@@ -221,6 +221,11 @@ shape:
         keepH2Intro: true,            // multi only: the native <p>s right under the target h2
                                       // ("212,773 entities found" on /tag/<name>) stay there,
                                       // indented like the h3s (_keepH2Intro(), _alignH2Intro())
+        foldPrivateCollections: true, // <entity>-collections: the "plus N other private
+                                      // collections" footer row leaves the table AND allRows,
+                                      // the intro <p> gets its count (finalCleanup())
+        foldAnonymousSubscribers: true, // editor/<entity>-subscribers: same for "Plus N
+                                      // other anonymous users" (finalCleanup())
 
         // Column pipeline:
         columnExtractors: [ { extractor: 'name', sourceColumn: 'Col', syntheticColumns: ['A','B'] } ],

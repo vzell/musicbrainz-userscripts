@@ -1,0 +1,26 @@
+[
+  {
+    "version": "WIP.2",
+    "date": "2026-10-22",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Release and release group collections: the \"plus N other private collections\" row no longer comes back as a table row after a sort or filter; it stays folded into the line above the table. An entity in no collection no longer offers a Collections button with nothing to show, and neither does a subscribers page without subscribers."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "WIP.1",
+    "date": "2026-10-22",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "New pages: the \"Found in N user collections\" page of an area, artist, event, instrument, label, place, recording, series or work (the link in its sidebar) becomes a filterable Collection | Editor table, like a release's. The \"Subscribers\" page of an artist, label, series or collection becomes a table of its subscribers, like an editor's, with the anonymous subscribers counted in the line above it."
+        ]
+      }
+    ]
+  }
+]

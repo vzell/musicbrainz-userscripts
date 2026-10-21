@@ -15,6 +15,7 @@
 // @require      file:///V:/home/vzell/git/musicbrainz-userscripts/lib/VZ_MBLibrary.user.js
 // @include      /^https?:\/\/(?:[^\/]+\.)?musicbrainz\.(?:org|eu)\/(?:artist|release-group|release|work|recording|label|series|place|area|instrument|event|collection|url)\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/?(?:\?.*)?$/
 // @include      /^https?:\/\/(?:[^\/]+\.)?musicbrainz\.(?:org|eu)\/(?:artist|release-group|release|work|recording|label|series|place|area|instrument|event)\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/(?:aliases|releases|recordings|works|events|relationships|discids|fingerprints|performances|places|artists|labels|tags|users|collections|ratings|edits|annotations|annotation(?:\/\d+)?)\/?(?:\?.*)?$/
+// @include      /^https?:\/\/(?:[^\/]+\.)?musicbrainz\.(?:org|eu)\/(?:artist|label|series|collection)\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/subscribers\/?(?:\?.*)?$/
 // @include      /^https?:\/\/(?:[^\/]+\.)?musicbrainz\.(?:org|eu)\/release\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}(?:\/disc\/\d+)?\/?(?:\?[^#]*)?(?:#.*)?$/
 // @include      /^https?:\/\/(?:[^\/]+\.)?musicbrainz\.(?:org|eu)\/(?:search\?query=.*|search\/edits\/?(?:\?.*)?|edit\/(?:subscribed(?:_editors)?|notes-received)\/?(?:\?.*)?|account\/applications\/?(?:\?.*)?|tags.*|tag\/.*|cdtoc\/.*|taglookup.*|artist-credit\/.*|reports.*|report\/.*|elections\/?(?:\?.*)?|election\/.*|genres\/?(?:\?.*)?|cdstub\/.*|isrc\/.*|iswc\/.*|doc\/Edit_Types\/?(?:\?.*)?|instruments\/?(?:\?.*)?|privileged\/?(?:\?.*)?)$/
 // @include      /^https?:\/\/(?:[^\/]+\.)?musicbrainz\.(?:org|eu)\/user\/[^\/]+\/(?:subscriptions\/.*|subscribers\/?(?:\?.*)?|collections\/?(?:\?.*)?|ratings\/.*|ratings(?:\?.*)?|tags.*|tag\/.*|edits(?:\/open)?\/?(?:\?.*)?)$/
@@ -9711,6 +9712,44 @@
     }
 
     /**
+     * An entity's "Found in N user collections" page: every entity kind that
+     * can be put in a collection (Structure C of `applyListToTable()`).
+     */
+    const _ENTITY_COLLECTIONS_RE =
+        /\/(?:area|artist|event|instrument|label|place|recording|release|release-group|series|work)\/[a-f0-9-]{36}\/collections/;
+
+    /**
+     * The `<ul>` an `<h2>` heads in Structure C of `applyListToTable()`:
+     * the first `<ul>` among its next five element siblings (an intro `<p>`
+     * sits between them), or null.
+     *
+     * @param {Element} h2
+     * @returns {Element|null}
+     */
+    function _h2ListUl(h2) {
+        let _next = h2.nextElementSibling;
+        for (let _steps = 0; _next && _steps < 5; _steps++) {
+            if (_next.tagName === 'UL') return _next;
+            _next = _next.nextElementSibling;
+        }
+        return null;
+    }
+
+    /**
+     * A button's `showIf` for the h2 + `<ul>` list pages (collections,
+     * subscribers): true when the live page has a list for Structure C to
+     * convert, read from the same root it reads. An entity in no collection
+     * ("… has not been added to any collections.") has only the h2 and a
+     * `<p>`, and gets no button rather than one that renders nothing.
+     *
+     * @returns {boolean}
+     */
+    function _hasH2List() {
+        const _root = document.getElementById('content') || document.body;
+        return Array.from(_root.querySelectorAll('h2')).some(h2 => !!_h2ListUl(h2));
+    }
+
+    /**
      * Converts `<ul>` list elements on the live page (or a fetched document) into
      * `<table class="tbl">` elements so the standard fetch / filter / sort pipeline
      * can process them.  Called for every entry in `features.listToTable`.
@@ -9718,7 +9757,8 @@
      * Supports seven distinct DOM structures, selected by path and sectionId:
      *   A) div-wrapped  — `<div id="sectionId"><ul>…</ul></div>`
      *   B) bare-ul      — `<ul class="<singular>-list">…</ul>`
-     *   C) h2+ul        — area-users, tag-value-entity, user-tag-value-entity, subscribers
+     *   C) h2+ul        — area-users, tag-value-entity, user-tag-value-entity,
+     *                     editor and entity subscribers, entity collections
      *   D) h3+ul        — one-segment tag pages (/tag/VALUE, /user/USERNAME/tag/VALUE)
      *   E) h3+ul (popular-tags) — /tags page after renameH2ToH3 has renamed the
      *                              original h2 headings to h3
@@ -9792,21 +9832,14 @@
                 const _isUserTagValueEntity = _currentPath.match(/\/user\/[^/]+\/tag\/[^/]+\/.+/); // /user/.../tag/<v>/<entity>
                 const _isTagValue           = !_isTagValueEntity && _currentPath.match(/\/tag\//); // one-segment only
                 const _isSubscribers        = _currentPath.includes('/subscribers');
-                const _isEntityCollections  = _currentPath.match(/\/(?:release|release-group)\/[a-f0-9-]{36}\/collections/);
+                const _isEntityCollections  = _currentPath.match(_ENTITY_COLLECTIONS_RE);
 
                 // ── Structure C: h2+ul (/area/<mbid>/users, /tag/<v>/<entity>,
                 //                       /user/.../tag/<v>/<entity>, /subscribers,
-                //                       /release|release-group/<mbid>/collections) ─
+                //                       /<entity>/<mbid>/collections) ─────────
                 if (_isAreaUsers || _isTagValueEntity || _isUserTagValueEntity || _isSubscribers || _isEntityCollections) {
                     Array.from(_root.querySelectorAll('h2')).forEach(_h2 => {
-                        let _next  = _h2.nextElementSibling;
-                        let _steps = 0;
-                        let _ul    = null;
-                        while (_next && _steps < 5) {
-                            if (_next.tagName === 'UL') { _ul = _next; break; }
-                            _next = _next.nextElementSibling;
-                            _steps++;
-                        }
+                        const _ul = _h2ListUl(_h2);
                         if (!_ul) return;
 
                         // Column name derivation:
@@ -31454,17 +31487,55 @@
             },
             tableMode: 'single'
         },
-        // Subscriber pages (e.g. /user/vzell/subscribers)
+        // Subscriber pages (e.g. /user/vzell/subscribers). Anchored to /user/:
+        // the entity subscribers pages below have the same suffix.
         {
             type: 'editor-subscribers',
-            match: (path) => path.includes('/subscribers'),
-            buttons: [ { label: 'Show all Editor Subscribers for User', shortLabel: 'Editor Subscribers' } ],
+            match: (path) => /^\/user\/[^/]+\/subscribers\/?$/.test(path),
+            buttons: [ { label: 'Show all Editor Subscribers for User', shortLabel: 'Editor Subscribers',
+                         showIf: _hasH2List } ],
             features: {
                 // Empty sectionId triggers Structure C in applyListToTable: the
                 // function scans for <h2>…<ul> pairs in the content area and uses
                 // the h2 text as the column name (e.g. "Subscribers").
-                listToTable: [ '' ]
+                listToTable: [ '' ],
+                // The "Plus N other anonymous users" footer row goes into the
+                // intro paragraph (finalCleanup()).
+                foldAnonymousSubscribers: true
             },
+            tableMode: 'single'
+        },
+        // An entity's subscribers (the sidebar's "Subscribers" link), same
+        // h2 + <p> + <ul> shape as an editor's (debug/artist-subscribers.html,
+        // debug/label-subscribers.html). Only these four entity kinds can be
+        // subscribed to. collection-subscribers must stay above
+        // collections-releases, whose /collection/<mbid> match is unanchored.
+        {
+            type: 'artist-subscribers',
+            match: (path) => path.match(/\/artist\/[a-f0-9-]{36}\/subscribers/),
+            buttons: [ { label: 'Show all Subscribers for Artist', shortLabel: 'Subscribers', showIf: _hasH2List } ],
+            features: { listToTable: [ '' ], foldAnonymousSubscribers: true },
+            tableMode: 'single'
+        },
+        {
+            type: 'label-subscribers',
+            match: (path) => path.match(/\/label\/[a-f0-9-]{36}\/subscribers/),
+            buttons: [ { label: 'Show all Subscribers for Label', shortLabel: 'Subscribers', showIf: _hasH2List } ],
+            features: { listToTable: [ '' ], foldAnonymousSubscribers: true },
+            tableMode: 'single'
+        },
+        {
+            type: 'series-subscribers',
+            match: (path) => path.match(/\/series\/[a-f0-9-]{36}\/subscribers/),
+            buttons: [ { label: 'Show all Subscribers for Series', shortLabel: 'Subscribers', showIf: _hasH2List } ],
+            features: { listToTable: [ '' ], foldAnonymousSubscribers: true },
+            tableMode: 'single'
+        },
+        {
+            type: 'collection-subscribers',
+            match: (path) => path.match(/\/collection\/[a-f0-9-]{36}\/subscribers/),
+            buttons: [ { label: 'Show all Subscribers for Collection', shortLabel: 'Subscribers', showIf: _hasH2List } ],
+            features: { listToTable: [ '' ], foldAnonymousSubscribers: true },
             tableMode: 'single'
         },
         // Account applications page (/account/applications) — 'Authorized
@@ -32778,7 +32849,8 @@
         {
             type: 'release-collections',
             match: (path) => path.match(/\/release\/[a-f0-9-]{36}\/collections/),
-            buttons: [ { label: 'Show all Collections for Release', shortLabel: 'Collections' } ],
+            // showIf: no button for an entity in no collection (no <ul>).
+            buttons: [ { label: 'Show all Collections for Release', shortLabel: 'Collections', showIf: _hasH2List } ],
             features: {
                 // Empty sectionId triggers Structure C in applyListToTable: the
                 // function scans for <h2>…<ul> pairs in the content area and uses
@@ -32787,14 +32859,17 @@
                 // Split the combined "CollectionName by Editor" cell into two columns.
                 columnExtractors: [
                     { sourceColumn: 'Collections', extractor: 'Collection_Editor', syntheticColumns: ['Collection', 'Editor'] }
-                ]
+                ],
+                // The "plus N other private collections" footer row goes into
+                // the intro paragraph (finalCleanup()).
+                foldPrivateCollections: true
             },
             tableMode: 'single'
         },
         {
             type: 'releasegroup-collections',
             match: (path) => path.match(/\/release-group\/[a-f0-9-]{36}\/collections/),
-            buttons: [ { label: 'Show all Collections for Release Group', shortLabel: 'Collections' } ],
+            buttons: [ { label: 'Show all Collections for Release Group', shortLabel: 'Collections', showIf: _hasH2List } ],
             features: {
                 // Empty sectionId triggers Structure C in applyListToTable: the
                 // function scans for <h2>…<ul> pairs in the content area and uses
@@ -32803,7 +32878,131 @@
                 // Split the combined "CollectionName by Editor" cell into two columns.
                 columnExtractors: [
                     { sourceColumn: 'Collections', extractor: 'Collection_Editor', syntheticColumns: ['Collection', 'Editor'] }
-                ]
+                ],
+                foldPrivateCollections: true
+            },
+            tableMode: 'single'
+        },
+        // Every other collectable entity's "Found in N user collections" page
+        // (the sidebar link), same shape as the release's
+        // (debug/artist-collections.html). These stay here, above the broad
+        // entity matchers further down (includes('/label'),
+        // includes('/series'), /work/<mbid>, includes('/recording'), …),
+        // which would otherwise claim them.
+        {
+            type: 'area-collections',
+            match: (path) => path.match(/\/area\/[a-f0-9-]{36}\/collections/),
+            buttons: [ { label: 'Show all Collections for Area', shortLabel: 'Collections', showIf: _hasH2List } ],
+            features: {
+                listToTable: [ '' ],
+                columnExtractors: [
+                    { sourceColumn: 'Collections', extractor: 'Collection_Editor', syntheticColumns: ['Collection', 'Editor'] }
+                ],
+                foldPrivateCollections: true
+            },
+            tableMode: 'single'
+        },
+        {
+            type: 'artist-collections',
+            match: (path) => path.match(/\/artist\/[a-f0-9-]{36}\/collections/),
+            buttons: [ { label: 'Show all Collections for Artist', shortLabel: 'Collections', showIf: _hasH2List } ],
+            features: {
+                listToTable: [ '' ],
+                columnExtractors: [
+                    { sourceColumn: 'Collections', extractor: 'Collection_Editor', syntheticColumns: ['Collection', 'Editor'] }
+                ],
+                foldPrivateCollections: true
+            },
+            tableMode: 'single'
+        },
+        {
+            type: 'event-collections',
+            match: (path) => path.match(/\/event\/[a-f0-9-]{36}\/collections/),
+            buttons: [ { label: 'Show all Collections for Event', shortLabel: 'Collections', showIf: _hasH2List } ],
+            features: {
+                listToTable: [ '' ],
+                columnExtractors: [
+                    { sourceColumn: 'Collections', extractor: 'Collection_Editor', syntheticColumns: ['Collection', 'Editor'] }
+                ],
+                foldPrivateCollections: true
+            },
+            tableMode: 'single'
+        },
+        {
+            type: 'instrument-collections',
+            match: (path) => path.match(/\/instrument\/[a-f0-9-]{36}\/collections/),
+            buttons: [ { label: 'Show all Collections for Instrument', shortLabel: 'Collections', showIf: _hasH2List } ],
+            features: {
+                listToTable: [ '' ],
+                columnExtractors: [
+                    { sourceColumn: 'Collections', extractor: 'Collection_Editor', syntheticColumns: ['Collection', 'Editor'] }
+                ],
+                foldPrivateCollections: true
+            },
+            tableMode: 'single'
+        },
+        {
+            type: 'label-collections',
+            match: (path) => path.match(/\/label\/[a-f0-9-]{36}\/collections/),
+            buttons: [ { label: 'Show all Collections for Label', shortLabel: 'Collections', showIf: _hasH2List } ],
+            features: {
+                listToTable: [ '' ],
+                columnExtractors: [
+                    { sourceColumn: 'Collections', extractor: 'Collection_Editor', syntheticColumns: ['Collection', 'Editor'] }
+                ],
+                foldPrivateCollections: true
+            },
+            tableMode: 'single'
+        },
+        {
+            type: 'place-collections',
+            match: (path) => path.match(/\/place\/[a-f0-9-]{36}\/collections/),
+            buttons: [ { label: 'Show all Collections for Place', shortLabel: 'Collections', showIf: _hasH2List } ],
+            features: {
+                listToTable: [ '' ],
+                columnExtractors: [
+                    { sourceColumn: 'Collections', extractor: 'Collection_Editor', syntheticColumns: ['Collection', 'Editor'] }
+                ],
+                foldPrivateCollections: true
+            },
+            tableMode: 'single'
+        },
+        {
+            type: 'recording-collections',
+            match: (path) => path.match(/\/recording\/[a-f0-9-]{36}\/collections/),
+            buttons: [ { label: 'Show all Collections for Recording', shortLabel: 'Collections', showIf: _hasH2List } ],
+            features: {
+                listToTable: [ '' ],
+                columnExtractors: [
+                    { sourceColumn: 'Collections', extractor: 'Collection_Editor', syntheticColumns: ['Collection', 'Editor'] }
+                ],
+                foldPrivateCollections: true
+            },
+            tableMode: 'single'
+        },
+        {
+            type: 'series-collections',
+            match: (path) => path.match(/\/series\/[a-f0-9-]{36}\/collections/),
+            buttons: [ { label: 'Show all Collections for Series', shortLabel: 'Collections', showIf: _hasH2List } ],
+            features: {
+                listToTable: [ '' ],
+                columnExtractors: [
+                    { sourceColumn: 'Collections', extractor: 'Collection_Editor', syntheticColumns: ['Collection', 'Editor'] }
+                ],
+                foldPrivateCollections: true
+            },
+            tableMode: 'single'
+        },
+        {
+            type: 'work-collections',
+            match: (path) => path.match(/\/work\/[a-f0-9-]{36}\/collections/),
+            buttons: [ { label: 'Show all Collections for Work', shortLabel: 'Collections', showIf: _hasH2List } ],
+            features: {
+                listToTable: [ '' ],
+                columnExtractors: [
+                    { sourceColumn: 'Collections', extractor: 'Collection_Editor', syntheticColumns: ['Collection', 'Editor'] }
+                ],
+                foldPrivateCollections: true
             },
             tableMode: 'single'
         },
@@ -113044,6 +113243,22 @@ a { color: #1565c0; }`;
     }
 
     /**
+     * Takes a list page's footer row ("plus N other private collections",
+     * "Plus N other anonymous users") out of `allRows` and `originalAllRows`,
+     * which every sort and filter re-renders from — removing it from the DOM
+     * alone brings it back on the first sort.
+     *
+     * @param {HTMLTableRowElement} row
+     */
+    function _spliceFooterRow(row) {
+        [allRows, originalAllRows].forEach(arr => {
+            if (!Array.isArray(arr)) return;
+            const _i = arr.indexOf(row);
+            if (_i !== -1) arr.splice(_i, 1);
+        });
+    }
+
+    /**
      * Runs a set of post-render DOM clean-up tasks after `renderGroupedTable` or
      * `renderFinalTable` has completed.
      *
@@ -113054,11 +113269,14 @@ a { color: #1565c0; }`;
      *     the injected "Searchform" h2.
      *   • Wires cdtoc tracklist sub-row toggles via `_cdtocInitTracklistToggles()`.
      *   • user-subscriptions — removes the redundant subscription-type nav paragraph.
-     *   • release-collections / releasegroup-collections — rewrites the intro
-     *     paragraph and drops the trailing "plus M other private collections" row.
-     *   • editor-subscribers — removes a trailing "Plus N other anonymous users"
-     *     row (splicing it out of `allRows`/`originalAllRows` too) and patches the
-     *     preceding paragraph and row-count stat to match.
+     *   • `features.foldPrivateCollections` (the `<entity>-collections` pages) —
+     *     drops the trailing "plus M other private collections" row (splicing
+     *     it out of `allRows`/`originalAllRows` too) and rewrites the intro
+     *     paragraph.
+     *   • `features.foldAnonymousSubscribers` (editor and entity subscribers) —
+     *     removes a trailing "Plus N other anonymous users" row (splicing it
+     *     out of `allRows`/`originalAllRows` too) and patches the preceding
+     *     paragraph and row-count stat to match.
      *   • Applies the page definition's `removeSelector` (single element) and
      *     `removeSelectors` (all matches of each selector) removals.
      *   • Removes the native MusicBrainz `div.filter` bar (redundant after the
@@ -113152,13 +113370,15 @@ a { color: #1565c0; }`;
                 }
             });
         }
-        // ── release-collections / releasegroup-collections: rewrite intro paragraph ─
+        // ── features.foldPrivateCollections (<entity>-collections): rewrite intro paragraph ─
         // Pattern: "<EntityName> has been added to N collections:"
         // Last row:  "plus M other private collections"
         // Result:    "<b><i>EntityName</i></b> has been added to <b>N</b> collections
         //             and <b>M</b> other private collections"
-        //            (last row removed from table)
-        if (pageType === 'release-collections' || pageType === 'releasegroup-collections') {
+        //            (last row removed from the table AND from allRows /
+        //            originalAllRows: renderFinalTable() re-renders from those,
+        //            so a DOM-only removal came back on the first sort)
+        if (activeDefinition?.features?.foldPrivateCollections) {
             const _tbl = document.querySelector('table.tbl');
             let _privateCount = 0;
             let _lastRow      = null;
@@ -113180,6 +113400,7 @@ a { color: #1565c0; }`;
 
             if (_privateCount > 0 && _lastRow) {
                 _lastRow.remove();
+                _spliceFooterRow(_lastRow);
                 // Patch count stat.
                 if (_tbl) {
                     const _newCount = _tbl.querySelectorAll('tbody tr').length;
@@ -113195,8 +113416,9 @@ a { color: #1565c0; }`;
             // Rewrite the intro paragraph regardless of whether private rows exist.
             document.querySelectorAll('p').forEach(_p => {
                 // Match: "SomeName has been added to 97 collections:"
+                // (or "… to 1 collection:")
                 const _pm = _p.textContent.match(
-                    /^(.+?)\s+has been added to\s+([\d,]+)\s+collections[:\s]*$/i
+                    /^(.+?)\s+has been added to\s+([\d,]+)\s+collections?[:\s]*$/i
                 );
                 if (!_pm) return;
                 const _entityName  = _pm[1].trim();
@@ -113212,7 +113434,7 @@ a { color: #1565c0; }`;
                 const _bTotal = document.createElement('b');
                 _bTotal.textContent = String(_totalCount);
                 _p.appendChild(_bTotal);
-                _p.append(' collections');
+                _p.append(_totalCount === 1 ? ' collection' : ' collections');
                 if (_privateCount > 0) {
                     _p.append(' and ');
                     const _bPriv = document.createElement('b');
@@ -113226,7 +113448,8 @@ a { color: #1565c0; }`;
             });
         }
 
-        if (pageType === 'editor-subscribers') {
+        // ── features.foldAnonymousSubscribers (editor and entity subscribers) ─
+        if (activeDefinition?.features?.foldAnonymousSubscribers) {
             const _tbl = document.querySelector('table.tbl');
             let _anonCount = 0;
             let _lastRow   = null;
@@ -113241,7 +113464,7 @@ a { color: #1565c0; }`;
                         _anonCount = parseInt(_m[1].replace(/,/g, ''), 10) || 0;
                         _lastRow   = _candidate;
                         Lib.debug('cleanup',
-                            `editor-subscribers: found ${_anonCount} anonymous users in last row.`);
+                            `${pageType}: found ${_anonCount} anonymous users in last row.`);
                     }
                 }
             }
@@ -113251,13 +113474,7 @@ a { color: #1565c0; }`;
                 _lastRow.remove();
 
                 // Splice out of in-memory row arrays so sort/filter never re-inserts it.
-                const _spliceAnon = (arr) => {
-                    if (!Array.isArray(arr)) return;
-                    const _si = arr.indexOf(_lastRow);
-                    if (_si !== -1) arr.splice(_si, 1);
-                };
-                _spliceAnon(allRows);
-                _spliceAnon(originalAllRows);
+                _spliceFooterRow(_lastRow);
 
                 // 2. Patch table.dataset.mbTotalRows and the h2 row-count stat.
                 if (_tbl) {
@@ -113293,7 +113510,7 @@ a { color: #1565c0; }`;
                     _p.appendChild(_bAnon);
                     _p.append(` anonymous users subscribed${_rest}`);
                     Lib.debug('cleanup',
-                        `editor-subscribers: patched paragraph ` +
+                        `${pageType}: patched paragraph ` +
                         `(total=${_total}, real=${_real}, anon=${_anonCount}).`);
                 });
             }
