@@ -14,7 +14,7 @@
 // @require      https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js
 // @require      file:///V:/home/vzell/git/musicbrainz-userscripts/lib/VZ_MBLibrary.user.js
 // @include      /^https?:\/\/(?:[^\/]+\.)?musicbrainz\.(?:org|eu)\/(?:artist|release-group|release|work|recording|label|series|place|area|instrument|event|collection|url)\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/?(?:\?.*)?$/
-// @include      /^https?:\/\/(?:[^\/]+\.)?musicbrainz\.(?:org|eu)\/(?:artist|release-group|release|work|recording|label|series|place|area|instrument|event)\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/(?:aliases|releases|recordings|works|events|relationships|discids|fingerprints|performances|places|artists|labels|tags|users|collections|ratings|edits|annotations)\/?(?:\?.*)?$/
+// @include      /^https?:\/\/(?:[^\/]+\.)?musicbrainz\.(?:org|eu)\/(?:artist|release-group|release|work|recording|label|series|place|area|instrument|event)\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/(?:aliases|releases|recordings|works|events|relationships|discids|fingerprints|performances|places|artists|labels|tags|users|collections|ratings|edits|annotations|annotation(?:\/\d+)?)\/?(?:\?.*)?$/
 // @include      /^https?:\/\/(?:[^\/]+\.)?musicbrainz\.(?:org|eu)\/release\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}(?:\/disc\/\d+)?\/?(?:\?[^#]*)?(?:#.*)?$/
 // @include      /^https?:\/\/(?:[^\/]+\.)?musicbrainz\.(?:org|eu)\/(?:search\?query=.*|search\/edits\/?(?:\?.*)?|edit\/(?:subscribed(?:_editors)?|notes-received)\/?(?:\?.*)?|account\/applications\/?(?:\?.*)?|tags.*|tag\/.*|cdtoc\/.*|taglookup.*|artist-credit\/.*|reports.*|report\/.*|elections\/?(?:\?.*)?|election\/.*|genres\/?(?:\?.*)?|cdstub\/.*|isrc\/.*|iswc\/.*|doc\/Edit_Types\/?(?:\?.*)?|instruments\/?(?:\?.*)?|privileged\/?(?:\?.*)?)$/
 // @include      /^https?:\/\/(?:[^\/]+\.)?musicbrainz\.(?:org|eu)\/user\/[^\/]+\/(?:subscriptions\/.*|subscribers\/?(?:\?.*)?|collections\/?(?:\?.*)?|ratings\/.*|ratings(?:\?.*)?|tags.*|tag\/.*|edits(?:\/open)?\/?(?:\?.*)?)$/
@@ -33333,6 +33333,25 @@
             tableMode: 'single',
             non_paginated: true
         },
+        // One version of an entity's annotation (/<kind>/<mbid>/annotation/<n>,
+        // or the current one without the number; 2026-10-21): the version
+        // beside the current one, block by block, the changes marked
+        // (applyAnnotationCompareToTables()). Both texts are in the page's own
+        // JSON. Anchored: /annotations is the history above.
+        {
+            type: 'annotation-version',
+            match: (path) => /^\/(?:artist|instrument|area|place|series|label|work|release-group|release|recording|event)\/[a-f0-9-]{36}\/annotation(?:\/\d+)?\/?$/.test(path),
+            buttons: [ {
+                label: 'Compare with the current version', shortLabel: 'Compare',
+                description: 'Show this version of the annotation beside the current one, paragraph by paragraph, with what changed marked. Both are in this page: nothing else is asked.'
+            } ],
+            features: {
+                annotationCompareToTables: true,
+                groupByH3: true
+            },
+            tableMode: 'multi',
+            non_paginated: true
+        },
         // Area pages
         // The area overview (/area/<mbid>): its only data is the
         // Relationships lists, turned into tables by applyRelDetailsToTables()
@@ -49354,6 +49373,28 @@
     }
 
     /**
+     * The page JSON of an annotation version page (`/<kind>/<MBID>/annotation[/<n>]`):
+     * `{annotation, entity: {latest_annotation, …}, numberOfRevisions, …}`,
+     * each annotation with `id`, `html`, `text`, `changelog`,
+     * `creation_date` and `editor` (probed 2026-10-21, logged in and out).
+     * The header has a JSON script of its own (the entity type and MBID)
+     * BEFORE it, so the one with an `annotation` key is looked for.
+     *
+     * @param {?Element} content - The page's `#content`.
+     * @returns {?Object} `null` when there is none or it does not parse.
+     * @throws Never.
+     */
+    function _mbAnnotationPageData(content) {
+        const json = content && Array.from(content.querySelectorAll('script[type="application/json"]'))
+            .find(s => /^\s*\{\s*"annotation"\s*:/.test(s.textContent) || /"numberOfRevisions"/.test(s.textContent));
+        try {
+            return json ? JSON.parse(json.textContent) : null;
+        } catch (_) {
+            return null;
+        }
+    }
+
+    /**
      * One version of an entity's annotation (`/<kind>/<MBID>/annotation/<n>`,
      * or the current one at `/<kind>/<MBID>/annotation`; 2026-10-21, shown
      * to anyone) as a record for its card: the text (`_mbAnnotationBlocks()`
@@ -49382,12 +49423,8 @@
         let old = /old revision/.test(said);
         let editor = _mbPopText(ed);
         let editorId = ed ? (ed.getAttribute('href') || '').split('/')[2] || '' : '';
-        // The header has a JSON script of its own (the entity type and MBID)
-        // before the annotation's.
-        const json = Array.from(content.querySelectorAll('script[type="application/json"]'))
-            .find(s => /^\s*\{\s*"annotation"\s*:/.test(s.textContent) || /"numberOfRevisions"/.test(s.textContent));
         try {
-            const parsed = json ? JSON.parse(json.textContent) : null;
+            const parsed = _mbAnnotationPageData(content);
             revisions = Number(parsed && parsed.numberOfRevisions) || 0;
             // Logged out, an old version's line reads like the current one's
             // ("Annotation last modified on …", probed 2026-10-21), so the
@@ -91384,6 +91421,11 @@ a { color: #1565c0; }`;
         if (activeDefinition.features?.userProfileToTables) {
             applyUserProfileToTables(activeDefinition);
         }
+        // An annotation version ('annotation-version'): this version beside
+        // the current one, from the page's own JSON.
+        if (activeDefinition.features?.annotationCompareToTables) {
+            applyAnnotationCompareToTables(activeDefinition);
+        }
 
         // ── editsToTable pre-processing ─────────────────────────────────────
         // For the 'edits' pageType, convert the native div.edit-list block
@@ -91916,6 +91958,9 @@ a { color: #1565c0; }`;
                 }
                 if (doc !== document && activeDefinition.features?.userProfileToTables) {
                     applyUserProfileToTables(activeDefinition, doc);
+                }
+                if (doc !== document && activeDefinition.features?.annotationCompareToTables) {
+                    applyAnnotationCompareToTables(activeDefinition, doc);
                 }
 
                 // ── editsToTable on fetched pages ────────────────────────────
@@ -100798,6 +100843,160 @@ a { color: #1565c0; }`;
         new Set(heads).forEach(h => h.remove());
         [info, ...stats].filter(Boolean).forEach(t => t.remove());
         Lib.debug('render', `applyUserProfileToTables: ${frags.length} groups.`);
+    }
+
+    /**
+     * Pairs two annotations' blocks (`_mbAnnotationBlocks()`) for the
+     * 'annotation-version' table: the longest common run of equal blocks
+     * (a heading equals a heading of the same text, a paragraph a paragraph)
+     * is "same"; between two equal ones, the blocks only one side has are
+     * paired in order with a block of the same kind on the other side as
+     * "changed", the rest are "only in this version" / "only in the current
+     * version". Each row carries the section it sits in (the last heading
+     * above it, the current version's text first). Pure.
+     *
+     * @param {Array<{h?: string, p?: string}>} a - This version.
+     * @param {Array<{h?: string, p?: string}>} b - The current version.
+     * @returns {Array<{heading: boolean, section: string, a: ?string, b: ?string,
+     *   status: ('same'|'changed'|'only in this version'|'only in the current version')}>}
+     */
+    function _annotationCompareRows(a, b) {
+        const key = x => (x.h !== undefined ? `h:${x.h}` : `p:${x.p}`);
+        const text = x => (x.h !== undefined ? x.h : x.p);
+        const n = a.length;
+        const m = b.length;
+        const L = Array.from({ length: n + 1 }, () => new Array(m + 1).fill(0));
+        for (let i = n - 1; i >= 0; i--) {
+            for (let j = m - 1; j >= 0; j--) {
+                L[i][j] = key(a[i]) === key(b[j]) ? L[i + 1][j + 1] + 1 : Math.max(L[i + 1][j], L[i][j + 1]);
+            }
+        }
+        const out = [];
+        let section = '';
+        const push = (x, y, status) => {
+            const heading = (x || y).h !== undefined;
+            if (heading) section = text(y || x);
+            out.push({ heading, section, a: x ? text(x) : null, b: y ? text(y) : null, status });
+        };
+        let gone = [];
+        let fresh = [];
+        const flush = () => {
+            const used = new Set();
+            gone.forEach((x) => {
+                const k = fresh.findIndex((y, idx) => !used.has(idx) && (y.h !== undefined) === (x.h !== undefined));
+                if (k >= 0) {
+                    used.add(k);
+                    push(x, fresh[k], 'changed');
+                } else push(x, null, 'only in this version');
+            });
+            fresh.forEach((y, idx) => { if (!used.has(idx)) push(null, y, 'only in the current version'); });
+            gone = [];
+            fresh = [];
+        };
+        let i = 0;
+        let j = 0;
+        while (i < n && j < m) {
+            if (key(a[i]) === key(b[j])) {
+                flush();
+                push(a[i++], b[j++], 'same');
+            } else if (L[i + 1][j] >= L[i][j + 1]) gone.push(a[i++]);
+            else fresh.push(b[j++]);
+        }
+        while (i < n) gone.push(a[i++]);
+        while (j < m) fresh.push(b[j++]);
+        flush();
+        return out;
+    }
+
+    /**
+     * An annotation date from the page JSON (`creation_date`, ISO in UTC) as
+     * "2015-06-19 06:31 UTC"; '' for none.
+     *
+     * @param {?string} iso
+     * @returns {string}
+     */
+    function _annotationDate(iso) {
+        const m = /^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2})/.exec(String(iso || ''));
+        return m ? `${m[1]} ${m[2]} UTC` : '';
+    }
+
+    /**
+     * Turns an annotation version page into two h3 + `table.tbl` groups
+     * (`features.annotationCompareToTables`, pageType 'annotation-version'),
+     * read from the page's own JSON (`_mbAnnotationPageData()`): "This
+     * version" (Field | Value: whether it is the current one, editor, date,
+     * changelog, the current version's date and editor, how many versions)
+     * and "Compared with the current version" (# | Section | This version |
+     * Current version | Status, `_annotationCompareRows()`). A changed row's
+     * status (`span.mb-annot-status` in the Status cell) carries the rich
+     * comparison card (`_setTipCmp()`: attributes of a span inside the cell,
+     * so they survive every clone and the disk round trip). The
+     * texts are copied as text (`_mbAnnotationBlocks()`), never as markup.
+     * The native annotation stays where it is; a new h2 "Annotation
+     * versions" after it heads the groups. Idempotent
+     * (`data-mb-annot-compare` on `#content`).
+     *
+     * @param {object}           def
+     * @param {Document|Element} [docContext=document]
+     * @returns {void}
+     */
+    function applyAnnotationCompareToTables(def, docContext = document) {
+        if (!def?.features?.annotationCompareToTables) return;
+        const doc = docContext.nodeType === Node.DOCUMENT_NODE ? docContext : docContext.ownerDocument;
+        const content = doc.getElementById('content');
+        if (!content || content.dataset.mbAnnotCompare) return;
+        const box = content.querySelector('div.annotation');
+        const data = _mbAnnotationPageData(content);
+        const ann = data && data.annotation;
+        if (!box || !ann) return;
+        content.dataset.mbAnnotCompare = '1';
+        const latest = (data.entity && data.entity.latest_annotation) || ann;
+        const isCurrent = latest.id === ann.id;
+        // An inert document: nothing in it runs or loads.
+        const blocks = html => _mbAnnotationBlocks(new DOMParser().parseFromString(String(html || ''), 'text/html').body);
+        const mine = blocks(ann.html);
+        const rows = _annotationCompareRows(mine, isCurrent ? mine : blocks(latest.html));
+        const who = x => (x && x.editor && x.editor.name ? String(x.editor.name) : '');
+        const info = [
+            ['Version', isCurrent ? 'the current one' : 'an old one'],
+            ['Edited by', who(ann)],
+            ['Date', _annotationDate(ann.creation_date)],
+            ['Changelog', ann.changelog ? String(ann.changelog) : '(none)'],
+            ['Current version', isCurrent ? 'this one' : `${_annotationDate(latest.creation_date)}${who(latest) ? ` by ${who(latest)}` : ''}`],
+            ['Versions', data.numberOfRevisions ? String(data.numberOfRevisions) : ''],
+        ].filter(r => r[1]);
+        const lines = (t, strong) => {
+            if (t === null) return '';
+            const wrap = strong ? doc.createElement('strong') : doc.createDocumentFragment();
+            String(t).split('\n').forEach((line, k) => {
+                if (k) wrap.appendChild(doc.createElement('br'));
+                wrap.appendChild(doc.createTextNode(line));
+            });
+            return [wrap];
+        };
+        // The status and its card sit on a span INSIDE the cell: a disk file
+        // keeps a cell's markup but only listed attributes of the <td>.
+        const cmpRows = rows.map((r, k) => {
+            const st = doc.createElement('span');
+            st.className = 'mb-annot-status';
+            st.textContent = r.status;
+            st.dataset.mbAnnotStatus = r.status === 'same' ? 'same' : r.status === 'changed' ? 'changed' : r.a === null ? 'added' : 'removed';
+            if (r.status === 'changed') {
+                _setTipCmp(st, 'Changed in the current version',
+                    [{ at: 0, la: 'This version', lb: 'Current', a: r.a.replace(/\n/g, ' '), b: r.b.replace(/\n/g, ' ') }]);
+            }
+            return [String(k + 1), r.section, lines(r.a, r.heading), lines(r.b, r.heading), [st]];
+        });
+        const changed = rows.filter(r => r.status !== 'same').length;
+        const intro = isCurrent ? '<p>This is the current version: nothing has changed since.</p>'
+            : `<p>${changed} of ${rows.length} block${rows.length === 1 ? '' : 's'} differ${changed === 1 ? 's' : ''} from the current version.</p>`;
+        const h2 = doc.createElement('h2');
+        h2.className = 'mb-annot-compare';
+        h2.textContent = 'Annotation versions';
+        box.after(h2);
+        h2.after(_eventBuildTable(doc, 'This version', ['Field', 'Value'], info),
+            _eventBuildTable(doc, 'Compared with the current version', ['#', 'Section', 'This version', 'Current version', 'Status'], cmpRows, intro));
+        Lib.debug('render', `applyAnnotationCompareToTables: ${rows.length} blocks, ${changed} differ${isCurrent ? ' (the current version)' : ''}.`);
     }
 
     // ── The sidebar beside the page's own data ───────────────────────────────

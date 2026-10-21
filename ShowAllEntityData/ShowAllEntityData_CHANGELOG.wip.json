@@ -1,5 +1,17 @@
 [
   {
+    "version": "WIP.9",
+    "date": "2026-10-21",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "New page type: one version of an annotation (\"View this version\" on an annotation history, or \"View current revision\") gets a \"Compare with the current version\" button. It shows who wrote the version and when, and a table with one row per paragraph or heading: this version's text, the current version's text, and whether it is the same, changed, only in this version or only in the current version. Point at \"changed\" to see both texts with the difference marked. Both are read from the page itself."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.8",
     "date": "2026-10-21",
     "sections": [

@@ -1124,6 +1124,21 @@ kinds (no `url`, no `collection`); `edit_annotation` and
   `popup-mb-annotations.spec.js` (PATH, HISTORY, VERSION, CURRENT, LOGIN,
   SAFE) on `release-tracks-sidebar-search-links.html`; mutations
   `scripts/mutations/popup-annotations.json` (9, all caught).
+- **The version page itself** (2026-10-21, WIP.9) is the pageType
+  `annotation-version` (PAGETYPES-TESTING-REFERENCE.org #114): its button
+  runs `applyAnnotationCompareToTables()`, which reads the SAME page JSON
+  through the shared `_mbAnnotationPageData()` (the preview's parser uses it
+  too) and builds "This version" (Field | Value) and "Compared with the
+  current version" (`_annotationCompareRows()`: an LCS of equal blocks, the
+  gaps paired by kind as "changed", the rest "only in this version" / "only
+  in the current version"). A changed row's status is a SPAN with the rich
+  card (`_setTipCmp()`): a disk file keeps a cell's markup but only listed
+  `<td>` attributes, so a card on the `<td>` came back empty after Load
+  from Disk. No disk-load hook: the file's groups render as saved. Spec
+  `annotation-version-compare.spec.js`; mutations
+  `scripts/mutations/annotation-version-compare.json` (8; the fetched-copy
+  hook is `expect: pass` — a non_paginated page is read from the live
+  document).
 
 ## MusicBrainz: beyond table links (org/iframe.org, Phase 4)
 

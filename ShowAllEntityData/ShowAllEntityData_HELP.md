@@ -1635,7 +1635,9 @@ an import brings your deletions back.
 - **Reports** — the `/reports` index and all 117 reports across 14 categories
 - **Edit listings** — edit search, per-entity edits, your own edits, open edits,
   subscribed edits, notes received
-- **Annotation history** (`/<entity>/<mbid>/annotations`) across ten entity types
+- **Annotation history** (`/<entity>/<mbid>/annotations`) across ten entity types,
+  and **one version of an annotation** (`/<entity>/<mbid>/annotation/<n>`, or the
+  current one) compared with the current version
 - **Auto-editor elections**, **genre**, **instrument** and **edit-type** lists,
   **top CD stubs**, **ISRC**, **ISWC** and **privileged account** pages
 - **Account pages** (`/account/applications`)
@@ -2098,6 +2100,18 @@ clamp the long *Edit details* and *Edit notes* columns with a *more* toggle.
 selectable Old/New comparison radios, and a relocated *Compare versions* button
 that can open in a new tab. *Editor* is the first column, ahead of *Old* and
 *New*, and stays visible when you scroll sideways.
+
+**One version of an annotation** (*View this version* on the history page, or
+*View current revision*) gets a **Compare with the current version** button. It
+shows two tables under the annotation: *This version* (whether it is the
+current one, who wrote it and when, its changelog, when the current version
+was written and by whom, how many versions there are), and *Compared with the
+current version*, one row per paragraph or heading with this version's text,
+the current version's text and what happened to it: *same*, *changed*, *only
+in this version* or *only in the current version*. Point at *changed* to see
+the two texts one under the other with the difference marked. Both texts are
+on the page already, so nothing else is asked; the annotation itself stays
+where it is.
 
 **Auto-editor election** pages consolidate both the index and individual
 elections.

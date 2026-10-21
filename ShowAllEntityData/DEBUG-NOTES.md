@@ -25221,3 +25221,32 @@ the left edge, which the annotation test in the same file already does with
 only: blur again, then `toLeftEdge()`, before measuring. With it: 24/24
 twice under the same load. Nothing in the userscript changed: the premise,
 not the property under test.
+
+## 2026-10-21 — annotation-version pageType (WIP.9, branch feat/pop-user-page-lists)
+
+Env: 2026-10-21T14:56:23+02:00 · NB-3641 · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) · Playwright 1.62.1 Chromium · no Tampermonkey (GM stubs)
+
+Asked for with `debug/annotation-artist.html` (/artist/70248960-…/annotation/630690)
+and `debug/annotation-release.html` (/release/3ec14d03-…/annotation/1063770), both FRP;
+the user chose "version vs current" for what it shows.
+
+- **The page** (raw captures, logged out): `div#content` with the entity's
+  h1 header, the tabs, a JSON script, then `div.annotation > h2.annotation +
+  div.annotation-body + p "Changelog:" + div.annotation-details`. No table,
+  no pagination. The JSON (`{annotation, entity: {latest_annotation},
+  numberOfRevisions, showChangeLog, showEmpty}`) carries BOTH texts as
+  rendered HTML, so the comparison needs nothing beyond the page. The
+  release header has its own JSON script first (see WIP.4's note).
+- **`@include`**: line 17's alternation gained `annotation(?:\/\d+)?`
+  (the skill's warning: without it the entry is unreachable, as the
+  `annotations` pageType once was).
+- **Disk trap:** the first version put the rich card's `data-mb-tip-cmp`
+  on the Status `<td>`; after Save → Load the statuses were back but the
+  card was not. The disk record keeps a cell's markup and only LISTED td
+  attributes (the length/video/work flags each have their own field), so the
+  status is now a span inside the cell. A disk-load hook was written and then
+  removed: a mutation showed it changed nothing (the file's groups render
+  as saved, and the page has no native table to replace).
+- The native annotation's own wiki heading ("Barcode and Other
+  Identifiers") survives the grouped render's h3/table sweep on this page
+  (pinned in the spec).
