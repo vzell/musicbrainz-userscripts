@@ -25204,3 +25204,20 @@ releases, places, instruments, events.
   sidebar-overhaul.json, 1 in caa-card-keys.json) and, as asked, the 7 that
   were already stale at HEAD 8ccbd8d (tables:, more kinds:, disk:, two
   picture:). The full sidebar-overhaul.json list then ran 71/71 OK.
+
+## 2026-10-21 — sticky-page-headers "search page" flake: reproduced and fixed
+
+Env: 2026-10-21T14:46:26+02:00 · NB-3641 · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) · Playwright 1.62.1 Chromium · no Tampermonkey (GM stubs)
+
+The first sighting earlier today (test:full at b9e151a): "search page: the
+status line after a bare h1 inside #content stays put" failed on its
+premise `before.scrollX === 0`. Reproduced on demand with
+`--repeat-each=24 --workers=14`: 1/24 failed, "Received: 700" — the
+page (wider than the 700 px window) had been scrolled sideways before the
+first measurement, by the button click or by the global filter's focus
+landing after `settleFocusAndPointer()`'s wait. The test never returned to
+the left edge, which the annotation test in the same file already does with
+`toLeftEdge()` (its own 6 px premise failure, 2026-10-08). Fix in the test
+only: blur again, then `toLeftEdge()`, before measuring. With it: 24/24
+twice under the same load. Nothing in the userscript changed: the premise,
+not the property under test.
