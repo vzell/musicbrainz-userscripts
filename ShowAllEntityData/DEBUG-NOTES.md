@@ -25127,3 +25127,19 @@ warnings; no near-miss cell had one.
 - `scripts/mutations/diff-cards.json`: the two entries anchored on the old
   `const cmp = flag.kind === 'warn' ? _liveSepCmp(…) : null;` line were
   re-anchored on `_liveFlagCmp()`; 6 new ones, 14/14 caught.
+
+## 2026-10-21 — test:full after WIP.3–WIP.6: one flake in sticky-page-headers
+
+Env: 2026-10-21T12:54:28+02:00 · NB-3641 · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) · Playwright 1.62.1 Chromium (chromium-fixtures + chromium-mobile) · no Tampermonkey (GM stubs)
+
+`python3 scripts/run-test-full.py` on `feat/pop-user-page-lists` at b9e151a:
+2108 passed, 1 failed, 2109 tests, 14 workers, wall 14 m 52 s (finished
+13:09:20 CEST). The failure: `sticky-page-headers.spec.js:1280` "search page:
+the status line after a bare h1 inside #content stays put", at its PREMISE
+`expect(before.scrollX).toBe(0)` (expectPinned()), i.e. the page was not at
+scrollX 0 when the first measurement was taken. Re-run alone with
+`--repeat-each=3`: 3/3 passed. None of WIP.3–WIP.6 runs on a search page
+(the cover copy is gated on a /release or /release-group path, the
+annotation kinds act on hover, the findings changes touch release and
+recording tables), so this is load-dependent timing in the test's setup,
+recorded here as a first sighting rather than fixed.
