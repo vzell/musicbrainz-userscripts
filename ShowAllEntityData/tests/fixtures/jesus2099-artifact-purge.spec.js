@@ -81,7 +81,7 @@ test.describe('jesus2099 artifact purge on the final rendered page', () => {
         expect(lengthTh.classes).not.toContain('treleases');
         expect(lengthTh.classes).toContain('mb-original-column');
         // The plugin's "SUPER MIND CONTROL Ⅱ X TURBO" title is gone. The
-        // header has a title again since WIP.3 (feat/short-column-labels):
+        // header has a title again since 9.99.1406 (feat/short-column-labels):
         // our own column description (_COLUMN_DESCRIPTIONS), set because
         // the purge left the header without a tip.
         expect(lengthTh.title || '').not.toMatch(/SUPER|MIND|CONTROL|TURBO/);
