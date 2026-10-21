@@ -25,6 +25,9 @@
                 border-left: 3px solid #8a7f6a;
             }
             #mb-dp-notes .mb-dp-note-tip { border-left-color: #c48a00; }
+            /* The "#" cell's event (_eventRgEventStack()): a whole card, so
+               the card's padding and border, not a note's left rule. */
+            #mb-dp-notes .mb-dp-note-event { padding: 8px 12px 9px; border-left: 1px solid #d9cfbd; }
             #mb-dp-origin { border-left-color: #8b1a1a; }
             #mb-dp-notes .mb-dp-origin-kv {
                 display: grid;
@@ -41,13 +44,24 @@
             #mb-dp-origin .mb-dp-origin-kv dt { color: #8b1a1a; }
             #mb-dp-notes .mb-dp-origin-kv dd { margin: 0; overflow-wrap: anywhere; }
             #mb-dp-origin .mb-dp-origin-track { font-weight: 700; }
-            /* MusicBrainz's own entity glyph before the card's title and the
-               window's kind (_MB_KIND_ICON). */
-            #mb-dp-peek .mb-pop-kind-icon {
+            /* The kind line of the card and of every box stacked above it
+               (_dpPrependKindHead()): MusicBrainz's own entity glyph
+               (_MB_KIND_ICON) when there is one and the kind, as in the
+               window's title bar; a hairline under it. */
+            :is(#mb-dp-peek, #mb-dp-notes .mb-dp-note) > .mb-pop-kind-head {
+                display: flex;
+                align-items: center;
+                font: 700 12px/1.3 Georgia, "Times New Roman", Times, serif;
+                color: #4a3f33;
+                padding-bottom: 5px;
+                margin-bottom: 6px;
+                border-bottom: 1px solid #d9cfbd;
+            }
+            :is(#mb-dp-peek, #mb-dp-notes) .mb-pop-kind-icon {
+                flex: none;
                 width: 16px;
                 height: 16px;
                 margin-right: 5px;
-                vertical-align: -2px;
             }
             .mb-dp-dialog .mb-dp-kind-icon {
                 width: 18px;
@@ -77,25 +91,25 @@
             #mb-dp-peek .mb-dp-thumbs img { height: 44px; max-width: 72px; object-fit: cover; border: 1px solid #d9cfbd; border-radius: 2px; }
             #mb-dp-peek .mb-dp-src { margin-top: 1px; }
             #mb-dp-peek .mb-dp-excerpt { font-style: italic; }
-            :is(#mb-dp-peek, .mb-dp-dialog) .mb-dp-kv {
+            :is(#mb-dp-peek, .mb-dp-note-event, .mb-dp-dialog) .mb-dp-kv {
                 display: grid;
                 grid-template-columns: max-content minmax(0, 1fr);
                 gap: 1px 10px;
                 margin: 4px 0 0;
             }
-            :is(#mb-dp-peek, .mb-dp-dialog) .mb-dp-kv dt { font-style: italic; color: #7a6d5c; }
-            :is(#mb-dp-peek, .mb-dp-dialog) .mb-dp-kv dd { margin: 0; }
-            :is(#mb-dp-peek, .mb-dp-dialog) .mb-dp-tracks { margin: 3px 0 0; padding: 0; list-style: none; }
-            #mb-dp-peek .mb-dp-tracks { columns: 2; column-gap: 16px; }
-            :is(#mb-dp-peek, .mb-dp-dialog) .mb-dp-tracks li { break-inside: avoid; }
-            #mb-dp-peek .mb-dp-tracks li { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-            :is(#mb-dp-peek, .mb-dp-dialog) .mb-dp-pos { color: #7a6d5c; font-variant-numeric: tabular-nums; margin-right: 6px; }
+            :is(#mb-dp-peek, .mb-dp-note-event, .mb-dp-dialog) .mb-dp-kv dt { font-style: italic; color: #7a6d5c; }
+            :is(#mb-dp-peek, .mb-dp-note-event, .mb-dp-dialog) .mb-dp-kv dd { margin: 0; }
+            :is(#mb-dp-peek, .mb-dp-note-event, .mb-dp-dialog) .mb-dp-tracks { margin: 3px 0 0; padding: 0; list-style: none; }
+            :is(#mb-dp-peek, .mb-dp-note-event) .mb-dp-tracks { columns: 2; column-gap: 16px; }
+            :is(#mb-dp-peek, .mb-dp-note-event, .mb-dp-dialog) .mb-dp-tracks li { break-inside: avoid; }
+            :is(#mb-dp-peek, .mb-dp-note-event) .mb-dp-tracks li { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+            :is(#mb-dp-peek, .mb-dp-note-event, .mb-dp-dialog) .mb-dp-pos { color: #7a6d5c; font-variant-numeric: tabular-nums; margin-right: 6px; }
             :is(#mb-dp-peek, .mb-dp-dialog) .mb-dp-stat { margin: 4px 0 2px; }
             :is(#mb-dp-peek, .mb-dp-dialog) .mb-dp-stat b { font-size: 1.6em; font-variant-numeric: tabular-nums; }
-            :is(#mb-dp-peek, .mb-dp-dialog) .mb-dp-spin { display: inline-block; animation: mb-dp-spin [SCRUBBED] linear infinite; }
+            :is(#mb-dp-peek, .mb-dp-note-event, .mb-dp-dialog) .mb-dp-spin { display: inline-block; animation: mb-dp-spin [SCRUBBED] linear infinite; }
             @keyframes mb-dp-spin { to { transform: rotate(360deg); } }
             @media (prefers-reduced-motion: reduce) {
-                :is(#mb-dp-peek, .mb-dp-dialog) .mb-dp-spin { animation: none; }
+                :is(#mb-dp-peek, .mb-dp-note-event, .mb-dp-dialog) .mb-dp-spin { animation: none; }
             }
             .mb-dp-dialog .mb-dp-tbtn {
                 display: inline-flex;
@@ -458,7 +472,7 @@
             }
             #mb-dp-peek .mb-rg-cover img { width: 100%; height: 100%; object-fit: cover; display: block; }
             #mb-dp-peek .mb-rg-headtext { min-width: 0; }
-            :is(#mb-dp-peek, .mb-dp-dialog) .mb-rg-pills { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+            :is(#mb-dp-peek, .mb-dp-note-event, .mb-dp-dialog) .mb-rg-pills { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
             .mb-dp-dialog .mb-rg-pills { margin: 6px 0 2px; }
             .mb-dp-dialog .mb-tt-pill {
                 display: inline-block; background: #efe6d4; color: #4a3f33; border: 1px solid #d9cfbd; border-radius: 3px;
@@ -506,7 +520,7 @@
             }
             /* The MusicBrainz entity cards (_mbEntitySource()): one track per
                line with its length at the end. */
-            #mb-dp-peek .mb-pop-card { width: 440px; max-width: 100%; }
+            :is(#mb-dp-peek, .mb-dp-note-event) .mb-pop-card { width: 440px; max-width: 100%; }
             /* An artist's, label's or place's picture (_mbPopCardPicture()),
                known only after a Space: 64 px beside the facts. */
             #mb-dp-peek .mb-pop-card-pic { display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: 10px; align-items: start; }
@@ -514,11 +528,11 @@
             #mb-dp-peek .mb-pop-main { min-width: 0; }
             .mb-dp-dialog .mb-pop-xpic { margin: 6px 0 4px; }
             .mb-dp-dialog .mb-pop-xpic .mb-dp-xcover { margin: 0 0 3px; cursor: zoom-in; }
-            #mb-dp-peek .mb-pop-tracks { columns: 1; }
-            :is(#mb-dp-peek, .mb-dp-dialog) .mb-pop-tracks li { display: flex; gap: 6px; align-items: baseline; }
-            :is(#mb-dp-peek, .mb-dp-dialog) .mb-pop-tracks .mb-dp-pos { flex: none; min-width: 1.6em; margin-right: 0; }
-            :is(#mb-dp-peek, .mb-dp-dialog) .mb-pop-ttl { flex: 1; min-width: 0; }
-            #mb-dp-peek .mb-pop-ttl { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+            :is(#mb-dp-peek, .mb-dp-note-event) .mb-pop-tracks { columns: 1; }
+            :is(#mb-dp-peek, .mb-dp-note-event, .mb-dp-dialog) .mb-pop-tracks li { display: flex; gap: 6px; align-items: baseline; }
+            :is(#mb-dp-peek, .mb-dp-note-event, .mb-dp-dialog) .mb-pop-tracks .mb-dp-pos { flex: none; min-width: 1.6em; margin-right: 0; }
+            :is(#mb-dp-peek, .mb-dp-note-event, .mb-dp-dialog) .mb-pop-ttl { flex: 1; min-width: 0; }
+            :is(#mb-dp-peek, .mb-dp-note-event) .mb-pop-ttl { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
             :is(#mb-dp-peek, .mb-dp-dialog) .mb-pop-len { flex: none; color: #7a6d5c; font-variant-numeric: tabular-nums; }
             .mb-dp-dialog .mb-dp-kv a, .mb-dp-dialog .mb-dp-xsub a, .mb-dp-dialog .mb-pop-ttl a { color: #6b3f12; }
             /* A collection (_mbParseCollectionPage()): two lines of its
@@ -563,6 +577,9 @@
             :is(#mb-dp-peek, .mb-dp-dialog) .mb-ext-url { font: 11.5px/1.4 ui-monospace, Consolas, monospace; color: #7a6d5c; overflow-wrap: anywhere; }
             .mb-dp-dialog .mb-ext-url a { color: #6b3f12; }
             .mb-dp-dialog .mb-ext-xdesc { margin-top: 6px; }
+        </style><style id="mb-jqui-z-style">
+            body > .ui-widget-overlay.ui-front { z-index: 10050; }
+            body > .ui-dialog.ui-front { z-index: 10051; }
         </style><style id="sa-mbtt-style">
             .mb-mbtt-gf, .mb-mbtt-stf, .mb-mbtt-cf { border-radius:2px; padding:0 3px; font-style:italic; }
             .mb-mbtt-gf { background:#FFD700; color:red; }
@@ -1656,6 +1673,32 @@
         }
         td[data-mb-finding="warn"]:not([data-mb-finding-inline])::after  { content: '⚠️'; }
         td[data-mb-finding="error"]:not([data-mb-finding-inline])::after { content: '❌'; }
+        /* A Relationships cell (rel-multi-site) draws its glyph with
+           ::before: its ::after is the in-flow reload glyph shown on hover
+           right after the icons (#mb-rel-cell-glyph-style), which used to
+           take this glyph's absolute place at the right edge. A loaded cell
+           with icons has no ::before content of its own; a loading or failed
+           cell keeps its load-state ::before. The cell is font-size 0, so
+           sizes are in px, not em. */
+        td.mb-rel-cell[data-mb-finding]:not([data-mb-finding-inline]) { padding-right: 18px; }
+        td.mb-rel-cell[data-mb-finding]:not([data-mb-finding-inline])::after {
+            content: none;
+            position: static;
+            transform: none;
+        }
+        td.mb-rel-cell[data-mb-finding]:not([data-mb-finding-inline]):not([data-rel-loading]):not([data-rel-error])::before {
+            position: absolute;
+            right: 2px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 12px;
+            line-height: 1;
+            min-width: 0;
+            opacity: 1;
+            pointer-events: none;
+        }
+        td.mb-rel-cell[data-mb-finding="warn"]:not([data-mb-finding-inline]):not([data-rel-loading]):not([data-rel-error])::before  { content: '⚠️'; }
+        td.mb-rel-cell[data-mb-finding="error"]:not([data-mb-finding-inline]):not([data-rel-loading]):not([data-rel-error])::before { content: '❌'; }
         /* Track-vs-recording length mismatch (release-tracks only, see
            _applyLengthMismatchFlag()). Driven ENTIRELY off the td's own
            data-mb-len-flag attribute — no marker element exists in the cell at
