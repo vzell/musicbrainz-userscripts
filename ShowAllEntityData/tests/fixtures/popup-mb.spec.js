@@ -1029,35 +1029,44 @@ test.describe('MusicBrainz link previews: the note stack and the entity glyphs (
         await expect(a).toHaveAttribute('title', 'Springsteen, Bruce');
     });
 
-    test('the entity glyph: before the card\'s title (loaded and failed) and the window\'s kind; none for an ISRC', async ({ page }) => {
+    test('the kind line: glyph and kind on top of the card (loaded and failed), the window\'s kind; no glyph for an ISRC', async ({ page }) => {
         let fail = false;
         await open(page, {
             settings: { sa_pop_mb: true }, showAll: false,
             ws2: (url) => (fail && url.includes('/ws/2/work/') ? { status: 500, body: '{}' } : null),
         });
+        const head = () => card(page).locator(':scope > .mb-pop-kind-head');
         const a = await addLink(page, `/recording/${REC_ID}`, 'Thunder Road');
         await ctrlHover(page, a);
         await expect(card(page)).toContainText('fetched now');
-        const icon = card(page).locator('.mb-tt-title').first().locator(':scope > img.mb-pop-kind-icon:first-child');
-        await expect(icon).toHaveCount(1);
+        // The card's FIRST child, once, after the loading paint was repainted.
+        await expect(head()).toHaveCount(1);
+        await expect(card(page).locator(':scope > :first-child')).toHaveClass('mb-pop-kind-head');
+        await expect(head()).toHaveText('Recording');
+        const icon = head().locator(':scope > img.mb-pop-kind-icon:first-child');
         await expect(icon).toHaveAttribute('src', /\/static\/images\/entity\/recording\.svg$/);
+        await expect(card(page).locator('.mb-tt-title img'), 'the glyph moved out of the title').toHaveCount(0);
         await page.keyboard.press('Space');
         const title = dialog(page).locator(':scope > div > span').first();
-        await expect(title).toHaveText('Recording');
+        await expect(title, 'the card and the window name the same kind').toHaveText('Recording');
         await expect(title.locator(':scope > img.mb-dp-kind-icon:first-child')).toHaveAttribute('src', /\/recording\.svg$/);
         await page.keyboard.press('Escape');
         await expect(dialog(page)).toBeHidden();
 
-        // A failed card's head carries it too (the shell, not the kind's HTML).
+        // A failed card has the line too (the shell, not the kind's HTML),
+        // and the shell no longer repeats the kind below the title.
         fail = true;
         const w = await addLink(page, `/work/${WORK_ID}`, 'Born to Run');
         await ctrlHover(page, w);
         await expect(card(page)).toContainText('Could not load it');
-        await expect(card(page).locator('.mb-tt-title img.mb-pop-kind-icon')).toHaveAttribute('src', /\/work\.svg$/);
+        await expect(head()).toHaveText('Work');
+        await expect(head().locator('img.mb-pop-kind-icon')).toHaveAttribute('src', /\/work\.svg$/);
+        await expect(card(page).locator('.mb-tt-comment', { hasText: /^Work$/ })).toHaveCount(0);
 
         const i = await addLink(page, '/isrc/USSM17500803', 'USSM17500803');
         await ctrlHover(page, i);
         await expect(card(page)).toContainText('fetched now');
+        await expect(head(), 'a kind without a glyph still names itself').toHaveText('ISRC');
         await expect(card(page).locator('img.mb-pop-kind-icon')).toHaveCount(0);
     });
 });

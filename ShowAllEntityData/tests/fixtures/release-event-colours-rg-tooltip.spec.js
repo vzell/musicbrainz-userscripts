@@ -168,6 +168,10 @@ test.describe('per-event "#" colours and the "#" release group card', () => {
         await hoverHash(page, 0, 0);
         await expect(tip(page)).toContainText('main event');
         await expect(tip(page)).toContainText('Born Again', { timeout: 15000 });
+        // The kind line: a release group, with MusicBrainz's release-group glyph.
+        const head = tip(page).locator(':scope > .mb-pop-kind-head');
+        await expect(head).toHaveText('Release group');
+        await expect(head.locator('img.mb-pop-kind-icon')).toHaveAttribute('src', /\/static\/images\/entity\/release_group\.svg$/);
         expect(searches).toEqual([]);
         expect(browses).toHaveLength(1);
     });

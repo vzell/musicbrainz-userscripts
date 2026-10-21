@@ -527,16 +527,36 @@ floating hover tooltip.
     the WS/2 rate gate. Probe 2026-10-16 (vzell-lap, curl): artist, release,
     release_group, recording, work, label, area, place, event, series,
     instrument, genre, collection and editor answer 200; url, isrc, iswc,
-    cdtoc and `release-group` answer 404. Those kinds have none. The card:
-    `_dpAddKindIcon()` prepends `img.mb-pop-kind-icon` to the first
-    `.mb-tt-title` after every paint, so every kind's own card HTML, the
-    loading shell and the failed shell get it. The window: `_dpShowInDialog()`
+    cdtoc and `release-group` answer 404. Those kinds have none. The card
+    (superseded 2026-10-21, see "The kind line" below): ~~`_dpAddKindIcon()`
+    prepends `img.mb-pop-kind-icon` to the first `.mb-tt-title`~~. The window: `_dpShowInDialog()`
     puts `img.mb-dp-kind-icon` INSIDE the title-bar span, before the kind path
     (the current kind's glyph). Inside, because the bar is `space-between`, so
     a sibling `<img>` would leave a gap; the span's text stays the kinds alone.
   Covered by `popup-mb.spec.js` "the note stack and the entity glyphs (WIP.1)"
   and its "only repeats its name" control; mutation list
   `gpe-art-viewer.json`.
+  - **The kind line (`.mb-pop-kind-head`, 2026-10-21, mockup
+    https://claude.ai/artifact/JekitWKi2rFCiC7r3HYzru variant A).** The
+    card's first child: the glyph (when there is one) and the kind, a small
+    version of the window's title bar, with a hairline under it.
+    `_dpAddKindHead()` adds it to `#mb-dp-peek` after EVERY paint (show and
+    repaint, in `_dpShowPeek()`): a repaint replaces the card's HTML and the
+    line with it. It replaced `_dpAddKindIcon()`, so the glyph is no longer
+    inside the title. The text is `_dpKindLabel(t)` (`t.kind || t.src.kind`),
+    which `_dpShowInDialog()` reads for its path too, so the card and the
+    window never name different kinds. EVERY source gets the line, the other
+    sites' cards included ("Discogs release", "Wikipedia", "Detail page"),
+    without a glyph, since `_mbKindIconUrl()` returns '' for them. The release
+    page's own release-group sources (`_rgLinkSource()`, `_eventRgSource()`,
+    `_MB_RG_SOURCE_IDS`) do get the release-group glyph, in the window too.
+    `_mbPopCardShell()`'s loading and failed shells no longer repeat the kind
+    as a `.mb-tt-comment` under the title. A kind's own comment line ("Rejected
+    edits · editor", "Discogs · release") stays: it says more than the kind.
+    Covered by `popup-mb.spec.js` "the kind line…", `popup-ext.spec.js`
+    "names link their Discogs pages…" and
+    `release-event-colours-rg-tooltip.spec.js` "\"#\" card, main event";
+    mutation list `popup-card-kind-head.json`.
 - **The track/recording name note (`#mb-dp-origin`, 2026-10-09).** jesus2099's
   "mb. INLINE STUFF" gives a release page's recording link a native
   `title="track name: …\n≠rec. name: …"` when the track is named differently

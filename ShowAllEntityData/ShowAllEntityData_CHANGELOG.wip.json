@@ -1,0 +1,15 @@
+[
+    {
+        "version": "WIP.1",
+        "date": "2026-10-21",
+        "sections": [
+            {
+                "label": "✨ Improve",
+                "items": [
+                    "Link previews: every hover card now opens with a kind line, the entity's icon and its kind (\"Recording\", \"Release group\", \"Event\"), the same words as the window's title bar, so the card says what Space will open. Cards of other sites get it too (\"Discogs release\", \"Wikipedia\"), without an icon. The icon moved out of the title into that line; the loading and failed cards no longer repeat the kind under the title.",
+                    "The release page's release-group cards (the subheader link and the \"#\" cell of a live track) now carry MusicBrainz's release-group icon, in the card and in the window's title bar."
+                ]
+            }
+        ]
+    }
+]

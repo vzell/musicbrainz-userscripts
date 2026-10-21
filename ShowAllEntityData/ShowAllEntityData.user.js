@@ -21155,6 +21155,14 @@
     const _MB_KIND_ICON_FROM_ID = new Set(['annotations', 'annotation']);
 
     /**
+     * Popup sources other than `mb-entity` whose targets are MusicBrainz
+     * release groups, so they carry its glyph: the release page's subheader
+     * link (`_rgLinkSource()`) and the "#" cell (`_eventRgSource()`).
+     * @type {Set<string>}
+     */
+    const _MB_RG_SOURCE_IDS = new Set(['mb-release-group', 'mb-event-rg']);
+
+    /**
      * The URL of a MusicBrainz kind's own glyph (`_MB_KIND_ICON`), on this
      * origin; '' for a kind without one or a target of another source.
      *
@@ -21162,7 +21170,11 @@
      * @returns {string}
      */
     function _mbKindIconUrl(t) {
-        if (!t || !t.src || t.src.id !== 'mb-entity') return '';
+        if (!t || !t.src) return '';
+        // The release page's own release-group sources (_rgLinkSource(),
+        // _eventRgSource()) show a MusicBrainz release group too.
+        if (_MB_RG_SOURCE_IDS.has(t.src.id)) return `${window.location.origin}/static/images/entity/${_MB_KIND_ICON['release-group']}.svg`;
+        if (t.src.id !== 'mb-entity') return '';
         // An editing history shows the glyph of what it is the history of;
         // an annotation the glyph of the entity it annotates.
         const type = t.type === 'edits' ? _mbEditsLabel(String(t.id || '')).icon
@@ -21172,23 +21184,43 @@
     }
 
     /**
-     * Puts the target's entity glyph in front of the card's title (the
-     * entity's name, or the link's text while loading). A DOM step after
-     * every paint, so every kind's own card HTML gets it.
+     * What a target is called: the card's kind line and the window's title
+     * bar both read it, so the two never disagree ("Recording", "Discogs ·
+     * release", "Rejected edits").
+     *
+     * @param {object} t - A target (`_popResolve()`).
+     * @returns {string}
+     */
+    function _dpKindLabel(t) {
+        return String(t.kind || t.src.kind || '');
+    }
+
+    /**
+     * Puts the card's kind line on top of it: the target's entity glyph
+     * (MusicBrainz kinds only) and its kind, a small version of the window's
+     * title bar. A DOM step after every paint, so every source's card HTML,
+     * the loading and the failed shells get it; a repaint replaces the
+     * card's HTML, and the line with it, so it is added once per paint.
      *
      * @param {HTMLElement} el - `#mb-dp-peek`.
      * @param {object} t - Its target.
      * @returns {void}
      */
-    function _dpAddKindIcon(el, t) {
+    function _dpAddKindHead(el, t) {
+        const label = _dpKindLabel(t);
+        if (!label || el.querySelector(':scope > .mb-pop-kind-head')) return;
+        const head = document.createElement('div');
+        head.className = 'mb-pop-kind-head';
         const src = _mbKindIconUrl(t);
-        const title = src ? el.querySelector('.mb-tt-title') : null;
-        if (!title || title.querySelector(':scope > img.mb-pop-kind-icon')) return;
-        const img = document.createElement('img');
-        img.className = 'mb-pop-kind-icon';
-        img.alt = '';
-        img.src = src;
-        title.prepend(img);
+        if (src) {
+            const img = document.createElement('img');
+            img.className = 'mb-pop-kind-icon';
+            img.alt = '';
+            img.src = src;
+            head.append(img);
+        }
+        head.append(label);
+        el.prepend(head);
     }
 
     /**
@@ -21296,7 +21328,7 @@
         const repaint = () => {
             if (!_dpPeekShowing(t.el)) return;
             el.innerHTML = t.src.card(t, false, repaint);
-            _dpAddKindIcon(el, t);
+            _dpAddKindHead(el, t);
             _dpPlacePeek(t.el);
         };
         // The notes of the link and its cell, as boxes above the card (Ctrl
@@ -21312,7 +21344,7 @@
         // its card showing when its rate slot comes up.
         el.style.display = 'block';
         el.innerHTML = t.src.card(t, true, repaint);
-        _dpAddKindIcon(el, t);
+        _dpAddKindHead(el, t);
         _dpPlacePeek(t.el);
     }
 
@@ -21784,7 +21816,7 @@
         // first span: the target's kind, after a drill-down the path to it
         // ("Release group › Release"), its last three steps.
         const title = _dpDialog.api ? _dpDialog.api.dialog.querySelector(':scope > div > span') : null;
-        const kinds = _dpDialog.stack.concat([t]).map(x => x.kind || x.src.kind);
+        const kinds = _dpDialog.stack.concat([t]).map(_dpKindLabel);
         if (title) {
             // MusicBrainz's glyph of the kind shown now, in front of the
             // path: inside the span, so the bar's space-between leaves no
@@ -22201,13 +22233,23 @@
             #mb-dp-origin .mb-dp-origin-kv dt { color: #8b1a1a; }
             #mb-dp-notes .mb-dp-origin-kv dd { margin: 0; overflow-wrap: anywhere; }
             #mb-dp-origin .mb-dp-origin-track { font-weight: 700; }
-            /* MusicBrainz's own entity glyph before the card's title and the
-               window's kind (_MB_KIND_ICON). */
+            /* The card's kind line (_dpAddKindHead()): MusicBrainz's own
+               entity glyph (_MB_KIND_ICON) and the kind, as in the window's
+               title bar; a hairline under it. */
+            #mb-dp-peek > .mb-pop-kind-head {
+                display: flex;
+                align-items: center;
+                font: 700 12px/1.3 Georgia, "Times New Roman", Times, serif;
+                color: #4a3f33;
+                padding-bottom: 5px;
+                margin-bottom: 6px;
+                border-bottom: 1px solid #d9cfbd;
+            }
             #mb-dp-peek .mb-pop-kind-icon {
+                flex: none;
                 width: 16px;
                 height: 16px;
                 margin-right: 5px;
-                vertical-align: -2px;
             }
             .mb-dp-dialog .mb-dp-kind-icon {
                 width: 18px;
@@ -47741,8 +47783,8 @@
                 ? `<div class="mb-pop-card mb-pop-card-pic">${aside}<div class="mb-pop-main">${main}</div></div>`
                 : `<div class="mb-pop-card">${main}</div>`;
         }
-        const head = `<div class="mb-tt-title">${_rgEsc(t.name || t.kind)}</div><div class="mb-tt-comment">${_rgEsc(t.kind)}</div>` +
-            '<div class="mb-tt-rule"></div>';
+        // The kind is the card's kind line (_dpAddKindHead()), not repeated here.
+        const head = `<div class="mb-tt-title">${_rgEsc(t.name || t.kind)}</div><div class="mb-tt-rule"></div>`;
         if (st && st.status === 'failed') {
             return `<div class="mb-pop-card">${head}<div class="mb-tt-alert">Could not load it from MusicBrainz ` +
                 `(${_rgEsc(st.detail)}).${_rgEsc(failNote ? failNote(st.detail) : '')}</div>` +

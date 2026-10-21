@@ -1,0 +1,67 @@
+[
+    {
+        "name": "the card has no kind line",
+        "why": "The card shows its glyph at most, and the kind is only known once the window opens.",
+        "edits": [
+            {
+                "find": "        const label = _dpKindLabel(t);\n        if (!label || el.querySelector(':scope > .mb-pop-kind-head')) return;",
+                "replace": "        const label = _dpKindLabel(t);\n        if (label || el.querySelector(':scope > .mb-pop-kind-head')) return;"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "the kind line: glyph and kind on top of the card",
+        "expect": "fail"
+    },
+    {
+        "name": "a repaint loses the kind line",
+        "why": "The loading paint has the line; the loaded card that replaces its HTML would not.",
+        "edits": [
+            {
+                "find": "            el.innerHTML = t.src.card(t, false, repaint);\n            _dpAddKindHead(el, t);",
+                "replace": "            el.innerHTML = t.src.card(t, false, repaint);"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "the kind line: glyph and kind on top of the card",
+        "expect": "fail"
+    },
+    {
+        "name": "the kind line reads the source's kind, not the target's",
+        "why": "The card and the window would name different kinds (\"Web page\" over a Discogs release).",
+        "edits": [
+            {
+                "find": "        return String(t.kind || t.src.kind || '');",
+                "replace": "        return String(t.src.kind || t.kind || '');"
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "names link their Discogs pages",
+        "expect": "fail"
+    },
+    {
+        "name": "the release page's release-group sources have no glyph",
+        "why": "The \"#\" card and the subheader link's card are MusicBrainz release groups and carry its glyph.",
+        "edits": [
+            {
+                "find": "    const _MB_RG_SOURCE_IDS = new Set(['mb-release-group', 'mb-event-rg']);",
+                "replace": "    const _MB_RG_SOURCE_IDS = new Set([]);"
+            }
+        ],
+        "spec": "tests/fixtures/release-event-colours-rg-tooltip.spec.js",
+        "grep": "\"#\" card, main event",
+        "expect": "fail"
+    },
+    {
+        "name": "the shell repeats the kind under the title",
+        "why": "The loading and failed cards would say the kind twice, once in the line and once below the title.",
+        "edits": [
+            {
+                "find": "        const head = `<div class=\"mb-tt-title\">${_rgEsc(t.name || t.kind)}</div><div class=\"mb-tt-rule\"></div>`;",
+                "replace": "        const head = `<div class=\"mb-tt-title\">${_rgEsc(t.name || t.kind)}</div><div class=\"mb-tt-comment\">${_rgEsc(t.kind)}</div><div class=\"mb-tt-rule\"></div>`;"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "the kind line: glyph and kind on top of the card",
+        "expect": "fail"
+    }
+]

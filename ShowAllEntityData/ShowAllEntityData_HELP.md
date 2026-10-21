@@ -2379,9 +2379,12 @@ the tag's own page, since MusicBrainz cannot look a tag up otherwise.
   any more. A tooltip that only repeats the link's name is left out. When the
   card closes (Esc, or the pointer leaves the link but stays in the cell),
   the cell's own card comes back.
-- **The entity's glyph.** The card and the window's title bar show
-  MusicBrainz's own icon of the kind (artist, release, recording, work, …)
-  in front of the name and in front of the kind ("Recording").
+- **The kind line.** Every card opens with a small header naming what it
+  shows ("Recording", "Release group", "Discogs release", "Wikipedia"), the
+  same words as the window's title bar, so you know what Space will open.
+  For MusicBrainz kinds it starts with MusicBrainz's own icon of the kind
+  (artist, release, recording, work, …), which the window's title bar shows
+  too.
 - **‹ ›** or **← →** step to the same kind of link in the **same column** of
   the next or previous row, on into the next sub-table. A row links a
   release, an artist and a label; the arrows stay with the one you started
