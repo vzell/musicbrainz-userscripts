@@ -143,7 +143,7 @@ Specs:
   load. So `_sbWireCover()` reads `data-small-thumbnail` (made absolute)
   straight away instead of waiting for the `<img>`. A cover with no
   `.present` (no front image) gets no copy.
-- **An event's event art** (2026-10-21, WIP.8): the same markup in
+- **An event's event art** (2026-10-21, 9.99.1414): the same markup in
   `#sidebar .event-art` (no `.present` class there), wired the same way with
   the Event Art Archive (`_sbCoverCtx()` → `EAA_CTX`).
 
@@ -195,7 +195,7 @@ the release page's "Cover art (N)" section. Never at load.
   `mb-sb-avatar-contain` (`object-fit: contain` on white), because a tall
   transparent line drawing cropped by `cover` is an unrecognisable strip.
 - **The picture's own control** (`_sbPictureControl()`): `role=button`,
-  `tabindex=0`, click, Enter or Space, and since 2026-10-21 (WIP.8, asked
+  `tabindex=0`, click, Enter or Space, and since 2026-10-21 (9.99.1414, asked
   for: "the same treatment as an image in the CAA/EAA column") the B2 image
   card instead of a plain tooltip: `data-mbtt-fn="sb-pic"` →
   `_sbPicCardHtml()`, the picture's preview (`.mb-art-card-preview`), its

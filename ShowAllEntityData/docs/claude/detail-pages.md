@@ -1001,7 +1001,7 @@ Backspace, Alt+← and the kinds-path title need nothing new.
 
 The links of a profile's statistics (`user-profile`, rendered by
 `applyUserProfileToTables()`): "view", "N%", "View all", "view list", and
-(WIP.2) the "Tags and ratings" sub-section's tags and ratings. All are read
+(9.99.1408) the "Tags and ratings" sub-section's tags and ratings. All are read
 from the page (no Web Service), through `_mbPageLoad()`.
 
 - **Edit lists are the `edits` kind.** `/user/<name>/edits/<status>` (the
@@ -1124,7 +1124,7 @@ kinds (no `url`, no `collection`); `edit_annotation` and
   `popup-mb-annotations.spec.js` (PATH, HISTORY, VERSION, CURRENT, LOGIN,
   SAFE) on `release-tracks-sidebar-search-links.html`; mutations
   `scripts/mutations/popup-annotations.json` (9, all caught).
-- **The version page itself** (2026-10-21, WIP.9) is the pageType
+- **The version page itself** (2026-10-21, 9.99.1415) is the pageType
   `annotation-version` (PAGETYPES-TESTING-REFERENCE.org #114): its button
   runs `applyAnnotationCompareToTables()`, which reads the SAME page JSON
   through the shared `_mbAnnotationPageData()` (the preview's parser uses it

@@ -901,7 +901,7 @@ render sites), `_vsbRefresh()`, `_vsbBaseOffset()`.
   the page overflows sideways (`html.mb-sph-on`). Under them the h3's raise
   level is set through `--mb-sph-z-raised: 103`.
 - **MusicBrainz's own modal dialogs go ABOVE the whole ladder** (2026-10-21,
-  WIP.7): MusicBrainz appends a jQuery UI `div.ui-widget-overlay.ui-front` and
+  9.99.1413): MusicBrainz appends a jQuery UI `div.ui-widget-overlay.ui-front` and
   `div.ui-dialog.ui-front` to `<body>` (the sidebar cover's
   `.artwork-dialog`, `debug/mb-native-sidbar-image-open.html`) at jQuery
   UI's `.ui-front { z-index: 100 }`, and the stuck header block, the h2/h3

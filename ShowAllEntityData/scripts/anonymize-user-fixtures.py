@@ -37,7 +37,7 @@ FILES = {
     'search-type.html': 'edits-page-search-type.html',
     'subscribers.html': 'subscribers-page-vzell.html',
     'applications.html': 'applications-page-vzell.html',
-    # The editor's own tags and ratings (WIP.2): their own data, unchanged.
+    # The editor's own tags and ratings (9.99.1408): their own data, unchanged.
     'tags.html': 'user-tags-page-vzell.html',
     'ratings.html': 'user-ratings-page-vzell.html',
 }

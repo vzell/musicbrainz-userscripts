@@ -138,7 +138,7 @@ WIP.2):
   changes only the date head before the first ": " of each " / " part,
   so "Wilkes-Barre" in a venue stays. Clearing the flag removes
   `data-mb-tip-cmp` with the title.
-- **The live near misses** (2026-10-21, WIP.6: `live-nearmiss`,
+- **The live near misses** (2026-10-21, 9.99.1412: `live-nearmiss`,
   `event-live-nearmiss`, `rec-live-nearmiss`): same family, same place.
   `_stampLiveTitleRow()` now calls `_liveFlagCmp()`, which keeps the
   separator card for `warn`, gives a near miss (the flag carries its
