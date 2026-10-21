@@ -1437,6 +1437,27 @@
                          'just before the 👁️ Visible button is built.'
         },
 
+        sa_short_column_labels: {
+            label: 'Short column header labels',
+            type: 'checkbox',
+            default: true,
+            description: 'Shows a shorter name in the header of some wide columns, for example '
+                         + '"Work" for "Recording of" and "Perf." for "Performance attributes" '
+                         + 'on recording lists. Hovering the header shows the full name. Menus, '
+                         + 'the 📊 drop-down, exports and the Default Hidden Columns table keep '
+                         + 'using the full name. When disabled, every header shows its full name.'
+        },
+
+        sa_column_descriptions: {
+            label: 'Explain MusicBrainz columns in header tooltips',
+            type: 'checkbox',
+            default: true,
+            description: 'Hovering the header of a MusicBrainz column (Artist, Catalog#, Country/Date, '
+                         + '…) shows what the column holds, under the column\'s name in bold. Columns '
+                         + 'this script adds already have such a tooltip. When disabled, MusicBrainz\'s '
+                         + 'own columns have no header tooltip.'
+        },
+
         sa_enable_density_control: {
             label: 'Enable Table Density Control',
             type: 'checkbox',
@@ -41601,13 +41622,9 @@
          * @returns {boolean}
          */
         const isColVisible = colName => {
-            const th = headers.find(h => {
-                const clean = h.textContent
-                    .replace(/[⇅▲▼⁰¹²³⁴⁵⁶⁷⁸⁹📊▶◀▤0-9]/gu, '')
-                    .trim()
-                    .replace(/\s+/g, ' ');
-                return clean === colName;
-            });
+            // By name, not by text: a labelled header paints "Work", not
+            // "Recording of" (_colLabel()).
+            const th = headers.find(h => _cleanColHeaderText(h).replace(/\s+/g, ' ') === colName);
             return !!th && th.style.display !== 'none';
         };
 
@@ -60602,7 +60619,11 @@
             return th.dataset.colName.trim();
         }
 
-        // 2. First text node of .mb-col-hdr-flex (before sort/uniq spans)
+        // 2. First text node of .mb-col-hdr-flex (before sort/uniq spans) —
+        // unless that node is a display LABEL (_colLabel()), whose name the
+        // flex carries.
+        const _labelled = _colKeyOfLabelledHeader(th);
+        if (_labelled) return _labelled;
         const _flex = th.querySelector('.mb-col-hdr-flex');
         if (_flex) {
             for (const node of _flex.childNodes) {
@@ -60624,6 +60645,298 @@
 
         // Last resort: raw textContent stripped of known glyph characters
         return th.textContent.replace(/[⇅▲▼📊▶◀▤⁰¹²³⁴⁵⁶⁷⁸⁹]/gu, '').trim();
+    }
+
+    // ── Column display labels ────────────────────────────────────────────────
+    //
+    // A column's NAME is its key: `data-col-name`, `collapsableColumns`, the 📊
+    // sections, `sa_default_hidden_columns`, exports and saved files all use
+    // it. A LABEL is only what the header paints (the first text node of
+    // `.mb-col-hdr-flex`, in `makeTableSortableUnified()`), with the full name
+    // in the header's tooltip. Every reader resolves the key; a header that
+    // lost its `data-col-name` (a disk load) gets it back from the flex
+    // (`_colKeyOfLabelledHeader()`). See docs/claude/toolbar-and-header-ui.md,
+    // "Column display labels".
+
+    /**
+     * Built-in labels, for columns that appear on many pageTypes. A single
+     * pageType adds or overrides labels with `features.columnLabels`.
+     *
+     * Literal names, not `_RECOF_COL`/`_RECOF_ATTR_COL`: those are declared
+     * further down the IIFE, and reading them here would hit their TDZ.
+     * @type {Object<string, string>}
+     */
+    const _COLUMN_LABELS = {
+        'Recording of':           'Work',
+        'Performance attributes': 'Perf.'
+    };
+
+    /**
+     * The labels in force on this page: `_COLUMN_LABELS` with the active
+     * pageType's `features.columnLabels` over it, or `{}` when
+     * `sa_short_column_labels` is off.
+     *
+     * @param {Object} [def=activeDefinition] - The pageType definition whose
+     *   `features.columnLabels` apply.
+     * @returns {Object<string, string>}
+     */
+    function _activeColumnLabels(def = activeDefinition) {
+        if (Lib.settings.sa_short_column_labels === false) return {};
+        const own = def?.features?.columnLabels;
+        return own ? Object.assign({}, _COLUMN_LABELS, own) : _COLUMN_LABELS;
+    }
+
+    /**
+     * The text a column's header paints: its label, or its name when it has
+     * none.
+     *
+     * @param {string} colName - The column's name (its key).
+     * @returns {string}
+     */
+    function _colLabel(colName) {
+        return _activeColumnLabels()[colName] || colName;
+    }
+
+    /**
+     * The column name a labelled header carries on its `.mb-col-hdr-flex`
+     * (`data-mb-col-key`, set only when the label differs from the name), or
+     * `''`. It is the one way back from a label: a saved file stores the
+     * header's `innerHTML`, which keeps the flex and this attribute but not
+     * the `<th>`'s own `data-col-name`. Never reverse a label by its text —
+     * "Work" is also a real column (`artist-works`).
+     *
+     * @param {Element} th - A `<th>`, or a detached copy of one.
+     * @returns {string}
+     */
+    function _colKeyOfLabelledHeader(th) {
+        const flex = th.querySelector('.mb-col-hdr-flex[data-mb-col-key]');
+        return flex ? flex.dataset.mbColKey : '';
+    }
+
+    /**
+     * What a column holds, for the header tooltip of a column MusicBrainz
+     * itself renders (the script's own columns explain themselves where they
+     * are built, e.g. `_synthColTooltip()`). The card shows the column's name
+     * above this text, in bold (`_tipTextToHtml()`, `_tipHeaderColumnName()`).
+     *
+     * A value is a string, or an object of texts per ROW entity
+     * (`_tableRowEntity()`: what one row of the table is) with `default` for
+     * every other table. A name means different things on different pages
+     * ("Type" of an event, a release group, a work), and the row entity is
+     * what tells them apart. A pageType adds or overrides texts with
+     * `features.columnDescriptions` (same shape), e.g. for a table whose rows
+     * are no entity at all. A name missing here gets no tooltip.
+     * @type {Object<string, (string|Object<string, string>)>}
+     */
+    const _COLUMN_DESCRIPTIONS = {
+        '#': {
+            default:   'The item\'s number in this list: a track\'s position on its medium, or an item\'s number in a series.',
+            edit:      'The edit\'s number, linked to the edit.'
+        },
+        'Artist':           'The artist credit: the artist or artists the item is credited to, with their join phrases ("&", "feat."), each linked to the artist.',
+        'Artists':          'The artists credited.',
+        'Title': {
+            default:   'The title, linked to its page. A disambiguation comment follows in grey.',
+            recording: 'The recording\'s title, linked to the recording. A disambiguation comment follows in grey.'
+        },
+        'Name': {
+            default:   'The name, linked to its page. A disambiguation comment follows in grey.',
+            recording: 'The recording\'s title, linked to the recording. A disambiguation comment follows in grey.'
+        },
+        'Date': {
+            default:   'The date, as precisely as MusicBrainz knows it: a year, a year and month, or a full date.',
+            event:     'The date the event took place; for an event of several days, the first one.',
+            release:   'The release date.'
+        },
+        'Time':             'The time the event started, as entered in MusicBrainz.',
+        'Type': {
+            default:        'The type MusicBrainz gives the item.',
+            event:          'The kind of event: concert, festival, launch event, convention/expo, award ceremony, stage performance, masterclass/clinic.',
+            'release-group': 'The release group\'s primary type (Album, Single, EP, Broadcast, Other) and its secondary types (Live, Compilation, Soundtrack, …).',
+            release:        'The type of the release\'s release group: its primary type and secondary types.',
+            recording:      'The type of the release group of the release the recording appears on.',
+            work:           'The kind of work: song, aria, concerto, symphony, …',
+            artist:         'The kind of artist: person, group, orchestra, choir, character or other.',
+            label:          'The kind of label: original production, bootleg production, reissue production, distributor, holding, rights society, imprint, …',
+            place:          'The kind of place: studio, venue, stadium, indoor arena, religious building, …',
+            area:           'The kind of area: country, subdivision, county, municipality, city, district or island.',
+            series:         'What the series groups: release groups, releases, recordings, works, events, …',
+            instrument:     'The kind of instrument: wind, string, percussion, electronic, family, ensemble, …'
+        },
+        'Year':             'The year of the release group\'s first release.',
+        'Release':          'The release, linked to its page.',
+        'Releases': {
+            default:    'The number of releases.',
+            'release-group': 'How many releases the release group has.',
+            collection: 'How many releases the collection holds.'
+        },
+        'Release group':    'The release group, linked to its page.',
+        'Release groups':   'The release groups the recording appears on.',
+        'Release events':   'Where and when the release came out: one country or region and one date per release event.',
+        'Rating':           'The average rating MusicBrainz users gave, out of five stars.',
+        'Length':           'The duration, in minutes and seconds.',
+        'Format':           'The release\'s media, with how many of each: "2×CD", "12\\" Vinyl + DVD".',
+        'Tracks':           'The number of tracks on each medium, e.g. "10 + 12".',
+        'Country/Date':     'The release events: the country or region where the release came out, and the date. A release can have several.',
+        'Country':          'The country.',
+        'Label':            'The label or labels the release came out on.',
+        'Labels': {
+            default:    'The labels.',
+            collection: 'How many labels the collection holds.'
+        },
+        'Catalog#':         'The catalog number the label gave the release, one per label.',
+        'Catalog number':   'The catalog number the label gave the release.',
+        'Barcode':          'The barcode printed on the release, usually a UPC or an EAN.',
+        'ASIN':             'The Amazon Standard Identification Number, from the release\'s Amazon link.',
+        'ISRCs':            'The recording\'s ISRCs (International Standard Recording Codes).',
+        'ISWC':             'The work\'s ISWC (International Standard Musical Work Code).',
+        'AcoustIDs':        'The AcoustID audio fingerprints linked to the recording.',
+        'Disc ID':          'The disc ID worked out from the CD\'s table of contents, linked to its CD TOC page.',
+        'Attributes': {
+            default:   'Attributes of the item or of its relationship.',
+            recording: 'The attributes of the recording\'s performance relationship: live, cover, partial, instrumental, …',
+            work:      'The work\'s attributes, such as the identifiers rights societies gave it.'
+        },
+        'Event':            'The event, linked to its page.',
+        'Events': {
+            default:    'The events.',
+            collection: 'How many events the collection holds.'
+        },
+        'Location':         'Where the event took place: the place, then its area.',
+        'Role':             'The artist\'s part in the event: main performer, support act, guest performer, host, …',
+        'Work':             'The work, linked to its page.',
+        'Works': {
+            default:    'The works.',
+            collection: 'How many works the collection holds.'
+        },
+        'Authors':          'The work\'s writers: composers, lyricists and other author credits.',
+        'Recording artists': 'The artists of the work\'s recordings.',
+        'Other artists':    'Other artists credited on the work, such as arrangers and publishers.',
+        'Language': {
+            default:   'The language.',
+            work:      'The language of the work\'s lyrics.'
+        },
+        'Lyrics languages': 'The languages of the work\'s lyrics.',
+        'Credited as':      'The name the entity is credited as in this relationship, when it differs from its own name.',
+        'Relationship types': 'The relationship types that link the recording to the instrument, e.g. "instrument" or "vocal".',
+        'Medium':           'Which medium of the release the track is on.',
+        'Track':            'The track\'s position on its medium.',
+        'Area': {
+            default:   'The area.',
+            place:     'The area the place is in.'
+        },
+        'Areas': {
+            default:    'The areas.',
+            collection: 'How many areas the collection holds.'
+        },
+        'Place':            'The place, linked to its page.',
+        'Series': {
+            default:    'The series.',
+            collection: 'How many series the collection holds.'
+        },
+        'Instruments': {
+            default:    'The instruments.',
+            collection: 'How many instruments the collection holds.'
+        },
+        'Genres': {
+            default:    'The genres.',
+            collection: 'How many genres the collection holds.'
+        },
+        'Recordings': {
+            default:    'The recordings.',
+            collection: 'How many recordings the collection holds.'
+        },
+        'Collection':       'The collection, linked to its page.',
+        'Collaborators':    'The editors who may change the collection besides its owner.',
+        'Subscribed':       'Whether you are subscribed to the collection.',
+        'Alias':            'The alias: another name the entity is known by.',
+        'Sort name':        'The name as MusicBrainz sorts it, e.g. "Springsteen, Bruce".',
+        'Locale':           'The language (and country) for which the alias is the name used, when one is set.',
+        'Begin date':       'When the name started being used.',
+        'End date':         'When the name stopped being used.',
+        'Editor':           'The MusicBrainz editor who made the change.',
+        'Lookup count':     'How often the CD stub has been looked up.',
+        'Modify count':     'How often the CD stub has been changed.',
+        'Description':      'The instrument\'s description.',
+        'Annotation':       'The annotation: free text editors added to the entity.',
+        'Release title':    'The title of the release.',
+        'Release artist':   'The release\'s artist credit.',
+        'Track artist':     'The track\'s artist credit.',
+        'Release group type': 'The type of the release\'s release group.'
+    };
+
+    /**
+     * What one row of a table is: the entity kind of the first MusicBrainz
+     * link in its first body row, looked for in the pageType's main column
+     * first (`stickyColumn`, `extractMainColumn`), then left to right.
+     * Read once per table by `makeTableSortableUnified()`.
+     *
+     * @param {HTMLTableElement} table
+     * @returns {string} e.g. `'event'`, `'release-group'`, `'collection'`;
+     *   `''` when the first row links nothing of MusicBrainz's.
+     */
+    function _tableRowEntity(table) {
+        const row = table.querySelector('tbody tr:not(.mb-col-filter-row)');
+        if (!row) return '';
+        const kindOf = (a) => {
+            const m = /^(?:https?:\/\/[^/]*musicbrainz\.(?:org|eu))?\/(artist|release-group|release|recording|work|label|area|place|event|series|instrument|genre|collection|user|edit|cdtoc)\//
+                .exec(a.getAttribute('href') || '');
+            return m ? m[1] : '';
+        };
+        const f = activeDefinition?.features || {};
+        const mainName = f.stickyColumn || f.extractMainColumn;
+        if (mainName) {
+            const ths = Array.from(table.querySelectorAll('thead tr:first-child th'));
+            const idx = ths.findIndex(th => _cleanColHeaderText(th) === mainName);
+            const cell = idx >= 0 ? row.cells[idx] : null;
+            const kind = cell ? Array.from(cell.querySelectorAll('a[href]')).map(kindOf).find(Boolean) : '';
+            if (kind) return kind;
+        }
+        for (const a of row.querySelectorAll('td a[href]')) {
+            const kind = kindOf(a);
+            if (kind) return kind;
+        }
+        return '';
+    }
+
+    /**
+     * The description of a MusicBrainz column (`_COLUMN_DESCRIPTIONS`,
+     * with the pageType's `features.columnDescriptions` over it), or `''`.
+     * Always `''` with `sa_column_descriptions` off and on a foreign site,
+     * whose columns the MusicBrainz texts do not describe.
+     *
+     * @param {string} colName - The column's name (its key).
+     * @param {string} rowKind - `_tableRowEntity()` of its table.
+     * @param {Object} [def=activeDefinition]
+     * @returns {string}
+     */
+    function _columnDescription(colName, rowKind, def = activeDefinition) {
+        if (Lib.settings.sa_column_descriptions === false || _foreignHost) return '';
+        const own = def?.features?.columnDescriptions;
+        const entry = (own && Object.prototype.hasOwnProperty.call(own, colName))
+            ? own[colName] : _COLUMN_DESCRIPTIONS[colName];
+        if (!entry) return '';
+        if (typeof entry === 'string') return entry;
+        return entry[rowKind] || entry.default || '';
+    }
+
+    /**
+     * The column name a header's tooltip card puts first, as its bold title:
+     * the `data-col-name` of a `<th>` in the first header row of one of our
+     * tables, or `''` for any other element. Every column header's card
+     * then names its column, whichever code wrote the tip and whenever
+     * (a derived column's origin, the Relationships load state, a
+     * description), and a labelled one ("Work") shows its full name.
+     *
+     * @param {?Element} el
+     * @returns {string}
+     */
+    function _tipHeaderColumnName(el) {
+        if (!el || el.tagName !== 'TH' || !el.dataset.colName) return '';
+        const row = el.parentElement;
+        const thead = row && row.parentElement;
+        if (!thead || thead.tagName !== 'THEAD' || thead.firstElementChild !== row) return '';
+        return el.closest('table.tbl') ? el.dataset.colName : '';
     }
 
     /**
@@ -65684,9 +65997,11 @@ ${sections.join('\n')}
             const _tHdrRow = tbl.querySelector('thead tr:first-child');
             const _columns = _tHdrRow ? Array.from(_tHdrRow.cells).map((th, ci) => {
                 const _thFlex  = th.querySelector('.mb-col-hdr-flex');
-                const _rawName = (_thFlex || th).textContent
-                    .replace(/[⇅▲▼⁰¹²³⁴⁵⁶⁷⁸⁹📊▶◀▤]/gu, '')
-                    .replace(/\d+\s*$/, '').trim();
+                // The name, not a display label (_colLabel()) the header paints.
+                const _rawName = th.dataset.colName || _colKeyOfLabelledHeader(th)
+                    || (_thFlex || th).textContent
+                        .replace(/[⇅▲▼⁰¹²³⁴⁵⁶⁷⁸⁹📊▶◀▤]/gu, '')
+                        .replace(/\d+\s*$/, '').trim();
                 const _colName = _rawName || `Col ${ci + 1}`;
 
                 const _visible = th.style.display !== 'none';
@@ -79481,6 +79796,8 @@ a { color: #1565c0; }`;
      *   - each non-empty line is a block; with two or more blocks the first is
      *     the title, and a single short block is a title on its own;
      *   - a block starting with "Configurable in" is a footnote;
+     *   - a column header's card starts with the column's name, so it is the
+     *     title (`_tipHeaderColumnName()`), unless the text already does;
      *   - key combinations ("Ctrl+R", "Alt+Shift+H", the key after "then" in
      *     a prefix hint, "Escape") become `<kbd>` keycaps;
      *   - a line the element's `data-mb-tip-cmp` names gets its comparison
@@ -79522,6 +79839,11 @@ a { color: #1565c0; }`;
         const cmp = _cmpTipData(el, text);
         const len = cmp.find(c => c.kind === 'len');
         if (len) return _cmpLenCardHtml(len);
+        // A column header's card is titled with the column's name, above
+        // whatever its tip says (_tipHeaderColumnName()). Not under
+        // comparisons: their entries are numbered by the text's own lines.
+        const hdrName = cmp.length ? '' : _tipHeaderColumnName(el);
+        if (hdrName && blocks[0] !== hdrName) blocks.unshift(hdrName);
         const at = new Map();
         const skip = new Set();
         cmp.forEach((c) => {
@@ -84516,7 +84838,7 @@ a { color: #1565c0; }`;
             const colIdx  = parseInt(inp.dataset.colIdx, 10);
             const headers = table.querySelectorAll('thead tr:first-child th');
             const colName = headers[colIdx]
-                ? headers[colIdx].textContent.replace(/[⇅▲▼⁰¹²³⁴⁵⁶⁷⁸⁹📊▶◀▤0-9]/gu, '').trim()
+                ? _cleanColHeaderText(headers[colIdx])
                 : `Col ${colIdx}`;
 
             // ── Value-set filter (set by applyUniqValueSet via uniq-drop checkboxes) ──
@@ -109611,6 +109933,8 @@ a { color: #1565c0; }`;
         const isMultiTable = activeDefinition && activeDefinition.tableMode === 'multi';
 
         const headers = table.querySelectorAll('thead tr:first-child th');
+        // What one row is, for the column descriptions (_columnDescription()).
+        const rowKind = _tableRowEntity(table);
 
         // State shape: { lastSortIndex, sortState, multiSortColumns }
         // sortState: 0 = original ⇅, 1 = asc ▲, 2 = desc ▼
@@ -109860,7 +110184,10 @@ a { color: #1565c0; }`;
             // pages" re-runs this on the live table): the header is decorated
             // by then, its 📊 count badge holds plain digits, and the text
             // read "Title 102". The name stored on the first pass wins.
-            const colName = th.dataset.colName || th.textContent.replace(/[⇅▲▼📊▶◀▤⁰¹²³⁴⁵⁶⁷⁸⁹]/gu, '').trim();
+            // A labelled header (_colLabel()) paints its label, so its text
+            // is not its name: take the name the flex carries.
+            const colName = th.dataset.colName || _colKeyOfLabelledHeader(th)
+                || th.textContent.replace(/[⇅▲▼📊▶◀▤⁰¹²³⁴⁵⁶⁷⁸⁹]/gu, '').trim();
             th.innerHTML = ''; // clear for new icon layout
 
             const createIcon = (char, targetState) => {
@@ -110227,7 +110554,20 @@ a { color: #1565c0; }`;
             // count number OR the 📊 glyph both open the dropdown.
             const hdrFlex = document.createElement('div');
             hdrFlex.className = 'mb-col-hdr-flex';
-            hdrFlex.appendChild(document.createTextNode(`${colName} `));
+            // The painted text is the column's display label ("Work" for
+            // "Recording of"); the name stays in data-col-name, and on the
+            // flex too, which a saved file keeps (_colKeyOfLabelledHeader()).
+            const colLabel = _colLabel(colName);
+            hdrFlex.appendChild(document.createTextNode(`${colLabel} `));
+            if (colLabel !== colName) hdrFlex.dataset.mbColKey = colName;
+            // A header with no tip of its own: what a MusicBrainz column
+            // holds, or (a labelled one) at least its full name. The card
+            // puts the name above either (_tipHeaderColumnName()).
+            if (!th.hasAttribute('data-mb-tip') && !th.title) {
+                const desc = _columnDescription(colName, rowKind);
+                if (desc) _setTip(th, desc);
+                else if (colLabel !== colName) _setTip(th, colName);
+            }
             hdrFlex.appendChild(createIcon('⇅', 0));
             hdrFlex.appendChild(createIcon('▲', 1));
             hdrFlex.appendChild(createIcon('▼', 2));
@@ -120885,12 +121225,15 @@ a { color: #1565c0; }`;
                             // column by its real name. Collapse back to the original plain
                             // text — the flex wrapper's only genuine Text-node child — so
                             // this header starts clean, exactly like a freshly-fetched
-                            // native <th>.
+                            // native <th>. A labelled header's text node holds its
+                            // display label ("Work"), not its name: the flex carries
+                            // the name (_colKeyOfLabelledHeader()).
                             const hdrFlex = cell.querySelector('.mb-col-hdr-flex');
                             if (hdrFlex) {
                                 const nameNode = Array.from(hdrFlex.childNodes)
                                     .find(n => n.nodeType === Node.TEXT_NODE);
-                                cell.textContent = nameNode ? nameNode.textContent.trim() : cell.textContent.trim();
+                                cell.textContent = _colKeyOfLabelledHeader(cell)
+                                    || (nameNode ? nameNode.textContent.trim() : cell.textContent.trim());
                             }
 
                             tr.appendChild(cell);
@@ -140166,6 +140509,43 @@ a { color: #1565c0; }`;
              * @returns {boolean}
              */
             titleHasRecNameMismatch: (cell) => _titleHasRecNameMismatch(cell),
+            /**
+             * The labels a pageType definition would paint
+             * (`_activeColumnLabels()`), so a spec can pin how
+             * `features.columnLabels` merges over the built-in ones without a
+             * pageType that uses it.
+             *
+             * @param {Object} def - A definition, e.g. `{ features: { columnLabels: {…} } }`.
+             * @returns {Object<string, string>}
+             */
+            columnLabelsFor: (def) => Object.assign({}, _activeColumnLabels(def)),
+            /**
+             * A column's header description (`_columnDescription()`) for a
+             * row entity and a pageType definition, so a spec can pin the
+             * entity variants and `features.columnDescriptions` without a page
+             * for each.
+             *
+             * @param {string} colName
+             * @param {string} rowKind - e.g. `'event'`, or `''`.
+             * @param {Object} [def] - Defaults to the active definition.
+             * @returns {string}
+             */
+            columnDescriptionFor: (colName, rowKind, def) => _columnDescription(colName, rowKind, def),
+            /**
+             * What one row of a table is (`_tableRowEntity()`).
+             *
+             * @param {HTMLTableElement} table
+             * @returns {string}
+             */
+            tableRowEntity: (table) => _tableRowEntity(table),
+            /**
+             * Decorates a table's headers again (`makeTableSortableUnified()`),
+             * as "↻ Load remaining pages" does on the live table.
+             *
+             * @param {HTMLTableElement} table
+             * @returns {void}
+             */
+            makeTableSortableUnified: (table) => makeTableSortableUnified(table, 'main_table'),
             /**
              * A host's site kind (`_siteFamilyOf()`), the key of the 📊
              * "… - Site kind" sections, so a spec can pin the suffix rule on

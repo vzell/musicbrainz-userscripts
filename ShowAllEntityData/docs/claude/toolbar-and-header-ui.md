@@ -130,6 +130,78 @@ the dangerous case**, because the one tool you would reach for says the file is
 fine. If a CSS change makes unrelated rules stop working, grep the edited
 region for a backtick before debugging anything else.
 
+### Column display labels (`_colLabel()`, `sa_short_column_labels`)
+
+A column's **name** is its key: `data-col-name`, `collapsableColumns`, the 📊
+sections, `sa_default_hidden_columns`, the 👁️ menus, exports and saved files
+all use it. A **label** is only the text the header paints: the first text node
+of `.mb-col-hdr-flex`, written by `makeTableSortableUnified()`. The full name
+is the bold title of the header's tooltip card, which every header's card gets
+(see "Column header tooltips" below).
+
+- **Declaring a label.** Built-in labels go in `_COLUMN_LABELS`, for columns
+  on many pageTypes: "Recording of" → "Work" and "Performance attributes" →
+  "Perf." (since `feat/short-column-labels`). A single pageType adds or
+  overrides labels with `features.columnLabels: { '<name>': '<label>' }`, which
+  `_activeColumnLabels()` merges over the built-in ones.
+  `sa_short_column_labels` off returns `{}`.
+- **The way back from a label is the flex, never the text.** A labelled flex
+  carries `data-mb-col-key="<name>"`. Saving to disk and the "Show
+  single-table" handoff store the header's `innerHTML`, which keeps that
+  attribute but loses the `<th>`'s `data-col-name`. The restore in
+  `loadTableDataFromDisk()` rebuilds the header as the plain name from it
+  (`_colKeyOfLabelledHeader()`). **Do not add a reverse lookup by label
+  text.** "Work" is also a real column on `artist-works`, and a text lookup
+  would rename it.
+- **Every reader resolves the name.** Use `dataset.colName` or
+  `_cleanColHeaderText()`, never a decorated header's `textContent`. Three
+  readers used text and were switched:
+  - `syncCollapseButtonsWithColumnVisibility()`'s `isColVisible`
+  - `showStatsPanel()`'s column list
+  - the "invalid regexp" filter message
+
+  Specs: `tests/fixtures/column-labels.spec.js`. Planted defects:
+  `scripts/mutations/column-labels.json`.
+
+### Column header tooltips: the name in bold, then what the column holds
+
+Every column header's "Liner notes" card is titled with the column's name.
+`_tipTextToHtml()` puts `_tipHeaderColumnName(el)` above the tip's own lines,
+unless the first line already is the name. This covers a `<th>` in the first
+header row of a `table.tbl` with `data-col-name`. **It is done in the card,
+not in the tip text**, so it holds for every writer:
+- `_synthColTooltip()`'s "Derived from …"
+- an injected column's explanation
+- the Relationships header's load state, which changes later
+- a description
+
+It is skipped when the tip carries comparisons (`data-mb-tip-cmp`), whose
+entries are numbered by the text's own lines.
+
+**A column MusicBrainz renders itself gets a description** as its tip, from
+`_COLUMN_DESCRIPTIONS`. `makeTableSortableUnified()` sets it only when the
+header has no tip of its own; the decorator runs after `cleanupHeaders()`
+stamped the script's columns.
+- **The value:** a string, or an object of texts per **row entity** with a
+  `default`. The row entity is what one row of the table is: `_tableRowEntity()`
+  reads the kind of the first MusicBrainz link in the first body row, in the
+  `stickyColumn`/`extractMainColumn` column first. "Type" on an artist's
+  events (rows: `event`) is the kind of event; on a release-group list it is
+  the primary and secondary types.
+- **Per pageType:** `features.columnDescriptions` (same shape) wins over the
+  built-in texts. It is the way in for a table whose rows are no entity, such
+  as elections, annotations or CD stubs.
+- **When there is no text:** off with `sa_column_descriptions`, and always off
+  on a foreign site (`_foreignHost`), whose columns these texts do not
+  describe. A name with no entry gets no tip, as before.
+- **Not covered yet:** the edit-detail and merge tables (Old/New tracklist,
+  Into:, Track #). Their meaning was not checked, so they have no entry.
+
+Specs: `tests/fixtures/column-descriptions.spec.js`. Planted defects:
+`scripts/mutations/column-descriptions.json`. Snapshot baselines drift by the
+new `title`/`data-mb-tip` on native headers (`tests/snapshots/registry.org`,
+"Expected drift").
+
 ## The h1 toolbar is two pull-down menus plus two pinned buttons
 
 `org/action-button-redesign.org`. The bar used to be one flat run of up to 13

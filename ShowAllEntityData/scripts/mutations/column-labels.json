@@ -1,0 +1,145 @@
+[
+  {
+    "name": "the header paints the column's name, not its label",
+    "why": "Without the label the feature does nothing visible; every key-based check would still pass.",
+    "edits": [
+      {
+        "find": "            hdrFlex.appendChild(document.createTextNode(`${colLabel} `));",
+        "replace": "            hdrFlex.appendChild(document.createTextNode(`${colName} `));"
+      }
+    ],
+    "spec": "tests/fixtures/column-labels.spec.js",
+    "grep": "paints \"Work\"",
+    "expect": "fail"
+  },
+  {
+    "name": "the labelled flex does not carry the column's name",
+    "why": "A saved file keeps the header's innerHTML, not the th's data-col-name; without the flex key a reloaded header reads \"Work\" and the pair is injected a second time.",
+    "edits": [
+      {
+        "find": "            if (colLabel !== colName) hdrFlex.dataset.mbColKey = colName;",
+        "replace": "            if (colLabel !== colName) void 0;"
+      }
+    ],
+    "spec": "tests/fixtures/column-labels.spec.js",
+    "grep": "saved and reloaded",
+    "expect": "fail"
+  },
+  {
+    "name": "the disk restore rebuilds a labelled header from its label text",
+    "why": "The restore collapses a decorated header to its text node, which is the label: the header then becomes a column named \"Work\".",
+    "edits": [
+      {
+        "find": "                                cell.textContent = _colKeyOfLabelledHeader(cell)\n                                    || (nameNode",
+        "replace": "                                cell.textContent = (nameNode"
+      }
+    ],
+    "spec": "tests/fixtures/column-labels.spec.js",
+    "grep": "saved and reloaded",
+    "expect": "fail"
+  },
+  {
+    "name": "a labelled header's card is not titled with its name",
+    "why": "The card puts the column's name above the tip (_tipHeaderColumnName()); without it a header that reads \"Work\" never says it is \"Recording of\".",
+    "edits": [
+      {
+        "find": "        if (hdrName && blocks[0] !== hdrName) blocks.unshift(hdrName);",
+        "replace": "        void hdrName;"
+      }
+    ],
+    "spec": "tests/fixtures/column-labels.spec.js",
+    "grep": "names the column once",
+    "expect": "fail"
+  },
+  {
+    "name": "isColVisible matches header text again",
+    "why": "The labelled pair reads \"Work\"/\"Perf.\", so hiding the other collapsable columns hides the collapse button although the pair is still visible.",
+    "edits": [
+      {
+        "find": "            const th = headers.find(h => _cleanColHeaderText(h).replace(/\\s+/g, ' ') === colName);",
+        "replace": "            const th = headers.find(h => h.textContent.replace(/[⇅▲▼⁰¹²³⁴⁵⁶⁷⁸⁹📊▶◀▤0-9]/gu, '').trim().replace(/\\s+/g, ' ') === colName);"
+      }
+    ],
+    "spec": "tests/fixtures/column-labels.spec.js",
+    "grep": "collapse button",
+    "expect": "fail"
+  },
+  {
+    "name": "the Statistics panel reads the header text",
+    "why": "The panel would list the columns as \"Work\" and \"Perf.\".",
+    "edits": [
+      {
+        "find": "                const _rawName = th.dataset.colName || _colKeyOfLabelledHeader(th)\n                    || (_thFlex || th).textContent",
+        "replace": "                const _rawName = (_thFlex || th).textContent"
+      }
+    ],
+    "spec": "tests/fixtures/column-labels.spec.js",
+    "grep": "Statistics",
+    "expect": "fail"
+  },
+  {
+    "name": "a filter error names the column by its header text",
+    "why": "The invalid-regexp message would say Column \"Work\".",
+    "edits": [
+      {
+        "find": "                ? _cleanColHeaderText(headers[colIdx])\n                : `Col ${colIdx}`;",
+        "replace": "                ? headers[colIdx].textContent.replace(/[⇅▲▼⁰¹²³⁴⁵⁶⁷⁸⁹📊▶◀▤0-9]/gu, '').trim()\n                : `Col ${colIdx}`;"
+      }
+    ],
+    "spec": "tests/fixtures/column-labels.spec.js",
+    "grep": "Statistics",
+    "expect": "fail"
+  },
+  {
+    "name": "sa_short_column_labels is ignored",
+    "why": "With the setting off the headers must paint their names.",
+    "edits": [
+      {
+        "find": "        if (Lib.settings.sa_short_column_labels === false) return {};",
+        "replace": "        if (false) return {};"
+      }
+    ],
+    "spec": "tests/fixtures/column-labels.spec.js",
+    "grep": "sa_short_column_labels off",
+    "expect": "fail"
+  },
+  {
+    "name": "features.columnLabels is ignored",
+    "why": "A pageType's own labels must merge over the built-in ones.",
+    "edits": [
+      {
+        "find": "        return own ? Object.assign({}, _COLUMN_LABELS, own) : _COLUMN_LABELS;",
+        "replace": "        return _COLUMN_LABELS;"
+      }
+    ],
+    "spec": "tests/fixtures/column-labels.spec.js",
+    "grep": "merges over",
+    "expect": "fail"
+  },
+  {
+    "name": "_cleanColHeaderText() reads a labelled flex's text node",
+    "why": "Belt and braces: every decorated header has data-col-name, which step 1 returns first, so no spec reaches step 2 with a labelled flex. Recorded so the guard is not mistaken for tested.",
+    "edits": [
+      {
+        "find": "        if (_labelled) return _labelled;",
+        "replace": "        void _labelled;"
+      }
+    ],
+    "spec": "tests/fixtures/column-labels.spec.js",
+    "grep": "column display labels",
+    "expect": "pass"
+  },
+  {
+    "name": "makeTableSortableUnified() takes a labelled header's name from its text",
+    "why": "Belt and braces: the restore already writes the name as the header's text, and a re-decorated header still has data-col-name, so no spec reaches this fallback.",
+    "edits": [
+      {
+        "find": "            const colName = th.dataset.colName || _colKeyOfLabelledHeader(th)\n                || th.textContent",
+        "replace": "            const colName = th.dataset.colName\n                || th.textContent"
+      }
+    ],
+    "spec": "tests/fixtures/column-labels.spec.js",
+    "grep": "column display labels",
+    "expect": "pass"
+  }
+]
