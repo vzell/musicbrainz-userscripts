@@ -19871,9 +19871,15 @@
      *   - `tip`, last: the link's own ready-made card (`data-mbtt`, e.g. a
      *     link of the Sidebar cards, `_sbLinkTip()`), as `#mb-stat-tooltip`
      *     would show it; that card gives way meanwhile (`yieldTo()`).
+     * Each box also names where it comes from (`label`), which
+     * `_dpFillNotes()` writes as its kind line, as the card has one:
+     * "Finding" (a finding's tip, `data-mb-finding-tip`), "Note" (any other
+     * tip or title of the cell), "Track ≠ recording", "Link title" (the
+     * link's own title), "Link" (the link's own card, a Relationships icon's
+     * box), "Filter" (the Relationships filter's view of the cell).
      *
      * @param {object} t - A target (`_popResolve()`).
-     * @returns {Array<{kind: string, html: string}>}
+     * @returns {Array<{kind: string, html: string, label: string}>}
      */
     function _dpCollectNotes(t) {
         const squash = s => String(s).replace(/\s+/g, ' ').trim().toLowerCase();
@@ -19886,7 +19892,8 @@
         const relCell = own && own.tagName === 'A' && own.closest('td.mb-rel-cell');
         if (relCell) {
             const kinds = { filter: 'rel', finding: 'tip' };
-            return _relStackParts(relCell, own).map(p => ({ kind: kinds[p.kind] || 'title', html: p.html }));
+            const labels = { filter: 'Filter', finding: 'Finding' };
+            return _relStackParts(relCell, own).map(p => ({ kind: kinds[p.kind] || 'title', html: p.html, label: labels[p.kind] || 'Link' }));
         }
         // The link's note box compares the two names; the cell's finding box
         // then gives the label alone, not the same comparison again.
@@ -19895,16 +19902,19 @@
             const text = _dpTitleText(n).trim();
             if (n === own) {
                 const note = _dpOriginNote(n);
-                if (note) return { kind: 'origin', html: _dpOriginHtml(note) };
+                if (note) return { kind: 'origin', html: _dpOriginHtml(note), label: 'Track ≠ recording' };
             }
-            if (n.hasAttribute('data-mb-tip')) return { kind: 'tip', html: _tipTextToHtml(text, n, { noOrigin: hasOrigin }) };
+            if (n.hasAttribute('data-mb-tip')) {
+                return { kind: 'tip', html: _tipTextToHtml(text, n, { noOrigin: hasOrigin }), label: n.dataset.mbFindingTip ? 'Finding' : 'Note' };
+            }
             if (n === own && squash(text) === squash(n.textContent)) return null;
+            const label = n === own ? 'Link title' : 'Note';
             if (n === own && sortName) {
-                return { kind: 'title', html: `<dl class="mb-dp-origin-kv"><dt>Sort name</dt><dd>${_mbttEscape(text)}</dd></dl>` };
+                return { kind: 'title', html: `<dl class="mb-dp-origin-kv"><dt>Sort name</dt><dd>${_mbttEscape(text)}</dd></dl>`, label };
             }
-            return { kind: 'title', html: `<div class="mb-tt-body">${text.split('\n').map(_mbttEscape).join('<br>')}</div>` };
+            return { kind: 'title', html: `<div class="mb-tt-body">${text.split('\n').map(_mbttEscape).join('<br>')}</div>`, label };
         }).filter(Boolean);
-        if (own && own.dataset && own.dataset.mbtt) notes.push({ kind: 'tip', html: own.dataset.mbtt });
+        if (own && own.dataset && own.dataset.mbtt) notes.push({ kind: 'tip', html: own.dataset.mbtt, label: 'Link' });
         return notes;
     }
 
@@ -21130,8 +21140,9 @@
      * are none. A source may add cards of its own below the notes, right
      * above its card (`stack(t, start, repaint)`: the "#" cell's event,
      * `_eventRgEventStack()`); a box with a `target` gets that target's kind
-     * line (`_dpAddKindHead()`). Only a call with `start` may let such a card
-     * ask (the engine's rule): the show, never a repaint.
+     * line (`_dpAddKindHead()`), any other its `label` as one, without a
+     * glyph. Only a call with `start` may let such a card ask (the engine's
+     * rule): the show, never a repaint.
      *
      * @param {object} t - A target (`_popResolve()`).
      * @param {boolean} [start] - The card is being shown (not repainted).
@@ -21145,7 +21156,10 @@
         box.innerHTML = notes.map(n =>
             `<div class="mb-tt-liner mb-dp-note mb-dp-note-${n.kind}" role="tooltip"${n.kind === 'origin' ? ' id="mb-dp-origin"' : ''}>${n.html}</div>`
         ).join('');
-        notes.forEach((n, i) => { if (n.target) _dpAddKindHead(box.children[i], n.target); });
+        notes.forEach((n, i) => {
+            if (n.target) _dpAddKindHead(box.children[i], n.target);
+            else if (n.label) _dpPrependKindHead(box.children[i], n.label, '');
+        });
     }
 
     /**
@@ -21226,11 +21240,23 @@
      * @returns {void}
      */
     function _dpAddKindHead(el, t) {
-        const label = _dpKindLabel(t);
+        _dpPrependKindHead(el, _dpKindLabel(t), _mbKindIconUrl(t));
+    }
+
+    /**
+     * Puts a kind line on top of a box: a glyph (when `src` names one) and
+     * the label, the hairline under it (CSS). Once per box: a box that
+     * already starts with one keeps it.
+     *
+     * @param {HTMLElement} el - The card, or a box of the stack above it.
+     * @param {string} label
+     * @param {string} src - The glyph's URL, '' for none.
+     * @returns {void}
+     */
+    function _dpPrependKindHead(el, label, src) {
         if (!label || el.querySelector(':scope > .mb-pop-kind-head')) return;
         const head = document.createElement('div');
         head.className = 'mb-pop-kind-head';
-        const src = _mbKindIconUrl(t);
         if (src) {
             const img = document.createElement('img');
             img.className = 'mb-pop-kind-icon';
@@ -22261,10 +22287,11 @@
             #mb-dp-origin .mb-dp-origin-kv dt { color: #8b1a1a; }
             #mb-dp-notes .mb-dp-origin-kv dd { margin: 0; overflow-wrap: anywhere; }
             #mb-dp-origin .mb-dp-origin-track { font-weight: 700; }
-            /* The card's kind line (_dpAddKindHead()): MusicBrainz's own
-               entity glyph (_MB_KIND_ICON) and the kind, as in the window's
-               title bar; a hairline under it. */
-            :is(#mb-dp-peek, #mb-dp-notes .mb-dp-note-event) > .mb-pop-kind-head {
+            /* The kind line of the card and of every box stacked above it
+               (_dpPrependKindHead()): MusicBrainz's own entity glyph
+               (_MB_KIND_ICON) when there is one and the kind, as in the
+               window's title bar; a hairline under it. */
+            :is(#mb-dp-peek, #mb-dp-notes .mb-dp-note) > .mb-pop-kind-head {
                 display: flex;
                 align-items: center;
                 font: 700 12px/1.3 Georgia, "Times New Roman", Times, serif;

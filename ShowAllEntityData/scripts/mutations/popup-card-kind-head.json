@@ -4,8 +4,8 @@
         "why": "The card shows its glyph at most, and the kind is only known once the window opens.",
         "edits": [
             {
-                "find": "        const label = _dpKindLabel(t);\n        if (!label || el.querySelector(':scope > .mb-pop-kind-head')) return;",
-                "replace": "        const label = _dpKindLabel(t);\n        if (label || el.querySelector(':scope > .mb-pop-kind-head')) return;"
+                "find": "        _dpPrependKindHead(el, _dpKindLabel(t), _mbKindIconUrl(t));",
+                "replace": "        void el;"
             }
         ],
         "spec": "tests/fixtures/popup-mb.spec.js",
@@ -49,6 +49,32 @@
         ],
         "spec": "tests/fixtures/release-event-colours-rg-tooltip.spec.js",
         "grep": "\"#\" card, main event",
+        "expect": "fail"
+    },
+    {
+        "name": "the stacked boxes have no kind line",
+        "why": "Only the card names its kind; the boxes above it (a note, the track/recording note, a link's title or card) would not say where they come from.",
+        "edits": [
+            {
+                "find": "            else if (n.label) _dpPrependKindHead(box.children[i], n.label, '');\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "a cell tip and the track/recording note",
+        "expect": "fail"
+    },
+    {
+        "name": "the stacked boxes' kind line has no hairline",
+        "why": "The line's CSS reached the card and the event box only; the other boxes showed the label without the rule under it (vzell's browser, 2026-10-21).",
+        "edits": [
+            {
+                "find": "            :is(#mb-dp-peek, #mb-dp-notes .mb-dp-note) > .mb-pop-kind-head {",
+                "replace": "            :is(#mb-dp-peek, #mb-dp-notes .mb-dp-note-event) > .mb-pop-kind-head {"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "a cell tip and the track/recording note",
         "expect": "fail"
     },
     {

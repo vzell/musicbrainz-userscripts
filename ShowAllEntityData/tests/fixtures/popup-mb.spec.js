@@ -904,6 +904,14 @@ test.describe('MusicBrainz link previews: the note stack and the entity glyphs (
     const SVG = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"><rect width="16" height="16"/></svg>';
     const stack = (page) => page.locator('#mb-dp-notes');
     const statTip = (page) => page.locator('#mb-stat-tooltip');
+    /** A stacked box's text without its kind line. */
+    const boxBody = (box) => box.evaluate((el) => Array.from(el.childNodes)
+        .filter((n) => !(n.classList && n.classList.contains('mb-pop-kind-head'))).map((n) => n.textContent).join(''));
+    /** A stacked box's kind line: its text and its hairline. */
+    const boxHead = (box) => box.locator(':scope > .mb-pop-kind-head').evaluate((el) => {
+        const cs = getComputedStyle(el);
+        return [el.textContent, `${cs.borderBottomWidth} ${cs.borderBottomStyle}`];
+    });
 
     /**
      * Gives the cell holding `a` its own tip, as `_setTip()` writes one.
@@ -987,7 +995,8 @@ test.describe('MusicBrainz link previews: the note stack and the entity glyphs (
         }, tipText);
         await ctrlHover(page, a);
         await expect(card(page)).toContainText('fetched now');
-        await expect(stack(page).locator('.mb-dp-note-tip')).toHaveText('⚠️ Track name differs from recording name');
+        await expect(stack(page).locator('.mb-dp-note-tip > .mb-pop-kind-head')).toHaveText('Note');
+        expect(await boxBody(stack(page).locator('.mb-dp-note-tip'))).toBe('⚠️ Track name differs from recording name');
         await expect(stack(page).locator('.mb-dp-note-tip .mb-tt-cmp')).toHaveCount(0);
         await expect(stack(page).locator('#mb-dp-origin mark.mb-tt-cmp-d')).toHaveText(['·(version·7)']);
     });
@@ -1003,6 +1012,9 @@ test.describe('MusicBrainz link previews: the note stack and the entity glyphs (
         await expect(notes).toHaveCount(2);
         await expect(notes.nth(0)).toHaveClass(/mb-dp-note-tip/);
         await expect(notes.nth(1)).toHaveAttribute('id', 'mb-dp-origin');
+        // Each box opens with its kind line and its hairline, as the card.
+        expect(await boxHead(notes.nth(0))).toEqual(['Note', '1px solid']);
+        expect(await boxHead(notes.nth(1))).toEqual(['Track ≠ recording', '1px solid']);
         await expect(statTip(page)).toBeHidden();
         const b0 = await notes.nth(0).boundingBox();
         const b1 = await notes.nth(1).boundingBox();
@@ -1023,6 +1035,7 @@ test.describe('MusicBrainz link previews: the note stack and the entity glyphs (
         await expect(box).toBeVisible();
         await expect(box.locator('dt')).toHaveText('Sort name');
         await expect(box.locator('dd')).toHaveText('Springsteen, Bruce');
+        expect(await boxHead(box)).toEqual(['Link title', '1px solid']);
         await expect(a).not.toHaveAttribute('title', /./);
         await page.keyboard.press('Escape');
         await expect(stack(page)).toBeHidden();
@@ -1046,6 +1059,12 @@ test.describe('MusicBrainz link previews: the note stack and the entity glyphs (
         const icon = head().locator(':scope > img.mb-pop-kind-icon:first-child');
         await expect(icon).toHaveAttribute('src', /\/static\/images\/entity\/recording\.svg$/);
         await expect(card(page).locator('.mb-tt-title img'), 'the glyph moved out of the title').toHaveCount(0);
+        // A hairline under the line, as under the window's title bar.
+        const rule = await head().evaluate((el) => {
+            const cs = getComputedStyle(el);
+            return `${cs.borderBottomWidth} ${cs.borderBottomStyle} ${cs.borderBottomColor} ${cs.paddingBottom}`;
+        });
+        expect(rule, 'the kind line\'s hairline').toBe('1px solid rgb(217, 207, 189) 5px');
         await page.keyboard.press('Space');
         const title = dialog(page).locator(':scope > div > span').first();
         await expect(title, 'the card and the window name the same kind').toHaveText('Recording');

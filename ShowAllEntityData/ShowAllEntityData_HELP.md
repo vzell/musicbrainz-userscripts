@@ -2385,7 +2385,9 @@ the tag's own page, since MusicBrainz cannot look a tag up otherwise.
   none covering the card or each other: the cell's warnings first (*Pending
   edits*, *Track name differs from recording name*, *This recording is not
   linked to any work*, …), then the link's own notes (the track/recording
-  names above, an artist's or label's **Sort name**). Neither the browser's
+  names above, an artist's or label's **Sort name**). Like the card, each box
+  opens with a small header saying what it is (*Finding*, *Note*, *Track ≠
+  recording*, *Link title*, *Link*, *Filter*) and a thin line under it. Neither the browser's
   own grey tooltip nor the cell's "Liner notes" card appears over the card
   any more. A tooltip that only repeats the link's name is left out. When the
   card closes (Esc, or the pointer leaves the link but stays in the cell),

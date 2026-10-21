@@ -585,6 +585,17 @@ floating hover tooltip.
     "names link their Discogs pages…" and
     `release-event-colours-rg-tooltip.spec.js` "\"#\" card, main event";
     mutation list `popup-card-kind-head.json`.
+    **Every box of the note stack has one too** (vzell, 2026-10-21: "there
+    should also be a thin horizontal line after the header line"):
+    `_dpCollectNotes()` gives each note a `label` ("Finding" for a finding's
+    tip, `data-mb-finding-tip`; "Note" for any other tip or title of the
+    cell; "Track ≠ recording"; "Link title"; "Link" for the link's own
+    `data-mbtt` card and a Relationships icon's box; "Filter"), and
+    `_dpFillNotes()` writes it with `_dpPrependKindHead()`, the helper
+    `_dpAddKindHead()` uses too (a box with a `target`, the "#" cell's
+    event, gets that target's line, glyph included). One CSS rule,
+    `:is(#mb-dp-peek, #mb-dp-notes .mb-dp-note) > .mb-pop-kind-head`, draws
+    the line and its hairline for all of them.
 - **The track/recording name note (`#mb-dp-origin`, 2026-10-09).** jesus2099's
   "mb. INLINE STUFF" gives a release page's recording link a native
   `title="track name: …\n≠rec. name: …"` when the track is named differently
