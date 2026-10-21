@@ -25250,3 +25250,11 @@ the user chose "version vs current" for what it shows.
 - The native annotation's own wiki heading ("Barcode and Other
   Identifiers") survives the grouped render's h3/table sweep on this page
   (pinned in the spec).
+
+## 2026-10-21 — test:full after WIP.7–WIP.9 and the sticky flake fix
+
+Env: 2026-10-21T14:57:08+02:00 · NB-3641 · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) · Playwright 1.62.1 Chromium (chromium-fixtures + chromium-mobile) · no Tampermonkey (GM stubs)
+
+`python3 scripts/run-test-full.py` on `feat/pop-user-page-lists` at ad95a5c:
+2116/2116 passed, 14 workers, wall 14 m 26 s (finished 15:11:34 CEST). The
+sticky-page-headers "search page" test that failed in the 12:54 run passed.
