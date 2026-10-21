@@ -1289,6 +1289,14 @@ test.describe('sticky page headers — every block of content that is not a wide
         await waitForRenderComplete(page, { waitForAutoResize: false });
         await settleFocusAndPointer(page);
         await waitEngaged(page);
+        // The page is wider than the 700 px window: the button click, or a
+        // filter focus that landed after settleFocusAndPointer()'s wait,
+        // scrolls it sideways. Seen once in a full run on a loaded host
+        // (2026-10-21, NB-3641: "before.scrollX" not 0, 3/3 green alone).
+        // Blur again and return to the left edge: the premise, not the
+        // property under test.
+        await page.evaluate(() => { if (document.activeElement) document.activeElement.blur(); });
+        await toLeftEdge(page);
         const sels = ['#mb-status-displays-wrapper', '#content > h1'];
         const before = await measure(page, sels);
         expect(before.items.map((it) => it.key.replace(/\[\d+\]$/, '')).sort(),

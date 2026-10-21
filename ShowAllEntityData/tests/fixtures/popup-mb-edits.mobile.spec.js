@@ -6,6 +6,7 @@
 // its window (with `sa_pop_mb_on_touch`, the touch twin), the narrow header
 // shows the button as ✎ alone, a tap on it shows the history, a tap on a row
 // selects it and shows its changes stacked (OLD over NEW), and Back returns.
+// A tap on an editor's status list opens its window (popup-mb-user-lists.spec.js).
 
 const path = require('path');
 const fs = require('fs');
@@ -85,4 +86,29 @@ test('a tap opens the recording window; ✎ alone shows its history; a tapped ro
     expect(nb.y, 'NEW stacked under OLD').toBeGreaterThan(ob.y + ob.height - 1);
     await tapAt(page, dialog.locator('button.mb-dp-tbtn', { hasText: '← Back' }));
     await expect(dialog.locator(':scope > div > span').first()).toHaveText('Recording');
+});
+
+test('a tap on an editor\'s status list (2026-10-21) opens its window, titled by the list, with its edits', async ({ page }) => {
+    const ctx = page.context();
+    await ctx.route('https://static.metabrainz.org/**', (route) => route.abort('blockedbyclient'));
+    await ctx.route(/\/ws\/2\//, (route) => route.fulfill({ status: 404, contentType: 'application/json', body: '{}' }));
+    await ctx.route(/^https:\/\/musicbrainz\.org\/user\/vzell\/edits\/rejected$/, (route) => route.fulfill({ path: path.join(__dirname, 'edits-page-user-vzell-rejected.html'), contentType: 'text/html' }));
+    await loadUserscriptPage(page, {
+        url: RG_URL, fixtureFile: FIXTURE, testMode: true,
+        settingsOverride: { sa_rich_tooltip_delay_ms: 0, sa_pop_mb_on_touch: true },
+    });
+    await page.evaluate(() => {
+        const td = document.querySelector('table.tbl tbody tr td:first-child');
+        const a = document.createElement('a');
+        a.href = '/user/vzell/edits/rejected';
+        a.className = 'pop-probe';
+        a.textContent = 'Rejected edits';
+        td.append(' ', a);
+    });
+    await tapAt(page, page.locator('a.pop-probe'));
+    const dialog = page.locator('#mb-dp-dialog');
+    await expect(dialog).toBeVisible();
+    await expect(dialog.locator(':scope > div > span').first()).toHaveText('Rejected edits');
+    await expect(dialog.locator('.mb-meh-e')).toHaveCount(50);
+    await expect(dialog.locator('button.mb-meh-hist-btn')).toBeHidden();
 });

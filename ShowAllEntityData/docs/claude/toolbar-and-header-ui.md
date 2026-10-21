@@ -900,6 +900,21 @@ render sites), `_vsbRefresh()`, `_vsbBaseOffset()`.
   tests as the sticky page headers, whose own raise rules exist only while
   the page overflows sideways (`html.mb-sph-on`). Under them the h3's raise
   level is set through `--mb-sph-z-raised: 103`.
+- **MusicBrainz's own modal dialogs go ABOVE the whole ladder** (2026-10-21,
+  WIP.7): MusicBrainz appends a jQuery UI `div.ui-widget-overlay.ui-front` and
+  `div.ui-dialog.ui-front` to `<body>` (the sidebar cover's
+  `.artwork-dialog`, `debug/mb-native-sidbar-image-open.html`) at jQuery
+  UI's `.ui-front { z-index: 100 }`, and the stuck header block, the h2/h3
+  bars and the sidebar handle (10000) painted through it.
+  `_ensureMbDialogZStyle()` (init, MusicBrainz only) sets
+  `body > .ui-widget-overlay.ui-front` to `MB_JQUI_Z_OVERLAY` (10050) and
+  the dialog one above: over the ladder, the handle and this script's menus
+  (10000–10002), under its own modal dialogs (20000+), the artwork viewer
+  and the tooltips. `body >` makes it outrank `.ui-front` by specificity.
+  The page also carries a hidden `.ui-dialog` of its own before any dialog
+  opens. Spec `mb-dialog-above-bars.spec.js` (what `elementFromPoint` hits
+  over the toolbar, the h2 and the handle); mutations
+  `scripts/mutations/mb-dialog-above-bars.json`.
 - **The sticky page headers' pinned content bodies** (status line, art
   strips, group intro, the entity header) are raised to 107 on hover by
   that feature; while the bars are on they are capped at 101

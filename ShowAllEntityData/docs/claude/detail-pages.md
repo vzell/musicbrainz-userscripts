@@ -767,7 +767,10 @@ Live page costs ONE request — and parses it into a record kept like any card
 (`_mbLoad()`, the loader both kinds of card share; `_MB_POP_PAGE_VERSION`:
 **bump it when a page parser's output changes**). Paths: `_MB_POP_PAGE_RE`,
 the bare edit or profile only (not `/edit/<n>/data`; `/user/<name>/edits` is
-an editing history since 2026-10-20, see below).
+an editing history since 2026-10-20, see below; an editor's other lists, edit
+searches, `/user/<name>/subscribers` and `/account/applications` since
+2026-10-21, section "an editor's lists, edit searches, subscribers and
+applications" below).
 
 - **`_mbParseEditPage()`** reads `.edit-header` (number, type; the editor, or
   "Editor hidden" when logged out), every `table.details` row (`td.old` +
@@ -993,6 +996,149 @@ Backspace, Alt+← and the kinds-path title need nothing new.
   prototype parser `scripts/lib/mb-edits-parser.browser.js` over saved pages:
   39 edit types), `scripts/show-mb-edits-samples.py`,
   `scripts/build-mb-edit-history-mockups.py`.
+
+## MusicBrainz: an editor's lists, edit searches, subscribers and applications (2026-10-21)
+
+The links of a profile's statistics (`user-profile`, rendered by
+`applyUserProfileToTables()`): "view", "N%", "View all", "view list", and
+(WIP.2) the "Tags and ratings" sub-section's tags and ratings. All are read
+from the page (no Web Service), through `_mbPageLoad()`.
+
+- **Edit lists are the `edits` kind.** `/user/<name>/edits/<status>` (the
+  seven statuses the profile links: open, accepted, autoedits, applied,
+  rejected, failed, cancelled), `/user/<name>/votes` and `/search/edits?…`
+  are the same page as an editing history ("Found N edits",
+  `div.edit-list`, the same pager; captured logged in 2026-10-21), so they
+  reuse `_mbParseEditsPage()` and the whole window unchanged.
+  - **Id = the page path** (`_MB_POP_EDITLIST_RE`), or path + query for a
+    search (`_mbEditsSearchId()`: the query as the link spells it, minus
+    `page=`). A history's ids (`<kind>/<MBID>`, `user/<name>`) and cache
+    keys are unchanged. `_mbEditsPagePath(id)` / `_mbEditsUrl(id, n)` build
+    the page (`&page=n` after a search's own query).
+  - **A search is a target only with `conditions.` and without
+    `form_only=`**: the empty form (the header's "Edit search") and an edit
+    list's "Quick links" to the prefilled form list nothing.
+    `_mbPopParsePath(pathname, search)` takes the query for this one case;
+    `_mbPopTarget()` and `_mbPopStampHref()` pass it.
+  - **Names: `_mbEditsLabel(id)`** gives the window's title (`titleOf` on the
+    kind: "Rejected edits", "Votes", "Edit search"), the card's comment, the
+    window's subline, the empty-list line and the glyph. A list's own
+    heading ("Rejected edits by vzell") is NOT read: the name comes from the
+    id, so `_mbParseEditsPage()`'s subject regex stays "(Open )Edits by".
+  - **`keep`**: a status list or votes as a history (no open edit → kept for
+    `sa_pop_mb_ttl_hours`); **an edit search memory-only**, whatever it holds,
+    since its conditions may be relative ("24 hours ago").
+  - No "✎ Editing history" on a list: `_mbEditsSubject()` returns null, as
+    for a history.
+- **`subscribers`** (`_MB_POP_ACCOUNT_RE`, id the name):
+  `_mbParseSubscribersPage()` reads the section after `h2` "Subscribers"
+  (`_mbPopH2Section()`; the page has no `#content`): the editor links of its
+  `ul`, "Plus N other anonymous users", "There are currently N users". Card:
+  the count, the anonymous count, the first 12 names; window: every editor
+  linked, so a click drills to their card.
+- **`applications`** (`_MB_POP_ACCOUNT_RE`, id `me`; only the logged-in
+  owner sees the page, else a login page → `failNote`):
+  `_mbParseApplicationsPage()` reads the "Authorized applications" and
+  "Developer applications" sections and the digest-auth line. **Only the
+  `_MB_APPS_COLS` columns, as text** (Application, Name, Access, Last granted
+  token, Type): the Actions cell is "Revoke access", a GET link that revokes,
+  and a developer application's row holds its OAuth client id and secret.
+  The real page had no developer table on capture, so the APPS spec plants
+  one with "OAuth Client ID"/"OAuth Client Secret" columns and asserts
+  neither value reaches the window. **Memory-only** (`keep: () => false`).
+- **`usertags`** (`/user/<name>/tags`, `_MB_POP_ACCOUNT_KINDS`, id the
+  name): `_mbParseUserTagsPage()` needs the h2 "Tags <name> upvoted" and
+  reads `#all-tags ul.genre-list > li` and `ul.tag-list > li` (name +
+  `span.tag-count`); one page, no pager (112 tags on capture, their counts
+  sum to the profile's "Tags upvoted 347"). Card: tags, genres, votes, the
+  ten most used together; window: both lists by count, each tag linked to
+  the GLOBAL `/tag/<name>` so it drills into the tag card (the editor's own
+  `/user/<name>/tag/<name>` is no kind). `?show_downvoted=1` returns null in
+  `_mbPopParsePath()`: another list than the page read, never seen live
+  (the account has 0 downvotes, so the profile links none).
+- **`userratings`** (`/user/<name>/ratings`): `_mbParseUserRatingsPage()`
+  reads per h2 "<Kind> ratings" its `ul > li`: `.current-user-rating` (1–5),
+  the first link to a bare entity page outside `.inline-rating`, the rest of
+  the item's text with `.inline-rating` removed, and the "View all ratings"
+  link. **The stars are `/rating/rate/?…` GET links that change the
+  rating**: never copied (the window draws ★/☆ text). The page shows a few
+  per kind, so the counts say "shown".
+- Fixtures (`scripts/fetch-mb-page-fixture.js --auth`, then
+  `scripts/anonymize-user-fixtures.py`, which replaces the subscribers' names
+  with editor-1… and blanks developer-application cells):
+  `edits-page-user-vzell-{rejected,open,votes}.html`,
+  `edits-page-search-type.html`, `subscribers-page-vzell.html`,
+  `applications-page-vzell.html`, `user-{tags,ratings}-page-vzell.html`.
+  Spec: `popup-mb-user-lists.spec.js` (PATH, STATUS, EMPTY, VOTES, SEARCH,
+  SUBS, APPS, TAGS, RATINGS), one tap test in
+  `popup-mb-edits.mobile.spec.js`; mutations
+  `scripts/mutations/popup-user-lists.json` (14, all caught).
+
+## MusicBrainz: an annotation's history and its versions (2026-10-21)
+
+An annotation's own line ("View annotation history | Edit annotation", in
+`.annotation-details`), the sidebar's "View annotation history" and every
+"View this version" / "View current revision" link get a card and a window.
+Two kinds read from the page (`_mbPopPageKind()`), both found by
+`_MB_POP_ANNOT_RE` in `_mbPopParsePath()` for the eleven annotated entity
+kinds (no `url`, no `collection`); `edit_annotation` and
+`annotations-differences` do not match (the pattern is anchored).
+
+- **`annotations`** (`/<kind>/<MBID>/annotations`, id `<kind>/<MBID>`, the
+  shape of an `edits` id). **Probed 2026-10-21: MusicBrainz shows this page
+  to a logged-in editor only** — logged out the page never loads, so a
+  fixture needs `--auth` and a login page is the `failNote`.
+  `_mbParseAnnotationsPage()` reads `table#annotation-history` (by header:
+  "Date", "Version history"; editor = the row's `/user/` link; changelog =
+  the history cell without its link, "(no changelog specified)" → '') and
+  takes each version's TEXT from the page's own JSON inside the form
+  (`annotations[].html`, keyed by `id`). Card: versions, the latest date,
+  editor, changelog and the first three blocks; window: the latest text and
+  every version ("Version N", newest first as the page lists them), each
+  linked to its `/annotation/<n>` so a click drills into the `annotation`
+  kind, each editor to `/user/<name>`.
+- **`annotation`** (`/<kind>/<MBID>/annotation/<n>`, id `<kind>/<MBID>/<n>`;
+  the current one at `/<kind>/<MBID>/annotation`, id `<kind>/<MBID>`;
+  `titleOf` says "Annotation version" or "Annotation"). Shown to anyone.
+  `_mbParseAnnotationVersionPage()` reads `div.annotation`: the body, "Changelog:",
+  and `.annotation-details`. **Logged out, an old version's line reads like
+  the current one's** ("Annotation last modified on <date> UTC.", logged
+  in "This is an old revision … as edited by <editor> on <date>."), so
+  old/current is decided by the page JSON's `annotation.id` against
+  `entity.latest_annotation.id`, and the editor comes from
+  `annotation.editor.name` when the line names none. **The header has a JSON
+  script of its own first** (`{"entityType":…,"gid":…}`): the parser looks
+  for the one with an `annotation` key.
+- **Text only, never markup.** `_mbAnnotationBlocks()` turns a rendered body
+  into `{h}` / `{p}` blocks of `textContent` (a `<br>` kept as a newline, a
+  list item as "• …"); `_mbAnnotationHtml()` escapes them. The JSON's `html`
+  is parsed in an inert `DOMParser` document. So a link inside an
+  annotation is its text in the card; the SAFE spec plants an `<img
+  onerror>` and asserts it neither reaches the window nor runs.
+- **Glyph:** `_MB_KIND_ICON_FROM_ID` — both kinds show the glyph of the
+  entity named by the id's first segment.
+- Fixtures (`scripts/fetch-mb-page-fixture.js`, release 3ec14d03-…):
+  `release-annotations-history.html` (`--auth`),
+  `release-annotation-version.html` (version 810603) and
+  `release-annotation-current.html` (logged out). Spec:
+  `popup-mb-annotations.spec.js` (PATH, HISTORY, VERSION, CURRENT, LOGIN,
+  SAFE) on `release-tracks-sidebar-search-links.html`; mutations
+  `scripts/mutations/popup-annotations.json` (9, all caught).
+- **The version page itself** (2026-10-21, WIP.9) is the pageType
+  `annotation-version` (PAGETYPES-TESTING-REFERENCE.org #114): its button
+  runs `applyAnnotationCompareToTables()`, which reads the SAME page JSON
+  through the shared `_mbAnnotationPageData()` (the preview's parser uses it
+  too) and builds "This version" (Field | Value) and "Compared with the
+  current version" (`_annotationCompareRows()`: an LCS of equal blocks, the
+  gaps paired by kind as "changed", the rest "only in this version" / "only
+  in the current version"). A changed row's status is a SPAN with the rich
+  card (`_setTipCmp()`): a disk file keeps a cell's markup but only listed
+  `<td>` attributes, so a card on the `<td>` came back empty after Load
+  from Disk. No disk-load hook: the file's groups render as saved. Spec
+  `annotation-version-compare.spec.js`; mutations
+  `scripts/mutations/annotation-version-compare.json` (8; the fetched-copy
+  hook is `expect: pass` — a non_paginated page is read from the live
+  document).
 
 ## MusicBrainz: beyond table links (org/iframe.org, Phase 4)
 

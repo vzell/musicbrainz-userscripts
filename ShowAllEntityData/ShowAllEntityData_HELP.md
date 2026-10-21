@@ -688,6 +688,15 @@ lower case ("(Live in Asbury Park 2009)" → "(live in Asbury Park 2009)"). A
 title ending in "…" shows in one row with the "…" marked: the full title is
 not on the page, so nothing is proposed.
 
+A live title, event name or recording comment that *almost* follows the live
+form shows the text over the form it almost has, the difference marked: "live,
+1993-4-21: Sony Music Studios, …" over "live, 1993‐04‐21: Sony Music Studios,
+…", "Live, …" over "live, …", "live 2004‐10‐02: …" over "live, 2004‐10‐02: …",
+"1975‐02‐05 The Main Point, …" over "1975‐02‐05: The Main Point, …". Only a fix
+that cannot be read two ways is proposed, and only when the result is itself
+in the live form. When there is no single answer ("05.02.1975": which part
+is the day?), the text shows in one row with the part to rewrite marked.
+
 ### Check title style
 
 On a MusicBrainz page with titles (release groups, releases, recordings,
@@ -768,6 +777,11 @@ its own switch there, plus one for their yellow tint.
 | ❌    | Recorded at event differs from the comment                      | Release tracklist: Recorded at event        |
 | ❌    | Recorded at place differs from the comment venue                | Release tracklist: Recorded at place        |
 | ❌    | Live credit date differs from the recording date                | Release tracklist: credit columns           |
+
+A flagged cell's hover card names the problem and, where there is one, the
+cell's own detail. *Live credit without a date* names the date the credit is
+most likely from: the recording's own "live recording of" date, which the
+credit was checked against ("probably 1988-04-27").
 
 The tint of each newly highlighted problem has its own switch in ⚙️ Settings →
 ⚠️ Findings; turning one off keeps the problem in the menu. The menus
@@ -932,8 +946,9 @@ close every sidebar section; the headings of the main page are left alone.
   the search links of jesus2099's *mb. ALL LINKS*, which the Sidebar cards
   and tables below show as one *Search* group.
 - **The picture** (as soon as the page opens, no table needed). The photo or
-  logo from Wikimedia Commons at the top of the sidebar shows a card with its
-  file name when you point at it, and opens in the
+  logo from Wikimedia Commons at the top of the sidebar shows the same card as
+  an image in a *CAA*/*EAA* column when you point at it — the picture, where
+  it comes from and its file name — and opens in the
   [artwork viewer](#cover-art) on a click, Enter or Space, with *Open on
   Commons* in its bar. A small copy appears at the start of the page heading,
   so it stays in sight with the sidebar closed. Nothing extra is loaded: it is
@@ -945,6 +960,14 @@ close every sidebar section; the headings of the main page are left alone.
   viewer, and the copy at the start of the heading, there before and after
   you load the table. A drawing is shown whole in the copy, not cropped, and
   its viewer bar has no Commons link.
+  On a release, release group or event page, the front cover (an event's
+  event art) from the sidebar gets the copy at the start of the heading too.
+  Pointing at the copy, or at the sidebar's own cover, shows the card of a
+  *CAA*/*EAA* column: every image of the release (or event), the main front
+  starred, Space for all of them, Shift for bigger ones. They are asked for
+  on that first hover, not before. A click, Enter or Space on either opens
+  them all in the viewer, starting at the front; a Ctrl-click on the
+  sidebar's cover still opens MusicBrainz's own window.
   Switches: *Sidebar picture: hover card and viewer*, *Sidebar picture beside
   the name*.
 - **The picture in previews.** The link previews of an artist, a label or a
@@ -1629,7 +1652,9 @@ an import brings your deletions back.
 - **Reports** — the `/reports` index and all 117 reports across 14 categories
 - **Edit listings** — edit search, per-entity edits, your own edits, open edits,
   subscribed edits, notes received
-- **Annotation history** (`/<entity>/<mbid>/annotations`) across ten entity types
+- **Annotation history** (`/<entity>/<mbid>/annotations`) across ten entity types,
+  and **one version of an annotation** (`/<entity>/<mbid>/annotation/<n>`, or the
+  current one) compared with the current version
 - **Auto-editor elections**, **genre**, **instrument** and **edit-type** lists,
   **top CD stubs**, **ISRC**, **ISWC** and **privileged account** pages
 - **Account pages** (`/account/applications`)
@@ -2093,6 +2118,18 @@ selectable Old/New comparison radios, and a relocated *Compare versions* button
 that can open in a new tab. *Editor* is the first column, ahead of *Old* and
 *New*, and stays visible when you scroll sideways.
 
+**One version of an annotation** (*View this version* on the history page, or
+*View current revision*) gets a **Compare with the current version** button. It
+shows two tables under the annotation: *This version* (whether it is the
+current one, who wrote it and when, its changelog, when the current version
+was written and by whom, how many versions there are), and *Compared with the
+current version*, one row per paragraph or heading with this version's text,
+the current version's text and what happened to it: *same*, *changed*, *only
+in this version* or *only in the current version*. Point at *changed* to see
+the two texts one under the other with the difference marked. Both texts are
+on the page already, so nothing else is asked; the annotation itself stays
+where it is.
+
 **Auto-editor election** pages consolidate both the index and individual
 elections.
 
@@ -2149,7 +2186,12 @@ groups**, **recordings**, **works**, **artists**, **labels**, **areas**,
 **instruments**, **events**, **places**, **series**, **collections**, the
 **[info]** link beside every URL, and the
 codes: **ISRCs**, **ISWCs** and **disc IDs**, **edits** and **editors**,
-**editing histories** (the sidebar's *Editing history* link), and
+**editing histories** (the sidebar's *Editing history* link), an editor's
+**other edit lists** and **edit searches** (the *view*, *N%* and *View all*
+links of a profile's statistics), an editor's **subscribers**, **tags** and
+**ratings** and your **applications** (the profile's *view list* and *view*
+links), an **annotation's history** and its **versions** (*View annotation
+history*, *View this version*, *View current revision*), and
 **tags** (a genre or tag link, also the pills of the sidebar's Tags card).
 A **Barcode** cell has a card too: the barcode's format and the releases
 carrying it. So does an entry of a column's **📊 dropdown** that names one
@@ -2197,6 +2239,35 @@ first changes; its window every change, the entities it touches and its notes
 editor card shows the user type, member since and edit counts — nothing
 personal. An open edit is read again on every page load, since its votes
 change.
+On an editor's profile, every list of edits it links has a card and a window
+like an editing history (below), titled by what it lists: *Open*, *Accepted*,
+*Auto-edits*, *Applied*, *Rejected* (voted down), *Failed* and *Cancelled
+edits*, their **Votes**, and every **edit search** (*Last 24 hours*, the *N%*
+links of the edit types). An edit search is read again on every page load,
+since what it finds changes ("24 hours ago"). The *view list* beside
+**Subscribers** shows who is subscribed to the editor's edits, and how many
+more anonymously; a name in its window opens that editor's card. The *view
+list* beside **Authorized applications** shows your applications (only you
+see that page): each one's name, what it may access and when it last got a
+token, how many applications you registered, and whether digest
+authentication is on. It never shows an application's OAuth client ID or
+secret, nor a *Revoke access* link, and it is never kept after a page load.
+The *view* beside **Tags upvoted** shows how many tags and genres the editor
+voted for, with how many votes, the ten they used most on the card, and every
+one in the window, most used first; a tag opens its own tag card. (Downvoted
+tags have no preview.) The *view* beside **Ratings** shows their ratings as
+their ratings page does, a few per kind, each with its stars; an entity opens
+its own card, and *All … ratings* opens MusicBrainz's full list in a tab. The
+window never copies the stars, which on MusicBrainz are links that change a
+rating.
+*View annotation history* (under an annotation, and in the sidebar) shows
+how many versions the annotation has, and the latest one's date, editor,
+changelog and first lines; its window lists every version, newest first, and
+a version opens its own card. MusicBrainz shows that history only when you
+are logged in, so logged out the card says so. *View this version* and *View
+current revision* show that version's date, editor, changelog and text. An
+annotation is copied as plain text: its links and formatting stay on
+MusicBrainz's page.
 A tag card shows whether the tag is a genre, how many entities carry it
 and the kinds with the most of them (*Recordings 129,479*); it is read from
 the tag's own page, since MusicBrainz cannot look a tag up otherwise.
@@ -2279,6 +2350,9 @@ the tag's own page, since MusicBrainz cannot look a tag up otherwise.
     window says that too: open the page once in a tab (↗), then press ⟳.
   - The sidebar's **Editing history** link and an editor window's *Their
     edits* link have a card of their own and open the same window.
+  - A profile's other edit lists and edit searches open this window too,
+    titled by the list (*Rejected edits*, *Votes*, *Edit search*). A list has
+    no ✎ Editing history of its own.
 - **A track named differently from its recording.** With jesus2099's
   *mb. INLINE STUFF* installed, a track whose name differs from its recording's
   carries a note with both names. The browser used to show that note in its

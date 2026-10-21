@@ -14,7 +14,7 @@
 // @require      https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js
 // @require      file:///V:/home/vzell/git/musicbrainz-userscripts/lib/VZ_MBLibrary.user.js
 // @include      /^https?:\/\/(?:[^\/]+\.)?musicbrainz\.(?:org|eu)\/(?:artist|release-group|release|work|recording|label|series|place|area|instrument|event|collection|url)\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/?(?:\?.*)?$/
-// @include      /^https?:\/\/(?:[^\/]+\.)?musicbrainz\.(?:org|eu)\/(?:artist|release-group|release|work|recording|label|series|place|area|instrument|event)\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/(?:aliases|releases|recordings|works|events|relationships|discids|fingerprints|performances|places|artists|labels|tags|users|collections|ratings|edits|annotations)\/?(?:\?.*)?$/
+// @include      /^https?:\/\/(?:[^\/]+\.)?musicbrainz\.(?:org|eu)\/(?:artist|release-group|release|work|recording|label|series|place|area|instrument|event)\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/(?:aliases|releases|recordings|works|events|relationships|discids|fingerprints|performances|places|artists|labels|tags|users|collections|ratings|edits|annotations|annotation(?:\/\d+)?)\/?(?:\?.*)?$/
 // @include      /^https?:\/\/(?:[^\/]+\.)?musicbrainz\.(?:org|eu)\/release\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}(?:\/disc\/\d+)?\/?(?:\?[^#]*)?(?:#.*)?$/
 // @include      /^https?:\/\/(?:[^\/]+\.)?musicbrainz\.(?:org|eu)\/(?:search\?query=.*|search\/edits\/?(?:\?.*)?|edit\/(?:subscribed(?:_editors)?|notes-received)\/?(?:\?.*)?|account\/applications\/?(?:\?.*)?|tags.*|tag\/.*|cdtoc\/.*|taglookup.*|artist-credit\/.*|reports.*|report\/.*|elections\/?(?:\?.*)?|election\/.*|genres\/?(?:\?.*)?|cdstub\/.*|isrc\/.*|iswc\/.*|doc\/Edit_Types\/?(?:\?.*)?|instruments\/?(?:\?.*)?|privileged\/?(?:\?.*)?)$/
 // @include      /^https?:\/\/(?:[^\/]+\.)?musicbrainz\.(?:org|eu)\/user\/[^\/]+\/(?:subscriptions\/.*|subscribers\/?(?:\?.*)?|collections\/?(?:\?.*)?|ratings\/.*|ratings(?:\?.*)?|tags.*|tag\/.*|edits(?:\/open)?\/?(?:\?.*)?)$/
@@ -517,14 +517,14 @@
             label: "Sidebar picture: hover card and viewer",
             type: "checkbox",
             default: true,
-            description: "The picture MusicBrainz shows in the sidebar (an artist's photo, a label's logo, from Wikimedia Commons; an instrument's IROMBOOK drawing) gets a hover card and opens in the artwork viewer on a click, Enter or Space. Uses the picture MusicBrainz already loaded: no extra request."
+            description: "The picture MusicBrainz shows in the sidebar (an artist's photo, a label's logo, from Wikimedia Commons; an instrument's IROMBOOK drawing) gets the image card of a CAA/EAA column on hover and opens in the artwork viewer on a click, Enter or Space. Uses the picture MusicBrainz already loaded: no extra request. On a release, release group or event page, the sidebar's own cover gets the card of every image (asked on the first hover) and opens them in the artwork viewer instead of MusicBrainz's own window; Ctrl-click still opens MusicBrainz's."
         },
 
         sa_sidebar_picture_in_header: {
             label: "Sidebar picture beside the name",
             type: "checkbox",
             default: true,
-            description: "Also show a small copy of the sidebar picture at the start of the page heading, so it stays in sight with the sidebar closed. Same hover card and viewer. Needs 'Sidebar picture: hover card and viewer'."
+            description: "Also show a small copy of the sidebar picture at the start of the page heading, so it stays in sight with the sidebar closed. Same hover card and viewer. On a release, release group or event page it is the front cover (the event art); its card shows every image and a click opens them all in the viewer (asked on the first hover or click). Needs 'Sidebar picture: hover card and viewer'."
         },
 
         sa_sidebar_tables_button: {
@@ -21142,8 +21142,17 @@
     const _MB_KIND_ICON = {
         artist: 'artist', release: 'release', 'release-group': 'release_group', recording: 'recording',
         work: 'work', label: 'label', area: 'area', place: 'place', event: 'event', series: 'series',
-        instrument: 'instrument', collection: 'collection', user: 'editor',
+        instrument: 'instrument', collection: 'collection', user: 'editor', subscribers: 'editor',
+        usertags: 'editor', userratings: 'editor',
     };
+
+    /**
+     * Kinds whose glyph is their entity's, read from the id
+     * (`<kind>/<MBID>…`): an annotation history or version shows the
+     * release's (artist's, …) own glyph.
+     * @type {Set<string>}
+     */
+    const _MB_KIND_ICON_FROM_ID = new Set(['annotations', 'annotation']);
 
     /**
      * The URL of a MusicBrainz kind's own glyph (`_MB_KIND_ICON`), on this
@@ -21154,8 +21163,10 @@
      */
     function _mbKindIconUrl(t) {
         if (!t || !t.src || t.src.id !== 'mb-entity') return '';
-        // An editing history shows the glyph of what it is the history of.
-        const type = t.type === 'edits' ? String(t.id || '').split('/')[0] : t.type;
+        // An editing history shows the glyph of what it is the history of;
+        // an annotation the glyph of the entity it annotates.
+        const type = t.type === 'edits' ? _mbEditsLabel(String(t.id || '')).icon
+            : (_MB_KIND_ICON_FROM_ID.has(t.type) ? String(t.id || '').split('/')[0] : t.type);
         const stem = Object.prototype.hasOwnProperty.call(_MB_KIND_ICON, type) ? _MB_KIND_ICON[type] : '';
         return stem ? `${window.location.origin}/static/images/entity/${stem}.svg` : '';
     }
@@ -28639,13 +28650,16 @@
      *   `_parseCreditDateAnnotation`/`_parseBareParenDate`; `null` when no
      *   date attribute was found at all, or the annotation present wasn't
      *   date-shaped (e.g. a task note) — both count as "missing".
-     * @returns {?{icon: string, tooltip: string}}
+     * @returns {?{icon: string, tooltip: string, date?: string}} A missing
+     *   date's flag carries `date`, the recording date it is deduced to be
+     *   (`_appendLiveDateFlag()` stamps it for the finding's title).
      */
     function _liveDateCheckResult(recordingDate, parsedDate) {
         if (!parsedDate) {
             return {
                 icon: '⚠️',
-                tooltip: `This track is a live recording (recorded ${recordingDate}), but this credit has no date attribute — it can't be confirmed to be from the same performance.`
+                tooltip: `This track is a live recording (recorded ${recordingDate}), but this credit has no date attribute — it can't be confirmed to be from the same performance.`,
+                date: recordingDate,
             };
         }
         if (parsedDate.compareValue === recordingDate) return null;
@@ -28664,14 +28678,20 @@
      * container — a credit `<li>`, or a "Recorded at event" `<td>` directly
      * (that column never renders a list).
      *
+     * A missing date's flag also carries `data-mb-live-date`, the
+     * recording date the credit is deduced to be from: the
+     * `live-credit-nodate` finding names it in the cell's title. An
+     * attribute, so it survives every clone and the disk round trip.
+     *
      * @param {HTMLElement} container
-     * @param {?{icon: string, tooltip: string}} result
+     * @param {?{icon: string, tooltip: string, date?: string}} result
      */
     function _appendLiveDateFlag(container, result) {
         if (!result) return;
         const _flag = document.createElement('span');
         _flag.className = 'mb-live-date-flag';
         _flag.textContent = ' ' + result.icon;
+        if (result.date) _flag.dataset.mbLiveDate = result.date;
         _setTip(_flag, result.tooltip);
         container.appendChild(_flag);
     }
@@ -33332,6 +33352,25 @@
                 stickyColumn: 'Editor'
             },
             tableMode: 'single',
+            non_paginated: true
+        },
+        // One version of an entity's annotation (/<kind>/<mbid>/annotation/<n>,
+        // or the current one without the number; 2026-10-21): the version
+        // beside the current one, block by block, the changes marked
+        // (applyAnnotationCompareToTables()). Both texts are in the page's own
+        // JSON. Anchored: /annotations is the history above.
+        {
+            type: 'annotation-version',
+            match: (path) => /^\/(?:artist|instrument|area|place|series|label|work|release-group|release|recording|event)\/[a-f0-9-]{36}\/annotation(?:\/\d+)?\/?$/.test(path),
+            buttons: [ {
+                label: 'Compare with the current version', shortLabel: 'Compare',
+                description: 'Show this version of the annotation beside the current one, paragraph by paragraph, with what changed marked. Both are in this page: nothing else is asked.'
+            } ],
+            features: {
+                annotationCompareToTables: true,
+                groupByH3: true
+            },
+            tableMode: 'multi',
             non_paginated: true
         },
         // Area pages
@@ -39347,6 +39386,36 @@
     const SPH_Z_RAISED = 107;
     /** z-index of a raised BODY-LEVEL pinned element (MB header, banners, footer): one above SPH_Z_RAISED, so an open MB header menu beats a raised content bar instead of tying with it (a tie goes to the later element in DOM order, i.e. the content bar). */
     const SPH_Z_CHROME_RAISED = 108;
+    /**
+     * z-index of MusicBrainz's own jQuery UI modal overlay (its dialog one
+     * above): MusicBrainz appends `div.ui-widget-overlay.ui-front` and
+     * `div.ui-dialog.ui-front` to `<body>` (the sidebar cover's artwork
+     * dialog, `.artwork-dialog`: debug/mb-native-sidbar-image-open.html,
+     * 2026-10-21), at jQuery UI's `.ui-front { z-index: 100 }` — under the
+     * stuck header block (105–107), the stuck h2/h3 bars (102–104), the
+     * sticky thead (100) and the sidebar handle (10000), which all painted
+     * through it. Above all of those and this script's menus (10000–10002),
+     * under its own modal dialogs (20000 and up), artwork viewer and tooltips.
+     */
+    const MB_JQUI_Z_OVERLAY = 10050;
+
+    /**
+     * Lifts MusicBrainz's own jQuery UI modal (overlay and dialog) above this
+     * script's pinned bars and sidebar handle (`MB_JQUI_Z_OVERLAY`). A
+     * body-level selector, so it outranks jQuery UI's `.ui-front` by
+     * specificity, whichever stylesheet loads last. MusicBrainz only; once.
+     *
+     * @returns {void}
+     */
+    function _ensureMbDialogZStyle() {
+        if (_foreignHost || document.getElementById('mb-jqui-z-style')) return;
+        const st = GM_addStyle(`
+            body > .ui-widget-overlay.ui-front { z-index: ${MB_JQUI_Z_OVERLAY}; }
+            body > .ui-dialog.ui-front { z-index: ${MB_JQUI_Z_OVERLAY + 1}; }
+        `);
+        st.id = 'mb-jqui-z-style';
+    }
+
     /** Debounce delay (ms) for coalescing resize / observer bursts into one refresh pass. */
     const SPH_REFRESH_DELAY_MS = 60;
     /** Lower bound (px) for a pinned element's clamped width, so tiny viewports never collapse a bar. */
@@ -44436,17 +44505,20 @@
      * own setting.
      *
      * @param {?ReturnType<typeof _parseLiveTitle>} live
-     * @returns {?{kind: ('error'|'warn'), tip: string}}
+     * @returns {?{kind: ('error'|'warn'), tip: string, nearmiss?: string}} A
+     *   near miss carries its problem as `nearmiss`, for its comparison
+     *   (`_liveFlagCmp()`).
      */
     function _liveTitleFlag(live) {
         if (!live) return null;
         if ((live.kind === 'invalid' || live.kind === 'nearmiss') && Lib.settings.sa_enable_live_title_error_flag !== false) {
-            return {
-                kind: 'error',
-                tip: live.kind === 'invalid'
-                    ? `Live title date is impossible: ${live.problems.join(', ')}.`
-                    : `Starts with a date but is not a live title "YYYY-MM-DD: Venue, City, …": ${live.problems[0]}.`,
-            };
+            if (live.kind === 'nearmiss') {
+                return {
+                    kind: 'error', nearmiss: live.problems[0],
+                    tip: `Starts with a date but is not a live title "YYYY-MM-DD: Venue, City, …": ${live.problems[0]}.`,
+                };
+            }
+            return { kind: 'error', tip: `Live title date is impossible: ${live.problems.join(', ')}.` };
         }
         if ((live.sep === 'ascii' || live.sep === 'mixed') && Lib.settings.sa_enable_live_title_separator_flag !== false) {
             return {
@@ -44528,13 +44600,14 @@
      * impossible date or a near miss, `'warn'` for a plain "-" in the date.
      *
      * @param {?ReturnType<typeof _parseRecordingComment>} rc
-     * @returns {?{kind: ('error'|'warn'), tip: string}}
+     * @returns {?{kind: ('error'|'warn'), tip: string, nearmiss?: string}} A
+     *   near miss carries its problem as `nearmiss` (`_liveFlagCmp()`).
      */
     function _recCommentFlag(rc) {
         if (!rc) return null;
         const errorOn = Lib.settings.sa_enable_live_title_error_flag !== false;
         if (rc.form === 'nearmiss' && errorOn) {
-            return { kind: 'error', tip: `Recording comment almost follows "live, YYYY-MM-DD: Venue, City, …": ${rc.problem}.` };
+            return { kind: 'error', nearmiss: rc.problem, tip: `Recording comment almost follows "live, YYYY-MM-DD: Venue, City, …": ${rc.problem}.` };
         }
         const live = rc.form === 'nearmiss' ? null : rc.live;
         if (live && live.kind === 'invalid' && errorOn) {
@@ -44599,6 +44672,23 @@
      * @returns {?{at: number, la: string, lb: string, sb: string, own: string, a: string, b: string}}
      */
     function _liveSepCmp(td, recKind) {
+        const src = _liveFlagText(td, recKind);
+        if (!src) return null;
+        const b = _liveSepFixed(src.text);
+        return b === src.text ? null : { at: 0, la: src.la, lb: 'MB style', sb: 'MB style', own: 'b', a: src.text, b };
+    }
+
+    /**
+     * The text a live-title flag judged, read the way the flag's own reader
+     * reads it (`_findCellLiveTitle()`, `_findCellEventName()`,
+     * `_findCellRecordingComment()`), whitespace collapsed, and the label of
+     * its row in the rich card.
+     *
+     * @param {HTMLTableCellElement} td
+     * @param {?('plain'|'link')} recKind - Set when the comment raised the flag.
+     * @returns {?{text: string, la: ('Title'|'Event'|'Comment')}}
+     */
+    function _liveFlagText(td, recKind) {
         let text = null;
         let la = 'Title';
         if (recKind) {
@@ -44625,17 +44715,153 @@
             }
         }
         if (!text) return null;
-        const a = text.replace(/\s+/g, ' ').trim();
-        const b = _liveSepFixed(a);
-        return b === a ? null : { at: 0, la, lb: 'MB style', sb: 'MB style', own: 'b', a, b };
+        return { text: text.replace(/\s+/g, ' ').trim(), la };
+    }
+
+    /**
+     * A near miss's text in the form it almost has — or `null` when there is
+     * no single right answer. Only fixes that cannot be read two ways are
+     * made, then the result must PASS the same parser that flagged the text
+     * (`_parseLiveTitle()` "valid", or a recording comment's live forms with
+     * a valid date), so a fix is never a guess:
+     *   - a comment's event type lower-cased ("Live, …"), ", " after it
+     *     ("live 2004‐…", "live: KBCO Studios, …"), "live, " before a
+     *     date-led comment with no type;
+     *   - a year-first date's parts padded and joined by "‐" ("1993-4-21",
+     *     "1975.02.05", "2004–10–02");
+     *   - ": " after the date ("2004‐10‐02, Gund Arena, …", "… 2004‐10‐02
+     *     Gund Arena, …", "2004‐10‐02:Gund Arena");
+     *   - then `_liveSepFixed()`.
+     * Never fixed: a day-first or month-first date ("05.02.1975" — which is
+     * the day?), two years ("1973/1976"), a location that is not "Venue,
+     * City, …", several dates (" / ").
+     *
+     * @param {string} text - The text as flagged.
+     * @param {('title'|'comment')} target - A release / release group title
+     *   or event name, or a recording comment.
+     * @returns {?string}
+     */
+    function _liveNearMissFixed(text, target) {
+        const full = String(text || '').replace(/\s+/g, ' ').trim();
+        if (!full || full.includes(' / ')) return null;
+        let prefix = '';
+        let body = full;
+        let tail = '';
+        if (target === 'comment') {
+            const semi = full.indexOf(';');
+            const head = (semi < 0 ? full : full.slice(0, semi)).trim();
+            tail = semi < 0 ? '' : full.slice(semi);
+            const lower = head.toLowerCase();
+            const type = EVENT_TYPE_KEYWORDS.find(k => lower.startsWith(k) && (lower.length === k.length || /^[ ,:]/.test(lower.slice(k.length))));
+            if (type) {
+                prefix = type;
+                body = head.slice(type.length).replace(/^(?:\s*[,:]\s*|\s+)/, '');
+                if (body) prefix += ', ';
+            } else {
+                prefix = 'live, ';
+                body = head;
+            }
+            if (!body) return _liveNearMissCheck(prefix + tail, full, target);
+            if (!/^[\d?]/.test(body)) return _liveNearMissCheck(prefix + body + tail, full, target);
+        }
+        // A year-first date, padded: the only order that cannot be misread.
+        const d = /^(\d{4})\s?[‐\-–./]\s?(\d{1,2})(?:\s?[‐\-–./]\s?(\d{1,2}))?(?!\d)/.exec(body);
+        if (d) {
+            const pad = x => x.padStart(2, '0');
+            body = `${d[1]}‐${pad(d[2])}${d[3] ? `‐${pad(d[3])}` : ''}${body.slice(d[0].length)}`;
+        }
+        const h = _LIVE_DATE_HEAD_RE.exec(body);
+        if (!h) return null;
+        let after = body.slice(h[0].length);
+        if (/^:\S/.test(after)) after = `: ${after.slice(1)}`;
+        else if (/^ +[^\s,:]/.test(after)) after = `: ${after.trim()}`;
+        else if (/^, /.test(after) && !after.includes(': ')) after = `: ${after.slice(2)}`;
+        return _liveNearMissCheck(_liveSepFixed(prefix + h[0] + after) + tail, full, target);
+    }
+
+    /**
+     * `_liveNearMissFixed()`'s last step: the candidate when it differs from
+     * the text and passes the parser the flag came from, else `null`.
+     *
+     * @param {string} candidate
+     * @param {string} full - The text as flagged.
+     * @param {('title'|'comment')} target
+     * @returns {?string}
+     */
+    function _liveNearMissCheck(candidate, full, target) {
+        if (candidate === full) return null;
+        if (target === 'comment') {
+            const rc = _parseRecordingComment(candidate);
+            const ok = !!rc && ['typeonly', 'date', 'datelocation', 'location'].includes(rc.form) && (!rc.live || rc.live.kind === 'valid');
+            return ok ? candidate : null;
+        }
+        const live = _parseLiveTitle(candidate);
+        return live && live.kind === 'valid' ? candidate : null;
+    }
+
+    /**
+     * The one-row card of a near miss with no single fix
+     * (`_liveNearMissFixed()` gave `null`): the text with the part to
+     * rewrite marked — the date run for a date problem ("05.02.1975",
+     * "1973/1976"), the location for a location problem. `null` when the
+     * part is not found.
+     *
+     * @param {string} text
+     * @param {string} la - The row's label.
+     * @param {string} problem - The flag's `nearmiss`.
+     * @returns {?{at: number, kind: 'mark', la: string, a: string, s: number, e: number, sum: string}}
+     */
+    function _liveNearMissMark(text, la, problem) {
+        let s = -1;
+        let e = -1;
+        let sum = '';
+        if (/date/.test(problem)) {
+            const m = /[\d?][\d?‐\-–./]*[\d?]/.exec(text);
+            if (m) {
+                s = m.index;
+                e = m.index + m[0].length;
+                sum = 'No single fix: write the marked date as one YYYY-MM-DD date.';
+            }
+        } else if (/location/.test(problem)) {
+            const c = text.indexOf(': ');
+            if (c >= 0) {
+                s = c + 2;
+                e = text.length;
+                sum = 'No single fix: the location should read "Venue, City, …".';
+            }
+        }
+        return s >= 0 && e > s ? { at: 0, kind: 'mark', la, a: text, s, e, sum } : null;
+    }
+
+    /**
+     * The rich card's comparison for a live-title flag (`_stampLiveTitleRow()`):
+     * a separator warning's (`_liveSepCmp()`); a near miss's text over the
+     * form it almost has (`_liveNearMissFixed()`), the difference marked, or
+     * — with no single fix — its one-row card (`_liveNearMissMark()`); none
+     * for an impossible date, which has no right value to show.
+     *
+     * @param {HTMLTableCellElement} td
+     * @param {?('plain'|'link')} recKind - Set when the comment raised the flag.
+     * @param {{kind: ('error'|'warn'), nearmiss?: string}} flag
+     * @returns {?Object}
+     */
+    function _liveFlagCmp(td, recKind, flag) {
+        if (flag.kind === 'warn') return _liveSepCmp(td, recKind);
+        if (!flag.nearmiss) return null;
+        const src = _liveFlagText(td, recKind);
+        if (!src) return null;
+        const b = _liveNearMissFixed(src.text, recKind ? 'comment' : 'title');
+        if (b) return { at: 0, la: src.la, lb: 'MB style', sb: 'MB style', own: 'b', a: src.text, b };
+        return _liveNearMissMark(src.text, src.la, flag.nearmiss);
     }
 
     /**
      * Stamps (or clears) one row's live-title flag on each of `colIdxs`'
      * cells: `data-mb-live-flag` drives the tint and glyph from CSS, `title`
      * explains it, `data-mb-col-tip` marks the tooltip as this script's own.
-     * A separator warning also stores its comparison (`_liveSepCmp()`), so
-     * the rich card shows the text over its "‐" form, the hyphens marked.
+     * A separator warning or a near miss also stores its comparison
+     * (`_liveFlagCmp()`), so the rich card shows the text over its "‐" form
+     * or over the form it almost has, the difference marked.
      * Clearing removes the tooltip only from a cell this function flagged,
      * so a foreign `title` is never touched.
      *
@@ -44654,7 +44880,7 @@
             const flag = recFlag || (rec === 'plain' ? null : _liveTitleFlag(_findCellAnyLiveTitle(td)));
             if (flag) {
                 td.dataset.mbLiveFlag = flag.kind;
-                const cmp = flag.kind === 'warn' ? _liveSepCmp(td, recFlag ? rec : null) : null;
+                const cmp = _liveFlagCmp(td, recFlag ? rec : null, flag);
                 _setTipCmp(td, flag.tip, cmp ? [cmp] : []);
                 td.dataset.mbColTip = '1';
             } else if (td.dataset.mbLiveFlag) {
@@ -44752,6 +44978,26 @@
      */
     const _cellHasLiveDateFlag = (cell, glyph) =>
         Array.from(cell.querySelectorAll('.mb-live-date-flag')).some(s => s.textContent.includes(glyph));
+
+    /**
+     * The `live-credit-nodate` finding's detail: the date a cell's undated
+     * live credits can be deduced to be from — the recording's own "live
+     * recording of" date, which is what the flag was measured against
+     * (`_appendLiveDateFlag()`'s `data-mb-live-date`). Every distinct date
+     * is named (one row is one recording, so it is one date); '' for a
+     * flag stamped before the attribute existed (an older disk record).
+     *
+     * @param {HTMLTableCellElement} cell
+     * @returns {string}
+     */
+    function _liveCreditDeducedDate(cell) {
+        const dates = [];
+        cell.querySelectorAll('.mb-live-date-flag[data-mb-live-date]').forEach((s) => {
+            const d = s.dataset.mbLiveDate;
+            if (s.textContent.includes('⚠️') && d && !dates.includes(d)) dates.push(d);
+        });
+        return dates.length ? `probably ${dates.join(' or ')}, the recording's own date ("live recording of")` : '';
+    }
 
     /**
      * The finding registry, WARNINGs first, each level in menu order. See the
@@ -45227,6 +45473,7 @@
             rowGate: row => !!row.querySelector('.mb-live-date-flag'),
             cols: () => '*',
             test: cell => _cellHasLiveDateFlag(cell, '⚠️'),
+            detail: cell => _liveCreditDeducedDate(cell),
             tint: _findingTintSetting('sa_findings_tint_live_credit'),
         },
         {
@@ -45536,7 +45783,16 @@
                 const c = f.compare && f.compare(td, row, plan);
                 if (c) compares[f.id] = c;
             });
-            rowWide.forEach(f => { if (f.test(td, row, plan)) ids.push(f.id); });
+            // A row finding's detail and comparison are per cell too (the
+            // date an undated live credit is deduced to be from).
+            rowWide.forEach((f) => {
+                if (!f.test(td, row, plan)) return;
+                ids.push(f.id);
+                const d = f.detail && f.detail(td, row, plan);
+                if (d) details[f.id] = d;
+                const c = f.compare && f.compare(td, row, plan);
+                if (c) compares[f.id] = c;
+            });
             _writeFindingAttrs(td, ids, details, compares);
         });
     }
@@ -47063,23 +47319,98 @@
     const _MB_POP_EDITS_RE = /^\/(?:(artist|release-group|release|recording|work|label|event|place|area|series|instrument|url)\/([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})|user\/([^/]+))\/edits\/?$/;
 
     /**
+     * An editor's other edit lists (2026-10-21), the links of a profile's
+     * Statistics: `/user/<name>/edits/<status>` with the seven statuses the
+     * profile links, and `/user/<name>/votes` (the edits they voted on).
+     * Same page as an editing history ("Found N edits", `div.edit-list`,
+     * probed logged in 2026-10-21), so the same `edits` kind; its id is the
+     * path itself (`_mbEditsPagePath()`).
+     * @type {RegExp}
+     */
+    const _MB_POP_EDITLIST_RE = /^\/user\/[^/]+\/(?:edits\/(?:open|accepted|autoedits|applied|rejected|failed|cancelled)|votes)$/;
+
+    /**
+     * An entity's annotation history (`/<kind>/<MBID>/annotations`, kind
+     * `annotations`) and one version of its annotation
+     * (`/<kind>/<MBID>/annotation/<n>`, or the current one without the
+     * number: kind `annotation`), 2026-10-21. The id is `<kind>/<MBID>`, plus
+     * `/<n>` for a numbered version; the MBID lowercased, as for
+     * `_MB_POP_PATH_RE`. Probed 2026-10-21: the history is shown to a
+     * logged-in editor only (logged out, the page never loads), a version to
+     * anyone. `edit_annotation` and `annotations-differences` do not match.
+     * @type {RegExp}
+     */
+    const _MB_POP_ANNOT_RE = /^\/(artist|release-group|release|recording|work|label|event|place|area|series|instrument)\/([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})\/(?:(annotations)|annotation(?:\/(\d+))?)\/?$/;
+
+    /**
+     * Pages of an editor's account read for their cards (2026-10-21):
+     * `/user/<name>/subscribers`, `/user/<name>/tags` and
+     * `/user/<name>/ratings` (the kind by `_MB_POP_ACCOUNT_KINDS`, id the
+     * name) and `/account/applications` (kind `applications`, id `me`: it is
+     * always the logged-in reader's own).
+     * @type {RegExp}
+     */
+    const _MB_POP_ACCOUNT_RE = /^\/(?:user\/([^/]+)\/(subscribers|tags|ratings)|account\/(applications))\/?$/;
+
+    /** `_MB_POP_ACCOUNT_RE`'s editor page → its kind in `_MB_KINDS`. */
+    const _MB_POP_ACCOUNT_KINDS = { subscribers: 'subscribers', tags: 'usertags', ratings: 'userratings' };
+
+    /**
+     * The id of an edit search (`/search/edits?…`, 2026-10-21): the path and
+     * the query as the link spells it, without `page=` (the window's pager
+     * adds its own). '' for a search that lists nothing yet: no
+     * `conditions.` (the empty form, the header's "Edit search") or
+     * `form_only=yes` (an edit list's "Quick links" to the prefilled form).
+     *
+     * @param {string} search - The link's `search`, with or without `?`.
+     * @returns {string}
+     */
+    function _mbEditsSearchId(search) {
+        const q = String(search || '').replace(/^\?/, '').split('&').filter(p => p && !/^page=/.test(p));
+        if (!q.some(p => /^conditions\./.test(p)) || q.some(p => /^form_only=/.test(p))) return '';
+        return `/search/edits?${q.join('&')}`;
+    }
+
+    /**
      * The kind a MusicBrainz page path previews as: an entity by MBID
      * (`_MB_POP_PATH_RE`), a code (`_MB_POP_CODE_RE`), an editing history
-     * (`_MB_POP_EDITS_RE`), an edit, an editor or a tag (`_MB_POP_PAGE_RE`);
-     * `seg` is the path's own first segment (a disc ID's page is /cdtoc/, its
-     * kind `discid`), '' when the kind's own `path()` names the page (an
-     * editing history). `null` for any other path.
+     * (`_MB_POP_EDITS_RE`), an editor's other edit list
+     * (`_MB_POP_EDITLIST_RE`) or an edit search (`_mbEditsSearchId()`, the
+     * one path that needs `search`), an annotation history or version
+     * (`_MB_POP_ANNOT_RE`), an editor's subscribers, tags or
+     * ratings or the reader's applications (`_MB_POP_ACCOUNT_RE`; downvoted
+     * tags are not previewed), an edit, an editor or a tag
+     * (`_MB_POP_PAGE_RE`); `seg` is the path's own first segment (a disc
+     * ID's page is /cdtoc/, its kind `discid`), '' when the kind's own
+     * `path()` names the page (an editing history). `null` for any other
+     * path.
      *
      * @param {string} pathname
+     * @param {string} [search] - The URL's query, for an edit search.
      * @returns {?{seg: string, type: string, id: string}}
      */
-    function _mbPopParsePath(pathname) {
+    function _mbPopParsePath(pathname, search = '') {
         const m = _MB_POP_PATH_RE.exec(pathname);
         if (m) return { seg: m[1], type: m[1], id: m[2].toLowerCase() };
         const c = _MB_POP_CODE_RE.exec(pathname);
         if (c) return { seg: c[1], type: _MB_POP_CODE_TYPES[c[1]], id: c[2] };
         const h = _MB_POP_EDITS_RE.exec(pathname);
         if (h) return { seg: '', type: 'edits', id: h[1] ? `${h[1]}/${h[2].toLowerCase()}` : `user/${h[3]}` };
+        if (_MB_POP_EDITLIST_RE.test(pathname)) return { seg: '', type: 'edits', id: pathname };
+        if (/^\/search\/edits\/?$/.test(pathname)) {
+            const sid = _mbEditsSearchId(search);
+            return sid ? { seg: '', type: 'edits', id: sid } : null;
+        }
+        const n = _MB_POP_ANNOT_RE.exec(pathname);
+        if (n) {
+            const base = `${n[1]}/${n[2].toLowerCase()}`;
+            return n[3] ? { seg: '', type: 'annotations', id: base } : { seg: '', type: 'annotation', id: n[4] ? `${base}/${n[4]}` : base };
+        }
+        const a = _MB_POP_ACCOUNT_RE.exec(pathname);
+        // An editor's downvoted tags (`?show_downvoted=1`) are another list
+        // than the page the card reads: no card rather than the wrong one.
+        if (a && a[2] === 'tags' && /(?:^|[?&])show_downvoted=1(?:&|$)/.test(search)) return null;
+        if (a) return a[2] ? { seg: '', type: _MB_POP_ACCOUNT_KINDS[a[2]], id: a[1] } : { seg: '', type: 'applications', id: 'me' };
         const p = _MB_POP_PAGE_RE.exec(pathname);
         if (p) return { seg: p[1] || p[3] || p[5], type: p[1] || p[3] || p[5], id: p[2] || p[4] || p[6] };
         return null;
@@ -47130,13 +47461,13 @@
     function _mbPopStampHref(el, hrefs, name) {
         const list = typeof hrefs === 'string' ? [hrefs] : Array.from(hrefs || []);
         if (!el || list.length !== 1) return;
-        let pathname;
+        let u;
         try {
-            pathname = new URL(list[0], window.location.origin).pathname;
+            u = new URL(list[0], window.location.origin);
         } catch (_) {
             return;
         }
-        const pp = _mbPopParsePath(pathname);
+        const pp = _mbPopParsePath(u.pathname, u.search);
         if (!pp || !Object.prototype.hasOwnProperty.call(_MB_KINDS, pp.type)) return;
         el.setAttribute('data-mb-pop', `${pp.type}:${pp.id}`);
         if (name) el.setAttribute('data-mb-pop-name', name);
@@ -47203,7 +47534,7 @@
         } else if (a.tagName !== 'A' || a.origin !== window.location.origin) {
             return null;
         } else {
-            const pp = _mbPopParsePath(a.pathname);
+            const pp = _mbPopParsePath(a.pathname, a.search);
             if (pp) ({ seg, type, id } = pp);
         }
         // Own keys only: a stamped kind is a string from an attribute.
@@ -47220,7 +47551,7 @@
         const where = seg ? `/${seg}/${id}` : (k.path ? k.path(id) : `/${type}/${id}`);
         return {
             key: `${type}:${id}`, url: new URL(where, window.location.origin).href,
-            type, id, kind: k.title, wide: !!k.wide,
+            type, id, kind: k.titleOf ? k.titleOf(id) : k.title, wide: !!k.wide,
             name: a.getAttribute('data-mb-pop-name') || (k.nameOf ? k.nameOf(a) : '') || a.textContent.trim(),
             col: table ? _resolveColHeaderName(table, td.cellIndex) : '',
         };
@@ -48762,6 +49093,374 @@
     }
 
     /**
+     * The elements after a page's `<h2>` with this text, up to the next
+     * `<h2>` (a section of a page without `#content`: an editor's
+     * subscribers, the account's applications).
+     *
+     * @param {?Element} page - `#page`.
+     * @param {string} title
+     * @returns {?Array<Element>} `null` when there is no such h2.
+     */
+    function _mbPopH2Section(page, title) {
+        const h2 = page && Array.from(page.querySelectorAll('h2')).find(x => _mbPopText(x) === title);
+        if (!h2) return null;
+        const els = [];
+        for (let el = h2.nextElementSibling; el && el.tagName !== 'H2'; el = el.nextElementSibling) els.push(el);
+        return els;
+    }
+
+    /**
+     * An editor's subscribers page (`/user/<name>/subscribers`, 2026-10-21)
+     * as a record for its card: the editors subscribed to their edits (name
+     * and the id of their `/user/<id>` link) and how many more are
+     * anonymous ("Plus N other anonymous users"); `total` is the page's own
+     * "There are currently N users" when it says so. `null` when the page
+     * has no "Subscribers" h2 (a login page, an error page). Selectors from
+     * the capture of 2026-10-21 (DEBUG-NOTES.md).
+     *
+     * @param {Document} doc
+     * @returns {?{name: string, editors: Array<{name: string, id: string}>, anonymous: number, total: number}}
+     */
+    function _mbParseSubscribersPage(doc) {
+        const page = doc.getElementById('page');
+        const els = _mbPopH2Section(page, 'Subscribers');
+        if (!els) return null;
+        const num = s => Number(String(s).replace(/,/g, '')) || 0;
+        const editors = [];
+        let anonymous = 0;
+        let total = -1;
+        els.forEach((el) => {
+            const m = el.tagName === 'P' && /currently ([\d,]+) users?/.exec(_mbPopText(el));
+            if (m) total = num(m[1]);
+            if (el.tagName !== 'UL') return;
+            el.querySelectorAll(':scope > li').forEach((li) => {
+                const a = li.querySelector('a[href^="/user/"]');
+                if (a) {
+                    editors.push({ name: _mbPopText(a), id: (a.getAttribute('href') || '').split('/')[2] || '' });
+                    return;
+                }
+                const anon = /Plus ([\d,]+) other anonymous/.exec(_mbPopText(li));
+                if (anon) anonymous = num(anon[1]);
+            });
+        });
+        return {
+            name: _mbPopText(page.querySelector('h1 a[href^="/user/"] bdi')), editors, anonymous,
+            total: total >= 0 ? total : editors.length + anonymous,
+        };
+    }
+
+    /**
+     * The columns of the account's application tables the card may read,
+     * by header (2026-10-21). Everything else is never read: the "Actions"
+     * cell holds "Revoke access" (a GET link that revokes), and a developer
+     * application's row holds its OAuth client id and secret.
+     * @type {Set<string>}
+     */
+    const _MB_APPS_COLS = new Set(['Application', 'Name', 'Access', 'Last granted token', 'Type']);
+
+    /**
+     * The account's applications page (`/account/applications`, 2026-10-21;
+     * only its logged-in owner sees it) as a record for its card: per
+     * section ("Authorized applications", "Developer applications") the
+     * `_MB_APPS_COLS` columns of its `table.tbl` as text, no link and no
+     * other cell; and whether digest authentication is enabled. `null`
+     * without either section (a login page). Kept in memory only
+     * (`_MB_KINDS.applications`).
+     *
+     * @param {Document} doc
+     * @returns {?{authorized: {cols: Array<string>, rows: Array<Array<string>>},
+     *   developer: {cols: Array<string>, rows: Array<Array<string>>}, digest: string}}
+     */
+    function _mbParseApplicationsPage(doc) {
+        const page = doc.getElementById('page');
+        const read = (title) => {
+            const els = _mbPopH2Section(page, title);
+            if (!els) return null;
+            const table = els.find(el => el.tagName === 'TABLE' && el.classList.contains('tbl'));
+            if (!table) return { cols: [], rows: [] };
+            const heads = Array.from(table.querySelectorAll('thead th')).map(th => _mbPopText(th));
+            const keep = heads.map((h, i) => (_MB_APPS_COLS.has(h) ? i : -1)).filter(i => i >= 0);
+            return {
+                cols: keep.map(i => heads[i]),
+                rows: Array.from(table.querySelectorAll('tbody tr')).map(tr => keep.map(i => _mbPopText(tr.cells[i]))),
+            };
+        };
+        const authorized = read('Authorized applications');
+        const developer = read('Developer applications');
+        if (!authorized && !developer) return null;
+        const dig = (_mbPopH2Section(page, 'Digest access authentication') || []).map(el => _mbPopText(el)).join(' ');
+        const d = /Digest authentication is (enabled|disabled)/.exec(dig);
+        return {
+            authorized: authorized || { cols: [], rows: [] }, developer: developer || { cols: [], rows: [] },
+            digest: d ? d[1] : '',
+        };
+    }
+
+    /**
+     * An editor's tags page (`/user/<name>/tags`, 2026-10-21) as a record
+     * for its card: the tags they upvoted, as the page lists them under its
+     * h3s "Genres" (`ul.genre-list`) and "Other tags" (`ul.tag-list`), each
+     * with its `span.tag-count` (how many entities they tagged with it).
+     * One page, no pager (captured 2026-10-21: 112 tags). `null` without the
+     * h2 "Tags <name> upvoted" (a login page, an error page).
+     *
+     * @param {Document} doc
+     * @returns {?{name: string, genres: Array<{name: string, count: number}>, tags: Array<{name: string, count: number}>}}
+     */
+    function _mbParseUserTagsPage(doc) {
+        const page = doc.getElementById('page');
+        const h2 = page && Array.from(page.querySelectorAll('h2')).find(x => /^Tags .+ upvoted$/.test(_mbPopText(x)));
+        if (!h2) return null;
+        const read = sel => Array.from(page.querySelectorAll(`#all-tags ${sel} > li`)).map((li) => {
+            const a = li.querySelector('a[href]');
+            return a ? { name: _mbPopText(a), count: Number(_mbPopText(li.querySelector('.tag-count')).replace(/,/g, '')) || 0 } : null;
+        }).filter(Boolean);
+        return { name: _mbPopText(page.querySelector('h1 a[href^="/user/"] bdi')), genres: read('ul.genre-list'), tags: read('ul.tag-list') };
+    }
+
+    /**
+     * An editor's ratings page (`/user/<name>/ratings`, 2026-10-21) as a
+     * record for its card: per h2 "<Kind> ratings" the ratings its `ul`
+     * shows — the value of `.current-user-rating` (1–5), the rated entity
+     * (the item's link to a bare entity page) and the rest of the item's
+     * text (an event's date, a disambiguation) — and the kind's "View all
+     * ratings" page. MusicBrainz shows a few per kind there, so the counts
+     * are of what is shown. The stars' own links (`/rating/rate/?…`, GET
+     * links that CHANGE the rating) are never read. `null` without the
+     * editor's h1 (a login page, an error page).
+     *
+     * @param {Document} doc
+     * @returns {?{name: string, kinds: Array<{kind: string, more: string,
+     *   items: Array<{rating: number, type: string, id: string, name: string, extra: string}>}>}}
+     */
+    function _mbParseUserRatingsPage(doc) {
+        const page = doc.getElementById('page');
+        const name = page ? _mbPopText(page.querySelector('h1 a[href^="/user/"] bdi')) : '';
+        if (!name) return null;
+        const kinds = [];
+        page.querySelectorAll('h2').forEach((h2) => {
+            const m = /^(.+) ratings$/.exec(_mbPopText(h2));
+            const ul = h2.nextElementSibling;
+            if (!m || !ul || ul.tagName !== 'UL') return;
+            const items = [];
+            let more = '';
+            ul.querySelectorAll(':scope > li').forEach((li) => {
+                const stars = li.querySelector('.current-user-rating');
+                const a = Array.from(li.querySelectorAll('a[href]')).find(x => !x.closest('.inline-rating') && _MB_POP_PATH_RE.test(x.getAttribute('href')));
+                if (!stars || !a) {
+                    const all = li.querySelector('a[href^="/user/"]');
+                    if (all && /View all/.test(_mbPopText(all))) more = all.getAttribute('href');
+                    return;
+                }
+                const p = _MB_POP_PATH_RE.exec(a.getAttribute('href'));
+                const rest = li.cloneNode(true);
+                rest.querySelectorAll('.inline-rating').forEach(x => x.remove());
+                const name2 = _mbPopText(a);
+                items.push({
+                    rating: Number(_mbPopText(stars)) || 0, type: p[1], id: p[2].toLowerCase(), name: name2,
+                    extra: _mbPopText(rest).replace(/^[\s\-–]+/, '').slice(name2.length).trim(),
+                });
+            });
+            kinds.push({ kind: m[1], more, items });
+        });
+        return { name, kinds };
+    }
+
+    /**
+     * An annotation's rendered body as plain text blocks, for a card and a
+     * window that copy no markup: a heading (`h`) or a paragraph (`p`, a
+     * `<br>` kept as a line break; a list item gets a "• "). Text only, so
+     * the record can be kept and is shown escaped.
+     *
+     * @param {?Element} root - `.annotation-body`, or a parsed `html` field.
+     * @returns {Array<{h?: string, p?: string}>}
+     */
+    function _mbAnnotationBlocks(root) {
+        const blocks = [];
+        const text = (el) => {
+            const c = el.cloneNode(true);
+            c.querySelectorAll('br').forEach(br => br.replaceWith('\n'));
+            return c.textContent.split('\n').map(s => s.replace(/\s+/g, ' ').trim()).filter(Boolean).join('\n');
+        };
+        const walk = (el) => {
+            Array.from(el.children).forEach((c) => {
+                if (/^H[1-6]$/.test(c.tagName)) {
+                    const h = text(c);
+                    if (h) blocks.push({ h });
+                } else if (c.tagName === 'UL' || c.tagName === 'OL') {
+                    c.querySelectorAll(':scope > li').forEach((li) => {
+                        const p = text(li);
+                        if (p) blocks.push({ p: `• ${p}` });
+                    });
+                } else if (c.tagName === 'DIV' && c.children.length) {
+                    walk(c);
+                } else {
+                    const p = text(c);
+                    if (p) blocks.push({ p });
+                }
+            });
+        };
+        if (root) walk(root);
+        return blocks;
+    }
+
+    /**
+     * The entity an annotation page is about, from its header: the h1 link's
+     * name and the kind of page it links.
+     *
+     * @param {?Element} content - The page's `#content`.
+     * @returns {{name: string, type: string}}
+     */
+    function _mbAnnotationEntity(content) {
+        const a = content && content.querySelector('h1 a[href]');
+        const p = a ? _MB_POP_PATH_RE.exec(a.getAttribute('href')) : null;
+        return { name: _mbPopText(a), type: p ? p[1] : '' };
+    }
+
+    /**
+     * An entity's annotation history page (`/<kind>/<MBID>/annotations`,
+     * 2026-10-21; shown to a logged-in editor only) as a record for its
+     * card: one row per version of `table#annotation-history`, newest first
+     * as the page lists them — its number (from "View this version"), the
+     * editor (name, `/user/<id>`), the date as the page writes it, and the
+     * changelog ('' for "no changelog specified") — with each version's
+     * text read from the page's own JSON in the form (`annotations[].html`,
+     * as `_mbAnnotationBlocks()`). `null` without the table (a login page,
+     * an error page). Selectors from the capture of 2026-10-21
+     * (DEBUG-NOTES.md).
+     *
+     * @param {Document} doc
+     * @returns {?{name: string, type: string, versions: Array<{id: string, editor: string, editorId: string,
+     *   date: string, changelog: string, blocks: Array<{h?: string, p?: string}>}>}}
+     */
+    function _mbParseAnnotationsPage(doc) {
+        const content = doc.getElementById('content');
+        const table = content && content.querySelector('table#annotation-history');
+        if (!table) return null;
+        const bodies = new Map();
+        const json = table.closest('form') && table.closest('form').querySelector('script[type="application/json"]');
+        try {
+            const parsed = json ? JSON.parse(json.textContent) : null;
+            // An inert document: nothing in it runs or loads.
+            (parsed && parsed.annotations || []).forEach((x) => {
+                bodies.set(String(x.id), _mbAnnotationBlocks(new DOMParser().parseFromString(String(x.html || ''), 'text/html').body));
+            });
+        } catch (_) { /* no texts: the table alone */ }
+        const heads = Array.from(table.querySelectorAll('thead th')).map(th => _mbPopText(th));
+        const col = name => heads.indexOf(name);
+        const versions = Array.from(table.querySelectorAll('tbody > tr')).map((tr) => {
+            const ver = tr.querySelector('a[href*="/annotation/"]');
+            const id = ver ? (/\/annotation\/(\d+)/.exec(ver.getAttribute('href')) || [])[1] || '' : '';
+            if (!id) return null;
+            const ed = tr.querySelector('a[href^="/user/"]');
+            const hist = tr.cells[col('Version history')];
+            let changelog = '';
+            if (hist) {
+                const c = hist.cloneNode(true);
+                c.querySelectorAll('a').forEach(x => x.remove());
+                changelog = _mbPopText(c).replace(/^\((.*)\)$/, '$1');
+                if (/^no changelog specified$/i.test(changelog)) changelog = '';
+            }
+            return {
+                id, editor: _mbPopText(ed), editorId: ed ? (ed.getAttribute('href') || '').split('/')[2] || '' : '',
+                date: _mbPopText(tr.cells[col('Date')]), changelog, blocks: bodies.get(id) || [],
+            };
+        }).filter(Boolean);
+        return Object.assign(_mbAnnotationEntity(content), { versions });
+    }
+
+    /**
+     * `_mbAnnotationBlocks()`' blocks as escaped HTML: a heading as `<h4>`
+     * (the window) or a bold line (the card), a paragraph keeping its line
+     * breaks. `max` blocks at most, then "+ N more".
+     *
+     * @param {Array<{h?: string, p?: string}>} blocks
+     * @param {{card?: boolean, max?: number}} [opts]
+     * @returns {string}
+     */
+    function _mbAnnotationHtml(blocks, { card = false, max = Infinity } = {}) {
+        const shown = blocks.slice(0, max);
+        const br = s => _rgEsc(s).replace(/\n/g, '<br>');
+        const html = shown.map((b) => {
+            if (b.h) return card ? `<div class="mb-tt-body"><b>${br(b.h)}</b></div>` : `<h4>${br(b.h)}</h4>`;
+            return card ? `<div class="mb-tt-body">${br(b.p)}</div>` : `<p>${br(b.p)}</p>`;
+        }).join('');
+        const more = blocks.length - shown.length;
+        return html + (more > 0 ? `<div class="${card ? 'mb-tt-dim' : 'mb-dp-xsub'}">+ ${more} more</div>` : '');
+    }
+
+    /**
+     * The page JSON of an annotation version page (`/<kind>/<MBID>/annotation[/<n>]`):
+     * `{annotation, entity: {latest_annotation, …}, numberOfRevisions, …}`,
+     * each annotation with `id`, `html`, `text`, `changelog`,
+     * `creation_date` and `editor` (probed 2026-10-21, logged in and out).
+     * The header has a JSON script of its own (the entity type and MBID)
+     * BEFORE it, so the one with an `annotation` key is looked for.
+     *
+     * @param {?Element} content - The page's `#content`.
+     * @returns {?Object} `null` when there is none or it does not parse.
+     * @throws Never.
+     */
+    function _mbAnnotationPageData(content) {
+        const json = content && Array.from(content.querySelectorAll('script[type="application/json"]'))
+            .find(s => /^\s*\{\s*"annotation"\s*:/.test(s.textContent) || /"numberOfRevisions"/.test(s.textContent));
+        try {
+            return json ? JSON.parse(json.textContent) : null;
+        } catch (_) {
+            return null;
+        }
+    }
+
+    /**
+     * One version of an entity's annotation (`/<kind>/<MBID>/annotation/<n>`,
+     * or the current one at `/<kind>/<MBID>/annotation`; 2026-10-21, shown
+     * to anyone) as a record for its card: the text (`_mbAnnotationBlocks()`
+     * of `.annotation-body`), the changelog ('' for "(no changelog)"), and
+     * what `.annotation-details` says — an old version names its editor and
+     * date ("This is an old revision of this annotation, as edited by … on
+     * …"), the current one only its date ("Annotation last modified on …").
+     * `revisions` is the page JSON's `numberOfRevisions` (0 when absent).
+     * `null` without `div.annotation` (an error page).
+     *
+     * @param {Document} doc
+     * @returns {?{name: string, type: string, blocks: Array<{h?: string, p?: string}>, changelog: string,
+     *   editor: string, editorId: string, date: string, old: boolean, revisions: number}}
+     */
+    function _mbParseAnnotationVersionPage(doc) {
+        const content = doc.getElementById('content');
+        const box = content && content.querySelector('div.annotation');
+        if (!box) return null;
+        const details = box.querySelector('.annotation-details');
+        const said = _mbPopText(details);
+        const ed = details && details.querySelector('a[href^="/user/"]');
+        const cl = Array.from(box.querySelectorAll(':scope > p')).find(p => /^Changelog:/.test(_mbPopText(p)));
+        let changelog = cl ? _mbPopText(cl).replace(/^Changelog:\s*/, '').replace(/^\((.*)\)$/, '$1') : '';
+        if (/^no changelog( specified)?$/i.test(changelog)) changelog = '';
+        let revisions = 0;
+        let old = /old revision/.test(said);
+        let editor = _mbPopText(ed);
+        let editorId = ed ? (ed.getAttribute('href') || '').split('/')[2] || '' : '';
+        try {
+            const parsed = _mbAnnotationPageData(content);
+            revisions = Number(parsed && parsed.numberOfRevisions) || 0;
+            // Logged out, an old version's line reads like the current one's
+            // ("Annotation last modified on …", probed 2026-10-21), so the
+            // ids decide; the editor is in the JSON either way.
+            const ann = parsed && parsed.annotation;
+            const latest = parsed && parsed.entity && parsed.entity.latest_annotation;
+            if (ann && latest && ann.id != null && latest.id != null) old = ann.id !== latest.id;
+            if (!editor && ann && ann.editor && ann.editor.name) {
+                editor = String(ann.editor.name);
+                editorId = encodeURIComponent(editor);
+            }
+        } catch (_) { /* not said */ }
+        return Object.assign(_mbAnnotationEntity(content), {
+            blocks: _mbAnnotationBlocks(box.querySelector('.annotation-body')), changelog, editor, editorId,
+            date: (/\bon (\d{4}-\d{2}-\d{2}[^.]*)\./.exec(said) || [])[1] || '', old, revisions,
+        });
+    }
+
+    /**
      * Columns of a collection's table the window leaves out: stars that do
      * not survive a copy, and the artist columns that only widen it. An
      * event's "Artists" (often a dozen performers) goes too
@@ -49409,7 +50108,10 @@
      * entry per edit (`_mbEditsEntry()`), deduped by number: another
      * userscript's batch grouping nests the member blocks in a summary block
      * (debug/edits-*.html). The subject: an entity's header link (`h1 a`),
-     * else an editor's page heading ("Edits by <name>").
+     * else an editor's page heading ("Edits by <name>"). An editor's other
+     * lists ("Rejected edits by <name>", "Votes by <name>") and an edit
+     * search (2026-10-21) give '': their name comes from the id
+     * (`_mbEditsLabel()`).
      *
      * @param {Document} doc
      * @returns {?{subject: {path: string, name: string}, by: string, total: number, atLeast: boolean,
@@ -49472,9 +50174,36 @@
     }
 
     /**
+     * The page of an `edits` id: an entity's or editor's history
+     * (`<kind>/<MBID>`, `user/<name>`) is `/<id>/edits`; an editor's other
+     * list or an edit search (2026-10-21) has its page path as its id.
+     *
+     * @param {string} id
+     * @returns {string}
+     */
+    function _mbEditsPagePath(id) {
+        return id.startsWith('/') ? id : `/${id}/edits`;
+    }
+
+    /**
+     * The URL of page n of an `edits` id; an edit search's query gets
+     * `&page=n` after its own parameters.
+     *
+     * @param {string} id
+     * @param {number} n
+     * @returns {string}
+     */
+    function _mbEditsUrl(id, n) {
+        const p = _mbEditsPagePath(id);
+        return new URL(n > 1 ? `${p}${p.includes('?') ? '&' : '?'}page=${n}` : p, window.location.origin).href;
+    }
+
+    /**
      * Loads page n of an editing history (`_mbPageLoad()`, the one
      * MusicBrainz gate). A page with an open edit stays in memory only: its
-     * votes change (as an open edit's card, `_MB_KINDS.edit`).
+     * votes change (as an open edit's card, `_MB_KINDS.edit`). An edit
+     * search stays in memory only, whatever it holds: its conditions may be
+     * relative ("24 hours ago"), so a kept answer would be a wrong one.
      *
      * @param {object} t - The `edits` target.
      * @param {number} n
@@ -49482,21 +50211,51 @@
      * @returns {void}
      */
     function _mbEditsLoad(t, n, opts = {}) {
-        const url = new URL(`/${t.id}/edits${n > 1 ? `?page=${n}` : ''}`, window.location.origin).href;
-        _mbPageLoad(_mbEditsKey(t.id, n), url, _mbParseEditsPage, Object.assign({
-            wanted: _mbPopWanted(t), keep: d => !d.entries.some(e => e.status === 'open'),
+        const search = t.id.startsWith('/search/');
+        _mbPageLoad(_mbEditsKey(t.id, n), _mbEditsUrl(t.id, n), _mbParseEditsPage, Object.assign({
+            wanted: _mbPopWanted(t), keep: d => !search && !d.entries.some(e => e.status === 'open'),
         }, opts));
     }
 
+    /** An editor's edit lists by their path's status (`_MB_POP_EDITLIST_RE`), as MusicBrainz heads them. */
+    const _MB_EDITS_LIST_HEADS = {
+        open: 'Open edits', accepted: 'Accepted edits', autoedits: 'Auto-edits', applied: 'Applied edits',
+        rejected: 'Rejected edits', failed: 'Failed edits', cancelled: 'Cancelled edits',
+    };
+
     /**
-     * What a history is about, in words: an entity's kind, or "editor".
+     * What an `edits` id is, in words: `head` (the window's title, "Editing
+     * history", "Rejected edits", "Votes", "Edit search"), `comment` (the
+     * card's line under the name), `sub` (the window's line under it),
+     * `name` (the subject's name when the page names none: an MBID, an
+     * editor's name, '' for a search), `none` (the line of an empty list)
+     * and `icon` (the `_MB_KIND_ICON` kind of the glyph).
      *
      * @param {string} id
-     * @returns {string}
+     * @returns {{head: string, comment: string, sub: string, name: string, none: string, icon: string}}
      */
-    function _mbEditsKindWord(id) {
+    function _mbEditsLabel(id) {
+        const dec = (s) => {
+            try {
+                return decodeURIComponent(s || '');
+            } catch (_) {
+                return s || '';
+            }
+        };
+        if (id.startsWith('/search/')) {
+            return { head: 'Edit search', comment: 'Edit search', sub: 'edit search', name: '', none: 'No edit matches this search.', icon: '' };
+        }
+        const l = /^\/user\/([^/]+)\/(?:edits\/(\w+)|votes)$/.exec(id);
+        if (l) {
+            const head = l[2] ? (_MB_EDITS_LIST_HEADS[l[2]] || 'Edits') : 'Votes';
+            return { head, comment: `${head} · editor`, sub: `editor · ${head.toLowerCase()}`, name: dec(l[1]), none: 'MusicBrainz lists no edit here.', icon: 'user' };
+        }
         const seg = id.split('/')[0];
-        return seg === 'user' ? 'editor' : seg.replace(/-/g, ' ');
+        const word = seg === 'user' ? 'editor' : seg.replace(/-/g, ' ');
+        return {
+            head: 'Editing history', comment: `Editing history · ${word}`, sub: `${word} · editing history`,
+            name: dec(id.split('/')[1]), none: `MusicBrainz lists no edit for this ${word}.`, icon: seg,
+        };
     }
 
     /**
@@ -49641,8 +50400,8 @@
         const r0 = recs[0];
         const all = recs.flatMap(r => r.entries);
         if (!all.some(e => e.id === ui.sel)) ui.sel = all.length ? all[0].id : '';
-        const kind = _mbEditsKindWord(t.id);
-        const name = r0.subject.name || decodeURIComponent((t.id.split('/')[1] || ''));
+        const label = _mbEditsLabel(t.id);
+        const name = r0.subject.name || label.name || label.head;
         const total = r0.atLeast ? `at least ${r0.total.toLocaleString('en-US')}` : r0.total.toLocaleString('en-US');
         const last = recs[recs.length - 1];
         const counts = {};
@@ -49659,7 +50418,7 @@
         const line = e => (e ? `${_rgEsc((/^(\d{4}-\d\d-\d\d \d\d:\d\d)/.exec(e.date) || [e.date])[0])}${e.editor ? ` by ${_rgEsc(e.editor)}` : ''} (${_rgEsc(e.type)})` : '');
         const morePages = r0.atLeast || last.page < last.pages;
         const head = '<div class="mb-dp-x"><div class="mb-dp-col">' +
-            `<div class="mb-dp-xtitle">${_rgEsc(name)}</div><div class="mb-dp-xsub">MusicBrainz · ${_rgEsc(kind)} · editing history</div>` +
+            `<div class="mb-dp-xtitle">${_rgEsc(name)}</div><div class="mb-dp-xsub">MusicBrainz · ${_rgEsc(label.sub)}</div>` +
             (r0.by ? `<div>${_rgEsc(r0.by)}</div>` : '') +
             (all.some(e => e.editorHidden) ? '<p class="mb-dp-xsub">Logged out, MusicBrainz hides who made each edit and every edit note. Log in on musicbrainz.org to see them here.</p>' : '') +
             '</div><div class="mb-dp-col"><h4>MusicBrainz says</h4>' + _mbPopKvHtml([
@@ -49670,7 +50429,7 @@
                 ['Editors', top.length ? `${Object.keys(eds).length}: ${top.map(([nm, c]) => `${_rgEsc(nm)} (${c})`).join(', ')}` : ''],
             ]) + '</div></div>';
         if (!all.length) {
-            return `${head}<div class="mb-meh-x"><div class="mb-dp-xsub">MusicBrainz lists no edit for this ${_rgEsc(kind)}.</div></div>`;
+            return `${head}<div class="mb-meh-x"><div class="mb-dp-xsub">${_rgEsc(label.none)}</div></div>`;
         }
         let list = all;
         if (ui.group !== 'all') list = list.filter(e => e.cat === ui.group);
@@ -49920,7 +50679,9 @@
      * window's title (`title`), a wider card (`wide`), and how the card and
      * the window are built (`card`, `extracted`, optional `onAreaClick`), as
      * the popup engine's sources build theirs; an optional `nameOf(a)` names
-     * a link's loading card when its own text does not (an "[info]" link).
+     * a link's loading card when its own text does not (an "[info]" link),
+     * an optional `titleOf(id)` the window's title per id (an editor's
+     * "Rejected edits" is the `edits` kind, 2026-10-21).
      * Requests per kind follow
      * org/iframe.org Phase 0 (R1–R4); each inc set is valid for its lookup
      * per https://musicbrainz.org/doc/MusicBrainz_API (checked 2026-10-07).
@@ -50659,6 +51420,186 @@
                     `<p><a href="/user/${encodeURIComponent(d.name)}/edits" target="_blank" rel="noopener">Their edits</a></p></div></div>`;
             },
         })),
+        // An editor's subscribers (2026-10-21), the profile's "view list":
+        // read from the page (`_mbParseSubscribersPage()`). The window links
+        // each editor, so a click drills into their card (Phase 5).
+        subscribers: Object.assign({ title: 'Subscribers', wide: false, path: id => `/user/${id}/subscribers` }, _mbPopPageKind({
+            parse: _mbParseSubscribersPage,
+            cardHtml(d, t) {
+                const shown = d.editors.slice(0, 12);
+                return `<div class="mb-tt-title">${_rgEsc(d.name || t.id)}</div><div class="mb-tt-comment">Subscribers · editor</div>` +
+                    `<div class="mb-tt-body mb-rg-pills">${_mbPopPillsHtml([`${d.total} subscriber${d.total === 1 ? '' : 's'}`,
+                        d.anonymous ? `${d.anonymous} anonymous` : ''])}</div><div class="mb-tt-rule"></div>` +
+                    (shown.length ? `<div class="mb-tt-body">${shown.map(e => _rgEsc(e.name)).join(', ')}</div>` +
+                        (d.editors.length > shown.length ? `<div class="mb-tt-dim">+ ${d.editors.length - shown.length} more</div>` : '')
+                        : '<div class="mb-tt-comment">Nobody is subscribed to their edits.</div>');
+            },
+            windowHtml(d, t) {
+                const left = `<div class="mb-dp-xtitle">${_rgEsc(d.name || t.id)}</div><div class="mb-dp-xsub">MusicBrainz · editor · subscribers</div>` +
+                    '<h4>Subscribers</h4>' + _mbPopKvHtml([
+                        ['Editors', _rgEsc(String(d.editors.length))], ['Anonymous', d.anonymous ? _rgEsc(String(d.anonymous)) : ''],
+                        ['Total', _rgEsc(String(d.total))],
+                    ]);
+                const right = `<h4>Editors · ${d.editors.length}</h4>` + (d.editors.length
+                    ? `<ul class="mb-pop-taglist">${d.editors.map(e => `<li><a href="/user/${_rgEsc(e.id)}" target="_blank" rel="noopener">${_rgEsc(e.name)}</a></li>`).join('')}</ul>`
+                    : '<div class="mb-dp-xsub">No editor is subscribed by name.</div>');
+                return `<div class="mb-dp-x"><div class="mb-dp-col">${left}</div><div class="mb-dp-col">${right}</div></div>`;
+            },
+        })),
+        // The reader's own applications (2026-10-21), the profile's
+        // "Authorized applications … view list": read from the page
+        // (`_mbParseApplicationsPage()`), only the `_MB_APPS_COLS` columns
+        // as text — never an OAuth client id or secret, never a "Revoke
+        // access" link — and kept in memory only: account data, not a
+        // MusicBrainz entity.
+        applications: Object.assign({ title: 'Applications', wide: true, path: () => '/account/applications' }, _mbPopPageKind({
+            parse: _mbParseApplicationsPage,
+            keep: () => false,
+            failNote: () => ' MusicBrainz shows this page only to its logged-in owner.',
+            cardHtml(d) {
+                const names = d.authorized.rows.map(r => r[0]).filter(Boolean);
+                const dev = d.developer.rows.length;
+                return '<div class="mb-tt-title">Applications</div><div class="mb-tt-comment">Your account</div>' +
+                    `<div class="mb-tt-body mb-rg-pills">${_mbPopPillsHtml([`${names.length} authorized`, `${dev} developer`,
+                        d.digest ? `digest auth ${d.digest}` : ''])}</div><div class="mb-tt-rule"></div>` +
+                    (names.length ? `<div class="mb-tt-body">${names.slice(0, 8).map(_rgEsc).join(', ')}</div>` +
+                        (names.length > 8 ? `<div class="mb-tt-dim">+ ${names.length - 8} more</div>` : '')
+                        : '<div class="mb-tt-comment">No application is authorized.</div>');
+            },
+            windowHtml(d) {
+                const sec = (title, s, none) => `<h4>${_rgEsc(title)} · ${s.rows.length}</h4>` + (s.rows.length
+                    ? _mbPopTableHtml(s.cols, s.rows.map(r => r.map(_rgEsc))) : `<div class="mb-dp-xsub">${_rgEsc(none)}</div>`);
+                const left = '<div class="mb-dp-xtitle">Applications</div><div class="mb-dp-xsub">MusicBrainz · your account</div>' +
+                    _mbPopKvHtml([['Authorized', _rgEsc(String(d.authorized.rows.length))], ['Developer', _rgEsc(String(d.developer.rows.length))],
+                        ['Digest auth', _rgEsc(d.digest)]]);
+                const right = sec('Authorized applications', d.authorized, 'No application is authorized.') +
+                    sec('Developer applications', d.developer, 'No application is registered.');
+                return `<div class="mb-dp-x"><div class="mb-dp-col">${left}</div><div class="mb-dp-col">${right}</div></div>`;
+            },
+        })),
+        // An editor's tags (2026-10-21), the profile's "Tags upvoted …
+        // view": read from the page (`_mbParseUserTagsPage()`). Each tag
+        // links its own `/tag/<name>` page, so a click drills into the tag
+        // card; the editor's `/user/<name>/tag/<name>` pages are no kind.
+        usertags: Object.assign({ title: 'Tags', wide: false, path: id => `/user/${id}/tags` }, _mbPopPageKind({
+            parse: _mbParseUserTagsPage,
+            cardHtml(d, t) {
+                const all = d.genres.concat(d.tags);
+                const votes = all.reduce((s, x) => s + x.count, 0);
+                const top = all.slice().sort((a, b) => (b.count - a.count) || a.name.localeCompare(b.name)).slice(0, 10);
+                return `<div class="mb-tt-title">${_rgEsc(d.name || t.id)}</div><div class="mb-tt-comment">Tags · editor</div>` +
+                    `<div class="mb-tt-body mb-rg-pills">${_mbPopPillsHtml([`${all.length} tag${all.length === 1 ? '' : 's'}`,
+                        d.genres.length ? `${d.genres.length} genre${d.genres.length === 1 ? '' : 's'}` : '',
+                        `${votes.toLocaleString('en-US')} vote${votes === 1 ? '' : 's'}`])}</div><div class="mb-tt-rule"></div>` +
+                    (top.length ? `<div class="mb-tt-body">${top.map(x => `${_rgEsc(x.name)} <span class="mb-rg-dim">${x.count}</span>`).join(', ')}</div>`
+                        : '<div class="mb-tt-comment">They have upvoted no tag.</div>');
+            },
+            windowHtml(d, t) {
+                const list = items => `<ul class="mb-pop-taglist">${items.slice().sort((a, b) => (b.count - a.count) || a.name.localeCompare(b.name))
+                    .map(x => `<li><a href="/tag/${encodeURIComponent(x.name)}" target="_blank" rel="noopener">${_rgEsc(x.name)}</a> ` +
+                        `<span class="mb-rg-dim">${x.count}</span></li>`).join('')}</ul>`;
+                const left = `<div class="mb-dp-xtitle">${_rgEsc(d.name || t.id)}</div><div class="mb-dp-xsub">MusicBrainz · editor · tags upvoted</div>` +
+                    `<h4>Genres · ${d.genres.length}</h4>` + (d.genres.length ? list(d.genres) : '<div class="mb-dp-xsub">None.</div>');
+                const right = `<h4>Other tags · ${d.tags.length}</h4>` + (d.tags.length ? list(d.tags) : '<div class="mb-dp-xsub">None.</div>');
+                return `<div class="mb-dp-x"><div class="mb-dp-col">${left}</div><div class="mb-dp-col">${right}</div></div>`;
+            },
+        })),
+        // An editor's ratings (2026-10-21), the profile's "Ratings … view":
+        // read from the page (`_mbParseUserRatingsPage()`), the few per kind
+        // it shows, each entity linked so it drills; never the stars' own
+        // `/rating/rate/` links, which change the rating.
+        userratings: Object.assign({ title: 'Ratings', wide: true, path: id => `/user/${id}/ratings` }, _mbPopPageKind({
+            parse: _mbParseUserRatingsPage,
+            cardHtml(d, t) {
+                const n = d.kinds.reduce((s, k) => s + k.items.length, 0);
+                const stars = r => `${'★'.repeat(r)}${'☆'.repeat(Math.max(0, 5 - r))}`;
+                return `<div class="mb-tt-title">${_rgEsc(d.name || t.id)}</div><div class="mb-tt-comment">Ratings · editor</div>` +
+                    `<div class="mb-tt-body mb-rg-pills">${_mbPopPillsHtml([`${n} rating${n === 1 ? '' : 's'} shown`,
+                        `${d.kinds.length} kind${d.kinds.length === 1 ? '' : 's'}`])}</div><div class="mb-tt-rule"></div>` +
+                    (d.kinds.length ? _mbPopKvHtml(d.kinds.map(k => [k.kind, k.items.slice(0, 2).map(x => `${stars(x.rating)} ${_rgEsc(x.name)}`).join('<br>') +
+                        (k.items.length > 2 ? `<br><span class="mb-rg-dim">+ ${k.items.length - 2} more</span>` : '')]))
+                        : '<div class="mb-tt-comment">They have rated nothing.</div>');
+            },
+            windowHtml(d, t) {
+                const stars = r => `${'★'.repeat(r)}${'☆'.repeat(Math.max(0, 5 - r))}`;
+                const left = `<div class="mb-dp-xtitle">${_rgEsc(d.name || t.id)}</div><div class="mb-dp-xsub">MusicBrainz · editor · ratings</div>` +
+                    _mbPopKvHtml(d.kinds.map(k => [k.kind, _rgEsc(String(k.items.length))])) +
+                    '<p class="mb-dp-xsub">As their ratings page shows them: a few of each kind.</p>';
+                const right = d.kinds.length ? d.kinds.map(k => `<h4>${_rgEsc(k.kind)} · ${k.items.length}</h4>` +
+                    _mbPopTableHtml(['Rating', k.kind, ''], k.items.map(x => [stars(x.rating),
+                        `<a href="/${_rgEsc(x.type)}/${_rgEsc(x.id)}" target="_blank" rel="noopener">${_rgEsc(x.name)}</a>`, _rgEsc(x.extra)])) +
+                    (k.more ? `<p><a href="${_rgEsc(k.more)}" target="_blank" rel="noopener">All ${_rgEsc(k.kind.toLowerCase())} ratings</a></p>` : '')).join('')
+                    : '<div class="mb-dp-xsub">They have rated nothing.</div>';
+                return `<div class="mb-dp-x"><div class="mb-dp-col">${left}</div><div class="mb-dp-col">${right}</div></div>`;
+            },
+        })),
+        // An entity's annotation history (2026-10-21), the annotation's "View
+        // annotation history": read from the page (`_mbParseAnnotationsPage()`),
+        // which MusicBrainz shows to a logged-in editor only. The window
+        // lists every version, each linked so a click opens it (the
+        // `annotation` kind), and each editor so a click opens their card.
+        annotations: Object.assign({ title: 'Annotation history', wide: true, path: id => `/${id}/annotations` }, _mbPopPageKind({
+            parse: _mbParseAnnotationsPage,
+            failNote: () => ' MusicBrainz shows an annotation history only to a logged-in editor.',
+            cardHtml(d, t) {
+                const last = d.versions[0];
+                const n = d.versions.length;
+                return `<div class="mb-tt-title">${_rgEsc(d.name || t.id)}</div><div class="mb-tt-comment">Annotation history · ${_rgEsc(d.type || t.id.split('/')[0])}</div>` +
+                    `<div class="mb-tt-body mb-rg-pills">${_mbPopPillsHtml([`${n} version${n === 1 ? '' : 's'}`,
+                        last ? `latest ${_rgEsc(last.date)}` : ''])}</div><div class="mb-tt-rule"></div>` +
+                    (last ? _mbPopKvHtml([['Latest by', _rgEsc(last.editor)], ['Changelog', _rgEsc(last.changelog)]]) +
+                        _mbAnnotationHtml(last.blocks, { card: true, max: 3 })
+                        : '<div class="mb-tt-comment">No annotation has been written.</div>');
+            },
+            windowHtml(d, t) {
+                const n = d.versions.length;
+                const last = d.versions[0];
+                const left = `<div class="mb-dp-xtitle">${_rgEsc(d.name || t.id)}</div>` +
+                    `<div class="mb-dp-xsub">MusicBrainz · ${_rgEsc(d.type || t.id.split('/')[0])} · annotation history</div>` +
+                    _mbPopKvHtml([['Versions', _rgEsc(String(n))], ['Latest', last ? _rgEsc(last.date) : ''], ['Latest by', last ? _rgEsc(last.editor) : '']]) +
+                    (last && last.blocks.length ? `<h4>The latest text</h4>${_mbAnnotationHtml(last.blocks)}` : '');
+                const right = `<h4>Versions · ${n}</h4>` + (n ? _mbPopTableHtml(['Version', 'Editor', 'Date', 'Changelog'], d.versions.map((v, i) => [
+                    `<a href="/${_rgEsc(t.id)}/annotation/${_rgEsc(v.id)}" target="_blank" rel="noopener">Version ${n - i}</a>`,
+                    v.editorId ? `<a href="/user/${_rgEsc(v.editorId)}" target="_blank" rel="noopener">${_rgEsc(v.editor)}</a>` : _rgEsc(v.editor),
+                    _rgEsc(v.date), v.changelog ? _rgEsc(v.changelog) : '<span class="mb-rg-dim">none</span>',
+                ])) : '<div class="mb-dp-xsub">No annotation has been written.</div>');
+                return `<div class="mb-dp-x"><div class="mb-dp-col">${left}</div><div class="mb-dp-col">${right}</div></div>`;
+            },
+        })),
+        // One version of an entity's annotation (2026-10-21): a version's
+        // "View this version", or the current one ("View current
+        // revision"), read from its page (`_mbParseAnnotationVersionPage()`).
+        // Its text is copied as text only, never as markup.
+        annotation: Object.assign({
+            title: 'Annotation', wide: true,
+            titleOf: id => (/\/\d+$/.test(id) ? 'Annotation version' : 'Annotation'),
+            path: (id) => {
+                const p = id.split('/');
+                return `/${p[0]}/${p[1]}/annotation${p[2] ? `/${p[2]}` : ''}`;
+            },
+        }, _mbPopPageKind({
+            parse: _mbParseAnnotationVersionPage,
+            cardHtml(d, t) {
+                const what = d.old ? 'an old version' : 'the current version';
+                return `<div class="mb-tt-title">${_rgEsc(d.name || t.id)}</div><div class="mb-tt-comment">Annotation · ${_rgEsc(what)}</div>` +
+                    `<div class="mb-tt-body mb-rg-pills">${_mbPopPillsHtml([_rgEsc(d.date), d.editor ? `by ${_rgEsc(d.editor)}` : '',
+                        d.revisions ? `${d.revisions} version${d.revisions === 1 ? '' : 's'}` : ''])}</div><div class="mb-tt-rule"></div>` +
+                    (d.changelog ? _mbPopKvHtml([['Changelog', _rgEsc(d.changelog)]]) : '') +
+                    (d.blocks.length ? _mbAnnotationHtml(d.blocks, { card: true, max: 4 }) : '<div class="mb-tt-comment">This version is empty.</div>');
+            },
+            windowHtml(d, t) {
+                const p = t.id.split('/');
+                const base = `/${p[0]}/${p[1]}`;
+                const left = `<div class="mb-dp-xtitle">${_rgEsc(d.name || t.id)}</div>` +
+                    `<div class="mb-dp-xsub">MusicBrainz · ${_rgEsc(d.type || p[0])} · annotation</div>` +
+                    _mbPopKvHtml([['Version', d.old ? 'an old one' : 'the current one'], ['Edited by', _rgEsc(d.editor)], ['Date', _rgEsc(d.date)],
+                        ['Changelog', _rgEsc(d.changelog)], ['Versions', d.revisions ? _rgEsc(String(d.revisions)) : '']]) +
+                    `<p><a href="${_rgEsc(base)}/annotations" target="_blank" rel="noopener">Annotation history</a>` +
+                    (d.old ? ` · <a href="${_rgEsc(base)}/annotation" target="_blank" rel="noopener">The current version</a>` : '') + '</p>';
+                const right = '<h4>Annotation</h4>' + (d.blocks.length ? _mbAnnotationHtml(d.blocks) : '<div class="mb-dp-xsub">This version is empty.</div>');
+                return `<div class="mb-dp-x"><div class="mb-dp-col">${left}</div><div class="mb-dp-col">${right}</div></div>`;
+            },
+        })),
         // A tag (2026-10-19): read from its page (`_mbParseTagPage()`), the
         // Web Service has no lookup of a tag by name. Card: is it a genre,
         // how many entities, how many of each kind. Window: the same, plus
@@ -50705,17 +51646,23 @@
         // link to the page (the sidebar's "Editing history", an editor's
         // "Their edits") is a target like any other. Page n is its own
         // record (`_mbEditsKey()`); ⟳ reads page 1 again and starts over.
+        // Since 2026-10-21 also an editor's other lists (`/user/<name>/edits/
+        // <status>`, `/user/<name>/votes`) and an edit search
+        // (`/search/edits?…`): the same page, their path as their id
+        // (`_mbEditsPagePath()`), named by `_mbEditsLabel()`.
         edits: {
             title: 'Editing history', wide: true,
-            path: id => `/${id}/edits`,
+            titleOf: id => _mbEditsLabel(id).head,
+            path: _mbEditsPagePath,
             card(t, start, repaint) {
                 if (start) _mbEditsLoad(t, 1, { repaint });
                 return _mbPopCardShell(t, _mbPop.get(_mbEditsKey(t.id, 1)), (d) => {
                     const types = {};
                     d.entries.forEach((e) => { types[e.type] = (types[e.type] || 0) + 1; });
                     const latest = d.entries[0];
-                    return `<div class="mb-tt-title">${_rgEsc(d.subject.name || decodeURIComponent(t.id.split('/')[1] || ''))}</div>` +
-                        `<div class="mb-tt-comment">Editing history · ${_rgEsc(_mbEditsKindWord(t.id))}</div>` +
+                    const label = _mbEditsLabel(t.id);
+                    return `<div class="mb-tt-title">${_rgEsc(d.subject.name || label.name || label.head)}</div>` +
+                        `<div class="mb-tt-comment">${_rgEsc(label.comment)}</div>` +
                         `<div class="mb-tt-body mb-rg-pills">${_mbPopPillsHtml([`${d.atLeast ? 'at least ' : ''}${d.total.toLocaleString('en-US')} edits`,
                             d.entries.some(e => e.status === 'open') ? `${d.entries.filter(e => e.status === 'open').length} open` : ''])}</div>` +
                         '<div class="mb-tt-rule"></div>' + _mbPopKvHtml([
@@ -70579,6 +71526,9 @@ a { color: #1565c0; }`;
         Lib.error('init', 'Required elements not found. Terminating.', { pageType, hasHeader: !!headerContainer });
         return;
     }
+
+    // MusicBrainz's own modal dialogs (the sidebar cover's) above our bars.
+    _ensureMbDialogZStyle();
 
     // The sidebar picture's hover card and viewer (docs/claude/sidebar.md).
     // MusicBrainz adds the picture after load, so this only starts watching.
@@ -90793,6 +91743,11 @@ a { color: #1565c0; }`;
         if (activeDefinition.features?.userProfileToTables) {
             applyUserProfileToTables(activeDefinition);
         }
+        // An annotation version ('annotation-version'): this version beside
+        // the current one, from the page's own JSON.
+        if (activeDefinition.features?.annotationCompareToTables) {
+            applyAnnotationCompareToTables(activeDefinition);
+        }
 
         // ── editsToTable pre-processing ─────────────────────────────────────
         // For the 'edits' pageType, convert the native div.edit-list block
@@ -91325,6 +92280,9 @@ a { color: #1565c0; }`;
                 }
                 if (doc !== document && activeDefinition.features?.userProfileToTables) {
                     applyUserProfileToTables(activeDefinition, doc);
+                }
+                if (doc !== document && activeDefinition.features?.annotationCompareToTables) {
+                    applyAnnotationCompareToTables(activeDefinition, doc);
                 }
 
                 // ── editsToTable on fetched pages ────────────────────────────
@@ -100209,6 +101167,160 @@ a { color: #1565c0; }`;
         Lib.debug('render', `applyUserProfileToTables: ${frags.length} groups.`);
     }
 
+    /**
+     * Pairs two annotations' blocks (`_mbAnnotationBlocks()`) for the
+     * 'annotation-version' table: the longest common run of equal blocks
+     * (a heading equals a heading of the same text, a paragraph a paragraph)
+     * is "same"; between two equal ones, the blocks only one side has are
+     * paired in order with a block of the same kind on the other side as
+     * "changed", the rest are "only in this version" / "only in the current
+     * version". Each row carries the section it sits in (the last heading
+     * above it, the current version's text first). Pure.
+     *
+     * @param {Array<{h?: string, p?: string}>} a - This version.
+     * @param {Array<{h?: string, p?: string}>} b - The current version.
+     * @returns {Array<{heading: boolean, section: string, a: ?string, b: ?string,
+     *   status: ('same'|'changed'|'only in this version'|'only in the current version')}>}
+     */
+    function _annotationCompareRows(a, b) {
+        const key = x => (x.h !== undefined ? `h:${x.h}` : `p:${x.p}`);
+        const text = x => (x.h !== undefined ? x.h : x.p);
+        const n = a.length;
+        const m = b.length;
+        const L = Array.from({ length: n + 1 }, () => new Array(m + 1).fill(0));
+        for (let i = n - 1; i >= 0; i--) {
+            for (let j = m - 1; j >= 0; j--) {
+                L[i][j] = key(a[i]) === key(b[j]) ? L[i + 1][j + 1] + 1 : Math.max(L[i + 1][j], L[i][j + 1]);
+            }
+        }
+        const out = [];
+        let section = '';
+        const push = (x, y, status) => {
+            const heading = (x || y).h !== undefined;
+            if (heading) section = text(y || x);
+            out.push({ heading, section, a: x ? text(x) : null, b: y ? text(y) : null, status });
+        };
+        let gone = [];
+        let fresh = [];
+        const flush = () => {
+            const used = new Set();
+            gone.forEach((x) => {
+                const k = fresh.findIndex((y, idx) => !used.has(idx) && (y.h !== undefined) === (x.h !== undefined));
+                if (k >= 0) {
+                    used.add(k);
+                    push(x, fresh[k], 'changed');
+                } else push(x, null, 'only in this version');
+            });
+            fresh.forEach((y, idx) => { if (!used.has(idx)) push(null, y, 'only in the current version'); });
+            gone = [];
+            fresh = [];
+        };
+        let i = 0;
+        let j = 0;
+        while (i < n && j < m) {
+            if (key(a[i]) === key(b[j])) {
+                flush();
+                push(a[i++], b[j++], 'same');
+            } else if (L[i + 1][j] >= L[i][j + 1]) gone.push(a[i++]);
+            else fresh.push(b[j++]);
+        }
+        while (i < n) gone.push(a[i++]);
+        while (j < m) fresh.push(b[j++]);
+        flush();
+        return out;
+    }
+
+    /**
+     * An annotation date from the page JSON (`creation_date`, ISO in UTC) as
+     * "2015-06-19 06:31 UTC"; '' for none.
+     *
+     * @param {?string} iso
+     * @returns {string}
+     */
+    function _annotationDate(iso) {
+        const m = /^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2})/.exec(String(iso || ''));
+        return m ? `${m[1]} ${m[2]} UTC` : '';
+    }
+
+    /**
+     * Turns an annotation version page into two h3 + `table.tbl` groups
+     * (`features.annotationCompareToTables`, pageType 'annotation-version'),
+     * read from the page's own JSON (`_mbAnnotationPageData()`): "This
+     * version" (Field | Value: whether it is the current one, editor, date,
+     * changelog, the current version's date and editor, how many versions)
+     * and "Compared with the current version" (# | Section | This version |
+     * Current version | Status, `_annotationCompareRows()`). A changed row's
+     * status (`span.mb-annot-status` in the Status cell) carries the rich
+     * comparison card (`_setTipCmp()`: attributes of a span inside the cell,
+     * so they survive every clone and the disk round trip). The
+     * texts are copied as text (`_mbAnnotationBlocks()`), never as markup.
+     * The native annotation stays where it is; a new h2 "Annotation
+     * versions" after it heads the groups. Idempotent
+     * (`data-mb-annot-compare` on `#content`).
+     *
+     * @param {object}           def
+     * @param {Document|Element} [docContext=document]
+     * @returns {void}
+     */
+    function applyAnnotationCompareToTables(def, docContext = document) {
+        if (!def?.features?.annotationCompareToTables) return;
+        const doc = docContext.nodeType === Node.DOCUMENT_NODE ? docContext : docContext.ownerDocument;
+        const content = doc.getElementById('content');
+        if (!content || content.dataset.mbAnnotCompare) return;
+        const box = content.querySelector('div.annotation');
+        const data = _mbAnnotationPageData(content);
+        const ann = data && data.annotation;
+        if (!box || !ann) return;
+        content.dataset.mbAnnotCompare = '1';
+        const latest = (data.entity && data.entity.latest_annotation) || ann;
+        const isCurrent = latest.id === ann.id;
+        // An inert document: nothing in it runs or loads.
+        const blocks = html => _mbAnnotationBlocks(new DOMParser().parseFromString(String(html || ''), 'text/html').body);
+        const mine = blocks(ann.html);
+        const rows = _annotationCompareRows(mine, isCurrent ? mine : blocks(latest.html));
+        const who = x => (x && x.editor && x.editor.name ? String(x.editor.name) : '');
+        const info = [
+            ['Version', isCurrent ? 'the current one' : 'an old one'],
+            ['Edited by', who(ann)],
+            ['Date', _annotationDate(ann.creation_date)],
+            ['Changelog', ann.changelog ? String(ann.changelog) : '(none)'],
+            ['Current version', isCurrent ? 'this one' : `${_annotationDate(latest.creation_date)}${who(latest) ? ` by ${who(latest)}` : ''}`],
+            ['Versions', data.numberOfRevisions ? String(data.numberOfRevisions) : ''],
+        ].filter(r => r[1]);
+        const lines = (t, strong) => {
+            if (t === null) return '';
+            const wrap = strong ? doc.createElement('strong') : doc.createDocumentFragment();
+            String(t).split('\n').forEach((line, k) => {
+                if (k) wrap.appendChild(doc.createElement('br'));
+                wrap.appendChild(doc.createTextNode(line));
+            });
+            return [wrap];
+        };
+        // The status and its card sit on a span INSIDE the cell: a disk file
+        // keeps a cell's markup but only listed attributes of the <td>.
+        const cmpRows = rows.map((r, k) => {
+            const st = doc.createElement('span');
+            st.className = 'mb-annot-status';
+            st.textContent = r.status;
+            st.dataset.mbAnnotStatus = r.status === 'same' ? 'same' : r.status === 'changed' ? 'changed' : r.a === null ? 'added' : 'removed';
+            if (r.status === 'changed') {
+                _setTipCmp(st, 'Changed in the current version',
+                    [{ at: 0, la: 'This version', lb: 'Current', a: r.a.replace(/\n/g, ' '), b: r.b.replace(/\n/g, ' ') }]);
+            }
+            return [String(k + 1), r.section, lines(r.a, r.heading), lines(r.b, r.heading), [st]];
+        });
+        const changed = rows.filter(r => r.status !== 'same').length;
+        const intro = isCurrent ? '<p>This is the current version: nothing has changed since.</p>'
+            : `<p>${changed} of ${rows.length} block${rows.length === 1 ? '' : 's'} differ${changed === 1 ? 's' : ''} from the current version.</p>`;
+        const h2 = doc.createElement('h2');
+        h2.className = 'mb-annot-compare';
+        h2.textContent = 'Annotation versions';
+        box.after(h2);
+        h2.after(_eventBuildTable(doc, 'This version', ['Field', 'Value'], info),
+            _eventBuildTable(doc, 'Compared with the current version', ['#', 'Section', 'This version', 'Current version', 'Status'], cmpRows, intro));
+        Lib.debug('render', `applyAnnotationCompareToTables: ${rows.length} blocks, ${changed} differ${isCurrent ? ' (the current version)' : ''}.`);
+    }
+
     // ── The sidebar beside the page's own data ───────────────────────────────
     // Two views of the same `_sbCollectGroups()` groups, neither needing the
     // "🗂 Sidebar as tables" button (mockup picked 2026-10-15,
@@ -101097,6 +102209,35 @@ a { color: #1565c0; }`;
     }
 
     /**
+     * The hover card of the sidebar picture or its copy beside the name
+     * (`data-mbtt-fn="sb-pic"`): the B2 image card of a CAA/EAA cell image
+     * (`_artCardImageHtml()`'s look) for the one picture — its preview,
+     * where it comes from, its file name, the size the browser loaded —
+     * built from the picture already shown: nothing is asked.
+     *
+     * @param {HTMLElement} el - The sidebar `<img>`, or the copy's box.
+     * @returns {?string}
+     */
+    function _sbPicCardHtml(el) {
+        const img = el.tagName === 'IMG' ? el : el.querySelector('img');
+        const src = img ? (img.currentSrc || img.src) : '';
+        const source = src ? _sbPictureSource(src) : null;
+        if (!source) return null;
+        const side = document.querySelector('#sidebar img.mb-sb-pic') || img;
+        const type = _sbEntityType();
+        const origin = source.kind === 'irombook' ? 'IROMBOOK' : 'Wikimedia Commons';
+        const size = side.naturalWidth ? `${side.naturalWidth} × ${side.naturalHeight} px as loaded` : '';
+        return `<div style="max-width:${_artNumSetting('sa_caa_tip_image_size', 200, 40) + 20}px;min-width:200px;">` +
+            `<div class="mb-tt-title">${_rgEsc(type.charAt(0).toUpperCase() + type.slice(1))} image</div>` +
+            `<img class="mb-art-card-preview" src="${_rgEsc(src)}" alt=""${source.kind === 'irombook' ? ' style="background:#ffffff;"' : ''}>` +
+            `<div class="mb-tt-body" style="display:flex;gap:4px;flex-wrap:wrap;"><span class="mb-tt-pill">${_rgEsc(origin)}</span></div>` +
+            (source.file ? `<div class="mb-tt-comment">${_rgEsc(source.file)}</div>` : '') +
+            '<div class="mb-tt-rule"></div>' +
+            (size ? `<div class="mb-tt-dim">${_rgEsc(size)}</div>` : '') +
+            '<div class="mb-tt-foot">Click: viewer</div></div>';
+    }
+
+    /**
      * Makes one element open the sidebar picture: hover card, click, Enter
      * and Space.
      * @param {Element} el - The picture or its copy beside the name.
@@ -101104,15 +102245,13 @@ a { color: #1565c0; }`;
      * @returns {void}
      */
     function _sbPictureControl(el, img) {
-        const source = _sbPictureSource(img.currentSrc || img.src);
-        const file = source ? source.file : '';
-        const origin = source && source.kind === 'irombook' ? 'IROMBOOK' : 'Wikimedia Commons';
         const type = _sbEntityType();
         el.setAttribute('role', 'button');
         el.tabIndex = 0;
         el.setAttribute('aria-label', `Open the ${type} image`);
         el.classList.add('mb-sb-pic');
-        _setTip(el, `${type.charAt(0).toUpperCase() + type.slice(1)} image · ${origin}${file ? ' · ' + file : ''}. Click to open it in the viewer.`);
+        // The image card, as a CAA/EAA cell image's (`_sbPicCardHtml()`).
+        el.dataset.mbttFn = 'sb-pic';
         el.addEventListener('click', (e) => {
             if (e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey) return;
             e.preventDefault();
@@ -101139,32 +102278,212 @@ a { color: #1565c0; }`;
         const source = _sbPictureSource(img.currentSrc || img.src);
         if (!source) return;
         img.dataset.mbSbPic = '1';
-        if (!document.getElementById('mb-sb-pic-style')) {
-            // A drawing is fitted whole on white, not cropped: an IROMBOOK
-            // instrument is tall line art on a transparent ground.
-            const st = GM_addStyle(`
-                #sidebar img.mb-sb-pic, .mb-sb-avatar { cursor: zoom-in; }
-                #sidebar img.mb-sb-pic:focus-visible, .mb-sb-avatar:focus-visible { outline: 2px solid #2f5f9e; outline-offset: 2px; }
-                .mb-sb-avatar { display: inline-block; width: 34px; height: 34px; margin-right: 8px; vertical-align: middle; border: 1px solid #d9cfbd; border-radius: 3px; overflow: hidden; background: #fbf8f1; }
-                .mb-sb-avatar img { display: block; width: 100%; height: 100%; object-fit: cover; }
-                .mb-sb-avatar.mb-sb-avatar-contain { background: #fff; }
-                .mb-sb-avatar.mb-sb-avatar-contain img { object-fit: contain; }
-            `);
-            st.id = 'mb-sb-pic-style';
-        }
+        _sbEnsurePictureStyle();
         _sbPictureControl(img, img);
+        const box = _sbHeaderCopy(img.currentSrc || img.src, source.kind === 'irombook');
+        if (box) _sbPictureControl(box, img);
+    }
+
+    /**
+     * The sidebar picture's CSS, added once: the pointer, the focus ring and
+     * the 34 px copy at the start of the heading.
+     * @returns {void}
+     */
+    function _sbEnsurePictureStyle() {
+        if (document.getElementById('mb-sb-pic-style')) return;
+        // A drawing is fitted whole on white, not cropped: an IROMBOOK
+        // instrument is tall line art on a transparent ground.
+        const st = GM_addStyle(`
+            #sidebar img.mb-sb-pic, .mb-sb-avatar { cursor: zoom-in; }
+            #sidebar img.mb-sb-pic:focus-visible, .mb-sb-avatar:focus-visible { outline: 2px solid #2f5f9e; outline-offset: 2px; }
+            .mb-sb-avatar { display: inline-block; width: 34px; height: 34px; margin-right: 8px; vertical-align: middle; border: 1px solid #d9cfbd; border-radius: 3px; overflow: hidden; background: #fbf8f1; }
+            .mb-sb-avatar img { display: block; width: 100%; height: 100%; object-fit: cover; }
+            .mb-sb-avatar.mb-sb-avatar-contain { background: #fff; }
+            .mb-sb-avatar.mb-sb-avatar-contain img { object-fit: contain; }
+        `);
+        st.id = 'mb-sb-pic-style';
+    }
+
+    /**
+     * Puts the copy of a sidebar picture at the start of the page heading,
+     * unless `sa_sidebar_picture_in_header` is off, there is no heading, or
+     * it already has one.
+     * @param {string} src - The picture's address.
+     * @param {boolean} contain - Fit it whole (a drawing) instead of cropping.
+     * @returns {?HTMLSpanElement} The copy, for its control; null when none was made.
+     */
+    function _sbHeaderCopy(src, contain) {
         const h1 = headerContainer && headerContainer.tagName === 'H1' ? headerContainer : document.querySelector('#content h1, h1');
-        if (Lib.settings.sa_sidebar_picture_in_header !== false && h1 && !h1.querySelector('.mb-sb-avatar')) {
-            const box = document.createElement('span');
-            box.className = 'mb-sb-avatar';
-            if (source.kind === 'irombook') box.classList.add('mb-sb-avatar-contain');
-            const copy = document.createElement('img');
-            copy.src = img.currentSrc || img.src;
-            copy.alt = '';
-            box.appendChild(copy);
-            _sbPictureControl(box, img);
-            h1.prepend(box);
+        if (Lib.settings.sa_sidebar_picture_in_header === false || !h1 || h1.querySelector('.mb-sb-avatar')) return null;
+        const box = document.createElement('span');
+        box.className = 'mb-sb-avatar';
+        if (contain) box.classList.add('mb-sb-avatar-contain');
+        const copy = document.createElement('img');
+        copy.src = src;
+        copy.alt = '';
+        box.appendChild(copy);
+        h1.prepend(box);
+        return box;
+    }
+
+    /**
+     * The archive path of this page's release, release group or event
+     * (`/release/<mbid>`, `/release-group/<mbid>`, `/event/<mbid>`, lower
+     * case, the key of `CAA_CTX`'s or `EAA_CTX`'s caches); '' on any other
+     * page.
+     * @returns {string}
+     */
+    function _sbCoverPath() {
+        const m = location.pathname.match(/^\/(release|release-group|event)\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})(?:\/|$)/i);
+        return m ? `/${m[1]}/${m[2].toLowerCase()}` : '';
+    }
+
+    /**
+     * The archive of a `_sbCoverPath()`: the Event Art Archive for an event,
+     * else the Cover Art Archive. Only called on a hover or a click — both
+     * contexts are declared far below this part of the file (TDZ at init).
+     * @param {string} path
+     * @returns {Object} `EAA_CTX` or `CAA_CTX`.
+     */
+    function _sbCoverCtx(path) {
+        return path.startsWith('/event/') ? EAA_CTX : CAA_CTX;
+    }
+
+    /**
+     * What a `_sbCoverPath()` is, for the card and the aria label.
+     * @param {string} path
+     * @returns {('release'|'release group'|'event')}
+     */
+    function _sbCoverLabel(path) {
+        return path.startsWith('/event/') ? 'event' : path.startsWith('/release-group/') ? 'release group' : 'release';
+    }
+
+    /**
+     * The hover card of a release's, release group's or event's cover — its
+     * copy beside the name and the sidebar's own cover link
+     * (`data-mbtt-fn="sb-cover"`, the path in `data-mb-sb-cover`): the B1
+     * card of every image of the record, as a CAA/EAA cell's
+     * (`_artRecordCardHtml()`; the first hover asks the archive, as a
+     * relationship-list cover icon does). Off with `sa_caa_tip_summary`.
+     *
+     * @param {HTMLElement} el
+     * @returns {?string}
+     */
+    function _sbCoverCardHtml(el) {
+        const path = el.dataset.mbSbCover || '';
+        if (!path || Lib.settings.sa_caa_tip_summary === false) return null;
+        const label = _sbCoverLabel(path);
+        const title = _cachedEntityName || `${label.charAt(0).toUpperCase() + label.slice(1)} artwork`;
+        const own = el.matches('#sidebar a.artwork-image');
+        return _artRecordCardHtml(el, _sbCoverCtx(path), path, title,
+            own ? 'Click: viewer · Ctrl-click: MusicBrainz\'s own' : 'Click: viewer');
+    }
+
+    /**
+     * A plain click on the sidebar's own cover link (a release's, release
+     * group's or event's `a.artwork-image`) opens the artwork viewer instead
+     * of MusicBrainz's dialog. On the WINDOW in the capture phase, so it runs
+     * before MusicBrainz's handler and the navigation guard, and
+     * stopPropagation keeps the click from both. Ctrl, Shift, Alt or ⌘ leave
+     * it to MusicBrainz.
+     * @param {MouseEvent} e
+     * @returns {void}
+     */
+    function _sbCoverLinkClick(e) {
+        if (e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return;
+        const a = e.target && e.target.closest ? e.target.closest('#sidebar a.artwork-image[data-mb-sb-cover]') : null;
+        if (!a) return;
+        e.preventDefault();
+        e.stopPropagation();
+        _sbOpenCover(a.dataset.mbSbCover, a);
+    }
+
+    /**
+     * Opens the release's (release group's) Cover Art Archive images, or the
+     * event's Event Art Archive images, in the artwork viewer at the front
+     * image, asking the archive first when
+     * its record is not in yet (a click is the only thing that asks), the
+     * way `_artIconClick()` opens a relationship-list cover icon. When the
+     * record turns out empty or the archive does not answer, nothing opens
+     * (a debug line says why), and a later click asks again.
+     * @param {string} path - From `_sbCoverPath()`.
+     * @param {Element} opener - Focus returns here on close.
+     * @returns {void}
+     */
+    function _sbOpenCover(path, opener) {
+        const ctx = _sbCoverCtx(path);
+        const open = () => {
+            const images = ctx.imagesCache.get(path) || [];
+            if (!images.length) {
+                Lib.debug(ctx.key, `_sbOpenCover: no images for ${path}` +
+                    (ctx.failedCache.has(path) ? ' (the archive did not answer)' : ''));
+                return;
+            }
+            const front = images.findIndex(im => im.front);
+            // The cover's card is showing under the pointer: the viewer covers it.
+            const tip = document.getElementById('mb-stat-tooltip');
+            if (tip) tip.style.display = 'none';
+            _artViewerOpen(ctx, path, null, front < 0 ? 0 : front,
+                { opener, title: `${_cachedEntityName || document.title} — ${ctx.key === 'eaa' ? 'event art' : 'cover art'}` });
+        };
+        if (ctx.countCache.has(path) && !ctx.failedCache.has(path)) open();
+        else {
+            if (ctx.failedCache.has(path)) ctx.countCache.delete(path);
+            _artRelIconLoad(path, open, ctx);
         }
+    }
+
+    /**
+     * Wires a release's, release group's or event's sidebar cover
+     * (`.cover-art.present span.artwork-image`, `.event-art
+     * span.artwork-image`): a copy at the start of the heading, and the
+     * sidebar's own cover link, both with the record's artwork card
+     * (`_sbCoverCardHtml()`) and opening its images in the artwork viewer.
+     * The address is the span's `data-small-thumbnail`, there before
+     * MusicBrainz's script puts the `<img>` in, and the browser loads that
+     * thumbnail for the sidebar anyway. A Ctrl/Shift click on the sidebar
+     * link is still MusicBrainz's.
+     * @param {HTMLElement} span
+     * @returns {void}
+     */
+    function _sbWireCover(span) {
+        if (span.dataset.mbSbPic) return;
+        const path = _sbCoverPath();
+        const raw = span.getAttribute('data-small-thumbnail') || '';
+        if (!path || !raw) return;
+        span.dataset.mbSbPic = '1';
+        _sbEnsurePictureStyle();
+        // The sidebar's own cover link: the same card, and a click opens our
+        // viewer (`_sbCoverLinkClick()`), not MusicBrainz's dialog.
+        const own = span.closest('a.artwork-image');
+        if (own) {
+            own.dataset.mbSbCover = path;
+            own.dataset.mbttFn = 'sb-cover';
+            if (!_sbWireCover.listening) {
+                _sbWireCover.listening = true;
+                window.addEventListener('click', _sbCoverLinkClick, true);
+            }
+        }
+        const box = _sbHeaderCopy(raw.startsWith('//') ? `https:${raw}` : raw, false);
+        if (!box) return;
+        const label = _sbCoverLabel(path);
+        box.setAttribute('role', 'button');
+        box.tabIndex = 0;
+        box.setAttribute('aria-label', `Open the ${label}'s ${label === 'event' ? 'event art' : 'cover art'}`);
+        box.classList.add('mb-sb-pic');
+        box.dataset.mbSbCover = path;
+        box.dataset.mbttFn = 'sb-cover';
+        box.addEventListener('click', (e) => {
+            if (e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey) return;
+            e.preventDefault();
+            e.stopPropagation();
+            _sbOpenCover(path, box);
+        });
+        box.addEventListener('keydown', (e) => {
+            if (e.key !== 'Enter' && e.key !== ' ') return;
+            e.preventDefault();
+            _sbOpenCover(path, box);
+        });
     }
 
     /**
@@ -101173,13 +102492,20 @@ a { color: #1565c0; }`;
      * another script's markup, then MusicBrainz's own Commons component, then
      * an instrument's IROMBOOK drawing (`#sidebar > div.picture`, server-
      * rendered, so it is found at once); it is a literal here because this
-     * runs at init, before this part of the file (TDZ).
+     * runs at init, before this part of the file (TDZ). A release's,
+     * release group's or event's cover (`_sbWireCover()`) is server-rendered
+     * too.
      * @returns {void}
      */
     function _sbInitPicture() {
         if (_foreignHost || Lib.settings.sa_sidebar_picture === false) return;
         const sidebar = document.getElementById('sidebar');
         if (!sidebar) return;
+        if (_sbCoverPath()) {
+            const cover = sidebar.querySelector('.cover-art.present span.artwork-image[data-small-thumbnail], .event-art span.artwork-image[data-small-thumbnail]');
+            if (cover) _sbWireCover(cover);
+            return;
+        }
         const find = () => {
             const img = sidebar.querySelector('.entity-image .picture img, .commons-image .picture img, :scope > .picture img');
             if (img && (img.currentSrc || img.src)) { _sbWirePicture(img); return true; }
@@ -133082,6 +134408,8 @@ a { color: #1565c0; }`;
                 case 'art-img': return _artCardImageHtml(el);
                 case 'art-rel': return _artRelIconCardHtml(el);
                 case 'dg-img': return _dgImgCardHtml(el);
+                case 'sb-pic': return _sbPicCardHtml(el);
+                case 'sb-cover': return _sbCoverCardHtml(el);
                 default: return null;
             }
         } catch (err) {
@@ -133126,7 +134454,7 @@ a { color: #1565c0; }`;
     // hover (`_mbttAfterHide()`), Shift follows the key.
 
     /** The resolver cards built by `_artCardCoreHtml()`. */
-    const _ART_CARD_FNS = new Set(['art-sum', 'art-rel', 'dg-img']);
+    const _ART_CARD_FNS = new Set(['art-sum', 'art-rel', 'dg-img', 'sb-cover']);
 
     /**
      * The artwork card's view: `allEl` is the element whose card shows every
@@ -133485,20 +134813,38 @@ a { color: #1565c0; }`;
     function _artRelIconCardHtml(a) {
         const info = _artRelIconInfo(a);
         if (!info || !_artRelIconCardOn()) return null;
-        const title = info.title || 'Cover art';
+        return _artRecordCardHtml(a, CAA_CTX, info.path, info.title || 'Cover art',
+            _artRelIconViewerOn() ? 'Click: viewer · Ctrl-click: the artwork page' : '');
+    }
+
+    /**
+     * The B1 card of every image of ONE archive record that is not a table
+     * row's (a relationship-list cover icon, a sidebar cover): the record's
+     * card once it is in; "Loading" while asked (the first hover asks,
+     * `_artRelIconLoad()`, and the card repaints when it arrives); a line
+     * when the archive has no image or did not answer.
+     *
+     * @param   {HTMLElement} el - The hovered element.
+     * @param   {Object} ctx - `CAA_CTX` or `EAA_CTX`.
+     * @param   {string} path - The record (`/release/<mbid>`, …).
+     * @param   {string} title
+     * @param   {string} foot
+     * @returns {string}
+     */
+    function _artRecordCardHtml(el, ctx, path, title, foot) {
         const head = `<div class="mb-tt-title">${_rgEsc(title)}</div>`;
-        if (!CAA_CTX.countCache.has(info.path)) {
-            _artRelIconLoad(info.path, () => _artRelIconRepaint(a));
-            return `<div style="max-width:310px;">${head}<div class="mb-tt-comment"><span class="mb-dp-spin">◌</span> Loading the release's artwork…</div></div>`;
+        const archive = ctx.key === 'eaa' ? 'Event Art Archive' : 'Cover Art Archive';
+        if (!ctx.countCache.has(path)) {
+            _artRelIconLoad(path, () => _artRelIconRepaint(el), ctx);
+            return `<div style="max-width:310px;">${head}<div class="mb-tt-comment"><span class="mb-dp-spin">◌</span> Loading the ${ctx.key === 'eaa' ? 'event' : 'release'}'s artwork…</div></div>`;
         }
-        const images = CAA_CTX.imagesCache.get(info.path) || [];
+        const images = ctx.imagesCache.get(path) || [];
         if (!images.length) {
-            const why = CAA_CTX.failedCache.has(info.path) ? 'The Cover Art Archive did not answer.' : 'No artwork in the Cover Art Archive.';
+            const why = ctx.failedCache.has(path) ? `The ${archive} did not answer.` : `No artwork in the ${archive}.`;
             return `<div style="max-width:310px;">${head}<div class="mb-tt-dim">${why}</div></div>`;
         }
         return _artCardCoreHtml({
-            el: a, ctx: CAA_CTX, images, order: images.map((_, i) => i), title, hit: () => false, matches: '',
-            foot: _artRelIconViewerOn() ? 'Click: viewer · Ctrl-click: the artwork page' : '',
+            el, ctx, images, order: images.map((_, i) => i), title, hit: () => false, matches: '', foot,
         });
     }
 
@@ -141883,6 +143229,18 @@ a { color: #1565c0; }`;
              */
             liveSepFixed(text) {
                 return _liveSepFixed(text);
+            },
+
+            /**
+             * Thin wrapper around `_liveNearMissFixed()` — a near miss in the
+             * form it almost has, or null when there is no single fix.
+             *
+             * @param {string} text
+             * @param {('title'|'comment')} target
+             * @returns {?string}
+             */
+            liveNearMissFixed(text, target) {
+                return _liveNearMissFixed(text, target);
             },
 
             /**

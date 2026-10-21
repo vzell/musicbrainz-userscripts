@@ -24939,7 +24939,327 @@ and blocked": 2 expected). Neither touches code this branch changed
 alone with `--repeat-each=3`: 30/30 passed. Treated as load-dependent
 flakes under 14 workers, not seen before in DEBUG-NOTES — worth watching.
 
-## 2026-10-21 — short column header labels (WIP.1) and the discogs-links favicon flake (WIP.2) (branch feat/short-column-labels)
+## 2026-10-21 — what an editor's lists, subscribers and applications pages hold, for their link previews (branch feat/pop-user-page-lists)
+
+Env: 2026-10-21T10:07:45+02:00 · NB-3641 · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) · Playwright 1.62.1 Chromium (captures and fixture specs) · no Tampermonkey (GM stubs)
+
+Captured logged in with `node scripts/fetch-mb-page-fixture.js --auth`, then
+`python3 scripts/anonymize-user-fixtures.py <dir>` into `tests/fixtures/`.
+
+- **`/user/vzell/edits/rejected`, `/edits/open`, `/user/vzell/votes`,
+  `/search/edits?…conditions…`: all the editing-history page.**
+  `#content .search-toggle` "Found 65 edits" / "Found 0 edits" / "Found at
+  least 500 edits", 50 `div.edit-list` a page, `ul.pagination` with
+  `?page=N` (the search's links carry the whole query plus `&page=N`).
+  Headings: `h2` "Rejected edits by <a>vzell</a>", "Open edits by …",
+  "Votes by …"; the search has `h1` "Search for edits" and no subject. So
+  `_mbParseEditsPage()` reads all four unchanged; the votes page is the edits
+  OTHER editors made that vzell voted on. At 0 edits there is no `#edits`
+  block at all, only the "Found 0 edits" line.
+- The lists' "Quick links" carry `/search/edits?…&form_only=yes…` links:
+  they open the prefilled form and list nothing, hence `_mbEditsSearchId()`'s
+  `form_only=` exclusion.
+- **`/user/vzell/subscribers`** (no `#content`): `#page > h1 a[href^="/user/"]
+  bdi` the editor, `h2` "Subscribers", `p` "There are currently 8 users
+  subscribed to edits that you make:", `ul > li > a[href^="/user/"]` (6) and
+  a last `li` "Plus 2 other anonymous users".
+- **`/account/applications`** (no `#content`): `h1` "Applications"; `h2`
+  "Authorized applications" + `p` + `table.tbl` with headers Application |
+  Access | Last granted token | Actions — Actions is
+  `<a href="/account/applications/revoke-access/<app>/<scope>">Revoke
+  access</a>`, a plain GET link; `h2` "Developer applications" + `p`s ("You
+  do not have any registered applications." on this account, so the
+  developer table's real headers are NOT seen); `h2` "Digest access
+  authentication" with "Digest authentication is <strong>enabled</strong>"
+  and a POST form. Hence `_MB_APPS_COLS` (a whitelist, so an unseen
+  client-id/secret column is dropped whatever its header) and memory-only.
+- `/user/vzell` itself shows the statistics links only to a logged-in
+  reader: the committed logged-out `user-page-vzell.html` has only the
+  subscribers "view list", which the SUBS test uses on the rendered profile
+  (its sub-tables start collapsed: `ensureSubTableVisible(page, 0)`).
+
+## 2026-10-21 — an editor's tags and ratings pages, for their link previews (WIP.2, branch feat/pop-user-page-lists)
+
+Env: 2026-10-21T10:48:02+02:00 · NB-3641 · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) · Playwright 1.62.1 Chromium · no Tampermonkey (GM stubs)
+
+Reported after WIP.1 shipped to the branch: the profile's "Tags and ratings"
+sub-section ("Tags upvoted 347 view", "Ratings 12 view") still had no card.
+Captured logged in (`fetch-mb-page-fixture.js --auth`), no `#content` on
+either page:
+
+- **`/user/vzell/tags`**: `h2` "Tags vzell upvoted", a GET form
+  (`show_downvoted` 0/1, `order` name/count/countdesc), then
+  `#all-tags > h3 "Genres" + div#genres > ul.genre-list` and
+  `h3 "Other tags" + div#tags > ul.tag-list`; each `li` = `a[href=
+  "/user/vzell/tag/<t>"]` + `span.tag-vote-buttons > span.tag-count`. 112
+  tags, counts summing to 347 — the profile's number is VOTES, not tags.
+  No pager. "Tags downvoted 0" has no link, so the downvoted list's URL
+  shape is unseen; `?show_downvoted=1` (the form's own parameter) is
+  excluded from previews rather than shown with the upvoted data.
+- **`/user/vzell/ratings`**: per kind `h2` "<Kind> ratings" + `ul`; each
+  `li` = `span.inline-rating > span.star-rating > span.current-user-rating`
+  (text 1–5, width %) + five `a.set-rating`/`a.remove-rating` with
+  `href="/rating/rate/?entity_type=…&entity_id=…&rating=N&returnto=…"` —
+  **plain GET links that set or remove the rating** — then " - " and the
+  entity link, then an event's "(date)", `span.comment`, `span.cancelled`.
+  The last `li` of each kind: `a[href="/user/vzell/ratings/<kind>"]` "View
+  all ratings". 12 ratings over 7 kinds on capture.
+
+## 2026-10-21 — the sidebar cover beside the release title (WIP.3, branch feat/pop-user-page-lists)
+
+Env: 2026-10-21T12:18:43+02:00 · NB-3641 · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) · Playwright 1.62.1 Chromium · no Tampermonkey (GM stubs)
+
+Asked for from `debug/release-tracks-tttr.html` (FRP of release
+3ec14d03-…): artist, place and instrument pages show the sidebar picture at
+the start of the h1, a release page did not.
+
+- **Why it was missing:** `_sbInitPicture()` looked only for
+  `.entity-image/.commons-image .picture img` and `#sidebar > .picture img`,
+  and `_sbPictureSource()` accepted only Commons and IROMBOOK addresses. A
+  release's (and release group's) cover is `#sidebar .cover-art.present >
+  a.artwork-image > span.artwork-image[data-small-thumbnail]`.
+- **The span is not stable.** In the raw page it holds no `<img>` (only the
+  `<noscript>` one); MusicBrainz's script adds it after load, and when the
+  thumbnail fails it replaces the span's whole `.cover-art` content with
+  `<em class="cover-art-error">Image failed to load correctly…`. Seen in the
+  fixture run: the harness blocks every archive.org image (`ARCHIVE_ORG_RE`
+  in `tests/support/loadPage.js`), so by the time the userscript ran the span
+  was gone. In a browser the image loads and the span stays (it is there,
+  `<img>` inside, in the FRP snapshot). `_sbWireCover()` reads
+  `data-small-thumbnail` at init and does not wait for the `<img>`; the spec
+  serves a copy of each fixture with the thumbnails on a host it answers.
+- **What the copy opens:** all the release's images (`CAA_CTX`, path
+  `/release/<mbid>` or `/release-group/<mbid>`) at the record's front image,
+  asked on the click only, the `_artIconClick()` way. `CAA_CTX` and
+  `_artRelIconLoading` are declared far below the init call, so nothing of
+  them is touched before a click (TDZ) — a mutation that asked at init threw
+  instead of asking, and was rewritten to defer the call.
+- **Pre-existing, not touched:** 7 anchors of
+  `scripts/mutations/sidebar-overhaul.json` already matched 0 or 2 times at
+  HEAD 8ccbd8d (`tables:`, `more kinds:`, `disk:` and two `picture:` entries;
+  `python3 scripts/check-mutation-anchors.py
+  scripts/mutations/sidebar-overhaul.json`). The three this change moved were
+  re-anchored; the cover mutations were run as a subset.
+
+## 2026-10-21 — an annotation's history and versions, for their link previews (WIP.4, branch feat/pop-user-page-lists)
+
+Env: 2026-10-21T12:39:35+02:00 · NB-3641 · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) · Playwright 1.62.1 Chromium · no Tampermonkey (GM stubs)
+
+Asked for from `debug/release-tracks-tttr.html`: the annotation's "View
+annotation history" (`/release/3ec14d03-…/annotations`) had no card.
+Captured with `scripts/fetch-mb-page-fixture.js` on 2026-10-21:
+
+- **The history is login-only.** Logged out, the capture timed out twice
+  waiting for `#page` (the RG page captured fine in the same minute, so it
+  was not the browser check); `--auth` returned the page at once. So the
+  `annotations` kind has a `failNote` for a login page, and the fixture is
+  the logged-in one (only vzell's own name in it).
+- **The history page carries every version's text** in a JSON script inside
+  its form (`{"annotations":[{id, html, text, changelog, editor, …}]}`), so
+  the card shows the latest text without asking the version pages. The
+  table: `table#annotation-history`, columns Old, New, Editor, Date,
+  Version history; "View this version" → `/annotation/<n>`, then
+  "(<em>no changelog specified</em>)" or the changelog.
+- **A version page, logged out, cannot tell old from current by its text:**
+  both say "Annotation last modified on <date> UTC." (logged in, an old one
+  says "This is an old revision … as edited by <editor> on <date>"). Its
+  JSON has `annotation.id` and `entity.latest_annotation.id`, which decide,
+  and `annotation.editor.name`. First attempt read the wrong JSON: the
+  `div.releaseheader` carries its own `{"entityType":…,"gid":…}` script
+  BEFORE the annotation's, and `querySelector` took that one.
+- The current version is `/annotation` without a number (the version page's
+  "View current revision"), the same markup.
+
+## 2026-10-21 — "Live credit without a date" names the deduced date (WIP.5, branch feat/pop-user-page-lists)
+
+Env: 2026-10-21T12:43:30+02:00 · NB-3641 · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) · Playwright 1.62.1 Chromium · no Tampermonkey (GM stubs)
+
+Asked for on release 3ec14d03-… ("Born to Run (new live)", Toby Scott's
+"recording engineer" credit, screenshot): the hover card said only "⚠️ Live
+credit without a date".
+
+- **The date was already known.** `_liveDateCheckResult()` raises the ⚠️
+  only when the row has a "live recording of" date, and the small ⚠️ span's
+  own tooltip already said "(recorded 1988-04-27)". The card the user saw is
+  NOT that span's: it is the `<td>`'s finding title (`_writeFindingAttrs()`)
+  stacked with the link's sort name by `_dpCollectNotes()`. The span sits
+  beside the `<a>`, not around it, so its tooltip never joins the card.
+- **Why the cell title had no detail:** `_stampFindingRow()` asked
+  `detail()`/`compare()` only of COLUMN findings; a row finding
+  (`live-credit-nodate` is `scope: 'row'`) got its id and nothing else. Now
+  both scopes are asked; no other row finding has either, so nothing else
+  changed.
+- The date travels as `data-mb-live-date` on the flag span: the findings
+  stamp cloned rows (a mutation keeping it as a JS property failed already
+  on the first render), and a disk load restores the flags as HTML.
+- Snapshot track 4 for reference: its `dl.ars` has the live credits "solo
+  acoustic guitar … (on 1988-04-27)", event "(1988-04-27)", place "(on
+  1988-04-27)", "live recording of: Born to Run (on 1988-04-27)", and
+  "recording engineer: Toby Scott" with no date. The comment is "live,
+  1988‐04‐27: Los Angeles Memorial Sports Arena, …" (U+2010).
+
+## 2026-10-21 — rich comparison cards for the live near misses (WIP.6, branch feat/pop-user-page-lists)
+
+Env: 2026-10-21T12:53:52+02:00 · NB-3641 · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) · Playwright 1.62.1 Chromium · no Tampermonkey (GM stubs)
+
+Asked for from `debug/recording-comment-diff-tooltip.html` (FRP of
+/tag/acoustic rock/recording): "Because the Night [unplugged]" with the
+comment "live, 1993-4-21: Sony Music Studios, New York, NY, USA" showed only
+'Recording comment almost follows "live, YYYY-MM-DD: …": date is not written
+YYYY-MM-DD.' The snapshot's 110 `data-mb-tip-cmp` cells were all separator
+warnings; no near-miss cell had one.
+
+- **Why:** the live-title family is family-painted (`data-mb-live-flag`), so
+  `_writeFindingAttrs()` never writes its tip and a FINDINGS `compare` would
+  be ignored; `_stampLiveTitleRow()` built a comparison for `warn` only.
+- **No corrected text existed:** the classifiers return a `problem`
+  sentence, not where it is. `_liveNearMissFixed()` rebuilds the text, and
+  every candidate must PASS the classifier that flagged it, so nothing it
+  proposes is a near miss or an impossible date (a padded "1975-2-31" is
+  rejected that way).
+- **Gotcha:** a `kind: 'mark'` entry without `at` validates in
+  `_cmpTipData()` but is never placed by `_tipTextToHtml()` (it keys entries
+  by integer `at`). The card silently had no row until `at: 0` was added.
+- Other near misses on the snapshot page: "(Live)" (many: case), "(live:
+  KBCO Studios, Boulder, CO, USA)" (fixed to "live, KBCO Studios, …", the
+  location-only form), "(live, 1973/1976)" (no fix: two years; the mark
+  card).
+- `scripts/mutations/diff-cards.json`: the two entries anchored on the old
+  `const cmp = flag.kind === 'warn' ? _liveSepCmp(…) : null;` line were
+  re-anchored on `_liveFlagCmp()`; 6 new ones, 14/14 caught.
+
+## 2026-10-21 — test:full after WIP.3–WIP.6: one flake in sticky-page-headers
+
+Env: 2026-10-21T12:54:28+02:00 · NB-3641 · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) · Playwright 1.62.1 Chromium (chromium-fixtures + chromium-mobile) · no Tampermonkey (GM stubs)
+
+`python3 scripts/run-test-full.py` on `feat/pop-user-page-lists` at b9e151a:
+2108 passed, 1 failed, 2109 tests, 14 workers, wall 14 m 52 s (finished
+13:09:20 CEST). The failure: `sticky-page-headers.spec.js:1280` "search page:
+the status line after a bare h1 inside #content stays put", at its PREMISE
+`expect(before.scrollX).toBe(0)` (expectPinned()), i.e. the page was not at
+scrollX 0 when the first measurement was taken. Re-run alone with
+`--repeat-each=3`: 3/3 passed. None of WIP.3–WIP.6 runs on a search page
+(the cover copy is gated on a /release or /release-group path, the
+annotation kinds act on hover, the findings changes touch release and
+recording tables), so this is load-dependent timing in the test's setup,
+recorded here as a first sighting rather than fixed.
+
+## 2026-10-21 — MusicBrainz's jQuery UI dialog under our pinned bars (WIP.7, branch feat/pop-user-page-lists)
+
+Env: 2026-10-21T14:13:42+02:00 · NB-3641 · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) · Playwright 1.62.1 Chromium · no Tampermonkey (GM stubs); the report itself from the user's browser (version not given)
+
+Reported with screenshots on /release-group/f83d2211-… and /release/3ec14d03-…:
+a click on the SIDEBAR's cover opened MusicBrainz's own dialog, and the h1
+toolbar buttons ("Releases", "Data", "View", ⚙, ?) and the sidebar handle
+painted through it. On the artist page the same click opens our viewer
+(z-index 2147483400), so nothing showed through there.
+
+- `debug/mb-native-sidbar-image-open.html` (FRP, /event/47b84024-…, dialog
+  open): jQuery UI appends `div.ui-widget-overlay.ui-front` and
+  `div.ui-dialog.ui-front` (content `.artwork-dialog`) as the LAST children
+  of `<body>`, after the footer, with no inline z-index: jQuery UI's own
+  `.ui-front { z-index: 100 }` applies.
+- Measured on the release fixture after the render (positioned elements
+  with a z-index): MB header `.mb-vsb-chrome` 108, stuck header block 107,
+  tracklist h2 104, h3 102, thead 100, column resizers and sticky column
+  101, `#sidebar-toggle-handle` 10000 (fixed). Everything from 101 up was
+  above the dialog.
+- Fix: `_ensureMbDialogZStyle()` lifts the overlay to 10050 and the dialog
+  to 10051 (above our menus at 10000–10002, under our own dialogs at 20000+).
+  Not a guess at a class name: the selectors are the snapshot's.
+- Test trap: the fixture page already holds a hidden `.ui-dialog` of its own
+  (`display: none`), so the spec addresses its planted dialog by id.
+- HELP: no section described this; nothing in it was made false.
+
+## 2026-10-21 — the sidebar pictures get the CAA/EAA column's cards (WIP.8, branch feat/pop-user-page-lists)
+
+Env: 2026-10-21T14:45:12+02:00 · NB-3641 · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) · Playwright 1.62.1 Chromium · no Tampermonkey (GM stubs)
+
+Asked for with a screenshot of the artist page: pointing at the photo (in
+the sidebar or beside the name) showed a plain one-line tooltip; "the same
+treatment as an image in the CAA/EAA column", also on release groups,
+releases, places, instruments, events.
+
+- **Two cards, both existing looks.** A single picture (Commons,
+  IROMBOOK) gets the B2 image card (`_sbPicCardHtml()`, data-mbtt-fn
+  "sb-pic"): nothing to ask, the picture is shown already. A release,
+  release group or event cover gets the B1 card of every image of its
+  record (`_sbCoverCardHtml()`, "sb-cover"), through the card the
+  relationship-list cover icons already used — refactored into
+  `_artRecordCardHtml(el, ctx, path, title, foot)` so CAA and EAA share
+  it. The record is asked on the first hover, as those icons do (user's
+  choice, 2026-10-21).
+- **The sidebar's own cover link is now ours too**: a window capture-phase
+  click listener opens our viewer, so MusicBrainz's jQuery UI dialog (the
+  one WIP.7 lifted above our bars) no longer opens from the sidebar at all;
+  Ctrl/Shift/Alt/⌘ leave it to MusicBrainz.
+- **Events:** `.event-art` has the same `a.artwork-image >
+  span.artwork-image[data-small-thumbnail]` markup as `.cover-art` but no
+  `.present` class (fixture event-overview.html).
+- **Test trap:** the Commons tests plant a 1×1 PNG; without MusicBrainz's
+  CSS it sat at x 8, under the fixed sidebar handle (x 0–15, z 10000), so a
+  hover at its centre got the HANDLE's card ("Toggle Full Width Sidebar").
+  The planted image is now sized 120 px, as MusicBrainz's CSS would.
+- **Mutations:** re-anchored 5 entries this change moved (4 in
+  sidebar-overhaul.json, 1 in caa-card-keys.json) and, as asked, the 7 that
+  were already stale at HEAD 8ccbd8d (tables:, more kinds:, disk:, two
+  picture:). The full sidebar-overhaul.json list then ran 71/71 OK.
+
+## 2026-10-21 — sticky-page-headers "search page" flake: reproduced and fixed
+
+Env: 2026-10-21T14:46:26+02:00 · NB-3641 · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) · Playwright 1.62.1 Chromium · no Tampermonkey (GM stubs)
+
+The first sighting earlier today (test:full at b9e151a): "search page: the
+status line after a bare h1 inside #content stays put" failed on its
+premise `before.scrollX === 0`. Reproduced on demand with
+`--repeat-each=24 --workers=14`: 1/24 failed, "Received: 700" — the
+page (wider than the 700 px window) had been scrolled sideways before the
+first measurement, by the button click or by the global filter's focus
+landing after `settleFocusAndPointer()`'s wait. The test never returned to
+the left edge, which the annotation test in the same file already does with
+`toLeftEdge()` (its own 6 px premise failure, 2026-10-08). Fix in the test
+only: blur again, then `toLeftEdge()`, before measuring. With it: 24/24
+twice under the same load. Nothing in the userscript changed: the premise,
+not the property under test.
+
+## 2026-10-21 — annotation-version pageType (WIP.9, branch feat/pop-user-page-lists)
+
+Env: 2026-10-21T14:56:23+02:00 · NB-3641 · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) · Playwright 1.62.1 Chromium · no Tampermonkey (GM stubs)
+
+Asked for with `debug/annotation-artist.html` (/artist/70248960-…/annotation/630690)
+and `debug/annotation-release.html` (/release/3ec14d03-…/annotation/1063770), both FRP;
+the user chose "version vs current" for what it shows.
+
+- **The page** (raw captures, logged out): `div#content` with the entity's
+  h1 header, the tabs, a JSON script, then `div.annotation > h2.annotation +
+  div.annotation-body + p "Changelog:" + div.annotation-details`. No table,
+  no pagination. The JSON (`{annotation, entity: {latest_annotation},
+  numberOfRevisions, showChangeLog, showEmpty}`) carries BOTH texts as
+  rendered HTML, so the comparison needs nothing beyond the page. The
+  release header has its own JSON script first (see WIP.4's note).
+- **`@include`**: line 17's alternation gained `annotation(?:\/\d+)?`
+  (the skill's warning: without it the entry is unreachable, as the
+  `annotations` pageType once was).
+- **Disk trap:** the first version put the rich card's `data-mb-tip-cmp`
+  on the Status `<td>`; after Save → Load the statuses were back but the
+  card was not. The disk record keeps a cell's markup and only LISTED td
+  attributes (the length/video/work flags each have their own field), so the
+  status is now a span inside the cell. A disk-load hook was written and then
+  removed: a mutation showed it changed nothing (the file's groups render
+  as saved, and the page has no native table to replace).
+- The native annotation's own wiki heading ("Barcode and Other
+  Identifiers") survives the grouped render's h3/table sweep on this page
+  (pinned in the spec).
+
+## 2026-10-21 — test:full after WIP.7–WIP.9 and the sticky flake fix
+
+Env: 2026-10-21T14:57:08+02:00 · NB-3641 · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) · Playwright 1.62.1 Chromium (chromium-fixtures + chromium-mobile) · no Tampermonkey (GM stubs)
+
+`python3 scripts/run-test-full.py` on `feat/pop-user-page-lists` at ad95a5c:
+2116/2116 passed, 14 workers, wall 14 m 26 s (finished 15:11:34 CEST). The
+sticky-page-headers "search page" test that failed in the 12:54 run passed.
+
+## 2026-10-21 — short column header labels (9.99.1404, was WIP.1) and the discogs-links favicon flake (9.99.1405, was WIP.2) (branch feat/short-column-labels)
 
 Env: 2026-10-21T16:19:04+02:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.54.1-microsoft-standard-WSL2) · Playwright 1.62.1 Chromium · no Tampermonkey (GM stubs)
 
@@ -24983,7 +25303,7 @@ failed, `discogs-links.spec.js:196`.
   load-dependent flakes (`discogs-rate-limit.spec.js`,
   `fixture-load-no-archive-org-wait.spec.js`). Those are not addressed here.
 
-## 2026-10-21 — column header tooltips: the name in bold, descriptions for MusicBrainz's columns (WIP.3) (branch feat/short-column-labels)
+## 2026-10-21 — column header tooltips: the name in bold, descriptions for MusicBrainz's columns (9.99.1406, was WIP.3) (branch feat/short-column-labels)
 
 Env: 2026-10-21T17:05:32+02:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.54.1-microsoft-standard-WSL2) · Playwright 1.62.1 Chromium · no Tampermonkey (GM stubs)
 
@@ -25015,3 +25335,14 @@ See "Column header tooltips" in docs/claude/toolbar-and-header-ui.md.
   and now fails on the assertion it targets.
 - **`test:full`** 16:53:39–17:05:32 CEST (11 m 53 s): 2097/2098, the one
   failure being the purge spec above; it passes after the change, 5/5.
+
+## 2026-10-21 — test:full after merging main (9.99.1404–1406) into feat/pop-user-page-lists
+
+Env: 2026-10-21T17:37:53+02:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.54.1-microsoft-standard-WSL2) · Playwright 1.62.1 Chromium · no Tampermonkey (GM stubs)
+
+`python3 scripts/run-test-full.py` on `feat/pop-user-page-lists` at 0232650
+(the merge of `main` with the short column labels and the column header
+tooltips): 2131/2131 passed, 14 workers, wall 12 m 46 s (17:25:07–17:37:53
+CEST). The branch's own specs and the header-tooltip change did not collide.
+In particular, no spec of WIP.1–WIP.9 asserts that a native header has no
+`title`.

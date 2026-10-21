@@ -605,6 +605,24 @@ section on Disambiguation. `rec-event-mismatch`/`rec-place-mismatch` compare
 the comment with the event name and with the place name (= the venue, the
 location's first part). See docs/claude/findings.md.
 
+**The deduced date (2026-10-21).** A ⚠️ "no date attribute" flag exists only
+when the row has a "live recording of" date (`_liveDateCtx.recordingDate`),
+and that date is what the credit was measured against — so it is the date
+the credit can be deduced to be from. `_liveDateCheckResult()` returns it as
+`date`, `_appendLiveDateFlag()` stamps it as `data-mb-live-date` (an
+attribute: it survives `cloneNode` and the disk round trip, which stores the
+flags as HTML), and `live-credit-nodate`'s `detail()`
+(`_liveCreditDeducedDate()`) names it in the cell's title: "⚠️ Live credit
+without a date: probably 1988-04-27, the recording's own date (…)". That
+needed row findings to get a `detail()` at all: `_stampFindingRow()` now asks
+it for both scopes. The other dated credits of the track (event, place,
+instruments) are NOT consulted: they are what the ❌ twin compares, and the
+recording date is the one source every flagged row has. Spec
+`live-credit-deduced-date.spec.js` (each title against its own row's
+"Recording date"), plus a check in
+`live-date-flags-survive-disk-roundtrip.spec.js`; mutations
+`scripts/mutations/live-credit-deduced-date.json` (5, all caught).
+
 **Item 4: the release group decides the main event.** `initReleaseGroupLink()`
 (page init, and again at the end of every `stampFindings()`) rewrites the
 subheader's "see all versions" link from `release.releaseGroup` in the page's

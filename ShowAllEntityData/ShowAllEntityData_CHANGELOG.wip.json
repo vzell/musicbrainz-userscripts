@@ -1,0 +1,111 @@
+[
+  {
+    "version": "WIP.9",
+    "date": "2026-10-21",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "New page type: one version of an annotation (\"View this version\" on an annotation history, or \"View current revision\") gets a \"Compare with the current version\" button. It shows who wrote the version and when, and a table with one row per paragraph or heading: this version's text, the current version's text, and whether it is the same, changed, only in this version or only in the current version. Point at \"changed\" to see both texts with the difference marked. Both are read from the page itself."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "WIP.8",
+    "date": "2026-10-21",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "The sidebar picture and its copy beside the name now show the same hover card as an image in a CAA/EAA column, instead of a one-line tooltip: an artist's photo, a label's logo or a place's picture from Wikimedia Commons, and an instrument's IROMBOOK drawing, with the picture, where it comes from and its file name.",
+          "Release, release group and event pages: pointing at the cover beside the name, or at the sidebar's own cover, shows the CAA/EAA column's card of every image of the release (or the event's event art), asked for on that first hover; Space shows them all, Shift bigger. A click on either opens them all in the artwork viewer, starting at the front, instead of MusicBrainz's own window; Ctrl-click on the sidebar's cover still opens MusicBrainz's. Event pages now get the cover beside the name too."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "WIP.7",
+    "date": "2026-10-21",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "MusicBrainz's own pop-up windows, such as the one a click on the sidebar's cover opens on release, release group and event pages, now cover the whole page. The script's buttons beside the title, the headings that stay at the top while scrolling and the sidebar handle no longer show through them."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "WIP.6",
+    "date": "2026-10-21",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "The live near misses get the rich comparison card: a recording comment that \"almost follows 'live, YYYY-MM-DD: Venue, City, …'\", and a release, release group title or event name that starts with a date but is not quite in the live form, now show the text over the form it almost has, the difference marked (\"live, 1993-4-21: …\" over \"live, 1993‐04‐21: …\", \"Live, …\" over \"live, …\", \"1975‐02‐05 The Main Point, …\" over \"1975‐02‐05: The Main Point, …\"). Only a fix that cannot be read two ways is proposed, and only when the result is itself in the live form; when there is no single answer (\"05.02.1975\": which part is the day?), the text shows in one row with the part to rewrite marked."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "WIP.5",
+    "date": "2026-10-21",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "Release tracklist: the hover card of a \"Live credit without a date\" cell now names the date the credit is most likely from: the recording's own \"live recording of\" date, which the credit was checked against (\"⚠️ Live credit without a date: probably 1988-04-27, …\"). It stays there after filtering, sorting and loading the page from disk."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "WIP.4",
+    "date": "2026-10-21",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "Link previews for annotations: \"View annotation history\" (under an annotation and in the sidebar, on every kind of page that has one) shows how many versions the annotation has and the latest one's date, editor, changelog and first lines; its window lists every version, newest first, and a version opens its own card. MusicBrainz shows the history only to a logged-in editor, and logged out the card says so. \"View this version\" and \"View current revision\" show that version's date, editor, changelog and text. An annotation is copied as plain text, never as markup."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "WIP.3",
+    "date": "2026-10-21",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "Release and release group pages: the front cover from the sidebar now also appears at the start of the page heading, as an artist's photo, a label's logo or an instrument's drawing already did, so it stays in sight with the sidebar closed. A click, Enter or Space on it opens all of the release's Cover Art Archive images in the artwork viewer, starting at the front cover; they are asked for on that click only. The sidebar's own cover keeps MusicBrainz's link. Switches: \"Sidebar picture: hover card and viewer\" and \"Sidebar picture beside the name\"."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "WIP.2",
+    "date": "2026-10-21",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "Link previews on an editor's profile, \"Tags and ratings\": the \"view\" beside Tags upvoted shows how many tags and genres they voted for and with how many votes, the most used first; a tag opens its own tag card. The \"view\" beside Ratings shows their ratings as their ratings page does, a few per kind with their stars; an entity opens its own card. The stars on MusicBrainz's page are links that change a rating, and the window never copies them. Downvoted tags have no preview."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "WIP.1",
+    "date": "2026-10-21",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "Link previews on an editor's profile: every \"view\", \"N%\" and \"View all\" link of the statistics now has a card and a window. An editor's Open, Accepted, Auto-edits, Applied, Rejected, Failed and Cancelled edits, their Votes, and every edit search (\"Last 24 hours\", the edit types' percentages) open in the editing-history window, titled by what they list. An edit search is read again on every page load. The two \"view list\" links show the editor's subscribers (names, and how many are anonymous; a name opens that editor's card) and your authorized and registered applications (name, access, last token, digest authentication). An application's OAuth client ID or secret and its \"Revoke access\" link are never shown, and that page is never kept after a page load."
+        ]
+      }
+    ]
+  }
+]
