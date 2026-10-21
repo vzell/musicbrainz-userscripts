@@ -517,14 +517,14 @@
             label: "Sidebar picture: hover card and viewer",
             type: "checkbox",
             default: true,
-            description: "The picture MusicBrainz shows in the sidebar (an artist's photo, a label's logo, from Wikimedia Commons; an instrument's IROMBOOK drawing) gets a hover card and opens in the artwork viewer on a click, Enter or Space. Uses the picture MusicBrainz already loaded: no extra request."
+            description: "The picture MusicBrainz shows in the sidebar (an artist's photo, a label's logo, from Wikimedia Commons; an instrument's IROMBOOK drawing) gets a hover card and opens in the artwork viewer on a click, Enter or Space. Uses the picture MusicBrainz already loaded: no extra request. On a release or release group page, the cover gets a copy beside the name (see below), and the sidebar's own cover keeps MusicBrainz's link."
         },
 
         sa_sidebar_picture_in_header: {
             label: "Sidebar picture beside the name",
             type: "checkbox",
             default: true,
-            description: "Also show a small copy of the sidebar picture at the start of the page heading, so it stays in sight with the sidebar closed. Same hover card and viewer. Needs 'Sidebar picture: hover card and viewer'."
+            description: "Also show a small copy of the sidebar picture at the start of the page heading, so it stays in sight with the sidebar closed. Same hover card and viewer. On a release or release group page it is the front cover; a click opens all its Cover Art Archive images in the viewer (asked on that click). Needs 'Sidebar picture: hover card and viewer'."
         },
 
         sa_sidebar_tables_button: {
@@ -101229,32 +101229,132 @@ a { color: #1565c0; }`;
         const source = _sbPictureSource(img.currentSrc || img.src);
         if (!source) return;
         img.dataset.mbSbPic = '1';
-        if (!document.getElementById('mb-sb-pic-style')) {
-            // A drawing is fitted whole on white, not cropped: an IROMBOOK
-            // instrument is tall line art on a transparent ground.
-            const st = GM_addStyle(`
-                #sidebar img.mb-sb-pic, .mb-sb-avatar { cursor: zoom-in; }
-                #sidebar img.mb-sb-pic:focus-visible, .mb-sb-avatar:focus-visible { outline: 2px solid #2f5f9e; outline-offset: 2px; }
-                .mb-sb-avatar { display: inline-block; width: 34px; height: 34px; margin-right: 8px; vertical-align: middle; border: 1px solid #d9cfbd; border-radius: 3px; overflow: hidden; background: #fbf8f1; }
-                .mb-sb-avatar img { display: block; width: 100%; height: 100%; object-fit: cover; }
-                .mb-sb-avatar.mb-sb-avatar-contain { background: #fff; }
-                .mb-sb-avatar.mb-sb-avatar-contain img { object-fit: contain; }
-            `);
-            st.id = 'mb-sb-pic-style';
-        }
+        _sbEnsurePictureStyle();
         _sbPictureControl(img, img);
+        const box = _sbHeaderCopy(img.currentSrc || img.src, source.kind === 'irombook');
+        if (box) _sbPictureControl(box, img);
+    }
+
+    /**
+     * The sidebar picture's CSS, added once: the pointer, the focus ring and
+     * the 34 px copy at the start of the heading.
+     * @returns {void}
+     */
+    function _sbEnsurePictureStyle() {
+        if (document.getElementById('mb-sb-pic-style')) return;
+        // A drawing is fitted whole on white, not cropped: an IROMBOOK
+        // instrument is tall line art on a transparent ground.
+        const st = GM_addStyle(`
+            #sidebar img.mb-sb-pic, .mb-sb-avatar { cursor: zoom-in; }
+            #sidebar img.mb-sb-pic:focus-visible, .mb-sb-avatar:focus-visible { outline: 2px solid #2f5f9e; outline-offset: 2px; }
+            .mb-sb-avatar { display: inline-block; width: 34px; height: 34px; margin-right: 8px; vertical-align: middle; border: 1px solid #d9cfbd; border-radius: 3px; overflow: hidden; background: #fbf8f1; }
+            .mb-sb-avatar img { display: block; width: 100%; height: 100%; object-fit: cover; }
+            .mb-sb-avatar.mb-sb-avatar-contain { background: #fff; }
+            .mb-sb-avatar.mb-sb-avatar-contain img { object-fit: contain; }
+        `);
+        st.id = 'mb-sb-pic-style';
+    }
+
+    /**
+     * Puts the copy of a sidebar picture at the start of the page heading,
+     * unless `sa_sidebar_picture_in_header` is off, there is no heading, or
+     * it already has one.
+     * @param {string} src - The picture's address.
+     * @param {boolean} contain - Fit it whole (a drawing) instead of cropping.
+     * @returns {?HTMLSpanElement} The copy, for its control; null when none was made.
+     */
+    function _sbHeaderCopy(src, contain) {
         const h1 = headerContainer && headerContainer.tagName === 'H1' ? headerContainer : document.querySelector('#content h1, h1');
-        if (Lib.settings.sa_sidebar_picture_in_header !== false && h1 && !h1.querySelector('.mb-sb-avatar')) {
-            const box = document.createElement('span');
-            box.className = 'mb-sb-avatar';
-            if (source.kind === 'irombook') box.classList.add('mb-sb-avatar-contain');
-            const copy = document.createElement('img');
-            copy.src = img.currentSrc || img.src;
-            copy.alt = '';
-            box.appendChild(copy);
-            _sbPictureControl(box, img);
-            h1.prepend(box);
+        if (Lib.settings.sa_sidebar_picture_in_header === false || !h1 || h1.querySelector('.mb-sb-avatar')) return null;
+        const box = document.createElement('span');
+        box.className = 'mb-sb-avatar';
+        if (contain) box.classList.add('mb-sb-avatar-contain');
+        const copy = document.createElement('img');
+        copy.src = src;
+        copy.alt = '';
+        box.appendChild(copy);
+        h1.prepend(box);
+        return box;
+    }
+
+    /**
+     * The Cover Art Archive path of this page's release or release group
+     * (`/release/<mbid>`, `/release-group/<mbid>`, lower case, the key of
+     * `CAA_CTX`'s caches); '' on any other page.
+     * @returns {string}
+     */
+    function _sbCoverPath() {
+        const m = location.pathname.match(/^\/(release|release-group)\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})(?:\/|$)/i);
+        return m ? `/${m[1]}/${m[2].toLowerCase()}` : '';
+    }
+
+    /**
+     * Opens the release's (or release group's) Cover Art Archive images in
+     * the artwork viewer at the front image, asking the archive first when
+     * its record is not in yet (a click is the only thing that asks), the
+     * way `_artIconClick()` opens a relationship-list cover icon. When the
+     * record turns out empty or the archive does not answer, nothing opens
+     * (a debug line says why), and a later click asks again.
+     * @param {string} path - From `_sbCoverPath()`.
+     * @param {Element} opener - Focus returns here on close.
+     * @returns {void}
+     */
+    function _sbOpenCover(path, opener) {
+        const open = () => {
+            const images = CAA_CTX.imagesCache.get(path) || [];
+            if (!images.length) {
+                Lib.debug(CAA_CTX.key, `_sbOpenCover: no images for ${path}` +
+                    (CAA_CTX.failedCache.has(path) ? ' (the archive did not answer)' : ''));
+                return;
+            }
+            const front = images.findIndex(im => im.front);
+            _artViewerOpen(CAA_CTX, path, null, front < 0 ? 0 : front,
+                { opener, title: `${_cachedEntityName || document.title} — cover art` });
+        };
+        if (CAA_CTX.countCache.has(path) && !CAA_CTX.failedCache.has(path)) open();
+        else {
+            if (CAA_CTX.failedCache.has(path)) CAA_CTX.countCache.delete(path);
+            _artRelIconLoad(path, open, CAA_CTX);
         }
+    }
+
+    /**
+     * Wires a release's or release group's sidebar cover
+     * (`.cover-art.present span.artwork-image`): a copy at the start of the
+     * heading that opens the release's images in the artwork viewer. The
+     * address is the span's `data-small-thumbnail`, there before
+     * MusicBrainz's script puts the `<img>` in, and the browser loads that
+     * thumbnail for the sidebar anyway. MusicBrainz's own sidebar cover keeps
+     * its own link and is not touched.
+     * @param {HTMLElement} span
+     * @returns {void}
+     */
+    function _sbWireCover(span) {
+        if (span.dataset.mbSbPic) return;
+        const path = _sbCoverPath();
+        const raw = span.getAttribute('data-small-thumbnail') || '';
+        if (!path || !raw) return;
+        span.dataset.mbSbPic = '1';
+        _sbEnsurePictureStyle();
+        const box = _sbHeaderCopy(raw.startsWith('//') ? `https:${raw}` : raw, false);
+        if (!box) return;
+        const label = path.startsWith('/release-group/') ? 'release group' : 'release';
+        box.setAttribute('role', 'button');
+        box.tabIndex = 0;
+        box.setAttribute('aria-label', `Open the ${label}'s cover art`);
+        box.classList.add('mb-sb-pic');
+        _setTip(box, `${label.charAt(0).toUpperCase() + label.slice(1)} cover · Cover Art Archive. Click to open its images in the viewer.`);
+        box.addEventListener('click', (e) => {
+            if (e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey) return;
+            e.preventDefault();
+            e.stopPropagation();
+            _sbOpenCover(path, box);
+        });
+        box.addEventListener('keydown', (e) => {
+            if (e.key !== 'Enter' && e.key !== ' ') return;
+            e.preventDefault();
+            _sbOpenCover(path, box);
+        });
     }
 
     /**
@@ -101263,13 +101363,19 @@ a { color: #1565c0; }`;
      * another script's markup, then MusicBrainz's own Commons component, then
      * an instrument's IROMBOOK drawing (`#sidebar > div.picture`, server-
      * rendered, so it is found at once); it is a literal here because this
-     * runs at init, before this part of the file (TDZ).
+     * runs at init, before this part of the file (TDZ). A release's or
+     * release group's cover (`_sbWireCover()`) is server-rendered too.
      * @returns {void}
      */
     function _sbInitPicture() {
         if (_foreignHost || Lib.settings.sa_sidebar_picture === false) return;
         const sidebar = document.getElementById('sidebar');
         if (!sidebar) return;
+        if (_sbCoverPath()) {
+            const cover = sidebar.querySelector('.cover-art.present span.artwork-image[data-small-thumbnail]');
+            if (cover) _sbWireCover(cover);
+            return;
+        }
         const find = () => {
             const img = sidebar.querySelector('.entity-image .picture img, .commons-image .picture img, :scope > .picture img');
             if (img && (img.currentSrc || img.src)) { _sbWirePicture(img); return true; }

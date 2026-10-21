@@ -1,5 +1,17 @@
 [
   {
+    "version": "WIP.3",
+    "date": "2026-10-21",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "Release and release group pages: the front cover from the sidebar now also appears at the start of the page heading, as an artist's photo, a label's logo or an instrument's drawing already did, so it stays in sight with the sidebar closed. A click, Enter or Space on it opens all of the release's Cover Art Archive images in the artwork viewer, starting at the front cover; they are asked for on that click only. The sidebar's own cover keeps MusicBrainz's link. Switches: \"Sidebar picture: hover card and viewer\" and \"Sidebar picture beside the name\"."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.2",
     "date": "2026-10-21",
     "sections": [

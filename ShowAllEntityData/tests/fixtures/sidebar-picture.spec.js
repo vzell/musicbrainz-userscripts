@@ -240,3 +240,128 @@ test.describe('an instrument\'s IROMBOOK drawing', () => {
         await expect(viewer(page)).toBeVisible();
     });
 });
+
+// A release's or release group's front cover: MusicBrainz's own
+// `#sidebar .cover-art.present span.artwork-image`, server-rendered with its
+// address in `data-small-thumbnail`; MusicBrainz's script puts the `<img>` in,
+// and replaces the whole span with "Image failed to load" when it cannot. The
+// harness blocks every archive.org image, so each fixture is served from a
+// copy whose thumbnails live on a host this spec answers (THUMB_HOST).
+// The guarantees pinned:
+//   - a copy of the cover leads the heading at load, from the span's
+//     thumbnail address (made absolute), with its card; the sidebar's own
+//     cover is not touched (it keeps MusicBrainz's link);
+//   - nothing is asked of the Cover Art Archive before the click; the click
+//     asks once and opens the viewer on ALL the release's images, at the
+//     FRONT image even when it is not the first (the record is reordered so
+//     the front is second); Esc gives focus back to the copy;
+//   - the copy still leads the heading after the tracks rendered;
+//   - a release group page does the same with its own path;
+//   - no `.present` cover, or the copy switched off, makes no copy.
+
+const REL_URL = 'https://musicbrainz.org/release/20a52f17-ce0b-48bf-911e-9f962a518185';
+const REL_FIXTURE = path.join(__dirname, 'release-tracks-live-date-flags.html');
+const THUMB_HOST = 'thumbs.mb-test.invalid';
+const REL_THUMB = `https://${THUMB_HOST}/download/mbid-20a52f17-ce0b-48bf-911e-9f962a518185/mbid-20a52f17-ce0b-48bf-911e-9f962a518185-40457792022_thumb250.jpg`;
+const RG_URL = 'https://musicbrainz.org/release-group/fa9c43a7-2592-3336-a09b-1414b4b6ee68';
+const RG_FIXTURE = path.join(__dirname, 'rg-page-berlin.html');
+const CAA_CORS = { 'access-control-allow-origin': '*' };
+const CAA_RECORD = JSON.parse(require('fs').readFileSync(path.join(__dirname, 'caa-release-d0adda7e.json'), 'utf8'));
+
+/**
+ * Loads a release or release group page from a copy of `fixture` whose
+ * archive.org thumbnails are on THUMB_HOST (`edit` changes the copy further),
+ * with the Cover Art Archive record served locally (the front image moved to
+ * second place) and every record request counted in `asked`.
+ * @param {import('@playwright/test').Page} page
+ * @param {import('@playwright/test').TestInfo} testInfo
+ * @param {string} url
+ * @param {string} fixture
+ * @param {{settings?: Object, edit?: function(string): string}} [opts]
+ * @returns {Promise<{asked: string[]}>}
+ */
+async function openCover(page, testInfo, url, fixture, { settings = {}, edit = (h) => h } = {}) {
+    const fs = require('fs');
+    const copy = testInfo.outputPath(path.basename(fixture));
+    fs.writeFileSync(copy, edit(fs.readFileSync(fixture, 'utf8').split('//archive.org/download/').join(`//${THUMB_HOST}/download/`)));
+    const asked = [];
+    const images = CAA_RECORD.images.slice();
+    const fi = images.findIndex((im) => im.front);
+    const [front] = images.splice(fi, 1);
+    images.splice(1, 0, front);
+    const body = JSON.stringify({ ...CAA_RECORD, images });
+    await page.route(`https://${THUMB_HOST}/**`, (r) => r.fulfill({ body: PNG, contentType: 'image/png' }));
+    await page.route(/^https:\/\/coverartarchive\.org\//, (r) => {
+        const u = r.request().url();
+        if (/^https:\/\/coverartarchive\.org\/(release|release-group)\/[0-9a-f-]{36}\/?$/.test(u)) {
+            asked.push(u);
+            return r.fulfill({ status: 200, headers: CAA_CORS, contentType: 'application/json', body });
+        }
+        return r.fulfill({ status: 200, headers: CAA_CORS, body: PNG, contentType: 'image/png' });
+    });
+    await loadUserscriptPage(page, { url, fixtureFile: copy, testMode: true,
+                                     settingsOverride: { sa_enable_caa_pics: false, sa_enable_relationships_column: false,
+                                                         sa_art_idb_enable: false, ...settings } });
+    return { asked };
+}
+
+test.describe('a release\'s or release group\'s cover beside the name', () => {
+    test('the copy leads the heading at load; the click opens all the images at the front', async ({ page }, testInfo) => {
+        const { asked } = await openCover(page, testInfo, REL_URL, REL_FIXTURE);
+        await expect(avatar(page)).toHaveCount(1);
+        expect(await avatarFirst(page), 'the copy leads the heading').toBe(true);
+        await expect(avatar(page).locator('img')).toHaveAttribute('src', REL_THUMB);
+        await expect(avatar(page)).toHaveAttribute('role', 'button');
+        await expect(avatar(page)).toHaveAttribute('data-mb-tip', '');
+        expect(await avatar(page).getAttribute('title')).toContain('Cover Art Archive');
+        await expect(page.locator('#sidebar .cover-art .mb-sb-pic'), 'the sidebar\'s own cover is not touched').toHaveCount(0);
+        await observerRan(page);
+        expect(asked, 'nothing asked before the click').toEqual([]);
+        await avatar(page).click();
+        await expect(viewer(page)).toBeVisible();
+        await expect(viewer(page).locator('.mb-artv-title')).toContainText('cover art');
+        await expect(viewer(page).locator('.mb-artv-pos'), 'opened at the front image, which is second').toHaveText(`2 / ${CAA_RECORD.images.length}`);
+        expect(asked).toEqual(['https://coverartarchive.org/release/20a52f17-ce0b-48bf-911e-9f962a518185']);
+        await page.keyboard.press('Escape');
+        await expect(viewer(page)).toBeHidden();
+        expect(await page.evaluate(() => document.activeElement && document.activeElement.matches('h1 .mb-sb-avatar'))).toBe(true);
+        // Enter opens it again from the record already in.
+        await page.keyboard.press('Enter');
+        await expect(viewer(page)).toBeVisible();
+        expect(asked.length, 'the record is asked once').toBe(1);
+    });
+
+    test('the copy still leads the heading after "Show all Tracks" rendered', async ({ page }, testInfo) => {
+        await openCover(page, testInfo, REL_URL, REL_FIXTURE);
+        await expect(avatar(page)).toHaveCount(1);
+        await page.route(`${REL_URL}?**`, (r) => r.fulfill({ path: testInfo.outputPath(path.basename(REL_FIXTURE)), contentType: 'text/html' }));
+        await page.click('button[data-label="Show all Tracks for Release"]');
+        await waitForRenderComplete(page, { waitForAutoResize: false });
+        await expect(page.locator('table.tbl tbody tr').first()).toBeVisible();
+        await expect(avatar(page)).toHaveCount(1);
+        expect(await avatarFirst(page), 'the copy still leads the heading on the final page').toBe(true);
+    });
+
+    test('a release group page opens its own record', async ({ page }, testInfo) => {
+        const { asked } = await openCover(page, testInfo, RG_URL, RG_FIXTURE);
+        await expect(avatar(page)).toHaveCount(1);
+        expect(await avatar(page).getAttribute('title')).toContain('Release group cover');
+        await avatar(page).click();
+        await expect(viewer(page)).toBeVisible();
+        expect(asked).toEqual(['https://coverartarchive.org/release-group/fa9c43a7-2592-3336-a09b-1414b4b6ee68']);
+    });
+
+    test('no copy with the copy switched off', async ({ page }, testInfo) => {
+        await openCover(page, testInfo, REL_URL, REL_FIXTURE, { settings: { sa_sidebar_picture_in_header: false } });
+        await expect(page.locator('h1')).toHaveCount(1);
+        await observerRan(page);
+        await expect(avatar(page)).toHaveCount(0);
+    });
+
+    test('no copy without a present cover', async ({ page }, testInfo) => {
+        await openCover(page, testInfo, REL_URL, REL_FIXTURE, { edit: (h) => h.replace('class="cover-art present"', 'class="cover-art"') });
+        await expect(page.locator('h1')).toHaveCount(1);
+        await observerRan(page);
+        await expect(avatar(page)).toHaveCount(0);
+    });
+});

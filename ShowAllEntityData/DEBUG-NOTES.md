@@ -25004,3 +25004,39 @@ either page:
   entity link, then an event's "(date)", `span.comment`, `span.cancelled`.
   The last `li` of each kind: `a[href="/user/vzell/ratings/<kind>"]` "View
   all ratings". 12 ratings over 7 kinds on capture.
+
+## 2026-10-21 — the sidebar cover beside the release title (WIP.3, branch feat/pop-user-page-lists)
+
+Env: 2026-10-21T12:18:43+02:00 · NB-3641 · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) · Playwright 1.62.1 Chromium · no Tampermonkey (GM stubs)
+
+Asked for from `debug/release-tracks-tttr.html` (FRP of release
+3ec14d03-…): artist, place and instrument pages show the sidebar picture at
+the start of the h1, a release page did not.
+
+- **Why it was missing:** `_sbInitPicture()` looked only for
+  `.entity-image/.commons-image .picture img` and `#sidebar > .picture img`,
+  and `_sbPictureSource()` accepted only Commons and IROMBOOK addresses. A
+  release's (and release group's) cover is `#sidebar .cover-art.present >
+  a.artwork-image > span.artwork-image[data-small-thumbnail]`.
+- **The span is not stable.** In the raw page it holds no `<img>` (only the
+  `<noscript>` one); MusicBrainz's script adds it after load, and when the
+  thumbnail fails it replaces the span's whole `.cover-art` content with
+  `<em class="cover-art-error">Image failed to load correctly…`. Seen in the
+  fixture run: the harness blocks every archive.org image (`ARCHIVE_ORG_RE`
+  in `tests/support/loadPage.js`), so by the time the userscript ran the span
+  was gone. In a browser the image loads and the span stays (it is there,
+  `<img>` inside, in the FRP snapshot). `_sbWireCover()` reads
+  `data-small-thumbnail` at init and does not wait for the `<img>`; the spec
+  serves a copy of each fixture with the thumbnails on a host it answers.
+- **What the copy opens:** all the release's images (`CAA_CTX`, path
+  `/release/<mbid>` or `/release-group/<mbid>`) at the record's front image,
+  asked on the click only, the `_artIconClick()` way. `CAA_CTX` and
+  `_artRelIconLoading` are declared far below the init call, so nothing of
+  them is touched before a click (TDZ) — a mutation that asked at init threw
+  instead of asking, and was rewritten to defer the call.
+- **Pre-existing, not touched:** 7 anchors of
+  `scripts/mutations/sidebar-overhaul.json` already matched 0 or 2 times at
+  HEAD 8ccbd8d (`tables:`, `more kinds:`, `disk:` and two `picture:` entries;
+  `python3 scripts/check-mutation-anchors.py
+  scripts/mutations/sidebar-overhaul.json`). The three this change moved were
+  re-anchored; the cover mutations were run as a subset.

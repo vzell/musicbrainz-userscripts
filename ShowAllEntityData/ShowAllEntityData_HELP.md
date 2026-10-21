@@ -934,6 +934,11 @@ close every sidebar section; the headings of the main page are left alone.
   viewer, and the copy at the start of the heading, there before and after
   you load the table. A drawing is shown whole in the copy, not cropped, and
   its viewer bar has no Commons link.
+  On a release or release group page, the front cover from the sidebar gets
+  the copy at the start of the heading too. A click, Enter or Space on it
+  opens all of the release's images from the Cover Art Archive in the viewer,
+  starting at the front cover; they are asked for on that click, not before.
+  The sidebar's own cover keeps MusicBrainz's link.
   Switches: *Sidebar picture: hover card and viewer*, *Sidebar picture beside
   the name*.
 - **The picture in previews.** The link previews of an artist, a label or a

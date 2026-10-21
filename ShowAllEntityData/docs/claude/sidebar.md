@@ -134,6 +134,16 @@ Specs:
   h1 before the toolbar is built; nothing in the render rewrites the h1, so
   it is still first there on the final page.
 
+- **A release's or release group's front cover** (added 2026-10-21,
+  `debug/release-tracks-tttr.html`): MusicBrainz's own server-rendered
+  `#sidebar .cover-art.present > a.artwork-image > span.artwork-image`, its
+  addresses in `data-small-thumbnail` / `-large-` / `-huge-`. MusicBrainz's
+  script puts the `<img>` into the span after load, and REPLACES the whole
+  span with "Image failed to load correctly" when the thumbnail does not
+  load. So `_sbWireCover()` reads `data-small-thumbnail` (made absolute)
+  straight away instead of waiting for the `<img>`. A cover with no
+  `.present` (no front image) gets no copy.
+
 The two Commons ones arrive AFTER load: the raw page has neither. `_sbInitPicture()` is called
 once at init, right after the required-elements check, on MusicBrainz only
 (`_foreignHost`). It wires a picture that is already there (selector
@@ -144,13 +154,28 @@ MutationObserver for up to 15 s.
 **Nothing is requested.** The picture is MusicBrainz's own, already in the
 browser. The viewer loads it through the external path (`external: true`: no
 art cache, no referrer), like `_dpArtViewerClick()` does for another site's
-images.
+images. **The one exception is a click on a cover's copy**: it opens ALL the
+release's (or release group's) images, so it asks the Cover Art Archive
+record (`_sbOpenCover()`, the same path as `_artIconClick()`:
+`_artRelIconLoad(path, open, CAA_CTX)`, or at once when `CAA_CTX.countCache`
+already has it, e.g. after the release page's "Cover art (N)" section). Only
+that click asks, never the load.
 
 **Rules.**
 - **Only a Commons file or an IROMBOOK drawing** (`_sbPictureSource()`:
   `_sbCommonsFile()`, the host ends in `wikimedia.org`; `_sbIrombookFile()`,
-  `static.metabrainz.org/irombook/`). The event sidebar's event art already
-  has the artwork viewer, and is left alone.
+  `static.metabrainz.org/irombook/`), **or a release / release group cover**
+  (a path of its own, below). The event sidebar's event art already has the
+  artwork viewer, and is left alone.
+- **A cover differs from a picture in four places**: only the COPY is wired
+  (MusicBrainz's own sidebar cover keeps its link, so with
+  `sa_sidebar_picture_in_header` off nothing changes on the page); it is
+  found only on a `/release/<mbid>…` or `/release-group/<mbid>…` path
+  (`_sbCoverPath()`, which is also the `CAA_CTX` cache key), and on those
+  pages the Commons selector is not watched; the viewer context is
+  `CAA_CTX`, not `_SB_PIC_CTX`, so the bar reads "CAA", shows every image and
+  starts at the record's `front` one; its card reads "Release cover · Cover
+  Art Archive".
 - **A drawing differs in three places only**: the card says "IROMBOOK"
   instead of "Wikimedia Commons"; the viewer gets no `pageUrl` (a drawing has
   no file page, so the bar shows no link); the copy beside the name carries
@@ -170,10 +195,16 @@ images.
   collapsed.
 
 **Settings.** `sa_sidebar_picture` (default on) and `sa_sidebar_picture_in_header`
-(default on).
+(default on). Both gate the cover copy too.
 
-**Specs.** `sidebar-picture.spec.js` (10: both Commons markups, then an
-instrument's drawing) and `sidebar-picture.mobile.spec.js` (1). The Commons
+**Specs.** `sidebar-picture.spec.js` (15: both Commons markups, an
+instrument's drawing, then the release / release group cover) and
+`sidebar-picture.mobile.spec.js` (1). The cover tests serve a COPY of each
+fixture whose archive.org thumbnails are moved to a host the spec answers:
+the harness blocks every archive.org image, and MusicBrainz's script would
+replace the blocked span before the userscript looked. The record is served
+with its front image moved to second place, so "opens at the front" cannot
+pass by starting at index 0. The Commons
 tests add the picture late and serve upload.wikimedia.org from a 1×1 PNG; the
 instrument tests load `sidebar-picture-instrument-recordings.html` (built by
 `scripts/build-sidebar-picture-instrument-fixture.py`), serve the IROMBOOK host
@@ -181,7 +212,8 @@ from the same PNG, and check the copy leads the h1 before and after "Show all
 Recordings for Instrument". A "left alone" test waits one macrotask
 turn (`observerRan()`): an observer callback is a microtask, so this is a real
 settle, not a sleep. There are 14 `picture:` mutations in
-`sidebar-overhaul.json` (six of them for the drawing, added 2026-10-20). The "still
+`sidebar-overhaul.json` (six of them for the drawing, added 2026-10-20) and
+6 `cover:` ones (2026-10-21). The "still
 first on the final page" half has no mutation: no code keeps it there, it
 holds because nothing rewrites the h1.
 
