@@ -1856,6 +1856,17 @@ TRACKLIST you can switch the card off, search the words instead of the exact
 phrase (like the website's search, with many more hits), drop the
 restriction to the release's artist, and set how many closest titles to show.
 
+**The event itself, above that card.** When the track's **Recorded at event**
+cell links an event, a second card sits right above the release group card:
+the event's name, type, date, place, tour, line-up and the start of its
+setlist, as the event link's own preview shows them. Each card opens with
+its kind ("Event", "Release group"), so you can tell the two apart. The first
+hover on a track of an event asks MusicBrainz once, after the release group
+search; the answer is kept like the other previews. A track whose event is
+only named in its comment shows no event card. Switch it off with *Show the
+track's event above the "#" release group card* in ⚙️ Settings → 💿 RELEASE
+TRACKLIST.
+
 **Event and place against the comment.** A **Recorded at event** cell is
 marked ❌ when none of its events is named like the recording comment without
 its event type: the comment `live, 1996‐04‐19: Saal 1, ICC Berlin, …` needs

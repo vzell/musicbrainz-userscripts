@@ -1,0 +1,80 @@
+[
+    {
+        "name": "the \"#\" source stacks nothing",
+        "why": "Without the source's stack the event card never shows above the release group card.",
+        "edits": [
+            {
+                "find": "            stack: (t, start, repaint) => _eventRgEventStack(t.el, start, repaint),\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/release-event-colours-rg-tooltip.spec.js",
+        "grep": "another event: the event card above the release group card",
+        "expect": "fail"
+    },
+    {
+        "name": "a repaint may start the event lookup",
+        "why": "The engine's rule: only a show asks. A failed lookup's repaint would ask again, and again (the 503 loop the docs record).",
+        "edits": [
+            {
+                "find": "            if (t.src.stack) _dpFillNotes(t, false, repaint);\n            _dpPlacePeek(t.el);\n        };",
+                "replace": "            if (t.src.stack) _dpFillNotes(t, true, repaint);\n            _dpPlacePeek(t.el);\n        };"
+            }
+        ],
+        "spec": "tests/fixtures/release-event-colours-rg-tooltip.spec.js",
+        "grep": "a failed lookup says so, and a repaint does not ask again",
+        "expect": "fail"
+    },
+    {
+        "name": "the event target stays on the event link",
+        "why": "Its request is wanted only while a card shows for its element (_mbPopWanted()); the event link has no card, so the lookup is dropped at its rate slot and the box stays loading.",
+        "edits": [
+            {
+                "find": "        const et = Object.assign(base, { el: td, src: _EVENT_RG_EVENT_SRC });",
+                "replace": "        const et = Object.assign(base, { el: a, src: _EVENT_RG_EVENT_SRC });"
+            }
+        ],
+        "spec": "tests/fixtures/release-event-colours-rg-tooltip.spec.js",
+        "grep": "the main event: the release's own event",
+        "expect": "fail"
+    },
+    {
+        "name": "the setting does not gate the event card",
+        "why": "sa_event_rg_event_card off must show the release group card alone and ask nothing.",
+        "edits": [
+            {
+                "find": "        if (Lib.settings.sa_event_rg_event_card === false || !td.parentElement) return [];",
+                "replace": "        if (!td.parentElement) return [];"
+            }
+        ],
+        "spec": "tests/fixtures/release-event-colours-rg-tooltip.spec.js",
+        "grep": "setting off: no event card",
+        "expect": "fail"
+    },
+    {
+        "name": "the stacked box has no kind line",
+        "why": "Two cards one above the other: without \"Event\" over the upper one, it is not clear which box is which.",
+        "edits": [
+            {
+                "find": "        notes.forEach((n, i) => { if (n.target) _dpAddKindHead(box.children[i], n.target); });\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/release-event-colours-rg-tooltip.spec.js",
+        "grep": "another event: the event card above the release group card",
+        "expect": "fail"
+    },
+    {
+        "name": "the event card is read from any event link of the row",
+        "why": "Only the \"Recorded at event\" column names the track's event: the title cell's own relationships (dl.ars) link events too, so with the column's link gone the row still showed a card.",
+        "edits": [
+            {
+                "find": "            if (plan.nameOf(i) === 'Recorded at event') return row.cells[i].querySelector('a[href*=\"/event/\"]');\n        }\n        return null;",
+                "replace": "        }\n        return row.querySelector('a[href*=\"/event/\"]');"
+            }
+        ],
+        "spec": "tests/fixtures/release-event-colours-rg-tooltip.spec.js",
+        "grep": "a row whose event cell links no event",
+        "expect": "fail"
+    }
+]

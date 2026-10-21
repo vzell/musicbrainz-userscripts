@@ -18,6 +18,7 @@ const path = require('path');
 const { test, expect } = require('../support/test');
 const { loadUserscriptPage } = require('../support/loadPage');
 const { waitForRenderComplete } = require('../support/browser');
+const { routeEventLookups } = require('../support/eventLookups');
 
 const RELEASE_URL = 'https://musicbrainz.org/release/e384f062-85a3-4141-9122-0814d987cda3';
 const FIXTURE = path.join(__dirname, 'release-tracks-brixton-night.html');
@@ -27,10 +28,11 @@ const json = (name) => fs.readFileSync(path.join(__dirname, name), 'utf8');
  * Loads Brixton Night with the WS/2 search and browse routed and counted.
  *
  * @param {import('@playwright/test').Page} page
- * @param {{search?: function(string): {status: number, body: string}, settings?: Object}} [opts]
- * @returns {Promise<{searches: string[], browses: string[]}>}
+ * @param {{search?: function(string): {status: number, body: string}, settings?: Object,
+ *   eventStatus?: function(string): ?number}} [opts]
+ * @returns {Promise<{searches: string[], browses: string[], lookups: string[]}>}
  */
-async function open(page, { search = null, settings = {} } = {}) {
+async function open(page, { search = null, settings = {}, eventStatus = null } = {}) {
     await page.context().route('https://static.metabrainz.org/**', (route) => route.abort('blockedbyclient'));
     await page.context().route('https://coverartarchive.org/**', (route) => route.fulfill({ status: 404, body: '' }));
     const searches = [];
@@ -45,6 +47,7 @@ async function open(page, { search = null, settings = {} } = {}) {
         browses.push(route.request().url());
         return route.fulfill({ status: 200, contentType: 'application/json', body: json('ws2-rg-release-browse.json') });
     });
+    const lookups = await routeEventLookups(page, { status: eventStatus });
     await loadUserscriptPage(page, { url: RELEASE_URL, fixtureFile: FIXTURE, testMode: true, settingsOverride: { sa_rich_tooltip_delay_ms: 0, ...settings } });
     await page.route('https://musicbrainz.org/release/**', (route) => route.fulfill({ path: FIXTURE, contentType: 'text/html' }));
     await page.click('button[data-label="Show all Tracks for Release"]');
@@ -52,7 +55,7 @@ async function open(page, { search = null, settings = {} } = {}) {
     const master = page.locator('.mb-master-toggle');
     if (await master.count() && (await master.getAttribute('data-state')) === 'collapsed') await master.click();
     await page.mouse.move(0, 0);
-    return { searches, browses };
+    return { searches, browses, lookups };
 }
 
 const RAH22 = '1996‐04‐22: Royal Albert Hall, London, England, UK';
@@ -306,5 +309,117 @@ test.describe('per-event "#" colours and the "#" release group card', () => {
         expect(opened[0]).toBe('/release-group/fa9c43a7-2592-3336-a09b-1414b4b6ee68');
         expect(opened[1]).toMatch(/^\/search\?query=releasegroup%3A%22.*&type=release_group&method=advanced$/);
         expect(opened[2]).toBe('/release-group/499a96d4-f934-34a8-a9f7-0636ff42ba6b');
+    });
+});
+
+// The track's event stacked above the "#" card (sa_event_rg_event_card,
+// mockup https://claude.ai/artifact/JekitWKi2rFCiC7r3HYzru variant A):
+// the "Recorded at event" link's event, as the link previews' event card,
+// in the note stack (#mb-dp-notes) right above the release group card.
+// WS/2 answers: scripts/probe-event-card-fixtures.py.
+test.describe('the "#" card\'s stacked event card', () => {
+    const RAH22_ID = '0ee722a0-00b8-45a4-ba21-f4d549ce29bd';
+    const BRIX24_ID = '066b48dd-4246-4553-ba5d-94fd2d29115a';
+    const eventBox = (page) => page.locator('#mb-dp-notes > .mb-dp-note-event');
+    let pageErrors;
+
+    test.beforeEach(({ page }) => {
+        pageErrors = [];
+        page.on('pageerror', (e) => pageErrors.push(String(e.stack || e.message)));
+    });
+
+    test.afterEach(() => {
+        expect(pageErrors, `uncaught page errors: ${JSON.stringify(pageErrors)}`).toEqual([]);
+    });
+
+    test('another event: the event card above the release group card, its kind line; one lookup per event', async ({ page }) => {
+        const { lookups } = await open(page, { search: () => ({ status: 200, body: foundFor(RAH22) }) });
+        await hoverHash(page, 2, 9);
+        await expect(tip(page)).toContainText('Found by searching for this event', { timeout: 15000 });
+        const box = eventBox(page);
+        await expect(box).toBeVisible();
+        // The pill only once loaded: the loading shell's title is the name too.
+        await expect(box.locator('.mb-tt-pill').first()).toHaveText('Concert', { timeout: 15000 });
+        await expect(box.locator('.mb-tt-title').first()).toHaveText(RAH22);
+        await expect(box.locator('dl.mb-dp-kv dt').first()).toHaveText('Place');
+        // The kind line names it, with the event glyph; the card below it
+        // is the release group's.
+        await expect(box.locator(':scope > .mb-pop-kind-head')).toHaveText('Event');
+        await expect(box.locator(':scope > .mb-pop-kind-head img')).toHaveAttribute('src', /\/static\/images\/entity\/event\.svg$/);
+        await expect(tip(page).locator(':scope > .mb-pop-kind-head')).toHaveText('Release group');
+        // ABOVE the card, on its left edge, no wider.
+        const b = await box.boundingBox();
+        const c = await tip(page).boundingBox();
+        expect(b.y + b.height, 'the box ends above the card').toBeLessThanOrEqual(c.y);
+        expect(Math.round(b.x)).toBe(Math.round(c.x));
+        expect(b.width).toBeLessThanOrEqual(c.width + 1);
+        expect(lookups).toEqual([RAH22_ID]);
+        // The other track of the same event: from memory, nothing asked.
+        await hoverHash(page, 2, 10);
+        await expect(eventBox(page).locator('.mb-tt-title').first()).toHaveText(RAH22);
+        expect(lookups, 'kept per event').toEqual([RAH22_ID]);
+    });
+
+    test('the main event: the release\'s own event above its own release group', async ({ page }) => {
+        const { lookups } = await open(page);
+        await hoverHash(page, 0, 0);
+        await expect(tip(page)).toContainText('main event');
+        await expect(eventBox(page).locator('.mb-tt-pill').first()).toHaveText('Concert', { timeout: 15000 });
+        await expect(eventBox(page).locator('.mb-tt-title').first()).toHaveText(BRIX25.replace('04‐25', '04‐24'));
+        expect(lookups).toEqual([BRIX24_ID]);
+    });
+
+    test('setting off: no event card, no lookup; the release group card as before', async ({ page }) => {
+        const { lookups } = await open(page, { settings: { sa_event_rg_event_card: false } });
+        await hoverHash(page, 0, 0);
+        await expect(tip(page)).toContainText('Born Again', { timeout: 15000 });
+        await expect(eventBox(page)).toHaveCount(0);
+        expect(lookups).toEqual([]);
+    });
+
+    test('the schema default is on', async ({ page }) => {
+        const { lookups } = await open(page, { settings: { sa_event_rg_event_card: undefined } });
+        await hoverHash(page, 0, 0);
+        await expect(eventBox(page)).toBeVisible();
+        await expect.poll(() => lookups.length, { timeout: 15000 }).toBe(1);
+    });
+
+    test('a row whose event cell links no event: nothing stacked, nothing asked', async ({ page }) => {
+        const { lookups } = await open(page);
+        // The live row's "Recorded at event" link, taken away: the event is
+        // then known from the row's key only, which has no MBID.
+        const removed = await page.evaluate(() => {
+            const row = document.querySelectorAll('table.tbl')[0].tBodies[0].rows[0];
+            const head = Array.from(row.closest('table').tHead.rows[0].cells).findIndex(th => /Recorded at event/.test(th.textContent));
+            const a = head >= 0 ? row.cells[head].querySelector('a[href*="/event/"]') : null;
+            if (a) a.remove();
+            return !!a;
+        });
+        expect(removed, 'the fixture row links its event').toBe(true);
+        await hoverHash(page, 0, 0);
+        await expect(tip(page)).toContainText('Born Again', { timeout: 15000 });
+        await expect(eventBox(page)).toHaveCount(0);
+        expect(lookups).toEqual([]);
+    });
+
+    test('a failed lookup says so, and a repaint does not ask again; the next hover does', async ({ page }) => {
+        test.setTimeout(60000);
+        await page.clock.install();
+        let fail = true;
+        const { lookups } = await open(page, { eventStatus: () => (fail ? 500 : null) });
+        await hoverHash(page, 0, 0);
+        // A repaint that asked again would put the box back to loading, over
+        // and over, and it would never settle on the failure.
+        await expect(eventBox(page)).toContainText('Could not load it', { timeout: 30000 });
+        const n = lookups.length;
+        await expect(tip(page)).toContainText('Born Again', { timeout: 15000 });
+        // Past several rate slots (1.1 s each): still nothing asked.
+        await page.clock.fastForward(5000);
+        await expect(eventBox(page)).toContainText('Could not load it');
+        expect(lookups.length, 'no lookup from a repaint').toBe(n);
+        fail = false;
+        await hoverHash(page, 0, 0);
+        await expect(eventBox(page).locator('.mb-tt-pill').first()).toHaveText('Concert', { timeout: 15000 });
+        expect(lookups.length, 'asked again on the hover').toBeGreaterThan(n);
     });
 });

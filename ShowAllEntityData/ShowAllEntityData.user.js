@@ -3175,6 +3175,18 @@
                          'up cards nor starts searches.'
         },
 
+        sa_event_rg_event_card: {
+            label: 'Show the track\'s event above the "#" release group card',
+            type: 'checkbox',
+            default: true,
+            description: 'Stacks a card of the event the track was recorded at (its "Recorded at event" link) ' +
+                         'right above the "#" release group card: its name, type, date, place, tour, line-up and ' +
+                         'the start of its setlist, as the event link\'s own preview shows them. The first hover ' +
+                         'on a track of an event asks MusicBrainz once (after the release group search, at the ' +
+                         'same one-a-second pace); the answer is kept like the other previews. A track whose event ' +
+                         'is named only in its comment, without a link, shows no event card.'
+        },
+
         sa_event_rg_search_phrase: {
             label: 'Search the event name as an exact phrase',
             type: 'checkbox',
@@ -21115,18 +21127,25 @@
     /**
      * Fills the stack above the card with a target's notes, one box each;
      * the track/recording note's box is `#mb-dp-origin`. Hidden when there
-     * are none.
+     * are none. A source may add cards of its own below the notes, right
+     * above its card (`stack(t, start, repaint)`: the "#" cell's event,
+     * `_eventRgEventStack()`); a box with a `target` gets that target's kind
+     * line (`_dpAddKindHead()`). Only a call with `start` may let such a card
+     * ask (the engine's rule): the show, never a repaint.
      *
      * @param {object} t - A target (`_popResolve()`).
+     * @param {boolean} [start] - The card is being shown (not repainted).
+     * @param {?function(): void} [repaint] - The card's repaint.
      * @returns {void}
      */
-    function _dpFillNotes(t) {
-        const notes = _dpCollectNotes(t);
+    function _dpFillNotes(t, start = false, repaint = null) {
+        const notes = _dpCollectNotes(t).concat(t.src.stack ? t.src.stack(t, start, repaint || (() => {})) : []);
         const box = _dpEnsureNotesEl();
         box.style.display = notes.length ? 'flex' : 'none';
         box.innerHTML = notes.map(n =>
             `<div class="mb-tt-liner mb-dp-note mb-dp-note-${n.kind}" role="tooltip"${n.kind === 'origin' ? ' id="mb-dp-origin"' : ''}>${n.html}</div>`
         ).join('');
+        notes.forEach((n, i) => { if (n.target) _dpAddKindHead(box.children[i], n.target); });
     }
 
     /**
@@ -21329,6 +21348,9 @@
             if (!_dpPeekShowing(t.el)) return;
             el.innerHTML = t.src.card(t, false, repaint);
             _dpAddKindHead(el, t);
+            // A source's own stacked cards repaint with it (their answers
+            // come in through this repaint too).
+            if (t.src.stack) _dpFillNotes(t, false, repaint);
             _dpPlacePeek(t.el);
         };
         // The notes of the link and its cell, as boxes above the card (Ctrl
@@ -21339,12 +21361,15 @@
         // A Relationships icon's own stack gives way too: the card's stack
         // carries its boxes.
         if (t.el.closest('td.mb-rel-cell')) _relHideTooltip();
-        _dpFillNotes(t);
+        _dpFillNotes(t, false, repaint);
         // Shown before the source is asked, so a request it starts finds
         // its card showing when its rate slot comes up.
         el.style.display = 'block';
         el.innerHTML = t.src.card(t, true, repaint);
         _dpAddKindHead(el, t);
+        // A source's stacked cards ask after the card itself, so the card's
+        // own request keeps the first rate slot.
+        if (t.src.stack) _dpFillNotes(t, true, repaint);
         _dpPlacePeek(t.el);
     }
 
@@ -22217,6 +22242,9 @@
                 border-left: 3px solid #8a7f6a;
             }
             #mb-dp-notes .mb-dp-note-tip { border-left-color: #c48a00; }
+            /* The "#" cell's event (_eventRgEventStack()): a whole card, so
+               the card's padding and border, not a note's left rule. */
+            #mb-dp-notes .mb-dp-note-event { padding: 8px 12px 9px; border-left: 1px solid #d9cfbd; }
             #mb-dp-origin { border-left-color: #8b1a1a; }
             #mb-dp-notes .mb-dp-origin-kv {
                 display: grid;
@@ -22236,7 +22264,7 @@
             /* The card's kind line (_dpAddKindHead()): MusicBrainz's own
                entity glyph (_MB_KIND_ICON) and the kind, as in the window's
                title bar; a hairline under it. */
-            #mb-dp-peek > .mb-pop-kind-head {
+            :is(#mb-dp-peek, #mb-dp-notes .mb-dp-note-event) > .mb-pop-kind-head {
                 display: flex;
                 align-items: center;
                 font: 700 12px/1.3 Georgia, "Times New Roman", Times, serif;
@@ -22245,7 +22273,7 @@
                 margin-bottom: 6px;
                 border-bottom: 1px solid #d9cfbd;
             }
-            #mb-dp-peek .mb-pop-kind-icon {
+            :is(#mb-dp-peek, #mb-dp-notes) .mb-pop-kind-icon {
                 flex: none;
                 width: 16px;
                 height: 16px;
@@ -22279,25 +22307,25 @@
             #mb-dp-peek .mb-dp-thumbs img { height: 44px; max-width: 72px; object-fit: cover; border: 1px solid #d9cfbd; border-radius: 2px; }
             #mb-dp-peek .mb-dp-src { margin-top: 1px; }
             #mb-dp-peek .mb-dp-excerpt { font-style: italic; }
-            :is(#mb-dp-peek, .mb-dp-dialog) .mb-dp-kv {
+            :is(#mb-dp-peek, .mb-dp-note-event, .mb-dp-dialog) .mb-dp-kv {
                 display: grid;
                 grid-template-columns: max-content minmax(0, 1fr);
                 gap: 1px 10px;
                 margin: 4px 0 0;
             }
-            :is(#mb-dp-peek, .mb-dp-dialog) .mb-dp-kv dt { font-style: italic; color: #7a6d5c; }
-            :is(#mb-dp-peek, .mb-dp-dialog) .mb-dp-kv dd { margin: 0; }
-            :is(#mb-dp-peek, .mb-dp-dialog) .mb-dp-tracks { margin: 3px 0 0; padding: 0; list-style: none; }
-            #mb-dp-peek .mb-dp-tracks { columns: 2; column-gap: 16px; }
-            :is(#mb-dp-peek, .mb-dp-dialog) .mb-dp-tracks li { break-inside: avoid; }
-            #mb-dp-peek .mb-dp-tracks li { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-            :is(#mb-dp-peek, .mb-dp-dialog) .mb-dp-pos { color: #7a6d5c; font-variant-numeric: tabular-nums; margin-right: 6px; }
+            :is(#mb-dp-peek, .mb-dp-note-event, .mb-dp-dialog) .mb-dp-kv dt { font-style: italic; color: #7a6d5c; }
+            :is(#mb-dp-peek, .mb-dp-note-event, .mb-dp-dialog) .mb-dp-kv dd { margin: 0; }
+            :is(#mb-dp-peek, .mb-dp-note-event, .mb-dp-dialog) .mb-dp-tracks { margin: 3px 0 0; padding: 0; list-style: none; }
+            :is(#mb-dp-peek, .mb-dp-note-event) .mb-dp-tracks { columns: 2; column-gap: 16px; }
+            :is(#mb-dp-peek, .mb-dp-note-event, .mb-dp-dialog) .mb-dp-tracks li { break-inside: avoid; }
+            :is(#mb-dp-peek, .mb-dp-note-event) .mb-dp-tracks li { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+            :is(#mb-dp-peek, .mb-dp-note-event, .mb-dp-dialog) .mb-dp-pos { color: #7a6d5c; font-variant-numeric: tabular-nums; margin-right: 6px; }
             :is(#mb-dp-peek, .mb-dp-dialog) .mb-dp-stat { margin: 4px 0 2px; }
             :is(#mb-dp-peek, .mb-dp-dialog) .mb-dp-stat b { font-size: 1.6em; font-variant-numeric: tabular-nums; }
-            :is(#mb-dp-peek, .mb-dp-dialog) .mb-dp-spin { display: inline-block; animation: mb-dp-spin 0.9s linear infinite; }
+            :is(#mb-dp-peek, .mb-dp-note-event, .mb-dp-dialog) .mb-dp-spin { display: inline-block; animation: mb-dp-spin 0.9s linear infinite; }
             @keyframes mb-dp-spin { to { transform: rotate(360deg); } }
             @media (prefers-reduced-motion: reduce) {
-                :is(#mb-dp-peek, .mb-dp-dialog) .mb-dp-spin { animation: none; }
+                :is(#mb-dp-peek, .mb-dp-note-event, .mb-dp-dialog) .mb-dp-spin { animation: none; }
             }
             .mb-dp-dialog .mb-dp-tbtn {
                 display: inline-flex;
@@ -22660,7 +22688,7 @@
             }
             #mb-dp-peek .mb-rg-cover img { width: 100%; height: 100%; object-fit: cover; display: block; }
             #mb-dp-peek .mb-rg-headtext { min-width: 0; }
-            :is(#mb-dp-peek, .mb-dp-dialog) .mb-rg-pills { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+            :is(#mb-dp-peek, .mb-dp-note-event, .mb-dp-dialog) .mb-rg-pills { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
             .mb-dp-dialog .mb-rg-pills { margin: 6px 0 2px; }
             .mb-dp-dialog .mb-tt-pill {
                 display: inline-block; background: #efe6d4; color: #4a3f33; border: 1px solid #d9cfbd; border-radius: 3px;
@@ -22708,7 +22736,7 @@
             }
             /* The MusicBrainz entity cards (_mbEntitySource()): one track per
                line with its length at the end. */
-            #mb-dp-peek .mb-pop-card { width: 440px; max-width: 100%; }
+            :is(#mb-dp-peek, .mb-dp-note-event) .mb-pop-card { width: 440px; max-width: 100%; }
             /* An artist's, label's or place's picture (_mbPopCardPicture()),
                known only after a Space: 64 px beside the facts. */
             #mb-dp-peek .mb-pop-card-pic { display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: 10px; align-items: start; }
@@ -22716,11 +22744,11 @@
             #mb-dp-peek .mb-pop-main { min-width: 0; }
             .mb-dp-dialog .mb-pop-xpic { margin: 6px 0 4px; }
             .mb-dp-dialog .mb-pop-xpic .mb-dp-xcover { margin: 0 0 3px; cursor: zoom-in; }
-            #mb-dp-peek .mb-pop-tracks { columns: 1; }
-            :is(#mb-dp-peek, .mb-dp-dialog) .mb-pop-tracks li { display: flex; gap: 6px; align-items: baseline; }
-            :is(#mb-dp-peek, .mb-dp-dialog) .mb-pop-tracks .mb-dp-pos { flex: none; min-width: 1.6em; margin-right: 0; }
-            :is(#mb-dp-peek, .mb-dp-dialog) .mb-pop-ttl { flex: 1; min-width: 0; }
-            #mb-dp-peek .mb-pop-ttl { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+            :is(#mb-dp-peek, .mb-dp-note-event) .mb-pop-tracks { columns: 1; }
+            :is(#mb-dp-peek, .mb-dp-note-event, .mb-dp-dialog) .mb-pop-tracks li { display: flex; gap: 6px; align-items: baseline; }
+            :is(#mb-dp-peek, .mb-dp-note-event, .mb-dp-dialog) .mb-pop-tracks .mb-dp-pos { flex: none; min-width: 1.6em; margin-right: 0; }
+            :is(#mb-dp-peek, .mb-dp-note-event, .mb-dp-dialog) .mb-pop-ttl { flex: 1; min-width: 0; }
+            :is(#mb-dp-peek, .mb-dp-note-event) .mb-pop-ttl { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
             :is(#mb-dp-peek, .mb-dp-dialog) .mb-pop-len { flex: none; color: #7a6d5c; font-variant-numeric: tabular-nums; }
             .mb-dp-dialog .mb-dp-kv a, .mb-dp-dialog .mb-dp-xsub a, .mb-dp-dialog .mb-pop-ttl a { color: #6b3f12; }
             /* A collection (_mbParseCollectionPage()): two lines of its
@@ -46765,6 +46793,23 @@
     const _eventRgPlans = new WeakMap();
 
     /**
+     * A table's findings plan (`_findingPlanForTable()`), made once per
+     * table and kept in `_eventRgPlans`.
+     *
+     * @param {?HTMLTableElement} table
+     * @returns {?ReturnType<typeof _findingPlanForTable>}
+     */
+    function _eventRgPlan(table) {
+        if (!table) return null;
+        let plan = _eventRgPlans.get(table);
+        if (!plan) {
+            plan = _findingPlanForTable(table);
+            _eventRgPlans.set(table, plan);
+        }
+        return plan;
+    }
+
+    /**
      * MBIDs of the release's artist credit, from the page's own JSON.
      *
      * @returns {string[]}
@@ -46801,12 +46846,7 @@
      * @returns {?string}
      */
     function _eventSearchText(row) {
-        const table = row.closest('table');
-        let plan = table ? _eventRgPlans.get(table) : null;
-        if (table && !plan) {
-            plan = _findingPlanForTable(table);
-            _eventRgPlans.set(table, plan);
-        }
+        const plan = _eventRgPlan(row.closest('table'));
         const ce = plan ? _rowRecCommentEvent(row, plan) : null;
         if (ce) return ce.event;
         const key = row.dataset.mbEventKey || '';
@@ -47110,13 +47150,63 @@
     }
 
     /**
+     * The source the "#" cell's stacked event card claims
+     * (`_eventRgEventStack()`): a MusicBrainz entity, so its kind line has
+     * the event glyph (`_mbKindIconUrl()`).
+     * @type {{id: string, kind: string}}
+     */
+    const _EVENT_RG_EVENT_SRC = { id: 'mb-entity', kind: 'Event' };
+
+    /**
+     * The event link of a row's "Recorded at event" cell, the first one (the
+     * column holds one event per track, `_findRecordedAtDt(…)[0]`).
+     *
+     * @param {HTMLTableRowElement} row
+     * @returns {?HTMLAnchorElement}
+     */
+    function _eventRgEventLink(row) {
+        const plan = _eventRgPlan(row.closest('table'));
+        if (!plan) return null;
+        for (let i = 0; i < row.cells.length; i++) {
+            if (plan.nameOf(i) === 'Recorded at event') return row.cells[i].querySelector('a[href*="/event/"]');
+        }
+        return null;
+    }
+
+    /**
+     * The "#" cell's stacked card (`stack` of `_eventRgSource()`, shown
+     * above its release group card by `_dpFillNotes()`): the event the
+     * row's "Recorded at event" cell links, as the link previews' event card
+     * (`_MB_KINDS.event`: the same lookup, the same cache, the same rate
+     * gate). Its target is a copy of the event link's on the HOVERED cell,
+     * so the request is wanted while the "#" card shows (`_mbPopWanted()`).
+     * None when the row links no event (an event named only in the live
+     * comment has no MBID to look up) or with `sa_event_rg_event_card` off.
+     * Only a call with `start` asks: the hover, never a repaint.
+     *
+     * @param {HTMLTableCellElement} td - The "#" cell.
+     * @param {boolean} start
+     * @param {function(): void} repaint - The card's repaint.
+     * @returns {Array<{kind: string, html: string, target: object}>}
+     */
+    function _eventRgEventStack(td, start, repaint) {
+        if (Lib.settings.sa_event_rg_event_card === false || !td.parentElement) return [];
+        const a = _eventRgEventLink(td.parentElement);
+        const base = a ? _mbPopTarget(a) : null;
+        if (!base || base.type !== 'event') return [];
+        const et = Object.assign(base, { el: td, src: _EVENT_RG_EVENT_SRC });
+        return [{ kind: 'event', html: _MB_KINDS.event.card(et, start, repaint), target: et }];
+    }
+
+    /**
      * The "#" cell of a live track (`_EVENT_RG_CELL_SEL`: a release
      * tracklist row with an event key) as a source of the popup engine: the
      * release group of the track's event (`_eventRgCardHtml()`), the
-     * release's own for the main event, else one a search finds. Its card
-     * waits for Ctrl unless `sa_event_rg_tooltip_without_ctrl` is on; Space
-     * pins the window (`_eventRgWindowHtml()`), and ‹ › step down the "#"
-     * cells of every visible row, from one sub-table into the next. Off with
+     * release's own for the main event, else one a search finds; above it,
+     * the event itself (`stack`, `_eventRgEventStack()`). Its card waits for
+     * Ctrl unless `sa_event_rg_tooltip_without_ctrl` is on; Space pins the
+     * window (`_eventRgWindowHtml()`), and ‹ › step down the "#" cells of
+     * every visible row, from one sub-table into the next. Off with
      * `sa_event_rg_tooltip`.
      *
      * @returns {object} The source.
@@ -47143,6 +47233,7 @@
                 return new URL(path, window.location.origin).href;
             },
             card: (t, start, repaint) => _eventRgCardHtml(t.el, start, repaint),
+            stack: (t, start, repaint) => _eventRgEventStack(t.el, start, repaint),
             extracted: (t, start, force, repaint) => _eventRgWindowHtml(t.el, start, force, repaint),
             onAreaClick: _rgOnAreaClick,
             steps: () => Array.from(document.querySelectorAll(_EVENT_RG_CELL_SEL)).filter(td => td.getClientRects().length > 0),

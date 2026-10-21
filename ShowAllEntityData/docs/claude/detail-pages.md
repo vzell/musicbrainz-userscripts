@@ -83,6 +83,7 @@ release page adds two (below). A source has:
 | `liveFailTitle`, a target's `noLive`  | the Live page's failure heading ("Could not load the detail page." unless set; the external source: "the page"); no Live page button for that target (YouTube) |
 | `steps(t)`, `stepId(el)`              | what ‹ › step through, and an identity that survives the `cloneNode(true)` re-renders                                                                          |
 | `kind`, `wide`, `onAreaClick(e, t)`   | the dialog's title, a wider card, a click in the Extracted view (a sortable header)                                                                            |
+| `stack(t, start, repaint)` (optional) | cards of its own in the note stack, right above its card: `[{kind, html, target?}]`; a `target` gets its kind line (`_dpFillNotes()`; the "#" cell's event)    |
 
 Rules that fail silently if broken:
 
@@ -117,6 +118,33 @@ tints and the "#" card"):
   down the "#" cells of every visible row (`stepId` = `data-mb-row-idx`). Off
   with `sa_event_rg_tooltip`. Alt+click stays its own handler
   (`initEventRgTooltip()`).
+  - **Its stacked event card (`stack`, `_eventRgEventStack()`, 2026-10-21,
+    mockup https://claude.ai/artifact/JekitWKi2rFCiC7r3HYzru, decision 2
+    variant A; `sa_event_rg_event_card`, default on).** Above the release
+    group card, as the last box of `#mb-dp-notes`: the event the row's
+    "Recorded at event" cell links (`_eventRgEventLink()`, by column name
+    through the findings plan, NEVER the row's first event link: the title
+    cell's own `dl.ars` links events too), shown as `_MB_KINDS.event.card()`,
+    the same lookup, IndexedDB cache and rate gate as the event link's own
+    preview. Its target is `_mbPopTarget(a)` with `el` set to the HOVERED "#"
+    cell, because `_mbPopWanted()` drops a request whose element shows no card
+    at its rate slot; `src` is `_EVENT_RG_EVENT_SRC` (`mb-entity`, so the
+    kind line gets the event glyph). `_dpShowPeek()` fills the notes without
+    `start` before the card, and again WITH `start` after the card's own
+    `card(t, true)`, so the release-group search or browse keeps the first
+    rate slot. Every repaint refills the stack without `start` (a failed
+    lookup is asked again by the next hover only). A row that links no
+    event (the event named only in a comment has no MBID) stacks nothing.
+    The box is `.mb-dp-note-event`, with a card's padding and border, not a
+    note's left rule. Its body's CSS comes from extending the card's
+    `:is(#mb-dp-peek, …)` selector lists with `.mb-dp-note-event`, not from
+    copies. Covered by `release-event-colours-rg-tooltip.spec.js` "the "#"
+    card's stacked event card" (fixture answers
+    `ws2-pop-event-{brixton-0424,rah-0422}.json`, from
+    `scripts/probe-event-card-fixtures.py`, routed by
+    `tests/support/eventLookups.js`, which `release-rg-popup.spec.js` uses
+    too, so no spec that hovers a "#" cell reaches the network); mutation
+    list `event-hash-event-card.json`.
 
 Both share `_rgReleases` (a group's releases as far as loaded) and `_rgFacts`
 (its lookup), and the window `_rgWindowFor()` builds:

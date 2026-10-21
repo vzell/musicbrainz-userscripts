@@ -1,0 +1,147 @@
+{
+  "type-id": "ef55e8d7-3d00-394a-8012-f5506a29ff0b",
+  "type": "Concert",
+  "setlist": "@ [70248960-cb53-4ea4-943a-edb18f7d336f|Bruce Springsteen]\r\n# with\r\n@ [9a214f8b-f606-47d7-803f-f1b96854ae14|Kevin Buell]\r\n\r\n* [3fff3842-e572-394e-a3c0-69a9dccccd50|The Ghost of Tom Joad]\r\n* [edee001d-572c-352a-8486-dcfe06f8fc90|Atlantic City]\r\n* [ff84940b-6940-33d0-b343-16370f33ca15|Straight Time]\r\n* [c2146e4a-cc11-32fe-81ac-310073f02ad2|Highway 29]\r\n* [d3cbf5a8-c80a-3273-a405-e756cf11e9ca|Darkness on the Edge of Town]\r\n* [75a7b094-f011-3177-a2bc-7d59d2e8de09|State Trooper]\r\n* [b1684ddf-3673-348f-847a-7a538230d5f5|Mansion on the Hill]\r\n* [8506885d-3efa-45db-bc9f-c2d9330bb635|Pilgrim in the Temple of Love]\r\n* [cce38f48-6d14-4f2f-80fd-a09d0cbd19c7|Red Headed Woman]\r\n* [2ba51d23-e042-3279-b9ee-de5b552fafdb|Brothers Under the Bridge]\r\n* [55d593ce-52cc-30ec-9494-eca1ab879f5c|Born in the U.S.A.]\r\n* [511de63f-d586-364d-b62a-0919941a41d7|Dry Lightning]\r\n* [3ceaab7d-52b4-3957-93e6-dfb7459803df|Seeds]\r\n* [f4a77656-8cdb-365c-aef9-034c098e249f|Youngstown]\r\n* [fb6f5b78-65a5-3d8a-b1a0-e7431d1e4b14|Sinaloa Cowboys]\r\n* [a39a5b73-5d05-304b-9e5b-3ce210900cf9|The Line]\r\n* [6ce583b4-ca66-3f52-a7e8-5941f7f49ae0|Balboa Park]\r\n* [483abf96-6154-32e2-982f-5f7bab0a39a7|Across the Border]\r\n* [ceb9c01a-a31a-3bf8-8289-e81f880f53d4|Bobby Jean]\r\n* [58a01740-e85b-36a6-bcee-24bf53b8b2fe|This Hard Land]\r\n* [218391f6-1d68-353b-8a25-39a5a94c95a5|Streets of Philadelphia]\r\n* [0af60b56-55d3-374d-87ce-7463abcd7943|Galveston Bay]\r\n* [13411c83-ddd8-31ca-b968-79e4cf6db8fb|The Promised Land]",
+  "disambiguation": "",
+  "id": "066b48dd-4246-4553-ba5d-94fd2d29115a",
+  "relations": [
+    {
+      "direction": "backward",
+      "type": "main performer",
+      "attributes": [],
+      "source-credit": "",
+      "target-credit": "",
+      "end": null,
+      "type-id": "936c7c95-3156-3889-a062-8a0cd57f8946",
+      "artist": {
+        "name": "Kevin Buell",
+        "id": "9a214f8b-f606-47d7-803f-f1b96854ae14",
+        "disambiguation": "",
+        "country": null,
+        "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+        "sort-name": "Buell, Kevin",
+        "type": "Person"
+      },
+      "begin": null,
+      "attribute-values": {},
+      "ended": false,
+      "attribute-ids": {},
+      "target-type": "artist"
+    },
+    {
+      "begin": null,
+      "type-id": "936c7c95-3156-3889-a062-8a0cd57f8946",
+      "artist": {
+        "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+        "name": "Bruce Springsteen",
+        "disambiguation": "",
+        "country": "US",
+        "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+        "type": "Person",
+        "sort-name": "Springsteen, Bruce"
+      },
+      "end": null,
+      "target-credit": "",
+      "target-type": "artist",
+      "ended": false,
+      "attribute-ids": {
+        "acoustic guitar": "00beaf8e-a781-431c-8130-7c2871696b7d",
+        "other vocals": "c359be96-620a-435c-bd25-2eb0ce81a22e",
+        "harmonica": "63e37f1a-30b6-4746-8a49-dfb55be3cdd1"
+      },
+      "attribute-values": {},
+      "attribute-credits": {
+        "other vocals": "vocals"
+      },
+      "type": "main performer",
+      "direction": "backward",
+      "source-credit": "",
+      "attributes": [
+        "acoustic guitar",
+        "harmonica",
+        "other vocals"
+      ]
+    },
+    {
+      "attribute-values": {},
+      "target-type": "place",
+      "attribute-ids": {},
+      "ended": false,
+      "type-id": "e2c6f697-07dc-38b1-be0b-83d740165532",
+      "begin": null,
+      "target-credit": "Brixton Academy",
+      "end": null,
+      "attributes": [],
+      "place": {
+        "type": "Venue",
+        "coordinates": {
+          "longitude": -0.114922,
+          "latitude": 51.465107
+        },
+        "type-id": "cd92781a-a73f-30e8-a430-55d7521338db",
+        "address": "211 Stockwell Road, London, SW9 9SL",
+        "name": "O₂ Academy Brixton",
+        "id": "71073546-8e50-48a8-a781-6628d91760c0",
+        "disambiguation": "",
+        "area": {
+          "name": "Brixton",
+          "id": "61941444-5a83-43e2-ba48-4db7438e0f26",
+          "disambiguation": "",
+          "sort-name": "Brixton",
+          "type": "District",
+          "type-id": "84039871-5e47-38ca-a66a-45e512c8290f"
+        }
+      },
+      "source-credit": "",
+      "direction": "forward",
+      "type": "held at"
+    },
+    {
+      "source-credit": "",
+      "attributes": [],
+      "type": "part of",
+      "direction": "forward",
+      "series": {
+        "type": "Tour",
+        "type-id": "8ff6df0e-3dce-3bdf-bd57-d386c51b0060",
+        "disambiguation": "",
+        "id": "5baa4a40-5c7a-466a-b2d7-b8d9c198a035",
+        "name": "The Ghost of Tom Joad Tour: Solo Acoustic"
+      },
+      "target-type": "series",
+      "attribute-ids": {},
+      "ended": false,
+      "attribute-values": {},
+      "begin": null,
+      "type-id": "707d947d-9563-328a-9a7d-0c5b9c3a9791",
+      "end": null,
+      "target-credit": ""
+    },
+    {
+      "attribute-ids": {},
+      "ended": false,
+      "target-type": "url",
+      "attribute-values": {},
+      "url": {
+        "id": "5171ac12-6872-404c-a074-ef8df3c01592",
+        "resource": "http://brucebase.wikidot.com/1996#240496"
+      },
+      "target-credit": "",
+      "end": null,
+      "type-id": "30ee8e92-5722-4dd7-943c-a2fa82b9aff4",
+      "begin": null,
+      "source-credit": "",
+      "attributes": [],
+      "type": "review",
+      "direction": "forward"
+    }
+  ],
+  "life-span": {
+    "ended": true,
+    "begin": "1996-04-24",
+    "end": "1996-04-24"
+  },
+  "name": "1996‐04‐24: Brixton Academy, London, England, UK",
+  "cancelled": false,
+  "time": ""
+}

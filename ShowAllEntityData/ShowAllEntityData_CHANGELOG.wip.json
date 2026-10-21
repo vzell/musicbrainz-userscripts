@@ -1,5 +1,17 @@
 [
     {
+        "version": "WIP.2",
+        "date": "2026-10-21",
+        "sections": [
+            {
+                "label": "🚀 Feature",
+                "items": [
+                    "Release tracklist: hovering a live track's \"#\" cell now also shows the event the track was recorded at, in a card stacked right above the release group card: its name, type, date, place, tour, line-up and the start of its setlist, as the event link's own preview shows them. With the kind line of WIP.1, the two cards read \"Event\" and \"Release group\". The first hover on a track of an event asks MusicBrainz once, after the release group search and at the same one-a-second pace; the answer is kept like the other previews. A track whose event is only named in its comment shows no event card. New setting \"Show the track's event above the \"#\" release group card\" (💿 RELEASE TRACKLIST), on by default."
+                ]
+            }
+        ]
+    },
+    {
         "version": "WIP.1",
         "date": "2026-10-21",
         "sections": [
