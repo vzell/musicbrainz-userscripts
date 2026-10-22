@@ -1,0 +1,286 @@
+[
+  {
+    "name": "the dialog drops the source into the body as text again",
+    "why": "A renderer that fell back to text would look almost right and be wrong on every heading, table and link.",
+    "file": "../lib/VZ_MBLibrary.user.js",
+    "edits": [
+      {
+        "find": "                    _mdRenderInto(body, text);",
+        "replace": "                    body.textContent = text;"
+      }
+    ],
+    "spec": "tests/fixtures/lib-markdown-help.spec.js",
+    "grep": "headings, emphasis, code spans and links become elements",
+    "expect": "fail"
+  },
+  {
+    "name": "underscore emphasis is 'restored'",
+    "why": "Settings keys are snake_case; an underscore rule italicises the middle of sa_enable_caa_pics. The plausible 'improvement' is exactly this.",
+    "file": "../lib/VZ_MBLibrary.user.js",
+    "edits": [
+      {
+        "find": "            const RE = /(`[^`]+`)|(\\*\\*[^*]+\\*\\*)|(\\*[^*\\n]+\\*)|(\\[[^\\]]*\\]\\([^)\\s]+\\))/;",
+        "replace": "            const RE = /(`[^`]+`)|(\\*\\*[^*]+\\*\\*)|(\\*[^*\\n]+\\*)|(_[^_\\n]+_)|(\\[[^\\]]*\\]\\([^)\\s]+\\))/;"
+      },
+      {
+        "find": "                } else if (tok[0] === '*') {",
+        "replace": "                } else if (tok[0] === '*' || tok[0] === '_') {"
+      }
+    ],
+    "spec": "tests/fixtures/lib-markdown-help.spec.js",
+    "grep": "a snake_case identifier is NOT italicised",
+    "expect": "fail"
+  },
+  {
+    "name": "any scheme is accepted as a link href",
+    "why": "The text is fetched at runtime; a javascript: URL must render as inert text, never as a link.",
+    "file": "../lib/VZ_MBLibrary.user.js",
+    "edits": [
+      {
+        "find": "                    if (/^(https?:\\/\\/|#)/i.test(href)) {",
+        "replace": "                    if (href) {"
+      }
+    ],
+    "spec": "tests/fixtures/lib-markdown-help.spec.js",
+    "grep": "a non-http link renders as inert text",
+    "expect": "fail"
+  },
+  {
+    "name": "inline syntax is applied inside a fenced code block",
+    "why": "A fence's content is content, not markup; the help file shows Markdown and settings strings in fences.",
+    "file": "../lib/VZ_MBLibrary.user.js",
+    "edits": [
+      {
+        "find": "                    pre.textContent = body.join('\\n');",
+        "replace": "                    _mdInline(pre, body.join('\\n'));"
+      }
+    ],
+    "spec": "tests/fixtures/lib-markdown-help.spec.js",
+    "grep": "fenced code keeps its content verbatim",
+    "expect": "fail"
+  },
+  {
+    "name": "the table separator row is not required",
+    "why": "Without the separator guard a pipe-led prose line starts a table and the line after it vanishes into the skipped separator slot.",
+    "file": "../lib/VZ_MBLibrary.user.js",
+    "edits": [
+      {
+        "find": "                if (line[0] === '|' && i + 1 < lines.length\n                    && /^\\s*\\|[\\s:|-]+\\|\\s*$/.test(lines[i + 1])) {",
+        "replace": "                if (line[0] === '|' && i + 1 < lines.length) {"
+      }
+    ],
+    "spec": "tests/fixtures/lib-markdown-help.spec.js",
+    "grep": "a pipe-led line with no separator",
+    "expect": "fail"
+  },
+  {
+    "name": "a wrapped bullet ends its list (no lazy continuation)",
+    "why": "Every fragment is individually well-formed, so reading the output does not show it; counting the lists does.",
+    "file": "../lib/VZ_MBLibrary.user.js",
+    "edits": [
+      {
+        "find": "                            const cont = lines[i].match(/^\\s{2,}(\\S.*)$/);",
+        "replace": "                            const cont = null;"
+      }
+    ],
+    "spec": "tests/fixtures/lib-markdown-help.spec.js",
+    "grep": "a wrapped bullet stays ONE item",
+    "expect": "fail"
+  },
+  {
+    "name": "a lazy continuation need not be indented",
+    "why": "Without the indent requirement a list swallows the heading under it.",
+    "file": "../lib/VZ_MBLibrary.user.js",
+    "edits": [
+      {
+        "find": "                            const cont = lines[i].match(/^\\s{2,}(\\S.*)$/);",
+        "replace": "                            const cont = lines[i].match(/^\\s*(\\S.*)$/);"
+      }
+    ],
+    "spec": "tests/fixtures/lib-markdown-help.spec.js",
+    "grep": "a heading directly under a list",
+    "expect": "fail"
+  },
+  {
+    "name": "<details> renders closed, as written",
+    "why": "A quick filter that reports hits inside a closed box is worse than no filter.",
+    "file": "../lib/VZ_MBLibrary.user.js",
+    "edits": [
+      {
+        "find": "                    d.open = true;",
+        "replace": "                    d.open = false;"
+      }
+    ],
+    "spec": "tests/fixtures/lib-markdown-help.spec.js",
+    "grep": "renders OPEN, so the quick filter",
+    "expect": "fail"
+  },
+  {
+    "name": "an in-document anchor is handed to the browser",
+    "why": "The browser would scroll the page underneath the fixed dialog, and the table of contents would appear to do nothing.",
+    "file": "../lib/VZ_MBLibrary.user.js",
+    "edits": [
+      {
+        "find": "                            a.addEventListener('click', (ev) => {\n                                ev.preventDefault();",
+        "replace": "                            a.addEventListener('click', (ev) => {\n                                if (ev.type === 'never') ev.preventDefault();"
+      }
+    ],
+    "spec": "tests/fixtures/lib-markdown-help.spec.js",
+    "grep": "an in-document anchor link scrolls the dialog",
+    "expect": "fail"
+  },
+  {
+    "name": "heading ids lose their prefix, matching GitHub's bare slug",
+    "why": "The prefix is what keeps a help heading's id from colliding with an id the host page already uses.",
+    "file": "../lib/VZ_MBLibrary.user.js",
+    "edits": [
+      {
+        "find": "            return 'vz-md-' + String(text).toLowerCase()",
+        "replace": "            return '' + String(text).toLowerCase()"
+      }
+    ],
+    "spec": "tests/fixtures/lib-markdown-help.spec.js",
+    "grep": "an in-document anchor link scrolls the dialog",
+    "expect": "fail"
+  },
+  {
+    "name": "the Markdown stylesheet is never injected",
+    "why": "Every class is still stamped, so the structure assertions pass; only a computed style sees the sheet missing.",
+    "file": "../lib/VZ_MBLibrary.user.js",
+    "edits": [
+      {
+        "find": "            if (document.getElementById('vz-md-help-style')) return;",
+        "replace": "            if (true) return;"
+      }
+    ],
+    "spec": "tests/fixtures/lib-markdown-help.spec.js",
+    "grep": "the stylesheet is actually injected",
+    "expect": "fail"
+  },
+  {
+    "name": "the fetched text is cached in GM storage",
+    "why": "The whole point of the move: a GM value is handed to every page of the script, so a cached document is paid for on every page view.",
+    "file": "../lib/VZ_MBLibrary.user.js",
+    "edits": [
+      {
+        "find": "                        _mdHelpTexts.set(o.url, text);",
+        "replace": "                        _mdHelpTexts.set(o.url, text); GM_setValue(`${scriptId}-md-help-cache`, text);"
+      }
+    ],
+    "spec": "tests/fixtures/lib-markdown-help.spec.js",
+    "grep": "the text is kept in memory only",
+    "expect": "fail"
+  },
+  {
+    "name": "the copy in memory is not reused",
+    "why": "Without it every open is a download; the in-memory copy is what replaces the old GM cache.",
+    "file": "../lib/VZ_MBLibrary.user.js",
+    "edits": [
+      {
+        "find": "                let text = force ? null : _mdHelpTexts.get(o.url);",
+        "replace": "                let text = null;"
+      }
+    ],
+    "spec": "tests/fixtures/lib-markdown-help.spec.js",
+    "grep": "the text is kept in memory only",
+    "expect": "fail"
+  },
+  {
+    "name": "Force refresh serves the copy in memory",
+    "why": "The link would say Refreshed and show the old text.",
+    "file": "../lib/VZ_MBLibrary.user.js",
+    "edits": [
+      {
+        "find": "                let text = force ? null : _mdHelpTexts.get(o.url);",
+        "replace": "                let text = _mdHelpTexts.get(o.url);"
+      }
+    ],
+    "spec": "tests/fixtures/lib-markdown-help.spec.js",
+    "grep": "Force refresh fetches again",
+    "expect": "fail"
+  },
+  {
+    "name": "the quick filter hides non-matching blocks",
+    "why": "Hiding paragraphs and headings out of prose destroys its reading order; the filter highlights only.",
+    "file": "../lib/VZ_MBLibrary.user.js",
+    "edits": [
+      {
+        "find": "                if (q) _mdHighlight(body, q, markBg, markColor);",
+        "replace": "                if (q) { _mdHighlight(body, q, markBg, markColor); body.querySelectorAll('h1, h2, p').forEach((el) => { if (!el.textContent.toLowerCase().includes(q)) el.style.display = 'none'; }); }"
+      }
+    ],
+    "spec": "tests/fixtures/lib-markdown-help.spec.js",
+    "grep": "non-matching content stays VISIBLE",
+    "expect": "fail"
+  },
+  {
+    "name": "clearing the highlights leaves split text nodes",
+    "why": "The next query then misses matches that straddle the old mark boundaries.",
+    "file": "../lib/VZ_MBLibrary.user.js",
+    "edits": [
+      {
+        "find": "            root.querySelectorAll('mark.vz-md-hl').forEach((m) => {\n                m.parentNode.replaceChild(document.createTextNode(m.textContent), m);\n            });\n            root.normalize();",
+        "replace": "            root.querySelectorAll('mark.vz-md-hl').forEach((m) => {\n                m.parentNode.replaceChild(document.createTextNode(m.textContent.slice(0, -1)), m);\n            });"
+      }
+    ],
+    "spec": "tests/fixtures/lib-markdown-help.spec.js",
+    "grep": "clearing the filter removes the highlights",
+    "expect": "fail"
+  },
+  {
+    "name": "Escape in the filter closes the whole dialog",
+    "why": "The first Escape must only clear the query; losing the dialog there throws away the reader's place.",
+    "file": "../lib/VZ_MBLibrary.user.js",
+    "edits": [
+      {
+        "find": "                // First Escape clears the field, the second leaves it; neither\n                // closes the dialog.\n                e.stopPropagation();",
+        "replace": "                // First Escape clears the field, the second leaves it; neither\n                // closes the dialog."
+      }
+    ],
+    "spec": "tests/fixtures/lib-markdown-help.spec.js",
+    "grep": "Escape clears the filter first",
+    "expect": "fail"
+  },
+  {
+    "name": "a click outside does not close it",
+    "why": "The dialog would stay over the page until Escape or the ✕.",
+    "file": "../lib/VZ_MBLibrary.user.js",
+    "edits": [
+      {
+        "find": "                if (dialog.isConnected) document.addEventListener('mousedown', onOutside, true);",
+        "replace": "                if (dialog.isConnected && false) document.addEventListener('mousedown', onOutside, true);"
+      }
+    ],
+    "spec": "tests/fixtures/lib-markdown-help.spec.js",
+    "grep": "a click outside closes it",
+    "expect": "fail"
+  },
+  {
+    "name": "the geometry is not stored on close",
+    "why": "geometryKey would be accepted and silently do nothing.",
+    "file": "../lib/VZ_MBLibrary.user.js",
+    "edits": [
+      {
+        "find": "                if (!dialog.isConnected) return;\n                saveGeometry();",
+        "replace": "                if (!dialog.isConnected) return;"
+      }
+    ],
+    "spec": "tests/fixtures/lib-markdown-help.spec.js",
+    "grep": "with geometryKey the position and size are stored",
+    "expect": "fail"
+  },
+  {
+    "name": "Retry does not fetch again",
+    "why": "After a failure the dialog could never recover without being closed and reopened.",
+    "file": "../lib/VZ_MBLibrary.user.js",
+    "edits": [
+      {
+        "find": "                retry.addEventListener('click', () => { loadAndRender(true); });",
+        "replace": "                retry.addEventListener('click', () => {});"
+      }
+    ],
+    "spec": "tests/fixtures/lib-markdown-help.spec.js",
+    "grep": "a failed fetch shows the error with Retry",
+    "expect": "fail"
+  }
+]
