@@ -3989,7 +3989,15 @@ etc
 Use the Discogs history diff format in other pageTypes, for example the BB “changes” button (you have to be logged in).
 
 
-* TODO write the forum section for 9.99.1394 -> 9.99.1426
+* TODO write the forum section for 9.99.167 -> 9.99.1426
+
+write the forum section for 9.99.1167 -> 9.99.1426
+
+9.99.1167 is the last officially published one.
+
+there are already sections after that one, that were meant to be published but never did.
+
+rewrite all these and combine with the latest changes
 
 * TODO "Links" column - switch of the native tooltip on the FRP
 
