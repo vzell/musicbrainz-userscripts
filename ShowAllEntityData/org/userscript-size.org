@@ -1,0 +1,586 @@
+#+TITLE: ShowAllEntityData at 7.9 MB — size, manageability and libraries
+#+DATE: 2026-10-22
+
+Env (analysis): 2026-10-22T10:52+02:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux
+6.18.54.1-microsoft-standard-WSL2) · code reading, acorn, four read-only code sweeps · browser n/a
+Env (measurement): see 2.1 — Chromium 151.0.7922.34 via Playwright 1.62.1, no Tampermonkey
+
+Asked 2026-10-22 (org/TODO.org, "* TODO userscript size and managibility"): (1) what the 7.9 MB
+mean for the end user's page with Tampermonkey, and for manageability — a comprehensive report;
+(2) refactoring suggestions, see REFACTORING.org; (3) whether parts can move into one or more
+libraries — link previews and popups, the non-MusicBrainz pageTypes, the extractors, etc.
+
+*This is a follow-up, not a restart.* ~org/build-framework.org~ holds the 2026-10-10 response
+(at 6.7 MB, 9.99.1316) to an overlapping set of questions, and it is still the reference for:
+delivering the script (§1.1: a header-only ~.meta.js~, pinning iro, an immutable library URL),
+the developer loop (§1.2: a ~file://~ dev loader instead of pasting into Tampermonkey), the build
+phases (§2: derive artifacts first, then an optional byte-identical fragment split, never a
+bundler), the exhaustive non-MB inventory and its MusicBrainz pitfalls (§3a), splitting the non-MB
+code (§3b) and cooperation with your other userscripts (§3c). This file re-measures at 7.9 MB,
+adds what that response did not cover — where every byte is and which parts grew, memory per tab,
+supported initial pages, the library question per subsystem, REFACTORING.org's status — and
+points back instead of repeating.
+
+Grep anchors, not line numbers: the file moves on every commit.
+
+*Units.* File and transfer sizes in MB are decimal (7,903,066 bytes = 7.9 MB). The size tables
+of 1 and 5.2 count KiB (1,024 bytes). Memory is in MiB (1,048,576 bytes), as Chromium reports it.
+
+* TL;DR
+
+- *7.9 MB, growing ≈100–130 KiB a day.* 2.5 MB on June 30, 5.1 MB on October 1, 7.9 MB today
+  (9.99.1426), from about 15 commits a day: 10 MB in the second week of November at this pace.
+  42 % of the bytes are comments, 17.5 % indentation; about a quarter is code.
+- *Two new features made 44 % of October's growth:* link previews (7 → 797 KiB) and the non-MB
+  sites (0 → 412 KiB).
+- *Every matched page pays ≈260 ms (≈1.1 s on a four times slower CPU) and ≈17 MiB per tab*
+  (Chromium, no Tampermonkey; the absolutes are this session's, quote the ratios). Against the
+  published 9.99.1167 that is ≈1.8× the time for 1.58× the bytes — time grows faster than the
+  file — and 1.6× the memory, which grows with it. 15 MiB of the 17 is the script's own text,
+  held at two bytes per character.
+- *The cheapest wins are outside the code:* the library parses the cached changelog (1.75 MB
+  today, 2 MB after the next publish) on every page — ≈6.5 MiB per tab and +9 ms (+34 ms at ×4) —
+  Tampermonkey hands every stored value to every page, an orphaned value rides along, and each
+  update check downloads the whole file (1.3 MB gzipped today, ≈2 MB after the next publish).
+- *For the code:* a publish copy without comments and with its non-Latin-1 characters escaped
+  saves ≈20 % of the time and ≈11 MiB per tab. The manageability fix is the byte-identical
+  fragment split — one source file per area, no runtime change.
+- *Libraries are feasible for some parts, but no page gets cheaper:* a ~@require~ is parsed on
+  every matched page. Title case, the extractors, the AR helpers and the settings schema could
+  move now; the link previews and the non-MB converters only after a refactor; the engine not at
+  all. Do it only where another script of yours reuses the code.
+- *Top five by value* (the ranked list in 4 is ordered by risk, so the two structural items come
+  last there): lazy changelog and orphan sweep (#1, #2), ~.meta.js~ and a pinned iro (#3, #4),
+  the dev loader that ends the pasting (#5), the stripped one-byte publish copy (#18), the
+  fragment split (#19). The charts are on a private page,
+  https://claude.ai/artifact/SVWXC4UYL3yM117PnPuf1T (others can open it only once you share it).
+
+* 1. What the 7.9 MB are
+
+Measured with ~scripts/size-report.js~ (acorn tokens; 2026-10-22, this branch). Raw output:
+~node scripts/size-report.js --rev e66f26e,ee5b2eb,3b36ee0,e311d34,535dad8,WORKTREE~.
+
+** 1.1 Composition
+
+9.99.1426: 7,903,066 bytes, 144,364 lines, 34,885 characters above U+00FF.
+
+| Kind                                       |   KiB | % of bytes |
+|--------------------------------------------+-------+------------|
+| comments (acorn tokens)                    | 3,242 |       42.0 |
+| indentation outside string content         | 1,348 |       17.5 |
+| strings and template literals              | 1,077 |       14.0 |
+| … of which CSS templates given GM_addStyle |   300 |        3.9 |
+| … of which CSS comments inside those       |    77 |        1.0 |
+| regex literals                             |    33 |        0.4 |
+| everything else (code)                     | 2,017 |       26.1 |
+
+- *About a quarter of the file is code tokens.* Comments and indentation are 59.5 %. Nothing is
+  minified and there are no data blobs — the size is code plus a lot of prose, as on 10-10.
+- The line-based comment share org/build-framework.org used (a line counts as a comment line if
+  it starts with ~//~, ~/*~ or ~*~) is 45.5 % now; the tool reproduces 10-10's 47.1 % exactly at
+  9.99.1316, and its 33,235 characters above U+00FF. Comments went from 34 % of the bytes
+  (2026-06-30) to 46 % (late September) and back to 42 %.
+- *The 77 KiB of CSS comments are string content.* They survive any JavaScript comment stripping
+  and are injected into the page as stylesheet text (2.4).
+- *34,885 characters above U+00FF* (emoji, ⚠️/📊 glyphs, typographic quotes and dashes, mostly in
+  comments; 4,510 in code at 10-10) make the whole source a TWO-byte string in the browser. One
+  such character is enough. Measured consequence in 2.2.
+
+** 1.2 Where the bytes are
+
+Every top-level statement of the IIFE is assigned to one subsystem by NAME
+(~scripts/size-report-subsystems.json~; names are stable across versions, line numbers are not).
+A statement's bytes include its JSDoc and the comments above it. ~configSchema~ keys and
+~pageDefinitions~ entries are split further (a foreign site's settings and pageTypes count as
+"non-MB"). The attribution is by naming convention, so it is approximate at the edges, but the
+buckets add up to the file exactly, and the two subsystems the explorers measured independently
+agree: link previews 797 KiB here vs 802 kB (decimal) by line ranges, title case 39 vs ≈40 KiB.
+
+| Subsystem                                                                    | KiB |    % | KiB without comments |
+|------------------------------------------------------------------------------+-----+------+----------------------|
+| Link previews: hover cards and detail windows                                | 797 | 10.3 |                  534 |
+| Engine, rest (init, WS/2 client, helpers, the long tail)                     | 774 | 10.0 |                  345 |
+| Fetch, render, save/load to disk, export, third-party interop                | 752 |  9.7 |                  429 |
+| Artwork: CAA/EAA columns, cover-art section, viewer                          | 695 |  9.0 |                  405 |
+| Filtering, highlighting, cell parsing, discography view                      | 658 |  8.5 |                  310 |
+| Toolbar, menus, tooltips, dialogs, async-job popup, cache overview           | 583 |  7.5 |                  428 |
+| 📊 unique-values dropdown                                                    | 446 |  5.8 |                  254 |
+| Non-MusicBrainz sites (Springsteen sites, Discogs pages)                     | 412 |  5.3 |                  262 |
+| Column extractors and release-tracks AR columns                              | 375 |  4.9 |                  150 |
+| Other columns: Picard, Recording of, ⏱ length, release events, barcode, …    | 353 |  4.6 |                  169 |
+| Column UI: sort, collapse, visibility, resize, density, collapsible headings | 343 |  4.4 |                  204 |
+| Settings schema, migrations, config export/import                            | 311 |  4.0 |                  256 |
+| pageDefinitions (MusicBrainz pageTypes)                                      | 217 |  2.8 |                  154 |
+| Relationships column                                                         | 215 |  2.8 |                   99 |
+| DOM pre-processing of MusicBrainz pages (apply*, event/relationship tables)  | 192 |  2.5 |                  109 |
+| Global CSS block injected at load (top-level GM_addStyle)                    | 141 |  1.8 |                  141 |
+| Sticky filter bars and page headers, touch input                             | 125 |  1.6 |                   55 |
+| Sidebar (sections, picture, as tables, collapse)                             | 123 |  1.6 |                   83 |
+| Test-mode hook (~__saTest~), shipped to every user                           |  84 |  1.1 |                   26 |
+| Findings (⚠️/❌ menus, cell tints)                                            |  65 |  0.8 |                   46 |
+| Title case and typography (foreign titles, MB title findings)                |  39 |  0.5 |                   20 |
+| Header, licence and credits                                                  |  17 |  0.2 |                    0 |
+
+What the three areas the question names add up to:
+- *Link previews* (hover cards and the Space window, MusicBrainz and external sites): 797 KiB,
+  10.3 %, including the popup engine's own settings (≈12 KiB of ~configSchema~).
+- *Non-MB pageTypes*: 412 KiB, 5.3 % (+ 39 KiB title case, which MusicBrainz findings use too).
+  The previews' readers FOR those sites are inside the 797 KiB.
+- *Extractors*: 375 KiB, 4.9 % — of which the two registries are 82 KiB and the release-tracks AR
+  helpers ≈132 kB (an estimate from line ranges).
+
+Together that is about 20 % of the file. The other 80 % is the table engine and its UI.
+
+** 1.3 Growth: what drove it
+
+| Subsystem (KiB)            | 06-30 (9.99.674) | 09-01 (9.99.978) | 09-27 (9.99.1167, published) | 10-01 (9.99.1179) | 10-10 (9.99.1316) | 10-22 (9.99.1426) | since 10-01 |
+|----------------------------+------------------+------------------+------------------------------+-------------------+-------------------+-------------------+-------------|
+| Link previews              |                1 |                6 |                            7 |                 7 |               434 |               797 |        +790 |
+| Non-MB sites               |                0 |                0 |                            0 |                 0 |               243 |               412 |        +412 |
+| Artwork                    |              330 |              376 |                          476 |               476 |               673 |               695 |        +220 |
+| Engine, rest               |              265 |              377 |                          553 |               581 |               675 |               774 |        +193 |
+| Toolbar, tooltips, dialogs |              358 |              367 |                          423 |               423 |               502 |               583 |        +160 |
+| Sidebar                    |               13 |               13 |                           13 |                13 |                13 |               123 |        +110 |
+| Sticky bars and headers    |               19 |               20 |                           20 |                20 |               115 |               125 |        +105 |
+| Filtering, cell parsing    |              206 |              379 |                          533 |               556 |               609 |               658 |        +102 |
+| 📊 dropdown                |               58 |              224 |                          341 |               358 |               424 |               446 |         +88 |
+| Settings                   |               92 |              136 |                          221 |               223 |               282 |               311 |         +88 |
+| DOM pre-processing         |               67 |              109 |                          111 |               111 |               153 |               192 |         +81 |
+| Findings                   |                0 |                0 |                            0 |                 0 |                48 |                65 |         +65 |
+| Global CSS block           |                0 |               42 |                           89 |                95 |               132 |               141 |         +46 |
+| everything else (9 groups) |            1,080 |            1,552 |                        2,113 |             2,133 |             2,239 |             2,395 |        +262 |
+| *total*                    |            2,488 |            3,601 |                        4,898 |             4,996 |             6,540 |             7,718 |      +2,722 |
+
+- *2.5 MB → 7.9 MB in four months; +2.8 MB (2,722 KiB) in the last three weeks.* About 15
+  commits a day touch the file (331 since 10-01, 1,011 in all). At October's pace (≈100–130 KiB a
+  day) it passes 10 MB in the second week of November, 15 MB around the end of the year. The
+  10-10 estimate ("10 MB is roughly 300 versions away") holds in versions (110 versions for +1.2
+  MB) — but versions now come ten a day.
+- *Since 10-01, two features account for 44 % of the growth:* the link-preview engine (7 → 797
+  KiB, still growing by ≈30 KiB a day) and the non-MB sites (0 → 412 KiB; Discogs ≈121 KiB of it,
+  all since 10-10).
+- CSS in ~GM_addStyle~ templates as a whole grew from 131 KiB (10-01) to 300 KiB (10-22); the
+  global block is 141 KiB of it.
+- *Comments grew with the code, not ahead of it* (42–46 % since September), so a comment policy
+  would slow the growth, not stop it.
+
+* 2. What it costs a user's browser
+
+** 2.1 Per matched page, measured
+
+Env: 2026-10-22T15:35:52+02:00–15:55:35+02:00 · NB-3641 (i7-14700HX, 28 threads, 31 GB) · WSL2
+Ubuntu 24.04.4 LTS (Linux 6.18.54.1-microsoft-standard-WSL2) · Node v24.19.0 · Chromium
+151.0.7922.34 via Playwright 1.62.1 · no Tampermonkey (in-memory GM stubs). Commands and the
+complete tables: ~tests/MEASUREMENTS.org~, "2026-10-22 — userscript load cost at 7.9 MB".
+
+What is timed: appending the arm's text as a ~<script>~, i.e. parse + compile + run. On a bare
+page with no pageType the script stops at its gate (~Required elements not found~, checked per
+run). On two saved SUPPORTED pages (raw snapshots of an artist's release groups and of a release
+with its tracklist) it goes on through its initial-page set-up — toolbar, link previews, sidebar,
+the CSS — and "settled" waits two more macrotasks and one animation frame. A fresh browser
+context per run (no compilation cache carries over); 15 runs after 2 warm-ups on the bare page,
+10 after 2 on the supported pages; medians; every run valid. The older versions are read from git
+and timed in the same session, against today's library. On the supported pages every request but
+the page and the script is aborted, so MusicBrainz's own stylesheet and scripts never load: the
+set-up runs against an unstyled page.
+
+*How far to trust the numbers.*
+- *This host ran about twice as slow today as on 10-10 for the very same file* (9.99.1316:
+  211.0 ms now, 102.6 ms then, ×1), with the same Chromium and Playwright and the machine idle.
+  The WSL kernel changed in between (6.18.40.1 → 6.18.54.1), and the laptop's power state may
+  differ.
+- *The speed was bimodal WITHIN each run too:* p10 sits ≈25 % below the median in every arm
+  (some rounds were fast for all arms alike). The i7-14700HX mixes performance and efficiency
+  cores, which fits such a split.
+- *And it drifted between runs:* the same 9.99.1167 arm took 143.9 ms in the bare-page run and
+  112.6 / 154.3 ms in the two page runs; on the artist page its ratio to today was 0.52 in the
+  timing run and 0.64 in the separate memory run.
+
+So: quote ratios, not absolutes; compare arms only within one table; and read the ratios as
+±10 % — "≈1.8×", "≈20 %", not the third digit the tables print.
+
+The bare page (every matched page pays this, supported or not):
+
+#+NAME: gate-timing
+| Arm                                |    MB | ×1 ms (p10–p90)     | ÷ today | ×4 ms (p10–p90)        | ÷ today | settled ×1 / ×4 ms |
+|------------------------------------+-------+---------------------+---------+------------------------+---------+--------------------|
+| today (9.99.1426)                  |  7.90 | 262.5 (198.9–269.5) |    1.00 | 1128.7 (1051.0–1176.9) |    1.00 | 263.5 / 1133.1     |
+| 9.99.1316 (2026-10-10)             |  6.70 | 211.0 (158.6–215.0) |    0.80 | 912.9 (677.5–938.6)    |    0.81 | 211.7 / 917.4      |
+| published 9.99.1167                |  5.02 | 143.9 (115.2–147.1) |    0.55 | 608.6 (453.9–616.7)    |    0.54 | 145.0 / 614.6      |
+| today, comments stripped           |  3.45 | 216.4 (167.1–223.8) |    0.82 | 944.5 (702.6–968.2)    |    0.84 | 217.3 / 950.1      |
+| today, stripped + one-byte         |  3.47 | 205.5 (151.6–212.9) |    0.78 | 899.3 (660.9–923.3)    |    0.80 | 206.2 / 905.3      |
+| today, never run (pre-parse floor) |  7.90 | 116.3 (85.9–118.1)  |    0.44 | 497.8 (463.2–527.7)    |    0.44 | 116.4 / 497.9      |
+| today + code to 10 MB              | 10.00 | 352.0 (261.2–359.4) |    1.34 | 1505.1 (1161.0–1547.4) |    1.33 | 352.9 / 1508.6     |
+| today + code to 15 MB              | 15.00 | 565.6 (415.0–578.3) |    2.15 | 2412.8 (1809.8–2453.0) |    2.14 | 566.4 / 2417.0     |
+| today + comments to 10 MB          | 10.00 | 282.8 (209.5–293.5) |    1.08 | 1209.3 (886.5–1234.4)  |    1.07 | 284.5 / 1213.8     |
+| today, changelog cached            |  7.90 | 263.0 (257.7–275.6) |    1.00 | 1132.8 (1104.0–1159.9) |    1.00 | 272.7 / 1167.3     |
+| no userscript                      |  0.00 | 0.0 (0.0–0.1)       |    0.00 | 0.0 (0.0–0.1)          |    0.00 | 0.2 / 0.8          |
+
+The first view of a supported page:
+
+#+NAME: page-timing-artist-releasegroups
+| Arm                        | ×1 ms (p10–p90)     | ÷ today | ×4 ms (p10–p90)       | ÷ today | settled ×1 / ×4 ms |
+|----------------------------+---------------------+---------+-----------------------+---------+--------------------|
+| today (9.99.1426)          | 215.3 (211.7–290.9) |    1.00 | 1233.0 (928.9–1253.1) |    1.00 | 232.6 / 1293.1     |
+| published 9.99.1167        | 112.6 (111.8–120.5) |    0.52 | 643.6 (476.3–654.1)   |    0.52 | 134.1 / 721.5      |
+| today, comments stripped   | 179.4 (178.0–238.3) |    0.83 | 1023.9 (777.0–1044.1) |    0.83 | 197.7 / 1088.0     |
+| today, stripped + one-byte | 175.2 (170.9–206.1) |    0.81 | 1004.3 (762.5–1020.0) |    0.81 | 192.5 / 1062.3     |
+| no userscript              | 0.0 (0.0–0.1)       |    0.00 | 0.0 (0.0–0.7)         |    0.00 | 0.5 / 1.9          |
+
+#+NAME: page-timing-release-tracks
+| Arm                        | ×1 ms (p10–p90)     | ÷ today | ×4 ms (p10–p90)        | ÷ today | settled ×1 / ×4 ms |
+|----------------------------+---------------------+---------+------------------------+---------+--------------------|
+| today (9.99.1426)          | 294.5 (213.2–299.0) |    1.00 | 1268.7 (1222.9–1289.9) |    1.00 | 306.0 / 1313.6     |
+| published 9.99.1167        | 154.3 (114.9–157.0) |    0.52 | 653.9 (644.2–667.1)    |    0.52 | 169.6 / 713.0      |
+| today, comments stripped   | 244.3 (182.8–246.2) |    0.83 | 1076.1 (1031.6–1091.3) |    0.85 | 255.7 / 1118.1     |
+| today, stripped + one-byte | 237.4 (173.4–242.7) |    0.81 | 1027.9 (998.5–1032.7)  |    0.81 | 252.1 / 1071.8     |
+| no userscript              | 0.0 (0.0–0.1)       |    0.00 | 0.1 (0.0–0.6)          |    0.00 | 0.5 / 2.1          |
+
+What the numbers say:
+- *Every matched page: ≈260 ms at full speed, ≈1.1 s with the CPU slowed four times*, before
+  anything useful happens, and also on pages with no pageType. The script runs at document-idle,
+  so the page is already visible, but the main thread is blocked for that long, on every
+  navigation (MusicBrainz is a multi-page site).
+- *The time grows faster than the file.* 9.99.1167 → today: 1.58× the bytes, ≈1.8× the time
+  (both throttle rates). 9.99.1316 → today: 1.18× the bytes, ≈1.25× the time. More of the new
+  code runs at load instead of only being parsed.
+- *Never-called code costs ≈43 ms per MB, comments ≈10 ms per MB* (×1; the 10 MB and 15 MB code
+  pads agree on the first). 10-10 measured 20 and 4.5 on the same host in its faster state: the
+  ratio of the two (≈4.4) is the same. *Pre-parsing alone* (the never-run copy) is ≈45 % of
+  today's cost.
+- *A stripped copy saves ≈18 %, a stripped one-byte copy ≈22 %* (×1; 16 % and 20 % at ×4).
+  Comments are cheap to scan; the one-byte form is another ≈5 % faster to parse.
+- *At 15 MB of code — the end of the year at October's pace — a page pays 2.15× today's cost*:
+  ≈0.57 s at full speed, ≈2.4 s at ×4.
+- *The cached changelog* does not slow the script's own synchronous part (the library parses it
+  after the script), but the page settles ≈9 ms later at full speed and ≈34 ms later at ×4.
+- *Supported pages* (each its own run; compare within a table only): today's file costs ≈1.9×
+  what 9.99.1167 costs there (≈1.8× on the bare page), stripping saves 17–19 %, and what the
+  script defers until the page settles adds 12–17 ms at full speed, 45–60 ms at ×4 — without
+  MusicBrainz's own stylesheet, so the real style work is likely larger.
+
+** 2.2 Memory per tab, measured
+
+Same session, separate runs with ~--memory~ (7 runs on the bare page, 5 on each supported page,
+after a warm-up). After each run the arm's text is dropped from the page, Chromium collects
+garbage, and a memory-infra dump of the run's renderer gives its private footprint — the figure
+Chromium's own task manager shows as "Memory footprint" — and the allocators it sits in.
+
+#+NAME: memory-gate
+| Arm                                | footprint MiB | Δ no script | source text (parkable strings) MiB | V8 heap MiB |
+|------------------------------------+---------------+-------------+------------------------------------+-------------|
+| no userscript                      |          18.5 |         0.0 |                                0.5 |         3.2 |
+| today (9.99.1426)                  |          35.7 |        17.2 |                               15.5 |         5.1 |
+| today, never run (pre-parse floor) |          33.6 |        15.2 |                               15.5 |         3.3 |
+| today, comments stripped           |          27.3 |         8.8 |                                7.1 |         5.0 |
+| today, stripped + one-byte         |          24.2 |         5.7 |                                3.8 |         5.1 |
+| today + code to 15 MB              |          51.5 |        33.1 |                               29.0 |         6.0 |
+| published 9.99.1167                |          29.4 |        10.9 |                               10.0 |         4.2 |
+| 9.99.1316 (2026-10-10)             |          33.0 |        14.6 |                               13.2 |         4.7 |
+
+#+NAME: memory-artist-releasegroups
+| Arm                        | footprint MiB | Δ no script | source text (parkable strings) MiB | V8 heap MiB |
+|----------------------------+---------------+-------------+------------------------------------+-------------|
+| no userscript              |          27.8 |         0.0 |                                0.5 |         3.2 |
+| today (9.99.1426)          |          46.5 |        18.7 |                               15.8 |         5.3 |
+| today, comments stripped   |          38.2 |        10.5 |                                7.4 |         5.3 |
+| today, stripped + one-byte |          34.9 |         7.1 |                                4.2 |         5.3 |
+| published 9.99.1167        |          38.8 |        11.1 |                               10.2 |         4.4 |
+
+#+NAME: memory-release-tracks
+| Arm                        | footprint MiB | Δ no script | source text (parkable strings) MiB | V8 heap MiB |
+|----------------------------+---------------+-------------+------------------------------------+-------------|
+| no userscript              |          26.9 |         0.0 |                                0.5 |         3.2 |
+| today (9.99.1426)          |          44.6 |        17.7 |                               15.8 |         5.3 |
+| today, comments stripped   |          36.3 |         9.4 |                                7.4 |         5.4 |
+| today, stripped + one-byte |          32.9 |         6.0 |                                4.2 |         5.3 |
+| published 9.99.1167        |          37.7 |        10.8 |                               10.2 |         4.4 |
+
+What the numbers say:
+- *The script costs ≈17–19 MiB per tab* (+17.2 MiB on the bare page, +18.7 and +17.7 MiB on the
+  two supported pages), and *15 MiB of that is the script's own text* (15.0 above the no-script
+  page's 0.5). Blink keeps a classic script's source as a "parkable string" for as long as the
+  page lives, here at two bytes per character because 34,885 characters are above U+00FF. The
+  estimate of build-framework.org §0.3 ("≈13.4 MB at 6.7 MB, two-byte, not measured") is now
+  measured: 12.7 MiB for 9.99.1316 (13.2 with the baseline).
+- *Compiled code and objects are small next to it:* the V8 heap grows by ≈2 MiB.
+- *Memory follows the size of the text, not what runs:* the never-run copy costs +15.2 MiB
+  against +17.2 MiB for the real one, and 7 MB of never-called code add ≈16 MiB. Memory grows
+  with the file (published 9.99.1167: +10.9 MiB; 1.58× the bytes, 1.6× the memory).
+- *Stripping comments halves it, and the one-byte form halves the text again:* +8.8 MiB stripped,
+  +5.7 MiB stripped and one-byte — a third of today's cost, on all three pages (+7.1 and +6.0 MiB
+  on the supported ones).
+- *Several tabs multiply it* — roughly 170 MiB for ten MusicBrainz tabs, ≈235 MiB with the
+  changelog cached (2.3), if each tab has its own renderer. This is a foreground tab right after
+  load; Chromium can compress parkable strings in background tabs, so those are likely cheaper.
+- *The changelog arm is not in these tables.* Its footprint (+16.5 MiB over today's) counts the
+  seeded value several times over, because the harness seeds it through an init script that holds
+  further copies; 2.3 gives the defensible figure.
+
+** 2.3 The changelog and the other values in GM storage
+
+Tampermonkey makes ~GM_getValue~ synchronous by handing a script's WHOLE store to the page at
+injection. Its own issue tracker shows it: issue #2045 asked to stop "preloading all storage data
+at script start" for scripts that do NOT use the legacy ~GM_getValue~/~GM_setValue~; that was
+done in 5.3.6207, and the maintainer decided against changing the old API. This script grants
+the legacy API, so it still gets the whole store up front. Issue #1787 shows the limit: a 23 MB
+store broke with "message length exceeded". So every value this script ever stored travels to
+every matched page, before a line of the script runs.
+
+What is stored that is big (startup sweep, 2026-10-22). The cached texts come from the MIRROR
+(~REMOTE_BASE~, still 9.99.1167); the next publish makes them the dev repository's sizes.
+
+| GM key                               | Size today (after the next publish)        | What reads it                                                                                                                                                |
+|--------------------------------------+--------------------------------------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| ~showallentitydata-remote-changelog~ | 1.75 MB, 1,338 entries (2.04 MB, 1,597)    | the LIBRARY's ~initRemoteContent()~, on every matched page (also discogs/Springsteen pages with support off); re-fetched and re-written hourly               |
+| ~showallentitydata-remote-help-md~   | 47 kB (222 kB)                             | only the ❓ dialog; stored once the dialog has been opened                                                                                                   |
+| ~showallentitydata-remote-help-text~ | at most 50 kB                              | *nothing*: orphaned since the Markdown help (9.99.1148); not in ~_SETTINGS_ORPHANED_KEYS~ (which holds ~sa_*~ keys only), so it is never deleted             |
+| ~mb_sa_subtable_snapshot_<uid>~      | a whole compressed table, "megabytes each" | the "Show single-table" handoff; deleted when the new tab consumes it, so a blocked or closed tab leaves it behind for good — and it travels with every page |
+
+- ~fetchCachedText()~ (VZ_MBLibrary) stores the fetched text with a 1-hour TTL and never deletes
+  it; a stale value is overwritten, not removed.
+- ~initRemoteContent()~ parses the cached JSON on every matched page and keeps the entries for
+  the page's lifetime, for a dialog most visits never open. *Cost:* the page settles ≈9 ms later
+  (≈34 ms at ×4; 2.1), and the tab keeps *≈6.5 MiB* — 3.2 MiB of parsed entries (measured: the
+  JS heap the parse leaves behind) plus the cached text itself, which Tampermonkey keeps in the
+  page's copy of the store: 1.73 million characters, 8,272 of them above U+00FF, so 3.3 MiB as a
+  two-byte string. After the next publish ≈7.6 MiB. Tampermonkey's own copies for the hand-off
+  are not measured.
+- The hourly refetch writes ≈1.75 MB into Tampermonkey's storage. Whether Tampermonkey then pushes
+  the new value to every other open tab of the script (it supports value-change listeners) is
+  not verified.
+
+** 2.4 CSS, listeners and observers on a supported page
+
+From the startup sweep (code reading; the timings in 2.1 include all of it):
+- *About 207 kB of CSS* is injected at load on a supported page, in about 12 ~<style>~ elements:
+  the global block (141 KiB, much of it CSS comments inside the template literal) and the popup
+  engine's (≈46 kB) are the big ones. Each new stylesheet makes the browser re-check the whole
+  document's styles, and ~_vsbEnsureStyle()~ forces that recalc at once by reading a computed
+  style (~getComputedStyle(document.body)~). Unsupported pages get none of it.
+- *About 40 listeners*, all delegated (none per link or per row): three capture-phase ~mouseover~
+  resolvers (link previews, tooltip card, async jobs), scroll and resize handlers, the Ctrl+M
+  capture ~keydown~ (also on unsupported pages, no off switch). Per hover, ~_popResolve()~ runs
+  ~closest()~ against up to 9 sources (10-10 §4 #9).
+- *Observers*: a MutationObserver on ~#sidebar~ for the page's lifetime, one for up to 15 s for
+  the sidebar picture, a ResizeObserver on the header block, and a ≈400 ms rAF loop when the
+  sticky header switches on.
+- *About 485 synchronous GM reads* at startup (473 from the library's settings init); cheap,
+  since the values are already in the page.
+- *Release pages* additionally ~JSON.parse~ MusicBrainz's embedded release payload
+  (~_readEmbeddedReleaseJson()~ via ~initReleaseGroupLink~).
+
+** 2.5 Frames, updates, mobile
+
+- *Frames: no extra cost.* The header has no ~@noframes~, but the only iframe the script creates
+  is the Live view of the pinned window: ~srcdoc~, ~sandbox~ without ~allow-scripts~, URL
+  ~about:srcdoc~, which no ~@include~ matches. On jungleland.it and brucespringsteen.it framesets
+  the frame gates exit — after the parse.
+- *Updates:* ~@updateURL~ is still the full file. raw.githubusercontent.com serves it gzipped:
+  1.28 MB for the published 9.99.1167 (5.0 MB) on every check, whether or not there is an update,
+  and ≈2.05 MB once 7.9 MB is published (10-10 §1.1 #1: a header-only ~.meta.js~). The library's
+  hourly changelog refetch is another 0.52 MB gzipped (0.6 MB after the next publish).
+- *Mobile (Firefox Android + Tampermonkey, which you use):* the ×4 CPU columns are the stand-in;
+  a phone is often slower than that and has less memory to spare per tab. Playwright cannot drive
+  Firefox Android (org/mobile.org), so the real number needs the remote-debugging recipe there.
+
+** 2.6 What these numbers cannot see, and how to see it in your browser
+
+The harness injects the file as a page ~<script>~ with in-memory GM stubs, on pages without
+MusicBrainz's own stylesheet and scripts. It does not see Tampermonkey reading the script and its
+store, handing both to the page, its sandbox, its code caching (if any), Firefox, a real network,
+or the style work against MusicBrainz's real CSS. Five minutes in your own browser close most of
+it:
+
+1. *Chrome/Vivaldi task manager* (Shift+Esc), column "Memory footprint": open the same
+   MusicBrainz page in two tabs, one with the script enabled and one with it disabled in the
+   Tampermonkey dashboard. The difference is directly comparable with 2.2's footprint figures.
+2. *DevTools → Performance → "Record and reload"* on a supported page: the long "Compile Script"
+   and "Evaluate Script" entries of the userscript, with and without the script (10-10 §0.5).
+3. *Tampermonkey dashboard → the script → "Storage"*: the size of
+   ~showallentitydata-remote-changelog~ and whether ~-remote-help-text~ or any
+   ~mb_sa_subtable_snapshot_*~ key is there.
+4. Record browser, Tampermonkey version and the numbers in ~tests/MEASUREMENTS.org~ with an
+   environment stamp.
+
+* 3. Manageability
+
+The 10-10 table (org/build-framework.org §0.4) still holds; what changed or was not there:
+
+| Area                      | Today                                                                                                                                                                                                                                                                                                                   |
+|---------------------------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Claude (and any reader)   | ≈2 million tokens for the whole file (estimate: ≈3.5–4 bytes per token), so no session can read it; every task is grep plus slices. The project carries a 108 kB CLAUDE.md with a grep-anchor table, 20 topic docs and 14 skills, largely to navigate one file. ~str_replace~ anchors must be unique across 144k lines. |
+| Testing pure code         | Pure parts are tested by SLICING the file between two anchors and running the slice in a vm (~scripts/check-mb-title-case.js~). A separate file per part would make that a plain ~require~.                                                                                                                             |
+| Every test pays the parse | Each fixture test loads the whole file once or more; at the gate-page cost of 2.1 that is minutes of CPU per ~test:full~ (1,789 tests on 2026-10-16) spent before any test logic.                                                                                                                                       |
+| git                       | 1,011 commits touch the file, 331 of them since 10-01. Each stores a new 7.9 MB blob (≈2 MB compressed as a loose object, a small delta once packed); this repository has 196 MiB packed plus 265 MiB of loose objects right now (~git gc~ would fold most of that).                                                    |
+| GitHub                    | Previews generally work below 2 MB, and a single file's diff is cut at 500 KB of raw diff, so neither the file view nor large commits render on the web. The raw URL always works.                                                                                                                                      |
+| Publishing                | "Copy the file, rewrite one line" (~scripts/check-publish-ready.py~). Every extra published file (a library, a ~.meta.js~) is one more thing to copy and check. Greasy Fork stays closed: a 2 MB cap, and minifying to fit is forbidden.                                                                                |
+| Mirror lag                | The mirror is at 9.99.1167 (5.0 MB); the next publish ships 7.9 MB, +58 % at once, and ≈1.8× the per-page time and 1.6× the memory per tab (2.1, 2.2).                                                                                                                                                                  |
+| Developer loop            | Still "paste 7.9 MB into Tampermonkey's editor"; the 10-10 dev loader (§1.2) is not built yet.                                                                                                                                                                                                                          |
+
+* 4. Refactoring suggestions, ranked
+
+One list: the suggestions of 10-10 §4 (none has landed), REFACTORING.org #1–#5 (none has
+landed; REFACTORING.org gets a dated re-evaluation today) and what this report adds (*new*). Two
+10-10 items are not separate rows: #1 (stale docs about the library ~@require~) is moot now — the
+dev header requires ~file://~ again, as the notes say — and #14 (the stripped publish copy) is
+#18 here. *Order:* by risk to MusicBrainz and by how little each needs, zero-runtime and
+header-only items first, the structural ones last; the TL;DR picks the five worth most.
+"Runtime" = it changes what runs in a user's browser. Gains are this session's measurements
+where there is one (2.1, 2.2, 2.3).
+
+#+NAME: ranked
+|  # | Suggestion                                                                                                                                                                                                                                                                                          | From                           | Runtime?                | Risk to MB             | Gain                                                                                                                        | How to verify                                                              |
+|----+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+--------------------------------+-------------------------+------------------------+-----------------------------------------------------------------------------------------------------------------------------+----------------------------------------------------------------------------|
+|  1 | Lazy changelog: VZ_MBLibrary parses (and fetches) the changelog only when the 📜 dialog opens, keeps the cache out of GM storage (IndexedDB, or none), and a migration deletes the stored key                                                                                                       | 10-10 #13, new evidence        | yes, library            | low                    | −9.2 ms (×1) / −34.2 ms (×4) per page and ≈6.5 MiB per tab (3.2 MiB parsed entries, measured, plus the 3.3 MiB cached text) | changelog dialog specs; the real+changelog arm equals real                 |
+|  2 | Sweep orphaned GM values at startup: delete showallentitydata-remote-help-text, expire mb_sa_subtable_snapshot_* older than an hour                                                                                                                                                                 | new                            | yes, tiny               | very low               | up to megabytes fewer in every page's storage hand-off, for the profiles that have them                                     | a fixture spec that seeds both keys                                        |
+|  3 | Header-only .meta.js as @updateURL, plus its publish check                                                                                                                                                                                                                                          | 10-10 #5                       | header only             | none                   | 1.28 MB (gzip) less per update check per user today, ≈2 MB after the next publish                                           | check-publish-ready.py --strict; one manual "check for updates"            |
+|  4 | Pin @jaames/iro@5.5.2 and tighten harness-required-libs.spec.js                                                                                                                                                                                                                                     | 10-10 #6                       | header only             | very low               | no silent library change                                                                                                    | check-vendored-libs.py; the spec                                           |
+|  5 | Dev loader plus stage-dev.py (staged copy, mutation-backup lock, header-hash warning, separate browser profile)                                                                                                                                                                                     | 10-10 #3                       | no                      | none                   | no more pasting 7.9 MB into Tampermonkey                                                                                    | edit → stage → reload                                                      |
+|  6 | mutation-check writes mutants to a temp dir (SAED_USERSCRIPT_PATH redirect)                                                                                                                                                                                                                         | 10-10 #4                       | no (harness)            | none                   | the working copy stays untouched during a run; prerequisite for 5 and 18                                                    | working copy mtime and hash unchanged during a run                         |
+|  7 | Record one real-browser measurement (task manager footprint, DevTools trace, Tampermonkey Storage tab)                                                                                                                                                                                              | 10-10 #2, 2.6                  | no                      | none                   | the Tampermonkey share this harness cannot see                                                                              | a row in tests/MEASUREMENTS.org                                            |
+|  8 | Downgrade "Required elements not found. Terminating." from Lib.error to Lib.debug                                                                                                                                                                                                                   | 10-10 #8                       | console only            | very low               | no ERROR line on every bare entity page                                                                                     | grep the specs first                                                       |
+|  9 | _popResolve(): test src.enabled() before node.closest(src.selector)                                                                                                                                                                                                                                 | 10-10 #9                       | yes, popup hot path     | low                    | fewer closest() calls per hover on MusicBrainz                                                                              | popup-*.spec.js, detail-preview.spec.js                                    |
+| 10 | Move the CSS comments out of the GM_addStyle template literals into JavaScript comments                                                                                                                                                                                                             | new                            | yes, CSS text only      | low                    | 77 KiB less stylesheet text injected; strippable in a publish copy                                                          | the CSS with comments removed is byte-identical before and after           |
+| 11 | Startup validator for pageDefinitions keys and extractor names                                                                                                                                                                                                                                      | REFACTORING.org #3             | diagnostics only        | very low               | a typo'd features key or extractor name is reported, not silently ignored                                                   | plant a typo; the validator names it                                       |
+| 12 | De-duplicate: the *-tags cluster, the 7 filtered/unfiltered pairs, dateParts (month/day arrays now in 4 places), appendSortKey (now 3 copies)                                                                                                                                                       | REFACTORING.org #1, #2, #4, #5 | yes, small              | low                    | one fix instead of 3–11                                                                                                     | deep-equal of generated vs literal definitions; date-column specs          |
+| 13 | Converter hooks (features.convert, prepareLivePage) instead of 26 flag ifs in three places                                                                                                                                                                                                          | REFACTORING.org #11 (new)      | yes, non-MB dispatch    | low–medium             | no converter forgotten in one of three paths; prerequisite for moving any site                                              | sl-/jl-/bs-/bb-/dg-* specs AND the MusicBrainz suite                       |
+| 14 | Derive the seven host lists from one table                                                                                                                                                                                                                                                          | 10-10 #11                      | yes, non-MB gating      | low–medium             | a fifth site cannot miss one list                                                                                           | the foreign specs and the MusicBrainz suite                                |
+| 15 | A spec that sees the _foreignHost detection filter                                                                                                                                                                                                                                                  | 10-10 #12                      | no (test)               | none                   | two "expect: pass" mutations become visible                                                                                 | flip them to "fail"                                                        |
+| 16 | saed:ready / saed:rendered events plus data-saed-gen for your other userscripts                                                                                                                                                                                                                     | 10-10 #10                      | yes, additive           | low                    | cooperation without timing guesses                                                                                          | a listener fixture script and a spec counting events                       |
+| 17 | Build tool, Phase 1: derive the dev stage and .meta.js from the single file                                                                                                                                                                                                                         | 10-10 #7                       | no                      | none                   | one tool for 3, 5 and 18                                                                                                    | artifacts byte-identical to the hand-made ones                             |
+| 18 | Publish copy: comments and indentation stripped, characters above U+00FF escaped, every newline kept. The header and credits stay verbatim, so their 24 characters above U+00FF must become plain first: 22 are in your own notes, 2 (Ⅱ, →) are quoted from jesus2099's header in the credits block | REFACTORING.org #12 (new)      | yes, the whole artifact | medium                 | −21.7 % (×1) / −20.3 % (×4) parse-and-run time and −11.5 MiB per tab, measured (stripped + one-byte vs today)               | the full fixture suite against the publish copy; line numbers spot-checked |
+| 19 | Byte-identical fragment split (src/NN-name.js joined into the same IIFE)                                                                                                                                                                                                                            | REFACTORING.org #10, 10-10 #15 | no                      | low, process cost high | one file per subsystem instead of one 7.9 MB file                                                                           | SHA-256 equality on the first cut, then a freshness spec                   |
+| 20 | Libraries, only for code with a second consumer (title case first)                                                                                                                                                                                                                                  | REFACTORING.org #13 (new)      | yes                     | medium                 | reuse across your scripts; no page gets cheaper                                                                             | an immutable URL with #sha256=, a version handshake, a publish-check entry |
+
+*Not on the list, on purpose:* a bundler with modules (REFACTORING.org's rejection stands, for
+its decisive reason: about 3,000 top-level declarations — 2,188 functions, 779 ~const~/~let~ —
+that all see each other); minifying for users
+(stack traces and readable userscripts are worth more than the remaining bytes once comments are
+gone); removing comments from the SOURCE (they are the project's design record — strip them from
+the shipped copy instead); moving the pageType detection earlier to skip the top level on pages
+without a pageType (10-10 §4 "not safe": much of what runs before it is what detection reads).
+
+* 5. Libraries (question 3)
+
+** 5.1 What a Tampermonkey ~@require~ library is — and what it is not
+
+- A required file is downloaded at install and stored by Tampermonkey; on every matched page it
+  runs before the script, in the same sandbox, with the script's grants, and its top-level names
+  are visible to the script (that is how ~VZ_MBLibrary~ works today). The script's own code
+  stays inside its IIFE, so a library sees none of it unless the script hands it over.
+- *It is not lazy.* Every ~@require~ is injected and parsed on every page the script matches. A
+  library cannot be loaded only on discogs.com, or only when somebody hovers a link. Moving code
+  into a library changes WHERE the bytes live, not how many each page parses (2.1: the cost
+  scales with the code a page parses). Two routes would change what a page parses:
+  - a separate userscript with its own ~@include~ list — rejected in 10-10 §3b, and the previews
+    sweep adds reasons (5.2);
+  - lazy loading: ~@resource~ text read with ~GM_getResourceText~ and evaluated only when needed.
+    Not recommended. ~GM_getResourceText~ is synchronous, so Tampermonkey very likely hands the
+    resource text to every page anyway, as it does the GM values (not verified). It needs ~eval~
+    in the sandbox. And it costs readable stack traces.
+- *Since Tampermonkey 4.16 externals refresh only when the script itself updates*, and a
+  library has no entry of its own in the dashboard. This project has already lived through both
+  failure modes with its one library: SAED 9.99.1138 ran against library 4.0.0 and behaved
+  differently with nothing saying so (the library's 4.3.0 changelog), and
+  ~CustomizableMultiSelector.user.js~ shipped with a ~file://~ ~@require~ from 2026-02-02 to
+  2026-09-25 — which fails silently for every user. Every new library multiplies the publish
+  rewrite that ~check-publish-ready.py~ exists to catch.
+- New failure modes a library would bring: a missing library throws a ~ReferenceError~ (only
+  ~VZ_MBLibrary~ has the ~Lib~ stub fallback); a script declaration silently shadows a library
+  name; ~__saTest~ exposes ≈20 parsers through the script's closure and would have to be
+  re-pointed.
+- Done right, each library needs an immutable URL per release (a tag or commit plus
+  ~#sha256=~ SRI, which Tampermonkey checks at install), a version handshake at startup (the
+  script refuses an older library loudly), and its own entry in the publish check.
+
+** 5.2 Per candidate
+
+| Candidate                                    | Size (KiB, % / without comments) | Coupling to the script's private state                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      | As a library                                                                                                                                                                 | Verdict                                                                                                                                                                                                                                              |
+|----------------------------------------------+----------------------------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Column extractors (both registries)          | 82 KiB                           | ≈99 % pure: DOM in, DOM/text out; 5 ~Lib.debug~ calls; one helper lives in the filter engine (~_findCellEditorInfo~); ~video~ and ~caa~ MOVE nodes out of the source cell (keep that behaviour)                                                                                                                                                                                                                                                                                                                                                                             | feasible now: library globals plus ~setLogger(Lib)~                                                                                                                          | fragment; a library only if another script wants the extractors                                                                                                                                                                                      |
+| Release-tracks AR helpers                    | ≈132 kB (estimate)               | pure (~_findAllArDts~, ~_build*Td~); one ~_setTip~, two ~_cloneInstrumentAnchorWithIcon~. NOT separable: ~applyExtractTrackTitleData~ (reads 9 settings, mutates ~activeDefinition~, pushes into ~activeSyntheticColumnExtractors~), the observers, the continuation rows                                                                                                                                                                                                                                                                                                   | the pure part now, injecting ~_setTip~                                                                                                                                       | fragment                                                                                                                                                                                                                                             |
+| Title case and typography                    | 39 KiB / 20                      | nearly pure: two settings reads and one ~_setTipCmp~; used by the foreign converters AND by MusicBrainz's title-style findings                                                                                                                                                                                                                                                                                                                                                                                                                                              | feasible now                                                                                                                                                                 | *the best library candidate*: small, stable, pure, and your Springsteen scripts could use MusicBrainz title style                                                                                                                                    |
+| Settings schema (~configSchema~)             | 272 KiB; 242 net (see note)      | pure data, no closures; ~new VZ_MBLibrary(…, configSchema, …)~ reads it                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     | technically trivial                                                                                                                                                          | fragment, NOT a library: it changes with almost every feature (419 settings), so a separate release unit invites schema/code skew — exactly the skew 5.1 describes                                                                                   |
+| Link previews (popup engine)                 | 797 KiB, 10.3 % / 534            | never builds ~table.tbl~, never calls the pipeline, does not read ~activeDefinition~/~allRows~. But: two-way state with the tooltip engine (~_statTipApi~ declared in the popup engine and assigned by ~_initStatTooltip()~; ~_dpPeek.typedAt~ written by both), the ~data-mb-dp-saved-title~ attribute contract with ~_setTip~ and the findings, the shared MB rate gate (~_relAwaitRateSlot~) and Discogs slot, ≈38 helpers from elsewhere, and the dg-* TABLE pageTypes use ≈20 of its symbols (~_extGet~, ~_extDiscogs*~, ~_EXT_DG_LISTS~, ~_extDgHistParse~, ~_mbPop~) | after a refactor: a context object of ≈35 entries (≈15 once a core of pure helpers exists), with the seam at ~_popSources()~                                                 | fragment now; a library only if a second script wants link previews (MB_PageEnhancer?). Standalone userscript: no (it splits GM storage, doubles both rate gates, and would start running on pages with no pageType)                                 |
+| Non-MB pageTypes (converters)                | 412 KiB, 5.3 % / 262             | dispatched by 26 flag ~if~s in three clusters (live page, fetched pages, load from disk) plus a 5-way host switch at init; 14 host branches in 8 shared functions (6 in ~openUniqDrop~); jungleland/brucespringsteen/brucebase need ~Lib~, ~_setTip~, the table style and the title-case engine (their row builders call ~_mbSetSiteTitle()~); springsteenlyrics' bar needs the filter engine (~getCleanColumnText~, ~applyUniqValueSet~, ~allRows~, ~isLoaded~); Discogs needs ≈35 identifiers incl. the popup engine's Discogs reader                                     | after a refactor: per-definition hooks (~features.convert(def, doc)~, ~prepareLivePage(def)~, in the style of the existing ~features.pageRequest~) and a per-site descriptor | fragment first; the hook refactor is worth doing anyway (it removes the "converter must be wired in three places" pitfall); Discogs not separable until the dropdown, filter modes and tooltip cards have registries; own userscript: no (10-10 §3b) |
+| Artwork (CAA/EAA, viewer, cover-art section) | 695 KiB, 9.0 % / 405             | mirrors icons and thumbnails onto master rows (~_artMirror*~), sort/filter sentinels in ~_CLEAN_STRIP_SEL~, its own IndexedDB, the art viewer used by previews and Discogs                                                                                                                                                                                                                                                                                                                                                                                                  | not separable without the row model                                                                                                                                          | fragment                                                                                                                                                                                                                                             |
+| The engine (everything not listed here)      | ≈4.9 MiB (5.1 MB), 65 %          | this IS the shared mutable state (~activeDefinition~, ~allRows~, caches, ~_toolbarMenus~ …)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 | no                                                                                                                                                                           | fragments                                                                                                                                                                                                                                            |
+| Test-mode hook ~__saTest~                    | 84 KiB / 26                      | exists to reach closure-private functions                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   | no                                                                                                                                                                           | stays; gated at runtime by ~window.__SA_TEST_MODE__~                                                                                                                                                                                                 |
+
+Sizes are from ~size-report.js~ where it can name the part exactly (the extractor registries,
+~configSchema~, the areas of 1.2) and from the coupling sweeps otherwise (the AR helpers, ≈).
+~configSchema~ is 272 KiB (278,560 bytes) as one object; 242 KiB once its foreign-site (18 KiB)
+and link-preview (≈12 KiB) keys are counted with those areas, as 1.2 does.
+
+** 5.3 Answer
+
+*Feasible for some parts, but a library is the wrong primary tool.* It does not make a single
+page cheaper (5.1), it adds the publish and version-skew hazards this project has already paid
+for once, and the parts that are cleanly separable today (extractors, AR helpers, title case,
+the settings schema) are exactly the parts whose separation buys least — they are edited
+together with the code around them.
+
+The order that gets each benefit where it is cheapest:
+1. *Per-page cost first, no split needed* (4: the changelog, the orphaned GM values, the
+   publish copy, ~.meta.js~). That is where the users' milliseconds and megabytes are.
+2. *Manageability: the byte-identical fragment split* (10-10 §2.4). ~src/NN-name.js~ joined back
+   into the same IIFE, so no scope, TDZ or behaviour changes, proven by SHA-256 equality on the
+   first cut. It gives one file per subsystem of 1.2 — 20 to 40 files of 100–800 KB — which is
+   what "relocate the popup code / the non-MB code / the extractors" is really asking for, without
+   a single new URL for users.
+3. *Libraries only where there is a second consumer*, starting with the smallest pure piece: the
+   title-case engine (your Springsteen scripts), then WS/2 client plus rate gate and the escapers
+   if MB_PageEnhancer wants them (that is a "VZ_MBCore" or an extension of ~VZ_MBLibrary~), then
+   the popup engine behind ~_popSources()~ if a second script wants link previews. Each with an
+   immutable URL, SRI, a version handshake and a publish-check entry (5.1).
+
+* 6. Open questions
+
+From 10-10, still open:
+1. Do you still live-test in Firefox? (Decides whether the dev loader needs the local-HTTP
+   fallback, 10-10 §1.2.)
+2. Where is your BruceBase userscript, and which BB pages does it touch? (10-10 §3c)
+3. Which phase first: Phase 0 (dev loader, header fixes) only, or Phase 0 + 1?
+4. Downgrade the no-pageType ~Lib.error~ that every bare entity page logs?
+5. REFACTORING.org's bundler verdict: annotated today (5), as 10-10 asked.
+
+New:
+6. Is the changelog dialog worth ≈1.75 MB in every page's storage hand-off and ≈6.5 MiB per
+   tab? (4, #1: the library change also benefits MB_PageEnhancer, which shares the library.)
+7. Would a publish copy without comments be acceptable to you, given that users would no longer
+   see the rationale comments in their Tampermonkey editor (line numbers stay the same)? And may
+   the two characters it would have to change in the credits block (Ⅱ and → in the quoted header
+   of jesus2099's script, CLAUDE.md "do not edit") become "II" and "->" in the published copy?
+   Without that, the copy stays two-byte and keeps only the comment saving.
+8. Is there a second consumer for any library candidate (5.2) — MB_PageEnhancer for link
+   previews, your Springsteen scripts for title case?
+
+* 7. Method and reproduction
+
+- *Size:* ~node scripts/size-report.js --rev e66f26e,ee5b2eb,3b36ee0,e311d34,535dad8,WORKTREE~
+  (≈1 s per revision; exits 1 if the buckets do not add up). Rules:
+  ~scripts/size-report-subsystems.json~; first-match by name, ~configSchema~ keys and
+  ~pageDefinitions~ entries split, prefix traps excluded.
+- *Load cost:* ~scripts/measure-script-load-cost.js~ (2026-10-10, extended today with
+  ~--rev~, ~none~, ~stripped-ascii~, ~--pad-to~, ~--memory~, ~--page/--url~), summarised with
+  ~scripts/summarize-load-cost.js~. The exact command lines, the environment and all tables are
+  in ~tests/MEASUREMENTS.org~, "2026-10-22 — userscript load cost at 7.9 MB …". Raw JSON is not
+  committed; each run re-creates it.
+- *Memory:* Chromium memory-infra dumps over CDP (~Tracing.requestMemoryDump~), the run's
+  renderer only. Its private footprint is the number Chromium's own task manager shows;
+  ~parkable_strings~ is where Blink keeps a classic script's source.
+- *Not measured:* Tampermonkey itself, Firefox, the real network, MusicBrainz's own CSS and
+  scripts (aborted on the supported pages), a long session (garbage that only accumulates),
+  background tabs (where Chromium may compress parkable strings).
+- *The one-byte arm* escapes the 4,967 characters above U+00FF in string, template and regex
+  tokens, and REPLACES the 24 in the kept header and credits with "?" — fine for measuring, not
+  for publishing (open question 7).
+- *Reviewed:* an adversarial review agent checked every figure against the JSON, the code and
+  the docs (2026-10-22); its corrections are in this version.
+- *One methodology change from 10-10:* the arm's text now enters the page as an ~evaluate()~
+  argument instead of a routed ~fetch()~. The fetch left a second decoded copy of the text in
+  Blink's buffer partition after the run (memory-infra, 2026-10-22: +15.7 MiB for the real file),
+  which Tampermonkey's injection has no counterpart for. The timed part starts from the same DOM
+  text either way, so timings should not move; the two pilots agreed within their noise (257 vs
+  262 ms for the real file, n=2 each).

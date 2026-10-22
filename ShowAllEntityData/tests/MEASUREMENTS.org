@@ -3786,6 +3786,36 @@ not kept — its numbers are copied from the console).
 Flagged to the user before going on, per the performance gate. Whether the
 cost grows with the row count was not measured.
 
+* 2026-10-10 — userscript load cost to the pageType gate, by file size (NB-3641)
+
+Env: 2026-10-10T07:49:57Z–07:51:37Z · NB-3641 (28 cores, 31 GB) · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.40.1-microsoft-standard-WSL2) · Node v24.19.0 · Chromium 151.0.7922.34 via Playwright 1.62.1 · no Tampermonkey (in-memory GM stubs)
+
+What a matched page pays just for the file's size, before any table work:
+=node scripts/measure-script-load-cost.js --runs 15 --warmup 2 --throttle 1,4=,
+script 9.99.1316+2026-10-10, branch =docs/build-framework=. Page: a routed
+=https://musicbrainz.org/__saed-measure= with no pageType, so every run stops
+at the gate (checked per run; 0 invalid). Fresh BrowserContext per run;
+iro/pako/VZ_MBLibrary injected untimed; timed = appending a =<script>= with
+the arm's text (parse + compile + run to the gate). 15 kept runs per cell.
+
+| Arm                                         |      Bytes | ×1 median ms |  ×1 p10–p90 | ×4 median ms |  ×4 p10–p90 | ScriptDuration ×1 ms |
+|---------------------------------------------+------------+--------------+-------------+--------------+-------------+----------------------|
+| real (today's file)                         |  6,696,865 |        102.6 |  99.8–105.2 |        428.6 | 419.9–444.4 |                 58.1 |
+| prescan (never-called wrapper: the floor)   |  6,696,899 |         44.0 |   42.6–46.3 |        181.1 | 175.0–189.1 |                  0.0 |
+| stripped (comments + indent, newlines kept) |  2,811,168 |         85.9 |   82.0–90.7 |        354.2 | 348.5–366.4 |                 53.2 |
+| pad-code-10MB (real + never-called code)    | 10,000,583 |        168.9 | 163.1–177.4 |        690.5 | 683.0–720.5 |                 87.7 |
+| pad-comment-10MB (real + comment lines)     | 10,000,073 |        117.4 | 113.1–119.9 |        484.2 | 475.4–494.8 |                 63.0 |
+
+Changelog cache seeded (the library parses the 1.93 MB changelog after the
+IIFE): "settled" 103.3 → 111.1 ms (×1), 430.3 → 457.2 ms (×4); =JSON.parse=
+alone 2.0 / 9.3 ms; JS heap retained after GC +1.5 → +4.7 MB.
+
+*Read as:* ≈20 ms per MB of never-called code and ≈4.5 ms per MB of comments
+at ×1 (≈79 / 17 at ×4); stripping comments is −58 % bytes but −16 % time.
+Analysis and caveats (what Tampermonkey adds is not in these numbers):
+=org/build-framework.org=, section 0.3. Raw JSON not committed; the script
+re-creates it in about two minutes on this host.
+
 * 2026-10-11 — 💾 cache Export and Import, synthetic cache (branch feature/cache-export-import, petri)
 
 Env: 2026-10-11T00:47:58Z–00:48:31Z · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.40.1-microsoft-standard-WSL2) · Playwright 1.62.1 bundled Chromium (headless), no Tampermonkey (GM stubs).
@@ -3904,3 +3934,138 @@ CEST). Scaled by test count that gave about 04:24 CEST, and the run finished
 at 04:23:52 CEST, in the same 5481 s as the 1773-test run: 0.306 s against
 0.309 s per test. The longest spec files were =popup-mb.spec.js= (6.7 m) and
 =rel-auto-retry-failed.spec.js= (5.3 m).
+
+* 2026-10-22 — userscript load cost at 7.9 MB: versions, variants, supported pages, memory (NB-3641)
+
+Env: 2026-10-22T15:35:52+02:00–15:55:35+02:00 · NB-3641 (i7-14700HX, 28 threads, 31 GB) · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.54.1-microsoft-standard-WSL2) · Node v24.19.0 · Chromium 151.0.7922.34 via Playwright 1.62.1 · no Tampermonkey (in-memory GM stubs)
+
+The 2026-10-10 measurement above, repeated at 9.99.1426 (7,903,066 bytes) and
+extended (=scripts/measure-script-load-cost.js=, extended on branch
+=docs/build-framework= the same day): older versions timed in the SAME session
+(=rev:= arms read with =git show=: 3b36ee0 = 9.99.1167, the published one;
+535dad8 = 9.99.1316, the 10-10 file), a =none= arm, a =stripped-ascii= arm (the
+stripped copy with every character above U+00FF escaped: a one-byte source), a
+15 MB code pad, two SUPPORTED initial pages (the raw snapshots
+=tests/snapshots/artist-releasegroups/raw.html= and
+=tests/snapshots/release-tracks/raw.html= at their =tests/pagetypes.json= URLs;
+valid when the h1 toolbar exists, "settled" adds one animation frame), and
+memory from a Chromium memory-infra dump of each run's renderer. Analysis:
+=org/userscript-size.org= §2. Raw JSON not committed; the commands re-create it
+in about 20 minutes:
+
+#+begin_example
+node scripts/measure-script-load-cost.js --runs 15 --warmup 2 --throttle 1,4 --rev 3b36ee0,535dad8 --pad-to 10000000,15000000
+node scripts/measure-script-load-cost.js --memory --runs 7 --warmup 1 --throttle 1 --rev 3b36ee0,535dad8 --pad-to 10000000,15000000 \
+    --arms none,real,prescan,stripped,stripped-ascii,pad-code-15MB,real+changelog,rev:9.99.1167,rev:9.99.1316
+node scripts/measure-script-load-cost.js --runs 10 --warmup 2 --throttle 1,4 --rev 3b36ee0 \
+    --page tests/snapshots/artist-releasegroups/raw.html --url 'https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f?all=1&va=0'
+node scripts/measure-script-load-cost.js --memory --runs 5 --warmup 1 --throttle 1 --rev 3b36ee0 --page … --url …   (same page)
+node scripts/measure-script-load-cost.js --runs 10 --warmup 2 --throttle 1,4 --rev 3b36ee0 \
+    --page tests/snapshots/release-tracks/raw.html --url https://musicbrainz.org/release/1d404e1d-fcb6-3a52-b478-e706e893c897
+node scripts/measure-script-load-cost.js --memory --runs 5 --warmup 1 --throttle 1 --rev 3b36ee0 --page … --url …   (same page)
+node scripts/summarize-load-cost.js <each JSON>
+#+end_example
+
+*Same host, twice as slow as on 10-10.* The 9.99.1316 file took 211.0 ms here
+against 102.6 ms on 10-10 (×1), with the same Chromium and Playwright and the
+machine idle (load 0.5). The WSL kernel changed in between (6.18.40.1 →
+6.18.54.1), and the laptop's power state may differ. The speed was also
+bimodal WITHIN each run (p10 ≈25 % below the median in every arm; the
+i7-14700HX mixes performance and efficiency cores) and drifted BETWEEN the six
+runs: the same 9.99.1167 arm took 143.9 ms in the bare-page run and 112.6 /
+154.3 ms in the two page runs, and its ratio to today on the artist page was
+0.52 in the timing run but 0.64 in the memory run. Compare arms within one
+table only, quote ratios, and read them as ±10 %.
+
+*One method change:* the arm's text now enters the page as an =evaluate()=
+argument instead of a routed =fetch()=. With the fetch, a second decoded copy of
+the text stayed in Blink's buffer partition after the run (+15.7 MiB for the real
+file in a memory-infra pilot), which Tampermonkey's injection has no
+counterpart for. The timed part starts from the same DOM text either way; two
+pilots agreed within their noise (257 vs 262 ms, n=2).
+
+Bare page (no pageType, 15 runs + 2 warm-ups, every run valid):
+
+#+NAME: gate-timing
+| Arm                                | MB    | ×1 ms (p10–p90)     | ÷ today | ×4 ms (p10–p90)        | ÷ today | settled ×1 / ×4 ms |
+|------------------------------------+-------+---------------------+---------+------------------------+---------+--------------------|
+| today (9.99.1426)                  | 7.90  | 262.5 (198.9–269.5) | 1.00    | 1128.7 (1051.0–1176.9) | 1.00    | 263.5 / 1133.1     |
+| 9.99.1316 (2026-10-10)             | 6.70  | 211.0 (158.6–215.0) | 0.80    | 912.9 (677.5–938.6)    | 0.81    | 211.7 / 917.4      |
+| published 9.99.1167                | 5.02  | 143.9 (115.2–147.1) | 0.55    | 608.6 (453.9–616.7)    | 0.54    | 145.0 / 614.6      |
+| today, comments stripped           | 3.45  | 216.4 (167.1–223.8) | 0.82    | 944.5 (702.6–968.2)    | 0.84    | 217.3 / 950.1      |
+| today, stripped + one-byte         | 3.47  | 205.5 (151.6–212.9) | 0.78    | 899.3 (660.9–923.3)    | 0.80    | 206.2 / 905.3      |
+| today, never run (pre-parse floor) | 7.90  | 116.3 (85.9–118.1)  | 0.44    | 497.8 (463.2–527.7)    | 0.44    | 116.4 / 497.9      |
+| today + code to 10 MB              | 10.00 | 352.0 (261.2–359.4) | 1.34    | 1505.1 (1161.0–1547.4) | 1.33    | 352.9 / 1508.6     |
+| today + code to 15 MB              | 15.00 | 565.6 (415.0–578.3) | 2.15    | 2412.8 (1809.8–2453.0) | 2.14    | 566.4 / 2417.0     |
+| today + comments to 10 MB          | 10.00 | 282.8 (209.5–293.5) | 1.08    | 1209.3 (886.5–1234.4)  | 1.07    | 284.5 / 1213.8     |
+| today, changelog cached            | 7.90  | 263.0 (257.7–275.6) | 1.00    | 1132.8 (1104.0–1159.9) | 1.00    | 272.7 / 1167.3     |
+| no userscript                      | 0.00  | 0.0 (0.0–0.1)       | 0.00    | 0.0 (0.0–0.1)          | 0.00    | 0.2 / 0.8          |
+
+Supported pages (10 + 2, every run valid):
+
+#+NAME: page-timing-artist-releasegroups
+| Arm                        | ×1 ms (p10–p90)     | ÷ today | ×4 ms (p10–p90)       | ÷ today | settled ×1 / ×4 ms |
+|----------------------------+---------------------+---------+-----------------------+---------+--------------------|
+| today (9.99.1426)          | 215.3 (211.7–290.9) | 1.00    | 1233.0 (928.9–1253.1) | 1.00    | 232.6 / 1293.1     |
+| published 9.99.1167        | 112.6 (111.8–120.5) | 0.52    | 643.6 (476.3–654.1)   | 0.52    | 134.1 / 721.5      |
+| today, comments stripped   | 179.4 (178.0–238.3) | 0.83    | 1023.9 (777.0–1044.1) | 0.83    | 197.7 / 1088.0     |
+| today, stripped + one-byte | 175.2 (170.9–206.1) | 0.81    | 1004.3 (762.5–1020.0) | 0.81    | 192.5 / 1062.3     |
+| no userscript              | 0.0 (0.0–0.1)       | 0.00    | 0.0 (0.0–0.7)         | 0.00    | 0.5 / 1.9          |
+
+#+NAME: page-timing-release-tracks
+| Arm                        | ×1 ms (p10–p90)     | ÷ today | ×4 ms (p10–p90)        | ÷ today | settled ×1 / ×4 ms |
+|----------------------------+---------------------+---------+------------------------+---------+--------------------|
+| today (9.99.1426)          | 294.5 (213.2–299.0) | 1.00    | 1268.7 (1222.9–1289.9) | 1.00    | 306.0 / 1313.6     |
+| published 9.99.1167        | 154.3 (114.9–157.0) | 0.52    | 653.9 (644.2–667.1)    | 0.52    | 169.6 / 713.0      |
+| today, comments stripped   | 244.3 (182.8–246.2) | 0.83    | 1076.1 (1031.6–1091.3) | 0.85    | 255.7 / 1118.1     |
+| today, stripped + one-byte | 237.4 (173.4–242.7) | 0.81    | 1027.9 (998.5–1032.7)  | 0.81    | 252.1 / 1071.8     |
+| no userscript              | 0.0 (0.0–0.1)       | 0.00    | 0.1 (0.0–0.6)          | 0.00    | 0.5 / 2.1          |
+
+Memory, private footprint of the run's renderer after GC (7 + 1 on the bare
+page, 5 + 1 on each supported page, every run valid). The changelog arm is left
+out of the table: its footprint (+16.5 MiB over today's) counts the seeded value
+several times over, because the harness seeds it through an init script that
+holds further copies. Its own retained heap is the run's JS-heap delta against
+the plain arm: −10.46 against −13.83 MB, i.e. +3.4 MB (3.2 MiB) of parsed
+entries; with the cached text itself (the mirror's changelog: 1,732,882
+characters, 8,272 above U+00FF, so 3.3 MiB as a two-byte string) ≈6.5 MiB per
+tab.
+
+#+NAME: memory-gate
+| Arm                                | footprint MiB | Δ no script | source text (parkable strings) MiB | V8 heap MiB |
+|------------------------------------+---------------+-------------+------------------------------------+-------------|
+| no userscript                      | 18.5          | 0.0         | 0.5                                | 3.2         |
+| today (9.99.1426)                  | 35.7          | 17.2        | 15.5                               | 5.1         |
+| today, never run (pre-parse floor) | 33.6          | 15.2        | 15.5                               | 3.3         |
+| today, comments stripped           | 27.3          | 8.8         | 7.1                                | 5.0         |
+| today, stripped + one-byte         | 24.2          | 5.7         | 3.8                                | 5.1         |
+| today + code to 15 MB              | 51.5          | 33.1        | 29.0                               | 6.0         |
+| published 9.99.1167                | 29.4          | 10.9        | 10.0                               | 4.2         |
+| 9.99.1316 (2026-10-10)             | 33.0          | 14.6        | 13.2                               | 4.7         |
+
+#+NAME: memory-artist-releasegroups
+| Arm                        | footprint MiB | Δ no script | source text (parkable strings) MiB | V8 heap MiB |
+|----------------------------+---------------+-------------+------------------------------------+-------------|
+| no userscript              | 27.8          | 0.0         | 0.5                                | 3.2         |
+| today (9.99.1426)          | 46.5          | 18.7        | 15.8                               | 5.3         |
+| today, comments stripped   | 38.2          | 10.5        | 7.4                                | 5.3         |
+| today, stripped + one-byte | 34.9          | 7.1         | 4.2                                | 5.3         |
+| published 9.99.1167        | 38.8          | 11.1        | 10.2                               | 4.4         |
+
+#+NAME: memory-release-tracks
+| Arm                        | footprint MiB | Δ no script | source text (parkable strings) MiB | V8 heap MiB |
+|----------------------------+---------------+-------------+------------------------------------+-------------|
+| no userscript              | 26.9          | 0.0         | 0.5                                | 3.2         |
+| today (9.99.1426)          | 44.6          | 17.7        | 15.8                               | 5.3         |
+| today, comments stripped   | 36.3          | 9.4         | 7.4                                | 5.4         |
+| today, stripped + one-byte | 32.9          | 6.0         | 4.2                                | 5.3         |
+| published 9.99.1167        | 37.7          | 10.8        | 10.2                               | 4.4         |
+
+*Read as:* every matched page ≈260 ms (×1) / ≈1.1 s (×4); ≈1.8× the time of
+9.99.1167 for 1.58× the bytes; never-called code ≈43 ms per MB, comments
+≈10 ms per MB (10-10: 20 and 4.5 on the same host in its faster state — the
+ratio of the two is unchanged); a stripped one-byte copy ≈−22 % (×1) / ≈−20 %
+(×4) and −11.5 MiB per tab; memory +17.2 MiB per tab, 15.0 MiB of it the
+source text held two-byte in Blink's parkable strings, growing with the file
+(9.99.1167: +10.9 MiB); a cached changelog ≈6.5 MiB per tab and +9 ms (×1) /
++34 ms (×4) until settled. Memory columns are MiB (2^20 bytes).

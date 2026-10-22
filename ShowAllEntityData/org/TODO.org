@@ -4057,8 +4057,11 @@ Make suggestions for refactoring, see also @REFACTORING.org
 Is it feasible to relocate specifically parts of the code in a library or multiple libraries
 
 #+begin_example
-code for href hovering, card and detail popups 
+code for href hovering, card and detail popups
 code for non-MB PTs
 code for extractors
 etc.
 #+end_example
+
+Analysed 2026-10-22 — see [[file:userscript-size.org][org/userscript-size.org]] (follows the 2026-10-10 answer in
+[[file:build-framework.org][org/build-framework.org]]; REFACTORING.org has a dated re-evaluation and candidates #10–#13).
