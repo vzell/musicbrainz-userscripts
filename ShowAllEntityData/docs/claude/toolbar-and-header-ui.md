@@ -130,6 +130,90 @@ the dangerous case**, because the one tool you would reach for says the file is
 fine. If a CSS change makes unrelated rules stop working, grep the edited
 region for a backtick before debugging anything else.
 
+### Column display labels (`_colLabel()`, `sa_short_column_labels`)
+
+A column's **name** is its key: `data-col-name`, `collapsableColumns`, the 📊
+sections, `sa_default_hidden_columns`, the 👁️ menus, exports and saved files
+all use it. A **label** is only the text the header paints: the first text node
+of `.mb-col-hdr-flex`, written by `makeTableSortableUnified()`. The full name
+is the bold title of the header's tooltip card, which every header's card gets
+(see "Column header tooltips" below).
+
+- **Declaring a label.** Built-in labels go in `_COLUMN_LABELS`, for columns
+  on many pageTypes: "Recording of" → "Work" and "Performance attributes" →
+  "Perf." (since `feat/short-column-labels`). A single pageType adds or
+  overrides labels with `features.columnLabels: { '<name>': '<label>' }`, which
+  `_activeColumnLabels()` merges over the built-in ones.
+  `sa_short_column_labels` off returns `{}`.
+- **The way back from a label is the flex, never the text.** A labelled flex
+  carries `data-mb-col-key="<name>"`. Saving to disk and the "Show
+  single-table" handoff store the header's `innerHTML`, which keeps that
+  attribute but loses the `<th>`'s `data-col-name`. The restore in
+  `loadTableDataFromDisk()` rebuilds the header as the plain name from it
+  (`_colKeyOfLabelledHeader()`). **Do not add a reverse lookup by label
+  text.** "Work" is also a real column on `artist-works`, and a text lookup
+  would rename it.
+- **Every reader resolves the name.** Use `dataset.colName` or
+  `_cleanColHeaderText()`, never a decorated header's `textContent`. Three
+  readers used text and were switched:
+  - `syncCollapseButtonsWithColumnVisibility()`'s `isColVisible`
+  - `showStatsPanel()`'s column list
+  - the "invalid regexp" filter message
+
+  Specs: `tests/fixtures/column-labels.spec.js`. Planted defects:
+  `scripts/mutations/column-labels.json`.
+
+### Column header tooltips: the name in bold, then what the column holds
+
+Every column header's "Liner notes" card is titled with the column's name.
+`_tipTextToHtml()` puts `_tipHeaderColumnName(el)` above the tip's own lines,
+unless the first line already is the name. This covers a `<th>` in the first
+header row of a `table.tbl` with `data-col-name`. **It is done in the card,
+not in the tip text**, so it holds for every writer:
+- `_synthColTooltip()`'s "Derived from …"
+- an injected column's explanation
+- the Relationships header's load state, which changes later
+- a description
+
+It is skipped when the tip carries comparisons (`data-mb-tip-cmp`), whose
+entries are numbered by the text's own lines.
+
+**A column MusicBrainz renders itself gets a description** as its tip, from
+`_COLUMN_DESCRIPTIONS`. `makeTableSortableUnified()` sets it only when the
+header has no tip of its own; the decorator runs after `cleanupHeaders()`
+stamped the script's columns.
+- **The value:** a string, or an object of texts per **row entity** with a
+  `default`. The row entity is what one row of the table is: `_tableRowEntity()`
+  reads the kind of the first MusicBrainz link in the first body row, in the
+  `stickyColumn`/`extractMainColumn` column first. "Type" on an artist's
+  events (rows: `event`) is the kind of event; on a release-group list it is
+  the primary and secondary types.
+- **Per pageType:** `features.columnDescriptions` (same shape) wins over the
+  built-in texts. It is the way in for a table whose rows are no entity, such
+  as elections, annotations or CD stubs.
+- **A text that changes:** a text may be a function, for a column whose
+  content changes under the user. Length switches between seconds and
+  milliseconds with ⏱.
+  - A description tip carries `data-mb-col-desc`.
+    `_refreshColumnDescriptions(colName)` rewrites only those, so a header
+    whose tip another writer replaced is left alone. `release-tracks`'
+    `_initLengthColHeaderTooltips()` removes the marker for that reason.
+  - Whatever changes the content calls it; for ⏱ that is the end of
+    `_msToggleLengthPrecision()`.
+  - A description is the script's own tooltip (`data-mb-tip`), so
+    `_isOwnColumnTooltip()` never takes it for jesus2099's on a native
+    `treleases` header (docs/claude/release-tracks-and-length.md).
+- **When there is no text:** off with `sa_column_descriptions`, and always off
+  on a foreign site (`_foreignHost`), whose columns these texts do not
+  describe. A name with no entry gets no tip, as before.
+- **Not covered yet:** the edit-detail and merge tables (Old/New tracklist,
+  Into:, Track #). Their meaning was not checked, so they have no entry.
+
+Specs: `tests/fixtures/column-descriptions.spec.js`. Planted defects:
+`scripts/mutations/column-descriptions.json`. Snapshot baselines drift by the
+new `title`/`data-mb-tip` on native headers (`tests/snapshots/registry.org`,
+"Expected drift").
+
 ## The h1 toolbar is two pull-down menus plus two pinned buttons
 
 `org/action-button-redesign.org`. The bar used to be one flat run of up to 13
@@ -542,7 +626,9 @@ Both halves matter and the reasons are easy to get backwards.
   `▶🔗` / `▶🖼` / `▶⏱` toggles are injected into `.mb-col-hdr-flex` *after*
   `makeColumnsResizable()` runs, and the `.mb-col-uniq-count` /
   `.mb-col-collapse-count` digits are written later still by the idle-scheduled
-  `_updateAllColHeaderCounts()`. A floor frozen at set-up is short by 4-6 px on
+  `_updateAllColHeaderCounts()` — in batches, at most every 500 ms and at the
+  end of its pass (PERFORMANCE.org Step 38), so a badge can stay empty for a
+  while after the render. A floor frozen at set-up is short by 4-6 px on
   a plain column and by 43-126 px on one carrying a late toggle — which let a
   column be dragged narrower than its own header and clipped the 📊 pill.
 - **The fresh measurement REPLACES the stamped one; do not `max()` them.** The
@@ -606,12 +692,21 @@ How it behaves, and why:
   `#mb-art-bigbox-tooltip`, `#mb-art-hover-preview` or `#mb-rel-tooltip`
   shows (`_OTHER_RICH_TIPS`). The title stays stashed, so no grey box appears
   either. A Relationships icon whose cell a filter matches is skipped before
-  the stash: that tooltip's plain panel shows this very title, and a stash
-  would leave the panel empty. **Give any NEW floating hover tooltip's id to
+  the stash: its own stack (`#mb-rel-tooltip`, the filter box and the icon
+  box, `_relStackParts()`, since 2026-10-17) shows it. Without a matching
+  filter the card IS the icon box (`_tipTextToHtml()` returns
+  `_relLinkNoteHtml()` for a `td.mb-rel-cell a`). **Give any NEW floating hover tooltip's id to
   `_OTHER_RICH_TIPS`**, or its elements' own titles will draw a card on top of
   it. All three were found in a browser, not by a spec: an inline CAA
   thumbnail's "N images found" card on its own preview, a Relationships URL
   shown twice.
+- **The link preview card (`#mb-dp-peek`) takes the card's text over**
+  (WIP.1, 2026-10-16). When a preview card is due or shows for a link INSIDE
+  the card's element (a finding's tip on the Title `<td>`), the own card
+  gives way, `_statTipApi.yieldTo()`, and the text becomes a box of the
+  preview's note stack. `_statTipApi.resume()` brings it back when the
+  preview closes. Until then both showed on the same target, whichever timer
+  fired first. See docs/claude/detail-pages.md, "The note stack".
 - `[data-mbtt]` (ready-made HTML: row counts, action buttons) keeps its old
   path: shown at once, no delay, and not gated by `sa_rich_tooltips`.
 - `_tipTextToHtml()` only infers structure from plain text and escapes first.
@@ -626,7 +721,8 @@ is the top layer; only the page-corner notice (2147483000) comes close.
 
 **One look.** `.mb-tt-liner` in the main `GM_addStyle` block is the style of
 every floating tooltip: `#mb-stat-tooltip`, `#mb-art-bigbox-tooltip`,
-`#mb-rel-tooltip`, `#mb-rel-plain-tooltip` and `#mb-ctrl-m-tooltip`. Give a new
+the boxes of `#mb-rel-tooltip` (a stack since 2026-10-17; `#mb-rel-plain-tooltip`
+is gone) and `#mb-ctrl-m-tooltip`. Give a new
 one that class and its row classes (`.mb-tt-title`, `-body`, `-foot`,
 `-comment`, `-dim`, `-rule`, `-pill`, `-alert`). Never give it inline colours:
 the old dark panel's `#cdd6f4` / `#45475a` literals were what had to be hunted
@@ -743,6 +839,71 @@ render sites), `_vsbRefresh()`, `_vsbBaseOffset()`.
 - **The h3's indent** (`margin-left: 1.5em`, the table under it sits 4 px
   further left in the fixture) is masked with a page-coloured `box-shadow`
   shifted left, so rows never show beside a stuck bar.
+- **The right end: one page-coloured strip at the window edge**
+  (`#mb-sph-rmask`, 2026-10-14). With the sticky page headers engaged, a
+  bar is capped (`--mb-sph-maxw`) a gutter short of the window, the room it
+  needs to stay pinned to the end of the scroll (`_sphRefresh()`). A wide
+  table ran on past that line to the window edge, and rows scrolling under
+  a stuck bar showed beside it. `_sphUpdateRightMask()` now keeps one
+  `position: fixed` strip at the window's right edge, top to bottom, as
+  wide as the smallest gap between a pinned h2/h3 bar and the window edge,
+  in the page colour (`_sphGutterBg()`): a wide table, its rows and its
+  stuck thead end on the bars' line at every scroll position, like the
+  Annotation / Credits / Wikipedia bars. z-index `SPH_Z_RMASK` 102: over
+  the table (thead 100, resizer 101), under a raised h3 (103), the stuck
+  h2 (104), the header block and MB's sidebar (105), the MB header and
+  footer (106+) and every popup; `pointer-events` stay on, so nothing
+  hidden under it can be clicked. Hidden without a pinned bar (no line to
+  align to) and whenever the feature is disengaged. Three earlier
+  versions were rejected in the user's browser the same day, each a
+  per-bar `::after`: the strip beside the bar in the bar's colour (past
+  the table's end at maximum scroll), the same clamped to the content's
+  end on scroll (still further right than the section bars), and the same
+  in the page colour (the table itself still ran on past the line). The
+  gutter had also been ~100 px too wide on MusicBrainz: under
+  `#page { display: table }` a collapsed sidebar stayed a table cell as
+  wide as its min-content; it is `display: none` now
+  (`initSidebarCollapse()`), after the 0.3 s slide-out (a discrete
+  `display` transition). The initial collapse (`sa_sidebar_collapsed`)
+  runs with the transition off: otherwise a page set to open collapsed
+  kept the sidebar for 0.3 s and then reflowed under a pointer already
+  resting on a link (8 `popup-ext.spec.js` failures on petri, 2026-10-14;
+  spec "no sidebar box from the first frame"). The fixtures carry no MB stylesheet, so
+  `sticky-page-headers.spec.js` injects that layout excerpt to see it.
+  Specs: "a wide table ends on the h2/h3 bars' line" (painted pixels at
+  scrollX 0 and with the bars stuck), "the right-edge mask lies under
+  chrome", "stop where the table ends", "collapsed sidebar takes no
+  space"; mutations: `scripts/mutations/sticky-gutter-sorted-thead.json`.
+- **The opened sidebar and its handle on a wide page** (2026-10-14,
+  reported on a release group). Auto-resize makes `#sidebar`
+  `position: sticky` with `right: 0`. It is the last cell of MB's `#page`
+  table, so on a page wider than the window its own place is past the right
+  edge. It used to be `left: 0`, which never applies there, so an opened
+  sidebar stayed out of view and only slid in while scrolling right (the
+  page-coloured right-edge mask was NOT what hid it: the sidebar's z-index,
+  105, is above the mask's, 102). `initSidebarCollapse()`'s handle sits at
+  the sidebar's top (at `#content`'s top while collapsed), clamped inside
+  the visual viewport, instead of `top: 50%`. After a click, and whenever
+  `html`'s class changes (the sticky page headers switching), `followHandle()`
+  places it every frame for 400 ms: the sidebar and the content containers
+  slide for 0.3 s and a single measurement landed 50 px off. Changes inside
+  the sidebar keep the single rAF measurement, so a render is not slowed.
+  Spec: `sidebar-collapse-handle.spec.js` (3); mutations in
+  `scripts/mutations/sidebar-overhaul.json` ("handle: …").
+  **On a phone** (fixed 2026-10-14, after 9.99.1347): MB's pages carry no
+  viewport meta, so a phone lays them out like a desktop page and a fixed
+  element lives in a viewport wider than what is shown (Pixel 7 emulation:
+  `innerWidth` 964, `visualViewport` 412). `right: 0` put the handle at
+  x 949, never tappable. `updateHandlePosition()` now sets `left` (the
+  coordinates `getBoundingClientRect()` and a fixed box share) and clamps
+  the handle inside `visualViewport` (offsetLeft/Top, width, height), and
+  `visualViewport` scroll/resize events re-place it. On a desktop the visual
+  viewport is the window, so nothing moves there; it also no longer uses
+  `innerWidth`, which counts the scrollbar while a fixed box's offsets do
+  not. Spec: `sidebar-collapse-handle.mobile.spec.js` (a real tap, also
+  after a pan). A pinch-zoom cannot be tested: headless Chromium ignores
+  `Input.synthesizePinchGesture`, so the listener's mutation is recorded
+  `expect: "pass"`.
 - **Stacking ladder:** thead 100, column resizer 101, h3 102 (raised 103),
   data h2 104 (raised 107 = `SPH_Z_RAISED`), Brucebase side bar 150. A
   raised h3 stays UNDER the h2 (an h3 sliding in under the stuck h2 must
@@ -751,6 +912,21 @@ render sites), `_vsbRefresh()`, `_vsbBaseOffset()`.
   tests as the sticky page headers, whose own raise rules exist only while
   the page overflows sideways (`html.mb-sph-on`). Under them the h3's raise
   level is set through `--mb-sph-z-raised: 103`.
+- **MusicBrainz's own modal dialogs go ABOVE the whole ladder** (2026-10-21,
+  9.99.1413): MusicBrainz appends a jQuery UI `div.ui-widget-overlay.ui-front` and
+  `div.ui-dialog.ui-front` to `<body>` (the sidebar cover's
+  `.artwork-dialog`, `debug/mb-native-sidbar-image-open.html`) at jQuery
+  UI's `.ui-front { z-index: 100 }`, and the stuck header block, the h2/h3
+  bars and the sidebar handle (10000) painted through it.
+  `_ensureMbDialogZStyle()` (init, MusicBrainz only) sets
+  `body > .ui-widget-overlay.ui-front` to `MB_JQUI_Z_OVERLAY` (10050) and
+  the dialog one above: over the ladder, the handle and this script's menus
+  (10000–10002), under its own modal dialogs (20000+), the artwork viewer
+  and the tooltips. `body >` makes it outrank `.ui-front` by specificity.
+  The page also carries a hidden `.ui-dialog` of its own before any dialog
+  opens. Spec `mb-dialog-above-bars.spec.js` (what `elementFromPoint` hits
+  over the toolbar, the h2 and the handle); mutations
+  `scripts/mutations/mb-dialog-above-bars.json`.
 - **The sticky page headers' pinned content bodies** (status line, art
   strips, group intro, the entity header) are raised to 107 on hover by
   that feature; while the bars are on they are capped at 101
@@ -772,6 +948,12 @@ is `"expect": "pass"`: nothing between 104 and 107 overlaps it in the
 fixture). The SPH-only stacking tests in `sticky-page-headers.spec.js` run
 with this setting off (`SPH_ONLY`), since it deliberately changes the
 "content bars have no base z-index" rule they pin.
+
+**The sticky page headers' content root is `_sphPageEl()`** (2026-10-18):
+MusicBrainz's `#page`, except on discogs.com, where it is our own
+`#mb-dg-root`. Discogs' page has a `#page` of its own inside `#app`; taken
+for the content root, it made our section a `<body>`-level "chrome" target,
+pinned and capped whole with its tables (see docs/claude/discogs.md).
 
 ### The header block sticks above the bars
 
@@ -915,17 +1097,55 @@ the first job).
 **`tablework` (long sorts and filters, `_tw*`).** Sorting yields
 (`sortLargeArray()` chunks above 5000 rows) and now passes its progress
 callback, `_twSortProgress()`, which opens the card once a sort has run past
-500 ms (`_TW_OPEN_AFTER_MS`) — never for a short one. Filtering's matching
-loop does NOT yield, so the page cannot repaint during it; `runFilter()` only
-records its time and rows (`_twFilterRecord()`), the draw time follows from
-`_renderSettled`, and the breakdown shows when the user hovers the status
-line (`#mb-sort-status-display`, `#mb-filter-status-display`). A yielding
-`runFilter()` is a separate perf branch, decided 2026-10-10. Cost while the
-card is closed: one object write and one `.then()` per filter pass. Specs:
+500 ms (`_TW_OPEN_AFTER_MS`) — never for a short one. The filter pass for
+TYPING on a table over `sa_chunked_render_threshold` rows yields too
+(`runFilterSliced()`, PERFORMANCE.org Step 39) and reports the same way:
+`_twFilterBegin()` returns a pass record that every later
+`_twFilterProgress()` / `_twFilterStale()` / `_twFilterCompared()` call
+names — a stale pass notices only at its next yield, by which time its
+successor may have begun, and a module-level "current pass" would let it
+write into the successor's record. While it runs the card shows Running,
+"Filtering for “q”" (plus "within the last result" when narrowing), rows
+compared of total and matches so far; afterwards the last filter with its
+query, Comparing (time, rows, slices) and Drawing; "Recent" logs a replaced
+pass ("“Hom” replaced by “Home” after N of M rows", kind `dim`) and each
+finished one. `_ajLog()` needs a job, so a pass too short to open the card
+logs nothing. The note reads "Filtering pauses every few milliseconds so the
+page keeps responding; a key typed meanwhile starts a new pass. Matching rows
+are prepared for drawing in the same short steps. Drawing a large table comes
+in chunks of 500 rows." Approved mockup:
+https://claude.ai/artifact/GCdE1u84VHcySfj3fSiNFf (2026-10-10).
+**The threshold is checked in BOTH steps of the pass** (`_twFilterMaybeOpen()`,
+called from `_twFilterProgress()` while comparing and from
+`_twFilterPrepProgress()` while the clones are built). It used to be checked
+only while comparing, and a column filter never opened the card: its pass
+compares only its own sub-table (8 ms for 2,143 rows on the release-groups
+capture, the other groups being cache hits) and spends the rest, about
+900 ms, preparing. `_twFilterPrepare()` switches the record to
+`step: 'prepare'` and fixes `compareMs` there; `_twFilterCompared()` then
+sets `prepMs`. The card shows the step line ("Comparing · Preparing", then
+"Compared ✓ · Preparing", `s.steps` in `_ajRender()`), the count in
+"rows prepared for drawing" during the second step, and a Preparing fact
+afterwards. The pass is named by `_twFilterLabel()`: the global text, then
+each column filter as `“v” in Column (Sub-table)` (the sub-table only on a
+multi-table page, read from the h3's own text before its count), past three
+parts counted; `all rows` when nothing is filtered. The record's `query` is
+that label, quotes included, so no caller adds quotes. Mockup approved
+2026-10-11: https://claude.ai/artifact/1ZBfeQbQzD3uWid1HEb7LV. The sub-table
+filter (`applySubFilter`, the h3 🔍) is a separate synchronous path and never
+shows the card (org/TODO.org). Every other
+filter caller is the synchronous `runFilter()`, which only records its time
+and rows (`_twFilterRecord()`); the draw time follows from `_renderSettled`,
+and the breakdown shows when the user hovers the status line
+(`#mb-sort-status-display`, `#mb-filter-status-display`). `_ajRender()` shows
+an optional `s.countNote` on the right of the count line (the "match so
+far"). Cost while the card is closed: one object write and one `.then()` per
+filter pass, plus one object write per slice. Specs:
 `async-pop-tablework.spec.js` — the auto-open path through
 `__saTest.tableWork` with a fake clock, because no fixture reaches the 5000
 rows the live callback needs; mutations `scripts/mutations/async-pop-tablework.json`
-(5, all caught).
+(5, all caught); the filter's card, through the real pass with
+`__saTest.filterSlicing`: `filter-sliced.spec.js`.
 
 `FIXTURE_SETTINGS_OVERRIDE` forces `sa_async_pop_auto_open` off: a card opened
 by a toggle click sits right over the header cells a spec clicks next. Specs
@@ -977,4 +1197,70 @@ Statistics panel, under the artwork viewer and every tooltip.
 
 Specs: `idb-overview.spec.js` (8, both databases seeded before the userscript
 opens them) and `idb-overview.mobile.spec.js`; mutations
-`scripts/mutations/idb-overview.json` (12, all caught).
+`scripts/mutations/idb-overview.json` (12, all caught). The seed is
+`seedCacheOverview()` in `tests/support/idbFixture.js`, shared with the
+export/import specs below; its link-preview records have the real
+`{url, v, at, data}` shape.
+
+### Export and Import (`_idbx*`)
+
+Two panes in the overview, opened by Export… / Import… in its header
+(`data-idbx="open-export"` / `"open-import"`, `aria-pressed`), painted into
+slots `_idboPaint()` leaves under the tile strip (`[data-idbx-slot]`), so a
+rescan repaints them from `_idbo.x`. Mockup approved 2026-10-10:
+`https://claude.ai/artifact/AsJhH3GAiNmfaDGz2ci4q6`; its four questions were
+answered as recommended (`.jsonl.gz`, images unticked, a part with another
+layout skipped whole, all link-preview entries exported), plus two later
+decisions: **Last import** is a fifth tile (Last clean-up stays), and another
+site's export is refused.
+
+**The file** is a gzip of one JSON object per line. Line 1 is the header:
+`kind: 'sa-cache-export'`, `format` (`_IDBX_FORMAT`, 1), script version,
+`origin`, `written`, `browser`, `layouts` (each database name → its schema
+version: `_ART_IDB_VERSION`, `_DP_IDB_VERSION`), and `parts` (id and count).
+Then `{p, v}` per entry, `v` the stored record verbatim; a Blob field becomes
+`{$blob: {type, b64}}`. The last line is `{kind: 'end', count}`. Without it the
+file was cut short, and the import refuses it.
+
+**Export** reads each ticked part in key order, `_IDBX_READ_BATCH` entries per
+`getAll()` with a lower bound past the last key. Each batch is its own
+transaction, because one held across the FileReader and gzip awaits would
+auto-commit under it. Expired entries, and entries without a stored date, are
+left out. Lines go through `pako.Deflate` (already `@require`d; no
+`CompressionStream`), and the chunks become a Blob handed to a plain
+`<a download>`. There is no filename dialog, as the mockup shows.
+
+**Import** reads the file twice, streaming both times (`_idbxLines()`:
+`file.stream()` → `pako.Inflate` → `TextDecoder` → lines; a 45 MB file is never
+held as text).
+- `_idbxCheck()` classifies every entry against a fresh scan's key → stamp
+  maps (`_idbxClassify()`: add / upd / same / exp / bad) and writes nothing.
+- `_idbxMerge()` re-reads the file, re-classifies with the SAME maps, and
+  writes only add and upd, in `readwrite` transactions of
+  `_IDBX_WRITE_BATCH`. A stop drops the pending batch and keeps the written
+  ones.
+- Refusals come from `_idbxHeader()` and the check: not an export (no header,
+  or not gzip), a newer format, another origin, a cut-short file.
+- A part whose `layouts[db]` differs from this browser's is skipped whole.
+- The shape check, `_idbxValidate()`, requires the store's `keyPath` field (from
+  `_idboParts()`, which now also carries `layout`), a stored date no more than a
+  day in the future, and the store's own fields. Its reasons are the "why" list.
+
+**Memory caches are not touched**, the same rule as deletes, and the Done text
+tells the user to reload open pages. Esc: a delete's question, then the merge
+question, then an open pane, then the dialog (`_idbxOnEscape()` sits between
+the first and the last in `_idboOnKey()`). Closing the dialog stops a running
+job and resets `_idbo.x`. The last import is stored in this origin's
+`localStorage` (`_IDBX_LAST_KEY`), like the cache itself, not in GM storage,
+which is shared across sites.
+
+Timings: `tests/support/probe-idb-export-import.js` (`__saTest.idbOverview.perfRoundTrip`)
+and tests/MEASUREMENTS.org, 2026-10-11. On petri, about 60,000 JSON
+entries/s and 13 MB/s of images to export; the merge is bound by IndexedDB
+writes. The pane's "Takes about" (`fileB / 12e6 + n / 50000` s) comes from
+there. Its JSON size ratio (`_IDBX_RATIO_JSON`, 0.15) is NOT calibrated: the
+synthetic cache compresses far better than a real one.
+
+Specs: `idb-export-import.spec.js` (8) and `idb-export-import.mobile.spec.js`
+(1); test hooks `__saTest.idbOverview.dump/holdAfterFlush/exportB64/perfRoundTrip`;
+mutations `scripts/mutations/idb-export-import.json` (17, all caught).

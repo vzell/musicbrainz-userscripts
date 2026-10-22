@@ -264,18 +264,28 @@ settings you care about instead. (If you do want a clean slate, press
 * Fixed the "Artists with collaboration relationships" report's main column rendering empty.
 * Minor: the video icon is centered in its cell again.
 
-## Changes since last version (9.99.1167 -> 9.99.1271)
+## Changes since last version (9.99.1167 -> 9.99.1426)
+
+This is a big one: about four weeks of work and more than 250 changes. The
+headlines are a preview card for every link, data checks in two new ⚠️ WARNING
+/ ❌ ERROR menus, cover art on release and event pages, relationships as
+tables, and support for discogs.com and four Bruce Springsteen sites (both
+opt-in).
 
 ### Your settings and this update
 
-**Again, you don't have to do anything.** This release adds 93 settings, all
-arriving at their defaults, and removes none. ⚙️ Settings gains seven new
-sections: ⚠️ FINDINGS, 🎫 EVENT PAGE, 🔎 DETAIL-PAGE PREVIEWS, and one each for
-four Bruce Springsteen sites (see the end of this post).
+**Again, you don't have to do anything.** This release adds 177 settings, all
+arriving at their defaults, and removes none. ⚙️ Settings gains thirteen new
+sections: ⚠️ FINDINGS, 🎫 EVENT PAGE, 🔗 RELATIONSHIP SECTIONS, 🎼 RECORDING OF
+COLUMN, 🔎 LINK PREVIEWS ON MUSICBRAINZ, 🔎 EXTERNAL LINK PREVIEWS, 🔎 EVERY
+PREVIEW (MusicBrainz links and the sites above), 🔤 TITLES ON THE OTHER SITES,
+and one each for discogs.com and the four Springsteen sites (see the end of
+this post).
 
 Six defaults changed, all of them colours that go with the new "Liner notes"
 tooltip look (see *Enhancements: other* below). **These reach you
-automatically.** If you picked one of these colours yourself, you keep yours.
+automatically, unless you set them yourself.** If you picked one of these
+colours, you keep yours.
 
 | Setting (as it appears in ⚙️ Settings)       | Section                 | Old                    | New                         |
 |----------------------------------------------|-------------------------|------------------------|-----------------------------|
@@ -289,12 +299,30 @@ automatically.** If you picked one of these colours yourself, you keep yours.
 **Switched on by default, in case you'd rather not have them.** Each is one
 checkbox away:
 
-* **Sticky Page Headers** (📌 TABLE STICKINESS) --- on desktop browsers only; phones and tablets keep it off unless you opt in.
-* **The ⚠️ WARNING / ❌ ERROR menus** and their yellow/red cell tints (⚠️ FINDINGS) --- every tint has its own switch, and turning a tint off keeps the problem in the menu.
-* **"Liner notes" tooltips** (💬 TOOLTIPS).
-* **The Cover art section** above a release tracklist (💿 RELEASE TRACKLIST) and **the Event art section** on event pages (🎫 EVENT PAGE).
+* **Link previews** (🔎 LINK PREVIEWS ON MUSICBRAINZ, 🔎 EXTERNAL LINK PREVIEWS). This is the biggest change in this release. Resting the pointer on a link shows a card, and each card that appears asks MusicBrainz (or the linked site) for its data. Requests to MusicBrainz share the script's one-request-per-second pace with the Relationships column. "Link previews (hover card and Space window)" turns all of them off at once; "Preview linked entities on hover", "Also preview links outside tables" and "Preview external links on hover" turn off one kind each. If you'd rather have a card only while you hold Ctrl, switch off "Show every preview on a plain hover (without Ctrl)" in 🔎 EVERY PREVIEW. Phones and tablets have their own switches, all **off**.
+* **The release group and event cards on a live track's "#" cell** (💿 RELEASE TRACKLIST). The first hover on a track of an event asks MusicBrainz once for its release group and its event.
+* **Sticky Page Headers** and **Sticky Filter Bars** (📌 TABLE STICKINESS). Sticky Page Headers stays off on phones and tablets unless you turn on "Sticky Page Headers on touch devices".
+* **The ⚠️ WARNING / ❌ ERROR menus** and their yellow/red cell tints (⚠️ FINDINGS). Every tint has its own switch, and turning a tint off keeps the problem in the menu. The title-style check runs only when you ask for it, unless you switch on "Check title style automatically".
+* **"Liner notes" tooltips** and **the progress card for background jobs** (💬 TOOLTIPS).
+* **The Cover art section and Medium images** on a release tracklist (💿 RELEASE TRACKLIST), **the event page's tables and its Event art section** (🎫 EVENT PAGE).
+* **Cc / Rx / Ex switches on every column filter** and **Hide Empty Sub-tables While Filtering** (🎨 TABLE FILTER CONFIGURATION).
+* **The sidebar additions** (⭲ COLLABSABLE SIDEBAR): remembered open sections, section counts, external links grouped by kind, the sidebar picture's card and its copy beside the name, the "Sidebar" cards below the page's data, and the sidebar tables in the Credits/Relationships view.
+* **Relationships as tables** (🔗 RELATIONSHIP SECTIONS). This only adds a button; nothing changes until you press it.
+* **The "Recording of" columns** (🎼 RECORDING OF COLUMN). They load nothing until you ask.
+* **Short column header labels** and **Explain MusicBrainz columns in header tooltips** (🎨 UI FEATURES).
 
-Everything for the four Springsteen sites is **off** by default. On MusicBrainz you will never see any of it.
+Everything for discogs.com and the four Springsteen sites is **off** by
+default. While it's off, the script leaves those sites exactly as they are,
+and nothing changes on MusicBrainz either way.
+
+**Some settings now look different.** A setting with a fixed set of choices
+(for example "Expanded CAA/EAA cell layout": Grid / Grouped / List) is now a
+row of buttons instead of a text box. Your current values are kept. The small
+and big CAA/EAA image fetch sizes used to accept any number, so they could ask
+the archive for a size it doesn't have; now they offer only 250, 500 and
+1200 px. The button rows come with the new version of the VZ_MBLibrary
+library the script uses. With an older copy of the library these settings
+show as text boxes, as before, and work the same.
 
 ### New: ⚠️ WARNING / ❌ ERROR --- the page tells you what's wrong with its data
 
@@ -302,6 +330,11 @@ Everything for the four Springsteen sites is **off** by default. On MusicBrainz 
 [SCREENSHOT: the ⚠️ WARNING menu open, with its counts]
 
 * **Problems that had no highlight now get one** --- a light yellow tint with ⚠️ (light red with ❌ for errors), each behind its own switch in ⚙️ Settings → ⚠️ FINDINGS.
+
+* **The hover card shows what differs** --- a warning that compares two values shows them one under the other and marks only what differs, down to a single letter, an apostrophe ' against ’, or a hyphen ‐ against -, with a line in plain words below ("1 letter in a different case: w → W", "Only in the recording name: (single version)"). This covers track ≠ recording name, a recording date or venue against the recording comment, a main-event track against the release group title, and track/recording length mismatches (digits lined up, the gap labelled amber or red). A near miss of the live form shows the text over the form it almost has ("live, 1993-4-21: …" over "live, 1993‐04‐21: …"), and a live credit without a date names the date it is most likely from.
+
+* **Check title style against the MusicBrainz guidelines** --- "Aa Check title style (MB guidelines)" at the top of the ⚠️ WARNING menu checks every title on the page and adds five warnings: "Title not in MB title case" ("Prayer For The Weary" → "Prayer for the Weary"), "ASCII punctuation in title" ("Don't" → "Don’t", "..." → "…"), "Series number without comma" ("Broadcasts Vol. 5" → "Broadcasts, Vol. 5"), "Featured artist in title" and "Extra title information to remove" ("(bonus track)"). Only clear cases are flagged: titles in another language or in sentence case, live bootleg titles, a phrasal "Take On Me" or "& The E Street Band" are left alone. It runs only when you click it (about 0.2 s per 10,000 different titles) and stays on for the page until you reload; "Check title style automatically" in ⚠️ FINDINGS runs it on every page.
+[SCREENSHOT: a title-style warning card, the title over its MusicBrainz style]
 
 * **Live bootleg titles checked against the style guide** --- release and release group titles that follow the [live bootleg](https://musicbrainz.org/doc/Style/Specific_types_of_releases/Live_bootlegs) form "YYYY-MM-DD[, early show]: Venue, City, State, Country" get a ❌ for an impossible date (month 13, 29 February in a non-leap year) or a near miss ("05.02.1975: …", a missing ": "), and a ⚠️ for a plain "-" instead of "‐" in the date. Titles naming several dates ("1978‐08‐21/22/23: …", "1989‐07‐04 / 1990‐04‐22: …") are understood, and each date is checked on its own. The 📊 dropdown gets matching "Live title info" sections: validity, near misses, date completeness, location completeness and separators.
 
@@ -313,7 +346,34 @@ Everything for the four Springsteen sites is **off** by default. On MusicBrainz 
 
 * **Extra title information** --- a trailing "(Live)" or "(Version 1)" that should be lowercase gets a ⚠️ (the keyword list is editable in ⚠️ FINDINGS), and every title's extra title information --- the "single version" in "(single version)" --- is now shown in green italics so it stands apart from the title itself.
 
-* **Artwork findings** --- "Artwork has no Front image" and "Physical release artwork has no Medium image" (any format but Digital Media). These are only known once the artwork has loaded, so their counts grow while the CAA column loads.
+* **Artwork and links** --- "Artwork has no Front image" and "Physical release artwork has no Medium image" (any format but Digital Media), and "Several links to one site in Relationships": a Relationships cell with two different links to one site (two Discogs pages, two amazon.de products, …). amazon.de and amazon.com count as different sites, and "Sites allowed more than one link in Relationships" lists sites that never count. These are only known once the column has loaded, so their counts grow while it loads. On the event page, a setlist MBID typed with uppercase letters gets a ⚠️ too.
+
+### New: a preview for every link
+
+* **Rest the pointer on a link and get a card** with the essentials of what it links to: a release (cover, format, date, label, the first tracks), a release group, recording, work, artist, label, area, instrument, event, place, series, ISRC, ISWC, disc ID or collection. A line at the top names the kind ("Recording", "Release group"), with MusicBrainz's own icon. An edit and an editor get one too, read from their pages: votes, status and changes for an edit; edit counts and member-since for an editor, never the personal details a profile may show. It works in every table and, with "Also preview links outside tables", everywhere else on the page: the header, the annotation, the sidebar, relationship lists. A Barcode cell shows the releases that carry the barcode. A catalog number shows the card of the label it belongs to. An entry in the 📊 dropdown that names one entity shows that entity's card. Notes about the cell (pending edits, track ≠ recording name, the filter's matches, …) stack above the card, one box each, instead of covering it.
+[SCREENSHOT: a release preview card on hover]
+
+* **Press Space to pin it** into a window you can move and resize, with much more: a release's whole tracklist by medium, every release of a release group (sortable), a recording's credits, an event's whole setlist with its posters, a place's events, a work's recordings, an artist's or label's external links. A click on a link inside the window shows that entity in the same window ("Release group › Release"), and ← Back (or Backspace) goes back. ‹ › and ← → step through the rows of the column the window was opened from, from one sub-table into the next. "Live page" shows the entity's real page inside the window.
+[SCREENSHOT: a pinned preview window after drilling down from a release group to a release]
+
+* **Editing history in the window** --- "✎ Editing history" (or H) shows the entity's or editor's edits in the same window, 50 at a time: date, editor, a coloured type pill, what changed, votes or status, with chips for category and status. Click an edit to see it below: old and new values side by side with MusicBrainz's red/green marks, a merge as Merge | Into, then the edit notes. The sidebar's "Editing history" link opens it too. Logged out, the window says that MusicBrainz hides editors and notes.
+[SCREENSHOT: the editing history window with one edit opened]
+
+* **Editors, tags, collections and annotations** --- on an editor's profile, every "view" link of the statistics has a card and a window: their open, accepted, applied, rejected, failed and cancelled edits and their votes; their subscribers; their tags, with how many votes each; their ratings. A tag link shows whether it is a genre and how many entities of each kind carry it, and an editor's own tag what that editor tagged with it. A collection shows its type, size, owner and first entries, and the window pages through all of them, with covers for a release collection. An entity's "Subscribers" and "Found in N user collections" links show who subscribes and which collections hold it. "View annotation history" shows how many versions the annotation has and the latest one's text. These are read from MusicBrainz's pages, one request each, because the web service doesn't have them.
+
+* **Pictures and places**: an artist, label or place window shows its picture (the Wikimedia Commons file MusicBrainz links, or the one its Wikidata item names), and a click opens it in the artwork viewer. Areas are named the way MusicBrainz names them, down from the city ("OceanFirst Bank Center in West Long Branch, New Jersey, United States"). An event's setlist is linked: each song links its work, and every artist links the artist page.
+
+* **Links to other sites, too.** A card shows the page's title, site, image and description, and the link's status: a dead link says the page is gone, a moved page shows where it went, and a site's bot check (Cloudflare and similar) is named as such instead of being reported as a dead link. Wikipedia and Wikidata are read through their own services: the article's opening paragraph, the Wikidata item's names. A YouTube video shows its title, channel and thumbnail. A link to one of the four Springsteen sites gets that site's own card, and a Brucebase date link ("reviews:" on an event) shows the one show it names.
+[SCREENSHOT: an external link card with its status line]
+
+* **Discogs, in full** --- a Discogs link's window shows what the Discogs page shows. A release or master: every image, the tracklist with each track's credits, the notes, and for a release its companies, identifiers, videos and how many users have or want it. A master lists all its versions, which you can filter by format, country and decade. An artist shows the profile and the whole discography, split into Releases, Appearances, Unofficial and Credits, and a label its releases. A release's history link shows every change, and "View changes" shows a change old and new side by side. Every link in the window (artists, labels, users, Discogs searches, Discogs' own guidelines) opens in the same window, with ← Back. Discogs allows a request every 2.5 seconds, or every second with your own Discogs token (optional, in 🔎 EXTERNAL LINK PREVIEWS). Long lists load the rest only when you press "Load the other …", which says first how many requests that takes.
+[SCREENSHOT: a Discogs master window with its versions table]
+
+* **What MusicBrainz knows about a URL**: the "[info]" link after every URL in a relationship list gets a card listing which entities link that URL, by relationship. An external link's pinned window says the same, or "Not in MusicBrainz". URL pages (musicbrainz.org/url/…) also get a "Relationships" button, which shows those entities as tables.
+
+* **About privacy and permissions**: a request to another site is sent **without your cookies**, so the card shows the page everyone sees. The first time a site is contacted, Tampermonkey asks whether the script may. So a site never contacted before is loaded only when you press Space, never by just hovering. After you answer once, its links also load on hover. A card's answer is kept in your browser (24 hours for MusicBrainz, a week for other sites; both adjustable). The Discogs token is sent only to Discogs, shown as dots and never written into a saved configuration file.
+
+* **On a phone or tablet** the previews are off unless you switch on their touch twins. With a twin on, a tap opens the window instead of the page, and ↗ in the window opens the page.
 
 ### New: live releases --- which concert is each track from?
 
@@ -322,9 +382,9 @@ Everything for the four Springsteen sites is **off** by default. On MusicBrainz 
 * **Tracks from other events stand out** --- when the release group has a live title, its date names the main event, and every track from another event gets its own tint in the "#" column plus a small "E1", "E2", … chip, numbered by date (readable without colour, too). Hover the "🎪 N events" badge for a legend. When the tracks carry live event data but the release group title isn't a live title, a ⚠️ after the release group link says why and suggests a title built from the event with the most tracks.
 [SCREENSHOT: a release tracklist with E1/E2 chips and the 🎪 badge legend]
 
-* **The release group, one hover away** --- the "(see all versions of this release, 5 available)" link now names the release group ("5 versions available in 1996‐04‐19: ICC Berlin, …"), and hovering it shows the group's card: cover, type, artist and its releases, with this one marked. Press Space to pin it into a window you can move and resize, with every release of the group (not just the first 100) in a sortable table with covers, next to the group's rating, genres, links and annotation.
+* **The release group, one hover away** --- the "(see all versions of this release, 5 available)" link now names the release group ("5 versions available in 1996‐04‐19: ICC Berlin, …"), and hovering it shows the group's card: cover, type, artist and its releases, with this one marked. Press Space to pin it into a window with every release of the group in a sortable table with covers, next to the group's rating, genres, links and annotation.
 
-* **…and the release group of each track's own event** --- hold Ctrl over a live track's "#" cell to see the release group for that track's event: the release's own group for the main event, otherwise a group named exactly like the event (searched only when you ask, once per event). If there's none, the card says so and lists the closest titles. Alt+click opens the release group, or the search, on musicbrainz.org.
+* **…and the event and release group of each track** --- hover a live track's "#" cell to see two cards: the event the track was recorded at (name, date, place, tour, line-up, the start of its setlist), and the release group for that event --- the release's own group for the main event, otherwise a group named exactly like the event. If there's none, the card says so and lists the closest titles. Alt+click opens the release group, or the search, on musicbrainz.org.
 
 ### New: cover art on release and event pages
 
@@ -332,6 +392,8 @@ Everything for the four Springsteen sites is **off** by default. On MusicBrainz 
 [SCREENSHOT: the Cover art section in its Spreads layout]
 
 * **A full-screen artwork viewer** --- click any thumbnail: ← → step through the images, ↑ ↓ or the mouse wheel zoom towards the pointer, G shows a grid, I an info panel (types, comment, sizes, edit link), O the original file, P runs a slideshow, Esc closes; on a touch screen, tap and swipe. A plain click on MusicBrainz's own "Cover art (N)" tab now opens the viewer instead of leaving the page (Ctrl-click still goes to the archive).
+
+* **The cover beside the name** --- on release, release group and event pages, the front cover also sits at the start of the page heading, so it stays in sight with the sidebar closed. Pointing at it (or at the sidebar's cover) shows a card with every image, and a click opens them all in the viewer, starting at the front. Ctrl-click on the sidebar's cover still opens MusicBrainz's own window.
 
 * **Medium images in the medium headings** --- disc and record-label images appear as small thumbnails in the heading of the medium they show, wherever that is certain (a single medium; a comment naming exactly one medium, such as "disc 2" or "side C"; or exactly as many uncommented images as media). Anything else is listed in one note instead of being guessed.
 
@@ -344,7 +406,7 @@ Everything for the four Springsteen sites is **off** by default. On MusicBrainz 
 * **Type chips at a glance** --- after the image count, one letter per artwork type (F, B, Sp, M, Bk, T; for event art Poster, Banner, Schedule, Setlist, Ticket), filled with a count when the release has that type and hollow when it doesn't.
 [SCREENSHOT: a CAA column with type chips and an expanded tile grid]
 
-* **Rich cards and the viewer** --- hovering the artwork icon or the image count shows the release's whole artwork card; hovering one image shows its preview, types, comment and position ("Image 6 of 10 · Medium 2 of 3"). Clicking an image (or the icon) opens the full-screen viewer, where ← → run on into the next row and Shift+← → change rows, through the rows your filters leave visible.
+* **Rich cards and the viewer** --- hovering the artwork icon or the image count shows the release's whole artwork card; press Space to see every image instead of the first 12, and hold Shift to draw the tiles bigger. Hovering one image shows its preview, types, comment and position ("Image 6 of 10 · Medium 2 of 3"). Clicking an image (or the icon) opens the full-screen viewer, where ← → run on into the next row and Shift+← → change rows, through the rows your filters leave visible.
 
 * **An artwork gallery per table** --- the new 🖼 button next to 📊 opens a movable, resizable window with every image of the releases the table currently shows, grouped by release and labelled with format, country/date, label and catalog number. Type chips show only those images and name the releases without one ("No Medium image"), and "Compare two" lines two releases up type by type. It asks the archive for nothing new.
 
@@ -353,9 +415,49 @@ Everything for the four Springsteen sites is **off** by default. On MusicBrainz 
 * **An event's relationships as tables** --- a new "Relationships" button on any event page turns MusicBrainz's one-target-per-line lists into filterable, sortable tables, one per kind of related entity (Artists, Places, Recordings, Releases, Series, URLs, …), each with the columns that fit it: Relationship, Credits, Artist, Area, Disambiguation, … A performer's credits are split one per row ("lead vocals", "harmonica", "electric guitar"), with the time in its own column. The related series' own relationships get their own "Via <series>" table.
 [SCREENSHOT: an event page's relationship tables]
 
-* **The setlist as tables** --- a "Setlist: Line-up" table (every artist, how they're joined, and a billing number), then one table per part of the setlist ("Soundcheck", "Concert", …) with that part's notes under its heading. A medley stays one row listing every work, "Also in" names the other parts that play the same work, "Recording" links the recording made at this event, and the artists of a "(with …)" line get their own Additional artists column. Prefer one table? Switch on "One table for the whole setlist".
+* **The setlist as tables** --- a "Setlist: Line-up" table (every artist, how they're joined, and a billing number), then one table per part of the setlist ("Soundcheck", "Concert", …) with that part's notes under its heading. A medley stays one row listing every work, "Also in" names the other parts that play the same work, "Recording" links the recording made at this event (with a Video column where it's a video), and the artists of a "(with …)" line get their own Additional artists column, linked to the artist. Prefer one table? Switch on "One table for the whole setlist".
 
 * Every part has its own switch in ⚙️ Settings → 🎫 EVENT PAGE.
+
+### New: relationships as tables on many more pages
+
+* **The event page's relationship tables, now nearly everywhere**: place, area, instrument and URL pages get a "Relationships" button. Series, work, release group and recording pages, and the artist and label Relationships tab, get one next to their own button. On a release it's called "Credits". The two buttons are either/or: the new one leaves the page's main table out, and the other button brings it back.
+[SCREENSHOT: a work page's relationships as tables]
+
+* **Dates, positions and names get their own columns**: "(from 1977-06-27 until 1978-05-05)" becomes Begin and End (each split into day, month, year and weekday), a series position becomes Number (and Order where the two differ), an area's parent areas become Parent area, and a primary alias in parentheses gets a "Primary alias" column instead of landing in Disambiguation. A band membership with a period and instruments fills Begin/End and a multi-row Credits cell.
+
+* **"Via …" tables**: a recording's related works and a release's release-group credits each get their own table ("Via Badlands", "Via release group: Live/1975–85"), so they are never mistaken for the page's own relationships.
+
+* **More in the 📊 dropdown**: on a table that mixes kinds, "Entity info - Type" has one entry per kind (Artist, Release group, Event, URL, …). On a link column, "Links info - Site" has one entry per site with its icon, and "Links info - Site kind" counts a site whatever its country ("amazon.*"). With inline CAA/EAA thumbnails on, release groups, releases and events get their small cover or event-art image. Prefer one table? Switch on "One table for all relationships".
+
+### New: the sidebar, reorganised
+
+* **It remembers what you opened**: a sidebar section you opened is open again on the next page of the same kind, and one you never opened starts closed. Each heading shows how many entries it holds, Ctrl+Click opens or closes them all, and Open all / Close all sit at the top. The ▶/◀ handle is there as soon as the page opens, before any button is pressed.
+
+* **External links grouped by kind**: Official, Social, Streaming, Concerts, Lyrics, Databases, Stores and Other, each opening and closing on its own. Links are only reordered, never removed, and whatever other userscripts add stays where it is.
+
+* **The sidebar's facts next to the page's data**: after the page's own button (Tracks, Releases, …) a "Sidebar" heading follows, with the sidebar's information, labels, release events, external links and tags as small read-only cards, each link with the sidebar's own site icon. Every card starts open except "Search", the long list of search links jesus2099's "mb. ALL LINKS" adds, which becomes one tidy card with a box to find a site. Ctrl+Click on a card's title opens or closes them all. The Credits and Relationships views also end with the sidebar's groups as real tables ("Sidebar: Release information", "Sidebar: External links", …), which you can filter and sort. A link that already appears as a relationship row is left out.
+[SCREENSHOT: the "Sidebar" cards under a release's tracklist]
+
+* **The sidebar picture** (an artist's photo, a label's logo, an instrument's drawing) shows a card when you point at it and opens in the artwork viewer on a click. A small copy also sits at the start of the page heading, so it stays visible when the sidebar is closed.
+
+* A separate "🗂 Sidebar as tables" button exists too, but it is **off** by default, because the two views above already show the same information. Turn it on in ⭲ COLLABSABLE SIDEBAR if you want it.
+
+### New: "Recording of" on every recording list
+
+* **Which work does each recording perform?** Two new columns after the recording's name: "Work" (the work it is a recording of, e.g. "Can't Help Falling in Love (cover/live)", one row per work for a medley) and "Perf." (its performance attributes and date). They are on every list with one recording per row: an artist's Recordings, recording search results, an instrument's or area's Recordings, a place's Performances, a work's recordings, a series or collection of recordings, an ISRC page, tagged and rated recordings, and an artist credit's recordings. Nothing is loaded until you ask: click a cell's 🎼 for one row, or ▶🎼 in the header for all of them, 100 recordings per request where that's cheaper. Answers are kept for 30 days. Each kind of page has its own checkbox in 🎼 RECORDING OF COLUMN.
+[SCREENSHOT: the "Recording of" column with a suggested work]
+
+* **A suggestion where the work is missing**: on an artist's Recordings page, a recording without a work gets the artist's work with the closest title, in orange and marked "suggested:". Endings like "(alternate take)", case and quotes are ignored. If the ["MusicBrainz: Batch-add 'performance of' relationships"](https://github.com/murdos/musicbrainz-userscripts/raw/master/batch-add-recording-relationships.user.js) userscript already holds the artist's work list in your browser, that copy is reused (read only). The 📊 dropdown gains "Recording of - Load state" and "Recording of - Suggested work" sections.
+
+### New: a progress card for background jobs, and your browser cache
+
+* **See what a loading column is doing**: the Relationships column, the ⏱ millisecond lengths and the "Recording of" columns now report through one card in the "Liner notes" look. It shows what is being loaded, a progress bar with failures and cache hits, the last few requests with their outcome (a 503 and its retry are visible without opening the console), and buttons such as "Retry failed". It opens under the column's toggle when you start the job. Esc closes it and the job keeps running. A sort that takes more than half a second, or a long filter, shows its progress in the same card.
+[SCREENSHOT: the progress card during a Relationships load]
+
+* **💾 Browser cache**: a new overview of everything the script keeps in your browser (cover art, relationships, millisecond lengths, "Recording of" answers, link previews), with how much space each part takes, how old the entries are and how many are past their keep time. You can delete what's expired, clear one part or everything, or delete entries older than 7, 30 or 90 days. Every delete asks first. Open it from ⚙️ Settings (🗄️ ART ARCHIVE INDEXEDDB CACHE), the 📊 Statistics panel, the Tampermonkey menu, or a progress card.
+
+* **Take your cache to another computer**: Export… writes it to one file, and Import… merges it into another browser's cache. Before changing anything, the import shows what it would add or skip, and a newer entry already in the browser is never replaced.
 
 ### New: Cc / Rx / Ex on every column filter
 
@@ -364,60 +466,111 @@ Everything for the four Springsteen sites is **off** by default. On MusicBrainz 
 
 * **Status lines say what's applied** --- the filter status line now shows each part's modes (e.g. `'Release':(ex) "live"`) and the query as typed, so an inverted or regexp column filter no longer looks like a plain one.
 
-### New: Sticky Page Headers
+### New: more pages
+
+* **Editor profiles** (/user/<name>) get a "Profile" button: General information, Edits, Votes, Added entities and, where the profile has them, Tags and ratings as sub-tables, with counts that sort as numbers. Nothing is fetched; blocks other userscripts add to a profile stay where they are.
+* **Every edit list of an editor**: besides their edits and open edits, now also their accepted, auto-edits, applied, rejected, failed and cancelled edits, and the edits they voted on.
+* **An entity's "Found in N user collections" page** (areas, artists, events, instruments, labels, places, recordings, series, works) as a Collection | Editor table, and **the "Subscribers" page** of an artist, label, series or collection.
+* **One version of an annotation** ("View this version", "View current revision") gets "Compare with the current version": a table with one row per paragraph or heading, this version's text, the current one's, and whether it is the same, changed, or only in one of them.
+* **Release tracklists on single-medium links** --- `/release/<mbid>/disc/<n>` (and the `…#<track>` form that points at one track) now work too; the highlighted track stays highlighted after "Show all Tracks", through filtering and sorting.
+
+### New: sticky headers and filter bars
 
 * **The page stays put while a wide table scrolls sideways** --- the MusicBrainz header, the entity header with its buttons, the tabs, every h2/h3 section bar and its expanded content (Credits, Annotation, …), the cover-art strip and the footer now stay in place, and the sticky column stops in line with its table's bar instead of at the window's edge. A table narrow enough to fit the window stays put entirely. It only engages while the page really overflows sideways, and works together with jesus2099's "mb. STICKY HEADER" userstyle.
 
+* **…and while it scrolls down** --- the page heading with its buttons, the section bar with the global filter and the row count, and the column headers stay at the top of the window. On a page with sub-tables, the bar of the sub-table you're in (with its own filter) stays there too, until the next one takes its place.
+
 ### Enhancements: the 📊 dropdown
 
-* **Grouped by topic** --- one header per topic ("Entity info", "Title info", …) holds its sub-sections, and entries show just their value ("Bruce Springsteen" instead of "» artist name: Bruce Springsteen" on every line); the quick filter still matches the full text. Sub-sections with more than 15 entries open collapsed (configurable), and one you expand yourself stays expanded. "Group Sections By Topic" brings back the flat layout.
+* **Grouped by topic** --- one header per topic ("Entity info", "Title info", …) holds its sub-sections, and entries show just their value ("Bruce Springsteen" instead of "» artist name: Bruce Springsteen" on every line); the quick filter still matches the full text. Sub-sections with more than 15 entries open collapsed (configurable), and one you expand yourself stays expanded. "Unique-Values Dropdown: Group Sections By Topic" brings back the flat layout.
 [SCREENSHOT: the 📊 dropdown grouped by topic]
 
 * **Resizable** --- drag the grip in its lower-right corner. The size is remembered per page type and column; double-click the grip to reset it.
 
 * **"Title info" on every title** --- following the [title style guide](https://musicbrainz.org/doc/Style/Titles): medleys, multiple titles joined by " / ", subtitles, series numbering (", Volume 1", ", Pt. II"), format words (EP/LP/CD/Single), extra title information, and style issues (titles cut off with "…", ALL UPPERCASE). Also on Name/Recording/Release/Release group/Work columns (the list is editable), and only for cells that link a title, so an artist like "ABBA" is never read as an uppercase title.
 
-* **More sections** --- "Rating info" (has a rating / none); the same Length info sections on "Recording length" as on "Length", plus a "Track vs recording" section for flagged pairs; "Video info - Medium format"; "Event info" for the Event-Type/Country/Detail/Additional-info columns split from a recording comment (with a "Country form" section, so "USA" vs "United States" spellings stand out); "Editor info - Active for/since" on Annotation history pages; "Reports - Trend" when the Reports Statistics companion script is installed; and "Instrument info - Cross-reference" on the instrument list.
+* **More sections** --- "Rating info" (has a rating / none); the same Length info sections on "Recording length" as on "Length", plus a "Track vs recording" section for flagged pairs; "Video info - Medium format"; "Event info" for the Event-Type/Country/Detail/Additional-info columns split from a recording comment (with a "Country form" section, so "USA" vs "United States" spellings stand out); "Relationship icons - Site kind" on the Relationships column, counting amazon.com, amazon.de and amazon.co.uk together; "Editor info - Active for/since" on Annotation history pages; "Reports - Trend" when the Reports Statistics companion script is installed; and "Instrument info - Cross-reference" on the instrument list.
+
+### Enhancements: filtering and scrolling large tables
+
+* **Typing a filter no longer freezes a big table.** The filter now compares and prepares rows a few milliseconds at a time and lets the page respond in between, and every key you type replaces the filter still running. On a 4,000-row page the slowest key fell from about 1.6–1.9 s to 0.1–0.5 s. On a 47-table release-groups page a key no longer waits at all. Each key also costs about a quarter of the painting it used to.
+
+* **Empty sub-tables get out of the way**: while the global filter or a ⚠️ WARNING / ❌ ERROR menu filter is active, a sub-table without a matching row is hidden, heading and all, and comes back exactly as it was when you widen or clear the filter. A sub-table with its own active filter stays visible, and when the filter would empty every sub-table they all stay on screen.
+
+* **Row counts no longer push the buttons around** --- the count next to each heading keeps a fixed width, so "(20)" turning into "(3 of 3)/20" while you type no longer shifts the buttons after it.
+
+### Enhancements: the artwork viewer
+
+* **Every corner reachable**: a zoomed image pans to every edge, and the bottom of a tall image is no longer cut off. "Viewer: move a zoomed image by" chooses between following the mouse and dragging. The bar shows the zoom as a percentage, and 1 shows the actual pixels. On a touch screen, pinch to zoom and drag with one finger.
+
+* **New keys**: R rotates (for sideways spines, OBI strips and booklets), H and V mirror (for a scan of a CD's matrix area read through the disc), F switches to real fullscreen, B cycles the background (dark, light, checkerboard), and D downloads the original file with a sensible name ("04 Other opened gatefold cover, inside left.jpg"). The info panel shows the pixel size and file size of what's on screen. None of this changes anything in the archive.
+[SCREENSHOT: the artwork viewer with a rotated booklet scan and the info panel]
+
+* **Images in a preview window open in the viewer**: a release's cover, an event's posters, a picture of a linked page.
 
 ### Enhancements: other
 
 * **"Liner notes" tooltips** --- every hover text the script adds is now a small cream card in a serif face, like the insert of a record sleeve, with a bold title line and keyboard shortcuts drawn as keycaps, instead of the browser's plain grey tooltip on buttons, filter boxes, column headers and flagged cells. MusicBrainz's own hover texts and other userscripts' are left alone. Switch it off, or change the delay, in ⚙️ Settings → 💬 TOOLTIPS.
 [SCREENSHOT: a "Liner notes" tooltip on a toolbar button]
 
-* **Row counts no longer push the buttons around** --- the count next to each heading keeps a fixed width, so "(20)" turning into "(3 of 3)/20" while you type no longer shifts the buttons after it.
+* **Column headers explain themselves** --- every column header now has a tooltip saying what the column holds, MusicBrainz's own columns too (Artist, Catalog#, Country/Date, Format, ISRCs, … about 70 in all), fitted to the table where a name means different things ("Type" on an Events page is the kind of event). A few long headers are shortened ("Work", "Perf."), with the full name in the tooltip; "Short column header labels" in 🎨 UI FEATURES brings the full names back.
 
-* **Release tracklists on single-medium links** --- `/release/<mbid>/disc/<n>` (and the `…#<track>` form that points at one track) now work too; the highlighted track stays highlighted after "Show all Tracks", through filtering and sorting.
+* **Pressing a button a second time just works** --- it still reloads the page, but the reloaded page now runs the same button by itself, with a short "↻ Page reloaded — re-running …" note, instead of a "⚠️ Page Reloaded" dialog to dismiss and the button to press again.
 
-* **Annotations read better** --- wiki headings inside an annotation ("== … ==") become collapsible sub-section bars like Credits' "Release", Ctrl+Click on one toggles every sub-heading of that section, and the redundant "Show less..." link is gone. On Annotation search results, hovering a cover shows the whole annotation in a card.
+* **Annotations read better** --- wiki headings inside an annotation ("== … ==") become collapsible sub-section bars like Credits' "Release", Ctrl+Click on one toggles every sub-heading of that section, and the redundant "Show less..." link is gone. On Annotation search results, hovering a cover shows the whole annotation in a card. Annotation history pages show the Editor column first.
 
-* **Phones and tablets** --- a tap no longer leaves a hover tooltip stuck on the page, the on-screen keyboard no longer pops up by itself (after a render, a filter's ✕, or opening a 📊 dropdown), and Sticky Page Headers no longer squeezes the header into a narrow column (it's off on touch devices unless you turn on "Sticky Page Headers on touch devices"). ❓ Help has a new "On a phone or tablet" section.
+* **Other userscripts** --- instrument icons from ["MusicBrainz: Instrument Icons Everywhere"](https://github.com/Lotheric/metabrainz-userscripts) (@Lotheric) are no longer lost in the release "Instruments" column and the instrument list, and the 📊 dropdown shows and filters them ("Instrument info - Icon"). With majkinetor's "ISRC Scout", its "ISRC" column works like the "ISRCs" column (one code per line, ⚠️ on an invalid one, the ISRC sections in 📊), and its "Links" column can be filtered by platform ("Spotify").
+
+* **Phones and tablets** --- a tap no longer leaves a hover tooltip stuck on the page, the on-screen keyboard no longer pops up by itself (after a render, a filter's ✕, or opening a 📊 dropdown), and the collapsed sidebar's handle stays within reach. ❓ Help has a new "On a phone or tablet" section.
+
+* **The collapsed sidebar takes no space at all**: wide tables now end on the same line as the section bars above them, and opening the sidebar on a wide page shows it at the window's edge at once.
 
 * The "Add a new alias" link is gone from the consolidated Aliases pages.
 
-### New: beyond MusicBrainz --- four Bruce Springsteen sites (opt-in, off by default)
+### Beyond MusicBrainz: discogs.com (opt-in, off by default)
 
-The same table engine --- filtering, sorting, the 📊 dropdown, Save to Disk --- now also works on a few Bruce Springsteen fan sites. Each site has its own section in ⚙️ Settings and is off by default; while it's off, the script leaves that site exactly as it is, and nothing changes on MusicBrainz either way.
+With "Enable on discogs.com" (⚙️ Settings → 💿 DISCOGS), the same table engine
+--- filtering, sorting, the 📊 dropdown, Save to Disk --- works on discogs.com
+too. Off, the script leaves discogs.com exactly as it is.
+
+* **Master, release, artist and label pages** get a section of their own above Discogs' page, with filterable, sortable tables. Master: all its versions, the main release marked ★. Release: Tracklist, Credits, Companies, Barcode and Other Identifiers, and Other versions. Artist: the whole discography, one sub-table per Discogs role. Label: its newest 500, 1,000 or 5,000 releases, the oldest 500 or 1,000, or all of them. Every list has a thumbnail column: pointing at a thumbnail shows every image of that release, and a click opens them in the artwork viewer at full size.
+[SCREENSHOT: a Discogs master page with its versions as a table]
+
+* **More Discogs pages**: a list's submissions page ("Show all submissions"), a user's page (their submissions, contributions, collection and wantlist), a user's ratings, and a release's history page (the changes, and the diff of the revision it shows). Users' pictures appear beside their names.
+
+* **Which of these are in MusicBrainz?** With murdos' "Import Discogs releases to MusicBrainz" userscript installed, every table whose rows are releases, masters, artists or labels gets a "MusicBrainz" column: every MusicBrainz entity linked to that Discogs page, or a search box where there's none. The links come from that script's own cache first (read only), then from MusicBrainz, 100 Discogs links per request, one request a second. The 📊 dropdown counts the links per row, and a Picard column sends a found release's MusicBrainz page to Picard. Without that userscript nothing changes.
+
+* **Discogs' pace**: the rows come from Discogs' API, 100 a request, one request every 2.5 seconds, or every second with your Discogs token. All your Discogs tabs share that pace, and when Discogs says its per-minute limit is used up, they wait a minute and try again. Pointing at a button shows what it costs, and more than 50 pages asks first, as on MusicBrainz.
+
+### Beyond MusicBrainz: four Bruce Springsteen sites (opt-in, off by default)
+
+The same table engine also works on a few Bruce Springsteen fan sites. Each
+site has its own section in ⚙️ Settings and is off by default.
 
 * **springsteenlyrics.com** --- the collection lists (every category, plus the 5000-item "Latest additions"), the bootleg lists including CD/vinyl bootlegs, and the lyrics index (over 3,500 entries across every first letter) each become one table, fetched across all their pages. Dates are split into DD/MM/YYYY/Day/Month and locations into Place/Locality/Region/Country, the way MusicBrainz event pages are. An optional compact bar replaces the site's rows of category/format/country/year buttons with pull-down menus, one date-aware bootleg search box and a Recent list, and once a list is loaded its menus filter the table directly.
 * **jungleland.it** --- the bootleg artwork list (list.htm, opened in its own tab) becomes one table with Title, Date (split into DD/MM/YYYY/Day/Month), Year and Version.
 * **brucespringsteen.it** --- the record database (records.aspx, opened in its own tab) gets Unofficial and Official buttons that load every record of that kind into one table.
-* **Brucebase** --- the song list (stats:songs) turns its 28 letter tabs into one table, one row per song.
-* **Detail-page previews** --- hold Ctrl over a title to see what its own page adds (a bootleg's tracklist and scans, a song's lyrics and live history, …) without leaving the table; Space pins it into a window where ‹ › step through the rows. One setting per site, off by default.
+* **Brucebase** --- the song list (stats:songs) turns its 28 letter tabs into one table, one row per song. A new "Events" button on every year page (1949-64 … 2026) turns the year's shows, sessions, rehearsals and cancelled dates into one table, with Date (split into day/month/year/weekday), Type, Venue, City, State, Country, Tour, Soundcheck and Setlist one song per row, Notes and Media; on the start page, "Show all events of all years" loads every year into one table (separate setting: "Enable on the Brucebase year pages (event lists)"). Also the 2,892 people and bands of stats:relations as one table, and the wiki's last 200, 1,000 or 5,000 changes, with dates in your own time zone. The wiki's side bar stays in view while you scroll, and can get the MusicBrainz sidebar's collapse handle ("Collabsable sidebar") or move to the right.
+[SCREENSHOT: a Brucebase year page as one table]
+* **Titles written the MusicBrainz way**: "BORN IN THE USA" and "Born In The U.S.A." become "Born in the USA" and "Born in the U.S.A.", and "BOSS AT HIS BEST (THE)" becomes "The Boss at His Best". Acronyms keep their capitals, and hovering a changed cell shows the site's own text with the changes marked. Typographic punctuation is a separate switch: "Don’t", "Rock ’n’ Roll", "1975–1985", "Freeze‐Out". With it on, a filter has to be typed with the same characters. Both are in 🔤 TITLES ON THE OTHER SITES, and both are on once a site is enabled.
+* **Detail-page previews** --- point at a title to see what its own page adds (a bootleg's tracklist and scans, a song's lyrics and live history, …) without leaving the table, also on the page as the site shows it before you press any button; Space pins it into a window where ‹ › step through the rows. One setting per site, off by default.
 
 ### Fixes
 
 * Typing no longer jumps into the global filter when a slow table finishes loading while you're already typing in another field.
 * The toolbar's pull-down menus open upward when the toolbar is near the bottom of the window, instead of off-screen. They also close when you click a link and then cancel the "leave this page?" question.
-* Clicking a column's Cc/Rx/Ex switch on an artist's Releases tab no longer asks "You are about to leave this page".
+* A click on an image of the big-picture strip above a table opens the artwork viewer instead of asking "You are about to leave this page", and a Ctrl-click or Shift-click no longer asks either.
 * After "↻ Load remaining pages", columns could be renamed with a number added ("Title 4"), which broke filters, sorting and column visibility that refer to them by name.
 * Ticking a sub-table filter's Cc/Rx/Ex box now re-applies its column filters straight away; a plain global filter no longer matches across two cells ("Rest Bruce" matching the end of one cell and the start of the next); and sub-table status lines no longer contradict themselves.
-* Ctrl+A then Backspace in a filter box now clears the filter (it used to do nothing, or empty the box without re-filtering).
-* The 👁️ column-visibility menu lists "Barcode" instead of "▌█Barcode", and "Barcode" in "Default hidden columns per page type" now actually hides it. Column headers containing an emoji (🔗, 🖼, 📋 --- added by other userscripts) are no longer mangled.
+* Ctrl+A then Backspace in a filter box now clears the filter (it used to do nothing, or empty the box without re-filtering). A global filter holding only spaces can be cleared with its ✕ again.
+* The 👁️ column-visibility menu lists "Barcode" instead of "▌█Barcode", and "Barcode" in "Default Hidden Columns per Page Type" now actually hides it. Column headers containing an emoji (🔗, 🖼, 📋 --- added by other userscripts) are no longer mangled.
+* Tag pages whose first section is Artists: the Release groups, Releases and Recordings tables had every header from the second column on standing over the wrong column. The Comment column no longer shows the artist's disambiguation instead of the entity's own, and "N entities found" stays under the heading instead of below the last table.
 * Escape now cancels the Ctrl+M keyboard prefix and closes its overlay at once.
-* MusicBrainz's own header menus (Editing, Search, …) are no longer drawn behind the page's title bar.
+* MusicBrainz's own header menus (Editing, Search, …) are no longer drawn behind the page's title bar, and MusicBrainz's own pop-up windows (such as the one the sidebar's cover opens) now cover the whole page, with none of the script's buttons showing through.
 * The cover-art tooltip works again with the "Right Side Flags Everywhere" userscript installed.
 * The ⚠⟳ retry button no longer appears twice on single-table pages, and a plain browser tooltip no longer pops up on top of the rich one.
-* With jesus2099's "mb. INLINE STUFF" installed, a track whose name differs from its recording's name is no longer invisible to the title checks and the "Title info" sections.
 * The first action button on an artist's Releases tab reads "Artist", not "Artists".
 * The "Release"/"Release group" sub-headings in an expanded Credits section are indented under their h2, like other sub-tables.
 * The third-party "MBz YouTube Music Lookup" userscript's stray button no longer ends up in the rendered tracklist.
+* Report pages and the CD stub list: the status line sits right under the page heading again.
+* A page whose header line ran just past the window's edge no longer jumps back and forth several times a second.

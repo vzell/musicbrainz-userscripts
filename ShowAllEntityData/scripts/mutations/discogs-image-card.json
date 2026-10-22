@@ -1,0 +1,80 @@
+[
+    {
+        "name": "dg image card: the thumbnail not stamped",
+        "why": "The tooltip engine finds a resolver card by data-mbtt-fn only.",
+        "edits": [
+            {
+                "find": "<a class=\"mb-dg-thumblink\" data-mbtt-fn=\"dg-img\" href=",
+                "replace": "<a class=\"mb-dg-thumblink\" href="
+            }
+        ],
+        "spec": "tests/fixtures/discogs-image-card.spec.js",
+        "grep": "hover: Loading with the thumbnail",
+        "expect": "fail"
+    },
+    {
+        "name": "dg image card: the resolver does not know dg-img",
+        "why": "Without its case the stamp resolves to no card.",
+        "edits": [
+            {
+                "find": "                case 'dg-img': return _dgImgCardHtml(el);\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/discogs-image-card.spec.js",
+        "grep": "hover: Loading with the thumbnail",
+        "expect": "fail"
+    },
+    {
+        "name": "dg image card: the record wanted after the hover moved on",
+        "why": "A row the pointer only passed over must cost no request (asked after the rate slot).",
+        "edits": [
+            {
+                "find": "                wanted: () => _dgImgCardShows(a),",
+                "replace": "                wanted: () => true,"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-image-card.spec.js",
+        "grep": "moved on before its turn",
+        "expect": "fail"
+    },
+    {
+        "name": "dg image card: the setting ignored",
+        "why": "sa_dg_tip_images off: no card and no request.",
+        "edits": [
+            {
+                "find": "        if (Lib.settings.sa_dg_tip_images === false) return null;",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/discogs-image-card.spec.js",
+        "grep": "all images of a row on hover\" off",
+        "expect": "fail"
+    },
+    {
+        "name": "dg image card: Discogs' primary not the card's main image",
+        "why": "The ★ tile and the primary/secondary tally come from imageType.",
+        "edits": [
+            {
+                "find": "        const shown = images.map(im => ({ ...im, front: im.imageType === 'primary', types: im.imageType ? [im.imageType] : [] }));",
+                "replace": "        const shown = images;"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-image-card.spec.js",
+        "grep": "hover: Loading with the thumbnail",
+        "expect": "fail"
+    },
+    {
+        "name": "art card: an external record told it has no main front",
+        "why": "\"main front\" is MusicBrainz's notion; a Discogs card says primary.",
+        "edits": [
+            {
+                "find": "            images.some(im => im.front) ? (ctx.external ? '★ primary' : '★ main front') : (ctx.external ? 'no primary' : 'no main front'),",
+                "replace": "            images.some(im => im.front) ? '★ main front' : 'no main front',"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-image-card.spec.js",
+        "grep": "hover: Loading with the thumbnail",
+        "expect": "fail"
+    }
+]

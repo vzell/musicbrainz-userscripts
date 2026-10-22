@@ -187,7 +187,7 @@
     "why": "Empties the list of rich tooltips that rule a card out: an inline CAA thumbnail's own title ('8 images found …') is drawn over its preview (reported 2026-10-04).",
     "edits": [
       {
-        "find": "        const _OTHER_RICH_TIPS = ['mb-art-bigbox-tooltip', 'mb-art-hover-preview', 'mb-rel-tooltip', 'mb-dp-peek'];\n",
+        "find": "        const _OTHER_RICH_TIPS = ['mb-art-bigbox-tooltip', 'mb-art-hover-preview', 'mb-rel-tooltip', 'mb-dp-peek', 'mb-async-pop'];\n",
         "replace": "        const _OTHER_RICH_TIPS = [];\n"
       }
     ],

@@ -477,16 +477,16 @@ test.describe('Relationships column: per-row load-state glyphs and click-to-load
             });
             slowMbid = (await rowMbids(page))[1];
 
-            const clickedAt = Date.now();
+            const clickedAt = performance.now();
             await clickCellEdge(page, slowMbid);
             await expect.poll(async () => (await cellState(page, slowMbid)).loading, { timeout: 3000 }).toBe(true);
 
             await page.fill('#mb-global-filter-input', 'zzzz-matches-no-row');
             await expect.poll(async () => (await rowMbids(page)).length, { timeout: 10000 }).toBe(0);
-            expect(Date.now() - clickedAt, 'the row was hidden before its answer could land')
+            expect(performance.now() - clickedAt, 'the row was hidden before its answer could land')
                 .toBeLessThan(DELAY_MS - 1000);
 
-            await page.waitForTimeout(Math.max(0, DELAY_MS + 1500 - (Date.now() - clickedAt)));
+            await page.waitForTimeout(Math.max(0, DELAY_MS + 1500 - (performance.now() - clickedAt)));
             await page.fill('#mb-global-filter-input', '');
             // 45 s, not 15 s, and the project-level timeout does not cover this:
             // what expires here is this poll, not the test budget. Clearing the

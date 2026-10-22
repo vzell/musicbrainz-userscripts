@@ -36,6 +36,23 @@
 
 const path = require('path');
 const { test, expect } = require('../support/test');
+
+/**
+ * Dispatches a Ctrl-click on a link and returns whether it arrived there
+ * cancelled (`null`: it never arrived). Cancelled at the link afterwards, so
+ * no tab opens. Since 2026-10-17 the navigation guard asks nothing on a
+ * Ctrl-click (a new tab loses nothing), so its dialog no longer shows that
+ * the click reached the link; this does.
+ *
+ * @param {HTMLAnchorElement} a
+ * @returns {?boolean}
+ */
+const ctrlClickAtLink = (a) => {
+    let seen = null;
+    a.addEventListener('click', (e) => { seen = e.defaultPrevented; e.preventDefault(); }, { once: true });
+    a.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, ctrlKey: true, button: 0 }));
+    return seen;
+};
 const { loadUserscriptPage } = require('../support/loadPage');
 const { waitForRenderComplete } = require('../support/browser');
 const { collectPageErrors } = require('../support/liveAssertions');
@@ -61,7 +78,17 @@ test.describe('CAA/EAA column redesign', () => {
         expect(await page.evaluate(() => document.documentElement.dataset.mbArtLayout)).toBe('grid');
 
         const ul = cell(page, R.sixteen).locator('ul.mb-caa-art-ul');
-        const collapsed = await ul.evaluate((u) => ({ display: getComputedStyle(u).display, width: u.getBoundingClientRect().width }));
+        // The column still widens by a few px just after the render (264 →
+        // 270 px, probed 2026-10-14): under a loaded full run the first read
+        // came before that and the comparison below failed. Take the
+        // collapsed width once two reads in a row agree.
+        let collapsed = null;
+        await expect.poll(async () => {
+            const now = await ul.evaluate((u) => ({ display: getComputedStyle(u).display, width: u.getBoundingClientRect().width }));
+            const settled = !!collapsed && Math.round(now.width) === Math.round(collapsed.width);
+            collapsed = now;
+            return settled;
+        }, { intervals: [100, 100, 150, 200, 250] }).toBe(true);
         expect(collapsed.display, 'a collapsed cell is not a grid').not.toBe('grid');
 
         await expandCell(page, R.sixteen);
@@ -190,6 +217,127 @@ test.describe('CAA/EAA column redesign', () => {
         await expect(page.locator('#mb-art-hover-preview'), 'no front preview beside the card').toBeHidden();
     });
 
+    // Card keys (2026-10-20). Space must DRAW every image (16 tiles, no "+N"),
+    // not merely be swallowed — and must leave the page's Space alone where
+    // it has nothing to do: no card, nothing cut off, typing into a field.
+    // Shift must change the drawn TILE SIZE, measured, not a class.
+
+    /**
+     * Dispatches a Space keydown at the body and returns whether it was spent.
+     * @param {import('@playwright/test').Page} page
+     * @returns {Promise<boolean>}
+     */
+    const spaceSpent = (page) => page.evaluate(() => {
+        const ev = new KeyboardEvent('keydown', { key: ' ', code: 'Space', bubbles: true, cancelable: true });
+        document.body.dispatchEvent(ev);
+        return ev.defaultPrevented;
+    });
+    /** @param {import('@playwright/test').Locator} tip */
+    const tileWidth = async (tip) => Math.round((await tip.locator('.mb-art-card-tile').first().boundingBox()).width);
+
+    test('B1 keys: Space draws every image and back; the next hover starts at the cap again', async ({ page }) => {
+        test.setTimeout(120000);
+        await open(page);
+        const tip = page.locator('#mb-stat-tooltip');
+        expect(await spaceSpent(page), 'no card: Space stays the page\'s').toBe(false);
+        await cell(page, R.sixteen).locator('span.caa-icon').hover();
+        await expect(tip.locator('.mb-art-card-tile')).toHaveCount(12);
+        await expect(tip.locator('.mb-art-card-keys')).toContainText('Space all 16 images');
+        await page.keyboard.press('Space');
+        await expect(tip.locator('.mb-art-card-tile')).toHaveCount(16);
+        await expect(tip.locator('.mb-art-card-more')).toHaveCount(0);
+        await expect(tip.locator('.mb-art-card-keys')).toContainText('Space first 12');
+        await page.keyboard.press('Space');
+        await expect(tip.locator('.mb-art-card-tile')).toHaveCount(12);
+        await expect(tip.locator('.mb-art-card-more')).toHaveText('+4');
+
+        await page.keyboard.press('Space');
+        await expect(tip.locator('.mb-art-card-tile')).toHaveCount(16);
+        await page.mouse.move(0, 0);
+        await expect(tip).toBeHidden();
+        await cell(page, R.sixteen).locator('span.caa-icon').hover();
+        await expect(tip.locator('.mb-art-card-tile'), 'a new hover starts at the cap').toHaveCount(12);
+    });
+
+    test('B1 keys: Space is left alone with nothing cut off and while typing into a field', async ({ page }) => {
+        test.setTimeout(120000);
+        await open(page);
+        const tip = page.locator('#mb-stat-tooltip');
+        await cell(page, R.outside).locator('span.caa-icon').hover();
+        await expect(tip.locator('.mb-art-card-tile')).toHaveCount(3);
+        expect(await spaceSpent(page), 'three images, nothing cut off').toBe(false);
+        await expect(tip.locator('.mb-art-card-keys')).not.toContainText('Space');
+
+        await cell(page, R.sixteen).locator('span.caa-icon').hover();
+        await expect(tip.locator('.mb-art-card-tile')).toHaveCount(12);
+        // A text field that filters nothing, fixed in a corner away from the
+        // pointer: typing into the header search scrolled the page up to it,
+        // the card closed on that, and the Space never met a card (probed
+        // 2026-10-20). Here the card is still up when the Space arrives, so
+        // the key hook runs and has to decide.
+        await page.evaluate(() => {
+            const f = document.createElement('input');
+            f.id = 't-field';
+            f.type = 'text';
+            f.style.cssText = 'position:fixed;top:0;left:0;width:80px;z-index:1;';
+            document.body.appendChild(f);
+            f.focus({ preventScroll: true });
+        });
+        await page.keyboard.type('x');
+        await expect(tip, 'the card still shows as the Space comes').toBeVisible();
+        await expect(tip.locator('.mb-art-card-tile')).toHaveCount(12);
+        await page.keyboard.type(' ');
+        await expect(page.locator('#t-field'), 'the typed Space was the field\'s').toHaveValue('x ');
+        await expect(tip.locator('.mb-art-card-tile')).toHaveCount(12);
+    });
+
+    test('B1 keys: Shift draws bigger tiles while held, also when held before the hover', async ({ page }) => {
+        test.setTimeout(120000);
+        await open(page);
+        const tip = page.locator('#mb-stat-tooltip');
+        await cell(page, R.sixteen).locator('span.caa-icon').hover();
+        await expect(tip.locator('.mb-art-card-tile')).toHaveCount(12);
+        expect(await tileWidth(tip)).toBe(56);
+        await page.keyboard.down('Shift');
+        await expect.poll(() => tileWidth(tip), 'sa_caa_tip_summary_big_tile default').toBe(150);
+        await expect(tip.locator('.mb-art-card-tile'), 'still the cap').toHaveCount(12);
+        await page.keyboard.up('Shift');
+        await expect.poll(() => tileWidth(tip)).toBe(56);
+
+        await page.mouse.move(0, 0);
+        await expect(tip).toBeHidden();
+        await page.keyboard.down('Shift');
+        await cell(page, R.sixteen).locator('span.caa-icon').hover();
+        await expect(tip).toBeVisible();
+        expect(await tileWidth(tip), 'Shift held as the pointer came in').toBe(150);
+        await page.keyboard.up('Shift');
+    });
+
+    test('B1 keys: Shift + Space on a small window — every image, tiles shrunk, the card inside the window', async ({ page }) => {
+        test.setTimeout(120000);
+        await open(page);
+        await page.setViewportSize({ width: 900, height: 500 });
+        const tip = page.locator('#mb-stat-tooltip');
+        await cell(page, R.sixteen).locator('span.caa-icon').scrollIntoViewIfNeeded();
+        await cell(page, R.sixteen).locator('span.caa-icon').hover();
+        await expect(tip.locator('.mb-art-card-tile')).toHaveCount(12);
+        await page.keyboard.down('Shift');
+        await page.keyboard.press('Space');
+        await expect(tip.locator('.mb-art-card-tile')).toHaveCount(16);
+        const fit = await tip.evaluate((t) => {
+            const r = t.getBoundingClientRect();
+            const tile = t.querySelector('.mb-art-card-tile').getBoundingClientRect();
+            return { top: r.top, bottom: r.bottom, left: r.left, right: r.right, vw: innerWidth, vh: innerHeight, tile: Math.round(tile.width) };
+        });
+        await page.keyboard.up('Shift');
+        expect(fit.tile, 'shrunk below the Shift size to fit').toBeLessThan(150);
+        expect(fit.tile, 'still bigger than the compact card\'s').toBeGreaterThan(56);
+        expect(fit.top).toBeGreaterThanOrEqual(0);
+        expect(fit.left).toBeGreaterThanOrEqual(0);
+        expect(fit.bottom, 'the card cannot scroll: it must fit').toBeLessThanOrEqual(fit.vh);
+        expect(fit.right).toBeLessThanOrEqual(fit.vw);
+    });
+
     test('D1: a click opens the viewer at that image; ← → cross into the next row; no JSON request', async ({ page }) => {
         test.setTimeout(120000);
         const { hits } = await open(page);
@@ -235,18 +383,16 @@ test.describe('CAA/EAA column redesign', () => {
     test('D1: a plain icon click is the viewer\'s, a Ctrl-click the link\'s; with cross-rows off ← → wrap in the row', async ({ page }) => {
         test.setTimeout(120000);
         await open(page, { sa_art_viewer_cross_rows: false });
-        // The navigation guard asks before a link leaves the loaded page (a
-        // native confirm). So "the click reached the link" is observable as
-        // that dialog — and a plain click must never get there.
+        // A Ctrl-click reaches the link uncancelled (a new tab); a plain one
+        // is the viewer's. Neither brings the navigation guard's confirm.
         const dialogs = [];
         page.on('dialog', (d) => { dialogs.push(d.message()); d.dismiss(); });
         const icon = cell(page, R.sixteen).locator(`a[href="/release/${R.sixteen}/cover-art"]`);
-        await icon.click({ modifiers: ['Control'] });
-        await expect.poll(() => dialogs.length, 'the navigation guard saw the Ctrl-click').toBe(1);
+        expect(await icon.evaluate(ctrlClickAtLink), 'the Ctrl-click reached the link uncancelled').toBe(false);
         expect(await viewer(page)).toBeNull();
         await icon.click();
         await expect.poll(() => viewer(page)).toMatchObject({ pos: '1 / 16' });
-        expect(dialogs.length, 'a plain click opens the viewer, no leave-page confirm').toBe(1);
+        expect(dialogs, 'no leave-page confirm').toEqual([]);
         await page.keyboard.press('Escape');
 
         await expandCell(page, R.sixteen);

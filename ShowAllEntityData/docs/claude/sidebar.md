@@ -1,0 +1,686 @@
+# MusicBrainz sidebar (`_sb*`)
+
+The right-hand sidebar MusicBrainz shows on entity pages: its sections, its
+picture, and its facts as tables. Mockup approved 2026-10-10:
+`https://claude.ai/artifact/9ZZtr9hR7uUGBPSk2ohvfW`. Picks: remember what was
+opened; external links grouped by kind; other scripts' content left where it
+is (no per-script settings); facts as tables behind their own button with the
+sidebar kept; the picture in the sidebar, beside the name and in the entity
+hover card (not on the sidebar handle; the viewer opens from the window, not
+the card: decided 2026-10-11, the card closes on mousedown). Plan:
+`~/.claude/plans/` "MusicBrainz sidebar overhaul", branch `feature/sidebar-overhaul`.
+
+## The collapse handle (`initSidebarCollapse(phase)`)
+
+`#sidebar-toggle-handle` (◀/▶, `sa_collabsable_sidebar`). Since 2026-10-21
+(9.99.1403, org/initial-page-footprint.org) it has two phases:
+
+- **`'initial'`** — from page init, beside `_sbInitPicture()`, MusicBrainz
+  only (`!_foreignHost`), with `sa_sidebar_handle_initial_page` (default on).
+  It builds the handle, its listeners and only the CSS a COLLAPSED sidebar
+  needs. The sidebar starts open unless `sa_sidebar_collapsed_initial_page`.
+- **`'final'`** — from both render tails (fetch, disk load). It adds
+  `#mb-sidebar-layout-style` (the consolidated view's `margin-right: 240px`
+  on `#page`, `#content` padding, box-sizing, the slide transitions), builds
+  the handle if the initial phase did not, and applies
+  `sa_sidebar_collapsed` ONCE per page (`initSidebarCollapse.finalApplied`);
+  a re-render or a later disk load keeps the user's choice.
+
+**The layout CSS never lands on the initial page**: with the sidebar open,
+the IP's `#page`/`#content`/`#sidebar` boxes must equal those of a page
+without the handle (`initial-page-quiet.spec.js` "IP HANDLE"). The
+transitions are in that sheet too — on the IP they animated every change of
+MusicBrainz's own layout (a late stylesheet, a window resize), so the IP's
+handle snaps instead of sliding. `setCollapsed()` (exposed as
+`initSidebarCollapse.setCollapsed`) is the one no-animation state change.
+
+## Sections
+
+`_sbEnhance()` runs at the end of every `makeH2sCollapsible()` pass, on
+`#sidebar` only. The main content's headings keep their old behaviour; every
+change below is gated on `#sidebar.contains(h2)`.
+
+**Where a sidebar section ends.** `makeH2sCollapsible()` used to walk an h2's
+siblings up to the next h2. MusicBrainz puts Tags in its own wrapper
+element, so the walk ran into that wrapper and treated it as part of
+"Artist information": closing Artist information hid Tags, and its count would
+have included the tags. Inside `#sidebar` the walk now also stops at an element
+that CONTAINS an h2. `_sbSectionNodes()` applies the same rule for the
+`_sb*` helpers; keep the two in step.
+
+**Initial state.**
+- `sa_sidebar_remember_sections` (default on): open as last left, per entity
+  type and section kind, in the GM key `sa_sidebar_open_sections`
+  (`{ artist: { 'external-links': true, 'text:tags>genres': false, … } }`).
+- Nothing remembered means closed, so a first visit looks as it did before.
+- `sa_sidebar_open_all` (default off) opens everything and takes precedence.
+- The kind is the h2's own MusicBrainz class (`_sbKind()`), else
+  `text:<heading text>` (Tags has no class). An h3 or a link group is
+  `<h2 kind>><its name>`.
+- `h2._mbToggle` is WRAPPED, so every route remembers: click, Ctrl+Click on a
+  peer, the Open all / Close all bar, Enter/Space. The initial toggle is
+  suppressed with `_mbSbInit`. Without that, loading a page would record every
+  section as a choice.
+
+**Counts** (`sa_sidebar_section_counts`): `li` items that are not
+`.separator`, not our `.mb-sbl-head`, not `.all-relationships`, plus `dt`.
+Zero shows nothing (Rating).
+
+**Sub-sections.**
+- Native sidebar h3s (Tags: Genres / Other tags; Collections) fold their
+  siblings up to the next h3 or h2 (`_sbWireH3()`).
+- An h2 that opens shows every sibling under it, folded h3 lists included, so
+  the wrapper re-applies the h3 states (`_sbReapplyUnder()`).
+- A folded link group needs nothing there: the h2 shows the list, never the
+  items inside it. A mutation proved that branch dead, and it was removed.
+
+**External links by kind** (`sa_sidebar_link_groups`, `_sbGroupLinks()`).
+- **No link is moved or rebuilt.** Each native `li` gets `data-mb-sbl-kind` and a
+  CSS `order`. The `ul` becomes a flex column, and one heading `li` per kind is
+  appended.
+- That keeps MusicBrainz's markup and any other script's references intact.
+- An `li` without a known `*-favicon` class (`no-favicon`, or another script's
+  item) is "Other".
+- `li.all-relationships` ("View all relationships") is MusicBrainz's own link,
+  not an external site: it stays last, ungrouped and uncounted.
+- The site → kind map is `_SB_LINK_KINDS`; a new MusicBrainz favicon falls to
+  "Other" until it is added there.
+
+**Other scripts.** Nothing of theirs is read, moved or hidden. Their h2s get
+the same toggle as MusicBrainz's own, as they always did. The mockup's
+gather/hide choices were not picked and are not built. Two exceptions, each
+by the user's consent: the sidebar picture another script adds
+(`div.entity-image`, below; 2026-10-11) gets a hover card and the viewer, and
+only its img's address is read; and jesus2099's search lists are read into
+the Sidebar cards and tables (2026-10-17, "The Search group" below). The
+sidebar itself is still left as it is.
+
+**Re-runs.** `makeH2sCollapsible()` runs again after a disk load. `_sbReset()`
+removes our counts, bar, group heads and h3 icons, and unhooks our handlers
+first.
+
+Specs:
+- `sidebar-sections.spec.js` (8) and `sidebar-sections.mobile.spec.js` (1), on
+  `tests/fixtures/artist-releasegroups-live-titles.html`. That is Bruce
+  Springsteen's real artist page: 57 external links plus "View all
+  relationships", and Tags in its own wrapper.
+- Mutations: `scripts/mutations/sidebar-overhaul.json`.
+- **Mobile trap:** this fixture has no MusicBrainz stylesheet, so its sidebar is a
+  sticky block wider than the phone. The spec adds MusicBrainz's phone layout
+  rule (`#sidebar { position: static; width: auto }`), scrolls the target to the
+  middle with its left edge in view, and taps with `page.touchscreen` at
+  visual-viewport coordinates.
+- `locator.tap()` scrolls again by itself, to the top edge under the sticky
+  header bar, and a zoomed-out phone's `getBoundingClientRect()` is in
+  layout-viewport coordinates.
+
+## The sidebar picture
+
+**Whose picture it is** (musicbrainz-server source, read 2026-10-11):
+- MusicBrainz's own `CommonsImage` component renders
+  `div.commons-image > div.picture > img` plus an "Image from Wikimedia
+  Commons" note. Its server side returns nothing unless
+  `WIKIMEDIA_COMMONS_IMAGES_ENABLED`, and on musicbrainz.org it returns
+  `{"image": null}` for every entity and the page shows no picture: the switch
+  is off there.
+- The picture in the user's browser is `div.entity-image > div.picture > img`,
+  with no note: **another userscript adds it**. The user consented on
+  2026-10-11 to it being decorated; only the img's address is read.
+
+- **An instrument's drawing** (added 2026-10-20, `debug/electric-bass-guitar.html`):
+  MusicBrainz's own server-rendered `#sidebar > div.picture > img` from
+  `static.metabrainz.org/irombook/…` with an "IROMBOOK image" note. It IS in
+  the raw page, so `_sbInitPicture()` finds it at once and the copy is in the
+  h1 before the toolbar is built; nothing in the render rewrites the h1, so
+  it is still first there on the final page.
+
+- **A release's or release group's front cover** (added 2026-10-21,
+  `debug/release-tracks-tttr.html`): MusicBrainz's own server-rendered
+  `#sidebar .cover-art.present > a.artwork-image > span.artwork-image`, its
+  addresses in `data-small-thumbnail` / `-large-` / `-huge-`. MusicBrainz's
+  script puts the `<img>` into the span after load, and REPLACES the whole
+  span with "Image failed to load correctly" when the thumbnail does not
+  load. So `_sbWireCover()` reads `data-small-thumbnail` (made absolute)
+  straight away instead of waiting for the `<img>`. A cover with no
+  `.present` (no front image) gets no copy.
+- **An event's event art** (2026-10-21, 9.99.1414): the same markup in
+  `#sidebar .event-art` (no `.present` class there), wired the same way with
+  the Event Art Archive (`_sbCoverCtx()` → `EAA_CTX`).
+
+The two Commons ones arrive AFTER load: the raw page has neither. `_sbInitPicture()` is called
+once at init, right after the required-elements check, on MusicBrainz only
+(`_foreignHost`). It wires a picture that is already there (selector
+`.entity-image .picture img, .commons-image .picture img, :scope > .picture img`, a literal because
+this runs before its part of the file: TDZ), or watches `#sidebar` with a
+MutationObserver for up to 15 s.
+
+**Nothing is requested.** The picture is MusicBrainz's own, already in the
+browser. The viewer loads it through the external path (`external: true`: no
+art cache, no referrer), like `_dpArtViewerClick()` does for another site's
+images. **The one exception is a cover** (release, release group, event):
+its card and its viewer show ALL the record's images, so the FIRST HOVER of
+the copy or of the sidebar's own cover link asks the archive record
+(`_artRecordCardHtml()` → `_artRelIconLoad(path, …, ctx)`, as a
+relationship-list cover icon does), and a click asks it when no hover has
+(`_sbOpenCover()`); at once when `ctx.countCache` already has it, e.g. after
+the release page's "Cover art (N)" section. Never at load.
+
+**Rules.**
+- **Only a Commons file or an IROMBOOK drawing** (`_sbPictureSource()`:
+  `_sbCommonsFile()`, the host ends in `wikimedia.org`; `_sbIrombookFile()`,
+  `static.metabrainz.org/irombook/`), **or a release / release group /
+  event cover** (a path of its own, below). `_sbPictureSource()` still
+  answers null for an event-art address, so `_sbWirePicture()` never takes
+  one for a Commons picture.
+- **A cover differs from a picture in four places**: it is found only on a
+  `/release/<mbid>…`, `/release-group/<mbid>…` or `/event/<mbid>…` path
+  (`_sbCoverPath()`, which is also the archive cache key), and on those
+  pages the Commons selector is not watched; besides the copy, the SIDEBAR'S
+  OWN cover link (`a.artwork-image`, stamped `data-mb-sb-cover`) is wired:
+  same card, and a plain click opens our viewer through a window
+  capture-phase listener (`_sbCoverLinkClick()`) so MusicBrainz's jQuery UI
+  dialog never opens (Ctrl/Shift/Alt/⌘ leave the click to MusicBrainz; with
+  `sa_sidebar_picture_in_header` off the link is still wired); the viewer
+  context is `CAA_CTX`/`EAA_CTX` (`_sbCoverCtx()`, read only on a hover or
+  click: both are declared far below, TDZ at init), so the bar reads "CAA"
+  or "EAA", shows every image and starts at the record's `front` one; its
+  card is the CAA/EAA column's B1 card of every image
+  (`data-mbtt-fn="sb-cover"` → `_sbCoverCardHtml()` → `_artRecordCardHtml()`,
+  which `_artRelIconCardHtml()` now shares; Space draws every image, Shift
+  bigger tiles: `sb-cover` is in `_ART_CARD_FNS`). Off with
+  `sa_caa_tip_summary`.
+- **A drawing differs in three places only**: the card says "IROMBOOK"
+  instead of "Wikimedia Commons"; the viewer gets no `pageUrl` (a drawing has
+  no file page, so the bar shows no link); the copy beside the name carries
+  `mb-sb-avatar-contain` (`object-fit: contain` on white), because a tall
+  transparent line drawing cropped by `cover` is an unrecognisable strip.
+- **The picture's own control** (`_sbPictureControl()`): `role=button`,
+  `tabindex=0`, click, Enter or Space, and since 2026-10-21 (9.99.1414, asked
+  for: "the same treatment as an image in the CAA/EAA column") the B2 image
+  card instead of a plain tooltip: `data-mbtt-fn="sb-pic"` →
+  `_sbPicCardHtml()`, the picture's preview (`.mb-art-card-preview`), its
+  origin pill (Wikimedia Commons / IROMBOOK), its file name, the size the
+  browser loaded, "Click: viewer". Built from the picture already shown:
+  nothing is asked. No `title` any more, so no native box either.
+- **The viewer context** is its own (`_SB_PIC_CTX`, column "Entity image"). A
+  shared context would make the bar read "Detail page" or "CAA".
+- **The viewer bar** shows an image's `pageUrl` as a link (`pageLabel`, here
+  "Open on Commons", `data-mb-artv-page`). That is an optional field, so
+  every other caller is unchanged.
+- **The copy beside the name** (`sa_sidebar_picture_in_header`) is a
+  `span.mb-sb-avatar` prepended to the header h1, 34 px with `object-fit:
+  cover`, with the same control. It stays in sight when the sidebar is
+  collapsed.
+
+**Settings.** `sa_sidebar_picture` (default on) and `sa_sidebar_picture_in_header`
+(default on). Both gate the cover copy too.
+
+**Specs.** `sidebar-picture.spec.js` (17: both Commons markups, an
+instrument's drawing, then the release / release group / event cover) and
+`sidebar-picture.mobile.spec.js` (1). The cover tests serve a COPY of each
+fixture whose archive.org thumbnails are moved to a host the spec answers:
+the harness blocks every archive.org image, and MusicBrainz's script would
+replace the blocked span before the userscript looked. The record is served
+with its front image moved to second place, so "opens at the front" cannot
+pass by starting at index 0. The Commons
+tests add the picture late and serve upload.wikimedia.org from a 1×1 PNG,
+sized 120 px by the test as MusicBrainz's CSS would (a 1×1 image sits under
+the fixed sidebar handle at the page's left edge, and a hover lands on the
+handle's card); the
+instrument tests load `sidebar-picture-instrument-recordings.html` (built by
+`scripts/build-sidebar-picture-instrument-fixture.py`), serve the IROMBOOK host
+from the same PNG, and check the copy leads the h1 before and after "Show all
+Recordings for Instrument". A "left alone" test waits one macrotask
+turn (`observerRan()`): an observer callback is a microtask, so this is a real
+settle, not a sleep. There are 14 `picture:` mutations in
+`sidebar-overhaul.json` (six of them for the drawing, added 2026-10-20),
+9 `cover:` and 3 `card:` ones (2026-10-21). The "still
+first on the final page" half has no mutation: no code keeps it there, it
+holds because nothing rewrites the h1.
+
+## "🗂 Sidebar as tables"
+
+A button, not a part of any other render. You chose that over mixing the groups
+into the discography's pipeline on 2026-10-11.
+
+**Where it shows** (`_sbTablesButtons()`): appended to the toolbar's
+`buttonsToRender` at init when all of these hold:
+- the host is MusicBrainz;
+- `sa_sidebar_tables_button` is on (off by default since the inline views, below);
+- the path is an entity overview
+  (`/artist|label|event|release-group|recording|work|series|place|area|instrument/<mbid>`,
+  or `/release/<mbid>` with an optional `/disc/N`);
+- the page has `#sidebar dl.properties`.
+
+`_sbTablesButtons()` runs during init, before the `_sb*` part of the file has
+executed, so it must not read a module-level `const` from there (TDZ). That is
+why the path pattern is a literal inside it.
+
+**A page type is needed first.** The button joins a toolbar, and a page with
+no page type gets none: the script stops at init. Release (`release-tracks`)
+and series (`series-releases`) have one. Place, area and instrument overviews
+got theirs from main's relationship tables (`place-overview`,
+`area-overview`, `instrument-overview`, merged into this branch 2026-10-14).
+Those match while `sa_enable_relationship_tables` OR
+`sa_sidebar_tables_button` is on; their own "Relationships" button carries
+`showIf` on the first, so with the relationship tables off only the Sidebar
+button shows. A release page needs `sa_enable_release_tracks` (default on)
+for the same reason.
+
+**In the toolbar.**
+- It sits behind its own divider (`ownGroup`,
+  `.mb-button-own-group-divider`), so it does not read as one of the page
+  type's buttons, or as part of a group label like "RGs:".
+- Its tooltip is its own `description` ("… nothing is fetched"). The toolbar
+  now prefers that over its generic "Fetch …" texts.
+- Its painted text follows the toolbar convention, `🧮N Sidebar`: every button
+  carries 🧮 and its Ctrl+M number.
+- The full suite found the first two problems:
+  `action-button-shortlabel-and-rich-tooltip.spec.js` counted the artist
+  page's buttons, and now also pins the divider and the description (two
+  mutations).
+
+**The button object.** It sets `type: 'sidebar-tables'`,
+`tableMode: 'multi'`, `non_paginated`, `replaceFeatures`, and its own
+features (`sidebarToTables`, `groupByH3`, `integerColumns` for # and Votes).
+It has no `params`, so page 1 is the live document: no request.
+
+**How `startFetchingProcess()` treats it.** The same two fields main's
+relationship-tables buttons use (`_relTablesButton()`). The branch had its
+own `ownFeatures`/`pageType` pair for this; the merge of `main` on
+2026-10-14 replaced it with main's fuller version (it also drops
+`entityFeatures` and lets a disk load find the button again).
+- A button `type` replaces the detected `pageType` for that render.
+  There is nothing to restore: a second press reloads the page, which detects
+  the type afresh. Without it, `artist-releasegroups`' own branches run on the
+  sidebar render; a mutation proves it.
+- `replaceFeatures` drops the page type's features and entity features from
+  the merge. On today's pages this is covered: the leaked features find no
+  column of theirs, and the event page's `eventDetailsToTables` output is
+  removed again by the sidebar converter. The mutation is recorded as
+  `expect: "pass"` with that reason. `replaceFeatures` stays as the guard for
+  a page type whose features WOULD act on `#`, `Kind` or `Votes`.
+
+**The converter** (`applySidebarToTables()`). It is called from the live
+pre-processing and for a fetched page, next to `applyEventDetailsToTables()`.
+It builds groups with `_eventBuildTable()`:
+
+| Group                            | Columns                               | Source                                                                                                                                                                                                                                                                                         |
+|----------------------------------|---------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `<h2 text of dl.properties>`     | #, Property, Value                    | every `dl.properties` (dd cloned); a release has two: "Release information", "Additional details"                                                                                                                                                                                              |
+| Labels (release)                 | #, Label, Catalog number              | the `ul.links` whose items link a label's own page (`/label/<mbid>`, never `/label/<mbid>/edit`: a label's Editing list); `.catalog-number`                                                                                                                                                    |
+| Release events (release)         | #, Country, Date                      | `ul.release-events > li`: the `.flag` area link, `.release-date`                                                                                                                                                                                                                               |
+| `<h2 text of ul.external_links>` | #, Site, Link, Kind, Details          | every OUTERMOST `ul.external_links` (a release has "Release group external links" too); Site = host; Kind = `_SB_LINK_KINDS`; Details = the item's own text beside its link, e.g. "(as @x)" (`_sbOwnText()`), then each link nested in it ("en: Devils & Dust"); `.all-relationships` left out |
+| Search                           | #, Search, Section, Group, Site, Link | jesus2099's search lists (`_SB_SEARCH_LIST_SEL`), all in ONE group where the first of them is; see "The Search group"                                                                                                                                                                          |
+| Tags                             | #, Tag, Kind, Votes                   | Kind is Genre or Tag; Votes from `.tag-count`                                                                                                                                                                                                                                                  |
+
+- An empty group is left out.
+- It removes that document's own `table.tbl`s and h3s from `#content`, so only
+  its groups are read.
+- It puts an h2 "Sidebar" before the first h2 of `#content`, with the groups
+  after it. Where it starts does not decide where it ends:
+  `_relocateTrailingH2Sections()` (`sa_enable_h2_section_relocation_on_final_page`)
+  moves the page's other h2 sections above it after the render, as on every
+  page. On a release (headings in `div.annotation` and
+  `div.tracklist-and-credits`, no direct h2) the groups come last, under the
+  annotation and the emptied Tracklist heading; placing them earlier was
+  tried on 2026-10-14 and undone by that pass.
+- The sidebar is only cloned from; our counts, icons and group heads are
+  filtered out of the clones.
+
+**Disk load of a saved "Sidebar as tables" view.** Supported since the merge
+of main (2026-10-14). Before it, a save reloaded as its page type (Load from
+Disk keyed on the detected pageType), so the restore was left out. Main's
+`_activateButtonForSavedPageType()` makes the saved pageType's button active
+first; `_buttonForSavedPageType()` also asks `_sbTablesButtons()`, and the
+disk-load restore runs `applySidebarToTables()` beside the other converters.
+
+**Specs.** `sidebar-tables.spec.js` (5), on the artist and event fixtures:
+- the three groups with their rows;
+- no discography view buttons, and no Relationships or CAA column even with
+  both switched on;
+- the global filter;
+- the sidebar unchanged;
+- no request;
+- no button off an overview page or with the switch off.
+
+There are 7 mutations in `sidebar-overhaul.json`, 6 caught and 1 recorded
+`expect: "pass"`, as above.
+
+**Specs for the five more kinds** (2026-10-14, 8 more in the same file), on
+main's `rel-<kind>-overview.html` captures:
+- per kind (release, series, place, area, instrument): the button, a render
+  of sidebar groups only (every h3 is a sidebar heading), the first being the
+  kind's facts with one row per fact, and no request;
+- the release: both facts lists, Labels and Release events with their rows,
+  both external-links lists, no tracklist table;
+- with the relationship tables off: place, area and instrument keep the
+  button, and no Relationships button shows;
+- a disk round trip on the release: the same groups, under their own
+  "Sidebar" heading at the top level of `#content`. Without the converter on
+  the load path the groups still render, but nested in the release's
+  `div.tracklist-and-credits` with no heading; counting tables anywhere in
+  `#content` missed that, so the test also checks where they sit.
+
+9 more mutations, all caught. One ("the saved Sidebar button is not found")
+fails by the spec's timeout, not an assertion: Load from Disk's
+pageType-mismatch prompt comes up instead of the render button.
+
+## The picture in the entity previews (`_mbPopImageLoad()`)
+
+Part 4. MusicBrainz's `/<type>/<mbid>/commons-image` is no use: its switch
+is off (above), so it answers `{"image": null}` (DEBUG-NOTES.md, 2026-10-11,
+two entries). The popup engine does in the browser what that server code would
+do, and only on Space.
+
+**What is asked, in order** (`_mbPopImageLoad(t, relations, again, repaint)`):
+1. An `image` or `logo` relationship to `commons.wikimedia.org/wiki/File:…`
+   (`_mbPopCommonsFile()`) gives the file. No request. Bruce Springsteen and
+   Columbia both have one.
+2. Else the `wikidata` relationship's item: one `wbgetclaims` per property of
+   `_MB_POP_IMG_PROPS` until one names a file.
+   - An artist or a place asks P18 (image), then P154 (logo). **A label asks
+     P154 first**, unlike the server: Columbia's P18 is a photograph of
+     something else (`scripts/probe-wikidata-image.py`).
+   - A preferred value wins; a deprecated one is never taken
+     (`_mbPopClaimFile()`).
+   - Through `_extGet()`: Wikidata's own rate gate, anonymous,
+     `Api-User-Agent`, `wanted()` after the slot.
+3. Neither: "no picture".
+
+**Cache.** `_mbLoad()` under `pop:img:<type>:<id>`, version
+`_MB_POP_IMG_VERSION`, `_mbTtlMs()`. "No picture" is kept too, so a second
+Space asks nothing. A failure is retried only by ⟳ or "Try again".
+
+**When.** Only from the kinds' `pin()` (artist, label, place), once their
+url-rels answer is there: the artist's and label's window lookups, the place's
+own card lookup. `relations` is null before that; a ⟳ that comes while the
+url-rels reload is remembered in `_mbPopImgAgain`, so the next start skips the
+caches. Not area (locator maps), not event (event art).
+
+**The card never asks.** `_mbPopImagePeek()` reads the record from memory,
+else ONE IndexedDB read per key per page load, and repaints on a hit. The
+card is then a grid (`_mbPopCardShell()`'s `aside`, `spec.cardAside`): a
+64 px picture, then the facts; the foot says "Space picture & more". A place's
+card lookup carries the Wikidata link, and still starts nothing.
+
+**The window.** Under the title (`_mbPopWindowPicture()`): a ◌ line while
+loading, nothing when there is none, the failure with "Try again", else the
+picture as an `a[data-mb-artv-ext]` with `data-mb-artv-page`. A click goes
+through `_dpArtViewerClick()`, which now passes that page as the viewer's
+"Open on Commons" link (an optional field: other images are unchanged). The
+caption names the file and, for P18/P154, the item.
+
+**Addresses.** `commons.wikimedia.org/wiki/Special:FilePath/<file>?width=330`
+(the card and the window) and `?width=1280` (the viewer). They redirect to
+upload.wikimedia.org (probe: 28 KB and 404 KB for Bruce Springsteen's file).
+These hosts are first reached on that Space; a later card loads the 330 px
+thumbnail again, from the browser's cache.
+
+**Setting.** `sa_pop_mb_image` (default on), after the touch twins. Not a
+`_popSettingOn()` twin: it is part of `sa_pop_mb`, not a source.
+
+**Specs.** `pop-mb-image.spec.js` (8) and `pop-mb-image.mobile.spec.js` (1).
+Wikidata is the GM stub's `__gmXhrResponses`; Commons a local PNG.
+`popup-mb.spec.js` routes the Wikimedia hosts too, since its artist, label and
+place windows now show the Commons-relationship picture. A trap: the window's
+scroll area takes focus on `mouseenter`, which the closing viewer overlay fires
+under a pointer parked on the picture, so the focus test moves the pointer
+off first. There are 10 mutations in `sidebar-overhaul.json`.
+
+Measured: `_sbEnhance()` is about 1.2 ms of a 1.5 ms `makeH2sCollapsible()`
+pass on the artist page (`tests/support/probe-sidebar-cost.js`,
+`__saTest.sidebar.timing()`, tests/MEASUREMENTS.org 2026-10-11).
+
+## The sidebar beside the page's own data (`_sbInline*`, `_sbAppendRelTablesGroups()`)
+
+Mockup picked 2026-10-15 (`https://claude.ai/artifact/FUdHYEuiLqhmrX3hqitzX4`,
+"P2 + A3, B1, skip duplicate links on"); request in org/sidebar-info.org
+"Overwhole". Branch `feature/sidebar-inline`. The same groups as the button
+above, without pressing it.
+
+**One reader.** `_sbCollectGroups(doc, {links, tags})` returns
+`[{ key, name, cols, rows }]` (`info`, `labels`, `events`, `links`, `tags`);
+every call clones afresh, so each consumer may insert the cells.
+`applySidebarToTables()` builds its tables from it (always every group), and
+so do the two views below. Change what is read there, once.
+
+**In a relationship-tables render** (`sa_sidebar_in_rel_tables`, default on).
+`applyRelDetailsToTables()` calls `_sbAppendRelTablesGroups(doc, frag)` just
+before inserting its fragment, so the live render, a fetched page and a disk
+load all get the tables, and the place / area / instrument overviews too.
+- Named `Sidebar: <heading>`: sub-table state is keyed by name, and a release
+  has a relationship "Labels" table as well as the sidebar's.
+- Same dataset as the relationship tables (the "one dataset per page" rule in
+  relationship-tables.md): the h2's global filter covers them; each has its
+  STF, CFs and 📊. `Votes` is in `_relTablesFeatures()`' integer columns.
+- Duplicates (`sa_sidebar_inline_skip_dup_links`, default on): a sidebar link
+  whose `_sbLinkKey()` (host without `www.`, path without trailing slash,
+  query; no scheme) is already a link in the fragment is dropped, the rows
+  renumbered, an empty links group dropped. On a release both link groups
+  usually go: its own URLs and its group's are relationship rows already.
+
+**After every other render: the read-only "Sidebar" section**
+(`sa_sidebar_inline_main`, default on; `sa_sidebar_inline_collapsed`,
+default off).
+- Markup: `div.mb-sb-inline-wrap > h2.mb-sb-inline-h2 + div.mb-sb-inline >
+  div.mb-sb-cards > section.mb-sb-card[data-mb-sb-key]`. **No `table.tbl`,
+  no h3**, so no table pass, filter, sort, Picard, CAA or the
+  `renderGroupedTable()` h3 sweep ever sees it. Cards fold through a
+  delegated listener on `div.mb-sb-inline` (never cloned).
+- **Card folding.**
+  - **Initial state** (`_sbInlineBuild()`'s `startsOpen`), from the select
+    `sa_sidebar_inline_cards_open` read through `_selectSetting()`:
+    `all-but-search` (the default since 2026-10-17, vzell: "except Search ALL
+    sections … uncollapsed by default"; `_SETTINGS_MIGRATIONS` moves a
+    stored `info` to it) opens every card but the `search` one; `info` opens
+    only the FIRST `info` card (a release's "Additional details" is a second
+    `info` card and starts closed; a page without an info card has every
+    card closed); `all` every card, Search too; `none` none. A stray stored
+    value reads as the default (settings-and-config.md, "Select settings").
+    Card states are not remembered. The specs that need a MIXED state to
+    start from (CTRL+CLICK, MARKER, the release-facts arms of INITIAL STATE)
+    seed `info`.
+  - **Release special case** (`sa_sidebar_inline_release_facts_open`,
+    default on): on `release-tracks`, `info` opens EVERY facts card, keys
+    `info` (Release information, Additional details), `labels` and `events`;
+    links and tags stay closed. Keyed on `activeDefinition.type`, so it never
+    reaches another pageType: a work's sidebar also has several `info` cards
+    (Work information, Work attributes), and the spec loads it to pin that
+    only the first opens there (`PAGES.work`, `rel-work-overview.html`).
+  - **Ctrl+Click / Cmd+Click** (and Ctrl+Enter / Ctrl+Space) on any head:
+    every card takes the clicked card's NEW state, the rule of
+    `makeH2sCollapsible()`'s Ctrl+Click on peer h2s. So it is a toggle from a
+    mixed state too, and not "flip each card" (a mutation pins the
+    difference).
+  - **Closed marker**: `.mb-sb-card-shut > .mb-sb-card-head > span:first-child::before`
+    draws ▶. Pseudo-content on purpose: the title span's `textContent` stays
+    the group's name, which the specs and `inline()` read. Open cards get none.
+  - **Hover card**: `data-mbtt` from `_sbInlineCardTip()` (title, what the
+    kind holds from `_SB_INLINE_CARD_DESC`, the count, the click rules, a
+    settings foot). It does not depend on the card's state, so a fold never
+    rewrites a card on screen. No `title`, so no native box on top.
+- **The Tags card's pills (2026-10-19).** A pill is the tag's link plus its
+  vote number (`span.mb-sb-pill-votes`, MusicBrainz's `.tag-count`). The
+  number carries `data-mbtt` from `_sbTagVotesTip()`: "Score N", genre or
+  tag, and what the number is — the vote total on this entity, +1 per tag or
+  upvote, −1 per downvote, shown only while above 0 (quoted from
+  MusicBrainz_API and Folksonomy_Tagging in its JSDoc). The link itself is
+  a target of the popup engine's `tag` kind (detail-pages.md, "MusicBrainz:
+  tag cards"); the number is its sibling, so hovering one never shows the
+  other's card. Pinned by `sidebar-inline.spec.js` "tag pills".
+- **Cards are a wrapping flex row, never fixed grid columns.** A value can
+  hold a line that never breaks: More Flags Everywhere makes every area
+  `span.mfe-flag-wrapper` `white-space: nowrap !important`, and in a
+  220 px-minimum grid column its flags stuck out of the card (DEBUG-NOTES.md
+  2026-10-15). Facts cards take their content's width, links and tags a
+  whole row, a dd that still cannot fit scrolls inside its card. Pinned by
+  "NO OVERFLOW". The section is also capped to the window
+  (`max-width: calc(100vw - 32px - 1.5em)`, the Cover art section's cap): on a
+  release it sits in the tracklist's wrapper, thousands of px wide with a
+  wide tracklist, and on a phone a facts card took all of it
+  (`sidebar-inline.mobile.spec.js`). Specs about other features on a release
+  page that are sensitive to the table's vertical position switch the cards
+  off (`title-el-without-bdi`, `release-tracks-cover-art.mobile`).
+- `_sbInlineInsertSection()` runs in the render tails right after
+  `_makeCreditsH3sCollapsible()`: in `finalCleanup()` and in the disk-load
+  tail, which relocates again after `finalCleanup()`. It builds once per
+  page and PLACES on every call (`_sbInlinePlace()`): after
+  `#bottom-credits`; else after the `h2.relationships` section (before the
+  next h2 or element holding one); else right above the data h2; else at the
+  end of `#content`. An `h2.relationships` that holds `.mb-row-count-stat` IS
+  the data h2 (event-overview: the event tables render under it) and is
+  skipped by the second rule, so the third puts the cards right above it —
+  without the skip they landed after every event table (2026-10-20,
+  `debug/event-sidebar-above-relationships.html`). area-releases-filtered's
+  "Relationships" data h2 is a fabricated one without the class, so it
+  never hit this. Placing again after each relocation is required: the
+  relocation treats our h2 as one more trailing section and would put it
+  BEFORE the Relationships section (reverse-order pass; pinned by the
+  release-group disk round trip in `sidebar-inline.spec.js`).
+- `makeH2sCollapsible()` makes the h2 an ordinary collapsible section and,
+  like every non-data h2, closes it; `_sbInlineOpen()` opens it right after
+  (both tails), as `_releaseArtInsertSection()`'s h2 is opened.
+- **The section boundary.** `makeH2sCollapsible()`'s sibling walk stops at a
+  `.mb-sb-inline-wrap`: without that, folding Credits / Relationships would
+  fold ours with it, because the walk only stops at an H2 element and ours
+  sits inside a div.
+- Skipped on a relationship-tables render (it gets the tables) and on the
+  "🗂 Sidebar as tables" render; MusicBrainz only.
+
+**The Search group and the card layout** (2026-10-17). Mockup
+`https://claude.ai/artifact/V9Pqx5r7K37Qe3PEm93cpc`, picked "A3 + B1 + D2 +
+C1, variants merged, empty sections at the foot", with the Liner-notes look
+and the tables reading the search lists too. Branch
+`feat/sidebar-search-card`.
+- **What went wrong.** jesus2099's *mb. ALL LINKS* adds "Search the web",
+  "Search in the whitelist" and "Search further" and nests its lists three
+  deep: section `li` (an h3) → group `li` (its own text) → links, EVERY
+  level an `ul.external_links`. `_sbCollectGroups()` read
+  `querySelectorAll('ul.external_links')`, so each nested list became a group
+  named after the outer h2 (26 "Search …" cards on Devils & Dust), and an
+  item's details were `li.textContent` minus its first link: the whole tree
+  run together (378 characters). The same leak, smaller, put the script's
+  "edit" / "choose languages" controls into MusicBrainz's own link chips.
+- **The reader now.** Only a section's OUTERMOST `ul.external_links` is read.
+  An item's link is `_sbItemLink()` (a direct child, else one not in a
+  nested list); its Details are `_sbOwnText()` (its own text nodes and
+  link-free, list-free children; never `.icon`, never a list) plus
+  `_sbItemKids()` (the links of a list nested in it, labelled by their own
+  item's text, "en"). Rows carry `own` and `kids` as properties for the
+  cards; the filter in `_sbAppendRelTablesGroups()` keeps the same row
+  arrays, so they survive it.
+- **The Search group.** `_SB_SEARCH_LIST_SEL`
+  (`ul.jesus2099_all-links_searchLinks`) lists are ONE group `search`, placed
+  where the first of them is (between a release's two link groups); a walk
+  records each link's heading (Search), section and group path, and each
+  section or group with no link in `empty` (a section with no link at all is
+  listed once, not with each group). Left out with the links
+  (`opts.links === false`). No duplicate skipping: a search link is never a
+  relationship row.
+- **The Search card** (`_sbSearchBody()`, `_sbSearchApply()`): starts closed
+  unless "every card" (it is no facts card); a switch (All + one button per
+  heading, only with more than one) in `data-mb-sb-scope`; a find box over
+  each entry's `data-mb-sb-find` (name, variants, path), with its count and
+  `.mb-sb-hit` marks; per heading an index of section boxes packed into CSS
+  columns (layout B, vzell 2026-10-17, mockup
+  https://claude.ai/artifact/QAHkW8x2BFdeVh8UsCQnud): a box per section with
+  its link count; inside it `.mb-sb-ix-gl`, a grid whose label column holds
+  the group names in italics (each group `.mb-sb-ix-g` is `display:
+  contents`: an `em` cell and a `.mb-sb-ix-s` flex-wrap cell of sites); a
+  heading with one section is one box in one row (`.mb-sb-ix-one`, Search
+  the web). Before it, the sites were spans with nothing between them, so a
+  line could break only inside a name ("Web | pages") and a name with no
+  space ran into the next column. Hiding a group relies on
+  `.mb-sb-inline [hidden]` (`!important`), which beats `display:
+  contents`; a foot naming the empty
+  sections and groups, hidden while finding. Variants (`_sbMergeVariants()`,
+  `_SB_VARIANT_RE`, full-width brackets too): "X", "X (by a)", "X (b)" → one
+  entry linking X with variant links "a", "b"; a lone "X (a)" stays as
+  written. Esc in a non-empty box empties it and stops there; the switch,
+  the box and Esc are delegated on `div.mb-sb-inline` like the folding.
+- **Site icons** (2026-10-17, vzell): a link shows the icon its sidebar item
+  shows. `_sbCollectGroups()` reads it once per item (`_sbIconOf()`): on this
+  page the item's COMPUTED background (MusicBrainz draws it from its
+  stylesheet by the `*-favicon` class; jesus2099 sets it inline on its search
+  items); on a page that is not rendered (a fetched page, a disk load) the
+  inline background, else the class through a hidden probe item in the
+  sidebar (`_sbFaviconByClass`, once per class). **MusicBrainz's icons are
+  `data:image/png;base64,…` URIs** (its `icons-*.css` on
+  static.metabrainz.org, read in a real browser: a plain fetch of the page
+  gets a JavaScript challenge, "Verifying your browser"): `_sbBgUrl()` takes
+  `data:image/` as well as http(s). The first version took http(s) only and
+  showed jesus2099's inline icons but none of MusicBrainz's (vzell's report;
+  the spec had modelled MusicBrainz's rule with an https URL). A `data:` icon
+  is ~10 KB, so it is written ONCE, as a rule
+  `a.mb-sb-ico[data-mb-sb-ico="NAME"]` in `#mb-sb-ico-style`
+  (`_sbIconRef()`; NAME a FNV-1a hash of the URL, not a running number: a
+  page saved to disk keeps the attribute), and the link carries only that
+  name. `_sbWithIcon()` puts it on the cloned LINK (`a.mb-sb-ico`, 16px,
+  20px of room), never as an `<img>` in the cell: the cards and tables take a cell's first
+  node as its link (`row[2][0]`, `r[5][0]`), and the background survives a
+  table's `cloneNode` and adds no filter text. So the icon is in the cards,
+  the Search index (its variant links lose it: one icon per entry) and all
+  three table views (`_sbInlineEnsureStyle()` is called by
+  `_sbAppendRelTablesGroups()` and `applySidebarToTables()` for the rule).
+  **The relationship tables' own URL rows too** (`_sbIconRelLinks()`, called
+  by `applyRelDetailsToTables()` right before `_sbAppendRelTablesGroups()`,
+  whatever `sa_sidebar_in_rel_tables` says): with
+  `sa_sidebar_inline_skip_dup_links` on (default) a release's URLs and its
+  group's appear ONLY as relationship rows, so without this the Credits view
+  showed none of their icons (vzell's screenshot). A row link takes the
+  icon of the sidebar item with the same `_sbLinkKey()`, the duplicate
+  skipping's own key. A live check (real release, Credits) found the
+  "Sidebar: …" tables' icons all there and only these rows bare.
+  **The event page too** (2026-10-19, WIP.1 of `feat/link-site-uvd`):
+  `event-overview` builds its tables with its own converter,
+  `applyEventDetailsToTables()`, which never ran this pass, so a review link
+  had its icon in the sidebar card and none in the "URLs" table
+  (`debug/event-review-glyph.html`). It now calls `_sbIconRelLinks()` before
+  inserting its tables. Spec: `event-overview-url-icons.spec.js`.
+  The 📊 dropdown of these link columns reuses the icon by NAME
+  (`span.mb-uniq-site-icon[data-mb-sb-ico]`, the same `#mb-sb-ico-style`
+  rule, whose selector covers that span too): see "Links info - Site" in
+  docs/claude/uniq-dropdown.md.
+  No request: the browser shows these icons already. The fixtures refuse
+  MusicBrainz's stylesheet, so the ICONS specs add the one `*-favicon` rule
+  they need (`open(…, css)`); jesus2099's inline icons are in the fixture.
+- **Hover cards on links** (`_sbLinkTip()`, `data-mbtt`): title, where it is
+  listed, the site (for a `forward-request.html` link the `_action` host),
+  the address (`.mb-sb-tt-url` wraps it). With `sa_pop_mb_page` the link
+  preview engine claims the same links (`#page a[href]`): the hover card is
+  then a box of the preview's note stack, never a second box beside it
+  (detail-pages.md, "The note stack"; "HOVER STACK" in the spec).
+- **Layout** (`_sbInlineLayout()`): with facts AND other cards,
+  `.mb-sb-cards-split` is a grid `fit-content(26rem) minmax(0, 1fr)`: the
+  facts in `.mb-sb-rail`, links/search/tags in `.mb-sb-main`. A facts card
+  wider than 26rem scrolls its dd (the NO OVERFLOW rule above still holds).
+  `.mb-sb-inline` is a size container: below 760px of its own width the
+  split stacks, the rail wrapping as the old row. With only one kind, the
+  old wrapping row.
+- Specs: `sidebar-search-card.spec.js` (12; BOXES measures the boxes at 1400 and 560px), on
+  `tests/fixtures/release-tracks-sidebar-search-links.html` (Devils & Dust,
+  saved with the script active, `debug/DaD-ISRC-Links-initial.html`; built
+  by `scripts/build-sidebar-search-fixture.py`, which removes the toolbar our
+  own first pass had left in the save). Mutations:
+  `scripts/mutations/sidebar-search-card.json` (31; Esc in the find box is
+  `expect: "pass"`: Chromium empties a search input on Esc by itself).
+
+**`sa_sidebar_tables_button` is off by default** since this change (it
+duplicated the two views). Its reads are `=== true` / `!== true` so a stub
+`Lib` keeps it off; `_SETTINGS_MIGRATIONS` carries `was: [true]`.
+
+**Specs.** `sidebar-inline.spec.js` (21) and `sidebar-inline.mobile.spec.js` (1, the window cap): card folding (INITIAL STATE and its two
+switches, CTRL+CLICK ALL from a mixed state both ways plus Cmd and
+Ctrl+Enter, the ▶ MARKER following each fold, the TOOLTIP on every head and
+on hover); order and columns of the
+`Sidebar:` tables, duplicates on/off, global filter + a sort that ORDERS,
+the place overview, the switches, a disk round trip; the cards' place on a
+release (after `#bottom-credits`), a release group (after Relationships,
+again after an empty-query re-render), an artist (above the data h2), an
+event (above `h2.relationships`, the data h2, never after its tables),
+folding (Credits leaves it open, its own h2, a card by click and Enter),
+content counts against the sidebar itself, the switches. The rel-tables
+specs seed `sa_sidebar_in_rel_tables: false` (they pin the relationship
+tables); `sidebar-tables.spec.js` seeds the button on and pins the new
+default. Mutations: `scripts/mutations/sidebar-inline.json`.

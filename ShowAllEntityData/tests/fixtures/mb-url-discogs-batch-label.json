@@ -1,0 +1,115 @@
+{
+ "url-count": 3,
+ "url-offset": 0,
+ "urls": [
+  {
+   "id": "1ee33f57-9f08-4a97-80f1-768de39ff73e",
+   "resource": "https://www.discogs.com/label/93330",
+   "relations": [
+    {
+     "target-credit": "",
+     "attributes": [],
+     "attribute-ids": {},
+     "source-credit": "",
+     "ended": false,
+     "attribute-values": {},
+     "type": "discogs",
+     "type-id": "5b987f87-25bc-4a2d-b3f1-3618795b8207",
+     "end": null,
+     "begin": null,
+     "target-type": "label",
+     "label": {
+      "type": "Holding",
+      "name": "Columbia Records",
+      "label-code": null,
+      "id": "7b94f338-4985-445c-b65b-1dcf41b80c16",
+      "disambiguation": "not for release label use! company owned by Sony Music Entertainment, only use for manufacturing/distribution and copyright holding",
+      "type-id": "43f31a62-97e4-36f6-9752-453c131b71ed",
+      "sort-name": "Columbia Records"
+     },
+     "direction": "backward"
+    }
+   ]
+  },
+  {
+   "relations": [],
+   "resource": "https://www.discogs.com/label/275307",
+   "id": "bed31789-05d9-4dfe-aca7-16b8b6b6efa2"
+  },
+  {
+   "relations": [
+    {
+     "target-credit": "",
+     "attributes": [],
+     "attribute-ids": {},
+     "source-credit": "",
+     "ended": false,
+     "attribute-values": {},
+     "type": "discogs",
+     "type-id": "5b987f87-25bc-4a2d-b3f1-3618795b8207",
+     "begin": null,
+     "end": null,
+     "target-type": "label",
+     "label": {
+      "type": "Imprint",
+      "name": "Columbia",
+      "label-code": 162,
+      "disambiguation": "owned by Sony Music Entertainment, worldwide except JP; formerly owned by CBS between 1938–1990 within US/CA/MX",
+      "id": "011d1192-6f65-45bd-85c4-0400dd45693e",
+      "sort-name": "Columbia",
+      "type-id": "b6285b2a-3514-3d43-80df-fcf528824ded"
+     },
+     "direction": "backward"
+    },
+    {
+     "ended": false,
+     "attribute-values": {},
+     "type": "discogs",
+     "target-credit": "",
+     "attribute-ids": {},
+     "attributes": [],
+     "source-credit": "",
+     "label": {
+      "name": "Columbia",
+      "type": "Imprint",
+      "type-id": "b6285b2a-3514-3d43-80df-fcf528824ded",
+      "sort-name": "Columbia",
+      "id": "47692917-5bad-4c56-a352-9d7ab7648ede",
+      "disambiguation": "Japanese “magic notes” imprint operated by Nippon Columbia; active 1931–2002 and 2010–present",
+      "label-code": null
+     },
+     "direction": "backward",
+     "type-id": "5b987f87-25bc-4a2d-b3f1-3618795b8207",
+     "begin": null,
+     "end": null,
+     "target-type": "label"
+    },
+    {
+     "direction": "backward",
+     "label": {
+      "type-id": "7aaa37fe-2def-3476-b359-80245850062d",
+      "sort-name": "Columbia Records",
+      "disambiguation": "EMI‐owned 1931–1990, worldwide except US, CA, MX, ES, & JP; largely defunct since Jan 1973",
+      "id": "ad6f8706-c95e-443b-8579-8e3ecd27126c",
+      "label-code": 162,
+      "type": "Original Production",
+      "name": "Columbia Records"
+     },
+     "type-id": "5b987f87-25bc-4a2d-b3f1-3618795b8207",
+     "target-type": "label",
+     "begin": null,
+     "end": null,
+     "ended": false,
+     "type": "discogs",
+     "attribute-values": {},
+     "target-credit": "",
+     "source-credit": "",
+     "attribute-ids": {},
+     "attributes": []
+    }
+   ],
+   "resource": "https://www.discogs.com/label/1866",
+   "id": "ed9d3c6a-fa7f-4f10-ac3a-523dc2b4b0a5"
+  }
+ ]
+}

@@ -92,6 +92,12 @@ out inside =page.goto()= (=DEBUG-NOTES.md=, 2026-10-01) — so
 subdomains whenever a =fixtureFile= is given (=ARCHIVE_ORG_RE=). It never
 matches =coverartarchive.org= or =eventartarchive.org=, so a spec's own mocks
 for those keep answering (=fixture-load-no-archive-org-wait.spec.js=).
+A thumbnail the saved page loads from =coverartarchive.org= reaches the
+Internet Archive too, through a redirect, and a route never sees a redirect's
+second url — =filter-autofocus.spec.js= timed out in =page.goto()= that way
+(2026-10-14). So the art archives' images are blocked as well, but only while
+=page.goto()= runs (=ART_ARCHIVE_RE=): once the page has loaded, their requests
+reach a spec's own mock, or the network, as before.
 
 The second one is musicbrainz.org itself: every saved page loads
 =/static/scripts/supported-browser-check.js= from it, and under a parallel run
@@ -370,10 +376,10 @@ console error appears.
 
 | Gate                            | Fires when                                                   |
 |---------------------------------+--------------------------------------------------------------|
-| ℹ️ Unknown Page Count            | An edit-listing page whose pagination has no true last page  |
-| ⚠️ High Page Count               | More pages than =sa_max_page= (default 50)                   |
+| ℹ️ Unknown Page Count           | An edit-listing page whose pagination has no true last page  |
+| ⚠️ High Page Count              | More pages than =sa_max_page= (default 50)                   |
 | 💾 Save to Disk / 🎨 Render Now | More rows than =sa_render_threshold= (default 5000)          |
-| ⚠️ Large Render Warning          | More rows than =sa_render_warning_threshold= (default 10000) |
+| ⚠️ Large Render Warning         | More rows than =sa_render_warning_threshold= (default 10000) |
 
 The last two fire *after* the fetch finishes, so hitting one wastes the entire
 fetch and then times out. Run with =npm run test:headed= to see which dialog is
@@ -560,3 +566,9 @@ run is not coverage of anything.
 The userscript bodies it loads are gitignored — they are not ours to
 redistribute — so only the harness and =manifest.json= are committed. Without
 the bodies present the harness reports an empty set rather than failing.
+
+A third-party script's own setting is seeded with =--gm-value=key=value=
+(repeatable; merged over the pageType's =seedGmValues=). The GM stub store is
+fresh on every run, so without it a script always starts on its first-run
+default — e.g. Instrument Icons Everywhere runs =before= unless given
+=--gm-value=iconPosition=after=.

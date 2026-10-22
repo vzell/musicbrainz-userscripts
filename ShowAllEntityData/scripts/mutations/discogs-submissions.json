@@ -1,0 +1,318 @@
+[
+    {
+        "name": "dg-submissions: the #app gate takes the submissions list for Cloudflare's check",
+        "why": "The submissions list is plain HTML without #app; only a page with neither #app nor #page_content is the check.",
+        "edits": [
+            {
+                "find": "        !((_DG_SUBS_PATH_RE.test(window.location.pathname) || _DG_USER_PATH_RE.test(window.location.pathname) ||",
+                "replace": "        !((false || _DG_USER_PATH_RE.test(window.location.pathname) ||"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-submissions.spec.js",
+        "grep": "the flat view",
+        "expect": "fail"
+    },
+    {
+        "name": "dg-submissions: our section inside Discogs' #main_wrapper",
+        "why": "Without #app, header and page share #main_wrapper; the sticky headers pin every other <body> child whole, so our section must be one.",
+        "edits": [
+            {
+                "find": "        else document.body.insertBefore(root, document.body.firstChild);",
+                "replace": "        else (document.getElementById('page') || document.body).prepend(root);"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-submissions.spec.js",
+        "grep": "the flat view",
+        "expect": "fail"
+    },
+    {
+        "name": "dg-submissions: the pages asked without view=flat",
+        "why": "The browser view's list has no release ids: every page is read as the flat view.",
+        "edits": [
+            {
+                "find": "        u.searchParams.set('view', 'flat');",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/discogs-submissions.spec.js",
+        "grep": "the browser view",
+        "expect": "fail"
+    },
+    {
+        "name": "dg-submissions: Artist and Title not split",
+        "why": "vzell 2026-10-18: \"Artist - Title\" split at the first \" - \" into two columns.",
+        "edits": [
+            {
+                "find": "            const cut = name.indexOf(' - ');",
+                "replace": "            const cut = -1;"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-submissions.spec.js",
+        "grep": "the flat view",
+        "expect": "fail"
+    },
+    {
+        "name": "dg-submissions: the unlabelled fourth cell (the matched artist) dropped",
+        "why": "Discogs' flat row has a fourth cell without a header: the list's artist the release matched.",
+        "edits": [
+            {
+                "find": "            const matched = td[3] && td[3].querySelector('a[href]');",
+                "replace": "            const matched = null;"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-submissions.spec.js",
+        "grep": "the flat view",
+        "expect": "fail"
+    },
+    {
+        "name": "dghistory: the reader never takes a history link",
+        "why": "The Discogs reader's path pattern takes /history too; the history reader must come first and claim it.",
+        "edits": [
+            {
+                "find": "        return /^(?:www\\.)?discogs\\.com$/.test(u.hostname.toLowerCase()) && _EXT_DGH_PATH_RE.test(u.pathname);",
+                "replace": "        return false;"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-submissions.spec.js",
+        "grep": "a history link",
+        "expect": "fail"
+    },
+    {
+        "name": "dghistory: the card reads the history on a hover",
+        "why": "windowOnly: only Space reads the edit history (mockup tab C), never a hover.",
+        "edits": [
+            {
+                "find": "        if (t.reader.windowOnly && (!st0 || st0.status === 'failed')) {",
+                "replace": "        if (false) {"
+            },
+            {
+                "find": "        if (start && !t.reader.windowOnly) _extLoad(t, { repaint });",
+                "replace": "        if (start) _extLoad(t, { repaint });"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-submissions.spec.js",
+        "grep": "a history link",
+        "expect": "fail"
+    },
+    {
+        "name": "dghistory: on discogs.com through GM_xmlhttpRequest, not the browser's session",
+        "why": "On discogs.com the history page is a same-origin fetch() with the session that passed Discogs' browser check.",
+        "edits": [
+            {
+                "find": "        if (!_isDgHost) return _extGet(url, { wanted });",
+                "replace": "        return _extGet(url, { wanted });"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-submissions.spec.js",
+        "grep": "a history link",
+        "expect": "fail"
+    },
+    {
+        "name": "dghistory: the cache key keeps the link's slug",
+        "why": "A history link and a release title share one request: the key is the release's canonical history URL (keyUrl).",
+        "edits": [
+            {
+                "find": "            key: `ext:${reader.id}:${reader.keyUrl ? reader.keyUrl(u) : u.href}`,",
+                "replace": "            key: `ext:${reader.id}:${u.href}`,"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-submissions.spec.js",
+        "grep": "a history link",
+        "expect": "fail"
+    },
+    {
+        "name": "dghistory: the diff shows every block, marked or not",
+        "why": "The latest change shows only the blocks Discogs marked, unless \"The whole release\" is pressed.",
+        "edits": [
+            {
+                "find": "            const shown = ui.diffAll ? diff.blocks : diff.blocks.filter(b => b.changed);",
+                "replace": "            const shown = diff.blocks;"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-submissions.spec.js",
+        "grep": "a history link",
+        "expect": "fail"
+    },
+    {
+        "name": "dghistory: a release's window on the submissions list without its history",
+        "why": "vzell 2026-10-18: \"History, then the release\" for a title on this page.",
+        "edits": [
+            {
+                "find": "        if (dg.kind === 'release' && _dgOnSubmissions()) out.top = _extDgHistReleaseParts(t, dg.id, { start, force, repaint });",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/discogs-submissions.spec.js",
+        "grep": "History, then the release",
+        "expect": "fail"
+    },
+    {
+        "name": "dghistory: the history drawn under the release, not above it",
+        "why": "A window's top part goes ABOVE the two columns.",
+        "edits": [
+            {
+                "find": "        return top + `<div class=\"mb-dp-x\"><div class=\"mb-dp-col\">${left.join('')}</div><div class=\"mb-dp-col\">${right.join('')}</div></div>` + full +",
+                "replace": "        return `<div class=\"mb-dp-x\"><div class=\"mb-dp-col\">${left.join('')}</div><div class=\"mb-dp-col\">${right.join('')}</div></div>` + full + top +"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-submissions.spec.js",
+        "grep": "History, then the release",
+        "expect": "fail"
+    },
+    {
+        "name": "full-size viewer: the row's record never asked",
+        "why": "A row's full images come from its record, asked for when the viewer shows the row.",
+        "edits": [
+            {
+                "find": "            setTimeout(() => _dgArtLoad(rows[i]), 0);",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/discogs-submissions.spec.js",
+        "grep": "full images from its record",
+        "expect": "fail"
+    },
+    {
+        "name": "full-size viewer: the arrived images never shown",
+        "why": "_artViewerReplaceImages() swaps a row's thumbnail for its full images in place.",
+        "edits": [
+            {
+                "find": "        if (!st || st.ctx !== ctx || st.entityPath !== entityPath || !images.length) return;",
+                "replace": "        return;"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-submissions.spec.js",
+        "grep": "full images from its record",
+        "expect": "fail"
+    },
+    {
+        "name": "full-size viewer: Try again does nothing",
+        "why": "A failed row offers \"Try again\", which asks once more.",
+        "edits": [
+            {
+                "find": "            if (im && im.retry) im.retry();",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/discogs-submissions.spec.js",
+        "grep": "Try again",
+        "expect": "fail"
+    },
+    {
+        "name": "dg-submissions: the matched artist linked by name again",
+        "why": "Discogs' name link (/artist/<name>) has no id: no reader takes it. A search link, as the Artist column (vzell 2026-10-18).",
+        "edits": [
+            {
+                "find": "                `${matched ? _dgSearchCell(matched.textContent.trim(), 'artist') : '<td></td>'}` +",
+                "replace": "                `${matched ? _dgCell(matched.textContent.trim(), _dgAbsHref(matched)) : '<td></td>'}` +"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-submissions.spec.js",
+        "grep": "the flat view",
+        "expect": "fail"
+    },
+    {
+        "name": "dg pages: Discogs' input[type=search] content-box wins over the column filters",
+        "why": "discogs.css (the older pages) makes our width-100% filters content-box: ~86 px past each column (vzell, debug/stretch.html).",
+        "edits": [
+            {
+                "find": "            body.mb-sa-host-dg input.mb-col-filter-input { box-sizing: border-box; }",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/discogs-submissions.spec.js",
+        "grep": "every column filter",
+        "expect": "fail"
+    },
+    {
+        "name": "dg Changed time: no Time of day section",
+        "why": "On discogs.com a dateTimeParts time column gets \"Time info - Time of day\" (vzell 2026-10-18).",
+        "edits": [
+            {
+                "find": "        const isTimeCol    = _colHeaderName === 'Time' || (_isDgHost && (activeColumnExtractors || [])",
+                "replace": "        const isTimeCol    = _colHeaderName === 'Time' || (false && (activeColumnExtractors || [])"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-submissions.spec.js",
+        "grep": "Changed split",
+        "expect": "fail"
+    },
+    {
+        "name": "dg avatars: a submissions user's picture never asked",
+        "why": "vzell 2026-10-18: each user's own picture; asked when its row comes on screen.",
+        "edits": [
+            {
+                "find": "            if (name && !_dgAvatarQueue.includes(name)) {",
+                "replace": "            if (false) {"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-submissions.spec.js",
+        "grep": "Changed by",
+        "expect": "fail"
+    },
+    {
+        "name": "dg avatars: the picture inside the name's link",
+        "why": "A link around an image is the image's (_extTarget()): the name's preview would be lost.",
+        "edits": [
+            {
+                "find": "        return `<td>${img}${href ? `<a href=\"${_rgEsc(href)}\"${_DG_NEW_TAB}>${_rgEsc(name)}</a>` : _rgEsc(name)}</td>`;",
+                "replace": "        return `<td>${href ? `<a href=\"${_rgEsc(href)}\"${_DG_NEW_TAB}>${img}${_rgEsc(name)}</a>` : _rgEsc(name)}</td>`;"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-submissions.spec.js",
+        "grep": "Changed by",
+        "expect": "fail"
+    },
+    {
+        "name": "dghistory: the users' pictures not read from the history page",
+        "why": "The history page carries each user's picture: no request needed.",
+        "edits": [
+            {
+                "find": "            const avatar = tr.querySelector('.user_thumbnail_with_username img[src]');",
+                "replace": "            const avatar = null;"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-submissions.spec.js",
+        "grep": "a history link",
+        "expect": "fail"
+    },
+    {
+        "name": "dg-submissions: the browser view's body not tagged for the scroll unlock",
+        "why": "subbrowser.css's body rule (overflow hidden, height 100%) reaches the viewport: the window cannot scroll, the table stops at its edges.",
+        "edits": [
+            {
+                "find": "        if (document.querySelector('table#browser, #hpane_wrap')) document.body.classList.add('mb-dg-unlock-scroll');",
+                "replace": "        if (false) document.body.classList.add('mb-dg-unlock-scroll');"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-submissions.spec.js",
+        "grep": "no longer locks the window",
+        "expect": "fail"
+    },
+    {
+        "name": "dg-submissions: the scroll unlock rule left out of the style",
+        "why": "The tag alone changes nothing: the rule must override Discogs' own body rule.",
+        "edits": [
+            {
+                "find": "            body.mb-sa-host-dg.mb-dg-unlock-scroll { overflow: visible !important; height: auto !important; }",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/discogs-submissions.spec.js",
+        "grep": "no longer locks the window",
+        "expect": "fail"
+    },
+    {
+        "name": "dg-submissions: every Discogs page tagged for the scroll unlock",
+        "why": "Only the split pane's page needs it; the rest keep Discogs' own layout.",
+        "edits": [
+            {
+                "find": "        if (document.querySelector('table#browser, #hpane_wrap')) document.body.classList.add('mb-dg-unlock-scroll');",
+                "replace": "        document.body.classList.add('mb-dg-unlock-scroll');"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-submissions.spec.js",
+        "grep": "is not tagged",
+        "expect": "fail"
+    }
+]

@@ -151,7 +151,9 @@ async function open(page, settings = {}, { domToggle = false, hold = [] } = {}) 
     } else {
         await clickMasterToggleAndExpandAll(page);
     }
-    await expect.poll(() => page.locator('ul.mb-caa-art-ul').count(), {
+    // Cells only: the auto-resize measures a detached sample list
+    // (_artReserveSummaryWidths()), which must never be counted as one.
+    await expect.poll(() => page.locator('table.tbl td > ul.mb-caa-art-ul').count(), {
         timeout: 30000, message: 'every release with artwork gets its cell built',
     }).toBe(Object.keys(BODIES).filter((m) => !hold.includes(m)).length);
     return { hits, release: () => held.splice(0).forEach((r) => r()) };

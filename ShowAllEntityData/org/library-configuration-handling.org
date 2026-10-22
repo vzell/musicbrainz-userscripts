@@ -1,0 +1,320 @@
+#+TITLE: VZ_MBLibrary setting types: what is done, what is missing
+#+STARTUP: overview
+
+Written 2026-10-15T21:10:39+02:00 on =NB-3641=, =main= at =b11eb91=
+(ShowAllEntityData 9.99.1356, VZ_MBLibrary 4.4.0). A working plan, meant
+to be picked up in a later session on any host: every item says what to read
+first, what to change, and how to prove it. Anchors are symbols, never line
+numbers (the files move on every commit).
+
+* Status
+
+|  # | Item                                      | State | Where it landed                                      |
+|----+-------------------------------------------+-------+------------------------------------------------------|
+|  1 | =select= (segmented buttons)              | DONE  | lib 4.4.0, SAED 9.99.1355 (branch merged 2026-10-15) |
+|  2 | =number= bounds and =step= enforced       | TODO  |                                                      |
+|  3 | =range= (slider + box)                    | TODO  | same branch as 2, recommended                        |
+|  4 | Checkbox pairs/triples → =select=         | TODO  | needs a new migration kind first                     |
+|  5 | =showIf= dependent rows                   | TODO  |                                                      |
+|  6 | =checklist= (multi-select)                | TODO  |                                                      |
+|  7 | =string_list= (chips)                     | TODO  |                                                      |
+|  8 | =key_value= (ordered pairs)               | TODO  |                                                      |
+|  9 | A library-only test harness               | TODO  | would close the =expect: pass= gap of 1              |
+| 10 | Publish library 4.4.0 with the userscript | TODO  | not yet in =vzell/mb-userscripts=                    |
+
+Ranking as agreed: 1 (done), then 2+3 together, then the rest by how much of
+the schema each cleans up. Only =select= was needed for the sidebar cards;
+everything below is a proposal, nothing is promised.
+
+* Read first, every time
+
+- *Design page with the analysis and working mockups* (all candidates drawn
+  in the real dialog's look): https://claude.ai/artifact/9NX1da57DZZrKRShQJ2V78
+  — the user picked rendering B (segmented) for =select=. Its other mockups
+  (range + enforced bounds, checklist, chips, key/value, a greyed dependent
+  row) are the starting point for items 2–8; ask before deviating from them.
+- =docs/claude/settings-and-config.md=, section "Select settings": the model
+  every new type's doc section should follow (schema, library, reading,
+  on-load pass, config file, converted keys, specs, mutations).
+- =lib/VZ_MBLibrary.user.js=: the commented =changelog_library= array right
+  after =LIBRARY_VERSION= (4.4.0's entry describes the select design).
+- Consumers of the library, all of which must keep working unchanged:
+  =ShowAllEntityData=, =MB_PageEnhancer= (1.0.12) and the mirror's
+  =CustomizableMultiSelector=. None of them uses a type that does not exist
+  yet, so a new type is additive as long as no shared path changes behaviour.
+
+* Ground rules for any new type
+** Branching and versions
+- Feature branch, never =main=. Userscript: WIP entries in
+  =ShowAllEntityData_CHANGELOG.wip.json=, no =@version= bump on the branch.
+- The library has no WIP mechanism. Its version is bumped ON THE BRANCH, in
+  THREE places that must agree: =// @version=, =LIBRARY_VERSION=, a new top
+  entry in =changelog_library=. Minor version for a new type (4.5.0, …).
+- This repo's =@require= is the local =file:///V:/…/lib/VZ_MBLibrary.user.js=
+  (so a live browser check exercises the working copy); the published copy
+  must carry the network URL. =scripts/check-publish-ready.py= before any
+  republish.
+
+** Degrade path, decided with =select=
+An older library renders any unknown type as a plain text box (the final
+=else= of the widget chain). So the userscript NEVER trusts a stored value of a
+new type: it reads through a validating helper (=_selectSetting()= is the
+model) and puts stored values in canonical form on load
+(=_canonicalizeSelectSettings()=, called right after
+=_coerceNumericSettings()=). Then the publish order of library and userscript
+does not matter, and a user on the old library still gets correct behaviour.
+
+** Every place a new type must be considered
+Library (=lib/VZ_MBLibrary.user.js=, inside =settingsInterface=):
+- =showModal()= widget chain: the =isCheck= … =isTable=, =isSelect= flags and
+  the =if (isCheck) … else= branches. A widget that is not ONE element with a
+  =.value= puts a hidden input under =<scriptId>-input-<key>= (the =select= and
+  =popup_dialog= pattern), so SAVE, =takeSnapshot=, =hasUnsavedChanges=,
+  =rowWidgetValue= (changed marks) and =isSchemaDefault()= need nothing new.
+- The Default column: =hasComparableDefault=, =defaultText=, =defaultNote=
+  (also feeds =data-vz-default= and the search).
+- =widgetTitle()= (the row tooltip; =select= adds a "Choices:" line).
+- Post-render wiring: delegated on =settingsBodyEl= (the =select segments=
+  block is the model), never per widget.
+- The SAVE handler (=<scriptId>-save-btn= onclick): typed values (=select=
+  maps the hidden text back to the option's own value).
+- =resetSettingWidget()=: any widget whose visible state is not the hidden
+  input must be re-synced there (=syncSelectSegments()=); the global RESET and
+  the per-section ↺ both go through it.
+- =settingsEscHandler=: a focused control of the new widget must BLUR on
+  Escape, not close the dialog.
+- The per-row widget CSS block (after =/* ── Per-row setting widgets ── */=).
+  No backtick in a =GM_addStyle= comment.
+- The =showModal= JSDoc list of widget types.
+- Every hoverable control needs a =title= (=settings-dialog-header.spec.js=
+  "every settings row has a tooltip on the widget you can actually hover"
+  caught segments without one).
+
+Userscript (=ShowAllEntityData.user.js=):
+- =_applyConfigSettings()= (📂 import): a branch for the type; an invalid value
+  counts as =invalid=, never falls into the =String()= catch-all.
+- =_buildConfigJson()= (💾 export): export what the code acts on.
+- =_coerceNumericSettings()= / =_canonicalizeSelectSettings()=: the on-load
+  pass for the type.
+- =_settingsValueMatches()=, =_migrateFrozenSettings()= pass 3: string
+  compare; check the type does not need its own rule.
+- =_maskSecretSettingInputs()= sets =input.type='password'= — only valid on a
+  text input; keep =secret= off any other widget.
+- The test hooks under =window.__saTest= (=numericSettings()=,
+  =selectSettings()=): add one per type that has an on-load pass.
+
+Tooling (no type list anywhere, so a new type is accepted; still run them):
+- =scripts/dump-config-defaults.py= (a new count in =_meta.types=),
+  =scripts/dump-default-history.py= (=_NON_VALUE_TYPES= = divider, function,
+  table), =scripts/audit-config-defaults.py=. A new type must have a =default=.
+
+** Proving it
+- Specs: =tests/fixtures/settings-dialog.spec.js= drives the REAL library
+  against the real schema (the "type: select" describe is the model:
+  RENDER, PICK + SAVE, RESET + SAVE, KEYBOARD, ON LOAD, STORED VALUES);
+  =config-import-export.spec.js= for the config file.
+- Harness traps met while doing =select=:
+  - =settingsOverride= is re-seeded on EVERY load, so a SAVE that reloads
+    brings a seeded value back. Seed with =GM_setValue= on load 1, then load
+    the shell again (=loadShell()= twice) — never =page.reload()=, which loses
+    the =addScriptTag= injection.
+  - A SAVE that changed nothing does not reload; one that did, does.
+  - Lint forbids =waitForSelector=/=waitForTimeout= beyond the baseline: use
+    =expect(...).toHaveCount(0)= and =expect.poll()=.
+- Mutations: one JSON per type in =scripts/mutations/= (=settings-select.json=
+  is the model). A mutation edits ONE file, so a library guard that the
+  userscript's on-load pass already covers can only be recorded
+  =expect: pass= — see item 9.
+- =npm run test:full= through =scripts/run-test-full.py=, then the user's
+  live check, then ask before merging.
+
+* DONE 1. =select=
+CLOSED: [2026-10-15]
+- Library 4.4.0: segmented buttons over a hidden input; =selectOptions()=,
+  =selectValue()= (trimmed, case-insensitive); typed values on SAVE; Default
+  column shows the option label; "Choices:" in the tooltip; arrows/Home/End;
+  Escape blurs.
+- Userscript 9.99.1355: =_selectOptionValue()=, =_selectSetting()=,
+  =_canonicalizeSelectSettings()=; import refuses non-options; export writes
+  =_selectSetting()=.
+- Converted (stored words unchanged, so no migration): =sa_caa_cell_layout=,
+  =sa_art_viewer_background=, =sa_art_viewer_pan=, =sa_art_viewer_size=,
+  =sa_caa_small_img_size=, =sa_caa_big_img_size= (number options 250/500/1200);
+  new: =sa_sidebar_inline_cards_open=.
+- Follow-ups, open:
+  - [ ] The four old tolerant readers (=_artCellLayoutSetting()=,
+    =_artViewerBgSetting()=, the pan and size reads) still parse
+    =Lib.settings= themselves. Moving them to =_selectSetting()= is a cleanup,
+    not a fix; the "remember until the setting changes" overrides
+    (=MB_ART_VIEWER_BG_KEY=, =MB_ART_CELL_LAYOUT_KEY=, ={v, from}=) must keep
+    comparing against the same stored word.
+  - [ ] The 14 =Lib.settings.sa_caa_*_img_size || 250= reads work with string
+    or number; they could go through =_selectSetting()= too.
+  - [ ] Rendering B only. If a select ever gets more than ~4 options or long
+    labels, decide then whether the library should fall back to a native
+    =<select>= (mockup variant A).
+
+* TODO 2. =number=: enforce =min=, =max=, =step=
+*Problem.* =min=/=max= are only HTML attributes on =input type=number=;
+nothing validates, so SAVE stores 3500 for a max of 3000. Worse, a missing
+=max= is rendered as =max="100"= (=cfg.max || 100=), and =min= as
+=cfg.min || 0=. There is no =step=, so fractional settings
+(=sa_ars_column_max_height_em= 5.6, =sa_annotation_column_max_height_em=)
+show the browser's step-mismatch state.
+
+*Verify first* (the survey was by grep, 2026-10-15): which numbers have
+=min= but no =max= (=sa_rel_auto_retry_max_failed=, =sa_pop_mb_ttl_hours=,
+=sa_pop_ext_ttl_hours= were found) and whether any stored/default value
+exceeds 100 — those rows are drawn invalid today.
+
+*Library.*
+- Omit the attribute when the schema has no bound (no silent 100). Add =step=
+  (default 1; =any= for fractional).
+- On input: mark the widget invalid (class + message line in the row, as in
+  the mockup) when out of range or not a number.
+- On SAVE: refuse an invalid number — keep the last valid value, and say so
+  (a note in the dialog, not a silent clamp). Decide: refuse the whole SAVE,
+  or save the rest and keep that key? (Mockup says "SAVE keeps the last valid
+  value".)
+- =resetSettingWidget()= clears the invalid state.
+
+*Userscript.*
+- Add bounds to numbers that have none: =sa_max_page=, =sa_auto_expand=,
+  =sa_render_threshold=, =sa_render_warning_threshold=,
+  =sa_chunked_render_threshold=, =sa_auto_resize_columns_threshold=,
+  =sa_event_rg_search_hints=, =sa_rg_window_max_releases=,
+  =sa_picard_tagger_default_port= / =sa_picard_tagger_max_port= (1–65535).
+- =_coerceNumericSettings()=: also clamp (or fall back to the default for) a
+  stored value outside the bounds? Decide; the import already rejects NaN.
+- Remember the =|| default= hazard: =0= is falsy (=sa_render_threshold=).
+
+*Tests.* settings-dialog: an out-of-range entry is marked, SAVE does not store
+it; a missing =max= renders no =max=; =step= on a fractional row. Import: an
+out-of-range number is =invalid=. Mutations for each guard.
+
+* TODO 3. =range= (slider + number box)
+Do with item 2: the box half IS item 2's enforced number.
+- Schema: =type: 'range'=, =min=, =max= REQUIRED, =step= optional, maybe
+  =unit= ('ms', 'px', '%') for the label and the scale ends.
+- Library: =input type=range= + =input type=number= kept in step; the hidden
+  value is the number box's; SAVE stores a Number.
+- Candidates (re-verify bounds): =sa_rich_tooltip_delay_ms= 0–3000,
+  =sa_filter_debounce_delay= 0–2000, =sa_dialog_save_export_autoclose_ms=
+  0–30000, =sa_caa_cell_tile_size= 32–250, =sa_caa_tip_image_size= 80–600,
+  =sa_stats_panel_width= 400–1600, =sa_stats_panel_max_height= 30–98 (%),
+  =sa_recording_of_suggest_max_distance_pct= 0–60,
+  =sa_caa_cell_grid_cols= 1–12, =sa_uniq_dropdown_visible_rows= 3–50, the
+  =sa_*_ttl_days= family 1–365.
+- Converting =number= → =range= keeps the stored Number: no migration. But
+  =_coerceNumericSettings()= only handles =type === 'number'= — extend it to
+  =range=, or every converted key loses its string→number repair.
+- =__saTest.numericSettings()= filters on =number=: same.
+
+* TODO 4. Checkbox pairs/triples → =select= (needs a fold migration)
+*Why a separate item.* These are two or three stored keys becoming ONE, and
+=_SETTINGS_MIGRATIONS= cannot express that: its shape is ={key, was: [...]}=,
+it reads only that key and can only DELETE it (reset to default). There is no
+way today to read old key A and B and write new key C.
+
+*Mechanism first (userscript, =_migrateFrozenSettings()= and friends).*
+- A new entry kind, e.g. ={fold: 'sa_new', from: ['sa_a', 'sa_b'], map: (a, b) => value}=,
+  run once under a raised =_SETTINGS_MIGRATION_LEVEL=, with the old values
+  backed up to =sa_settings_migration_backup= first (as the existing pass
+  does), the old keys deleted and added to =_SETTINGS_ORPHANED_KEYS=.
+- Must run BEFORE =_coerceNumericSettings()= / =_canonicalizeSelectSettings()=.
+- A profile where the old keys are absent (defaults) must write nothing.
+- Config import of an OLD file still carrying the old keys: map them too, or
+  report them as skipped? Decide.
+
+*Candidates* (from the 2026-10-15 survey; re-verify each reader):
+| Keys                                                                | One select would be                                |
+|---------------------------------------------------------------------+----------------------------------------------------|
+| =sa_sidebar_remember_sections= + =sa_sidebar_open_all=              | closed / remember / all                            |
+| =sa_event_rg_tooltip= + =sa_event_rg_tooltip_without_ctrl=          | off / with Ctrl / plain hover                      |
+| =sa_dp_hover_without_ctrl=                                          | Ctrl / plain hover (2-way, maybe stays a checkbox) |
+| =sa_pop_mb= + =sa_pop_mb_on_touch=                                  | off / desktop / desktop + touch                    |
+| =sa_pop_mb_page= + =sa_pop_mb_page_on_touch=                        | same                                               |
+| =sa_pop_ext= + =sa_pop_ext_on_touch=                                | same                                               |
+| =sa_enable_sticky_page_headers= + =sa_sticky_page_headers_on_touch= | same                                               |
+| =sa_findings_no_front_image= + =sa_findings_tint_no_front_image=    | off / menu only / menu + tint                      |
+| =sa_findings_no_medium_image= + its tint key                        | same                                               |
+| =sa_relationship_tables_one_table=, =sa_event_overview_*_one_table= | per kind / one table (2-way)                       |
+| =sa_bb_sidebar_right=                                               | left / right (2-way)                               |
+| =sa_sidebar_inline_collapsed= (+ =sa_sidebar_inline_cards_open=)    | could join one "Sidebar section" select            |
+
+Caution: FIXTURE_SETTINGS_OVERRIDE forces several of these keys OFF
+(=sa_pop_mb=, =sa_pop_mb_page=, =sa_pop_ext=, =sa_dp_hover_without_ctrl=,
+=sa_event_rg_tooltip_without_ctrl=); converting them changes
+=tests/support/loadPage.js= and every spec that seeds them. Big blast radius:
+one pair per branch.
+
+* TODO 5. =showIf= dependent rows
+*Problem.* About thirty labels start with "…" and say "needs the setting
+above" in prose; the dialog shows them live and editable while the parent is
+off. =applyVisibility()= has no notion of one row depending on another.
+- Schema: =showIf: 'sa_parent'= (truthy), later maybe
+  =showIf: {key: 'sa_x', is: 'info'}= for a select parent.
+- Library: greyed and =disabled= (the mockup), NOT hidden — hiding would
+  fight search and "Changed only". Re-evaluate from the delegated
+  =input/change= listener. Rule from CLAUDE.md: only =applyVisibility()= may
+  assign =display= to a row; =disabled= + a class is a different channel, keep
+  it that way.
+- SAVE still stores a disabled child's value (it is the user's choice for when
+  the parent comes back on).
+- The "changed" marks and section badges: does a disabled changed child
+  count? Decide (probably yes: it is still stored).
+- Candidates: every "…" child row, e.g. =sa_sidebar_inline_collapsed=,
+  =sa_sidebar_inline_cards_open=, =sa_sidebar_inline_release_facts_open=
+  (parent =sa_sidebar_inline_main=), the =*_on_touch= and =*_without_ctrl=
+  rows, the findings tint rows. Grep labels starting with "…".
+
+* TODO 6. =checklist= (multi-select)
+- Stored as TODAY's comma-separated string, so every reader stays as it is
+  and no migration is needed; the widget only changes how it is edited.
+- Schema: =options= (known values) + =allowOther: true= to keep a stored value
+  that is not in the list as an extra ticked box.
+- Candidates: =sa_findings_nonphysical_formats= (MusicBrainz medium formats),
+  =sa_uvd_title_info_columns=, =sa_uvd_event_name_columns=,
+  =sa_uvd_recording_comment_columns= (column names — where would the option
+  list come from? a static list in the schema, or "free text" only?).
+- Order of the stored list: schema order or tick order? The readers parse it
+  as a set today; verify before deciding.
+- Groups of separate checkboxes as one checklist (=sa_rt_show_*=,
+  =sa_caa_pics_*=, =sa_filename_include_*=, =sa_export_*=, =sa_findings_tint_*=)
+  would be a multi-key fold like item 4: out of scope here.
+
+* TODO 7. =string_list= (chips)
+- Stored as the same comma-separated line. Chips with ×, Enter adds,
+  duplicates refused, a count (the mockup).
+- Candidate: =sa_findings_eti_keywords= (25 words on one line).
+- Normalisation: lower-case? trim? The reader matches case-insensitively —
+  verify, then store as typed or normalised.
+
+* TODO 8. =key_value= (ordered pairs)
+- Stored as =Front=F, Back=B, …= unchanged. Rows of Type | Letters with ↑ ↓,
+  because the ORDER is the chip order and the "grouped" layout's group order.
+- Candidates: =sa_caa_chip_types=, =sa_eaa_chip_types=.
+- A type without "=Letters" shows its first two letters: the editor must allow
+  an empty value and write the bare key back.
+- Overlaps =type: 'table'= (which has its own editor and its own 💾). Decide
+  whether =key_value= is a small inline table or a reuse of the table editor
+  with a string storage format.
+
+* TODO 9. A library-only test harness
+=settings-select.json= records one honest =expect: pass=: breaking the
+library's case-insensitive =selectValue()= is invisible because
+ShowAllEntityData's =_canonicalizeSelectSettings()= fixes the stored value
+first. A consumer without that pass (MB_PageEnhancer) would be exposed, and no
+spec can see it. Options:
+- a tiny fixture consumer page (a 5-key schema, every type) loaded with the
+  real library and the GM stubs, so library guards are tested on their own;
+- or let =mutation-check.py= accept edits in two files per mutation.
+Either would also make items 2–8 testable without the 438-key schema.
+
+* TODO 10. Publish library 4.4.0 together with the userscript
+- Mirror (=vzell/mb-userscripts=) still has the older library. Publish
+  =lib/VZ_MBLibrary.user.js= 4.4.0 and ShowAllEntityData 9.99.1356 together,
+  the userscript with the NETWORK =@require=.
+- =python3 scripts/check-publish-ready.py= before, =--strict= after.
+- Users whose Tampermonkey has not refreshed the =@require= yet see the six
+  select settings as text boxes; values still read correctly (degrade path).

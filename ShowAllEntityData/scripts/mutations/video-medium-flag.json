@@ -92,19 +92,19 @@
   },
   {
     "name": "the new counts are missing from the render gates",
-    "why": "Both makeSynItem branches sit behind a long 'is there anything to show' condition. On the Video column the medium-format counts are the ONLY synthetic entries, so without them in the gate the section never renders. (On Length the gate is always opened by the duration buckets anyway, which is why this targets the Video spec.)",
+    "why": "Both makeSynItem branches sit behind a long 'is there anything to show' condition. On the Video column the medium-format counts are the ONLY synthetic entries, so without them in the gate the section never renders. (On Length the gate is always opened by the duration buckets anyway, which is why this targets the Video spec.) Aimed at the DVD table (2026-10-14): on the CD fixture the Video column's empty cells (emptyCellCount) open the gate on their own, so the CD test no longer sees this; every DVD track is a video, nothing is empty, and only the video counts open it.",
     "edits": [
       {
-        "find": "            lenFlagSevereCount > 0 || lenFlagWarnCount > 0 || videoMediumMismatchCount > 0 || videoMediumOkCount > 0 ||\n            lengthDeviationWithin10Count > 0",
-        "replace": "            lengthDeviationWithin10Count > 0"
+        "find": "            lenFlagSevereCount > 0 || lenFlagWarnCount > 0 || videoMediumMismatchCount > 0 || videoMediumOkCount > 0 || entityTypeCounts.size > 0 ||\n            lengthDeviationWithin10Count > 0",
+        "replace": "            lenFlagSevereCount > 0 || lenFlagWarnCount > 0 || entityTypeCounts.size > 0 ||\n            lengthDeviationWithin10Count > 0"
       },
       {
-        "find": "                   lenFlagSevereCount > 0 || lenFlagWarnCount > 0 || videoMediumMismatchCount > 0 || videoMediumOkCount > 0 ||\n                   lengthDeviationWithin10Count > 0",
-        "replace": "                   lengthDeviationWithin10Count > 0"
+        "find": "                   lenFlagSevereCount > 0 || lenFlagWarnCount > 0 || videoMediumMismatchCount > 0 || videoMediumOkCount > 0 || entityTypeCounts.size > 0 ||\n                   lengthDeviationWithin10Count > 0",
+        "replace": "                   lenFlagSevereCount > 0 || lenFlagWarnCount > 0 || entityTypeCounts.size > 0 ||\n                   lengthDeviationWithin10Count > 0"
       }
     ],
     "spec": "tests/fixtures/release-tracks-video-medium-flag.spec.js",
-    "grep": "counts the four video rows",
+    "grep": "DVD-Video: ✅ counts the five DVD videos",
     "expect": "fail"
   }
 ]

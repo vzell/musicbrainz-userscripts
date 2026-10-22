@@ -34,7 +34,12 @@
 // instead of #page's right-hand cell, and its translateX(100%) ghost box —
 // which the `#sidebar.sidebar-collapsed { transform: none }` rule exists to
 // remove — cannot occur. That guard is recorded as `"expect": "pass"` in
-// scripts/mutations/sticky-page-headers.json and needs a live spec.
+// scripts/mutations/sticky-page-headers.json and needs a live spec. Since
+// 2026-10-14 a collapsed sidebar is `display: none`, so the ghost box cannot
+// occur on MB either. The one test that needs MB's table layout ("collapsed
+// sidebar takes no space") injects an excerpt of it: under it a collapsed
+// sidebar used to stay a table cell as wide as its min-content, which this
+// blind spot hid for as long as the feature existed.
 //
 // Each negative assertion ("does NOT engage") is followed by a positive
 // control in the same test that makes it engage by removing exactly the one
@@ -365,6 +370,81 @@ test.describe('sticky page headers — single-table page', () => {
         const after = await measure(page, ['body > div.header']);
         expectPinned(before, after);
         expect(after.items[0].right).toBeLessThanOrEqual(after.clientWidth - 16 + 1);
+    });
+
+    test('under MB\'s table layout a collapsed sidebar takes no space: the bars reach the right as far as the left inset', async ({ page }) => {
+        // MusicBrainz lays #page out as a table with #sidebar as a cell, and
+        // a table cell never shrinks below its min-content width: collapsed
+        // (width 0, opacity 0) it kept an invisible strip at the right end of
+        // the page (78 px measured on an area page, 2026-10-14), the right
+        // gutter grew by that much, and every bar stopped that far short of
+        // the window edge. The excerpt below is MB's own layout rules
+        // (common-aaaf2ca.css), which the fixtures otherwise do not load; the
+        // ::before stands in for sidebar content that cannot wrap.
+        await openSeries(page, {
+            css: '#page { display: table; width: 100%; padding: 16px; box-sizing: border-box; }'
+                + ' #content { display: table-cell; padding-right: 16px; }'
+                + ' #sidebar { display: table-cell; vertical-align: top; padding-left: 16px; width: 218px; border-left: 1px solid #ddd; }'
+                + ' #sidebar::before { content: ""; display: inline-block; width: 80px; height: 1px; }',
+        });
+        await waitEngaged(page);
+        const measure = () => page.evaluate(() => {
+            const sidebar = document.getElementById('sidebar');
+            const page = document.getElementById('page');
+            const content = document.getElementById('content');
+            const table = document.querySelector('table.tbl');
+            const pad = (el) => parseFloat(getComputedStyle(el).paddingRight) || 0;
+            return {
+                collapsed: sidebar.classList.contains('sidebar-collapsed'),
+                pageDisplay: getComputedStyle(page).display,
+                sidebarBoxes: sidebar.getClientRects().length,
+                pastTable: document.documentElement.scrollWidth - (table.getBoundingClientRect().right + window.scrollX),
+                padding: pad(content) + pad(page),
+                bars: Array.from(document.querySelectorAll('#content h2.mb-toggle-h2.mb-sph-target'))
+                    .filter((h) => h.getClientRects().length > 0)
+                    .map((h) => {
+                        const r = h.getBoundingClientRect();
+                        return { left: Math.round(r.left), rightGap: Math.round(document.documentElement.clientWidth - r.right) };
+                    }),
+            };
+        });
+        // The bars' offsets come from the sticky pass, which runs again once
+        // the collapsed sidebar has left the layout (a ResizeObserver round
+        // trip): under a loaded full run the first read came before it
+        // (2026-10-14). Wait for it; a lasting defect still fails below.
+        await expect.poll(async () => JSON.stringify((await measure()).bars.filter((b) => b.rightGap > b.left + 1)),
+            { timeout: 10000 }).toBe('[]');
+        const geo = await measure();
+        expect(geo.collapsed, 'premise: the sidebar starts collapsed').toBe(true);
+        expect(geo.pageDisplay, 'premise: MB\'s table layout is in place').toBe('table');
+        expect(geo.bars.length, 'premise: pinned h2 bars').toBeGreaterThan(0);
+        expect(geo.sidebarBoxes, 'a collapsed sidebar has no box').toBe(0);
+        expect(geo.pastTable, 'the page ends after the table\'s own padding, no strip beyond').toBeLessThanOrEqual(geo.padding + 1);
+        const short = geo.bars.filter((b) => b.rightGap > b.left + 1);
+        expect(short, 'bars whose right gap is wider than their left inset').toEqual([]);
+    });
+
+    test('a page set to open with the sidebar collapsed has no sidebar box from the first frame (no slide-out)', async ({ page }) => {
+        // initSidebarCollapse() says the initial collapse is "without
+        // animation so the page opens already collapsed". Adding the class
+        // to an already laid-out sidebar animated anyway, and with the
+        // collapsed state ending in display: none (a discrete transition)
+        // the sidebar stayed for 0.3 s and then the page reflowed: links
+        // moved from under a resting pointer (popup-ext.spec.js, 2026-10-14).
+        await openSeries(page, {
+            beforeRender: (p) => p.evaluate(() => {
+                const sidebar = document.getElementById('sidebar');
+                window.__sbBoxesNextFrame = null;
+                const mo = new MutationObserver(() => {
+                    if (!sidebar.classList.contains('sidebar-collapsed')) return;
+                    mo.disconnect();
+                    requestAnimationFrame(() => { window.__sbBoxesNextFrame = sidebar.getClientRects().length; });
+                });
+                mo.observe(sidebar, { attributes: true, attributeFilter: ['class'] });
+            }),
+        });
+        await expect.poll(() => page.evaluate(() => window.__sbBoxesNextFrame), 'premise: the sidebar was collapsed at render').not.toBeNull();
+        expect(await page.evaluate(() => window.__sbBoxesNextFrame), 'boxes one frame after the collapse').toBe(0);
     });
 
     test('offsets are already right on the pass that engages, not one observer round-trip later', async ({ page }) => {
@@ -1209,6 +1289,14 @@ test.describe('sticky page headers — every block of content that is not a wide
         await waitForRenderComplete(page, { waitForAutoResize: false });
         await settleFocusAndPointer(page);
         await waitEngaged(page);
+        // The page is wider than the 700 px window: the button click, or a
+        // filter focus that landed after settleFocusAndPointer()'s wait,
+        // scrolls it sideways. Seen once in a full run on a loaded host
+        // (2026-10-21, NB-3641: "before.scrollX" not 0, 3/3 green alone).
+        // Blur again and return to the left edge: the premise, not the
+        // property under test.
+        await page.evaluate(() => { if (document.activeElement) document.activeElement.blur(); });
+        await toLeftEdge(page);
         const sels = ['#mb-status-displays-wrapper', '#content > h1'];
         const before = await measure(page, sels);
         expect(before.items.map((it) => it.key.replace(/\[\d+\]$/, '')).sort(),
@@ -1655,6 +1743,104 @@ test.describe('sticky page headers — the sticky column docks in line with its 
         expect((await stickyGeom(page))[0].docked, 'scrolling back takes the mask off again').toBe(false);
     });
 
+    test('two columns before the sticky one: the second does not mask the first; the first masks the gutter', async ({ page }) => {
+        // Every one of the `pre` cells used to carry the gutter mask, a
+        // page-coloured box-shadow reaching L px to its LEFT. For the first
+        // one that is the gutter; for the second it is the right edge of the
+        // first, which it painted white at scrollX 0: on annotations (Old,
+        // New, then the sticky Editor) a 16 px strip cut off Old's 📊 button
+        // (debug/annotations-old-new.final.html, 2026-10-16). The series
+        // table gets an extra column in front of "#", so "Release" has two
+        // before it. Column 1 is painted magenta, so a white strip over it is
+        // unmistakable whatever its own content.
+        const MAGENTA = 'table.tbl > tbody > tr > td:first-child { background: rgb(255, 0, 255) !important; }';
+        await openSeries(page, {
+            css: `${MB_TBL_CSS} ${MAGENTA}`,
+            beforeRender: (p) => p.evaluate(() => {
+                const t = document.querySelector('table.tbl');
+                const th = document.createElement('th');
+                th.textContent = 'Pick';
+                t.querySelector('thead tr').prepend(th);
+                t.querySelectorAll('tbody > tr').forEach((tr) => {
+                    const td = document.createElement('td');
+                    td.style.minWidth = '80px';
+                    tr.prepend(td);
+                });
+            }),
+        });
+        await waitEngaged(page);
+        const stamps = () => page.evaluate(() => {
+            const t = document.querySelector('table.tbl');
+            const hr = t.querySelector(':scope > thead > tr:first-child');
+            return {
+                pre: t.dataset.mbSphColPre || null,
+                mask: t.dataset.mbSphColMask || null,
+                left: parseFloat(t.dataset.mbSphColLeft),
+                shadows: Array.from(hr.cells).slice(0, 3).map((c) => getComputedStyle(c).boxShadow),
+                stickyIdx: hr.querySelector('.mb-sticky-col').cellIndex,
+            };
+        });
+        const s0 = await stamps();
+        expect(s0.stickyIdx, 'premise: the sticky column is third').toBe(2);
+        expect(s0.pre, 'premise: both columns before it dock').toBe('2');
+        expect(s0.mask).toBe('1');
+        expect(s0.shadows[0], 'the first column masks the gutter').toContain(`-${s0.left}px 0px 0px 0px`);
+        expect(s0.shadows[1], 'the second column carries no mask').toBe('none');
+
+        // What the user saw: the strip L px wide left of column 2's edge, in
+        // the body rows, must still be column 1 (magenta), not page white.
+        const box = await page.evaluate((L) => {
+            const t = document.querySelector('table.tbl');
+            const rows = t.querySelectorAll(':scope > tbody > tr');
+            const c2 = rows[0].cells[1].getBoundingClientRect();
+            const last = rows[Math.min(2, rows.length - 1)].getBoundingClientRect();
+            return {
+                x: Math.ceil(c2.left - L + 2),
+                y: Math.ceil(c2.top + 2),
+                width: Math.floor(L - 4),
+                height: Math.floor(last.bottom - c2.top - 4),
+            };
+        }, s0.left);
+        expect(box.width, 'premise: a strip wide enough to inspect').toBeGreaterThan(8);
+        const png = await page.screenshot({ clip: box });
+        const notMagenta = await page.evaluate(async (b64) => {
+            const img = new Image();
+            img.src = `data:image/png;base64,${b64}`;
+            await img.decode();
+            const c = document.createElement('canvas');
+            c.width = img.width;
+            c.height = img.height;
+            const ctx = c.getContext('2d');
+            ctx.drawImage(img, 0, 0);
+            const d = ctx.getImageData(0, 0, c.width, c.height).data;
+            let bad = 0;
+            for (let i = 0; i < d.length; i += 4) {
+                if (!(d[i] > 230 && d[i + 1] < 40 && d[i + 2] > 230)) bad++;
+            }
+            return { bad, total: d.length / 4 };
+        }, png.toString('base64'));
+        expect(notMagenta.bad, `pixels over column 1 that are not its own background (of ${notMagenta.total})`).toBe(0);
+
+        // The gutter is still fully masked once both columns and then the
+        // sticky one have docked.
+        const p = (await stickyGeom(page))[0].p;
+        await scrollToX(page, Math.round(p / 2));
+        const dirtMid = await gutterDirt(page);
+        expect(dirtMid.bad, `gutter pixels between the docks (first: ${dirtMid.sample})`).toBe(0);
+        await scrollToRightEnd(page);
+        const dirtEnd = await gutterDirt(page);
+        expect(dirtEnd.bad, `gutter pixels at the far right (first: ${dirtEnd.sample})`).toBe(0);
+        await scrollToX(page, 0);
+
+        // With column 1 hidden, "#" is the leftmost and takes the mask over.
+        await page.click('#mb-visible-btn');
+        await page.locator('label[for^="mb-col-vis-"]', { hasText: /Pick$/ }).evaluate((l) => l.click());
+        await expect.poll(async () => (await stamps()).mask, { message: 'the mask moves to "#"' }).toBe('2');
+        const s1 = await stamps();
+        expect(s1.pre).toBe('2');
+        expect(s1.shadows[1], '"#" now masks the gutter').toContain(`-${s1.left}px 0px 0px 0px`);
+    });
+
     test('a refresh pass while scrolled keeps the column docked and masked', async ({ page }) => {
         // The docking point p is the width of the columns before the sticky
         // one ("#" here). It used to be read from the right edge of "#",
@@ -1687,5 +1873,41 @@ test.describe('sticky page headers — the sticky column docks in line with its 
         const after = await stickyGeom(page);
         expect(Math.abs(after[0].thLeft), 'previous behaviour: left 0').toBeLessThanOrEqual(1);
         expect(after[0].shadow).toBe('none');
+    });
+});
+
+// A status line in the header that runs past the window is a capped bar's
+// own overflow: engaged, the bar is capped and the line wraps, so the
+// overflow is gone; disengaged, it is back. Before 2026-10-14 that engaged and
+// disengaged every frame (html.mb-sph-on toggling every ~70 ms, the page
+// jumping by its margins), found through rich-tooltips.spec.js, whose hover
+// target moved away mid-hover. Pinned: it engages (so the overflow is really
+// there) and then stays put.
+test.describe('sticky page headers — an overflowing header status line', () => {
+    test('a status line past the window edge engages once and does not flip back and forth', async ({ page }) => {
+        await page.setViewportSize({ width: 1280, height: 720 });
+        await loadUserscriptPage(page, { url: 'https://musicbrainz.org/release-group/aaaaaaaa-0000-0000-0000-000000000002',
+                                         fixtureFile: path.join(__dirname, 'releasegroup-releases-live-titles.html'), testMode: true });
+        await page.click('button[data-label="Show all Releases for ReleaseGroup"]');
+        await waitForRenderComplete(page);
+        await page.evaluate(() => {
+            window.__sphFlips = 0;
+            let on = document.documentElement.classList.contains('mb-sph-on');
+            new MutationObserver(() => {
+                const now = document.documentElement.classList.contains('mb-sph-on');
+                if (now !== on) { window.__sphFlips++; on = now; }
+            }).observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+        });
+        await page.fill('#mb-global-filter-input', 'Studio');
+        await expect.poll(() => page.evaluate(() => document.documentElement.classList.contains('mb-sph-on')),
+            'the status line overflows the window, so the feature engages').toBe(true);
+        // 60 frames: the flip-flop took ~4 frames a cycle.
+        await page.evaluate(() => new Promise((done) => {
+            let n = 0;
+            const step = () => (++n >= 60 ? done() : requestAnimationFrame(step));
+            requestAnimationFrame(step);
+        }));
+        expect(await page.evaluate(() => window.__sphFlips), 'engaged once, then no flip-flop').toBeLessThanOrEqual(1);
+        expect(await page.evaluate(() => document.documentElement.classList.contains('mb-sph-on'))).toBe(true);
     });
 });

@@ -1,0 +1,41 @@
+[
+    {
+        "name": "dg 📊 avatars: no picture on an entry",
+        "why": "The entry shows its user's picture after the name.",
+        "edits": [
+            {
+                "find": "                if (_dgAv) item.appendChild(_dgAvatarTrailingSlot(_dgAv));\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/discogs-submissions.spec.js",
+        "grep": "📊 of",
+        "expect": "fail"
+    },
+    {
+        "name": "dg 📊 avatars: the cells' pictures not read by the scan",
+        "why": "A history's pictures come with the page, never through _dgAvatars: only the scan knows them.",
+        "edits": [
+            {
+                "find": "                    if (_av) dgAvatarMap.set(v, _av.getAttribute('src'));",
+                "replace": "                    void _av;"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-submissions.spec.js",
+        "grep": "📊 of a history",
+        "expect": "fail"
+    },
+    {
+        "name": "dg 📊 avatars: a picture that came after the panel's data was read is lost",
+        "why": "The panel's data is cached; a submissions list's pictures arrive later (_dgAvatars).",
+        "edits": [
+            {
+                "find": "                const _dgAv = _isDgHost ? (dgAvatarMap.get(v) || _dgAvatars.get(v) || '') : '';",
+                "replace": "                const _dgAv = _isDgHost ? (dgAvatarMap.get(v) || '') : '';"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-submissions.spec.js",
+        "grep": "📊 of \"Changed by\"",
+        "expect": "fail"
+    }
+]

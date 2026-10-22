@@ -108,8 +108,8 @@
     "why": "The single-table loop serves single-table Load from Disk and the sub-table handoff tab. No pageType that has LENGTH flags reaches it: release-tracks is multi-table and is not in SA_SNAPSHOT_SUPPORTED_PAGETYPES. KNOWN UNREACHABLE today. Kept so that adding the handoff to release-tracks, or flags to a single-table page, finds a reader already in place.",
     "edits": [
       {
-        "find": "                        _restoreLenMismatchFlag(td, cellData);\n                        _restoreVideoMediumFlag(td, cellData);\n                        _restoreNoWorkFlag(td, cellData);\n                        if (_beforeFp !== null) {",
-        "replace": "                        _restoreVideoMediumFlag(td, cellData);\n                        _restoreNoWorkFlag(td, cellData);\n                        if (_beforeFp !== null) {"
+        "find": "                        _restoreLenMismatchFlag(td, cellData);\n                        _restoreVideoMediumFlag(td, cellData);\n                        _recOfRestoreCell(td, cellData);\n                        _restoreNoWorkFlag(td, cellData);\n                        if (_beforeFp !== null) {",
+        "replace": "                        _restoreVideoMediumFlag(td, cellData);\n                        _recOfRestoreCell(td, cellData);\n                        _restoreNoWorkFlag(td, cellData);\n                        if (_beforeFp !== null) {"
       }
     ],
     "spec": "tests/fixtures/len-flag-disk-roundtrip.spec.js",

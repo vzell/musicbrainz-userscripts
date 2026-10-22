@@ -1,0 +1,317 @@
+* TODO make sure we can always run completely OFFLINE
+
+Is it possible to make our userscript run completely offline on MB and non-MB PTs:
+
+1.)
+
+We already have the Save/Load persistence framework
+
+2.)
+
+What else would be needed. CSS files etc ?
+
+3.)
+
+Especially the non-MB sites, except currently SL and BB are actually completely static. No new data is ever feed in
+anymore. Also the chance is high that their websites are eventually shutdown and then the data would be lost.
+
+a.)
+
+for the persistence storage we could maybe even setup our own filesystem area or use local opensource database systems
+(make some suggestions)
+
+4.)
+
+The non-MB sites should somehow periodically be snapshotted, so that we could generate some kind of diff view of the
+data which has changed (and what) between different snapshots. Make some nice rich HTML based mockup suggestions.
+
+5.)
+
+When our userscripts detects that the network is down, is there a way to inform the user and give him the chance to work
+with the last snapshotted data
+
+6.)
+
+Make a comprehensive analysis and report/suggstions
+
+7.)
+
+write the plan at the end of this file so that I can also work on it from other machines
+
+** Answer (2026-10-16, no change to the userscript)
+
+Env: 2026-10-16T01:43:01+02:00 · NB-3641 · WSL2 Ubuntu 24.04.4 (Linux
+6.18.40.1) · code reading at =dc6afd8=, Playwright 1.62.1 Chromium for the
+probe check · no Tampermonkey.
+
+Mockups (private Artifact): https://claude.ai/artifact/CNWMy9nbquVcXZ7BMerWSi
+— local copy [[file:offline-mockups.html]]. Letters A–H below refer to it.
+
+Delivered this session: this write-up, the mockups, and the probe
+=scripts/probe-offline-capabilities.user.js= with its check
+=scripts/check-probe-offline-capabilities.js= (17 checks; mutation-checked
+by hand with two planted defects, both caught). No userscript change, so no
+version bump and no changelog entry.
+
+*** The one fact everything else follows from
+
+When the network is really down, the browser cannot load musicbrainz.org or
+any of the four Springsteen sites. It shows its own error page, no
+=@include= line matches, and Tampermonkey never starts the script. So:
+
+- *On a live page* the script can only handle "the page loaded, then the
+  network went away" (and pages the browser serves from its own cache).
+  That is worth doing (item 5), but it is not "completely offline".
+- *Completely offline* needs a page that comes from this machine: a small
+  local server on =127.0.0.1=, or a =file://= page if Tampermonkey runs there
+  in your browser. The script then runs on that page like on a fifth site
+  and loads snapshots into the normal pipeline (mockup B).
+- A service worker on musicbrainz.org (the usual offline technique) is not
+  available to a userscript: its script has to be a file served by that
+  site.
+
+*** 1. Save/Load as the base
+
+What it is (=saveTableDataToDisk()=, =_hydrateAndRenderFromSnapshotData()=,
+=SA_SNAPSHOT_FORMAT_VERSION= ='1.1'=, gzipped JSON via pako):
+- Keeps: page metadata (url, pageType, button, timestamp, =incomplete=),
+  headers, and per cell =getCleanCellHtml()= plus a few flags
+  (Relationships =relDone=, length/video/work flags, Recording of).
+- Leaves out: the page chrome (h1, tabs, sidebar), any CSS, all images (art
+  is stripped by =_stripTransientCellState()= and refetched), Release events
+  cells, sort/filter state, and *any row key*.
+- A load must run on a live page of the same host: it activates the
+  matching button, re-runs the DOM pre-processing and the site converters on
+  the live document, and needs =table.tbl= / =#content= there. Then
+  artwork, Release events (always), unloaded Relationships cells,
+  Recording of and every card go back to the network or IndexedDB.
+
+So Save/Load is the right base for the *data*, and it is half of what an
+offline view needs. Proposed format 1.2, backwards compatible (a 1.1 file
+still loads):
+- =row.key= — a stable key per row (see item 4), so two files can be
+  compared row by row without parsing cell HTML.
+- =row.text= — the clean text per column (=getCleanColumnText()=), the
+  thing a diff compares.
+- absolute URLs in cell HTML (SL links and covers are relative today, so a
+  file loaded anywhere but SL points at the wrong host).
+- optional =shell=: the chrome HTML and the text of the page's stylesheets
+  (read from =document.styleSheets= at save time), so the local page (B) can
+  show a MusicBrainz table with MusicBrainz's look.
+- optional =images=: references (URL → content hash) into an image folder
+  or store, never the bytes inside the JSON.
+
+*** 2. What else is needed besides the data
+
+Inventory: 24 runtime network dependencies. Grouped by what happens
+offline:
+
+| Group              | Examples                                                                                                                                               | Offline today                                                                                                                                                                                                                                                  |
+|--------------------+--------------------------------------------------------------------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Fine               | =@require= iro, pako, VZ_MBLibrary; all of the script's CSS                                                                                            | Tampermonkey stores =@require= files at install; the CSS is ~45 =GM_addStyle()= blocks with no =url()=, no =@import=, no web font                                                                                                                              |
+| Served from cache  | CAA/EAA JSON and images, Relationships, ms lengths, Recording of, MB/ext cards, foreign detail pages                                                   | IndexedDB, 24 h–30 d — but an *expired* record is never served, and several are deleted on read (=_relIdbGet()=, =_msIdbGetLength()=) or by =_artIdbSweepExpired()=: the cache shrinks while offline                                                           |
+| Slow to fail       | =fetchHtml()= (3 tries, ~7 s a page), Relationships (~5 s per MBID, one at a time), artwork (30 s timeout, 4 at a time)                                | Finishes eventually, with retry glyphs; a big table spins for minutes                                                                                                                                                                                          |
+| No cache at all    | Release events (=initReleaseEventsColumn()=), ERG ▶ expand, Google S2 favicons, Wikidata/Commons pictures, sidebar picture, site images on SL/JL/BS/BB | Error state or broken image                                                                                                                                                                                                                                    |
+| Help and changelog | ❓ (GitHub), Shift-❓ (raw.githubusercontent.com), 📜                                                                                                  | Help: stale GM copy or "could not load" + Retry. 📜: the menu entry is only registered once entries exist (=VZ_MBLibrary= =initRemoteContent()=), and the script passes =null= as its built-in changelog, so with no cached copy there is *no* 📜 entry at all |
+
+CSS: on MusicBrainz the table look (borders, zebra rows, thead), the flags
+(=span.flag= sprites) and the entity favicons come from MusicBrainz's own
+stylesheet. A cached or live MB page has it; the local page (B) does not,
+which is what the optional =shell= in format 1.2 is for. The foreign sites
+get a self-contained look from =_ensureForeignTableStyle()= and
+=_ensure*Style()=, so a foreign snapshot looks right anywhere; only the
+site's own images are missing.
+
+*** 3. Keeping the data of the static sites
+
+Premise check: by the docs JL and KF/BS are the static ones, SL and BB
+still change. JL is not frozen: the 2026-10-05 capture
+(=debug/jungleland.it.html=) has six 2026 entries, the latest
+=20260416.htm=. Slowing down, not stopped. No evidence either way for BS.
+The snapshot design below does not depend on which sites are static: a
+static site's snapshots simply come out "no change", stored as references.
+
+Sizes, from the site docs: JL 6,326 rows from one 1.1 MB page; BS 1,878 +
+1,186 rows from two GETs; SL about 16,700 rows from about 173 GETs; BB
+songs 1,679, relations 2,892, years 5,009 (63 GETs), recent changes up to
+5,000 (POSTs). The rows are small. The detail pages are the cost: one per
+row at 1.1 s spacing is 22–34 min for BS and 1 h 47 min for JL. The images
+are the bulk (no measurement yet; the probe reports the quota).
+
+Today nothing about these sites is kept for long: detail pages for 30 days
+(=_DP_TTL_MS=, hard-coded), images never (=_DP_ART_CTX= is external, browser
+HTTP cache only), and IndexedDB belongs to one site address, so each site
+has its own copy and its own quota. Nothing calls
+=navigator.storage.persist()=, so the browser may evict all of it under
+storage pressure.
+
+Storage options (mockup H has the comparison table):
+
+| Option                                                                           | For                                                                                                                                                                 | Against                                                                                             |
+|----------------------------------------------------------------------------------+---------------------------------------------------------------------------------------------------------------------------------------------------------------------+-----------------------------------------------------------------------------------------------------|
+| IndexedDB + =persist()=                                                          | Already there; zero setup                                                                                                                                           | Per browser, per site; invisible to other machines; a cache, not an archive                         |
+| OPFS (origin private file system)                                                | Fast, files                                                                                                                                                         | Same per-site, per-browser walls as IndexedDB                                                       |
+| *Local folder via File System Access* (=showDirectoryPicker=)                    | Plain files in a folder you choose (e.g. =V:\sa-archive=); git, Syncthing or OneDrive carry it to other machines; one folder for all four sites                     | Chromium only; the handle needs a click to re-grant after a browser restart                         |
+| *Small local server*: Python stdlib + SQLite (FTS5)                              | Works in every browser (=GM_xmlhttpRequest= to =127.0.0.1=); also serves the offline page B; one =.sqlite= file; Datasette gives a browsable, queryable UI for free | A process to start; one more thing to maintain                                                      |
+| git repository of JSONL (on top of the folder)                                   | History and =git diff= for free; push = available on every machine                                                                                                  | Diffs of large JSONL are noisy without one-row-per-line and sorted keys                             |
+| DuckDB over the JSONL files                                                      | Ad-hoc SQL across all snapshots in seconds                                                                                                                          | Analysis only, no UI                                                                                |
+| PouchDB in the page + CouchDB at home                                            | Built-in multi-machine replication                                                                                                                                  | A server to run; heavy for one user                                                                 |
+| Raw WARC (browsertrix-crawler, ArchiveBox, =wget --warc-file=), replay with pywb | Keeps *everything*, including what the script does not parse; replay shows the original sites; standard format                                                      | Outside the userscript; SL needs a real browser (Cloudflare), so browsertrix rather than wget there |
+| Internet Archive "Save Page Now"                                                 | Public, nothing to run                                                                                                                                              | Not under your control; partial coverage; =org/internet.archive.org= is its own TODO                |
+
+Recommendation: *two tiers*.
+1. Shutdown insurance, outside the script: a scheduled raw crawl of JL, BS
+   and BB to WARC (wget is enough there), and browsertrix-crawler for SL.
+   Replay with pywb. This keeps the whole sites, whatever the script reads
+   or not.
+2. Structured snapshots, written by the script: keyed rows (format 1.2),
+   optionally detail records and images, into *one* local store shared by
+   all four sites. Folder or local server is decided by the probe (does
+   =showDirectoryPicker= exist in your browser; does Tampermonkey run on
+   =file://= and localhost). The folder is the lighter choice for Chromium;
+   the server is the only one that also covers Firefox and also serves page
+   B.
+IndexedDB stays what it is today, a cache; phase 1 just stops it from
+expiring for these sites (=sa_*_keep_forever=) and asks for =persist()=.
+
+*** 4. Periodic snapshots and the diff view
+
+The job ("📸 Snapshot site", mockup C):
+- runs every button of the site's pageTypes with the existing fetch loop
+  (no new fetch path), optionally every row's detail page through
+  =_dpGet()= (resumable, at the existing 1.1 s spacing) and its images;
+- writes one snapshot: header (site, pageType, button, Berlin time with
+  offset, script version, row count, =incomplete=), then one record per row
+  (=key=, =text= per column, =html=);
+- if every row equals the previous snapshot it stores a "same as <date>"
+  reference, so a weekly run of a frozen site costs a few bytes;
+- an =incomplete= run is kept but never compared (a missing page would read
+  as hundreds of removed rows).
+
+Row keys (all derivable from data the converters already read):
+- SL: path + =item= (the href also carries =category= and =f_*=, which must
+  be dropped); lyrics =song== slug.
+- JL: the artwork page link (=YYYYMMDD[_N].htm=; the =_N= is the version).
+- BS: the =Code= (uniqueness not yet checked; the first snapshot asserts it).
+- BB: the page link (=/song:…=, =/relation:…=, =/gig:…=); two year-page
+  headings have no link, fallback date + anchor; recent changes: page +
+  revision.
+
+Scheduling: a userscript cannot run unattended. Two options, both cheap:
+a reminder on the next visit when the last snapshot is older than N days
+(setting), or a scheduled Playwright job (=tests/live= already logs in and
+drives the script) that presses the button weekly. The WARC crawl is a
+cron job either way.
+
+The diff (mockups D, E, F):
+- rows matched by key; text compared after =getCleanColumnText()=-style
+  clean-up so markup-only site changes do not flood it; a removed+added pair
+  with the same title and date is shown as "moved";
+- *rendered by the engine*: a converter =applySnapshotDiffToTable()= turns
+  two snapshots into an ordinary =table.tbl= with a Change column in front
+  and old→new in changed cells. Filter, sort, 📊 (a "Change" section),
+  Save to disk all work unchanged — no parallel render path, as the
+  CLAUDE.md scope rule demands;
+- D is the summary first: one tile per table, then changed cells per column;
+- F is one row's history in the usual liner-notes card, built from a change
+  log the diff writes, never by re-reading every snapshot on hover.
+
+*** 5. Network down: telling the user, offering the last snapshot
+
+Possible, on a page that did load (mockup A):
+- A =_net*= state fed by =navigator.onLine=, the =online=/=offline= events
+  and, decisively, consecutive status-0/timeout failures from
+  =fetchHtml()=, =_ws2GetJson()=, =_artGmFetchBlob()= and =_extFetch()=.
+  =navigator.onLine= alone is wrong in both directions (true on a LAN
+  without internet); the probe records how it behaves in your browser.
+- Banner under the h1 (or the h1 chip on foreign sites): since when, what
+  failed, "Open last snapshot ▾", "Try again".
+- *Cache-only mode*: fetchers answer at once from IndexedDB, *including
+  expired records* (marked stale), no expiry sweep, no delete-on-read, no
+  30 s waits; queued work runs once when the network is back.
+- "Open last snapshot" lists the snapshots of this pageType from the store
+  of item 3 and loads one through =_hydrateAndRenderFromSnapshotData()=.
+
+Not possible: anything before the page loads (see the first section). For
+that the local page B is the entry point; with the folder variant it is a
+=file://= page, with the server variant =http://127.0.0.1:<port>/=. Either
+needs one new =@include= and one =host: 'local'= pageType.
+
+*** 6. Report summary and risks
+
+- MusicBrainz first: everything here is opt-in and off by default. The
+  shared parts (phase 0's network state and cache-only mode) must be inert
+  while online — no extra request, no extra work on the hot path — and are
+  proven with the MusicBrainz fixture suite, not only new specs.
+- Per-site storage: IndexedDB, OPFS, quota and =persist()= are per site
+  address. Anything meant to survive or travel goes to the local store, not
+  into four separate browser caches.
+- Quota and eviction: without =persist()= the browser may drop a whole
+  site's data under pressure. Images will dominate; the probe reports the
+  real quota.
+- Cloudflare on SL: a snapshot run in your tab is fine (same-origin, your
+  clearance cookie); a crawler needs a real browser (browsertrix).
+- Content rights: snapshots and WARCs are for personal use and
+  preservation; publishing them is a separate question.
+- Testing: =context.setOffline(true)= does *not* stop routed requests in
+  Playwright (seen in the probe check, 2026-10-16) — offline specs must
+  abort their routes (='internetdisconnected'=) instead.
+
+*** 7. Plan
+
+Each phase is useful alone; each user-visible phase on its own feature
+branch with WIP changelog, HELP resync and specs. Decisions still open are
+marked ❓.
+
+**** TODO Probe in your browser (now)
+- Install =scripts/probe-offline-capabilities.user.js=. In Chrome, enable
+  "Allow access to file URLs" for Tampermonkey.
+- Run "Probe: offline capabilities" on musicbrainz.org, on one foreign
+  site, on any local =.html= file (=file://=) and on a page from
+  =python3 -m http.server 8765= (=http://127.0.0.1:8765/=). The green badge
+  shows where it ran. Repeat once with the network unplugged.
+- Optionally "… keep this site's storage (persist)" on one site to see the
+  browser's answer.
+- Put the JSON files into =debug/=; they decide ❓ folder vs server.
+
+**** TODO Phase 0 — offline detection and cache-only mode
+- =_net*= state, banner/chip (A), cache-only mode in every fetcher; serve
+  expired IndexedDB records while offline; pause =_artIdbSweepExpired()=
+  and delete-on-read while offline.
+- Always register 📜 (a "no cached copy yet" message instead of a missing
+  entry).
+- Specs: fixture specs that abort routes mid-render (single and multi
+  table), MusicBrainz fixture suite unchanged; performance check that the
+  online path costs nothing (=run-perf-comparison=).
+
+**** TODO Phase 1 — keep the foreign sites' data
+- Per site =sa_<site>_keep_forever= (default false; a boolean, never a
+  magic number of days), a TTL setting for detail pages instead of
+  =_DP_TTL_MS=, =persist()= asked when the switch is turned on.
+- Site images into an image store with keys of their own (the =fa:<url>=
+  idea in =org/springsteenlyrics.org= item 4), unlimited when kept forever.
+- Archive tab in 💾 Browser cache (G): quota, persist state, switches.
+- Closes the TODO.org items "increase the IDB lifetime", "sync add non-MB
+  images with the CAA framework" and "storeage forever for non-MB sites".
+
+**** TODO Phase 2 — snapshots
+- Format 1.2 (=key=, =text=, absolute URLs, optional =shell= and =images=),
+  1.1 still loads.
+- ❓ the local store: folder (File System Access) or local server (SQLite).
+- "📸 Snapshot site" job (C) on the async job popup (=_aj*=), resumable,
+  reminder after N days.
+- Raw WARC crawl as a separate script/cron (=scripts/=, not the userscript).
+
+**** TODO Phase 3 — diff
+- =applySnapshotDiffToTable()=, the Change column and its 📊 section,
+  summary (D), row history (F).
+- Specs: two saved snapshots as fixtures with planted added/changed/removed/
+  moved rows; mutation-checked.
+
+**** TODO Phase 4 — the local offline page
+- ❓ =file://= or =127.0.0.1=, after the probe.
+- =@include= + =host: 'local'= pageType; archive index (B); snapshot loading
+  through the existing hydrate path; MusicBrainz snapshots with their saved
+  =shell= CSS.
+- Spec: the whole path with the network blocked (all routes aborted).
+

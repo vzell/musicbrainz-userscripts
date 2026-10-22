@@ -34,6 +34,7 @@ const path = require('path');
 const { test, expect } = require('../support/test');
 const { loadUserscriptPage, addRequiredLibs, MB_LIBRARY_PATH, USERSCRIPT_PATH } = require('../support/loadPage');
 const { waitForRenderComplete } = require('../support/browser');
+const { routeEventLookups } = require('../support/eventLookups');
 
 const RELEASE_URL = 'https://musicbrainz.org/release/e384f062-85a3-4141-9122-0814d987cda3';
 const RELEASE_GID = 'e384f062-85a3-4141-9122-0814d987cda3';
@@ -83,7 +84,7 @@ async function open(page, { browse = null, search = null, settings = {}, showAll
     const log = { browses: [], lookups: [], searches: [], pages: [] };
     await page.context().route('**/ws/2/release?release-group=**', (route) => {
         const offset = Number(new URL(route.request().url()).searchParams.get('offset') || 0);
-        log.browses.push({ offset, at: Date.now() });
+        log.browses.push({ offset, at: performance.now() });
         const r = browse ? browse(offset) : { status: 200, body: json('ws2-rg-release-browse.json') };
         return route.fulfill({ status: r.status, contentType: 'application/json', body: r.body });
     });
@@ -101,6 +102,8 @@ async function open(page, { browse = null, search = null, settings = {}, showAll
         log.pages.push(route.request().url());
         return route.fulfill({ path: RG_PAGE, contentType: 'text/html' });
     });
+    // The "#" card's stacked event card (on by default) asks for its event.
+    await routeEventLookups(page);
     await loadUserscriptPage(page, { url: RELEASE_URL, fixtureFile: FIXTURE, testMode: true, settingsOverride: { sa_rich_tooltip_delay_ms: 0, ...settings } });
     await page.route('https://musicbrainz.org/release/**', (route) => route.fulfill({ path: FIXTURE, contentType: 'text/html' }));
     if (showAll) {
@@ -241,10 +244,12 @@ test.describe('the release-group popup on the popup engine (org/iframe.org Phase
 
     test('one rate gate: the card\'s request waits behind slots another feature holds', async ({ page }) => {
         const log = await open(page, { showAll: false });
-        const t0 = await page.evaluate(() => {
-            window.__saTest.reserveMbRateSlots(3);
-            return Date.now();
-        });
+        // t0 on the test's own monotonic clock, like the route's log: the
+        // page's Date.now() is another process's wall clock, which WSL2 can
+        // step back mid-wait (DEBUG-NOTES.md, 2026-10-14). Taken after the
+        // reservation returns, so it can only shorten the measured gap.
+        await page.evaluate(() => window.__saTest.reserveMbRateSlots(3));
+        const t0 = performance.now();
         await page.locator(LINK).hover();
         await expect(card(page)).toContainText('Born Again', { timeout: 15000 });
         expect(log.browses).toHaveLength(1);

@@ -61,10 +61,19 @@ const SEVERE_ROWS = 1;
 // Excluded by origin, not by message text — neither involves the userscript.
 const THIRD_PARTY = [/supported-browser-check/, /Unexpected token '<'/];
 
-/** Every flagged cell's kind and tooltip, sorted, so two renders compare by value. */
+/**
+ * Every flagged cell's kind, tooltip and rich card (the two lengths of the
+ * diff view, `data-mb-tip-cmp`; null when the card is the sentence alone),
+ * sorted, so two renders compare by value.
+ */
 const flaggedCells = (page) => page.evaluate(() =>
     Array.from(document.querySelectorAll('table.tbl tbody td[data-mb-len-flag]'))
-        .map((td) => ({ kind: td.dataset.mbLenFlag, title: td.title, ownTip: td.dataset.mbColTip === '1' }))
+        .map((td) => {
+            const div = document.createElement('div');
+            div.innerHTML = window.__saTest.tipTextToHtml(td.title, td);
+            const times = Array.from(div.querySelectorAll('.mb-tt-cmp-t')).map((t) => t.textContent);
+            return { kind: td.dataset.mbLenFlag, title: td.title, ownTip: td.dataset.mbColTip === '1', card: times.length ? times : null };
+        })
         .sort((a, b) => (a.kind + a.title).localeCompare(b.kind + b.title)));
 
 /** A length level's findings-menu row count, or null when the menu has no such row. */
@@ -149,6 +158,7 @@ test.describe('LENGTH mismatch flags survive Save to Disk → Load from Disk', (
         // so a restored page with nothing on it cannot pass by agreeing with
         // an empty source.
         expect(before, 'the source tracklist carries its flags').toHaveLength(FLAGGED_CELLS);
+        expect(before.every((c) => c.card && c.card.length === 2), 'and each its two-length card').toBe(true);
         expect(await warnCount(source)).toBe(WARN_ROWS);
         expect(await severeCount(source)).toBe(SEVERE_ROWS);
 
@@ -200,6 +210,23 @@ test.describe('LENGTH mismatch flags survive Save to Disk → Load from Disk', (
         expect(await warnCount(page), 'and no length row is offered').toBeNull();
     });
 
+    test('a tampered two-length card is dropped; the sentence stays', async ({ context }) => {
+        // `lenCmp` is file data: `_cmpTipData()` keeps only entries of the
+        // known shape, so a bad one leaves the plain tooltip, not a broken card.
+        const tampered = path.join(tmpDir, 'tampered-cmp.json.gz');
+        const n = rewriteSavedCells(saved, tampered, (cell) => {
+            if (!Array.isArray(cell.lenCmp)) return false;
+            cell.lenCmp = [{ ...cell.lenCmp[0], trackMs: '<b>x</b>' }];
+            return true;
+        });
+        expect(n, 'every flagged cell saved its two lengths').toBe(FLAGGED_CELLS);
+        const page = await openRelease(context, pageErrors, SETTINGS);
+        await loadFromDisk(page, tampered);
+        const after = await flaggedCells(page);
+        expect(after.map((c) => c.title)).toEqual(before.map((c) => c.title));
+        expect(after.every((c) => c.card === null)).toBe(true);
+    });
+
     test('only a known flag and a string tooltip are applied; a file without flags loads as before',
         async ({ context }) => {
             // The first flagged cell gets a kind outside the two, the second a
@@ -228,7 +255,7 @@ test.describe('LENGTH mismatch flags survive Save to Disk → Load from Disk', (
             expect(await visibleRows(page), 'the tracklist itself loads in full').toBe(8);
             expect(await flaggedCells(page),
                 'only the valid kind is applied, and without the non-string tooltip')
-                .toEqual([{ kind: 'warn', title: '', ownTip: false }]);
+                .toEqual([{ kind: 'warn', title: '', ownTip: false, card: null }]);
             expect(await warnCount(page), 'the menu counts what was restored and nothing else').toBe(1);
             expect(await severeCount(page), 'no ❌ was restored').toBeNull();
         });

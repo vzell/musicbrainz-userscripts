@@ -68,8 +68,8 @@ const RESUME_BTN = '#mb-resume-fetch-btn';
 async function settledStatus(page, timeout = 90000) {
     let last = null;
     let same = 0;
-    const deadline = Date.now() + timeout;
-    while (Date.now() < deadline) {
+    const deadline = performance.now() + timeout;
+    while (performance.now() < deadline) {
         const now = await page.locator(STATUS).textContent().catch(() => null);
         if (now && /Loaded/.test(now)) {
             same = (now === last) ? same + 1 : 0;
@@ -112,7 +112,7 @@ async function loadEvents(page, respond, settingsOverride) {
     await page.route('https://musicbrainz.org/artist/**', (route) => {
         const u = new URL(route.request().url());
         const p = Number(u.searchParams.get('page') || '1');
-        reqs.push({ page: p, at: Date.now() });
+        reqs.push({ page: p, at: performance.now() });
         const r = (respond && respond(p)) || {};
         if (r.status && r.status !== 200) {
             return route.fulfill({

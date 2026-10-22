@@ -1,0 +1,206 @@
+{
+  "pageType": "artist-recordings-petty",
+  "url": "https://musicbrainz.org/artist/f93dbc64-6f08-4033-bcc7-8a0bb4689849/recordings",
+  "tableMode": "single",
+  "subTableIndex": null,
+  "totalRows": 2512,
+  "picardArm": null,
+  "relArm": null,
+  "relSeedPath": null,
+  "relIconsRendered": null,
+  "relSettleMs": null,
+  "seedGmValues": {
+    "sa_pop_mb": false,
+    "sa_pop_mb_page": false,
+    "sa_pop_ext": false,
+    "sa_dp_hover_without_ctrl": false,
+    "sa_event_rg_tooltip_without_ctrl": false,
+    "sa_enable_caa_pics": false,
+    "sa_enable_relationships_column": false
+  },
+  "branch": "branch-typed-c3-o1",
+  "gitBranch": "perf/faster-filtering",
+  "capturedAt": "2026-10-10",
+  "startedAt": "2026-10-10T14:08:43.180Z",
+  "finishedAt": "2026-10-10T14:10:56.499Z",
+  "machine": {
+    "hostname": "petri",
+    "platform": "linux",
+    "release": "6.18.40.1-microsoft-standard-WSL2",
+    "cpus": 24,
+    "totalMemGb": 31,
+    "node": "v24.16.0",
+    "playwright": "1.62.1",
+    "uptimeHours": 156.2,
+    "claudeResident": {
+      "count": 1,
+      "oldestSessionHours": 26.8
+    },
+    "claudeSinceBoot": true
+  },
+  "scriptVersion": "9.99.1316+2026-10-10",
+  "interactions": {
+    "globalFilterTyped@150": {
+      "delayMs": 150,
+      "worstKeyMs": 40,
+      "keysOver50": 0,
+      "keysOver100": 0,
+      "longestFrameMs": 413.3000000715256,
+      "longestBlockingMs": 358.7,
+      "longestTaskMs": 405,
+      "totalMs": 1804,
+      "afterLastKeyMs": 744,
+      "passes": 1,
+      "medianMs": 744,
+      "samples": 5,
+      "supported": {
+        "eventTiming": true,
+        "loaf": true,
+        "longtask": true
+      },
+      "raw": [
+        {
+          "worstKeyMs": 40,
+          "keysOver50": 0,
+          "keysOver100": 0,
+          "longestFrameMs": 494.7000000476837,
+          "longestBlockingMs": 432.9,
+          "longestTaskMs": 475,
+          "totalMs": 2043,
+          "afterLastKeyMs": 817,
+          "passes": 1,
+          "keys": 8
+        },
+        {
+          "worstKeyMs": 72,
+          "keysOver50": 1,
+          "keysOver100": 0,
+          "longestFrameMs": 442.1999999284744,
+          "longestBlockingMs": 383,
+          "longestTaskMs": 427,
+          "totalMs": 2480,
+          "afterLastKeyMs": 754,
+          "passes": 1,
+          "keys": 11
+        },
+        {
+          "worstKeyMs": 40,
+          "keysOver50": 0,
+          "keysOver100": 0,
+          "longestFrameMs": 413.3000000715256,
+          "longestBlockingMs": 358.7,
+          "longestTaskMs": 405,
+          "totalMs": 1804,
+          "afterLastKeyMs": 744,
+          "passes": 1,
+          "keys": 7
+        },
+        {
+          "worstKeyMs": 40,
+          "keysOver50": 0,
+          "keysOver100": 0,
+          "longestFrameMs": 362,
+          "longestBlockingMs": 309,
+          "longestTaskMs": 357,
+          "totalMs": 1737,
+          "afterLastKeyMs": 668,
+          "passes": 1,
+          "keys": 7
+        },
+        {
+          "worstKeyMs": 56,
+          "keysOver50": 1,
+          "keysOver100": 0,
+          "longestFrameMs": 350.7999999523163,
+          "longestBlockingMs": 298.5,
+          "longestTaskMs": 347,
+          "totalMs": 1713,
+          "afterLastKeyMs": 656,
+          "passes": 1,
+          "keys": 7
+        }
+      ]
+    },
+    "globalFilterTyped@400": {
+      "delayMs": 400,
+      "worstKeyMs": 1032,
+      "keysOver50": 4,
+      "keysOver100": 3,
+      "longestFrameMs": 1013.8999999761581,
+      "longestBlockingMs": 934.2,
+      "longestTaskMs": 1010,
+      "totalMs": 5315,
+      "afterLastKeyMs": 393,
+      "passes": 6,
+      "medianMs": 393,
+      "samples": 5,
+      "supported": {
+        "eventTiming": true,
+        "loaf": true,
+        "longtask": true
+      },
+      "raw": [
+        {
+          "worstKeyMs": 752,
+          "keysOver50": 7,
+          "keysOver100": 3,
+          "longestFrameMs": 842.8000000715256,
+          "longestBlockingMs": 724.4,
+          "longestTaskMs": 632,
+          "totalMs": 4947,
+          "afterLastKeyMs": 499,
+          "passes": 7,
+          "keys": 8
+        },
+        {
+          "worstKeyMs": 920,
+          "keysOver50": 6,
+          "keysOver100": 2,
+          "longestFrameMs": 1013.8999999761581,
+          "longestBlockingMs": 913.9,
+          "longestTaskMs": 784,
+          "totalMs": 6016,
+          "afterLastKeyMs": 497,
+          "passes": 11,
+          "keys": 11
+        },
+        {
+          "worstKeyMs": 1280,
+          "keysOver50": 4,
+          "keysOver100": 4,
+          "longestFrameMs": 1525.1000000238419,
+          "longestBlockingMs": 1435.1,
+          "longestTaskMs": 1511,
+          "totalMs": 5502,
+          "afterLastKeyMs": 393,
+          "passes": 5,
+          "keys": 7
+        },
+        {
+          "worstKeyMs": 1032,
+          "keysOver50": 2,
+          "keysOver100": 2,
+          "longestFrameMs": 984.3999999761581,
+          "longestBlockingMs": 934.2,
+          "longestTaskMs": 1010,
+          "totalMs": 4761,
+          "afterLastKeyMs": 378,
+          "passes": 6,
+          "keys": 7
+        },
+        {
+          "worstKeyMs": 1152,
+          "keysOver50": 4,
+          "keysOver100": 4,
+          "longestFrameMs": 1404.6000000238419,
+          "longestBlockingMs": 1337.8,
+          "longestTaskMs": 1422,
+          "totalMs": 5315,
+          "afterLastKeyMs": 381,
+          "passes": 5,
+          "keys": 7
+        }
+      ]
+    }
+  }
+}

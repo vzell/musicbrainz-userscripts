@@ -56,8 +56,8 @@
     "why": "sa_recording_of_browse_batch_enable off still browses.",
     "edits": [
       {
-        "find": "        if (wanted.size > 1 && artist && Lib.settings.sa_recording_of_browse_batch_enable !== false) {\n",
-        "replace": "        if (wanted.size > 1 && artist) {\n"
+        "find": "        if (wanted.size > 1 && src && Lib.settings.sa_recording_of_browse_batch_enable !== false) {\n",
+        "replace": "        if (wanted.size > 1 && src) {\n"
       }
     ],
     "spec": "tests/fixtures/recording-of-column.spec.js",
@@ -190,8 +190,8 @@
     "why": "_recOfEnsureWorks() ignores sa_recording_of_suggest_enable.",
     "edits": [
       {
-        "find": "        if (!artist || Lib.settings.sa_recording_of_suggest_enable === false) return false;\n        if (_recOfWorks && _recOfWorks.artist === artist && !force) return true;",
-        "replace": "        if (!artist) return false;\n        if (_recOfWorks && _recOfWorks.artist === artist && !force) return true;"
+        "find": "        return _recOfDecl.suggest && Lib.settings.sa_recording_of_suggest_enable !== false;",
+        "replace": "        return _recOfDecl.suggest;"
       },
       {
         "find": "    async function _recOfSuggestAll(allowNetwork) {\n        if (Lib.settings.sa_recording_of_suggest_enable === false) return;\n",

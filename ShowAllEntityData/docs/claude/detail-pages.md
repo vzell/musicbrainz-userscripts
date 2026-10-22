@@ -13,15 +13,28 @@ Design study, probes and the mockups the user chose from:
 
 ## Gates: one setting per host, nothing on MusicBrainz
 
-| Host                  | Setting                | Detail links                                                                                                    |
-|-----------------------|------------------------|-----------------------------------------------------------------------------------------------------------------|
+| Host                  | Setting                | Detail links                                                                                                        |
+|-----------------------|------------------------|---------------------------------------------------------------------------------------------------------------------|
 | springsteenlyrics.com | `sa_sl_detail_preview` | `collection.php`/`bootlegs.php`/`brucelegs.php` with `item=N`; `lyrics.php?song=SLUG` (the lyrics index, 9.99.1264) |
-| jungleland.it         | `sa_jl_detail_preview` | `/html/*.htm` except list, images, artwork                                                                      |
-| brucespringsteen.it   | `sa_bs_detail_preview` | `/DB/detrec.aspx?code=`                                                                                         |
-| brucebase.wikidot.com | `sa_bb_detail_preview` | `/song:<slug>`                                                                                                  |
+| jungleland.it         | `sa_jl_detail_preview` | `/html/*.htm` except list, images, artwork                                                                          |
+| brucespringsteen.it   | `sa_bs_detail_preview` | `/DB/detrec.aspx?code=`                                                                                             |
+| brucebase.wikidot.com | `sa_bb_detail_preview` | `/song:<slug>`                                                                                                      |
 
 All four default **off** and sit under their host's own `sa_enable_<site>`
-setting, which still has to be on. `_DP_SITES` is keyed by `_foreignHost`,
+setting, which still has to be on.
+
+**Scope (WIP.4, 2026-10-12):** `_dpSiteForLink()` takes a detail link in a
+`table.tbl > tbody` as before, AND — on a desktop — one anywhere on the page
+outside `_DP_PAGE_SKIP` (the script's toolbar and menus, the card, the
+window): the initial page, before any button, has the site's own lists
+(Brucebase's song tabview), and they preview like the table's rows. ‹ › from
+such a link walk `_dpPageLinks()` (the visible detail links, each URL once, in
+page order; a tabview's hidden panels are skipped) instead of a table. On a
+touch-primary device only the table body counts: a target turns a tap into
+"open the window", and a native link keeps its navigation — the reason
+`sa_pop_mb_page_on_touch` is off by default. Spec: detail-preview.spec.js
+"the initial page, before any button" (+ mobile); mutations
+`scripts/mutations/foreign-ip-popups.json` (5/5). `_DP_SITES` is keyed by `_foreignHost`,
 so on MusicBrainz `_dpActiveSite()` is null and no foreign source is
 enabled. Since the popup engine (next section) `_initDetailPreview()` is
 called on every page and installs only where a source is enabled: on
@@ -39,6 +52,19 @@ preview setting on changes nothing"` (every FOREIGN preview setting on, an
 
 ## The popup engine: sources (org/iframe.org, Phase 1)
 
+**Gate order (2026-10-21, 9.99.1402, org/initial-page-footprint.org):**
+1. `sa_pop_enabled` (master, default on), at the call site
+   `if (pageType && headerContainer && …) _initDetailPreview()`: off, the
+   engine is never installed — no listener, no `#mb-dp-style`, no request,
+   on every host.
+2. `_initDetailPreview()` itself installs only when some source is enabled.
+3. `sa_pop_initial_page` (default on), FIRST in `_popResolve()`: off, on
+   MusicBrainz (`!_foreignHost`) nothing resolves while `!isLoaded` — the
+   initial page, before a button rendered the table or a disk load drew
+   one. `isLoaded` is declared far below; reading it at event time only is
+   safe because the init IIFE is synchronous. Foreign hosts ignore it.
+4. Each source's `enabled()` (the `sa_pop_*` keys), then `needsCtrl()`.
+
 The card and the dialog are an engine that serves SOURCES (`_popSources()`,
 built once; `_popResolve(node)` finds the first enabled source whose
 `selector` matches `node.closest()` and whose `resolve()` accepts it, and
@@ -46,17 +72,18 @@ returns a TARGET `{src, el, key, url, …}`). The four foreign sites are one
 source each (`_dpSiteSource()`, the behaviour above, unchanged); a MusicBrainz
 release page adds two (below). A source has:
 
-| Member                                    | What it is                                                                                                           |
-|-------------------------------------------|----------------------------------------------------------------------------------------------------------------------|
-| `selector`, `resolve(el)`                 | which element it previews (a link, or a container such as a "#" cell), and that element's `{key, url}`, or null      |
-| `enabled()`                               | its host and settings, read at every event                                                                           |
-| `needsCtrl()`                             | whether its card waits for Ctrl (the foreign sites: `_dpNeedsCtrl()`)                                                |
-| `card(t, start, repaint)`                 | the card's HTML for the CURRENT state, at once                                                                       |
-| `extracted(t, start, force, repaint)`     | the Extracted view's HTML, the same way                                                                              |
-| `live`, `liveUrl(t)`                      | the Live page view: `_dpIsolateFrame()`'s fields, plus `charset` and `awaitSlot` (the rate gate `_dpGetRaw()` waits on) |
-| `liveFailTitle`, a target's `noLive`      | the Live page's failure heading ("Could not load the detail page." unless set; the external source: "the page"); no Live page button for that target (YouTube) |
-| `steps(t)`, `stepId(el)`                  | what ‹ › step through, and an identity that survives the `cloneNode(true)` re-renders                                |
-| `kind`, `wide`, `onAreaClick(e, t)`       | the dialog's title, a wider card, a click in the Extracted view (a sortable header)                                  |
+| Member                                | What it is                                                                                                                                                     |
+|---------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `selector`, `resolve(el)`             | which element it previews (a link, or a container such as a "#" cell), and that element's `{key, url}`, or null                                                |
+| `enabled()`                           | its host and settings, read at every event                                                                                                                     |
+| `needsCtrl()`                         | whether its card waits for Ctrl (the foreign sites: `_dpNeedsCtrl()`)                                                                                          |
+| `card(t, start, repaint)`             | the card's HTML for the CURRENT state, at once                                                                                                                 |
+| `extracted(t, start, force, repaint)` | the Extracted view's HTML, the same way                                                                                                                        |
+| `live`, `liveUrl(t)`                  | the Live page view: `_dpIsolateFrame()`'s fields, plus `charset` and `awaitSlot` (the rate gate `_dpGetRaw()` waits on)                                        |
+| `liveFailTitle`, a target's `noLive`  | the Live page's failure heading ("Could not load the detail page." unless set; the external source: "the page"); no Live page button for that target (YouTube) |
+| `steps(t)`, `stepId(el)`              | what ‹ › step through, and an identity that survives the `cloneNode(true)` re-renders                                                                          |
+| `kind`, `wide`, `onAreaClick(e, t)`   | the dialog's title, a wider card, a click in the Extracted view (a sortable header)                                                                            |
+| `stack(t, start, repaint)` (optional) | cards of its own in the note stack, right above its card: `[{kind, html, target?}]`; a `target` gets its kind line (`_dpFillNotes()`; the "#" cell's event)    |
 
 Rules that fail silently if broken:
 
@@ -91,6 +118,33 @@ tints and the "#" card"):
   down the "#" cells of every visible row (`stepId` = `data-mb-row-idx`). Off
   with `sa_event_rg_tooltip`. Alt+click stays its own handler
   (`initEventRgTooltip()`).
+  - **Its stacked event card (`stack`, `_eventRgEventStack()`, 2026-10-21,
+    mockup https://claude.ai/artifact/JekitWKi2rFCiC7r3HYzru, decision 2
+    variant A; `sa_event_rg_event_card`, default on).** Above the release
+    group card, as the last box of `#mb-dp-notes`: the event the row's
+    "Recorded at event" cell links (`_eventRgEventLink()`, by column name
+    through the findings plan, NEVER the row's first event link: the title
+    cell's own `dl.ars` links events too), shown as `_MB_KINDS.event.card()`,
+    the same lookup, IndexedDB cache and rate gate as the event link's own
+    preview. Its target is `_mbPopTarget(a)` with `el` set to the HOVERED "#"
+    cell, because `_mbPopWanted()` drops a request whose element shows no card
+    at its rate slot; `src` is `_EVENT_RG_EVENT_SRC` (`mb-entity`, so the
+    kind line gets the event glyph). `_dpShowPeek()` fills the notes without
+    `start` before the card, and again WITH `start` after the card's own
+    `card(t, true)`, so the release-group search or browse keeps the first
+    rate slot. Every repaint refills the stack without `start` (a failed
+    lookup is asked again by the next hover only). A row that links no
+    event (the event named only in a comment has no MBID) stacks nothing.
+    The box is `.mb-dp-note-event`, with a card's padding and border, not a
+    note's left rule. Its body's CSS comes from extending the card's
+    `:is(#mb-dp-peek, …)` selector lists with `.mb-dp-note-event`, not from
+    copies. Covered by `release-event-colours-rg-tooltip.spec.js` "the "#"
+    card's stacked event card" (fixture answers
+    `ws2-pop-event-{brixton-0424,rah-0422}.json`, from
+    `scripts/probe-event-card-fixtures.py`, routed by
+    `tests/support/eventLookups.js`, which `release-rg-popup.spec.js` uses
+    too, so no spec that hovers a "#" cell reaches the network); mutation
+    list `event-hash-event-card.json`.
 
 Both share `_rgReleases` (a group's releases as far as loaded) and `_rgFacts`
 (its lookup), and the window `_rgWindowFor()` builds:
@@ -193,16 +247,24 @@ hosts (kept, decided 2026-10-07).
   `area-rels+url-rels`, window `event?place=…&limit=100` sorted by date (the
   browse is not); series — one lookup with every item-kind relation (R1),
   items by `ordering-key` (the lookup is not in order) (9.99.1275); ISRC
-  (`artist-credits`), ISWC, disc ID and collection — one lookup each, no extras
+  (`artist-credits`), ISWC and disc ID — one lookup each, no extras
   (9.99.1276); url, the "[info]" link (U2, section "MusicBrainz URL entities"
-  below). Browse keys: `pop:browse:<entity>?<query>` (`_mbPopBrowse()`).
+  below); tag and collection, read from their pages (sections "MusicBrainz:
+  tag cards" and "MusicBrainz: collection cards" below).
+  Browse keys: `pop:browse:<entity>?<query>` (`_mbPopBrowse()`).
+- **Pictures** (artist, label, place; `sa_pop_mb_image`, the sidebar overhaul's
+  part 4): the window shows the entity's Commons picture, from an `image`/`logo`
+  relationship or the Wikidata item's P18/P154 (`_mbPopImageLoad()`, from
+  `pin()` only), and a later card shows it from memory or IndexedDB
+  (`_mbPopImagePeek()`, `spec.cardAside`). A hover never asks Wikidata. Full
+  rules: docs/claude/sidebar.md, "The picture in the entity previews".
 - **Codes** are a second path pattern, `_MB_POP_CODE_RE` (`/isrc/`, `/iswc/`,
   `/cdtoc/`); `_MB_POP_CODE_TYPES` maps the page segment to the kind and Web
   Service path — a disc ID's page is `/cdtoc/<id>`, its lookup
   `/ws/2/discid/<id>`, and the target's `url` (↗, Live page) keeps the PAGE's
-  segment. A kind may add `failNote(detail)` to its failure line: a private
-  collection answers 401 (the Web Service shows public collections only) and
-  its card says "It is probably private." — still not kept, as any failure.
+  segment. A kind may add `failNote(detail)` to its failure line (a page
+  kind too, `_mbPopPageKind()`): a collection we may not see says so ("It
+  may be private, or no longer exist.") — still not kept, as any failure.
 - **The setlist is MusicBrainz's markup** (`_mbPopSetlist()`): `@ ` line-up
   artist, `# ` comment (between artists, the billing word "&"/"with"),
   `* ` song. The window LINKS `[mbid|name]` tokens (`_mbPopSetlistLine()`,
@@ -213,8 +275,10 @@ hosts (kept, decided 2026-10-07).
   regex is case-INSENSITIVE and the link takes the MBID lowercased: editors
   type mixed-case MBIDs (`[E497263c-…-Dca99482962c|The Fever]` on the Stone
   Pony event `26cead1c…`, 14 of its 44 tokens), which the old lowercase-only
-  regex left as raw `[…|…]` text, and `_MB_POP_PATH_RE` (so drill-down)
-  matches lowercase only. MusicBrainz's own page links EVERY token of a song
+  regex left as raw `[…|…]` text. `_MB_POP_PATH_RE` accepts uppercase hex
+  too since WIP.3 (2026-10-12: the event page's own setlist links keep the
+  case the editor typed, and were no preview target), and every reader
+  lowercases the MBID, so one entity has one cache key and one lookup. MusicBrainz's own page links EVERY token of a song
   line as `/work/`, the "with" artists included (`debug/mb-event-initial.html`)
   — not a model to copy. The card keeps names only (plain text). (The
   event-overview page's `_eventSetlistParse()` reads the rendered HTML, a
@@ -297,7 +361,11 @@ hosts (kept, decided 2026-10-07).
 - **One box at a time.** `#mb-stat-tooltip`'s own-card path already gives way
   to `#mb-dp-peek` (`_OTHER_RICH_TIPS`); on a link with its own `data-mb-tip`
   text the card wins. Pinned with a control (previews off → the Liner notes
-  card shows).
+  card shows). Since WIP.1 (2026-10-16) the same holds for the CELL's own
+  tip (a finding, "no work"), which used to show beside or under the card
+  depending on which of two equal timers fired first. Its text is a box of
+  the card's note stack now, and its card comes back once the preview card is
+  gone ("The note stack" under "The card" below).
 
 **The detail pages match no `@include` line.** The script never runs ON them,
 in a tab or in the Live page frame. Everything is fetched (same origin) and
@@ -429,6 +497,105 @@ floating hover tooltip.
   detail link opens the dialog INSTEAD of the page. A touch screen has no hover;
   the dialog's ↗ opens the page. The hover handler's own tap guard is covered
   by the mousedown hide (recorded `"expect": "pass"`).
+- **The note stack (`#mb-dp-notes`, org/TODO.org "stacking multiple rich
+  tooltips", WIP.1, 2026-10-16).** The track/recording name note below was
+  the first box stacked above the card; it is now one box of a column of
+  them, `#mb-dp-notes` (fixed, flex column, 4 px gap, its own z-index, since
+  a fixed box is a stacking context of its own). `_dpCollectNotes(t)` builds
+  them from `_dpTitledChain(t.el)`: the card's element and every titled
+  ancestor up to its table cell (the cell included). "Titled" reads
+  `_dpTitleText()`: `title`, a title this engine parked
+  (`data-mb-dp-saved-title`), or one `#mb-stat-tooltip` stashed
+  (`data-mb-tip-saved`). Top to bottom (decided 2026-10-16):
+  - the cell's tips, outermost first. A `data-mb-tip` element (a finding's
+    tip from `_writeFindingAttrs()`, `_NO_WORK_FLAG_TIP`) is rendered with
+    `_tipTextToHtml()`, exactly as the "Liner notes" card it replaces
+    (`.mb-dp-note-tip`, amber rule). A native title is plain text;
+  - the link's own title: the "≠" note as `#mb-dp-origin` (below), its own
+    `data-mb-tip` as a tip, else plain text (`.mb-dp-note-title`). On an
+    artist or label target it is MusicBrainz's sort name and is labelled
+    "Sort name". A title that only repeats the link's text (MusicBrainz's on
+    a recording with a disambiguation, debug/expand.html) gets NO box.
+  - last, the link's own ready-made card: a `data-mbtt` ON THE LINK (the
+    Sidebar cards' links, `_sbLinkTip()`, 2026-10-17), its HTML as is
+    (`.mb-dp-note-tip`). Before, that card and the preview showed side by
+    side (vzell's browser, "Tougher Than the Rest"). Only the link itself:
+    a `data-mbtt` on an ancestor is no note. Nothing is parked for it:
+    `#mb-stat-tooltip` gives way (below) and does not show it again over the
+    preview when the pointer comes back onto the link (the mouseover branch
+    for `data-mbtt` checks `_dpPeekShown() && _dpPeek.link === el` and keeps
+    the link as its target, so `resume()` can show it afterwards).
+  - **Every** title of that chain is parked while the card is due or shows
+    (`_dpStashTitles()`, from `_dpSchedulePeek()` and `_dpShowPeek()`), and
+    `_dpRestoreTitles()` gives them back by sweeping
+    `[data-mb-dp-saved-title]` (clones included). This **supersedes** the
+    "Only the note is parked" rule of 2026-10-09: those titles had no box of
+    their own then, and the browser drew them over the card (images 21-23 of
+    the TODO: "Born to Run", "Springsteen, Bruce"). A title already stashed by
+    `#mb-stat-tooltip` (an empty `title`) is left to that engine.
+  - **`#mb-stat-tooltip` gives way** through `_statTipApi` (declared beside
+    `_dpPeek`, assigned in `_initStatTooltip()`): `_dpShowPeek()` calls
+    `yieldTo(el)`, which hides an own card whose element contains the link,
+    or the link's own `data-mbtt` card (stash kept, hover not dismissed);
+    `_dpHidePeek()` calls `resume()`, which shows an own card again after the
+    usual delay (a link's `data-mbtt` card at once, as it first showed) if
+    the pointer is still on its element and the hover was not dismissed by a
+    mousedown. Pinned for `data-mbtt` by `sidebar-search-card.spec.js`
+    "HOVER STACK" (three mutations in `sidebar-search-card.json`). `_showOwn()`
+    also returns while a card is DUE for a link inside its element. That
+    guard only removes a moment in between, since both timers use
+    `sa_rich_tooltip_delay_ms`, so its mutation is `"expect": "pass"`.
+  - Writers respect the park: `_setTip()` on a parked element writes into
+    `data-mb-dp-saved-title`, and `_writeFindingAttrs()` counts a parked
+    title as the cell's title and removes it with the finding tip. Readers
+    that run only on a click (`_buildDiskCellData()` reading `cell.title`)
+    are safe: a mousedown hides the card, which restores the titles first.
+  - **Entity glyphs** (`_MB_KIND_ICON`, `_mbKindIconUrl()`): MusicBrainz's own
+    `/static/images/entity/<stem>.svg`, same origin, browser-cached, outside
+    the WS/2 rate gate. Probe 2026-10-16 (vzell-lap, curl): artist, release,
+    release_group, recording, work, label, area, place, event, series,
+    instrument, genre, collection and editor answer 200; url, isrc, iswc,
+    cdtoc and `release-group` answer 404. Those kinds have none. The card
+    (superseded 2026-10-21, see "The kind line" below): ~~`_dpAddKindIcon()`
+    prepends `img.mb-pop-kind-icon` to the first `.mb-tt-title`~~. The window: `_dpShowInDialog()`
+    puts `img.mb-dp-kind-icon` INSIDE the title-bar span, before the kind path
+    (the current kind's glyph). Inside, because the bar is `space-between`, so
+    a sibling `<img>` would leave a gap; the span's text stays the kinds alone.
+  Covered by `popup-mb.spec.js` "the note stack and the entity glyphs (WIP.1)"
+  and its "only repeats its name" control; mutation list
+  `gpe-art-viewer.json`.
+  - **The kind line (`.mb-pop-kind-head`, 2026-10-21, mockup
+    https://claude.ai/artifact/JekitWKi2rFCiC7r3HYzru variant A).** The
+    card's first child: the glyph (when there is one) and the kind, a small
+    version of the window's title bar, with a hairline under it.
+    `_dpAddKindHead()` adds it to `#mb-dp-peek` after EVERY paint (show and
+    repaint, in `_dpShowPeek()`): a repaint replaces the card's HTML and the
+    line with it. It replaced `_dpAddKindIcon()`, so the glyph is no longer
+    inside the title. The text is `_dpKindLabel(t)` (`t.kind || t.src.kind`),
+    which `_dpShowInDialog()` reads for its path too, so the card and the
+    window never name different kinds. EVERY source gets the line, the other
+    sites' cards included ("Discogs release", "Wikipedia", "Detail page"),
+    without a glyph, since `_mbKindIconUrl()` returns '' for them. The release
+    page's own release-group sources (`_rgLinkSource()`, `_eventRgSource()`,
+    `_MB_RG_SOURCE_IDS`) do get the release-group glyph, in the window too.
+    `_mbPopCardShell()`'s loading and failed shells no longer repeat the kind
+    as a `.mb-tt-comment` under the title. A kind's own comment line ("Rejected
+    edits · editor", "Discogs · release") stays: it says more than the kind.
+    Covered by `popup-mb.spec.js` "the kind line…", `popup-ext.spec.js`
+    "names link their Discogs pages…" and
+    `release-event-colours-rg-tooltip.spec.js` "\"#\" card, main event";
+    mutation list `popup-card-kind-head.json`.
+    **Every box of the note stack has one too** (vzell, 2026-10-21: "there
+    should also be a thin horizontal line after the header line"):
+    `_dpCollectNotes()` gives each note a `label` ("Finding" for a finding's
+    tip, `data-mb-finding-tip`; "Note" for any other tip or title of the
+    cell; "Track ≠ recording"; "Link title"; "Link" for the link's own
+    `data-mbtt` card and a Relationships icon's box; "Filter"), and
+    `_dpFillNotes()` writes it with `_dpPrependKindHead()`, the helper
+    `_dpAddKindHead()` uses too (a box with a `target`, the "#" cell's
+    event, gets that target's line, glyph included). One CSS rule,
+    `:is(#mb-dp-peek, #mb-dp-notes .mb-dp-note) > .mb-pop-kind-head`, draws
+    the line and its hairline for all of them.
 - **The track/recording name note (`#mb-dp-origin`, 2026-10-09).** jesus2099's
   "mb. INLINE STUFF" gives a release page's recording link a native
   `title="track name: …\n≠rec. name: …"` when the track is named differently
@@ -443,9 +610,28 @@ floating hover tooltip.
     every parked title, including any clone a re-render made of the row
     meanwhile. It sweeps the document only after a stash
     (`_dpPeek.stashed`), so a hide costs nothing on a page without notes.
-  - Only the note is parked, because only the note has a box of its own. A
+  - ~~Only the note is parked, because only the note has a box of its own. A
     link's other titles (MusicBrainz's sort names, other scripts') stay; a
-    mutation pins this.
+    mutation pins this.~~ Superseded by the note stack (above, WIP.1): every
+    title has a box now, and every title is parked.
+  - The box is now a child of `#mb-dp-notes` (the stack above), built by
+    `_dpFillNotes()`; `_dpPlacePeek()` places the whole stack.
+  - **The diff view (2026-10-17, org/TODO.org "the rich tooltips should show
+    track/recording differences below each other").** `_dpOriginHtml()`
+    renders the two names with `_cmpHtml()`: one under the other, only the
+    differing runs marked (`mark.mb-tt-cmp-d`, in both rows), and a summary
+    line in plain words. The diff (`_cmpDiff()`) is a token LCS refined
+    letter by letter inside a replaced pair of similar words, with
+    diff-match-patch's "semantic cleanup" idea; below 40 % shared text
+    nothing is marked. The same renderer serves every comparison tooltip:
+    the findings that name two values, the length mismatch
+    (`_cmpLenCardHtml()`), the one-row `kind: 'mark'` card of a truncated
+    title (`_cmpMarkHtml()`), the window badge's tip and a foreign site's
+    original title, through `data-mb-tip-cmp` (see docs/claude/findings.md,
+    "compare rides beside detail"). The note stack shows them too: a cell
+    tip goes through `_tipTextToHtml()` there. No parser output changed, so no
+    `_DP_PARSER_VERSION` bump. Mockup:
+    https://claude.ai/artifact/7Nbqih988jfzpGxbiQTX75 (variant A).
   - `_titleHasRecNameMismatch()` (the 📊 flag and the ⚠️ finding) reads the
     title OR the parked attribute (`_dpOriginTitle()`), so a count, a stamp or
     a clone taken while a card shows still sees the flag.
@@ -540,7 +726,20 @@ same rate gate. ⟳ bypasses that memory. A new frame first loads an empty
 `about:blank` document whose `load` fires too, so the listener is attached
 only once `srcdoc` is set, and `_dpIsolateFrame()` also skips `about:blank`.
 
-`_dpIsolateFrame()` runs on the copy's load:
+`_dpIsolateFrame()` runs as soon as the copy is PARSED (since 2026-10-17):
+the frame runs no script and its new document exists only once the srcdoc
+navigation has started, so `_dpIsolateWhenParsed()` looks at it from this
+window every `_DP_LIVE_PARSE_POLL_MS` (50) for up to
+`_DP_LIVE_PARSE_WAIT_MS` (30 s); a document still `loading` is left alone,
+and the copy's `load` stays as the fallback. **Before, it ran on `load`, which
+waits for every image and stylesheet of the page**: a Brucebase year page
+names 260 images, and on a slow site the page stayed untrimmed and its show
+unmarked until the last one had come (found because the spec's Brucebase
+Live page test was not network-free: it failed whenever wikidot was slow). A
+`livePrepare` may return a function, which runs on that `load` (Brucebase:
+scroll to the show once more). Listeners added from this window to the
+frame's document DO fire (wheel, keydown, mousedown, scroll; probed
+2026-10-17), unlike the frame's own `setTimeout`. What it does:
 - it hides every sibling of the host's `liveRoot` and of each of its ancestors,
   plus the `liveHide` selectors. Both go through
   `html.mb-dp-isolate .mb-dp-hide`, which the "Hide the site's navigation" box
@@ -626,7 +825,11 @@ rate gate, and the raw-page memory the Live page view reads, so a hover then
 Live page costs ONE request — and parses it into a record kept like any card
 (`_mbLoad()`, the loader both kinds of card share; `_MB_POP_PAGE_VERSION`:
 **bump it when a page parser's output changes**). Paths: `_MB_POP_PAGE_RE`,
-the bare edit or profile only (not `/edit/<n>/data`, `/user/<name>/edits`).
+the bare edit or profile only (not `/edit/<n>/data`; `/user/<name>/edits` is
+an editing history since 2026-10-20, see below; an editor's other lists, edit
+searches, `/user/<name>/subscribers` and `/account/applications` since
+2026-10-21, section "an editor's lists, edit searches, subscribers and
+applications" below).
 
 - **`_mbParseEditPage()`** reads `.edit-header` (number, type; the editor, or
   "Editor hidden" when logged out), every `table.details` row (`td.old` +
@@ -657,6 +860,419 @@ preferences. Committed: the user's OWN applied edit (logged in, editor and
 note shown), an open edit captured LOGGED OUT (no other editor's name or
 notes), and the user's own profile logged out with its age, gender and
 location rows removed. Never commit another editor's profile.
+
+## MusicBrainz: tag cards, read from the page (2026-10-19)
+
+A tag is the third PAGE kind (`tag`, `_mbPopPageKind()`), beside the edit and
+the editor: the Web Service has no lookup of a tag by name. Lookups go by
+MBID, and the tag search answers names and scores only (MusicBrainz_API and
+MusicBrainz_API/Search, checked 2026-10-19). Its page, `/tag/<name>`, has
+everything the card needs in one request.
+
+- **Path:** `_MB_POP_PAGE_RE`'s third branch, `/tag/<name>` bare. The id is
+  the name percent-encoded as in the link (`tag:alternative%20rock`), like
+  `user`. Not previewed: the tabs (`/tag/<name>/artist`) and `/tags`. An
+  editor's own tag (`/user/<name>/tag/<name>`) is its own kind since
+  2026-10-21 (`usertag`, below with the editor's lists).
+- **`_mbParseTagPage()`** reads `#content`: the name from `.tagheader h1 a`,
+  the genre from the first `a[href^="/genre/"]` (only a tag that is a genre
+  has one), "N entities found", and per `h3` (one per entity kind, and only
+  for a kind that has entities) its list of the first ten. A kind's count
+  is the number in its "See all N …" `em > a` when there is one, otherwise
+  its list's length (Areas: two, no link). Text and `{type, id, name, extra}`
+  only, so it can be stored in IndexedDB for `sa_pop_mb_ttl_hours`.
+- **Card:** name, "Tag of the genre …" or "Tag", pills (Genre, the total),
+  the six largest kinds with counts (`_mbPopTagKinds()`: largest first).
+  **Window:** the genre (a link to `/genre/<id>`, new tab: genres are no
+  kind), the total, a Kind/Count table linking each kind's
+  `/tag/<name>/<slug>` (`_mbPopTagKindHref()`: the page's "See all" link,
+  else `SA_TAG_VALUE_CATEGORY_SLUGS`), and per kind its entities as plain
+  entity links, so they drill down (Phase 5).
+- **Where:** every `/tag/<name>` link, e.g. MusicBrainz's own
+  `ul.genre-list`/`ul.tag-list`, the "Sidebar" Tags card's pills
+  (`.mb-sb-pill`), tags tables. Outside a table body only with
+  `sa_pop_mb_page`, as for every kind. The pill's vote number is a SIBLING
+  of the link and has its own hover card (sidebar.md).
+- Fixture: `tests/fixtures/tag-page-alternative-rock.html`
+  (`scripts/fetch-mb-page-fixture.js /tag/alternative%20rock`). Specs:
+  `popup-mb.spec.js` "tags, read from the page", `sidebar-inline.spec.js`
+  "tag pills"; mutations `scripts/mutations/tag-reader.json`.
+
+## MusicBrainz: collection cards, read from the page (2026-10-20)
+
+The collection kind was a Web Service lookup until 2026-10-20; it is now a
+PAGE kind (`_mbPopPageKind()`, `wide: true`). The Web Service answers a
+collection's name, type, `type-id`, `entity-type`, `<entity>-count` and
+`editor` only — no description, no collaborators, no subscribers, neither in
+the lookup nor in `/ws/2/collection?editor=` (probed 2026-10-20). The page
+has them. Mockup picked 2026-10-20:
+https://claude.ai/artifact/KtfNY1XfjyJoPb8fGjLGeu (25 entries a window page,
+a pager, covers, eight entries on the card).
+
+- **Path:** unchanged, `_MB_POP_PATH_RE`'s `collection`. Key
+  `pop:page:collection:<MBID>`; page n > 1 of the window's pager is its own
+  record, `pop:page:collection:<MBID>:p<n>` (`_mbCollKey()`, `_mbCollLoad()`).
+- **`_mbParseCollectionPage()`** (selectors in DEBUG-NOTES.md, 2026-10-20 "what
+  a collection page holds"): the name from `.collectionheader h1`, public from
+  the subheader, the sidebar's Owner / Type / "Number of entities", the
+  collaborators from `div.collaborators` (always there, EMPTY when none), the
+  description from `div.description` through `_mbEditsHtml()` (the edits'
+  sanitizer: links kept, other userscripts' classes dropped), the entity kind
+  and plural from `#content`'s own h2, the rows and the page count. **Every
+  `table.tbl` is read**: a release group collection's page is one table per
+  release group type, each after its h3 ("Album + Compilation"); the first
+  alone held 65 of 100 rows, and the pager then asked for a page 3 that does
+  not exist. The h3 becomes a "Type" column in front. A row's entity is its
+  first link to a bare page of the table's kind; its cells are kept as safe
+  HTML except `_MB_COLL_SKIP_COLS` (Rating, Begin area, End area) and an
+  event's Artists. `.caa-icon` marks a row with artwork.
+- **Card:** pills (type, size via `_mbCollHolds()`, pages, public/private),
+  Owner, Collaborators, About (the description's text, clamped to two lines),
+  the first `_MB_COLL_CARD_ROWS` (8) entries in the two-column
+  `.mb-dp-tracks` list.
+- **Window:** facts and the whole description on the left; on the right
+  `_MB_COLL_WIN_ROWS` (25) entries in `_mbPopTableHtml()` (never `tbl`) with
+  ◀ ▶ (`_mbCollAreaClick()`, `_mbCollUi`). A MusicBrainz page holds 100, so
+  slices 1–4 cost nothing and slice 5 reads `?page=2` — only then
+  (`__saTest.mbPopStatus()` lets the spec show page 2 was not even started).
+  Release and release group collections show the slice's covers as
+  `coverartarchive.org/<kind>/<MBID>/front-250` images, only for rows the
+  page marks with `.caa-icon`: no CAA API request, and only in the window
+  (Space), never on a hover.
+- **No editing history** (H, "✎ Editing history"): a collection's
+  `/collection/<MBID>/edits` says "Found 0 edits" logged in and did not load
+  within 90 s logged out (probed twice, 2026-10-20), so `_mbEditsSubject()`
+  still returns null for it. The window does not link "Open edits" /
+  "Editing history" either.
+- **Never read:** the pending-edits count beside "Open edits"
+  (`.jesus2099PendingEditsCount`), the "PRINT ALL PAGES" item in the
+  pagination (the page count comes from `a[href*="page="]` only), flag
+  markup in the description (`_MB_EDITS_FOREIGN_CLS`).
+- Fixtures (`scripts/fetch-mb-page-fixture.js`, 2026-10-20):
+  `collection-page-coverart-video.html` and `-p2.html` (chaban's public
+  "Cover art: Video", committed with the user's consent),
+  `collection-page-attending.html` (the user's own, empty). Specs:
+  `popup-mb.spec.js` "ISRC, ISWC, disc ID, collection" (five collection
+  tests), `popup-mb.mobile.spec.js` (tap and ▶); mutations in
+  `scripts/mutations/popup-mb.json`.
+
+## MusicBrainz: an entity's editing history in the window (2026-10-20)
+
+Plan, probe and decisions: `org/mb-edit-history.org`; mockups (real parsed
+edits): `org/mb-edit-history-mockups.html`. **✎ Editing history** in the
+window's header (`hist` in `_dpDialog.controls`, key **H** in
+`_dpDialogKeys()`) shows the `/…/edits` page of what the window shows, in the
+same window, with the look of a Discogs release's history
+(`_extDgHistSectionsHtml()`, above): `_dpOpenEdits()` pushes the current
+target on `_dpDialog.stack` and shows an `edits` target, so ← Back,
+Backspace, Alt+← and the kinds-path title need nothing new.
+
+- **Who has one: `_mbEditsSubject(t)`.** Read from the target's own
+  MusicBrainz URL (`t.src.liveUrl(t)` against `_MB_POP_PATH_RE`), so a
+  release group shown by the release-group sources counts too; every MBID
+  kind but a collection ("Found 0 edits": collections are not edited
+  through edits, probed); an editor (`user` kind) → `user/<name>`. Null on a
+  foreign host and while `sa_pop_mb` is off (the history is one of its
+  cards, and `_dpRenderDialog()` refuses a disabled source). The button is
+  hidden wherever it is null, the history itself included.
+- **The kind: `_MB_KINDS.edits`**, id `<kind>/<MBID>` or `user/<name>`,
+  `path()` → `/<id>/edits`. `_MB_POP_EDITS_RE` makes the page's links
+  targets too (`_mbPopParsePath()` returns `seg: ''` so `_mbPopTarget()`
+  takes the kind's `path()`): the sidebar's "Editing history" and the editor
+  window's "Their edits" get a card (`card`: subject, total, latest edit,
+  commonest types) and open the same window.
+- **Pages: one record each**, `pop:page:edits:<id>:<n>` (`_mbEditsKey()`),
+  through `_mbPageLoad()` (the one MusicBrainz gate, `_dpRawMem`), 50 edits
+  a page. `_mbEditsUi` (per id, this page load) holds the chips, the order,
+  the selection, "Only what changed" and how many pages are read;
+  `_mbEditsPages()` collects them and the next one's state; "Load page N"
+  (`data-mb-meh-act="more"`) asks for it; ⟳ (`force`) re-reads page 1 and
+  starts over at one page. **`keep`: no entry `open`** — a page holding an
+  open edit stays in memory only, as an open edit's card. A busy entity says
+  "Found at least 500 edits" and links pages 1–10, deeper pages raising both
+  (probed), so with `atLeast` the footer has no "of M".
+- **The parser: `_mbParseEditsPage()`**, null without "Found (at least) N
+  edit(s)" in `#content .search-toggle` (a login page, the browser check).
+  An entry per `div.edit-list` with an "Edit #N - Type" link, deduped by
+  number (another userscript nests batch members inside a summary block on
+  the LIVE page; fetched pages never carry it, so that guard is unseen by
+  the specs and recorded so in the mutation list). Rows
+  (`_mbEditsRows()`): `td.old`+`td.new` → diff; `th[rowspan=2]` over an old
+  row and a new row → one diff (edit relationship); nested old/new tables
+  in a value → one diff per track ("Track N", set track lengths); an
+  Old/New table in a value → its halves (`_mbEditsSplitTable()`: an edit
+  medium's "Old tracklist | New tracklist", artist credits' "# | Old artist
+  | New artist"); "Old X"+"New X" values → one diff (reorder art); anything
+  else a value, a context row once the edit has a diff; `same` when both
+  sides read alike. The summary line and the editor's own note are worked
+  out here, so the render is strings only.
+- **The sanitizer: `_mbEditsHtml()`** keeps what a node HOLDS, never its
+  own tag. Links stay MusicBrainz paths (a plain click drills, `_dpDrill()`;
+  `/edit/N` opens the edit card, `/user/x` the editor's); **a nested table
+  is `table.mb-meh-sub`, never `tbl`** (every global `table.tbl` query of
+  the script would count the window's content; the RG test pins the count);
+  artwork only from the two archives, from the `<noscript>` thumbnail (a
+  DOMParser document runs no script, so `<noscript>` is markup), its link
+  `a.mb-meh-art`, numbered `data-mb-artv-ext` when the pane is built so
+  `_dpArtViewerClick()` opens the viewer; `diff-only-a`/`-b` →
+  `mb-dgh-rem`/`-add`; other userscripts' markup dropped by class prefix.
+- **The window: `_mbEditsWindowHtml()`.** The subject and "MusicBrainz says"
+  (edits and pages read, latest, first or oldest read, statuses when mixed,
+  editors); `_extDgSection('meh-hist', …)` with category chips, status chips
+  only when mixed, Newest/Oldest, rows in a list that scrolls on its own
+  (`.mb-meh-list`, `data-mb-keep-scroll`), so the pane stays under it, and
+  the footer; `_extDgSection('meh-diff', …)` = `_mbEditsPaneHtml()`: a facts
+  line, the OLD | NEW grid (`mb-dgh-diff mb-meh-diff`; a merge Merge | Into)
+  or one column ("Added", "Removed", "Details"), the legend, the notes, "Only
+  what changed" (default on: hides context rows after the first and `same`
+  rows, never MusicBrainz's own "Note" row; says so when nothing visible
+  changed), and `Edit #N` (a link, so the drill). **The grid's column border
+  goes by class (`.mb-meh-n`), not Discogs' `nth-child(even)`**: a context
+  row spans both columns and shifts the parity.
+- **Clicks and keys.** `_mbEditsAreaClick()` (the kind's `onAreaClick`):
+  section heads through the Discogs windows' `_extDgCollapsed`, then
+  `data-mb-meh-act` = group | status | order | only | sel | more. A row is a
+  `role="button"` with `data-mb-keep-focus`; `_mbEditsRowKeys()` (from
+  `_dpDialogKeys()`): Enter selects, ↑ ↓ move and select — **by a click on
+  the row, which repaints and detaches it mid-dispatch**: that closed the
+  dialog until `createInfoDialog()`'s outside-click check also asked
+  `e.composedPath().includes(dialog)` (2026-10-20). A mouse click survived
+  only by the `_lastMousedownInDialog` flag; a keyboard click (Enter on a
+  focused chip of ANY window that repaints, the Discogs history's included)
+  has no mousedown.
+- **Failures.** `_mbPageLoad()` names MusicBrainz's "Verifying your browser"
+  page (`_mbIsBrowserCheck()`, `_MB_BROWSER_CHECK_NOTE`) for every page
+  card, instead of "not the page expected". Logged out, MusicBrainz hides
+  every editor and sends no notes (`editorHidden`, `notesHidden`), and the
+  window says so.
+- **Glyph.** `_mbKindIconUrl()` gives an `edits` target its subject's icon.
+- **Tests:** `tests/fixtures/popup-mb-edits.spec.js` (PATH, BUTTON, DIFF,
+  SPLIT, ONLY, ADDED, RG, KEEP, EDITOR, NONE, LOGGEDOUT, CHECK) and
+  `popup-mb-edits.mobile.spec.js`; fixtures `tests/fixtures/edits-page-*.html`
+  (real pages, scrubbed by `scripts/fetch-mb-page-fixture.js`; logged in, so
+  they name other editors, with the user's consent, answer 6); mutations
+  `scripts/mutations/popup-mb-edits.json`. Research scripts:
+  `scripts/probe-mb-entity-edits.py`, `scripts/inventory-mb-edits.js` (the
+  prototype parser `scripts/lib/mb-edits-parser.browser.js` over saved pages:
+  39 edit types), `scripts/show-mb-edits-samples.py`,
+  `scripts/build-mb-edit-history-mockups.py`.
+
+## MusicBrainz: an editor's lists, edit searches, subscribers and applications (2026-10-21)
+
+The links of a profile's statistics (`user-profile`, rendered by
+`applyUserProfileToTables()`): "view", "N%", "View all", "view list", and
+(9.99.1408) the "Tags and ratings" sub-section's tags and ratings. All are read
+from the page (no Web Service), through `_mbPageLoad()`.
+
+- **Edit lists are the `edits` kind.** `/user/<name>/edits/<status>` (the
+  seven statuses the profile links: open, accepted, autoedits, applied,
+  rejected, failed, cancelled), `/user/<name>/votes` and `/search/edits?…`
+  are the same page as an editing history ("Found N edits",
+  `div.edit-list`, the same pager; captured logged in 2026-10-21), so they
+  reuse `_mbParseEditsPage()` and the whole window unchanged.
+  - **Id = the page path** (`_MB_POP_EDITLIST_RE`), or path + query for a
+    search (`_mbEditsSearchId()`: the query as the link spells it, minus
+    `page=`). A history's ids (`<kind>/<MBID>`, `user/<name>`) and cache
+    keys are unchanged. `_mbEditsPagePath(id)` / `_mbEditsUrl(id, n)` build
+    the page (`&page=n` after a search's own query).
+  - **A search is a target only with `conditions.` and without
+    `form_only=`**: the empty form (the header's "Edit search") and an edit
+    list's "Quick links" to the prefilled form list nothing.
+    `_mbPopParsePath(pathname, search)` takes the query for this one case;
+    `_mbPopTarget()` and `_mbPopStampHref()` pass it.
+  - **Names: `_mbEditsLabel(id)`** gives the window's title (`titleOf` on the
+    kind: "Rejected edits", "Votes", "Edit search"), the card's comment, the
+    window's subline, the empty-list line and the glyph. A list's own
+    heading ("Rejected edits by vzell") is NOT read: the name comes from the
+    id, so `_mbParseEditsPage()`'s subject regex stays "(Open )Edits by".
+  - **`keep`**: a status list or votes as a history (no open edit → kept for
+    `sa_pop_mb_ttl_hours`); **an edit search memory-only**, whatever it holds,
+    since its conditions may be relative ("24 hours ago").
+  - No "✎ Editing history" on a list: `_mbEditsSubject()` returns null, as
+    for a history.
+- **`subscribers`** (`_MB_POP_ACCOUNT_RE`, id the name):
+  `_mbParseSubscribersPage()` reads the section after `h2` "Subscribers"
+  (`_mbPopH2Section()`; the page has no `#content`): the editor links of its
+  `ul`, "Plus N other anonymous users", "There are currently N users". Card:
+  the count, the anonymous count, the first 12 names; window: every editor
+  linked, so a click drills to their card.
+- **`applications`** (`_MB_POP_ACCOUNT_RE`, id `me`; only the logged-in
+  owner sees the page, else a login page → `failNote`):
+  `_mbParseApplicationsPage()` reads the "Authorized applications" and
+  "Developer applications" sections and the digest-auth line. **Only the
+  `_MB_APPS_COLS` columns, as text** (Application, Name, Access, Last granted
+  token, Type): the Actions cell is "Revoke access", a GET link that revokes,
+  and a developer application's row holds its OAuth client id and secret.
+  The real page had no developer table on capture, so the APPS spec plants
+  one with "OAuth Client ID"/"OAuth Client Secret" columns and asserts
+  neither value reaches the window. **Memory-only** (`keep: () => false`).
+- **`usertags`** (`/user/<name>/tags`, `_MB_POP_ACCOUNT_KINDS`, id the
+  name): `_mbParseUserTagsPage()` needs the h2 "Tags <name> upvoted" and
+  reads `#all-tags ul.genre-list > li` and `ul.tag-list > li` (name +
+  `span.tag-count`); one page, no pager (112 tags on capture, their counts
+  sum to the profile's "Tags upvoted 347"). Card: tags, genres, votes, the
+  ten most used together; window: both lists by count, each tag linked to
+  the GLOBAL `/tag/<name>` so it drills into the tag card (written when the
+  editor's own `/user/<name>/tag/<name>` was no kind; it is `usertag` since
+  2026-10-21, the window's links stay global). `?show_downvoted=1` returns null in
+  `_mbPopParsePath()`: another list than the page read, never seen live
+  (the account has 0 downvotes, so the profile links none).
+- **`usertag`** (`/user/<editor>/tag/<tag>`, 2026-10-21, vzell: "tag detail
+  popup support on PTs like /user/vzell/tags when hovering the tag
+  anchors"): `_MB_POP_USERTAG_RE`, checked in `_mbPopParsePath()` after the
+  account pages and before `_MB_POP_PAGE_RE`; the id is `<editor>/<tag>`,
+  both as the link spells them, and `path()` puts `/tag/` back between them.
+  Not previewed: its kind pages (`…/tag/<tag>/release`) and
+  `?show_downvoted=1`. The page is fullwidth, WITHOUT `#content`
+  (`tests/fixtures/user-tag-page-vzell-{live,acoustic-rock,gig}.html`,
+  `scripts/fetch-mb-page-fixture.js`, anonymous, 2026-10-21T21:54+02:00,
+  NB-3641): h1 the editor, h2 "Entities <editor> tagged as “<a
+  href=/tag/…>”", then the same "N entities found" and h3/`ul`/"See all N"
+  body as `/tag/<name>`. So `_mbParseTagPage()`'s body moved into
+  `_mbParseTagSections(root)`, which both parsers call
+  (`_mbParseUserTagPage()` with `#page`), and the window into
+  `_mbPopTagWindowHtml(d, base, head, empty)`, `base` being the page path
+  `_mbPopTagKindHref(base, s)` builds a kind's page from. Card: the tag,
+  "<editor>’s tag", the total, the kinds by count and the first
+  `_MB_POP_USERTAG_CARD_ROWS` (6) entries with "+ N more". Window: Editor,
+  Entities, Everyone's (`/tag/<tag>`, a drill into the tag card), then the
+  tag window's kinds. Glyph: the editor's (`_MB_KIND_ICON`). Specs:
+  `popup-mb-user-lists.spec.js` "USER TAG: …" (on the tags page before and
+  after its render), PATH; mutations `scripts/mutations/popup-user-tag.json`.
+- **`userratings`** (`/user/<name>/ratings`): `_mbParseUserRatingsPage()`
+  reads per h2 "<Kind> ratings" its `ul > li`: `.current-user-rating` (1–5),
+  the first link to a bare entity page outside `.inline-rating`, the rest of
+  the item's text with `.inline-rating` removed, and the "View all ratings"
+  link. **The stars are `/rating/rate/?…` GET links that change the
+  rating**: never copied (the window draws ★/☆ text). The page shows a few
+  per kind, so the counts say "shown".
+- Fixtures (`scripts/fetch-mb-page-fixture.js --auth`, then
+  `scripts/anonymize-user-fixtures.py`, which replaces the subscribers' names
+  with editor-1… and blanks developer-application cells):
+  `edits-page-user-vzell-{rejected,open,votes}.html`,
+  `edits-page-search-type.html`, `subscribers-page-vzell.html`,
+  `applications-page-vzell.html`, `user-{tags,ratings}-page-vzell.html`.
+  Spec: `popup-mb-user-lists.spec.js` (PATH, STATUS, EMPTY, VOTES, SEARCH,
+  SUBS, APPS, TAGS, RATINGS), one tap test in
+  `popup-mb-edits.mobile.spec.js`; mutations
+  `scripts/mutations/popup-user-lists.json` (14, all caught).
+
+## MusicBrainz: an entity's subscribers and collections (2026-10-22)
+
+The sidebar's "Subscribers" (`/<kind>/<MBID>/subscribers`) and "Found in N
+user collections" (`/<kind>/<MBID>/collections`) links. Both are read from
+the page (`_mbPopPageKind()`). Those pages are also pageTypes since the same
+branch (PAGETYPES-TESTING-REFERENCE.org #115–#127).
+
+- **Path:** `_MB_POP_ENTITY_LIST_RE`, checked in `_mbPopParsePath()` after
+  the account pages. The id is `<kind>/<MBID>`, with the MBID lowercased.
+  - Subscribers exist only for `_MB_POP_SUBSCRIBABLE` (artist, label,
+    series, collection).
+  - Collections exist for every collectable kind except a collection.
+  - Any other combination is `null`: no card rather than one that can only
+    fail.
+- **`subscribers` is the editor's kind, widened.**
+  - `path()` tells the two cases apart by `_mbPopListOf(id)` (the entity
+    kind, or '' for an editor's name).
+  - The card's and window's kind word comes from the same function.
+  - `_mbParseSubscribersPage()` takes the name from the h1's editor link, and
+    otherwise from the h1's first `<bdi>`: an entity page's h1 links nothing.
+  - The page shape is the same, except it sits inside `#content`, which
+    `_mbPopH2Section(#page)` reaches anyway.
+- **`collections`** (`_mbParseEntityCollectionsPage()`):
+  - It reads `#content`'s h2 "Collections". **The sidebar has an h2
+    "Collections" of its own** (the reader's collections, "Add to a new
+    collection"). It comes later in the document, so the first match is
+    already right. Reading `#content` makes that explicit, and the mutation
+    is recorded as `expect: pass`.
+  - The total is the `<p>`'s "has been added to N collections" (N includes
+    the private ones). The private count comes from the last `<li>`. An
+    empty page ("has not been added to any collections", no `<ul>`) falls
+    back to the counted rows, 0.
+  - The card shows pills, then the first `_MB_POP_COLLS_CARD_ROWS` (8) as
+    "name by owner".
+  - The window has a Collection | Editor table, both linked, so a click
+    drills into the collection's or the editor's card.
+- **Glyph:** both kinds are in `_MB_KIND_ICON_FROM_ID`, which now applies
+  only to an id containing `/`. An editor's subscribers (the id is the name)
+  keep the editor glyph.
+- **No `_MB_POP_PAGE_VERSION` bump.** An editor's subscribers record is
+  unchanged, and the entity records are new keys.
+- **Fixtures:** `entity-artist-subscribers.html` (the host: its sidebar holds
+  the real snapshot's two links), `entity-artist-collections.html` and
+  `entity-release-collections-empty.html`, all built by
+  `scripts/make-entity-list-fixtures.py`.
+- **Spec:** `popup-mb-entity-lists.spec.js` (PATH, SUBS, COLLS, EDITOR,
+  EMPTY).
+- **Mutations:** `scripts/mutations/popup-entity-lists.json` has 12 entries.
+  10 are caught; 2 are recorded as `pass`: the total is covered by the
+  fallback on this page, and the `#content` scope by document order.
+
+## MusicBrainz: an annotation's history and its versions (2026-10-21)
+
+An annotation's own line ("View annotation history | Edit annotation", in
+`.annotation-details`), the sidebar's "View annotation history" and every
+"View this version" / "View current revision" link get a card and a window.
+Two kinds read from the page (`_mbPopPageKind()`), both found by
+`_MB_POP_ANNOT_RE` in `_mbPopParsePath()` for the eleven annotated entity
+kinds (no `url`, no `collection`); `edit_annotation` and
+`annotations-differences` do not match (the pattern is anchored).
+
+- **`annotations`** (`/<kind>/<MBID>/annotations`, id `<kind>/<MBID>`, the
+  shape of an `edits` id). **Probed 2026-10-21: MusicBrainz shows this page
+  to a logged-in editor only** — logged out the page never loads, so a
+  fixture needs `--auth` and a login page is the `failNote`.
+  `_mbParseAnnotationsPage()` reads `table#annotation-history` (by header:
+  "Date", "Version history"; editor = the row's `/user/` link; changelog =
+  the history cell without its link, "(no changelog specified)" → '') and
+  takes each version's TEXT from the page's own JSON inside the form
+  (`annotations[].html`, keyed by `id`). Card: versions, the latest date,
+  editor, changelog and the first three blocks; window: the latest text and
+  every version ("Version N", newest first as the page lists them), each
+  linked to its `/annotation/<n>` so a click drills into the `annotation`
+  kind, each editor to `/user/<name>`.
+- **`annotation`** (`/<kind>/<MBID>/annotation/<n>`, id `<kind>/<MBID>/<n>`;
+  the current one at `/<kind>/<MBID>/annotation`, id `<kind>/<MBID>`;
+  `titleOf` says "Annotation version" or "Annotation"). Shown to anyone.
+  `_mbParseAnnotationVersionPage()` reads `div.annotation`: the body, "Changelog:",
+  and `.annotation-details`. **Logged out, an old version's line reads like
+  the current one's** ("Annotation last modified on <date> UTC.", logged
+  in "This is an old revision … as edited by <editor> on <date>."), so
+  old/current is decided by the page JSON's `annotation.id` against
+  `entity.latest_annotation.id`, and the editor comes from
+  `annotation.editor.name` when the line names none. **The header has a JSON
+  script of its own first** (`{"entityType":…,"gid":…}`): the parser looks
+  for the one with an `annotation` key.
+- **Text only, never markup.** `_mbAnnotationBlocks()` turns a rendered body
+  into `{h}` / `{p}` blocks of `textContent` (a `<br>` kept as a newline, a
+  list item as "• …"); `_mbAnnotationHtml()` escapes them. The JSON's `html`
+  is parsed in an inert `DOMParser` document. So a link inside an
+  annotation is its text in the card; the SAFE spec plants an `<img
+  onerror>` and asserts it neither reaches the window nor runs.
+- **Glyph:** `_MB_KIND_ICON_FROM_ID` — both kinds show the glyph of the
+  entity named by the id's first segment.
+- Fixtures (`scripts/fetch-mb-page-fixture.js`, release 3ec14d03-…):
+  `release-annotations-history.html` (`--auth`),
+  `release-annotation-version.html` (version 810603) and
+  `release-annotation-current.html` (logged out). Spec:
+  `popup-mb-annotations.spec.js` (PATH, HISTORY, VERSION, CURRENT, LOGIN,
+  SAFE) on `release-tracks-sidebar-search-links.html`; mutations
+  `scripts/mutations/popup-annotations.json` (9, all caught).
+- **The version page itself** (2026-10-21, 9.99.1415) is the pageType
+  `annotation-version` (PAGETYPES-TESTING-REFERENCE.org #114): its button
+  runs `applyAnnotationCompareToTables()`, which reads the SAME page JSON
+  through the shared `_mbAnnotationPageData()` (the preview's parser uses it
+  too) and builds "This version" (Field | Value) and "Compared with the
+  current version" (`_annotationCompareRows()`: an LCS of equal blocks, the
+  gaps paired by kind as "changed", the rest "only in this version" / "only
+  in the current version"). A changed row's status is a SPAN with the rich
+  card (`_setTipCmp()`): a disk file keeps a cell's markup but only listed
+  `<td>` attributes, so a card on the `<td>` came back empty after Load
+  from Disk. No disk-load hook: the file's groups render as saved. Spec
+  `annotation-version-compare.spec.js`; mutations
+  `scripts/mutations/annotation-version-compare.json` (8; the fetched-copy
+  hook is `expect: pass` — a non_paginated page is read from the live
+  document).
 
 ## MusicBrainz: beyond table links (org/iframe.org, Phase 4)
 
@@ -763,8 +1379,17 @@ generalize to URLs".
   U3's live spec hovered it no such link had a card at all; https is also
   how MusicBrainz stores it. Not the MetaBrainz family or the artwork archives
   (`_EXT_SKIP_HOST_RE`), not a share button (`_EXT_SKIP_URL_RE`), not around
-  `img:not(.avatar)`, not in `_EXT_SKIP_SEL` (chrome, `td.mb-rel-cell`, the
-  card and the window, `_MB_POP_PAGE_SKIP`). Scope: `_EXT_SCOPE_SEL` (table
+  `img:not(.avatar)`, not in `_EXT_SKIP_SEL` (chrome, the card and the
+  window, `_MB_POP_PAGE_SKIP`). **A Relationships column icon is the
+  exception to both (2026-10-17):** it is an image link that IS the link, so
+  it gets the card, named by its site (`_relLinkName()`, the icon's text is
+  its hidden filter key), and `_dpCollectNotes()` gives it the icon's own
+  boxes (`_relStackParts()`: the filter box while a filter matches the
+  cell, then the icon box) instead of its bare title and the cell's "click
+  outside the icons" hint; `_dpShowPeek()` hides the column's own stack
+  (`_relHideTooltip()`), whose timer also yields while `_dpPeek.link` is the
+  icon. Mockup https://claude.ai/artifact/NonAS8iqfjSMRUaXojzSnT;
+  `rel-icons.spec.js`, mutations `rel-icons.json`. Scope: `_EXT_SCOPE_SEL` (table
   bodies, `table.details`, `.annotation`, `ul.external_links`), plus `#page`
   with `sa_pop_mb_page` — a getter, read at every event.
 - **Fetching: `_extFetch()`, never `fetch()`** (another origin, no CORS):
@@ -779,7 +1404,11 @@ generalize to URLs".
   transient status.
 - **One rate gate per HOST: `_extAwaitSlot(host)`** (`_extSpacingMs(host)`:
   `_EXT_SPACING_MS`, except Discogs' API since U3), reserved synchronously. Never `_relAwaitRateSlot()`: another site, another
-  budget. `__saTest.extRateSlotWaitMs(host)` reads it.
+  budget. `__saTest.extRateSlotWaitMs(host)` reads it. **Discogs' API is
+  shared by every tab** since 2026-10-19 (`_EXT_SHARED_SLOT_HOSTS`: its next
+  slot also in GM storage, a 429 or `X-Discogs-Ratelimit-Remaining: 0` pauses
+  every tab for a minute, up to `_EXT_SHARED_TRIES` asks): see
+  docs/claude/discogs.md, "Discogs' request limit, shared by every tab".
 - **First contact (answer 7).** With only `@connect *` covering a host,
   Tampermonkey asks the user once before the first request to it (X9, B1).
   So `_extCard()` makes NO request for a host that is neither in
@@ -1019,13 +1648,131 @@ subdomain, matched by `endsWith`), so a hover loads them from the first time.
   styles, track count, the primary image; a master links its main release.
   Artist/label: name (Discogs' " (2)" suffix dropped), the profile with
   Discogs' markup removed (`_extDiscogsText()`: `[a=…]`, `[l123]`, `[url]`),
-  real name, members, groups, parent label, sublabels. `noLive`: the page is
+  real name, members, groups, aliases (since 2026-10-18), parent label,
+  sublabels — as counts on the card (`cardFacts`). `noLive`: the page is
   another host than the API's, which Tampermonkey would ask about, and the
   API says more. **Rate: `_extSpacingMs()`** — 2.5 s apart without a token
   (25 a minute, Discogs' own `X-Discogs-Ratelimit`, U0 X4), 1 s with one (60:
   the same header answered 60 to `Authorization: Discogs token=…`, probed
   with the user's token 2026-10-08 12:09Z, which also confirms the header
   form).
+- **The Discogs window (2026-10-17, mockup
+  https://claude.ai/artifact/49tucEnfghTCMtyvwN6qaM, layout A).** A release
+  or master record keeps `rec.discogs` (`_EXT_DISCOGS_VERSION` 2 on top of
+  `_EXT_IDB_VERSION`, the reader's own `version`, so only Discogs records are
+  read again): the tracklist with each track's `extraartists`, the images
+  (`_extDiscogsImages()`), the notes; a release also companies, credits,
+  identifiers, videos, and the facts "Community" and "Data quality" (after
+  `_EXT_CARD_FACTS`: window only). Same answer, no request more.
+  Rendering goes through three optional READER hooks, so `_extExtracted()`
+  and `_extCard()` stay generic: `window(t, rec, {start, force, repaint})`
+  → `{left, right, full}` (`_extDiscogsWindow()`), `cardExtra(t, rec)`
+  (`_extDiscogsCardExtra()`), and `onAreaClick`/`onAreaInput`, reached from
+  the dialog's delegated listeners through `_extSource()`. Sections are
+  collapsible (`_extDgCollapsed`, page load, across Discogs windows); the
+  per-target state (open track credits, filter, chips, sort, the load run)
+  is `_extDgUi`. **Names are links** (vzell, 2026-10-17, after trying the
+  branch): every artist, label and company keeps its Discogs `id`
+  (`_EXT_DISCOGS_VERSION` 3) and `_extDgLink()` links `/artist/<id>` or
+  `/label/<id>` (id 0: plain text); the facts' "Artist" and "Label" go
+  through a fifth reader hook, `factsHtml(t, rec, facts)` (the card keeps
+  `_dpFieldsHtml()`'s plain text). A click drills down like a version's row.
+  **The title says what the link is**: a sixth hook, `kindFor(u)`, gives the
+  target its `kind` ("Discogs release" …, `_extDiscogsKind()`), so a
+  drill-down's path reads "Discogs master › Discogs release"; `rec.subtitle`
+  ("Discogs · master release", as the mockup had it) replaces `siteName`
+  under the title in card and window, while "Discogs says" keeps `siteName`.
+  A VERSION's label has no id (the versions rows carry `catno, country,
+  format, id, label, major_formats, released, resource_url, stats, status,
+  thumb, title`; checked 2026-10-17), so it links Discogs' label SEARCH
+  (`/search/?q=<name>&type=label`, vzell's pick), `a.mb-dg-label`, new tab:
+  `_extDgDrill()` takes only the Discogs reader's pages, so a click on it
+  never opens the search in the window.
+  The cover links the full primary image (`rec.imageFull`)
+  and is the same file as the gallery's first: `_dpArtViewerClick()` counts
+  a URL once.
+  **Versions** (`_extDgListLoad()` on `_EXT_DG_LISTS.versions` since
+  2026-10-18, key `ext:discogs-versions:<master>:<page>`): `masters/<id>/versions`, 100 a
+  page — `per_page` is capped at 100 (probe 2026-10-17,
+  `scripts/probe-discogs-versions.py`: master 26725 = 387 versions, 4 pages
+  of ~76 KB; page 1 carries `filters.available`, counts for ALL versions).
+  Page 1 when the window starts — or, the `_rgWindowFor()` exception, on the
+  repaint that brings the master's own record when the window loaded it (a
+  tap: no card before), once, while page 1 has no state. Never from a card
+  (`wanted()` needs the window on the master). "Load the other N" runs
+  `_extDgLoadNext()`: ONE page at a time through the host's gate, so Stop
+  leaves nothing waiting; a failed page does not stop the run, and the
+  button then asks only the failed ones. **`_mbLoad()` forgets a skipped
+  load without notifying**, so the versions loader repaints itself after a
+  skip (found by the spec: Stop before a page's slot left the bar
+  "Running"). A later visit reads pages 2..N from IndexedDB once page 1 is
+  there (`_extDgPeekCached()`, no request). Year "0" is no year; empty
+  values sort last both ways. A Discogs link IN the window (a version's
+  row, See also, `[r=…]` in notes) drills down (`_extDgDrill()`,
+  `_extTarget(a, {inWindow: true})`), Back returns.
+  **Two engine changes came with it**: `_dpDialog.repaint` and
+  `_dpAreaRepaint()` (a repaint keeps `data-mb-keep-scroll` scroll positions
+  and the `data-mb-keep-focus` field's focus and caret), and
+  `createInfoDialog()`'s scroll area no longer takes the focus on
+  `mouseenter` from an element inside it — Chrome fires `mouseenter` again
+  when a repaint swaps the content under a resting pointer, which took the
+  focus out of the versions' filter while pages arrived (found by the spec).
+- **The Discogs artist and label windows (2026-10-18, mockup
+  https://claude.ai/artifact/WuBNbFTgNHJtxip4xBv6yc, approved by vzell
+  2026-10-18 with: show the API's production credits plus a link to all of
+  them; a master row's "▸ versions" is the collapsible master table; label
+  batches of 5 pages; tables of 150 rows, then "Show more").** An artist or
+  label record keeps `rec.discogs` too (`_EXT_DISCOGS_VERSION` 4): the
+  profile WITH its markup, every image (the answer's `images` IS the "More
+  images" set: Bruce Springsteen 27, Columbia 74), the names with ids
+  (members, groups with `active`, aliases; parent label, sublabels), name
+  variations, sites, a label's contact info, the data quality. Two generic
+  record fields came with it: `descInWindow` (`_extLeftCol()` leaves the
+  description out: the window's Profile section shows it, with links —
+  `_extDiscogsMarkupHtml(s, {names: true})`: `[a123]`/`[l123]` link the page,
+  `[a=Name]`/`[l=Name]` Discogs' search, as a version's label) and
+  `cardFacts` (the card shows only the counts; "Data quality" is the
+  window's). "Discogs says" is the reader's own (`_extDgEntityFactsHtml()`).
+  **The lists are one loader**: `_EXT_DG_LISTS` names each list's key, URL,
+  answer field and row shape — `versions`, `artist`
+  (`artists/<id>/releases?sort=year&sort_order=asc`, key
+  `ext:discogs-artist-releases:<id>:<page>`), `label`
+  (`labels/<id>/releases?sort=year&sort_order=desc|asc`, key
+  `ext:discogs-label-releases:<id>:<order>:<page>`, `batch: 5`) — and
+  `_extDgListLoad()`, `_extDgLoadNext()`, `_extDgPeekCached()`,
+  `_extDgListState()`, `_extDgListStart()` serve all three; a list's run
+  (chain, Stop, tried pages, `upTo`) is `_extDgRun()`, per target and list.
+  Probe 2026-10-17/18 (`scripts/probe-discogs-artist-label.py`): an artist's
+  list is ordered **by role, then year** — Bruce Springsteen's 6,782 rows run
+  Main p1–4, Producer 78 and Co-producer 2 p4–5, Appearance p5–33,
+  TrackAppearance p33–48, UnofficialRelease p48–68; Max Weinberg's 528 (6
+  pages) hold Main, Producer, Mixed by, Appearance, TrackAppearance,
+  UnofficialRelease. So the sections (Releases = Main; Appearances = On
+  releases + On tracks; Unofficial; Credits = every other role) fill in that
+  order, and `_extDgRoleState()` calls a role complete once the pages loaded
+  without a gap from page 1 hold a LATER role (`_EXT_DG_ROLE_ORDER`; a
+  credit is 1); until then its count reads "N so far". The API's credits are
+  only the production ones (the website's 4,445 for Springsteen —
+  written-by, instruments, vocals — come from its own service), so Credits
+  links `?type=Credits` on Discogs. Masters carry no format, so the website's
+  Albums / Singles & EPs / Compilations split cannot be made: the chips are
+  All / Masters / Releases. A master row's "▸ versions" asks that master's
+  versions page 1 (the versions list's own key, shared with the master's
+  window) on the click and shows `_EXT_DG_NEST_ROWS` (12) with "Open the
+  master here". A label's list has releases only, no facets, and thousands
+  of pages (Columbia 396,611 = 3,967): it never loads all — "Load 5 more
+  pages" sets the run's `upTo`; its bar shows only the pages it has or will
+  ask; its later-visit lookup reads IndexedDB in order up to the first page
+  not kept; newest/oldest first are two lists (the order is in the key), and
+  the other order's page 1 comes from the repaint, as the master's does.
+  Typing in the artist's or label's filter repaints the whole window
+  (`data-mb-keep-focus` keeps the field), not a list part as the versions do.
+- **On discogs.com itself (2026-10-18)** the readers also feed the
+  `dg-*` pageTypes' tables (`_EXT_DG_LISTS` rows, `_extDiscogsTracklist()`),
+  and a Discogs link there — the page's OWN host — is previewed:
+  `_extTarget()` takes it when `_extDiscogsTest()` does, and
+  `_DP_SITES['www.discogs.com']` (`setting: null`, `extRoot: '#app'`) limits
+  it to the table and Discogs' content. See docs/claude/discogs.md.
 - **The token: `sa_pop_ext_discogs_token`** (text, default empty), read by
   `_extDiscogsToken()` (trimmed) and sent ONLY as `Authorization: Discogs
   token=…` to api.discogs.com — never in a URL, so `_extGet()`'s debug line
@@ -1045,7 +1792,147 @@ both entry points). Answers are captures: `python3
 scripts/capture-ext-fixtures.py` writes `tests/fixtures/ext-*.json`
 (`{url, status, contentType, body}`, each the exact request a reader builds
 for an English browser). Mutations: the `U3:` entries of
-`scripts/mutations/popup-ext.json`.
+`scripts/mutations/popup-ext.json`. The Discogs window: the block "the
+Discogs window (2026-10-17)" of the same spec (sections and counts from the
+release fixture, track credits, grouping, the gallery in the viewer; a
+master's versions — none from a hover, page 1 on opening, the rest on the
+button in order, typing through page arrivals, chips, sort ORDER with no-year
+last, memory on reopening, a version drilled into and Back; a failed page and
+its retry; Stop with a page under way and before a page's slot; an old reader
+version not served) and the last test of `popup-ext.mobile.spec.js` (a tap
+opens a master's window, page 1 comes on the record's repaint, the controls
+answer taps). Versions fixtures `ext-discogs-master-versions-p1..p4`
+(captured 2026-10-17). Mutations: the `Discogs:` entries, "artwork viewer:
+the same image counted twice" and "dialog shell: mouseenter …". The artist
+and label windows: the block "the Discogs artist and label windows
+(2026-10-18)" (no list from a hover; sections by role and "so far" after page
+1, complete after the rest; the credits box; 150 rows and "Show more"; sort;
+the filter and chips; a master row's versions, one request, shared between
+two roles; Springsteen's page 1 of 68 and the cost on its button without a
+token; the profile's links; 27 images in the viewer; a master drilled into
+and Back; a label's warning, its batch of 5 and no page more, Show all,
+format chips, the other order asked once; Stop and a later visit from
+IndexedDB; an artist record of reader version 3 not served) and the last test
+of `popup-ext.mobile.spec.js` (taps on the run, a section, a master's
+versions, a label's order). Fixtures `ext-discogs-artist-small*`,
+`ext-discogs-artist-releases-p1`, `ext-discogs-label-releases-*`,
+`ext-discogs-master-450426-versions-p1` (captured 2026-10-18). Mutations: the
+`Discogs artist…`/`Discogs label…` entries.
+
+### A Discogs release's edit history (2026-10-18)
+
+Mockup https://claude.ai/artifact/Y69bUJTvYSksKTFRMcYJvZ, tab C; vzell's
+answers: on discogs.com AND on MusicBrainz; on a submissions list a title
+opens "History, then the release" (docs/claude/discogs.md, "Submissions").
+
+- **Reader `dghistory`, BEFORE `discogs` in `_EXT_READERS`**:
+  `_EXT_DISCOGS_PATH_RE` ends in `(?:[-/]|$)`, so the Discogs reader takes
+  `/release/<id>/history` too — `_extDgHistTest()` must win first.
+- **The page**: `/release/<id>/history` (saved as
+  `debug/discogs-release-history.html`) holds the same parts as the
+  submissions browser view's `#historyData` pane: `#editing_header` (name,
+  100 px picture, `[r…]`), `table#hist` (one `tr.datarow` per change, the
+  newest `#latest`; `.linked_username`, `.hili` — none for a comment —,
+  `.history_notes_content`, the date in `span[title]` as "Feb 24, 2016
+  01:24 PM", View/Changes/Images links, `href` on the standalone page,
+  `data-sb-navigate` in the pane), `#rating .vote_info_helper`, and
+  `table.diff` (two cells, each the whole release page as it was, marks
+  `hl_added`/`hl_changed1`/`hl_changed2`; Discogs' legend: removed, changed,
+  added). `_extDgHistParse()` reads either; `_extDgHistHtml()` keeps text,
+  breaks, links, bold and the marks, nothing else; `_extDgHistBlocks()` cuts
+  a diff side into named blocks (the profile's facts, each section) and a
+  block is `changed` when either side has a mark.
+- **Only on Space** (`windowOnly`: the card says "Not read yet" until the
+  window has read it) — a new reader flag in `_extCard()`. ONE request,
+  `_extDgHistGet()`: on discogs.com a same-origin `fetch()` with the
+  browser's session (an anonymous request there would meet the browser
+  check that session has already passed), through the host's slot; on
+  MusicBrainz `_extGet()` (anonymous, as every external request), and a
+  Cloudflare answer is the usual `checked` record. `_extHostKnown()` counts
+  the page's own host as known (a same-origin request never prompts).
+- **One cache entry per release**: `keyUrl` (new reader option) makes the
+  key `ext:dghistory:https://www.discogs.com/release/<id>/history` whatever
+  the link's slug or language, and `_extDgHistTarget()` builds the same
+  target for a release's window, so a history link and a title share one
+  request. Records: `_EXT_IDB_VERSION * 100 + _EXT_DGH_VERSION` — bump
+  `_EXT_DGH_VERSION` when the parser's output changes.
+- **The window**: card facts Last change, Changes ("15: 9 edits, 2 images,
+  …"), Data quality, First; sections `dgh-hist` (every change: ISO date with
+  Discogs' relative time on hover, user, kind pill, note cut to two lines
+  with more/less, links; kinds as a filter, Newest/Oldest first; state per
+  release in `_extDgHistUi`) and `dgh-diff` ("revision 13 → 14", only the
+  marked blocks unless *The whole release*). Controls:
+  `_extDgHistControl()`, from the reader's own `onAreaClick` and from
+  `_extDiscogsAreaClick()` (the release window on a submissions list).
+- **New window part `top`**: a reader's `window()` may return `top`, drawn
+  full width ABOVE the two columns (`_extExtracted()`); only the release
+  window on a submissions list uses it.
+- **`_extLoad(t, {wanted})`**: a caller other than the card or the window
+  on `t` passes who still wants the answer (the release window asking for
+  its history; the artwork viewer on a Discogs row, docs/claude/discogs.md).
+
+Tests: `tests/fixtures/discogs-submissions.spec.js` (the history link, the
+title, a sign-in page, the MusicBrainz link) and the last test of
+`discogs-pages.mobile.spec.js`. Fixture `dg-release-history.html`
+(`scripts/build-discogs-fixtures.py`). Mutations:
+`scripts/mutations/discogs-submissions.json`, the `dghistory:` entries.
+
+**View changes (round 2, 2026-10-18).** Discogs' View and Changes links are
+one button per change that has a diff (`e.rev`, from its links;
+`_EXT_DGH_VERSION` 2); an image change keeps its Images link. The click sets
+`_extDgHistUi.rev` and starts `_extDgHistDiffLoad()`: ONE request for the
+`?diff=<rev>` page (saved as `debug/discogs-release-history-diff.html` — the
+same markup, its diff the one asked, the changed row `highlight`, no rating
+or form), key `ext:dghistory-diff:<id>:<rev>`. The second section then
+reads "Change · revision 8 → 10" — Discogs' numbers from the page: it
+compares 10 with 8 when 9 changed no data — with "Back to the latest
+change". **Each diff side holds the release page, whose tracklist is a
+table too:** the parser takes `:scope > thead/tbody` of `table.diff` only
+(it took a tracklist cell as the "new" side before; revision 14 came out
+right by luck).
+
+### Discogs users, searches, support articles; every link in the window (2026-10-18)
+
+Mockup https://claude.ai/artifact/XRTM8v1aLNj3voVt6RxVJz, tab B. Three
+readers, after `discogs` and before `generic` (their paths are not
+`_EXT_DISCOGS_PATH_RE`'s), each with `keyUrl` and `_EXT_DGX_VERSION`:
+
+- **`dguser`** (`/user/<name>`): `api.discogs.com/users/<name>` (no token):
+  the card's facts (`cardFacts` 6); the window adds the **Recent activity**
+  (`_extDgUserActivity()`: the user's page through `_extDgHistGet()`,
+  `table.broadcast_table` rows — kind from the icon's `aria-label`, the text
+  with its links, the date; saved as `debug/discogs-user-vzell.html`) and the
+  user's Discogs pages.
+- **`dgsearch`** (`/search/?q=…[&type=…]`): `database/search` — Discogs'
+  docs say it needs authentication, it answered 200 without (probe
+  2026-10-18); page 1 in the record, "Load 25 more" via
+  `_EXT_DG_LISTS.search` and `_extDgListLoad()` (25 a request, vzell).
+- **`dgsupport`** (support.discogs.com `/hc/…/articles/<id>`): the pages
+  answer with Cloudflare's check, the Help Center API
+  `/api/v2/help_center/articles/<id>.json` does not; `_extDgSupportHtml()`
+  keeps the article's structure and links, its anchors as
+  `data-mb-dgs-anchor` (never ids in our page), marks the block of the
+  link's `#section`; the window scrolls to it once per opening
+  (`scrolledFor`); a link to another section of the article scrolls there.
+
+**A secondary request inside a window starts on `start` OR while it has no
+state yet** (as `_extDgListStart()`): after a drill-down the target's own
+record arrives on a repaint, which is not a `start` render — the activity
+and a release window's history never started then (`discogs-links.spec.js`
+caught it; the release case had passed only because the card had loaded the
+release first).
+
+**Every link in a Discogs window drills** (`_extDgDrill()`: any reader, not
+only `discogs`; vzell: "ALL links should be resolved inside the same
+popup"), from every Discogs-family window (`_extDgFamilyClick()`: section
+heads, "Load 25 more", in-article anchors, then the drill). On discogs.com a
+same-host link gets a target only through `_extDgSiteTest()`.
+
+Tests: `tests/fixtures/discogs-links.spec.js`. Fixtures
+`ext-discogs-user-*`, `ext-discogs-search-columbia-label-p1/p2`,
+`ext-discogs-support-360005006654` (`scripts/capture-ext-fixtures.py`),
+`dg-user-vzell.html`, `dg-release-history-diff.html`. Mutations:
+`scripts/mutations/discogs-links.json`.
 
 ## The Springsteen sites across hosts (org/iframe.org "* generalize to URLs", U4)
 
@@ -1107,7 +1994,16 @@ the header's `@connect` and `_EXT_CONNECT_HOSTS` (the parent domain covers
   never fired (Chrome: "Blocked script execution in 'about:srcdoc'") and left
   the page at its top; `scrollIntoView()` would also scroll the page behind
   the window. Now the frame document's `scrollingElement.scrollTop` is set at
-  once and again at `_EXT_BB_SCROLL_AGAIN_MS`. And with the http link as its
+  once and again at `_EXT_BB_SCROLL_AGAIN_MS`, and once more on the frame's
+  `load` (the page is prepared when parsed, its images can come much later) —
+  each only until the reader has used the wheel, a key, a mouse button or
+  touch in the page. Not by comparing scroll positions: hiding the
+  navigation moves the page right after the first scroll, and Chrome's
+  scroll anchoring then changes `scrollTop` by itself (the first version of
+  this guard, 2026-10-17, stopped every later scroll that way). Chrome's
+  anchoring also keeps the show in place while images land, so the spec
+  turns it off (`overflow-anchor: none`) to see the scroll on `load`. And
+  with the http link as its
   base, the page's own relative form pointed at http from an https copy
   (Chrome: "Mixed Content"). Both reported from a real browser, both pinned
   by mutations.
@@ -1120,8 +2016,13 @@ window and its trimmed Live page from the hover's fetch; a Brucebase date
 (one year request for three dates, a date with no show, the year from
 IndexedDB after a reload; two dates asked while the year page loads share
 it — the only test that sees `_extBbYears`, since IndexedDB covers it once
-the year is kept), a show's window and marked Live page, and a cancelled
-show. Year page fixture: `tests/fixtures/ext-bb-year-2025.html`
+the year is kept), a show's window and marked Live page, the Live page
+prepared before its images (held back 6 s, 40×40 each: trimmed, marked and
+scrolled before they come, scrolled again on `load`) and a reader's wheel
+not undone (2026-10-17), and a cancelled show. **`openEvent()` refuses the
+four sites' hosts and wikidot/wdfiles** (a Live page frame fetches the site's
+own CSS and images; the Brucebase test failed whenever the real site was
+slow); a test that wants them answers them with a later route. Year page fixture: `tests/fixtures/ext-bb-year-2025.html`
 (`scripts/build-detail-fixtures.py`). Mutations: the `U4:` entries of
 `scripts/mutations/popup-ext.json`. The live spec's Brucebase review is the
 date reader's since U4, and its "U4: a work's annotation links" test runs on

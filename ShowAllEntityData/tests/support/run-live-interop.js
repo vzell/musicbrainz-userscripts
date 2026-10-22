@@ -20,6 +20,14 @@
  *   node tests/support/run-live-interop.js --pagetype release-tracks --combo kitchen-sink --diff
  *   node tests/support/run-live-interop.js --url <live-url> --show-all-button 'button[data-label="..."]' --scripts jesus2099-supermind
  *   node tests/support/run-live-interop.js --pagetype release-tracks   # no combo/scripts — clean baseline, no third-party scripts loaded
+ *   node tests/support/run-live-interop.js --url <live-url> --show-all-button '…' --scripts lotheric-instrument-icons --gm-value=iconPosition=after
+ *
+ * --gm-value=key=value (repeatable) seeds one GM storage value before the
+ * page loads, on top of the pageType's own `seedGmValues`. The GM stub
+ * store is shared by every injected script, ShowAllEntityData included, so
+ * this sets a third-party script's own setting (e.g. Instrument Icons
+ * Everywhere's 'iconPosition') as well as an `sa_` one. The value is parsed
+ * as JSON when it can be (`true`, `5000`), else kept as a string.
  *
  * Leaves the browser open for visual inspection until you close its window
  * (or Ctrl+C the process) — pass --headless to skip that and exit as soon
@@ -43,7 +51,7 @@ const SNAPSHOTS_DIR = path.join(__dirname, '..', 'snapshots');
 
 /**
  * @param {string[]} argv - `process.argv.slice(2)`
- * @returns {{ pageType: string|null, url: string|null, showAllButton: string|null, combo: string|null, scripts: string[]|null, diff: boolean, headless: boolean }}
+ * @returns {{ pageType: string|null, url: string|null, showAllButton: string|null, combo: string|null, scripts: string[]|null, gmValues: Object<string, *>, diff: boolean, headless: boolean }}
  */
 function parseArgs(argv) {
     const arg = (flag) => {
@@ -57,9 +65,32 @@ function parseArgs(argv) {
         showAllButton: arg('--show-all-button'),
         combo: arg('--combo'),
         scripts: scriptsArg ? scriptsArg.split(',').map((s) => s.trim()).filter(Boolean) : null,
+        gmValues: parseGmValues(argv),
         diff: argv.includes('--diff'),
         headless: argv.includes('--headless'),
     };
+}
+
+/**
+ * Collects every `--gm-value=key=value` argument into one object. A value
+ * that parses as JSON (`true`, `0`, `"x"`) is stored parsed; anything else
+ * (`after`) as the plain string.
+ *
+ * @param {string[]} argv - `process.argv.slice(2)`
+ * @returns {Object<string, *>}
+ */
+function parseGmValues(argv) {
+    const values = {};
+    argv.filter((a) => a.startsWith('--gm-value=')).forEach((a) => {
+        const kv = a.slice('--gm-value='.length);
+        const eq = kv.indexOf('=');
+        if (eq <= 0) throw new Error(`--gm-value needs key=value, got "${kv}".`);
+        const raw = kv.slice(eq + 1);
+        let value;
+        try { value = JSON.parse(raw); } catch (e) { value = raw; }
+        values[kv.slice(0, eq)] = value;
+    });
+    return values;
 }
 
 /**
@@ -116,7 +147,7 @@ function resolveConfig({ pageType, url, showAllButton }) {
     const pageErrors = collectPageErrors(page);
 
     await injectLiveUserscripts(page, initEntries);
-    await seedGmValues(page, config.seedGmValues);
+    await seedGmValues(page, { ...(config.seedGmValues || {}), ...args.gmValues });
     await loadUserscriptPage(page, { url: config.url, testMode: true });
 
     const showAllBtn = page.locator(config.showAllButtonSelector);

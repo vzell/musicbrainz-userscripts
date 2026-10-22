@@ -1,0 +1,68 @@
+[
+  {
+    "name": "detail links only in a table body again",
+    "why": "The old _dpSiteForLink() gate: a native link on the initial page (Brucebase's song tabview) is no target. Must fail on the native-link test.",
+    "edits": [
+      {
+        "find": "        if (!a.closest('table.tbl > tbody') && (_isTouchPrimaryDevice() || a.closest(_DP_PAGE_SKIP))) return null;",
+        "replace": "        if (!a.closest('table.tbl > tbody')) return null;"
+      }
+    ],
+    "spec": "tests/fixtures/detail-preview.spec.js",
+    "grep": "a native song link shows its card",
+    "expect": "fail"
+  },
+  {
+    "name": "touch takes the native links too",
+    "why": "Without the touch guard a tap on a native song link opens the window instead of the page. Must fail on the mobile test.",
+    "edits": [
+      {
+        "find": "        if (!a.closest('table.tbl > tbody') && (_isTouchPrimaryDevice() || a.closest(_DP_PAGE_SKIP))) return null;",
+        "replace": "        if (!a.closest('table.tbl > tbody') && a.closest(_DP_PAGE_SKIP)) return null;"
+      }
+    ],
+    "spec": "tests/fixtures/detail-preview.mobile.spec.js",
+    "grep": "native detail link opens no dialog",
+    "project": "chromium-mobile",
+    "expect": "fail"
+  },
+  {
+    "name": "the script's toolbar is a target",
+    "why": "_DP_PAGE_SKIP not applied: a detail link in the script's own toolbar shows a card. Must fail on the toolbar test.",
+    "edits": [
+      {
+        "find": "        if (!a.closest('table.tbl > tbody') && (_isTouchPrimaryDevice() || a.closest(_DP_PAGE_SKIP))) return null;",
+        "replace": "        if (!a.closest('table.tbl > tbody') && _isTouchPrimaryDevice()) return null;"
+      }
+    ],
+    "spec": "tests/fixtures/detail-preview.spec.js",
+    "grep": "own toolbar is not a target",
+    "expect": "fail"
+  },
+  {
+    "name": "steps from a native link look for a table",
+    "why": "From a native link ← → would walk a table that is not there and step nowhere. Must fail on the step test.",
+    "edits": [
+      {
+        "find": "            steps: (t) => (t.el.closest('table.tbl > tbody') ? _dpRowLinks(t.table) : _dpPageLinks()),",
+        "replace": "            steps: (t) => _dpRowLinks(t.table),"
+      }
+    ],
+    "spec": "tests/fixtures/detail-preview.spec.js",
+    "grep": "step through the visible native song links",
+    "expect": "fail"
+  },
+  {
+    "name": "steps include hidden tabs' links",
+    "why": "A hidden tab's songs in the step list: → from the visible tab's last song lands on a link nobody can see. Must fail on the last-song test (the step test from \"4th of July\" cannot see it: its next song is on the visible tab either way).",
+    "edits": [
+      {
+        "find": "            if (a.closest('table.tbl > tbody') || seen.has(a.href) || !a.getClientRects().length || !_dpSiteForLink(a)) return false;",
+        "replace": "            if (a.closest('table.tbl > tbody') || seen.has(a.href) || !_dpSiteForLink(a)) return false;"
+      }
+    ],
+    "spec": "tests/fixtures/detail-preview.spec.js",
+    "grep": "last song goes nowhere",
+    "expect": "fail"
+  }
+]

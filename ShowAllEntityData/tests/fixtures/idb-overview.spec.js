@@ -4,6 +4,7 @@ const path = require('path');
 const { test, expect } = require('../support/test');
 const { loadUserscriptPage } = require('../support/loadPage');
 const { setupRecordingOf } = require('../support/recordingOf');
+const { seedCacheOverview } = require('../support/idbFixture');
 
 // The 💾 browser cache overview (_idbo*): what the script keeps in IndexedDB,
 // for the user. Both databases are seeded before the userscript opens them:
@@ -20,7 +21,6 @@ const { setupRecordingOf } = require('../support/recordingOf');
 
 const URL = 'https://musicbrainz.org/artist/89729b97-90a3-4f84-9e88-e16f96cab350/recordings';
 const FIXTURE = path.join(__dirname, 'artist-recordings.html');
-const DAY = 86400000;
 const dlg = (page) => page.locator('#mb-idb-overview');
 const row = (page, id) => page.locator(`#mb-idb-overview tr[data-part="${id}"]`);
 
@@ -31,56 +31,9 @@ const row = (page, id) => page.locator(`#mb-idb-overview tr[data-part="${id}"]`)
  * @param {Object} [settings]
  */
 async function setup(page, settings = {}) {
-    await seed(page);
+    await seedCacheOverview(page);
     await loadUserscriptPage(page, { url: URL, fixtureFile: FIXTURE, testMode: true, settingsOverride: settings });
     await page.waitForFunction(() => window.__seedDone === 2);
-}
-
-/**
- * Registers the seeding init script (runs before the userscript on the next
- * navigation).
- * @param {import('@playwright/test').Page} page
- */
-async function seed(page) {
-    await page.addInitScript(({ DAY }) => {
-        const now = Date.now();
-        const old = now - 40 * DAY;
-        window.__seedDone = 0;
-        const art = indexedDB.open('vz-mb-saed-art-cache', 4);
-        art.onupgradeneeded = () => {
-            const db = art.result;
-            [['images', 'url'], ['metadata', 'entityPath'], ['rel-ws2', 'ckey'], ['ms-rec-len', 'gid'],
-                ['recof-ws2', 'ckey'], ['artist-works', 'artist']].forEach(([n, k]) => {
-                if (!db.objectStoreNames.contains(n)) db.createObjectStore(n, { keyPath: k });
-            });
-        };
-        art.onsuccess = () => {
-            const db = art.result;
-            const tx = db.transaction(['images', 'metadata', 'rel-ws2', 'recof-ws2', 'artist-works'], 'readwrite');
-            const blob = (n) => new Blob([new Uint8Array(n)], { type: 'image/png' });
-            tx.objectStore('images').put({ url: 'https://coverartarchive.org/release/a/front-250', blob: blob(5000), storedAt: now });
-            tx.objectStore('images').put({ url: 'https://coverartarchive.org/release/b/front-250', blob: blob(3000), storedAt: old });
-            tx.objectStore('metadata').put({ entityPath: '/release/a', count: 1, images: [], storedAt: now });
-            tx.objectStore('metadata').put({ entityPath: '/release/b', count: 1, images: [], storedAt: now - 2 * DAY });
-            tx.objectStore('metadata').put({ entityPath: '/release/c', count: 0, images: [], storedAt: old });
-            tx.objectStore('rel-ws2').put({ ckey: 'release:aaa', data: { relations: [] }, ts: now });
-            tx.objectStore('rel-ws2').put({ ckey: 'release:bbb', data: { relations: [] }, ts: now });
-            tx.objectStore('recof-ws2').put({ ckey: 'recording:r1|work-rels', rels: [], ts: now });
-            tx.objectStore('recof-ws2').put({ ckey: 'recording:r2|work-rels', rels: [], ts: now - 10 * DAY });
-            tx.objectStore('recof-ws2').put({ ckey: 'recording:r3|work-rels', rels: [], ts: old });
-            tx.objectStore('artist-works').put({ artist: 'x', works: [{ id: 'w', title: 'Badlands', comment: '' }], ts: now, source: 'MusicBrainz' });
-            tx.oncomplete = () => { db.close(); window.__seedDone++; };
-        };
-        const dp = indexedDB.open('vz-saed-detail-pages', 1);
-        dp.onupgradeneeded = () => { dp.result.createObjectStore('pages', { keyPath: 'url' }); };
-        dp.onsuccess = () => {
-            const db = dp.result;
-            const tx = db.transaction('pages', 'readwrite');
-            tx.objectStore('pages').put({ url: 'https://en.wikipedia.org/wiki/Born_to_Run', at: now, v: 1, html: '<p>x</p>' });
-            tx.objectStore('pages').put({ url: 'https://www.discogs.com/release/1', at: old, v: 1, html: '<p>y</p>' });
-            tx.oncomplete = () => { db.close(); window.__seedDone++; };
-        };
-    }, { DAY });
 }
 
 /** Opens the overview through the test hook and waits for the scan. */
@@ -199,7 +152,7 @@ test.describe('💾 browser cache overview', () => {
 
     test('the Statistics panel opens it', async ({ page }) => {
         // A rendered page is needed for the 📊 Statistics button.
-        await seed(page);
+        await seedCacheOverview(page);
         await setupRecordingOf(page);
         await page.evaluate(() => document.getElementById('mb-stats-btn').click());
         await page.locator('#mb-stats-idb-overview-btn').click();

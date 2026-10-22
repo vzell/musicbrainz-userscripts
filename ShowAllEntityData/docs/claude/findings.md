@@ -31,7 +31,8 @@ project skill `add-finding` (`.claude/skills/add-finding/SKILL.md`).
 | `enabled()`                            | Optional; the finding's own feature setting (`sa_enable_pending_edits_section`, `sa_enable_barcode_validation`).                                                                         |
 | `cols(name, plan)`                     | Which columns are tested. `'*'` = every cell of a row that passes `rowGate()`.                                                                                                           |
 | `test(cell, row, plan)`                | The detector.                                                                                                                                                                            |
-| `detail(cell, row, plan)`              | Optional, cell scope: this cell's own text, appended to its tooltip line after the label (`rec-event-mismatch`/`rec-place-mismatch` name both values). Same source-row rule as `test()`. |
+| `detail(cell, row, plan)`              | Optional, per cell (either scope; a row finding's since 2026-10-21): this cell's own text, appended to its tooltip line after the label (`rec-event-mismatch`/`rec-place-mismatch` name both values; `live-credit-nodate` the date the credit is deduced to be from). Same source-row rule as `test()`. |
+| `compare(cell, row, plan)`             | Optional, per cell (either scope): `{la, lb, a, b}` for the rich card, which shows the two values one under the other, the difference marked (`_cmpHtml()`).                              |
 | `tint(cell)`                           | Whether this finding paints. `false` for the families that already had CSS (length, video, no-work, live titles); the rest read their `sa_findings_tint_*` setting.                      |
 
 **`test()` reads SOURCE-row data, never post-render decoration.** The stamp
@@ -102,6 +103,63 @@ findings, because `rg-title-mismatch` reads it. `_forEachStampRow()` reaches
 a live clone AND its master, so anything that COUNTS rows there must dedupe
 by `data-mb-row-idx` (`_computeMainEventCtx()` once counted 76 tracks for 38).
 
+**`compare` rides beside `detail`, never instead of it.** The plain title
+keeps `detail`'s prose (the native fallback, and what specs and the disk file
+read); `_writeFindingAttrs()` writes each finding's `compare` value into
+`data-mb-tip-cmp` (`_setTipCmp()`), tagged with the tip line it belongs to
+and the label as its `head`, so the "Liner notes" card shows the label and
+the two values one under the other instead of the prose. The attribute also
+records the text it was built for: a card shows it only while the title is
+still that text (`_cmpTipData()`), so a tip rewritten by anything else never
+pairs with an old comparison. `title-mismatch` marks its entry `origin`: under
+a preview card the link's own note box compares the same two names, so the
+cell's box in the stack gives the label alone (`_dpCollectNotes()`,
+`noOrigin`). The diff and its look: mockup
+https://claude.ai/artifact/7Nbqih988jfzpGxbiQTX75 (approved 2026-10-17,
+variant A); mutation list `scripts/mutations/tooltip-diff.json`.
+
+Three more cards since 2026-10-20 (branch `feat/mb-title-style-findings`,
+WIP.2):
+
+- **`eti-case`**: `_findingEtiCaseCmp()`, the title over the same title with
+  the keywords of each capitalized group in lower case (the finding's own
+  `etiCase`/`etiRanges` and `_etiKeywords()`, so names in the group stay).
+- **`truncated`**: `_findingTruncatedCmp()`, a ONE-row entry, `kind: 'mark'`
+  (`_cmpMarkHtml()`): the title with its closing "…" marked and a summary.
+  There is no honest second value — the full title is not on the page — and
+  "the title without …" would propose a fix that may be wrong (the user's
+  choice). `_cmpTipData()` validates the kind (`a`, `la`, `s`, `e`, `sum`).
+- **`live-sep` / `event-live-sep` / `rec-live-sep`**: these are
+  family-painted (`data-mb-live-flag`), so `_writeFindingAttrs()` never
+  writes their tip and a `compare` on the finding would be ignored. The
+  comparison is written where the tip is: `_stampLiveTitleRow()` stores
+  `_liveSepCmp()` with the flag's own sentence, `at: 0`, for a `warn` flag
+  only (a red cell's error is the date, not the hyphen). `_liveSepFixed()`
+  changes only the date head before the first ": " of each " / " part,
+  so "Wilkes-Barre" in a venue stays. Clearing the flag removes
+  `data-mb-tip-cmp` with the title.
+- **The live near misses** (2026-10-21, 9.99.1412: `live-nearmiss`,
+  `event-live-nearmiss`, `rec-live-nearmiss`): same family, same place.
+  `_stampLiveTitleRow()` now calls `_liveFlagCmp()`, which keeps the
+  separator card for `warn`, gives a near miss (the flag carries its
+  problem as `nearmiss`, from `_liveTitleFlag()`/`_recCommentFlag()`) the
+  text over `_liveNearMissFixed()`'s form, and still gives an impossible
+  date nothing. **The fixer never guesses**: it makes only fixes that read
+  one way (a comment's type lower-cased, ", " after it, "live, " before a
+  typeless date-led comment, a YEAR-FIRST date padded and "‐"-joined, ": "
+  after the date), and the result must pass the parser that flagged it
+  (`_liveNearMissCheck()`: `_parseLiveTitle()` "valid", or a comment's live
+  forms with a valid date). A day-first or month-first date ("05.02.1975"),
+  two years ("1973/1976"), a bad location or several dates get the one-row
+  `kind: 'mark'` card instead (`_liveNearMissMark()`, the date run or the
+  location marked) — which needs `at: 0` like every entry, or
+  `_tipTextToHtml()` places it nowhere. "live: KBCO Studios, …" IS fixed to
+  "live, KBCO Studios, …": the location-only form is the one valid reading.
+  `_liveFlagText()` is the text reader both cards share.
+
+Spec `tests/fixtures/findings-diff-cards.spec.js`, mutations
+`scripts/mutations/diff-cards.json`.
+
 Attributes only, so none of the "writing cell text after the render" duties
 apply (docs/claude/filter-and-cache-invariants.md) — except the 📊 cache,
 whose `findingCounts` come from these attributes: the stamp invalidates each
@@ -120,10 +178,12 @@ arrives AFTER `stampFindings()` ran. The rules for any such finding:
   Because the stamp reads the cache, `stampFindings()` itself already gets
   every record that was cached before it ran (IDB, a re-fetch).
 - **A per-row re-stamp, not another `stampFindings()`.**
-  `_artBuildMultiRowArtCell()` (both branches) queues the row;
-  `_artFlushFindingsRestamp()` re-runs `_stampFindingRow()` on each queued live
+  `_artBuildMultiRowArtCell()` (both branches) queues the row
+  (`_artQueueFindingsRestamp()` → the shared `_queueFindingsRestamp()`);
+  `_flushFindingsRestamp()` re-runs `_stampFindingRow()` on each queued live
   row AND its master row, 150 ms later in one batch. A full pass per record
-  would be O(rows) per row.
+  would be O(rows) per row. (Until 2026-10-19 the pair was artwork-only,
+  `_artFlushFindingsRestamp()`.)
 - **Only a CHANGED stamp goes on** — gen bump, the touched tables' 📊 caches,
   `updateFilterButtonsVisibility()` (the menus), and `runFilter()` only while
   an artwork finding is filtering. That condition is what stops a loop:
@@ -132,6 +192,97 @@ arrives AFTER `stampFindings()` ran. The rules for any such finding:
 - A row the active filter removed is never enriched, so it is stamped only
   once its art loads in some later view. The menu count therefore grows while
   the CAA column loads; its tip says so.
+
+### The Relationships column: `rel-multi-site` (was `rel-multi-discogs`)
+
+The second kind of late data (2026-10-19, `feat/link-site-uvd`): the deferred
+Relationships column (docs/claude/deferred-columns-picard-relationships.md)
+writes its cells after `stampFindings()` ran. "Several links to one site in
+Relationships" (⚠️, cell scope, column "Relationships") follows the same
+rules. Until 2026-10-21 (9.99.1401, `feat/rel-multi-site-and-initial-page`) it
+was "Several Discogs links in Relationships", Discogs only:
+
+- `test()` reads `_findCellRelSiteDupes()`: the icons' hidden
+  `.mb-rel-filter-key` spans, which `_relWriteResult()` writes into the live
+  cells AND copies onto the master rows — source-row data. Grouped by HOST
+  without "www." — never by site kind (`_siteFamilyOf()`): amazon.de and
+  amazon.com, music. and itunes.apple.com are different sites, one link each
+  is what MusicBrainz expects. Distinct by host + path, so a `?…` variant of
+  one page is one URL (which also makes two YouTube `watch?v=` links ONE);
+  a host with 2+ flags. Hosts in `sa_findings_rel_multi_site_ignore` never
+  count. Only icons that are drawn count (a link type with no icon class —
+  wikipedia by default — never reaches the cell).
+- `detail()` (`_relSiteDupesDetail()`) names EVERY site involved, one line
+  each: "Discogs (discogs.com): url, url". The cell title, its hover title
+  and the icon's popup finding box (`_relFindingNoteHtml()`) all show it.
+- `_relWriteResult()` queues each live row it wrote (both the answer and
+  the "no relationships" branch, so a ⟳ reload can also CLEAR a stamp)
+  through `_queueFindingsRestamp(tr, ['rel-multi-site'])`.
+- The filter re-run condition is `_LATE_FINDING_IDS` (artwork + this one).
+  No loop: a re-rendered clone never reaches `_relWriteResult()` again
+  (`relDone`).
+- A write to master rows ONLY (a clicked row the filter has since hidden:
+  `cells` empty) is not re-stamped: nothing live to queue. The next fetch or
+  disk load stamps it; `stampFindings()` reads the master's spans.
+- Settings `sa_findings_rel_multi_discogs` (the finding, needs
+  `sa_enable_relationships_column`) and `sa_findings_tint_rel_multi_discogs`
+  — **the keys keep "discogs"** on purpose: renaming them would drop every
+  saved value (`_SETTINGS_MIGRATIONS` moves defaults, not keys). Plus
+  `sa_findings_rel_multi_site_ignore` (text, hosts).
+- The cell draws its ⚠️ with `::before`, not the generic `::after` (that is
+  the hover ⟳ here) — see "Pseudo-element slots of a loaded cell" in
+  docs/claude/deferred-columns-picard-relationships.md.
+- Specs `rel-column-site-kind-discogs.spec.js` (Discogs cases, filter,
+  survival), `rel-multi-site-finding.spec.js` (every site, ignore list,
+  glyphs on hover, popup stack); mutations
+  `scripts/mutations/link-site-uvd.json`, `scripts/mutations/rel-multi-site-and-ip.json`.
+
+## On demand: the title-style findings
+
+`title-case`, `title-typography`, `title-series-sep`, `title-feat` and
+`title-eti-remove` (branch `feat/mb-title-style-findings`,
+org/title-style-guidelines.org) check MusicBrainz titles against the style
+guide. They are the first findings that run only when ASKED for, because the
+check costs real render time: about 20 µs per distinct title in Node, so
+~0.2 s per 10,000 (`node scripts/check-mb-title-case.js --mb-sample`;
+0.85 µs for a repeated title, which the memo serves).
+
+- **The gate is `enabled()`** — `_titleStyleEnabled(key)`: `_titleStyleActive()`
+  (`!_foreignHost` and either `_titleStyleRequested` or
+  `sa_findings_title_style_auto`, default OFF) plus the finding's own
+  `sa_findings_title_*` setting. A disabled finding is not in any plan, so
+  the default render pays nothing but `_titleStyleAvail`'s header scan.
+- **The trigger is the first row of the ⚠️ WARNING menu**
+  (`_titleStyleMenuRow()`, `_buildTitleStyleMenuRow()`, placement option B
+  of the mockup https://claude.ai/artifact/5MUe9Ti1hGBu9tAP6PYXVV, chosen
+  2026-10-20). It is offered while `_titleStyleAvail` (the last
+  `stampFindings()` met a `plan.titleInfo()` column on a MusicBrainz page),
+  so `_updateFindingMenus()` now builds the WARNING menu even with no
+  finding rows — the one exception to "a menu is hidden while the page has
+  nothing of its kind". Without rows its label carries no "(0)".
+- **The click re-runs `stampFindings()`** (`_runTitleStyleCheck()`), which is
+  idempotent — `initReleaseGroupLink()` included — and then shows the time
+  and the memo size as the row's status line. Later fetches and disk loads
+  of the page keep the findings on; a reload drops them.
+- **One checker, `_mbTitleStyleCheck(text)`**, in the shared title section
+  (so `scripts/check-mb-title-case.js` cuts and tests it), memoized by text.
+  It reuses the converters' `_mbTitleCase()` and `_mbTypographyFixed()`
+  READ-ONLY and keeps their output only where the guideline is certain;
+  docs/claude/foreign-title-case.md has the rules, and every exemption is a
+  mutation in `scripts/mutations/title-style.json`.
+- **`compare`** gives `{la: 'Title', lb: 'MB style', own: 'b'}` for case,
+  typography and series; `title-feat` and `title-eti-remove` propose no
+  title and give a `detail` instead.
+- **One tint setting** for all five, `sa_findings_tint_title_style`.
+- Overlaps are deliberate: an ALL UPPERCASE title also carries `title-case`
+  (its card shows the proposal), and "(Live)" both `eti-case` and
+  `title-case`. `_MBTC_ETI` (the case rule's lower-case ETI words) and
+  `sa_findings_eti_keywords` (`eti-case`'s) are different lists, so a group
+  such as "(Second Night)" is `title-case` only.
+
+Spec `tests/fixtures/findings-title-style.spec.js` (plants titles into
+`artist-releasegroups-live-titles.html`), cases
+`tests/support/mbTitleStyleCases.js` (Node and browser).
 
 ## Counting: `_findingRowTally()` and the stamp generation
 

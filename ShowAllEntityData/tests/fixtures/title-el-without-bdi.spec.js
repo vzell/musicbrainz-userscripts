@@ -48,7 +48,10 @@ const TRACKS = {
 async function openRelease(page) {
     await loadUserscriptPage(page, {
         url: URL, fixtureFile: FIXTURE, testMode: true,
-        settingsOverride: { sa_enable_release_tracks: true, sa_uvd_autocollapse_threshold: 0 },
+        // The read-only Sidebar cards (9.99.1352) are switched off: they push
+        // the DVD table's header so low that its 📊 panel opens partly below
+        // the window, and this spec is about the ETI entry, not the layout.
+        settingsOverride: { sa_enable_release_tracks: true, sa_uvd_autocollapse_threshold: 0, sa_sidebar_inline_main: false },
     });
     await injectThirdPartyScript(page, 'inline-stuff-recname');
     const rewritten = await page.evaluate(() => Array.from(

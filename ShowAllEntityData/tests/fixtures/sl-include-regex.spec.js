@@ -8,6 +8,7 @@
 // springsteenlyrics.com lines admit exactly the list pages, the jungleland.it
 // line exactly its list.htm, the brucespringsteen.it line exactly its
 // DB/records.aspx, the Brucebase lines exactly its stats:songs and its year
+// pages, the discogs.com line exactly its master, release, artist and label
 // pages, while every MusicBrainz sample still matches.
 
 const fs = require('fs');
@@ -179,6 +180,36 @@ test.describe('@include coverage', () => {
         expect(others.filter((u) => injected(u))).toEqual([]);
     });
 
+    test('brucebase.wikidot.com: Relations and Recent changes, and nothing else', () => {
+        const pages = [
+            'https://brucebase.wikidot.com/stats:relations',
+            'http://brucebase.wikidot.com/stats:relations/',
+            'https://brucebase.wikidot.com/stats:relations#toc0',
+            'https://brucebase.wikidot.com/system:recent-changes',
+            'https://brucebase.wikidot.com/system:recent-changes/',
+            'https://brucebase.wikidot.com/system:recent-changes?x=1',
+        ];
+        const others = [
+            // The Relations page's siblings (its own links), a relation page.
+            'https://brucebase.wikidot.com/stats:relations-list',
+            'https://brucebase.wikidot.com/stats:relations-persons',
+            'https://brucebase.wikidot.com/stats:relations-bands',
+            'https://brucebase.wikidot.com/relation:bryan-adams',
+            // The AJAX endpoint the Recent changes buttons POST to, and the
+            // site's other management lists.
+            'https://brucebase.wikidot.com/ajax-module-connector.php',
+            'https://brucebase.wikidot.com/system:recent-changes/html/0123abcd',
+            'https://brucebase.wikidot.com/manage:page-history-list',
+            'https://brucebase.wikidot.com/system:page-tags',
+            // Another wiki on the same farm, and look-alike hosts.
+            'https://otherwiki.wikidot.com/system:recent-changes',
+            'https://www.brucebase.wikidot.com/stats:relations',
+            'https://brucebase.wikidot.com.example.org/stats:relations',
+        ];
+        expect(pages.filter((u) => !injected(u))).toEqual([]);
+        expect(others.filter((u) => injected(u))).toEqual([]);
+    });
+
     test('brucebase.wikidot.com: the year pages, and nothing else', () => {
         const years = [
             'https://brucebase.wikidot.com/2026',
@@ -234,6 +265,104 @@ test.describe('@include coverage', () => {
         expect(others.filter((u) => injected(u))).toEqual([]);
     });
 
+    test('discogs.com: a master, release, artist or label page, and nothing else', () => {
+        const pages = [
+            'https://www.discogs.com/master/26725-Bruce-Springsteen-Born-To-Run',
+            'https://www.discogs.com/release/1874253-Bruce-Springsteen-Born-To-Run',
+            'https://www.discogs.com/release/1874253',
+            'https://www.discogs.com/artist/219986-Bruce-Springsteen',
+            'https://www.discogs.com/artist/219986-Bruce-Springsteen?type=Credits',
+            'https://www.discogs.com/label/1866-Columbia',
+            'https://www.discogs.com/label/1866-Columbia?page=2#releases',
+            'https://discogs.com/release/1874253-Bruce-Springsteen-Born-To-Run',
+            'http://www.discogs.com/master/26725',
+            // A language prefix, as the site's own language links write it.
+            'https://www.discogs.com/de/release/1874253-Bruce-Springsteen-Born-To-Run',
+            'https://www.discogs.com/pt-BR/artist/219986'.toLowerCase(),
+        ];
+        const others = [
+            'https://www.discogs.com/',
+            'https://www.discogs.com/search/?q=Springsteen&type=all',
+            'https://www.discogs.com/sell/list?master_id=26725',
+            'https://www.discogs.com/release/1874253-Bruce-Springsteen-Born-To-Run/image/SW1hZ2U6NDYwODA1ODY=',
+            'https://www.discogs.com/user/vzell/collection',
+            'https://www.discogs.com/artist/Bruce-Springsteen',
+            'https://api.discogs.com/releases/1874253',
+            'https://www.discogs.com.example.org/release/1874253',
+            'https://example.org/www.discogs.com/release/1874253',
+        ];
+        expect(pages.filter((u) => !injected(u))).toEqual([]);
+        expect(others.filter((u) => injected(u))).toEqual([]);
+    });
+
+    test('discogs.com: a submissions list, either view, a language prefix; no other /submissions… path', () => {
+        const pages = [
+            'https://www.discogs.com/submissions?mode=list&id=599283&page=1&view=flat',
+            'https://www.discogs.com/submissions?mode=list&id=599283&page=1',
+            'https://www.discogs.com/submissions',
+            'https://discogs.com/submissions?mode=saved',
+            'https://www.discogs.com/de/submissions?mode=list&id=599283&page=1&view=flat',
+            'https://www.discogs.com/pt_BR/submissions?mode=list&id=599283&page=1&view=flat',
+        ];
+        const others = [
+            'https://www.discogs.com/submissions/599283',
+            'https://www.discogs.com/submissionsx?mode=list',
+            'https://www.discogs.com.example.org/submissions?mode=list',
+        ];
+        expect(pages.filter((u) => !injected(u))).toEqual([]);
+        expect(others.filter((u) => injected(u))).toEqual([]);
+    });
+
+    test('discogs.com: a release\'s history page (dg-history), with or without ?diff=', () => {
+        const pages = [
+            'https://www.discogs.com/release/8164856-Human-Touch/history?diff=10&page=1',
+            'https://www.discogs.com/release/8164856-Human-Touch/history',
+            'https://www.discogs.com/release/8164856/history',
+            'https://www.discogs.com/de/release/8164856-Human-Touch/history?rev=4',
+        ];
+        const others = [
+            'https://www.discogs.com/release/8164856-Human-Touch/images/history?rev=7',
+            'https://www.discogs.com/master/27146/history',
+            'https://www.discogs.com/release/8164856-Human-Touch/historyx',
+        ];
+        expect(pages.filter((u) => !injected(u))).toEqual([]);
+        expect(others.filter((u) => injected(u))).toEqual([]);
+    });
+
+    test('discogs.com: a user\'s page (dg-user), a language prefix; not its sub-pages', () => {
+        const pages = [
+            'https://www.discogs.com/user/vzell',
+            'https://www.discogs.com/user/vzell/',
+            'https://discogs.com/user/GuiBeal?tab=1',
+            'https://www.discogs.com/de/user/vzell',
+            'https://www.discogs.com/pt_BR/user/vzell',
+        ];
+        const others = [
+            'https://www.discogs.com/user/vzell/collection',
+            'https://www.discogs.com/user/vzell/submissions',
+            'https://www.discogs.com/user/',
+        ];
+        expect(pages.filter((u) => !injected(u))).toEqual([]);
+        expect(others.filter((u) => injected(u))).toEqual([]);
+    });
+
+    test('discogs.com: a user\'s ratings (dg-ratings, 2026-10-19), a language prefix and the page\'s own query', () => {
+        const pages = [
+            'https://www.discogs.com/users/ratings/vzell',
+            'https://www.discogs.com/users/ratings/vzell?limit=250&page=1',
+            'https://discogs.com/users/ratings/vzell/?sort=rating&sort_order=desc',
+            'https://www.discogs.com/de/users/ratings/vzell?limit=250&page=1',
+        ];
+        const others = [
+            'https://www.discogs.com/users/ratings/',
+            'https://www.discogs.com/users/ratings/vzell/more',
+            'https://www.discogs.com/users/vzell',
+            'https://www.discogs.com.example.org/users/ratings/vzell',
+        ];
+        expect(pages.filter((u) => !injected(u))).toEqual([]);
+        expect(others.filter((u) => injected(u))).toEqual([]);
+    });
+
     test('MusicBrainz pages are still covered', () => {
         const mb = [
             'https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/releases',
@@ -241,7 +370,14 @@ test.describe('@include coverage', () => {
             'https://beta.musicbrainz.org/search?query=springsteen&type=artist',
             'https://musicbrainz.org/user/vzell/ratings',
             'https://musicbrainz.org/cdstub/browse',
+            // The overview pages of the relationship-tables pageTypes (WIP.6/WIP.8).
+            'https://musicbrainz.org/place/6a59a67c-fcc5-491f-949c-bfc45bc97463',
+            'https://musicbrainz.org/area/489ce91b-6658-3307-9877-795b68554c98',
+            'https://musicbrainz.org/instrument/a1baa57d-6ab4-461e-89df-448d6fd2c597',
+            'https://musicbrainz.org/url/a333fbe2-2707-4799-aa2e-50d21be8081c',
         ];
         expect(mb.filter((u) => !injected(u))).toEqual([]);
+        // A URL's other tabs have no pageType: the line admits the overview only.
+        expect(injected('https://musicbrainz.org/url/a333fbe2-2707-4799-aa2e-50d21be8081c/edit')).toBe(false);
     });
 });

@@ -1,0 +1,188 @@
+[
+  {
+    "name": "the live-title flag stores no comparison",
+    "why": "The card falls back to the sentence alone, as before the change. Must fail on the live-title card test.",
+    "edits": [
+      {
+        "find": "                _setTipCmp(td, flag.tip, cmp ? [cmp] : []);",
+        "replace": "                _setTip(td, flag.tip);"
+      }
+    ],
+    "spec": "tests/fixtures/findings-diff-cards.spec.js",
+    "grep": "live title with",
+    "expect": "fail"
+  },
+  {
+    "name": "the live-date fix rewrites every hyphen",
+    "why": "\"Wilkes-Barre\" in the location would be proposed as \"Wilkes‐Barre\". Must fail on the date-head test.",
+    "edits": [
+      {
+        "find": "            return head.replace(/([\\d?])-(?=[\\d?])/g, '$1‐') + (c < 0 ? '' : part.slice(c));",
+        "replace": "            return part.replace(/-/g, '‐');"
+      }
+    ],
+    "spec": "tests/fixtures/findings-diff-cards.spec.js",
+    "grep": "date head only",
+    "expect": "fail"
+  },
+  {
+    "name": "a red live-title cell gets the separator comparison too",
+    "why": "An impossible date is an error about the date, not the hyphen. Must fail on the live-title card test (red cell).",
+    "edits": [
+      {
+        "find": "        if (flag.kind === 'warn') return _liveSepCmp(td, recKind);\n",
+        "replace": "        if (flag.kind === 'warn' || !flag.nearmiss) return _liveSepCmp(td, recKind);\n"
+      }
+    ],
+    "spec": "tests/fixtures/findings-diff-cards.spec.js",
+    "grep": "live title with",
+    "expect": "fail"
+  },
+  {
+    "name": "a recording comment is compared as a title",
+    "why": "The comment flag would read the recording title instead of its comment. Must fail on the recording-comment test.",
+    "edits": [
+      {
+        "find": "                const cmp = _liveFlagCmp(td, recFlag ? rec : null, flag);",
+        "replace": "                const cmp = _liveFlagCmp(td, null, flag);"
+      }
+    ],
+    "spec": "tests/fixtures/findings-diff-cards.spec.js",
+    "grep": "recording comment",
+    "expect": "fail"
+  },
+  {
+    "name": "eti-case has no comparison",
+    "why": "The card shows the label alone. Must fail on the ETI test.",
+    "edits": [
+      {
+        "find": "            compare: cell => _findingEtiCaseCmp(cell),",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/findings-diff-cards.spec.js",
+    "grep": "capitalized ETI",
+    "expect": "fail"
+  },
+  {
+    "name": "the ETI proposal lowers the names in the group too",
+    "why": "\"(live in asbury park 2009)\" would be proposed. Must fail on the ETI test.",
+    "edits": [
+      {
+        "find": "            const low = g.replace(/\\S+/g, w => (kw.has(_etiBareWord(w).toLowerCase()) ? w.toLowerCase() : w));",
+        "replace": "            const low = g.toLowerCase();"
+      }
+    ],
+    "spec": "tests/fixtures/findings-diff-cards.spec.js",
+    "grep": "capitalized ETI",
+    "expect": "fail"
+  },
+  {
+    "name": "truncated has no card row",
+    "why": "The card shows the label alone. Must fail on the truncated test.",
+    "edits": [
+      {
+        "find": "            compare: cell => _findingTruncatedCmp(cell),",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/findings-diff-cards.spec.js",
+    "grep": "truncated title",
+    "expect": "fail"
+  },
+  {
+    "name": "a one-row entry fails validation",
+    "why": "_cmpTipData() would drop every kind:'mark' entry. Must fail on the truncated test.",
+    "edits": [
+      {
+        "find": "                    ? str(c.a) && str(c.la) && num(c.s) && num(c.e) && (c.sum === undefined || str(c.sum))",
+        "replace": "                    ? false"
+      }
+    ],
+    "spec": "tests/fixtures/findings-diff-cards.spec.js",
+    "grep": "truncated title",
+    "expect": "fail"
+  },
+  {
+    "name": "near misses get no comparison",
+    "why": "_liveFlagCmp() stops at a near miss: the card is the sentence alone again.",
+    "edits": [
+      {
+        "find": "        if (!flag.nearmiss) return null;\n        const src = _liveFlagText(td, recKind);\n",
+        "replace": "        return null;\n"
+      }
+    ],
+    "spec": "tests/fixtures/findings-diff-cards.spec.js",
+    "grep": "1993-4-21",
+    "expect": "fail"
+  },
+  {
+    "name": "a near-miss fix is not validated",
+    "why": "_liveNearMissCheck() returns any changed candidate: an impossible date gets a proposal.",
+    "edits": [
+      {
+        "find": "            return ok ? candidate : null;\n",
+        "replace": "            return candidate;\n"
+      },
+      {
+        "find": "        return live && live.kind === 'valid' ? candidate : null;\n",
+        "replace": "        return candidate;\n"
+      }
+    ],
+    "spec": "tests/fixtures/findings-diff-cards.spec.js",
+    "grep": "near-miss fixer",
+    "expect": "fail"
+  },
+  {
+    "name": "a year-first date is not padded",
+    "why": "\"1993-4-21\" stays unpadded, fails the check, and gets no proposal.",
+    "edits": [
+      {
+        "find": "            const pad = x => x.padStart(2, '0');\n",
+        "replace": "            const pad = x => x;\n"
+      }
+    ],
+    "spec": "tests/fixtures/findings-diff-cards.spec.js",
+    "grep": "1993-4-21",
+    "expect": "fail"
+  },
+  {
+    "name": "the no-fix card has no line to sit on",
+    "why": "The mark entry loses its at: _tipTextToHtml() never places it.",
+    "edits": [
+      {
+        "find": "        return s >= 0 && e > s ? { at: 0, kind: 'mark', la, a: text, s, e, sum } : null;\n",
+        "replace": "        return s >= 0 && e > s ? { kind: 'mark', la, a: text, s, e, sum } : null;\n"
+      }
+    ],
+    "spec": "tests/fixtures/findings-diff-cards.spec.js",
+    "grep": "no single fix",
+    "expect": "fail"
+  },
+  {
+    "name": "a title near miss carries no problem",
+    "why": "_liveTitleFlag() drops nearmiss: titles and event names get no card.",
+    "edits": [
+      {
+        "find": "                    kind: 'error', nearmiss: live.problems[0],\n",
+        "replace": "                    kind: 'error',\n"
+      }
+    ],
+    "spec": "tests/fixtures/findings-diff-cards.spec.js",
+    "grep": "release title and event name",
+    "expect": "fail"
+  },
+  {
+    "name": "a comment near miss carries no problem",
+    "why": "_recCommentFlag() drops nearmiss: comments get no card.",
+    "edits": [
+      {
+        "find": "            return { kind: 'error', nearmiss: rc.problem, tip: ",
+        "replace": "            return { kind: 'error', tip: "
+      }
+    ],
+    "spec": "tests/fixtures/findings-diff-cards.spec.js",
+    "grep": "1993-4-21",
+    "expect": "fail"
+  }
+]

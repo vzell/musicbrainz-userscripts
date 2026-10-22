@@ -56,8 +56,8 @@
     "why": "The reloaded page holds the native relationship lists again; they would stay beside the restored tables.",
     "edits": [
       {
-        "find": "            if (activeDefinition.features?.eventDetailsToTables) {\n                applyEventDetailsToTables(activeDefinition);\n            }\n\n            // Restore table headers",
-        "replace": "\n            // Restore table headers"
+        "find": "            if (activeDefinition.features?.eventDetailsToTables) {\n                applyEventDetailsToTables(activeDefinition);\n            }\n            if (activeDefinition.features?.relDetailsToTables) {",
+        "replace": "            if (activeDefinition.features?.relDetailsToTables) {"
       }
     ],
     "spec": "tests/fixtures/event-overview.spec.js",
@@ -69,8 +69,8 @@
     "why": "span.comment must land in Disambiguation, not in Credits/Details.",
     "edits": [
       {
-        "find": "                parts.comment.push(clone(n));",
-        "replace": "                parts.extra.push(clone(n));"
+        "find": "                } else {\n                    parts.comment.push(c);\n                }",
+        "replace": "                } else {\n                    parts.extra.push(c);\n                }"
       }
     ],
     "spec": "tests/fixtures/event-overview.spec.js",
@@ -173,8 +173,8 @@
     "why": "The declaration gives '#' its right-aligned, tabular-figure cells. Numeric SORTING does not depend on it: _sortColumnKind()'s name heuristic already treats any header containing '#' as numeric.",
     "edits": [
       {
-        "find": "                integerColumns: [ { sourceColumn: '#', align: 'R' }, { sourceColumn: 'Billing', align: 'R' } ]",
-        "replace": "                integerColumns: [ { sourceColumn: 'Billing', align: 'R' } ]"
+        "find": "                    { sourceColumn: '#', align: 'R' }, { sourceColumn: 'Billing', align: 'R' },\n",
+        "replace": "                    { sourceColumn: 'Billing', align: 'R' },\n"
       }
     ],
     "spec": "tests/fixtures/event-overview.spec.js",
@@ -225,8 +225,8 @@
     "why": "The declaration gives Billing its right-aligned, tabular cells.",
     "edits": [
       {
-        "find": "                integerColumns: [ { sourceColumn: '#', align: 'R' }, { sourceColumn: 'Billing', align: 'R' } ]",
-        "replace": "                integerColumns: [ { sourceColumn: '#', align: 'R' } ]"
+        "find": "                    { sourceColumn: '#', align: 'R' }, { sourceColumn: 'Billing', align: 'R' },\n",
+        "replace": "                    { sourceColumn: '#', align: 'R' },\n"
       }
     ],
     "spec": "tests/fixtures/event-overview-setlist.spec.js",
@@ -290,8 +290,8 @@
     "why": "A song with a recording made at this event links it.",
     "edits": [
       {
-        "find": "            rec: recordings.filter(r => recTitle(r) === norm(s.text)).map(r => r.main.map(n => n.cloneNode(true)))",
-        "replace": "            rec: []"
+        "find": "                if (recTitle(r) !== norm(s.text)) return false;",
+        "replace": "                return false;"
       }
     ],
     "spec": "tests/fixtures/event-overview-setlist.spec.js",
@@ -567,7 +567,7 @@
     "why": "Their MBIDs are artists' (the line-up links the same MBIDs as /artist/).",
     "edits": [
       {
-        "find": "                    if (/\\/work\\/[0-9a-f-]{36}/.test(href)) a.setAttribute('href', href.replace('/work/', '/artist/'));",
+        "find": "                    a.setAttribute('href', `${m[1]}artist${m[2]}`);\n",
         "replace": ""
       }
     ],
@@ -580,7 +580,7 @@
     "why": "One row per artist: split at ',', '&' and 'and'.",
     "edits": [
       {
-        "find": "            withItems = _eventSplitNodes(rest, /\\s*(?:,|&|\\band\\b)\\s*/);",
+        "find": "            withItems = _eventSplitNodes(rest, /\\s*(?:,|&|\\band\\b)\\s*/).map(_eventDropLeadingArticle);",
         "replace": "            withItems = [rest];"
       }
     ],

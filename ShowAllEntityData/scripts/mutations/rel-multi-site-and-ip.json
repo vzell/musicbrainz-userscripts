@@ -1,0 +1,214 @@
+[
+  {
+    "name": "the Relationships finding glyph is drawn by ::after again",
+    "why": "The reported bug 1a: the finding's ⚠️ and the hover ⟳ shared ::after, so the ⟳ took the ⚠️'s absolute place at the right edge.",
+    "edits": [
+      {
+        "find": "        td.mb-rel-cell[data-mb-finding=\"warn\"]:not([data-mb-finding-inline]):not([data-rel-loading]):not([data-rel-error])::before  { content: '⚠️'; }",
+        "replace": ""
+      },
+      {
+        "find": "        td.mb-rel-cell[data-mb-finding]:not([data-mb-finding-inline])::after {\n            content: none;\n            position: static;\n            transform: none;\n        }",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/rel-multi-site-finding.spec.js",
+    "grep": "GLYPHS",
+    "expect": "fail"
+  },
+  {
+    "name": "the hover title handler replaces the finding title with the reload hint",
+    "why": "The reported bug 1a, tooltip half: the finding text has to stay above the hint.",
+    "edits": [
+      {
+        "find": "        const ids = (td.dataset.mbFindings || '').split(' ').filter(id => _FINDING_BY_ID.has(id));\n        if (ids.length) {\n            const details = {};",
+        "replace": "        const ids = [];\n        if (ids.length) {\n            const details = {};"
+      }
+    ],
+    "spec": "tests/fixtures/rel-multi-site-finding.spec.js",
+    "grep": "GLYPHS",
+    "expect": "fail"
+  },
+  {
+    "name": "the icon's popup stack carries no finding box",
+    "why": "The reported bug 1b: the stack showed the link box only.",
+    "edits": [
+      {
+        "find": "        if (finding) parts.push({ kind: 'finding', html: finding });",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/rel-multi-site-finding.spec.js",
+    "grep": "under the preview card",
+    "expect": "fail"
+  },
+  {
+    "name": "the #mb-stat-tooltip path carries no finding box",
+    "why": "Without a preview card the icon's box comes from _tipTextToHtml(), a second path that must carry the finding too.",
+    "edits": [
+      {
+        "find": "            return (finding ? `${finding}<div class=\"mb-tt-rule\"></div>` : '') + _relLinkNoteHtml(el);",
+        "replace": "            return _relLinkNoteHtml(el);"
+      }
+    ],
+    "spec": "tests/fixtures/rel-multi-site-finding.spec.js",
+    "grep": "without a preview card",
+    "expect": "fail"
+  },
+  {
+    "name": "the finding box under the card is not in the finding colour",
+    "why": "The finding box maps to the 'tip' note kind, the one with the amber finding border.",
+    "edits": [
+      {
+        "find": "            const kinds = { filter: 'rel', finding: 'tip' };",
+        "replace": "            const kinds = { filter: 'rel' };"
+      }
+    ],
+    "spec": "tests/fixtures/rel-multi-site-finding.spec.js",
+    "grep": "under the preview card",
+    "expect": "fail"
+  },
+  {
+    "name": "the check is Discogs-only again",
+    "why": "1c: every host counts, so the x.bandcamp.com cell is the second flagged one.",
+    "edits": [
+      {
+        "find": "            if (ignore.includes(host)) return;",
+        "replace": "            if (ignore.includes(host) || host !== 'discogs.com') return;"
+      }
+    ],
+    "spec": "tests/fixtures/rel-multi-site-finding.spec.js",
+    "grep": "SITES",
+    "expect": "fail"
+  },
+  {
+    "name": "sites are grouped by site kind, not host",
+    "why": "amazon.de/amazon.com and music./itunes.apple.com are different sites; grouping by _siteFamilyOf() flags them.",
+    "edits": [
+      {
+        "find": "            if (!byHost.has(host)) byHost.set(host, []);\n            const urls = byHost.get(host);",
+        "replace": "            const fam = _siteFamilyOf(host);\n            if (!byHost.has(fam)) byHost.set(fam, []);\n            const urls = byHost.get(fam);"
+      }
+    ],
+    "spec": "tests/fixtures/rel-multi-site-finding.spec.js",
+    "grep": "SITES",
+    "expect": "fail"
+  },
+  {
+    "name": "the ignore list is not read",
+    "why": "A listed host must never count.",
+    "edits": [
+      {
+        "find": "            if (ignore.includes(host)) return;",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/rel-multi-site-finding.spec.js",
+    "grep": "IGNORE",
+    "expect": "fail"
+  },
+  {
+    "name": "the detail names the first site only",
+    "why": "The user asked for every site involved to be named (two Discogs and two amazon.de: both).",
+    "edits": [
+      {
+        "find": "        return _findCellRelSiteDupes(cell).map(d => `${d.name} (${d.host}): ${d.urls.join(', ')}`).join('\\n');",
+        "replace": "        return _findCellRelSiteDupes(cell).slice(0, 1).map(d => `${d.name} (${d.host}): ${d.urls.join(', ')}`).join('\\n');"
+      }
+    ],
+    "spec": "tests/fixtures/rel-multi-site-finding.spec.js",
+    "grep": "SITES",
+    "expect": "fail"
+  },
+  {
+    "name": "the link-preview master switch is not read",
+    "why": "2b: off, the engine must not be installed at all.",
+    "edits": [
+      {
+        "find": "    if (pageType && headerContainer && Lib.settings.sa_pop_enabled !== false) _initDetailPreview();",
+        "replace": "    if (pageType && headerContainer) _initDetailPreview();"
+      }
+    ],
+    "spec": "tests/fixtures/initial-page-quiet.spec.js",
+    "grep": "MASTER OFF",
+    "expect": "fail"
+  },
+  {
+    "name": "the initial-page preview switch is not read",
+    "why": "2b: off, nothing may resolve before a button rendered the table.",
+    "edits": [
+      {
+        "find": "        if (!_foreignHost && !isLoaded && Lib.settings.sa_pop_initial_page === false) return null;\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/initial-page-quiet.spec.js",
+    "grep": "IP OFF",
+    "expect": "fail"
+  },
+  {
+    "name": "the initial-page preview switch blocks the rendered table too",
+    "why": "2b: once the table is rendered the previews must work as set; the gate is the initial page only.",
+    "edits": [
+      {
+        "find": "        if (!_foreignHost && !isLoaded && Lib.settings.sa_pop_initial_page === false) return null;",
+        "replace": "        if (!_foreignHost && Lib.settings.sa_pop_initial_page === false) return null;"
+      }
+    ],
+    "spec": "tests/fixtures/initial-page-quiet.spec.js",
+    "grep": "IP OFF",
+    "expect": "fail"
+  },
+  {
+    "name": "no sidebar handle on the initial page",
+    "why": "2c: the handle must be there before any button.",
+    "edits": [
+      {
+        "find": "        initSidebarCollapse('initial');\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/initial-page-quiet.spec.js",
+    "grep": "IP HANDLE",
+    "expect": "fail"
+  },
+  {
+    "name": "the consolidated view's layout CSS lands on the initial page",
+    "why": "2c: an open sidebar on the initial page must keep MusicBrainz's layout; the layout rules (margin-right, padding, box-sizing, transitions) are the final phase's only.",
+    "edits": [
+      {
+        "find": "        if (phase === 'final' && !document.getElementById('mb-sidebar-layout-style')) {",
+        "replace": "        if (!document.getElementById('mb-sidebar-layout-style')) {"
+      }
+    ],
+    "spec": "tests/fixtures/initial-page-quiet.spec.js",
+    "grep": "IP HANDLE",
+    "expect": "fail"
+  },
+  {
+    "name": "the render leaves the initial page's open sidebar open",
+    "why": "2c: the consolidated view still starts collapsed (sa_sidebar_collapsed) when the handle came from the initial page.",
+    "edits": [
+      {
+        "find": "                if (Lib.settings.sa_sidebar_collapsed) initSidebarCollapse.setCollapsed(true);",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/initial-page-quiet.spec.js",
+    "grep": "FRP COLLAPSED",
+    "expect": "fail"
+  },
+  {
+    "name": "the initial page starts per sa_sidebar_collapsed",
+    "why": "2c: the initial page has its own start state, open by default; sharing the consolidated view's would collapse it.",
+    "edits": [
+      {
+        "find": "            ? !!Lib.settings.sa_sidebar_collapsed_initial_page\n",
+        "replace": "            ? !!Lib.settings.sa_sidebar_collapsed\n"
+      }
+    ],
+    "spec": "tests/fixtures/initial-page-quiet.spec.js",
+    "grep": "FRP COLLAPSED",
+    "expect": "fail"
+  }
+]

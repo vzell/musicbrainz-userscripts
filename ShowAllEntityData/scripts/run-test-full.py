@@ -9,9 +9,16 @@ The run's output is passed through unchanged (and copied to --log when given).
 Alongside it, this script keeps a small JSON status file that
 ~/.claude/statusline.sh reads, so the prompt's status line shows
 
-    🧪 test:full · <host> · <branch>@<sha> · since HH:MM:SS UTC · done/total · ETA ~HH:MM UTC
+    🧪 test:full · <host> · <branch>@<sha> · since HH:MM:SS CEST · done/total · ETA ~HH:MM CEST
 
 while the suite runs, and the result for an hour afterwards.
+
+Times are Berlin time (Europe/Berlin, CET/CEST; CLAUDE.md, "Time zone:
+Europe/Berlin"): stored as ISO 8601 with the offset
+(`2026-10-15T07:24:28+02:00`), printed as `07:24:28 CEST`. Arithmetic is
+done in UTC and only the result is converted, so an ETA that crosses a clock
+change is still right. Older status/history files hold `…Z` stamps;
+statusline.sh reads both.
 
 Status file: ~/.cache/sa-test-full/status.json (one per user; the newest run
 wins). Per-host history: ~/.cache/sa-test-full/last-<host>.json, holding the
@@ -36,7 +43,9 @@ import socket
 import subprocess
 import sys
 import time
+import zoneinfo
 
+BERLIN = zoneinfo.ZoneInfo('Europe/Berlin')
 STATE_DIR = os.path.expanduser('~/.cache/sa-test-full')
 STATUS_PATH = os.path.join(STATE_DIR, 'status.json')
 
@@ -51,8 +60,13 @@ def utc_now():
 
 
 def iso(dt):
-    """Format an aware datetime as `YYYY-MM-DDTHH:MM:SSZ`."""
-    return dt.strftime('%Y-%m-%dT%H:%M:%SZ')
+    """Format an aware datetime in Berlin time as `YYYY-MM-DDTHH:MM:SS+HH:MM`."""
+    return dt.astimezone(BERLIN).isoformat(timespec='seconds')
+
+
+def hms(dt, seconds=True):
+    """Format an aware datetime as Berlin wall time plus zone, e.g. `07:24:28 CEST`."""
+    return dt.astimezone(BERLIN).strftime('%H:%M:%S %Z' if seconds else '%H:%M %Z')
 
 
 def git(*args):
@@ -142,13 +156,14 @@ def main():
             status['workers'] = int(m.group(2))
             if history and history.get('tests'):
                 eta_s = history['wall_s'] * status['total'] / history['tests']
-                status['eta'] = iso(start + datetime.timedelta(seconds=round(eta_s)))
+                eta = start + datetime.timedelta(seconds=round(eta_s))
+                status['eta'] = iso(eta)
                 status['eta_basis'] = (f"last full run on {host}: "
                                        f"{history['tests']} tests in {history['wall_s']} s")
-                when = f"probably around {status['eta'][11:16]} UTC"
+                when = f"probably around {hms(eta, seconds=False)}"
             else:
                 when = f"no recorded test:full on {host}, so no ETA yet"
-            msg = (f"[run-test-full] The suite started at {iso(start)[11:19]} UTC on "
+            msg = (f"[run-test-full] The suite started at {hms(start)} on "
                    f"{host}, on {status['branch']} at {status['sha']}: "
                    f"{status['total']} tests, {status['workers']} workers, {when}.")
             for out in (sys.stdout, log):

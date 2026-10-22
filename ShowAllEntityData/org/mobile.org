@@ -65,13 +65,47 @@ keyboard always appears right away.
 
 I only want it to appear when explicitely focusing myself an input field
 
-** bug
+** DONE bug
 
 There is another annoyance where the mobile keyboard automatically appears:
 
 When pressing the UVD the quick filter field automatically has focus too, so the keyboards appears. I ONLY want it to
 appear when I explicitely focus the quick filter field myself
 
+
+* DONE report
+
+Create a comprehensive report of how our userscript currently supports mobile devices:
+
+1.)
+
+Map the different actions we normally do with the mouse/keyboard on a normal PC based system with the differetn parts of
+our userscript generated UI
+
+#+begin_example
+h1/h2/h3 lines
+menus
+UVD
+scrolling
+sidebar handling
+tooltip hovering/handling on CAA/EAA images and URL links
+etc.
+#+end_example
+
+to how it's supposed to be done on a mobile, so I can actually check on real devices like mobile phones or tablets if
+everything works as designed
+
+2.)
+
+Handling of "Save"/"Load" from storage
+
+3.)
+
+check for other areas which I'm currently not thinking of
+
+4.)
+
+append your report to this file in emacs org-mode syntax
 
 * Answer to "bug" (2026-10-03, branch =uvd-no-autofocus-touch=) — FIXED
 
@@ -228,3 +262,629 @@ is "does not work by finger"):
   restore it;
 - tap-spec coverage for the Relationships, bigbox-wrapper and inline-thumbnail
   tooltip guards (guarded, but not pinned by a spec of their own yet).
+
+* Answer to "report" (2026-10-15) — mobile support map
+
+Env: 2026-10-15T23:23:07+02:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux
+6.18.40.1) · browser n/a · Tampermonkey n/a (code reading of ShowAllEntityData
+9.99.1356, =62eff4c=)
+
+This is all read from the code; none of it was observed on a phone. "As
+designed" means what the code is written to do on a touch-primary device. The
+=chromium-mobile= specs (=tests/fixtures/<name>.mobile.spec.js=, named below
+without the suffix) pin part of it under Pixel 7 emulation in Chromium. That
+is not Firefox Android, and it cannot emulate a pinch.
+
+Status legend used in the tables:
+- =OK= — designed for touch AND pinned by the mobile spec named in brackets
+- =OK*= — designed for touch, or a plain click that needs nothing special; no
+  mobile spec
+- =GAP= — cannot be done by finger at all
+- =MOD= — needs a modifier key (Ctrl/Alt/Shift+click); no touch equivalent
+  unless one is named
+- =RISK= — works in principle, but likely to misbehave on a real device:
+  check it
+
+** 0. Before testing on a device
+
+- Install the *published* copy from =vzell/mb-userscripts=. This repo's copy
+  loads the library through a =file:///V:/…= =@require=. On a phone that fails
+  silently: =Lib= falls back to a stub, every setting reads its built-in
+  default, and ⚙️ does nothing.
+- How the script decides it is on a touch device: =_isTouchPrimaryDevice()=,
+  which is =matchMedia('(hover: none) and (pointer: coarse)')=. It never looks
+  at the user agent, so "Desktop site" on or off makes no difference. A
+  touchscreen laptop with a mouse counts as a desktop. A tablet with a paired
+  mouse or trackpad may report =hover: hover= and get desktop behaviour, which
+  is worth one check.
+- How a tap is told apart from a real mouse: =_isTouchCompatMouseEvent()=. It
+  is true when there was a =pointerdown= with =pointerType 'touch'= or a
+  =touchstart= in the last 800 ms, or when =sourceCapabilities.firesTouchEvents=
+  is set.
+- Settings that only apply on touch. All are in ⚙️ and all default to *off*.
+  On touch the =_on_touch= key REPLACES the plain key (=_popSettingOn()=), and
+  the plain key's value is ignored there:
+
+  | Setting                           | When ticked, on a touch device                                                                               | Desktop twin (default)               |
+  |-----------------------------------+--------------------------------------------------------------------------------------------------------------+--------------------------------------|
+  | =sa_pop_mb_on_touch=              | a tap on an MB entity link in a table opens the preview window instead of the page                           | =sa_pop_mb= (on)                     |
+  | =sa_pop_mb_page_on_touch=         | the same for MB links outside tables                                                                         | =sa_pop_mb_page= (on)                |
+  | =sa_pop_ext_on_touch=             | a tap on a link to another site opens its preview window                                                     | =sa_pop_ext= (on)                    |
+  | =sa_sticky_page_headers_on_touch= | Sticky Page Headers also run on touch (on Firefox Android this did nothing on 2026-10-03; still undiagnosed) | =sa_enable_sticky_page_headers= (on) |
+
+- Settings reach the phone only through ⚙️ → 💾 Save configuration / 📂 Load
+  configuration, because each Tampermonkey install has its own storage. See 2.3.
+- On Firefox Android the Tampermonkey menu (💾 Browser cache, ⚙️ Userscript
+  Settings Manager, 📜 ChangeLog, 🔧 Library Settings) is under the browser
+  menu → Extensions → Tampermonkey. 📜 ChangeLog has no in-page button, so that
+  menu is its only route.
+- MusicBrainz has no =<meta name="viewport">=, so the page is laid out at
+  desktop width and then zoomed out. Most =RISK= items below are about what
+  happens after you pinch-zoom in. Device emulation in Chrome or Firefox does
+  not reproduce Firefox Android's zoom; only the phone does.
+
+** 1. Interaction map
+
+*** 1.1 h1 line (action buttons, toolbar menus)
+
+| Element                                                                                        | Desktop                                                                                      | On touch (as designed)                                                                                            | Status                                                                                                 |
+|------------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------+-------------------------------------------------------------------------------------------------------------------+--------------------------------------------------------------------------------------------------------|
+| Action buttons (🧮 Show all …)                                                                 | click; hover shows a rich card with the full label                                           | a tap starts the fetch; the card never opens on a tap                                                             | OK (touch-tooltip); GAP for the card's text                                                            |
+| 📦 Data ▾, 🛠 View ▾, 📀 Discography ▾                                                          | click opens; ↑↓ Home End move; Esc or an outside click closes                                | a tap opens; a tap on a row activates it; a tap outside closes (a tap fires the =mousedown= that this listens to) | OK*; RISK: the panel is clamped to =innerWidth/innerHeight=, so check it is visible after a pinch-zoom |
+| Menu rows (Save, Load, Export ▸, Statistics, Density ▸, Keyboard Shortcuts, discography views) | click, or Ctrl+S/L/E/I/D/K                                                                   | tap                                                                                                               | OK*                                                                                                    |
+| ⚠️ WARNING / ❌ ERROR finding menus                                                             | clicking a row toggles that finding (=_toggleFinding()=); hovering a row explains it         | tap; the menu closes after each row, so reopen it to tick another; the explanations cannot be reached             | OK*; GAP (explanations)                                                                                |
+| ❓ help                                                                                        | click opens HELP on GitHub; Shift+click shows it in the page; Ctrl+M → H                     | a tap opens GitHub                                                                                                | OK*; MOD: the in-page help cannot be reached                                                           |
+| ⚙️ settings                                                                                     | click, Ctrl+,                                                                                | tap                                                                                                               | OK* (see 1.11)                                                                                         |
+| Progress card =#mb-async-pop=                                                                  | opens for a job you start; hovering the job's anchor reopens it; Esc or leaving it closes it | opens for a job you start (=sa_async_pop_auto_open=); a tap outside closes it (=_ajOnPointerDown=)                | OK (async-pop); RISK: once closed it cannot be reopened by tap                                         |
+| 💾 Browser cache overview                                                                      | Tampermonkey menu, a Statistics panel button, a ⚙️ function, a progress-card action           | the same routes, by tap                                                                                           | OK (idb-overview)                                                                                      |
+
+*** 1.2 h2 / h3 lines
+
+| Element                                                                                                                      | Desktop                                                    | On touch (as designed)                                                                    | Status                                                                                      |
+|------------------------------------------------------------------------------------------------------------------------------+------------------------------------------------------------+-------------------------------------------------------------------------------------------+---------------------------------------------------------------------------------------------|
+| =.mb-toggle-h2= heading                                                                                                      | click toggles it; Ctrl+click toggles every peer h2; Ctrl+2 | a tap toggles that one only                                                               | OK*; MOD: no way to toggle all h2s by touch                                                 |
+| =.mb-toggle-h3= sub-table heading                                                                                            | click; Ctrl+click toggles all h3s; Ctrl+3                  | a tap toggles one; the "Show/Hide all sub-sections" button (=.mb-master-toggle=) does all | OK*                                                                                         |
+| =.mb-master-toggle=                                                                                                          | click                                                      | tap                                                                                       | OK*; its tooltip promises "Ctrl+Click … ALL" but the handler never reads =ctrlKey= (see 4.) |
+| Credits / Annotation sub-headings                                                                                            | click; Ctrl+click toggles every one in that section        | a tap toggles one                                                                         | OK*; MOD                                                                                    |
+| h2 buttons (↔️ Resize, 👁️ Visible, ⚠⟳ retry, ⏳, 🎨, Clear column filters) and h3 buttons (resize, visible, Show single-table) | click                                                      | tap; they are small pill-shaped targets                                                   | OK*; RISK: hard to hit while zoomed out                                                     |
+| Sub-table 🔍 reveal                                                                                                          | click                                                      | a tap shows the filter without focusing it, so no keyboard appears                        | OK (filter-autofocus)                                                                       |
+| Row-count stat                                                                                                               | read-only; hovering shows a card ("N sub-tables hidden" …) | a tap passes through to the heading toggle; the card cannot be reached                    | GAP (the card's text)                                                                       |
+| Sticky thead and vertical sticky filter bars                                                                                 | CSS sticky                                                 | NOT switched off on touch (unlike Sticky Page Headers)                                    | RISK: check while pinch-zoomed                                                              |
+
+*** 1.3 Column headers
+
+| Element                                                     | Desktop                                                     | On touch (as designed)                                                | Status                                                   |
+|-------------------------------------------------------------+-------------------------------------------------------------+-----------------------------------------------------------------------+----------------------------------------------------------|
+| Sort ⇅ ▲ ▼                                                  | click the glyph; Ctrl+click ▲/▼ adds the column to a multi-column sort; Alt+click sorts by text length; Ctrl+↑/↓/# from a focused column filter | tap the glyph; only the glyph sorts, not the rest of the header, and each glyph has only ~2×5 px padding | OK*; MOD (multi-column and length sort); RISK: hard to hit |
+| 📊 (UVD)                                                    | click, Enter/Space, Ctrl+Q                                  | tap                                                                   | OK (release-tracks-instrument-icons); see 1.5            |
+| Column collapse =.mb-col-collapse-hdr-btn=                  | click; Ctrl+click also opens nested wiki h2s                | tap                                                                   | OK*; MOD                                                 |
+| Column width grip =.column-resizer=                         | drag (=mousedown/mousemove=, =makeColumnsResizable()=)      | cannot be dragged by finger; ↔️ Resize is the alternative             | GAP                                                      |
+| ▶🔗 Relationships, ▶⏱ ms, ▶🖼 CAA (+ its layout cycle), ▶♪ Picard, release-events ⚠/⏳ | click, Enter/Space                          | tap                                                                   | OK*                                                      |
+| 👁️ column visibility menu                                   | click opens it; checkboxes, Select/Deselect all, Choose config; Alt+letters; drag it by its header; Esc or an outside click closes | tap; the list scrolls inside the menu (=max-height: 60vh=); the menu cannot be moved | OK*; GAP (moving it)                                     |
+
+*** 1.4 Filters (GF, STF, CF)
+
+| Element                                                   | Desktop                                                                                                                                       | On touch (as designed)                                                                                                                                                               | Status                                                                                                                                                                                                                              |
+|-----------------------------------------------------------+-----------------------------------------------------------------------------------------------------------------------------------------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Typing into the GF, an STF or a CF                        | click and type; the GF is focused automatically after the render; Ctrl+G / Ctrl+C                                                             | tap to focus; nothing is focused automatically, so the keyboard never appears uninvited; the field stays =readonly= until the first real tap (=_hardenFilterInputAgainstAutofill()=) | OK (filter-autofocus, filter-sliced)                                                                                                                                                                                                |
+| ✕ clear                                                   | click, and the cursor goes back into the field; Esc clears, then blurs; Shift+Esc / Ctrl+Shift+G clear everything                             | tap; on touch the cursor is NOT put back                                                                                                                                             | OK (filter-autofocus)                                                                                                                                                                                                               |
+| Cc / Rx / Ex checkboxes on the GF and STF                 | click; Ctrl+click applies that mode to every column filter                                                                                    | tap one; for a single sub-table, the mode pop-up's "Apply these modes to every column in this table" button                                                                          | OK*; MOD (the page-wide version has no touch path)                                                                                                                                                                                  |
+| Column chips =.mb-col-mode-chip=                          | click; faint until hovered                                                                                                                    | tap; shown at 0.7 opacity under =(hover: none)=; 9 px text, so tiny targets                                                                                                          | OK*; RISK: hard to hit                                                                                                                                                                                                              |
+| Compact =.mb-col-mode-btn= → =#mb-col-mode-pop=           | click opens it; an outside click or Esc closes it                                                                                             | a tap opens it; a tap outside closes it                                                                                                                                              | RISK: it closes on ANY window =resize= (=_closeColModePop()=), so rotating the phone or the keyboard appearing or disappearing closes it                                                                                            |
+| Filter width grips ⋮ (GF, STF)                            | drag with the mouse                                                                                                                           | cannot be dragged by finger                                                                                                                                                          | GAP                                                                                                                                                                                                                                 |
+| 🔍 focus prefix (=sa_filter_focus_prefix=, default "🔍 ") | kept at the front by a =keydown= guard (=guardFilterPrefixKeydown()=) and by clamping the caret on =selectionchange=                          | the guard looks for =e.key === 'Backspace'=, and Android soft keyboards often report =key: "Unidentified"= instead                                                                   | RISK, see 4.4                                                                                                                                                                                                                       |
+| Filter history 🕑 / + pin                                 | 🕑 or Alt+H toggles it; hover or arrows select; click or Enter applies; a query is saved to history only on Enter; an outside click closes it | tap 🕑, tap an entry; the keyboard's Go/Search key should send Enter                                                                                                                 | RISK: opening the history focuses its quick filter, and applying an entry focuses the filter. Both call =.focus()= directly, not =_autoFocusInput()=, so the keyboard pops up. RISK: check that Go/Enter saves the query to history |
+| Ctrl+U Unicode picker                                     | Ctrl+U in a filter                                                                                                                            | —                                                                                                                                                                                    | GAP (there is no button for it)                                                                                                                                                                                                     |
+
+*** 1.5 UVD (📊 dropdown)
+
+| Element                            | Desktop                                                                                                                          | On touch (as designed)                                                                                   | Status                                                                                                                                                                                                                                                   |
+|------------------------------------+----------------------------------------------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Open / close                       | clicking 📊 toggles it; an outside click, Esc, or a page scroll that moves the 📊 button closes it                               | a tap on 📊 opens it; a tap outside closes it                                                            | OK*; RISK: flicking the list past its end hands the scroll to the page (the script sets no =overscroll-behavior= anywhere), and that page scroll closes the panel (=getUniqDropEl()=). The keyboard rising from the quick filter can scroll the page too |
+| Entries (checkboxes)               | click; the panel stays open so you can tick several; hover highlights an entry and describes it                                  | tap; the descriptions cannot be reached                                                                  | OK*; GAP (descriptions)                                                                                                                                                                                                                                  |
+| Section headers                    | click collapses or expands; Ctrl+click applies to every main header, or to every sub-section of a topic (=_uvdSetAllTopLevel()=) | a tap toggles one                                                                                        | OK*; MOD                                                                                                                                                                                                                                                 |
+| Quick filter                       | focused when the panel opens and after ×; ↑↓ Enter                                                                               | not focused on touch; tap it to type                                                                     | OK (filter-autofocus)                                                                                                                                                                                                                                    |
+| Resize grip =.mb-uniq-resize-grip= | drag; a double-click resets the size                                                                                             | Pointer Events with =touch-action: none= (=_wireUvdResizeGrip()=), so it drags by finger; it is 14×14 px | OK*; RISK: on a page with no viewport meta a double-tap usually zooms instead of resetting                                                                                                                                                               |
+| Position                           | fixed, 140–440 px wide, opens on the side with more room, clamped to =innerWidth=                                                | the same                                                                                                 | RISK: check where it lands after a pinch-zoom                                                                                                                                                                                                            |
+
+*** 1.6 Table cells
+
+| Element                                            | Desktop                                                                                                                                                  | On touch (as designed)                                                                                                             | Status                                 |
+|----------------------------------------------------+----------------------------------------------------------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------------------------+----------------------------------------|
+| =.mb-cell-collapse-toggle= ▶N▤ and prose more/less | click; Ctrl+click also opens nested wiki h2s                                                                                                             | tap; the toggle is small (0.72em, top right of the cell)                                                                           | OK*; MOD; RISK: hard to hit            |
+| Release-group expand ▶ (=ergCreateButton()=)       | =mousedown=                                                                                                                                              | tap (the tap fires a compatibility =mousedown=)                                                                                    | OK*, worth a check                     |
+| Sticky first column (=applyStickyColumn()=)        | =mouseenter/leave= paint the row's hover colour                                                                                                          | a tapped row stays tinted until you tap somewhere else                                                                             | RISK (cosmetic)                        |
+| Barcode cell                                       | click toggles the merge checkbox                                                                                                                         | tap                                                                                                                                | OK*                                    |
+| Annotation compare radios + button                 | click                                                                                                                                                    | tap                                                                                                                                | OK*                                    |
+| Relationships cell =.mb-rel-cell=                  | clicking the cell outside its icon links loads or reloads the row (=_relCellDelegateHandler()=); ⟳ shows on hover; a rich tooltip while a filter matches | tap, but the cell is =font-size: 0=, so there is almost nothing to hit besides the icons; ⟳ never shows; the tooltip is suppressed | RISK (tap area); GAP (tooltip)         |
+| Finding tint (yellow/red)                          | hovering explains the finding                                                                                                                            | the tint is visible; the explanation cannot be reached                                                                             | GAP                                    |
+| Picard ♪                                           | click sends to Picard on localhost                                                                                                                       | needs Picard on the same device                                                                                                    | n/a on a phone                         |
+| "#" cell of a live track (=initEventRgTooltip()=)  | hover (or Ctrl+hover) shows the release-group card; Alt+click opens it on MB                                                                             | a tap opens the release-group preview window; its ↗ opens MB                                                                       | OK (release-rg-popup); MOD (Alt+click) |
+
+*** 1.7 Tooltips and link previews (CAA/EAA images, URL links, entity links)
+
+The rule: every hover card's "show" handler returns early for a tap, because
+no =mouseout= would ever arrive to close it again. So on touch NO hover card
+appears. What is left to check is whether a tap reaches the same information
+some other way.
+
+| Hover card                                                                  | Desktop trigger                                                    | Tap path on touch                                                                                                                                                  | Status                                            |
+|-----------------------------------------------------------------------------+--------------------------------------------------------------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------+---------------------------------------------------|
+| =[data-mbtt]= rich cards (action buttons, row counts, the CAA icon summary) | hover                                                              | none for the card itself; the tap works the control (the CAA icon opens the viewer)                                                                                | OK (touch-tooltip); GAP (card)                    |
+| "Liner notes" cards (=data-mb-tip= / =_setTip()=)                           | hover, after =sa_rich_tooltip_delay_ms=                            | none; mobile browsers do not show a =title= either                                                                                                                 | GAP                                               |
+| Relationships panels =#mb-rel-tooltip= / =#mb-rel-plain-tooltip=            | hover on a relationship icon while a filter matches                | none; the tap follows the link                                                                                                                                     | GAP (and no mobile spec for the guard)            |
+| CAA/EAA hover preview =#mb-art-hover-preview=                               | hover on an icon or thumbnail (=sa_caa_hover_preview=)             | a tap on the CAA/EAA icon (=sa_caa_viewer_icon_click=, on), or on an image in an expanded cell (=sa_caa_column_viewer=, on), opens the artwork viewer              | OK (caa-column-redesign)                          |
+| Per-image type tooltip                                                      | hover on an image                                                  | the viewer's Info panel (I button)                                                                                                                                 | OK*                                               |
+| Inline thumbnails in the name cell =.mb-caa-inline-ph=                      | hover                                                              | none: they have no click handler, so a tap does nothing                                                                                                            | GAP                                               |
+| Big-image strip (bigbox) tooltip                                            | hover                                                              | none; the strip is an =<a>=, so a tap goes to the entity                                                                                                           | GAP (and no mobile spec)                          |
+| Release "Cover art (N)" tiles, medium thumbs, event art                     | hover card; click opens the viewer                                 | a tap opens the viewer; swipe steps                                                                                                                                | OK (release-tracks-cover-art, event-overview-art) |
+| CAA gallery                                                                 | click                                                              | tap                                                                                                                                                                | OK (caa-gallery)                                  |
+| Sidebar picture                                                             | hover card; click opens the viewer                                 | a tap opens the viewer                                                                                                                                             | OK (sidebar-picture)                              |
+| Link preview card =#mb-dp-peek=                                             | hover (or Ctrl+hover); Space pins it into the window; Esc hides it | the card never shows. Where that link source is switched on for touch, a tap opens the pinned window =#mb-dp-dialog= directly, which is the touch version of Space | see the next table                                |
+
+Which link previews a tap opens, with default settings:
+
+| Link source                                                    | Touch switch (default)                                                                         | Default result of a tap        | Spec                         |
+|----------------------------------------------------------------+------------------------------------------------------------------------------------------------+--------------------------------+------------------------------|
+| MB entity link in a table, including 📊 entries, barcode, cat# | =sa_pop_mb_on_touch= (off)                                                                     | the link is followed           | popup-mb                     |
+| MB link outside tables                                         | =sa_pop_mb_page_on_touch= (off)                                                                | the link is followed           | popup-mb                     |
+| External / URL link, =[info]=                                  | =sa_pop_ext_on_touch= (off)                                                                    | the link is followed           | popup-ext, popup-ext-foreign |
+| Release page "see all N versions" link                         | =sa_release_rg_link= (on); no touch twin                                                       | the release-group window opens | release-rg-popup             |
+| "#" cell of a live track                                       | =sa_event_rg_tooltip= (on); no touch twin                                                      | the release-group window opens | release-rg-popup             |
+| Detail links on the Springsteen sites                          | that site's preview switch; on touch only links inside a table body count (=_dpSiteForLink()=) | the window opens               | detail-preview               |
+
+Everything inside the window works by tap:
+- ✕ or a tap outside closes it.
+- ← Back goes back, and ‹ › step through the entries.
+- Extracted / Live switch the view, and ⟳ reloads.
+- ↗ opens the page.
+- A link inside drills down.
+- An image opens the viewer (pop-mb-image).
+
+A host that was never contacted before is first contacted on that tap; a tap
+counts as the consent that Space gives on a desktop.
+
+Not reachable on touch: moving or resizing the window (=createInfoDialog()= is
+mouse-only), and Ctrl-to-show-now, which touch does not need.
+
+*** 1.8 Artwork viewer =#mb-art-viewer=
+
+| Action                                                                             | Desktop                                                                                                                 | On touch (as designed)                                                                                                                                     | Status                   |
+|------------------------------------------------------------------------------------+-------------------------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------------------------------------------------+--------------------------|
+| Open                                                                               | click a tile, thumbnail, icon, the sidebar picture, or an image in a preview window                                     | tap                                                                                                                                                        | OK (several specs)       |
+| Step                                                                               | ← →, the ‹ › buttons                                                                                                    | swipe more than 50 px (when not zoomed); the ‹ › buttons; swiping past the end continues into the next row when =sa_art_viewer_cross_rows= is on (default) | OK (caa-column-redesign) |
+| Zoom                                                                               | wheel, ↑↓, 0, 1, Z; a click on the image = 2×                                                                           | pinch, centred between the fingers; a tap on the image = 2×                                                                                                | OK (art-viewer-extras)   |
+| Pan while zoomed                                                                   | move or drag the mouse                                                                                                  | drag with one finger                                                                                                                                       | OK (art-viewer-extras)   |
+| Grid, Info, Slideshow, Rotate, Flip H, Fullscreen, Download, Original, Source page | keys G I P R H F D O, or the buttons                                                                                    | the buttons                                                                                                                                                | OK*; Download: see 2.5   |
+| Close                                                                              | Esc (leaves fullscreen first, then the grid, then the viewer), ✕                                                        | ✕                                                                                                                                                          | OK*                      |
+| Desktop only                                                                       | Shift+← → (jump a row), V (flip vertically), B (background), Shift+R (rotate the other way), 0/1 (exact zoom), Home/End | —                                                                                                                                                          | GAP (minor)              |
+
+*** 1.9 Sidebar
+
+| Element                                  | Desktop                                                                           | On touch (as designed)                                                              | Status                                                            |
+|------------------------------------------+-----------------------------------------------------------------------------------+-------------------------------------------------------------------------------------+-------------------------------------------------------------------|
+| Section headings                         | click, Enter/Space; Ctrl+click toggles all                                        | a tap toggles one; the "Open all / Close all" bar does all                          | OK (sidebar-sections)                                             |
+| h3 sub-sections, groups of links by kind | click                                                                             | tap                                                                                 | OK (sidebar-sections)                                             |
+| ▶/◀ collapse handle                      | click                                                                             | tap; kept inside what you can see after a pan or pinch (=visualViewport= listeners) | OK (sidebar-collapse-handle; the pinch itself cannot be emulated) |
+| Inline "Sidebar" cards                   | clicking a card's head toggles it; Ctrl+click toggles all; the head has a tooltip | a tap toggles one; the width is capped to the screen                                | OK (sidebar-inline); MOD                                          |
+| "🗂 Sidebar as tables"                    | toolbar button                                                                    | tap; the resulting tables behave like any other                                     | OK*                                                               |
+
+*** 1.10 Scrolling and stickiness
+
+| Element                                          | Desktop                                                    | On touch (as designed)                                                                                                         | Status                                                                                 |
+|--------------------------------------------------+------------------------------------------------------------+--------------------------------------------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------|
+| Sticky Page Headers (h1 block, tabs, h2/h3 bars) | on (=sa_enable_sticky_page_headers=)                       | OFF unless =sa_sticky_page_headers_on_touch= is ticked; when it is, the bars are sized to =innerWidth= (=_sphViewportWidth()=) | OK (sticky-page-headers); the opt-in still did nothing on Firefox Android (2026-10-03) |
+| Sticky thead, vertical sticky filter bars        | CSS sticky                                                 | unchanged on touch                                                                                                             | RISK: check while zoomed                                                               |
+| Sticky first column                              | CSS sticky                                                 | unchanged                                                                                                                      | OK* (but see the hover tint in 1.6)                                                    |
+| Wide tables                                      | the page scrolls sideways                                  | normal touch panning                                                                                                           | OK*                                                                                    |
+| Panels that close on scroll or resize            | 📊 panel (page scroll), column-mode pop-up (window resize) | the same; touch scrolling and the keyboard make both happen far more often                                                     | RISK (see 1.4, 1.5)                                                                    |
+
+There is no scroll-to-top button. The only wheel handler is the viewer's zoom.
+
+*** 1.11 Dialogs and settings
+
+| Dialog                                                                        | Desktop                                                                                                                       | On touch (as designed)                                                                                                                                                     | Status                                       |
+|-------------------------------------------------------------------------------+-------------------------------------------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------+----------------------------------------------|
+| Settings dialog (library)                                                     | opened by ⚙️, Ctrl+, or the TM menu; drag its header and resize its corner with the mouse; the search field is focused on open | a tap opens it; it cannot be moved or resized; the search field IS focused 200 ms after opening (in the library, not through =_autoFocusInput()=), so the keyboard pops up | GAP (move/resize); RISK (keyboard)           |
+| iro colour pickers                                                            | click / drag                                                                                                                  | iro handles touch itself                                                                                                                                                   | OK*                                          |
+| Shortcut-capture fields                                                       | press the key combination                                                                                                     | needs a hardware keyboard                                                                                                                                                  | GAP (n/a)                                    |
+| Library table editor, pinned-filter editor (=showEditPersistentListDialog()=) | drag by the header; double-click a row to edit; Alt+A/E/R/S/C                                                                 | tap a row, then the Edit button; it cannot be moved; the pinned-filter editor focuses its quick filter on open                                                             | GAP (move); RISK (keyboard)                  |
+| Statistics panel                                                              | drag; its quick filter is focused on open                                                                                     | tap; the keyboard pops up on open                                                                                                                                          | GAP (move); RISK (keyboard)                  |
+| Help, Shortcuts and other info dialogs (=createInfoDialog()=)                 | drag the title bar; CSS resize corner; the quick filter is focused on open                                                    | cannot be moved or resized; the keyboard pops up on open                                                                                                                   | GAP; RISK                                    |
+| Save and Export dialogs (=showSaveDialog()=, =showExportDialog()=)            | the filename field is focused and selected on open; Alt+S                                                                     | the keyboard pops up on open                                                                                                                                               | RISK                                         |
+| Load dialog (=showLoadFilterDialog()=)                                        | its filter is focused once a file is read (phase 2)                                                                           | the keyboard pops up after you pick a file                                                                                                                                 | RISK                                         |
+| Custom confirm/alert (=Lib.showCustomConfirm/Alert=), threshold dialogs       | placed next to whatever opened them                                                                                           | placed using =innerWidth/innerHeight=, with the top not kept ≥ 0                                                                                                           | RISK: may be off-screen or tiny while zoomed |
+
+*** 1.12 Keyboard shortcuts and what to tap instead
+
+| Shortcut                                           | Tap instead                                                                 |
+|----------------------------------------------------+-----------------------------------------------------------------------------|
+| Ctrl+,                                             | ⚙️                                                                           |
+| Ctrl+G / Ctrl+C                                    | tap the filter                                                              |
+| Ctrl+Shift+G / Shift+Esc                           | the "Clear all filters" / "Clear all COLUMN filters" buttons                |
+| Ctrl+E S L V D I                                   | the 📦/🛠 menu rows Export, Save, Load, Visible columns, Density, Statistics |
+| Ctrl+B                                             | the barcode column's header toggle                                          |
+| Ctrl+R                                             | ↔️ Resize                                                                    |
+| Ctrl+K, ?, /                                       | 🛠 → Keyboard Shortcuts                                                      |
+| Ctrl+↑ / ↓ / # (in a column filter)                | the ▲ ▼ ⇅ glyphs                                                            |
+| Ctrl+O / Q / A (in a column filter)                | the column collapse button / 📊 / ▶🖼                                        |
+| Ctrl+M prefix + a digit or letter                  | the visible button it names                                                 |
+| Alt+letter in dialogs                              | the button with that letter underlined                                      |
+| Esc                                                | ✕, or a tap outside                                                         |
+| Ctrl+2 / Ctrl+3 (all h2s / all h3s)                | none for h2s; for h3s, the "Show/Hide all sub-sections" button              |
+| Ctrl+U (Unicode picker), Ctrl+M → H (in-page help) | none                                                                        |
+
+All the modifier clicks that have no touch path (=MOD=), in one place:
+- Ctrl+click on an h2, h3, sub-heading, sidebar section or inline card, to
+  toggle all of its peers.
+- Ctrl+click on ▲▼ for a multi-column sort, and Alt+click on ▲▼ to sort by
+  text length.
+- Ctrl+click on Cc/Rx/Ex to apply the mode to all columns.
+- Ctrl+click on a 📊 section header.
+- Ctrl+click on a collapse button, which also opens nested h2s.
+- Shift+click on ❓ for the in-page help.
+- Alt+click on the "#" cell of a live track.
+
+** 2. Save / Load from storage
+
+*** 2.1 Save to Disk (📦 → Save, Ctrl+S, or "Save" in the Save-or-Render dialog)
+
+- =saveTableDataToDisk()= turns the rows into JSON and gzips them with pako. It
+  wraps the result in a =Blob= (=application/gzip=) with an object URL, and
+  =showSaveDialog()= asks for a file name.
+- The file is written by a plain =<a download>= and =.click()=, inside the tap
+  on the dialog's Save button. That is a user gesture, so mobile browsers allow
+  it. There is no File System Access API and no =GM_download= (not granted),
+  so nothing needs a fallback for a missing API.
+- The name is
+  =<prefix><EntityType>-(<Name>)-<Section>[-detail][-(rows)]_<timestamp>.json.gz=
+  (=_assembleExportFilename()=). Android does not ask where to put it; it goes
+  to Downloads, possibly after a download prompt or snackbar.
+- RISK: the object URL is revoked 1000 ms after the click. Android's download
+  manager may read the blob later than that, which would give an empty or
+  failed download. If a save seems to work but the file is 0 bytes or missing,
+  check this first.
+- RISK: the filename field is focused on open, so the keyboard pops up (1.11).
+
+*** 2.2 Load from Disk (📦 → Load, Ctrl+L)
+
+- =showLoadFilterDialog()= has its own hidden file input,
+  ~accept=".gz,application/gzip,.json"~, opened from its Load button. It reads
+  the file with =FileReader= and =pako.ungzip=. You can set a pre-filter
+  before the rows are rendered.
+- Whether the file is gzip is decided by its NAME (=file.name.endsWith('.gz')=),
+  not by the gzip magic bytes.
+- RISK: Android's file picker turns =accept= into MIME types. A =.json.gz=
+  that the system labels =application/x-gzip= or =application/octet-stream=
+  may show greyed out. Some providers (Drive, other cloud apps) hand over a
+  display name without =.gz=; the gzip data is then parsed as text, and the
+  load fails.
+- Save/Load has no drag-and-drop, so touch loses nothing here.
+- The toolbar's =#mb-file-input= has an =onchange= that calls
+  =loadTableDataFromDisk()=, but nothing ever opens it. It looks like dead
+  code.
+- RISK: the dialog's filter is focused once the file is read, so the keyboard
+  pops up.
+
+*** 2.3 Settings: 💾 Save configuration / 📂 Load configuration (⚙️ dialog footer)
+
+- Writing: =_saveSettingsConfig()= makes a plain JSON blob, and
+  =showExportDialog()= downloads it with =<a download>= as
+  =<SCRIPT_ID>-config-<ts>.json=. The same 1 s revoke RISK as in 2.1 applies.
+- Reading: a hidden ~<input type=file accept=".json,application/json">~ →
+  =_loadSettingsConfig()= (=file.text()=), then the page reloads.
+- This is the only way to bring desktop settings onto the phone. It also
+  carries workspace state: pinned filters, filter history, column visibility
+  and layouts (=_CFG_WORKSPACE_GROUPS=). =secret= keys (the Discogs token)
+  never travel.
+
+*** 2.4 Browser cache Export / Import (💾 Browser cache → Export/Import, =_idbx*=)
+
+- Export (=_idbxExport()=): a gzip stream (pako) of JSONL lines, with images
+  base64-encoded, saved as =sa-cache-<host>-<date>.jsonl.gz=. The whole
+  compressed file is held in memory before the download. Images are unticked
+  by default; keep them unticked on a phone.
+- RISK: the download starts after a long run of async work, so it is outside
+  the user gesture and a browser may block or quietly drop it. "Download
+  again" is the retry that does count as a gesture; use it if nothing appears.
+- The toast says "Your browser asks where to put it". On Android it does not;
+  the file goes straight to Downloads (wording, see 4.).
+- Import: "Choose a file…" (~accept=".gz,application/gzip"~, with the same
+  picker RISK as 2.2), or drag-and-drop on desktop; the button covers touch.
+  Here gzip is detected by CONTENT, so a renamed file still loads. The import
+  runs in two passes, check then merge, in batches of 200.
+- Pinned under emulation by idb-export-import.
+
+*** 2.5 Other downloads
+
+- 📦 → Export (CSV, JSON, Org, HTML) and the Statistics export use the same
+  blob + =<a download>= path as 2.1, with the same 1 s revoke RISK and the
+  same focused filename field.
+- The viewer's Download (D or the button, =_artViewerDownload()=) fetches the
+  image first and clicks the link afterwards, which is outside the gesture
+  (RISK). Its blob is revoked after 10 s.
+
+*** 2.6 IndexedDB caches on a phone
+
+- =vz-mb-saed-art-cache= holds images, artwork metadata, the Relationships
+  WS/2 answers, ms lengths, "Recording of" data and artist works.
+  =vz-saed-detail-pages= holds preview pages, MB preview records and the
+  favicons of external sites.
+- Entries expire by age only: =sa_art_idb_image_ttl_days= 30, metadata 30,
+  plus a TTL per store. There is no size cap and no LRU. Expired rows are
+  removed when they are read, and by a sweep when the browser is idle
+  (=_artIdbSweepExpired()=).
+- There is no =QuotaExceededError= handling. With a phone's smaller quota,
+  writes fail quietly and the script goes to the network instead. That is
+  correct, but you cannot see it happen. The 💾 overview shows usage against
+  quota (=navigator.storage.estimate()=); worth a look on the phone after a
+  big page.
+- IndexedDB belongs to one origin in one browser profile. The desktop cache
+  reaches the phone only through 2.4.
+- =sa_art_idb_enable= turns the art cache off if storage is tight.
+
+** 3. Other areas
+
+- *Background tabs.* There is no =visibilitychange= or =freeze= handling. The
+  page fetch loop, the WS/2 rate gate and the Retry-After waits all run on
+  =setTimeout=, so a background tab slows them down a lot. Firefox Android
+  may also discard a background tab, and an unsaved render is then gone. Keep
+  the tab in front during a long fetch, and Save to Disk before switching
+  apps with a big render on screen.
+- *New tabs.* "Show single-table", overflow tables
+  (=sa_render_overflow_tables_in_new_tab=, on), help, annotation compare and
+  the viewer's "Source page" all open a new tab (=window.open=). On a phone
+  that puts the rendered page in the background (see the previous point).
+  "Show single-table" hands the table over through a GM storage key
+  (=mb_sa_subtable_snapshot_<uid>=), which the new tab deletes when it loads.
+  If the new tab never loads, the key stays forever, and it can be megabytes;
+  nothing sweeps it.
+- *Memory.* The thresholds are the desktop ones and have no touch variant:
+  =sa_max_page= 50, =sa_render_threshold= 5000, =sa_render_warning_threshold=
+  10000. A phone may run out of memory well below them. They are per install,
+  so lower them in the phone's own profile.
+- *Native dialogs.* The navigation guard (=initNavigationGuard()=) uses
+  =window.confirm()=, and about a dozen =alert()= calls report errors in
+  export, save and load. Firefox Android shows them as its own sheets. That
+  works, but they block the page.
+- *Where custom dialogs land.* =Lib.showCustomConfirm/Alert= and the
+  threshold dialogs are placed using =innerWidth/innerHeight=, and their top
+  is not kept on screen. While pinch-zoomed they may open partly off-screen;
+  zoom out to find them. HELP's troubleshooting note that "a dialog may be
+  waiting for you" matters even more on a phone.
+- *Double-tap.* With no viewport meta, a double-tap zooms the page. So
+  anything that relies on =dblclick= is unreliable. That is the 📊 grip reset
+  and the pinned-filter editor's row edit; the row edit also has a button, the
+  grip reset does not.
+- *=title= tooltips.* Mobile browsers never show them, so information the
+  script keeps only in tooltips is invisible on touch (collected in 4.).
+- *Tablets.* A Bluetooth keyboard brings the shortcuts back. A trackpad or
+  mouse may switch the device to =hover: hover=, and with it to desktop
+  behaviour. Check one tablet both ways.
+- *Clipboard.* The script never uses the clipboard, so there is no
+  secure-context or permission problem.
+- *iframes.* The preview window's "Live page" is a sandboxed =srcdoc= iframe
+  that the script does not run in. The header has no =@noframes=; the
+  Jungleland and brucespringsteen.it gates check =window.top= themselves.
+- *Find in page.* The browser's find skips rows that a filter hides
+  (=display: none=). That is expected, but it can surprise on a phone.
+- *Picard* ♪ needs Picard on the same machine, so it does not apply on a
+  phone.
+- *Other sites* (SL, JL, KF, BB) use the same engine and follow the same touch
+  rules. The SL scope bar and the BB side bar handle are plain clicks. On
+  touch, only their preview links inside a table body count.
+
+** 4. Gaps and suspected bugs, by priority
+
+For each item: what it is, where it is, whether the code confirms it, and a
+suggested direction. Nothing here is fixed yet.
+
+1. *The keyboard pops up when these open.* Confirmed in the code. These
+   =.focus()= calls bypass =_autoFocusInput()=:
+   - =showSaveDialog()= and =showExportDialog()=: the filename field.
+   - =showLoadFilterDialog()=: its filter, in phase 2.
+   - The Statistics panel's quick filter.
+   - =createInfoDialog()='s quick filter (Help, Shortcuts, …).
+   - =showEditPersistentListDialog()=: =eplQF=.
+   - =createFilterHistoryWidget()=: =_histOpen= focuses the quick filter, and
+     =_applyEntry= focuses the filter.
+   - In the library: the settings dialog's search field.
+
+   Direction: the same fix as on 2026-10-03, that is, route them through
+   =_autoFocusInput()=. The library needs its own
+   =(hover: none) and (pointer: coarse)= check. Pin it the same way as
+   =filter-autofocus.mobile.spec.js=.
+2. *The blob is revoked 1 s after the download click.* Confirmed in the code
+   (=showSaveDialog()=, =showExportDialog()=); what this does on a device is
+   unconfirmed. Direction: revoke later (for example after 60 s, or on
+   =pagehide=), as =_artViewerDownload()= already waits 10 s.
+3. *📊 closes when its list is scrolled past its end.* Confirmed: any page
+   scroll that moves the 📊 button closes it, and the script sets no
+   =overscroll-behavior= anywhere. Unconfirmed on a device. Direction:
+   =overscroll-behavior: contain= on the panel's scroll area.
+4. *The 🔍 prefix and Android Backspace.* Two parts of the code are
+   confirmed: the guard checks =e.key=, and the =input= safety net adds a whole
+   new prefix whenever the field no longer starts with one. So if the soft
+   keyboard's Backspace (=key "Unidentified"=) deletes the space of the prefix,
+   the field becomes "🔍 🔍" and filters for "🔍". Unconfirmed on a device.
+   Direction: guard in =beforeinput= (=inputType deleteContentBackward=), or
+   have the =input= handler repair the existing prefix instead of adding a new
+   one.
+5. *The column-mode pop-up closes on every window resize.* Confirmed
+   (=_closeColModePop()= on =resize=). The keyboard showing or hiding, or a
+   rotation, closes it. Direction: on touch, ignore resizes that only change
+   the height, or move the pop-up instead of closing it.
+6. *Drags work only with a mouse.* Confirmed for:
+   - the column width grip (=makeColumnsResizable()=);
+   - the ⋮ grips of the GF and STF;
+   - moving and resizing every dialog: settings, info window, Statistics, 👁️
+     menu, save/load, the table editors.
+
+   Direction: Pointer Events plus =touch-action: none=, modelled on
+   =_wireUvdResizeGrip()=.
+7. *Information that exists only in tooltips.* This follows from the design,
+   since tooltips are suppressed on a tap. Lost on touch:
+   - the action buttons' full labels;
+   - finding explanations, both in the menu rows and on tinted cells;
+   - the Relationships filter-match panels;
+   - row-count details;
+   - 📊 entry descriptions;
+   - "Liner notes" cards;
+   - the preview behind the inline thumbnails.
+
+   Direction: one shared long-press or ⓘ affordance that shows the
+   =data-mbtt= / =data-mb-tip= card pinned, with an explicit close.
+8. *No touch path for "all peers".* That covers:
+   - Ctrl+click on h2s, inline sidebar cards, Credits/Annotation sub-headings
+     and 📊 sections;
+   - Cc/Rx/Ex applied page-wide;
+   - Ctrl+2 / Ctrl+3;
+   - multi-column sort (Ctrl+click) and length sort (Alt+click).
+
+   Direction: low priority. Menu rows such as 🛠 View → "Expand/collapse all
+   h2" would cover the common cases.
+9. *The progress card cannot be reopened on touch.* Confirmed: =_ajInitHover()=
+   only reacts to hover. Direction: let a tap on the job's status line reopen
+   it.
+10. *Inline thumbnails ignore a tap.* Confirmed: =.mb-caa-inline-ph= has no
+    click handler. Direction: open the viewer, as the CAA cell images do.
+11. *The Relationships cell is hard to tap.* The cell is =font-size: 0=, so
+    "click outside the icons to reload" has almost no target. Direction: show
+    a ⟳ on touch.
+12. *Leftover single-table snapshot keys.* Confirmed:
+    =openSubtableAsSingleTableTab()= writes them, and only the tab that reads
+    one deletes it. Direction: at start-up, sweep
+    =mb_sa_subtable_snapshot_*= keys older than a day.
+13. *Background tabs are not handled.* Confirmed: there is no
+    =visibilitychange= listener. Direction: at least warn when a fetch is
+    running and the tab is hidden, or offer Save to Disk.
+14. *Text that is wrong, on desktop too:*
+    - HELP §Sorting says "Click a column header to sort"; only the ⇅ ▲ ▼
+      glyphs sort.
+    - The tooltip of =.mb-master-toggle= promises Ctrl+Click for "ALL", but
+      its handler never reads =ctrlKey=.
+    - The cache export toast says "Your browser asks where to put it". That
+      is not true on Android, or in any browser that saves straight to
+      Downloads.
+    - HELP §"On a phone or tablet" says nothing about Save/Load, downloads,
+      moving settings to the phone, or the background-tab risk.
+15. *Spec gaps,* already noted on 2026-10-03: no mobile spec pins the
+    Relationships tooltip guard, the bigbox guard or the inline-thumbnail
+    guard.
+
+** 5. Device test checklist
+
+Run it on a phone (Firefox Android + Tampermonkey) and on a tablet. Suggested
+pages:
+- an artist's release groups (a single table);
+- a release (release-tracks: cover art, AR columns, sidebar);
+- a release group or an artist's releases (several tables);
+- an event (event art, "#" cells).
+
+*** Setup
+- [ ] The published copy is installed, and ⚙️ opens the Settings Manager (if
+  not, the library did not load)
+- [ ] Desktop settings were brought over with 💾/📂 configuration (2.3)
+- [ ] 💾 Browser cache shows a usage/quota figure
+- [ ] Tablet, with and without a paired mouse or trackpad: which behaviour do
+  you get?
+
+*** h1 / menus
+- [ ] Tap an action button: the fetch starts and no card stays on screen
+- [ ] 📦 / 🛠 / 📀 open on a tap, their rows work, a tap outside closes them;
+  zoomed in, the panel is still visible
+- [ ] ⚠️/❌ finding menu: a tap on a row filters; reopen the menu to add
+  another
+- [ ] ❓ opens HELP on GitHub
+- [ ] Start a Relationships load: the progress card opens, and a tap outside
+  closes it. Can you get it back? (expected today: no, 4.9)
+
+*** h2 / h3
+- [ ] Tap an h2 and an h3: each one collapses and expands on its own
+- [ ] "Show all sub-sections" opens every sub-table
+- [ ] Sub-table 🔍: the filter appears and the keyboard does NOT
+- [ ] Zoomed in and scrolling: the sticky thead and filter bars look sane
+
+*** Column headers
+- [ ] ⇅ ▲ ▼ can be hit with a finger, and sorting works
+- [ ] ↔️ Resize fits the columns (the edge grip itself will not drag; that is
+  expected)
+- [ ] The ▶🔗 ▶🖼 ▶⏱ toggles work
+- [ ] 👁️ menu: a long list scrolls inside the menu, and a tap outside closes it
+
+*** Filters
+- [ ] After a render, the keyboard does NOT appear
+- [ ] Tap the GF: the keyboard appears and typing filters; ✕ clears without
+  bringing the keyboard back
+- [ ] Backspace all the way to the start of the GF and of a CF: the 🔍 prefix
+  stays, and no stray "🔍" filter appears (4.4)
+- [ ] Tap a compact Cc/Rx/Ex button: the pop-up opens. Does it survive the
+  keyboard appearing? A rotation? (4.5)
+- [ ] 🕑 history: does the keyboard pop up when it opens (expected today: yes,
+  4.1)? Does Go/Enter save the query to history?
+
+*** UVD 📊
+- [ ] Tap 📊: the panel opens and the keyboard does NOT
+- [ ] Tick several entries: the panel stays open and the table filters
+- [ ] Flick the entry list past its end: does the panel close? (4.3)
+- [ ] Tap the quick filter: the keyboard appears. Does the panel survive that?
+- [ ] Drag the resize grip with a finger: the panel resizes
+- [ ] Zoomed in: the panel opens next to its 📊
+
+*** Cells
+- [ ] ▶N▤ cell toggles and prose more/less react to a tap
+- [ ] The release-group ▶ expand works by tap
+- [ ] Relationships cell: can you hit the cell itself (not an icon) to reload
+  it?
+- [ ] In a table with a sticky column, does a tapped row stay tinted?
+
+*** Artwork
+- [ ] A tap on the CAA/EAA icon opens the viewer; swipe steps, also into the
+  next row
+- [ ] Pinch zooms; one finger pans while zoomed; a tap on the image gives 2×
+- [ ] ✕ closes, and the page keeps its scroll position
+- [ ] A tap on a release "Cover art" tile or a medium thumb opens the viewer;
+  Spreads fit the screen
+- [ ] Inline thumbnail beside a name: a tap does nothing (expected today, 4.10)
+- [ ] Viewer Download: does a file appear in Downloads? (2.5)
+
+*** Link previews
+- [ ] With defaults, a tap on an MB link in a table opens the page (no window)
+- [ ] The release page's "N versions" link and an event's "#" cell open the
+  preview window; ↗ opens the page
+- [ ] With =sa_pop_mb_on_touch= on: a tap on an MB link opens the window;
+  drill down, ← Back, ✕
+- [ ] With =sa_pop_ext_on_touch= on: a tap on an external link opens the
+  window (the first request to that host happens now)
+
+*** Sidebar
+- [ ] Sections and link groups fold by tap; Open all / Close all work
+- [ ] The ▶/◀ handle stays at the right edge after a pan and a pinch, and a
+  tap opens and closes the sidebar
+- [ ] A tap on the sidebar picture opens the viewer
+- [ ] The inline Sidebar cards fit the screen width
+
+*** Dialogs
+- [ ] ⚙️ Settings: does the keyboard pop up when it opens (expected today:
+  yes, 4.1)? Can you scroll to every setting?
+- [ ] Statistics, Help, Shortcuts: does the keyboard pop up when they open?
+  (4.1)
+- [ ] The High Page Count and Save-or-Render dialogs: visible without zooming
+  out?
+
+*** Save / Load
+- [ ] Save to Disk: the file lands in Downloads with its full name and a size
+  above zero (4.2)
+- [ ] Load from Disk: the picker lets you choose that =.json.gz= (not greyed
+  out), and it loads; also try one from a cloud provider
+- [ ] Export CSV/JSON: the file arrives and is not empty
+- [ ] 💾/📂 configuration: a round trip between desktop and phone
+- [ ] Cache Export without images: the file arrives (if not, use "Download
+  again"); Import it on another device
+
+*** Other
+- [ ] Start a big fetch, switch to another app for a minute, come back: is it
+  still running, finished, or was the tab reloaded?
+- [ ] "Show single-table": the new tab renders. Going back, is the original
+  render still there?
+- [ ] Double-tap the 📊 grip: does the page zoom, or does the panel size reset?

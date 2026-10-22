@@ -224,6 +224,30 @@ BOTH bare-`title` call sites (`_isJesus2099Treleases()` and
 `_isOwnColumnTooltip()`. Anything that puts a `title` on a `treleases`
 `<th>`/`<td>` must mark it the same way.
 
+**Since branch `fix/length-header-tooltips`, `data-mb-tip` marks
+it too.** `_isOwnColumnTooltip()` accepts `data-mb-col-tip` OR `data-mb-tip`,
+and `data-mb-tip` is stamped only by `_setTip()`. So any tooltip written
+through `_setTip()` is recognised, and no writer has to remember the second
+marker. That came from a regression: the column descriptions of 9.99.1406
+(`_COLUMN_DESCRIPTIONS`) went through `_setTip()` without `data-mb-col-tip`.
+On every page whose Length `<th>` MusicBrainz marks `treleases` (an ISRC page,
+the relationship overviews), the next filter keystroke then stripped the
+native class and the description. Pinned by
+`tests/fixtures/length-header-tooltips.spec.js`. A `title` set by direct
+assignment is still NOT ours, by design. See "Script tooltips go through
+`_setTip()`" in docs/claude/toolbar-and-header-ui.md.
+
+**The Length tooltips follow the ⏱ state.** `_initLengthColHeaderTooltips()`
+builds both texts from `_msLengthPrecisionShown()`:
+- **Seconds:** "rounded to the nearest second, so '4:50' can be anything from
+  4:49.500 to 4:50.499".
+- **Milliseconds:** "shown here with milliseconds", and the ⏱ hint offers
+  "back to whole seconds".
+
+`_msToggleLengthPrecision()` re-runs it after every press, together with
+`_refreshColumnDescriptions('Length')`, which does the same for the generic
+Length description on the other pages.
+
 `purgeJesus2099Artifacts()`/`_stripJesus2099InTable()` strip every remaining
 jesus2099 artifact from the tables this script renders — header row included,
 plus the captured source rows in `groupedRows`/`allRows` (cleaning only the
@@ -605,6 +629,24 @@ section on Disambiguation. `rec-event-mismatch`/`rec-place-mismatch` compare
 the comment with the event name and with the place name (= the venue, the
 location's first part). See docs/claude/findings.md.
 
+**The deduced date (2026-10-21).** A ⚠️ "no date attribute" flag exists only
+when the row has a "live recording of" date (`_liveDateCtx.recordingDate`),
+and that date is what the credit was measured against — so it is the date
+the credit can be deduced to be from. `_liveDateCheckResult()` returns it as
+`date`, `_appendLiveDateFlag()` stamps it as `data-mb-live-date` (an
+attribute: it survives `cloneNode` and the disk round trip, which stores the
+flags as HTML), and `live-credit-nodate`'s `detail()`
+(`_liveCreditDeducedDate()`) names it in the cell's title: "⚠️ Live credit
+without a date: probably 1988-04-27, the recording's own date (…)". That
+needed row findings to get a `detail()` at all: `_stampFindingRow()` now asks
+it for both scopes. The other dated credits of the track (event, place,
+instruments) are NOT consulted: they are what the ❌ twin compares, and the
+recording date is the one source every flagged row has. Spec
+`live-credit-deduced-date.spec.js` (each title against its own row's
+"Recording date"), plus a check in
+`live-date-flags-survive-disk-roundtrip.spec.js`; mutations
+`scripts/mutations/live-credit-deduced-date.json` (5, all caught).
+
 **Item 4: the release group decides the main event.** `initReleaseGroupLink()`
 (page init, and again at the end of every `stampFindings()`) rewrites the
 subheader's "see all versions" link from `release.releaseGroup` in the page's
@@ -643,6 +685,13 @@ column uses (≥1.1 s apart, together). A hit counts only
 when its title IS the event name: terms mode scores wrong concerts 100
 (`scripts/probe-rg-event-search.py`). Spec
 `release-event-colours-rg-tooltip.spec.js` on `release-tracks-brixton-night.html`.
+**The event above the card (2026-10-21, `sa_event_rg_event_card`, default
+on):** the row's "Recorded at event" event, stacked above the release group
+card as the link previews' event card, one lookup per event through the same
+gate, asked after the card's own request and never by a repaint. Details in
+docs/claude/detail-pages.md, `_eventRgSource()`'s "stacked event card". A spec
+that hovers a "#" cell routes those lookups with
+`tests/support/eventLookups.js`.
 
 **Fixture trap: a freshly fetched release page re-renders itself.**
 `tests/fixtures/release-tracks-multi-event.html` came from
@@ -653,3 +702,127 @@ comments `scripts/build-multi-event-fixture.py` put into the server markup.
 Older fixtures name bundles that no longer exist, which is the only reason
 they never hit this. `release-tracks-event-consistency.spec.js` aborts
 `static.metabrainz.org/**`; any spec on a newly fetched release page must too.
+
+## Instruments column: third-party instrument icons
+
+"MusicBrainz: Instrument Icons Everywhere" (@Lotheric,
+`tests/fixtures/live-userscripts/manifest.json` id `lotheric-instrument-icons`)
+puts an `<img class="mb-ii-icon">` IMMEDIATELY BEFORE every visible
+`a[href*="/instrument/"]` and stamps the ANCHOR `data-ii-processed="true"`.
+It never looks at a stamped anchor again.
+
+**Since its 2026-10-12.2140 the icon can be on either side.** The script's
+`iconPosition` setting (its own GM storage, switched from its Tampermonkey
+menu, which reloads the page) is `'before'` (the first-run default) or
+`'after'`, where the image is the anchor's IMMEDIATE NEXT sibling. One page
+has one side. `_findInstrumentLinkIcon()` is the single place that knows
+this: previous sibling first, then the next sibling, unless that image is
+directly followed by another instrument `<a>` (in `<a1></a><img><a2>` with no
+text between, it is a2's 'before' icon). MusicBrainz always puts text between
+two instrument links, so only the tie-break spec builds that shape. Every
+reader (the 📊 counts, `ii-icon-*` filtering and highlighting,
+`_iiSoleIcon()`, the "» instrument:" trailing icon, the sweep) goes through
+it; nothing else may test `previousSibling`/`nextSibling` for an icon. Before
+2026-10-14 it looked only at the previous sibling, so in 'after' mode the 📊
+lost "🎻 with instrument icon" (debug/instuments-right-UVD.html, DEBUG-NOTES.md
+2026-10-14). release-tracks reads the live
+document, which the script decorated at DOMContentLoaded, so every instrument
+anchor a builder copies is already stamped.
+
+**Any builder that copies an instrument anchor must use
+`_cloneInstrumentAnchorWithIcon()`, never a bare `cloneNode(true)`.** A bare
+copy keeps the stamp and drops the icon, because the icon is a sibling and not
+a child. That is how the Instruments column showed no icon at all
+(`_buildInstrumentVocalsListItem()`), and the same was true of a credit's
+"(instrument)" annotation (`_buildCreditListItem()`) and instrument-list's
+Name column (`Name_Comment_Description`). The helper copies the icon on the
+same side of the anchor it was on, and keeps the stamp. When the source has no icon (still
+loading, or the script's `'NONE'`, which the DOM cannot tell apart), it removes
+the stamp, so the script decorates SA's cell itself.
+
+Two nets catch what the helper does not:
+
+- `_iiReleaseIconlessAnchors()` runs once per fetch and disk load, right after
+  the render. It removes the stamp from every icon-less instrument anchor in
+  the rendered tables and in the source rows, which covers any other extractor
+  that still copies with a bare `cloneNode(true)`.
+- `_iiInstallIconReconciler()` carries an icon that arrives AFTER the render
+  from the live clone to the source row (see filter-and-cache-invariants.md).
+
+The helper and the sweep cover for each other. Each one's mutation passes
+alone, and only removing both fails
+(`scripts/mutations/instrument-icons.json`). The specs that pin the COPY
+stretch the simulator's debounce to 2 s, so the script cannot have added the
+icon later by the time they read the table.
+
+`_parseInstrumentVocalsDt()` is unaffected: an `<img>` is neither a text node
+nor an `<a>`, so an icon never changes how a `<dt>` component classifies
+(pinned by the "without the script nothing changes" spec, which compares
+the entry text with and without the script).
+
+Everything is gated on `_iiPresent()` (any `[data-ii-processed]` in the
+document): for a user without the script, the only cost is one
+`querySelector` per call. Simulator:
+`tests/fixtures/thirdPartyScripts/ii-instrument-icons.js`. Specs:
+`release-tracks-instrument-icons{,.mobile}.spec.js`,
+`instrument-list-instrument-icons.spec.js`.
+
+## ISRC Scout's ISRC and Links columns
+
+"ISRC Scout" (@majkinetor, `tests/fixtures/live-userscripts/manifest.json`,
+`majkinetor-isrc-scout`) adds two columns to the native tracklist, before
+`.rating` (else `.treleases`): `th/td.ii-col.ii-col-isrc` "ISRC" and
+`.ii-col.ii-col-links` "Links". They arrive ASYNC, after its own WS/2 release
+load, so the "Tracks" button has to be pressed after they appear
+(debug/DaD-ISRC-Links-initial.html, debug/multiple-ISRC.html).
+
+`applyExtractTrackTitleData()` rebuilds both cells in its per-row loop:
+
+- **ISRC** (`_normalizeIsrcScoutTd()`): ISRC Scout writes sibling
+  `a.ii-trk-isrc[href="/isrc/CODE"]` anchors holding its own
+  `span.ii-isrcf` segments. They become `ul > li > a > code`, one `<li>` per
+  ISRC, the shape of this script's own "ISRCs" column. The code comes from the
+  `href`. From there nothing is special: `'ISRC'` is in `collapsableColumns`,
+  `initIsrcFormatting()` gives the CC-XXX-YY-NNNNN display and ⚠️, and
+  `_isIsrcColumnName()` ("ISRCs" or "ISRC") opens the 📊 ISRC sections and the
+  "Invalid ISRC format" finding to it.
+- **Links** (`_normalizeIsrcScoutLinksTd()`): the icons are inline SVG with no
+  text; the only text was the `sup.ii-trk-n` "N links" badge, so the 📊 count
+  was the number of distinct badge digits. Each `a.ii-trk-ln` now carries
+  `data-mb-link-platform` (from its `title`, "<Platform> · <url>", without
+  " (ended)") and a hidden `span.mb-ii-link-name`; `.ii-trk-n` is in
+  `_CLEAN_STRIP_SEL`. A filter highlight inside the hidden name is shown by
+  outlining its icon (`a.ii-trk-ln:has(<any highlight class>)`), and the 📊
+  "Links info - Platform" section (docs/claude/uniq-dropdown.md) lists the
+  platforms.
+
+**Both cells keep their `ii-col` classes, on purpose.** ISRC Scout's
+`fillTrackData()` (a MutationObserver on `documentElement`, one rAF per burst)
+adds fresh cells to every row with no `:scope > .ii-col` child, in every table
+holding a row whose `id` is a track MBID, and every header row `tr.subh`. The
+rendered tables keep both, so a rebuilt cell without the class would get a
+second, bare cell beside it on the next DOM change.
+
+**The race, not guarded (2026-10-16).** Because ISRC Scout treats the rendered
+tables as its own, its `showTrackData()` (remove EVERY `.ii-col` in the
+document, then `fillTrackData()`) replaces the decorated header and cells with
+bare ones: no sort buttons, no 📊, unknown to the column model, colspans bumped
+again. It runs when its release load settles, when its modal closes, after a
+Mission Control apply, when its column toggles or settings change, and after
+its link editor closes. Pressing "Tracks" before the columns arrive ends the
+same way via the observer. Reported as "the ISRC and Links columns have no sort
+and 📊 glyphs"; the FRP snapshot of the normal order has them all.
+
+**The icons lose SUPER MIND CONTROL's new-tab marker.** Its WARN_NEW_WINDOW
+rule pads every `a[target='_blank']` by 16px for a red new-window sprite, and
+ISRC Scout's icon links open in a new tab. Against ISRC Scout's
+`.ii-trk-lns { max-width: 224px }`, six platforms with link counts wrapped onto
+two lines (`debug/links-overflow.html`: 139px alone, 224px and two lines with
+the padding). `td.ii-col-links a.ii-trk-ln[target='_blank']` resets padding
+and background; every icon there is an outside link, so the marker said
+nothing. Scoped to those icons: a new-tab link anywhere else keeps it.
+
+Simulator: `tests/fixtures/thirdPartyScripts/isrc-scout-columns.js` (markup and
+the re-filling observer, not the wipe). Spec:
+`release-tracks-isrc-scout.spec.js`; mutations:
+`scripts/mutations/isrc-scout-column.json`.

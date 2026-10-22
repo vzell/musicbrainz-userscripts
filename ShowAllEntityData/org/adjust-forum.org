@@ -2,8 +2,7 @@
 ** FORUM.org
 ** prepare for relesae
 
-
-* TODO Resync HELP and create forum post
+* DONE Resync HELP and create forum post
 
 For my upcoming userscript update/announcement at https://community.metabrainz.org/t/vzell-s-userscripts-support-thread/814844
 
@@ -25,7 +24,7 @@ Remove obsolete entries
 
 Check if the current bullet points still hold
 
-* ## Changes since last version (9.99.1167 -> 9.99.1271)
+* DONE ## Changes since last version (9.99.1167 -> 9.99.1271)
 
 ADD a new section + all the relevant information
 
@@ -38,3 +37,26 @@ after the current section and its contents
 #+begin_example
 ## Changes since last version (9.99.746 -> 9.99.1167)
 #+end_example
+
+* DONE ## Changes since last version (9.99.1271 -> 9.99.1356)
+
+1.)
+
+ADD a new section + all the relevant information
+
+#+begin_example
+## Changes since last version (9.99.1271-> 9.99.1356)
+#+end_example
+
+after the current section and its contents
+
+#+begin_example
+## Changes since last version (9.99.1167 -> 9.99.1271)
+#+end_example
+
+to my upcoming forum post summary file @FORUM.org
+
+2.)
+
+Create a skill for it
+

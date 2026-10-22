@@ -122,7 +122,11 @@ function buildGmStubsScript(initialValues = {}) {
             window.__gmXhrLog = window.__gmXhrLog || [];
             window.GM_xmlhttpRequest = function (opts) {
                 const responses = window.__gmXhrResponses || {};
-                const configured = responses[opts.url];
+                // A spec may also answer by function (\`window.__gmXhrResponder(opts)\`
+                // returning the same shape, or undefined): for URLs the code
+                // builds itself, such as a batch of MusicBrainz resources.
+                const configured = responses[opts.url]
+                    || (typeof window.__gmXhrResponder === 'function' ? window.__gmXhrResponder(opts) : undefined);
                 window.__gmXhrLog.push({
                     url: opts.url, method: opts.method || 'GET', anonymous: opts.anonymous === true,
                     headers: Object.assign({}, opts.headers || {}),

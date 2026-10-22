@@ -28,6 +28,7 @@ will never need is folded into collapsible sections.
 - [Sorting](#sorting)
 - [Columns](#columns)
 - [Collapsing and expanding](#collapsing-and-expanding)
+- [The sidebar](#the-sidebar)
 - [Cover art](#cover-art)
 - [The Relationships column](#the-relationships-column)
 - [The Recording of column](#the-recording-of-column)
@@ -59,7 +60,9 @@ will never need is folded into collapsible sections.
    controls described below.
 
 Pressing the action button a second time reloads the page first. That is
-deliberate — it is the cheapest way to get back to a clean state.
+deliberate — it is the cheapest way to get back to a clean state. After the
+reload the button you pressed runs again by itself; a short note beside the
+status line ("↻ Page reloaded — re-running …") says so, and fades.
 
 ---
 
@@ -192,9 +195,20 @@ card shows:
   cache and the network.
 
 A **long sort** (more than half a second) opens the same card with its
-progress. Filtering cannot show progress yet: while it compares rows the page
-cannot repaint. Hover the status line next to the filter box afterwards to see
-how long the last sort and filter took, and how long drawing the rows took.
+progress. So does a long **filter while you type** on a table of more than
+1,000 rows, in the global filter or in a column filter. The card shows what
+you are filtering for (a column filter by its column, and on a page with
+sub-tables by its sub-table too, e.g. “live” in Title (Album + Live)) and
+which step the filter is on. First it compares rows: how many have been
+compared and how many match so far. Then it prepares the matching rows for
+drawing, with its own count. A column filter compares only its own sub-table,
+so it spends most of its time preparing. Filtering pauses every few
+milliseconds, so the page keeps responding to your keys; a key typed while it
+runs starts a new pass, and the card's **Recent** list notes which one was
+replaced. Hover the status line next to the filter box afterwards to see how
+long the last sort and filter took: comparing, preparing and drawing the rows.
+The 🔍 filter on a sub-table's heading still filters at once and does not
+show the card.
 
 <kbd>Esc</kbd> closes it, and the job keeps running. Hovering the toggle shows
 it again, live; moving the pointer away closes it. You can move onto the card
@@ -264,6 +278,21 @@ that apply to each part in brackets:
 ✓ Sorted by: "Year"▲ (133 rows)
 ```
 
+**Empty sub-tables disappear.** On a page with sub-tables, while the global
+filter or a ⚠️ WARNING / ❌ ERROR menu filter is active, a sub-table left with
+no matching row is hidden: its heading line and the table go together. Widen or
+clear the filter and it comes back exactly as it was, collapsed or expanded,
+with its artwork strip as you left it. A sub-table with a filter of its own (a
+column filter, its 🔍 sub-table filter or its ⏳ toggle) stays visible even when
+it is empty, so you can still reach that filter and change it. When the filter
+matches nothing at all, nothing is hidden: every sub-table stays on screen,
+showing "(0 of N)", so the buttons in its column headers stay reachable (for
+example ⏱, which can turn a length like "3:11" into the "3:11.666" you typed).
+Hover the row
+count in the page heading to see how many sub-tables are hidden. Setting (🎨
+TABLE FILTER CONFIGURATION): **Hide Empty Sub-tables While Filtering** (on by
+default).
+
 <details>
 <summary>Filter field states, focus indicators and history</summary>
 
@@ -297,8 +326,8 @@ MusicBrainz's own orange marker and painting over it would erase the signal you
 pressed the button to find. On multi-table pages each sub-section gets its own
 button and the one in the filter bar becomes a three-state master. (The
 **Pending edits** row of the ⚠️ WARNING menu is a separate filter: it narrows
-every sub-section, including those with no pending edits, which then show
-nothing.)
+every sub-section, and those with no pending edits are then hidden, see "Empty
+sub-tables disappear" above.)
 
 **Both filter fields are resizable** via the ⋮ handle to their right.
 
@@ -371,6 +400,9 @@ themselves:
 - **🎚️ Credit details**, **🎭 Roles**, **📅 Release events**, **💿 Format
   info**, **🏷️ Catalog info**, **🔗 Relationship icons**, **⏳ Pending edits**,
   and a **Relationships — Load state** section on pages carrying that column.
+  **🧩 Relationship icons - Site kind** counts the same site together whatever
+  its country or subdomain (amazon.com, amazon.de and amazon.co.uk are one
+  `amazon.*` entry); it appears when some site has two or more such hosts.
 - **🔢 Tracks info** — a "Tracks" column's per-medium counts, a multi-medium
   flag, and the summed **Total** (the same number as the "Total Tracks" column:
   "5 + 5 + 5" is `5` under *Tracks* and `15` under *Total*).
@@ -568,11 +600,23 @@ themselves:
   lists the parts of a slash-joined type separately: a `BUMA/STEMRA ID` badge
   is offered as `BUMA/STEMRA ID`, `BUMA` and `STEMRA ID`.
 - **ISRC info** — one sub-section per constituent (country, registrant, year,
-  designation) plus a validity flag, on any "ISRCs" column. An entry whose code
+  designation) plus a validity flag, on any "ISRCs" column and on ISRC
+  Scout's "ISRC" column. An entry whose code
   sits only inside a **collapsed** list item carries a ▶ marker: it is still
   offered (ticking it shows the row and tints the cell's ▶ toggle), the marker
   just says why nothing on screen shows it until the cell is expanded. **ISWC info** — a
   validity flag on any "ISWC" column. See "ISRC/ISWC codes" below.
+- **📡 Links info - Platform** — on ISRC Scout's "Links" column of a release
+  tracklist: one entry per platform (Spotify, Deezer, …) with the number of
+  rows linking to it and the platform's icon. Ticking one outlines its icons.
+- **🌐 Links info - Site** and **🧩 Links info - Site kind** — on the link
+  columns of the relationship tables (Credits / Relationships buttons), the
+  event page's tables and the sidebar tables: "URL" (URLs), "Target" (Via
+  release group, Via series) and "Link" (Sidebar: …). One entry per site with
+  the number of rows linking to it and the same site icon the link shows;
+  *Site kind* counts one site whatever its country or subdomain
+  (`amazon.*`, `bandcamp.*`) and appears when some site has two or more such
+  hosts. Ticking a site marks its address in the link text.
 - **Barcode info** — on any "Barcode" column: a validity flag (✅/⚠️), which
   GS1 format (UPC-A/EAN-13/EAN-8/GTIN-14) a conforming entry matches, and a
   "Same As" list, one entry per group of rows sharing a barcode number
@@ -584,7 +628,8 @@ themselves:
 quick filter and then closes. The panel closes on an outside click.
 
 **Cosmetics worth knowing**: count badges use a uniform monospace width so the
-numbers right-align; flag icons are on by default and can be switched off; the
+numbers right-align; flag icons (and, with *Instrument Icons Everywhere*
+installed, instrument icons) are on by default and can be switched off; the
 visible row count before scrolling is configurable (default 30) and also drives
 whether the panel flips upward.
 
@@ -615,8 +660,10 @@ bold with a ✓. Rows combine with each other and with any other filter you set:
 two problems in the same column show rows with *either*, two in different
 columns show rows with *both*. **✗ Clear warning filters** (or **✗ Clear error
 filters**) removes only what that menu set. A menu is not shown at all while
-the page has nothing of its kind, and the counts always describe the whole
-page, not just the rows a filter leaves on screen.
+the page has nothing of its kind (except that the WARNING menu always offers
+"Check title style" on a MusicBrainz page with titles, see below), and the
+counts always describe the whole page, not just the rows a filter leaves on
+screen.
 
 Most rows work by ticking the matching entry in the column's 📊 dropdown — the
 **Findings - Warning** / **Findings - Error** section — so you see it in that
@@ -624,6 +671,68 @@ column's filter box, and every way of clearing a column filter clears it too.
 Problems that can sit in several different columns of one row (pending edits,
 live credit dates) filter by row instead, and show a chip beside the global
 filter with a ✕ to remove it.
+
+**A problem that compares two values shows them one under the other.** Rest
+the pointer on the cell: the track name over the recording name, the comment's
+venue over the place, the Recording date over the comment's date, the release
+group title over the event, the track length over the recording length. Only
+the part that differs is marked, down to a single letter or a hyphen ‐ against
+-, and a line under them says in words what differs. Two lengths line up digit
+by digit, with the gap in a small amber (⚠️) or red (❌) label.
+
+Problems with a known MusicBrainz form show the title over that form: a live
+title, event name or recording comment whose date uses "-" over the same text
+with "‐" (only the date's hyphens marked — a hyphen in the venue stays), and
+capitalized extra title information over the same title with its keywords in
+lower case ("(Live in Asbury Park 2009)" → "(live in Asbury Park 2009)"). A
+title ending in "…" shows in one row with the "…" marked: the full title is
+not on the page, so nothing is proposed.
+
+A live title, event name or recording comment that *almost* follows the live
+form shows the text over the form it almost has, the difference marked: "live,
+1993-4-21: Sony Music Studios, …" over "live, 1993‐04‐21: Sony Music Studios,
+…", "Live, …" over "live, …", "live 2004‐10‐02: …" over "live, 2004‐10‐02: …",
+"1975‐02‐05 The Main Point, …" over "1975‐02‐05: The Main Point, …". Only a fix
+that cannot be read two ways is proposed, and only when the result is itself
+in the live form. When there is no single answer ("05.02.1975": which part
+is the day?), the text shows in one row with the part to rewrite marked.
+
+### Check title style
+
+On a MusicBrainz page with titles (release groups, releases, recordings,
+works, a tracklist), the ⚠️ WARNING menu starts with **Aa Check title style
+(MB guidelines)** — even when the page has no other warning. Click it to
+check every title on the page against the MusicBrainz style guide. What it
+finds joins the menu as five more warnings:
+
+| Warning                               | Example                           | MusicBrainz style                |
+|---------------------------------------|-----------------------------------|----------------------------------|
+| Aa Title not in MB title case         | Prayer For The Weary              | Prayer for the Weary             |
+| ’ ASCII punctuation in title          | Don't Be Lonely                   | Don’t Be Lonely                  |
+| , Series number without comma         | Broadcasts Vol. 5                 | Broadcasts, Vol. 5               |
+| ft. Featured artist in title          | Song (feat. Somebody)             | the artist belongs in the credit |
+| ( ) Extra title information to remove | Come Together [The Beatles Cover] | Come Together                    |
+
+Rest the pointer on a flagged cell to see the title over its MusicBrainz style,
+with only the letters or marks that differ highlighted. Nothing is changed:
+the check only points things out.
+
+It flags only what the guideline is sure about. It never flags:
+
+- titles that read as another language, or are written in sentence case
+  ("Bolji nego ja");
+- live bootleg titles ("1977‐05‐13, late show: …");
+- a capitalized short preposition that may belong to a verb ("Take On Me",
+  "Stand By Me"), or "The" after "&" ("& The E Street Band");
+- lower-case words inside "( … )" (descriptive extra title information);
+- anything in "[ … ]" (file names, "[unknown]").
+
+The check is not run by itself, because it costs about 0.2 seconds per
+10,000 different titles. After the click it stays on for the page until you
+reload it, and the first row then says how many titles it checked and how
+long that took. To run it on every page by itself, turn on ⚙️ Settings → ⚠️
+Findings → **Check title style automatically**. Each of the five warnings has
+its own switch there, plus one for their yellow tint.
 
 <details>
 <summary>What is checked</summary>
@@ -639,14 +748,21 @@ filter with a ✕ to remove it.
 | ⚠️     | Recording date and comment date differ in precision             | Release tracklist: Recording date           |
 | ⚠️     | Main-event track differs from the release group title           | Release tracklist: event columns            |
 | ⚠️     | No state code for a USA/Canada event location                   | Event-Country                               |
+| ⚠️     | Setlist MBID written with uppercase letters                     | Event page: Song, Additional artists        |
 | ⚠️     | Title in ALL UPPERCASE                                          | Title columns                               |
 | ⚠️     | Title truncated with "…"                                        | Title columns                               |
 | ⚠️     | Extra title information starts uppercase, e.g. "(Version 1)"    | Title columns                               |
 | ⚠️     | Track name differs from recording name (jesus2099's "≠" marker) | Release tracklist: Title                    |
+| ⚠️     | Title not in MB title case (after "Check title style")          | Title columns                               |
+| ⚠️     | ASCII punctuation in title (after "Check title style")          | Title columns                               |
+| ⚠️     | Series number without comma (after "Check title style")         | Title columns                               |
+| ⚠️     | Featured artist in title (after "Check title style")            | Title columns                               |
+| ⚠️     | Extra title information to remove (after "Check title style")   | Title columns                               |
 | ⚠️     | 🟠 Release has low data quality                                 | Release / Title columns                     |
-| ⚠️     | Invalid ISRC / ISWC / barcode format                            | ISRCs, ISWC, Barcode                        |
+| ⚠️     | Invalid ISRC / ISWC / barcode format                            | ISRCs, ISRC, ISWC, Barcode                  |
 | ⚠️     | Artwork has no Front image (releases with artwork only)         | CAA                                         |
 | ⚠️     | Physical release artwork has no Medium image                    | CAA (needs a Format column)                 |
+| ⚠️     | Several links to one site in Relationships (once loaded)        | Relationships                               |
 | ⚠️     | Pending edits                                                   | any column                                  |
 | ⚠️     | Live credit without a date                                      | Release tracklist: credit columns           |
 | ❌    | Track and recording length far apart                            | Release tracklist: Length, Recording length |
@@ -661,6 +777,11 @@ filter with a ✕ to remove it.
 | ❌    | Recorded at event differs from the comment                      | Release tracklist: Recorded at event        |
 | ❌    | Recorded at place differs from the comment venue                | Release tracklist: Recorded at place        |
 | ❌    | Live credit date differs from the recording date                | Release tracklist: credit columns           |
+
+A flagged cell's hover card names the problem and, where there is one, the
+cell's own detail. *Live credit without a date* names the date the credit is
+most likely from: the recording's own "live recording of" date, which the
+credit was checked against ("probably 1988-04-27").
 
 The tint of each newly highlighted problem has its own switch in ⚙️ Settings →
 ⚠️ Findings; turning one off keeps the problem in the menu. The menus
@@ -692,7 +813,20 @@ restore the original order. The indicator goes `⇅ → ▲ → ▼`.
 **👁️ Visible** hides and shows columns per table, remembered per page type.
 **↔️ Resize** fits every column to its content; columns can also be dragged by
 their right edge, and a column can never be dragged narrower than its own
-header needs.
+header needs. The CAA and EAA columns are fitted to a fully loaded artwork
+line from the start, so the image count and the type letters stay on one line
+even while the artwork is still arriving.
+
+**Hover a column header** to see what the column holds. The tooltip shows the
+column's name in bold, then the explanation. Columns the script adds explain
+where their data comes from, for example *Derived from 'Comment': the event
+date …*. MusicBrainz's own columns (Artist, Catalog#, Country/Date, Type, …)
+get a description of their own. Where a name means different things, the
+description fits the page: on an artist's Events page, *Type* is the kind of
+event. To turn the descriptions of MusicBrainz's columns off, use *Explain
+MusicBrainz columns in header tooltips* (🎨 UI FEATURES). On other sites
+(Discogs, the Springsteen sites) only the script's own columns have such a
+tooltip.
 
 **Scrolling down** keeps the page heading with the action buttons and the
 status line ("Loaded … Fetching …") at the top of the window, from the moment
@@ -721,7 +855,8 @@ window's width meanwhile
 stops in line with the h2 or h3 bar above its table, not at the window's left
 edge, and nothing scrolls into the strip to its left. A column in front of it,
 such as "#" before "Title", stays at that line too, and the sticky column
-slides over it. A table that fits in the window, such as an artist's
+slides over it. On the right, a wide table ends on the same line as the bars
+above it, so no row shows beside a bar while the bars stay at the top. A table that fits in the window, such as an artist's
 one-column "Artist credits" or a short sub-table next to wide ones, stays
 completely in place while the page scrolls, like the bars.
 This only engages while the page really is wider than the window.
@@ -772,6 +907,150 @@ so a column of times reads as a column rather than as ragged text.
   *more* / *less* toggle.
 - `Ctrl+Click` a prose toggle, or a column header's toggle, to force-expand —
   including any wiki headings nested inside the cell.
+
+---
+
+## The sidebar
+
+After a table is shown, the MusicBrainz sidebar's sections (*Artist
+information*, *Tags*, *External links*, *Editing*, …) open and close with a
+click on their heading, or with Enter or Space. `Ctrl+Click` one to open or
+close every sidebar section; the headings of the main page are left alone.
+**Open all** and **Close all** at the top of the sidebar do the same.
+
+- **Remembered.** A section you open is open again the next time you show a
+  table on the same kind of page (artist pages, label pages, …). A section you
+  never opened starts closed. Turn this off with *Remember open sidebar
+  sections*, or open everything every time with *Open every sidebar section*.
+- **Counts.** Each heading shows how many entries its section holds.
+- **Sub-sections.** *Genres* and *Other tags* under Tags, and the two lists
+  under Collections, open and close on their own, and are remembered too.
+- **External links by kind.** The links are grouped under Official, Social,
+  Streaming, Concerts, Lyrics, Databases, Stores and Other, each group opening
+  and closing on its own. *View all relationships* stays at the end. Turn the
+  grouping off with *Group external links by kind*.
+- **The handle** (*Collabsable sidebar*). The small ▶/◀ tab at the top-left
+  corner of the sidebar closes the whole sidebar and opens it again; closed,
+  the tab waits at the right edge of the window. On a page wider than the
+  window the opened sidebar stays at the window's right edge, in sight at
+  any horizontal scroll. The tab is there as soon as the page opens, before
+  any button is pressed, with the sidebar open and the page laid out as
+  MusicBrainz draws it; there it closes and opens without the slide. Once a
+  button has rendered the table, *Start with sidebar collapsed* closes it
+  (without the slide). *Sidebar handle before a button is pressed* switches
+  the early tab off; *Start with sidebar collapsed before a button is
+  pressed* closes the sidebar from the start.
+- **Other scripts.** Whatever another userscript adds to the sidebar stays
+  where it put it. Its headings open and close like the others; nothing of it
+  is read or moved. There are two exceptions: the sidebar picture below, and
+  the search links of jesus2099's *mb. ALL LINKS*, which the Sidebar cards
+  and tables below show as one *Search* group.
+- **The picture** (as soon as the page opens, no table needed). The photo or
+  logo from Wikimedia Commons at the top of the sidebar shows the same card as
+  an image in a *CAA*/*EAA* column when you point at it — the picture, where
+  it comes from and its file name — and opens in the
+  [artwork viewer](#cover-art) on a click, Enter or Space, with *Open on
+  Commons* in its bar. A small copy appears at the start of the page heading,
+  so it stays in sight with the sidebar closed. Nothing extra is loaded: it is
+  the picture already shown. MusicBrainz has switched its own sidebar picture
+  off, so on musicbrainz.org today that picture comes from another userscript
+  you have installed; MusicBrainz's own works too, should it come back.
+  An instrument's drawing (MusicBrainz shows one from the IROMBOOK on many
+  instrument pages) works the same way on every tab of the instrument: card,
+  viewer, and the copy at the start of the heading, there before and after
+  you load the table. A drawing is shown whole in the copy, not cropped, and
+  its viewer bar has no Commons link.
+  On a release, release group or event page, the front cover (an event's
+  event art) from the sidebar gets the copy at the start of the heading too.
+  Pointing at the copy, or at the sidebar's own cover, shows the card of a
+  *CAA*/*EAA* column: every image of the release (or event), the main front
+  starred, Space for all of them, Shift for bigger ones. They are asked for
+  on that first hover, not before. A click, Enter or Space on either opens
+  them all in the viewer, starting at the front; a Ctrl-click on the
+  sidebar's cover still opens MusicBrainz's own window.
+  Switches: *Sidebar picture: hover card and viewer*, *Sidebar picture beside
+  the name*.
+- **The picture in previews.** The link previews of an artist, a label or a
+  place show its picture too, once you have pressed Space on one: see
+  *Link previews on MusicBrainz* under [Page-specific
+  behaviour](#page-specific-behaviour).
+- **The sidebar under Credits / Relationships.** After the page's own button
+  (*Tracks*, *Releases*, *Artist RGs*, …) has shown its table, a **Sidebar**
+  heading comes right below the *Credits* or *Relationships* section (on a
+  page without one, or where *Relationships* is the table itself, as on an
+  event page: right above the table). Under it, the sidebar's
+  information, labels, release events, external links and tags are small
+  cards: facts as *name → value* lines in a column on the left, links as
+  chips grouped by kind (Official, Social, Streaming, …) beside them, tags as
+  pills with their votes. Pointing at a pill's number explains it: the tag's
+  vote total on this entity (tagging or upvoting adds 1, a downvote takes 1
+  away; MusicBrainz shows a tag only while its total is above 0). Pointing at
+  the tag's name shows its link preview. In a narrow window the facts come first and the
+  links below them. A link's chip shows only the link; a link listed under it
+  (the Wikipedia article under a Wikidata link) is a small *› en* link after
+  it. A link shows the same site icon in front of its name as in the real
+  sidebar (none where the sidebar shows none). Pointing at a link shows its
+  site and full address; with link previews on, that box sits above the
+  preview card, as elsewhere.
+  With jesus2099's *mb. ALL LINKS* installed, its *Search the web*, *Search in
+  the whitelist* and *Search further* lists are one **Search** card (closed
+  at first) between the link cards. It is an index: each section (*By genre*,
+  *By area*, …) is a box of its own, with its groups' names in italics in a
+  column on the left (*Rock*, *Japan*, …) and their sites beside them, each
+  site in one piece with its icon. *Search the web* is one row. Variants of one site are one entry with small links, for example
+  *Prog Archives (barcode, name)*. Sections with nothing for this kind of page
+  are named once at the foot. The switch at the top (*All*, *Web*,
+  *Whitelist*, *Further*) shows one list at a time, and the box finds a site
+  by its name, variant, section or group; Esc empties it. Pointing at a
+  search link names the site it searches, also when the script sends the
+  search through its forwarding page.
+  They are for reading: no filter, no sorting. The heading opens and closes
+  like any other. Every card starts open except **Search**, which starts
+  closed, marked with ▶. With *Information card* chosen instead, only the
+  first information card (*Artist information*, *Release group information*,
+  …) starts open, and after *Show all Tracks for Release* the release's
+  *Additional details*, *Labels* and *Release events* too, next to *Release
+  information*. A click on a card's title (or Enter) opens or closes it;
+  **Ctrl+Click** (Cmd+Click on a Mac) opens or closes every card at once,
+  following the one you clicked. Hovering a title shows what the card holds.
+  It reads the page itself, so nothing is loaded. Switches: *Sidebar facts below
+  Credits/Relationships*, *… start the 'Sidebar' section closed*, *… cards
+  that start open* (No card / Information card / Every card but Search, the
+  default / Every card), and *… on a
+  release: also Additional details, Labels and Release events*.
+- **The sidebar in the Credits / Relationships view.** After *Credits* (on a
+  release) or *Relationships* (series, work, release group, recording; the
+  place, area and instrument pages' own button), the sidebar's groups follow
+  the relationship tables as tables of their own, named *Sidebar: Release
+  information*, *Sidebar: Labels*, … They share the heading's filter, and you
+  can sort them and use the 📊 dropdown on them like on the others. A sidebar
+  link that is already a row of a relationship table is left out (a
+  release's own URLs and its release group's are both there already); a
+  links table with nothing left is left out with it. The search links of
+  *mb. ALL LINKS* are one table, *Sidebar: Search*, with the list, section
+  and group each link is under. Links show their site icons here too, and
+  so do the URL rows of the relationship tables (a release's own links and
+  its release group's), with the icon the sidebar shows for the same link.
+  Switches: *Sidebar
+  tables in the Credits/Relationships view*, *… skip links already in a
+  relationship table*. *… include external links* and *… include tags*
+  apply to both views.
+- **🗂 Sidebar as tables** (off by default; turn it on with *'Sidebar as
+  tables' button*). On artist, label, event, release group,
+  recording, work, release, series, place, area and instrument pages this
+  button shows the sidebar's information (*Sort name*, *Born*, *Area*, …),
+  its external links (with their site and kind) and its tags (genre or tag,
+  with votes) as tables. On a release you also get its additional details,
+  its labels with their catalog numbers, its release events, and the release
+  group's external links, each as its own table. You can filter, sort and use
+  the 📊 dropdown on them like on any other table. It reads the page itself,
+  so nothing is loaded, and the sidebar stays as it is. Pressing another
+  button afterwards reloads the page first, as every second press does. A
+  saved "Sidebar as tables" view loads back from disk as the same tables.
+  Place, area and instrument pages keep the button with *Relationships as
+  tables* switched off.
+
+The switches are in ⚙️ Settings, next to *Collabsable sidebar*.
 
 ---
 
@@ -846,7 +1125,22 @@ since opening all of them would load every thumbnail on the page.
 **Cards.** Hovering the artwork icon or the image count shows a card with the
 release's whole artwork: a tile per image (★ main front), a tally of the types,
 pending images, and — while a filter matches — the images it matches, marked
-the same way. Hovering one image of an expanded cell shows its card: the
+the same way. The card shows at most 12 tiles and a "+N" for the rest
+(*Tiles shown in the artwork card*). While it shows:
+
+- **Space** draws every image; Space again goes back to the first 12. With
+  nothing cut off, or while you are typing into a field, Space keeps its usual
+  meaning.
+- **Shift** held draws the tiles bigger (*Tile size in the artwork card while
+  Shift is held*, 150 px), also when Shift is already down as the pointer
+  reaches the icon. Release it to go back.
+- Both together give every image at the bigger size. The card cannot scroll,
+  so it shrinks its tiles until it fits the window.
+
+Every image starts again at 12 on the next hover. The same keys work on the
+cards of the relationship-list covers and of discogs.com's Image column.
+Bigger tiles cost no request; every image loads the thumbnails that were left
+out. Hovering one image of an expanded cell shows its card: the
 preview, its types and comment, its position ("Image 6 of 10 · Medium 2 of 3"),
 main front/back, the sizes the archive has and its archive id.
 
@@ -858,6 +1152,15 @@ at the last/first image continue into the next/previous row, and
 **Shift+← →** jump between rows. Only the rows the filters leave visible are
 stepped through. Ctrl-click (or middle-click) the icon to follow the link
 instead.
+
+**The big-picture strip and the relationship lists open the viewer too.** A
+click on an image of the strip above a table opens the viewer on that
+release's (or event's) images, instead of leaving the page. So does a click on
+a small cover in a relationship list, such as the release group page's
+*Relationships* section ("includes:", "single/EP which was taken from:"),
+where hovering that cover shows the release's artwork card (its images, count
+and types). The card's record is fetched on the first hover, one request.
+Ctrl-click follows the link in a new tab, and asks nothing.
 
 **The gallery (🖼).** The 🖼 button among a table's artwork controls (after
 📊), or **🖼 Open gallery** in its 📊 summary, opens a window with every image
@@ -921,6 +1224,22 @@ shows only the page-wide `⚠⟳`, since it covers the same rows. The failed cou
 computed from the captured rows, not from what is on screen, so a filter cannot
 hide failures from it.
 
+**Hovering an icon** shows what it is: the site (Discogs, Amazon,
+SpringsteenLyrics, …), MusicBrainz's relationship type, and the full URL.
+While a filter matches the cell, a box above it lists all the row's links
+with the filter's marks and marks the icon you point at ("◂ this icon"). With
+link previews on, the link's preview card shows under those boxes.
+
+**Several links to the same site** (two Discogs pages, two amazon.de products,
+…) are a ⚠️ WARNING: the cell turns light yellow with a ⚠️ at its right edge.
+Hovering an icon of such a cell shows the warning first, naming every site
+involved with its links, and marks the icon you point at. The cell's own
+tooltip names them too, above the reload hint; the `⟳` still appears right
+after the icons. Different hosts count as different sites, so amazon.de and
+amazon.com, or music.apple.com and itunes.apple.com, never flag. Hosts listed
+under *Sites allowed more than one link in Relationships* (⚙️, Findings) never
+count.
+
 **An automatic follow-up pass** retries failures once the first load drains,
 after a 30-second pause, at most twice per page, and never at all when more than
 25 entities failed — that many is an outage, and hammering it is not a retry.
@@ -934,13 +1253,28 @@ so you can filter to exactly the rows that failed.
 
 ## The Recording of column
 
-On an artist's **Recordings** page, two columns follow **Name**:
+On an artist's **Recordings** page, two columns follow **Name**. They are on
+the other recording lists too, after that page's own recording column:
+
+| Page                                                                                                    | After         |
+|---------------------------------------------------------------------------------------------------------|---------------|
+| An artist's, an instrument's Recordings; recording search results; a series or collection of recordings | **Name**      |
+| An ISRC; an area's Recordings; a place's Performances; a work's recordings                              | **Title**     |
+| Tagged recordings (yours or everyone's); your rated recordings; an artist credit's recordings           | **Recording** |
+
+The two columns are:
 
 - **Recording of** — the work each recording performs, as a link. Its
   attributes follow in light green italics, e.g.
   *Can't Help Falling in Love (cover/live)*. A medley lists one row per work.
 - **Performance attributes** — the same attributes one per row (cover, live,
   partial, instrumental, medley, …), plus the performance date.
+
+To save width, their headers read **Work** and **Perf.**. Hover a header to
+see its full name. Everything else uses the full names: the 👁️ Visible menu,
+the 📊 drop-down, exports, and the *Default Hidden Columns per Page Type*
+table. To see the full names in the headers, turn off **Short column header
+labels** in the settings (🎨 UI FEATURES).
 
 This is what the "MusicBrainz: Batch-add 'performance of' relationships"
 userscript writes under each title, as columns you can filter and sort. If
@@ -955,14 +1289,19 @@ every row is loaded it reads **▼🎼**. A cell shows `⋯` while queued, `◌`
 loading, `–` when the recording has no work, and `⚠︎` when the request
 failed; click a `⚠︎` to try again.
 
-**Few requests.** Loading every row first asks for the artist's recordings
-100 at a time, and that first answer also says how big the catalogue is. If
-the catalogue is much larger than the page, the rest is looked up one row
-at a time instead, whichever needs fewer requests. Answers are kept in the
-browser for 30 days, so a reload costs nothing.
+**Few requests.** On an artist's Recordings page, loading every row first
+asks for the artist's recordings 100 at a time, and that first answer also
+says how big the catalogue is. If the catalogue is much larger than the
+page, the rest is looked up one row at a time instead, whichever needs fewer
+requests. A work page and a collection do the same with the work's or the
+collection's recordings. Every other page looks up one row per request (about
+one a second). Answers are kept in the browser for 30 days, so a reload costs
+nothing, and a recording loaded on one page is already loaded on every other.
 
-**Suggested works.** For a recording without a work, the column suggests
-the artist's work with the closest title, in orange and marked *suggested:*.
+**Suggested works** (artist's Recordings page only — the other lists have no
+single artist to take works from). For a recording without a work, the
+column suggests the artist's work with the closest title, in orange and
+marked *suggested:*.
 "(alternate take)" and similar endings are ignored, and so are case,
 spacing and typographic quotes. The artist's work list is loaded with the
 column and kept for 30 days. If the batch-add userscript already holds that
@@ -974,7 +1313,10 @@ loaded / has a work / work suggested / no work / failed) and **Suggested
 work** (one entry per suggested title). The attributes appear in the
 existing attribute entries.
 
-Settings: ⚙️ Settings → 🎼 RECORDING OF COLUMN.
+Settings: ⚙️ Settings → 🎼 RECORDING OF COLUMN. The first checkbox turns the
+columns off everywhere; one checkbox per page group (search, instrument,
+series, collection, ISRC, area/place, work, tags, ratings, artist credit)
+turns them off on those pages only.
 
 ---
 
@@ -994,6 +1336,12 @@ arrived, and dimmed when MusicBrainz simply has no sub-second length on record.
 Those last two are different facts and only one of them is worth a second click.
 Answers are cached per recording in IndexedDB, so a recording seen on one page is
 free on the next.
+
+The *Length* header's tooltip says what the column shows right now. With ⏱ off,
+it says the value is rounded to the second, so "4:50" can be anything from
+4:49.500 to 4:50.499. With ⏱ on, it says the value is shown with milliseconds,
+and that ⏱ switches back to whole seconds. On a release tracklist the
+*Recording length* tooltip changes the same way.
 
 A release tracklist also gets a **Recording length** column whenever some track's
 recording length disagrees with its track length, and flags the disagreements
@@ -1083,6 +1431,31 @@ whole site, including MusicBrainz's own storage.
 Open it from ⚙️ Settings → 🗄️ ART ARCHIVE INDEXEDDB CACHE, from the 📊
 Statistics panel, from the Tampermonkey menu, or with **💾 Cache overview** on
 any [progress card](#the-progress-card).
+
+### Taking the cache to another browser
+
+**Export…** in the dialog's header writes the cache to a file
+(`sa-cache-musicbrainz.org-<date>.jsonl.gz`), so another browser or computer
+does not have to load it all again. Tick the parts you want. Cover art images
+start unticked: they are most of the size, the file grows by about as much as
+they take, and the other browser can fetch them again. Entries past their keep
+time are left out. The pane says how many entries go in, about how big the file
+will be and how long it takes; **Stop** ends it without saving anything.
+
+**Import…** merges such a file into this browser's cache. Choose the file (or
+drop it on the pane). The script reads it once and shows, part by part, what the
+merge would do: entries missing here are added, entries newer in the file
+replace the older ones here, and entries that are the same or newer here are
+kept as they are. Expired entries and entries that fail the check are never
+written; **why** lists the reasons. Nothing changes until you press **Merge…**
+and confirm. **Stop** during the merge keeps what was already written and
+leaves the rest as it was. Pages that are already open keep what they loaded;
+reload them to use the new entries. The **Last import** tile shows when you last
+imported, and from which file.
+
+The cache belongs to one site, so an export from musicbrainz.org can only be
+imported on musicbrainz.org. A part that was written by a script with a
+different cache layout is skipped and says so; the other parts still merge.
 
 ---
 
@@ -1208,7 +1581,7 @@ you automatically.
 | 🔍 Expand release and release groups            | Inline ▶/▼ expanders                                                                                                                                                                                                                                                  |
 | ▶️ Expand truncated cells                        | Whether a clipped cell offers an expander, and how it looks                                                                                                                                                                                                           |
 | 📑 Show single-table                            | The client-side sub-table snapshot button and its colours                                                                                                                                                                                                             |
-| ⚠️ Findings                                      | The ⚠️ WARNING / ❌ ERROR menus on or off; one switch per newly highlighted finding (ALL UPPERCASE, truncated, track ≠ recording name, low quality, pending edits, ISRC, ISWC, barcode, live credit dates, capitalized ETI); the extra title information keyword list  |
+| ⚠️ Findings                                      | The ⚠️ WARNING / ❌ ERROR menus on or off; one switch per newly highlighted finding (ALL UPPERCASE, truncated, track ≠ recording name, low quality, pending edits, ISRC, ISWC, barcode, live credit dates, capitalized ETI, several links to one site in Relationships, with a list of sites allowed several); the extra title information keyword list; "Check title style automatically", the five title-style warnings and their tint |
 | 💿 Release tracklist                            | Every tracklist column family, credit colours, live-date flagging, the ARs column                                                                                                                                                                                     |
 | 🔖 Barcode highlight                            | Identical-barcode highlighting                                                                                                                                                                                                                                        |
 | 🔖 Barcode validation                           | GS1 format/check-digit validation, the 📊 Validity/Format/Same As sections                                                                                                                                                                                            |
@@ -1221,10 +1594,12 @@ you automatically.
 | ⏱️ Resource timing                               | Cache-hint indicators and where they appear                                                                                                                                                                                                                           |
 | 🔤 Unicode picker                               | Enable, shortcut key, and the glyph table                                                                                                                                                                                                                             |
 | 🎸 springsteenlyrics.com                        | Switch on the springsteenlyrics.com collection and bootleg lists (off by default); see [Page-specific behaviour](#page-specific-behaviour)                                                                                                                            |
+| 🔤 Titles on the other sites                    | Titles in MusicBrainz style and with typographic punctuation on the Springsteen sites (both on by default); see [Page-specific behaviour](#page-specific-behaviour)                                                                                                   |
 | 🌴 jungleland.it                                | Switch on the jungleland.it bootleg artwork list (off by default); see [Page-specific behaviour](#page-specific-behaviour)                                                                                                                                            |
 | 💿 brucespringsteen.it                          | Switch on the brucespringsteen.it record database (off by default); see [Page-specific behaviour](#page-specific-behaviour)                                                                                                                                           |
-| 📚 Brucebase                                    | Switch on the Brucebase song list and, separately, its year pages (both off by default); see [Page-specific behaviour](#page-specific-behaviour)                                                                                                                      |
-| 🔎 Link previews on MusicBrainz                 | The cards of the links on MusicBrainz pages (on by default; on a phone or tablet off unless you tick the *… on touch devices* boxes), how long their answers are kept, the release group window's size; see [Page-specific behaviour](#page-specific-behaviour)     |
+| 📚 Brucebase                                    | Switch on the Brucebase song list, Relations and Recent changes and, separately, its year pages (all off by default); see [Page-specific behaviour](#page-specific-behaviour)                                                                                         |
+| 💿 Discogs                                      | Switch on discogs.com's master, release, artist, label, submissions, user and ratings pages (off by default), and the MusicBrainz column with murdos' importer userscript (on; its automatic lookups on); see [Page-specific behaviour](#page-specific-behaviour)                                                                                                          |
+| 🔎 Link previews on MusicBrainz                 | The master switch of every link preview and the one for the page before a button is pressed; the cards of the links on MusicBrainz pages (on by default; on a phone or tablet off unless you tick the *… on touch devices* boxes), how long their answers are kept, the release group window's size; see [Page-specific behaviour](#page-specific-behaviour)     |
 | 🔎 Every preview                                | Show the MusicBrainz link previews and the Springsteen sites' detail-page previews on a plain hover (on by default), or only while Ctrl is held                                                                                                                       |
 
 </details>
@@ -1272,13 +1647,24 @@ an import brings your deletions back.
   the whole tracklist across every medium, consolidated
 - **Event pages** (`/event/<mbid>`) — the event's relationships and setlist as
   tables, and its Event Art Archive images
-- **Collections** — your own, subscribed ones, and their entity sub-tabs
+- **Relationships as tables** on place, area, instrument and URL pages, and as a
+  second button on series, work, release group, recording and release pages
+  and the artist and label Relationships tab
+- **Collections** — your own, subscribed ones, and their entity sub-tabs; an
+  entity's *Found in N user collections* page, and the *Subscribers* page of an
+  artist, label, series or collection
+- **Editor profiles** (`/user/<name>`) — the profile's information and
+  statistics as tables
 - **Tags** — entity tag pages, user tag pages, and the most-popular-tags page
 - **Search results** — every entity type
 - **Reports** — the `/reports` index and all 117 reports across 14 categories
-- **Edit listings** — edit search, per-entity edits, your own edits, open edits,
-  subscribed edits, notes received
-- **Annotation history** (`/<entity>/<mbid>/annotations`) across ten entity types
+- **Edit listings** — edit search, per-entity edits, subscribed edits, notes
+  received, and every list of an editor's profile Statistics: their edits, open,
+  accepted, auto-edits, applied, rejected, failed and cancelled edits, and the
+  edits they voted on
+- **Annotation history** (`/<entity>/<mbid>/annotations`) across ten entity types,
+  and **one version of an annotation** (`/<entity>/<mbid>/annotation/<n>`, or the
+  current one) compared with the current version
 - **Auto-editor elections**, **genre**, **instrument** and **edit-type** lists,
   **top CD stubs**, **ISRC**, **ISWC** and **privileged account** pages
 - **Account pages** (`/account/applications`)
@@ -1287,8 +1673,9 @@ an import brings your deletions back.
   category and the entry page), bootleg lists, CD and vinyl bootleg list
   and lyrics index, the **jungleland.it**
   bootleg artwork list, the **brucespringsteen.it** record database and
-  the **Brucebase** song list and year pages — each off until you switch it on, see
-  [Page-specific behaviour](#page-specific-behaviour)
+  the **Brucebase** song list, year pages, Relations and Recent changes, and
+  **discogs.com**'s master, release, artist, label, submissions, user, ratings and release history pages — each off until
+  you switch it on, see [Page-specific behaviour](#page-specific-behaviour)
 
 </details>
 
@@ -1317,6 +1704,32 @@ Also available: **AcoustIDs** and **ISRCs** columns (both off by default), a
 raw **ARs** column, and a flag on live-recording credit dates that disagree with
 the recording date (Recording engineer, Performer, Vocals, Instruments, Recorded
 at event, Recorded at place).
+
+**Instrument icons.** With the userscript *MusicBrainz: Instrument Icons
+Everywhere* (by Lotheric) installed, the small instrument pictures it puts in
+front of instrument names (or after them, if you set that script to) are
+kept everywhere the consolidated table shows
+those names: the *Instruments* column, instruments credited inside other
+credit columns, the *Name* column of the instrument list, and instrument search
+results. A picture that loads after the table is built still arrives and stays
+through sorting and filtering. In the 📊 dropdown, an entry shows the picture
+of its instrument, and an *Instrument info - Icon* section counts the rows
+with and without one. An instrument without a picture can be one the script
+has no picture for, or one it has not loaded yet.
+
+**ISRC Scout.** With the userscript *ISRC Scout* (by majkinetor) installed,
+its **ISRC** and **Links** columns are part of the consolidated table. They
+appear a moment after the page loads, because the script loads the release
+first, so press **Tracks** once they are there; pressed earlier, the
+script adds them afterwards as plain columns that cannot be sorted or
+filtered. **ISRC** lists one code per line, collapses like the other
+multi-row columns, and works like the **ISRCs** column (format, ⚠️ on an
+invalid code, the 📊 ISRC sections). **Links** keeps its icons, and you
+filter it by platform name: type `Spotify`, or tick a platform in the 📊
+section *Links info - Platform*; the matching icons are outlined. The
+script's own buttons, or a change to its settings, can replace both columns
+with its plain ones again; reload the page and press **Tracks** once the
+columns are back.
 
 **Cover art without leaving the page.** After **Tracks for Release**, a
 **Cover art (N)** section opens above the tracklist with every Cover Art
@@ -1447,6 +1860,17 @@ TRACKLIST you can switch the card off, search the words instead of the exact
 phrase (like the website's search, with many more hits), drop the
 restriction to the release's artist, and set how many closest titles to show.
 
+**The event itself, above that card.** When the track's **Recorded at event**
+cell links an event, a second card sits right above the release group card:
+the event's name, type, date, place, tour, line-up and the start of its
+setlist, as the event link's own preview shows them. Each card opens with
+its kind ("Event", "Release group"), so you can tell the two apart. The first
+hover on a track of an event asks MusicBrainz once, after the release group
+search; the answer is kept like the other previews. A track whose event is
+only named in its comment shows no event card. Switch it off with *Show the
+track's event above the "#" release group card* in ⚙️ Settings → 💿 RELEASE
+TRACKLIST.
+
 **Event and place against the comment.** A **Recorded at event** cell is
 marked ❌ when none of its events is named like the recording comment without
 its event type: the comment `live, 1996‐04‐19: Saal 1, ICC Berlin, …` needs
@@ -1500,10 +1924,12 @@ the columns that fit it:
   "held at", "recording location for", …);
 - for performers, **Credits** — one row per credit ("lead vocals",
   "harmonica", …, instrument links kept) — and **Time** ("19:40 - 22:29");
-  **Artist** for recordings and releases, **Area** for a place, **Details**
-  for anything else on the line ("order: 150" for a series), and
-  **Disambiguation** (without its parentheses) — each only when some row has
-  one;
+  **Artist** for recordings and releases, **Area** for a place, **Begin** and
+  **End** for a relationship's dates, **Number** (and **Order**) for a series
+  position ("order: 150"), **Details** for anything else on the line,
+  **Disambiguation** (without its parentheses) and **Primary alias** — each
+  only when some row has one (dates, positions and aliases are read the same
+  way as on other pages, see *Relationships as tables on other pages*);
 - for URLs, the **Site** and the link, with its **[info]** page.
 
 Under "Related series", MusicBrainz also lists the relationships of the
@@ -1516,14 +1942,32 @@ table.
 number that moves on at every joining word but "&" — and one table per part
 of the setlist (**Setlist: Soundcheck**, **Setlist: Concert**, …; **Setlist:
 Songs** when the setlist has no parts). A part's notes ("Scheduled: 19:30 |
-Local Start Time 19:40 / End Time 22:29") sit under its heading. **Song** is a
+Local Start Time 19:40 / End Time 22:29") sit under its heading, indented like its table. **Song** is a
 multi-row column: a medley line ("Land of Hope and Dreams / People Get
 Ready") stays one row with one list row per work. The artists of a "(with …)"
 line ("This Land Is Your Land (with Trombone Shorty & the New Breed Brass Band
-and all performers)") go into **Additional artists**, one row each, linked to
-the artist. **Also in** names the other parts that play the same work;
-**Recording** links the recording made at this event whose title is the song.
-A song without a work link is kept as text.
+and all performers)") go into **Additional artists**, one row each ("New
+Breed Brass Band", without the sentence's "the"), linked to the artist.
+MusicBrainz itself links them as works; the script points them at the artist
+on the page as soon as it loads, before any button. **Also in** names the
+other parts that play the same work; **Recording** links the recording made at
+this event whose title is the song, each recording once (even when two
+relationships, e.g. "recording location for" and "shot for", name it). A song
+without a work link is kept as text. A song or artist whose MBID was typed with
+uppercase letters ("[E497263c-…|The Fever]") is still recognised, and its cell
+is flagged ⚠️ "MBID contains uppercase letters" — MusicBrainz resolves the link,
+but the setlist should be edited to use the lowercase MBID (see
+[Warnings and errors](#warnings-and-errors)). Such a link gets its link preview
+like any other, on the event page itself too.
+
+**Video and entity icons.** When a recording carries MusicBrainz's video icon,
+**Recordings** and the setlist tables get a **Video** column right after
+**Recording**: the icon, and "video"/"audio" for sorting and the 📊 dropdown
+(a setlist row says "video" when any of its recordings is one). As on a release
+tracklist, a column that holds one kind of entity (**Artist**, **Place**,
+**Area**, **Recording**, **Release**, **Series**, **Song**, **Additional
+artists**, …) shows that entity's icon once in its header instead of on every
+cell; a column that mixes kinds (**Target**) keeps the icons on its cells.
 
 **Event art without leaving the page.** Above the tables, an **Event art (N)**
 section shows every Event Art Archive image of the event — posters, schedules,
@@ -1548,10 +1992,88 @@ section comes with the button).
 </details>
 
 <details>
+<summary>Relationships as tables on other pages</summary>
+
+Most entity pages list their relationships the way an event page does: short
+lists under a **Relationships** heading, one target per line. The same tables
+the event page gets are available on:
+
+- **Place, area, instrument and URL pages** (`/place/<mbid>`, `/area/<mbid>`,
+  `/instrument/<mbid>`, `/url/<mbid>`): **Relationships for Place** (Area,
+  Instrument, URL) — the only button there, since those lists are the page's
+  data. On a URL page they are the entities that link the URL; its "URL
+  details" stay as MusicBrainz shows them.
+- **Series, work, release group and recording pages**: a **Relationships**
+  button beside the page's own **Show all…** button.
+- **The artist and label Relationships tab** (`/artist/<mbid>/relationships`):
+  **Relationship lists**, beside the tab's existing **Relationships** button
+  (which consolidates the tables further down).
+- **Release pages**: **Credits**, beside **Tracks** — the release's own
+  credits under "Credits", never the track credits (those stay with
+  **Tracks**, also when MusicBrainz shows them at the bottom).
+
+The two buttons on one page are **either/or**: the page's own button renders
+as it always did, with the relationship lists left as a section you can
+collapse; the new button renders only the relationship tables and leaves the
+page's main table out. Press the other button to switch (the page reloads, as
+it does for every second press).
+
+The tables are the event page's — one per kind of related entity, each with
+the columns that fit it, the entity glyph in the column header — plus:
+
+- **Begin** and **End** for a relationship's dates: "(from 1977-06-27 until
+  1978-05-05)", "(in 1978)" and "(on 1978-04-11)" (Begin = End), "(until
+  1931)", "(… to present)" (End "present"), "(ended)". Both are split like
+  every other date into **B-DD**, **B-MM**, **B-YYYY**, **B-Day**,
+  **B-Month** and the same for **E-**, so you can filter for a year or a
+  weekday.
+- **Number** for a series position ("number: 20"), or **Number** and **Order**
+  when the two differ for some row in that table ("(on 2009-02-01: number:
+  43) (order: 19)").
+- **Parent area** for an area's own parent chain ("Alabama" → "United
+  States"), **Area** for a place's.
+- An ended URL relationship, which MusicBrainz shows struck through and
+  without a link, is still a row of the URLs table, with its end date.
+- **Primary alias**: a name MusicBrainz adds in parentheses for an entity
+  whose name is in another script ("フジパシフィックミュージック
+  (Fujipacific Music, Inc.)") — not mixed up with **Disambiguation**.
+- An artist's membership with a period and what they played — "(from 1964-12
+  until 1965-06: lead vocals, electric guitar)" — gives **Begin**, **End**
+  and a multi-row **Credits** cell, one row per credit.
+- **Genre** and **Instrument** show their glyph once in the column header,
+  like every other single-kind column.
+- With *Enable inline CAA/EAA thumbnails in Release/Title column* on (⚙️
+  Settings → 🖼️ CAA/EAA ILLUSTRATED DISCOGRAPHY), a release group
+  or release gets its small cover image in front of its name, and an event
+  its event art image — also in a mixed **Target** column, where each row
+  gets the picture that fits it.
+
+In a table that mixes kinds (a **Via …** table, the one-table layout), the
+📊 dropdown of the **Target** and **Type** columns has an **Entity info -
+Type** section: one entry per kind of related entity — Artist, Release group,
+Event, Series, URL, … — with its icon and how many rows are of that kind.
+Tick one to keep only those rows. The event page's mixed tables have it too.
+
+A recording's **Related works** and a release's **Release group** credits
+describe the work or the group, not the page's entity, so each gets its own
+**Via Badlands** / **Via release group: Live/1975–85** table with a **Type**
+column.
+
+Settings, in ⚙️ Settings → 🔗 RELATIONSHIP SECTIONS: *Relationships as tables*
+(off: no new button and no page type for place, area and instrument pages),
+*One table for all relationships* (off by default: one table with **Type** and
+**From** instead of one per kind), *Include related works / the release group*
+(off: those sections stay as MusicBrainz shows them). Save and Load work as on
+any page; a saved file loads back as the same button.
+
+</details>
+
+<details>
 <summary>ISRC/ISWC codes</summary>
 
 Wherever an **ISRCs** column appears (here, and on any native recordings
-listing), every code is shown as `CC-XXX-YY-NNNNN` with the country and year
+listing), and in ISRC Scout's **ISRC** column on a release tracklist, every
+code is shown as `CC-XXX-YY-NNNNN` with the country and year
 segments lightly tinted — regardless of whether MusicBrainz's own markup or a
 third-party script produced the cell. A code that doesn't match that shape is
 left as-is but gets a ⚠️ warning glyph and a tooltip explaining why.
@@ -1614,7 +2136,20 @@ clamp the long *Edit details* and *Edit notes* columns with a *more* toggle.
 
 **Annotation history** pages get Editor and Version-history columns, always
 selectable Old/New comparison radios, and a relocated *Compare versions* button
-that can open in a new tab.
+that can open in a new tab. *Editor* is the first column, ahead of *Old* and
+*New*, and stays visible when you scroll sideways.
+
+**One version of an annotation** (*View this version* on the history page, or
+*View current revision*) gets a **Compare with the current version** button. It
+shows two tables under the annotation: *This version* (whether it is the
+current one, who wrote it and when, its changelog, when the current version
+was written and by whom, how many versions there are), and *Compared with the
+current version*, one row per paragraph or heading with this version's text,
+the current version's text and what happened to it: *same*, *changed*, *only
+in this version* or *only in the current version*. Point at *changed* to see
+the two texts one under the other with the difference marked. Both texts are
+on the page already, so nothing else is asked; the annotation itself stays
+where it is.
 
 **Auto-editor election** pages consolidate both the index and individual
 elections.
@@ -1622,6 +2157,18 @@ elections.
 **`/account/applications`** is served with a stricter Content-Security-Policy
 than the rest of MusicBrainz. Every dialog, tooltip and panel renders correctly
 there; nothing is reduced.
+
+**Editor profiles** (`/user/<name>`) get a **Profile** button. It reads the
+page you are on (nothing is fetched) and turns *General information* and each
+*Statistics* table into its own sub-table under one *Profile* heading:
+*General information* (Field, Value; a long bio is clamped with a *more*
+toggle), *Edits* (Status, Count, and the share and *view* link when the page
+shows them), *Votes* (Last 28 days and Overall, each with its share; *Total
+effective votes* and *Total* are rows like the others), *Added entities* and,
+when the profile has it, *Tags and ratings*. The counts sort as numbers, so
+"1,466,095" sorts above "99". Blocks other userscripts add to a profile (an
+*Edit Notes* list, highlights, flags) are left as they are and never copied
+into the tables.
 
 </details>
 
@@ -1641,6 +2188,15 @@ releases.
 <details>
 <summary>Link previews on MusicBrainz</summary>
 
+**Two switches above all the others** (⚙️ Settings → 🔎 LINK PREVIEWS ON
+MUSICBRAINZ, both on by default): *Link previews (hover card and Space
+window)* turns every preview off at once (MusicBrainz, external links, the
+release page's release-group card and the other supported sites), and then
+the script adds nothing for them to any page. *Link previews also before a
+button is pressed*, switched off, keeps a supported page as MusicBrainz draws
+it until a button has rendered the table (or a saved one is loaded); from
+then on the previews work as set below.
+
 With ⚙️ Settings → 🔎 LINK PREVIEWS ON MUSICBRAINZ → *Preview linked entities
 on hover* switched on (it is, unless you switch it off), the links on the page
 show what is behind them without opening a tab. On a **phone or tablet** that
@@ -1650,7 +2206,16 @@ window instead of the page. So far: **releases**, **release
 groups**, **recordings**, **works**, **artists**, **labels**, **areas**,
 **instruments**, **events**, **places**, **series**, **collections**, the
 **[info]** link beside every URL, and the
-codes: **ISRCs**, **ISWCs** and **disc IDs**, and **edits** and **editors**.
+codes: **ISRCs**, **ISWCs** and **disc IDs**, **edits** and **editors**,
+**editing histories** (the sidebar's *Editing history* link), an editor's
+**other edit lists** and **edit searches** (the *view*, *N%* and *View all*
+links of a profile's statistics), an editor's **subscribers**, **tags** and
+**ratings** and your **applications** (the profile's *view list* and *view*
+links), an entity's **subscribers** and **collections** (the sidebar's
+*Subscribers* and *Found in N user collections* links), an **annotation's
+history** and its **versions** (*View annotation history*, *View this
+version*, *View current revision*), and
+**tags** (a genre or tag link, also the pills of the sidebar's Tags card).
 A **Barcode** cell has a card too: the barcode's format and the releases
 carrying it. So does an entry of a column's **📊 dropdown** that names one
 artist, label, area or other entity: rest the pointer on it. Pinning it with Space
@@ -1677,8 +2242,15 @@ event card its date and time, place, what it is part of, line-up and first
 songs; a place card
 its address and coordinates; a series card its first items. An ISRC or ISWC
 card lists the recordings or works carrying the code; a disc ID card its
-tracks, length and releases; a collection card its type, size and editor
-(MusicBrainz shows only public collections; a private one's card says so).
+tracks, length and releases. A collection card is read from the
+collection's own page: its type, size and number of pages, whether it is
+public, its owner and collaborators, the first two lines of its description
+and its first eight entries (someone else's private collection is not shown
+to you; its card says so). Its window shows the whole description with its
+links, and the entries 25 at a time with the page's own columns and ◀ ▶ to
+page through them; a further page of MusicBrainz's (100 entries each) is read
+only when you get to it. A release or release group collection also shows
+those 25 entries' covers from the Cover Art Archive.
 An **[info]** card (the link MusicBrainz writes after each URL of a
 relationship list or a **URLs** table) shows the URL's site and address and
 which entities link it, by relationship — *Setlistfm: Event: 2025‐05‐20: Co‐op
@@ -1690,6 +2262,47 @@ first changes; its window every change, the entities it touches and its notes
 editor card shows the user type, member since and edit counts — nothing
 personal. An open edit is read again on every page load, since its votes
 change.
+On an editor's profile, every list of edits it links has a card and a window
+like an editing history (below), titled by what it lists: *Open*, *Accepted*,
+*Auto-edits*, *Applied*, *Rejected* (voted down), *Failed* and *Cancelled
+edits*, their **Votes**, and every **edit search** (*Last 24 hours*, the *N%*
+links of the edit types). An edit search is read again on every page load,
+since what it finds changes ("24 hours ago"). The *view list* beside
+**Subscribers** shows who is subscribed to the editor's edits, and how many
+more anonymously; a name in its window opens that editor's card. An
+artist's, label's, series' or collection's sidebar *Subscribers* link shows
+the same for that entity. Its *Found in N user collections* link shows how
+many collections hold it, how many of them are private, and the first few
+by name and owner; the window lists every public one, and a collection or
+an owner in it opens their card. The *view
+list* beside **Authorized applications** shows your applications (only you
+see that page): each one's name, what it may access and when it last got a
+token, how many applications you registered, and whether digest
+authentication is on. It never shows an application's OAuth client ID or
+secret, nor a *Revoke access* link, and it is never kept after a page load.
+The *view* beside **Tags upvoted** shows how many tags and genres the editor
+voted for, with how many votes, the ten they used most on the card, and every
+one in the window, most used first; a tag opens its own tag card. (Downvoted
+tags have no preview.) On the editor's tags page itself, each tag link
+(*acoustic rock*, *gig*, …) shows what THAT editor tagged with it: how many
+entities, how many of each kind and the first few; its window lists each
+kind's first entries with MusicBrainz's *See all* page, and *Everyone's*
+opens the tag's own card. The *view* beside **Ratings** shows their ratings as
+their ratings page does, a few per kind, each with its stars; an entity opens
+its own card, and *All … ratings* opens MusicBrainz's full list in a tab. The
+window never copies the stars, which on MusicBrainz are links that change a
+rating.
+*View annotation history* (under an annotation, and in the sidebar) shows
+how many versions the annotation has, and the latest one's date, editor,
+changelog and first lines; its window lists every version, newest first, and
+a version opens its own card. MusicBrainz shows that history only when you
+are logged in, so logged out the card says so. *View this version* and *View
+current revision* show that version's date, editor, changelog and text. An
+annotation is copied as plain text: its links and formatting stay on
+MusicBrainz's page.
+A tag card shows whether the tag is a genre, how many entities carry it
+and the kinds with the most of them (*Recordings 129,479*); it is read from
+the tag's own page, since MusicBrainz cannot look a tag up otherwise.
 **Esc** or moving away closes it.
 
 **Press Space** to pin it into a window:
@@ -1717,7 +2330,15 @@ change.
   "(with …)" — linked to the artist, what was recorded there and its posters;
   for a place, its area named the same way, a map link, its links and up to
   100 of its events by date; for a
-  series, every item in order. A part that could not be loaded says so, with
+  series, every item in order; for a tag, its genre, how many of each kind
+  it carries (each linked to the tag's page of that kind) and the ten top
+  entities of every kind. An **artist, label or place** window shows its
+  **picture** under the name: the Wikimedia Commons file MusicBrainz links as
+  its image or logo, else the one its Wikidata item names (one or two small
+  requests to Wikidata, a label's logo first). It is asked only here, never
+  for a card; after that the card shows it too, small, beside the facts, also
+  after a reload. Click it for the artwork viewer, with *Open on Commons*.
+  Switch: *Pictures in artist, label and place previews*. A part that could not be loaded says so, with
   **Try again**. Areas are named down from the city, as on MusicBrainz's
   own pages: the window looks up each area above, one per level, and
   remembers them for every other card; a card shows the whole line only once
@@ -1727,17 +2348,71 @@ change.
 - **Live page**: the entity's own MusicBrainz page, without the site's header
   and footer, and without its scripts.
 - **Click an image** (a release's front cover or its Cover art strip, an
-  event's posters) to open it in the artwork viewer, the same one as the
+  event's posters, an artist's, label's or place's picture) to open it in the artwork viewer, the same one as the
   release page's Cover art, stepping through all of that release's or event's
   images. **Esc** returns to the window; Ctrl-click opens the image in a new
   tab instead.
+- **✎ Editing history** (or press **H**) in the window's header shows the
+  entity's editing history in the same window, laid out like a Discogs
+  release's history. Every entity with an MBID has one (not a collection:
+  MusicBrainz lists no edits for one),
+  and so does an editor (their edits). **← Back** (or Backspace) returns.
+  - **History**: one row per edit, newest first: when it closed (an open
+    edit: "voting · 7 days"), who made it, its type as a coloured pill (green
+    add, blue edit, red remove, amber merge, grey other), what it changed with
+    the editor's own note, and its votes or status (open, failed vote,
+    cancelled). The chips show one category or status; *Oldest first* turns
+    the list round. **Click a row** (or move with ↑ ↓) to see that edit below.
+  - **The edit**: its old and new values side by side, the changed words
+    marked red and green as MusicBrainz marks them. An edit medium's
+    tracklist is split into its old and new halves, and a merge shows Merge
+    and Into. An addition or removal is one column. *Only what changed* (on
+    by default) hides the unchanged rows; *Everything* lists them. The edit
+    notes follow. Cover and event art open in the artwork viewer. **Edit #…**
+    opens the edit's own card (votes, every note) in the window, and an
+    entity link opens that entity's card.
+  - MusicBrainz lists 50 edits a page: **Load page 2 of 7** reads the next 50.
+    A busy entity only says "at least 500 edits", so its footer has no last
+    page.
+  - Each page is one request to MusicBrainz. Selecting a row asks for nothing.
+    A history whose edits are all closed is kept like any card; a page with an
+    open edit is read again next time, because its votes change. Logged out,
+    MusicBrainz hides who made each edit and all notes, and the window says
+    so. If MusicBrainz answers with its "Verifying your browser" page, the
+    window says that too: open the page once in a tab (↗), then press ⟳.
+  - The sidebar's **Editing history** link and an editor window's *Their
+    edits* link have a card of their own and open the same window.
+  - A profile's other edit lists and edit searches open this window too,
+    titled by the list (*Rejected edits*, *Votes*, *Edit search*). A list has
+    no ✎ Editing history of its own.
 - **A track named differently from its recording.** With jesus2099's
   *mb. INLINE STUFF* installed, a track whose name differs from its recording's
   carries a note with both names. The browser used to show that note in its
   own small box over the card. Now it is a box stacked just above the card,
-  and once pinned, a maroon badge next to the window's title ("from track
-  “…” ≠ recording “…”"). The window shows the recording, but always says which
-  track it came from.
+  with the two names one under the other and **only what differs marked**
+  (one letter in another case, ' against ’, added text such as "(single
+  version)"), plus a line saying what it is. Once pinned, a maroon badge
+  next to the window's title says it again ("from track “…” ≠ recording
+  “…”"). The window shows the recording, but always says which track it came
+  from.
+- **Notes stacked above the card.** Everything else the hovered link and its
+  cell would show as a tooltip is a box above the card too, one box each,
+  none covering the card or each other: the cell's warnings first (*Pending
+  edits*, *Track name differs from recording name*, *This recording is not
+  linked to any work*, …), then the link's own notes (the track/recording
+  names above, an artist's or label's **Sort name**). Like the card, each box
+  opens with a small header saying what it is (*Finding*, *Note*, *Track ≠
+  recording*, *Link title*, *Link*, *Filter*) and a thin line under it. Neither the browser's
+  own grey tooltip nor the cell's "Liner notes" card appears over the card
+  any more. A tooltip that only repeats the link's name is left out. When the
+  card closes (Esc, or the pointer leaves the link but stays in the cell),
+  the cell's own card comes back.
+- **The kind line.** Every card opens with a small header naming what it
+  shows ("Recording", "Release group", "Discogs release", "Wikipedia"), the
+  same words as the window's title bar, so you know what Space will open.
+  For MusicBrainz kinds it starts with MusicBrainz's own icon of the kind
+  (artist, release, recording, work, …), which the window's title bar shows
+  too.
 - **‹ ›** or **← →** step to the same kind of link in the **same column** of
   the next or previous row, on into the next sub-table. A row links a
   release, an artist and a label; the arrows stay with the one you started
@@ -1756,8 +2431,9 @@ hours (*Keep MusicBrainz answers for (hours)*); the card's foot says whether
 it was *fetched now* or *saved today*. A card that could not load says so;
 hover again to retry.
 
-Not previewed: the artwork column's links, a link around a picture (they have
-their own preview) and the Relationships column (its own tooltip). Links
+Not previewed: the artwork column's links and a link around a picture (they
+have their own preview). The Relationships column's icons are previewed like
+any other link (see *The Relationships column*). Links
 outside a table are previewed while *Also preview links outside tables* is on
 (same section, on by default): the header, an annotation, the sidebar and
 relationship lists have cards then, but not the tabs, the page navigation or
@@ -1843,13 +2519,107 @@ once and without Tampermonkey asking first:
 - **Discogs** releases, masters, artists and labels: for a release the
   artist, year, country, format, label and catalogue number, genres and number
   of tracks, with the cover; for an artist or a label its profile, real name,
-  members or sublabels. No *Live page* (↗ opens Discogs). Discogs allows a
-  card every 2.5 seconds; with your own **Discogs personal access token**
+  members or sublabels. No *Live page* (↗ opens Discogs). A release's card
+  adds one line saying what its window holds ("8 tracks · 64 credits · 12
+  companies · 12 identifiers · 5 images").
+
+  The **window** (Space) shows what the Discogs page shows, at no extra cost:
+  all images (a click opens the artwork viewer, ← → step through them), the
+  **Tracklist** with each track's credits (closed at first: *▸ 7 credits*
+  opens one track, *Show all track credits* every one), the **Notes**, and
+  for a release also **Companies, etc.**, **Credits** (with the tracks they
+  cover), **Barcode and Other Identifiers**, **Videos**, and how many Discogs
+  users have or want it and its data quality. A name credited differently
+  from the artist's Discogs name has Discogs' `*`; point at it for the
+  Discogs name. Every artist, label and company is a link to its Discogs
+  page; a click shows that page in the same window (*Back* returns), and
+  Ctrl-click opens it in a new tab. The window's title says what the link is
+  — *Discogs release*, *Discogs master*, *Discogs artist*, *Discogs label* —
+  and after such a click the path, e.g. *Discogs master › Discogs release*.
+  Each heading opens and closes its section; a closed one
+  stays closed in the next Discogs window until the page is reloaded.
+
+  A **master**'s window adds its **Versions**. Discogs lists them 100 at a
+  time, so the window asks for the first 100 when it opens and the rest only
+  when you press *Load the other …* (it says how many requests that is and
+  about how long it takes); *Stop* lets the page under way finish and asks
+  nothing more. A bar shows each hundred (hatched: from the cache, green:
+  loaded, red: failed, which a button asks again). Filter the versions by
+  typing, or by the chips for format, country and decade (their counts cover
+  every version, loaded or not), and sort by a column heading. The master's
+  main release and a release this page links are marked. A version's label
+  links Discogs' label search for that name, in a new tab: the list of
+  versions names a label without saying which one. A click on a version
+  shows it in the same window, and *Back* returns to the master. A card never
+  asks for versions; once a window has, the master's card says how many there
+  are.
+
+  An **artist**'s or a **label**'s window shows the profile (with its links;
+  *Show it all* for a long one), every image — the ones behind Discogs'
+  *More images* too — and, under *Discogs says*, the real name, members,
+  groups, aliases and name variations, or the parent label; then the sites,
+  and for a label its contact info and sublabels. The card shows how many
+  images there are and, once a window has read it, how big the discography
+  or the label's list is.
+
+  Below, an artist's **Discography** is split as on Discogs: **Releases**,
+  **Appearances** (on releases, on tracks), **Unofficial** and **Credits**,
+  each a table you can close, sort by a heading and filter (by typing, or
+  *Masters* / *Releases*). Discogs lists the discography by role and then by
+  year, 100 at a time, so the window asks for the first 100 when it opens and
+  the rest on *Load the other …* (Bruce Springsteen: 67 requests, about 2 min
+  48 s without a token), and the sections fill in that order: a count that
+  reads "so far" is still growing. Discogs gives only the production credits
+  (producer, mixer …); *All credits on Discogs* opens the full list there. A
+  master's *▸ versions* shows its first versions in place (one request);
+  *Open the master here* shows all of them. A table shows 150 rows at first,
+  then *Show 500 more* or *Show all*.
+
+  A label's **Releases** can run to hundreds of thousands (Columbia: 396,611,
+  almost 4,000 requests), so the window loads 5 pages (500 releases) per
+  *Load 5 more pages*, newest or oldest first (another order asks Discogs
+  again; each is kept on its own). The filter and the format chips work on
+  what is loaded. Every list is kept for 7 days, like the card: a later
+  window shows it without asking again (hatched in the bar). Discogs allows a
+  request every 2.5 seconds; with your own **Discogs personal access token**
   (⚙️ Settings → 🔎 EXTERNAL LINK PREVIEWS → *Discogs personal access token*;
   on discogs.com: Settings → Developers → *Generate new token*) it allows one
   a second. The token is sent only to Discogs, shows as dots in the settings,
   is never written into a saved configuration file, and loading one leaves
   your token as it is.
+- A Discogs release's **edit history** (a link to its history page,
+  `discogs.com/release/…/history`): the card shows the last change, how many
+  changes there were and the data quality; the window lists every change —
+  date, user, what it was (*Submit Release*, *Edit Release*, *Images*,
+  *Merge Pending*, a comment …), the note, and **View changes** (an image
+  change: its *Images* link) — with the kinds as a filter and *Newest first* /
+  *Oldest first*. Below, the **latest change** as Discogs shows it: old and new
+  side by side, the changes marked (removed, changed, added): only the parts
+  that changed, or *The whole release*. *View changes* on another change shows
+  that one there instead (*Change · revision 8 → 10*: Discogs compares with
+  the last revision that changed something), one request the first time;
+  *Back to the latest change* returns. The history page is read only when
+  you press Space, never on a hover. On discogs.com it is read with your own
+  Discogs session; from MusicBrainz it is asked like any other site, and if
+  Discogs answers with its browser check, the window says so — ↗ opens the
+  page.
+- A Discogs **user** (`discogs.com/user/…`): the card shows their public
+  profile — name, location, member since, contributor rank, releases
+  contributed, pending submissions, collection and wantlist sizes; the window
+  adds their **Recent activity** (read from their page, only when you press
+  Space; from MusicBrainz it may meet Discogs' browser check) and links to
+  their pages on Discogs.
+- A Discogs **search** (`discogs.com/search/?q=…`, e.g. a label cell's link
+  on the Discogs pages): how many results; the window lists them, 25 at a
+  time (*Load 25 more*, one request each), each a link. No token needed.
+- A **support.discogs.com** guideline (e.g. "RSG §6.12.2" in a history note):
+  the article from Discogs' help centre, scrolled to the section the link
+  names and marked; a link to another section of it scrolls there.
+
+In a Discogs window **every link opens in the same window**: a release,
+master, artist or label, a user, a search, a guideline, or another site.
+**← Back** (Backspace, Alt+←) returns to what it showed before; Ctrl/⌘-click
+opens a new tab instead.
 
 Links to the four **Springsteen sites** the script supports get the same card
 those sites' own lists show (no setting of those sites is needed here): a
@@ -1860,7 +2630,9 @@ site. They load on a hover from the first time, without Tampermonkey asking.
 A **Brucebase date** link (the "reviews:" link of many events,
 `brucebase.wikidot.com/2025#261025`) shows that one show of the year page:
 venue and date, the setlist, the people, the notes, and a link to the gig
-page; its *Live page* is the year page, scrolled to the show and marked. One
+page; its *Live page* is the year page, scrolled to the show and marked
+before the year's pictures have loaded, and scrolled to it again once they
+have (unless you have scrolled the page yourself by then). One
 request reads the whole year, so other dates of that year then cost nothing —
 but Brucebase is slow, and that first request can take several seconds. A
 date the year page has no show for, or a show that did not take place, says
@@ -1919,7 +2691,9 @@ gets a heading with the usual toolbar and one action button: **Items** on a
 collection list or the entry page, **Bootlegs** on either bootleg list. Pressing it
 fetches every page of that list (100 items each), turns the item cards into
 one table, and gives you the usual filters, sorting, column controls, export
-and Save/Load.
+and Save/Load. The **Title** column writes the titles the MusicBrainz way
+("Live At The Matrix" reads "Live at the Matrix", see *Titles in MusicBrainz
+style* further down).
 
 The entry page holds the whole collection (over 5000 items in more than 50
 pages), so the usual "many pages" and "many rows" questions come up before it
@@ -2058,7 +2832,8 @@ pages) gets one button, **Lyrics**. The site lists its songs one first letter
 per page. Pressing it fetches every letter, whichever page you start on, and
 turns the over 3,500 song lines into one table:
 
-- **Title** links to the song's lyrics page. **Lyrics** is ✓ when that page
+- **Title** links to the song's lyrics page, written the MusicBrainz way
+  ("BABY I'M SO COLD" reads "Baby I’m So Cold"). **Lyrics** is ✓ when that page
   has lyrics, and ✗ when the site's plain icon says it has none.
 - **Version** is the site's text in brackets, as written ("Live 30 Sep 1987
   version", "Original Roy Orbison version"). It is also read into:
@@ -2105,8 +2880,9 @@ Once on, the page gets a heading with the usual toolbar and one action
 button, **Bootlegs**. Pressing it turns the whole list into one table with
 these columns:
 
-- **Title:** the bootleg's title, without the date the site appends to it.
-  It links to that bootleg's artwork page, which opens in a new tab.
+- **Title:** the bootleg's title, without the date the site appends to it,
+  written the MusicBrainz way (see *Titles in MusicBrainz style* below). It
+  links to that bootleg's artwork page, which opens in a new tab.
 - **Date:** that date as `1975-08-15`, so sorting it is chronological. It is
   empty for the undated entries the site files under "Others".
 - **Year:** the date's year. Filter or pick from its 📊 list to see one year,
@@ -2164,14 +2940,15 @@ turns them into one table:
 
 *Format* is the site's own text ("2 CD-R", "1 7 in."). *Notes* is the italic
 line some records carry ("Picture disc", "Lower 'Bruce Springsteen' - Little
-Steven Mix"). The title links to the record's detail page, which opens in a
-new tab. With the preview on, resting the pointer on a title shows the
+Steven Mix"). The title, written the MusicBrainz way ("BOSS AT HIS BEST (THE)" reads "The
+Boss at His Best", see *Titles in MusicBrainz style* below), links to the
+record's detail page, which opens in a new tab. With the preview on, resting the pointer on a title shows the
 record's tracklist and the shows its tracks come from (see
 *Previewing the detail pages* under [Page-specific behaviour](#page-specific-behaviour)).
 
 To switch from one kind to the other, press the other button. The page
-reloads first, as it does whenever a second list is loaded, so press it once
-more after the reload.
+reloads first, as it does whenever a second list is loaded, and then runs
+that button by itself.
 
 </details>
 
@@ -2190,8 +2967,9 @@ page gets a heading with the usual toolbar and one action button, **Songs**.
 Pressing it turns the site's 28 letter tabs into one table with these
 columns:
 
-- **Title:** the song's title, as the wiki writes it. It links to that song's
-  page.
+- **Title:** the song's title, written the MusicBrainz way ("Born In The
+  U.S.A." reads "Born in the U.S.A.", see *Titles in MusicBrainz style*
+  below). It links to that song's page.
 - **Letter:** the tab the song is listed under: *0-9* or *A* to *Z*. Filter
   or pick from its 📊 list to see one letter, which is the job the tabs did.
 
@@ -2228,9 +3006,12 @@ entry, with these columns:
 - **Type:** *Gig*, *No gig* (cancelled or postponed), *Recording*,
   *Rehearsal*, *Interview* or *No Bruce*, from the kind of page the entry
   links to.
-- **Venue:** the venue as written, linked to the entry's own page. A second
-  part such as "SUMMER STAGE" stays with it.
-- **City**, **State** and **Country:** a US state or Canadian province code
+- **Venue:** the venue, linked to the entry's own page, written the
+  MusicBrainz way ("HAMPTON ROADS COLISEUM" reads "Hampton Roads Coliseum").
+  A second part such as "Summer Stage" stays with it.
+- **City**, **State** and **Country** (City and Country written the
+  MusicBrainz way, "SYDNEY" reads "Sydney", "THE NETHERLANDS" "The
+  Netherlands"; a country of USA, and State, as the wiki writes them): a US state or Canadian province code
   goes in State, with USA or CANADA as the country. Elsewhere the country is
   written out, and State holds the region where the wiki gives one ("NEW SOUTH
   WALES").
@@ -2238,8 +3019,10 @@ entry, with these columns:
   the wiki's "Start of …" / "Continuation of …" / "End of …" boxes. Entries
   outside any box, such as those before a year's first box, are empty.
 - **Soundcheck:** the soundcheck, one song per row.
-- **Setlist:** the set, one song per row, as written: bold for a tour
-  premiere, "(with …)" for guests, " - " joining a medley. A recording
+- **Setlist:** the set, one song per row, each title written the MusicBrainz
+  way ("I'M ON FIRE" reads "I’m on Fire"), the rest as the wiki has it: bold for a tour
+  premiere (also when the wiki sets a whole tour opener's setlist in bold,
+  as on 2012-03-18), "(with …)" for guests, " - " joining a medley. A recording
   session's setlist is the songs recorded. A set with its own label in the
   wiki ("Pre-show:", "With Bruce:", "with Willie Nile:") stays in this column,
   its first row tagged with that label.
@@ -2289,6 +3072,249 @@ many rows (*Large Dataset Threshold*, 5000).
 </details>
 
 <details>
+<summary>Brucebase Relations</summary>
+
+Brucebase lists everyone Bruce Springsteen shared a stage or a studio with —
+and family, friends and actors — at `https://brucebase.wikidot.com/stats:relations`,
+in 28 letter tabs (0-9, A to Z, and "&" for band names with an "&"). It comes
+with *Enable on the Brucebase song list*. The page gets a heading with the
+usual toolbar and one button, **Relations**, which turns the tabs into one
+table of the nearly 2,900 entries:
+
+- **Name:** the name in reading order, linked to the person's or band's page:
+  "Bryan Adams", "The Alliance Singers", "k.d. lang". A band whose name has a
+  comma of its own ("Crosby, Stills & Nash") keeps it.
+- **Sort name:** the name as the wiki lists it, "Adams, Bryan".
+- **Type:** *Person* or *Band*, the column the wiki lists it in.
+- **Letter:** the tab it is listed under.
+
+Names keep their capitals as the wiki writes them; only the punctuation
+becomes typographic ("D’Angelo"), see *Titles in MusicBrainz style* below.
+Everything is on the page; nothing is fetched.
+
+</details>
+
+<details>
+<summary>Brucebase Recent changes</summary>
+
+`https://brucebase.wikidot.com/system:recent-changes` is the wiki's log of
+every edit. It comes with *Enable on the Brucebase song list*. The page gets
+three buttons: **200**, **1,000** and **5,000** load the last 200, 1,000 or
+5,000 changes into one table. The site's own list shows 20 at a time; the
+buttons always load 200 per page (the most the site offers), and the site's
+"Revisions per page" is set to 200 as well, so its own *Update list* matches.
+The site's form still decides **what** is loaded: untick *ALL* and tick, say,
+*new pages*, or pick a category, before pressing a button. The columns:
+
+- **Page:** the page's title, linked to it.
+- **Category:** the part of the page's name before the colon (*gig*, *song*,
+  *gallery*, …); empty for a page in no category.
+- **Flags:** what changed, one row per flag, the site's letter and its
+  meaning: N new page created, S content source text changed, T title
+  changed, R page renamed/moved, A tags changed, M meta data changed, F
+  file/attachment action. Filter it, or pick from its 📊 list. A change
+  with two flags shows the first one and a ▶ toggle that opens the other,
+  as MusicBrainz's list cells do; the column header's button opens or
+  closes all of them.
+- **Date** and **Time:** when, in your own time zone, as `2026-10-12` and
+  `17:42:28`. **DD**, **MM**, **YYYY**, **Day** and **Month** (at the end of
+  the table) split the date up as on MusicBrainz pages, and the 📊 lists of
+  Date and Time offer the same sections as there: the year, month and
+  weekday of the date, and the part of the day (morning, afternoon, evening,
+  night).
+- **Revision:** the page's revision number; 0 for a new page.
+- **User:** who made the change, linked to their Wikidot profile (new tab).
+- **Comment:** the change's comment, where there is one.
+
+Each 200 changes is one request to the wiki, one after the other; 5,000 is 25
+requests and takes a minute or so. A change made while they load can show up
+twice.
+
+</details>
+
+<details>
+<summary>discogs.com: masters, releases, artists, labels, submissions, users and ratings</summary>
+
+With ⚙️ Settings → *💿 Discogs* → *Enable on discogs.com* on (off by
+default), a master, release, artist or label page on discogs.com gets a
+section of its own above Discogs' page, with the toolbar and these buttons:
+
+- **Master — Show all versions:** every version in one table: a thumbnail,
+  title, format, label, catalogue number, country and year; ★ marks the
+  master's main release.
+- **Release — Show tracklist, credits and other versions:** five sub-tables:
+  **Tracklist** (with each track's credits), **Credits**, **Companies, etc.**,
+  **Barcode and Other Identifiers** and **Other versions** (every other
+  version of its master).
+- **Artist — Show the whole discography:** one sub-table per Discogs role, in
+  Discogs' order: **Releases**, the credits Discogs' API gives (*Credits:
+  Producer*, …), **Appearances**, **Track appearances**, **Unofficial**; with
+  type (master or release), title, artist, format, label, year, and how many
+  Discogs users have and want it. Discogs' own split into Albums, Singles &
+  EPs and Compilations, and credits such as written-by or instruments, are
+  not in its API.
+- **Label — Newest:** 500, 1,000 or 5,000 releases; **Oldest:** 500 or 1,000;
+  **Then:** all of them. A large label has hundreds of thousands (Columbia:
+  396,611), so "All" asks first how many pages that is.
+- **Submissions — Show all submissions:** a list's submissions page (*Submissions
+  from List*, `/submissions?mode=list&id=…`), in the flat view or the browser
+  view: every submission in one table: **Artist** (a Discogs search link),
+  **Title** (the release), **Changed by**, **Changed** (date and time; point
+  at it for "6 minutes ago"), **Matched artist** (the list's artist the
+  release matched) and **History** (its history page). These rows come from
+  discogs.com's own pages, 100 a page, not from the API; pointing at the button
+  shows how many pages. On this page the section sits at the very top, above
+  Discogs' header.
+- **Release history — Show the changes and the diff:** a release's history
+  page (`/release/<id>/history`, also with `?diff=N`): **Changes** — when (date
+  and time also apart), the user with their picture, the action, the note,
+  the revision and *View changes*, which opens the preview window on that
+  revision's changes —, and **Diff · revision 8 → 10**: each part of the
+  release in the revision the page shows, old and new, *Marked* "changed"
+  where Discogs marked it. Read from the page itself.
+- **User — Show the submissions / contributions / collection / wantlist:** a
+  user's page (`/user/<name>`): their submissions (sub-tables **Releases**,
+  **Artists**, **Labels**, the empty ones left out), contributions,
+  collection and wantlist, from Discogs' API (no token needed; 642
+  submissions are 7 requests). A button shows only when the page counts that
+  list: an empty or private collection or wantlist has none. Columns as on the
+  other Discogs pages, plus Discogs' **Status** (the collection and wantlist:
+  **Added**). Here too the section sits at the very top.
+- **Ratings — Show all ratings:** a user's ratings page
+  (`/users/ratings/<name>`): every release they rated in one table: a
+  thumbnail, **Artist**, **Title**, **Format**, **Label**, **Cat#**, **Year**,
+  **Rating** (1 to 5, sorted as a number) and Discogs' **Data quality**. Read
+  from discogs.com's own pages, 250 a page (Discogs' API has no such list);
+  your own sort on the page is kept. Pointing at the button shows how many
+  pages. Here too the section sits at the very top.
+
+The rows come from Discogs' API, 100 a request, one after the other: a
+request every 2.5 seconds, or every second with your Discogs personal access
+token (⚙️ Settings → *🔎 External link previews*). Discogs counts those
+requests for your whole connection (or your token), not per tab, so all
+your Discogs tabs share them; when Discogs says the minute's requests are
+used up, every tab waits a minute and then asks again, and the status line
+says so. With several Discogs tabs open, the token helps most. Pointing at
+a button shows what it costs. Bruce Springsteen's discography is 68 requests, about 3
+minutes without a token; more than 50 pages asks you first, as on
+MusicBrainz. Discogs' own page stays as it is below the section. As
+everywhere, pressing a second button reloads the page, which then runs that
+button by itself.
+
+Titles link their Discogs pages, and so do the names in a track's credits
+(one row each; a long list is collapsed, ▶ opens it). The 📊 dropdown knows
+these columns as it knows MusicBrainz's: a track's **Credits** have *Credit
+details - Role* (Backing Vocals, Guitar, Producer …) and *- Attribute* (the
+words in Discogs' "[…]"), as the Instruments column; **Cat#** is one row per
+catalog number with the *Catalog info* sections, as Catalog#; **Year** has
+the Date column's sections (*Decade*, *Year*). Dates with a time (a
+submissions list's *Changed*, a user's *Added* and *Last changed*) also come
+as separate date and time columns, with the *Date info* and *Time info - Time
+of day* sections. A plain click on any
+link in these tables never leaves the page: with *Preview external links on
+hover* on it opens the preview window there, otherwise — and with
+Ctrl/⌘-click — a new tab. Discogs' lists name
+artists and labels without saying which ones, so those link Discogs' search
+for the name. A click on a thumbnail opens the artwork viewer on that row's
+images at full size, every one of them (a master row: the master's own
+images). The thumbnail shows at once with "Loading the full size…"; the
+full images take its place when Discogs answers: one request per row, and
+only for the rows you look at (a release you already previewed costs
+nothing). **Pointing at a thumbnail** shows a card with every image of that
+row — the primary one starred — as the Cover Art column does on
+MusicBrainz; the first time it is one request for that row, which the
+viewer then reuses (off: ⚙️ Settings → 💿 Discogs → *Image column: all
+images of a row on hover*). In the viewer, ← → step through the row's images, Shift+← → through the rows; if
+Discogs does not answer, the viewer says why and offers *Try again*. The
+section starts at the window's left edge and is as wide as its widest
+table; scrolled sideways, the toolbar and the bars stay in view.
+
+With *Preview external links on hover* on, a Discogs link in the table or in
+the page's content (not Discogs' header or footer) gets the same card and
+window as on MusicBrainz. A user's name carries their own picture: in a
+history it comes with the page; in a submissions list it is read from the
+user's profile once their row is on screen (one request each, one at a time).
+The 📊 list of that column shows each user's picture after their name too —
+every picture known by then; opening it asks for none.
+Pointing at a picture shows it larger in a card; a click opens it in the
+artwork viewer at the largest size Discogs serves. On a submissions page a release title's window
+opens with the release's **edit history** (see *Link previews*), then the
+release as everywhere; once it has been read, the title's card shows the
+last change too.
+
+**MusicBrainz column.** With the userscript *Import Discogs releases to
+MusicBrainz* (by murdos) installed, every table whose rows are releases,
+masters, artists or labels gets a **MusicBrainz** column right after
+*Title* or *Name*: a master's versions, a release's *Credits*, *Companies,
+etc.* and *Other versions*, a discography, a label's releases, a
+submissions list and a user's lists (not a tracklist, the identifiers or a
+history). Each cell shows on one line the MusicBrainz entities linked to
+that Discogs page, as that script's icons do on Discogs' own page: a yellow
+search box (**R?**, **A?**, **L?**, **P?**, **G?**) for each kind with none,
+which searches MusicBrainz for the name, then one icon per entity (grey: the
+link has ended) and a count from two up. A company is looked for as a
+MusicBrainz **place** first (a studio, a pressing plant), and its label is
+not shown once a place is found. The links come from that script's own
+memory first (only read, never changed), then from this script's own,
+then from MusicBrainz in the background: 100 Discogs links a request, one
+request a second, a spinner in each cell until its answer arrives. **▶ MB**
+in the column's header shows the progress (pointing at it opens the
+progress card) and asks again for rows that failed (⚠, also a click on the
+⚠ itself). Answers are kept 90 days, "nothing found" 7 days, so a second
+visit asks MusicBrainz nothing. Filter the column by a MusicBrainz ID; the
+📊 section *MusicBrainz - Links* counts the links per row (*» MB links: 0, 1,
+2 …*, and *pending* / *error* while lookups run) and rings the matched icons.
+Switch it off, or only the automatic lookups (then ▶ MB asks), in ⚙️
+Settings → 💿 Discogs. Without that userscript the column never appears.
+
+A table whose rows are releases (a master's versions, a release's other
+versions, a label's releases, a user's lists and ratings …) also gets the
+**Picard** column, as on MusicBrainz: open it with **▶♪** and each row whose
+Discogs release has a MusicBrainz release gets a ♪ that loads that release
+into Picard — rows still being looked up get theirs as soon as MusicBrainz
+answers.
+
+</details>
+
+<details>
+<summary>Titles in MusicBrainz style</summary>
+
+On springsteenlyrics.com, jungleland.it, brucespringsteen.it and Brucebase
+the tables write titles the way MusicBrainz writes English titles rather
+than each site's own way — the collection, bootleg, record and lyrics
+titles, the Brucebase song titles, and on a Brucebase year page the venues,
+cities, countries (a country of USA stays as it is) and every song of
+Soundcheck and Setlist. Two settings,
+both **on** by default, under ⚙️ Settings → *🔤 Titles on the other sites*:
+
+- **Write titles in MusicBrainz style:** capitals as MusicBrainz uses them:
+  every word capitalised except, inside the title, *a, an, the, and, but, or,
+  nor* and the short prepositions (*as, at, by, for, in, of, on, to, …*).
+  "BORN IN THE USA" and "Born In The U.S.A." read "Born in the USA" and "Born
+  in the U.S.A."; "(Version 2)" reads "(version 2)"; brucespringsteen.it's
+  "BOSS AT HIS BEST (THE)" reads "The Boss at His Best". Acronyms keep their
+  capitals (USA, NJ, MTV, U.S.A.). On a setlist only the song titles change:
+  "(with Patti Scialfa)", set labels and bold or italic songs stay as they
+  are. State stays as the wiki writes it, and so does a placeholder such as
+  "[no title]".
+- **Write typographic punctuation in titles:** ’ for an apostrophe ("Don’t",
+  "Rock ’n’ Roll"), “double” and ‘single’ quotation marks, … for "...", — for
+  "--", an en dash for a range ("1975–1985") and between the songs of a
+  medley, a hyphen ‐ inside a word ("Freeze‐Out") and a date, ″ for inches.
+  Brucebase Relations names get this too. **A filter then has to use the same
+  characters:** "don't" no longer finds "Don’t".
+
+Rest the pointer on a title that changed to see it as the site writes it,
+above the title as shown, with the letters and marks that changed marked.
+The rules are applied by machine, so a title that needs judgement — a word
+used as part of a verb ("Stand on It"), an acronym nobody listed — can still
+come out differently from MusicBrainz; "up" is always capitalised ("Held Up
+Without a Gun"), and so is "on" in "Come On", "Hang On" and the like. A change
+of either setting shows the next time a table is built.
+
+</details>
+
+<details>
 <summary>Previewing the detail pages</summary>
 
 Each row of these tables links to a page with more detail: a bootleg's
@@ -2300,12 +3326,12 @@ the table.
 It is **off until you switch it on**, for each site separately, right under
 that site's own switch in ⚙️ Settings:
 
-| Site                   | Setting                                                  | The card shows                                                                 |
-|------------------------|----------------------------------------------------------|--------------------------------------------------------------------------------|
+| Site                     | Setting                                                      | The card shows                                                                                                                                              |
+|--------------------------|--------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | 🎸 springsteenlyrics.com | *Preview item and song pages on springsteenlyrics.com lists* | the tracklist by disc, the notes (lineage, edition), the artwork scans; on the lyrics index, the version, the first lines of the lyrics and the song's info |
-| 🌴 jungleland.it        | *Preview artwork pages on the jungleland.it list*        | the uploader and the scans (front, back, discs, booklet)                       |
-| 💿 brucespringsteen.it  | *Preview record pages in the brucespringsteen.it database* | the tracklist, the show each track comes from, the notes, the photo           |
-| 📚 Brucebase           | *Preview song pages on the Brucebase song list*          | the album it comes from, how often and when last it was played live, releases |
+| 🌴 jungleland.it         | *Preview artwork pages on the jungleland.it list*            | the uploader and the scans (front, back, discs, booklet)                                                                                                    |
+| 💿 brucespringsteen.it   | *Preview record pages in the brucespringsteen.it database*   | the tracklist, the show each track comes from, the notes, the photo                                                                                         |
+| 📚 Brucebase             | *Preview song pages on the Brucebase song list*              | the album it comes from, how often and when last it was played live, releases                                                                               |
 
 **Rest the pointer on a title** for a moment and a card opens beside it. If
 you would rather move the pointer across the table without opening cards or
@@ -2314,6 +3340,11 @@ Ctrl)* under ⚙️ Settings → *🔎 EVERY PREVIEW* (it covers the MusicBrainz
 previews too): then **hold Ctrl and rest the pointer on a title**, or rest the
 pointer on the title first and then press **Ctrl**, and the card opens at
 once.
+This works on the page as the site shows it too, before you press any
+button: rest the pointer on a song in Brucebase's own song list ("1945" on
+*stats:songs*), a title on a springsteenlyrics.com or jungleland.it list, and
+its card opens the same way (on a touch screen, a tap there still opens the
+page; only the script's table opens the window).
 The first time, it shows "Loading the detail page…" while the page is read in
 the background. The script reads at most one page a second, and a page you
 have already seen comes back at once: it is kept for 30 days. The card's last
@@ -2324,7 +3355,8 @@ pointer away closes the card, and so does **Esc**.
 type into the filter box stays in the filter box. In the window:
 
 - **‹ ›** or the **← →** keys step to the previous or next row of the table,
-  in the order the table shows them.
+  in the order the table shows them; from a title on the site's own page, to
+  the previous or next title you can see there (a hidden tab's are skipped).
 - **Extracted** shows what the script read from the page, laid out for
   reading: the fields, the scans, the notes and the whole tracklist. Click
   the cover or a scan to open it in the artwork viewer (the same one as the
@@ -2340,7 +3372,8 @@ type into the filter box stays in the filter box. In the window:
   is left. The page's own scripts do not run there: on Brucebase every tab is
   shown, one under the other, and an embedded video is a "▶ Watch on YouTube"
   link instead of a player. A page you have just hovered opens without being
-  read again.
+  read again. The page is trimmed as soon as its text is in, without waiting
+  for its pictures.
 - **⟳** reads the page again instead of using the saved copy.
 - **↗** opens the page in a new tab.
 
@@ -2375,6 +3408,9 @@ behave differently from a desktop, on purpose:
 - **Sticky Page Headers is off.** Pinch-zoom moves what you see independently
   of what the browser pins, so the bars cannot reliably stay in view. To try it
   anyway, tick *Sticky Page Headers on touch devices* in 📌 Table stickiness.
+- **The sidebar's ▶/◀ handle stays where you can tap it**, at the right edge
+  of what you see, also when the page is wider than the screen and you have
+  scrolled or zoomed.
 - **A tap on a title opens the detail preview's window** on the sites where
   you switched the preview on (*Previewing the detail pages* under
   [Page-specific behaviour](#page-specific-behaviour)), instead of the page
@@ -2394,7 +3430,8 @@ dialog is waiting for you — a large listing asks before fetching, and the answ
 is a plain-DOM dialog rather than a browser one, so it may be behind something.
 
 **Filtering stopped responding after a while.** Press the action button again;
-it reloads the page and starts clean. That is what the second press is for.
+it reloads the page and runs again from a clean start. That is what the second
+press is for.
 
 **The Relationships column is empty and nothing is loading.** It is collapsed —
 large tables start that way on purpose. Press **▶🔗** in its header, or click a

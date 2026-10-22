@@ -1,0 +1,171 @@
+[
+    {
+        "name": "the edits path is not recognised",
+        "why": "Without _MB_POP_EDITS_RE in _mbPopParsePath() no /…/edits link is a target, and a sidebar 'Editing history' link has no card.",
+        "edits": [
+            {
+                "find": "        if (h) return { seg: '', type: 'edits', id: h[1] ? `${h[1]}/${h[2].toLowerCase()}` : `user/${h[3]}` };",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb-edits.spec.js",
+        "grep": "PATH",
+        "expect": "fail"
+    },
+    {
+        "name": "the button shows on every window",
+        "why": "The button must follow _mbEditsSubject(): an ISRC, an edit or the history itself has no editing history.",
+        "edits": [
+            {
+                "find": "_dpDialog.controls.hist.style.display = _mbEditsSubject(t) ? '' : 'none';",
+                "replace": "_dpDialog.controls.hist.style.display = '';"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb-edits.spec.js",
+        "grep": "NONE",
+        "expect": "fail"
+    },
+    {
+        "name": "an editor has no subject",
+        "why": "The editor window's history is /user/<name>/edits; without the user branch the Editor card has no button.",
+        "edits": [
+            {
+                "find": "        if (t.src.id === 'mb-entity' && t.type === 'user') return `user/${t.id}`;",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb-edits.spec.js",
+        "grep": "EDITOR",
+        "expect": "fail"
+    },
+    {
+        "name": "H does nothing",
+        "why": "H opens the history from the keyboard (the user's answer 2).",
+        "edits": [
+            {
+                "find": "        if ((e.key === 'h' || e.key === 'H') && !e.altKey && !e.ctrlKey && !e.metaKey && _mbEditsSubject(_dpDialog.target)) {",
+                "replace": "        if (false) {"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb-edits.spec.js",
+        "grep": "DIFF",
+        "expect": "fail"
+    },
+    {
+        "name": "a keyboard click that repaints closes the window",
+        "why": "createInfoDialog()'s outside-click check ran contains() on a target the repaint had detached; only a mouse click's mousedown flag hid it. composedPath() still names the dialog. The history's ↓ selects by a click.",
+        "edits": [
+            {
+                "find": "            if (e.composedPath().includes(dialog)) return;",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb-edits.spec.js",
+        "grep": "DIFF",
+        "expect": "fail"
+    },
+    {
+        "name": "an edit relationship's rowspan pair is two rows",
+        "why": "th[rowspan=2] puts the old value on one row and the new on the next; without the pending pair the new value is a label-less row of its own.",
+        "edits": [
+            {
+                "find": "                    if (oldTd && !newTd && th && th.rowSpan === 2) pending = r;",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb-edits.spec.js",
+        "grep": "EDITOR",
+        "expect": "fail"
+    },
+    {
+        "name": "an Old/New table is not split",
+        "why": "An edit medium's tracklist is one value holding 'Old tracklist | New tracklist'; split, its halves are the OLD and NEW columns.",
+        "edits": [
+            {
+                "find": "                const only = td.children.length === 1 && td.firstElementChild.tagName === 'TABLE' ? _mbEditsSplitTable(td.firstElementChild) : null;",
+                "replace": "                const only = null;"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb-edits.spec.js",
+        "grep": "SPLIT",
+        "expect": "fail"
+    },
+    {
+        "name": "MusicBrainz's Note is hidden by 'Only what changed'",
+        "why": "A Note row explains the edit (subsecond track lengths); it stays visible.",
+        "edits": [
+            {
+                "find": "        const hide = (r, i) => (r.kind === 'ctx' && i > 0 && r.label !== 'Note') || !!r.same;",
+                "replace": "        const hide = (r, i) => (r.kind === 'ctx' && i > 0) || !!r.same;"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb-edits.spec.js",
+        "grep": "ONLY",
+        "expect": "fail"
+    },
+    {
+        "name": "a nested table keeps the class tbl",
+        "why": "Every global table.tbl query of the script would count the window's merge and tracklist tables.",
+        "edits": [
+            {
+                "find": "            case 'TABLE': return `<table class=\"mb-meh-sub\">${inner}</table>`;",
+                "replace": "            case 'TABLE': return `<table class=\"tbl\">${inner}</table>`;"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb-edits.spec.js",
+        "grep": "RG",
+        "expect": "fail"
+    },
+    {
+        "name": "the noscript thumbnail is dropped",
+        "why": "An artwork cell's image is inside <noscript>; a DOMParser document parses it as markup, and without it the edit shows no cover and the viewer has nothing.",
+        "edits": [
+            {
+                "find": "            if (/^(SCRIPT|STYLE|BUTTON|SELECT|TEXTAREA|INPUT|FORM|SVG)$/.test(tag)) return '';",
+                "replace": "            if (/^(SCRIPT|STYLE|BUTTON|SELECT|TEXTAREA|INPUT|FORM|SVG|NOSCRIPT)$/.test(tag)) return '';"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb-edits.spec.js",
+        "grep": "RG",
+        "expect": "fail"
+    },
+    {
+        "name": "an open edit's page is kept",
+        "why": "An open edit's votes change: a page holding one stays in memory only, as an open edit's card.",
+        "edits": [
+            {
+                "find": "            wanted: _mbPopWanted(t), keep: d => !d.entries.some(e => e.status === 'open'),",
+                "replace": "            wanted: _mbPopWanted(t), keep: null,"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb-edits.spec.js",
+        "grep": "KEEP",
+        "expect": "fail"
+    },
+    {
+        "name": "the browser check is just 'not the page expected'",
+        "why": "MusicBrainz's 'Verifying your browser' page must be named, so the user knows to open the page once.",
+        "edits": [
+            {
+                "find": "            return { ok: false, detail: _mbIsBrowserCheck(raw.html) ? _MB_BROWSER_CHECK_NOTE : 'not the page expected' };",
+                "replace": "            return { ok: false, detail: 'not the page expected' };"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb-edits.spec.js",
+        "grep": "CHECK",
+        "expect": "fail"
+    },
+    {
+        "name": "nested batch members are not deduped",
+        "why": "Another userscript nests batch members inside a summary div.edit-list on the LIVE page (debug/edits-*.html). The window parses FETCHED pages, which never carry that markup, so no fixture can see this guard; it is kept for the snapshots and recorded here as unseen.",
+        "edits": [
+            {
+                "find": "            if (e && !seen.has(e.id)) {",
+                "replace": "            if (e) {"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb-edits.spec.js",
+        "grep": "BUTTON",
+        "expect": "pass"
+    }
+]

@@ -1,0 +1,935 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<!-- SKELETON-END: everything above this line is dropped when the page is published as an Artifact. -->
+<title>Springsteen Sites Logged In</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,500..800&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: the same test bench as detail-pages-mockups.html. Each proposal is a
+   mock browser window showing the real site's page with the userscript's table,
+   and a notes column beside it. Popups use the script's cream "liner notes"
+   card. Covers and photos are drawn placeholders: an artifact cannot load
+   images from the real sites. */
+:root {
+    --bg: #e9edf1;
+    --surface: #f8fafc;
+    --ink: #18202b;
+    --muted: #556070;
+    --line: #cfd6df;
+    --accent: #24527f;
+    --accent-ink: #ffffff;
+    --accent-soft: #dbe6f1;
+    --ok: #2c7347;
+    --ok-soft: #dcefe2;
+    --warn: #8f5a00;
+    --warn-soft: #f6e8cc;
+    --err: #9b2218;
+    --err-soft: #f6dcd8;
+    --shadow: 0 1px 0 rgba(20, 30, 45, 0.05), 0 12px 32px -18px rgba(20, 30, 45, 0.35);
+
+    /* The foreign sites and the script's table: a light page in both themes. */
+    --site-bg: #ffffff;
+    --site-ink: #222222;
+    --site-dim: #6b6b6b;
+    --site-line: #dddddd;
+    --site-head: #e8e8e8;
+    --site-even: #f2f2f2;
+    --site-link: #1d4f96;
+    --site-chrome: #f1f3f6;
+    --site-chrome-ink: #4d5664;
+    --site-sel: #fff4c2;
+    --site-new: #fdf3d0;
+    --site-new-line: #c99a1c;
+
+    /* The userscript's .mb-tt-liner card. */
+    --liner-bg: #fbf8f1;
+    --liner-ink: #2b2622;
+    --liner-line: #d9cfbd;
+    --liner-dim: #7a6d5c;
+    --liner-pill: #efe6d4;
+    --liner-pill-ink: #4a3f33;
+
+    /* The artwork viewer is dark in both themes. */
+    --viewer-bg: #0f1216;
+    --viewer-ink: #e8ebef;
+    --viewer-dim: #8c96a3;
+
+    --f-display: "Archivo", "Arial Narrow", "Helvetica Neue", Arial, sans-serif;
+    --f-body: "IBM Plex Sans", "Segoe UI", system-ui, -apple-system, sans-serif;
+    --f-mono: "IBM Plex Mono", ui-monospace, Consolas, "Courier New", monospace;
+    --f-liner: Georgia, "Times New Roman", Times, serif;
+    --f-site: Arial, Helvetica, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+        --bg: #11161d;
+        --surface: #19212b;
+        --ink: #e2e7ee;
+        --muted: #9aa5b4;
+        --line: #2c3746;
+        --accent: #86b4e2;
+        --accent-ink: #0e1620;
+        --accent-soft: #1f3248;
+        --ok: #74c494;
+        --ok-soft: #1c3326;
+        --warn: #e3ac4c;
+        --warn-soft: #3a2d14;
+        --err: #f08a7d;
+        --err-soft: #3d1f1b;
+        --shadow: 0 1px 0 rgba(0, 0, 0, 0.3), 0 14px 34px -16px rgba(0, 0, 0, 0.7);
+        color-scheme: dark;
+    }
+}
+:root[data-theme="dark"] {
+    --bg: #11161d;
+    --surface: #19212b;
+    --ink: #e2e7ee;
+    --muted: #9aa5b4;
+    --line: #2c3746;
+    --accent: #86b4e2;
+    --accent-ink: #0e1620;
+    --accent-soft: #1f3248;
+    --ok: #74c494;
+    --ok-soft: #1c3326;
+    --warn: #e3ac4c;
+    --warn-soft: #3a2d14;
+    --err: #f08a7d;
+    --err-soft: #3d1f1b;
+    --shadow: 0 1px 0 rgba(0, 0, 0, 0.3), 0 14px 34px -16px rgba(0, 0, 0, 0.7);
+    color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font: 15px/1.55 var(--f-body);
+}
+.page {
+    max-width: 1240px;
+    margin: 0 auto;
+    padding-block: 28px 64px;
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+    display: grid;
+    gap: 40px;
+}
+h1, h2, h3 { font-family: var(--f-display); text-wrap: balance; margin: 0; }
+h1 { font-size: clamp(28px, 4vw, 40px); font-weight: 800; font-stretch: 85%; letter-spacing: -0.01em; }
+h2 { font-size: 24px; font-weight: 750; font-stretch: 90%; }
+h3 { font-size: 16px; font-weight: 700; }
+p { margin: 0; max-width: 68ch; }
+code, .mono { font-family: var(--f-mono); font-size: 0.86em; }
+a { color: var(--accent); }
+
+.intro { display: grid; gap: 12px; }
+.eyebrow {
+    font: 600 12px/1 var(--f-body);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+}
+.jump { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
+.jump a {
+    text-decoration: none;
+    border: 1px solid var(--line);
+    background: var(--surface);
+    color: var(--ink);
+    padding: 5px 11px;
+    border-radius: 999px;
+    font-size: 13px;
+}
+.jump a:hover, .jump a:focus-visible { border-color: var(--accent); outline: none; }
+.jump b { color: var(--accent); font-family: var(--f-mono); font-weight: 500; margin-right: 4px; }
+
+section.item { display: grid; gap: 16px; scroll-margin-top: 12px; }
+.item-head { display: grid; gap: 6px; border-top: 2px solid var(--ink); padding-top: 12px; }
+.item-head .eyebrow b { color: var(--accent); }
+
+.bench { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 20px; align-items: start; }
+@media (max-width: 960px) { .bench { grid-template-columns: minmax(0, 1fr); } }
+.notes {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 14px 16px;
+    display: grid;
+    gap: 10px;
+    font-size: 14px;
+}
+.notes h3 { font-size: 14px; }
+.notes ul { margin: 0; padding-left: 18px; display: grid; gap: 6px; }
+.tag {
+    display: inline-block;
+    font: 600 11px/1 var(--f-body);
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    padding: 3px 7px;
+    border-radius: 3px;
+}
+.tag.ok { background: var(--ok-soft); color: var(--ok); }
+.tag.warn { background: var(--warn-soft); color: var(--warn); }
+.tag.err { background: var(--err-soft); color: var(--err); }
+.tag.info { background: var(--accent-soft); color: var(--accent); }
+
+/* A mock browser window. */
+.win {
+    border: 1px solid var(--line);
+    border-radius: 7px;
+    overflow: hidden;
+    box-shadow: var(--shadow);
+    background: var(--site-bg);
+    color: var(--site-ink);
+    min-width: 0;
+}
+.win-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--site-chrome);
+    color: var(--site-chrome-ink);
+    padding: 7px 10px;
+    font: 12px/1.2 var(--f-mono);
+    border-bottom: 1px solid var(--site-line);
+    min-width: 0;
+}
+.win-bar .dots { display: flex; gap: 5px; flex: none; }
+.win-bar .dots i { width: 9px; height: 9px; border-radius: 50%; background: var(--site-line); display: block; }
+.win-bar .url { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.win-body { padding: 14px; font: 13px/1.45 var(--f-site); position: relative; overflow-x: auto; }
+.win-body h1.site { font: bold 20px/1.2 var(--f-site); display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 10px; }
+.win-body a { color: var(--site-link); text-decoration: none; }
+
+/* The script's toolbar buttons and chips on the h1. */
+.tb {
+    font: 12px/1 var(--f-site);
+    border: 1px solid #b9c0ca;
+    background: #f6f7f9;
+    color: #1d2733;
+    border-radius: 3px;
+    padding: 4px 8px;
+    white-space: nowrap;
+}
+.login-chip {
+    font: 600 11px/1 var(--f-site);
+    border-radius: 999px;
+    padding: 4px 9px;
+    white-space: nowrap;
+    border: 1px solid;
+}
+.login-chip.in { color: #1f6a3e; border-color: #8cc5a0; background: #e8f5ec; }
+.login-chip.out { color: #5b6573; border-color: #c6ccd4; background: #f4f5f7; }
+.login-chip.cf { color: #8a4b00; border-color: #e3bb7a; background: #fdf1dc; }
+
+/* The script's table. */
+.tbl { border-collapse: collapse; width: 100%; font: 12px/1.35 var(--f-site); }
+.tbl th {
+    background: var(--site-head);
+    text-align: left;
+    padding: 5px 7px;
+    border-bottom: 1px solid var(--site-line);
+    white-space: nowrap;
+    font-weight: bold;
+}
+.tbl td { padding: 5px 7px; border-bottom: 1px solid var(--site-line); vertical-align: top; }
+.tbl tbody tr:nth-child(even) td { background: var(--site-even); }
+.tbl tr.hl td { background: var(--site-sel) !important; }
+.tbl .num { text-align: right; font-variant-numeric: tabular-nums; }
+.tbl .dim { color: var(--site-dim); }
+.tbl th.new, .tbl td.new { background: var(--site-new) !important; box-shadow: inset 2px 0 0 var(--site-new-line); }
+.hdr-btn {
+    display: inline-block;
+    font: 11px/1 var(--f-site);
+    border: 1px solid #b9c0ca;
+    background: #fff;
+    border-radius: 3px;
+    padding: 2px 4px;
+    margin-left: 4px;
+    font-weight: normal;
+}
+.count-pill {
+    display: inline-block;
+    min-width: 1.6em;
+    text-align: center;
+    font: bold 10px/1 var(--f-site);
+    padding: 3px 5px;
+    border-radius: 999px;
+    background: #e6ecf3;
+    color: #23466b;
+    font-variant-numeric: tabular-nums;
+}
+.count-pill.zero { background: #f0f0f0; color: #9a9a9a; }
+.pending { color: var(--site-dim); font-style: italic; }
+.media-ic {
+    display: inline-block;
+    font: bold 9px/1 var(--f-site);
+    padding: 2px 3px;
+    border: 1px solid #c9ced6;
+    border-radius: 2px;
+    margin-right: 2px;
+    color: #4d5664;
+}
+
+/* Placeholder artwork. --h sets the hue of one sleeve. */
+.cover {
+    --h: 210;
+    width: 42px;
+    aspect-ratio: 1;
+    max-width: 100%;
+    border-radius: 2px;
+    background:
+        radial-gradient(circle at 70% 30%, hsl(var(--h) 60% 75% / 0.85), transparent 55%),
+        linear-gradient(135deg, hsl(var(--h) 45% 32%), hsl(calc(var(--h) + 40) 50% 18%));
+    box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.15);
+    display: block;
+}
+.cover.sm { width: 30px; }
+.cover.lg { width: 112px; }
+.cover.photo {
+    background:
+        radial-gradient(ellipse at 50% 80%, hsl(var(--h) 70% 60% / 0.9), transparent 60%),
+        radial-gradient(circle at 30% 30%, hsl(calc(var(--h) + 30) 40% 70% / 0.5), transparent 40%),
+        linear-gradient(180deg, #14171d, hsl(var(--h) 30% 14%));
+    aspect-ratio: 4 / 3;
+}
+.cell-art { display: flex; align-items: center; gap: 6px; }
+
+/* Liner-notes popup card. */
+.liner {
+    background: var(--liner-bg);
+    color: var(--liner-ink);
+    border: 1px solid var(--liner-line);
+    border-radius: 6px;
+    box-shadow: 0 18px 40px -16px rgba(30, 20, 10, 0.45);
+    font: 13px/1.45 var(--f-body);
+    width: min(520px, 100%);
+    overflow: hidden;
+}
+.liner-top { padding: 12px 14px 8px; display: grid; gap: 3px; }
+.liner-crumbs { font: 11px/1.3 var(--f-body); color: var(--liner-dim); display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+.liner-crumbs a { color: var(--liner-dim); }
+.liner-crumbs b { color: var(--liner-ink); font-weight: 600; }
+.liner-title { font: 700 17px/1.25 var(--f-liner); }
+.liner-sub { color: var(--liner-dim); font-style: italic; font-family: var(--f-liner); }
+.liner-fields { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 3px 12px; padding: 4px 14px 10px; }
+.liner-fields dt { color: var(--liner-dim); }
+.liner-fields dd { margin: 0; }
+.liner-tabs { display: flex; flex-wrap: wrap; gap: 4px; padding: 0 14px 8px; }
+.pill {
+    background: var(--liner-pill);
+    color: var(--liner-pill-ink);
+    border-radius: 999px;
+    padding: 2px 9px;
+    font-size: 12px;
+    border: 1px solid transparent;
+}
+.pill.on { border-color: var(--liner-pill-ink); font-weight: 600; }
+.liner-sec { border-top: 1px solid var(--liner-line); padding: 9px 14px; display: grid; gap: 6px; }
+.liner-sec h4 { margin: 0; font: 600 11px/1 var(--f-body); letter-spacing: 0.07em; text-transform: uppercase; color: var(--liner-dim); }
+.liner-sec ol, .liner-sec ul { margin: 0; padding-left: 20px; }
+.liner-foot {
+    border-top: 1px solid var(--liner-line);
+    padding: 7px 14px;
+    font-size: 11px;
+    color: var(--liner-dim);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 14px;
+}
+.kbd {
+    font: 500 10px/1 var(--f-mono);
+    border: 1px solid var(--liner-line);
+    border-bottom-width: 2px;
+    border-radius: 3px;
+    padding: 2px 4px;
+    background: #fff;
+    color: var(--liner-ink);
+}
+.strip { display: flex; gap: 5px; overflow-x: auto; padding-bottom: 3px; }
+.strip .cover { width: 64px; flex: none; }
+.more { align-self: center; font-size: 12px; color: var(--liner-dim); flex: none; padding: 0 4px; }
+.drill { border-bottom: 1px dotted currentColor; cursor: pointer; }
+
+/* Stacked popups (drill-down). */
+.stack { display: grid; gap: 0; }
+.stack .liner + .liner { margin-top: -6px; margin-left: 22px; }
+.stack .liner.back { opacity: 0.55; transform: scale(0.98); transform-origin: top left; }
+
+/* Viewer. */
+.viewer {
+    background: var(--viewer-bg);
+    color: var(--viewer-ink);
+    border-radius: 6px;
+    padding: 12px;
+    display: grid;
+    gap: 10px;
+    font: 12px/1.4 var(--f-body);
+}
+.viewer-main { display: grid; grid-template-columns: minmax(0, 1fr) 190px; gap: 12px; }
+@media (max-width: 640px) { .viewer-main { grid-template-columns: minmax(0, 1fr); } }
+.viewer-main .cover { width: 100%; aspect-ratio: 1; }
+.viewer-side { display: grid; gap: 6px; align-content: start; color: var(--viewer-dim); }
+.viewer-side b { color: var(--viewer-ink); font-weight: 600; }
+.viewer .strip .cover { width: 46px; opacity: 0.6; }
+.viewer .strip .cover.cur { opacity: 1; outline: 2px solid var(--viewer-ink); outline-offset: 1px; }
+
+/* Data flow. */
+.flow { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; align-items: stretch; }
+@media (max-width: 760px) { .flow { grid-template-columns: minmax(0, 1fr); } }
+.zone {
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    background: var(--surface);
+    padding: 12px 14px;
+    display: grid;
+    gap: 8px;
+    align-content: start;
+    font-size: 13.5px;
+}
+.zone.safe { border-color: var(--ok); }
+.zone h3 { font-size: 14px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.zone ul { margin: 0; padding-left: 18px; display: grid; gap: 4px; }
+.arrow-note { font: 12px/1.4 var(--f-mono); color: var(--muted); }
+
+pre.json {
+    margin: 0;
+    background: #fff;
+    color: #1d2733;
+    border: 1px solid var(--site-line);
+    padding: 10px;
+    font: 11.5px/1.45 var(--f-mono);
+    overflow-x: auto;
+    max-height: 340px;
+}
+.probe-box { border: 2px solid #333; background: #fff; color: #000; padding: 8px; display: grid; gap: 6px; font: 12px var(--f-site); }
+.probe-box .bar { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+
+.matrix-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); }
+table.matrix { border-collapse: collapse; width: 100%; font-size: 13px; min-width: 760px; }
+table.matrix th, table.matrix td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+table.matrix th { font: 600 12px/1.2 var(--f-body); letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted); }
+table.matrix tr:last-child td { border-bottom: 0; }
+
+.grid-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; }
+.pt-card { border: 1px solid var(--line); background: var(--surface); border-radius: 6px; padding: 12px 14px; display: grid; gap: 8px; align-content: start; font-size: 13.5px; }
+.pt-card .mono { color: var(--muted); }
+.pt-card .cols { display: flex; flex-wrap: wrap; gap: 4px; }
+.pt-card .cols span { font: 11px/1 var(--f-site); background: var(--site-head); color: var(--site-ink); padding: 3px 6px; border-radius: 2px; }
+
+.legend { display: flex; flex-wrap: wrap; gap: 14px; font-size: 12.5px; color: var(--muted); align-items: center; }
+.swatch { display: inline-block; width: 14px; height: 14px; vertical-align: -2px; margin-right: 5px; background: var(--site-new); box-shadow: inset 2px 0 0 var(--site-new-line); border: 1px solid var(--site-line); }
+
+@media (prefers-reduced-motion: no-preference) {
+    .jump a { transition: border-color 0.15s; }
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+<header class="intro">
+    <span class="eyebrow">ShowAllEntityData · springsteenlyrics.com &amp; brucebase.wikidot.com · mockups, 2026-10-16</span>
+    <h1>Using the Springsteen sites logged in</h1>
+    <p>Mockups for the open TODO in <code>org/springsteenlyrics.org</code>. Item 1: logging in without the script or Claude ever holding your password. Item 2: the probe that finds out what logging in adds. Item 3: Brucebase, including the gig → venue drill-down. Item 4: artwork on every non-MusicBrainz pageType. Nothing here is built yet. Cells outlined in gold are new.</p>
+    <div class="legend"><span><span class="swatch"></span>new column or cell</span><span>Covers and photos are drawn placeholders; the real ones come from the sites.</span><span>Table rows and counts are examples. The Carnegie Hall gig and venue facts (setlist, 33 photos, 7 performances, Wikipedia text) are from the live pages, fetched 2026-10-16.</span></div>
+    <nav class="jump" aria-label="Sections">
+        <a href="#login"><b>1</b>Login, privacy, Cloudflare</a>
+        <a href="#probe"><b>2</b>The probe</a>
+        <a href="#bb-gig"><b>3a</b>BB gig card</a>
+        <a href="#bb-venue"><b>3b</b>Gig → venue drill-down</a>
+        <a href="#bb-year"><b>3c</b>Year table, new columns</a>
+        <a href="#bb-new"><b>3d</b>New BB pageTypes</a>
+        <a href="#art-matrix"><b>4a</b>Art per pageType</a>
+        <a href="#art-sl"><b>4b</b>SL art column</a>
+        <a href="#art-bb"><b>4c</b>BB gig photos</a>
+    </nav>
+</header>
+
+<!-- ============================================================ 1 -->
+<section class="item" id="login">
+    <div class="item-head">
+        <span class="eyebrow"><b>1a + 1b</b> · credentials and Cloudflare</span>
+        <h2>You log in in the browser. Nothing else holds the password.</h2>
+        <p>The script never asks for a user name or password and never logs in itself. It only rides along on the session your browser already has. Its list and detail fetches on SL and BB already send that session today, so in your own tab the extra content is there; the converters just skip what they do not know yet.</p>
+    </div>
+    <div class="flow">
+        <div class="zone safe">
+            <h3>Your browser <span class="tag ok">password lives here only</span></h3>
+            <ul>
+                <li>You log in on the site's own form.</li>
+                <li>Session cookie and Cloudflare clearance cookie stay in the browser's jar.</li>
+                <li>Same-origin <code>fetch()</code> (list pages, detail cards on the site) sends them automatically.</li>
+                <li>Cards opened <em>from MusicBrainz</em> stay anonymous (<code>_extFetch</code>, <code>anonymous: true</code>): the public view.</li>
+            </ul>
+        </div>
+        <div class="zone">
+            <h3>The userscript <span class="tag info">reads the page, not the jar</span></h3>
+            <ul>
+                <li>Detects the state from the page: SL shows a password field when logged out; BB shows "Sign in" in <code>#login-status</code>.</li>
+                <li>Stores the state with each cached detail card, so a public and a logged-in copy never stand in for each other.</li>
+                <li>Adds logged-in-only columns only when the fetched pages have them.</li>
+                <li>No <code>sa_*</code> setting for user or password, ever.</li>
+            </ul>
+        </div>
+        <div class="zone">
+            <h3>Claude <span class="tag warn">sees structure, not you</span></h3>
+            <ul>
+                <li>Gets the probe's redacted JSON from <code>debug/</code>.</li>
+                <li>Logged-in fixtures only from pages you choose to save, scrubbed before commit.</li>
+                <li>Later: Playwright login state in <code>playwright/.auth/</code>, with a <code>permissions.deny</code> rule so Claude's tools do not read it.</li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="bench">
+        <div class="win">
+            <div class="win-bar"><span class="dots"><i></i><i></i><i></i></span><span class="url">https://www.springsteenlyrics.com/bootlegs.php?cmd=list&amp;category=aud_live1975</span></div>
+            <div class="win-body">
+                <h1 class="site">Audio bootlegs · Live 1975–1977
+                    <span class="tb">Show all items</span>
+                    <span class="login-chip in" title="The fetched pages were the logged-in pages">● Logged in · your view</span>
+                </h1>
+                <h1 class="site" style="font-size:16px">brucebase · 2025
+                    <span class="tb">Show all events</span>
+                    <span class="login-chip out">○ Public view</span>
+                </h1>
+                <div style="border:1px solid #e3bb7a;background:#fdf1dc;color:#5a3a00;padding:8px 10px;border-radius:4px;display:grid;gap:4px">
+                    <b>Stopped after page 3 of 6: the site sent its Cloudflare check instead of page 4.</b>
+                    <span>Open the site in this tab (any page), let the check pass, then press <span class="tb">Resume</span>. Rows from pages 1–3 are kept.</span>
+                </div>
+            </div>
+        </div>
+        <aside class="notes">
+            <h3>What the chips mean</h3>
+            <ul>
+                <li><span class="login-chip in">● Logged in</span>: every page of this run came back logged in.</li>
+                <li><span class="login-chip out">○ Public view</span>: logged out, or the cards came from another site.</li>
+                <li>A mixed run (session expired halfway) says so, with the page where it changed.</li>
+            </ul>
+            <h3>Cloudflare (SL only)</h3>
+            <ul>
+                <li>In your tab it never bites: same-origin requests carry the clearance cookie.</li>
+                <li>It bites cross-origin anonymous requests, Python, and later Playwright, whose clearance is tied to browser and IP.</li>
+                <li>Today a challenged page reads as "0 cards". A <code>_slIsChallenge()</code> check names it, as above.</li>
+            </ul>
+        </aside>
+    </div>
+</section>
+
+<!-- ============================================================ 2 -->
+<section class="item" id="probe">
+    <div class="item-head">
+        <span class="eyebrow"><b>2</b> · finding out what logging in adds</span>
+        <h2>The probe asks every page twice and keeps only the difference</h2>
+        <p><code>scripts/probe-logged-in-diff.user.js</code>, a throwaway Tampermonkey script. Run it from the Tampermonkey menu while logged in. Each probed page is fetched without and with your cookies, compared in the browser, and reduced to headings, tab labels, table headers, link kinds, image counts, form field names and short redacted excerpts. You review the JSON and download it into <code>debug/</code>.</p>
+    </div>
+    <div class="bench">
+        <div class="win">
+            <div class="win-bar"><span class="dots"><i></i><i></i><i></i></span><span class="url">https://brucebase.wikidot.com/2025 · Tampermonkey ▸ Probe: what logging in adds (all pages)</span></div>
+            <div class="win-body">
+                <div class="probe-box">
+                    <div class="bar"><span class="tb">Download</span><span class="tb">Copy</span><span class="tb">Close</span><span>Review before saving: nothing here should name you. Put the file into debug/.</span></div>
+<pre class="json">{
+  "probe": "probe-logged-in-diff 1.0.0",
+  "host": "brucebase.wikidot.com",
+  "results": [
+    {
+      "url": "https://brucebase.wikidot.com/gig:2025-03-26-carnegie-hall-new-york-city-ny",
+      "public":   { "status": 200, "bytes": 120699, "challenge": false,
+                    "login": { "state": "out", "marker": "#login-status .login-status-sign-in" } },
+      "loggedIn": { "status": 200, "bytes": 123822, "challenge": false,
+                    "login": { "state": "in", "marker": "#login-status without sign-in" } },
+      "userNameDetected": true,
+      "outline": {
+        "tabsOnlyLoggedIn": [ "EXAMPLE tab" ],
+        "linkKinds": { "system:": "4 → 9" },
+        "images": "41 → 41"
+      },
+      "onlyLoggedIn": [
+        { "path": "div#login-status > span.printuser",
+          "context": "#header", "text": "«USER» My account",
+          "links": { "account:": 1 }, "images": 1, "fields": [] }
+      ]
+    }
+  ]
+}</pre>
+                </div>
+            </div>
+        </div>
+        <aside class="notes">
+            <h3>Example output</h3>
+            <p>The values shown are made up apart from the two byte sizes, which are from <code>org/iframe.org</code> X9. The real run fills this in.</p>
+            <h3>What never leaves the browser</h3>
+            <ul>
+                <li>Cookies and form input values: not read at all.</li>
+                <li>Your user name: found on the page, plus any terms you type in, replaced by <code>«USER»</code>.</li>
+                <li>E-mail addresses, long token-like strings, session-like URL parameters.</li>
+                <li>Link URLs: only their kind (<code>gig:</code>, <code>collection.php cmd=list ?category</code>).</li>
+            </ul>
+            <h3>Checked</h3>
+            <p><code>node scripts/check-probe-logged-in-diff.js</code>: a planted logged-in block is found, and none of the planted secrets reaches the report. Switching the redaction off makes it fail.</p>
+        </aside>
+    </div>
+</section>
+
+<!-- ============================================================ 3a -->
+<section class="item" id="bb-gig">
+    <div class="item-head">
+        <span class="eyebrow"><b>3a</b> · Brucebase · new card kind</span>
+        <h2>A card for gig pages</h2>
+        <p>Today only <code>song:</code> pages have a card on Brucebase. A gig page has a tab strip (On Stage, Setlist, Performances, Gallery, Media, Recording, Storyteller, Eyewitness, News/Memorabilia) and a photo gallery. Its first line links the year page anchor ("Info &amp; Setlist") and the venue page ("Venue").</p>
+    </div>
+    <div class="bench">
+        <div class="win">
+            <div class="win-bar"><span class="dots"><i></i><i></i><i></i></span><span class="url">https://brucebase.wikidot.com/2025 · hover "Carnegie Hall", press Space</span></div>
+            <div class="win-body" style="display:grid;gap:12px">
+                <table class="tbl">
+                    <thead><tr><th>Date</th><th>Type</th><th>Venue</th><th>City</th><th>Setlist</th></tr></thead>
+                    <tbody>
+                        <tr><td>2025-03-24</td><td>Rehearsal</td><td>Carnegie Hall</td><td>New York City</td><td class="dim">▶ 3</td></tr>
+                        <tr class="hl"><td>2025-03-26</td><td>Benefit</td><td><a class="drill" href="#bb-gig">Carnegie Hall</a></td><td>New York City</td><td class="dim">▶ 2</td></tr>
+                    </tbody>
+                </table>
+                <div class="liner" role="dialog" aria-label="Gig card">
+                    <div class="liner-top">
+                        <div class="liner-crumbs"><span>brucebase · gig</span></div>
+                        <div class="liner-title">2025-03-26 · Carnegie Hall, New York City, NY</div>
+                        <div class="liner-sub">People Have The Power: A Celebration of Patti Smith</div>
+                    </div>
+                    <dl class="liner-fields">
+                        <dt>Scheduled</dt><dd>20:00 · local start ??:??</dd>
+                        <dt>Venue</dt><dd><a class="drill" href="#bb-venue">Carnegie Hall</a> · 7 performances</dd>
+                        <dt>Year page</dt><dd><a href="#bb-year">2025 #260325</a></dd>
+                    </dl>
+                    <div class="liner-tabs">
+                        <span class="pill">On Stage</span><span class="pill on">Setlist 2</span><span class="pill">Gallery 33</span><span class="pill">Media</span><span class="pill">Recording</span><span class="pill">Storyteller</span><span class="pill">Eyewitness</span><span class="pill">News/Memorabilia</span>
+                    </div>
+                    <div class="liner-sec">
+                        <h4>Setlist</h4>
+                        <ol><li><a class="drill" href="#bb-gig">Because The Night</a></li><li><a class="drill" href="#bb-gig">People Have The Power</a> <span style="color:var(--liner-dim)">(with Patti Smith)</span></li></ol>
+                    </div>
+                    <div class="liner-sec">
+                        <h4>Gallery · 33</h4>
+                        <div class="strip">
+                            <span class="cover photo" style="--h:20"></span><span class="cover photo" style="--h:35"></span><span class="cover photo" style="--h:5"></span><span class="cover photo" style="--h:200"></span><span class="cover photo" style="--h:28"></span><span class="more">+28 ▸</span>
+                        </div>
+                    </div>
+                    <div class="liner-foot"><span><span class="kbd">Space</span> pin</span><span>click a dotted link to open it here</span><span>click a photo for the viewer</span><span><span class="kbd">Esc</span> close</span></div>
+                </div>
+            </div>
+        </div>
+        <aside class="notes">
+            <h3>What changes</h3>
+            <ul>
+                <li><code>_DP_SITES['brucebase.wikidot.com'].isDetailUrl</code> also takes <code>gig:</code>, <code>nogig:</code>, <code>venue:</code>, <code>relation:</code> and <code>retail:</code>, each with its own parser.</li>
+                <li>The tab strip shows counts; a tab opens its section in place.</li>
+                <li>The gallery goes to the existing artwork viewer through <code>_DP_ART_CTX</code>, which external cards already use.</li>
+                <li>The song card keeps its lyric sheet scan and performance graph, which <code>_dpParseBb</code> drops today.</li>
+            </ul>
+            <span class="tag info">public content, no login needed</span>
+        </aside>
+    </div>
+</section>
+
+<!-- ============================================================ 3b -->
+<section class="item" id="bb-venue">
+    <div class="item-head">
+        <span class="eyebrow"><b>3b</b> · Brucebase · drill-down</span>
+        <h2>From the gig to its venue, inside the same window</h2>
+        <p>The "further detail page" you asked for. A dotted link inside a card opens the next card in the same window, with a trail to go back. Today drill-down exists only for MusicBrainz entity links (<code>_dpDrill</code>), and links inside a card never open another card.</p>
+    </div>
+    <div class="bench">
+        <div class="win">
+            <div class="win-bar"><span class="dots"><i></i><i></i><i></i></span><span class="url">card window · gig → venue</span></div>
+            <div class="win-body">
+                <div class="stack">
+                    <div class="liner back" aria-hidden="true">
+                        <div class="liner-top">
+                            <div class="liner-crumbs"><span>brucebase · gig</span></div>
+                            <div class="liner-title">2025-03-26 · Carnegie Hall, New York City, NY</div>
+                        </div>
+                    </div>
+                    <div class="liner" role="dialog" aria-label="Venue card">
+                        <div class="liner-top">
+                            <div class="liner-crumbs"><a href="#bb-year">2025</a> › <a href="#bb-gig">Gig 2025-03-26</a> › <b>Venue</b></div>
+                            <div class="liner-title">Carnegie Hall, New York City, NY</div>
+                            <div class="liner-sub">7 performances, excl. rehearsals</div>
+                        </div>
+                        <div class="liner-sec">
+                            <p>Carnegie Hall is a concert venue in Midtown Manhattan in New York City, located at 881 Seventh Avenue, occupying the east stretch of Seventh Avenue between West 56th Street and West 57th Street… <span style="color:var(--liner-dim)">Source: Wikipedia</span></p>
+                        </div>
+                        <div class="liner-sec">
+                            <h4>Performances</h4>
+                            <ul style="list-style:none;padding:0;display:grid;gap:2px;font-variant-numeric:tabular-nums">
+                                <li><a class="drill" href="#bb-gig">2025-03-26</a> · People Have The Power benefit</li>
+                                <li><a class="drill" href="#bb-gig">2016-12-14</a></li>
+                                <li><a class="drill" href="#bb-gig">2010-05-13</a></li>
+                                <li><a class="drill" href="#bb-gig">2009-11-17</a></li>
+                                <li><a class="drill" href="#bb-gig">2007-04-05</a></li>
+                                <li><a class="drill" href="#bb-gig">1995-04-12</a></li>
+                                <li><a class="drill" href="#bb-gig">1987-12-07</a></li>
+                            </ul>
+                        </div>
+                        <div class="liner-sec">
+                            <h4>Gallery · 2</h4>
+                            <div class="strip"><span class="cover photo" style="--h:15"></span><span class="cover photo" style="--h:45"></span></div>
+                        </div>
+                        <div class="liner-foot"><span><span class="kbd">Backspace</span> back to the gig</span><span>click a date: that gig, same window</span><span>trail keeps 8 steps</span></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <aside class="notes">
+            <h3>Rules it keeps</h3>
+            <ul>
+                <li>A drill step is a click or a key, never a hover: only a call with <code>start</code> may start a request.</li>
+                <li>Read the venue link from the gig page. The slug can't be derived: gig names are cut short (<code>…red-bank-n</code>) and some carry a letter (<code>2025-04-26b-</code>).</li>
+                <li>Each step is one same-origin GET, cached like any card.</li>
+            </ul>
+            <h3>Same for</h3>
+            <ul><li><code>relation:</code> → a person's gigs and songs</li><li><code>retail:</code> → a release with cover and tracks</li><li><code>song:</code> → song card (already exists)</li></ul>
+        </aside>
+    </div>
+</section>
+
+<!-- ============================================================ 3c -->
+<section class="item" id="bb-year">
+    <div class="item-head">
+        <span class="eyebrow"><b>3c</b> · Brucebase · year pages and home</span>
+        <h2>The year table borrows from the gig pages, on request</h2>
+        <p>The year page already gives Date, Type, Venue, City, Setlist and the Media icons. The venue page link, the photo count and the On Stage line-up are only on each gig page, so they come in as deferred columns. Like the Relationships column, they load for the rows in view when you press the header button.</p>
+    </div>
+    <div class="bench">
+        <div class="win">
+            <div class="win-bar"><span class="dots"><i></i><i></i><i></i></span><span class="url">https://brucebase.wikidot.com/2025 · after "Show all events"</span></div>
+            <div class="win-body">
+                <table class="tbl">
+                    <thead><tr>
+                        <th>Date</th><th>Type</th><th>Venue</th><th>City</th><th>Media</th>
+                        <th class="new">Venue page<span class="hdr-btn">▼🏟</span></th>
+                        <th class="new">Photos<span class="hdr-btn">▼📷</span></th>
+                        <th class="new">On stage<span class="hdr-btn">▶</span></th>
+                    </tr></thead>
+                    <tbody>
+                        <tr><td>2025-01-18</td><td>Concert</td><td>Hackensack Meridian Health Theatre</td><td>Red Bank</td><td><span class="media-ic">PH</span><span class="media-ic">ST</span></td>
+                            <td class="new"><a href="#bb-venue">Hackensack Meridian Health Theatre</a></td>
+                            <td class="new"><span class="cell-art"><span class="cover photo sm" style="--h:210"></span><span class="count-pill">12</span></span></td>
+                            <td class="new">▶ 9</td></tr>
+                        <tr class="hl"><td>2025-03-26</td><td>Benefit</td><td>Carnegie Hall</td><td>New York City</td><td><span class="media-ic">PH</span><span class="media-ic">VI</span><span class="media-ic">NE</span></td>
+                            <td class="new"><a href="#bb-venue">Carnegie Hall</a> <span class="dim">7×</span></td>
+                            <td class="new"><span class="cell-art"><span class="cover photo sm" style="--h:20"></span><span class="count-pill">33</span></span></td>
+                            <td class="new">▶ 29</td></tr>
+                        <tr><td>2025-04-26</td><td>Concert</td><td>Pollak Theatre</td><td>West Long Branch</td><td><span class="media-ic">ST</span></td>
+                            <td class="new"><span class="pending">loading…</span></td>
+                            <td class="new"><span class="pending">loading…</span></td>
+                            <td class="new"><span class="pending">…</span></td></tr>
+                        <tr><td>2025-05-14</td><td>Concert</td><td>Co-op Live</td><td>Manchester</td><td><span class="media-ic">PH</span><span class="media-ic">BO</span></td>
+                            <td class="new dim">not loaded</td>
+                            <td class="new dim">not loaded</td>
+                            <td class="new dim">–</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <aside class="notes">
+            <h3>Cost</h3>
+            <ul>
+                <li>One gig page per row, 1 request per second; a year of 60 shows is about a minute.</li>
+                <li>Results are cached per gig page, so the second visit is free.</li>
+                <li>On the home page (all years, thousands of rows) the button loads the filtered rows only and says how many first.</li>
+            </ul>
+            <h3>Sorting and filtering</h3>
+            <ul>
+                <li>Photos sorts by count, then presence, through a hidden sort key, like CAA.</li>
+                <li>The 📊 dropdown on Venue page lists venues with their counts.</li>
+            </ul>
+        </aside>
+    </div>
+</section>
+
+<!-- ============================================================ 3d -->
+<section class="item" id="bb-new">
+    <div class="item-head">
+        <span class="eyebrow"><b>3d</b> · Brucebase · new pageTypes</span>
+        <h2>Pages that could become tables</h2>
+        <p>Supported now: <code>stats:songs</code>, <code>stats:relations</code>, <code>system:recent-changes</code>, year pages and home. The 2025 year page alone links these unsupported kinds: <code>gig:</code> 27, <code>nogig:</code> 6, <code>interview:</code> 14, <code>recording:</code> 3, <code>rehearsal:</code> 2, <code>retail:</code> 6, <code>relation:</code> 108.</p>
+    </div>
+    <div class="grid-cards">
+        <div class="pt-card">
+            <h3>bb-discography</h3>
+            <span class="mono">/stats:discography</span>
+            <p>Official releases, one row each, with the sleeve from the retail page.</p>
+            <div class="cols"><span>Art</span><span>Title</span><span>Year</span><span>Format</span><span>Label</span><span>Type</span></div>
+            <span class="tag info">first pick: art and a clean list</span>
+        </div>
+        <div class="pt-card">
+            <h3>bb-venue</h3>
+            <span class="mono">/venue:&lt;slug&gt;</span>
+            <p>One venue: its performances as a table, with dates split into parts and the gallery as a strip.</p>
+            <div class="cols"><span>Date</span><span>Type</span><span>Tour</span><span>Setlist</span><span>Photos</span></div>
+        </div>
+        <div class="pt-card">
+            <h3>bb-relation</h3>
+            <span class="mono">/relation:&lt;slug&gt;</span>
+            <p>One person: the gigs they played and the songs, from the person's page.</p>
+            <div class="cols"><span>Date</span><span>Venue</span><span>Role</span><span>Songs</span></div>
+        </div>
+        <div class="pt-card">
+            <h3>bb-tour</h3>
+            <span class="mono">/stats:tour-statistics</span>
+            <p>Tours with show counts and date ranges; each row opens the year table filtered to that tour.</p>
+            <div class="cols"><span>Tour</span><span>First</span><span>Last</span><span>Shows</span><span>Songs</span></div>
+        </div>
+        <div class="pt-card">
+            <h3>bb-scans</h3>
+            <span class="mono">/stats:scans-setlist · /stats:scans-ticket</span>
+            <p>Setlist and ticket scans as a gallery table: date, venue, thumbnail, open in the viewer.</p>
+            <div class="cols"><span>Scan</span><span>Date</span><span>Venue</span><span>Kind</span></div>
+            <span class="tag info">a natural home for item 4</span>
+        </div>
+        <div class="pt-card">
+            <h3>Year table: more Types</h3>
+            <span class="mono">bb-year / bb-home</span>
+            <p>Interviews, recording sessions and rehearsals as their own rows with Type set, so one filter shows a year's studio work.</p>
+            <div class="cols"><span>Type = Interview</span><span>Recording</span><span>Rehearsal</span></div>
+            <span class="tag warn">check what the year table already keeps</span>
+        </div>
+    </div>
+</section>
+
+<!-- ============================================================ 4a -->
+<section class="item" id="art-matrix">
+    <div class="item-head">
+        <span class="eyebrow"><b>4a</b> · artwork on the non-MusicBrainz pageTypes</span>
+        <h2>One foreign-art path beside CAA/EAA, never inside it</h2>
+        <p>The CAA/EAA column pipeline is built around MusicBrainz: archive URLs, MBID patterns, the <code>caa</code> extractor. Bending it to foreign sites would put MusicBrainz at risk. The artwork viewer and the summary panel already take any list of images (<code>_DP_ART_CTX</code> does this for cards). So foreign art gets its own small path, with its own setting, sort key and cache keys, and reuses the viewer.</p>
+    </div>
+    <div class="matrix-wrap">
+        <table class="matrix">
+            <thead><tr><th>pageType</th><th>Images today</th><th>Where the rest is</th><th>Presence without a fetch</th><th>Proposal</th></tr></thead>
+            <tbody>
+                <tr><td><code>sl-collection</code>, <code>sl-collection-intro</code></td><td>Cover thumbnail column</td><td>Item page: every scan (<code>*_tn.*</code> → full size)</td><td>Cover present or not</td><td><b>Art</b> column: cover + scan count, loaded on request; strip; viewer</td></tr>
+                <tr><td><code>sl-bootlegs</code></td><td>Cover; "Artwork" yes/no</td><td>Item page scans</td><td><b>Yes</b>: the Artwork flag</td><td>Same; presence sort works before any fetch</td></tr>
+                <tr><td><code>sl-brucelegs</code></td><td>Cover</td><td>Item page scans</td><td>Cover present or not</td><td>Same as collection</td></tr>
+                <tr><td><code>bs-records</code></td><td>None</td><td>Detail page; often a cover at <code>blegs\images\&lt;code&gt;.jpg</code></td><td>URL from the row's code; a failed load means "no"</td><td>Inline cover with no detail fetch at all; viewer</td></tr>
+                <tr><td><code>jl-list</code></td><td>None</td><td>Detail page: front, back, cd1, booklet…</td><td>No</td><td>Art column on request; viewer with type chips (front/back/booklet)</td></tr>
+                <tr><td><code>bb-year</code>, <code>bb-home</code></td><td>16 px media icons</td><td>Gig page gallery</td><td>"PH" media icon = photos exist</td><td><b>Photos</b> column = the EAA of Brucebase (3c, 4c)</td></tr>
+                <tr><td><code>bb-songs</code></td><td>None</td><td>Song page: lyric sheet, performance graph</td><td>No</td><td>In the song card only</td></tr>
+                <tr><td><code>sl-lyrics</code>, <code>bb-relations</code>, <code>bb-recent-changes</code></td><td>None</td><td>None worth a column</td><td>–</td><td>Nothing</td></tr>
+            </tbody>
+        </table>
+    </div>
+    <div class="notes">
+        <h3>Guard rails for MusicBrainz</h3>
+        <ul>
+            <li>New setting per site (e.g. <code>sa_sl_art</code>, default off), under each site's own opt-in.</li>
+            <li>Own sort-key class, added to <code>_CLEAN_STRIP_SEL</code> and <code>_sortCellText()</code>; never <code>.mb-caa-sort-key</code>.</li>
+            <li>Own cache keys (<code>fa:&lt;url&gt;</code>), never an MBID path in the art cache's <code>metadata</code> store.</li>
+            <li>The foreign-site specs that assert zero CAA/EAA requests stay as they are, and the MusicBrainz fixture suite must pass unchanged.</li>
+        </ul>
+    </div>
+</section>
+
+<!-- ============================================================ 4b -->
+<section class="item" id="art-sl">
+    <div class="item-head">
+        <span class="eyebrow"><b>4b</b> · springsteenlyrics.com</span>
+        <h2>An Art column that works like CAA</h2>
+        <p>The Cover column becomes Art: the thumbnail you have now, a count badge once the item page is read, a big-image strip per table, and the viewer. Bootlegs know presence before any fetch from their Artwork flag.</p>
+    </div>
+    <div class="bench">
+        <div class="win">
+            <div class="win-bar"><span class="dots"><i></i><i></i><i></i></span><span class="url">https://www.springsteenlyrics.com/bootlegs.php?cmd=list&amp;category=aud_live1975</span></div>
+            <div class="win-body" style="display:grid;gap:12px">
+                <h1 class="site" style="font-size:16px">Live 1975–1977 · 487 items
+                    <span class="tb">▼ Show big images</span><span class="tb">🖼 Art summary</span>
+                </h1>
+                <div class="strip" aria-label="Big-image strip">
+                    <span class="cover lg" style="--h:12"></span><span class="cover lg" style="--h:200"></span><span class="cover lg" style="--h:330"></span><span class="cover lg" style="--h:48"></span><span class="cover lg" style="--h:160"></span>
+                </div>
+                <table class="tbl">
+                    <thead><tr><th class="new">Art<span class="hdr-btn">▼🖼</span><span class="hdr-btn">📊</span></th><th>Title</th><th>Date</th><th>Location</th><th>Format</th></tr></thead>
+                    <tbody>
+                        <tr><td class="new"><span class="cell-art"><span class="cover" style="--h:12"></span><span class="count-pill">14</span></span></td><td>The Bottom Line 1975</td><td>1975-08-15</td><td>New York City, NY</td><td>3CD</td></tr>
+                        <tr class="hl"><td class="new"><span class="cell-art"><span class="cover" style="--h:200"></span><span class="count-pill">6</span></span></td><td>Born To Run Tour – Roxy Night</td><td>1975-10-18</td><td>Los Angeles, CA</td><td>2CD</td></tr>
+                        <tr><td class="new"><span class="cell-art"><span class="cover" style="--h:330"></span><span class="pending">…</span></span></td><td>Hammersmith Odeon '75</td><td>1975-11-18</td><td>London, England</td><td>2CD</td></tr>
+                        <tr><td class="new"><span class="cell-art"><span class="cover" style="--h:48"></span><span class="count-pill zero">1</span></span></td><td>Main Point Revisited</td><td>1975-02-05</td><td>Bryn Mawr, PA</td><td>2CD</td></tr>
+                    </tbody>
+                </table>
+                <div class="viewer" aria-label="Artwork viewer">
+                    <div class="viewer-main">
+                        <span class="cover" style="--h:200"></span>
+                        <div class="viewer-side">
+                            <b>Born To Run Tour – Roxy Night</b>
+                            <span>Scan 2 of 6 · back inlay</span>
+                            <span>springsteenlyrics.com · item 4554</span>
+                            <span><span class="kbd" style="background:transparent;color:inherit">← →</span> scans · <span class="kbd" style="background:transparent;color:inherit">Shift ← →</span> next row</span>
+                        </div>
+                    </div>
+                    <div class="strip"><span class="cover" style="--h:200"></span><span class="cover cur" style="--h:205"></span><span class="cover" style="--h:195"></span><span class="cover" style="--h:210"></span><span class="cover" style="--h:190"></span><span class="cover" style="--h:215"></span></div>
+                </div>
+            </div>
+        </div>
+        <aside class="notes">
+            <h3>Behaviour</h3>
+            <ul>
+                <li>Loads counts for the rows in view on <span class="tb">▼🖼</span>, one item page per second, cached per item.</li>
+                <li>The 📊 dropdown gets an "Art" section: has art / no art / count ranges.</li>
+                <li>The Art summary panel makes zero requests, as on MusicBrainz.</li>
+                <li>Viewer: <code>_artViewerOpen()</code> with an external ctx and the minimal records <code>_dpArtViewerClick</code> builds today.</li>
+            </ul>
+            <h3>Logged in</h3>
+            <p>If the probe finds more or bigger scans for members, they appear here without change. The count is then "your view" and the login chip says so.</p>
+        </aside>
+    </div>
+</section>
+
+<!-- ============================================================ 4c -->
+<section class="item" id="art-bb">
+    <div class="item-head">
+        <span class="eyebrow"><b>4c</b> · Brucebase · gig photos as event art</span>
+        <h2>Photos per show, browsable like Event Art</h2>
+        <p>What EAA is to MusicBrainz events, the gig gallery is to Brucebase shows. The Photos column from 3c feeds a per-year strip and the viewer, and Shift+→ steps from one show's photos to the next.</p>
+    </div>
+    <div class="bench">
+        <div class="win">
+            <div class="win-bar"><span class="dots"><i></i><i></i><i></i></span><span class="url">https://brucebase.wikidot.com/2025 · ▼ Show big images</span></div>
+            <div class="win-body" style="display:grid;gap:12px">
+                <div style="display:grid;gap:6px">
+                    <b style="font:bold 13px var(--f-site)">2025-03-26 · Carnegie Hall · 33 photos</b>
+                    <div class="strip"><span class="cover photo lg" style="--h:20"></span><span class="cover photo lg" style="--h:35"></span><span class="cover photo lg" style="--h:5"></span><span class="cover photo lg" style="--h:200"></span><span class="more">+29</span></div>
+                </div>
+                <div style="display:grid;gap:6px">
+                    <b style="font:bold 13px var(--f-site)">2025-01-18 · Red Bank · 12 photos</b>
+                    <div class="strip"><span class="cover photo lg" style="--h:210"></span><span class="cover photo lg" style="--h:240"></span><span class="cover photo lg" style="--h:260"></span><span class="more">+9</span></div>
+                </div>
+            </div>
+        </div>
+        <aside class="notes">
+            <h3>Credits</h3>
+            <p>Brucebase names the photographer in each file name (<code>20250326_TaylorHill_01.jpg</code>) and asks for credit. The viewer shows the name from the file name in its side panel.</p>
+            <h3>Thumbnails</h3>
+            <p>The site serves <code>…/thumbnail.jpg</code> beside each full image. The strip uses those and loads the full image only in the viewer.</p>
+        </aside>
+    </div>
+</section>
+
+<footer class="notes">
+    <h3>Order proposed in the plan</h3>
+    <ul>
+        <li>Run the probe on both sites while logged in; its JSON decides the logged-in columns.</li>
+        <li>Login state in the detail cache and the login chip (small, protects everything after it).</li>
+        <li>Brucebase gig and venue cards with drill-down (3a, 3b), then the deferred year columns (3c).</li>
+        <li>The foreign-art path, starting with springsteenlyrics.com bootlegs (presence for free), then Brucebase photos.</li>
+    </ul>
+</footer>
+
+</div>
+</body>
+</html>

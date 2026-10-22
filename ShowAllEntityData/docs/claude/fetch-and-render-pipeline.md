@@ -12,18 +12,34 @@ re-enter the function:
 // Reload the page if a fetch process has already run to fix column-level
 // filter unresponsiveness
 if (isLoaded && !_isResume) {
-    sessionStorage.setItem('mb_show_all_reload_pending', 'true');
+    // _reloadFlag = JSON {label, index, href} of the pressed action button,
+    // or the bare 'true' when the press was not one of them
+    sessionStorage.setItem('mb_show_all_reload_pending', _reloadFlag);
     window.location.reload();
     return;
 }
 ```
 
-Nothing re-presses after the reload — init only clears the flag — so the error
-arm's own advice, *repress the "Show all" button*, means **reload, then press
-again**. Do not read that comment as evidence that the render tail is exercised
-a second time on a live page; it is not, and building item 5 on that inference
-cost five stalled spec runs whose only symptom was a renderer blocked so hard
-that `page.evaluate()` timed out (DEBUG-NOTES.md, 2026-09-20).
+**The guard is the first statement after `_isResume`** (since 9.99.1397). It used to stand ~400 lines in, after the
+definition merge, the removal of the other sections from the visible page and,
+on `artist-releasegroups`, a whole network pre-fetch pass — all of it thrown
+away by the reload.
+
+**The reloaded page presses the same button again by itself**
+(`_autoRepressAfterReload()`, at the end of init): it finds the button by its
+`data-label` (by `index` only when the label was empty), only while
+`location.href` is still the reloaded URL, shows a brief
+`#mb-reload-repress-note` beside the status line and clicks the button on a
+`setTimeout(0)`, after the rest of init has attached the status line. With the
+bare `'true'`, another URL or no matching button it falls back to the old
+"⚠️ Page Reloaded" dialog. Pinned by `tests/fixtures/reload-auto-repress.spec.js`.
+
+So a second press still means **reload, then press again** — the second press
+now made by init, not the user. Do not read the error arm's advice, *repress
+the "Show all" button*, as evidence that the render tail is exercised a second
+time on a live page; it is not, and building item 5 on that inference cost five
+stalled spec runs whose only symptom was a renderer blocked so hard that
+`page.evaluate()` timed out (DEBUG-NOTES.md, 2026-09-20).
 
 **The `_isResume` exemption is the ONE way back in**, and it is deliberately
 narrow. `startFetchingProcess(e, buttonConfig, baseDef, resumeFrom)` with a
@@ -302,3 +318,69 @@ Two more things the event page taught, both generic:
   default on) moves every h2 section that comes after the data h2 to just
   before it. On the event page a native "Setlist" therefore ends up above
   "Relationships" — by design, not a bug in the converter.
+- **The groups go in right after the target h2, so a native paragraph
+  between that h2 and the first table ends up below the LAST table.** On
+  `/tag/<name>` (`tag-value`, `debug/tag-entity-initial.html` vs
+  `-final.html`, 2026-10-19) that was "212,773 entities found".
+  `features.keepH2Intro` (on `tag-value` and `user-tag-value` only) makes
+  `_keepH2Intro()` put the run of `<p>` right after the h2, plus any
+  `.mb-h2-intro` an earlier render or a disk load left elsewhere, back under
+  the h2 on every render, and the pairs start after them. `_alignH2Intro()`
+  then copies the first h3's computed `margin-left` onto them: the h3 rule's
+  `1.5em` is in the h3's larger font, so `1.5em` on a paragraph falls 4 px
+  short (the stylesheet keeps it as the fallback). Pinned by
+  `tag-value-intro.spec.js`.
+
+## An editor's profile: a converter on a page without `#content` (2026-10-20)
+
+`user-profile` (`/user/<name>`, branch feat/user-and-collection-pages)
+is `non_paginated`: page 1 is the live document, nothing is fetched.
+`applyUserProfileToTables()` (`features.userProfileToTables`, wired at the
+same three call sites as `applySidebarToTables()`: live, fetched, disk load)
+builds its groups with `_eventBuildTable()`, so each carries
+`data-mb-col-headers` (the groups' columns differ, see above).
+
+- **No `#content`**: h1, h2s and tables are children of `#page`, as on
+  account-applications. The converter works on `#page` and marks it
+  (`data-mb-user-profile`); `groupByH3` finds each table's h3.
+- It replaces the h2 that heads `table.profileinfo` ("General information")
+  with one h2 "Profile", removes "Statistics" and the native tables. The h2
+  "Edit Notes" between them is USER_STATS's (another userscript, the
+  `title` says so): left alone, never read, and
+  `_relocateTrailingH2Sections()` may move it.
+- **Two page shapes.** Logged out (the fixture `user-page-vzell.html`) a
+  statistics cell is the count alone; logged in (`debug/user-chaban.html`)
+  it is "1,466,095 (view)" / "187,144 (100%)", an overall vote count is a
+  link, and the votes table has a one-cell "Total effective votes" row.
+  `_upSplitStat()` splits a cell into count, share and link; a column no row
+  fills is left out, so the logged-out Edits group is Status | Count only.
+  The spec plants the logged-in shape into the fixture (no logged-in capture
+  of the user's own profile exists yet).
+- Copied cells drop other userscripts' additions (`_upCellNodes()`: flag
+  images, `.mfe-flag-wrapper` unwrapped, every `style`).
+
+## One live dataset per page: a second data section is an either/or button
+
+Added 2026-10-12 (org/relationship-tables-pt.org). Every render owns the
+page-wide state: `activeDefinition`, `pageType`, `allRows`/`groupedRows`,
+`_filterResultCache`, and the global filter's fixed `mb-global-filter-*` ids.
+So exactly one h2 carries the global filter, row-count stats, status line,
+Clear button and master toggle; h3 sub-tables under it each get their own
+filter and count. Two h2 data sections cannot be live at once.
+
+A page with a second data section therefore gets a second BUTTON, and the two
+are either/or. Two mechanisms exist:
+
+- `targetHeader` buttons (`area-releases`, `artist-aliases`): the "UI Cleanup"
+  block in `startFetchingProcess()` removes the sections of the OTHER buttons'
+  `targetHeader`s. Only works when every button names its header.
+- A button with its own `type` + `replaceFeatures` (the relationship-tables
+  buttons, `_relTablesButton()`, docs/claude/relationship-tables.md): it runs
+  as that pageType with only its own features, and its converter removes the
+  other data sections itself (`removeMain`). The page's own button keeps no
+  `targetHeader` and renders exactly as before.
+
+Both rely on the rule above: a second press reloads, so the switched `pageType`
+never outlives the render. A file saved from such a render records the
+button's `type`; the disk load activates that button
+(`_activateButtonForSavedPageType()`) before its pre-processing.

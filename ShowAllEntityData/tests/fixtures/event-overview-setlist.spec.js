@@ -244,7 +244,7 @@ test.describe('pageType event-overview: the setlist as tables (WIP.2)', () => {
         ]);
         expect(cells.every((c) => c.works === 1), 'only the song\'s own work, not the artists').toBe(true);
         const last = cells[cells.length - 1];
-        expect(last.items).toEqual(['Trombone Shorty', 'the New Breed Brass Band', 'all performers']);
+        expect(last.items, 'the sentence\'s "the" is not part of the linked name').toEqual(['Trombone Shorty', 'New Breed Brass Band', 'all performers']);
         expect(last.hrefs).toEqual(['/artist/cae4fd51-4d58-4d48-92c1-6198cc2e45ed', '/artist/470ebb49-d510-4dae-95ee-c0a75c882dc7']);
         expect(cells[0].items).toEqual(['Rosanne Cash']);
     });

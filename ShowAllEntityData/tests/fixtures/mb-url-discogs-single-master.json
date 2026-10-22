@@ -1,0 +1,30 @@
+{
+ "id": "fb0fb999-1da7-4c1b-80f6-2f5c5ee124e6",
+ "resource": "https://www.discogs.com/master/27097",
+ "relations": [
+  {
+   "source-credit": "",
+   "attribute-ids": {},
+   "end": null,
+   "ended": false,
+   "target-credit": "",
+   "attributes": [],
+   "type": "discogs",
+   "type-id": "99e550f3-5ab4-3110-b5b9-fe01d970b126",
+   "release_group": {
+    "id": "d5f992ab-6238-3b28-bf2b-7b16d913c9f6",
+    "primary-type-id": null,
+    "secondary-type-ids": [],
+    "secondary-types": [],
+    "title": "Devils & Dust",
+    "primary-type": null,
+    "first-release-date": "2005-04-25",
+    "disambiguation": ""
+   },
+   "target-type": "release_group",
+   "direction": "backward",
+   "attribute-values": {},
+   "begin": null
+  }
+ ]
+}

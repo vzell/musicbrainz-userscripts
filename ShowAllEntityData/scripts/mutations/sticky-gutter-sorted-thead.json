@@ -1,0 +1,106 @@
+[
+    {
+        "name": "a collapsed sidebar keeps its layout box",
+        "why": "Under MB's #page { display: table } a collapsed sidebar stays a table cell as wide as its min-content: the page runs past the table and every pinned bar stops that far short of the window edge (2026-10-14, area page).",
+        "edits": [
+            {
+                "find": "            .sidebar-collapsed {\n                display: none !important;\n",
+                "replace": "            .sidebar-collapsed {\n"
+            }
+        ],
+        "spec": "tests/fixtures/sticky-page-headers.spec.js",
+        "grep": "collapsed sidebar takes no space",
+        "expect": "fail"
+    },
+    {
+        "name": "no right-edge mask",
+        "why": "A wide table ran on past the h2/h3 bars' line to the window edge, and rows showed beside a stuck bar (2026-10-14).",
+        "edits": [
+            {
+                "find": "        if (mask.classList.contains('mb-sph-rmask-on') !== (w > 0)) mask.classList.toggle('mb-sph-rmask-on', w > 0);\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/sticky-filter-bars.spec.js",
+        "grep": "ends on the h2/h3 bars' line",
+        "expect": "fail"
+    },
+    {
+        "name": "the mask is narrower than the bars' gap",
+        "why": "Its width is the smallest gap between a pinned h2/h3 bar and the window edge; narrower, the table runs on past the line.",
+        "edits": [
+            {
+                "find": "        const w = gaps.length ? Math.ceil(Math.min(...gaps) * 100) / 100 : 0;\n",
+                "replace": "        const w = gaps.length ? Math.ceil(Math.min(...gaps) * 50) / 100 : 0;\n"
+            }
+        ],
+        "spec": "tests/fixtures/sticky-filter-bars.spec.js",
+        "grep": "ends on the h2/h3 bars' line",
+        "expect": "fail"
+    },
+    {
+        "name": "the mask lies under the table",
+        "why": "It must paint over what scrolls, the stuck thead included. A plant at z-index 99 (just under the thead's 100) is invisible in this fixture: the thead's 100 is scoped inside an ancestor stacking context there and the mask (fixed, on <body>) is hit over it even at 99 (probed 2026-10-14). On MusicBrainz the thead competes directly and 102 > 100 decides; under the page content altogether (-1) is what the fixture can see.",
+        "edits": [
+            {
+                "find": "    const SPH_Z_RMASK = 102;\n",
+                "replace": "    const SPH_Z_RMASK = -1;\n"
+            }
+        ],
+        "spec": "tests/fixtures/sticky-filter-bars.spec.js",
+        "grep": "ends on the h2/h3 bars' line",
+        "expect": "fail"
+    },
+    {
+        "name": "the mask paints over body-level chrome (the footer)",
+        "why": "Only what scrolls is covered; the pinned MB footer (106) reaches the window edge and stays on top.",
+        "edits": [
+            {
+                "find": "    const SPH_Z_RMASK = 102;\n",
+                "replace": "    const SPH_Z_RMASK = 1000;\n"
+            }
+        ],
+        "spec": "tests/fixtures/sticky-filter-bars.spec.js",
+        "grep": "lies under chrome",
+        "expect": "fail"
+    },
+    {
+        "name": "the sticky thead has no backing colour",
+        "why": "A sorted column's header tint is 60 % alpha; on the Springsteen sites nothing was behind it, and rows scrolling under the pinned header showed through (2026-10-14: brucespringsteen.it, then springsteenlyrics.com, whose Bootstrap table { background-color: transparent } also beat a zero-specificity backing).",
+        "edits": [
+            {
+                "find": "            body:is(.mb-sa-host-sl, .mb-sa-host-jl, .mb-sa-host-bs, .mb-sa-host-bb) table.tbl > thead {\n                background-color: #fff;\n            }\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/sorted-thead-opaque.spec.js",
+        "grep": "sorted header stays opaque",
+        "expect": "fail"
+    },
+    {
+        "name": "the thead backing has no specificity (inside :where())",
+        "why": "springsteenlyrics.com's Bootstrap table { background-color: transparent } then wins, and the rows show through the sorted headers there; brucespringsteen.it has no such rule.",
+        "edits": [
+            {
+                "find": "            body:is(.mb-sa-host-sl, .mb-sa-host-jl, .mb-sa-host-bs, .mb-sa-host-bb) table.tbl > thead {\n                background-color: #fff;\n            }\n",
+                "replace": "            :where(body:is(.mb-sa-host-sl, .mb-sa-host-jl, .mb-sa-host-bs, .mb-sa-host-bb) table.tbl) > thead {\n                background-color: inherit;\n            }\n"
+            }
+        ],
+        "spec": "tests/fixtures/sorted-thead-opaque.spec.js",
+        "grep": "springsteenlyrics",
+        "expect": "fail"
+    },
+    {
+        "name": "a data table that is a direct <body> child is collected as chrome",
+        "why": "jungleland.it: capped like a bar and raised over every stuck bar while hovered, the table's rows painted over the stuck h1, status line and h2 (2026-10-14, debug/jl.html).",
+        "edits": [
+            {
+                "find": "            if (el !== page && !el.matches('table.tbl')) add(el, true);\n",
+                "replace": "            if (el !== page) add(el, true);\n"
+            }
+        ],
+        "spec": "tests/fixtures/sticky-filter-bars.spec.js",
+        "grep": "direct <body> child",
+        "expect": "fail"
+    }
+]

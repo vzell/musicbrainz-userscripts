@@ -151,4 +151,5 @@ After the latest sticky feature bug fixes there is still one left with native Mu
 
 ** TODO Still open, from fddfe5b itself: after a sort finishes, the browser stays busy longer before going idle (+0.5 to +1.1 s on artist-events)
 
-Still open, from fddfe5b itself: after a sort finishes, the browser stays busy longer before going idle (+0.5 to +1.1 s on artist-events). Nothing has traced it to a cause yet.
+Still open, from fddfe5b itself: after a sort finishes, the browser stays busy longer before going idle (+0.5 to +1.1 s
+on artist-events). Nothing has traced it to a cause yet.

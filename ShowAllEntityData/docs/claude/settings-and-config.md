@@ -166,6 +166,43 @@ stored collapse state. A filter opens the sections holding matches WITHOUT
 touching their stored state, so clearing it restores the user's own layout;
 mutations exist for both directions of getting that wrong.
 
+**Select settings** (`type: 'select'`, VZ_MBLibrary 4.4.0, 2026-10-15). A fixed
+set of choices, drawn as segmented buttons. Design and mockups:
+`https://claude.ai/artifact/9NX1da57DZZrKRShQJ2V78` (picked: B, segmented).
+- **Schema:** `options: [{ value, label, hint? }]` or bare values; `default`
+  must be one of the values. A value keeps its type: the two image sizes use
+  NUMBER options (`250`), so SAVE and the import store `500`, not `"500"`.
+- **Library:** the buttons sit over a hidden input under the usual
+  `<scriptId>-input-<key>` id, so SAVE, the snapshot, the changed marks, RESET
+  and `isSchemaDefault()` need nothing of their own. SAVE maps the input's
+  text back to the option's typed value (`settingsInterface.selectValue()`,
+  trimmed and case-insensitive). A stored value that is no option shows and
+  saves as the default. The Default column shows the option LABEL; the row
+  tooltip lists the choices; Escape on a segment blurs it.
+- **Read through `_selectSetting(key)`**, never `Lib.settings.sa_x` raw, in new
+  code: it returns a valid option or the default, whatever the profile holds
+  (a typo, a library older than 4.4.0 that shows the row as a text box, the
+  stub `Lib`). `_selectOptionValue()` is the userscript's own matcher, on
+  purpose not the library's: the published library can be older.
+- **`_canonicalizeSelectSettings()`** runs on load after
+  `_coerceNumericSettings()`: `"500"` stored while the sizes were number
+  settings becomes `500`, `" List "` becomes `"list"`; a value that is no
+  option is left for its reader. The existing tolerant readers
+  (`_artCellLayoutSetting()`, `_artViewerBgSetting()`, the pan and size reads)
+  were kept as they are.
+- **Config file:** `_applyConfigSettings()` refuses a value that is no option
+  (counted `invalid`, like a bad number); `_buildConfigJson()` exports
+  `_selectSetting()`, so a file never carries a value its own import refuses.
+- **Converted 2026-10-15, stored words unchanged so no migration:**
+  `sa_caa_cell_layout`, `sa_art_viewer_background`, `sa_art_viewer_pan`,
+  `sa_art_viewer_size` (text), `sa_caa_small_img_size`, `sa_caa_big_img_size`
+  (number); new: `sa_sidebar_inline_cards_open`.
+- Specs: `settings-dialog.spec.js` "type: select" (6),
+  `config-import-export.spec.js` "a select imports only one of its options",
+  `sidebar-inline.spec.js` INITIAL STATE. Mutations:
+  `scripts/mutations/settings-select.json` (one recorded `expect: pass`: the
+  library's tolerant match is covered for this consumer by the on-load pass).
+
 **A fixture profile is not a pristine profile.** `FIXTURE_SETTINGS_OVERRIDE`
 forces `sa_enable_caa_pics`, `sa_enable_relationships_column`,
 `sa_enable_release_tracks_cover_art`, `sa_event_overview_event_art` and,

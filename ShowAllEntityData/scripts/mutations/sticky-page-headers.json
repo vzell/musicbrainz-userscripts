@@ -21,7 +21,7 @@
     "why": "Drops the MB top header, banners and footer from the targets. Content bars still pin, so a test asserting only h2/h3 would pass.",
     "edits": [
       {
-        "find": "        for (const el of Array.from(document.body.children)) {\n            if (el !== page) add(el, true);\n        }\n",
+        "find": "        for (const el of Array.from(document.body.children)) {\n            if (el !== page && !el.matches('table.tbl')) add(el, true);\n        }\n",
         "replace": ""
       }
     ],
@@ -77,8 +77,8 @@
     "why": "WIP.2: sticky keeps the MARGIN box inside the containing block, so the bar is 16px too wide and is pushed back during the last 16px of the scroll. The fixture header has no margin of its own, so the test injects MB's 16px.",
     "edits": [
       {
-        "find": "vw - left - gutter - (parseFloat(cs.marginRight) || 0)",
-        "replace": "vw - left - gutter"
+        "find": "const room = vw - left - gutter - marginRight;",
+        "replace": "const room = vw - left - gutter;"
       }
     ],
     "spec": "tests/fixtures/sticky-page-headers.spec.js",
@@ -90,8 +90,8 @@
     "why": "The class stays on after the overflow is gone, which is what the WIP.2 lock-on bug looked like from outside.",
     "edits": [
       {
-        "find": "                    docEl.classList.remove('mb-sph-on');\n",
-        "replace": ""
+        "find": "                if (!(extentOff > vw + 1 && extentOff > extent + margins + 1 && !_sphSidebarBlocksWidening())) {\n",
+        "replace": "                if (false) {\n"
       }
     ],
     "spec": "tests/fixtures/sticky-page-headers.spec.js",
@@ -479,7 +479,7 @@
     "why": "Masks the gutter from scrollX 0 on, which with \"#\" before \"Title\" paints over the right part of the \"#\" column and its header buttons.",
     "edits": [
       {
-        "find": "            const docked = scrollX >= p - 0.5;\n",
+        "find": "            const docked = scrollX >= p - 0.5 && (scrollX > 0 || !table.classList.contains('mb-bb-table'));\n",
         "replace": "            const docked = true;\n"
       }
     ],
@@ -492,7 +492,7 @@
     "why": "The column docks in the right place, but the gutter to its left shows the cells scrolling past.",
     "edits": [
       {
-        "find": "            const docked = scrollX >= p - 0.5;\n",
+        "find": "            const docked = scrollX >= p - 0.5 && (scrollX > 0 || !table.classList.contains('mb-bb-table'));\n",
         "replace": "            const docked = false;\n"
       }
     ],
@@ -544,8 +544,8 @@
     "why": "The h1 toolbar's fetch progress fill is display:block + position:absolute for good (inside a hidden wrapper), so the entity header matches the popup rule and stays raised at 107, painting over MB's header menus (debug/mb-native-menu-bug.html). The menu test cannot see this one: there the header is raised to 108 anyway.",
     "edits": [
       {
-        "find": "[style*=\"display: block\"][style*=\"z-index\"])",
-        "replace": "[style*=\"display: block\"])"
+        "find": "html.mb-sph-on .mb-sph-target:has([style*=\"position: absolute\"][style*=\"display: block\"][style*=\"z-index\"])",
+        "replace": "html.mb-sph-on .mb-sph-target:has([style*=\"position: absolute\"][style*=\"display: block\"])"
       }
     ],
     "spec": "tests/fixtures/sticky-page-headers.spec.js",
@@ -563,6 +563,45 @@
     ],
     "spec": "tests/fixtures/sticky-page-headers.spec.js",
     "grep": "an open MB header menu stays above",
+    "expect": "fail"
+  },
+  {
+    "name": "a disengage does not check the disengaged layout",
+    "why": "The 9.99.1339 behaviour: the engaged extent alone decides, so a header status line past the window edge (a capped bar's own overflow) engages and disengages every frame.",
+    "edits": [
+      {
+        "find": "                if (!(extentOff > vw + 1 && extentOff > extent + margins + 1 && !_sphSidebarBlocksWidening())) {\n",
+        "replace": "                if (true) {\n"
+      }
+    ],
+    "spec": "tests/fixtures/sticky-page-headers.spec.js",
+    "grep": "does not flip back and forth",
+    "expect": "fail"
+  },
+  {
+    "name": "the disengaged check ignores <body>'s margins",
+    "why": "A few px of overflow that only the restored margins cause keeps the feature engaged: a page whose overflow is gone never disengages (a ratchet).",
+    "edits": [
+      {
+        "find": "                if (!(extentOff > vw + 1 && extentOff > extent + margins + 1 && !_sphSidebarBlocksWidening())) {\n",
+        "replace": "                if (!(extentOff > vw + 1 && !_sphSidebarBlocksWidening())) {\n"
+      }
+    ],
+    "spec": "tests/fixtures/sticky-page-headers.spec.js",
+    "grep": "no ratchet",
+    "expect": "fail"
+  },
+  {
+    "name": "the initial sidebar collapse animates",
+    "why": "The class is added with the sidebar's transition on: the collapsed sidebar keeps its box for the 0.3 s discrete display transition, then the page reflows under a resting pointer.",
+    "edits": [
+      {
+        "find": "            sidebar.style.transition = 'none';\n            sidebar.classList.add('sidebar-collapsed');\n",
+        "replace": "            sidebar.classList.add('sidebar-collapsed');\n"
+      }
+    ],
+    "spec": "tests/fixtures/sticky-page-headers.spec.js",
+    "grep": "no sidebar box from the first frame",
     "expect": "fail"
   }
 ]

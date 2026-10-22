@@ -9,7 +9,19 @@ Input is a saved snapshot of each real page in `debug/`:
     debug/bb-year-cache/1968.html https://brucebase.wikidot.com/1968         (2026-10-09, probe)
     debug/bb-year-cache/1985.html https://brucebase.wikidot.com/1985         (2026-10-09, probe)
     debug/bb-year-cache/2018.html https://brucebase.wikidot.com/2018         (2026-10-09, probe)
+    debug/bb-year-cache/2012.html https://brucebase.wikidot.com/2012         (2026-10-09, probe)
     debug/bb-initial.html         https://brucebase.wikidot.com/             (2026-10-09, browser)
+    debug/bb-relations-raw.html   https://brucebase.wikidot.com/stats:relations        (2026-10-12, probe)
+    debug/bb-recent-changes-raw.html          .../system:recent-changes      (2026-10-12, probe)
+    debug/bb-recent-changes-ajax-p{1,2}.json  its AJAX pages 1 and 2, 200 each (2026-10-12, probe)
+
+The last three come from scripts/probe-bb-recent-changes.py, which saves the
+pages as the SERVER sends them (the user's own snapshots of those two pages,
+debug/bb-relations-*.html and debug/bb-recent-changes.html, are only
+`#main-content`). The Recent changes page is written whole (its own list
+holds 20 changes; the spec serves the two AJAX answers, which the button
+reads instead); the AJAX answers are copied as they are, JSON, a `body` of
+200 changes each.
 
 The year pages were picked for their shapes (scripts/probe-bb-year-pages.py
 read all 63): 2026 is the request's own page (Soundcheck, prefixed sets,
@@ -18,8 +30,11 @@ blockquote recordings, a tour box and its end, `00` days, Help Us, LiveDL);
 box, `00` days and superscript-only "No set details known." paragraphs;
 1985 has the Australian regions ("SYDNEY, NEW SOUTH WALES, AUSTRALIA") and
 descriptions written as plain paragraphs, not a `.list-pages-box`; 2018
-has letter anchors (`180718a`) and setlists set in italics. The year pages
-are written whole, like the song list.
+has letter anchors (`180718a`) and setlists set in italics; 2012 has a tour
+opener (2012-03-18) whose whole setlist is bold, eighteen songs in one
+`<strong>`, and a bold run that opens with the separator ("<strong>/ LAND OF
+HOPE AND DREAMS</strong>"). The year pages are written whole, like the song
+list.
 
 The start page (`bb-home`) is written whole too, except that its side bar's
 "Gig Pages" links keep only the four fixture years: the button pages through
@@ -48,6 +63,7 @@ Re-run after re-capturing the snapshot:
     python3 scripts/build-bb-fixtures.py
 """
 
+import json
 import os
 import re
 import sys
@@ -62,6 +78,7 @@ YEARS = [
     ('debug/bb-year-cache/1968.html', 'tests/fixtures/bb-year-1968.html'),
     ('debug/bb-year-cache/1985.html', 'tests/fixtures/bb-year-1985.html'),
     ('debug/bb-year-cache/2018.html', 'tests/fixtures/bb-year-2018.html'),
+    ('debug/bb-year-cache/2012.html', 'tests/fixtures/bb-year-2012.html'),
 ]
 HOME = ('debug/bb-initial.html', 'tests/fixtures/bb-home.html')
 HOME_KEEP = {'1968', '1985', '2018', '2026'}
@@ -101,10 +118,46 @@ def build_songs():
           '(both tabviews)')
 
 
+RELATIONS = ('debug/bb-relations-raw.html', 'tests/fixtures/bb-relations.html')
+CHANGES = ('debug/bb-recent-changes-raw.html', 'tests/fixtures/bb-recent-changes.html')
+CHANGES_AJAX = [(f'debug/bb-recent-changes-ajax-p{n}.json', f'tests/fixtures/bb-recent-changes-p{n}.json') for n in (1, 2)]
+
+
+def build_simple(src, out, must, count_re, what):
+    """One page written whole, sanitised; `must` has to be in it."""
+    if not os.path.exists(os.path.join(ROOT, src)):
+        print(f'{src}: not on this machine -- {out} left as it is')
+        return
+    html = sanitise(src)
+    if must not in html:
+        sys.exit(f'{src}: no {must!r} -- has the page changed shape?')
+    with open(os.path.join(ROOT, out), 'w', encoding='utf-8', newline='\n') as fh:
+        fh.write(note_for(src) + html)
+    print(f'{src} -> {out}: {len(re.findall(count_re, html))} {what}')
+
+
+def build_changes_ajax():
+    """The two AJAX answers, copied verbatim (checked to be status "ok")."""
+    for src, out in CHANGES_AJAX:
+        if not os.path.exists(os.path.join(ROOT, src)):
+            print(f'{src}: not on this machine -- {out} left as it is')
+            continue
+        with open(os.path.join(ROOT, src), encoding='utf-8') as fh:
+            data = json.load(fh)
+        if data.get('status') != 'ok' or 'changes-list-item' not in data.get('body', ''):
+            sys.exit(f'{src}: not an "ok" answer with changes')
+        with open(os.path.join(ROOT, out), 'w', encoding='utf-8', newline='\n') as fh:
+            json.dump(data, fh, ensure_ascii=False)
+        print(f'{src} -> {out}: {data["body"].count("changes-list-item")} changes')
+
+
 def main():
     """Reads the snapshots, sanitises them, and writes the fixtures. A
     snapshot that is not on this machine (`debug/` is gitignored) is
     skipped, leaving its committed fixture as it is."""
+    build_simple(*RELATIONS, '=- &amp; -=', r'href="/relation:', 'relation links')
+    build_simple(*CHANGES, 'id="site-changes-list"', r'class="changes-list-item"', 'changes in its own list')
+    build_changes_ajax()
     if os.path.exists(os.path.join(ROOT, SNAPSHOT)):
         build_songs()
     else:

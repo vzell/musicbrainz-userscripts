@@ -1,0 +1,62 @@
+#+TITLE: What ShowAllEntityData does on the initial page (IP)
+#+DATE: 2026-10-21
+
+Env: 2026-10-21 · NB-3641 · code reading only (main at e4b28fe + branch
+feat/rel-multi-site-and-initial-page) · browser n/a
+
+Asked 2026-10-20: "I want our userscript to be as non-intrusive as possible on
+the IP of a supported MB PT … analyse and summarize what kind of features are
+already injected besides our standard action buttons in the h1 line of a PT."
+
+The IP is a supported MusicBrainz page BEFORE any action button is pressed
+(nothing fetched, no consolidated table). Everything below runs there. Grep
+anchors, not line numbers (the file moves on every commit).
+
+* Runs on the IP
+
+|  # | Feature                                                                                                      | Wired at (grep)                                | Gate today                                                                                                                                                                |
+|----+--------------------------------------------------------------------------------------------------------------+------------------------------------------------+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+|  1 | h1 toolbar: action buttons, 📦 Data (Save/Load), 🛠 View (🎹 shortcuts), ⚙️, ❓, hidden progress/Stop        | =_orderToolbar=                                | 📦 =sa_enable_save_load=, 🎹 =sa_enable_keyboard_shortcuts=; ⚙️ and ❓ always                                                                                             |
+|  2 | Status line written into MB's own =p.subheader= (or a wrapper under the h1), realigned on resize             | the status-line block after the toolbar insert | *none*                                                                                                                                                                    |
+|  3 | Link-preview hover card + Space window on every =#page= link; WS/2 requests start on hover                   | =_initDetailPreview()=                         | =sa_pop_mb=, =sa_pop_mb_page=, =sa_pop_ext=, =sa_dp_hover_without_ctrl= — since 9.99.1402 also the master switch =sa_pop_enabled= and the IP switch =sa_pop_initial_page= |
+|  4 | "Liner notes" card for the script's own tooltips (=data-mb-tip=, =data-mbtt=)                                | =_initStatTooltip()=                           | =sa_rich_tooltips= (own tips); action-button cards always                                                                                                                 |
+|  5 | Native link titles parked in =data-mb-dp-saved-title= and shown inside the preview card                      | =_dpStashTitles()=                             | only through #3                                                                                                                                                           |
+|  6 | Sticky entity header (=#mb-vsb-mask=, =html.mb-vsb-on=, scroll-padding, z-index class on =div.header=)       | =initStickyFilterBars()=                       | =sa_enable_sticky_filter_bars=, shared with the FRP                                                                                                                       |
+|  7 | h1 alias relocation (=span.comment= → =p#mb-h1-alias-line=)                                                  | =applyH1CommentSpanRelocation('initial')=      | =sa_enable_h1_comment_span_relocation_on_initial_page= — the only IP-specific key before this branch                                                                      |
+|  8 | Auto-click of MB's annotation "Show more…" (every matched MB page, supported or not)                         | =autoExpandNativeAnnotation()=                 | =sa_enable_annotation_auto_expand=                                                                                                                                        |
+|  9 | Ctrl+M prefix mode: capture-phase keydown with =stopImmediatePropagation=, overlay =#mb-ctrl-m-tooltip=      | the Ctrl+M listener before page-type detection | *no off switch* (=sa_keyboard_shortcut_prefix= changes the key only)                                                                                                      |
+| 10 | Release page: "see all versions of this release, N available" rewritten, with its own card                   | =initReleaseGroupLink()=                       | =sa_release_rg_link=                                                                                                                                                      |
+| 11 | Sidebar picture: zoom cursor, card, viewer; a 34 px copy in the h1                                           | =_sbInitPicture()=                             | =sa_sidebar_picture=, =sa_sidebar_picture_in_header=                                                                                                                      |
+| 12 | Click on another script's cover icon in relationship lists opens our viewer; hover card                      | =_artInitRelIcons()=                           | =sa_enable_caa_pics= + =sa_caa_column_viewer= + =sa_caa_viewer_icon_click=; card =sa_caa_tip_summary=                                                                     |
+| 13 | Event page: setlist "(with …)" =/work/= links re-pointed to =/artist/=                                       | =_eventSetlistFixLinks=                        | the pageType switch =sa_enable_event_overview=                                                                                                                            |
+| 14 | Blur of MB's header search box =#headerid-query=                                                             | the blur after the alias relocation            | *none*                                                                                                                                                                    |
+| 15 | =table.tbl { position: relative; z-index: 0 }= on MB's native tables (the rest of the sheet is =mb-=-scoped) | the global =GM_addStyle= block                 | *none*                                                                                                                                                                    |
+| 16 | Startup notices (after a settings migration or a table-row seed)                                             | =_showTableSeedNotice=, the migration notice   | data-driven                                                                                                                                                               |
+| 17 | "Sidebar as tables" button                                                                                   | =_sbTablesButtons()=                           | =sa_sidebar_tables_button= (off by default)                                                                                                                               |
+| 18 | Sidebar collapse handle, sidebar OPEN (new in 9.99.1403)                                                     | =initSidebarCollapse('initial')=               | =sa_collabsable_sidebar= + =sa_sidebar_handle_initial_page=; start state =sa_sidebar_collapsed_initial_page=                                                              |
+
+Listeners with no visible effect on the IP: Alt-click on the event "#" cell,
+the touch tracker, async-job hover, pagehide cleanup.
+
+* Runs on the FRP only (after a button press or a disk load)
+
+=makeH2sCollapsible()= and =_sbEnhance()= (collapsible h2s, the sidebar's
+sections, counts, link groups, Open/Close-all), the sidebar collapse
+(collapsed by default, =sa_sidebar_collapsed=), the release-tracks cover-art
+section, =applyStickyHeaders=, =initStickyPageHeaders=, =initKeyboardShortcuts=
+(Ctrl+S/L/,), =initNavigationGuard=, =performClutterCleanup=,
+=stopOtherScripts=, the inline sidebar cards, event art, column resize and
+visibility, density, stats.
+
+* Candidate follow-ups (not done)
+
+The four IP items with no off switch:
+- #9 Ctrl+M: an on/off key (=sa_enable_keyboard_shortcut_prefix=).
+- #14 the search-box blur: a key, or drop it.
+- #15 =table.tbl= stacking context on native tables: scope it to our tables
+  (they carry =mb-= markers) once a snapshot shows what depends on it.
+- #2 the status line inside MB's subheader: hide until a button was pressed?
+
+Keys shared between IP and FRP that could get an IP twin like #7 has:
+=sa_enable_sticky_filter_bars=, =sa_sidebar_picture=/=…_in_header=,
+=sa_release_rg_link=, the CAA icon-click keys.

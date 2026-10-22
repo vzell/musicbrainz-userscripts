@@ -147,7 +147,10 @@ Columns (`_BS_HEADERS`):
 ## Styling
 
 - `_ensureForeignTableStyle()`'s `:is()` list now names
-  `.mb-sa-host-bs` too.
+  `.mb-sa-host-bs` too. Its `table.tbl > thead { background-color: #fff }`
+  is the backing for a sorted column's translucent header tint (see
+  jungleland.md, "Styling"; reported here first, "gatefold" showing through
+  a sorted "Notes" header, 2026-10-14).
 - `_ensureBsStyle()` styles only the injected `<h1>`/`<h2>` and left-aligns
   them against the site's centred layout.
 
@@ -164,3 +167,12 @@ captures into `tests/fixtures/bs-records-{unofficial,official,lp}.html`,
 kept WHOLE with their inline script, minus the body background.
 `tests/support/bsFixture.js` serves every records.aspx request by its
 `tipe=`. Mutation list: `scripts/mutations/bs-support.json`.
+
+## Titles
+
+Since 2026-10-13 (`feature/bb-recent-changes-relations`) the Title column is
+in MusicBrainz title style with typographic punctuation, the site's text as
+the cell's tooltip — `sa_foreign_mb_titles`, `sa_foreign_typography`, both on
+by default. The converter specs load with both OFF (the fixture loader's
+`titles` option); `tests/fixtures/mb-title-case.spec.js` covers the ON side.
+See docs/claude/foreign-title-case.md.

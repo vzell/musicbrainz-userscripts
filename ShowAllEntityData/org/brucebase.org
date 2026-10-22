@@ -1,4 +1,9 @@
-﻿* TODO add support for logged in case
+﻿* DONE add support for logged in case
+
+One plan for both sites: [[file:springsteenlyrics.org]], "* TODO add support
+for logged in case", "** Answer (2026-10-16, …)". Brucebase-specific parts
+are its sections 3 and 4.
+
 * DONE BruceBase - Songs
 ** DONE i
 
@@ -105,4 +110,8 @@ Make some suggestions here how to present to the user in one or more columns, us
 The whole feature should be configurable (default off, as the main userscript is normally used just with MusicBrainz)
 
 
+* TODO create userscript which directly scrolls to the first difference on http://brucebase.wikidot.com/song:streets-of-minneapolis pages when clicking history
+
+create userscript which directly scrolls to the first difference on
+http://brucebase.wikidot.com/song:streets-of-minneapolis pages when clicking history
 

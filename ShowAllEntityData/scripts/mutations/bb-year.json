@@ -4,7 +4,7 @@
         "why": "Year pages are opt-in (sa_bb_year_pages, default off) on top of sa_enable_brucebase. Without their gate the toolbar appears with only the Brucebase switch on; the spec must see it appear.",
         "edits": [
             {
-                "find": "if (_isBbHost && _BB_YEAR_PATH_RE.test(window.location.pathname) && Lib.settings.sa_bb_year_pages !== true) {",
+                "find": "if (_isBbHost && (_BB_YEAR_PATH_RE.test(window.location.pathname) || _BB_HOME_PATH_RE.test(window.location.pathname)) &&\n        Lib.settings.sa_bb_year_pages !== true) {",
                 "replace": "if (false) {"
             }
         ],
@@ -121,7 +121,7 @@
         "why": "Each setlist would be one row; the spec pins one song per row.",
         "edits": [
             {
-                "find": "            text.split(/(?:^|\\s)\\/(?:\\s|$)/).forEach((part, i) => {",
+                "find": "            text.split(_BB_SET_SEP_RE).forEach((part, i) => {",
                 "replace": "            [text].forEach((part, i) => {"
             }
         ],
@@ -245,5 +245,31 @@
         "spec": "tests/fixtures/bb-year.spec.js",
         "grep": "Notes keeps the description",
         "expect": "pass"
+    },
+    {
+        "name": "a bold run spanning songs is one song",
+        "why": "The 2012-03-18 report: only the paragraph's top-level text is split, so a setlist set all in bold (18 songs in one <strong>) is one long row. Must fail on the 2012 test.",
+        "edits": [
+            {
+                "find": "            if (_bbIsSplittableInline(n)) {",
+                "replace": "            if (false) {"
+            }
+        ],
+        "spec": "tests/fixtures/bb-year.spec.js",
+        "grep": "2012: a setlist set all in bold",
+        "expect": "fail"
+    },
+    {
+        "name": "a split song loses its bold",
+        "why": "_bbSplitInline() returns its pieces unwrapped: the songs split, but the tour premieres no longer read as bold. Must fail on the 2012 test's bold count.",
+        "edits": [
+            {
+                "find": "            const wrap = docContext.importNode(el, false);\n            piece.forEach(n => wrap.appendChild(n));\n            return [wrap];",
+                "replace": "            return piece;"
+            }
+        ],
+        "spec": "tests/fixtures/bb-year.spec.js",
+        "grep": "2012: a setlist set all in bold",
+        "expect": "fail"
     }
 ]

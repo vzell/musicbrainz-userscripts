@@ -149,6 +149,15 @@ test.describe('live-date flags survive a Save to Disk → Load from Disk round t
 
             expect(await warningCount(reopened), 'the ⚠️ menu still counts both flagged tracks')
                 .toBe(WARNING_ROWS);
+
+            // The deduced date travels as the flag's data-mb-live-date, so
+            // the hydrated cells' titles still name it (2026-10-21).
+            const titles = await reopened.evaluate(() => Array.from(document.querySelectorAll('tbody td'))
+                .filter((td) => (td.dataset.mbFindings || '').split(' ').includes('live-credit-nodate'))
+                .map((td) => td.getAttribute('title') || ''));
+            expect(titles.length, 'flagged cells after the load').toBeGreaterThan(0);
+            titles.forEach((t) => expect(t, 'the title names the deduced date')
+                .toMatch(/⚠️ Live credit without a date: probably \d{4}-\d{2}-\d{2}/));
         });
 
     test('B: loading it after a flagless page has already been filtered', async ({ page, context }) => {

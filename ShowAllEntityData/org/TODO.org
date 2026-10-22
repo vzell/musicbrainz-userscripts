@@ -859,7 +859,6 @@ I also corrected the manifest entry and added a follow-up to the `DEBUG-NOTES.md
 files to commit are `manifest.json`, `DEBUG-NOTES.md` and the new probe script; `org/TODO.org` is your earlier edit and
 I'd leave it out. Nothing is committed yet. Should I commit them?
 
-
 * DONE indent h3 headers under h2 section before the h2 headerline with the global filter
 ** DONE i
 
@@ -942,6 +941,11 @@ Is it possible to align the contents of the h3 sub-sections under the h2 "Annota
 the screenshot
 
 * DONE make userscript mobile firendly
+
+
+* TODO What's left from the parking lot in AUDIT.org
+
+- that icon-mirror half
 
 * TODO 503
 ** CAA/EAA and Relationships multi section button
@@ -1085,10 +1089,6 @@ Two honest gaps, both recorded rather than buried:
 - Path dedup within a table isn't pinned — it needs a fixture with a sticky column over an artwork column.
 
 
-* TODO What's left from the parking lot in AUDIT.org
-
-- that icon-mirror half
-
 * DONE - The two recorded (unfixed) harness weaknesses:
 ** DONE i
 
@@ -1185,7 +1185,7 @@ e.g. https://musicbrainz.org/search?query=Born+to&type=instrument&limit=25&metho
 #+end_example
 
 
-* TODO todo
+* TODO todo - performance
 
 1. Event-name follow-ups
      E.g. cross-check the date in the event name against the row's Date column, or cut the +76 ms warm 📊 open cost on Event columns.
@@ -1193,10 +1193,9 @@ e.g. https://musicbrainz.org/search?query=Born+to&type=instrument&limit=25&metho
     MEASUREMENTS.org 2026-10-01: on multi-table pages each row is parsed twice (live clone + master); parse once and copy the attribute (~24 ms → ~12 ms)
 
 
-* bug report for "Credited as" field in real MB edit relationships page
+* TODO bug report for "Credited as" field in real MB edit relationships page
 
 #+begin_example
-
 As soon as I type "U", for "UK" in the "Credited as" field
 
 <img width="1070" height="708" alt="Image" src="https://github.com/user-attachments/assets/11c8c89e-5987-4f16-ad96-b79e72ebcf46" />
@@ -1207,10 +1206,9 @@ I get
 #+end_example
 
 
-* DONE integrate springsteenlyrics.com
-
-
 * TODO fix my release-tracks special script
+
+* DONE integrate springsteenlyrics.com
 
 * DONE add more functionality to the SP parser
 
@@ -1270,7 +1268,6 @@ The value for the "Annotation" C should be the FULL uncollapsed value, even if t
 @debug/search-annotation-tooltip.html - full final rendered page of above URL, filtered by just one row
 #+end_example
 
-
 * DONE track .ne. recording name minitooltip above popup
 ** DONE i
 
@@ -1291,7 +1288,6 @@ prominently in different font and colour, so it's always obvious where we are co
   - Without INLINE STUFF: nothing appears. It reuses that script's note and doesn't compare the track and recording names itself. It could, from the recording data the card already loads, if you want it
     independent of that script.
   - The ⚠️ and 📊 "≠" flag keeps working while the title is removed.
-
 
 * DONE BUG
 ** DONE initial
@@ -1360,7 +1356,6 @@ c.)
 Would it even be possible, when the side-bar stays on the left on BB PTs, that it still gets the side-bar toggle handle
 (like BB PTs) but collapses to the left
 
-
 * DONE add to CLAUDE.md
 
 1.)
@@ -1383,8 +1378,7 @@ MEASUREMENTS.org
 etc. (if you think we need more in this list)
 #+end_example
 
-
-* TODO rework the sticky behaviour when scrolling down
+* DONE rework the sticky behaviour when scrolling down
 ** DONE i
 
 rework the sticky behaviour when scrolling down:
@@ -1428,7 +1422,7 @@ The '<div id="mb-status-displays-wrapper"' line should be rendered ABOVE the h1 
 Right now it sits below the thin horizontal line (which is rendered below ht h1), [Image #4]
 I should sit above the thin horizontal line
 
-** TODO summary
+** DONE summary
 
 I committed and pushed both commits to origin/feature/sticky-filter-bars, and did not merge into main.
 
@@ -1453,7 +1447,6 @@ I committed and pushed both commits to origin/feature/sticky-filter-bars, and di
   - When the table header is stuck, the column-filter mode pop-up (Cc/Rx/Ex) drifts away from its button as you scroll. That was already true before this branch.
   - The version bump and real changelog entry happen at merge time; the entries are in ShowAllEntityData_CHANGELOG.wip.json. It's your call when to merge.
     
-
 * DONE bug + new feature
 
 Next is:
@@ -1489,40 +1482,43 @@ should also be sticky when scrolling down, even before the h2 header line with t
 So basically I for ALL PTs I want the line with the action buttons + the line with the "mb-status-displays-container"
 ALWAYS be sticky too when srolling down.
 
+* DONE add instrument icons support (), ONLY the icon should show up in the UVD
+
 
 * TODO adapt the logging framework and orig page shine through from majkinetor
-
-* TODO add instrument icons support (), ONLY the icon should show up in the UVD
 
 * TODO add sanojjanos event stuff in a nice popup (cachable)
 
 
 * TODO menu in non-MB pages for PTs
 
-* !! separate on NB-xxxx - TODO almost feature-full - take out non mb code or try a build fraemwork
+* !! separate on NB-xxxx - TODO almost feature-full - take out non MB code or try a build framework
 
 * TODO non-MB detail pages
 
 * TODO integration with my own BB userscript
 
-
 * DONE maybe stack the h3 header in the multi-table case when stickyness is involved
 
-* TODO IDB overwhole - show info to the end-user; age, storage, delete possibilities/merge, remove etc (nice gpahical overview, cake diagram), number of keys
+* DONE IDB overwhole - show info to the end-user; age, storage, delete possibilities/merge, remove etc (nice gpahical overview, cake diagram), number of keys
 
 * TODO increase the IDB lifetime, non-MB sites should basically be there forever
 
+Planned as phase 1 of [[file:offline.org]] ("** Answer (2026-10-16, …)", "*** 7. Plan").
+
 * TODO sync add non-MB images with the CAA framework, but unlimited
 
-* TODO storeage forever for non-M sites, except SL
+Planned as phase 1 of [[file:offline.org]] ("** Answer (2026-10-16, …)", "*** 7. Plan").
+* TODO storeage forever for non-MB sites, except SL
 
-* TODO make sure we can always run completely OFFLINE (especially non-MB sites, excetp SL and BB)
+Planned as phase 1 of [[file:offline.org]] ("** Answer (2026-10-16, …)", "*** 7. Plan").
 
 * TODO filter checkboxes for every filter dialog if not overwritten
 
-* TODO add support BB pages
-** https://brucebase.wikidot.com/system:recent-changes - change to 200 revisions per page beforehand
-** "Relations
+* DONE add support BB pages
+** DONE https://brucebase.wikidot.com/system:recent-changes - change to 200 revisions per page beforehand
+** DONE "Relations
+** TODO maybe more
 
 * generalize popup framework in general (if not yet done)
 
@@ -1542,10 +1538,10 @@ the "Renamed to" Columbia should sit directly under the "~Label" line
 2.) SEEMS to be working when you wait long enough
 
 long running CAA fetches doesn't seem to be covered by the autoresize column feature:
-the CAA column break
+the CAA column breaks
 
 
-* TODO create a skill - There is a new third party userscript batch-add-recording-relationships
+* DONE create a skill - There is a new third party userscript batch-add-recording-relationships
 ** i
 
 1.)
@@ -1648,7 +1644,6 @@ Everything you asked for is built on feature/recording-of-column, and the full s
   The mockups are at ⧉ https://claude.ai/artifact/P8LJjFQkURd6a8fHYVwrhq (progress card) and ⧉ https://claude.ai/artifact/4UsPjhkP1gN6cb9wCnQw72 (cache overview). Your edits in org/*.org were left alone.
 
 ** implement
-
 *** i
 
 Everything works/look BEAUTIFUL, go on like that, you ROCK.. it's exactly the "look and feel" I like, write it down to
@@ -1697,8 +1692,7 @@ commit, push then /merge-push-remove
     - Your commit 041e038 picked up my uncommitted changelog fold and you pushed it, so the fold has no separate commit. The content is correct, the changelog audit is clean, and I didn't force-push.
     - The "LAF" row you added to the project CLAUDE.md was stashed across the merge and restored; it's still uncommitted for you.
     - The published mirror still has 9.99.1167, so a republish is pending.
-
-* TODO Prompts to continue after /clear:
+* DONE Prompts to continue after /clear:
 
 1.) Cache export/import ("merge"):
 Implement export/import ("merge") of the ShowAllEntityData browser cache between browsers, on a new feature branch.
@@ -1717,36 +1711,36 @@ Measure first, with scripts/run-perf-arms.py (status-line progress), each A/B pa
 block. Then design in plan mode: time budget per slice, cancelling a pass when a newer keystroke arrives (a stale pass must never write results), keeping _filterResultCache / _rowTextCache semantics, single- and multi-table paths, and ordering with renderFinalTable()'s chunked
 render. Flag the expected cost (total time may grow) with numbers before implementing and let me decide. Any change to the progress card follows my global UI look and feel (mockup first).
 
-* TODO MusicBrainz sidebar entries ==> collapsable h2/h3
+* DONE MusicBrainz sidebar entries ==> collapsable h2/h3
 
 The MusicBrainz sidebar entries (typically collapsed by default) need some overhaul:
 
 Make some suggestions with rich HTML based mockups beforehand how to handle the MusicBrainz sidebar entries. Could we
 generalize this (of course configurable), make some suggestions.
 
-1.)
+1.) DONE (9.99.1340, 2026-10-14): collapsible, remembered sidebar sections with counts; external links grouped by kind.
 
 Should we make them to collapsable h2/h3 heading with corresponding entries
 
-2.)
+2.) DONE (9.99.1340, 2026-10-14): other scripts' sidebar content is never read or moved; the one exception is the sidebar picture, by consent (9.99.1341, 9.99.1343).
 
 there are usually lots of third-party scripts active and render info/action based stuff to the side-bar, these shouldn't
 be parsed without checking with me beforehand or make them configurable
 
-3.)
+3.) DONE (9.99.1342, 9.99.1344, 2026-10-14): "🗂 Sidebar as tables" on artist, label, event, release group, recording, work, release, series, place, area and instrument pages.
 
 We already have a framework for rendering "Relationships" information into table based structures at PT which represents
 events e.g. https://musicbrainz.org/event/a40b40f8-2d88-4f78-b12f-ed5fe9c88f84
 
 Use this as a starting point
 
-4.)
+4.) DONE (9.99.1341, 9.99.1343, 2026-10-14): the sidebar picture with hover card, viewer and a copy beside the name; pictures in artist, label and place previews.
 
 make some suggestions where we could display entity image icons (if available) e.g. places/labels/artist etc from the
 sidebar on the main page (of course with the internal viewer hovwer functionality, the side bar currently seems to still
 missing it)
 
-5.) Cache export/import ("merge"):
+5.) DONE (9.99.1326, 2026-10-11) Cache export/import ("merge"):
 Implement export/import ("merge") of the ShowAllEntityData browser cache between browsers, on a new feature branch.
 
 The 💾 Browser cache overview (_idbo*, docs/claude/toolbar-and-header-ui.md "💾 Browser cache overview") lists every IndexedDB part: the art cache DB (images, metadata, rel-ws2, ms-rec-len, recof-ws2, artist-works) and the link-preview DB (pages). Add to that dialog:
@@ -1756,20 +1750,2315 @@ user-supplied data), and say what was added/updated/skipped.
 Follow my global CLAUDE.md "UI look and feel": publish an interactive HTML mockup first and wait for approval. Then plan mode, fixture specs plus a mutation list, docs, WIP changelog, as usual. Measure export and import time on a large cache and record it in
 tests/MEASUREMENTS.org.
 
-6.) Faster filtering:
+6.) DONE (9.99.1317–9.99.1325, 2026-10-11) Faster filtering:
 Implement "Faster filtering" on a new feature branch: make runFilter()'s row-matching loop hand control back to the page between batches of rows, so the progress card (tablework provider, _tw*) can show live filter progress and the page stays responsive while it filters.
 
 Measure first, with scripts/run-perf-arms.py (status-line progress), each A/B pair run twice in opposite orders: main arms for artist-events, artist-releases-dylan, artist-releasegroups and artist-recordings-petty — per-keystroke filter latency and the longest main-thread
 block. Then design in plan mode: time budget per slice, cancelling a pass when a newer keystroke arrives (a stale pass must never write results), keeping _filterResultCache / _rowTextCache semantics, single- and multi-table paths, and ordering with renderFinalTable()'s chunked
 render. Flag the expected cost (total time may grow) with numbers before implementing and let me decide. Any change to the progress card follows my global UI look and feel (mockup first).
 
-
-* TODO switch to the new LAF everywhere
-
-* TODO reuse our LAF (Look and Feel) for MB PTs, maybe in UVD entity stats (hover over popups) or CAA/EAA stats (hover over popups)
+* DONE switch to the new LAF everywhere
+* DONE reuse our LAF (Look and Feel) for MB PTs, maybe in UVD entity stats (hover over popups) or CAA/EAA stats (hover over popups)
 
 1.)
 
 reuse our LAF (Look and Feel) for MB PTs, maybe in UVD entity stats (hover over popups) or CAA/EAA stats (hover over
 popups)
 
+
+* TODO sub-table filter (STF) on the time-sliced pass and the ⏳ card
+
+The 🔍 filter on each sub-table heading (`applySubFilter`) still filters synchronously and never shows the ⏳ progress
+card; the global and column filters do since perf/faster-filtering (WIP.9). Move STF typing onto `runFilterSliced()` on its
+own branch, with its own typed A/B (the faster-filtering measurements do not cover it).
+
+
+* ---------------------------------------------------------------
+
+* to add to TODO.org
+** bug
+
+It works, but do NOT merge yet.
+
+But the new popup ONLY shows up when filtering with the global filter, not with the sub-table or column level filter
+
+** tested live
+
+- Tested live, looks good, commit and push; stop the suite for now, itg takes too long on "vzell-lap", we will implement a couple more things and test with the whole suite before merging
+- the next upcoming implementation will branch from this one, feature/instrument-icons-interop
+- at the very end we will run the whole testsuite
+
+instead of branching from main, add the new features/bug fixes on a branch starting from feature/instrument-icons-interop
+
+
+* DONE fix setlist on PT 'artist-events'
+
+fix the "Video" column, entity glyphs and setlist on PT 'event-overview':
+
+1.)
+
+https://musicbrainz.org/event/4379731e-7609-4197-bb9b-7739b326cb7c - 2024‐05‐23: Grosvenor House, London, England, UK
+
+a.)
+
+Add a new "Video" column if the video icon is present on recordings at the "Recording" column at the sub-tables
+"Recordings" and "Setlist: Songs"
+
+#+begin_example
+@debug/2024-05-23-initial.html - IP
+#+end_example
+
+b.)
+
+The glyphs currently on the entities in the data cells should go to the column header after the column names like what
+we do on 'relesase-tracks' PTs e.g.
+
+#+begin_example
+<div class="mb-col-hdr-flex" style="">Vocals <span class="artistlink" style="height: 14px; margin-left: 4px; margin-right: 4px;">
+#+end_example
+
+2.)
+
+The initial page should show an artist hyperlinked as an artist and not as a work + on the FRP concat words like "the "
+should not be rendered in the "Additional artist" C data cell
+
+https://musicbrainz.org/event/cd595883-d26a-4e76-a033-eb588e0f9c55 - 2026‐06‐04: OceanFirst Bank Center, West Long Branch, NJ, USA (2026-06-04)
+
+#+begin_example
+@debug/2026-06-04-initial.html -IP
+@debug/2026-06-04-final.html - FRP, "the New Breed Brass Band" ==> "New Breed Brass Band"
+#+end_example
+
+3.)
+
+On the FRP
+
+https://musicbrainz.org/event/26cead1c-a5fa-4677-873a-312412c6dc91 - 2001‐05‐27: The Stone Pony, Asbury Park, NJ, USA (2001-05-27)
+
+#+begin_example
+@debug/2001-05-27-initial.html - IP
+@debug/2001-05-27-final.html- "The Fever" in the "Song" C is not hyperlinked
+@debug/2001-05-27-final.html - "Bruce Springsteen" is rendered with a work anchor instead of an artist anchor
+#+end_example
+
+additionally add this bullet points
+
+4.)
+
+a.)
+
+In the "Setlist: Songs" subtable flag each cell in the "Song" and "Additional artists" columns with a warning icon (+
+descriptive tooltip) when the MBID contains uppercase characters like in e.g. "* [E497263c-4f15-36c0-B27c-Dca99482962c|The Fever] (with [70248960-Cb53-4ea4-943a-Edb18f7d336f|Bruce Springsteen])"
+
+Actually the MBIDs are still recognized when used in URLs, but the end-user should get a hint anyway so he/she can edit
+the data on MB
+
+b.)
+
+also add a UVD entry in these columns for this fact and in the '<button id="mb-findings-warn-menu-btn" type="button"' menu
+
+5.)
+
+The detail popup for work and artist URLs referenced from the "Setlist" section should aready work on the IP of PT
+'event-overview' even when the MBID contains uppercase chars
+
+6.)
+
+The following type of lines
+
+#+begin_example
+'Scheduled: 17:00 Local Start Time ??:?? / End Time ??:??'
+'Scheduled: 17:00 Local Start Time 20:00 / End Time 23:10'
+#+end_example
+
+should be indented below it's "Setlist: Songs" h3 section, see screenshot [Image #4]
+
+* DONE the detail dialog should already popup on the IP
+
+Create a new branch on top of fix/event-overview-video-glyphs:
+
+the detail dialog should already popup on the IP of ALL non-MB pages, e.g. when hovering the song "1945" on https://brucebase.wikidot.com/stats:songs
+[Image #6] - detail song page popup on the FRP
+
+* DONE BB - https://brucebase.wikidot.com/2012 - 2012-03-18
+
+On https://brucebase.wikidot.com/2012 the event on 2012-03-18 renders all songs in one long line instead of a multi-row
+cell
+
+* DONE the "CAA" column should always be wide enough to hold the image, the type glyphs + the optional warning icon (especially for large tables)
+
+1.)
+
+Is the last thing you fixed probably the same problem that I sometimes see for especially large tables, which take long
+to download all the CAA images information, and during which the "CAA" column doesn't seem to be wide enough to hold ALL
+the following information (when the auto resize feature of columns is in effect)
+
+#+begin_example
+image
+type glyphs
+optional warning icon
+#+end_example
+
+See the following screenshot, during which not all info for every row had been fetched - @debug/CAA-wrapped.png
+
+For small tables the "CAA" column seems to be ALWAYS wide enough to render all the info in ONE line
+
+2.)
+
+If my diagnosis doesn't hold true it's something we need to tackle in a separate commit
+
+3.)
+
+The CAA/EAA column should ALWAYS be wide enough to hold ALL the information even during rendering
+
+
+* 'release-tracks' PTs which have an h3 "Barcode and Other Identifiers" section, should render that section as a filterable/sortable table
+
+'release-tracks' PTs which have an h3 "Barcode and Other Identifiers" section
+
+#+begin_example
+<h3 class="mb-annotation-toggle-h3 mb-annotation-h3-processed" data-mb-tip="" title="Click to collapse this sub-section (Ctrl+Click to toggle ALL sub-sections of this section)"><span class="mb-toggle-icon">▼</span>Barcode and Other Identifiers</h3>
+#+end_example
+
+should render that section as a filterable/sortable table
+
+#+begin_example
+@debug/BarcodeAnOtherIdentifiers.html - FRP of https://musicbrainz.org/release/f50fcf09-4339-4e1c-91cd-e1d2a7b3a7bc
+#+end_example
+
+
+* "Name" column in https://musicbrainz.org/search?query=guit&type=instrument&method=indexed needs a UVD entry for comments
+
+"Name" column in https://musicbrainz.org/search?query=guit&type=instrument&method=indexed needs a UVD entry for comments
+
+
+* ● Your browser reaches MusicBrainz over IPv6.
+
+I can only use IPv4, and right now this network's IPv4 route to MusicBrainz's servers is being cut off. It isn't a Claude Code sandbox or proxy restriction: no
+proxy is set, and other sites load fine from here.
+
+┌───────────────────────────────┬───────────────────┬─────────────────────────────────────────────────────────────────┐
+│             From              │     Protocol      │                             Result                              │
+├───────────────────────────────┼───────────────────┼─────────────────────────────────────────────────────────────────┤
+│ WSL (my shell, Playwright)    │ IPv4              │ connects, then the connection is reset during the TLS handshake │
+├───────────────────────────────┼───────────────────┼─────────────────────────────────────────────────────────────────┤
+│ WSL                           │ IPv6              │ fails: WSL has no IPv6 route                                    │
+├───────────────────────────────┼───────────────────┼─────────────────────────────────────────────────────────────────┤
+│ Windows curl.exe -4           │ IPv4              │ fails the same way                                              │
+├───────────────────────────────┼───────────────────┼─────────────────────────────────────────────────────────────────┤
+│ Windows curl.exe -6           │ IPv6              │ 200, via 2a01:4f8:c011:f68::1                                   │
+├───────────────────────────────┼───────────────────┼─────────────────────────────────────────────────────────────────┤
+│ Windows curl.exe, default     │ IPv6 is preferred │ 200, which is what your browser does                            │
+├───────────────────────────────┼───────────────────┼─────────────────────────────────────────────────────────────────┤
+│ WSL → github.com, example.com │ IPv4              │ 200                                                             │
+└───────────────────────────────┴───────────────────┴─────────────────────────────────────────────────────────────────┘
+
+So:
+- Windows prefers IPv6, so your browser never touches the broken IPv4 route.
+- WSL2 in its default NAT mode has no IPv6, so curl and Playwright's Chromium fall back to IPv4.
+- Every MetaBrainz host fails over IPv4, not just musicbrainz.org. coverartarchive.org, listenbrainz.org and metabrainz.org all behave the same, and they share one front end. Other IPv4 sites work.
+
+Why the IPv4 route fails, I can't confirm. It looks like your public IPv4 address is blocked or throttled on MetaBrainz's side: the connection succeeds and is then reset, it affects only their hosts, and it
+hits Windows too. Their documented answer to too many requests is HTTP 503, and a reset during the TLS handshake looks more like an address-level block. Yesterday's full-suite run from this machine got 754
+tests through, so it started recently. Whether our test traffic tripped it, I can't tell from here.
+
+What you can do:
+- Give WSL your Windows IPv6: add networkingMode=mirrored under [wsl2] in %UserProfile%\.wslconfig, then run wsl --shutdown. WSL then shares Windows' network, IPv6 included, and Playwright should get through
+  like your browser. This changes WSL's networking for everything on this machine, so it's your call.
+- Wait it out: check now and then with curl -4 -sI https://musicbrainz.org/ from WSL. If it's a temporary block, it should lift on its own.
+- If it doesn't lift, try curl.exe -4 from another machine on the same network. If that fails too, the block is on your public IPv4 address, and it's worth asking MetaBrainz.
+
+I saved this as a memory, so next time I'll check this first rather than treat these failures as a code problem.
+
+* ● The full run didn't finish
+WSL restarted at 08:55 UTC (my guess is the WSL update to kernel 6.18.54.1, since the kernel version changed) and killed it at 1593 of 1686 tests. main is clean and matches
+origin/main at b4bf048. I re-ran the three tests that failed. One real regression from the hide-empty-sub-tables feature has reached main.
+
+Where the run stopped: 1590 passed, 3 failed, 93 never ran. The logs were in /tmp and the restart wiped them. The progress file and Playwright's test-results/ folder survived, and that's where these numbers
+come from.
+
+The three failures:
+
+┌───────────────────────────────────────────────────────┬───────────────────────────────────────────────────────────────────────────────────────────────┬──────────────────────────────────────────────────┐
+│                         Test                          │                                             Cause                                             │                      Rerun                       │
+├───────────────────────────────────────────────────────┼───────────────────────────────────────────────────────────────────────────────────────────────┼──────────────────────────────────────────────────┤
+│ instrument-icons-uvd.spec.js:157                      │ timing; unrelated                                                                             │ passes                                           │
+├───────────────────────────────────────────────────────┼───────────────────────────────────────────────────────────────────────────────────────────────┼──────────────────────────────────────────────────┤
+│ detail-preview.spec.js:571 (springsteenlyrics.com     │ flaky test from an earlier branch in the stack: its poll reads the iframe before the iframe   │ fails 1 in 8 runs even on the commit before my   │
+│ card)                                                 │ has a document                                                                                │ feature                                          │
+├───────────────────────────────────────────────────────┼───────────────────────────────────────────────────────────────────────────────────────────────┼──────────────────────────────────────────────────┤
+│ ms-length-filter-after-toggle.spec.js:142 (test C)    │ my feature                                                                                    │ fails every time                                 │
+└───────────────────────────────────────────────────────┴───────────────────────────────────────────────────────────────────────────────────────────────┴──────────────────────────────────────────────────┘
+
+The regression: test C types the global filter "11.666" on a release with one medium. While lengths are shown in seconds, nothing matches, so the medium is hidden along with its column headers. The ⏱ button
+that switches to milliseconds (which would make "11.666" match) is in one of those headers. Neither the test nor a user can reach it. Any button in a column header that changes what the global filter matches
+has the same problem, and only once every sub-table is hidden: while one stays visible, its header controls are still reachable.
+
+Two ways to fix it:
+- Never hide every sub-table (my recommendation). If the filter would empty them all, show them all with "(0 of N)", as before. Hiding then only removes sub-tables while at least one stays on screen, and
+  that one keeps the header controls reachable. My "nothing matches: every sub-table is hidden" test would change to match.
+- Keep the behaviour and change test C to turn the setting off. To use ⏱ with no matches, a user would have to clear the filter, click ⏱, and type the filter again.
+
+Which way do you want? Either fix goes on a new branch with a regression test. I still owe a complete test:full on main, and I'll run it once the fix is in.
+* ● The fix is merged into main as 9.99.1339 and pushed
+
+main matches origin/main, and I didn't run the full suite, as you asked.
+
+- TODO.org: your newer edits are committed as fa11320 and went in with the merge.
+- Commits: merge 8697e52, changelog fold d4f1c28.
+- Fold: WIP.1 became 9.99.1339. No cross-references needed rewriting, and the entry already carried today's date. // @version is 9.99.1339+2026-10-13 and the WIP file is gone.
+- Checks on main: syntax check, changelog audit (1510 entries, clean) and docs audit all pass.
+- Branch: fix/hide-empty-subtables-keep-one is deleted locally and on origin.
+
+For tomorrow's test:full on the other host:
+- ms-length-filter-after-toggle test C should now pass; on the interrupted run it was the one real failure.
+- detail-preview.spec.js:571 (the springsteenlyrics.com card) may fail about one run in eight. That's a known flaky test, not this change.
+- On vzell-lap, the last recorded full run took 22 m 36 s for 439 tests. At 1686 tests that scales to about 87 minutes here; a faster host will be quicker.
+
+The published copy in vzell/mb-userscripts is still at 9.99.1167, so republishing (including the HELP the ❓ button serves) is still to do.
+
+* ● Committed as 047b717 and pushed
+
+feature/sidebar-overhaul on GitHub matches the local branch.
+
+  The branch is ready to merge into main whenever you say so. Merging would:
+  1. Turn WIP.1–WIP.8 into real version numbers and bump // @version.
+  2. Run the full suite on the merged main.
+  3. Mark org/TODO.org items 1–4 DONE, and re-read HELP and PERFORMANCE.org against what shipped.
+  4. Push main, then delete feature/sidebar-overhaul and fix/sticky-gutter-and-sorted-thead, locally and on GitHub. The fix branch is fully contained in this one.
+
+  Two things stay open after the merge: the phone handle that can't be tapped, and the three mutation entries in sticky-page-headers.json that were already stale on main.
+
+
+
+* merge
+
+1.)
+
+merge main into our feature branch "feature/sidebar-overhaul" as that one alreay has the missing pageTyes for place,
+area and instrument pages.
+
+2.)
+
+after the merge go on with our current plan
+
+* actually not yet
+
+Actually not yet, first merge the branch "fix/sticky-gutter-and-sorted-thead" into our "feature/sidebar-overhaul" to
+check if something breaks now as it's also sidebar related
+
+
+* DONE fix the h2/h3 stretching problem to the right browser side
+** i
+
+1.)
+
+There are two visual gliches which probably are related on the MB PTs:
+
+The h2/h3 header lines do NOT stretch to the right of the browser window, see
+e.g. https://musicbrainz.org/area/489ce91b-6658-3307-9877-795b68554c98 and the table text is visible before the sticky
+headers
+
+#+begin_example
+@debug/USA-final.html - [Image #1] - FRP "Series" subtable uncollapsed, but the page has not been scrolled down
+[Image #2] - FRP "Series" subtable uncollapsed and scrolled down, "Barry Manilow" from the "Disambiguation" column is still visible during scrolling right after the non-stretched h2/h3 header lines 
+[Image #3] - FRP "Series" subtable uncollapsed and completely scrolled to the right, the sub-table then gets aligned with the non-stretched h2/h3 header lines but there is still empty space on the right side of the browser window
+#+end_example
+
+Is there anything we can fix here, propose some solutions
+
+2.)
+
+[Image #4] - On non MB PTs,
+e.g. https://www.brucespringsteen.it/DB/records.aspx?tipe=-2,0,1,2,3,4,5,6,7,8,9,10,11&sort=0&addon=0 when sorting a non
+sticky column like e.g. "Notes" and then scrolling down, the rows are srolling up but the contents is actually visible
+in the header column of the sort column, see e.g. the text "gatefold" from the "Notes" column
+When multisorting non-sticky columns the effect is visible in all sort columns.  
+
+** bug
+
+2.) is fixed.  1.) still doesn't look completely right. When scrolled to the complete right, the "Annotation" h2 line
+looks nice, cause it doesn't completely stretch to the right and leaves a small space more or less like the sidebar
+toggle width. The long sub-table also shows this behaviour, but the h2 line with the global filter and the h3 sub-table
+section headers stretch to the complete right, even under the sidebar toggle handle - @debug/h2h3bug.html
+
+* DONE Normalize titles in nonMB PTs according to MB style guidelines
+** DONE i
+
+Create a new branch on top of feature/relationship-tables:
+
+1.)
+
+add support for the new BB pageTypes
+
+#+begin_example
+"Recent changes" - https://brucebase.wikidot.com/system:recent-changes - change to 200 revisions per page beforehand
+"Relations" - https://brucebase.wikidot.com/stats:relations
+#+end_example
+
+a,)
+
+#+begin_example
+@debug/bb-recent-changes.html - IP - switched to 200 revisions per page <select id="rev-perpage">_
+#+end_example
+
+b.)
+
+Relations:
+#+begin_example
+@debug/bb-relations-0-9.html - IP on tab "0-9"
+@debug/bb-relations-a.html - IP on tab "A"
+#+end_example
+
+2.)
+
+Normalize titles in non-MB PTs
+
+#+begin_example
+https://www.brucespringsteen.it/DB/records.aspx?tipe=-1,0,1,2,3,4,5,6,7,8,9,10,11 - the "Title" column
+https://www.brucespringsteen.it/DB/records.aspx?tipe=-1,0,1,2,3,4,5,6,7,8,9,10,11 - the "Title" column
+https://www.jungleland.it/html/list.htm - the "Title" column
+https://brucebase.wikidot.com/stats:songs - the "Title" column
+https://brucebase.wikidot.com/<year> - the "Venue", "Soundcheck" and "Setlist" column
+#+end_example
+
+according to MB style guidelines
+
+see
+
+#+begin_example
+general - https://musicbrainz.org/doc/Style
+Specifically for english - https://musicbrainz.org/doc/Style/Language/English 
+#+end_example
+
+3.)
+
+Change the basic ASCII punctuation characters such as ' and " and use typographically-correct punctuation (such as ’ for
+the English apostrophe):
+
+Here the full list:
+
+hyphen         (‐)    - 2010 - 8208 - joins words and syllables of a word (e.g. “Tenth Avenue Freeze‐Out” or “co‐operate”)
+
+figure dash    (‒)    - 2012 - 8210 - used as a dash within numbers (e.g. 555‒1212)
+en dash        (–)    - 2013 - 8211 - indicates a range of numbers (e.g. 1989–90)
+em dash        (—)    - 2014 - 8212 - separate thoughts—like this
+minus sign     (−)    - 2212 - 8722 - indicates subtraction
+hyphen minus   (-)    - 2D   - 45   - minus on alphanumeric keys
+quotation dash (―)    - 2015 - 8213 - introduces quoted text in some cases (non‐standard for English dialect)
+
+' vs ’ vs ´
+" vs „“”
+... vs …
+
+    deutsch – for German „quotation marks“ and ‚single quotation marks‘ (default)
+    francais – for French «double quotation marks» and ‹single quotation marks›
+    deutsch-2 – for an alternative style of German »double« and ›single quotation marks‹
+    english – for English “double” and ‘single quotation marks’
+
+Preferred Unicode characters for English punctuation
+Preferred	Usage	Deprecates
+‐	Hyphen	Joins words and syllables of a word or dates 2012‐12‐15 (e.g. co‐operate).	-	Hyphen-minus
+‒	Figure Dash	Used as a dash within numbers (e.g. 555‒1212).
+–	- 2013 - - 8211 - AltGr-# - - En Dash	Indicates a range of numbers (e.g. 1989–90).
+−	Minus sign	Indicates subtraction.
+—	- 2014 - 2012 - AltGr-Shift- - Em Dash	Separate thoughts—like this.	--	Hyphen-minus ×2
+―	Horizontal bar aka Quotation dash	Introduces quoted text in some cases (non‐standard for English dialect).
+'       apostrophe on alphanumeric keys
+‘	- 2018 - 8216 - AltGr-' - Left single quotation mark	Indicates start of quoted text.	'	Apostrophe
+’	Right single quotation mark Apostrophe	Indicates end of quoted text, or omitted characters.
+′	- 2032 - 8242 - AltGr-^ - Prime	Minutes; feet
+“	Left double quotation mark	Indicates start of quoted text.	"	Quotation mark
+”	Right double quotation mark	Indicates end of quoted text.
+″	- 2033 - 8243 - AltGr-Shift-^ - Double prime	Seconds; inches
+〃	Ditto mark	Indicates that the word(s) or figure(s) below which it is placed are to be repeated.
+…	Horizontal ellipsis	Indicates intentional omission in original text…or a pause in speech or thought.	...	Full stop ×3
+×	Multiplication	Indicates a multiplication operation.	x	(the letter ‘X’) when used to indicate multiplication
+⁄	Fraction slash	Indicates arbitrary fractions of decimal numbers (e.g. 15⁄16). Hardcoded fractions: ¼, ½, ¾, ⅐, ⅑, ⅒, ⅓, ⅔, ⅕, ⅖, ⅗, ⅘, ⅙, ⅚, ⅛, ⅜, ⅝, ⅞, ⅟ and ↉.	/	Slash
+∕	Division slash	Indicates a division operation (e.g. 3.14∕2n).	/	Slash
+¤       AltGr-Shift-4
+
+** DONE bugs
+
+1.)
+
+a.)
+
+The current "Date" column on https://brucebase.wikidot.com/system:recent-changes should be split in "Date" and "Time"
+
+b.)
+
+The "Date" column should additionally be run through the dateParts extractor
+
+c.)
+
+Both columns should get the same UVD treatment as the same columns on MB pageTypes
+
+2.)
+
+Normalize titles also in non-MB PTs
+
+#+begin_example
+https://www.springsteenlyrics.com/bootlegs.php?cmd=list&category=<category> - "Title" column
+https://www.springsteenlyrics.com/collection.php?cmd=list&category=<category> - "Title" column
+https://www.springsteenlyrics.com/lyrics.php - "Title" column
+https://brucebase.wikidot.com/<year> - additionally the "City" and "Country" except when the country cell is "USA" (leave it as is)
+#+end_example
+ 
+* DONE on multi-table PTs when filtering globally, hide the sub-tables with 0 filtered rows (the h3 sub-table beader line + the sub-table itself)
+
+Create a new branch on top of feature/bb-recent-changes-relations:
+
+On multi-table PTs when filtering globally, hide the sub-tables with 0 filtered rows (the h3 sub-table header line + the
+sub-table itself). The sub-tables should reappear when at least on row satisfies the filter condition if that brodens
+the filter again.
+
+* DONE tabelize more sections - relationship tables
+** i
+
+Create a new branch on top of feature/foreign-ip-popups:
+
+Tabelize more sections in MB PTs like what we already do for the PT 'artist-events' with the data below the h2
+"Relationships" section in the event-overview converter (applyEventDetailsToTables), e.g. https://musicbrainz.org/event/4379731e-7609-4197-bb9b-7739b326cb7c
+
+Model the new behaviour on the event-overview converter:
+
+1.)
+
+PTs which have on the "Overview" tab of the IP a h2 "Relationships" section 
+
+#+begin_example
+<h2 class="relationships">Relationships</h2>
+#+end_example
+
+e.g. (the following also do not yet have their own PT and @include directive
+
+#+begin_example
+Place -> "Overview" tab: https://musicbrainz.org/place/6a59a67c-fcc5-491f-949c-bfc45bc97463
+Area -> "Overview" tab: https://musicbrainz.org/area/489ce91b-6658-3307-9877-795b68554c98
+Instrument -> "Overview" tab: https://musicbrainz.org/instrument/a1baa57d-6ab4-461e-89df-448d6fd2c597
+#+end_example
+
+2.)
+
+PTs which already have native table data but also have addtional h2 sections like e.g. "Relationships"
+
+#+begin_example
+Series -> "Overview" tab: https://musicbrainz.org/series/f4818e95-a515-4821-ad6d-270703f72dcf
+Work -> "Overview" tab: https://musicbrainz.org/work/1f573511-eb4b-3106-8fb2-f15de52e4868
+Label -> "Relationships" tab: https://musicbrainz.org/label/0b805b9c-ea03-4fc1-b50d-6dcef76433e0/relationships
+Artist -> "Relationships" tab: https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/relationships
+Release group -> "Overview" tab: https://musicbrainz.org/release-group/d5f992ab-6238-3b28-bf2b-7b16d913c9f6
+#+end_example
+
+The following are somewhat special
+
+#+begin_example
+Recording -> "Overview" tab: https://musicbrainz.org/recording/6719f5e8-9b80-4956-8e11-ee1614a6693a + this PT has an additional h2 "Related works" section besides "Relationships"
+#+end_example
+
+#+begin_example
+Release: @debug/BarcodeAnOtherIdentifiers.html - FRP of https://musicbrainz.org/release/f50fcf09-4339-4e1c-91cd-e1d2a7b3a7bc - has an h2 "Credits" section + two h3 "Release" and "Release group" subsections instead of the "Relationships" section
+#+end_example
+
+Show me some nice HTML based mockups, especially for the Recording and Release cases above
+
+3.)
+
+In the case of 2.), will the old functionality of filtering and sorting the already existing PTs with their main
+table/sub-tables when we also give the "Relationships"/"Credit" h2 sections a global filter field (and the sub-sections
+their own sub-table filtering)
+
+Basically does our userscript support multiple h2 lines with their own filtering, stats overview, clear and toggle buttons, status display etc 
+
+** a
+
+ For pages that already have a main table (Series, Work, Recording, Release group, Release, Label/Artist relationships tab), how should the tabelized Relationships/Credits section coexist with the main table?
+
+❯ 1. Either/or buttons (Recommended)
+     A second toolbar button ('Relationships' / 'Credits') beside the existing one, like area-releases today. The page shows one rendered section at a time. No engine change, and existing MB flows are
+     untouched. Fits on this branch.
+  2. Fold into one dataset
+     The main button also turns Relationships into extra h3 sub-tables of the same multi-table render, all under ONE global filter. Only works for multi-table PTs (not series-releases). The main table's
+     features (CAA, injected Relationships column, main-column extractor) touch the new groups, so it is risky for existing behaviour.
+  3. Real multi-section engine
+     Refactor the singletons into per-section instances so each h2 gets its own global filter, stats, status line and clear/toggle buttons, all live at the same time. A large separate project (hundreds of call
+     sites); I'd plan it as its own branch and ship either/or first.
+     
+** q
+
+1.)
+
+Begin/End columns yes, but feed also both in our dateParts extractor, e.g.
+
+#+begin_example
+                        { sourceColumn: 'Begin',      extractor: 'dateParts', syntheticColumns: ['B-DD', 'B-MM', 'B-YYYY', 'B-Day', 'B-Month'] },
+                        { sourceColumn: 'End',        extractor: 'dateParts', syntheticColumns: ['E-DD', 'E-MM', 'E-YYYY', 'E-Day', 'E-Month'] }
+#+end_example
+
+2.)
+
+Number column yes, but if "number:" and "order:" ever differ for an entry use two separate columns
+
+#+begin_example
+Number
+Order
+#+end_example
+
+3.)
+
+What do you mean with 'Release “inline credits”	Key on #bottom-credits, not on the h2 text'
+
+4.)
+
+The standard/current "Show all..." button should still render the "Relationships"/"Credits" section as now, as a
+collapsable (non sortabe/filterable) h2 section. ONLY when pressing the new "Relationships"/"Credits" botton that data
+only should be renderded in tables
+
+** bugs
+
+1.)
+
+On the following page:
+
+@debug/work.html - IP - https://musicbrainz.org/work/1f573511-eb4b-3106-8fb2-f15de52e4868
+
+the following info
+
+#+begin_example
+Fujipacific Music, Inc.
+Sony Music Publishing (Japan) Inc., A Division
+#+end_example
+
+should actually go into a "Primary alias" column and not the "Disambiguation" column as "publishing company of Mike Appel and Jim Cretecos"
+
+2.)
+
+The dates, vocal and instrument info an artist sang/played in a specific period e.g. on https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/relationships
+
+#+begin_example
+@debug/member-of.html
+#+end_example
+
+should be splitted in three oolumns, the first two already present
+
+#+begin_example
+Begin - should still be run through the dateParts converter
+End - should still be run through the dateParts converter
+Credits - multi-row cell column
+#+end_example
+
+instead of just one "Credits" column
+
+3.)
+
+On e.g. https://musicbrainz.org/area/489ce91b-6658-3307-9877-795b68554c98
+
+a.)
+
+In the "Areas" sub-table why are sometimes the country "United States" rendered in the "Parent area" column and not the
+"Details" column. And why are there "Parent area" column and "Details" column present, it looks like one column would be
+enough
+
+b.)
+
+the following entity glyphs
+
+#+begin_example
+<span class="genrelink"></span>
+<span class="instrumentlink"></span>
+#+end_example
+
+4.)
+
+At e.g.
+
+#+begin_example
+CAA-EAA-beforetitle.html - FRP after clicking the "Relationships" action button - https://musicbrainz.org/release/1d404e1d-fcb6-3a52-b478-e706e893c897 -  
+#+end_example
+
+Is it possible to render the release group CAA inline icon (if available) in the "Target" column in front of the release
+group name if the actual cell data is actually a "Release group" like in the "Title" column of PT 'artist-releasegroups'
+and the EAA inline event icon (if available) in front of the event name like in the "Event" column of
+e.g. https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/events
+
+5.)
+
+Also give event pages the Begin/End and Number/Order columns
+
+* DONE add a new PT for "URL" e.g. https://musicbrainz.org/url/a333fbe2-2707-4799-aa2e-50d21be8081c
+
+1.)
+
+add a new PT for "URL" e.g. https://musicbrainz.org/url/a333fbe2-2707-4799-aa2e-50d21be8081c
+
+#+begin_example
+@debug/URL.html - IP
+#+end_example
+
+use the skill "add-pagetype-from-html"
+
+2.)
+
+the "Target" and "Type" columns which could hold a mix of different entity type on PTs
+
+#+begin_example
+https://musicbrainz.org/release/1d404e1d-fcb6-3a52-b478-e706e893c897
+https://musicbrainz.org/recording/6719f5e8-9b80-4956-8e11-ee1614a6693a
+https://musicbrainz.org/event/a93485a0-7e5b-4ee5-b4a4-201b4d906e7a
+#+end_example
+
+need UVD entries with the MB entity type glyph (count of each entity type) on the FRP after the "Relationships" button action has bee pressed
+
+* DONE create a github PR
+
+create a real github pull request on https://github.com/Aerozol/metabrainz-userscripts/pulls with the patch at @debug/MusicBrainz-Nuclear-Tags-restore-checkbox-column.patch
+on my behalf
+
+create a real github pull request on https://github.com/Aerozol/metabrainz-userscripts/pulls with the uploaded patch on
+my behalf
+
+#+begin_src bash
+gh pr ready https://github.com/Aerozol/metabrainz-userscripts/pull/26
+#+end_src
+
+* DONE sidebar
+
+The "Sidebar" button/action is currently missing from the following PTs
+
+#+begin_example
+https://musicbrainz.org/release/230fd31d-f63f-4c01-8f10-432d36a1cb86
+https://musicbrainz.org/series/aa3694d3-a3d0-48ed-8f07-5b576de87908
+https://musicbrainz.org/place/6a59a67c-fcc5-491f-949c-bfc45bc97463
+https://musicbrainz.org/area/489ce91b-6658-3307-9877-795b68554c98
+https://musicbrainz.org/instrument/63021302-86cd-4aee-80df-2270d54f4978
+#+end_example
+
+* DONE "Old" and "New" column have an artifical spacing between them
+
+On e.g. https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/annotations
+
+1.)
+
+"Old" and "New" column have an artifical spacing between them
+
+#+begin_example
+annotations-old-new.initial.html - IP
+annotations-old-new.FINAL - FRP - [Image #15]
+#+end_example
+
+2.)
+
+make the "Editor" column the sticky column
+
+3.)
+
+Only run the impl specific tests, we are on vzell-lap, so no full test suite
+
+* DONE bug with sidebar
+
+1.)
+
+The collapsing/uncollapsing of the sidebar with the sidebar toggle works fine on MB PTs where there is no wide
+table/sub-table to scroll to the right ==> it renders visisble as it should - see [Image #6], where the sidebar is
+uncollpased, e.g. https://musicbrainz.org/instrument/63021302-86cd-4aee-80df-2270d54f4978
+
+2.)
+
+when uncollapsing the sidebar on MB PTs where there are wide tables/sub-tables involved,
+e.g. https://musicbrainz.org/release-group/f83d2211-dd81-4b1e-9a02-e89733891e1c, the sidebar contetns is initially not
+visible [Image #5], but slides in when scrolling to the right [Image #3] and is completely visible when we have scrolled
+completely to the right [Image #4]
+
+#+begin_example
+r-t-no-sidebar-content.html - FTR with sidebar uncollapsed, no sidebar content visible
+r-t-sidebar-content.html - raw HTML from the empty sidebar
+#+end_example
+
+3.)
+
+is it possible to render the sidebar handle at the top/beginning of the sidebar, see e.g. [Image #6] where it's located
+in front of the end of the side bar content in front of the "My collections"
+
+* DONE instruments support on right side
+
+https://musicbrainz.org/search?query=guitar&type=instrument&method=indexed
+
+* DONE add instrument support
+** DONE i
+
+add instrument support when the third-party userscript "MusicBrainz: Instrument Icons Everywhere" from @Lotheric is present
+
+1.)
+
+use the skill "wire-live-userscript" for @tests/fixtures/live-userscripts/MusicBrainz_Instrument_Icons_Everywhere.user.js
+
+2.)
+
+#+begin_example
+@debug/instrument.html - this is how an instrument glph is renderd when the userscript is present 
+@debug/gfanj-intruments-initial.html - IP
+#+end_example
+
+3.)
+
+#+begin_example
+@debug/instrument-search.html - FRP for https://musicbrainz.org/search?query=guit&type=instrument&method=indexed
+#+end_example
+
+It's missing the instrument icons in the UVD oc column "Name" and a count of rows actually having/missing instrument icons
+
+4.)
+
+** DONE instrument icon support on the right side
+
+1.)
+
+There is a new version of the third-party userscript "MusicBrainz: Instrument Icons Everywhere" from @Lotheric.
+Use the skill "wire-live-userscript" for registering the new version at @tests/fixtures/live-userscripts/MusicBrainz_Instrument_Icons_Everywhere.user.js
+It supports no rendering the instrument icon after (to the right of) the instrument name.
+
+2.)
+
+Add support for either case in our userscript:
+
+#+begin_example
+@debug/instuments-right.html - FRP with the option ON to render the instruments icon after (to the rigth of) the instrument name
+@debug/instuments-right-UVD.html - UVF for the above case, the instruments icon is MISSING
+#+end_example
+
+3.)
+
+Tested live, looks good, commit and push (inclusive the .org files)); stop the suite for now, it takes too long on
+"vzell-lap", /merge-push-remove now, will implement a couple more things and test with the whole suite later (possibly
+on a faster machine like "petri")
+
+* DONE rerun the full test-suite on "NB-3641" after the latest implementations on "vzell-lap" and rerun just recently on "petri"
+* DONE statusline.sh
+
+#+begin_example
+#!/bin/bash
+input=$(cat)
+
+MODEL=$(echo "$input" | jq -r '.model.display_name')
+DIR=$(echo "$input" | jq -r '.workspace.current_dir')
+COST=$(echo "$input" | jq -r '.cost.total_cost_usd // 0')
+PCT=$(echo "$input" | jq -r '.context_window.used_percentage // 0' | cut -d. -f1)
+DURATION_MS=$(echo "$input" | jq -r '.cost.total_duration_ms // 0')
+
+CYAN='\033[36m'; GREEN='\033[32m'; YELLOW='\033[33m'; RED='\033[31m'; RESET='\033[0m'
+
+# Pick bar color based on context usage
+if [ "$PCT" -ge 90 ]; then BAR_COLOR="$RED"
+elif [ "$PCT" -ge 70 ]; then BAR_COLOR="$YELLOW"
+else BAR_COLOR="$GREEN"; fi
+
+FILLED=$((PCT / 10)); EMPTY=$((10 - FILLED))
+printf -v FILL "%${FILLED}s"; printf -v PAD "%${EMPTY}s"
+BAR="${FILL// /█}${PAD// /░}"
+
+MINS=$((DURATION_MS / 60000)); SECS=$(((DURATION_MS % 60000) / 1000))
+
+BRANCH=""
+git rev-parse --git-dir > /dev/null 2>&1 && BRANCH=" | 🌿 $(git branch --show-current 2>/dev/null)"
+
+echo -e "${CYAN}[$MODEL]${RESET} 📁 ${DIR##*/}$BRANCH"
+COST_FMT=$(printf '$%.2f' "$COST")
+echo -e "${BAR_COLOR}${BAR}${RESET} ${PCT}% | ${YELLOW}${COST_FMT}${RESET} | ⏱️ ${MINS}m ${SECS}s"
+
+# Claude.ai subscription rate limits (only present for subscribers)
+FIVE_PCT=$(echo "$input" | jq -r '.rate_limits.five_hour.used_percentage // empty')
+FIVE_RESET=$(echo "$input" | jq -r '.rate_limits.five_hour.resets_at // empty')
+WEEK_PCT=$(echo "$input" | jq -r '.rate_limits.seven_day.used_percentage // empty')
+WEEK_RESET=$(echo "$input" | jq -r '.rate_limits.seven_day.resets_at // empty')
+
+pct_color() {
+    local p=$1
+    if [ "$p" -ge 90 ]; then echo "$RED"
+    elif [ "$p" -ge 70 ]; then echo "$YELLOW"
+    else echo "$GREEN"; fi
+}
+
+# Berlin wall time plus zone ("07:24:28 CEST") for any stamp date -d parses:
+# the newer "+02:00" stamps and the older "Z" ones alike. $2 = time format.
+bt() {
+    TZ=Europe/Berlin date -d "$1" "+${2:-%H:%M:%S} %Z"
+}
+
+fmt_remaining() {
+    local reset_epoch=$1 now diff h m
+    now=$(date +%s)
+    diff=$((reset_epoch - now)); [ "$diff" -lt 0 ] && diff=0
+    h=$((diff / 3600)); m=$(((diff % 3600) / 60))
+    printf "%dh %dm" "$h" "$m"
+}
+
+RATE_LINE=""
+if [ -n "$FIVE_PCT" ]; then
+    FIVE_INT=$(printf '%.0f' "$FIVE_PCT")
+    RATE_LINE="$(pct_color "$FIVE_INT")⏳ Session ${FIVE_INT}%${RESET} (${FIVE_RESET:+$(fmt_remaining "$FIVE_RESET")})"
+fi
+if [ -n "$WEEK_PCT" ]; then
+    WEEK_INT=$(printf '%.0f' "$WEEK_PCT")
+    WEEK_SEG="$(pct_color "$WEEK_INT")📆 Week ${WEEK_INT}%${RESET} (${WEEK_RESET:+$(fmt_remaining "$WEEK_RESET")})"
+    RATE_LINE="${RATE_LINE:+$RATE_LINE | }$WEEK_SEG"
+fi
+[ -n "$RATE_LINE" ] && echo -e "$RATE_LINE"
+
+# ShowAllEntityData test:full run, written by scripts/run-test-full.py.
+# Shown while it runs, and for an hour after it finishes.
+TF_FILE="$HOME/.cache/sa-test-full/status.json"
+if [ -f "$TF_FILE" ]; then
+    IFS=$'\t' read -r TF_STATE TF_HOST TF_BRANCH TF_SHA TF_START TF_TOTAL TF_PASS TF_FAIL TF_ETA TF_FINISH TF_WALL TF_PID < <(
+        jq -r '[.state, .host, .branch, .sha, .start, (.total // 0), .passed, .failed,
+                (.eta // "-"), (.finish // "-"), (.wall_s // 0), (.pid // 0)] | @tsv' "$TF_FILE" 2>/dev/null)
+    NOW=$(date +%s)
+    TF_HEAD="🧪 test:full · ${TF_HOST} · ${TF_BRANCH}@${TF_SHA}"
+    if [ "$TF_STATE" = "running" ]; then
+        if ! kill -0 "$TF_PID" 2>/dev/null; then
+            echo -e "${RED}${TF_HEAD} · started $(bt "$TF_START") · interrupted (${TF_PASS} passed, ${TF_FAIL} failed)${RESET}"
+        else
+            DONE=$((TF_PASS + TF_FAIL))
+            if [ "$TF_ETA" != "-" ]; then
+                ETA_TXT="ETA ~$(bt "$TF_ETA" %H:%M)"
+            elif [ "$DONE" -gt 0 ] && [ "$TF_TOTAL" -gt 0 ]; then
+                S0=$(date -d "$TF_START" +%s)
+                ETA_TXT="ETA ~$(bt "@$((S0 + (NOW - S0) * TF_TOTAL / DONE))" %H:%M) (extrapolated)"
+            else
+                ETA_TXT="ETA unknown"
+            fi
+            FAIL_TXT=""; [ "$TF_FAIL" -gt 0 ] && FAIL_TXT=" · ${RED}${TF_FAIL} failed${YELLOW}"
+            if [ "$TF_TOTAL" -gt 0 ]; then
+                echo -e "${YELLOW}${TF_HEAD} · since $(bt "$TF_START") · ${DONE}/${TF_TOTAL}${FAIL_TXT} · ${ETA_TXT}${RESET}"
+            else
+                echo -e "${YELLOW}${TF_HEAD} · since $(bt "$TF_START") · starting…${RESET}"
+            fi
+        fi
+    elif [ "$TF_FINISH" != "-" ]; then
+        AGE=$((NOW - $(date -d "$TF_FINISH" +%s)))
+        if [ "$AGE" -lt 3600 ]; then
+            WALL_TXT="$((TF_WALL / 60))m $((TF_WALL % 60))s"
+            if [ "$TF_STATE" = "passed" ]; then
+                echo -e "${GREEN}${TF_HEAD} · ✅ ${TF_PASS} passed in ${WALL_TXT} · finished $(bt "$TF_FINISH")${RESET}"
+            else
+                echo -e "${RED}${TF_HEAD} · ❌ ${TF_FAIL} failed, ${TF_PASS} passed in ${WALL_TXT} · finished $(bt "$TF_FINISH")${RESET}"
+            fi
+        fi
+    fi
+fi
+
+# ShowAllEntityData interaction-perf arms, written by scripts/run-perf-arms.py.
+# Shown while they run, and for an hour after they finish.
+PF_FILE="$HOME/.cache/sa-perf/status.json"
+if [ -f "$PF_FILE" ]; then
+    IFS=$'\t' read -r PF_STATE PF_HOST PF_BRANCH PF_SHA PF_START PF_NARMS PF_IDX PF_ARM PF_METRIC PF_SAMPLE PF_SAMPLES PF_STEP PF_TOTAL PF_ETA PF_FINISH PF_PID PF_RESULTS < <(
+        jq -r '[.state, .host, .branch, .sha, .start, (.arms | length), (.index // 0), (.arm // "-"),
+                ((.metric // "") | if . == "" then "-" else . end), (.sample // 0), (.samples // 0), (.step // 0), (.total // 0),
+                (.eta // "-"), (.finish // "-"), (.pid // 0),
+                ([.results[]? | "\(.arm) \(.wall_s / 60 | floor)m\(.wall_s % 60)s"] | join(", ") | if . == "" then "-" else . end)] | @tsv' "$PF_FILE" 2>/dev/null)
+    NOW=$(date +%s)
+    PF_HEAD="📈 perf · ${PF_HOST} · ${PF_BRANCH}@${PF_SHA}"
+    if [ "$PF_STATE" = "running" ]; then
+        if ! kill -0 "$PF_PID" 2>/dev/null; then
+            echo -e "${RED}${PF_HEAD} · started $(bt "$PF_START") · interrupted at arm $((PF_IDX + 1))/${PF_NARMS} ${PF_ARM}${RESET}"
+        else
+            ETA_TXT="ETA unknown"; [ "$PF_ETA" != "-" ] && ETA_TXT="ETA ~$(bt "$PF_ETA" %H:%M)"
+            STEP_TXT="starting…"
+            [ "$PF_TOTAL" -gt 0 ] && STEP_TXT="${PF_METRIC} · sample ${PF_SAMPLE}/${PF_SAMPLES} (${PF_STEP}/${PF_TOTAL})"
+            echo -e "${YELLOW}${PF_HEAD} · arm $((PF_IDX + 1))/${PF_NARMS} ${PF_ARM} · ${STEP_TXT} · ${ETA_TXT}${RESET}"
+        fi
+    elif [ "$PF_FINISH" != "-" ]; then
+        AGE=$((NOW - $(date -d "$PF_FINISH" +%s)))
+        if [ "$AGE" -lt 3600 ]; then
+            if [ "$PF_STATE" = "passed" ]; then
+                echo -e "${GREEN}${PF_HEAD} · ✅ ${PF_RESULTS} · finished $(bt "$PF_FINISH")${RESET}"
+            else
+                echo -e "${RED}${PF_HEAD} · ❌ ${PF_RESULTS} · finished $(bt "$PF_FINISH")${RESET}"
+            fi
+        fi
+    fi
+fi
+exit 0
+#+end_example
+
+* DONE "ISRC" and "Links" now rendered addionally as columns after the "Artist" column on PT 'release-tracks'
+** DONE initial
+
+With the new version of the third-party userscript "ISRC Scout" by @majkinetor the "ISRC" and "Links" columns are now
+rendered (but asynchronously, so the action button can only be pressed when the columns appear on the IP) additionally
+after the "Artist" column on PT 'release-tracks', e.g. https://musicbrainz.org/release/230fd31d-f63f-4c01-8f10-432d36a1cb86
+
+#+begin_example
+DaD-ISRC-Links-initial.html - IP - after the columns have arrived
+DaD-ISRC-Links-final.html - FRP - after the columns have arrived
+#+end_example
+
+1.)
+
+The "ISRC" column should get the same treatment regarding UVD as the "ISRCs" column and it should be a multi-row column
+as there can be multiple ISRCs per recording
+
+2.)
+
+Why do the "ISRC" and "Links" columns don't have the sort and UVD glyphs
+
+3.)
+
+the userscript is at @tests/fixtures/live-userscripts/ISRC-scout.js, register it with our skill first
+
+4.)
+
+@debug/multiple-ISRC.html - IP for https://musicbrainz.org/release/22a6802f-d22e-4f47-9f22-6aac257a4194 with multiple ISRs per cell
+
+5.)
+
+the missing glyphs were probably a racing issue, as the screenshot here shows them - [Image #2]
+
+** DONE bug
+
+Everything looks good and works, except a small glitch in the "Links" column, see [Image #4]:
+
+On row 18, the link icons are rendered over 2 lines, see the raw HTML at @debug/links-overflow.html
+* DONE stacking multiple rich tooltips (9.99.1359)
+
+Goal: stacking multiple rich tooltips when existing on the same target, so they do not render above each other and the last one renders wins
+
+Currently only when the track title name differs from the recording name on PT 'track-releases', see [Image #20], the
+corresponding tooltip which shows the different namings is displayed above the detail content popup which can be further
+"Space" opened. The "track name differs from the recording name (warning message)" is still hidden by the detail popup
+
+1.)
+
+This feature should be extended to ALL popup tooltips, e.g when a recording is not linked to an associated work, when it
+has pending edits, when the track name differs from the recording name (warning message), etc - see the following examples
+
+#+begin_example
+[Image #17]
+[Image #18]
+[Image #19]
+#+end_example
+
+2.)
+
+the should be displayed algined above each other and NOT overwriting each other
+
+3.)
+
+On e.g. https://musicbrainz.org/release/3ec14d03-2c03-4764-a69d-8155817a040f there is another visual glitch regarding
+the native recording name tooltip popup on recording links in the "Title" column. They show up sometimes also we already
+have now the rich HTML based popup
+
+#+begin_example
+[Image #21] - "Born to Run" native popup when hovering over row 4 with a disambiguation comment
+[Image #22] - NO native popup present when hovering over a row with NO  disambiguation comment - row 1
+[Image #23] - the artist name native popup even sits over the artist detail popup in the "Artist" column 
+#+end_example
+
+4.)
+
+a.)
+
+The native MB entity glyph should be rendered in the initial entity link detail popup right in of the entity name
+
+b.)
+
+and when the detail popup is "Space" expanded also right in front of the entity name, [Image #24] here the name
+"Recording" at the very beginning
+
+* DONE the rich tooltips should show track/recording differences below each other in a diff like view, with differing chars/portions highlighted
+
+1.)
+
+the rich tooltips should show track/recording differences below each other in a diff like view, with differing
+chars/portions highlighted... are there any algorithms out there we can use... it's all about presentation to the
+end-user, so he/she can spot right away where the differences are
+
+Current behaviour: @debug/title-diff-format.png
+
+2.)
+
+maybe there are other tooltips which show comparisons, fix them also
+
+3.)
+
+Make some nice HTML based mockups
+
+* DONE popup hover enhancements
+
+This is all on e.g. https://musicbrainz.org/release-group/f83d2211-dd81-4b1e-9a02-e89733891e1c - @debug/missing-CAA-hover.html
+
+1.)
+
+Inside the h2 "Relationships" section, when the standard action button on a PT has been pressed and we are on the FRP, if there are any cover icons present like in
+
+#+begin_example
+<table class="details mb-sph-target" style="width: 100%; --mb-sph-left: 19.99px; --mb-sph-maxw: 2147px;"><tbody><tr><th>single/EP which was taken from:</th><td style="word-break:break-all"><span class="rglink"></span><a href="https://musicbrainz.org/release/de3273d0-4906-4760-b8e2-51a7ffde946b/cover-art" ref="/release-group/b3559cb2-d7ad-32eb-a17e-54a873ce4122" title="1 image found in this release"><span class="caa-icon jesus2099userjs154481" style="background-size: contain; background-image: url(&quot;//coverartarchive.org/release-group/b3559cb2-d7ad-32eb-a17e-54a873ce4122/front-250&quot;);"></span></a><a href="/release-group/b3559cb2-d7ad-32eb-a17e-54a873ce4122"><bdi>Tunnel of Love</bdi></a><br></td></tr><tr><th>includes:</th><td style="word-break:break-all"><span class="rglink"></span><a href="https://musicbrainz.org/release/3dd269a3-c20b-4f29-bfa3-a92ca93c7fa2/cover-art" ref="/release-group/92b7f3ea-882a-4073-9e25-b3d158a67f57" title="5 images found in this release"><span class="caa-icon jesus2099userjs154481" style="background-size: contain; background-image: url(&quot;//coverartarchive.org/release-group/92b7f3ea-882a-4073-9e25-b3d158a67f57/front-250&quot;);"></span></a><a href="/release-group/92b7f3ea-882a-4073-9e25-b3d158a67f57"><bdi>Tunnel of Love Express</bdi></a><br></td></tr></tbody></table>
+#+end_example
+
+they should alos get the same treatment as other image icons regarding the popup hovering and internal viewer handling
+
+2.)
+
+The same for the icons under the "Relationships" column, they are not treated uniformly regarding our rich tooltip popup
+framework
+
+a.)
+
+when hovering they should show the detail URL based popup
+
+b.)
+
+when hovering and filtering (in this case column filtering) is in effect which filters on "Relationships" cells, two
+rich tooltips show up and they should stack over each other as in our generic tooltip stacking framework - [Image #]
+
+The hovered over icon should be mentioned in the tooltip popup, currently only the URL itself is shown, aand it's easy
+to misundertand what that URL actually means compared to the full list of URLs which show with background highlightning
+which entry actually is filtered on
+
+* DONE revamp "Search in ..." card handling
+** DONE i
+
+1.)
+
+Revamp the h4 "Search ..." card handling, eg. at https://musicbrainz.org/release/d2f07004-ef30-435f-ae73-64507bc639c1
+
+#+begin_example
+@debug/DaD-collapsed.html - IP -  - @debug/Search-collapsed.png
+@debug/DaD-uncollapsed.html - FRP - all uncollapsed - @debug/Search-uncollapsed.png
+#+end_example
+
+There are too many h4 lines starting with
+
+#+begin_example
+"Search the web"
+"Search in the .."
+"Search further"
+#+end_example
+
+and stretch up to the rigth browser window. The actual number of all these "Search ..." URLs depends heavily which
+additional third-party userscripts are active. On a default page these are probably a few if nothing at all
+
+2.)
+
+Make some nice HTML based mockups
+
+3.)
+
+Also the very long anchor text looks strange
+
+#+begin_example
+<span class="mb-sb-chip"><a href="https://jesus2099.gitlab.io/forward-request.html?_action=https://www.dramonline.org/search&amp;_method=post&amp;dram-search[q]=Devils%20%26%20Dust&amp;dram-search[t]=album">DRAM</a><span class="mb-sb-chip-detail">By genreClassicalEletronicPsyDBTraditionalIrish Traditional Music TunesMainly NorfolkThe SessionMetalMetal-ArchivesSpirit of MetalRockProg Archives (by barcode)Prog Archives (by name)Spirit of RockSoundtrackOverClock ReMixSoundtrackCollector (by barcode)SoundtrackCollector (by name)TheatreCastAlbums.orgLiteratureBookBrainzBookBrainz (all entities)Open LibraryGoodreadsLibriVox</span></span>
+#+end_example
+
+Make some suggestions how to shorten it or display it differently (actually where is it coming from at all ??)
+
+4.)
+
+With all the changes maybe the cards could be layout more efficiently ... please some suggestions
+
+** DONE add favicon icons
+
+For example on https://musicbrainz.org/release/22a6802f-d22e-4f47-9f22-6aac257a4194:
+
+Add site icons/favicon in front of the site names to the "Sidebar" sections like
+
+#+begin_example
+"EXTERNAL LINKS"
+"SEARCH"
+"RELEASE GROUP EXTERNAL LINKS"
+#+end_example
+
+etc. if the corresponding entries in the real sidebar have them
+
+#+begin_example
+ - current sidebar section on the FRP
+ - real sidebar with site icons in front of the site names
+#+end_example
+
+* DONE enrich the discogs URL detail parsers with more information
+
+Enrich the current discogs URL detail parsers when hovering over a discogs URL e.g. on https://musicbrainz.org/release/1d404e1d-fcb6-3a52-b478-e706e893c897
+
+#+begin_example
+[Image #14] - specific discogs release page
+[Image #15] - specific discogs release page after pressing "Space"
+[Image #16] - specific discogs master page
+#+end_example
+
+with much more information from their respective URLs as we currently have
+
+#+begin_example
+@debug/discogs-release.html - specific discogs release page - https://www.discogs.com/release/1874253-Bruce-Springsteen-Born-To-Run - IP
+@debug/discogs-master.html -  specific discogs master page - https://www.discogs.com/master/26725-Bruce-Springsteen-Born-To-Run - IP
+#+end_example
+
+1.)
+
+a.)
+
+from a release page additionally the sections
+
+#+begin_example
+"Tracklist" with credits
+"Companies, etc."
+"Credits"
+"Notes"
+"Barcode and Other Identifiers
+#+end_example
+
+plus the rendered images from the "More images" link
+
+b.)
+
+from a master page additionally the sections
+
+#+begin_example
+all the different versions from the "<n> versions" section
+#+end_example
+
+2.)
+
+Make some nice HTML based mockups/suggestions
+* DONE create support for discogs artist URLs for URL detail views on MB PTs
+
+1.)
+
+create support for discogs artist and labels URLs for URL detail views on MB PTs, like we already do for discogs release
+and master
+
+#+begin_example
+@debug/discogs-artist.html - IP - https://www.discogs.com/artist/219986-Bruce-Springsteen - take into account the "Releases", "Appearances", "Unoffical" and "Credits" section which should hold collapsable master/release tables
+@debug/discogs-label.html - IP - https://www.discogs.com/label/1866-Columbia
+#+end_example
+
+inclusive referenced images from the "More images" link
+
+2.)
+
+create nice rich HTML based mockups first
+
+* DONE support for discogs PTs
+** DONE i
+
+Create a new plan first:
+
+1.)
+
+Is it possible to extend the non-MB PTs too support the native Discogs URLs as new PTs e.g
+
+#+begin_example
+master - @debug/discogs-master.html
+release - @debug/discogs-release.html
+artist - @debug/discogs-artist.html
+label - @debug/discogs-label.html
+#+end_example
+
+2.)
+
+Can we use the already introduced discogs readers (which are used for rendering the discogs URL detail popups) instead
+of reinventing the wheel
+
+3.)
+
+create nice rich HTML based mockups first
+
+** DONE bugs
+
+1.)
+
+There are the following problems with each new Discogs PT
+
+#+begin_example
+[Image #31] - https://www.discogs.com/artist/219986-Bruce-Springsteen - FRP- "Artist" and "Label" columns are not hyperlinked
+[Image #32] - https://www.discogs.com/artist/219986-Bruce-Springsteen - FRP - scrolled down, the outermost columns are visible inside the sticky h2/h3 header lines
+[Image #36] - https://www.discogs.com/artist/219986-Bruce-Springsteen - FRP - scrolled right, column stickyness seems broken here when scrolling to the right
+[Image #33] - https://www.discogs.com/master/27097-Bruce-Springsteen-Devils-Dust - FRP - "Label" column is not hyperlinked
+[Image #34] - https://www.discogs.com/release/1132381-Bruce-Springsteen-Devils-Dust - FRP - the artists in "Credits" column are not hyperlinked, "Credits" column should be a multi-row column like the "Instruments" column on MB PT 'release-tracks'
+[Image #35] - https://www.discogs.com/label/582871-The-Stone-Pony - FRP - "Artist" column is not hyperlinked
+#+end_example
+
+2.)
+
+the outermost columns are visible inside the sticky h2/h3 header lines is present on every Discogs PT
+
+3.)
+
+When you compare the screenhots in 1.) you realize that the Discogs header on artist PTs is rendered left aligned and
+cut off in the browser window compared to the other ones
+
+4.)
+
+Is it possible to right align the complete h1 section with everything table related below it
+
+5.)
+
+Clicking the image in the first column should open our internal viewer
+
+** DONE add support for submissions
+
+1.)
+
+Implement full size images when clicking an image in the Discogs PTs
+
+2.)
+
+a.)
+
+add support for a new Discogs "Submissions" PT e.g. (Bruce Springsteen) https://www.discogs.com/submissions?mode=list&id=599283&page=1&view=flat
+
+#+begin_example
+@debug/discogs-submissions-flat.html - IP in flat view
+@debug/discogs-submissions.html - IP in detail view, where the '<div id="historyData">' shows the edit history of an entity
+#+end_example
+
+b.)
+
+when hovering over a release on the new PT, the detail view popup (after pressing "Space") should show the information
+of the '<div id="historyData">' in the non-flat view (implement a new reader for it)
+
+** DONE q
+
+1. Should the pageType also run on the browser view? YES
+2. Should "Artist – Title" be split into two columns: YES
+3. Should I cover other mode= submissions pages? NOT YET
+4. Should a title on this page open "History, then the release"; YES
+5. Should the history window work only on discogs.com, or also on MusicBrainz? ON BOTH
+6. For master rows in the viewer, should it show the master's own images? YES
+
+@debug/discogs-release-history.html - https://www.discogs.com//release/8164856-Human-Touch/history
+
+** DONE add missing "inline" support for clicking on URLs inside an already open detail popup (after pressing "Shift")
+*** DONE i
+
+1.)
+
+add missing "inline" support for clicking on URLs inside an already open detail popup (after pressing "Shift")
+
+#+begin_example
+@debug/missing-inline-urls.html - FRP on missing-inline-urls.html - https://www.discogs.com/submissions?mode=list&id=599283&page=1&view=flat - ALL links should be resolved inside the same popup with the same "Back" functionality 
+
+#+end_example
+<button type="button" class="mb-dp-tbtn" data-mb-tip="" title="Back to what the window showed before (Backspace, Alt+←)" style="">← Back</button>
+#+end_example
+
+2.)
+
+a.)
+
+On the Discogs PTs which currently would try to leave our current page e.g. [Image #44] - https://www.discogs.com/master/27097-Bruce-Springsteen-Devils-Dust
+when clicking the hyperlink on a "Columbia" label href e.g
+
+#+begin_example
+<td data-mb-rest-bg="#ffffff" style="background: rgb(255, 255, 255);"><a href="https://www.discogs.com/search/?q=Columbia&amp;type=label">Columbia</a></td>
+#+end_example
+
+I get the native browser popup
+
+b.)
+
+add support for Discogs support URLs which stay inside a hover popup 
+
+3.)
+
+The "View Changes" (currently separated hyperlinked entries) link in the "Discogs release history" popup detail should
+be just and and when clicked should render under the "LATEST CHANGE" section the corresponding changes
+
+#+begin_example
+<span class="mb-dgh-lk"><a href="https://www.discogs.com/release/32190612-Now-Thats-What-I-Call-Christmas/history?rev=6&amp;page=1" target="_blank" rel="noopener noreferrer">View</a><a href="https://www.discogs.com/release/32190612-Now-Thats-What-I-Call-Christmas/history?diff=6&amp;page=1" target="_blank" rel="noopener noreferrer">Changes</a></span>
+#+end_example
+
+*** DONE q
+
+1. One question: should search results show 25 at a time, with a "Load 25 more" button costing one request each: YES
+2. A saved page: please save a ?diff= page, e.g. https://www.discogs.com/release/8164856-Human-Touch/history?diff=10&page=1, as debug/discogs-release-history-diff.html. - PRESENT
+3.) for user profiles, if available also render the activity history in the popup:
+
+a.)
+
+support Discogs user pages e.g. https://www.discogs.com/user/vzell
+
+#+begin_example
+https://www.discogs.com/user/vzell - IP - @debug/discogs-user-vzell.html
+#+end_example
+
+as first class citizens PTs "discogs-user" (or whatever fits in the current scheme)
+
+b.)
+
+also add a new reader for rendering detail hover popups for that PT
+
+4.)
+
+add a skill for this kind of action
+
+*** DONE bug
+
+1.)
+
+The "Matched artist" column is not hyperlinked and the "History" column filterfield stretches too far right
+
+#+begin_example
+@debug/stretch.html - [Image #47]
+#+end_example
+
+2.)
+
+the user profile page is OK
+
+** DONE add additional functionality
+
+4.)
+
+On e.g. https://www.discogs.com/release/1132381-Bruce-Springsteen-Devils-Dust
+add a UVD section for the "Credits" column as we do with the "Instruments" column on MB PTs
+
+5.)
+
+On https://www.discogs.com/master/27097-Bruce-Springsteen-Devils-Dust give the "Cat#" column the same treatment as in the MB case for the "Catalog#" column on e.g
+https://musicbrainz.org/release-group/2872c420-5a5f-482e-b00c-199541c5b9b3
+
+6.)
+
+On https://www.discogs.com/label/582871-The-Stone-Pony treat the "Year" column like the "Date" column on MB pageTypes,
+so e.g "Decade" section support in the UVD
+
+7.)
+
+Split the "Changed" column in date/time columns and add our ususal treatment like on MB pages, e.g https://www.discogs.com/submissions?mode=list&id=599283&page=1&view=flat
+
+8.)
+
+Natively support URLs of the form https://www.discogs.com/release/8164856-Human-Touch/history?diff=10&page=1 as PTs
+
+9.)
+
+[Image #54] the "Changed by" column should get an editor/user icon
+
+10.)
+
+when hovering the avator it should be shown in highest resolution in our internal viewer
+
+11.)
+
+[Image #55] there are two column headers missing under the Diff - revision section" - @debug/2columns-missing.html
+ 
+* DONE column shift in "Release groups" and "Release" sections - https://musicbrainz.org/tag/arena%20rock
+
+On e.g. the PT https://musicbrainz.org/tag/arena%20rock there seems to be a column shift in the "Release groups" and "Release" sections:
+
+The "AC/DC (Australian hard rock band)" after the " by " from the "Release groups" and "Release" columns seems to be wrongly extracted
+#+begin_example
+@debug/tag-arena-rock.html - [Image #1]
+#+end_example
+
+* DONE todo for discogs
+** discogs URLs
+
+https://www.discogs.com/submissions?mode=list&id=599283&page=1&view=flat
+https://www.discogs.com/submissions?mode=list&id=599283&page=1
+
+** i
+
+● Pushed: main is at 3c335d0 on origin and feat/discogs-submissions is deleted. One test is still flaky, and it went out that way because you asked me to push first.
+
+  - Commits: 3d1c5ed commits the branch work that was still uncommitted (after syntax, lint and docs checks). fd923f6 is the merge into main, and 3c335d0 folds the changelog.
+  - Versions: WIP.1 became 9.99.1374 and WIP.2 became 9.99.1375. No cross-references needed rewriting, and both entries are dated 2026-10-18. @version is now 9.99.1375+2026-10-18 and the changelog audit passes.
+  - Branch: deleted locally. It was never on origin, so there was nothing to delete there.
+  - HELP: already covered everything in the release, so I didn't edit it. Since it changed, it has to be copied to the published repo; scripts/check-publish-ready.py will show what's out of date.
+
+  Tests: test:full passed 1,899 of 1,900 (9 m 41 s on petri). The failure is in the new discogs-links.spec.js:340 (a user's picture). The hover card never appeared within 5 s. When I re-ran that file on its own it failed 1 of 5 and then 4 of 8 runs.
+
+  It's a race, not a broken feature: a copy of the test that waits 1.5 s after the hover passed 72 of 72. I logged the events and ruled out a scroll hiding the card or the row being re-rendered. The traces of four failing runs are in
+  ShowAllEntityData/test-results/fixtures-discogs-links-dis-08ecb-… until the next Playwright run clears them. I couldn't save them anywhere else before stopping.
+
+  I'd fix it on a new branch: read the traces, fix the cause, and confirm the test fails before the fix and passes after.
+
+* DONE add new Discogs PT support for user rating pages and make all images shown in "Image" column when hovering
+** DONE i
+
+1.)
+
+add a new Discogs PT support for user rating pages e.g. https://www.discogs.com/users/ratings/vzell?limit=250&page=1
+
+#+begin_example
+@debug/discogs-user-ratings.html - IP
+#+end_example
+
+2.)
+
+when hovering the "Image" column in Discogs PTs make all images shown in a popup like what we do in the CAA/EAA column on MB PTs
+
+3.)
+
+Bug on PT https://www.discogs.com/submissions?mode=list&id=599283&page=1#mode=list&id=599283&page=1&item=%2Frelease%2F8164856-Human-Touch%2Fhistory
+
+#+begin_example
+@debug/discogs-scroll-bug.html - FRP
+#+end_example
+
+a.)
+
+the page is NOT scrollable downwards and to the right, it renders a browser full fixed number of entries on the FRP 
+
+b.)
+
+filtering and sorting works so
+
+4.)
+
+The Discogs submissions PTs should render the avator also in the UVD of the
+
+#+begin_example
+"Changed by" column at https://www.discogs.com/submissions?mode=list&id=599283&page=1&view=flat / https://www.discogs.com/submissions?mode=list&id=599283&page=1
+"User" at https://www.discogs.com/release/29758150-Fire-Gunar-Live/history
+#+end_example
+
+** DONE error
+
+I now get on e.g. https://www.discogs.com/release/8164856-Bruce-Springsteen-Human-Touch but also on other Discogs PTs in the console @debug/discogs-429.html
+
+* DONE add support for a "MusicBrainz" column on Discogs PTs
+** DONE initial
+
+On all new Discogs PTs add support for a "MusicBrainz" column when the third-party userscript "Import Discogs releases to MusicBrainz" by
+@murdos is present
+
+1.)
+
+register it from @tests/fixtures/live-userscripts/discogs_importer.user.js
+
+2.)
+
+render all MB icons + the '<span class="mb_valign mb_searchit">' icon as one row in the new "MusicBrainz" column cell
+and add UVD entries for the number of MB links
+
+#+begin_example
+@debug/discogs-release-withMB-icons.html - https://www.discogs.com/release/1132381-Bruce-Springsteen-Devils-Dust - FRP with Musicbrainz icons
+#+end_example
+
+see e.g the "Columbia" label:
+
+#+begin_example
+<td><span class="mb_wrapper"><span class="mb_valign mb_searchit"><a class="mb_search_link" target="_blank" title="Search this series on MusicBrainz (open in a new tab)" href="https://musicbrainz.org/search?query=Columbia&amp;type=series&amp;indexed=1"><small>S</small>?</a></span><span class="mb_valign"><a href="https://musicbrainz.org/label/011d1192-6f65-45bd-85c4-0400dd45693e" title="See this label on MusicBrainz"><img src="https://musicbrainz.org/static/images/entity/label.svg" height="16" width="16"></a> </span><span class="mb_valign"><a href="https://musicbrainz.org/label/47692917-5bad-4c56-a352-9d7ab7648ede" title="See this label on MusicBrainz"><img src="https://musicbrainz.org/static/images/entity/label.svg" height="16" width="16"></a> </span><span class="mb_valign"><a href="https://musicbrainz.org/label/ad6f8706-c95e-443b-8579-8e3ecd27126c" title="See this label on MusicBrainz"><img src="https://musicbrainz.org/static/images/entity/label.svg" height="16" width="16"></a> </span><span class="mb_valign"><a class="MuiTypography-root MuiTypography-labelSmall MuiLink-root MuiLink-underlineAlways css-glhfjc" href="/label/1866-Columbia" mlink="label/1866" mlink_done="series,label">Columbia</a></span></span><span class="MuiTypography-root MuiTypography-labelSmall css-1kybk0l"> – C2 93900</span></td>
+#+end_example
+
+3.)
+
+maybe we can reimplement what the third-party userscript does and use the Importer's cache
+
+* DONE add UVD entries to the "Relationships" column for unique counts for amazon link in general not dependant on which country, same for other URL types 
+
+do it all in one branch:
+
+1.)
+
+The review favicon
+
+#+begin_example
+<li class="review-favicon" data-mb-sbl-kind="Other" style="order: 70001;"><a href="http://brucebase.wikidot.com/2025#261025">Review (brucebase.wikidot.com)</a></li>
+#+end_example
+
+on e.g. https://musicbrainz.org/event/47b84024-bd3b-4e36-80e1-b051e12ede2f is missing in the "Relationship" column under the "URLs" section
+
+#+begin_example
+@debug/event-review-glyph.html - FRP - https://musicbrainz.org/release/979418e7-c2c1-47e8-805a-bdc2d60c0057
+#+end_example
+
+2.)
+
+The UVD in the following "Section - column"
+
+#+begin_example
+URLs - "URL"
+Via release group: <RG> - "Target"
+Sidebar: AME - "Link"
+Sidebar: Search - "Link"
+#+end_example
+
+need website icon support + unique value counts e.g. on https://musicbrainz.org/release/9d451257-ebce-44ec-aad8-b48609bfaf7a
+after clicking the "Credits" button (but the same is true for other PTs after clicking the "Relationships" button, e.g. on https://musicbrainz.org/series/bf668806-793f-4131-959f-9124ad76a47b)
+
+#+begin_example
+@debug/release-missing-glyphs.html - FRP
+#+end_example
+
+3.)
+
+there should also be unique counts for same kind of links (e.g. not dependant on which country)
+
+https://musicbrainz.org/release/979418e7-c2c1-47e8-805a-bdc2d60c0057
+
+4.)
+
+Remove
+
+#+begin_example
+<button title="Search &quot;Bruce Springsteen Tracks II: The Lost Albums&quot; on YouTube Music" style="cursor: pointer; --mb-sph-left: 20px; --mb-sph-maxw: 1590px;" class="mb-sph-target mb-sph-inline">YouTube Music Lookup</button>
+#+end_example
+
+from the bottom of the FRP at https://musicbrainz.org/release/9d451257-ebce-44ec-aad8-b48609bfaf7a - it's coming from a third-party user script "MBz YouTube Music Lookup" by @afro
+
+5.)
+
+if the "Relationships" column on MP PTs has multiple Discogs URL relationship icons, add a warning icon (see the skill "add-finding")
+
+* DONE the "Sidebar" section on events PTs should be rendered above the "Relationships" section
+
+The "Sidebar" section on PTs e.g. https://musicbrainz.org/event/47b84024-bd3b-4e36-80e1-b051e12ede2f should be rendered
+above the "Relationships" section as with all other MB PTs. This one seems to be the only exception, but check.
+
+#+begin_example
+@debug/event-sidebar-above-relationships.html - current FRP - "Sidebar" section below "Relationships"
+#+end_example
+
+#+begin_example
+@debug/USA-area-releases-filtered.html - FRP - https://musicbrainz.org/area/489ce91b-6658-3307-9877-795b68554c98/releases?link_type_id=1
+#+end_example
+
+* DONE add a "Editing history" button to the entity detail popup header of every supported MB entity
+** initial
+
+1.)
+
+add a "Editing history" button to the entity detail popup header of every supported MB entity e.g.
+
+#+begin_example
+@debug/entity-detail-popup-header.html - entity detail popup header for a recording where the track name difffers from the recording name 
+#+end_example
+
+See 3.) below what should happen when pressing the button
+
+2.)
+
+MB entity edit pages have the generic URL "/<entity>/<MBID>/edits" and can be found in the sidebar of each MB entity (if present) e.g
+
+#+begin_example
+<li><a href="/event/47b84024-bd3b-4e36-80e1-b051e12ede2f/edits"><bdi>Editing history</bdi></a></li>
+#+end_example
+
+Examples of IPs for the edit pages at @debug/
+
+#+begin_example
+edits-release-group.html
+edits-release.html
+edits-recording.html
+#+end_example
+
+3.)
+
+a.)
+
+parse them and render in the current detail popup the edit history of the current entity with the same look and feel
+what the Discogs "Submissions"PTs offer when pressing the history link in the "History" column [Image #21]
+
+The edit header lines
+
+#+begin_example
+<div class="edit-header applied edit-add add-medium">
+#+end_example
+
+should basically map to the Discogs "HISTORY" entries and when clicked should show the actual detail edits (mapped to the Discogs "LATEST CHANGE - REVISION" entries)
+
+b.)
+
+a back button should get us back to the previous page inside the same detail popup
+
+4.)
+
+make some nice rich HTML mockups
+
+5.)
+
+maybe download yourself some more edit pages of other entities to get a better overview what kind of edits are possible
+and how they are represented
+
+6.)
+
+images should get our internal viewer treatement too
+
+** questions
+
+Open questions (also at the end of the mockup's overview tab):
+1. Should the label be "✎ Editing history" (MusicBrainz's own word) or "✎ Edits"?
+2. Should there be a key for it, such as H?
+3. For busy entities, is "Load page 11 · more than 500 edits" enough, given there's no last page?
+4. Should the editor card get the same button for /user/<name>/edits, now or later?
+5. Should "Only what changed" be on by default?
+6. Logged-in pages name other editors and quote their notes. These are public on musicbrainz.org, and the Discogs fixtures already do the same. Can the test fixtures use these pages, or only logged-out pages plus your own edits?
+
+** answers
+
+1. Should the label be "✎ Editing history" (MusicBrainz's own word): "✎ Editing history"
+2. Should there be a key for it, such as H? YES
+3. For busy entities, is "Load page 11 · more than 500 edits" enough, given there's no last page? YES
+4. Should the editor card get the same button for /user/<name>/edits, now or later? NOW
+5. Should "Only what changed" be on by default? YES
+6. Logged-in pages name other editors and quote their notes. These are public on musicbrainz.org, and the Discogs fixtures already do the same. Can the test fixtures use these pages: YES
+
+** after resume
+
+● Automatic replies were not resumed for https://claude.ai/artifact/D4ZxzCjwsbWSRJLs6dqk58 — switching conversations
+inside a session doesn't bring comment monitors back. Publish the Artifact again, or ask Claude to watch it, to turn its
+replies back on.
+
+* DONE add "Space" on the image hover popup in the CAA/EAA column to show ALL images (right now it shows a couple and the a "+ 69")
+
+0.)
+
+what is the reason (and the current number break even number) of not showing all images on hover popup in the CAA/EAA
+column e.g. on https://musicbrainz.org/release-group/f731060c-05d4-439d-8351-59e5e5eb91a0 - @debug/CAA-lots-of-images.html - FRP - filtered
+
+1.)
+
+implement the option to press "Space" on the image hover popup in the CAA/EAA column to show ALL images (right now it
+shows a couple and then the additional ones as a number "+<images left to show>" e.g "+69") - [Image #17]
+
+2.)
+
+is it possible, when holding down the "Shift" key and hovering over the inline image in the CAA/EAA column of MB PTs, to
+show the images in a bigger size, e.g. the same size as what we show when hovering over the inline image in e.g. the
+"Release" column of the above URL - [Image #18]
+
+* DONE add the "Recording of" to more recording columns in other PTs
+
+Currently on the PT 'artist-recordings' e.g. https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/recordings on the FRP we render the new
+"Recording of" and "Performance attributes" columns (+ functionality) after the recording "Name" column with the functionality of on demand loading of works associated to the recordings
+
+#+begin_example
+<button type="button" class="mb-recof-col-hdr-btn" data-mb-aj="recof" data-mb-aj-name="▶🎼" aria-pressed="true" aria-label="Load the &quot;Recording of&quot; column"></button>
+#+end_example
+
+1.)
+
+Make a comprehensive report of MB PTs where we also render recording type columns
+
+2.)
+
+Is it feasible to also add the same treatment to these columns as we do on the PT 'artist-recordings', if yes make it configurable
+
+** Answer (2026-10-19, branch feat/recording-of-more-pts)
+
+*** 1.) MB pageTypes that render recordings
+
+One recording per row (anchor = the column that links /recording/):
+
+| pageType                                                           | tableMode    | anchor                | WS/2 browse parent | done in 9.99.1390           | tested in browser |
+|--------------------------------------------------------------------+--------------+-----------------------+--------------------+-----------------------------+-------------------|
+| artist-recordings                                                  | single       | Name                  | artist             | (already, with suggestions) | yes               |
+| instrument-recordings                                              | single       | Name                  | —                  | yes                         | yes               |
+| search (type=recording)                                            | single       | Name                  | —                  | yes                         | yes               |
+| series-releases → Recordings                                       | single       | Name                  | —                  | yes                         | yes               |
+| collections-releases → Recordings                                  | single       | Name                  | collection         | yes (no fixture yet)        | yes               |
+| isrc                                                               | single       | Title                 | —                  | yes                         | yes               |
+| area-recordings / -filtered                                        | multi/single | Title                 | —                  | yes                         | yes               |
+| place-performances / -filtered                                     | multi/single | Title                 | —                  | yes                         | yes               |
+| work-recordings / -filtered                                        | multi/single | Title                 | work               | yes                         | yes               |
+| tag-value-entity → Recordings                                      | single       | Recording             | —                  | yes                         | yes               |
+| user-tag-value-entity → Recordings                                 | single       | Recording             | —                  | yes (no fixture)            | yes               |
+| user-ratings-type → Recordings                                     | single       | Recording             | —                  | yes                         | yes               |
+| artist-credit-entity → Recordings                                  | single       | Recording             | — (id not an MBID) | yes                         | yes               |
+| tag-value, user-tag-value, user-ratings, artist-credit (all kinds) | multi        | Recording (one group) | —                  | later: per-table anchoring  |                   |
+| report-detail / report-multiple-linked (recording reports)         | single       | Recording             | —                  | later                       |                   |
+
+Recording is one column among other entities — not in scope: release-tracks
+(already shows "Recording of work" from the page itself, no requests),
+artist-/label-relationships (mixed sections), the relationship-table renders
+and area/place/instrument/url overviews, event-overview, the edits pages.
+No recording column: recording-releases, recording-fingerprints,
+releasegroup-releases, label-releases, iswc, cd-stub, recording-tags.
+
+*** 2.) Feasible — done for the one-recording-per-row lists
+
+=features.recordingOf: { after, browseBy, suggest, setting }=; one checkbox
+per page group (=sa_recording_of_on_*=, default on) under the master switch.
+Browse batching on work and collection pages (probed), lookups elsewhere,
+suggestions on artist-recordings only. Details:
+docs/claude/deferred-columns-picard-relationships.md, "Recording of column".
+
+** DONE fixtures
+**** q
+
+Are the following the right URL you are missing for the fixtures
+
+#+begin_example
+collections-releases → Recordings - https://musicbrainz.org/collection/17ee2e77-21e7-40f1-89b1-4238c9b73428
+user-tag-value-entity → Recordings - https://musicbrainz.org/user/vzell/tag/acoustic%20rock/recording
+#+end_example
+
+If yes, I will provide the raw HTML of them in the @debug folder
+
+**** a
+
+They are in place:
+
+#+begin_example
+- debug/collection-recordings-initial.html
+- debug/user-tag-recording-initial.html
+#+end_example
+
+** DONE bug
+
+1.)
+
+OK, both debug files are overwritten with the IPs
+
+2.)
+
+There is a rendering bug on PT 'search (type=recording)' e.g https://musicbrainz.org/search?query=Born+to+Run&type=recording&limit=25&method=indexed
+
+#+begin_example
+@debug/OF-WORK-search-recordings-initial.html - IP
+@debug/OF-WORK-search-recordings-final-ok.html - FRP - before the addition of the two new columns "Recording of" and "Performance attributes"
+@debug/OF-WORK-search-recordings-final-bug.html - FRP - after the addition of the two new columns 
+#+end_example
+
+* DONE add support for images in the sidebar of instruments PTs
+
+add support for images in the sidebar of instruments PTs and add them to the h1 line in front of the instrument name (IP and FRP)
+(like we do e.g for the picture for artists/places etc.)
+
+#+begin_example
+@debug/electric-bass-guitar.html - IP - - https://musicbrainz.org/instrument/0b9d87fa-93fa-4956-8b6a-a419566cc915/recordings
+#+end_example
+
+* DONE add support for a tag reader
+
+1.)
+
+On e.g. tag pages like https://musicbrainz.org/tag/alternative%20rock move the following container
+
+#+begin_example
+<p class="mb-sph-target" style="--mb-sph-left: 16px; --mb-sph-maxw: 1582px;">212,773 entities found</p>
+#+end_example
+
+right after the h2 header line with the global filter field, also indented like all the following h3 header lines
+
+#+begin_example
+@debug/tag-entity-initial.html - IP
+@debug/tag-entity-final.html - FRP
+#+end_example
+
+2.)
+
+a.)
+
+add support for a tag reader to display as detail popup on hovering and "Space" pressing a tag container like e.g
+
+#+begin_example
+<div class="mb-sb-chips mb-sb-card-body"><div class="mb-sb-chip-row"><span class="mb-sb-pill"><a href="/tag/alternative%20rock">alternative rock</a><span class="mb-sb-pill-votes">1</span></span><span class="mb-sb-pill"><a href="/tag/heartland%20rock">heartland rock</a><span class="mb-sb-pill-votes">1</span></span></div></div>
+#+end_example
+
+see the above raw HTML files in @debug and the following for the "TAGS" section on e.g. https://musicbrainz.org/artist/84c38d3a-3400-4c28-b988-90558bb6fae0/releases
+
+#+begin_example
+@debug/bo-deans-tag-buttons.html - FRP - https://musicbrainz.org/artist/84c38d3a-3400-4c28-b988-90558bb6fae0/releases
+#+end_example
+
+b.)
+
+also the number of spill votes
+
+#+begin_example
+<span class="mb-sb-pill-votes">1</span>
+#+end_example
+
+should get an explanatory rich tooltip
+
+* DONE new non-MB PTs
+
+discogs submission list
+* DONE bugs
+
+1.)
+
+[Image #19] - all the artists, labels etc should be hyperlinked on the discogs detail pages when opened with "Space"
+
++ the header section in the detail popup should clearly tell if the page is a relase or master page at e.g. '<span style="font-weight: 700; font-size: 1.15em; color: rgb(34, 34, 34);">Discogs › Discogs</span>'
+
+[Image #20] - the header line should say that it's a master page
+[Image #21] - the header line should say that it's a release page
+
+2.)
+
+For example on https://musicbrainz.org/release/22a6802f-d22e-4f47-9f22-6aac257a4194:
+
+Add site icons/favicon in front of the site names to the "Sidebar" sections like
+
+#+begin_example
+"EXTERNAL LINKS"
+"SEARCH"
+"RELEASE GROUP EXTERNAL LINKS"
+#+end_example
+
+etc. if the corresponding entries in the real sidebar have them
+
+#+begin_example
+ - current sidebar section on the FRP
+ - real sidebar with site icons in front of the site names
+#+end_example
+
+3.)
+
+Except the h4 "SEARCH" section ALL sections in the h2 "Sidebar" section should be uncollapsed by default
+
+* DONE Could the "Page Reloaded" popup dialog directly emulate the click on the corresponding "Show all..." button from which it was triggerd
+
+Could the "Page Reloaded" popup dialog,
+
+#+begin_example
+<div style="position: absolute; background-color: rgb(255, 255, 255); border: 1px solid rgb(204, 204, 204); border-radius: 10px; padding: 0px; min-width: 320px; max-width: 500px; box-shadow: rgba(0, 0, 0, 0.22) 0px 8px 32px; font-family: -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, Roboto, sans-serif; font-size: 14px; color: rgb(34, 34, 34); overflow: hidden; z-index: 20001; left: 235.672px; top: 125.062px;"><div style="background-color: rgb(74, 85, 104); color: rgb(255, 255, 255); padding: 10px 14px; font-weight: 600; font-size: 13px; letter-spacing: 0.03em;">⚠️ Page Reloaded</div><div style="padding: 16px 18px; line-height: 1.55; color: rgb(51, 51, 51); white-space: pre-wrap;">The underlying MusicBrainz page has been reloaded to ensure filter stability. Please click the desired "Show all" button again to start the process.</div><div style="display: flex; justify-content: flex-end; gap: 10px; padding: 10px 14px; border-top: 1px solid rgb(232, 232, 232); background-color: rgb(249, 249, 251);"><button style="padding: 6px 18px; border-radius: 6px; border: 1px solid rgb(67, 160, 71); cursor: pointer; font-size: 13px; font-weight: 600; transition: background 0.12s; background: rgb(76, 175, 80); color: rgb(255, 255, 255);">OK</button></div></div>
+#+end_example
+
+which shows up when already on an FRP and pressing either the same or another action button (if available) on the same
+page, do the following automatically:
+
+1.)
+
+clicking the "OK" button inside the dialog directly (or maybe wait 2/3 seconds until the user has read the popop dialog
+text)
+
+2.)
+
+directly emulate the click on the corresponding "Show all..." button from which it was triggered
+
+3.)
+
+Is it actually really neccessary to do it like we implemented currently or can we shortcut it further
+
+4.)
+
+If yes, please implement
+
+* DONE add a reader for collection detail popups
+
+1.)
+
+add a new PT for MB users, e.g. https://musicbrainz.org/user/chaban
+
+#+begin_example
+@debug/user-chaban.html - IP - chaban
+@debug/user-vac31.html - IP - Vac31
+#+end_example
+
+2.)
+
+a.)
+
+add a reader for richer collection detail popups (than we have now) on e.g.https://musicbrainz.org/user/chaban/collections
+
+#+begin_example
+@debug/chaban-collections-initial.html 
+#+end_example
+
+b.)
+
+read a couple of the actual referenced collections by yourself to get an idea of how collection pages look like
+
+3.)
+
+make some nice rich HTML based mockups
+
+* DONE multiple discogs relationships icons bugs
+
+1.)
+
+when there are multiple discogs relationships icons in the "Relationships" column for a specific cell, there are two bugs:
+
+#+begin_example
+@debug/multiple-discogs-relationships.html - FRP - https://musicbrainz.org/tag/distributor
+#+end_example
+
+a.)
+
+Although the warning icon for this case is present, when trying to hover over it, the glyph for "Click here, outside the icons, to reload this row’s relationships"
+(together with it's tooltip) takes over it's place, although that glyph is normally rendered right after the relationship icon(s) and NOT at the very right of the data cell.
+
+b.)
+
+in the screenshot, you can see the popup stack is missing the actual finding about the multiple (in this case double)
+discogs icons, what at least the "WARNING" menu shows us. please add it.
+
+c.)
+
+actually extend the multiple site check finding (like the discogs one) also to all other websites in the "Relationships"
+column
+
+2.)
+
+I want our userscript to be as non-intrusive as possible on the IP of a supported MB PT. We need config options for the
+end-user.
+
+a.)
+
+analyse and summarize what kind of features are already injected besides our standard action buttons in the h1 line of a
+PT.
+
+b.)
+
+I think there is the option ov hovering over a hyperlink and displaying a popup with "Space" typing detail window support.
+Make this configurable (default: true), but at least an end-user can switch it off when not needed
+
+c.)
+
+the sidebar should already get a sidebar handle on the IP, but the sidebar by default should be uncollapsed (whereas on
+the FRP it's collapsed by default)
+
+* DONE https://musicbrainz.org/user/vzell
+** DONE initial
+
+At the MB user pages e.g. https://musicbrainz.org/user/vzell
+
+#+begin_example
+@debug/user-vzell.html - FRP
+#+end_example
+
+the following types of links which are typically referenced from "View..." hrefs inside columns of sub-tables should
+also get our popup detail handling
+
+#+begin_example
+https://musicbrainz.org/account/applications
+https://musicbrainz.org/subscribers
+
+https://musicbrainz.org/user/vzell/edits
+
+https://musicbrainz.org/user/vzell/votes
+
+https://musicbrainz.org/user/vzell/edits/accepted
+https://musicbrainz.org/user/vzell/edits/autoedits
+https://musicbrainz.org/user/vzell/edits/applied
+https://musicbrainz.org/user/vzell/edits/rejected
+https://musicbrainz.org/user/vzell/edits/failed
+https://musicbrainz.org/user/vzell/edits/cancelled
+https://musicbrainz.org/user/vzell/edits/open
+https://musicbrainz.org/user/vzell/edits/failed
+https://musicbrainz.org/search/edits?conditions.1.operator=%3E&conditions.1.field=open_time&conditions.1.args.0=24+hours+ago&combinator=and&conditions.0.name=vzell&conditions.0.field=editor&order=desc&conditions.0.args.0=1126444&conditions.0.operator=%3D&negation=0&auto_edit_filter=
+#+end_example
+
+** DONE ratings and tags are still missing
+
+the user ratings and tags are still missing (see the "Tags and ratings" sub-section)
+
+#+begin_example
+https://musicbrainz.org/user/vzell/tags
+https://musicbrainz.org/user/vzell/ratings
+#+end_example
+
+* DONE on 'release-tracks' PTs render the front image from the sidebar also in front of the h1 release title
+** DONE initial
+
+#+begin_example
+@debug/release-tracks-tttr.html - FRP
+#+end_example
+
+1.)
+
+on 'release-tracks' PTs render the front image from the sidebar also in front of the h1 release title, etc. like we
+already do with artist, place, etc. - [Image #14]
+
+2.)
+
+the "View annotation history" href in the "Annotations" section
+
+#+begin_example
+<a href="/release/3ec14d03-2c03-4764-a69d-8155817a040f/annotations">View annotation history</a>
+#+end_example
+
+needs a detail popup - https://musicbrainz.org/release/3ec14d03-2c03-4764-a69d-8155817a040f/annotations
+
+3.)
+
+"Live credit without a date" e.g in the "Recording engineer" column should tell the date when it can be deduced -
+https://musicbrainz.org/release/3ec14d03-2c03-4764-a69d-8155817a040f - [Image #13]
+
+4.)
+
+add rich HTML diff tooltips for "Recording comment almost follows ...."/"Recording comment almost in the live from",
+e.g. on https://musicbrainz.org/tag/acoustic%20rock/recording
+
+#+begin_example
+@debug/recording-comment-diff-tooltip.html - FRP - [Image #15]
+#+end_example
+
+** DONE bugs
+
+some bugs and enhancements
+
+1.)
+
+There is a "shine through" effect on the following PTs (whereas on
+e.g. https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f it works as designed)
+
+#+begin_example
+[Image #17] - https://musicbrainz.org/release-group/f83d2211-dd81-4b1e-9a02-e89733891e1c
+[Image #18] - https://musicbrainz.org/release/3ec14d03-2c03-4764-a69d-8155817a040f
+#+end_example
+
+2.)
+
+a.)
+
+Currently when hovering over an artist image either the one in front of the h1 artist name or the one in the sidebar, we
+only get a tooltip popup, see [Image #19] and only when clicking the image we get our internal viewer treatment. 
+
+b.)
+
+I want the same treatment like we have when hovering an image in the "CAA"/"EAA" column on e.g. https://musicbrainz.org/release-group/f83d2211-dd81-4b1e-9a02-e89733891e1c PTs
+c.)
+
+same holds true for other PTs where we support images, like release groups, releases, places, instruments, etc -> please fix/add support
+
+3.)
+
+add a new PT for annotations e.g. https://musicbrainz.org/release/3ec14d03-2c03-4764-a69d-8155817a040f/annotation/1063770
+
+#+begin_example
+@debug/annotation-artist.html - https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/annotation/630690
+@debug/annotation-release.html - https://musicbrainz.org/release/3ec14d03-2c03-4764-a69d-8155817a040f/annotation/1063770
+#+end_example
+
+* DONE shorten column names for "Recording of" and "Performance attributes" on PTs which use them
+
+1.)
+
+Shorten column names for "Recording of" and "Performance attributes" on PTs which use them, e.g. https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/recordings.
+Make some suggestions so we can save space.
+
+2.)
+
+"1. Display labels only"; go with 1. and implement in such a way that we potentially can reuse it for other columns in other PTs, so make it reusable
+
+* DONE tag detail popup support on https://musicbrainz.org/user/vzell/tags
+
+After this implementation additional tackle the following:
+
+1.)
+
+Add tag detail popup support on PTs like e.g https://musicbrainz.org/user/vzell/tags when hovering the tag anchors
+(maybe check the collections page for ideas - https://musicbrainz.org/user/chaban/collections)
+
+#+begin_example
+@debug/user-tags.html
+#+end_example
+
+There are hrefs like the following on it:
+
+#+begin_example
+https://musicbrainz.org/user/vzell/tag/acoustic%20rock
+https://musicbrainz.org/user/vzell/tag/gig
+https://musicbrainz.org/user/vzell/tag/back%20scan%20missing
+etc.
+#+end_example
+
+* DONE on the first mini popup when hovering a known MB PT for further expansion with a complete detail popup, add a small headerline to the mini popup which already shows the entity type
+** DONE i
+
+1.)
+
+on the first mini popup [Image #32] when hovering a known MB PT, the entity type like in this case "Recording" is NOT
+shown and obvious, for further expansion with a complete detail popup [Image #31], add a small headerline or something
+else to the mini popup which already shows the entity type
+
+Make some suggestions and nice rich HTML mockups first
+
+2.)
+
+on PT 'release-tracks' e.g. https://musicbrainz.org/release/3ec14d03-2c03-4764-a69d-8155817a040f create a stacked popup
+tooltip above the RG popup [Image #34], which describes the event when hovering the "#" column (in this example the
+second row). The actual event is found in the "Recorded at event" column
+
+** q
+
+What I need from you
+1. Which variant for the kind: A, B, C, D or E?
+2. Should cards from other sites stay as they are, or also get the kind line?
+3. Which variant for the event card: A, B or C?
+4. Should the event card get its own checkbox, on by default, next to the "#" card's Ctrl setting, or follow the existing "MusicBrainz cards" setting?
+
+** answers
+
+1. Which variant for the kind: A, B, C, D or E?: ==> A
+2. Should cards from other sites stay as they are, or also get the kind line?: ==> They too with the kind line
+3. Which variant for the event card: A, B or C?: ==> A
+4. Should the event card get its own checkbox, on by default, next to the "#" card's Ctrl setting, or follow the existing "MusicBrainz cards" setting?: ==> YES, on by default
+
+* DONE Re-capture all the snapshot baselines after all the latest changes
+
+Re-capture all the snapshot baselines after all the latest changes
+
+* DONE add new artist collections PT
+** DONE initial
+
+Some entity pages e.g artists or labels have in their sidebar hrefs to collection and subscription pages.
+Add new <entity>-collections/subscriptions PTs.
+
+#+begin_example
+@debug/artist-sidebar.html - IP for the Bruce Springsteen artist sidebar - https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f
+#+end_example
+
+#+begin_example
+<a href="/artist/70248960-cb53-4ea4-943a-edb18f7d336f/subscribers" title="Bruce Springsteen"><bdi>Subscribers</bdi></a>
+<a href="/artist/70248960-cb53-4ea4-943a-edb18f7d336f/collections" title="Bruce Springsteen"><bdi>Found in 33 user collections</bdi></a>
+#+end_example
+
+1.)
+
+add new entity collections PTs
+
+#+begin_example
+@debug/artist-collections.html - IP - https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/collections
+@debug/release-collections.html - IP - https://musicbrainz.org/release/52c6808b-037d-47d5-b0c7-17331c9d36cd/collections - no collections yet
+#+end_example
+
+2.)
+
+add new entity subscriptions PTs
+
+#+begin_example
+@debug/artist-subscribers.html - IP - https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/subscribers
+@debug/label-subscribers.html - IP - https://musicbrainz.org/label/45ffe1d8-92da-4750-9a4a-f42861f46e2c/subscribers
+#+end_example
+
+** DONE add hover detail popup support for entity pages e.g artists or labels have in their sidebar hrefs to collection and subscription pages
+
+1.)
+
+add hover detail popup support for entity pages e.g artists or labels which have in their sidebar hrefs to collection and
+subscription pages, e.g.
+
+#+begin_example
+<a href="/artist/70248960-cb53-4ea4-943a-edb18f7d336f/subscribers" title="Bruce Springsteen"><bdi>Subscribers</bdi></a>
+<a href="/artist/70248960-cb53-4ea4-943a-edb18f7d336f/collections" title="Bruce Springsteen"><bdi>Found in 33 user collections</bdi></a>
+#+end_example
+
+2.)
+
+The BB PT https://brucebase.wikidot.com/system:recent-changes "Flags" column  should be a multi-row column - [Image #3]
+
+* DONE add missing PTs for edit/vote user pages
+
+Add missing PTs for edit/vote user pages
+
+Except
+
+#+begin_example
+https://musicbrainz.org/user/vzell/edits
+#+end_example
+
+all the following are missing as PTs
+
+#+begin_example
+https://musicbrainz.org/user/vzell/votes
+https://musicbrainz.org/user/vzell/edits/accepted
+https://musicbrainz.org/user/vzell/edits/autoedits
+https://musicbrainz.org/user/vzell/edits/applied
+https://musicbrainz.org/user/vzell/edits/rejected
+https://musicbrainz.org/user/vzell/edits/failed
+https://musicbrainz.org/user/vzell/edits/cancelled
+https://musicbrainz.org/user/vzell/edits/open
+https://musicbrainz.org/user/vzell/edits/failed
+#+end_example
+
+All have the same structure as https://musicbrainz.org/user/vzell/edits
+
+
+* TODO consolidate more LAF across more PTs
+
+
+* TODO Add a must have third-party userscripts section together with the end-user visible changes and what our userscript depends on
+
+Add a must have third-party userscripts section together with the end-user visible changes and what our userscript
+depends on
+
+1.)
+
+Analyse first and give a comprehensive summary in a nice HTML based view, with URLs to the original script (downlaod URL, homepage, documentaiotn URL, etc)
+
+2.)
+
+Suggestions for complete integration
+
+3.)
+
+etc
+
+
+* TODO check discogs artist pages if really ALL master are present + implement master->release(s) drilldown
+
+* TODO Use the Discogs history diff format in other pageTypes, for example the BB “changes” button
+
+Use the Discogs history diff format in other pageTypes, for example the BB “changes” button (you have to be logged in).
+
+
+* TODO write the forum section for 9.99.167 -> 9.99.1426
+
+write the forum section for 9.99.1167 -> 9.99.1426
+
+9.99.1167 is the last officially published one.
+
+there are already sections after that one, that were meant to be published but never did.
+
+rewrite all these and combine with the latest changes
+
+
+* TODO majkinetor: "Links" column - switch of the native tooltip on the FRP
+* TODO majkinetor: async issues
+* TODO majkinetor: no icons in the lower right corner
+
+
+* TODO tested live, OK; commit, push
+
+
+* TODO Release events - Japan need flag on the relationships area
+
+
+* TODO recapture user open edits page
+
+
+* TODO on collection pages, images should get internal viewer support + their tooltip should show a rich popup and highlight the corresponding row
+
+on collection pages, images should get internal viewer support + their tooltip should show a rich popup and highlight
+the corresponding row
+
+* TODO also the the pager framework on other detail popups like on the collections one
+* TODO Scrollbars (left side) and pager (tables right side) or any table + image internal viewer support should automatically be there for ALL detail popups
+
+Scrollbars (left side) and pager (tables right side) or any table + image internal viewer support should automatically
+be there for ALL detail popups, and the geometry should be based on the current and stored popup window size 
+
+a.)
+
+Chaban
+
+#+begin_example
+"Instrument collections" -> "Edit search queries" - scrollbar on the left section
+"Label collections" ->  "Artist as label" - multiple srollbars
+"Release collections" -> "Scans" - image hover popup + internal viewer click
+"Work collections" -> "Onomatopoeia" - adjust scrollbars for the right window + adjust height
+#+end_example
+
+b.)
+
+on collection pages, images should get internal viewer support + their tooltip should show a rich popup and highlight
+the corresponding row -> image hover popup + internal viewer click
+
+* TODO userscript size and managibility
+
+1.)
+
+Analyze the implications of our currently grown very large userscript regarding size (7.9 MB) and managibility and
+performance impact on the end-usersite when enabled in Tampermonkey and generate a comprehensive report.
+
+2.)
+
+Make suggestions for refactoring, see also @REFACTORING.org
+
+3.)
+
+Is it feasible to relocate specifically parts of the code in a library or multiple libraries
+
+#+begin_example
+code for href hovering, card and detail popups 
+code for non-MB PTs
+code for extractors
+etc.
+#+end_example

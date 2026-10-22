@@ -69,7 +69,7 @@ async function openPhone(page, settings) {
         settingsOverride: { sa_rich_tooltip_delay_ms: 0, ...settings },
     });
     page.on('framenavigated', (f) => { if (f === page.mainFrame()) log.navigations.push(f.url()); });
-    await page.exposeFunction('__popPeekShown', () => log.shown.push(Date.now()));
+    await page.exposeFunction('__popPeekShown', () => log.shown.push(performance.now()));
     await page.evaluate(() => {
         new MutationObserver(() => {
             const p = document.getElementById('mb-dp-peek');
@@ -142,4 +142,34 @@ test('with sa_pop_mb_page_on_touch on, a tap on a link outside the tables opens 
     await expect(dialog).toContainText('Bruce Springsteen');
     expect(log.navigations, 'the page stays').toEqual([]);
     expect(log.shown).toEqual([]);
+});
+
+// A collection is read from its page (2026-10-20): on a phone the tap opens
+// its window, and the pager's ▶ answers a tap as it does a click.
+test('a tap on a collection link opens its window; ▶ steps through its entries', async ({ page }) => {
+    const pages = [];
+    await page.context().route(/^https:\/\/musicbrainz\.org\/collection\//, (route) => {
+        pages.push(route.request().url());
+        return route.fulfill({ path: path.join(__dirname, 'collection-page-coverart-video.html'), contentType: 'text/html' });
+    });
+    const log = await openPhone(page, { sa_pop_mb_on_touch: true });
+    await page.evaluate(() => {
+        const a = document.createElement('a');
+        a.href = '/collection/3d73c67c-76c6-459d-ac8b-3145cb49d672';
+        a.className = 'pop-probe';
+        a.textContent = 'Cover art: Video';
+        document.querySelector('table.tbl tbody tr td:first-child').append(' ', a);
+    });
+    await tapLink(page, page.locator('a.pop-probe'));
+    const dialog = page.locator('#mb-dp-dialog');
+    await expect(dialog.locator(':scope > div > span').first()).toHaveText('Collection');
+    const h4 = dialog.locator('h4', { hasText: 'Release groups' });
+    await expect(h4).toHaveText('Release groups · 1–25 of 196');
+    const next = dialog.locator('button[data-mb-coll-act="next"]');
+    await next.scrollIntoViewIfNeeded();
+    const box = await next.boundingBox();
+    await page.touchscreen.tap(box.x + box.width / 2, box.y + box.height / 2);
+    await expect(h4).toHaveText('Release groups · 26–50 of 196');
+    expect(pages).toHaveLength(1);
+    expect(log.navigations, 'the page stays').toEqual([]);
 });

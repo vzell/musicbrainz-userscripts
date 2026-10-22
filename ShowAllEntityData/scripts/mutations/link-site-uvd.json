@@ -1,0 +1,236 @@
+[
+  {
+    "name": "the event converter skips the site-icon pass",
+    "why": "The reported bug: applyEventDetailsToTables() built its URL table without _sbIconRelLinks(), so the review link had its icon in the sidebar card and none in the table.",
+    "edits": [
+      {
+        "find": "        if (relBuilt) _sbIconRelLinks(doc, frag);\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/event-overview-url-icons.spec.js",
+    "grep": "the review link shows its sidebar icon",
+    "expect": "fail"
+  },
+  {
+    "name": "the Credits button does not name the YouTube button's selector",
+    "why": "The reported bug: the Credits render replaces the page's features, so release-tracks' removeSelectors never reached it and the third-party button stayed at the foot of the page.",
+    "edits": [
+      {
+        "find": "                _relTablesButton('release-credit-tables', 'Release', { credits: true }, 'Credits',\n                    { removeSelectors: [_YTM_LOOKUP_SEL] })",
+        "replace": "                _relTablesButton('release-credit-tables', 'Release', { credits: true }, 'Credits')"
+      }
+    ],
+    "spec": "tests/fixtures/release-tracks-third-party-youtube-lookup.spec.js",
+    "grep": "stripped from the Credits render too",
+    "expect": "fail"
+  },
+  {
+    "name": "_relTablesButton() drops its extra features",
+    "why": "The 5th parameter is the only way a page-specific feature reaches a replaceFeatures render; if it is not merged, the Credits removeSelectors silently disappears.",
+    "edits": [
+      {
+        "find": "            features: { ..._relTablesFeatures({ ownLabel: entity, removeMain: true, ...cfg }), ...extraFeatures }",
+        "replace": "            features: { ..._relTablesFeatures({ ownLabel: entity, removeMain: true, ...cfg }) }"
+      }
+    ],
+    "spec": "tests/fixtures/release-tracks-third-party-youtube-lookup.spec.js",
+    "grep": "stripped from the Credits render too",
+    "expect": "fail"
+  },
+  {
+    "name": "the site-link gate never opens",
+    "why": "Name AND render decide; a gate that never opens leaves the URL/Target/Link panels without site entries, silently.",
+    "edits": [
+      {
+        "find": "        const isSiteLinkCol = _siteLinkRender && (_colHeaderName === 'URL' || _colHeaderName === 'Target' || _colHeaderName === 'Link');",
+        "replace": "        const isSiteLinkCol = false;"
+      }
+    ],
+    "spec": "tests/fixtures/rel-tables-link-site-uvd.spec.js",
+    "grep": "COUNTS",
+    "expect": "fail"
+  },
+  {
+    "name": "the site kind is the host",
+    "why": "The country-independent count is the whole of item 3: a kind equal to the host never merges amazon.com and amazon.de.",
+    "edits": [
+      {
+        "find": "        return parts.length > suffix ? `${parts[parts.length - suffix - 1]}.*` : h;",
+        "replace": "        return h;"
+      }
+    ],
+    "spec": "tests/fixtures/rel-tables-link-site-uvd.spec.js",
+    "grep": "KIND: amazon.com",
+    "expect": "fail"
+  },
+  {
+    "name": "the country second-level label is not stripped",
+    "why": "co.uk/com.br must go with the country code, or amazon.co.uk is its own kind \"co.*\".",
+    "edits": [
+      {
+        "find": "        const suffix = parts.length >= 3 && parts[last].length === 2 && _SITE_FAMILY_SLD.has(parts[last - 1]) ? 2 : 1;",
+        "replace": "        const suffix = 1;"
+      }
+    ],
+    "spec": "tests/fixtures/rel-tables-link-site-uvd.spec.js",
+    "grep": "RULE",
+    "expect": "fail"
+  },
+  {
+    "name": "an entry gets no icon name",
+    "why": "The icon is the link's own, by name; never recording it leaves every entry without its icon.",
+    "edits": [
+      {
+        "find": "                        if (l.icoName && !linkSiteIconMap.has(l.host)) linkSiteIconMap.set(l.host, l.icoName);\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/rel-tables-link-site-uvd.spec.js",
+    "grep": "COUNTS",
+    "expect": "fail"
+  },
+  {
+    "name": "the icon rule does not cover the 📊 span",
+    "why": "The span reuses the rule _sbIconRef() writes; with the old a-only selector the entry carries the name and draws nothing.",
+    "edits": [
+      {
+        "find": ":is(a.mb-sb-ico, span.mb-uniq-site-icon)[data-mb-sb-ico=\"${name}\"]",
+        "replace": "a.mb-sb-ico[data-mb-sb-ico=\"${name}\"]"
+      }
+    ],
+    "spec": "tests/fixtures/rel-tables-link-site-uvd.spec.js",
+    "grep": "COUNTS",
+    "expect": "fail"
+  },
+  {
+    "name": "entity rows of a mixed Target column count",
+    "why": "A Target cell typed as another entity must hold no site; without the type check its MusicBrainz-relative links are skipped anyway, so this guard is defence in depth.",
+    "edits": [
+      {
+        "find": "        if (type && type !== 'url') return [];\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/rel-tables-link-site-uvd.spec.js",
+    "grep": "ENTITY ROWS",
+    "expect": "pass"
+  },
+  {
+    "name": "the site maps are left out of the 📊 cache",
+    "why": "A re-opened panel is served from the cache bundle; a Map missing there re-opens empty.",
+    "edits": [
+      {
+        "find": "                linkSiteValueCounts, linkSiteIconMap, linkFamilyValueCounts, linkFamilyHosts,\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/rel-tables-link-site-uvd.spec.js",
+    "grep": "CACHE",
+    "expect": "fail"
+  },
+  {
+    "name": "a site tick marks nothing",
+    "why": "The tick narrows the rows; the host inside the link text is the mark that says where.",
+    "edits": [
+      {
+        "find": "        const want = mode.slice(fam ? 11 : 9);\n        if (!want) return;",
+        "replace": "        const want = mode.slice(fam ? 11 : 9);\n        if (want) return;"
+      }
+    ],
+    "spec": "tests/fixtures/rel-tables-link-site-uvd.spec.js",
+    "grep": "TICK",
+    "expect": "fail"
+  },
+  {
+    "name": "the site kind section shows without a 2-site kind",
+    "why": "Without the 2+ rule the kind section repeats the site section entry for entry.",
+    "edits": [
+      {
+        "find": "        const _sortedLinkFamilyValues      = Array.from(linkFamilyHosts.values()).some(h => h.size > 1)",
+        "replace": "        const _sortedLinkFamilyValues      = true"
+      }
+    ],
+    "spec": "tests/fixtures/rel-tables-link-site-uvd.spec.js",
+    "grep": "no \"Site kind\" section",
+    "expect": "fail"
+  },
+  {
+    "name": "Relationships icons get no site kind",
+    "why": "The Relationships column side of item 3: no family per icon, no \"amazon.*\" entry.",
+    "edits": [
+      {
+        "find": "        if (!r || !/^https?:/.test(r.baseUrl)) return '';\n        try { return _siteFamilyOf(new URL(r.baseUrl).hostname); } catch (_) { return ''; }",
+        "replace": "        return '';"
+      }
+    ],
+    "spec": "tests/fixtures/rel-column-site-kind-discogs.spec.js",
+    "grep": "KIND COUNT",
+    "expect": "fail"
+  },
+  {
+    "name": "the Discogs finding never matches",
+    "why": "The detector is the whole finding.",
+    "edits": [
+      {
+        "find": "            test: cell => _findCellRelSiteDupes(cell).length > 0,",
+        "replace": "            test: cell => _findCellRelSiteDupes(cell).length > 99,"
+      }
+    ],
+    "spec": "tests/fixtures/rel-column-site-kind-discogs.spec.js",
+    "grep": "FINDING COUNT",
+    "expect": "fail"
+  },
+  {
+    "name": "a query variant of one Discogs URL counts twice",
+    "why": "Two raw strings of ONE page are not two links: without the origin+path key the release/4?ev=rr row is flagged too.",
+    "edits": [
+      {
+        "find": "            const key = `https://${host}${u.pathname.replace(/\\/+$/, '')}`;",
+        "replace": "            const key = k.textContent;"
+      }
+    ],
+    "spec": "tests/fixtures/rel-column-site-kind-discogs.spec.js",
+    "grep": "FINDING COUNT",
+    "expect": "fail"
+  },
+  {
+    "name": "the Relationships writer never re-stamps",
+    "why": "stampFindings() saw the cells empty; without the per-row re-stamp the finding never appears.",
+    "edits": [
+      {
+        "find": "        _restamp();\n    }",
+        "replace": "    }"
+      }
+    ],
+    "spec": "tests/fixtures/rel-column-site-kind-discogs.spec.js",
+    "grep": "FINDING COUNT",
+    "expect": "fail"
+  },
+  {
+    "name": "the Discogs tint setting is ignored",
+    "why": "The tint must follow its own setting, while the menu row stays.",
+    "edits": [
+      {
+        "find": "            tint: _findingTintSetting('sa_findings_tint_rel_multi_discogs'),",
+        "replace": "            tint: () => true,"
+      }
+    ],
+    "spec": "tests/fixtures/rel-column-site-kind-discogs.spec.js",
+    "grep": "tint setting off",
+    "expect": "fail"
+  },
+  {
+    "name": "the late re-stamp re-runs no filter for the Discogs finding",
+    "why": "While the finding is ticked, a row stamped later must be filtered in; only _LATE_FINDING_IDS decides. Not visible here: every cell is written before the tick, so nothing is stamped while it filters.",
+    "edits": [
+      {
+        "find": "    const _LATE_FINDING_IDS = [..._ART_FINDING_IDS, 'rel-multi-site'];",
+        "replace": "    const _LATE_FINDING_IDS = [..._ART_FINDING_IDS];"
+      }
+    ],
+    "spec": "tests/fixtures/rel-column-site-kind-discogs.spec.js",
+    "grep": "FINDING COUNT",
+    "expect": "pass"
+  }
+]

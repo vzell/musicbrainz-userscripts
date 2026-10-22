@@ -1,0 +1,266 @@
+[
+    {
+        "name": "the converters write the site's title as it is",
+        "why": "sa_foreign_mb_titles / sa_foreign_typography on (the default): every converted title goes through _mbSiteTitleText().",
+        "edits": [
+            {
+                "find": "        const shown = _mbSiteTitleText(text);",
+                "replace": "        const shown = text;"
+            }
+        ],
+        "spec": "tests/fixtures/mb-title-case.spec.js",
+        "grep": "Brucebase song list: titles|brucespringsteen.it: capitals",
+        "expect": "fail"
+    },
+    {
+        "name": "no tooltip with the site's own text",
+        "why": "A changed title shows the site's text on hover; the spec reads the cell's tip.",
+        "edits": [
+            {
+                "find": "        if (shown !== text) _mbSiteTitleTip(tipEl, text, shown);",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/mb-title-case.spec.js",
+        "grep": "Brucebase song list: titles",
+        "expect": "fail"
+    },
+    {
+        "name": "a setlist row's mixed-case note is rewritten too",
+        "why": "capsOnly: in a song row only the part in capitals is a title; \"(with Patti Scialfa)\" must stay as written.",
+        "edits": [
+            {
+                "find": "if (caseOn) after = _mbTitleCase(after, { capsOnly: !!opts.capsOnly });",
+                "replace": "if (caseOn) after = _mbTitleCase(after, { capsOnly: false });"
+            }
+        ],
+        "spec": "tests/fixtures/mb-title-case.spec.js",
+        "grep": "Patti Scialfa",
+        "expect": "fail"
+    },
+    {
+        "name": "the set label is read with the song",
+        "why": "skipSel leaves span.mb-bb-set-label out; read with it, its mixed case makes the row \"not in capitals\" and the first song of a labelled set stays in capitals.",
+        "edits": [
+            {
+                "find": "acceptNode: (n) => (opts.skipSel && n.parentElement?.closest(opts.skipSel)",
+                "replace": "acceptNode: (n) => (false"
+            }
+        ],
+        "spec": "tests/fixtures/mb-title-case.spec.js",
+        "grep": "set label",
+        "expect": "fail"
+    },
+    {
+        "name": "the year rows' songs are not rewritten at all",
+        "why": "Soundcheck/Setlist songs go through _mbSiteTitleNodes(); the spec pins \"Born in the U.S.A.\" in a 1985 setlist.",
+        "edits": [
+            {
+                "find": "                    _mbSiteTitleNodes(li, { capsOnly: true, skipSel: '.mb-bb-set-label' });\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/mb-title-case.spec.js",
+        "grep": "1985: venues and songs",
+        "expect": "fail"
+    },
+    {
+        "name": "the trailing \"(THE)\" stays",
+        "why": "brucespringsteen.it's sort form \"BOSS AT HIS BEST (THE)\" is \"The Boss at His Best\" in MusicBrainz.",
+        "edits": [
+            {
+                "find": "        if (am) t = `${am[2]} ${am[1]}`;",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/mb-title-case.spec.js",
+        "grep": "brucespringsteen.it: capitals|shared cases",
+        "expect": "fail"
+    },
+    {
+        "name": "a part in capitals inside a mixed title is title-cased",
+        "why": "\"(JEMS)\" in a mixed-case jungleland.it title is a name; only a title in capitals outside its parentheses has its parenthesised capitals rewritten.",
+        "edits": [
+            {
+                "find": "const caps = noLower(part) && /\\p{Lu}/u.test(part) && (!inParens || outerCaps);",
+                "replace": "const caps = noLower(part) && /\\p{Lu}/u.test(part);"
+            }
+        ],
+        "spec": "tests/fixtures/mb-title-case.spec.js",
+        "grep": "shared cases|jungleland.it",
+        "expect": "fail"
+    },
+    {
+        "name": "\"up\" is lower-cased like the other short prepositions",
+        "why": "On these sites \"up\" is a verb particle in nearly every title (\"Held Up Without a Gun\"), which MusicBrainz capitalises.",
+        "edits": [
+            {
+                "find": "'in', 'of', 'on', 'to', 'cum', 'mid', 'off', 'per', 'qua', 're', 'via']);",
+                "replace": "'in', 'of', 'on', 'to', 'cum', 'mid', 'off', 'per', 'qua', 're', 'up', 'via']);"
+            }
+        ],
+        "spec": "tests/fixtures/mb-title-case.spec.js",
+        "grep": "shared cases|Brucebase song list: titles",
+        "expect": "fail"
+    },
+    {
+        "name": "a phrasal \"On\" is lower-cased",
+        "why": "\"Come On Over\", \"Bring On the Night\": after a verb of _MBTC_PHRASAL the preposition is part of the verb.",
+        "edits": [
+            {
+                "find": "const particle = _MBTC_PHRASAL.has(prevKey) && _MBTC_PARTICLES_AFTER_VERB.has(w.word.toLowerCase());",
+                "replace": "const particle = false;"
+            }
+        ],
+        "spec": "tests/fixtures/mb-title-case.spec.js",
+        "grep": "shared cases",
+        "expect": "fail"
+    },
+    {
+        "name": "descriptive extra title information keeps its capitals",
+        "why": "\"(Version 2)\" is \"(version 2)\" in MusicBrainz style; the jungleland.it titles show it in every re-issue.",
+        "edits": [
+            {
+                "find": "const lower = inParens && words.every(({ word }) => {",
+                "replace": "const lower = false && words.every(({ word }) => {"
+            }
+        ],
+        "spec": "tests/fixtures/mb-title-case.spec.js",
+        "grep": "shared cases|jungleland.it",
+        "expect": "fail"
+    },
+    {
+        "name": "a word led by a digit is capitalised",
+        "why": "\"10TH AVENUE\" must become \"10th Avenue\", not \"10Th\".",
+        "edits": [
+            {
+                "find": "            if (!digitLed) out[firstLetter] = _mbtcCase(out[firstLetter], true);",
+                "replace": "            out[firstLetter] = _mbtcCase(out[firstLetter], true);"
+            }
+        ],
+        "spec": "tests/fixtures/mb-title-case.spec.js",
+        "grep": "shared cases",
+        "expect": "fail"
+    },
+    {
+        "name": "an elision's apostrophe opens a quotation",
+        "why": "\"'09\", \"'Til\", \"'n'\" shorten a word: ’, never ‘.",
+        "edits": [
+            {
+                "find": "                    if (_MBTP_ELISION_RE.test(rest)) {",
+                "replace": "                    if (false) {"
+            }
+        ],
+        "spec": "tests/fixtures/mb-title-case.spec.js",
+        "grep": "shared cases",
+        "expect": "fail"
+    },
+    {
+        "name": "the year rows' songs get no typography",
+        "why": "The one-for-one punctuation pass runs over a song row's text nodes; the spec pins \"I’m on Fire\" and the medley's en dash.",
+        "edits": [
+            {
+                "find": "        if (typoOn) after = _mbTypographyFixed(after);",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/mb-title-case.spec.js",
+        "grep": "1985: venues and songs",
+        "expect": "fail"
+    },
+    {
+        "name": "a song row's \"...\" is not an ellipsis",
+        "why": "The length-changing replacements run per text node after the one-for-one pass. No setlist of the five year fixtures holds \"...\" or \"--\", so no spec can see this one; the plain-title path (_mbTypography) is pinned by the shared cases.",
+        "edits": [
+            {
+                "find": "                const d2 = data.replace(/\\.{3}/g, '…').replace(/--/g, '—');",
+                "replace": "                const d2 = data;"
+            }
+        ],
+        "spec": "tests/fixtures/mb-title-case.spec.js",
+        "grep": "Brucebase year pages",
+        "expect": "pass"
+    },
+    {
+        "name": "the case setting is not consulted",
+        "why": "Each setting works alone: with sa_foreign_mb_titles off and typography on, the song list keeps \"Born In The U.S.A.\".",
+        "edits": [
+            {
+                "find": "        if (opts.caseOn ?? _mbTitlesOn()) t = _mbNormalizeTitle(t);",
+                "replace": "        t = _mbNormalizeTitle(t);"
+            }
+        ],
+        "spec": "tests/fixtures/mb-title-case.spec.js",
+        "grep": "each setting works alone",
+        "expect": "fail"
+    },
+    {
+        "name": "a placeholder in square brackets is title-cased",
+        "why": "\"[no title]\" is MusicBrainz's own special-purpose style and stays as written.",
+        "edits": [
+            {
+                "find": "        if (/^\\[[^\\]]*\\]$/.test(src.trim())) return src;\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/mb-title-case.spec.js",
+        "grep": "shared cases",
+        "expect": "fail"
+    },
+    {
+        "name": "springsteenlyrics.com card titles are written as the site has them",
+        "why": "The collection / bootleg / CD and vinyl lists' Title goes through _mbSiteTitleText(); the spec pins \"Live at the Matrix\".",
+        "edits": [
+            {
+                "find": "        const shownTitle = _mbSiteTitleText(title);",
+                "replace": "        const shownTitle = title;"
+            }
+        ],
+        "spec": "tests/fixtures/mb-title-case.spec.js",
+        "grep": "springsteenlyrics.com",
+        "expect": "fail"
+    },
+    {
+        "name": "springsteenlyrics.com lyrics titles stay in capitals",
+        "why": "The lyrics index's Title goes through _mbSetSiteTitle(); the spec pins \"Baby Don’t Go\".",
+        "edits": [
+            {
+                "find": "            _mbSetSiteTitle(link, a.textContent.replace(/\\s+/g, ' ').trim(), titleTd);",
+                "replace": "            link.textContent = a.textContent.replace(/\\s+/g, ' ').trim();"
+            }
+        ],
+        "spec": "tests/fixtures/mb-title-case.spec.js",
+        "grep": "springsteenlyrics.com",
+        "expect": "fail"
+    },
+    {
+        "name": "a year page's City and Country stay in capitals",
+        "why": "City and Country (not USA) are in MusicBrainz style; the spec pins \"Hampton\" and \"Australia\".",
+        "edits": [
+            {
+                "find": "        _mbSetSiteTitle(textCell(''), h.city);",
+                "replace": "        textCell(h.city);"
+            },
+            {
+                "find": "        else _mbSetSiteTitle(textCell(''), h.country);",
+                "replace": "        else textCell(h.country);"
+            }
+        ],
+        "spec": "tests/fixtures/mb-title-case.spec.js",
+        "grep": "1985: venues and songs",
+        "expect": "fail"
+    },
+    {
+        "name": "\"USA\" goes through the title style too",
+        "why": "The request: leave a Country of \"USA\" as it is. The explicit exception is belt and braces: USA is also in _MBTC_ACRONYMS, so the title style would keep it anyway and no spec can see this one.",
+        "edits": [
+            {
+                "find": "        if (h.country === 'USA') textCell(h.country);\n        else _mbSetSiteTitle(textCell(''), h.country);",
+                "replace": "        _mbSetSiteTitle(textCell(''), h.country);"
+            }
+        ],
+        "spec": "tests/fixtures/mb-title-case.spec.js",
+        "grep": "1985: venues and songs",
+        "expect": "pass"
+    }
+]

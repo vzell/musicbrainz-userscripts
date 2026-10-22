@@ -21500,3 +21500,3970 @@ as `wiencek-batch-performance` by the new `wire-live-userscript` skill.
    sort +5–6 %, the rest noise (tests/MEASUREMENTS.org). New tooling:
    `scripts/run-perf-arms.py` + `reportProgress()` in the harness feed the
    Claude Code status line (`~/.cache/sa-perf/status.json`).
+
+## 2026-10-10 — What a keystroke in the global filter costs outside `runFilter()` (branch perf/faster-filtering, measuring only)
+
+Env: 2026-10-10T12:25Z–12:49Z · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.40.1-microsoft-standard-WSL2) · Playwright 1.62.1 bundled Chromium (headless), no Tampermonkey (GM stubs) · `ShowAllEntityData.user.js` byte-identical to `main` (9.99.1316).
+
+**Symptom.** The new typed metric (`capture-interaction-perf.js --only=typed`,
+tests/MEASUREMENTS.org "Typed filtering") showed that with a 150 ms pause
+between keys (under the 300 ms debounce, so ONE filter pass) `artist-events`
+still has five keystrokes of 100 ms or more, worst 272 ms. Not the pass.
+
+**Method.** `tests/support/probe-keystroke-cost.js` records a Chromium trace
+while typing "United Kingdom" (14 keys, 150 ms apart) twice on one page load:
+"fresh", straight after `waitForRenderComplete()`, and "settled", after the
+column-header counts stopped changing. It lists every main-thread task of
+16 ms or more with what ran inside it. `--css=` / `--init=` inject a style or
+an experiment script after the render (never the script as shipped; each arm
+below is named). One trace per window: a single trace across the header-count
+wait overflowed Chromium's buffer and lost the second window silently.
+
+**Two separate causes, both confirmed by experiment.**
+
+1. *Every key repaints the whole page layer, about 75 ms (settled state).*
+   Each key is one 13–26 ms task (keypress, textInput, 9–16 ms layout), then a
+   72–81 ms Paint task. The paint's rect is the full viewport on layer 0, the
+   root layer: the table has no paint layer of its own, so a one-character
+   change in the input re-records the whole visible table. Once a filter has
+   narrowed the table the same paint drops to 13–20 ms, so it scales with the
+   painted rows, not with the key.
+   - `#mb-global-filter-input { will-change: transform }`: no change
+     (1102 / 1083 ms paint over 14 keys vs 1105 / 1072 baseline).
+   - `table.tbl { position: relative; z-index: 0 }`: per-key paint 17–19 ms.
+   - `table.tbl { contain: paint }`: per-key paint 17–19 ms.
+   - `table.tbl { will-change: transform }`: 17–20 ms, but a composited layer
+     for a 4174-row table costs GPU memory; not a candidate.
+   Either of the first two gives the table a self-painting layer whose
+   painting is reused when only the input changed. Both create a stacking
+   context (and `contain: paint` clips and becomes a containing block), so
+   the sticky header/column z-index and anything positioned out of a cell
+   must be checked before either ships.
+
+2. *Right after the render, every header-badge write makes the next key pay
+   a full table layout (fresh state).* The idle-time header-count scan
+   (`_updateAllColHeaderCounts()` via `_yieldToEventLoop()`; its
+   `getCleanColumnText()` TreeWalker shows as `acceptNode`) runs slices of
+   22–162 ms — some far past an idle deadline — and writes
+   `.mb-col-collapse-count` / `.mb-col-uniq-count` text as it goes (86 writes
+   to 26 spans, 67 of them changing the text, during the window). A changed
+   header cell in an auto-layout table dirties the whole table, so the next
+   key's frame does 74–163 ms of layout plus a 70–150 ms paint.
+   - baseline fresh, 14 keys: layout 1654–2896 ms, keypress handling 121–215 ms.
+   - `--init` dropping those span writes (textContent setter stubbed per
+     instance): layout **50 ms**, keypress 27 ms. Confirms the writes.
+   - CSS-only slot (`display:inline-block; contain:strict; width:5ch;
+     height:1.3em`) on the two badge classes: layout 1135–1189 ms, i.e. only
+     part of it. `.mb-col-uniq-count` is a flex item (`flex-shrink: 0` in
+     `.mb-col-uniq-wrap`), and a flex item cannot be a relayout boundary, so
+     containment on the span itself cannot isolate it; the remedy has to be
+     structural (a non-flex wrapper slot, or writing all badges once at the
+     end of the scan instead of per slice).
+   - Ruled out: `root.normalize()` in `getCleanColumnText()` runs on live
+     cells (157,232 calls in the window) but merged NOTHING (0 calls changed
+     the text-node count), and stubbing it to a no-op left layout at 2930 ms.
+     Its comment ("never changes visible content") holds here.
+
+**Consequence for the faster-filtering design.** Neither cause is in the
+filter pass's match loop, so yielding inside `runFilter()` cannot reach them.
+They are cheaper, independent fixes and belong in the same plan, measured
+with the same typed metric: (1) is one CSS rule plus a stacking-context
+check; (2) is a change to how the header-count scan publishes its numbers.
+Raw probe outputs: scratchpad only (not committed); the probe is re-runnable.
+
+## 2026-10-10 — Table paint layer landed on the branch (perf/faster-filtering, C1, WIP.2)
+
+Env: 2026-10-10T13:05Z · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.40.1-microsoft-standard-WSL2) · Playwright 1.62.1 bundled Chromium, no Tampermonkey (GM stubs).
+
+`table.tbl { position: relative; z-index: 0 }` went into the always-on
+stylesheet (the `GM_addStyle` block that starts with the paint-layer comment,
+before `.mb-sorting-active`), not into `applyStickyHeaders()`'s, which only
+runs with `sa_enable_sticky_headers` on. Cause and probe numbers: the entry
+above and PERFORMANCE.org Step 37.
+
+Two things the first spec draft got wrong, both premises rather than the fix:
+- "the stuck thead covers a scrolled row" placed the row at the viewport's
+  top edge, but with sticky filter bars on the thead sticks BELOW the stuck
+  h2 bar; the spec now reads where the thead sits once stuck and puts the row
+  there. Mutated (thead `z-index: -1`) it fails with the point drawn by a TD.
+- the mobile twin first used `loadFromDiskFixture()`, whose 📦 Data menu
+  click is covered by the wrapped toolbar at Pixel 7 width (no other mobile
+  spec uses it); it now renders the series fixture through its own
+  "Show all" button with sticky page headers off, since those pin a narrow
+  table with `position: sticky !important`.
+
+## 2026-10-10 — Header-count badges published in batches (perf/faster-filtering, C2, WIP.3)
+
+Env: 2026-10-10T13:20Z · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.40.1-microsoft-standard-WSL2) · Playwright 1.62.1 bundled Chromium, no Tampermonkey (GM stubs).
+
+`_updateAllColHeaderCounts()` now queues each column's writes (both badges,
+`_setTip()` and `aria-label` on the 📊 wrap) and flushes them when
+`_COL_HEADER_COUNTS_FLUSH_MS` (500) has passed since the last flush, plus once
+at the end; a stale token drops the queue. Cause: the 2026-10-10 keystroke
+entry above, cause 2; PERFORMANCE.org Step 38.
+
+One spec regressed and the cause was the spec's premise:
+`uniq-drop-count-click-toggle.spec.js` clicked `.mb-col-uniq-count` straight
+after the render. Per-column writes had happened to fill the Length badge
+before that; with batching it was still empty (zero width), so Playwright
+waited ("element is not visible", then "not stable" as the batch landed) and
+clicked while the header was shifting — the dropdown stayed open. A throwaway
+copy that first waited for the badge to have text passed 3/3, so the toggle
+itself is intact; the spec now waits for the number (a premise), as a person
+must, since an empty badge has nothing to click.
+
+`npm test` on C1+C2 (2026-10-10T13:42Z, petri, 110d84a + this change):
+1538 passed, 1 failed — `popup-ext.spec.js` "a Brucebase show's window: …
+scrolled to the show and marked": the `.mb-dp-anchor` inside the year-page
+iframe was still empty after 5 s. It passed 3/3 run alone. The detail-popup
+iframe path touches neither table CSS nor the header-count scan, so this is
+recorded as a load-dependent flake to watch, not attributed to this change; a
+second failure of it should get its own entry.
+
+## 2026-10-10 — Time-sliced typing filter (perf/faster-filtering, C5, WIP.4)
+
+Env: 2026-10-10T14:50Z · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.40.1-microsoft-standard-WSL2) · Playwright 1.62.1 bundled Chromium, no Tampermonkey (GM stubs).
+
+`runFilterSliced()` for the debounced global and column filters; design and
+rules in PERFORMANCE.org Step 39 and filter-and-cache-invariants.md ("A
+time-sliced filter pass writes nothing until it is current and complete").
+`npm test`: 1549/1549 (the popup-ext flake above did not recur).
+
+Found while building it, worth keeping:
+- **A stale pass notices only at its next yield.** By then its successor may
+  already have called `_twFilterBegin()`, so a module-level "current pass"
+  for the ⏳ card would let the stale pass mark its SUCCESSOR replaced.
+  `_twFilterBegin()` returns a record that every later call names, and a new
+  pass marks a still-running predecessor replaced itself.
+- **Mutations that shrink the work can be caught by the wrong assertion.**
+  Planting "the job compares half the rows" was caught — by the premise that
+  counts slices, not by the equality check it targeted. Replaced by "the job's
+  context loses the query" (same slices, every row matches), and the single-
+  table spec now compares BEFORE checking its narrowing premise, reading the
+  premise off the synchronous answer. Each "results differ" mutation now fails
+  on "the sliced pass shows what the synchronous one does".
+- **Mobile typing races the field's prefix.** Tapping the global filter and
+  typing at once put the first key in FRONT of the "🔍 " prefix ("B🔍 ru",
+  0 rows); the mobile spec waits for the prefix, as `typeGlobalFilter()` does
+  on desktop. The series fixture's header covers the field at Pixel 7 width,
+  so the spec uses the shared user-ratings helpers (`filterAutofocus.js`).
+- Two mutations are recorded `expect: "pass"`, with the reason: the
+  `_renderGeneration` bump needs a render of more than 500 rows in flight (no
+  fixture has one), and the row-array identity check is covered by the
+  generation whenever a sort replaces the arrays.
+
+## 2026-10-10 — The commit of a typed filter pass, profiled; initCollapsableColumns batched (perf/faster-filtering, C6a, WIP.5)
+
+Env: 2026-10-10T15:58Z (profile before) / 16:17Z (after) · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.40.1-microsoft-standard-WSL2) · Playwright 1.62.1 bundled Chromium, no Tampermonkey (GM stubs).
+
+The C5 A/B left the longest block above the stop rule on 4 of 8 page × delay
+cases (PERFORMANCE.org Step 39). The trace view cannot say what that block is —
+it names only each task's entry point — so the probe got `--cpu`: a V8 CPU
+profile of one typed run (0.1 ms sampling), inclusive/self time per
+`function:line`.
+
+artist-events, 400 ms, 8 passes, before: `renderFinalTable` 4363 ms inclusive,
+its completion hook 3753 ms, of which `initCollapsableColumns` 2621 ms
+(1460 ms `getBoundingClientRect`) and `_applyPostRenderRowPasses` 986 ms
+(`applyStickyColumn` 753); the clone-and-highlight map 1935 ms. So the plan's
+"slice the commit" was mostly the wrong lever: most of the block was forced
+layout, which slicing would only spread out. artist-releasegroups, by contrast:
+770 ms of JS in total, its 650-1000 ms frames being style/layout/paint of what
+`renderGroupedTable()` rewrote (every group, unchanged ones too) and the post-
+render passes run twice (renderGroupedTable's own, then runFilter's multi
+branch). The C6 plan (approved) follows from these two profiles.
+
+C6a: `initCollapsableColumns()` measured column by column — up to two full
+layouts per collapsable column, five here. Now each column is a generator that
+yields its measurement request; a driver reads all columns in two batches
+(PERFORMANCE.org Step 40). After: 653 ms (−75 %), `getBoundingClientRect` 138 ms.
+
+Spec premise trap, kept for the next reader: the small artist-events HTML
+fixtures have ONE collapsable column with content, which cannot tell "one read
+group" from "one per column" — the spec loads the committed 4174-row capture.
+And a bare `initCollapsableColumns()` call removes the EAA column's ▶N▤
+without rebuilding it (the art code owns it, `_artEnsureColCollapseProxy()`),
+which is old behaviour, so the outcome comparison leaves CAA/EAA out.
+
+## 2026-10-10 — Sticky column writes-then-reads (C6b, WIP.6); the duplicated multi-table passes kept on purpose (C6c dropped)
+
+Env: 2026-10-10T19:37Z (profile) / 19:38Z (`npm test`, 1553/1553) · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.40.1-microsoft-standard-WSL2) · Playwright 1.62.1 bundled Chromium, no Tampermonkey (GM stubs).
+
+C6b (PERFORMANCE.org Step 41): `applyStickyColumn()` now writes all styles,
+then reads all computed backgrounds, then stores. Gain after Step 40: 423 → 397
+ms over the typed run, inside the spread — the recalculations had become cheap
+once the layout was clean; ~87k `getComputedStyle` calls remain, which is
+Step 24's (lazy snapshot) territory. Kept because it is correct, pinned and
+does no harm.
+
+C6c, planned as "drop runFilter's second `_applyPostRenderRowPasses()` in
+multi mode", is NOT done, and must not be done naively: in multi mode
+`renderGroupedTable()` runs zebra/normalize/sticky/barcode BEFORE `runFilter()`
+runs `initIswcValidation()` / `initBarcodeValidation()` (and the other
+re-wires), and those stamp finding tints. The later call is the one whose sticky
+snapshot (`data-mb-rest-bg`, restored INLINE on hover leave) includes those
+tints; dropping it would make a hover paint the pre-tint colour over a finding.
+And it is cheap: ~15 ms per pass on the artist-releasegroups profile (the long
+frames there are layout/paint, not this). If it is ever removed, remove the
+EARLY one inside renderGroupedTable()'s filter path instead, and pin the
+"finding tint survives a row hover" property first.
+
+## 2026-10-10 — Clones in slices, a key retires the running pass, and the probe that hid a 613 ms task (C6e, WIP.7; C6d dropped)
+
+Env: 2026-10-10T19:45Z-20:12Z · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.40.1-microsoft-standard-WSL2) · Playwright 1.62.1 bundled Chromium, no Tampermonkey (GM stubs).
+
+C6d (skip unchanged hidden groups on artist-releasegroups) is not done: the
+profile showed typing changes most groups' match sets on every key until they
+are empty, and empty groups are already cheap; skipping hidden groups
+regardless would need lazy rendering, which many readers of hidden tables
+(counts, export, 📊, save) would have to learn. Not worth it here.
+
+C6e (PERFORMANCE.org Step 42) — the order things were found in, because the
+order is the lesson:
+
+1. After building clones in slices, the probe's trace of release groups showed
+   NO long task, yet keys arrived 800 ms late. `gap_tasks`-style counting of
+   every task between two keydowns: the main thread was 915 ms busy in 236
+   tasks, 811 ms of it in microtask checkpoints under BARE `RunTask` events.
+   The probe kept only `ThreadControllerImpl::RunTask` when that name
+   existed, so it never saw the async pass's continuations. Fixed: every
+   outermost task of either name. Then the probe also had to expand sub-table
+   29 (830 rows), as the typed metric does — without it nothing big was on
+   screen and the page looked fast.
+2. With the analyser fixed: one 613 ms task full of highlight TreeWalkers —
+   cloning, although the clones were prebuilt. `prebuiltUsed()` sampled at
+   every "✓" status write gave `0 "20", 47 "200", 47 "2005"`: the commit that
+   wrote "20" used none. Cause: pass "2" was still CURRENT when "0" was typed
+   (a pass went stale only when the next pass started, after the 300 ms
+   debounce), so it finished and committed by calling `runFilter()` — which
+   re-reads the input, "20", and filtered that synchronously. Fix: both filter
+   inputs take a generation on every key.
+3. After: release groups' key gaps 410-419 ms (none waits), longest task 79
+   ms; artist-events gaps 436-514 ms, longest 235 ms.
+
+Things tried and ruled out on the way: `scheduler.yield()` starving input —
+the same 800 ms gaps with the MessageChannel fallback (probe `--init` removing
+`scheduler.yield`), so not the yield; the `expandedCells` version check —
+nothing writes it during a pass (every writer is a click handler).
+A throwaway spec (deleted) confirmed per pass that the commit uses all 47
+prebuilt arrays once the fix is in.
+
+## 2026-10-10 — The branch A/B broke the last-key limit once; outdated vs stale passes (C6f, C6g, WIP.8)
+
+Env: 2026-10-10T20:19Z-20:57Z (A/B) / 21:2xZ (one-sample check) · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.40.1-microsoft-standard-WSL2) · Playwright 1.62.1 bundled Chromium, no Tampermonkey (GM stubs).
+
+The whole-branch A/B (tests/MEASUREMENTS.org) was a clear win on keys and frames,
+but `artist-events` at 400 ms between keys showed the wait after the last key at
+909-963 ms against `main`'s 380 ms — the plan's limit was +10 %. Mechanism: Step
+42 retired the running pass on every key; a 4174-row pass outlasts the key gap;
+no pass ever finished, so `_incrMatchSet` never advanced and the final pass
+compared and cloned everything. `main` blocks on every key, but each blocking
+pass finishes, so its last one only narrows. The user chose to fix it (Step 43).
+
+Design that came out of it: "no longer current" has two kinds. STALE (a newer
+generation — every synchronous runFilter() and a newer sliced pass — or a
+replaced row array) writes nothing. OUTDATED (only a key since it began) still
+finishes comparing and stores its complete result (correct for its own key),
+never draws, and stores nothing if the cache was invalidated meanwhile (new
+`_filterCacheEpoch`, bumped by all three invalidators — a new invalidator must
+bump it too). The next typed pass waits for an outdated predecessor when it
+will narrow from it (single table, extending plain text).
+
+Spec fallout worth knowing: the two specs that held a pass and then waited for
+the newer query's result now deadlocked — by design, the newer pass waits for
+the held one. They were rewritten to release first; the old "a newer key makes
+the pass write nothing" guarantee moved to the ✕-clear test (a synchronous
+pass = stale), which now also pins the narrowing state, and four C5 mutations
+were re-targeted there.
+
+## 2026-10-10 — perf/faster-filtering: final A/B accepted, merge gate green
+
+Env: 2026-10-10T21:25Z-22:02Z (A/B) / 22:12:47Z-22:20:25Z (`test:full`) · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.40.1-microsoft-standard-WSL2) · Playwright 1.62.1 bundled Chromium (headless), no Tampermonkey (GM stubs).
+
+Final typed A/B at `b62597d` (tests/MEASUREMENTS.org): wait after the last key
+within the +10 % limit on every page (−13 to +7.2 %); keys during a pass −73 to
+−90 %; longest frame −74 to −86 % with keys in passes, −45 to −60 % for a
+single pass, where three runs miss the plan's 50 % (release groups 105 ms,
+artist-events once 338 ms). The user accepted those near-misses.
+
+Merge gate: `python3 scripts/run-test-full.py` on `perf/faster-filtering` at
+`9ce4646`: 1571/1571 passed, 7 m 38 s (chromium-fixtures + chromium-mobile,
+`@slow` included). Mutation list `scripts/mutations/faster-filtering.json`:
+32 entries, 30 caught, 2 recorded `expect: "pass"` with their reasons.
+
+Not yet done, and required before any merge question (CLAUDE.md): the user's
+own try in a real browser on artist-events and artist-releasegroups. Nothing
+pushed.
+
+## 2026-10-11 — The ⏳ card never opened for a column filter (C6h, WIP.9)
+
+Env: 2026-10-10T23:30Z-23:55Z · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.40.1-microsoft-standard-WSL2) · Playwright 1.62.1 bundled Chromium (headless), no Tampermonkey (GM stubs). The report itself came from the user's browser on vzell-lap (browser and Tampermonkey versions unknown).
+
+Report (user, testing `c94bec5` on vzell-lap): "the new popup ONLY shows up when
+filtering with the global filter, not with the sub-table or column level
+filter".
+
+Two causes, one per filter:
+
+- **Sub-table filter (h3 🔍, `applySubFilter`):** a separate synchronous path the
+  branch never touched; it cannot report to the card. By design for now, added
+  to org/TODO.org.
+- **Column filter:** goes through `runFilterSliced()` like the global filter,
+  but the card's open check (`performance.now() - p.t0 > _TW_OPEN_AFTER_MS`)
+  lived only in `_twFilterProgress()`, called from the COMPARING slices. A
+  throwaway spec on the release-groups capture (sub-table 29 expanded, "live"
+  typed into its Title filter, `onSlice` timestamps per phase) showed why:
+  a column-filter pass compares only its own sub-table (2,143 rows in 8 ms; the
+  other groups are cache hits), then spends about 900 ms building clones in
+  ~90 slices, where nothing checked the threshold. The global filter compares
+  every row; on vzell-lap that crosses 500 ms, on petri it did not either (the
+  card opened for neither there, which is why the fixture suite never saw it).
+
+Fix (mockup approved: https://claude.ai/artifact/1ZBfeQbQzD3uWid1HEb7LV):
+`_twFilterMaybeOpen()` is called from both steps; `_twFilterPrepare()` /
+`_twFilterPrepProgress()` give the clone phase its own step on the card
+("Compared ✓ · Preparing", "N / M rows prepared for drawing", a Preparing fact
+afterwards), and `_twFilterLabel()` names a column filter by column and
+sub-table instead of "the column filters". Spec: `filter-sliced.spec.js`
+"opens for a column filter while it prepares rows" (comparing unheld, the card
+recorded closed while comparing as the premise); 5 mutations (C6h), all caught.
+
+## 2026-10-11 — 💾 cache Export and Import (feature/cache-export-import, WIP.1)
+
+Env: 2026-10-11T00:30Z-01:00Z · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.40.1-microsoft-standard-WSL2) · Playwright 1.62.1 bundled Chromium (headless), no Tampermonkey (GM stubs).
+
+Built from the approved mockup (https://claude.ai/artifact/AsJhH3GAiNmfaDGz2ci4q6)
+with the user's two later decisions (Last import as a fifth tile; another
+site's export refused). Design notes worth keeping, beyond
+docs/claude/toolbar-and-header-ui.md "Export and Import (`_idbx*`)":
+
+- **One transaction per read batch.** An export awaits a FileReader per image
+  and yields between batches; an IndexedDB transaction auto-commits as soon as
+  control returns to the event loop with no request pending, so a cursor held
+  across those awaits would die mid-part. `getAll(lowerBound(lastKey, true), 500)`
+  per batch avoids it, at the price of key-ordered (not insertion-ordered)
+  files, which nothing depends on.
+- **Two streaming passes, not one held result.** The check keeps counts only;
+  the merge re-reads the File and re-classifies with the check's key → stamp
+  maps, so both passes decide identically, and memory stays flat for a 45 MB
+  file with images. The `File` object stays readable between the passes.
+- **The link-preview layout had no constant** (`indexedDB.open(_DP_IDB_NAME, 1)`).
+  It is now `_DP_IDB_VERSION`, because the export header records every
+  database's layout and the import compares them.
+- **The overview spec's link-preview seed had the wrong shape** (`html` where
+  the code writes `data`). Harmless for the overview, which only counts, but an
+  import's shape check rejects it, so the round-trip test would have failed on
+  the fixture rather than the code. The seed is now shared
+  (`seedCacheOverview()`) and uses `{url, v, at, data}`.
+- **Calibration:** the pane's first time estimate (from the mockup) said 3.3 s
+  for 20,000 JSON entries that took 0.33 s, and 1.1 s for 45 MB of images that
+  took 3.4 s. Now `fileB / 12e6 + n / 50000` s (tests/MEASUREMENTS.org,
+  2026-10-11). The JSON size ratio stays an uncalibrated 0.15: the synthetic
+  cache compresses far better than a real one.
+
+Specs: idb-export-import.spec.js 8/8 and .mobile 1/1 on the first run, so the
+17 mutations (scripts/mutations/idb-export-import.json) are the evidence the
+assertions bite: all 17 caught.
+
+## 2026-10-11 — Sidebar sections; closing "Artist information" hid Tags (feature/sidebar-overhaul, WIP.1)
+
+Env: 2026-10-11T01:40Z-02:09Z · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.40.1-microsoft-standard-WSL2) · Playwright 1.62.1 bundled Chromium (headless), no Tampermonkey (GM stubs).
+
+Commit 1 of the sidebar plan (docs/claude/sidebar.md). Two findings worth keeping:
+
+- **A pre-existing bug.** `makeH2sCollapsible()` walks an h2's siblings up to the next h2.
+  MusicBrainz renders the sidebar's Tags (its own h2, Genres / Other tags h3s
+  and the tag editor) inside a wrapper element, so for "Artist information"
+  the walk passed into that wrapper: the wrapper was a content node of Artist
+  information, and closing it hid Tags too. (It showed up as "element is not
+  visible" when the new spec tried to click Tags while Artist information was
+  closed.) Inside `#sidebar` only, the walk now also stops at an element that
+  contains an h2; the main content's walk is unchanged. A regression test pins
+  it, and its mutation (the stop removed) fails it.
+- **"View all relationships" is not an external link.** `li.all-relationships`
+  sits in `ul.external_links` but links to the entity's own Relationships tab.
+  The first count said 58, against 57 sites. It now stays last, outside the
+  groups and the count.
+
+The mobile spec took four attempts. On the zoomed-out Pixel 7 emulation the
+unstyled fixture's sidebar is a sticky block wider than the screen;
+`locator.tap()` scrolls its target to the top edge, under the sticky page
+header bar (`.mb-vsb-chrome`), which then takes the tap; and
+`getBoundingClientRect()` is in layout-viewport coordinates while a touch is in
+visual-viewport ones. The spec now adds MusicBrainz's phone layout rule for the
+sidebar, scrolls the target to the middle with its left edge in view, and taps
+with `page.touchscreen` at visual-viewport coordinates.
+
+## 2026-10-11 — The commons-image endpoint: blocked for scripts, empty for a browser (feature/sidebar-overhaul, part 4)
+
+Env: 2026-10-11T02:24Z-02:26Z · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.40.1-microsoft-standard-WSL2) · Python 3 urllib / Playwright 1.62.1 bundled Chromium (headless), no Tampermonkey.
+
+Part 4 of the sidebar plan (the picture in the entity hover card) was to use
+the endpoint MusicBrainz's own sidebar calls, `/<type>/<mbid>/commons-image`,
+which the web service documentation does not cover, so it was probed first.
+
+- `scripts/probe-commons-image.py` (urllib): every URL answered **HTTP 200,
+  text/html, "Verifying your browser"**, a bot challenge. A script gets nothing
+  from MusicBrainz's HTML side any more, so a 200 status proves nothing here.
+- `tests/support/probe-commons-image.js` (headless Chromium, `fetch()` from an
+  open artist page): JSON comes back.
+  - Bruce Springsteen: 200, `{"image": null}`, although his sidebar shows a
+    Commons picture in the user's browser (debug/bs-debug.html).
+  - Various Artists: 200, `{"image": null}`.
+  - Columbia (label): 200, `{"image": null}`.
+  - A place: 404, HTML.
+  - A non-existent MBID: 400, HTML.
+  - About 430 ms per answer.
+- MusicBrainz's own page showed **no** sidebar picture within 20 s in that
+  browser, and made no commons-image or Wikimedia request of its own.
+
+So the endpoint cannot be shown to deliver a picture, and how the user's
+browser gets one is not reproducible here. Per the plan, part 4 stops at this
+report and goes back to the user. Not built: no code calls the endpoint. Open
+options:
+- skip the card picture;
+- read the entity's Wikidata link through the popup engine's existing Wikidata
+  reader (P18 image), on Space only;
+- capture which request delivers the sidebar picture in the user's real
+  browser (DevTools → Network) and probe that.
+
+## 2026-10-11 — One-off: column-filter-modes "never change a column's width" under a full run
+
+Env: 2026-10-11T02:40:13Z-02:47:59Z · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.40.1-microsoft-standard-WSL2) · Playwright 1.62.1 bundled Chromium (headless), no Tampermonkey (GM stubs).
+
+In the second `test:full` on `feature/sidebar-overhaul` (`42b519e`), 1600 of 1601
+passed. The one failure was `column-filter-modes.spec.js` "on or off, the switches
+never change a column's width": the widths came back as 132/140/… where 137/145/…
+were expected, off by about 5 px.
+
+It is not attributed to the branch:
+- the same test passed in the run before, and the only change since then is a
+  toolbar divider and tooltip;
+- it passed 3 of 3 alone;
+- the whole spec file passed 38 of 38 with 12 workers, run twice.
+
+This is the first recorded occurrence. If it comes back, the suspect is a
+measurement taken before the auto-resize settles under load, not the switches.
+
+## 2026-10-11 — Whose sidebar picture? MusicBrainz's is switched off; the one in the snapshots is another script's (feature/sidebar-overhaul, part 4)
+
+Env: 2026-10-11T07:06:21Z-07:06:44Z (probe) · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.40.1-microsoft-standard-WSL2) · Python 3 urllib (probe), source read through `gh api`; no browser.
+
+**Correction to the entry "The commons-image endpoint" above.** That entry
+left open how the user's browser gets the sidebar picture. The
+musicbrainz-server source (master, read 2026-10-11) answers it:
+
+- `lib/MusicBrainz/Server/Controller/Role/CommonsImage.pm`: the endpoint and
+  the page's cached image both return nothing unless
+  `DBDefs->WIKIMEDIA_COMMONS_IMAGES_ENABLED`. The file comes from an
+  `image`/`logo` relationship to Commons, else the Wikidata item's P242 (an
+  area), P18, then P154.
+- `root/static/scripts/common/components/CommonsImage.js` renders
+  `div.commons-image > div.picture > img` plus a "picture-note" link, "Image
+  from Wikimedia Commons".
+- The endpoint answers `{"image": null}` even for Bruce Springsteen, who has an
+  `image` relationship, and the live page shows no picture: the switch is
+  **off on musicbrainz.org**.
+- `debug/bs-debug.html` and `debug/multi-table-Artist_relationships.html` have
+  `div.entity-image > div.picture > img` with no picture-note and a
+  `?utm_source=commons.wikimedia.org&utm_campaign=rest&utm_content=thumbnail_unscaled`
+  address. That markup is not in the MusicBrainz source at all, so **another
+  userscript adds it**. Which one is unknown here.
+
+Decisions (user, 2026-10-11): part 2 keeps decorating `div.entity-image` (with
+consent; only the img's address is read) and also recognises
+`div.commons-image`. The previews (part 4) do what the server code would do,
+in the browser, on Space only.
+
+**Probe `scripts/probe-wikidata-image.py`:**
+- the Web Service answers scripts (unlike the HTML pages): 200 JSON, 377 ms
+  for Bruce Springsteen's url-rels (27,958 bytes);
+- **Bruce Springsteen** has an `image` relationship to
+  `File:Bruce_Springsteen_-_Roskilde_Festival_2012.jpg` (the same file the
+  other script shows) and Wikidata Q1225, whose P18 is "Bruce Springsteen
+  2025.jpg" (299 bytes, 314 ms); no P154;
+- **Columbia** has two `logo` relationships (Columbia_Records_logo.svg first)
+  and Q183387, whose **P18 is "AWomansSmileCraigCampbell.jpg"**, a photograph
+  of something else, and P154 "Columbia Records Colored Logo.svg". So a label
+  asks P154 before P18 (`_MB_POP_IMG_PROPS`), where the server asks P18 first;
+- **Various Artists**: Q3108914, no P18, no P154 (13 bytes each);
+- an id Wikidata cannot parse (`Q999999999999`) answers 200 with an `error`
+  object (`param-invalid`). `_mbPopImageLoad()` reads any `error` as "no
+  picture";
+- `Special:FilePath/<file>?width=330` answers 302 to
+  `Special:Redirect/file/…&width=330`, then the image: 28,399 bytes at 330 px
+  and 404,406 at 1280 for Bruce Springsteen's file; the SVG logo 10 KB / 44 KB;
+- the place MBID in the probe list answered 404 (a wrong id); the place path
+  is covered by the Stone Pony fixture (`image` relationship plus Q3989486).
+
+Built: `_mbPopImageLoad()` and friends (docs/claude/sidebar.md, "The picture
+in the entity previews"), `sa_pop_mb_image`, `pop-mb-image.spec.js` (8) and its
+mobile twin (1), and 11 more mutations in `scripts/mutations/sidebar-overhaul.json`
+(10 for the previews, 1 for MusicBrainz's own sidebar markup).
+
+## 2026-10-12 — "MusicBrainz: Instrument Icons Everywhere" (@Lotheric): snapshots, and the icons SA drops
+
+Env: snapshots saved 2026-10-10T21:55Z (gfanj) and 2026-10-12T12:51Z (search), file mtimes · vzell-lap · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.40.1-microsoft-standard-WSL2) · Brave 1.97.56 (Chromium 155.0.8059.40) · Tampermonkey 5.5.1, with the script v2026-10-07.1444 installed.
+
+The script (registered as `lotheric-instrument-icons` in
+`tests/fixtures/live-userscripts/manifest.json`) stamps every visible
+`a[href*="/instrument/"]` `data-ii-processed="true"` and inserts an
+`<img class="mb-ii-icon">` (data: URL GIF, `title` = irombook folder name)
+immediately BEFORE it. `debug/instrument.html` is one such image on its own.
+
+- `debug/gfanj-intruments-initial.html` — IP of release-tracks, release
+  `3ce46b79-5e8c-470a-bcdc-45f301d09f60` (Greetings From Asbury Park, N.J.,
+  Pitman pressing). 20 stamped instrument links, 9 icons (piano ×4,
+  saxophone ×3, contrabass, harmonica); the rest (bass, percussion, …) are
+  stamped with NO icon — the script's `'NONE'` (GitHub 404) or still loading;
+  the DOM cannot tell which. The icons sit inside the track `dl.ars > dt`:
+  `<dt>   <img class="mb-ii-icon">…<a href="/instrument/…" data-ii-processed="true">piano</a>:</dt>`.
+- `debug/instrument-search.html` — FRP of
+  `search?query=guit&type=instrument&method=indexed` (`tableMode: 'single'`).
+  89 stamped links, 8 icons. The Name and MB-Name cells keep their icons
+  (rows are moved, and MB-Name clones the cell content with the image); the
+  📊 dropdown on Name shows none, and nothing counts rows with/without one.
+
+Root cause of the missing icons on release-tracks: `_buildInstrumentVocalsListItem()`
+cloned the instrument `<a>` alone. The clone kept the stamp and lost the
+icon (a previous sibling, not a child), and the script never decorates a
+stamped anchor again. `_parseInstrumentVocalsDt()` is not affected — an
+`<img>` is neither a text node nor an `<a>`, so it never changes how a `<dt>`
+component classifies.
+
+Nothing in `ShowAllEntityData.user.js` referred to `mb-ii-icon` or
+`data-ii-processed` before this branch.
+
+### 2026-10-12 — the fix, and what testing it turned up (feature/instrument-icons-interop, WIP.1/WIP.2)
+
+Env: 2026-10-12T13:10Z-14:02Z · vzell-lap · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.40.1-microsoft-standard-WSL2) · Playwright 1.62.1 bundled Chromium (headless), no Tampermonkey (GM stubs); the real script replaced by `tests/fixtures/thirdPartyScripts/ii-instrument-icons.js`.
+
+Three copy sites dropped the icon, not one: `_buildInstrumentVocalsListItem()`
+(Instruments column), `_buildCreditListItem()` (a credit's "(strings)"
+annotation) and `Name_Comment_Description` (instrument-list "Name"). All go
+through `_cloneInstrumentAnchorWithIcon()` now; `_iiReleaseIconlessAnchors()`
+is the net for any other bare `cloneNode(true)`. Checked and found nothing to
+do: instrument-artists/-releases/-recordings (instrument links only in the
+header, tabs and sidebar), and search `type=instrument` cells (rows come from a
+fresh fetch, unstamped, so the script decorates SA's own cells; `single` mode
+moves rows, so the icons are on the source rows already).
+
+Things worth knowing next time:
+
+- **`_iiPresent()` must not cache a "no".** Rows from a fetched page are
+  unstamped at render time; the script stamps them 120 ms later. A
+  version that cached the first answer hid the "Instrument info - Icon"
+  section on the search page entirely — hence the post-render re-checks in
+  `_iiInstallIconReconciler()` (`_II_RECHECK_MS`).
+- **The helper and the sweep cover for each other.** With the script's
+  default 120 ms debounce, a broken copy site still ends up with an icon a
+  moment later (sweep → script). The specs that pin the COPY stretch the
+  simulator's debounce to 2 s; each net's mutation alone passes, both
+  together fail.
+- **A freshly fetched release fixture must block `static.metabrainz.org/**`**
+  (release-tracks-and-length.md "Fixture trap"). Without it a
+  DOMContentLoaded edit to the fixture vanished: MusicBrainz's current bundle
+  re-rendered the tracklist from JSON.
+- A hang while writing the late-icon filter spec turned out to be the spec (an
+  unapplied helper edit plus Playwright retries), not a re-render loop — the
+  unguarded reconciler fired once in a probe. `_iiMirrorLateIcons()` re-runs
+  the filter only when a source row actually changed anyway, which rules a
+  loop out by construction.
+
+20 mutations (`scripts/mutations/instrument-icons.json`), all as expected.
+
+Partial merge gate. Env: 2026-10-12T14:02:37Z, stopped by the user at about 14:35Z · vzell-lap · same OS and Playwright as above. `test:full` at `f41f886` reached 754/1596 with 1 failure,
+`column-filter-modes.spec.js:492` ("on or off, the switches never change a
+column's width"). That test passes 3/3 alone (`--repeat-each=3`), so it is a
+load-sensitive flake under 2 workers, not this branch. The full suite is
+deferred until the follow-up work branched from here is done.
+
+## 2026-10-12 — event-overview: Video column, header glyphs, setlist "(with …)" links, mixed-case MBIDs (WIP.3)
+
+Env: 2026-10-12T15:44Z · vzell-lap · WSL2 Ubuntu 24.04.4 (Linux 6.18.40.1) · Playwright 1.62.1, Chromium 151.0.7922.34 · no Tampermonkey (GM stubs). Snapshots: from the user's browser, versions unknown.
+
+Snapshots (in `debug/`, gitignored):
+- `2024-05-23-initial.html` — event 4379731e-… (Grosvenor House). Despite its
+  name it is a RENDERED page: "Recordings" and "Setlist: Songs" both show
+  `<span class="recordinglink"></span><span class="video" title="This recording
+  is a video"></span>` in the Recording cell, and the setlist row lists "Thunder
+  Road" twice — one recording, named by "recording location for" AND "shot for".
+  Every typed column carries its entity glyph on each cell (`artistlink`,
+  `placelink`, `arealink` chain + `span.flag`, `recordinglink`).
+- `2026-06-04-initial.html` / `-final.html` — event cd595883-…. The native
+  `p.setlist` links every "(with …)" artist as `/work/<artist MBID>` (MusicBrainz's
+  setlist syntax: `[mbid|name]` on a `*` song line is always rendered as a work).
+  The converter already re-pointed them in the table; the initial page was left
+  wrong. FRP: "Trombone Shorty & the New Breed Brass Band" split into
+  "the New Breed Brass Band" — the "the" is the sentence's.
+- `2001-05-27-initial.html` / `-final.html` — event 26cead1c-… (Stone Pony).
+  The setlist's MBIDs were typed with uppercase letters:
+  `/work/E497263c-4f15-36c0-B27c-Dca99482962c` ("The Fever"),
+  `/work/70248960-Cb53-4ea4-943a-Edb18f7d336f` (Bruce Springsteen).
+
+**Root cause (2001-05-27):** every MBID regex on the setlist path was
+`/\/work\/[0-9a-f-]{36}/` without `/i` — `_eventSetlistSong()`'s works
+collection and its "(with …)" re-pointing, and `_eventSetlistGroups()`'s
+`workId`. "The Fever" matched no work link, so the song became plain text;
+Bruce Springsteen's link was never re-pointed and stayed a work. MusicBrainz
+resolves the mixed-case URLs (the user's check), so the fix matches with `/i`
+and keeps the case — which the new `mbid-uppercase` ⚠️ finding reads, to tell
+the user to edit the setlist.
+
+Fix and design: org/event-overview-pt.org, "WIP.3". Spec
+`tests/fixtures/event-overview-video-glyphs.spec.js` (10 tests): 9 fail on the
+pre-change code (checked in a scratch worktree of HEAD, the live userscript
+untouched), the 10th is the negative "no finding" case. Mutation list
+`scripts/mutations/event-overview-video-glyphs.json`: 9/9 caught, plus one
+guard no fixture can see (the converter's own `_eventSetlistFixLinks()` call —
+this single-page pageType always converts the live, already-repaired document).
+
+Follow-up (same day, user items 5–6), same Env:
+- **Link previews ignored mixed-case MBIDs on the initial page.** Root cause:
+  `_MB_POP_PATH_RE` matched `[0-9a-f]` only, so `_mbPopParsePath()` returned
+  null for `/work/C33ef12f-…` and the link was no popup target. Now A-F is
+  accepted and the MBID is lowercased by every reader (`_mbPopParsePath()`,
+  the edit page parser — `_MB_POP_PAGE_VERSION` 3).
+- **The setlist note sat flush left** under an indented h3 and table:
+  `renderGroupedTable()` gives each grouped table an inline `margin-left:
+  1.5em`, the `.mb-group-intro` wrapper got none. It now takes the table's.
+  This applies to every grouped page with a note, not only the event page.
+Mutation list now 12 caught + 1 unreachable guard; tested live by the user.
+
+## 2026-10-12 — Springsteen sites: detail preview on the initial page (WIP.4); Brucebase bold setlists (WIP.5)
+
+Env: 2026-10-12T16:28Z · vzell-lap · WSL2 Ubuntu 24.04.4 (Linux 6.18.40.1) · Playwright 1.62.1, Chromium 151.0.7922.34 · no Tampermonkey (GM stubs). The user's report: from their browser, versions unknown.
+
+**Preview on the initial page.** Report: hovering "1945" in Brucebase's own
+song list on `stats:songs` showed nothing; the same song in the rendered table
+showed its card. Root cause: `_dpSiteForLink()` required
+`a.closest('table.tbl > tbody')`, and before any button the page has no
+`table.tbl` — the engine itself was installed (`_initDetailPreview()` runs at
+init on any pageType). Now a desktop takes a detail link anywhere outside
+`_DP_PAGE_SKIP`; touch keeps the table-only scope (a target turns a tap into
+"open the window"). ‹ › from a native link: `_dpPageLinks()`. Pages with no
+pageType (a song page itself) still get no engine — the script stops at init
+there; not changed.
+
+**Brucebase 2012-03-18 as one long line.** `debug/bb-year-cache/2012.html`:
+the tour opener's setlist paragraph is
+`<strong>WE TAKE CARE OF OUR OWN / … / ROCKY GROUND</strong> <strong>/ LAND OF
+HOPE AND DREAMS</strong> - PEOPLE GET READY <strong>/ BORN TO RUN / …</strong>`.
+`_bbSplitSet()` split on " / " in TOP-LEVEL text nodes only, so the songs
+inside each `<strong>` never split. `_bbSplitInline()` now splits an inline
+run that holds a separator, each piece in a shallow copy of the run (the bold
+stays). `check-bb-year-converter.js` over all 63 cached years, before vs after
+(the pre-fix script in a scratch worktree): only 1984 (+31), 1999 (+24), 2009
+(+25) and 2012 (+22) change — each a bold tour opener — 0 problems either way.
+New fixture `tests/fixtures/bb-year-2012.html` (build-bb-fixtures.py).
+
+Fails-before: mutation lists run in scratch worktrees (live userscript
+untouched): `foreign-ip-popups.json` 5/5, `bb-year.json`'s two new entries 2/2.
+
+## 2026-10-12 — relationship tables on ten more page families (WIP.6, branch `feature/relationship-tables`)
+Env: 2026-10-12T18:28Z–19:52Z · vzell-lap · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.40.1) · Playwright 1.62.1 Chromium (captures, specs) · no Tampermonkey (GM stubs)
+
+Design record: `org/relationship-tables-pt.org`; rules: `docs/claude/relationship-tables.md`.
+
+**Captures.** Plain `curl` against musicbrainz.org now returns the
+"Verifying your browser" proof-of-work page (HTTP 200, `<title>Verifying your
+browser</title>`) — a probe that reads it as an empty page sees no h2 at all.
+The ten example pages were saved with `tests/support/capture-raw-page.js` as
+`tests/fixtures/rel-*-overview.html` and read with the new
+`scripts/probe-rel-sections.js`.
+
+**Release credit layouts** (`scripts/probe-release-credits-layouts.js`,
+19:12Z): opened logged out, a release shows credits INLINE (the toggle reads
+"Display credits at bottom"); `#bottom-credits` then holds only the Credits h2,
+`#release-relationships` and `#release-group-relationships`. In the "at bottom"
+layout it also holds one `div.bottom-credits` per medium (every track's
+credits) before those two. The choice survives a reload. The converter reads
+the two blocks by id.
+
+**Found while building, each pinned by a spec and a mutation:**
+- A place relationship's date is printed AFTER its area chain, so
+  `_eventRelParseLine()` puts "(from 1977-08-24 until 1978-05-05)" into `area`
+  ("…, United States (from …)" in the Area cell). `_relRowAttrs()` peels it.
+- `_eventTrimNodes(…, true)` strips one outer "(" … ")" pair only when the run
+  starts with "(" — so a line's `extra` may or may not have lost it.
+  `_relPeelAttrs()` decides from the text (no paren, or ")" before the first
+  "(") instead of assuming.
+- Ended URL relationships have NO link: `<span class="deleted"><bdi>https://…`
+  — they came out as an "Other" group of 4 rows on the artist's tab.
+- Series positions with a date: "(in 1997: number: 1997) (order: 10)".
+- Picard's per-table guard (`a[href*="/release/"]`) matched external links
+  (discogs.com/release/…, rateyourmusic.com/release/…): the URL tables got a
+  Picard column. Now a MusicBrainz release href only.
+- On a release page the tables must not be inserted inside `#bottom-credits`:
+  `renderGroupedTable()`'s initial h3 sweep spares every h3 there
+  (`el.closest('#bottom-credits')`), so they would have survived the sweep and
+  been rendered twice. The h2 moves out first.
+- A release-group title lookup that took the first sidebar `/release-group/`
+  link got "see all ratings".
+
+**Tests.** `rel-tables-recording.spec.js` 10/10, `rel-tables-pages.spec.js`
+10/10. `scripts/mutations/rel-tables.json` 12/12 fail as expected (live
+userscript restored and hash-verified). Regression run over the touched
+families (event-overview*, release-tracks*, picard*, recording-of*,
+artist-relationships-work-column, rel-column-disk-load-cells, series,
+place-performances*, area-*, status-line-placement; fixtures + mobile):
+212/213, the one failure `release-tracks-instrument-icons.spec.js` "a late
+icon updates the 📊 counts…" passed 3/3 when re-run alone — timing under
+load, not this change (it does not touch the instrument-icon path).
+
+## 2026-10-12 — relationship tables, review round 2 (WIP.7)
+Env: 2026-10-12T21:07Z · vzell-lap · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.40.1) · Playwright 1.62.1 Chromium · no Tampermonkey (GM stubs); user snapshots from their browser (version unknown)
+
+User snapshots read with the new `scripts/probe-snapshot-table-col.js`
+(rows of a saved page whose column has a value, with that cell's HTML):
+
+- `debug/area-USA-final.html`: 51 of 57 Areas rows had their parent chain in
+  a Details column. Cause, from `debug/area-USA-initial.html`: "MusicBrainz
+  More Flags Everywhere" wraps `span.arealink` + the area link + its flag
+  `<img>` + the "," that follows in one `span.mfe-flag-wrapper`
+  (`AREA_ICON_WRAPPER_SEL`). The comma was inside the target ("Alabama,"), the
+  rest began with " " + the country flag span, so the chain was never
+  recognised. The raw captures (no third-party scripts) never showed it — the
+  spec rebuilds that wrapping on the fixture.
+- `debug/work.html`: "(Fujipacific Music, Inc.)" is
+  `<span class="comment">(<bdi><i title="Primary alias">…</i></bdi>)</span>`.
+- `debug/member-of.html`: "(from 1964-12 until 1965-06: lead vocals,
+  <a>electric guitar</a>)" — the date LEADS the group and the group ends in a
+  link, so the end-of-run peeler never saw it.
+- `debug/CAA-EAA-beforetitle.html` (release 1d404e1d): release-group and event
+  targets in the "Via release group" Target column; captured raw as
+  `tests/fixtures/rel-release-art-overview.html` (24 "performed at" events,
+  11 release groups). `addCAA`/`addEAA` accept candidate arrays already
+  (report-detail), and each row's link picks CAA or EAA.
+
+The event page now passes the same parsing options; its spec's "(order: 150)"
+expectation moved from Details to Number (the only event assertion that
+changed). Tests: event-overview* + rel-tables* on fixtures and mobile 63/63;
+`scripts/mutations/rel-tables.json` 19/19 as expected (one "expect: pass":
+the strip link-scan scope is not visible to any spec yet).
+
+## 2026-10-12 — url-overview pageType; 📊 "Entity info - Type" (WIP.8)
+Env: 2026-10-12T21:40Z · vzell-lap · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.40.1) · Playwright 1.62.1 Chromium · no Tampermonkey (GM stubs)
+
+**URL page** (`debug/url-overview.html`, the user's IP snapshot, renamed from
+`debug/URL.html`; raw capture `tests/fixtures/rel-url-overview.html` via
+`tests/support/capture-raw-page.js`): `div#content` present; h1 in
+`.urlheader` (not one of the header selectors — the `h1 a bdi` fallback finds
+it, as for event/instrument pages); h2 "URL details" with a ONE-row
+`table.details` ("URL:" → the link itself), then `h2.relationships` with the
+entities linking the URL ("other databases: Born to Run by Bruce
+Springsteen"). No `table.tbl`, no pagination, nothing under it in a sidebar
+the converter reads. The script never ran on `/url/<mbid>` before: the
+`@include` line for bare entity pages had no `url` (now added; the URL's
+other tabs stay out). `sl-include-regex.spec.js` now lists the four overview
+URLs, because the fixture harness injects regardless of `@include`.
+
+**📊 "Entity info - Type"**: counts the new `data-mb-entity-type` attribute on
+the Target/Type cells of mixed tables (`withType` in `_eventRelColumns()`), so
+it also appears on the event page's "Via" / one-table layouts. Checked against
+a DOM oracle (the table's own Type cell texts) on release 1d404e1d's
+"Via release group" table: Event 24, Release group 11, Series 7, URL as many
+as Type says. Not highlighted (attribute-driven, like the video-medium flag).
+
+Tests (WIP.8): `scripts/mutations/rel-tables.json` now 25 entries, all as
+expected. Two of the six new ones were wrong at first and corrected: the glyph
+entry's `find` matched both render blocks (now planted in
+`_entityTypeGlyphClass()`), and the render-gate entry was recorded as
+`"expect": "pass"` but the spec DOES see it (the gates decide whether the
+synthetic sections render at all) → `"fail"`. Regression run over every
+📊/uvd/uniq spec plus event-overview*, rel-tables*, findings*,
+sl-include-regex, fixtures + mobile: 337/338. The one failure,
+`instrument-icons-uvd.spec.js` "a 📊 opened before the script stamped the
+fetched rows…", failed its PREMISE (104 rows already `data-ii-processed` when
+the panel opened — the third-party stub won the race under load); 5/5 when
+re-run alone.
+
+## 2026-10-13 — Brucebase Relations and Recent changes; MusicBrainz title style and typography on the Springsteen sites (WIP.9–WIP.11, branch `feature/bb-recent-changes-relations`)
+
+Env: 2026-10-12T22:32Z–23:30Z · vzell-lap · WSL2 Ubuntu 24.04.4 (Linux 6.18.40.1) · Playwright 1.62.1 Chromium, no Tampermonkey (GM stubs); probes: n/a
+
+**Snapshots.** The user's `debug/bb-recent-changes.html`,
+`debug/bb-relations-0-9.html` and `debug/bb-relations-a.html` are
+`#main-content` fragments (no `<head>`, header or side bar), so the fixtures
+come from the server's pages instead: `scripts/probe-bb-recent-changes.py`
+saved `debug/bb-recent-changes-raw.html`, `debug/bb-relations-raw.html` and
+two AJAX answers (`debug/bb-recent-changes-ajax-p{1,2}.json`). The two
+Relations snapshots differ only in which tab is active.
+
+**Recent changes is not a URL-paginated list.** Root of the design:
+Wikidot's `SiteChangesModule.js` (fetched, minified, 2026-10-12) builds
+`page`, `perpage` (= `#rev-perpage`), `categoryId`, `options` (ticked
+`rev-type-*` boxes as JSON) and POSTs them through `OZONE.ajax.requestModule`
+to `/ajax-module-connector.php` (`moduleName=changes/SiteChangesListModule`,
+plus `wikidot_token7`, which must equal the cookie). curl with a made-up
+token in both places answered `status: ok` with 200 changes. The pager
+shows no last page; at 200 a page, page 100 is 2025-10-17 and page 1,000 is
+2020-12-14 — so fixed 1/5/25-page buttons, no "all". The engine got its
+first non-URL page source, `features.pageRequest` + `pageCount`, and
+`fetchHtml()` an optional `init`; the loop's live-document shortcut is
+skipped for such a page. The user's snapshot shows every flag `title=""`:
+the site's hover-tip script moves the server's titles into its own tips, so
+the meanings ("content source text changed", …) are read off the SERVER
+HTML into `_BB_CHANGES_FLAGS`. Items: 3–4 of 200 carry two flags (always S+T);
+"(new)" is revision 0; ~75 % have a comment.
+
+**Relations.** 2,892 entries, no duplicates across tabs, the site's own
+per-tab counts stale on C, F and M. Exactly three names hold a comma that is
+not the sort form: two bands with "&" after it ("Crosby, Stills & Nash"),
+and "Fields, Elysian", which IS one — hence `_bbRelationDisplayName()`'s
+"one ', ', no '&' after it" rule.
+
+**Title style.** Sampled every title of the four sites from the snapshots
+(`scripts/check-mb-title-case.js --sample`): Brucebase song list every word
+capitalised (1,664/1,679), brucespringsteen.it in capitals (1,782/1,878
+unofficial, 1,182/1,186 official), jungleland.it as typed (3,814 every-word,
+1,877 mixed, 512 mostly lower, 123 capitals), year-page venues and setlist
+songs in capitals with mixed-case notes. Rules from
+https://musicbrainz.org/doc/Style/Language/English and /doc/Style/Titles; the
+first sample run turned "(JEMS)" into "(Jems)" (→ a parenthesised part counts
+as capitals only when the title is outside it too), "10TH" into "10Th"
+(→ a digit-led word is never capitalised), and "BORDERLINE...WITH" into one
+word (→ a dot followed by a dot ends a word). "up" and phrasal "on" are
+deliberate deviations, measured on the song list (Held Up, Hurry Up, Shipping
+Up, Stand Up; Come On, Hang On, Bring On). Typography: jungleland.it types
+´ and ` for apostrophes ("Spirit of ´76", "`Cause", "Rock `n` Roll") — found
+by listing every title with a quote character (527).
+
+**Filters do not fold punctuation** (no `’`/`'` equivalence anywhere in the
+filter path) — the reason typography is its own setting; left alone rather
+than changing the shared filter hot path.
+
+Tests: `bb-recent-changes.spec.js` 11/11, `bb-relations.spec.js` 10/10,
+`mb-title-case.spec.js` 8/8 (+ 101 shared cases), `sl-include-regex.spec.js`
+8/8; the converter specs (bb-songs, bb-year, bb-home, jl-list, bs-records,
+66 tests) pass with the two settings seeded off by their loaders. Mutations:
+`foreign-titles.json` 15/15 as declared (the per-node ellipsis `"pass"`: no
+year fixture holds "..." in a setlist). `bb-relations-changes.json` 17/17 as
+declared, all `"fail"`. Shared fetch-loop code (`fetchHtml(url, init)`, the
+`pageRequest` branch) checked with html-fetch-transient, resume-from-failed-page,
+bb-home, sl-lyrics and the other foreign-site specs; `test:full` deferred to the
+end of the branch stack (vzell-lap).
+
+## 2026-10-13 — second round: Recent changes Date/Time; titles on springsteenlyrics.com and the year pages' City/Country (WIP.9–WIP.11 amended)
+
+Env: 2026-10-12T23:50Z–2026-10-13T00:20Z · vzell-lap · WSL2 Ubuntu 24.04.4 (Linux 6.18.40.1) · Playwright 1.62.1 Chromium, no Tampermonkey (GM stubs)
+
+**Date / Time on Recent changes.** The user asked for the MusicBrainz 📊
+treatment of both columns. Read off the engine, no change needed there: a
+column fed to `dateParts` gets the "Date info - …" sections
+(`_dateExprColumnNames()` → `isDateExprCol`), and a column NAMED "Time" gets
+"Time info - Time of day" (`isTimeCol`, `_findCellTimeBucket()` reads the
+leading HH:MM, so "17:42:28" buckets). So the converter writes two columns
+(`_bbChangeDate()` returns `{date, time}`), and the definition adds the
+`dateParts` extractor as jl-list does. The `dateTimeParts` extractor that
+annotations/elections use was NOT taken: it keeps the source column and adds
+"<x> date"/"<x> time" synthetics, and the time one is not called "Time".
+
+**Titles.** springsteenlyrics.com card titles are already "every word
+capitalised" (89 of 158 sampled change, small words), the lyrics index in
+capitals (all change). One find: "[no title]" — MusicBrainz's own
+special-purpose style — would have become "[No Title]"; a title wholly in
+square brackets is now left alone. Cities and countries sampled from the 63
+cached year pages (531 cities, 38 countries) all read right ("The
+Netherlands", "Northern Ireland", "Ivory Coast"); "USA" stays by request, and
+is an acronym anyway (its explicit exception is mutation `"pass"`).
+
+Tests: bb-recent-changes 13/13, mb-title-case 9/9 (+110 cases), sl-* /
+bb-year / bb-home 64/64 with the settings off. New mutations 7/7 as declared
+(foreign-titles.json now 20, bb-relations-changes.json 19).
+
+## 2026-10-13 — hide sub-tables a page-wide filter empties (WIP.12, branch `feature/hide-empty-subtables`)
+
+Env: 2026-10-13T00:11Z · vzell-lap · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.40.1) · Playwright 1.62.1 Chromium · no Tampermonkey (GM stubs)
+
+Request: on multi-table pageTypes, while filtering globally, hide every sub-table
+(h3 + table) with 0 filtered rows, and bring it back when a broader filter
+refills it. Before this change `renderGroupedTable()` deliberately kept every
+pair on screen ("Do not hide the table or H3 even if group.rows.length is 0"),
+which on long pages makes a GF a wall of "(0 of N)" headings.
+
+Design (full rules in docs/claude/filter-and-cache-invariants.md, "Empty
+sub-tables under a page-wide filter"):
+
+- `_syncEmptySubtableVisibility()` runs at the tail of every
+  `renderGroupedTable()`, before `_syncMasterToggleState()`. That one place
+  covers the sync and time-sliced filter passes, sorts (scoped re-renders keep
+  undisturbed tbodies, so `tbody.rows.length` is still right), disk loads and
+  the discography-view reset.
+- Page-wide means the GF text, `_findingRowFilter`, or a cell-scope finding's
+  📊 tick. **Trap found while planning:** `_setFinding()` writes a cell finding
+  into a column filter input of EVERY table, so a naive "this sub-table has a
+  column filter → keep it" exemption would have exempted every table and hidden
+  nothing for those findings. `_isFindingOnlyColFilter()` tells them apart.
+- Exempt: a sub-table with its own CF/📊/STF/⏳ (its inputs would vanish with
+  it), and the one holding the focus.
+- Hidden by class (`.mb-empty-subtable-hidden`, `!important`), never
+  `style.display`. That property holds the collapse state, and mutation H2
+  proves it: writing `style.display` brings a collapsed sub-table back expanded.
+  `_syncMasterToggleState()` had to learn the class (mutation H5).
+- The h2 count tooltip adds "N of M sub-tables hidden: no row matches the
+  global filter" (`_h2HiddenSubtablesNote()`).
+- Setting `sa_hide_empty_subtables`, default on.
+
+Known limitation, by design: an STF edit does not re-render, so clearing the
+last STF character of an empty sub-table (while a GF is active) leaves it
+visible until the next GF/CF change. Hiding it then would pull the input out
+from under the cursor.
+
+Tests: `hide-empty-subtables.spec.js` 9/9; mutations
+`scripts/mutations/hide-empty-subtables.json` 7/7 fail as declared. A targeted
+run of 23 related filter/multi-table specs (00:18–00:37Z): 157 passed, 18
+failed. One was real: `row-count-stat-fixed-width`'s multi-table test used the
+GF "CD", which empties the Promotion sub-table, so the h3 whose controls it
+measures was now hidden. Its query is now "Vinyl", which keeps a row in both
+sub-tables. The other 17 (and 27 on a rerun of `column-filter-modes` +
+`filter-sliced`) were all `page.goto: net::ERR_CONNECTION_CLOSED`. Those specs
+load a shell from musicbrainz.org, and `curl https://musicbrainz.org/` failed
+the same way from this host at the time (SSL_ERROR_SYSCALL). They are
+unrelated to this branch and have to be re-run with the network up, at the
+latest in the end-of-stack `test:full`.
+
+## 2026-10-13 — hide-empty-sub-tables hid the LAST sub-table, and with it the ⏱ toggle (WIP.1, branch `fix/hide-empty-subtables-keep-one`)
+
+Env: 2026-10-13T21:33Z · vzell-lap · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.54.1) · Playwright 1.62.1 Chromium · no Tampermonkey (GM stubs)
+
+Found by the first `test:full` on `main` after the 9.99.1327–9.99.1338 stack
+was merged (started 05:42:15Z at `b4bf048`, 1686 tests, 2 workers). WSL
+restarted at 08:55:49Z (the kernel went from 6.18.40.1 to 6.18.54.1), which
+killed the run at 1593 of 1686: 1590 passed, 3 failed, 93 never ran. The log
+was in `/tmp` and was lost. `~/.cache/sa-test-full/status.json` and
+`test-results/` survived, and these numbers come from them.
+
+- `ms-length-filter-after-toggle.spec.js` test C: **caused by 9.99.1338**, and
+  fails on every rerun. Its release has one medium. The GF "11.666" matches
+  nothing while lengths are in seconds, so `_syncEmptySubtableVisibility()`
+  hid that medium, thead included, and the ⏱ button that would make the GF
+  match was out of reach. A user is in the same position.
+  Fix: never hide every sub-table on screen. Decide all of them first, and if
+  none would stay, hide none. A table the discography view already hides does
+  not count as staying. User's choice of the two options offered (the other
+  was to keep hiding everything and seed the setting off in test C).
+- `detail-preview.spec.js:571` (springsteenlyrics.com card): flaky and
+  unrelated. It fails 1 in 8 even at `993b60a` (before 9.99.1338). Its
+  `state()` poll reads `frame.contentDocument.documentElement.dataset` while
+  the iframe has a document but no `documentElement` yet, and the
+  `page.evaluate` throws instead of returning null. Not fixed here.
+- `instrument-icons-uvd.spec.js:157`: passed on rerun (timing).
+
+Tests: `hide-empty-subtables.spec.js` (the "nothing matches" test now pins
+"nothing hidden") plus `ms-length-filter-after-toggle.spec.js`, 14/14.
+`ms-length` test C fails on `main` and passes here. Mutations
+`hide-empty-subtables.json` 9/9 (new H8/H9 drop the keep-one guard).
+
+## 2026-10-14 — pinned bars stop short of the right edge, rows show beside them; a sorted header is see-through on the Springsteen sites (WIP.1–WIP.2, branch `fix/sticky-gutter-and-sorted-thead`)
+
+Env: 2026-10-13T22:20Z–22:50Z (2026-10-14 local) · vzell-lap · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.54.1) · Playwright 1.62.1 Chromium · no Tampermonkey (GM stubs). The user's reports came from their own browser, version not stated (`unknown`).
+
+**Report 1 (MusicBrainz, area page `/area/489ce91b…`, Relationships, Series
+uncollapsed; `debug/USA-final.html` + three screenshots):** the h2/h3 bars
+ended ~120 px before the window's right edge. While they were stuck at the
+top, rows showed in that strip ("…y Barry Manilow" beside the Series h3).
+Scrolled to the far right, an empty strip stayed after the table.
+
+Probe (a scratch script, not kept): `debug/USA-final.html` rendered
+statically at 1913 px with MusicBrainz's own `common-aaaf2ca.css` (fetched
+from static.metabrainz.org; the fixtures never load it). Page right 3588,
+`#content` 3500, `#sidebar` 3500–3578, table 3490. `#page` is
+`display: table` and `#sidebar` a `table-cell`. A table cell never shrinks
+below its min-content width, so `.sidebar-collapsed { width: 0;
+margin-right: -240px }` did nothing (margins do not apply to cells either),
+and the opacity-0 sidebar kept 78 px. `_sphRefresh()`'s
+`gutter = max(parentLeft, extent − parentRight)` then came out ~98 px, and
+every bar was capped that far short. The ~20 px gutter that remains without
+the sidebar is by design (the bar's room to stay pinned to the end of the
+scroll), but nothing covered it on the right, while the left side has the
+h3 indent shadow and the sticky-column masks.
+
+Fix: a collapsed sidebar is `display: none` (`initSidebarCollapse()`, with
+`display 0.3s allow-discrete` so the slide-out still plays). Not scoped
+under `html.mb-sph-on`: engaging would then change the extent it engaged
+on. And the bars paint their own background over the gutter (user's choice
+over a page-coloured mask): `::after` with `background: inherit`, width
+`--mb-sph-bleed` = gutter + margin-right, h2/h3 bars only (`_SPH_BLEED_SEL`).
+
+Trap hit on the way: the first version registered `--mb-sph-bleed`
+`inherits: false` like the other three properties, and the `::after` came
+out 0 px wide. A pseudo-element sees only INHERITED values of its
+originating element. It is `inherits: true` now. That is why it must never
+be written on a table pinned whole: every cell would inherit it, and a
+change would restyle the whole table, which is the 249 ms trap the other
+properties were made non-inheriting for. Pinned by a mutation.
+
+Also: the Ctrl+M overlay placed itself left of `#sidebar`'s rect; a
+`display: none` sidebar's rect is all zeros, which would have pushed it off
+the left edge. Guarded with `getClientRects().length`.
+
+**Report 2 (brucespringsteen.it records, screenshot):** sort "Notes", scroll
+down, and "gatefold" showed through the sorted header. With a multi-sort,
+every sorted header was affected. `.mb-mscol-hdr-N` is a 60 % alpha
+`background-color !important` that replaces the cell's own colour. On
+MusicBrainz, MB's CSS paints a gradient image on `table.tbl thead` itself,
+behind the header cells; on the foreign hosts the thead had no background,
+so the rows under the sticky thead showed through. Fix:
+`table.tbl thead { background-color: inherit }` in `applyStickyHeaders()`.
+That is the table's colour: `#fff` on the foreign hosts (the colour the tint
+already blended with while nothing was under it, so the header looks the
+same), and transparent on MusicBrainz, where `table.tbl` has no colour, so
+MB is unchanged by construction.
+
+Tests: `sticky-page-headers.spec.js` "collapsed sidebar takes no space"
+(injects an excerpt of MB's layout CSS); the custom-property test and the
+"narrow sub-tables are pinned whole" test now also pin "no bleed on a
+table"; `sticky-filter-bars.spec.js` "reach the window edge in their own
+colour" (painted pixels beside the stuck h2 and h3, scrolled both ways);
+new `sorted-thead-opaque.spec.js` (bs fixture, one and two sorted columns,
+the same header pixel before and after rows scroll under). Mutations:
+`scripts/mutations/sticky-gutter-sorted-thead.json`, 6/6 caught.
+Performance: nothing on the filter, sort or render path. The sidebar has
+one box fewer; the bleed is one custom-property write per bar, made only
+when its value changes, from values the pass already has. No capture.
+
+**Second round, same day (user's browser, `debug/h2h3bug.html` + screenshot):**
+report 2 confirmed fixed. Report 1: scrolled to the far right, the
+Wikipedia h2 (it rides inside the pinned `.wikipedia-extract` body, so it
+has no bleed of its own) stopped where the content ends, a page padding
+short of the window edge, which the user liked. But the data h2 and the h3
+bars painted on to the window edge, under the sidebar handle, past the
+table's end: the snapshot shows a fixed `--mb-sph-bleed: 20px`. The bleed
+now reaches only as far as the bar's containing block reaches on screen,
+`clamp(parentRight − scrollX − barRight, 0, gutter + margin-right)`,
+recomputed in the existing passive scroll listener (`_sphUpdateBleed()`).
+That is arithmetic on values `_sphRefresh()` already has, with a write only
+when a value changes: never on a vertical scroll, and on a horizontal one
+only within the last gutter's width of the scroll range. Test: "stop where
+the table ends"; two more mutations (a fixed width; no update on scroll),
+8/8 caught. The mutation "bleed written on tables" had gone stale (a `0`
+was filtered out as falsy and never written) and was re-planted as an
+object.
+
+A `test:full` started at 22:50:11Z was stopped at 381/1690 (all passed),
+because this change landed in the working tree under it. It was restarted
+afterwards.
+
+**Third round, same day (user's browser, release page, two screenshots):**
+fully scrolled, it looked right; part of the way, the data h2 and the h3
+bars still reached the window edge while the Annotation and Credits bars
+(riding inside pinned bodies) ended a gutter short "all the time", and
+those are the reference. So the strip is masked in the PAGE colour
+(`_sphGutterBg()`) at a fixed gutter + margin-right width: the option
+offered first and declined before the comparison was visible. The
+per-scroll clamp (`_sphUpdateBleed()`) is gone with it, since a
+page-coloured strip over page padding is invisible at maximum scroll anyway.
+The second `test:full` (23:15:16Z at `460ad13`) was stopped at 199/1691
+(all passed) for the same reason as the first. Mutations: 7/7 caught,
+including "the strip is painted in the bar's own colour".
+
+**Fourth round, same day (user's browser, release page and artist events,
+three screenshots):** the bars now line up, but the wide tables themselves
+still ran on to the window edge until scrolled to their end; the user asked
+for the tables to end on the bars' line from the start and during the
+scroll. So the per-bar `::after` (and its inheriting `--mb-sph-bleed`) is
+replaced by one window-tall, page-coloured strip fixed at the window's right
+edge (`#mb-sph-rmask`, `_sphUpdateRightMask()`), as wide as the smallest
+bar gap, at z-index 102: over the table and its stuck thead, under the
+raised h3, the stuck h2, the header block, MB's sidebar, the MB header and
+footer and every popup.
+
+A trap in the mutation run: a plant at z-index 99 (just under the thead's
+100) PASSED. The probe showed the mask is hit over the stuck thead even at
+99 in this fixture, because the thead's 100 is scoped inside an ancestor
+stacking context there. On MusicBrainz it competes directly, and 102 > 100
+decides. The plant was changed to "under the page content altogether" (-1),
+which the fixture can see, with the reason recorded in the mutation file.
+Mutations: 6/6 caught. The third `test:full` (23:30:16Z at `5ac6b54`) was
+stopped at 208/1691 (all passed) because this change landed under it.
+
+**Fifth round, same day (user's browser; three screenshots, `debug/jl.html`):**
+
+- springsteenlyrics.com: sorted headers still showed rows through them. The
+  site's Bootstrap 3.3.2 (fetched from the live site, `bootstrap/css/
+  bootstrap.min.css`) has `table { background-color: transparent }`, which
+  outranks `_ensureForeignTableStyle()`'s zero-specificity table colour, so
+  the thead's `inherit` came out transparent. The fixtures load no site CSS,
+  which is why the brucespringsteen.it arm had passed. Now
+  `_ensureForeignTableStyle()` gives `table.tbl > thead` `#fff` outside
+  `:where()`. The `inherit` in `applyStickyHeaders()` became redundant
+  (`transparent` on MusicBrainz, overridden on the Springsteen sites) and
+  was taken out, so the shared code is the same as on `main`.
+- jungleland.it: rows ran over the stuck header block and h2. The snapshot
+  shows `table.tbl.mb-jl-table.mb-sph-target` WITHOUT `mb-sph-table`, capped
+  (`--mb-sph-maxw`): `_sphCollectTargets()` pinned every direct `<body>`
+  child as chrome, the list table included (no MB `#page` there). A pinned
+  non-table target is raised while hovered (107, and 108 for body-level
+  ones), and VSB's cap for pinned bodies skips `<body>` children, so with
+  the pointer on the list the whole table painted over the bars. The
+  fixture reproduces it (`probe`: the table classed as a target). This
+  predates the branch. Fix: the `<body>`-children pass skips `table.tbl`;
+  the table pass handles it. MusicBrainz tables are never `<body>`
+  children.
+
+Mutations: 8/8 caught.
+
+**Merge gate on `77bad5a`:** `test:full` 2026-10-14T00:35:36Z–01:55:20Z on
+`vzell-lap` (2 workers, 79 m 44 s): 1695 passed, 2 failed. Neither failure
+is caused by this branch. Each one was rerun with `--repeat-each=6`, on the
+branch and with `main`'s userscript swapped in (the spec and support files
+are identical on both):
+
+| test | branch | `main` |
+|---|---|---|
+| `rich-tooltips.spec.js:58` (heading title read once, right after the tooltip shows) | 1/6 failed | 2/6 failed |
+| `detail-preview.spec.js:571` (springsteenlyrics.com card, see 2026-10-13) | 2/6 failed | 3/6 failed |
+
+Not fixed here.
+
+## 2026-10-14 — Merged main into feature/sidebar-overhaul; "Sidebar as tables" on release, series, place, area and instrument (WIP.5)
+
+Env: 2026-10-14T10:06Z · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.54.1-microsoft-standard-WSL2) · Playwright 1.62.1 Chromium (fixture specs), no Tampermonkey (GM stubs)
+
+**Why the button was missing.** Release and series pages had a toolbar, but
+`_sbTablesButtons()` let only six kinds through. Place, area and instrument
+overviews had no page type on the branch at all, so the script stopped at
+init with no toolbar to join. Main's relationship tables (`06f4f74`) added
+`place-overview`, `area-overview` and `instrument-overview`, hence the merge
+first (main `d4f1c28`, 9.99.1339; merge commit `33e043a`).
+
+**Merge conflicts and how they were resolved.**
+- Toolbar button list: main's `showIf`/`_noMainButton` filter, then
+  `.concat(_sbTablesButtons())`.
+- `startFetchingProcess()`: main's `replaceFeatures` plus button `type` is
+  the branch's `ownFeatures` plus `pageType`, done more fully (it also drops
+  `entityFeatures`, and `_activateButtonForSavedPageType()` lets a disk load
+  find the button). Main's version kept; the Sidebar button now sets
+  `type: 'sidebar-tables', replaceFeatures: true`. Its two mutations were
+  rewritten to plant the same defects through the new fields; both behave as
+  before (one `expect: "pass"`, one caught).
+- Fetched-page pre-processing: both `relDetailsToTables` and `sidebarToTables`.
+- This file: both sides kept, in date order.
+Checked on the merged tree: 177/177 in the specs both sides touched;
+`sidebar-overhaul.json` 39/39.
+
+**The change.**
+- `_sbTablesButtons()` also lets through release (with `/disc/N`), series,
+  place, area and instrument.
+- The three overview definitions also match with `sa_sidebar_tables_button`
+  on; their Relationships button has `showIf` on
+  `sa_enable_relationship_tables`, so with that off only the Sidebar button
+  shows.
+- `applySidebarToTables()`: every `dl.properties` and every
+  `ul.external_links` is its own group, named by its heading (a release has
+  two of each). New for a release: Labels (the `ul.links` whose items link a
+  label's own page, so a label's Editing list, which links
+  `/label/<mbid>/edit`, is never taken for one) and Release events.
+- Disk load: `_buttonForSavedPageType()` also asks `_sbTablesButtons()`, and
+  the restore runs `applySidebarToTables()`. Without that call the groups
+  still render, but nested in the release's `div.tracklist-and-credits` with
+  no "Sidebar" heading (probed: the loaded `#content` has only the native
+  wrappers at top level); the round-trip test now checks where they sit.
+
+**Tried and undone: placing the groups earlier on a release.** A release has
+no direct h2 in `#content` (its headings are in `div.annotation` and
+`div.tracklist-and-credits`), so the "Sidebar" heading is appended at the
+bottom. Inserting it before the first child holding an h2 changed nothing:
+`_relocateTrailingH2Sections()` (`sa_enable_h2_section_relocation_on_final_page`,
+default on) moves every other h2 section above the data heading after the
+render, on every page. That is the design, so the change was reverted.
+
+**Found, not fixed (main's, not this branch's).** Refreshing
+`scripts/config-default-history.json` (11 settings added: main's three, this
+branch's eight) makes `audit-config-defaults.py` report
+`sa_bb_sidebar_right: no entry — was true, now false`. Both commits
+(`d60e197` true, `91b558b` false, 2026-10-09) are on main and were the same
+WIP.3, so the true default probably never shipped. A migration entry or an
+allowlist is the user's decision.
+
+Tests: `sidebar-tables.spec.js` 13/13 (8 new). Mutations: 9 new in
+`sidebar-overhaul.json`, all caught; "the saved Sidebar button is not found"
+fails by the spec's 90 s timeout (the pageType-mismatch prompt replaces the
+render button), not by an assertion.
+
+**Full suite** (`run-test-full.py`, start 2026-10-14T10:09:02Z, finish
+10:18:10Z, 9 m 8 s, petri, `33e043a` plus the uncommitted WIP.5 work):
+1719/1724.
+- `rel-tables-pages.spec.js` place and series pinned the exact toolbar
+  button list; the Sidebar button is now on both by design, so both lists
+  gained '🗂 Sidebar as tables'.
+- `popup-mb` (a hover that moved on before its rate slot) and
+  `ws2-transient-classifier` (a 502 batch retry gap of 2307 ms against
+  3000) passed on rerun: timing under a full parallel run.
+- `rich-tooltips.spec.js` "h2/h3 row-count stat … hands the heading title
+  back" fails every time, also on `main` alone and on this merge without the
+  WIP.5 work, and passes on the branch before the merge (`73350e7`).
+  `git bisect` between the merge base `33c8d48` and `main` names `06f4f74`
+  (main's relationship tables). The h2's own title ("Click to
+  collapse/uncollapse section …") is still set while the stat's card shows.
+  Main's regression; not fixed on this branch.
+
+Mutations on the final tree: `sidebar-overhaul.json` 48/48 as expected
+(47 caught, 1 `expect: "pass"`), after repointing "tables: the button on any
+page" at the rewritten path pattern in `_sbTablesButtons()`.
+
+## 2026-10-14 — Sticky page headers flip-flopped on an overflowing header status line; sa_bb_sidebar_right migration (WIP.5)
+
+Env: 2026-10-14T11:03Z · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.54.1-microsoft-standard-WSL2) · Playwright 1.62.1 Chromium (fixture specs), no Tampermonkey (GM stubs)
+
+Both "found, not fixed" items of the entry above, fixed on request.
+
+**The rich-tooltips failure was not a tooltip bug.** Probes on
+`releasegroup-releases-live-titles.html` (1280 px window, after the "Studio"
+global filter):
+- The h2's title came back because the pointer left the row-count stat: the
+  `mouseout` restored it, correctly.
+- The stat moved because the page re-laid itself out: width 1280 → 1401,
+  `<body>` margins 0 → 8, the tabs sticky → static, the header 38 px shorter.
+- A 20 ms timeline of `html` classes showed `mb-sph-on` toggling every
+  60–70 ms indefinitely: the sticky page headers engaging and disengaging.
+- Disengaged, `#page` was 1401 wide. The widest leaves: the header's status
+  line (`#mb-filter-status-display`, `white-space: nowrap`, to 1393;
+  `#mb-info-display-generic`, 566 px) in `#mb-status-displays-container`, an
+  `inline-flex` that never wraps. Engaged, that header bar is a capped target,
+  the line wraps, `#page` fits in 1280, and `_sphRefresh()` disengaged: the
+  overflow was the capped bar's own. `_sphRefresh()`'s JSDoc said this
+  "cannot oscillate".
+- Why `06f4f74`: its "Relationships" button lengthened the release group's
+  toolbar, which aligns the status line under the first button, pushing it
+  past the edge. A layout coincidence exposed a general flaw; the Sidebar
+  button (WIP.3/WIP.5) lengthens more toolbars the same way.
+
+**Fix** (`_sphRefresh()`): before disengaging, the pass removes
+`html.mb-sph-on`, measures the disengaged extent, and re-adds the class when
+that extent exceeds both the window and the engaged extent plus `<body>`'s
+own margins. The margins allowance is needed: the first version without it
+broke "disengages once the overflow is gone … (no ratchet)", whose bare
+fixture overflows by a few px with the feature off. The cost is one extra
+layout, on a pass that would disengage only, like the extra layout the
+engage pass already takes. Timeline after the fix: engaged once at ~750 ms,
+then stable.
+
+Test: `sticky-page-headers.spec.js` "a status line past the window edge
+engages once and does not flip back and forth". It asserts the feature
+engages (so the overflow is really there) and flips at most once over 60
+animation frames. Mutations: 2 more in `scripts/mutations/sticky-page-headers.json`,
+both caught (no disengaged check: the new test; no margins allowance: the
+"no ratchet" test). Sticky, tooltip and sl-sticky specs: 72/72.
+`rich-tooltips.spec.js`: 7/7.
+
+**`sa_bb_sidebar_right`:** a `_SETTINGS_MIGRATIONS` entry `was: [true]`. The
+true default lived one day inside one branch (`d60e197` → `91b558b`,
+2026-10-09, both "WIP.3", `@version` 9.99.1298 at the time) and never
+shipped, but `dump-default-history.py` walks every revision. The entry
+resets a stored `true` only in a profile that has not run migration level 1
+yet (it is not bumped). `audit-config-defaults.py` is clean again: 24 retired
+defaults, 4 orphaned keys, matching 898 revisions. `settings-migration.spec.js`
+18/18.
+
+**Full suite after these fixes, and one test race.** Two runs (11:03:15Z →
+11:13:08Z, 1723/1725; 11:18:29Z → 11:26:49Z, 1722/1725; petri) failed only on
+timing-sensitive tests, each passing alone: `ws2-transient-classifier` (a
+retry gap; also 1 in 5 on `main` alone), `column-filter-modes` "never change
+a column's width" (the one-off recorded in `3358368`), a `popup-mb` place
+window (6/6 alone). `caa-column-redesign.spec.js` "grid is the default … a
+collapsed cell keeps its width" failed in both (264 vs 270 px). A probe
+showed the column widening by 6 px on its own within ~100 ms of the render
+(page 5217 → 5223 px, sticky headers engaged throughout), so the test's first
+read could come before it. Same 24/24 under 12 parallel workers with and
+without the `_sphRefresh()` fix: not caused by it. The test now takes the
+collapsed width once two reads in a row agree.
+
+## 2026-10-14 — Merged fix/sticky-gutter-and-sorted-thead into feature/sidebar-overhaul; the initial sidebar collapse animated (WIP.6)
+
+Env: 2026-10-14T13:34Z · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.54.1-microsoft-standard-WSL2) · Playwright 1.62.1 Chromium (fixture specs), no Tampermonkey (GM stubs)
+
+**Merge** (`eac6013`): the userscript merged cleanly. The fix branch kept
+main's disengage path, so the `_sphRefresh()` stay-engaged check and its
+right-edge mask (`#mb-sph-rmask`, visible only under `html.mb-sph-on`) do not
+overlap. The WIP files: this branch's WIP.1–WIP.5 kept, the fix branch's
+WIP.1/WIP.2 appended as WIP.6/WIP.7. DEBUG-NOTES: both sides kept, in date
+order.
+
+**What broke, and on which branch.** The first full run after the merge
+(12:31:13Z → 12:39:37Z, 1729/1736) showed `popup-ext.spec.js` failing 7–8
+of 34 on every run, alone and on one worker too (the card or the window
+never showed after a hover). `main` and this branch before the merge
+(`0053015`): 34/34. The fix branch alone: 6 failed. `git bisect` over its
+commits names `460ad13`, and removing its one line `display: none
+!important` from `.sidebar-collapsed` gives 34/34. The fix branch's own new
+spec "collapsed sidebar takes no space" also failed 4/4 on petri, on the fix
+branch alone. Its merge gate ran on vzell-lap (2 workers), where both passed.
+
+**Cause.** `initSidebarCollapse()` applies `sa_sidebar_collapsed` at render
+"without animation so the page opens already collapsed", but only added the
+class. The sidebar was already laid out, so the transitions ran, and the fix
+branch's new `display 0.3s allow-discrete` kept the collapsed sidebar in
+the layout for 0.3 s. Then `#page` (a CSS table) reflowed into the freed
+width and the event page's links moved from under a pointer that was
+already resting on them. A slower machine had hovered only after the jump.
+
+**Fix:** the initial collapse sets `transition: none` on the sidebar, adds
+the class, forces the style (`offsetWidth`) and clears the inline
+transition, so a click on the handle still slides. Test:
+`sticky-page-headers.spec.js` "a page set to open with the sidebar
+collapsed has no sidebar box from the first frame (no slide-out)", which
+counts the boxes one frame after the class lands. Mutation "the initial
+sidebar collapse animates" in `scripts/mutations/sticky-page-headers.json`
+is caught. Then `popup-ext` passed 47/47 twice (with the mobile twin and
+the sticky spec), and the fix branch's spec passed as written (4/4 alone,
+8/8 on 8 workers).
+
+**Mutation anchors.** Of `sticky-page-headers.json`, 3 were repointed and
+caught again:
+- "the feature never lets go once engaged": staled by this branch's
+  `_sphRefresh()` change; it is now the stay-engaged check always holding;
+- "body-level chrome is no longer collected" and "a bar's own margin-right
+  is not subtracted": staled by the fix branch.
+3 more are already stale on `main` and were left alone: "the docked state
+ignores the columns before the sticky one", "the docked column is never
+masked" (0 matches) and "the open-popup rule no longer requires an inline
+z-index" (4 matches). `sticky-gutter-sorted-thead.json`: 8/8 on the merged
+tree.
+
+**Full suite** (13:26:13Z → 13:34:31Z, 8 m 18 s, petri, `eac6013` plus
+these changes): 1736/1737. The one failure, `ws2-transient-classifier`
+"a 502 on a browse page is retried, and its Retry-After is honoured too", is
+the retry-gap flake that also fails 1 run in 5 on `main` alone.
+
+## 2026-10-14 — The retry-gap and rate-gate specs: WSL2 stepped the wall clock back, not a short wait
+
+Env: 2026-10-14T13:54Z · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.54.1-microsoft-standard-WSL2) · Playwright 1.62.1 Chromium (fixture specs), no Tampermonkey (GM stubs)
+
+**Symptom.** One run in a few failed a "gap too short" check under load, a
+different spec each time: `ws2-transient-classifier` (2307 and 2550 ms
+against ≥ 2900, `Retry-After: 3`), `html-fetch-transient`,
+`release-rg-popup` (2352 against ≥ 3000), `popup-mb` and `popup-ext` rate-gate
+tests. It also happened on `main` alone (1 in 5).
+
+**Probe.** "a Retry-After header is honoured as a floor on the backoff",
+`--repeat-each=60 --workers=12`: 8–10 short gaps per batch, all near 2550 ms.
+With `fetch` wrapped in the page and both clocks logged:
+- the page's `Date.now()` and the route's `Date.now()` in Node agreed:
+  2550 ms between the 503 answer and the retry;
+- the page's `performance.now()` said 3001 ms, and Node's `process.hrtime`
+  said 3012 ms.
+
+So the script waited the full 3000 ms (`beforeRetry`'s `setTimeout` runs on
+the monotonic clock), and the wall clock was stepped back about 460 ms
+during the wait: WSL2 resynchronising with the host. Every spec that timed
+an interval with `Date.now()` could see it.
+
+**Fix (tests only).** Every request log, `t0` and deadline in 12 fixture
+specs is on Node's `performance.now()` (24 sites). `release-rg-popup.spec.js`
+compared the page's `Date.now()` with Node's; its `t0` is now taken in Node
+after the reservation returns, which can only shorten the measured gap. The
+two HTTP-date lines in `ws2-transient-classifier.spec.js` keep `Date.now()`.
+Rule in docs/claude/testing-playwright.md. After it: the floor test 60/60
+(repeated under the same load), the two other `Retry-After` tests 60/60
+twice, and the 12 specs 163/163 plus `resume-from-failed-page` 7/7.
+
+Full suite after the fix (13:54:05Z → 14:02:24Z, 8 m 19 s, petri, `0ada5c7`
+plus these spec changes): 1737/1737, the first fully green run of the day.
+
+## 2026-10-14 — The opened sidebar stayed out of view on wide pages; the handle at the sidebar's top (WIP.8)
+
+Env: 2026-10-14T15:07Z · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.54.1-microsoft-standard-WSL2) · Playwright 1.62.1 Chromium (fixture specs), no Tampermonkey (GM stubs). The report and the snapshots `debug/r-t-no-sidebar-content.html` and `debug/r-t-sidebar-content.html` came from the user's browser on vzell-lap (versions not given: unknown).
+
+**Report.** The handle opens the sidebar fine where nothing is wider than the
+window (an instrument page). On a release group with wide tables the opened
+sidebar showed no content, slid in while scrolling right, and was complete
+at the right end. Also asked for: the handle at the top of the sidebar.
+
+**Snapshots.** The FRP has `html.mb-vsb-on.mb-sph-on`, `#page` inline
+`min-width: 100%; width: fit-content` and `#sidebar` inline
+`position: sticky; left: 0px; top: 0px; … z-index: 105` (auto-resize).
+The second file ("the empty sidebar") is the right-edge mask, `<div
+id="mb-sph-rmask" class="mb-sph-rmask-on" style="width: 244px">`. It is NOT
+what hides the sidebar: its z-index is 102, under the sidebar's 105. The
+sidebar is simply not there: it is the last cell of MB's `#page` table,
+placed after the wide content, past the window's right edge. Sticky
+`left: 0` only stops it scrolling off the LEFT edge, which never happens.
+
+**Probe** (`rel-release-group-overview.html`, MB's table layout injected as
+`sticky-page-headers.spec.js` does, 1000 px window): opened, the sidebar at
+x 941–1159; at the right end of the scroll 766–984.
+
+**Fix.**
+- Auto-resize sets `right: 0` (cleared on restore): opened, the sidebar is at
+  782–1000.
+- The handle's top follows the sidebar's top (`#content`'s while collapsed),
+  clamped inside the visual viewport.
+- A frame-by-frame probe after the click showed the handle placed once at
+  sidebar x 794 while it settled at 782: the content containers slide for
+  0.3 s, and the sticky page headers' switch moves a sidebar held at the
+  edge. `followHandle()` places it every frame for 400 ms after a click or
+  an `html` class change. Sidebar subtree changes keep their single rAF
+  read.
+
+**Tests.** `sidebar-collapse-handle.spec.js` (3) passes 18/18 on 6 workers.
+Mutations (`sidebar-overhaul.json`, all caught): the old `left: 0`; no
+`top` of the handle's own; one measurement instead of the follow.
+
+**Not fixed: the handle on a phone.** A mobile twin found the handle
+untappable: on the Pixel 7 emulation it is fixed to the layout viewport's
+right edge (x 949 of 964) while the visual viewport is 412 px wide. That
+was so before this change, which only moves it vertically; it now at least
+stays inside the visible height (it was at y 1117 of 839 for a moment).
+The twin was dropped rather than written around it.
+
+## 2026-10-14 — The sidebar handle on a phone; three stale sticky mutations; a popup-ext Live-page race (branch fix/phone-handle-mutations-flake)
+
+Env: 2026-10-14T16:15Z · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.54.1-microsoft-standard-WSL2) · Playwright 1.62.1 Chromium (fixture specs; chromium-mobile: Pixel 7 emulation), no Tampermonkey (GM stubs)
+
+**The handle on a phone.** MB's pages carry no viewport meta, so a phone lays
+them out like a desktop page. On the Pixel 7 emulation a fixed element lives
+in a viewport `innerWidth` 964 px wide while `visualViewport` (and
+`clientWidth`) is 412: `right: 0` put the handle at x 949, and Playwright's
+tap hit `<html>`. `updateHandlePosition()` now writes `left` in the
+coordinates `getBoundingClientRect()` and a fixed box share, clamped inside
+the visual viewport (offsetLeft/Top, width, height), and `visualViewport`
+scroll/resize re-place it. A desktop's visual viewport is the window, so the
+desktop spec (`sidebar-collapse-handle.spec.js`) is unchanged and passes; the
+expanded-sidebar case also stops using `innerWidth`, which counts a classic
+scrollbar while a fixed box's offsets do not.
+Spec: `sidebar-collapse-handle.mobile.spec.js` (tap opens, inside the visible
+part collapsed, opened and after a pan; a second tap closes). Mutations in
+`sidebar-overhaul.json`: the fixed viewport taken as the visible one, caught;
+no visualViewport scroll listener, recorded `expect: "pass"`, because a pan is
+a window scroll the old listener follows, and a pinch-zoom cannot be made
+here (`Input.synthesizePinchGesture` left `visualViewport.scale` at 1).
+
+**Stale mutations.** The 3 entries of `sticky-page-headers.json` already
+stale on `main`: the two "docked" entries target the line that gained the
+Brucebase guard in `_sphUpdateColDocked()`; "the open-popup rule no longer
+requires an inline z-index" matched 4 rules (3 sticky-filter-bar, 1 sticky
+page header) and now names the sticky page header's whole selector. All 3
+caught again. A sweep of every list (each `find` must occur exactly once)
+still finds 43 stale anchors in 22 other lists (repointed in the next entry):
+event-overview 7; bb-support, popup-mb, uvd-title-sections 4 each;
+mobile-basics 3; async-pop-providers, bb-year, video-medium-flag,
+ws2-transient-classifier 2 each; art-viewer-extras, bs-support,
+caa-column-redesign, caa-gallery, detail-preview, event-overview-video-glyphs,
+jl-support, len-flag-disk-roundtrip, popup-event-details, popup-ext,
+rel-tables, resume-from-failed-page, rich-tooltips-liner 1 each. One of this
+branch's own ("handle: no top of its own") went stale with the handle's CSS
+comment and was repointed, caught again.
+
+**The popup-ext flake.** "a site's window: … its Live page from the hover's
+fetch" failed once under a full run (0 elements `.mb-dp-hide`). The classes
+are set by `_dpIsolateFrame()` on the frame's `load`, after `srcdoc`, and the
+test read the frame at once. It and its Wikipedia twin now poll, after
+`documentElement.dataset.mbDpDone`, as `detail-preview.spec.js` already did;
+84/84 repeated on 12 workers. Rule in docs/claude/testing-playwright.md.
+
+**The column-width check, too** (full run 16:15:58Z → 16:24:16Z on this
+branch: 1739/1741). `column-filter-modes.spec.js` "on or off, the switches
+never change a column's width", the recurring one (`3358368`, 11:18 today),
+failed 10 runs in 12 on 12 workers and passed alone. A probe measured both
+pages 3 s after the test's "settled" read: they agreed (348, 137, 145, 148,
+…); the losing page had three columns 5–6 px narrower at the first read. The
+test's settle (two equal reads 250 ms apart) comes before a late layout step
+under load. It now re-measures both pages until they agree (15 s), and a
+lasting difference fails with both lists: 12/12 under the same load. Waiting
+for the auto-resize button's "Restore…" title instead was tried and is wrong
+here: a disk load never runs that pass. No mutation covered the test; added
+"the switches claim room in the column" (a min-width on the wrapper), caught.
+Laying the chips out in flow passes: the wrapper's `container-type:
+inline-size` keeps its content from widening it. The other failure of that
+run, `rich-tooltips-liner.spec.js` "a mousedown hides the card", passed 12/12
+on 12 workers: not changed.
+
+**And two more of the same kind** (full run 16:29:38Z → 16:37:59Z,
+1739/1741), each passing 12/12 alone on 12 workers:
+- `popup-mb.spec.js` "the place window: its area in the area chain": the
+  row still read "Asbury Park, New Jersey ◌" after the default 5 s, behind
+  three area lookups on the 1 req/s gate. That expectation gets 15 s.
+- `sticky-page-headers.spec.js` "… a collapsed sidebar takes no space": a
+  bar's right gap was read before the sticky pass ran again after the
+  sidebar left the layout. The geometry is now polled until no bar's right
+  gap is wider than its left inset (10 s); its mutation ("a collapsed sidebar
+  keeps its layout box") is still caught.
+
+**Left as it is at first** (full run 16:43:11Z → 16:51:31Z, 1740/1741;
+cause found and fixed in the next entry):
+`filter-autofocus.spec.js` "a sub-table filter's ✕ clears it and focuses it
+again" failed in `page.goto` itself ("Test timeout of 90000ms exceeded"),
+before any of its own steps; the same file failed the same way in the 12:31
+run. The file passed 36/36 repeated 6× on 12 workers. A fixture load that
+never finishes under a full suite's load is not something the test can wait
+out, so nothing was changed; if it comes back a third time, the place to look
+is what the fixture server is doing at that moment, not the spec. Each full
+run today surfaced a different load-sensitive test: all fixed above except
+this one.
+
+## 2026-10-14 — A fixture load waiting on archive.org through a coverartarchive.org redirect; 43 stale mutation anchors repointed (branch fix/phone-handle-mutations-flake)
+
+Env: 2026-10-14T19:27Z · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.54.1-microsoft-standard-WSL2) · Playwright 1.62.1 Chromium (fixture specs), no Tampermonkey (GM stubs)
+
+**The filter-autofocus timeout.** `filter-autofocus.spec.js` "a sub-table
+filter's ✕ clears it and focuses it again" timed out in `page.goto()` in two
+full runs, and in the others took anywhere from 4 s to 1.2 min. Its fixture,
+`user-ratings-multigroup.html`, shows two release-group thumbnails as
+`//coverartarchive.org/release-group/…/front-250`. A probe that timed every
+subresource of the load (scratch script, not committed) showed each one
+redirected to `archive.org/download/…` and on to a `dn7…ca.archive.org`
+mirror, which ended the load (1.7–2.1 s here, at a quiet moment). The
+2026-10-01 fix aborts archive.org images (`ARCHIVE_ORG_RE`), but a route only
+sees the FIRST url of a redirect chain: with that route in place the probe
+still loaded both mirrors. So a slow Internet Archive still held the load,
+one hop removed.
+
+`loadUserscriptPage()` now also aborts images from coverartarchive.org and
+eventartarchive.org (`ART_ARCHIVE_RE`), but only while `page.goto()` runs:
+the route is removed once the page has loaded. The images in the saved
+markup are the only ones the `load` event waits for; every request the
+userscript makes afterwards still reaches a spec's own mock, or the network,
+as before ("a coverartarchive.org mock registered BEFORE the load still
+answers its images" passes unchanged). New tests in
+`fixture-load-no-archive-org-wait.spec.js`: with a coverartarchive.org mock
+that never answers, the ratings fixture loads in under 20 s, both
+thumbnails are blocked, and the mock is reached again after the load; plus
+the pattern's own test. Mutations in `fixture-archive-org.json`: no block
+during the load (`page.goto` times out), and the block outliving the load
+(the CAA mock is never reached): both caught.
+
+**43 stale mutation anchors, repointed.** Every one that
+`scripts/check-mutation-anchors.py` reported (previous entry), in 22 lists;
+the check now reports 0 bad of 1754. Each new anchor matches the userscript
+exactly once and plants the same defect its entry describes, on the code as
+it is now. Most had drifted with a later edit to the same lines: a new
+`anchorSelector` row, a fourth/fifth `_OTHER_RICH_TIPS` member
+(`mb-dp-peek`, `mb-async-pop`), `_mbSetSiteTitle()` in place of
+`textContent`, `_recOfRestoreCell()` between two disk restores, the
+relationship-tables variants of shared code, a Retry-After log line. Two
+matched twice and were narrowed to the copy their spec runs (the art
+viewer's archive panel; the Brucebase song list, not the Relations page).
+The 40 entries involved were run with `scripts/mutation-check.py` (19:34Z): 39 as
+recorded (34 caught, 5 recorded `expect: "pass"` passing). The 40th,
+video-medium-flag's "the new counts are missing from the render gates",
+passed where it should fail: on the CD fixture the Video column's empty
+cells (`emptyCellCount`) open the 📊 gate on their own, so its test cannot
+see the video counts missing. Aimed at the DVD test instead, where every
+track is a video and nothing else opens the gate: caught.
+
+Full run 19:42:39Z → 19:50:55Z on this branch (`9806685` plus these
+changes): 1743/1743, the first clean full run of the branch. The
+filter-autofocus test took 3.6 s.
+
+## 2026-10-14 — Instrument Icons Everywhere 2026-10-12.2140: the icon AFTER the name (WIP.1, branch feat/ii-icon-after)
+
+Env: snapshots saved 2026-10-14T20:34Z (FRP) and 2026-10-14T20:35Z (UVD), file mtimes · vzell-lap · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.54.1-microsoft-standard-WSL2) · Brave 1.97.56 (Chromium 155.0.8059.40) · Tampermonkey 5.5.1, with the script v2026-10-12.2140 set to "after link ➡". Fixture runs: 2026-10-14T21:06Z · vzell-lap · same OS · Playwright 1.62.1 Chromium, no Tampermonkey (GM stubs).
+
+**What changed upstream.** The new version has a setting, `iconPosition`
+(`'before'`, the first-run default, or `'after'`). It is kept in the script's
+own GM storage and toggled from its Tampermonkey menu, which reloads the page.
+In 'after' mode `insertIconAfterLink()` puts the `img.mb-ii-icon` as the
+anchor's IMMEDIATE NEXT sibling, with its margins swapped (left 0.30em, right
+0.05em). The stamp still goes on the anchor. Manifest entry updated
+(commit 221f990); `run-live-interop.js` gained `--gm-value=key=value`, since
+an unseeded harness run is always 'before'.
+
+**Snapshots.** `debug/instuments-right.html` is an FRP of release-tracks for
+*Tunnel of Love Express I: Tougher Than the Rest*
+(release 3ec14d03-2c03-4764-a69d-8155817a040f). 18 stamped anchors, 2 icons,
+both harmonica: irombook has no icon for bass, drum machine, guitar,
+keyboard, mandolin, organ, percussion or acoustic guitar, on the native page
+too. One icon is in the native `<dt>` (`harmonica</a><img>, `), the other in
+SA's credit `<li>` (`harmonica</a><img>: Bruce Springsteen`).
+`debug/instuments-right-UVD.html` is the 📊 panel of that column: "Instrument
+info - Icon" lists only "○ without instrument icon (2)". "🎻 with instrument
+icon" is missing, and "» instrument: harmonica" has no trailing icon.
+
+**Root cause.** `_findInstrumentLinkIcon()` looked only at
+`anchor.previousSibling`, which was the script's only side until now. Every
+reader goes through it, so in 'after' mode every icon read as absent. SA's
+cell still SHOWED the harmonica icon, but only by accident:
+`_cloneInstrumentAnchorWithIcon()` saw no icon and removed the stamp, and the
+script decorated SA's copy again. Three more places assumed the before side:
+- `_cloneInstrumentAnchorWithIcon()` always put a copied icon in front.
+- `_iiMirrorLateIcons()` required `icon.nextSibling` to be the anchor, so in
+  'after' mode a late icon never reached the source row of a multi-table
+  page.
+- `_iiReleaseIconlessAnchors()` released anchors that did have an
+  after-icon. The script's own guard prevented a duplicate, so this was
+  harmless.
+
+**Fix.** `_findInstrumentLinkIcon()` checks the previous sibling, then the
+next sibling. The next-sibling image is skipped when it is directly followed
+by another instrument `<a>`, because in `<a1></a><img><a2>` it is a2's
+'before' icon. The clone and the mirror keep the side. The test hook gains
+`__saTest.findInstrumentLinkIcon`.
+
+**Tests.** The simulator `ii-instrument-icons.js` takes `position`. The
+release-tracks, instrument-search UVD and instrument-list icon specs now run
+over both positions; their oracles read the icon on the expected side only, so
+a copy on the wrong side fails. There is a new tie-break spec. 28/28 pass. In
+`scripts/mutations/instrument-icons.json`, four anchors that went stale with
+the code change were repointed, and four new mutations were added: lookup
+before-only, after-icon cloned in front, late after-icon not attributed, and
+no tie-break.
+
+Mutation run 2026-10-14T21:15:59Z → 21:23:56Z · vzell-lap ·
+`scripts/mutation-check.py scripts/mutations/instrument-icons.json`: 24/24 as
+expected. The four new ones fail only their `[icon after]` arm. The two
+"(alone)" covers-for-each-other entries still pass, now in both arms. The
+userscript was restored and hash-verified.
+
+## 2026-10-14 — Release "Credits": jesus2099's cover-art icon taken as the "Via release group" target (WIP.1, branch fix/rel-tables-third-party-art-icon)
+
+Env: 2026-10-14T22:34Z · vzell-lap · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.54.1-microsoft-standard-WSL2) · Playwright 1.62.1 Chromium, no Tampermonkey (GM stubs) for the tests; the user's browser for the report: unknown
+
+**Symptom.** On release 52c6808b-037d-47d5-b0c7-17331c9d36cd, the "Credits" button's "Via release
+group: Tougher Than the Rest" table had these faults:
+- Type read "Release".
+- The Target cell held only an icon.
+- The group's name sat in an extra Details column.
+- A Picard column appeared.
+- There was no CAA big-image strip and no CAA h3 buttons.
+
+In an earlier render the same table was right: Type "Release group", the name after our inline
+thumbnail, and the strip.
+
+**Snapshot.** `debug/release-tracks-with-sidebar-initial.html` (initial page). In
+`#release-group-relationships`, every release-group line reads
+`<span class="rglink"></span><a href="https://musicbrainz.org/release/<mbid>/cover-art" ref="/release-group/<mbid>"><span class="caa-icon jesus2099userjs154481"></span></a><a href="/release-group/<mbid>"><bdi>Tunnel of Love</bdi></a><br>`,
+and `div.jesus2099userjs154481bigbox` sits below the h3.
+
+**Root cause.** `_eventRelParseLine()` takes the first element after the empty marker spans as
+the target, and here that is jesus2099's icon link. From there:
+- `/release/…/cover-art` → `_eventRelTargetType()` = release, so the Type reads "Release".
+- The link has no text, so the Target cell looks empty.
+- The real release-group link went to `extra`, which became the Details column.
+- A MusicBrainz `/release/` link in the table brings in the Picard column.
+- No release-group link is left in Target, so the CAA inline thumbnail, the big-image strip and
+  the h3 buttons have nothing to work on.
+
+The converter's code had not changed. jesus2099 adds the link asynchronously, after its own
+lookup ("1 image found in this release"), so it is a race: in the earlier render the link was
+not there yet.
+
+**Fix.** The lead-skip loop of `_eventRelParseLine()` now also drops a text-less `<a>` holding
+only `span.caa-icon`/`span.eaa-icon`. It does this for every caller, the event page included.
+This matches columnEraser strategy 2 and `_stripLateJesus2099CaaIcon()`, which remove the same
+anchor elsewhere. The bigbox div was already harmless: it has no `table.details` and is removed
+with `#release-group-relationships`.
+
+**Tests.** A new spec in `rel-tables-pages.spec.js`, "jesus2099's cover-art icon before a
+release group is never the target", adds the icon links and the bigbox to `rel-release-art-overview.html`
+exactly as in the snapshot, then checks four things: 11 "Release group" rows and no "Release"
+row, the name in Target, no Details/Picard column, and 11 of our inline thumbnails with no icon
+left. A new mutation in `scripts/mutations/rel-tables.json` (skip disabled) fails as expected
+("the parse: still release groups"), and the userscript was restored and hash-verified. The
+rel-tables and event-overview specs pass on fixtures and mobile, 69/69. Lint is within the baseline.
+
+## 2026-10-15 — Sidebar cards: More Flags Everywhere's flags stuck out of the "Label information" card (branch feature/sidebar-inline)
+
+Env: 2026-10-15T00:15Z · vzell-lap · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.54.1) · user's browser (Brave, versions unknown) with Tampermonkey (version unknown) for the report; Playwright 1.62.1 Chromium, no Tampermonkey (GM stubs) for the test.
+
+Reported by the user on PolyGram Distribution's Relationships tab
+(`/label/0b805b9c-…/relationships`, screenshot only, no snapshot): in the new
+read-only "Sidebar" cards (WIP.2) the flags of the Area value
+(Saint-Laurent, Montréal, Québec, Canada) were drawn past the card's right
+border. Root cause: "MusicBrainz More Flags Everywhere"
+(`tests/fixtures/live-userscripts/MusicBrainz_Right_Side_Flags_Everywhere.user.js`,
+lines 1784/1902/1987) wraps each area as `span.mfe-flag-wrapper` (link,
+comment, flag image, comma) and makes it and every descendant
+`white-space: nowrap !important`. The cards sat in fixed
+`repeat(auto-fill, minmax(220px, 1fr))` grid columns (~250 px), narrower
+than "Montréal (Montreal, city) 🏳," plus the dt column, and an unbreakable
+line overflows. Fix: the cards are a wrapping flex row; facts cards take the
+width of their content (`flex: 0 1 auto`, `min-width: min(220px, 100%)`,
+`max-width: 100%`), links and tags a whole row; a dd that still cannot fit
+(phone width) scrolls inside its card (`overflow-x: auto`). Test:
+`sidebar-inline.spec.js` "NO OVERFLOW" rebuilds the wrapper markup and the
+script's rule on the fixture's own sidebar (rel-label-rels-overview.html is
+the same label) and asserts nothing in the card ends past its right edge.
+Mutation "cards: a fixed grid column again" (the old grid) fails it as
+expected; the userscript was restored and hash-verified.
+
+## 2026-10-15 — Merge of feature/sidebar-inline: test:full found 5 failures; the Sidebar cards were 8416 px wide on a phone
+
+Env: 2026-10-15T00:18Z–01:49Z · vzell-lap · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.54.1) · Playwright 1.62.1 Chromium, no Tampermonkey (GM stubs); chromium-mobile Pixel 7 emulation.
+
+`npm run test:full` on `main` at `f2d1f15` (the merge, before the fold): 1768
+passed, 5 failed, 1773 tests, wall 91 m 21 s.
+- `action-button-shortlabel-and-rich-tooltip` "artist-releasegroups": counted
+  three buttons; "🗂 Sidebar as tables" is off by default since 9.99.1353. The
+  test now switches it on, so its divider and description stay pinned.
+- `filter-sliced` "a pass outdated by a newer key never draws": passed alone
+  and in a five-spec re-run; a timing flake under the full load, not touched.
+- `title-el-without-bdi` "ticking » ETI: music video": the 📊 entry was
+  "outside of the viewport". The Sidebar cards push the DVD table's header
+  lower, and the panel opens partly below the window. The spec is about the
+  ETI entry, so it switches the cards off (`sa_sidebar_inline_main: false`).
+- `release-tracks-cover-art.mobile` (both tests): `locator.tap()` was
+  intercepted by our h2, our cards, then tile 2, all above the target tile.
+  A probe (temporary spec, deleted) showed `elementFromPoint()` at the tile's
+  centre IS the tile: nothing covers it; the zoomed-out phone's tap drifts
+  once the tiles sit ~400 px lower (the "Mobile trap" in
+  docs/claude/sidebar.md). The spec switches the cards off.
+  The same probe found a real defect: `.mb-sb-inline-wrap` sits in the
+  release's `div.tracklist-and-credits`, 8416 px wide on this fixture, and on
+  the phone the first facts card was 8416 px wide (on desktop it is sized to
+  its content; Chrome's mobile text autosizing is the likely difference, not
+  verified). Fixed with the Cover art section's own cap,
+  `max-width: calc(100vw - 32px - 1.5em)` on `.mb-sb-inline`. Pinned by
+  `sidebar-inline.mobile.spec.js`; a desktop version of the test passed with
+  the cap removed (mutation "cards: not capped to the window" UNEXPECTED), so
+  it lives in the mobile project only, where the mutation fails as expected.
+After the fixes the five specs, `sidebar-inline` (both projects), and the
+mutation pass/fail as expected; the full suite was not re-run.
+
+## 2026-10-15 — Flaky "Live page view" polls: `contentDocument` without a root element during the srcdoc swap (branch feature/sidebar-cards-fold)
+
+Env: 2026-10-15T20:53:52+02:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.40.1-microsoft-standard-WSL2) · Playwright 1.62.1 bundled Chromium (headless) · no Tampermonkey (GM stubs).
+
+- **Symptom.** One failure in a `test:full` of 1785 (20:17:55–20:27:59 CEST):
+  `detail-preview.spec.js:571` "springsteenlyrics.com: the card, then the
+  Live page view with the site's navigation hidden", `page.evaluate:
+  TypeError: Cannot read properties of null (reading 'dataset')`. It passed 5/5
+  alone and 145/145 with its file repeated on 14 workers; the same suite at
+  14:27 had passed. Unrelated to the branch's change (sidebar cards).
+- **Root cause: the spec, not the userscript.** The poll read
+  `doc.documentElement.dataset.mbDpDone` off the frame's `contentDocument`.
+  While the frame swaps its first about:blank for the srcdoc copy, that
+  document can briefly have no root element, and a poll landing then throws
+  instead of returning "not yet". `_dpIsolateFrame()` itself is safe: it
+  checks `!doc.body` before touching `documentElement`.
+- **Reproduced** under load: `detail-preview.spec.js` + `popup-ext.spec.js`,
+  `--repeat-each=6 --workers=28`: 1 failed / 377 passed, the same error.
+- **Fix.** `!doc.documentElement ||` in all four polls with the pattern
+  (`detail-preview.spec.js` ×2, `popup-ext.spec.js` ×2). After it, the same
+  two files `--repeat-each=12 --workers=28`: 756/756. A rare race cannot be
+  mutation-checked deterministically; the stress run at twice the repetitions
+  is the evidence.
+
+## 2026-10-16 — Playwright: `context.setOffline(true)` does not stop routed requests (offline probe check)
+
+Env: 2026-10-16T01:43:01+02:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.40.1-microsoft-standard-WSL2) · Playwright 1.62.1 bundled Chromium (headless) · no Tampermonkey (probe loaded without GM).
+
+- **Seen in** `scripts/check-probe-offline-capabilities.js` (org/offline.org,
+  "Answer"). With `context.route('https://probe.test/**', …)` in place,
+  `context.setOffline(true)` made `navigator.onLine` false, but a same-origin
+  `fetch('/ok')` was still fulfilled by the route handler (status 204), so the
+  probe's verdict read 'online'.
+- **Why it matters.** Request interception runs before the offline
+  emulation. Every fixture spec serves its pages and Web Service answers
+  through routes, so a future spec for offline handling (org/offline.org
+  phase 0) that only calls `setOffline(true)` tests nothing: its requests are
+  still answered.
+- **What to do instead.** Abort the routes (`route.abort('internetdisconnected')`
+  gives the same status-0 failure a real outage does), or `context.unroute()`
+  before `setOffline(true)` when the request should reach the browser's own
+  offline path. The check does the latter for its "really offline" step and
+  covers `route.abort('internetdisconnected')` separately.
+
+## 2026-10-16 — annotations: white strip over "Old"; Editor moved to the first column (branch fix/annotations-editor-first)
+
+Env: 2026-10-16T02:38:00+02:00 · vzell-lap · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.54.1-microsoft-standard-WSL2) · Playwright 1.62.1 bundled Chromium (headless) · no Tampermonkey (GM stubs). The report itself came from the user's real browser (browser/Tampermonkey versions not stated: unknown).
+
+- **Symptom** (`/artist/70248960-…/annotations`, `debug/annotations-old-new.initial.html`
+  = IP, `debug/annotations-old-new.final.html` = FRP, plus a screenshot): a
+  ~16 px white strip between "Old" and "New", in the header, filter row and
+  every body row. Old's 📊 button and its filter's clear button were cut off.
+- **Root cause.** The FRP table carries `data-mb-sph-col-left="15.99"
+  data-mb-sph-col-pre="2"`: the sticky column (Editor) is third, so with
+  sticky page headers on, Old and New both dock under it
+  (`_sphMeasureStickyCols()`'s `pre`). `_sphEnsureColRules()` gave EVERY
+  `:nth-child(-n+pre)` cell the gutter mask, a page-coloured `box-shadow` L px
+  to its left. For the first cell that is the gutter. For New it is the last
+  L px of Old, painted over it at scrollX 0 (both z-index 0, New later in the
+  DOM). The JSDoc's "harmless at scrollX 0" held only for `pre === 1`, the one
+  case built against ("#" before "Title"). Generic: any table with two or more
+  columns before its sticky one.
+- **Fix.** Only the leftmost VISIBLE pre cell masks: `_sphMeasureStickyCols()`
+  returns `first` (its 1-based position; columns hidden through 👁️ are
+  `display: none` on every cell, so positions stay aligned), stamped as
+  `data-mb-sph-col-mask`, and the mask rule is
+  `[data-mb-sph-col-mask="first"] … > :nth-child(first)`. One mask is enough
+  because every pre cell docks at the same offset, and the first one sits
+  there from scrollX 0 on.
+- **Editor first** (user decision, same day: Editor was already
+  `stickyColumn`, but Old/New docking under it read as "Old is the sticky
+  column"). New generic `features.moveColumnFirst` →
+  `applyMoveColumnFirst()`: moves the named native column to the front of the
+  header and of every row shaped like it, in the same three places as the
+  converters (live page, fetched page, disk load), idempotent. Then `pre` is
+  0 on annotations, so the strip cannot occur there anyway. Fix 1 still
+  matters for other tables.
+- **Tests.** `sticky-page-headers.spec.js` "two columns before the sticky
+  one…" (series table plus an injected leading column, magenta-painted:
+  pixel strip at scrollX 0, computed shadows, gutter after both docks, and the
+  mask moving to "#" once the leading column is hidden);
+  `annotations-editor-first.spec.js` (order, row integrity, sticky index, no
+  `pre`, name-keyed extractors, radios). `scripts/mutations/annotations-editor-first.json`:
+  4/4 fail as intended. The pixel check alone also caught the reverted mask,
+  shown with the property assertion removed. Targeted run: 9 spec files,
+  100/100 passed (5.2 min).
+
+## 2026-10-16 — link previews: notes stacked above the card, every title parked, entity glyphs (branch feature/stacked-tooltips, WIP.1)
+
+Env: 2026-10-16T12:47:22+02:00 · vzell-lap · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.54.1-microsoft-standard-WSL2) · Playwright 1.62.1 bundled Chromium (headless) · no Tampermonkey (GM stubs). The report (org/TODO.org "stacking multiple rich tooltips", images 17-24) came from the user's real browser (browser/Tampermonkey versions not stated: unknown).
+
+- **Symptom 1 (images 17-20).** On release pages the Title cell's own tip
+  ("This recording is not linked to any work", "⚠️ Pending edits", "⚠️ Track
+  name differs from recording name") showed as a `#mb-stat-tooltip` card
+  beside or under the recording's GPE card (`#mb-dp-peek`).
+- **Root cause 1: two equal timers.** The tip is `_setTip()` text on the
+  `<td>` (`_writeFindingAttrs()`, `_applyNoWorkFlag()`). Hovering the link
+  inside it, `_initStatTooltip()`'s mouseover reaches the `<td>` (the link
+  has no title) and schedules its card with `sa_rich_tooltip_delay_ms`. The
+  popup engine schedules the preview with the same delay. `_showOwn()` gives
+  way only to a VISIBLE `_OTHER_RICH_TIPS` element, so whichever timer fired
+  first won, and the other box then appeared too. Only jesus2099's "≠" title
+  had a box in the stack (`#mb-dp-origin`, 2026-10-09).
+- **Symptom 2 (images 21-23): native boxes over the card.** MusicBrainz titles
+  a recording link that has a disambiguation with its bare name
+  (`debug/expand.html`: `title="Tougher Than the Rest"`; the user's "Born to
+  Run" row 4) and an artist link with its sort name ("Springsteen, Bruce").
+  The 2026-10-09 rule "Only the note is parked" left those titles in place on
+  purpose ("no box of their own"), so the browser drew them over the card.
+- **Fix.** The box above the card is now a stack, `#mb-dp-notes`
+  (`_dpCollectNotes()`, `_dpFillNotes()`): the cell's tips (outermost first,
+  `_tipTextToHtml()` for `data-mb-tip`), then the link's title (the "≠" note
+  as `#mb-dp-origin`; an artist's/label's sort name as "Sort name"; a title
+  that only repeats the link's text gets no box). `_dpStashTitles()` parks
+  EVERY title of that chain (`_dpTitledChain()`: the link up to its cell),
+  which supersedes "Only the note": each title has a box now.
+  `_statTipApi.yieldTo()` hides the cell's card when the preview shows, and
+  `resume()` brings it back once the preview closes with the pointer still on
+  the cell. `_setTip()` and `_writeFindingAttrs()` respect a parked title.
+- **Traps.**
+  - **A fixed container is a stacking context.** The boxes'
+    `.mb-tt-liner` z-index means nothing inside `#mb-dp-notes` unless the
+    container carries the same z-index itself.
+  - **The window's title bar is `space-between`.** A glyph `<img>` placed as
+    a sibling before the title span would get its own share of the free
+    space (a gap) whenever the badge is hidden. So it goes INSIDE the span,
+    and `_dpShowInDialog()` writes the span with `replaceChildren()`, no
+    longer `textContent`. The span's text stays "Recording", which the specs
+    read.
+  - **The `_showOwn()` "card due" guard has no observable end state.** Both
+    timers fire in the same tick, and `yieldTo()` hides the card before any
+    paint, so the mutation is recorded `"expect": "pass"` with the reason.
+- **Probe (glyph URLs, curl, vzell-lap, same session):**
+  `/static/images/entity/<stem>.svg` answers 200 for artist, release,
+  release_group, recording, work, label, area, place, event, series,
+  instrument, genre, collection and editor, and 404 for url, isrc, iswc,
+  cdtoc and `release-group`. Recorded at `_MB_KIND_ICON`.
+- **Tests.** `popup-mb.spec.js` "the note stack and the entity glyphs
+  (WIP.1)" (5 tests) plus the reworked control "…only repeats its name…"
+  (it used to pin that a non-note title stays in place, now the opposite).
+  `scripts/mutations/gpe-art-viewer.json`: 25/25 as expected (8 new entries,
+  1 retired, 2 `find`s updated for the renames). The old "every title is
+  parked" entry is gone: that is now the intended behaviour. `test:full` on
+  vzell-lap (started 12:46:52 CEST, `ea5a986`) was stopped at the user's
+  request after about 225 of 1794 tests, all passed. The full run is left
+  to `petri`. The user checked the change in a real browser and found it
+  OK before the merge.
+
+## 2026-10-16 — ISRC Scout's "ISRC"/"Links" columns: ISRCs treatment, a real Links count, and the missing-glyph race (branch feature/isrc-scout-column, WIP.1)
+
+Env: 2026-10-16T19:06:32+02:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.54.1-microsoft-standard-WSL2) · Playwright 1.62.1 bundled Chromium (headless) · no Tampermonkey (GM stubs). The snapshots and the screenshot came from the user's real browser (browser/Tampermonkey versions not stated: unknown); the script source read is ISRC Scout 2026.10.16.181657 (tests/fixtures/live-userscripts/ISRC-scout.user.js).
+
+Snapshots (debug/, gitignored):
+- `DaD-ISRC-Links-initial.html` / `DaD-ISRC-Links-final.html` /
+  `DaD-ISRC-Links-final-h4-uncollapsed.html` — release
+  230fd31d-f63f-4c01-8f10-432d36a1cb86, IP and FRP after the columns
+  arrived; one ISRC per track.
+- `multiple-ISRC.html` — IP of release 22a6802f-d22e-4f47-9f22-6aac257a4194,
+  several ISRCs per recording (track 2 two, track 7 three) and "N links"
+  badges (`sup.ii-trk-n` 2 and 3).
+
+- **Ask 1: "ISRC" should be like "ISRCs".** The cell is sibling
+  `a.ii-trk-isrc[href="/isrc/CODE"]` anchors with ISRC Scout's own
+  `span.ii-isrcf` segments and no `<code>`. `_findCellIsrcParts()` read it
+  already, but `_formatIsrcAnchor()` needs a `<code>`, the cell is no list,
+  and every ISRC gate was the literal name `'ISRCs'`. Fix: `_normalizeIsrcScoutTd()`
+  rebuilds it into `ul > li > a > code` (from the href), `'ISRC'` joins
+  release-tracks' `collapsableColumns`, and `_isIsrcColumnName()` replaces
+  the literal in `isIsrcCol` and the `isrc-invalid` finding.
+- **Ask 2: "Why do ISRC and Links have no sort/📊 glyphs?"** Not a defect of
+  ours: in both FRP snapshots the two headers have three `.sort-icon-btn`, a
+  `.mb-col-uniq-btn` and `data-col-name`, like every other header, and the
+  later screenshot shows them. Mechanism of the race, read from ISRC Scout's
+  source: the rendered tables keep `tr.subh` and each row's track-MBID `id`,
+  which is exactly what its `fillTrackData()` looks for. Its
+  `showTrackData()` removes every `.ii-col` in the document and re-adds bare
+  cells; it runs when its release load settles, on modal close, after a
+  Mission Control apply, on its column toggles/settings and after its link
+  editor. Its MutationObserver adds bare cells to rows lacking a
+  `:scope > .ii-col` child, so pressing "Tracks" before the columns arrive
+  ends the same way. Explained only, by the user's choice; a guard is a
+  separate change.
+- **Ask 3 (follow-up): "add count to Links UVD".** The Links header count was
+  the number of distinct badge digits — the cells' only text (the "2" in the
+  screenshot). Fix: `_normalizeIsrcScoutLinksTd()` stamps
+  `data-mb-link-platform` on each `a.ii-trk-ln` (from its title) and appends
+  a hidden `span.mb-ii-link-name`; `.ii-trk-n` joins `_CLEAN_STRIP_SEL`; a
+  `:has()` rule outlines an icon whose hidden name holds a filter highlight;
+  new 📊 section "Links info - Platform" (kind `linkplatform:`).
+- **Why the rebuilt cells keep `ii-col`:** a rebuilt cell without it would
+  make ISRC Scout's observer add a second, bare cell to the row. The
+  simulator reproduces that observer; mutation "the rebuilt cells lose ISRC
+  Scout's ii-col class" proves the spec sees it.
+- **Observed, not changed:** after a 📊 tick the column filter input reads
+  `🔍 » platform: Spotify`; typing into it then leaves `🔍 Spotify`, which
+  matches nothing. Generic tick behaviour (not specific to the new section,
+  not checked on `main`); the spec pairs ticks with the global filter instead.
+- **Tests:** `release-tracks-isrc-scout.spec.js` 12/12;
+  `scripts/mutations/isrc-scout-column.json` 12/12 caught (one needed a
+  stronger assertion first: the plain 📊 values, since a leaked badge digit
+  leaves every platform set distinct and the count unchanged). Related
+  specs (release-tracks-*, isrc-column-format, uniq-drop-code-highlights,
+  findings-*; fixtures + mobile) 184/184 on petri.
+
+## 2026-10-16 — ISRC Scout's "Links" icons wrap onto two lines with SUPER MIND CONTROL (branch feature/isrc-scout-column, WIP.1)
+Env: 2026-10-16T21:39:36+02:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.54.1-microsoft-standard-WSL2) · Playwright 1.62.1 bundled Chromium (headless) · no Tampermonkey (GM stubs). The screenshot and `debug/links-overflow.html` (the row-18 cell of release 22a6802f-d22e-4f47-9f22-6aac257a4194) came from the user's real browser (browser/Tampermonkey versions not stated: unknown).
+
+- **Symptom:** on the rendered tracklist, row 18's Links icons (Deezer,
+  Tidal², Apple Music², Qobuz², Spotify³, YouTube) took two lines. Each icon
+  was followed by a red new-window marker.
+- **Cause, measured, not ShowAllEntityData's:** jesus2099's SUPER MIND
+  CONTROL (WARN_NEW_WINDOW, default on) adds
+  `a[target='_blank'] { padding-right: 16px; background: … new-window gif }`
+  to the whole page, and ISRC Scout's icon links open in a new tab. ISRC
+  Scout caps its icon row at `.ii-trk-lns { max-width: 224px }`. A scratch
+  Chromium measurement of the snapshot cell with ISRC Scout's own CSS: 139 px
+  on one line alone; 224 px and two lines with SUPER MIND's rule; 139 px and
+  one line again with the reset below. The hidden platform names
+  (`span.mb-ii-link-name`, `display: none`) take no space, so the same wrap
+  happens on the plain page without ShowAllEntityData.
+- **Fix:** `td.ii-col-links a.ii-trk-ln[target='_blank'] { padding-right: 0;
+  background: none; }` (specificity 0,3,2 beats 0,1,1; SUPER MIND's rule is
+  not `!important`). Scoped to these icons only: every one of them is an
+  outside link, so the marker said nothing there. Same idea as
+  `td.mb-rel-cell`'s reset of MusicBrainz's new-tab `::after`.
+- **Tests:** new test "Links icons carry no new-tab padding from SUPER MIND
+  CONTROL, other new-tab links keep it" (injects the rule; a new-tab link
+  outside the table keeps 16 px, so the reset is scoped);
+  `release-tracks-isrc-scout.spec.js` 13/13; mutation "Links icons keep SUPER
+  MIND CONTROL's new-tab padding" added, `scripts/mutations/isrc-scout-column.json`
+  13/13 caught.
+
+## 2026-10-16 — CAA column too narrow while artwork loads on large pages: type chips on a second line (branch fix/caa-eaa-column-width, WIP.1)
+Env: 2026-10-16T22:23:11+02:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.54.1-microsoft-standard-WSL2) · Playwright 1.62.1 bundled Chromium (headless) · no Tampermonkey (GM stubs). The screenshot `debug/CAA-wrapped.png` (artist Bruce Springsteen, discography, 22 pages, 2145 rows, 46 sub-tables) came from the user's real browser (browser/Tampermonkey versions not stated: unknown).
+
+- **Symptom:** during the CAA load of a large page, the CAA cells showed the
+  icon and the cache hint over the count on one line and the type chips
+  (F B Sp M Bk T) on a second. Small tables always fit on one line.
+- **Not the SUPER MIND CONTROL padding** of the ISRC Scout Links fix: no CAA
+  cell element carries `target="_blank"` (the new-tab links of the art code
+  are in the viewer and the summary panel), and the screenshot shows no
+  new-window marker in the column.
+- **Cause, from the code and a probe:** li-0 (`li.mb-caa-art-li-summary`) is
+  a flex row with `flex-wrap: wrap` by design ("the chips wrap to the next
+  line when the cell is too narrow for both"). The auto-resize measures once,
+  right after the render (1.90 s there), and the count badge and chips arrive
+  with each archive record (CAA 6 m 53 s there). Probe (fixture
+  release-group page, every archive answer held until the resize had run):
+  the CAA header got `min-width: 170px` while the loaded lines need
+  178–202 px. That fixture's table still had slack (set width 5028 px, laid
+  out at 5176 px for other columns), so it did not wrap there; the large
+  page has none, so the chips wrap.
+- **Fix (user's choice of two: reserve up front, not grow as records
+  arrive):** `_artReserveSummaryWidths()` measures one detached worst-case
+  li-0 per art column (`_artBuildSummarySample()`) in one layout read; both
+  resize paths floor the art column at it, after the prose cap. Fixture
+  result: min-width 250 px (230 reserved + the usual 20), lines 178–202 px.
+  Measured detached because several MutationObservers watch tbody subtrees.
+- **Tests:** `caa-col-width-reserve.spec.js` 3/3 (page-wide resize,
+  sub-table resize, no sample left in the page);
+  `scripts/mutations/caa-col-width-reserve.json` 5/5 caught. The CAA/EAA/
+  art/resize specs 200/200.
+
+## 2026-10-17 — Flaky "a mousedown hides the card" (rich-tooltips-liner.spec.js): the toolbar moves under the pointer (branch fix/tooltip-mousedown-flake)
+Env: 2026-10-17T01:15:47+02:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.54.1-microsoft-standard-WSL2) · Playwright 1.62.1 bundled Chromium (headless) · no Tampermonkey (GM stubs).
+
+- **Symptom:** `test:full` on `main` after the 9.99.1361 merge: 1809/1810,
+  the one failure "a mousedown hides the card for the rest of the hover"
+  (`#mb-stat-tooltip` still visible after `mouse.down()`). Run alone with
+  `--repeat-each=5` it failed 2/5 on the merged tree and 3/5 on the
+  pre-merge `49078c5`, so not the merge. The 2026-10-14 entry
+  (fix/phone-handle-mutations-flake) saw it once in a full run and 12/12
+  alone.
+- **Not the engine.** The failure screenshot shows the card of a DIFFERENT
+  element, "Relationships for ReleaseGroup". The trace has the pointer at
+  (214.4, 84.25): the test's element, the h1 status line "Loaded 1 page
+  (18 rows)", settles at (204, 143).
+- **Cause:** `openRg()` clicks "Show all sub-sections". Opening the
+  sub-tables widens the page, and the h1 with it (1264 → 4741 px), so the
+  toolbar fits on one line (h1 101 → 38 px tall) and the status line sits at
+  (212, 82). The debounced sticky-headers pass (`SPH_REFRESH_DELAY_MS`, 60)
+  then engages `html.mb-sph-on` and fits the h1 back to the window
+  (1280 px, two lines again), about 80–100 ms after the click. A box read
+  inside that window puts the pointer where the Relationships button lands
+  a moment later. Chromium sends mouseout/mouseover for the element now
+  under the still pointer, and `_initStatTooltip()` starts a NEW hover
+  (`_hide()` clears `_dismissed`), so the new element's card shows. That is
+  the right behaviour; the test's box was stale.
+- **Fix (test only):** after the master click, `openRg()` polls until the
+  h1 fits the window (`h1` width ≤ `clientWidth`). A first attempt waited
+  for `__saTest.sphRefreshPasses()` to rise: still 2/20, because a pass
+  left over from the render can land between reading the count and the
+  click (pass 2 at +70 ms, the fitting pass 3 at +200 ms).
+- **Verified:** the spec plus a load probe, `--repeat-each=30`: 330/330
+  (the test 30/30), where the same load failed it 2/8 before the fix.
+- **Not fixed, worth knowing:** the brief one-line toolbar is real in the
+  browser too, for up to one debounce plus a layout after "Show all
+  sub-sections". Users may see it as a flicker of the h1 toolbar. Not
+  measured in a real browser.
+
+## 2026-10-17 — Comparison tooltips: the diff view (org/TODO.org "the rich tooltips should show track/recording differences below each other", branch feat/tooltip-diff-view, WIP.1)
+
+Env: 2026-10-17T02:17:42+02:00 · petri · WSL2 Ubuntu 24.04.3 (Linux 6.18.54.1) · Playwright 1.62.1 bundled Chromium · no Tampermonkey (GM stubs)
+
+- **Snapshot:** `debug/title-diff-format.png` (vzell's browser): the
+  preview card's note box showed "TRACK NAME I Wanna Dance with Somebody (Who
+  Loves Me)" over "≠ RECORDING I Wanna Dance With Somebody (Who Loves Me)",
+  and the reader had to find the one `w`/`W`. Every other tooltip that
+  compares two values did the same in prose (`comment "…", event "…"`).
+- **Design:** one renderer for all of them (`_cmpHtml()`, `_cmpLenCardHtml()`),
+  fed by `data-mb-tip-cmp` beside the plain title. Mockup approved
+  2026-10-17, variant A ("two rows, marked"):
+  https://claude.ai/artifact/7Nbqih988jfzpGxbiQTX75. The diff is a token LCS
+  (words, space runs, single punctuation), refined letter by letter inside a
+  replaced pair of similar words, plus diff-match-patch's "semantic cleanup"
+  idea. No library: titles are short; `_CMP_MAX_CELLS` caps the table.
+- **Found while prototyping the diff in the mockup (each now has a test and
+  a mutation):**
+  - "same words in a different order" fired when only punctuation changed
+    (the sorted word lists matched): reorder now also needs the word
+    SEQUENCE to differ.
+  - A reordered venue ("Saal 1, ICC Berlin" vs "ICC Berlin, Saal 1") broke
+    into four marks, because the LCS kept the ", " and " " tokens between
+    them: shared runs of only spaces and punctuation between two changes are
+    folded into them (`_cmpFoldGlue()`).
+  - The visible-space marker, done as a chain of `.replace()`s, rewrote the
+    space inside its own inserted `<span class="ws">`: a no-break space came
+    out as broken markup. Now a per-character map (`_cmpShowWs()`).
+  - Found by the uvd-recording-comments extension, not the mockup: one side
+    empty (a date only the comment has) tripped the "share under 40 %"
+    fallback and showed nothing marked. The fallback now needs text on both
+    sides.
+- **Kept, against the plan:** the length card does NOT follow the ⏱
+  millisecond toggle. `_lengthMismatchTooltip()` documents why it always
+  quotes full milliseconds (at seconds precision the two can read the same,
+  which is exactly when the tooltip is needed); the card keeps that rule.
+- **No double comparison under a preview card:** the Title cell's
+  `title-mismatch` finding box sits right above the link's note box in
+  `#mb-dp-notes`, which compares the same names. Its entry is marked
+  `origin`, and `_dpCollectNotes()` renders it as the label alone there.
+- **Test trap:** hovering a cell's centre can land on a link inside it; the
+  engine (like the browser) takes the NEAREST titled element, so the cell's
+  card never shows. Specs hover the cell's padding (`position: {x: 2, y: 2}`)
+  or test the card through `__saTest.tipTextToHtml(title, el)`.
+- **Verified:** `tests/fixtures/tooltip-diff.spec.js` (10), extensions of
+  popup-mb, mb-title-case, uvd-recording-comments and len-flag-disk-roundtrip;
+  `scripts/mutations/tooltip-diff.json` 16/16 caught, the userscript restored
+  and hash-verified.
+- **Not measured:** `stampFindings()` timing. `compare()` runs only for cells
+  whose `test()` already matched, and builds a small JSON string; the diff
+  itself runs on hover. Nothing on the filter/sort/render path changed.
+
+## 2026-10-17 — Relationships icons: popups, the filter stack, and the "leave this page?" dialog on artwork clicks (branch feat/tooltip-diff-view, WIP.2)
+
+Env: 2026-10-17T03:08:46+02:00 · petri · WSL2 Ubuntu 24.04.3 (Linux 6.18.54.1) · Playwright 1.62.1 bundled Chromium · no Tampermonkey (GM stubs); vzell's live checks: browser and Tampermonkey version unknown
+
+- **Snapshots:** `debug/missing-CAA-hover.html` (release group f83d2211…,
+  FRP: the h2 "Relationships" list with two jesus2099 `caa-icon` links, and
+  the Relationships column's icons), `debug/hover.png` (column filter "disc"
+  on the Relationships column: the URL list box and a separate bare-URL box,
+  apart and unlabelled). Mockup approved 2026-10-17 (defaults: two-box stack,
+  type pill): https://claude.ai/artifact/NonAS8iqfjSMRUaXojzSnT
+- **Why the column's icons had no link card:** `_EXT_SKIP_SEL` listed
+  `td.mb-rel-cell`, and `_extTarget()` refuses any link around an
+  `<img>`. Both now let a Relationships icon through; its name is the site
+  (`_relLinkName()`), because its text is the hidden `.mb-rel-filter-key`
+  URL.
+- **Why two boxes side by side:** `#mb-rel-tooltip` (URL list) and
+  `#mb-rel-plain-tooltip` (the icon's title) were placed by hand, right of
+  each other. Now one stack (`_relStackParts()`), the same boxes in the
+  card's note stack; the plain tooltip is gone.
+- **The "You are about to leave this page" dialog (reported live twice: the
+  relationship-list cover icon after my change, and the big-picture strip
+  before it):** the navigation guard is a DOCUMENT capture click listener.
+  My first `_artIconClick()` was one too, so on the same node its
+  stopPropagation could not keep the guard from asking. The strip never had a
+  click handler at all: its images are plain links to the release page.
+  `docs/claude/artwork-caa-eaa.md` already said the column click listens on
+  `window` capture for exactly this reason. **I had not read that doc before
+  writing the handler**; the spec that should have caught it loaded the page
+  without rendering, so the guard (`isLoaded`) was not armed. The specs now
+  render first and fail on any dialog.
+- **Also fixed while there:** a click right after the hover dropped its
+  viewer, because the hover's load was already in flight and
+  `_artRelIconLoad()` ignored a second asker (now queued); and the guard
+  asked on Ctrl/⌘/Shift-clicks (a new tab or window), which three specs had
+  used as their proof that a Ctrl-click reached the link. They read
+  `defaultPrevented` at the link now.
+- **Verified:** `rel-icons.spec.js` (5), `bigbox-tooltip.spec.js` (+2),
+  the three rewritten `rich-tooltips.spec.js` tests, the three Ctrl-click
+  specs; the related set (popup, ext, CAA column, Relationships column,
+  guard specs) green; `scripts/mutations/rel-icons.json` 13/13 as recorded
+  (two guards that cover each other are `"expect": "pass"` alone, and fail
+  together). Full suite deferred to the end of the branch, as asked.
+
+## 2026-10-17 — Sidebar cards: two dozen "Search …" cards and a 378-character chip (jesus2099 mb. ALL LINKS; branch feat/sidebar-search-card, WIP.1)
+
+Env: 2026-10-17T03:48:32+02:00 · petri · WSL2 Ubuntu 24.04.3 (Linux 6.18.54.1) · Playwright 1.62.1 bundled Chromium · no Tampermonkey (GM stubs)
+
+- **Snapshots:** `debug/DaD-collapsed.html` (IP, cards closed) and
+  `debug/DaD-uncollapsed.html` (FRP, cards open) with
+  `debug/Search-initial.png` / `debug/Search-uncollapsed.png`, vzell's
+  browser, release 6336b8db-ac72-4afa-a954-94b437b49abc (Devils & Dust,
+  bootleg): under "Sidebar (99)" 28 link cards, 26 of them "Search the web",
+  "Search in the whitelist" (×21) or "Search further" (×5), and chips like
+  "DRAM By genreClassicalEletronicPsyDBTraditional…" running across the
+  window. `debug/DaD-ISRC-Links-initial.html` is the same page before a
+  button press; `scripts/build-sidebar-search-fixture.py` turns it into the
+  fixture.
+- **Root cause (two, both in `_sbCollectGroups()`):** jesus2099's
+  "mb. ALL LINKS" nests its search lists three deep (section li with an h3 →
+  group li with its own text → links), and every level is an
+  `ul.external_links`, MusicBrainz's own class. (1)
+  `side.querySelectorAll('ul.external_links')` took every nested list as a
+  group of its own, named by the h2 above the outermost one. (2) An item's
+  link was its FIRST `a[href]` anywhere inside, and its Details
+  `li.textContent` minus that link's text: for the "By genre" item, DRAM
+  plus the text of the whole genre tree, with no spaces (378 characters).
+  The same leak put the script's "edit" icon text and its "choose languages
+  en: Devils & Dust" under MusicBrainz's own Discogs and Wikidata chips. It
+  also broke the rule in `docs/claude/sidebar.md` that no other script's
+  content is read: by accident, because the script reuses the class.
+- **Fix (mockup https://claude.ai/artifact/V9Pqx5r7K37Qe3PEm93cpc, picked
+  "A3 + B1 + D2 + C1"):** only a section's outermost list is read; an item's
+  Details are its own text (`_sbOwnText()`) and the links nested in it
+  (`_sbItemKids()`); the script's lists are read on purpose into ONE group
+  `search` with each link's section and group (`_SB_SEARCH_LIST_SEL`), shown
+  as one closed "Search" card with an index, a switch and a find box, and as
+  one "Sidebar: Search" table. The cards got the facts/links split and the
+  Liner-notes look. Details: `docs/claude/sidebar.md`, "The Search group and
+  the card layout".
+- **Fixture trap:** the "initial" save already held our toolbar (saved after
+  init, before a press). Loaded as a fixture the script added a second one,
+  and `page.click('button[data-label=…]')` hit the saved, listener-less copy
+  first: the first run of every test timed out waiting for a render that
+  never started. The builder removes our toolbar, status display and stamps.
+- **Verified:** `sidebar-search-card.spec.js` 7/7; the sidebar set
+  (`sidebar-inline`, `-inline.mobile`, `sidebar-tables`, `sidebar-sections`,
+  `-sections.mobile`, the new spec) 49/49; lint within the baseline.
+  `scripts/mutations/sidebar-search-card.json` 15/15 as recorded: 14 caught,
+  and "find: Esc does nothing" recorded `"expect": "pass"`, because the box
+  is an `input type=search` and Chromium empties it on Esc by itself.
+  `sidebar-inline.json` 26/26 caught, three of its finds moved to the new
+  CSS ("a fixed grid column" became "a fixed facts column": the split grid
+  decides the facts' width on the NO OVERFLOW page now).
+- **Live check (vzell's browser, "Tougher Than the Rest", 2026-10-17):**
+  everything worked, but with link previews on a card link's hover card
+  (`data-mbtt`, `#mb-stat-tooltip`) and its preview card showed side by side.
+  The note stack and `_statTipApi.yieldTo()` knew only titles
+  (`data-mb-tip`), so a ready-made `data-mbtt` card neither went into the
+  stack nor gave way. Now `_dpCollectNotes()` adds the link's own
+  `data-mbtt` as the last box, `yieldTo()`/`resume()` cover it, and the
+  `data-mbtt` mouseover branch does not show it again over a preview of the
+  same link. Spec "HOVER STACK", three more mutations.
+
+## 2026-10-17 — Event image card: the line-up one artist per line (branch feat/event-tooltip-artist-lines, WIP.1)
+
+Env: 2026-10-17T11:22:16+02:00 · petri · WSL2 Ubuntu 24.04.3 (Linux 6.18.54.1) · Playwright 1.62.1 bundled Chromium · no Tampermonkey (GM stubs); vzell's report: browser and Tampermonkey version unknown
+
+- **Report (vzell's screenshot, The Stone Pony's events, place
+  6a59a67c-fcc5-491f-949c-bfc45bc97463):** hovering an EAA image (strip or
+  inline) showed the 17-artist line-up of 2025-12-14 as one comma-separated
+  paragraph. Wanted: artists and roles one under the other.
+- **Change:** `_artTooltipArtistRoles()` writes one `div.mb-tt-artist-role`
+  per `li` inside `div.mb-tt-artist-roles` instead of text nodes joined by
+  ", ". The role span (colour, bold) is unchanged; MusicBrainz's collapsed
+  entries are still read. No cap on the length: the card lists all of them.
+- **Verified:** new `event-tooltip-artist-lines.spec.js` on the hand-built
+  `tests/fixtures/place-events-lineup.html` (no fixture with event art had a
+  multi-artist line-up); `bigbox-tooltip` and `uniq-drop-role-sections`
+  7/7; `scripts/mutations/event-tooltip-artist-lines.json` 2/2 caught; lint
+  within the baseline. HELP checked: it names only the role colours, no
+  edit needed.
+
+## 2026-10-17 — The Discogs window: release sections, master versions (branch feat/discogs-rich-preview, WIP.1)
+
+Env: 2026-10-17T14:23:58+02:00 · petri · WSL2 Ubuntu 24.04.3 (Linux 6.18.54.1) · Playwright 1.62.1 bundled Chromium · no Tampermonkey (GM stubs); probes: Python urllib, no browser, no token
+
+- **Request (vzell, screenshots of the Discogs card and window on release
+  1d404e1d-fcb6-3a52-b478-e706e893c897):** the window should carry what
+  discogs.com shows: a release's Tracklist with credits, Companies, Credits,
+  Notes, Barcode and Other Identifiers and the "More images"; a master's
+  versions. Mockup https://claude.ai/artifact/49tucEnfghTCMtyvwN6qaM,
+  answers: layout A, versions page 1 on opening and the rest on a button,
+  track credits closed, plus the master's tracklist/notes/images, the
+  release's videos, have/want and data quality.
+- **Finding:** the reader's one API answer (`releases/<id>`) already holds
+  every release section and every image (images come WITHOUT a token,
+  fixture `ext-discogs-release.json`), so the release half costs no
+  request. The versions are `masters/<id>/versions`: `per_page` capped at
+  100 (500 asked, 100 answered), master 26725 = 387 versions = 4 pages of
+  ~76 KB, `X-Discogs-Ratelimit: 25`, page 1 carries `filters.available`
+  (format, label, country, released) for all of them
+  (`scripts/probe-discogs-versions.py`). The `debug/discogs-*.html`
+  snapshots only confirmed the section names and the versions columns; the
+  pages sit behind Cloudflare (U0 X6), the reader stays on the API.
+- **Bugs found by the new specs before shipping:**
+  1. Stop before a page's slot left the bar "Running": `_mbLoad()` deletes
+     a skipped load WITHOUT notifying its listeners. The versions loader now
+     repaints after a skip (`setTimeout`, after the delete).
+  2. A tap (no card before the window) never asked for page 1: the record
+     arrived on a repaint, and repaints start nothing. Page 1 now also
+     starts on that repaint, once, while page 1 has no state (the
+     `_rgWindowFor()` exception). Only the mobile spec could see it: on
+     desktop the hover card had loaded the record.
+  3. Typing in the versions' filter while pages arrived lost the focus.
+     `createInfoDialog()` focuses its scroll area on `mouseenter`, and
+     Chrome fires `mouseenter` again when a repaint replaces the content
+     under a resting pointer. It no longer takes the focus from an element
+     inside it. Confirmed by mutation (reverting it fails the spec on
+     `toBeFocused`).
+- **Pre-existing, not this branch:** `popup-ext.spec.js` "a Brucebase
+  show's window: notes, gig page, and the year page as Live page,
+  scrolled to the show and marked" failed 5 runs in a row in the morning
+  (4 here, 1 with main's userscript), then passed alone and inside
+  `test:full` (1844/1844, 14:25:10–14:34:07+02:00, petri). Root cause and
+  fix: the entry "The Live page waited for every image" below (shipped
+  in 9.99.1366, merged into this branch).
+- **Verified:** the Discogs window block 6/6 and `popup-ext.mobile.spec.js`
+  4/4; `popup-ext`, `popup-ext-foreign`, `popup-mb`, `detail-preview`
+  148/149 (the Brucebase test above); 11 new mutations in
+  `scripts/mutations/popup-ext.json`, all caught (the card mutation only
+  after its test waited for the host's next slot); lint within the
+  baseline.
+
+## 2026-10-17 — The Discogs window: names as links, the title says release or master (branch feat/discogs-rich-preview, WIP.2)
+
+Env: 2026-10-17T16:41:12+02:00 · petri · WSL2 Ubuntu 24.04.3 (Linux 6.18.54.1) · Playwright 1.62.1 bundled Chromium · no Tampermonkey (GM stubs); vzell's report: browser and Tampermonkey version unknown
+
+- **Report (vzell, screenshots of release 22a6802f…'s "Devils & Dust" windows):**
+  artists, labels and companies should link their Discogs pages, and the
+  title ("Discogs › Discogs" after a drill-down, "Discogs" otherwise) should
+  say whether the page is a release or a master.
+- **Change:** ids kept (`_EXT_DISCOGS_VERSION` 3), `_extDgLink()`, reader
+  hooks `factsHtml` and `kindFor`, `rec.subtitle` (which the approved
+  mockup already showed for a master and the first build had left out).
+  A browser that tried the branch holds version-2 records: the IndexedDB
+  test now seeds both 3 (before the branch) and 302 (the branch's first
+  build), each caught by its own mutation.
+- **Verified:** the 13 Discogs tests and the whole `popup-ext` spec with its
+  mobile sibling (45/45), 4 new mutations caught, lint
+  within the baseline.
+- **Versions’ labels (vzell: "the values under LABEL – CAT# are still not
+  hyperlinked"):** the versions rows give a label by NAME only (fields
+  checked on the capture: catno, country, format, id, label, major_formats,
+  released, resource_url, stats, status, thumb, title), so there is no
+  label page to link. vzell picked Discogs’ label search for the name, in a
+  new tab (`a.mb-dg-label`); one more assertion in the master test, one
+  more mutation, caught.
+
+## 2026-10-17 — Sidebar cards: the real sidebar's site icons; every card open but Search (branch feat/sidebar-icons-open, WIP.3 + WIP.4)
+
+Env: 2026-10-17T17:00:16+02:00 · petri · WSL2 Ubuntu 24.04.3 (Linux 6.18.54.1) · Playwright 1.62.1 bundled Chromium · no Tampermonkey (GM stubs)
+
+- **Request (vzell, release 22a6802f-d22e-4f47-9f22-6aac257a4194):** the
+  "Sidebar" cards (External links, Search, Release group external links …)
+  should show the site icons the real sidebar shows; every card should
+  start open except Search. Answers: a new select option as the new
+  default; icons in the cards AND the Sidebar tables. Branched off
+  feat/discogs-rich-preview at 85b8062 (vzell's call), not main.
+- **How the icons are read:** both kinds are the `li`'s BACKGROUND —
+  MusicBrainz's from its stylesheet by the `*-favicon` class, jesus2099's
+  inline (`style="background-image: url(...favicon.ico)"`, checked in
+  `release-tracks-sidebar-search-links.html`). On the live page the computed
+  style gives both; a page that is not rendered gets the inline style, else
+  the class through a hidden probe item. The icon goes on the cloned link
+  as its own background, not as an `<img>` in the cell: the cards read a
+  cell's FIRST node as its link (`row[2][0]`, `r[5][0]`).
+- **The default change broke four specs, each for a reason worth keeping:**
+  settings-dialog's PICK (`hasText: 'Every card'` now matches two
+  segments: an exact match), sidebar-inline's CTRL+CLICK and MARKER (they
+  need a MIXED state: they seed `info`), sidebar-search-card's HOVER STACK
+  (it clicked External links OPEN; the click now closed it).
+- **Verified so far:** sidebar-inline, sidebar-search-card, settings-dialog
+  (+ config-import-export) green; 6 new mutations in
+  `scripts/mutations/sidebar-search-card.json`, all caught (the computed
+  style and the class probe cover for each other on a live page, so they
+  are mutated together); lint within the baseline;
+  `audit-config-defaults.py` agrees on every inline fallback and waits for
+  the history refresh after the commit. `test:full` 1848/1848
+  (17:00:16–17:09:31+02:00, petri, on 85b8062 + this working tree).
+- **vzell's browser check (same day):** most icons were still missing —
+  Discogs, every release-group link, most Search entries; only jesus2099's
+  inline icons showed. **Cause:** MusicBrainz draws every site icon as a
+  `data:image/png;base64,…` URI (`icons-f602321.css`), and `_sbBgUrl()`
+  took http(s) only. Read in a real Chromium (a plain HTTP fetch of
+  musicbrainz.org now gets a JavaScript challenge, "Verifying your
+  browser"). The ICONS spec had modelled MusicBrainz's rule with an https
+  URL, so it could not see this; it now uses a `data:` URI. Fix: `data:image/`
+  accepted; each icon written ONCE as a rule in `#mb-sb-ico-style`, named by
+  a hash of its URL, the link carrying only the name (a ~10 KB icon inline
+  on every link and table clone would have been hundreds of KB). Two more
+  mutations, both caught. While rewriting, one splice deleted `_sbIconOf()`
+  (a ReferenceError, caught by the fetch's error handler: no cards at all);
+  restored, sidebar-search-card 11/11.
+- **Live check** (2026-10-17T17:26:57+02:00, petri, Playwright 1.62.1 bundled Chromium, real
+  musicbrainz.org, userscript loaded, logged out, no third-party scripts):
+  release 6336b8db-… (Devils & Dust, PROF Records), "Show all Tracks": 10
+  of 10 sidebar links with an icon have it in the cards; Discogs's is the
+  `data:` icon. (jesus2099's Search card is not in that harness; the fixture
+  covers its inline icons and its MusicBrainz classes.)
+- **vzell: "make sure that the site icons also render when the Credits/etc.
+  action button is pressed"** (screenshot: "URLs" and "Via release group"
+  rows bare). A live check (release 6336b8db-…, Credits,
+  `sa_sidebar_inline_skip_dup_links` off) found the "Sidebar: …" tables'
+  10 icons all drawn and the 10 relationship URL rows bare: with the
+  duplicates skipped (the default) those rows are where the sidebar's links
+  ARE. `_sbIconRelLinks()` gives a row link the icon of the sidebar item
+  with the same `_sbLinkKey()`. The ICONS Credits spec now checks a URL row
+  ("URLs", "Via release group"), a class-drawn and an inline Search row,
+  and the Sidebar copy with duplicates kept; one more mutation, caught.
+- **Final run:** `test:full` 1848/1848 (17:33:32–17:42:37+02:00, petri), and the
+  live Credits check (default settings): 10 of 10 sidebar links with an icon
+  carry it in the tables, the URL rows included.
+
+## 2026-10-17 — The Live page waited for every image; the Brucebase Live page test depended on the real site (branch fix/live-page-early, WIP.1)
+
+Env: 2026-10-17T15:55:15+02:00 · petri · WSL2 Ubuntu 24.04.3 (Linux 6.18.54.1) · Playwright 1.62.1 bundled Chromium · no Tampermonkey (GM stubs)
+
+- **Symptom:** `popup-ext.spec.js` "a Brucebase show's window: notes, gig
+  page, and the year page as Live page, scrolled to the show and marked"
+  failed 5 runs in a row in the morning (4 on feat/discogs-rich-preview, 1
+  with main's userscript stashed in): the frame never had a
+  `.mb-dp-anchor` within the 5 s poll. In the afternoon it passed alone and
+  inside `test:full` (1844/1844, 14:25:10–14:34:07+02:00, petri).
+- **Root cause — the spec was not network-free.** The Live page's frame
+  loads the year page's own CSS and images from the real site (its `<base>`
+  is brucebase.wikidot.com; `ext-bb-year-2025.html` names 260 images on
+  brucebase.wdfiles.com), and `_dpIsolateFrame()` — which runs the
+  Brucebase `livePrepare` that marks the show and scrolls to it — was called
+  only from the frame's `load` event, which waits for every one of them.
+  When the site was slow, `load` came after the poll. Proven with two
+  throwaway variants of the test: those hosts answering after 8 s → the
+  same failure ("Received string: \"\""); those hosts refused → pass.
+- **The same wait hit real users** (vzell chose to fix it, 2026-10-17): on
+  a slow site every Live page showed the site's navigation, and a Brucebase
+  year page was neither marked nor scrolled, until the LAST image had loaded.
+- **Fix, script:** `_dpIsolateWhenParsed()` prepares the page as soon as
+  the srcdoc copy is parsed (checked from this window every 50 ms, up to
+  30 s; `load` stays the fallback; a `loading` document is left alone).
+  `livePrepare` may return a function run on `load`: Brucebase scrolls to
+  the show once more there. The later scrolls stop once the reader has used
+  the wheel, a key, a mouse button or touch in the frame — listeners added
+  from this window DO fire in the script-less frame (probed: wheel 1,
+  scroll 11, keydown 1, mousedown 1). The first version of that guard
+  compared scroll positions and stopped every later scroll: hiding the
+  navigation moves the page right after the first scroll, and Chrome's
+  scroll anchoring changes `scrollTop` by itself (the original test failed
+  on it).
+- **Fix, spec:** `openEvent()` refuses wikidot.com, wdfiles.com and the
+  other three Springsteen sites' hosts, as it already refused
+  static.metabrainz.org. Two new tests hold the year's images back (6 s
+  and 4 s, 40×40 PNGs built in the spec, `solidPng()`): trimmed, marked and
+  scrolled before they come and again on `load` (with `overflow-anchor:
+  none`, or Chromium's anchoring hides whether the script scrolls again);
+  a reader's wheel is not undone (asserted as "the show stays below the top
+  of the view": `scrollTop` itself moved 9393 → 10541 by anchoring alone).
+  `detail-preview.spec.js` reads Live-page frames of the same sites and has
+  the same network exposure; it passed and is not changed here.
+- **Verified:** the three Brucebase Live page tests 9/9 (3 runs each);
+  `popup-ext`, `popup-ext-foreign`, `detail-preview` (+ mobile siblings) and
+  `popup-mb` 151/151; 4 new mutations in `scripts/mutations/popup-ext.json`,
+  3 caught, 1 recorded `"expect": "pass"` (the "still loading" check:
+  Chromium parses this 300 KB copy before the first 50 ms check); lint
+  within the baseline.
+
+## 2026-10-17 — Search card: sites ran out of their column, "Web | pages" (branch feat/sidebar-search-boxes, WIP.5)
+
+Env: 2026-10-17T20:09:20+02:00 · petri · WSL2 Ubuntu 24.04.3 (Linux 6.18.54.1) · Playwright 1.62.1 bundled Chromium · no Tampermonkey (GM stubs); the symptom from vzell's screenshot of /artist/Dean Martin (browser and Tampermonkey version not stated)
+
+- **Symptom (vzell, screenshot):** in the Sidebar's Search card, sites
+  spilled out of their column into the next one ("SoundtrackCollector",
+  "IOBDb", "Theatricalia" over *Social networks*), and *Search the web*
+  showed "Web" on one line and "pages · Images · Videos" on the next.
+- **Root cause:** `_sbSearchBody()` appended each site as a span with no
+  text between two spans, and the `·` was a `::before`. A line therefore had
+  break opportunities only INSIDE names: "Web pages" broke at its space, and
+  a run of one-word names had none, so it overflowed its 14.5rem column
+  (CSS columns let content overflow into the gap and the next column).
+  Reproduced in the mockup's "Now" tab with the shipped rules (7 lines out
+  of their area at 1450px).
+- **Fix (layout B of the mockup, vzell's pick,
+  https://claude.ai/artifact/QAHkW8x2BFdeVh8UsCQnud):** every section is a
+  bordered box packed into columns (`columns: 21em`); inside it a grid
+  (`.mb-sb-ix-gl`) with the group names as a right-aligned label column and
+  each group's sites in a flex-wrap cell (`.mb-sb-ix-s`, gap instead of the
+  dot). A group stays `.mb-sb-ix-g`, now `display: contents`, so
+  `_sbSearchApply()` and the spec's index walker keep their shape; hiding it
+  works through the existing `.mb-sb-inline [hidden] { display: none
+  !important }` (a `[hidden]` rule of my own was redundant; its mutation
+  passed, which is how that showed). A heading with one section is one box
+  in one row (`.mb-sb-ix-one`). `.mb-sb-first` and its dot are gone.
+- **Verified:** new BOXES test in `sidebar-search-card.spec.js` (each
+  section boxed, no site outside its box, no site name over two lines, the
+  sites of a box starting at one edge, Search the web one row, at 1400 and
+  560px; finding hides a group's name with it); 4 new mutations in
+  `scripts/mutations/sidebar-search-card.json`, all caught;
+  `sidebar-search-card` + `sidebar-inline` 30/30.
+
+## 2026-10-18 — Discogs artist and label windows; the versions loader becomes one list loader (branch feat/discogs-artist-label, WIP.1)
+Env: 2026-10-18T01:05:58+02:00 · petri · WSL2 Ubuntu 24.04.3 (Linux 6.18.54.1) · Playwright 1.62.1 Chromium · no Tampermonkey (GM stubs); probes: n/a
+
+- **Request (vzell):** Discogs artist and label links get the window release
+  and master links have, modelled on `debug/discogs-artist.html` and
+  `debug/discogs-label.html`: the artist's Releases / Appearances / Unofficial
+  / Credits as collapsible master/release tables, the label's releases, every
+  image behind "More images". Mockup first:
+  https://claude.ai/artifact/WuBNbFTgNHJtxip4xBv6yc, approved 2026-10-18.
+- **Probe (`scripts/probe-discogs-artist-label.py`, 2026-10-17/18):**
+  `artists/<id>/releases?sort=year` is ordered BY ROLE, then year. A sample
+  of pages first suggested it carries no credits at all, and the user chose
+  "leave Credits out" on that; the full capture of all 68 pages of Bruce
+  Springsteen showed Producer 78 and Co-producer 2 on pages 4–5 (Max
+  Weinberg: Producer, Mixed by). Told the user; they chose to show the API's
+  credits plus a link to all of them on Discogs. Lesson: a claim of absence
+  from a list needs the whole list, not a sample of pages. Masters carry no
+  format (no Albums / Singles split); a label's list has releases only, no
+  facets, and Columbia has 3,967 pages, so it loads in batches of 5.
+- **Design:** `_EXT_DG_LISTS` (versions, artist, label) and one loader
+  (`_extDgListLoad()`, `_extDgLoadNext()`, `_extDgPeekCached()`,
+  `_extDgListState()`, `_extDgListStart()`), the run state per target and
+  list (`_extDgRun()`), instead of a copy of the versions loader. A role is
+  complete once the pages loaded without a gap from page 1 hold a later role
+  (`_extDgRoleState()`). Generic record fields `descInWindow` and
+  `cardFacts`. `_EXT_DISCOGS_VERSION` 4. Details: docs/claude/detail-pages.md.
+- **Verified:** the 14 existing Discogs specs unchanged and green after the
+  refactor; 6 new specs in `popup-ext.spec.js` and 1 in
+  `popup-ext.mobile.spec.js`; 27 Discogs mutations (`scripts/mutations/popup-ext.json`,
+  the 7 versions entries the refactor moved re-anchored, 12 new) all caught.
+  One new entry first SURVIVED ("Discogs artist: Stop does not end the run
+  of pages"): the spec's `expect.poll(...).toBe(loaded)` passed on its first
+  look, and the pill reads Idle for a moment between two pages of a run, so
+  nothing proved that no page followed Stop. Now it watches 2.5 s for a
+  request more (a poll that must time out; `waitForTimeout` is over the lint
+  baseline) and checks the pill after. `test:full` on petri 2026-10-18
+  01:11:45–01:21:20+02:00: 1858 passed. Three entries of popup-ext.json were
+  already stale on main ("a link around an image is previewed", "U3:
+  Discogs is asked without a User-Agent", "U3: a Discogs link has a Live
+  page": their `find` matches nothing) and are left as they were.
+  vzell tried the branch in the browser before the merge: OK.
+
+## 2026-10-18 — discogs.com's own pages as pageTypes (dg-master/-release/-artist/-label), fed by the link previews' readers (branch feat/discogs-pagetypes, WIP.1)
+Env: 2026-10-18T02:04:43+02:00 · petri · WSL2 Ubuntu 24.04.3 (Linux 6.18.54.1) · Playwright 1.62.1 Chromium (headless, live discogs.com probe; fixture specs with GM stubs, no Tampermonkey)
+
+- **Request (vzell):** pageTypes for discogs.com's master, release, artist
+  and label pages (`debug/discogs-{master,release,artist,label}.html`),
+  built on the Discogs readers of the link previews rather than new
+  scraping. Mockup https://claude.ai/artifact/KTtCM7SaYVHZDaQdNqjUAK, v2
+  approved 2026-10-18 (placement A, label buttons 500/1,000/5,000 newest,
+  500/1,000 oldest, All; five release sub-tables; an Image column; artist
+  sections by role; previews on discogs.com, main content only).
+- **Why the API, not the page:** the snapshots are a React app (`#app`)
+  with generated class names (`releases_mxLkA`, `labelReleasesTable_b3YFz`,
+  `table_Zlpb1`), each showing one slice: artist 392 rows of one tab, label
+  500 of 396,611, master 41 of 387 versions.
+- **Live probe (`scripts/probe-discogs-pages.js`):** Discogs' header is its
+  own root `#__header_root_<n>` (3576, 4134, 8239: the number changes per
+  load, so it is matched by prefix), the page is `#app`; a node put between
+  them survived the page's scripts; master → release is a full page load.
+  Hence `_dgPrepareLivePage()` mounts `#mb-dg-root` with `app.before()`.
+- **Engine:** `features.pageRequest` may now return `fetchText()` (API pages
+  through `_extGet()`), `features.pageCountAsync` asks the page count before
+  the gates, a button may carry `groupLabel`. Found while writing it: the
+  engine clears `stopRequested` only AFTER its gates, so the count requests
+  must not consult Stop (`_dgFetchText(url, false)`), or a press after a
+  stopped, unrendered run would load one page. And the "⚠️ High Page Count"
+  text called any list "This MusicBrainz entity", also on the Springsteen
+  sites: now "This list" on a foreign host.
+- **Found by the specs:** a second button press reloads the page (the
+  engine's rule, docs/claude/fetch-and-render-pipeline.md), so the label's
+  Newest and Oldest tests are two page loads; the first `@include` draft
+  also admitted a release's image page (`/release/<id>-…/image/…`), caught by
+  `sl-include-regex.spec.js` and tightened to an optional slug, then only a
+  query or hash.
+- **Raised with vzell, not changed:** sub-tables start collapsed (engine
+  default on every multi-table page; the mockup showed them open); the Image
+  column is as wide as its header controls, not the mockup's 48 px.
+- **Verified:** `discogs-pages.spec.js` 8/8, `discogs-pages.mobile.spec.js`
+  1/1, `sl-include-regex.spec.js` 9/9; 17 mutations
+  (`scripts/mutations/discogs-pages.json`), all caught. One first SURVIVED
+  ("the header and footer previewed too"): the spec asserted
+  `toBeHidden()` on a card that had not yet had its hover delay, which
+  passes at once. It now asks `__saTest.popResolve()` what the engine
+  would preview (header and footer null; a table link and a content link
+  resolve) — the same trap as "a poll for 'still N' passes on its first
+  look" in the Discogs artist/label entry above.
+- `test:full` on petri 2026-10-18 02:41:36–02:50:59+02:00 (branch
+  feat/discogs-pagetypes, uncommitted on baaa243): 1868 passed — every
+  MusicBrainz fixture spec unchanged by the engine's two optional hooks.
+
+## 2026-10-18 — discogs.com pageTypes, vzell's first browser round: names not linked, rows past the sticky bars, Discogs' header shrunk, columns cut off when scrolled right (branch feat/discogs-pagetypes, WIP.1)
+Env: 2026-10-18T03:35:36+02:00 · petri · WSL2 Ubuntu 24.04.3 (Linux 6.18.54.1) · vzell's browser: unknown (screenshots, artist 219986, master 27097, release 1132381, label 582871); reproduction: Playwright 1.62.1 Chromium, no Tampermonkey
+
+- **Reported (6 screenshots):** Artist/Label cells not linked (artist,
+  master, label pages); a track's Credits one run-on line (wanted: one row
+  each, linked, like MB's Instruments column); scrolled down, the outermost
+  columns showed beside the stuck h2/h3 bars on every Discogs page; on the
+  artist page (the widest table) Discogs' header shrank to the left and the
+  sticky columns broke when scrolled right; the section should sit at the
+  window's left edge; a thumbnail click should open our viewer.
+- **Root cause (layout):** the sticky page headers took Discogs' own `#page`
+  (inside `#app`) for the content root, so our `#mb-dg-root` — a `<body>`
+  child — was pinned and capped WHOLE as chrome with its tables; Discogs'
+  header, also chrome, was narrowed. Reproduced with the real script on the
+  saved `debug/discogs-artist.html` (scripts stripped, Discogs' CSS loaded)
+  served at Max Weinberg's live URL, API answers real: html `mb-sph-on`,
+  header 840 px of a 2000 px window, the section capped at 1,440 px in a
+  3,161 px page. Fix `_sphPageEl()` (#mb-dg-root on discogs.com) and the
+  section as wide as its widest table at the window's left edge: header
+  2000 px, the section 2,880 px from x 0, bars pinned on the sideways scroll.
+- **Found on the way:** the live page in an automated browser came back as
+  Cloudflare's "Just a moment…" check AT the Discogs URL, and the script put
+  its section on it. The gate now needs `#app`. Live page CSP blocks
+  injected scripts: the reproduction used `bypassCSP`.
+- **Decided with vzell:** an artist cell is one search link (no splitting of
+  "A & B"), a label cell one link per ", "-separated label; "right align"
+  meant the window's left edge. The viewer shows the lists' 150 px
+  thumbnails (the URL is signed; full size = one request per release).
+- **Verified:** `discogs-pages.spec.js` 11/11, the sticky-header specs and
+  the mobile spec 73/73; 7 new mutations, all caught (24 in
+  `scripts/mutations/discogs-pages.json`).
+- `test:full` on petri 2026-10-18 03:35:47–03:45:35+02:00 (uncommitted on
+  baaa243): 1871 passed. vzell tried the branch in the browser: OK.
+
+## 2026-10-18 — discogs.com: Submissions pageType, a release's edit history, full-size images in the viewer (branch feat/discogs-submissions, WIP.1)
+
+Env: 2026-10-18T10:33+02:00 · petri · WSL2 Ubuntu 24.04.3 (Linux 6.18.54.1) · Playwright 1.62.1 Chromium · no Tampermonkey (GM stubs)
+
+Mockup https://claude.ai/artifact/Y69bUJTvYSksKTFRMcYJvZ, vzell's answers in
+docs/claude/discogs.md. Snapshots: `debug/discogs-submissions-flat.html`
+(flat view), `debug/discogs-submissions.html` (browser view, its
+`#historyData` pane), `debug/discogs-release-history.html` (a release's
+standalone history page, saved by vzell logged in).
+
+- **The submissions page is not React.** No `#app` (the Cloudflare gate's
+  test), so the gate lets `/submissions` through when `#page_content` is
+  there. Header and page share `#main_wrapper`: our section must be the
+  first `<body>` child, or `_sphCollectTargets()` pins `#main_wrapper` — all
+  of Discogs' page — as chrome (the same bug class as the artist page's
+  round, entry above). A mutation plants exactly that.
+- **The browser view's list carries no release ids** (`a.sublink`,
+  `href="javascript:void(0)"`, `data-sublink-id` is the index), so both views
+  read the FLAT pages (`view=flat` forced); the page count is on the live
+  page in both ("… of 1,140", the flat view's "Jump to" `max`). Discogs'
+  flat row has a fourth cell no header names: the list's artist matched.
+- **`/release/<id>/history` and `#historyData` are the same markup**
+  (`#editing_header`, `table#hist`, `#rating`, `table.diff`), except the
+  View/Changes links: `href` standalone, `data-sb-navigate` in the pane.
+  `_EXT_DISCOGS_PATH_RE` ends in `(?:[-/]|$)`, so the Discogs API reader
+  took history links too: the new reader sits before it.
+- **Two harness traps in the new spec**, not script bugs: a flat page URL
+  equal to the fixture's own URL is served by `loadUserscriptPage()`'s route
+  (registered last, so it wins) and never reaches the spec's logging route —
+  the fixture is loaded without `page=`; and `cell(table, 'Changed')` took
+  "Changed by" (prefix match) — exact name first now.
+- **Not checked:** a request from MusicBrainz to `www.discogs.com` is
+  anonymous like every external request; whether Cloudflare lets it through
+  is for vzell's browser round (the window says so if not).
+- **Verified:** `discogs-submissions.spec.js` 9/9, `discogs-pages.spec.js`,
+  the mobile spec, `sl-include-regex.spec.js`; 15 mutations, all caught
+  (`scripts/mutations/discogs-submissions.json`); lint within baseline.
+  `test:full` on petri 2026-10-18T10:23:53–10:33:29+02:00 (uncommitted on
+  77ad5df): 1882 passed.
+
+## 2026-10-18 — discogs.com round 2: table clicks that stay, every link in the window, View changes, dg-user (branch feat/discogs-submissions, WIP.2)
+
+Env: 2026-10-18T18:26+02:00 · petri · WSL2 Ubuntu 24.04.3 (Linux 6.18.54.1) · Playwright 1.62.1 Chromium · no Tampermonkey (GM stubs)
+
+Mockup https://claude.ai/artifact/XRTM8v1aLNj3voVt6RxVJz (v2). Snapshots:
+`debug/missing-inline-urls.html` (FRP of the release window on the
+submissions list: its user, history and support links opened new tabs),
+`debug/discogs-release-history-diff.html` (`?diff=10`),
+`debug/discogs-user-vzell.html` (IP of a user page). Probes:
+`scripts/probe-discogs-links.py`, `scripts/probe-discogs-user.py`.
+
+- **Discogs' docs vs. the API:** `database/search` is documented as needing
+  authentication; it answered 200 without a token (thumbnails empty).
+  support.discogs.com's article pages answer Cloudflare's check (403), its
+  Zendesk Help Center API (`/api/v2/help_center/articles/<id>.json`) does not.
+  A user's profile, submissions (642 = the page's "Pending"), contributions,
+  collection, wantlist and lists all answer without a token.
+- **The script's own "You are about to leave this page"** fired on a plain
+  click on a label search link of our tables (vzell's screenshot). Our
+  tables' links now open a new tab, and a plain click opens the window.
+- **A `start`-only load inside a window never starts after a drill-down**:
+  the target's record arrives on a repaint (not `start`); the user's Recent
+  activity stayed at "Reading…". The release window's history part had the
+  same flaw, hidden because the specs hovered first (the card had loaded the
+  release). Both now start while their key has no state (as
+  `_extDgListStart()`).
+- **`table.diff`'s cells hold the release page, tracklist table included**:
+  `tbody > tr > td` picked a tracklist cell as the "new" side; revision 14
+  came out right by luck, revision 10 showed nothing. `:scope >` now.
+- **Discogs compares revision 10 with 8** (9 changed no data): labels come
+  from the page.
+- **Open (vzell's live test):** everything else works live;
+  `https://www.discogs.com/user/vzell` showed nothing, although the spec
+  renders the saved page at that URL with both buttons. Suspected: the
+  installed script's header lacks the new `@include` line. Asked for the
+  Tampermonkey icon state / an FRP snapshot.
+- **Verified:** `discogs-links.spec.js` 7/7 and the Discogs and popup-ext
+  specs 92/92; 13 mutations, all caught (`scripts/mutations/discogs-links.json`);
+  lint within baseline. `test:full` on petri 2026-10-18T18:17:02–18:26:48+02:00
+  (uncommitted on 77ad5df): 1890 passed.
+
+## 2026-10-18 — discogs.com round 2, vzell's live round: Matched artist unlinked, filters past their columns, split Submissions groups (branch feat/discogs-submissions, WIP.2)
+
+Env: 2026-10-18T19:00+02:00 · petri · WSL2 Ubuntu 24.04.3 (Linux 6.18.54.1) · Playwright 1.62.1 Chromium · no Tampermonkey (GM stubs); vzell's screenshots: browser and Tampermonkey versions unknown
+
+- **User page "not supported"** was the installed header without the new
+  `@include` line; vzell: "the user profile page is OK" afterwards.
+- **Matched artist "not hyperlinked":** Discogs links it by name
+  (`/artist/Bruce+Springsteen`), no id, so no reader took it (no card; a
+  click a new tab). A search link now, as the Artist column.
+- **Column filters ran past their columns** (`debug/stretch.html`, twice:
+  submissions and a user's page). Not reproducible on the fixture, nor on the
+  snapshot rendered with scripts and remote CSS blocked — the measuring
+  script itself hid the cause. Served with st.discogs.com's `discogs.css`
+  (fetched 2026-10-18, 290 KB) every input ended ~86 px past its column:
+  `input[type=search]{box-sizing:content-box}` beats `.mb-col-filter-input`.
+  Lesson: measure a foreign page's FRP WITH the site's stylesheets.
+- **Submissions split into a sub-table per page run** ("Releases 199,
+  Labels 1, Releases 97, Artists 3, …"): the `groupByH3` loop starts a group
+  whenever the heading changes; the fixture served page 1 for pages 2-6, so
+  the kinds never mixed. `features.groupMergeByName` (dg-user only); the spec
+  now serves page 7 as page 3.
+- **Verified:** discogs-submissions 10/10, discogs-links 7/7 (the search test
+  flaked once under load at 5 s: 10 s wait now); mutations for all three,
+  caught.
+
+## 2026-10-18 — discogs.com: the columns as MusicBrainz's (Credits role section, Cat#, Year, date/time splits), search results with pictures (branch feat/discogs-submissions, WIP.2)
+
+Env: 2026-10-18T19:53+02:00 · petri · WSL2 Ubuntu 24.04.3 (Linux 6.18.54.1) · Playwright 1.62.1 Chromium · no Tampermonkey (GM stubs)
+
+- **A search result with a picture never opened in the window**: each row was
+  ONE link around its thumbnail, and `_extTarget()` leaves a link around an
+  image to the image. The label results of the spec had no thumbnails
+  (without a token Discogs sends none), so it passed. The picture is now
+  outside the link; the title's link covers the row (`::after`).
+- **Credits / Cat# / Year / date-time**: sentinels (`.mb-credit-role`,
+  `.mb-credit-attr`, `.catalog-number` lists) and name gates scoped to
+  discogs.com (`isCatalogCol`, `isDateExprCol`, `isTimeCol`); the new 📊
+  section "Credit details - Role" (kind `dgrole`). Discogs joins several
+  catalog numbers with ", " (86 of 387 Born To Run versions).
+- **"When was the edit done"**: the API gives a release's `date_added` and
+  `date_changed` only (anyone's last change), not the user's own edit date,
+  which is only in the release's history (one request each): vzell chose the
+  two release dates as columns.
+- **Verified:** discogs-pages 14/14, discogs-submissions, discogs-links;
+  8 new mutations, all caught; lint within baseline. `test:full` on petri
+  2026-10-18T19:43:54–19:53:48+02:00 (uncommitted on 77ad5df): 1896 passed.
+
+## 2026-10-18 — discogs.com: dg-history, users' pictures (viewer, card), sub-tables with their own columns (branch feat/discogs-submissions, WIP.2)
+
+Env: 2026-10-18T20:31+02:00 · petri · WSL2 Ubuntu 24.04.3 (Linux 6.18.54.1) · Playwright 1.62.1 Chromium · no Tampermonkey (GM stubs)
+
+- **dg-history** (`/release/<id>/history[?diff=N]`): rows from the history
+  reader's `_extDgHistParse()`; `dg-release` must exclude the path
+  (`_EXT_DISCOGS_PATH_RE` takes `/history`), pinned by a mutation.
+- **Two cells without a header in the Diff table** (vzell,
+  `debug/2columns-missing.html`): the fetch loop re-resolves extractors per
+  sub-table only for a list of pageTypes; dg-history's Changes split
+  ("Changed" at column 0) ran on the Diff table's Section ("Companies, etc."
+  → "Companies," / "etc."), and dg-user's on Artists/Labels. My dg-user test
+  counted rows only: the new assertions count cells against headers.
+- **Users' pictures:** a history carries them; a submissions list does not
+  (one profile request per user on screen, one at a time). Render cost of
+  the re-fill observer, 1,200 rows: 0.48/0.48/0.49 s with, 0.48/0.47/0.47 s
+  without (2026-10-18T20:02+02:00) — noise. Largest picture = the profile's
+  `avatar_url` (500 px; Discogs' image URLs are signed): hover card + viewer.
+- **Stray `sleep 5` processes** vzell noticed: waiting loops of two earlier
+  sessions, `until ! pgrep -f "mutation-check.py"; do sleep 5; done` — `pgrep
+  -f` matches the loop's OWN command line, so they never end. Never wait that
+  way: use a background task's completion notice.
+- **Verified:** discogs specs, popup-ext; every new guard mutation-checked
+  (`scripts/mutations/discogs-links.json`, `…/discogs-submissions.json`); lint
+  within baseline. `test:full` on petri 2026-10-18T20:21:38–20:31:16+02:00
+  (uncommitted on 77ad5df): 1900 passed.
+
+## 2026-10-19 — discogs.com: the MusicBrainz column with murdos' importer (branch feat/discogs-mb-column, WIP.1)
+
+Env: 2026-10-19T00:31+02:00 · NB-3641 · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) · Playwright 1.62.1, Chromium build 1234, no Tampermonkey (GM stubs); snapshot from vzell's browser: browser/Tampermonkey versions unknown
+
+- **The request named the wrong script.** vzell asked for "Discogs API links"
+  (Anakunda) support; that script only adds a "View through API" link. The
+  icons in `debug/discogs-release-withMB-icons.html` (`span.mb_wrapper`,
+  `span.mb_valign.mb_searchit`, `mlink`/`mlink_done`, `mlink_processed`) are
+  murdos' "Import Discogs releases to MusicBrainz" (2026.10.14.2, its
+  mblinks.js@755843cf). vzell then copied that one into
+  `tests/fixtures/live-userscripts/` (registered `murdos-discogs-importer`).
+- **Snapshot:** all 120 `span.mb_wrapper` are inside Discogs' `#app`; our
+  section's tables have none — the importer's selectors are Discogs' React
+  class prefixes, and our rows come from the API. Its `$('h1')` does reach
+  our `h1.mb-dg-h1` (`mlink_processed="2"`, the release icon prepended). So
+  the column cannot come from the importer's DOM; it reimplements the lookup
+  and reads the importer's localStorage cache `DISCOGS_MBLINKS_CACHE-v3.1`
+  read only (docs/claude/discogs.md, "The MusicBrainz column").
+- **Probe** (`scripts/probe-mb-url-batch-by-discogs.py`, same env, no
+  browser): /ws/2/url drops a 101st `resource=` SILENTLY (200, no error) —
+  the importer's 75 is safe, our 100 is the limit, never more; several
+  relationship incs in one request work, so one request serves a whole
+  release page's artists, labels, places and releases; matching is exact
+  (slug, `http:`, no www all 404).
+- **Two traps met on the way:** `cleanColumnText` already existed on
+  `__saTest` (a second copy is a duplicate key, caught by the lint baseline);
+  a CSS escape like `"\25B6"` inside the `GM_addStyle` template literal is an
+  octal-escape SyntaxError — write the glyph itself. A highlight for icons
+  cannot be a `.mb-column-filter-highlight` span: every filter pass replaces
+  those spans with a text node of their text, which would delete the icons;
+  the ring reuses `mb-rel-icon-match`, which the passes remove as a class.
+- **Verified:** `tests/fixtures/discogs-mb-column.spec.js` (10 tests) and the
+  other Discogs specs; `scripts/mutations/discogs-mb-column.json` — 9 planted
+  defects, all caught (the `_CLEAN_STRIP_SEL` one only after the test read
+  the clean text itself: "R?" never matched as a filter anyway, the box's two
+  text nodes join with a space); lint within baseline. `test:full` on NB-3641
+  2026-10-19T00:34:03–00:45:36+02:00 (uncommitted on 7824778): 1911 passed.
+
+## 2026-10-19 — tag pages: "Artist" header missing when Artists is the first section; artist comment read as the entity's Comment (branch fix/tag-value-artist-header, WIP.1)
+
+Env: 2026-10-19T11:31+02:00 · NB-3641 · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) · Playwright 1.62.1 Chromium · no Tampermonkey (GM stubs)
+
+Snapshot: `debug/tag-arena-rock.html` (vzell, FRP of `/tag/arena%20rock`,
+plus a screenshot of the CAA card showing "Van Halen" as the title).
+
+- **Column shift in Release groups/Releases/Recordings.** The cells were
+  right (`Release group | Artist | MB-Name | Comment | Primary alias |
+  Relationships`); the header row had no `Artist`. `renderGroupedTable()`'s
+  per-group thead branch (tag-value, user-tag-value, instrument-list,
+  artist-credit) clones `rawTemplateHead` — the FIRST native table's head —
+  and renamed its first `<th>` to `group.colName` only AFTER
+  `cleanupHeaders()`. This page has no Areas section, so that `<th>` said
+  "Artist"; `cleanupHeaders()`' name dedup then skipped artistCredit's
+  synthetic "Artist" header while the row pass still appended its cell.
+  The existing tag fixtures all start with Areas ("Area"), which is why no
+  spec saw it. Fix: rename first, then `cleanupHeaders()`. Its removal maps
+  are prefixes of MusicBrainz's own names (Relationships, Performance
+  Attributes, Release events, Tagger, Rating), so no group name is removed.
+- **CAA card: artist as title, no artist line.** Same cause: tag RG/R
+  declare `tooltipColumns: ['MB-Name', 'Artist']`, resolved by header name.
+- **Comment = the artist's disambiguation.** `_extractMainColumnParts()` took
+  `querySelector('.comment')`, so "Back in Black by AC/DC (Australian hard
+  rock band)" got "Australian hard rock band" as the release group's
+  Comment (and an artist alias would have become its Primary alias). New
+  `_ownEntityCommentSpan()` skips a comment inside the artist credit — a
+  direct-child `<bdi>` with an `/artist/` link that follows the cell's first
+  link without containing it (so a cell that IS an artist credit keeps its
+  comment); no " by " text is matched, so it works in any UI language. Also
+  used for the big-image wrapper's `data-art-tooltip-comment`.
+- **Which pageTypes:** scanned every `artistCredit`/`extractMainColumn`
+  user. " by Artist" inside the main cell: tag-value, user-tag-value (both
+  bugs), tag-value-entity, user-tag-value-entity (Comment only). user-ratings
+  splits " by " into a native Artist column in Structure H; artist-credit
+  rows are bare titles; event/relationship tables parse " by " in
+  `_eventParse`.
+- **Fixture trap:** a user-tag entity page's column name comes from the h2
+  with its LAST word before "tagged" dropped (the username, "Release groups
+  vzell tagged as …"); a fixture with the plain tag-page h2 names the column
+  "Release", and artistCredit (keyed on "Release group") silently never runs.
+  Hence a separate `user-tag-value-entity-artist-comment.html`.
+- **Verified:** `tests/fixtures/tag-value-artists-first.spec.js` (12 tests,
+  all four pageTypes), mutation-checked by
+  `scripts/mutations/tag-value-artists-first.json` (header order, call site,
+  helper: fail; the CAA wrapper read: recorded as pass, CAA is off in
+  fixtures and these pageTypes draw the card from tooltipColumns); the
+  tag-value/artist-credit/user-ratings/instrument-list specs: 46 passed;
+  lint within baseline.
+- **Merge gate:** `test:full` on main (merge `2e26b7f` + fold, 9.99.1376),
+  NB-3641, 2026-10-19T11:51:20–12:01:36+02:00 (10 m 16 s): 1911 passed,
+  1 failed — `popup-mb.spec.js:1322` "the event window: held at with the
+  whole area chain …": the 5 s `toHaveText` ran out while the area chain was
+  still resolving one step at a time ("… West Long Branch, New Jersey ◌").
+  Not on this change's path; passed alone 3/3 (`--repeat-each=3`) and with
+  its whole file 76/76. First recorded flake of that test — if it recurs,
+  the area-chain wait is the place to look, not this fix.
+- **Flake fixed (branch fix/popup-mb-area-chain-timeout):** the chain is
+  three area lookups behind the 1 req/s gate — timed at 3.3–3.9 s on
+  NB-3641 alone (5 runs) and 3.8 s beside popup-ext + sticky-page-headers on
+  14 workers, against the default 5 s `expect` timeout. Same cause the label
+  window's Area row was given `{ timeout: 15000 }` for on 2026-10-14; the
+  event window's "Held at" and the failed-step test's partial chain (same
+  three slots) now get the same. The exact-text match is unchanged, so a
+  chain stuck at "◌" still fails. Not reproducible on demand: 28 parallel
+  copies of the two tests alone passed before the change.
+
+## 2026-10-19 — dg-submissions browser view: the rendered page cannot scroll down or right (branch feat/discogs-mb-column, WIP.2)
+
+Env: 2026-10-19T15:21+02:00 · NB-3641 · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) · Playwright 1.62.1, Chromium build 1234, no Tampermonkey (GM stubs); snapshot and screenshot from vzell's browser: browser/Tampermonkey versions unknown
+
+- **Report** (vzell, `debug/discogs-scroll-bug.html` = FRP, plus a
+  screenshot of `…/submissions?mode=list&id=599283&page=1#…&item=%2Frelease%2F12931010-Eesti-Hit-13%2Fhistory`):
+  after the render the page shows one window's worth of the 1143 rows, the
+  columns run off the right edge, no scrollbars at all; filtering and
+  sorting work.
+- **Root cause: Discogs' own stylesheet.** The browser view (no `view=flat`;
+  `pageCategory: "history.browser"`) links
+  `stylesheets/sections/subbrowser.css`, whose first rule is
+  `body{overflow:hidden;margin:0;padding:0;height:100%;width:100%}`.
+  `<html>` has no overflow of its own, so the body's value is used for the
+  viewport: the window itself cannot be scrolled by the user. Discogs'
+  layout depends on it — `table#browser` holds `aside#items` and
+  `#hpane_wrap`, both set to the window's height by `submissions.js`
+  (`i.resize`) and scrolling inside themselves. Our `section#mb-dg-root` is
+  the first `<body>` child, in the page's flow, so it was cut at the
+  window's edges.
+- **Ruled out, with the snapshot:** the `item=` hash (Discogs' own: its
+  hashchange handler loads that history into `#historyData`; the userscript
+  never writes `location.hash`); our art viewer's lock (`<html>` has no
+  inline style); `mb-sph`/`mb-vsb` CSS (no overflow rule on html/body); an
+  open dialog (none in the DOM).
+- **Why the tests never saw it:** `tests/fixtures/dg-submissions-browser.html`
+  was built without Discogs' stylesheets and without the split pane. It is
+  now built (scripts/build-discogs-fixtures.py, `SUBBROWSER_CSS`) inside
+  `table#browser` with subbrowser.css's layout rules in its head.
+- **Fix:** `_dgPrepareLivePage()` tags `<body>` `mb-dg-unlock-scroll` when
+  `table#browser`/`#hpane_wrap` is present; `_ensureDgStyle()` gives that
+  body `overflow: visible !important; height: auto !important`. Host- and
+  page-scoped; MusicBrainz and every other Discogs page untouched (the flat
+  view asserted untagged).
+- **Test trap:** the first version of the regression test scrolled with
+  `window.scrollTo()` and passed WITH the lock — `overflow: hidden` only
+  stops the user, not a script. The test now scrolls with the mouse wheel
+  (down, then right) and asserts neither html nor body computes to
+  `overflow-y: hidden`. Mutation-checked: dropping the tag or the CSS rule
+  fails it ("the wheel scrolls the window down"); tagging every Discogs page
+  fails the flat-view test.
+- **Stale mutation entries repaired in passing** in
+  `scripts/mutations/discogs-submissions.json`: "our section inside Discogs'
+  #main_wrapper" (the avatar init now follows the insert) and "the diff
+  shows every block" (`h.diff` became `diff`); the Cloudflare-gate entry is
+  re-anchored with the ratings pageType, which changes that line again.
+
+## 2026-10-19 — discogs.com: "HTTP 429 from Discogs" on dg-release and the other API pageTypes (branch feat/discogs-mb-column, WIP.4)
+
+Env: 2026-10-19T16:10+02:00 · NB-3641 · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) · Playwright 1.62.1, Chromium build 1234, no Tampermonkey (GM stubs); console log from vzell's browser (`debug/discogs-429.html`, userscript 9.99.1376, library 4.4.0): browser/Tampermonkey versions unknown
+
+- **Report:** on `…/release/8164856-Bruce-Springsteen-Human-Touch` and other
+  Discogs pages, `features.pageCountAsync failed (HTTP 429 from Discogs for
+  https://api.discogs.com/releases/8164856) — trying one page`, then
+  `Error fetching/parsing page 1: HTTP 429`. The page loaded at 13:42:20,
+  the page count failed at :25 (first ask + one retry), page 1 at :30.
+- **Root cause (vzell's answers): no token and 4+ Discogs tabs open.**
+  Discogs' API allows 25 requests a minute per IP without a token (60 per
+  token), as a moving minute. Each tab's `_extAwaitSlot()` spaced only its
+  own requests (2.5 s), so N tabs asked N × 24 a minute, beside murdos'
+  importer (`discogs_importer.user.js:70`: one unauthenticated
+  `api.discogs.com/releases/<id>` per release page load), users' pictures on
+  a scrolled submissions list, and previews. Setting the token cured it for
+  vzell — 60 a minute, and the importer's requests no longer share it.
+- **Second defect, whatever the cause:** `_extGet()` retried a 429 ONCE,
+  `max(1.5 s, Retry-After)` later — inside the same moving minute, so it
+  could never succeed; one bad minute killed the whole run.
+- **Fix:** `_EXT_SHARED_SLOT_HOSTS` (`api.discogs.com`): the next slot also
+  in GM storage (`sa_ext_next_slot:api.discogs.com`), read and written by
+  every tab's `_extReserveSlot()`; a value more than 2 min ahead ignored. A
+  429, or `X-Discogs-Ratelimit-Remaining: 0`, pushes that slot a minute
+  ahead for every tab (`_extNoteBudget()`), and the request is asked again
+  from the gate up to `_EXT_SHARED_TRIES` (4) times. The slot wait is
+  interruptible on `!wanted()` (Stop), and a run's status line names a wait
+  over 5 s. Other hosts unchanged (2 tries, 1.5 s floor).
+- **Not established:** whether Discogs sends `Retry-After` or
+  `X-Discogs-Ratelimit-Remaining` on a 429 — forcing one costs the user's
+  budget for a minute, so it was not probed; the code honours both if
+  present and does not need either.
+- **Tests:** `tests/fixtures/discogs-rate-limit.spec.js` (5) and
+  `scripts/mutations/discogs-rate-limit.json` (6, all caught). The test
+  pause had to be LONGER than the 2.5 s spacing (4 s): at 1.5 s a missing
+  pause was hidden by the spacing itself. Discogs, link-preview and include
+  specs: 136 passed; lint within baseline.
+
+## 2026-10-19 — event page URL table without the review icon; YouTube Music button after Credits (branch feat/link-site-uvd, WIP.1/WIP.2)
+
+Env: 2026-10-19T18:04+02:00 · NB-3641 · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) · Playwright 1.62.1, Chromium (fixture project), no Tampermonkey (GM stubs); snapshots from vzell's browser (`debug/event-review-glyph.html`, `debug/release-missing-glyphs.html`): browser/Tampermonkey versions unknown
+
+- **Report 1 (org/TODO.org):** on event 47b84024… the sidebar's
+  `li.review-favicon` link (brucebase.wikidot.com) showed its icon in the
+  "Sidebar" card but not in the "URLs" table.
+- **Evidence:** in `debug/event-review-glyph.html` the card's link is
+  `a.mb-sb-ico[data-mb-sb-ico="erm2cn"]`, the table's
+  `<a class="wrap-anywhere" href="http://brucebase.wikidot.com/2025#261025">`
+  has neither. In `debug/release-missing-glyphs.html` (release Credits) every
+  URL row link HAS the icon. So `review-favicon` is read fine (`_sbIconOf()`
+  has no class list); the table pass is what was missing.
+- **Root cause:** `_sbIconRelLinks(doc, frag)` was called only by
+  `applyRelDetailsToTables()`; `event-overview` builds its tables with its
+  own converter, `applyEventDetailsToTables()`. **Fix:** the event converter
+  calls it before inserting its tables (live, fetched and disk-load docs).
+  Spec `tests/fixtures/event-overview-url-icons.spec.js`.
+- **Report 2:** the "MBz YouTube Music Lookup" button (@afro) stayed at the
+  foot of release 9d451257… after **Credits** (the Tracks render already
+  removed it).
+- **Root cause:** the Credits button is `_relTablesButton(…)` with
+  `replaceFeatures: true`: none of the release definition's features reach
+  that render, its `removeSelectors` included. **Fix:** one constant
+  `_YTM_LOOKUP_SEL`, used by Tracks and by the Credits button through
+  `_relTablesButton()`'s new `extraFeatures` parameter. Spec: a Credits case
+  in `release-tracks-third-party-youtube-lookup.spec.js`.
+- **Same branch, no bug behind them:** the 📊 "Links info - Site"/"- Site
+  kind" and "Relationship icons - Site kind" sections and the
+  `rel-multi-discogs` finding (docs/claude/uniq-dropdown.md, findings.md).
+  `scripts/mutations/link-site-uvd.json`: 18 entries, 16 caught, 2 recorded
+  `"expect": "pass"` with the reason.
+
+## 2026-10-19 — tag-value: "N entities found" pushed below the last table; tag link previews (branch feat/tag-reader, WIP.1/WIP.2)
+
+Env: 2026-10-19T18:39:21+02:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.54.1-microsoft-standard-WSL2) · Playwright 1.62.1 Chromium (build 1234), no Tampermonkey (GM stubs); snapshots: user's browser, unknown versions
+
+- **Snapshots:** `debug/tag-entity-initial.html` (IP of /tag/alternative%20rock:
+  `<h2>Entities tagged as …</h2><p>212,773 entities found</p><h3>Areas</h3>…`),
+  `debug/tag-entity-final.html` (FRP: the same `<p>` is the LAST child of
+  `#content`, after the Works table), `debug/bo-deans-tag-buttons.html` (FRP
+  of a BoDeans artist page: the "Sidebar" Tags card's pills
+  `span.mb-sb-pill > a[href="/tag/…"] + span.mb-sb-pill-votes`).
+- **Root cause (WIP.1):** `renderGroupedTable()` inserts every h3/table pair
+  from `lastInsertedElement = targetHeader`, i.e. `h2.after(h3)`, so all
+  pairs land between the h2 and its native paragraph. Not a CSS or late-DOM
+  issue: the paragraph is never touched, only overtaken. **Fix:**
+  `features.keepH2Intro` (tag-value, user-tag-value only) → `_keepH2Intro()`
+  moves the `<p>` run (and any earlier `.mb-h2-intro`) back under the h2 and
+  starts the pairs after it, on every render; `_alignH2Intro()` copies the
+  first h3's computed `margin-left`, because `1.5em` on the paragraph is in
+  its own smaller font (32 vs 36 px in the fixture with default sizes —
+  the first spec run caught that). Spec `tag-value-intro.spec.js`.
+- **WIP.2:** a `tag` page kind in the popup engine (no Web Service lookup of
+  a tag by name; docs/claude/detail-pages.md, "MusicBrainz: tag cards") and
+  `_sbTagVotesTip()` on the pill's number. The number is a sibling of the
+  link, so the two hover cards never compete.
+- `scripts/mutations/tag-reader.json`: 7 entries, 7 caught.
+
+## 2026-10-19 — "Recording of" columns on every one-recording-per-row list (branch feat/recording-of-more-pts, WIP.1)
+
+Env: 2026-10-19T19:16:01+02:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.54.1-microsoft-standard-WSL2) · Playwright 1.62.1 Chromium, no Tampermonkey (GM stubs); probes: no browser
+
+- **Task:** `org/TODO.org` "add the "Recording of" to more recording columns in
+  other PTs". The report of every MusicBrainz pageType that renders
+  recordings is under that TODO item. Scope chosen by the user: one recording
+  per row only, one checkbox per page group, on by default.
+- **What only held on artist-recordings:** the anchor was the literal
+  "Name" in three places (`_recOfAnchorIndex()`, the `_finalColNames`
+  splice, `_recOfInjectHeaders()`); the browse was by artist, from
+  `_recOfArtistMbid()`; suggestions used the artist's work list. All three
+  are now read from `_recOfDecl` (`features.recordingOf: { after, browseBy,
+  suggest, setting }`, `_recOfNormDecl()`). Everything else (the three
+  row-assembly sites, multi-table header injection in `cleanupHeaders()`,
+  live + master writes) was already source-agnostic.
+- **Inert cells:** a row whose anchor links no recording gets a cell without
+  `data-mbid`; the glyph CSS now requires `[data-mbid]` and
+  `_recOfCellLoadState()` returns null for it, so 📊 does not promise a load.
+- **Probe:** browse by work and by collection = lookup relations
+  (`tests/MEASUREMENTS.org`, "Recording of" browse by work and by collection).
+- **Fixtures:** `scripts/build-recording-of-pagetype-fixtures.py` fetched
+  isrc, instrument, series, user-ratings-type and artist-credit-entity pages
+  (cut to ≤ 6 rows, no pagination) plus the real WS/2 answers of all 34
+  recordings into `tests/fixtures/recording-of-pt-data.json`; search, work,
+  area and tag-value-entity reuse existing fixtures. musicbrainz.org answered
+  the collection page with a "Verifying your browser" bot check, so it has no
+  fixture (a browser snapshot is needed); user-tag-value-entity has none either.
+- **Caught by the old spec on the way:** the progress card's "Source" text
+  for artist-recordings had been generalised to "the recordings by this
+  artist"; `recording-of-column.spec.js` pins "the artist's recordings", so
+  the per-parent wording keeps that exact text.
+- Spec `recording-of-pagetypes.spec.js`; mutations
+  `scripts/mutations/recording-of-pagetypes.json`.
+- **Two positional bugs the full suite found once the pair was declared on
+  more pages** (`test:full` 2026-10-19T19:43:06+02:00, 5 failed / 2001):
+  1. *Hydration took the pair for Relationships cells.* Both restore
+     branches of `_hydrateAndRenderFromSnapshotData()` set
+     `className = 'mb-rel-cell'` on every cell record with an `mbid`, and
+     `_buildDiskCellData()` saves one for both "Recording of" cells. On
+     place-performances (which has a Relationships column) a sub-table tab
+     lost one of them and showed the Video value under Length
+     (`subtable-tab-handoff.spec.js`). Evidence: a temporary spec dumped
+     the tab's first row — `mb-rel-cell mb-perfattr-cell` at index 2 and no
+     `mb-recof-cell`. Fix: `&& !cellData.recof` in both branches. On
+     artist-recordings the cells had silently carried `mb-rel-cell` since
+     the feature shipped; harmless only because that page has no
+     Relationships column.
+  2. *Continuation-row merge ignored the inserted cells.*
+     `_mergeContinuationRowInto()` maps original index − excluded columns;
+     the pair after "Name" moved every target two to the right, so search
+     results merged extra releases two columns early (Medium/Type one item,
+     Picard 2 of 3). Fix: the call passes `_recOfAfterIdx` and the pair's
+     width. `search-recordings-continuation.spec.js`'s fixed `COL` indices
+     now count the pair.
+  Mutations for both are in `recording-of-pagetypes.json` (13 entries:
+  11 caught, 2 recorded as invisible with the reason).
+- **2026-10-20, user report — search results: "artists and recordings in the
+  same Artist column".** Env: 2026-10-20T00:10+02:00 · user's browser, unknown
+  versions (snapshots) / NB-3641 · Playwright 1.62.1 Chromium, no
+  Tampermonkey (GM stubs) for the check. Snapshots:
+  `debug/OF-WORK-search-recordings-initial.html` (IP of
+  /search?query=Born+to+Run&type=recording, saved after the page-load
+  toolbar was injected), `…-final-ok.html` (before the pair),
+  `…-final-bug.html` (with it). `scripts/compare-rendered-rows.py` on the
+  two FRPs: every recording with continuation rows has its extra releases
+  under Artist (2, 3, 38, 54 items), Track items under ISRCs, and one item
+  in Medium/Type — exactly the two-column merge shift fixed above
+  (`_mergeContinuationRowInto()`); the user's Tampermonkey copy predates
+  that fix (re-import needed). The page is now a whole-page fixture,
+  `recording-of-pt-search-born-to-run.html` (102 continuation rows), and
+  `recording-of-pagetypes.spec.js` renders it with the pair on and off and
+  requires identical item counts in every other column. Its first version
+  passed with the fix REVERTED: both renders share one browser context, the
+  "off" seed of the first carried into the second, and nothing asserted the
+  pair was present — now it does, and the seeded "off" render goes last.
+- **Fixtures from the user's browser:** `debug/collection-recordings-initial.html`
+  and `debug/user-tag-recording-initial.html` (and the search IP above) all
+  carry ShowAllEntityData's page-load toolbar and status line; the builder's
+  `strip_userscript()` removes them and refuses a page with any `id="mb-…"`
+  / `data-mb-…` left. Collection = `17ee2e77-…` (49 recordings, one browse
+  page), user tag = `vzell/acoustic rock`. The series is pinned to
+  `2b09356c-…`: `discover()` picked a different one on the second build.
+
+## 2026-10-20 — instrument pages: the IROMBOOK sidebar drawing as the sidebar picture (branch feat/instrument-sidebar-picture, WIP.1)
+
+Env: 2026-10-20T01:13:03+02:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.54.1-microsoft-standard-WSL2) · Playwright 1.62.1 Chromium, no Tampermonkey (GM stubs); snapshot: browser unknown
+
+- **Snapshot:** `debug/electric-bass-guitar.html` (IP of
+  /instrument/0b9d87fa-93fa-4956-8b6a-a419566cc915/recordings, with
+  jesus2099's ALL LINKS decorations in it). The sidebar opens with
+  `<div class="picture"><img src="https://static.metabrainz.org/irombook/bass_guitar/bass_guitar_electric.png"><br><span class="picture-note">IROMBOOK image/…</span></div>`
+  as the FIRST child of `#sidebar` — MusicBrainz's own markup, server-rendered,
+  not wrapped in `.entity-image`/`.commons-image`. `tests/fixtures/rel-instrument-overview.html`
+  (tenor guitar) has the same shape, so it is not a one-off.
+- **Why it was skipped:** `_sbInitPicture()`'s selector only had the two
+  Commons wrappers, and `_sbWirePicture()` rejected any non-Commons host
+  (the guard that keeps the event art out).
+- **Fix:** a third selector arm `:scope > .picture img`; `_sbPictureSource()`
+  accepts Commons or `static.metabrainz.org/irombook/` (`_sbIrombookFile()`),
+  everything else still left alone. Card names IROMBOOK; no viewer page
+  link; the h1 copy gets `mb-sb-avatar-contain` (whole drawing on white).
+- **IP vs FRP:** the drawing is in the raw page, so the copy is prepended at
+  init, before the toolbar; nothing in the instrument renders rewrites the h1
+  (the only `_h1.textContent =` is the disk-load path), so it stays first.
+  Pinned by the new spec rather than by code.
+- **Tests:** 4 new tests in `sidebar-picture.spec.js`; 6 new `picture:`
+  mutations in `sidebar-overhaul.json`, all caught.
+
+## 2026-10-20 — CAA/EAA artwork card: Space = every image, Shift = bigger tiles (branch feat/caa-card-space-shift, WIP.1)
+
+Env: 2026-10-20T01:45:23+02:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.54.1-microsoft-standard-WSL2) · Playwright 1.62.1 Chromium (chromium-1234), no Tampermonkey (GM stubs); snapshot: browser unknown
+
+- **Question asked first:** why does the B1 card on the CAA icon show "+69"
+  (`debug/CAA-lots-of-images.html`, FRP of release-group
+  f731060c-05d4-439d-8351-59e5e5eb91a0, the 81-image Tracks II release)?
+  `_artCardCoreHtml()` slices to `sa_caa_tip_summary_tiles` (default 12,
+  1–60), so the break-even is 12 and 81 → 12 + "+69". The cap came in with the
+  redesign (f4adaaf), although the design catalogue said "all images", and no
+  reason was ever recorded. What the code implies: the card is
+  `#mb-stat-tooltip`, which follows the pointer, closes on mouseout and so
+  can never scroll, at 310 px wide (5 tiles per line). Each tile is a
+  separate 250 px thumbnail request.
+- **Built:** `_mbttKey()` / `_mbttAfterHide()` / `_statTipApi.repaint()`
+  hooks in the tooltip engine, plus `_artCardFit()` (see
+  docs/claude/artwork-caa-eaa.md, "The B1 card's keys"). New setting
+  `sa_caa_tip_summary_big_tile` (150).
+- **Three traps hit while testing, each recorded so it is not hit again:**
+  1. `--mb-art-tile` already existed on `<html>` (the cell grid, 64 px). The
+     card's `var(--mb-art-tile, 56px)` read it, so the compact card measured
+     64. Renamed to `--mb-art-card-tile`.
+  2. `#mb-stat-tooltip { max-width: 520px }` capped the wide card, so the
+     tiles wrapped into more rows than the fit planned (card bottom 598 in a
+     500 px window). Fixed with a `:has(> [data-mb-art-wide])` override.
+  3. The typing guard relied on `_dpPeek.typedAt`, but the link preview's
+     `input` tracker is not installed where its sources are off (as in every
+     fixture). The tooltip engine now records it itself. A spec typing into
+     MusicBrainz's header search proved nothing: typing scrolled the page up
+     to the field, the card closed on the mouseout, and the Space never met
+     a card (the mutation that removes the guard still passed). The spec now
+     types into a `position:fixed` field.
+- **Mutation check:** `scripts/mutations/caa-card-keys.json`, 10 planted
+  defects, all fail their spec. The first run left three passing: the typing
+  pair (trap 3) and "fit skipped", which passed because without the fit the
+  tiles fell back to 56 px and fitted anyway. The tile size is now in the
+  markup, and the spec requires 56 < tile < 150.
+
+## 2026-10-20 — editing history in the entity window; a keyboard click closed any repainting dialog (branch feat/mb-edit-history-popup, WIP.1)
+
+Env: 2026-10-20T02:37+02:00 – 03:33:32+02:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.54.1-microsoft-standard-WSL2) · Playwright 1.62.1 Chromium (chromium-1234), no Tampermonkey (GM stubs); probe: urllib (Python 3.11.3) and Playwright Chromium, logged out and logged in as vzell
+
+- **Asked:** "✎ Editing history" in the popup window's header for every MB
+  entity, showing `/<entity>/<MBID>/edits` in the same window with the
+  Discogs history's look, and Back (org/TODO.org; plan, probe, answers and
+  mockups in org/mb-edit-history.org and org/mb-edit-history-mockups.html).
+- **Probe findings** (`scripts/probe-mb-entity-edits.py`, then pages saved
+  with `scripts/fetch-mb-page-fixture.js [--auth]` and reported with
+  `--from`):
+  1. urllib gets the "Verifying your browser" page (1394 bytes,
+     `/__meb_verify`) for every `/edits` path but the guitar's. The window
+     cannot rely on a session that passed it, so `_mbPageLoad()` now names
+     the check page (`_mbIsBrowserCheck()`) for every page card.
+  2. Logged out: "Editor hidden (log in…)" in every subheader, NO
+     `.edit-notes` block at all, "Vote tally:" before the tally, UTC dates.
+     Logged in: editors, notes, "My vote", the editor's own zone ("GMT+1").
+  3. "Found at least 500 edits" for a busy entity, pagination links 1–10;
+     page 30 of Bruce Springsteen says "at least 1950" and 39 pages. With
+     "at least" the last page is unknown.
+  4. `/collection/<mbid>/edits` logged in: "Found 0 edits" (not edited
+     through edits); logged out it did not load in 90 s. No button.
+  5. 21 saved pages hold 39 edit types (`scripts/inventory-mb-edits.js`);
+     row shapes are listed in org/mb-edit-history.org.
+- **Prototype bugs found on real pages before any userscript code:** the
+  sanitizer returned each value wrapped in its own `<td>` (it walked the
+  node, not its children); cover art came out empty, because the thumbnail
+  is a protocol-relative `//archive.org/…` URL inside `<noscript>`, which a
+  DOMParser document parses as markup and the first sanitizer dropped.
+- **Root cause of the dialog closing on ↓ (found by the DIFF spec):** a row
+  selects by a click; the scroll area's click listener repaints, which
+  detaches the row while the click still bubbles; `createInfoDialog()`'s
+  document-level outside-click handler then finds `dialog.contains(target)`
+  false and closes the dialog. A MOUSE click survives only because its
+  mousedown inside the dialog set `_lastMousedownInDialog`; a keyboard click
+  (Enter on a focused chip or row, the history's ↑ ↓) has no mousedown. So
+  this was latent in every window that repaints on a click, the Discogs
+  history's chips included. Fix: also return when
+  `e.composedPath().includes(dialog)` — the path is recorded at dispatch and
+  still names the dialog. Mutation-checked
+  (`scripts/mutations/popup-mb-edits.json`, "a keyboard click that repaints
+  closes the window").
+- **Test traps:** `loadUserscriptPage()` aborts every archive.org image at
+  PAGE level (`ARCHIVE_ORG_RE`), which a context route cannot override; the
+  spec adds a page route after the load, or the window's image `error`
+  listener removes the thumbnail and the artwork link is empty. On the
+  Pixel 7 project `Locator.tap()` misses on the zoomed-out page; taps go
+  through `page.touchscreen.tap()` at the element's centre, as
+  popup-mb.mobile.spec.js does.
+- **Design changes against the mockup, from implementing it:** the history
+  rows scroll in their own box (`.mb-meh-list`), so the selected edit's pane
+  stays under the list; MusicBrainz's own "Note" row is never hidden by
+  "Only what changed", and the pane says when nothing visible changed (set
+  track lengths that changed below a second); "On MusicBrainz ↗" was
+  dropped, since `_dpDrill()` would take a same-origin `/edit/N` link anyway:
+  `Edit #N` drills, and Ctrl-click or the edit card's ↗ opens the page.
+
+## 2026-10-20 — event page: the "Sidebar" cards landed below the Relationships tables (branch fix/sidebar-event-above-data, WIP.1)
+
+Env: 2026-10-20T15:19:19+02:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.54.1-microsoft-standard-WSL2) · Playwright 1.62.1 Chromium, no Tampermonkey (GM stubs); snapshots: browser unknown
+
+- **Snapshot:** `debug/event-sidebar-above-relationships.html` (FRP of
+  /event/47b84024-bd3b-4e36-80e1-b051e12ede2f after "Show all Relationships
+  for Event"). Order in `#content`: annotation, Event art,
+  `h2.relationships` WITH `.mb-row-count-stat` in it, the event tables, and
+  only then `.mb-sb-inline-wrap`. Every other page has the cards above the
+  data.
+- **Root cause:** `_sbInlinePlace()` tries "after the `h2.relationships`
+  section" before "right above the data h2". That second rule is for pages
+  where Relationships is a side section (release group: Relationships →
+  Sidebar → data). On event-overview `h2.relationships` IS the data h2
+  (`eventDetailsToTables` renders under it), so the walk to the next h2 ran
+  past every event table.
+- **Only exception?** The relationship-tables renders (`relDetailsToTables`)
+  never get the cards. `debug/USA-area-releases-filtered.html` (FRP of
+  /area/489ce91b-…/releases?link_type_id=1, the other `targetHeader:
+  'Relationships'` pageType) already has the wrap right above its data h2:
+  that h2 is fabricated (`data-mb-sa-fabricated-heading`) and has no
+  `relationships` class. So event-overview is the only one.
+- **Fix:** the second rule skips an `h2.relationships` that holds
+  `.mb-row-count-stat`; the third then puts the cards right above it
+  (between Event art and Relationships).
+- **Tests:** `sidebar-inline.spec.js` "PLACE: event — Relationships is the
+  data h2, so right above it" (next sibling is `h2.relationships`, the event
+  tables follow the wrap); mutation in `sidebar-inline.json` caught.
+
+## 2026-10-20 — MusicBrainz title-style findings: what the converters' title case gets wrong on MB data (branch feat/mb-title-style-findings, WIP.1)
+
+Env: 2026-10-20T16:46:17+02:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.54.1-microsoft-standard-WSL2) · Node (no browser) for the sample; Playwright 1.62.1 Chromium (chromium-1234), no Tampermonkey (GM stubs) for the spec
+
+- **Task:** org/title-style-guidelines.org — flag MusicBrainz titles that
+  break the style guide as ⚠️ findings with the diff card, reusing the
+  non-MB converters' `_mbTitleCase()`/`_mbTypography()`. Placement mockup
+  https://claude.ai/artifact/5MUe9Ti1hGBu9tAP6PYXVV; option B (a "Check
+  title style" row in the WARNING menu) + an auto setting, chosen by the user.
+- **Sample:** `node scripts/check-mb-title-case.js --mb-sample` reads every
+  recording/release/RG/work/track `<bdi>` of the MB snapshots in `debug/`
+  and `tests/fixtures/` (550 files, 7,936 distinct titles, 8,752 counted per
+  kind). The raw `_mbTitleCase()` changed 687 of 3,276 recordings (21%).
+  The false positives, by class: Spanish/Italian/German/Czech/Yiddish
+  titles; live bootleg titles (place names "The Netherlands", "late show");
+  bracketed file names "[… .mp3]"; phrasal "Take On Me", "Bringing On the
+  Fever"; descriptive ETI "(Stone Pony rehearsal, 1977 / mono)", "(U.S.
+  remix)" raised; a word after "(" or "…"; "& The E Street Band"; "Forum
+  Hall A"; "Rock n Roll" → "N"; "MP3" → "Mp3"; a " / " split INSIDE
+  parentheses (`_parseTitleAnatomy()` splits on every " / ", so the checker
+  has its own `_mbtsParts()`).
+- **After the filters** (docs/claude/foreign-title-case.md, "The same engine
+  on MusicBrainz pages"): case 295 of 8,752 (3.4%), typography 409 (4.7%),
+  series 22, featured artist 1, ETI to remove 1. Remaining debatable hits are
+  names inside titles ("92.9 The Mountain", "Satchmo The Great"), which the
+  guideline also lower-cases.
+- **Cost:** 17–23 µs per distinct title over four runs (Node, memo
+  cleared), 0.7–0.85 µs per repeated title (memo). Hence on demand, default
+  off.
+- **Overlap kept:** an ALL UPPERCASE title carries `allcaps` and
+  `title-case`; "(Live)" carries `eti-case` and `title-case`.
+- **Also found:** `scripts/mutations/foreign-titles.json` "no tooltip with
+  the site's own text" anchored a line that 154859e renamed to
+  `_mbSiteTitleTip()`, so it errored instead of running; anchor updated, the
+  entry fails as it should again.
+- **Tests:** `tests/fixtures/findings-title-style.spec.js` (9),
+  `tests/support/mbTitleStyleCases.js` (59 cases, Node and browser),
+  `scripts/mutations/title-style.json` (14 entries, all caught).
+
+## 2026-10-20 — diff cards for live-title "-", capitalized ETI and truncated titles (branch feat/mb-title-style-findings, WIP.2)
+
+Env: 2026-10-20T18:18:32+02:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.54.1-microsoft-standard-WSL2) · Playwright 1.62.1 Chromium (chromium-1234), no Tampermonkey (GM stubs); screenshots: browser unknown
+
+- **Snapshot:** `debug/live-title-date.html` (FRP of
+  /artist/70248960-…/recordings, filtered to one row). The Release groups
+  cell carries `data-mb-live-flag="warn"`, `data-mb-findings="live-sep"`
+  and the plain title "Live title date uses a plain "-" between its parts
+  instead of "‐" (U+2010)." — no `data-mb-tip-cmp`. That sentence is what the
+  note box above the preview card showed (user's screenshots 1–3, the same
+  for `eti-case` and `truncated`).
+- **Why live-sep had no card:** it is family-painted (`data-mb-live-flag`),
+  so `_writeFindingAttrs()` leaves its tip to `_stampLiveTitleRow()` and
+  would ignore a `compare` on the finding. The comparison is therefore
+  written there (`_liveSepCmp()`, warn only), not in the registry.
+- **truncated:** no proposal exists (the full title is not on the page), so
+  the user chose a one-row card with the "…" marked: new comparison kind
+  `mark` (`_cmpMarkHtml()`, validated in `_cmpTipData()`).
+- **Tests:** `tests/fixtures/findings-diff-cards.spec.js` (6),
+  `scripts/mutations/diff-cards.json` (8, all caught); 195 related tests
+  (uvd-live-titles, uvd-recording-comments, uvd-event-names, findings-*,
+  tooltip-diff, popup-mb, rich-tooltips-liner, …) pass.
+
+## 2026-10-20 — a second press reloads, then presses the same button again (branch feat/auto-repress-after-reload, WIP.1)
+
+Env: 2026-10-20T18:45:36+02:00 · NB-3641 · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) · Playwright 1.62.1 Chromium · no Tampermonkey (GM stubs)
+
+**Asked:** on a final rendered page, a second press of an action button ends
+on the "⚠️ Page Reloaded" dialog ("…click the desired Show all button again").
+Could the script dismiss it and press the button itself, and is the reload
+needed at all?
+
+- **The reload stays.** By the second press the initial page is gone: headings
+  renamed or injected, the other sections removed (`Cleaned UI to target
+  header`), the native tables replaced, module state filled. The guard's stated
+  reason, "column-level filter unresponsiveness" after a second fetch, is a
+  2026-05 workaround whose mechanism was never recorded (see the 2026-09-20
+  entry), so taking it out could only be tested, not reasoned about. A reload
+  is the cheap, known-good way back to a clean page.
+- **The dialog and the second click go.** The guard now stores
+  `{label, index, href}` of the pressed button (`allActionButtons`,
+  `data-label`) in `mb_show_all_reload_pending`; init's
+  `_autoRepressAfterReload()` finds that button again and clicks it. A bare
+  `'true'` (a press from something other than an action button, or a flag
+  written by an older version), another URL, or no matching label falls back
+  to the old dialog.
+- **The guard moved to the top of `startFetchingProcess()`.** It stood after
+  the definition merge, the `Cleaned UI to target header` removal (a visible
+  flicker before the reload) and, on `artist-releasegroups`, the whole
+  official-headers pre-fetch pass — network requests whose results the reload
+  discarded. Nothing between the old and the new position returned early, so
+  moving it changes only what is wasted.
+- **Trap hit while building it:** the dialog's old call site runs BEFORE
+  `statusDisplaysContainer.appendChild(globalStatusDisplay)`, so
+  `globalStatusDisplay.after(note)` there was a silent no-op on a detached
+  node (`after()` without a parent does nothing). The note and the click both
+  run in the `setTimeout(0)`, after the rest of init.
+- `_offerDisambiguationRebuild()`'s "Rebuild table" (`_lastActiveBtn.click()`)
+  is a second press too, so it now reloads and re-runs without a dialog.
+
+**Tests:** `tests/fixtures/reload-auto-repress.spec.js` (6 — the re-press
+fetches all 300 rows with no dialog; four untrusted flags fall back to the
+dialog and fetch nothing; the second press reloads before the merge's
+"… configured" debug lines and records the button).
+`scripts/mutations/reload-auto-repress.json` (4, all caught). The fixture
+harness injects the userscript after `goto`, so a real reload leaves no script
+running; the re-press tests seed the flag before injection instead.
+
+## 2026-10-20 — what a collection page holds, for a page-reading collection preview (branch feat/user-and-collection-pages)
+
+Env: 2026-10-20T20:15:21+02:00 · NB-3641 · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) · Playwright 1.62.1 Chromium, anonymous (scripts/fetch-mb-page-fixture.js) · no Tampermonkey
+
+**Why:** the collection preview reads `/ws/2/collection/<id>?fmt=json`, which
+carries `name`, `type`, `type-id`, `entity-type`, `<entity>-count` and
+`editor` only. Probed the same day: no description, no collaborators, no
+subscribers anywhere in WS/2, neither in the lookup nor in
+`/ws/2/collection?editor=<name>`. curl and WebFetch get "Verifying your
+browser" for the HTML, so the pages were saved through a real Chromium.
+
+**Saved (debug/, gitignored, chaban's public collections):**
+`collection-artist-vtuber.html` (artist, 950, 2 collaborators),
+`collection-rg-coverart-video.html` (release group, 196, 4 collaborators),
+`collection-release-video-yt.html` (release, 255),
+`collection-wishlist-wanted.html` (type "Wishlist", 6, none),
+`collection-event-virtual.html` (event, 9), `collection-area-historical.html`
+(area, 68), `collection-missing.html` (unknown MBID),
+`user-vzell-collections.html` (the user's own: two empty event collections).
+
+**Shape, the same on all six:**
+- `#content > div.collectionheader`: `h1 > a[href=/collection/<id>] > bdi`
+  (name), `p.subheader` "~ Public collection by <a href=/user/<owner>>"
+  (+ "See all of <owner>'s public collections").
+- `div.tabs`: one tab, "Overview".
+- `div.description`: `<h2>Description</h2>` then the formatted text (`p > bdi`,
+  `ul`, links `rel=nofollow`); absent when there is none.
+- `div.collaborators`: ALWAYS present; EMPTY when there are none, otherwise
+  `<h2>Collaborators</h2><p>` with comma-separated `a[href^="/user/"]`.
+- `<h2>` with the entity kind's plural ("Artists", "Release groups", …), then
+  `form[method=post]` > `nav > ul.pagination` (only with more than one page) +
+  `table.tbl`. **100 rows a page** (the artist collection: 10 pages for 950).
+- Columns per kind: artist — Artist, Type, Gender, Area, Begin, Begin area,
+  End, End area, Rating; release group — Year, Title, Artist, Rating,
+  Releases; release — Release, Artist, Format, Tracks, Country/Date, Label,
+  Catalog#, Barcode, Rating; event — Event, Type, Artists, Location, Date,
+  Time, Rating; area — Area, Type. The main link is the first
+  `a[href^="/<kind>/"]` with a `bdi` in the row (release group: 2nd column).
+- `#sidebar`: `h2.collection-information` + `dl.properties` — "Owner:",
+  "Type:" (`dd.type`), "Number of entities:"; `h2.editing` + `ul.links`
+  ("Open edits", "Editing history"). Logged in it adds Subscriptions
+  (Subscribe/Subscribers) and Export; a recording collection adds "Play on
+  ListenBrainz" (`debug/collection-recordings-initial.html`).
+- Unknown MBID: no `#content`, `#page` says "Collection not found".
+
+**Not to be read** (other userscripts, seen in the older logged-in snapshot):
+`.jesus2099PendingEditsCount` next to "Open edits", the "PRINT ALL PAGES"
+`li` in `ul.pagination`, and our own `#mb-show-all-controls-container`.
+
+## 2026-10-20 — user-profile pageType (WIP.1) and the collection preview read from the page (WIP.2) (branch feat/user-and-collection-pages)
+
+Env: 2026-10-20T21:31:01+02:00 · NB-3641 · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) · Playwright 1.62.1 Chromium · no Tampermonkey (GM stubs)
+
+Mockup picked 2026-10-20 (https://claude.ai/artifact/KtfNY1XfjyJoPb8fGjLGeu):
+profile as tables; collection card with eight entries; window with 25 entries,
+a pager, covers on Space.
+
+- **`user-profile`** (`applyUserProfileToTables()`, docs/claude/fetch-and-render-pipeline.md
+  "An editor's profile"). The committed fixture `user-page-vzell.html` is the
+  LOGGED-OUT shape: statistics cells hold counts only, the votes table has no
+  "Total effective votes" row and no links. The logged-in shape
+  (`debug/user-chaban.html`) adds "(view)"/"(N%)" after the counts. The first
+  spec run failed on exactly that: the converter was right, the spec assumed
+  one shape. The spec now covers both (the logged-in shape planted).
+  Sub-tables start collapsed, as on every multi page: a sort-icon click needs
+  `ensureSubTableVisible()` first.
+- **Collection preview.** A release group collection's page is NOT one table:
+  MusicBrainz writes one `table.tbl` per release group type, each after an h3
+  ("Album", "Album + Compilation", …; chaban's "Cover art: Video" page 1 has
+  seven, 65 + 4 + 3 + 3 + 4 + 20 + 1 = 100 rows). Reading the first table
+  only made the pager compute 65 rows a page and ask for a `?page=3` that
+  does not exist (a 404 in the window). The first structure probe (Step 1,
+  above) had printed "rowCount: 65" for that page and it went unnoticed. All
+  tables are read now, with the h3 as a "Type" column.
+- **H (editing history) stays off collections**, although the review asked
+  for it: `/collection/<MBID>/edits` timed out twice logged out (90 s,
+  `fetch-mb-page-fixture.js`, again today), and logged in it says "Found 0
+  edits" (2026-10-20 entry above, org/mb-edit-history.org). An H that opens an
+  empty or hanging window helps nobody; reported back to the user.
+- **No sleep in the spec**: "page 2 is read only when the pager gets there"
+  first used `waitForTimeout`, which the lint baseline refuses
+  (`playwright/no-wait-for-timeout`). A request started early waits for its
+  rate slot, so "not in the request log" proves nothing. The new test hook
+  `__saTest.mbPopStatus(key)` reads `_mbPop` directly: null means never
+  started. The mutation "the window reads page 2 at once" passed against the
+  log-only assertion and fails against the hook.
+
+Tests: `tests/fixtures/user-profile.spec.js` (6), `popup-mb.spec.js` collection
+(5 new, replacing 2 Web Service tests), `popup-mb.mobile.spec.js` (1).
+Mutations: `scripts/mutations/user-profile.json` (8), `popup-mb.json` (9
+collection entries replacing 1) — all caught.
+
+## 2026-10-21 — Relationships "several links" finding: ⟳ over the ⚠️, finding missing from the icon popup, all sites (WIP.1, WIP.2); a quieter initial page (WIP.3, WIP.4) (branch feat/rel-multi-site-and-initial-page)
+
+Env: 2026-10-21T00:45:40+02:00 · NB-3641 · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) · Playwright 1.62.1 Chromium · no Tampermonkey (GM stubs). The user's report: real browser, versions not given (unknown).
+
+Snapshot: `debug/multiple-discogs-relationships.html` (FRP of
+`https://musicbrainz.org/tag/distributor`, uploaded 2026-10-20, with two
+screenshots). Its two flagged cells (`45967cf5…` RCA Records, `ea212af6…`)
+carry `data-mb-findings="rel-multi-discogs" data-mb-finding="warn"`, and both
+already show the evidence of the tooltip half: `title` is the reload hint and
+`data-mb-tip=""` — the finding title was gone after the first hover.
+
+- **1a, root cause (CSS):** the finding's ⚠️ and the hover ⟳ were the SAME
+  pseudo-element, `td.mb-rel-cell::after`. The generic finding rule made it
+  `position: absolute; right: 2px`; the ⟳ rule in
+  `#mb-rel-cell-glyph-style` (specificity 0,6,4) won on `content` and reset
+  nothing else, so the ⟳ was drawn at the ⚠️'s place and the ⚠️ vanished on
+  any hover (`pointer-events: none` makes "hovering the ⚠️" hovering the
+  cell). Two side defects: the cell's `font-size: 0` turned
+  `padding-right: 1.6em` into 0, and the glyph sheet dimmed the ⚠️ to 0.35.
+  Fix: a Relationships cell draws its finding glyph with `::before`
+  (absolute, right edge, px sizes); `::after` is only the in-flow ⟳.
+- **1a, tooltip half:** `_relCellTitleHandler()` overwrote the cell title
+  with the reload hint. Now finding text + blank line + hint, through the
+  shared `_findingTitle()`.
+- **1b:** the icon's popup stack (`_relStackParts()`) had no finding box; its
+  three consumers (`#mb-dp-notes`, `#mb-rel-tooltip`, `#mb-stat-tooltip` via
+  `_tipTextToHtml()`'s early return) all skipped the cell's title on purpose.
+  New `_relFindingNoteHtml()` box first, kind `tip` under the card.
+- **1c:** `rel-multi-discogs` → `rel-multi-site` ("Several links to one site
+  in Relationships"), grouped by HOST without "www." (the user: "list them
+  all if let's say multiple discogs and multiple amazon.de"). Setting keys
+  kept (`sa_findings_rel_multi_discogs`, `…_tint_…`) so saved values stay; new
+  `sa_findings_rel_multi_site_ignore`. Disk loads re-stamp from the spans, so
+  a saved file with the old id is not a problem.
+  Test-data trap: a link type with no icon class (wikipedia, bandcamp as
+  type "bandcamp") never reaches the cell, so the first spec premise failed
+  with 1 flagged cell instead of 2 — the data now uses `streaming` /
+  `purchase for download`. And `?…` is dropped from the key, so two YouTube
+  `watch?v=` links count as ONE (kept: fewer false positives; documented).
+- **2a:** inventory of everything on the IP: `org/initial-page-footprint.org`.
+- **2b:** `sa_pop_enabled` (master, gates the `_initDetailPreview()` call)
+  and `sa_pop_initial_page` (first check in `_popResolve()`, `!isLoaded`,
+  MusicBrainz only).
+- **2c:** `initSidebarCollapse(phase)`. First version put the whole sidebar
+  stylesheet on the IP and the "layout unchanged" assertion caught it TWICE:
+  the `body:not(.sidebar-is-collapsed) #page { margin-right }` family (planned
+  for), and — not foreseen — the slide `transition`s on `#sidebar`/`#page`/
+  `#content`, which animated the fixture's late MB stylesheet (sidebar
+  4269 → 1100 px tall mid-transition). In real use they would animate every
+  native layout change (window resize). Both now live in
+  `#mb-sidebar-layout-style`, final phase only; the IP handle snaps.
+
+Tests: `tests/fixtures/rel-multi-site-finding.spec.js` (5),
+`tests/fixtures/initial-page-quiet.spec.js` (9),
+`rel-column-site-kind-discogs.spec.js` (id rename, `::before`). Mutations:
+`scripts/mutations/rel-multi-site-and-ip.json` (16, all caught);
+`link-site-uvd.json` anchors updated.
+
+`npm run test:full` (2026-10-21T00:45:31+02:00 → 00:56:48, NB-3641, 14
+workers, uncommitted branch tree on c3be664): 2081 passed, 2 failed —
+`discogs-rate-limit.spec.js` "another tab's reservation is honoured" and
+`fixture-load-no-archive-org-wait.spec.js` ("both thumbnails were requested
+and blocked": 2 expected). Neither touches code this branch changed
+(discogs.com rate slot; archive.org thumbnails in fixture markup). Re-run
+alone with `--repeat-each=3`: 30/30 passed. Treated as load-dependent
+flakes under 14 workers, not seen before in DEBUG-NOTES — worth watching.
+
+## 2026-10-21 — what an editor's lists, subscribers and applications pages hold, for their link previews (branch feat/pop-user-page-lists)
+
+Env: 2026-10-21T10:07:45+02:00 · NB-3641 · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) · Playwright 1.62.1 Chromium (captures and fixture specs) · no Tampermonkey (GM stubs)
+
+Captured logged in with `node scripts/fetch-mb-page-fixture.js --auth`, then
+`python3 scripts/anonymize-user-fixtures.py <dir>` into `tests/fixtures/`.
+
+- **`/user/vzell/edits/rejected`, `/edits/open`, `/user/vzell/votes`,
+  `/search/edits?…conditions…`: all the editing-history page.**
+  `#content .search-toggle` "Found 65 edits" / "Found 0 edits" / "Found at
+  least 500 edits", 50 `div.edit-list` a page, `ul.pagination` with
+  `?page=N` (the search's links carry the whole query plus `&page=N`).
+  Headings: `h2` "Rejected edits by <a>vzell</a>", "Open edits by …",
+  "Votes by …"; the search has `h1` "Search for edits" and no subject. So
+  `_mbParseEditsPage()` reads all four unchanged; the votes page is the edits
+  OTHER editors made that vzell voted on. At 0 edits there is no `#edits`
+  block at all, only the "Found 0 edits" line.
+- The lists' "Quick links" carry `/search/edits?…&form_only=yes…` links:
+  they open the prefilled form and list nothing, hence `_mbEditsSearchId()`'s
+  `form_only=` exclusion.
+- **`/user/vzell/subscribers`** (no `#content`): `#page > h1 a[href^="/user/"]
+  bdi` the editor, `h2` "Subscribers", `p` "There are currently 8 users
+  subscribed to edits that you make:", `ul > li > a[href^="/user/"]` (6) and
+  a last `li` "Plus 2 other anonymous users".
+- **`/account/applications`** (no `#content`): `h1` "Applications"; `h2`
+  "Authorized applications" + `p` + `table.tbl` with headers Application |
+  Access | Last granted token | Actions — Actions is
+  `<a href="/account/applications/revoke-access/<app>/<scope>">Revoke
+  access</a>`, a plain GET link; `h2` "Developer applications" + `p`s ("You
+  do not have any registered applications." on this account, so the
+  developer table's real headers are NOT seen); `h2` "Digest access
+  authentication" with "Digest authentication is <strong>enabled</strong>"
+  and a POST form. Hence `_MB_APPS_COLS` (a whitelist, so an unseen
+  client-id/secret column is dropped whatever its header) and memory-only.
+- `/user/vzell` itself shows the statistics links only to a logged-in
+  reader: the committed logged-out `user-page-vzell.html` has only the
+  subscribers "view list", which the SUBS test uses on the rendered profile
+  (its sub-tables start collapsed: `ensureSubTableVisible(page, 0)`).
+
+## 2026-10-21 — an editor's tags and ratings pages, for their link previews (WIP.2, branch feat/pop-user-page-lists)
+
+Env: 2026-10-21T10:48:02+02:00 · NB-3641 · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) · Playwright 1.62.1 Chromium · no Tampermonkey (GM stubs)
+
+Reported after WIP.1 shipped to the branch: the profile's "Tags and ratings"
+sub-section ("Tags upvoted 347 view", "Ratings 12 view") still had no card.
+Captured logged in (`fetch-mb-page-fixture.js --auth`), no `#content` on
+either page:
+
+- **`/user/vzell/tags`**: `h2` "Tags vzell upvoted", a GET form
+  (`show_downvoted` 0/1, `order` name/count/countdesc), then
+  `#all-tags > h3 "Genres" + div#genres > ul.genre-list` and
+  `h3 "Other tags" + div#tags > ul.tag-list`; each `li` = `a[href=
+  "/user/vzell/tag/<t>"]` + `span.tag-vote-buttons > span.tag-count`. 112
+  tags, counts summing to 347 — the profile's number is VOTES, not tags.
+  No pager. "Tags downvoted 0" has no link, so the downvoted list's URL
+  shape is unseen; `?show_downvoted=1` (the form's own parameter) is
+  excluded from previews rather than shown with the upvoted data.
+- **`/user/vzell/ratings`**: per kind `h2` "<Kind> ratings" + `ul`; each
+  `li` = `span.inline-rating > span.star-rating > span.current-user-rating`
+  (text 1–5, width %) + five `a.set-rating`/`a.remove-rating` with
+  `href="/rating/rate/?entity_type=…&entity_id=…&rating=N&returnto=…"` —
+  **plain GET links that set or remove the rating** — then " - " and the
+  entity link, then an event's "(date)", `span.comment`, `span.cancelled`.
+  The last `li` of each kind: `a[href="/user/vzell/ratings/<kind>"]` "View
+  all ratings". 12 ratings over 7 kinds on capture.
+
+## 2026-10-21 — the sidebar cover beside the release title (WIP.3, branch feat/pop-user-page-lists)
+
+Env: 2026-10-21T12:18:43+02:00 · NB-3641 · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) · Playwright 1.62.1 Chromium · no Tampermonkey (GM stubs)
+
+Asked for from `debug/release-tracks-tttr.html` (FRP of release
+3ec14d03-…): artist, place and instrument pages show the sidebar picture at
+the start of the h1, a release page did not.
+
+- **Why it was missing:** `_sbInitPicture()` looked only for
+  `.entity-image/.commons-image .picture img` and `#sidebar > .picture img`,
+  and `_sbPictureSource()` accepted only Commons and IROMBOOK addresses. A
+  release's (and release group's) cover is `#sidebar .cover-art.present >
+  a.artwork-image > span.artwork-image[data-small-thumbnail]`.
+- **The span is not stable.** In the raw page it holds no `<img>` (only the
+  `<noscript>` one); MusicBrainz's script adds it after load, and when the
+  thumbnail fails it replaces the span's whole `.cover-art` content with
+  `<em class="cover-art-error">Image failed to load correctly…`. Seen in the
+  fixture run: the harness blocks every archive.org image (`ARCHIVE_ORG_RE`
+  in `tests/support/loadPage.js`), so by the time the userscript ran the span
+  was gone. In a browser the image loads and the span stays (it is there,
+  `<img>` inside, in the FRP snapshot). `_sbWireCover()` reads
+  `data-small-thumbnail` at init and does not wait for the `<img>`; the spec
+  serves a copy of each fixture with the thumbnails on a host it answers.
+- **What the copy opens:** all the release's images (`CAA_CTX`, path
+  `/release/<mbid>` or `/release-group/<mbid>`) at the record's front image,
+  asked on the click only, the `_artIconClick()` way. `CAA_CTX` and
+  `_artRelIconLoading` are declared far below the init call, so nothing of
+  them is touched before a click (TDZ) — a mutation that asked at init threw
+  instead of asking, and was rewritten to defer the call.
+- **Pre-existing, not touched:** 7 anchors of
+  `scripts/mutations/sidebar-overhaul.json` already matched 0 or 2 times at
+  HEAD 8ccbd8d (`tables:`, `more kinds:`, `disk:` and two `picture:` entries;
+  `python3 scripts/check-mutation-anchors.py
+  scripts/mutations/sidebar-overhaul.json`). The three this change moved were
+  re-anchored; the cover mutations were run as a subset.
+
+## 2026-10-21 — an annotation's history and versions, for their link previews (WIP.4, branch feat/pop-user-page-lists)
+
+Env: 2026-10-21T12:39:35+02:00 · NB-3641 · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) · Playwright 1.62.1 Chromium · no Tampermonkey (GM stubs)
+
+Asked for from `debug/release-tracks-tttr.html`: the annotation's "View
+annotation history" (`/release/3ec14d03-…/annotations`) had no card.
+Captured with `scripts/fetch-mb-page-fixture.js` on 2026-10-21:
+
+- **The history is login-only.** Logged out, the capture timed out twice
+  waiting for `#page` (the RG page captured fine in the same minute, so it
+  was not the browser check); `--auth` returned the page at once. So the
+  `annotations` kind has a `failNote` for a login page, and the fixture is
+  the logged-in one (only vzell's own name in it).
+- **The history page carries every version's text** in a JSON script inside
+  its form (`{"annotations":[{id, html, text, changelog, editor, …}]}`), so
+  the card shows the latest text without asking the version pages. The
+  table: `table#annotation-history`, columns Old, New, Editor, Date,
+  Version history; "View this version" → `/annotation/<n>`, then
+  "(<em>no changelog specified</em>)" or the changelog.
+- **A version page, logged out, cannot tell old from current by its text:**
+  both say "Annotation last modified on <date> UTC." (logged in, an old one
+  says "This is an old revision … as edited by <editor> on <date>"). Its
+  JSON has `annotation.id` and `entity.latest_annotation.id`, which decide,
+  and `annotation.editor.name`. First attempt read the wrong JSON: the
+  `div.releaseheader` carries its own `{"entityType":…,"gid":…}` script
+  BEFORE the annotation's, and `querySelector` took that one.
+- The current version is `/annotation` without a number (the version page's
+  "View current revision"), the same markup.
+
+## 2026-10-21 — "Live credit without a date" names the deduced date (WIP.5, branch feat/pop-user-page-lists)
+
+Env: 2026-10-21T12:43:30+02:00 · NB-3641 · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) · Playwright 1.62.1 Chromium · no Tampermonkey (GM stubs)
+
+Asked for on release 3ec14d03-… ("Born to Run (new live)", Toby Scott's
+"recording engineer" credit, screenshot): the hover card said only "⚠️ Live
+credit without a date".
+
+- **The date was already known.** `_liveDateCheckResult()` raises the ⚠️
+  only when the row has a "live recording of" date, and the small ⚠️ span's
+  own tooltip already said "(recorded 1988-04-27)". The card the user saw is
+  NOT that span's: it is the `<td>`'s finding title (`_writeFindingAttrs()`)
+  stacked with the link's sort name by `_dpCollectNotes()`. The span sits
+  beside the `<a>`, not around it, so its tooltip never joins the card.
+- **Why the cell title had no detail:** `_stampFindingRow()` asked
+  `detail()`/`compare()` only of COLUMN findings; a row finding
+  (`live-credit-nodate` is `scope: 'row'`) got its id and nothing else. Now
+  both scopes are asked; no other row finding has either, so nothing else
+  changed.
+- The date travels as `data-mb-live-date` on the flag span: the findings
+  stamp cloned rows (a mutation keeping it as a JS property failed already
+  on the first render), and a disk load restores the flags as HTML.
+- Snapshot track 4 for reference: its `dl.ars` has the live credits "solo
+  acoustic guitar … (on 1988-04-27)", event "(1988-04-27)", place "(on
+  1988-04-27)", "live recording of: Born to Run (on 1988-04-27)", and
+  "recording engineer: Toby Scott" with no date. The comment is "live,
+  1988‐04‐27: Los Angeles Memorial Sports Arena, …" (U+2010).
+
+## 2026-10-21 — rich comparison cards for the live near misses (WIP.6, branch feat/pop-user-page-lists)
+
+Env: 2026-10-21T12:53:52+02:00 · NB-3641 · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) · Playwright 1.62.1 Chromium · no Tampermonkey (GM stubs)
+
+Asked for from `debug/recording-comment-diff-tooltip.html` (FRP of
+/tag/acoustic rock/recording): "Because the Night [unplugged]" with the
+comment "live, 1993-4-21: Sony Music Studios, New York, NY, USA" showed only
+'Recording comment almost follows "live, YYYY-MM-DD: …": date is not written
+YYYY-MM-DD.' The snapshot's 110 `data-mb-tip-cmp` cells were all separator
+warnings; no near-miss cell had one.
+
+- **Why:** the live-title family is family-painted (`data-mb-live-flag`), so
+  `_writeFindingAttrs()` never writes its tip and a FINDINGS `compare` would
+  be ignored; `_stampLiveTitleRow()` built a comparison for `warn` only.
+- **No corrected text existed:** the classifiers return a `problem`
+  sentence, not where it is. `_liveNearMissFixed()` rebuilds the text, and
+  every candidate must PASS the classifier that flagged it, so nothing it
+  proposes is a near miss or an impossible date (a padded "1975-2-31" is
+  rejected that way).
+- **Gotcha:** a `kind: 'mark'` entry without `at` validates in
+  `_cmpTipData()` but is never placed by `_tipTextToHtml()` (it keys entries
+  by integer `at`). The card silently had no row until `at: 0` was added.
+- Other near misses on the snapshot page: "(Live)" (many: case), "(live:
+  KBCO Studios, Boulder, CO, USA)" (fixed to "live, KBCO Studios, …", the
+  location-only form), "(live, 1973/1976)" (no fix: two years; the mark
+  card).
+- `scripts/mutations/diff-cards.json`: the two entries anchored on the old
+  `const cmp = flag.kind === 'warn' ? _liveSepCmp(…) : null;` line were
+  re-anchored on `_liveFlagCmp()`; 6 new ones, 14/14 caught.
+
+## 2026-10-21 — test:full after WIP.3–WIP.6: one flake in sticky-page-headers
+
+Env: 2026-10-21T12:54:28+02:00 · NB-3641 · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) · Playwright 1.62.1 Chromium (chromium-fixtures + chromium-mobile) · no Tampermonkey (GM stubs)
+
+`python3 scripts/run-test-full.py` on `feat/pop-user-page-lists` at b9e151a:
+2108 passed, 1 failed, 2109 tests, 14 workers, wall 14 m 52 s (finished
+13:09:20 CEST). The failure: `sticky-page-headers.spec.js:1280` "search page:
+the status line after a bare h1 inside #content stays put", at its PREMISE
+`expect(before.scrollX).toBe(0)` (expectPinned()), i.e. the page was not at
+scrollX 0 when the first measurement was taken. Re-run alone with
+`--repeat-each=3`: 3/3 passed. None of WIP.3–WIP.6 runs on a search page
+(the cover copy is gated on a /release or /release-group path, the
+annotation kinds act on hover, the findings changes touch release and
+recording tables), so this is load-dependent timing in the test's setup,
+recorded here as a first sighting rather than fixed.
+
+## 2026-10-21 — MusicBrainz's jQuery UI dialog under our pinned bars (WIP.7, branch feat/pop-user-page-lists)
+
+Env: 2026-10-21T14:13:42+02:00 · NB-3641 · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) · Playwright 1.62.1 Chromium · no Tampermonkey (GM stubs); the report itself from the user's browser (version not given)
+
+Reported with screenshots on /release-group/f83d2211-… and /release/3ec14d03-…:
+a click on the SIDEBAR's cover opened MusicBrainz's own dialog, and the h1
+toolbar buttons ("Releases", "Data", "View", ⚙, ?) and the sidebar handle
+painted through it. On the artist page the same click opens our viewer
+(z-index 2147483400), so nothing showed through there.
+
+- `debug/mb-native-sidbar-image-open.html` (FRP, /event/47b84024-…, dialog
+  open): jQuery UI appends `div.ui-widget-overlay.ui-front` and
+  `div.ui-dialog.ui-front` (content `.artwork-dialog`) as the LAST children
+  of `<body>`, after the footer, with no inline z-index: jQuery UI's own
+  `.ui-front { z-index: 100 }` applies.
+- Measured on the release fixture after the render (positioned elements
+  with a z-index): MB header `.mb-vsb-chrome` 108, stuck header block 107,
+  tracklist h2 104, h3 102, thead 100, column resizers and sticky column
+  101, `#sidebar-toggle-handle` 10000 (fixed). Everything from 101 up was
+  above the dialog.
+- Fix: `_ensureMbDialogZStyle()` lifts the overlay to 10050 and the dialog
+  to 10051 (above our menus at 10000–10002, under our own dialogs at 20000+).
+  Not a guess at a class name: the selectors are the snapshot's.
+- Test trap: the fixture page already holds a hidden `.ui-dialog` of its own
+  (`display: none`), so the spec addresses its planted dialog by id.
+- HELP: no section described this; nothing in it was made false.
+
+## 2026-10-21 — the sidebar pictures get the CAA/EAA column's cards (WIP.8, branch feat/pop-user-page-lists)
+
+Env: 2026-10-21T14:45:12+02:00 · NB-3641 · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) · Playwright 1.62.1 Chromium · no Tampermonkey (GM stubs)
+
+Asked for with a screenshot of the artist page: pointing at the photo (in
+the sidebar or beside the name) showed a plain one-line tooltip; "the same
+treatment as an image in the CAA/EAA column", also on release groups,
+releases, places, instruments, events.
+
+- **Two cards, both existing looks.** A single picture (Commons,
+  IROMBOOK) gets the B2 image card (`_sbPicCardHtml()`, data-mbtt-fn
+  "sb-pic"): nothing to ask, the picture is shown already. A release,
+  release group or event cover gets the B1 card of every image of its
+  record (`_sbCoverCardHtml()`, "sb-cover"), through the card the
+  relationship-list cover icons already used — refactored into
+  `_artRecordCardHtml(el, ctx, path, title, foot)` so CAA and EAA share
+  it. The record is asked on the first hover, as those icons do (user's
+  choice, 2026-10-21).
+- **The sidebar's own cover link is now ours too**: a window capture-phase
+  click listener opens our viewer, so MusicBrainz's jQuery UI dialog (the
+  one WIP.7 lifted above our bars) no longer opens from the sidebar at all;
+  Ctrl/Shift/Alt/⌘ leave it to MusicBrainz.
+- **Events:** `.event-art` has the same `a.artwork-image >
+  span.artwork-image[data-small-thumbnail]` markup as `.cover-art` but no
+  `.present` class (fixture event-overview.html).
+- **Test trap:** the Commons tests plant a 1×1 PNG; without MusicBrainz's
+  CSS it sat at x 8, under the fixed sidebar handle (x 0–15, z 10000), so a
+  hover at its centre got the HANDLE's card ("Toggle Full Width Sidebar").
+  The planted image is now sized 120 px, as MusicBrainz's CSS would.
+- **Mutations:** re-anchored 5 entries this change moved (4 in
+  sidebar-overhaul.json, 1 in caa-card-keys.json) and, as asked, the 7 that
+  were already stale at HEAD 8ccbd8d (tables:, more kinds:, disk:, two
+  picture:). The full sidebar-overhaul.json list then ran 71/71 OK.
+
+## 2026-10-21 — sticky-page-headers "search page" flake: reproduced and fixed
+
+Env: 2026-10-21T14:46:26+02:00 · NB-3641 · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) · Playwright 1.62.1 Chromium · no Tampermonkey (GM stubs)
+
+The first sighting earlier today (test:full at b9e151a): "search page: the
+status line after a bare h1 inside #content stays put" failed on its
+premise `before.scrollX === 0`. Reproduced on demand with
+`--repeat-each=24 --workers=14`: 1/24 failed, "Received: 700" — the
+page (wider than the 700 px window) had been scrolled sideways before the
+first measurement, by the button click or by the global filter's focus
+landing after `settleFocusAndPointer()`'s wait. The test never returned to
+the left edge, which the annotation test in the same file already does with
+`toLeftEdge()` (its own 6 px premise failure, 2026-10-08). Fix in the test
+only: blur again, then `toLeftEdge()`, before measuring. With it: 24/24
+twice under the same load. Nothing in the userscript changed: the premise,
+not the property under test.
+
+## 2026-10-21 — annotation-version pageType (WIP.9, branch feat/pop-user-page-lists)
+
+Env: 2026-10-21T14:56:23+02:00 · NB-3641 · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) · Playwright 1.62.1 Chromium · no Tampermonkey (GM stubs)
+
+Asked for with `debug/annotation-artist.html` (/artist/70248960-…/annotation/630690)
+and `debug/annotation-release.html` (/release/3ec14d03-…/annotation/1063770), both FRP;
+the user chose "version vs current" for what it shows.
+
+- **The page** (raw captures, logged out): `div#content` with the entity's
+  h1 header, the tabs, a JSON script, then `div.annotation > h2.annotation +
+  div.annotation-body + p "Changelog:" + div.annotation-details`. No table,
+  no pagination. The JSON (`{annotation, entity: {latest_annotation},
+  numberOfRevisions, showChangeLog, showEmpty}`) carries BOTH texts as
+  rendered HTML, so the comparison needs nothing beyond the page. The
+  release header has its own JSON script first (see WIP.4's note).
+- **`@include`**: line 17's alternation gained `annotation(?:\/\d+)?`
+  (the skill's warning: without it the entry is unreachable, as the
+  `annotations` pageType once was).
+- **Disk trap:** the first version put the rich card's `data-mb-tip-cmp`
+  on the Status `<td>`; after Save → Load the statuses were back but the
+  card was not. The disk record keeps a cell's markup and only LISTED td
+  attributes (the length/video/work flags each have their own field), so the
+  status is now a span inside the cell. A disk-load hook was written and then
+  removed: a mutation showed it changed nothing (the file's groups render
+  as saved, and the page has no native table to replace).
+- The native annotation's own wiki heading ("Barcode and Other
+  Identifiers") survives the grouped render's h3/table sweep on this page
+  (pinned in the spec).
+
+## 2026-10-21 — test:full after WIP.7–WIP.9 and the sticky flake fix
+
+Env: 2026-10-21T14:57:08+02:00 · NB-3641 · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) · Playwright 1.62.1 Chromium (chromium-fixtures + chromium-mobile) · no Tampermonkey (GM stubs)
+
+`python3 scripts/run-test-full.py` on `feat/pop-user-page-lists` at ad95a5c:
+2116/2116 passed, 14 workers, wall 14 m 26 s (finished 15:11:34 CEST). The
+sticky-page-headers "search page" test that failed in the 12:54 run passed.
+
+## 2026-10-21 — short column header labels (9.99.1404, was WIP.1) and the discogs-links favicon flake (9.99.1405, was WIP.2) (branch feat/short-column-labels)
+
+Env: 2026-10-21T16:19:04+02:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.54.1-microsoft-standard-WSL2) · Playwright 1.62.1 Chromium · no Tampermonkey (GM stubs)
+
+**WIP.1: display labels.** The headers of "Recording of" and "Performance
+attributes" were wide on every recording list (reported with a screenshot of
+`artist/70248960-…/recordings`). The header text was also the column's key in
+16 `collapsableColumns` lists, the 📊 sections, `sa_default_hidden_columns`,
+exports and saved files, so the column was not renamed. Instead the header
+paints a label ("Work" and "Perf.", `_COLUMN_LABELS` or
+`features.columnLabels`, gated by `sa_short_column_labels`). See "Column
+display labels" in docs/claude/toolbar-and-header-ui.md.
+- **Trap avoided: never reverse a label by its text.** The first draft had
+  `_colKeyFromLabel(text)`. It would have renamed `artist-works`' real "Work"
+  column to "Recording of" on a disk load. The name now travels on the
+  labelled flex as `data-mb-col-key`. A saved header's `innerHTML` keeps that
+  attribute, though it loses the `<th>`'s `data-col-name`.
+- **Three readers used the header text and had to change:**
+  - `isColVisible` in `syncCollapseButtonsWithColumnVisibility()`
+  - `showStatsPanel()`'s column list
+  - the "invalid regexp" filter message
+
+  All three are pinned by `tests/fixtures/column-labels.spec.js` (8 tests).
+- **Mutation check:** `scripts/mutations/column-labels.json` gave 11/11 as
+  expected. Two of them are fallbacks that no spec reaches, and are recorded
+  as `"expect": "pass"`.
+- **Snapshot baselines:** none of them carries the pair (they predate it), so
+  no drift.
+
+**WIP.2: favicon flake.** `test:full` at 16:05–16:18 CEST: 2090 passed, 1
+failed, `discogs-links.spec.js:196`.
+- **Symptom:** one GM request too many, `https://support.discogs.com/favicon.ico`.
+- **Cause:** `_extIconEnsure()` asks a host for its icon after the page's own
+  answer, through the host's rate slot. That is intended. Under 14 workers the
+  request lands before the spec's "only the article was requested" assertion;
+  alone it lands after.
+- **Reproduced** with `--repeat-each=28 --workers=14` on that test alone: the
+  old assertion failed 1/28 (that favicon line), the narrowed one passed 28/28.
+  The assertion now leaves out `/favicon.ico`; icons are covered by
+  `popup-ext.spec.js`.
+- This is a different spec from the earlier entry's "worth watching"
+  load-dependent flakes (`discogs-rate-limit.spec.js`,
+  `fixture-load-no-archive-org-wait.spec.js`). Those are not addressed here.
+
+## 2026-10-21 — column header tooltips: the name in bold, descriptions for MusicBrainz's columns (9.99.1406, was WIP.3) (branch feat/short-column-labels)
+
+Env: 2026-10-21T17:05:32+02:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.54.1-microsoft-standard-WSL2) · Playwright 1.62.1 Chromium · no Tampermonkey (GM stubs)
+
+Asked from screenshots. The "Recording of" card (bold name over its
+explanation, WIP.1) looked right; the derived columns' cards (Event-Date,
+MB-Name) had no name line; MusicBrainz's own columns had no tooltip at all.
+See "Column header tooltips" in docs/claude/toolbar-and-header-ui.md.
+- **The name line lives in the card, not the tip text.** `_tipTextToHtml()`
+  prepends `_tipHeaderColumnName(el)`. This replaces WIP.1's `_tipColumnName()`,
+  which prefixed the tip text and covered only labelled headers. Tips that are
+  written later (the Relationships load state, the ⏱ Length header) would have
+  lost a text prefix; the card covers every writer.
+- **Native descriptions.** `_COLUMN_DESCRIPTIONS` has 70 names, from the native
+  headers found in `tests/fixtures/*.html`, `debug/*.html` and the raw
+  snapshots (about 100 distinct names).
+  - Edit-detail and merge tables (Old/New tracklist, Into:, Track #, …) have no
+    entry, because their meaning was not checked.
+  - Ambiguous names get texts per row entity (`_tableRowEntity()`: the first
+    MusicBrainz link of the first body row).
+- **Foreign sites are excluded** (`_foreignHost`). Their column names overlap
+  ("Title", "Artist") but mean the converter's data.
+- **`jesus2099-artifact-purge.spec.js:63` failed in the run:** it asserted the
+  Length header has no `title` at all. It now asserts the plugin's title is
+  gone and ours is there. That is still a guard: an unpurged plugin title would
+  keep ours from being set.
+- **Mutations:** `scripts/mutations/column-descriptions.json` 8/8 and
+  `column-labels.json` 11/11. One description mutation first "failed" through a
+  syntax error (`void desc;` before an `else`). That was replaced and re-run,
+  and now fails on the assertion it targets.
+- **`test:full`** 16:53:39–17:05:32 CEST (11 m 53 s): 2097/2098, the one
+  failure being the purge spec above; it passes after the change, 5/5.
+
+## 2026-10-21 — test:full after merging main (9.99.1404–1406) into feat/pop-user-page-lists
+
+Env: 2026-10-21T17:37:53+02:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.54.1-microsoft-standard-WSL2) · Playwright 1.62.1 Chromium · no Tampermonkey (GM stubs)
+
+`python3 scripts/run-test-full.py` on `feat/pop-user-page-lists` at 0232650
+(the merge of `main` with the short column labels and the column header
+tooltips): 2131/2131 passed, 14 workers, wall 12 m 46 s (17:25:07–17:37:53
+CEST). The branch's own specs and the header-tooltip change did not collide.
+In particular, no spec of WIP.1–WIP.9 asserts that a native header has no
+`title`.
+
+## 2026-10-21 — Length header tooltip follows ⏱ (9.99.1417, was WIP.2); a native treleases header lost its class and description (9.99.1416, was WIP.1) (branch fix/length-header-tooltips)
+
+Env: 2026-10-21T18:57:18+02:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.54.1-microsoft-standard-WSL2) · Playwright 1.62.1 Chromium · no Tampermonkey (GM stubs)
+
+**Asked:** on `release-tracks` the Length tooltip should account for
+milliseconds once ⏱ shows them. It always said "rounded to the nearest
+second". It was a fixed text built in `_initLengthColHeaderTooltips()`, and
+the toggle rewrote cells and buttons but no header tooltip. The 9.99.1406
+generic Length description ("minutes and seconds") had the same gap on the
+other ⏱ pages.
+- **Change:** both texts are built from `_msLengthPrecisionShown()`.
+  `_msToggleLengthPrecision()` now ends with
+  `_refreshColumnDescriptions('Length')` and `_initLengthColHeaderTooltips()`.
+- **Multi-table:** release-tracks has one table per medium. Every sub-table's
+  header follows, and the spec polls all of them.
+
+**Found on the way (WIP.1), from 9.99.1406.**
+`docs/claude/release-tracks-and-length.md` warns that a `title` on a
+`treleases` `<th>` reads as jesus2099's unless it is marked as ours
+(`data-mb-col-tip`). The new column descriptions were not marked.
+- **Reproduced** on the ISRC fixture (`recording-of-pt-isrc.html`). After the
+  render the header is `treleases mb-original-column` with the description.
+  After one global-filter keystroke it is `mb-original-column` with no title:
+  `purgeJesus2099Artifacts()` stripped MusicBrainz's class and the tip.
+- **Fix:** `_isOwnColumnTooltip()` accepts `data-mb-tip` too, which only
+  `_setTip()` stamps. Root cause, not a per-call-site marker.
+- **Who is affected:** every page whose Length header MusicBrainz marks
+  `treleases` (ISRC, the relationship overviews). `release-tracks` itself was
+  safe, because its own Length tooltip already carried the marker.
+
+**Tests:** `tests/fixtures/length-header-tooltips.spec.js`, 3 tests.
+`scripts/mutations/length-header-tooltips.json`: 7/7 as expected (6 fail on
+their own assertion, 1 recorded as `"expect": "pass"`). The jesus2099, ms and
+column specs pass, 90/90.
+`test:full` on the branch (uncommitted tree on 44d4379), 18:57:30–19:09:24
+CEST, 14 workers: 2134/2134 passed, wall 11 m 54 s.
+
+## 2026-10-22 — entity collections and subscribers pages: 13 new pageTypes; the private-collections footer came back on a sort (branch feat/entity-collections-subscribers)
+
+Env: 2026-10-22T01:17:33+02:00 · vzell-lap · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.54.1-microsoft-standard-WSL2) · Playwright 1.62.1 Chromium · no Tampermonkey (GM stubs)
+
+**Asked:** an entity's sidebar links to `/<entity>/<mbid>/collections`
+("Found in N user collections") and, for artists, labels and series, to
+`/<entity>/<mbid>/subscribers`. Only release and release-group collections
+and `/user/<name>/subscribers` were supported.
+
+**Snapshots** (the user's browser, rendered-DOM saves: they carry other
+userscripts' markup, and `release-collections.html` already has this script's
+toolbar, so they are not fixtures as they stand):
+- `debug/artist-sidebar.html`: Bruce Springsteen's overview page, with the
+  sidebar's two links.
+- `debug/artist-collections.html`: `div#content` is present, the real h1 is
+  followed by the tabs. Then h2 "Collections", the `<p>` "Bruce Springsteen has
+  been added to 34 collections:", and a `<ul>` of 12 `<li>`s:
+  - 11 entries of `<a collection> by <a user>`;
+  - the last `<li>` reads "plus 23 other private collections".
+
+  No pagination. The shape is #41 `release-collections`'s.
+- `debug/release-collections.html`: the EMPTY variant. The h2 and the `<p>`
+  "Tougher Than the Rest has not been added to any collections." are there,
+  with no `<ul>`. Our toolbar in that save shows the button was offered
+  anyway, with nothing to render.
+- `debug/artist-subscribers.html`: h2 "Subscribers", the `<p>` "There are
+  currently 37 users subscribed to Bruce Springsteen:", and a `<ul>` of 29
+  `<li>`s, the last one "Plus 9 other anonymous users". Then the `<p>` "You are
+  currently subscribed. Unsubscribe?". No pagination. The shape is #6
+  `editor-subscribers`'s.
+- `debug/label-subscribers.html`: the same, 2 users, no anonymous footer.
+
+**Routing, before the change:**
+- `/artist|label|series/<mbid>/subscribers` was not in any `@include`.
+- If it had been, `editor-subscribers`' `includes('/subscribers')` would have
+  claimed it.
+- `/<entity>/<mbid>/collections` WAS included (line 17), but fell to whichever
+  broad matcher came first: `includes('/label')`, `includes('/series')`,
+  `/work/<mbid>` without `link_type_id`, `includes('/recording')`, ….
+
+**Change:**
+- 9 `<entity>-collections` entries next to #41/#42, above every broad matcher.
+- 4 `<entity>-subscribers` entries (artist, label, series, collection) right
+  after `editor-subscribers`, whose match is now anchored to `/user/`. They sit
+  above `collections-releases`, whose `/collection/<mbid>` match is unanchored.
+- A new `@include` line for the four subscribers paths.
+- Structure C's collections test is `_ENTITY_COLLECTIONS_RE`. The h2 → `<ul>`
+  walk is `_h2ListUl()`, shared with the new `showIf: _hasH2List`, so an empty
+  page gets no button.
+- `finalCleanup()`'s two `pageType ===` branches are now
+  `features.foldPrivateCollections` / `features.foldAnonymousSubscribers`.
+
+**Found on the way, a bug in #41/#42 since they were added.** The
+collections branch removed the "plus N other private collections" row from
+the DOM only, while the subscribers branch also spliced it out of
+`allRows`/`originalAllRows`. `renderFinalTable()` re-renders from those
+arrays, so the first sort put the row back.
+- **Reproduced** on the unchanged code with the new spec's re-sort test
+  (fixture served as a release's page): `rows.some(/other private/)` was `true`.
+- **Fixed** by `_spliceFooterRow()`, now used by both branches.
+
+**Fixtures:** built by `scripts/make-entity-list-fixtures.py`. It takes the
+entity name and `div#content` from the h2 on, verbatim, and puts them into a
+minimal page. Every editor name (subscribers and collection owners) becomes
+`editor-N`, as for `subscribers.html` on 2026-10-21.
+
+**Tests:** `tests/fixtures/entity-collections-subscribers.spec.js`, 17 tests:
+- the rendering of artist collections, artist subscribers and label
+  subscribers;
+- the re-sort;
+- no button on the empty page;
+- routing of every entity kind's URL, including `/user/vzell/subscribers`
+  still being the editor's.
+
+`scripts/mutations/entity-collections-subscribers.json`: 9/9 failed as
+expected. The related specs (popup user lists, recording-of pageTypes, the
+four tag-value specs) pass, 84/84. The `@include` line is not visible to a
+fixture: the harness injects regardless.
+
+**Not verified:** that `/collections` exists for every one of the 11 entity
+kinds, and `/subscribers` only for artist/label/series/collection. This follows
+MusicBrainz's collection and subscription types. vzell-lap cannot reach
+MusicBrainz over IPv4, so it is left to a browser check.

@@ -88,8 +88,8 @@ const STATUS_LOADED = '#mb-global-status-display > span:first-child';
 async function settledStatus(page, timeout = 60000) {
     let last = null;
     let same = 0;
-    const deadline = Date.now() + timeout;
-    while (Date.now() < deadline) {
+    const deadline = performance.now() + timeout;
+    while (performance.now() < deadline) {
         const now = await page.locator(STATUS).textContent().catch(() => null);
         // A run is only settled once the line says "Loaded" — the intermediate
         // "Loading (pass 1 of 2)…" texts are stable for seconds at a time while
@@ -127,7 +127,7 @@ async function loadEvents(page, respond) {
     await page.route('https://musicbrainz.org/artist/**', (route) => {
         const u = new URL(route.request().url());
         const p = Number(u.searchParams.get('page') || '1');
-        reqs.push({ page: p, at: Date.now() });
+        reqs.push({ page: p, at: performance.now() });
         const r = (respond && respond(p)) || {};
         if (r.status && r.status !== 200) {
             return route.fulfill({
@@ -167,7 +167,7 @@ async function loadRg(page, respond) {
         const p = Number(u.searchParams.get('page') || '1');
         const ordinal = (seen.get(url) || 0) + 1;
         seen.set(url, ordinal);
-        reqs.push({ all, page: p, at: Date.now() });
+        reqs.push({ all, page: p, at: performance.now() });
         const r = (respond && respond({ all, page: p, ordinal })) || {};
         if (r.status && r.status !== 200) {
             return route.fulfill({

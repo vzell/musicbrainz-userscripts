@@ -499,10 +499,56 @@ Grep `// ── CAA/EAA column redesign` for the code. Rules that fail silently:
   recomputed**: `_artCardCopy()` clones the cell's own pill/comment nodes,
   which `_artHighlightImageLi()` already marked — the viewer's info panel does
   the same through `opts.liFor`. A second highlight path would drift.
+- **The B1 card's keys (2026-10-20): Space = every image, Shift = bigger
+  tiles**, for all three cards `_artCardCoreHtml()` builds (`art-sum`,
+  `art-rel`, `dg-img` — `_ART_CARD_FNS`). `_initStatTooltip()` hands every
+  key to `_mbttKey()` while a resolver card shows, and rebuilds the card
+  through `_statTipApi.repaint()`. Late record repaints (`_artRelIconRepaint()`,
+  the Discogs card) also go through that, so the fit runs on them too. Space is
+  spent ONLY when the card is cut off (`data-mb-art-cut`) or already shows every
+  image; typing into a field keeps it (`_dpPeek.typedAt`, which the tooltip
+  engine now records itself, because the link preview installs nothing where
+  its sources are off); a shown link preview owns it. "Every image" belongs to
+  the hovered element and resets in `_mbttAfterHide()`; Shift follows the key
+  (and `e.shiftKey` on the mouseover, `blur` clears it). **The card never
+  scrolls, so it is fitted, not clipped**: `_artCardFit()` (from
+  `_mbttAfterShow()`, which now runs BEFORE `_positionTip()`) picks the line
+  width and shrinks `--mb-art-card-tile` until the rows fit the window. That
+  needs `#mb-stat-tooltip:has(> [data-mb-art-wide]) { max-width: none; }`:
+  without it the tooltip's 520 px cap wraps the tiles into more rows than
+  planned. **Do not name the card's custom property `--mb-art-tile`**: that one
+  is set on `<html>` for the cell grid (64 px), and the card read it at first.
+  Specs: the "B1 keys" tests in `caa-column-redesign.spec.js`, plus
+  `rel-icons.spec.js` and `discogs-image-card.spec.js`. Mutations:
+  `scripts/mutations/caa-card-keys.json`.
 - **The column click listens on `window` capture**, like the tab click above:
   the icon is a link and the navigation guard's document-capture listener
   would ask "leave the page?" first. Tile and ▦ clicks go the same way; ▦ in
   capture also keeps a header click from sorting. A plain left click only.
+- **Relationship-list cover icons and big-picture strip images
+  (2026-10-17)** open the viewer the same way, `_artIconClick()` on `window`
+  capture (`_artInitRelIcons()`, installed after `_initStatTooltip()`, reads
+  no `CAA_CTX` until a click). The first version listened on the DOCUMENT and
+  the guard, on the same node, asked anyway: vzell saw the dialog in the
+  browser, a spec on an unrendered page (guard not armed) did not. The guard
+  now also skips a click already cancelled (`e.defaultPrevented`) and one
+  with Ctrl, ⌘ or Shift (a new tab or window loses nothing): the three
+  specs that used its dialog to prove "the Ctrl-click reached the link" read
+  `defaultPrevented` at the link instead (`ctrlClickAtLink`). A cover icon
+  in `table.details` (jesus2099's `<a href="…/release/<mbid>/cover-art">
+  <span class="caa-icon">`, put in late) is stamped `data-mbtt-fn="art-rel"`
+  at the top of `#mb-stat-tooltip`'s mouseover (`_artRelIconStamp()`) and
+  shows the B1 card (`_artCardCoreHtml()`, shared with
+  `_artCardSummaryHtml()`, and since 2026-10-19 with discogs.com's Image
+  column, `_dgImgCardHtml()`: its facts line says "primary" for an
+  external context) from `_artFetchEntityImages()`, asked on the first
+  hover or click; waiting callers queue (`_artRelIconLoading`), because a
+  click right after the hover found the load already on its way and was
+  dropped. The click never navigates by itself. Gates: `sa_enable_caa_pics`
+  plus `sa_caa_tip_summary` (card) or `sa_caa_column_viewer` and
+  `sa_caa_viewer_icon_click` (click). Mockup
+  https://claude.ai/artifact/NonAS8iqfjSMRUaXojzSnT; `rel-icons.spec.js`,
+  `bigbox-tooltip.spec.js`, mutations `rel-icons.json`.
 - **The viewer steps the VISIBLE rows** (`_artColumnViewerRows()`: the live
   tbody, which `runFilter()` empties of rejected rows) with art in the cache,
   wrapping. `_artViewerStep()` crosses into the next row at either end only
@@ -534,6 +580,31 @@ h2/h3 expand-all controls skip it through `_COLLAPSE_HDR_BTN_SEL` (expanding
 every art cell would load every thumbnail). **li-0 must wrap**: the first
 render's prose marker div holds the icon, hint and count, and as a shrinkable
 flex item beside the chips it collapsed to the icon's width.
+
+**The auto-resize reserves a fully loaded li-0 (2026-10-16).** Both resize
+paths (`toggleAutoResizeColumns()`, `toggleSubTableAutoResize()`) measure once,
+right after the render, before most archive records are in; the count badge
+and the chips arrive with the record. Because li-0 wraps, a column sized to
+its header put the chips on a second line wherever the table had no slack:
+the large multi-table pages (`debug/CAA-wrapped.png`, 46 sub-tables, CAA
+6 m 53 s after a 1.9 s resize). Small tables hid it, since the table grew past
+its set width for other columns. `_artReserveSummaryWidths()` builds one
+detached worst-case li-0 per art column (`_artBuildSummarySample()`: ▶, the
+cell's own icon content with the live icon's computed size, a two-digit count
+with the cache hint when it is on, every vocabulary chip with a two-digit
+repeat count, and ⏳) and measures them all in one layout read. The width
+floors the column AFTER the prose cap, which a still-plain art cell's marker
+div triggers. Rules:
+
+- **Measure detached, never inside the table.** Several MutationObservers
+  watch `tbody` subtrees and `document.body` for added nodes; a sample put
+  into a live cell, even for one synchronous read, reaches them. The sample
+  host is removed in the same task.
+- **It is a worst case on purpose**, so the width never changes while loading.
+  On the fixture it reserves 230 px for lines of 178–202 px.
+- Spec `caa-col-width-reserve.spec.js` (archive answers held until the resize
+  has finished); mutations `scripts/mutations/caa-col-width-reserve.json`.
+  `caaColumnFixture.js` counts art lists inside table cells only.
 
 ## The table-wide artwork gallery (D2)
 

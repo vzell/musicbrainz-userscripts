@@ -79,6 +79,24 @@ Two smaller things worth knowing:
   path — there every pass really does rebuild every cell, which is the case the
   helper's JSDoc exists for.
 
+**On discogs.com the column comes from the MusicBrainz column** (2026-10-19,
+docs/claude/discogs.md, "The MusicBrainz column"). Its `a.mb-dg-mb-link`
+icons link `https://musicbrainz.org/release/<mbid>`, which the release-link
+guard and `_picardExtractRowEntities()` take as they are. Three things are
+Discogs-only, all scoped by host or by the column's own markup:
+- the guard also admits a table with a `td.mb-dg-mb-cell` whose
+  `data-mb-dg-types` names `release` — the answers arrive AFTER the render,
+  so a guard on links alone gave master/release pages the column only from
+  the importer's cache, and the ratings page never;
+- `_dgMbRenderCell()` refills the row's Picard cell when the table's column
+  is open (a source row is not in a table; its next clone is filled by the
+  render's own pass);
+- `_picardBuildTaggerUrl()`'s `resource` is `https://musicbrainz.org` on any
+  `_foreignHost`, and an icon link's empty text falls back to the cell's
+  `data-mb-dg-name` for the button's tooltip.
+Specs: the Picard tests of `tests/fixtures/discogs-ratings.spec.js`
+(`__saTest.picardTaggerUrl()` for the URL).
+
 **A release's own tracklist has no Picard column**, and that trips people up
 when picking a test page: `release-tracks` rows link `/recording/<mbid>`, and
 the guard asks for `/release/<mbid>`. `org/picard.org` named a release URL as
@@ -317,6 +335,26 @@ The traps. Every one of them fails silently:
   snapshot harness serializes the whole `documentElement`, so a page-level class
   drifts every rendered baseline, including pageTypes with no Relationships
   column at all.
+- **Pseudo-element slots of a loaded cell (2026-10-21, 9.99.1400): `::before` is
+  the finding's ⚠️/❌, `::after` is the hover ⟳.** The load states own
+  `::before` while a cell is NOT loaded (or loading, or failed); a loaded cell
+  with icons has no `::before` of its own, so a finding (`rel-multi-site`,
+  docs/claude/findings.md) draws there, absolute at the right edge
+  (`td.mb-rel-cell[data-mb-finding]` rules beside the generic finding CSS).
+  It used to share the generic `td[data-mb-finding]::after` — and the ⟳
+  hover rule swapped only that pseudo-element's `content`, so the ⟳ took the
+  ⚠️'s absolute place at the right edge on every hover
+  (debug/multiple-discogs-relationships.html). The cell is `font-size: 0`,
+  so its finding padding is `18px`, never em. **The hover title keeps the
+  finding**: `_relCellTitleHandler()` writes finding text + blank line +
+  hint (`_findingTitle()`, shared with `_writeFindingAttrs()`), never the hint
+  alone on a cell with `data-mb-findings`.
+- **An icon's popup stack starts with the cell's finding box**
+  (`_relStackParts()` → `_relFindingNoteHtml()`), on all three paths: the
+  preview card's `#mb-dp-notes` (kind `tip`, the amber border),
+  `#mb-rel-tooltip`, and `#mb-stat-tooltip` (`_tipTextToHtml()`'s
+  Relationships early return). Built from `_FINDING_BY_ID` and the icons,
+  never from the cell's title.
 - **The progress badge is `attr()`, never header text**, for the same reason
   as the toggle's own glyph: this `<th>`'s text feeds `colName` derivation,
   export and the 📊 dropdown. And its refresh is also where the table's 📊
@@ -520,27 +558,77 @@ measures "the button was not repainted" instead.
 
 ## Recording of column: two columns after "Name", loaded only on request
 
-`features.recordingOf` (artist-recordings) adds "Recording of" and
+`features.recordingOf` adds "Recording of" and
 "Performance attributes" — what Michael Wiencek's batch-add "performance of"
 userscript writes under each recording title, as two real columns. The code
 is the `_recOf*` family just above the Relationships section;
 `buildActiveRecordingOfColumns()` gates it (`sa_enable_recording_of_column`).
+Their headers paint "Work" and "Perf." (since `feat/short-column-labels`),
+but the columns are still named "Recording of" and "Performance attributes"
+everywhere else. See "Column display labels" in
+docs/claude/toolbar-and-header-ui.md.
 Show only: no edit is ever submitted. API facts (browse parity, 74 567
 recordings for Springsteen, only `performance` relations, search carries no
 relations): `scripts/probe-recording-work-rels.py`, `tests/MEASUREMENTS.org`.
 
+**Declared on every one-recording-per-row list** (since 9.99.1390,
+`feat/recording-of-more-pts`), as an object normalised by `_recOfNormDecl()`
+into `_recOfDecl`:
+`recordingOf: { after, browseBy, suggest, setting }`.
+- `after` — the header of the page's OWN recording column, which the pair
+  follows: "Name" (artist/instrument recordings, search, series and
+  collection Recordings), "Title" (isrc, area recordings, place performances,
+  work recordings) or "Recording" (tag, user tag, user ratings, artist-credit
+  Recordings). `_recOfAnchorIndex()`, the `_finalColNames` splice and
+  `_recOfInjectHeaders()` all read it — a hard-coded "Name" there leaves every
+  other page without the pair and no error.
+- `browseBy` — the WS/2 browse parent "load all" may use (`artist`, `work`,
+  `collection`); absent = lookups only. `_recOfBrowseSource()` also requires
+  the URL's own entity to be that parent (the `_relBrowseSource()` guard).
+  Declare one only after `scripts/probe-recording-work-rels.py --by
+  <entity>:<mbid>` shows browse = lookup relations (2026-10-19: work and
+  collection passed), because a browse answer is cached under the lookup's key.
+- `suggest` — only artist-recordings: suggestions need ONE artist's work list,
+  which no other list has. `_recOfSuggestOn()` gates `_recOfEnsureWorks()`,
+  the single-row path and the progress card's work-list row and action.
+- `setting` — the page group's own checkbox (`sa_recording_of_on_*`, default
+  on), under the master switch.
+`true` still means artist-recordings' declaration. Not declared: release-tracks
+(its "Recording of work" comes from the page itself, free), mixed-entity
+tables (relationships pages, relationship tables, overviews, event, edits) and
+the all-entity-kinds multi pages (tag-value, user-tag-value, user-ratings,
+artist-credit), which need per-table anchoring.
+
+**A row whose anchor links no recording gets an inert cell**: no `data-mbid`,
+so no 🎼 glyph (the CSS needs `[data-mbid]`), no click load, and
+`_recOfCellLoadState()` returns null, so 📊 "Load state" does not count it.
+
 **They are the only injected columns that are not appended.** Every other
 injected column goes at the row END, which is what lets the ⏱/Relationships
 code say "nothing they drop can shift Length". These two are INSERTED after
-"Name", and three things keep that from misplacing positional work:
+the anchor (`_recOfDecl.after`, "Name" on artist-recordings), and three
+things keep that from misplacing positional work:
 - `_recOfInsertCells()` runs in each of the three row-assembly sites BEFORE
   `applyIntegerColumnStyling()`, not after;
-- `_finalColNames` splices the two names in after "Name", so every
+- `_finalColNames` splices the two names in after the anchor, so every
   integer-column `colIdx` (styling, `finalizeSplitAlignedColumns()`,
   `finalizeRLCColumnWidths()`, `_repairTreleasesTd()`) is resolved against
   the final layout;
-- `_recOfInjectHeaders()` inserts the `<th>`s after the "Name" `<th>` in
-  `cleanupHeaders()`.
+- `_recOfInjectHeaders()` inserts the `<th>`s after the anchor `<th>` in
+  `cleanupHeaders()`;
+- `_mergeContinuationRowInto()` (search results' continuation rows) is told
+  the anchor index and the pair's width: its destination indices are
+  original-minus-excluded, which knows nothing of inserted cells, and without
+  the shift a recording's extra releases were merged two columns early
+  (`search-recordings-continuation.spec.js`, found by the full suite when the
+  pair was declared on search).
+**A restored cell record with `recof` is never a Relationships cell.** Both
+hydration branches (disk load, sub-table tab) used to tag ANY record with an
+`mbid` `td.mb-rel-cell`, and the pair's records carry one; on a page with a
+Relationships column the Relationships pass then removed one of them and
+every later column shifted (a sub-table tab of place-performances showed
+Video under Length). `subtable-tab-handoff.spec.js`, `recording-of-disk.spec.js`
+and the multi disk test in `recording-of-pagetypes.spec.js` pin it.
 The audit that found the post-render `colIdx` readers is in DEBUG-NOTES
 (2026-10-10). Inserting after styling instead "works" for the inserted cells
 and silently moves Length's colon alignment two columns left — pinned by
@@ -623,6 +711,10 @@ artist-recordings with the columns present but empty; filter and 📊 metrics
 within noise. The per-column residue of two more cells per row.
 
 Specs: `recording-of-column.spec.js`, `recording-of-suggest.spec.js`,
+`recording-of-pagetypes.spec.js` (every other declared page: anchor, browse vs
+lookups, settings, multi-table survival, inert cells; fixtures and real WS/2
+answers from `scripts/build-recording-of-pagetype-fixtures.py`, mutations
+`scripts/mutations/recording-of-pagetypes.json`),
 `recording-of-uniq.spec.js`, `recording-of-third-party.spec.js` (the batch-add
 userscript's markup: until this, nothing pinned the `'wiencek'` eraser or the
 foreign "Performance Attributes" strip). Fixtures come from

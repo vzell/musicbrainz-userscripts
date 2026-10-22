@@ -494,3 +494,141 @@ test.describe('per-section RESET', () => {
             'the section is where it was').toBe(before);
     });
 });
+
+// ── type: 'select' (VZ_MBLibrary 4.4.0) ──────────────────────────────────────
+//
+// Segmented buttons over a hidden input that carries the value under the usual
+// widget id. Pinned on two real keys: sa_sidebar_inline_cards_open (string
+// options) and sa_caa_small_img_size (NUMBER options, so "SAVE stores the
+// typed value" is a different guarantee from "SAVE stores the button's
+// data-value", which would be the string "500").
+test.describe('type: select', () => {
+    const SIDEBAR = 'divider_collabsable_sidebar';
+    const CAA = 'divider_caa_pics';
+    const KEY = 'sa_sidebar_inline_cards_open';
+    const segs = (page, key) => rowFor(page, key).locator('.vz-seg-btn');
+    const checked = (page, key) => rowFor(page, key).locator('.vz-seg-btn[aria-checked="true"]');
+    const stored = (page, key) => page.evaluate((k) => {
+        const v = window.GM_getValue(k, '__absent__');
+        return { v, type: typeof v };
+    }, key);
+    let pageErrors;
+    test.beforeEach(async ({ page }) => { pageErrors = collectPageErrors(page); });
+    test.afterEach(() => { expect(pageErrors, 'no uncaught page errors').toEqual([]); });
+
+    test('RENDER: one segment per option, the current one checked; Default shows the option label; the tooltip lists the choices', async ({ page }) => {
+        await loadShell(page);
+        await openViaGmMenu(page);
+        await headerFor(page, SIDEBAR).click();
+        await expect(rowFor(page, KEY)).toBeVisible();
+
+        await expect(segs(page, KEY)).toHaveText(['No card', 'Information card', 'Every card but Search', 'Every card']);
+        await expect(checked(page, KEY)).toHaveText('Every card but Search');
+        await expect(checked(page, KEY), 'the checked segment is the group\'s tab stop').toHaveAttribute('tabindex', '0');
+        await expect(page.locator(`#${SID}-input-${KEY}`)).toHaveValue('all-but-search');
+        await expect(rowFor(page, KEY).locator('[data-vz-settings-col="2"]'), 'the label, not the stored word')
+            .toHaveText('Every card but Search');
+        expect(await rowFor(page, KEY).locator('.vz-setting-label').getAttribute('title'))
+            .toContain('Choices: No card · Information card · Every card but Search · Every card');
+        await expect(rowFor(page, KEY), 'an untouched select is not marked').not.toHaveClass(/vz-setting-changed/);
+    });
+
+    test('PICK + SAVE: a click marks the row changed, SAVE stores the option\'s TYPED value (number options as numbers)', async ({ page }) => {
+        await loadShell(page);
+        await openViaGmMenu(page);
+        await headerFor(page, SIDEBAR).click();
+        await headerFor(page, CAA).click();
+
+        await segs(page, KEY).filter({ hasText: /^Every card$/ }).click();
+        await expect(checked(page, KEY)).toHaveText('Every card');
+        await expect(rowFor(page, KEY)).toHaveClass(/vz-setting-changed/);
+        await segs(page, 'sa_caa_small_img_size').filter({ hasText: '500 px' }).click();
+        await expect(rowFor(page, 'sa_caa_small_img_size')).toHaveClass(/vz-setting-changed/);
+
+        await page.evaluate(() => { window.__notReloaded = true; });
+        await page.click(`#${SID}-save-btn`);
+        await page.waitForFunction(() => window.__notReloaded === undefined, null, { timeout: 5000 });
+        expect(await stored(page, KEY)).toEqual({ v: 'all', type: 'string' });
+        expect(await stored(page, 'sa_caa_small_img_size'), 'typed as the schema writes it').toEqual({ v: 500, type: 'number' });
+    });
+
+    test('RESET + SAVE: the section ↺ puts the segment back, and a default-equal SAVE deletes the stored key', async ({ page }) => {
+        // Stored by hand, not through settingsOverride: the harness re-seeds
+        // its overrides on every load, so the SAVE's reload would bring a
+        // seeded 'none' straight back and hide the deletion. GM values outlive
+        // a navigation; the second load is what reads this one.
+        await loadShell(page);
+        await page.evaluate((k) => window.GM_setValue(k, 'none'), KEY);
+        await loadShell(page);
+        await openViaGmMenu(page);
+        await headerFor(page, SIDEBAR).click();
+        await expect(checked(page, KEY)).toHaveText('No card');
+        await expect(rowFor(page, KEY)).toHaveClass(/vz-setting-changed/);
+
+        await headerFor(page, SIDEBAR).locator('.vz-section-reset').click();
+        await page.getByRole('button', { name: 'OK', exact: true }).click();
+        await expect(checked(page, KEY), 'the buttons follow the reset, not only the hidden input').toHaveText('Every card but Search');
+        await expect(page.locator(`#${SID}-input-${KEY}`)).toHaveValue('all-but-search');
+        await expect(rowFor(page, KEY)).not.toHaveClass(/vz-setting-changed/);
+
+        await page.evaluate(() => { window.__notReloaded = true; });
+        await page.click(`#${SID}-save-btn`);
+        await page.waitForFunction(() => window.__notReloaded === undefined, null, { timeout: 5000 });
+        expect(await stored(page, KEY), 'at the default nothing is stored').toEqual({ v: '__absent__', type: 'string' });
+    });
+
+    test('KEYBOARD: arrows move the choice and the focus; Escape on a segment blurs it and keeps the dialog open', async ({ page }) => {
+        await loadShell(page);
+        await openViaGmMenu(page);
+        await headerFor(page, SIDEBAR).click();
+        // Escape FIRST, with nothing changed: there an unguarded Escape closes
+        // the dialog outright (with a change it would only ask first).
+        await checked(page, KEY).focus();
+        await page.keyboard.press('Escape');
+        await expect(page.locator(OVERLAY), 'Escape on a segment does not close the dialog').toBeVisible();
+        expect(await page.evaluate(() => document.activeElement && document.activeElement.classList.contains('vz-seg-btn')),
+            'the segment lost focus').toBe(false);
+
+        await checked(page, KEY).focus();
+        await page.keyboard.press('ArrowRight');
+        await expect(checked(page, KEY)).toHaveText('Every card');
+        await expect(checked(page, KEY)).toBeFocused();
+        await page.keyboard.press('ArrowRight');
+        await expect(checked(page, KEY), 'wraps round').toHaveText('No card');
+        await page.keyboard.press('End');
+        await expect(checked(page, KEY)).toHaveText('Every card');
+        await page.keyboard.press('Home');
+        await expect(checked(page, KEY)).toHaveText('No card');
+        await expect(rowFor(page, KEY)).toHaveClass(/vz-setting-changed/);
+    });
+
+    test('ON LOAD: stored values are put in canonical form ("500" → 500, " List " → "list"); a stray one is left for its reader', async ({ page }) => {
+        await loadShell(page, {
+            sa_caa_small_img_size: '500',      // stored while it was a number setting
+            sa_caa_cell_layout: ' List ',      // stored by the old text box
+            sa_art_viewer_pan: 'sideways',     // no option at all
+        });
+        const s = await page.evaluate(() => window.__saTest.selectSettings());
+        expect(s.sa_caa_small_img_size).toEqual({ value: 500, type: 'number', read: 500 });
+        expect(s.sa_caa_cell_layout).toEqual({ value: 'list', type: 'string', read: 'list' });
+        expect(s.sa_art_viewer_pan, 'left as stored; _selectSetting() reads the default')
+            .toEqual({ value: 'sideways', type: 'string', read: 'follow' });
+    });
+
+    test('STORED VALUES: one written by a text box is recognised; one that is no option shows and saves as the default', async ({ page }) => {
+        await loadShell(page, { sa_caa_cell_layout: 'List ', [KEY]: 'bogus' });
+        await openViaGmMenu(page);
+        await headerFor(page, SIDEBAR).click();
+        await headerFor(page, CAA).click();
+        await expect(checked(page, 'sa_caa_cell_layout'), '"List " is the list option').toHaveText('List');
+        await expect(rowFor(page, 'sa_caa_cell_layout')).toHaveClass(/vz-setting-changed/);
+        await expect(checked(page, KEY), 'a stray value shows the default').toHaveText('Every card but Search');
+
+        await page.click(`#${SID}-save-btn`);
+        await expect(page.locator(OVERLAY)).toHaveCount(0);
+        await expect.poll(() => stored(page, 'sa_caa_cell_layout'), { message: 'saved in its canonical form' })
+            .toEqual({ v: 'list', type: 'string' });
+        await expect.poll(() => stored(page, KEY), { message: 'the stray value is gone' })
+            .toEqual({ v: '__absent__', type: 'string' });
+    });
+});

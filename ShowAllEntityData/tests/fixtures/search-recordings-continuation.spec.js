@@ -22,9 +22,12 @@ const SEARCH_URL =
 const FIXTURE_FILE = path.join(__dirname, 'search-recordings-continuation.html');
 
 // Column indices in the rendered table. The eight native columns keep their
-// original positions — every synthetic/injected column (Video, Event-*,
-// MB-Name, Comment, Primary alias, Picard) is appended after them.
-const COL = { NAME: 0, LENGTH: 1, RELEASE: 4, TRACK: 5, MEDIUM: 6, TYPE: 7 };
+// order; "Recording of" + "Performance attributes" are INSERTED right after
+// Name (features.recordingOf, sa_recording_of_on_search, default on), so
+// every native column right of Name sits two places later. Every other
+// synthetic/injected column (Video, Event-*, MB-Name, Comment, Primary
+// alias, Picard) is appended after them.
+const COL = { NAME: 0, LENGTH: 3, RELEASE: 6, TRACK: 7, MEDIUM: 8, TYPE: 9 };
 
 test('search?type=recording: continuation rows fold into the preceding row as multi-row Release/Track/Medium/Type cells', async ({ page }) => {
     // Both tests below pin the Picard column AT INITIAL RENDER — the three

@@ -1,0 +1,106 @@
+[
+  {
+    "name": "a header's card is not titled with the column's name",
+    "why": "Derived and injected tips would show without the bold name line the user asked for.",
+    "edits": [
+      {
+        "find": "        if (hdrName && blocks[0] !== hdrName) blocks.unshift(hdrName);",
+        "replace": "        void hdrName;"
+      }
+    ],
+    "spec": "tests/fixtures/column-descriptions.spec.js",
+    "grep": "derived column keeps its tip",
+    "expect": "fail"
+  },
+  {
+    "name": "a MusicBrainz column gets no description",
+    "why": "Native headers would stay without a tooltip.",
+    "edits": [
+      {
+        "find": "                if (desc) _setTip(th, desc);",
+        "replace": "                if (false) _setTip(th, desc);"
+      }
+    ],
+    "spec": "tests/fixtures/column-descriptions.spec.js",
+    "grep": "gets its description",
+    "expect": "fail"
+  },
+  {
+    "name": "the description replaces a tip the header already has",
+    "why": "An injected or derived column's own explanation would be overwritten (Recording of: by its bare name).",
+    "edits": [
+      {
+        "find": "            if (!th.hasAttribute('data-mb-tip') && !th.title) {",
+        "replace": "            if (true) {"
+      }
+    ],
+    "spec": "tests/fixtures/column-descriptions.spec.js",
+    "grep": "derived column keeps its tip",
+    "expect": "fail"
+  },
+  {
+    "name": "sa_column_descriptions is ignored",
+    "why": "With the setting off, native headers must have no tip.",
+    "edits": [
+      {
+        "find": "        if (Lib.settings.sa_column_descriptions === false || _foreignHost) return '';",
+        "replace": "        if (_foreignHost) return '';"
+      }
+    ],
+    "spec": "tests/fixtures/column-descriptions.spec.js",
+    "grep": "sa_column_descriptions off",
+    "expect": "fail"
+  },
+  {
+    "name": "a foreign site gets MusicBrainz descriptions",
+    "why": "Discogs' or a Springsteen site's columns are not what the MusicBrainz texts describe.",
+    "edits": [
+      {
+        "find": "        if (Lib.settings.sa_column_descriptions === false || _foreignHost) return '';",
+        "replace": "        if (Lib.settings.sa_column_descriptions === false) return '';"
+      }
+    ],
+    "spec": "tests/fixtures/column-descriptions.spec.js",
+    "grep": "foreign site",
+    "expect": "fail"
+  },
+  {
+    "name": "the row entity variant is ignored",
+    "why": "\"Type\" on an artist's events would read the generic text, not the kinds of event.",
+    "edits": [
+      {
+        "find": "        return entry[rowKind] || entry.default || '';",
+        "replace": "        return entry.default || '';"
+      }
+    ],
+    "spec": "tests/fixtures/column-descriptions.spec.js",
+    "grep": "kind of event",
+    "expect": "fail"
+  },
+  {
+    "name": "the row entity is never found",
+    "why": "Every variant falls back to its default.",
+    "edits": [
+      {
+        "find": "        const row = table.querySelector('tbody tr:not(.mb-col-filter-row)');\n        if (!row) return '';",
+        "replace": "        const row = null;\n        if (!row) return '';"
+      }
+    ],
+    "spec": "tests/fixtures/column-descriptions.spec.js",
+    "grep": "kind of event",
+    "expect": "fail"
+  },
+  {
+    "name": "features.columnDescriptions is ignored",
+    "why": "A pageType's own texts must win over the built-in ones.",
+    "edits": [
+      {
+        "find": "        const entry = (own && Object.prototype.hasOwnProperty.call(own, colName))",
+        "replace": "        const entry = (false)"
+      }
+    ],
+    "spec": "tests/fixtures/column-descriptions.spec.js",
+    "grep": "overrides",
+    "expect": "fail"
+  }
+]

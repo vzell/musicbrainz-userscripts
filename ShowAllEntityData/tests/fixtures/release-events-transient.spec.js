@@ -127,7 +127,7 @@ async function loadReleaseEventsPage(page, respond) {
         (route) => route.fulfill({ path: FIXTURE_FILE, contentType: 'text/html' }));
     await page.route('**/ws/2/label/**', (route) => {
         const i = calls.length;
-        calls.push(Date.now());
+        calls.push(performance.now());
         const r = (state.respond && state.respond(i)) || {};
         if (r.status && r.status !== 200) {
             return route.fulfill({ status: r.status, contentType: 'text/plain', body: 'Service Unavailable' });

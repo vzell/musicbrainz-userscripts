@@ -63,11 +63,41 @@ from the live DOM silently skips whatever is filtered out — and if it runs onc
 per fetch, those rows never get the data at all (§3.3, `initReleaseEventsColumn()`).
 Collect from `groupedRows`/`allRows` as well, or mirror onto the master row.
 
+**A third-party image is a post-render write too.** "Instrument Icons
+Everywhere" inserts its `img.mb-ii-icon` into a live cell whenever an icon
+becomes available, which is often after the render. It changes no text, so
+`_rowTextCache` and the text the filters read are unaffected (item 3 does not
+apply). It still owes the rest:
+`_iiMirrorLateIcons()` copies the icon onto the SOURCE row's matching anchor
+(same `href`, same ordinal in the cell), on the same side. The anchor is the
+icon's next sibling or, with the script set to 'after', its previous sibling,
+and `_findInstrumentLinkIcon()` decides which. The copy is needed because a multi-table re-render
+clones the source row and a 📊 "Instrument info - Icon" tick matches source
+rows. It then drops the uniq-dropdown cache (item 1) and the filter-result
+keys that read icon presence (`_filterKeyReadsInstrumentIcon()`, item 2), and
+re-runs the filter only when an `ii-icon-*` entry is ticked (item 4). The
+observer behind it, `_iiInstallIconReconciler()`, looks only at added nodes
+that ARE an `img.mb-ii-icon`. A re-render adds whole `<tr>`s, so those records
+are skipped at the first check. It re-runs the filter only when a source row
+actually gained an icon, so an icon it cannot place on a source row can never
+cause a re-render loop.
+
+It is installed from the render tail when `_iiPresent()`, and that check
+CANNOT be cached as "no". Rows taken from a FETCHED page (a search, any page
+but the current one) are unstamped at render time. The script stamps them only
+after its debounce. So when nothing is stamped yet but SA's tables hold
+instrument links, `_iiInstallIconReconciler()` checks again
+(`_II_RECHECK_MS`), and on install it treats the icons already placed as late
+ones. A version that cached the first "no" hid the whole feature on the
+instrument search page (spec "a 📊 opened before the script stamped the
+fetched rows is refreshed once it has").
+
 Worked examples, all with fixture specs and mutation lists:
 `_msApplyLengthPrecision()` (⏱, one-shot), `initReleaseEventsColumn()` (one
 answer for many rows), `_maybeCorrectAreaFlagRegion()` (a stream, coalesced per
 frame by `_scheduleAreaFlagFilterRefresh()`), `_artSetInlineSortKey()` /
-`_artSyncSearchTextToSourceRow()` (per-cell, key-predicate invalidation).
+`_artSyncSearchTextToSourceRow()` (per-cell, key-predicate invalidation),
+`_iiMirrorLateIcons()` (a third-party image, key-predicate invalidation).
 
 ## `collapsableColumns`: list vs. prose cells
 
@@ -145,6 +175,16 @@ existing CAA/EAA `[data-caa-expand-btn]` precedent), extend all of: the
 gathering pass in `initCollapsableColumns`, its idempotent cleanup selector,
 `ensureCollapseDelegate`, `_applyCollapseState`, and
 `_syncCollapseHasMatchInTable`.
+
+**`initCollapsableColumns` never reads layout inside a column pass**
+(PERFORMANCE.org Step 40). Each column is the generator `_colPass`: it does its
+writes, `yield`s what it needs measured, and finishes with the answers; the
+driver after it measures ALL columns in two batched reads. A new cell kind that
+needs a measurement (a width, an overflow) adds it to the yielded request and
+reads it in the driver. A `getBoundingClientRect()`/`scrollHeight` inside the
+pass would bring back one full-table layout per column — 330 ms per filter
+pass on artist-events — and `collapse-measure-batched.spec.js` counts the read
+groups to catch exactly that.
 
 Wiki-rendered `<h2>` sub-headings nested *inside* a prose cell (e.g.
 "== Known performances ==" inside an Annotation cell) are a separate concern
@@ -394,3 +434,109 @@ consistent, each written after it had been broken (findings F3–F7 of
 the end of one cell plus the start of the next. Text nodes INSIDE one cell are
 still joined with a space — a name and its disambiguation comment must stay
 matchable, which the spec's `guard: F6` test pins.
+
+## A time-sliced filter pass writes nothing until it is current and complete
+
+Typing on a table over `sa_chunked_render_threshold` rows goes through
+`runFilterSliced()` (PERFORMANCE.org Step 39); every other caller is the
+synchronous `runFilter()`. The rules that keep the two from disagreeing:
+
+- **One preparation.** The sliced pass gets its work from
+  `runFilter({ collect: true })` — the same cache keys, the same per-group
+  `matchCtx` (copied: the multi branch rebuilds one object per group) and the
+  same incremental-narrowing decision. It then fills those keys and calls
+  `runFilter()`, which finds them cached. A new structural filter therefore
+  still needs its field in `_buildFilterKey()` and `_buildIncrPartialKey()`
+  (see above), and nothing else: never compute a key for the sliced path
+  separately.
+- **Collect mode is side-effect free where it matters**: no
+  `_filterCacheSet`, no `_incr*`, no `_activeFilterHighlightCtx`, no clone,
+  no render, no generation. It does write what the synchronous pass writes
+  BEFORE matching (the ⏳ status text, the global input's border,
+  `getColFilters()`'s per-input borders and h3 regexp errors) — idempotent
+  reflections of the inputs.
+- **Stale means: a newer generation (`_filterGen`) or a replaced row array**
+  (`_filterRowArrays()`, by identity), checked after every yield. Every
+  synchronous `runFilter()` takes a generation, so a clear, a sort, a 📊
+  pick or a findings toggle cancels a pass in flight. A stale pass writes
+  nothing.
+- **Outdated means: a KEY since the pass began** (`_filterInputGen`, bumped in
+  both filter inputs' handlers — not when the debounced pass starts: a pass
+  still current at its end commits by calling `runFilter()`, which re-reads
+  the inputs, so a quicker key would be filtered synchronously, Step 42). An
+  outdated pass finishes COMPARING and stores that complete result (cache and
+  narrowing state, correct for its own key) — but never clones or draws, and
+  stores nothing if the cache was invalidated meanwhile (`_filterCacheEpoch`,
+  bumped by every invalidator). The next typed pass waits for it when it will
+  narrow from it (`_filterQueryExtends()`, single table only), Step 43. A new
+  invalidator must bump `_filterCacheEpoch`, or an outdated pass can put back
+  what it removed.
+- **Prebuilt clones go to exactly one `runFilter()` call.** The pass builds the
+  clones in slices (`_buildFilterClone()`) and hands them over in
+  `_filterPrebuiltClones`, set just before the committing call and cleared in
+  its `finally`. `runFilter()`'s two clone maps must keep doing what
+  `_buildFilterClone()` does; the sliced-vs-synchronous equality specs catch a
+  drift. A change to `expandedCells` during the pass discards the clones
+  (`_expandedCellsVersion`).
+- **A stale pass writes NOTHING** — no cache entry, no narrowing state, no
+  status, no render. Only a complete, current pass stores its results, so
+  `_filterResultCache` and `_incrMatchSet` only ever hold complete answers.
+  The `_rowTextCache` memos it made are kept: they are per-row text, valid
+  whatever the query.
+- **`_renderSettled` stays pending while a pass compares** (published before
+  the first yield, resolved in `finally`), so the header-count scan never
+  scans a table that is about to be replaced.
+- **A sliced pass stops a stale chunked render at once** (`_renderGeneration++`
+  at its start): the table may show a partly drawn previous result while the
+  ⏳ status says filtering is under way (decided 2026-10-10).
+
+Specs: `filter-sliced{,.mobile}.spec.js`, driven through
+`__saTest.filterSlicing` (threshold 0, one row per slice, an awaited
+`onSlice` that holds a pass mid-way); mutations in
+`scripts/mutations/faster-filtering.json`.
+
+## Empty sub-tables under a page-wide filter
+
+Requested 2026-10-13 (branch `feature/hide-empty-subtables`). On a
+`tableMode: 'multi'` page, a sub-table left with no row by a **page-wide**
+filter is hidden: its h3, the table, and every element between them (the
+`.mb-group-intro` and the CAA/EAA bigboxes). `_syncEmptySubtableVisibility()`
+decides this at the tail of every `renderGroupedTable()`, just before
+`_syncMasterToggleState()`. Setting: `sa_hide_empty_subtables`, default on.
+
+- **Page-wide means the GF text or a findings filter.** A findings filter is
+  either `_findingRowFilter` or a cell-scope finding's 📊 tick
+  (`MB_UNIQ_STRUCTURE_MODE_PREFIX + 'finding-'`). A tick like that is written
+  into a column filter input of EVERY table. So when the code asks "does this
+  sub-table have its own filter", an input whose only content is finding ticks
+  does not count. Without that, a cell-scope finding would exempt every table
+  and hide none.
+- **A sub-table with a filter of its own is never hidden.** That means a typed
+  CF or a 📊 pick, an STF text, or its ⏳ scope. Its inputs live in its h3 and
+  thead, so hiding it would hide the only way to widen that filter again. For
+  the same reason, the sub-table that holds the focused element stays visible.
+- **Never hide the last one.** When every sub-table would be hidden, none is.
+  Then they all show "(0 of N)". A header control can change what the GF
+  matches (⏱ turns "3:11" into "3:11.666"), and with every thead hidden there
+  is none left to click. Found by `ms-length-filter-after-toggle.spec.js` test
+  C (9.99.1338 shipped without this). While at least one sub-table stays on
+  screen, its header still offers every such control, so the others can go.
+  A table already hidden by the discography view (`mbDiscHidden`) does not
+  count as one that stays on screen.
+- **The hiding is a CLASS (`.mb-empty-subtable-hidden`, `display: none
+  !important`) plus `data-mb-empty-hidden` on the table, never `style.display`.**
+  `table.style.display` is the collapse state. The bigboxes' own display is the
+  art-strip state, and the h3's is the discography view's `mbDiscHidden`.
+  Writing any of them would lose the state the sub-table must come back with.
+  The master toggle and Ctrl+click on an h3 write `style.display`, which the
+  class overrides, so neither can reveal a hidden empty sub-table.
+- **Anything that judges "is this table visible" by `t.style.display` must
+  also check the class.** `_syncMasterToggleState()` does. An empty hidden
+  table has `style.display === ''`, which would keep its label on "Hide all".
+- The decision reads the live `tbody.rows.length`. A scoped (sort-only)
+  re-render leaves undisturbed tbodies in place, so their count is still right.
+  Nothing is written to a cell, so the four obligations at the top of this
+  file do not apply.
+
+Specs: `tests/fixtures/hide-empty-subtables.spec.js`; mutations in
+`scripts/mutations/hide-empty-subtables.json`.

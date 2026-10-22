@@ -1,4 +1,4 @@
-* TODO sticky areas
+* DONE sticky areas
 ** DONE i
 
 1.)
@@ -219,6 +219,5 @@ beginning and end of each table @debug/stray-lines.html
   To try it, re-import the script in Tampermonkey and scroll right on release 52c6808b… and isrc/USSM19500019. Tell me when you want it merged.
 #+end_example
 
-
-** TODO go after the remaining ~0.7 s
+** DONE go after the remaining ~0.7 s
 

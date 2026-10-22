@@ -1,0 +1,158 @@
+[
+    {
+        "name": "dg-ratings: the #app gate takes the ratings page for Cloudflare's check",
+        "why": "The ratings page is plain HTML without #app; only a page with neither #app nor #page_content is the check.",
+        "edits": [
+            {
+                "find": "           _DG_HIST_PATH_RE.test(window.location.pathname) || _DG_RATINGS_PATH_RE.test(window.location.pathname)) &&",
+                "replace": "           _DG_HIST_PATH_RE.test(window.location.pathname)) &&"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-ratings.spec.js",
+        "grep": "the page: our section first",
+        "expect": "fail"
+    },
+    {
+        "name": "dg-ratings: the pages asked at the live page's own size",
+        "why": "250 a page is the largest Discogs offers; the count assumes it.",
+        "edits": [
+            {
+                "find": "        u.searchParams.set('limit', String(_DG_RATINGS_PER_PAGE));",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/discogs-ratings.spec.js",
+        "grep": "two pages of 250",
+        "expect": "fail"
+    },
+    {
+        "name": "dg-ratings: the pages asked without the table layout",
+        "why": "\"Large Covers\" (layout=big) has no table: a user who chose it would get no rows.",
+        "edits": [
+            {
+                "find": "        u.searchParams.set('layout', 'med');",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/discogs-ratings.spec.js",
+        "grep": "the rows: every column",
+        "expect": "fail"
+    },
+    {
+        "name": "dg-ratings: one page whatever the total",
+        "why": "The page count comes from \"of N\" at 250 a page.",
+        "edits": [
+            {
+                "find": "        return { total, pages: Math.max(1, Math.ceil(total / _DG_RATINGS_PER_PAGE)) };",
+                "replace": "        return { total, pages: 1 };"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-ratings.spec.js",
+        "grep": "two pages of 250",
+        "expect": "fail"
+    },
+    {
+        "name": "dg-ratings: the rating not read",
+        "why": "The Rating column is span.rating's data-value.",
+        "edits": [
+            {
+                "find": "            const rating = tr.querySelector('span.rating[data-value]');",
+                "replace": "            const rating = null;"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-ratings.spec.js",
+        "grep": "the rows: every column",
+        "expect": "fail"
+    },
+    {
+        "name": "dg-ratings: the \" - \" before the title left in the Artist cell",
+        "why": "Discogs writes \"Artist - Title\" in one cell; the separator is not the artist's.",
+        "edits": [
+            {
+                "find": "                artists[artists.length - 1] = doc.createTextNode(lastText.textContent.replace(/\\s*-\\s*$/, ''));",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/discogs-ratings.spec.js",
+        "grep": "the rows: every column",
+        "expect": "fail"
+    },
+    {
+        "name": "dg-ratings: Rating sorted as text without the integer column",
+        "why": "integerColumns right-aligns and sorts numerically; with single digits the order is the same, so only the alignment differs — recorded as pass.",
+        "edits": [
+            {
+                "find": "                integerColumns: [ { sourceColumn: 'Year', align: 'R' }, { sourceColumn: 'Rating', align: 'R' } ]",
+                "replace": "                integerColumns: [ { sourceColumn: 'Year', align: 'R' } ]"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-ratings.spec.js",
+        "grep": "Rating sorts as a number",
+        "expect": "pass"
+    },
+    {
+        "name": "dg-ratings: a page without the table taken as an empty page",
+        "why": "A sign-in page or a browser check must be a FAILED page (status 0), not zero rows.",
+        "edits": [
+            {
+                "find": "        if (!table) throw Object.assign(new Error('Discogs answered, but not with a list of ratings'), { status: 0 });",
+                "replace": "        if (!table) return '<!DOCTYPE html><html><body></body></html>';"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-ratings.spec.js",
+        "grep": "a sign-in page",
+        "expect": "fail"
+    },
+    {
+        "name": "dg Picard: the column only from MusicBrainz release links already there",
+        "why": "On discogs.com the answers come after the render: a table whose MusicBrainz column looks up releases must have the column from the start.",
+        "edits": [
+            {
+                "find": "                || (_isDgHost && !!table.querySelector('tbody td.mb-dg-mb-cell[data-mb-dg-types~=\"release\"]'));",
+                "replace": "                ;"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-ratings.spec.js",
+        "grep": "Picard: the column is there",
+        "expect": "fail"
+    },
+    {
+        "name": "dg Picard: a late MusicBrainz answer not taken by an open column",
+        "why": "The MusicBrainz cell is rewritten in place; nothing else re-renders the row's Picard cell.",
+        "edits": [
+            {
+                "find": "        if (picard && table && _picardTableExpanded(table)) {\n            _picardApplyCellState(row, picard, true);",
+                "replace": "        if (false) {\n            _picardApplyCellState(row, picard, true);"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-ratings.spec.js",
+        "grep": "Picard: the column is there",
+        "expect": "fail"
+    },
+    {
+        "name": "dg Picard: the button named by its icon's (empty) text",
+        "why": "The MusicBrainz-column link is an icon; the cell's data-mb-dg-name is the release's name.",
+        "edits": [
+            {
+                "find": "name: a.textContent.trim() || targetCell.dataset.mbDgName || '' });",
+                "replace": "name: a.textContent.trim() });"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-ratings.spec.js",
+        "grep": "Picard: the column is there",
+        "expect": "fail"
+    },
+    {
+        "name": "dg Picard: the resource is the page's own origin (discogs.com)",
+        "why": "The entity is MusicBrainz's: Picard is sent its MusicBrainz page.",
+        "edits": [
+            {
+                "find": "        const origin = _foreignHost ? 'https://musicbrainz.org' : window.location.origin;",
+                "replace": "        const origin = window.location.origin;"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-ratings.spec.js",
+        "grep": "sends MusicBrainz's release page",
+        "expect": "fail"
+    }
+]

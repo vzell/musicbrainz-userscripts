@@ -237,6 +237,11 @@ function sortStatusLocator(page, config) {
  * `--samples=N` overrides `DEFAULT_SAMPLES` for plumbing checks only; see that
  * constant's own JSDoc.
  *
+ * `--only=typed` runs `globalFilterTyped` alone (see `measureTypedFilterOnce()`)
+ * instead of the six standard metrics, at each of `--typing-delays=150,400`
+ * (ms between keys; that pair is the default). Its file carries a `-typed`
+ * suffix so it can never be mistaken for a full run.
+ *
  * @param {string[]} argv
  * `--rel-arm=absent|collapsed|expanded` is the same idea for the injected
  * Relationships column, and composes with `--arm=` (both may be given). Unlike
@@ -255,14 +260,31 @@ function parseArgs(argv) {
     const relArmArg = argv.find((a) => a.startsWith('--rel-arm='));
     const samplesArg = argv.find((a) => a.startsWith('--samples='));
     const samples = samplesArg ? parseInt(samplesArg.slice('--samples='.length), 10) : DEFAULT_SAMPLES;
+    const onlyArg = argv.find((a) => a.startsWith('--only='));
+    const delaysArg = argv.find((a) => a.startsWith('--typing-delays='));
+    const delays = delaysArg
+        ? delaysArg.slice('--typing-delays='.length).split(',').map((s) => parseInt(s, 10)).filter((n) => Number.isFinite(n) && n >= 0)
+        : DEFAULT_TYPING_DELAYS;
     return {
         pageType: arg ? arg.slice('--pageType='.length) : null,
         label: labelArg ? labelArg.slice('--label='.length) : null,
         arm: armArg ? armArg.slice('--arm='.length) : null,
         relArm: relArmArg ? relArmArg.slice('--rel-arm='.length) : null,
         samples: Number.isFinite(samples) && samples > 0 ? samples : DEFAULT_SAMPLES,
+        only: onlyArg ? onlyArg.slice('--only='.length) : null,
+        typingDelays: delays.length ? delays : DEFAULT_TYPING_DELAYS,
     };
 }
+
+/**
+ * Key delays for `--only=typed`, in ms. 150 is quicker than the filter
+ * debounce on every instrumented page (its floor is `sa_filter_debounce_delay`,
+ * 300 by default), so most keys are swallowed and one or two passes run; 400
+ * is slower than it, so a pass starts after nearly every key and the next key
+ * arrives while that pass runs.
+ * @type {number[]}
+ */
+const DEFAULT_TYPING_DELAYS = [150, 400];
 
 /**
  * Pre-bracket idle applied to EVERY `--rel-arm=` run, seeded or not.
@@ -512,6 +534,170 @@ async function measureGlobalFilterOnce(browser, config, value) {
     return ms;
 }
 
+/**
+ * How long the main thread must stay free of long animation frames before a
+ * typed sample counts as finished. The final filter pass writes its status
+ * line before `renderFinalTable()`'s chunked render has drawn every chunk, so
+ * the status alone would end the bracket early; this quiet window covers that
+ * tail. Long animation frames are only reported at 50 ms and up, so "quiet"
+ * means "no frame was held for 50 ms or more".
+ */
+const TYPED_QUIET_MS = 750;
+
+/**
+ * Installs the page-side recorders for one typed sample: Event Timing entries
+ * (per-keystroke latency, grouped by `interactionId`), long animation frames,
+ * long tasks, and a count of filter passes started (each one writes
+ * "⏳ Filtering..." to `#mb-filter-status-display` first).
+ *
+ * Read-only towards the userscript: it observes the page and never calls into
+ * the script, so a `main` arm and a branch arm are measured identically.
+ *
+ * @param {import('playwright').Page} page
+ * @returns {Promise<{eventTiming: boolean, loaf: boolean, longtask: boolean}>}
+ *   Which entry types this Chromium build supports.
+ */
+async function installTypedRecorders(page) {
+    return page.evaluate(() => {
+        const supported = (typeof PerformanceObserver !== 'undefined' && PerformanceObserver.supportedEntryTypes) || [];
+        const rec = { t0: performance.now(), events: [], loaf: [], longtask: [], passes: 0, lastLoafEnd: 0 };
+        window.__saPerfTyped = rec;
+        if (supported.includes('event')) {
+            new PerformanceObserver((list) => {
+                for (const e of list.getEntries()) {
+                    if (!e.interactionId) continue;
+                    rec.events.push({ id: e.interactionId, name: e.name, start: e.startTime, dur: e.duration });
+                }
+            }).observe({ type: 'event', durationThreshold: 16, buffered: false });
+        }
+        if (supported.includes('long-animation-frame')) {
+            new PerformanceObserver((list) => {
+                for (const e of list.getEntries()) {
+                    rec.loaf.push({ start: e.startTime, dur: e.duration, blocking: e.blockingDuration });
+                    rec.lastLoafEnd = Math.max(rec.lastLoafEnd, e.startTime + e.duration);
+                }
+            }).observe({ type: 'long-animation-frame', buffered: false });
+        }
+        if (supported.includes('longtask')) {
+            new PerformanceObserver((list) => {
+                for (const e of list.getEntries()) rec.longtask.push({ start: e.startTime, dur: e.duration });
+            }).observe({ type: 'longtask', buffered: false });
+        }
+        document.addEventListener('input', () => { rec.lastInput = performance.now(); }, true);
+        // A pass writes "⏳ Filtering..." and then its result in the SAME task,
+        // so by the time an observer runs the element already shows the result.
+        // The mutation records still carry every node that was added, ⏳ included.
+        const status = document.querySelector('#mb-filter-status-display');
+        if (status) {
+            new MutationObserver((records) => {
+                for (const r of records) {
+                    for (const n of r.addedNodes) {
+                        if ((n.textContent || '').startsWith('⏳')) rec.passes++;
+                    }
+                }
+            }).observe(status, { childList: true, characterData: true, subtree: true });
+        }
+        return {
+            eventTiming: supported.includes('event'),
+            loaf: supported.includes('long-animation-frame'),
+            longtask: supported.includes('longtask'),
+        };
+    });
+}
+
+/**
+ * One typed sample: types `value` into the global filter one key at a time
+ * with `delayMs` between keys, the way a person types, and measures what that
+ * person feels rather than how long one filter pass takes.
+ *
+ * The existing `globalFilter` metric types with no delay, so the debounce
+ * swallows every keystroke but the last and the run is a SINGLE pass
+ * (tests/MEASUREMENTS.org says so). With a delay longer than the debounce,
+ * passes start between keystrokes and the next key lands while one is
+ * running, which is exactly what a yielding `runFilter()` is meant to fix.
+ * Two delays are the useful pair: one shorter than the debounce (a quick
+ * typist; mostly one pass) and one longer (a typist who pauses).
+ *
+ * Measured per sample:
+ *   - `worstKeyMs`: the slowest keystroke, from key down to the next paint
+ *     (Event Timing, the longest entry of each interaction). Keystrokes under
+ *     16 ms are not reported by the browser and count as 0 here.
+ *   - `keysOver50` / `keysOver100`: keystrokes that took 50 / 100 ms or more.
+ *   - `longestFrameMs` / `longestBlockingMs`: the longest animation frame and
+ *     its blocking time (frames are reported from 50 ms), i.e. the longest
+ *     stretch the page could not paint.
+ *   - `longestTaskMs`: the longest single task (reported from 50 ms).
+ *   - `totalMs`: first key to the final pass's status line plus a quiet main
+ *     thread (see `TYPED_QUIET_MS`), so the chunked render's tail counts. It
+ *     includes the typing itself (keys × delay), the same on every arm.
+ *   - `afterLastKeyMs`: last key to that same end point, the wait a person
+ *     sees once they stop typing.
+ *   - `passes`: filter passes started.
+ *
+ * @param {import('playwright').Browser} browser
+ * @param {ReturnType<typeof toArm>} config
+ * @param {string} value - What to type.
+ * @param {number} delayMs - Pause between keys.
+ * @returns {Promise<{worstKeyMs: number, keysOver50: number, keysOver100: number,
+ *   longestFrameMs: number, longestBlockingMs: number, longestTaskMs: number,
+ *   totalMs: number, afterLastKeyMs: number, passes: number, keys: number,
+ *   supported: {eventTiming: boolean, loaf: boolean, longtask: boolean}}>}
+ */
+async function measureTypedFilterOnce(browser, config, value, delayMs) {
+    const page = await loadPage(browser, config);
+    const input = page.locator('#mb-global-filter-input');
+    await input.click();
+    const supported = await installTypedRecorders(page);
+    const startPerf = await page.evaluate(() => performance.now());
+    // Press, then pause — not `pressSequentially(value, {delay})`, whose delay
+    // also HOLDS each key down that long, so the last character lands a whole
+    // delay before the call returns and "after the last key" reads as ~0.
+    for (let k = 0; k < value.length; k++) {
+        await page.keyboard.press(value[k]);
+        if (k < value.length - 1) await page.waitForTimeout(delayMs);
+    }
+    // The page's own time of the last `input` event, not the time this call
+    // returned: the round trip would otherwise count as page work.
+    const lastKeyPerf = await page.evaluate(() => window.__saPerfTyped.lastInput || performance.now());
+    // The final pass is the one whose status names the WHOLE query: every
+    // earlier pass names a prefix of it, and the closing quote tells them
+    // apart. Both table modes write `GLOBAL:"<query>"`.
+    await page.waitForFunction((v) => {
+        const el = document.querySelector('#mb-filter-status-display');
+        const t = (el && el.textContent) || '';
+        return !t.startsWith('⏳') && t.includes(`GLOBAL:"${v}"`);
+    }, value, { timeout: 120000, polling: 50 });
+    await page.waitForFunction((quiet) => {
+        const rec = window.__saPerfTyped;
+        return performance.now() - Math.max(rec.lastLoafEnd, rec.settleSeen || (rec.settleSeen = performance.now())) >= quiet;
+    }, TYPED_QUIET_MS, { timeout: 120000, polling: 100 });
+    const rec = await page.evaluate(() => window.__saPerfTyped);
+    await page.close();
+
+    const perInteraction = new Map();
+    for (const e of rec.events) {
+        if (e.start < startPerf) continue;
+        perInteraction.set(e.id, Math.max(perInteraction.get(e.id) || 0, e.dur));
+    }
+    const lat = [...perInteraction.values()];
+    const after = (arr) => arr.filter((e) => e.start >= startPerf);
+    const max = (arr, k) => arr.reduce((m, e) => Math.max(m, e[k]), 0);
+    const endPerf = Math.max(rec.lastLoafEnd, rec.settleSeen || 0);
+    return {
+        worstKeyMs: lat.reduce((m, x) => Math.max(m, x), 0),
+        keysOver50: lat.filter((x) => x >= 50).length,
+        keysOver100: lat.filter((x) => x >= 100).length,
+        longestFrameMs: max(after(rec.loaf), 'dur'),
+        longestBlockingMs: max(after(rec.loaf), 'blocking'),
+        longestTaskMs: max(after(rec.longtask), 'dur'),
+        totalMs: Math.round(endPerf - startPerf),
+        afterLastKeyMs: Math.round(endPerf - lastKeyPerf),
+        passes: rec.passes,
+        keys: value.length,
+        supported,
+    };
+}
+
 /** @param {import('playwright').Browser} browser @param {ReturnType<typeof toArm>} config @param {string} value @returns {Promise<number>} */
 async function measureColumnFilterOnce(browser, config, value) {
     const page = await loadPage(browser, config);
@@ -709,8 +895,51 @@ async function runAll(browser, config) {
     };
 }
 
+/**
+ * The `--only=typed` run: `globalFilterTyped` at each key delay, `SAMPLES`
+ * fresh page loads per delay, each value from the page's own
+ * `filterValues`. Every reported field is the median over the samples; the
+ * raw samples are kept too, because a worst-keystroke number is spiky and a
+ * reader should be able to see the spread.
+ *
+ * @param {import('playwright').Browser} browser
+ * @param {ReturnType<typeof toArm>} config
+ * @param {number[]} delays
+ * @returns {Promise<Object>}
+ */
+async function runTyped(browser, config, delays) {
+    const out = {};
+    const total = SAMPLES * delays.length;
+    let step = 0;
+    for (const delay of delays) {
+        const samples = [];
+        for (let i = 0; i < SAMPLES; i++) {
+            samples.push(await withRetry(`globalFilterTyped@${delay}`,
+                () => measureTypedFilterOnce(browser, config, config.filterValues[i % config.filterValues.length], delay)));
+            reportProgress(++step, total, `globalFilterTyped@${delay}`, i + 1);
+        }
+        const fields = ['worstKeyMs', 'keysOver50', 'keysOver100', 'longestFrameMs', 'longestBlockingMs',
+            'longestTaskMs', 'totalMs', 'afterLastKeyMs', 'passes'];
+        const medians = {};
+        for (const f of fields) medians[f] = median(samples.map((s) => s[f]));
+        out[`globalFilterTyped@${delay}`] = {
+            delayMs: delay,
+            ...medians,
+            medianMs: medians.afterLastKeyMs,
+            samples: SAMPLES,
+            supported: samples[0].supported,
+            raw: samples.map(({ supported, ...rest }) => rest),
+        };
+    }
+    return out;
+}
+
 (async () => {
-    const { pageType, label, arm, relArm, samples } = parseArgs(process.argv.slice(2));
+    const { pageType, label, arm, relArm, samples, only, typingDelays } = parseArgs(process.argv.slice(2));
+    if (only && only !== 'typed') {
+        console.error(`--only=${only}: the only supported value is "typed".`);
+        process.exit(1);
+    }
     SAMPLES = samples;
     if (SAMPLES !== DEFAULT_SAMPLES) {
         console.warn(`  NOTE: --samples=${SAMPLES} — a plumbing check, NOT a publishable arm. `
@@ -757,6 +986,9 @@ async function runAll(browser, config) {
     const armSuffix = [
         arm ? `picard-${arm}` : null,
         relArm ? `rel-${relArm}` : null,
+        // A typed run measures different things than a full run, so it must
+        // never land on (or be read as) a full run's file.
+        only === 'typed' ? 'typed' : null,
     ].filter(Boolean).join('-');
     const outName = label || (armSuffix ? `${branch}-${armSuffix}` : branch);
     const startedAt = new Date();
@@ -764,7 +996,9 @@ async function runAll(browser, config) {
     const scriptVersion = readScriptVersion();
     const browser = await chromium.launch();
     try {
-        const interactions = await runAll(browser, config);
+        const interactions = only === 'typed'
+            ? await runTyped(browser, config, typingDelays)
+            : await runAll(browser, config);
 
         // archiveFileStem(), not a hand-rolled parts array. runMetadata.js's
         // own header says this script "requires them from here", and it did —

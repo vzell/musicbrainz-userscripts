@@ -206,5 +206,18 @@
     "spec": "tests/fixtures/column-filter-modes.spec.js",
     "grep": "a column's switch survives the re-render",
     "expect": "pass"
+  },
+  {
+    "name": "the switches claim room in the column",
+    "why": "With the setting on, the filter wrapper reserves room for its chips (min-width), so every column with a filter grows. (Laying the chips out in flow instead is NOT a usable mutation: the wrapper's container-type: inline-size keeps its content from widening it, so that one passes.)",
+    "edits": [
+      {
+        "find": "        .mb-col-filter-wrapper.mb-col-modes {\n            container-type: inline-size;\n",
+        "replace": "        .mb-col-filter-wrapper.mb-col-modes {\n            min-width: 260px;\n            container-type: inline-size;\n"
+      }
+    ],
+    "spec": "tests/fixtures/column-filter-modes.spec.js",
+    "grep": "never change a column's width",
+    "expect": "fail"
   }
 ]

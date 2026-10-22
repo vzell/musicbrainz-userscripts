@@ -16,10 +16,16 @@
 //   - the thumbnail request was blocked, not answered;
 //   - coverartarchive.org is NOT swallowed by the pattern: a spec's own mock
 //     for it is still the one that answers.
+//
+// The second hop (2026-10-14): a thumbnail in the fixture's markup that comes
+// from coverartarchive.org is redirected to archive.org, and a route never
+// sees a redirect's second url. Such images are blocked at coverartarchive.org
+// instead, during page.goto() only (ART_ARCHIVE_RE); afterwards a spec's own
+// mock answers again.
 
 const path = require('path');
 const { test, expect } = require('../support/test');
-const { loadUserscriptPage, ARCHIVE_ORG_RE } = require('../support/loadPage');
+const { loadUserscriptPage, ARCHIVE_ORG_RE, ART_ARCHIVE_RE } = require('../support/loadPage');
 
 const RELEASE_URL = 'https://musicbrainz.org/release/1d404e1d-fcb6-3a52-b478-e706e893c897';
 const FIXTURE = path.join(__dirname, 'release-tracks-ms-length.html');
@@ -37,9 +43,9 @@ test('a fixture load never waits on an archive.org image', async ({ page }) => {
         }
     });
 
-    const t0 = Date.now();
+    const t0 = performance.now();
     await loadUserscriptPage(page, { url: RELEASE_URL, fixtureFile: FIXTURE, testMode: true });
-    const loadMs = Date.now() - t0;
+    const loadMs = performance.now() - t0;
 
     expect(loadMs, 'the fixture loaded without waiting on archive.org').toBeLessThan(20000);
     expect(hangingRouteHit, 'the helper\'s abort route answered first').toBe(0);
@@ -63,6 +69,43 @@ test('a coverartarchive.org mock registered BEFORE the load still answers its im
         img.src = 'https://coverartarchive.org/release/1d404e1d-fcb6-3a52-b478-e706e893c897/front-250';
     }));
     expect(mockHits, 'the spec\'s own coverartarchive.org mock answered').toBeGreaterThan(0);
+});
+
+test('a fixture load never waits on a coverartarchive.org thumbnail in its markup', async ({ page }) => {
+    test.setTimeout(30000);
+    // user-ratings-multigroup.html shows two release-group thumbnails from
+    // coverartarchive.org. A mock that never answers stands in for the
+    // redirect to an Internet Archive that does not answer.
+    let hangingRouteHit = 0;
+    await page.route('https://coverartarchive.org/**', () => { hangingRouteHit++; });
+    const blocked = [];
+    page.on('requestfailed', (req) => {
+        if (/coverartarchive\.org\//.test(req.url())) blocked.push(req.failure() && req.failure().errorText);
+    });
+
+    const t0 = performance.now();
+    await loadUserscriptPage(page, {
+        url: 'https://musicbrainz.org/user/vzell/ratings',
+        fixtureFile: path.join(__dirname, 'user-ratings-multigroup.html'),
+        testMode: true,
+    });
+    const loadMs = performance.now() - t0;
+
+    expect(loadMs, 'the fixture loaded without waiting on the thumbnails').toBeLessThan(20000);
+    expect(hangingRouteHit, 'the helper\'s route answered first').toBe(0);
+    expect(blocked.length, 'both thumbnails were requested and blocked').toBe(2);
+    expect(blocked.every((t) => /BLOCKED_BY_CLIENT/.test(t || ''))).toBe(true);
+
+    // Once loaded, the spec's own mock is reached again.
+    page.evaluate(() => { new Image().src = 'https://coverartarchive.org/release-group/x/front-250'; });
+    await expect.poll(() => hangingRouteHit, { message: 'the mock is reached after the load' }).toBeGreaterThan(0);
+});
+
+test('ART_ARCHIVE_RE: the two art archives only', () => {
+    expect(ART_ARCHIVE_RE.test('https://coverartarchive.org/release-group/x/front-250')).toBe(true);
+    expect(ART_ARCHIVE_RE.test('https://eventartarchive.org/event/x/front')).toBe(true);
+    expect(ART_ARCHIVE_RE.test('https://archive.org/download/x')).toBe(false);
+    expect(ART_ARCHIVE_RE.test('https://musicbrainz.org/release/x/cover-art')).toBe(false);
 });
 
 test('ARCHIVE_ORG_RE: the Internet Archive only, never the art archives', () => {

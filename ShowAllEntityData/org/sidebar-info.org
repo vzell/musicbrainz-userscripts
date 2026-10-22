@@ -1,0 +1,120 @@
+* DONE Overwhole the sidebar info presentation
+** DONE initial
+
+Please explain and maybe implement a fix for the following:
+
+1.)
+
+The current userscript code renders a "Details" and "Picard" column in the "Via release group: Tougher Than the Rest"
+sub-table of https://musicbrainz.org/release/52c6808b-037d-47d5-b0c7-17331c9d36cd, see also [Image #4] - @debug/release-tracks-with-sidebar-initial.html
+
+2.)
+
+Older code actually rendered it like [Image #3] where the release group name renders right after the RG inline image and
+there is a also a big picture image stripe present
+
+3.)
+
+I actually want 2.) even with our current code 
+
+** DONE tested live
+
+Tested live, looks good, commit and push (inclusive the .org files); stop the suite for now, it takes too long on
+"vzell-lap", /merge-push-remove now, will implement a couple more things and test with the whole suite later (possibly
+on a faster machine like "petri")
+
+** DONE Overwhole
+
+We need another overwhole of the presentation of the information located in the sidebar of most of MB PTs.
+
+1.)
+
+currently we support a "Sidebar" button which when pressed renders the sidebar info as h3 headed sub-tables
+
+2.)
+
+a.)
+
+make some suggestions (inclusive nice HTML based mockups) how the information from 1.) could be shown already when
+pressing the generic PT action button like e.g. "Tracks" for PT 'release-tracks' under the same named h3 headed but
+non-filterable/non-sortable subsections below the rendered h2 "Relationships"/"Credits" section on the FRP. - [Image #10]
+
+b.)
+
+For "Part A" of the current plan also include mockups to show the sidebar information under it's own h2 "Sidebar" header
+plus h3 headed but non-filterable/non-sortable subsections. In this case the h2 "sidebar" should render below the
+already present h2 "Relationships"/"Credits" section
+
+3.)
+
+do the same (suggestions inclusive nice HTML based mockups) when pressing the "Relationships"/"Credits" action button if
+present on a PT, but in this case the info should show up as h3 headed but filterable/sortable subsections/sub-tables
+below the rendered h2 "Relationships"/"Credits" section on the FRP - so under [Image #11]
+
+4.)
+
+make everything configurable as usual
+
+** DONE add some more functionality
+
+Add some more functionality:
+
+1.)
+
+Only the first card which renders the "<ENTITY> INFORMATION" e.g. "ARTIST INFORMATION" should be rendered initially
+uncollapsed
+
+#+begin_example
+<h4 class="mb-sb-card-head" role="button" tabindex="0" aria-expanded="true"><span>Artist information</span><span class="mb-sb-card-count">5</span></h4>
+#+end_example
+
+All other cards should stay collapsed initially.
+
+2.)
+
+Every card h4 header should get a descriptive rich HTML tooltip
+
+3.)
+
+Ctrl-click on one h4 header card (doesn't matter from which one) should act as a toggle for collapsing/uncollapsing all
+cards together (inclusive a tooltip which describes this behaviour). Additionally there should be a visual indication
+that a card is actually collapsed (for the uncollapsed state this visual indication is not needed)
+
+** DONE the settings library lacks a select-type setting
+
+The settings library lacks a select-type setting. What needs to be done to support it.
+
+1.)
+
+Do a comprehensive analysis what kind of settings we currently support and what could additionally be implemented
+(specifically with our userscript in mind)
+
+2.)
+
+Show me some nice HTML based mockups for the settings
+
+3.)
+
+reimplement the current feature with the select-type setting
+
+** DONE special case 'release-tracks' PT
+
+Special case 'release-tracks' PT regarding the displayed default cards:
+
+It should also get the sidebar sections "Additional details", "Labels" and Release events" in addition to "Release information" (configurable, default: true)
+
+*** Picks (2026-10-15)
+
+Mockup: https://claude.ai/artifact/FUdHYEuiLqhmrX3hqitzX4 — picked "P2 + A3 (start open), B1, skip
+duplicate links on", and ~sa_sidebar_tables_button~ off by default. Implemented on
+~feature/sidebar-inline~, merged 2026-10-15 (9.99.1351–9.99.1353); design in docs/claude/sidebar.md "The sidebar beside the
+page's own data". Tested live by the user, merged.
+
+
+* DONE write a plan for what we discussed about the missing implementations in the library regarding userscript settings
+
+Write a plan for what we discussed about the missing implementations in the library regarding userscript
+settings. Currently we only implemented select lists and used them in OUR userscript.
+
+Generate the file at @org/library-configuration-handling.org so that I can work on it on different hosts in different
+Claude sessions later on.

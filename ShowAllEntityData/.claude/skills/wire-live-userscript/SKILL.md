@@ -35,13 +35,13 @@ The file can arrive from three places:
 
 Read the header block in full and note, for the summary you give the user:
 
-| Header | What it tells you here |
-|---|---|
+| Header                                     | What it tells you here                                        |
+|--------------------------------------------|---------------------------------------------------------------|
 | `@name`, `@author`, `@version`, `@license` | manifest fields; whether the file may be redistributed at all |
-| `@match` / `@include` | which SA pageTypes it can interact with (step 4) |
-| `@run-at` | the manifest `when` (see `register-live-userscript` step 2) |
-| `@grant` | harness compatibility (step 4) |
-| `@require` | external code the harness will `fetch()` at injection time |
+| `@match` / `@include`                      | which SA pageTypes it can interact with (step 4)              |
+| `@run-at`                                  | the manifest `when` (see `register-live-userscript` step 2)   |
+| `@grant`                                   | harness compatibility (step 4)                                |
+| `@require`                                 | external code the harness will `fetch()` at injection time    |
 
 Then skim the body for **how it runs**, because that changes what the
 harness can reproduce:
@@ -156,11 +156,11 @@ SA strips or survives it without running the script.
 Only when the user wants SA to do what the script does. Build one table and
 show it before writing code:
 
-| Script feature | Decision | Data source | Storage | Settings |
-|---|---|---|---|---|
-| e.g. "live recording of <work>" line | absorb as a column | `/ws/2/recording?artist=…&inc=work-rels` | IndexedDB store | gate + TTL |
-| e.g. batch edit submission | out of scope (outward-facing) | — | — | — |
-| e.g. its header column | already handled (`cleanupHeaders`) | — | — | — |
+| Script feature                       | Decision                           | Data source                              | Storage         | Settings   |
+|--------------------------------------|------------------------------------|------------------------------------------|-----------------|------------|
+| e.g. "live recording of <work>" line | absorb as a column                 | `/ws/2/recording?artist=…&inc=work-rels` | IndexedDB store | gate + TTL |
+| e.g. batch edit submission           | out of scope (outward-facing)      | —                                        | —               | —          |
+| e.g. its header column               | already handled (`cleanupHeaders`) | —                                        | —               | —          |
 
 For every "absorb" row:
 

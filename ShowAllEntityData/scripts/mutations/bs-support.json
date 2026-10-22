@@ -122,7 +122,7 @@
     {
         "name": "the Title link keeps the site's base target",
         "why": "Standalone there is no 'principale' frame; the page's <base target> would open each record in a window of that name. The spec pins target=_blank.",
-        "edits": [{ "find": "        link.target = '_blank';\n        link.rel = 'noopener';\n        link.textContent = r.title;", "replace": "        link.rel = 'noopener';\n        link.textContent = r.title;" }],
+        "edits": [{ "find": "        link.target = '_blank';\n        link.rel = 'noopener';\n        _mbSetSiteTitle(link, r.title, titleTd);", "replace": "        link.rel = 'noopener';\n        _mbSetSiteTitle(link, r.title, titleTd);" }],
         "spec": "tests/fixtures/bs-records.spec.js",
         "grep": "record fields land in their own columns",
         "expect": "fail"

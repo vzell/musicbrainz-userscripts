@@ -1,0 +1,184 @@
+[
+    {
+        "name": "an editor's other lists are not recognised",
+        "why": "Without _MB_POP_EDITLIST_RE in _mbPopParsePath() the profile's 'view' links to /user/<name>/edits/<status> and /user/<name>/votes have no card.",
+        "edits": [
+            {
+                "find": "        if (_MB_POP_EDITLIST_RE.test(pathname)) return { seg: '', type: 'edits', id: pathname };",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb-user-lists.spec.js",
+        "grep": "STATUS",
+        "expect": "fail"
+    },
+    {
+        "name": "the link's query is not passed",
+        "why": "An edit search is told by its query (conditions.); without a.search no /search/edits link is a target.",
+        "edits": [
+            {
+                "find": "const pp = _mbPopParsePath(a.pathname, a.search);",
+                "replace": "const pp = _mbPopParsePath(a.pathname);"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb-user-lists.spec.js",
+        "grep": "SEARCH",
+        "expect": "fail"
+    },
+    {
+        "name": "page= is kept in a search's id",
+        "why": "The id must not carry page=: the pager appends its own, and the same search linked from page 3 would be another record.",
+        "edits": [
+            {
+                "find": "split('&').filter(p => p && !/^page=/.test(p));",
+                "replace": "split('&').filter(p => p);"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb-user-lists.spec.js",
+        "grep": "PATH",
+        "expect": "fail"
+    },
+    {
+        "name": "a form_only search is a target",
+        "why": "An edit list's Quick links open the prefilled form, which lists nothing: no card.",
+        "edits": [
+            {
+                "find": " || q.some(p => /^form_only=/.test(p))",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb-user-lists.spec.js",
+        "grep": "PATH",
+        "expect": "fail"
+    },
+    {
+        "name": "an edit search is kept in IndexedDB",
+        "why": "A search's conditions may be relative ('24 hours ago'): it stays in memory only, so a reload asks again.",
+        "edits": [
+            {
+                "find": "keep: d => !search && !d.entries.some(e => e.status === 'open'),",
+                "replace": "keep: d => !d.entries.some(e => e.status === 'open'),"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb-user-lists.spec.js",
+        "grep": "SEARCH",
+        "expect": "fail"
+    },
+    {
+        "name": "the applications are kept in IndexedDB",
+        "why": "Account data, not an entity: memory only, so a reload asks again (and a login page then fails).",
+        "edits": [
+            {
+                "find": "keep: () => false,",
+                "replace": "keep: () => true,"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb-user-lists.spec.js",
+        "grep": "APPS",
+        "expect": "fail"
+    },
+    {
+        "name": "every application column is read",
+        "why": "Only _MB_APPS_COLS may be read: the Actions cell holds 'Revoke access', a developer application's row its OAuth client id and secret.",
+        "edits": [
+            {
+                "find": "const keep = heads.map((h, i) => (_MB_APPS_COLS.has(h) ? i : -1)).filter(i => i >= 0);",
+                "replace": "const keep = heads.map((h, i) => i);"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb-user-lists.spec.js",
+        "grep": "APPS",
+        "expect": "fail"
+    },
+    {
+        "name": "a list's window is titled 'Editing history'",
+        "why": "titleOf() names the window per id: 'Rejected edits', 'Votes', 'Edit search'.",
+        "edits": [
+            {
+                "find": "kind: k.titleOf ? k.titleOf(id) : k.title,",
+                "replace": "kind: k.title,"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb-user-lists.spec.js",
+        "grep": "STATUS",
+        "expect": "fail"
+    },
+    {
+        "name": "subscribers and applications are not recognised",
+        "why": "Without _MB_POP_ACCOUNT_RE's branch the profile's two 'view list' links (and its tags and ratings 'view') have no card.",
+        "edits": [
+            {
+                "find": "        if (a) return a[2] ? { seg: '', type: _MB_POP_ACCOUNT_KINDS[a[2]], id: a[1] } : { seg: '', type: 'applications', id: 'me' };",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb-user-lists.spec.js",
+        "grep": "SUBS",
+        "expect": "fail"
+    },
+    {
+        "name": "the anonymous subscribers are not counted",
+        "why": "'Plus N other anonymous users' is the only place the page says how many are anonymous.",
+        "edits": [
+            {
+                "find": "if (anon) anonymous = num(anon[1]);",
+                "replace": "if (anon) anonymous = 0;"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb-user-lists.spec.js",
+        "grep": "SUBS",
+        "expect": "fail"
+    },
+    {
+        "name": "downvoted tags get the upvoted card",
+        "why": "/user/<name>/tags?show_downvoted=1 is another list than the page the card reads: no card rather than the wrong one.",
+        "edits": [
+            {
+                "find": "        if (a && a[2] === 'tags' && /(?:^|[?&])show_downvoted=1(?:&|$)/.test(search)) return null;",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb-user-lists.spec.js",
+        "grep": "PATH",
+        "expect": "fail"
+    },
+    {
+        "name": "the tags card is in page order",
+        "why": "The card names the ten most used tags (genres and tags together), not the first ten by name.",
+        "edits": [
+            {
+                "find": "const top = all.slice().sort((a, b) => (b.count - a.count) || a.name.localeCompare(b.name)).slice(0, 10);",
+                "replace": "const top = all.slice(0, 10);"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb-user-lists.spec.js",
+        "grep": "TAGS",
+        "expect": "fail"
+    },
+    {
+        "name": "the tags page is not told apart from a login page",
+        "why": "Without the 'Tags <name> upvoted' h2 the page is not the tags page; a parser that accepts anything shows an empty card for a login page.",
+        "edits": [
+            {
+                "find": "const h2 = page && Array.from(page.querySelectorAll('h2')).find(x => /^Tags .+ upvoted$/.test(_mbPopText(x)));",
+                "replace": "const h2 = page && Array.from(page.querySelectorAll('h2')).find(x => /^Tags .+ downvoted$/.test(_mbPopText(x)));"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb-user-lists.spec.js",
+        "grep": "TAGS",
+        "expect": "fail"
+    },
+    {
+        "name": "a rating's stars are read as its text",
+        "why": "The stars are links (1 2 3 4 5) that change the rating; their digits must not leak into the item's extra text.",
+        "edits": [
+            {
+                "find": "rest.querySelectorAll('.inline-rating').forEach(x => x.remove());",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb-user-lists.spec.js",
+        "grep": "RATINGS",
+        "expect": "fail"
+    }
+]

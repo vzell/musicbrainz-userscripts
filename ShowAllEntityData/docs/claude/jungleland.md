@@ -150,6 +150,26 @@ so the render-decision dialog appears. That is expected, just as on SL's
   `body:is(.mb-sa-host-sl, .mb-sa-host-jl)` inside `:where()`. A further
   host extends that `:is()` list rather than copying the block, as
   brucespringsteen.it did (`.mb-sa-host-bs`).
+- **The sticky thead has a white backing of its own** (2026-10-14). A
+  sorted column's header tint (`.mb-mscol-hdr-N`) is a 60 % alpha
+  `background-color !important` that replaces the cell's own colour; on
+  MusicBrainz MB's stylesheet paints an image on the thead behind it, here
+  nothing did, and rows scrolling under the pinned header showed through
+  (brucespringsteen.it, then springsteenlyrics.com). So
+  `_ensureForeignTableStyle()` gives `table.tbl > thead` `#fff` — the one
+  rule of that block deliberately NOT inside `:where()`: it must outrank the
+  site's own CSS, and springsteenlyrics.com's Bootstrap 3.3.2 has
+  `table { background-color: transparent }`, which also beats the
+  zero-specificity table colour (a first fix that made the thead inherit
+  the table's colour failed there for exactly that reason). Spec:
+  `sorted-thead-opaque.spec.js` (that arm injects the Bootstrap rule).
+- **The list table is a direct `<body>` child**, and Sticky Page Headers
+  collected every `<body>` child as chrome: the table was capped like a bar
+  and, hovered, raised over every stuck bar, so its rows painted over the
+  stuck h1, status line and h2 (2026-10-14, `debug/jl.html`).
+  `_sphCollectTargets()` now leaves `table.tbl` out of that pass; the table
+  pass pins it whole only while it fits, never raised. Spec:
+  `sticky-filter-bars.spec.js` "a data table that is a direct <body> child".
 - **`_ensureJlStyle()`** adds only the injected headings, `.mb-jl-hidden`,
   and a guard against the site's `A:hover { font-weight: bold }`, which
   would reflow a table row under the pointer.
@@ -170,3 +190,12 @@ is added. `tests/support/jlFixture.js` serves it behind a catch-all abort for
 the host. `loadJlFramesetPage()` routes `artwork.htm` to the site's own
 frameset markup and injects the userscript into the left frame. Mutation
 list: `scripts/mutations/jl-support.json`.
+
+## Titles
+
+Since 2026-10-13 (`feature/bb-recent-changes-relations`) the Title column is
+in MusicBrainz title style with typographic punctuation, the site's text as
+the cell's tooltip — `sa_foreign_mb_titles`, `sa_foreign_typography`, both on
+by default. The converter specs load with both OFF (the fixture loader's
+`titles` option); `tests/fixtures/mb-title-case.spec.js` covers the ON side.
+See docs/claude/foreign-title-case.md.

@@ -45,6 +45,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const zlib = require('zlib');
 const { test, expect } = require('../support/test');
 const { loadUserscriptPage, addRequiredLibs, MB_LIBRARY_PATH, USERSCRIPT_PATH } = require('../support/loadPage');
 const { waitForRenderComplete } = require('../support/browser');
@@ -120,7 +121,7 @@ async function openEvent(page, { settings = {}, responses = {}, press = true, ws
     await ctx.route(/\/ws\/2\/url[/?]/, async (route) => {
         const url = route.request().url();
         log.ws2.push(url);
-        log.ws2At.push(Date.now());
+        log.ws2At.push(performance.now());
         const own = ws2 ? await ws2(url) : null;
         const known = url.startsWith(`https://musicbrainz.org/ws/2/url/${SETLIST_URL_ID}?`) ||
             url.includes(`resource=${encodeURIComponent(SETLIST)}&`);
@@ -133,6 +134,15 @@ async function openEvent(page, { settings = {}, responses = {}, press = true, ws
     // The real site is never asked: a page fetch() (instead of the stubbed
     // GM_xmlhttpRequest) fails here, as it would against CORS.
     await ctx.route('https://www.setlist.fm/**', (route) => route.abort('blockedbyclient'));
+    // A Live page's frame loads the site's own CSS and images (its <base> is
+    // the site): never from the network here. Brucebase's year page alone
+    // names 260 images on brucebase.wdfiles.com, and the frame's load event,
+    // which marked and scrolled to the show, waited for all of them: the
+    // Brucebase Live page test failed whenever the real site was slow
+    // (2026-10-17: 5 runs in a row, main too). A test that wants them answers
+    // them itself (a later route wins).
+    await ctx.route(/^https?:\/\/(?:[^/]+\.)?(?:wikidot\.com|wdfiles\.com|springsteenlyrics\.com|jungleland\.it|brucespringsteen\.it)\//,
+        (route) => route.abort('blockedbyclient'));
     await ctx.addInitScript((r) => { window.__gmXhrResponses = r; }, responses);
     await loadUserscriptPage(page, {
         url: URL_EVENT, fixtureFile: FIXTURE, testMode: true,
@@ -927,7 +937,7 @@ test.describe('MusicBrainz URL entities (U2)', () => {
         await ctrlHover(page, setlistLink(page));
         await expect(card(page)).toContainText('Bruce Springsteen Setlist at Co-op Live, Manchester');
         await page.evaluate(() => window.__saTest.reserveMbRateSlots(2));
-        const t0 = Date.now();
+        const t0 = performance.now();
         await page.keyboard.press('Space');
         await expect(dialog(page).locator('.mb-dp-area a[href^="/event/"]')).toHaveText([SETLIST_EVENT], { timeout: 10000 });
         expect(log.ws2).toEqual([SETLIST_LOOKUP]);
@@ -1053,11 +1063,15 @@ test.describe('readers of known sites (U3): Wikipedia, Wikidata, Discogs', () =>
         await d.getByRole('button', { name: 'Live page' }).click();
         const frame = d.locator('iframe');
         await expect(frame).toHaveAttribute('srcdoc', /article-end/);
-        const hidden = await frame.evaluate((f) => {
+        // The classes are set on the frame's load (_dpIsolateFrame()), which
+        // comes after srcdoc: read them once that has run.
+        await expect.poll(() => frame.evaluate((f) => {
             const doc = f.contentDocument;
+            // The srcdoc swap can leave the document without a root element
+            // for a moment: "not yet", not a throw.
+            if (!doc || !doc.documentElement || !doc.documentElement.dataset.mbDpDone) return null;
             return ['header.probe-head', 'nav.probe-nav', '#content'].map(s => doc.querySelector(s).classList.contains('mb-dp-hide'));
-        });
-        expect(hidden, 'the header and menus hidden, the article shown').toEqual([true, true, false]);
+        }), 'the header and menus hidden, the article shown').toEqual([true, true, false]);
         expect((await xhrFull(page)).map(r => r.url)).toEqual([EXT('wikipedia-greetings').url, W.greet]);
     });
 
@@ -1100,7 +1114,7 @@ test.describe('readers of known sites (U3): Wikipedia, Wikidata, Discogs', () =>
 
         await page.keyboard.press('Space');
         const d = dialog(page);
-        await expect(d.locator(':scope > div > span').first()).toHaveText('Discogs');
+        await expect(d.locator(':scope > div > span').first()).toHaveText('Discogs release');
         await expect(d.getByRole('button', { name: 'Live page' }), 'the API, not the page').toBeHidden();
         await expect(d).toContainText('Columbia – PC 33795');
         await expect(d).toContainText('Rock, Pop Rock, Rock & Roll');
@@ -1146,6 +1160,648 @@ test.describe('readers of known sites (U3): Wikipedia, Wikidata, Discogs', () =>
     });
 });
 
+// The Discogs window (2026-10-17, mockup https://claude.ai/artifact/49tucEnfghTCMtyvwN6qaM):
+// a release's tracklist with credits, companies, credits, identifiers,
+// notes, videos and images come in the reader's ONE answer; a master's
+// versions are their own request, 100 a page (ext-discogs-master-versions-p1..p4:
+// 387 versions, captured 2026-10-17), page 1 when the window opens, the rest
+// on its button. Images from i.discogs.com are answered with a pixel here.
+const DGV = [1, 2, 3, 4].map(p => `https://api.discogs.com/masters/26725/versions?per_page=100&page=${p}`);
+const DG_REL = JSON.parse(EXT('discogs-release').body);
+const dgVersionsLog = async (page) => (await xhrFull(page)).map(r => r.url).filter(u => u.includes('/versions?'));
+// How long the next request to Discogs' API would wait for its slot, ms (0: it would go now).
+const dgSlotWait = (page) => () => page.evaluate(() => window.__saTest.extRateSlotWaitMs('api.discogs.com'));
+
+/**
+ * The event page with the Discogs answers, and i.discogs.com's images as a
+ * pixel (the gallery and the versions' thumbnails are plain images).
+ *
+ * @param {import('@playwright/test').Page} page
+ * @param {{settings?: Object, responses?: Object}} [opts]
+ * @returns {Promise<void>}
+ */
+async function openDiscogs(page, { settings = {}, responses = {} } = {}) {
+    await page.context().route('https://i.discogs.com/**', (route) => route.fulfill({ status: 200, contentType: 'image/png', body: PNG }));
+    await openEvent(page, {
+        settings: { sa_pop_ext: true, ...settings },
+        responses: {
+            ...extAnswers('discogs-release', 'discogs-master', 'discogs-artist', 'discogs-master-versions-p1', 'discogs-master-versions-p2',
+                'discogs-master-versions-p3', 'discogs-master-versions-p4'),
+            ...responses,
+        },
+    });
+    await addAnnotationLinks(page, [DG.release, DG.master]);
+}
+
+test.describe('the Discogs window (2026-10-17)', () => {
+    test('a release: its sections from the one answer, track credits closed until opened, the gallery in the viewer', async ({ page }) => {
+        await openDiscogs(page);
+        await ctrlHover(page, probe(page, 0));
+        const c = card(page);
+        const trackCredits = DG_REL.tracklist.reduce((n, x) => n + (x.extraartists || []).length, 0);
+        // The card's summary line counts what the window holds.
+        await expect(c.locator('.mb-dg-sum')).toHaveText(
+            `8 tracks · ${trackCredits + DG_REL.extraartists.length} credits · 12 companies · 12 identifiers · 5 images`);
+        await expect(c, 'the new facts are the window\'s only').not.toContainText('Data quality');
+        await page.keyboard.press('Space');
+        const d = dialog(page);
+        await expect(d.locator('.mb-dg-xh')).toHaveText(['Images 5', 'Tracklist 8', 'Notes', 'Companies, etc. 12', 'Credits 18',
+            'Barcode and Other Identifiers 12', 'Videos 3']);
+        expect((await xhrFull(page)).map(r => r.url), 'no request more than the card\'s').toEqual(['https://api.discogs.com/releases/1874253']);
+        await expect(d).toContainText(`${DG_REL.community.have.toLocaleString('en-US')} have · ${DG_REL.community.want.toLocaleString('en-US')} want`);
+        await expect(d).toContainText('Needs Vote');
+
+        // Track credits: closed; one opens; "Show all" opens the eight; "Hide" closes them.
+        const tl = d.locator('[data-mb-dg-sec="tracklist"]');
+        await expect(tl.locator('.mb-dg-tcred')).toHaveCount(0);
+        await tl.locator('.mb-dg-cr').first().click();
+        await expect(tl.locator('.mb-dg-cr').first()).toHaveText('▾ 7 credits');
+        await expect(tl.locator('.mb-dg-tcred')).toHaveCount(1);
+        await expect(tl.locator('.mb-dg-tcred')).toContainText('Backing Vocals – Mike Appel, Steve Van Zandt');
+        await tl.getByRole('button', { name: 'Show all track credits' }).click();
+        await expect(tl.locator('.mb-dg-tcred')).toHaveCount(8);
+        // A name credited differently: Discogs' own *, its Discogs name on hover.
+        await expect(tl.locator('.mb-dg-anv').first()).toHaveText('Max M. Weinberg*');
+        await expect(tl.locator('.mb-dg-anv').first()).toHaveAttribute('title', /on Discogs: Max Weinberg/);
+        await tl.getByRole('button', { name: 'Hide all track credits' }).click();
+        await expect(tl.locator('.mb-dg-tcred')).toHaveCount(0);
+
+        // Grouped as Discogs lists them.
+        await expect(d.locator('[data-mb-dg-sec="companies"]')).toContainText('Recorded At – Record Plant, N.Y.C., 914 Sound Studios');
+        await expect(d.locator('[data-mb-dg-sec="credits"]')).toContainText('Producer – Jon Landau (tracks: A1 to A4, B2 to B4)');
+        const ids = d.locator('[data-mb-dg-sec="identifiers"]');
+        await expect(ids.locator('.mb-dg-it')).toHaveText(['Rights Society', 'Pressing Plant ID', 'Matrix / Runout']);
+        await expect(ids).toContainText('P AL 33795-1J · A-side deadwax, stamped, var. 3');
+        await expect(d.locator('[data-mb-dg-sec="notes"] a', { hasText: 'Canadian Pressing' })).toHaveAttribute('href', 'http://www.discogs.com/release/567824');
+        await expect(d.locator('[data-mb-dg-sec="videos"] a')).toHaveCount(3);
+
+        // A section closes and stays closed through a repaint (another track toggle would repaint it).
+        await d.locator('.mb-dg-xh', { hasText: 'Credits' }).click();
+        await expect(d.locator('.mb-dg-xh', { hasText: 'Credits' })).toHaveAttribute('aria-expanded', 'false');
+        await expect(d.locator('[data-mb-dg-sec="credits"] .mb-dg-lines')).toHaveCount(0);
+        await tl.locator('.mb-dg-cr').nth(1).click();
+        await expect(d.locator('[data-mb-dg-sec="credits"] .mb-dg-lines')).toHaveCount(0);
+        await d.locator('.mb-dg-xh', { hasText: 'Credits' }).click();
+        await expect(d.locator('[data-mb-dg-sec="credits"] .mb-dg-lines')).toHaveCount(1);
+
+        // The gallery: five images, the cover the same file as the first, so the viewer counts five.
+        const gal = d.locator('[data-mb-dg-sec="images"] .mb-dp-gallery a');
+        await expect(gal).toHaveCount(5);
+        await gal.nth(2).click();
+        const viewer = page.locator('#mb-art-viewer');
+        await expect(viewer).toBeVisible();
+        await expect(viewer.locator('.mb-artv-pos')).toHaveText('3 / 5');
+        await page.keyboard.press('ArrowRight');
+        await expect(viewer.locator('.mb-artv-pos')).toHaveText('4 / 5');
+    });
+
+    test('a master: no versions from a hover; page 1 when the window opens; the rest on the button; filter, chips, sort; a version in the window and back', async ({ page }) => {
+        // A token: 1 s apart, so the three pages take about 3 s.
+        await openDiscogs(page, { settings: { sa_pop_ext_discogs_token: 'tok-probe' } });
+        await ctrlHover(page, probe(page, 1));
+        const c = card(page);
+        await expect(c.locator('.mb-tt-title')).toHaveText('Born To Run');
+        await expect(c.locator('.mb-dg-sum')).toHaveText('Versions: Space lists them');
+        // Until the host's next slot has come (1 s apart with the token): a
+        // request the card had started would be made by then.
+        await expect.poll(dgSlotWait(page), { timeout: 5000 }).toBe(0);
+        await expect(c.locator('.mb-dg-sum')).toHaveText('Versions: Space lists them');
+        expect(await dgVersionsLog(page), 'a card never asks for versions').toEqual([]);
+
+        await page.keyboard.press('Space');
+        const d = dialog(page);
+        const vers = d.locator('[data-mb-dg-sec="versions"]');
+        await expect(vers.locator('.mb-dg-counts').first()).toHaveText('100 of 387 loaded');
+        expect(await dgVersionsLog(page), 'page 1 only').toEqual([DGV[0]]);
+        await expect(d.locator('.mb-dg-xh')).toHaveText(['Images 7', 'Tracklist 8', 'Notes', 'Versions 387']);
+        await expect(vers.locator('.mb-dg-bar i')).toHaveCount(4);
+        await expect(vers.locator('.mb-dg-bar i.mb-dg-seg-loaded')).toHaveCount(1);
+        await expect(vers.locator('tbody tr')).toHaveCount(100);
+        // The master's main release, and the release this page links too.
+        await expect(vers.locator('tr[data-mb-dg-vid="13896528"] .mb-dg-pill')).toHaveText('main');
+        await expect(vers.locator('tr[data-mb-dg-vid="1874253"] .mb-dg-pill')).toHaveText('this page links it');
+        // A version's label: Discogs gives its name only, no id, so it links
+        // Discogs' label search for that name, in a new tab (not the window).
+        const label = vers.locator('tr[data-mb-dg-vid="1874253"] a.mb-dg-label');
+        await expect(label).toHaveText('Columbia');
+        await expect(label).toHaveAttribute('href', 'https://www.discogs.com/search/?q=Columbia&type=label');
+        await expect(label).toHaveAttribute('target', '_blank');
+
+        await vers.getByRole('button', { name: 'Load the other 287 (3 requests, about 3 s)' }).click();
+        // Typing while the pages arrive: each arrival repaints the window,
+        // and the field keeps its focus, caret and text through them.
+        const q = vers.locator('.mb-dg-vq');
+        await q.fill('Japan');
+        await expect(vers.locator('.mb-dg-counts').first()).toHaveText('387 of 387 loaded', { timeout: 15000 });
+        await expect(vers.locator('.mb-dg-pill').first()).toHaveText('Done');
+        expect(await dgVersionsLog(page), 'one after the other, each once').toEqual(DGV);
+        await expect(q).toBeFocused();
+        await expect(q).toHaveValue('Japan');
+        expect(await q.evaluate(el => el.selectionStart), 'the caret where it was').toBe(5);
+        await expect(vers.locator('tbody tr')).toHaveCount(37);
+        await vers.getByRole('button', { name: 'Clear filters' }).click();
+        await expect(vers.locator('tbody tr')).toHaveCount(387);
+        // A chip filters by its value; a second click lifts it.
+        await vers.locator('.mb-dg-fc[data-mb-dg-v="Japan"]').click();
+        await expect(vers.locator('tbody tr')).toHaveCount(37);
+        await expect(vers.locator('tbody tr td:nth-child(4)')).toHaveText(Array(37).fill('Japan'));
+        await vers.locator('.mb-dg-fc[data-mb-dg-v="Japan"]').click();
+        await expect(vers.locator('tbody tr')).toHaveCount(387);
+
+        // The sort ORDERS the rows (years ascending by default; a click on
+        // Year descends; versions of no year stay last either way).
+        const years = () => vers.locator('tbody tr td.mb-dg-yr').allTextContents();
+        const asNum = (list) => list.filter(y => y !== '—').map(y => parseInt(y, 10));
+        let ys = await years();
+        expect(asNum(ys), 'ascending').toEqual([...asNum(ys)].sort((a, b) => a - b));
+        expect(ys.includes('—'), 'the capture has versions of no year').toBe(true);
+        expect(ys.slice(ys.indexOf('—')).every(y => y === '—'), 'no year: last').toBe(true);
+        await vers.locator('th[data-mb-dg-sort="year"]').click();
+        await expect(vers.locator('th[data-mb-dg-sort="year"]')).toHaveAttribute('aria-sort', 'descending');
+        ys = await years();
+        expect(asNum(ys), 'descending').toEqual([...asNum(ys)].sort((a, b) => b - a));
+        expect(ys.slice(ys.indexOf('—')).every(y => y === '—'), 'no year: last').toBe(true);
+        await vers.locator('th[data-mb-dg-sort="country"]').click();
+        const countries = await vers.locator('tbody tr td:nth-child(4)').allTextContents();
+        expect(countries.filter(Boolean), 'countries A→Z').toEqual([...countries.filter(Boolean)].sort((a, b) => a.localeCompare(b)));
+
+        // Back on the card: the versions the window read; again in the window: no request.
+        await page.keyboard.press('Escape');
+        await ctrlHover(page, probe(page, 1));
+        await expect(c.locator('.mb-dg-sum')).toHaveText('387 versions in 33 countries, 1975–2025');
+        await page.keyboard.press('Space');
+        await expect(vers.locator('.mb-dg-counts').first()).toHaveText('387 of 387 loaded');
+        expect(await dgVersionsLog(page), 'memory: no request').toEqual(DGV);
+
+        // A click on a version's row shows that release in the window; Back returns.
+        await vers.locator('tr[data-mb-dg-vid="1874253"] td:nth-child(4)').click();
+        await expect(d.locator(':scope > div > span').first()).toHaveText('Discogs master › Discogs release');
+        await expect(d.locator('.mb-dg-xh', { hasText: 'Companies, etc.' })).toBeVisible();
+        await d.getByRole('button', { name: /Back/ }).click();
+        await expect(d.locator('[data-mb-dg-sec="versions"] .mb-dg-counts').first()).toHaveText('387 of 387 loaded');
+    });
+
+    test('a failed page: "Done with errors", the button asks that page only', async ({ page }) => {
+        await openDiscogs(page, {
+            settings: { sa_pop_ext_discogs_token: 'tok-probe' },
+            responses: { [DGV[2]]: { error: 'network down' } },
+        });
+        await ctrlHover(page, probe(page, 1));
+        await expect(card(page).locator('.mb-tt-title')).toHaveText('Born To Run');
+        await page.keyboard.press('Space');
+        const vers = dialog(page).locator('[data-mb-dg-sec="versions"]');
+        await vers.getByRole('button', { name: /^Load the other 287/ }).click();
+        await expect(vers.locator('.mb-dg-pill').first()).toHaveText('Done with errors', { timeout: 15000 });
+        await expect(vers.locator('.mb-dg-counts').first()).toContainText('287 of 387 loaded');
+        await expect(vers.locator('.mb-dg-bad')).toContainText('page 3 failed');
+        await expect(vers.locator('.mb-dg-bar i.mb-dg-seg-failed')).toHaveCount(1);
+        expect(await dgVersionsLog(page), 'page 4 after the failed 3').toEqual(DGV);
+        await page.evaluate(([u, ok]) => { window.__gmXhrResponses[u] = ok; }, [DGV[2], extAnswers('discogs-master-versions-p3')[DGV[2]]]);
+        await vers.getByRole('button', { name: 'Try page 3 again (1 request, about 1 s)' }).click();
+        await expect(vers.locator('.mb-dg-pill').first()).toHaveText('Done', { timeout: 15000 });
+        expect(await dgVersionsLog(page), 'page 3 only, again').toEqual([...DGV, DGV[2]]);
+    });
+
+    test('Stop: the page under way finishes, nothing more is asked', async ({ page }) => {
+        const slow = extAnswers('discogs-master-versions-p2')[DGV[1]];
+        await openDiscogs(page, {
+            settings: { sa_pop_ext_discogs_token: 'tok-probe' },
+            responses: { [DGV[1]]: { ...slow, delayMs: 1500 } },
+        });
+        await ctrlHover(page, probe(page, 1));
+        await expect(card(page).locator('.mb-tt-title')).toHaveText('Born To Run');
+        await page.keyboard.press('Space');
+        const vers = dialog(page).locator('[data-mb-dg-sec="versions"]');
+        await vers.getByRole('button', { name: /^Load the other 287/ }).click();
+        await expect(vers.locator('.mb-dg-pill').first()).toHaveText('Running');
+        await expect(vers.locator('.mb-dg-bar i.mb-dg-seg-queued')).toHaveCount(2);
+        // Stop while page 2's answer is under way (held back 1.5 s).
+        await expect.poll(() => dgVersionsLog(page)).toEqual([DGV[0], DGV[1]]);
+        await vers.getByRole('button', { name: 'Stop' }).click();
+        await expect(vers).toContainText('Stopping after this page');
+        await expect(vers.locator('.mb-dg-pill').first()).toHaveText('Idle', { timeout: 10000 });
+        await expect(vers.locator('.mb-dg-counts').first()).toHaveText('200 of 387 loaded');
+        // Page 3's slot would have come by now.
+        await expect.poll(dgSlotWait(page), { timeout: 5000 }).toBe(0);
+        expect(await dgVersionsLog(page), 'nothing after the page under way').toEqual([DGV[0], DGV[1]]);
+        await expect(vers.getByRole('button', { name: 'Load the other 187 (2 requests, about 2 s)' })).toBeVisible();
+    });
+
+    test('Stop before the next page\'s turn: nothing is asked, and the window says so', async ({ page }) => {
+        // Without a token: 2.5 s between requests, so page 2 waits its turn.
+        await openDiscogs(page);
+        await ctrlHover(page, probe(page, 1));
+        await expect(card(page).locator('.mb-tt-title')).toHaveText('Born To Run', { timeout: 10000 });
+        await page.keyboard.press('Space');
+        const vers = dialog(page).locator('[data-mb-dg-sec="versions"]');
+        await expect(vers.locator('.mb-dg-counts').first()).toHaveText('100 of 387 loaded', { timeout: 10000 });
+        await vers.getByRole('button', { name: /^Load the other 287/ }).click();
+        await vers.getByRole('button', { name: 'Stop' }).click();
+        await expect(vers.locator('.mb-dg-pill').first()).toHaveText('Idle', { timeout: 10000 });
+        await expect(vers.locator('.mb-dg-bar i.mb-dg-seg-running, .mb-dg-bar i.mb-dg-seg-queued')).toHaveCount(0);
+        expect(await dgVersionsLog(page), 'page 1 only').toEqual([DGV[0]]);
+    });
+
+    test('names link their Discogs pages; the title and subtitle say what the link is; an artist opens in the window', async ({ page }) => {
+        await openDiscogs(page);
+        await ctrlHover(page, probe(page, 0));
+        await expect(card(page).locator('.mb-ext-headtext .mb-tt-comment')).toHaveText('Discogs · release');
+        // A card of another site has the kind line too: the window's kind,
+        // no glyph (MusicBrainz kinds only).
+        await expect(card(page).locator(':scope > .mb-pop-kind-head')).toHaveText('Discogs release');
+        await expect(card(page).locator(':scope > .mb-pop-kind-head img')).toHaveCount(0);
+        await page.keyboard.press('Space');
+        const d = dialog(page);
+        const title = d.locator(':scope > div > span').first();
+        await expect(title).toHaveText('Discogs release');
+        await expect(d.locator('.mb-dp-xsub').first()).toHaveText('Discogs · release');
+        // The facts: the artist and the label link their pages.
+        await expect(d.locator('.mb-dp-kv a[href="https://www.discogs.com/artist/219986"]')).toHaveText('Bruce Springsteen');
+        await expect(d.locator('.mb-dp-kv a[href="https://www.discogs.com/label/1866"]')).toHaveText('Columbia');
+        await expect(d.locator('.mb-dp-kv')).toContainText('Columbia – PC 33795');
+        // A company and a credit, a name credited differently included.
+        await expect(d.locator('[data-mb-dg-sec="companies"] a[href="https://www.discogs.com/label/265540"]').first()).toHaveText('Record Plant, N.Y.C.');
+        const landau = d.locator('[data-mb-dg-sec="credits"] a.mb-dg-name', { hasText: 'Jon Landau' }).first();
+        await expect(landau).toHaveAttribute('href', /^https:\/\/www\.discogs\.com\/artist\/\d+$/);
+        const tl = d.locator('[data-mb-dg-sec="tracklist"]');
+        await tl.getByRole('button', { name: 'Show all track credits' }).click();
+        await expect(tl.locator('a[href="https://www.discogs.com/artist/254876"]').first()).toHaveText('Max M. Weinberg*');
+        // A click on the artist shows the artist in the window; Back returns.
+        await d.locator('.mb-dp-kv a[href="https://www.discogs.com/artist/219986"]').click();
+        await expect(title).toHaveText('Discogs release › Discogs artist');
+        await expect(d).toContainText('Bruce Frederick Joseph Springsteen');
+        await expect(d.locator('.mb-dp-xsub').first()).toHaveText('Discogs · artist');
+        await d.getByRole('button', { name: /Back/ }).click();
+        await expect(title).toHaveText('Discogs release');
+    });
+
+    test('a record of an earlier Discogs reader is not served from IndexedDB', async ({ page }) => {
+        await openDiscogs(page);
+        await ctrlHover(page, probe(page, 0));
+        await expect(card(page).locator('.mb-dg-sum')).toBeVisible();
+        const key = `mb:ext:discogs:${DG.release}`;
+        await expect.poll(() => idbHas(page, key)).toBe(true);
+        // The same record as an earlier reader kept it: version 3 (before
+        // 2026-10-17, no window data) and 302 (the window without the
+        // names' Discogs ids, which a browser that tried the branch holds).
+        for (const v of [3, 302]) {
+            await page.evaluate(([k, ver]) => new Promise((resolve, reject) => {
+                const req = indexedDB.open('vz-saed-detail-pages');
+                req.onsuccess = () => {
+                    const db = req.result;
+                    const store = db.transaction('pages', 'readwrite').objectStore('pages');
+                    const g = store.get(k);
+                    g.onsuccess = () => {
+                        const r = g.result;
+                        r.v = ver;
+                        r.data = { ...r.data, title: 'OLD RECORD', discogs: undefined };
+                        store.put(r).onsuccess = () => { db.close(); resolve(); };
+                    };
+                    g.onerror = reject;
+                };
+                req.onerror = reject;
+            }), [key, v]);
+            await reloadEvent(page);
+            await addAnnotationLinks(page, [DG.release, DG.master]);
+            await ctrlHover(page, probe(page, 0));
+            await expect(card(page).locator('.mb-tt-title'), `version ${v}`).toHaveText('Born To Run');
+            expect((await xhrFull(page)).map(r => r.url), `version ${v}: asked again`).toEqual(['https://api.discogs.com/releases/1874253']);
+        }
+    });
+});
+
+// The Discogs artist and label windows (2026-10-18, mockup
+// https://claude.ai/artifact/WuBNbFTgNHJtxip4xBv6yc): the profile, every
+// image, the names and sites come in the reader's ONE answer; an artist's
+// discography and a label's releases are lists of their own, 100 a page,
+// page 1 when the window opens. Fixtures (captured 2026-10-18,
+// scripts/capture-ext-fixtures.py): Max Weinberg (254876), 528 entries = 6
+// pages holding every kind of role in Discogs' order (page 1: Main 2,
+// Producer 7, Mixed by 2, Appearance 89; pages 2-4 Appearance; page 5
+// Appearance 35, TrackAppearance 7, UnofficialRelease 58; page 6
+// UnofficialRelease 28); Bruce Springsteen's page 1 of 68 (Main only);
+// Columbia newest first pages 1-6 and oldest first page 1 (396,611 releases).
+const DGA = {
+    small: 'https://www.discogs.com/artist/254876-Max-Weinberg',
+    pages: [1, 2, 3, 4, 5, 6].map(p => `https://api.discogs.com/artists/254876/releases?sort=year&sort_order=asc&per_page=100&page=${p}`),
+    bigP1: 'https://api.discogs.com/artists/219986/releases?sort=year&sort_order=asc&per_page=100&page=1',
+    nest: 'https://api.discogs.com/masters/450426/versions?per_page=100&page=1',
+};
+const DGL = (order, p) => `https://api.discogs.com/labels/1866/releases?sort=year&sort_order=${order}&per_page=100&page=${p}`;
+// The list requests made so far (not the readers' own records).
+const dgListLog = async (page) => (await xhrFull(page)).map(r => r.url).filter(u => /\/releases\?|\/versions\?/.test(u));
+
+/**
+ * The event page with the Discogs answers of the artist and label windows,
+ * the links in the annotation: Max Weinberg, Bruce Springsteen, Columbia.
+ * A token by default (1 s apart), so a run of pages takes seconds.
+ *
+ * @param {import('@playwright/test').Page} page
+ * @param {{settings?: Object, responses?: Object}} [opts]
+ * @returns {Promise<void>}
+ */
+async function openDiscogsEntities(page, { settings = {}, responses = {} } = {}) {
+    await page.context().route('https://i.discogs.com/**', (route) => route.fulfill({ status: 200, contentType: 'image/png', body: PNG }));
+    await openEvent(page, {
+        settings: { sa_pop_ext: true, sa_pop_ext_discogs_token: 'tok-probe', ...settings },
+        responses: {
+            ...extAnswers('discogs-artist', 'discogs-label', 'discogs-master', 'discogs-artist-small', 'discogs-artist-releases-p1',
+                'discogs-master-450426-versions-p1', 'discogs-label-releases-asc-p1',
+                ...[1, 2, 3, 4, 5, 6].map(p => `discogs-artist-small-p${p}`),
+                ...[1, 2, 3, 4, 5, 6].map(p => `discogs-label-releases-desc-p${p}`)),
+            ...responses,
+        },
+    });
+    await addAnnotationLinks(page, [DGA.small, DG.artist, DG.label]);
+}
+
+test.describe('the Discogs artist and label windows (2026-10-18)', () => {
+    test('an artist: no discography from a hover; the window\'s profile, images, names, sites; sections by role, "so far" until a later role; the rest on the button', async ({ page }) => {
+        await openDiscogsEntities(page);
+        await ctrlHover(page, probe(page, 0));
+        const c = card(page);
+        await expect(c.locator('.mb-tt-title')).toHaveText('Max Weinberg');
+        await expect(c.locator('.mb-dg-sum')).toHaveText('3 images · discography: Space lists it');
+        await expect(c, 'the data quality is the window\'s only').not.toContainText('Data quality');
+        await expect(c).toContainText('Aliases');
+        await expect.poll(dgSlotWait(page), { timeout: 5000 }).toBe(0);
+        expect(await dgListLog(page), 'a card never asks for the discography').toEqual([]);
+
+        await page.keyboard.press('Space');
+        const d = dialog(page);
+        const disco = d.locator('[data-mb-dg-disco="artist"]');
+        await expect(disco.locator('.mb-dg-counts').first()).toHaveText('100 of 528 loaded');
+        expect(await dgListLog(page), 'page 1 only').toEqual([DGA.pages[0]]);
+        // Page 1 holds Main, the credits and the first Appearances: Releases
+        // and Credits are complete (a later role has arrived), Appearances not.
+        await expect(d.locator('.mb-dg-xh')).toHaveText(['Profile', 'Images 3', 'Sites 3', 'Releases 2', 'Appearances 89 so far',
+            'On releases 89 so far', 'On tracks …', 'Unofficial …', 'Credits 9', 'Producer 7', 'Mixed by 2']);
+        await expect(disco.locator('.mb-dg-c.mb-dg-sofar')).toHaveCount(4);
+        await expect(disco.locator('[data-mb-dg-sec="a-TrackAppearance"]')).toContainText('Not loaded yet');
+        await expect(disco.locator('[data-mb-dg-sec="a-credits"] .mb-dg-box'))
+            .toContainText('(for Max Weinberg: Producer, Mixed by, 9 entries)');
+        await expect(disco.locator('[data-mb-dg-sec="a-credits"] .mb-dg-box a')).toHaveAttribute('href', 'https://www.discogs.com/artist/254876?type=Credits');
+        // The profile is its own section, not the description again.
+        await expect(d.locator('.mb-ext-xdesc')).toHaveCount(0);
+        await expect(d.locator('[data-mb-dg-sec="profile"]')).toContainText('no junior Ginger Bakers');
+        // "Discogs says": the names linked to their pages, the data quality.
+        const kv = d.locator('.mb-dp-kv').last();
+        await expect(kv.locator('dt')).toHaveText(['Real name', 'In groups', 'Aliases', 'Variations', 'Data quality']);
+        await expect(kv.locator('a[href="https://www.discogs.com/artist/408247"]')).toHaveText('The E-Street Band');
+        await expect(kv.locator('a[href="https://www.discogs.com/artist/7670035"]')).toHaveText('Mighty Max');
+        // A release row: its format and label; a master row: no format, a versions toggle.
+        const main = disco.locator('[data-mb-dg-sec="a-main"] tbody > tr');
+        await expect(main).toHaveCount(2);
+        await expect(main.nth(0)).toContainText('13xFile, MP3, Single, 256 · Sha-La Music');
+        await expect(main.nth(0).locator('.mb-dg-pill')).toHaveText('release');
+        await expect(main.nth(1).locator('.mb-dg-pill')).toHaveText('master');
+        await expect(main.nth(1).locator('.mb-dg-exp')).toHaveText('▸ versions');
+        // Releases: by this artist (with others), so the artist column is there.
+        await expect(disco.locator('[data-mb-dg-sec="a-main"] th')).toHaveText(['', 'Title', 'Artist', 'Year', 'Have', 'Want']);
+
+        await disco.getByRole('button', { name: 'Load the other 428 (5 requests, about 5 s)' }).click();
+        await expect(disco.locator('.mb-dg-pill').first()).toHaveText('Running');
+        await expect(disco.getByRole('button', { name: 'Stop' })).toBeVisible();
+        await expect(disco.locator('.mb-dg-counts').first()).toHaveText('528 of 528 loaded', { timeout: 20000 });
+        await expect(disco.locator('.mb-dg-pill').first()).toHaveText('Done');
+        expect(await dgListLog(page), 'one after the other, each once').toEqual(DGA.pages);
+        await expect(d.locator('.mb-dg-xh')).toHaveText(['Profile', 'Images 3', 'Sites 3', 'Releases 2', 'Appearances 431',
+            'On releases 424', 'On tracks 7', 'Unofficial 86', 'Credits 9', 'Producer 7', 'Mixed by 2']);
+        await expect(disco.locator('.mb-dg-c.mb-dg-sofar')).toHaveCount(0);
+        await expect(disco.locator('.mb-dg-bar i.mb-dg-seg-loaded')).toHaveCount(6);
+    });
+
+    test('an artist\'s tables: 150 rows, then "Show more"; sort; the filter and chips over what is loaded; a master row\'s versions', async ({ page }) => {
+        await openDiscogsEntities(page);
+        await ctrlHover(page, probe(page, 0));
+        await page.keyboard.press('Space');
+        const d = dialog(page);
+        const disco = d.locator('[data-mb-dg-disco="artist"]');
+        await disco.getByRole('button', { name: /^Load the other 428/ }).click();
+        await expect(disco.locator('.mb-dg-counts').first()).toHaveText('528 of 528 loaded', { timeout: 20000 });
+
+        const onRel = disco.locator('[data-mb-dg-sec="a-Appearance"]');
+        await expect(onRel.locator('tbody > tr')).toHaveCount(150);
+        await expect(onRel.locator('.mb-dg-morerow')).toContainText('Showing 150 of 424.');
+        await onRel.getByRole('button', { name: 'Show 274 more' }).click();
+        await expect(onRel.locator('tbody > tr')).toHaveCount(424);
+        await expect(onRel.locator('.mb-dg-morerow')).toHaveCount(0);
+
+        // Discogs' order (by year) first; "Have" sorts most first.
+        await expect(onRel.locator('tbody > tr').first()).toContainText('Love, Love, Love');
+        await onRel.locator('th[data-mb-dg-asort="have"]').click();
+        await expect(onRel.locator('th[data-mb-dg-asort="have"]')).toHaveAttribute('aria-sort', 'descending');
+        await expect(onRel.locator('tbody > tr').first()).toContainText('Born In The U.S.A.');
+        await expect(onRel.locator('tbody > tr').first().locator('td.mb-dg-num').first()).toHaveText('63,340');
+        // A second click: back to Discogs' order.
+        await onRel.locator('th[data-mb-dg-asort="have"]').click();
+        await expect(onRel.locator('th[data-mb-dg-asort="have"]')).not.toHaveAttribute('aria-sort', /./);
+        await expect(onRel.locator('tbody > tr').first()).toContainText('Love, Love, Love');
+
+        // The Masters chip and the filter narrow every section; the counts stay what Discogs has.
+        await disco.locator('.mb-dg-fc[data-mb-dg-atype="m"]').click();
+        await expect(disco.locator('.mb-dg-fc[data-mb-dg-atype="m"]')).toHaveText('Masters352');
+        await expect(disco.locator('[data-mb-dg-sec="a-main"] tbody > tr')).toHaveCount(1);
+        const q = disco.locator('.mb-dg-aq');
+        await q.fill('signal hill');
+        await expect(q).toBeFocused();
+        await expect(disco.locator('[data-mb-dg-sec="a-main"]')).toContainText('No loaded entry matches the filter.');
+        await expect(disco.locator('[data-mb-dg-sec="a-c-Producer"] tbody > tr')).toHaveCount(1);
+        await expect(disco.locator('[data-mb-dg-sec="a-c-Producer"] tbody > tr')).toContainText('Summer On Signal Hill');
+        await expect(d.locator('.mb-dg-xh', { hasText: 'Producer' })).toHaveText('Producer 7');
+        await disco.getByRole('button', { name: 'Clear filters' }).click();
+        await expect(q).toHaveValue('');
+        await expect(disco.locator('[data-mb-dg-sec="a-c-Producer"] tbody > tr')).toHaveCount(7);
+
+        // A master row's versions: one request, on the click only.
+        const before = await dgListLog(page);
+        expect(before.filter(u => u.includes('/versions?')), 'no versions before the click').toEqual([]);
+        const john = disco.locator('[data-mb-dg-sec="a-c-Producer"] tbody > tr', { hasText: 'John Eddie' }).first();
+        await john.locator('.mb-dg-exp').click();
+        const nest = disco.locator('[data-mb-dg-sec="a-c-Producer"] .mb-dg-nest');
+        await expect(nest.locator('.mb-dg-nt tr')).toHaveCount(12);
+        await expect(nest.locator('.mb-dg-counts')).toContainText('18 versions · the first 12 in Discogs\' order.');
+        await expect(nest.locator('a', { hasText: 'Open the master here' })).toHaveAttribute('href', 'https://www.discogs.com/master/450426');
+        expect((await dgListLog(page)).filter(u => u.includes('/versions?')), 'one request').toEqual([DGA.nest]);
+        // The same master under "Mixed by" is open too, from the same answer.
+        await expect(disco.locator('[data-mb-dg-sec="a-c-Mixed-by"] .mb-dg-nt tr')).toHaveCount(12);
+        expect((await dgListLog(page)).filter(u => u.includes('/versions?'))).toEqual([DGA.nest]);
+        await john.locator('.mb-dg-exp').click();
+        await expect(disco.locator('.mb-dg-nest')).toHaveCount(0);
+    });
+
+    test('Bruce Springsteen: page 1 of 68; the profile\'s names; 27 images in the viewer; a master opens in the window and Back returns', async ({ page }) => {
+        // No token: 2.5 s apart, as most users have it.
+        await openDiscogsEntities(page, { settings: { sa_pop_ext_discogs_token: '' } });
+        await ctrlHover(page, probe(page, 1));
+        const c = card(page);
+        await expect(c.locator('.mb-dg-sum')).toHaveText('27 images · discography: Space lists it');
+        await page.keyboard.press('Space');
+        const d = dialog(page);
+        const disco = d.locator('[data-mb-dg-disco="artist"]');
+        await expect(disco.locator('.mb-dg-counts').first()).toHaveText('100 of 6,782 loaded');
+        await expect(disco.locator('h3')).toHaveText('Discography 6,782');
+        // Page 1 is Main only: nothing is complete yet, the button names the cost.
+        await expect(disco.locator('.mb-dg-xh')).toHaveText(['Releases 100 so far', 'Appearances …', 'On releases …', 'On tracks …',
+            'Unofficial …', 'Credits …']);
+        await expect(disco.getByRole('button', { name: 'Load the other 6,682 (67 requests, about 2 min 48 s)' })).toBeVisible();
+        await expect(disco.locator('.mb-dg-bar i')).toHaveCount(68);
+        await expect(disco.locator('[data-mb-dg-sec="a-credits"]')).toContainText('Not loaded yet: Discogs lists credits after the artist\'s own releases.');
+        // Some of his Main entries are splits with others: the artist column is there.
+        await expect(disco.locator('[data-mb-dg-sec="a-main"] th', { hasText: 'Artist' })).toHaveCount(1);
+
+        // The profile's names link Discogs' search (the markup gives no id).
+        const prof = d.locator('[data-mb-dg-sec="profile"]');
+        await expect(prof.locator('a', { hasText: 'Patti Scialfa' })).toHaveAttribute('href', 'https://www.discogs.com/search/?q=Patti%20Scialfa&type=artist');
+        await expect(prof).not.toContainText('[a=');
+        // Name variations: ten, then all.
+        const kv = d.locator('.mb-dp-kv').last();
+        await kv.getByRole('button', { name: '+31 more' }).click();
+        await expect(kv.getByRole('button', { name: 'fewer' })).toBeVisible();
+        await expect(kv.locator('dt')).toHaveText(['Real name', 'In groups', 'Aliases', 'Variations', 'Data quality']);
+
+        // Every image, the "More images" set included; the cover is the first, counted once.
+        const gal = d.locator('[data-mb-dg-sec="images"] .mb-dp-gallery a');
+        await expect(gal).toHaveCount(27);
+        await expect(gal.first().locator('span')).toHaveText('primary');
+        await gal.nth(26).click();
+        const viewer = page.locator('#mb-art-viewer');
+        await expect(viewer.locator('.mb-artv-pos')).toHaveText('27 / 27');
+        await page.keyboard.press('Escape');
+        await expect(viewer).toBeHidden();
+
+        // A master's title shows it in the window; Back returns to the discography.
+        await disco.locator('[data-mb-dg-sec="a-main"] a[href="https://www.discogs.com/master/26725"]').click();
+        await expect(d.locator(':scope > div > span').first()).toHaveText('Discogs artist › Discogs master');
+        await expect(d.locator('.mb-dg-xh', { hasText: 'Tracklist' })).toBeVisible();
+        await d.getByRole('button', { name: /Back/ }).click();
+        await expect(disco.locator('.mb-dg-counts').first()).toHaveText('100 of 6,782 loaded');
+    });
+
+    test('a label: page 1 newest first, a warning for its size; 5 more pages a click; the other order is asked once; format chips, filter, Show all', async ({ page }) => {
+        await openDiscogsEntities(page);
+        await ctrlHover(page, probe(page, 2));
+        const c = card(page);
+        await expect(c.locator('.mb-tt-title')).toHaveText('Columbia');
+        await expect(c.locator('.mb-dg-sum')).toHaveText('74 images · releases: Space lists them');
+        await expect(c).toContainText('Sony Music Entertainment');
+        await expect.poll(dgSlotWait(page), { timeout: 5000 }).toBe(0);
+        expect(await dgListLog(page), 'a card never asks for the releases').toEqual([]);
+
+        await page.keyboard.press('Space');
+        const d = dialog(page);
+        const rel = d.locator('[data-mb-dg-disco="label"]');
+        await expect(rel.locator('h3')).toHaveText('Releases 396,611');
+        await expect(rel.locator('.mb-dg-warnbox')).toContainText('Columbia has 396,611 releases on Discogs. Loading them all would take 3,967 requests');
+        await expect(rel.locator('.mb-dg-counts').first()).toHaveText('100 of 396,611 loaded · one segment = 100 releases');
+        expect(await dgListLog(page)).toEqual([DGL('desc', 1)]);
+        await expect(rel.locator('.mb-dg-bar i')).toHaveCount(1);
+        await expect(rel.locator('tbody > tr').first()).toContainText('Sweet FA');
+        // "Discogs says": the parent label linked, how many releases.
+        const kv = d.locator('.mb-dp-kv').last();
+        await expect(kv.locator('a[href="https://www.discogs.com/label/29073"]')).toHaveText('Sony Music Entertainment');
+        await expect(kv).toContainText('396,611');
+        // The profile's label references by id link the label's page.
+        await expect(d.locator('[data-mb-dg-sec="profile"] a[href="https://www.discogs.com/label/112015"]')).toHaveText('label 112015');
+        await expect(d.locator('.mb-dg-xh', { hasText: 'Contact info' })).toBeVisible();
+        const subs = d.locator('[data-mb-dg-sec="sublabels"]');
+        await expect(subs.locator('.mb-dg-names a')).toHaveCount(24);
+        await subs.getByRole('button', { name: '+193 more' }).click();
+        await expect(subs.locator('.mb-dg-names a')).toHaveCount(217);
+
+        await rel.getByRole('button', { name: 'Load 5 more pages (500 releases, about 5 s)' }).click();
+        await expect(rel.locator('.mb-dg-counts').first()).toHaveText('600 of 396,611 loaded · one segment = 100 releases', { timeout: 20000 });
+        expect(await dgListLog(page), 'the batch, and no page more').toEqual([1, 2, 3, 4, 5, 6].map(p => DGL('desc', p)));
+        await expect(rel.locator('.mb-dg-bar i.mb-dg-seg-loaded')).toHaveCount(6);
+        await expect(rel.getByRole('button', { name: 'Load 5 more pages (500 releases, about 5 s)' })).toBeVisible();
+
+        // 200 rows, then all of them.
+        await expect(rel.locator('tbody > tr')).toHaveCount(200);
+        await rel.getByRole('button', { name: 'Show all 600' }).click();
+        await expect(rel.locator('tbody > tr')).toHaveCount(600);
+        // Format chips count what is loaded; one narrows the table.
+        await expect(rel.locator('.mb-dg-fc').first()).toHaveText('LP314');
+        await rel.locator('.mb-dg-fc[data-mb-dg-lfmt="CD"]').click();
+        await expect(rel.locator('tbody > tr')).toHaveCount(100);
+        const q = rel.locator('.mb-dg-lq');
+        await rel.getByRole('button', { name: 'Clear filters' }).click();
+        await q.fill('Y4LPLY585');
+        await expect(rel.locator('tbody > tr')).toHaveCount(1);
+        await expect(q).toBeFocused();
+        await rel.getByRole('button', { name: 'Clear filters' }).click();
+
+        // Oldest first: another list, asked once; back to newest: no request, the 600 still there.
+        await rel.getByRole('button', { name: 'Oldest first' }).click();
+        await expect(rel.locator('.mb-dg-counts').first()).toHaveText('100 of 396,611 loaded · one segment = 100 releases');
+        await expect(rel.locator('tbody > tr').first().locator('.mb-dg-yr')).toHaveText('—');
+        await rel.getByRole('button', { name: 'Newest first' }).click();
+        await expect(rel.locator('.mb-dg-counts').first()).toHaveText('600 of 396,611 loaded · one segment = 100 releases');
+        expect(await dgListLog(page)).toEqual([...[1, 2, 3, 4, 5, 6].map(p => DGL('desc', p)), DGL('asc', 1)]);
+    });
+
+    test('a later visit: the discography from IndexedDB, hatched, without a request; Stop ends a run with the page under way', async ({ page }) => {
+        await openDiscogsEntities(page);
+        await ctrlHover(page, probe(page, 0));
+        await page.keyboard.press('Space');
+        const disco = dialog(page).locator('[data-mb-dg-disco="artist"]');
+        await disco.getByRole('button', { name: /^Load the other 428/ }).click();
+        await expect(disco.locator('.mb-dg-counts').first()).toHaveText(/^300 of 528 loaded/, { timeout: 20000 });
+        await disco.getByRole('button', { name: 'Stop' }).click();
+        await expect(disco.locator('.mb-dg-pill').first()).toHaveText('Idle', { timeout: 10000 });
+        const loaded = (await dgListLog(page)).length;
+        expect(loaded, 'the page under way finished, nothing more').toBeLessThanOrEqual(4);
+        await expect(disco.getByRole('button', { name: /^Load the other/ })).toBeVisible();
+        // "Nothing more" needs time to pass: with the token a page may go 1 s
+        // after the last, so watch for more than two slots for a request
+        // more (a poll for "still N" would pass on its first look). The pill
+        // reads Idle for a moment between two pages of a run, so it is
+        // checked after the watch too.
+        const more = await expect.poll(async () => (await dgListLog(page)).length, { timeout: 2500, intervals: [250] })
+            .toBeGreaterThan(loaded).then(() => true, () => false);
+        expect(more, 'no page after Stop').toBe(false);
+        await expect(disco.locator('.mb-dg-pill').first()).toHaveText('Idle');
+
+        await reloadEvent(page);
+        await addAnnotationLinks(page, [DGA.small, DG.artist, DG.label]);
+        await ctrlHover(page, probe(page, 0));
+        await page.keyboard.press('Space');
+        const again = dialog(page).locator('[data-mb-dg-disco="artist"]');
+        await expect(again.locator('.mb-dg-counts').first()).toHaveText(new RegExp(`^${loaded * 100} of 528 loaded · ${loaded * 100} from cache`));
+        await expect(again.locator('.mb-dg-bar i.mb-dg-seg-cache')).toHaveCount(loaded);
+        expect(await dgListLog(page), 'nothing asked again').toEqual([]);
+    });
+
+    test('an artist record of the reader before its window is not served from IndexedDB', async ({ page }) => {
+        await openDiscogsEntities(page);
+        await ctrlHover(page, probe(page, 0));
+        await expect(card(page).locator('.mb-dg-sum')).toBeVisible();
+        const key = `mb:ext:discogs:${DGA.small}`;
+        await expect.poll(() => idbHas(page, key)).toBe(true);
+        // As reader version 3 kept it (2026-10-17): no window data.
+        await page.evaluate((k) => new Promise((resolve, reject) => {
+            const req = indexedDB.open('vz-saed-detail-pages');
+            req.onsuccess = () => {
+                const db = req.result;
+                const store = db.transaction('pages', 'readwrite').objectStore('pages');
+                const g = store.get(k);
+                g.onsuccess = () => {
+                    const r = g.result;
+                    r.v = 303;
+                    r.data = { ...r.data, title: 'OLD RECORD', discogs: undefined, descInWindow: undefined };
+                    store.put(r).onsuccess = () => { db.close(); resolve(); };
+                };
+                g.onerror = reject;
+            };
+            req.onerror = reject;
+        }), key);
+        await reloadEvent(page);
+        await addAnnotationLinks(page, [DGA.small, DG.artist, DG.label]);
+        await ctrlHover(page, probe(page, 0));
+        await expect(card(page).locator('.mb-tt-title')).toHaveText('Max Weinberg');
+        expect((await xhrFull(page)).map(r => r.url), 'asked again').toEqual(['https://api.discogs.com/artists/254876']);
+    });
+});
+
 // U4: the four Springsteen sites' own parsers on links from MusicBrainz, and
 // the Brucebase date anchor. Pages are the detail-preview fixtures
 // (scripts/build-detail-fixtures.py; jungleland.it's is windows-1252 bytes,
@@ -1167,6 +1823,34 @@ const BBD = {
     january: 'https://brucebase.wikidot.com/2025#090125',
     none: 'https://brucebase.wikidot.com/2025#010125',
 };
+
+/**
+ * A solid PNG of a given size: an image answer that takes room once it
+ * has loaded (a 1×1 pixel would not move anything on the page).
+ *
+ * @param {number} w
+ * @param {number} h
+ * @returns {Buffer}
+ */
+function solidPng(w, h) {
+    const chunk = (type, data) => {
+        const len = Buffer.alloc(4);
+        len.writeUInt32BE(data.length);
+        const td = Buffer.concat([Buffer.from(type, 'ascii'), data]);
+        const crc = Buffer.alloc(4);
+        crc.writeUInt32BE(zlib.crc32(td) >>> 0);
+        return Buffer.concat([len, td, crc]);
+    };
+    const ihdr = Buffer.alloc(13);
+    ihdr.writeUInt32BE(w, 0);
+    ihdr.writeUInt32BE(h, 4);
+    ihdr.set([8, 0, 0, 0, 0], 8);
+    // One filter byte (0) and w grey pixels per row.
+    const rows = Buffer.alloc((w + 1) * h, 0x99);
+    for (let y = 0; y < h; y++) rows[y * (w + 1)] = 0;
+    return Buffer.concat([Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]), chunk('IHDR', ihdr),
+        chunk('IDAT', zlib.deflateSync(rows)), chunk('IEND', Buffer.alloc(0))]);
+}
 
 test.describe('the Springsteen sites across hosts (U4)', () => {
     test('which reader serves which link: the four sites\' detail pages, a Brucebase date; the rest generic', async ({ page }) => {
@@ -1234,8 +1918,13 @@ test.describe('the Springsteen sites across hosts (U4)', () => {
         await d.getByRole('button', { name: 'Live page' }).click();
         const frame = d.locator('iframe');
         await expect(frame).toHaveAttribute('srcdoc', /blog-post/);
-        expect(await frame.evaluate((f) => f.contentDocument.querySelectorAll('.mb-dp-hide').length),
-            'springsteenlyrics.com\'s own liveRoot hides its navigation').toBeGreaterThan(0);
+        // Set on the frame's load (_dpIsolateFrame()), after srcdoc: read
+        // once that has run. Read at once, it failed under a loaded full run
+        // (0 hidden, 2026-10-14).
+        await expect.poll(() => frame.evaluate((f) => {
+            const doc = f.contentDocument;
+            return doc && doc.documentElement && doc.documentElement.dataset.mbDpDone ? doc.querySelectorAll('.mb-dp-hide').length : -1;
+        }), 'springsteenlyrics.com\'s own liveRoot hides its navigation').toBeGreaterThan(0);
         expect((await xhrFull(page)).map(r => r.url), 'one request: the Live page reuses the hover\'s').toEqual([SP.sl]);
     });
 
@@ -1327,6 +2016,100 @@ test.describe('the Springsteen sites across hosts (U4)', () => {
             return se.scrollTop > 1000 && top >= 0 && top < 60;
         }), { timeout: 5000 }).toBe(true);
         expect((await xhrFull(page)).map(r => r.url)).toEqual([BB_YEAR, 'https://brucebase.wikidot.com/2025#261025']);
+    });
+
+    test('the Live page is prepared before its images are in, scrolled to the show again once they are, and a reader\'s scroll is kept', async ({ page }) => {
+        // The year page's 260 images on brucebase.wdfiles.com answer after
+        // 6 s, each a 40×40 picture that pushes the show down when it lands.
+        // Before 2026-10-17 nothing was trimmed, marked or scrolled until the
+        // frame's load event, i.e. until the last of them.
+        await openEvent(page, {
+            settings: { sa_pop_ext: true },
+            responses: {
+                [BB_YEAR]: htmlAnswer(page_('ext-bb-year-2025.html')),
+                'https://brucebase.wikidot.com/2025#261025': htmlAnswer(page_('ext-bb-year-2025.html')),
+            },
+        });
+        const IMG = solidPng(40, 40);
+        await page.context().route('https://brucebase.wdfiles.com/**', (route) => new Promise((resolve) => {
+            setTimeout(() => resolve(route.fulfill({ status: 200, contentType: 'image/png', body: IMG }).catch(() => {})), 6000);
+        }));
+        await addAnnotationLinks(page, [BBD.stonePony]);
+        await ctrlHover(page, probe(page, 0));
+        await expect(card(page)).toContainText('3 tracks');
+        await page.keyboard.press('Space');
+        const d = dialog(page);
+        await d.getByRole('button', { name: 'Live page' }).click();
+        const frame = d.locator('iframe');
+        await expect(frame).toHaveAttribute('srcdoc', /name="261025"/);
+        const state = () => frame.evaluate((f) => {
+            const doc = f.contentDocument;
+            const m = doc && doc.documentElement && doc.querySelector('.mb-dp-anchor');
+            return {
+                loaded: !!doc && doc.URL !== 'about:blank' && doc.readyState === 'complete',
+                trimmed: !!doc && !!doc.documentElement && doc.documentElement.classList.contains('mb-dp-isolate'),
+                marked: m ? m.textContent.trim().slice(0, 44) : '',
+                top: m ? Math.round(m.getBoundingClientRect().top) : null,
+                scrollTop: doc && doc.scrollingElement ? doc.scrollingElement.scrollTop : 0,
+            };
+        });
+        // Long before the images: trimmed, marked and scrolled to the show.
+        await expect.poll(state, { timeout: 2500 }).toMatchObject({
+            loaded: false, trimmed: true, marked: '2025-10-26 - THE STONE PONY, ASBURY PARK, NJ',
+        });
+        await expect.poll(async () => { const s = await state(); return s.top >= 0 && s.top < 60 && s.scrollTop > 1000; }, { timeout: 2500 }).toBe(true);
+        // As in a browser without scroll anchoring (Chromium's keeps the show
+        // in place by itself while the images land, which would hide whether
+        // the script scrolls to it again).
+        await frame.evaluate((f) => { f.contentDocument.documentElement.style.overflowAnchor = 'none'; f.contentDocument.body.style.overflowAnchor = 'none'; });
+        // Once they are in, scrolled to it again (they pushed it down).
+        await expect.poll(async () => (await state()).loaded, { timeout: 20000 }).toBe(true);
+        await expect.poll(async () => { const s = await state(); return s.top >= 0 && s.top < 60; }, { timeout: 3000 }).toBe(true);
+    });
+
+    test('a reader who scrolls the Live page before its images are in is not pulled back to the show', async ({ page }) => {
+        await openEvent(page, {
+            settings: { sa_pop_ext: true },
+            responses: {
+                [BB_YEAR]: htmlAnswer(page_('ext-bb-year-2025.html')),
+                'https://brucebase.wikidot.com/2025#261025': htmlAnswer(page_('ext-bb-year-2025.html')),
+            },
+        });
+        const IMG = solidPng(40, 40);
+        await page.context().route('https://brucebase.wdfiles.com/**', (route) => new Promise((resolve) => {
+            setTimeout(() => resolve(route.fulfill({ status: 200, contentType: 'image/png', body: IMG }).catch(() => {})), 4000);
+        }));
+        await addAnnotationLinks(page, [BBD.stonePony]);
+        await ctrlHover(page, probe(page, 0));
+        await expect(card(page)).toContainText('3 tracks');
+        await page.keyboard.press('Space');
+        const d = dialog(page);
+        await d.getByRole('button', { name: 'Live page' }).click();
+        const frame = d.locator('iframe');
+        const scrolled = () => frame.evaluate((f) => {
+            const doc = f.contentDocument;
+            return doc && doc.querySelector('.mb-dp-anchor') && doc.scrollingElement ? doc.scrollingElement.scrollTop : -1;
+        });
+        await expect.poll(scrolled, { timeout: 2500 }).toBeGreaterThan(1000);
+        // The reader turns the wheel back up the year page, right away
+        // (before the later scrolls at 0.3 and 1.5 s and the images at 4 s).
+        const box = await frame.boundingBox();
+        await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+        await page.mouse.wheel(0, -1500);
+        const top = () => frame.evaluate((f) => f.contentDocument.scrollingElement.scrollTop);
+        let settled = -1;
+        await expect.poll(async () => { const v = await top(); const same = v === settled; settled = v; return same; }, { intervals: [250] }).toBe(true);
+        // Where the show sits in the view now: well below its top.
+        const markTop = () => frame.evaluate((f) => f.contentDocument.querySelector('.mb-dp-anchor').getBoundingClientRect().top);
+        expect(settled, 'the wheel moved the page').toBeGreaterThanOrEqual(0);
+        expect(await markTop(), 'the show is below the top of the view').toBeGreaterThan(300);
+        // Past the later scrolls and the images' arrival (load): the show is
+        // NOT brought back to the top. (scrollTop itself may change: Chrome's
+        // scroll anchoring keeps what the reader looks at in place while the
+        // images above it take their room — measured 9393 → 10541.)
+        await expect.poll(() => frame.evaluate((f) => f.contentDocument.readyState), { timeout: 20000 }).toBe('complete');
+        await page.evaluate(() => new Promise((r) => setTimeout(r, 300)));
+        expect(await markTop(), 'not pulled back').toBeGreaterThan(300);
     });
 
     test('a cancelled show: no setlist, "did not take place", its /nogig: page', async ({ page }) => {

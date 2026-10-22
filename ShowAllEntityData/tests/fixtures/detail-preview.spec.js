@@ -587,10 +587,13 @@ test.describe('the other hosts', () => {
         await expect(frame).toHaveAttribute('sandbox', 'allow-same-origin allow-popups allow-popups-to-escape-sandbox');
         // Seen from the list page: same origin, so the frame's document is
         // readable. "Rendered" is measured by client rects: a child of a hidden
-        // ancestor keeps its own computed display.
+        // ancestor keeps its own computed display. While the frame swaps its
+        // first about:blank for the srcdoc copy, the document can briefly have
+        // no root element: a poll landing then must read "not yet", not throw
+        // (seen once in a full run under load, 2026-10-15).
         const state = () => page.evaluate(() => {
             const doc = document.querySelector('#mb-dp-dialog iframe').contentDocument;
-            if (!doc || !doc.documentElement.dataset.mbDpDone) return null;
+            if (!doc || !doc.documentElement || !doc.documentElement.dataset.mbDpDone) return null;
             const shown = (sel) => doc.querySelector(sel).getClientRects().length > 0;
             return { topBar: shown('.top-bar'), footer: shown('footer'), detail: shown('.project-detail') };
         });
@@ -810,7 +813,7 @@ test.describe('the other hosts', () => {
         await dialog.locator('button', { hasText: 'Live page' }).click();
         await expect.poll(() => page.evaluate(() => {
             const doc = document.querySelector('#mb-dp-dialog iframe').contentDocument;
-            if (!doc || !doc.documentElement.dataset.mbDpDone) return null;
+            if (!doc || !doc.documentElement || !doc.documentElement.dataset.mbDpDone) return null;
             const panels = Array.from(doc.querySelectorAll('#page-content .yui-content > div'));
             return {
                 sideBar: getComputedStyle(doc.getElementById('side-bar')).display,
@@ -834,5 +837,89 @@ test.describe('the other hosts', () => {
             return { handlers, js: doc.querySelectorAll('[href^="javascript:" i]').length };
         })).toEqual({ handlers: 0, js: 0 });
         expect(errors).toEqual([]);
+    });
+});
+
+// The initial page, before any button (WIP.4): the site's own lists preview
+// like the rendered table's rows. Pins, each against its neighbour:
+//   - a NATIVE detail link (Brucebase's song tabview on stats:songs, no
+//     table.tbl yet) shows its card — the guarantee the table-only test
+//     above cannot see;
+//   - ← → from such a link step through the page's VISIBLE detail links (a
+//     hidden tab's songs are skipped), not through a table that is not there;
+//   - the script's own toolbar is never a target, even with a detail link in it.
+test.describe('the initial page, before any button (Brucebase stats:songs)', () => {
+    const NATIVE = '#page-content a[href="/song:4th-of-july-asbury-park-sandy"]';
+
+    test('a native song link shows its card, from one request', async ({ page }) => {
+        const errors = trackPageErrors(page);
+        await loadBbSongsPage(page, { settingsOverride: { sa_bb_detail_preview: true } });
+        const { served } = await routeDetailPages(page, 'bb');
+        expect(await page.locator('table.tbl').count(), 'premise: nothing rendered yet').toBe(0);
+        await peekAt(page, page.locator(NATIVE));
+        await expect(peek(page).locator('.mb-dp-stat')).toHaveText('280 live performances');
+        expect(served).toEqual(['https://brucebase.wikidot.com/song:4th-of-july-asbury-park-sandy']);
+        expect(errors).toEqual([]);
+    });
+
+    test('← → step through the visible native song links', async ({ page }) => {
+        await loadBbSongsPage(page, { settingsOverride: { sa_bb_detail_preview: true } });
+        const { served } = await routeDetailPages(page, 'bb');
+        const order = await page.evaluate((sel) => {
+            const visible = Array.from(document.querySelectorAll('#page-content a[href^="/song:"]'))
+                .filter((a) => a.getClientRects().length);
+            const hidden = Array.from(document.querySelectorAll('#page-content a[href^="/song:"]'))
+                .filter((a) => !a.getClientRects().length).length;
+            const hrefs = [...new Set(visible.map((a) => a.href))];
+            const i = hrefs.indexOf(document.querySelector(sel).href);
+            return { next: hrefs[i + 1], hidden, i };
+        }, NATIVE);
+        expect(order.i, 'premise: the link is on the visible tab').toBeGreaterThanOrEqual(0);
+        expect(order.hidden, 'premise: other tabs hide their songs').toBeGreaterThan(0);
+        await peekAt(page, page.locator(NATIVE));
+        await expect(peek(page).locator('.mb-dp-stat')).toHaveText('280 live performances');
+        await page.keyboard.press('Space');
+        await expect(page.locator('#mb-dp-dialog')).toBeVisible();
+        await page.keyboard.press('ArrowRight');
+        await expect.poll(() => served.includes(order.next), { timeout: 15000 }).toBe(true);
+    });
+
+    test('→ from the visible tab\'s last song goes nowhere — never into a hidden tab', async ({ page }) => {
+        await loadBbSongsPage(page, { settingsOverride: { sa_bb_detail_preview: true } });
+        const { served } = await routeDetailPages(page, 'bb');
+        const order = await page.evaluate(() => {
+            const all = Array.from(document.querySelectorAll('#page-content a[href^="/song:"]'));
+            const visible = [...new Set(all.filter((a) => a.getClientRects().length).map((a) => a.getAttribute('href')))];
+            const hidden = [...new Set(all.filter((a) => !a.getClientRects().length).map((a) => a.href))];
+            return { last: visible[visible.length - 1], prev: visible[visible.length - 2], hidden };
+        });
+        expect(order.hidden.length, 'premise: other tabs hide their songs').toBeGreaterThan(0);
+        await peekAt(page, page.locator(`#page-content a[href="${order.last}"]`).first());
+        await page.keyboard.press('Space');
+        await expect(page.locator('#mb-dp-dialog')).toBeVisible();
+        await page.keyboard.press('ArrowRight');
+        // Control: ← does step. Requests are served in order, so a wrong step
+        // into a hidden tab would have asked before this one.
+        await page.keyboard.press('ArrowLeft');
+        const prev = new URL(order.prev, 'https://brucebase.wikidot.com').href;
+        await expect.poll(() => served.includes(prev), { timeout: 15000 }).toBe(true);
+        expect(served.filter((u) => order.hidden.includes(u)), 'no hidden-tab song was asked for').toEqual([]);
+    });
+
+    test('a detail link in the script\'s own toolbar is not a target', async ({ page }) => {
+        await page.clock.install();
+        await loadBbSongsPage(page, { settingsOverride: { sa_bb_detail_preview: true } });
+        const { served } = await routeDetailPages(page, 'bb');
+        await page.evaluate(() => {
+            const a = document.createElement('a');
+            a.href = '/song:4th-of-july-asbury-park-sandy';
+            a.id = 'probe-toolbar-link';
+            a.textContent = '4th';
+            document.getElementById('mb-show-all-controls-container').appendChild(a);
+        });
+        await hover(page, page.locator('#probe-toolbar-link'));
+        await page.clock.fastForward(1200);
+        expect(await page.locator('#mb-dp-peek:visible').count()).toBe(0);
+        expect(served).toEqual([]);
     });
 });
