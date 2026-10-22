@@ -3999,7 +3999,10 @@ there are already sections after that one, that were meant to be published but n
 
 rewrite all these and combine with the latest changes
 
-* TODO "Links" column - switch of the native tooltip on the FRP
+
+* TODO majkinetor: "Links" column - switch of the native tooltip on the FRP
+* TODO majkinetor: async issues
+* TODO majkinetor: no icons in the lower right corner
 
 
 * TODO tested live, OK; commit, push
@@ -4007,7 +4010,9 @@ rewrite all these and combine with the latest changes
 
 * TODO Release events - Japan need flag on the relationships area
 
+
 * TODO recapture user open edits page
+
 
 * TODO on collection pages, images should get internal viewer support + their tooltip should show a rich popup and highlight the corresponding row
 
@@ -4036,4 +4041,24 @@ b.)
 on collection pages, images should get internal viewer support + their tooltip should show a rich popup and highlight
 the corresponding row -> image hover popup + internal viewer click
 
+* TODO userscript size and managibility
 
+1.)
+
+Analyze the implications of our currently grown very large userscript regarding size (7.9 MB) and managibility and
+performance impact on the end-usersite when enabled in Tampermonkey and generate a comprehensive report.
+
+2.)
+
+Make suggestions for refactoring, see also @REFACTORING.org
+
+3.)
+
+Is it feasible to relocate specifically parts of the code in a library or multiple libraries
+
+#+begin_example
+code for href hovering, card and detail popups 
+code for non-MB PTs
+code for extractors
+etc.
+#+end_example
