@@ -66,7 +66,13 @@ mapping's direction: `WIP.1` must come out as the LOWEST new version. It exits
 to run unconditionally.
 
 The five steps it implements are CLAUDE.md's "At merge time (on `main`)"
-list; its module docstring explains each and why. The three that are easy to
+list; its module docstring explains each and why. A sixth follows them:
+`--apply` also rebuilds the GitHub changelog pages
+(`scripts/build-changelog-pages.py`: `ShowAllEntityData_RELEASES.md`,
+`ShowAllEntityData_CHANGELOG.md` and `ShowAllEntityData_CHANGELOG/*.md`) from
+the JSON it just changed, so commit them with the fold. They are what the
+Tampermonkey 📜 ChangeLog entry opens, and `scripts/check-publish-ready.py`
+fails while they are stale or missing from the mirror at script parity. The three that are easy to
 get wrong by hand, and the reason this is a script:
 
 - **Ordering.** The WIP file is stored newest-first (`WIP.10` at the top),

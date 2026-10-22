@@ -108,6 +108,12 @@ Describe the **net change from FROM to TO** as a FROM user experiences it.
 - Check: no trailing whitespace (`grep -nP '[ \t]+$' FORUM.org`), the
   counts in the opening paragraph match the diff, every setting named exists
   under that label at TO.
+- Rebuild the GitHub release notes: `python3 scripts/build-changelog-pages.py`.
+  `ShowAllEntityData_RELEASES.md` ("What's new", opened from the
+  Tampermonkey 📜 ChangeLog entry) is generated from these sections, and the
+  build fails when TO is not a version in `ShowAllEntityData_CHANGELOG.json`
+  (a typo in the heading, or a release that was never folded). Commit the
+  regenerated page with the section.
 - `FORUM.org` is not a userscript change: no version bump, no changelog
   entry. Show the diff; commit only when asked, as
   `[ShowAllEntityData] docs: FORUM.org section FROM -> TO`.

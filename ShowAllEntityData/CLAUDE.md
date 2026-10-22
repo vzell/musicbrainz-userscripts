@@ -388,6 +388,14 @@ it would stop being run. Its arms are mutation-checked by
 `scripts/check-publish-ready-gate.py` against a scratch mirror in a temp
 directory, never the real one. Full checklist: `org/config-handling.org` F6.
 
+**A publish copies the generated changelog pages too**: `ShowAllEntityData_RELEASES.md`
+("What's new", built from FORUM.org's release sections), `ShowAllEntityData_CHANGELOG.md`
+and the whole `ShowAllEntityData_CHANGELOG/` directory (the development log, one page per
+month), all written by `scripts/build-changelog-pages.py` (`--check`, `--selftest`).
+`fold-wip-changelog.py --apply` rebuilds them; `check-publish-ready.py` fails while they are
+stale here or missing from the mirror at script parity, because the Tampermonkey
+📜 ChangeLog entry opens them on GitHub.
+
 ## Git Workflow
 - Never commit feature work directly to `main`. Always create a feature branch first (`git checkout -b <topic>`), commit there, then merge via PR or fast-forward and push.
 - **NEVER merge an implementation branch into `main` without asking first —
