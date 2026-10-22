@@ -1157,6 +1157,57 @@ from the page (no Web Service), through `_mbPageLoad()`.
   `popup-mb-edits.mobile.spec.js`; mutations
   `scripts/mutations/popup-user-lists.json` (14, all caught).
 
+## MusicBrainz: an entity's subscribers and collections (2026-10-22)
+
+The sidebar's "Subscribers" (`/<kind>/<MBID>/subscribers`) and "Found in N
+user collections" (`/<kind>/<MBID>/collections`) links. Both are read from
+the page (`_mbPopPageKind()`). Those pages are also pageTypes since the same
+branch (PAGETYPES-TESTING-REFERENCE.org #115–#127).
+
+- **Path:** `_MB_POP_ENTITY_LIST_RE`, checked in `_mbPopParsePath()` after
+  the account pages. The id is `<kind>/<MBID>`, with the MBID lowercased.
+  - Subscribers exist only for `_MB_POP_SUBSCRIBABLE` (artist, label,
+    series, collection).
+  - Collections exist for every collectable kind except a collection.
+  - Any other combination is `null`: no card rather than one that can only
+    fail.
+- **`subscribers` is the editor's kind, widened.**
+  - `path()` tells the two cases apart by `_mbPopListOf(id)` (the entity
+    kind, or '' for an editor's name).
+  - The card's and window's kind word comes from the same function.
+  - `_mbParseSubscribersPage()` takes the name from the h1's editor link, and
+    otherwise from the h1's first `<bdi>`: an entity page's h1 links nothing.
+  - The page shape is the same, except it sits inside `#content`, which
+    `_mbPopH2Section(#page)` reaches anyway.
+- **`collections`** (`_mbParseEntityCollectionsPage()`):
+  - It reads `#content`'s h2 "Collections". **The sidebar has an h2
+    "Collections" of its own** (the reader's collections, "Add to a new
+    collection"). It comes later in the document, so the first match is
+    already right. Reading `#content` makes that explicit, and the mutation
+    is recorded as `expect: pass`.
+  - The total is the `<p>`'s "has been added to N collections" (N includes
+    the private ones). The private count comes from the last `<li>`. An
+    empty page ("has not been added to any collections", no `<ul>`) falls
+    back to the counted rows, 0.
+  - The card shows pills, then the first `_MB_POP_COLLS_CARD_ROWS` (8) as
+    "name by owner".
+  - The window has a Collection | Editor table, both linked, so a click
+    drills into the collection's or the editor's card.
+- **Glyph:** both kinds are in `_MB_KIND_ICON_FROM_ID`, which now applies
+  only to an id containing `/`. An editor's subscribers (the id is the name)
+  keep the editor glyph.
+- **No `_MB_POP_PAGE_VERSION` bump.** An editor's subscribers record is
+  unchanged, and the entity records are new keys.
+- **Fixtures:** `entity-artist-subscribers.html` (the host: its sidebar holds
+  the real snapshot's two links), `entity-artist-collections.html` and
+  `entity-release-collections-empty.html`, all built by
+  `scripts/make-entity-list-fixtures.py`.
+- **Spec:** `popup-mb-entity-lists.spec.js` (PATH, SUBS, COLLS, EDITOR,
+  EMPTY).
+- **Mutations:** `scripts/mutations/popup-entity-lists.json` has 12 entries.
+  10 are caught; 2 are recorded as `pass`: the total is covered by the
+  fallback on this page, and the `#content` scope by document order.
+
 ## MusicBrainz: an annotation's history and its versions (2026-10-21)
 
 An annotation's own line ("View annotation history | Edit annotation", in

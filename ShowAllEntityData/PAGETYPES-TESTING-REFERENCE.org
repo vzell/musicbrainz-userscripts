@@ -117,7 +117,7 @@ skill for turning a =planned= row into a =captured= one.
 | Area/place "list-of-X"                           | area-artists, area-events, area-labels, area-users, area-places, place-events                                                                                                                                                                                                                                         | area-artists, place-events                             | planned                                                      | —                                                                                                                                                                                                                                                                |
 | Instrument "list-of-X"                           | instrument-artists, instrument-releases, instrument-recordings                                                                                                                                                                                                                                                        | instrument-releases                                    | planned                                                      | =INSTR_GT= ("Guitar") likely has a large real catalog — substitute a rarer instrument (e.g. "lap steel guitar") for this specific row, not for instrument-tags/entity-aliases which stay tiny regardless.                                                        |
 | Release/RG discography-style (CAA+CountryDate)   | artist-releases, label-releases, releasegroup-releases, recording-releases, area-releases                                                                                                                                                                                                                             | releasegroup-releases, recording-releases (REC_BTR)    | releasegroup-releases *captured*; recording-releases planned | artist-releases/label-releases anchor on large catalogs (full Springsteen/Columbia discography) — substitute a smaller connected artist/label before capturing those specifically; area-releases is bespoke (see below), not part of this cluster's dedup.       |
-| =release-collections=/=releasegroup-collections= | 2 types, identical shape                                                                                                                                                                                                                                                                                              | release-collections (REL_BTR)                          | planned                                                      | —                                                                                                                                                                                                                                                                |
+| =<entity>-collections= / =<entity>-subscribers=  | 11 collections types (release, releasegroup + 9 more) and 5 subscribers types (editor, artist, label, series, collection); one shape each                                                                                                                                                                             | artist-collections, artist-subscribers                 | planned                                                      | Fixture-covered (entity-collections-subscribers.spec.js). Live capture blocked from vzell-lap (IPv4).                                                                                                                                                            |
 | =entityFeatures=-per-H2 single/multi-view pairs  | artist-credit(+entity), user-ratings(+type), user-tag-value(+entity), tag-value(+entity)                                                                                                                                                                                                                              | artist-credit + artist-credit-entity (AC_ID)           | planned                                                      | =AC_ID= ("...with Garland Jeffreys") is a rare, specific credit combo — naturally small, satisfying both criteria at once. =tag-value=/=user-tag-value=(-entity) currently use the generic tag "rock" — substitute a low-cardinality tag before capturing those. |
 | Global/admin, single instances                   | reports-index, report-multiple-linked, report-detail, auto-elections, auto-editor-election, genres-list, instrument-list, privileged-accounts, edit-types, popular-tags, top-cd-stub, cd-stub, isrc, taglookup, cdtoc, editor-subscribers, user-subscriptions, account-applications, user-collections, ratings-entity | (test each individually)                               | planned                                                      | Not a redundant cluster — each renders genuinely different content — but all are cheap/non-Springsteen-anchored or naturally small, so capture opportunistically as backlog time allows.                                                                         |
 
@@ -273,6 +273,26 @@ skill for turning a =planned= row into a =captured= one.
 | 112 | dg-ratings                    | single       | discogs.com /users/ratings/NAME                | NOT MusicBrainz, opt-in; plain HTML: the user's ratings pages, 250 a page, same-origin                                     |
 | 113 | user-profile                  | multi        | /user/USER                                     | non-paginated, own converter, groupByH3, integerColumns                                                                    |
 | 114 | annotation-version            | multi        | /release/REL_TTTR/annotation/810603            | non-paginated, own converter (page JSON), groupByH3, block compare + rich diff cards                                       |
+| 115 | area-collections              | single       | /area/MBID/collections                         | listToTable (Structure C), Collection/Editor split, foldPrivateCollections, showIf                                         |
+| 116 | artist-collections            | single       | /artist/MBID/collections                       | listToTable (Structure C), Collection/Editor split, foldPrivateCollections, showIf                                         |
+| 117 | event-collections             | single       | /event/MBID/collections                        | listToTable (Structure C), Collection/Editor split, foldPrivateCollections, showIf                                         |
+| 118 | instrument-collections        | single       | /instrument/MBID/collections                   | listToTable (Structure C), Collection/Editor split, foldPrivateCollections, showIf                                         |
+| 119 | label-collections             | single       | /label/MBID/collections                        | listToTable (Structure C), Collection/Editor split, foldPrivateCollections, showIf                                         |
+| 120 | place-collections             | single       | /place/MBID/collections                        | listToTable (Structure C), Collection/Editor split, foldPrivateCollections, showIf                                         |
+| 121 | recording-collections         | single       | /recording/MBID/collections                    | listToTable (Structure C), Collection/Editor split, foldPrivateCollections, showIf                                         |
+| 122 | series-collections            | single       | /series/MBID/collections                       | listToTable (Structure C), Collection/Editor split, foldPrivateCollections, showIf                                         |
+| 123 | work-collections              | single       | /work/MBID/collections                         | listToTable (Structure C), Collection/Editor split, foldPrivateCollections, showIf                                         |
+| 124 | artist-subscribers            | single       | /artist/MBID/subscribers                       | listToTable (Structure C), foldAnonymousSubscribers, showIf                                                                |
+| 125 | label-subscribers             | single       | /label/MBID/subscribers                        | listToTable (Structure C), foldAnonymousSubscribers, showIf                                                                |
+| 126 | series-subscribers            | single       | /series/MBID/subscribers                       | listToTable (Structure C), foldAnonymousSubscribers, showIf                                                                |
+| 127 | collection-subscribers        | single       | /collection/MBID/subscribers                   | listToTable (Structure C), foldAnonymousSubscribers, showIf                                                                |
+| 128 | user-accepted-edits           | single       | /user/USER/edits/accepted                      | edits-to-table, unbounded pagination, renameH2ToH1, CAA                                                                    |
+| 129 | user-autoedits                | single       | /user/USER/edits/autoedits                     | edits-to-table, unbounded pagination, renameH2ToH1, CAA                                                                    |
+| 130 | user-applied-edits            | single       | /user/USER/edits/applied                       | edits-to-table, unbounded pagination, renameH2ToH1, CAA                                                                    |
+| 131 | user-rejected-edits           | single       | /user/USER/edits/rejected                      | edits-to-table, unbounded pagination, renameH2ToH1, CAA                                                                    |
+| 132 | user-failed-edits             | single       | /user/USER/edits/failed                        | edits-to-table, unbounded pagination, renameH2ToH1, CAA                                                                    |
+| 133 | user-cancelled-edits          | single       | /user/USER/edits/cancelled                     | edits-to-table, unbounded pagination, renameH2ToH1, CAA                                                                    |
+| 134 | user-votes                    | single       | /user/USER/votes                               | edits-to-table, unbounded pagination, renameH2ToH1, CAA                                                                    |
 
 * Page type details
 ** 1. taglookup
@@ -322,10 +342,10 @@ skill for turning a =planned= row into a =captured= one.
 
 ** 6. editor-subscribers
 - URL: [[https://musicbrainz.org/user/vzell/subscribers][/user/USER/subscribers]]
-- Match: ~path.includes('/subscribers')~
+- Match: ~/^\/user\/[^/]+\/subscribers\/?$/~ (anchored since the entity subscribers pages, #124–#127)
 - Button: "Show all Editor Subscribers for User"
 - tableMode: single
-- Features exercised: =listToTable=
+- Features exercised: =listToTable=, =foldAnonymousSubscribers=, =showIf: _hasH2List=
 
 ** 7. account-applications
 - URL: [[https://musicbrainz.org/account/applications][/account/applications]]
@@ -515,7 +535,7 @@ lists converted into sortable tables), tableMode =multi=.
 - Match: ~/\/release\/[a-f0-9-]{36}\/collections/~
 - Button: "Show all Collections for Release"
 - tableMode: single
-- Features exercised: =listToTable=, Collections column split into Collection/Editor
+- Features exercised: =listToTable=, Collections column split into Collection/Editor, =foldPrivateCollections=, =showIf: _hasH2List= (no button on "has not been added to any collections")
 
 ** 42. releasegroup-collections
 - URL: [[https://musicbrainz.org/release-group/39b22944-7503-3937-8bba-09b17281cc6a/collections][/release-group/RG_BTR/collections]]
@@ -556,7 +576,7 @@ lists converted into sortable tables), tableMode =multi=.
 - Match: ~/^\/user\/[^/]+\/edits$/~
 - Button: "Show all Edits for User"
 - tableMode: single
-- Features exercised: same as #46 but =insertH2: 'Edits'= and no =renameH2ToH1= (this page already has both an =<h1>= and the edits =<h2>=)
+- Features exercised: same as #46 but =insertH2: 'Edits'= (the page has no =<h1>= either: its title is the =<h2>= "Edits by USER", re-probed 2026-10-22)
 
 ** 48. search
 - URL: [[https://musicbrainz.org/search?query=Bruce+Springsteen&type=artist][/search?query=Bruce+Springsteen&type=artist]]
@@ -1042,6 +1062,30 @@ lists converted into sortable tables), tableMode =multi=.
 - =div#content= present; a real h1; the only native h2 is the annotation's own =h2.annotation= inside =div.annotation=. No table, no pagination.
 - Features exercised: =annotationCompareToTables= (=applyAnnotationCompareToTables()=, from the page JSON =_mbAnnotationPageData()=: "This version" as Field | Value and "Compared with the current version" as # | Section | This version | Current version | Status, =_annotationCompareRows()=, a changed row's status span carrying the rich diff card), =groupByH3=. The native annotation stays above the new h2 "Annotation versions".
 - Coverage: =tests/fixtures/annotation-version-compare.spec.js= (old release version, old artist version, the current version, a Save → Load round trip) over =release-annotation-version.html=, =release-annotation-current.html=, =artist-annotation-version.html=; mutations =scripts/mutations/annotation-version-compare.json=.
+
+** 115.–123. <entity>-collections (area, artist, event, instrument, label, place, recording, series, work)
+- URL: the sidebar's "Found in N user collections", e.g. [[https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/collections][/artist/ARTIST/collections]].
+- Match: ~/\/<entity>\/[a-f0-9-]{36}\/collections/~, one entry per entity kind, all in the "Collections pages" group next to #41/#42 — above the broad entity matchers (=includes('/label')=, =includes('/series')=, =/work/<mbid>=, =includes('/recording')=, …) that would otherwise claim them.
+- Button: "Show all Collections for <Entity>" (short: Collections), only when the page has a list (=showIf: _hasH2List=).
+- tableMode: single; same shape as #41 (=div#content=, h2 "Collections", intro =<p>=, =<ul>=, last =<li>= "plus N other private collections"; no pagination).
+- Features exercised: =listToTable= Structure C (=_ENTITY_COLLECTIONS_RE=), =Collection_Editor= split, =foldPrivateCollections= (=finalCleanup()=: footer row out of the table AND =allRows=, intro rewritten).
+- Coverage: =tests/fixtures/entity-collections-subscribers.spec.js= over =entity-artist-collections.html= (built by =scripts/make-entity-list-fixtures.py=); the routing tests serve that fixture at every other entity's URL. Mutations =scripts/mutations/entity-collections-subscribers.json=. Snapshot baseline: planned.
+
+** 124.–127. <entity>-subscribers (artist, label, series, collection)
+- URL: the sidebar's "Subscribers", e.g. [[https://musicbrainz.org/label/45ffe1d8-92da-4750-9a4a-f42861f46e2c/subscribers][/label/LABEL/subscribers]]. Only these four entity kinds can be subscribed to.
+- Match: ~/\/<entity>\/[a-f0-9-]{36}\/subscribers/~, right after #6 (whose match is anchored to =/user/= since) and above #43 collections-releases (unanchored =/collection/<mbid>=). Own =@include= line.
+- Button: "Show all Subscribers for <Entity>" (short: Subscribers), =showIf: _hasH2List=.
+- tableMode: single; same shape as #6 (h2 "Subscribers", intro "There are currently N users subscribed to X:", =<ul>=, optional last =<li>= "Plus N other anonymous users", a subscribe =<p>=; no pagination).
+- Features exercised: =listToTable= Structure C, =foldAnonymousSubscribers=.
+- Coverage: same spec, over =entity-artist-subscribers.html= (anonymous footer) and =entity-label-subscribers.html= (none). Snapshot baseline: planned.
+
+** 128.–134. An editor's other edit lists (user-accepted-edits, user-autoedits, user-applied-edits, user-rejected-edits, user-failed-edits, user-cancelled-edits, user-votes)
+- URL: the "view" links of a profile's Statistics, e.g. [[https://musicbrainz.org/user/vzell/edits/rejected][/user/USER/edits/rejected]], [[https://musicbrainz.org/user/vzell/votes][/user/USER/votes]] (the edits the editor voted on).
+- Match: ~/^\/user\/[^/]+\/edits\/<status>\/?$/~ and ~/^\/user\/[^/]+\/votes\/?$/~, right after #47. The =@include= line of the user pages admits all seven.
+- Button: "Show all <Status> Edits for User" (short: <Status> Edits), "Show all Auto-edits for User", "Show all Votes for User".
+- tableMode: single; the same page as #46/#47, probed logged in 2026-10-22 (=scripts/probe-user-edit-lists.py=): no =<h1>=, one title =<h2>= ("Accepted edits by USER", "Votes by USER", …), no =div.tabs=, 50 =div.edit-list= a page, "Found [at least] N edits" and the pagination widget. Login-gated, like #46.
+- Features exercised: same as #46, with =insertH2= naming the list. The header fallback for a page with no =<h1>= is keyed on =features.renameH2ToH1= since (it named #46/#47 only).
+- Coverage: =tests/fixtures/user-edit-lists.spec.js= (=@include=, each list's own button, the rejected list's render) over =edits-page-user-vzell-rejected.html= and =edits-page-user-vzell-votes.html=; the rejected page stands in for the statuses without a fixture. Mutations =scripts/mutations/user-edit-lists.json=. Snapshot baseline: planned.
 
 ** Relationship-tables buttons on existing pageTypes (not pageTypes of their own)
 =_relTablesButton()= adds a second button to series-releases, work-recordings, releasegroup-releases, recording-releases (with "Related works" as "Via <work>" tables), label-relationships and artist-relationships ("Relationship lists"), and release-tracks ("Credits", the release's own =#release-relationships= and its group's =#release-group-relationships=, never the per-medium track credits). Each runs as its own pageType for that render (=series-relationship-tables=, =work-relationship-tables=, =releasegroup-relationship-tables=, =recording-relationship-tables=, =label-relationship-tables=, =artist-relationship-tables=, =release-credit-tables=; =buttonConfig.type= switches =pageType= in =startFetchingProcess()=), with only its own features (=replaceFeatures=), and removes the page's main data section (=removeMain=, =_relRemoveMainSections()=). A saved file records that pageType and loads back as the same button (=_activateButtonForSavedPageType()=). Hidden with =sa_enable_relationship_tables= off (=showIf=). Coverage: =tests/fixtures/rel-tables-recording.spec.js= (incl. the main button unchanged and a Save → Load round trip) and =rel-tables-pages.spec.js=, raw captures =tests/fixtures/rel-{series,work,label-rels,artist-rels,release-group,recording,release}-overview.html=.

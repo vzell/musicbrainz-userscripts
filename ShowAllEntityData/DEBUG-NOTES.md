@@ -25383,3 +25383,87 @@ their own assertion, 1 recorded as `"expect": "pass"`). The jesus2099, ms and
 column specs pass, 90/90.
 `test:full` on the branch (uncommitted tree on 44d4379), 18:57:30–19:09:24
 CEST, 14 workers: 2134/2134 passed, wall 11 m 54 s.
+
+## 2026-10-22 — entity collections and subscribers pages: 13 new pageTypes; the private-collections footer came back on a sort (branch feat/entity-collections-subscribers)
+
+Env: 2026-10-22T01:17:33+02:00 · vzell-lap · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.54.1-microsoft-standard-WSL2) · Playwright 1.62.1 Chromium · no Tampermonkey (GM stubs)
+
+**Asked:** an entity's sidebar links to `/<entity>/<mbid>/collections`
+("Found in N user collections") and, for artists, labels and series, to
+`/<entity>/<mbid>/subscribers`. Only release and release-group collections
+and `/user/<name>/subscribers` were supported.
+
+**Snapshots** (the user's browser, rendered-DOM saves: they carry other
+userscripts' markup, and `release-collections.html` already has this script's
+toolbar, so they are not fixtures as they stand):
+- `debug/artist-sidebar.html`: Bruce Springsteen's overview page, with the
+  sidebar's two links.
+- `debug/artist-collections.html`: `div#content` is present, the real h1 is
+  followed by the tabs. Then h2 "Collections", the `<p>` "Bruce Springsteen has
+  been added to 34 collections:", and a `<ul>` of 12 `<li>`s:
+  - 11 entries of `<a collection> by <a user>`;
+  - the last `<li>` reads "plus 23 other private collections".
+
+  No pagination. The shape is #41 `release-collections`'s.
+- `debug/release-collections.html`: the EMPTY variant. The h2 and the `<p>`
+  "Tougher Than the Rest has not been added to any collections." are there,
+  with no `<ul>`. Our toolbar in that save shows the button was offered
+  anyway, with nothing to render.
+- `debug/artist-subscribers.html`: h2 "Subscribers", the `<p>` "There are
+  currently 37 users subscribed to Bruce Springsteen:", and a `<ul>` of 29
+  `<li>`s, the last one "Plus 9 other anonymous users". Then the `<p>` "You are
+  currently subscribed. Unsubscribe?". No pagination. The shape is #6
+  `editor-subscribers`'s.
+- `debug/label-subscribers.html`: the same, 2 users, no anonymous footer.
+
+**Routing, before the change:**
+- `/artist|label|series/<mbid>/subscribers` was not in any `@include`.
+- If it had been, `editor-subscribers`' `includes('/subscribers')` would have
+  claimed it.
+- `/<entity>/<mbid>/collections` WAS included (line 17), but fell to whichever
+  broad matcher came first: `includes('/label')`, `includes('/series')`,
+  `/work/<mbid>` without `link_type_id`, `includes('/recording')`, ….
+
+**Change:**
+- 9 `<entity>-collections` entries next to #41/#42, above every broad matcher.
+- 4 `<entity>-subscribers` entries (artist, label, series, collection) right
+  after `editor-subscribers`, whose match is now anchored to `/user/`. They sit
+  above `collections-releases`, whose `/collection/<mbid>` match is unanchored.
+- A new `@include` line for the four subscribers paths.
+- Structure C's collections test is `_ENTITY_COLLECTIONS_RE`. The h2 → `<ul>`
+  walk is `_h2ListUl()`, shared with the new `showIf: _hasH2List`, so an empty
+  page gets no button.
+- `finalCleanup()`'s two `pageType ===` branches are now
+  `features.foldPrivateCollections` / `features.foldAnonymousSubscribers`.
+
+**Found on the way, a bug in #41/#42 since they were added.** The
+collections branch removed the "plus N other private collections" row from
+the DOM only, while the subscribers branch also spliced it out of
+`allRows`/`originalAllRows`. `renderFinalTable()` re-renders from those
+arrays, so the first sort put the row back.
+- **Reproduced** on the unchanged code with the new spec's re-sort test
+  (fixture served as a release's page): `rows.some(/other private/)` was `true`.
+- **Fixed** by `_spliceFooterRow()`, now used by both branches.
+
+**Fixtures:** built by `scripts/make-entity-list-fixtures.py`. It takes the
+entity name and `div#content` from the h2 on, verbatim, and puts them into a
+minimal page. Every editor name (subscribers and collection owners) becomes
+`editor-N`, as for `subscribers.html` on 2026-10-21.
+
+**Tests:** `tests/fixtures/entity-collections-subscribers.spec.js`, 17 tests:
+- the rendering of artist collections, artist subscribers and label
+  subscribers;
+- the re-sort;
+- no button on the empty page;
+- routing of every entity kind's URL, including `/user/vzell/subscribers`
+  still being the editor's.
+
+`scripts/mutations/entity-collections-subscribers.json`: 9/9 failed as
+expected. The related specs (popup user lists, recording-of pageTypes, the
+four tag-value specs) pass, 84/84. The `@include` line is not visible to a
+fixture: the harness injects regardless.
+
+**Not verified:** that `/collections` exists for every one of the 11 entity
+kinds, and `/subscribers` only for artist/label/series/collection. This follows
+MusicBrainz's collection and subscription types. vzell-lap cannot reach
+MusicBrainz over IPv4, so it is left to a browser check.

@@ -15,9 +15,10 @@
 // @require      file:///V:/home/vzell/git/musicbrainz-userscripts/lib/VZ_MBLibrary.user.js
 // @include      /^https?:\/\/(?:[^\/]+\.)?musicbrainz\.(?:org|eu)\/(?:artist|release-group|release|work|recording|label|series|place|area|instrument|event|collection|url)\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/?(?:\?.*)?$/
 // @include      /^https?:\/\/(?:[^\/]+\.)?musicbrainz\.(?:org|eu)\/(?:artist|release-group|release|work|recording|label|series|place|area|instrument|event)\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/(?:aliases|releases|recordings|works|events|relationships|discids|fingerprints|performances|places|artists|labels|tags|users|collections|ratings|edits|annotations|annotation(?:\/\d+)?)\/?(?:\?.*)?$/
+// @include      /^https?:\/\/(?:[^\/]+\.)?musicbrainz\.(?:org|eu)\/(?:artist|label|series|collection)\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/subscribers\/?(?:\?.*)?$/
 // @include      /^https?:\/\/(?:[^\/]+\.)?musicbrainz\.(?:org|eu)\/release\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}(?:\/disc\/\d+)?\/?(?:\?[^#]*)?(?:#.*)?$/
 // @include      /^https?:\/\/(?:[^\/]+\.)?musicbrainz\.(?:org|eu)\/(?:search\?query=.*|search\/edits\/?(?:\?.*)?|edit\/(?:subscribed(?:_editors)?|notes-received)\/?(?:\?.*)?|account\/applications\/?(?:\?.*)?|tags.*|tag\/.*|cdtoc\/.*|taglookup.*|artist-credit\/.*|reports.*|report\/.*|elections\/?(?:\?.*)?|election\/.*|genres\/?(?:\?.*)?|cdstub\/.*|isrc\/.*|iswc\/.*|doc\/Edit_Types\/?(?:\?.*)?|instruments\/?(?:\?.*)?|privileged\/?(?:\?.*)?)$/
-// @include      /^https?:\/\/(?:[^\/]+\.)?musicbrainz\.(?:org|eu)\/user\/[^\/]+\/(?:subscriptions\/.*|subscribers\/?(?:\?.*)?|collections\/?(?:\?.*)?|ratings\/.*|ratings(?:\?.*)?|tags.*|tag\/.*|edits(?:\/open)?\/?(?:\?.*)?)$/
+// @include      /^https?:\/\/(?:[^\/]+\.)?musicbrainz\.(?:org|eu)\/user\/[^\/]+\/(?:subscriptions\/.*|subscribers\/?(?:\?.*)?|collections\/?(?:\?.*)?|ratings\/.*|ratings(?:\?.*)?|tags.*|tag\/.*|edits(?:\/(?:open|accepted|autoedits|applied|rejected|failed|cancelled))?\/?(?:\?.*)?|votes\/?(?:\?.*)?)$/
 // @include      /^https?:\/\/(?:[^\/]+\.)?musicbrainz\.(?:org|eu)\/user\/[^\/?#]+\/?(?:[?#].*)?$/
 // @include      /^https?:\/\/(?:www\.)?springsteenlyrics\.com\/(?:collection|bootlegs|brucelegs)\.php\?(?:[^#]*&)?cmd=list(?:[&#].*)?$/
 // @include      /^https?:\/\/(?:www\.)?springsteenlyrics\.com\/collection\.php(?:\?(?:(?:[^#]*&)?cmd=intro(?:&[^#]*)?|pg=\d+(?:&[^#]*)?))?(?:#.*)?$/
@@ -9711,6 +9712,44 @@
     }
 
     /**
+     * An entity's "Found in N user collections" page: every entity kind that
+     * can be put in a collection (Structure C of `applyListToTable()`).
+     */
+    const _ENTITY_COLLECTIONS_RE =
+        /\/(?:area|artist|event|instrument|label|place|recording|release|release-group|series|work)\/[a-f0-9-]{36}\/collections/;
+
+    /**
+     * The `<ul>` an `<h2>` heads in Structure C of `applyListToTable()`:
+     * the first `<ul>` among its next five element siblings (an intro `<p>`
+     * sits between them), or null.
+     *
+     * @param {Element} h2
+     * @returns {Element|null}
+     */
+    function _h2ListUl(h2) {
+        let _next = h2.nextElementSibling;
+        for (let _steps = 0; _next && _steps < 5; _steps++) {
+            if (_next.tagName === 'UL') return _next;
+            _next = _next.nextElementSibling;
+        }
+        return null;
+    }
+
+    /**
+     * A button's `showIf` for the h2 + `<ul>` list pages (collections,
+     * subscribers): true when the live page has a list for Structure C to
+     * convert, read from the same root it reads. An entity in no collection
+     * ("… has not been added to any collections.") has only the h2 and a
+     * `<p>`, and gets no button rather than one that renders nothing.
+     *
+     * @returns {boolean}
+     */
+    function _hasH2List() {
+        const _root = document.getElementById('content') || document.body;
+        return Array.from(_root.querySelectorAll('h2')).some(h2 => !!_h2ListUl(h2));
+    }
+
+    /**
      * Converts `<ul>` list elements on the live page (or a fetched document) into
      * `<table class="tbl">` elements so the standard fetch / filter / sort pipeline
      * can process them.  Called for every entry in `features.listToTable`.
@@ -9718,7 +9757,8 @@
      * Supports seven distinct DOM structures, selected by path and sectionId:
      *   A) div-wrapped  — `<div id="sectionId"><ul>…</ul></div>`
      *   B) bare-ul      — `<ul class="<singular>-list">…</ul>`
-     *   C) h2+ul        — area-users, tag-value-entity, user-tag-value-entity, subscribers
+     *   C) h2+ul        — area-users, tag-value-entity, user-tag-value-entity,
+     *                     editor and entity subscribers, entity collections
      *   D) h3+ul        — one-segment tag pages (/tag/VALUE, /user/USERNAME/tag/VALUE)
      *   E) h3+ul (popular-tags) — /tags page after renameH2ToH3 has renamed the
      *                              original h2 headings to h3
@@ -9792,21 +9832,14 @@
                 const _isUserTagValueEntity = _currentPath.match(/\/user\/[^/]+\/tag\/[^/]+\/.+/); // /user/.../tag/<v>/<entity>
                 const _isTagValue           = !_isTagValueEntity && _currentPath.match(/\/tag\//); // one-segment only
                 const _isSubscribers        = _currentPath.includes('/subscribers');
-                const _isEntityCollections  = _currentPath.match(/\/(?:release|release-group)\/[a-f0-9-]{36}\/collections/);
+                const _isEntityCollections  = _currentPath.match(_ENTITY_COLLECTIONS_RE);
 
                 // ── Structure C: h2+ul (/area/<mbid>/users, /tag/<v>/<entity>,
                 //                       /user/.../tag/<v>/<entity>, /subscribers,
-                //                       /release|release-group/<mbid>/collections) ─
+                //                       /<entity>/<mbid>/collections) ─────────
                 if (_isAreaUsers || _isTagValueEntity || _isUserTagValueEntity || _isSubscribers || _isEntityCollections) {
                     Array.from(_root.querySelectorAll('h2')).forEach(_h2 => {
-                        let _next  = _h2.nextElementSibling;
-                        let _steps = 0;
-                        let _ul    = null;
-                        while (_next && _steps < 5) {
-                            if (_next.tagName === 'UL') { _ul = _next; break; }
-                            _next = _next.nextElementSibling;
-                            _steps++;
-                        }
+                        const _ul = _h2ListUl(_h2);
                         if (!_ul) return;
 
                         // Column name derivation:
@@ -21182,10 +21215,12 @@
     /**
      * Kinds whose glyph is their entity's, read from the id
      * (`<kind>/<MBID>…`): an annotation history or version shows the
-     * release's (artist's, …) own glyph.
+     * release's (artist's, …) own glyph, an entity's subscribers or
+     * collections (2026-10-22) the artist's. An id with no `/` (an editor's
+     * subscribers: the id is the name) keeps the kind's own glyph.
      * @type {Set<string>}
      */
-    const _MB_KIND_ICON_FROM_ID = new Set(['annotations', 'annotation']);
+    const _MB_KIND_ICON_FROM_ID = new Set(['annotations', 'annotation', 'subscribers', 'collections']);
 
     /**
      * Popup sources other than `mb-entity` whose targets are MusicBrainz
@@ -21211,7 +21246,7 @@
         // An editing history shows the glyph of what it is the history of;
         // an annotation the glyph of the entity it annotates.
         const type = t.type === 'edits' ? _mbEditsLabel(String(t.id || '')).icon
-            : (_MB_KIND_ICON_FROM_ID.has(t.type) ? String(t.id || '').split('/')[0] : t.type);
+            : (_MB_KIND_ICON_FROM_ID.has(t.type) && String(t.id || '').includes('/') ? String(t.id).split('/')[0] : t.type);
         const stem = Object.prototype.hasOwnProperty.call(_MB_KIND_ICON, type) ? _MB_KIND_ICON[type] : '';
         return stem ? `${window.location.origin}/static/images/entity/${stem}.svg` : '';
     }
@@ -24720,9 +24755,11 @@
      * — identical DOM-manipulation approach, just `<h1>` instead of `<h3>`.
      *
      * This is a DOM pre-processing step for pageTypes that carry
-     * `features.renameH2ToH1: true` (currently 'user-edits'/'user-open-edits').
-     * Those pages render no native `<h1>` at all — their only heading is a
-     * `<h2>` ("Edits by <username>" / "Open edits by <username>"). Left as an
+     * `features.renameH2ToH1: true` (currently an editor's edit lists:
+     * 'user-edits', 'user-open-edits', the other 'user-*-edits' and
+     * 'user-votes'). Those pages render no native `<h1>` at all — their only
+     * heading is a `<h2>` ("Edits by <username>", "Votes by <username>", …).
+     * Left as an
      * `<h2>`, both the page-load button-toolbar injection and the post-render
      * filter/count/CAA-toggle injection resolve to that SAME element (there is
      * nothing else to pick), cramming the whole action-button toolbar, row-count
@@ -31454,17 +31491,55 @@
             },
             tableMode: 'single'
         },
-        // Subscriber pages (e.g. /user/vzell/subscribers)
+        // Subscriber pages (e.g. /user/vzell/subscribers). Anchored to /user/:
+        // the entity subscribers pages below have the same suffix.
         {
             type: 'editor-subscribers',
-            match: (path) => path.includes('/subscribers'),
-            buttons: [ { label: 'Show all Editor Subscribers for User', shortLabel: 'Editor Subscribers' } ],
+            match: (path) => /^\/user\/[^/]+\/subscribers\/?$/.test(path),
+            buttons: [ { label: 'Show all Editor Subscribers for User', shortLabel: 'Editor Subscribers',
+                         showIf: _hasH2List } ],
             features: {
                 // Empty sectionId triggers Structure C in applyListToTable: the
                 // function scans for <h2>…<ul> pairs in the content area and uses
                 // the h2 text as the column name (e.g. "Subscribers").
-                listToTable: [ '' ]
+                listToTable: [ '' ],
+                // The "Plus N other anonymous users" footer row goes into the
+                // intro paragraph (finalCleanup()).
+                foldAnonymousSubscribers: true
             },
+            tableMode: 'single'
+        },
+        // An entity's subscribers (the sidebar's "Subscribers" link), same
+        // h2 + <p> + <ul> shape as an editor's (debug/artist-subscribers.html,
+        // debug/label-subscribers.html). Only these four entity kinds can be
+        // subscribed to. collection-subscribers must stay above
+        // collections-releases, whose /collection/<mbid> match is unanchored.
+        {
+            type: 'artist-subscribers',
+            match: (path) => path.match(/\/artist\/[a-f0-9-]{36}\/subscribers/),
+            buttons: [ { label: 'Show all Subscribers for Artist', shortLabel: 'Subscribers', showIf: _hasH2List } ],
+            features: { listToTable: [ '' ], foldAnonymousSubscribers: true },
+            tableMode: 'single'
+        },
+        {
+            type: 'label-subscribers',
+            match: (path) => path.match(/\/label\/[a-f0-9-]{36}\/subscribers/),
+            buttons: [ { label: 'Show all Subscribers for Label', shortLabel: 'Subscribers', showIf: _hasH2List } ],
+            features: { listToTable: [ '' ], foldAnonymousSubscribers: true },
+            tableMode: 'single'
+        },
+        {
+            type: 'series-subscribers',
+            match: (path) => path.match(/\/series\/[a-f0-9-]{36}\/subscribers/),
+            buttons: [ { label: 'Show all Subscribers for Series', shortLabel: 'Subscribers', showIf: _hasH2List } ],
+            features: { listToTable: [ '' ], foldAnonymousSubscribers: true },
+            tableMode: 'single'
+        },
+        {
+            type: 'collection-subscribers',
+            match: (path) => path.match(/\/collection\/[a-f0-9-]{36}\/subscribers/),
+            buttons: [ { label: 'Show all Subscribers for Collection', shortLabel: 'Subscribers', showIf: _hasH2List } ],
+            features: { listToTable: [ '' ], foldAnonymousSubscribers: true },
             tableMode: 'single'
         },
         // Account applications page (/account/applications) — 'Authorized
@@ -32778,7 +32853,8 @@
         {
             type: 'release-collections',
             match: (path) => path.match(/\/release\/[a-f0-9-]{36}\/collections/),
-            buttons: [ { label: 'Show all Collections for Release', shortLabel: 'Collections' } ],
+            // showIf: no button for an entity in no collection (no <ul>).
+            buttons: [ { label: 'Show all Collections for Release', shortLabel: 'Collections', showIf: _hasH2List } ],
             features: {
                 // Empty sectionId triggers Structure C in applyListToTable: the
                 // function scans for <h2>…<ul> pairs in the content area and uses
@@ -32787,14 +32863,17 @@
                 // Split the combined "CollectionName by Editor" cell into two columns.
                 columnExtractors: [
                     { sourceColumn: 'Collections', extractor: 'Collection_Editor', syntheticColumns: ['Collection', 'Editor'] }
-                ]
+                ],
+                // The "plus N other private collections" footer row goes into
+                // the intro paragraph (finalCleanup()).
+                foldPrivateCollections: true
             },
             tableMode: 'single'
         },
         {
             type: 'releasegroup-collections',
             match: (path) => path.match(/\/release-group\/[a-f0-9-]{36}\/collections/),
-            buttons: [ { label: 'Show all Collections for Release Group', shortLabel: 'Collections' } ],
+            buttons: [ { label: 'Show all Collections for Release Group', shortLabel: 'Collections', showIf: _hasH2List } ],
             features: {
                 // Empty sectionId triggers Structure C in applyListToTable: the
                 // function scans for <h2>…<ul> pairs in the content area and uses
@@ -32803,7 +32882,131 @@
                 // Split the combined "CollectionName by Editor" cell into two columns.
                 columnExtractors: [
                     { sourceColumn: 'Collections', extractor: 'Collection_Editor', syntheticColumns: ['Collection', 'Editor'] }
-                ]
+                ],
+                foldPrivateCollections: true
+            },
+            tableMode: 'single'
+        },
+        // Every other collectable entity's "Found in N user collections" page
+        // (the sidebar link), same shape as the release's
+        // (debug/artist-collections.html). These stay here, above the broad
+        // entity matchers further down (includes('/label'),
+        // includes('/series'), /work/<mbid>, includes('/recording'), …),
+        // which would otherwise claim them.
+        {
+            type: 'area-collections',
+            match: (path) => path.match(/\/area\/[a-f0-9-]{36}\/collections/),
+            buttons: [ { label: 'Show all Collections for Area', shortLabel: 'Collections', showIf: _hasH2List } ],
+            features: {
+                listToTable: [ '' ],
+                columnExtractors: [
+                    { sourceColumn: 'Collections', extractor: 'Collection_Editor', syntheticColumns: ['Collection', 'Editor'] }
+                ],
+                foldPrivateCollections: true
+            },
+            tableMode: 'single'
+        },
+        {
+            type: 'artist-collections',
+            match: (path) => path.match(/\/artist\/[a-f0-9-]{36}\/collections/),
+            buttons: [ { label: 'Show all Collections for Artist', shortLabel: 'Collections', showIf: _hasH2List } ],
+            features: {
+                listToTable: [ '' ],
+                columnExtractors: [
+                    { sourceColumn: 'Collections', extractor: 'Collection_Editor', syntheticColumns: ['Collection', 'Editor'] }
+                ],
+                foldPrivateCollections: true
+            },
+            tableMode: 'single'
+        },
+        {
+            type: 'event-collections',
+            match: (path) => path.match(/\/event\/[a-f0-9-]{36}\/collections/),
+            buttons: [ { label: 'Show all Collections for Event', shortLabel: 'Collections', showIf: _hasH2List } ],
+            features: {
+                listToTable: [ '' ],
+                columnExtractors: [
+                    { sourceColumn: 'Collections', extractor: 'Collection_Editor', syntheticColumns: ['Collection', 'Editor'] }
+                ],
+                foldPrivateCollections: true
+            },
+            tableMode: 'single'
+        },
+        {
+            type: 'instrument-collections',
+            match: (path) => path.match(/\/instrument\/[a-f0-9-]{36}\/collections/),
+            buttons: [ { label: 'Show all Collections for Instrument', shortLabel: 'Collections', showIf: _hasH2List } ],
+            features: {
+                listToTable: [ '' ],
+                columnExtractors: [
+                    { sourceColumn: 'Collections', extractor: 'Collection_Editor', syntheticColumns: ['Collection', 'Editor'] }
+                ],
+                foldPrivateCollections: true
+            },
+            tableMode: 'single'
+        },
+        {
+            type: 'label-collections',
+            match: (path) => path.match(/\/label\/[a-f0-9-]{36}\/collections/),
+            buttons: [ { label: 'Show all Collections for Label', shortLabel: 'Collections', showIf: _hasH2List } ],
+            features: {
+                listToTable: [ '' ],
+                columnExtractors: [
+                    { sourceColumn: 'Collections', extractor: 'Collection_Editor', syntheticColumns: ['Collection', 'Editor'] }
+                ],
+                foldPrivateCollections: true
+            },
+            tableMode: 'single'
+        },
+        {
+            type: 'place-collections',
+            match: (path) => path.match(/\/place\/[a-f0-9-]{36}\/collections/),
+            buttons: [ { label: 'Show all Collections for Place', shortLabel: 'Collections', showIf: _hasH2List } ],
+            features: {
+                listToTable: [ '' ],
+                columnExtractors: [
+                    { sourceColumn: 'Collections', extractor: 'Collection_Editor', syntheticColumns: ['Collection', 'Editor'] }
+                ],
+                foldPrivateCollections: true
+            },
+            tableMode: 'single'
+        },
+        {
+            type: 'recording-collections',
+            match: (path) => path.match(/\/recording\/[a-f0-9-]{36}\/collections/),
+            buttons: [ { label: 'Show all Collections for Recording', shortLabel: 'Collections', showIf: _hasH2List } ],
+            features: {
+                listToTable: [ '' ],
+                columnExtractors: [
+                    { sourceColumn: 'Collections', extractor: 'Collection_Editor', syntheticColumns: ['Collection', 'Editor'] }
+                ],
+                foldPrivateCollections: true
+            },
+            tableMode: 'single'
+        },
+        {
+            type: 'series-collections',
+            match: (path) => path.match(/\/series\/[a-f0-9-]{36}\/collections/),
+            buttons: [ { label: 'Show all Collections for Series', shortLabel: 'Collections', showIf: _hasH2List } ],
+            features: {
+                listToTable: [ '' ],
+                columnExtractors: [
+                    { sourceColumn: 'Collections', extractor: 'Collection_Editor', syntheticColumns: ['Collection', 'Editor'] }
+                ],
+                foldPrivateCollections: true
+            },
+            tableMode: 'single'
+        },
+        {
+            type: 'work-collections',
+            match: (path) => path.match(/\/work\/[a-f0-9-]{36}\/collections/),
+            buttons: [ { label: 'Show all Collections for Work', shortLabel: 'Collections', showIf: _hasH2List } ],
+            features: {
+                listToTable: [ '' ],
+                columnExtractors: [
+                    { sourceColumn: 'Collections', extractor: 'Collection_Editor', syntheticColumns: ['Collection', 'Editor'] }
+                ],
+                foldPrivateCollections: true
             },
             tableMode: 'single'
         },
@@ -33073,6 +33276,113 @@
                 unboundedPagination: true,
                 renameH2ToH1: true,
                 insertH2: 'Edits',
+                collapsableColumns: [ 'Edit details', 'Edit notes' ],
+                addCAA: 'Entered from release'
+            },
+            tableMode: 'single'
+        },
+        // An editor's other edit lists, the links of a profile's Statistics:
+        // '/user/<username>/edits/<status>' and '/user/<username>/votes' (the
+        // edits they voted on). The same page as 'user-edits' above, probed
+        // logged in 2026-10-22 (scripts/probe-user-edit-lists.py): no native
+        // <h1>, one title <h2> ("Accepted edits by <username>", "Auto-edits
+        // by …", "Votes by …"), no div.tabs, a div.edit-list per edit, "Found
+        // [at least] N edits" and the pagination widget — so the same
+        // features. Anchored with '$' like the two above, so no list can
+        // satisfy another's match.
+        {
+            type: 'user-accepted-edits',
+            match: (path) => /^\/user\/[^/]+\/edits\/accepted\/?$/.test(path),
+            buttons: [ { label: 'Show all Accepted Edits for User', shortLabel: 'Accepted Edits' } ],
+            features: {
+                editsToTable: true,
+                unboundedPagination: true,
+                renameH2ToH1: true,
+                insertH2: 'Accepted edits',
+                collapsableColumns: [ 'Edit details', 'Edit notes' ],
+                addCAA: 'Entered from release'
+            },
+            tableMode: 'single'
+        },
+        {
+            type: 'user-autoedits',
+            match: (path) => /^\/user\/[^/]+\/edits\/autoedits\/?$/.test(path),
+            buttons: [ { label: 'Show all Auto-edits for User', shortLabel: 'Auto-edits' } ],
+            features: {
+                editsToTable: true,
+                unboundedPagination: true,
+                renameH2ToH1: true,
+                insertH2: 'Auto-edits',
+                collapsableColumns: [ 'Edit details', 'Edit notes' ],
+                addCAA: 'Entered from release'
+            },
+            tableMode: 'single'
+        },
+        {
+            type: 'user-applied-edits',
+            match: (path) => /^\/user\/[^/]+\/edits\/applied\/?$/.test(path),
+            buttons: [ { label: 'Show all Applied Edits for User', shortLabel: 'Applied Edits' } ],
+            features: {
+                editsToTable: true,
+                unboundedPagination: true,
+                renameH2ToH1: true,
+                insertH2: 'Applied edits',
+                collapsableColumns: [ 'Edit details', 'Edit notes' ],
+                addCAA: 'Entered from release'
+            },
+            tableMode: 'single'
+        },
+        {
+            type: 'user-rejected-edits',
+            match: (path) => /^\/user\/[^/]+\/edits\/rejected\/?$/.test(path),
+            buttons: [ { label: 'Show all Rejected Edits for User', shortLabel: 'Rejected Edits' } ],
+            features: {
+                editsToTable: true,
+                unboundedPagination: true,
+                renameH2ToH1: true,
+                insertH2: 'Rejected edits',
+                collapsableColumns: [ 'Edit details', 'Edit notes' ],
+                addCAA: 'Entered from release'
+            },
+            tableMode: 'single'
+        },
+        {
+            type: 'user-failed-edits',
+            match: (path) => /^\/user\/[^/]+\/edits\/failed\/?$/.test(path),
+            buttons: [ { label: 'Show all Failed Edits for User', shortLabel: 'Failed Edits' } ],
+            features: {
+                editsToTable: true,
+                unboundedPagination: true,
+                renameH2ToH1: true,
+                insertH2: 'Failed edits',
+                collapsableColumns: [ 'Edit details', 'Edit notes' ],
+                addCAA: 'Entered from release'
+            },
+            tableMode: 'single'
+        },
+        {
+            type: 'user-cancelled-edits',
+            match: (path) => /^\/user\/[^/]+\/edits\/cancelled\/?$/.test(path),
+            buttons: [ { label: 'Show all Cancelled Edits for User', shortLabel: 'Cancelled Edits' } ],
+            features: {
+                editsToTable: true,
+                unboundedPagination: true,
+                renameH2ToH1: true,
+                insertH2: 'Cancelled edits',
+                collapsableColumns: [ 'Edit details', 'Edit notes' ],
+                addCAA: 'Entered from release'
+            },
+            tableMode: 'single'
+        },
+        {
+            type: 'user-votes',
+            match: (path) => /^\/user\/[^/]+\/votes\/?$/.test(path),
+            buttons: [ { label: 'Show all Votes for User', shortLabel: 'Votes' } ],
+            features: {
+                editsToTable: true,
+                unboundedPagination: true,
+                renameH2ToH1: true,
+                insertH2: 'Votes',
                 collapsableColumns: [ 'Edit details', 'Edit notes' ],
                 addCAA: 'Entered from release'
             },
@@ -34902,6 +35212,10 @@
                     { sourceColumn: 'Revision', align: 'R' },
                     { sourceColumn: 'DD', align: 'R' }, { sourceColumn: 'MM', align: 'R' }, { sourceColumn: 'YYYY', align: 'C' }
                 ],
+                // Flags is one <li> per letter (_bbChangesBuildRow()): a
+                // multi-row column, so a two-flag change ("S" + "T") collapses
+                // behind its toggle like any MusicBrainz list cell.
+                collapsableColumns: [ 'Flags' ],
                 stickyColumn: 'Page'
             },
             tableMode: 'single'
@@ -47547,6 +47861,36 @@
     const _MB_POP_ACCOUNT_KINDS = { subscribers: 'subscribers', tags: 'usertags', ratings: 'userratings' };
 
     /**
+     * An entity's own list pages linked from its sidebar (2026-10-22):
+     * "Subscribers" (`/<kind>/<MBID>/subscribers`, kind `subscribers`, as an
+     * editor's) and "Found in N user collections" (`/<kind>/<MBID>/collections`,
+     * kind `collections`). The id is `<kind>/<MBID>`, the MBID lowercased.
+     * Which kinds have which page: `_MB_POP_SUBSCRIBABLE`, and every kind
+     * here but a collection has a collections page.
+     * @type {RegExp}
+     */
+    const _MB_POP_ENTITY_LIST_RE = /^\/(area|artist|collection|event|instrument|label|place|recording|release|release-group|series|work)\/([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})\/(subscribers|collections)\/?$/;
+
+    /** The entity kinds an editor can subscribe to (a subscribers page). */
+    const _MB_POP_SUBSCRIBABLE = new Set(['artist', 'label', 'series', 'collection']);
+
+    /** How many collections an entity's `collections` card lists. */
+    const _MB_POP_COLLS_CARD_ROWS = 8;
+
+    /**
+     * The entity kind a `subscribers` or `collections` id is about: "artist"
+     * for `artist/<MBID>`, '' for an editor's subscribers (the id is the
+     * editor's name).
+     *
+     * @param {string} id
+     * @returns {string}
+     */
+    function _mbPopListOf(id) {
+        const m = /^([a-z-]+)\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.exec(String(id || ''));
+        return m ? m[1] : '';
+    }
+
+    /**
      * The id of an edit search (`/search/edits?…`, 2026-10-21): the path and
      * the query as the link spells it, without `page=` (the window's pager
      * adds its own). '' for a search that lists nothing yet: no
@@ -47570,7 +47914,8 @@
      * one path that needs `search`), an annotation history or version
      * (`_MB_POP_ANNOT_RE`), an editor's subscribers, tags or
      * ratings or the reader's applications (`_MB_POP_ACCOUNT_RE`; downvoted
-     * tags are not previewed), an edit, an editor or a tag
+     * tags are not previewed), an entity's subscribers or collections
+     * (`_MB_POP_ENTITY_LIST_RE`), an edit, an editor or a tag
      * (`_MB_POP_PAGE_RE`); `seg` is the path's own first segment (a disc
      * ID's page is /cdtoc/, its kind `discid`), '' when the kind's own
      * `path()` names the page (an editing history). `null` for any other
@@ -47602,6 +47947,11 @@
         // than the page the card reads: no card rather than the wrong one.
         if (a && a[2] === 'tags' && /(?:^|[?&])show_downvoted=1(?:&|$)/.test(search)) return null;
         if (a) return a[2] ? { seg: '', type: _MB_POP_ACCOUNT_KINDS[a[2]], id: a[1] } : { seg: '', type: 'applications', id: 'me' };
+        const l = _MB_POP_ENTITY_LIST_RE.exec(pathname);
+        if (l) {
+            const ok = l[3] === 'subscribers' ? _MB_POP_SUBSCRIBABLE.has(l[1]) : l[1] !== 'collection';
+            return ok ? { seg: '', type: l[3], id: `${l[1]}/${l[2].toLowerCase()}` } : null;
+        }
         const u = _MB_POP_USERTAG_RE.exec(pathname);
         if (u) return /(?:^|[?&])show_downvoted=1(?:&|$)/.test(search) ? null : { seg: '', type: 'usertag', id: `${u[1]}/${u[2]}` };
         const p = _MB_POP_PAGE_RE.exec(pathname);
@@ -49303,13 +49653,17 @@
     }
 
     /**
-     * An editor's subscribers page (`/user/<name>/subscribers`, 2026-10-21)
-     * as a record for its card: the editors subscribed to their edits (name
-     * and the id of their `/user/<id>` link) and how many more are
-     * anonymous ("Plus N other anonymous users"); `total` is the page's own
-     * "There are currently N users" when it says so. `null` when the page
-     * has no "Subscribers" h2 (a login page, an error page). Selectors from
-     * the capture of 2026-10-21 (DEBUG-NOTES.md).
+     * A subscribers page as a record for its card: an editor's
+     * (`/user/<name>/subscribers`, 2026-10-21) or an artist's, label's,
+     * series' or collection's (`/<kind>/<MBID>/subscribers`, 2026-10-22, the
+     * same h2 + `<p>` + `<ul>` inside `#content`: debug/artist-subscribers.html).
+     * The editors subscribed (name and the id of their `/user/<id>` link) and
+     * how many more are anonymous ("Plus N other anonymous users"); `total`
+     * is the page's own "There are currently N users" when it says so. The
+     * name is the h1's editor link, else (an entity's page, whose h1 links
+     * nothing) the h1's first `<bdi>`. `null` when the page has no
+     * "Subscribers" h2 (a login page, an error page). Selectors from the
+     * captures of 2026-10-21 and 2026-10-22 (DEBUG-NOTES.md).
      *
      * @param {Document} doc
      * @returns {?{name: string, editors: Array<{name: string, id: string}>, anonymous: number, total: number}}
@@ -49337,8 +49691,56 @@
             });
         });
         return {
-            name: _mbPopText(page.querySelector('h1 a[href^="/user/"] bdi')), editors, anonymous,
+            name: _mbPopText(page.querySelector('h1 a[href^="/user/"] bdi') || page.querySelector('h1 bdi')), editors, anonymous,
             total: total >= 0 ? total : editors.length + anonymous,
+        };
+    }
+
+    /**
+     * An entity's "Found in N user collections" page
+     * (`/<kind>/<MBID>/collections`, 2026-10-22; debug/artist-collections.html)
+     * as a record for its card. Read from `#content`'s h2 "Collections" — the
+     * sidebar has an h2 "Collections" of its own (the reader's collections),
+     * which comes later and is never read. Its `<p>` says "<name> has been
+     * added to N collections:" (N counts the private ones too) or "… has not
+     * been added to any collections." (no `<ul>`: the total falls back to
+     * the rows counted, 0); each `<li>` is a collection
+     * link "by" its owner's link, the last one may be "plus N other private
+     * collections". `null` without that h2 (an error page).
+     *
+     * @param {Document} doc
+     * @returns {?{name: string, collections: Array<{name: string, id: string, editor: string, editorId: string}>,
+     *   private: number, total: number}}
+     */
+    function _mbParseEntityCollectionsPage(doc) {
+        const content = doc.getElementById('content');
+        const els = _mbPopH2Section(content, 'Collections');
+        if (!els) return null;
+        const num = s => Number(String(s).replace(/,/g, '')) || 0;
+        const collections = [];
+        let priv = 0;
+        let total = -1;
+        els.forEach((el) => {
+            const m = el.tagName === 'P' && /has been added to ([\d,]+) collections?/.exec(_mbPopText(el));
+            if (m) total = num(m[1]);
+            if (el.tagName !== 'UL') return;
+            el.querySelectorAll(':scope > li').forEach((li) => {
+                const c = li.querySelector('a[href^="/collection/"]');
+                if (c) {
+                    const u = li.querySelector('a[href^="/user/"]');
+                    collections.push({
+                        name: _mbPopText(c), id: (c.getAttribute('href') || '').split('/')[2] || '',
+                        editor: u ? _mbPopText(u) : '', editorId: u ? (u.getAttribute('href') || '').split('/')[2] || '' : '',
+                    });
+                    return;
+                }
+                const p = /plus ([\d,]+) other private/i.exec(_mbPopText(li));
+                if (p) priv = num(p[1]);
+            });
+        });
+        return {
+            name: _mbPopText(content.querySelector('h1 bdi')), collections, private: priv,
+            total: total >= 0 ? total : collections.length + priv,
         };
     }
 
@@ -51677,22 +52079,29 @@
                     `<p><a href="/user/${encodeURIComponent(d.name)}/edits" target="_blank" rel="noopener">Their edits</a></p></div></div>`;
             },
         })),
-        // An editor's subscribers (2026-10-21), the profile's "view list":
-        // read from the page (`_mbParseSubscribersPage()`). The window links
-        // each editor, so a click drills into their card (Phase 5).
-        subscribers: Object.assign({ title: 'Subscribers', wide: false, path: id => `/user/${id}/subscribers` }, _mbPopPageKind({
+        // An editor's subscribers (2026-10-21), the profile's "view list",
+        // and an artist's, label's, series' or collection's (2026-10-22, the
+        // sidebar's "Subscribers"; id `<kind>/<MBID>`): read from the page
+        // (`_mbParseSubscribersPage()`). The window links each editor, so a
+        // click drills into their card (Phase 5).
+        subscribers: Object.assign({
+            title: 'Subscribers', wide: false,
+            path: id => (_mbPopListOf(id) ? `/${id}/subscribers` : `/user/${id}/subscribers`),
+        }, _mbPopPageKind({
             parse: _mbParseSubscribersPage,
             cardHtml(d, t) {
                 const shown = d.editors.slice(0, 12);
-                return `<div class="mb-tt-title">${_rgEsc(d.name || t.id)}</div><div class="mb-tt-comment">Subscribers · editor</div>` +
+                const of = _mbPopListOf(t.id);
+                return `<div class="mb-tt-title">${_rgEsc(d.name || t.id)}</div><div class="mb-tt-comment">Subscribers · ${_rgEsc(of || 'editor')}</div>` +
                     `<div class="mb-tt-body mb-rg-pills">${_mbPopPillsHtml([`${d.total} subscriber${d.total === 1 ? '' : 's'}`,
                         d.anonymous ? `${d.anonymous} anonymous` : ''])}</div><div class="mb-tt-rule"></div>` +
                     (shown.length ? `<div class="mb-tt-body">${shown.map(e => _rgEsc(e.name)).join(', ')}</div>` +
                         (d.editors.length > shown.length ? `<div class="mb-tt-dim">+ ${d.editors.length - shown.length} more</div>` : '')
-                        : '<div class="mb-tt-comment">Nobody is subscribed to their edits.</div>');
+                        : `<div class="mb-tt-comment">${of ? 'Nobody is subscribed by name.' : 'Nobody is subscribed to their edits.'}</div>`);
             },
             windowHtml(d, t) {
-                const left = `<div class="mb-dp-xtitle">${_rgEsc(d.name || t.id)}</div><div class="mb-dp-xsub">MusicBrainz · editor · subscribers</div>` +
+                const left = `<div class="mb-dp-xtitle">${_rgEsc(d.name || t.id)}</div>` +
+                    `<div class="mb-dp-xsub">MusicBrainz · ${_rgEsc(_mbPopListOf(t.id) || 'editor')} · subscribers</div>` +
                     '<h4>Subscribers</h4>' + _mbPopKvHtml([
                         ['Editors', _rgEsc(String(d.editors.length))], ['Anonymous', d.anonymous ? _rgEsc(String(d.anonymous)) : ''],
                         ['Total', _rgEsc(String(d.total))],
@@ -51700,6 +52109,39 @@
                 const right = `<h4>Editors · ${d.editors.length}</h4>` + (d.editors.length
                     ? `<ul class="mb-pop-taglist">${d.editors.map(e => `<li><a href="/user/${_rgEsc(e.id)}" target="_blank" rel="noopener">${_rgEsc(e.name)}</a></li>`).join('')}</ul>`
                     : '<div class="mb-dp-xsub">No editor is subscribed by name.</div>');
+                return `<div class="mb-dp-x"><div class="mb-dp-col">${left}</div><div class="mb-dp-col">${right}</div></div>`;
+            },
+        })),
+        // An entity's "Found in N user collections" (2026-10-22, the
+        // sidebar's link; id `<kind>/<MBID>`): read from the page
+        // (`_mbParseEntityCollectionsPage()`). The window links each
+        // collection and its owner, so a click drills into their cards.
+        collections: Object.assign({ title: 'Collections', wide: false, path: id => `/${id}/collections` }, _mbPopPageKind({
+            parse: _mbParseEntityCollectionsPage,
+            cardHtml(d, t) {
+                const shown = d.collections.slice(0, _MB_POP_COLLS_CARD_ROWS);
+                const more = d.collections.length - shown.length;
+                return `<div class="mb-tt-title">${_rgEsc(d.name || t.id)}</div><div class="mb-tt-comment">Collections · ${_rgEsc(_mbPopListOf(t.id))}</div>` +
+                    `<div class="mb-tt-body mb-rg-pills">${_mbPopPillsHtml([`${d.total} collection${d.total === 1 ? '' : 's'}`,
+                        d.private ? `${d.private} private` : ''])}</div><div class="mb-tt-rule"></div>` +
+                    (shown.length ? shown.map(c => `<div class="mb-tt-body">${_rgEsc(c.name)}` +
+                        `${c.editor ? ` <span class="mb-rg-dim">by ${_rgEsc(c.editor)}</span>` : ''}</div>`).join('') +
+                        (more > 0 ? `<div class="mb-tt-dim">+ ${more} more</div>` : '')
+                        : `<div class="mb-tt-comment">${d.total ? 'In private collections only.' : 'In no collection.'}</div>`);
+            },
+            windowHtml(d, t) {
+                const left = `<div class="mb-dp-xtitle">${_rgEsc(d.name || t.id)}</div>` +
+                    `<div class="mb-dp-xsub">MusicBrainz · ${_rgEsc(_mbPopListOf(t.id))} · collections</div>` +
+                    '<h4>Collections</h4>' + _mbPopKvHtml([
+                        ['Public', _rgEsc(String(d.collections.length))], ['Private', d.private ? _rgEsc(String(d.private)) : ''],
+                        ['Total', _rgEsc(String(d.total))],
+                    ]);
+                const right = `<h4>Public collections · ${d.collections.length}</h4>` + (d.collections.length
+                    ? _mbPopTableHtml(['Collection', 'Editor'], d.collections.map(c => [
+                        `<a href="/collection/${_rgEsc(c.id)}" target="_blank" rel="noopener">${_rgEsc(c.name)}</a>`,
+                        c.editorId ? `<a href="/user/${_rgEsc(c.editorId)}" target="_blank" rel="noopener">${_rgEsc(c.editor)}</a>` : _rgEsc(c.editor),
+                    ]))
+                    : '<div class="mb-dp-xsub">In no public collection.</div>');
                 return `<div class="mb-dp-x"><div class="mb-dp-col">${left}</div><div class="mb-dp-col">${right}</div></div>`;
             },
         })),
@@ -71735,16 +72177,18 @@ a { color: #1565c0; }`;
                           document.querySelector('#content h1') || // Often catches search result headers
                           document.querySelector('h1');
 
-    // user-edits / user-open-edits ('/user/<username>/edits[/open]') render no
-    // <h1> at all — confirmed live, not just in the debug snapshots (every
-    // fallback above requires an <h1>, so headerContainer would otherwise stay
-    // null and the whole script aborts at the check below). The only heading
-    // on these pages is the native <h2>Edits by <username></h2> / <h2>Open
-    // edits by <username></h2> — use that instead. Scoped to these two
-    // pageTypes specifically (not a blanket "no h1 → fall back to any h2"
-    // rule) so no other page type's legitimately-missing-h1 case starts
-    // silently picking up an unrelated h2.
-    if (!headerContainer && (pageType === 'user-edits' || pageType === 'user-open-edits')) {
+    // An editor's edit lists ('/user/<username>/edits[/<status>]',
+    // '/user/<username>/votes': user-edits, user-open-edits and the other
+    // user-*-edits/user-votes pageTypes) render no <h1> at all — confirmed
+    // live, not just in the debug snapshots (every fallback above requires an
+    // <h1>, so headerContainer would otherwise stay null and the whole script
+    // aborts at the check below). The only heading on these pages is the
+    // native <h2>Edits by <username></h2>, <h2>Votes by <username></h2>, … —
+    // use that instead. Scoped to the pageTypes that promote that <h2>
+    // (features.renameH2ToH1, which only they carry), not a blanket "no h1 →
+    // fall back to any h2" rule, so no other page type's legitimately-
+    // missing-h1 case starts silently picking up an unrelated h2.
+    if (!headerContainer && baseDefinition?.features?.renameH2ToH1) {
         headerContainer = document.querySelector('#content h2') || document.querySelector('h2');
     }
 
@@ -113044,6 +113488,22 @@ a { color: #1565c0; }`;
     }
 
     /**
+     * Takes a list page's footer row ("plus N other private collections",
+     * "Plus N other anonymous users") out of `allRows` and `originalAllRows`,
+     * which every sort and filter re-renders from — removing it from the DOM
+     * alone brings it back on the first sort.
+     *
+     * @param {HTMLTableRowElement} row
+     */
+    function _spliceFooterRow(row) {
+        [allRows, originalAllRows].forEach(arr => {
+            if (!Array.isArray(arr)) return;
+            const _i = arr.indexOf(row);
+            if (_i !== -1) arr.splice(_i, 1);
+        });
+    }
+
+    /**
      * Runs a set of post-render DOM clean-up tasks after `renderGroupedTable` or
      * `renderFinalTable` has completed.
      *
@@ -113054,11 +113514,14 @@ a { color: #1565c0; }`;
      *     the injected "Searchform" h2.
      *   • Wires cdtoc tracklist sub-row toggles via `_cdtocInitTracklistToggles()`.
      *   • user-subscriptions — removes the redundant subscription-type nav paragraph.
-     *   • release-collections / releasegroup-collections — rewrites the intro
-     *     paragraph and drops the trailing "plus M other private collections" row.
-     *   • editor-subscribers — removes a trailing "Plus N other anonymous users"
-     *     row (splicing it out of `allRows`/`originalAllRows` too) and patches the
-     *     preceding paragraph and row-count stat to match.
+     *   • `features.foldPrivateCollections` (the `<entity>-collections` pages) —
+     *     drops the trailing "plus M other private collections" row (splicing
+     *     it out of `allRows`/`originalAllRows` too) and rewrites the intro
+     *     paragraph.
+     *   • `features.foldAnonymousSubscribers` (editor and entity subscribers) —
+     *     removes a trailing "Plus N other anonymous users" row (splicing it
+     *     out of `allRows`/`originalAllRows` too) and patches the preceding
+     *     paragraph and row-count stat to match.
      *   • Applies the page definition's `removeSelector` (single element) and
      *     `removeSelectors` (all matches of each selector) removals.
      *   • Removes the native MusicBrainz `div.filter` bar (redundant after the
@@ -113152,13 +113615,15 @@ a { color: #1565c0; }`;
                 }
             });
         }
-        // ── release-collections / releasegroup-collections: rewrite intro paragraph ─
+        // ── features.foldPrivateCollections (<entity>-collections): rewrite intro paragraph ─
         // Pattern: "<EntityName> has been added to N collections:"
         // Last row:  "plus M other private collections"
         // Result:    "<b><i>EntityName</i></b> has been added to <b>N</b> collections
         //             and <b>M</b> other private collections"
-        //            (last row removed from table)
-        if (pageType === 'release-collections' || pageType === 'releasegroup-collections') {
+        //            (last row removed from the table AND from allRows /
+        //            originalAllRows: renderFinalTable() re-renders from those,
+        //            so a DOM-only removal came back on the first sort)
+        if (activeDefinition?.features?.foldPrivateCollections) {
             const _tbl = document.querySelector('table.tbl');
             let _privateCount = 0;
             let _lastRow      = null;
@@ -113180,6 +113645,7 @@ a { color: #1565c0; }`;
 
             if (_privateCount > 0 && _lastRow) {
                 _lastRow.remove();
+                _spliceFooterRow(_lastRow);
                 // Patch count stat.
                 if (_tbl) {
                     const _newCount = _tbl.querySelectorAll('tbody tr').length;
@@ -113195,8 +113661,9 @@ a { color: #1565c0; }`;
             // Rewrite the intro paragraph regardless of whether private rows exist.
             document.querySelectorAll('p').forEach(_p => {
                 // Match: "SomeName has been added to 97 collections:"
+                // (or "… to 1 collection:")
                 const _pm = _p.textContent.match(
-                    /^(.+?)\s+has been added to\s+([\d,]+)\s+collections[:\s]*$/i
+                    /^(.+?)\s+has been added to\s+([\d,]+)\s+collections?[:\s]*$/i
                 );
                 if (!_pm) return;
                 const _entityName  = _pm[1].trim();
@@ -113212,7 +113679,7 @@ a { color: #1565c0; }`;
                 const _bTotal = document.createElement('b');
                 _bTotal.textContent = String(_totalCount);
                 _p.appendChild(_bTotal);
-                _p.append(' collections');
+                _p.append(_totalCount === 1 ? ' collection' : ' collections');
                 if (_privateCount > 0) {
                     _p.append(' and ');
                     const _bPriv = document.createElement('b');
@@ -113226,7 +113693,8 @@ a { color: #1565c0; }`;
             });
         }
 
-        if (pageType === 'editor-subscribers') {
+        // ── features.foldAnonymousSubscribers (editor and entity subscribers) ─
+        if (activeDefinition?.features?.foldAnonymousSubscribers) {
             const _tbl = document.querySelector('table.tbl');
             let _anonCount = 0;
             let _lastRow   = null;
@@ -113241,7 +113709,7 @@ a { color: #1565c0; }`;
                         _anonCount = parseInt(_m[1].replace(/,/g, ''), 10) || 0;
                         _lastRow   = _candidate;
                         Lib.debug('cleanup',
-                            `editor-subscribers: found ${_anonCount} anonymous users in last row.`);
+                            `${pageType}: found ${_anonCount} anonymous users in last row.`);
                     }
                 }
             }
@@ -113251,13 +113719,7 @@ a { color: #1565c0; }`;
                 _lastRow.remove();
 
                 // Splice out of in-memory row arrays so sort/filter never re-inserts it.
-                const _spliceAnon = (arr) => {
-                    if (!Array.isArray(arr)) return;
-                    const _si = arr.indexOf(_lastRow);
-                    if (_si !== -1) arr.splice(_si, 1);
-                };
-                _spliceAnon(allRows);
-                _spliceAnon(originalAllRows);
+                _spliceFooterRow(_lastRow);
 
                 // 2. Patch table.dataset.mbTotalRows and the h2 row-count stat.
                 if (_tbl) {
@@ -113293,7 +113755,7 @@ a { color: #1565c0; }`;
                     _p.appendChild(_bAnon);
                     _p.append(` anonymous users subscribed${_rest}`);
                     Lib.debug('cleanup',
-                        `editor-subscribers: patched paragraph ` +
+                        `${pageType}: patched paragraph ` +
                         `(total=${_total}, real=${_real}, anon=${_anonCount}).`);
                 });
             }

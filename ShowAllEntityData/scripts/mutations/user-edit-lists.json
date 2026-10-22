@@ -1,0 +1,54 @@
+[
+    {
+        "name": "the votes list is not a pageType",
+        "why": "Without user-votes' match /user/<name>/votes gets no button (the spec asserts each list's own label).",
+        "edits": [
+            {
+                "find": "match: (path) => /^\\/user\\/[^/]+\\/votes\\/?$/.test(path),",
+                "replace": "match: () => false,"
+            }
+        ],
+        "spec": "tests/fixtures/user-edit-lists.spec.js",
+        "grep": "BUTTON: /votes",
+        "expect": "fail"
+    },
+    {
+        "name": "the header fallback names only the first two lists",
+        "why": "These pages have no <h1>; without the renameH2ToH1-keyed fallback headerContainer stays null and the script aborts before painting a button.",
+        "edits": [
+            {
+                "find": "if (!headerContainer && baseDefinition?.features?.renameH2ToH1) {",
+                "replace": "if (!headerContainer && (pageType === 'user-edits' || pageType === 'user-open-edits')) {"
+            }
+        ],
+        "spec": "tests/fixtures/user-edit-lists.spec.js",
+        "grep": "BUTTON: /edits/accepted",
+        "expect": "fail"
+    },
+    {
+        "name": "the @include admits only /edits and /edits/open",
+        "why": "Tampermonkey would never inject the script on the other lists; the fixture harness injects unconditionally, so only the INCLUDE test can see it.",
+        "edits": [
+            {
+                "find": "edits(?:\\/(?:open|accepted|autoedits|applied|rejected|failed|cancelled))?\\/?(?:\\?.*)?|votes\\/?(?:\\?.*)?)$/",
+                "replace": "edits(?:\\/open)?\\/?(?:\\?.*)?)$/"
+            }
+        ],
+        "spec": "tests/fixtures/user-edit-lists.spec.js",
+        "grep": "INCLUDE",
+        "expect": "fail"
+    },
+    {
+        "name": "a list's title <h2> is not promoted",
+        "why": "Without renameH2ToH1 the toolbar and the filter bar share the one native <h2> (DEBUG-NOTES.md 2026-07-29).",
+        "edits": [
+            {
+                "find": "                renameH2ToH1: true,\n                insertH2: 'Rejected edits',",
+                "replace": "                insertH2: 'Rejected edits',"
+            }
+        ],
+        "spec": "tests/fixtures/user-edit-lists.spec.js",
+        "grep": "RENDER",
+        "expect": "fail"
+    }
+]

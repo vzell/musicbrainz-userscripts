@@ -13,7 +13,8 @@
  * console error and no visible progress.
  *
  * The confirming pageTypes: any `features.unboundedPagination: true` entry
- * (`edits`, `user-edits`, `user-open-edits`, `notes-received`) shows this
+ * (`edits`, `user-edits`, `user-open-edits`, the other `user-*-edits` and
+ * `user-votes`, `notes-received`) shows this
  * dialog ONLY when MusicBrainz's own pagination widget goes "ambiguous" (an
  * ellipsis, no true last page — see `_hasAmbiguousEditsPagination()` in
  * ShowAllEntityData.user.js) — i.e. once there's enough data that the fetch

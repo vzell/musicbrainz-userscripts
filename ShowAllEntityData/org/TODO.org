@@ -3881,6 +3881,85 @@ What I need from you
 3. Which variant for the event card: A, B or C?: ==> A
 4. Should the event card get its own checkbox, on by default, next to the "#" card's Ctrl setting, or follow the existing "MusicBrainz cards" setting?: ==> YES, on by default
 
+* DONE Re-capture all the snapshot baselines after all the latest changes
+
+Re-capture all the snapshot baselines after all the latest changes
+
+* DONE add new artist collections PT
+** DONE initial
+
+Some entity pages e.g artists or labels have in their sidebar hrefs to collection and subscription pages.
+Add new <entity>-collections/subscriptions PTs.
+
+#+begin_example
+@debug/artist-sidebar.html - IP for the Bruce Springsteen artist sidebar - https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f
+#+end_example
+
+#+begin_example
+<a href="/artist/70248960-cb53-4ea4-943a-edb18f7d336f/subscribers" title="Bruce Springsteen"><bdi>Subscribers</bdi></a>
+<a href="/artist/70248960-cb53-4ea4-943a-edb18f7d336f/collections" title="Bruce Springsteen"><bdi>Found in 33 user collections</bdi></a>
+#+end_example
+
+1.)
+
+add new entity collections PTs
+
+#+begin_example
+@debug/artist-collections.html - IP - https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/collections
+@debug/release-collections.html - IP - https://musicbrainz.org/release/52c6808b-037d-47d5-b0c7-17331c9d36cd/collections - no collections yet
+#+end_example
+
+2.)
+
+add new entity subscriptions PTs
+
+#+begin_example
+@debug/artist-subscribers.html - IP - https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/subscribers
+@debug/label-subscribers.html - IP - https://musicbrainz.org/label/45ffe1d8-92da-4750-9a4a-f42861f46e2c/subscribers
+#+end_example
+
+** DONE add hover detail popup support for entity pages e.g artists or labels have in their sidebar hrefs to collection and subscription pages
+
+1.)
+
+add hover detail popup support for entity pages e.g artists or labels which have in their sidebar hrefs to collection and
+subscription pages, e.g.
+
+#+begin_example
+<a href="/artist/70248960-cb53-4ea4-943a-edb18f7d336f/subscribers" title="Bruce Springsteen"><bdi>Subscribers</bdi></a>
+<a href="/artist/70248960-cb53-4ea4-943a-edb18f7d336f/collections" title="Bruce Springsteen"><bdi>Found in 33 user collections</bdi></a>
+#+end_example
+
+2.)
+
+The BB PT https://brucebase.wikidot.com/system:recent-changes "Flags" column  should be a multi-row column - [Image #3]
+
+* DONE add missing PTs for edit/vote user pages
+
+Add missing PTs for edit/vote user pages
+
+Except
+
+#+begin_example
+https://musicbrainz.org/user/vzell/edits
+#+end_example
+
+all the following are missing as PTs
+
+#+begin_example
+https://musicbrainz.org/user/vzell/votes
+https://musicbrainz.org/user/vzell/edits/accepted
+https://musicbrainz.org/user/vzell/edits/autoedits
+https://musicbrainz.org/user/vzell/edits/applied
+https://musicbrainz.org/user/vzell/edits/rejected
+https://musicbrainz.org/user/vzell/edits/failed
+https://musicbrainz.org/user/vzell/edits/cancelled
+https://musicbrainz.org/user/vzell/edits/open
+https://musicbrainz.org/user/vzell/edits/failed
+#+end_example
+
+All have the same structure as https://musicbrainz.org/user/vzell/edits
+
 
 * TODO consolidate more LAF across more PTs
 
@@ -3912,7 +3991,16 @@ Use the Discogs history diff format in other pageTypes, for example the BB “ch
 
 * TODO write the forum section for 9.99.1394 -> 9.99.1399
 
+
 * TODO "Links" column - switch of the native tooltip on the FRP
+
+
+* TODO tested live, OK; commit, push
+
+
+* TODO Release events - Japan need flag on the relationships area
+
+* TODO recapture user open edits page
 
 * TODO on collection pages, images should get internal viewer support + their tooltip should show a rich popup and highlight the corresponding row
 
@@ -3941,12 +4029,4 @@ b.)
 on collection pages, images should get internal viewer support + their tooltip should show a rich popup and highlight
 the corresponding row -> image hover popup + internal viewer click
 
-
-* TODO tested live, OK; commit, push
-
-* TODO Re-capture all the snapshot baselines after all the latest changes
-
-Re-capture all the snapshot baselines after all the latest changes
-
-* Release events -Japa need flag on the relationships area
 

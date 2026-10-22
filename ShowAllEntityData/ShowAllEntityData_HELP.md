@@ -1656,8 +1656,10 @@ an import brings your deletions back.
 - **Tags** — entity tag pages, user tag pages, and the most-popular-tags page
 - **Search results** — every entity type
 - **Reports** — the `/reports` index and all 117 reports across 14 categories
-- **Edit listings** — edit search, per-entity edits, your own edits, open edits,
-  subscribed edits, notes received
+- **Edit listings** — edit search, per-entity edits, subscribed edits, notes
+  received, and every list of an editor's profile Statistics: their edits, open,
+  accepted, auto-edits, applied, rejected, failed and cancelled edits, and the
+  edits they voted on
 - **Annotation history** (`/<entity>/<mbid>/annotations`) across ten entity types,
   and **one version of an annotation** (`/<entity>/<mbid>/annotation/<n>`, or the
   current one) compared with the current version
@@ -2207,8 +2209,10 @@ codes: **ISRCs**, **ISWCs** and **disc IDs**, **edits** and **editors**,
 **other edit lists** and **edit searches** (the *view*, *N%* and *View all*
 links of a profile's statistics), an editor's **subscribers**, **tags** and
 **ratings** and your **applications** (the profile's *view list* and *view*
-links), an **annotation's history** and its **versions** (*View annotation
-history*, *View this version*, *View current revision*), and
+links), an entity's **subscribers** and **collections** (the sidebar's
+*Subscribers* and *Found in N user collections* links), an **annotation's
+history** and its **versions** (*View annotation history*, *View this
+version*, *View current revision*), and
 **tags** (a genre or tag link, also the pills of the sidebar's Tags card).
 A **Barcode** cell has a card too: the barcode's format and the releases
 carrying it. So does an entry of a column's **📊 dropdown** that names one
@@ -2263,7 +2267,12 @@ edits*, their **Votes**, and every **edit search** (*Last 24 hours*, the *N%*
 links of the edit types). An edit search is read again on every page load,
 since what it finds changes ("24 hours ago"). The *view list* beside
 **Subscribers** shows who is subscribed to the editor's edits, and how many
-more anonymously; a name in its window opens that editor's card. The *view
+more anonymously; a name in its window opens that editor's card. An
+artist's, label's, series' or collection's sidebar *Subscribers* link shows
+the same for that entity. Its *Found in N user collections* link shows how
+many collections hold it, how many of them are private, and the first few
+by name and owner; the window lists every public one, and a collection or
+an owner in it opens their card. The *view
 list* beside **Authorized applications** shows your applications (only you
 see that page): each one's name, what it may access and when it last got a
 token, how many applications you registered, and whether digest
@@ -3101,7 +3110,10 @@ The site's form still decides **what** is loaded: untick *ALL* and tick, say,
 - **Flags:** what changed, one row per flag, the site's letter and its
   meaning: N new page created, S content source text changed, T title
   changed, R page renamed/moved, A tags changed, M meta data changed, F
-  file/attachment action. Filter it, or pick from its 📊 list.
+  file/attachment action. Filter it, or pick from its 📊 list. A change
+  with two flags shows the first one and a ▶ toggle that opens the other,
+  as MusicBrainz's list cells do; the column header's button opens or
+  closes all of them.
 - **Date** and **Time:** when, in your own time zone, as `2026-10-12` and
   `17:42:28`. **DD**, **MM**, **YYYY**, **Day** and **Month** (at the end of
   the table) split the date up as on MusicBrainz pages, and the 📊 lists of
