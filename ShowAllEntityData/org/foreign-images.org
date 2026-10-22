@@ -18,12 +18,12 @@ copy built with =python3 -I scripts/build-mockup-artifact.py org/foreign-images-
 
 *** What "the same" means on MusicBrainz
 
-| Piece          | On MusicBrainz                                                                                   | Code                                                         |
-|----------------+--------------------------------------------------------------------------------------------------+--------------------------------------------------------------|
-| Hover card     | B1 card, Space = every image, Shift = bigger tiles, fitted never clipped                         | =_artCardCoreHtml()=, =_mbttResolve()=, =_ART_CARD_FNS=      |
-| Viewer         | =#mb-art-viewer=: zoom/pan/flip/rotate, filmstrip, grid, info panel, D/F/B/O keys                | =_artViewerOpen(ctx, path, indices, start, opts)=            |
-| Click routing  | window-capture click, plain left click only; Shift+← → walks the VISIBLE rows (=onGroupStep=)    | =_artIconClick()=, =_artColumnViewerOnClick()=               |
-| Gallery        | per-table 🖼, zero requests, reads the caches only                                               | =_artCreateGalleryButton()=, =_artGalleryOpenViewer()=       |
+| Piece         | On MusicBrainz                                                                                | Code                                                    |
+|---------------+-----------------------------------------------------------------------------------------------+---------------------------------------------------------|
+| Hover card    | B1 card, Space = every image, Shift = bigger tiles, fitted never clipped                      | =_artCardCoreHtml()=, =_mbttResolve()=, =_ART_CARD_FNS= |
+| Viewer        | =#mb-art-viewer=: zoom/pan/flip/rotate, filmstrip, grid, info panel, D/F/B/O keys             | =_artViewerOpen(ctx, path, indices, start, opts)=       |
+| Click routing | window-capture click, plain left click only; Shift+← → walks the VISIBLE rows (=onGroupStep=) | =_artIconClick()=, =_artColumnViewerOnClick()=          |
+| Gallery       | per-table 🖼, zero requests, reads the caches only                                             | =_artCreateGalleryButton()=, =_artGalleryOpenViewer()=  |
 
 The viewer already takes any list of external records
 ={image, thumbnails:{250}, types:[], comment, external:true}= in a ctx with =external: true=
@@ -43,17 +43,17 @@ Links from the committed fixtures, 33 item pages, 1.1 s apart, cached in
 =debug/foreign-images/= (gitignored), summary in =debug/foreign-images/summary.json=. One
 HEAD per site on a full-size URL.
 
-| pageType                 | Pages with images | Images | Thumb → full rule                                        | HEAD on a full image                    |
-|--------------------------+-------------------+--------+----------------------------------------------------------+-----------------------------------------|
-| sl-bootlegs              | 4/4               | 17     | drop =_tn= — 17/17                                       | 200 image/jpeg 1,006,584 B (4554 scan)  |
-| sl-brucelegs             | 4/4               | 50     | drop =_tn= — 50/50                                       |                                         |
-| sl-collection            | 2/2               | 19     | drop =_tn= — 19/19                                       |                                         |
-| sl-lyrics (B)            | 1/4               | 1      | none: the image is not linked, thumb = full              |                                         |
-| jl-list                  | 3/3               | 20     | =thumb/tn_X= → =X= — 20/20                               | 200 image/jpeg 452,171 B (front, 1966)  |
-| bs-records (LP)          | 4/4               | 4      | none: one photo, not linked, thumb = full                | 200 image/jpeg 50,143 B (LP1B1)         |
-| bs-records (CD-R)        | 0/4               | 0      | —                                                        |                                         |
-| bb-songs                 | 1/4               | 2      | =local--resized-images/X/thumbnail.jpg= → =local--files/X= — 2/2 | 200 image/png 13,421 B (song graph) |
-| bb-year (=/gig:= pages)  | 4/4               | 13     | same rule — 5/5 for =files:=; =gallery:= and =news:= link =medium.jpg= instead | 200 image/jpeg for the =gallery:= original too (curl) |
+| pageType                | Pages with images | Images | Thumb → full rule                                                              | HEAD on a full image                                  |
+|-------------------------+-------------------+--------+--------------------------------------------------------------------------------+-------------------------------------------------------|
+| sl-bootlegs             | 4/4               |     17 | drop =_tn= — 17/17                                                             | 200 image/jpeg 1,006,584 B (4554 scan)                |
+| sl-brucelegs            | 4/4               |     50 | drop =_tn= — 50/50                                                             |                                                       |
+| sl-collection           | 2/2               |     19 | drop =_tn= — 19/19                                                             |                                                       |
+| sl-lyrics (B)           | 1/4               |      1 | none: the image is not linked, thumb = full                                    |                                                       |
+| jl-list                 | 3/3               |     20 | =thumb/tn_X= → =X= — 20/20                                                     | 200 image/jpeg 452,171 B (front, 1966)                |
+| bs-records (LP)         | 4/4               |      4 | none: one photo, not linked, thumb = full                                      | 200 image/jpeg 50,143 B (LP1B1)                       |
+| bs-records (CD-R)       | 0/4               |      0 | —                                                                              |                                                       |
+| bb-songs                | 1/4               |      2 | =local--resized-images/X/thumbnail.jpg= → =local--files/X= — 2/2               | 200 image/png 13,421 B (song graph)                   |
+| bb-year (=/gig:= pages) | 4/4               |     13 | same rule — 5/5 for =files:=; =gallery:= and =news:= link =medium.jpg= instead | 200 image/jpeg for the =gallery:= original too (curl) |
 
 Findings that change the design:
 
@@ -77,19 +77,19 @@ Findings that change the design:
 
 *** The mockups
 
-| Id  | What                                                                      | Verdict     |
-|-----+---------------------------------------------------------------------------+-------------|
-| S1  | sl-bootlegs Cover column: card (loading / loaded / cut at 31 / cover only), click → viewer | recommended |
-| V1  | the viewer on an SL row: cover + 9 scans, Shift+← → rows, grid, info      | recommended |
-| J1  | jungleland: a lazy Art column (dashed tile until loaded)                  | chosen      |
-| J2  | jungleland: a 🖼 glyph in the Title cell                                  | not chosen  |
-| J3  | the card with jungleland's labels as types                                | recommended |
-| K1  | brucespringsteen.it Photo column, three states                            | recommended |
-| B1  | bb-year: the Media icons (Photo, Ticket, News, Memorabilia) open their images | recommended |
-| B2  | bb-songs: Title glyph, graph + lyric sheets                               | optional    |
-| L1  | sl-lyrics: Title glyph, single-image card                                 | optional    |
-| G1  | table-wide 🖼 gallery: cached rows only, "Load the other N (≈ s)" button  | optional    |
-| S   | one =sa_<site>_tip_images= per site beside =sa_dg_tip_images=             | recommended |
+| Id | What                                                                                       | Verdict     |
+|----+--------------------------------------------------------------------------------------------+-------------|
+| S1 | sl-bootlegs Cover column: card (loading / loaded / cut at 31 / cover only), click → viewer | recommended |
+| V1 | the viewer on an SL row: cover + 9 scans, Shift+← → rows, grid, info                       | recommended |
+| J1 | jungleland: a lazy Art column (dashed tile until loaded)                                   | chosen      |
+| J2 | jungleland: a 🖼 glyph in the Title cell                                                    | not chosen  |
+| J3 | the card with jungleland's labels as types                                                 | recommended |
+| K1 | brucespringsteen.it Photo column, three states                                             | recommended |
+| B1 | bb-year: the Media icons (Photo, Ticket, News, Memorabilia) open their images              | recommended |
+| B2 | bb-songs: Title glyph, graph + lyric sheets                                                | optional    |
+| L1 | sl-lyrics: Title glyph, single-image card                                                  | optional    |
+| G1 | table-wide 🖼 gallery: cached rows only, "Load the other N (≈ s)" button                    | optional    |
+| S  | one =sa_<site>_tip_images= per site beside =sa_dg_tip_images=                              | recommended |
 
 *** Implementation outline (not started)
 
