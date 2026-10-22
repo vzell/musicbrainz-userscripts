@@ -3989,8 +3989,7 @@ etc
 Use the Discogs history diff format in other pageTypes, for example the BB “changes” button (you have to be logged in).
 
 
-* TODO write the forum section for 9.99.1394 -> 9.99.1399
-
+* TODO write the forum section for 9.99.1394 -> 9.99.1426
 
 * TODO "Links" column - switch of the native tooltip on the FRP
 
