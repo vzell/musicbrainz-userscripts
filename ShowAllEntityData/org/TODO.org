@@ -4089,3 +4089,28 @@ register the third-party user script by @zabe
 
 check what it's doing
 
+* republish reports
+
+Both reports are published, and each page links to the other.
+
+┌─────────────────────────────────────────────────────────────┬────────────────────────┬─────────────────────────────────────────────────────┐
+│                           Report                            │      Artifact ID       │                         URL                         │
+├─────────────────────────────────────────────────────────────┼────────────────────────┼─────────────────────────────────────────────────────┤
+│ ShowAllEntityData Size Report (org/userscript-size.org)     │ DUgKMUBCj15FBTVrTo3dER │ ⧉ https://claude.ai/artifact/DUgKMUBCj15FBTVrTo3dER │
+├─────────────────────────────────────────────────────────────┼────────────────────────┼─────────────────────────────────────────────────────┤
+│ ShowAllEntityData Build Framework (org/build-framework.org) │ MkupfW443Qpdjt1FM5mmnN │ ⧉ https://claude.ai/artifact/MkupfW443Qpdjt1FM5mmnN │
+└─────────────────────────────────────────────────────────────┴────────────────────────┴─────────────────────────────────────────────────────┘
+
+Neither is shared yet. I can publish artifacts but can't change who sees them. Until you share them, only the account this session is signed in to can open them.
+
+On using two Claude profiles: there's no ID to look up and no setting that shares everything for you.
+- Who owns an artifact: whichever account the Claude Code session was signed in to when it was published. It's private to that account by default.
+- Opening it from your other profile: open the artifact on claude.ai while signed in to the owning account. Then use the page's Share menu to give your other profile access. You do this once per artifact; after that the same URL works from both profiles.
+- Easiest habit: whenever I publish something, share it right away from the Share menu with your other profile.
+- Older links: org/userscript-size.org links an earlier chart page (SVWXC4UYL3yM117PnPuf1T). I can't tell which of your profiles owns that one. If one profile can't open it, it belongs to the other one, and you share it from there.
+
+I saved this to memory, so from now on I'll always give you the URL and ID and remind you to share.
+
+Making the publishing reusable: the converter is three files in my scratchpad: build_report.py, shell.html and pandoc-template.html. It turns any org file into a page with a contents list and scrolling tables. If you want it for other reports, I can move it into the repo, for example as scripts/publish-org-report/ with a scripts/publish-org-report.py entry point. It would go on its own branch, and that adds files, so tell me if you want it and where it should live.
+
+
