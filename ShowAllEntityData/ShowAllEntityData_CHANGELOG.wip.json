@@ -1,0 +1,14 @@
+[
+  {
+    "version": "WIP.1",
+    "date": "2026-10-22",
+    "sections": [
+      {
+        "label": "⚡ Performance",
+        "items": [
+          "Values the script stored once and nothing reads any more are now deleted when a page starts (a moment after it settles, so the page is not slowed). Tampermonkey hands everything a script has stored to every page it runs on, before the script starts, so a leftover is paid for on every page view. Two kinds go: the old plain-text help cache (replaced by the Markdown help in 9.99.1148, up to 50 kB), and the hand-off copies of a table that \"Show single-table\" leaves behind when the new tab was blocked or closed before it loaded, which can be megabytes each; one older than an hour is deleted, a younger one is kept for a tab that may still be loading. Settings are not touched."
+        ]
+      }
+    ]
+  }
+]

@@ -6186,7 +6186,104 @@
         document.body.appendChild(box);
     }
 
+    /**
+     * GM values this script once wrote and nothing reads any more.
+     *
+     * Not settings: those are {@link _SETTINGS_ORPHANED_KEYS}, removed once by
+     * `_migrateFrozenSettings()` behind its level. These are caches and
+     * hand-off values, and they matter for a reason settings do not:
+     * Tampermonkey hands a script's WHOLE GM store to every page it runs on,
+     * before a line of the script executes (org/userscript-size.org 2.3), so
+     * an orphan is paid for on every page view, by the megabyte for the big
+     * ones. `_sweepOrphanedGmValues()` deletes them whenever it finds them,
+     * not once: a deletion costs nothing when the key is already gone.
+     *
+     * @type {string[]}
+     */
+    const _GM_ORPHANED_VALUE_KEYS = [
+        // The plain-text help cache, orphaned by the Markdown help (9.99.1148),
+        // which changed the key on purpose so the new format was a cache miss.
+        SCRIPT_BASE_NAME.toLowerCase() + '-remote-help-text',
+    ];
+
+    /** Key prefix of the "Show single-table" cross-tab hand-off payloads. */
+    const _GM_SNAPSHOT_KEY_PREFIX = 'mb_sa_subtable_snapshot_';
+
+    /**
+     * How old a hand-off payload may get before the sweep deletes it. The new
+     * tab reads (and deletes) its payload as it starts, within seconds; one
+     * still there after an hour belongs to a tab that was blocked or closed
+     * before it loaded, and nothing will ever read it.
+     */
+    const _GM_SNAPSHOT_MAX_AGE_MS = 60 * 60 * 1000;
+
+    /**
+     * When a hand-off payload was written, read from its KEY rather than its
+     * value, so the sweep never copies megabytes out of storage to decide.
+     *
+     * `openSubtableAsSingleTableTab()` names the key
+     * `<prefix><Date.now() in base 36><up to 6 random base-36 chars>`, and
+     * `Date.now()` is 8 base-36 digits until 2059. A key that does not decode
+     * to a plausible time falls back to the payload's own `timestamp`.
+     *
+     * @param {string} key - A key starting with `_GM_SNAPSHOT_KEY_PREFIX`.
+     * @param {number} now - `Date.now()`.
+     * @returns {number|null} Milliseconds since it was written, or null when
+     *   neither the key nor the payload says.
+     */
+    function _gmSnapshotAgeMs(key, now) {
+        const stamp = parseInt(key.slice(_GM_SNAPSHOT_KEY_PREFIX.length, _GM_SNAPSHOT_KEY_PREFIX.length + 8), 36);
+        // 2020-01-01 .. now plus a day of clock skew: anything else is not a stamp.
+        if (Number.isFinite(stamp) && stamp > 1577836800000 && stamp < now + 86400000) {
+            return now - stamp;
+        }
+        const payload = GM_getValue(key, null);
+        return payload && typeof payload.timestamp === 'number' ? now - payload.timestamp : null;
+    }
+
+    /**
+     * Deletes the GM values nothing reads any more: the fixed list
+     * {@link _GM_ORPHANED_VALUE_KEYS}, and "Show single-table" hand-off
+     * payloads older than {@link _GM_SNAPSHOT_MAX_AGE_MS} (or of unknown age).
+     *
+     * Run from a `setTimeout(…, 0)` after start-up, so it adds nothing to the
+     * time before the page settles and can never race the tab that is about
+     * to consume a fresh payload (that one is minutes younger than the limit
+     * anyway). Without `GM_listValues` only the fixed keys can be found.
+     *
+     * @returns {string[]} The keys it deleted.
+     */
+    function _sweepOrphanedGmValues() {
+        if (typeof GM_getValue === 'undefined' || typeof GM_deleteValue === 'undefined') return [];
+        const deleted = [];
+        let stored = null;
+        if (typeof GM_listValues === 'function') {
+            try { stored = GM_listValues(); } catch (_) { stored = null; }
+        }
+        for (const key of _GM_ORPHANED_VALUE_KEYS) {
+            const present = stored ? stored.includes(key) : GM_getValue(key, undefined) !== undefined;
+            if (!present) continue;
+            GM_deleteValue(key);
+            deleted.push(key);
+        }
+        if (stored) {
+            const now = Date.now();
+            for (const key of stored) {
+                if (!key.startsWith(_GM_SNAPSHOT_KEY_PREFIX)) continue;
+                const age = _gmSnapshotAgeMs(key, now);
+                if (age !== null && age <= _GM_SNAPSHOT_MAX_AGE_MS) continue;
+                GM_deleteValue(key);
+                deleted.push(key);
+            }
+        }
+        if (deleted.length) {
+            Lib.info('init', `Deleted ${deleted.length} GM value(s) nothing reads any more: ${deleted.join(', ')}`);
+        }
+        return deleted;
+    }
+
     _migrateFrozenSettings();
+    setTimeout(_sweepOrphanedGmValues, 0);
     _coerceNumericSettings();
     _canonicalizeSelectSettings();
     // Registered here rather than at each entry point, so the library's own two
