@@ -286,6 +286,13 @@ skill for turning a =planned= row into a =captured= one.
 | 125 | label-subscribers             | single       | /label/MBID/subscribers                        | listToTable (Structure C), foldAnonymousSubscribers, showIf                                                                |
 | 126 | series-subscribers            | single       | /series/MBID/subscribers                       | listToTable (Structure C), foldAnonymousSubscribers, showIf                                                                |
 | 127 | collection-subscribers        | single       | /collection/MBID/subscribers                   | listToTable (Structure C), foldAnonymousSubscribers, showIf                                                                |
+| 128 | user-accepted-edits           | single       | /user/USER/edits/accepted                      | edits-to-table, unbounded pagination, renameH2ToH1, CAA                                                                    |
+| 129 | user-autoedits                | single       | /user/USER/edits/autoedits                     | edits-to-table, unbounded pagination, renameH2ToH1, CAA                                                                    |
+| 130 | user-applied-edits            | single       | /user/USER/edits/applied                       | edits-to-table, unbounded pagination, renameH2ToH1, CAA                                                                    |
+| 131 | user-rejected-edits           | single       | /user/USER/edits/rejected                      | edits-to-table, unbounded pagination, renameH2ToH1, CAA                                                                    |
+| 132 | user-failed-edits             | single       | /user/USER/edits/failed                        | edits-to-table, unbounded pagination, renameH2ToH1, CAA                                                                    |
+| 133 | user-cancelled-edits          | single       | /user/USER/edits/cancelled                     | edits-to-table, unbounded pagination, renameH2ToH1, CAA                                                                    |
+| 134 | user-votes                    | single       | /user/USER/votes                               | edits-to-table, unbounded pagination, renameH2ToH1, CAA                                                                    |
 
 * Page type details
 ** 1. taglookup
@@ -569,7 +576,7 @@ lists converted into sortable tables), tableMode =multi=.
 - Match: ~/^\/user\/[^/]+\/edits$/~
 - Button: "Show all Edits for User"
 - tableMode: single
-- Features exercised: same as #46 but =insertH2: 'Edits'= and no =renameH2ToH1= (this page already has both an =<h1>= and the edits =<h2>=)
+- Features exercised: same as #46 but =insertH2: 'Edits'= (the page has no =<h1>= either: its title is the =<h2>= "Edits by USER", re-probed 2026-10-22)
 
 ** 48. search
 - URL: [[https://musicbrainz.org/search?query=Bruce+Springsteen&type=artist][/search?query=Bruce+Springsteen&type=artist]]
@@ -1071,6 +1078,14 @@ lists converted into sortable tables), tableMode =multi=.
 - tableMode: single; same shape as #6 (h2 "Subscribers", intro "There are currently N users subscribed to X:", =<ul>=, optional last =<li>= "Plus N other anonymous users", a subscribe =<p>=; no pagination).
 - Features exercised: =listToTable= Structure C, =foldAnonymousSubscribers=.
 - Coverage: same spec, over =entity-artist-subscribers.html= (anonymous footer) and =entity-label-subscribers.html= (none). Snapshot baseline: planned.
+
+** 128.–134. An editor's other edit lists (user-accepted-edits, user-autoedits, user-applied-edits, user-rejected-edits, user-failed-edits, user-cancelled-edits, user-votes)
+- URL: the "view" links of a profile's Statistics, e.g. [[https://musicbrainz.org/user/vzell/edits/rejected][/user/USER/edits/rejected]], [[https://musicbrainz.org/user/vzell/votes][/user/USER/votes]] (the edits the editor voted on).
+- Match: ~/^\/user\/[^/]+\/edits\/<status>\/?$/~ and ~/^\/user\/[^/]+\/votes\/?$/~, right after #47. The =@include= line of the user pages admits all seven.
+- Button: "Show all <Status> Edits for User" (short: <Status> Edits), "Show all Auto-edits for User", "Show all Votes for User".
+- tableMode: single; the same page as #46/#47, probed logged in 2026-10-22 (=scripts/probe-user-edit-lists.py=): no =<h1>=, one title =<h2>= ("Accepted edits by USER", "Votes by USER", …), no =div.tabs=, 50 =div.edit-list= a page, "Found [at least] N edits" and the pagination widget. Login-gated, like #46.
+- Features exercised: same as #46, with =insertH2= naming the list. The header fallback for a page with no =<h1>= is keyed on =features.renameH2ToH1= since (it named #46/#47 only).
+- Coverage: =tests/fixtures/user-edit-lists.spec.js= (=@include=, each list's own button, the rejected list's render) over =edits-page-user-vzell-rejected.html= and =edits-page-user-vzell-votes.html=; the rejected page stands in for the statuses without a fixture. Mutations =scripts/mutations/user-edit-lists.json=. Snapshot baseline: planned.
 
 ** Relationship-tables buttons on existing pageTypes (not pageTypes of their own)
 =_relTablesButton()= adds a second button to series-releases, work-recordings, releasegroup-releases, recording-releases (with "Related works" as "Via <work>" tables), label-relationships and artist-relationships ("Relationship lists"), and release-tracks ("Credits", the release's own =#release-relationships= and its group's =#release-group-relationships=, never the per-medium track credits). Each runs as its own pageType for that render (=series-relationship-tables=, =work-relationship-tables=, =releasegroup-relationship-tables=, =recording-relationship-tables=, =label-relationship-tables=, =artist-relationship-tables=, =release-credit-tables=; =buttonConfig.type= switches =pageType= in =startFetchingProcess()=), with only its own features (=replaceFeatures=), and removes the page's main data section (=removeMain=, =_relRemoveMainSections()=). A saved file records that pageType and loads back as the same button (=_activateButtonForSavedPageType()=). Hidden with =sa_enable_relationship_tables= off (=showIf=). Coverage: =tests/fixtures/rel-tables-recording.spec.js= (incl. the main button unchanged and a Save → Load round trip) and =rel-tables-pages.spec.js=, raw captures =tests/fixtures/rel-{series,work,label-rels,artist-rels,release-group,recording,release}-overview.html=.

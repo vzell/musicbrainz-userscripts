@@ -1,5 +1,17 @@
 [
   {
+    "version": "WIP.5",
+    "date": "2026-10-22",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "An editor's other edit lists get a button too: the accepted, auto-edits, applied, rejected, failed and cancelled edits (/user/<name>/edits/<status>) and the edits they voted on (/user/<name>/votes), the \"view\" links of a profile's Statistics. Each one loads every page into one table, the way \"Show all Edits for User\" already did for their edits and open edits."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.4",
     "date": "2026-10-22",
     "sections": [

@@ -1656,8 +1656,10 @@ an import brings your deletions back.
 - **Tags** — entity tag pages, user tag pages, and the most-popular-tags page
 - **Search results** — every entity type
 - **Reports** — the `/reports` index and all 117 reports across 14 categories
-- **Edit listings** — edit search, per-entity edits, your own edits, open edits,
-  subscribed edits, notes received
+- **Edit listings** — edit search, per-entity edits, subscribed edits, notes
+  received, and every list of an editor's profile Statistics: their edits, open,
+  accepted, auto-edits, applied, rejected, failed and cancelled edits, and the
+  edits they voted on
 - **Annotation history** (`/<entity>/<mbid>/annotations`) across ten entity types,
   and **one version of an annotation** (`/<entity>/<mbid>/annotation/<n>`, or the
   current one) compared with the current version

@@ -18,7 +18,7 @@
 // @include      /^https?:\/\/(?:[^\/]+\.)?musicbrainz\.(?:org|eu)\/(?:artist|label|series|collection)\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/subscribers\/?(?:\?.*)?$/
 // @include      /^https?:\/\/(?:[^\/]+\.)?musicbrainz\.(?:org|eu)\/release\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}(?:\/disc\/\d+)?\/?(?:\?[^#]*)?(?:#.*)?$/
 // @include      /^https?:\/\/(?:[^\/]+\.)?musicbrainz\.(?:org|eu)\/(?:search\?query=.*|search\/edits\/?(?:\?.*)?|edit\/(?:subscribed(?:_editors)?|notes-received)\/?(?:\?.*)?|account\/applications\/?(?:\?.*)?|tags.*|tag\/.*|cdtoc\/.*|taglookup.*|artist-credit\/.*|reports.*|report\/.*|elections\/?(?:\?.*)?|election\/.*|genres\/?(?:\?.*)?|cdstub\/.*|isrc\/.*|iswc\/.*|doc\/Edit_Types\/?(?:\?.*)?|instruments\/?(?:\?.*)?|privileged\/?(?:\?.*)?)$/
-// @include      /^https?:\/\/(?:[^\/]+\.)?musicbrainz\.(?:org|eu)\/user\/[^\/]+\/(?:subscriptions\/.*|subscribers\/?(?:\?.*)?|collections\/?(?:\?.*)?|ratings\/.*|ratings(?:\?.*)?|tags.*|tag\/.*|edits(?:\/open)?\/?(?:\?.*)?)$/
+// @include      /^https?:\/\/(?:[^\/]+\.)?musicbrainz\.(?:org|eu)\/user\/[^\/]+\/(?:subscriptions\/.*|subscribers\/?(?:\?.*)?|collections\/?(?:\?.*)?|ratings\/.*|ratings(?:\?.*)?|tags.*|tag\/.*|edits(?:\/(?:open|accepted|autoedits|applied|rejected|failed|cancelled))?\/?(?:\?.*)?|votes\/?(?:\?.*)?)$/
 // @include      /^https?:\/\/(?:[^\/]+\.)?musicbrainz\.(?:org|eu)\/user\/[^\/?#]+\/?(?:[?#].*)?$/
 // @include      /^https?:\/\/(?:www\.)?springsteenlyrics\.com\/(?:collection|bootlegs|brucelegs)\.php\?(?:[^#]*&)?cmd=list(?:[&#].*)?$/
 // @include      /^https?:\/\/(?:www\.)?springsteenlyrics\.com\/collection\.php(?:\?(?:(?:[^#]*&)?cmd=intro(?:&[^#]*)?|pg=\d+(?:&[^#]*)?))?(?:#.*)?$/
@@ -24755,9 +24755,11 @@
      * — identical DOM-manipulation approach, just `<h1>` instead of `<h3>`.
      *
      * This is a DOM pre-processing step for pageTypes that carry
-     * `features.renameH2ToH1: true` (currently 'user-edits'/'user-open-edits').
-     * Those pages render no native `<h1>` at all — their only heading is a
-     * `<h2>` ("Edits by <username>" / "Open edits by <username>"). Left as an
+     * `features.renameH2ToH1: true` (currently an editor's edit lists:
+     * 'user-edits', 'user-open-edits', the other 'user-*-edits' and
+     * 'user-votes'). Those pages render no native `<h1>` at all — their only
+     * heading is a `<h2>` ("Edits by <username>", "Votes by <username>", …).
+     * Left as an
      * `<h2>`, both the page-load button-toolbar injection and the post-render
      * filter/count/CAA-toggle injection resolve to that SAME element (there is
      * nothing else to pick), cramming the whole action-button toolbar, row-count
@@ -33274,6 +33276,113 @@
                 unboundedPagination: true,
                 renameH2ToH1: true,
                 insertH2: 'Edits',
+                collapsableColumns: [ 'Edit details', 'Edit notes' ],
+                addCAA: 'Entered from release'
+            },
+            tableMode: 'single'
+        },
+        // An editor's other edit lists, the links of a profile's Statistics:
+        // '/user/<username>/edits/<status>' and '/user/<username>/votes' (the
+        // edits they voted on). The same page as 'user-edits' above, probed
+        // logged in 2026-10-22 (scripts/probe-user-edit-lists.py): no native
+        // <h1>, one title <h2> ("Accepted edits by <username>", "Auto-edits
+        // by …", "Votes by …"), no div.tabs, a div.edit-list per edit, "Found
+        // [at least] N edits" and the pagination widget — so the same
+        // features. Anchored with '$' like the two above, so no list can
+        // satisfy another's match.
+        {
+            type: 'user-accepted-edits',
+            match: (path) => /^\/user\/[^/]+\/edits\/accepted\/?$/.test(path),
+            buttons: [ { label: 'Show all Accepted Edits for User', shortLabel: 'Accepted Edits' } ],
+            features: {
+                editsToTable: true,
+                unboundedPagination: true,
+                renameH2ToH1: true,
+                insertH2: 'Accepted edits',
+                collapsableColumns: [ 'Edit details', 'Edit notes' ],
+                addCAA: 'Entered from release'
+            },
+            tableMode: 'single'
+        },
+        {
+            type: 'user-autoedits',
+            match: (path) => /^\/user\/[^/]+\/edits\/autoedits\/?$/.test(path),
+            buttons: [ { label: 'Show all Auto-edits for User', shortLabel: 'Auto-edits' } ],
+            features: {
+                editsToTable: true,
+                unboundedPagination: true,
+                renameH2ToH1: true,
+                insertH2: 'Auto-edits',
+                collapsableColumns: [ 'Edit details', 'Edit notes' ],
+                addCAA: 'Entered from release'
+            },
+            tableMode: 'single'
+        },
+        {
+            type: 'user-applied-edits',
+            match: (path) => /^\/user\/[^/]+\/edits\/applied\/?$/.test(path),
+            buttons: [ { label: 'Show all Applied Edits for User', shortLabel: 'Applied Edits' } ],
+            features: {
+                editsToTable: true,
+                unboundedPagination: true,
+                renameH2ToH1: true,
+                insertH2: 'Applied edits',
+                collapsableColumns: [ 'Edit details', 'Edit notes' ],
+                addCAA: 'Entered from release'
+            },
+            tableMode: 'single'
+        },
+        {
+            type: 'user-rejected-edits',
+            match: (path) => /^\/user\/[^/]+\/edits\/rejected\/?$/.test(path),
+            buttons: [ { label: 'Show all Rejected Edits for User', shortLabel: 'Rejected Edits' } ],
+            features: {
+                editsToTable: true,
+                unboundedPagination: true,
+                renameH2ToH1: true,
+                insertH2: 'Rejected edits',
+                collapsableColumns: [ 'Edit details', 'Edit notes' ],
+                addCAA: 'Entered from release'
+            },
+            tableMode: 'single'
+        },
+        {
+            type: 'user-failed-edits',
+            match: (path) => /^\/user\/[^/]+\/edits\/failed\/?$/.test(path),
+            buttons: [ { label: 'Show all Failed Edits for User', shortLabel: 'Failed Edits' } ],
+            features: {
+                editsToTable: true,
+                unboundedPagination: true,
+                renameH2ToH1: true,
+                insertH2: 'Failed edits',
+                collapsableColumns: [ 'Edit details', 'Edit notes' ],
+                addCAA: 'Entered from release'
+            },
+            tableMode: 'single'
+        },
+        {
+            type: 'user-cancelled-edits',
+            match: (path) => /^\/user\/[^/]+\/edits\/cancelled\/?$/.test(path),
+            buttons: [ { label: 'Show all Cancelled Edits for User', shortLabel: 'Cancelled Edits' } ],
+            features: {
+                editsToTable: true,
+                unboundedPagination: true,
+                renameH2ToH1: true,
+                insertH2: 'Cancelled edits',
+                collapsableColumns: [ 'Edit details', 'Edit notes' ],
+                addCAA: 'Entered from release'
+            },
+            tableMode: 'single'
+        },
+        {
+            type: 'user-votes',
+            match: (path) => /^\/user\/[^/]+\/votes\/?$/.test(path),
+            buttons: [ { label: 'Show all Votes for User', shortLabel: 'Votes' } ],
+            features: {
+                editsToTable: true,
+                unboundedPagination: true,
+                renameH2ToH1: true,
+                insertH2: 'Votes',
                 collapsableColumns: [ 'Edit details', 'Edit notes' ],
                 addCAA: 'Entered from release'
             },
@@ -72068,16 +72177,18 @@ a { color: #1565c0; }`;
                           document.querySelector('#content h1') || // Often catches search result headers
                           document.querySelector('h1');
 
-    // user-edits / user-open-edits ('/user/<username>/edits[/open]') render no
-    // <h1> at all — confirmed live, not just in the debug snapshots (every
-    // fallback above requires an <h1>, so headerContainer would otherwise stay
-    // null and the whole script aborts at the check below). The only heading
-    // on these pages is the native <h2>Edits by <username></h2> / <h2>Open
-    // edits by <username></h2> — use that instead. Scoped to these two
-    // pageTypes specifically (not a blanket "no h1 → fall back to any h2"
-    // rule) so no other page type's legitimately-missing-h1 case starts
-    // silently picking up an unrelated h2.
-    if (!headerContainer && (pageType === 'user-edits' || pageType === 'user-open-edits')) {
+    // An editor's edit lists ('/user/<username>/edits[/<status>]',
+    // '/user/<username>/votes': user-edits, user-open-edits and the other
+    // user-*-edits/user-votes pageTypes) render no <h1> at all — confirmed
+    // live, not just in the debug snapshots (every fallback above requires an
+    // <h1>, so headerContainer would otherwise stay null and the whole script
+    // aborts at the check below). The only heading on these pages is the
+    // native <h2>Edits by <username></h2>, <h2>Votes by <username></h2>, … —
+    // use that instead. Scoped to the pageTypes that promote that <h2>
+    // (features.renameH2ToH1, which only they carry), not a blanket "no h1 →
+    // fall back to any h2" rule, so no other page type's legitimately-
+    // missing-h1 case starts silently picking up an unrelated h2.
+    if (!headerContainer && baseDefinition?.features?.renameH2ToH1) {
         headerContainer = document.querySelector('#content h2') || document.querySelector('h2');
     }
 
