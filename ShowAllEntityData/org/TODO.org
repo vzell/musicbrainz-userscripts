@@ -4042,6 +4042,7 @@ on collection pages, images should get internal viewer support + their tooltip s
 the corresponding row -> image hover popup + internal viewer click
 
 * TODO userscript size and managibility
+** DONE initial
 
 1.)
 
@@ -4063,5 +4064,28 @@ code for extractors
 etc.
 #+end_example
 
-Analysed 2026-10-22 — see [[file:userscript-size.org][org/userscript-size.org]] (follows the 2026-10-10 answer in
-[[file:build-framework.org][org/build-framework.org]]; REFACTORING.org has a dated re-evaluation and candidates #10–#13).
+** TODO Analysed 2026-10-22
+
+see [[file:userscript-size.org][org/userscript-size.org]] (follows the 2026-10-10 answer in [[file:build-framework.org][org/build-framework.org]]; REFACTORING.org has a dated
+re-evaluation and candidates #10–#13).
+
+
+* TODO embed YouTube videos directly in the PTs where they are referenced + the original URL as popup box as now
+
+embed YouTube videos directly in the PTs where they are referenced + the original URL as popup box as now
+
+
+* TODO add support for image URLs from the sidebar like the logo label images
+
+1.)
+
+register the third-party user script by @zabe
+
+#+begin_example
+@tests/fixtures/live-userscripts/entity-image.user.js
+#+end_example
+
+2.)
+
+check what it's doing
+
