@@ -5377,9 +5377,7 @@
         { key: 'sa_sidebar_tables_button',         was: [true] },
         { key: 'sa_ui_artist_role_guest_performer_color', was: ['#e07000'] },
         { key: 'sa_ui_artist_role_main_performer_color',  was: ['#57ff5a'] },
-        { key: 'sa_ui_help_btn_style',             was: ['#78909C|white|1px solid #607D8B'] },
         { key: 'sa_ui_row_hover_bg',               was: ['#e2e2e2'] },
-        { key: 'sa_ui_settings_btn_style',         was: ['#607D8B|white|1px solid #546E7A'] },
         { key: 'sa_uniq_dropdown_visible_rows',    was: [8] },
     ];
 
