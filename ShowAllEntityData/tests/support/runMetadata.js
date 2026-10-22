@@ -228,7 +228,29 @@ function archiveFileStem({ prefix, label, version, capturedAt, hostname }) {
     return segments.join('-');
 }
 
+/**
+ * A moment as Berlin wall time with its offset, ISO 8601
+ * (`2026-10-22T10:52:04+02:00`): CLAUDE.md's "Time zone: Europe/Berlin" rule
+ * for every stored time, which keeps the hour that repeats when the clocks go
+ * back unambiguous. `Date.toISOString()` would store UTC instead.
+ *
+ * @param {Date} [date] - The moment; now when omitted.
+ * @returns {string}
+ */
+function berlinIso(date = new Date()) {
+    const fmt = new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'Europe/Berlin',
+        year: 'numeric', month: '2-digit', day: '2-digit',
+        hour: '2-digit', minute: '2-digit', second: '2-digit',
+        hourCycle: 'h23', timeZoneName: 'longOffset',
+    });
+    const p = Object.fromEntries(fmt.formatToParts(date).map(x => [x.type, x.value]));
+    const offset = p.timeZoneName.replace('GMT', '') || '+00:00';
+    return `${p.year}-${p.month}-${p.day}T${p.hour}:${p.minute}:${p.second}${offset}`;
+}
+
 module.exports = {
+    berlinIso,
     REPO_ROOT,
     USERSCRIPT_PATH,
     readScriptVersion,

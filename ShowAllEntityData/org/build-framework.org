@@ -810,3 +810,11 @@ reads); merging the four ~_*PrepareLivePage~ functions.
    (≈5–10 min; ~--runs 3 --warmup 1 --throttle 1~ for a quick look).
 5. Before any runtime change: ~npm run test:full~ via ~python3 scripts/run-test-full.py~,
    version bump + WIP changelog on the feature branch per CLAUDE.md.
+
+* Follow-up — 2026-10-22
+
+Re-measured at 7.9 MB (9.99.1426) and extended — where every byte is and which parts grew,
+memory per tab, supported initial pages, a library verdict per subsystem, REFACTORING.org's
+status: [[file:userscript-size.org][org/userscript-size.org]]. Nothing above is superseded unless that file
+says so; its sections point back here for delivery (§1), the build phases (§2) and the non-MB
+inventory (§3a).

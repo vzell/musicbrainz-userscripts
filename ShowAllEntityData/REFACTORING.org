@@ -60,6 +60,54 @@ Constraints that shape every verdict below:
 | 8 | Reorganize pageDefinitions beyond entity-class grouping | usability               | Not recommended    |
 | 9 | Merge renderFinalTable/renderGroupedTable               | usability               | Not recommended    |
 
+Added 2026-10-22 (see "Re-evaluation 2026-10-22" below):
+
+|  # | Candidate                                                   | Axis                      | Verdict                         |
+|----+-------------------------------------------------------------+---------------------------+---------------------------------|
+| 10 | Byte-identical fragment split (concatenation build)         | usability                 | Worth doing                     |
+| 11 | Converter hooks instead of flag dispatch (non-MB sites)     | extensibility/safety      | Worth doing                     |
+| 12 | Publish copy: comments stripped, chars above U+00FF escaped | end-user performance      | Worth doing, after #10's tool   |
+| 13 | ~@require~ libraries per subsystem                          | usability/reuse           | Conditional (second consumer)   |
+
+* Re-evaluation 2026-10-22 (7.9 MB)
+
+Env: 2026-10-22T16:00+02:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux
+6.18.54.1-microsoft-standard-WSL2) · code reading, acorn (~scripts/size-report.js~), four
+read-only sweeps · browser n/a
+
+Asked as part of org/TODO.org "userscript size and managibility"; the full analysis is
+~org/userscript-size.org~ (2026-10-22), which follows ~org/build-framework.org~'s 2026-10-10
+response. This section only records what changed for THIS file's candidates. Nothing above is
+deleted or rewritten, per this file's own rule.
+
+** The context, then and now
+
+| Fact                       | When this file was written | 2026-10-22                                                                       |
+|----------------------------+----------------------------+----------------------------------------------------------------------------------|
+| Size                       | 65,360 lines               | 144,364 lines, 7,903,066 bytes (42 % comments, 17.5 % indentation)               |
+| pageTypes                  | 86                         | 135 (114 MusicBrainz + 21 on other sites)                                        |
+| ~configSchema~ settings    | 213                        | 419 in 52 sections                                                               |
+| ~pageDefinitions~          | 2,834 lines                | 4,175 lines (~const pageDefinitions = [~)                                        |
+| Snapshot-covered pageTypes | 10                         | 19 snapshot directories under ~tests/snapshots/~                                 |
+| Behavioural coverage       | 14 live specs              | 319 fixture spec files (incl. mobile), 46 live specs; 1,789 tests in ~test:full~ |
+
+*Every line number in this file is stale* (the ~*-tags~ cluster now starts near 31566,
+~pageDefinitions~ at 31281). Grep the names.
+
+** Status of #1–#9
+
+| # | Candidate                      | Status 2026-10-22                                                                                                                                                                                                                                                           |
+|---+--------------------------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| 1 | ~*-tags~ cluster               | Open. Still 11 copy-pasted entries; ~user-tags~ still separate.                                                                                                                                                                                                             |
+| 2 | Filtered/unfiltered pairs      | Open. All 7 pairs still written out.                                                                                                                                                                                                                                        |
+| 3 | Startup validator              | Open, and more useful than before: 135 definitions, 21 distinct extractor names (all resolve today); an unknown name still only logs ~Lib.error~ at dispatch.                                                                                                               |
+| 4 | ~dateParts~ duplication        | Open, and spreading: the two parse/validate blocks are still duplicated, and the month/day name arrays now exist in 4 places.                                                                                                                                               |
+| 5 | ~appendSortKey~ closure        | Open; now THREE copies (~video~, ~caa~, ~cancelledEvent~).                                                                                                                                                                                                                  |
+| 6 | ~configSchema~ as ~@require~   | Still pure data, now 272 KiB. Verdict sharpened: a source FRAGMENT, not a library — it changes with nearly every feature, so a separate release unit invites schema/code skew (org/userscript-size.org §5.2). #10 gives the navigation benefit without the deployment risk. |
+| 7 | Bundler                        | The decisive reason stands (≈3,000 top-level declarations that all see each other). The "verification infeasible" reason has weakened (coverage above), and #10 sidesteps both: one scope, proven by byte identity.                                                         |
+| 8 | Reorganize ~pageDefinitions~   | Unchanged.                                                                                                                                                                                                                                                                  |
+| 9 | Merge the two render functions | Unchanged.                                                                                                                                                                                                                                                                  |
+
 * TODO Consolidate the ~*-tags~ pageDefinitions cluster
 
 ** Axis
@@ -357,3 +405,102 @@ and zebra-striping logic to the same shared ~renderRowsChunked()~/
 ** Verdict
 Not recommended. No duplication left to remove; the size gap is scope, not
 copy-paste.
+
+* TODO Byte-identical fragment split (concatenation build)
+
+Added 2026-10-22. Design: ~org/build-framework.org~ §2.4 (2026-10-10). Why now:
+~org/userscript-size.org~ §3 and §5.3.
+
+** Axis
+Usability. No session — human or Claude — can read the file whole (≈2 million tokens);
+every change is grep plus slices; anchors must be unique across 144k lines; pure parts are
+tested by slicing the file between two anchors (~scripts/check-mb-title-case.js~).
+
+** Evidence
+~scripts/size-report.js~ maps every top-level statement to a subsystem; the 20-odd
+subsystems of org/userscript-size.org §1.2 (link previews 797 KB, artwork 695 KB, filter 658
+KB, …) are the natural fragments. The file grew 2.5 → 7.9 MB in four months.
+
+** Cost / risk
+Zero runtime change by construction: ~src/NN-name.js~ fragments joined back into the same
+IIFE, in the same order, so scope, hoisting and TDZ are untouched — the reason #7 was
+rejected never arises. Proof of the first cut: SHA-256 of the joined file equals today's.
+The cost is process: the built file stays committed at its current path (every tool, spec
+and skill keeps reading it), the split/join tool must refuse to overwrite a hand-edited
+artifact, a freshness spec joins the merge gate, and merges rebuild the artifact. Details,
+including the cut-safe boundaries and the mutation-check interaction, in build-framework.org
+§2.4.
+
+** Recommended path
+After the dev loader and stage step (build-framework.org §1.2/§2.2), since both need the
+same "derive artifacts from the source" tool. Cut at top-level statement boundaries only
+(acorn); never reorder.
+
+* TODO Converter hooks instead of flag dispatch (non-MB sites)
+
+Added 2026-10-22.
+
+** Axis
+Extensibility and safety.
+
+** Evidence
+A foreign converter is wired in through hard-coded ~features.<flag>~ checks in THREE places —
+the live page, the fetched pages and the load from disk — 26 ~if~s in all (counted
+2026-10-22 in ~startFetchingProcess~ and ~_hydrateAndRenderFromSnapshotData~), plus a 5-way
+~baseDefinition.host~ switch at init. A new site that misses one of the three fails only in
+that path (build-framework.org §3a pitfall 8). The engine already has the hook style this
+needs: ~features.pageRequest~ / ~pageCountAsync~ / ~decorateDoc~.
+
+** Cost / risk
+Low–medium: the three call sites become one ~def.features.convert?.(def, doc)~ each, and the
+per-site preparation one ~prepareLivePage?.(def)~. Every foreign pageType has fixture specs;
+the MusicBrainz suite must show nothing changed (no MB definition sets any of the flags).
+
+** Recommended path
+One site at a time, jungleland first (smallest: it needs ~Lib~, the table style and the
+title-case engine, whose ~_mbSetSiteTitle()~ its row builder calls). Prerequisite for moving
+any site's code into its own fragment or library.
+
+* TODO Publish copy: comments stripped, characters above U+00FF escaped
+
+Added 2026-10-22. Measured gains: org/userscript-size.org §2.1/§2.2 (arms ~stripped~ and
+~stripped-ascii~).
+
+** Axis
+End-user performance: parse/compile time and memory per tab.
+
+** Evidence
+The shipped file is 42 % comments and 17.5 % indentation, and its 34,885 characters above
+U+00FF make the whole source a two-byte string: memory-infra shows Blink holding the source
+as a 15.0 MiB parkable string for the 7.9 MB file (≈2 bytes per character).
+
+** Cost / risk
+Medium. The publish copy differs from the tested file, so the fixture suite must run against
+it before each publish (an env-var path redirect in ~tests/support/loadPage.js~). Line numbers
+stay 1:1 (newlines kept), so users' stack traces still point at the source. Users would no
+longer see the rationale comments in their Tampermonkey editor. The 77 KiB of CSS comments
+inside ~GM_addStyle~ templates are string content and survive JS comment stripping; moving them
+into JS comments first is safe and small. *The one-byte half needs a decision:* the header and
+credits stay verbatim in a publish copy, and 24 of their characters are above U+00FF — 22 in the
+author's own notes (box-drawing, dashes, bullets: rewrite them in the source), 2 quoted from
+jesus2099's header in the credits block that CLAUDE.md marks "do not edit" (Ⅱ, →). One such
+character keeps the whole copy two-byte, so the measured −11.5 MiB per tab needs "II" and "->"
+in the published credits; the measuring arm replaced all 24 with "?".
+
+** Recommended path
+Build it with the same tool as #10 (acorn tokens, never regexes; the transforms already exist
+in ~scripts/lib/userscript-source.js~); publish rule becomes "mirror == strip(dev)".
+
+* Conditional: ~@require~ libraries per subsystem
+
+Added 2026-10-22. Full table: org/userscript-size.org §5.
+
+** Verdict
+A ~@require~ is parsed on every matched page, so a library makes no page cheaper; it adds a
+publish rewrite and the version skew this project already hit once (9.99.1138 against library
+4.0.0). Feasible now: the title-case engine (39 KB, nearly pure), the column extractors
+(82 KiB) and the release-tracks AR helpers (≈132 kB). After a refactor: the popup engine
+(≈35-entry context), the non-MB converters (#11 first). Not separable: the engine, artwork,
+~applyExtractTrackTitleData~. Do it only for code with a SECOND consumer — the title-case engine
+for the Springsteen scripts is the first candidate — with an immutable URL, ~#sha256=~ SRI, a
+version handshake and a publish-check entry per library.
