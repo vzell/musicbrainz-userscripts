@@ -1,5 +1,65 @@
 [
   {
+    "version": "9.99.1426",
+    "date": "2026-10-22",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "An editor's other edit lists get a button too: the accepted, auto-edits, applied, rejected, failed and cancelled edits (/user/<name>/edits/<status>) and the edits they voted on (/user/<name>/votes), the \"view\" links of a profile's Statistics. Each one loads every page into one table, the way \"Show all Edits for User\" already did for their edits and open edits."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.1425",
+    "date": "2026-10-22",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "Brucebase recent changes: the Flags column is a multi-row column now. A change with two flags (\"content source text changed\" and \"title changed\") shows the first one with a ▶ toggle to open the other, and the column header can open or close them all and counts them, like MusicBrainz's list columns."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.1424",
+    "date": "2026-10-22",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Link previews: an artist's, label's, series' or collection's sidebar \"Subscribers\" link now has a card and a window, like an editor's subscribers: how many are subscribed, how many anonymously, and their names. The \"Found in N user collections\" link of any entity has one too: how many collections hold it, how many of them are private, and the first few by name and owner; the window lists every public collection with its owner, and a click on either opens their card."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.1423",
+    "date": "2026-10-22",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Release and release group collections: the \"plus N other private collections\" row no longer comes back as a table row after a sort or filter; it stays folded into the line above the table. An entity in no collection no longer offers a Collections button with nothing to show, and neither does a subscribers page without subscribers."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.1422",
+    "date": "2026-10-22",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "New pages: the \"Found in N user collections\" page of an area, artist, event, instrument, label, place, recording, series or work (the link in its sidebar) becomes a filterable Collection | Editor table, like a release's. The \"Subscribers\" page of an artist, label, series or collection becomes a table of its subscribers, like an editor's, with the anonymous subscribers counted in the line above it."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.1421",
     "date": "2026-10-21",
     "sections": [

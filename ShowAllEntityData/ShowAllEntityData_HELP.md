@@ -1650,7 +1650,9 @@ an import brings your deletions back.
 - **Relationships as tables** on place, area, instrument and URL pages, and as a
   second button on series, work, release group, recording and release pages
   and the artist and label Relationships tab
-- **Collections** — your own, subscribed ones, and their entity sub-tabs
+- **Collections** — your own, subscribed ones, and their entity sub-tabs; an
+  entity's *Found in N user collections* page, and the *Subscribers* page of an
+  artist, label, series or collection
 - **Editor profiles** (`/user/<name>`) — the profile's information and
   statistics as tables
 - **Tags** — entity tag pages, user tag pages, and the most-popular-tags page
