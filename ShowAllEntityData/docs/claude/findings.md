@@ -330,8 +330,14 @@ honest without a hook of their own.
 
 ## The menus
 
-`_ensureFindingMenu(level)` → `createToolbarMenu()` with keys `findings-warn` /
-`findings-error`. Unlike 📦 Data and 🛠 View they **build their own rows**
+`_ensureFindingMenu(level)` → `createToolbarMenu({ segment: true })` with keys
+`findings-warn` / `findings-error`. Since 2026-10-22 they are the two
+attention INDICATORS of the SAED button (`_SAED_INDICATORS`,
+docs/claude/toolbar-and-header-ui.md "The SAED button"): a segment
+"❌ N ▾" / "⚠️ N ▾" in its `attn` area (errors first), tinted by level, and a
+row of the SAED menu's "Needs attention" group opening the same list beside
+the menu; `menu.indicatorCount` carries the count, and ticking a row keeps
+the list open. Unlike the Data and View groups they **build their own rows**
 (`_buildFindingMenuRows()`, `menuitemcheckbox`, adopted via `adopt()` for the
 keyboard and close behaviour) instead of adopting existing toolbar buttons —
 there are no such buttons; the rows ARE the feature. Row styling therefore

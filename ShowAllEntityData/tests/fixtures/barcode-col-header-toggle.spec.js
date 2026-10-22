@@ -134,7 +134,7 @@ test.describe('barcode-highlight toggle in the "Barcode" column header', () => {
     });
 
     // `sa_enable_direct_ctrl_char_shortcuts` ships OFF, so the bare Ctrl+B
-    // path needs it opted back in — see toolbar-menus.spec.js.
+    // path needs it opted back in — see saed-toolbar.spec.js.
     test('direct Ctrl+B toggles it when direct shortcuts are enabled', async ({ page }) => {
         await loadAndRender(page, { sa_enable_direct_ctrl_char_shortcuts: true });
         const toggle = page.locator('.mb-barcode-col-hdr-btn');

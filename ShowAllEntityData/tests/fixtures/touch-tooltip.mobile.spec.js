@@ -193,14 +193,16 @@ test.describe('hover tooltips on a touch device', () => {
         await page.locator(ISWC_BUTTON).evaluate((b) => b.click());
         await waitForRenderComplete(page, { waitForAutoResize: false });
 
-        const SETTINGS_BTN = '#mb-settings-btn[data-mb-tip]';
+        // The h2's 👁️ column-visibility button: an own tooltip, always laid out
+        // (it was ⚙️ until Settings became a row of the SAED menu, 2026-10-22).
+        const SETTINGS_BTN = '#mb-visible-btn[data-mb-tip]';
         const btn = page.locator(SETTINGS_BTN);
         const tip = page.locator('#mb-stat-tooltip');
         await expect(btn).toBeVisible();
         const title = await btn.getAttribute('title');
-        expect(title).toContain('settings manager');
+        expect(title).toContain('table columns');
 
-        // Keep the tap from opening the settings dialog over the page.
+        // Keep the tap from opening the column menu over the page.
         await page.evaluate((sel) => document.addEventListener('click', (e) => {
             if (e.target instanceof Element && e.target.closest(sel)) {
                 e.stopPropagation();
@@ -238,7 +240,7 @@ test.describe('hover tooltips on a touch device', () => {
         await page.waitForTimeout(PAST_TOUCH_WINDOW_MS);
         await mouseHover(page, btn);
         await expect(tip).toBeVisible();
-        await expect(tip).toContainText('settings manager');
+        await expect(tip).toContainText('table columns');
     });
 
     // The pre-redesign preview popup + type box: since the B2 image card

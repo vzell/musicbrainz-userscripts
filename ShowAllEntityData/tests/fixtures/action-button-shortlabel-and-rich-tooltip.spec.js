@@ -38,13 +38,14 @@ const SEARCH_FIXTURE = path.join(__dirname, 'search-recordings-continuation.html
  */
 const buttonRow = (page) => page.evaluate(() => {
     const container = document.getElementById('mb-show-all-controls-container');
-    const groupLabelEl = container.querySelector('strong');
-    const dividerEl = container.querySelector('.mb-button-group-label-divider');
+    // Since the SAED button (2026-10-22) the group label is a muted,
+    // non-clickable LABEL segment heading the actions area ("RGS 🧮¹ Artist …").
+    const actions = container.querySelector('#mb-saed-bar > [data-mb-area="actions"]');
+    const groupLabelEl = actions ? actions.querySelector('.mb-seg-label') : null;
     return {
         groupLabel: groupLabelEl ? groupLabelEl.textContent : null,
-        groupLabelFontSize: groupLabelEl ? groupLabelEl.style.fontSize : null,
-        groupDividerText: dividerEl ? dividerEl.textContent : null,
-        groupDividerBeforeLabel: !!(dividerEl && dividerEl.nextElementSibling === groupLabelEl),
+        groupLabelHeadsActions: !!groupLabelEl && actions.firstElementChild === groupLabelEl,
+        groupLabelIsButton: !!groupLabelEl && groupLabelEl.tagName === 'BUTTON',
         buttons: Array.from(container.querySelectorAll('button[data-label]')).map((btn) => ({
             text: btn.textContent.trim(),
             dataLabel: btn.dataset.label,
@@ -55,16 +56,15 @@ const buttonRow = (page) => page.evaluate(() => {
 });
 
 test.describe('action buttons: shortLabel, buttonGroupLabel and rich hover tooltip', () => {
-    test('user-subscriptions: "Subscriptions:" heading, short per-button labels, dataset.label unchanged', async ({ page }) => {
+    test('user-subscriptions: "Subscriptions" label segment, short per-button labels, dataset.label unchanged', async ({ page }) => {
         await loadUserscriptPage(page, { url: SUBSCRIPTIONS_URL, fixtureFile: SUBSCRIPTIONS_FIXTURE, testMode: true });
 
         const row = await buttonRow(page);
-        expect(row.groupLabel).toBe('Subscriptions:');
-        // A "|" ahead of the label, same divider style as the one before 📦 Data ▾,
-        // and the label reads smaller than the native h1 text it follows.
-        expect(row.groupDividerText).toBe(' | ');
-        expect(row.groupDividerBeforeLabel).toBe(true);
-        expect(row.groupLabelFontSize).toBe('0.65em');
+        expect(row.groupLabel).toBe('Subscriptions');
+        // The label heads the SAED button's actions area and is not itself a
+        // button: it names the group, it does nothing.
+        expect(row.groupLabelHeadsActions).toBe(true);
+        expect(row.groupLabelIsButton).toBe(false);
         expect(row.buttons).toHaveLength(5);
         expect(row.buttons[0].text).toBe('🧮¹ Artist');
         expect(row.buttons[0].dataLabel).toBe('🧮 Artist subscriptions');
@@ -75,11 +75,11 @@ test.describe('action buttons: shortLabel, buttonGroupLabel and rich hover toolt
     // The first button is the artist's OWN releases, so its short label is
     // the singular "Artist" — "Artists" read as if it fetched several artists'
     // releases. "Various Artists" is a proper name and stays plural.
-    test('artist-releases: "Releases:" heading, "Artist"/"Various Artists" short labels', async ({ page }) => {
+    test('artist-releases: "Releases" label, "Artist"/"Various Artists" short labels', async ({ page }) => {
         await loadFromDiskFixture(page, { url: ARTIST_RELEASES_URL, fixturePath: ARTIST_RELEASES_FIXTURE, testMode: true });
 
         const row = await buttonRow(page);
-        expect(row.groupLabel).toBe('Releases:');
+        expect(row.groupLabel).toBe('Releases');
         expect(row.buttons).toHaveLength(2);
         expect(row.buttons[0].text).toBe('🧮¹ Artist');
         expect(row.buttons[0].dataLabel).toBe('🧮 Artist releases');
@@ -87,15 +87,15 @@ test.describe('action buttons: shortLabel, buttonGroupLabel and rich hover toolt
         expect(row.buttons[1].dataLabel).toBe('🧮 VA releases');
     });
 
-    test('artist-releasegroups: "RGs:" heading, "Artist"/"Various Artists" short labels', async ({ page }) => {
+    test('artist-releasegroups: "RGs" label, "Artist"/"Various Artists" short labels', async ({ page }) => {
         // The Sidebar button is off by default since 9.99.1353: switched on
         // here, so its divider and description stay pinned.
         await loadFromDiskFixture(page, { url: ARTIST_RGS_URL, fixturePath: ARTIST_RGS_FIXTURE, testMode: true, settingsOverride: { sa_sidebar_tables_button: true } });
 
         const row = await buttonRow(page);
-        expect(row.groupLabel).toBe('RGs:');
+        expect(row.groupLabel).toBe('RGs');
         // The RG group's own two, then "🗂 Sidebar as tables" (docs/claude/sidebar.md)
-        // behind its own divider, with a description of its own: it fetches nothing.
+        // starting a group of its own, with a description of its own: it fetches nothing.
         expect(row.buttons).toHaveLength(3);
         expect(row.buttons[0].text).toBe('🧮¹ Artist');
         expect(row.buttons[0].dataLabel).toBe('🧮 Artist RGs');
@@ -104,10 +104,9 @@ test.describe('action buttons: shortLabel, buttonGroupLabel and rich hover toolt
         expect(row.buttons[2].dataLabel).toBe('🗂 Sidebar as tables');
         expect(row.buttons[2].title).toContain('nothing is fetched');
         expect(row.buttons[2].title).not.toContain('Fetch');
-        expect(await page.evaluate(() => {
-            const b = document.querySelector('#mb-show-all-controls-container button[data-label="🗂 Sidebar as tables"]');
-            return !!b.previousElementSibling && b.previousElementSibling.classList.contains('mb-button-own-group-divider');
-        }), 'its own divider separates it from the RGs group').toBe(true);
+        // A heavier rule (a group start) separates it from the RGs group.
+        await expect(page.locator('#mb-saed-bar button[data-label="🗂 Sidebar as tables"]'),
+            'its own group start separates it from the RGs group').toHaveClass(/mb-seg-group-start/);
     });
 
     test('iswc: the rich tooltip restores the full label and the shortcut hint, and shows on hover', async ({ page }) => {

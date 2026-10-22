@@ -1,10 +1,12 @@
 'use strict';
 
-// The ▶/▼-less half of the ❓ and 🎹 dialogs: a lower-right resize handle,
-// plus position+size persisted across close/reopen. Both dialogs share one
-// factory, createInfoDialog(), so opts.geoKey's save/restore/clamp machinery
-// is exercised once here rather than duplicated per dialog — what differs per
-// dialog is only its own GM key (sa_app_help_geometry / sa_shortcuts_help_geometry).
+// The ▶/▼-less half of the 🎹 dialog: a lower-right resize handle, plus
+// position+size persisted across close/reopen, through createInfoDialog()'s
+// opts.geoKey save/restore/clamp machinery (sa_shortcuts_help_geometry). The ❓
+// help dialog used the same factory until 2026-10-22, when it left this script
+// (help opens on GitHub; the dialog is VZ_MBLibrary's Lib.showMarkdownHelp(),
+// covered by lib-markdown-help.spec.js), so its row and the "two dialogs keep
+// independent keys" check went with it.
 //
 // Modeled on showLoadFilterDialog()'s own _saveGeo/_clampGeo/ResizeObserver,
 // which this reuses verbatim rather than re-deriving — see
@@ -24,16 +26,10 @@ async function loadPage(page) {
     await loadUserscriptPage(page, {
         url: ARTIST_RECORDINGS_URL, fixtureFile: FIXTURE_FILE, testMode: true,
     });
-    await page.waitForSelector('#mb-app-help-btn');
+    await page.waitForSelector('#mb-saed-bar');
 }
 
-/** Opens the ❓ dialog (Shift-click) and waits for it to exist. */
-async function openAppHelp(page) {
-    await page.locator('#mb-app-help-btn').click({ modifiers: ['Shift'] });
-    await page.waitForSelector('#mb-app-help-dialog');
-}
-
-/** Opens the 🎹 dialog — adopted into 🛠 View ▾, so it needs the menu helper. */
+/** Opens the 🎹 dialog — a row of the SAED menu, so it needs the menu helper. */
 async function openShortcutsHelp(page) {
     await clickToolbarItem(page, '#mb-shortcuts-help-btn');
     await page.waitForSelector('#mb-shortcuts-help');
@@ -69,7 +65,6 @@ async function dragResizeHandle(page, selector, dx, dy) {
 }
 
 for (const [label, geoKey, openDialog, dialogSel, dragHandleSel] of [
-    ['❓ app-help dialog', 'sa_app_help_geometry', openAppHelp, '#mb-app-help-dialog', '#mb-app-help-dialog > div'],
     ['🎹 shortcuts-help dialog', 'sa_shortcuts_help_geometry', openShortcutsHelp, '#mb-shortcuts-help', '#mb-shortcuts-help > div'],
 ]) {
     test.describe(`${label}: resize handle + persisted geometry`, () => {
@@ -278,20 +273,3 @@ for (const [label, geoKey, openDialog, dialogSel, dragHandleSel] of [
         });
     });
 }
-
-test.describe('the two dialogs keep independent geometry keys', () => {
-    test('moving one dialog does not touch the other one\'s stored geometry', async ({ page }) => {
-        await loadPage(page);
-        await openAppHelp(page);
-
-        const handle = page.locator('#mb-app-help-dialog > div').first();
-        const box = await handle.boundingBox();
-        await page.mouse.move(box.x + box.width / 2, box.y + 10);
-        await page.mouse.down();
-        await page.mouse.move(box.x + box.width / 2 + 50, box.y + 10 + 30, { steps: 3 });
-        await page.mouse.up();
-
-        expect(await readGeo(page, 'sa_app_help_geometry'), 'app-help moved').not.toBeNull();
-        expect(await readGeo(page, 'sa_shortcuts_help_geometry'), 'shortcuts-help untouched').toBeNull();
-    });
-});

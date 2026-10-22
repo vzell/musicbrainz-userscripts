@@ -8,10 +8,6 @@
     "ShowAllEntityData/tests/fixtures/action-button-shortlabel-and-rich-tooltip.spec.js": {
       "playwright/prefer-web-first-assertions": 1
     },
-    "ShowAllEntityData/tests/fixtures/app-help-github-and-markdown.spec.js": {
-      "playwright/no-wait-for-selector": 3,
-      "playwright/prefer-web-first-assertions": 7
-    },
     "ShowAllEntityData/tests/fixtures/area-recordings-ms-length.spec.js": {
       "playwright/no-wait-for-selector": 1
     },
@@ -72,7 +68,7 @@
       "playwright/no-wait-for-timeout": 1
     },
     "ShowAllEntityData/tests/fixtures/info-dialog-resize-geometry.spec.js": {
-      "playwright/no-wait-for-selector": 6,
+      "playwright/no-wait-for-selector": 5,
       "playwright/no-wait-for-timeout": 1
     },
     "ShowAllEntityData/tests/fixtures/jesus2099-artifact-purge.spec.js": {
@@ -198,9 +194,6 @@
     },
     "ShowAllEntityData/tests/fixtures/tag-value-relationships-column.spec.js": {
       "playwright/no-wait-for-selector": 1
-    },
-    "ShowAllEntityData/tests/fixtures/toolbar-menus.spec.js": {
-      "playwright/prefer-web-first-assertions": 2
     },
     "ShowAllEntityData/tests/fixtures/touch-tooltip.mobile.spec.js": {
       "playwright/no-wait-for-timeout": 6,

@@ -36,7 +36,9 @@ async function findingsMenuState(page, level) {
         const btn = document.getElementById(btnId);
         if (!btn) return null;
         const panel = document.getElementById(`${btnId}-panel`);
-        const container = document.getElementById('mb-show-all-controls-container');
+        // An indicator segment of the SAED button while it has rows
+        // (docs/claude/toolbar-and-header-ui.md, "The SAED button").
+        const area = document.querySelector('#mb-saed-bar > [data-mb-area="attn"]');
         const rows = panel
             ? Array.from(panel.querySelectorAll('.mb-findings-menu-item[data-mb-finding-id]')).map((r) => ({
                 id: r.dataset.mbFindingId,
@@ -47,7 +49,7 @@ async function findingsMenuState(page, level) {
             }))
             : [];
         return {
-            attached: !!container && btn.parentNode === container,
+            attached: !!area && btn.parentNode === area,
             label: (btn.querySelector('.mb-toolbar-menu-btn-label') || btn).textContent.trim(),
             title: btn.title,
             pressed: btn.getAttribute('aria-pressed'),

@@ -1,17 +1,20 @@
 'use strict';
 
 /**
- * Driving the h1 controls bar's pull-down menus from a test.
+ * Driving the SAED button's menus from a test.
  *
- * Since the action-button redesign the bar no longer holds one flat run of
- * labelled buttons. Save to Disk, Load from Disk and Export are rows inside
- * `📦 Data ▾`; Density, Statistics and the keyboard shortcuts reference are
- * rows inside `🛠 View ▾` (Barcode highlighting moved out of this menu
- * entirely, into the "Barcode" column header's own ▶/▼ toggle);
- * `artist-releasegroups`'
- * four discography views are rows inside `📀 Discography ▾`. The rows keep
- * their ids — `#mb-save-to-disk-btn` still selects the same element it always
- * did — but a row inside a closed panel is not visible, so a bare
+ * Since the SAED button (2026-10-22) everything the script adds to the page
+ * heading is one segmented button, `#mb-saed-bar`. Save to Disk, Load from
+ * Disk and Export ▸ are rows of the ☰ SAED menu's Data group; Density,
+ * Statistics and the keyboard shortcuts reference are rows of its View group
+ * (Keyboard Shortcuts sits in Help while View would hold nothing else);
+ * Settings and Help are its Help group; What's new and the full log its
+ * Changelog group; Export's four formats are a submenu of the Export row.
+ * `artist-releasegroups`' four discography views are rows of the
+ * `📀 Discography ▾` segment, and each findings level is an indicator
+ * segment (`❌ 1 ▾`, `⚠️ 43 ▾`). The rows keep their ids —
+ * `#mb-save-to-disk-btn` still selects the same element it always did — but a
+ * row inside a closed panel is not visible, so a bare
  * `page.click('#mb-save-to-disk-btn')` waits for actionability until the test
  * times out.
  *
@@ -28,25 +31,51 @@
  * change then edits nine specs instead of one helper.
  */
 
-/** Menu short name (`data-mb-menu-owner`) → its button's selector. */
+/** The ☰ SAED segment, which opens the script's menu. */
+const SAED_MENU_BUTTON = '#mb-saed-menu-btn';
+
+/**
+ * Menu or group short name (`data-mb-menu-owner`) → the segment that opens it.
+ * Every group of the SAED menu opens through ☰ SAED.
+ */
 const TOOLBAR_MENU_BUTTON = {
-    data: '#mb-data-menu-btn',
-    view: '#mb-view-menu-btn',
+    saed: SAED_MENU_BUTTON,
+    data: SAED_MENU_BUTTON,
+    view: SAED_MENU_BUTTON,
+    help: SAED_MENU_BUTTON,
+    log: SAED_MENU_BUTTON,
+    attn: SAED_MENU_BUTTON,
+    load: SAED_MENU_BUTTON,
     disc: '#mb-disc-menu-btn',
     'findings-warn': '#mb-findings-warn-menu-btn',
     'findings-error': '#mb-findings-error-menu-btn',
 };
 
+/** Submenu short name → the row of the SAED menu that opens it. */
+const TOOLBAR_SUBMENU_ROW = {
+    export: '#mb-export-btn',
+};
+
 /**
- * Opens one toolbar menu by name, if it is not already open.
+ * Opens one toolbar menu by name, if it is not already open. A group of the
+ * SAED menu opens the SAED menu; a submenu (Export ▸) opens the SAED menu and
+ * then its row.
  *
  * @param {import('@playwright/test').Page} page
- * @param {'data'|'view'|'disc'|'findings-warn'|'findings-error'} which
+ * @param {string} which - A key of TOOLBAR_MENU_BUTTON or TOOLBAR_SUBMENU_ROW.
  * @returns {Promise<boolean>} False when that menu does not exist on this page
  *   — every row it would hold is gated off, so `_orderToolbar()` never attached
- *   its button. Callers that need the menu should assert on this.
+ *   its segment. Callers that need the menu should assert on this.
  */
 async function openToolbarMenu(page, which) {
+    if (TOOLBAR_SUBMENU_ROW[which]) {
+        if (!await openToolbarMenu(page, 'saed')) return false;
+        const row = page.locator(TOOLBAR_SUBMENU_ROW[which]);
+        if (await row.count() === 0) return false;
+        if (await row.getAttribute('aria-expanded') !== 'true') await row.click();
+        await page.locator(`#mb-${which}-sub-panel`).waitFor({ state: 'visible' });
+        return true;
+    }
     const selector = TOOLBAR_MENU_BUTTON[which];
     if (!selector) throw new Error(`openToolbarMenu: unknown menu "${which}"`);
 
@@ -105,4 +134,6 @@ async function toolbarItemOwner(page, selector) {
     return item.getAttribute('data-mb-menu-owner');
 }
 
-module.exports = { TOOLBAR_MENU_BUTTON, openToolbarMenu, clickToolbarItem, toolbarItemOwner };
+module.exports = {
+    SAED_MENU_BUTTON, TOOLBAR_MENU_BUTTON, TOOLBAR_SUBMENU_ROW, openToolbarMenu, clickToolbarItem, toolbarItemOwner,
+};

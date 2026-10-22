@@ -46,6 +46,20 @@
     "expect": "fail"
   },
   {
+    "name": "the Markdown table gains an empty body row",
+    "why": "An empty <tr> leaves every cell's text unchanged, so only the row count can see it. Ported from scripts/mutations/app-help-table-row-count.json when the renderer moved into the library (2026-10-22).",
+    "file": "../lib/VZ_MBLibrary.user.js",
+    "edits": [
+      {
+        "find": "                    const tbody = document.createElement('tbody');\n                    i += 2;",
+        "replace": "                    const tbody = document.createElement('tbody');\n                    tbody.appendChild(document.createElement('tr'));\n                    i += 2;"
+      }
+    ],
+    "spec": "tests/fixtures/lib-markdown-help.spec.js",
+    "grep": "a pipe table becomes a real table with a header row",
+    "expect": "fail"
+  },
+  {
     "name": "inline syntax is applied inside a fenced code block",
     "why": "A fence's content is content, not markup; the help file shows Markdown and settings strings in fences.",
     "file": "../lib/VZ_MBLibrary.user.js",

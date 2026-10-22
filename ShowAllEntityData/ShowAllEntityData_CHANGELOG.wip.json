@@ -1,5 +1,34 @@
 [
   {
+    "version": "WIP.2",
+    "date": "2026-10-23",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "One button in the page heading: the SAED button. Everything the script adds there is now ONE segmented button with up to four parts, each doing its own thing: the page's fetch buttons as before (\"🧮¹ Artist | 🧮² Various Artists\"), 📀 Discography with the view it shows (release groups of an artist only), one part per thing that needs your attention (❌ 1 ▾ for errors, ⚠️ 43 ▾ for warnings, each opening its list right under it), and ☰ SAED ▾, the script's menu. 📦 Data ▾, 🛠 View ▾, the ⚙️ and ❓ buttons and the separate WARNING / ERROR buttons are gone into it.",
+          "The ☰ SAED menu has groups with a rule between them: Needs attention (the same lists as the parts on the bar), Data (Save to Disk, Load from Disk, Export ▸), View (Density, Statistics, Keyboard Shortcuts), Help (Settings, Help ↗) and Changelog (What's new ↗, Full development log ↗), with the installed version at its foot. Before anything is loaded there is nothing to view, so View is left out and Keyboard Shortcuts sits under Help. Export ▸ opens its four formats beside the menu when the pointer rests on it (or with → or a click); on a phone or a narrow window they open in place under the row. ↑ ↓ move, → opens, ← or Escape goes back, a second Escape closes the menu.",
+          "Hovering ☰ SAED shows a card with the script's full name, version, library version, script manager and its version, browser, author, and that it was written with AI help from Claude (Anthropic).",
+          "The menu's name is a setting: ⚙️ Settings → 🖌️ ELEMENT UI STYLES → \"Name of the ☰ menu\" (default \"SAED\"). The button's colours are \"SAED button colors\" there (formerly \"Toolbar menu button colors\").",
+          "On a narrow window (520 px or less) the fetch buttons leave the bar and head the menu as a \"Load\" group, so the button stays one line.",
+          "Help and the changelog open on GitHub, in a new tab. ❓ Help ↗ (and Ctrl+M then H) opens the help page; Shift-click no longer renders it inside the page. The changelog is two pages: \"What's new\", the changes of each published version in plain words, and the \"Full development log\" with every version and its technical details, one page per month. The Tampermonkey menu's \"📜 ChangeLog\" opens the SAED menu on these two (on the pages the script works on)."
+        ]
+      },
+      {
+        "label": "⚡ Performance",
+        "items": [
+          "The changelog is no longer downloaded, stored and read on every page. The library used to fetch the whole changelog (1.75 MB) about once an hour, keep it in the script's storage — which Tampermonkey hands to every page the script runs on — and read it on every page for a dialog most visits never opened: about 9 ms (34 ms on a slow computer) before a page settled and about 6.5 MiB of memory per tab. The stored copies of the changelog and of the help text are deleted when a page starts."
+        ]
+      },
+      {
+        "label": "🔧 Refactor",
+        "items": [
+          "Retired settings: the colours of the Settings ⚙️, Help ❓, Save and Load buttons and the \"|\" divider style. Those controls are rows of one menu in one look now; anyone who had chosen their own colours there loses them. Their stored values are deleted when a page starts."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.1",
     "date": "2026-10-22",
     "sections": [
