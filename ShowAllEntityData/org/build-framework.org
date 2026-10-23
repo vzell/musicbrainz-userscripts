@@ -779,7 +779,7 @@ browser.
 | 14 | Publish the comment-stripped copy (2.3)                                                                                                        | yes, whole artifact   | medium                 | buys −16 % load time (0.3); full fixture suite against the stripped file first; line numbers spot-checked                                                     |
 | 15 | Phase 2 split (2.4)                                                                                                                            | no, if byte-identical | low, process cost high | SHA-256 equality on the first cut; then the freshness spec                                                                                                    |
 
-*Status 2026-10-23:* #13 is implemented on branch ~feat/saed-toolbar~ (not merged yet), further
+*Status 2026-10-23:* #13 is implemented (~feat/saed-toolbar~, merged as 9.99.1427–9.99.1429), further
 than the row asked: this script no longer hands the library a ~remoteConfig~, so nothing is
 fetched, stored or parsed for its changelog; help and the changelog open on GitHub. Measured on
 petri: the page settles 5 % sooner with a cached changelog, and the tab keeps ≈7.4 MiB less

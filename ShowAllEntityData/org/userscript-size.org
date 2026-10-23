@@ -54,8 +54,8 @@ of 1 and 5.2 count KiB (1,024 bytes). Memory is in MiB (1,048,576 bytes), as Chr
   the dev loader that ends the pasting (#5), the stripped one-byte publish copy (#18), the
   fragment split (#19). The charts are on a private page,
   https://claude.ai/artifact/SVWXC4UYL3yM117PnPuf1T (others can open it only once you share it).
-- *2026-10-23: #1 and #2 are implemented* on branch ~feat/saed-toolbar~ (not merged yet), with
-  predictions and one confirming run on petri: see 8.
+- *2026-10-23: #1 and #2 are implemented* (branch ~feat/saed-toolbar~, merged the same day as
+  9.99.1427–9.99.1429), with predictions and one confirming run on petri: see 8.
 
 * 1. What the 7.9 MB are
 
@@ -603,8 +603,9 @@ Node v24.16.0 · Chromium 151.0.7922.34 via Playwright 1.62.1 · no Tampermonkey
 Env (your browser check, "I tested live, OK"): 2026-10-23 · browser and Tampermonkey versions
 unknown
 
-Branch ~feat/saed-toolbar~ (from ~main~ at 6c065f1, not merged yet; its changelog entries are
-in ~ShowAllEntityData_CHANGELOG.wip.json~ until the merge):
+Branch ~feat/saed-toolbar~ (from ~main~ at 6c065f1), merged 2026-10-23 as 9.99.1427 (the sweep),
+9.99.1428 (the SAED button, help and the changelog on GitHub) and 9.99.1429 (a fetch inside its
+segment, the 🔄 indicator):
 
 - *#1, the changelog — further than the row asked.* The library is no longer handed a
   ~remoteConfig~ by this script, so it fetches, stores and parses nothing for it. The changelog is

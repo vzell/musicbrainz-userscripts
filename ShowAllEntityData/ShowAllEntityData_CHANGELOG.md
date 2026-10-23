@@ -4,9 +4,48 @@ Every version, newest first, with the technical details behind each change. For 
 
 **Months:** [October 2026](ShowAllEntityData_CHANGELOG/2026-10.md) · [September 2026](ShowAllEntityData_CHANGELOG/2026-09.md) · [August 2026](ShowAllEntityData_CHANGELOG/2026-08.md) · [July 2026](ShowAllEntityData_CHANGELOG/2026-07.md) · [June 2026](ShowAllEntityData_CHANGELOG/2026-06.md) · [May 2026](ShowAllEntityData_CHANGELOG/2026-05.md) · [April 2026](ShowAllEntityData_CHANGELOG/2026-04.md) · [March 2026 (1 of 2)](ShowAllEntityData_CHANGELOG/2026-03-1.md) · [March 2026 (2 of 2)](ShowAllEntityData_CHANGELOG/2026-03-2.md) · [February 2026](ShowAllEntityData_CHANGELOG/2026-02.md) · [January 2026](ShowAllEntityData_CHANGELOG/2026-01.md)
 
-This page shows the newest 100 of 1597 versions; the month pages hold all of them.
+This page shows the newest 100 of 1600 versions; the month pages hold all of them.
 
 ---
+
+## 9.99.1429 — 2026-10-23
+
+**✨ Improve**
+
+- A fetch now runs inside the button you pressed. It fills blue page by page and reads "■ Stop · 3 / 40"; the line under the heading says which page, how many rows so far and about how long is left. Click it again to stop (or Ctrl+M then O): the page under way finishes and what has arrived is shown, and the status line says "Stopped by you after page n of N … — the rest was not loaded" instead of reading like a complete run. While the rows are being built it is striped (the stripes move only if your system allows motion), then it is the button it was. The other fetch buttons wait meanwhile. The separate red Stop button and the long progress bar beside the heading are gone, and so is the "Stop button colors" setting (its stored value is removed by itself).
+- A fetch that could not load every page now leaves a red "🔄 N ▾" on the SAED button, N being the pages missing, also listed under "Needs attention" in the ☰ menu. Its list says which page failed and why, and "↻ Load the N missing pages" carries on from there, keeping the rows you have — what the "↻ Load remaining pages" button at the end of the status line did. It goes away when that load starts, when you press a fetch button again, or when you load a file from disk.
+
+**🐛 Fix**
+
+- On a phone, the ☰ SAED menu could open below the bottom of the screen on a page wider than the screen (a release group's releases, for example); it now opens within what you see, above the button when there is no room below. On a phone the fetch buttons are always in that menu, under "Load", because MusicBrainz pages are laid out at the phone's width.
+
+
+## 9.99.1428 — 2026-10-23
+
+**🚀 Feature**
+
+- One button in the page heading: the SAED button. Everything the script adds there is now ONE segmented button with up to four parts, each doing its own thing: the page's fetch buttons as before ("🧮¹ Artist \| 🧮² Various Artists"), 📀 Discography with the view it shows (release groups of an artist only), one part per thing that needs your attention (❌ 1 ▾ for errors, ⚠️ 43 ▾ for warnings, each opening its list right under it), and ☰ SAED ▾, the script's menu. 📦 Data ▾, 🛠 View ▾, the ⚙️ and ❓ buttons and the separate WARNING / ERROR buttons are gone into it.
+- The ☰ SAED menu has groups with a rule between them: Needs attention (the same lists as the parts on the bar), Data (Save to Disk, Load from Disk, Export ▸), View (Density, Statistics, Keyboard Shortcuts), Help (Settings, Help ↗) and Changelog (What's new ↗, Full development log ↗), with the installed version at its foot. Before anything is loaded there is nothing to view, so View is left out and Keyboard Shortcuts sits under Help. Export ▸ opens its four formats beside the menu when the pointer rests on it (or with → or a click); on a phone or a narrow window they open in place under the row. ↑ ↓ move, → opens, ← or Escape goes back, a second Escape closes the menu.
+- Hovering ☰ SAED shows a card with the script's full name, version, library version, script manager and its version, browser, author, and that it was written with AI help from Claude (Anthropic).
+- The menu's name is a setting: ⚙️ Settings → 🖌️ ELEMENT UI STYLES → "Name of the ☰ menu" (default "SAED"). The button's colours are "SAED button colors" there (formerly "Toolbar menu button colors").
+- On a narrow window (520 px or less) the fetch buttons leave the bar and head the menu as a "Load" group, so the button stays one line.
+- Help and the changelog open on GitHub, in a new tab. ❓ Help ↗ (and Ctrl+M then H) opens the help page; Shift-click no longer renders it inside the page. The changelog is two pages: "What's new", the changes of each published version in plain words, and the "Full development log" with every version and its technical details, one page per month. The Tampermonkey menu's "📜 ChangeLog" opens the SAED menu on these two (on the pages the script works on).
+
+**⚡ Performance**
+
+- The changelog is no longer downloaded, stored and read on every page. The library used to fetch the whole changelog (1.75 MB) about once an hour, keep it in the script's storage — which Tampermonkey hands to every page the script runs on — and read it on every page for a dialog most visits never opened: about 9 ms (34 ms on a slow computer) before a page settled and about 6.5 MiB of memory per tab. The stored copies of the changelog and of the help text are deleted when a page starts.
+
+**🔧 Refactor**
+
+- Retired settings: the colours of the Settings ⚙️, Help ❓, Save and Load buttons and the "\|" divider style. Those controls are rows of one menu in one look now; anyone who had chosen their own colours there loses them. Their stored values are deleted when a page starts.
+
+
+## 9.99.1427 — 2026-10-23
+
+**⚡ Performance**
+
+- Values the script stored once and nothing reads any more are now deleted when a page starts (a moment after it settles, so the page is not slowed). Tampermonkey hands everything a script has stored to every page it runs on, before the script starts, so a leftover is paid for on every page view. Two kinds go: the old plain-text help cache (replaced by the Markdown help in 9.99.1148, up to 50 kB), and the hand-off copies of a table that "Show single-table" leaves behind when the new tab was blocked or closed before it loaded, which can be megabytes each; one older than an hour is deleted, a younger one is kept for a tab that may still be loading. Settings are not touched.
+
 
 ## 9.99.1426 — 2026-10-22
 
@@ -838,38 +877,6 @@ This page shows the newest 100 of 1597 versions; the month pages hold all of the
 **✨ Improve**
 
 - Springsteen sites: the detail-page preview works on the page as the site shows it too, before any button — e.g. a song in Brucebase's own song list ("1945" on stats:songs). ‹ › step through the titles visible there; the script's own toolbar is never a target. On a touch screen only the script's table opens the window, so a tap on the site's own link still navigates (\_dpSiteForLink(), \_dpPageLinks()).
-
-
-## 9.99.1329 — 2026-10-13
-
-**🐛 Fix**
-
-- Event page: the setlist's "(with …)" artists link to the artist on the page itself, as soon as it loads — MusicBrainz's setlist syntax renders them as work links (\_eventSetlistFixLinks()).
-- Event page, "Additional artists": a lone leading "the" before a linked name is dropped ("the New Breed Brass Band" → "New Breed Brass Band"); an unlinked item ("all performers") is kept as it is.
-- Event page: a setlist song or "(with …)" artist whose MBID was typed with uppercase letters is recognised again (event 26cead1c-…: "The Fever" came out as plain text and Bruce Springsteen stayed a work link). The links keep their case.
-- Event page, setlist tables: a recording that two relationships name ("recording location for" and "shot for") is listed once in its row's Recording cell.
-- Link previews: a MusicBrainz link whose MBID has uppercase letters (an event setlist's "\[E497263c-…\|The Fever\]", on the initial page too) is previewed like any other; the card asks for, caches and opens the lowercase MBID (\_MB\_POP\_PATH\_RE, \_mbPopParsePath(); \_MB\_POP\_PAGE\_VERSION 3).
-- Multi-table pages: a sub-table's note (e.g. "Scheduled: 17:00 Local Start Time ??:?? / End Time ??:??" under "Setlist: Songs") is indented like its table instead of sitting flush left (.mb-group-intro).
-
-**✨ Improve**
-
-- Event page: a "Video" column after "Recording" in "Recordings" and the setlist tables, when a recording carries MusicBrainz's video icon — the icon moves there, with "video"/"audio" for sorting and the 📊 dropdown (shared ColumnDataExtractor.video()).
-- Event page: each single-kind entity column (Artist, Place, Area, Recording, Release, Series, Song, Additional artists, …) shows its entity icon once in the header instead of on every cell, as on release tracklists (\_eventColGlyphs(), \_initColHeaderGlyph() now also on event-overview). Mixed "Target" columns keep their cell icons.
-- New ⚠️ finding "MBID contains uppercase letters" (🔠, mbid-uppercase) on the event page's Song and Additional artists cells: tint and tooltip naming the MBID, a 📊 "Findings - Warning" entry in both columns, and a ⚠️ WARNING menu row. Its tint has its own setting, sa\_findings\_tint\_mbid\_case (on by default).
-
-
-## 9.99.1328 — 2026-10-13
-
-**✨ Improve**
-
-- 📊 dropdown, with the "MusicBrainz: Instrument Icons Everywhere" userscript (@Lotheric) installed: a value entry whose cell shows one instrument's icon, and every "» instrument:" entry, shows that icon after its label (new setting "Show Instrument Icons In Unique-Values Dropdown", sa\_enable\_dropdown\_instrument\_icons, on by default, no effect without the userscript). A new "Instrument info - Icon" section (🎻) counts and filters the rows whose instrument links have / lack an icon (modes ii-icon-yes / ii-icon-no, \_highlightInstrumentIconMatch()), on any column that holds an instrument link — e.g. "Name" on an instrument search, where neither existed before.
-
-
-## 9.99.1327 — 2026-10-13
-
-**🐛 Fix**
-
-- With the "MusicBrainz: Instrument Icons Everywhere" userscript (@Lotheric) installed, the release "Instruments" column, a credit's "(instrument)" annotation and the instrument list's "Name" column lost every instrument icon: they copied the instrument link alone, so the copy kept the userscript's data-ii-processed stamp but not the icon in front of it, and the userscript never decorates a stamped link again. Links are now copied with their icon (\_cloneInstrumentAnchorWithIcon()); an icon-less copy is handed back to the userscript (\_iiReleaseIconlessAnchors()), and an icon that arrives after the table is built is carried onto the source row so it survives sorting and filtering (\_iiInstallIconReconciler(), \_iiMirrorLateIcons()). Nothing changes without that userscript.
 
 
 ---
