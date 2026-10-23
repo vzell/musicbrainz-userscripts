@@ -4,9 +4,17 @@ Every version, newest first, with the technical details behind each change. For 
 
 **Months:** [October 2026](ShowAllEntityData_CHANGELOG/2026-10.md) · [September 2026](ShowAllEntityData_CHANGELOG/2026-09.md) · [August 2026](ShowAllEntityData_CHANGELOG/2026-08.md) · [July 2026](ShowAllEntityData_CHANGELOG/2026-07.md) · [June 2026](ShowAllEntityData_CHANGELOG/2026-06.md) · [May 2026](ShowAllEntityData_CHANGELOG/2026-05.md) · [April 2026](ShowAllEntityData_CHANGELOG/2026-04.md) · [March 2026 (1 of 2)](ShowAllEntityData_CHANGELOG/2026-03-1.md) · [March 2026 (2 of 2)](ShowAllEntityData_CHANGELOG/2026-03-2.md) · [February 2026](ShowAllEntityData_CHANGELOG/2026-02.md) · [January 2026](ShowAllEntityData_CHANGELOG/2026-01.md)
 
-This page shows the newest 100 of 1600 versions; the month pages hold all of them.
+This page shows the newest 100 of 1601 versions; the month pages hold all of them.
 
 ---
+
+## 9.99.1430 — 2026-10-23
+
+**🚀 Feature**
+
+- An entity's Open edits page (the sidebar's "Open edits", e.g. /artist/&lt;id&gt;/open\_edits or /recording/&lt;id&gt;/open\_edits) gets a "Show all Open Edits" button: every open edit as one row of a filterable, sortable table, the same as the entity's Edits page already gets.
+- The sidebar's "Open edits" link now has a preview like "Editing history" beside it: hover for a card (how many edits, how many open, the latest, the commonest types), press Space for the window listing them, titled "Open edits".
+
 
 ## 9.99.1429 — 2026-10-23
 
@@ -870,13 +878,6 @@ This page shows the newest 100 of 1600 versions; the month pages hold all of the
 **🐛 Fix**
 
 - Brucebase year pages: a setlist the wiki sets in bold as a whole (a tour opener: 2012-03-18, also 1984-06-29, 1999-04-09, 2009-04-01) is one song per row again instead of one long line; each song keeps its bold, and a bold run opening with the separator ("&lt;strong&gt;/ LAND OF HOPE AND DREAMS&lt;/strong&gt; - PEOPLE GET READY") stays one medley row (\_bbSplitInline()).
-
-
-## 9.99.1330 — 2026-10-13
-
-**✨ Improve**
-
-- Springsteen sites: the detail-page preview works on the page as the site shows it too, before any button — e.g. a song in Brucebase's own song list ("1945" on stats:songs). ‹ › step through the titles visible there; the script's own toolbar is never a target. On a touch screen only the script's table opens the window, so a tap on the site's own link still navigates (\_dpSiteForLink(), \_dpPageLinks()).
 
 
 ---

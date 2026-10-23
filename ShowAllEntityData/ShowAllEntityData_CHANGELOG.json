@@ -1,5 +1,18 @@
 [
   {
+    "version": "9.99.1430",
+    "date": "2026-10-23",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "An entity's Open edits page (the sidebar's \"Open edits\", e.g. /artist/<id>/open_edits or /recording/<id>/open_edits) gets a \"Show all Open Edits\" button: every open edit as one row of a filterable, sortable table, the same as the entity's Edits page already gets.",
+          "The sidebar's \"Open edits\" link now has a preview like \"Editing history\" beside it: hover for a card (how many edits, how many open, the latest, the commonest types), press Space for the window listing them, titled \"Open edits\"."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.1429",
     "date": "2026-10-23",
     "sections": [
