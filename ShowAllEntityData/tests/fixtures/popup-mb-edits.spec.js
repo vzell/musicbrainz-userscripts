@@ -9,6 +9,9 @@
 // Pins, each named in its test (the uppercase tag is the mutation list's grep):
 //   PATH     what is previewed: /<kind>/<MBID>/edits and /user/<name>/edits are
 //            the edits kind; a collection's and a tab below one are not;
+//            an entity's /open_edits is an edits list, its path the id;
+//   OPEN     the sidebar's "Open edits": card, window titled "Open edits",
+//            one request, no ✎ button (open-edits-page-artist.html, 2026-10-23);
 //   BUTTON   the button on a recording window; one request; the rows are the
 //            page's edits; the newest selected; Back returns with no request;
 //   DIFF     H opens it; the Edit chip filters; the pane's marks carry the
@@ -205,6 +208,8 @@ test.describe('MusicBrainz link previews: the editing history (org/mb-edit-histo
             return {
                 rec: res(`/recording/${ids.rec.toUpperCase()}/edits`), user: res('/user/Some%20One/edits'),
                 coll: res(`/collection/${ids.rec}/edits`), open: res(`/recording/${ids.rec}/edits/open`), bare: res(`/recording/${ids.rec}`),
+                openEdits: res(`/recording/${ids.rec.toUpperCase()}/open_edits/`), collOpen: res(`/collection/${ids.rec}/open_edits`),
+                belowOpen: res(`/recording/${ids.rec}/open_edits/x`),
             };
         }, { rec: REC });
         expect(r.rec, 'the MBID lowercased, as an entity\'s').toBe(`mb-entity|edits:recording/${REC}`);
@@ -212,6 +217,36 @@ test.describe('MusicBrainz link previews: the editing history (org/mb-edit-histo
         expect(r.coll, 'a collection is not edited through edits').toBeNull();
         expect(r.open).toBeNull();
         expect(r.bare).toBe(`mb-entity|recording:${REC}`);
+        expect(r.openEdits, 'an entity\'s open edits: a list, its path the id, the MBID lowercased').toBe(`mb-entity|edits:/recording/${REC}/open_edits`);
+        expect(r.collOpen, 'nor a collection\'s open edits').toBeNull();
+        expect(r.belowOpen).toBeNull();
+    });
+
+    test('OPEN: the sidebar\'s "Open edits": its card; Space opens the list, titled Open edits; one request; no ✎ button', async ({ page }) => {
+        // The host page's own sidebar link; the artist's open edits answer
+        // it (the release group's own list was not captured).
+        const RG_OPEN = `/release-group/${RG_URL.split('/').pop()}/open_edits`;
+        const log = await open(page, {
+            settings: { sa_pop_mb_page: true },
+            pageFixture: url => (url.endsWith(RG_OPEN) ? 'open-edits-page-artist.html' : null),
+        });
+        const tables = await page.locator('table.tbl').count();
+        const link = page.locator(`#sidebar a[href="${RG_OPEN}"]`);
+        await expect(link).toHaveText('Open edits');
+        await link.scrollIntoViewIfNeeded();
+        await page.keyboard.down('Control');
+        await link.hover();
+        await page.keyboard.up('Control');
+        await expect(card(page).locator('.mb-tt-title')).toHaveText('Bruce Springsteen');
+        await expect(card(page).locator('.mb-tt-comment')).toHaveText('Open edits · release group');
+        await expect(card(page).locator('.mb-tt-pill')).toHaveText(['2 edits', '2 open']);
+        await page.keyboard.press('Space');
+        await expect(title(page)).toHaveText('Open edits');
+        await expect(rows(page)).toHaveCount(2);
+        await expect(dialog(page).locator('.mb-dp-xsub').first()).toHaveText('MusicBrainz · release group · open edits');
+        await expect(histBtn(page), 'a list has no editing history of its own').toBeHidden();
+        expect(log.html, 'one request, for the list').toEqual([RG_OPEN]);
+        expect(await page.locator('table.tbl').count(), 'no table.tbl in the window').toBe(tables);
     });
 
     test('BUTTON: ✎ Editing history on a recording window: one request, the page\'s edits, the newest selected; Back returns with none', async ({ page }) => {

@@ -1685,10 +1685,10 @@ an import brings your deletions back.
 - **Tags** — entity tag pages, user tag pages, and the most-popular-tags page
 - **Search results** — every entity type
 - **Reports** — the `/reports` index and all 117 reports across 14 categories
-- **Edit listings** — edit search, per-entity edits, subscribed edits, notes
-  received, and every list of an editor's profile Statistics: their edits, open,
-  accepted, auto-edits, applied, rejected, failed and cancelled edits, and the
-  edits they voted on
+- **Edit listings** — edit search, per-entity edits and open edits, subscribed
+  edits, notes received, and every list of an editor's profile Statistics: their
+  edits, open, accepted, auto-edits, applied, rejected, failed and cancelled
+  edits, and the edits they voted on
 - **Annotation history** (`/<entity>/<mbid>/annotations`) across ten entity types,
   and **one version of an annotation** (`/<entity>/<mbid>/annotation/<n>`, or the
   current one) compared with the current version
@@ -2234,7 +2234,8 @@ groups**, **recordings**, **works**, **artists**, **labels**, **areas**,
 **instruments**, **events**, **places**, **series**, **collections**, the
 **[info]** link beside every URL, and the
 codes: **ISRCs**, **ISWCs** and **disc IDs**, **edits** and **editors**,
-**editing histories** (the sidebar's *Editing history* link), an editor's
+**editing histories** and **open edits** (the sidebar's *Editing history*
+and *Open edits* links), an editor's
 **other edit lists** and **edit searches** (the *view*, *N%* and *View all*
 links of a profile's statistics), an editor's **subscribers**, **tags** and
 **ratings** and your **applications** (the profile's *view list* and *view*
@@ -2412,6 +2413,8 @@ the tag's own page, since MusicBrainz cannot look a tag up otherwise.
   - A profile's other edit lists and edit searches open this window too,
     titled by the list (*Rejected edits*, *Votes*, *Edit search*). A list has
     no ✎ Editing history of its own.
+  - So does the sidebar's **Open edits** link, titled *Open edits*: the edits
+    of that entity still in their voting period.
 - **A track named differently from its recording.** With jesus2099's
   *mb. INLINE STUFF* installed, a track whose name differs from its recording's
   carries a note with both names. The browser used to show that note in its
