@@ -120,6 +120,34 @@ async function press(page, label) {
     await waitForRenderComplete(page, { waitForAutoResize: false });
 }
 
+/**
+ * Waits, in animation frames rather than milliseconds, until an element's
+ * box has stopped moving. Opening the sub-tables (the master toggle) makes
+ * the sticky filter bars re-measure one frame later (`initStickyFilterBars()`:
+ * a ResizeObserver, then `_vsbRefresh()` in a requestAnimationFrame), which
+ * moves the rows (here 31 px down, 8 px left). A hover sent before that lands
+ * on what is there afterwards; on a loaded machine the frame comes late
+ * enough for that to happen (2026-10-23: 21 of 36 runs under load).
+ *
+ * @param {import('@playwright/test').Page} page
+ * @param {import('@playwright/test').Locator} el
+ * @returns {Promise<void>}
+ */
+async function settleBox(page, el) {
+    const frames = (n) => page.evaluate((k) => new Promise((resolve) => {
+        const step = (i) => (i ? requestAnimationFrame(() => step(i - 1)) : resolve());
+        step(k);
+    }), n);
+    let prev = JSON.stringify(await el.boundingBox());
+    await expect.poll(async () => {
+        await frames(3);
+        const now = JSON.stringify(await el.boundingBox());
+        const same = now === prev;
+        prev = now;
+        return same;
+    }, { message: 'the element\'s box settles' }).toBe(true);
+}
+
 const dialog = (page) => page.locator('#mb-dp-dialog');
 const kind = (page) => dialog(page).locator(':scope > div > span').first();
 const back = (page) => dialog(page).locator('button', { hasText: 'Back' });
@@ -350,6 +378,10 @@ test.describe('discogs.com: links that stay, every link in the window, View chan
         await press(page, 'Show the changes and the diff');
         await page.locator('.mb-master-toggle').click();
         const avatar = page.locator('#mb-dg-root table.tbl').nth(0).locator('tbody > tr').first().locator('img.mb-dg-avatar');
+        // The rows move once more after the toggle (settleBox()); the pointer
+        // leaves the toggle first, as the other hover specs park it.
+        await settleBox(page, avatar);
+        await page.mouse.move(0, 0);
         await avatar.hover();
         const card = page.locator('#mb-dg-avatar-card');
         await expect(card).toContainText('Pleasure_to_Kill');

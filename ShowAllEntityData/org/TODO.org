@@ -3960,137 +3960,6 @@ https://musicbrainz.org/user/vzell/edits/failed
 
 All have the same structure as https://musicbrainz.org/user/vzell/edits
 
-
-* TODO consolidate more LAF across more PTs
-
-
-* TODO Add a must have third-party userscripts section together with the end-user visible changes and what our userscript depends on
-
-Add a must have third-party userscripts section together with the end-user visible changes and what our userscript
-depends on
-
-1.)
-
-Analyse first and give a comprehensive summary in a nice HTML based view, with URLs to the original script (downlaod URL, homepage, documentaiotn URL, etc)
-
-2.)
-
-Suggestions for complete integration
-
-3.)
-
-etc
-
-
-* TODO check discogs artist pages if really ALL master are present + implement master->release(s) drilldown
-
-* TODO Use the Discogs history diff format in other pageTypes, for example the BB “changes” button
-
-Use the Discogs history diff format in other pageTypes, for example the BB “changes” button (you have to be logged in).
-
-
-* TODO write the forum section for 9.99.167 -> 9.99.1426
-
-write the forum section for 9.99.1167 -> 9.99.1426
-
-9.99.1167 is the last officially published one.
-
-there are already sections after that one, that were meant to be published but never did.
-
-rewrite all these and combine with the latest changes
-
-
-* TODO majkinetor: "Links" column - switch of the native tooltip on the FRP
-* TODO majkinetor: async issues
-* TODO majkinetor: no icons in the lower right corner
-
-
-* TODO tested live, OK; commit, push
-
-
-* TODO Release events - Japan need flag on the relationships area
-
-
-* TODO recapture user open edits page
-
-
-* TODO on collection pages, images should get internal viewer support + their tooltip should show a rich popup and highlight the corresponding row
-
-on collection pages, images should get internal viewer support + their tooltip should show a rich popup and highlight
-the corresponding row
-
-* TODO also the the pager framework on other detail popups like on the collections one
-* TODO Scrollbars (left side) and pager (tables right side) or any table + image internal viewer support should automatically be there for ALL detail popups
-
-Scrollbars (left side) and pager (tables right side) or any table + image internal viewer support should automatically
-be there for ALL detail popups, and the geometry should be based on the current and stored popup window size 
-
-a.)
-
-Chaban
-
-#+begin_example
-"Instrument collections" -> "Edit search queries" - scrollbar on the left section
-"Label collections" ->  "Artist as label" - multiple srollbars
-"Release collections" -> "Scans" - image hover popup + internal viewer click
-"Work collections" -> "Onomatopoeia" - adjust scrollbars for the right window + adjust height
-#+end_example
-
-b.)
-
-on collection pages, images should get internal viewer support + their tooltip should show a rich popup and highlight
-the corresponding row -> image hover popup + internal viewer click
-
-
-* DONE userscript size and managebility
-** DONE initial
-
-1.)
-
-Analyze the implications of our currently grown very large userscript regarding size (7.9 MB) and managibility and
-performance impact on the end-usersite when enabled in Tampermonkey and generate a comprehensive report.
-
-2.)
-
-Make suggestions for refactoring, see also @REFACTORING.org
-
-3.)
-
-Is it feasible to relocate specifically parts of the code in a library or multiple libraries
-
-#+begin_example
-code for href hovering, card and detail popups
-code for non-MB PTs
-code for extractors
-etc.
-#+end_example
-
-** DONE Analysed 2026-10-22
-
-see [[file:userscript-size.org][org/userscript-size.org]] (follows the 2026-10-10 answer in [[file:build-framework.org][org/build-framework.org]]; REFACTORING.org has a dated
-re-evaluation and candidates #10–#13).
-
-
-* TODO embed YouTube videos directly in the PTs where they are referenced + the original URL as popup box as now
-
-embed YouTube videos directly in the PTs where they are referenced + the original URL as popup box as now
-
-
-* TODO add support for image URLs from the sidebar like the logo label images
-
-1.)
-
-register the third-party user script by @zabe
-
-#+begin_example
-@tests/fixtures/live-userscripts/entity-image.user.js
-#+end_example
-
-2.)
-
-check what it's doing
-
-
 * DONE republish reports
 
 Both reports are published, and each page links to the other.
@@ -4261,8 +4130,7 @@ should be rendered as just ONE button (to be as non-invasive as possible) like i
 [hamburger glyph] [SAED main menu entry name, configurable] ▼ ==> opening the main user script menu
 #+end_example
 
-
-* TODO add support for entity "Open edits"
+* DONE add support for entity "Open edits"
 
 
 add support for new entity "Open edits" PTs e.g.
@@ -4273,5 +4141,166 @@ artist https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/open_
 #+end_example
 
 it's the same structure as every edit PT
+
+
+* DONE userscript size and managebility
+** DONE initial
+
+1.)
+
+Analyze the implications of our currently grown very large userscript regarding size (7.9 MB) and managibility and
+performance impact on the end-usersite when enabled in Tampermonkey and generate a comprehensive report.
+
+2.)
+
+Make suggestions for refactoring, see also @REFACTORING.org
+
+3.)
+
+Is it feasible to relocate specifically parts of the code in a library or multiple libraries
+
+#+begin_example
+code for href hovering, card and detail popups
+code for non-MB PTs
+code for extractors
+etc.
+#+end_example
+
+** DONE Analysed 2026-10-22
+
+see [[file:userscript-size.org][org/userscript-size.org]] (follows the 2026-10-10 answer in [[file:build-framework.org][org/build-framework.org]]; REFACTORING.org has a dated
+re-evaluation and candidates #10–#13).
+
+
+* TODO consolidate more LAF across more PTs
+
+
+* TODO Add a must have third-party userscripts section together with the end-user visible changes and what our userscript depends on
+
+Add a must have third-party userscripts section together with the end-user visible changes and what our userscript
+depends on
+
+1.)
+
+Analyse first and give a comprehensive summary in a nice HTML based view, with URLs to the original script (downlaod URL, homepage, documentaiotn URL, etc)
+
+2.)
+
+Suggestions for complete integration
+
+3.)
+
+etc
+
+
+* TODO check discogs artist pages if really ALL master are present + implement master->release(s) drilldown
+
+* TODO Use the Discogs history diff format in other pageTypes, for example the BB “changes” button
+
+Use the Discogs history diff format in other pageTypes, for example the BB “changes” button (you have to be logged in).
+
+
+* TODO write the forum section for 9.99.167 -> 9.99.1426
+
+write the forum section for 9.99.1167 -> 9.99.1426
+
+9.99.1167 is the last officially published one.
+
+there are already sections after that one, that were meant to be published but never did.
+
+rewrite all these and combine with the latest changes
+
+
+* TODO majkinetor: "Links" column - switch of the native tooltip on the FRP
+* TODO majkinetor: async issues
+* TODO majkinetor: no icons in the lower right corner
+
+
+* TODO tested live, OK; commit, push
+
+
+* TODO Release events - Japan need flag on the relationships area
+
+
+* TODO recapture user open edits page
+
+
+* TODO on collection pages, images should get internal viewer support + their tooltip should show a rich popup and highlight the corresponding row
+
+on collection pages, images should get internal viewer support + their tooltip should show a rich popup and highlight
+the corresponding row
+
+* TODO also the the pager framework on other detail popups like on the collections one
+* TODO Scrollbars (left side) and pager (tables right side) or any table + image internal viewer support should automatically be there for ALL detail popups
+
+Scrollbars (left side) and pager (tables right side) or any table + image internal viewer support should automatically
+be there for ALL detail popups, and the geometry should be based on the current and stored popup window size 
+
+a.)
+
+Chaban
+
+#+begin_example
+"Instrument collections" -> "Edit search queries" - scrollbar on the left section
+"Label collections" ->  "Artist as label" - multiple srollbars
+"Release collections" -> "Scans" - image hover popup + internal viewer click
+"Work collections" -> "Onomatopoeia" - adjust scrollbars for the right window + adjust height
+#+end_example
+
+b.)
+
+on collection pages, images should get internal viewer support + their tooltip should show a rich popup and highlight
+the corresponding row -> image hover popup + internal viewer click
+
+
+* TODO embed YouTube videos directly in the PTs where they are referenced + the original URL as popup box as now
+
+embed YouTube videos directly in the PTs where they are referenced + the original URL as popup box as now
+
+
+* TODO add support for image URLs from the sidebar like the logo label images
+
+1.)
+
+register the third-party user script by @zabe
+
+#+begin_example
+@tests/fixtures/live-userscripts/entity-image.user.js
+#+end_example
+
+2.)
+
+check what it's doing
+
+* TODO sidebar image hover for CAA images onyl working when hovering below the image in the description
+
+sidebar  image hover for CAA images onyl working when hovering below the image in the description
+
+
+
+* TODO In the "Space" popupped detail view window currently hovering a link (href) doesn't do anything
+
+After the full-test-suite:
+
+In the "Space" popup-ed detail view window currently hovering a link (href) doesn't do anything. Make some suggestions
+(images should probably treated differently) and nice rich HTML based mockups
+
+
+* TODO move the BB artwork column to the second position
+
+move the BB artwork column to the second position
+
+
+* TODO make the Artwork gallery popup resizable and movable
+
+make the Artwork gallery popup
+
+#+begin_example
+<div class="mb-fgal-head"><div class="mb-fgal-t"><b>Images — Other versions</b><span>discogs.com · Image column · ← → images, Shift+← → rows in the viewer</span></div><span class="mb-tt-ajpill mb-tt-ajpill-idle">Idle</span><button class="mb-fgal-x" type="button" data-mb-fgal-act="close" aria-label="Close (Esc)">✕</button></div>
+#+end_example
+
+resizable and movable like the other hover "Space" detail popups
+
+
 
 

@@ -25686,7 +25686,24 @@ appeared within 5 s.
 1/3 then 8/8; main's own userscript from BEFORE the merge (ea49305, none of
 the foreign-image work) 2/4 passed; the branch's (a9ef5b7) 4/4 then 8/8.
 The whole file twice: 22/22. So an intermittent failure on main as it was,
-not caused by the gallery. Likely cause (not changed here): the test hovers
-the avatar right after clicking the master toggle, without first parking the
-pointer elsewhere as the other hover specs do (`page.mouse.move(0, 0)`), so
-the hover can land without an enter.
+not caused by the gallery.
+
+**Cause, measured, and fixed (vzell: "also fix the flake").** Reproduced
+under load (`popup-mb.spec.js` + `popup-ext.spec.js` on 10 workers beside 36
+repeats on 6): 21/36 failed. Ruled out, each by a logging run: a picture
+without `src` (the history page carries it), a scroll event cancelling the
+card's 300 ms timer (none fires), the row being re-rendered (the hovered
+`<img>` stays connected), the blocked gravatar.com image (serving it: still
+24/36 failed). What it is: the failed run's trace ends with
+`#mb-stat-tooltip` showing the COLUMN FILTER input's text, under a pointer
+that had hovered the avatar. A per-frame log of the avatar's box shows it
+move 31 px down and 8 px left about 65 ms after the master toggle opened the
+sub-tables: the sticky filter bars re-measure one frame later
+(`initStickyFilterBars()`: a ResizeObserver, then `_vsbRefresh()` in a
+requestAnimationFrame). On a loaded machine that frame comes after the
+hover, the row moves out from under the resting pointer, `mouseout` cancels
+the card, and the pointer now sits on the filter row. A person moving the
+mouse gets a new `mouseover`, so the product is fine; the test was not.
+`settleBox()` in the spec waits, in animation frames, until the avatar's box
+stops moving, then parks the pointer and hovers: 36/36 and 36/36 under the
+same load, 11/11 for the file.
