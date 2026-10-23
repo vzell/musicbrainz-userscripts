@@ -259,7 +259,19 @@ takes them in); decision: *all four Brucebase kinds*, grouped by kind.
 
 ** TODO Phase 4: the table-wide 🖼 gallery
 
-Not started. Mockup *G1* (optional; the phasing includes it). Decision: opening the gallery
+Decisions (vzell, 2026-10-23, on the G2/G3 mockup): 1. the 🖼 in the table's heading
+bar; 2. type chips *and* "Compare two"; 3. ask before a run over 5 minutes; 4. discogs.com
+is part of phase 4.
+
+Mockup (2026-10-23, petri), approved with those answers: *G2* (the behaving G1 on
+sl-bootlegs: the 🖼 in the table's heading bar, the window, Load / Stop / closing stops /
+Retry, the viewer stand-in, Esc order) and *G3* (the same window on jungleland, LP records,
+Brucebase 1985 and the song list), with four open questions (where the 🖼 lives; type chips
+and Compare; asking before a run over 5 minutes; Discogs later). Source
+=org/foreign-gallery-mockups.html= (built from a template; the published copy inlines the
+images with =scripts/build-mockup-artifact.py=): https://claude.ai/artifact/SL81qFidC4wQM6Gz2jY47Z
+
+Mockup *G1* (optional; the phasing includes it). Decision: opening the gallery
 makes *no* request, it shows the rows whose records are cached already; a "Load the other N
 (≈ s)" button is offered *with its time shown* (N × the site's spacing), and that run *stops
 when the gallery closes*. MusicBrainz's own: =_artCreateGalleryButton()=,

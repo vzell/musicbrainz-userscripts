@@ -1,0 +1,1272 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<!-- SKELETON-END: everything above this line is dropped when the page is published as an Artifact. -->
+<title>Foreign Table Gallery</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<!--
+  ShowAllEntityData design study, 2026-10-23, petri. org/foreign-images.org, phase 4: the table-wide
+  🖼 gallery on the non-MusicBrainz tables. Supersedes the static G1 of org/foreign-images-mockups.html
+  (artifact UAX2fb3BEinkukHNaZMrvg), whose "Load the other N" button did nothing.
+  Data is real: the rows come from tests/fixtures/{sl-bootlegs-page1,jl-list-page1,bs-records-lp,
+  bb-year-1985,bb-songs}.html, the images from the item pages scripts/probe-foreign-images.py read on
+  2026-10-23. Rows past the ones the probe read show labelled tiles; their image counts are made up.
+  Built from a template by a scratch script; the published copy inlines the images
+  (scripts/build-mockup-artifact.py), because the Artifact sandbox blocks outside images.
+-->
+<!--EMBED-->
+<script type="application/json" id="mockup-images">
+{
+ "sl4553c": {
+  "u": "https://www.springsteenlyrics.com/bootlegs/aud_live1967/4553.jpg",
+  "max": 500
+ },
+ "sl4554c": {
+  "u": "https://www.springsteenlyrics.com/bootlegs/aud_live1967/4554.jpg",
+  "max": 500
+ },
+ "sl8694c": {
+  "u": "https://www.springsteenlyrics.com/bootlegs/aud_live1967/8694.jpg",
+  "max": 700
+ },
+ "sl4554s1": {
+  "u": "https://www.springsteenlyrics.com/bootlegs/aud_live1967/4554_artwork_01_tn.jpg"
+ },
+ "sl4554s2": {
+  "u": "https://www.springsteenlyrics.com/bootlegs/aud_live1967/4554_artwork_02_tn.jpg"
+ },
+ "sl4554s3": {
+  "u": "https://www.springsteenlyrics.com/bootlegs/aud_live1967/4554_artwork_03_tn.jpg"
+ },
+ "sl4554s4": {
+  "u": "https://www.springsteenlyrics.com/bootlegs/aud_live1967/4554_artwork_04_tn.jpg"
+ },
+ "sl4553s1": {
+  "u": "https://www.springsteenlyrics.com/bootlegs/aud_live1967/4553_artwork_01_tn.jpg"
+ },
+ "sl4553s2": {
+  "u": "https://www.springsteenlyrics.com/bootlegs/aud_live1967/4553_artwork_02_tn.jpg"
+ },
+ "sl4553s3": {
+  "u": "https://www.springsteenlyrics.com/bootlegs/aud_live1967/4553_artwork_03_tn.jpg"
+ },
+ "sl4553s4": {
+  "u": "https://www.springsteenlyrics.com/bootlegs/aud_live1967/4553_artwork_04_tn.jpg"
+ },
+ "sl8694s1": {
+  "u": "https://www.springsteenlyrics.com/bootlegs/aud_live1967/8694_artwork_01_tn.jpg"
+ },
+ "sl8694s2": {
+  "u": "https://www.springsteenlyrics.com/bootlegs/aud_live1967/8694_artwork_02_tn.jpg"
+ },
+ "sl8694s3": {
+  "u": "https://www.springsteenlyrics.com/bootlegs/aud_live1967/8694_artwork_03_tn.jpg"
+ },
+ "sl8694s4": {
+  "u": "https://www.springsteenlyrics.com/bootlegs/aud_live1967/8694_artwork_04_tn.jpg"
+ },
+ "sl8694s5": {
+  "u": "https://www.springsteenlyrics.com/bootlegs/aud_live1967/8694_artwork_05_tn.jpg"
+ },
+ "sl8694s6": {
+  "u": "https://www.springsteenlyrics.com/bootlegs/aud_live1967/8694_artwork_06_tn.jpg"
+ },
+ "sl8694s7": {
+  "u": "https://www.springsteenlyrics.com/bootlegs/aud_live1967/8694_artwork_07_tn.jpg"
+ },
+ "sl8694s8": {
+  "u": "https://www.springsteenlyrics.com/bootlegs/aud_live1967/8694_artwork_08_tn.jpg"
+ },
+ "sl8694s9": {
+  "u": "https://www.springsteenlyrics.com/bootlegs/aud_live1967/8694_artwork_09_tn.jpg"
+ },
+ "jl660101front": {
+  "u": "https://www.jungleland.it/artwork/1960/thumb/tn_19660101_front.jpg"
+ },
+ "jl660101back": {
+  "u": "https://www.jungleland.it/artwork/1960/thumb/tn_19660101_back.jpg"
+ },
+ "jl750205front": {
+  "u": "https://www.jungleland.it/artwork/1970/thumb/tn_19750205_front.jpg"
+ },
+ "jl750205back": {
+  "u": "https://www.jungleland.it/artwork/1970/thumb/tn_19750205_back.jpg"
+ },
+ "jl750205cd1": {
+  "u": "https://www.jungleland.it/artwork/1970/thumb/tn_19750205_cd1.jpg"
+ },
+ "jl750205cd2": {
+  "u": "https://www.jungleland.it/artwork/1970/thumb/tn_19750205_cd2.jpg"
+ },
+ "jl750205booklet1": {
+  "u": "https://www.jungleland.it/artwork/1970/thumb/tn_19750205_booklet1.jpg"
+ },
+ "jl750205booklet2": {
+  "u": "https://www.jungleland.it/artwork/1970/thumb/tn_19750205_booklet2.jpg"
+ },
+ "jl750205booklet3": {
+  "u": "https://www.jungleland.it/artwork/1970/thumb/tn_19750205_booklet3.jpg"
+ },
+ "jl750205booklet4": {
+  "u": "https://www.jungleland.it/artwork/1970/thumb/tn_19750205_booklet4.jpg"
+ },
+ "jl750205booklet5": {
+  "u": "https://www.jungleland.it/artwork/1970/thumb/tn_19750205_booklet5.jpg"
+ },
+ "jl750205booklet6": {
+  "u": "https://www.jungleland.it/artwork/1970/thumb/tn_19750205_booklet6.jpg"
+ },
+ "jl750205frontF": {
+  "u": "https://www.jungleland.it/artwork/1970/19750205_front.jpg",
+  "max": 1000
+ },
+ "bsLP1B1": {
+  "u": "https://www.brucespringsteen.it/blegs/images/LP1B1.jpg",
+  "max": 800
+ },
+ "bsLP1BF1": {
+  "u": "https://www.brucespringsteen.it/blegs/images/LP1BF1.jpg",
+  "max": 800
+ },
+ "bb0104p1": {
+  "u": "https://brucebase.wdfiles.com/local--resized-images/gallery:1985-01-04-roads-coliseum-hampton-va/19850104_MicHampton_01.jpg/thumbnail.jpg"
+ },
+ "bb0104p2": {
+  "u": "https://brucebase.wdfiles.com/local--resized-images/gallery:1985-01-04-roads-coliseum-hampton-va/19850104_MicHampton_02.jpg/thumbnail.jpg"
+ },
+ "bb0104t": {
+  "u": "https://brucebase.wdfiles.com/local--resized-images/files:ticket-1985/19850104_Ticket_01.jpg/thumbnail.jpg"
+ },
+ "bb0104n": {
+  "u": "https://brucebase.wdfiles.com/local--resized-images/news:1985-01-04-roads-coliseum-hampton-va/19850104_Article_01.jpg/thumbnail.jpg"
+ },
+ "bb0104p1F": {
+  "u": "https://brucebase.wdfiles.com/local--resized-images/gallery:1985-01-04-roads-coliseum-hampton-va/19850104_MicHampton_01.jpg/medium.jpg"
+ },
+ "bb0105p1": {
+  "u": "https://brucebase.wdfiles.com/local--resized-images/gallery:1985-01-05-roads-coliseum-hampton-va/19850105_MicHampton_01.jpg/thumbnail.jpg"
+ },
+ "bb0105p2": {
+  "u": "https://brucebase.wdfiles.com/local--resized-images/gallery:1985-01-05-roads-coliseum-hampton-va/19850105_MicHampton_02.jpg/thumbnail.jpg"
+ },
+ "bb0105t": {
+  "u": "https://brucebase.wdfiles.com/local--resized-images/files:ticket-1985/19850105_Ticket_01.jpg/thumbnail.jpg"
+ },
+ "bb0107pass": {
+  "u": "https://brucebase.wdfiles.com/local--resized-images/files:pass-1985/19850107_Pass_01.jpg/thumbnail.jpg"
+ },
+ "bb0107t": {
+  "u": "https://brucebase.wdfiles.com/local--resized-images/files:ticket-1985/19850107_Ticket_01.jpg/thumbnail.jpg"
+ },
+ "bb0107n1": {
+  "u": "https://brucebase.wdfiles.com/local--resized-images/news:1985-01-07-market-square-arena-indianapolis-in/19850107_Article_01a.jpg/thumbnail.jpg"
+ },
+ "bb0107n2": {
+  "u": "https://brucebase.wdfiles.com/local--resized-images/news:1985-01-07-market-square-arena-indianapolis-in/19850107_Article_01b.jpg/thumbnail.jpg"
+ },
+ "bb0107n3": {
+  "u": "https://brucebase.wdfiles.com/local--resized-images/news:1985-01-07-market-square-arena-indianapolis-in/19850107_Article_02.jpg/thumbnail.jpg"
+ },
+ "bb0108t": {
+  "u": "https://brucebase.wdfiles.com/local--resized-images/files:ticket-1985/19850108_Ticket_01.jpg/thumbnail.jpg"
+ },
+ "bbgraph": {
+  "u": "https://brucebase.wdfiles.com/local--resized-images/files:song-graph/graph_4thofjulyasburyparksandy.png/thumbnail.jpg"
+ },
+ "bbgraphF": {
+  "u": "https://brucebase.wdfiles.com/local--files/files:song-graph/graph_4thofjulyasburyparksandy.png",
+  "max": 900
+ },
+ "bblyric": {
+  "u": "https://brucebase.wdfiles.com/local--resized-images/files:song-lyricsheet/lyricsheet_4thofjulyasburyparksandy_early.jpg/thumbnail.jpg"
+ },
+ "sl4554s1F": {
+  "u": "https://www.springsteenlyrics.com/bootlegs/aud_live1967/4554_artwork_01.jpg",
+  "max": 1000
+ },
+ "sl8694s1F": {
+  "u": "https://www.springsteenlyrics.com/bootlegs/aud_live1967/8694_artwork_01.jpg",
+  "max": 1000
+ },
+ "sl8694s2F": {
+  "u": "https://www.springsteenlyrics.com/bootlegs/aud_live1967/8694_artwork_02.jpg",
+  "max": 1000
+ },
+ "bsLP1B1F": {
+  "u": "https://www.brucespringsteen.it/blegs/images/LP1B1.jpg",
+  "max": 800
+ }
+}
+</script>
+<script type="application/json" id="host-rows">
+{"jl": ["The Castiles 1966-1967(1966-01-01)", "Mr Music Inc, Bricktown NJ. may 18 ,1966(1966-05-18)", "Main Point Night(1975-02-05)", "You can trust your Car to the Man who wears the Star (Version 2)(1975-02-05)", "Prodigal Son At The Main Point (Version 3)(1975-02-05)", "The Saint, The Incident & The Main Point Shuffle (Version 4)(1975-02-05)", "Prodigal Son At The Main Point (Version 5)(1975-02-05)", "Prodigal Son at the Main Point (Version 6)(1975-02-05)", "Prodigal son at The Main Point (Version 7)(1975-02-05)", "The Main Point (Version 8)(1975-02-05)", "The Prodigal Son Meets JEMS At The Main Point M+ (Version 9)(1975-02-05)", "This 442's gonna overheat(1975-02-06)", "This 442`s gonna overheat(1975-02-07)", "Widener College DVD (Version 2)(1975-02-07)", "1975-02-07 Widener College, restored by MilesHai 150dpi DVD (Version 3)(1975-02-07)", "We Had Too Much To Drink Tonight(1975-02-10)", "Westbury Music Fair(1975-02-23)", "Westbury Serenade (Version 2)(1975-02-23)", "The greatest performance (Version 4)(1975-02-23)", "Westbury Music Fair (Version 5)(1975-02-23)", "WESTBURY MUSIC FAIR (Version 6)(1975-02-23)", "The Westbury Music Fair (Version 7)(1975-02-23)", "At the Painters Mill(1975-03-07)", "8 March 1975(1975-03-08)", "Introducing Miami Steve van Zandt(1975-07-20)", "A Star is Born (Godfather) (Version 2)(1975-07-20)", "Opening Night On The Born To Run Tour (Version 3)(1975-07-20)", "Ready To Run (Version 5)(1975-07-20)", "1975.07.20 Providence (Palace theatre) (Version 6)(1975-07-20)", "Geneva - 1975(1975-07-22)", "Geneva Theater (Version 2)(1975-07-22)", "Lenox - 1975(1975-07-23)", "The Complete Lenox Show (Version 2)(1975-07-23)", "The Complete Lennox Show (Version 3)(1975-07-23)", "Kutztown - 1975(1975-07-25)", "Kutztown ´75(1975-07-26)", "The Wild, The Innocent & The Kutztown Shuffle (Version 2)(1975-07-26)", "Rock`s new Sensation(1975-07-28)", "Talent & Feeling(1975-07-29)", "The Mosque - 1975(1975-08-01)", "At The Mosque Theatre (Version 2)(1975-08-01)", "Live at the Chrysler Theatre Norfolk, VA - 2 August 1975(1975-08-02)", "Live In Norfolk '75 (Version 2)(1975-08-02)", "Incident in Akron(1975-08-08)", "The Last Serenade(1975-08-10)", "Allen Theatre (Version 2)(1975-08-10)", "1975-08-13 Bottom Line, New York, NY, USA - Late Show (Original Master Series -(1975-08-13)", "1975-08-13 Bottom Line, New York, NY, USA - Late Show (Original Master Series -(1975-08-13)", "Bruce Springsteen & The E Street Band - 1975-08-13 - Bottom Line, NYC (late) - G(1975-08-13)", "Runaway American Dreams (early Show)(1975-08-14)", "Runaway American Dreams (Version 2)(1975-08-14)", "Night(early show) (Version 3)(1975-08-14)", "The way it was(1975-08-15)", "Live at the Bottom Line (Version 2)(1975-08-15)", "The Punk Meets The Godfather (Version 3)(1975-08-15)", "Down In The Bottom (Version 4)(1975-08-15)", "The Punks Meets The Godfather (Version 5)(1975-08-15)", "The Punk meets The Godfather (Version 6)(1975-08-15)", "The great white Boss(vinyl) (Version 7)(1975-08-15)", "The Way it was (Version 8)(1975-08-15)", "Vintage Broadcast 75 (Version 9)(1975-08-15)", "Up on the Roof(1975-08-16)", "I was a thriller(early show) (Version 2)(1975-08-16)", "When they walk in the Room(1975-08-17)", "From the coastline into the city (Version 2)(1975-08-17)", "The Electric Ballroom, Atlanta GA - 21 August 1975(1975-08-21)", "It`s gonna work out fine(1975-08-23)", "It's Gonna Workout Fine (corrected) (Version 2)(1975-08-23)", "Sparks On The Ballroom (Version 3)(1975-08-23)", "Sparks On The Ballroom (Version 4)(1975-08-23)", "New Orleans - 1975(1975-09-06)", "New Orleans Night (Version 2)(1975-09-06)", "Austin - 1975(1975-09-12)", "AUSTIN 1975 (Version 2)(1975-09-12)", "Music Hall(1975-09-13)", "Thank you Houston (Version 2)(1975-09-13)", "So Dark Tonight (Version 3)(1975-09-13)", "Dallas - 1975(1975-09-16)", "Minneapolis Shuffle(1975-09-21)", "Ann Arbor Saint(1975-09-23)", "Birthday Boy in Ann Arbor (Version 2)(1975-09-23)", "Meeting across the River(1975-09-26)", "Iowa Shuffle (Version 2)(1975-09-26)", "Live songs 1975 (Version 3)(1975-09-26)", "Iowa Rock City (Version 4)(1975-09-26)", "STAY COOL TONIGHT (Version 5)(1975-09-26)", "University Of Iowa (Ed Sciaky Archives) (Version 6)(1975-09-26)", "`Cause Tonight we got Style(1975-09-27)", "'Cause tonight we got style - Whole Front (Version 2)(1975-09-27)", "Hey KC - can you catch us a Ride ?(1975-09-28)", "Kansas City Shuffle (Version 2)(1975-09-28)", "before the bomb scare(1975-10-02)", "The Milwaukee Bomb Scare Show (Version 2)(1975-10-02)", "We had too much to drink tonight (Version 3)(1975-10-02)", "Milwaukee (Version 4)(1975-10-02)", "Somebody Tried To Blow Us Up Tonight (JEMS) (Version 5)(1975-10-02)", "First Night in Detroit(1975-10-04)", "Detroit (Version 2)(1975-10-04)", "The Homecoming(1975-10-11)", "Red Bank (Version 2)(1975-10-11)", "Street Of Life(1975-10-16)", "Ain`t Nobody here from Billboard Tonight ?(1975-10-17)", "9009 West Sunset (Version 2)(1975-10-17)", "Backstreets (Version 3)(1975-10-17)", "Backstreets(On Stage Records) (Version 4)(1975-10-17)", "Down in Roxyland (Version 5)(1975-10-17)", "Down in Roxyland (Version 6)(1975-10-17)", "Live at the Roxy (Version 7)(1975-10-17)", "The Roxy 10.17.1975 late show (Version 8)(1975-10-17)", "The Roxy Theatre Night (Version 9)(1975-10-17)", "The late Show at the Roxy 18.10.75(1975-10-18)", "Going back 1975, the l0st show(early show) (Version 2)(1975-10-18)", "The Roxy 10-18-75(late show) (Version 3)(1975-10-18)", "The Roxy(1975-10-19)", "Yes, we're talking to you (Version 2)(1975-10-19)", "Meeting across the river(1975-10-26)", "Paramount Theatre, Seattle (Version 2)(1975-10-26)", "That Thunder in your Heart(1975-11-01)", "Santa Barbara (Version 2)(1975-11-01)", "Phoenix - 1975(1975-11-06)"], "bs": [["LP1B1", "1980 BOSTON"], ["LP1BF1", "1981 BOX FILE"], ["LPAJTUP11", "A JOURNEY THRU THE U.S.A. PART 1"], ["LPAJTUP21", "A JOURNEY THRU THE U.S.A. PART 2"], ["LPAJTUP31", "A JOURNEY THRU THE U.S.A. PART 3"], ["LPAMOT1", "A MOMENT OF TRUTH"], ["LPASMM1", "A SELF MADE MAN"], ["LPAC1", "ACOUSTIC CONCERT"], ["LPARJ1", "ACOUSTIC RADIO JAM"], ["LPAT2", "ACOUSTIC TALES"], ["LPAITS1", "ACTION IN THE STREET"], ["LPAITS2", "ACTION IN THE STREET(copy/repress)"], ["LPAITS3", "ACTION IN THE STREET(copy/repress)"], ["LPAITS4", "ACTION IN THE STREET(copy/repress)"], ["LPAC11", "AGORA CLEVELAND 1974"], ["LPTASP11", "AGORA SHOW PART ONE (THE)"], ["LPTASP21", "AGORA SHOW PART TWO (THE)"], ["LPATY1", "ALL THOSE YEARS"], ["LPAV81", "ALPINE VALLEY 84"], ["LPAV82", "ALPINE VALLEY 84"], ["LPAVV11", "ALPINE VALLEY VOLUME 1"], ["LPAVV21", "ALPINE VALLEY VOLUME 2"], ["LPAT1", "AMERICAN TUNE"], ["LPA81", "AMNESTY 88"], ["LPATBP1", "AND THE BAND PLAYED"], ["LPATBP2", "AND THE BAND PLAYED(copy/repress)"], ["LPATTG1", "AND THEN TO GOTHENBERG"], ["LPARATWL1", "AS REQUESTED AROUND THE WORLD LIVE"], ["LPAP6TBITN1", "ASBURY PARK 69 - THE BOSS IS TURNED ON"], ["LPA6PMHLLM1", "AT 6 P.M. HE LEFT \"LA MANDRIA\""], ["LPAAVV1", "AT ALPINE VALLEY VOL. 1"], ["LPAAVV2", "AT ALPINE VALLEY VOL. 2"], ["LPAH1", "AT HOME"], ["LPAH2", "AT HOME(copy/repress)"], ["LPATSP1", "AT THE STONE PONY"], ["LPAG71", "ATLANTA GEORGIA 1975"], ["LPAG72", "ATLANTA GEORGIA 1975(copy/repress)"], ["LPTAS1", "ATLANTA SOUNDCHECK (THE)"], ["LPATA81", "AUSTRALIAN TOUR APRIL 85"], ["LPAFHV11", "AVERY FISHER HALL VOL 1"], ["LPAFHV21", "AVERY FISHER HALL VOL 2"], ["LPBILA1", "BACK IN L.A."], ["LPBITU1", "BACK IN THE USA"], ["LPBITULV121", "BACK IN THE USA LIVE VOL 1 - 2"], ["LPBTTR1", "BACK TO THE ROOTS"], ["LPBTTR2", "BACK TO THE ROOTS(copy/repress)"], ["LPBTN1", "BECAUSE THE NIGHT"], ["LPTBIYTC1", "BEST IS YET TO COME (THE)"], ["LPBA1", "BLACK ALBUM (THE)"], ["LPBBL1", "BLINDED BY LIFE"], ["LPBIC1", "BORN IN CINCINNATI"], ["LPBITA1", "BORN IN THE AMERICA"], ["LPBITUSALV121", "BORN IN THE USA LIVE VOL 1 - 2"], ["LPBITUT1", "BORN IN THE USA TOUR"], ["LPBTBTB1", "BORN TO BE THE BOSS"], ["LPBTBTB2", "BORN TO BE THE BOSS(copy/repress)"], ["LPBTR1", "BORN TO ROCK"], ["LPBAM1", "BOSS A MILANO"], ["LPTBAHB1", "BOSS AT HIS BEST (THE)"], ["LPTBHTB1", "BOSS HITS THE BADLANDS (THE)"], ["LPBITB1", "BOSS HITS THE BEEB (THE)"], ["LPTBHTS1", "BOSS HITS THE SIXTIES (THE)"], ["LPBIA1", "BOSS IN ARMS"], ["LPTBIB2", "BOSS IN BOSTON (THE)"], ["LPBEBA1", "BOSS IN EAST BERLIN ANATOLIA"], ["LPBITE1", "BOSS IN THE EAST"], ["LPBITEV11", "BOSS IN THE EAST VOL 1"], ["LPBITEV21", "BOSS IN THE EAST VOL 2"], ["LPTBIB1", "BOSS IS BACK (THE)"], ["LPTBIB3", "BOSS IS BACK (THE)"], ["LPTBIB4", "BOSS IS BACK (THE)"], ["LPTBIBTOL1", "BOSS IS BACK (THE)"], ["LPBITO1", "BOSS IS TURNED ON"], ["LPTBOES1", "BOSS OF E STREET (THE)"], ["LPTBOTB1", "BOSS OF THE BOARDWALK (THE)"], ["LPTBWB1", "BOSS WAS BORN (THE)"], ["LPTBWH1", "BOSS WAS HERE (THE)"], ["LPB741", "BOSTON 1974"], ["LPTBB1", "BOSTON BREAKER (THE)"], ["LPBH33741", "BOSTON HALL 3-3-74"], ["LPBOR1", "BOX O'ROCKS"], ["LPBHBA1", "BRING HIM BACK ALIVE"], ["LPB11", "BRUCE 1971"], ["LPBJ1", "BRUCE JUICE"], ["LPBOSS1", "BRUCE OR SIMPLY SPRINGSTEEN"], ["LPBSEHDLIA81", "BRUCE SPRINGSTEEN & HIS DISCIPLES LIVE IN AHOY '81"], ["LPBS71", "BRUCE SPRINGSTEEN 78"], ["LPBSATSOTW1", "BRUCE SPRINGSTEEN AND THE SECRETS OF THE WORLD(copy/repress)"], ["LPBSL81", "BRUCE SPRINGSTEEN LIVE 1981"], ["LPBNA1", "BUENOS NOCHES ARGENTINA"], ["LPBNA2", "BUENOS NOCHES ARGENTINA(copy/repress)"], ["LPBTR2", "BY THE RIVER"], ["LPCT1", "CAPITOL THEATRE"], ["LPC1", "CASTAWAY"], ["LPCSFATGB1", "CHRISTMAS SONGS FOR ALL THE GOOD BOYS"], ["LPC71", "CINCINNATI 78"], ["LPTCD1", "CLEAR DIFFERENCE (THE)"], ["LPC11", "CONCERT 1978"], ["LPCFAI1", "CONCERT FOR AMNESTY INTERNATIONAL"], ["LPCRD1", "COOL ROCKIN' DADDY"], ["LPCM1", "COPY ME(copy/repress)"], ["LPCITU1", "CORN IN THE USSR"], ["LPCITUPT1", "CORN IN THE USSR PART TWO"], ["LPCAA1", "CRIMINALS AND ARTIST"], ["LPCMAR1", "CRY ME A RIVER"], ["LPDDU81", "DANCING DOWN UNDER 85"], ["LPDID1", "DANCING IN DUBLIN"], ["LPDIP1", "DANCING IN THE PARK"], ["LPDIU1", "DANCING IN THE USA"], ["LPDOTEOC1", "DARKNESS ON THE EDGE OF CHARLESTON"], ["LPDOTEOC2", "DARKNESS ON THE EDGE OF CHARLESTON(copy/repress)"], ["LPDT2", "DEAD TROUSERS"], ["LPDT1", "DEMO TAPES"], ["LPDT4", "DEMO TAPES(copy/repress)"], ["LPDT5", "DEMO TAPES(copy/repress)"], ["LPTDID1", "DEVIL IN DISGUISE (THE)"], ["LPDIHTSHN1", "DO I HAVE TO SAY HIS NAME?"], ["LPDIHTSHN2", "DO I HAVE TO SAY HIS NAME?(copy/repress)"], ["LPDYLM1", "DO YOU LOVE ME?"], ["LPDYRWTM1", "DO YOU REMEMBER WHEN THE MUSIC"]], "bby": [["/gig:1985-01-04-roads-coliseum-hampton-va", "1985-01-04 - HAMPTON ROADS COLISEUM, HAMPTON, VA"], ["/gig:1985-01-05-roads-coliseum-hampton-va", "1985-01-05 - HAMPTON ROADS COLISEUM, HAMPTON, VA"], ["/gig:1985-01-07-market-square-arena-indianapolis-in", "1985-01-07 - MARKET SQUARE ARENA, INDIANAPOLIS, IN"], ["/gig:1985-01-08-market-square-arena-indianapolis-in", "1985-01-08 - MARKET SQUARE ARENA, INDIANAPOLIS, IN"], ["/gig:1985-01-10-freedom-hall-louisville-ky", "1985-01-10 - FREEDOM HALL, LOUISVILLE, KY"], ["/gig:1985-01-13-carolina-coliseum-columbia-sc", "1985-01-13 - CAROLINA COLISEUM, COLUMBIA, SC"], ["/gig:1985-01-15-coliseum-charlotte-nc", "1985-01-15 - CHARLOTTE COLISEUM, CHARLOTTE, NC"], ["/gig:1985-01-16-coliseum-charlotte-nc", "1985-01-16 - CHARLOTTE COLISEUM, CHARLOTTE, NC"], ["/gig:1985-01-17-rhinoceros-club-greensboro-nc", "1985-01-17 - RHINOCEROS CLUB, GREENSBORO, NC"], ["/gig:1985-01-18-coliseum-greensboro-nc", "1985-01-18 - GREENSBORO COLISEUM, GREENSBORO, NC"], ["/gig:1985-01-19-coliseum-greensboro-nc", "1985-01-19 - GREENSBORO COLISEUM, GREENSBORO, NC"], ["/gig:1985-01-23-civic-center-providence-ri", "1985-01-23 - PROVIDENCE CIVIC CENTER, PROVIDENCE, RI"], ["/gig:1985-01-24-civic-center-providence-ri", "1985-01-24 - PROVIDENCE CIVIC CENTER, PROVIDENCE, RI"], ["/gig:1985-01-26-carrier-dome-syracuse-ny", "1985-01-26 - CARRIER DOME, SYRACUSE, NY"], ["/gig:1985-01-27-carrier-dome-syracuse-ny", "1985-01-27 - CARRIER DOME, SYRACUSE, NY"], ["/gig:1985-02-23-forum-inglewood-ca", "1985-02-23 - THE FORUM, INGLEWOOD, CA"], ["/gig:1985-03-21-entertainment-centre-sydney-australia", "1985-03-21 - SYDNEY ENTERTAINMENT CENTRE, SYDNEY, NEW SOUTH WALES, AUSTRALIA"], ["/gig:1985-03-22-entertainment-centre-sydney-australia", "1985-03-22 - SYDNEY ENTERTAINMENT CENTRE, SYDNEY, NEW SOUTH WALES, AUSTRALIA"], ["/gig:1985-03-23-entertainment-centre-sydney-australia", "1985-03-23 - SYDNEY ENTERTAINMENT CENTRE, SYDNEY, NEW SOUTH WALES, AUSTRALIA"], ["/gig:1985-03-24-entertainment-centre-sydney-australia", "1985-03-24 - SYDNEY ENTERTAINMENT CENTRE, SYDNEY, NEW SOUTH WALES, AUSTRALIA"], ["/gig:1985-03-27-entertainment-centre-sydney-australia", "1985-03-27 - SYDNEY ENTERTAINMENT CENTRE, SYDNEY, NEW SOUTH WALES, AUSTRALIA"], ["/gig:1985-03-28-entertainment-centre-sydney-australia", "1985-03-28 - SYDNEY ENTERTAINMENT CENTRE, SYDNEY, NEW SOUTH WALES, AUSTRALIA"], ["/gig:1985-03-31b-qe-ii-brisbane-australia", "1985-03-31 - QE II JUBILEE SPORTS CENTRE, BRISBANE, QUEENSLAND, AUSTRALIA"], ["/gig:1985-04-03-showgrounds-melbourne-australia", "1985-04-03 - MELBOURNE SHOWGROUNDS, MELBOURNE, VICTORIA, AUSTRALIA"], ["/gig:1985-04-04-showgrounds-melbourne-australia", "1985-04-04 - MELBOURNE SHOWGROUNDS, MELBOURNE, VICTORIA, AUSTRALIA"], ["/gig:1985-04-10-kokuritsu-yoyogi-kyogi-jo-tokyo-japan", "1985-04-10 - KOKURITSU YOYOGI KYŌGI-JŌ, TOKYO, JAPAN"], ["/gig:1985-04-11-kokuritsu-yoyogi-kyogi-jo-tokyo-japan", "1985-04-11 - KOKURITSU YOYOGI KYŌGI-JŌ, TOKYO, JAPAN"], ["/gig:1985-04-13-kokuritsu-yoyogi-kyogi-jo-tokyo-japan", "1985-04-13 - KOKURITSU YOYOGI KYŌGI-JŌ, TOKYO, JAPAN"], ["/gig:1985-04-15-kokuritsu-yoyogi-kyogi-jo-tokyo-japan", "1985-04-15 - KOKURITSU YOYOGI KYŌGI-JŌ, TOKYO, JAPAN"], ["/gig:1985-04-16-kokuritsu-yoyogi-kyogi-jo-tokyo-japan", "1985-04-16 - KOKURITSU YOYOGI KYŌGI-JŌ, TOKYO, JAPAN"], ["/gig:1985-04-19-furitsu-taiikukan-kyoto-japan", "1985-04-19 - KYOTO FURITSU TAIIKUKAN, KYOTO, JAPAN"], ["/gig:1985-04-22-jo-horu-osaka-japan", "1985-04-22 - ŌSAKA-JŌ HŌRU, OSAKA, JAPAN"], ["/gig:1985-04-23-jo-horu-osaka-japan", "1985-04-23 - ŌSAKA-JŌ HŌRU, OSAKA, JAPAN"], ["/gig:1985-05-11-gemini-pub-lake-oswego-or", "1985-05-11 - GEMINI PUB, LAKE OSWEGO, OR"], ["/gig:1985-05-14-country-club-lake-oswego-or", "1985-05-14 - LAKE OSWEGO COUNTRY CLUB, LAKE OSWEGO, OR"], ["/gig:1985-06-01-castle-slane-ireland", "1985-06-01 - SLANE CASTLE, SLANE, IRELAND"], ["/gig:1985-06-04-st-james-park-newcastle-england", "1985-06-04 - ST. JAMES' PARK, NEWCASTLE, ENGLAND"], ["/gig:1985-06-05-st-james-park-newcastle-england", "1985-06-05 - ST. JAMES' PARK, NEWCASTLE, ENGLAND"], ["/gig:1985-06-08-ullevi-gothenburg-sweden", "1985-06-08 - ULLEVI, GOTHENBURG, SWEDEN"], ["/gig:1985-06-09-ullevi-gothenburg-sweden", "1985-06-09 - ULLEVI, GOTHENBURG, SWEDEN"], ["/gig:1985-06-12-stadion-feijenoord-rotterdam-netherlands", "1985-06-12 - STADION FEIJENOORD, ROTTERDAM, THE NETHERLANDS"], ["/gig:1985-06-13-stadion-feijenoord-rotterdam-netherlands", "1985-06-13 - STADION FEIJENOORD, ROTTERDAM, THE NETHERLANDS"], ["/gig:1985-06-15-waldstadion-frankfurt-germany", "1985-06-15 - WALDSTADION, FRANKFURT, WEST GERMANY"], ["/gig:1985-06-18-olympiastadion-munich-germany", "1985-06-18 - OLYMPIASTADION, MUNICH, WEST GERMANY"], ["/gig:1985-06-21-stadio-giuseppe-meazza-milan-italy", "1985-06-21 - STADIO GIUSEPPE MEAZZA, MILAN, ITALY"], ["/gig:1985-06-23-stade-richter-montpellier-france", "1985-06-23 - STADE RICHTER, MONTPELLIER, FRANCE"], ["/gig:1985-06-25-stade-geoffroy-guichard-saint-etienne-france", "1985-06-25 - STADE GEOFFROY-GUICHARD, SAINT-ÉTIENNE, FRANCE"], ["/gig:1985-06-29b-parc-de-la-courneuve-paris-france", "1985-06-29 - PARC DE LA COURNEUVE, PARIS, FRANCE"], ["/gig:1985-06-30b-parc-de-la-courneuve-paris-france", "1985-06-30 - PARC DE LA COURNEUVE, PARIS, FRANCE"], ["/gig:1985-07-03-wembley-stadium-london-england", "1985-07-03 - WEMBLEY STADIUM, LONDON, ENGLAND"], ["/gig:1985-07-04-wembley-stadium-london-england", "1985-07-04 - WEMBLEY STADIUM, LONDON, ENGLAND"], ["/gig:1985-07-06-wembley-stadium-london-england", "1985-07-06 - WEMBLEY STADIUM, LONDON, ENGLAND"], ["/gig:1985-07-07-roundhay-park-leeds-england", "1985-07-07 - ROUNDHAY PARK, LEEDS, ENGLAND"], ["/gig:1985-08-05-rfk-stadium-washington-dc", "1985-08-05 - RFK STADIUM, WASHINGTON, DC"], ["/gig:1985-08-07-municipal-stadium-cleveland-oh", "1985-08-07 - CLEVELAND MUNICIPAL STADIUM, CLEVELAND, OH"], ["/gig:1985-08-09-soldier-field-chicago-il", "1985-08-09 - SOLDIER FIELD, CHICAGO, IL"], ["/gig:1985-08-11-three-rivers-stadium-pittsburgh-pa", "1985-08-11 - THREE RIVERS STADIUM, PITTSBURGH, PA"], ["/gig:1985-08-14-veterans-stadium-philadelphia-pa", "1985-08-14 - VETERANS STADIUM, PHILADELPHIA, PA"], ["/gig:1985-08-15-veterans-stadium-philadelphia-pa", "1985-08-15 - VETERANS STADIUM, PHILADELPHIA, PA"], ["/gig:1985-08-18-giants-stadium-east-rutherford-nj", "1985-08-18 - GIANTS STADIUM, EAST RUTHERFORD, NJ"], ["/gig:1985-08-19-giants-stadium-east-rutherford-nj", "1985-08-19 - GIANTS STADIUM, EAST RUTHERFORD, NJ"], ["/gig:1985-08-21-giants-stadium-east-rutherford-nj", "1985-08-21 - GIANTS STADIUM, EAST RUTHERFORD, NJ"], ["/gig:1985-08-22-giants-stadium-east-rutherford-nj", "1985-08-22 - GIANTS STADIUM, EAST RUTHERFORD, NJ"], ["/gig:1985-08-26-cne-stadium-toronto-on", "1985-08-26 - CNE STADIUM, TORONTO, ON"], ["/gig:1985-08-27-cne-stadium-toronto-on", "1985-08-27 - CNE STADIUM, TORONTO, ON"], ["/gig:1985-08-31-giants-stadium-east-rutherford-nj", "1985-08-31 - GIANTS STADIUM, EAST RUTHERFORD, NJ"], ["/gig:1985-09-01-giants-stadium-east-rutherford-nj", "1985-09-01 - GIANTS STADIUM, EAST RUTHERFORD, NJ"], ["/gig:1985-09-04-silverdome-pontiac-mi", "1985-09-04 - PONTIAC SILVERDOME, PONTIAC, MI"], ["/gig:1985-09-06-hoosier-dome-indianapolis-in", "1985-09-06 - HOOSIER DOME, INDIANAPOLIS, IN"], ["/gig:1985-09-09-orange-bowl-miami-fl", "1985-09-09 - ORANGE BOWL, MIAMI, FL"], ["/gig:1985-09-10-orange-bowl-miami-fl", "1985-09-10 - ORANGE BOWL, MIAMI, FL"], ["/gig:1985-09-13-cotton-bowl-dallas-tx", "1985-09-13 - COTTON BOWL, DALLAS, TX"], ["/gig:1985-09-14-cotton-bowl-dallas-tx", "1985-09-14 - COTTON BOWL, DALLAS, TX"], ["/gig:1985-09-18-alameda-county-coliseum-oakland-ca", "1985-09-18 - OAKLAND-ALAMEDA COUNTY COLISEUM, OAKLAND, CA"], ["/gig:1985-09-19-alameda-county-coliseum-oakland-ca", "1985-09-19 - OAKLAND-ALAMEDA COUNTY COLISEUM, OAKLAND, CA"], ["/gig:1985-09-23-mile-high-stadium-denver-co", "1985-09-23 - MILE HIGH STADIUM, DENVER, CO"], ["/gig:1985-09-24-mile-high-stadium-denver-co", "1985-09-24 - MILE HIGH STADIUM, DENVER, CO"], ["/gig:1985-09-27-memorial-coliseum-los-angeles-ca", "1985-09-27 - LOS ANGELES MEMORIAL COLISEUM, LOS ANGELES, CA"], ["/gig:1985-09-29-memorial-coliseum-los-angeles-ca", "1985-09-29 - LOS ANGELES MEMORIAL COLISEUM, LOS ANGELES, CA"], ["/gig:1985-09-30-memorial-coliseum-los-angeles-ca", "1985-09-30 - LOS ANGELES MEMORIAL COLISEUM, LOS ANGELES, CA"], ["/gig:1985-10-02-memorial-coliseum-los-angeles-ca", "1985-10-02 - LOS ANGELES MEMORIAL COLISEUM, LOS ANGELES, CA"], ["/gig:1985-12-24-private-residence-rumson-nj", "1985-12-24 - SPRINGSTEEN RESIDENCE, RUMSON, NJ"]], "bbs": ["1945", "30 Days Out", "4th Of July, Asbury Park (Sandy)", "500 Miles", "57 Channels (And Nothin' On)", "634-5789 (Soulsville, U.S.A.)", "7 Rooms Of Gloom", "96 Tears", "A Change Is Gonna Come", "A Fine Fine Boy (Girl)", "A Good Life", "A Good Man Is Hard To Find (Pittsburgh)", "A Hard Day's Night", "A Hard Rain's A-Gonna Fall", "A Life Full Of Rain", "A Love So Fine", "A Matter Of Trust", "A Night Like This", "A Night With The Jersey Devil", "A Prayer By The River", "A Rainy Night In Soho", "A Rianxeira", "A Satisfied Mind", "A Story", "A Teenager In Love", "A Winter's Revelation (In 9 Illusions)", "A Woman's Got The Power", "Achy Breaky Heart", "Across The Border", "Across The Borderline", "Action In The Streets", "Adam Raised A Cain", "Addicted To Romance", "Adelita", "Ain't Gonna Lose It This Time", "Ain't Good Enough For You", "Ain't Got You", "Ain't It Strange", "Ain't Nothin' But A House Party", "Ain't That A Shame", "Ain't That Lovin' You Baby", "Ain't That Peculiar", "Ain't Too Proud To Beg", "Alison", "All Along The Watchtower", "All God's Children", "All I Have To Do Is Dream", "All I Need", "All I Needed Was You", "All I Wanna Know", "All I Want To Do Is Dance", "All I'm Thinkin' About", "All Just To Get To You", "All Or Nothin' At All", "All Shook Up", "All That Heaven Will Allow", "All The Way Home", "Allentown", "Alone", "Always A Friend", "Amazing Grace", "Amen", "America", "America The Beautiful", "America Under Fire", "American Babylon", "American Beauty", "American Land", "American Man", "American Music", "American Skin (41 Shots)", "American Slang", "Amplifier Blues", "An Der Schönen Blauen Donau", "Angel Baby", "Angel Eyes ( - Frank Sinatra - )", "Angel Eyes ( - Little Steven & The Disciples Of Soul - )", "Angel In The Alleyways", "Angel's Blues", "Angelyne", "Another Saturday Night", "Another Thin Line", "Another You", "Any Other Way", "Apache", "Apollo Medley", "Arabian Nights", "Around And Around", "As Long As I (Can Be With You)", "Atlantic City", "Au Clair De La Lune", "AUATC", "Auld Lang Syne", "Baby Doll", "Baby I", "Baby, I Love You", "Baby I'm A Star", "Baby I've Been Missing You", "Baby, Please Don't Go", "Baby What You Want Me To Do", "Baby Workout", "Back Door Man", "Back In The U.S.A.", "Back In Your Arms", "Backstreets", "Bad Day", "Bad Girls", "Bad Luck", "Bad Moon Rising", "Badlands", "Balboa Park", "Ball And Chain", "Ballad Of A Self-loading Pistol", "Ballad Of Easy Rider", "Bama Lama Bama Loo", "Barbara Ann", "Barefootin'", "Be My Baby", "Be True", "Be True To Your School"], "sll": [["babyme", "BABY & ME (BLONDIE)"], ["babycomeback", "BABY COME BACK"], ["babydoll", "BABY DOLL"], ["babydontgo", "BABY DON'T GO"], ["babydontgo2", "BABY DON'T GO"], ["babyi", "BABY I"], ["babyimastar", "BABY I'M A STAR"], ["babyimastar_original", "BABY I'M A STAR"], ["babyimsocold", "BABY I'M SO COLD"], ["babyworkout", "BABY WORKOUT"], ["babyyouremissing", "BABY YOU'RE MISSING"], ["babyiloveyou", "BABY, I LOVE YOU"], ["babyiloveyou_original", "BABY, I LOVE YOU"], ["backinyourarms", "BACK IN YOUR ARMS"], ["backstreets", "BACKSTREETS"], ["backstreets_unofficial1", "BACKSTREETS"], ["backstreets_unofficial2", "BACKSTREETS"], ["backstreets_unofficial3", "BACKSTREETS"], ["badday", "BAD DAY"], ["badday_original", "BAD DAY"], ["badmedicine", "BAD MEDICINE"], ["badmedicine_original", "BAD MEDICINE"], ["badmoonrising", "BAD MOON RISING"], ["badmoonrising_original", "BAD MOON RISING"], ["badlands", "BADLANDS"], ["badlands_outtake1", "BADLANDS"], ["badlands_outtake2", "BADLANDS"], ["badlands_instrumental", "BADLANDS"], ["balboapark", "BALBOA PARK"], ["balboavstheearthslayer", "BALBOA VS. THE EARTH SLAYER"], ["balladofaselfloadingpistol", "BALLAD OF A SELF-LOADING PISTOL"], ["balladofaselfloadingpistol_early1", "BALLAD OF A SELF-LOADING PISTOL"], ["balladofaselfloadingpistol_early2", "BALLAD OF A SELF-LOADING PISTOL"], ["balladofelmerthepea", "BALLAD OF ELMER THE PEA"], ["barefootin", "BAREFOOTIN'"], ["bemybaby", "BE MY BABY"], ["bemybaby_original", "BE MY BABY"], ["betrue", "BE TRUE"], ["betrue_official2", "BE TRUE"], ["betruetoyourschool", "BE TRUE TO YOUR SCHOOL"], ["bepopalula", "BE-BOP-A-LULA"], ["bepopalula_original", "BE-BOP-A-LULA"], ["becausethenight", "BECAUSE THE NIGHT"], ["becausethenight_unofficial1", "BECAUSE THE NIGHT"], ["becausethenight_unofficial2", "BECAUSE THE NIGHT"], ["bedrockrapmeettheflintstones", "BEDROCK RAP / MEET THE FLINTSTONES"], ["beforetheflood", "BEFORE THE FLOOD"], ["bellsofsansalvador", "BELLS OF SAN SALVADOR"], ["bellsofsansalvador_homedemo2", "BELLS OF SAN SALVADOR"], ["bellsofsansalvador_homedemo3", "BELLS OF SAN SALVADOR"], ["bellsofsansalvador_bandrehearsal", "BELLS OF SAN SALVADOR"], ["beneaththefloodline", "BENEATH THE FLOODLINE"], ["betterdays", "BETTER DAYS"], ["betterman", "BETTER MAN"], ["betterman_original", "BETTER MAN"], ["betterthings", "BETTER THINGS"], ["bettertohaveandnotneed", "BETTER TO HAVE AND NOT NEED"], ["bettyjean", "BETTY JEAN"], ["betweenheavenandearth", "BETWEEN HEAVEN AND EARTH"], ["bigblackheaven", "BIG BLACK HEAVEN"], ["bigyellowtaxi", "BIG YELLOW TAXI"], ["billyboy", "BILLY BOY"], ["billyswaltz", "BILLY'S WALTZ"], ["bishopdanced", "BISHOP DANCED"], ["blackboots", "BLACK BOOTS"], ["blackcowboys", "BLACK COWBOYS"], ["blackmountainballad", "BLACK MOUNTAIN BALLAD"], ["blacknightinbabylon", "BLACK NIGHT IN BABYLON"], ["blacksunrising", "BLACK SUN RISING"], ["blessmysoul", "BLESS MY SOUL"], ["blindman", "BLIND MAN"], ["blindspot", "BLIND SPOT"], ["blindedbythelight", "BLINDED BY THE LIGHT"], ["bloodbrothers", "BLOOD BROTHERS"], ["bloodbrothers_alt", "BLOOD BROTHERS"], ["bloodbrothers_unofficial1", "BLOOD BROTHERS"], ["bloodbrothers_unofficial2", "BLOOD BROTHERS"], ["bloodbrothers_soloacousticdemo1", "BLOOD BROTHERS"], ["bloodbrothers_fullbandtake1", "BLOOD BROTHERS"], ["bloodbrothers_soloacousticdemo2", "BLOOD BROTHERS"], ["bloodbrothers_fullbandtake2", "BLOOD BROTHERS"], ["bloodbrothers_soloacousticdemo3", "BLOOD BROTHERS"], ["bloodonblood", "BLOOD ON BLOOD"], ["bloodonblood_original", "BLOOD ON BLOOD"], ["blowindownthisroad", "BLOWIN' DOWN THIS ROAD"], ["blowindownthisroad_original", "BLOWIN' DOWN THIS ROAD"], ["blowininthewind", "BLOWIN' IN THE WIND"], ["blowininthewind_original", "BLOWIN' IN THE WIND"], ["blueangel", "BLUE ANGEL"], ["blueangel_original", "BLUE ANGEL"], ["bluebayou", "BLUE BAYOU"], ["bluebayou_original", "BLUE BAYOU"], ["bluechristmas", "BLUE CHRISTMAS"], ["bluehighway", "BLUE HIGHWAY"], ["bluemoon", "BLUE MOON"], ["bluemoonturnstogold", "BLUE MOON TURNS TO GOLD"], ["bluesguitarriff", "BLUES GUITAR RIFF (HIGH FIDELITY)"], ["bodiddley", "BO DIDDLEY"], ["bodiddleysagunslinger", "BO DIDDLEY'S A GUNSLINGER"], ["bobbyjean", "BOBBY JEAN"], ["bonymoronie", "BONY MORONIE"], ["boogieimprovisation", "BOOGIE IMPROVISATION"], ["bookofdreams", "BOOK OF DREAMS"], ["boomboom", "BOOM BOOM"], ["borderguard", "BORDER GUARD"], ["bornintheusa", "BORN IN THE U.S.A."], ["bornintheusa_official1", "BORN IN THE U.S.A."], ["bornintheusa_official2", "BORN IN THE U.S.A."], ["bornonthebayou", "BORN ON THE BAYOU"], ["bornonthebayou_original", "BORN ON THE BAYOU"], ["borntobealone", "BORN TO BE ALONE"], ["borntobewild", "BORN TO BE WILD"], ["borntorun", "BORN TO RUN"], ["borntorun_early", "BORN TO RUN"], ["borntowin", "BORN TO WIN"], ["brandnewcadillac", "BRAND NEW CADILLAC"], ["breakmyheart", "BREAK MY HEART (TONIGHT)"], ["breakmyheart2", "BREAK MY HEART (TONIGHT)"], ["breakout", "BREAK OUT"], ["breakout_unofficial2", "BREAK OUT"]]}
+</script>
+<style>
+/* Layout: a review sheet in the script's own "Liner notes" look (vzell, 2026-10-10): warm paper,
+   hairline rules, a system serif for reading, small caps sans for labels and buttons, mono for ids
+   and logs. Each specimen sits on a white "site stage" standing in for the foreign host's page.
+   One light look on purpose: the script's cards are paper-coloured on every host. */
+:root {
+    --ground: #efe9dc;
+    --site: #ffffff;
+    --paper: #fbf8f1;
+    --ink: #2b2622;
+    --rule: #d9cfbd;
+    --muted: #7a6d5c;
+    --ok: #3f7a3a;
+    --run: #2f5f9e;
+    --warn: #9a6a00;
+    --alert: #9b2218;
+    --wash: #f3ede1;
+    --shadow: 0 10px 24px -8px rgba(60, 40, 20, .35);
+    --serif: Georgia, "Times New Roman", serif;
+    --sans: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    color-scheme: light;
+}
+body {
+    background: var(--ground);
+    color: var(--ink);
+    font: 15px/1.5 var(--serif);
+}
+.wrap {
+    max-width: 1080px;
+    margin: 0 auto;
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+    padding-block: 28px 64px;
+    display: grid;
+    gap: 34px;
+}
+h1, h2, h3 { font-weight: normal; text-wrap: balance; margin: 0; }
+h1 { font-size: 30px; letter-spacing: -.01em; }
+h2 { font-size: 21px; }
+p { margin: 0; max-width: 70ch; }
+code, .mono { font-family: var(--mono); font-size: .86em; }
+.lab {
+    font: 600 10.5px/1.3 var(--sans);
+    letter-spacing: .09em;
+    text-transform: uppercase;
+    color: var(--muted);
+}
+.intro { display: grid; gap: 10px; }
+.intro .lab { color: var(--run); }
+.sec { display: grid; gap: 14px; }
+.sec-head { display: grid; gap: 6px; }
+.cap { color: var(--muted); font-size: 13.5px; max-width: 78ch; }
+
+/* ── The site stage: our table as it stands on the host ── */
+.stage {
+    position: relative;
+    background: var(--site);
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+    padding: 14px;
+    min-height: 260px;
+    display: grid;
+    gap: 10px;
+    align-content: start;
+}
+.stage-top { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; justify-content: space-between; }
+.demo { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.hbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+    background: #f6f2e9;
+    border-bottom: 1px solid var(--rule);
+    padding: 6px 8px;
+    font-family: var(--sans);
+    font-size: 13px;
+}
+.hbar h3 { font: 600 15px var(--serif); }
+.hbar .count { color: var(--muted); font-variant-numeric: tabular-nums; }
+.hbar input {
+    font: 13px var(--sans);
+    padding: 3px 6px;
+    border: 1px solid var(--rule);
+    border-radius: 3px;
+    width: 14em;
+    max-width: 100%;
+    background: #fff;
+    color: var(--ink);
+}
+.seg { display: inline-flex; border: 1px solid #b9ad97; border-radius: 3px; overflow: hidden; }
+.seg button {
+    font: 13px/1 var(--sans);
+    border: 0;
+    border-right: 1px solid #d8ccb5;
+    background: #faf7f0;
+    padding: 3px 7px;
+    cursor: pointer;
+    color: var(--ink);
+}
+.seg button:last-child { border-right: 0; }
+.seg button[aria-pressed="true"] { background: #e7ddc8; }
+.seg button.new { box-shadow: inset 0 0 0 2px var(--run); }
+.tbl-scroll { overflow-x: auto; }
+table.tbl { border-collapse: collapse; width: 100%; font: 13px/1.35 var(--sans); }
+table.tbl th { text-align: left; font-weight: 600; background: #f6f2e9; border-bottom: 1px solid var(--rule); padding: 4px 6px; white-space: nowrap; }
+table.tbl td { border-bottom: 1px solid #eee7da; padding: 4px 6px; vertical-align: middle; }
+table.tbl td.cov img, table.tbl td.cov .ph { width: 40px; height: 40px; object-fit: cover; border-radius: 3px; display: block; }
+.ph { background: #ece5d6; color: var(--muted); font: 600 9px/40px var(--sans); text-align: center; }
+
+/* ── Buttons, pills, facts, progress ── */
+.btn {
+    font: 600 10.5px/1 var(--sans);
+    letter-spacing: .07em;
+    text-transform: uppercase;
+    color: var(--ink);
+    background: transparent;
+    border: 1px solid var(--rule);
+    border-radius: 3px;
+    padding: 6px 9px;
+    cursor: pointer;
+}
+.btn:hover { background: var(--wash); }
+.btn:focus-visible, .seg button:focus-visible, .tab:focus-visible, figure.tile:focus-visible { outline: 2px solid var(--run); outline-offset: 1px; }
+.btn.primary { color: var(--run); border-color: var(--run); }
+.btn.danger { color: var(--alert); border-color: var(--alert); }
+.btn.sm { padding: 4px 7px; font-size: 10px; }
+.pill {
+    display: inline-block;
+    font: 600 9.5px/1 var(--sans);
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    padding: 4px 7px 3px;
+    border-radius: 999px;
+    border: 1px solid currentColor;
+    white-space: nowrap;
+}
+.pill.idle { color: var(--muted); }
+.pill.run { color: var(--run); }
+.pill.ok { color: var(--ok); }
+.pill.warn { color: var(--warn); }
+.pill.alert { color: var(--alert); }
+dl.facts { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 3px 14px; margin: 0; font-size: 13.5px; }
+dl.facts dt { font-style: italic; color: var(--muted); }
+dl.facts dd { margin: 0; min-width: 0; font-variant-numeric: tabular-nums; }
+.bar { display: flex; height: 7px; border-radius: 3px; overflow: hidden; background: #ece5d6; }
+.bar span { display: block; height: 100%; transition: width .25s; }
+.bar .s-cache { background: repeating-linear-gradient(135deg, #a89a83 0 3px, #d6cbb7 3px 6px); }
+.bar .s-ok { background: var(--ok); }
+.bar .s-fail { background: var(--alert); }
+.bar .s-queue { background: #c6b9a3; }
+.bar .s-rest { background: #e4dccc; }
+.counts { display: flex; flex-wrap: wrap; gap: 4px 14px; font: 12px var(--sans); color: var(--muted); font-variant-numeric: tabular-nums; }
+.counts b { color: var(--ink); font-weight: 600; }
+.counts .bad b, .counts .bad { color: var(--alert); }
+.key { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 4px; vertical-align: -1px; }
+
+/* ── The gallery window ── */
+.gal {
+    position: absolute;
+    z-index: 5;
+    left: 8px;
+    right: 8px;
+    max-width: 800px;
+    background: var(--paper);
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+    box-shadow: var(--shadow);
+    display: flex;
+    flex-direction: column;
+    max-height: 600px;
+}
+.gal[hidden] { display: none; }
+.gal-h { display: flex; gap: 10px; align-items: flex-start; padding: 12px 14px 10px; border-bottom: 1px solid var(--rule); }
+.gal-h .t { flex: 1 1 auto; min-width: 0; display: grid; gap: 2px; }
+.gal-h .t b { font: 17px/1.25 var(--serif); }
+.gal-h .t span { color: var(--muted); font-size: 12.5px; }
+.gal-h .x { border: 0; background: transparent; font: 18px/1 var(--sans); color: var(--muted); cursor: pointer; padding: 2px 4px; }
+.gal-b { overflow: auto; padding: 12px 14px 14px; display: grid; gap: 12px; align-content: start; }
+.panel { display: grid; gap: 8px; padding-bottom: 12px; border-bottom: 1px solid var(--rule); }
+.acts { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-size: 13px; }
+.acts .note { color: var(--muted); font-size: 12.5px; }
+.ask { border: 1px solid var(--warn); border-radius: 3px; background: #fbf3df; padding: 8px 10px; display: grid; gap: 8px; font-size: 13.5px; }
+.ask[hidden] { display: none; }
+.ask .acts { gap: 6px; }
+.log { display: grid; gap: 1px; font: 11.5px/1.45 var(--mono); }
+.log div { display: grid; grid-template-columns: 6.5em minmax(0, 1fr) max-content; gap: 10px; }
+.log .tm { color: var(--muted); }
+.log .bad { color: var(--alert); }
+.log .good { color: var(--ok); }
+.log .dim { color: var(--muted); }
+.rows { display: grid; gap: 10px; }
+.rel { display: grid; grid-template-columns: minmax(150px, 230px) minmax(0, 1fr); gap: 4px 14px; padding-top: 10px; border-top: 1px solid #ebe3d3; }
+.rel:first-child { border-top: 0; padding-top: 0; }
+.rel .who { display: grid; gap: 2px; align-content: start; min-width: 0; }
+.rel .who a { font: bold 13.5px/1.3 var(--serif); color: var(--ink); text-decoration: none; overflow-wrap: anywhere; }
+.rel .who a:hover { text-decoration: underline; }
+.rel .who span { color: var(--muted); font-size: 12px; }
+.rel.new { animation: arrive .6s ease-out; }
+@keyframes arrive { from { background: #e9f1e4; } to { background: transparent; } }
+.tiles { display: flex; flex-wrap: wrap; gap: 6px; align-items: flex-start; min-width: 0; }
+figure.tile { margin: 0; width: 66px; display: grid; gap: 2px; cursor: zoom-in; position: relative; }
+figure.tile img, figure.tile .fb {
+    width: 66px;
+    height: 66px;
+    object-fit: cover;
+    border: 1px solid var(--rule);
+    border-radius: 3px;
+    display: block;
+    box-sizing: border-box;
+}
+figure.tile .fb { display: grid; place-items: center; color: #fff; font: 600 10px var(--sans); text-align: center; padding: 3px; }
+figure.tile figcaption { font: 10px/1.2 var(--sans); color: var(--muted); overflow-wrap: anywhere; }
+figure.tile.main::after { content: '★'; position: absolute; top: 2px; left: 4px; color: #f2c14e; font-size: 13px; text-shadow: 0 0 2px #000; }
+.miss { color: var(--muted); font-size: 12.5px; font-style: italic; align-self: center; }
+.miss.bad { color: var(--alert); font-style: normal; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.more { color: var(--muted); font-size: 12.5px; }
+.kind { font: 600 9.5px var(--sans); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); width: 100%; margin-top: 2px; }
+
+/* ── The opener's hover card ── */
+.tip {
+    position: absolute;
+    z-index: 6;
+    width: min(300px, calc(100% - 16px));
+    background: var(--paper);
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+    box-shadow: var(--shadow);
+    padding: 9px 11px;
+    font-size: 13px;
+    display: grid;
+    gap: 4px;
+}
+.tip[hidden] { display: none; }
+.tip b { font-size: 14px; }
+.tip span { color: var(--muted); font-size: 12px; }
+
+/* ── The viewer stand-in (the real one is #mb-art-viewer, unchanged) ── */
+.viewer {
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    background: #0d0e11;
+    color: #ebe7df;
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    font: 13px/1.45 var(--sans);
+    padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px);
+}
+.viewer[hidden] { display: none; }
+.viewer .vb { display: flex; flex-wrap: wrap; gap: 6px 16px; align-items: center; padding: 10px 14px; border-bottom: 1px solid #2a2c33; }
+.viewer .vb b { font-size: 14px; }
+.viewer .vb .dim { color: #a7a196; }
+.viewer .vb button { margin-left: auto; background: transparent; border: 1px solid #555; color: #ebe7df; border-radius: 3px; padding: 3px 9px; cursor: pointer; }
+.viewer .vs { display: grid; place-items: center; padding: 14px; min-height: 0; }
+.viewer .vs img, .viewer .vs .fb { max-width: min(90vw, 900px); max-height: 70vh; object-fit: contain; }
+.viewer .vs .fb { width: 320px; height: 320px; display: grid; place-items: center; color: #fff; font: 600 15px var(--sans); border-radius: 4px; }
+.viewer .vf { padding: 8px 14px 14px; color: #a7a196; text-align: center; }
+.viewer kbd { font: 11px var(--mono); border: 1px solid #555; border-radius: 3px; padding: 0 4px; color: #ebe7df; }
+
+/* ── Host tabs and questions ── */
+.tabs { display: flex; flex-wrap: wrap; gap: 6px; }
+.tab {
+    font: 600 10.5px/1 var(--sans);
+    letter-spacing: .07em;
+    text-transform: uppercase;
+    border: 1px solid var(--rule);
+    background: var(--paper);
+    color: var(--muted);
+    border-radius: 3px;
+    padding: 7px 10px;
+    cursor: pointer;
+}
+.tab[aria-selected="true"] { color: var(--ink); border-color: var(--ink); }
+.qs { display: grid; gap: 12px; counter-reset: q; }
+.q { background: var(--paper); border: 1px solid var(--rule); border-radius: 4px; padding: 12px 14px; display: grid; gap: 6px; }
+.q h3 { font-size: 16px; }
+.q .rec { font: 600 10px var(--sans); letter-spacing: .08em; text-transform: uppercase; color: var(--ok); }
+.q ul { margin: 0; padding-left: 1.2em; display: grid; gap: 3px; font-size: 14px; }
+@media (max-width: 620px) {
+    .rel { grid-template-columns: minmax(0, 1fr); }
+    .gal { max-height: 520px; }
+    dl.facts { grid-template-columns: minmax(0, 1fr); }
+    dl.facts dd { margin-bottom: 4px; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .rel.new { animation: none; }
+    .bar span { transition: none; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="intro">
+    <span class="lab">ShowAllEntityData · org/foreign-images.org · phase 4</span>
+    <h1>The 🖼 gallery on the foreign tables</h1>
+    <p>Every image of the rows a foreign table shows, in one window, the way the 🖼 gallery works on MusicBrainz. Opening it asks for nothing: it shows the rows already read (by a hover, a click or an earlier session). For the others it offers one button that says what it costs, and the run stops when the window closes. This page behaves: press 🖼, then Load, Stop, close and reopen it, click an image, press Esc.</p>
+</header>
+
+<section class="sec" aria-labelledby="g2">
+    <div class="sec-head">
+        <span class="lab">G2 · springsteenlyrics.com · bootleg list · replaces the static G1</span>
+        <h2 id="g2">The opener and the window</h2>
+        <p class="cap">The 🖼 sits in the table's heading bar, after the row count and the bar's own buttons, as MusicBrainz's sits after the 📊 summary (outlined in blue here because it is the new part). 50 rows; 35 the list marks "artwork available"; 3 of those were read before. Demo speed only shortens the wait between pages; the script waits 1.1 s.</p>
+    </div>
+    <div class="stage" id="stage-sl">
+        <div class="stage-top">
+            <span class="lab">springsteenlyrics.com/bootlegs.php?cmd=list&amp;category=aud_live1967</span>
+            <span class="demo"><span class="lab">Demo speed</span>
+                <span class="seg" role="group" aria-label="Demo speed">
+                    <button type="button" data-speed="1" id="sp1">1×</button><button type="button" data-speed="4" id="sp4" aria-pressed="true">4×</button><button type="button" data-speed="40" id="sp40">40×</button>
+                </span>
+                <button type="button" class="btn sm" id="reset">Reset the demo</button>
+            </span>
+        </div>
+        <div class="hbar">
+            <h3>▼ Live shows: 1967-1974</h3>
+            <span class="count" id="sl-count">(50 of 50)</span>
+            <span class="seg"><button type="button" aria-label="Fit columns">⇔</button><button type="button" aria-label="Sticky column">⏺</button><button type="button" class="new" id="opener" aria-haspopup="dialog" aria-label="Artwork gallery">🖼</button></span>
+            <label class="lab" for="sl-filter">Filter</label>
+            <input id="sl-filter" type="search" placeholder="try: Matrix" autocomplete="off">
+        </div>
+        <div class="tbl-scroll">
+            <table class="tbl" id="sl-table">
+                <thead><tr><th>Cover</th><th>Title</th><th>Date</th><th>Artwork</th></tr></thead>
+                <tbody></tbody>
+            </table>
+        </div>
+        <div class="tip" id="tip" hidden role="tooltip">
+            <b>Artwork gallery</b>
+            <div>Every image of the rows this table shows that have been read: <span id="tip-n"></span></div>
+            <span>Opening it asks the site for nothing. Click to open; click again or Esc to close.</span>
+        </div>
+        <div class="gal" id="gal-sl" hidden role="dialog" aria-labelledby="gal-sl-t"></div>
+    </div>
+</section>
+
+<section class="sec" aria-labelledby="g3">
+    <div class="sec-head">
+        <span class="lab">G3 · the same window on the other lists</span>
+        <h2 id="g3">jungleland, brucespringsteen.it, Brucebase</h2>
+        <p class="cap">One window for every host; only the words and the counts change. A list with thousands of rows makes a long run, so a run over five minutes asks first, inside the window (open question 3). The lyrics index behaves as the song list.</p>
+    </div>
+    <div class="tabs" role="tablist" aria-label="Host">
+        <button type="button" class="tab" role="tab" data-host="jl" id="tab-jl" aria-selected="true">jungleland.it · Art</button>
+        <button type="button" class="tab" role="tab" data-host="bs" id="tab-bs" aria-selected="false">brucespringsteen.it · Photo</button>
+        <button type="button" class="tab" role="tab" data-host="bby" id="tab-bby" aria-selected="false">Brucebase · 1985</button>
+        <button type="button" class="tab" role="tab" data-host="bbs" id="tab-bbs" aria-selected="false">Brucebase · Songs</button>
+    </div>
+    <div class="stage" id="stage-host" style="min-height: 560px">
+        <div class="gal" id="gal-host" role="dialog" aria-labelledby="gal-host-t" style="top: 14px"></div>
+    </div>
+</section>
+
+<section class="sec" aria-labelledby="oq">
+    <div class="sec-head">
+        <span class="lab">Open questions</span>
+        <h2 id="oq">What the approved G1 left open</h2>
+    </div>
+    <div class="qs">
+        <div class="q">
+            <h3>1. Where the 🖼 lives on a foreign table</h3>
+            <span class="rec">Recommended: A</span>
+            <ul>
+                <li><b>A</b>, as drawn: in the table's heading bar, beside the row count, like MusicBrainz's.</li>
+                <li><b>B</b>: a row in ☰ SAED → View instead. One click further away, nothing new in the bar.</li>
+            </ul>
+        </div>
+        <div class="q">
+            <h3>2. Type chips and "Compare two"</h3>
+            <span class="rec">Recommended: chips yes, Compare no</span>
+            <ul>
+                <li>MusicBrainz's gallery has a chip per image type and a Compare view; G1 had neither, and neither is drawn here.</li>
+                <li>Chips help on jungleland (Front, Back, Medium, Booklet) and Brucebase (Photo, Ticket, News, Memorabilia). Compare is about release editions and fits none of these lists.</li>
+            </ul>
+        </div>
+        <div class="q">
+            <h3>3. Ask before a long run</h3>
+            <span class="rec">Recommended: ask above 5 minutes</span>
+            <ul>
+                <li>Not in G1. Drawn in G3: "Read 1,676 song pages? About 31 min…" with Start / Cancel, Esc cancels the question first.</li>
+                <li>Under five minutes the button starts at once, as on the bootleg list.</li>
+            </ul>
+        </div>
+        <div class="q">
+            <h3>4. discogs.com</h3>
+            <span class="rec">Recommended: later, not in phase 4</span>
+            <ul>
+                <li>Its Image column's records come from Discogs' API with its own cache and rate limits, not from the detail-page store this gallery reads.</li>
+            </ul>
+        </div>
+    </div>
+</section>
+
+</div>
+
+<div class="viewer" id="viewer" hidden role="dialog" aria-label="Artwork viewer">
+    <div class="vb"><b id="v-title"></b><span class="dim" id="v-row"></span><span class="dim" id="v-pos"></span><button type="button" id="v-close">✕ Esc</button></div>
+    <div class="vs" id="v-stage"></div>
+    <div class="vf">Stand-in for the artwork viewer (#mb-art-viewer, unchanged). <kbd>←</kbd> <kbd>→</kbd> images · <kbd>Shift</kbd>+<kbd>←</kbd> <kbd>→</kbd> the gallery's rows · <kbd>Esc</kbd> back to the gallery</div>
+</div>
+
+<script>
+(function () {
+    'use strict';
+    const IMGS = JSON.parse(document.getElementById('mockup-images').textContent);
+    const HOSTROWS = JSON.parse(document.getElementById('host-rows').textContent);
+    const EMBED = window.__EMBED || {};
+    const SPACING_S = 1.1;
+    const ASK_OVER_S = 300;
+    const TC = { Cover: '#7a5c3e', Scan: '#8a7d68', Front: '#7a5c3e', Back: '#5d6b7a', Medium: '#3f6b5e', Booklet: '#7a6a3e',
+        Photo: '#5b4a7a', Ticket: '#7a3e4f', News: '#4a5f7a', Memorabilia: '#6b5a3a', 'Song graph': '#3f6b5e', 'Lyric sheet': '#7a6a3e' };
+
+    /**
+     * Creates an element with attributes and children.
+     * @param {string} tag
+     * @param {Object} [attrs]
+     * @param {...(Node|string|null)} kids
+     * @returns {HTMLElement}
+     */
+    function el(tag, attrs, ...kids) {
+        const n = document.createElement(tag);
+        for (const [k, v] of Object.entries(attrs || {})) {
+            if (v === null || v === undefined || v === false) continue;
+            if (k === 'class') n.className = v;
+            else if (k.startsWith('on')) n.addEventListener(k.slice(2), v);
+            else n.setAttribute(k, v === true ? '' : v);
+        }
+        for (const c of kids.flat()) if (c !== null && c !== undefined && c !== false) n.append(c);
+        return n;
+    }
+
+    /**
+     * The URL of an image id: inlined in the published copy, hotlinked from disk.
+     * @param {string} id
+     * @returns {string}
+     */
+    function src(id) {
+        return EMBED[id] || (IMGS[id] && IMGS[id].u) || '';
+    }
+
+    /**
+     * An image, or a labelled tile in its type's colour when there is none or it cannot load.
+     * @param {?string} id
+     * @param {string} label
+     * @param {string} type
+     * @param {string} [cls]
+     * @returns {HTMLElement}
+     */
+    function pic(id, label, type, cls) {
+        const fb = () => el('span', { class: 'fb' + (cls ? ' ' + cls : ''), style: 'background:' + (TC[type] || '#8a7d68') }, label);
+        if (!id || !src(id)) return fb();
+        const i = el('img', { src: src(id), alt: label, loading: 'lazy', referrerpolicy: 'no-referrer', draggable: 'false', class: cls || null });
+        i.addEventListener('error', () => i.replaceWith(fb()), { once: true });
+        return i;
+    }
+
+    /**
+     * "about 35 s", "about 12 min", "about 1 h 4 min" for a number of pages.
+     * @param {number} n
+     * @returns {string}
+     */
+    function cost(n) {
+        const s = Math.round(n * SPACING_S);
+        if (s < 90) return `about ${s} s`;
+        const m = Math.round(s / 60);
+        return m < 60 ? `about ${m} min` : `about ${Math.floor(m / 60)} h ${m % 60} min`;
+    }
+
+    /** @param {number} n @returns {string} */
+    const fmt = (n) => n.toLocaleString('en-US');
+
+    /**
+     * "BABY DOLL" → "Baby Doll"; mixed case stays (the tables write titles the MusicBrainz way).
+     * @param {string} t
+     * @returns {string}
+     */
+    function tc(t) {
+        if (t !== t.toUpperCase()) return t;
+        return t.toLowerCase().replace(/(^|[\s(\-/"'.])([a-z])/g, (m, a, b) => a + b.toUpperCase());
+    }
+
+    /**
+     * A small deterministic number from a string, for made-up image counts.
+     * @param {string} s
+     * @returns {number}
+     */
+    function hash(s) {
+        let h = 7;
+        for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
+        return h;
+    }
+
+    /**
+     * Placeholder records: `n` labelled tiles of one type.
+     * @param {string} type
+     * @param {number} n
+     * @param {string} [word]
+     * @returns {Object[]}
+     */
+    function tiles(type, n, word) {
+        return Array.from({ length: n }, (_, k) => ({ id: null, type, cap: `${word || type.toLowerCase()} ${String(k + 1).padStart(2, '0')}` }));
+    }
+
+    // ── Hosts: rows from the fixtures, images from the probe ────────────
+    /**
+     * springsteenlyrics: the list's cover plus its scans.
+     * @param {string} n
+     * @param {number} scans
+     * @param {boolean} real
+     * @returns {Object[]}
+     */
+    function slImages(n, scans, real) {
+        return [{ id: real ? `sl${n}c` : null, type: 'Cover', cap: 'cover', front: true }]
+            .concat(Array.from({ length: scans }, (_, k) => ({ id: real ? `sl${n}s${k + 1}` : null, type: 'Scan', cap: `scan ${String(k + 1).padStart(2, '0')}` })));
+    }
+
+    const SL_ART = [["4554", "The Bruce Springsteen Story Vol. 2: The Castiles", "16 Sep 1967"], ["4553", "The Bruce Springsteen Story Vol. 1: The Castiles", "16 Sep 1967 - 30 Sep 1967"], ["8694", "Sixteen Guns", "16 Sep 1967, 30 Sep 1967"], ["9107", "[no title]", "13 Jan 1970"], ["6544", "Bruce Springsteen & Steel Mill", "13 Jan 1970"], ["2617", "Live At The Matrix", "13 Jan 1970"], ["7088", "Live At The Matrix", "13 Jan 1970"], ["8624", "Live At The Matrix", "13 Jan 1970"], ["6615", "Live At The Matrix", "13 Jan 1970"], ["6533", "Live At The Matrix Vol. 1", "13 Jan 1970"], ["2619", "Live At The Matrix Vol. 1", "13 Jan 1970"], ["6872", "Live At The Matrix Vol. 1", "13 Jan 1970"], ["6531", "Live At The Matrix Vol. 1", "13 Jan 1970"], ["6534", "Live At The Matrix Vol. 2", "13 Jan 1970"], ["2620", "Live At The Matrix Vol. 2", "13 Jan 1970"], ["6873", "Live At The Matrix Vol. 2", "13 Jan 1970"], ["6532", "Live At The Matrix Vol. 2", "13 Jan 1970"], ["9073", "Live In San Francisco", "13 Jan 1970"], ["6545", "Live In San Francisco 1970 Vol. 1", "13 Jan 1970"], ["6546", "Live In San Francisco 1970 Vol. 2", "13 Jan 1970"], ["2618", "Steel Mill Featuring Bruce Springsteen: Live At The Matrix", "13 Jan 1970"], ["2257", "Steel Mill Featuring Bruce Springsteen: Live At The Matrix", "13 Jan 1970"], ["6867", "Rockin' Roots Of Bruce Springsteen", "13 Jan 1970, 15 May 1971"], ["9104", "[no title]", "24 Apr 1970"], ["1273", "Steel Mill", "24 Apr 1970"], ["2622", "Sunlight Soldiers At The West End", "24 Apr 1970"], ["4555", "The Bruce Springsteen Story Vol. 3: 1970 - Steel Mill", "24 Apr 1970"], ["5684", "Torn And Frayed", "24 Apr 1970"], ["2624", "[no title]", "17 Jul 1970"], ["2460", "Last Show From Richmond", "14 Aug 1970"], ["2405", "The World Is Crying For Freedom", "14 Aug 1970"], ["2627", "Goin' Back In The Past", "18 Jan 1971"], ["8065", "Return To Rock And Roll", "18 Jan 1971"], ["6568", "Return To Rock And Roll", "18 Jan 1971"], ["8998", "Steel Mill Child", "18 Jan 1971"]];
+    const SL_CACHED = { 4554: 4, 4553: 4, 8694: 9 };
+    /** @returns {Object} The springsteenlyrics host. */
+    function hostSl() {
+        return {
+            key: 'sl',
+            title: 'Artwork — Live shows: 1967-1974',
+            sub: 'springsteenlyrics.com · bootleg list · Cover column',
+            noun: 'item page',
+            nouns: 'item pages',
+            rowWord: 'rows',
+            eligibleWord: 'with "artwork available"',
+            total: 50,
+            left: '15 rows the list marks "cover only" are not here: their item pages have no scans.',
+            notLoaded: 'Not loaded yet. Point at its cover in the table, or use Load.',
+            rows: SL_ART.map(([n, t, d]) => {
+                const cached = SL_CACHED[n];
+                return {
+                    id: n, title: t, meta: d, state: cached ? 'cached' : 'cold',
+                    images: cached ? slImages(n, cached, true) : slImages(n, 2 + hash(n) % 8, false),
+                    failOnce: n === '8624' ? 'HTTP 503' : '',
+                };
+            }),
+        };
+    }
+
+    /**
+     * jungleland: the file-name labels as types.
+     * @param {string} k
+     * @param {string[]} labels
+     * @param {boolean} real
+     * @returns {Object[]}
+     */
+    function jlImages(k, labels, real) {
+        return labels.map(l => {
+            const m = l.match(/^(front|back|cd|booklet)(\d*)$/);
+            const type = { front: 'Front', back: 'Back', cd: 'Medium', booklet: 'Booklet' }[m[1]];
+            return { id: real ? k + l : null, type, cap: m[1] === 'cd' ? `CD ${m[2]}` : m[1] === 'booklet' ? `page ${m[2]}` : l, front: l === 'front' };
+        });
+    }
+
+    /** @returns {Object} The jungleland host. */
+    function hostJl() {
+        const named = HOSTROWS.jl.map(t => {
+            const m = t.match(/^(.*?)\s*\((\d{4}-\d{2}-\d{2})\)$/);
+            return m ? [m[1], m[2]] : [t, ''];
+        });
+        return {
+            key: 'jl', title: 'Artwork — Bootleg artwork list', sub: 'jungleland.it · Art column', noun: "entry's page", nouns: 'entry pages',
+            rowWord: 'rows', eligibleWord: '', total: 676,
+            notLoaded: 'Not loaded yet. Point at its Art cell, or use Load.',
+            rows: Array.from({ length: 676 }, (_, i) => {
+                const [t, d] = named[i] || [`(row ${i + 1})`, ''];
+                if (i === 0) return { id: 'jl0', title: t, meta: d, state: 'cached', images: jlImages('jl660101', ['front', 'back'], true) };
+                if (i === 2) return { id: 'jl2', title: t, meta: d, state: 'cached', images: jlImages('jl750205', ['front', 'back', 'cd1', 'cd2', 'booklet1', 'booklet2', 'booklet3', 'booklet4', 'booklet5', 'booklet6'], true) };
+                const h = hash(t + i);
+                const none = h % 9 === 0;
+                return { id: 'jl' + i, title: t, meta: d, state: 'cold', willNone: none,
+                    images: none ? [] : jlImages('x', ['front', 'back'].concat(h % 3 ? ['cd1'] : [], h % 2 ? ['booklet1', 'booklet2'] : []), false) };
+            }),
+        };
+    }
+
+    /** @returns {Object} The brucespringsteen.it host. */
+    function hostBs() {
+        return {
+            key: 'bs', title: 'Artwork — LP', sub: 'brucespringsteen.it · Photo column', noun: "record's page", nouns: 'record pages',
+            rowWord: 'records', eligibleWord: '', total: 416,
+            notLoaded: 'Not loaded yet. Point at its Photo cell, or use Load.',
+            rows: Array.from({ length: 416 }, (_, i) => {
+                const [code, t] = HOSTROWS.bs[i] || ['R' + i, `(record ${i + 1})`];
+                const real = code === 'LP1B1' || code === 'LP1BF1';
+                if (real) return { id: code, title: tc(t), meta: code, state: 'cached', images: [{ id: 'bs' + code, type: 'Photo', cap: 'photo', front: true }] };
+                const none = hash(code) % 3 === 0;
+                return { id: code, title: tc(t), meta: code, state: 'cold', willNone: none, images: none ? [] : [{ id: null, type: 'Photo', cap: 'photo', front: true }] };
+            }),
+        };
+    }
+
+    /** @returns {Object} The Brucebase year host. */
+    function hostBby() {
+        const real = {
+            '/gig:1985-01-04-roads-coliseum-hampton-va': [['bb0104p1', 'Photo'], ['bb0104p2', 'Photo'], ['bb0104t', 'Ticket'], ['bb0104n', 'News']],
+            '/gig:1985-01-05-roads-coliseum-hampton-va': [['bb0105p1', 'Photo'], ['bb0105p2', 'Photo'], ['bb0105t', 'Ticket']],
+            '/gig:1985-01-07-market-square-arena-indianapolis-in': [['bb0107t', 'Ticket'], ['bb0107pass', 'Memorabilia'], ['bb0107n1', 'News'], ['bb0107n2', 'News'], ['bb0107n3', 'News']],
+            '/gig:1985-01-08-market-square-arena-indianapolis-in': [['bb0108t', 'Ticket']],
+        };
+        return {
+            key: 'bby', title: 'Images — 1985', sub: 'brucebase.wikidot.com · year page · Media icons', noun: "entry's page", nouns: 'entry pages',
+            rowWord: 'entries', eligibleWord: 'with a ringed Media icon', total: 100,
+            left: '3 entries have no ringed icon (no page of their own, or no Photo, Ticket, News or Memorabilia) and are not here.',
+            notLoaded: 'Not loaded yet. Point at one of its ringed icons, or use Load.',
+            groupKinds: true,
+            rows: Array.from({ length: 97 }, (_, i) => {
+                const [href, t] = HOSTROWS.bby[i] || ['/gig:' + i, `1985 · (entry ${i + 1})`];
+                const m = t.match(/^(\S+) - (.*)$/);
+                const title = m ? `${m[1]} · ${tc(m[2])}` : tc(t);
+                const r = real[href];
+                if (r) return { id: href, title, meta: '', state: 'cached', images: r.map(([id, type], k) => ({ id, type, cap: type.toLowerCase() })) };
+                const h = hash(href);
+                return { id: href, title, meta: '', state: 'cold',
+                    images: [].concat(h % 2 ? tiles('Photo', 1 + h % 3) : [], tiles('Ticket', 1), h % 5 === 0 ? tiles('Memorabilia', 1, 'pass') : [], h % 3 ? tiles('News', 1 + h % 2, 'clipping') : []) };
+            }),
+        };
+    }
+
+    /** @returns {Object} The Brucebase song host. */
+    function hostBbs() {
+        return {
+            key: 'bbs', title: 'Images — Songs', sub: 'brucebase.wikidot.com · song list · Title glyph', noun: "song's page", nouns: 'song pages',
+            rowWord: 'songs', eligibleWord: '', total: 1679,
+            notLoaded: 'Not loaded yet. Point at its 🖼, or use Load.',
+            rows: Array.from({ length: 1679 }, (_, i) => {
+                const t = HOSTROWS.bbs[i] || `(song ${i + 1})`;
+                if (/^4th Of July/.test(t)) return { id: 's' + i, title: t, meta: '', state: 'cached', images: [{ id: 'bbgraph', type: 'Song graph', cap: 'graph' }, { id: 'bblyric', type: 'Lyric sheet', cap: 'lyric sheet' }] };
+                const h = hash(t + i);
+                const none = h % 4 !== 0;
+                return { id: 's' + i, title: t, meta: '', state: 'cold', willNone: none, images: none ? [] : [{ id: null, type: 'Song graph', cap: 'graph' }].concat(h % 3 ? [] : tiles('Lyric sheet', 1, 'sheet')) };
+            }),
+        };
+    }
+
+    // ── The gallery ─────────────────────────────────────────────────────
+    let speed = 4;
+    let openViewerFor = null;
+
+    /**
+     * A gallery window bound to one host: its state survives closing, as the script's would for
+     * the page's life (the rows read stay read; a run does not).
+     * @param {HTMLElement} box
+     * @param {Object} host
+     * @param {{closable: boolean, scope: function(): (Set<string>|null), onState?: function(): void}} opt
+     * @returns {Object}
+     */
+    function makeGallery(box, host, opt) {
+        const st = { host, run: null, done: 0, failedNow: 0, log: [], ask: false, stoppedBy: '', fresh: new Set(), finished: '' };
+
+        /** @returns {Object[]} The rows in scope (the table's filter). */
+        function scoped() {
+            const s = opt.scope();
+            return s ? host.rows.filter(r => s.has(r.id)) : host.rows;
+        }
+
+        /** @param {Object[]} rows @returns {Object} Counts by state. */
+        function tally(rows) {
+            const c = { cached: 0, loaded: 0, failed: 0, cold: 0, none: 0, queued: 0, images: 0 };
+            rows.forEach(r => {
+                c[r.state] = (c[r.state] || 0) + 1;
+                if ((r.state === 'cached' || r.state === 'loaded') && r.images.length) c.images += r.images.length;
+            });
+            if (st.run) c.queued = st.run.queue.length;
+            return c;
+        }
+
+        /**
+         * One log line, newest first, at most six.
+         * @param {string} what
+         * @param {string} outcome
+         * @param {string} cls
+         */
+        function note(what, outcome, cls) {
+            const d = new Date();
+            const tm = [d.getHours(), d.getMinutes(), d.getSeconds()].map(x => String(x).padStart(2, '0')).join(':');
+            st.log.unshift({ tm, what, outcome, cls });
+            st.log.length = Math.min(st.log.length, 6);
+        }
+
+        /** @returns {string} The state pill's class and words. */
+        function pill(c) {
+            if (st.run) return ['run', 'Running'];
+            if (st.finished === 'errors') return ['warn', 'Done with errors'];
+            if (st.finished === 'ok') return ['ok', 'Done'];
+            if (c.cold || c.failed) return ['idle', 'Idle'];
+            return ['ok', 'Done'];
+        }
+
+        /** Starts (or, after the question, really starts) loading every not-loaded row in scope. */
+        function start(onlyFailed) {
+            const rows = scoped().filter(r => onlyFailed ? r.state === 'failed' : (r.state === 'cold' || r.state === 'failed'));
+            if (!rows.length) return;
+            st.ask = false;
+            st.finished = '';
+            st.stoppedBy = '';
+            st.run = { queue: rows.slice(), timer: 0, n: rows.length, k: 0 };
+            note(`${fmt(rows.length)} ${rows.length === 1 ? host.noun : host.nouns}`, 'started', 'dim');
+            tick();
+            render();
+        }
+
+        /** Reads the next queued row after the spacing, as `_dpGet()`'s gate would. */
+        function tick() {
+            const run = st.run;
+            if (!run) return;
+            run.timer = setTimeout(() => {
+                if (st.run !== run) return;
+                const r = run.queue.shift();
+                run.k++;
+                if (r.failOnce) {
+                    r.state = 'failed';
+                    r.failNote = r.failOnce;
+                    r.failOnce = '';
+                    note(r.title, `could not read the ${host.noun} (${r.failNote})`, 'bad');
+                } else if (r.willNone || !r.images.length) {
+                    r.state = 'none';
+                    note(r.title, 'no images', 'dim');
+                } else {
+                    r.state = 'loaded';
+                    st.fresh.add(r.id);
+                    note(r.title, `${r.images.length} image${r.images.length === 1 ? '' : 's'}`, 'good');
+                }
+                if (!run.queue.length) {
+                    st.run = null;
+                    const failed = scoped().filter(x => x.state === 'failed').length;
+                    st.finished = failed ? 'errors' : 'ok';
+                    note('run', failed ? `finished, ${failed} failed` : 'finished', failed ? 'bad' : 'good');
+                } else {
+                    tick();
+                }
+                render();
+            }, SPACING_S * 1000 / speed);
+        }
+
+        /**
+         * Stops a run, saying why.
+         * @param {string} why
+         */
+        function stop(why) {
+            if (!st.run) return;
+            clearTimeout(st.run.timer);
+            const left = st.run.queue.length;
+            st.run = null;
+            st.stoppedBy = why;
+            note('run', `${why} — ${fmt(left)} not read`, 'dim');
+            render();
+        }
+
+        /** Builds the summary panel: facts, bar, counts, actions, question, recent. */
+        function panel(rows, c) {
+            const eligible = rows.length;
+            const read = c.cached + c.loaded;
+            const scopeTxt = opt.scope() ? `only the ${fmt(eligible)} ${host.rowWord} the filter shows` : `all ${fmt(host.total)} ${host.rowWord}${host.eligibleWord ? `, ${fmt(eligible)} ${host.eligibleWord}` : ''}`;
+            const facts = el('dl', { class: 'facts' },
+                el('dt', {}, 'Rows'), el('dd', {}, scopeTxt),
+                el('dt', {}, 'Shown'), el('dd', {}, `${fmt(read)} ${read === 1 ? 'row' : 'rows'} · ${fmt(c.images)} images`),
+                el('dt', {}, 'Not loaded'), el('dd', {}, c.cold + c.failed + c.queued ? `${fmt(c.cold + c.failed)} · each its ${host.noun}, one request, ${SPACING_S} s apart` : 'none'),
+                c.none ? el('dt', {}, 'No images') : null, c.none ? el('dd', {}, `${fmt(c.none)} ${c.none === 1 ? 'row' : 'rows'} (read, nothing to show)`) : null,
+                el('dt', {}, 'Kept'), el('dd', {}, host.key === 'jl' || host.key === 'bs' ? 'half a year in this browser, shared with the preview' : '30 days in this browser, shared with the preview'));
+            const w = (n) => eligible ? `${(100 * n / eligible).toFixed(2)}%` : '0';
+            const bar = el('div', { class: 'bar', role: 'img', 'aria-label': `${c.cached} from the cache, ${c.loaded} loaded, ${c.failed} failed, ${c.queued || c.cold} not loaded` },
+                el('span', { class: 's-cache', style: `width:${w(c.cached)}` }),
+                el('span', { class: 's-ok', style: `width:${w(c.loaded + c.none)}` }),
+                el('span', { class: 's-fail', style: `width:${w(c.failed)}` }),
+                el('span', { class: st.run ? 's-queue' : 's-rest', style: `width:${w(st.run ? c.cold : c.cold)}` }));
+            const counts = el('div', { class: 'counts' },
+                el('span', {}, el('i', { class: 'key s-cache', style: 'background:repeating-linear-gradient(135deg,#a89a83 0 3px,#d6cbb7 3px 6px)' }), el('b', {}, fmt(c.cached)), ' from the cache'),
+                el('span', {}, el('i', { class: 'key', style: 'background:var(--ok)' }), el('b', {}, fmt(c.loaded + c.none)), ' loaded now'),
+                el('span', { class: c.failed ? 'bad' : null }, el('i', { class: 'key', style: 'background:var(--alert)' }), el('b', {}, fmt(c.failed)), ' failed'),
+                el('span', {}, el('i', { class: 'key', style: `background:${st.run ? '#c6b9a3' : '#e4dccc'}` }), el('b', {}, fmt(c.cold)), st.run ? ' queued' : ' not loaded'));
+            const acts = el('div', { class: 'acts' });
+            const todo = c.cold + c.failed;
+            if (st.run) {
+                acts.append(el('button', { type: 'button', class: 'btn', id: `${host.key}-stop`, onclick: () => stop('stopped') }, 'Stop'),
+                    el('span', { class: 'note' }, `Reading ${fmt(st.run.k + 1)} of ${fmt(st.run.n)}, ${cost(st.run.queue.length)} left. Closing the window stops it too.`));
+            } else if (todo) {
+                const failedOnly = st.finished === 'errors' && !c.cold;
+                if (failedOnly) {
+                    acts.append(el('button', { type: 'button', class: 'btn primary', id: `${host.key}-retry`, onclick: () => start(true) }, `Retry ${c.failed} failed`));
+                } else {
+                    const go = el('button', { type: 'button', class: 'btn primary', id: `${host.key}-load`, onclick: () => {
+                        if (todo * SPACING_S > ASK_OVER_S) { st.ask = true; render(); } else start(false);
+                    } }, `Load the other ${fmt(todo)} (${cost(todo)})`);
+                    acts.append(go);
+                    if (c.failed && c.cold) acts.append(el('button', { type: 'button', class: 'btn', onclick: () => start(true) }, `Retry ${c.failed} failed`));
+                    acts.append(el('span', { class: 'note' }, st.stoppedBy
+                        ? (st.stoppedBy === 'stopped' ? 'Stopped. The rows read so far stay read.' : 'Stopped when the window closed. The rows read so far stay read.')
+                        : 'Nothing is fetched until you press it.'));
+                }
+            } else {
+                acts.append(el('span', { class: 'note' }, `Every ${host.rowWord === 'rows' ? 'row' : host.rowWord.replace(/s$/, '')} in scope has been read.`));
+            }
+            const ask = el('div', { class: 'ask', hidden: !st.ask, role: 'alertdialog', 'aria-label': 'Long run' },
+                el('div', {}, el('b', {}, `Read ${fmt(todo)} ${host.nouns}?`), ` ${cost(todo).replace('about', 'About')}, one every ${SPACING_S} s, while this window stays open. You can stop at any time; what is read stays read.`),
+                el('div', { class: 'acts' },
+                    el('button', { type: 'button', class: 'btn primary', id: `${host.key}-ask-start`, onclick: () => start(false) }, 'Start'),
+                    el('button', { type: 'button', class: 'btn', onclick: () => { st.ask = false; render(); } }, 'Cancel')));
+            const recent = st.log.length ? el('div', { class: 'log', 'aria-label': 'Recent' },
+                st.log.map(l => el('div', {}, el('span', { class: 'tm' }, l.tm), el('span', {}, l.what), el('span', { class: l.cls }, l.outcome)))) : null;
+            return el('div', { class: 'panel' }, facts, bar, counts, acts, ask,
+                recent ? el('span', { class: 'lab' }, 'Recent') : null, recent,
+                host.left && !opt.scope() ? el('span', { class: 'more' }, host.left) : null);
+        }
+
+        /**
+         * One row block: its tiles, or why there are none.
+         * @param {Object} r
+         * @param {Object[]} nav The rows with images, in order (the viewer's Shift+← →).
+         * @returns {HTMLElement}
+         */
+        function block(r, nav) {
+            const who = el('div', { class: 'who' }, el('a', { href: '#', onclick: (e) => e.preventDefault() }, r.title),
+                el('span', {}, [r.meta, r.state === 'cached' ? 'read before' : r.state === 'loaded' ? 'read now' : ''].filter(Boolean).join(' · ')));
+            const t = el('div', { class: 'tiles' });
+            if (r.state === 'cold') {
+                t.append(el('span', { class: 'miss' }, st.run && st.run.queue.includes(r) ? 'Queued.' : host.notLoaded));
+            } else if (r.state === 'failed') {
+                t.append(el('span', { class: 'miss bad' }, `Could not read the ${host.noun} (${r.failNote}).`,
+                    el('button', { type: 'button', class: 'btn sm', onclick: () => { r.failOnce = ''; start(true); } }, 'Try again')));
+            } else {
+                let lastKind = '';
+                r.images.forEach((im, i) => {
+                    if (host.groupKinds && im.type !== lastKind) {
+                        lastKind = im.type;
+                        t.append(el('span', { class: 'kind' }, im.type));
+                    }
+                    const fig = el('figure', { class: 'tile' + (im.front ? ' main' : ''), tabindex: '0', 'aria-label': `${im.type}: ${im.cap}` },
+                        pic(im.id, im.cap, im.type), el('figcaption', {}, `${im.type}${im.cap && im.cap !== im.type.toLowerCase() ? ' · ' + im.cap : ''}`));
+                    const go = () => openViewerFor(nav, nav.indexOf(r), i);
+                    fig.addEventListener('click', go);
+                    fig.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); } });
+                    t.append(fig);
+                });
+            }
+            const b = el('div', { class: 'rel' + (st.fresh.has(r.id) ? ' new' : '') }, who, t);
+            st.fresh.delete(r.id);
+            return b;
+        }
+
+        /** Draws the window from the state, keeping its scroll position. */
+        function render() {
+            const body = box.querySelector('.gal-b');
+            const top = body ? body.scrollTop : 0;
+            const rows = scoped();
+            const c = tally(rows);
+            const [pc, pw] = pill(c);
+            box.replaceChildren(
+                el('div', { class: 'gal-h' },
+                    el('div', { class: 't' }, el('b', { id: box.id + '-t' }, host.title), el('span', {}, host.sub + ' · ← → images, Shift+← → rows in the viewer')),
+                    el('span', { class: `pill ${pc}` }, pw),
+                    opt.closable ? el('button', { type: 'button', class: 'x', 'aria-label': 'Close (Esc)', onclick: () => api.close() }, '✕') : null),
+                el('div', { class: 'gal-b' }, panel(rows, c), (() => {
+                    const list = el('div', { class: 'rows' });
+                    const nav = rows.filter(r => (r.state === 'cached' || r.state === 'loaded') && r.images.length);
+                    const shown = rows.filter(r => r.state !== 'none');
+                    const read = shown.filter(r => r.state === 'cached' || r.state === 'loaded' || r.state === 'failed');
+                    const cold = shown.filter(r => r.state === 'cold');
+                    // Read rows first, in table order; then the not-loaded ones, at most 40 named.
+                    read.forEach(r => list.append(block(r, nav)));
+                    cold.slice(0, 40).forEach(r => list.append(block(r, nav)));
+                    if (cold.length > 40) list.append(el('span', { class: 'more' }, `… and ${fmt(cold.length - 40)} more ${host.rowWord} not loaded yet.`));
+                    if (!shown.length) list.append(el('span', { class: 'more' }, 'No row in scope.'));
+                    return list;
+                })()));
+            const nb = box.querySelector('.gal-b');
+            if (nb) nb.scrollTop = top;
+            if (opt.onState) opt.onState(c);
+        }
+
+        const api = {
+            st,
+            render,
+            open() { box.hidden = false; render(); },
+            close() { stop('closed'); box.hidden = true; if (opt.onClose) opt.onClose(); },
+            isOpen: () => !box.hidden,
+            /** Esc: the question first, then the window. @returns {boolean} handled */
+            esc() {
+                if (st.ask) { st.ask = false; render(); return true; }
+                if (opt.closable && !box.hidden) { api.close(); return true; }
+                return false;
+            },
+            stopRun: (why) => stop(why),
+            counts: () => tally(scoped()),
+        };
+        return api;
+    }
+
+    // ── The viewer stand-in ─────────────────────────────────────────────
+    const V = { nav: null, k: 0, i: 0, opener: null };
+    const viewer = document.getElementById('viewer');
+
+    /** Draws the current image. */
+    function vDraw() {
+        const r = V.nav[V.k];
+        const im = r.images[V.i];
+        document.getElementById('v-title').textContent = r.title;
+        document.getElementById('v-row').textContent = `row ${V.k + 1} of ${V.nav.length}`;
+        document.getElementById('v-pos').textContent = `${V.i + 1} / ${r.images.length} · ${im.type}${im.cap ? ' · ' + im.cap : ''}`;
+        const full = IMGS[im.id + 'F'] ? im.id + 'F' : im.id;
+        document.getElementById('v-stage').replaceChildren(pic(full, im.cap, im.type));
+    }
+
+    openViewerFor = (nav, k, i) => {
+        V.nav = nav; V.k = k; V.i = i; V.opener = document.activeElement;
+        viewer.hidden = false;
+        vDraw();
+        document.getElementById('v-close').focus();
+    };
+
+    /** Closes the viewer, back to where it was opened. */
+    function vClose() {
+        viewer.hidden = true;
+        if (V.opener && V.opener.focus) V.opener.focus();
+    }
+    document.getElementById('v-close').addEventListener('click', vClose);
+
+    // ── G2: the springsteenlyrics stage ─────────────────────────────────
+    let sl = hostSl();
+    const galSl = document.getElementById('gal-sl');
+    const opener = document.getElementById('opener');
+    const filterIn = document.getElementById('sl-filter');
+    const tip = document.getElementById('tip');
+
+    /** @returns {?Set<string>} The ids the table's filter leaves, or null with no filter. */
+    function slScope() {
+        const q = filterIn.value.trim().toLowerCase();
+        if (!q) return null;
+        return new Set(sl.rows.filter(r => r.title.toLowerCase().includes(q) || r.meta.toLowerCase().includes(q)).map(r => r.id));
+    }
+
+    /** Draws the table rows (the first eight in scope). */
+    function drawTable() {
+        const s = slScope();
+        const rows = s ? sl.rows.filter(r => s.has(r.id)) : sl.rows;
+        document.getElementById('sl-count').textContent = s ? `(${rows.length} of 50)` : '(50 of 50)';
+        document.querySelector('#sl-table tbody').replaceChildren(...rows.slice(0, 8).map(r =>
+            el('tr', {}, el('td', { class: 'cov' }, SL_CACHED[r.id] ? pic(`sl${r.id}c`, 'cover', 'Cover') : el('span', { class: 'ph' }, r.id)),
+                el('td', {}, r.title), el('td', {}, r.meta), el('td', {}, 'artwork available'))));
+    }
+
+    /** Places the window under the opener. */
+    function placeGallery() {
+        const stage = document.getElementById('stage-sl');
+        const top = opener.getBoundingClientRect().bottom - stage.getBoundingClientRect().top + 6;
+        galSl.style.top = `${Math.round(top)}px`;
+    }
+
+    let gSl = null;
+    /** Builds (or rebuilds after Reset) the springsteenlyrics gallery. */
+    function buildSl() {
+        gSl = makeGallery(galSl, sl, {
+            closable: true, scope: slScope,
+            onState: (c) => { document.getElementById('tip-n').textContent = `${c.cached + c.loaded} rows read, ${c.cold + c.failed} not yet.`; },
+            onClose: () => { opener.setAttribute('aria-pressed', 'false'); opener.focus(); },
+        });
+        document.getElementById('tip-n').textContent = '3 rows read, 32 not yet.';
+    }
+    buildSl();
+    drawTable();
+
+    opener.addEventListener('click', () => {
+        hideTip(true);
+        if (gSl.isOpen()) { gSl.close(); return; }
+        placeGallery();
+        gSl.open();
+        opener.setAttribute('aria-pressed', 'true');
+    });
+    filterIn.addEventListener('input', () => { drawTable(); if (gSl.isOpen()) gSl.render(); });
+
+    // The opener's hover card: 250 ms to show, 300 ms grace to leave; never on touch, never over the open window.
+    let tipT = 0;
+    /** @param {boolean} [now] */
+    function hideTip(now) {
+        clearTimeout(tipT);
+        if (now) { tip.hidden = true; return; }
+        tipT = setTimeout(() => { tip.hidden = true; }, 300);
+    }
+    opener.addEventListener('pointerenter', (e) => {
+        if (e.pointerType !== 'mouse' || gSl.isOpen()) return;
+        clearTimeout(tipT);
+        tipT = setTimeout(() => {
+            const stage = document.getElementById('stage-sl');
+            const r = opener.getBoundingClientRect();
+            const s = stage.getBoundingClientRect();
+            tip.style.top = `${Math.round(r.bottom - s.top + 6)}px`;
+            tip.style.left = `${Math.max(8, Math.min(Math.round(r.left - s.left - 20), s.width - 316))}px`;
+            tip.hidden = false;
+        }, 250);
+    });
+    opener.addEventListener('pointerleave', () => hideTip());
+    tip.addEventListener('pointerenter', () => clearTimeout(tipT));
+    tip.addEventListener('pointerleave', () => hideTip());
+
+    document.querySelectorAll('[data-speed]').forEach(b => b.addEventListener('click', () => {
+        speed = Number(b.dataset.speed);
+        document.querySelectorAll('[data-speed]').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+    }));
+    document.getElementById('reset').addEventListener('click', () => {
+        gSl.stopRun('reset');
+        galSl.hidden = true;
+        filterIn.value = '';
+        sl = hostSl();
+        buildSl();
+        drawTable();
+    });
+
+    // ── G3: the other hosts ─────────────────────────────────────────────
+    const galHost = document.getElementById('gal-host');
+    const hosts = { jl: hostJl(), bs: hostBs(), bby: hostBby(), bbs: hostBbs() };
+    const gHosts = {};
+    let curHost = 'jl';
+
+    /**
+     * Shows one host's window; a run of another host stops (it is another page).
+     * @param {string} key
+     */
+    function showHost(key) {
+        if (gHosts[curHost] && curHost !== key) gHosts[curHost].stopRun('closed');
+        curHost = key;
+        document.querySelectorAll('.tab').forEach(t => t.setAttribute('aria-selected', String(t.dataset.host === key)));
+        if (!gHosts[key]) gHosts[key] = makeGallery(galHost, hosts[key], { closable: false, scope: () => null });
+        gHosts[key].render();
+    }
+    document.querySelectorAll('.tab').forEach(t => t.addEventListener('click', () => showHost(t.dataset.host)));
+    showHost('jl');
+
+    // ── Keys: the viewer owns them while open; then the question, then the window ──
+    window.addEventListener('keydown', (e) => {
+        if (!viewer.hidden) {
+            const r = V.nav[V.k];
+            if (e.key === 'Escape') { vClose(); e.preventDefault(); return; }
+            if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
+                const d = e.key === 'ArrowRight' ? 1 : -1;
+                if (e.shiftKey) {
+                    V.k = (V.k + d + V.nav.length) % V.nav.length;
+                    V.i = 0;
+                } else {
+                    V.i = (V.i + d + r.images.length) % r.images.length;
+                }
+                vDraw();
+                e.preventDefault();
+            }
+            return;
+        }
+        if (e.key !== 'Escape') return;
+        if (!tip.hidden) { hideTip(true); return; }
+        if (gSl.esc()) { e.preventDefault(); return; }
+        const g = gHosts[curHost];
+        if (g && g.st.ask) { g.esc(); e.preventDefault(); }
+    }, true);
+
+    // Touch: a tap outside the open window closes it (no hover-only dead ends).
+    document.addEventListener('pointerdown', (e) => {
+        if (e.pointerType === 'mouse' || !gSl.isOpen() || !viewer.hidden) return;
+        if (!galSl.contains(e.target) && e.target !== opener) gSl.close();
+    });
+})();
+</script>
+</body>
+</html>
