@@ -28,7 +28,7 @@ test('a tap on a detail link opens the dialog, not the page, and shows no hover 
         }).observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['style'] });
     });
 
-    const link = page.locator('table.tbl tbody a[href*="code=CR1AD1"]');
+    const link = page.locator('table.tbl tbody a:not(.mb-fi-cell)[href*="code=CR1AD1"]');
     await link.scrollIntoViewIfNeeded();
     // The premise: the link would open a new tab.
     await expect(link).toHaveAttribute('target', '_blank');

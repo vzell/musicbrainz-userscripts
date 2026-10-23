@@ -174,6 +174,50 @@ so the render-decision dialog appears. That is expected, just as on SL's
   and a guard against the site's `A:hover { font-weight: bold }`, which
   would reflow a table row under the pointer.
 
+## The Art column — `_JL_FI` (2026-10-23)
+
+org/foreign-images.org phase 2, mockups J1 (lazy Art column) and J3 (the
+labels as types). `_JL_HEADERS` starts with `Art`; `_jlBuildRow()` adds the
+cell, linking the entry's page (the anchor's absolute `href`).
+
+- **The cell is the shared lazy cell** (`_fiLazyCell()`, `_fiCellApply()`,
+  `_ensureFiStyle()`): `<a class="mb-fi-cell" data-mbtt-fn="fi-img"
+  data-mb-fi="jl" href="<the row's page>">`, a dashed tile (`data-mb-fi-state=
+  "cold"`) until that page is read, then the picture and the count
+  (`data-mb-fi-n`), or the CSS words for none. Its clean text stays EMPTY: the
+  tile, the count and the words are CSS, and the hidden `.mb-fi-sort-key`
+  ("a-yes" < "b-unread" < "c-none") is in `_CLEAN_STRIP_SEL` and read by
+  `_sortCellText()` — the one MusicBrainz-path change, a class in its one
+  lookup. So a late paint owes no filter-cache duty, only the write to the
+  SOURCE rows (`_fiPaint()` over `_fiCellIndex()`: live tables and
+  `_msSourceRows()`; docs/claude/filter-and-cache-invariants.md).
+- **The record is the detail preview's** (`_dpGet()`, `_DP_SITES['jungleland.it']`), now
+  kept **half a year** (`ttlDays: 182`, `_dpTtlMs()`; vzell: "these sites barely
+  change"). `_fiAfterRender()`, from both render tails (fresh render and disk
+  load), reads the whole detail-page store once (`_dpIdbAll()`, no request to
+  the site) and paints every row read before, within that lifetime and of this
+  parser version. Nothing is asked at render; a hover asks for its row only,
+  wanted while its card shows, after the rate slot.
+- **The cell is the image card's, not the detail preview's**: a cold cell links
+  the same page with no picture, so `_dpSiteForLink()` skips `a.mb-fi-cell`;
+  the preview stays on the Title. Specs that point at a row's page by href use
+  `a:not(.mb-fi-cell)[href…]`.
+- **The click** is `_fiClick()` (window capture, installed by the page
+  preparation through `_fiInstall()`): plain left click opens the viewer,
+  Ctrl/⌘/Shift/middle keep the link.
+- **Types from the file names** (`_jlFiType()`, no parser change: `_dpParseJl()`
+  already keeps each scan's `_label`): `front` Front (★ primary), `back` Back,
+  `cdN` Medium "CD N", `bookletN` Booklet "page N", anything else Other with
+  the label as comment. The cell shows `data.cover` (the front) or the first
+  scan; a page with no scans paints "no scans".
+- **Setting** `sa_jl_tip_images` (default on): the card only.
+- **Specs** `tests/fixtures/jl-image-card.spec.js` (render asks nothing; one
+  request on hover, the typed pills; the cell's text matches nothing typed;
+  a cell painted on a filtered clone survives the filter's removal; the sort;
+  the reload sweep; 100 vs 200 days; card off, click and Ctrl-click; the
+  detail preview leaves the cell alone). Mutations:
+  `scripts/mutations/foreign-lazy-cells.json`.
+
 ## Tests
 
 | Spec                                       | Pins                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |

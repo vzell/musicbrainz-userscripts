@@ -140,7 +140,7 @@ test.describe('detail-page preview on the real sites', { tag: '@extended' }, () 
         });
         await page.click('button[data-label="Show all bootlegs of this list"]');
         await waitForRenderComplete(page, { waitForAutoResize: false, timeout: 240000 });
-        const card = await cardFor(page, page.locator('table.tbl tbody a[href$="/html/19760930.htm"]'));
+        const card = await cardFor(page, page.locator('table.tbl tbody a:not(.mb-fi-cell)[href$="/html/19760930.htm"]'));
         await expect(card.locator('.mb-tt-title')).toHaveText('Santa Monica - 30 September 1976');
         await expect(card).toContainText('Olli2605');
         await expect(card.locator('img.mb-dp-cover')).toHaveCount(1);
@@ -156,7 +156,7 @@ test.describe('detail-page preview on the real sites', { tag: '@extended' }, () 
         });
         await page.click('h1.mb-bs-h1 button[data-label="Unofficial"]');
         await waitForRenderComplete(page, { waitForAutoResize: false, timeout: 180000 });
-        const card = await cardFor(page, page.locator('table.tbl tbody a[href*="code=CR1AD1"]'));
+        const card = await cardFor(page, page.locator('table.tbl tbody a:not(.mb-fi-cell)[href*="code=CR1AD1"]'));
         await expect(card).toContainText('Anubis Records');
         await expect(card).toContainText(/\d+ tracks on 2 discs/);
         await expect(card.locator('.mb-dp-src')).toHaveCount(1);

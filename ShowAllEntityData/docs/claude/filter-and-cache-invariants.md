@@ -92,6 +92,16 @@ ones. A version that cached the first "no" hid the whole feature on the
 instrument search page (spec "a 📊 opened before the script stamped the
 fetched rows is refreshed once it has").
 
+**A foreign site's lazy Art / Photo cell is the same case, by design**
+(`_fiCellApply()`, jungleland.it and brucespringsteen.it, 2026-10-23). Its
+picture, count and "no scans" are an image, attributes and CSS; its only text
+is the hidden `.mb-fi-sort-key`, which `_CLEAN_STRIP_SEL` strips (and
+`_sortCellText()` reads). So a late paint changes nothing a filter or the 📊
+panel reads, owes none of the four items, and only has to reach the SOURCE
+rows (`_fiPaint()` over `_msSourceRows()`): `jl-image-card.spec.js` paints a
+filtered clone and clears the filter. Give such a cell visible text and it
+owes all four.
+
 Worked examples, all with fixture specs and mutation lists:
 `_msApplyLengthPrecision()` (⏱, one-shot), `initReleaseEventsColumn()` (one
 answer for many rows), `_maybeCorrectAreaFlagRegion()` (a stream, coalesced per

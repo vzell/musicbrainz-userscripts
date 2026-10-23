@@ -1,0 +1,132 @@
+[
+    {
+        "name": "lazy cell: the sort key leaks into the filter text",
+        "why": "The cell's only text is its sort key (\"a-yes\"); _CLEAN_STRIP_SEL keeps it out of what a filter reads.",
+        "edits": [
+            {
+                "find": "        '.mb-fi-sort-key,' +\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/jl-image-card.spec.js",
+        "grep": "matches no row through the Art cell",
+        "expect": "fail"
+    },
+    {
+        "name": "lazy cell: the sort does not read the key",
+        "why": "Everything else in the cell is stripped, so without the key the column sorts by nothing.",
+        "edits": [
+            {
+                "find": "cell.querySelector('.mb-caa-sort-key, .mb-eaa-sort-key, .mb-fi-sort-key')",
+                "replace": "cell.querySelector('.mb-caa-sort-key, .mb-eaa-sort-key')"
+            }
+        ],
+        "spec": "tests/fixtures/jl-image-card.spec.js",
+        "grep": "sort by Art",
+        "expect": "fail"
+    },
+    {
+        "name": "lazy cell: a paint misses the source rows",
+        "why": "A filter re-render clones the source rows; a cell painted only on a clone is gone after the next one.",
+        "edits": [
+            {
+                "find": "        _msSourceRows().forEach(row => row.querySelectorAll(sel).forEach(add));\n        return map;",
+                "replace": "        return map;"
+            }
+        ],
+        "spec": "tests/fixtures/jl-image-card.spec.js",
+        "grep": "reaches its source row",
+        "expect": "fail"
+    },
+    {
+        "name": "lazy cell: the sweep ignores the lifetime",
+        "why": "A record older than the site's lifetime must not paint a cell.",
+        "edits": [
+            {
+                "find": "if (!rec || rec.v !== _DP_PARSER_VERSION || now - rec.at >= ttl || !urls.has(rec.url) || _dpMem.has(rec.url)) return;",
+                "replace": "if (!rec || rec.v !== _DP_PARSER_VERSION || !urls.has(rec.url) || _dpMem.has(rec.url)) return;"
+            }
+        ],
+        "spec": "tests/fixtures/jl-image-card.spec.js",
+        "grep": "keeps half a year",
+        "expect": "fail"
+    },
+    {
+        "name": "lazy cell: jungleland keeps the default 30 days",
+        "why": "vzell, 2026-10-23: jungleland.it and brucespringsteen.it keep their pages half a year.",
+        "edits": [
+            {
+                "find": "            parse: _dpParseJl,\n            ttlDays: 182,\n",
+                "replace": "            parse: _dpParseJl,\n"
+            }
+        ],
+        "spec": "tests/fixtures/jl-image-card.spec.js",
+        "grep": "keeps half a year",
+        "expect": "fail"
+    },
+    {
+        "name": "lazy cell: the render tail never sweeps",
+        "why": "After a reload the rows read before are painted from the database (_fiAfterRender()).",
+        "edits": [
+            {
+                "find": "        if (!_isJlHost && !_isBsHost) return 0;\n        const p = _isJlHost ? _JL_FI : _BS_FI;",
+                "replace": "        return 0;\n        const p = _isJlHost ? _JL_FI : _BS_FI;"
+            }
+        ],
+        "spec": "tests/fixtures/jl-image-card.spec.js",
+        "grep": "after a reload",
+        "expect": "fail"
+    },
+    {
+        "name": "lazy cell: jungleland's labels not typed",
+        "why": "Mockup J3: front is Front (★), cdN Medium, bookletN Booklet.",
+        "edits": [
+            {
+                "find": "        if (l === 'front') return { types: ['Front'], front: true, comment: '' };\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/jl-image-card.spec.js",
+        "grep": "every scan typed",
+        "expect": "fail"
+    },
+    {
+        "name": "lazy cell: the detail preview takes the Art cell",
+        "why": "A cold Art cell links the same page and has no picture; it is the image card's.",
+        "edits": [
+            {
+                "find": " || a.querySelector('img') || a.matches('a.mb-fi-cell')) return null;",
+                "replace": " || a.querySelector('img')) return null;"
+            }
+        ],
+        "spec": "tests/fixtures/jl-image-card.spec.js",
+        "grep": "not the detail preview",
+        "expect": "fail"
+    },
+    {
+        "name": "lazy cell: a photo that does not load counted as a photo",
+        "why": "The site hides a missing photo; ours says \"no photo\".",
+        "edits": [
+            {
+                "find": "            pre.onerror = () => { data.photo = 'none'; resolve(); };",
+                "replace": "            pre.onerror = () => { data.photo = 'ok'; resolve(); };"
+            }
+        ],
+        "spec": "tests/fixtures/bs-image-card.spec.js",
+        "grep": "does not load",
+        "expect": "fail"
+    },
+    {
+        "name": "lazy cell: the single photo drawn as a contact sheet",
+        "why": "Mockup K1: one photo per record, so the card is that photo, big.",
+        "edits": [
+            {
+                "find": "        if (p.single && shown.length === 1) {",
+                "replace": "        if (false) {"
+            }
+        ],
+        "spec": "tests/fixtures/bs-image-card.spec.js",
+        "grep": "render asks nothing",
+        "expect": "fail"
+    }
+]

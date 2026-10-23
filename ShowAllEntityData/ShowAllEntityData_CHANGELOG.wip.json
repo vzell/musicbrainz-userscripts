@@ -1,5 +1,31 @@
 [
     {
+        "version": "WIP.2",
+        "date": "2026-10-23",
+        "sections": [
+            {
+                "label": "🚀 Feature",
+                "items": [
+                    "jungleland.it list: a new Art column. Each row shows a dashed tile until its artwork page has been read, then the front scan and the number of scans. Pointing at it shows a card with every scan, typed as on MusicBrainz (Front ★, Back, Medium for a CD, Booklet), and a click opens the artwork viewer on them (Ctrl-click: the entry's page). The page is read on that first hover or click only, one request for that row. New setting \"Art column: every scan of an entry on hover\" (on by default, the card only).",
+                    "brucespringsteen.it records: a new Photo column, the same way: a dashed tile until the record's page has been read, then its photo or \"no photo\" (many records have none; a photo the site hides as missing counts as none). Pointing at it shows the photo large; a click opens the viewer. New setting \"Photo column: the record's photo on hover\" (on by default, the card only).",
+                    "On both sites, rows read before keep their picture: after the table appears, one read of the saved pages paints them, with no request to the site. Sorting by the Art/Photo column puts the rows with a picture first."
+                ]
+            },
+            {
+                "label": "✨ Improve",
+                "items": [
+                    "jungleland.it and brucespringsteen.it now keep a page they read for half a year instead of 30 days (the preview and the new columns share it): these sites barely change. springsteenlyrics.com and Brucebase keep 30 days."
+                ]
+            },
+            {
+                "label": "🔧 Refactor",
+                "items": [
+                    "The springsteenlyrics.com, jungleland.it and brucespringsteen.it image cards are built by one function (`_fiDpProvider()`) over the detail preview's page reader. `_sortCellText()` also reads the new hidden `.mb-fi-sort-key`: one more class in its one lookup; the MusicBrainz sort timing was compared before and after."
+                ]
+            }
+        ]
+    },
+    {
         "version": "WIP.1",
         "date": "2026-10-23",
         "sections": [

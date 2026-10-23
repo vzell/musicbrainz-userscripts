@@ -154,6 +154,53 @@ Columns (`_BS_HEADERS`):
 - `_ensureBsStyle()` styles only the injected `<h1>`/`<h2>` and left-aligns
   them against the site's centred layout.
 
+## The Photo column — `_BS_FI` (2026-10-23)
+
+org/foreign-images.org phase 2, mockup K1. Both `_BS_HEADERS` kinds start
+with `Photo`; `_bsBuildRow()` adds the cell, linking the record's
+`detrec.aspx?code=` page.
+
+- **The cell is the shared lazy cell** (`_fiLazyCell()`, `_fiCellApply()`,
+  `_ensureFiStyle()`): `<a class="mb-fi-cell" data-mbtt-fn="fi-img"
+  data-mb-fi="bs" href="<the row's page>">`, a dashed tile (`data-mb-fi-state=
+  "cold"`) until that page is read, then the picture and the count
+  (`data-mb-fi-n`), or the CSS words for none. Its clean text stays EMPTY: the
+  tile, the count and the words are CSS, and the hidden `.mb-fi-sort-key`
+  ("a-yes" < "b-unread" < "c-none") is in `_CLEAN_STRIP_SEL` and read by
+  `_sortCellText()` — the one MusicBrainz-path change, a class in its one
+  lookup. So a late paint owes no filter-cache duty, only the write to the
+  SOURCE rows (`_fiPaint()` over `_fiCellIndex()`: live tables and
+  `_msSourceRows()`; docs/claude/filter-and-cache-invariants.md).
+- **The record is the detail preview's** (`_dpGet()`, `_DP_SITES['brucespringsteen.it']`), now
+  kept **half a year** (`ttlDays: 182`, `_dpTtlMs()`; vzell: "these sites barely
+  change"). `_fiAfterRender()`, from both render tails (fresh render and disk
+  load), reads the whole detail-page store once (`_dpIdbAll()`, no request to
+  the site) and paints every row read before, within that lifetime and of this
+  parser version. Nothing is asked at render; a hover asks for its row only,
+  wanted while its card shows, after the rate slot.
+- **The cell is the image card's, not the detail preview's**: a cold cell links
+  the same page with no picture, so `_dpSiteForLink()` skips `a.mb-fi-cell`;
+  the preview stays on the Title. Specs that point at a row's page by href use
+  `a:not(.mb-fi-cell)[href…]`.
+- **The click** is `_fiClick()` (window capture, installed by the page
+  preparation through `_fiInstall()`): plain left click opens the viewer,
+  Ctrl/⌘/Shift/middle keep the link.
+- **A photo exists only if it loads.** `_dpParseBs()` lists
+  `blegs/images/<code>.jpg` whenever the page names it, but the site hides a
+  missing one with `onerror`. `_bsFiCheckPhoto()` (the provider's `afterLoad`)
+  loads it once — on a hover or a click, never at render — and records
+  `data.photo = 'ok' | 'none'` on the record, written back with `_dpIdbPut()`,
+  so the next session's sweep paints it without asking; until then the record
+  is not `ready()` and the cell stays cold. A missing photo is "no photo"
+  (state `none`), never an error to retry.
+- **The card is the single big picture** (`single: true`:
+  `img.mb-fi-card-big`, up to 250 px) instead of a one-tile contact sheet.
+- **Setting** `sa_bs_tip_images` (default on): the card only.
+- **Specs** `tests/fixtures/bs-image-card.spec.js` (render asks nothing; LP1B1's
+  photo, card, cell and viewer; CR1AD1 names none; a 404 is "no photo"; after
+  a reload no page is asked; card off). Mutations:
+  `scripts/mutations/foreign-lazy-cells.json`.
+
 ## Tests
 
 | Spec                                          | Pins                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |

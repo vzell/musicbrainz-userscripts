@@ -2896,6 +2896,20 @@ Once on, the page gets a heading with the usual toolbar and one action
 button, **Bootlegs**. Pressing it turns the whole list into one table with
 these columns:
 
+- **Art:** the bootleg's artwork. It starts as a dashed tile: the scans are
+  on the bootleg's artwork page, and nothing is read until you ask. **Point
+  at the tile** and a card shows every scan, typed the MusicBrainz way —
+  *Front* (starred), *Back*, *Medium* for a CD ("CD 1"), *Booklet* ("page
+  1") — after one request for that row (moving on before its turn asks
+  nothing). The tile then shows the front scan and the number of scans, or
+  "no scans". **Click it** for the artwork viewer on those scans (← → step
+  through them, Shift+← → through the rows the filter left, *Entry page*
+  opens the page); Ctrl/⌘-click opens the artwork page in a new tab. Pages
+  read once are kept for half a year, so after a reload the rows you have
+  looked at show their picture at once, with no request. Sorting by Art puts
+  the rows with a picture first. Switch the card off with ⚙️ Settings → *🌴
+  jungleland.it* → *Art column: every scan of an entry on hover*; the click
+  opens the viewer either way.
 - **Title:** the bootleg's title, without the date the site appends to it,
   written the MusicBrainz way (see *Titles in MusicBrainz style* below). It
   links to that bootleg's artwork page, which opens in a new tab.
@@ -2919,9 +2933,10 @@ these columns:
 The list holds over 6,000 bootlegs, more than the default *Large Dataset
 Threshold* (5000 rows), so the "many rows" question comes up before the table
 is shown.
-Everything is on that one page; nothing is fetched, unless you switch on the
-preview of the artwork pages (see
+Everything is on that one page; nothing is fetched unless you point at or
+click an Art tile, or switch on the preview of the artwork pages (see
 *Previewing the detail pages* under [Page-specific behaviour](#page-specific-behaviour)).
+The Art column and the preview read the same page, once.
 
 </details>
 
@@ -2950,9 +2965,20 @@ format box of the site's own filter is ticked. Each button loads **every**
 record of its kind, all formats, whatever the page itself was showing, and
 turns them into one table:
 
-- **Unofficial:** Title, Matrix, Format, Label, Code, Notes.
-- **Official:** Title, Catalogue, Format, Country, Promo, Code, Notes.
+- **Unofficial:** Photo, Title, Matrix, Format, Label, Code, Notes.
+- **Official:** Photo, Title, Catalogue, Format, Country, Promo, Code, Notes.
   *Promo* reads "yes" for a promo.
+
+*Photo* is the record's photo, read from its detail page when you ask. It
+starts as a dashed tile; **point at it** and, after one request for that
+row, the card shows the photo large and the tile becomes the photo, or "no
+photo" — many records have none, and a photo the site hides as missing
+counts as none. **Click it** for the artwork viewer (*Record page* opens the
+page); Ctrl/⌘-click opens the detail page in a new tab. Pages read once are
+kept for half a year, so after a reload the records you have looked at show
+their photo at once. Sorting by Photo puts the records with a photo first.
+Switch the card off with ⚙️ Settings → *💿 brucespringsteen.it* → *Photo
+column: the record's photo on hover*; the click opens the viewer either way.
 
 *Format* is the site's own text ("2 CD-R", "1 7 in."). *Notes* is the italic
 line some records carry ("Picture disc", "Lower 'Bruce Springsteen' - Little
@@ -3363,7 +3389,8 @@ its card opens the same way (on a touch screen, a tap there still opens the
 page; only the script's table opens the window).
 The first time, it shows "Loading the detail page…" while the page is read in
 the background. The script reads at most one page a second, and a page you
-have already seen comes back at once: it is kept for 30 days. The card's last
+have already seen comes back at once: it is kept for 30 days (half a year on
+jungleland.it and brucespringsteen.it, which barely change). The card's last
 line says whether the page was fetched now or saved earlier. Moving the
 pointer away closes the card, and so does **Esc**.
 

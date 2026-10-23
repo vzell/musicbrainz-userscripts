@@ -23,8 +23,8 @@ const { columnFilterInput } = require('../support/filterSortAssertions');
 const { clickToolbarItem } = require('../support/toolbarMenu');
 
 const HEADERS = {
-    unofficial: ['Title', 'Matrix', 'Format', 'Label', 'Code', 'Notes'],
-    official: ['Title', 'Catalogue', 'Format', 'Country', 'Promo', 'Code', 'Notes'],
+    unofficial: ['Photo', 'Title', 'Matrix', 'Format', 'Label', 'Code', 'Notes'],
+    official: ['Photo', 'Title', 'Catalogue', 'Format', 'Country', 'Promo', 'Code', 'Notes'],
 };
 
 /**

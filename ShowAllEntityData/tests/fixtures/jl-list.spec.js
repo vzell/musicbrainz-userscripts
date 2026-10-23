@@ -22,7 +22,7 @@ const { clickToolbarItem } = require('../support/toolbarMenu');
 
 // DD … Month come from the MusicBrainz `dateParts` extractor, fed the ISO
 // Date; extracted columns are appended after the converter's own three.
-const HEADERS = ['Title', 'Date', 'Year', 'Version', 'DD', 'MM', 'YYYY', 'Day', 'Month'];
+const HEADERS = ['Art', 'Title', 'Date', 'Year', 'Version', 'DD', 'MM', 'YYYY', 'Day', 'Month'];
 
 // The fixture's own entry count, read from the file rather than written down,
 // so a rebuilt fixture cannot leave this spec checking a stale number.

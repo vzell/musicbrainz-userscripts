@@ -159,3 +159,21 @@ and the shared path. What landed differs from the outline in these points:
   The Discogs specs and mutation files pass on the shared path. Six =discogs-pages.json=
   finds were already stale at HEAD (0 hits before this change too); they are left for a
   separate fix.
+
+** Phase 2 (2026-10-23, same branch, WIP.2)
+
+Decisions (vzell, 2026-10-23, answering the plan's questions): rows read in an earlier
+session show their picture at render (one IndexedDB read, no request); jungleland.it and
+brucespringsteen.it keep their pages *half a year* ("these sites barely change"; the other
+hosts keep 30 days); the column sorts through a =.mb-fi-sort-key= in =_sortCellText()=
+(measured, see below); =sa_jl_tip_images= / =sa_bs_tip_images= switch off the card only.
+
+Done: J1 + J3 (=_JL_FI=, the Art column, file-name labels as types) and K1 (=_BS_FI=, the
+Photo column, a photo only if it loads: =_bsFiCheckPhoto()=). The three detail-page
+providers are one factory (=_fiDpProvider()=); the lazy cell (=_fiLazyCell()=,
+=_fiCellApply()=, =_fiPaint()=) has no text of its own, so a late paint owes only the
+source-row write; =_fiAfterRender()= sweeps the store after both render tails. No parser
+change (=_DP_PARSER_VERSION= stays 2); =_dpTtlMs()= gives each host its lifetime. Specs:
+=jl-image-card.spec.js= (9), =bs-image-card.spec.js= (5); mutations
+=scripts/mutations/foreign-lazy-cells.json=. The detail preview now skips =a.mb-fi-cell=,
+and specs that address a row's page by href use =a:not(.mb-fi-cell)=.

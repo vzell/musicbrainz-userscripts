@@ -646,8 +646,12 @@ the shared foreign-image path (`_fiCardHtml()`, `_fiClick()`, `_fiLoad()`,
   `_tn.` images and stay out (fixture `detail-sl-brucelegs-148.html`: 31
   scans).
 - **States** (`_SL_FI.state()`): `none` (flag "0": "Cover only", never asked),
-  `cold`, `loading` (`_slFiLoads.pending`), `done` (`_dpMem` has it),
-  `failed` (`_slFiLoads.failed`: the reason and "Try again" in the viewer).
+  `cold`, `loading` (the provider's `loads.pending`), `done` (`_dpMem` has it),
+  `failed` (`loads.failed`: the reason and "Try again" in the viewer). Since
+  phase 2 `_SL_FI` is built by `_fiDpProvider()`, as jungleland's and
+  brucespringsteen.it's providers are (docs/claude/jungleland.md, "The Art
+  column"); its cover is its own picture (`ownPicture`), so it has no lazy cell
+  and no sweep.
   `wanted` is the card showing (`_fiCardShows()`) or the viewer on that row,
   asked after the rate slot: a row the pointer only passed over costs
   nothing (`_dpGet()` logs "no longer wanted, not asked" on `detail`).

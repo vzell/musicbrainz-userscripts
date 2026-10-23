@@ -4808,11 +4808,11 @@
             description: 'Off by default. When on, the script also runs on jungleland.it\'s ' +
                          'bootleg artwork list (html/list.htm) and offers a "Show all" button ' +
                          'that turns the long list of links into one filterable, sortable table ' +
-                         'with Title, Date, Year and Version columns, plus the date split into ' +
+                         'with Art, Title, Date, Year and Version columns, plus the date split into ' +
                          'day, month, year, weekday and month name. It works only when list.htm is ' +
                          'opened in its own tab: inside the site\'s two-frame view ' +
                          '(artwork.htm) the narrow left frame is left as it is. An item\'s own page ' +
-                         'is read only for the preview below. When off, the script exits on that ' +
+                         'is read only for the Art column and the preview below. When off, the script exits on that ' +
                          'site before touching the page. Settings are shared with MusicBrainz, so ' +
                          'this can be switched on from either site.'
         },
@@ -4824,11 +4824,25 @@
             description: 'Off by default; needs the setting above. When on, resting the pointer on ' +
                          'a title in the table with Ctrl held shows a card with what its artwork page adds: the ' +
                          'uploader and the scans (front, back, discs, booklet). The page is ' +
-                         'fetched in the background, at most one a second, and kept for 30 days. ' +
+                         'fetched in the background, at most one a second, and kept for half a year. ' +
                          'Press Space to pin the card into a window you can move, resize and ' +
                          'scroll; ← and → step through the rows, and its "Live page" view shows ' +
                          'the site\'s own page. Esc closes either. On a touch screen, tapping a ' +
                          'title opens the window.'
+        },
+
+        sa_jl_tip_images: {
+            label: 'Art column: every scan of an entry on hover',
+            type: 'checkbox',
+            default: true,
+            description: 'Needs the setting above that switches the site on. The table\'s Art column shows ' +
+                         'a dashed tile until an entry\'s artwork page has been read, then its front scan and ' +
+                         'the number of scans. Pointing at it shows a card with every scan, typed as on ' +
+                         'MusicBrainz (Front, Back, Medium for a CD, Booklet): the first time, that page is read — ' +
+                         'one request for that row only, kept half a year and shared with the preview, so a ' +
+                         'later click, preview or reload costs nothing; moving on before its turn asks nothing. ' +
+                         'Off: no card, and pointing asks nothing. A click on the Art cell opens the artwork viewer ' +
+                         'either way (Ctrl-click: the entry\'s page).'
         },
 
         // ============================================================
@@ -4846,11 +4860,11 @@
             description: 'Off by default. When on, the script also runs on brucespringsteen.it\'s ' +
                          'record list (DB/records.aspx) and offers two buttons, "Unofficial" and ' +
                          '"Official", which load every record of that kind, all formats ticked, ' +
-                         'into one filterable, sortable table (Title, Matrix or Catalogue, Format, ' +
+                         'into one filterable, sortable table (Photo, Title, Matrix or Catalogue, Format, ' +
                          'Label or Country, Code, Notes). It works only when records.aspx is ' +
                          'opened in its own tab: inside the site\'s two-frame view (Blegsdx.htm) ' +
                          'the narrow list frame is left as it is. A record\'s own page is read ' +
-                         'only for the preview below. When off, the script exits on that site ' +
+                         'only for the Photo column and the preview below. When off, the script exits on that site ' +
                          'before touching the page. Settings are shared with MusicBrainz, so this ' +
                          'can be switched on from either site.'
         },
@@ -4863,11 +4877,24 @@
                          'a record\'s title in the table with Ctrl held shows a card with what the record\'s own ' +
                          'page adds: the tracklist with the show each track comes from, the ' +
                          'notes, and the photo when there is one. The page is fetched in the ' +
-                         'background, at most one a second, and kept for 30 days. Press Space to ' +
+                         'background, at most one a second, and kept for half a year. Press Space to ' +
                          'pin the card into a window you can move, resize and scroll; ← and → ' +
                          'step through the rows, and its "Live page" view shows the site\'s own ' +
                          'page. Esc closes either. On a touch screen, tapping a title opens the ' +
                          'window.'
+        },
+
+        sa_bs_tip_images: {
+            label: 'Photo column: the record\'s photo on hover',
+            type: 'checkbox',
+            default: true,
+            description: 'Needs the setting above that switches the site on. The table\'s Photo column shows ' +
+                         'a dashed tile until a record\'s page has been read, then its photo, or "no photo" ' +
+                         '(many records have none). Pointing at it shows the photo large: the first time, the ' +
+                         'record\'s page and its photo are read — for that row only, kept half a year and shared ' +
+                         'with the preview, so a later click, preview or reload costs nothing; moving on before ' +
+                         'its turn asks nothing. Off: no card, and pointing asks nothing. A click on the Photo ' +
+                         'cell opens the artwork viewer either way (Ctrl-click: the record\'s page).'
         },
 
         // ============================================================
@@ -14717,10 +14744,11 @@
     // docs/claude/jungleland.md.
 
     /**
-     * Column headers of the jungleland.it table, in order.
+     * Column headers of the jungleland.it table, in order. Art is the lazy
+     * image cell (`_fiLazyCell()`, `_JL_FI`; 2026-10-23).
      * @type {string[]}
      */
-    const _JL_HEADERS = ['Title', 'Date', 'Year', 'Version'];
+    const _JL_HEADERS = ['Art', 'Title', 'Date', 'Year', 'Version'];
 
     /**
      * Reads a jungleland.it entry's version number from its link.
@@ -14799,7 +14827,11 @@
     }
 
     /**
-     * Builds one table row (Title, Date, Year, Version) for a jungleland.it entry.
+     * Builds one table row (Art, Title, Date, Year, Version) for a jungleland.it entry.
+     *
+     * Art is the lazy image cell (`_fiLazyCell()`): a dashed tile linking
+     * the entry's page, painted with its front scan once that page is read
+     * (`_JL_FI`, `_fiPaint()`, `_fiAfterRender()`).
      *
      * The Title cell links to the entry's artwork page by its resolved
      * absolute URL, in a new tab: standalone there is no `inferioredx1`
@@ -14813,6 +14845,7 @@
     function _jlBuildRow(item, docContext) {
         const { title, date, year } = _jlParseItem(item.anchor.textContent, item.section);
         const tr = docContext.createElement('tr');
+        tr.appendChild(_fiLazyCell(docContext, 'jl', item.anchor.href));
         const titleTd = docContext.createElement('td');
         const link = docContext.createElement('a');
         link.href = item.anchor.href;
@@ -14979,6 +15012,7 @@
 
         document.body.classList.add('mb-sa-host-jl');
         _ensureJlStyle();
+        _fiInstall();
         const h1 = document.createElement('h1');
         h1.className = 'mb-jl-h1';
         const bdi = document.createElement('bdi');
@@ -15015,8 +15049,8 @@
      * @type {{unofficial: string[], official: string[]}}
      */
     const _BS_HEADERS = {
-        unofficial: ['Title', 'Matrix', 'Format', 'Label', 'Code', 'Notes'],
-        official: ['Title', 'Catalogue', 'Format', 'Country', 'Promo', 'Code', 'Notes']
+        unofficial: ['Photo', 'Title', 'Matrix', 'Format', 'Label', 'Code', 'Notes'],
+        official: ['Photo', 'Title', 'Catalogue', 'Format', 'Country', 'Promo', 'Code', 'Notes']
     };
 
     /**
@@ -15127,6 +15161,8 @@
     function _bsBuildRow(p, kind, docContext) {
         const r = _bsReadRecord(p);
         const tr = docContext.createElement('tr');
+        // Photo: the lazy image cell (_fiLazyCell(), _BS_FI; 2026-10-23).
+        tr.appendChild(_fiLazyCell(docContext, 'bs', r.href));
         const titleTd = docContext.createElement('td');
         const link = docContext.createElement('a');
         link.href = r.href;
@@ -15313,6 +15349,7 @@
 
         document.body.classList.add('mb-sa-host-bs');
         _ensureBsStyle();
+        _fiInstall();
         _bsCheckAllFormats();
         if (document.readyState !== 'complete') {
             window.addEventListener('load', () => _bsCheckAllFormats(), { once: true });
@@ -19542,10 +19579,24 @@
     const _DP_IDB_VERSION = 1;
 
     /**
-     * How long a parsed detail page is reused before it is fetched again.
+     * How long a parsed detail page is reused before it is fetched again,
+     * unless its host's `_DP_SITES` entry says otherwise (`ttlDays`,
+     * `_dpTtlMs()`).
      * @type {number}
      */
     const _DP_TTL_MS = 30 * 24 * 60 * 60 * 1000;
+
+    /**
+     * A host's detail-page lifetime: its `ttlDays` (jungleland.it and
+     * brucespringsteen.it keep half a year — vzell, 2026-10-23: "these sites
+     * barely change"), else `_DP_TTL_MS`.
+     *
+     * @param {?object} site - A `_DP_SITES` entry.
+     * @returns {number} Milliseconds.
+     */
+    function _dpTtlMs(site) {
+        return site && site.ttlDays > 0 ? site.ttlDays * 24 * 60 * 60 * 1000 : _DP_TTL_MS;
+    }
 
     /**
      * Minimum spacing between two detail-page requests. A sweep of the
@@ -20415,12 +20466,14 @@
      * - `setting`: null for a host with no detail pages of its own
      *   (discogs.com: its pages are the Discogs reader's), whose source then
      *   never switches on.
+     * - `ttlDays`, optional: how long its parsed pages are kept
+     *   (`_dpTtlMs()`; default 30 days).
      * - `extRoot`: the site's content area, where a link to ANOTHER site is
      *   previewed besides the table (`_extSource()` on this host, U5), or
      *   null for the table only. Never the site's chrome: its share bar,
      *   menus and footer are left out by `_EXT_SKIP_SEL`.
      *
-     * @type {Object<string, {setting: ?string, isDetailUrl: function(URL): boolean, charset: ?string, parse: function(Document, string): ?object, liveRoot: ?function(Document): ?Element, liveHide: string[], liveCss: string, livePrepare: ?function(Document): ?function(): void, extRoot: ?string}>}
+     * @type {Object<string, {setting: ?string, isDetailUrl: function(URL): boolean, charset: ?string, parse: function(Document, string): ?object, liveRoot: ?function(Document): ?Element, liveHide: string[], liveCss: string, livePrepare: ?function(Document): ?function(): void, ttlDays?: number, extRoot: ?string}>}
      */
     const _DP_SITES = {
         'springsteenlyrics.com': {
@@ -20446,6 +20499,7 @@
                 !/\/(?:list|images|artwork|index)\.htm$/i.test(u.pathname),
             charset: 'windows-1252',
             parse: _dpParseJl,
+            ttlDays: 182,
             liveRoot: null,
             liveHide: [],
             liveCss: '',
@@ -20457,6 +20511,7 @@
             isDetailUrl: (u) => /^\/db\/detrec\.aspx$/i.test(u.pathname) && !!u.searchParams.get('code'),
             charset: null,
             parse: _dpParseBs,
+            ttlDays: 182,
             liveRoot: null,
             liveHide: ['p[style*="double"]', 'h4'],
             liveCss: '',
@@ -20549,7 +20604,9 @@
      * @returns {?object} The host's `_DP_SITES` entry, or null.
      */
     function _dpSiteForLink(a) {
-        if (!a || !a.matches || !a.matches('a[href]') || a.querySelector('img')) return null;
+        // A lazy Art / Photo cell (a.mb-fi-cell) links the same page but is
+        // the image card's, picture or not (_fiLazyCell()).
+        if (!a || !a.matches || !a.matches('a[href]') || a.querySelector('img') || a.matches('a.mb-fi-cell')) return null;
         if (!a.closest('table.tbl > tbody') && (_isTouchPrimaryDevice() || a.closest(_DP_PAGE_SKIP))) return null;
         const site = _dpActiveSite();
         if (!site) return null;
@@ -20856,7 +20913,7 @@
 
     /**
      * Returns a detail page's parsed record: from this session's memory,
-     * then IndexedDB (younger than `_DP_TTL_MS`, same parser version), then
+     * then IndexedDB (younger than the host's `_dpTtlMs()`, same parser version), then
      * the network through the rate gate.
      *
      * Resolves an OUTCOME, as the Relationships fetches do, and only a
@@ -20881,7 +20938,7 @@
             const mem = _dpMem.get(url);
             if (mem) return { outcome: 'ok', data: mem.data, at: mem.at, cached: true };
             const rec = await _dpIdbGet(url).catch(() => null);
-            if (rec && rec.v === _DP_PARSER_VERSION && Date.now() - rec.at < _DP_TTL_MS) {
+            if (rec && rec.v === _DP_PARSER_VERSION && Date.now() - rec.at < _dpTtlMs(site)) {
                 _dpMem.set(url, { data: rec.data, at: rec.at });
                 return { outcome: 'ok', data: rec.data, at: rec.at, cached: true };
             }
@@ -22059,8 +22116,10 @@
     // `data-mbtt-fn="fi-img"` (the shared tooltip engine resolves its card,
     // `_fiCardHtml()`) and `data-mb-fi="<key>"`, which names its PROVIDER
     // (`_fiProvider()`): what that host's rows are and where their records
-    // come from. Discogs' Image column (`_DG_FI`) and springsteenlyrics'
-    // Cover column (`_SL_FI`) are the two so far. Everything is delegated
+    // come from: Discogs' Image column (`_DG_FI`), springsteenlyrics' Cover
+    // column (`_SL_FI`), and the lazy Art / Photo columns of jungleland.it and
+    // brucespringsteen.it (`_JL_FI`, `_BS_FI`; `_fiDpProvider()` builds the
+    // three detail-page ones). Everything is delegated
     // (the card through `#mb-stat-tooltip`, the click on the window), so it
     // survives every re-render's clones with no re-wiring, and nothing runs
     // until a hover or a click: a render asks for nothing.
@@ -22083,12 +22142,17 @@
      *     with a `note` while there is nothing more to show;
      *   - `cardImages(images)`, optional: the card's view of them;
      *   - `loadingText(row)`, `foot`, `title()`: the card's wording and the
-     *     viewer's title.
+     *     viewer's title;
+     *   - `single`: one picture per row, so the card is that picture, big;
+     *   - `lazy` / `cellView(url)`: the provider paints lazy cells
+     *     (`_fiCellApply()`), and what the record says one shows (null while
+     *     there is no complete record).
      * @typedef {{ctx: Object, name: string, tableSel: string, linkSel: string, cardOn: function(): boolean,
      *   rowFor: function(HTMLAnchorElement, HTMLTableElement, string): Object, hasRecord: function(Object): boolean,
      *   state: function(Object): string, request: function(Object, Object): void, images: function(Object): Object[],
      *   cardImages: ?function(Object[]): Object[], loadingText: function(Object): string, foot: string,
-     *   title: function(): string}} FiProvider
+     *   title: function(): string, single?: boolean, lazy?: boolean,
+     *   cellView?: function(string): ?{state: string, thumb?: string, n?: number}}} FiProvider
      */
 
     /**
@@ -22102,6 +22166,8 @@
         switch (key) {
             case 'dg': return _DG_FI;
             case 'sl': return _SL_FI;
+            case 'jl': return _JL_FI;
+            case 'bs': return _BS_FI;
             default: return null;
         }
     }
@@ -22181,6 +22247,12 @@
         const images = p.images(row);
         if (images.length === 1 && images[0].note) return box(`${tile}<div class="mb-tt-dim">${_rgEsc(images[0].note)}</div>`);
         const shown = p.cardImages ? p.cardImages(images) : images;
+        // One picture per row (brucespringsteen.it's photo): that picture,
+        // big, instead of a contact sheet of one tile.
+        if (p.single && shown.length === 1) {
+            return box(`<img class="mb-art-card-preview mb-fi-card-big" src="${_rgEsc(_artViewerThumbUrl(shown[0]))}" alt="" referrerpolicy="no-referrer">` +
+                (p.foot ? `<div class="mb-tt-foot">${_rgEsc(p.foot)}</div>` : ''));
+        }
         return _artCardCoreHtml({
             el: a, ctx: p.ctx, images: shown, order: shown.map((_, i) => i), title, hit: () => false, matches: '',
             foot: p.foot,
@@ -22269,113 +22341,489 @@
     function _fiInstall() {
         if (_fiInstall.done) return;
         _fiInstall.done = true;
+        _ensureFiStyle();
         window.addEventListener('click', _fiClick, true);
     }
 
     /**
-     * The artwork viewer's context for a springsteenlyrics.com table's
-     * covers (`_SL_FI`).
-     * @type {ArtCtx}
+     * The lazy cells' look (`_fiCellApply()`) and the single-picture card:
+     * a dashed tile until read, the front thumbnail with its count, or the
+     * words "no scans" / "no photo" — all CSS, so the cell's text stays
+     * empty. Installed by `_fiInstall()`, so only on a foreign host.
+     *
+     * @returns {void}
      */
-    const _SL_ART_CTX = { key: 'sl', column: 'Cover', external: true, imagesCache: new Map() };
+    function _ensureFiStyle() {
+        if (document.getElementById('mb-fi-style')) return;
+        const style = GM_addStyle(`
+            table.tbl td.mb-fi-td { width: 44px; text-align: center; vertical-align: middle; }
+            a.mb-fi-cell { display: inline-block; position: relative; width: 40px; height: 40px;
+                vertical-align: middle; text-decoration: none; }
+            a.mb-fi-cell[data-mb-fi-state="cold"]::before { content: ''; position: absolute; inset: 3px;
+                border: 2px dashed #9a9a9a; border-radius: 4px; }
+            a.mb-fi-cell[data-mb-fi-state="none"]::before { position: absolute; inset: 0; display: flex;
+                align-items: center; justify-content: center; font: 9px/1.1 Arial, Helvetica, sans-serif;
+                color: #888; text-align: center; }
+            a.mb-fi-cell[data-mb-fi="jl"][data-mb-fi-state="none"]::before { content: 'no scans'; }
+            a.mb-fi-cell[data-mb-fi="bs"][data-mb-fi-state="none"]::before { content: 'no photo'; }
+            a.mb-fi-cell img.mb-fi-thumb { display: block; width: 40px; height: 40px; object-fit: cover;
+                border-radius: 3px; }
+            a.mb-fi-cell[data-mb-fi-n]::after { content: attr(data-mb-fi-n); position: absolute; right: -3px;
+                bottom: -3px; padding: 1px 3px; border-radius: 6px; background: #333; color: #fff;
+                font: bold 9px/1 Arial, Helvetica, sans-serif; }
+            #mb-stat-tooltip img.mb-fi-card-big { display: block; max-width: 250px; max-height: 250px; margin-top: 4px; }
+        `);
+        style.id = 'mb-fi-style';
+    }
 
     /**
-     * springsteenlyrics.com's item pages as the Cover column's records: the
-     * URL of each one being asked (a count, for `'loading'`), each failure's
-     * detail, and each one fetched in this session (the viewer's "one
-     * request" line).
-     * @type {{pending: Map<string, number>, failed: Map<string, string>, fetched: Set<string>}}
+     * The picture of a row that has none yet (a lazy cell's row before its
+     * page is read): a dashed tile, so the viewer and the card have
+     * something to show beside their note.
+     * @type {string}
      */
-    const _slFiLoads = { pending: new Map(), failed: new Map(), fetched: new Set() };
+    const _FI_PLACEHOLDER = 'data:image/svg+xml,' + encodeURIComponent(
+        '<svg xmlns="http://www.w3.org/2000/svg" width="250" height="250" viewBox="0 0 250 250">' +
+        '<rect x="8" y="8" width="234" height="234" rx="12" fill="none" stroke="#9a9a9a" stroke-width="4" stroke-dasharray="14 10"/></svg>');
+
+    /**
+     * A provider of the foreign-image card and viewer click whose records
+     * are a detail page of its host, read through `_dpGet()` — the detail
+     * preview's record (memory, IndexedDB, else ONE request through its
+     * rate gate), so the card, the viewer, a lazy cell and the preview share
+     * it whichever came first, and the preview's setting does not matter.
+     * springsteenlyrics.com, jungleland.it and brucespringsteen.it are built
+     * on it (`_SL_FI`, `_JL_FI`, `_BS_FI`); each keeps its own
+     * `loads` (the URLs being asked, each failure's detail, those fetched in
+     * this session for the viewer's "one request" line).
+     *
+     * `cfg`, besides the `FiProvider` fields it copies (`key`, `column`,
+     * `name`, `tableSel`, `linkSel`, `foot`, `loadingText`, `single`):
+     *   - `host`: its `_DP_SITES` key; `setting`: the card's switch;
+     *   - `h1`: the toolbar `<h1>`'s `<bdi>`, the viewer's title;
+     *   - `pageName` / `pageLabel`: "the item page" in notes / the viewer's
+     *     button;
+     *   - `ownPicture(row)`, optional: the row's own picture as a record
+     *     (springsteenlyrics' cover), with `ownSource` and `ownTail` (the
+     *     failure note's "Showing the cover."); without it a dashed tile;
+     *   - `needsThumb`: no record without the row's own picture;
+     *   - `isNone(row)`: a row that never asks (the list says no artwork);
+     *   - `noneNote`, `loadingNote`: the viewer's notes;
+     *   - `ready(data)`, optional: whether a record in memory is complete
+     *     (brucespringsteen.it's photo check), and `afterLoad(data, url)`,
+     *     which completes it (a Promise that never rejects);
+     *   - `recordImages(data, row)`: the record's images as viewer records,
+     *     or a note when it has none;
+     *   - `cellView(data)`, optional: what the row's lazy cell shows
+     *     (`_fiCellApply()`) — a provider with it is `lazy`, and every
+     *     answer paints its cells (`_fiPaint()`).
+     *
+     * @param {Object} cfg
+     * @returns {FiProvider}
+     */
+    function _fiDpProvider(cfg) {
+        const loads = { pending: new Map(), failed: new Map(), fetched: new Set() };
+        /** @type {FiProvider} */
+        const p = {
+            ctx: { key: cfg.key, column: cfg.column, external: true, imagesCache: new Map() },
+            name: cfg.name,
+            tableSel: cfg.tableSel,
+            linkSel: cfg.linkSel,
+            single: !!cfg.single,
+            lazy: !!cfg.cellView,
+            loads,
+            cardOn: () => Lib.settings[cfg.setting] !== false,
+            rowFor: (a, table, path) => {
+                const idx = _fiTitleColIdx(table);
+                const cell = idx >= 0 ? a.closest('tr').cells[idx] : null;
+                const img = a.querySelector('img');
+                return {
+                    url: a.href, thumb: img ? img.src : '', asked: false, path,
+                    title: (cell ? cell.textContent : (img ? img.alt : '')).replace(/\s+/g, ' ').trim(),
+                    ...(cfg.rowExtra ? cfg.rowExtra(a) : {}),
+                };
+            },
+            hasRecord: (row) => !!row.url && (!cfg.needsThumb || !!row.thumb),
+            state: (row) => {
+                if (cfg.isNone && cfg.isNone(row)) return 'none';
+                const mem = _dpMem.get(row.url);
+                if (mem && (!cfg.ready || cfg.ready(mem.data))) return 'done';
+                if (loads.pending.get(row.url)) return 'loading';
+                return loads.failed.has(row.url) ? 'failed' : 'cold';
+            },
+            request: (row, o) => {
+                const url = row.url;
+                loads.pending.set(url, (loads.pending.get(url) || 0) + 1);
+                _dpGet(url, _DP_SITES[cfg.host], { wanted: o.wanted, force: !!o.force }).then(async (res) => {
+                    if (res.outcome === 'ok') {
+                        loads.failed.delete(url);
+                        if (!res.cached) loads.fetched.add(url);
+                        if (cfg.afterLoad) await cfg.afterLoad(res.data, url);
+                    } else if (res.outcome === 'error') {
+                        loads.failed.set(url, res.detail || 'the request failed');
+                    }
+                }).finally(() => {
+                    const n = (loads.pending.get(url) || 1) - 1;
+                    if (n > 0) loads.pending.set(url, n);
+                    else loads.pending.delete(url);
+                    if (p.lazy) _fiPaint(p, url);
+                    o.repaint();
+                });
+            },
+            images: (row) => {
+                const own = cfg.ownPicture ? cfg.ownPicture(row) : null;
+                const pic = own || { image: _FI_PLACEHOLDER, thumbnails: { 250: _FI_PLACEHOLDER }, types: [], comment: row.title };
+                const noteOnly = (note, retry) => [{
+                    ...pic, external: true, pageUrl: row.url, pageLabel: cfg.pageLabel,
+                    note, ...(retry ? { retry } : {}), source: own ? cfg.ownSource : '',
+                }];
+                const state = p.state(row);
+                if (state === 'none') return noteOnly(cfg.noneNote);
+                if (state === 'failed') {
+                    return noteOnly(`Could not read ${cfg.pageName} (${loads.failed.get(row.url)}).${own ? cfg.ownTail : ''}`,
+                        () => _fiLoad(p, row, true));
+                }
+                if (state !== 'done') return noteOnly(cfg.loadingNote);
+                const got = cfg.recordImages(_dpMem.get(row.url).data, row);
+                if (typeof got === 'string') return noteOnly(got);
+                const source = row.asked && loads.fetched.has(row.url) ? `${cfg.pageName}: one request, now in the cache` : 'the cache: no request';
+                return got.map(im => ({ external: true, pageUrl: row.url, pageLabel: cfg.pageLabel, source, ...im }));
+            },
+            cellView: (url) => {
+                const mem = _dpMem.get(url);
+                if (!cfg.cellView || !mem || (cfg.ready && !cfg.ready(mem.data))) return null;
+                return cfg.cellView(mem.data);
+            },
+            cardImages: null,
+            loadingText: () => cfg.loadingText,
+            foot: cfg.foot,
+            title: () => {
+                const h1 = document.querySelector(cfg.h1);
+                return h1 ? h1.textContent : '';
+            },
+        };
+        return p;
+    }
+
+    /**
+     * A URL's last path segment, decoded ('' when it cannot be read).
+     *
+     * @param {string} u
+     * @returns {string}
+     */
+    function _fiFileName(u) {
+        try {
+            return decodeURIComponent(new URL(u).pathname.split('/').pop());
+        } catch (_) {
+            return '';
+        }
+    }
+
+    // ── Lazy cells: jungleland's Art, brucespringsteen.it's Photo ───────────
+    //
+    // A row of these lists has no picture of its own, so its first cell is
+    // a `<a class="mb-fi-cell">` to the row's page: a dashed tile until the
+    // page has been read, then its front picture and the image count (or
+    // "no scans" / "no photo"). The tile, the count and the words are CSS
+    // (`data-mb-fi-state`, `data-mb-fi-n`), so the cell's clean text stays
+    // EMPTY and a late paint changes nothing a filter or the 📊 panel reads:
+    // like a third-party icon, it owes only the write to the SOURCE rows
+    // (docs/claude/filter-and-cache-invariants.md). The hidden
+    // `.mb-fi-sort-key` ("a-yes" < "b-unread" < "c-none") is stripped from
+    // the clean text and read by `_sortCellText()`.
+
+    /**
+     * Writes a lazy cell's state: its attributes, the front thumbnail when
+     * there is one, and its sort key.
+     *
+     * @param {HTMLAnchorElement} a - The `a.mb-fi-cell`.
+     * @param {{state: string, thumb?: string, n?: number}} view - `'cold'`,
+     *   `'done'` or `'none'`.
+     * @returns {void}
+     */
+    function _fiCellApply(a, view) {
+        const doc = a.ownerDocument;
+        a.dataset.mbFiState = view.state;
+        if (view.n > 1) a.dataset.mbFiN = String(view.n);
+        else delete a.dataset.mbFiN;
+        a.replaceChildren();
+        if (view.state === 'done' && view.thumb) {
+            const img = doc.createElement('img');
+            img.className = 'mb-fi-thumb';
+            img.setAttribute('src', view.thumb);
+            img.setAttribute('alt', '');
+            img.setAttribute('loading', 'lazy');
+            img.setAttribute('referrerpolicy', 'no-referrer');
+            a.appendChild(img);
+        }
+        const key = doc.createElement('span');
+        key.className = 'mb-fi-sort-key';
+        key.style.display = 'none';
+        key.textContent = view.state === 'done' ? 'a-yes' : view.state === 'none' ? 'c-none' : 'b-unread';
+        a.appendChild(key);
+    }
+
+    /**
+     * A lazy cell for a converter: the link to the row's page, stamped for
+     * the card and the viewer click, in its unread state.
+     *
+     * @param {Document} doc - The document the row is built in.
+     * @param {string} key - The provider (`data-mb-fi`).
+     * @param {string} href - The row's page, absolute.
+     * @returns {HTMLTableCellElement}
+     */
+    function _fiLazyCell(doc, key, href) {
+        const td = doc.createElement('td');
+        td.className = 'mb-fi-td';
+        const a = doc.createElement('a');
+        a.className = 'mb-fi-cell';
+        a.dataset.mbttFn = 'fi-img';
+        a.dataset.mbFi = key;
+        a.setAttribute('href', href);
+        a.target = '_blank';
+        a.rel = 'noopener';
+        _fiCellApply(a, { state: 'cold' });
+        td.appendChild(a);
+        return td;
+    }
+
+    /**
+     * Every lazy cell of a provider, by URL: the shown tables and the source
+     * rows the next re-render clones from (a single table's live rows ARE
+     * its source rows; a Set keeps each once).
+     *
+     * @param {FiProvider} p
+     * @returns {Map<string, Set<HTMLAnchorElement>>}
+     */
+    function _fiCellIndex(p) {
+        const sel = `a.mb-fi-cell[data-mb-fi="${p.ctx.key}"]`;
+        const map = new Map();
+        const add = (a) => {
+            let s = map.get(a.href);
+            if (!s) { s = new Set(); map.set(a.href, s); }
+            s.add(a);
+        };
+        document.querySelectorAll(`table.tbl ${sel}`).forEach(add);
+        _msSourceRows().forEach(row => row.querySelectorAll(sel).forEach(add));
+        return map;
+    }
+
+    /**
+     * Paints every lazy cell of one URL from its record (the card's, the
+     * viewer's or the sweep's answer), live and source rows alike. No filter
+     * pass: nothing a match reads has changed.
+     *
+     * @param {FiProvider} p
+     * @param {string} url
+     * @returns {number} Cells painted.
+     */
+    function _fiPaint(p, url) {
+        const view = p.cellView(url);
+        if (!view) return 0;
+        const cells = _fiCellIndex(p).get(url);
+        if (!cells) return 0;
+        cells.forEach(a => _fiCellApply(a, view));
+        return cells.size;
+    }
+
+    /**
+     * Every record of the detail-page database (`_dpOpenIdb()`), one read.
+     *
+     * @returns {Promise<Array<{url: string, v: number, at: number, data: object}>>}
+     */
+    function _dpIdbAll() {
+        return _dpOpenIdb().then(db => new Promise((resolve, reject) => {
+            try {
+                const req = db.transaction('pages', 'readonly').objectStore('pages').getAll();
+                req.onsuccess = () => resolve(req.result || []);
+                req.onerror = (ev) => reject(ev.target.error);
+            } catch (e) {
+                reject(e);
+            }
+        }));
+    }
+
+    /**
+     * The render tail on jungleland.it and brucespringsteen.it (vzell,
+     * 2026-10-23: "these sites barely change"): every lazy cell whose page
+     * was read before shows its picture at once. One `getAll()` of the
+     * detail-page database — no request to the site — keeps the records of
+     * this parser version younger than the site's lifetime
+     * (`_dpTtlMs()`, half a year here) for the rows of the table, puts them
+     * in memory (so a hover answers at once too) and paints the cells.
+     * Called after a fresh render and a disk load; a single boolean check
+     * anywhere else.
+     *
+     * @returns {Promise<number>} Cells painted (for the specs).
+     */
+    async function _fiAfterRender() {
+        if (!_isJlHost && !_isBsHost) return 0;
+        const p = _isJlHost ? _JL_FI : _BS_FI;
+        const site = _DP_SITES[_isJlHost ? 'jungleland.it' : 'brucespringsteen.it'];
+        const urls = _fiCellIndex(p);
+        if (!urls.size) return 0;
+        const records = await _dpIdbAll().catch(() => []);
+        const ttl = _dpTtlMs(site);
+        const now = Date.now();
+        records.forEach(rec => {
+            if (!rec || rec.v !== _DP_PARSER_VERSION || now - rec.at >= ttl || !urls.has(rec.url) || _dpMem.has(rec.url)) return;
+            _dpMem.set(rec.url, { data: rec.data, at: rec.at });
+        });
+        // A fresh index: a re-render may have replaced the live cells meanwhile.
+        let n = 0;
+        _fiCellIndex(p).forEach((cells, url) => {
+            const view = p.cellView(url);
+            if (view) cells.forEach(a => { _fiCellApply(a, view); n++; });
+        });
+        Lib.debug('detail', `lazy cells: ${n} painted from ${records.length} saved page(s).`);
+        return n;
+    }
 
     /**
      * A springsteenlyrics.com list's Cover column as a provider of the
      * foreign-image card and viewer click (mockups S1/V1, 2026-10-23). The
-     * cover is in the row; the scans are on the item page, read through
-     * `_dpGet()` — the detail preview's record, memory, IndexedDB, else ONE
-     * request through its rate gate — so the card, the viewer and the
-     * preview share it whichever came first, and the preview's setting does
-     * not matter here. A bootleg row the list itself says has no artwork
-     * (`data-mb-sl-art="0"`, `_slBuildRow()`) never asks; a collection or
-     * brucelegs row carries no such flag and asks. Off with
-     * `sa_sl_tip_images` (the card only; a click still opens the viewer).
+     * cover is in the row; the scans are on the item page. A bootleg row the
+     * list itself says has no artwork (`data-mb-sl-art="0"`,
+     * `_slBuildRow()`) never asks; a collection or brucelegs row carries no
+     * such flag and asks. Off with `sa_sl_tip_images` (the card only; a
+     * click still opens the viewer).
      * @type {FiProvider}
      */
-    const _SL_FI = {
-        ctx: _SL_ART_CTX,
-        name: 'springsteenlyrics.com',
-        tableSel: 'body.mb-sa-host-sl table.tbl',
-        linkSel: 'a[data-mb-fi="sl"]',
-        cardOn: () => Lib.settings.sa_sl_tip_images !== false,
-        rowFor: (a, table, path) => {
-            const idx = _fiTitleColIdx(table);
-            const cell = idx >= 0 ? a.closest('tr').cells[idx] : null;
-            const img = a.querySelector('img');
-            return {
-                url: a.href, thumb: img ? img.src : '', art: a.dataset.mbSlArt || '', asked: false, path,
-                title: (cell ? cell.textContent : (img ? img.alt : '')).replace(/\s+/g, ' ').trim(),
-            };
+    const _SL_FI = _fiDpProvider({
+        key: 'sl', column: 'Cover', name: 'springsteenlyrics.com', host: 'springsteenlyrics.com',
+        tableSel: 'body.mb-sa-host-sl table.tbl', linkSel: 'a[data-mb-fi="sl"]', setting: 'sa_sl_tip_images',
+        h1: 'h1.mb-sl-h1 bdi', pageName: 'the item page', pageLabel: 'Item page',
+        needsThumb: true,
+        rowExtra: (a) => ({ art: a.dataset.mbSlArt || '' }),
+        isNone: (row) => row.art === '0',
+        ownPicture: (row) => ({ image: row.thumb, thumbnails: { 250: row.thumb }, types: ['Cover'], front: true, comment: row.title }),
+        ownSource: 'the list\'s cover',
+        ownTail: ' Showing the cover.',
+        noneNote: 'Cover only: the list says this item has no artwork, so its page is not read.',
+        loadingNote: 'Loading the scans from the item page… one request for this one (about 1 s apart).',
+        recordImages: (data, row) => {
+            const scans = (data.images || []).filter(im => im.thumb || im.full);
+            if (!scans.length) return 'The item page has no scans.';
+            return [{ image: row.thumb, thumbnails: { 250: row.thumb }, types: ['Cover'], front: true, comment: row.title }]
+                .concat(scans.map(im => ({
+                    image: im.full || im.thumb, thumbnails: { 250: im.thumb || im.full }, types: ['Scan'],
+                    comment: _fiFileName(im.full || im.thumb),
+                })));
         },
-        hasRecord: (row) => !!row.url && !!row.thumb,
-        state: (row) => {
-            if (row.art === '0') return 'none';
-            if (_dpMem.has(row.url)) return 'done';
-            if (_slFiLoads.pending.get(row.url)) return 'loading';
-            return _slFiLoads.failed.has(row.url) ? 'failed' : 'cold';
-        },
-        request: (row, o) => {
-            const url = row.url;
-            _slFiLoads.pending.set(url, (_slFiLoads.pending.get(url) || 0) + 1);
-            _dpGet(url, _DP_SITES['springsteenlyrics.com'], { wanted: o.wanted, force: !!o.force }).then((res) => {
-                if (res.outcome === 'ok') {
-                    _slFiLoads.failed.delete(url);
-                    if (!res.cached) _slFiLoads.fetched.add(url);
-                } else if (res.outcome === 'error') {
-                    _slFiLoads.failed.set(url, res.detail || 'the request failed');
-                }
-            }).finally(() => {
-                const n = (_slFiLoads.pending.get(url) || 1) - 1;
-                if (n > 0) _slFiLoads.pending.set(url, n);
-                else _slFiLoads.pending.delete(url);
-                o.repaint();
+        loadingText: 'Loading the scans from the item page…',
+        foot: 'Click: viewer · Ctrl-click: the item page',
+    });
+
+    /**
+     * A jungleland.it scan's file-name label as MusicBrainz's cover art
+     * types (mockup J3): `front` (★), `back`, `cdN` (Medium, "CD N"),
+     * `bookletN` (Booklet, "page N"); anything else is Other, its label the
+     * comment.
+     *
+     * @param {string} label - `_dpParseJl()`'s label ("front", "cd2", …).
+     * @returns {{types: string[], front: boolean, comment: string}}
+     */
+    function _jlFiType(label) {
+        const l = String(label || '').toLowerCase();
+        if (l === 'front') return { types: ['Front'], front: true, comment: '' };
+        if (l === 'back') return { types: ['Back'], front: false, comment: '' };
+        let m = l.match(/^cd(\d+)$/);
+        if (m) return { types: ['Medium'], front: false, comment: `CD ${Number(m[1])}` };
+        m = l.match(/^booklet(\d+)$/);
+        if (m) return { types: ['Booklet'], front: false, comment: `page ${Number(m[1])}` };
+        return { types: ['Other'], front: false, comment: label || '' };
+    }
+
+    /**
+     * jungleland.it's list as a provider (mockups J1/J3, 2026-10-23): the
+     * lazy Art column (`_jlBuildRow()`), the entry's page read through
+     * `_dpGet()` (`_dpParseJl()`: every scan, labelled by its file name).
+     * Off with `sa_jl_tip_images` (the card only).
+     * @type {FiProvider}
+     */
+    const _JL_FI = _fiDpProvider({
+        key: 'jl', column: 'Art', name: 'jungleland.it', host: 'jungleland.it',
+        tableSel: 'body.mb-sa-host-jl table.tbl', linkSel: 'a.mb-fi-cell[data-mb-fi="jl"]', setting: 'sa_jl_tip_images',
+        h1: 'h1.mb-jl-h1 bdi', pageName: 'the entry\'s page', pageLabel: 'Entry page',
+        noneNote: 'The entry\'s page has no scans.',
+        loadingNote: 'Loading the artwork from the entry\'s page… one request for this one (about 1 s apart).',
+        recordImages: (data) => {
+            const scans = (data.images || []).filter(im => im.thumb || im.full);
+            if (!scans.length) return 'The entry\'s page has no scans.';
+            return scans.map(im => {
+                const t = _jlFiType(im.label);
+                return {
+                    image: im.full || im.thumb, thumbnails: { 250: im.thumb || im.full }, types: t.types, front: t.front,
+                    comment: t.comment || _fiFileName(im.full || im.thumb),
+                };
             });
         },
-        images: (row) => {
-            const cover = {
-                image: row.thumb, thumbnails: { 250: row.thumb }, types: ['Cover'], front: true, external: true,
-                comment: row.title, pageUrl: row.url, pageLabel: 'Item page',
-            };
-            const coverOnly = (note, retry) => [{ ...cover, note, ...(retry ? { retry } : {}), source: 'the list\'s cover' }];
-            const state = _SL_FI.state(row);
-            if (state === 'none') return coverOnly('Cover only: the list says this item has no artwork, so its page is not read.');
-            if (state === 'failed') {
-                return coverOnly(`Could not read the item page (${_slFiLoads.failed.get(row.url)}). Showing the cover.`,
-                    () => _fiLoad(_SL_FI, row, true));
-            }
-            if (state !== 'done') return coverOnly('Loading the scans from the item page… one request for this one (about 1 s apart).');
-            const scans = (_dpMem.get(row.url).data.images || []).filter(im => im.thumb || im.full);
-            if (!scans.length) return coverOnly('The item page has no scans.');
-            const source = row.asked && _slFiLoads.fetched.has(row.url) ? 'the item page: one request, now in the cache' : 'the cache: no request';
-            const fileName = (u) => {
-                try {
-                    return decodeURIComponent(new URL(u).pathname.split('/').pop());
-                } catch (_) {
-                    return '';
-                }
-            };
-            return [{ ...cover, source }].concat(scans.map(im => ({
-                image: im.full || im.thumb, thumbnails: { 250: im.thumb || im.full }, types: ['Scan'], external: true,
-                comment: fileName(im.full || im.thumb), pageUrl: row.url, pageLabel: 'Item page', source,
-            })));
+        cellView: (data) => {
+            const scans = (data.images || []).filter(im => im.thumb || im.full);
+            if (!scans.length) return { state: 'none' };
+            return { state: 'done', thumb: data.cover || scans[0].thumb || scans[0].full, n: scans.length };
         },
-        cardImages: null,
-        loadingText: () => 'Loading the scans from the item page…',
-        foot: 'Click: viewer · Ctrl-click: the item page',
-        title: () => {
-            const h1 = document.querySelector('h1.mb-sl-h1 bdi');
-            return h1 ? h1.textContent : '';
+        loadingText: 'Loading the artwork from the entry\'s page…',
+        foot: 'Click: viewer · Ctrl-click: the entry\'s page',
+    });
+
+    /**
+     * Whether a brucespringsteen.it record's photo really exists: the page
+     * always names `blegs/images/<code>.jpg`, but the site hides a missing
+     * one with `onerror`, so only loading it tells. Loads it once (on a
+     * hover or a click, never at render), records `data.photo` (`'ok'` /
+     * `'none'`) and writes the record back, so the next session's sweep
+     * paints it without asking. A missing photo is "no photo", never an
+     * error to retry. Never rejects.
+     *
+     * @param {object} data - The record (`_dpParseBs()`), in `_dpMem`.
+     * @param {string} url - Its page.
+     * @returns {Promise<void>}
+     */
+    function _bsFiCheckPhoto(data, url) {
+        const im = (data.images || [])[0];
+        if (!im || data.photo) return Promise.resolve();
+        return new Promise((resolve) => {
+            const pre = new Image();
+            pre.referrerPolicy = 'no-referrer';
+            pre.onload = () => { data.photo = 'ok'; resolve(); };
+            pre.onerror = () => { data.photo = 'none'; resolve(); };
+            pre.src = im.full || im.thumb;
+        }).then(() => {
+            const mem = _dpMem.get(url);
+            return _dpIdbPut({ url, v: _DP_PARSER_VERSION, at: mem ? mem.at : Date.now(), data }).catch(() => { /* memory has it */ });
+        });
+    }
+
+    /**
+     * brucespringsteen.it's records as a provider (mockup K1, 2026-10-23):
+     * the lazy Photo column (`_bsBuildRow()`), the record's page read
+     * through `_dpGet()` (`_dpParseBs()`: at most one photo), the photo
+     * checked by `_bsFiCheckPhoto()`. One image, so the card is the single
+     * big picture (`single`). Off with `sa_bs_tip_images` (the card only).
+     * @type {FiProvider}
+     */
+    const _BS_FI = _fiDpProvider({
+        key: 'bs', column: 'Photo', name: 'brucespringsteen.it', host: 'brucespringsteen.it',
+        tableSel: 'body.mb-sa-host-bs table.tbl', linkSel: 'a.mb-fi-cell[data-mb-fi="bs"]', setting: 'sa_bs_tip_images',
+        h1: 'h1.mb-bs-h1 bdi', pageName: 'the record\'s page', pageLabel: 'Record page',
+        single: true,
+        noneNote: 'The record has no photo.',
+        loadingNote: 'Loading the record\'s page… one request for this one (about 1 s apart).',
+        ready: (data) => !(data.images || []).length || !!data.photo,
+        afterLoad: _bsFiCheckPhoto,
+        recordImages: (data, row) => {
+            const im = (data.images || [])[0];
+            if (!im || data.photo !== 'ok') return 'The record has no photo.';
+            return [{ image: im.full || im.thumb, thumbnails: { 250: im.thumb || im.full }, types: ['Photo'], front: true, comment: row.title }];
         },
-    };
+        cellView: (data) => {
+            const im = (data.images || [])[0];
+            return im && data.photo === 'ok' ? { state: 'done', thumb: im.thumb || im.full, n: 1 } : { state: 'none' };
+        },
+        loadingText: 'Loading the record\'s page…',
+        foot: 'Click: viewer · Ctrl-click: the record\'s page',
+    });
 
     /**
      * Opens the pinned dialog on a target, or shows that target in the
@@ -36363,6 +36811,10 @@
      * written before `_CLEAN_STRIP_SEL` existed and stripped the span out
      * from under it.
      *
+     * The same holds for `.mb-fi-sort-key` (2026-10-23), a foreign site's
+     * lazy Art/Photo cell (`_fiCellInner()`): stripped from the clean text,
+     * so its key is read here ("a-yes" < "b-unread" < "c-none").
+     *
      * **Deliberately scoped to the CAA/EAA sentinel, not the other two.**
      * `.mb-video-sort-key` and `.mb-cancelled-sort-key` are NOT in
      * `_CLEAN_STRIP_SEL`, so `getCleanVisibleText()` already sees them and
@@ -36383,7 +36835,7 @@
      */
     function _sortCellText(cell) {
         if (!cell) return '';
-        const artKey = cell.querySelector('.mb-caa-sort-key, .mb-eaa-sort-key');
+        const artKey = cell.querySelector('.mb-caa-sort-key, .mb-eaa-sort-key, .mb-fi-sort-key');
         if (artKey) return artKey.textContent.trim().toLowerCase();
         return getCleanVisibleText(cell).trim().toLowerCase();
     }
@@ -83609,6 +84061,11 @@ a { color: #1565c0; }`;
         // since everything else in the cell is stripped here too) and by the
         // saved-HTML `hasSortYes` probes.
         '.mb-caa-sort-key,.mb-eaa-sort-key,' +
+        // .mb-fi-sort-key: a foreign site's lazy Art/Photo cell
+        // (_fiCellInner(), jungleland.it, brucespringsteen.it) — "a-yes",
+        // "b-unread", "c-none", the column's only sort basis, read by
+        // _sortCellText(); everything else in the cell is an image or CSS.
+        '.mb-fi-sort-key,' +
         // discogs.com's MusicBrainz column (_dgMbCellHtml()): a search box's
         // "R?" and the link count badge are decoration; the column's text is
         // the hidden .mb-dg-mb-ids ("release <mbid> …"), which stays.
@@ -95438,6 +95895,9 @@ a { color: #1565c0; }`;
             _recOfInitColHeaderToggles();
             // discogs.com's MusicBrainz column: its ▶ MB toggles, then the lookup.
             _dgMbAfterRender(true);
+            // jungleland.it / brucespringsteen.it: lazy Art / Photo cells read
+            // before, painted from the detail-page database (no request).
+            _fiAfterRender();
             // Same reason as the line above: the <thead> this writes into may
             // have just been rebuilt from a clone. No-op unless the Release-events
             // lookup is loading or has failed.
@@ -124421,6 +124881,9 @@ a { color: #1565c0; }`;
             _recOfInitColHeaderToggles();
             // discogs.com's MusicBrainz column: its ▶ MB toggles, then the lookup.
             _dgMbAfterRender(true);
+            // jungleland.it / brucespringsteen.it: lazy Art / Photo cells read
+            // before, painted from the detail-page database (no request).
+            _fiAfterRender();
             // Same reason as the line above: the <thead> this writes into may
             // have just been rebuilt from a clone. No-op unless the Release-events
             // lookup is loading or has failed.
@@ -126898,7 +127361,7 @@ a { color: #1565c0; }`;
             { ...art, id: 'ms-rec-len', store: 'ms-rec-len', keyPath: 'gid', label: 'Millisecond lengths', color: '#6f8f5e', ttlDays: _idboDays(S.sa_ms_idb_ttl_days, 30) },
             { ...art, id: 'recof-ws2', store: 'recof-ws2', keyPath: 'ckey', label: 'Recording of', color: '#8a6ca0', ttlDays: _idboDays(S.sa_recording_of_ttl_days, 30) },
             { ...art, id: 'artist-works', store: 'artist-works', keyPath: 'artist', label: 'Artist work lists', color: '#c2a64a', ttlDays: _idboDays(S.sa_recording_of_works_ttl_days, 30) },
-            { ...dp, id: 'pages', store: 'pages', keyPath: 'url', label: 'Link preview pages', color: '#7a8c8c', ttlDays: _DP_TTL_MS / 86400000 },
+            { ...dp, id: 'pages', store: 'pages', keyPath: 'url', label: 'Link preview pages', color: '#7a8c8c', ttlDays: _dpTtlMs(_foreignHost ? _DP_SITES[_foreignHost] : null) / 86400000 },
             // discogs.com only: the MusicBrainz column's answers (its own
             // database, never opened on MusicBrainz).
             ...(_isDgHost ? [{
@@ -143224,6 +143687,13 @@ a { color: #1565c0; }`;
                 const site = _DP_SITES[host];
                 return site ? site.parse(new DOMParser().parseFromString(html, 'text/html'), url) : null;
             },
+            /**
+             * The detail-page record version (`_DP_PARSER_VERSION`), so a
+             * spec can seed the database with a record the sweep accepts
+             * (`_fiAfterRender()`) without writing the number down.
+             * @type {number}
+             */
+            dpParserVersion: _DP_PARSER_VERSION,
             /**
              * The Live page view's cleaning (`_dpLiveDocHtml()`): a page's HTML
              * in, the frame's `srcdoc` out, so a spec can pin what it removes,

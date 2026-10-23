@@ -348,7 +348,7 @@ test.describe('opt-in, and MusicBrainz untouched', () => {
         // delay instead of sleeping through it.
         await page.clock.install();
         const { served } = await bsWithTable(page, { sa_bs_detail_preview: false });
-        await hover(page, page.locator('table.tbl tbody a[href*="code=CR1AD1"]'));
+        await hover(page, page.locator('table.tbl tbody a:not(.mb-fi-cell)[href*="code=CR1AD1"]'));
         await page.clock.fastForward(1200);
         expect(await peek(page).count()).toBe(0);
         expect(await page.locator('#mb-dp-style').count()).toBe(0);
@@ -381,7 +381,7 @@ test.describe('the card waits for Ctrl (sa_dp_hover_without_ctrl)', () => {
         const errors = trackPageErrors(page);
         await page.clock.install();
         const { served } = await bsWithTable(page);
-        await plainHover(page, page.locator('table.tbl tbody a[href*="code=CR1AD1"]'));
+        await plainHover(page, page.locator('table.tbl tbody a:not(.mb-fi-cell)[href*="code=CR1AD1"]'));
         await page.clock.fastForward(1200);
         await expect(peek(page)).toHaveCount(0);
         expect(served).toEqual([]);
@@ -392,7 +392,7 @@ test.describe('the card waits for Ctrl (sa_dp_hover_without_ctrl)', () => {
         const errors = trackPageErrors(page);
         // A long delay: the card showing anyway proves the Ctrl press skips it.
         const { served } = await bsWithTable(page, { sa_rich_tooltip_delay_ms: 60000 });
-        await plainHover(page, page.locator('table.tbl tbody a[href*="code=CR1AD1"]'));
+        await plainHover(page, page.locator('table.tbl tbody a:not(.mb-fi-cell)[href*="code=CR1AD1"]'));
         await page.keyboard.press('Control');
         await expect(peek(page)).toBeVisible();
         await expect(peek(page)).toContainText('14 tracks on 2 discs');
@@ -411,7 +411,7 @@ test.describe('the card waits for Ctrl (sa_dp_hover_without_ctrl)', () => {
     test('with the setting on, a plain hover shows the card as before', async ({ page }) => {
         const errors = trackPageErrors(page);
         const { served } = await bsWithTable(page, { sa_dp_hover_without_ctrl: true });
-        await plainHover(page, page.locator('table.tbl tbody a[href*="code=CR1AD1"]'));
+        await plainHover(page, page.locator('table.tbl tbody a:not(.mb-fi-cell)[href*="code=CR1AD1"]'));
         await expect(peek(page)).toBeVisible();
         await expect(peek(page)).toContainText('14 tracks on 2 discs');
         expect(served).toHaveLength(1);
@@ -423,7 +423,7 @@ test.describe('the hover card and the pinned dialog (brucespringsteen.it)', () =
     test('a hover loads the page once, shows what it adds, and a second hover reads it from memory', async ({ page }) => {
         const errors = trackPageErrors(page);
         const { served } = await bsWithTable(page);
-        const link = page.locator('table.tbl tbody a[href*="code=CR1AD1"]');
+        const link = page.locator('table.tbl tbody a:not(.mb-fi-cell)[href*="code=CR1AD1"]');
         await peekAt(page, link);
         await expect(peek(page)).toBeVisible();
         await expect(peek(page)).toContainText('14 tracks on 2 discs');
@@ -447,7 +447,7 @@ test.describe('the hover card and the pinned dialog (brucespringsteen.it)', () =
     test('Esc hides the card; Space pins it; ← → step through the rows; Esc closes the dialog', async ({ page }) => {
         const errors = trackPageErrors(page);
         const { served } = await bsWithTable(page);
-        const link = page.locator('table.tbl tbody a[href*="code=CR1AD1"]');
+        const link = page.locator('table.tbl tbody a:not(.mb-fi-cell)[href*="code=CR1AD1"]');
         await peekAt(page, link);
         await expect(peek(page)).toContainText('14 tracks');
         await page.keyboard.press('Escape');
@@ -463,7 +463,7 @@ test.describe('the hover card and the pinned dialog (brucespringsteen.it)', () =
         await expect(dialog.locator('.mb-dp-gname')).toHaveText(['Tampa,FL,Jai Alai(USA) 10-Nov-1975']);
         await expect(dialog.locator('.mb-dp-tracks li')).toHaveCount(14);
         await expect(dialog.locator('.mb-dp-pos-label')).toHaveText(/^1 \/ \d+$/);
-        await expect(page.locator('tr.mb-dp-current a[href*="code=CR1AD1"]')).toHaveCount(1);
+        await expect(page.locator('tr.mb-dp-current a:not(.mb-fi-cell)[href*="code=CR1AD1"]')).toHaveCount(1);
         // The Space did not scroll the page under the dialog.
         expect(served).toHaveLength(1);
 
@@ -491,7 +491,7 @@ test.describe('the hover card and the pinned dialog (brucespringsteen.it)', () =
         await page.clock.install();
         await bsWithTable(page);
         const filter = page.locator('#mb-global-filter-input');
-        const link = page.locator('table.tbl tbody a[href*="code=CR1AD1"]');
+        const link = page.locator('table.tbl tbody a:not(.mb-fi-cell)[href*="code=CR1AD1"]');
         // Typing in the filter while the pointer rests on a title. The input
         // carries its own prefix ("🔍 "), so the checks are on what a key adds;
         // "1001" keeps the hovered row (1001 AMERICAN DREAMS) in the table.
@@ -518,7 +518,7 @@ test.describe('the hover card and the pinned dialog (brucespringsteen.it)', () =
     test('a hover that has moved on by the time its slot comes up makes no request', async ({ page }) => {
         await page.clock.install();
         const { served } = await bsWithTable(page, { sa_rich_tooltip_delay_ms: 0 });
-        const links = page.locator('table.tbl tbody a[href*="detrec.aspx"]');
+        const links = page.locator('table.tbl tbody a:not(.mb-fi-cell)[href*="detrec.aspx"]');
         await hover(page, links.nth(0));
         await expect.poll(() => served.length).toBe(1);
         // The second hover asks right away, but its slot must still be in the
@@ -550,7 +550,7 @@ test.describe('the hover card and the pinned dialog (brucespringsteen.it)', () =
         await page.route('https://www.brucespringsteen.it/blegs/images/LP1B1.jpg', (route) => route.fulfill({
             contentType: 'image/png', body: ONE_PX_PNG,
         }));
-        await peekAt(page, page.locator('table.tbl tbody a[href*="code=LP1B1"]'));
+        await peekAt(page, page.locator('table.tbl tbody a:not(.mb-fi-cell)[href*="code=LP1B1"]'));
         await expect(peek(page).locator('img.mb-dp-cover')).toHaveAttribute('src', 'https://www.brucespringsteen.it/blegs/images/LP1B1.jpg');
         await expect.poll(() => peek(page).locator('img.mb-dp-cover').evaluate((img) => img.naturalWidth)).toBe(1);
         expect(errors).toEqual([]);
@@ -560,7 +560,7 @@ test.describe('the hover card and the pinned dialog (brucespringsteen.it)', () =
         const errors = trackPageErrors(page);
         await bsWithTable(page);
         // The list loader's catch-all aborts the photo, as a missing one 404s on the site.
-        await peekAt(page, page.locator('table.tbl tbody a[href*="code=LP1B1"]'));
+        await peekAt(page, page.locator('table.tbl tbody a:not(.mb-fi-cell)[href*="code=LP1B1"]'));
         await expect(peek(page)).toContainText('15 tracks');
         await expect(peek(page).locator('img')).toHaveCount(0);
         expect(errors).toEqual([]);

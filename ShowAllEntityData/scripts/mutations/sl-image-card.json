@@ -30,8 +30,8 @@
         "why": "The list's own \"artwork available\" says beforehand that the item page has no scans.",
         "edits": [
             {
-                "find": "            if (row.art === '0') return 'none';\n",
-                "replace": ""
+                "find": "        isNone: (row) => row.art === '0',\n",
+                "replace": "        isNone: null,\n"
             }
         ],
         "spec": "tests/fixtures/sl-image-card.spec.js",
@@ -56,8 +56,8 @@
         "why": "sa_sl_tip_images off: no card and no request.",
         "edits": [
             {
-                "find": "        cardOn: () => Lib.settings.sa_sl_tip_images !== false,",
-                "replace": "        cardOn: () => true,"
+                "find": "            cardOn: () => Lib.settings[cfg.setting] !== false,",
+                "replace": "            cardOn: () => true,"
             }
         ],
         "spec": "tests/fixtures/sl-image-card.spec.js",
@@ -121,7 +121,7 @@
         "why": "The card reads the detail preview's record (_dpMem); a provider map of its own would ask twice.",
         "edits": [
             {
-                "find": "            if (_dpMem.has(row.url)) return 'done';\n",
+                "find": "                if (mem && (!cfg.ready || cfg.ready(mem.data))) return 'done';\n",
                 "replace": ""
             }
         ],
