@@ -1,0 +1,66 @@
+* add additional PTs to BB
+
+add additional PTs to BB:
+
+we already have
+
+#+begin_example
+https://brucebase.wikidot.com/stats:songs - tabbed page
+#+end_example
+
+#+begin_example
+https://brucebase.wikidot.com/stats:songs-list - list page
+https://brucebase.wikidot.com/stats:handwritten-lyric-sheets - tabbed page
+https://brucebase.wikidot.com/stats:songs-official-video - tabbed page
+https://brucebase.wikidot.com/stats:orphaned-songs - tabbed page
+https://brucebase.wikidot.com/stats:lyrics - scans of the known Bruce Springsteen lyrics - tabbed page
+https://brucebase.wikidot.com/stats:songs-by-album - songs by album -  tabbed page
+https://brucebase.wikidot.com/stats:songs-count - songs count - multi-column statistics numbers
+
+https://brucebase.wikidot.com/stats:bootlegs -
+https://brucebase.wikidot.com/stats:bootlegs-label -
+https://brucebase.wikidot.com/stats:discography - tabs - but alos the actual images
+
+https://brucebase.wikidot.com/stats:songs-registered - text page - @debug/BB-songs-registered.html
+#+end_example
+
+* TODO song - followup
+
+#+begin_example
+https://brucebase.wikidot.com/song:4th-of-july-asbury-park-sandy - 4th Of July, Asbury Park (Sandy)
+https://brucebase.wikidot.com/song:streets-of-minneapolis - with youtube video 
+#+end_example
+
+add all the info from the sub-tabs
+
+* bb-relations · bb-recent-changes · dg-submissions · dg-history	nothing	no artwork per row	—	out of scope
+
+* I'll record the new attributes as an expected drift in the registry rather than re-capturing baselines, since those are handled by a separate live harness. Next, I'll read the start of makeTableSortableUnified and the existing tooltip test hook.
+
+* Snapshot baselines: they will show the new header titles when re-captured.
+
+* Next is phase 1
+
+Next is phase 1: the springsteenlyrics card lists, plus one shared click handler and card for all the foreign sites,
+with Discogs' current handler moved into it. Start it in a fresh session (/clear, then plan mode). That session should
+begin by reading org/foreign-images.org, which has the decisions, the probe results and the implementation outline.
+
+
+* findings
+
+The full suite finished at 02:08:14 CEST after 12 m 57 s: 2185 passed, 1 failed.
+
+The one failure is the fixture-load-no-archive-org-wait.spec.js test from before. It counted 3 blocked
+coverartarchive.org thumbnail requests where it expects 2. I'm treating it as a flake, not a regression from this
+branch:
+- It's a known one. DEBUG-NOTES.md (2026-10-21) records the same message on this machine before this branch existed,
+  filed as "load-dependent, worth watching".
+- None of the code it exercises changed here. It loads a MusicBrainz ratings page, and the only change on the
+  MusicBrainz side (no referrer on card tiles) applies only to other sites' images.
+- Run alone it passed 15 of 15 times.
+
+Nothing has changed since the push: the branch is at fa7bb79 on origin and not merged into main.
+
+Should I add a short dated DEBUG-NOTES.md entry with this run's result and the flake's second sighting, and commit and
+push it to the branch? Phase 2 (jungleland and brucespringsteen.it) is ready to start in a fresh session.
+
