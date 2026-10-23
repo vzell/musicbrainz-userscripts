@@ -780,8 +780,67 @@ test.describe('the other hosts', () => {
         await expect(viewer).toBeHidden();
         await expect(dialog).toBeVisible();
         expect(await cd1.evaluate((a) => document.activeElement === a)).toBe(true);
+        // The focus given back opens no image preview (it would take the
+        // next Esc); waited past the preview's own 250 ms delay.
+        await page.evaluate(() => new Promise(r => setTimeout(r, 400)));
+        await expect(page.locator('#mb-dp-peek.mb-dp-imgpeek')).toBeHidden();
         await page.keyboard.press('Escape');
         await expect(dialog).toHaveCount(0);
+        expect(errors).toEqual([]);
+    });
+
+    test('jungleland.it: the cover\'s preview belongs to the picture, not to the empty space beside it', async ({ page }) => {
+        // Pins (org/dp-window-hover.org, H4): the cover's link is as wide as
+        // its picture, not the column (CSS); and even a link wider than its
+        // picture shows the image's preview only with the pointer ON the
+        // picture (_dpWinTarget()): beside it nothing shows, the foot line
+        // names nothing, and leaving the picture for that space hides it.
+        const errors = trackPageErrors(page);
+        await loadJlListPage(page, { settingsOverride: { sa_jl_detail_preview: true } });
+        await routeDetailPages(page, 'jl');
+        // A real-sized picture (the 1 px PNG would leave nothing to hover).
+        await page.route(/^https:\/\/www\.jungleland\.it\/artwork\//, (route) => route.fulfill({
+            contentType: 'image/svg+xml',
+            body: '<svg xmlns="http://www.w3.org/2000/svg" width="120" height="160"><rect width="120" height="160" fill="#7a6d5c"/></svg>',
+        }));
+        await page.click(`button[data-label="${JL_BUTTON}"]`);
+        await waitForRenderComplete(page, { waitForAutoResize: false });
+        await peekAt(page, page.locator('table.tbl tbody a', { hasText: 'Magic In The Köln Night' }));
+        await page.keyboard.press('Space');
+        const dialog = page.locator('#mb-dp-dialog');
+        const cover = dialog.locator('a:has(> img.mb-dp-xcover)');
+        const img = cover.locator('img');
+        const foot = dialog.locator('.mb-dp-wfoot');
+        await expect(img).toHaveJSProperty('complete', true);
+        await page.mouse.move(0, 0);
+        await expect(peek(page)).toBeHidden();
+
+        const box = async (l) => l.evaluate((el) => { const r = el.getBoundingClientRect(); return { x: r.x, y: r.y, w: r.width, h: r.height }; });
+        const col = await box(dialog.locator('.mb-dp-col').first());
+        let a = await box(cover);
+        const i = await box(img);
+        expect(i.w, 'the picture has a size').toBeGreaterThan(50);
+        expect(col.w - i.w, 'room beside the picture').toBeGreaterThan(40);
+        expect(Math.abs(a.w - i.w), 'the link is as wide as its picture').toBeLessThanOrEqual(2);
+
+        // A link wider than its picture (another site's markup): only the picture counts.
+        await cover.evaluate((el) => { el.style.display = 'block'; });
+        a = await box(cover);
+        expect(a.w - i.w, 'the link now runs beside the picture').toBeGreaterThan(40);
+        const besideX = i.x + i.w + 20;
+        const midY = i.y + i.h / 2;
+        await page.mouse.move(besideX, midY);
+        await page.evaluate(() => new Promise(r => setTimeout(r, 400)));
+        expect(await page.evaluate(([x, y]) => document.elementFromPoint(x, y).tagName, [besideX, midY]), 'the pointer is on the link').toBe('A');
+        await expect(peek(page)).toBeHidden();
+        await expect(foot).not.toContainText('Viewer:');
+        await page.mouse.move(i.x + i.w / 2, midY);
+        await expect(peek(page)).toBeVisible();
+        await expect(peek(page).locator('img.mb-dp-imgprev')).toHaveCount(1);
+        await expect(foot).toContainText('Viewer:');
+        await page.mouse.move(besideX, midY);
+        await expect(peek(page)).toBeHidden();
+        await expect(foot).not.toContainText('Viewer:');
         expect(errors).toEqual([]);
     });
 

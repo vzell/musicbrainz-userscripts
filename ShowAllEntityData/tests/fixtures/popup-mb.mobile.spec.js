@@ -173,3 +173,68 @@ test('a tap on a collection link opens its window; ▶ steps through its entries
     expect(pages).toHaveLength(1);
     expect(log.navigations, 'the page stays').toEqual([]);
 });
+
+/**
+ * Presses `link` with a finger, holds it until `held` resolves (the long
+ * press has done its work), and lifts it. Playwright has no long press; the
+ * touch goes through the DevTools protocol, after the same check as
+ * `tapLink()` that a finger there really touches it.
+ *
+ * @param {import('@playwright/test').Page} page
+ * @param {import('@playwright/test').Locator} link
+ * @param {function(): Promise<void>} held - Resolves once the press shows what it shows.
+ * @returns {Promise<void>}
+ */
+async function longPress(page, link, held) {
+    await link.scrollIntoViewIfNeeded();
+    const box = await link.boundingBox();
+    const x = box.x + box.width / 2;
+    const y = box.y + box.height / 2;
+    expect(await link.evaluate((a, [px, py]) => a.contains(document.elementFromPoint(
+        px + visualViewport.offsetLeft, py + visualViewport.offsetTop)), [x, y])).toBe(true);
+    const cdp = await page.context().newCDPSession(page);
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x, y }] });
+    await held();
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+    await cdp.detach();
+}
+
+/**
+ * Waits until the window's Extracted view has not changed for 300 ms: its
+ * later answers (the cover art) repaint it and replace its links.
+ *
+ * @param {import('@playwright/test').Page} page
+ * @returns {Promise<void>}
+ */
+async function settleWindow(page) {
+    await page.evaluate(() => new Promise((resolve) => {
+        const area = document.querySelector('#mb-dp-dialog .mb-dp-area');
+        let t = setTimeout(done, 300);
+        const mo = new MutationObserver(() => { clearTimeout(t); t = setTimeout(done, 300); });
+        mo.observe(area, { childList: true, subtree: true, characterData: true });
+        /** Stops watching. */
+        function done() { mo.disconnect(); resolve(); }
+    }));
+}
+
+test('inside the window: a long press shows a link\'s card and opens nothing; a tap opens it here (org/dp-window-hover.org)', async ({ page }) => {
+    const log = await openPhone(page, { sa_pop_mb: false, sa_pop_mb_on_touch: true });
+    await tapLink(page, page.locator(RELEASE_LINK).first());
+    const dialog = page.locator('#mb-dp-dialog');
+    await expect(dialog.locator('.mb-pop-tracks li')).toHaveCount(9, { timeout: 20000 });
+    await settleWindow(page);
+    const artist = dialog.locator('.mb-dp-area a[href^="/artist/"]').first();
+    const card = page.locator('#mb-dp-peek');
+    // Held until the card is up (the press shows it at 500 ms), then lifted.
+    await longPress(page, artist, () => expect(card).toBeVisible());
+    await expect(card).toContainText('Bruce Springsteen');
+    // The lift opened nothing: once the window is quiet, still the release,
+    // the card still up.
+    await settleWindow(page);
+    await expect(dialog.locator(':scope > div > span').first()).toHaveText('Release');
+    await expect(card).toBeVisible();
+    // A tap is a click: it opens the artist here.
+    await tapLink(page, artist);
+    await expect(dialog.locator(':scope > div > span').first()).toHaveText(/Release › Artist$/);
+    expect(log.navigations, 'the page stays').toEqual([]);
+});

@@ -2249,3 +2249,127 @@ test.describe('MusicBrainz link previews: drill-down inside the window (Phase 5)
         expect(log.lookups[1].url).not.toContain(REL_ID);
     });
 });
+
+test.describe('MusicBrainz link previews: hovering inside the window (org/dp-window-hover.org)', () => {
+    const title = (page) => dialog(page).locator(':scope > div > span').first();
+    const area = (page) => dialog(page).locator('.mb-dp-area');
+    const foot = (page) => dialog(page).locator('.mb-dp-wfoot');
+    const label = (page) => area(page).locator('a[href="/label/011d1192-6f65-45bd-85c4-0400dd45693e"]');
+
+    /**
+     * Opens the window on the page's first release (Greetings, its strip
+     * of 16 cover images) and parks the pointer outside it.
+     *
+     * @param {import('@playwright/test').Page} page
+     * @param {Object} [settings]
+     * @returns {Promise<Object>} `open()`'s request log.
+     */
+    async function releaseWindow(page, settings = {}) {
+        const log = await open(page, { settings: { sa_pop_mb: true, ...settings }, showAll: false });
+        await ctrlHover(page, relLink(page));
+        await expect(card(page)).toContainText('fetched now');
+        await page.keyboard.press('Space');
+        await expect(area(page).locator('.mb-pop-tracks li')).toHaveCount(9);
+        await expect(area(page).locator('.mb-dp-gallery img')).toHaveCount(16);
+        await page.mouse.move(0, 0);
+        return log;
+    }
+
+    /**
+     * Hovers an element of the window from outside it.
+     *
+     * @param {import('@playwright/test').Page} page
+     * @param {import('@playwright/test').Locator} el
+     * @returns {Promise<void>}
+     */
+    async function rest(page, el) {
+        await page.mouse.move(0, 0);
+        await el.scrollIntoViewIfNeeded();
+        await el.hover();
+    }
+
+    test('H1/H2: the foot line says what a click does; the links are marked at rest', async ({ page }) => {
+        await releaseWindow(page);
+        await expect(foot(page)).toContainText('Rest on a link or an image');
+        await expect(foot(page)).toContainText('Esc close');
+        await expect(label(page)).toHaveClass(/\bmb-dp-l-here\b/);
+        await expect(area(page).locator('.mb-dp-gallery a').first()).toHaveClass(/\bmb-dp-l-img\b/);
+        await rest(page, label(page));
+        await expect(foot(page)).toContainText('Opens here: Label · Columbia');
+        await expect(foot(page)).toContainText('Click: here · Ctrl-click: new tab');
+        await rest(page, area(page).locator('.mb-dp-gallery a').nth(2));
+        await expect(foot(page)).toContainText(/Viewer: .* · image 3 of 16/);
+        // A link the window cannot open (the artist's external links, the
+        // external previews being off): the ↗ and the foot line only.
+        await area(page).locator('a[href^="/artist/"]').first().click();
+        await expect(title(page)).toHaveText(/Release › Artist$/);
+        const out = area(page).locator('a.mb-dp-l-out').first();
+        await expect(out).toBeVisible();
+        await rest(page, out);
+        await expect(foot(page)).toContainText('New tab: ');
+        await expect(card(page)).toBeHidden();
+        await page.mouse.move(0, 0);
+        await expect(foot(page)).toContainText('Rest on a link or an image');
+    });
+
+    test('H3: a link that opens here gets its card under the page\'s Ctrl rule; Space opens it here', async ({ page }) => {
+        const log = await releaseWindow(page);
+        // The page's rule (sa_dp_hover_without_ctrl off in fixtures): a plain hover shows nothing.
+        await rest(page, label(page));
+        await page.evaluate(() => new Promise(r => setTimeout(r, 300)));
+        await expect(card(page)).toBeHidden();
+        expect(log.ws2.filter(u => u.includes('/ws/2/label/'))).toEqual([]);
+        await ctrlHover(page, label(page));
+        await expect(card(page)).toBeVisible();
+        await expect(card(page)).toContainText('Columbia');
+        await expect(card(page).locator('.mb-pop-kind-head')).toContainText('Label');
+        await page.keyboard.press('Space');
+        await expect(title(page)).toHaveText(/Release › Label$/);
+        await expect(card(page)).toBeHidden();
+        await expect(dialog(page).locator('button.mb-dp-tbtn', { hasText: '← Back' })).toBeVisible();
+        // H6: ← Back names where it goes.
+        await expect(dialog(page).locator('button.mb-dp-tbtn', { hasText: '← Back' })).toHaveAttribute('title', /^Back to: Release · /);
+    });
+
+    test('H4: an image shows large on a rest (no Ctrl, no request); Shift larger; Space pins nothing', async ({ page }) => {
+        const log = await releaseWindow(page);
+        const before = log.caa.length;
+        await rest(page, area(page).locator('.mb-dp-gallery a').nth(2));
+        await expect(card(page)).toBeVisible();
+        await expect(card(page).locator('img.mb-dp-imgprev')).toHaveCount(1);
+        await expect(card(page)).toContainText('image 3 of 16');
+        await expect(card(page)).toContainText('Click: viewer · Shift: larger');
+        await page.keyboard.down('Shift');
+        await expect(card(page).locator('img.mb-dp-imgprev-big')).toHaveCount(1);
+        await page.keyboard.up('Shift');
+        await expect(card(page).locator('img.mb-dp-imgprev-big')).toHaveCount(0);
+        await page.keyboard.press('Space');
+        await expect(title(page)).toHaveText('Release');
+        expect(log.caa.length, 'no archive request').toBe(before);
+        await page.keyboard.press('Escape');
+        await expect(card(page)).toBeHidden();
+        await expect(dialog(page)).toBeVisible();
+    });
+
+    test('H5 off (the default): a rest reads nothing ahead', async ({ page }) => {
+        const log = await releaseWindow(page);
+        const rec = area(page).locator('.mb-pop-tracks li').nth(1).locator('a').first();
+        await rest(page, rec);
+        await page.evaluate(() => new Promise(r => setTimeout(r, 1500)));
+        expect(log.ws2.filter(u => u.includes('/ws/2/recording/')), 'off: nothing read ahead').toEqual([]);
+        await expect(rec).not.toHaveClass(/\bmb-dp-l-read\b/);
+    });
+
+    test('H5 on: a 600 ms rest reads the recording ahead, then the click shows it from memory', async ({ page }) => {
+        const log = await releaseWindow(page, { sa_dp_window_read_ahead: true });
+        const rec = area(page).locator('.mb-pop-tracks li').nth(1).locator('a').first();
+        await rest(page, rec);
+        await expect.poll(() => log.ws2.filter(u => u.includes('/ws/2/recording/')).length, { timeout: 5000 }).toBe(1);
+        await expect(rec).toHaveClass(/\bmb-dp-l-read\b/);
+        await expect(foot(page)).toContainText('(read before, no request)');
+        await rec.click();
+        await expect(title(page)).toHaveText(/Release › Recording$/);
+        await page.evaluate(() => new Promise(r => setTimeout(r, 300)));
+        expect(log.ws2.filter(u => /\/ws\/2\/recording\/[0-9a-f-]{36}\?inc=artist-credits/.test(u)), 'the card\'s lookup, once').toHaveLength(1);
+    });
+});

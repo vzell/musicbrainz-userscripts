@@ -1,0 +1,844 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<!-- SKELETON-END: everything above this line is dropped when the page is published as an Artifact. -->
+<title>Space Window Hover</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<!--
+  ShowAllEntityData design study, 2026-10-23, petri (branch feature/dp-window-hover).
+  vzell: "In the 'Space' popup-ed detail view window currently hovering a link (href) doesn't do
+  anything. Make some suggestions (images should probably be treated differently) and nice rich HTML
+  based mockups."
+  Data is real: the MusicBrainz release from tests/fixtures/ws2-pop-release-greetings.json (and the
+  artist/label/recording fixtures for the peeks), its cover art from the Cover Art Archive's index
+  (one request, 2026-10-23), the Discogs release from tests/fixtures/ext-discogs-release.json.
+  The published copy inlines the images (scripts/build-mockup-artifact.py).
+-->
+<!--EMBED-->
+<script type="application/json" id="mockup-images">
+{
+ "caa1": {
+  "u": "https://coverartarchive.org/release/3ce46b79-5e8c-470a-bcdc-45f301d09f60/31475411558-250.jpg"
+ },
+ "caa1L": {
+  "u": "https://coverartarchive.org/release/3ce46b79-5e8c-470a-bcdc-45f301d09f60/31475411558-500.jpg",
+  "max": 520
+ },
+ "caa2": {
+  "u": "https://coverartarchive.org/release/3ce46b79-5e8c-470a-bcdc-45f301d09f60/31475412085-250.jpg"
+ },
+ "caa2L": {
+  "u": "https://coverartarchive.org/release/3ce46b79-5e8c-470a-bcdc-45f301d09f60/31475412085-500.jpg",
+  "max": 520
+ },
+ "caa3": {
+  "u": "https://coverartarchive.org/release/3ce46b79-5e8c-470a-bcdc-45f301d09f60/31475412520-250.jpg"
+ },
+ "caa3L": {
+  "u": "https://coverartarchive.org/release/3ce46b79-5e8c-470a-bcdc-45f301d09f60/31475412520-500.jpg",
+  "max": 520
+ },
+ "caa4": {
+  "u": "https://coverartarchive.org/release/3ce46b79-5e8c-470a-bcdc-45f301d09f60/31475413059-250.jpg"
+ },
+ "caa5": {
+  "u": "https://coverartarchive.org/release/3ce46b79-5e8c-470a-bcdc-45f301d09f60/31475413348-250.jpg"
+ },
+ "caa6": {
+  "u": "https://coverartarchive.org/release/3ce46b79-5e8c-470a-bcdc-45f301d09f60/31475413935-250.jpg"
+ },
+ "caa7": {
+  "u": "https://coverartarchive.org/release/3ce46b79-5e8c-470a-bcdc-45f301d09f60/31475414567-250.jpg"
+ },
+ "caa8": {
+  "u": "https://coverartarchive.org/release/3ce46b79-5e8c-470a-bcdc-45f301d09f60/31475415091-250.jpg"
+ },
+ "dg1": {
+  "u": "https://i.discogs.com/hIMRiV5mWG3vbv15VN7bplJkAh1tQo7nk8vVIgoMB5Y/rs:fit/g:sm/q:40/h:150/w:150/czM6Ly9kaXNjb2dz/LWRhdGFiYXNlLWlt/YWdlcy9SLTE4NzQy/NTMtMTU4ODE3NzA1/MS0zMzkwLmpwZWc.jpeg"
+ },
+ "dg1L": {
+  "u": "https://i.discogs.com/Ko0PmM0LTv-X1yntH9WL_M3mwrBxt0nECy6OpsNSV2s/rs:fit/g:sm/q:90/h:600/w:599/czM6Ly9kaXNjb2dz/LWRhdGFiYXNlLWlt/YWdlcy9SLTE4NzQy/NTMtMTU4ODE3NzA1/MS0zMzkwLmpwZWc.jpeg",
+  "max": 520
+ },
+ "dg2": {
+  "u": "https://i.discogs.com/rdWTwwUm6XP0zeXNoclSKu9lOW6UwW_fmS68QPSyIgk/rs:fit/g:sm/q:40/h:150/w:150/czM6Ly9kaXNjb2dz/LWRhdGFiYXNlLWlt/YWdlcy9SLTE4NzQy/NTMtMTU4ODE3NzA1/MC04NDExLmpwZWc.jpeg"
+ },
+ "dg2L": {
+  "u": "https://i.discogs.com/m0hlV9Hqb2bW77AXfD5gX3ggpNm-hv4t0BEG5l9-si8/rs:fit/g:sm/q:90/h:293/w:600/czM6Ly9kaXNjb2dz/LWRhdGFiYXNlLWlt/YWdlcy9SLTE4NzQy/NTMtMTU4ODE3NzA1/MC04NDExLmpwZWc.jpeg",
+  "max": 520
+ },
+ "dg3": {
+  "u": "https://i.discogs.com/kxHFoJvbFAk_KnTxGujewSsK9rFnGL1aTLA0a7v91Qk/rs:fit/g:sm/q:40/h:150/w:150/czM6Ly9kaXNjb2dz/LWRhdGFiYXNlLWlt/YWdlcy9SLTE4NzQy/NTMtMTU4ODE3NzA1/MC05NTQ0LmpwZWc.jpeg"
+ },
+ "dg3L": {
+  "u": "https://i.discogs.com/JFbiT2LU_114FUG3K8HvLHrWyGHIWgJvdsDKBxQvNbU/rs:fit/g:sm/q:90/h:600/w:594/czM6Ly9kaXNjb2dz/LWRhdGFiYXNlLWlt/YWdlcy9SLTE4NzQy/NTMtMTU4ODE3NzA1/MC05NTQ0LmpwZWc.jpeg",
+  "max": 520
+ },
+ "dg4": {
+  "u": "https://i.discogs.com/HJ1XyRW7roylZre6nY2ZPyv1OFtNCH0aQ5A5dT7narI/rs:fit/g:sm/q:40/h:150/w:150/czM6Ly9kaXNjb2dz/LWRhdGFiYXNlLWlt/YWdlcy9SLTE4NzQy/NTMtMTM1NjIxMTg3/Mi03MjAyLmpwZWc.jpeg"
+ },
+ "dg5": {
+  "u": "https://i.discogs.com/4pl0QZgAFecln1n2gogmlNJSG8vWoSqYom8Gy_WdZIE/rs:fit/g:sm/q:40/h:150/w:150/czM6Ly9kaXNjb2dz/LWRhdGFiYXNlLWlt/YWdlcy9SLTE4NzQy/NTMtMTM1NjIxMTg4/NS0yMjAwLmpwZWc.jpeg"
+ }
+}
+</script>
+<style>
+/* Layout: a review sheet in the script's "Liner notes" look: the Space window rebuilt as it is
+   today (title bar, Extracted view in two columns), each suggestion a switch on top of it, the
+   suggestions written up beside. One light look on purpose, as the window is. */
+:root {
+    --ground: #efe9dc;
+    --paper: #fbf8f1;
+    --ink: #2b2622;
+    --rule: #d9cfbd;
+    --muted: #7a6d5c;
+    --ok: #3f7a3a;
+    --run: #2f5f9e;
+    --warn: #9a6a00;
+    --alert: #9b2218;
+    --wash: #f3ede1;
+    --shadow: 0 10px 24px -8px rgba(60, 40, 20, .35);
+    --serif: Georgia, "Times New Roman", serif;
+    --sans: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    color-scheme: light;
+}
+body { background: var(--ground); color: var(--ink); font: 15px/1.5 var(--serif); }
+.wrap {
+    max-width: 1120px;
+    margin: 0 auto;
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+    padding-block: 28px 64px;
+    display: grid;
+    gap: 30px;
+}
+h1, h2, h3 { font-weight: normal; margin: 0; text-wrap: balance; }
+h1 { font-size: 30px; }
+h2 { font-size: 21px; }
+h3 { font-size: 16px; }
+p { margin: 0; max-width: 72ch; }
+.lab { font: 600 10.5px/1.3 var(--sans); letter-spacing: .09em; text-transform: uppercase; color: var(--muted); }
+.intro { display: grid; gap: 10px; }
+.intro .lab { color: var(--run); }
+.today { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; }
+.today div { background: var(--paper); border: 1px solid var(--rule); border-radius: 4px; padding: 10px 12px; font-size: 14px; }
+.today b { display: block; font: 600 10.5px var(--sans); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin-bottom: 2px; }
+.today .no { color: var(--alert); }
+kbd { font: 11px var(--mono); border: 1px solid var(--rule); border-bottom-width: 2px; border-radius: 3px; padding: 0 4px; background: #fff; }
+
+/* ── Controls: host tabs, suggestion switches ── */
+.ctl { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; }
+.tabs, .sw { display: flex; flex-wrap: wrap; gap: 6px; }
+.tab, .chip {
+    font: 600 10.5px/1 var(--sans);
+    letter-spacing: .07em;
+    text-transform: uppercase;
+    border: 1px solid var(--rule);
+    background: var(--paper);
+    color: var(--muted);
+    border-radius: 3px;
+    padding: 7px 10px;
+    cursor: pointer;
+}
+.chip { border-radius: 999px; }
+.tab[aria-selected="true"], .chip[aria-pressed="true"] { color: var(--ink); border-color: var(--ink); background: var(--wash); }
+.chip .id { font-family: var(--mono); margin-right: 5px; }
+.tab:focus-visible, .chip:focus-visible, button:focus-visible, a:focus-visible, figure:focus-visible { outline: 2px solid var(--run); outline-offset: 1px; }
+
+/* ── The page behind and the Space window, as today ── */
+.stage { position: relative; background: #e8e8e8; border: 1px solid var(--rule); border-radius: 4px; padding: 18px; min-height: 640px; }
+.stage-cap { position: absolute; top: 6px; left: 12px; }
+.win {
+    position: relative;
+    margin: 18px auto 0;
+    max-width: 960px;
+    background: #fff;
+    border: 1px solid #aaa;
+    border-radius: 4px;
+    box-shadow: 0 12px 36px -10px rgba(0, 0, 0, .45);
+    display: flex;
+    flex-direction: column;
+    max-height: 600px;
+}
+.wbar { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; padding: 7px 9px; border-bottom: 1px solid #ccc; background: #f7f7f7; font: 13px/1.2 var(--sans); }
+.wbar .ttl { display: flex; align-items: center; gap: 6px; font: 600 14px var(--serif); }
+.wbar .kicon { width: 18px; height: 18px; border-radius: 3px; background: #ba478f; color: #fff; font: 700 10px/18px var(--sans); text-align: center; }
+.wbar .kicon.dg { background: #333; }
+.origin { margin: 0 auto 0 10px; padding: 2px 10px; border-left: 3px solid #8b1a1a; border-radius: 2px; background: #f8e9e6; color: #8b1a1a; font: italic 600 13px/1.4 var(--serif); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 260px; }
+.tbtn { display: inline-flex; align-items: center; justify-content: center; min-width: 26px; height: 26px; padding: 0 7px; border: 1px solid #ccc; border-radius: 3px; background: #fff; color: #222; font: 13px/1 var(--sans); cursor: pointer; }
+.tbtn:hover { background: #f0f0f0; }
+.tbtn[disabled] { opacity: .45; cursor: default; }
+.seg { display: inline-flex; }
+.seg .tbtn { border-radius: 0; }
+.seg .tbtn + .tbtn { border-left: 0; }
+.seg .tbtn[aria-pressed="true"] { background: #2b2622; color: #fbf8f1; border-color: #2b2622; }
+.pos { font: 12px var(--mono); color: #666; min-width: 4.5em; text-align: center; }
+.area { overflow: auto; background: var(--paper); flex: 1 1 auto; min-height: 0; }
+.x { display: grid; grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr); gap: 18px; padding: 14px 18px; font: 13.5px/1.5 var(--serif); }
+.x .xtitle { font-weight: 700; font-size: 1.2em; line-height: 1.3; }
+.x .xsub { font-style: italic; color: var(--muted); }
+.x h4 { margin: 14px 0 4px; font: 600 11px/1.3 var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.x .col > h4:first-child { margin-top: 0; }
+.x dl { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 1px 10px; margin: 4px 0 0; }
+.x dt { font-style: italic; color: var(--muted); }
+.x dd { margin: 0; min-width: 0; }
+.x a { color: #0b5394; text-decoration: none; }
+.x a:hover { text-decoration: underline; }
+.x ol { margin: 3px 0 0; padding: 0; list-style: none; }
+.x ol li { display: grid; grid-template-columns: 2.2em minmax(0, 1fr) max-content; gap: 6px; }
+.x .tpos, .x .tlen { color: var(--muted); font-variant-numeric: tabular-nums; }
+.x .credits li { display: block; }
+.x .role { color: var(--muted); font-style: italic; }
+.xcover { display: block; max-width: 100%; max-height: 220px; margin: 8px 0; border: 1px solid var(--rule); cursor: zoom-in; }
+.gallery { display: flex; flex-wrap: wrap; gap: 6px; }
+.gallery figure { margin: 0; display: inline-flex; flex-direction: column; align-items: center; gap: 2px; color: var(--muted); font-size: 11px; cursor: zoom-in; position: relative; }
+.gallery img, .gallery .fb { height: 76px; width: 76px; object-fit: cover; border: 1px solid var(--rule); }
+.fb { display: grid; place-items: center; color: #fff; font: 600 10px var(--sans); background: #8a7d68; }
+
+/* The window's footer: today the keys; with H1 what a click on the hovered thing does. */
+.wfoot { display: flex; gap: 10px; align-items: center; padding: 5px 10px; border-top: 1px solid var(--rule); background: #f6f1e6; font: 12px/1.4 var(--sans); color: var(--muted); min-height: 30px; }
+.wfoot .g { font-size: 14px; width: 18px; text-align: center; }
+.wfoot b { color: var(--ink); font-weight: 600; }
+.wfoot .k { margin-left: auto; white-space: nowrap; }
+
+/* H2 — the links say what a click does, at rest. */
+.mark a.drill { text-decoration: underline dotted #0b5394 1px; text-underline-offset: 2px; }
+.mark a.drill:hover::after { content: ' ↳'; color: var(--muted); font-size: .85em; }
+.mark a.newtab::after { content: ' ↗'; font-size: .8em; color: var(--muted); }
+.mark .gallery figure:hover img, .mark .xcover:hover { box-shadow: 0 0 0 2px #2f5f9e; }
+.mark a.ready::before { content: ''; display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--ok); margin-right: 4px; vertical-align: 1px; }
+
+/* H3 — the card of a link inside the window; H4 — an image's preview; H6 — Back's hint. */
+.peek {
+    position: absolute;
+    z-index: 20;
+    width: min(300px, calc(100% - 16px));
+    background: var(--paper);
+    border: 1px solid var(--rule);
+    border-radius: 3px;
+    box-shadow: 0 1px 0 #e9e1d1, var(--shadow);
+    padding: 8px 12px 9px;
+    font: 13px/1.5 var(--serif);
+    display: grid;
+    gap: 3px;
+}
+.peek[hidden] { display: none; }
+.peek .kh { display: flex; gap: 6px; align-items: center; font: 700 12px var(--serif); color: #4a3f33; border-bottom: 1px solid var(--rule); padding-bottom: 5px; margin-bottom: 3px; }
+.peek .kh i { font-style: normal; width: 16px; height: 16px; border-radius: 3px; background: #ba478f; color: #fff; font: 700 9px/16px var(--sans); text-align: center; }
+.peek .kh i.dg { background: #333; }
+.peek .t { font-weight: 700; font-size: 1.05em; }
+.peek .d { color: var(--muted); font-size: .92em; }
+.peek .f { font-style: italic; color: var(--muted); font-size: .92em; border-top: 1px solid var(--rule); padding-top: 4px; margin-top: 3px; }
+.peek .pill { display: inline-block; background: #efe6d4; border: 1px solid var(--rule); border-radius: 3px; padding: 0 5px; font-size: .85em; font-weight: 700; margin-right: 3px; }
+.peek .spin { display: inline-block; animation: spin .9s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.peek.img { width: auto; max-width: min(560px, calc(100% - 16px)); }
+.peek.img img, .peek.img .fb { display: block; max-width: 300px; max-height: 300px; border: 1px solid var(--rule); }
+.peek.img.big img, .peek.img.big .fb { max-width: 520px; max-height: 520px; }
+.hint { position: absolute; z-index: 21; background: var(--paper); border: 1px solid var(--rule); border-radius: 3px; box-shadow: var(--shadow); padding: 4px 9px; font: 12.5px var(--serif); }
+.hint[hidden] { display: none; }
+.toast { position: absolute; left: 50%; bottom: 44px; transform: translateX(-50%); z-index: 22; background: #2b2622; color: #fbf8f1; border-radius: 3px; padding: 6px 12px; font: 12.5px var(--sans); }
+.toast[hidden] { display: none; }
+
+/* The viewer stand-in (the real one is #mb-art-viewer, unchanged). */
+.viewer { position: fixed; inset: 0; z-index: 60; background: #0d0e11; color: #ebe7df; display: grid; grid-template-rows: auto minmax(0, 1fr) auto; font: 13px/1.45 var(--sans); }
+.viewer[hidden] { display: none; }
+.viewer .vb { display: flex; gap: 14px; align-items: center; padding: 10px 14px; border-bottom: 1px solid #2a2c33; }
+.viewer .vb button { margin-left: auto; background: transparent; border: 1px solid #555; color: #ebe7df; border-radius: 3px; padding: 3px 9px; cursor: pointer; }
+.viewer .vs { display: grid; place-items: center; padding: 14px; min-height: 0; }
+.viewer .vs img, .viewer .vs .fb { max-width: min(90vw, 800px); max-height: 72vh; object-fit: contain; }
+.viewer .vs .fb { width: 300px; height: 300px; }
+.viewer .vf { padding: 8px 14px 14px; color: #a7a196; text-align: center; }
+
+/* ── Suggestions ── */
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 12px; }
+.card { background: var(--paper); border: 1px solid var(--rule); border-radius: 4px; padding: 12px 14px; display: grid; gap: 6px; align-content: start; }
+.card .top { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+.card .id { font: 600 12px var(--mono); color: var(--muted); }
+.v { font: 600 9.5px/1 var(--sans); letter-spacing: .08em; text-transform: uppercase; padding: 4px 7px 3px; border-radius: 999px; border: 1px solid currentColor; }
+.v.rec { color: var(--ok); }
+.v.opt { color: var(--run); }
+.v.no { color: var(--muted); }
+.card dl { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 2px 10px; margin: 0; font-size: 13.5px; }
+.card dt { font-style: italic; color: var(--muted); }
+.card dd { margin: 0; }
+.qs { display: grid; gap: 10px; }
+.q { background: var(--paper); border: 1px solid var(--rule); border-radius: 4px; padding: 10px 14px; display: grid; gap: 4px; }
+.q .rec { font: 600 10px var(--sans); letter-spacing: .08em; text-transform: uppercase; color: var(--ok); }
+@media (max-width: 700px) {
+    .x { grid-template-columns: minmax(0, 1fr); }
+    .origin { display: none; }
+    .stage { padding: 10px; }
+}
+@media (prefers-reduced-motion: reduce) { .peek .spin { animation: none; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="intro">
+    <span class="lab">ShowAllEntityData · the Space window (#mb-dp-dialog) · branch feature/dp-window-hover</span>
+    <h1>Hovering inside the Space window</h1>
+    <p>On the page, resting on a link shows its card and Space pins it into this window. Inside the window, a click already does the right thing, but resting on a link shows nothing: you only find out what a link is by clicking it. Six suggestions below, each a switch on the window as it is today. Images get their own treatment (H4).</p>
+    <div class="today">
+        <div><b>Hover a link, today</b><span class="no">Nothing.</span> The card engine leaves the window out on purpose (<code>_DP_PAGE_SKIP</code>).</div>
+        <div><b>Click a MusicBrainz link</b>Opens it in this window (drill-down), ← Back returns.</div>
+        <div><b>Click a Discogs link</b>Every link in a Discogs window opens in it too.</div>
+        <div><b>Click an image</b>The artwork viewer, over the window.</div>
+    </div>
+</header>
+
+<section aria-labelledby="try" style="display: grid; gap: 12px;">
+    <div class="ctl">
+        <div class="tabs" role="tablist" aria-label="Window">
+            <button type="button" class="tab" role="tab" id="tab-mb" aria-selected="true">MusicBrainz release</button>
+            <button type="button" class="tab" role="tab" id="tab-dg" aria-selected="false">Discogs release</button>
+        </div>
+        <div class="sw" role="group" aria-label="Suggestions">
+            <button type="button" class="chip" data-s="h1" aria-pressed="true"><span class="id">H1</span>What a click does</button>
+            <button type="button" class="chip" data-s="h2" aria-pressed="true"><span class="id">H2</span>Marked links</button>
+            <button type="button" class="chip" data-s="h3" aria-pressed="true"><span class="id">H3</span>Card in the window</button>
+            <button type="button" class="chip" data-s="h4" aria-pressed="true"><span class="id">H4</span>Image preview</button>
+            <button type="button" class="chip" data-s="h5" aria-pressed="false"><span class="id">H5</span>Read ahead</button>
+            <button type="button" class="chip" data-s="h6" aria-pressed="true"><span class="id">H6</span>Where Back goes</button>
+        </div>
+        <button type="button" class="chip" id="ctrl-rule" aria-pressed="false" title="Mirrors sa_dp_hover_without_ctrl">Card without Ctrl</button>
+    </div>
+    <h2 id="try" class="lab" style="font-size: 11px;">Try it: rest on a link (hold <kbd>Ctrl</kbd> for its card), on an image, on ← Back; click; press <kbd>Space</kbd> on a card; <kbd>Esc</kbd></h2>
+    <div class="stage" id="stage">
+        <span class="stage-cap lab">the page behind · the Space window over it</span>
+        <div class="win mark" id="win" role="dialog" aria-label="Detail window">
+            <div class="wbar">
+                <span class="ttl"><span class="kicon" id="kicon">R</span><span id="wtitle">Release</span></span>
+                <span class="origin" id="worigin">from the table: Greetings From Asbury Park, N.J.</span>
+                <button type="button" class="tbtn" id="back" disabled>← Back</button>
+                <span class="seg"><button type="button" class="tbtn" aria-label="Previous row">‹</button><span class="pos">3 / 41</span><button type="button" class="tbtn" aria-label="Next row">›</button></span>
+                <span class="seg"><button type="button" class="tbtn" aria-pressed="true">Extracted</button><button type="button" class="tbtn" aria-pressed="false">Live page</button></span>
+                <button type="button" class="tbtn" aria-label="Fetch again">⟳</button>
+                <a class="tbtn newtab-btn" href="#" id="wopen" aria-label="Open the page in a new tab">↗</a>
+                <button type="button" class="tbtn" aria-label="Close">✕</button>
+            </div>
+            <div class="area" id="area"></div>
+            <div class="wfoot" id="wfoot"></div>
+            <div class="peek" id="peek" hidden role="tooltip"></div>
+            <div class="hint" id="hint" hidden role="tooltip"></div>
+            <div class="toast" id="toast" hidden></div>
+        </div>
+    </div>
+</section>
+
+<section aria-labelledby="sug" style="display: grid; gap: 12px;">
+    <div><span class="lab">Suggestions</span><h2 id="sug">Six ways to make a resting pointer useful</h2></div>
+    <div class="cards">
+        <div class="card"><div class="top"><span class="id">H1</span><h3>What a click does</h3><span class="v rec">recommended</span></div>
+            <p>The window's foot line says what the hovered thing is and what a click will do: "Opens here: Label · Columbia", "New tab: musicbrainz.org/…", "Viewer: Back · image 2 of 8". Like a browser's status bar, but in words. With nothing hovered it shows the window's keys.</p>
+            <dl><dt>Cost</dt><dd>None: read from the link and the record already shown.</dd><dt>Rules</dt><dd>Keyboard focus counts as hover (Tab through the links).</dd></dl></div>
+        <div class="card"><div class="top"><span class="id">H2</span><h3>Marked links</h3><span class="v rec">recommended</span></div>
+            <p>Before any hover, a link that opens here has a dotted underline (↳ on hover), one that leaves the page ↗, an image a ring and a zoom pointer. A link whose record is already read has a small green dot (with H5).</p>
+            <dl><dt>Cost</dt><dd>CSS only.</dd><dt>Rules</dt><dd>Classes set when the window's HTML is built, never in a table.</dd></dl></div>
+        <div class="card"><div class="top"><span class="id">H3</span><h3>Card in the window</h3><span class="v rec">recommended</span></div>
+            <p>A link that opens here gets the same card as on the page, beside the link, above the window: from memory when it was read before, "Loading…" otherwise. <kbd>Space</kbd> on it opens it here, like a click; on the page Space pins a card into the window, so the key means the same thing.</p>
+            <dl><dt>Cost</dt><dd>The page's rule: a MusicBrainz record is asked through the rate gate, wanted only while the card shows; a host never reached is first asked on Space, never on a hover.</dd><dt>Rules</dt><dd><kbd>Ctrl</kbd> as on the page (setting "card without Ctrl"); Esc closes the card first.</dd></dl></div>
+        <div class="card"><div class="top"><span class="id">H4</span><h3>Image preview</h3><span class="v rec">recommended</span></div>
+            <p>Images are not links to read: resting on one shows it large, with its type, its place in the set and "Click: viewer". <kbd>Shift</kbd> shows it larger. The cover too.</p>
+            <dl><dt>Cost</dt><dd>One image (the 500 / 600 px rendition), loaded after a 250 ms rest; no API request.</dd><dt>Rules</dt><dd>The preview never covers the image it shows; touch: a tap stays the viewer.</dd></dl></div>
+        <div class="card"><div class="top"><span class="id">H5</span><h3>Read ahead</h3><span class="v opt">optional, off</span></div>
+            <p>Resting 600 ms on a link that opens here reads its record, so the click is instant; the link gets H2's green dot. Without H3 this is how a resting pointer helps at all.</p>
+            <dl><dt>Cost</dt><dd>One request per link rested on, through the rate gate; MusicBrainz only, never another site.</dd><dt>Rules</dt><dd>A setting, off by default.</dd></dl></div>
+        <div class="card"><div class="top"><span class="id">H6</span><h3>Where Back goes</h3><span class="v rec">recommended</span></div>
+            <p>Resting on ← Back names the page it returns to: "Back to: Release · Greetings From Asbury Park, N.J.". The path in the title shows only the last three kinds.</p>
+            <dl><dt>Cost</dt><dd>None.</dd><dt>Rules</dt><dd>Also on ‹ › (the previous / next row's title).</dd></dl></div>
+    </div>
+</section>
+
+<section aria-labelledby="oq" style="display: grid; gap: 10px;">
+    <div><span class="lab">Open questions</span><h2 id="oq">What to decide before building</h2></div>
+    <div class="qs">
+        <div class="q"><h3>1. Which ones</h3><span class="rec">Recommended: H1, H2, H3, H4, H6 now; H5 later, as a setting</span><p>H1, H2 and H6 cost nothing; H3 and H4 are the page's own rules carried into the window.</p></div>
+        <div class="q"><h3>2. The Ctrl rule inside the window</h3><span class="rec">Recommended: the page's rule</span><p>The page shows a card with Ctrl held unless "card without Ctrl" is on. Inside the window the pointer rests on links all the time while reading, so a card without Ctrl could be busy. Same setting as the page, or always Ctrl inside the window?</p></div>
+        <div class="q"><h3>3. Links that open a new tab</h3><span class="rec">Recommended: H1 and H2 only</span><p>A link the window cannot open (a page of another site with no reader) gets the ↗ and the foot line, no card. Or the generic link card the page shows for other sites?</p></div>
+        <div class="q"><h3>4. Phone</h3><span class="rec">Recommended: tap = click, long-press = card</span><p>No hover on touch: a tap keeps doing what a click does; a long press shows H3's card or H4's preview, and lifting the finger leaves it open until the next tap.</p></div>
+    </div>
+</section>
+
+</div>
+
+<div class="viewer" id="viewer" hidden role="dialog" aria-label="Artwork viewer">
+    <div class="vb"><b id="v-title"></b><span id="v-pos"></span><button type="button" id="v-close">✕ Esc</button></div>
+    <div class="vs" id="v-stage"></div>
+    <div class="vf">Stand-in for the artwork viewer (#mb-art-viewer, unchanged). <kbd>←</kbd> <kbd>→</kbd> images · <kbd>Esc</kbd> back to the window</div>
+</div>
+
+<script>
+(function () {
+    'use strict';
+    const IMGS = JSON.parse(document.getElementById('mockup-images').textContent);
+    const EMBED = window.__EMBED || {};
+    const S = { h1: true, h2: true, h3: true, h4: true, h5: false, h6: true, noCtrl: false };
+
+    /**
+     * Creates an element.
+     * @param {string} tag
+     * @param {Object} [attrs]
+     * @param {...(Node|string|null)} kids
+     * @returns {HTMLElement}
+     */
+    function el(tag, attrs, ...kids) {
+        const n = document.createElement(tag);
+        for (const [k, v] of Object.entries(attrs || {})) {
+            if (v === null || v === undefined || v === false) continue;
+            if (k === 'class') n.className = v;
+            else if (k.startsWith('on')) n.addEventListener(k.slice(2), v);
+            else n.setAttribute(k, v === true ? '' : v);
+        }
+        for (const c of kids.flat()) if (c !== null && c !== undefined && c !== false) n.append(c);
+        return n;
+    }
+
+    /**
+     * An image by id (inlined in the published copy), or a labelled tile.
+     * @param {string} id
+     * @param {string} label
+     * @param {string} [cls]
+     * @returns {HTMLElement}
+     */
+    function pic(id, label, cls) {
+        const u = EMBED[id] || (IMGS[id] && IMGS[id].u) || '';
+        const fb = () => el('span', { class: 'fb' + (cls ? ' ' + cls : '') }, label);
+        if (!u) return fb();
+        const i = el('img', { src: u, alt: label, class: cls || null, referrerpolicy: 'no-referrer', draggable: 'false' });
+        i.addEventListener('error', () => i.replaceWith(fb()), { once: true });
+        return i;
+    }
+
+    // ── Sample data (real, from the fixtures) ───────────────────────────
+    const CAA = [{"types": ["Front"], "comment": ""}, {"types": ["Back"], "comment": ""}, {"types": ["Medium"], "comment": ""}, {"types": ["Medium"], "comment": ""}, {"types": ["Front", "Other"], "comment": "fold‐out postcard sleeve, back"}, {"types": ["Other"], "comment": "fold‐out postcard sleeve, back"}, {"types": ["Front"], "comment": "without postcard sleeve"}, {"types": ["Other"], "comment": ""}];
+    const DGI = ["primary", "secondary", "secondary", "secondary", "secondary"];
+    const fmtLen = (ms) => `${Math.floor(ms / 60000)}:${String(Math.round(ms / 1000) % 60).padStart(2, '0')}`;
+
+    /** Cards the window can show for a link: read before (facts) or not (null). */
+    const CARDS = {
+        'artist:bruce': { kind: 'Artist', k: 'A', title: 'Bruce Springsteen', lines: ['Person · US · born 1949-09-23', 'alternative folk, americana, aor, classic rock'], read: true },
+        'label:columbia': { kind: 'Label', k: 'L', title: 'Columbia', lines: ['Imprint · US · since 1887 · LC 162', 'owned by Sony Music Entertainment, worldwide except JP'], read: true },
+        'rg:greetings': { kind: 'Release group', k: 'RG', title: 'Greetings From Asbury Park, N.J.', lines: ['Album · Bruce Springsteen · 1973'], read: false },
+        'dg:artist:219989': { kind: 'Discogs artist', k: 'D', dg: true, title: 'Jon Landau', lines: ['Producer, Manager · from Discogs'], read: false },
+        'dg:label:1866': { kind: 'Discogs label', k: 'D', dg: true, title: 'Columbia', lines: ['American label, founded 1888 · from Discogs'], read: true },
+    };
+
+    /**
+     * The two windows: what they hold and which links open here.
+     * @type {Object<string, Object>}
+     */
+    const WIN = {
+        mb: {
+            kind: 'Release', k: 'R', origin: 'from the table: Greetings From Asbury Park, N.J.',
+            build() {
+                const L = (text, href, key, kind) => el('a', { href, class: 'drill', 'data-card': key, 'data-kind': kind }, text);
+                const left = el('div', { class: 'col' },
+                    el('div', { class: 'xtitle' }, 'Greetings From Asbury Park, N.J.'),
+                    el('div', { class: 'xsub' }, 'Bruce Springsteen · 1973-01-05 · US · Official'),
+                    imgFig('caa1', 'Front', 0, true),
+                    el('h4', {}, 'Fields'),
+                    el('dl', {},
+                        el('dt', {}, 'Artist'), el('dd', {}, L('Bruce Springsteen', 'https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f', 'artist:bruce', 'Artist')),
+                        el('dt', {}, 'Label'), el('dd', {}, L('Columbia', 'https://musicbrainz.org/label/011d1192-6f65-45bd-85c4-0400dd45693e', 'label:columbia', 'Label'), ' · KC 31903'),
+                        el('dt', {}, 'Release group'), el('dd', {}, L('Greetings From Asbury Park, N.J.', 'https://musicbrainz.org/release-group/c497fc44-ddaf-3cce-a9b4-bfec958a0f3c', 'rg:greetings', 'Release group')),
+                        el('dt', {}, 'Format'), el('dd', {}, '12" Vinyl · 9 tracks'),
+                        el('dt', {}, 'Barcode'), el('dd', {}, 'none')),
+                    el('h4', {}, `Cover art (${CAA.length})`),
+                    el('div', { class: 'gallery' }, CAA.map((c, i) => imgFig(`caa${i + 1}`, c.types.join(' / ') + (c.comment ? ' · ' + c.comment : ''), i))));
+                const tracks = [['Blinded by the Light', 302000, '3497900e-6c78-47d8-a6ae-4526e7f3bfd6'], ['Growin’ Up', 185000, '109c22b2-0d97-419f-bee4-edb7d6f8dbff'],
+                    ['Mary Queen of Arkansas', 320000, '13bdde38-e8cc-41cf-a0bb-6c195bb8665f'], ['Does This Bus Stop at 82nd Street?', 125000, '5eaa1035-3685-43a1-9236-0fd60952780d'],
+                    ['Lost in the Flood', 314000, '666148da-9889-470c-a2cd-efc9fb0c7199'], ['The Angel', 203000, 'f8102160-84a5-4ecd-b1ad-f3c7e5ad6877'],
+                    ['For You', 279000, 'd7610153-af46-4f96-ae68-564000948a65'], ['Spirit in the Night', 298000, '127f5477-caeb-462b-9689-57da3c9e6972'],
+                    ['It’s Hard to Be a Saint in the City', 193000, 'a704d8cd-b6d7-4918-b865-82f623f4a4ce']];
+                const right = el('div', { class: 'col' },
+                    el('h4', {}, 'Tracklist · 9 tracks'),
+                    el('ol', {}, tracks.map(([t, ms, id], i) => el('li', {}, el('span', { class: 'tpos' }, String(i + 1)),
+                        L(t, `https://musicbrainz.org/recording/${id}`, `rec:${i}`, 'Recording'), el('span', { class: 'tlen' }, fmtLen(ms))))),
+                    el('h4', {}, 'See also'),
+                    el('div', {}, el('a', { href: 'https://musicbrainz.org/release/3ce46b79-5e8c-470a-bcdc-45f301d09f60/cover-art', class: 'newtab' }, 'Cover art on MusicBrainz'), ' · ',
+                        el('a', { href: 'https://musicbrainz.org/release/3ce46b79-5e8c-470a-bcdc-45f301d09f60/edits', class: 'newtab' }, 'Editing history')));
+                return el('div', { class: 'x' }, left, right);
+            },
+        },
+        dg: {
+            kind: 'Discogs release', k: 'D', dg: true, origin: 'from the table: Born To Run (US, 1975)',
+            build() {
+                const L = (text, href, key, kind) => el('a', { href, class: 'drill', 'data-card': key, 'data-kind': kind }, text);
+                const left = el('div', { class: 'col' },
+                    el('div', { class: 'xtitle' }, 'Born To Run'),
+                    el('div', { class: 'xsub' }, 'Bruce Springsteen · 1975 · US · Vinyl, LP, Album, Stereo'),
+                    imgFig('dg1', 'primary', 0, true),
+                    el('h4', {}, 'Fields'),
+                    el('dl', {},
+                        el('dt', {}, 'Artist'), el('dd', {}, L('Bruce Springsteen', 'https://www.discogs.com/artist/219986', 'dg:artist:219986', 'Discogs artist')),
+                        el('dt', {}, 'Label'), el('dd', {}, L('Columbia', 'https://www.discogs.com/label/1866', 'dg:label:1866', 'Discogs label'), ' · PC 33795'),
+                        el('dt', {}, 'Master'), el('dd', {}, L('Born To Run', 'https://www.discogs.com/master/26725', 'dg:master:26725', 'Discogs master'))),
+                    el('h4', {}, `Images (${DGI.length})`),
+                    el('div', { class: 'gallery' }, DGI.map((t, i) => imgFig(`dg${i + 1}`, t, i))));
+                const tracks = [['A1', 'Thunder Road', '4:50'], ['A2', 'Tenth Avenue Freeze-Out', '3:11'], ['A3', 'Night', '3:01'], ['A4', 'Backstreets', '6:29'],
+                    ['B1', 'Born To Run', '4:30'], ['B2', 'She\'s The One', '4:30'], ['B3', 'Meeting Across The River', '3:16'], ['B4', 'Jungleland', '9:33']];
+                const credits = [['Jon Landau', 219989, 'Producer'], ['Mike Appel', 219990, 'Producer'], ['Jimmy Iovine', 170807, 'Engineer, Mixed By'],
+                    ['Greg Calbi', 244135, 'Mastered By'], ['Charlie Calello', 154498, 'Arranged By [Strings], Conductor [Strings]'], ['Eric Meola', 2223756, 'Photography By [Cover And Liner]'],
+                    ['John Berg', 760210, 'Design'], ['Andy Engel', 692297, 'Design']];
+                const right = el('div', { class: 'col' },
+                    el('h4', {}, 'Tracklist · 8 tracks'),
+                    el('ol', {}, tracks.map(([p, t, d]) => el('li', {}, el('span', { class: 'tpos' }, p), el('span', {}, t), el('span', { class: 'tlen' }, d)))),
+                    el('h4', {}, 'Credits · 18'),
+                    el('ol', { class: 'credits' }, credits.map(([n, id, r]) => el('li', {}, L(n, `https://www.discogs.com/artist/${id}`, `dg:artist:${id}`, 'Discogs artist'), ' ', el('span', { class: 'role' }, '– ' + r)))),
+                    el('h4', {}, 'See also'),
+                    el('div', {}, el('a', { href: 'https://www.discogs.com/release/1874253/history', class: 'drill', 'data-card': 'dg:history', 'data-kind': 'Discogs release history' }, 'Edit history'), ' · ',
+                        el('a', { href: 'https://www.discogs.com/sell/release/1874253', class: 'newtab' }, 'Marketplace')));
+                return el('div', { class: 'x' }, left, right);
+            },
+        },
+    };
+
+    /**
+     * An image in the window: the cover (big) or a gallery tile.
+     * @param {string} id
+     * @param {string} label
+     * @param {number} i
+     * @param {boolean} [cover]
+     * @returns {HTMLElement}
+     */
+    function imgFig(id, label, i, cover) {
+        if (cover) {
+            const c = pic(id, label, 'xcover');
+            c.dataset.img = String(i);
+            c.tabIndex = 0;
+            return c;
+        }
+        return el('figure', { 'data-img': String(i), tabindex: '0', 'aria-label': label }, pic(id, label), el('span', {}, `image ${i + 1}`));
+    }
+
+    // ── State ───────────────────────────────────────────────────────────
+    const area = document.getElementById('area');
+    const foot = document.getElementById('wfoot');
+    const peek = document.getElementById('peek');
+    const hint = document.getElementById('hint');
+    const toast = document.getElementById('toast');
+    const win = document.getElementById('win');
+    const back = document.getElementById('back');
+    let host = 'mb';
+    let stack = [];
+    let ctrl = false;
+    let hovered = null;
+    let showT = 0;
+    let aheadT = 0;
+    const readNow = new Set();
+
+    /** The window's foot at rest: its keys. */
+    function footRest() {
+        foot.replaceChildren(el('span', { class: 'g' }, '⌨'), el('span', {}, S.h1 ? 'Rest on a link or an image: this line says what a click does.' : ''),
+            el('span', { class: 'k' }, '← → rows · H history · Backspace back · Esc close'));
+    }
+
+    /**
+     * H1: what a click on this element does.
+     * @param {Element} t
+     */
+    function footFor(t) {
+        if (!S.h1) return footRest();
+        let g = '↳';
+        let what;
+        if (t.dataset.img !== undefined) {
+            const imgs = host === 'mb' ? CAA.map(c => c.types.join(' / ')) : DGI;
+            g = '🔍';
+            what = [el('b', {}, 'Viewer: '), `${imgs[t.dataset.img]} · image ${Number(t.dataset.img) + 1} of ${imgs.length}`];
+        } else if (t.matches('a.drill')) {
+            const c = CARDS[t.dataset.card];
+            what = [el('b', {}, 'Opens here: '), `${t.dataset.kind} · ${t.textContent}`, c && (c.read || readNow.has(t.dataset.card)) ? ' (read before, no request)' : ''];
+        } else if (t.matches('#back')) {
+            g = '←';
+            what = [el('b', {}, 'Back to: '), backLabel()];
+        } else {
+            g = '↗';
+            what = [el('b', {}, 'New tab: '), t.getAttribute('href').replace(/^https:\/\//, '')];
+        }
+        foot.replaceChildren(el('span', { class: 'g' }, g), el('span', {}, ...what),
+            el('span', { class: 'k' }, t.dataset.img !== undefined ? 'Click: viewer · Shift: larger' : t.matches('a.drill') ? 'Click: here · Ctrl-click: new tab' : ''));
+    }
+
+    /** @returns {string} Where ← Back would go. */
+    function backLabel() {
+        const prev = stack[stack.length - 1];
+        return prev ? `${prev.kind} · ${prev.title}` : '';
+    }
+
+    /** Draws the window for the current host or drilled target. */
+    function render() {
+        hide();
+        const top = stack.length ? stack[stack.length - 1] : null;
+        const W = WIN[host];
+        document.getElementById('kicon').textContent = W.k;
+        document.getElementById('kicon').classList.toggle('dg', !!W.dg);
+        document.getElementById('worigin').textContent = W.origin;
+        back.disabled = !stack.length;
+        if (!stack.length) {
+            document.getElementById('wtitle').textContent = W.kind;
+            area.replaceChildren(W.build());
+        } else {
+            const cur = current;
+            document.getElementById('wtitle').textContent = [W.kind, ...stack.slice(1).map(s => s.kind), cur.kind].slice(-3).join(' › ');
+            area.replaceChildren(el('div', { class: 'x' }, el('div', { class: 'col' },
+                el('div', { class: 'xtitle' }, cur.title), el('div', { class: 'xsub' }, cur.kind),
+                el('h4', {}, 'Fields'), el('dl', {}, ...(cur.lines || ['(read now)']).flatMap((l, i) => [el('dt', {}, i ? 'More' : 'About'), el('dd', {}, l)]))),
+            el('div', { class: 'col' }, el('h4', {}, 'In the real window'), el('p', {}, 'This kind\'s full Extracted view, as a drill-down shows it today. ← Back (or Backspace) returns.'))));
+        }
+        win.classList.toggle('mark', S.h2);
+        footRest();
+    }
+    let current = null;
+
+    /**
+     * Opens a link here (a click, or Space on its card): the drill-down.
+     * @param {HTMLAnchorElement} a
+     */
+    function drill(a) {
+        const c = CARDS[a.dataset.card] || { kind: a.dataset.kind, title: a.textContent, lines: null };
+        stack.push(current ? current : { kind: WIN[host].kind, title: host === 'mb' ? 'Greetings From Asbury Park, N.J.' : 'Born To Run' });
+        current = { kind: a.dataset.kind, title: c.title || a.textContent, lines: c.lines };
+        readNow.add(a.dataset.card);
+        render();
+    }
+
+    /** ← Back. */
+    function goBack() {
+        if (!stack.length) return;
+        const prev = stack.pop();
+        current = stack.length ? prev : null;
+        render();
+    }
+
+    /** Hides the card, the preview and the hints. */
+    function hide() {
+        clearTimeout(showT);
+        clearTimeout(aheadT);
+        peek.hidden = true;
+        hint.hidden = true;
+    }
+
+    /**
+     * Places a floating card beside an element, inside the window.
+     * @param {HTMLElement} box
+     * @param {Element} t
+     */
+    function place(box, t) {
+        const w = win.getBoundingClientRect();
+        const r = t.getBoundingClientRect();
+        box.hidden = false;
+        const bw = box.offsetWidth;
+        const bh = box.offsetHeight;
+        let left = r.right - w.left + 10;
+        if (left + bw > w.width - 8) left = Math.max(8, r.left - w.left - bw - 10);
+        let top = r.top - w.top - 6;
+        if (top + bh > w.height - 8) top = Math.max(8, w.height - bh - 8);
+        box.style.left = `${left}px`;
+        box.style.top = `${top}px`;
+    }
+
+    /**
+     * H3: the card of a link that opens here.
+     * @param {HTMLAnchorElement} a
+     */
+    function showCard(a) {
+        const key = a.dataset.card;
+        const c = CARDS[key];
+        const known = c && (c.read || readNow.has(key));
+        const kh = el('div', { class: 'kh' }, el('i', { class: c && c.dg || key.startsWith('dg') ? 'dg' : null }, (c && c.k) || '·'), a.dataset.kind);
+        if (known) {
+            peek.replaceChildren(kh, el('div', { class: 't' }, c.title), ...c.lines.map(l => el('div', { class: 'd' }, l)),
+                el('div', { class: 'f' }, `${readNow.has(key) && !c.read ? 'read just now' : 'read before'} · Space: open here · Click: open here`));
+        } else {
+            peek.replaceChildren(kh, el('div', { class: 't' }, a.textContent),
+                el('div', { class: 'd' }, el('span', { class: 'spin' }, '◌'), ' Loading… one request for this one (about 1 s apart).'),
+                el('div', { class: 'f' }, 'Space: open here · moving on asks nothing'));
+            setTimeout(() => {
+                if (hovered !== a || peek.hidden) return;
+                readNow.add(key);
+                if (!CARDS[key]) CARDS[key] = { kind: a.dataset.kind, title: a.textContent, lines: [`${a.dataset.kind} · read just now`], read: false };
+                showCard(a);
+                if (S.h2) a.classList.add('ready');
+            }, 1100);
+        }
+        peek.classList.remove('img', 'big');
+        place(peek, a);
+    }
+
+    /**
+     * H4: an image's preview.
+     * @param {Element} t
+     * @param {boolean} big
+     */
+    function showImage(t, big) {
+        const i = Number(t.dataset.img);
+        const imgs = host === 'mb' ? CAA.map((c, k) => ({ id: `caa${k + 1}`, label: c.types.join(' / ') + (c.comment ? ' · ' + c.comment : '') })) : DGI.map((ty, k) => ({ id: `dg${k + 1}`, label: ty }));
+        const im = imgs[i];
+        const large = IMGS[im.id + 'L'] ? im.id + 'L' : im.id;
+        peek.replaceChildren(el('div', { class: 'kh' }, el('i', { class: host === 'dg' ? 'dg' : null }, '▣'), host === 'mb' ? 'Cover art' : 'Discogs image'),
+            pic(large, im.label), el('div', { class: 'd' }, `${im.label} · image ${i + 1} of ${imgs.length}`),
+            el('div', { class: 'f' }, big ? 'Click: viewer' : 'Click: viewer · Shift: larger'));
+        peek.classList.add('img');
+        peek.classList.toggle('big', big);
+        place(peek, t);
+    }
+
+    /**
+     * What a resting pointer (or focus) does on an element.
+     * @param {Element} t
+     */
+    function rest(t) {
+        hide();
+        hovered = t;
+        footFor(t);
+        if (t.matches('#back')) {
+            if (S.h6 && stack.length) {
+                hint.textContent = `Back to: ${backLabel()}`;
+                place(hint, t);
+            }
+            return;
+        }
+        if (t.dataset.img !== undefined) {
+            if (S.h4) showT = setTimeout(() => hovered === t && showImage(t, false), 250);
+            return;
+        }
+        if (t.matches('a.drill')) {
+            if (S.h3 && (ctrl || S.noCtrl)) showT = setTimeout(() => hovered === t && showCard(t), 350);
+            if (S.h5 && !readNow.has(t.dataset.card) && !(CARDS[t.dataset.card] || {}).read) {
+                aheadT = setTimeout(() => {
+                    if (hovered !== t) return;
+                    readNow.add(t.dataset.card);
+                    if (!CARDS[t.dataset.card]) CARDS[t.dataset.card] = { kind: t.dataset.kind, title: t.textContent, lines: [`${t.dataset.kind} · read ahead`], read: false };
+                    if (S.h2) t.classList.add('ready');
+                    footFor(t);
+                }, 600 + 1000);
+            }
+        }
+    }
+
+    /** @param {Element} t @returns {?Element} The element a pointer or focus rests on. */
+    const target = (t) => t.closest && t.closest('a, [data-img], #back');
+
+    area.addEventListener('mouseover', (e) => {
+        const t = target(e.target);
+        if (t && t !== hovered) rest(t);
+    });
+    win.addEventListener('mouseleave', () => { hovered = null; hide(); footRest(); });
+    area.addEventListener('mouseout', (e) => {
+        const t = target(e.target);
+        if (t && t === hovered && !(e.relatedTarget && t.contains(e.relatedTarget))) { hovered = null; hide(); footRest(); }
+    });
+    back.addEventListener('mouseenter', () => rest(back));
+    back.addEventListener('mouseleave', () => { hovered = null; hide(); footRest(); });
+    back.addEventListener('click', goBack);
+    area.addEventListener('focusin', (e) => { const t = target(e.target); if (t) rest(t); });
+    area.addEventListener('click', (e) => {
+        const t = target(e.target);
+        if (!t) return;
+        e.preventDefault();
+        if (t.dataset.img !== undefined) return openViewer(Number(t.dataset.img));
+        if (e.ctrlKey || e.metaKey || t.matches('a.newtab')) return say(`Would open ${t.getAttribute('href').replace(/^https:\/\//, '')} in a new tab.`);
+        if (t.matches('a.drill')) drill(t);
+    });
+    document.getElementById('wopen').addEventListener('click', (e) => { e.preventDefault(); say('Would open the page in a new tab.'); });
+
+    /**
+     * A short line at the window's foot (the mockup's stand-in for leaving the page).
+     * @param {string} s
+     */
+    function say(s) {
+        toast.textContent = s;
+        toast.hidden = false;
+        clearTimeout(say.t);
+        say.t = setTimeout(() => { toast.hidden = true; }, 1800);
+    }
+
+    // ── Keys ────────────────────────────────────────────────────────────
+    window.addEventListener('keydown', (e) => {
+        if (!viewer.hidden) {
+            if (e.key === 'Escape') { closeViewer(); e.preventDefault(); }
+            if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') { vStep(e.key === 'ArrowRight' ? 1 : -1); e.preventDefault(); }
+            return;
+        }
+        if (e.key === 'Control') {
+            ctrl = true;
+            if (hovered && hovered.matches && hovered.matches('a.drill') && S.h3 && peek.hidden) showCard(hovered);
+        }
+        if (e.key === 'Shift' && hovered && hovered.dataset && hovered.dataset.img !== undefined && S.h4) showImage(hovered, true);
+        if (e.key === ' ' && hovered && hovered.matches && hovered.matches('a.drill') && !peek.hidden && !peek.classList.contains('img')) { e.preventDefault(); drill(hovered); }
+        if (e.key === 'Escape' && (!peek.hidden || !hint.hidden)) { hide(); e.preventDefault(); }
+        if (e.key === 'Backspace' && document.activeElement === document.body) { goBack(); e.preventDefault(); }
+    }, true);
+    window.addEventListener('keyup', (e) => {
+        if (e.key === 'Control') ctrl = false;
+        if (e.key === 'Shift' && hovered && hovered.dataset && hovered.dataset.img !== undefined && S.h4 && !peek.hidden) showImage(hovered, false);
+    });
+
+    // ── The viewer stand-in ────────────────────────────────────────────
+    const viewer = document.getElementById('viewer');
+    const V = { i: 0, opener: null };
+    /** @returns {Array<{id: string, label: string}>} */
+    const vList = () => (host === 'mb' ? CAA.map((c, k) => ({ id: `caa${k + 1}`, label: c.types.join(' / ') })) : DGI.map((t, k) => ({ id: `dg${k + 1}`, label: t })));
+    /** Draws the viewer. */
+    function vDraw() {
+        const l = vList();
+        const im = l[V.i];
+        document.getElementById('v-title').textContent = host === 'mb' ? 'Greetings From Asbury Park, N.J.' : 'Born To Run';
+        document.getElementById('v-pos').textContent = `${V.i + 1} / ${l.length} · ${im.label}`;
+        document.getElementById('v-stage').replaceChildren(pic(IMGS[im.id + 'L'] ? im.id + 'L' : im.id, im.label));
+    }
+    /** @param {number} i */
+    function openViewer(i) {
+        hide();
+        V.i = i;
+        V.opener = document.activeElement;
+        viewer.hidden = false;
+        vDraw();
+        document.getElementById('v-close').focus();
+    }
+    /** @param {number} d */
+    function vStep(d) { const n = vList().length; V.i = (V.i + d + n) % n; vDraw(); }
+    /** Closes the viewer. */
+    function closeViewer() { viewer.hidden = true; if (V.opener && V.opener.focus) V.opener.focus(); }
+    document.getElementById('v-close').addEventListener('click', closeViewer);
+
+    // ── Controls ───────────────────────────────────────────────────────
+    document.querySelectorAll('.chip[data-s]').forEach(b => b.addEventListener('click', () => {
+        S[b.dataset.s] = !S[b.dataset.s];
+        b.setAttribute('aria-pressed', String(S[b.dataset.s]));
+        render();
+    }));
+    document.getElementById('ctrl-rule').addEventListener('click', (e) => {
+        S.noCtrl = !S.noCtrl;
+        e.currentTarget.setAttribute('aria-pressed', String(S.noCtrl));
+    });
+    document.querySelectorAll('.tab').forEach(t => t.addEventListener('click', () => {
+        host = t.id === 'tab-mb' ? 'mb' : 'dg';
+        document.querySelectorAll('.tab').forEach(x => x.setAttribute('aria-selected', String(x === t)));
+        stack = [];
+        current = null;
+        render();
+    }));
+    // Touch (open question 4): a long press shows the card or the preview.
+    let pressT = 0;
+    area.addEventListener('pointerdown', (e) => {
+        if (e.pointerType === 'mouse') return;
+        const t = target(e.target);
+        if (!t) return;
+        pressT = setTimeout(() => {
+            hovered = t;
+            if (t.dataset.img !== undefined && S.h4) showImage(t, false);
+            else if (t.matches('a.drill') && S.h3) showCard(t);
+        }, 500);
+    });
+    area.addEventListener('pointerup', () => clearTimeout(pressT));
+    render();
+})();
+</script>
+</body>
+</html>

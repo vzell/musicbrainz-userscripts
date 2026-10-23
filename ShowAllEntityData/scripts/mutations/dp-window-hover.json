@@ -1,0 +1,229 @@
+[
+    {
+        "name": "H3/H4: the hover handler ignores the window's links",
+        "why": "Without _dpWinTarget() in the mouseover, a link of the window is never the hovered element, so neither Ctrl nor a rest shows its card or an image's preview.",
+        "edits": [
+            {
+                "find": "            const t = _popResolve(e.target) || _dpWinTarget(e.target);\n            if (!t || t.el === _dpPeek.link || _isTouchCompatMouseEvent(e)) return;",
+                "replace": "            const t = _popResolve(e.target);\n            if (!t || t.el === _dpPeek.link || _isTouchCompatMouseEvent(e)) return;"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "H3: a link that opens here",
+        "expect": "fail"
+    },
+    {
+        "name": "H3: Space on a window link's card opens a new path instead of opening it here",
+        "why": "Space on a card of a link in the window must open it there, as a click does (the back stack keeps the release).",
+        "edits": [
+            {
+                "find": "                if (pt && pt.drilled && _dpDialog.api && _dpDialog.target) {",
+                "replace": "                if (false) {"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "H3: a link that opens here",
+        "expect": "fail"
+    },
+    {
+        "name": "H4: Space on an image's preview scrolls the window",
+        "why": "An image's preview pins nothing and keeps the window where it is; a Space that scrolls hides the preview and the next Esc closes the window.",
+        "edits": [
+            {
+                "find": "                const pt = _dpPeek.target;\n                e.preventDefault();\n                e.stopImmediatePropagation();\n                // An image's preview pins nothing, and the Space does not\n                // scroll the window away from under it either.\n                if (pt && pt.img) return;",
+                "replace": "                const pt = _dpPeek.target;\n                if (pt && pt.img) return;\n                e.preventDefault();\n                e.stopImmediatePropagation();"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "H4: an image shows large",
+        "expect": "fail"
+    },
+    {
+        "name": "H4: Shift does not show the image larger",
+        "why": "Shift held on an image's preview shows it larger.",
+        "edits": [
+            {
+                "find": "            if (e.key === 'Shift' && !e.repeat && _dpPeek.target && _dpPeek.target.img) {\n                _dpWinBig(true);",
+                "replace": "            if (e.key === 'Shift' && !e.repeat && _dpPeek.target && _dpPeek.target.img) {"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "H4: an image shows large",
+        "expect": "fail"
+    },
+    {
+        "name": "H4: an image's own 250 ms delay is ignored",
+        "why": "Known overlap: the fixture page sets sa_rich_tooltip_delay_ms to 0, shorter than the image's 250 ms, so no spec can see the image wait less or more. Recorded, not covered.",
+        "edits": [
+            {
+                "find": "        const delay = typeof t.delay === 'number' ? t.delay : (typeof d === 'number' && d >= 0) ? d : 400;",
+                "replace": "        const delay = (typeof d === 'number' && d >= 0) ? d : 400;"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "H4: an image shows large",
+        "expect": "pass"
+    },
+    {
+        "name": "H1: the foot line never names what is hovered",
+        "why": "The window's foot line says what a click on the hovered link or image does.",
+        "edits": [
+            {
+                "find": "            _dpWin.hover = el;\n            _dpWinFoot(w);",
+                "replace": "            _dpWin.hover = el;\n            _dpWinFoot(null);"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "H1/H2: the foot line",
+        "expect": "fail"
+    },
+    {
+        "name": "H2: the marks are never laid",
+        "why": "The links are marked by a MutationObserver on the scroll area, after every repaint.",
+        "edits": [
+            {
+                "find": "        _dpWin.observer.observe(area, { childList: true, subtree: true });",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "H1/H2: the foot line",
+        "expect": "fail"
+    },
+    {
+        "name": "H5: the read-ahead is never wanted",
+        "why": "The read-ahead's request is wanted while the pointer stays on the link; without it the rate gate drops it.",
+        "edits": [
+            {
+                "find": "            (!!t.readAhead && t.el.isConnected && t.el.matches(':hover'));",
+                "replace": "            false;"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "H5 on:",
+        "expect": "fail"
+    },
+    {
+        "name": "H5: the read-ahead runs with the setting off",
+        "why": "sa_dp_window_read_ahead is off by default: a rest reads nothing ahead.",
+        "edits": [
+            {
+                "find": "        if (Lib.settings.sa_dp_window_read_ahead !== true || !t || t.src.id !== 'mb-entity' || _dpWinRead(t)) return;",
+                "replace": "        if (!t || t.src.id !== 'mb-entity' || _dpWinRead(t)) return;"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "H5 off",
+        "expect": "fail"
+    },
+    {
+        "name": "H6: ← Back does not name where it goes",
+        "why": "Back's tip names the target it returns to.",
+        "edits": [
+            {
+                "find": "        _dpWinNavTips(t);\n        _dpWin.hover = null;",
+                "replace": "        _dpWin.hover = null;"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "H3: a link that opens here",
+        "expect": "fail"
+    },
+    {
+        "name": "Discogs: its window's links are not 'opens here'",
+        "why": "Every link a reader takes in a Discogs-family window opens in it (_extDgDrill()); the hover must say so and give it its card.",
+        "edits": [
+            {
+                "find": "        if (cur.reader && cur.reader.onAreaClick) {\n            const r = _extTarget(a, { inWindow: true });",
+                "replace": "        if (false) {\n            const r = _extTarget(a, { inWindow: true });"
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "hovering inside a Discogs window",
+        "expect": "fail"
+    },
+    {
+        "name": "touch: the lift after a long press is a click",
+        "why": "Decision 4: a long press shows the card and opens nothing; the click the lift would make is swallowed.",
+        "edits": [
+            {
+                "find": "            // No compatibility mousedown (which hides the card) and no click.\n            e.preventDefault();",
+                "replace": "            // No compatibility mousedown (which hides the card) and no click."
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.mobile.spec.js",
+        "project": "chromium-mobile",
+        "grep": "inside the window: a long press",
+        "expect": "fail"
+    },
+    {
+        "name": "touch: a long press shows nothing",
+        "why": "Decision 4: a long press shows the link's card.",
+        "edits": [
+            {
+                "find": "                _dpWin.pressed = true;\n                _dpHidePeek();\n                _dpPeek.link = t.el;\n                _dpPeek.target = t;\n                _dpShowPeek(t);",
+                "replace": "                _dpWin.pressed = true;"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.mobile.spec.js",
+        "project": "chromium-mobile",
+        "grep": "inside the window: a long press",
+        "expect": "fail"
+    },
+    {
+        "name": "H4: the cover's link spans the column",
+        "why": "Without the inline-block rule the cover's link runs across the column, and the pointer beside the picture is on the link (vzell's report, 2026-10-23).",
+        "edits": [
+            {
+                "find": "            .mb-dp-dialog a:has(> img.mb-dp-xcover) { display: inline-block; max-width: 100%; vertical-align: top; }\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/detail-preview.spec.js",
+        "grep": "jungleland.it: the cover's preview belongs to the picture",
+        "expect": "fail"
+    },
+    {
+        "name": "H4: any point of an image link shows the preview",
+        "why": "An image link counts only on its picture; without the test a link wider than its picture shows the preview, and names the viewer in the foot line, with the pointer on the empty space beside it.",
+        "edits": [
+            {
+                "find": "return pointer && !node.closest('img') ? null : { kind: 'img', a };",
+                "replace": "return { kind: 'img', a };"
+            }
+        ],
+        "spec": "tests/fixtures/detail-preview.spec.js",
+        "grep": "jungleland.it: the cover's preview belongs to the picture",
+        "expect": "fail"
+    },
+    {
+        "name": "H4: a focus opens the image's preview",
+        "why": "The viewer gives the focus back to the thumbnail on closing; a preview opened by that focus takes the next Esc, so the window stays open (the full suite's failure, 2026-10-23). Both guards are reverted: with the picture as the preview's element a focus on the link could not open it either.",
+        "edits": [
+            {
+                "find": "return pointer && !node.closest('img') ? null : { kind: 'img', a };",
+                "replace": "return { kind: 'img', a };"
+            },
+            {
+                "find": "el: node.closest('img'), a: w.a, key: `dp-img:",
+                "replace": "el: w.a, a: w.a, key: `dp-img:"
+            }
+        ],
+        "spec": "tests/fixtures/detail-preview.spec.js",
+        "grep": "jungleland.it: a click on a scan opens the artwork viewer",
+        "expect": "fail"
+    },
+    {
+        "name": "H4: the image's preview belongs to the link",
+        "why": "With the link as the preview's element, leaving the picture for the link's empty space is not leaving it, and the preview stays.",
+        "edits": [
+            {
+                "find": "el: node.closest('img'), a: w.a, key: `dp-img:",
+                "replace": "el: w.a, a: w.a, key: `dp-img:"
+            }
+        ],
+        "spec": "tests/fixtures/detail-preview.spec.js",
+        "grep": "jungleland.it: the cover's preview belongs to the picture",
+        "expect": "fail"
+    }
+]

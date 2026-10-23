@@ -2454,6 +2454,25 @@ the tag's own page, since MusicBrainz cannot look a tag up otherwise.
   entity in the same window; the title shows the path, for example *Release
   group › Release*. **← Back**, **Backspace** or **Alt+←** return. Ctrl-click
   (or a middle click) still opens the link in a new tab.
+- **Rest the pointer on something inside the window** to see what a click on
+  it does, before you click. The window's bottom line names it: *Opens here:
+  Label · Columbia* (with *read before, no request* when it already is), *New
+  tab: …* for a link that leaves the page, *Viewer: Back · image 2 of 8* for an
+  image. Links are marked too: a dotted underline for one that opens in the
+  window, **↗** for one that leaves it, a ring for an image.
+  - A link that opens in the window shows its **card** there, as on the page
+    (with Ctrl held, unless *Show every preview on a plain hover* is on).
+    **Space** opens it in the window, as a click does.
+  - An **image** shows large after a short rest on the picture itself (not on
+    the space beside it); hold **Shift** for larger, and click for the artwork
+    viewer. Space does nothing then.
+  - **← Back** and **‹ ›** name where they go when you rest on them.
+  - *In the window, read a link ahead while the pointer rests on it* (same
+    section, off by default) reads a MusicBrainz link after a moment's rest,
+    so the click shows it at once; such links get a small green dot. Links to
+    other sites are never read ahead.
+  - On a touch screen a tap stays a click; a **long press** shows the link's
+    card or the image.
 
 Each card asks MusicBrainz once, and only if the pointer is still on the link
 when its turn comes: the script makes at most one request a second, shared
@@ -2650,7 +2669,9 @@ once and without Tampermonkey asking first:
 In a Discogs window **every link opens in the same window**: a release,
 master, artist or label, a user, a search, a guideline, or another site.
 **← Back** (Backspace, Alt+←) returns to what it showed before; Ctrl/⌘-click
-opens a new tab instead.
+opens a new tab instead. Resting on a link shows its card and names it on the
+window's bottom line, as in a MusicBrainz window (see *Rest the pointer on
+something inside the window* above).
 
 Links to the four **Springsteen sites** the script supports get the same card
 those sites' own lists show (no setting of those sites is needed here): a

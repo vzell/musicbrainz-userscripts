@@ -25707,3 +25707,38 @@ mouse gets a new `mouseover`, so the product is fine; the test was not.
 `settleBox()` in the spec waits, in animation frames, until the avatar's box
 stops moving, then parks the pointer and hovers: 36/36 and 36/36 under the
 same load, 11/11 for the file.
+
+## 2026-10-23 — hovering inside the Space window: links and images (branch feature/dp-window-hover)
+
+Env: 2026-10-23T22:22:39+02:00 · petri · WSL2 Ubuntu 24.04.3 (Linux 6.18.54.1) · Playwright 1.62.1 Chromium (desktop; chromium-mobile: Pixel 7 emulation), no Tampermonkey (GM stubs) · real browser: vzell's, versions not given
+
+Feature H1–H6 and the phone's long press, as in the mockup
+(org/dp-window-hover.org, https://claude.ai/artifact/APF35bPAyvFZvKjFHGHrZU);
+design notes in docs/claude/detail-pages.md, "Hovering inside the window".
+
+**First `test:full`** (22:22:39–22:34:53 CEST, 2,264 tests, wall 734 s):
+2,263 passed, 1 failed — `detail-preview.spec.js` "jungleland.it: a click on
+a scan opens the artwork viewer …": after Esc closed the viewer, the second
+Esc left the window open. Cause: the viewer gives the focus back to the
+thumbnail; that `focusin` went through `_dpWinTarget()` and scheduled the
+image's preview (250 ms). Under load the second Esc came after the delay and
+closed the preview instead of the window. Alone it passed, which is why the
+popup regression set had not seen it.
+
+**vzell's browser check, same evening**: on a springsteenlyrics window
+("Paris 1985") the preview showed with the pointer on the empty space to the
+RIGHT of the cover. The cover is `img.mb-dp-xcover` (`display: block`) in an
+inline `<a data-mb-artv-ext>`; a block inside an inline box stretches the
+link's box across the column, and `_dpWinWhat()` took any point of an image
+link as the image.
+
+Both fixed together: the cover's link is `inline-block` (CSS), an image link
+counts only with the pointer on its `<img>` (`_dpWinWhat(node, pointer)`),
+and the preview's element is the `<img>` itself (`t.el`, link in `t.a`), so
+leaving the picture hides it and a focus never opens it. New spec
+"jungleland.it: the cover's preview belongs to the picture …" (it also
+forces the link wide, so the JS guard is tested apart from the CSS); the
+viewer spec waits past the 250 ms delay before its last Esc. Mutations
+`scripts/mutations/dp-window-hover.json`: 17, 16 fail as expected, one
+recorded `pass` (the image's own delay); the four new ones each fail
+(before the wait was added, the focus mutation passed — the timing hid it).
