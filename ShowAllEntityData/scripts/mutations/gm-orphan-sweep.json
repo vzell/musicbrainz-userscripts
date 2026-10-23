@@ -1,0 +1,93 @@
+[
+  {
+    "name": "the sweep is never scheduled",
+    "why": "Nothing fails visibly: the orphans simply keep riding along in every page's GM hand-off.",
+    "edits": [
+      {
+        "find": "    setTimeout(_sweepOrphanedGmValues, 0);\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/gm-orphan-sweep.spec.js",
+    "grep": "deletes the orphans and the stale hand-offs",
+    "expect": "fail"
+  },
+  {
+    "name": "the age limit is three hours, not one",
+    "why": "A two-hour-old hand-off nobody will read survives; only an assertion on that exact payload sees it.",
+    "edits": [
+      {
+        "find": "                if (age !== null && age <= _GM_SNAPSHOT_MAX_AGE_MS) continue;",
+        "replace": "                if (age !== null && age <= 3 * _GM_SNAPSHOT_MAX_AGE_MS) continue;"
+      }
+    ],
+    "spec": "tests/fixtures/gm-orphan-sweep.spec.js",
+    "grep": "deletes the orphans and the stale hand-offs",
+    "expect": "fail"
+  },
+  {
+    "name": "a fresh hand-off is deleted too",
+    "why": "The 'Show single-table' tab that is still loading would find its payload gone and fall back to a live fetch.",
+    "edits": [
+      {
+        "find": "                if (age !== null && age <= _GM_SNAPSHOT_MAX_AGE_MS) continue;",
+        "replace": "                if (age !== null && age < 0) continue;"
+      }
+    ],
+    "spec": "tests/fixtures/gm-orphan-sweep.spec.js",
+    "grep": "deletes the orphans and the stale hand-offs",
+    "expect": "fail"
+  },
+  {
+    "name": "the prefix test is removed",
+    "why": "Every stored value would be judged as a hand-off payload, and the user's settings and workspace deleted.",
+    "edits": [
+      {
+        "find": "                if (!key.startsWith(_GM_SNAPSHOT_KEY_PREFIX)) continue;\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/gm-orphan-sweep.spec.js",
+    "grep": "deletes the orphans and the stale hand-offs",
+    "expect": "fail"
+  },
+  {
+    "name": "the payload timestamp fallback is dropped",
+    "why": "A hand-off whose key does not decode would always count as unknown age and be deleted while fresh.",
+    "edits": [
+      {
+        "find": "        return payload && typeof payload.timestamp === 'number' ? now - payload.timestamp : null;",
+        "replace": "        return null;"
+      }
+    ],
+    "spec": "tests/fixtures/gm-orphan-sweep.spec.js",
+    "grep": "deletes the orphans and the stale hand-offs",
+    "expect": "fail"
+  },
+  {
+    "name": "a payload of unknown age is kept",
+    "why": "One that names no time at all would then stay in storage for ever.",
+    "edits": [
+      {
+        "find": "                if (age !== null && age <= _GM_SNAPSHOT_MAX_AGE_MS) continue;",
+        "replace": "                if (age === null || age <= _GM_SNAPSHOT_MAX_AGE_MS) continue;"
+      }
+    ],
+    "spec": "tests/fixtures/gm-orphan-sweep.spec.js",
+    "grep": "deletes the orphans and the stale hand-offs",
+    "expect": "fail"
+  },
+  {
+    "name": "without GM_listValues the fixed keys are not looked for",
+    "why": "The grant is feature-detected; a profile or manager without it would keep every fixed orphan.",
+    "edits": [
+      {
+        "find": "            const present = stored ? stored.includes(key) : GM_getValue(key, undefined) !== undefined;",
+        "replace": "            const present = stored ? stored.includes(key) : false;"
+      }
+    ],
+    "spec": "tests/fixtures/gm-orphan-sweep.spec.js",
+    "grep": "without GM_listValues",
+    "expect": "fail"
+  }
+]

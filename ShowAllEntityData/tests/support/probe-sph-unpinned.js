@@ -15,7 +15,7 @@
 //         PROBE_PAGES=<json file> node tests/support/probe-sph-unpinned.js
 // The default page list is the reported pages plus every pageType in
 // tests/pagetypes.json. Network: one page load plus the userscript's own
-// fetch per page, stopped after three pages (#mb-stop-btn), which is enough
+// fetch per page, stopped after three pages (Stop: the running segment), which is enough
 // to show a page's structure.
 
 const fs = require('fs');

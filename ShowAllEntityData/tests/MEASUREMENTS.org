@@ -4070,6 +4070,90 @@ source text held two-byte in Blink's parkable strings, growing with the file
 (9.99.1167: +10.9 MiB); a cached changelog ≈6.5 MiB per tab and +9 ms (×1) /
 +34 ms (×4) until settled. Memory columns are MiB (2^20 bytes).
 
+* 2026-10-23 — the lazy changelog, measured: main vs feat/saed-toolbar with the changelog cache seeded (petri)
+
+Env: 2026-10-23T02:27:12+02:00–02:32:44+02:00 · petri (AMD Ryzen 9 7900, 24 threads, 31 GB) · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.54.1-microsoft-standard-WSL2) · Node v24.16.0 · Chromium 151.0.7922.34 via Playwright 1.62.1 · no Tampermonkey (in-memory GM stubs)
+
+The confirming run of =org/userscript-size.org= §8 (ranked #1 and #2,
+implemented on =feat/saed-toolbar=, HEAD 0011972; =main= at 6c065f1). Both
+files are 9.99.1426: =real= is the branch (7,907,971 bytes), =rev:9.99.1426=
+is =main= (7,903,066 bytes), each against the branch's VZ_MBLibrary 4.5.0,
+which still parses the changelog for a script that hands it a =remoteConfig=
+(=main='s does, the branch's does not). =+changelog= seeds
+=showallentitydata-remote-changelog= with this repository's
+=ShowAllEntityData_CHANGELOG.json= (2,037,907 bytes, 1,597 entries — the size
+users get after the next publish). The =rev:…+changelog= arm was added to
+=scripts/measure-script-load-cost.js= for this run. Raw JSON not committed:
+
+#+begin_example
+ARMS=none,real,real+changelog,rev:9.99.1426,rev:9.99.1426+changelog
+node scripts/measure-script-load-cost.js --runs 15 --warmup 2 --throttle 1,4 --rev main --arms "$ARMS"
+node scripts/measure-script-load-cost.js --runs 10 --warmup 2 --throttle 1,4 --rev main --arms "$ARMS" \
+    --page tests/snapshots/artist-releasegroups/raw.html --url 'https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f?all=1&va=0'
+node scripts/measure-script-load-cost.js --memory --runs 7 --warmup 1 --throttle 1 --rev main --arms "$ARMS"
+node scripts/summarize-load-cost.js <each JSON>
+#+end_example
+
+petri runs this file about twice as fast as NB-3641 did on 10-22 (130 vs
+262 ms for the same 9.99.1426), so compare within these tables only. Every
+run valid. "settled" is what the changelog parse moves: the library parses
+after the script, inside the two macrotasks "settled" waits for.
+
+Bare page (no pageType), 15 runs + 2 warm-ups, medians:
+
+#+NAME: lazy-changelog-gate
+| Arm                       | ×1 sync ms (p10–p90) | ×1 settled ms | ×4 sync ms (p10–p90) | ×4 settled ms |
+|---------------------------+----------------------+---------------+----------------------+---------------|
+| main                      | 130.5 (123.5–136.0)  | 130.9         | 531.8 (524.8–537.7)  | 534.4         |
+| main, changelog cached    | 129.0 (121.6–133.0)  | 135.6         | 528.9 (526.5–549.3)  | 566.1         |
+| branch                    | 130.2 (123.2–135.3)  | 130.4         | 539.6 (530.1–543.7)  | 541.0         |
+| branch, changelog cached  | 129.2 (124.5–136.2)  | 129.4         | 535.1 (526.2–545.3)  | 537.2         |
+| no userscript             | 0.0 (0.0–0.0)        | 0.1           | 0.0 (0.0–0.8)        | 0.5           |
+
+artist-releasegroups initial page (raw snapshot), 10 runs + 2 warm-ups:
+
+#+NAME: lazy-changelog-artist-releasegroups
+| Arm                       | ×1 sync ms (p10–p90) | ×1 settled ms | ×4 sync ms (p10–p90) | ×4 settled ms |
+|---------------------------+----------------------+---------------+----------------------+---------------|
+| main                      | 137.8 (136.4–140.1)  | 151.6         | 591.8 (584.5–595.9)  | 624.2         |
+| main, changelog cached    | 137.2 (134.5–140.0)  | 157.4         | 589.3 (579.4–592.0)  | 641.6         |
+| branch                    | 142.8 (141.4–143.2)  | 153.4         | 602.0 (595.6–610.5)  | 634.6         |
+| branch, changelog cached  | 141.6 (140.9–144.7)  | 155.7         | 608.4 (592.5–618.6)  | 647.3         |
+| no userscript             | 0.0 (0.0–0.1)        | 0.4           | 0.0 (0.0–0.6)        | 1.3           |
+
+Memory, bare page, ×1, 7 runs + 1 warm-up (MiB, medians):
+
+#+NAME: lazy-changelog-memory
+| Arm                      | footprint | Δ none | parkable strings | V8 heap | partition_alloc |
+|--------------------------+-----------+--------+------------------+---------+-----------------|
+| no userscript            | 18.5      | 0.0    | 0.6              | 3.2     | 1.4             |
+| main                     | 35.8      | 17.3   | 15.6             | 5.1     | 16.3            |
+| main, changelog cached   | 51.2      | 32.7   | 15.6             | 16.1    | 20.3            |
+| branch                   | 35.8      | 17.3   | 15.6             | 5.1     | 16.3            |
+| branch, changelog cached | 43.8      | 25.3   | 15.6             | 9.1     | 20.3            |
+
+*Read as:*
+- *The changelog no longer delays the page.* On =main= a cached changelog
+  makes the bare page settle 4.7 ms later (×1) and 31.7 ms later (×4); on the
+  branch it changes nothing (−1.0 / −3.8 ms, noise). Branch against =main=,
+  both with the cache: −6.2 ms (×1) and −28.9 ms (×4), ratio 0.95 at both
+  rates. On the artist page the same comparison is +2.3 / +12.7 ms on the
+  branch against +5.8 / +17.4 ms on =main=, inside the arms' p10–p90 spread at
+  ×4: not a clean reading there.
+- *Memory:* the cache costs =main= +15.4 MiB per tab in this harness and the
+  branch +8.0 MiB. The difference, *7.4 MiB footprint (7.0 MiB of it V8
+  heap)*, is the parsed changelog the library no longer keeps. The branch's
+  remaining +8.0 MiB (V8 +4.0, partition_alloc +4.0) is the harness's own
+  copies of the seeded value (the init script holds it), so is not a cost the
+  branch has: in Tampermonkey the orphan sweep deletes the key on the first
+  page, and later pages are handed nothing.
+- *The branch's initial set-up on a supported page costs a little more:*
+  +5.0 ms sync at ×1 (142.8 vs 137.8, p10–p90 not overlapping) and +10.2 ms at
+  ×4 (+3.6 % / +1.7 %), settled +1.8 / +10.4 ms. The bare page shows no
+  difference (it stops at the gate before any toolbar is built), so this is
+  the SAED bar's construction. Small next to the changelog it removes, which
+  cost =main= +5.8 / +17.4 ms settled on the same page.
+
 * 2026-10-23 — interaction timings, main vs feature/foreign-art-viewer (phase 2: =.mb-fi-sort-key= in =_sortCellText()= and =_CLEAN_STRIP_SEL=) (NB-3641)
 
 Env: 2026-10-23T02:59:09+02:00 → 2026-10-23T04:33:43+02:00 · NB-3641 (28 CPUs, 31 GB) · WSL2

@@ -63,8 +63,12 @@ async function openRg(page, settings = {}) {
     await page.mouse.move(0, 0);
 }
 
-/** The settings ⚙️ button: an own tooltip with a prefix-key shortcut hint. */
-const ownButton = (page) => page.locator('#mb-settings-btn[data-mb-tip]');
+/**
+ * The h2's 👁️ column-visibility button: an own tooltip with a prefix-key
+ * shortcut hint, always laid out after a render. (It was ⚙️ until 2026-10-22,
+ * when Settings became a row of the SAED menu, closed most of the time.)
+ */
+const ownButton = (page) => page.locator('#mb-visible-btn[data-mb-tip]');
 
 const card = (page) => page.locator('#mb-stat-tooltip');
 
@@ -83,7 +87,7 @@ test.describe('rich tooltips: Liner notes', () => {
         await expect(card(page)).toHaveClass(/mb-tt-liner/);
         expect(await card(page).evaluate((t) => getComputedStyle(t).backgroundColor)).toBe(LINER_BG);
         expect(await card(page).evaluate((t) => getComputedStyle(t).fontFamily)).toContain('Georgia');
-        await expect(card(page).locator('.mb-tt-title, .mb-tt-body').first()).toContainText('settings manager');
+        await expect(card(page).locator('.mb-tt-title, .mb-tt-body').first()).toContainText('table columns');
         await expect(card(page).locator('kbd').first()).toHaveText('Ctrl');
         // While the card shows, the browser has no title to draw its own box
         // from, and the text is still offered to assistive technology.
@@ -174,7 +178,7 @@ test.describe('rich tooltips: Liner notes', () => {
         await btn.hover();
         await expect(card(page)).toBeVisible();
         await page.evaluate(() => window.__saTest.setTip(
-            document.getElementById('mb-settings-btn'), 'Re-tipped while hovered'));
+            document.getElementById('mb-visible-btn'), 'Re-tipped while hovered'));
         await expect(btn, 'no native box while the card shows').toHaveAttribute('title', '');
         await expect(card(page)).toContainText('Re-tipped while hovered');
         await expect(btn).toHaveAttribute('aria-description', 'Re-tipped while hovered');

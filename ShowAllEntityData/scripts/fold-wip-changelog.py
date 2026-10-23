@@ -41,6 +41,10 @@ names, in order:
   4. Bump `// @version` in the userscript header to the highest assigned
      number, formatted `M.MM.NNN+YYYY-MM-DD`.
   5. Delete `ShowAllEntityData_CHANGELOG.wip.json`.
+  6. Rebuild the GitHub changelog pages (`scripts/build-changelog-pages.py`:
+     `ShowAllEntityData_RELEASES.md`, `ShowAllEntityData_CHANGELOG.md` and the
+     month pages). They are generated from the JSON this fold just changed,
+     so a fold without them leaves the published pages one release behind.
 
 Dry-run by default: prints the mapping, the cross-reference rewrites and the
 version bump, and touches nothing. Pass --apply to write.
@@ -57,6 +61,7 @@ nothing; `git add -A` and commit yourself (the skill's step 5).
 
 import argparse
 import datetime
+import importlib.util
 import json
 import pathlib
 import re
@@ -171,6 +176,25 @@ def rewrite_refs(value, mapping, log):
     return value
 
 
+def rebuild_changelog_pages(root):
+    """Runs scripts/build-changelog-pages.py's writer on `root`.
+
+    Loaded by path because the file name has dashes. A project without
+    FORUM.org (a scratch copy given with --project-dir) is reported, not
+    failed: the fold itself is complete without the pages.
+
+    @returns a one-line summary for the closing message.
+    """
+    builder = pathlib.Path(__file__).resolve().parent / 'build-changelog-pages.py'
+    if not (root / 'FORUM.org').exists():
+        return 'skipped (no FORUM.org in this project directory)'
+    spec = importlib.util.spec_from_file_location('build_changelog_pages', builder)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    report = module.write(str(root))
+    return f'{len(report)} file(s) changed' if report else 'already up to date'
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__,
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -280,8 +304,11 @@ def main():
     userscript_path.write_text(''.join(lines), encoding='utf-8')
     # Step 5 — the WIP file has served its purpose.
     wip_path.unlink()
+    # Step 6 — the GitHub changelog pages are generated from the JSON.
+    pages = rebuild_changelog_pages(root)
 
     print(f'\nWrote {CHANGELOG}, bumped {USERSCRIPT}, removed {WIP}.')
+    print(f'Changelog pages rebuilt: {pages}')
     print('Now: node --check, npm test, then git add -A && git commit.')
     return 0
 

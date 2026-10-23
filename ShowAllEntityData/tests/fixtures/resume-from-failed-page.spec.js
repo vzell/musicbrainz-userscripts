@@ -8,7 +8,9 @@
 // When `fetchHtml()` has spent its three attempts on page K, the loop `break`s
 // and the status line says "⚠️ Loaded K-1 of M pages — INCOMPLETE" (F1). Until
 // now the only way forward was to press the button again and re-fetch all M
-// pages. A "↻ Load remaining pages" button now re-enters
+// pages. "↻ Load the N missing pages", in the list of the 🔄 indicator the
+// failed run leaves on the SAED button (a "↻ Load remaining pages" button at
+// the end of the status line until 2026-10-23), now re-enters
 // `startFetchingProcess()` with a `resumeFrom` record, which changes exactly
 // four things: the page count is reused rather than re-probed (and its two
 // threshold dialogs stay shut), the heading pre-processing is skipped, the row
@@ -52,6 +54,7 @@ const { loadUserscriptPage } = require('../support/loadPage');
 const { collectPageErrors } = require('../support/liveAssertions');
 const { dismissCustomConfirmDialog } = require('../support/customDialog');
 const { columnFilterInput, columnFilterClear } = require('../support/filterSortAssertions');
+const { resumeMissingPages, MISSING_PAGES_SEGMENT } = require('../support/stopButton');
 
 const EVENTS = {
     url: 'https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/events',
@@ -62,7 +65,8 @@ const EVENTS = {
 };
 
 const STATUS = '#mb-global-status-display';
-const RESUME_BTN = '#mb-resume-fetch-btn';
+/** The offer: the 🔄 indicator on the SAED button (its list holds the resume). */
+const OFFER = MISSING_PAGES_SEGMENT;
 
 /** @returns {Promise<string>} The status line, once it stops changing. */
 async function settledStatus(page, timeout = 90000) {
@@ -151,7 +155,7 @@ test.describe('resume an interrupted fetch at the page that failed',
         expect(status, 'the run reports 1 of 3 pages').toMatch(/1 of 3 pages/);
         expect(status, 'and says so in the word the fix introduced').toMatch(/INCOMPLETE/);
 
-        await expect(page.locator(RESUME_BTN), 'the offer is on screen').toBeVisible();
+        await expect(page.locator(OFFER), 'the offer is on screen').toBeVisible();
 
         // THE assertion: not that a button exists, but that it knows where to
         // pick up. A button offering page 1 would re-fetch what is already here.
@@ -178,7 +182,7 @@ test.describe('resume an interrupted fetch at the page that failed',
         expect(await renderedRows(page)).toBe(EVENTS.rowsPerPage);
 
         const beforeResume = reqs.length;
-        await page.click(RESUME_BTN);
+        await resumeMissingPages(page);
         const status = await settledStatus(page);
 
         // 300, not 200. Page 1's rows came from the LIVE document and can never
@@ -189,7 +193,7 @@ test.describe('resume an interrupted fetch at the page that failed',
             .toMatch(/Loaded 3 pages \(300 rows\)/);
         expect(status).not.toMatch(/INCOMPLETE/);
         expect(await resumeState(page), 'a completed resume leaves no offer behind').toBeNull();
-        await expect(page.locator(RESUME_BTN)).toHaveCount(0);
+        await expect(page.locator(OFFER)).toHaveCount(0);
 
         // …and it really did resume rather than re-run: the second phase asked
         // only for the pages that were missing.
@@ -208,7 +212,7 @@ test.describe('resume an interrupted fetch at the page that failed',
                 return p2 <= 3 ? { status: 503 } : null;
             });
             await settledStatus(page);
-            await page.click(RESUME_BTN);
+            await resumeMissingPages(page);
             await settledStatus(page);
 
             const idx = await page.evaluate(() => Array.from(
@@ -235,7 +239,7 @@ test.describe('resume an interrupted fetch at the page that failed',
         await settledStatus(page);
         expect((await resumeState(page)).nextPage).toBe(2);
 
-        await page.click(RESUME_BTN);
+        await resumeMissingPages(page);
         const status = await settledStatus(page);
 
         expect(status, 'two of three pages now').toMatch(/2 of 3 pages/);
@@ -250,7 +254,7 @@ test.describe('resume an interrupted fetch at the page that failed',
             totalRowsAccumulated: EVENTS.rowsPerPage * 2,
             maxPageKnown: true,
         });
-        await expect(page.locator(RESUME_BTN)).toBeVisible();
+        await expect(page.locator(OFFER)).toBeVisible();
     });
 
     test('the page count is not re-probed, so its dialog does not fire a second time',
@@ -267,9 +271,9 @@ test.describe('resume an interrupted fetch at the page that failed',
             expect(await dismissCustomConfirmDialog(page, { timeout: 5000 }),
                 'the first run really is gated by the dialog').toBe(true);
             await settledStatus(page);
-            await expect(page.locator(RESUME_BTN)).toBeVisible();
+            await expect(page.locator(OFFER)).toBeVisible();
 
-            await page.click(RESUME_BTN);
+            await resumeMissingPages(page);
             // Checked BEFORE settling: the dialog blocks the run, so if one
             // appeared this would catch it while it is still open.
             expect(await dismissCustomConfirmDialog(page, { timeout: 5000 }),
@@ -295,7 +299,7 @@ test.describe('resume an interrupted fetch at the page that failed',
                 return p2 <= 3 ? { status: 503 } : null;
             });
             await settledStatus(page);
-            await page.click(RESUME_BTN);
+            await resumeMissingPages(page);
             await settledStatus(page);
             const all = EVENTS.rowsPerPage * EVENTS.pages;
             expect(await renderedRows(page)).toBe(all);
@@ -347,7 +351,7 @@ test.describe('resume an interrupted fetch at the page that failed',
                 return p2 <= 3 ? { status: 503 } : null;
             });
             await settledStatus(page);
-            await expect(page.locator(RESUME_BTN)).toBeVisible();
+            await expect(page.locator(OFFER)).toBeVisible();
 
             // A SECOND fetch is answered by `window.location.reload()`, and that
             // behaviour is deliberately untouched — the resume is exempted from
@@ -365,6 +369,6 @@ test.describe('resume an interrupted fetch at the page that failed',
             // asserted through `__saTest`: the fixture harness injects the
             // userscript into the page it loaded, so after a reload there is no
             // script running to ask.
-            await expect(page.locator(RESUME_BTN)).toHaveCount(0);
+            await expect(page.locator(OFFER)).toHaveCount(0);
         });
 });

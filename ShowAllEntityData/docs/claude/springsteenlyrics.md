@@ -602,9 +602,9 @@ list, and nothing needs to), and `slNavOnly: true`, which does three things:
   `slCardsToTable`): Category, the search box and Recent. With no category in
   the query, the Category button reads "Choose a list"; the bootleg lists have
   no "all" list, and no entry is current.
-- **`body.mb-sa-sl-nav-only` hides `#mb-button-divider-initial`, 📦 Data and 🛠
-  View**: with no table they act on nothing, and the divider would open a
-  toolbar with no fetch button. ⚙️ and ❓ stay.
+- **`body.mb-sa-sl-nav-only` hides the SAED menu's Data and View groups**:
+  with no table they act on nothing. Help (⚙️ Settings, ❓ Help) and Changelog
+  stay. (Until 2026-10-22: `#mb-button-divider-initial`, 📦 Data and 🛠 View.)
 
 Nothing is recorded there: `_slRecordListCount()` needs `cmd=list`, and the
 Statistics counts are not read (decided 2026-10-05: they drift from the lists'

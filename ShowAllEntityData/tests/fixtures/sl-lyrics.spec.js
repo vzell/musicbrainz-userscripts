@@ -15,6 +15,7 @@ const { test, expect } = require('../support/test');
 const { loadSlListPage, renderedSlRows, renderedSlHeaders } = require('../support/slFixture');
 const { waitForRenderComplete } = require('../support/browser');
 const { waitForSortSettled, columnFilterInput } = require('../support/filterSortAssertions');
+const { resumeMissingPages, MISSING_PAGES_SEGMENT } = require('../support/stopButton');
 
 const HEADERS = ['Title', 'Lyrics', 'Version', 'Type', 'Artist', 'Date', 'Show', 'No.', 'Letter',
     'DD', 'MM', 'YYYY', 'Day', 'Month'];
@@ -102,12 +103,12 @@ test.describe('sl-lyrics (springsteenlyrics.com lyrics index)', () => {
         await page.route((url) => url.pathname === '/lyrics.php' && url.searchParams.get('letter') === 'b',
             (route) => route.fulfill({ status: 404, body: 'gone for now' }), { times: 1 });
         await page.click(`button[data-label="${spec.button}"]`);
-        await expect(page.locator('#mb-resume-fetch-btn')).toBeVisible({ timeout: 30000 });
+        await expect(page.locator(MISSING_PAGES_SEGMENT)).toBeVisible({ timeout: 30000 });
         expect(await page.evaluate(() => window.__saTest.resumeState())).toMatchObject({ nextPage: 2, maxPage: 2 });
         await expect(page.locator('table.tbl tbody tr')).toHaveCount(PAREN_ROWS);
 
         const before = requests.length;
-        await page.click('#mb-resume-fetch-btn');
+        await resumeMissingPages(page);
         await waitForRenderComplete(page, { waitForAutoResize: false });
         const rows = await renderedSlRows(page);
         expect(rows).toHaveLength(PAREN_ROWS + B_ROWS);
@@ -119,7 +120,7 @@ test.describe('sl-lyrics (springsteenlyrics.com lyrics index)', () => {
     });
 
     test('a resume keeps every column\'s name, also once the 📊 counts are filled in', async ({ page }) => {
-        // "↻ Load remaining pages" re-runs makeTableSortableUnified() over the
+        // The resume (🔄 → "↻ Load the missing page") re-runs makeTableSortableUnified() over the
         // live table's headers. Once their 📊 count badges hold digits, a name
         // read from the header text came out "Title 4", "Letter 1": the
         // resumed table's columns were renamed, and the test above failed
@@ -129,12 +130,12 @@ test.describe('sl-lyrics (springsteenlyrics.com lyrics index)', () => {
         await page.route((url) => url.pathname === '/lyrics.php' && url.searchParams.get('letter') === 'b',
             (route) => route.fulfill({ status: 404, body: 'gone for now' }), { times: 1 });
         await page.click(`button[data-label="${spec.button}"]`);
-        await expect(page.locator('#mb-resume-fetch-btn')).toBeVisible({ timeout: 30000 });
+        await expect(page.locator(MISSING_PAGES_SEGMENT)).toBeVisible({ timeout: 30000 });
         // The premise: the partial table's badges hold digits before the resume.
         for (const col of ['Title', 'Letter']) {
             await expect(page.locator(`table.tbl thead th[data-col-name="${col}"] .mb-col-uniq-count`)).toHaveText(/\d/);
         }
-        await page.click('#mb-resume-fetch-btn');
+        await resumeMissingPages(page);
         await waitForRenderComplete(page, { waitForAutoResize: false });
         expect(await renderedSlHeaders(page)).toEqual(HEADERS);
         const rows = await renderedSlRows(page);

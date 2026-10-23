@@ -214,152 +214,164 @@ Specs: `tests/fixtures/column-descriptions.spec.js`. Planted defects:
 new `title`/`data-mb-tip` on native headers (`tests/snapshots/registry.org`,
 "Expected drift").
 
-## The h1 toolbar is two pull-down menus plus two pinned buttons
+## The SAED button: the h1 toolbar is ONE segmented button
 
-`org/action-button-redesign.org`. The bar used to be one flat run of up to 13
-controls, nine of them labelled. It is now:
+Since 2026-10-22 (approved mockup v6:
+https://claude.ai/artifact/QUqoriyP6qX3D3EutjhyzX; v1–v5 and the superseded
+changelog chooser https://claude.ai/artifact/Qk6RSyT5EieQxRiVnYKzUV are its
+history). It replaced 📦 Data ▾, 🛠 View ▾, 📀 Discography ▾ as a button of
+its own, the ⚙️❓ pill, the ⚠️ WARNING / ❌ ERROR menu buttons and every `|`
+divider (`org/action-button-redesign.org` was the step before).
 
-| Order | Element                                | Present                                                                               |
-|-------|----------------------------------------|---------------------------------------------------------------------------------------|
-| 1     | `🧮N …` fetch buttons                  | always                                                                                |
-| 2     | `#mb-stop-btn`                         | always (hidden outside a fetch)                                                       |
-| 3     | `#mb-button-divider-initial`           | always — the only surviving `\|`                                                      |
-| 4     | `#mb-disc-menu-btn` `📀 Discography ▾` | `artist-releasegroups`, post-render                                                   |
-| 5     | `#mb-data-menu-btn` `📦 Data ▾`        | from the initial render                                                               |
-| 6     | `#mb-view-menu-btn` `🛠 View ▾`         | from the initial render (🎹 seeds it)                                                 |
-| 7     | `#mb-settings-btn` `⚙️`                 | always, pinned — left half of the ⚙️❓ pill                                            |
-| 8     | `#mb-app-help-btn` `❓`                | always, pinned — right half of the ⚙️❓ pill                                           |
-| 8a    | `#mb-button-divider-findings`          | always in the DOM; shown only while a findings menu is attached                       |
-| 8b    | `#mb-findings-warn-menu-btn` `⚠️ WARNING (N) ▾` | post-render, only when the page has a warning (docs/claude/findings.md)        |
-| 8c    | `#mb-findings-error-menu-btn` `❌ ERROR (N) ▾`  | post-render, only when the page has an error                                   |
-| 9     | `#mb-fetch-progress-wrap`              | always (hidden outside a fetch) — trails everything, `org/action-button-redesign.org` |
+`#mb-saed-bar` sits first in `#mb-show-all-controls-container` and has four
+AREAS (`span.mb-saed-area[data-mb-area]`), each reacting on its own:
 
-`_TOOLBAR_TAIL_ORDER` declares 3-9 and `_orderToolbar()` asserts it; anything
-not named there keeps whatever position it was appended at. The progress bar
-sits LAST rather than beside `#mb-stop-btn` deliberately — it used to sit
-between the fetch buttons and Stop, which read as if Stop belonged to the
-menus/pill that followed it rather than to the fetch buttons that preceded it.
+| Area      | Holds                                                                 | Present                                  |
+|-----------|-----------------------------------------------------------------------|------------------------------------------|
+| `actions` | the `🧮N …` fetch buttons as `.mb-seg-action`; group labels as `.mb-seg-label` | always (on a narrow screen: hidden) |
+| `disc`    | `#mb-disc-menu-btn` "📀 Discography: <view> ▾"                         | `artist-releasegroups`, post-render      |
+| `attn`    | one segment per attention indicator with rows (🔄 2 ▾, ❌ 1 ▾, ⚠️ 43 ▾) | post-render, only while it has something |
+| `menu`    | `#mb-saed-menu-btn` "☰ SAED ▾" (name: `sa_toolbar_menu_name`)          | always                                   |
 
-**7 and 8 are drawn as ONE segmented pill** — a fourth run alongside the three
-in "The h2/h3 control runs are segmented pills" below, and built the same way,
-so read that section's rules first. Three things are specific to this one:
+Hairlines split the segments of an area, a heavier rule the areas, and the
+first visible area has none (`.mb-saed-first`, `_saedMarkFirst()`). Nothing
+follows the bar in the container (`_TOOLBAR_TAIL_ORDER` is the bar alone
+since 2026-10-23: a fetch's Stop and progress are in its segment, below).
+Size and shape come from `sa_ui_action_btn_style`,
+colours from `sa_ui_toolbar_menu_btn_style` ("SAED button colors"), both as
+custom properties on the bar. The colour settings of ⚙️, ❓, Save, Load,
+the divider and Stop were retired with it (`_SETTINGS_ORPHANED_KEYS`, and
+`_GM_ORPHANED_VALUE_KEYS` for profiles past the migration).
 
-- **Selected by the class `.mb-toolbar-pinned-btn`, not an id prefix**, because
-  these two ids share none. The caps use the run-relative pair
-  (`:not(.c + .c)` / `:not(:has(+ .c))`) — `:first-of-type`/`:last-of-type` are
-  wrong here for exactly the reason they are wrong for the sort group: they
-  count elements of the same TAG, and these `<button>`s are neither the first
-  nor the last button among their siblings.
-- **A class, never a wrapper element.** They must stay DIRECT children of
-  `#mb-show-all-controls-container`: `_TOOLBAR_TAIL_ORDER` re-appends them
-  there, and `toolbar-menus.spec.js` reads the container's own children to
-  assert that only the findings divider and menus (rows 8a-8c) follow them —
-  `#mb-fetch-progress-wrap` (present but `display:none` outside a fetch) is the
-  true last child, per row 9 above. The findings menus are NOT part of the
-  pill: they carry no `.mb-toolbar-pinned-btn`, and the divider keeps them
-  visibly apart from ❓.
-- **It cancels the flex gap, and the margin sits on the LEFT half.** The bar is
-  `display:inline-flex` with a gap between every pair of children, and a flex
-  gap cannot be suppressed for one pair — so one segment pulls back by exactly
-  one `--mb-toolbar-gap`, a custom property both sides read so the pill cannot
-  split open if that number is retuned. **Which side carries it is the
-  load-bearing part.** The bar is also `flex-wrap: wrap`, and at some widths the
-  two halves land on different lines — measured at 1040-1080px and 550-590px,
-  ordinary window territory. With the pull on the RIGHT half, ❓ then started
-  8px past the bar's own left edge: content outside its container. On the LEFT
-  half the same pull merely shortens a line that has nothing after it, so a
-  split degrades to a square left edge. The split itself is not preventable
-  without a wrapper, and a wrapper costs the direct-children contract above.
+**A fetch runs inside the segment that started it** (option (b) of the
+approved mockup; `_saedRunStart()` … `_saedRunEnd()`, state in `_saedRun`):
 
-**Their backgrounds are settings, not pill CSS.** `sa_ui_settings_btn_style`
-and `sa_ui_help_btn_style` kept their own keys and had their DEFAULTS changed
-to match `sa_ui_toolbar_menu_btn_style`, with `_SETTINGS_MIGRATIONS` entries
-naming the old slate values — so the pill reads as one control by default while
-a user who chose their own colours keeps them. Forcing one ground in the
-stylesheet would silently override that choice.
-`ensureSettingsButtonIsLast()` is a back-compat alias, still called from ~7
-sites, and no longer does anything else. Two of the three old divider spans
-(`.mb-button-divider-after-load`, `.mb-button-divider-before-shortcuts`) are
-gone — they separated groups that no longer exist.
+- From the main pass's start (where the old Stop button appeared) the pressed
+  segment is `.mb-seg-running`: a blue fill to its `--p` custom property
+  (`_saedRunProgress(n, N)`, a background IMAGE, so the segment's inline
+  red/orange/green `background-color` — still set per page, still shown
+  after the run as before — stays under it), "■ Stop · n / N"
+  (`.mb-seg-stop-glyph`), `aria-label` "Stop loading", and a card saying
+  so. The other action segments are `disabled`; the running one is not.
+- **A click on the running segment is Stop** (`_saedRequestStop()`: the
+  action's `onclick` checks `_saedRun.btn === eb` before
+  `startFetchingProcess()`; prefix-mode O calls it too). It sets
+  `stopRequested`, says "Stopping…" and `aria-disabled`; the loop finishes
+  the page under way, and the status line then says "Stopped by you after
+  page n of N … — the rest was not loaded". There is no `#mb-stop-btn` and
+  no `sa_ui_stop_btn_style` any more.
+- `_saedRunRendering(rows)` before the render tail: `.mb-seg-rendering`,
+  striped (moving only under `prefers-reduced-motion: no-preference`),
+  disabled, "Rendering N rows…". `_saedRunEnd()` at every exit of the run
+  (render tail, save-without-render, cancel, abort, catch, a cancelled
+  page-count dialog) gives back the label, `title` and `data-mbtt` it had,
+  enables every action, and focuses the segment only when focus fell to
+  `<body>` (the render tail's global-filter focus comes later and wins).
+- **The words go under the heading**: `#mb-fetch-progress-wrap`, first in
+  `#mb-status-displays-container`, written by `_saedRunStatus()` —
+  "Loading page n of N · R rows so far · about t s left". The pre-fetch pass
+  of `artist-releasegroups` and the overflow-medium loader write it too, but
+  do NOT make the segment run: Stop is honoured from the main pass on
+  (`stopRequested` is reset there), so a Stop offered earlier would be a lie.
+- **A failed page ends as the 🔄 indicator** (`fetch-missing`, level alert,
+  first in `_SAED_INDICATORS`). `_createResumeFetchButton()` (the old name,
+  kept for its call sites) syncs it to `_resumeState`: "🔄 N ▾" with N the
+  pages missing (no number when the page count was never learned), a note
+  (`.mb-saed-ind-note`) with the page and `_httpFailureDetail()`, and the row
+  `#mb-resume-fetch-btn` "↻ Load the N missing pages", which runs
+  `_resumeFetchFromFailedPage()`. It is cleared at the START of every run
+  (also a resume's, so it cannot be pressed twice), and by a load from disk.
+  Specs: `fetch-in-segment.spec.js`; helpers in `tests/support/stopButton.js`
+  (`stopAfterPages()`, `resumeMissingPages()`).
 
-**The menus ADOPT the existing buttons; they do not replace them.** (One
-exception, by necessity: the ⚠️ WARNING / ❌ ERROR findings menus have no
-existing buttons to adopt — each row is a finding with a live count — so
-`_buildFindingMenuRows()` builds `menuitemcheckbox` rows and still passes each
-through `adopt()` for the keyboard, close and focus behaviour. Their look lives
-in `.mb-findings-menu-item` CSS; see docs/claude/findings.md.) A menu row
-IS the button that used to sit in the bar — same id, same `title`, same
-`onclick`, same colour setting, same `ctrlMFunctionMap` entry — moved into a
-panel by `adopt()` and restyled as a full-width row. That is the rule to carry
-forward: build a new toolbar control the way every other one is built, then
-adopt it. Row order inside a panel comes from `_TOOLBAR_MENU_ROW_ORDER`, not
-from the sequence the render tail happens to adopt in — 🎹 is adopted on the
-INITIAL render and would otherwise head the 🛠 View list.
+**The ☰ SAED menu** (`_saedMenu()`, key `saed`) holds GROUPS, in this order
+(`_SAED_GROUPS`): Load (narrow screens only), Needs attention, Data, View,
+Help, Changelog; the installed version is its foot. A group is NOT a menu: it
+is a menu-shaped descriptor from `_saedGroup(key)` registered in
+`_toolbarMenus` with `isGroup`, whose `adopt()` puts a row in the group,
+whose `open()`/`close()` are the SAED menu's, and whose `btn` is the ☰ SAED
+segment. That is what keeps `_ensureDataMenu()` / `_ensureViewMenu()` and
+every adoption site unchanged, and `_toolbarInvoke()` / `_toolbarAnchorFor()`
+working. `_saedRefreshGroups()` (on every open and every `_orderToolbar()`):
 
-Seven things are load-bearing, and every one of them fails silently:
+- a group with no visible row is hidden; "Load" only on a narrow screen;
+- **the View rule**: Keyboard Shortcuts sits in View while View has anything
+  else, and last in Help otherwise (before a render there is nothing to view);
+- `only` (the Tampermonkey "📜 ChangeLog" entry, `_saedOpenChangelog()`)
+  hides every other group and the foot.
 
-- **A panel must FIT the window: it is `position: fixed`, and the page can
-  never scroll it into view.** `open()` puts it below its button when it fits
-  there, else above when there is more room above, and caps it to the room it
-  opens into (`max-height`, scrolling inside). Until 9.99.1262 it always opened
-  below: with the toolbar near the window's bottom the rows were off-screen,
-  and a click on one retried until the test timed out. That was
-  `event-overview.spec.js`'s intermittent "Save to Disk" failure, whose
-  unstyled fixture puts the toolbar at the bottom of the 720 px window, and the
-  reason `clickToolbarItem()` grew a `force` option. Same rule as
-  springsteenlyrics.com's scope bar (`_slPlaceScopePop()`). Specs:
-  `toolbar-menus.spec.js` "toolbar menus fit in the window".
+**The attention indicators are one registry, `_SAED_INDICATORS`** (glyph,
+level, label; declared next to `_toolbarMenus` for the TDZ reason). Each
+entry is a menu made with `createToolbarMenu({ segment: true })` whose button
+`_orderToolbar()` puts in the `attn` area while it has rows, ordered by the
+registry (alert first), and which `_saedRefreshAttention()` also lists as a
+row of "Needs attention" that opens the same list beside the menu. Today: 🔄
+missing pages (above) and the two findings menus (docs/claude/findings.md).
+**Adding one** = an entry in
+`_SAED_INDICATORS`, a menu filled by your own code, and
+`descriptor.indicatorCount` set wherever its count changes; then
+`_orderToolbar()` and `_saedRefreshAttention()`. The ⚠️ segment is the one
+indicator shown at zero: it is where "Check title style" is started.
 
-- **A row in a CLOSED panel has a ZERO bounding rect.** Density's and Export's
-  own pull-downs, and `showLoadFilterDialog()`, all position themselves from a
-  rect. So **every programmatic activation goes through `_toolbarInvoke()`**,
-  which opens the host menu first and degrades to a plain click for a control
-  that was never adopted; and **anything wanting an ANCHOR asks
-  `_toolbarAnchorFor()`** for the menu BUTTON, never the row. A bare
-  `.click()` opens the sub-menu pinned to the top-left corner of the viewport.
-  The seven `isShortcutEvent()` arms, the `ctrlMFunctionMap` entries, the four
-  export-dialog `triggerButton:` sites and `showSaveDialog()`'s anchor all go
-  through one or the other.
-- **The row-activation close listener is CAPTURE phase.** `densityBtn.onclick`
-  and `exportBtn.onclick` both open with `e.stopPropagation()` — they must, or
-  their own document-level outside-click handler would close the pull-down they
-  just opened — so a bubble listener never fires for exactly the two rows that
-  need it. Found by `toolbar-menus.spec.js` on its first run.
-- **An open panel is `display:flex; flex-direction:column`, not `block`.** Flex
-  items are blockified by the CSS display spec, so each row's own inline
-  `display:inline-flex` computes to `flex` and lays out full-width while
-  `display:none` still hides it. The three sites revealing Save to Disk had to
-  move from `'inline-block'` to `'flex'`: `inline-block` blockifies to plain
-  `block`, where the `::after` hint's `margin-left:auto` computes to zero.
+**Submenus** (`createToolbarMenu()`'s `open({ parent, besideRow, focusFirst })`):
+a row carrying `_mbSubOpen(focusFirst)` opens its submenu after a 150 ms rest
+of the pointer, on → or on a click; beside the parent's panel, on its LEFT
+first (the SAED menu is right-aligned under its segment), level with the row;
+in place under the row (`.mb-toolbar-menu-inline`) on a narrow or hover-less
+screen (`_toolbarSubmenuInline()`). A submenu keeps its parent open
+(`_closeToolbarMenus()` spares `parentMenu()`), takes the keyboard while open
+(the parent's keydown returns while `openChild()`), gives it back on ← or
+Escape, and a choice in it closes both. Export ▸ (`#mb-export-sub`) and the
+"Needs attention" rows are the two users.
+
+**The hover card** of ☰ SAED (`_saedCardHtml()`, `data-mbtt`): the full name
+in bold, version, library, script manager and its version, browser (from
+`GM_info.platform` when the manager reports it), author, "AI help from Claude
+(Anthropic)". No request. The card engine shows no card for a control whose
+menu is open (`aria-expanded="true"`), and `open()` takes down one already up.
+
+The rules that carry over from the two menus it replaced, every one silent
+when broken:
+
+- **A panel must FIT the window: it is `position: fixed`.** Below its segment
+  when it fits, else above when there is more room above, capped and
+  scrolling inside. "The window" is what SHOWS, `_toolbarViewBox()` (the
+  visual viewport), never `window.innerWidth/innerHeight`: on a phone whose
+  page is wider than the screen the layout viewport is far larger (636 × 1296
+  against 412 × 839 shown on releasegroup-releases), and a panel placed by it
+  opened under the bottom edge (`saed-narrow.mobile.spec.js`, 2026-10-23).
+- **Every phone gets the narrow layout.** MusicBrainz sets
+  `width=device-width`, so a phone lays the page out ≈412 px wide and the
+  action segments are rows of ☰ → Load. A spec presses an action through
+  `pressAction()` (`tests/support/toolbarMenu.js`), which takes the Load row
+  when the segment is hidden; a fixture without the viewport tag (the 5 KB
+  `uniq-drop-viewport-clip.html`) is laid out 980 px wide and keeps its
+  segments. Without a laid-out segment (hidden, scrolled away, or
+  `opts.topRight`) it opens at the window's top right — the Tampermonkey route
+  on a page scrolled down.
+- **A row in a CLOSED panel has a ZERO bounding rect.** Every programmatic
+  activation goes through `_toolbarInvoke()`; anything wanting an ANCHOR asks
+  `_toolbarAnchorFor()` (for a group's row: the ☰ SAED segment).
+- **The row-activation close listener is CAPTURE phase**, deferred one task.
+  A row that opens a submenu, a `menuitemcheckbox` row (findings: tick
+  several in a row) and a disabled row do not close.
+- **An open panel and a SAED group are column flex containers**, so a row's
+  own display computes to flex while an inline `display:none` still hides it.
+  The rows' look is the menu stylesheet's ("Liner notes", `!important`): no row
+  carries a colour of its own any more, and 📀's active view is
+  `aria-checked` on a `menuitemradio` row, not a tint.
 - **The keyboard hint is CSS `::after` from `data-mb-menu-hint`, never text.**
-  It keeps the hint out of the row's `textContent`, so a read of the row is its
-  label alone — same rule, same reason, as the column-header family's glyphs,
-  and `toolbar-menus.spec.js` asserts exactly that.
-  **This entry used to give a different and false reason**: that
-  `updateBarcodeHighlightBtnState()` rewrites its button's `innerHTML`
-  wholesale, so an attribute survives where a `<kbd>` child would not. That
-  function writes `style.background`/`borderColor`/`color` and `title` only;
-  the button's content is set once at creation. Corrected in 9.99.1148 rather
-  than quietly dropped, because a plausible-but-wrong reason is what licenses
-  the next person to conclude "no rewrite here, so a `<kbd>` is fine".
-  **And the barcode row is the one that had no hint at all** until 9.99.1148 —
-  `adopt()` was called without the argument. Every row now passes one.
-- **Layout lives in the `.mb-toolbar-menu-item` class with `!important`.**
-  `_applyDiscButtonTints()` rewrites a row's whole `cssText` on every view
-  switch; without `!important` that flattens the row back to a bar button.
-- **An empty menu must not render**, and what delivers that is LAZY CREATION —
-  each `_ensure*Menu()` call sits inside its own `sa_enable_*` gate, so the menu
-  is never constructed. `_orderToolbar()`'s emptiness reconcile is a second line
-  for a future call site that ensures a menu and then adopts nothing; no fixture
-  can tell the two apart, and `scripts/mutations/toolbar-menus.json` records
-  that as an honest `"expect": "pass"`.
+- **An empty menu or group must not render** — lazy creation inside each
+  feature gate, plus `_orderToolbar()`'s reconcile (honest `"expect": "pass"`
+  in the mutation list: no fixture empties a created indicator).
 
-**`tests/support/toolbarMenu.js` is where the layout knowledge lives on the test
-side** — `clickToolbarItem()` reads `data-mb-menu-owner` off the DOM rather than
-carrying a table of its own, so a control that moves between menus needs no
-change there. Nine call sites migrated to it. A spec that hard-codes "click
-`#mb-data-menu-btn`, then click the row" pins the current grouping as if it were
-the behaviour under test; don't.
+**`tests/support/toolbarMenu.js` holds the layout knowledge on the test side**:
+`clickToolbarItem()` reads `data-mb-menu-owner` and opens the owning menu, a
+group through ☰ SAED, Export's formats through their row. A spec that
+hard-codes "open ☰ SAED, then click the row" pins the grouping; don't. Specs:
+`tests/fixtures/saed-toolbar.spec.js` (mutation list
+`scripts/mutations/saed-toolbar.json`), `app-help-github.spec.js`,
+`findings-menus.spec.js` for the indicators.
 
 ## ↔️ Resize and 👁️ Visible live in the h2, before `#mb-filter-container`
 
@@ -413,80 +425,45 @@ Covered by `tests/fixtures/h2-table-controls-anchor.spec.js` (mutation list
 without it the pill assertion measures an empty run and passes for the wrong
 reason.
 
-## ❓ opens GitHub; Shift-❓ renders the same file in the page
+## ❓ Help and the changelog open GitHub
 
-`org/action-button-redesign.org` item 2. Help is
-**`ShowAllEntityData_HELP.md`**, hand-written, and the `.txt` is retired. Three
-things read it and they must stay in agreement:
+Since 2026-10-22, nothing about help or the changelog is fetched, cached or
+rendered in the page.
 
-|                          |                                                 |
-|--------------------------|-------------------------------------------------|
-| `HELP_GITHUB_URL`        | the `/blob/` page — where a plain ❓ click goes |
-| `REMOTE_HELP_URL`        | the same file raw — what the dialog fetches     |
-| the committed `_HELP.md` | what a publish copies to the mirror             |
+| What                         | Opens                                                   | From                                       |
+|------------------------------|---------------------------------------------------------|--------------------------------------------|
+| ❓ Help ↗ (`#mb-app-help-btn`) | `HELP_GITHUB_URL` (`ShowAllEntityData_HELP.md`)          | the SAED menu's Help group, prefix-mode H |
+| 📜 What's new ↗               | `CHANGELOG_RELEASES_URL` (`ShowAllEntityData_RELEASES.md`) | the Changelog group                       |
+| 🗒 Full development log ↗     | `CHANGELOG_LOG_URL` (`ShowAllEntityData_CHANGELOG.md`)     | the Changelog group                       |
 
-`openAppHelp(e)` is the button's handler and branches on `e.shiftKey` alone;
-`showAppHelp()` is the dialog and is no longer wired to the button directly.
-**Prefix-mode `H` stays on `showAppHelp()`**, because prefix mode refuses Shift
-(`!e.shiftKey` in its own guard) — so the keyboard has one route and it is the
-one a mouse-free user cannot otherwise reach. The dialog's title bar carries
-`#mb-app-help-github-link` so the other destination is not lost.
+The two changelog pages are GENERATED by `scripts/build-changelog-pages.py`
+(What's new from FORUM.org's release sections, the log from the JSON, one
+page per month) and published with the script (CLAUDE.md, "Publishing").
 
-**`window.open()`, never `GM_openInTab()`.** The latter needs a new `@grant`,
-and a new grant re-prompts every existing Tampermonkey user on their next
-update — a real cost to everyone for a tab `window.open()` already opens from a
-click handler's user gesture.
+- **The Tampermonkey "📜 ChangeLog" entry is this script's**, registered next
+  to "💾 Browser cache", past the no-pageType gate, so on supported pages only.
+  It opens the SAED menu on its Changelog group alone. VZ_MBLibrary is built
+  WITHOUT `remoteConfig`: with one, the library fetches the whole changelog
+  (1.75 MB) hourly, keeps it in GM storage — which Tampermonkey hands to every
+  page — and parses it on every page for its own dialog
+  (org/userscript-size.org 2.3).
+- **The Shift-click in-page help dialog is gone.** Its renderer and quick
+  filter are VZ_MBLibrary 4.5.0's `Lib.showMarkdownHelp()` now, for other
+  scripts; its rules (nodes never innerHTML, `*italic*` only, `<details>`
+  open, `#anchor` scrolls the dialog, text kept in memory and never in GM
+  storage) are recorded and pinned there (`tests/fixtures/lib-markdown-help.spec.js`,
+  `scripts/mutations/lib-markdown-help.json`).
+- **`window.open()`, never `GM_openInTab()`.** Every route is a click or a key
+  press, i.e. a user gesture, and a new `@grant` would re-prompt every
+  existing Tampermonkey user on update. `noopener,noreferrer` keeps the GitHub
+  tab from getting a `window.opener` handle back.
+- **The old caches are swept**: `-remote-help-text`, `-remote-help-md`,
+  `-remote-changelog`, the library's changelog dialog size and
+  `sa_app_help_geometry` are in `_GM_ORPHANED_VALUE_KEYS`
+  (`_sweepOrphanedGmValues()`).
 
-Six things about the renderer (`_mdRenderInto()` / `_mdInline()` /
-`_mdHeadingId()`), each of which fails quietly:
-
-- **It is styled by `GM_addStyle` classes, not per-node inline styles** — like
-  every other panel since the 9.99.736-9.99.745 CSP run, and far less code than
-  setting a dozen properties on each node of a long document.
-  **The CSP half of that rule is narrower than this file used to say.** What
-  `/account/*`'s `style-src 'self'` blocks is `<style>` elements and `style="…"`
-  written into an **`innerHTML` template**; CSSOM writes (`el.style.foo = …`)
-  are not blocked, which is why the entire h1 toolbar sets its styles that way
-  and renders correctly there. A node-building renderer was never in the
-  blocked case. Corrected in 9.99.1149, along with the mutation that had
-  recorded itself an honest `"expect": "pass"` on the strength of it — the
-  stylesheet's absence IS observable, as a computed value, and is now asserted.
-- **`_italic_` is deliberately unsupported; only `*italic*`.** Half the nouns
-  here are snake_case settings keys, and an underscore rule renders
-  `sa_enable_caa_pics` as "sa" + *enable_caa* + "pics". CommonMark refuses
-  intra-word underscore emphasis for the same reason, so leaving it out makes
-  this agree with GitHub on the case that occurs.
-- **Nodes, never `innerHTML`.** The bytes arrive over the network at runtime;
-  "it is our own file" is a fact about the repository, not about what a fetch
-  returns. A link href is admitted only when `http(s)` or `#`.
-- **`<details>` renders OPEN.** Collapsed content is still in the DOM, so the
-  dialog's quick filter would highlight matches the reader cannot see. GitHub is
-  where the sections collapse; this dialog exists to be searched.
-- **An `#anchor` link scrolls the DIALOG.** It is a fixed overlay with its own
-  scroll area, so following the fragment scrolls MusicBrainz's page underneath
-  while the table of contents appears to do nothing. Heading ids carry an
-  `mb-md-` prefix so they cannot collide with the page's own, and both the
-  heading and the link resolve through `_mdHeadingId()` — which is why a table
-  of contents written for GitHub's bare slug works here too.
-- **The coupling runs file → renderer, not the other way.** The renderer covers
-  exactly what `_HELP.md` uses; the file is written to stay inside it. The last
-  test in the spec renders the REAL committed file and is what keeps that true.
-- **A list item's continuation line must be INDENTED, and that is a guard.** An
-  indented non-bullet line appends to the item above it; without the rule every
-  wrapped bullet ends its list, and without the INDENT part a list swallows the
-  heading under it. The first half shipped broken for an afternoon and no
-  assertion saw it — see `scripts/probe-help-md-render.js`, and the
-  DEBUG-NOTES entry on why fifteen green tests could not.
-
-**`CACHE_KEY_HELP` was renamed to `…-remote-help-md`** because
-`Lib.fetchCachedText()` keys on the cache key alone and stores no URL beside the
-bytes — an upgrading user's cached plain text would otherwise be fed to the
-Markdown renderer for up to a TTL. Any future format change owes the same
-rename. No fixture starts with a stale cache, so this is a second
-`"expect": "pass"`.
-
-Covered by `tests/fixtures/app-help-github-and-markdown.spec.js`; mutation list
-`scripts/mutations/app-help-github-and-markdown.json`.
+Covered by `tests/fixtures/app-help-github.spec.js` and
+`tests/fixtures/saed-toolbar.spec.js`.
 
 ## The h2/h3 control runs are segmented pills too — three of them, not one
 
@@ -495,10 +472,10 @@ that sit beside a table's heading. `org/503-handling.org`, "Retry UI: one
 segmented control per table". The h2's ↔️/👁️ pair (above) is deliberately NOT
 part of any of these runs — it anchors past the end of them all.
 
-**A FOURTH run now uses this idiom outside the h2/h3**: the h1 toolbar's
-`⚙️`/`❓` pinned pair, selected by class rather than id prefix. The rules below
-apply to it unchanged; what differs is written up under "The h1 toolbar is two
-pull-down menus plus two pinned buttons" rather than repeated here.
+**The h1 toolbar's ⚙️/❓ pinned pair used to be a FOURTH run of this idiom.**
+Since 2026-10-22 the whole h1 toolbar is one segmented button built
+differently (areas with their own rules, no `!important` pill CSS): see "The
+SAED button: the h1 toolbar is ONE segmented button".
 
 **Three runs, selected by ID PREFIX, and no DOM change at all.** The ids were
 already prefix-consistent, so the CSS needs no class and no wrapper:
@@ -1189,9 +1166,9 @@ on screen, so this is deliberate.
 (`#mb-stats-idb-overview-btn`), the Tampermonkey menu ("💾 Browser cache"),
 and an automatic "💾 Cache overview" action on every progress card whose
 snapshot has `cache` rows (`_ajRender()` adds it; `__idb` is the framework's
-own action id, handled before the provider's `act()`). A 📦 Data menu row was
-not added: that panel lives in `<body>` on every page, so it would drift every
-snapshot baseline. The stylesheet is injected on first open (`#mb-idbo-style`)
+own action id, handled before the provider's `act()`). A row of the SAED menu
+(then 📦 Data) was not added: that panel lives in `<body>` on every page, so it
+would drift every snapshot baseline. The stylesheet is injected on first open (`#mb-idbo-style`)
 for the same reason. z-index 2147483200: over the settings dialog and the
 Statistics panel, under the artwork viewer and every tooltip.
 

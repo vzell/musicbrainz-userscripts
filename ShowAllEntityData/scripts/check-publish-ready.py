@@ -68,6 +68,7 @@ usage:
   python3 scripts/check-publish-ready.py --mirror /path/to/mb-userscripts
 """
 import argparse
+import importlib.util
 import json
 import os
 import re
@@ -280,6 +281,30 @@ def check_script(name, dev_path, mirror, dev_lib_v, mir_lib_v,
                          f'parity ({dev_v}) — {why}, so it would serve the wrong '
                          f'content to a current script')
 
+    # The GitHub changelog pages (scripts/build-changelog-pages.py). The
+    # Tampermonkey 📜 ChangeLog entry and the SAED menu's Changelog group open
+    # them on the mirror's GitHub, so at parity every one must be there and
+    # current: a missing month page is a dead link in the published index.
+    dev_dir = os.path.dirname(dev_path)
+    generated = generated_pages(dev_dir, base)
+    for rel in generated:
+        if behind:
+            break             # will be copied with the script
+        mir_side = os.path.join(mirror, rel)
+        if not os.path.isfile(mir_side):
+            fails.append(f'{rel}: missing from the mirror while {name} is at parity '
+                         f'({dev_v}) — the published changelog pages link to it')
+        elif read(os.path.join(dev_dir, rel)) != read(mir_side):
+            fails.append(f'{rel}: differs from the dev copy while {name} is at parity '
+                         f'({dev_v}) — the published changelog pages are out of date')
+    mir_log_dir = os.path.join(mirror, f'{base}_CHANGELOG')
+    if generated and os.path.isdir(mir_log_dir):
+        for page in sorted(os.listdir(mir_log_dir)):
+            rel = f'{base}_CHANGELOG/{page}'
+            if page.endswith('.md') and rel not in generated:
+                notes.append(f'{rel}: on the mirror but no longer generated — remove it '
+                             f'(a month page that was split or merged)')
+
     # A companion the dev repo no longer ships, still sitting on the mirror.
     # A NOTE, not a failure, and deliberately: `_HELP.txt` must outlive the
     # rename, because every user still on an older version fetches it until
@@ -307,6 +332,45 @@ def check_script(name, dev_path, mirror, dev_lib_v, mir_lib_v,
                 f'{base}_CHANGELOG.json: the published changelog\'s newest entry is '
                 f'{newest} but the published script is {mir_v} — the 📜 ChangeLog '
                 f'dialog and the running script disagree')
+
+
+def generated_pages(dev_dir, base):
+    """The dev side's generated changelog pages, as paths relative to `dev_dir`.
+
+    Empty for a project that does not generate them (no `<base>_RELEASES.md`).
+    """
+    if not os.path.isfile(os.path.join(dev_dir, f'{base}_RELEASES.md')):
+        return []
+    pages = [f'{base}_RELEASES.md', f'{base}_CHANGELOG.md']
+    log_dir = os.path.join(dev_dir, f'{base}_CHANGELOG')
+    if os.path.isdir(log_dir):
+        pages += [f'{base}_CHANGELOG/{n}' for n in sorted(os.listdir(log_dir)) if n.endswith('.md')]
+    return pages
+
+
+def check_dev_changelog_pages(fails, notes):
+    """The dev pages must match their sources, or a publish copies stale ones.
+
+    Runs `scripts/build-changelog-pages.py`'s own `stale()`, loaded by path
+    (the file name has dashes), so this check and `--check` cannot disagree.
+    """
+    builder = os.path.join(ROOT, 'scripts', 'build-changelog-pages.py')
+    if not os.path.isfile(builder):
+        return
+    spec = importlib.util.spec_from_file_location('build_changelog_pages', builder)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    try:
+        report = module.stale(ROOT)
+    except module.BuildError as err:
+        fails.append(f'changelog pages cannot be built: {err}')
+        return
+    if report:
+        fails.append(f'changelog pages are stale in the dev repo ({len(report)} file(s), e.g. '
+                     f'{report[0][0]} {report[0][1]}) — run python3 scripts/build-changelog-pages.py '
+                     f'before publishing')
+    else:
+        notes.append('changelog pages: current with ShowAllEntityData_CHANGELOG.json and FORUM.org')
 
 
 def check_dev_library_require(fails, notes):
@@ -354,6 +418,7 @@ def main():
     sweep_mirror_for_file_requires(mirror, fails)
     dev_lib_v, mir_lib_v = check_library(mirror, fails, pending, notes)
     check_dev_library_require(fails, notes)
+    check_dev_changelog_pages(fails, notes)
     for name, dev_path in dev_scripts():
         check_script(name, dev_path, mirror, dev_lib_v, mir_lib_v,
                      fails, pending, notes)

@@ -2,8 +2,8 @@
   "_meta": {
     "generated_by": "scripts/dump-default-history.py",
     "source": "ShowAllEntityData/ShowAllEntityData.user.js",
-    "head": "fadba4c2ccc7fb1ae73da161e9efc7d282450482",
-    "revisions_walked": 1013
+    "head": "479523eea194808e198ff85a0060b5dd04918da2",
+    "revisions_walked": 1015
   },
   "changes": [
     {
@@ -330,20 +330,6 @@
         7
       ]
     },
-    "sa_ui_settings_btn_style": {
-      "type": "popup_dialog",
-      "current": "#ECEFF1|#263238|1px solid #B0BEC5",
-      "was": [
-        "#607D8B|white|1px solid #546E7A"
-      ]
-    },
-    "sa_ui_help_btn_style": {
-      "type": "popup_dialog",
-      "current": "#ECEFF1|#263238|1px solid #B0BEC5",
-      "was": [
-        "#78909C|white|1px solid #607D8B"
-      ]
-    },
     "sa_count_stat_tooltip_bg": {
       "type": "color_picker",
       "current": "#fbf8f1",
@@ -450,11 +436,47 @@
       "last_default": 10000,
       "type": "number"
     },
+    "sa_ui_stop_btn_style": {
+      "last_version": "9.99.1426+2026-10-22",
+      "last_date": "2026-10-23",
+      "last_default": "#f44336|white|1px solid #d32f2f",
+      "type": "popup_dialog"
+    },
+    "sa_ui_settings_btn_style": {
+      "last_version": "9.99.1426+2026-10-22",
+      "last_date": "2026-10-22",
+      "last_default": "#ECEFF1|#263238|1px solid #B0BEC5",
+      "type": "popup_dialog"
+    },
+    "sa_ui_help_btn_style": {
+      "last_version": "9.99.1426+2026-10-22",
+      "last_date": "2026-10-22",
+      "last_default": "#ECEFF1|#263238|1px solid #B0BEC5",
+      "type": "popup_dialog"
+    },
+    "sa_ui_button_divider_style": {
+      "last_version": "9.99.1426+2026-10-22",
+      "last_date": "2026-10-22",
+      "last_default": "#999|0 4px",
+      "type": "popup_dialog"
+    },
     "sa_ui_h2_artist_rgs_global_bg": {
       "last_version": "9.99.913+2026-08-22",
       "last_date": "2026-08-22",
       "last_default": "#1b5e20",
       "type": "color_picker"
+    },
+    "sa_ui_save_btn_style": {
+      "last_version": "9.99.1426+2026-10-22",
+      "last_date": "2026-10-22",
+      "last_default": "#4CAF50|white|1px solid #45a049|#45a049",
+      "type": "popup_dialog"
+    },
+    "sa_ui_load_btn_style": {
+      "last_version": "9.99.1426+2026-10-22",
+      "last_date": "2026-10-22",
+      "last_default": "#2196F3|white|1px solid #0b7dda|#0b7dda",
+      "type": "popup_dialog"
     },
     "sa_ui_download_notification_font_size": {
       "last_version": "9.99.913+2026-08-22",
@@ -591,11 +613,8 @@
     "sa_enable_sticky_page_headers": true,
     "sa_sticky_page_headers_on_touch": false,
     "sa_ui_action_btn_style": "0.8em|2px 8px|24px|6px",
-    "sa_ui_stop_btn_style": "#f44336|white|1px solid #d32f2f",
-    "sa_ui_settings_btn_style": "#ECEFF1|#263238|1px solid #B0BEC5",
     "sa_ui_toolbar_menu_btn_style": "#ECEFF1|#263238|1px solid #B0BEC5|#CFD8DC",
-    "sa_ui_help_btn_style": "#ECEFF1|#263238|1px solid #B0BEC5",
-    "sa_ui_button_divider_style": "#999|0 4px",
+    "sa_toolbar_menu_name": "SAED",
     "sa_global_filter_border_idle": "#000000",
     "sa_global_filter_border_active": "orange",
     "sa_subtable_filter_border_idle": "#cccccc",
@@ -677,8 +696,6 @@
     "sa_ld_dialog_min_width": 640,
     "sa_ld_dialog_header_font_size": "1.00em",
     "sa_ld_status_font_size": "0.95em",
-    "sa_ui_save_btn_style": "#4CAF50|white|1px solid #45a049|#45a049",
-    "sa_ui_load_btn_style": "#2196F3|white|1px solid #0b7dda|#0b7dda",
     "sa_dialog_save_export_autoclose_ms": 1800,
     "sa_ld_auto_resize_after_load": false,
     "sa_enable_show_single_table_btn": true,
@@ -851,16 +868,13 @@
     "sa_edits_color_zebra_even": "#f2f2f2",
     "sa_enable_springsteenlyrics": false,
     "sa_sl_detail_preview": false,
-    "sa_sl_tip_images": true,
     "sa_sl_compact_nav": false,
     "sa_foreign_mb_titles": true,
     "sa_foreign_typography": true,
     "sa_enable_jungleland": false,
     "sa_jl_detail_preview": false,
-    "sa_jl_tip_images": true,
     "sa_enable_brucespringsteen": false,
     "sa_bs_detail_preview": false,
-    "sa_bs_tip_images": true,
     "sa_enable_brucebase": false,
     "sa_bb_year_pages": false,
     "sa_bb_collabsable_sidebar": false,
