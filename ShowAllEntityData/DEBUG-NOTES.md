@@ -25467,3 +25467,37 @@ fixture: the harness injects regardless.
 kinds, and `/subscribers` only for artist/label/series/collection. This follows
 MusicBrainz's collection and subscription types. vzell-lap cannot reach
 MusicBrainz over IPv4, so it is left to a browser check.
+
+## 2026-10-23 — foreign image card phase 1: test:full; the coverartarchive.org thumbnail flake explained (branch feature/foreign-art-viewer)
+
+Env: 2026-10-23T01:55:17+02:00 · NB-3641 · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) · Playwright 1.62.1 Chromium (fixture specs) · no Tampermonkey (GM stubs); the user's own browser check of the feature: done by vzell, versions not recorded
+
+`npm run test:full` (`scripts/run-test-full.py`, 01:55:17 → 02:08:14 CEST,
+12 m 57 s, 14 workers; feature/foreign-art-viewer at 5bb315c plus the
+uncommitted phase-1 tree, committed as 0cb95fd): 2185 passed, 1 failed —
+`fixture-load-no-archive-org-wait.spec.js` "a fixture load never waits on a
+coverartarchive.org thumbnail in its markup", "both thumbnails were
+requested and blocked": expected 2, received 3. Second sighting; the first is
+the 2026-10-21 entry ("load-dependent flakes … worth watching").
+
+**Root cause: Chromium, not the userscript or the helper.** A probe logging
+every coverartarchive.org request reproduced it 1 in ~120 loads under 14
+workers: ONE navigation, one document, and each of the fixture's two
+thumbnails asked twice, the second pair ~20 ms after the first failed, still
+inside `page.goto()` — before the helper injects the userscript at all
+(`addRequiredLibs()` runs after `goto`). A control with no helper and no
+userscript (the fixture fulfilled, everything else aborted, a plain
+`goto`) did the same: 3 or 4 failures for 2 images in 2 of 300 loads.
+Consistent with a failed speculative fetch (the preload scanner) that the
+parser's own `<img>` then asks for again; the probes did not prove which
+fetch was which, and nothing depends on it.
+
+**Fix (spec only):** the test counted requests where its guarantee is per
+image. It now records each failure's URL and asserts the SET of blocked URLs
+is exactly the two thumbnails, and that every failure — a repeat too — is
+`BLOCKED_BY_CLIENT`. Load budget, "the helper's route answered first" and
+"the mock is reached after the load" are unchanged. After the fix: that test
+200/200 with `--repeat-each=200 --workers=14`;
+`scripts/mutations/fixture-archive-org.json` still 4/4 caught. The temporary
+probe specs were deleted. The other 2026-10-21 flake,
+`discogs-rate-limit.spec.js`, did not show in this run and is untouched.
