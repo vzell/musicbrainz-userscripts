@@ -27,6 +27,7 @@ const { typeGlobalFilter, waitForSortSettled, columnFilterInput } = require('../
 const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=', 'base64');
 const GIG4 = 'https://brucebase.wikidot.com/gig:1985-01-04-roads-coliseum-hampton-va';
 const GIG7 = 'https://brucebase.wikidot.com/gig:1985-01-07-market-square-arena-indianapolis-in';
+const GIG13 = 'https://brucebase.wikidot.com/gig:1985-01-13-carolina-coliseum-columbia-sc';
 const SONG = 'https://brucebase.wikidot.com/song:4th-of-july-asbury-park-sandy';
 const SONG_NONE = 'https://brucebase.wikidot.com/song:500-miles';
 
@@ -156,6 +157,14 @@ test.describe('the Brucebase readers (one record per saved page)', () => {
         expect(g4.images[2].medium).toBe('');
         const g7 = await read('detail-bb-gig-1985-01-07.html', GIG7);
         expect(g7.images.map(i => i.label)).toEqual(['Memorabilia', 'Ticket', 'News', 'News', 'News']);
+        // The Setlist tab's gallery (files:setlist-1985): two setlist images,
+        // of kind Setlist, not Other; the tab's inline small.jpg is not a
+        // gallery item and is not read twice.
+        const g13 = await read('detail-bb-gig-1985-01-13.html', GIG13);
+        const setlists = g13.images.filter(i => i.label === 'Setlist');
+        expect(setlists.map(i => i.full.replace(/^.*\//, ''))).toEqual(
+            ['19850113_Setlist_01a_Handwritten.jpg', '19850113_Setlist_01b_Handwritten.jpg']);
+        expect(g13.images.filter(i => i.label === 'Other')).toEqual([]);
         // A song page keeps its fields and gains its graph and lyric sheet.
         const song = await read('detail-bb-4th-of-july.html', SONG);
         expect(song.images.map(i => i.label)).toEqual(['Song graph', 'Lyric sheet']);
@@ -164,17 +173,17 @@ test.describe('the Brucebase readers (one record per saved page)', () => {
 });
 
 test.describe('bb-year: the Media icons open the entry page\'s images (mockup B1)', () => {
-    test('render asks nothing; only Photo, Ticket, News and Memorabilia icons of entries with a page are triggers', async ({ page }) => {
+    test('render asks nothing; only Photo, Ticket, Setlist, News and Memorabilia icons of entries with a page are triggers', async ({ page }) => {
         const { errors, served } = await openYear(page);
         expect(served, 'no entry page at render').toEqual([]);
         const kinds = await page.evaluate(() => Array.from(new Set(
             Array.from(document.querySelectorAll('table.tbl tbody a.mb-fi-media'), a => a.dataset.mbFiKind))).sort());
-        expect(kinds).toEqual(['Memorabilia', 'News', 'Photo', 'Ticket']);
+        expect(kinds).toEqual(['Memorabilia', 'News', 'Photo', 'Setlist', 'Ticket']);
         // Storyteller, Bootleg, Video … stay plain images.
         const plain = await page.evaluate(() => Array.from(document.querySelectorAll('table.tbl tbody ul.mb-bb-media > li'))
             .filter(li => !li.querySelector('a.mb-fi-media'))
             .map(li => li.querySelector('.mb-bb-media-label').textContent)
-            .filter(l => ['Photo', 'Ticket', 'News', 'Memorabilia'].includes(l)).length);
+            .filter(l => ['Photo', 'Ticket', 'Setlist', 'News', 'Memorabilia'].includes(l)).length);
         expect(plain, 'every such icon of an entry with a page is a trigger').toBe(0);
         await expect(icon(page, GIG4, 'Photo')).toBeVisible();
         await expect(icon(page, GIG7, 'Memorabilia')).toBeVisible();
@@ -195,6 +204,25 @@ test.describe('bb-year: the Media icons open the entry page\'s images (mockup B1
         await expect(tip(page).locator('.mb-tt-title').first()).toHaveText('1985-01-04 · Ticket');
         await expect(tip(page).locator('.mb-art-card-tile')).toHaveCount(1);
         expect(served).toEqual([GIG4]);
+        expect(errors).toEqual([]);
+    });
+
+    test('the Setlist icon is ringed: its card shows the two setlist images, a click opens the viewer on the first', async ({ page }) => {
+        const { errors, served } = await openYear(page);
+        // 1985-01-13 (debug/media-icons.html): the Setlist icon was a bare
+        // <img> beside the ringed Photo, Ticket, News and Memorabilia.
+        await expect(icon(page, GIG13, 'Setlist')).toBeVisible();
+        await hover(page, icon(page, GIG13, 'Setlist'));
+        await expect(tip(page).locator('.mb-tt-title').first()).toHaveText('1985-01-13 · Setlist');
+        await expect(tip(page).locator('.mb-art-card-tile')).toHaveCount(2);
+        await expect(tip(page).locator('.mb-tt-pill')).toHaveText(['Setlist ×2']);
+        await expect(tip(page).locator('.mb-art-card-tile img').first()).toHaveAttribute('src', /Setlist_01a_Handwritten\.jpg\/small\.jpg$/);
+        expect(served).toEqual([GIG13]);
+        await page.mouse.move(0, 0);
+        await icon(page, GIG13, 'Setlist').click();
+        await expect(viewer(page)).toBeVisible();
+        await expect(viewer(page).locator('.mb-artv-img')).toHaveAttribute('src', /19850113_Setlist_01a_Handwritten\.jpg/);
+        expect(served).toEqual([GIG13]);
         expect(errors).toEqual([]);
     });
 

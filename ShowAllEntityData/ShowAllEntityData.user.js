@@ -18181,11 +18181,13 @@
     /**
      * The Media icons whose kind the entry's page holds as images (photos,
      * tickets, passes, clippings: scripts/probe-foreign-images.py,
-     * 2026-10-23): `_bbYearBuildRow()` makes them open the foreign-image
+     * 2026-10-23; setlists, `files:setlist-YYYY` on every sampled page with
+     * a Setlist icon, 1978–2024: scripts/probe-bb-setlist-images.py,
+     * 2026-10-24): `_bbYearBuildRow()` makes them open the foreign-image
      * card and viewer (`_BB_FI`). The other icons stay plain.
      * @type {Set<string>}
      */
-    const _BB_FI_MEDIA_KINDS = new Set(['Photo', 'Ticket', 'News', 'Memorabilia']);
+    const _BB_FI_MEDIA_KINDS = new Set(['Photo', 'Ticket', 'Setlist', 'News', 'Memorabilia']);
 
     /**
      * Matches a set paragraph's label, the text before its first colon
@@ -18606,7 +18608,7 @@
      * (absolute) intact, so its song links get the detail preview. Media is
      * the entry's icon row, one `<li>` per icon: the site's own image and
      * its label as text (shown by the icon, read by filters and the 📊
-     * dropdown). An unlinked Photo, Ticket, News or Memorabilia icon of an
+     * dropdown). An unlinked Photo, Ticket, Setlist, News or Memorabilia icon of an
      * entry with a page of its own links that page as the foreign-image
      * card's and viewer's trigger (`a.mb-fi-media`, `_BB_FI`; the label's
      * text is unchanged). The "Help Us" icon and the request text after it
@@ -19716,9 +19718,11 @@
      *    song's graph and lyric sheets, and the photos, tickets, passes and
      *    clippings of a year page's entry (`_dpParseBbPage()`), for the
      *    foreign-image card and viewer (org/foreign-images.org, phase 3).
+     * 4: a Brucebase setlist image (`files:setlist-YYYY`) is of kind
+     *    Setlist, no longer Other (`_bbImageKind()`).
      * @type {number}
      */
-    const _DP_PARSER_VERSION = 3;
+    const _DP_PARSER_VERSION = 4;
 
     /**
      * IndexedDB database of parsed detail pages. Deliberately NOT a store in
@@ -20544,9 +20548,10 @@
     /**
      * A Brucebase image's kind, by the wiki folder it lives in: Photo
      * (`gallery:<page>`), Ticket (`files:ticket-YYYY`), Memorabilia
-     * (`files:pass-YYYY`), News (`news:<page>`), Song graph
-     * (`files:song-graph`), Lyric sheet (`files:song-lyricsheet`), else
-     * Other (scripts/probe-foreign-images.py, 2026-10-23).
+     * (`files:pass-YYYY`), Setlist (`files:setlist-YYYY`), News
+     * (`news:<page>`), Song graph (`files:song-graph`), Lyric sheet
+     * (`files:song-lyricsheet`), else Other (scripts/probe-foreign-images.py,
+     * 2026-10-23; Setlist: scripts/probe-bb-setlist-images.py, 2026-10-24).
      *
      * @param {string} folder - The path segment after
      *   `local--resized-images/` ("files:ticket-1985", "gallery:1985-01-04-…").
@@ -20558,6 +20563,7 @@
         if (f.startsWith('news:')) return 'News';
         if (f.startsWith('files:ticket-')) return 'Ticket';
         if (f.startsWith('files:pass-')) return 'Memorabilia';
+        if (f.startsWith('files:setlist-')) return 'Setlist';
         if (f === 'files:song-graph') return 'Song graph';
         if (f === 'files:song-lyricsheet') return 'Lyric sheet';
         return 'Other';
@@ -23686,7 +23692,7 @@
 
     /**
      * Brucebase's year table as a provider (mockup B1, 2026-10-23): the
-     * Media icons Photo, Ticket, Memorabilia (passes) and News of an entry
+     * Media icons Photo, Ticket, Setlist, Memorabilia (passes) and News of an entry
      * with a page of its own (`_bbYearBuildRow()` stamps them
      * `a.mb-fi-media`, `data-mb-fi-kind`). The page — a gig, or any other
      * entry — is read through `_dpGet()` (`_dpParseBbPage()`: its gallery
@@ -23699,7 +23705,7 @@
         key: 'bb', column: 'Media', name: 'Brucebase', host: 'brucebase.wikidot.com',
         gal: { heading: 'Images', where: 'Media icons', point: 'one of its ringed icons', rows: 'entries', page: 'entry\'s page',
             pages: 'entry pages', eligible: 'with a ringed Media icon',
-            left: '{n} {rows} have no ringed icon (no page of their own, or no Photo, Ticket, News or Memorabilia) and are not here.' },
+            left: '{n} {rows} have no ringed icon (no page of their own, or no Photo, Ticket, Setlist, News or Memorabilia) and are not here.' },
         tableSel: 'body.mb-sa-host-bb table.tbl', linkSel: 'a.mb-fi-media[data-mb-fi="bb"]', setting: 'sa_bb_tip_images',
         h1: 'h1.mb-bb-h1 bdi', pageName: 'the entry\'s page', pageLabel: 'Entry page',
         noRowThumb: true,

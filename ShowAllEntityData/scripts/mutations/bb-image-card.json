@@ -22,7 +22,7 @@
             }
         ],
         "spec": "tests/fixtures/bb-image-card.spec.js",
-        "grep": "only Photo, Ticket, News and Memorabilia icons",
+        "grep": "only Photo, Ticket, Setlist, News and Memorabilia icons",
         "expect": "fail"
     },
     {
@@ -141,6 +141,32 @@
         "spec": "tests/fixtures/bb-image-card.mobile.spec.js",
         "project": "chromium-mobile",
         "grep": "a tap on a Media icon",
+        "expect": "fail"
+    },
+    {
+        "name": "year table: the Setlist icon is not a trigger",
+        "why": "org/TODO.org e (2026-10-24): an entry page with a Setlist icon holds its setlist images (files:setlist-YYYY); without Setlist in _BB_FI_MEDIA_KINDS the icon stays a bare <img>.",
+        "edits": [
+            {
+                "find": "const _BB_FI_MEDIA_KINDS = new Set(['Photo', 'Ticket', 'Setlist', 'News', 'Memorabilia']);",
+                "replace": "const _BB_FI_MEDIA_KINDS = new Set(['Photo', 'Ticket', 'News', 'Memorabilia']);"
+            }
+        ],
+        "spec": "tests/fixtures/bb-image-card.spec.js",
+        "grep": "the Setlist icon is ringed",
+        "expect": "fail"
+    },
+    {
+        "name": "reader: a setlist image is of kind Other",
+        "why": "Without the files:setlist- rule the ringed Setlist icon's card says the page has no setlist images.",
+        "edits": [
+            {
+                "find": "        if (f.startsWith('files:setlist-')) return 'Setlist';\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/bb-image-card.spec.js",
+        "grep": "the Setlist icon is ringed|a gig page: its gallery images",
         "expect": "fail"
     }
 ]

@@ -549,8 +549,11 @@ card and the artwork viewer, through the shared foreign-image path
   (`files:artwork-disco/…`, the same on every page), the 32 px status icons,
   the Storyteller badge and the social links. The kind is the wiki folder
   (`_bbImageKind()`): `gallery:` Photo, `files:ticket-` Ticket,
-  `files:pass-` Memorabilia, `news:` News, `files:song-graph`,
-  `files:song-lyricsheet`. `_DP_PARSER_VERSION` 3.
+  `files:pass-` Memorabilia, `files:setlist-` Setlist, `news:` News,
+  `files:song-graph`, `files:song-lyricsheet`. `_DP_PARSER_VERSION` 4
+  (Setlist since 2026-10-24: `files:setlist-YYYY` on every sampled entry
+  page with a Setlist icon, 1978–2024, `scripts/probe-bb-setlist-images.py`;
+  before, such an image was Other and the Setlist icon was never ringed).
 - **Entry pages are read, never previewed.** `_dpGet()` takes any URL, so
   `isDetailUrl` stays `/song:` only: neither the detail preview nor the
   Springsteen reader on other hosts (`_extDpTest()`) takes a `/gig:` link.
@@ -561,7 +564,7 @@ card and the artwork viewer, through the shared foreign-image path
   original, then `medium.jpg`, then the thumbnail; the card's tiles are
   `small.jpg`.
 - **Media icons (B1).** `_bbYearBuildRow()` wraps an UNLINKED Photo, Ticket,
-  News or Memorabilia icon (`_BB_FI_MEDIA_KINDS`) of an entry with a heading
+  Setlist, News or Memorabilia icon (`_BB_FI_MEDIA_KINDS`) of an entry with a heading
   link in `a.mb-fi-media[data-mb-fi="bb"][data-mb-fi-kind]` to that page — any
   entry kind, not only `/gig:` (vzell, 2026-10-23). The year page's icons
   are bare `<img>`s (only the side bar's legend links them), and the label

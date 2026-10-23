@@ -25745,3 +25745,38 @@ recorded `pass` (the image's own delay); the four new ones each fail
 
 **Merge (`main`, f8dff66 + the fold to 9.99.1437)**: `test:full`
 22:55:13–23:07:08 CEST on petri, 2,265 passed, 0 failed, wall 715 s.
+
+## 2026-10-24 — the Brucebase Setlist Media icon was never ringed (branch feature/bb-events-and-gallery, WIP.1)
+
+Env: 2026-10-24T01:59:25+02:00 · petri · WSL2 Ubuntu 24.04.3 (Linux 6.18.54.1) · Playwright 1.62.1 Chromium, no Tampermonkey (GM stubs); the probe: n/a (Python, brucebase.wikidot.com)
+
+Reported by vzell on https://brucebase.wikidot.com/1985, entry 1985-01-13
+(`debug/media-icons.html`: the cell's markup; `debug/bb-event-detail-1985-01-13.html`:
+the entry page): Photo, Ticket, News and Memorabilia ringed, Setlist a bare
+`<img>`, although the page's Setlist tab shows two handwritten setlists.
+
+**Two causes, both needed for the symptom to go away:**
+- `_BB_FI_MEDIA_KINDS` held Photo, Ticket, News and Memorabilia only, so
+  `_bbYearBuildRow()` never wrapped a Setlist icon in `a.mb-fi-media`.
+- `_bbImageKind()` had no rule for the folder `files:setlist-YYYY`: such an
+  image was "Other", so even a ringed icon's card would have said "No
+  setlist images on the entry's page".
+
+The two images are the Setlist tab's gallery box (`19850113_Setlist_01a` and
+`01b`); the tab's inline `small.jpg` of 01a is not a gallery item, so the
+reader takes it once, as it should.
+
+**Probe** `scripts/probe-bb-setlist-images.py` (new; 1.1 s apart, pages
+cached in `debug/foreign-images/`): the first entry with a Setlist icon and
+a `/gig:` page in 1978, 1985, 1993, 1999, 2003, 2009, 2012, 2016 and 2024 —
+every one holds `files:setlist-YYYY` (13 images in all; 1975 has no such
+entry). Seen on the way: `files:centermic-2016` (3 images), still "Other".
+
+Fix: Setlist in both, `_DP_PARSER_VERSION` 3 → 4 (a stored record's kinds
+change). New fixture `detail-bb-gig-1985-01-13.html`
+(`scripts/build-detail-fixtures.py`; the other fixtures rebuilt identical).
+`bb-image-card.spec.js`: the reader's Setlist kind and the icon's card (two
+tiles, "Setlist ×2") and viewer (01a first). Mutations
+`scripts/mutations/bb-image-card.json`: 13, all as expected, the two new ones
+fail. Related specs (bb-year, foreign-gallery, sl-scope-bar,
+bb-image-card.mobile, detail-preview): 105 passed.

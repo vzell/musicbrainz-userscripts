@@ -3146,10 +3146,10 @@ entry, with these columns:
   Ticket, Setlist, Storyteller, News, Memorabilia, Eyewitness, Video, Audio,
   Bootleg, LiveDL, Retail, Featured. Rest the pointer on an icon for its name.
   Type a name in the column filter (e.g. "Bootleg"), or pick one from the 📊
-  list, to see the entries that have it. **Photo, Ticket, News and
+  list, to see the entries that have it. **Photo, Ticket, Setlist, News and
   Memorabilia are ringed** when the entry has a page of its own: pointing at
-  one shows a card with those images from that page (photos, tickets, passes,
-  newspaper clippings); a click opens the artwork viewer on them, with every
+  one shows a card with those images from that page (photos, tickets,
+  handwritten setlists, passes, newspaper clippings); a click opens the artwork viewer on them, with every
   other kind one ← → away and Shift+← → for the previous or next row
   (Ctrl/⌘-click: the page). The page is read on that first hover or click
   only, one request for that row, kept 30 days. ⚙️ Settings → *📚 Brucebase*
@@ -3417,8 +3417,8 @@ nothing**: the rows read before come from this browser.
   now, failed and still to go, with the counts under it and the last few
   pages in *Recent*. A page that could not be read says why and offers
   *Try again* (or *Retry N failed* at the end).
-- **Type chips** (Front, Back, Booklet; Cover, Scan; Photo, Ticket, News,
-  Memorabilia; primary, secondary …) narrow the images; pick several to see
+- **Type chips** (Front, Back, Booklet; Cover, Scan; Photo, Ticket, Setlist,
+  News, Memorabilia; primary, secondary …) narrow the images; pick several to see
   any of them. **Compare two** puts two read rows side by side, one line per
   type.
 - **A click on an image** opens the artwork viewer; ← → step through that

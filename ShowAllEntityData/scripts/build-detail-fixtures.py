@@ -22,7 +22,9 @@ pages a row of each foreign table links to:
                            reader; captured by probe-bb-date-anchor.py),
                            gig:1985-01-04-… and gig:1985-01-07-… (in
                            bb-year-1985; org/foreign-images.org phase 3,
-                           debug/foreign-images/ by probe-foreign-images.py)
+                           debug/foreign-images/ by probe-foreign-images.py),
+                           gig:1985-01-13-… (two setlist images; captured
+                           by probe-bb-setlist-images.py, 2026-10-24)
 
 Removed, so a spec stays network-free and the page cannot change under it:
 every `<script>`, `<noscript>`, `<iframe>` and `<link>`, and `background=`
@@ -76,6 +78,11 @@ TARGETS = [
      'detail-bb-gig-1985-01-04.html', b'gallery:1985-01-04-roads-coliseum-hampton-va', None),
     ('foreign-images/brucebase.wikidot.com_gig_1985-01-07-market-square-arena-indianapolis-in.html',
      'detail-bb-gig-1985-01-07.html', b'files:pass-1985', None),
+    # org/TODO.org "Some enhancements" e (2026-10-24): its Setlist icon, two
+    # setlist images (files:setlist-1985), captured by
+    # scripts/probe-bb-setlist-images.py.
+    ('foreign-images/brucebase.wikidot.com_gig_1985-01-13-carolina-coliseum-columbia-sc.html',
+     'detail-bb-gig-1985-01-13.html', b'files:setlist-1985', None),
 ]
 
 STRIP_RES = [

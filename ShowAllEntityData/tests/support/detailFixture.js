@@ -76,6 +76,7 @@ const DETAIL_HOSTS = {
                 '/song:4th-of-july-asbury-park-sandy': 'detail-bb-4th-of-july.html',
                 '/gig:1985-01-04-roads-coliseum-hampton-va': 'detail-bb-gig-1985-01-04.html',
                 '/gig:1985-01-07-market-square-arena-indianapolis-in': 'detail-bb-gig-1985-01-07.html',
+                '/gig:1985-01-13-carolina-coliseum-columbia-sc': 'detail-bb-gig-1985-01-13.html',
             };
             return files[u.pathname] ? path.join(FIXTURE_DIR, files[u.pathname]) : null;
         },

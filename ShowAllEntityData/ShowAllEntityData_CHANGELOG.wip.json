@@ -1,0 +1,14 @@
+[
+    {
+        "version": "WIP.1",
+        "date": "2026-10-24",
+        "sections": [
+            {
+                "label": "🐛 Fix",
+                "items": [
+                    "Brucebase year table: the Setlist icon in the Media column is now ringed like Photo, Ticket, News and Memorabilia when the entry has a page of its own. Pointing at it shows the handwritten setlists from that page (two on 1985-01-13, Columbia, SC), and a click opens them in the viewer. Before, the icon stayed plain, and the page's setlist images were counted as \"Other\"."
+                ]
+            }
+        ]
+    }
+]

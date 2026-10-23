@@ -462,7 +462,8 @@ markup.
   `_dpParseBbPage()` (title and images only), which only the foreign-image
   card of the year table's Media icons asks for: `isDetailUrl` stays
   `/song:`, so such a page is never previewed (docs/claude/brucebase.md,
-  "Images: the Media icons and the song glyph").
+  "Images: the Media icons and the song glyph"). `_DP_PARSER_VERSION` 4
+  (2026-10-24): a `files:setlist-YYYY` image is of kind Setlist.
 
 **`_dpBlockText()` collapses the source's whitespace before it turns `<br>`
 into a line break.** The sites write `line<br />\nline`; keeping that
