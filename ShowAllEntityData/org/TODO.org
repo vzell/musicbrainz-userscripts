@@ -4041,7 +4041,8 @@ b.)
 on collection pages, images should get internal viewer support + their tooltip should show a rich popup and highlight
 the corresponding row -> image hover popup + internal viewer click
 
-* TODO userscript size and managibility
+
+* TODO userscript size and managebility
 ** DONE initial
 
 1.)
@@ -4089,7 +4090,8 @@ register the third-party user script by @zabe
 
 check what it's doing
 
-* republish reports
+
+* DONE republish reports
 
 Both reports are published, and each page links to the other.
 
@@ -4113,4 +4115,150 @@ I saved this to memory, so from now on I'll always give you the URL and ID and r
 
 Making the publishing reusable: the converter is three files in my scratchpad: build_report.py, shell.html and pandoc-template.html. It turns any org file into a page with a contents list and scrolling tables. If you want it for other reports, I can move it into the repo, for example as scripts/publish-org-report/ with a scripts/publish-org-report.py entry point. It would go on its own branch, and that adds files, so tell me if you want it and where it should live.
 
+
+* TODO tackle
+** i
+
+According to
+
+#+begin_example
+@org/build-framework.org
+@org/userscript-size.org
+@REFACTORING.org
+#+end_example
+
+bullet point 1
+
+#+begin_example
+|  1 | Lazy changelog: VZ_MBLibrary parses (and fetches) the changelog only when the 📜 dialog opens, keeps the cache out of GM storage (IndexedDB, or none), and a migration deletes the stored key                                                                                                       | 10-10 #13, new evidence        | yes, library            | low                    | −9.2 ms (×1) / −34.2 ms (×4) per page and ≈6.5 MiB per tab (3.2 MiB parsed entries, measured, plus the 3.3 MiB cached text) | changelog dialog specs; the real+changelog arm equals real                 |
+#+end_example
+
+is the first to tackle
+
+1.)
+
+Actually I ONLY want the GitHub help page display and NOT the local (Shift click behaviour) anymore
+
+2.)
+
+the tackle bullet point 2.
+
+#+begin_example
+|  2 | Sweep orphaned GM values at startup: delete showallentitydata-remote-help-text, expire mb_sa_subtable_snapshot_* older than an hour                                                                                                                                                                 | new                            | yes, tiny               | very low               | up to megabytes fewer in every page's storage hand-off, for the profiles that have them                                     | a fixture spec that seeds both keys                                        |
+#+end_example
+
+3.)
+
+adjust the .org files accordingly with timestamps and on which host it was implemented as usual and make predictions what was gained
+
+** a
+
+actually now I get it: I was talking about the [Image #4] help button
+
+a.)
+
+it should ONLY show the help in a new tab directly from GitHub
+
+b.)
+
+the "Shift click" popup [Image #2] should be gone from our userscript (it should still be possible for my userscripts to display it)
+
+c.)
+
+
+the "ChangeLog" menu entry in the Tampermonkey userscript menue for our userscript [Image #3], should also ONLY
+redirect to the GitHub page (reformat accordingly in a nice representation when an end-user clicks it)
+
+** two github changelog versions
+
+1.)
+
+there should be two GitHub rendered changelog versions
+
+#+begin_example
+the current one - with lots of implementation details
+an end-user facing one (best practice)
+#+end_example
+
+2.)
+
+when clicking the "ChangeLog" menu entry in the Tampermonkey userscript menue, we should get a nice option to choose
+which one
+
+** a
+
+actually I like variant A - [Image #8]
+
+1.)
+
+could this be enhanced/generalized with the following (show me a mockup first):
+
+#+begin_example
+Data - [Image #10]
+ Save to Disk
+ Load from Disk
+ Export
+  - export options in a sub-menu - [Image #12] 
+-- divider line --
+View
+ Density
+ Statistics
+ Keyboard Shortcuts
+-- divider line --
+Help
+Keyboard shortcuts - [Image #9], so ONLY render the "View" menu when other entries beside "Keyboard shortcuts" would show up there
+ChangeLog
+ What's new
+ Full development log
+#+end_example
+
+and only present ONE menue button after the action buttons
+
+** Wow, I really like the current approach
+
+1.) go with "SAED" (make it configurable) as the menu entry (with a comprehensive rich tooltip which shows the full
+script name, version (OS, usermanager version like Tampermonkey, etc,) and author in the tooltip header line in bold (as
+for our other rich popups), inclusive your AI help... thx. btw
+
+2.)
+
+Wow, I really like the current approach, lets' extend it even further and display the main "Show .."
+action buttons right after the clickable pull down menu
+
+Mockup:
+#+begin_example
+[action button 1] [action button 2] .. [action button n] | ["Warnings" glyph (if warnings present)] ["Errors" glyph (if errors present)] ... | [hamburger glyph] [SAED main menu entry name, configurable] ▼
+#+end_example
+
+3.)
+
+specifically the part "..." in
+
+#+begin_example
+["Warnings" glyph (if warnings present)] ["Errors" glyph (if errors present)] ...
+#+end_example
+
+should be generalized for future use. Probably we will have more glyphs which need specifc attention from the end-user
+
+** actually
+
+Actually the whole
+
+#+begin_example
+[action button 1] [action button 2] .. [action button n] | ["Warnings" glyph (if warnings present)] ["Errors" glyph (if errors present)] ... | [hamburger glyph] [SAED main menu entry name, configurable] ▼
+#+end_example
+
+should be rendered as just ONE button (to be as non-invasive as possible) like in the last mockup where the
+"Warnings"/Errors" glyphs were collocated with the menu area, with the different areas reacting differently:
+
+#+begin_example
+[action button 1] ==> as before, standard action for button 1
+[action button 2] ==> as before, standard action for button 2
+..
+[action button n] ==> as before, standard action for button n
+["Warnings" glyph (if warnings present)] ==> opening the "Warnings" menu, maybe with a small glyph to show the user it's expandable (generalize as much as possible for future enhancements)
+["Errors" glyph (if errors present)] ==> opening the "Errors" menu, maybe with a small glyph to show the user it's expandable
+...
+[hamburger glyph] [SAED main menu entry name, configurable] ▼ ==> opening the main user script menu
+#+end_example
 
