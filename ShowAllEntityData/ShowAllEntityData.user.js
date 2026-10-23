@@ -64105,6 +64105,30 @@ ${sections.join('\n')}
     }
 
     /**
+     * The part of the page the user can SEE, in the coordinates a
+     * `position: fixed` panel and `getBoundingClientRect()` use (the layout
+     * viewport): the visual viewport where the browser has one.
+     *
+     * On a desktop the two are the same box. On a phone they are not when
+     * the page is wider than the screen: a MusicBrainz page laid out at
+     * device width (412 px on a Pixel 7) whose content needs 636 px gets a
+     * 636 × 1296 layout viewport while 412 × 839 of it shows. Measured
+     * against `window.innerHeight`, the ☰ SAED menu "fitted" below its
+     * segment and opened under the bottom edge of the screen
+     * (tests/support/probe-saed-phone-menu.js, 2026-10-23).
+     *
+     * @returns {{left: number, top: number, right: number, bottom: number, width: number, height: number}}
+     */
+    function _toolbarViewBox() {
+        const vv = window.visualViewport;
+        const left = vv ? vv.offsetLeft : 0;
+        const top = vv ? vv.offsetTop : 0;
+        const width = vv ? vv.width : window.innerWidth;
+        const height = vv ? vv.height : window.innerHeight;
+        return { left, top, right: left + width, bottom: top + height, width, height };
+    }
+
+    /**
      * Creates one toolbar pull-down: a button destined for the h1 controls bar,
      * plus a `position:fixed` panel appended to `<body>`.
      *
@@ -64265,47 +64289,51 @@ ${sections.join('\n')}
                 panel.style.left = '';
             } else if (parent && parentRow) {
                 if (panel.parentNode !== document.body) document.body.appendChild(panel);
+                const vb = _toolbarViewBox();
                 const pr = parent.panel.getBoundingClientRect();
                 const rr = parentRow.getBoundingClientRect();
                 const w = panel.offsetWidth;
                 const h = panel.offsetHeight;
                 let left = pr.left - w + 2;                       // the left side first: the SAED menu is right-aligned
-                if (left < 8) left = Math.min(pr.right - 2, window.innerWidth - w - 8);
-                const top = Math.max(8, Math.min(rr.top - 6, window.innerHeight - h - 8));
-                panel.style.left = `${Math.max(8, left)}px`;
+                if (left < vb.left + 8) left = Math.min(pr.right - 2, vb.right - w - 8);
+                const top = Math.max(vb.top + 8, Math.min(rr.top - 6, vb.bottom - h - 8));
+                panel.style.left = `${Math.max(vb.left + 8, left)}px`;
                 panel.style.top = `${top}px`;
-                if (h > window.innerHeight - 16) {
-                    panel.style.maxHeight = `${window.innerHeight - 16}px`;
+                if (h > vb.height - 16) {
+                    panel.style.maxHeight = `${vb.height - 16}px`;
                     panel.style.overflowY = 'auto';
                 }
             } else {
                 if (panel.parentNode !== document.body) document.body.appendChild(panel);
+                // Measured against what SHOWS, not the layout viewport (they
+                // differ on a phone whose page is wider than the screen).
+                const vb = _toolbarViewBox();
                 const rect = btn.getBoundingClientRect();
-                const laidOut = btn.isConnected && rect.width > 0 && rect.bottom > 0 && rect.top < window.innerHeight;
+                const laidOut = btn.isConnected && rect.width > 0 && rect.bottom > vb.top && rect.top < vb.bottom;
                 if (opts.topRight || !laidOut) {
-                    panel.style.top = '48px';
-                    panel.style.left = `${Math.max(8, window.innerWidth - panel.offsetWidth - 16)}px`;
+                    panel.style.top = `${vb.top + 48}px`;
+                    panel.style.left = `${Math.max(vb.left + 8, vb.right - panel.offsetWidth - 16)}px`;
                 } else {
                     const height = panel.offsetHeight;
-                    const below = window.innerHeight - rect.bottom - 5 - 8;
-                    const above = rect.top - 5 - 8;
+                    const below = vb.bottom - rect.bottom - 5 - 8;
+                    const above = rect.top - vb.top - 5 - 8;
                     const up = height > below && above > below;
                     const room = Math.max(80, Math.floor(up ? above : below));
                     if (height > room) {
                         panel.style.maxHeight = `${room}px`;
                         panel.style.overflowY = 'auto';
                     }
-                    panel.style.top  = up ? `${Math.max(8, rect.top - 5 - Math.min(height, room))}px` : `${rect.bottom + 5}px`;
+                    panel.style.top  = up ? `${Math.max(vb.top + 8, rect.top - 5 - Math.min(height, room))}px` : `${rect.bottom + 5}px`;
                     // Right-aligned under a segment of the bar (the SAED menu
                     // is the bar's last segment); left-aligned otherwise.
                     panel.style.left = segment
-                        ? `${Math.max(8, rect.right - panel.offsetWidth)}px`
+                        ? `${Math.max(vb.left + 8, rect.right - panel.offsetWidth)}px`
                         : `${rect.left}px`;
                 }
-                // Keep the panel inside the viewport when the button sits far right.
+                // Keep the panel inside the visible part when the button sits far right.
                 const pRect = panel.getBoundingClientRect();
-                if (pRect.right > window.innerWidth - 8) {
-                    panel.style.left = `${Math.max(8, window.innerWidth - pRect.width - 8)}px`;
+                if (pRect.right > vb.right - 8) {
+                    panel.style.left = `${Math.max(vb.left + 8, vb.right - pRect.width - 8)}px`;
                 }
             }
             focusIdx = -1;

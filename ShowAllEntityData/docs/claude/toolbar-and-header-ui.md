@@ -335,7 +335,18 @@ when broken:
 
 - **A panel must FIT the window: it is `position: fixed`.** Below its segment
   when it fits, else above when there is more room above, capped and
-  scrolling inside. Without a laid-out segment (hidden, scrolled away, or
+  scrolling inside. "The window" is what SHOWS, `_toolbarViewBox()` (the
+  visual viewport), never `window.innerWidth/innerHeight`: on a phone whose
+  page is wider than the screen the layout viewport is far larger (636 × 1296
+  against 412 × 839 shown on releasegroup-releases), and a panel placed by it
+  opened under the bottom edge (`saed-narrow.mobile.spec.js`, 2026-10-23).
+- **Every phone gets the narrow layout.** MusicBrainz sets
+  `width=device-width`, so a phone lays the page out ≈412 px wide and the
+  action segments are rows of ☰ → Load. A spec presses an action through
+  `pressAction()` (`tests/support/toolbarMenu.js`), which takes the Load row
+  when the segment is hidden; a fixture without the viewport tag (the 5 KB
+  `uniq-drop-viewport-clip.html`) is laid out 980 px wide and keeps its
+  segments. Without a laid-out segment (hidden, scrolled away, or
   `opts.topRight`) it opens at the window's top right — the Tampermonkey route
   on a page scrolled down.
 - **A row in a CLOSED panel has a ZERO bounding rect.** Every programmatic

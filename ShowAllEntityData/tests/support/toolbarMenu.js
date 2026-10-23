@@ -134,6 +134,41 @@ async function toolbarItemOwner(page, selector) {
     return item.getAttribute('data-mb-menu-owner');
 }
 
+/**
+ * Presses one of the page's actions (a `🧮 …` fetch button) the way a user
+ * can on this screen: its segment on the SAED button, or — on a narrow
+ * layout, where the segments leave the bar — its row in the ☰ menu's "Load"
+ * group (`_saedApplyNarrow()`, ≤ 520 px).
+ *
+ * The narrow case is every phone on a real MusicBrainz page: MusicBrainz
+ * sets `<meta name="viewport" content="width=device-width, …">`, so a Pixel 7
+ * lays the page out 412 px wide (chromium-mobile). A fixture without that
+ * tag is laid out 980 px wide and keeps its segments. A Load row clicks its
+ * segment, so the fetch, its event target and its running state are the
+ * segment's either way. `selector` names the SEGMENT
+ * (`button[data-label="…"]`).
+ *
+ * @param {import('@playwright/test').Page} page
+ * @param {string} selector - The action segment.
+ * @param {{tap?: boolean}} [opts] - `tap`: touch taps instead of clicks.
+ * @returns {Promise<void>}
+ */
+async function pressAction(page, selector, { tap = false } = {}) {
+    const seg = page.locator(selector).first();
+    await seg.waitFor({ state: 'attached' });
+    const press = (loc) => (tap ? loc.tap() : loc.click());
+    if (await seg.isVisible()) {
+        await press(seg);
+        return;
+    }
+    const idx = await seg.evaluate((b) =>
+        Array.from(document.querySelectorAll('#mb-saed-bar .mb-seg-action')).indexOf(b));
+    if (idx < 0) throw new Error(`pressAction: "${selector}" is not an action segment of the SAED button`);
+    await press(page.locator(SAED_MENU_BUTTON));
+    await press(page.locator(`${SAED_MENU_BUTTON}-panel .mb-saed-group[data-mb-group="load"] .mb-saed-load-row`).nth(idx));
+}
+
 module.exports = {
     SAED_MENU_BUTTON, TOOLBAR_MENU_BUTTON, TOOLBAR_SUBMENU_ROW, openToolbarMenu, clickToolbarItem, toolbarItemOwner,
+    pressAction,
 };

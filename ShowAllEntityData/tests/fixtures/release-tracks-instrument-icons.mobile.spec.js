@@ -11,6 +11,7 @@ const path = require('path');
 const { test, expect } = require('../support/test');
 const { loadUserscriptPage } = require('../support/loadPage');
 const { injectThirdPartyScript } = require('../support/thirdPartyScripts');
+const { pressAction } = require('../support/toolbarMenu');
 
 const RELEASE_URL = 'https://musicbrainz.org/release/3ce46b79-5e8c-470a-bcdc-45f301d09f60';
 const FIXTURE = path.join(__dirname, 'release-tracks-instrument-icons.html');
@@ -28,7 +29,7 @@ test('Instruments column and its 📊 "» instrument:" entry show the icon (tap)
         testMode: true,
         settingsOverride: { sa_enable_release_tracks: true },
     });
-    await page.tap('button[data-label="Show all Tracks for Release"]');
+    await pressAction(page, 'button[data-label="Show all Tracks for Release"]', { tap: true });
     await expect(page.locator('#mb-filter-container')).toBeAttached();
 
     const pianoIcons = await page.evaluate(() => {

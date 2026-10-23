@@ -155,9 +155,10 @@ warning or error in its list keeps the list open, so you can tick several. The
 menu opens below the button, or above it when the button is near the bottom of
 the window; one longer than the room available scrolls.
 
-**On a narrow window** (520 px or less) the fetch buttons leave the bar and
-head the menu as a "Load" group, so the button stays on one line, and Export's
-formats open in place under their row.
+**On a narrow window** (520 px or less — on a phone that is every MusicBrainz
+page) the fetch buttons leave the bar and head the menu as a "Load" group, so
+the button stays on one line, and Export's formats open in place under their
+row.
 
 **The Tampermonkey menu's 📜 ChangeLog** opens the SAED menu on its Changelog
 group: *What's new* lists what changed for you in each published version, in

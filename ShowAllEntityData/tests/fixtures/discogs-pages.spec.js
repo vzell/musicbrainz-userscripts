@@ -288,7 +288,9 @@ test.describe('discogs.com pages (2026-10-18)', () => {
     test('a label: Newest / Oldest / Then groups; Newest 500 asks its five pages and no more', async ({ page }) => {
         const { errors } = await openDg(page, 'label');
         const bar = page.locator('#mb-dg-root h1');
-        await expect(bar.locator('strong.mb-button-group-label')).toHaveText(['Newest:', 'Oldest:', 'Then:']);
+        // Group labels are label segments of the SAED button since 2026-10-22
+        // (muted caps by CSS, no colon in the text).
+        await expect(bar.locator('.mb-seg-label.mb-button-group-label')).toHaveText(['Newest', 'Oldest', 'Then']);
         expect(await bar.locator('button[data-label^="Show "]').evaluateAll(bs => bs.map(b => b.textContent.trim().split(/\s+/).pop())))
             .toEqual(['500', '1,000', '5,000', '500', '1,000', 'All']);
         await expect(bar.locator('button[data-label="Show the newest 5,000 releases"]')).toHaveAttribute('title', /50 requests, about 50 s with your token/);

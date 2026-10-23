@@ -4,6 +4,7 @@ const path = require('path');
 const { test, expect } = require('../support/test');
 const { loadUserscriptPage } = require('../support/loadPage');
 const { waitForRenderComplete } = require('../support/browser');
+const { pressAction } = require('../support/toolbarMenu');
 
 // MusicBrainz sidebar sections on a phone (chromium-mobile, Pixel 7: touch,
 // no hover): a tap opens a section and the Open all bar works; a tap on a
@@ -38,7 +39,7 @@ test('sections and link groups open and fold by tap', async ({ page }) => {
         settingsOverride: { sa_enable_caa_pics: false, sa_enable_relationships_column: false, sa_collabsable_sidebar: false },
     });
     await page.route(`${URL}*`, (r) => r.fulfill({ path: FIXTURE, contentType: 'text/html' }));
-    await page.locator('button[data-label="🧮 Artist RGs"]').tap();
+    await pressAction(page, 'button[data-label="🧮 Artist RGs"]', { tap: true });
     await waitForRenderComplete(page, { waitForAutoResize: false });
     // The fixture has no MusicBrainz stylesheet; on a phone MusicBrainz lays
     // the sidebar out as a plain block under the content. Without this rule

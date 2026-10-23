@@ -301,5 +301,19 @@
     "spec": "tests/fixtures/saed-toolbar.spec.js",
     "grep": "one segmented button",
     "expect": "pass"
+  },
+  {
+    "name": "the menu measures the layout viewport, not what shows",
+    "why": "On a phone page wider than the screen the ☰ SAED menu opens below the bottom edge of the screen.",
+    "edits": [
+      {
+        "find": "        const height = vv ? vv.height : window.innerHeight;",
+        "replace": "        const height = window.innerHeight;"
+      }
+    ],
+    "spec": "tests/fixtures/saed-narrow.mobile.spec.js",
+    "grep": "the menu opens inside what SHOWS",
+    "project": "chromium-mobile",
+    "expect": "fail"
   }
 ]
