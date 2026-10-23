@@ -263,7 +263,7 @@ Decisions (vzell, 2026-10-23, on the G2/G3 mockup): 1. the 🖼 in the table's h
 bar; 2. type chips *and* "Compare two"; 3. ask before a run over 5 minutes; 4. discogs.com
 is part of phase 4.
 
-Mockup (2026-10-23, petri), approved with those answers: *G2* (the behaving G1 on
+Mockup (2026-10-23, petri), version 2 approved ("Yes go ahead"; chips, Compare and a Discogs tab drawn after the answers): *G2* (the behaving G1 on
 sl-bootlegs: the 🖼 in the table's heading bar, the window, Load / Stop / closing stops /
 Retry, the viewer stand-in, Esc order) and *G3* (the same window on jungleland, LP records,
 Brucebase 1985 and the song list), with four open questions (where the 🖼 lives; type chips

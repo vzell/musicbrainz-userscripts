@@ -423,6 +423,30 @@ figure.tile.main::after { content: '★'; position: absolute; top: 2px; left: 4p
 .more { color: var(--muted); font-size: 12.5px; }
 .kind { font: 600 9.5px var(--sans); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); width: 100%; margin-top: 2px; }
 
+/* ── Type chips and Compare two ── */
+.chips { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; }
+.chip {
+    font: 600 10px/1 var(--sans);
+    letter-spacing: .07em;
+    text-transform: uppercase;
+    color: var(--muted);
+    background: transparent;
+    border: 1px solid var(--rule);
+    border-radius: 999px;
+    padding: 5px 9px;
+    cursor: pointer;
+}
+.chip .n { font-weight: 400; margin-left: 4px; font-variant-numeric: tabular-nums; }
+.chip[aria-pressed="true"] { color: var(--ink); border-color: var(--ink); background: var(--wash); }
+.chip.cmp { margin-left: 8px; }
+.chip:focus-visible { outline: 2px solid var(--run); outline-offset: 1px; }
+.rel.dimmed .who { opacity: .6; }
+.cmp-grid { display: grid; grid-template-columns: max-content minmax(0, 1fr) minmax(0, 1fr); gap: 8px 14px; align-items: start; }
+.cmp-grid .h { font: 600 10px var(--sans); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); border-bottom: 1px solid var(--rule); padding-bottom: 4px; min-width: 0; }
+.cmp-grid .h select { font: 13px var(--serif); max-width: 100%; border: 1px solid var(--rule); border-radius: 3px; background: #fff; color: var(--ink); padding: 2px 4px; }
+.cmp-grid .ty { font: 600 10px var(--sans); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); padding-top: 4px; }
+.cmp-grid .none { color: var(--muted); font-style: italic; font-size: 12.5px; }
+
 /* ── The opener's hover card ── */
 .tip {
     position: absolute;
@@ -546,9 +570,10 @@ figure.tile.main::after { content: '★'; position: absolute; top: 2px; left: 4p
     <div class="sec-head">
         <span class="lab">G3 · the same window on the other lists</span>
         <h2 id="g3">jungleland, brucespringsteen.it, Brucebase</h2>
-        <p class="cap">One window for every host; only the words and the counts change. A list with thousands of rows makes a long run, so a run over five minutes asks first, inside the window (open question 3). The lyrics index behaves as the song list.</p>
+        <p class="cap">One window for every host; only the words, the counts and the pace change. A run over five minutes asks first, inside the window. Discogs reads its own API at its own pace (2.5 s a request, 1 s with a token), and its versions are where Compare earns its place. The lyrics index behaves as the song list. Discogs' rows show labelled tiles: no Discogs image was downloaded for this page.</p>
     </div>
     <div class="tabs" role="tablist" aria-label="Host">
+        <button type="button" class="tab" role="tab" data-host="dg" id="tab-dg" aria-selected="false">discogs.com · Image</button>
         <button type="button" class="tab" role="tab" data-host="jl" id="tab-jl" aria-selected="true">jungleland.it · Art</button>
         <button type="button" class="tab" role="tab" data-host="bs" id="tab-bs" aria-selected="false">brucespringsteen.it · Photo</button>
         <button type="button" class="tab" role="tab" data-host="bby" id="tab-bby" aria-selected="false">Brucebase · 1985</button>
@@ -561,40 +586,32 @@ figure.tile.main::after { content: '★'; position: absolute; top: 2px; left: 4p
 
 <section class="sec" aria-labelledby="oq">
     <div class="sec-head">
-        <span class="lab">Open questions</span>
-        <h2 id="oq">What the approved G1 left open</h2>
+        <span class="lab">Decided · vzell, 2026-10-23</span>
+        <h2 id="oq">What the first version left open</h2>
     </div>
     <div class="qs">
         <div class="q">
-            <h3>1. Where the 🖼 lives on a foreign table</h3>
-            <span class="rec">Recommended: A</span>
-            <ul>
-                <li><b>A</b>, as drawn: in the table's heading bar, beside the row count, like MusicBrainz's.</li>
-                <li><b>B</b>: a row in ☰ SAED → View instead. One click further away, nothing new in the bar.</li>
-            </ul>
+            <h3>1. The 🖼 lives in the table's heading bar</h3>
+            <span class="rec">Decided</span>
+            <ul><li>Beside the row count, like MusicBrainz's after its 📊.</li></ul>
         </div>
         <div class="q">
             <h3>2. Type chips and "Compare two"</h3>
-            <span class="rec">Recommended: chips yes, Compare no</span>
+            <span class="rec">Decided: both, now drawn</span>
             <ul>
-                <li>MusicBrainz's gallery has a chip per image type and a Compare view; G1 had neither, and neither is drawn here.</li>
-                <li>Chips help on jungleland (Front, Back, Medium, Booklet) and Brucebase (Photo, Ticket, News, Memorabilia). Compare is about release editions and fits none of these lists.</li>
+                <li>Chips appear once a row has been read: "All" plus one per type with its count. Several chips = any of them. A row with none of the picked types stays, dimmed, with "No Booklet image".</li>
+                <li>"Compare two" puts two read rows side by side, one line per type; the chips apply. The viewer's Shift+← → follow the gallery's rows that the chips leave.</li>
             </ul>
         </div>
         <div class="q">
-            <h3>3. Ask before a long run</h3>
-            <span class="rec">Recommended: ask above 5 minutes</span>
-            <ul>
-                <li>Not in G1. Drawn in G3: "Read 1,676 song pages? About 31 min…" with Start / Cancel, Esc cancels the question first.</li>
-                <li>Under five minutes the button starts at once, as on the bootleg list.</li>
-            </ul>
+            <h3>3. Ask before a run over 5 minutes</h3>
+            <span class="rec">Decided</span>
+            <ul><li>Inside the window, Start / Cancel; Esc cancels the question first. Shorter runs start at once.</li></ul>
         </div>
         <div class="q">
-            <h3>4. discogs.com</h3>
-            <span class="rec">Recommended: later, not in phase 4</span>
-            <ul>
-                <li>Its Image column's records come from Discogs' API with its own cache and rate limits, not from the detail-page store this gallery reads.</li>
-            </ul>
+            <h3>4. discogs.com is in phase 4</h3>
+            <span class="rec">Decided, now drawn</span>
+            <ul><li>Its rows are the Image column's: the record is the release or master read through Discogs' API (kept a week), at Discogs' pace, the token's faster pace named in the button.</li></ul>
         </div>
     </div>
 </section>
@@ -616,7 +633,8 @@ figure.tile.main::after { content: '★'; position: absolute; top: 2px; left: 4p
     const SPACING_S = 1.1;
     const ASK_OVER_S = 300;
     const TC = { Cover: '#7a5c3e', Scan: '#8a7d68', Front: '#7a5c3e', Back: '#5d6b7a', Medium: '#3f6b5e', Booklet: '#7a6a3e',
-        Photo: '#5b4a7a', Ticket: '#7a3e4f', News: '#4a5f7a', Memorabilia: '#6b5a3a', 'Song graph': '#3f6b5e', 'Lyric sheet': '#7a6a3e' };
+        Photo: '#5b4a7a', Ticket: '#7a3e4f', News: '#4a5f7a', Memorabilia: '#6b5a3a', 'Song graph': '#3f6b5e', 'Lyric sheet': '#7a6a3e',
+        primary: '#7a5c3e', secondary: '#5d6b7a' };
 
     /**
      * Creates an element with attributes and children.
@@ -665,10 +683,11 @@ figure.tile.main::after { content: '★'; position: absolute; top: 2px; left: 4p
     /**
      * "about 35 s", "about 12 min", "about 1 h 4 min" for a number of pages.
      * @param {number} n
+     * @param {number} [spacing] Seconds a request.
      * @returns {string}
      */
-    function cost(n) {
-        const s = Math.round(n * SPACING_S);
+    function cost(n, spacing) {
+        const s = Math.round(n * (spacing || SPACING_S));
         if (s < 90) return `about ${s} s`;
         const m = Math.round(s / 60);
         return m < 60 ? `about ${m} min` : `about ${Math.floor(m / 60)} h ${m % 60} min`;
@@ -844,6 +863,24 @@ figure.tile.main::after { content: '★'; position: absolute; top: 2px; left: 4p
         };
     }
 
+    const DG = {"title": "Born To Run", "items": 387, "rows": [[29668336, "Born To Run", "LP, Album, Stereo", "US", "1975"], [5063678, "Born To Run", "LP, Album, Stereo", "UK", "1975"], [22770998, "Born To Run", "LP, Album, Unofficial Release", "Taiwan", "1975"], [10157262, "Born To Run", "Album", "Indonesia", "1975"], [13528022, "Born To Run", "LP, Album, Promo, Stereo", "US", "1975"], [13844131, "Born To Run", "LP, Album, Stereo", "Canada", "1975"], [14579260, "Born To Run", "LP, Album", "Israel", "1975"], [12481346, "Born To Run", "LP, Album", "US", "1975"], [10916578, "Born To Run", "LP, Album", "US", "1975"], [12002379, "Born To Run", "Album", "US", "1975"], [16805457, "Born To Run", "Album", "Europe", "1975"], [22318618, "Born To Run", "Album", "US", "1975"], [17314960, "Born To Run", "LP, Album", "South Africa", "1975"], [13909962, "Born To Run", "LP, Album, Stereo", "US", "1975"], [29505991, "Born To Run", "LP, Album", "Europe", "1975"], [8247820, "Born To Run", "LP, Advance, Album, Promo", "US", "1975"], [8297691, "Born To Run", "LP, Album, Promo, Stereo", "US", "1975"], [12423538, "Born To Run", "LP, Album, Stereo", "Ireland", "1975"], [17918632, "Born To Run", "LP, Album", "US", "1975"], [15442538, "Born To Run", "LP, Album, Misprint", "Rhodesia", "1975"], [36225631, "Born to Run", "", "US", "1975"], [17431384, "Born To Run", "LP, Album, Stereo", "US", "1975"], [13952983, "Born To Run", "LP, Album", "Philippines", "1975"], [36581836, "Born To Run", "LP, Album", "US", "1975"], [28584388, "Born To Run", "Album", "US", "1975"], [8110043, "Born To Run", "LP, Album, Misprint, Stereo", "US", "1975"], [12950448, "Born To Run", "LP, Album", "UK", "1975"], [4120828, "Born To Run", "LP, Album, Misprint, Stereo", "US", "1975"], [17067528, "Born To Run", "Album, Club Edition", "US", "1975"], [14334141, "‎Born To Run", "LP, Album", "Italy", "1975"], [6203782, "Born To Run", "Album", "Brazil", "1975"], [1663765, "Born To Run", "LP, Album, Stereo", "UK", "1975"], [3339333, "Born To Run", "LP, Album", "Canada", "1975"], [10061384, "Born To Run", "LP, Album", "Italy", "1975"], [27101292, "Born To Run", "LP, Album, Stereo", "US", "1975"], [3048585, "Born To Run", "LP, Album", "New Zealand", "1975"], [6133214, "Born To Run", "LP, Album", "Ireland", "1975"], [9509252, "Born To Run = 明日なき暴走 ", "LP, Album, Promo", "Japan", "1975"], [15775847, "Born To Run", "Album", "Argentina", "1975"], [34937843, "Born To Run", "Album", "Italy", "1975"], [23714435, "Born To Run", "LP, Album", "Canada", "1975"], [1874253, "Born To Run", "LP, Album, Stereo", "US", "1975"], [15814666, "Born To Run", "LP, Album", "UK", "1975"], [5094181, "Born To Run", "Album", "US", "1975"], [14687415, "Born To Run", "Album, Reissue", "UK", "1975"], [14345640, "Born To Run", "LP, Advance, Album, Promo", "US", "1975"], [17648176, "Born To Run", "LP, Album, Stereo", "US", "1975"], [3446756, "Born To Run", "LP, Album, Promo", "US", "1975"], [23584652, "Born To Run", "LP, Album, Stereo", "UK", "1975"], [14675864, "Born To Run", "LP, Album", "Greece", "1975"], [8042776, "Born To Run", "LP, Album", "US", "1975"], [27616938, "Born To Run", "LP, Album, Stereo", "US", "1975"], [9200455, "Born To Run", "LP, Album", "Argentina", "1975"], [12013509, "Born To Run", "LP, Album", "Argentina", "1975"], [13420310, "Born To Run", "Album, Stereo", "Canada", "1975"], [19282114, "Born To Run", "LP, Album", "South Africa", "1975"], [27645654, "Born To Run", "LP, Album, Stereo", "US", "1975"], [5859126, "Born To Run", "LP, Album, Picture Disc, Unofficial Release", "Canada", "1975"], [12345248, "Born To Run", "LP, Album, Promo", "Argentina", "1975"], [2589130, "Born To Run", "LP, Album", "Spain", "1975"]]};
+    /** @returns {Object} The discogs.com host: a master's versions. */
+    function hostDg() {
+        const n = DG.items;
+        return {
+            key: 'dg', title: `Images — ${DG.title} (versions)`, sub: 'discogs.com · master · Image column', noun: 'release record', nouns: 'release records',
+            rowWord: 'versions', eligibleWord: '', total: n, spacing: 2.5, tokenSpacing: 1, kept: 'a week in this browser, shared with the link preview',
+            notLoaded: 'Not loaded yet. Point at its image, or use Load.',
+            rows: Array.from({ length: n }, (_, i) => {
+                const [id, t, f, c, y] = DG.rows[i] || [i, DG.title, '', '', ''];
+                const meta = [f, c, y].filter(Boolean).join(' · ');
+                const h = hash(String(id));
+                const imgs = [{ id: null, type: 'primary', cap: 'front', front: true }].concat(tiles('secondary', 1 + h % 6, 'image'));
+                return { id: 'dg' + id, title: t, meta, state: i === 0 || i === 1 || i === 4 ? 'cached' : 'cold', images: imgs };
+            }),
+        };
+    }
+
     // ── The gallery ─────────────────────────────────────────────────────
     let speed = 4;
     let openViewerFor = null;
@@ -857,7 +894,27 @@ figure.tile.main::after { content: '★'; position: absolute; top: 2px; left: 4p
      * @returns {Object}
      */
     function makeGallery(box, host, opt) {
-        const st = { host, run: null, done: 0, failedNow: 0, log: [], ask: false, stoppedBy: '', fresh: new Set(), finished: '' };
+        const st = { host, run: null, done: 0, failedNow: 0, log: [], ask: false, stoppedBy: '', fresh: new Set(), finished: '',
+            sel: new Set(), compare: false, ca: null, cb: null };
+        const sp = host.spacing || SPACING_S;
+        /** @param {number} n @returns {string} The run's cost, with the token's where there is one. */
+        const costTxt = (n) => cost(n, sp) + (host.tokenSpacing ? `; ${cost(n, host.tokenSpacing)} with a Discogs token` : '');
+
+        /** @param {Object} im @returns {boolean} Whether an image passes the chips (none = all, several = any). */
+        const match = (im) => !st.sel.size || st.sel.has(im.type);
+
+        /** @param {Object} r @returns {number[]} The image indices of a row the chips let through. */
+        const shownIdx = (r) => r.images.map((_, i) => i).filter(i => match(r.images[i]));
+
+        /**
+         * The viewer's rows: the read rows with an image the chips let through, each with only those images.
+         * @param {Object[]} rows
+         * @returns {Array<{r: Object, images: Object[], idx: number[]}>}
+         */
+        function navOf(rows) {
+            return rows.filter(r => (r.state === 'cached' || r.state === 'loaded') && shownIdx(r).length)
+                .map(r => ({ r, title: r.title, idx: shownIdx(r), images: shownIdx(r).map(i => r.images[i]) }));
+        }
 
         /** @returns {Object[]} The rows in scope (the table's filter). */
         function scoped() {
@@ -941,7 +998,7 @@ figure.tile.main::after { content: '★'; position: absolute; top: 2px; left: 4p
                     tick();
                 }
                 render();
-            }, SPACING_S * 1000 / speed);
+            }, sp * 1000 / speed);
         }
 
         /**
@@ -966,9 +1023,9 @@ figure.tile.main::after { content: '★'; position: absolute; top: 2px; left: 4p
             const facts = el('dl', { class: 'facts' },
                 el('dt', {}, 'Rows'), el('dd', {}, scopeTxt),
                 el('dt', {}, 'Shown'), el('dd', {}, `${fmt(read)} ${read === 1 ? 'row' : 'rows'} · ${fmt(c.images)} images`),
-                el('dt', {}, 'Not loaded'), el('dd', {}, c.cold + c.failed + c.queued ? `${fmt(c.cold + c.failed)} · each its ${host.noun}, one request, ${SPACING_S} s apart` : 'none'),
+                el('dt', {}, 'Not loaded'), el('dd', {}, c.cold + c.failed + c.queued ? `${fmt(c.cold + c.failed)} · each its ${host.noun}, one request, ${sp} s apart` : 'none'),
                 c.none ? el('dt', {}, 'No images') : null, c.none ? el('dd', {}, `${fmt(c.none)} ${c.none === 1 ? 'row' : 'rows'} (read, nothing to show)`) : null,
-                el('dt', {}, 'Kept'), el('dd', {}, host.key === 'jl' || host.key === 'bs' ? 'half a year in this browser, shared with the preview' : '30 days in this browser, shared with the preview'));
+                el('dt', {}, 'Kept'), el('dd', {}, host.kept || (host.key === 'jl' || host.key === 'bs' ? 'half a year in this browser, shared with the preview' : '30 days in this browser, shared with the preview')));
             const w = (n) => eligible ? `${(100 * n / eligible).toFixed(2)}%` : '0';
             const bar = el('div', { class: 'bar', role: 'img', 'aria-label': `${c.cached} from the cache, ${c.loaded} loaded, ${c.failed} failed, ${c.queued || c.cold} not loaded` },
                 el('span', { class: 's-cache', style: `width:${w(c.cached)}` }),
@@ -984,15 +1041,15 @@ figure.tile.main::after { content: '★'; position: absolute; top: 2px; left: 4p
             const todo = c.cold + c.failed;
             if (st.run) {
                 acts.append(el('button', { type: 'button', class: 'btn', id: `${host.key}-stop`, onclick: () => stop('stopped') }, 'Stop'),
-                    el('span', { class: 'note' }, `Reading ${fmt(st.run.k + 1)} of ${fmt(st.run.n)}, ${cost(st.run.queue.length)} left. Closing the window stops it too.`));
+                    el('span', { class: 'note' }, `Reading ${fmt(st.run.k + 1)} of ${fmt(st.run.n)}, ${cost(st.run.queue.length, sp)} left. Closing the window stops it too.`));
             } else if (todo) {
                 const failedOnly = st.finished === 'errors' && !c.cold;
                 if (failedOnly) {
                     acts.append(el('button', { type: 'button', class: 'btn primary', id: `${host.key}-retry`, onclick: () => start(true) }, `Retry ${c.failed} failed`));
                 } else {
                     const go = el('button', { type: 'button', class: 'btn primary', id: `${host.key}-load`, onclick: () => {
-                        if (todo * SPACING_S > ASK_OVER_S) { st.ask = true; render(); } else start(false);
-                    } }, `Load the other ${fmt(todo)} (${cost(todo)})`);
+                        if (todo * sp > ASK_OVER_S) { st.ask = true; render(); } else start(false);
+                    } }, `Load the other ${fmt(todo)} (${costTxt(todo)})`);
                     acts.append(go);
                     if (c.failed && c.cold) acts.append(el('button', { type: 'button', class: 'btn', onclick: () => start(true) }, `Retry ${c.failed} failed`));
                     acts.append(el('span', { class: 'note' }, st.stoppedBy
@@ -1003,7 +1060,7 @@ figure.tile.main::after { content: '★'; position: absolute; top: 2px; left: 4p
                 acts.append(el('span', { class: 'note' }, `Every ${host.rowWord === 'rows' ? 'row' : host.rowWord.replace(/s$/, '')} in scope has been read.`));
             }
             const ask = el('div', { class: 'ask', hidden: !st.ask, role: 'alertdialog', 'aria-label': 'Long run' },
-                el('div', {}, el('b', {}, `Read ${fmt(todo)} ${host.nouns}?`), ` ${cost(todo).replace('about', 'About')}, one every ${SPACING_S} s, while this window stays open. You can stop at any time; what is read stays read.`),
+                el('div', {}, el('b', {}, `Read ${fmt(todo)} ${host.nouns}?`), ` ${costTxt(todo).replace(/^about/, 'About')}, one every ${sp} s, while this window stays open. You can stop at any time; what is read stays read.`),
                 el('div', { class: 'acts' },
                     el('button', { type: 'button', class: 'btn primary', id: `${host.key}-ask-start`, onclick: () => start(false) }, 'Start'),
                     el('button', { type: 'button', class: 'btn', onclick: () => { st.ask = false; render(); } }, 'Cancel')));
@@ -1011,7 +1068,81 @@ figure.tile.main::after { content: '★'; position: absolute; top: 2px; left: 4p
                 st.log.map(l => el('div', {}, el('span', { class: 'tm' }, l.tm), el('span', {}, l.what), el('span', { class: l.cls }, l.outcome)))) : null;
             return el('div', { class: 'panel' }, facts, bar, counts, acts, ask,
                 recent ? el('span', { class: 'lab' }, 'Recent') : null, recent,
-                host.left && !opt.scope() ? el('span', { class: 'more' }, host.left) : null);
+                host.left && !opt.scope() ? el('span', { class: 'more' }, host.left) : null,
+                chips(rows));
+        }
+
+        /**
+         * The chips: "All" and one per type of the read rows' images, with counts, then "Compare two".
+         * Nothing until a row has been read.
+         * @param {Object[]} rows
+         * @returns {?HTMLElement}
+         */
+        function chips(rows) {
+            const counts = new Map();
+            let all = 0;
+            rows.forEach(r => {
+                if (r.state !== 'cached' && r.state !== 'loaded') return;
+                r.images.forEach(im => { counts.set(im.type, (counts.get(im.type) || 0) + 1); all++; });
+            });
+            if (!all) return null;
+            const chip = (label, type, n) => el('button', {
+                type: 'button', class: 'chip', 'aria-pressed': String(type ? st.sel.has(type) : st.sel.size === 0),
+                onclick: () => { if (!type) st.sel.clear(); else if (st.sel.has(type)) st.sel.delete(type); else st.sel.add(type); render(); },
+            }, label, el('span', { class: 'n' }, fmt(n)));
+            return el('div', { class: 'chips', role: 'group', 'aria-label': 'Image types' },
+                chip('All', '', all), [...counts.keys()].map(t => chip(t, t, counts.get(t))),
+                el('button', { type: 'button', class: 'chip cmp', 'aria-pressed': String(st.compare), onclick: () => { st.compare = !st.compare; render(); } }, 'Compare two'));
+        }
+
+        /**
+         * "Compare two": two read rows side by side, one line per type (the chips apply).
+         * @param {Object[]} rows
+         * @returns {HTMLElement}
+         */
+        function compareView(rows) {
+            const ok = rows.filter(r => (r.state === 'cached' || r.state === 'loaded') && r.images.length);
+            if (ok.length < 2) return el('span', { class: 'more' }, `Comparing needs two read ${host.rowWord} with images.`);
+            if (!ok.some(r => r.id === st.ca)) st.ca = ok[0].id;
+            if (!ok.some(r => r.id === st.cb) || st.cb === st.ca) st.cb = ok.find(r => r.id !== st.ca).id;
+            const sides = [st.ca, st.cb].map(id => ok.find(r => r.id === id));
+            const grid = el('div', { class: 'cmp-grid' }, el('div', { class: 'h' }, 'Type'));
+            sides.forEach((s, k) => {
+                const sel = el('select', { 'aria-label': `${k ? 'Second' : 'First'} ${host.rowWord.replace(/s$/, '')} to compare`,
+                    onchange: (e) => { if (k) st.cb = e.target.value; else st.ca = e.target.value; render(); } },
+                ok.map(r => el('option', { value: r.id, selected: r.id === s.id }, r.meta ? `${r.title} · ${r.meta}` : r.title)));
+                grid.append(el('div', { class: 'h' }, sel));
+            });
+            const types = [];
+            sides.forEach(r => r.images.forEach(im => { if (!types.includes(im.type)) types.push(im.type); }));
+            types.filter(t => !st.sel.size || st.sel.has(t)).forEach(t => {
+                grid.append(el('div', { class: 'ty' }, t));
+                sides.forEach(r => {
+                    const cell = el('div', { class: 'tiles' });
+                    r.images.forEach((im, i) => {
+                        if (im.type !== t) return;
+                        const nav = [{ r, title: r.title, idx: r.images.map((_, j) => j), images: r.images }];
+                        cell.append(tile(im, () => openViewerFor(nav, 0, i)));
+                    });
+                    if (!cell.childNodes.length) cell.append(el('span', { class: 'none' }, 'none'));
+                    grid.append(cell);
+                });
+            });
+            return grid;
+        }
+
+        /**
+         * One image tile.
+         * @param {Object} im
+         * @param {function(): void} go Opens the viewer on it.
+         * @returns {HTMLElement}
+         */
+        function tile(im, go) {
+            const fig = el('figure', { class: 'tile' + (im.front ? ' main' : ''), tabindex: '0', 'aria-label': `${im.type}: ${im.cap}` },
+                pic(im.id, im.cap, im.type), el('figcaption', {}, `${im.type}${im.cap && im.cap !== im.type.toLowerCase() ? ' · ' + im.cap : ''}`));
+            fig.addEventListener('click', go);
+            fig.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); } });
+            return fig;
         }
 
         /**
@@ -1031,20 +1162,20 @@ figure.tile.main::after { content: '★'; position: absolute; top: 2px; left: 4p
                     el('button', { type: 'button', class: 'btn sm', onclick: () => { r.failOnce = ''; start(true); } }, 'Try again')));
             } else {
                 let lastKind = '';
-                r.images.forEach((im, i) => {
+                const k = nav.findIndex(n => n.r === r);
+                const idx = shownIdx(r);
+                if (!idx.length) t.append(el('span', { class: 'miss' }, `No ${[...st.sel].join(' or ')} image.`));
+                idx.forEach((i, j) => {
+                    const im = r.images[i];
                     if (host.groupKinds && im.type !== lastKind) {
                         lastKind = im.type;
                         t.append(el('span', { class: 'kind' }, im.type));
                     }
-                    const fig = el('figure', { class: 'tile' + (im.front ? ' main' : ''), tabindex: '0', 'aria-label': `${im.type}: ${im.cap}` },
-                        pic(im.id, im.cap, im.type), el('figcaption', {}, `${im.type}${im.cap && im.cap !== im.type.toLowerCase() ? ' · ' + im.cap : ''}`));
-                    const go = () => openViewerFor(nav, nav.indexOf(r), i);
-                    fig.addEventListener('click', go);
-                    fig.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); } });
-                    t.append(fig);
+                    t.append(tile(im, () => openViewerFor(nav, k, j)));
                 });
             }
-            const b = el('div', { class: 'rel' + (st.fresh.has(r.id) ? ' new' : '') }, who, t);
+            const dim = (r.state === 'cached' || r.state === 'loaded') && !shownIdx(r).length;
+            const b = el('div', { class: 'rel' + (st.fresh.has(r.id) ? ' new' : '') + (dim ? ' dimmed' : '') }, who, t);
             st.fresh.delete(r.id);
             return b;
         }
@@ -1062,8 +1193,9 @@ figure.tile.main::after { content: '★'; position: absolute; top: 2px; left: 4p
                     el('span', { class: `pill ${pc}` }, pw),
                     opt.closable ? el('button', { type: 'button', class: 'x', 'aria-label': 'Close (Esc)', onclick: () => api.close() }, '✕') : null),
                 el('div', { class: 'gal-b' }, panel(rows, c), (() => {
+                    if (st.compare) return compareView(rows);
                     const list = el('div', { class: 'rows' });
-                    const nav = rows.filter(r => (r.state === 'cached' || r.state === 'loaded') && r.images.length);
+                    const nav = navOf(rows);
                     const shown = rows.filter(r => r.state !== 'none');
                     const read = shown.filter(r => r.state === 'cached' || r.state === 'loaded' || r.state === 'failed');
                     const cold = shown.filter(r => r.state === 'cold');
@@ -1218,7 +1350,7 @@ figure.tile.main::after { content: '★'; position: absolute; top: 2px; left: 4p
 
     // ── G3: the other hosts ─────────────────────────────────────────────
     const galHost = document.getElementById('gal-host');
-    const hosts = { jl: hostJl(), bs: hostBs(), bby: hostBby(), bbs: hostBbs() };
+    const hosts = { dg: hostDg(), jl: hostJl(), bs: hostBs(), bby: hostBby(), bbs: hostBbs() };
     const gHosts = {};
     let curHost = 'jl';
 
