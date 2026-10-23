@@ -2,8 +2,8 @@
   "_meta": {
     "generated_by": "scripts/dump-default-history.py",
     "source": "ShowAllEntityData/ShowAllEntityData.user.js",
-    "head": "0cb95fda6d70f314d202e038f84ae9bcde1408fc",
-    "revisions_walked": 1012
+    "head": "fadba4c2ccc7fb1ae73da161e9efc7d282450482",
+    "revisions_walked": 1013
   },
   "changes": [
     {
@@ -857,8 +857,10 @@
     "sa_foreign_typography": true,
     "sa_enable_jungleland": false,
     "sa_jl_detail_preview": false,
+    "sa_jl_tip_images": true,
     "sa_enable_brucespringsteen": false,
     "sa_bs_detail_preview": false,
+    "sa_bs_tip_images": true,
     "sa_enable_brucebase": false,
     "sa_bb_year_pages": false,
     "sa_bb_collabsable_sidebar": false,
