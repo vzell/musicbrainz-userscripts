@@ -14,7 +14,7 @@
 // @require      https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js
 // @require      file:///V:/home/vzell/git/musicbrainz-userscripts/lib/VZ_MBLibrary.user.js
 // @include      /^https?:\/\/(?:[^\/]+\.)?musicbrainz\.(?:org|eu)\/(?:artist|release-group|release|work|recording|label|series|place|area|instrument|event|collection|url)\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/?(?:\?.*)?$/
-// @include      /^https?:\/\/(?:[^\/]+\.)?musicbrainz\.(?:org|eu)\/(?:artist|release-group|release|work|recording|label|series|place|area|instrument|event)\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/(?:aliases|releases|recordings|works|events|relationships|discids|fingerprints|performances|places|artists|labels|tags|users|collections|ratings|edits|annotations|annotation(?:\/\d+)?)\/?(?:\?.*)?$/
+// @include      /^https?:\/\/(?:[^\/]+\.)?musicbrainz\.(?:org|eu)\/(?:artist|release-group|release|work|recording|label|series|place|area|instrument|event)\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/(?:aliases|releases|recordings|works|events|relationships|discids|fingerprints|performances|places|artists|labels|tags|users|collections|ratings|edits|open_edits|annotations|annotation(?:\/\d+)?)\/?(?:\?.*)?$/
 // @include      /^https?:\/\/(?:[^\/]+\.)?musicbrainz\.(?:org|eu)\/(?:artist|label|series|collection)\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/subscribers\/?(?:\?.*)?$/
 // @include      /^https?:\/\/(?:[^\/]+\.)?musicbrainz\.(?:org|eu)\/release\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}(?:\/disc\/\d+)?\/?(?:\?[^#]*)?(?:#.*)?$/
 // @include      /^https?:\/\/(?:[^\/]+\.)?musicbrainz\.(?:org|eu)\/(?:search\?query=.*|search\/edits\/?(?:\?.*)?|edit\/(?:subscribed(?:_editors)?|notes-received)\/?(?:\?.*)?|account\/applications\/?(?:\?.*)?|tags.*|tag\/.*|cdtoc\/.*|taglookup.*|artist-credit\/.*|reports.*|report\/.*|elections\/?(?:\?.*)?|election\/.*|genres\/?(?:\?.*)?|cdstub\/.*|isrc\/.*|iswc\/.*|doc\/Edit_Types\/?(?:\?.*)?|instruments\/?(?:\?.*)?|privileged\/?(?:\?.*)?)$/
@@ -11103,7 +11103,8 @@
      * from.
      *
      * This is a DOM pre-processing step for pageTypes that carry
-     * `features.editsToTable: true` (currently just `'edits'`). Must run in the
+     * `features.editsToTable: true` (`'edits'`, `'open-edits'` and the
+     * `'user-*-edits'`/`'user-votes'` lists). Must run in the
      * same pre-processing slot as `applyListToTable` — after
      * `applyRenameH2ToH3`/`applyInsertH2` and before maxPage determination —
      * and, like `applyListToTable`, must be re-applied to each freshly fetched
@@ -33209,7 +33210,8 @@
             tableMode: 'single'
         },
         // Edit-listing pages ('/search/edits', '/<entity>/<mbid>/edits',
-        // '/edit/subscribed', '/edit/subscribed_editors'). Must be checked
+        // '/edit/subscribed', '/edit/subscribed_editors'; an entity's
+        // '/open_edits' is 'open-edits' right below). Must be checked
         // BEFORE 'search' below — routing is first-match-wins and
         // '/search/edits' would otherwise be swallowed by 'search''s
         // path.includes('/search') match.
@@ -33245,6 +33247,30 @@
                 // links to a non-release entity (e.g. a recording, for
                 // "Edit recording" edits) — CAA_CTX.entityGuard only matches
                 // release/release-group hrefs.
+                addCAA: 'Entered from release'
+            },
+            tableMode: 'single'
+        },
+        // An entity's open edits ('/<entity>/<mbid>/open_edits', the sidebar's
+        // "Open edits"). The same page as its '/edits' above — native <h1>
+        // "Open Edits for <entity>", "Found N edits", one div.edit-list per
+        // edit, no <h2> outside them (debug/open-edits-artist.html,
+        // debug/open-edits-recording.html) — so the same pipeline, but its
+        // own pageType for its own button label and <h2> title, as
+        // 'user-open-edits' is to 'user-edits'. '$'-anchored, so '/edits'
+        // can never match here, nor '/open_edits' in 'edits'. Logged in,
+        // with edits the reader may vote on, MusicBrainz adds a "Vote on
+        // all edits" div.voteopts.overall-vote above #edits: it is outside
+        // every div.edit-list, so applyEditsToTable leaves it in place.
+        {
+            type: 'open-edits',
+            match: (path) => /^\/[a-z-]+\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/open_edits\/?$/.test(path),
+            buttons: [ { label: 'Show all Open Edits', shortLabel: 'Open Edits' } ],
+            features: {
+                editsToTable: true,
+                unboundedPagination: true,
+                insertH2: 'Open edits',
+                collapsableColumns: [ 'Edit details', 'Edit notes' ],
                 addCAA: 'Entered from release'
             },
             tableMode: 'single'
@@ -47878,10 +47904,14 @@
      * profile links, and `/user/<name>/votes` (the edits they voted on).
      * Same page as an editing history ("Found N edits", `div.edit-list`,
      * probed logged in 2026-10-21), so the same `edits` kind; its id is the
-     * path itself (`_mbEditsPagePath()`).
+     * path itself (`_mbEditsPagePath()`). Since 2026-10-23 also an entity's
+     * open edits (`/<kind>/<MBID>/open_edits`, the sidebar's "Open edits";
+     * debug/open-edits-artist.html), the same kinds as `_MB_POP_EDITS_RE`
+     * (a collection's lists nothing, as its history); `_mbPopParsePath()`
+     * lowercases the MBID and drops a trailing slash.
      * @type {RegExp}
      */
-    const _MB_POP_EDITLIST_RE = /^\/user\/[^/]+\/(?:edits\/(?:open|accepted|autoedits|applied|rejected|failed|cancelled)|votes)$/;
+    const _MB_POP_EDITLIST_RE = /^\/(?:user\/[^/]+\/(?:edits\/(?:open|accepted|autoedits|applied|rejected|failed|cancelled)|votes)|(?:artist|release-group|release|recording|work|label|event|place|area|series|instrument|url)\/[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\/open_edits\/?)$/;
 
     /**
      * An entity's annotation history (`/<kind>/<MBID>/annotations`, kind
@@ -47958,8 +47988,8 @@
     /**
      * The kind a MusicBrainz page path previews as: an entity by MBID
      * (`_MB_POP_PATH_RE`), a code (`_MB_POP_CODE_RE`), an editing history
-     * (`_MB_POP_EDITS_RE`), an editor's other edit list
-     * (`_MB_POP_EDITLIST_RE`) or an edit search (`_mbEditsSearchId()`, the
+     * (`_MB_POP_EDITS_RE`), an editor's other edit list or an entity's open
+     * edits (`_MB_POP_EDITLIST_RE`) or an edit search (`_mbEditsSearchId()`, the
      * one path that needs `search`), an annotation history or version
      * (`_MB_POP_ANNOT_RE`), an editor's subscribers, tags or
      * ratings or the reader's applications (`_MB_POP_ACCOUNT_RE`; downvoted
@@ -47981,7 +48011,10 @@
         if (c) return { seg: c[1], type: _MB_POP_CODE_TYPES[c[1]], id: c[2] };
         const h = _MB_POP_EDITS_RE.exec(pathname);
         if (h) return { seg: '', type: 'edits', id: h[1] ? `${h[1]}/${h[2].toLowerCase()}` : `user/${h[3]}` };
-        if (_MB_POP_EDITLIST_RE.test(pathname)) return { seg: '', type: 'edits', id: pathname };
+        if (_MB_POP_EDITLIST_RE.test(pathname)) {
+            const o = /^\/([a-z-]+\/[0-9a-fA-F-]{36})\/open_edits\/?$/.exec(pathname);
+            return { seg: '', type: 'edits', id: o ? `/${o[1].toLowerCase()}/open_edits` : pathname };
+        }
         if (/^\/search\/edits\/?$/.test(pathname)) {
             const sid = _mbEditsSearchId(search);
             return sid ? { seg: '', type: 'edits', id: sid } : null;
@@ -50902,7 +50935,8 @@
 
     /**
      * What an `edits` id is, in words: `head` (the window's title, "Editing
-     * history", "Rejected edits", "Votes", "Edit search"), `comment` (the
+     * history", "Rejected edits", "Votes", "Edit search", an entity's "Open
+     * edits"), `comment` (the
      * card's line under the name), `sub` (the window's line under it),
      * `name` (the subject's name when the page names none: an MBID, an
      * editor's name, '' for a search), `none` (the line of an empty list)
@@ -50926,6 +50960,11 @@
         if (l) {
             const head = l[2] ? (_MB_EDITS_LIST_HEADS[l[2]] || 'Edits') : 'Votes';
             return { head, comment: `${head} · editor`, sub: `editor · ${head.toLowerCase()}`, name: dec(l[1]), none: 'MusicBrainz lists no edit here.', icon: 'user' };
+        }
+        const o = /^\/([a-z-]+)\/([0-9a-f-]{36})\/open_edits$/.exec(id);
+        if (o) {
+            const word = o[1].replace(/-/g, ' ');
+            return { head: 'Open edits', comment: `Open edits · ${word}`, sub: `${word} · open edits`, name: o[2], none: `MusicBrainz lists no open edit for this ${word}.`, icon: o[1] };
         }
         const seg = id.split('/')[0];
         const word = seg === 'user' ? 'editor' : seg.replace(/-/g, ' ');
@@ -52421,7 +52460,9 @@
         // Since 2026-10-21 also an editor's other lists (`/user/<name>/edits/
         // <status>`, `/user/<name>/votes`) and an edit search
         // (`/search/edits?…`): the same page, their path as their id
-        // (`_mbEditsPagePath()`), named by `_mbEditsLabel()`.
+        // (`_mbEditsPagePath()`), named by `_mbEditsLabel()`; since
+        // 2026-10-23 an entity's open edits (`/<kind>/<MBID>/open_edits`,
+        // the sidebar's "Open edits") the same way.
         edits: {
             title: 'Editing history', wide: true,
             titleOf: id => _mbEditsLabel(id).head,

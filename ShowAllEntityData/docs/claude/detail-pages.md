@@ -1090,6 +1090,16 @@ from the page (no Web Service), through `_mbPageLoad()`.
     since its conditions may be relative ("24 hours ago").
   - No "✎ Editing history" on a list: `_mbEditsSubject()` returns null, as
     for a history.
+  - **An entity's open edits (2026-10-23)**: `/<kind>/<MBID>/open_edits`,
+    the sidebar's "Open edits" next to "Editing history", is the same page
+    again ("Open Edits for <a>…" is an `h1 a` subject), so it is a list of
+    this kind too: the entity form in `_MB_POP_EDITLIST_RE` (the kinds of
+    `_MB_POP_EDITS_RE`; a collection's lists nothing, as its history),
+    id `/<kind>/<mbid>/open_edits` (MBID lowercased, no trailing slash, by
+    `_mbPopParsePath()`), named by its own `_mbEditsLabel()` branch ("Open
+    edits", "Open edits · <kind>"). Every entry is open, so `keep` makes
+    every page memory-only. Specs: `popup-mb-edits.spec.js` PATH and OPEN
+    (the host page's real sidebar link, with `sa_pop_mb_page`).
 - **`subscribers`** (`_MB_POP_ACCOUNT_RE`, id the name):
   `_mbParseSubscribersPage()` reads the section after `h2` "Subscribers"
   (`_mbPopH2Section()`; the page has no `#content`): the editor links of its

@@ -25509,3 +25509,43 @@ now, without a colon).
 **Not checked:** other `position: fixed` pop-ups (the 📊 dropdown, the link
 previews, dialogs) may measure `innerWidth/innerHeight` the same way; on a
 phone page wider than the screen they would misplace too.
+
+## 2026-10-23 — an entity's open edits: pageType 'open-edits' and the sidebar link's preview (branch feat/entity-open-edits)
+
+Env: 2026-10-23T16:14:02+02:00 · petri · WSL2 Ubuntu 24.04.3 (Linux 6.18.54.1-microsoft-standard-WSL2) · snapshots: the user's real browser, versions unknown · fixtures and specs: Playwright 1.62.1, Chromium 151.0.7922.34, no Tampermonkey (GM stubs).
+
+Snapshots read: `debug/open-edits-artist.html` (Bruce Springsteen, 2 edits) and
+`debug/open-edits-recording.html` (Streets of Philadelphia, 1 edit). The prompt
+paired the RELEASE URL `/release/4d854621-…/open_edits` with the second file, but
+that file is the recording `0da6ef66-…`'s page (`div.recordingheader`, the
+`returnto=` of its Cancel link). No release snapshot exists; the pageType is
+entity-generic, so it did not matter.
+
+Findings worth keeping:
+
+- **The page is `/<entity>/<mbid>/edits` again**, checked against
+  `tests/fixtures/edits-page-artist.html`: native `<h1>` "Open Edits for <a>…"
+  inside `div.<entity>header`, `table.search-help`, `.search-toggle` "Found N
+  edits", `#edits > form` with one `div.edit-list` per edit, no `div.tabs`, no
+  `<h2>` outside the edit blocks. So `editsToTable` + `insertH2`, no
+  `renameH2ToH1` (unlike the `/user/<name>/edits/*` lists, which have no `<h1>`).
+- **Why the script never ran there:** `open_edits` was missing from the entity
+  sub-path `@include`; there was no pageType to miss.
+- **One element the `/edits` page lacks:** logged in, with an edit the reader may
+  vote on, `div.voteopts.overall-vote` ("Vote on all edits") sits above `#edits`.
+  It is outside every `div.edit-list`, so `applyEditsToTable()` leaves it alone.
+  Not in the anonymous fixtures (no vote radios logged out); the browser check
+  covers it.
+- **Both `debug/` files are FRP-like, not raw**: Mammoth edit-note helper
+  (`.mmth-*`), jesus2099's cover-art box and CAA icon, HQ flag images. Unusable
+  as fixtures, so `open-edits-page-{artist,recording}.html` were fetched raw
+  with `scripts/fetch-mb-page-fixture.js`, anonymous.
+- **The sidebar's "Open edits" link had no preview** while "Editing history" did:
+  `_mbPopParsePath()` knew `/edits` only. It is now an `edits`-kind list like
+  `/user/<name>/edits/open` (id = the path, MBID lowercased); without its own
+  `_mbEditsLabel()` branch the id fell through to the history branch with
+  `seg === ''`, i.e. an empty kind word and no glyph — the mutation list plants
+  exactly that.
+
+Same session: the `user-open-edits` snapshot baseline was re-captured (the
+account has an open edit again); see `tests/snapshots/registry.org`.

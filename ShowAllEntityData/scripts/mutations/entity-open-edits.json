@@ -1,0 +1,80 @@
+[
+    {
+        "name": "the @include does not admit /open_edits",
+        "why": "Tampermonkey would never inject the script on an entity's open edits; the fixture harness injects unconditionally, so only the INCLUDE test can see it.",
+        "edits": [
+            {
+                "find": "ratings|edits|open_edits|annotations",
+                "replace": "ratings|edits|annotations"
+            }
+        ],
+        "spec": "tests/fixtures/entity-open-edits.spec.js",
+        "grep": "INCLUDE",
+        "expect": "fail"
+    },
+    {
+        "name": "the open-edits pageType never matches",
+        "why": "Without its match /open_edits gets no button at all (nothing else claims the path).",
+        "edits": [
+            {
+                "find": "\\/open_edits\\/?$/.test(path),",
+                "replace": "\\/open_edits_never\\/?$/.test(path),"
+            }
+        ],
+        "spec": "tests/fixtures/entity-open-edits.spec.js",
+        "grep": "BUTTON",
+        "expect": "fail"
+    },
+    {
+        "name": "the open-edits pageType does not convert the edit blocks",
+        "why": "Without editsToTable the div.edit-list blocks stay on the page and no row is built.",
+        "edits": [
+            {
+                "find": "buttons: [ { label: 'Show all Open Edits', shortLabel: 'Open Edits' } ],\n            features: {\n                editsToTable: true,",
+                "replace": "buttons: [ { label: 'Show all Open Edits', shortLabel: 'Open Edits' } ],\n            features: {\n                editsToTable: false,"
+            }
+        ],
+        "spec": "tests/fixtures/entity-open-edits.spec.js",
+        "grep": "RENDER",
+        "expect": "fail"
+    },
+    {
+        "name": "an entity's /open_edits is not a preview target",
+        "why": "Without the entity form in _MB_POP_EDITLIST_RE the sidebar's Open edits link gets no card.",
+        "edits": [
+            {
+                "find": "\\/open_edits\\/?)$/;",
+                "replace": "\\/open_edits_never\\/?)$/;"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb-edits.spec.js",
+        "grep": "OPEN:",
+        "expect": "fail"
+    },
+    {
+        "name": "the open-edits id keeps the link's MBID case",
+        "why": "An upper-case MBID would key a second cache entry for the same list; the PATH test pins the lowercased id.",
+        "edits": [
+            {
+                "find": "id: o ? `/${o[1].toLowerCase()}/open_edits` : pathname",
+                "replace": "id: pathname"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb-edits.spec.js",
+        "grep": "PATH:",
+        "expect": "fail"
+    },
+    {
+        "name": "the open-edits id is named as an editing history",
+        "why": "Without its _mbEditsLabel() branch the id falls through to the history branch: the card's comment and the window's title are wrong.",
+        "edits": [
+            {
+                "find": "const o = /^\\/([a-z-]+)\\/([0-9a-f-]{36})\\/open_edits$/.exec(id);",
+                "replace": "const o = null;"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb-edits.spec.js",
+        "grep": "OPEN:",
+        "expect": "fail"
+    }
+]
