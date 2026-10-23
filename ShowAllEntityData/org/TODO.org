@@ -4042,7 +4042,7 @@ on collection pages, images should get internal viewer support + their tooltip s
 the corresponding row -> image hover popup + internal viewer click
 
 
-* TODO userscript size and managebility
+* DONE userscript size and managebility
 ** DONE initial
 
 1.)
@@ -4065,7 +4065,7 @@ code for extractors
 etc.
 #+end_example
 
-** TODO Analysed 2026-10-22
+** DONE Analysed 2026-10-22
 
 see [[file:userscript-size.org][org/userscript-size.org]] (follows the 2026-10-10 answer in [[file:build-framework.org][org/build-framework.org]]; REFACTORING.org has a dated
 re-evaluation and candidates #10–#13).
@@ -4115,8 +4115,7 @@ I saved this to memory, so from now on I'll always give you the URL and ID and r
 
 Making the publishing reusable: the converter is three files in my scratchpad: build_report.py, shell.html and pandoc-template.html. It turns any org file into a page with a contents list and scrolling tables. If you want it for other reports, I can move it into the repo, for example as scripts/publish-org-report/ with a scripts/publish-org-report.py entry point. It would go on its own branch, and that adds files, so tell me if you want it and where it should live.
 
-
-* TODO tackle
+* DONE tackle
 ** i
 
 According to
@@ -4261,4 +4260,18 @@ should be rendered as just ONE button (to be as non-invasive as possible) like i
 ...
 [hamburger glyph] [SAED main menu entry name, configurable] ▼ ==> opening the main user script menu
 #+end_example
+
+
+* TODO add support for entity "Open edits"
+
+
+add support for new entity "Open edits" PTs e.g.
+
+#+begin_example
+recording https://musicbrainz.org/release/4d854621-0264-4b83-9687-8ad4b9a4e99b/open_edits - @debug/open-edits-recording.html
+artist https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/open_edits - @debug/open-edits-artist.html
+#+end_example
+
+it's the same structure as every edit PT
+
 
