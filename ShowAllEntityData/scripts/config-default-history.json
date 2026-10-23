@@ -2,8 +2,8 @@
   "_meta": {
     "generated_by": "scripts/dump-default-history.py",
     "source": "ShowAllEntityData/ShowAllEntityData.user.js",
-    "head": "cfb75a63884da5688221a3e75538c25ade4aa5af",
-    "revisions_walked": 1021
+    "head": "f8dff6608af687df657d30d40be59adb24502a37",
+    "revisions_walked": 1027
   },
   "changes": [
     {
@@ -444,19 +444,19 @@
     },
     "sa_ui_settings_btn_style": {
       "last_version": "9.99.1426+2026-10-22",
-      "last_date": "2026-10-22",
+      "last_date": "2026-10-23",
       "last_default": "#ECEFF1|#263238|1px solid #B0BEC5",
       "type": "popup_dialog"
     },
     "sa_ui_help_btn_style": {
       "last_version": "9.99.1426+2026-10-22",
-      "last_date": "2026-10-22",
+      "last_date": "2026-10-23",
       "last_default": "#ECEFF1|#263238|1px solid #B0BEC5",
       "type": "popup_dialog"
     },
     "sa_ui_button_divider_style": {
       "last_version": "9.99.1426+2026-10-22",
-      "last_date": "2026-10-22",
+      "last_date": "2026-10-23",
       "last_default": "#999|0 4px",
       "type": "popup_dialog"
     },
@@ -468,13 +468,13 @@
     },
     "sa_ui_save_btn_style": {
       "last_version": "9.99.1426+2026-10-22",
-      "last_date": "2026-10-22",
+      "last_date": "2026-10-23",
       "last_default": "#4CAF50|white|1px solid #45a049|#45a049",
       "type": "popup_dialog"
     },
     "sa_ui_load_btn_style": {
       "last_version": "9.99.1426+2026-10-22",
-      "last_date": "2026-10-22",
+      "last_date": "2026-10-23",
       "last_default": "#2196F3|white|1px solid #0b7dda|#0b7dda",
       "type": "popup_dialog"
     },
@@ -902,6 +902,7 @@
     "sa_pop_ext_favicons": true,
     "sa_pop_ext_ttl_hours": 168,
     "sa_pop_ext_discogs_token": "",
-    "sa_dp_hover_without_ctrl": true
+    "sa_dp_hover_without_ctrl": true,
+    "sa_dp_window_read_ahead": false
   }
 }

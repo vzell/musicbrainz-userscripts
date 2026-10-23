@@ -4,9 +4,19 @@ Every version, newest first, with the technical details behind each change. For 
 
 **Months:** [October 2026](ShowAllEntityData_CHANGELOG/2026-10.md) · [September 2026](ShowAllEntityData_CHANGELOG/2026-09.md) · [August 2026](ShowAllEntityData_CHANGELOG/2026-08.md) · [July 2026](ShowAllEntityData_CHANGELOG/2026-07.md) · [June 2026](ShowAllEntityData_CHANGELOG/2026-06.md) · [May 2026](ShowAllEntityData_CHANGELOG/2026-05.md) · [April 2026](ShowAllEntityData_CHANGELOG/2026-04.md) · [March 2026 (1 of 2)](ShowAllEntityData_CHANGELOG/2026-03-1.md) · [March 2026 (2 of 2)](ShowAllEntityData_CHANGELOG/2026-03-2.md) · [February 2026](ShowAllEntityData_CHANGELOG/2026-02.md) · [January 2026](ShowAllEntityData_CHANGELOG/2026-01.md)
 
-This page shows the newest 100 of 1607 versions; the month pages hold all of them.
+This page shows the newest 100 of 1608 versions; the month pages hold all of them.
 
 ---
+
+## 9.99.1437 — 2026-10-23
+
+**🚀 Feature**
+
+- Inside the preview window (the one Space opens), resting the pointer on a link now says what a click does. The window's bottom line names it — "Opens here: Label · Columbia" ("read before, no request" when it is), "New tab: …" for a link that leaves the page, "Viewer: Back · image 2 of 8" for an image — and links are marked at rest: a dotted underline for one that opens in the window, ↗ for one that leaves it, a ring for an image.
+- A link that opens in the window shows its card there, as on the page (with Ctrl held unless "Show every preview on a plain hover" is on); Space opens it in the window, as a click does. An image shows large after a short rest on the picture itself (not on the space beside it), Shift larger, a click opens the viewer. ← Back and ‹ › say where they go.
+- New setting "In the window, read a link ahead while the pointer rests on it" (off by default): a short rest on a MusicBrainz link reads it, so the click shows it at once; such links get a small green dot. Links to other sites are never read ahead.
+- On a phone, a tap in the window stays a click; a long press shows the link's card or the image.
+
 
 ## 9.99.1436 — 2026-10-23
 
@@ -878,13 +888,6 @@ This page shows the newest 100 of 1607 versions; the month pages hold all of the
 **🚀 Feature**
 
 - Pages with sub-tables: while the global filter or a ⚠️ WARNING / ❌ ERROR menu filter is active, a sub-table with no matching row is hidden, heading line and table together, instead of staying on screen as "(0 of N)". Widen or clear the filter and it comes back as it was, collapsed or expanded, with its artwork strip as you left it. A sub-table with its own filter (a column filter, its 🔍 sub-table filter or its ⏳ toggle) stays visible even when empty, so that filter can still be reached. The row-count tooltip in the page heading says how many sub-tables are hidden. Setting: "Hide Empty Sub-tables While Filtering" (🎨 TABLE FILTER CONFIGURATION, on by default).
-
-
-## 9.99.1337 — 2026-10-13
-
-**✨ Improve**
-
-- springsteenlyrics.com, jungleland.it, brucespringsteen.it and Brucebase tables: titles get typographic punctuation instead of the keyboard characters — ’ for an apostrophe ("Don’t", "Comin’", "Rock ’n’ Roll", "Spirit of ’76"), “double” and ‘single’ quotation marks, … for "...", — for "--", an en dash for a range ("1975–1985") and a medley's " – ", a hyphen ‐ between words ("Freeze‐Out") and inside a date ("1999‐08‐12"), ″ for inches and × between two numbers. Brucebase Relations names get the same ("D’Angelo"). A setting of its own, "Write typographic punctuation in titles" (on by default): a column filter has to be typed with the same characters, so "don't" no longer finds "Don’t".
 
 
 ---

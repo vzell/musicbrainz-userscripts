@@ -25742,3 +25742,6 @@ viewer spec waits past the 250 ms delay before its last Esc. Mutations
 `scripts/mutations/dp-window-hover.json`: 17, 16 fail as expected, one
 recorded `pass` (the image's own delay); the four new ones each fail
 (before the wait was added, the focus mutation passed — the timing hid it).
+
+**Merge (`main`, f8dff66 + the fold to 9.99.1437)**: `test:full`
+22:55:13–23:07:08 CEST on petri, 2,265 passed, 0 failed, wall 715 s.
