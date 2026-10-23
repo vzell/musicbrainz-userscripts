@@ -265,8 +265,8 @@
         "why": "A thumbnail opens the script's artwork viewer (vzell, 2026-10-18).",
         "edits": [
             {
-                "find": "        document.addEventListener('click', _dgThumbClick, true);\n",
-                "replace": ""
+                "find": "        _ensureDgStyle();\n        _fiInstall();\n",
+                "replace": "        _ensureDgStyle();\n"
             }
         ],
         "spec": "tests/fixtures/discogs-pages.spec.js",

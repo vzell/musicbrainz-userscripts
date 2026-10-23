@@ -1,0 +1,132 @@
+[
+    {
+        "name": "sl image card: the cover link not stamped with its provider",
+        "why": "The card resolver and the viewer click find their provider by data-mb-fi only.",
+        "edits": [
+            {
+                "find": "                coverLink.dataset.mbFi = 'sl';\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/sl-image-card.spec.js",
+        "grep": "render asks nothing",
+        "expect": "fail"
+    },
+    {
+        "name": "foreign image card: the resolver does not know fi-img",
+        "why": "Without its case the stamp resolves to no card.",
+        "edits": [
+            {
+                "find": "                case 'fi-img':\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/sl-image-card.spec.js",
+        "grep": "render asks nothing",
+        "expect": "fail"
+    },
+    {
+        "name": "sl image card: a bootleg without artwork asks anyway",
+        "why": "The list's own \"artwork available\" says beforehand that the item page has no scans.",
+        "edits": [
+            {
+                "find": "            if (row.art === '0') return 'none';\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/sl-image-card.spec.js",
+        "grep": "marks as having no artwork",
+        "expect": "fail"
+    },
+    {
+        "name": "foreign image card: the record wanted after the hover moved on",
+        "why": "A row the pointer only passed over must cost no request (asked after the rate slot).",
+        "edits": [
+            {
+                "find": "                wanted: () => _fiCardShows(a),",
+                "replace": "                wanted: () => true,"
+            }
+        ],
+        "spec": "tests/fixtures/sl-image-card.spec.js",
+        "grep": "moved on before its turn",
+        "expect": "fail"
+    },
+    {
+        "name": "sl image card: the setting ignored",
+        "why": "sa_sl_tip_images off: no card and no request.",
+        "edits": [
+            {
+                "find": "        cardOn: () => Lib.settings.sa_sl_tip_images !== false,",
+                "replace": "        cardOn: () => true,"
+            }
+        ],
+        "spec": "tests/fixtures/sl-image-card.spec.js",
+        "grep": "every image of an item on hover\" off",
+        "expect": "fail"
+    },
+    {
+        "name": "foreign viewer click: hidden rows stepped through",
+        "why": "Invisible here, recorded as such: runFilter() takes the rows it hides OUT of the tbody, so a filtered single table has no display:none row for the guard to skip; the spec still pins that Shift+→ goes to the next row the filter left. The guard is for rows hidden in place (a collapsed or switched view).",
+        "edits": [
+            {
+                "find": "            .filter(l => l.closest('tr').style.display !== 'none' && l.getClientRects().length);\n        const k = links.indexOf(a);",
+                "replace": "            ;\n        const k = links.indexOf(a);"
+            }
+        ],
+        "spec": "tests/fixtures/sl-image-card.spec.js",
+        "grep": "next VISIBLE row",
+        "expect": "pass"
+    },
+    {
+        "name": "foreign viewer click: a modified click taken",
+        "why": "Ctrl, Shift, Alt or ⌘ keep the link (a new tab).",
+        "edits": [
+            {
+                "find": "        if (e.button !== 0 || e.ctrlKey || e.shiftKey || e.altKey || e.metaKey || !(e.target instanceof Element)) return;\n        const a = e.target.closest('a[data-mb-fi], a[data-mbtt-fn=\"dg-img\"]');",
+                "replace": "        if (e.button !== 0 || !(e.target instanceof Element)) return;\n        const a = e.target.closest('a[data-mb-fi], a[data-mbtt-fn=\"dg-img\"]');"
+            }
+        ],
+        "spec": "tests/fixtures/sl-image-card.spec.js",
+        "grep": "Ctrl-click keeps the link",
+        "expect": "fail"
+    },
+    {
+        "name": "foreign viewer click: not installed on springsteenlyrics.com",
+        "why": "_slPrepareLivePage() installs the click; without it a cover click follows the link.",
+        "edits": [
+            {
+                "find": "        _ensureSlStyle();\n        _fiInstall();\n",
+                "replace": "        _ensureSlStyle();\n"
+            }
+        ],
+        "spec": "tests/fixtures/sl-image-card.spec.js",
+        "grep": "Cover only",
+        "expect": "fail"
+    },
+    {
+        "name": "foreign viewer click: on the document instead of the window",
+        "why": "Invisible here, recorded as such: _fiInstall() runs at page preparation, before initNavigationGuard() arms after a render, so on the same node it still runs first and its preventDefault() makes the guard skip the click. The window keeps that true whatever registers first (the relationship-list icons were caught by exactly this order, docs/claude/artwork-caa-eaa.md).",
+        "edits": [
+            {
+                "find": "        window.addEventListener('click', _fiClick, true);",
+                "replace": "        document.addEventListener('click', _fiClick, true);"
+            }
+        ],
+        "spec": "tests/fixtures/sl-image-card.spec.js",
+        "grep": "Cover only",
+        "expect": "pass"
+    },
+    {
+        "name": "sl image card: the shared record not shared",
+        "why": "The card reads the detail preview's record (_dpMem); a provider map of its own would ask twice.",
+        "edits": [
+            {
+                "find": "            if (_dpMem.has(row.url)) return 'done';\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/sl-image-card.spec.js",
+        "grep": "render asks nothing",
+        "expect": "fail"
+    }
+]

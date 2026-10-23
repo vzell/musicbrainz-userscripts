@@ -4715,6 +4715,20 @@
                          'closes either. On a touch screen, tapping a title opens the window.'
         },
 
+        sa_sl_tip_images: {
+            label: 'Cover column: every image of an item on hover',
+            type: 'checkbox',
+            default: true,
+            description: 'Needs the setting above that switches the site on. Pointing at a cover in a ' +
+                         'collection, bootleg or CD and vinyl bootleg list shows a card with the cover and every ' +
+                         'artwork scan of that item, as the Cover Art column does on MusicBrainz. The scans are on ' +
+                         'the item\'s own page: the first time, that page is read — one request for that row only, ' +
+                         'kept 30 days and shared with the item preview, so a later click or preview costs nothing; ' +
+                         'moving on before its turn asks nothing. A bootleg the list marks as having no artwork is ' +
+                         'never asked. A click on a cover opens the artwork viewer either way (Ctrl-click: the ' +
+                         'item page).'
+        },
+
         sa_sl_compact_nav: {
             label: 'Compact category and filter bar on springsteenlyrics.com lists',
             type: 'checkbox',
@@ -11406,7 +11420,9 @@
      * (relative `collection.php?item=…`/`bootlegs.php?item=…`, which resolves
      * against the same directory on the live and on a fetched page). Cover
      * re-emits the card's thumbnail with `loading="lazy"`, so a consolidated
-     * list of hundreds of rows only loads the images scrolled into view.
+     * list of hundreds of rows only loads the images scrolled into view; its
+     * link is stamped for the image card and viewer click (`_SL_FI`), and a
+     * bootleg's with the card's own "artwork available" (`data-mb-sl-art`).
      *
      * @param {Element}  card        The `div.blog-post` element.
      * @param {string}   kind        `'collection'` or `'bootlegs'`.
@@ -11447,6 +11463,16 @@
             img.setAttribute('alt', title);
             img.className = 'mb-sl-cover';
             linkCell(img);
+            // The Cover column's image card and viewer click (_SL_FI): the
+            // stamps are attributes, so every render's clones keep them. A
+            // bootleg card says itself whether the item has artwork (the
+            // Artwork column's test); a "0" row never reads its item page.
+            const coverLink = href ? tr.lastElementChild.firstElementChild : null;
+            if (coverLink) {
+                coverLink.dataset.mbttFn = 'fi-img';
+                coverLink.dataset.mbFi = 'sl';
+                if (kind === 'bootlegs') coverLink.dataset.mbSlArt = body.querySelector('.bi-image') ? '1' : '0';
+            }
         } else {
             textCell('');
         }
@@ -12317,7 +12343,8 @@
      * same way it reads a MusicBrainz h1.
      *
      * Also tags `<body>` with `mb-sa-host-sl` (the scope of every SL style
-     * rule), installs `_ensureSlStyle()`, and records the site's navbar height
+     * rule), installs `_ensureSlStyle()` and the covers' viewer click
+     * (`_fiInstall()`), and records the site's navbar height
      * in `--mb-sl-navbar-h` for the sticky table header. Nothing else on the
      * page changes until the user presses the "Show all" button.
      *
@@ -12332,6 +12359,7 @@
 
         document.body.classList.add('mb-sa-host-sl');
         _ensureSlStyle();
+        _fiInstall();
         const navbar = document.querySelector('.navbar.sticky, .navbar-fixed-top, .navbar');
         if (navbar && navbar.offsetHeight > 0) {
             document.documentElement.style.setProperty('--mb-sl-navbar-h', `${navbar.offsetHeight}px`);
@@ -15534,8 +15562,9 @@
      * @returns {string}
      */
     function _dgThumbCell(thumb) {
-        // data-mbtt-fn: the hover card of every image of the row (_dgImgCardHtml()).
-        return `<td class="mb-dg-imgcell">${thumb ? `<a class="mb-dg-thumblink" data-mbtt-fn="dg-img" href="${_rgEsc(thumb)}" target="_blank" rel="noopener noreferrer">` +
+        // data-mbtt-fn + data-mb-fi: the hover card of every image of the
+        // row and the viewer click (_fiCardHtml(), _fiClick(); _DG_FI).
+        return `<td class="mb-dg-imgcell">${thumb ? `<a class="mb-dg-thumblink" data-mbtt-fn="fi-img" data-mb-fi="dg" href="${_rgEsc(thumb)}" target="_blank" rel="noopener noreferrer">` +
             `<img class="mb-dg-thumb" src="${_rgEsc(thumb)}" alt="" width="40" height="40" loading="lazy" referrerpolicy="no-referrer"></a>` : ''}</td>`;
     }
 
@@ -16124,7 +16153,7 @@
 
     /**
      * One row of a discogs.com table as the artwork viewer steps through
-     * them (`_dgThumbClick()`): its thumbnail, its title, the link
+     * them (`_fiClick()`): its thumbnail, its title, the link
      * previews' target for its release or master (null when the row has no
      * such link), its viewer key, and whether the viewer asked for its record
      * (`asked`: the full images then cost a request, not the cache).
@@ -16159,44 +16188,10 @@
             }));
         }
         if (st && st.status === 'failed') {
-            return thumbOnly(`Discogs did not answer (${st.detail}). Showing the 150 px thumbnail.`, () => _dgArtLoad(row, true));
+            return thumbOnly(`Discogs did not answer (${st.detail}). Showing the 150 px thumbnail.`, () => _fiLoad(_DG_FI, row, true));
         }
         const spacing = _extDiscogsToken() ? 'about 1 s with your token' : 'about 2.5 s; 1 s with a Discogs token';
         return thumbOnly(`Loading the full size from Discogs… one request for this one (${spacing}).`, null);
-    }
-
-    /**
-     * Asks for a row's record once the viewer shows it — never ahead — and
-     * shows its full images when it arrives. Wanted only while the viewer
-     * is on that row (`_extGet()` asks `wanted()` when the slot comes up).
-     *
-     * @param {DgArtRow} row
-     * @param {boolean} [force] - "Try again" after a failure.
-     * @returns {void}
-     */
-    function _dgArtLoad(row, force = false) {
-        const refresh = () => _artViewerReplaceImages(_DG_ART_CTX, row.path, _dgArtImages(row));
-        if (!row.target) return;
-        const st = _mbPop.get(row.target.key);
-        if (!force && st && (st.status === 'done' || st.status === 'failed')) return;
-        if (!st || st.status !== 'loading') row.asked = true;
-        _extLoad(row.target, {
-            force: false, repaint: refresh,
-            wanted: () => !!_artViewerState && _artViewerState.ctx === _DG_ART_CTX && _artViewerState.entityPath === row.path,
-        });
-        refresh();
-    }
-
-    /**
-     * The index of a discogs.com table's Title column (its first header
-     * starting "Title"), -1 for none.
-     *
-     * @param {HTMLTableElement} table
-     * @returns {number}
-     */
-    function _dgTitleColIdx(table) {
-        return Array.from(table.querySelectorAll('thead tr:first-child th'))
-            .findIndex(th => (th.dataset.colName || th.textContent).trim().startsWith('Title'));
     }
 
     /**
@@ -16205,7 +16200,7 @@
      * release or master), null when that column has no such link.
      *
      * @param {HTMLAnchorElement} l - The row's `a.mb-dg-thumblink`.
-     * @param {number} titleIdx - `_dgTitleColIdx()` of its table.
+     * @param {number} titleIdx - `_fiTitleColIdx()` of its table.
      * @param {string} path - The viewer's key for the row.
      * @returns {DgArtRow}
      */
@@ -16220,114 +16215,42 @@
     }
 
     /**
-     * Whether `#mb-stat-tooltip` still shows the card of this thumbnail:
-     * the card is on screen and the pointer still on the link.
-     *
-     * @param {HTMLAnchorElement} a
-     * @returns {boolean}
-     */
-    function _dgImgCardShows(a) {
-        const tip = document.getElementById('mb-stat-tooltip');
-        return !!tip && tip.style.display === 'block' && a.isConnected && a.matches(':hover');
-    }
-
-    /**
-     * The hover card of a thumbnail in a discogs.com table (vzell,
-     * 2026-10-19: "all images in a popup, like the CAA/EAA column"): the
-     * B1 artwork card (`_artCardCoreHtml()`) of every image of the row's
-     * release or master — the record the viewer and the link preview use
+     * A discogs.com table's thumbnails as a provider of the foreign-image
+     * card and viewer click (`_fiCardHtml()`, `_fiClick()`; vzell,
+     * 2026-10-18/19). The hover card shows every image of the row's release
+     * or master — the record the viewer and the link preview use
      * (`_extLoad()`: memory, IndexedDB, else ONE request for this row, never
-     * a neighbour's). Until it is in, "Loading" with the list's thumbnail;
-     * the request is wanted only while this card shows (`_dgImgCardShows()`,
-     * asked after the rate slot), and the card repaints when it arrives.
-     * Off with `sa_dg_tip_images`; no card for a row without a release or
-     * master link.
-     *
-     * @param {HTMLAnchorElement} a - The `a.mb-dg-thumblink`.
-     * @returns {?string} Card HTML, or null for none.
+     * a neighbour's); off with `sa_dg_tip_images`; no card for a row without
+     * a release or master link. A plain click opens the viewer on the row's
+     * images at FULL size, asked for when the viewer shows the row
+     * (`_fiLoad()`), the list's 150 px thumbnail shown meanwhile (its URL is
+     * signed: no larger size can be made from it); a master's own images
+     * too (vzell). Discogs' primary image is the one MusicBrainz would call
+     * the main front: the card's ★ and its type tally (primary, secondary).
+     * @type {FiProvider}
      */
-    function _dgImgCardHtml(a) {
-        if (Lib.settings.sa_dg_tip_images === false) return null;
-        const table = a.closest('#mb-dg-root table.tbl');
-        if (!table) return null;
-        const row = _dgArtRowFor(a, _dgTitleColIdx(table), `dg-card:${a.href}`);
-        if (!row.target) return null;
-        const title = row.title || 'Discogs';
-        const box = (body) => `<div style="max-width:310px;"><div class="mb-tt-title">${_rgEsc(title)}</div>${body}</div>`;
-        const st = _mbPop.get(row.target.key);
-        if (!st || (st.status !== 'done' && st.status !== 'failed')) {
-            _extLoad(row.target, {
-                force: false,
-                repaint: () => {
-                    if (!_dgImgCardShows(a)) return;
-                    if (_statTipApi) _statTipApi.repaint(a);
-                },
-                wanted: () => _dgImgCardShows(a),
-            });
-            return box(`<div class="mb-art-card-tiles"><span class="mb-art-card-tile"><img src="${_rgEsc(row.thumb)}" alt="" referrerpolicy="no-referrer"></span></div>` +
-                `<div class="mb-tt-comment"><span class="mb-dp-spin">◌</span> Loading every image of this one from Discogs…</div>`);
-        }
-        const images = _dgArtImages(row);
-        if (images.length === 1 && images[0].note) return box(`<div class="mb-tt-dim">${_rgEsc(images[0].note)}</div>`);
-        // Discogs' primary image is the one MusicBrainz would call the main
-        // front: the card's ★ and its type tally (primary, secondary).
-        const shown = images.map(im => ({ ...im, front: im.imageType === 'primary', types: im.imageType ? [im.imageType] : [] }));
-        return _artCardCoreHtml({
-            el: a, ctx: _DG_ART_CTX, images: shown, order: shown.map((_, i) => i), title, hit: () => false, matches: '',
-            foot: 'Click: viewer',
-        });
-    }
-
-    /**
-     * A plain click on a thumbnail of a discogs.com table opens the artwork
-     * viewer (vzell, 2026-10-18) on that row's images at FULL size: the
-     * row's release or master record (its own images, a master's too:
-     * vzell), asked for when the viewer shows the row (`_dgArtLoad()`), the
-     * list's 150 px thumbnail shown meanwhile (its URL is signed: no larger
-     * size can be made from it). ← → step through the row's images,
-     * Shift+← → through the table's shown rows, in their order (and ← → past
-     * either end, with `sa_art_viewer_cross_rows`). A row the link previews
-     * already read costs nothing. Delegated on the document (capture),
-     * since every render clones the rows. Ctrl, Shift, Alt or ⌘ keep the
-     * link's new tab.
-     *
-     * @param {MouseEvent} e
-     * @returns {void}
-     */
-    function _dgThumbClick(e) {
-        if (e.button !== 0 || e.ctrlKey || e.shiftKey || e.altKey || e.metaKey || !(e.target instanceof Element)) return;
-        const a = e.target.closest('#mb-dg-root table.tbl a.mb-dg-thumblink');
-        if (!a) return;
-        const table = a.closest('table.tbl');
-        const links = Array.from(table.querySelectorAll('tbody > tr a.mb-dg-thumblink'))
-            .filter(l => l.closest('tr').style.display !== 'none' && l.getClientRects().length);
-        const k = links.indexOf(a);
-        if (k < 0) return;
-        const titleIdx = _dgTitleColIdx(table);
-        /** @type {DgArtRow[]} */
-        const rows = links.map((l, i) => _dgArtRowFor(l, titleIdx, `dg:${i}:${l.href}`));
-        e.preventDefault();
-        e.stopImmediatePropagation();
-        _DG_ART_CTX.imagesCache.clear();
-        const show = (i) => {
-            _DG_ART_CTX.imagesCache.set(rows[i].path, _dgArtImages(rows[i]));
-            // After the cache entry: a record already there is shown at once.
-            setTimeout(() => _dgArtLoad(rows[i]), 0);
-        };
-        let cur = k;
-        show(cur);
-        const h1 = document.querySelector('#mb-dg-root h1.mb-dg-h1 bdi');
-        _artViewerOpen(_DG_ART_CTX, rows[cur].path, null, 0, {
-            opener: a, title: h1 ? h1.textContent : '', rowPos: { k: cur + 1, n: rows.length },
-            onGroupStep: (d) => {
-                const next = cur + d;
-                if (next < 0 || next >= rows.length) return null;
-                cur = next;
-                show(cur);
-                return { entityPath: rows[cur].path, list: null, title: h1 ? h1.textContent : '', rowPos: { k: cur + 1, n: rows.length } };
-            },
-        });
-    }
+    const _DG_FI = {
+        ctx: _DG_ART_CTX,
+        name: 'Discogs',
+        tableSel: '#mb-dg-root table.tbl',
+        linkSel: 'a.mb-dg-thumblink',
+        cardOn: () => Lib.settings.sa_dg_tip_images !== false,
+        rowFor: (a, table, path) => _dgArtRowFor(a, _fiTitleColIdx(table), path),
+        hasRecord: (row) => !!row.target,
+        state: (row) => {
+            const st = _mbPop.get(row.target.key);
+            return st && ['loading', 'done', 'failed'].includes(st.status) ? st.status : 'cold';
+        },
+        request: (row, o) => _extLoad(row.target, { force: false, repaint: o.repaint, wanted: o.wanted }),
+        images: _dgArtImages,
+        cardImages: (images) => images.map(im => ({ ...im, front: im.imageType === 'primary', types: im.imageType ? [im.imageType] : [] })),
+        loadingText: () => 'Loading every image of this one from Discogs…',
+        foot: 'Click: viewer',
+        title: () => {
+            const h1 = document.querySelector('#mb-dg-root h1.mb-dg-h1 bdi');
+            return h1 ? h1.textContent : '';
+        },
+    };
 
     /**
      * Prepares a discogs.com page at init, standing in for the MusicBrainz
@@ -16343,7 +16266,7 @@
      * Also tags `<body>` with `mb-sa-host-dg` (and `mb-dg-unlock-scroll` on a
      * submissions list's browser view, whose subbrowser.css locks the
      * window's scrolling), installs `_ensureDgStyle()` and the thumbnails'
-     * viewer click (`_dgThumbClick()`).
+     * viewer click (`_fiInstall()`).
      * Nothing else on the page changes until the user presses a button.
      *
      * @returns {?HTMLHeadingElement} The `<h1>` to use as header container, or
@@ -16358,7 +16281,7 @@
         // #hpane_wrap) locks the window's scrolling (_ensureDgStyle()).
         if (document.querySelector('table#browser, #hpane_wrap')) document.body.classList.add('mb-dg-unlock-scroll');
         _ensureDgStyle();
-        document.addEventListener('click', _dgThumbClick, true);
+        _fiInstall();
         const root = document.createElement('section');
         root.id = 'mb-dg-root';
         const h1 = document.createElement('h1');
@@ -20972,7 +20895,10 @@
         const entry = { wants: [wanted], promise: null };
         entry.promise = (async () => {
             await _dpAwaitSlot();
-            if (!entry.wants.some(w => w())) return { outcome: 'skipped' };
+            if (!entry.wants.some(w => w())) {
+                Lib.debug('detail', `no longer wanted, not asked: ${url}`);
+                return { outcome: 'skipped' };
+            }
             try {
                 const html = await _dpFetchText(url, site.charset);
                 _dpRememberRaw(url, html);
@@ -22124,6 +22050,332 @@
         _artViewerOpen(_DP_ART_CTX, key, null, k, { opener: a, title });
         return true;
     }
+
+    // ── Foreign-site images in the tables: one card, one viewer click ──────
+    //
+    // vzell, 2026-10-23 (org/foreign-images.org): MusicBrainz's B1 image
+    // card and the artwork viewer on the non-MusicBrainz tables, one path
+    // for every host. A trigger is a link in a table row carrying
+    // `data-mbtt-fn="fi-img"` (the shared tooltip engine resolves its card,
+    // `_fiCardHtml()`) and `data-mb-fi="<key>"`, which names its PROVIDER
+    // (`_fiProvider()`): what that host's rows are and where their records
+    // come from. Discogs' Image column (`_DG_FI`) and springsteenlyrics'
+    // Cover column (`_SL_FI`) are the two so far. Everything is delegated
+    // (the card through `#mb-stat-tooltip`, the click on the window), so it
+    // survives every re-render's clones with no re-wiring, and nothing runs
+    // until a hover or a click: a render asks for nothing.
+
+    /**
+     * A host's rows as the foreign-image card and viewer take them.
+     *   - `ctx`: the viewer's context (`external: true`, its own cache);
+     *   - `name`: the card's title for a row without one;
+     *   - `tableSel` / `linkSel`: the tables it serves and its trigger links;
+     *   - `cardOn()`: its hover-card setting;
+     *   - `rowFor(a, table, path)`: a trigger's row (`thumb`, `title`,
+     *     `asked`, `path`, and whatever the provider needs);
+     *   - `hasRecord(row)`: whether the row has a record to ask for at all;
+     *   - `state(row)`: `'none'` (nothing to ask), `'cold'`, `'loading'`,
+     *     `'done'` or `'failed'`;
+     *   - `request(row, {wanted, repaint, force})`: asks for the record;
+     *     `wanted` is asked when the rate slot comes up, `repaint` runs when
+     *     the answer is in;
+     *   - `images(row)`: the viewer's records for the row as it stands — one
+     *     with a `note` while there is nothing more to show;
+     *   - `cardImages(images)`, optional: the card's view of them;
+     *   - `loadingText(row)`, `foot`, `title()`: the card's wording and the
+     *     viewer's title.
+     * @typedef {{ctx: Object, name: string, tableSel: string, linkSel: string, cardOn: function(): boolean,
+     *   rowFor: function(HTMLAnchorElement, HTMLTableElement, string): Object, hasRecord: function(Object): boolean,
+     *   state: function(Object): string, request: function(Object, Object): void, images: function(Object): Object[],
+     *   cardImages: ?function(Object[]): Object[], loadingText: function(Object): string, foot: string,
+     *   title: function(): string}} FiProvider
+     */
+
+    /**
+     * The provider a trigger's `data-mb-fi` names. A `switch`, read at event
+     * time, so the providers can be declared with their hosts' code.
+     *
+     * @param {string} key
+     * @returns {?FiProvider}
+     */
+    function _fiProvider(key) {
+        switch (key) {
+            case 'dg': return _DG_FI;
+            case 'sl': return _SL_FI;
+            default: return null;
+        }
+    }
+
+    /**
+     * A trigger link's provider; a link stamped `data-mbtt-fn="dg-img"` (a
+     * Discogs table saved before the shared card) is Discogs'.
+     *
+     * @param {HTMLElement} a
+     * @returns {?FiProvider}
+     */
+    function _fiProviderOf(a) {
+        return _fiProvider(a.dataset.mbFi || (a.dataset.mbttFn === 'dg-img' ? 'dg' : ''));
+    }
+
+    /**
+     * The index of a table's Title column (its first header starting
+     * "Title"), -1 for none.
+     *
+     * @param {HTMLTableElement} table
+     * @returns {number}
+     */
+    function _fiTitleColIdx(table) {
+        return Array.from(table.querySelectorAll('thead tr:first-child th'))
+            .findIndex(th => (th.dataset.colName || th.textContent).trim().startsWith('Title'));
+    }
+
+    /**
+     * Whether `#mb-stat-tooltip` still shows the card of this trigger: the
+     * card is on screen and the pointer still on the link.
+     *
+     * @param {HTMLAnchorElement} a
+     * @returns {boolean}
+     */
+    function _fiCardShows(a) {
+        const tip = document.getElementById('mb-stat-tooltip');
+        return !!tip && tip.style.display === 'block' && a.isConnected && a.matches(':hover');
+    }
+
+    /**
+     * The hover card of a trigger: the B1 artwork card (`_artCardCoreHtml()`)
+     * of every image of the row. Until the record is in, "Loading" with the
+     * row's own picture; the request is for this row only, wanted only while
+     * this card shows (`_fiCardShows()`, asked after the rate slot), and the
+     * card repaints when it arrives. A row with nothing more than one image
+     * and a note (no record, a failure, nothing found) shows that image and
+     * the note. Off with the provider's setting (`cardOn()`); no card for a
+     * row without a record (`hasRecord()`).
+     *
+     * @param {HTMLAnchorElement} a
+     * @returns {?string} Card HTML, or null for none.
+     */
+    function _fiCardHtml(a) {
+        const p = _fiProviderOf(a);
+        if (!p || !p.cardOn()) return null;
+        const table = a.closest(p.tableSel);
+        if (!table) return null;
+        const row = p.rowFor(a, table, `${p.ctx.key}-card:${a.href}`);
+        if (!p.hasRecord(row)) return null;
+        const title = row.title || p.name;
+        const box = (body) => `<div style="max-width:310px;"><div class="mb-tt-title">${_rgEsc(title)}</div>${body}</div>`;
+        const tile = row.thumb
+            ? `<div class="mb-art-card-tiles"><span class="mb-art-card-tile"><img src="${_rgEsc(row.thumb)}" alt="" referrerpolicy="no-referrer"></span></div>`
+            : '';
+        const state = p.state(row);
+        if (state === 'cold' || state === 'loading') {
+            p.request(row, {
+                force: false,
+                repaint: () => {
+                    if (!_fiCardShows(a)) return;
+                    if (_statTipApi) _statTipApi.repaint(a);
+                },
+                wanted: () => _fiCardShows(a),
+            });
+            return box(`${tile}<div class="mb-tt-comment"><span class="mb-dp-spin">◌</span> ${_rgEsc(p.loadingText(row))}</div>`);
+        }
+        const images = p.images(row);
+        if (images.length === 1 && images[0].note) return box(`${tile}<div class="mb-tt-dim">${_rgEsc(images[0].note)}</div>`);
+        const shown = p.cardImages ? p.cardImages(images) : images;
+        return _artCardCoreHtml({
+            el: a, ctx: p.ctx, images: shown, order: shown.map((_, i) => i), title, hit: () => false, matches: '',
+            foot: p.foot,
+        });
+    }
+
+    /**
+     * Asks for a row's record once the viewer shows it — never ahead — and
+     * shows its images when it arrives. Wanted only while the viewer is on
+     * that row (the provider's `request()` asks `wanted()` when the slot
+     * comes up).
+     *
+     * @param {FiProvider} p
+     * @param {Object} row - `p.rowFor()`'s row.
+     * @param {boolean} [force] - "Try again" after a failure.
+     * @returns {void}
+     */
+    function _fiLoad(p, row, force = false) {
+        const refresh = () => _artViewerReplaceImages(p.ctx, row.path, p.images(row));
+        if (!p.hasRecord(row)) return;
+        const state = p.state(row);
+        if (state === 'none' || (!force && (state === 'done' || state === 'failed'))) return;
+        if (state !== 'loading') row.asked = true;
+        p.request(row, {
+            force, repaint: refresh,
+            wanted: () => !!_artViewerState && _artViewerState.ctx === p.ctx && _artViewerState.entityPath === row.path,
+        });
+        refresh();
+    }
+
+    /**
+     * A plain click on a trigger opens the artwork viewer on that row's
+     * images: what the row's record has (`_fiLoad()`, asked when the viewer
+     * shows the row), its own picture meanwhile. ← → step through the row's
+     * images, Shift+← → through the table's shown rows, in their order (and
+     * ← → past either end, with `sa_art_viewer_cross_rows`). A row already
+     * read (by the card, the viewer or the link preview) costs nothing.
+     * Ctrl, Shift, Alt or ⌘ and any other button keep the link.
+     *
+     * On the window, capture (`_fiInstall()`): ahead of every listener on
+     * the document, `initNavigationGuard()`'s "leave this page" among them.
+     *
+     * @param {MouseEvent} e
+     * @returns {void}
+     */
+    function _fiClick(e) {
+        if (e.button !== 0 || e.ctrlKey || e.shiftKey || e.altKey || e.metaKey || !(e.target instanceof Element)) return;
+        const a = e.target.closest('a[data-mb-fi], a[data-mbtt-fn="dg-img"]');
+        const p = a && _fiProviderOf(a);
+        const table = p && a.closest(p.tableSel);
+        if (!table) return;
+        const links = Array.from(table.querySelectorAll(`tbody > tr ${p.linkSel}`))
+            .filter(l => l.closest('tr').style.display !== 'none' && l.getClientRects().length);
+        const k = links.indexOf(a);
+        if (k < 0) return;
+        const rows = links.map((l, i) => p.rowFor(l, table, `${p.ctx.key}:${i}:${l.href}`));
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        p.ctx.imagesCache.clear();
+        const show = (i) => {
+            p.ctx.imagesCache.set(rows[i].path, p.images(rows[i]));
+            // After the cache entry: a record already there is shown at once.
+            setTimeout(() => _fiLoad(p, rows[i]), 0);
+        };
+        let cur = k;
+        show(cur);
+        _artViewerOpen(p.ctx, rows[cur].path, null, 0, {
+            opener: a, title: p.title(), rowPos: { k: cur + 1, n: rows.length },
+            onGroupStep: (d) => {
+                const next = cur + d;
+                if (next < 0 || next >= rows.length) return null;
+                cur = next;
+                show(cur);
+                return { entityPath: rows[cur].path, list: null, title: p.title(), rowPos: { k: cur + 1, n: rows.length } };
+            },
+        });
+    }
+
+    /**
+     * Installs the foreign-image viewer click (`_fiClick()`) once. Called
+     * by each foreign host's page preparation (`_dgPrepareLivePage()`,
+     * `_slPrepareLivePage()`), never on MusicBrainz.
+     *
+     * @returns {void}
+     */
+    function _fiInstall() {
+        if (_fiInstall.done) return;
+        _fiInstall.done = true;
+        window.addEventListener('click', _fiClick, true);
+    }
+
+    /**
+     * The artwork viewer's context for a springsteenlyrics.com table's
+     * covers (`_SL_FI`).
+     * @type {ArtCtx}
+     */
+    const _SL_ART_CTX = { key: 'sl', column: 'Cover', external: true, imagesCache: new Map() };
+
+    /**
+     * springsteenlyrics.com's item pages as the Cover column's records: the
+     * URL of each one being asked (a count, for `'loading'`), each failure's
+     * detail, and each one fetched in this session (the viewer's "one
+     * request" line).
+     * @type {{pending: Map<string, number>, failed: Map<string, string>, fetched: Set<string>}}
+     */
+    const _slFiLoads = { pending: new Map(), failed: new Map(), fetched: new Set() };
+
+    /**
+     * A springsteenlyrics.com list's Cover column as a provider of the
+     * foreign-image card and viewer click (mockups S1/V1, 2026-10-23). The
+     * cover is in the row; the scans are on the item page, read through
+     * `_dpGet()` — the detail preview's record, memory, IndexedDB, else ONE
+     * request through its rate gate — so the card, the viewer and the
+     * preview share it whichever came first, and the preview's setting does
+     * not matter here. A bootleg row the list itself says has no artwork
+     * (`data-mb-sl-art="0"`, `_slBuildRow()`) never asks; a collection or
+     * brucelegs row carries no such flag and asks. Off with
+     * `sa_sl_tip_images` (the card only; a click still opens the viewer).
+     * @type {FiProvider}
+     */
+    const _SL_FI = {
+        ctx: _SL_ART_CTX,
+        name: 'springsteenlyrics.com',
+        tableSel: 'body.mb-sa-host-sl table.tbl',
+        linkSel: 'a[data-mb-fi="sl"]',
+        cardOn: () => Lib.settings.sa_sl_tip_images !== false,
+        rowFor: (a, table, path) => {
+            const idx = _fiTitleColIdx(table);
+            const cell = idx >= 0 ? a.closest('tr').cells[idx] : null;
+            const img = a.querySelector('img');
+            return {
+                url: a.href, thumb: img ? img.src : '', art: a.dataset.mbSlArt || '', asked: false, path,
+                title: (cell ? cell.textContent : (img ? img.alt : '')).replace(/\s+/g, ' ').trim(),
+            };
+        },
+        hasRecord: (row) => !!row.url && !!row.thumb,
+        state: (row) => {
+            if (row.art === '0') return 'none';
+            if (_dpMem.has(row.url)) return 'done';
+            if (_slFiLoads.pending.get(row.url)) return 'loading';
+            return _slFiLoads.failed.has(row.url) ? 'failed' : 'cold';
+        },
+        request: (row, o) => {
+            const url = row.url;
+            _slFiLoads.pending.set(url, (_slFiLoads.pending.get(url) || 0) + 1);
+            _dpGet(url, _DP_SITES['springsteenlyrics.com'], { wanted: o.wanted, force: !!o.force }).then((res) => {
+                if (res.outcome === 'ok') {
+                    _slFiLoads.failed.delete(url);
+                    if (!res.cached) _slFiLoads.fetched.add(url);
+                } else if (res.outcome === 'error') {
+                    _slFiLoads.failed.set(url, res.detail || 'the request failed');
+                }
+            }).finally(() => {
+                const n = (_slFiLoads.pending.get(url) || 1) - 1;
+                if (n > 0) _slFiLoads.pending.set(url, n);
+                else _slFiLoads.pending.delete(url);
+                o.repaint();
+            });
+        },
+        images: (row) => {
+            const cover = {
+                image: row.thumb, thumbnails: { 250: row.thumb }, types: ['Cover'], front: true, external: true,
+                comment: row.title, pageUrl: row.url, pageLabel: 'Item page',
+            };
+            const coverOnly = (note, retry) => [{ ...cover, note, ...(retry ? { retry } : {}), source: 'the list\'s cover' }];
+            const state = _SL_FI.state(row);
+            if (state === 'none') return coverOnly('Cover only: the list says this item has no artwork, so its page is not read.');
+            if (state === 'failed') {
+                return coverOnly(`Could not read the item page (${_slFiLoads.failed.get(row.url)}). Showing the cover.`,
+                    () => _fiLoad(_SL_FI, row, true));
+            }
+            if (state !== 'done') return coverOnly('Loading the scans from the item page… one request for this one (about 1 s apart).');
+            const scans = (_dpMem.get(row.url).data.images || []).filter(im => im.thumb || im.full);
+            if (!scans.length) return coverOnly('The item page has no scans.');
+            const source = row.asked && _slFiLoads.fetched.has(row.url) ? 'the item page: one request, now in the cache' : 'the cache: no request';
+            const fileName = (u) => {
+                try {
+                    return decodeURIComponent(new URL(u).pathname.split('/').pop());
+                } catch (_) {
+                    return '';
+                }
+            };
+            return [{ ...cover, source }].concat(scans.map(im => ({
+                image: im.full || im.thumb, thumbnails: { 250: im.thumb || im.full }, types: ['Scan'], external: true,
+                comment: fileName(im.full || im.thumb), pageUrl: row.url, pageLabel: 'Item page', source,
+            })));
+        },
+        cardImages: null,
+        loadingText: () => 'Loading the scans from the item page…',
+        foot: 'Click: viewer · Ctrl-click: the item page',
+        title: () => {
+            const h1 = document.querySelector('h1.mb-sl-h1 bdi');
+            return h1 ? h1.textContent : '';
+        },
+    };
 
     /**
      * Opens the pinned dialog on a target, or shows that target in the
@@ -135184,7 +135436,10 @@ a { color: #1565c0; }`;
                 case 'art-sum': return _artCardSummaryHtml(el);
                 case 'art-img': return _artCardImageHtml(el);
                 case 'art-rel': return _artRelIconCardHtml(el);
-                case 'dg-img': return _dgImgCardHtml(el);
+                // 'dg-img': a Discogs table saved before the shared
+                // foreign-image card (_fiProviderOf() reads it as Discogs').
+                case 'fi-img':
+                case 'dg-img': return _fiCardHtml(el);
                 case 'sb-pic': return _sbPicCardHtml(el);
                 case 'sb-cover': return _sbCoverCardHtml(el);
                 default: return null;
@@ -135231,7 +135486,7 @@ a { color: #1565c0; }`;
     // hover (`_mbttAfterHide()`), Shift follows the key.
 
     /** The resolver cards built by `_artCardCoreHtml()`. */
-    const _ART_CARD_FNS = new Set(['art-sum', 'art-rel', 'dg-img', 'sb-cover']);
+    const _ART_CARD_FNS = new Set(['art-sum', 'art-rel', 'fi-img', 'dg-img', 'sb-cover']);
 
     /**
      * The artwork card's view: `allEl` is the element whose card shows every
@@ -135443,7 +135698,9 @@ a { color: #1565c0; }`;
             const im = images[i];
             const cls = 'mb-art-card-tile' + (im.front ? ' mb-art-card-main' : '') +
                 (Lib.settings.sa_caa_tip_highlight !== false && o.hit(i) ? ' mb-art-card-hit' : '');
-            return `<span class="${cls}"><img src="${_rgEsc(_artViewerThumbUrl(im))}" alt="" loading="lazy"></span>`;
+            // Another site's image (an external context) goes without a
+            // referrer, as everywhere else the script shows one.
+            return `<span class="${cls}"><img src="${_rgEsc(_artViewerThumbUrl(im))}" alt="" loading="lazy"${ctx.external ? ' referrerpolicy="no-referrer"' : ''}></span>`;
         }).join('') + (order.length > max ? `<span class="mb-art-card-more">+${order.length - max}</span>` : '');
         const tally = new Map();
         images.forEach(im => ((im.types && im.types.length) ? im.types : ['(no type)'])

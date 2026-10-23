@@ -1138,7 +1138,8 @@ the same way. The card shows at most 12 tiles and a "+N" for the rest
   so it shrinks its tiles until it fits the window.
 
 Every image starts again at 12 on the next hover. The same keys work on the
-cards of the relationship-list covers and of discogs.com's Image column.
+cards of the relationship-list covers, of discogs.com's Image column and of
+springsteenlyrics.com's Cover column.
 Bigger tiles cost no request; every image loads the thumbnails that were left
 out. Hovering one image of an expanded cell shows its card: the
 preview, its types and comment, its position ("Image 6 of 10 · Medium 2 of 3"),
@@ -2855,10 +2856,25 @@ While loading, the progress line names the letter it is on ("Loading H (9
 of 32)"). If one letter fails to load, "↻ Load remaining pages" carries on
 from that letter.
 
-Cover and Title link to the item's own page on springsteenlyrics.com;
-following one asks first, as leaving any consolidated table does. To see
-what that page adds without leaving the table, switch on the preview: see
-*Previewing the detail pages* under [Page-specific behaviour](#page-specific-behaviour).
+Title links to the item's own page on springsteenlyrics.com; following it
+asks first, as leaving any consolidated table does. To see what that page
+adds without leaving the table, switch on the preview: see *Previewing the
+detail pages* under [Page-specific behaviour](#page-specific-behaviour).
+
+**Pointing at a cover** (collection, latest additions, bootlegs, CD and
+vinyl bootlegs) shows a card with the cover — starred — and every artwork
+scan of that item, as the Cover Art column does on MusicBrainz: Space shows
+every image when there are more than fit, Shift draws them bigger. The scans
+are on the item's own page, so the first time that page is read: one request
+for that row only, kept 30 days and shared with the preview above (a later
+click or preview costs nothing). Moving on before its turn asks nothing, and
+a bootleg the list marks as having no artwork ("Cover only") is never asked.
+**A click on a cover** opens the artwork viewer on those images: ← → step
+through them, Shift+← → through the rows the filter left, and *Item page*
+opens the item's page. Ctrl/⌘-click (or a middle click) opens the item page
+in a new tab, as before. Switch the card off with ⚙️ Settings → 🎸
+springsteenlyrics.com → *Cover column: every image of an item on hover*; the
+click opens the viewer either way.
 
 </details>
 

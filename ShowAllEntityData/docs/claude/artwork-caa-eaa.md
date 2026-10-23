@@ -500,8 +500,9 @@ Grep `// ── CAA/EAA column redesign` for the code. Rules that fail silently:
   which `_artHighlightImageLi()` already marked — the viewer's info panel does
   the same through `opts.liFor`. A second highlight path would drift.
 - **The B1 card's keys (2026-10-20): Space = every image, Shift = bigger
-  tiles**, for all three cards `_artCardCoreHtml()` builds (`art-sum`,
-  `art-rel`, `dg-img` — `_ART_CARD_FNS`). `_initStatTooltip()` hands every
+  tiles**, for every card `_artCardCoreHtml()` builds (`art-sum`,
+  `art-rel`, `sb-cover`, and the foreign sites' `fi-img`, with its old name
+  `dg-img` — `_ART_CARD_FNS`). `_initStatTooltip()` hands every
   key to `_mbttKey()` while a resolver card shows, and rebuilds the card
   through `_statTipApi.repaint()`. Late record repaints (`_artRelIconRepaint()`,
   the Discogs card) also go through that, so the fit runs on them too. Space is
@@ -540,8 +541,9 @@ Grep `// ── CAA/EAA column redesign` for the code. Rules that fail silently:
   at the top of `#mb-stat-tooltip`'s mouseover (`_artRelIconStamp()`) and
   shows the B1 card (`_artCardCoreHtml()`, shared with
   `_artCardSummaryHtml()`, and since 2026-10-19 with discogs.com's Image
-  column, `_dgImgCardHtml()`: its facts line says "primary" for an
-  external context) from `_artFetchEntityImages()`, asked on the first
+  column, since 2026-10-23 the shared foreign-image card `_fiCardHtml()`,
+  springsteenlyrics' Cover column too: its facts line says "primary" for an
+  external context, whose tiles also go without a referrer) from `_artFetchEntityImages()`, asked on the first
   hover or click; waiting callers queue (`_artRelIconLoading`), because a
   click right after the hover found the load already on its way and was
   dropped. The click never navigates by itself. Gates: `sa_enable_caa_pics`

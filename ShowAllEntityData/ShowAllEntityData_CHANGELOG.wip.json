@@ -1,0 +1,21 @@
+[
+    {
+        "version": "WIP.1",
+        "date": "2026-10-23",
+        "sections": [
+            {
+                "label": "🚀 Feature",
+                "items": [
+                    "springsteenlyrics.com lists (collection, latest additions, bootlegs, CD and vinyl bootlegs): pointing at a cover shows a card with the cover and every artwork scan of that item, as the Cover Art column does on MusicBrainz (Space: every image, Shift: bigger tiles). The scans are read from the item's own page on that first hover, one request for that row only, kept 30 days and shared with the item preview; moving on before its turn asks nothing, and a bootleg the list marks as having no artwork is never asked. New setting \"Cover column: every image of an item on hover\" (on by default, inside the site's own switch).",
+                    "A click on a cover opens the artwork viewer on that item's cover and scans: ← → through its images, Shift+← → through the rows the filter left, an \"Item page\" button. Ctrl-click (or a middle click) still opens the item page."
+                ]
+            },
+            {
+                "label": "🔧 Refactor",
+                "items": [
+                    "Discogs' Image column card and viewer click now run on one shared path for every non-MusicBrainz site (`_fiCardHtml()`, `_fiClick()`, `_fiLoad()`, a provider per site), which the jungleland.it, brucespringsteen.it and Brucebase tables will use next. Its click listens on the window instead of the document. Unchanged on Discogs, except that a row with no other image now shows its thumbnail beside the note. Nothing changes on MusicBrainz, and nothing new runs while a table renders."
+                ]
+            }
+        ]
+    }
+]

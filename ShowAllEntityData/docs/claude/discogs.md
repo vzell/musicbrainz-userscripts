@@ -120,14 +120,15 @@ costs (`_dgCost()`, `_dgCostPer()`).
   name linked to `/artist/<id>` (the release record has the ids), and
   `collapsableColumns: ['Credits']` on `dg-release` collapses it like
   MusicBrainz's Instruments column (vzell).
-- **A thumbnail opens the artwork viewer** (`_dgThumbClick()`, delegated on
-  the document, capture: renders clone the rows), captioned with the row's
+- **A thumbnail opens the artwork viewer** (`_fiClick()`, the shared
+  foreign-image click since 2026-10-23, provider `_DG_FI`; delegated on the
+  window, capture: renders clone the rows), captioned with the row's
   title (`_DG_ART_CTX`). **Since 2026-10-18 at full size:** each shown row is
   a viewer group (`onGroupStep`: Shift+← →, and ← → past either end with
   `sa_art_viewer_cross_rows`); its images are the link previews' record of
   the row's release or master (`_extTarget()` on the Title link, then
   `_extLoad()` with its own `wanted`: memory, IndexedDB, or ONE request),
-  asked by `_dgArtLoad()` only when the viewer SHOWS the row — never ahead.
+  asked by `_fiLoad()` only when the viewer SHOWS the row — never ahead.
   Until it arrives, the list's 150 px thumbnail (signed: no other size can
   be made from it) with `im.note` ("Loading the full size…"); a failure
   says why and offers "Try again" (`im.retry`); `_artViewerReplaceImages()`
@@ -305,10 +306,19 @@ user, no list — so the rows come from these pages, fetched same-origin by
 
 vzell: "when hovering the Image column in Discogs PTs make all images shown
 in a popup like what we do in the CAA/EAA column on MB PTs". Every
-`_dgThumbCell()` link carries `data-mbtt-fn="dg-img"`, so the shared tooltip
-engine (`_initStatTooltip()`, `#mb-stat-tooltip`) resolves it through
-`_mbttResolve()` → `_dgImgCardHtml()`: delegated, so it survives every
-re-render's clones with no re-wiring.
+`_dgThumbCell()` link carries `data-mbtt-fn="fi-img"` and `data-mb-fi="dg"`,
+so the shared tooltip engine (`_initStatTooltip()`, `#mb-stat-tooltip`)
+resolves it through `_mbttResolve()` → `_fiCardHtml()` with the Discogs
+provider `_DG_FI`: delegated, so it survives every re-render's clones with no
+re-wiring. Since 2026-10-23 the card, the click and the load-on-show are the
+shared foreign-image path (`_fiCardHtml()`, `_fiClick()`, `_fiLoad()`; the
+springsteenlyrics Cover column is its second provider, docs/claude/springsteenlyrics.md);
+`_DG_FI` holds what is Discogs': the row (`_dgArtRowFor()`), its record's
+state (`_mbPop`), the request (`_extLoad()`), the images (`_dgArtImages()`)
+and the card's primary/secondary view (`cardImages`). The old stamp
+`data-mbtt-fn="dg-img"` (a table saved to disk before) still resolves as
+Discogs'. One visible change came with it: a row with nothing but its
+thumbnail and a note now shows the thumbnail beside the note.
 
 - **The card is the B1 artwork card** (`_artCardCoreHtml()`): the row's
   title, the count, up to `sa_caa_tip_summary_tiles` tiles, the type tally.
@@ -317,10 +327,10 @@ re-render's clones with no re-wiring.
   primary" for an external context (`ctx.external`), never "main front".
 - **The record is the viewer's and the link preview's** (`_extLoad()` on
   `_dgArtRowFor()`'s target — the row's Title link read by the Discogs
-  reader; `_dgThumbClick()` builds its rows with the same helper): memory,
+  reader; `_fiClick()` builds its rows with the same helper): memory,
   IndexedDB, else ONE request for the hovered row, never a neighbour's.
   Until it is in, "Loading" with the list's thumbnail; `repaint` re-resolves
-  the card while it still shows; `wanted` is `_dgImgCardShows()` (the card
+  the card while it still shows; `wanted` is `_fiCardShows()` (the card
   on screen, the pointer on the link), asked after the rate slot — a row the
   pointer only passed over costs nothing. A later click or Space costs
   nothing either.

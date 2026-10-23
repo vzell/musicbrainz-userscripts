@@ -131,3 +131,31 @@ Findings that change the design:
   3. the Brucebase readers (=/gig:= for bb-year's Media icons, =/song:= images for
      bb-songs) and sl-lyrics' glyph;
   4. the table-wide 🖼 gallery.
+
+** Phase 1 (2026-10-23, branch =feature/foreign-art-viewer=, WIP.1)
+
+Env: 2026-10-23T01:40:23+02:00 · NB-3641 · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) ·
+Playwright Chromium (fixtures), no Tampermonkey (GM stubs) · real browser not yet tried
+
+Done: the SL card lists (sl-collection, sl-collection-intro, sl-bootlegs, sl-brucelegs)
+and the shared path. What landed differs from the outline in these points:
+
+- One layer after =_dpArtViewerClick()=: =_fiProvider()= (a switch, read at event time),
+  =_fiCardHtml()=, =_fiLoad()=, =_fiClick()= (window capture, =_fiInstall()=),
+  =_fiTitleColIdx()=. Discogs' =_dgThumbClick()=, =_dgImgCardHtml()=,
+  =_dgImgCardShows()= and =_dgArtLoad()= are gone; =_DG_FI= keeps what is Discogs'. The
+  stamp is =data-mbtt-fn="fi-img" data-mb-fi="<key>"=; the old ="dg-img"= still resolves.
+- SL provider =_SL_FI=: the converter stamps the Cover link, plus =data-mb-sl-art= on a
+  bootleg list; the record is =_dpGet()='s (shared with the detail preview); setting
+  =sa_sl_tip_images= gates the card only. No count badge on the cover (a post-render cell
+  write); no parser change, =_DP_PARSER_VERSION= stays 2 (brucelegs 148: 31 scans, no
+  related item's cover).
+- =_dpGet()= now logs "no longer wanted, not asked: <url>" on =detail= when it drops a
+  request at its slot.
+- Tests: =tests/fixtures/sl-image-card.spec.js= (10), fixture =detail-sl-brucelegs-148.html=;
+  mutations =scripts/mutations/sl-image-card.json=: 8 caught, 2 recorded as
+  ="expect": "pass"= (the hidden-row filter: =runFilter()= removes rows rather than hiding
+  them; window vs document: the click is registered before the navigation guard arms).
+  The Discogs specs and mutation files pass on the shared path. Six =discogs-pages.json=
+  finds were already stale at HEAD (0 hits before this change too); they are left for a
+  separate fix.
