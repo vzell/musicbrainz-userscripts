@@ -189,7 +189,7 @@ and specs that address a row's page by href use =a:not(.mb-fi-cell)=.
 
 Done 2026-10-23 on petri (same branch, WIP.3 bb-year, WIP.4 bb-songs, WIP.5 sl-lyrics).
 Browser check: vzell, 2026-10-23, on petri: the 1985 year page's Media icons ("it
-works"). stats:songs (glyphs) and lyrics.php?letter=b were not named in that check.
+works"), then the song list's and the lyrics index's glyphs ("work fine too").
 
 Env: 2026-10-23T17:42:05+02:00 · petri · WSL2 Ubuntu 24.04.3 (Linux 6.18.54.1) ·
 Playwright 1.62.1 Chromium, no Tampermonkey (GM stubs) · real browser not yet tried
