@@ -1541,19 +1541,12 @@
                          'page\'s actions, the attention indicators and the ☰ menu): fontSize|padding|height|borderRadius'
         },
 
-        sa_ui_stop_btn_style: {
-            label: 'Stop button colors',
-            type: 'popup_dialog',
-            fields: ['bg', 'color', 'border'],
-            colorFields: ['bg', 'color'],
-            default: '#f44336|white|1px solid #d32f2f',
-            description: 'Stop button: bg|color|border'
-        },
-
         // The ⚙️ Settings / ❓ Help pill colours, the Save / Load colours and
         // the "|" divider style were retired with the SAED button (2026-10-22):
-        // those controls are rows of one menu in one look now. Their stored
-        // values are deleted by _sweepOrphanedGmValues().
+        // those controls are rows of one menu in one look now. The Stop
+        // button's colours followed (2026-10-23): a fetch is stopped from its
+        // own running segment, in the SAED button's look. Their stored values
+        // are deleted by _sweepOrphanedGmValues().
         sa_ui_toolbar_menu_btn_style: {
             label: 'SAED button colors',
             type: 'popup_dialog',
@@ -5408,6 +5401,7 @@
         'sa_ui_load_btn_style',
         'sa_ui_save_btn_style',
         'sa_ui_settings_btn_style',
+        'sa_ui_stop_btn_style',
     ];
 
     /**
@@ -6170,6 +6164,8 @@
         'sa_ui_save_btn_style',
         'sa_ui_load_btn_style',
         'sa_ui_button_divider_style',
+        // …and the Stop button's, retired when a fetch moved into its segment.
+        'sa_ui_stop_btn_style',
     ];
 
     /** Key prefix of the "Show single-table" cross-tab hand-off payloads. */
@@ -25317,9 +25313,9 @@
      * the fetch pipeline indefinitely. Mediums are processed sequentially so
      * their AJAX requests can't race each other.
      *
-     * Drives the same inline progress bar (`fetchProgressWrap`/-`Fill`/-`Label`,
-     * created once at UI-setup time) the paginated-fetch loop in
-     * `startFetchingProcess` uses — otherwise, on a release with an
+     * Writes the same progress line under the heading (`_saedRunStatus()`)
+     * the paginated-fetch loop in `startFetchingProcess` uses — otherwise,
+     * on a release with an
      * overflowing medium, this phase runs silently before the real fetch
      * loop even starts and can look like a hang. Updated live as each
      * medium's own AJAX response streams rows in (via the same
@@ -25346,10 +25342,10 @@
         Lib.debug('init', `loadAllOverflowMediumTracks: found ${_tbodies.length} overflowing medium(s).`);
 
         // Progress indicator, mirroring the paginated-fetch "Loading page X
-        // of Y... (Z rows) - Ns left" bar driven by startFetchingProcess's
-        // main fetch loop (fetchProgressWrap/-Fill/-Label, created once at
-        // UI-setup time — see the "Fetch progress bar" block near the
-        // controlsContainer). Each overflowing medium is its own AJAX round
+        // of Y · Z rows so far · about N s left" line written by
+        // startFetchingProcess's main fetch loop (`_saedRunStatus()`; the
+        // "Fetch progress line" block near the controlsContainer). Each
+        // overflowing medium is its own AJAX round
         // trip (see this function's own JSDoc), which on a release with
         // several such mediums can otherwise look like a hang before the
         // real per-page fetch loop even starts.
@@ -25365,10 +25361,6 @@
         // MusicBrainz's own already-known total in the progress label — see
         // _updateOverflowProgress below.
         let _currentExpectedTotal = null;
-        fetchProgressWrap.style.display = 'inline-flex';
-        fetchProgressFill.style.width = '0%';
-        fetchProgressFill.style.background = '#ffcccc';
-        fetchProgressLabel.style.color = '#333';
 
         // Unlike the per-page fetch loop (one HTTP round trip per update), a
         // single overflowing medium's own AJAX load can itself take a long
@@ -25388,11 +25380,6 @@
         // @param {number} currentMediumRows - That medium's live row count
         //   (0 once it has just finished — folded into `_tracksLoadedSoFar`).
         const _updateOverflowProgress = (currentElapsedMs = 0, currentFraction = 0, currentMediumRows = 0) => {
-            const _progress = Math.min((_mediumsCompleted + currentFraction) / _totalMediums, 1);
-            fetchProgressFill.style.width = `${Math.round(_progress * 100)}%`;
-            fetchProgressFill.style.background =
-                _progress >= 1.0 ? '#ccffcc' : (_progress >= 0.5 ? '#ffe0b2' : '#ffcccc');
-
             // Time left = (this medium's own remaining time, extrapolated from
             // its progress-so-far) + (average completed-medium time × however
             // many full mediums are still queued up after this one). Falls
@@ -25415,9 +25402,9 @@
                 ? _tracksLoadedSoFar + _currentExpectedTotal : null;
             const _tracksLabel = _grandExpectedTotal !== null
                 ? `${_totalTracksSoFar} of ${_grandExpectedTotal}` : `${_totalTracksSoFar}`;
-            fetchProgressLabel.textContent =
-                `Loading overflow tracks: medium ${_currentMediumNum} of ${_totalMediums}... ` +
-                `(${_tracksLabel} tracks) - ${_estRemainingSeconds.toFixed(1)}s left`;
+            _saedRunStatus(
+                `Loading overflow tracks: medium ${_currentMediumNum} of ${_totalMediums} · ` +
+                `${_tracksLabel} tracks · about ${_estRemainingSeconds.toFixed(1)} s left`);
         };
         _updateOverflowProgress();
 
@@ -60955,6 +60942,7 @@
      * @type {Array<{key: string, glyph: string, level: ('alert'|'warn'|'info'), label: string}>}
      */
     const _SAED_INDICATORS = [
+        { key: 'fetch-missing',  glyph: '🔄', level: 'alert', label: 'Missing pages' },
         { key: 'findings-error', glyph: '❌', level: 'alert', label: 'Errors' },
         { key: 'findings-warn',  glyph: '⚠️', level: 'warn',  label: 'Warnings' },
     ];
@@ -60971,7 +60959,8 @@
 
     /**
      * The h1 controls container's tail, in final visual order: the SAED
-     * button first, then what a fetch shows beside it.
+     * button. (A fetch's Stop and progress used to follow it; they are in
+     * the running segment and the status line now, `_saedRunStart()`.)
      *
      * Everything NOT named here keeps whatever position it was appended at —
      * which is why the hidden `<input type="file">` needs no entry. What used
@@ -60981,8 +60970,6 @@
      */
     const _TOOLBAR_TAIL_ORDER = [
         'mb-saed-bar',
-        'mb-stop-btn',
-        'mb-fetch-progress-wrap',
     ];
 
     /**
@@ -64017,18 +64004,6 @@ ${sections.join('\n')}
     }
 
     /**
-     * Full CSS for the Stop button.
-     * Config: sa_ui_stop_btn_style — bg|color|border
-     * Note: display is kept at 'none' by the caller and toggled dynamically.
-     */
-    function uiStopBtnCSS() {
-        const defaults = '#f44336|white|1px solid #d32f2f';
-        const [bg, color, border] =
-            parseCondensedStyle(Lib.settings.sa_ui_stop_btn_style, defaults);
-        return `${uiActionBtnBaseCSS()} background-color:${bg}; color:${color}; border:${border}; display:none;`;
-    }
-
-    /**
      * Full CSS for a toolbar pull-down button that is NOT a segment of the
      * SAED button (none is drawn in the bar today; a submenu's unused button
      * gets it). The SAED button reads the same setting for its own colours.
@@ -64945,6 +64920,153 @@ ${sections.join('\n')}
         _saedBarEl.classList.toggle('mb-saed-narrow', narrow);
         _saedMarkFirst();
         _saedRefreshGroups();
+    }
+
+    // ── A fetch runs inside the segment that started it (option (b)) ─────────
+    //
+    // Approved 2026-10-22 (mockup v6, https://claude.ai/artifact/QUqoriyP6qX3D3EutjhyzX):
+    // while pages load, the pressed action segment IS the progress bar and
+    // the Stop button — a blue fill (`--p`), "■ Stop · n / N" — and the line
+    // under the heading says which page, the rows so far and the time left
+    // (`#mb-fetch-progress-wrap`, first in the status line). The other action
+    // segments are disabled. While rows are rendered it is striped; then it
+    // gets its own label back. This replaced the separate Stop button and the
+    // 600–750 px progress bar beside the toolbar.
+
+    /**
+     * The running fetch's segment, or null: `btn`, the label, tooltip and
+     * card it had before, and whether Stop was pressed.
+     *
+     * @type {?{btn: HTMLElement, text: string, title: ?string, mbtt: (string|undefined), stopping: boolean}}
+     */
+    let _saedRun = null;
+
+    /**
+     * Writes the running segment's label: a small square (the Stop glyph)
+     * and `text`.
+     *
+     * @param {string} text
+     * @returns {void}
+     */
+    function _saedRunLabel(text) {
+        if (!_saedRun) return;
+        const sq = document.createElement('span');
+        sq.className = 'mb-seg-stop-glyph';
+        sq.setAttribute('aria-hidden', 'true');
+        _saedRun.btn.replaceChildren(sq, document.createTextNode(text));
+    }
+
+    /**
+     * Turns `btn` into the running fetch's segment. Idempotent for the same
+     * segment; a different one first ends the old run.
+     *
+     * @param {?HTMLElement} btn - The pressed action segment.
+     * @returns {void}
+     */
+    function _saedRunStart(btn) {
+        if (!btn || !btn.classList) return;
+        if (_saedRun && _saedRun.btn === btn) return;
+        _saedRunEnd();
+        _saedRun = {
+            btn,
+            text: btn.textContent,
+            title: btn.getAttribute('title'),
+            mbtt: btn.dataset.mbtt,
+            stopping: false,
+        };
+        btn.classList.add('mb-seg-running');
+        btn.disabled = false;
+        btn.setAttribute('aria-label', 'Stop loading');
+        btn.style.setProperty('--p', '0%');
+        btn.dataset.mbtt = '<strong>Stop loading</strong><br>Stops after the page that is loading now. '
+            + 'The rows loaded so far stay and are shown.';
+        _setTip(btn, 'Stop loading after this page; the rows loaded so far stay');
+        _saedRunLabel('Stop');
+    }
+
+    /**
+     * Moves the running segment's fill and label on: "■ Stop · n / N".
+     *
+     * @param {number} n - Pages (or units) done.
+     * @param {number} total - All of them.
+     * @returns {void}
+     */
+    function _saedRunProgress(n, total) {
+        if (!_saedRun || _saedRun.stopping) return;
+        const pct = total > 0 ? Math.min(100, Math.round((n / total) * 100)) : 0;
+        _saedRun.btn.style.setProperty('--p', `${pct}%`);
+        _saedRunLabel(`Stop · ${n} / ${total}`);
+    }
+
+    /**
+     * Stop, from the running segment or prefix-mode O: the loop ends after
+     * the page that is loading now, and what arrived is rendered.
+     *
+     * @returns {void}
+     */
+    function _saedRequestStop() {
+        if (!_saedRun || _saedRun.stopping) return;
+        Lib.debug('cleanup', 'Stop requested by user.');
+        stopRequested = true;
+        _saedRun.stopping = true;
+        _saedRun.btn.setAttribute('aria-disabled', 'true');
+        _saedRunLabel('Stopping…');
+    }
+
+    /**
+     * The fetch is over and `rows` rows are being rendered: the segment is
+     * striped and disabled until `_saedRunEnd()`.
+     *
+     * @param {number} rows
+     * @returns {void}
+     */
+    function _saedRunRendering(rows) {
+        if (!_saedRun) return;
+        const btn = _saedRun.btn;
+        btn.classList.remove('mb-seg-running');
+        btn.classList.add('mb-seg-rendering');
+        btn.disabled = true;
+        btn.style.removeProperty('--p');
+        btn.replaceChildren(document.createTextNode(`Rendering ${Number(rows).toLocaleString('en-US')} rows…`));
+        fetchProgressLabel.textContent = `Rendering ${Number(rows).toLocaleString('en-US')} rows…`;
+    }
+
+    /**
+     * Gives the segment its label, tooltip and card back, and enables every
+     * action segment again. Focus goes back to it when nothing else has it
+     * (a disabled button drops focus); the render tail's own move to the
+     * global filter comes later and wins, as it always did. Safe to call
+     * when nothing runs.
+     *
+     * @returns {void}
+     */
+    function _saedRunEnd() {
+        fetchProgressWrap.style.display = 'none';
+        if (!_saedRun) return;
+        const { btn, text, title, mbtt } = _saedRun;
+        _saedRun = null;
+        btn.classList.remove('mb-seg-running', 'mb-seg-rendering');
+        btn.style.removeProperty('--p');
+        btn.removeAttribute('aria-label');
+        btn.removeAttribute('aria-disabled');
+        btn.textContent = text;
+        if (title === null) btn.removeAttribute('title'); else btn.setAttribute('title', title);
+        if (mbtt === undefined) delete btn.dataset.mbtt; else btn.dataset.mbtt = mbtt;
+        allActionButtons.forEach(b => { b.disabled = false; });
+        const ae = document.activeElement;
+        if (!ae || ae === document.body) btn.focus({ preventScroll: true });
+    }
+
+    /**
+     * Shows a line of fetch progress under the heading
+     * (`#mb-fetch-progress-wrap`, first in the status line).
+     *
+     * @param {string} text
+     * @returns {void}
+     */
+    function _saedRunStatus(text) {
+        fetchProgressWrap.style.display = 'inline';
+        fetchProgressLabel.textContent = text;
     }
 
     /**
@@ -72547,7 +72669,16 @@ a { color: #1565c0; }`;
 
         // Pass the entire config object
         eb.dataset.label = conf.label;  // stable original label — survives superscript/textContent mutations
-        eb.onclick = (e) => startFetchingProcess(e, conf, activeDefinition);
+        // While its fetch runs the segment is the Stop button (`_saedRunStart()`).
+        eb.onclick = (e) => {
+            if (_saedRun && _saedRun.btn === eb) {
+                e.preventDefault();
+                e.stopPropagation();
+                _saedRequestStop();
+                return;
+            }
+            startFetchingProcess(e, conf, activeDefinition);
+        };
         // A button that is not part of the page type's own run ("🗂 Sidebar as
         // tables") starts after a heavier rule, so it does not read as one of
         // them (or as part of their "RGs"-style group label).
@@ -72691,73 +72822,16 @@ a { color: #1565c0; }`;
         _saedGroup('log').adopt(row);
     });
 
-    // --- Fetch progress bar (shown during data loading, hidden otherwise) ---
+    // --- Fetch progress line (shown during data loading, hidden otherwise) ---
+    // The bar itself is the running action segment (`_saedRunStart()`); this
+    // is the words beside it, first in the status line under the heading
+    // (placed there with `statusDisplaysContainer`).
     const fetchProgressWrap = document.createElement('span');
     fetchProgressWrap.id = 'mb-fetch-progress-wrap';
-    fetchProgressWrap.style.cssText = 'display:none; align-items:center; vertical-align:middle;';
-
-    // Custom progress bar: outer track + inner fill + label all stacked in one element
-    const fetchProgressOuter = document.createElement('span');
-    fetchProgressOuter.id = 'mb-fetch-progress-outer';
-    fetchProgressOuter.style.cssText = [
-        'display:inline-block',
-        'position:relative',
-        'width:auto',
-        // min-width must fit the longest label this bar ever shows without
-        // clipping — fetchProgressFill/-Label are both position:absolute, so
-        // they contribute nothing to this element's own auto width; it always
-        // renders at exactly min-width (never grows to fit content) unless
-        // min-width itself is wide enough. 420px fit the original paginated-
-        // fetch label ("Loading page 999 of 999... (99999 rows) - 9999.9s
-        // left", ~55 chars) but not the longer overflow-tracks label
-        // ("Loading overflow tracks: medium 20 of 20... (99999 tracks) -
-        // 9999.9s left", ~73 chars) added later — see DEBUG-NOTES.md.
-        'min-width:600px',
-        'max-width:750px',
-        'height:20px',
-        'background:#e0e0e0',
-        'border-radius:4px',
-        'overflow:hidden',
-        'vertical-align:middle',
-        'border:1px solid #bbb',
-    ].join(';');
-
-    const fetchProgressFill = document.createElement('span');
-    fetchProgressFill.id = 'mb-fetch-progress-fill';
-    fetchProgressFill.style.cssText = [
-        'display:block',
-        'position:absolute',
-        'top:0',
-        'left:0',
-        'height:100%',
-        'width:0%',
-        'background:#ffcccc',     // light red — initial colour before first progress update
-        'transition:width 0.2s ease, background 0.3s ease',
-        'border-radius:3px 0 0 3px',
-    ].join(';');
-
+    fetchProgressWrap.style.cssText = 'display:none; font-size:0.95em; color:#2f5f9e; font-weight:bold; font-variant-numeric:tabular-nums; white-space:nowrap;';
     const fetchProgressLabel = document.createElement('span');
     fetchProgressLabel.id = 'mb-fetch-progress-label';
-    fetchProgressLabel.style.cssText = [
-        'position:absolute',
-        'top:0',
-        'left:0',
-        'width:100%',
-        'height:100%',
-        'display:flex',
-        'align-items:center',
-        'justify-content:center',
-        'font-size:0.75em',
-        'font-weight:bold',
-        'color:#333',           // dark text — always readable on the light pastel fill colours
-        'white-space:nowrap',
-        'pointer-events:none',
-    ].join(';');
-
-    fetchProgressOuter.appendChild(fetchProgressFill);
-    fetchProgressOuter.appendChild(fetchProgressLabel);
-    fetchProgressWrap.appendChild(fetchProgressOuter);
-    controlsContainer.appendChild(fetchProgressWrap);
+    fetchProgressWrap.appendChild(fetchProgressLabel);
 
     // Every control the initial render contributes now exists. The 📦 Data ▾ /
     // 🛠 View ▾ buttons were only adopted INTO above — this is what attaches
@@ -72814,13 +72888,6 @@ a { color: #1565c0; }`;
     const preFilterMsg = document.createElement('span');
     preFilterMsg.id = 'mb-preload-filter-msg';
     preFilterMsg.style.cssText = 'font-size:0.8em; color:red; margin-left:4px; font-weight:bold; white-space:nowrap; display:none;';
-
-    const stopBtn = document.createElement('button');
-    stopBtn.id = 'mb-stop-btn';
-    stopBtn.innerHTML = makeButtonHTML('Stop', 'o');
-    stopBtn.type = 'button';
-    stopBtn.style.cssText = uiStopBtnCSS();
-    _setTip(stopBtn, `Stop the current data fetching process from the MusicBrainz backend database (${getPrefixDisplay()}, then O)`);
 
     const globalStatusDisplay = document.createElement('span');
     globalStatusDisplay.id = 'mb-global-status-display';
@@ -74451,7 +74518,6 @@ a { color: #1565c0; }`;
         Lib.debug('filter', `Column filters cleared for table: ${tableName}`);
     }
 
-    controlsContainer.appendChild(stopBtn);
     _orderToolbar(controlsContainer);
     // Filter container is NOT appended here anymore; moved to H2 later
 
@@ -74470,12 +74536,6 @@ a { color: #1565c0; }`;
         table.tbl { position: relative; z-index: 0; }
 
         .mb-sorting-active, .mb-sorting-active * { cursor: wait !important; }
-        button.mb-show-all-btn-loading:disabled {
-            cursor: default !important;
-            color: buttontext !important;
-            opacity: 1 !important;
-            border: 1px solid #767676 !important;
-        }
 
         /* ── Button press-down effect (active state) ──────────────────────────
            H1 action-bar buttons already carry transition:transform 0.1s,box-shadow 0.1s
@@ -74875,6 +74935,42 @@ a { color: #1565c0; }`;
         .mb-saed-bar .mb-saed-attn-seg.mb-saed-lv-info  { background-color: #e3ebf6; color: #2f5f9e; }
         .mb-saed-bar .mb-saed-attn-seg:hover:not(:disabled) { filter: brightness(0.95); }
         .mb-saed-bar .mb-saed-attn-seg[aria-pressed="true"] { box-shadow: inset 0 0 0 2px currentColor; }
+        /* A fetch runs inside the segment that started it (_saedRunStart()):
+           a blue fill to --p, then stripes while the rows are rendered (the
+           stripes move only when motion is welcome). Background IMAGES, so
+           they cover the inline background-color the segment keeps. */
+        .mb-saed-bar .mb-seg.mb-seg-running {
+            background-image: linear-gradient(to right, #c9d8ee var(--p, 0%), #e6edf7 var(--p, 0%));
+            color: #2f5f9e;
+            font-weight: 600;
+            font-variant-numeric: tabular-nums;
+            min-width: 9.5em;
+            justify-content: center;
+        }
+        .mb-saed-bar .mb-seg.mb-seg-running:hover {
+            background-image: linear-gradient(to right, #bccfe9 var(--p, 0%), #dbe5f3 var(--p, 0%));
+        }
+        .mb-saed-bar .mb-seg.mb-seg-running[aria-disabled="true"] { cursor: progress; }
+        .mb-saed-bar .mb-seg-stop-glyph {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            background: currentColor;
+            border-radius: 1px;
+        }
+        .mb-saed-bar .mb-seg.mb-seg-rendering,
+        .mb-saed-bar .mb-seg.mb-seg-rendering:disabled {
+            background-image: repeating-linear-gradient(-45deg, #e6edf7 0 6px, #d6e2f2 6px 12px);
+            background-size: 200% 100%;
+            color: #2f5f9e;
+            font-weight: 600;
+            opacity: 1;
+            cursor: progress;
+        }
+        @media (prefers-reduced-motion: no-preference) {
+            .mb-saed-bar .mb-seg.mb-seg-rendering { animation: mb-seg-slide 1s linear infinite; }
+        }
+        @keyframes mb-seg-slide { from { background-position: 0 0; } to { background-position: -34px 0; } }
         /* The rich card of the menu segment (_saedCardHtml()). */
         table.mb-saed-card { border-collapse: collapse; margin: 2px 0 6px; }
         table.mb-saed-card th {
@@ -77298,6 +77394,16 @@ a { color: #1565c0; }`;
             font-size: 12.5px;
         }
         .mb-saed-foot[hidden] { display: none; }
+        /* An indicator's own words above its rows (the 🔄 list: which page
+           failed and why). */
+        .mb-saed-ind-note {
+            max-width: 26em;
+            padding: 6px 14px 6px;
+            color: #9b2218;
+            font-size: 12.5px;
+            line-height: 1.4;
+            white-space: normal;
+        }
         /* "Needs attention" rows: glyph, label, count, then the submenu arrow. */
         .mb-saed-attn-row .mb-saed-row-glyph { width: 1.4em; text-align: center; flex-shrink: 0; }
         .mb-saed-attn-row .mb-saed-row-count {
@@ -77940,6 +78046,8 @@ a { color: #1565c0; }`;
     const statusDisplaysContainer = document.createElement('div');
     statusDisplaysContainer.id = 'mb-status-displays-container';
     statusDisplaysContainer.style.cssText = 'display:inline-flex; align-items:center; gap:8px; line-height:1; vertical-align:middle;';
+    // A running fetch's progress line comes first (`_saedRunStatus()`).
+    statusDisplaysContainer.appendChild(fetchProgressWrap);
     statusDisplaysContainer.appendChild(globalStatusDisplay);
     const _statusDivider = document.createElement('span');
     _statusDivider.id = 'mb-status-divider';
@@ -78245,8 +78353,8 @@ a { color: #1565c0; }`;
     let _lastFetchIncomplete = null;
 
     /**
-     * What an interrupted fetch left behind, so the "↻ Load remaining pages"
-     * button can pick up at the page that failed instead of re-fetching
+     * What an interrupted fetch left behind, so the 🔄 indicator's "↻ Load
+     * the N missing pages" can pick up at the page that failed instead of re-fetching
      * everything from page 1.
      *
      * **Only the values that cannot be re-derived are kept here.** `maxPage`
@@ -90730,15 +90838,6 @@ a { color: #1565c0; }`;
         return cur.length > prev.length && cur.startsWith(prev);
     }
 
-    stopBtn.addEventListener('click', (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        Lib.debug('cleanup', 'Stop requested by user.');
-        stopRequested = true;
-        stopBtn.disabled = true;
-        stopBtn.textContent = 'Stopping...';
-    });
-
     /**
      * Returns the debounce delay to use for the current filter pass.
      * The user-configured `sa_filter_debounce_delay` is the floor (minimum).
@@ -92103,6 +92202,7 @@ a { color: #1565c0; }`;
         // is what makes a fresh press of any button remove a stale offer, and
         // what makes a resumed run that succeeds leave nothing behind.
         _resumeState = null;
+        _createResumeFetchButton();  // …and takes the 🔄 indicator off the bar
 
         // ── BEGIN: Artist-Releasegroups pre-fetch pass ────────────────────────────────────────
         //
@@ -92118,8 +92218,8 @@ a { color: #1565c0; }`;
         // whose mainLabel equals the currently-clicked button's label.
         //
         // Nothing is rendered during this pass — only h3 text content is collected.
-        // Progress is surfaced via globalStatusDisplay and fetchProgressLabel so the
-        // user can see that work is happening.
+        // Progress is surfaced on the progress line under the heading
+        // (`_saedRunStatus()`) so the user can see that work is happening.
         //
         // Reset arrays unconditionally so a second button press always gets fresh data.
         // A RESUME is the one press that is not a second one: it continues the
@@ -92154,17 +92254,13 @@ a { color: #1565c0; }`;
                 Lib.debug('fetch', `Artist-Releasegroups pre-fetch pass: using params`, _preFetchParams);
 
                 // Pass 1 of 2: determine max page for the official-only URL.
-                // Make the progress bar wrap visible NOW so fetchProgressLabel updates
-                // are actually displayed during the pre-fetch pass.  The wrap is
-                // normally shown later (after isLoaded / stopOtherScripts checks), but
-                // the pre-fetch runs before that point, so we must show it here.
-                fetchProgressWrap.style.display = 'inline-flex';
-                fetchProgressFill.style.width = '0%';
-                globalStatusDisplay.textContent = 'Loading (pass 1 of 2): getting official page count…';
-                globalStatusDisplay.style.color = '#999';
-                fetchProgressLabel.textContent  = 'Pass 1 of 2 — official headers…';
-                fetchProgressLabel.style.color  = '#333';
-                fetchProgressFill.style.background = '#b3d9ff'; // light blue for pre-fetch pass
+                // Said on the progress line under the heading. The segment
+                // itself becomes the progress bar only for pass 2 (the main
+                // fetch below): Stop is honoured from there on, and a Stop
+                // that cut this pass short would only lose the
+                // Official/Non-Official split, not save any time.
+                globalStatusDisplay.textContent = '';
+                _saedRunStatus('Loading (pass 1 of 2): getting the official page count…');
 
                 const _preMaxRes = await fetchMaxPageGeneric(path, _preFetchParams);
                 const _preMaxPage = _preMaxRes.maxPage;
@@ -92185,13 +92281,8 @@ a { color: #1565c0; }`;
                         _preUrl.searchParams.set(k, _preFetchParams[k])
                     );
 
-                    // Update progress bar and status for each pre-fetch page
-                    const _preProgress = Math.round((_pp / _preMaxPage) * 100);
-                    fetchProgressFill.style.width = `${_preProgress}%`;
-                    fetchProgressLabel.textContent =
-                        `Pass 1 of 2 — official headers: page ${_pp}/${_preMaxPage}`;
-                    globalStatusDisplay.textContent =
-                        `Loading (pass 1 of 2): fetching official page ${_pp} of ${_preMaxPage}…`;
+                    // The progress line, for each pre-fetch page
+                    _saedRunStatus(`Loading (pass 1 of 2): official page ${_pp} of ${_preMaxPage}…`);
 
                     let _preDoc;
                     try {
@@ -92257,11 +92348,8 @@ a { color: #1565c0; }`;
                     `Artist-Releasegroups pre-fetch pass complete. Official categories:`,
                     h3_official_category_header_array);
 
-                // Reset progress bar for the main fetch pass (pass 2 of 2)
-                fetchProgressFill.style.width = '0%';
-                fetchProgressFill.style.background = '#ffcccc'; // back to light red
-                fetchProgressLabel.textContent = 'Loading (pass 2 of 2)…';
-                globalStatusDisplay.textContent = 'Loading (pass 2 of 2)…';
+                // The main fetch pass (pass 2 of 2) comes next.
+                _saedRunStatus('Loading (pass 2 of 2)…');
             } else {
                 Lib.debug('fetch',
                     `Artist-Releasegroups: no matching subType button found — skipping pre-fetch pass`);
@@ -92704,6 +92792,7 @@ a { color: #1565c0; }`;
                 activeBtn.style.color = '';
                 activeBtn.disabled = false;
                 _setInfoSub('mb-info-display-generic', '');
+                _saedRunEnd();
                 return;
             }
         } else if (!_isResume && maxPage > maxThreshold) {
@@ -92718,6 +92807,7 @@ a { color: #1565c0; }`;
                 activeBtn.style.color = '';
                 activeBtn.disabled = false;
                 _setInfoSub('mb-info-display-generic', '');
+                _saedRunEnd();
                 return;
             }
         }
@@ -92759,24 +92849,18 @@ a { color: #1565c0; }`;
         removeSanojjonasContainers();
         _watchForLateSanojjonasInjections();
 
-        // Update UI state
-        activeBtn.disabled = true;
-        activeBtn.classList.add('mb-show-all-btn-loading');
+        // Update UI state: the pressed segment becomes the progress bar and
+        // the Stop button (`_saedRunStart()`), the other actions wait.
         allActionButtons.forEach(b => { if (b !== activeBtn) b.disabled = true; });
+        _saedRunStart(activeBtn);
 
-        stopBtn.style.display = 'inline-block';
-        stopBtn.disabled = false;
         const _prevCtrlMO = ctrlMFunctionMap['o']; // preserve permanent 'o' entry (Toggle Multi-Row Collapse)
-        ctrlMFunctionMap['o'] = { fn: () => stopBtn.click(), description: 'Stop fetching' };
-        globalStatusDisplay.textContent = 'Loading…';
+        ctrlMFunctionMap['o'] = { fn: _saedRequestStop, description: 'Stop fetching' };
+        // The progress line says it all while pages load; the status after it
+        // is written again when the run ends.
+        globalStatusDisplay.textContent = '';
         globalStatusDisplay.style.color = '#999';
-
-        // Show the inline fetch progress bar
-        fetchProgressWrap.style.display = 'inline-flex';
-        fetchProgressFill.style.width = '0%';
-        fetchProgressFill.style.background = '#ffcccc'; // light red, matching action-button palette
-        fetchProgressLabel.textContent = 'Loading…';
-        fetchProgressLabel.style.color = '#333';
+        _saedRunStatus('Loading…');
 
         const startTime = performance.now();
         let fetchingTimeStart = performance.now();
@@ -92905,7 +92989,7 @@ a { color: #1565c0; }`;
                     // 3-of-40 (org/503-handling.org F1). `fetchHtml()` has
                     // already spent its three attempts by the time we are here.
                     fetchIncomplete.pageFailure = { page: p, detail: _httpFailureDetail(e) };
-                    // Everything the "↻ Load remaining pages" button needs, taken
+                    // Everything the 🔄 indicator's resume needs, taken
                     // here because here is the only place all of it is in scope
                     // and correct: page `p` failed BEFORE `pagesProcessed++`, so
                     // every counter still describes pages 1..p-1 exactly.
@@ -94564,23 +94648,23 @@ a { color: #1565c0; }`;
                 const avgPageTime = cumulativeFetchTime / pagesProcessed;
                 const estRemainingSeconds = (avgPageTime * (maxPage - p)) / 1000;
 
-                // Update color on action button based on progress (red -> orange -> green)
+                // The segment's own colour once the run is over, as before the
+                // SAED button (red -> orange -> green: how much of the listing
+                // it holds); while it runs, its blue fill covers this.
                 const progress = p / maxPage;
                 let bgColor = '#ffcccc'; // light red
                 if (progress >= 1.0) bgColor = '#ccffcc'; // light green
                 else if (progress >= 0.5) bgColor = '#ffe0b2'; // light orange
                 activeBtn.style.backgroundColor = bgColor;
 
-                // Drive the inline progress bar in the h1 controls line
-                const fillPct = Math.round(progress * 100);
-                // Use the same light-toned palette as the action button backgrounds:
-                // light red → light orange → light green (mirrors #ffcccc / #ffe0b2 / #ccffcc).
-                const fillColor = progress >= 1.0 ? '#ccffcc' : (progress >= 0.5 ? '#ffe0b2' : '#ffcccc');
-                fetchProgressFill.style.width = `${fillPct}%`;
-                fetchProgressFill.style.background = fillColor;
-                fetchProgressLabel.textContent = pageKeys
-                    ? `Loading ${pageKeys[p - 1].key.toUpperCase()} (${p} of ${maxPage})... (${totalRowsAccumulated} rows) - ${estRemainingSeconds.toFixed(1)}s left`
-                    : `Loading page ${p} of ${maxPage}... (${totalRowsAccumulated} rows) - ${estRemainingSeconds.toFixed(1)}s left`;
+                // The running segment fills (blue) and counts; the line under
+                // the heading says the page, the rows so far and the time left.
+                _saedRunProgress(p, maxPage);
+                const _rowsSoFar = `${totalRowsAccumulated.toLocaleString('en-US')} row${totalRowsAccumulated === 1 ? '' : 's'} so far`;
+                const _left = `about ${estRemainingSeconds.toFixed(1)} s left`;
+                _saedRunStatus(pageKeys
+                    ? `Loading ${pageKeys[p - 1].key.toUpperCase()} (${p} of ${maxPage}) · ${_rowsSoFar} · ${_left}`
+                    : `Loading page ${p} of ${maxPage} · ${_rowsSoFar} · ${_left}`);
 
                 // Detailed statistics per page fetch
                 Lib.debug('fetch', `Page ${p}/${maxPage} processed in ${(pageDuration / 1000).toFixed(2)}s. Rows on page: ${rowsInThisPage}. Total: ${totalRowsAccumulated}`);
@@ -94628,10 +94712,7 @@ a { color: #1565c0; }`;
                     saveTableDataToDisk();
 
                     // Clean up UI
-                    activeBtn.disabled = false;
-                    activeBtn.classList.remove('mb-show-all-btn-loading');
-                    allActionButtons.forEach(b => b.disabled = false);
-                    stopBtn.style.display = 'none';
+                    _saedRunEnd();
                     if (_prevCtrlMO) ctrlMFunctionMap['o'] = _prevCtrlMO; else delete ctrlMFunctionMap['o'];
 
                     const fetchSeconds = (totalFetchingTime / 1000).toFixed(2);
@@ -94653,20 +94734,15 @@ a { color: #1565c0; }`;
                     // AFTER it, not once at the end of the function this exit
                     // never reaches.
                     _createResumeFetchButton();
-                    fetchProgressWrap.style.display = 'none';
 
                     Lib.debug('success', `Process complete. Data saved without rendering. Row Count: ${totalRows}. Fetch Time: ${fetchSeconds}s`);
                     return; // Exit without rendering
                 } else if (userChoice === 'cancel') {
                     // User cancelled
                     Lib.debug('cache', 'User cancelled the operation.');
-                    activeBtn.disabled = false;
-                    activeBtn.classList.remove('mb-show-all-btn-loading');
-                    allActionButtons.forEach(b => b.disabled = false);
-                    stopBtn.style.display = 'none';
+                    _saedRunEnd();
                     if (_prevCtrlMO) ctrlMFunctionMap['o'] = _prevCtrlMO; else delete ctrlMFunctionMap['o'];
                     globalStatusDisplay.textContent = 'Operation cancelled';
-                    fetchProgressWrap.style.display = 'none';
                     return;
                 }
                 // If userChoice === 'render', continue with normal rendering below
@@ -94687,14 +94763,10 @@ a { color: #1565c0; }`;
                 );
                 if (!proceed) {
                     Lib.warn('render', `User aborted render at warning threshold (${totalRows} rows).`);
-                    activeBtn.disabled = false;
-                    activeBtn.classList.remove('mb-show-all-btn-loading');
-                    allActionButtons.forEach(b => b.disabled = false);
-                    stopBtn.style.display = 'none';
+                    _saedRunEnd();
                     if (_prevCtrlMO) ctrlMFunctionMap['o'] = _prevCtrlMO; else delete ctrlMFunctionMap['o'];
                     globalStatusDisplay.textContent = `Render cancelled (${totalRows.toLocaleString()} rows fetched — use "Load from disk" to render later)`;
                     globalStatusDisplay.style.color = 'orange';
-                    fetchProgressWrap.style.display = 'none';
                     return;
                 }
             }
@@ -94757,12 +94829,10 @@ a { color: #1565c0; }`;
                 updateH2Count(totalRows, totalRows);
             }
 
-            activeBtn.disabled = false;
-            activeBtn.classList.remove('mb-show-all-btn-loading');
-            allActionButtons.forEach(b => b.disabled = false);
-            stopBtn.style.display = 'none';
+            // Pages are in; the segment is striped while the rows are built
+            // (`_saedRunEnd()` at the end of the render tail gives it back).
+            _saedRunRendering(totalRows);
             if (_prevCtrlMO) ctrlMFunctionMap['o'] = _prevCtrlMO; else delete ctrlMFunctionMap['o'];
-            fetchProgressWrap.style.display = 'none';
 
             // Only show filter container if it wasn't already appended to H2 (handled in updateH2Count or renderGroupedTable)
             if (!filterContainer.parentNode) {
@@ -95299,6 +95369,11 @@ a { color: #1565c0; }`;
                 _sdLoaded.textContent =
                     `⚠️ Loaded ${_incomplete.pagesPhrase} (${totalRows} rows)`;
                 _sdLoaded.style.color = '#b26a00';
+            } else if (stopRequested && pagesProcessed < maxPage) {
+                // Stop in the running segment (approved mockup v6): said in
+                // the user's words, so a short table is not taken for all.
+                _sdLoaded.textContent =
+                    `Stopped by you after page ${pagesProcessed} of ${maxPage} (${totalRows} rows) — the rest was not loaded`;
             } else {
                 _sdLoaded.textContent = `Loaded ${pagesProcessed} ${pageLabel} (${totalRows} rows)`;
             }
@@ -95311,7 +95386,7 @@ a { color: #1565c0; }`;
             _sdAppend(`Rendering: ${renderSeconds}s`, ', ',
                 'Time to build and insert the fetched rows into the DOM.');
             _createResumeFetchButton();
-            fetchProgressWrap.style.display = 'none';
+            _saedRunEnd();
 
             // The status block above cleared #mb-info-display-rel and reset
             // _relGlobalStatusDone, AFTER the render tail had already called
@@ -95324,8 +95399,7 @@ a { color: #1565c0; }`;
         } catch (err) {
             Lib.error('fetch', 'Critical Error during fetch:', err);
             globalStatusDisplay.textContent = 'Error during load… (repress the "Show all" button)';
-            fetchProgressWrap.style.display = 'none';
-            activeBtn.disabled = false;
+            _saedRunEnd();
             allActionButtons.forEach(b => b.disabled = false);
             activeBtn.style.backgroundColor = '';
             activeBtn.style.color = '';
@@ -114583,42 +114657,82 @@ a { color: #1565c0; }`;
      *          the three of them cannot word the same run differently.
      */
     /**
-     * Builds the "↻ Load remaining pages" button into the status line, when the
-     * run that just finished left a resume point behind.
+     * Brings the 🔄 missing-pages indicator of the SAED button in line with
+     * the resume point (`_resumeState`): a red "🔄 N ▾" segment in the bar's
+     * attention area while a run that just finished left pages behind, whose
+     * list says which page failed and why, and offers "↻ Load the N missing
+     * pages" (`#mb-resume-fetch-btn`), the existing resume. Gone again
+     * otherwise — after a fresh press, a resume that got everything, or a
+     * load from disk.
      *
-     * Placed at the END of the status block rather than beside the `⚠️ Loaded N
-     * of M pages` span it explains: that block is rebuilt wholesale by every
-     * run, and the CAA and Relationships completions append their own segments
-     * to it afterwards, so a control wedged between the segments would have to
-     * be re-created by each of them.
+     * This replaced (2026-10-23) the "↻ Load remaining pages" button at the
+     * end of the status line: a failure is something that needs attention,
+     * and the attention area is where the SAED button keeps those
+     * (`_SAED_INDICATORS`, approved mockup v6).
      *
      * Offered whenever a page fetch finally failed — including when the page
      * COUNT was never learned, where the resume is still the right move (it
-     * re-asks for the one page that failed) and only the wording of the tooltip
-     * differs.
+     * re-asks for the one page that failed) and only the wording differs:
+     * the segment then has no number.
+     *
+     * The name is the old one, kept for its three call sites and the notes
+     * that cite it.
      *
      * @returns {void}
      */
     function _createResumeFetchButton() {
-        if (!_resumeState) return;
-        if (document.getElementById('mb-resume-fetch-btn')) return;
         const st = _resumeState;
-        const _b = document.createElement('button');
-        _b.id = 'mb-resume-fetch-btn';
-        _b.type = 'button';
-        _b.textContent = '↻ Load remaining pages';
-        _b.style.cssText = _REL_RETRY_BTN_CSS;
-        _setTip(_b, st.maxPageKnown
+        let menu = _toolbarMenus.get('fetch-missing');
+        if (!st && !menu) return;
+        if (!menu) {
+            menu = createToolbarMenu({
+                key: 'fetch-missing', id: 'mb-fetch-missing-menu-btn', label: '🔄', title: '', segment: true,
+            });
+            menu.btn.classList.add('mb-saed-attn-seg', 'mb-saed-lv-alert');
+        }
+        menu.panel.querySelectorAll('.mb-toolbar-menu-item, .mb-saed-ind-note').forEach(el => el.remove());
+        if (!st) {
+            menu.indicatorCount = 0;
+            _orderToolbar();
+            _saedRefreshAttention();
+            return;
+        }
+        const missing = st.maxPageKnown ? Math.max(1, st.maxPage - st.nextPage + 1) : 0;
+        const pages = (n) => `${n} page${n === 1 ? '' : 's'}`;
+        const failure = _lastFetchIncomplete && _lastFetchIncomplete.pageFailure;
+        const why = `Page ${st.nextPage}${st.maxPageKnown ? ` of ${st.maxPage}` : ''} could not be loaded`
+            + (failure ? ` (${failure.detail})` : '');
+        const after = missing - 1;
+        const lost = !st.maxPageKnown ? 'and the page count was never learned, so the rest of the listing is missing'
+            : after === 0 ? 'so it is missing'
+            : `so it and the ${after === 1 ? 'page' : `${after} pages`} after it are missing`;
+        const shown = st.pagesProcessed === 1 ? 'The page before it is shown.'
+            : `The ${st.pagesProcessed} pages before it are shown.`;
+        const note = document.createElement('div');
+        note.className = 'mb-saed-ind-note';
+        note.textContent = `${why}, ${lost}. ${shown}`;
+        menu.panel.appendChild(note);
+        const row = document.createElement('button');
+        row.id = 'mb-resume-fetch-btn';
+        row.type = 'button';
+        row.textContent = missing === 1 ? '↻ Load the missing page'
+            : missing ? `↻ Load the ${missing} missing pages` : '↻ Load the missing pages';
+        _setTip(row, st.maxPageKnown
             ? `Continue the interrupted load at page ${st.nextPage} of ${st.maxPage}. ` +
-              `The ${st.pagesProcessed} page(s) already loaded are kept — nothing is re-fetched.`
+              `The ${pages(st.pagesProcessed)} already loaded are kept — nothing is re-fetched.`
             : `Continue the interrupted load at page ${st.nextPage}. The page count was ` +
               `never established, so this re-asks for that page and carries on from there. ` +
-              `The ${st.pagesProcessed} page(s) already loaded are kept.`);
-        _b.addEventListener('click', ev => {
-            ev.stopPropagation();
-            _resumeFetchFromFailedPage();
-        });
-        globalStatusDisplay.appendChild(_b);
+              `The ${pages(st.pagesProcessed)} already loaded are kept.`);
+        row.addEventListener('click', () => { _resumeFetchFromFailedPage(); });
+        menu.adopt(row);
+        menu.indicatorCount = missing || 1;
+        menu.setLabel(missing ? `🔄 ${missing}` : '🔄');
+        menu.btn.setAttribute('aria-label', missing ? `${pages(missing)} missing` : 'Pages missing');
+        _setTip(menu.btn, missing
+            ? `${pages(missing)} of this listing could not be loaded. Click to load them.`
+            : 'The rest of this listing could not be loaded. Click to try again.');
+        _orderToolbar();
+        _saedRefreshAttention();
     }
 
     /**
@@ -114642,7 +114756,7 @@ a { color: #1565c0; }`;
     async function _resumeFetchFromFailedPage() {
         const st = _resumeState;
         if (!st) return;
-        document.getElementById('mb-resume-fetch-btn')?.remove();
+        _closeToolbarMenus();
         Lib.debug('fetch', `Resuming interrupted fetch at page ${st.nextPage} of ${st.maxPage} ` +
                            `(${st.pagesProcessed} pages, ${st.totalRowsAccumulated} rows kept).`);
         const _synthetic = {
@@ -114751,10 +114865,10 @@ a { color: #1565c0; }`;
      * (`_HTML_FETCH_BACKOFF_MS`, 2 s then 5 s, against 1.1 s then 2.2 s). A
      * page fetch is one request per PAGE rather than one per row, so there are
      * far fewer of them and each is worth waiting longer for; and the caller
-     * has a progress bar on screen, so the wait is visible rather than dead
-     * air.
+     * has its progress on screen (the running segment), so the wait is
+     * visible rather than dead air.
      *
-     * *A pressed Stop button interrupts a pending backoff*, so the button stays
+     * *A pressed Stop interrupts a pending backoff*, so the segment stays
      * responsive instead of sitting out up to seven seconds of sleeping.
      *
      * *There is no shared budget across pages, and none is needed.* Every
@@ -124259,11 +124373,9 @@ a { color: #1565c0; }`;
             globalStatusDisplay.innerHTML = '';
             // A resume point belongs to a FETCH of this page, not to a row set:
             // these rows came from a file and there is no page K to carry on
-            // from. The `innerHTML` clear above already removes the button, so
-            // this is the invariant said out loud rather than a live bug —
-            // `_createResumeFetchButton()` is reachable only from
-            // `startFetchingProcess()`, which clears this at its top anyway.
+            // from, so the 🔄 indicator a failed fetch left on the bar goes.
             _resumeState = null;
+            _createResumeFetchButton();
             _caaGlobalStatusDone = false;  // allow the first CAA completion to append its segment
             _relGlobalStatusDone = false;  // allow the first Rels completion to append its segment
             const _sdLoadedFromDisk = document.createElement('span');
@@ -142626,7 +142738,7 @@ a { color: #1565c0; }`;
             tableRowEntity: (table) => _tableRowEntity(table),
             /**
              * Decorates a table's headers again (`makeTableSortableUnified()`),
-             * as "↻ Load remaining pages" does on the live table.
+             * as the 🔄 indicator's resume does on the live table.
              *
              * @param {HTMLTableElement} table
              * @returns {void}

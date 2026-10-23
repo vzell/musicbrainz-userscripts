@@ -230,17 +230,59 @@ AREAS (`span.mb-saed-area[data-mb-area]`), each reacting on its own:
 |-----------|-----------------------------------------------------------------------|------------------------------------------|
 | `actions` | the `🧮N …` fetch buttons as `.mb-seg-action`; group labels as `.mb-seg-label` | always (on a narrow screen: hidden) |
 | `disc`    | `#mb-disc-menu-btn` "📀 Discography: <view> ▾"                         | `artist-releasegroups`, post-render      |
-| `attn`    | one segment per attention indicator with rows (❌ 1 ▾, ⚠️ 43 ▾)        | post-render, only while it has something |
+| `attn`    | one segment per attention indicator with rows (🔄 2 ▾, ❌ 1 ▾, ⚠️ 43 ▾) | post-render, only while it has something |
 | `menu`    | `#mb-saed-menu-btn` "☰ SAED ▾" (name: `sa_toolbar_menu_name`)          | always                                   |
 
 Hairlines split the segments of an area, a heavier rule the areas, and the
-first visible area has none (`.mb-saed-first`, `_saedMarkFirst()`). After the
-bar only what a fetch shows trails it (`_TOOLBAR_TAIL_ORDER`: `#mb-stop-btn`,
-`#mb-fetch-progress-wrap`). Size and shape come from `sa_ui_action_btn_style`,
+first visible area has none (`.mb-saed-first`, `_saedMarkFirst()`). Nothing
+follows the bar in the container (`_TOOLBAR_TAIL_ORDER` is the bar alone
+since 2026-10-23: a fetch's Stop and progress are in its segment, below).
+Size and shape come from `sa_ui_action_btn_style`,
 colours from `sa_ui_toolbar_menu_btn_style` ("SAED button colors"), both as
-custom properties on the bar. The colour settings of ⚙️, ❓, Save, Load and
-the divider were retired with it (`_SETTINGS_ORPHANED_KEYS`, and
+custom properties on the bar. The colour settings of ⚙️, ❓, Save, Load,
+the divider and Stop were retired with it (`_SETTINGS_ORPHANED_KEYS`, and
 `_GM_ORPHANED_VALUE_KEYS` for profiles past the migration).
+
+**A fetch runs inside the segment that started it** (option (b) of the
+approved mockup; `_saedRunStart()` … `_saedRunEnd()`, state in `_saedRun`):
+
+- From the main pass's start (where the old Stop button appeared) the pressed
+  segment is `.mb-seg-running`: a blue fill to its `--p` custom property
+  (`_saedRunProgress(n, N)`, a background IMAGE, so the segment's inline
+  red/orange/green `background-color` — still set per page, still shown
+  after the run as before — stays under it), "■ Stop · n / N"
+  (`.mb-seg-stop-glyph`), `aria-label` "Stop loading", and a card saying
+  so. The other action segments are `disabled`; the running one is not.
+- **A click on the running segment is Stop** (`_saedRequestStop()`: the
+  action's `onclick` checks `_saedRun.btn === eb` before
+  `startFetchingProcess()`; prefix-mode O calls it too). It sets
+  `stopRequested`, says "Stopping…" and `aria-disabled`; the loop finishes
+  the page under way, and the status line then says "Stopped by you after
+  page n of N … — the rest was not loaded". There is no `#mb-stop-btn` and
+  no `sa_ui_stop_btn_style` any more.
+- `_saedRunRendering(rows)` before the render tail: `.mb-seg-rendering`,
+  striped (moving only under `prefers-reduced-motion: no-preference`),
+  disabled, "Rendering N rows…". `_saedRunEnd()` at every exit of the run
+  (render tail, save-without-render, cancel, abort, catch, a cancelled
+  page-count dialog) gives back the label, `title` and `data-mbtt` it had,
+  enables every action, and focuses the segment only when focus fell to
+  `<body>` (the render tail's global-filter focus comes later and wins).
+- **The words go under the heading**: `#mb-fetch-progress-wrap`, first in
+  `#mb-status-displays-container`, written by `_saedRunStatus()` —
+  "Loading page n of N · R rows so far · about t s left". The pre-fetch pass
+  of `artist-releasegroups` and the overflow-medium loader write it too, but
+  do NOT make the segment run: Stop is honoured from the main pass on
+  (`stopRequested` is reset there), so a Stop offered earlier would be a lie.
+- **A failed page ends as the 🔄 indicator** (`fetch-missing`, level alert,
+  first in `_SAED_INDICATORS`). `_createResumeFetchButton()` (the old name,
+  kept for its call sites) syncs it to `_resumeState`: "🔄 N ▾" with N the
+  pages missing (no number when the page count was never learned), a note
+  (`.mb-saed-ind-note`) with the page and `_httpFailureDetail()`, and the row
+  `#mb-resume-fetch-btn` "↻ Load the N missing pages", which runs
+  `_resumeFetchFromFailedPage()`. It is cleared at the START of every run
+  (also a resume's, so it cannot be pressed twice), and by a load from disk.
+  Specs: `fetch-in-segment.spec.js`; helpers in `tests/support/stopButton.js`
+  (`stopAfterPages()`, `resumeMissingPages()`).
 
 **The ☰ SAED menu** (`_saedMenu()`, key `saed`) holds GROUPS, in this order
 (`_SAED_GROUPS`): Load (narrow screens only), Needs attention, Data, View,
@@ -263,8 +305,9 @@ level, label; declared next to `_toolbarMenus` for the TDZ reason). Each
 entry is a menu made with `createToolbarMenu({ segment: true })` whose button
 `_orderToolbar()` puts in the `attn` area while it has rows, ordered by the
 registry (alert first), and which `_saedRefreshAttention()` also lists as a
-row of "Needs attention" that opens the same list beside the menu. Today: the
-two findings menus (docs/claude/findings.md). **Adding one** = an entry in
+row of "Needs attention" that opens the same list beside the menu. Today: 🔄
+missing pages (above) and the two findings menus (docs/claude/findings.md).
+**Adding one** = an entry in
 `_SAED_INDICATORS`, a menu filled by your own code, and
 `descriptor.indicatorCount` set wherever its count changes; then
 `_orderToolbar()` and `_saedRefreshAttention()`. The ⚠️ segment is the one

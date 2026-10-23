@@ -1,5 +1,18 @@
 [
   {
+    "version": "WIP.3",
+    "date": "2026-10-23",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "A fetch now runs inside the button you pressed. It fills blue page by page and reads \"■ Stop · 3 / 40\"; the line under the heading says which page, how many rows so far and about how long is left. Click it again to stop (or Ctrl+M then O): the page under way finishes and what has arrived is shown, and the status line says \"Stopped by you after page n of N … — the rest was not loaded\" instead of reading like a complete run. While the rows are being built it is striped (the stripes move only if your system allows motion), then it is the button it was. The other fetch buttons wait meanwhile. The separate red Stop button and the long progress bar beside the heading are gone, and so is the \"Stop button colors\" setting (its stored value is removed by itself).",
+          "A fetch that could not load every page now leaves a red \"🔄 N ▾\" on the SAED button, N being the pages missing, also listed under \"Needs attention\" in the ☰ menu. Its list says which page failed and why, and \"↻ Load the N missing pages\" carries on from there, keeping the rows you have — what the \"↻ Load remaining pages\" button at the end of the status line did. It goes away when that load starts, when you press a fetch button again, or when you load a file from disk."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.2",
     "date": "2026-10-23",
     "sections": [

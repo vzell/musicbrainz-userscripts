@@ -167,7 +167,7 @@ function _scrubTimingAfterLabel(html, label, replacement = '[SCRUBBED]') {
  *     their `data-mbtt` tooltips' own "Total load time: X.Xs" line),
  *     `#mb-info-display-generic`'s auto-resize "...in X.XXs" message, and
  *     the (hidden-but-still-serialized) `#mb-fetch-progress-label`'s stale
- *     "...  - X.Xs left" estimate.
+ *     "... about X.X s left" estimate ("- X.Xs left" before 2026-10-23).
  *
  * MusicBrainz's own embedded `<script type="application/json">`/
  * `"application/ld+json">`/`window.__MB__` bootstrap blocks (whose *object
@@ -209,8 +209,9 @@ const GENERIC_SCRUB_RULES = [
     (html) => _scrubTimingAfterLabel(html, 'in '),
     // #mb-fetch-progress-label's stale "... - X.Xs left" estimate — suffix-
     // anchored on " left" rather than a label-prefix match, since "- " on
-    // its own is too generic a prefix to be a safe match anchor.
-    (html) => html.replace(/\d+(?:\.\d+)?s left/g, '[SCRUBBED] left'),
+    // its own is too generic a prefix to be a safe match anchor. Since the
+    // SAED button (2026-10-23) it reads "about X.X s left", with a space.
+    (html) => html.replace(/\d+(?:\.\d+)? ?s left/g, '[SCRUBBED] left'),
     // jQuery UI's auto-incrementing `ui-id-N`, which MusicBrainz's own page JS
     // hands out in a nondeterministic ORDER. On a release page the empty
     // `ui-autocomplete` <ul> and the `artwork-dialog` race to claim ui-id-1/2/3,

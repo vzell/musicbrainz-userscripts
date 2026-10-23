@@ -51,8 +51,12 @@ will never need is folded into collapsible sections.
    will fetch, for example **🧮¹ Events for Artist**. Pages that offer
    more than one listing get one button each, numbered `🧮¹ 🧮² 🧮³` so the
    keyboard can reach them.
-3. A progress bar tracks the fetch, page by page. **⏹ Stop** interrupts it and
-   keeps whatever has already arrived.
+3. The button you pressed shows the progress: it fills blue page by page and
+   reads **■ Stop · 3 / 40**, and the line under the heading says which page,
+   how many rows so far and about how long is left. **Click it to stop** (or
+   `Ctrl+M` then `O`): the page under way finishes, and whatever has arrived is
+   shown. The other fetch buttons wait meanwhile; while the rows are being
+   built the button is striped.
 4. When it finishes you get one table, a filter bar, sortable headers, and the
    controls described below.
 
@@ -81,7 +85,10 @@ The status line turns orange:
 ```
 
 The rows that did arrive are real and usable — the table is simply smaller than
-the listing. Press the action button again to start over.
+the listing. A red **🔄 N ▾** part appears on the SAED button, N being the pages
+missing: its list says which page failed and why, and **↻ Load the N missing
+pages** carries on from that page, keeping what you have (nothing is fetched
+twice). Press the action button again to start over instead.
 
 <details>
 <summary>The details worth knowing about an incomplete fetch</summary>
@@ -117,8 +124,9 @@ four parts**, the SAED button. Each part does its own thing:
 
 | Part                              | What it does                                                                                                                       |
 |-----------------------------------|------------------------------------------------------------------------------------------------------------------------------------|
-| **🧮 …**                          | The page's fetch buttons, as before: each loads every page of its list into one table.                                            |
+| **🧮 …**                          | The page's fetch buttons, as before: each loads every page of its list into one table. While it loads, the one you pressed is the progress bar and the Stop button. |
 | **📀 Discography: … ▾**           | Artist release-group pages only, once loaded: names the view you are in and switches it.                                          |
+| **🔄 N ▾**                        | Only after a fetch that could not load every page: how many are missing, and a click offers to load them. See [When a fetch does not finish](#when-a-fetch-does-not-finish). |
 | **❌ N ▾ · ⚠️ N ▾**               | Only when the page has errors or warnings, errors first: how many rows have one, and a click lists them. See [Warnings and errors](#warnings-and-errors). |
 | **☰ SAED ▾**                      | The script's menu. Rest the pointer on it for its name, version and author.                                                       |
 
@@ -126,7 +134,7 @@ The **☰ SAED menu** has these groups, with a line between them:
 
 | Group               | Rows                                                                          |
 |---------------------|-------------------------------------------------------------------------------|
-| **Needs attention** | the same error and warning lists as the parts on the bar                      |
+| **Needs attention** | the same lists as the 🔄, ❌ and ⚠️ parts on the bar                           |
 | **Data**            | 💾 Save to Disk · 📂 Load from Disk · 📤 Export ▸ (CSV, JSON, Org-Mode, HTML) |
 | **View**            | 📏 Density · 📊 Statistics · 🎹 Keyboard Shortcuts                            |
 | **Help**            | ⚙️ Settings · ❓ Help ↗ (this page, on GitHub)                                 |
@@ -2870,8 +2878,8 @@ turns the over 3,500 song lines into one table:
   lists.
 
 While loading, the progress line names the letter it is on ("Loading H (9
-of 32)"). If one letter fails to load, "↻ Load remaining pages" carries on
-from that letter.
+of 32)"). If one letter fails to load, the red 🔄 part's "↻ Load the missing
+page" carries on from that letter.
 
 Cover and Title link to the item's own page on springsteenlyrics.com;
 following one asks first, as leaving any consolidated table does. To see

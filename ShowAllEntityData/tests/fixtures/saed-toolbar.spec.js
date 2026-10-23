@@ -143,13 +143,12 @@ test.describe('the SAED button', () => {
         await expect(page.locator(`${PANEL} #mb-settings-btn`)).toHaveCount(1);
         await expect(page.locator(`${PANEL} #mb-app-help-btn`)).toHaveCount(1);
 
-        // The container holds the bar first; only what a fetch shows trails it.
+        // The container holds the bar and nothing else: a fetch's Stop and
+        // progress live in its segment and the status line since 2026-10-23.
         // (The hidden <input type="file"> behind Load from Disk is no control.)
         const tail = await page.evaluate(() => Array.from(document.getElementById('mb-show-all-controls-container').children)
             .map((c) => c.id).filter((id) => id && id !== 'mb-file-input'));
-        expect(tail[0]).toBe('mb-saed-bar');
-        expect(tail.slice(1).every((id) => ['mb-stop-btn', 'mb-fetch-progress-wrap'].includes(id)),
-            `only fetch controls after the bar: ${tail.join(', ')}`).toBe(true);
+        expect(tail).toEqual(['mb-saed-bar']);
     });
 
     test('each group adopts the real buttons, keeping their ids, in the declared order', async ({ page }) => {

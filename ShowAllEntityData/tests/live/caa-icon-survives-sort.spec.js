@@ -76,7 +76,7 @@ const DEFAULT_ARTIST_RELEASES_URL = 'https://musicbrainz.org/artist/84c38d3a-340
 //   SINGLE_CAA_SETTLE_MS=900000 \
 //   npx playwright test tests/live/caa-icon-survives-sort.spec.js --project=chromium-live
 //
-// `SINGLE_CAA_STOP_PAGES` drives the real `#mb-stop-btn` via
+// `SINGLE_CAA_STOP_PAGES` drives the real Stop (the running segment) via
 // `stopAfterPages()`, which is how a paginated artist is cut down to a
 // measurable size without inventing a new mechanism.
 const ARTIST_RELEASES_URL = process.env.SINGLE_CAA_URL || DEFAULT_ARTIST_RELEASES_URL;
