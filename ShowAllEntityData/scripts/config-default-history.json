@@ -2,8 +2,8 @@
   "_meta": {
     "generated_by": "scripts/dump-default-history.py",
     "source": "ShowAllEntityData/ShowAllEntityData.user.js",
-    "head": "1718517ef206242c7507fffdf274ecd2aee6cb86",
-    "revisions_walked": 1013
+    "head": "479523eea194808e198ff85a0060b5dd04918da2",
+    "revisions_walked": 1015
   },
   "changes": [
     {
@@ -436,6 +436,12 @@
       "last_default": 10000,
       "type": "number"
     },
+    "sa_ui_stop_btn_style": {
+      "last_version": "9.99.1426+2026-10-22",
+      "last_date": "2026-10-23",
+      "last_default": "#f44336|white|1px solid #d32f2f",
+      "type": "popup_dialog"
+    },
     "sa_ui_settings_btn_style": {
       "last_version": "9.99.1426+2026-10-22",
       "last_date": "2026-10-22",
@@ -607,7 +613,6 @@
     "sa_enable_sticky_page_headers": true,
     "sa_sticky_page_headers_on_touch": false,
     "sa_ui_action_btn_style": "0.8em|2px 8px|24px|6px",
-    "sa_ui_stop_btn_style": "#f44336|white|1px solid #d32f2f",
     "sa_ui_toolbar_menu_btn_style": "#ECEFF1|#263238|1px solid #B0BEC5|#CFD8DC",
     "sa_toolbar_menu_name": "SAED",
     "sa_global_filter_border_idle": "#000000",
