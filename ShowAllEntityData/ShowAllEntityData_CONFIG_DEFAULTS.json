@@ -3,10 +3,10 @@
     "generated_by": "scripts/dump-config-defaults.py",
     "purpose": "Generated artifact. NOTHING in the userscript reads this file. See org/config-handling.org Item 4.",
     "script_version": "9.99.1429+2026-10-23",
-    "schema_entries": 469,
+    "schema_entries": 470,
     "sections": 52,
-    "settings": 417,
-    "settings_with_default": 412,
+    "settings": 418,
+    "settings_with_default": 413,
     "settings_without_default": [
       "sa_default_hidden_columns",
       "sa_rel_other_db_classes",
@@ -15,7 +15,7 @@
       "sa_unicode_char_picker_mappings"
     ],
     "types": {
-      "checkbox": 242,
+      "checkbox": 243,
       "color_picker": 62,
       "number": 53,
       "divider": 52,
@@ -263,6 +263,7 @@
     "sa_bb_collabsable_sidebar": "Collabsable sidebar",
     "sa_bb_detail_preview": "Preview song pages on the Brucebase song list",
     "sa_bb_sidebar_right": "Show the Brucebase side bar on the right",
+    "sa_bb_tip_images": "Media icons and song glyphs: the page's images on hover",
     "sa_bb_year_pages": "Enable on the Brucebase year pages (event lists)",
     "sa_bs_detail_preview": "Preview record pages in the brucespringsteen.it database",
     "sa_bs_tip_images": "Photo column: the record's photo on hover",
@@ -682,6 +683,7 @@
     "sa_bb_collabsable_sidebar": false,
     "sa_bb_detail_preview": false,
     "sa_bb_sidebar_right": false,
+    "sa_bb_tip_images": true,
     "sa_bb_year_pages": false,
     "sa_bs_detail_preview": false,
     "sa_bs_tip_images": true,

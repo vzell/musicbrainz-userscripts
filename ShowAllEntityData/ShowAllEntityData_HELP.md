@@ -2863,6 +2863,16 @@ turns the over 3,500 song lines into one table:
 - **Title** links to the song's lyrics page, written the MusicBrainz way
   ("BABY I'M SO COLD" reads "Baby I’m So Cold"). **Lyrics** is ✓ when that page
   has lyrics, and ✗ when the site's plain icon says it has none.
+- **🖼 after a title** stands for the pictures on the song's page: the covers
+  of the albums the song is on and, now and then, a hand-written sheet. It is
+  dashed until that page has been read, then shows how many pictures there
+  are, or disappears when there are none. Point at it for a card with them (a
+  single picture large); click it for the artwork viewer (Ctrl/⌘-click: the
+  song's page). The page is read on that first hover or click only, one
+  request for that row, kept 30 days and shared with the song preview; songs
+  read before show their count as soon as the table is there. It follows
+  ⚙️ Settings → 🎸 springsteenlyrics.com → *Cover column: every image of an
+  item on hover*.
 - **Version** is the site's text in brackets, as written ("Live 30 Sep 1987
   version", "Original Roy Orbison version"). It is also read into:
   - **Type:** Live, Soundcheck, Original, Cover, Album, Other artist album,
@@ -3038,7 +3048,11 @@ columns:
 
 - **Title:** the song's title, written the MusicBrainz way ("Born In The
   U.S.A." reads "Born in the U.S.A.", see *Titles in MusicBrainz style*
-  below). It links to that song's page.
+  below). It links to that song's page. The small **🖼** after it stands for
+  the images on the song's page (its performance graph, hand-written lyric
+  sheets): dashed until that page has been read, then their number, or gone
+  when there are none. Point at it for a card with them; click it for the
+  artwork viewer (Ctrl/⌘-click: the song's page).
 - **Letter:** the tab the song is listed under: *0-9* or *A* to *Z*. Filter
   or pick from its 📊 list to see one letter, which is the job the tabs did.
 
@@ -3047,8 +3061,12 @@ with a subtitle, such as "(I Can't Get No) Satisfaction", a second time; they
 are not repeated, and keep the letter of their main title (*S*). The tabs are
 replaced by the table; the second set of tabs further down (News, Media,
 Released) stays as it was. Everything is on that one page; nothing is
-fetched, unless you switch on the preview of the song pages (see
+fetched, unless you point at or click a song's 🖼 (that song's page, one
+request, kept 30 days; songs read before show their count at once) or switch
+on the preview of the song pages (see
 *Previewing the detail pages* under [Page-specific behaviour](#page-specific-behaviour)).
+⚙️ Settings → *📚 Brucebase* → *Media icons and song glyphs: the page's
+images on hover* switches the card off; a click opens the viewer either way.
 
 </details>
 
@@ -3104,13 +3122,22 @@ entry, with these columns:
   Ticket, Setlist, Storyteller, News, Memorabilia, Eyewitness, Video, Audio,
   Bootleg, LiveDL, Retail, Featured. Rest the pointer on an icon for its name.
   Type a name in the column filter (e.g. "Bootleg"), or pick one from the 📊
-  list, to see the entries that have it.
+  list, to see the entries that have it. **Photo, Ticket, News and
+  Memorabilia are ringed** when the entry has a page of its own: pointing at
+  one shows a card with those images from that page (photos, tickets, passes,
+  newspaper clippings); a click opens the artwork viewer on them, with every
+  other kind one ← → away and Shift+← → for the previous or next row
+  (Ctrl/⌘-click: the page). The page is read on that first hover or click
+  only, one request for that row, kept 30 days. ⚙️ Settings → *📚 Brucebase*
+  → *Media icons and song glyphs: the page's images on hover* switches the
+  card off; a click opens the viewer either way.
 - **Info wanted:** *yes* where Brucebase asks for more information about the
   date (its "Help Us" icon).
 
 The table replaces the entries and the tour boxes. The icon legend above and
 the Previous / Listing / Next line below stay. Everything is on the page;
-nothing is fetched.
+nothing is fetched, except an entry's own page when you point at or click
+one of its ringed Media icons.
 
 **The side bar:** on every Brucebase page the script handles, the wiki's
 side bar (Site Navigation, Gig Pages, …) stays in view while you scroll: at
@@ -3400,7 +3427,7 @@ that site's own switch in ⚙️ Settings:
 | 🎸 springsteenlyrics.com | *Preview item and song pages on springsteenlyrics.com lists* | the tracklist by disc, the notes (lineage, edition), the artwork scans; on the lyrics index, the version, the first lines of the lyrics and the song's info |
 | 🌴 jungleland.it         | *Preview artwork pages on the jungleland.it list*            | the uploader and the scans (front, back, discs, booklet)                                                                                                    |
 | 💿 brucespringsteen.it   | *Preview record pages in the brucespringsteen.it database*   | the tracklist, the show each track comes from, the notes, the photo                                                                                         |
-| 📚 Brucebase             | *Preview song pages on the Brucebase song list*              | the album it comes from, how often and when last it was played live, releases                                                                               |
+| 📚 Brucebase             | *Preview song pages on the Brucebase song list*              | the album it comes from, how often and when last it was played live, releases, the graph and lyric sheets                                                   |
 
 **Rest the pointer on a title** for a moment and a card opens beside it. If
 you would rather move the pointer across the table without opening cards or

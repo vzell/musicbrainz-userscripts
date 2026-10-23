@@ -21,7 +21,13 @@ A refusal (403, Cloudflare page) is recorded as such, never as "no images".
 Pages are cached in the --out directory, so a re-run costs no request;
 --refresh fetches again. Requests are 1.1 s apart, one at a time.
 
+--small (phase 3, 2026-10-23) reads the summary.json of an earlier run and
+makes no page request: for the first Brucebase image of each folder kind
+(`files:`, `gallery:`, `news:`) it HEADs the `small.jpg` rendition (the card's
+250 px tile) and the `local--files` original, 1.1 s apart.
+
 usage: python3 -I scripts/probe-foreign-images.py [--out DIR] [--refresh]
+       python3 -I scripts/probe-foreign-images.py --small [--out DIR]
 """
 import html.parser
 import json
@@ -204,6 +210,28 @@ def head(url):
         return 0, type(e).__name__, None
 
 
+def small(outdir):
+    """HEAD the small.jpg rendition and the original of one Brucebase image
+    per folder kind, taken from summary.json; print and return the results."""
+    with open(os.path.join(outdir, 'summary.json'), encoding='utf-8') as f:
+        pages = json.load(f)['pages']
+    picked = {}
+    for p in pages:
+        for im in p['images']:
+            m = re.search(r'/local--resized-images/((files|gallery|news):[^/]+/[^/]+)/thumbnail\.jpg$', im['thumb'])
+            if not m or 'artwork-disco' in m.group(1) or m.group(2) in picked:
+                continue
+            picked[m.group(2)] = im['thumb']
+    out = {}
+    for kind, thumb in sorted(picked.items()):
+        sm = thumb[:-len('thumbnail.jpg')] + 'small.jpg'
+        orig = thumb.replace('/local--resized-images/', '/local--files/')[:-len('/thumbnail.jpg')]
+        out[kind] = {'small': [sm, head(sm)], 'original': [orig, head(orig)]}
+        print(f'{kind:8} small    {out[kind]["small"][1]}  {sm}')
+        print(f'{kind:8} original {out[kind]["original"][1]}  {orig}')
+    return out
+
+
 def main(argv):
     """Run the probe; print a summary and write summary.json."""
     outdir = os.path.join(ROOT, 'debug', 'foreign-images')
@@ -211,6 +239,9 @@ def main(argv):
     if '--out' in argv:
         outdir = os.path.abspath(argv[argv.index('--out') + 1])
     os.makedirs(outdir, exist_ok=True)
+    if '--small' in argv:
+        small(outdir)
+        return 0
     rows, headed = [], {}
     for site, kind, url in sources():
         text, status, note = fetch(url, outdir, refresh)

@@ -666,6 +666,22 @@ the shared foreign-image path (`_fiCardHtml()`, `_fiClick()`, `_fiLoad()`,
 - **No count badge on the cover** (the mockup's `span.n`): it would be a
   post-render cell write owed to the master rows; the card shows the count.
 
+### The lyrics index's Title glyph — `_SLL_FI`
+
+vzell, 2026-10-23 (org/foreign-images.org, phase 3, mockup L1):
+`applySlLyricsToTable()` appends `_fiGlyph(doc, 'sll', href)` after each title
+link, with the link's own (relative) `href`, so both resolve to the same URL in
+the live, a fetched or a reloaded document. The glyph has no text (CSS: dashed
+🖼 unread, 🖼 and the count, hidden for none; see docs/claude/brucebase.md,
+"Images: the Media icons and the song glyph"). The record is
+`_dpParseSlSong()`'s, unchanged: every `lyrics/images/` picture — the covers
+of the albums the song is on (Badlands: 14) and now and then a hand-written
+sheet (Baby Me: one); the probe's four "Baby …" songs had none. One picture
+is the card itself, big (`single`). `_fiAfterRender()` paints the songs read
+before (30 days). Setting: `sa_sl_tip_images`, as the Cover column. Specs in
+`tests/fixtures/bb-image-card.spec.js` ("sl-lyrics: …"); title-link
+locators in the detail-preview specs use `a:not(.mb-fi-glyph)`.
+
 
 ## Tests
 

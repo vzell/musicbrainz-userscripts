@@ -532,3 +532,69 @@ Fixtures: `python3 scripts/build-bb-fixtures.py` writes
 saves; `tests/support/bbFixture.js`'s `loadBbRelationsPage()` and
 `loadBbChangesPage()` (which answers every POST with p1/p2 in turn, or an
 error, and records each request's fields).
+
+## Images: the Media icons and the song glyph — `_BB_FI`, `_BBS_FI`
+
+vzell, 2026-10-23 (org/foreign-images.org, phase 3, mockups B1 and B2): the
+year table's Media icons and the song list's titles get MusicBrainz's image
+card and the artwork viewer, through the shared foreign-image path
+(`_fiCardHtml()`, `_fiClick()`, `_fiDpProvider()`; docs/claude/springsteenlyrics.md,
+"The Cover column's image card and viewer").
+
+- **The reader.** `_dpParseBb()` sends a `/song:` page to the song parser
+  and every other page to `_dpParseBbPage()` (title and images only). Both
+  take their images from `_bbPageImages()`: the thumbnails of the gallery
+  boxes in `#page-content` (`.gallery-box .gallery-item img`), whichever
+  tab holds them. That one selector leaves out the side bar's promo cover
+  (`files:artwork-disco/…`, the same on every page), the 32 px status icons,
+  the Storyteller badge and the social links. The kind is the wiki folder
+  (`_bbImageKind()`): `gallery:` Photo, `files:ticket-` Ticket,
+  `files:pass-` Memorabilia, `news:` News, `files:song-graph`,
+  `files:song-lyricsheet`. `_DP_PARSER_VERSION` 3.
+- **Entry pages are read, never previewed.** `_dpGet()` takes any URL, so
+  `isDetailUrl` stays `/song:` only: neither the detail preview nor the
+  Springsteen reader on other hosts (`_extDpTest()`) takes a `/gig:` link.
+- **Renditions** (HEAD 200 for a `files:`, a `gallery:` and a `news:`
+  image, `scripts/probe-foreign-images.py --small`, 2026-10-23): the viewer
+  record is `{image: original, thumbnails: {1200: original, large: the
+  page's medium.jpg, 250: small.jpg}}`, so `_artViewerBigUrls()` tries the
+  original, then `medium.jpg`, then the thumbnail; the card's tiles are
+  `small.jpg`.
+- **Media icons (B1).** `_bbYearBuildRow()` wraps an UNLINKED Photo, Ticket,
+  News or Memorabilia icon (`_BB_FI_MEDIA_KINDS`) of an entry with a heading
+  link in `a.mb-fi-media[data-mb-fi="bb"][data-mb-fi-kind]` to that page — any
+  entry kind, not only `/gig:` (vzell, 2026-10-23). The year page's icons
+  are bare `<img>`s (only the side bar's legend links them), and the label
+  span keeps its text, so the Media filter and the 📊 entries read the
+  same. Build time, so a save to disk keeps the stamps. The ring is CSS
+  (`_ensureFiStyle()`). The card shows the icon's kind (`cardImages`, titled
+  "date · kind"), or a note when the page has none of it; the viewer opens on
+  that kind's first image (`startAt`; on an unread row the record's arrival
+  moves it there, `_artViewerReplaceImages()`'s `start`), every kind grouped
+  and one ← → away. A row is ONE stop for Shift+← →, whichever icon was
+  clicked (`_fiClick()` keeps one trigger per `<tr>`); a row reached that way
+  opens at its first image.
+- **Song glyph (B2).** `_bbBuildRow()` appends `_fiGlyph()`: an
+  `a.mb-fi-glyph` with no text — dashed 🖼 while unread, 🖼 and the count once
+  read, `display: none` for a page with none, all CSS — so Title's text, sort
+  and filter do not change. It is lazy (`cellView`): every answer paints its
+  glyphs live and in the source rows (`_fiPaint()`), and `_fiAfterRender()`
+  paints the songs read before from the database at render (30 days).
+  `_dpSiteForLink()` skips it, so the preview stays on the title link.
+- **Side effect:** a song record now has `images`, so the song preview's card
+  shows the thumbnails and its window an "Images (n)" gallery.
+- **Setting** `sa_bb_tip_images` (default on): the card only, for both.
+- **Cost.** Nothing at render (one `<a>` per icon or row; the sweep only on a
+  table with glyphs). `_fiClick()` builds a row only when the viewer shows it:
+  doing it for every row up front cost minutes on a 10,348-row table (five
+  columns read by name per row); now ~0.17 s, 18 ms on the 398-row
+  four-year fixture (Playwright Chromium, petri, 2026-10-23).
+- **Specs** `tests/fixtures/bb-image-card.spec.js` (the readers; the
+  triggers; the kind's card; the viewer on the kind and one stop per row;
+  Ctrl-click; the Media filter; no gig preview; the glyph: no text, its
+  count, the sweep, gone for none, not the preview's; the song preview's
+  thumbnails; the sl-lyrics glyph), `bb-image-card.mobile.spec.js` (a tap
+  opens the viewer); mutations `scripts/mutations/bb-image-card.json` (11,
+  one `"expect": "pass"`: the click's own `startAt`, covered by the record's
+  arrival). Fixtures `detail-bb-gig-1985-01-04.html` and `-01-07.html`
+  (`scripts/build-detail-fixtures.py`).

@@ -185,9 +185,43 @@ change (=_DP_PARSER_VERSION= stays 2); =_dpTtlMs()= gives each host its lifetime
 =scripts/mutations/foreign-lazy-cells.json=. The detail preview now skips =a.mb-fi-cell=,
 and specs that address a row's page by href use =a:not(.mb-fi-cell)=.
 
-** TODO Phase 3: the Brucebase readers (bb-year Media icons, bb-songs) and sl-lyrics' glyph
+** DONE Phase 3: the Brucebase readers (bb-year Media icons, bb-songs) and sl-lyrics' glyph
 
-Not started. Mockups *B1* (recommended), *B2* and *L1* (optional, but the phasing above
+Done 2026-10-23 on petri (same branch, WIP.3 bb-year, WIP.4 bb-songs, WIP.5 sl-lyrics).
+Browser check: vzell, 2026-10-23, on petri: the 1985 year page's Media icons ("it
+works"). stats:songs (glyphs) and lyrics.php?letter=b were not named in that check.
+
+Env: 2026-10-23T17:42:05+02:00 · petri · WSL2 Ubuntu 24.04.3 (Linux 6.18.54.1) ·
+Playwright 1.62.1 Chromium, no Tampermonkey (GM stubs) · real browser not yet tried
+
+Decisions (vzell, 2026-10-23, answering the plan's questions): the glyphs are swept at
+render like the Art / Photo cells (one IndexedDB read, 30 days on these two hosts); the
+Media icons work on *every entry with a heading link*, not only =/gig:= pages.
+
+What landed differs from the outline below in these points:
+
+- No new =isDetailUrl=: =_dpGet()= takes any URL, so =/gig:= pages are read through the
+  same parser entry (=_dpParseBb()= → =_dpParseBbPage()= for a non-song page) while the
+  detail preview and the cross-host reader stay on =/song:=.
+- One selector instead of skip rules: =#page-content .gallery-box .gallery-item img=
+  (=_bbPageImages()=) leaves out the promo, the icons and the social links by itself.
+- Renditions probed (=probe-foreign-images.py --small=, 6 HEADs): the card's tiles are
+  =small.jpg=; the viewer tries the original, then the page's =medium.jpg=, then the
+  thumbnail, through its existing fallback (=_artViewerBigUrls()=), no viewer change.
+- The shared layer gained =titleOf= / =cardTitle= / =cardImages(images, row)= /
+  =startAt= / =noRowThumb= on =_fiDpProvider()=, =_fiGlyph()= (no text, no sort key),
+  =_artViewerReplaceImages()='s =start=, and =_fiClick()= keeps one trigger per row and
+  builds a row only when the viewer shows it — building them all up front took minutes
+  on a 10,348-row year table (DEBUG-NOTES.md, 2026-10-23, phase 3); now ~0.17 s.
+- The sl-lyrics glyph also counts album covers: a released song's page shows them
+  (Badlands: 14), which the probe's four "Baby …" songs did not have.
+- Side effect: the Brucebase song preview's card and window now show the song's images.
+- Specs =bb-image-card.spec.js= (18), =bb-image-card.mobile.spec.js= (2); mutations
+  =scripts/mutations/bb-image-card.json= (11); fixtures =detail-bb-gig-1985-01-0{4,7}.html=.
+
+The plan as it stood before the work:
+
+Mockups *B1* (recommended), *B2* and *L1* (optional, but the phasing above
 takes them in); decision: *all four Brucebase kinds*, grouped by kind.
 
 - *bb-year: the Media icons open what they announce* (B1). The year table's =Media=
@@ -235,7 +269,9 @@ Discogs trio was for phase 1. The cached rows of a provider are =_dpMem= (and, o
 
 ** TODO Before the branch merges into main
 
-- Browser check of phase 2 (see its section); phase 3/4 each get their own.
+- Browser check of phases 2 and 3 (see their sections); phase 4 gets its own.
+- =tests/live/detail-preview.spec.js='s two song locators now read =a:not(.mb-fi-glyph)=
+  (the Title glyph links the same page) — updated, never re-run.
 - =npm run test:live= for the three live specs updated for the Art / Photo columns
   (=tests/live/{jl-list,bs-records,detail-preview}.spec.js=: headers, =a:not(.mb-fi-cell)=
   locators) — updated but never re-run; they reach the real sites.

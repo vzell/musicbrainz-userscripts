@@ -655,7 +655,7 @@ test.describe('the other hosts', () => {
         const want = await page.evaluate(([h, u]) => window.__saTest.dpParse('springsteenlyrics.com', h, u),
             [fixtureHtml('detail-sl-lyrics-badlands.html'), 'https://www.springsteenlyrics.com/lyrics.php?song=badlands']);
 
-        await peekAt(page, page.locator('table.tbl tbody a[href$="lyrics.php?song=badlands"]'));
+        await peekAt(page, page.locator('table.tbl tbody a:not(.mb-fi-glyph)[href$="lyrics.php?song=badlands"]'));
         await expect(peek(page).locator('.mb-tt-title')).toHaveText('BADLANDS');
         await expect(peek(page)).toContainText('Album version');
         await expect(peek(page)).toContainText('Versions on the site');
@@ -674,7 +674,7 @@ test.describe('the other hosts', () => {
         await page.keyboard.press('Escape');
         await expect(dialog).toHaveCount(0);
 
-        await peekAt(page, page.locator('table.tbl tbody a[href$="lyrics.php?song=babyme"]'));
+        await peekAt(page, page.locator('table.tbl tbody a:not(.mb-fi-glyph)[href$="lyrics.php?song=babyme"]'));
         await expect(peek(page)).toContainText('Lyrics not available');
         await expect(peek(page).locator('.mb-dp-excerpt')).toHaveCount(0);
         expect(errors).toEqual([]);
@@ -791,7 +791,7 @@ test.describe('the other hosts', () => {
         await routeDetailPages(page, 'bb');
         await page.click(`button[data-label="${BB_BUTTON}"]`);
         await waitForRenderComplete(page, { waitForAutoResize: false });
-        await peekAt(page, page.locator('table.tbl tbody a[href$="/song:4th-of-july-asbury-park-sandy"]'));
+        await peekAt(page, page.locator('table.tbl tbody a:not(.mb-fi-glyph)[href$="/song:4th-of-july-asbury-park-sandy"]'));
         await expect(peek(page).locator('.mb-dp-stat')).toHaveText('280 live performances');
         await expect(peek(page)).toContainText('2024-09-15 Beach, Surf Stage, Asbury Park, NJ');
         await expect(peek(page)).toContainText('Track 2 of The Wild, The Innocent & The E Street Shuffle, 1973.');

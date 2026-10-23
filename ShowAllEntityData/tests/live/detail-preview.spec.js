@@ -97,7 +97,7 @@ test.describe('detail-page preview on the real sites', { tag: '@extended' }, () 
         });
         await page.click('button[data-label="Show all lyrics"]');
         await waitForRenderComplete(page, { waitForAutoResize: false, timeout: 180000 });
-        const card = await cardFor(page, page.locator('table.tbl tbody a[href$="lyrics.php?song=badlands"]'));
+        const card = await cardFor(page, page.locator('table.tbl tbody a:not(.mb-fi-glyph)[href$="lyrics.php?song=badlands"]'));
         await expect(card.locator('.mb-tt-title')).toHaveText('BADLANDS');
         await expect(card).toContainText('Album version');
         expect(await card.locator('.mb-dp-excerpt').evaluate((el) => el.innerText.split('\n').filter(Boolean).length)).toBe(4);
@@ -173,7 +173,7 @@ test.describe('detail-page preview on the real sites', { tag: '@extended' }, () 
         });
         await page.click('button[data-label="Show all songs"]');
         await waitForRenderComplete(page, { waitForAutoResize: false, timeout: 120000 });
-        const card = await cardFor(page, page.locator('table.tbl tbody a[href$="/song:4th-of-july-asbury-park-sandy"]'));
+        const card = await cardFor(page, page.locator('table.tbl tbody a:not(.mb-fi-glyph)[href$="/song:4th-of-july-asbury-park-sandy"]'));
         await expect(card.locator('.mb-dp-stat')).toHaveText(/^[\d,]+ live performances$/);
         await expect(card).toContainText('Last played');
         await expect(card).toContainText('Track 2 of The Wild, The Innocent & The E Street Shuffle, 1973.');

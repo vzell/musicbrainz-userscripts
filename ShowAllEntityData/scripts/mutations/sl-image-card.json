@@ -69,8 +69,8 @@
         "why": "Invisible here, recorded as such: runFilter() takes the rows it hides OUT of the tbody, so a filtered single table has no display:none row for the guard to skip; the spec still pins that Shift+→ goes to the next row the filter left. The guard is for rows hidden in place (a collapsed or switched view).",
         "edits": [
             {
-                "find": "            .filter(l => l.closest('tr').style.display !== 'none' && l.getClientRects().length);\n        const k = links.indexOf(a);",
-                "replace": "            ;\n        const k = links.indexOf(a);"
+                "find": "            if (tr.style.display === 'none' || !l.getClientRects().length) return;\n",
+                "replace": ""
             }
         ],
         "spec": "tests/fixtures/sl-image-card.spec.js",

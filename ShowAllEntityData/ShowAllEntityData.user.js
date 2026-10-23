@@ -4665,7 +4665,9 @@
                          'kept 30 days and shared with the item preview, so a later click or preview costs nothing; ' +
                          'moving on before its turn asks nothing. A bootleg the list marks as having no artwork is ' +
                          'never asked. A click on a cover opens the artwork viewer either way (Ctrl-click: the ' +
-                         'item page).'
+                         'item page). The same goes for the lyrics index: a small 🖼 after each title stands for ' +
+                         'the song page\'s pictures (now and then a hand-written sheet); dashed until that page ' +
+                         'has been read, then their count, or gone when it has none.'
         },
 
         sa_sl_compact_nav: {
@@ -4915,6 +4917,22 @@
                          'through the rows, and its "Live page" view shows the wiki\'s own page ' +
                          'with every tab opened. Esc closes either. On a touch screen, tapping a ' +
                          'title opens the window.'
+        },
+
+        sa_bb_tip_images: {
+            label: 'Media icons and song glyphs: the page\'s images on hover',
+            type: 'checkbox',
+            default: true,
+            description: 'Needs a setting above that switches the wiki on. On a year page\'s table the Photo, ' +
+                         'Ticket, News and Memorabilia icons are ringed: pointing at one shows a card with ' +
+                         'those images from the entry\'s own page. On the song list a small 🖼 after each title ' +
+                         'does the same for the song\'s graph and lyric sheets; it is dashed until the song\'s ' +
+                         'page has been read, then shows how many images there are, or disappears when there ' +
+                         'are none. The first time, the page is read — one request for that row only, kept 30 ' +
+                         'days and shared with the preview, so a later click, preview or reload costs nothing; ' +
+                         'moving on before its turn asks nothing. Off: no card, and pointing asks nothing. A click ' +
+                         'opens the artwork viewer either way, on the icon\'s kind with every other kind one ← → ' +
+                         'away (Ctrl-click: the page).'
         },
 
         // ============================================================
@@ -11899,6 +11917,8 @@
             // Cold"), the site's capitals as the tooltip.
             _mbSetSiteTitle(link, a.textContent.replace(/\s+/g, ' ').trim(), titleTd);
             titleTd.appendChild(link);
+            // The song page's images (mockup L1): no text, see _fiGlyph().
+            titleTd.appendChild(_fiGlyph(docContext, 'sll', a.getAttribute('href')));
             tr.appendChild(titleTd);
             // bi-file-earmark-text: lyrics on the song page; the plain
             // bi-file-earmark: "Lyrics not available" (checked on song=babyme).
@@ -17955,7 +17975,8 @@
      * Builds one table row (Title, Letter) for a Brucebase song.
      *
      * The Title cell links to the song's page by its resolved absolute URL,
-     * in the same tab, as the site's own list does. Its text is in
+     * in the same tab, as the site's own list does, followed by the song's
+     * image glyph (`_fiGlyph()`, `_BBS_FI`; no text). Its text is in
      * MusicBrainz title style while `sa_foreign_mb_titles` is on
      * (`_mbSetSiteTitle()`: "Born In The U.S.A." → "Born in the U.S.A.").
      *
@@ -17970,6 +17991,7 @@
         link.href = item.anchor.href;
         _mbSetSiteTitle(link, item.anchor.textContent.replace(/\s+/g, ' ').trim(), titleTd);
         titleTd.appendChild(link);
+        titleTd.appendChild(_fiGlyph(docContext, 'bbs', item.anchor.href));
         tr.appendChild(titleTd);
         const letterTd = docContext.createElement('td');
         letterTd.textContent = item.letter;
@@ -18108,6 +18130,15 @@
      * @type {RegExp}
      */
     const _BB_ICON_SRC_RE = /\/00([A-Za-z]+)-32\.png$/;
+
+    /**
+     * The Media icons whose kind the entry's page holds as images (photos,
+     * tickets, passes, clippings: scripts/probe-foreign-images.py,
+     * 2026-10-23): `_bbYearBuildRow()` makes them open the foreign-image
+     * card and viewer (`_BB_FI`). The other icons stay plain.
+     * @type {Set<string>}
+     */
+    const _BB_FI_MEDIA_KINDS = new Set(['Photo', 'Ticket', 'News', 'Memorabilia']);
 
     /**
      * Matches a set paragraph's label, the text before its first colon
@@ -18528,8 +18559,11 @@
      * (absolute) intact, so its song links get the detail preview. Media is
      * the entry's icon row, one `<li>` per icon: the site's own image and
      * its label as text (shown by the icon, read by filters and the 📊
-     * dropdown). The "Help Us" icon and the request text after it are the
-     * Info wanted column instead.
+     * dropdown). An unlinked Photo, Ticket, News or Memorabilia icon of an
+     * entry with a page of its own links that page as the foreign-image
+     * card's and viewer's trigger (`a.mb-fi-media`, `_BB_FI`; the label's
+     * text is unchanged). The "Help Us" icon and the request text after it
+     * are the Info wanted column instead.
      *
      * While `sa_foreign_mb_titles` is on, Venue, City, Country (not "USA")
      * and the songs of Soundcheck and Setlist are in MusicBrainz title
@@ -18667,6 +18701,19 @@
                 if (m.link) {
                     const a = docContext.createElement('a');
                     a.setAttribute('href', _bbAbsHref(m.link.getAttribute('href')));
+                    a.appendChild(img);
+                    li.appendChild(a);
+                } else if (href && _BB_FI_MEDIA_KINDS.has(m.label)) {
+                    // The kinds with images on the entry's page open them:
+                    // the foreign-image card and viewer (`_BB_FI`).
+                    const a = docContext.createElement('a');
+                    a.className = 'mb-fi-media';
+                    a.dataset.mbttFn = 'fi-img';
+                    a.dataset.mbFi = 'bb';
+                    a.dataset.mbFiKind = m.label;
+                    a.setAttribute('href', _bbAbsHref(href));
+                    a.target = '_blank';
+                    a.rel = 'noopener';
                     a.appendChild(img);
                     li.appendChild(a);
                 } else {
@@ -19450,7 +19497,8 @@
      * for file names) reads it like a MusicBrainz h1.
      *
      * Also tags `<body>` with `mb-sa-host-bb` (the scope of every Brucebase
-     * style rule), installs `_ensureBbStyle()` and arranges the wiki's side
+     * style rule), installs `_ensureBbStyle()` and the foreign-image viewer
+     * click (`_fiInstall()`: the Media icons, the song glyphs) and arranges the wiki's side
      * bar (`_bbArrangeSideBar()`). On Recent changes it also sets the site's
      * "Revisions per page" to 200 (`_bbChangesPerPageSelect()`). Nothing else
      * on the page changes until the user presses a button.
@@ -19465,6 +19513,7 @@
 
         document.body.classList.add('mb-sa-host-bb');
         _ensureBbStyle();
+        _fiInstall();
         _bbArrangeSideBar();
         if (/^\/system:recent-changes\/?$/.test(window.location.pathname)) _bbChangesPerPageSelect();
         const pageTitle = document.getElementById('page-title');
@@ -19616,9 +19665,13 @@
      * version is ignored, so a parser change never shows stale fields.
      * 2: Brucebase's "Released on" is one release per line, and its live
      *    releases are their own field (`_bbReleaseLines()`).
+     * 3: Brucebase pages carry their gallery images (`_bbPageImages()`): a
+     *    song's graph and lyric sheets, and the photos, tickets, passes and
+     *    clippings of a year page's entry (`_dpParseBbPage()`), for the
+     *    foreign-image card and viewer (org/foreign-images.org, phase 3).
      * @type {number}
      */
-    const _DP_PARSER_VERSION = 2;
+    const _DP_PARSER_VERSION = 3;
 
     /**
      * IndexedDB database of parsed detail pages. Deliberately NOT a store in
@@ -20442,7 +20495,86 @@
     }
 
     /**
-     * Parses a Brucebase song page (`/song:<slug>`).
+     * A Brucebase image's kind, by the wiki folder it lives in: Photo
+     * (`gallery:<page>`), Ticket (`files:ticket-YYYY`), Memorabilia
+     * (`files:pass-YYYY`), News (`news:<page>`), Song graph
+     * (`files:song-graph`), Lyric sheet (`files:song-lyricsheet`), else
+     * Other (scripts/probe-foreign-images.py, 2026-10-23).
+     *
+     * @param {string} folder - The path segment after
+     *   `local--resized-images/` ("files:ticket-1985", "gallery:1985-01-04-…").
+     * @returns {string}
+     */
+    function _bbImageKind(folder) {
+        const f = String(folder || '').toLowerCase();
+        if (f.startsWith('gallery:')) return 'Photo';
+        if (f.startsWith('news:')) return 'News';
+        if (f.startsWith('files:ticket-')) return 'Ticket';
+        if (f.startsWith('files:pass-')) return 'Memorabilia';
+        if (f === 'files:song-graph') return 'Song graph';
+        if (f === 'files:song-lyricsheet') return 'Lyric sheet';
+        return 'Other';
+    }
+
+    /**
+     * A Brucebase page's own images: the thumbnails of its gallery boxes
+     * (`#page-content .gallery-box .gallery-item`), whichever tab holds them.
+     * That leaves out the side bar's promo cover (`#side-bar`, the same
+     * "Live From Asbury Park" on every page), the 32 px status icons, the
+     * Storyteller badge and the social links, none of which is in a gallery
+     * box. Each image is `{thumb, full, medium, label}`: `thumb` the page's
+     * `…/thumbnail.jpg`, `full` the original
+     * (`local--resized-images/X/thumbnail.jpg` → `local--files/X`, 200 for
+     * every folder kind, 2026-10-23), `medium` the page's own link when it
+     * is a `medium.jpg` (gallery and news images), `label` the kind
+     * (`_bbImageKind()`).
+     *
+     * @param {Element} content - `#page-content`.
+     * @param {string}  url     - The page's URL.
+     * @returns {Array<{thumb: string, full: string, medium: string, label: string}>}
+     */
+    function _bbPageImages(content, url) {
+        const out = [];
+        content.querySelectorAll('.gallery-box .gallery-item img[src*="/local--resized-images/"]').forEach(img => {
+            const thumb = _dpAbsUrl(img.getAttribute('src'), url);
+            const m = thumb.match(/\/local--resized-images\/(([^/]+)\/[^/]+)\/[^/]+$/);
+            if (!m) return;
+            const a = img.closest('a[href]');
+            const href = a ? _dpAbsUrl(a.getAttribute('href'), url) : '';
+            out.push({
+                thumb,
+                full: thumb.slice(0, thumb.indexOf('/local--resized-images/')) + '/local--files/' + m[1],
+                medium: /\/medium\.jpg$/.test(href) ? href : '',
+                label: _bbImageKind(decodeURIComponent(m[2])),
+            });
+        });
+        return out;
+    }
+
+    /**
+     * Parses any Brucebase page that is not a song: an entry of a year page
+     * (`/gig:`, `/nogig:`, `/recording:`, `/rehearsal:`, …). Only its title
+     * and its gallery images (`_bbPageImages()`), for the foreign-image card
+     * and viewer of the year table's Media icons; the detail preview does
+     * not take these pages (`isDetailUrl` is `/song:` only).
+     *
+     * @param {Document} doc The fetched page.
+     * @param {string}   url The page's URL.
+     * @returns {?object} The record, or null when the page has no
+     *   `#page-content`.
+     */
+    function _dpParseBbPage(doc, url) {
+        const content = doc.getElementById('page-content');
+        if (!content) return null;
+        const data = _dpEmpty();
+        data.title = _dpText(doc.getElementById('page-title') ? doc.getElementById('page-title').textContent : '');
+        data.images = _bbPageImages(content, url);
+        return data;
+    }
+
+    /**
+     * Parses a Brucebase song page (`/song:<slug>`); any other page goes to
+     * `_dpParseBbPage()`.
      *
      * `#page-title` is the title, and the text of `#page-content` before the
      * song's tabview is its origin ("Track 2 of The Wild, The Innocent & The
@@ -20451,17 +20583,24 @@
      * (`_bbCollectItems()`), and the panels are read by label: Performances
      * (the count and the newest show, its list being newest first), Released
      * on Album, Released as Live Download (the count), and Credits, On The
-     * Tracks and Lyrics as whole sections for the dialog.
+     * Tracks and Lyrics as whole sections for the dialog. Its images are its
+     * gallery boxes' (`_bbPageImages()`: the song graph, lyric sheets).
      *
      * @param {Document} doc The fetched page.
-     * @param {string}   url The page's URL (unused; links are not kept).
+     * @param {string}   url The page's URL.
      * @returns {?object} The record, or null when the page has no
      *   `#page-content`.
      */
     function _dpParseBb(doc, url) {
+        let path = '';
+        try {
+            path = new URL(url).pathname;
+        } catch (_) { /* not a URL: read it as a song page */ }
+        if (path && !/^\/song:/.test(path)) return _dpParseBbPage(doc, url);
         const content = doc.getElementById('page-content');
         if (!content) return null;
         const data = _dpEmpty();
+        data.images = _bbPageImages(content, url);
         data.title = _dpText(doc.getElementById('page-title') ? doc.getElementById('page-title').textContent : '');
         const nav = content.querySelector('div.yui-navset');
         const before = [];
@@ -20662,9 +20801,10 @@
      * @returns {?object} The host's `_DP_SITES` entry, or null.
      */
     function _dpSiteForLink(a) {
-        // A lazy Art / Photo cell (a.mb-fi-cell) links the same page but is
-        // the image card's, picture or not (_fiLazyCell()).
-        if (!a || !a.matches || !a.matches('a[href]') || a.querySelector('img') || a.matches('a.mb-fi-cell')) return null;
+        // A lazy Art / Photo cell (a.mb-fi-cell) or a Title glyph
+        // (a.mb-fi-glyph) links the same page but is the image card's,
+        // picture or not (_fiLazyCell(), _fiGlyph()).
+        if (!a || !a.matches || !a.matches('a[href]') || a.querySelector('img') || a.matches('a.mb-fi-cell, a.mb-fi-glyph')) return null;
         if (!a.closest('table.tbl > tbody') && (_isTouchPrimaryDevice() || a.closest(_DP_PAGE_SKIP))) return null;
         const site = _dpActiveSite();
         if (!site) return null;
@@ -22175,9 +22315,10 @@
     // `_fiCardHtml()`) and `data-mb-fi="<key>"`, which names its PROVIDER
     // (`_fiProvider()`): what that host's rows are and where their records
     // come from: Discogs' Image column (`_DG_FI`), springsteenlyrics' Cover
-    // column (`_SL_FI`), and the lazy Art / Photo columns of jungleland.it and
-    // brucespringsteen.it (`_JL_FI`, `_BS_FI`; `_fiDpProvider()` builds the
-    // three detail-page ones). Everything is delegated
+    // column (`_SL_FI`), the lazy Art / Photo columns of jungleland.it and
+    // brucespringsteen.it (`_JL_FI`, `_BS_FI`), Brucebase's Media icons and
+    // song glyphs (`_BB_FI`, `_BBS_FI`) and springsteenlyrics' lyrics glyphs
+    // (`_SLL_FI`); `_fiDpProvider()` builds every detail-page one. Everything is delegated
     // (the card through `#mb-stat-tooltip`, the click on the window), so it
     // survives every re-render's clones with no re-wiring, and nothing runs
     // until a hover or a click: a render asks for nothing.
@@ -22198,7 +22339,11 @@
      *     the answer is in;
      *   - `images(row)`: the viewer's records for the row as it stands — one
      *     with a `note` while there is nothing more to show;
-     *   - `cardImages(images)`, optional: the card's view of them;
+     *   - `cardImages(images, row)`, optional: the card's view of them
+     *     (a Brucebase Media icon: its kind only);
+     *   - `cardTitle(row)`, optional: the card's title (else `row.title`);
+     *   - `startAt(row, images)`, optional: the image the viewer opens on
+     *     (else the first);
      *   - `loadingText(row)`, `foot`, `title()`: the card's wording and the
      *     viewer's title;
      *   - `single`: one picture per row, so the card is that picture, big;
@@ -22208,7 +22353,8 @@
      * @typedef {{ctx: Object, name: string, tableSel: string, linkSel: string, cardOn: function(): boolean,
      *   rowFor: function(HTMLAnchorElement, HTMLTableElement, string): Object, hasRecord: function(Object): boolean,
      *   state: function(Object): string, request: function(Object, Object): void, images: function(Object): Object[],
-     *   cardImages: ?function(Object[]): Object[], loadingText: function(Object): string, foot: string,
+     *   cardImages: ?function(Object[], Object): Object[], cardTitle?: function(Object): string,
+     *   startAt?: function(Object, Object[]): number, loadingText: function(Object): string, foot: string,
      *   title: function(): string, single?: boolean, lazy?: boolean,
      *   cellView?: function(string): ?{state: string, thumb?: string, n?: number}}} FiProvider
      */
@@ -22226,6 +22372,9 @@
             case 'sl': return _SL_FI;
             case 'jl': return _JL_FI;
             case 'bs': return _BS_FI;
+            case 'bb': return _BB_FI;
+            case 'bbs': return _BBS_FI;
+            case 'sll': return _SLL_FI;
             default: return null;
         }
     }
@@ -22285,7 +22434,7 @@
         if (!table) return null;
         const row = p.rowFor(a, table, `${p.ctx.key}-card:${a.href}`);
         if (!p.hasRecord(row)) return null;
-        const title = row.title || p.name;
+        const title = (p.cardTitle ? p.cardTitle(row) : row.title) || p.name;
         const box = (body) => `<div style="max-width:310px;"><div class="mb-tt-title">${_rgEsc(title)}</div>${body}</div>`;
         const tile = row.thumb
             ? `<div class="mb-art-card-tiles"><span class="mb-art-card-tile"><img src="${_rgEsc(row.thumb)}" alt="" referrerpolicy="no-referrer"></span></div>`
@@ -22304,7 +22453,8 @@
         }
         const images = p.images(row);
         if (images.length === 1 && images[0].note) return box(`${tile}<div class="mb-tt-dim">${_rgEsc(images[0].note)}</div>`);
-        const shown = p.cardImages ? p.cardImages(images) : images;
+        const shown = p.cardImages ? p.cardImages(images, row) : images;
+        if (shown.length === 1 && shown[0].note) return box(`<div class="mb-tt-dim">${_rgEsc(shown[0].note)}</div>`);
         // One picture per row (brucespringsteen.it's photo): that picture,
         // big, instead of a contact sheet of one tile.
         if (p.single && shown.length === 1) {
@@ -22329,7 +22479,10 @@
      * @returns {void}
      */
     function _fiLoad(p, row, force = false) {
-        const refresh = () => _artViewerReplaceImages(p.ctx, row.path, p.images(row));
+        const refresh = () => {
+            const images = p.images(row);
+            _artViewerReplaceImages(p.ctx, row.path, images, p.startAt ? p.startAt(row, images) : -1);
+        };
         if (!p.hasRecord(row)) return;
         const state = p.state(row);
         if (state === 'none' || (!force && (state === 'done' || state === 'failed'))) return;
@@ -22350,6 +22503,12 @@
      * read (by the card, the viewer or the link preview) costs nothing.
      * Ctrl, Shift, Alt or ⌘ and any other button keep the link.
      *
+     * A row is one stop however many triggers it has (a Brucebase year row
+     * has one per Media icon): the clicked link for its own row, the first
+     * trigger for every other. The viewer opens at the provider's
+     * `startAt()` (the clicked icon's kind); a row reached by Shift+← → has
+     * no kind and opens at its first image.
+     *
      * On the window, capture (`_fiInstall()`): ahead of every listener on
      * the document, `initNavigationGuard()`'s "leave this page" among them.
      *
@@ -22362,29 +22521,47 @@
         const p = a && _fiProviderOf(a);
         const table = p && a.closest(p.tableSel);
         if (!table) return;
-        const links = Array.from(table.querySelectorAll(`tbody > tr ${p.linkSel}`))
-            .filter(l => l.closest('tr').style.display !== 'none' && l.getClientRects().length);
+        const seen = new Map();
+        Array.from(table.querySelectorAll(`tbody > tr ${p.linkSel}`)).forEach(l => {
+            const tr = l.closest('tr');
+            if (tr.style.display === 'none' || !l.getClientRects().length) return;
+            if (!seen.has(tr) || l === a) seen.set(tr, l);
+        });
+        const links = Array.from(seen.values());
         const k = links.indexOf(a);
         if (k < 0) return;
-        const rows = links.map((l, i) => p.rowFor(l, table, `${p.ctx.key}:${i}:${l.href}`));
+        // A row is built when the viewer first shows it, never all up front:
+        // `rowFor()` reads the row's cells (a Brucebase year row: five
+        // columns by name), which over a 10,000-row table is the difference
+        // between one row and minutes (measured 2026-10-23).
+        const rows = new Array(links.length);
+        const rowAt = (i) => {
+            if (!rows[i]) {
+                rows[i] = p.rowFor(links[i], table, `${p.ctx.key}:${i}:${links[i].href}`);
+                if (links[i] !== a) rows[i].kind = '';
+            }
+            return rows[i];
+        };
         e.preventDefault();
         e.stopImmediatePropagation();
         p.ctx.imagesCache.clear();
         const show = (i) => {
-            p.ctx.imagesCache.set(rows[i].path, p.images(rows[i]));
+            const row = rowAt(i);
+            p.ctx.imagesCache.set(row.path, p.images(row));
             // After the cache entry: a record already there is shown at once.
-            setTimeout(() => _fiLoad(p, rows[i]), 0);
+            setTimeout(() => _fiLoad(p, row), 0);
         };
         let cur = k;
         show(cur);
-        _artViewerOpen(p.ctx, rows[cur].path, null, 0, {
-            opener: a, title: p.title(), rowPos: { k: cur + 1, n: rows.length },
+        const first = p.startAt ? p.startAt(rowAt(cur), p.ctx.imagesCache.get(rowAt(cur).path)) : -1;
+        _artViewerOpen(p.ctx, rowAt(cur).path, null, Math.max(0, first), {
+            opener: a, title: p.title(), rowPos: { k: cur + 1, n: links.length },
             onGroupStep: (d) => {
                 const next = cur + d;
-                if (next < 0 || next >= rows.length) return null;
+                if (next < 0 || next >= links.length) return null;
                 cur = next;
                 show(cur);
-                return { entityPath: rows[cur].path, list: null, title: p.title(), rowPos: { k: cur + 1, n: rows.length } };
+                return { entityPath: rowAt(cur).path, list: null, title: p.title(), rowPos: { k: cur + 1, n: links.length } };
             },
         });
     }
@@ -22392,7 +22569,8 @@
     /**
      * Installs the foreign-image viewer click (`_fiClick()`) once. Called
      * by each foreign host's page preparation (`_dgPrepareLivePage()`,
-     * `_slPrepareLivePage()`), never on MusicBrainz.
+     * `_slPrepareLivePage()`, `_jlPrepareLivePage()`, `_bsPrepareLivePage()`,
+     * `_bbPrepareLivePage()`), never on MusicBrainz.
      *
      * @returns {void}
      */
@@ -22430,6 +22608,15 @@
                 bottom: -3px; padding: 1px 3px; border-radius: 6px; background: #333; color: #fff;
                 font: bold 9px/1 Arial, Helvetica, sans-serif; }
             #mb-stat-tooltip img.mb-fi-card-big { display: block; max-width: 250px; max-height: 250px; margin-top: 4px; }
+            a.mb-fi-glyph { display: inline-block; margin-left: 6px; padding: 0 2px; border-radius: 3px;
+                font: 12px/1.2 Arial, Helvetica, sans-serif; color: #555; text-decoration: none; white-space: nowrap; }
+            a.mb-fi-glyph::before { content: '🖼'; }
+            a.mb-fi-glyph[data-mb-fi-state="cold"] { opacity: .6; outline: 1px dashed #9a9a9a; outline-offset: 0; }
+            a.mb-fi-glyph[data-mb-fi-n]::after { content: attr(data-mb-fi-n); margin-left: 2px; font-weight: bold; font-size: 10px; }
+            a.mb-fi-glyph[data-mb-fi-state="none"] { display: none; }
+            ul.mb-bb-media a.mb-fi-media { display: inline-block; border-radius: 50%; line-height: 0;
+                box-shadow: 0 0 0 2px #2f5f9e; }
+            ul.mb-bb-media a.mb-fi-media:hover { box-shadow: 0 0 0 2px #2f5f9e, 0 0 0 4px rgba(47,95,158,.25); }
         `);
         style.id = 'mb-fi-style';
     }
@@ -22465,6 +22652,12 @@
      *     (springsteenlyrics' cover), with `ownSource` and `ownTail` (the
      *     failure note's "Showing the cover."); without it a dashed tile;
      *   - `needsThumb`: no record without the row's own picture;
+     *   - `noRowThumb`: the trigger's `<img>` is not the row's picture (a
+     *     Brucebase Media icon);
+     *   - `titleOf(a, table)`, optional: the row's title, for a table with no
+     *     Title column (else that column's text);
+     *   - `cardTitle(row)`, `cardImages(images, row)`, `startAt(row, images)`,
+     *     optional: copied as they are (see `FiProvider`);
      *   - `isNone(row)`: a row that never asks (the list says no artwork);
      *   - `noneNote`, `loadingNote`: the viewer's notes;
      *   - `ready(data)`, optional: whether a record in memory is complete
@@ -22492,12 +22685,17 @@
             loads,
             cardOn: () => Lib.settings[cfg.setting] !== false,
             rowFor: (a, table, path) => {
-                const idx = _fiTitleColIdx(table);
-                const cell = idx >= 0 ? a.closest('tr').cells[idx] : null;
                 const img = a.querySelector('img');
+                let title;
+                if (cfg.titleOf) {
+                    title = cfg.titleOf(a, table);
+                } else {
+                    const idx = _fiTitleColIdx(table);
+                    const cell = idx >= 0 ? a.closest('tr').cells[idx] : null;
+                    title = (cell ? cell.textContent : (img ? img.alt : '')).replace(/\s+/g, ' ').trim();
+                }
                 return {
-                    url: a.href, thumb: img ? img.src : '', asked: false, path,
-                    title: (cell ? cell.textContent : (img ? img.alt : '')).replace(/\s+/g, ' ').trim(),
+                    url: a.href, thumb: cfg.noRowThumb || !img ? '' : img.src, asked: false, path, title,
                     ...(cfg.rowExtra ? cfg.rowExtra(a) : {}),
                 };
             },
@@ -22552,7 +22750,9 @@
                 if (!cfg.cellView || !mem || (cfg.ready && !cfg.ready(mem.data))) return null;
                 return cfg.cellView(mem.data);
             },
-            cardImages: null,
+            cardImages: cfg.cardImages || null,
+            ...(cfg.cardTitle ? { cardTitle: cfg.cardTitle } : {}),
+            ...(cfg.startAt ? { startAt: cfg.startAt } : {}),
             loadingText: () => cfg.loadingText,
             foot: cfg.foot,
             title: () => {
@@ -22602,6 +22802,13 @@
     function _fiCellApply(a, view) {
         const doc = a.ownerDocument;
         a.dataset.mbFiState = view.state;
+        // A Title glyph (`_fiGlyph()`) shows every count, and has no picture
+        // and no sort key: it must not change how the Title column sorts.
+        if (a.classList.contains('mb-fi-glyph')) {
+            if (view.state === 'done' && view.n > 0) a.dataset.mbFiN = String(view.n);
+            else delete a.dataset.mbFiN;
+            return;
+        }
         if (view.n > 1) a.dataset.mbFiN = String(view.n);
         else delete a.dataset.mbFiN;
         a.replaceChildren();
@@ -22646,6 +22853,36 @@
     }
 
     /**
+     * A Title glyph for a converter (mockups B2 / L1, 2026-10-23): for lists
+     * where most rows have no images (Brucebase's songs, springsteenlyrics'
+     * lyrics), a small link after the title to the row's page, stamped for
+     * the card and the viewer click. It has NO text: the dashed 🖼 while
+     * unread, the 🖼 with its count once read and `display: none` for a page
+     * with none are CSS (`data-mb-fi-state`, `data-mb-fi-n`,
+     * `_ensureFiStyle()`), so the Title cell's clean text, its sort and the
+     * 📊 panel stay as they were, and a late paint (`_fiPaint()`,
+     * `_fiAfterRender()`) owes only the write to the source rows.
+     *
+     * @param {Document} doc  - The document the row is built in.
+     * @param {string}   key  - The provider (`data-mb-fi`).
+     * @param {string}   href - The row's page, as the row's title link writes
+     *   it, so both resolve to the same URL (the record's key).
+     * @returns {HTMLAnchorElement}
+     */
+    function _fiGlyph(doc, key, href) {
+        const a = doc.createElement('a');
+        a.className = 'mb-fi-glyph';
+        a.dataset.mbttFn = 'fi-img';
+        a.dataset.mbFi = key;
+        a.setAttribute('href', href);
+        a.target = '_blank';
+        a.rel = 'noopener';
+        a.setAttribute('aria-label', 'Images');
+        _fiCellApply(a, { state: 'cold' });
+        return a;
+    }
+
+    /**
      * Every lazy cell of a provider, by URL: the shown tables and the source
      * rows the next re-render clones from (a single table's live rows ARE
      * its source rows; a Set keeps each once).
@@ -22654,7 +22891,7 @@
      * @returns {Map<string, Set<HTMLAnchorElement>>}
      */
     function _fiCellIndex(p) {
-        const sel = `a.mb-fi-cell[data-mb-fi="${p.ctx.key}"]`;
+        const sel = `:is(a.mb-fi-cell, a.mb-fi-glyph)[data-mb-fi="${p.ctx.key}"]`;
         const map = new Map();
         const add = (a) => {
             let s = map.get(a.href);
@@ -22702,22 +22939,28 @@
     }
 
     /**
-     * The render tail on jungleland.it and brucespringsteen.it (vzell,
-     * 2026-10-23: "these sites barely change"): every lazy cell whose page
-     * was read before shows its picture at once. One `getAll()` of the
-     * detail-page database — no request to the site — keeps the records of
-     * this parser version younger than the site's lifetime
-     * (`_dpTtlMs()`, half a year here) for the rows of the table, puts them
-     * in memory (so a hover answers at once too) and paints the cells.
-     * Called after a fresh render and a disk load; a single boolean check
-     * anywhere else.
+     * The render tail on the hosts with lazy cells or Title glyphs: every
+     * one whose page was read before shows what it holds at once (vzell,
+     * 2026-10-23: jungleland.it's Art and brucespringsteen.it's Photo, "these
+     * sites barely change"; then Brucebase's song and springsteenlyrics'
+     * lyrics glyphs). One `getAll()` of the detail-page database — no
+     * request to the site — keeps the records of this parser version
+     * younger than the site's lifetime (`_dpTtlMs()`: half a year on the
+     * first two, 30 days on the others) for the rows of the table, puts
+     * them in memory (so a hover answers at once too) and paints the cells.
+     * A table with none (a Brucebase year table, a springsteenlyrics card
+     * list) reads nothing. Called after a fresh render and a disk load; a
+     * single check anywhere else.
      *
      * @returns {Promise<number>} Cells painted (for the specs).
      */
     async function _fiAfterRender() {
-        if (!_isJlHost && !_isBsHost) return 0;
-        const p = _isJlHost ? _JL_FI : _BS_FI;
-        const site = _DP_SITES[_isJlHost ? 'jungleland.it' : 'brucespringsteen.it'];
+        const host = _isJlHost ? 'jungleland.it' : _isBsHost ? 'brucespringsteen.it'
+            : _isBbHost ? 'brucebase.wikidot.com' : _isSlHost ? 'springsteenlyrics.com' : '';
+        if (!host) return 0;
+        const p = { 'jungleland.it': _JL_FI, 'brucespringsteen.it': _BS_FI, 'brucebase.wikidot.com': _BBS_FI,
+            'springsteenlyrics.com': _SLL_FI }[host];
+        const site = _DP_SITES[host];
         const urls = _fiCellIndex(p);
         if (!urls.size) return 0;
         const records = await _dpIdbAll().catch(() => []);
@@ -22881,6 +23124,154 @@
         },
         loadingText: 'Loading the record\'s page…',
         foot: 'Click: viewer · Ctrl-click: the record\'s page',
+    });
+
+    /**
+     * The order of the Brucebase kinds in a row's images: the year table's
+     * Media icons first, in the site's own order, then a song's.
+     * @type {string[]}
+     */
+    const _BB_FI_KINDS = ['Photo', 'Ticket', 'Memorabilia', 'News', 'Song graph', 'Lyric sheet', 'Other'];
+
+    /**
+     * A Brucebase page's images (`_bbPageImages()`) as the viewer's records,
+     * grouped by kind (`_BB_FI_KINDS`, page order within a kind). The viewer
+     * tries the original first, then the page's own `medium.jpg`, then the
+     * thumbnail (`_artViewerBigUrls()`); the card's tile is `small.jpg`
+     * (HEAD 200 for a files:, gallery: and news: image, 2026-10-23).
+     *
+     * @param {object} data - The record.
+     * @returns {Object[]}
+     */
+    function _bbFiImages(data) {
+        const rank = (im) => {
+            const i = _BB_FI_KINDS.indexOf(im.label);
+            return i < 0 ? _BB_FI_KINDS.length : i;
+        };
+        return (data.images || []).filter(im => im.thumb || im.full)
+            .map((im, i) => ({ im, i }))
+            .sort((x, y) => rank(x.im) - rank(y.im) || x.i - y.i)
+            .map(({ im }) => {
+                const full = im.full || im.thumb;
+                const small = im.thumb ? im.thumb.replace(/\/thumbnail\.jpg$/, '/small.jpg') : full;
+                return {
+                    image: full, thumbnails: { 1200: full, ...(im.medium ? { large: im.medium } : {}), 250: small },
+                    types: [im.label || 'Other'], front: false, comment: _fiFileName(full),
+                };
+            });
+    }
+
+    /**
+     * The text of one column of a row, by the column's name
+     * (`_cleanColHeaderText()`), '' when the table has no such column.
+     *
+     * @param {HTMLTableElement}    table
+     * @param {HTMLTableRowElement} tr
+     * @param {string}              name
+     * @returns {string}
+     */
+    function _fiColText(table, tr, name) {
+        const idx = Array.from(table.querySelectorAll('thead tr:first-child th')).findIndex(th => _cleanColHeaderText(th) === name);
+        const cell = idx >= 0 ? tr.cells[idx] : null;
+        return cell ? cell.textContent.replace(/\s+/g, ' ').trim() : '';
+    }
+
+    /**
+     * Brucebase's year table as a provider (mockup B1, 2026-10-23): the
+     * Media icons Photo, Ticket, Memorabilia (passes) and News of an entry
+     * with a page of its own (`_bbYearBuildRow()` stamps them
+     * `a.mb-fi-media`, `data-mb-fi-kind`). The page — a gig, or any other
+     * entry — is read through `_dpGet()` (`_dpParseBbPage()`: its gallery
+     * images, by kind). The card shows the icon's kind; the viewer opens on
+     * its first image, every other kind one ← → away; Shift+← → walk the
+     * rows. Off with `sa_bb_tip_images` (the card only).
+     * @type {FiProvider}
+     */
+    const _BB_FI = _fiDpProvider({
+        key: 'bb', column: 'Media', name: 'Brucebase', host: 'brucebase.wikidot.com',
+        tableSel: 'body.mb-sa-host-bb table.tbl', linkSel: 'a.mb-fi-media[data-mb-fi="bb"]', setting: 'sa_bb_tip_images',
+        h1: 'h1.mb-bb-h1 bdi', pageName: 'the entry\'s page', pageLabel: 'Entry page',
+        noRowThumb: true,
+        rowExtra: (a) => ({ kind: a.dataset.mbFiKind || '', date: _fiColText(a.closest('table'), a.closest('tr'), 'Date') }),
+        titleOf: (a, table) => {
+            const tr = a.closest('tr');
+            const where = ['Venue', 'City', 'State'].map(c => _fiColText(table, tr, c)).filter(Boolean).join(', ');
+            return [_fiColText(table, tr, 'Date'), where].filter(Boolean).join(' · ');
+        },
+        cardTitle: (row) => (row.kind ? [row.date, row.kind].filter(Boolean).join(' · ') : row.title),
+        cardImages: (images, row) => {
+            if (!row.kind) return images;
+            const own = images.filter(im => (im.types || []).includes(row.kind));
+            if (own.length) return own;
+            return [{ ...images[0], note: `No ${row.kind.toLowerCase()} images on the entry's page; ` +
+                `${images.length} other${images.length === 1 ? '' : 's'} — click for ${images.length === 1 ? 'it' : 'them'}.` }];
+        },
+        startAt: (row, images) => (row.kind ? (images || []).findIndex(im => (im.types || []).includes(row.kind)) : -1),
+        noneNote: 'The entry\'s page has no images.',
+        loadingNote: 'Loading the images from the entry\'s page… one request for this one (about 1 s apart).',
+        recordImages: (data) => {
+            const images = _bbFiImages(data);
+            return images.length ? images : 'The entry\'s page has no images.';
+        },
+        loadingText: 'Loading the images from the entry\'s page…',
+        foot: 'Click: viewer · ← → every kind · Ctrl-click: the entry\'s page',
+    });
+
+    /**
+     * Brucebase's song list as a provider (mockup B2, 2026-10-23): the Title
+     * glyph (`_fiGlyph()`, `_bbBuildRow()`), the song's page read through
+     * `_dpGet()` (`_dpParseBb()`: its graph and lyric sheets) — the record
+     * the detail preview shows. Off with `sa_bb_tip_images` (the card only).
+     * @type {FiProvider}
+     */
+    const _BBS_FI = _fiDpProvider({
+        key: 'bbs', column: 'Title', name: 'Brucebase', host: 'brucebase.wikidot.com',
+        tableSel: 'body.mb-sa-host-bb table.tbl', linkSel: 'a.mb-fi-glyph[data-mb-fi="bbs"]', setting: 'sa_bb_tip_images',
+        h1: 'h1.mb-bb-h1 bdi', pageName: 'the song\'s page', pageLabel: 'Song page',
+        noneNote: 'The song\'s page has no images.',
+        loadingNote: 'Loading the images from the song\'s page… one request for this one (about 1 s apart).',
+        recordImages: (data) => {
+            const images = _bbFiImages(data);
+            return images.length ? images : 'The song\'s page has no images.';
+        },
+        cellView: (data) => {
+            const n = _bbFiImages(data).length;
+            return n ? { state: 'done', n } : { state: 'none' };
+        },
+        loadingText: 'Loading the images from the song\'s page…',
+        foot: 'Click: viewer · Ctrl-click: the song\'s page',
+    });
+
+    /**
+     * springsteenlyrics.com's lyrics index as a provider (mockup L1,
+     * 2026-10-23): the Title glyph (`_fiGlyph()`, `applySlLyricsToTable()`),
+     * the song's page read through `_dpGet()` (`_dpParseSlSong()`: its
+     * `lyrics/images/` pictures, usually none, now and then a hand-written
+     * sheet). One picture is the card itself, big (`single`). Off with
+     * `sa_sl_tip_images` (the card only).
+     * @type {FiProvider}
+     */
+    const _SLL_FI = _fiDpProvider({
+        key: 'sll', column: 'Title', name: 'springsteenlyrics.com', host: 'springsteenlyrics.com',
+        tableSel: 'body.mb-sa-host-sl table.tbl', linkSel: 'a.mb-fi-glyph[data-mb-fi="sll"]', setting: 'sa_sl_tip_images',
+        h1: 'h1.mb-sl-h1 bdi', pageName: 'the song\'s page', pageLabel: 'Song page',
+        single: true,
+        noneNote: 'The song\'s page has no images.',
+        loadingNote: 'Loading the song\'s page… one request for this one (about 1 s apart).',
+        recordImages: (data) => {
+            const images = (data.images || []).filter(im => im.thumb || im.full);
+            if (!images.length) return 'The song\'s page has no images.';
+            return images.map(im => ({
+                image: im.full || im.thumb, thumbnails: { 250: im.thumb || im.full }, types: ['Image'],
+                front: false, comment: _fiFileName(im.full || im.thumb),
+            }));
+        },
+        cellView: (data) => {
+            const n = (data.images || []).filter(im => im.thumb || im.full).length;
+            return n ? { state: 'done', n } : { state: 'none' };
+        },
+        loadingText: 'Loading the song\'s page…',
+        foot: 'Click: viewer · Ctrl-click: the song\'s page',
     });
 
     /**
@@ -95958,8 +96349,9 @@ a { color: #1565c0; }`;
             _recOfInitColHeaderToggles();
             // discogs.com's MusicBrainz column: its ▶ MB toggles, then the lookup.
             _dgMbAfterRender(true);
-            // jungleland.it / brucespringsteen.it: lazy Art / Photo cells read
-            // before, painted from the detail-page database (no request).
+            // jungleland.it / brucespringsteen.it lazy Art / Photo cells and
+            // Brucebase / springsteenlyrics Title glyphs read before, painted
+            // from the detail-page database (no request).
             _fiAfterRender();
             // Same reason as the line above: the <thead> this writes into may
             // have just been rebuilt from a clone. No-op unless the Release-events
@@ -124989,8 +125381,9 @@ a { color: #1565c0; }`;
             _recOfInitColHeaderToggles();
             // discogs.com's MusicBrainz column: its ▶ MB toggles, then the lookup.
             _dgMbAfterRender(true);
-            // jungleland.it / brucespringsteen.it: lazy Art / Photo cells read
-            // before, painted from the detail-page database (no request).
+            // jungleland.it / brucespringsteen.it lazy Art / Photo cells and
+            // Brucebase / springsteenlyrics Title glyphs read before, painted
+            // from the detail-page database (no request).
             _fiAfterRender();
             // Same reason as the line above: the <thead> this writes into may
             // have just been rebuilt from a clone. No-op unless the Release-events
@@ -135344,19 +135737,24 @@ a { color: #1565c0; }`;
      * Gives an entry of the viewer's images cache new images (a Discogs
      * row's full images, once its record has arrived) and, when the viewer
      * shows that entry, shows them in place: the same position as far as it
-     * still exists, the same opener and row.
+     * still exists, the same opener and row. When the viewer showed only a
+     * note (the row's record was still loading), it moves to `start`: a
+     * Brucebase Media icon's first image of its kind.
      *
      * @param   {ArtCtx}   ctx
      * @param   {string}   entityPath
      * @param   {Object[]} images
+     * @param   {number}   [start=-1] Where to go from a lone note; -1: stay.
      * @returns {void}
      */
-    function _artViewerReplaceImages(ctx, entityPath, images) {
+    function _artViewerReplaceImages(ctx, entityPath, images, start = -1) {
         ctx.imagesCache.set(entityPath, images);
         const st = _artViewerState;
         if (!st || st.ctx !== ctx || st.entityPath !== entityPath || !images.length) return;
+        const fromNote = st.images.length === 1 && !!st.images[0].note;
         st.images = images;
         st.list = images.map((_, i) => i);
+        if (fromNote && start >= 0 && start < images.length) st.i = start;
         if (!st.list.includes(st.i)) st.i = 0;
         _artViewerRender();
     }

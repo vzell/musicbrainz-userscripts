@@ -456,7 +456,13 @@ markup.
   `/stats:discography` link) and runs to the next one, so its year, kind and
   "(recorded …)" stay with it. The paragraph beginning "Live versions" becomes
   its own field, "Released live on". A paragraph with no such element is kept
-  whole.
+  whole. Since 2026-10-23 (`_DP_PARSER_VERSION` 3, org/foreign-images.org
+  phase 3) a song record carries its gallery images (`_bbPageImages()`:
+  graph, lyric sheets), and any OTHER Brucebase page goes to
+  `_dpParseBbPage()` (title and images only), which only the foreign-image
+  card of the year table's Media icons asks for: `isDetailUrl` stays
+  `/song:`, so such a page is never previewed (docs/claude/brucebase.md,
+  "Images: the Media icons and the song glyph").
 
 **`_dpBlockText()` collapses the source's whitespace before it turns `<br>`
 into a line break.** The sites write `line<br />\nline`; keeping that

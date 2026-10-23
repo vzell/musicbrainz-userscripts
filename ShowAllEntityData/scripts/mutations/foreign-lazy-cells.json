@@ -69,8 +69,8 @@
         "why": "After a reload the rows read before are painted from the database (_fiAfterRender()).",
         "edits": [
             {
-                "find": "        if (!_isJlHost && !_isBsHost) return 0;\n        const p = _isJlHost ? _JL_FI : _BS_FI;",
-                "replace": "        return 0;\n        const p = _isJlHost ? _JL_FI : _BS_FI;"
+                "find": "        if (!host) return 0;\n",
+                "replace": "        return 0;\n"
             }
         ],
         "spec": "tests/fixtures/jl-image-card.spec.js",
@@ -95,8 +95,8 @@
         "why": "A cold Art cell links the same page and has no picture; it is the image card's.",
         "edits": [
             {
-                "find": " || a.querySelector('img') || a.matches('a.mb-fi-cell')) return null;",
-                "replace": " || a.querySelector('img')) return null;"
+                "find": " || a.querySelector('img') || a.matches('a.mb-fi-cell, a.mb-fi-glyph')) return null;",
+                "replace": " || a.querySelector('img') || a.matches('a.mb-fi-glyph')) return null;"
             }
         ],
         "spec": "tests/fixtures/jl-image-card.spec.js",

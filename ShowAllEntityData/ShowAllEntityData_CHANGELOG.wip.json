@@ -1,5 +1,53 @@
 [
     {
+        "version": "WIP.5",
+        "date": "2026-10-23",
+        "sections": [
+            {
+                "label": "🚀 Feature",
+                "items": [
+                    "springsteenlyrics.com lyrics index: a small 🖼 after each title stands for the song page's pictures (the covers of the albums a song is on, now and then a hand-written sheet). It is dashed until that page has been read, then shows how many there are, or disappears when there are none. Pointing at it shows them (a single picture large), a click opens the artwork viewer (Ctrl-click: the song's page). It follows the setting \"Cover column: every image of an item on hover\"; songs read before show their count at once, with no request."
+                ]
+            }
+        ]
+    },
+    {
+        "version": "WIP.4",
+        "date": "2026-10-23",
+        "sections": [
+            {
+                "label": "🚀 Feature",
+                "items": [
+                    "Brucebase song list: the same 🖼 after each title for the song page's graph and lyric sheets: dashed until read, then the count, gone when the page has none; a card on hover, the viewer on a click. Songs read before show their count at once, with no request."
+                ]
+            },
+            {
+                "label": "✨ Improve",
+                "items": [
+                    "The Brucebase song preview (card and window) now shows the song page's images too: the graph and the lyric sheets, which open the artwork viewer from the window. Pages saved before are read again once, because what is kept of a page has changed (the springsteenlyrics.com, jungleland.it and brucespringsteen.it pages too)."
+                ]
+            }
+        ]
+    },
+    {
+        "version": "WIP.3",
+        "date": "2026-10-23",
+        "sections": [
+            {
+                "label": "🚀 Feature",
+                "items": [
+                    "Brucebase year pages: in the Media column the Photo, Ticket, News and Memorabilia icons are ringed and open what they announce. Pointing at one shows a card with those images from the entry's own page (photos, tickets, passes, newspaper clippings); a click opens the artwork viewer on them, every other kind one ← → away, and Shift+← → go to the previous or next row (Ctrl-click: the page). The page is read on that first hover or click only, one request for that row, kept 30 days. Works for every entry with a page of its own (shows, rehearsals, recordings …), on a year page and on \"all years\". New setting \"Media icons and song glyphs: the page's images on hover\" (on by default, the card only)."
+                ]
+            },
+            {
+                "label": "🔧 Refactor",
+                "items": [
+                    "The foreign sites' image click (`_fiClick()`) builds a row when the viewer first shows it, not every row of the table up front, and a row with several triggers (a year row's Media icons) is one stop for Shift+← →. On a 10,348-row year table (four years cloned, Playwright Chromium) a click takes about 0.17 s after the first."
+                ]
+            }
+        ]
+    },
+    {
         "version": "WIP.2",
         "date": "2026-10-23",
         "sections": [

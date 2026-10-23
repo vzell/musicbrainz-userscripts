@@ -64,10 +64,21 @@ const DETAIL_HOSTS = {
         },
         contentType: 'text/html; charset=utf-8',
     },
+    // A song, and (org/foreign-images.org phase 3) any entry page of a year
+    // table: `/gig:`, `/nogig:`, `/recording:`, … — a wiki page name with a
+    // category prefix. The year pages themselves (`/1985`) and the wiki's
+    // system pages stay the list loaders'.
     bb: {
-        isDetail: (u) => u.hostname === 'brucebase.wikidot.com' && /^\/song:/.test(u.pathname),
-        fileFor: (u) => (u.pathname === '/song:4th-of-july-asbury-park-sandy'
-            ? path.join(FIXTURE_DIR, 'detail-bb-4th-of-july.html') : null),
+        isDetail: (u) => u.hostname === 'brucebase.wikidot.com' &&
+            /^\/(?:song|gig|nogig|recording|rehearsal|interview|nobruce):/.test(u.pathname),
+        fileFor: (u) => {
+            const files = {
+                '/song:4th-of-july-asbury-park-sandy': 'detail-bb-4th-of-july.html',
+                '/gig:1985-01-04-roads-coliseum-hampton-va': 'detail-bb-gig-1985-01-04.html',
+                '/gig:1985-01-07-market-square-arena-indianapolis-in': 'detail-bb-gig-1985-01-07.html',
+            };
+            return files[u.pathname] ? path.join(FIXTURE_DIR, files[u.pathname]) : null;
+        },
         contentType: 'text/html; charset=utf-8',
     },
 };

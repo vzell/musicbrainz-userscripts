@@ -25543,3 +25543,57 @@ now, without a colon).
 **Not checked:** other `position: fixed` pop-ups (the 📊 dropdown, the link
 previews, dialogs) may measure `innerWidth/innerHeight` the same way; on a
 phone page wider than the screen they would misplace too.
+
+## 2026-10-23 — foreign image card phase 3: Brucebase readers, the Title glyphs; a click that read every row (branch feature/foreign-art-viewer)
+
+Env: 2026-10-23T17:42:05+02:00 · petri · WSL2 Ubuntu 24.04.3 (Linux 6.18.54.1) · Playwright 1.62.1 Chromium (chromium-1234) · no Tampermonkey (GM stubs); real browser not yet tried
+
+org/foreign-images.org phase 3 (mockups B1, B2, L1): `_BB_FI` (bb-year Media
+icons), `_BBS_FI` (bb-songs glyph), `_SLL_FI` (sl-lyrics glyph); reader
+`_bbPageImages()` / `_dpParseBbPage()`, `_DP_PARSER_VERSION` 3. Design notes in
+docs/claude/brucebase.md, "Images: the Media icons and the song glyph".
+
+**Probe (16:53 CEST, 6 HEAD requests, 1.1 s apart):**
+`scripts/probe-foreign-images.py --small` from the cached pages in
+`debug/foreign-images/`: `small.jpg` and the `local--files` original are 200
+for a `files:` (song graph, PNG original 13,421 B), a `gallery:` (7,851 B) and
+a `news:` image (97,026 B). So the card's tiles are `small.jpg`, and the
+viewer's order is original → the page's `medium.jpg` → thumbnail.
+
+**What the pages are:** the wanted images are exactly
+`#page-content .gallery-box .gallery-item img` with a `local--resized-images`
+src, in whatever tab (gig pages: Gallery, Media, News/Memorabilia; song page:
+a later tab). The side bar's promo cover (`#side-bar .image-container`), the
+Storyteller badge and the four social icons are outside a gallery box. The
+year page's Photo/Ticket/News/Box icons are UNLINKED images; the only
+`javascript:` links of those icons are the side bar's legend.
+
+**Bug found while measuring, before any commit:** `_fiClick()` built a row
+(`rowFor()`) for EVERY visible trigger up front. `_BB_FI.rowFor()` reads Date,
+Venue, City, State by column name (`_cleanColHeaderText()` over every header,
+per call), so one click on a year table of 10,348 rows (bb-home's four years
+cloned in the page) did not finish within 240 s. Rows are now built when the
+viewer first shows them (`rowAt()`): 18 ms on the real 398-row table; on the
+10,348-row one 390 ms for the first click (it includes laying out the rows I
+had just appended), then 169 and 167 ms. The real "all years" table is about
+5,000 rows. Not a fixture assertion (a timing); recorded here and in the
+WIP.3 changelog entry.
+
+**Flake seen, not caused here:** `popup-ext.spec.js` "a reader who scrolls
+the Live page before its images are in is not pulled back to the show" failed
+once in a run of 84 specs (markTop −538, expected > 300), then passed 3/3
+alone and 49/49 in its file's full run. It scrolls a Brucebase year page in
+an iframe before its images load; timing under load.
+
+**The lyrics glyph counts album covers too:** `_dpParseSlSong()` takes every
+`lyrics/images/` picture, and a released song's page shows the covers of its
+albums (Badlands: 14). The probe's four "Baby …" pages had none but Baby Me's
+sheet, which is where "most rows have none" came from. Kept as the mockup
+described it ("album covers and, now and then, a hand-written sheet").
+
+Specs: `tests/fixtures/bb-image-card.spec.js` (18), `bb-image-card.mobile.spec.js`
+(2); mutations `scripts/mutations/bb-image-card.json` (11 OK, one recorded
+`"expect": "pass"`); three anchors of `sl-image-card.json` and
+`foreign-lazy-cells.json` moved with the code. Regression: the bb-*, sl-lyrics,
+the four image-card, detail-preview (desktop and mobile), popup-ext*,
+art-viewer* and mb-title-case specs.
