@@ -25672,3 +25672,21 @@ nothing covered it. The spec centres each target and taps its box
 **Discogs artist captures** (`ext-discogs-artist-small-p*.json`) carry
 empty thumbnails, so no artist row has an image trigger; the multi-table
 test uses dg-release (Other versions).
+
+## 2026-10-23 — merge of feature/foreign-art-viewer: test:full on main, one flake that predates the merge
+
+Env: 2026-10-23T20:04:58+02:00 · petri · WSL2 Ubuntu 24.04.3 (Linux 6.18.54.1) · Playwright 1.62.1 Chromium (chromium-1234) · no Tampermonkey (GM stubs)
+
+`test:full` on merged main (990a69a + the fold to 9.99.1431–9.99.1436):
+2,256 passed, 1 failed, wall 12 m 1 s. The failure: `discogs-links.spec.js`
+"a user's picture: hover shows a card …" — `#mb-dg-avatar-card` never
+appeared within 5 s.
+
+**Not this merge's.** Alone, with `--repeat-each`: the merged userscript
+1/3 then 8/8; main's own userscript from BEFORE the merge (ea49305, none of
+the foreign-image work) 2/4 passed; the branch's (a9ef5b7) 4/4 then 8/8.
+The whole file twice: 22/22. So an intermittent failure on main as it was,
+not caused by the gallery. Likely cause (not changed here): the test hovers
+the avatar right after clicking the master toggle, without first parking the
+pointer elsewhere as the other hover specs do (`page.mouse.move(0, 0)`), so
+the hover can land without an enter.

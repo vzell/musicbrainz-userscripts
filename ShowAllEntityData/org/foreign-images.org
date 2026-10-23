@@ -132,7 +132,7 @@ Findings that change the design:
      bb-songs) and sl-lyrics' glyph;
   4. the table-wide 🖼 gallery.
 
-** DONE Phase 1 (2026-10-23, branch =feature/foreign-art-viewer=, WIP.1)
+** DONE Phase 1 (2026-10-23, branch =feature/foreign-art-viewer=, 9.99.1431, was WIP.1)
 
 Browser check: vzell, 2026-10-23 ("tested live, OK").
 
@@ -162,7 +162,7 @@ and the shared path. What landed differs from the outline in these points:
   finds were already stale at HEAD (0 hits before this change too); they are left for a
   separate fix.
 
-** DONE Phase 2 (2026-10-23, same branch, WIP.2)
+** DONE Phase 2 (2026-10-23, same branch, 9.99.1432, was WIP.2)
 
 Browser check: vzell, 2026-10-23, on petri ("all tested live, OK", with phase 4).
 
@@ -186,7 +186,8 @@ and specs that address a row's page by href use =a:not(.mb-fi-cell)=.
 
 ** DONE Phase 3: the Brucebase readers (bb-year Media icons, bb-songs) and sl-lyrics' glyph
 
-Done 2026-10-23 on petri (same branch, WIP.3 bb-year, WIP.4 bb-songs, WIP.5 sl-lyrics).
+Done 2026-10-23 on petri (same branch; 9.99.1433 bb-year, 9.99.1434 bb-songs, 9.99.1435 sl-lyrics,
+were WIP.3–WIP.5).
 Browser check: vzell, 2026-10-23, on petri: the 1985 year page's Media icons ("it
 works"), then the song list's and the lyrics index's glyphs ("work fine too").
 
@@ -258,7 +259,7 @@ takes them in); decision: *all four Brucebase kinds*, grouped by kind.
 
 ** DONE Phase 4: the table-wide 🖼 gallery
 
-Done 2026-10-23 on petri (same branch, WIP.6). Browser check: vzell, 2026-10-23, on petri
+Done 2026-10-23 on petri (same branch, 9.99.1436, was WIP.6). Browser check: vzell, 2026-10-23, on petri
 ("all tested live, OK").
 
 Env: 2026-10-23T19:36:02+02:00 · petri · WSL2 Ubuntu 24.04.3 (Linux 6.18.54.1) ·
@@ -293,7 +294,12 @@ when the gallery closes*. MusicBrainz's own: =_artCreateGalleryButton()=,
 Discogs trio was for phase 1. The cached rows of a provider are =_dpMem= (and, on jungleland
 / brucespringsteen.it, what =_fiAfterRender()= loaded from the store).
 
-** TODO Before the branch merges into main
+** DONE Before the branch merges into main
+
+Merged into main on 2026-10-23 (=990a69a=; the only conflict, two sets of DEBUG-NOTES.md
+entries appended at the end, kept both in date order) and folded to 9.99.1431–9.99.1436.
+The live specs below were still not re-run.
+
 
 - Browser checks of every phase: done (vzell, 2026-10-23).
 - =tests/live/detail-preview.spec.js='s two song locators now read =a:not(.mb-fi-glyph)=

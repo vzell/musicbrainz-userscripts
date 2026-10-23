@@ -4,9 +4,78 @@ Every version, newest first, with the technical details behind each change. For 
 
 **Months:** [October 2026](ShowAllEntityData_CHANGELOG/2026-10.md) · [September 2026](ShowAllEntityData_CHANGELOG/2026-09.md) · [August 2026](ShowAllEntityData_CHANGELOG/2026-08.md) · [July 2026](ShowAllEntityData_CHANGELOG/2026-07.md) · [June 2026](ShowAllEntityData_CHANGELOG/2026-06.md) · [May 2026](ShowAllEntityData_CHANGELOG/2026-05.md) · [April 2026](ShowAllEntityData_CHANGELOG/2026-04.md) · [March 2026 (1 of 2)](ShowAllEntityData_CHANGELOG/2026-03-1.md) · [March 2026 (2 of 2)](ShowAllEntityData_CHANGELOG/2026-03-2.md) · [February 2026](ShowAllEntityData_CHANGELOG/2026-02.md) · [January 2026](ShowAllEntityData_CHANGELOG/2026-01.md)
 
-This page shows the newest 100 of 1601 versions; the month pages hold all of them.
+This page shows the newest 100 of 1607 versions; the month pages hold all of them.
 
 ---
+
+## 9.99.1436 — 2026-10-23
+
+**🚀 Feature**
+
+- A 🖼 gallery on the other sites' tables (springsteenlyrics.com, jungleland.it, brucespringsteen.it, Brucebase, discogs.com), as on MusicBrainz: the 🖼 after a table's row count opens a window with every image of the rows already read — by a hover, a click, or an earlier visit (read from this browser, no request). For the others it offers one button that says what it costs ("Load the other 32 (about 35 s)"; on Discogs without a token also what it would cost with one); a run over five minutes asks first, Stop or closing the window ends it, and the rows read stay read. A progress bar, counts and a Recent log show how it goes; a row that failed offers Try again. Type chips (Front, Back, Booklet; Photo, Ticket, News; primary, secondary …) narrow the images, "Compare two" puts two rows side by side, and a click on an image opens the artwork viewer, Shift+← → through the gallery's rows.
+
+**🔧 Refactor**
+
+- The foreign-image providers gained `peekSaved()`, `spacingS()`, `tokenSpacingS()`, `kept()` and their gallery words; `_fiDpPeek()` is the render sweep's saved-page read, now shared with the gallery; `_fiColIdx()` reads a table's column names once per header row. MusicBrainz: `updateH2Count()` re-anchors one more id prefix (`mb-fgal-btn-`), and `_fgalAfterRender()` beside `_dgMbAfterRender()` returns at once off the foreign hosts.
+
+
+## 9.99.1435 — 2026-10-23
+
+**🚀 Feature**
+
+- springsteenlyrics.com lyrics index: a small 🖼 after each title stands for the song page's pictures (the covers of the albums a song is on, now and then a hand-written sheet). It is dashed until that page has been read, then shows how many there are, or disappears when there are none. Pointing at it shows them (a single picture large), a click opens the artwork viewer (Ctrl-click: the song's page). It follows the setting "Cover column: every image of an item on hover"; songs read before show their count at once, with no request.
+
+
+## 9.99.1434 — 2026-10-23
+
+**🚀 Feature**
+
+- Brucebase song list: the same 🖼 after each title for the song page's graph and lyric sheets: dashed until read, then the count, gone when the page has none; a card on hover, the viewer on a click. Songs read before show their count at once, with no request.
+
+**✨ Improve**
+
+- The Brucebase song preview (card and window) now shows the song page's images too: the graph and the lyric sheets, which open the artwork viewer from the window. Pages saved before are read again once, because what is kept of a page has changed (the springsteenlyrics.com, jungleland.it and brucespringsteen.it pages too).
+
+
+## 9.99.1433 — 2026-10-23
+
+**🚀 Feature**
+
+- Brucebase year pages: in the Media column the Photo, Ticket, News and Memorabilia icons are ringed and open what they announce. Pointing at one shows a card with those images from the entry's own page (photos, tickets, passes, newspaper clippings); a click opens the artwork viewer on them, every other kind one ← → away, and Shift+← → go to the previous or next row (Ctrl-click: the page). The page is read on that first hover or click only, one request for that row, kept 30 days. Works for every entry with a page of its own (shows, rehearsals, recordings …), on a year page and on "all years". New setting "Media icons and song glyphs: the page's images on hover" (on by default, the card only).
+
+**🔧 Refactor**
+
+- The foreign sites' image click (`_fiClick()`) builds a row when the viewer first shows it, not every row of the table up front, and a row with several triggers (a year row's Media icons) is one stop for Shift+← →. On a 10,348-row year table (four years cloned, Playwright Chromium) a click takes about 0.17 s after the first.
+
+
+## 9.99.1432 — 2026-10-23
+
+**🚀 Feature**
+
+- jungleland.it list: a new Art column. Each row shows a dashed tile until its artwork page has been read, then the front scan and the number of scans. Pointing at it shows a card with every scan, typed as on MusicBrainz (Front ★, Back, Medium for a CD, Booklet), and a click opens the artwork viewer on them (Ctrl-click: the entry's page). The page is read on that first hover or click only, one request for that row. New setting "Art column: every scan of an entry on hover" (on by default, the card only).
+- brucespringsteen.it records: a new Photo column, the same way: a dashed tile until the record's page has been read, then its photo or "no photo" (many records have none; a photo the site hides as missing counts as none). Pointing at it shows the photo large; a click opens the viewer. New setting "Photo column: the record's photo on hover" (on by default, the card only).
+- On both sites, rows read before keep their picture: after the table appears, one read of the saved pages paints them, with no request to the site. Sorting by the Art/Photo column puts the rows with a picture first.
+
+**✨ Improve**
+
+- jungleland.it and brucespringsteen.it now keep a page they read for half a year instead of 30 days (the preview and the new columns share it): these sites barely change. springsteenlyrics.com and Brucebase keep 30 days.
+
+**🔧 Refactor**
+
+- The springsteenlyrics.com, jungleland.it and brucespringsteen.it image cards are built by one function (`_fiDpProvider()`) over the detail preview's page reader. `_sortCellText()` also reads the new hidden `.mb-fi-sort-key`: one more class in its one lookup; the MusicBrainz sort timing was compared before and after.
+
+
+## 9.99.1431 — 2026-10-23
+
+**🚀 Feature**
+
+- springsteenlyrics.com lists (collection, latest additions, bootlegs, CD and vinyl bootlegs): pointing at a cover shows a card with the cover and every artwork scan of that item, as the Cover Art column does on MusicBrainz (Space: every image, Shift: bigger tiles). The scans are read from the item's own page on that first hover, one request for that row only, kept 30 days and shared with the item preview; moving on before its turn asks nothing, and a bootleg the list marks as having no artwork is never asked. New setting "Cover column: every image of an item on hover" (on by default, inside the site's own switch).
+- A click on a cover opens the artwork viewer on that item's cover and scans: ← → through its images, Shift+← → through the rows the filter left, an "Item page" button. Ctrl-click (or a middle click) still opens the item page.
+
+**🔧 Refactor**
+
+- Discogs' Image column card and viewer click now run on one shared path for every non-MusicBrainz site (`_fiCardHtml()`, `_fiClick()`, `_fiLoad()`, a provider per site), which the jungleland.it, brucespringsteen.it and Brucebase tables will use next. Its click listens on the window instead of the document. Unchanged on Discogs, except that a row with no other image now shows its thumbnail beside the note. Nothing changes on MusicBrainz, and nothing new runs while a table renders.
+
 
 ## 9.99.1430 — 2026-10-23
 
@@ -816,68 +885,6 @@ This page shows the newest 100 of 1601 versions; the month pages hold all of the
 **✨ Improve**
 
 - springsteenlyrics.com, jungleland.it, brucespringsteen.it and Brucebase tables: titles get typographic punctuation instead of the keyboard characters — ’ for an apostrophe ("Don’t", "Comin’", "Rock ’n’ Roll", "Spirit of ’76"), “double” and ‘single’ quotation marks, … for "...", — for "--", an en dash for a range ("1975–1985") and a medley's " – ", a hyphen ‐ between words ("Freeze‐Out") and inside a date ("1999‐08‐12"), ″ for inches and × between two numbers. Brucebase Relations names get the same ("D’Angelo"). A setting of its own, "Write typographic punctuation in titles" (on by default): a column filter has to be typed with the same characters, so "don't" no longer finds "Don’t".
-
-
-## 9.99.1336 — 2026-10-13
-
-**✨ Improve**
-
-- springsteenlyrics.com, jungleland.it, brucespringsteen.it and Brucebase tables: titles are written the way MusicBrainz writes English titles instead of each site's own way — "BORN IN THE USA" and "Born In The U.S.A." become "Born in the USA" and "Born in the U.S.A.", brucespringsteen.it's "BOSS AT HIS BEST (THE)" becomes "The Boss at His Best", jungleland.it's "(Version 2)" becomes "(version 2)". On springsteenlyrics.com this covers the collection, bootleg and CD/vinyl bootleg titles and the lyrics index; on Brucebase the song list and, on a year page, the Venue, City and Country columns (a country of "USA" stays as it is) and every song of Soundcheck and Setlist; notes such as "(with Patti Scialfa)", set labels and bold or italic songs stay as they are. Acronyms (USA, NJ, MTV, PNC, U.S.A.) keep their capitals, and a placeholder such as "\[no title\]" stays as written. Only capital letters change, and a cell that changed shows the site's own text when you rest the pointer on it. New setting "Write titles in MusicBrainz style" (on by default).
-
-
-## 9.99.1335 — 2026-10-13
-
-**🚀 Feature**
-
-- Brucebase "Relations" (brucebase.wikidot.com/stats:relations): "Show all relations" turns the 28 letter tabs into one filterable, sortable table of the 2,892 people and bands — Name ("Bryan Adams", "The Alliance Singers"), Sort name as the site lists it ("Adams, Bryan"), Type (Person or Band) and Letter.
-- Brucebase "Recent changes" (brucebase.wikidot.com/system:recent-changes): three buttons load the last 200, 1,000 or 5,000 changes of the wiki — always 200 per page, whatever the site's own list shows — into one table: Page, Category, Flags (one row per flag with its meaning: new page, source changed, tags changed, file action, …), Date and Time (in your own time zone), Revision, User and Comment. Date is split into day, month, year, weekday and month name like on MusicBrainz pages, and Date and Time get the same 📊 sections as there (Date info - Year, Month, Weekday, …; Time info - Time of day). The site's own form still decides which kinds of change and which category are loaded. Both pages come with "Enable on the Brucebase song list".
-
-
-## 9.99.1334 — 2026-10-13
-
-**🚀 Feature**
-
-- URL pages (musicbrainz.org/url/&lt;mbid&gt;) get "Show all Relationships for URL": the entities that link the URL, by relationship, as tables — the same relationship tables as on place, area and instrument pages. "URL details" stays as MusicBrainz shows it.
-
-**✨ Improve**
-
-- 📊 dropdown: a new "Entity info - Type" section on the Target and Type columns of a relationship table that mixes kinds ("Via …" tables, the one-table layout, the event page): one entry per kind of related entity — Artist, Release group, Event, Series, URL, … — with its MusicBrainz glyph and the number of rows of that kind. Ticking one leaves only those rows.
-
-
-## 9.99.1333 — 2026-10-13
-
-**✨ Improve**
-
-- Relationships as tables: a primary alias — the name MusicBrainz adds in parentheses for an entity named in another script, "フジパシフィックミュージック (Fujipacific Music, Inc.)" — gets its own "Primary alias" column instead of landing in Disambiguation.
-- Relationships as tables: an artist's membership with a period and what was played — "(from 1964-12 until 1965-06: lead vocals, electric guitar)" — now fills Begin and End (with their day/month/year parts) and a multi-row Credits cell, instead of one Credits cell holding the date too.
-- Relationships as tables: Genre and Instrument columns show their glyph once in the header, like the other single-kind columns.
-- Relationships as tables: with inline CAA/EAA thumbnails on, a release group or release gets its small cover image before its name and an event its event art image — also in a mixed Target column, each row the picture that fits it.
-- Event pages: the relationship tables get the same Begin/End (and their date parts) and Number/Order columns, and read primary aliases and ended URL relationships the same way. A series position such as "(order: 150)" is now Number instead of Details.
-
-**🐛 Fix**
-
-- Relationships as tables, area pages: with "MusicBrainz More Flags Everywhere" installed, an area's parent chain ("Alabama" → "United States") went into a Details column for most rows, and the target kept a trailing comma; it is in Parent area again, and Details is gone.
-
-
-## 9.99.1332 — 2026-10-13
-
-**🚀 Feature**
-
-- Relationships as tables beyond the event page: place, area and instrument pages get a "Show all Relationships" button (three new page types), and series, work, release group and recording pages, and the artist and label Relationships tab, get one beside their own "Show all…" button (on the Relationships tab it reads "Relationship lists", on a release "Credits"). It turns the native relationship lists into filterable, sortable tables, one per kind of related entity (Artists, Labels, Places, URLs, …), with the same converter as the event page. The page's own button is unchanged and still leaves those lists as a collapsible section; the two are either/or, so the new button leaves the page's main table out of its render (press the other button to get it back).
-- A recording's "Related works" and a release's release-group credits each get a "Via …" table ("Via Badlands", "Via release group: Live/1975–85") with a Type column, so the work's or group's relationships are never mistaken for the page's own. A release's credits are read from its own two blocks only, never from the per-medium track credits MusicBrainz adds there in its "Display credits at bottom" layout.
-- Dates become Begin and End columns: "(from 1977-06-27 until 1978-05-05)", "(in 1978)", "(on 1978-04-11)", "(until 1931)", "(… to present)", "(ended)", and both are split into B-/E- day, month, year, weekday and month name. A series position becomes Number, or Number and Order when the two differ for some row ("(on 2009-02-01: number: 43) (order: 19)"). An area's parent areas get their own column, and an ended URL relationship, which MusicBrainz shows without a link, is still a URL row with its end date.
-- Settings: a new "🔗 RELATIONSHIP SECTIONS" group — "Relationships as tables" (on), "One table for all relationships" (off), "Include related works / the release group" (on). A file saved from one of these renders loads back as that render on the same page.
-
-**🐛 Fix**
-
-- Picard column: a table only gets one when it links to a MusicBrainz release. A URL relationship such as discogs.com/release/… or rateyourmusic.com/release/… no longer counts as one.
-
-
-## 9.99.1331 — 2026-10-13
-
-**🐛 Fix**
-
-- Brucebase year pages: a setlist the wiki sets in bold as a whole (a tour opener: 2012-03-18, also 1984-06-29, 1999-04-09, 2009-04-01) is one song per row again instead of one long line; each song keeps its bold, and a bold run opening with the separator ("&lt;strong&gt;/ LAND OF HOPE AND DREAMS&lt;/strong&gt; - PEOPLE GET READY") stays one medley row (\_bbSplitInline()).
 
 
 ---
