@@ -215,12 +215,13 @@ takes them in); decision: *all four Brucebase kinds*, grouped by kind.
   from =_bbPrepareLivePage()= (or whichever function prepares the Brucebase page — grep).
 - Setting =sa_bb_tip_images= (default on, inside =sa_enable_brucebase=); sl-lyrics rides
   on =sa_sl_tip_images= unless decided otherwise.
-- Specs on the committed fixtures plus new item pages. *The probe's cache is not on
-  petri*: =debug/= is gitignored, and =debug/foreign-images/= (the gig and song pages)
-  exists only on NB-3641. Re-run =python3 scripts/probe-foreign-images.py= there first
-  (1.1 s between requests, ~40 s), then copy what a spec needs into
-  =tests/fixtures/detail-bb-*.html= and add it to =tests/support/detailFixture.js='s =bb=
-  =fileFor=.
+- Specs on the committed fixtures plus new item pages. =debug/= is gitignored, but vzell
+  copied =debug/foreign-images/= (33 item pages + =summary.json=; the Brucebase ones are
+  =brucebase.wikidot.com_gig_1985-01-0{4,5,7,8}-*.html= and four =…_song_*.html=) and
+  =debug/mockup-image-cache/= (the mockups' images) to petri by hand on 2026-10-23, so no
+  re-probe is needed: copy what a spec needs into =tests/fixtures/detail-bb-*.html= and add
+  it to =tests/support/detailFixture.js='s =bb= =fileFor=. Only if those are missing:
+  =python3 scripts/probe-foreign-images.py= (1.1 s between requests, ~40 s).
 
 ** TODO Phase 4: the table-wide 🖼 gallery
 
@@ -255,6 +256,8 @@ Env: 2026-10-23 · from NB-3641 (session limit) to petri
 - Start with =/clear= and plan mode; read this file, then =docs/claude/brucebase.md=,
   =docs/claude/detail-pages.md= (the readers, =_DP_PARSER_VERSION=) and the shared layer's
   header comment (grep =Foreign-site images in the tables=).
+- =debug/foreign-images/= and =debug/mockup-image-cache/= are on petri already (copied by
+  hand, 2026-10-23); nothing else under =debug/= is needed for phases 3–4.
 - Tampermonkey on petri must re-import the userscript for a browser check (the repo's
   =@require= is a =file://= path to this tree).
 - Code map of what exists: =_fiProvider()=, =_fiCardHtml()=, =_fiLoad()=, =_fiClick()=,
