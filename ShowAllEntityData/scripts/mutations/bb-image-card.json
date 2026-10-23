@@ -1,0 +1,146 @@
+[
+    {
+        "name": "reader: every wikidot image of the page, side bar included",
+        "why": "Only the gallery boxes of #page-content are the page's own images; the side bar's promo cover, the Storyteller badge and the social icons are not.",
+        "edits": [
+            {
+                "find": "        content.querySelectorAll('.gallery-box .gallery-item img[src*=\"/local--resized-images/\"]').forEach(img => {",
+                "replace": "        content.ownerDocument.querySelectorAll('img[src*=\"/local--resized-images/\"]').forEach(img => {"
+            }
+        ],
+        "spec": "tests/fixtures/bb-image-card.spec.js",
+        "grep": "never the side bar",
+        "expect": "fail"
+    },
+    {
+        "name": "year table: the kind icons are not triggers",
+        "why": "_bbYearBuildRow() wraps an unlinked Photo/Ticket/News/Memorabilia icon in a.mb-fi-media; without it the icons open nothing.",
+        "edits": [
+            {
+                "find": "} else if (href && _BB_FI_MEDIA_KINDS.has(m.label)) {",
+                "replace": "} else if (false) {"
+            }
+        ],
+        "spec": "tests/fixtures/bb-image-card.spec.js",
+        "grep": "only Photo, Ticket, News and Memorabilia icons",
+        "expect": "fail"
+    },
+    {
+        "name": "card: the icon's kind is ignored",
+        "why": "Hovering Photo must show the photos only, not every image of the entry's page.",
+        "edits": [
+            {
+                "find": "            if (!row.kind) return images;\n            const own = images.filter(im => (im.types || []).includes(row.kind));",
+                "replace": "            return images;\n            const own = images.filter(im => (im.types || []).includes(row.kind));"
+            }
+        ],
+        "spec": "tests/fixtures/bb-image-card.spec.js",
+        "grep": "the card of the photos only",
+        "expect": "fail"
+    },
+    {
+        "name": "viewer: the record's arrival keeps the loading position",
+        "why": "A click on an unread row opens on the loading note; when the record comes in the viewer must move to the icon's kind (_artViewerReplaceImages()'s start).",
+        "edits": [
+            {
+                "find": "        if (fromNote && start >= 0 && start < images.length) st.i = start;",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/bb-image-card.spec.js",
+        "grep": "opens the viewer on the icon",
+        "expect": "fail"
+    },
+    {
+        "name": "viewer: the click ignores startAt",
+        "why": "Known overlap: every spec clicks an UNREAD row, whose images at click time are the loading note (startAt -1), so the record's arrival (the entry above) is what moves the viewer. Recorded, not covered.",
+        "edits": [
+            {
+                "find": "_artViewerOpen(p.ctx, rowAt(cur).path, null, Math.max(0, first), {",
+                "replace": "_artViewerOpen(p.ctx, rowAt(cur).path, null, 0, {"
+            }
+        ],
+        "spec": "tests/fixtures/bb-image-card.spec.js",
+        "grep": "opens the viewer on the icon",
+        "expect": "pass"
+    },
+    {
+        "name": "viewer: one stop per trigger, not per row",
+        "why": "A year row has up to four triggers; Shift+→ must go to the next row, not to the same row's next icon.",
+        "edits": [
+            {
+                "find": "            if (!seen.has(tr) || l === a) seen.set(tr, l);",
+                "replace": "            seen.set(l, l);"
+            }
+        ],
+        "spec": "tests/fixtures/bb-image-card.spec.js",
+        "grep": "goes to the next ROW",
+        "expect": "fail"
+    },
+    {
+        "name": "glyph: it gets the lazy cell's sort key",
+        "why": "The Title glyph must have no text: a sort key there would change how Title sorts and what a Title filter reads.",
+        "edits": [
+            {
+                "find": "        if (a.classList.contains('mb-fi-glyph')) {\n            if (view.state === 'done' && view.n > 0) a.dataset.mbFiN = String(view.n);\n            else delete a.dataset.mbFiN;\n            return;\n        }\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/bb-image-card.spec.js",
+        "grep": "every glyph unread, with no text",
+        "expect": "fail"
+    },
+    {
+        "name": "glyph: the detail preview takes it",
+        "why": "The glyph links the song's page and holds no <img>, so without its own skip _dpSiteForLink() would preview it.",
+        "edits": [
+            {
+                "find": "a.matches('a.mb-fi-cell, a.mb-fi-glyph')) return null;",
+                "replace": "a.matches('a.mb-fi-cell')) return null;"
+            }
+        ],
+        "spec": "tests/fixtures/bb-image-card.spec.js",
+        "grep": "the glyph is the image card's, not the detail preview's",
+        "expect": "fail"
+    },
+    {
+        "name": "glyph: a page with no images keeps its glyph",
+        "why": "State none is display: none (CSS); without it a song read as having no images still shows its dashed glyph.",
+        "edits": [
+            {
+                "find": "            a.mb-fi-glyph[data-mb-fi-state=\"none\"] { display: none; }\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/bb-image-card.spec.js",
+        "grep": "one with no images loses its glyph",
+        "expect": "fail"
+    },
+    {
+        "name": "sweep: Brucebase is not swept",
+        "why": "_fiAfterRender() paints the glyphs of songs read in an earlier session from the database (no request).",
+        "edits": [
+            {
+                "find": "            : _isBbHost ? 'brucebase.wikidot.com' : _isSlHost ? 'springsteenlyrics.com' : '';",
+                "replace": "            : _isSlHost ? 'springsteenlyrics.com' : '';"
+            }
+        ],
+        "spec": "tests/fixtures/bb-image-card.spec.js",
+        "grep": "painted from the database",
+        "expect": "fail"
+    },
+    {
+        "name": "mobile: the click handler does not take a tap on a Media icon",
+        "why": "On touch there is no hover; the tap is the only way in and must open the viewer, not the page.",
+        "edits": [
+            {
+                "find": "        const a = e.target.closest('a[data-mb-fi], a[data-mbtt-fn=\"dg-img\"]');",
+                "replace": "        const a = e.target.closest('a[data-mb-fi]:not(.mb-fi-media), a[data-mbtt-fn=\"dg-img\"]');"
+            }
+        ],
+        "spec": "tests/fixtures/bb-image-card.mobile.spec.js",
+        "project": "chromium-mobile",
+        "grep": "a tap on a Media icon",
+        "expect": "fail"
+    }
+]

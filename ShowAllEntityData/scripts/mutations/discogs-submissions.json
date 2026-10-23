@@ -164,7 +164,7 @@
         "why": "A row's full images come from its record, asked for when the viewer shows the row.",
         "edits": [
             {
-                "find": "            setTimeout(() => _dgArtLoad(rows[i]), 0);",
+                "find": "            setTimeout(() => _fiLoad(p, rows[i]), 0);",
                 "replace": ""
             }
         ],

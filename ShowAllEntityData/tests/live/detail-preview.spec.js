@@ -97,7 +97,7 @@ test.describe('detail-page preview on the real sites', { tag: '@extended' }, () 
         });
         await page.click('button[data-label="Show all lyrics"]');
         await waitForRenderComplete(page, { waitForAutoResize: false, timeout: 180000 });
-        const card = await cardFor(page, page.locator('table.tbl tbody a[href$="lyrics.php?song=badlands"]'));
+        const card = await cardFor(page, page.locator('table.tbl tbody a:not(.mb-fi-glyph)[href$="lyrics.php?song=badlands"]'));
         await expect(card.locator('.mb-tt-title')).toHaveText('BADLANDS');
         await expect(card).toContainText('Album version');
         expect(await card.locator('.mb-dp-excerpt').evaluate((el) => el.innerText.split('\n').filter(Boolean).length)).toBe(4);
@@ -140,7 +140,7 @@ test.describe('detail-page preview on the real sites', { tag: '@extended' }, () 
         });
         await page.click('button[data-label="Show all bootlegs of this list"]');
         await waitForRenderComplete(page, { waitForAutoResize: false, timeout: 240000 });
-        const card = await cardFor(page, page.locator('table.tbl tbody a[href$="/html/19760930.htm"]'));
+        const card = await cardFor(page, page.locator('table.tbl tbody a:not(.mb-fi-cell)[href$="/html/19760930.htm"]'));
         await expect(card.locator('.mb-tt-title')).toHaveText('Santa Monica - 30 September 1976');
         await expect(card).toContainText('Olli2605');
         await expect(card.locator('img.mb-dp-cover')).toHaveCount(1);
@@ -156,7 +156,7 @@ test.describe('detail-page preview on the real sites', { tag: '@extended' }, () 
         });
         await page.click('h1.mb-bs-h1 button[data-label="Unofficial"]');
         await waitForRenderComplete(page, { waitForAutoResize: false, timeout: 180000 });
-        const card = await cardFor(page, page.locator('table.tbl tbody a[href*="code=CR1AD1"]'));
+        const card = await cardFor(page, page.locator('table.tbl tbody a:not(.mb-fi-cell)[href*="code=CR1AD1"]'));
         await expect(card).toContainText('Anubis Records');
         await expect(card).toContainText(/\d+ tracks on 2 discs/);
         await expect(card.locator('.mb-dp-src')).toHaveCount(1);
@@ -173,7 +173,7 @@ test.describe('detail-page preview on the real sites', { tag: '@extended' }, () 
         });
         await page.click('button[data-label="Show all songs"]');
         await waitForRenderComplete(page, { waitForAutoResize: false, timeout: 120000 });
-        const card = await cardFor(page, page.locator('table.tbl tbody a[href$="/song:4th-of-july-asbury-park-sandy"]'));
+        const card = await cardFor(page, page.locator('table.tbl tbody a:not(.mb-fi-glyph)[href$="/song:4th-of-july-asbury-park-sandy"]'));
         await expect(card.locator('.mb-dp-stat')).toHaveText(/^[\d,]+ live performances$/);
         await expect(card).toContainText('Last played');
         await expect(card).toContainText('Track 2 of The Wild, The Innocent & The E Street Shuffle, 1973.');

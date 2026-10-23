@@ -1,0 +1,1400 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<!-- SKELETON-END: everything above this line is dropped when the page is published as an Artifact. -->
+<title>Foreign Site Artwork</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<!--
+  ShowAllEntityData design study, 2026-10-23. Companion to org/foreign-images.org.
+  Bringing MusicBrainz's image hover card (B1), the full-screen viewer (#mb-art-viewer) and its
+  click routing to the non-MusicBrainz pageTypes (springsteenlyrics, jungleland, brucespringsteen.it,
+  brucebase; discogs.com already has them).
+  Data is real: rows from tests/fixtures/{sl-bootlegs-page1,jl-list-page1,bs-records-lp,bb-year-1985}.html,
+  images from the item pages scripts/probe-foreign-images.py read on 2026-10-23 (debug/foreign-images/).
+  Opened from disk, images are hotlinked from the sites. The published Artifact copy carries them
+  inline (window.__EMBED, scripts/build-mockup-artifact.py), because its sandbox blocks outside images.
+  Every image falls back to a labelled tile if it cannot load.
+-->
+<!--EMBED-->
+<script type="application/json" id="mockup-images">
+{
+ "sl4553c": {"u": "https://www.springsteenlyrics.com/bootlegs/aud_live1967/4553.jpg", "max": 500},
+ "sl4554c": {"u": "https://www.springsteenlyrics.com/bootlegs/aud_live1967/4554.jpg", "max": 500},
+ "sl8694c": {"u": "https://www.springsteenlyrics.com/bootlegs/aud_live1967/8694.jpg", "max": 700},
+ "sl2616c": {"u": "https://www.springsteenlyrics.com/bootlegs/aud_live1967/2616.jpg", "max": 500},
+ "sl4554s1": {"u": "https://www.springsteenlyrics.com/bootlegs/aud_live1967/4554_artwork_01_tn.jpg"},
+ "sl4554s2": {"u": "https://www.springsteenlyrics.com/bootlegs/aud_live1967/4554_artwork_02_tn.jpg"},
+ "sl4554s3": {"u": "https://www.springsteenlyrics.com/bootlegs/aud_live1967/4554_artwork_03_tn.jpg"},
+ "sl4554s4": {"u": "https://www.springsteenlyrics.com/bootlegs/aud_live1967/4554_artwork_04_tn.jpg"},
+ "sl4554f1": {"u": "https://www.springsteenlyrics.com/bootlegs/aud_live1967/4554_artwork_01.jpg", "max": 1000},
+ "sl4553s1": {"u": "https://www.springsteenlyrics.com/bootlegs/aud_live1967/4553_artwork_01_tn.jpg"},
+ "sl4553s2": {"u": "https://www.springsteenlyrics.com/bootlegs/aud_live1967/4553_artwork_02_tn.jpg"},
+ "sl4553s3": {"u": "https://www.springsteenlyrics.com/bootlegs/aud_live1967/4553_artwork_03_tn.jpg"},
+ "sl4553s4": {"u": "https://www.springsteenlyrics.com/bootlegs/aud_live1967/4553_artwork_04_tn.jpg"},
+ "sl8694s1": {"u": "https://www.springsteenlyrics.com/bootlegs/aud_live1967/8694_artwork_01_tn.jpg"},
+ "sl8694s2": {"u": "https://www.springsteenlyrics.com/bootlegs/aud_live1967/8694_artwork_02_tn.jpg"},
+ "sl8694s3": {"u": "https://www.springsteenlyrics.com/bootlegs/aud_live1967/8694_artwork_03_tn.jpg"},
+ "sl8694s4": {"u": "https://www.springsteenlyrics.com/bootlegs/aud_live1967/8694_artwork_04_tn.jpg"},
+ "sl8694s5": {"u": "https://www.springsteenlyrics.com/bootlegs/aud_live1967/8694_artwork_05_tn.jpg"},
+ "sl8694s6": {"u": "https://www.springsteenlyrics.com/bootlegs/aud_live1967/8694_artwork_06_tn.jpg"},
+ "sl8694s7": {"u": "https://www.springsteenlyrics.com/bootlegs/aud_live1967/8694_artwork_07_tn.jpg"},
+ "sl8694s8": {"u": "https://www.springsteenlyrics.com/bootlegs/aud_live1967/8694_artwork_08_tn.jpg"},
+ "sl8694s9": {"u": "https://www.springsteenlyrics.com/bootlegs/aud_live1967/8694_artwork_09_tn.jpg"},
+ "sl8694f1": {"u": "https://www.springsteenlyrics.com/bootlegs/aud_live1967/8694_artwork_01.jpg", "max": 1000},
+ "sl8694f2": {"u": "https://www.springsteenlyrics.com/bootlegs/aud_live1967/8694_artwork_02.jpg", "max": 1000},
+ "sl148c": {"u": "https://www.springsteenlyrics.com/brucelegs/0/148.jpg", "max": 400},
+ "sl148s1": {"u": "https://www.springsteenlyrics.com/brucelegs/0/148_artwork_01_tn.jpg"},
+ "sl148s2": {"u": "https://www.springsteenlyrics.com/brucelegs/0/148_artwork_02_tn.jpg"},
+ "sl148s3": {"u": "https://www.springsteenlyrics.com/brucelegs/0/148_artwork_03_tn.jpg"},
+ "sl148s4": {"u": "https://www.springsteenlyrics.com/brucelegs/0/148_artwork_04_tn.jpg"},
+ "sl148s5": {"u": "https://www.springsteenlyrics.com/brucelegs/0/148_artwork_05_tn.jpg"},
+ "sl148s6": {"u": "https://www.springsteenlyrics.com/brucelegs/0/148_artwork_06_tn.jpg"},
+ "sl148s7": {"u": "https://www.springsteenlyrics.com/brucelegs/0/148_artwork_07_tn.jpg"},
+ "sl148s8": {"u": "https://www.springsteenlyrics.com/brucelegs/0/148_artwork_08_tn.jpg"},
+ "sl148s9": {"u": "https://www.springsteenlyrics.com/brucelegs/0/148_artwork_09_tn.jpg"},
+ "sllyr": {"u": "https://www.springsteenlyrics.com/lyrics/images/third-album-proposed-song-list_3-4.jpg", "max": 700},
+ "jl660101front": {"u": "https://www.jungleland.it/artwork/1960/thumb/tn_19660101_front.jpg"},
+ "jl660101back": {"u": "https://www.jungleland.it/artwork/1960/thumb/tn_19660101_back.jpg"},
+ "jl750205front": {"u": "https://www.jungleland.it/artwork/1970/thumb/tn_19750205_front.jpg"},
+ "jl750205back": {"u": "https://www.jungleland.it/artwork/1970/thumb/tn_19750205_back.jpg"},
+ "jl750205cd1": {"u": "https://www.jungleland.it/artwork/1970/thumb/tn_19750205_cd1.jpg"},
+ "jl750205cd2": {"u": "https://www.jungleland.it/artwork/1970/thumb/tn_19750205_cd2.jpg"},
+ "jl750205booklet1": {"u": "https://www.jungleland.it/artwork/1970/thumb/tn_19750205_booklet1.jpg"},
+ "jl750205booklet2": {"u": "https://www.jungleland.it/artwork/1970/thumb/tn_19750205_booklet2.jpg"},
+ "jl750205booklet3": {"u": "https://www.jungleland.it/artwork/1970/thumb/tn_19750205_booklet3.jpg"},
+ "jl750205booklet4": {"u": "https://www.jungleland.it/artwork/1970/thumb/tn_19750205_booklet4.jpg"},
+ "jl750205booklet5": {"u": "https://www.jungleland.it/artwork/1970/thumb/tn_19750205_booklet5.jpg"},
+ "jl750205booklet6": {"u": "https://www.jungleland.it/artwork/1970/thumb/tn_19750205_booklet6.jpg"},
+ "jl750205frontF": {"u": "https://www.jungleland.it/artwork/1970/19750205_front.jpg", "max": 1000},
+ "jl260331front": {"u": "https://www.jungleland.it/artwork/2020/thumb/tn_20260331_front.jpg"},
+ "jl260331back": {"u": "https://www.jungleland.it/artwork/2020/thumb/tn_20260331_back.jpg"},
+ "jl260331cd1": {"u": "https://www.jungleland.it/artwork/2020/thumb/tn_20260331_cd1.jpg"},
+ "jl260331cd2": {"u": "https://www.jungleland.it/artwork/2020/thumb/tn_20260331_cd2.jpg"},
+ "jl260331cd3": {"u": "https://www.jungleland.it/artwork/2020/thumb/tn_20260331_cd3.jpg"},
+ "jl260331booklet1": {"u": "https://www.jungleland.it/artwork/2020/thumb/tn_20260331_booklet1.jpg"},
+ "jl260331booklet2": {"u": "https://www.jungleland.it/artwork/2020/thumb/tn_20260331_booklet2.jpg"},
+ "jl260331booklet3": {"u": "https://www.jungleland.it/artwork/2020/thumb/tn_20260331_booklet3.jpg"},
+ "bsLP1B1": {"u": "https://www.brucespringsteen.it/blegs/images/LP1B1.jpg", "max": 800},
+ "bsLP1BF1": {"u": "https://www.brucespringsteen.it/blegs/images/LP1BF1.jpg", "max": 800},
+ "bsLPAJTUP11": {"u": "https://www.brucespringsteen.it/blegs/images/LPAJTUP11.jpg", "max": 800},
+ "bb0104p1": {"u": "https://brucebase.wdfiles.com/local--resized-images/gallery:1985-01-04-roads-coliseum-hampton-va/19850104_MicHampton_01.jpg/thumbnail.jpg"},
+ "bb0104p2": {"u": "https://brucebase.wdfiles.com/local--resized-images/gallery:1985-01-04-roads-coliseum-hampton-va/19850104_MicHampton_02.jpg/thumbnail.jpg"},
+ "bb0104p1F": {"u": "https://brucebase.wdfiles.com/local--resized-images/gallery:1985-01-04-roads-coliseum-hampton-va/19850104_MicHampton_01.jpg/medium.jpg"},
+ "bb0104t": {"u": "https://brucebase.wdfiles.com/local--resized-images/files:ticket-1985/19850104_Ticket_01.jpg/thumbnail.jpg"},
+ "bb0104n": {"u": "https://brucebase.wdfiles.com/local--resized-images/news:1985-01-04-roads-coliseum-hampton-va/19850104_Article_01.jpg/thumbnail.jpg"},
+ "bb0105p1": {"u": "https://brucebase.wdfiles.com/local--resized-images/gallery:1985-01-05-roads-coliseum-hampton-va/19850105_MicHampton_01.jpg/thumbnail.jpg"},
+ "bb0105p2": {"u": "https://brucebase.wdfiles.com/local--resized-images/gallery:1985-01-05-roads-coliseum-hampton-va/19850105_MicHampton_02.jpg/thumbnail.jpg"},
+ "bb0105t": {"u": "https://brucebase.wdfiles.com/local--resized-images/files:ticket-1985/19850105_Ticket_01.jpg/thumbnail.jpg"},
+ "bb0107pass": {"u": "https://brucebase.wdfiles.com/local--resized-images/files:pass-1985/19850107_Pass_01.jpg/thumbnail.jpg"},
+ "bb0107t": {"u": "https://brucebase.wdfiles.com/local--resized-images/files:ticket-1985/19850107_Ticket_01.jpg/thumbnail.jpg"},
+ "bb0107n1": {"u": "https://brucebase.wdfiles.com/local--resized-images/news:1985-01-07-market-square-arena-indianapolis-in/19850107_Article_01a.jpg/thumbnail.jpg"},
+ "bb0107n2": {"u": "https://brucebase.wdfiles.com/local--resized-images/news:1985-01-07-market-square-arena-indianapolis-in/19850107_Article_01b.jpg/thumbnail.jpg"},
+ "bb0107n3": {"u": "https://brucebase.wdfiles.com/local--resized-images/news:1985-01-07-market-square-arena-indianapolis-in/19850107_Article_02.jpg/thumbnail.jpg"},
+ "bb0108t": {"u": "https://brucebase.wdfiles.com/local--resized-images/files:ticket-1985/19850108_Ticket_01.jpg/thumbnail.jpg"},
+ "bbgraph": {"u": "https://brucebase.wdfiles.com/local--resized-images/files:song-graph/graph_4thofjulyasburyparksandy.png/thumbnail.jpg"},
+ "bbgraphF": {"u": "https://brucebase.wdfiles.com/local--files/files:song-graph/graph_4thofjulyasburyparksandy.png", "max": 900},
+ "bblyric": {"u": "https://brucebase.wdfiles.com/local--resized-images/files:song-lyricsheet/lyricsheet_4thofjulyasburyparksandy_early.jpg/thumbnail.jpg"}
+}
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Condensed:wght@500;600;700&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap">
+<style>
+/* Layout: a design-review sheet, same family as org/redesign-CAA-EAA-mockups.html. A sticky index,
+   a coverage matrix, then one section per site; each mockup is a specimen card holding a light
+   "site stage" (our table, as the script draws it on that host) with a cost/rule caption. */
+:root {
+    --bg: #f2f3f5;
+    --surface: #ffffff;
+    --ink: #1c2230;
+    --muted: #586174;
+    --rule: #d8dce3;
+    --accent: #ba478f;          /* MusicBrainz purple */
+    --accent-ink: #ffffff;
+    --ok: #2f7d4f;
+    --warn: #a45a07;
+    --bad: #b42318;
+
+    --f-display: "IBM Plex Sans Condensed", "Arial Narrow", system-ui, sans-serif;
+    --f-body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --f-mono: "IBM Plex Mono", ui-monospace, Consolas, "Courier New", monospace;
+
+    /* Stage = our table on the foreign host. Always light, as the script draws it. */
+    --st-bg: #ffffff;
+    --st-ink: #222222;
+    --st-even: #f4f4f4;
+    --st-rule: #c9c9c9;
+    --st-head: #eeeeee;
+    --st-link: #0b3fae;
+    --st-muted: #777777;
+    --st-font: Arial, Helvetica, sans-serif;
+    --st-hover: #fff6c2;
+
+    /* Liner notes = the script's tooltip look (.mb-tt-liner). Kept verbatim. */
+    --ln-bg: #fbf8f1;
+    --ln-ink: #2b2622;
+    --ln-rule: #d9cfbd;
+    --ln-dim: #7a6d5c;
+    --ln-pill: #efe6d4;
+    --ln-pill-ink: #4a3f33;
+    --ln-shadow: rgba(60, 40, 20, 0.35);
+    --ln-font: Georgia, "Times New Roman", Times, serif;
+
+    /* Viewer = a darkroom. Deliberately the same in both themes. */
+    --vw-bg: #0d0e11;
+    --vw-panel: #17191e;
+    --vw-ink: #ebe7df;
+    --vw-dim: #9c978c;
+    --vw-rule: #2b2e35;
+    --vw-accent: #f0a35e;
+
+    /* Image types: CAA's colours where the site's label maps onto a CAA type, new ones for the rest. */
+    --t-front: #2f6fb2;
+    --t-back: #7a4fb0;
+    --t-medium: #2c806a;
+    --t-booklet: #b0574f;
+    --t-scan: #556274;
+    --t-photo: #2f6fb2;
+    --t-ticket: #a26a12;
+    --t-pass: #7a4fb0;
+    --t-news: #5d6b2f;
+    --t-graph: #2c806a;
+    --t-sheet: #b0574f;
+
+    /* Site badges in the stage label. */
+    --s-sl: #1f5b8f;
+    --s-jl: #2b7a3d;
+    --s-bs: #9a3324;
+    --s-bb: #5a4a8a;
+    --s-dg: #333333;
+}
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+        --bg: #121418;
+        --surface: #1a1d23;
+        --ink: #e7e9ee;
+        --muted: #9aa2b1;
+        --rule: #2d313a;
+        --accent: #e58cc4;
+        --accent-ink: #1d0c17;
+        --ok: #6cc28f;
+        --warn: #f0a35e;
+        --bad: #f08a80;
+        color-scheme: dark;
+    }
+}
+:root[data-theme="dark"] {
+    --bg: #121418;
+    --surface: #1a1d23;
+    --ink: #e7e9ee;
+    --muted: #9aa2b1;
+    --rule: #2d313a;
+    --accent: #e58cc4;
+    --accent-ink: #1d0c17;
+    --ok: #6cc28f;
+    --warn: #f0a35e;
+    --bad: #f08a80;
+    color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font: 15px/1.55 var(--f-body);
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+    padding-block: 0 56px;
+}
+body::before {
+    content: "";
+    position: fixed;
+    inset: 0 0 auto;
+    height: env(safe-area-inset-top, 0px);
+    z-index: 30;
+    background: var(--bg);
+}
+img { max-width: 100%; }
+a { color: inherit; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.wrap { max-width: 1180px; margin: 0 auto; }
+h1, h2, h3 { font-family: var(--f-display); text-wrap: balance; line-height: 1.15; margin: 0; }
+code, kbd, .mono { font-family: var(--f-mono); font-size: 0.88em; }
+p { margin: 0; max-width: 70ch; }
+
+/* ── Header ─────────────────────────────────────────────────────────────── */
+.hero { padding-block: 36px 20px; display: grid; gap: 14px; }
+.eyebrow { font: 600 12px/1 var(--f-display); letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent); }
+.hero h1 { font-size: clamp(30px, 5vw, 46px); font-weight: 700; letter-spacing: -0.01em; }
+.hero .lede { font-size: 17px; color: var(--muted); }
+.facts-row { display: flex; flex-wrap: wrap; gap: 6px 22px; margin: 4px 0 0; padding: 12px 0 0; border-top: 1px solid var(--rule); font-size: 13px; }
+.facts-row div { display: flex; gap: 6px; min-width: 0; }
+.facts-row dt { color: var(--muted); }
+.facts-row dd { margin: 0; font-weight: 500; overflow-wrap: anywhere; }
+
+/* ── Index ──────────────────────────────────────────────────────────────── */
+.toc {
+    position: sticky;
+    top: env(safe-area-inset-top, 0px);
+    z-index: 20;
+    background: var(--bg);
+    border-bottom: 1px solid var(--rule);
+    margin-inline: calc(-1 * max(16px, env(safe-area-inset-left, 0px)));
+    padding: 8px max(16px, env(safe-area-inset-left, 0px));
+}
+.toc ul { list-style: none; margin: 0 auto; padding: 0; max-width: 1180px; display: flex; gap: 4px 18px; flex-wrap: wrap; font: 500 14px/1.6 var(--f-display); }
+.toc a { text-decoration: none; color: var(--muted); }
+.toc a:hover { color: var(--ink); }
+.toc b { color: var(--accent); margin-right: 4px; }
+
+/* ── Sections and specimen cards ────────────────────────────────────────── */
+section { padding-block: 40px 0; display: grid; gap: 18px; scroll-margin-top: 48px; }
+.sec-head { display: grid; gap: 8px; }
+.sec-head h2 { font-size: 28px; display: flex; align-items: baseline; gap: 12px; }
+.sec-letter {
+    display: inline-grid; place-items: center; width: 34px; height: 34px; border-radius: 4px;
+    background: var(--accent); color: var(--accent-ink); font-size: 18px; flex-shrink: 0; transform: translateY(4px);
+}
+.sec-head p { color: var(--muted); }
+.grid-2 { display: grid; gap: 18px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 460px), 1fr)); }
+.spec { background: var(--surface); border: 1px solid var(--rule); border-radius: 6px; display: grid; grid-template-rows: auto 1fr auto; min-width: 0; }
+.spec-head { display: flex; align-items: center; gap: 10px; padding: 12px 16px; border-bottom: 1px solid var(--rule); flex-wrap: wrap; }
+.spec-id { font: 600 13px/1 var(--f-mono); padding: 4px 6px; border-radius: 3px; border: 1px solid var(--rule); color: var(--muted); }
+.spec-head h3 { font-size: 18px; font-weight: 600; flex: 1 1 auto; min-width: 0; }
+.verdict { font: 600 11px/1 var(--f-display); letter-spacing: 0.06em; text-transform: uppercase; padding: 5px 8px; border-radius: 999px; border: 1px solid currentColor; white-space: nowrap; }
+.v-rec { color: var(--ok); }
+.v-opt { color: var(--muted); }
+.v-ref { color: var(--muted); border-style: dashed; }
+.v-q { color: var(--warn); }
+.spec-body { padding: 16px; min-width: 0; display: grid; gap: 12px; align-content: start; }
+.spec-cap { padding: 12px 16px 14px; border-top: 1px solid var(--rule); display: grid; gap: 8px; font-size: 13.5px; }
+.cost { display: grid; grid-template-columns: max-content 1fr; gap: 3px 12px; margin: 0; }
+.cost dt { color: var(--muted); font-weight: 500; }
+.cost dd { margin: 0; min-width: 0; }
+.tag-good { color: var(--ok); font-weight: 600; }
+.tag-warn { color: var(--warn); font-weight: 600; }
+.tag-bad { color: var(--bad); font-weight: 600; }
+
+/* ── The coverage matrix ────────────────────────────────────────────────── */
+.matrix-wrap { overflow-x: auto; background: var(--surface); border: 1px solid var(--rule); border-radius: 6px; }
+.matrix { width: 100%; border-collapse: collapse; font-size: 13.5px; min-width: 780px; }
+.matrix th, .matrix td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--rule); vertical-align: top; }
+.matrix th { font: 600 12px/1.2 var(--f-display); letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted); }
+.matrix td:first-child { font-family: var(--f-mono); font-size: 12.5px; white-space: nowrap; }
+.matrix tr:last-child td { border-bottom: 0; }
+.st { display: inline-block; font: 600 11px/1 var(--f-display); letter-spacing: 0.04em; padding: 4px 7px; border-radius: 999px; border: 1px solid currentColor; white-space: nowrap; }
+.st-done { color: var(--ok); }
+.st-new { color: var(--accent); }
+.st-none { color: var(--muted); border-style: dashed; }
+.num { font-variant-numeric: tabular-nums; font-family: var(--f-mono); font-size: 12.5px; }
+
+/* ── The site stage ─────────────────────────────────────────────────────── */
+.stage { background: var(--st-bg); color: var(--st-ink); font: 12px/1.45 var(--st-font); border: 1px solid var(--rule); border-radius: 4px; padding: 10px; min-width: 0; }
+.stage a { color: var(--st-link); text-decoration: none; }
+.stage .dim { color: var(--st-muted); }
+.stage-label { display: flex; align-items: center; gap: 6px; font: 500 11px/1.2 var(--f-mono); color: var(--st-muted); margin-bottom: 8px; flex-wrap: wrap; }
+.site { font: 700 10px/1 var(--st-font); color: #ffffff; padding: 3px 5px; border-radius: 2px; letter-spacing: 0.03em; }
+.scroll-x { overflow-x: auto; max-width: 100%; }
+table.tbl { border-collapse: collapse; width: 100%; font-size: 12px; }
+table.tbl th { background: var(--st-head); text-align: left; padding: 4px 6px; border-bottom: 1px solid var(--st-rule); white-space: nowrap; font-weight: 700; }
+table.tbl th.new { background: #e6e0f0; color: #4a2a63; }
+table.tbl td { padding: 4px 6px; vertical-align: middle; border-bottom: 1px solid var(--st-even); }
+table.tbl tbody tr:nth-child(even) td { background: var(--st-even); }
+table.tbl tbody tr.hot td { background: var(--st-hover); }
+.tnum { font-variant-numeric: tabular-nums; }
+
+/* Our cells */
+.cov { display: inline-block; position: relative; cursor: zoom-in; line-height: 0; }
+.cov .im { width: 48px; height: 48px; object-fit: cover; border-radius: 2px; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3); display: block; }
+.cov .n {
+    position: absolute; right: -6px; bottom: -5px; font: 700 10px/1 var(--st-font);
+    background: #222222; color: #ffffff; border-radius: 7px; padding: 2px 5px; box-shadow: 0 0 0 2px var(--st-bg);
+}
+.cov:hover .im { outline: 2px solid var(--st-link); outline-offset: 1px; }
+.lazy {
+    display: inline-grid; place-items: center; width: 44px; height: 44px; border: 1px dashed #b9b9b9; border-radius: 3px;
+    color: #9a9a9a; font: 700 9px/1.1 var(--st-font); text-align: center; cursor: help; background: #fafafa;
+}
+.lazy.loading { border-style: solid; border-color: var(--st-link); color: var(--st-link); }
+.lazy.loading::after { content: ""; width: 14px; height: 14px; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: spin 0.8s linear infinite; }
+.lazy.loading span { display: none; }
+.none { color: var(--st-muted); font-style: italic; font-size: 11px; }
+.tglyph { cursor: zoom-in; margin-left: 5px; font-size: 12px; padding: 0 3px; border: 1px solid var(--st-rule); border-radius: 3px; background: #fbfbfb; white-space: nowrap; }
+.tglyph b { font: 700 9.5px/1 var(--st-font); margin-left: 2px; }
+.tglyph.dash { border-style: dashed; color: #9a9a9a; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.media { display: flex; gap: 3px; flex-wrap: wrap; }
+.mi {
+    display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 3px; border: 1px solid var(--st-rule);
+    font: 700 9px/1 var(--st-font); color: #ffffff; background: var(--tc); cursor: default;
+}
+.mi.has { cursor: zoom-in; box-shadow: 0 0 0 2px var(--st-bg), 0 0 0 3px var(--tc); }
+.legend { display: flex; gap: 10px; flex-wrap: wrap; font: 11px/1.3 var(--st-font); color: var(--st-muted); }
+.legend span { display: inline-flex; align-items: center; gap: 4px; }
+
+/* Fallback tile when an image cannot load. Same box as the image it replaces. */
+.fb { display: inline-grid; place-items: center; color: #ffffff; font: 700 10px/1.1 var(--st-font); overflow: hidden; text-align: center; padding: 2px; }
+
+/* ── Liner-notes card (the B1 card, as _artCardCoreHtml() draws it) ─────── */
+.liner {
+    background: var(--ln-bg); color: var(--ln-ink); border: 1px solid var(--ln-rule); border-radius: 3px;
+    padding: 8px 12px 9px; font: 13px/1.5 var(--ln-font);
+    box-shadow: 0 1px 0 #e9e1d1, 0 10px 24px -8px var(--ln-shadow); text-align: left; overflow-wrap: anywhere;
+}
+.liner .t { font-weight: 700; font-size: 1.08em; line-height: 1.3; }
+.liner .d { font-size: 0.9em; color: var(--ln-dim); }
+.liner .rule { height: 0; border-top: 1px solid var(--ln-rule); margin: 6px 0; }
+.liner .foot { margin-top: 6px; font-style: italic; font-size: 0.92em; color: var(--ln-dim); }
+.liner .pill { display: inline-block; background: var(--ln-pill); color: var(--ln-pill-ink); border: 1px solid var(--ln-rule); border-radius: 3px; padding: 0 5px; font-size: 0.86em; font-weight: 700; line-height: 1.45; white-space: nowrap; }
+.liner kbd {
+    display: inline-block; margin: 0 1px; padding: 0 5px; background: #ffffff; color: #2b2622; border: 1px solid #cbbfa9;
+    border-radius: 3px; box-shadow: 0 1px 0 #cbbfa9; font: 600 0.82em/1.35 var(--f-mono);
+}
+.liner .loadbox { display: flex; align-items: center; gap: 10px; padding: 4px 0; }
+.liner .loadbox .ph { width: 56px; height: 56px; object-fit: cover; border-radius: 2px; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3); }
+.liner .spin { width: 14px; height: 14px; border: 2px solid var(--ln-dim); border-right-color: transparent; border-radius: 50%; animation: spin 0.8s linear infinite; display: inline-block; vertical-align: -2px; margin-right: 6px; }
+.grp-h { display: flex; align-items: center; gap: 6px; font: 700 10.5px/1 var(--st-font); margin: 6px 0 4px; }
+.grp-h::after { content: ""; flex: 1; border-top: 1px solid var(--ln-rule); }
+.chip { font: 700 9.5px/1 var(--st-font); min-width: 17px; text-align: center; padding: 3px 4px; border-radius: 3px; border: 1px solid var(--tc); background: var(--tc); color: #ffffff; }
+.sheet { display: grid; grid-template-columns: repeat(var(--cols, 5), var(--tile, 56px)); gap: 6px; }
+.sheet figure { margin: 0; display: grid; gap: 2px; justify-items: center; position: relative; }
+.sheet .th { width: var(--tile, 56px); height: var(--tile, 56px); object-fit: cover; border-radius: 2px; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3); }
+.sheet figcaption { font: 10px/1.2 var(--ln-font); color: var(--ln-dim); text-align: center; max-width: var(--tile, 56px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sheet .star::after { content: "★"; position: absolute; top: -5px; left: -4px; font-size: 12px; color: #c58a1b; text-shadow: 0 0 2px #ffffff; }
+.sheet .more { width: var(--tile, 56px); height: var(--tile, 56px); display: grid; place-items: center; border: 1px dashed var(--ln-rule); border-radius: 2px; font: 700 12px/1.1 var(--ln-font); color: var(--ln-dim); text-align: center; }
+.liner.big { --tile: 92px; }
+
+#tip { position: fixed; z-index: 50; pointer-events: none; max-width: min(520px, calc(100vw - 16px)); display: none; }
+.pinned { display: flex; gap: 14px; flex-wrap: wrap; align-items: flex-start; }
+.pinned .liner { flex: 0 1 auto; max-width: 100%; }
+.arrow-note { font: 11px/1.3 var(--f-mono); color: var(--st-muted); }
+.state-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 230px), 1fr)); gap: 12px; align-items: start; }
+.state-row .lab { font: 600 11px/1.3 var(--f-mono); color: var(--muted); margin-bottom: 4px; }
+
+/* ── The viewer ─────────────────────────────────────────────────────────── */
+.vw { background: var(--vw-bg); color: var(--vw-ink); font: 13px/1.45 var(--f-body); display: grid; grid-template-rows: auto minmax(0, 1fr) auto auto; height: 100%; min-height: 0; border-radius: 6px; overflow: hidden; }
+.vw:focus { outline: none; }
+.vw:focus-visible { outline: 2px solid var(--vw-accent); outline-offset: -2px; }
+.vw-top { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-bottom: 1px solid var(--vw-rule); flex-wrap: wrap; }
+.vw-rel { display: flex; align-items: center; gap: 8px; flex: 1 1 260px; min-width: 0; }
+.vw-rel .name { font: 600 15px/1.2 var(--f-display); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.vw-rel .pos { color: var(--vw-dim); font: 12px/1 var(--f-mono); white-space: nowrap; }
+.vw-rel .host { font: 600 10px/1 var(--f-mono); color: var(--vw-dim); border: 1px solid var(--vw-rule); border-radius: 3px; padding: 3px 5px; white-space: nowrap; }
+.vw button { font: 500 12px/1 var(--f-body); color: var(--vw-ink); background: transparent; border: 1px solid var(--vw-rule); border-radius: 4px; padding: 6px 8px; cursor: pointer; white-space: nowrap; }
+.vw button:hover { border-color: var(--vw-dim); }
+.vw button[aria-pressed="true"] { background: var(--vw-accent); color: #1a1006; border-color: var(--vw-accent); }
+.vw button kbd { font: 600 10px/1 var(--f-mono); opacity: 0.7; margin-left: 4px; }
+.vw-main { display: grid; grid-template-columns: minmax(0, 1fr) 270px; min-height: 0; }
+.vw-main.noinfo { grid-template-columns: minmax(0, 1fr); }
+.vw-main.noinfo .vw-info { display: none; }
+.vw-stage { position: relative; overflow: hidden; min-height: 0; display: grid; place-items: center; }
+.vw-img { max-width: 92%; max-height: 92%; object-fit: contain; transition: transform 0.12s ease-out; box-shadow: 0 12px 40px -10px rgba(0, 0, 0, 0.8); user-select: none; }
+.vw-img.fb { width: 50%; aspect-ratio: 1; font-size: 22px; }
+.vw-nav { position: absolute; top: 50%; transform: translateY(-50%); width: 40px; height: 64px; font-size: 26px !important; background: rgba(0, 0, 0, 0.35) !important; border: 0 !important; z-index: 2; }
+.vw-nav.prev { left: 6px; }
+.vw-nav.next { right: 6px; }
+.vw-zoom { position: absolute; left: 10px; bottom: 8px; font: 11px/1 var(--f-mono); color: var(--vw-dim); z-index: 2; }
+.vw-note { position: absolute; right: 10px; bottom: 8px; font: 11px/1.3 var(--f-body); color: var(--vw-dim); z-index: 2; max-width: 60%; text-align: right; }
+.vw-info { border-left: 1px solid var(--vw-rule); padding: 10px; overflow-y: auto; min-height: 0; background: var(--vw-panel); }
+.vw-info .liner { box-shadow: none; }
+.kv { display: grid; grid-template-columns: max-content 1fr; gap: 2px 8px; font-size: 0.92em; margin: 0; }
+.kv dt { color: var(--ln-dim); }
+.kv dd { margin: 0; min-width: 0; }
+.vw-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 10px; padding: 14px; overflow-y: auto; width: 100%; height: 100%; align-content: start; }
+.vw-grid .ghead { grid-column: 1 / -1; font: 600 12px/1 var(--f-display); color: var(--vw-dim); letter-spacing: 0.04em; text-transform: uppercase; padding-top: 4px; }
+.vw-grid button { padding: 0; border: 1px solid var(--vw-rule); display: grid; background: var(--vw-panel); text-align: left; white-space: normal; }
+.vw-grid .im { width: 100%; aspect-ratio: 1; object-fit: cover; display: block; }
+.vw-grid .cap { padding: 4px 6px 5px; font: 11px/1.25 var(--f-body); }
+.vw-film { display: flex; gap: 6px; padding: 8px 10px; overflow-x: auto; border-top: 1px solid var(--vw-rule); background: var(--vw-panel); }
+.vw-film button { padding: 0; border: 2px solid transparent; border-radius: 3px; flex: 0 0 auto; display: grid; justify-items: center; gap: 2px; background: transparent; }
+.vw-film button[aria-current="true"] { border-color: var(--vw-accent); }
+.vw-film .im { width: 54px; height: 54px; object-fit: cover; display: block; }
+.vw-film .lbl { font: 10px/1 var(--f-mono); color: var(--vw-dim); padding-bottom: 3px; }
+.vw-keys { display: flex; flex-wrap: wrap; gap: 4px 14px; padding: 7px 10px; font: 11px/1.4 var(--f-body); color: var(--vw-dim); border-top: 1px solid var(--vw-rule); }
+.vw-keys kbd { font: 600 10px/1 var(--f-mono); color: var(--vw-ink); border: 1px solid var(--vw-rule); border-bottom-width: 2px; border-radius: 3px; padding: 2px 4px; margin-right: 3px; }
+.vw-inline { height: min(620px, 84vh); }
+#overlay { position: fixed; inset: 0; z-index: 100; background: rgba(5, 6, 8, 0.86); padding: calc(12px + env(safe-area-inset-top, 0px)) max(12px, env(safe-area-inset-right, 0px)) calc(12px + env(safe-area-inset-bottom, 0px)) max(12px, env(safe-area-inset-left, 0px)); display: grid; }
+#overlay[hidden] { display: none; }
+@media (max-width: 760px) {
+    .vw-main { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto; }
+    .vw-info { border-left: 0; border-top: 1px solid var(--vw-rule); max-height: 38%; }
+    .vw-inline { height: 88vh; }
+}
+
+/* ── Gallery dialog ─────────────────────────────────────────────────────── */
+.dlg { border: 1px solid #b9b9b9; border-radius: 6px; box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.45); background: var(--st-bg); overflow: hidden; }
+.dlg-h { display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: #f8f8f8; border-bottom: 2px solid #dddddd; flex-wrap: wrap; }
+.dlg-h b { font-size: 14px; flex: 1 1 auto; }
+.dlg-b { padding: 10px 12px; display: grid; gap: 4px; }
+.gal-note { font-size: 11.5px; color: var(--st-muted); background: #fffbe6; border: 1px solid #efe2a8; border-radius: 3px; padding: 6px 8px; }
+.gal-rel { display: grid; grid-template-columns: 190px minmax(0, 1fr); gap: 10px; padding: 8px 0; border-top: 1px solid var(--st-even); }
+.gal-rel .who b { display: block; font-size: 12.5px; }
+.gal-rel .who span { color: var(--st-muted); font-size: 11px; display: block; }
+.gal-rel .tiles { display: flex; gap: 6px; flex-wrap: wrap; align-items: flex-start; }
+.gal-rel figure { margin: 0; width: 76px; display: grid; gap: 2px; }
+.gal-rel .im { width: 76px; height: 76px; object-fit: cover; border-radius: 2px; cursor: zoom-in; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25); }
+.gal-rel figcaption { font: 10px/1.2 var(--st-font); overflow-wrap: anywhere; color: var(--st-muted); }
+.gal-rel .missing { color: var(--st-muted); font-style: italic; font-size: 11.5px; align-self: center; padding: 6px 10px; border: 1px dashed var(--st-rule); border-radius: 3px; }
+.sbtn { font: 12px var(--st-font); padding: 3px 8px; border: 1px solid #aaaaaa; border-radius: 3px; background: #f5f5f5; color: #222222; cursor: pointer; }
+@media (max-width: 560px) { .gal-rel { grid-template-columns: minmax(0, 1fr); } }
+
+/* ── Settings mock ──────────────────────────────────────────────────────── */
+.set { border: 1px solid #cccccc; border-radius: 4px; overflow: hidden; }
+.set-h { background: #f0f0f0; padding: 6px 10px; font-weight: 700; border-bottom: 1px solid #dddddd; }
+.set-r { display: grid; grid-template-columns: 22px minmax(0, 1fr); gap: 6px; padding: 6px 10px; border-bottom: 1px solid #eeeeee; align-items: start; }
+.set-r:last-child { border-bottom: 0; }
+.set-r .k { font: 10.5px/1.3 var(--f-mono); color: var(--st-muted); }
+.set-r.child { padding-left: 32px; }
+.set-r.new { background: #f6f1fa; }
+.set-r input { margin: 2px 0 0; }
+
+/* ── Rules, questions ───────────────────────────────────────────────────── */
+.rules { margin: 0; padding-left: 22px; display: grid; gap: 8px; max-width: 86ch; }
+.rules li::marker { font-family: var(--f-mono); color: var(--accent); }
+.rules b { font-family: var(--f-display); }
+.qs { display: grid; gap: 10px; }
+.q { background: var(--surface); border: 1px solid var(--rule); border-left: 3px solid var(--warn); border-radius: 4px; padding: 10px 14px; display: grid; gap: 4px; }
+.q b { font-family: var(--f-display); font-size: 16px; }
+.q .rec { color: var(--ok); font-weight: 600; }
+footer { margin-top: 48px; padding-top: 16px; border-top: 1px solid var(--rule); color: var(--muted); font-size: 13px; display: grid; gap: 6px; }
+
+@media (prefers-reduced-motion: reduce) {
+    .vw-img { transition: none; }
+    .lazy.loading::after, .liner .spin { animation: none; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="hero">
+    <div class="eyebrow">ShowAllEntityData · design study · non-MusicBrainz pageTypes</div>
+    <h1>Foreign site artwork: hover card, viewer, click routing</h1>
+    <p class="lede">On MusicBrainz a table image gets the liner-notes card on hover, the darkroom viewer on click, and Shift&nbsp;+&nbsp;←&nbsp;→ to walk the visible rows. discogs.com already has all three. These mockups show the same three on springsteenlyrics.com, jungleland.it, brucespringsteen.it and brucebase, built from rows in the committed fixtures and from images on the item pages the probe read on 2026‑10‑23.</p>
+    <dl class="facts-row">
+        <div><dt>Branch</dt><dd><code>feature/foreign-art-viewer</code></dd></div>
+        <div><dt>Probe</dt><dd><code>scripts/probe-foreign-images.py</code>, 33 item pages</dd></div>
+        <div><dt>Thumb → full rule</dt><dd>SL 86/86 · JL 20/20 · BB files 7/7</dd></div>
+        <div><dt>Env</dt><dd>2026-10-23T00:44+02:00 · NB-3641 · WSL2 · browser n/a</dd></div>
+    </dl>
+</header>
+
+<nav class="toc" aria-label="Sections">
+    <ul>
+        <li><a href="#matrix"><b>0</b>Coverage</a></li>
+        <li><a href="#sl"><b>1</b>SL card lists</a></li>
+        <li><a href="#viewer"><b>2</b>Viewer</a></li>
+        <li><a href="#jl"><b>3</b>Jungleland</a></li>
+        <li><a href="#bs"><b>4</b>KF records</a></li>
+        <li><a href="#bb"><b>5</b>Brucebase</a></li>
+        <li><a href="#lyr"><b>6</b>SL lyrics</a></li>
+        <li><a href="#gal"><b>7</b>Gallery</a></li>
+        <li><a href="#set"><b>8</b>Settings &amp; rules</a></li>
+        <li><a href="#qs"><b>9</b>Decided</a></li>
+    </ul>
+</nav>
+
+<!-- ── 0 Coverage ─────────────────────────────────────────────────────── -->
+<section id="matrix">
+    <div class="sec-head">
+        <h2><span class="sec-letter">0</span>Where the pictures are</h2>
+        <p>Only the springsteenlyrics card lists show an image in our table today, and it is a plain link to the item page. Everywhere else, the pictures sit on each row's item page, which the detail preview already reads and caches (<code>_dpGet()</code>, IndexedDB). The card and the viewer would read that same record, so they never cost a second request for a row whose preview was already opened.</p>
+    </div>
+    <div class="matrix-wrap">
+        <table class="matrix">
+            <thead><tr><th>pageType</th><th>In our table today</th><th>Where the images come from</th><th>Probe</th><th>Proposed</th></tr></thead>
+            <tbody>
+                <tr><td>dg-master · dg-release · dg-artist · dg-label · dg-user · dg-ratings</td><td>Image column; <code>dg-img</code> card; viewer</td><td>Discogs API record (<code>_dgArtLoad()</code>)</td><td class="num">—</td><td><span class="st st-done">done · the template</span></td></tr>
+                <tr><td>sl-collection · sl-bootlegs · sl-brucelegs</td><td>Cover thumbnail, links to the item page</td><td>Item page: the cover, plus scans <code>*_tn.jpg</code> → drop <code>_tn</code></td><td class="num">10/10 pages · 86 scans</td><td><span class="st st-new">card · viewer · gallery</span></td></tr>
+                <tr><td>jl-list</td><td>nothing</td><td>Item page: <code>artwork/&lt;decade&gt;/thumb/tn_X</code> → <code>artwork/&lt;decade&gt;/X</code>, labelled front/back/cd/booklet</td><td class="num">3/3 pages · 20 scans</td><td><span class="st st-new">Art column or Title glyph</span></td></tr>
+                <tr><td>bs-records</td><td>nothing</td><td>Record page: at most one photo, <code>blegs/images/&lt;code&gt;.jpg</code>, not linked</td><td class="num">LP 4/4 · CD‑R 0/4</td><td><span class="st st-new">Photo column</span></td></tr>
+                <tr><td>bb-year · bb-home</td><td>Media icons (Photo, Ticket, News, Memorabilia …), not artwork</td><td><code>/gig:</code> page: <code>gallery:</code>, <code>files:ticket-YYYY</code>, <code>files:pass-YYYY</code>, <code>news:</code>. No parser reads them yet</td><td class="num">4/4 gigs · 13 images</td><td><span class="st st-new">card per Media icon · viewer</span></td></tr>
+                <tr><td>bb-songs</td><td>nothing</td><td><code>/song:</code> page gallery: graph, lyric sheets (<code>a.with-lb</code>). <code>_dpParseBb</code> reads no images yet</td><td class="num">1/4 songs</td><td><span class="st st-new">Title glyph</span></td></tr>
+                <tr><td>sl-lyrics</td><td>nothing</td><td>Song page <code>lyrics/images/*.jpg</code> (album covers, hand-written sheets)</td><td class="num">1/4 songs</td><td><span class="st st-new">Title glyph</span></td></tr>
+                <tr><td>bb-relations · bb-recent-changes · dg-submissions · dg-history</td><td>nothing</td><td>no artwork per row</td><td class="num">—</td><td><span class="st st-none">out of scope</span></td></tr>
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<!-- ── 1 SL card lists ────────────────────────────────────────────────── -->
+<section id="sl">
+    <div class="sec-head">
+        <h2><span class="sec-letter">1</span>springsteenlyrics: the Cover column gets the card</h2>
+        <p>The cover is already in the row, so the card can open at once with it. The scans come from the item page on the first hover. The list's own "artwork available" flag (the Artwork column) tells beforehand which rows have scans at all, so a row without it never asks.</p>
+    </div>
+    <div class="spec">
+        <div class="spec-head"><span class="spec-id">S1</span><h3>sl-bootlegs, Cover column: hover and click</h3><span class="verdict v-rec">recommended</span></div>
+        <div class="spec-body">
+            <div class="stage">
+                <div class="stage-label"><span class="site" style="background: var(--s-sl)">SL</span>bootlegs.php?category=aud_live1967 · 4 of 50 rows · hover a cover, click it</div>
+                <div class="scroll-x">
+                    <table class="tbl" id="sl-table">
+                        <thead><tr><th>Cover</th><th>Title</th><th>Label</th><th>Date</th><th>Location</th><th>Format</th><th>Duration</th><th>Artwork</th></tr></thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="state-row" id="sl-states"></div>
+        </div>
+        <div class="spec-cap">
+            <dl class="cost">
+                <dt>Requests</dt><dd>None at render. One item page on the first hover (or click) of a row with "artwork available", through <code>_dpGet()</code>: same cache, same 1.1&nbsp;s spacing as the detail preview. A row without the flag shows "cover only" and asks nothing.</dd>
+                <dt>Records</dt><dd><code>{image, thumbnails:{250}, types:[], comment, external:true}</code>, cover first with ★ ("primary" on an external context, as on Discogs).</dd>
+                <dt>Click</dt><dd>Plain left click opens the viewer. Ctrl/⌘/Shift/middle click keep today's link to the item page.</dd>
+                <dt>Card keys</dt><dd><kbd>Space</kbd> every image (148 has 31 scans; the card shows 9 and "+22"), <kbd>Shift</kbd> bigger tiles. Both are <code>_mbttKey()</code>'s, unchanged.</dd>
+            </dl>
+        </div>
+    </div>
+</section>
+
+<!-- ── 2 Viewer ───────────────────────────────────────────────────────── -->
+<section id="viewer">
+    <div class="sec-head">
+        <h2><span class="sec-letter">2</span>The viewer on a foreign row</h2>
+        <p>The same <code>#mb-art-viewer</code> MusicBrainz uses, opened with an external context per host (as <code>_DG_ART_CTX</code> does). The stage shows the thumbnail at once and swaps to the large image when it arrives. The info panel is <code>_artViewerInfoExternal()</code>'s: position, host, size facts and both links, with no archive rows. Try ← →, Shift&nbsp;+&nbsp;← →, <kbd>G</kbd> and <kbd>I</kbd> after clicking into it.</p>
+    </div>
+    <div class="spec">
+        <div class="spec-head"><span class="spec-id">V1</span><h3>sl-bootlegs row 3 "Sixteen Guns": cover + 9 scans</h3><span class="verdict v-rec">recommended</span></div>
+        <div class="spec-body"><div class="vw-inline" id="vw-inline"></div></div>
+        <div class="spec-cap">
+            <dl class="cost">
+                <dt>Shift + ← →</dt><dd>The previous/next VISIBLE row of the table (<code>runFilter()</code> has removed the rest), loading its record if needed; the stage shows the cover meanwhile. With <code>sa_art_viewer_cross_rows</code>, plain ← → cross into the next row at either end.</dd>
+                <dt>D, F, B, O</dt><dd>As on MusicBrainz. D downloads the full-size URL anonymously, O opens it with <code>noreferrer</code>. The art IndexedDB is skipped for external images (unchanged rule).</dd>
+                <dt>Extra link</dt><dd>"Item page ↗" (<code>im.pageUrl</code>), the same slot Commons images use.</dd>
+            </dl>
+        </div>
+    </div>
+</section>
+
+<!-- ── 3 Jungleland ───────────────────────────────────────────────────── -->
+<section id="jl">
+    <div class="sec-head">
+        <h2><span class="sec-letter">3</span>jungleland: no image in the row today</h2>
+        <p>Every jungleland entry has front, back, CD and booklet scans on its item page, labelled in the file name. The labels map onto MusicBrainz's own type vocabulary, so the card can use the grouped layout and type chips as the CAA column does. The question is where the trigger goes.</p>
+    </div>
+    <div class="grid-2">
+        <div class="spec">
+            <div class="spec-head"><span class="spec-id">J1</span><h3>A lazy Art column</h3><span class="verdict v-rec">chosen</span></div>
+            <div class="spec-body">
+                <div class="stage">
+                    <div class="stage-label"><span class="site" style="background: var(--s-jl)">JL</span>list.htm · hover the dashed tile to load it</div>
+                    <div class="scroll-x"><table class="tbl" id="jl-a"><thead><tr><th class="new">Art</th><th>Title</th><th>Date</th><th>Year</th><th>Version</th></tr></thead><tbody></tbody></table></div>
+                </div>
+            </div>
+            <div class="spec-cap">
+                <p>The cell holds a dashed tile until the record is cached, then the front thumbnail and the count. A later render reads the cache, so a row loaded once keeps its picture.</p>
+                <dl class="cost"><dt>Cost</dt><dd>One more column (44&nbsp;px). Sorting by it sorts loaded before not-loaded, like the CAA presence sort; it needs a <code>_sortCellText()</code> key.</dd></dl>
+            </div>
+        </div>
+        <div class="spec">
+            <div class="spec-head"><span class="spec-id">J2</span><h3>A glyph in the Title cell</h3><span class="verdict v-ref">sl-lyrics, bb-songs only</span></div>
+            <div class="spec-body">
+                <div class="stage">
+                    <div class="stage-label"><span class="site" style="background: var(--s-jl)">JL</span>list.htm · same rows, no new column</div>
+                    <div class="scroll-x"><table class="tbl" id="jl-b"><thead><tr><th>Title</th><th>Date</th><th>Year</th><th>Version</th></tr></thead><tbody></tbody></table></div>
+                </div>
+            </div>
+            <div class="spec-cap">
+                <p>The 🖼 sits after the title, dashed until loaded, then with its count. Nothing changes the table's shape, and the same glyph works for sl-lyrics and bb-songs.</p>
+                <dl class="cost"><dt>Cost</dt><dd>No thumbnail in the row. The glyph must be stripped from <code>getCleanColumnText()</code> (a <code>_CLEAN_STRIP_SEL</code> entry) so "10" never matches a Title filter.</dd></dl>
+            </div>
+        </div>
+    </div>
+    <div class="spec">
+        <div class="spec-head"><span class="spec-id">J3</span><h3>The card: jungleland's labels as types</h3><span class="verdict v-rec">recommended</span></div>
+        <div class="spec-body">
+            <div class="pinned" id="jl-card-pin"></div>
+            <div class="scroll-x">
+                <table class="matrix" style="min-width: 520px">
+                    <thead><tr><th>File-name label</th><th>Type shown</th><th>Chip</th></tr></thead>
+                    <tbody>
+                        <tr><td>front</td><td>Front (★ primary)</td><td><span class="chip" style="--tc: var(--t-front)">F</span></td></tr>
+                        <tr><td>back</td><td>Back</td><td><span class="chip" style="--tc: var(--t-back)">B</span></td></tr>
+                        <tr><td>cd1, cd2, cd3 …</td><td>Medium, comment "CD 1"</td><td><span class="chip" style="--tc: var(--t-medium)">M</span></td></tr>
+                        <tr><td>booklet1 … booklet6</td><td>Booklet, comment "page 1"</td><td><span class="chip" style="--tc: var(--t-booklet)">Bk</span></td></tr>
+                        <tr><td>anything else</td><td>Other, the label as comment</td><td><span class="chip" style="--tc: var(--t-scan)">?</span></td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ── 4 brucespringsteen.it ──────────────────────────────────────────── -->
+<section id="bs">
+    <div class="sec-head">
+        <h2><span class="sec-letter">4</span>brucespringsteen.it: one photo or none</h2>
+        <p>A record page has at most one photo. The probe found one on all four LP pages and none on the four CD‑R pages, so whether a row has one is only known after its page is read. The cell therefore has three states, and the card is a single large image (the B2 shape) rather than a contact sheet.</p>
+    </div>
+    <div class="spec">
+        <div class="spec-head"><span class="spec-id">K1</span><h3>bs-records, Photo column</h3><span class="verdict v-rec">recommended</span></div>
+        <div class="spec-body">
+            <div class="stage">
+                <div class="stage-label"><span class="site" style="background: var(--s-bs)">KF</span>Records, LP · hover a row's photo</div>
+                <div class="scroll-x"><table class="tbl" id="bs-table"><thead><tr><th class="new">Photo</th><th>Title</th><th>Matrix</th><th>Format</th><th>Label</th><th>Code</th></tr></thead><tbody></tbody></table></div>
+            </div>
+            <div class="legend"><span><span class="lazy" style="width: 18px; height: 18px"></span>not read yet</span><span>photo: the page's own image</span><span><span class="none">no photo</span> the page has none (hidden by its <code>onerror</code> on the site)</span></div>
+        </div>
+        <div class="spec-cap">
+            <dl class="cost">
+                <dt>Image</dt><dd>Thumbnail = full = <code>blegs/images/&lt;code&gt;.jpg</code> (640×480, 50&nbsp;KB on LP1B1). The viewer has no larger rendition to wait for (the existing "scan is its own thumbnail" branch).</dd>
+                <dt>404</dt><dd>The site hides a broken photo with <code>onerror</code>. Ours records it as "no photo", never as an error to retry.</dd>
+            </dl>
+        </div>
+    </div>
+</section>
+
+<!-- ── 5 Brucebase ────────────────────────────────────────────────────── -->
+<section id="bb">
+    <div class="sec-head">
+        <h2><span class="sec-letter">5</span>Brucebase: the Media icons open what they announce</h2>
+        <p>A year page's Media column already says which kinds of material a gig page holds. The gig page has them in typed folders: <code>gallery:</code> photos, <code>files:ticket-1985</code>, <code>files:pass-1985</code>, <code>news:</code> clippings. Hovering an icon shows the card filtered to that kind, and a click opens the viewer on it, with every kind one ←&nbsp;→ away.</p>
+    </div>
+    <div class="spec">
+        <div class="spec-head"><span class="spec-id">B1</span><h3>bb-year 1985: hover a ringed Media icon</h3><span class="verdict v-rec">recommended</span></div>
+        <div class="spec-body">
+            <div class="stage">
+                <div class="stage-label"><span class="site" style="background: var(--s-bb)">BB</span>brucebase.wikidot.com/1985 · 4 of 100 rows</div>
+                <div class="scroll-x"><table class="tbl" id="bb-table"><thead><tr><th>Date</th><th>Type</th><th>Venue</th><th>City</th><th>State</th><th>Tour</th><th>Media</th></tr></thead><tbody></tbody></table></div>
+            </div>
+            <div class="legend" id="bb-legend"></div>
+            <div class="pinned" id="bb-card-pin"></div>
+        </div>
+        <div class="spec-cap">
+            <dl class="cost">
+                <dt>Ring</dt><dd>Only an icon with images behind it is ringed and opens anything: Photo, Ticket, News, Memorabilia (passes). Storyteller, Eyewitness, Bootleg and Video stay as they are.</dd>
+                <dt>Full size</dt><dd><code>local--resized-images/X/thumbnail.jpg</code> → <code>local--files/X</code> (HEAD 200 for a <code>files:</code> PNG and a <code>gallery:</code> photo). The page itself links <code>medium.jpg</code> for gallery and news images; the viewer tries the original first and falls back to it.</dd>
+                <dt>Parser</dt><dd>New: a <code>/gig:</code> reader beside <code>_dpParseBb</code>. It must skip the side bar's promo image (the same "Live from Asbury Park" cover on every page) and the 32&nbsp;px status icons.</dd>
+            </dl>
+        </div>
+    </div>
+    <div class="spec">
+        <div class="spec-head"><span class="spec-id">B2</span><h3>bb-songs: graph and lyric sheets</h3><span class="verdict v-opt">optional</span></div>
+        <div class="spec-body">
+            <div class="stage">
+                <div class="stage-label"><span class="site" style="background: var(--s-bb)">BB</span>brucebase.wikidot.com/songs · Title glyph (J2's form)</div>
+                <div class="scroll-x"><table class="tbl" id="bbs-table"><thead><tr><th>Title</th><th>Letter</th></tr></thead><tbody></tbody></table></div>
+            </div>
+            <div class="pinned" id="bbs-card-pin"></div>
+        </div>
+        <div class="spec-cap"><p>Only 1 of the 4 probed song pages had images of its own. The glyph is dashed ("not read yet") until the page is read, and disappears for a song with none.</p></div>
+    </div>
+</section>
+
+<!-- ── 6 SL lyrics ────────────────────────────────────────────────────── -->
+<section id="lyr">
+    <div class="sec-head">
+        <h2><span class="sec-letter">6</span>springsteenlyrics lyrics index</h2>
+        <p>Song pages carry album covers and, now and then, a hand-written sheet. In the probe's B sample only "Baby Me" had one, so the Title glyph fits here as on bb-songs.</p>
+    </div>
+    <div class="spec">
+        <div class="spec-head"><span class="spec-id">L1</span><h3>sl-lyrics: Title glyph and a single-image card</h3><span class="verdict v-opt">optional</span></div>
+        <div class="spec-body">
+            <div class="stage">
+                <div class="stage-label"><span class="site" style="background: var(--s-sl)">SL</span>lyrics.php?letter=b</div>
+                <div class="scroll-x"><table class="tbl" id="lyr-table"><thead><tr><th>Title</th><th>Lyrics</th><th>Type</th><th>Artist</th><th>Letter</th></tr></thead><tbody></tbody></table></div>
+            </div>
+            <div class="pinned" id="lyr-card-pin"></div>
+        </div>
+    </div>
+</section>
+
+<!-- ── 7 Gallery ──────────────────────────────────────────────────────── -->
+<section id="gal">
+    <div class="sec-head">
+        <h2><span class="sec-letter">7</span>The table-wide 🖼 gallery</h2>
+        <p>MusicBrainz's gallery (D2) reads only the caches and makes no request. On a foreign table that means it shows the rows already loaded and says how many are not. Loading the rest would be a long run at 1.1&nbsp;s a page, so it is offered as an explicit button with its time, never done by opening the gallery.</p>
+    </div>
+    <div class="spec">
+        <div class="spec-head"><span class="spec-id">G1</span><h3>sl-bootlegs: 3 of 35 rows with artwork loaded</h3><span class="verdict v-opt">optional</span></div>
+        <div class="spec-body">
+            <div class="dlg">
+                <div class="dlg-h"><b>🖼 Artwork — The Castiles 1967 (sl-bootlegs)</b><span class="dim" style="font-size: 11px">← → rows · click an image: viewer</span><button class="sbtn" type="button">✕</button></div>
+                <div class="dlg-b" id="gal-body">
+                    <div class="gal-note">3 of 35 rows with "artwork available" are loaded. <button class="sbtn" type="button" id="gal-more">Load the other 32 (about 35 s)</button> Nothing is fetched until you press it.</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ── 8 Settings and rules ───────────────────────────────────────────── -->
+<section id="set">
+    <div class="sec-head">
+        <h2><span class="sec-letter">8</span>Settings and the rules underneath</h2>
+        <p>One switch per site beside the existing <code>sa_dg_tip_images</code>, inside the site's own opt-in section, so nothing appears on a host whose support is off.</p>
+    </div>
+    <div class="grid-2">
+        <div class="spec">
+            <div class="spec-head"><span class="spec-id">S</span><h3>Settings dialog, site sections</h3><span class="verdict v-rec">recommended</span></div>
+            <div class="spec-body">
+                <div class="stage">
+                    <div class="set">
+                        <div class="set-h">springsteenlyrics.com</div>
+                        <div class="set-r"><input type="checkbox" checked disabled aria-label="enabled"><div>Enable on springsteenlyrics.com<div class="k">sa_enable_springsteenlyrics</div></div></div>
+                        <div class="set-r child new"><input type="checkbox" checked aria-label="cover card"><div>Image card and viewer on covers and scans<div class="k">sa_sl_tip_images · default on</div></div></div>
+                        <div class="set-h">jungleland.it</div>
+                        <div class="set-r new"><input type="checkbox" checked aria-label="jl images"><div>Image card and viewer (Art column / 🖼 glyph)<div class="k">sa_jl_tip_images · default on</div></div></div>
+                        <div class="set-h">brucespringsteen.it</div>
+                        <div class="set-r new"><input type="checkbox" checked aria-label="bs images"><div>Photo column with card and viewer<div class="k">sa_bs_tip_images · default on</div></div></div>
+                        <div class="set-h">brucebase.wikidot.com</div>
+                        <div class="set-r new"><input type="checkbox" checked aria-label="bb images"><div>Media icons open their images<div class="k">sa_bb_tip_images · default on</div></div></div>
+                        <div class="set-h">discogs.com</div>
+                        <div class="set-r"><input type="checkbox" checked aria-label="dg images"><div>Image card on the Image column<div class="k">sa_dg_tip_images · existing</div></div></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="spec">
+            <div class="spec-head"><span class="spec-id">R</span><h3>Rules the implementation keeps</h3><span class="verdict v-ref">reference</span></div>
+            <div class="spec-body">
+                <ol class="rules">
+                    <li><b>No request at render.</b> A record is asked on hover or click only, through <code>_dpGet()</code> at its 1.1&nbsp;s spacing. On its own host that is the same rule the detail preview follows.</li>
+                    <li><b>One record, one cache.</b> The card, the viewer, the Art/Photo cell and the detail preview read one parsed record. A parser change bumps <code>_DP_PARSER_VERSION</code>.</li>
+                    <li><b>Late answers reach the source rows.</b> A cell filled after render (J1, K1) is mirrored to the master row (<code>_findMasterRowByIdx()</code>) and owes the four filter-cache duties.</li>
+                    <li><b>One click handler, window capture.</b> Plain left click only, so the navigation guard and new-tab clicks behave as today. <code>_dgThumbClick()</code> folds into it.</li>
+                    <li><b>External images stay external.</b> <code>referrerpolicy="no-referrer"</code> everywhere, including <code>_artCardCoreHtml()</code>'s tiles, which lack it today. No art IndexedDB.</li>
+                    <li><b>MusicBrainz unchanged.</b> Every new branch is host-scoped. The MusicBrainz fixture suite runs before merge.</li>
+                </ol>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ── 9 Questions ────────────────────────────────────────────────────── -->
+<section id="qs">
+    <div class="sec-head"><h2><span class="sec-letter">9</span>Decided</h2><p>vzell, 2026-10-23.</p></div>
+    <div class="qs">
+        <div class="q"><b>jungleland: J1</b><p><span class="rec">The lazy Art column.</span> The Title glyph stays the trigger for sl-lyrics and bb-songs, where most rows have no images.</p></div>
+        <div class="q"><b>Brucebase gig pages: all four kinds</b><p><span class="rec">Photos, tickets, passes and clippings, grouped by kind.</span></p></div>
+        <div class="q"><b>The gallery's "Load the rest" button</b><p><span class="rec">Offered with its time shown; the run stops when the gallery closes.</span> Opening the gallery still makes no request.</p></div>
+        <div class="q"><b>Phasing</b><p><span class="rec">Approved:</span> 1 = SL card lists plus the shared handler; 2 = jungleland (J1) and KF; 3 = Brucebase gig and song readers, sl-lyrics; 4 = the gallery.</p></div>
+    </div>
+</section>
+
+<footer>
+    <div>Companion notes: <code>org/foreign-images.org</code>. Probe: <code>python3 -I scripts/probe-foreign-images.py</code> (pages cached in <code>debug/foreign-images/</code>).</div>
+    <div>Images belong to springsteenlyrics.com, jungleland.it, brucespringsteen.it and brucebase.wikidot.com and are shown here only to judge the design.</div>
+</footer>
+</div>
+
+<div id="tip" role="tooltip"></div>
+<div id="overlay" hidden></div>
+
+<script>
+(function () {
+    'use strict';
+    const IMGS = JSON.parse(document.getElementById('mockup-images').textContent);
+    const EMBED = window.__EMBED || {};
+    const TC = { Front: '--t-front', Back: '--t-back', Medium: '--t-medium', Booklet: '--t-booklet', Scan: '--t-scan', Cover: '--t-front',
+        Photo: '--t-photo', Ticket: '--t-ticket', Pass: '--t-pass', News: '--t-news', Graph: '--t-graph', 'Lyric sheet': '--t-sheet', Other: '--t-scan' };
+    const ABBR = { Front: 'F', Back: 'B', Medium: 'M', Booklet: 'Bk', Scan: 'S', Cover: 'C', Photo: 'Ph', Ticket: 'Tk', Pass: 'Ps', News: 'N', Graph: 'G', 'Lyric sheet': 'L', Other: '?' };
+
+    /**
+     * Creates an element with attributes and children.
+     * @param {string} tag
+     * @param {Object} [attrs]
+     * @param {...(Node|string|null)} kids
+     * @returns {HTMLElement}
+     */
+    function el(tag, attrs, ...kids) {
+        const n = document.createElement(tag);
+        for (const [k, v] of Object.entries(attrs || {})) {
+            if (v === null || v === undefined || v === false) continue;
+            if (k === 'class') n.className = v;
+            else if (k === 'style') n.style.cssText = v;
+            else if (k.startsWith('on')) n.addEventListener(k.slice(2), v);
+            else n.setAttribute(k, v === true ? '' : v);
+        }
+        for (const c of kids.flat()) if (c !== null && c !== undefined && c !== false) n.append(c);
+        return n;
+    }
+
+    /**
+     * The URL of an image id: inlined in the published copy, hotlinked from disk.
+     * @param {string} id
+     * @returns {string}
+     */
+    function src(id) {
+        return EMBED[id] || (IMGS[id] && IMGS[id].u) || '';
+    }
+
+    /**
+     * An <img> for an image id that turns into a labelled tile when it cannot load.
+     * @param {string} id
+     * @param {string} cls
+     * @param {string} [label]
+     * @param {string} [type]
+     * @returns {HTMLElement}
+     */
+    function img(id, cls, label, type) {
+        const i = el('img', { class: cls, src: src(id), alt: label || '', loading: 'lazy', referrerpolicy: 'no-referrer', draggable: 'false' });
+        i.addEventListener('error', () => {
+            const t = el('span', { class: cls + ' fb', style: 'background: var(' + (TC[type] || '--t-scan') + ')' }, label || ABBR[type] || '?');
+            i.replaceWith(t);
+        }, { once: true });
+        return i;
+    }
+
+    /** A site's host name, by image id prefix. */
+    const HOST = { sl: 'springsteenlyrics.com', jl: 'jungleland.it', bs: 'brucespringsteen.it', bb: 'brucebase.wikidot.com' };
+
+    // ── Data (rows from the fixtures, images from the probe) ────────────────
+    /**
+     * Records for a springsteenlyrics item: cover first, then its scans.
+     * @param {string} n item number
+     * @param {number} scans scan count on the item page
+     * @param {number} shown how many scan thumbnails the mockup carries
+     * @param {Object} [full] scan index → full-size image id
+     * @returns {Array<Object>}
+     */
+    function slImages(n, scans, shown, full) {
+        const out = [{ id: 'sl' + n + 'c', type: 'Cover', cap: 'cover', primary: true, full: 'sl' + n + 'c' }];
+        for (let k = 1; k <= scans; k++) {
+            out.push({ id: k <= shown ? 'sl' + n + 's' + k : null, type: 'Scan', cap: 'scan ' + String(k).padStart(2, '0'), full: (full && full[k]) || null });
+        }
+        return out;
+    }
+    const SL_ROWS = [
+        { n: '4553', title: 'The Bruce Springsteen Story Vol. 1: The Castiles', label: 'E. St. Records', date: '16 Sep 1967 - 30 Sep 1967', loc: 'The Left Foot, Freehold, NJ', fmt: 'FLAC', dur: '54:55', art: true, images: slImages('4553', 4, 4), state: 'cold' },
+        { n: '4554', title: 'The Bruce Springsteen Story Vol. 2: The Castiles', label: 'E. St. Records', date: '16 Sep 1967', loc: 'The Left Foot, Freehold, NJ', fmt: 'FLAC', dur: '31:09', art: true, images: slImages('4554', 4, 4, { 1: 'sl4554f1' }), state: 'loaded' },
+        { n: '8694', title: 'Sixteen Guns', label: 'Eternal Grooves', date: '16 Sep 1967, 30 Sep 1967', loc: 'The Left Foot, Freehold, NJ', fmt: 'FLAC', dur: '73:37', art: true, images: slImages('8694', 9, 9, { 1: 'sl8694f1', 2: 'sl8694f2' }), state: 'loaded' },
+        { n: '2616', title: '[no title]', label: 'mjk5510 transfer', date: '20 Sep 1969', loc: 'Free University, Richmond, VA', fmt: 'FLAC', dur: '61:37', art: false, images: slImages('2616', 0, 0), state: 'loaded' }
+    ];
+    const SL148 = { n: '148', title: '4th Of July - The Wild Session', images: slImages('148', 31, 9) };
+
+    /**
+     * Records for a jungleland entry from its file-name labels.
+     * @param {string} k id prefix (jl + yymmdd)
+     * @param {Array<string>} labels
+     * @param {Object} [full] label → full-size image id
+     * @returns {Array<Object>}
+     */
+    function jlImages(k, labels, full) {
+        return labels.map(l => {
+            const m = l.match(/^(front|back|cd|booklet)(\d*)$/);
+            const type = !m ? 'Other' : { front: 'Front', back: 'Back', cd: 'Medium', booklet: 'Booklet' }[m[1]];
+            const cap = !m ? l : m[1] === 'cd' ? 'CD ' + m[2] : m[1] === 'booklet' ? 'page ' + m[2] : type.toLowerCase();
+            return { id: k + l, type, cap, primary: l === 'front', full: (full && full[l]) || null };
+        });
+    }
+    const JL_ROWS = [
+        { title: 'The Castiles 1966-1967', date: '1966-01-01', year: '1966', ver: '', images: jlImages('jl660101', ['front', 'back']), state: 'loaded' },
+        { title: 'Main Point Night', date: '1975-02-05', year: '1975', ver: '', images: jlImages('jl750205', ['front', 'back', 'cd1', 'cd2', 'booklet1', 'booklet2', 'booklet3', 'booklet4', 'booklet5', 'booklet6'], { front: 'jl750205frontF' }), state: 'loaded' },
+        { title: 'You can trust your Car to the Man who wears the Star', date: '1975-02-05', year: '1975', ver: '2', images: [], state: 'cold' },
+        { title: 'Land of Hope and Dreams USA 2026 - Minneapolis', date: '2026-03-31', year: '2026', ver: '', images: jlImages('jl260331', ['front', 'back', 'cd1', 'cd2', 'cd3', 'booklet1', 'booklet2', 'booklet3']), state: 'cold' }
+    ];
+    const BS_ROWS = [
+        { title: '1980 BOSTON', mx: '5646', fmt: '2 LP', label: 'Zebra Records', code: 'LP1B1', images: [{ id: 'bsLP1B1', type: 'Photo', cap: 'photo', primary: true, full: 'bsLP1B1' }], state: 'loaded' },
+        { title: '1981 BOX FILE', mx: 'CNT 101-2-3', fmt: '3 LP', label: 'Unknown', code: 'LP1BF1', images: [{ id: 'bsLP1BF1', type: 'Photo', cap: 'photo', primary: true, full: 'bsLP1BF1' }], state: 'loaded' },
+        { title: 'A JOURNEY THRU THE U.S.A. PART 1', mx: 'RR-4-BS', fmt: '1 LP', label: 'Rock records', code: 'LPAJTUP11', images: [{ id: 'bsLPAJTUP11', type: 'Photo', cap: 'photo', primary: true, full: 'bsLPAJTUP11' }], state: 'cold' },
+        { title: '1001 AMERICAN DREAMS', mx: '2211/12', fmt: '2 CD-R', label: 'Anubis Records', code: 'CR1AD1', images: [], state: 'none' }
+    ];
+    const BB_ICONS = [['Photo', '--t-photo', 'Ph'], ['Ticket', '--t-ticket', 'Tk'], ['News', '--t-news', 'N'], ['Memorabilia', '--t-pass', 'Me'], ['Storyteller', '--s-dg', 'St'], ['Eyewitness', '--s-dg', 'Ey']];
+    const BB_ROWS = [
+        { date: '1985-01-04', venue: 'Hampton Roads Coliseum', city: 'Hampton', st: 'VA', icons: ['Photo', 'Ticket', 'News', 'Eyewitness'],
+            images: [{ id: 'bb0104p1', type: 'Photo', cap: 'MicHampton 01', primary: true, full: 'bb0104p1F' }, { id: 'bb0104p2', type: 'Photo', cap: 'MicHampton 02' },
+                { id: 'bb0104t', type: 'Ticket', cap: 'Ticket 01' }, { id: 'bb0104n', type: 'News', cap: 'Article 01' }] },
+        { date: '1985-01-05', venue: 'Hampton Roads Coliseum', city: 'Hampton', st: 'VA', icons: ['Photo', 'Ticket', 'Storyteller'],
+            images: [{ id: 'bb0105p1', type: 'Photo', cap: 'MicHampton 01', primary: true }, { id: 'bb0105p2', type: 'Photo', cap: 'MicHampton 02' }, { id: 'bb0105t', type: 'Ticket', cap: 'Ticket 01' }] },
+        { date: '1985-01-07', venue: 'Market Square Arena', city: 'Indianapolis', st: 'IN', icons: ['Ticket', 'News', 'Memorabilia'],
+            images: [{ id: 'bb0107t', type: 'Ticket', cap: 'Ticket 01', primary: true }, { id: 'bb0107pass', type: 'Pass', cap: 'Pass 01' },
+                { id: 'bb0107n1', type: 'News', cap: 'Article 01a' }, { id: 'bb0107n2', type: 'News', cap: 'Article 01b' }, { id: 'bb0107n3', type: 'News', cap: 'Article 02' }] },
+        { date: '1985-01-08', venue: 'Market Square Arena', city: 'Indianapolis', st: 'IN', icons: ['Ticket'],
+            images: [{ id: 'bb0108t', type: 'Ticket', cap: 'Ticket 01', primary: true }] }
+    ];
+    const ICON_TYPE = { Photo: ['Photo'], Ticket: ['Ticket'], News: ['News'], Memorabilia: ['Pass'] };
+    const BBS_ROWS = [
+        { title: '4th Of July, Asbury Park (Sandy)', letter: '0-9', images: [{ id: 'bbgraph', type: 'Graph', cap: 'performances', primary: true, full: 'bbgraphF' }, { id: 'bblyric', type: 'Lyric sheet', cap: 'early lyrics' }], state: 'loaded' },
+        { title: '500 Miles', letter: '0-9', images: [], state: 'none' },
+        { title: '57 Channels (And Nothin\' On)', letter: '0-9', images: [], state: 'cold' }
+    ];
+    const LYR_ROWS = [
+        { title: 'Baby Come Back', lyr: 'yes', type: 'Original', artist: 'Bruce Springsteen', images: [], state: 'none' },
+        { title: 'Baby Me', lyr: 'yes', type: 'Original', artist: 'Bruce Springsteen', images: [{ id: 'sllyr', type: 'Lyric sheet', cap: 'proposed song lists', primary: true, full: 'sllyr', comment: 'Proposed handwritten song lists for the third album (Backstreets)' }], state: 'loaded' },
+        { title: 'Baby Doll', lyr: 'yes', type: 'Original', artist: 'Bruce Springsteen', images: [], state: 'cold' }
+    ];
+
+    // ── The card (_artCardCoreHtml()'s shape) ───────────────────────────────
+    /**
+     * The B1 card: title, facts line, contact sheet (grouped when more than one type), foot.
+     * @param {Object} o {title, host, images, all, big, foot, groups, only}
+     * @returns {HTMLElement}
+     */
+    function card(o) {
+        const imgs = o.only ? o.images.filter(i => o.only.includes(i.type)) : o.images;
+        const types = [...new Set(imgs.map(i => i.type))];
+        const limit = o.all ? Infinity : (o.limit || 10);
+        const facts = imgs.length + (imgs.length === 1 ? ' image' : ' images') + ' · ' + (imgs.some(i => i.primary) ? '★ primary' : 'no primary') + ' · ' + o.host;
+        const c = el('div', { class: 'liner' + (o.big ? ' big' : ''), style: o.cols ? '--cols:' + o.cols : null },
+            el('div', { class: 't' }, o.title),
+            el('div', { class: 'd' }, facts),
+            el('div', { class: 'rule' }));
+        const sheet = (list) => {
+            const s = el('div', { class: 'sheet' });
+            list.forEach(i => s.append(el('figure', { class: i.primary ? 'star' : null }, i.id ? img(i.id, 'th', i.cap, i.type) : el('span', { class: 'th fb', style: 'background: var(' + TC[i.type] + ')' }, ABBR[i.type]), el('figcaption', {}, i.cap))));
+            return s;
+        };
+        if (o.groups && types.length > 1) {
+            let left = limit;
+            types.forEach(t => {
+                const list = imgs.filter(i => i.type === t);
+                if (left <= 0) return;
+                c.append(el('div', { class: 'grp-h' }, el('span', { class: 'chip', style: '--tc: var(' + TC[t] + ')' }, ABBR[t]), t + ' × ' + list.length));
+                c.append(sheet(list.slice(0, left)));
+                left -= list.length;
+            });
+        } else {
+            const s = sheet(imgs.slice(0, limit));
+            if (imgs.length > limit) s.append(el('div', { class: 'more' }, '+' + (imgs.length - limit)));
+            c.append(s);
+        }
+        c.append(el('div', { class: 'foot' }, ...(o.foot || footKeys(imgs.length > limit))));
+        return c;
+    }
+
+    /**
+     * The card's foot: the keys it answers to.
+     * @param {boolean} cut the card leaves images out
+     * @returns {Array<Node|string>}
+     */
+    function footKeys(cut) {
+        return [cut ? el('kbd', {}, 'Space') : null, cut ? ' every image · ' : '', el('kbd', {}, 'Shift'), ' bigger · Click: viewer'];
+    }
+
+    /**
+     * The card while the record is on its way: the cover the row already has, and a spinner.
+     * @param {string} title
+     * @param {string|null} coverId
+     * @param {string} host
+     * @returns {HTMLElement}
+     */
+    function loadingCard(title, coverId, host) {
+        return el('div', { class: 'liner' },
+            el('div', { class: 't' }, title),
+            el('div', { class: 'd' }, host),
+            el('div', { class: 'rule' }),
+            el('div', { class: 'loadbox' }, coverId ? img(coverId, 'ph', 'cover', 'Cover') : null,
+                el('div', {}, el('span', { class: 'spin' }), 'Reading the item page for its scans …', el('div', { class: 'd' }, 'one request, then cached with the detail preview'))),
+            el('div', { class: 'foot' }, 'Click: viewer (opens on the cover now)'));
+    }
+
+    /**
+     * A card that says what there is not.
+     * @param {string} title
+     * @param {string} text
+     * @param {string|null} coverId
+     * @returns {HTMLElement}
+     */
+    function noteCard(title, text, coverId) {
+        return el('div', { class: 'liner' }, el('div', { class: 't' }, title), el('div', { class: 'rule' }),
+            el('div', { class: 'loadbox' }, coverId ? img(coverId, 'ph', 'cover', 'Cover') : null, el('div', { class: 'd' }, text)),
+            el('div', { class: 'foot' }, coverId ? 'Click: viewer (the cover)' : 'Nothing to open'));
+    }
+
+    // ── Floating tooltip ────────────────────────────────────────────────────
+    const tip = document.getElementById('tip');
+    let tipFor = null;
+    let tipBig = false;
+    let tipAll = false;
+    let tipBuild = null;
+    /**
+     * Shows a card next to the pointer (the shared tooltip engine's job in the script).
+     * @param {HTMLElement} anchor
+     * @param {Function} build () => card element, given {big, all}
+     * @param {MouseEvent} e
+     */
+    function showTip(anchor, build, e) {
+        tipFor = anchor;
+        tipBuild = build;
+        tipBig = e.shiftKey;
+        tipAll = false;
+        paintTip(e.clientX, e.clientY);
+    }
+    /**
+     * Repaints the shown card (after Space/Shift) and places it.
+     * @param {number} [x]
+     * @param {number} [y]
+     */
+    function paintTip(x, y) {
+        if (!tipFor) return;
+        tip.replaceChildren(tipBuild({ big: tipBig, all: tipAll }));
+        tip.style.display = 'block';
+        const r = tip.getBoundingClientRect();
+        const ax = x !== undefined ? x : parseFloat(tip.dataset.x);
+        const ay = y !== undefined ? y : parseFloat(tip.dataset.y);
+        tip.dataset.x = ax;
+        tip.dataset.y = ay;
+        let left = ax + 16;
+        let top = ay + 14;
+        if (left + r.width > innerWidth - 8) left = Math.max(8, ax - r.width - 16);
+        if (top + r.height > innerHeight - 8) top = Math.max(8, innerHeight - r.height - 8);
+        tip.style.left = left + 'px';
+        tip.style.top = top + 'px';
+    }
+    /** Hides the card. */
+    function hideTip() {
+        tipFor = null;
+        tip.style.display = 'none';
+    }
+    /**
+     * Wires hover and click on an element.
+     * @param {HTMLElement} node
+     * @param {Function} build
+     * @param {Function} [onclick]
+     * @param {Function} [onfirst] first hover (the lazy load)
+     */
+    function hover(node, build, onclick, onfirst) {
+        node.addEventListener('mouseenter', (e) => { if (onfirst) onfirst(); showTip(node, build, e); node.closest('tr') && node.closest('tr').classList.add('hot'); });
+        node.addEventListener('mousemove', (e) => { if (tipFor === node) { tip.dataset.x = e.clientX; tip.dataset.y = e.clientY; paintTip(e.clientX, e.clientY); } });
+        node.addEventListener('mouseleave', () => { hideTip(); node.closest('tr') && node.closest('tr').classList.remove('hot'); });
+        if (onclick) node.addEventListener('click', (e) => { e.preventDefault(); hideTip(); onclick(); });
+    }
+    document.addEventListener('keydown', (e) => {
+        if (!tipFor || !overlay.hidden) return;
+        if (e.key === ' ') { e.preventDefault(); tipAll = !tipAll; paintTip(); }
+        if (e.key === 'Shift') { tipBig = true; paintTip(); }
+    });
+    document.addEventListener('keyup', (e) => { if (tipFor && e.key === 'Shift') { tipBig = false; paintTip(); } });
+    // A redraw replaces the hovered trigger; its mouseleave never fires, so the next pointer move decides.
+    document.addEventListener('mouseover', () => { if (tipFor && !tipFor.isConnected) hideTip(); }, true);
+    /** Repaints a shown card after its row's state changed under it. */
+    function refreshTip() {
+        if (tipFor) paintTip();
+    }
+
+    // ── The viewer ──────────────────────────────────────────────────────────
+    const overlay = document.getElementById('overlay');
+    /**
+     * Builds a viewer over a list of row sets, inside `host`.
+     * @param {HTMLElement} host
+     * @param {Array<Object>} sets [{title, host, images, page}]
+     * @param {number} row
+     * @param {number} start
+     * @param {Object} [opts] {modal, onClose}
+     * @returns {Object} the viewer's state
+     */
+    function viewer(host, sets, row, start, opts) {
+        const st = { row, i: start, grid: false, info: true, zoom: 1, rot: 0, flip: false };
+        const root = el('div', { class: 'vw', tabindex: '0', role: 'dialog', 'aria-label': 'Artwork viewer' });
+        host.replaceChildren(root);
+        /** The images of the current row that the mockup can show. */
+        const cur = () => sets[st.row].images;
+        /** Renders everything from the state. */
+        function render() {
+            const set = sets[st.row];
+            const im = cur()[st.i];
+            const top = el('div', { class: 'vw-top' },
+                el('div', { class: 'vw-rel' },
+                    el('span', { class: 'name' }, set.title),
+                    el('span', { class: 'pos' }, (st.i + 1) + ' / ' + cur().length),
+                    sets.length > 1 ? el('span', { class: 'pos' }, 'row ' + (st.row + 1) + ' / ' + sets.length) : null,
+                    el('span', { class: 'host' }, set.host)),
+                el('button', { type: 'button', 'aria-pressed': String(st.grid), onclick: () => { st.grid = !st.grid; render(); } }, 'Grid', el('kbd', {}, 'G')),
+                el('button', { type: 'button', 'aria-pressed': String(st.info), onclick: () => { st.info = !st.info; render(); } }, 'Info', el('kbd', {}, 'I')),
+                el('button', { type: 'button', onclick: () => { st.rot = (st.rot + 90) % 360; render(); } }, '⟳', el('kbd', {}, 'R')),
+                el('button', { type: 'button', 'aria-pressed': String(st.flip), onclick: () => { st.flip = !st.flip; render(); } }, '⇋', el('kbd', {}, 'H')),
+                el('button', { type: 'button', onclick: () => { st.zoom = st.zoom >= 3 ? 1 : st.zoom + 0.5; render(); } }, 'Zoom', el('kbd', {}, '+')),
+                el('button', { type: 'button', title: 'In the script: download the full-size image (anonymous)' }, 'D'),
+                set.page ? el('button', { type: 'button', title: set.page }, 'Item page ↗') : null,
+                opts && opts.modal ? el('button', { type: 'button', onclick: close }, '✕', el('kbd', {}, 'Esc')) : null);
+            let stage;
+            if (st.grid) {
+                stage = el('div', { class: 'vw-grid' });
+                let last = null;
+                cur().forEach((g, k) => {
+                    if (!g.id) return;
+                    if (g.type !== last) { stage.append(el('div', { class: 'ghead' }, g.type)); last = g.type; }
+                    stage.append(el('button', { type: 'button', onclick: () => { st.i = k; st.grid = false; render(); } }, img(g.id, 'im', g.cap, g.type), el('div', { class: 'cap' }, g.cap)));
+                });
+            } else {
+                const shown = im.full || im.id;
+                const pic = shown ? img(shown, 'vw-img', im.cap, im.type) : el('span', { class: 'vw-img fb', style: 'background: var(' + TC[im.type] + ')' }, im.cap);
+                pic.style.transform = 'scale(' + st.zoom + ')' + (st.flip ? ' scaleX(-1)' : '') + ' rotate(' + st.rot + 'deg)';
+                stage = el('div', { class: 'vw-stage' }, pic,
+                    el('button', { type: 'button', class: 'vw-nav prev', 'aria-label': 'Previous', onclick: () => step(-1) }, '‹'),
+                    el('button', { type: 'button', class: 'vw-nav next', 'aria-label': 'Next', onclick: () => step(1) }, '›'),
+                    el('div', { class: 'vw-zoom' }, Math.round(st.zoom * 100) + ' %'),
+                    el('div', { class: 'vw-note' }, im.full && im.full !== im.id ? 'large image' : im.id ? 'thumbnail; the large image replaces it on arrival' : 'not in this mockup'));
+            }
+            const info = el('div', { class: 'vw-info' }, el('div', { class: 'liner' },
+                el('div', { class: 't' }, im.cap + (im.primary ? ' ★' : '')),
+                im.comment ? el('div', { class: 'd' }, im.comment) : null,
+                el('div', { class: 'rule' }),
+                el('dl', { class: 'kv' },
+                    el('dt', {}, 'Position'), el('dd', {}, (st.i + 1) + ' of ' + cur().length),
+                    el('dt', {}, 'Type'), el('dd', {}, im.type),
+                    el('dt', {}, 'From'), el('dd', {}, set.host),
+                    el('dt', {}, 'Size'), el('dd', {}, im.full ? 'shown after load' : 'thumbnail only'),
+                    el('dt', {}, 'Links'), el('dd', {}, 'thumbnail · full size'))));
+            const film = el('div', { class: 'vw-film' });
+            cur().forEach((g, k) => film.append(el('button', { type: 'button', 'aria-current': String(k === st.i), onclick: () => { st.i = k; render(); } },
+                g.id ? img(g.id, 'im', g.cap, g.type) : el('span', { class: 'im fb', style: 'background: var(' + TC[g.type] + ')' }, ABBR[g.type]), el('span', { class: 'lbl' }, ABBR[g.type] + (k + 1)))));
+            const keys = el('div', { class: 'vw-keys' },
+                el('span', {}, el('kbd', {}, '←'), el('kbd', {}, '→'), 'image'),
+                sets.length > 1 ? el('span', {}, el('kbd', {}, 'Shift'), el('kbd', {}, '←'), el('kbd', {}, '→'), 'row') : null,
+                el('span', {}, el('kbd', {}, 'G'), 'grid'), el('span', {}, el('kbd', {}, 'I'), 'info'), el('span', {}, el('kbd', {}, 'R'), 'rotate'),
+                el('span', {}, el('kbd', {}, 'D'), 'download'), el('span', {}, el('kbd', {}, 'F'), 'fullscreen'));
+            root.replaceChildren(top, el('div', { class: 'vw-main' + (st.info ? '' : ' noinfo') }, stage, info), film, keys);
+        }
+        /**
+         * Steps through the row's images, wrapping.
+         * @param {number} d
+         */
+        function step(d) {
+            const n = cur().length;
+            st.i = (st.i + d + n) % n;
+            st.zoom = 1;
+            render();
+        }
+        /**
+         * Steps to the previous/next row.
+         * @param {number} d
+         */
+        function stepRow(d) {
+            st.row = (st.row + d + sets.length) % sets.length;
+            st.i = 0;
+            st.zoom = 1;
+            render();
+        }
+        /** Closes a modal viewer. */
+        function close() {
+            if (opts && opts.onClose) opts.onClose();
+        }
+        root.addEventListener('keydown', (e) => {
+            if (e.ctrlKey || e.metaKey || e.altKey) return;
+            const k = e.key;
+            if (k === 'ArrowLeft' || k === 'ArrowRight') { e.preventDefault(); (e.shiftKey && sets.length > 1 ? stepRow : step)(k === 'ArrowLeft' ? -1 : 1); }
+            else if (k === 'g' || k === 'G') { st.grid = !st.grid; render(); }
+            else if (k === 'i' || k === 'I') { st.info = !st.info; render(); }
+            else if (k === 'r' || k === 'R') { st.rot = (st.rot + 90) % 360; render(); }
+            else if (k === 'h' || k === 'H') { st.flip = !st.flip; render(); }
+            else if (k === '+') { st.zoom = Math.min(4, st.zoom + 0.5); render(); }
+            else if (k === '-') { st.zoom = Math.max(1, st.zoom - 0.5); render(); }
+            else if (k === 'Escape' && opts && opts.modal) { e.preventDefault(); close(); }
+            else return;
+            root.focus();
+        });
+        render();
+        return { root, render };
+    }
+
+    /**
+     * Opens the viewer full-screen, as a click in the table does.
+     * @param {Array<Object>} sets
+     * @param {number} row
+     * @param {number} start
+     */
+    function openViewer(sets, row, start) {
+        const back = document.activeElement;
+        overlay.hidden = false;
+        const v = viewer(overlay, sets, row, start || 0, { modal: true, onClose: () => { overlay.hidden = true; overlay.replaceChildren(); if (back) back.focus(); } });
+        v.root.focus();
+    }
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) { overlay.hidden = true; overlay.replaceChildren(); } });
+
+    // ── S1: springsteenlyrics bootlegs ──────────────────────────────────────
+    const slSets = SL_ROWS.map(r => ({ title: r.title, host: HOST.sl, page: 'bootlegs.php?item=' + r.n, images: r.images }));
+    /**
+     * The card for an SL row in its current state.
+     * @param {Object} r
+     * @param {Object} o {big, all}
+     * @returns {HTMLElement}
+     */
+    function slCard(r, o) {
+        if (!r.art) return noteCard(r.title, 'Cover only: the list says this item has no artwork, so its page is not read.', r.images[0].id);
+        if (r.state === 'loading') return loadingCard(r.title, r.images[0].id, HOST.sl);
+        return card({ title: r.title, host: HOST.sl, images: r.images, big: o.big, all: o.all, limit: 10 });
+    }
+    const slBody = document.querySelector('#sl-table tbody');
+    SL_ROWS.forEach((r, k) => {
+        const cov = el('a', { class: 'cov', href: '#sl' }, img(r.images[0].id, 'im', 'cover', 'Cover'), r.art && r.state === 'loaded' ? el('span', { class: 'n' }, String(r.images.length)) : null);
+        hover(cov, (o) => slCard(r, o), () => openViewer(slSets, k, 0), () => {
+            if (r.state !== 'cold') return;
+            r.state = 'loading';
+            setTimeout(() => { r.state = 'loaded'; cov.append(el('span', { class: 'n' }, String(r.images.length))); if (tipFor === cov) paintTip(); }, 1100);
+        });
+        slBody.append(el('tr', {}, el('td', {}, cov), el('td', {}, el('a', { href: '#sl' }, r.title)), el('td', {}, r.label), el('td', { class: 'tnum' }, r.date),
+            el('td', {}, r.loc), el('td', {}, r.fmt), el('td', { class: 'tnum' }, r.dur), el('td', {}, r.art ? 'artwork available' : '')));
+    });
+    const slStates = document.getElementById('sl-states');
+    [['first hover, row 1', loadingCard(SL_ROWS[0].title, 'sl4553c', HOST.sl)],
+        ['loaded, row 3', card({ title: SL_ROWS[2].title, host: HOST.sl, images: SL_ROWS[2].images, limit: 10 })],
+        ['31 scans (brucelegs 148): cut, Space shows all', card({ title: SL148.title, host: HOST.sl, images: SL148.images, limit: 9 })],
+        ['no artwork flag, row 4', slCard(SL_ROWS[3], {})]
+    ].forEach(([lab, c]) => slStates.append(el('div', {}, el('div', { class: 'lab' }, lab), c)));
+
+    // ── V1: the inline viewer ───────────────────────────────────────────────
+    viewer(document.getElementById('vw-inline'), slSets.slice(0, 3), 2, 1);
+
+    // ── J1 / J2: jungleland ─────────────────────────────────────────────────
+    const jlSets = JL_ROWS.map(r => ({ title: r.title + ' (' + r.date + ')', host: HOST.jl, page: r.date.replace(/-/g, '') + '.htm', images: r.images.length ? r.images : [{ id: null, type: 'Other', cap: 'no scans' }] }));
+    /**
+     * The card for a jungleland row.
+     * @param {Object} r
+     * @param {Object} o
+     * @returns {HTMLElement}
+     */
+    function jlCard(r, o) {
+        if (r.state === 'loading') return loadingCard(r.title, null, HOST.jl);
+        if (!r.images.length) return noteCard(r.title, 'The item page has no scans.', null);
+        return card({ title: r.title + ' (' + r.date + ')', host: HOST.jl, images: r.images, groups: true, big: o.big, all: o.all, limit: 12 });
+    }
+    /**
+     * The J1 cell or the J2 glyph for a row, by its state.
+     * @param {Object} r
+     * @param {boolean} glyph
+     * @returns {HTMLElement}
+     */
+    function jlTrigger(r, glyph) {
+        if (glyph) {
+            if (r.state === 'loaded') return r.images.length ? el('span', { class: 'tglyph' }, '🖼', el('b', {}, String(r.images.length))) : el('span');
+            return el('span', { class: 'tglyph dash' }, '🖼');
+        }
+        if (r.state === 'loaded') return r.images.length ? el('span', { class: 'cov' }, img(r.images[0].id, 'im', 'front', 'Front'), el('span', { class: 'n' }, String(r.images.length))) : el('span', { class: 'none' }, 'no scans');
+        return el('span', { class: 'lazy' + (r.state === 'loading' ? ' loading' : '') }, el('span', {}, 'hover'));
+    }
+    /**
+     * Draws one jungleland variant table; both share the rows' state.
+     * @param {string} sel
+     * @param {boolean} glyph
+     */
+    function drawJl(sel, glyph) {
+        const tb = document.querySelector(sel + ' tbody');
+        tb.replaceChildren();
+        JL_ROWS.forEach((r, k) => {
+            const t = jlTrigger(r, glyph);
+            hover(t, (o) => jlCard(r, o), () => r.state === 'loaded' && r.images.length && openViewer(jlSets, k, 0), () => {
+                if (r.state !== 'cold') return;
+                r.state = 'loading';
+                drawBothJl();
+                setTimeout(() => { r.state = 'loaded'; drawBothJl(); refreshTip(); }, 1100);
+            });
+            const title = el('td', {}, el('a', { href: '#jl' }, r.title), glyph ? t : null);
+            tb.append(el('tr', {}, glyph ? null : el('td', {}, t), title, el('td', { class: 'tnum' }, r.date), el('td', { class: 'tnum' }, r.year), el('td', {}, r.ver)));
+        });
+    }
+    /** Redraws both variants (they share state, as the script's cache would). */
+    function drawBothJl() {
+        drawJl('#jl-a', false);
+        drawJl('#jl-b', true);
+    }
+    drawBothJl();
+    document.getElementById('jl-card-pin').append(
+        el('div', {}, el('div', { class: 'arrow-note' }, 'Main Point Night: grouped by type'), card({ title: 'Main Point Night (1975-02-05)', host: HOST.jl, images: JL_ROWS[1].images, groups: true, limit: 12 })));
+
+    // ── K1: brucespringsteen.it ─────────────────────────────────────────────
+    const bsSets = BS_ROWS.filter(r => r.images.length).map(r => ({ title: r.title, host: HOST.bs, page: 'detrec.aspx?code=' + r.code, images: r.images }));
+    const bsBody = document.querySelector('#bs-table tbody');
+    /** Draws the KF table from the rows' state. */
+    function drawBs() {
+        bsBody.replaceChildren();
+        BS_ROWS.forEach((r) => {
+            let cell;
+            if (r.state === 'none') cell = el('span', { class: 'none' }, 'no photo');
+            else if (r.state === 'loaded') cell = el('span', { class: 'cov' }, img(r.images[0].id, 'im', 'photo', 'Photo'));
+            else cell = el('span', { class: 'lazy' + (r.state === 'loading' ? ' loading' : '') }, el('span', {}, 'hover'));
+            hover(cell, (o) => r.state === 'loading' ? loadingCard(r.title, null, HOST.bs)
+                : r.state === 'none' ? noteCard(r.title, 'The record page has no photo.', null)
+                    : el('div', { class: 'liner' + (o.big ? ' big' : '') }, el('div', { class: 't' }, r.title), el('div', { class: 'd' }, '1 image · ★ primary · ' + HOST.bs), el('div', { class: 'rule' }),
+                        img(r.images[0].id, '', r.title, 'Photo'), el('div', { class: 'foot' }, 'Click: viewer')),
+            () => r.state === 'loaded' && openViewer(bsSets, bsSets.findIndex(s => s.title === r.title), 0), () => {
+                if (r.state !== 'cold') return;
+                r.state = 'loading';
+                drawBs();
+                setTimeout(() => { r.state = 'loaded'; drawBs(); refreshTip(); }, 1100);
+            });
+            bsBody.append(el('tr', {}, el('td', {}, cell), el('td', {}, el('a', { href: '#bs' }, r.title)), el('td', {}, r.mx), el('td', {}, r.fmt), el('td', {}, r.label), el('td', {}, r.code)));
+        });
+    }
+    drawBs();
+
+    // ── B1 / B2: Brucebase ──────────────────────────────────────────────────
+    const bbSets = BB_ROWS.map(r => ({ title: r.date + ' · ' + r.venue + ', ' + r.city + ', ' + r.st, host: HOST.bb, page: '/gig:' + r.date, images: r.images }));
+    const bbBody = document.querySelector('#bb-table tbody');
+    BB_ROWS.forEach((r, k) => {
+        const media = el('span', { class: 'media' });
+        r.icons.forEach(name => {
+            const ic = BB_ICONS.find(x => x[0] === name);
+            const types = ICON_TYPE[name];
+            const has = types && r.images.some(i => types.includes(i.type));
+            const m = el('span', { class: 'mi' + (has ? ' has' : ''), style: '--tc: var(' + ic[1] + ')', title: name }, ic[2]);
+            if (has) {
+                hover(m, (o) => card({ title: r.date + ' · ' + name, host: HOST.bb, images: r.images, only: types, big: o.big, all: o.all,
+                    foot: [r.images.length + ' images on the gig page in all · Click: viewer on ' + name.toLowerCase() + ', ← → for the rest'] }),
+                () => openViewer(bbSets, k, r.images.findIndex(i => types.includes(i.type))));
+            }
+            media.append(m);
+        });
+        bbBody.append(el('tr', {}, el('td', { class: 'tnum' }, el('a', { href: '#bb' }, r.date)), el('td', {}, 'gig'), el('td', {}, r.venue), el('td', {}, r.city), el('td', {}, r.st), el('td', {}, 'Born In The U.S.A. Tour'), el('td', {}, media)));
+    });
+    const leg = document.getElementById('bb-legend');
+    BB_ICONS.forEach(([n, c, a]) => leg.append(el('span', {}, el('span', { class: 'mi' + (ICON_TYPE[n] ? ' has' : ''), style: '--tc: var(' + c + ')' }, a), n)));
+    document.getElementById('bb-card-pin').append(
+        el('div', {}, el('div', { class: 'arrow-note' }, '1985-01-07 · whole gig page, grouped'), card({ title: '1985-01-07 · Market Square Arena, Indianapolis, IN', host: HOST.bb, images: BB_ROWS[2].images, groups: true })),
+        el('div', {}, el('div', { class: 'arrow-note' }, '1985-01-04 · hover on Ph'), card({ title: '1985-01-04 · Photo', host: HOST.bb, images: BB_ROWS[0].images, only: ['Photo'] })));
+
+    /**
+     * A Title-glyph table (B2, L1): dashed until read, a count once loaded, gone when there is nothing.
+     * @param {string} sel
+     * @param {Array<Object>} rows
+     * @param {Function} cells (row) => extra <td>s
+     * @param {string} host
+     */
+    function glyphTable(sel, rows, cells, host) {
+        const tb = document.querySelector(sel + ' tbody');
+        const sets = rows.filter(r => r.images.length).map(r => ({ title: r.title, host, images: r.images }));
+        /** Draws the table from the rows' state. */
+        function draw() {
+            tb.replaceChildren();
+            rows.forEach((r) => {
+                let g = null;
+                if (r.state === 'loaded' && r.images.length) g = el('span', { class: 'tglyph' }, '🖼', el('b', {}, String(r.images.length)));
+                else if (r.state === 'cold' || r.state === 'loading') g = el('span', { class: 'tglyph dash' }, r.state === 'loading' ? '⏳' : '🖼');
+                if (g) {
+                    hover(g, (o) => r.state === 'loading' ? loadingCard(r.title, null, host) : r.images.length
+                        ? card({ title: r.title, host, images: r.images, groups: true, big: o.big, all: o.all }) : noteCard(r.title, 'The page has no images.', null),
+                    () => r.images.length && r.state === 'loaded' && openViewer(sets, sets.findIndex(s => s.title === r.title), 0), () => {
+                        if (r.state !== 'cold') return;
+                        r.state = 'loading';
+                        draw();
+                        setTimeout(() => { r.state = 'loaded'; draw(); refreshTip(); }, 1100);
+                    });
+                }
+                tb.append(el('tr', {}, el('td', {}, el('a', { href: '#' }, r.title), g), ...cells(r)));
+            });
+        }
+        draw();
+    }
+    glyphTable('#bbs-table', BBS_ROWS, (r) => [el('td', {}, r.letter)], HOST.bb);
+    document.getElementById('bbs-card-pin').append(card({ title: BBS_ROWS[0].title, host: HOST.bb, images: BBS_ROWS[0].images, groups: true }));
+    glyphTable('#lyr-table', LYR_ROWS, (r) => [el('td', {}, r.lyr), el('td', {}, r.type), el('td', {}, r.artist), el('td', {}, 'B')], HOST.sl);
+    const lyrImg = img('sllyr', '', 'song list', 'Lyric sheet');
+    lyrImg.style.cssText = 'width: 200px; border: 1px solid var(--ln-rule)';
+    document.getElementById('lyr-card-pin').append(
+        el('div', { class: 'liner' }, el('div', { class: 't' }, 'Baby Me'), el('div', { class: 'd' }, '1 image · ★ primary · ' + HOST.sl), el('div', { class: 'rule' }),
+            el('div', { style: 'display: flex; gap: 10px; align-items: flex-start; flex-wrap: wrap' }, lyrImg,
+                el('div', { class: 'd', style: 'flex: 1 1 160px' }, 'Proposed handwritten song lists for the third album, reproduced in Backstreets magazine (the image\'s own alt text).')),
+            el('div', { class: 'foot' }, 'Click: viewer')));
+
+    // ── G1: gallery ─────────────────────────────────────────────────────────
+    const galBody = document.getElementById('gal-body');
+    const galRows = SL_ROWS.slice(1, 3).concat([{ title: SL148.title, date: '1973', images: SL148.images, n: '148' }]);
+    const galSets = galRows.map(r => ({ title: r.title, host: HOST.sl, images: r.images }));
+    galRows.forEach((r, k) => {
+        const tiles = el('div', { class: 'tiles' });
+        r.images.filter(i => i.id).slice(0, 8).forEach((i, j) => tiles.append(el('figure', {}, el('span', { onclick: () => openViewer(galSets, k, j) }, img(i.id, 'im', i.cap, i.type)), el('figcaption', {}, i.cap + (i.primary ? ' ★' : '')))));
+        if (r.images.length > 8) tiles.append(el('span', { class: 'missing' }, '+' + (r.images.length - 8) + ' more in the viewer'));
+        galBody.append(el('div', { class: 'gal-rel' }, el('div', { class: 'who' }, el('b', {}, r.title), el('span', {}, r.images.length + ' images · ' + (r.date || ''))), tiles));
+    });
+    galBody.append(el('div', { class: 'gal-rel' }, el('div', { class: 'who' }, el('b', {}, 'The Bruce Springsteen Story Vol. 1'), el('span', {}, 'artwork available')), el('span', { class: 'missing' }, 'Not loaded yet. Hover its cover in the table, or use "Load the other 32".')));
+    document.getElementById('gal-more').addEventListener('click', (e) => { e.target.textContent = 'In the script this starts the run; the mockup stops here.'; });
+})();
+</script>
+</body>
+</html>

@@ -4,7 +4,7 @@
         "why": "The tooltip engine finds a resolver card by data-mbtt-fn only.",
         "edits": [
             {
-                "find": "<a class=\"mb-dg-thumblink\" data-mbtt-fn=\"dg-img\" href=",
+                "find": "<a class=\"mb-dg-thumblink\" data-mbtt-fn=\"fi-img\" data-mb-fi=\"dg\" href=",
                 "replace": "<a class=\"mb-dg-thumblink\" href="
             }
         ],
@@ -17,7 +17,7 @@
         "why": "Without its case the stamp resolves to no card.",
         "edits": [
             {
-                "find": "                case 'dg-img': return _dgImgCardHtml(el);\n",
+                "find": "                case 'fi-img':\n",
                 "replace": ""
             }
         ],
@@ -30,7 +30,7 @@
         "why": "A row the pointer only passed over must cost no request (asked after the rate slot).",
         "edits": [
             {
-                "find": "                wanted: () => _dgImgCardShows(a),",
+                "find": "                wanted: () => _fiCardShows(a),",
                 "replace": "                wanted: () => true,"
             }
         ],
@@ -43,8 +43,8 @@
         "why": "sa_dg_tip_images off: no card and no request.",
         "edits": [
             {
-                "find": "        if (Lib.settings.sa_dg_tip_images === false) return null;",
-                "replace": ""
+                "find": "        cardOn: () => Lib.settings.sa_dg_tip_images !== false,",
+                "replace": "        cardOn: () => true,"
             }
         ],
         "spec": "tests/fixtures/discogs-image-card.spec.js",
@@ -56,8 +56,8 @@
         "why": "The ★ tile and the primary/secondary tally come from imageType.",
         "edits": [
             {
-                "find": "        const shown = images.map(im => ({ ...im, front: im.imageType === 'primary', types: im.imageType ? [im.imageType] : [] }));",
-                "replace": "        const shown = images;"
+                "find": "        cardImages: (images) => images.map(im => ({ ...im, front: im.imageType === 'primary', types: im.imageType ? [im.imageType] : [] })),",
+                "replace": "        cardImages: null,"
             }
         ],
         "spec": "tests/fixtures/discogs-image-card.spec.js",

@@ -4654,6 +4654,22 @@
                          'closes either. On a touch screen, tapping a title opens the window.'
         },
 
+        sa_sl_tip_images: {
+            label: 'Cover column: every image of an item on hover',
+            type: 'checkbox',
+            default: true,
+            description: 'Needs the setting above that switches the site on. Pointing at a cover in a ' +
+                         'collection, bootleg or CD and vinyl bootleg list shows a card with the cover and every ' +
+                         'artwork scan of that item, as the Cover Art column does on MusicBrainz. The scans are on ' +
+                         'the item\'s own page: the first time, that page is read — one request for that row only, ' +
+                         'kept 30 days and shared with the item preview, so a later click or preview costs nothing; ' +
+                         'moving on before its turn asks nothing. A bootleg the list marks as having no artwork is ' +
+                         'never asked. A click on a cover opens the artwork viewer either way (Ctrl-click: the ' +
+                         'item page). The same goes for the lyrics index: a small 🖼 after each title stands for ' +
+                         'the song page\'s pictures (now and then a hand-written sheet); dashed until that page ' +
+                         'has been read, then their count, or gone when it has none.'
+        },
+
         sa_sl_compact_nav: {
             label: 'Compact category and filter bar on springsteenlyrics.com lists',
             type: 'checkbox',
@@ -4733,11 +4749,11 @@
             description: 'Off by default. When on, the script also runs on jungleland.it\'s ' +
                          'bootleg artwork list (html/list.htm) and offers a "Show all" button ' +
                          'that turns the long list of links into one filterable, sortable table ' +
-                         'with Title, Date, Year and Version columns, plus the date split into ' +
+                         'with Art, Title, Date, Year and Version columns, plus the date split into ' +
                          'day, month, year, weekday and month name. It works only when list.htm is ' +
                          'opened in its own tab: inside the site\'s two-frame view ' +
                          '(artwork.htm) the narrow left frame is left as it is. An item\'s own page ' +
-                         'is read only for the preview below. When off, the script exits on that ' +
+                         'is read only for the Art column and the preview below. When off, the script exits on that ' +
                          'site before touching the page. Settings are shared with MusicBrainz, so ' +
                          'this can be switched on from either site.'
         },
@@ -4749,11 +4765,25 @@
             description: 'Off by default; needs the setting above. When on, resting the pointer on ' +
                          'a title in the table with Ctrl held shows a card with what its artwork page adds: the ' +
                          'uploader and the scans (front, back, discs, booklet). The page is ' +
-                         'fetched in the background, at most one a second, and kept for 30 days. ' +
+                         'fetched in the background, at most one a second, and kept for half a year. ' +
                          'Press Space to pin the card into a window you can move, resize and ' +
                          'scroll; ← and → step through the rows, and its "Live page" view shows ' +
                          'the site\'s own page. Esc closes either. On a touch screen, tapping a ' +
                          'title opens the window.'
+        },
+
+        sa_jl_tip_images: {
+            label: 'Art column: every scan of an entry on hover',
+            type: 'checkbox',
+            default: true,
+            description: 'Needs the setting above that switches the site on. The table\'s Art column shows ' +
+                         'a dashed tile until an entry\'s artwork page has been read, then its front scan and ' +
+                         'the number of scans. Pointing at it shows a card with every scan, typed as on ' +
+                         'MusicBrainz (Front, Back, Medium for a CD, Booklet): the first time, that page is read — ' +
+                         'one request for that row only, kept half a year and shared with the preview, so a ' +
+                         'later click, preview or reload costs nothing; moving on before its turn asks nothing. ' +
+                         'Off: no card, and pointing asks nothing. A click on the Art cell opens the artwork viewer ' +
+                         'either way (Ctrl-click: the entry\'s page).'
         },
 
         // ============================================================
@@ -4771,11 +4801,11 @@
             description: 'Off by default. When on, the script also runs on brucespringsteen.it\'s ' +
                          'record list (DB/records.aspx) and offers two buttons, "Unofficial" and ' +
                          '"Official", which load every record of that kind, all formats ticked, ' +
-                         'into one filterable, sortable table (Title, Matrix or Catalogue, Format, ' +
+                         'into one filterable, sortable table (Photo, Title, Matrix or Catalogue, Format, ' +
                          'Label or Country, Code, Notes). It works only when records.aspx is ' +
                          'opened in its own tab: inside the site\'s two-frame view (Blegsdx.htm) ' +
                          'the narrow list frame is left as it is. A record\'s own page is read ' +
-                         'only for the preview below. When off, the script exits on that site ' +
+                         'only for the Photo column and the preview below. When off, the script exits on that site ' +
                          'before touching the page. Settings are shared with MusicBrainz, so this ' +
                          'can be switched on from either site.'
         },
@@ -4788,11 +4818,24 @@
                          'a record\'s title in the table with Ctrl held shows a card with what the record\'s own ' +
                          'page adds: the tracklist with the show each track comes from, the ' +
                          'notes, and the photo when there is one. The page is fetched in the ' +
-                         'background, at most one a second, and kept for 30 days. Press Space to ' +
+                         'background, at most one a second, and kept for half a year. Press Space to ' +
                          'pin the card into a window you can move, resize and scroll; ← and → ' +
                          'step through the rows, and its "Live page" view shows the site\'s own ' +
                          'page. Esc closes either. On a touch screen, tapping a title opens the ' +
                          'window.'
+        },
+
+        sa_bs_tip_images: {
+            label: 'Photo column: the record\'s photo on hover',
+            type: 'checkbox',
+            default: true,
+            description: 'Needs the setting above that switches the site on. The table\'s Photo column shows ' +
+                         'a dashed tile until a record\'s page has been read, then its photo, or "no photo" ' +
+                         '(many records have none). Pointing at it shows the photo large: the first time, the ' +
+                         'record\'s page and its photo are read — for that row only, kept half a year and shared ' +
+                         'with the preview, so a later click, preview or reload costs nothing; moving on before ' +
+                         'its turn asks nothing. Off: no card, and pointing asks nothing. A click on the Photo ' +
+                         'cell opens the artwork viewer either way (Ctrl-click: the record\'s page).'
         },
 
         // ============================================================
@@ -4874,6 +4917,22 @@
                          'through the rows, and its "Live page" view shows the wiki\'s own page ' +
                          'with every tab opened. Esc closes either. On a touch screen, tapping a ' +
                          'title opens the window.'
+        },
+
+        sa_bb_tip_images: {
+            label: 'Media icons and song glyphs: the page\'s images on hover',
+            type: 'checkbox',
+            default: true,
+            description: 'Needs a setting above that switches the wiki on. On a year page\'s table the Photo, ' +
+                         'Ticket, News and Memorabilia icons are ringed: pointing at one shows a card with ' +
+                         'those images from the entry\'s own page. On the song list a small 🖼 after each title ' +
+                         'does the same for the song\'s graph and lyric sheets; it is dashed until the song\'s ' +
+                         'page has been read, then shows how many images there are, or disappears when there ' +
+                         'are none. The first time, the page is read — one request for that row only, kept 30 ' +
+                         'days and shared with the preview, so a later click, preview or reload costs nothing; ' +
+                         'moving on before its turn asks nothing. Off: no card, and pointing asks nothing. A click ' +
+                         'opens the artwork viewer either way, on the icon\'s kind with every other kind one ← → ' +
+                         'away (Ctrl-click: the page).'
         },
 
         // ============================================================
@@ -11466,7 +11525,9 @@
      * (relative `collection.php?item=…`/`bootlegs.php?item=…`, which resolves
      * against the same directory on the live and on a fetched page). Cover
      * re-emits the card's thumbnail with `loading="lazy"`, so a consolidated
-     * list of hundreds of rows only loads the images scrolled into view.
+     * list of hundreds of rows only loads the images scrolled into view; its
+     * link is stamped for the image card and viewer click (`_SL_FI`), and a
+     * bootleg's with the card's own "artwork available" (`data-mb-sl-art`).
      *
      * @param {Element}  card        The `div.blog-post` element.
      * @param {string}   kind        `'collection'` or `'bootlegs'`.
@@ -11507,6 +11568,16 @@
             img.setAttribute('alt', title);
             img.className = 'mb-sl-cover';
             linkCell(img);
+            // The Cover column's image card and viewer click (_SL_FI): the
+            // stamps are attributes, so every render's clones keep them. A
+            // bootleg card says itself whether the item has artwork (the
+            // Artwork column's test); a "0" row never reads its item page.
+            const coverLink = href ? tr.lastElementChild.firstElementChild : null;
+            if (coverLink) {
+                coverLink.dataset.mbttFn = 'fi-img';
+                coverLink.dataset.mbFi = 'sl';
+                if (kind === 'bootlegs') coverLink.dataset.mbSlArt = body.querySelector('.bi-image') ? '1' : '0';
+            }
         } else {
             textCell('');
         }
@@ -11847,6 +11918,8 @@
             // Cold"), the site's capitals as the tooltip.
             _mbSetSiteTitle(link, a.textContent.replace(/\s+/g, ' ').trim(), titleTd);
             titleTd.appendChild(link);
+            // The song page's images (mockup L1): no text, see _fiGlyph().
+            titleTd.appendChild(_fiGlyph(docContext, 'sll', a.getAttribute('href')));
             tr.appendChild(titleTd);
             // bi-file-earmark-text: lyrics on the song page; the plain
             // bi-file-earmark: "Lyrics not available" (checked on song=babyme).
@@ -12376,7 +12449,8 @@
      * same way it reads a MusicBrainz h1.
      *
      * Also tags `<body>` with `mb-sa-host-sl` (the scope of every SL style
-     * rule), installs `_ensureSlStyle()`, and records the site's navbar height
+     * rule), installs `_ensureSlStyle()` and the covers' viewer click
+     * (`_fiInstall()`), and records the site's navbar height
      * in `--mb-sl-navbar-h` for the sticky table header. Nothing else on the
      * page changes until the user presses the "Show all" button.
      *
@@ -12391,6 +12465,7 @@
 
         document.body.classList.add('mb-sa-host-sl');
         _ensureSlStyle();
+        _fiInstall();
         const navbar = document.querySelector('.navbar.sticky, .navbar-fixed-top, .navbar');
         if (navbar && navbar.offsetHeight > 0) {
             document.documentElement.style.setProperty('--mb-sl-navbar-h', `${navbar.offsetHeight}px`);
@@ -14748,10 +14823,11 @@
     // docs/claude/jungleland.md.
 
     /**
-     * Column headers of the jungleland.it table, in order.
+     * Column headers of the jungleland.it table, in order. Art is the lazy
+     * image cell (`_fiLazyCell()`, `_JL_FI`; 2026-10-23).
      * @type {string[]}
      */
-    const _JL_HEADERS = ['Title', 'Date', 'Year', 'Version'];
+    const _JL_HEADERS = ['Art', 'Title', 'Date', 'Year', 'Version'];
 
     /**
      * Reads a jungleland.it entry's version number from its link.
@@ -14830,7 +14906,11 @@
     }
 
     /**
-     * Builds one table row (Title, Date, Year, Version) for a jungleland.it entry.
+     * Builds one table row (Art, Title, Date, Year, Version) for a jungleland.it entry.
+     *
+     * Art is the lazy image cell (`_fiLazyCell()`): a dashed tile linking
+     * the entry's page, painted with its front scan once that page is read
+     * (`_JL_FI`, `_fiPaint()`, `_fiAfterRender()`).
      *
      * The Title cell links to the entry's artwork page by its resolved
      * absolute URL, in a new tab: standalone there is no `inferioredx1`
@@ -14844,6 +14924,7 @@
     function _jlBuildRow(item, docContext) {
         const { title, date, year } = _jlParseItem(item.anchor.textContent, item.section);
         const tr = docContext.createElement('tr');
+        tr.appendChild(_fiLazyCell(docContext, 'jl', item.anchor.href));
         const titleTd = docContext.createElement('td');
         const link = docContext.createElement('a');
         link.href = item.anchor.href;
@@ -15010,6 +15091,7 @@
 
         document.body.classList.add('mb-sa-host-jl');
         _ensureJlStyle();
+        _fiInstall();
         const h1 = document.createElement('h1');
         h1.className = 'mb-jl-h1';
         const bdi = document.createElement('bdi');
@@ -15046,8 +15128,8 @@
      * @type {{unofficial: string[], official: string[]}}
      */
     const _BS_HEADERS = {
-        unofficial: ['Title', 'Matrix', 'Format', 'Label', 'Code', 'Notes'],
-        official: ['Title', 'Catalogue', 'Format', 'Country', 'Promo', 'Code', 'Notes']
+        unofficial: ['Photo', 'Title', 'Matrix', 'Format', 'Label', 'Code', 'Notes'],
+        official: ['Photo', 'Title', 'Catalogue', 'Format', 'Country', 'Promo', 'Code', 'Notes']
     };
 
     /**
@@ -15158,6 +15240,8 @@
     function _bsBuildRow(p, kind, docContext) {
         const r = _bsReadRecord(p);
         const tr = docContext.createElement('tr');
+        // Photo: the lazy image cell (_fiLazyCell(), _BS_FI; 2026-10-23).
+        tr.appendChild(_fiLazyCell(docContext, 'bs', r.href));
         const titleTd = docContext.createElement('td');
         const link = docContext.createElement('a');
         link.href = r.href;
@@ -15344,6 +15428,7 @@
 
         document.body.classList.add('mb-sa-host-bs');
         _ensureBsStyle();
+        _fiInstall();
         _bsCheckAllFormats();
         if (document.readyState !== 'complete') {
             window.addEventListener('load', () => _bsCheckAllFormats(), { once: true });
@@ -15593,8 +15678,9 @@
      * @returns {string}
      */
     function _dgThumbCell(thumb) {
-        // data-mbtt-fn: the hover card of every image of the row (_dgImgCardHtml()).
-        return `<td class="mb-dg-imgcell">${thumb ? `<a class="mb-dg-thumblink" data-mbtt-fn="dg-img" href="${_rgEsc(thumb)}" target="_blank" rel="noopener noreferrer">` +
+        // data-mbtt-fn + data-mb-fi: the hover card of every image of the
+        // row and the viewer click (_fiCardHtml(), _fiClick(); _DG_FI).
+        return `<td class="mb-dg-imgcell">${thumb ? `<a class="mb-dg-thumblink" data-mbtt-fn="fi-img" data-mb-fi="dg" href="${_rgEsc(thumb)}" target="_blank" rel="noopener noreferrer">` +
             `<img class="mb-dg-thumb" src="${_rgEsc(thumb)}" alt="" width="40" height="40" loading="lazy" referrerpolicy="no-referrer"></a>` : ''}</td>`;
     }
 
@@ -16183,7 +16269,7 @@
 
     /**
      * One row of a discogs.com table as the artwork viewer steps through
-     * them (`_dgThumbClick()`): its thumbnail, its title, the link
+     * them (`_fiClick()`): its thumbnail, its title, the link
      * previews' target for its release or master (null when the row has no
      * such link), its viewer key, and whether the viewer asked for its record
      * (`asked`: the full images then cost a request, not the cache).
@@ -16218,44 +16304,10 @@
             }));
         }
         if (st && st.status === 'failed') {
-            return thumbOnly(`Discogs did not answer (${st.detail}). Showing the 150 px thumbnail.`, () => _dgArtLoad(row, true));
+            return thumbOnly(`Discogs did not answer (${st.detail}). Showing the 150 px thumbnail.`, () => _fiLoad(_DG_FI, row, true));
         }
         const spacing = _extDiscogsToken() ? 'about 1 s with your token' : 'about 2.5 s; 1 s with a Discogs token';
         return thumbOnly(`Loading the full size from Discogs… one request for this one (${spacing}).`, null);
-    }
-
-    /**
-     * Asks for a row's record once the viewer shows it — never ahead — and
-     * shows its full images when it arrives. Wanted only while the viewer
-     * is on that row (`_extGet()` asks `wanted()` when the slot comes up).
-     *
-     * @param {DgArtRow} row
-     * @param {boolean} [force] - "Try again" after a failure.
-     * @returns {void}
-     */
-    function _dgArtLoad(row, force = false) {
-        const refresh = () => _artViewerReplaceImages(_DG_ART_CTX, row.path, _dgArtImages(row));
-        if (!row.target) return;
-        const st = _mbPop.get(row.target.key);
-        if (!force && st && (st.status === 'done' || st.status === 'failed')) return;
-        if (!st || st.status !== 'loading') row.asked = true;
-        _extLoad(row.target, {
-            force: false, repaint: refresh,
-            wanted: () => !!_artViewerState && _artViewerState.ctx === _DG_ART_CTX && _artViewerState.entityPath === row.path,
-        });
-        refresh();
-    }
-
-    /**
-     * The index of a discogs.com table's Title column (its first header
-     * starting "Title"), -1 for none.
-     *
-     * @param {HTMLTableElement} table
-     * @returns {number}
-     */
-    function _dgTitleColIdx(table) {
-        return Array.from(table.querySelectorAll('thead tr:first-child th'))
-            .findIndex(th => (th.dataset.colName || th.textContent).trim().startsWith('Title'));
     }
 
     /**
@@ -16264,7 +16316,7 @@
      * release or master), null when that column has no such link.
      *
      * @param {HTMLAnchorElement} l - The row's `a.mb-dg-thumblink`.
-     * @param {number} titleIdx - `_dgTitleColIdx()` of its table.
+     * @param {number} titleIdx - `_fiTitleColIdx()` of its table.
      * @param {string} path - The viewer's key for the row.
      * @returns {DgArtRow}
      */
@@ -16279,113 +16331,76 @@
     }
 
     /**
-     * Whether `#mb-stat-tooltip` still shows the card of this thumbnail:
-     * the card is on screen and the pointer still on the link.
-     *
-     * @param {HTMLAnchorElement} a
-     * @returns {boolean}
-     */
-    function _dgImgCardShows(a) {
-        const tip = document.getElementById('mb-stat-tooltip');
-        return !!tip && tip.style.display === 'block' && a.isConnected && a.matches(':hover');
-    }
-
-    /**
-     * The hover card of a thumbnail in a discogs.com table (vzell,
-     * 2026-10-19: "all images in a popup, like the CAA/EAA column"): the
-     * B1 artwork card (`_artCardCoreHtml()`) of every image of the row's
-     * release or master — the record the viewer and the link preview use
+     * A discogs.com table's thumbnails as a provider of the foreign-image
+     * card and viewer click (`_fiCardHtml()`, `_fiClick()`; vzell,
+     * 2026-10-18/19). The hover card shows every image of the row's release
+     * or master — the record the viewer and the link preview use
      * (`_extLoad()`: memory, IndexedDB, else ONE request for this row, never
-     * a neighbour's). Until it is in, "Loading" with the list's thumbnail;
-     * the request is wanted only while this card shows (`_dgImgCardShows()`,
-     * asked after the rate slot), and the card repaints when it arrives.
-     * Off with `sa_dg_tip_images`; no card for a row without a release or
-     * master link.
-     *
-     * @param {HTMLAnchorElement} a - The `a.mb-dg-thumblink`.
-     * @returns {?string} Card HTML, or null for none.
+     * a neighbour's); off with `sa_dg_tip_images`; no card for a row without
+     * a release or master link. A plain click opens the viewer on the row's
+     * images at FULL size, asked for when the viewer shows the row
+     * (`_fiLoad()`), the list's 150 px thumbnail shown meanwhile (its URL is
+     * signed: no larger size can be made from it); a master's own images
+     * too (vzell). Discogs' primary image is the one MusicBrainz would call
+     * the main front: the card's ★ and its type tally (primary, secondary).
+     * @type {FiProvider}
      */
-    function _dgImgCardHtml(a) {
-        if (Lib.settings.sa_dg_tip_images === false) return null;
-        const table = a.closest('#mb-dg-root table.tbl');
-        if (!table) return null;
-        const row = _dgArtRowFor(a, _dgTitleColIdx(table), `dg-card:${a.href}`);
-        if (!row.target) return null;
-        const title = row.title || 'Discogs';
-        const box = (body) => `<div style="max-width:310px;"><div class="mb-tt-title">${_rgEsc(title)}</div>${body}</div>`;
-        const st = _mbPop.get(row.target.key);
-        if (!st || (st.status !== 'done' && st.status !== 'failed')) {
-            _extLoad(row.target, {
-                force: false,
-                repaint: () => {
-                    if (!_dgImgCardShows(a)) return;
-                    if (_statTipApi) _statTipApi.repaint(a);
-                },
-                wanted: () => _dgImgCardShows(a),
-            });
-            return box(`<div class="mb-art-card-tiles"><span class="mb-art-card-tile"><img src="${_rgEsc(row.thumb)}" alt="" referrerpolicy="no-referrer"></span></div>` +
-                `<div class="mb-tt-comment"><span class="mb-dp-spin">◌</span> Loading every image of this one from Discogs…</div>`);
-        }
-        const images = _dgArtImages(row);
-        if (images.length === 1 && images[0].note) return box(`<div class="mb-tt-dim">${_rgEsc(images[0].note)}</div>`);
-        // Discogs' primary image is the one MusicBrainz would call the main
-        // front: the card's ★ and its type tally (primary, secondary).
-        const shown = images.map(im => ({ ...im, front: im.imageType === 'primary', types: im.imageType ? [im.imageType] : [] }));
-        return _artCardCoreHtml({
-            el: a, ctx: _DG_ART_CTX, images: shown, order: shown.map((_, i) => i), title, hit: () => false, matches: '',
-            foot: 'Click: viewer',
-        });
-    }
+    const _DG_FI = {
+        ctx: _DG_ART_CTX,
+        name: 'Discogs',
+        tableSel: '#mb-dg-root table.tbl',
+        linkSel: 'a.mb-dg-thumblink',
+        cardOn: () => Lib.settings.sa_dg_tip_images !== false,
+        rowFor: (a, table, path) => _dgArtRowFor(a, _fiTitleColIdx(table), path),
+        hasRecord: (row) => !!row.target,
+        state: (row) => {
+            const st = _mbPop.get(row.target.key);
+            return st && ['loading', 'done', 'failed'].includes(st.status) ? st.status : 'cold';
+        },
+        request: (row, o) => _extLoad(row.target, { force: false, repaint: o.repaint, wanted: o.wanted }),
+        images: _dgArtImages,
+        cardImages: (images) => images.map(im => ({ ...im, front: im.imageType === 'primary', types: im.imageType ? [im.imageType] : [] })),
+        loadingText: () => 'Loading every image of this one from Discogs…',
+        foot: 'Click: viewer',
+        title: () => {
+            const h1 = document.querySelector('#mb-dg-root h1.mb-dg-h1 bdi');
+            return h1 ? h1.textContent : '';
+        },
+        peekSaved: (rows) => _dgFiPeek(rows),
+        spacingS: () => _extSpacingMs('api.discogs.com') / 1000,
+        tokenSpacingS: () => (_extDiscogsToken() ? 0 : 1),
+        kept: () => {
+            const h = Math.round(_extTtlMs() / 3600000);
+            return h % 24 ? `${h} hours` : h === 168 ? 'a week' : `${h / 24} days`;
+        },
+        gal: { heading: 'Images', where: 'Image column', point: 'its image', rows: 'rows', page: 'Discogs record', pages: 'Discogs records' },
+    };
 
     /**
-     * A plain click on a thumbnail of a discogs.com table opens the artwork
-     * viewer (vzell, 2026-10-18) on that row's images at FULL size: the
-     * row's release or master record (its own images, a master's too:
-     * vzell), asked for when the viewer shows the row (`_dgArtLoad()`), the
-     * list's 150 px thumbnail shown meanwhile (its URL is signed: no larger
-     * size can be made from it). ← → step through the row's images,
-     * Shift+← → through the table's shown rows, in their order (and ← → past
-     * either end, with `sa_art_viewer_cross_rows`). A row the link previews
-     * already read costs nothing. Delegated on the document (capture),
-     * since every render clones the rows. Ctrl, Shift, Alt or ⌘ keep the
-     * link's new tab.
+     * Puts the Discogs records of some rows that are saved in this browser
+     * in memory, as `_mbLoad()` would on a hover: one `getAll()` of the
+     * detail-page database (they are kept there as `mb:<key>`), no request to
+     * Discogs; a record of the reader's version younger than `_extTtlMs()`,
+     * not already in memory. The gallery's read at open (`_fgalOpen()`).
      *
-     * @param {MouseEvent} e
-     * @returns {void}
+     * @param {DgArtRow[]} rows
+     * @returns {Promise<number>} Records put in memory.
      */
-    function _dgThumbClick(e) {
-        if (e.button !== 0 || e.ctrlKey || e.shiftKey || e.altKey || e.metaKey || !(e.target instanceof Element)) return;
-        const a = e.target.closest('#mb-dg-root table.tbl a.mb-dg-thumblink');
-        if (!a) return;
-        const table = a.closest('table.tbl');
-        const links = Array.from(table.querySelectorAll('tbody > tr a.mb-dg-thumblink'))
-            .filter(l => l.closest('tr').style.display !== 'none' && l.getClientRects().length);
-        const k = links.indexOf(a);
-        if (k < 0) return;
-        const titleIdx = _dgTitleColIdx(table);
-        /** @type {DgArtRow[]} */
-        const rows = links.map((l, i) => _dgArtRowFor(l, titleIdx, `dg:${i}:${l.href}`));
-        e.preventDefault();
-        e.stopImmediatePropagation();
-        _DG_ART_CTX.imagesCache.clear();
-        const show = (i) => {
-            _DG_ART_CTX.imagesCache.set(rows[i].path, _dgArtImages(rows[i]));
-            // After the cache entry: a record already there is shown at once.
-            setTimeout(() => _dgArtLoad(rows[i]), 0);
-        };
-        let cur = k;
-        show(cur);
-        const h1 = document.querySelector('#mb-dg-root h1.mb-dg-h1 bdi');
-        _artViewerOpen(_DG_ART_CTX, rows[cur].path, null, 0, {
-            opener: a, title: h1 ? h1.textContent : '', rowPos: { k: cur + 1, n: rows.length },
-            onGroupStep: (d) => {
-                const next = cur + d;
-                if (next < 0 || next >= rows.length) return null;
-                cur = next;
-                show(cur);
-                return { entityPath: rows[cur].path, list: null, title: h1 ? h1.textContent : '', rowPos: { k: cur + 1, n: rows.length } };
-            },
+    async function _dgFiPeek(rows) {
+        const want = new Map();
+        rows.forEach(r => { if (r.target && !_mbPop.has(r.target.key)) want.set(`mb:${r.target.key}`, r.target); });
+        if (!want.size) return 0;
+        const records = await _dpIdbAll().catch(() => []);
+        const ttl = _extTtlMs();
+        const now = Date.now();
+        let n = 0;
+        records.forEach(rec => {
+            const t = rec && want.get(rec.url);
+            if (!t || rec.v !== (t.reader.version || _EXT_IDB_VERSION) || now - rec.at >= ttl || _mbPop.has(t.key)) return;
+            _mbPop.set(t.key, { status: 'done', data: rec.data, at: rec.at, cached: true, detail: '', listeners: new Set(), wants: [] });
+            n++;
         });
+        return n;
     }
 
     /**
@@ -16402,7 +16417,7 @@
      * Also tags `<body>` with `mb-sa-host-dg` (and `mb-dg-unlock-scroll` on a
      * submissions list's browser view, whose subbrowser.css locks the
      * window's scrolling), installs `_ensureDgStyle()` and the thumbnails'
-     * viewer click (`_dgThumbClick()`).
+     * viewer click (`_fiInstall()`).
      * Nothing else on the page changes until the user presses a button.
      *
      * @returns {?HTMLHeadingElement} The `<h1>` to use as header container, or
@@ -16417,7 +16432,7 @@
         // #hpane_wrap) locks the window's scrolling (_ensureDgStyle()).
         if (document.querySelector('table#browser, #hpane_wrap')) document.body.classList.add('mb-dg-unlock-scroll');
         _ensureDgStyle();
-        document.addEventListener('click', _dgThumbClick, true);
+        _fiInstall();
         const root = document.createElement('section');
         root.id = 'mb-dg-root';
         const h1 = document.createElement('h1');
@@ -17996,7 +18011,8 @@
      * Builds one table row (Title, Letter) for a Brucebase song.
      *
      * The Title cell links to the song's page by its resolved absolute URL,
-     * in the same tab, as the site's own list does. Its text is in
+     * in the same tab, as the site's own list does, followed by the song's
+     * image glyph (`_fiGlyph()`, `_BBS_FI`; no text). Its text is in
      * MusicBrainz title style while `sa_foreign_mb_titles` is on
      * (`_mbSetSiteTitle()`: "Born In The U.S.A." → "Born in the U.S.A.").
      *
@@ -18011,6 +18027,7 @@
         link.href = item.anchor.href;
         _mbSetSiteTitle(link, item.anchor.textContent.replace(/\s+/g, ' ').trim(), titleTd);
         titleTd.appendChild(link);
+        titleTd.appendChild(_fiGlyph(docContext, 'bbs', item.anchor.href));
         tr.appendChild(titleTd);
         const letterTd = docContext.createElement('td');
         letterTd.textContent = item.letter;
@@ -18149,6 +18166,15 @@
      * @type {RegExp}
      */
     const _BB_ICON_SRC_RE = /\/00([A-Za-z]+)-32\.png$/;
+
+    /**
+     * The Media icons whose kind the entry's page holds as images (photos,
+     * tickets, passes, clippings: scripts/probe-foreign-images.py,
+     * 2026-10-23): `_bbYearBuildRow()` makes them open the foreign-image
+     * card and viewer (`_BB_FI`). The other icons stay plain.
+     * @type {Set<string>}
+     */
+    const _BB_FI_MEDIA_KINDS = new Set(['Photo', 'Ticket', 'News', 'Memorabilia']);
 
     /**
      * Matches a set paragraph's label, the text before its first colon
@@ -18569,8 +18595,11 @@
      * (absolute) intact, so its song links get the detail preview. Media is
      * the entry's icon row, one `<li>` per icon: the site's own image and
      * its label as text (shown by the icon, read by filters and the 📊
-     * dropdown). The "Help Us" icon and the request text after it are the
-     * Info wanted column instead.
+     * dropdown). An unlinked Photo, Ticket, News or Memorabilia icon of an
+     * entry with a page of its own links that page as the foreign-image
+     * card's and viewer's trigger (`a.mb-fi-media`, `_BB_FI`; the label's
+     * text is unchanged). The "Help Us" icon and the request text after it
+     * are the Info wanted column instead.
      *
      * While `sa_foreign_mb_titles` is on, Venue, City, Country (not "USA")
      * and the songs of Soundcheck and Setlist are in MusicBrainz title
@@ -18708,6 +18737,19 @@
                 if (m.link) {
                     const a = docContext.createElement('a');
                     a.setAttribute('href', _bbAbsHref(m.link.getAttribute('href')));
+                    a.appendChild(img);
+                    li.appendChild(a);
+                } else if (href && _BB_FI_MEDIA_KINDS.has(m.label)) {
+                    // The kinds with images on the entry's page open them:
+                    // the foreign-image card and viewer (`_BB_FI`).
+                    const a = docContext.createElement('a');
+                    a.className = 'mb-fi-media';
+                    a.dataset.mbttFn = 'fi-img';
+                    a.dataset.mbFi = 'bb';
+                    a.dataset.mbFiKind = m.label;
+                    a.setAttribute('href', _bbAbsHref(href));
+                    a.target = '_blank';
+                    a.rel = 'noopener';
                     a.appendChild(img);
                     li.appendChild(a);
                 } else {
@@ -19491,7 +19533,8 @@
      * for file names) reads it like a MusicBrainz h1.
      *
      * Also tags `<body>` with `mb-sa-host-bb` (the scope of every Brucebase
-     * style rule), installs `_ensureBbStyle()` and arranges the wiki's side
+     * style rule), installs `_ensureBbStyle()` and the foreign-image viewer
+     * click (`_fiInstall()`: the Media icons, the song glyphs) and arranges the wiki's side
      * bar (`_bbArrangeSideBar()`). On Recent changes it also sets the site's
      * "Revisions per page" to 200 (`_bbChangesPerPageSelect()`). Nothing else
      * on the page changes until the user presses a button.
@@ -19506,6 +19549,7 @@
 
         document.body.classList.add('mb-sa-host-bb');
         _ensureBbStyle();
+        _fiInstall();
         _bbArrangeSideBar();
         if (/^\/system:recent-changes\/?$/.test(window.location.pathname)) _bbChangesPerPageSelect();
         const pageTitle = document.getElementById('page-title');
@@ -19657,9 +19701,13 @@
      * version is ignored, so a parser change never shows stale fields.
      * 2: Brucebase's "Released on" is one release per line, and its live
      *    releases are their own field (`_bbReleaseLines()`).
+     * 3: Brucebase pages carry their gallery images (`_bbPageImages()`): a
+     *    song's graph and lyric sheets, and the photos, tickets, passes and
+     *    clippings of a year page's entry (`_dpParseBbPage()`), for the
+     *    foreign-image card and viewer (org/foreign-images.org, phase 3).
      * @type {number}
      */
-    const _DP_PARSER_VERSION = 2;
+    const _DP_PARSER_VERSION = 3;
 
     /**
      * IndexedDB database of parsed detail pages. Deliberately NOT a store in
@@ -19678,10 +19726,24 @@
     const _DP_IDB_VERSION = 1;
 
     /**
-     * How long a parsed detail page is reused before it is fetched again.
+     * How long a parsed detail page is reused before it is fetched again,
+     * unless its host's `_DP_SITES` entry says otherwise (`ttlDays`,
+     * `_dpTtlMs()`).
      * @type {number}
      */
     const _DP_TTL_MS = 30 * 24 * 60 * 60 * 1000;
+
+    /**
+     * A host's detail-page lifetime: its `ttlDays` (jungleland.it and
+     * brucespringsteen.it keep half a year — vzell, 2026-10-23: "these sites
+     * barely change"), else `_DP_TTL_MS`.
+     *
+     * @param {?object} site - A `_DP_SITES` entry.
+     * @returns {number} Milliseconds.
+     */
+    function _dpTtlMs(site) {
+        return site && site.ttlDays > 0 ? site.ttlDays * 24 * 60 * 60 * 1000 : _DP_TTL_MS;
+    }
 
     /**
      * Minimum spacing between two detail-page requests. A sweep of the
@@ -20469,7 +20531,86 @@
     }
 
     /**
-     * Parses a Brucebase song page (`/song:<slug>`).
+     * A Brucebase image's kind, by the wiki folder it lives in: Photo
+     * (`gallery:<page>`), Ticket (`files:ticket-YYYY`), Memorabilia
+     * (`files:pass-YYYY`), News (`news:<page>`), Song graph
+     * (`files:song-graph`), Lyric sheet (`files:song-lyricsheet`), else
+     * Other (scripts/probe-foreign-images.py, 2026-10-23).
+     *
+     * @param {string} folder - The path segment after
+     *   `local--resized-images/` ("files:ticket-1985", "gallery:1985-01-04-…").
+     * @returns {string}
+     */
+    function _bbImageKind(folder) {
+        const f = String(folder || '').toLowerCase();
+        if (f.startsWith('gallery:')) return 'Photo';
+        if (f.startsWith('news:')) return 'News';
+        if (f.startsWith('files:ticket-')) return 'Ticket';
+        if (f.startsWith('files:pass-')) return 'Memorabilia';
+        if (f === 'files:song-graph') return 'Song graph';
+        if (f === 'files:song-lyricsheet') return 'Lyric sheet';
+        return 'Other';
+    }
+
+    /**
+     * A Brucebase page's own images: the thumbnails of its gallery boxes
+     * (`#page-content .gallery-box .gallery-item`), whichever tab holds them.
+     * That leaves out the side bar's promo cover (`#side-bar`, the same
+     * "Live From Asbury Park" on every page), the 32 px status icons, the
+     * Storyteller badge and the social links, none of which is in a gallery
+     * box. Each image is `{thumb, full, medium, label}`: `thumb` the page's
+     * `…/thumbnail.jpg`, `full` the original
+     * (`local--resized-images/X/thumbnail.jpg` → `local--files/X`, 200 for
+     * every folder kind, 2026-10-23), `medium` the page's own link when it
+     * is a `medium.jpg` (gallery and news images), `label` the kind
+     * (`_bbImageKind()`).
+     *
+     * @param {Element} content - `#page-content`.
+     * @param {string}  url     - The page's URL.
+     * @returns {Array<{thumb: string, full: string, medium: string, label: string}>}
+     */
+    function _bbPageImages(content, url) {
+        const out = [];
+        content.querySelectorAll('.gallery-box .gallery-item img[src*="/local--resized-images/"]').forEach(img => {
+            const thumb = _dpAbsUrl(img.getAttribute('src'), url);
+            const m = thumb.match(/\/local--resized-images\/(([^/]+)\/[^/]+)\/[^/]+$/);
+            if (!m) return;
+            const a = img.closest('a[href]');
+            const href = a ? _dpAbsUrl(a.getAttribute('href'), url) : '';
+            out.push({
+                thumb,
+                full: thumb.slice(0, thumb.indexOf('/local--resized-images/')) + '/local--files/' + m[1],
+                medium: /\/medium\.jpg$/.test(href) ? href : '',
+                label: _bbImageKind(decodeURIComponent(m[2])),
+            });
+        });
+        return out;
+    }
+
+    /**
+     * Parses any Brucebase page that is not a song: an entry of a year page
+     * (`/gig:`, `/nogig:`, `/recording:`, `/rehearsal:`, …). Only its title
+     * and its gallery images (`_bbPageImages()`), for the foreign-image card
+     * and viewer of the year table's Media icons; the detail preview does
+     * not take these pages (`isDetailUrl` is `/song:` only).
+     *
+     * @param {Document} doc The fetched page.
+     * @param {string}   url The page's URL.
+     * @returns {?object} The record, or null when the page has no
+     *   `#page-content`.
+     */
+    function _dpParseBbPage(doc, url) {
+        const content = doc.getElementById('page-content');
+        if (!content) return null;
+        const data = _dpEmpty();
+        data.title = _dpText(doc.getElementById('page-title') ? doc.getElementById('page-title').textContent : '');
+        data.images = _bbPageImages(content, url);
+        return data;
+    }
+
+    /**
+     * Parses a Brucebase song page (`/song:<slug>`); any other page goes to
+     * `_dpParseBbPage()`.
      *
      * `#page-title` is the title, and the text of `#page-content` before the
      * song's tabview is its origin ("Track 2 of The Wild, The Innocent & The
@@ -20478,17 +20619,24 @@
      * (`_bbCollectItems()`), and the panels are read by label: Performances
      * (the count and the newest show, its list being newest first), Released
      * on Album, Released as Live Download (the count), and Credits, On The
-     * Tracks and Lyrics as whole sections for the dialog.
+     * Tracks and Lyrics as whole sections for the dialog. Its images are its
+     * gallery boxes' (`_bbPageImages()`: the song graph, lyric sheets).
      *
      * @param {Document} doc The fetched page.
-     * @param {string}   url The page's URL (unused; links are not kept).
+     * @param {string}   url The page's URL.
      * @returns {?object} The record, or null when the page has no
      *   `#page-content`.
      */
     function _dpParseBb(doc, url) {
+        let path = '';
+        try {
+            path = new URL(url).pathname;
+        } catch (_) { /* not a URL: read it as a song page */ }
+        if (path && !/^\/song:/.test(path)) return _dpParseBbPage(doc, url);
         const content = doc.getElementById('page-content');
         if (!content) return null;
         const data = _dpEmpty();
+        data.images = _bbPageImages(content, url);
         data.title = _dpText(doc.getElementById('page-title') ? doc.getElementById('page-title').textContent : '');
         const nav = content.querySelector('div.yui-navset');
         const before = [];
@@ -20551,12 +20699,14 @@
      * - `setting`: null for a host with no detail pages of its own
      *   (discogs.com: its pages are the Discogs reader's), whose source then
      *   never switches on.
+     * - `ttlDays`, optional: how long its parsed pages are kept
+     *   (`_dpTtlMs()`; default 30 days).
      * - `extRoot`: the site's content area, where a link to ANOTHER site is
      *   previewed besides the table (`_extSource()` on this host, U5), or
      *   null for the table only. Never the site's chrome: its share bar,
      *   menus and footer are left out by `_EXT_SKIP_SEL`.
      *
-     * @type {Object<string, {setting: ?string, isDetailUrl: function(URL): boolean, charset: ?string, parse: function(Document, string): ?object, liveRoot: ?function(Document): ?Element, liveHide: string[], liveCss: string, livePrepare: ?function(Document): ?function(): void, extRoot: ?string}>}
+     * @type {Object<string, {setting: ?string, isDetailUrl: function(URL): boolean, charset: ?string, parse: function(Document, string): ?object, liveRoot: ?function(Document): ?Element, liveHide: string[], liveCss: string, livePrepare: ?function(Document): ?function(): void, ttlDays?: number, extRoot: ?string}>}
      */
     const _DP_SITES = {
         'springsteenlyrics.com': {
@@ -20582,6 +20732,7 @@
                 !/\/(?:list|images|artwork|index)\.htm$/i.test(u.pathname),
             charset: 'windows-1252',
             parse: _dpParseJl,
+            ttlDays: 182,
             liveRoot: null,
             liveHide: [],
             liveCss: '',
@@ -20593,6 +20744,7 @@
             isDetailUrl: (u) => /^\/db\/detrec\.aspx$/i.test(u.pathname) && !!u.searchParams.get('code'),
             charset: null,
             parse: _dpParseBs,
+            ttlDays: 182,
             liveRoot: null,
             liveHide: ['p[style*="double"]', 'h4'],
             liveCss: '',
@@ -20685,7 +20837,10 @@
      * @returns {?object} The host's `_DP_SITES` entry, or null.
      */
     function _dpSiteForLink(a) {
-        if (!a || !a.matches || !a.matches('a[href]') || a.querySelector('img')) return null;
+        // A lazy Art / Photo cell (a.mb-fi-cell) or a Title glyph
+        // (a.mb-fi-glyph) links the same page but is the image card's,
+        // picture or not (_fiLazyCell(), _fiGlyph()).
+        if (!a || !a.matches || !a.matches('a[href]') || a.querySelector('img') || a.matches('a.mb-fi-cell, a.mb-fi-glyph')) return null;
         if (!a.closest('table.tbl > tbody') && (_isTouchPrimaryDevice() || a.closest(_DP_PAGE_SKIP))) return null;
         const site = _dpActiveSite();
         if (!site) return null;
@@ -20992,7 +21147,7 @@
 
     /**
      * Returns a detail page's parsed record: from this session's memory,
-     * then IndexedDB (younger than `_DP_TTL_MS`, same parser version), then
+     * then IndexedDB (younger than the host's `_dpTtlMs()`, same parser version), then
      * the network through the rate gate.
      *
      * Resolves an OUTCOME, as the Relationships fetches do, and only a
@@ -21017,7 +21172,7 @@
             const mem = _dpMem.get(url);
             if (mem) return { outcome: 'ok', data: mem.data, at: mem.at, cached: true };
             const rec = await _dpIdbGet(url).catch(() => null);
-            if (rec && rec.v === _DP_PARSER_VERSION && Date.now() - rec.at < _DP_TTL_MS) {
+            if (rec && rec.v === _DP_PARSER_VERSION && Date.now() - rec.at < _dpTtlMs(site)) {
                 _dpMem.set(url, { data: rec.data, at: rec.at });
                 return { outcome: 'ok', data: rec.data, at: rec.at, cached: true };
             }
@@ -21031,7 +21186,10 @@
         const entry = { wants: [wanted], promise: null };
         entry.promise = (async () => {
             await _dpAwaitSlot();
-            if (!entry.wants.some(w => w())) return { outcome: 'skipped' };
+            if (!entry.wants.some(w => w())) {
+                Lib.debug('detail', `no longer wanted, not asked: ${url}`);
+                return { outcome: 'skipped' };
+            }
             try {
                 const html = await _dpFetchText(url, site.charset);
                 _dpRememberRaw(url, html);
@@ -22182,6 +22340,2013 @@
         _DP_ART_CTX.imagesCache.set(key, images);
         _artViewerOpen(_DP_ART_CTX, key, null, k, { opener: a, title });
         return true;
+    }
+
+    // ── Foreign-site images in the tables: one card, one viewer click ──────
+    //
+    // vzell, 2026-10-23 (org/foreign-images.org): MusicBrainz's B1 image
+    // card and the artwork viewer on the non-MusicBrainz tables, one path
+    // for every host. A trigger is a link in a table row carrying
+    // `data-mbtt-fn="fi-img"` (the shared tooltip engine resolves its card,
+    // `_fiCardHtml()`) and `data-mb-fi="<key>"`, which names its PROVIDER
+    // (`_fiProvider()`): what that host's rows are and where their records
+    // come from: Discogs' Image column (`_DG_FI`), springsteenlyrics' Cover
+    // column (`_SL_FI`), the lazy Art / Photo columns of jungleland.it and
+    // brucespringsteen.it (`_JL_FI`, `_BS_FI`), Brucebase's Media icons and
+    // song glyphs (`_BB_FI`, `_BBS_FI`) and springsteenlyrics' lyrics glyphs
+    // (`_SLL_FI`); `_fiDpProvider()` builds every detail-page one. Everything is delegated
+    // (the card through `#mb-stat-tooltip`, the click on the window), so it
+    // survives every re-render's clones with no re-wiring, and nothing runs
+    // until a hover or a click: a render asks for nothing.
+
+    /**
+     * A host's rows as the foreign-image card and viewer take them.
+     *   - `ctx`: the viewer's context (`external: true`, its own cache);
+     *   - `name`: the card's title for a row without one;
+     *   - `tableSel` / `linkSel`: the tables it serves and its trigger links;
+     *   - `cardOn()`: its hover-card setting;
+     *   - `rowFor(a, table, path)`: a trigger's row (`thumb`, `title`,
+     *     `asked`, `path`, and whatever the provider needs);
+     *   - `hasRecord(row)`: whether the row has a record to ask for at all;
+     *   - `state(row)`: `'none'` (nothing to ask), `'cold'`, `'loading'`,
+     *     `'done'` or `'failed'`;
+     *   - `request(row, {wanted, repaint, force})`: asks for the record;
+     *     `wanted` is asked when the rate slot comes up, `repaint` runs when
+     *     the answer is in;
+     *   - `images(row)`: the viewer's records for the row as it stands — one
+     *     with a `note` while there is nothing more to show;
+     *   - `cardImages(images, row)`, optional: the card's view of them
+     *     (a Brucebase Media icon: its kind only);
+     *   - `cardTitle(row)`, optional: the card's title (else `row.title`);
+     *   - `startAt(row, images)`, optional: the image the viewer opens on
+     *     (else the first);
+     *   - `loadingText(row)`, `foot`, `title()`: the card's wording and the
+     *     viewer's title;
+     *   - `single`: one picture per row, so the card is that picture, big;
+     *   - `lazy` / `cellView(url)`: the provider paints lazy cells
+     *     (`_fiCellApply()`), and what the record says one shows (null while
+     *     there is no complete record);
+     *   - for the table-wide gallery (`_fgalOpen()`): `peekSaved(rows)` puts
+     *     the rows' records saved in this browser in memory, no request;
+     *     `spacingS()` / `tokenSpacingS()` the seconds a record costs (and,
+     *     on Discogs without a token, what one would with it; else 0);
+     *     `kept()` how long a record is kept; `gal` its words — `heading`
+     *     ("Artwork", "Images"), `where` ("Cover column"), `point` (how a
+     *     row is read by hand: "its cover in the table"), `rows` ("rows",
+     *     "entries"), `page` / `pages` ("item page"), `eligible` (the rows it
+     *     covers when that is not every row: 'with "artwork available"'),
+     *     `left` (why the others are not in it; `{n}` and `{rows}` filled in).
+     * @typedef {{ctx: Object, name: string, tableSel: string, linkSel: string, cardOn: function(): boolean,
+     *   rowFor: function(HTMLAnchorElement, HTMLTableElement, string): Object, hasRecord: function(Object): boolean,
+     *   state: function(Object): string, request: function(Object, Object): void, images: function(Object): Object[],
+     *   cardImages: ?function(Object[], Object): Object[], cardTitle?: function(Object): string,
+     *   startAt?: function(Object, Object[]): number, loadingText: function(Object): string, foot: string,
+     *   title: function(): string, single?: boolean, lazy?: boolean,
+     *   cellView?: function(string): ?{state: string, thumb?: string, n?: number},
+     *   peekSaved: function(Object[]): Promise<*>, spacingS: function(): number, tokenSpacingS: function(): number,
+     *   kept: function(): string, gal: {heading: string, where: string, point: string, rows: string, page: string, pages: string,
+     *   eligible?: string, left?: string}}} FiProvider
+     */
+
+    /**
+     * The provider a trigger's `data-mb-fi` names. A `switch`, read at event
+     * time, so the providers can be declared with their hosts' code.
+     *
+     * @param {string} key
+     * @returns {?FiProvider}
+     */
+    function _fiProvider(key) {
+        switch (key) {
+            case 'dg': return _DG_FI;
+            case 'sl': return _SL_FI;
+            case 'jl': return _JL_FI;
+            case 'bs': return _BS_FI;
+            case 'bb': return _BB_FI;
+            case 'bbs': return _BBS_FI;
+            case 'sll': return _SLL_FI;
+            default: return null;
+        }
+    }
+
+    /**
+     * A trigger link's provider; a link stamped `data-mbtt-fn="dg-img"` (a
+     * Discogs table saved before the shared card) is Discogs'.
+     *
+     * @param {HTMLElement} a
+     * @returns {?FiProvider}
+     */
+    function _fiProviderOf(a) {
+        return _fiProvider(a.dataset.mbFi || (a.dataset.mbttFn === 'dg-img' ? 'dg' : ''));
+    }
+
+    /**
+     * The index of a table's Title column (its first header starting
+     * "Title"), -1 for none.
+     *
+     * @param {HTMLTableElement} table
+     * @returns {number}
+     */
+    function _fiTitleColIdx(table) {
+        return Array.from(table.querySelectorAll('thead tr:first-child th'))
+            .findIndex(th => (th.dataset.colName || th.textContent).trim().startsWith('Title'));
+    }
+
+    /**
+     * Whether `#mb-stat-tooltip` still shows the card of this trigger: the
+     * card is on screen and the pointer still on the link.
+     *
+     * @param {HTMLAnchorElement} a
+     * @returns {boolean}
+     */
+    function _fiCardShows(a) {
+        const tip = document.getElementById('mb-stat-tooltip');
+        return !!tip && tip.style.display === 'block' && a.isConnected && a.matches(':hover');
+    }
+
+    /**
+     * The hover card of a trigger: the B1 artwork card (`_artCardCoreHtml()`)
+     * of every image of the row. Until the record is in, "Loading" with the
+     * row's own picture; the request is for this row only, wanted only while
+     * this card shows (`_fiCardShows()`, asked after the rate slot), and the
+     * card repaints when it arrives. A row with nothing more than one image
+     * and a note (no record, a failure, nothing found) shows that image and
+     * the note. Off with the provider's setting (`cardOn()`); no card for a
+     * row without a record (`hasRecord()`).
+     *
+     * @param {HTMLAnchorElement} a
+     * @returns {?string} Card HTML, or null for none.
+     */
+    function _fiCardHtml(a) {
+        const p = _fiProviderOf(a);
+        if (!p || !p.cardOn()) return null;
+        const table = a.closest(p.tableSel);
+        if (!table) return null;
+        const row = p.rowFor(a, table, `${p.ctx.key}-card:${a.href}`);
+        if (!p.hasRecord(row)) return null;
+        const title = (p.cardTitle ? p.cardTitle(row) : row.title) || p.name;
+        const box = (body) => `<div style="max-width:310px;"><div class="mb-tt-title">${_rgEsc(title)}</div>${body}</div>`;
+        const tile = row.thumb
+            ? `<div class="mb-art-card-tiles"><span class="mb-art-card-tile"><img src="${_rgEsc(row.thumb)}" alt="" referrerpolicy="no-referrer"></span></div>`
+            : '';
+        const state = p.state(row);
+        if (state === 'cold' || state === 'loading') {
+            p.request(row, {
+                force: false,
+                repaint: () => {
+                    if (!_fiCardShows(a)) return;
+                    if (_statTipApi) _statTipApi.repaint(a);
+                },
+                wanted: () => _fiCardShows(a),
+            });
+            return box(`${tile}<div class="mb-tt-comment"><span class="mb-dp-spin">◌</span> ${_rgEsc(p.loadingText(row))}</div>`);
+        }
+        const images = p.images(row);
+        if (images.length === 1 && images[0].note) return box(`${tile}<div class="mb-tt-dim">${_rgEsc(images[0].note)}</div>`);
+        const shown = p.cardImages ? p.cardImages(images, row) : images;
+        if (shown.length === 1 && shown[0].note) return box(`<div class="mb-tt-dim">${_rgEsc(shown[0].note)}</div>`);
+        // One picture per row (brucespringsteen.it's photo): that picture,
+        // big, instead of a contact sheet of one tile.
+        if (p.single && shown.length === 1) {
+            return box(`<img class="mb-art-card-preview mb-fi-card-big" src="${_rgEsc(_artViewerThumbUrl(shown[0]))}" alt="" referrerpolicy="no-referrer">` +
+                (p.foot ? `<div class="mb-tt-foot">${_rgEsc(p.foot)}</div>` : ''));
+        }
+        return _artCardCoreHtml({
+            el: a, ctx: p.ctx, images: shown, order: shown.map((_, i) => i), title, hit: () => false, matches: '',
+            foot: p.foot,
+        });
+    }
+
+    /**
+     * Asks for a row's record once the viewer shows it — never ahead — and
+     * shows its images when it arrives. Wanted only while the viewer is on
+     * that row (the provider's `request()` asks `wanted()` when the slot
+     * comes up).
+     *
+     * @param {FiProvider} p
+     * @param {Object} row - `p.rowFor()`'s row.
+     * @param {boolean} [force] - "Try again" after a failure.
+     * @returns {void}
+     */
+    function _fiLoad(p, row, force = false) {
+        const refresh = () => {
+            const images = p.images(row);
+            _artViewerReplaceImages(p.ctx, row.path, images, p.startAt ? p.startAt(row, images) : -1);
+        };
+        if (!p.hasRecord(row)) return;
+        const state = p.state(row);
+        if (state === 'none' || (!force && (state === 'done' || state === 'failed'))) return;
+        if (state !== 'loading') row.asked = true;
+        p.request(row, {
+            force, repaint: refresh,
+            wanted: () => !!_artViewerState && _artViewerState.ctx === p.ctx && _artViewerState.entityPath === row.path,
+        });
+        refresh();
+    }
+
+    /**
+     * A plain click on a trigger opens the artwork viewer on that row's
+     * images: what the row's record has (`_fiLoad()`, asked when the viewer
+     * shows the row), its own picture meanwhile. ← → step through the row's
+     * images, Shift+← → through the table's shown rows, in their order (and
+     * ← → past either end, with `sa_art_viewer_cross_rows`). A row already
+     * read (by the card, the viewer or the link preview) costs nothing.
+     * Ctrl, Shift, Alt or ⌘ and any other button keep the link.
+     *
+     * A row is one stop however many triggers it has (a Brucebase year row
+     * has one per Media icon): the clicked link for its own row, the first
+     * trigger for every other. The viewer opens at the provider's
+     * `startAt()` (the clicked icon's kind); a row reached by Shift+← → has
+     * no kind and opens at its first image.
+     *
+     * On the window, capture (`_fiInstall()`): ahead of every listener on
+     * the document, `initNavigationGuard()`'s "leave this page" among them.
+     *
+     * @param {MouseEvent} e
+     * @returns {void}
+     */
+    function _fiClick(e) {
+        if (e.button !== 0 || e.ctrlKey || e.shiftKey || e.altKey || e.metaKey || !(e.target instanceof Element)) return;
+        const a = e.target.closest('a[data-mb-fi], a[data-mbtt-fn="dg-img"]');
+        const p = a && _fiProviderOf(a);
+        const table = p && a.closest(p.tableSel);
+        if (!table) return;
+        const seen = new Map();
+        Array.from(table.querySelectorAll(`tbody > tr ${p.linkSel}`)).forEach(l => {
+            const tr = l.closest('tr');
+            if (tr.style.display === 'none' || !l.getClientRects().length) return;
+            if (!seen.has(tr) || l === a) seen.set(tr, l);
+        });
+        const links = Array.from(seen.values());
+        const k = links.indexOf(a);
+        if (k < 0) return;
+        // A row is built when the viewer first shows it, never all up front:
+        // `rowFor()` reads the row's cells (a Brucebase year row: five
+        // columns by name), which over a 10,000-row table is the difference
+        // between one row and minutes (measured 2026-10-23).
+        const rows = new Array(links.length);
+        const rowAt = (i) => {
+            if (!rows[i]) {
+                rows[i] = p.rowFor(links[i], table, `${p.ctx.key}:${i}:${links[i].href}`);
+                if (links[i] !== a) rows[i].kind = '';
+            }
+            return rows[i];
+        };
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        p.ctx.imagesCache.clear();
+        const show = (i) => {
+            const row = rowAt(i);
+            p.ctx.imagesCache.set(row.path, p.images(row));
+            // After the cache entry: a record already there is shown at once.
+            setTimeout(() => _fiLoad(p, row), 0);
+        };
+        let cur = k;
+        show(cur);
+        const first = p.startAt ? p.startAt(rowAt(cur), p.ctx.imagesCache.get(rowAt(cur).path)) : -1;
+        _artViewerOpen(p.ctx, rowAt(cur).path, null, Math.max(0, first), {
+            opener: a, title: p.title(), rowPos: { k: cur + 1, n: links.length },
+            onGroupStep: (d) => {
+                const next = cur + d;
+                if (next < 0 || next >= links.length) return null;
+                cur = next;
+                show(cur);
+                return { entityPath: rowAt(cur).path, list: null, title: p.title(), rowPos: { k: cur + 1, n: links.length } };
+            },
+        });
+    }
+
+    /**
+     * Installs the foreign-image viewer click (`_fiClick()`) once. Called
+     * by each foreign host's page preparation (`_dgPrepareLivePage()`,
+     * `_slPrepareLivePage()`, `_jlPrepareLivePage()`, `_bsPrepareLivePage()`,
+     * `_bbPrepareLivePage()`), never on MusicBrainz.
+     *
+     * @returns {void}
+     */
+    function _fiInstall() {
+        if (_fiInstall.done) return;
+        _fiInstall.done = true;
+        _ensureFiStyle();
+        window.addEventListener('click', _fiClick, true);
+    }
+
+    /**
+     * The lazy cells' look (`_fiCellApply()`) and the single-picture card:
+     * a dashed tile until read, the front thumbnail with its count, or the
+     * words "no scans" / "no photo" — all CSS, so the cell's text stays
+     * empty. Installed by `_fiInstall()`, so only on a foreign host.
+     *
+     * @returns {void}
+     */
+    function _ensureFiStyle() {
+        if (document.getElementById('mb-fi-style')) return;
+        const style = GM_addStyle(`
+            table.tbl td.mb-fi-td { width: 44px; text-align: center; vertical-align: middle; }
+            a.mb-fi-cell { display: inline-block; position: relative; width: 40px; height: 40px;
+                vertical-align: middle; text-decoration: none; }
+            a.mb-fi-cell[data-mb-fi-state="cold"]::before { content: ''; position: absolute; inset: 3px;
+                border: 2px dashed #9a9a9a; border-radius: 4px; }
+            a.mb-fi-cell[data-mb-fi-state="none"]::before { position: absolute; inset: 0; display: flex;
+                align-items: center; justify-content: center; font: 9px/1.1 Arial, Helvetica, sans-serif;
+                color: #888; text-align: center; }
+            a.mb-fi-cell[data-mb-fi="jl"][data-mb-fi-state="none"]::before { content: 'no scans'; }
+            a.mb-fi-cell[data-mb-fi="bs"][data-mb-fi-state="none"]::before { content: 'no photo'; }
+            a.mb-fi-cell img.mb-fi-thumb { display: block; width: 40px; height: 40px; object-fit: cover;
+                border-radius: 3px; }
+            a.mb-fi-cell[data-mb-fi-n]::after { content: attr(data-mb-fi-n); position: absolute; right: -3px;
+                bottom: -3px; padding: 1px 3px; border-radius: 6px; background: #333; color: #fff;
+                font: bold 9px/1 Arial, Helvetica, sans-serif; }
+            #mb-stat-tooltip img.mb-fi-card-big { display: block; max-width: 250px; max-height: 250px; margin-top: 4px; }
+            a.mb-fi-glyph { display: inline-block; margin-left: 6px; padding: 0 2px; border-radius: 3px;
+                font: 12px/1.2 Arial, Helvetica, sans-serif; color: #555; text-decoration: none; white-space: nowrap; }
+            a.mb-fi-glyph::before { content: '🖼'; }
+            a.mb-fi-glyph[data-mb-fi-state="cold"] { opacity: .6; outline: 1px dashed #9a9a9a; outline-offset: 0; }
+            a.mb-fi-glyph[data-mb-fi-n]::after { content: attr(data-mb-fi-n); margin-left: 2px; font-weight: bold; font-size: 10px; }
+            a.mb-fi-glyph[data-mb-fi-state="none"] { display: none; }
+            ul.mb-bb-media a.mb-fi-media { display: inline-block; border-radius: 50%; line-height: 0;
+                box-shadow: 0 0 0 2px #2f5f9e; }
+            ul.mb-bb-media a.mb-fi-media:hover { box-shadow: 0 0 0 2px #2f5f9e, 0 0 0 4px rgba(47,95,158,.25); }
+        `);
+        style.id = 'mb-fi-style';
+    }
+
+    /**
+     * The picture of a row that has none yet (a lazy cell's row before its
+     * page is read): a dashed tile, so the viewer and the card have
+     * something to show beside their note.
+     * @type {string}
+     */
+    const _FI_PLACEHOLDER = 'data:image/svg+xml,' + encodeURIComponent(
+        '<svg xmlns="http://www.w3.org/2000/svg" width="250" height="250" viewBox="0 0 250 250">' +
+        '<rect x="8" y="8" width="234" height="234" rx="12" fill="none" stroke="#9a9a9a" stroke-width="4" stroke-dasharray="14 10"/></svg>');
+
+    /**
+     * A provider of the foreign-image card and viewer click whose records
+     * are a detail page of its host, read through `_dpGet()` — the detail
+     * preview's record (memory, IndexedDB, else ONE request through its
+     * rate gate), so the card, the viewer, a lazy cell and the preview share
+     * it whichever came first, and the preview's setting does not matter.
+     * springsteenlyrics.com, jungleland.it and brucespringsteen.it are built
+     * on it (`_SL_FI`, `_JL_FI`, `_BS_FI`); each keeps its own
+     * `loads` (the URLs being asked, each failure's detail, those fetched in
+     * this session for the viewer's "one request" line).
+     *
+     * `cfg`, besides the `FiProvider` fields it copies (`key`, `column`,
+     * `name`, `tableSel`, `linkSel`, `foot`, `loadingText`, `single`):
+     *   - `host`: its `_DP_SITES` key; `setting`: the card's switch;
+     *   - `h1`: the toolbar `<h1>`'s `<bdi>`, the viewer's title;
+     *   - `pageName` / `pageLabel`: "the item page" in notes / the viewer's
+     *     button;
+     *   - `ownPicture(row)`, optional: the row's own picture as a record
+     *     (springsteenlyrics' cover), with `ownSource` and `ownTail` (the
+     *     failure note's "Showing the cover."); without it a dashed tile;
+     *   - `needsThumb`: no record without the row's own picture;
+     *   - `noRowThumb`: the trigger's `<img>` is not the row's picture (a
+     *     Brucebase Media icon);
+     *   - `titleOf(a, table)`, optional: the row's title, for a table with no
+     *     Title column (else that column's text);
+     *   - `cardTitle(row)`, `cardImages(images, row)`, `startAt(row, images)`,
+     *     optional: copied as they are (see `FiProvider`);
+     *   - `gal`: the gallery's words (see `FiProvider`);
+     *   - `isNone(row)`: a row that never asks (the list says no artwork);
+     *   - `noneNote`, `loadingNote`: the viewer's notes;
+     *   - `ready(data)`, optional: whether a record in memory is complete
+     *     (brucespringsteen.it's photo check), and `afterLoad(data, url)`,
+     *     which completes it (a Promise that never rejects);
+     *   - `recordImages(data, row)`: the record's images as viewer records,
+     *     or a note when it has none;
+     *   - `cellView(data)`, optional: what the row's lazy cell shows
+     *     (`_fiCellApply()`) — a provider with it is `lazy`, and every
+     *     answer paints its cells (`_fiPaint()`).
+     *
+     * @param {Object} cfg
+     * @returns {FiProvider}
+     */
+    function _fiDpProvider(cfg) {
+        const loads = { pending: new Map(), failed: new Map(), fetched: new Set() };
+        /** @type {FiProvider} */
+        const p = {
+            ctx: { key: cfg.key, column: cfg.column, external: true, imagesCache: new Map() },
+            name: cfg.name,
+            tableSel: cfg.tableSel,
+            linkSel: cfg.linkSel,
+            single: !!cfg.single,
+            lazy: !!cfg.cellView,
+            loads,
+            cardOn: () => Lib.settings[cfg.setting] !== false,
+            rowFor: (a, table, path) => {
+                const img = a.querySelector('img');
+                let title;
+                if (cfg.titleOf) {
+                    title = cfg.titleOf(a, table);
+                } else {
+                    const idx = _fiTitleColIdx(table);
+                    const cell = idx >= 0 ? a.closest('tr').cells[idx] : null;
+                    title = (cell ? cell.textContent : (img ? img.alt : '')).replace(/\s+/g, ' ').trim();
+                }
+                return {
+                    url: a.href, thumb: cfg.noRowThumb || !img ? '' : img.src, asked: false, path, title,
+                    ...(cfg.rowExtra ? cfg.rowExtra(a) : {}),
+                };
+            },
+            hasRecord: (row) => !!row.url && (!cfg.needsThumb || !!row.thumb),
+            state: (row) => {
+                if (cfg.isNone && cfg.isNone(row)) return 'none';
+                const mem = _dpMem.get(row.url);
+                if (mem && (!cfg.ready || cfg.ready(mem.data))) return 'done';
+                if (loads.pending.get(row.url)) return 'loading';
+                return loads.failed.has(row.url) ? 'failed' : 'cold';
+            },
+            request: (row, o) => {
+                const url = row.url;
+                loads.pending.set(url, (loads.pending.get(url) || 0) + 1);
+                _dpGet(url, _DP_SITES[cfg.host], { wanted: o.wanted, force: !!o.force }).then(async (res) => {
+                    if (res.outcome === 'ok') {
+                        loads.failed.delete(url);
+                        if (!res.cached) loads.fetched.add(url);
+                        if (cfg.afterLoad) await cfg.afterLoad(res.data, url);
+                    } else if (res.outcome === 'error') {
+                        loads.failed.set(url, res.detail || 'the request failed');
+                    }
+                }).finally(() => {
+                    const n = (loads.pending.get(url) || 1) - 1;
+                    if (n > 0) loads.pending.set(url, n);
+                    else loads.pending.delete(url);
+                    if (p.lazy) _fiPaint(p, url);
+                    o.repaint();
+                });
+            },
+            images: (row) => {
+                const own = cfg.ownPicture ? cfg.ownPicture(row) : null;
+                const pic = own || { image: _FI_PLACEHOLDER, thumbnails: { 250: _FI_PLACEHOLDER }, types: [], comment: row.title };
+                const noteOnly = (note, retry) => [{
+                    ...pic, external: true, pageUrl: row.url, pageLabel: cfg.pageLabel,
+                    note, ...(retry ? { retry } : {}), source: own ? cfg.ownSource : '',
+                }];
+                const state = p.state(row);
+                if (state === 'none') return noteOnly(cfg.noneNote);
+                if (state === 'failed') {
+                    return noteOnly(`Could not read ${cfg.pageName} (${loads.failed.get(row.url)}).${own ? cfg.ownTail : ''}`,
+                        () => _fiLoad(p, row, true));
+                }
+                if (state !== 'done') return noteOnly(cfg.loadingNote);
+                const got = cfg.recordImages(_dpMem.get(row.url).data, row);
+                if (typeof got === 'string') return noteOnly(got);
+                const source = row.asked && loads.fetched.has(row.url) ? `${cfg.pageName}: one request, now in the cache` : 'the cache: no request';
+                return got.map(im => ({ external: true, pageUrl: row.url, pageLabel: cfg.pageLabel, source, ...im }));
+            },
+            cellView: (url) => {
+                const mem = _dpMem.get(url);
+                if (!cfg.cellView || !mem || (cfg.ready && !cfg.ready(mem.data))) return null;
+                return cfg.cellView(mem.data);
+            },
+            cardImages: cfg.cardImages || null,
+            ...(cfg.cardTitle ? { cardTitle: cfg.cardTitle } : {}),
+            ...(cfg.startAt ? { startAt: cfg.startAt } : {}),
+            loadingText: () => cfg.loadingText,
+            foot: cfg.foot,
+            title: () => {
+                const h1 = document.querySelector(cfg.h1);
+                return h1 ? h1.textContent : '';
+            },
+            peekSaved: (rows) => _fiDpPeek(new Set(rows.map(r => r.url)), _DP_SITES[cfg.host]),
+            spacingS: () => _DP_SPACING_MS / 1000 + 0.1,
+            tokenSpacingS: () => 0,
+            gal: cfg.gal,
+            kept: () => (_DP_SITES[cfg.host].ttlDays > 0 ? 'half a year' : '30 days'),
+        };
+        return p;
+    }
+
+    /**
+     * A URL's last path segment, decoded ('' when it cannot be read).
+     *
+     * @param {string} u
+     * @returns {string}
+     */
+    function _fiFileName(u) {
+        try {
+            return decodeURIComponent(new URL(u).pathname.split('/').pop());
+        } catch (_) {
+            return '';
+        }
+    }
+
+    // ── Lazy cells: jungleland's Art, brucespringsteen.it's Photo ───────────
+    //
+    // A row of these lists has no picture of its own, so its first cell is
+    // a `<a class="mb-fi-cell">` to the row's page: a dashed tile until the
+    // page has been read, then its front picture and the image count (or
+    // "no scans" / "no photo"). The tile, the count and the words are CSS
+    // (`data-mb-fi-state`, `data-mb-fi-n`), so the cell's clean text stays
+    // EMPTY and a late paint changes nothing a filter or the 📊 panel reads:
+    // like a third-party icon, it owes only the write to the SOURCE rows
+    // (docs/claude/filter-and-cache-invariants.md). The hidden
+    // `.mb-fi-sort-key` ("a-yes" < "b-unread" < "c-none") is stripped from
+    // the clean text and read by `_sortCellText()`.
+
+    /**
+     * Writes a lazy cell's state: its attributes, the front thumbnail when
+     * there is one, and its sort key.
+     *
+     * @param {HTMLAnchorElement} a - The `a.mb-fi-cell`.
+     * @param {{state: string, thumb?: string, n?: number}} view - `'cold'`,
+     *   `'done'` or `'none'`.
+     * @returns {void}
+     */
+    function _fiCellApply(a, view) {
+        const doc = a.ownerDocument;
+        a.dataset.mbFiState = view.state;
+        // A Title glyph (`_fiGlyph()`) shows every count, and has no picture
+        // and no sort key: it must not change how the Title column sorts.
+        if (a.classList.contains('mb-fi-glyph')) {
+            if (view.state === 'done' && view.n > 0) a.dataset.mbFiN = String(view.n);
+            else delete a.dataset.mbFiN;
+            return;
+        }
+        if (view.n > 1) a.dataset.mbFiN = String(view.n);
+        else delete a.dataset.mbFiN;
+        a.replaceChildren();
+        if (view.state === 'done' && view.thumb) {
+            const img = doc.createElement('img');
+            img.className = 'mb-fi-thumb';
+            img.setAttribute('src', view.thumb);
+            img.setAttribute('alt', '');
+            img.setAttribute('loading', 'lazy');
+            img.setAttribute('referrerpolicy', 'no-referrer');
+            a.appendChild(img);
+        }
+        const key = doc.createElement('span');
+        key.className = 'mb-fi-sort-key';
+        key.style.display = 'none';
+        key.textContent = view.state === 'done' ? 'a-yes' : view.state === 'none' ? 'c-none' : 'b-unread';
+        a.appendChild(key);
+    }
+
+    /**
+     * A lazy cell for a converter: the link to the row's page, stamped for
+     * the card and the viewer click, in its unread state.
+     *
+     * @param {Document} doc - The document the row is built in.
+     * @param {string} key - The provider (`data-mb-fi`).
+     * @param {string} href - The row's page, absolute.
+     * @returns {HTMLTableCellElement}
+     */
+    function _fiLazyCell(doc, key, href) {
+        const td = doc.createElement('td');
+        td.className = 'mb-fi-td';
+        const a = doc.createElement('a');
+        a.className = 'mb-fi-cell';
+        a.dataset.mbttFn = 'fi-img';
+        a.dataset.mbFi = key;
+        a.setAttribute('href', href);
+        a.target = '_blank';
+        a.rel = 'noopener';
+        _fiCellApply(a, { state: 'cold' });
+        td.appendChild(a);
+        return td;
+    }
+
+    /**
+     * A Title glyph for a converter (mockups B2 / L1, 2026-10-23): for lists
+     * where most rows have no images (Brucebase's songs, springsteenlyrics'
+     * lyrics), a small link after the title to the row's page, stamped for
+     * the card and the viewer click. It has NO text: the dashed 🖼 while
+     * unread, the 🖼 with its count once read and `display: none` for a page
+     * with none are CSS (`data-mb-fi-state`, `data-mb-fi-n`,
+     * `_ensureFiStyle()`), so the Title cell's clean text, its sort and the
+     * 📊 panel stay as they were, and a late paint (`_fiPaint()`,
+     * `_fiAfterRender()`) owes only the write to the source rows.
+     *
+     * @param {Document} doc  - The document the row is built in.
+     * @param {string}   key  - The provider (`data-mb-fi`).
+     * @param {string}   href - The row's page, as the row's title link writes
+     *   it, so both resolve to the same URL (the record's key).
+     * @returns {HTMLAnchorElement}
+     */
+    function _fiGlyph(doc, key, href) {
+        const a = doc.createElement('a');
+        a.className = 'mb-fi-glyph';
+        a.dataset.mbttFn = 'fi-img';
+        a.dataset.mbFi = key;
+        a.setAttribute('href', href);
+        a.target = '_blank';
+        a.rel = 'noopener';
+        a.setAttribute('aria-label', 'Images');
+        _fiCellApply(a, { state: 'cold' });
+        return a;
+    }
+
+    /**
+     * Every lazy cell of a provider, by URL: the shown tables and the source
+     * rows the next re-render clones from (a single table's live rows ARE
+     * its source rows; a Set keeps each once).
+     *
+     * @param {FiProvider} p
+     * @returns {Map<string, Set<HTMLAnchorElement>>}
+     */
+    function _fiCellIndex(p) {
+        const sel = `:is(a.mb-fi-cell, a.mb-fi-glyph)[data-mb-fi="${p.ctx.key}"]`;
+        const map = new Map();
+        const add = (a) => {
+            let s = map.get(a.href);
+            if (!s) { s = new Set(); map.set(a.href, s); }
+            s.add(a);
+        };
+        document.querySelectorAll(`table.tbl ${sel}`).forEach(add);
+        _msSourceRows().forEach(row => row.querySelectorAll(sel).forEach(add));
+        return map;
+    }
+
+    /**
+     * Paints every lazy cell of one URL from its record (the card's, the
+     * viewer's or the sweep's answer), live and source rows alike. No filter
+     * pass: nothing a match reads has changed.
+     *
+     * @param {FiProvider} p
+     * @param {string} url
+     * @returns {number} Cells painted.
+     */
+    function _fiPaint(p, url) {
+        const view = p.cellView(url);
+        if (!view) return 0;
+        const cells = _fiCellIndex(p).get(url);
+        if (!cells) return 0;
+        cells.forEach(a => _fiCellApply(a, view));
+        return cells.size;
+    }
+
+    /**
+     * Every record of the detail-page database (`_dpOpenIdb()`), one read.
+     *
+     * @returns {Promise<Array<{url: string, v: number, at: number, data: object}>>}
+     */
+    function _dpIdbAll() {
+        return _dpOpenIdb().then(db => new Promise((resolve, reject) => {
+            try {
+                const req = db.transaction('pages', 'readonly').objectStore('pages').getAll();
+                req.onsuccess = () => resolve(req.result || []);
+                req.onerror = (ev) => reject(ev.target.error);
+            } catch (e) {
+                reject(e);
+            }
+        }));
+    }
+
+    /**
+     * The render tail on the hosts with lazy cells or Title glyphs: every
+     * one whose page was read before shows what it holds at once (vzell,
+     * 2026-10-23: jungleland.it's Art and brucespringsteen.it's Photo, "these
+     * sites barely change"; then Brucebase's song and springsteenlyrics'
+     * lyrics glyphs). One `getAll()` of the detail-page database — no
+     * request to the site — keeps the records of this parser version
+     * younger than the site's lifetime (`_dpTtlMs()`: half a year on the
+     * first two, 30 days on the others) for the rows of the table, puts
+     * them in memory (so a hover answers at once too) and paints the cells.
+     * A table with none (a Brucebase year table, a springsteenlyrics card
+     * list) reads nothing. Called after a fresh render and a disk load; a
+     * single check anywhere else.
+     *
+     * @returns {Promise<number>} Cells painted (for the specs).
+     */
+    async function _fiAfterRender() {
+        const host = _isJlHost ? 'jungleland.it' : _isBsHost ? 'brucespringsteen.it'
+            : _isBbHost ? 'brucebase.wikidot.com' : _isSlHost ? 'springsteenlyrics.com' : '';
+        if (!host) return 0;
+        const p = { 'jungleland.it': _JL_FI, 'brucespringsteen.it': _BS_FI, 'brucebase.wikidot.com': _BBS_FI,
+            'springsteenlyrics.com': _SLL_FI }[host];
+        const site = _DP_SITES[host];
+        const urls = _fiCellIndex(p);
+        if (!urls.size) return 0;
+        const saved = await _fiDpPeek(new Set(urls.keys()), site);
+        // A fresh index: a re-render may have replaced the live cells meanwhile.
+        let n = 0;
+        _fiCellIndex(p).forEach((cells, url) => {
+            const view = p.cellView(url);
+            if (view) cells.forEach(a => { _fiCellApply(a, view); n++; });
+        });
+        Lib.debug('detail', `lazy cells: ${n} painted from ${saved} saved page(s).`);
+        return n;
+    }
+
+    /**
+     * Puts the saved detail pages of some URLs in memory: one `getAll()` of
+     * the detail-page database, no request to the site; a record of this
+     * parser version younger than the site's lifetime (`_dpTtlMs()`), not
+     * already in memory. The render sweep's read (`_fiAfterRender()`) and
+     * the gallery's at open (`_fgalOpen()`).
+     *
+     * @param {Set<string>} urls
+     * @param {?object}     site - Its `_DP_SITES` entry.
+     * @returns {Promise<number>} Records in the database (for the log).
+     */
+    async function _fiDpPeek(urls, site) {
+        const records = await _dpIdbAll().catch(() => []);
+        const ttl = _dpTtlMs(site);
+        const now = Date.now();
+        records.forEach(rec => {
+            if (!rec || rec.v !== _DP_PARSER_VERSION || now - rec.at >= ttl || !urls.has(rec.url) || _dpMem.has(rec.url)) return;
+            _dpMem.set(rec.url, { data: rec.data, at: rec.at });
+        });
+        return records.length;
+    }
+
+    /**
+     * A springsteenlyrics.com list's Cover column as a provider of the
+     * foreign-image card and viewer click (mockups S1/V1, 2026-10-23). The
+     * cover is in the row; the scans are on the item page. A bootleg row the
+     * list itself says has no artwork (`data-mb-sl-art="0"`,
+     * `_slBuildRow()`) never asks; a collection or brucelegs row carries no
+     * such flag and asks. Off with `sa_sl_tip_images` (the card only; a
+     * click still opens the viewer).
+     * @type {FiProvider}
+     */
+    const _SL_FI = _fiDpProvider({
+        key: 'sl', column: 'Cover', name: 'springsteenlyrics.com', host: 'springsteenlyrics.com',
+        gal: { heading: 'Artwork', where: 'Cover column', point: 'its cover in the table', rows: 'rows', page: 'item page',
+            pages: 'item pages', eligible: 'with "artwork available"',
+            left: '{n} {rows} the list marks "cover only" are not here: their item pages have no scans.' },
+        tableSel: 'body.mb-sa-host-sl table.tbl', linkSel: 'a[data-mb-fi="sl"]', setting: 'sa_sl_tip_images',
+        h1: 'h1.mb-sl-h1 bdi', pageName: 'the item page', pageLabel: 'Item page',
+        needsThumb: true,
+        rowExtra: (a) => ({ art: a.dataset.mbSlArt || '' }),
+        isNone: (row) => row.art === '0',
+        ownPicture: (row) => ({ image: row.thumb, thumbnails: { 250: row.thumb }, types: ['Cover'], front: true, comment: row.title }),
+        ownSource: 'the list\'s cover',
+        ownTail: ' Showing the cover.',
+        noneNote: 'Cover only: the list says this item has no artwork, so its page is not read.',
+        loadingNote: 'Loading the scans from the item page… one request for this one (about 1 s apart).',
+        recordImages: (data, row) => {
+            const scans = (data.images || []).filter(im => im.thumb || im.full);
+            if (!scans.length) return 'The item page has no scans.';
+            return [{ image: row.thumb, thumbnails: { 250: row.thumb }, types: ['Cover'], front: true, comment: row.title }]
+                .concat(scans.map(im => ({
+                    image: im.full || im.thumb, thumbnails: { 250: im.thumb || im.full }, types: ['Scan'],
+                    comment: _fiFileName(im.full || im.thumb),
+                })));
+        },
+        loadingText: 'Loading the scans from the item page…',
+        foot: 'Click: viewer · Ctrl-click: the item page',
+    });
+
+    /**
+     * A jungleland.it scan's file-name label as MusicBrainz's cover art
+     * types (mockup J3): `front` (★), `back`, `cdN` (Medium, "CD N"),
+     * `bookletN` (Booklet, "page N"); anything else is Other, its label the
+     * comment.
+     *
+     * @param {string} label - `_dpParseJl()`'s label ("front", "cd2", …).
+     * @returns {{types: string[], front: boolean, comment: string}}
+     */
+    function _jlFiType(label) {
+        const l = String(label || '').toLowerCase();
+        if (l === 'front') return { types: ['Front'], front: true, comment: '' };
+        if (l === 'back') return { types: ['Back'], front: false, comment: '' };
+        let m = l.match(/^cd(\d+)$/);
+        if (m) return { types: ['Medium'], front: false, comment: `CD ${Number(m[1])}` };
+        m = l.match(/^booklet(\d+)$/);
+        if (m) return { types: ['Booklet'], front: false, comment: `page ${Number(m[1])}` };
+        return { types: ['Other'], front: false, comment: label || '' };
+    }
+
+    /**
+     * jungleland.it's list as a provider (mockups J1/J3, 2026-10-23): the
+     * lazy Art column (`_jlBuildRow()`), the entry's page read through
+     * `_dpGet()` (`_dpParseJl()`: every scan, labelled by its file name).
+     * Off with `sa_jl_tip_images` (the card only).
+     * @type {FiProvider}
+     */
+    const _JL_FI = _fiDpProvider({
+        key: 'jl', column: 'Art', name: 'jungleland.it', host: 'jungleland.it',
+        gal: { heading: 'Artwork', where: 'Art column', point: 'its Art cell', rows: 'rows', page: 'entry\'s page', pages: 'entry pages' },
+        tableSel: 'body.mb-sa-host-jl table.tbl', linkSel: 'a.mb-fi-cell[data-mb-fi="jl"]', setting: 'sa_jl_tip_images',
+        h1: 'h1.mb-jl-h1 bdi', pageName: 'the entry\'s page', pageLabel: 'Entry page',
+        noneNote: 'The entry\'s page has no scans.',
+        loadingNote: 'Loading the artwork from the entry\'s page… one request for this one (about 1 s apart).',
+        recordImages: (data) => {
+            const scans = (data.images || []).filter(im => im.thumb || im.full);
+            if (!scans.length) return 'The entry\'s page has no scans.';
+            return scans.map(im => {
+                const t = _jlFiType(im.label);
+                return {
+                    image: im.full || im.thumb, thumbnails: { 250: im.thumb || im.full }, types: t.types, front: t.front,
+                    comment: t.comment || _fiFileName(im.full || im.thumb),
+                };
+            });
+        },
+        cellView: (data) => {
+            const scans = (data.images || []).filter(im => im.thumb || im.full);
+            if (!scans.length) return { state: 'none' };
+            return { state: 'done', thumb: data.cover || scans[0].thumb || scans[0].full, n: scans.length };
+        },
+        loadingText: 'Loading the artwork from the entry\'s page…',
+        foot: 'Click: viewer · Ctrl-click: the entry\'s page',
+    });
+
+    /**
+     * Whether a brucespringsteen.it record's photo really exists: the page
+     * always names `blegs/images/<code>.jpg`, but the site hides a missing
+     * one with `onerror`, so only loading it tells. Loads it once (on a
+     * hover or a click, never at render), records `data.photo` (`'ok'` /
+     * `'none'`) and writes the record back, so the next session's sweep
+     * paints it without asking. A missing photo is "no photo", never an
+     * error to retry. Never rejects.
+     *
+     * @param {object} data - The record (`_dpParseBs()`), in `_dpMem`.
+     * @param {string} url - Its page.
+     * @returns {Promise<void>}
+     */
+    function _bsFiCheckPhoto(data, url) {
+        const im = (data.images || [])[0];
+        if (!im || data.photo) return Promise.resolve();
+        return new Promise((resolve) => {
+            const pre = new Image();
+            pre.referrerPolicy = 'no-referrer';
+            pre.onload = () => { data.photo = 'ok'; resolve(); };
+            pre.onerror = () => { data.photo = 'none'; resolve(); };
+            pre.src = im.full || im.thumb;
+        }).then(() => {
+            const mem = _dpMem.get(url);
+            return _dpIdbPut({ url, v: _DP_PARSER_VERSION, at: mem ? mem.at : Date.now(), data }).catch(() => { /* memory has it */ });
+        });
+    }
+
+    /**
+     * brucespringsteen.it's records as a provider (mockup K1, 2026-10-23):
+     * the lazy Photo column (`_bsBuildRow()`), the record's page read
+     * through `_dpGet()` (`_dpParseBs()`: at most one photo), the photo
+     * checked by `_bsFiCheckPhoto()`. One image, so the card is the single
+     * big picture (`single`). Off with `sa_bs_tip_images` (the card only).
+     * @type {FiProvider}
+     */
+    const _BS_FI = _fiDpProvider({
+        key: 'bs', column: 'Photo', name: 'brucespringsteen.it', host: 'brucespringsteen.it',
+        gal: { heading: 'Artwork', where: 'Photo column', point: 'its Photo cell', rows: 'records', page: 'record\'s page', pages: 'record pages' },
+        tableSel: 'body.mb-sa-host-bs table.tbl', linkSel: 'a.mb-fi-cell[data-mb-fi="bs"]', setting: 'sa_bs_tip_images',
+        h1: 'h1.mb-bs-h1 bdi', pageName: 'the record\'s page', pageLabel: 'Record page',
+        single: true,
+        noneNote: 'The record has no photo.',
+        loadingNote: 'Loading the record\'s page… one request for this one (about 1 s apart).',
+        ready: (data) => !(data.images || []).length || !!data.photo,
+        afterLoad: _bsFiCheckPhoto,
+        recordImages: (data, row) => {
+            const im = (data.images || [])[0];
+            if (!im || data.photo !== 'ok') return 'The record has no photo.';
+            return [{ image: im.full || im.thumb, thumbnails: { 250: im.thumb || im.full }, types: ['Photo'], front: true, comment: row.title }];
+        },
+        cellView: (data) => {
+            const im = (data.images || [])[0];
+            return im && data.photo === 'ok' ? { state: 'done', thumb: im.thumb || im.full, n: 1 } : { state: 'none' };
+        },
+        loadingText: 'Loading the record\'s page…',
+        foot: 'Click: viewer · Ctrl-click: the record\'s page',
+    });
+
+    /**
+     * The order of the Brucebase kinds in a row's images: the year table's
+     * Media icons first, in the site's own order, then a song's.
+     * @type {string[]}
+     */
+    const _BB_FI_KINDS = ['Photo', 'Ticket', 'Memorabilia', 'News', 'Song graph', 'Lyric sheet', 'Other'];
+
+    /**
+     * A Brucebase page's images (`_bbPageImages()`) as the viewer's records,
+     * grouped by kind (`_BB_FI_KINDS`, page order within a kind). The viewer
+     * tries the original first, then the page's own `medium.jpg`, then the
+     * thumbnail (`_artViewerBigUrls()`); the card's tile is `small.jpg`
+     * (HEAD 200 for a files:, gallery: and news: image, 2026-10-23).
+     *
+     * @param {object} data - The record.
+     * @returns {Object[]}
+     */
+    function _bbFiImages(data) {
+        const rank = (im) => {
+            const i = _BB_FI_KINDS.indexOf(im.label);
+            return i < 0 ? _BB_FI_KINDS.length : i;
+        };
+        return (data.images || []).filter(im => im.thumb || im.full)
+            .map((im, i) => ({ im, i }))
+            .sort((x, y) => rank(x.im) - rank(y.im) || x.i - y.i)
+            .map(({ im }) => {
+                const full = im.full || im.thumb;
+                const small = im.thumb ? im.thumb.replace(/\/thumbnail\.jpg$/, '/small.jpg') : full;
+                return {
+                    image: full, thumbnails: { 1200: full, ...(im.medium ? { large: im.medium } : {}), 250: small },
+                    types: [im.label || 'Other'], front: false, comment: _fiFileName(full),
+                };
+            });
+    }
+
+    /**
+     * The text of one column of a row, by the column's name
+     * (`_cleanColHeaderText()`), '' when the table has no such column.
+     *
+     * @param {HTMLTableElement}    table
+     * @param {HTMLTableRowElement} tr
+     * @param {string}              name
+     * @returns {string}
+     */
+    function _fiColText(table, tr, name) {
+        const idx = _fiColIdx(table, name);
+        const cell = idx >= 0 ? tr.cells[idx] : null;
+        return cell ? cell.textContent.replace(/\s+/g, ' ').trim() : '';
+    }
+
+    /**
+     * Each table's column names by index, read once per header row: the
+     * gallery builds a row for every row of a table (`_fgalOpen()`), and
+     * `_cleanColHeaderText()` over every header for each of them would be
+     * O(rows × columns). A rebuilt `<thead>` row is another element, so it is
+     * read again.
+     * @type {WeakMap<HTMLTableElement, {row: Element, names: string[]}>}
+     */
+    const _fiColNames = new WeakMap();
+
+    /**
+     * The index of a table's column by its name, -1 for none.
+     *
+     * @param {HTMLTableElement} table
+     * @param {string}           name
+     * @returns {number}
+     */
+    function _fiColIdx(table, name) {
+        const row = table.querySelector('thead tr:first-child');
+        if (!row) return -1;
+        let c = _fiColNames.get(table);
+        if (!c || c.row !== row || c.names.length !== row.cells.length) {
+            c = { row, names: Array.from(row.cells, th => _cleanColHeaderText(th)) };
+            _fiColNames.set(table, c);
+        }
+        return c.names.indexOf(name);
+    }
+
+    /**
+     * Brucebase's year table as a provider (mockup B1, 2026-10-23): the
+     * Media icons Photo, Ticket, Memorabilia (passes) and News of an entry
+     * with a page of its own (`_bbYearBuildRow()` stamps them
+     * `a.mb-fi-media`, `data-mb-fi-kind`). The page — a gig, or any other
+     * entry — is read through `_dpGet()` (`_dpParseBbPage()`: its gallery
+     * images, by kind). The card shows the icon's kind; the viewer opens on
+     * its first image, every other kind one ← → away; Shift+← → walk the
+     * rows. Off with `sa_bb_tip_images` (the card only).
+     * @type {FiProvider}
+     */
+    const _BB_FI = _fiDpProvider({
+        key: 'bb', column: 'Media', name: 'Brucebase', host: 'brucebase.wikidot.com',
+        gal: { heading: 'Images', where: 'Media icons', point: 'one of its ringed icons', rows: 'entries', page: 'entry\'s page',
+            pages: 'entry pages', eligible: 'with a ringed Media icon',
+            left: '{n} {rows} have no ringed icon (no page of their own, or no Photo, Ticket, News or Memorabilia) and are not here.' },
+        tableSel: 'body.mb-sa-host-bb table.tbl', linkSel: 'a.mb-fi-media[data-mb-fi="bb"]', setting: 'sa_bb_tip_images',
+        h1: 'h1.mb-bb-h1 bdi', pageName: 'the entry\'s page', pageLabel: 'Entry page',
+        noRowThumb: true,
+        rowExtra: (a) => ({ kind: a.dataset.mbFiKind || '', date: _fiColText(a.closest('table'), a.closest('tr'), 'Date') }),
+        titleOf: (a, table) => {
+            const tr = a.closest('tr');
+            const where = ['Venue', 'City', 'State'].map(c => _fiColText(table, tr, c)).filter(Boolean).join(', ');
+            return [_fiColText(table, tr, 'Date'), where].filter(Boolean).join(' · ');
+        },
+        cardTitle: (row) => (row.kind ? [row.date, row.kind].filter(Boolean).join(' · ') : row.title),
+        cardImages: (images, row) => {
+            if (!row.kind) return images;
+            const own = images.filter(im => (im.types || []).includes(row.kind));
+            if (own.length) return own;
+            return [{ ...images[0], note: `No ${row.kind.toLowerCase()} images on the entry's page; ` +
+                `${images.length} other${images.length === 1 ? '' : 's'} — click for ${images.length === 1 ? 'it' : 'them'}.` }];
+        },
+        startAt: (row, images) => (row.kind ? (images || []).findIndex(im => (im.types || []).includes(row.kind)) : -1),
+        noneNote: 'The entry\'s page has no images.',
+        loadingNote: 'Loading the images from the entry\'s page… one request for this one (about 1 s apart).',
+        recordImages: (data) => {
+            const images = _bbFiImages(data);
+            return images.length ? images : 'The entry\'s page has no images.';
+        },
+        loadingText: 'Loading the images from the entry\'s page…',
+        foot: 'Click: viewer · ← → every kind · Ctrl-click: the entry\'s page',
+    });
+
+    /**
+     * Brucebase's song list as a provider (mockup B2, 2026-10-23): the Title
+     * glyph (`_fiGlyph()`, `_bbBuildRow()`), the song's page read through
+     * `_dpGet()` (`_dpParseBb()`: its graph and lyric sheets) — the record
+     * the detail preview shows. Off with `sa_bb_tip_images` (the card only).
+     * @type {FiProvider}
+     */
+    const _BBS_FI = _fiDpProvider({
+        key: 'bbs', column: 'Title', name: 'Brucebase', host: 'brucebase.wikidot.com',
+        gal: { heading: 'Images', where: 'Title glyph', point: 'its 🖼', rows: 'songs', page: 'song\'s page', pages: 'song pages' },
+        tableSel: 'body.mb-sa-host-bb table.tbl', linkSel: 'a.mb-fi-glyph[data-mb-fi="bbs"]', setting: 'sa_bb_tip_images',
+        h1: 'h1.mb-bb-h1 bdi', pageName: 'the song\'s page', pageLabel: 'Song page',
+        noneNote: 'The song\'s page has no images.',
+        loadingNote: 'Loading the images from the song\'s page… one request for this one (about 1 s apart).',
+        recordImages: (data) => {
+            const images = _bbFiImages(data);
+            return images.length ? images : 'The song\'s page has no images.';
+        },
+        cellView: (data) => {
+            const n = _bbFiImages(data).length;
+            return n ? { state: 'done', n } : { state: 'none' };
+        },
+        loadingText: 'Loading the images from the song\'s page…',
+        foot: 'Click: viewer · Ctrl-click: the song\'s page',
+    });
+
+    /**
+     * springsteenlyrics.com's lyrics index as a provider (mockup L1,
+     * 2026-10-23): the Title glyph (`_fiGlyph()`, `applySlLyricsToTable()`),
+     * the song's page read through `_dpGet()` (`_dpParseSlSong()`: its
+     * `lyrics/images/` pictures, usually none, now and then a hand-written
+     * sheet). One picture is the card itself, big (`single`). Off with
+     * `sa_sl_tip_images` (the card only).
+     * @type {FiProvider}
+     */
+    const _SLL_FI = _fiDpProvider({
+        key: 'sll', column: 'Title', name: 'springsteenlyrics.com', host: 'springsteenlyrics.com',
+        gal: { heading: 'Images', where: 'Title glyph', point: 'its 🖼', rows: 'songs', page: 'song\'s page', pages: 'song pages' },
+        tableSel: 'body.mb-sa-host-sl table.tbl', linkSel: 'a.mb-fi-glyph[data-mb-fi="sll"]', setting: 'sa_sl_tip_images',
+        h1: 'h1.mb-sl-h1 bdi', pageName: 'the song\'s page', pageLabel: 'Song page',
+        single: true,
+        noneNote: 'The song\'s page has no images.',
+        loadingNote: 'Loading the song\'s page… one request for this one (about 1 s apart).',
+        recordImages: (data) => {
+            const images = (data.images || []).filter(im => im.thumb || im.full);
+            if (!images.length) return 'The song\'s page has no images.';
+            return images.map(im => ({
+                image: im.full || im.thumb, thumbnails: { 250: im.thumb || im.full }, types: ['Image'],
+                front: false, comment: _fiFileName(im.full || im.thumb),
+            }));
+        },
+        cellView: (data) => {
+            const n = (data.images || []).filter(im => im.thumb || im.full).length;
+            return n ? { state: 'done', n } : { state: 'none' };
+        },
+        loadingText: 'Loading the song\'s page…',
+        foot: 'Click: viewer · Ctrl-click: the song\'s page',
+    });
+
+    // ── The table-wide 🖼 gallery on the foreign tables ─────────────────────
+    //
+    // vzell, 2026-10-23 (org/foreign-images.org, phase 4; mockup G2/G3,
+    // https://claude.ai/artifact/SL81qFidC4wQM6Gz2jY47Z, org/foreign-gallery-mockups.html):
+    // every image of the rows a foreign table shows, in one Liner-notes
+    // window (`#mb-fgal`) under its 🖼 in the table's heading bar, after the
+    // row count. Opening it asks the site for nothing: it shows the rows
+    // whose records are in memory or saved in this browser (the provider's
+    // `peekSaved()`, one IndexedDB read). The others are one button away,
+    // its cost named ("Load the other 32 (about 35 s)"); a run over five
+    // minutes asks first, inside the window, and the run stops when the
+    // window closes. Type chips and "Compare two" as on MusicBrainz's 🖼
+    // (`_artGallery*`, which stays as it is); a click on an image opens the
+    // artwork viewer, Shift+← → over the gallery's rows. One provider per
+    // table (`_fgalProviderFor()`), the same `FiProvider` the hover card and
+    // the viewer click use, so a row read by any of them is read for all.
+
+    /**
+     * A run longer than this, in seconds, asks before it starts (vzell,
+     * 2026-10-23: "ask").
+     * @type {number}
+     */
+    const _FGAL_ASK_OVER_S = 300;
+
+    /**
+     * How many rows not loaded yet the window names one by one; the rest
+     * are counted.
+     * @type {number}
+     */
+    const _FGAL_NAMED_COLD = 40;
+
+    /**
+     * The open gallery, or null. One at a time.
+     * @type {?Object}
+     */
+    let _fgalState = null;
+
+    /**
+     * What a table's gallery remembers between two openings for the page's
+     * life: the log, how its last run ended, the rows it read.
+     * @type {WeakMap<HTMLTableElement, {log: Object[], finished: string, stopped: string, readNow: Set<string>}>}
+     */
+    const _fgalMemo = new WeakMap();
+
+    /**
+     * The provider of a foreign table's images: the first of this host's
+     * whose triggers the table's rows hold; null for a table with none
+     * (Brucebase's Relations, Recent changes).
+     *
+     * @param {HTMLTableElement} table
+     * @returns {?FiProvider}
+     */
+    function _fgalProviderFor(table) {
+        const cands = _isDgHost ? [_DG_FI] : _isSlHost ? [_SL_FI, _SLL_FI] : _isJlHost ? [_JL_FI]
+            : _isBsHost ? [_BS_FI] : _isBbHost ? [_BB_FI, _BBS_FI] : [];
+        return cands.find(p => table.matches(p.tableSel) && table.querySelector(`tbody > tr ${p.linkSel}`)) || null;
+    }
+
+    /**
+     * Places each foreign table's 🖼 right after its heading's row count —
+     * or puts it back there: the count is rebuilt on every filter
+     * (`updateH2Count()` re-anchors `[id^="mb-fgal-btn-"]` with the other
+     * heading controls), and a multi-table page rebuilds its `<h3>`s.
+     * Called beside `_dgMbAfterRender()`: both render tails and both
+     * re-render branches of `runFilter()`. One boolean check on MusicBrainz.
+     *
+     * @returns {void}
+     */
+    function _fgalAfterRender() {
+        if (!_foreignHost) return;
+        _ensureFgalStyle();
+        document.querySelectorAll('table.tbl').forEach((table, i) => {
+            const id = `mb-fgal-btn-${i}`;
+            let btn = document.getElementById(id);
+            const p = _fgalProviderFor(table);
+            const header = p ? caaFindHeaderForTable(table) : null;
+            const anchor = header ? (header.querySelector(':scope > .mb-row-count-stat') || _hdrCtlAnchor(header)) : null;
+            if (!anchor) {
+                if (btn) btn.remove();
+                return;
+            }
+            if (!btn) {
+                btn = document.createElement('button');
+                btn.id = id;
+                btn.type = 'button';
+                btn.className = 'mb-fgal-btn';
+                btn.textContent = '🖼';
+                btn.dataset.mbttFn = 'fgal';
+                btn.setAttribute('aria-haspopup', 'dialog');
+                btn.setAttribute('aria-pressed', 'false');
+                btn.setAttribute('aria-label', 'Image gallery of this table');
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const t = _fgalTableOf(btn);
+                    if (t) _fgalOpen(t, btn);
+                });
+            }
+            if (btn.previousElementSibling !== anchor) anchor.after(btn);
+        });
+    }
+
+    /**
+     * The table a 🖼 belongs to, at click time (a re-render may have
+     * replaced it): `table.tbl` number N of `#mb-fgal-btn-N`.
+     *
+     * @param {HTMLElement} btn
+     * @returns {?HTMLTableElement}
+     */
+    function _fgalTableOf(btn) {
+        const m = btn.id.match(/^mb-fgal-btn-(\d+)$/);
+        return m ? document.querySelectorAll('table.tbl')[Number(m[1])] || null : null;
+    }
+
+    /**
+     * The table's rows with a trigger, one per row (the first trigger), as
+     * the provider takes them, and how many rows it shows in all. A row the
+     * provider has no record for, or one the list itself rules out (a
+     * springsteenlyrics bootleg marked "cover only"), is not in the gallery.
+     *
+     * @param {FiProvider}       p
+     * @param {HTMLTableElement} table
+     * @returns {{rows: Object[], total: number}}
+     */
+    function _fgalRows(p, table) {
+        const seen = new Map();
+        table.querySelectorAll(`tbody > tr ${p.linkSel}`).forEach(l => {
+            const tr = l.closest('tr');
+            if (tr.style.display !== 'none' && !seen.has(tr)) seen.set(tr, l);
+        });
+        const rows = [];
+        Array.from(seen.values()).forEach((l, i) => {
+            const row = p.rowFor(l, table, `fgal:${i}:${l.href}`);
+            row.kind = '';
+            if (!p.hasRecord(row) || p.state(row) === 'none') return;
+            rows.push({ row, key: row.url || (row.target && row.target.key) || l.href });
+        });
+        const total = Array.from(table.tBodies).reduce((n, tb) => n + Array.from(tb.rows).filter(tr => tr.style.display !== 'none').length, 0);
+        return { rows, total };
+    }
+
+    /**
+     * A gallery row as it stands: `read` (its images), `empty` (read, no
+     * image beyond a note), `failed` (with the reason), `loading` (a hover
+     * or the run is asking) or `cold`.
+     *
+     * @param {FiProvider} p
+     * @param {Object}     g - A row of `_fgalRows()`.
+     * @returns {{state: string, images: Object[], note: string}}
+     */
+    function _fgalRowState(p, g) {
+        const s = p.state(g.row);
+        if (s === 'done') {
+            const raw = p.images(g.row);
+            if (!raw.length || (raw.length === 1 && raw[0].note)) return { state: 'empty', images: [], note: '' };
+            return { state: 'read', images: p.cardImages ? p.cardImages(raw, g.row) : raw, note: '' };
+        }
+        if (s === 'failed') {
+            const raw = p.images(g.row);
+            return { state: 'failed', images: [], note: (raw[0] && raw[0].note) || 'The request failed.' };
+        }
+        return { state: s === 'loading' ? 'loading' : 'cold', images: [], note: '' };
+    }
+
+    /**
+     * "about 35 s", "about 12 min", "about 1 h 4 min" for some records.
+     *
+     * @param {number} n
+     * @param {number} spacing - Seconds a record.
+     * @returns {string}
+     */
+    function _fgalCost(n, spacing) {
+        const s = Math.round(n * spacing);
+        if (s < 90) return `about ${s} s`;
+        const m = Math.round(s / 60);
+        return m < 60 ? `about ${m} min` : `about ${Math.floor(m / 60)} h ${m % 60} min`;
+    }
+
+    /**
+     * A run's cost, with what it would be with a Discogs token where that
+     * is faster.
+     *
+     * @param {FiProvider} p
+     * @param {number}     n
+     * @returns {string}
+     */
+    function _fgalCostText(p, n) {
+        const tok = p.tokenSpacingS();
+        return _fgalCost(n, p.spacingS()) + (tok ? `; ${_fgalCost(n, tok)} with a Discogs token` : '');
+    }
+
+    /**
+     * The 🖼's hover card: what the window would show, counted from memory
+     * (no request, no database read). None while the window is open.
+     *
+     * @param {HTMLElement} btn
+     * @returns {?string}
+     */
+    function _fgalTipHtml(btn) {
+        if (_fgalState) return null;
+        const table = _fgalTableOf(btn);
+        const p = table && _fgalProviderFor(table);
+        if (!p) return null;
+        const { rows } = _fgalRows(p, table);
+        const read = rows.filter(g => p.state(g.row) === 'done').length;
+        return `<div class="mb-tt-title">${_rgEsc(p.gal.heading)} gallery</div>` +
+            `<div class="mb-tt-body">Every image of the ${_rgEsc(p.gal.rows)} this table shows that have been read: ` +
+            `${read.toLocaleString('en-US')} read, ${(rows.length - read).toLocaleString('en-US')} not yet.</div>` +
+            '<div class="mb-tt-dim">Opening it asks the site for nothing. Click to open; click again or Esc to close.</div>';
+    }
+
+    /**
+     * Opens the gallery of a table under its 🖼 — or, from the same table's
+     * 🖼 again, closes it. Another table's open gallery closes first.
+     * Renders at once from memory, then once more after the provider's
+     * `peekSaved()` has put the rows saved in this browser in memory.
+     *
+     * @param {HTMLTableElement} table
+     * @param {HTMLElement}      opener
+     * @returns {void}
+     */
+    function _fgalOpen(table, opener) {
+        const prev = _fgalState;
+        if (prev) {
+            _fgalClose();
+            if (prev.table === table) return;
+        }
+        const p = _fgalProviderFor(table);
+        if (!p) return;
+        _ensureFgalStyle();
+        const { rows, total } = _fgalRows(p, table);
+        let memo = _fgalMemo.get(table);
+        if (!memo) {
+            memo = { log: [], finished: '', stopped: '', readNow: new Set() };
+            _fgalMemo.set(table, memo);
+        }
+        const box = document.createElement('div');
+        box.id = 'mb-fgal';
+        box.className = 'mb-tt-liner';
+        box.setAttribute('role', 'dialog');
+        box.setAttribute('aria-label', `${p.gal.heading} gallery`);
+        const st = {
+            p, table, opener, box, rows, total, memo, filtered: _anyFilterActive(), run: null,
+            sel: new Set(), compare: false, ca: null, cb: null, ask: false, peeking: true, fresh: new Set(),
+            onKey: (e) => _fgalOnKey(st, e),
+            onDown: (e) => {
+                if (e.pointerType !== 'mouse' && !box.contains(e.target) && e.target !== opener && !_artViewerState) _fgalClose();
+            },
+        };
+        _fgalState = st;
+        document.body.appendChild(box);
+        box.addEventListener('click', (e) => _fgalOnClick(st, e));
+        box.addEventListener('change', (e) => _fgalOnChange(st, e));
+        box.addEventListener('keydown', (e) => {
+            if (e.key !== 'Enter' && e.key !== ' ') return;
+            const fig = e.target.closest && e.target.closest('figure.mb-fgal-tile');
+            if (!fig) return;
+            e.preventDefault();
+            _fgalOpenViewer(st, fig);
+        });
+        window.addEventListener('keydown', st.onKey, true);
+        document.addEventListener('pointerdown', st.onDown, true);
+        opener.setAttribute('aria-pressed', 'true');
+        _fgalPlace(st);
+        _fgalRender(st);
+        Promise.resolve(p.peekSaved(rows.map(g => g.row))).catch(() => 0).then(() => {
+            st.peeking = false;
+            if (_fgalState === st) _fgalRender(st);
+        });
+        Lib.debug('detail', `_fgalOpen(): ${rows.length} row(s) of ${total} in the gallery.`);
+    }
+
+    /**
+     * Closes the open gallery, stopping its run ("Stopped when the window
+     * closed"), and gives the focus back to its 🖼.
+     *
+     * @returns {void}
+     */
+    function _fgalClose() {
+        const st = _fgalState;
+        if (!st) return;
+        _fgalStop(st, 'closed');
+        _fgalState = null;
+        window.removeEventListener('keydown', st.onKey, true);
+        document.removeEventListener('pointerdown', st.onDown, true);
+        st.box.remove();
+        st.opener.setAttribute('aria-pressed', 'false');
+        if (st.opener.isConnected) st.opener.focus({ preventScroll: true });
+    }
+
+    /**
+     * Esc: the open question first, then the window. The artwork viewer
+     * owns every key while it is open.
+     *
+     * @param {Object}        st
+     * @param {KeyboardEvent} e
+     * @returns {void}
+     */
+    function _fgalOnKey(st, e) {
+        if (e.key !== 'Escape' || _artViewerState || _fgalState !== st) return;
+        e.preventDefault();
+        e.stopPropagation();
+        if (st.ask) {
+            st.ask = false;
+            _fgalRender(st);
+            return;
+        }
+        _fgalClose();
+    }
+
+    /**
+     * Puts the window under its 🖼, inside the window's width.
+     *
+     * @param {Object} st
+     * @returns {void}
+     */
+    function _fgalPlace(st) {
+        const r = st.opener.getBoundingClientRect();
+        const vw = document.documentElement.clientWidth;
+        const w = Math.min(800, vw - 16);
+        const left = Math.max(8, Math.min(r.left - 20, vw - w - 8));
+        st.box.style.width = `${w}px`;
+        st.box.style.left = `${Math.round(left + window.scrollX)}px`;
+        st.box.style.top = `${Math.round(r.bottom + window.scrollY + 6)}px`;
+    }
+
+    /**
+     * A line of the window's Recent log, newest first, at most six.
+     *
+     * @param {Object} st
+     * @param {string} what
+     * @param {string} outcome
+     * @param {string} cls - `good`, `bad` or `dim`.
+     * @returns {void}
+     */
+    function _fgalNote(st, what, outcome, cls) {
+        const d = new Date();
+        const tm = [d.getHours(), d.getMinutes(), d.getSeconds()].map(x => String(x).padStart(2, '0')).join(':');
+        st.memo.log.unshift({ tm, what, outcome, cls });
+        st.memo.log.length = Math.min(st.memo.log.length, 6);
+    }
+
+    /**
+     * Reads every row in scope not read yet (or only the failed ones), one
+     * after the other through the provider's `request()` — its rate gate,
+     * its cache, the same record a hover would read. Each request is wanted
+     * only while this run is the window's, so Stop or closing the window
+     * asks nothing more.
+     *
+     * @param {Object}  st
+     * @param {boolean} onlyFailed
+     * @returns {Promise<void>}
+     */
+    async function _fgalRun(st, onlyFailed) {
+        const p = st.p;
+        const queue = st.rows.filter(g => {
+            const s = _fgalRowState(p, g).state;
+            return onlyFailed ? s === 'failed' : (s === 'cold' || s === 'failed');
+        });
+        if (!queue.length || st.run) return;
+        const run = { queue, n: queue.length, k: 0, halt: null, stop: null };
+        run.halt = new Promise(res => { run.stop = res; });
+        st.run = run;
+        st.ask = false;
+        st.memo.finished = '';
+        st.memo.stopped = '';
+        _fgalNote(st, `${queue.length.toLocaleString('en-US')} ${queue.length === 1 ? p.gal.page : p.gal.pages}`, 'started', 'dim');
+        for (const g of queue) {
+            if (st.run !== run) return;
+            run.k++;
+            _fgalRender(st);
+            const force = _fgalRowState(p, g).state === 'failed';
+            await Promise.race([
+                new Promise(res => p.request(g.row, { force, repaint: res, wanted: () => _fgalState === st && st.run === run })),
+                run.halt,
+            ]);
+            if (st.run !== run) return;
+            const now = _fgalRowState(p, g);
+            const title = g.row.title || g.key;
+            if (now.state === 'read') {
+                st.memo.readNow.add(g.key);
+                st.fresh.add(g.key);
+                _fgalNote(st, title, `${now.images.length} image${now.images.length === 1 ? '' : 's'}`, 'good');
+            } else if (now.state === 'empty') {
+                st.memo.readNow.add(g.key);
+                _fgalNote(st, title, 'no images', 'dim');
+            } else if (now.state === 'failed') {
+                _fgalNote(st, title, `could not read the ${p.gal.page}`, 'bad');
+            }
+        }
+        st.run = null;
+        const failed = st.rows.filter(g => _fgalRowState(p, g).state === 'failed').length;
+        st.memo.finished = failed ? 'errors' : 'ok';
+        _fgalNote(st, 'run', failed ? `finished, ${failed} failed` : 'finished', failed ? 'bad' : 'good');
+        if (_fgalState === st) _fgalRender(st);
+    }
+
+    /**
+     * Stops a running gallery run, saying why: `stopped` (Stop) or
+     * `closed` (the window closed).
+     *
+     * @param {Object} st
+     * @param {string} why
+     * @returns {void}
+     */
+    function _fgalStop(st, why) {
+        const run = st.run;
+        if (!run) return;
+        st.run = null;
+        run.stop();
+        st.memo.stopped = why;
+        const left = run.queue.length - run.k + 1;
+        _fgalNote(st, 'run', `${why === 'closed' ? 'stopped: the window closed' : 'stopped'} — ${left.toLocaleString('en-US')} not read`, 'dim');
+        if (_fgalState === st) _fgalRender(st);
+    }
+
+    /**
+     * Whether an image passes the chips (none = every type, several = any).
+     *
+     * @param {Object} st
+     * @param {Object} im
+     * @returns {boolean}
+     */
+    function _fgalMatch(st, im) {
+        return !st.sel.size || st.sel.has(_fgalType(im));
+    }
+
+    /**
+     * An image's type for the chips and Compare: its first type, else
+     * "(no type)".
+     *
+     * @param {Object} im
+     * @returns {string}
+     */
+    function _fgalType(im) {
+        return (Array.isArray(im.types) && im.types[0]) || '(no type)';
+    }
+
+    /**
+     * The viewer's rows: the read rows with an image the chips let through,
+     * each with the indices of those images, in table order.
+     *
+     * @param {Object} st
+     * @returns {Array<{g: Object, images: Object[], idx: number[]}>}
+     */
+    function _fgalNav(st) {
+        const out = [];
+        st.rows.forEach(g => {
+            const s = _fgalRowState(st.p, g);
+            if (s.state !== 'read') return;
+            const idx = s.images.map((_, i) => i).filter(i => _fgalMatch(st, s.images[i]));
+            if (idx.length) out.push({ g, images: s.images, idx });
+        });
+        return out;
+    }
+
+    /**
+     * Draws the window from its state, keeping its scroll position.
+     *
+     * @param {Object} st
+     * @returns {void}
+     */
+    function _fgalRender(st) {
+        const p = st.p;
+        const old = st.box.querySelector('.mb-fgal-body');
+        const top = old ? old.scrollTop : 0;
+        const states = new Map(st.rows.map(g => [g, _fgalRowState(p, g)]));
+        const c = { cache: 0, now: 0, failed: 0, cold: 0, empty: 0, images: 0 };
+        st.rows.forEach(g => {
+            const s = states.get(g);
+            if (s.state === 'read' || s.state === 'empty') {
+                if (st.memo.readNow.has(g.key)) c.now++;
+                else c.cache++;
+                if (s.state === 'empty') c.empty++;
+                c.images += s.images.length;
+            } else if (s.state === 'failed') c.failed++;
+            else c.cold++;
+        });
+        const head = _artvEl('div', 'mb-fgal-head');
+        const t = _artvEl('div', 'mb-fgal-t');
+        const name = _fgalTableName(st.table) || p.title();
+        t.append(_artvEl('b', null, `${p.gal.heading}${name ? ' — ' + name : ''}`),
+            _artvEl('span', null, `${window.location.hostname.replace(/^www\./, '')} · ${p.gal.where} · ← → images, Shift+← → rows in the viewer`));
+        const [pc, pw] = st.run ? ['run', 'Running'] : st.memo.finished === 'errors' ? ['warn', 'Done with errors']
+            : (!c.cold && !c.failed) || st.memo.finished === 'ok' ? ['ok', 'Done'] : ['idle', 'Idle'];
+        const x = _artvEl('button', 'mb-fgal-x', '✕');
+        x.type = 'button';
+        x.dataset.mbFgalAct = 'close';
+        x.setAttribute('aria-label', 'Close (Esc)');
+        head.append(t, _artvEl('span', `mb-tt-ajpill mb-tt-ajpill-${pc}`, pw), x);
+        const body = _artvEl('div', 'mb-fgal-body');
+        body.append(_fgalPanel(st, c));
+        body.append(st.compare ? _fgalCompare(st, states) : _fgalList(st, states));
+        st.box.replaceChildren(head, body);
+        body.scrollTop = top;
+    }
+
+    /**
+     * The name of a table's heading (its first text), '' for none.
+     *
+     * @param {HTMLTableElement} table
+     * @returns {string}
+     */
+    function _fgalTableName(table) {
+        const h = caaFindHeaderForTable(table);
+        const n = h && Array.from(h.childNodes).find(x => x.nodeType === 3 && x.textContent.trim());
+        if (n) return n.textContent.replace(/\s+/g, ' ').trim();
+        const bdi = h && h.querySelector('bdi');
+        return bdi ? bdi.textContent.trim() : '';
+    }
+
+    /**
+     * The window's summary: facts, the progress bar and its counts, the
+     * actions, the question before a long run, the Recent log, why some
+     * rows are not here, and the chips.
+     *
+     * @param {Object} st
+     * @param {Object} c - `_fgalRender()`'s counts.
+     * @returns {HTMLElement}
+     */
+    function _fgalPanel(st, c) {
+        const p = st.p;
+        const g = p.gal;
+        const fmt = (n) => n.toLocaleString('en-US');
+        const eligible = st.rows.length;
+        const read = c.cache + c.now - c.empty;
+        const sp = p.spacingS();
+        const panel = _artvEl('div', 'mb-fgal-panel');
+        const facts = _artvEl('dl', 'mb-tt-ajfacts');
+        const fact = (k, v) => facts.append(_artvEl('dt', null, k), _artvEl('dd', null, v));
+        fact('Rows', st.filtered ? `only the ${fmt(eligible)} ${g.rows} the filters show`
+            : `all ${fmt(st.total)} ${g.rows}${g.eligible ? `, ${fmt(eligible)} ${g.eligible}` : ''}`);
+        fact('Shown', st.peeking ? 'reading this browser\'s saved pages…' : `${fmt(read)} ${read === 1 ? 'row' : 'rows'} · ${fmt(c.images)} images`);
+        fact('Not loaded', c.cold + c.failed ? `${fmt(c.cold + c.failed)} · each its ${g.page}, one request, ${sp} s apart` : 'none');
+        if (c.empty) fact('No images', `${fmt(c.empty)} ${c.empty === 1 ? 'row' : 'rows'} (read, nothing to show)`);
+        fact('Kept', `${p.kept()} in this browser, shared with the ${p === _DG_FI ? 'link preview' : 'preview'}`);
+        panel.append(facts);
+        const bar = _artvEl('div', 'mb-tt-ajbar');
+        const w = (n) => (eligible ? `${(100 * n / eligible).toFixed(2)}%` : '0');
+        [['c', c.cache], ['d', c.now], ['f', c.failed], [st.run ? 'q' : 'r', c.cold]].forEach(([k, n]) => {
+            const s = _artvEl('span', `mb-tt-ajbar-${k}`);
+            s.style.width = w(n);
+            bar.append(s);
+        });
+        bar.setAttribute('role', 'img');
+        bar.setAttribute('aria-label', `${c.cache} from the cache, ${c.now} loaded now, ${c.failed} failed, ${c.cold} not loaded`);
+        const counts = _artvEl('div', 'mb-fgal-counts');
+        counts.append(_artvEl('span', null, `${fmt(c.cache)} from the cache`), _artvEl('span', null, `${fmt(c.now)} loaded now`),
+            _artvEl('span', c.failed ? 'mb-tt-ajlog-bad' : null, `${fmt(c.failed)} failed`),
+            _artvEl('span', null, `${fmt(c.cold)} ${st.run ? 'queued' : 'not loaded'}`));
+        panel.append(bar, counts);
+        const acts = _artvEl('div', 'mb-tt-ajacts');
+        const btn = (label, act, cls) => {
+            const b = _artvEl('button', `mb-tt-ajact${cls ? ' mb-tt-ajact-' + cls : ''}`, label);
+            b.type = 'button';
+            b.dataset.mbFgalAct = act;
+            return b;
+        };
+        const note = (text) => _artvEl('span', 'mb-fgal-note', text);
+        const todo = c.cold + c.failed;
+        if (st.run) {
+            const left = st.run.n - st.run.k;
+            acts.append(btn('Stop', 'stop'), note(`Reading ${fmt(st.run.k)} of ${fmt(st.run.n)}, ${_fgalCost(left, sp)} left. Closing the window stops it too.`));
+        } else if (st.peeking) {
+            acts.append(note('Reading this browser\'s saved pages…'));
+        } else if (todo) {
+            if (st.memo.finished === 'errors' && !c.cold) {
+                acts.append(btn(`Retry ${fmt(c.failed)} failed`, 'retry', 'primary'));
+            } else {
+                acts.append(btn(`Load the other ${fmt(todo)} (${_fgalCostText(p, todo)})`, 'load', 'primary'));
+                if (c.failed && c.cold) acts.append(btn(`Retry ${fmt(c.failed)} failed`, 'retry'));
+                acts.append(note(st.memo.stopped === 'stopped' ? 'Stopped. The rows read so far stay read.'
+                    : st.memo.stopped === 'closed' ? 'Stopped when the window closed. The rows read so far stay read.'
+                        : 'Nothing is fetched until you press it.'));
+            }
+        } else if (eligible) {
+            acts.append(note(`Every one of these ${g.rows} has been read.`));
+        }
+        panel.append(acts);
+        if (st.ask && todo) {
+            const ask = _artvEl('div', 'mb-fgal-ask');
+            ask.setAttribute('role', 'alertdialog');
+            const q = _artvEl('div');
+            q.append(_artvEl('b', null, `Read ${fmt(todo)} ${g.pages}?`),
+                ` ${_fgalCostText(p, todo).replace(/^about/, 'About')}, one every ${sp} s, while this window stays open. ` +
+                'You can stop at any time; what is read stays read.');
+            const a2 = _artvEl('div', 'mb-tt-ajacts');
+            a2.append(btn('Start', 'start', 'primary'), btn('Cancel', 'cancel'));
+            ask.append(q, a2);
+            panel.append(ask);
+        }
+        if (st.memo.log.length) {
+            const ul = _artvEl('ul', 'mb-tt-ajlog');
+            st.memo.log.forEach(l => {
+                const li = document.createElement('li');
+                const time = _artvEl('time', null, l.tm);
+                const what = _artvEl('span');
+                what.append(`${l.what} · `, _artvEl('span', `mb-tt-ajlog-${l.cls}`, l.outcome));
+                li.append(time, what);
+                ul.append(li);
+            });
+            panel.append(_artvEl('div', 'mb-tt-ajlog-h', 'Recent'), ul);
+        }
+        const left = st.total - eligible;
+        if (g.left && left > 0 && !st.filtered) {
+            panel.append(_artvEl('div', 'mb-tt-dim', g.left.replace('{n}', fmt(left)).replace('{rows}', g.rows)));
+        }
+        const chips = _fgalChips(st);
+        if (chips) panel.append(chips);
+        return panel;
+    }
+
+    /**
+     * The chips: "All" and one per type of the read rows' images, with
+     * counts, then "Compare two". Nothing until a row has been read.
+     *
+     * @param {Object} st
+     * @returns {?HTMLElement}
+     */
+    function _fgalChips(st) {
+        const counts = new Map();
+        let all = 0;
+        st.rows.forEach(g => {
+            const s = _fgalRowState(st.p, g);
+            if (s.state !== 'read') return;
+            s.images.forEach(im => {
+                const t = _fgalType(im);
+                counts.set(t, (counts.get(t) || 0) + 1);
+                all++;
+            });
+        });
+        if (!all) return null;
+        const box = _artvEl('div', 'mb-fgal-chips');
+        box.setAttribute('role', 'group');
+        box.setAttribute('aria-label', 'Image types');
+        const chip = (label, type, n, pressed) => {
+            const b = _artvEl('button', 'mb-fgal-chip', label);
+            b.type = 'button';
+            b.dataset.mbFgalType = type;
+            b.setAttribute('aria-pressed', String(pressed));
+            if (n !== null) b.append(_artvEl('span', 'mb-fgal-n', n.toLocaleString('en-US')));
+            return b;
+        };
+        box.append(chip('All', '', all, st.sel.size === 0));
+        counts.forEach((n, t) => box.append(chip(t, t, n, st.sel.has(t))));
+        const cmp = chip('Compare two', '', null, st.compare);
+        cmp.classList.add('mb-fgal-cmp');
+        delete cmp.dataset.mbFgalType;
+        cmp.dataset.mbFgalAct = 'compare';
+        box.append(cmp);
+        return box;
+    }
+
+    /**
+     * One image tile: the 250 px thumbnail (lazy, no referrer), ★ for the
+     * main front, its type and comment.
+     *
+     * @param {Object} g - The row.
+     * @param {Object} im
+     * @param {number} i - Its index in the row's images.
+     * @returns {HTMLElement}
+     */
+    function _fgalTile(g, im, i) {
+        const fig = _artvEl('figure', 'mb-fgal-tile' + (im.front ? ' mb-fgal-main' : ''));
+        fig.dataset.mbFgalKey = g.key;
+        fig.dataset.mbFgalI = String(i);
+        fig.tabIndex = 0;
+        const img = document.createElement('img');
+        img.src = _artViewerThumbUrl(im);
+        img.alt = _fgalType(im);
+        img.loading = 'lazy';
+        img.referrerPolicy = 'no-referrer';
+        const type = _fgalType(im);
+        const cap = _artvEl('figcaption', null, im.comment && im.comment !== g.row.title ? `${type} · ${im.comment}` : type);
+        fig.setAttribute('aria-label', cap.textContent);
+        fig.append(img, cap);
+        return fig;
+    }
+
+    /**
+     * The gallery view: the read (and failed) rows first, in table order,
+     * then the ones not loaded yet, the first `_FGAL_NAMED_COLD` by name.
+     *
+     * @param {Object} st
+     * @param {Map<Object, Object>} states
+     * @returns {HTMLElement}
+     */
+    function _fgalList(st, states) {
+        const p = st.p;
+        const list = _artvEl('div', 'mb-fgal-rows');
+        const shown = st.rows.filter(g => states.get(g).state !== 'empty');
+        const done = shown.filter(g => ['read', 'failed'].includes(states.get(g).state));
+        const cold = shown.filter(g => !['read', 'failed'].includes(states.get(g).state));
+        const queued = new Set(st.run ? st.run.queue.slice(st.run.k) : []);
+        const block = (g) => {
+            const s = states.get(g);
+            const rel = _artvEl('div', 'mb-fgal-rel');
+            rel.dataset.mbFgalKey = g.key;
+            rel.dataset.mbFgalState = s.state;
+            const who = _artvEl('div', 'mb-fgal-who');
+            const a = _artvEl('a', null, g.row.title || g.key);
+            a.href = g.row.url || (g.row.target && g.row.target.url) || '#';
+            a.target = '_blank';
+            a.rel = 'noopener';
+            who.append(a, _artvEl('span', null, s.state === 'read' ? `${s.images.length} image${s.images.length === 1 ? '' : 's'} · ${st.memo.readNow.has(g.key) ? 'read now' : 'read before'}` : ''));
+            const tiles = _artvEl('div', 'mb-fgal-tiles');
+            if (s.state === 'failed') {
+                const f = _artvEl('span', 'mb-fgal-miss mb-tt-ajlog-bad', s.note);
+                const b = _artvEl('button', 'mb-tt-ajact', 'Try again');
+                b.type = 'button';
+                b.dataset.mbFgalAct = 'retry';
+                f.append(' ', b);
+                tiles.append(f);
+            } else if (s.state === 'read') {
+                const idx = s.images.map((_, i) => i).filter(i => _fgalMatch(st, s.images[i]));
+                if (!idx.length) {
+                    tiles.append(_artvEl('span', 'mb-fgal-miss', `No ${[...st.sel].join(' or ')} image.`));
+                    rel.classList.add('mb-fgal-dimmed');
+                }
+                let kind = '';
+                idx.forEach(i => {
+                    const im = s.images[i];
+                    if (p === _BB_FI && _fgalType(im) !== kind) {
+                        kind = _fgalType(im);
+                        tiles.append(_artvEl('span', 'mb-fgal-kind', kind));
+                    }
+                    tiles.append(_fgalTile(g, im, i));
+                });
+            } else {
+                tiles.append(_artvEl('span', 'mb-fgal-miss', s.state === 'loading' ? 'Loading…'
+                    : queued.has(g) ? 'Queued.' : `Not loaded yet. Point at ${p.gal.point}, or use Load.`));
+            }
+            if (st.fresh.has(g.key)) {
+                rel.classList.add('mb-fgal-new');
+                st.fresh.delete(g.key);
+            }
+            rel.append(who, tiles);
+            return rel;
+        };
+        done.forEach(g => list.append(block(g)));
+        cold.slice(0, _FGAL_NAMED_COLD).forEach(g => list.append(block(g)));
+        if (cold.length > _FGAL_NAMED_COLD) {
+            list.append(_artvEl('div', 'mb-tt-dim', `… and ${(cold.length - _FGAL_NAMED_COLD).toLocaleString('en-US')} more ${p.gal.rows} not loaded yet.`));
+        }
+        if (!shown.length) list.append(_artvEl('div', 'mb-tt-dim', st.rows.length ? 'Every row read has no image.' : 'No row in scope.'));
+        return list;
+    }
+
+    /**
+     * "Compare two": two read rows side by side, one line per type (the
+     * chips apply), "none" where a row has no image of it.
+     *
+     * @param {Object} st
+     * @param {Map<Object, Object>} states
+     * @returns {HTMLElement}
+     */
+    function _fgalCompare(st, states) {
+        const ok = st.rows.filter(g => states.get(g).state === 'read' && states.get(g).images.length);
+        if (ok.length < 2) return _artvEl('div', 'mb-tt-dim', `Comparing needs two read ${st.p.gal.rows} with images.`);
+        if (!ok.some(g => g.key === st.ca)) st.ca = ok[0].key;
+        if (!ok.some(g => g.key === st.cb) || st.cb === st.ca) st.cb = ok.find(g => g.key !== st.ca).key;
+        const sides = [st.ca, st.cb].map(k => ok.find(g => g.key === k));
+        const grid = _artvEl('div', 'mb-fgal-cmp-grid');
+        grid.append(_artvEl('div', 'mb-fgal-cmp-h', 'Type'));
+        sides.forEach((s, k) => {
+            const h = _artvEl('div', 'mb-fgal-cmp-h');
+            const sel = document.createElement('select');
+            sel.dataset.mbFgalSide = k ? 'b' : 'a';
+            sel.setAttribute('aria-label', `${k ? 'Second' : 'First'} row to compare`);
+            ok.forEach(g => {
+                const o = document.createElement('option');
+                o.value = g.key;
+                o.textContent = g.row.title || g.key;
+                if (g === s) o.selected = true;
+                sel.append(o);
+            });
+            h.append(sel);
+            grid.append(h);
+        });
+        const types = [];
+        sides.forEach(g => states.get(g).images.forEach(im => { if (!types.includes(_fgalType(im))) types.push(_fgalType(im)); }));
+        types.filter(t => !st.sel.size || st.sel.has(t)).forEach(t => {
+            grid.append(_artvEl('div', 'mb-fgal-cmp-ty', t));
+            sides.forEach(g => {
+                const cell = _artvEl('div', 'mb-fgal-tiles');
+                states.get(g).images.forEach((im, i) => { if (_fgalType(im) === t) cell.append(_fgalTile(g, im, i)); });
+                if (!cell.childNodes.length) cell.append(_artvEl('span', 'mb-fgal-miss', 'none'));
+                grid.append(cell);
+            });
+        });
+        return grid;
+    }
+
+    /**
+     * Clicks in the window (delegated): ✕, Load, Start / Cancel, Stop,
+     * Retry, a chip, "Compare two", an image.
+     *
+     * @param {Object}     st
+     * @param {MouseEvent} e
+     * @returns {void}
+     */
+    function _fgalOnClick(st, e) {
+        const t = e.target;
+        if (!(t instanceof Element)) return;
+        const act = t.closest('[data-mb-fgal-act]');
+        if (act) {
+            e.preventDefault();
+            const todo = st.rows.filter(g => ['cold', 'failed'].includes(_fgalRowState(st.p, g).state)).length;
+            switch (act.dataset.mbFgalAct) {
+                case 'close': _fgalClose(); return;
+                case 'load':
+                    if (todo * st.p.spacingS() > _FGAL_ASK_OVER_S) {
+                        st.ask = true;
+                        _fgalRender(st);
+                    } else _fgalRun(st, false);
+                    return;
+                case 'start': _fgalRun(st, false); return;
+                case 'cancel': st.ask = false; _fgalRender(st); return;
+                case 'stop': _fgalStop(st, 'stopped'); return;
+                case 'retry': _fgalRun(st, true); return;
+                case 'compare': st.compare = !st.compare; _fgalRender(st); return;
+                default: return;
+            }
+        }
+        const chip = t.closest('[data-mb-fgal-type]');
+        if (chip) {
+            const type = chip.dataset.mbFgalType;
+            if (!type) st.sel.clear();
+            else if (st.sel.has(type)) st.sel.delete(type);
+            else st.sel.add(type);
+            _fgalRender(st);
+            return;
+        }
+        const fig = t.closest('figure.mb-fgal-tile');
+        if (fig) {
+            e.preventDefault();
+            _fgalOpenViewer(st, fig);
+        }
+    }
+
+    /**
+     * A Compare side chosen.
+     *
+     * @param {Object} st
+     * @param {Event}  e
+     * @returns {void}
+     */
+    function _fgalOnChange(st, e) {
+        const sel = e.target.closest && e.target.closest('select[data-mb-fgal-side]');
+        if (!sel) return;
+        if (sel.dataset.mbFgalSide === 'a') st.ca = sel.value;
+        else st.cb = sel.value;
+        _fgalRender(st);
+    }
+
+    /**
+     * Opens the artwork viewer at a tile: that row's images the chips let
+     * through (in Compare, all of them); Shift+← → step the gallery's rows
+     * that have such an image, in table order, round.
+     *
+     * @param {Object}      st
+     * @param {HTMLElement} fig - The `figure.mb-fgal-tile`.
+     * @returns {void}
+     */
+    function _fgalOpenViewer(st, fig) {
+        const p = st.p;
+        const nav = _fgalNav(st);
+        const i = Number(fig.dataset.mbFgalI);
+        let k = nav.findIndex(n => n.g.key === fig.dataset.mbFgalKey);
+        if (k < 0) {
+            // Compare shows every image of a side, the chips' or not.
+            const g = st.rows.find(x => x.key === fig.dataset.mbFgalKey);
+            const s = g && _fgalRowState(p, g);
+            if (!s || s.state !== 'read') return;
+            nav.unshift({ g, images: s.images, idx: s.images.map((_, j) => j) });
+            k = 0;
+        }
+        const list = nav[k].idx.includes(i) ? nav[k].idx : nav[k].images.map((_, j) => j);
+        p.ctx.imagesCache.clear();
+        nav.forEach(n => p.ctx.imagesCache.set(n.g.row.path, n.images));
+        const describe = (n) => ({ entityPath: n.g.row.path, list: n.idx, title: n.g.row.title || p.title(), rowPos: { k: nav.indexOf(n) + 1, n: nav.length } });
+        const here = describe(nav[k]);
+        _artViewerOpen(p.ctx, here.entityPath, list, i, {
+            opener: fig, title: here.title, rowPos: here.rowPos,
+            onGroupStep: (d) => {
+                if (nav.length < 2) return null;
+                k = (k + d + nav.length) % nav.length;
+                return describe(nav[k]);
+            },
+        });
+    }
+
+    /**
+     * The window's look, on top of the Liner-notes card (`.mb-tt-liner`) and
+     * the async job card's rows it reuses (`.mb-tt-aj*`). Below the artwork
+     * viewer (2147483400), so an image opens over it; above the 📊 dropdown.
+     * Installed on a foreign host only.
+     *
+     * @returns {void}
+     */
+    function _ensureFgalStyle() {
+        if (document.getElementById('mb-fgal-style')) return;
+        const style = GM_addStyle(`
+            button.mb-fgal-btn { cursor: pointer; padding: 1px 4px; border: 1px solid #aaa; border-radius: 3px;
+                background: #f5f5f5; vertical-align: middle; font-size: 0.8em; margin-left: 3px; line-height: 1;
+                display: inline-flex; align-items: center; box-sizing: border-box; }
+            button.mb-fgal-btn[aria-pressed="true"] { background: #e7ddc8; border-color: #8a7d68; }
+            #mb-fgal.mb-tt-liner { position: absolute; z-index: 2147483300; padding: 0; display: flex; flex-direction: column;
+                max-height: min(600px, 80vh); font-size: 13.5px; }
+            #mb-fgal .mb-fgal-head { display: flex; gap: 10px; align-items: flex-start; padding: 11px 14px 9px; border-bottom: 1px solid #d9cfbd; }
+            #mb-fgal .mb-fgal-t { flex: 1 1 auto; min-width: 0; display: grid; gap: 2px; }
+            #mb-fgal .mb-fgal-t b { font-size: 16px; line-height: 1.25; }
+            #mb-fgal .mb-fgal-t span { color: #7a6d5c; font-size: 12px; }
+            #mb-fgal .mb-fgal-x { border: 0; background: transparent; font: 17px/1 system-ui, Arial, sans-serif; color: #7a6d5c;
+                cursor: pointer; padding: 2px 4px; }
+            #mb-fgal .mb-fgal-body { overflow: auto; padding: 11px 14px 14px; display: grid; gap: 11px; align-content: start; }
+            #mb-fgal .mb-fgal-panel { display: grid; gap: 6px; padding-bottom: 11px; border-bottom: 1px solid #d9cfbd; }
+            #mb-fgal .mb-tt-ajbar, #mb-fgal .mb-tt-ajacts { margin: 0; }
+            #mb-fgal .mb-tt-ajbar-r { background: #e4dccc; }
+            #mb-fgal .mb-fgal-counts { display: flex; flex-wrap: wrap; gap: 3px 14px; font: 12px system-ui, Arial, sans-serif;
+                color: #7a6d5c; font-variant-numeric: tabular-nums; }
+            #mb-fgal .mb-fgal-note { color: #7a6d5c; font-size: 12.5px; align-self: center; }
+            #mb-fgal .mb-fgal-ask { border: 1px solid #e3d09a; border-radius: 3px; background: #fbf3dc; padding: 8px 10px; display: grid; gap: 6px; }
+            #mb-fgal .mb-fgal-chips { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; margin-top: 2px; }
+            #mb-fgal .mb-fgal-chip { font: 600 10px/1 system-ui, Arial, sans-serif; letter-spacing: .07em; text-transform: uppercase;
+                color: #7a6d5c; background: transparent; border: 1px solid #d9cfbd; border-radius: 999px; padding: 5px 9px; cursor: pointer; }
+            #mb-fgal .mb-fgal-chip[aria-pressed="true"] { color: #2b2622; border-color: #2b2622; background: #f3ede1; }
+            #mb-fgal .mb-fgal-n { font-weight: 400; margin-left: 4px; }
+            #mb-fgal .mb-fgal-cmp { margin-left: 8px; }
+            #mb-fgal .mb-fgal-rows { display: grid; gap: 10px; }
+            #mb-fgal .mb-fgal-rel { display: grid; grid-template-columns: minmax(140px, 220px) minmax(0, 1fr); gap: 4px 14px;
+                padding-top: 10px; border-top: 1px solid #ebe3d3; }
+            #mb-fgal .mb-fgal-rel:first-child { border-top: 0; padding-top: 0; }
+            #mb-fgal .mb-fgal-rel.mb-fgal-dimmed .mb-fgal-who { opacity: .6; }
+            #mb-fgal .mb-fgal-rel.mb-fgal-new { animation: mb-fgal-arrive .6s ease-out; }
+            @keyframes mb-fgal-arrive { from { background: #e9f1e4; } to { background: transparent; } }
+            #mb-fgal .mb-fgal-who { display: grid; gap: 2px; align-content: start; min-width: 0; }
+            #mb-fgal .mb-fgal-who a { font-weight: 700; color: #2b2622; text-decoration: none; overflow-wrap: anywhere; }
+            #mb-fgal .mb-fgal-who a:hover { text-decoration: underline; }
+            #mb-fgal .mb-fgal-who span { color: #7a6d5c; font-size: 12px; }
+            #mb-fgal .mb-fgal-tiles { display: flex; flex-wrap: wrap; gap: 6px; align-items: flex-start; min-width: 0; }
+            #mb-fgal figure.mb-fgal-tile { margin: 0; width: 66px; display: grid; gap: 2px; cursor: zoom-in; position: relative; }
+            #mb-fgal figure.mb-fgal-tile img { width: 66px; height: 66px; object-fit: cover; border: 1px solid #d9cfbd; border-radius: 3px;
+                display: block; box-sizing: border-box; background: #ece5d6; }
+            #mb-fgal figure.mb-fgal-tile figcaption { font: 10px/1.2 system-ui, Arial, sans-serif; color: #7a6d5c; overflow-wrap: anywhere; }
+            #mb-fgal figure.mb-fgal-tile:focus-visible { outline: 2px solid #2f5f9e; outline-offset: 1px; }
+            #mb-fgal .mb-fgal-main::after { content: '★'; position: absolute; top: 2px; left: 4px; color: #f2c14e; font-size: 13px;
+                text-shadow: 0 0 2px #000; }
+            #mb-fgal .mb-fgal-kind { font: 600 9.5px system-ui, Arial, sans-serif; letter-spacing: .08em; text-transform: uppercase;
+                color: #7a6d5c; width: 100%; margin-top: 2px; }
+            #mb-fgal .mb-fgal-miss { color: #7a6d5c; font-size: 12.5px; font-style: italic; align-self: center; }
+            #mb-fgal .mb-fgal-miss.mb-tt-ajlog-bad { color: #9b2218; font-style: normal; }
+            #mb-fgal .mb-fgal-cmp-grid { display: grid; grid-template-columns: max-content minmax(0, 1fr) minmax(0, 1fr); gap: 8px 14px; align-items: start; }
+            #mb-fgal .mb-fgal-cmp-h, #mb-fgal .mb-fgal-cmp-ty { font: 600 10px system-ui, Arial, sans-serif; letter-spacing: .08em;
+                text-transform: uppercase; color: #7a6d5c; min-width: 0; }
+            #mb-fgal .mb-fgal-cmp-h { border-bottom: 1px solid #d9cfbd; padding-bottom: 4px; }
+            #mb-fgal .mb-fgal-cmp-h select { font: 13px Georgia, "Times New Roman", serif; max-width: 100%; text-transform: none; letter-spacing: 0; }
+            #mb-fgal .mb-fgal-cmp-ty { padding-top: 4px; }
+            @media (max-width: 620px) {
+                #mb-fgal .mb-fgal-rel { grid-template-columns: minmax(0, 1fr); }
+                #mb-fgal .mb-tt-ajfacts { grid-template-columns: minmax(0, 1fr); }
+            }
+            @media (prefers-reduced-motion: reduce) { #mb-fgal .mb-fgal-rel.mb-fgal-new { animation: none; } }
+        `);
+        style.id = 'mb-fgal-style';
     }
 
     /**
@@ -36186,6 +38351,10 @@
      * written before `_CLEAN_STRIP_SEL` existed and stripped the span out
      * from under it.
      *
+     * The same holds for `.mb-fi-sort-key` (2026-10-23), a foreign site's
+     * lazy Art/Photo cell (`_fiCellInner()`): stripped from the clean text,
+     * so its key is read here ("a-yes" < "b-unread" < "c-none").
+     *
      * **Deliberately scoped to the CAA/EAA sentinel, not the other two.**
      * `.mb-video-sort-key` and `.mb-cancelled-sort-key` are NOT in
      * `_CLEAN_STRIP_SEL`, so `getCleanVisibleText()` already sees them and
@@ -36206,7 +38375,7 @@
      */
     function _sortCellText(cell) {
         if (!cell) return '';
-        const artKey = cell.querySelector('.mb-caa-sort-key, .mb-eaa-sort-key');
+        const artKey = cell.querySelector('.mb-caa-sort-key, .mb-eaa-sort-key, .mb-fi-sort-key');
         if (artKey) return artKey.textContent.trim().toLowerCase();
         return getCleanVisibleText(cell).trim().toLowerCase();
     }
@@ -83219,6 +85388,10 @@ a { color: #1565c0; }`;
             // selector.  The :scope > guard ensures only direct h2 children are
             // matched, so mb-rel-retry-1 / mb-rel-retry-2 … inside h3 sub-headers in
             // multi-table mode are never collected here.
+            //
+            // • A foreign table's 🖼 gallery opener (#mb-fgal-btn-N,
+            //   _fgalAfterRender()) sits right after the count too; never on
+            //   MusicBrainz.
             const globalArtBtns = Array.from(targetH2.querySelectorAll(
                 ':scope > .mb-global-art-toggle-btn,' +
                 ' :scope > .mb-eaa-art-toggle-btn,' +
@@ -83226,7 +85399,8 @@ a { color: #1565c0; }`;
                 ' :scope > [id$="-global-retry"],' +
                 ' :scope > [id^="mb-eaa-toggle-btn-retry-"],' +
                 ' :scope > [id^="mb-caa-toggle-btn-retry-"],' +
-                ' :scope > [id^="mb-rel-retry-"]'
+                ' :scope > [id^="mb-rel-retry-"],' +
+                ' :scope > [id^="mb-fgal-btn-"]'
             ));
             for (let i = globalArtBtns.length - 1; i >= 0; i--) {
                 span.after(globalArtBtns[i]);
@@ -83493,6 +85667,11 @@ a { color: #1565c0; }`;
         // since everything else in the cell is stripped here too) and by the
         // saved-HTML `hasSortYes` probes.
         '.mb-caa-sort-key,.mb-eaa-sort-key,' +
+        // .mb-fi-sort-key: a foreign site's lazy Art/Photo cell
+        // (_fiCellInner(), jungleland.it, brucespringsteen.it) — "a-yes",
+        // "b-unread", "c-none", the column's only sort basis, read by
+        // _sortCellText(); everything else in the cell is an image or CSS.
+        '.mb-fi-sort-key,' +
         // discogs.com's MusicBrainz column (_dgMbCellHtml()): a search box's
         // "R?" and the link count badge are decoration; the column's text is
         // the hidden .mb-dg-mb-ids ("release <mbid> …"), which stays.
@@ -90190,6 +92369,8 @@ a { color: #1565c0; }`;
             _recOfInitColHeaderToggles();
             // discogs.com's MusicBrainz column: its ▶ MB toggles.
             _dgMbAfterRender(false);
+            // A foreign table's 🖼 gallery opener, after its row count.
+            _fgalAfterRender();
             // Same reason as the line above: the <thead> this writes into may
             // have just been rebuilt from a clone. No-op unless the Release-events
             // lookup is loading or has failed.
@@ -90477,6 +92658,8 @@ a { color: #1565c0; }`;
                 _recOfInitColHeaderToggles();
                 // discogs.com's MusicBrainz column: its ▶ MB toggles.
                 _dgMbAfterRender(false);
+                // A foreign table's 🖼 gallery opener, after its row count.
+                _fgalAfterRender();
                 // Same reason as the line above: the <thead> this writes into may
                 // have just been rebuilt from a clone. No-op unless the Release-events
                 // lookup is loading or has failed.
@@ -95290,6 +97473,12 @@ a { color: #1565c0; }`;
             _recOfInitColHeaderToggles();
             // discogs.com's MusicBrainz column: its ▶ MB toggles, then the lookup.
             _dgMbAfterRender(true);
+            // A foreign table's 🖼 gallery opener, after its row count.
+            _fgalAfterRender();
+            // jungleland.it / brucespringsteen.it lazy Art / Photo cells and
+            // Brucebase / springsteenlyrics Title glyphs read before, painted
+            // from the detail-page database (no request).
+            _fiAfterRender();
             // Same reason as the line above: the <thead> this writes into may
             // have just been rebuilt from a clone. No-op unless the Release-events
             // lookup is loading or has failed.
@@ -124318,6 +126507,12 @@ a { color: #1565c0; }`;
             _recOfInitColHeaderToggles();
             // discogs.com's MusicBrainz column: its ▶ MB toggles, then the lookup.
             _dgMbAfterRender(true);
+            // A foreign table's 🖼 gallery opener, after its row count.
+            _fgalAfterRender();
+            // jungleland.it / brucespringsteen.it lazy Art / Photo cells and
+            // Brucebase / springsteenlyrics Title glyphs read before, painted
+            // from the detail-page database (no request).
+            _fiAfterRender();
             // Same reason as the line above: the <thead> this writes into may
             // have just been rebuilt from a clone. No-op unless the Release-events
             // lookup is loading or has failed.
@@ -126793,7 +128988,7 @@ a { color: #1565c0; }`;
             { ...art, id: 'ms-rec-len', store: 'ms-rec-len', keyPath: 'gid', label: 'Millisecond lengths', color: '#6f8f5e', ttlDays: _idboDays(S.sa_ms_idb_ttl_days, 30) },
             { ...art, id: 'recof-ws2', store: 'recof-ws2', keyPath: 'ckey', label: 'Recording of', color: '#8a6ca0', ttlDays: _idboDays(S.sa_recording_of_ttl_days, 30) },
             { ...art, id: 'artist-works', store: 'artist-works', keyPath: 'artist', label: 'Artist work lists', color: '#c2a64a', ttlDays: _idboDays(S.sa_recording_of_works_ttl_days, 30) },
-            { ...dp, id: 'pages', store: 'pages', keyPath: 'url', label: 'Link preview pages', color: '#7a8c8c', ttlDays: _DP_TTL_MS / 86400000 },
+            { ...dp, id: 'pages', store: 'pages', keyPath: 'url', label: 'Link preview pages', color: '#7a8c8c', ttlDays: _dpTtlMs(_foreignHost ? _DP_SITES[_foreignHost] : null) / 86400000 },
             // discogs.com only: the MusicBrainz column's answers (its own
             // database, never opened on MusicBrainz).
             ...(_isDgHost ? [{
@@ -134670,19 +136865,24 @@ a { color: #1565c0; }`;
      * Gives an entry of the viewer's images cache new images (a Discogs
      * row's full images, once its record has arrived) and, when the viewer
      * shows that entry, shows them in place: the same position as far as it
-     * still exists, the same opener and row.
+     * still exists, the same opener and row. When the viewer showed only a
+     * note (the row's record was still loading), it moves to `start`: a
+     * Brucebase Media icon's first image of its kind.
      *
      * @param   {ArtCtx}   ctx
      * @param   {string}   entityPath
      * @param   {Object[]} images
+     * @param   {number}   [start=-1] Where to go from a lone note; -1: stay.
      * @returns {void}
      */
-    function _artViewerReplaceImages(ctx, entityPath, images) {
+    function _artViewerReplaceImages(ctx, entityPath, images, start = -1) {
         ctx.imagesCache.set(entityPath, images);
         const st = _artViewerState;
         if (!st || st.ctx !== ctx || st.entityPath !== entityPath || !images.length) return;
+        const fromNote = st.images.length === 1 && !!st.images[0].note;
         st.images = images;
         st.list = images.map((_, i) => i);
+        if (fromNote && start >= 0 && start < images.length) st.i = start;
         if (!st.list.includes(st.i)) st.i = 0;
         _artViewerRender();
     }
@@ -135331,7 +137531,11 @@ a { color: #1565c0; }`;
                 case 'art-sum': return _artCardSummaryHtml(el);
                 case 'art-img': return _artCardImageHtml(el);
                 case 'art-rel': return _artRelIconCardHtml(el);
-                case 'dg-img': return _dgImgCardHtml(el);
+                // 'dg-img': a Discogs table saved before the shared
+                // foreign-image card (_fiProviderOf() reads it as Discogs').
+                case 'fi-img':
+                case 'dg-img': return _fiCardHtml(el);
+                case 'fgal': return _fgalTipHtml(el);
                 case 'sb-pic': return _sbPicCardHtml(el);
                 case 'sb-cover': return _sbCoverCardHtml(el);
                 default: return null;
@@ -135378,7 +137582,7 @@ a { color: #1565c0; }`;
     // hover (`_mbttAfterHide()`), Shift follows the key.
 
     /** The resolver cards built by `_artCardCoreHtml()`. */
-    const _ART_CARD_FNS = new Set(['art-sum', 'art-rel', 'dg-img', 'sb-cover']);
+    const _ART_CARD_FNS = new Set(['art-sum', 'art-rel', 'fi-img', 'dg-img', 'sb-cover']);
 
     /**
      * The artwork card's view: `allEl` is the element whose card shows every
@@ -135590,7 +137794,9 @@ a { color: #1565c0; }`;
             const im = images[i];
             const cls = 'mb-art-card-tile' + (im.front ? ' mb-art-card-main' : '') +
                 (Lib.settings.sa_caa_tip_highlight !== false && o.hit(i) ? ' mb-art-card-hit' : '');
-            return `<span class="${cls}"><img src="${_rgEsc(_artViewerThumbUrl(im))}" alt="" loading="lazy"></span>`;
+            // Another site's image (an external context) goes without a
+            // referrer, as everywhere else the script shows one.
+            return `<span class="${cls}"><img src="${_rgEsc(_artViewerThumbUrl(im))}" alt="" loading="lazy"${ctx.external ? ' referrerpolicy="no-referrer"' : ''}></span>`;
         }).join('') + (order.length > max ? `<span class="mb-art-card-more">+${order.length - max}</span>` : '');
         const tally = new Map();
         images.forEach(im => ((im.types && im.types.length) ? im.types : ['(no type)'])
@@ -143111,6 +145317,13 @@ a { color: #1565c0; }`;
                 const site = _DP_SITES[host];
                 return site ? site.parse(new DOMParser().parseFromString(html, 'text/html'), url) : null;
             },
+            /**
+             * The detail-page record version (`_DP_PARSER_VERSION`), so a
+             * spec can seed the database with a record the sweep accepts
+             * (`_fiAfterRender()`) without writing the number down.
+             * @type {number}
+             */
+            dpParserVersion: _DP_PARSER_VERSION,
             /**
              * The Live page view's cleaning (`_dpLiveDocHtml()`): a page's HTML
              * in, the frame's `srcdoc` out, so a spec can pin what it removes,

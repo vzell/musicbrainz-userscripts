@@ -108,7 +108,7 @@
         "why": "The toolbar's name is Discogs' own <h1>; the title is longer (\"… Discography: Vinyl, CDs, & More\").",
         "edits": [
             {
-                "find": "        const own = document.querySelector('#app h1');",
+                "find": "        const own = document.querySelector('#app h1, .browser_flat_title > h1, #user_header h1, #editing_header > h1');",
                 "replace": "        const own = null;"
             }
         ],
@@ -173,7 +173,7 @@
         "why": "On discogs.com a Discogs link is the Discogs reader's, though it is the page's own host.",
         "edits": [
             {
-                "find": "&& !(_isDgHost && _extDiscogsTest(u))) return null;",
+                "find": "&& !(_isDgHost && _extDgSiteTest(u))) return null;",
                 "replace": ") return null;"
             }
         ],
@@ -212,7 +212,7 @@
         "why": "On a phone a tap on a Discogs link in the table opens its window (the Discogs reader on its own host).",
         "edits": [
             {
-                "find": "&& !(_isDgHost && _extDiscogsTest(u))) return null;",
+                "find": "&& !(_isDgHost && _extDgSiteTest(u))) return null;",
                 "replace": ") return null;"
             }
         ],
@@ -226,7 +226,7 @@
         "why": "The lists give artist and label as text only: they link Discogs' search (vzell, 2026-10-18).",
         "edits": [
             {
-                "find": "            return q ? `<a href=\"https://www.discogs.com/search/?q=${encodeURIComponent(q)}&amp;type=${type}\">${_rgEsc(name)}</a>` : _rgEsc(name);",
+                "find": "            return q ? `<a href=\"https://www.discogs.com/search/?q=${encodeURIComponent(q)}&amp;type=${type}\"${_DG_NEW_TAB}>${_rgEsc(name)}</a>` : _rgEsc(name);",
                 "replace": "            return _rgEsc(name);"
             }
         ],
@@ -252,8 +252,8 @@
         "why": "Track credits are one row each, like MusicBrainz's Instruments column (vzell, 2026-10-18).",
         "edits": [
             {
-                "find": "                collapsableColumns: [ 'Credits' ],",
-                "replace": "                collapsableColumns: [],"
+                "find": "                collapsableColumns: [ 'Credits', 'Cat#' ],",
+                "replace": "                collapsableColumns: [ 'Cat#' ],"
             }
         ],
         "spec": "tests/fixtures/discogs-pages.spec.js",
@@ -265,8 +265,8 @@
         "why": "A thumbnail opens the script's artwork viewer (vzell, 2026-10-18).",
         "edits": [
             {
-                "find": "        document.addEventListener('click', _dgThumbClick, true);\n",
-                "replace": ""
+                "find": "        _ensureDgStyle();\n        _fiInstall();\n",
+                "replace": "        _ensureDgStyle();\n"
             }
         ],
         "spec": "tests/fixtures/discogs-pages.spec.js",
@@ -304,8 +304,8 @@
         "why": "A page at a Discogs URL without #app (the security check) is not a Discogs page.",
         "edits": [
             {
-                "find": "    if (_isDgHost && !document.getElementById('app')) {",
-                "replace": "    if (false) {"
+                "find": "    if (_isDgHost && !document.getElementById('app') &&",
+                "replace": "    if (false &&"
             }
         ],
         "spec": "tests/fixtures/discogs-pages.spec.js",

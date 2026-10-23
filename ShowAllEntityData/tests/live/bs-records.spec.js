@@ -20,8 +20,8 @@ const START_URL = `${ORIGIN}/DB/records.aspx?tipe=-1,4&sort=0`;
 const ALL = '0,1,2,3,4,5,6,7,8,9,10,11';
 
 for (const kind of [
-    { button: 'Unofficial', tipe: `-1,${ALL}`, headers: ['Title', 'Matrix', 'Format', 'Label', 'Code', 'Notes'] },
-    { button: 'Official', tipe: `-2,${ALL}`, headers: ['Title', 'Catalogue', 'Format', 'Country', 'Promo', 'Code', 'Notes'] },
+    { button: 'Unofficial', tipe: `-1,${ALL}`, headers: ['Photo', 'Title', 'Matrix', 'Format', 'Label', 'Code', 'Notes'] },
+    { button: 'Official', tipe: `-2,${ALL}`, headers: ['Photo', 'Title', 'Catalogue', 'Format', 'Country', 'Promo', 'Code', 'Notes'] },
 ]) {
     test(`brucespringsteen.it ${kind.button}: every record of every format, as many as the list announces`, { tag: '@extended' }, async ({ page, request }) => {
         test.setTimeout(240000);

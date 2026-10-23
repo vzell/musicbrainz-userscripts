@@ -500,8 +500,9 @@ Grep `// ── CAA/EAA column redesign` for the code. Rules that fail silently:
   which `_artHighlightImageLi()` already marked — the viewer's info panel does
   the same through `opts.liFor`. A second highlight path would drift.
 - **The B1 card's keys (2026-10-20): Space = every image, Shift = bigger
-  tiles**, for all three cards `_artCardCoreHtml()` builds (`art-sum`,
-  `art-rel`, `dg-img` — `_ART_CARD_FNS`). `_initStatTooltip()` hands every
+  tiles**, for every card `_artCardCoreHtml()` builds (`art-sum`,
+  `art-rel`, `sb-cover`, and the foreign sites' `fi-img`, with its old name
+  `dg-img` — `_ART_CARD_FNS`). `_initStatTooltip()` hands every
   key to `_mbttKey()` while a resolver card shows, and rebuilds the card
   through `_statTipApi.repaint()`. Late record repaints (`_artRelIconRepaint()`,
   the Discogs card) also go through that, so the fit runs on them too. Space is
@@ -540,8 +541,9 @@ Grep `// ── CAA/EAA column redesign` for the code. Rules that fail silently:
   at the top of `#mb-stat-tooltip`'s mouseover (`_artRelIconStamp()`) and
   shows the B1 card (`_artCardCoreHtml()`, shared with
   `_artCardSummaryHtml()`, and since 2026-10-19 with discogs.com's Image
-  column, `_dgImgCardHtml()`: its facts line says "primary" for an
-  external context) from `_artFetchEntityImages()`, asked on the first
+  column, since 2026-10-23 the shared foreign-image card `_fiCardHtml()`,
+  springsteenlyrics' Cover column too: its facts line says "primary" for an
+  external context, whose tiles also go without a referrer) from `_artFetchEntityImages()`, asked on the first
   hover or click; waiting callers queue (`_artRelIconLoading`), because a
   click right after the hover found the load already on its way and was
   dropped. The click never navigates by itself. Gates: `sa_enable_caa_pics`
@@ -635,3 +637,57 @@ find the retry). Rules:
 
 Covered by `caa-gallery.spec.js` (incl. EAA), `caa-gallery.mobile.spec.js`,
 `caa-summary-button-position.spec.js`; mutation list `caa-gallery.json`.
+
+## The table-wide 🖼 gallery on the foreign tables (`_fgal*`)
+
+vzell, 2026-10-23 (org/foreign-images.org, phase 4; mockup G2/G3,
+https://claude.ai/artifact/SL81qFidC4wQM6Gz2jY47Z, source
+`org/foreign-gallery-mockups.html`). The non-MusicBrainz counterpart of D2,
+grep `// ── The table-wide 🖼 gallery on the foreign tables`. D2 itself is
+untouched: its archive caches, `createInfoDialog()` window and look stay
+MusicBrainz's.
+
+- **One provider per table** (`_fgalProviderFor()`): the same `FiProvider`
+  as the hover card and the viewer click (springsteenlyrics Cover / lyrics
+  glyph, jungleland Art, brucespringsteen.it Photo, Brucebase Media icons /
+  song glyph, Discogs Image), so a row read by any of them is read for all.
+  A table without triggers (Brucebase Relations, Recent changes, Discogs
+  tracklists) gets no 🖼.
+- **The opener** `#mb-fgal-btn-N` (N = its `table.tbl` index, resolved at
+  click time) sits right after the heading's `.mb-row-count-stat` —
+  vzell's answer 1. `_fgalAfterRender()` places it, beside each
+  `_dgMbAfterRender()` call (both render tails, both `runFilter()`
+  re-render branches), and `updateH2Count()`'s re-anchor list carries
+  `[id^="mb-fgal-btn-"]`. Off the foreign hosts it returns on
+  `_foreignHost`: no style, no button (spec "never on MusicBrainz").
+- **Opening asks for nothing.** It renders from memory at once, then once
+  more after `peekSaved()`: one `getAll()` of the detail-page database
+  (`_fiDpPeek()`, shared with the render sweep; Discogs' records are in the
+  same database as `mb:<key>`, `_dgFiPeek()`). The 🖼's hover card
+  (`data-mbtt-fn="fgal"`, `_fgalTipHtml()`) counts from memory only, and
+  shows nothing while the window is open.
+- **The run** (`_fgalRun()`) asks the not-read rows one after the other
+  through `p.request()` — the provider's own rate gate and cache — each
+  `wanted()` only while this run is the window's; `Promise.race()` with the
+  run's `halt` ends the wait on Stop or close (a Discogs load that is no
+  longer wanted never calls back). Cost = rows × `spacingS()` (1.1 s on the
+  detail-page hosts, 2.5 s / 1 s with a token on Discogs, whose button also
+  names the token's pace). Over `_FGAL_ASK_OVER_S` (300 s) it asks first,
+  inside the window — vzell's answer 3. Closing the window stops it; the
+  next opening says so (`_fgalMemo`, per table for the page's life).
+- **The window** `#mb-fgal` is a `.mb-tt-liner` at z-index 2147483300 —
+  under the artwork viewer (2147483400), which opens over it and owns every
+  key; Esc closes the question first, then the window. It reuses the async
+  job card's rows (`.mb-tt-ajpill`, `-ajbar`, `-ajfacts`, `-ajlog`,
+  `-ajact`). Touch: a tap outside closes it; no hover-only part.
+- **Chips and Compare** (answer 2), as D2: by each image's first type
+  (`_fgalType()`; Discogs' primary/secondary come through `cardImages()`);
+  the viewer's Shift+← → step the read rows the chips leave, round.
+- **Rows** come from the live table at open (`_fgalRows()`, one trigger per
+  row), so a filter narrows it ("only the N rows the filters show"); a row
+  the list rules out (a bootleg marked "cover only") is counted as not
+  here. `_fiColIdx()` keeps `rowFor()` cheap over thousands of rows.
+- **Specs** `tests/fixtures/foreign-gallery.spec.js` (13) and
+  `foreign-gallery.mobile.spec.js`; mutations
+  `scripts/mutations/foreign-gallery.json` (14; three recorded
+  `"expect": "pass"` with the overlap named).

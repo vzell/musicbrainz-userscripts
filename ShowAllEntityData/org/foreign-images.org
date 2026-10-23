@@ -1,0 +1,329 @@
+#+TITLE: Image hover card, viewer and click routing on the non-MusicBrainz pageTypes
+#+STARTUP: showall
+
+* TODO Bring MusicBrainz's image card + viewer to the foreign tables
+
+add the same "image popup hover"/"detail image view"/"internal viewer handling" what we
+have on MB PTs to the non-MB-PTs. download neccessary detail referenced hrefs to investigate
+and show me some nice rich HTML based mockups, in a new brach
+
+** Answer (2026-10-23, branch =feature/foreign-art-viewer=, no change to the userscript)
+
+Env: 2026-10-23T00:44:37+02:00 · NB-3641 · WSL2 Ubuntu (Linux 6.18.54.1) · browser n/a
+(Python probe) · Tampermonkey n/a
+
+Mockups: =org/foreign-images-mockups.html= (opened from disk, images hotlinked), published
+copy built with =python3 -I scripts/build-mockup-artifact.py org/foreign-images-mockups.html
+<out.html>= (76 images inlined, 1.8 MB): https://claude.ai/artifact/UAX2fb3BEinkukHNaZMrvg
+
+*** What "the same" means on MusicBrainz
+
+| Piece         | On MusicBrainz                                                                                | Code                                                    |
+|---------------+-----------------------------------------------------------------------------------------------+---------------------------------------------------------|
+| Hover card    | B1 card, Space = every image, Shift = bigger tiles, fitted never clipped                      | =_artCardCoreHtml()=, =_mbttResolve()=, =_ART_CARD_FNS= |
+| Viewer        | =#mb-art-viewer=: zoom/pan/flip/rotate, filmstrip, grid, info panel, D/F/B/O keys             | =_artViewerOpen(ctx, path, indices, start, opts)=       |
+| Click routing | window-capture click, plain left click only; Shift+← → walks the VISIBLE rows (=onGroupStep=) | =_artIconClick()=, =_artColumnViewerOnClick()=          |
+| Gallery       | per-table 🖼, zero requests, reads the caches only                                             | =_artCreateGalleryButton()=, =_artGalleryOpenViewer()=  |
+
+The viewer already takes any list of external records
+={image, thumbnails:{250}, types:[], comment, external:true}= in a ctx with =external: true=
+and its own =imagesCache= (=_DP_ART_CTX=, =_DG_ART_CTX=). Every branch that differs for
+another site's image asks =im.external= (=_artViewerUrl=, =_artViewerLoad=,
+=_artViewerInfoExternal=, the download, the grid). discogs.com has all of it already:
+=_dgThumbCell()= → =dg-img= card (=_dgImgCardHtml()=), =_dgThumbClick()= → viewer with row
+stepping, =_dgArtLoad()= swaps the thumbnail for the full images through
+=_artViewerReplaceImages()=. That trio is the template.
+
+=_initStatTooltip()= and =_artInitRelIcons()= already run on every enabled foreign host
+(no host gate between the opt-in gates and their install).
+
+*** The probe — =scripts/probe-foreign-images.py=
+
+Links from the committed fixtures, 33 item pages, 1.1 s apart, cached in
+=debug/foreign-images/= (gitignored), summary in =debug/foreign-images/summary.json=. One
+HEAD per site on a full-size URL.
+
+| pageType                | Pages with images | Images | Thumb → full rule                                                              | HEAD on a full image                                  |
+|-------------------------+-------------------+--------+--------------------------------------------------------------------------------+-------------------------------------------------------|
+| sl-bootlegs             | 4/4               |     17 | drop =_tn= — 17/17                                                             | 200 image/jpeg 1,006,584 B (4554 scan)                |
+| sl-brucelegs            | 4/4               |     50 | drop =_tn= — 50/50                                                             |                                                       |
+| sl-collection           | 2/2               |     19 | drop =_tn= — 19/19                                                             |                                                       |
+| sl-lyrics (B)           | 1/4               |      1 | none: the image is not linked, thumb = full                                    |                                                       |
+| jl-list                 | 3/3               |     20 | =thumb/tn_X= → =X= — 20/20                                                     | 200 image/jpeg 452,171 B (front, 1966)                |
+| bs-records (LP)         | 4/4               |      4 | none: one photo, not linked, thumb = full                                      | 200 image/jpeg 50,143 B (LP1B1)                       |
+| bs-records (CD-R)       | 0/4               |      0 | —                                                                              |                                                       |
+| bb-songs                | 1/4               |      2 | =local--resized-images/X/thumbnail.jpg= → =local--files/X= — 2/2               | 200 image/png 13,421 B (song graph)                   |
+| bb-year (=/gig:= pages) | 4/4               |     13 | same rule — 5/5 for =files:=; =gallery:= and =news:= link =medium.jpg= instead | 200 image/jpeg for the =gallery:= original too (curl) |
+
+Findings that change the design:
+
+- *springsteenlyrics*: the list's cover IS the item page's cover (same URL). The scans
+  exist only on the item page. The list already prints "artwork available" (the Artwork
+  column: 35 of 50 rows on =sl-bootlegs-page1=), so a row without it needs no request.
+  A brucelegs item page also shows the covers of related items (the same show's other
+  releases): only the card's own =.col-md-2 img= is the cover — =_dpParseSl= already
+  does that.
+- *jungleland*: the labels are in the file names (=front=, =back=, =cd1…=,
+  =booklet1…=) and map onto MusicBrainz's types (Front, Back, Medium, Booklet), so the
+  card can use the grouped layout and type chips.
+- *brucespringsteen.it*: at most one photo, often none (all four CD-R pages); thumb =
+  full. Presence is known only after the page is read → a three-state cell.
+- *brucebase*: the gig pages hold typed folders — =gallery:<gig>= (photos),
+  =files:ticket-YYYY=, =files:pass-YYYY=, =news:<gig>= (clippings) — which match the year
+  page's Media icons (Photo, Ticket, Memorabilia, News). Every page also carries the
+  side bar's promo image (=files:artwork-disco/disco_livefromasburypark_rsd26.jpg=,
+  linking =/retail:=); a reader must skip it. =_dpParseBb= reads only =/song:= pages and
+  no images; a =/gig:= reader is new.
+
+*** The mockups
+
+| Id | What                                                                                       | Verdict     |
+|----+--------------------------------------------------------------------------------------------+-------------|
+| S1 | sl-bootlegs Cover column: card (loading / loaded / cut at 31 / cover only), click → viewer | recommended |
+| V1 | the viewer on an SL row: cover + 9 scans, Shift+← → rows, grid, info                       | recommended |
+| J1 | jungleland: a lazy Art column (dashed tile until loaded)                                   | chosen      |
+| J2 | jungleland: a 🖼 glyph in the Title cell                                                    | not chosen  |
+| J3 | the card with jungleland's labels as types                                                 | recommended |
+| K1 | brucespringsteen.it Photo column, three states                                             | recommended |
+| B1 | bb-year: the Media icons (Photo, Ticket, News, Memorabilia) open their images              | recommended |
+| B2 | bb-songs: Title glyph, graph + lyric sheets                                                | optional    |
+| L1 | sl-lyrics: Title glyph, single-image card                                                  | optional    |
+| G1 | table-wide 🖼 gallery: cached rows only, "Load the other N (≈ s)" button                    | optional    |
+| S  | one =sa_<site>_tip_images= per site beside =sa_dg_tip_images=                              | recommended |
+
+*** Implementation outline (as planned; phases 1–2 landed, see their sections for what differs)
+
+1. One generic path for foreign rows, folding Discogs' in: a ctx per host
+   (={key, column, external: true, imagesCache}=), records built from the parsed detail
+   record =_dpGet()= already caches (same IndexedDB, same 1.1 s spacing as the detail
+   preview), a card case in =_mbttResolve()= + =_ART_CARD_FNS=, one window-capture click
+   handler keyed on a data attribute (plain left click only; =_dgThumbClick()= moves into
+   it).
+2. Parsers: =_dpParseSl= / =_dpParseJl= / =_dpParseBs= already return cover and scans; JL
+   needs its label → type map; a new =/gig:= reader and image extraction for =/song:=
+   pages (skip the promo image and the 32 px icons). Bump =_DP_PARSER_VERSION=.
+3. Cells: S1 wires the existing =img.mb-sl-cover=; J1/K1 add a deferred column whose late
+   writes reach the master rows (=_findMasterRowByIdx()=) and owe the four filter-cache
+   duties (docs/claude/filter-and-cache-invariants.md); a glyph goes into
+   =_CLEAN_STRIP_SEL=.
+4. =_artCardCoreHtml()=: =referrerpolicy="no-referrer"= on its tiles for an external
+   ctx (missing today; only Discogs' loading box sets it).
+5. Settings =sa_sl_tip_images=, =sa_jl_tip_images=, =sa_bs_tip_images=,
+   =sa_bb_tip_images= (default on, inside each site's opt-in).
+6. Specs per site modelled on =tests/fixtures/discogs-image-card.spec.js= (card states,
+   click → viewer, Shift+← → over filtered rows, Ctrl-click keeps the link, zero requests
+   at render); new fixtures for the item pages from =debug/foreign-images/=. MusicBrainz
+   fixture suite before merge; perf: nothing on the MusicBrainz hot path, nothing at
+   render on the foreign hosts.
+
+*** Decisions (vzell, 2026-10-23)
+
+- jungleland: *J1*, the lazy Art column. The Title glyph (J2's form) stays the trigger
+  for sl-lyrics and bb-songs, where most rows have no images.
+- Brucebase: *all four kinds* — photos (=gallery:=), tickets, passes, clippings
+  (=news:=) — grouped by kind.
+- Gallery: the "Load the other N" button is *offered with its time shown*, and the run
+  *stops when the gallery closes*. Opening the gallery itself still makes no request.
+- Phasing *approved*:
+  1. SL card lists (sl-collection, sl-bootlegs, sl-brucelegs) + the shared foreign-image
+     ctx, card and window-capture click handler (Discogs' =_dgThumbClick()= folded in);
+  2. jungleland (J1) and brucespringsteen.it (K1);
+  3. the Brucebase readers (=/gig:= for bb-year's Media icons, =/song:= images for
+     bb-songs) and sl-lyrics' glyph;
+  4. the table-wide 🖼 gallery.
+
+** DONE Phase 1 (2026-10-23, branch =feature/foreign-art-viewer=, WIP.1)
+
+Browser check: vzell, 2026-10-23 ("tested live, OK").
+
+Env: 2026-10-23T01:40:23+02:00 · NB-3641 · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) ·
+Playwright Chromium (fixtures), no Tampermonkey (GM stubs) · real browser not yet tried
+
+Done: the SL card lists (sl-collection, sl-collection-intro, sl-bootlegs, sl-brucelegs)
+and the shared path. What landed differs from the outline in these points:
+
+- One layer after =_dpArtViewerClick()=: =_fiProvider()= (a switch, read at event time),
+  =_fiCardHtml()=, =_fiLoad()=, =_fiClick()= (window capture, =_fiInstall()=),
+  =_fiTitleColIdx()=. Discogs' =_dgThumbClick()=, =_dgImgCardHtml()=,
+  =_dgImgCardShows()= and =_dgArtLoad()= are gone; =_DG_FI= keeps what is Discogs'. The
+  stamp is =data-mbtt-fn="fi-img" data-mb-fi="<key>"=; the old ="dg-img"= still resolves.
+- SL provider =_SL_FI=: the converter stamps the Cover link, plus =data-mb-sl-art= on a
+  bootleg list; the record is =_dpGet()='s (shared with the detail preview); setting
+  =sa_sl_tip_images= gates the card only. No count badge on the cover (a post-render cell
+  write); no parser change, =_DP_PARSER_VERSION= stays 2 (brucelegs 148: 31 scans, no
+  related item's cover).
+- =_dpGet()= now logs "no longer wanted, not asked: <url>" on =detail= when it drops a
+  request at its slot.
+- Tests: =tests/fixtures/sl-image-card.spec.js= (10), fixture =detail-sl-brucelegs-148.html=;
+  mutations =scripts/mutations/sl-image-card.json=: 8 caught, 2 recorded as
+  ="expect": "pass"= (the hidden-row filter: =runFilter()= removes rows rather than hiding
+  them; window vs document: the click is registered before the navigation guard arms).
+  The Discogs specs and mutation files pass on the shared path. Six =discogs-pages.json=
+  finds were already stale at HEAD (0 hits before this change too); they are left for a
+  separate fix.
+
+** DONE Phase 2 (2026-10-23, same branch, WIP.2)
+
+Browser check: vzell, 2026-10-23, on petri ("all tested live, OK", with phase 4).
+
+Decisions (vzell, 2026-10-23, answering the plan's questions): rows read in an earlier
+session show their picture at render (one IndexedDB read, no request); jungleland.it and
+brucespringsteen.it keep their pages *half a year* ("these sites barely change"; the other
+hosts keep 30 days); the column sorts through a =.mb-fi-sort-key= in =_sortCellText()=
+(measured: =tests/MEASUREMENTS.org=, "2026-10-23 — interaction timings, main vs
+feature/foreign-art-viewer", eight runs on artist-events, sort 0.99, every ratio inside
+its arms' spread); =sa_jl_tip_images= / =sa_bs_tip_images= switch off the card only.
+
+Done: J1 + J3 (=_JL_FI=, the Art column, file-name labels as types) and K1 (=_BS_FI=, the
+Photo column, a photo only if it loads: =_bsFiCheckPhoto()=). The three detail-page
+providers are one factory (=_fiDpProvider()=); the lazy cell (=_fiLazyCell()=,
+=_fiCellApply()=, =_fiPaint()=) has no text of its own, so a late paint owes only the
+source-row write; =_fiAfterRender()= sweeps the store after both render tails. No parser
+change (=_DP_PARSER_VERSION= stays 2); =_dpTtlMs()= gives each host its lifetime. Specs:
+=jl-image-card.spec.js= (9), =bs-image-card.spec.js= (5); mutations
+=scripts/mutations/foreign-lazy-cells.json=. The detail preview now skips =a.mb-fi-cell=,
+and specs that address a row's page by href use =a:not(.mb-fi-cell)=.
+
+** DONE Phase 3: the Brucebase readers (bb-year Media icons, bb-songs) and sl-lyrics' glyph
+
+Done 2026-10-23 on petri (same branch, WIP.3 bb-year, WIP.4 bb-songs, WIP.5 sl-lyrics).
+Browser check: vzell, 2026-10-23, on petri: the 1985 year page's Media icons ("it
+works"), then the song list's and the lyrics index's glyphs ("work fine too").
+
+Env: 2026-10-23T17:42:05+02:00 · petri · WSL2 Ubuntu 24.04.3 (Linux 6.18.54.1) ·
+Playwright 1.62.1 Chromium, no Tampermonkey (GM stubs) · real browser not yet tried
+
+Decisions (vzell, 2026-10-23, answering the plan's questions): the glyphs are swept at
+render like the Art / Photo cells (one IndexedDB read, 30 days on these two hosts); the
+Media icons work on *every entry with a heading link*, not only =/gig:= pages.
+
+What landed differs from the outline below in these points:
+
+- No new =isDetailUrl=: =_dpGet()= takes any URL, so =/gig:= pages are read through the
+  same parser entry (=_dpParseBb()= → =_dpParseBbPage()= for a non-song page) while the
+  detail preview and the cross-host reader stay on =/song:=.
+- One selector instead of skip rules: =#page-content .gallery-box .gallery-item img=
+  (=_bbPageImages()=) leaves out the promo, the icons and the social links by itself.
+- Renditions probed (=probe-foreign-images.py --small=, 6 HEADs): the card's tiles are
+  =small.jpg=; the viewer tries the original, then the page's =medium.jpg=, then the
+  thumbnail, through its existing fallback (=_artViewerBigUrls()=), no viewer change.
+- The shared layer gained =titleOf= / =cardTitle= / =cardImages(images, row)= /
+  =startAt= / =noRowThumb= on =_fiDpProvider()=, =_fiGlyph()= (no text, no sort key),
+  =_artViewerReplaceImages()='s =start=, and =_fiClick()= keeps one trigger per row and
+  builds a row only when the viewer shows it — building them all up front took minutes
+  on a 10,348-row year table (DEBUG-NOTES.md, 2026-10-23, phase 3); now ~0.17 s.
+- The sl-lyrics glyph also counts album covers: a released song's page shows them
+  (Badlands: 14), which the probe's four "Baby …" songs did not have.
+- Side effect: the Brucebase song preview's card and window now show the song's images.
+- Specs =bb-image-card.spec.js= (18), =bb-image-card.mobile.spec.js= (2); mutations
+  =scripts/mutations/bb-image-card.json= (11); fixtures =detail-bb-gig-1985-01-0{4,7}.html=.
+
+The plan as it stood before the work:
+
+Mockups *B1* (recommended), *B2* and *L1* (optional, but the phasing above
+takes them in); decision: *all four Brucebase kinds*, grouped by kind.
+
+- *bb-year: the Media icons open what they announce* (B1). The year table's =Media=
+  column (=_BB_YEAR_HEADERS=, cells built in =_bbYearBuildRow()=) names the kinds a
+  =/gig:= page holds (Photo, Ticket, Memorabilia, News). Hover an icon: the card filtered
+  to that kind; click: the viewer on it, every kind one ← → away. A NEW reader: today
+  =_DP_SITES['brucebase.wikidot.com'].isDetailUrl= takes =/song:= only and =_dpParseBb()=
+  reads no images. The probe's rules (table above): =local--resized-images/X/thumbnail.jpg=
+  → =local--files/X=; =gallery:<gig>= and =news:<gig>= link =medium.jpg= instead; the typed
+  folders are =gallery:= (photos), =files:ticket-YYYY=, =files:pass-YYYY=, =news:=
+  (clippings). Skip the side bar's promo image
+  (=files:artwork-disco/disco_livefromasburypark_rsd26.jpg=, linking =/retail:=) and the
+  32 px icons. A parser change: bump =_DP_PARSER_VERSION= (2 → 3) and say why in its JSDoc.
+- *bb-songs: song graph and lyric sheets* (B2): image extraction for =/song:= pages (same
+  rules), the trigger a Title glyph (J2's form), not a column — most rows have none.
+- *sl-lyrics: a Title glyph, single-image card* (L1): =_dpParseSlSong()= already returns a
+  song page's images (=lyrics/images/=; "thumb = full", not linked). Glyph in the Title
+  cell (=applySlLyricsToTable()=), the single big picture (=single: true=, as =_BS_FI=).
+- *A glyph is text*: it goes into =_CLEAN_STRIP_SEL= (or is CSS only), or a Title filter
+  matches its digits; if it is painted after render it owes what the lazy cell owes (the
+  source-row write) — see docs/claude/filter-and-cache-invariants.md, "A foreign site's
+  lazy Art / Photo cell".
+- Providers through =_fiDpProvider()= (=_BB_FI=, and either a second SL provider or a
+  =cellView= on =_SL_FI= for lyrics); =_fiProvider()= gains their keys; =_fiInstall()=
+  from =_bbPrepareLivePage()= (or whichever function prepares the Brucebase page — grep).
+- Setting =sa_bb_tip_images= (default on, inside =sa_enable_brucebase=); sl-lyrics rides
+  on =sa_sl_tip_images= unless decided otherwise.
+- Specs on the committed fixtures plus new item pages. =debug/= is gitignored, but vzell
+  copied =debug/foreign-images/= (33 item pages + =summary.json=; the Brucebase ones are
+  =brucebase.wikidot.com_gig_1985-01-0{4,5,7,8}-*.html= and four =…_song_*.html=) and
+  =debug/mockup-image-cache/= (the mockups' images) to petri by hand on 2026-10-23, so no
+  re-probe is needed: copy what a spec needs into =tests/fixtures/detail-bb-*.html= and add
+  it to =tests/support/detailFixture.js='s =bb= =fileFor=. Only if those are missing:
+  =python3 scripts/probe-foreign-images.py= (1.1 s between requests, ~40 s).
+
+** DONE Phase 4: the table-wide 🖼 gallery
+
+Done 2026-10-23 on petri (same branch, WIP.6). Browser check: vzell, 2026-10-23, on petri
+("all tested live, OK").
+
+Env: 2026-10-23T19:36:02+02:00 · petri · WSL2 Ubuntu 24.04.3 (Linux 6.18.54.1) ·
+Playwright 1.62.1 Chromium, no Tampermonkey (GM stubs) · real browser not yet tried
+
+What landed (docs/claude/artwork-caa-eaa.md, "The table-wide 🖼 gallery on the foreign
+tables"): =_fgal*= with the providers' new =peekSaved()= / =spacingS()= /
+=tokenSpacingS()= / =kept()= / =gal=; the window is a =.mb-tt-liner= reusing the async job
+card's rows; MusicBrainz's own gallery (D2) is untouched. Differs from the mockup only
+where the mockup had to invent: the 🖼's hover card counts from memory (no database read
+on a hover). Specs =foreign-gallery.spec.js= (13), =foreign-gallery.mobile.spec.js= (1);
+mutations =scripts/mutations/foreign-gallery.json= (14, three ="expect": "pass"=).
+=test:full=: 2,253 passed (DEBUG-NOTES.md, 2026-10-23, phase 4).
+
+Decisions (vzell, 2026-10-23, on the G2/G3 mockup): 1. the 🖼 in the table's heading
+bar; 2. type chips *and* "Compare two"; 3. ask before a run over 5 minutes; 4. discogs.com
+is part of phase 4.
+
+Mockup (2026-10-23, petri), version 2 approved ("Yes go ahead"; chips, Compare and a Discogs tab drawn after the answers): *G2* (the behaving G1 on
+sl-bootlegs: the 🖼 in the table's heading bar, the window, Load / Stop / closing stops /
+Retry, the viewer stand-in, Esc order) and *G3* (the same window on jungleland, LP records,
+Brucebase 1985 and the song list), with four open questions (where the 🖼 lives; type chips
+and Compare; asking before a run over 5 minutes; Discogs later). Source
+=org/foreign-gallery-mockups.html= (built from a template; the published copy inlines the
+images with =scripts/build-mockup-artifact.py=): https://claude.ai/artifact/SL81qFidC4wQM6Gz2jY47Z
+
+Mockup *G1* (optional; the phasing includes it). Decision: opening the gallery
+makes *no* request, it shows the rows whose records are cached already; a "Load the other N
+(≈ s)" button is offered *with its time shown* (N × the site's spacing), and that run *stops
+when the gallery closes*. MusicBrainz's own: =_artCreateGalleryButton()=,
+=_artGalleryOpenViewer()= (per-table 🖼, reads the caches only) — the template, as the
+Discogs trio was for phase 1. The cached rows of a provider are =_dpMem= (and, on jungleland
+/ brucespringsteen.it, what =_fiAfterRender()= loaded from the store).
+
+** TODO Before the branch merges into main
+
+- Browser checks of every phase: done (vzell, 2026-10-23).
+- =tests/live/detail-preview.spec.js='s two song locators now read =a:not(.mb-fi-glyph)=
+  (the Title glyph links the same page) — updated, never re-run.
+- =npm run test:live= for the three live specs updated for the Art / Photo columns
+  (=tests/live/{jl-list,bs-records,detail-preview}.spec.js=: headers, =a:not(.mb-fi-cell)=
+  locators) — updated but never re-run; they reach the real sites.
+- =python3 scripts/run-test-full.py= on the merged tree: ran on the branch with phase 4
+  (2,253 passed, 2026-10-23 19:48 CEST); run again after merging main if main moved.
+- At merge (=merge-push-remove= skill, and only after vzell says so): fold WIP.1 … WIP.n of
+  =ShowAllEntityData_CHANGELOG.wip.json= with =scripts/fold-wip-changelog.py=, re-read the
+  HELP sections the phases touched, re-read =PERFORMANCE.org= for prose made false.
+
+** Handoff: continuing on petri (2026-10-23)
+
+Env: 2026-10-23 · from NB-3641 (session limit) to petri
+
+- Branch =feature/foreign-art-viewer= is pushed and clean (this note included), ahead of =origin/main=
+  after merging main 9.99.1429. On petri: =git fetch && git checkout feature/foreign-art-viewer
+  && git pull=.
+- Start with =/clear= and plan mode; read this file, then =docs/claude/brucebase.md=,
+  =docs/claude/detail-pages.md= (the readers, =_DP_PARSER_VERSION=) and the shared layer's
+  header comment (grep =Foreign-site images in the tables=).
+- =debug/foreign-images/= and =debug/mockup-image-cache/= are on petri already (copied by
+  hand, 2026-10-23); nothing else under =debug/= is needed for phases 3–4.
+- Tampermonkey on petri must re-import the userscript for a browser check (the repo's
+  =@require= is a =file://= path to this tree).
+- Code map of what exists: =_fiProvider()=, =_fiCardHtml()=, =_fiLoad()=, =_fiClick()=,
+  =_fiInstall()=, =_ensureFiStyle()=, =_fiDpProvider()=, =_fiLazyCell()=, =_fiCellApply()=,
+  =_fiPaint()=, =_fiCellIndex()=, =_fiAfterRender()=, =_dpIdbAll()=, =_dpTtlMs()=; providers
+  =_DG_FI=, =_SL_FI=, =_JL_FI=, =_BS_FI=. Specs =sl-image-card=, =jl-image-card=,
+  =bs-image-card=, =discogs-image-card=; mutations =sl-image-card.json=,
+  =foreign-lazy-cells.json=.

@@ -4153,3 +4153,29 @@ Memory, bare page, ×1, 7 runs + 1 warm-up (MiB, medians):
   difference (it stops at the gate before any toolbar is built), so this is
   the SAED bar's construction. Small next to the changelog it removes, which
   cost =main= +5.8 / +17.4 ms settled on the same page.
+
+* 2026-10-23 — interaction timings, main vs feature/foreign-art-viewer (phase 2: =.mb-fi-sort-key= in =_sortCellText()= and =_CLEAN_STRIP_SEL=) (NB-3641)
+
+Env: 2026-10-23T02:59:09+02:00 → 2026-10-23T04:33:43+02:00 · NB-3641 (28 CPUs, 31 GB) · WSL2
+Ubuntu 24.04.4 (Linux 6.18.54.1) · Playwright 1.62.1 Chromium, node v24.19.0 · no Tampermonkey
+(GM stubs). Both arms at 9.99.1426 (main at 6c065f1, the branch at 5f74806).
+
+pageType =artist-events= (=tableMode: single=), "Bruce Springsteen — Events", 4,174 rows,
+disk fixture; =node tests/support/capture-interaction-perf.js= through
+=scripts/run-perf-arms.py=, 5 samples per metric, eight runs in the order A,B,B,A then B,A,A,B
+(=tests/snapshots/artist-events/interaction-perf-perf-{main,branch}-r{1..4}-9.99.1426-2026-10-23-NB-3641.json=).
+The one change on the MusicBrainz path is one more class in two selector lists. Medians in ms,
+and the ratio of the arms' medians (branch / main):
+
+| interaction  | main r1–r4               | branch r1–r4             | ratio |
+|--------------+--------------------------+--------------------------+-------|
+| sort         | 5328 5595 5398 5416      | 5362 5539 5316 5369      | 0.992 |
+| globalFilter | 1761 1783 1813 1879      | 1891 1758 1539 1510      | 0.917 |
+| columnFilter | 1937 1924 2050 2203      | 2067 2580 2056 2142      | 1.056 |
+| uniqDropWarm | 650 735 656 759          | 734 712 727 605          | 1.035 |
+| uniqDropCold | 31441 31441 29858 30151  | 30210 29775 30059 29522  | 0.971 |
+
+*Read as:* no change. Sort, the gated path, is 0.99. The first A,B,B,A pair alone put
+columnFilter at 1.20, all of it from one branch run (2580); the reversed pair puts both branch
+runs inside main's own range (1924–2203), and globalFilter, which reads the same strip list,
+went the other way. Every ratio is inside its arms' run-to-run spread.

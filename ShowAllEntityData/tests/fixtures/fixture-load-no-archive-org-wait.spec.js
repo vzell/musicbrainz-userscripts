@@ -78,9 +78,15 @@ test('a fixture load never waits on a coverartarchive.org thumbnail in its marku
     // redirect to an Internet Archive that does not answer.
     let hangingRouteHit = 0;
     await page.route('https://coverartarchive.org/**', () => { hangingRouteHit++; });
+    // Every failed request, by URL. Chromium itself sometimes asks for a
+    // failed image a second time during the parse (seen 2026-10-23 on
+    // NB-3641 under 14 workers, 2 of 300 plain loads of this fixture with NO
+    // userscript and no helper: 3 or 4 failures for 2 images), so the
+    // guarantee is per image — each one requested and every request
+    // blocked — never a count of requests.
     const blocked = [];
     page.on('requestfailed', (req) => {
-        if (/coverartarchive\.org\//.test(req.url())) blocked.push(req.failure() && req.failure().errorText);
+        if (/coverartarchive\.org\//.test(req.url())) blocked.push({ url: req.url(), text: req.failure() && req.failure().errorText });
     });
 
     const t0 = performance.now();
@@ -93,8 +99,11 @@ test('a fixture load never waits on a coverartarchive.org thumbnail in its marku
 
     expect(loadMs, 'the fixture loaded without waiting on the thumbnails').toBeLessThan(20000);
     expect(hangingRouteHit, 'the helper\'s route answered first').toBe(0);
-    expect(blocked.length, 'both thumbnails were requested and blocked').toBe(2);
-    expect(blocked.every((t) => /BLOCKED_BY_CLIENT/.test(t || ''))).toBe(true);
+    expect([...new Set(blocked.map((b) => b.url))].sort(), 'both thumbnails were requested and blocked').toEqual([
+        'https://coverartarchive.org/release-group/065db277-9ec0-45af-9fd2-b4435674d834/front-250',
+        'https://coverartarchive.org/release-group/3eb2f3c8-1975-48b2-b455-acc202057386/front-250',
+    ]);
+    expect(blocked.every((b) => /BLOCKED_BY_CLIENT/.test(b.text || '')), 'every request blocked, a repeat too').toBe(true);
 
     // Once loaded, the spec's own mock is reached again.
     page.evaluate(() => { new Image().src = 'https://coverartarchive.org/release-group/x/front-250'; });

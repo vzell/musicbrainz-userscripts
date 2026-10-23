@@ -1165,7 +1165,8 @@ the same way. The card shows at most 12 tiles and a "+N" for the rest
   so it shrinks its tiles until it fits the window.
 
 Every image starts again at 12 on the next hover. The same keys work on the
-cards of the relationship-list covers and of discogs.com's Image column.
+cards of the relationship-list covers, of discogs.com's Image column and of
+springsteenlyrics.com's Cover column.
 Bigger tiles cost no request; every image loads the thumbnails that were left
 out. Hovering one image of an expanded cell shows its card: the
 preview, its types and comment, its position ("Image 6 of 10 · Medium 2 of 3"),
@@ -2865,6 +2866,16 @@ turns the over 3,500 song lines into one table:
 - **Title** links to the song's lyrics page, written the MusicBrainz way
   ("BABY I'M SO COLD" reads "Baby I’m So Cold"). **Lyrics** is ✓ when that page
   has lyrics, and ✗ when the site's plain icon says it has none.
+- **🖼 after a title** stands for the pictures on the song's page: the covers
+  of the albums the song is on and, now and then, a hand-written sheet. It is
+  dashed until that page has been read, then shows how many pictures there
+  are, or disappears when there are none. Point at it for a card with them (a
+  single picture large); click it for the artwork viewer (Ctrl/⌘-click: the
+  song's page). The page is read on that first hover or click only, one
+  request for that row, kept 30 days and shared with the song preview; songs
+  read before show their count as soon as the table is there. It follows
+  ⚙️ Settings → 🎸 springsteenlyrics.com → *Cover column: every image of an
+  item on hover*.
 - **Version** is the site's text in brackets, as written ("Live 30 Sep 1987
   version", "Original Roy Orbison version"). It is also read into:
   - **Type:** Live, Soundcheck, Original, Cover, Album, Other artist album,
@@ -2885,10 +2896,25 @@ While loading, the progress line names the letter it is on ("Loading H (9
 of 32)"). If one letter fails to load, the red 🔄 part's "↻ Load the missing
 page" carries on from that letter.
 
-Cover and Title link to the item's own page on springsteenlyrics.com;
-following one asks first, as leaving any consolidated table does. To see
-what that page adds without leaving the table, switch on the preview: see
-*Previewing the detail pages* under [Page-specific behaviour](#page-specific-behaviour).
+Title links to the item's own page on springsteenlyrics.com; following it
+asks first, as leaving any consolidated table does. To see what that page
+adds without leaving the table, switch on the preview: see *Previewing the
+detail pages* under [Page-specific behaviour](#page-specific-behaviour).
+
+**Pointing at a cover** (collection, latest additions, bootlegs, CD and
+vinyl bootlegs) shows a card with the cover — starred — and every artwork
+scan of that item, as the Cover Art column does on MusicBrainz: Space shows
+every image when there are more than fit, Shift draws them bigger. The scans
+are on the item's own page, so the first time that page is read: one request
+for that row only, kept 30 days and shared with the preview above (a later
+click or preview costs nothing). Moving on before its turn asks nothing, and
+a bootleg the list marks as having no artwork ("Cover only") is never asked.
+**A click on a cover** opens the artwork viewer on those images: ← → step
+through them, Shift+← → through the rows the filter left, and *Item page*
+opens the item's page. Ctrl/⌘-click (or a middle click) opens the item page
+in a new tab, as before. Switch the card off with ⚙️ Settings → 🎸
+springsteenlyrics.com → *Cover column: every image of an item on hover*; the
+click opens the viewer either way.
 
 </details>
 
@@ -2910,6 +2936,20 @@ Once on, the page gets a heading with the usual toolbar and one action
 button, **Bootlegs**. Pressing it turns the whole list into one table with
 these columns:
 
+- **Art:** the bootleg's artwork. It starts as a dashed tile: the scans are
+  on the bootleg's artwork page, and nothing is read until you ask. **Point
+  at the tile** and a card shows every scan, typed the MusicBrainz way —
+  *Front* (starred), *Back*, *Medium* for a CD ("CD 1"), *Booklet* ("page
+  1") — after one request for that row (moving on before its turn asks
+  nothing). The tile then shows the front scan and the number of scans, or
+  "no scans". **Click it** for the artwork viewer on those scans (← → step
+  through them, Shift+← → through the rows the filter left, *Entry page*
+  opens the page); Ctrl/⌘-click opens the artwork page in a new tab. Pages
+  read once are kept for half a year, so after a reload the rows you have
+  looked at show their picture at once, with no request. Sorting by Art puts
+  the rows with a picture first. Switch the card off with ⚙️ Settings → *🌴
+  jungleland.it* → *Art column: every scan of an entry on hover*; the click
+  opens the viewer either way.
 - **Title:** the bootleg's title, without the date the site appends to it,
   written the MusicBrainz way (see *Titles in MusicBrainz style* below). It
   links to that bootleg's artwork page, which opens in a new tab.
@@ -2933,9 +2973,10 @@ these columns:
 The list holds over 6,000 bootlegs, more than the default *Large Dataset
 Threshold* (5000 rows), so the "many rows" question comes up before the table
 is shown.
-Everything is on that one page; nothing is fetched, unless you switch on the
-preview of the artwork pages (see
+Everything is on that one page; nothing is fetched unless you point at or
+click an Art tile, or switch on the preview of the artwork pages (see
 *Previewing the detail pages* under [Page-specific behaviour](#page-specific-behaviour)).
+The Art column and the preview read the same page, once.
 
 </details>
 
@@ -2964,9 +3005,20 @@ format box of the site's own filter is ticked. Each button loads **every**
 record of its kind, all formats, whatever the page itself was showing, and
 turns them into one table:
 
-- **Unofficial:** Title, Matrix, Format, Label, Code, Notes.
-- **Official:** Title, Catalogue, Format, Country, Promo, Code, Notes.
+- **Unofficial:** Photo, Title, Matrix, Format, Label, Code, Notes.
+- **Official:** Photo, Title, Catalogue, Format, Country, Promo, Code, Notes.
   *Promo* reads "yes" for a promo.
+
+*Photo* is the record's photo, read from its detail page when you ask. It
+starts as a dashed tile; **point at it** and, after one request for that
+row, the card shows the photo large and the tile becomes the photo, or "no
+photo" — many records have none, and a photo the site hides as missing
+counts as none. **Click it** for the artwork viewer (*Record page* opens the
+page); Ctrl/⌘-click opens the detail page in a new tab. Pages read once are
+kept for half a year, so after a reload the records you have looked at show
+their photo at once. Sorting by Photo puts the records with a photo first.
+Switch the card off with ⚙️ Settings → *💿 brucespringsteen.it* → *Photo
+column: the record's photo on hover*; the click opens the viewer either way.
 
 *Format* is the site's own text ("2 CD-R", "1 7 in."). *Notes* is the italic
 line some records carry ("Picture disc", "Lower 'Bruce Springsteen' - Little
@@ -2999,7 +3051,11 @@ columns:
 
 - **Title:** the song's title, written the MusicBrainz way ("Born In The
   U.S.A." reads "Born in the U.S.A.", see *Titles in MusicBrainz style*
-  below). It links to that song's page.
+  below). It links to that song's page. The small **🖼** after it stands for
+  the images on the song's page (its performance graph, hand-written lyric
+  sheets): dashed until that page has been read, then their number, or gone
+  when there are none. Point at it for a card with them; click it for the
+  artwork viewer (Ctrl/⌘-click: the song's page).
 - **Letter:** the tab the song is listed under: *0-9* or *A* to *Z*. Filter
   or pick from its 📊 list to see one letter, which is the job the tabs did.
 
@@ -3008,8 +3064,12 @@ with a subtitle, such as "(I Can't Get No) Satisfaction", a second time; they
 are not repeated, and keep the letter of their main title (*S*). The tabs are
 replaced by the table; the second set of tabs further down (News, Media,
 Released) stays as it was. Everything is on that one page; nothing is
-fetched, unless you switch on the preview of the song pages (see
+fetched, unless you point at or click a song's 🖼 (that song's page, one
+request, kept 30 days; songs read before show their count at once) or switch
+on the preview of the song pages (see
 *Previewing the detail pages* under [Page-specific behaviour](#page-specific-behaviour)).
+⚙️ Settings → *📚 Brucebase* → *Media icons and song glyphs: the page's
+images on hover* switches the card off; a click opens the viewer either way.
 
 </details>
 
@@ -3065,13 +3125,22 @@ entry, with these columns:
   Ticket, Setlist, Storyteller, News, Memorabilia, Eyewitness, Video, Audio,
   Bootleg, LiveDL, Retail, Featured. Rest the pointer on an icon for its name.
   Type a name in the column filter (e.g. "Bootleg"), or pick one from the 📊
-  list, to see the entries that have it.
+  list, to see the entries that have it. **Photo, Ticket, News and
+  Memorabilia are ringed** when the entry has a page of its own: pointing at
+  one shows a card with those images from that page (photos, tickets, passes,
+  newspaper clippings); a click opens the artwork viewer on them, with every
+  other kind one ← → away and Shift+← → for the previous or next row
+  (Ctrl/⌘-click: the page). The page is read on that first hover or click
+  only, one request for that row, kept 30 days. ⚙️ Settings → *📚 Brucebase*
+  → *Media icons and song glyphs: the page's images on hover* switches the
+  card off; a click opens the viewer either way.
 - **Info wanted:** *yes* where Brucebase asks for more information about the
   date (its "Help Us" icon).
 
 The table replaces the entries and the tour boxes. The icon legend above and
 the Previous / Listing / Next line below stay. Everything is on the page;
-nothing is fetched.
+nothing is fetched, except an entry's own page when you point at or click
+one of its ringed Media icons.
 
 **The side bar:** on every Brucebase page the script handles, the wiki's
 side bar (Site Navigation, Gig Pages, …) stays in view while you scroll: at
@@ -3307,6 +3376,39 @@ answers.
 </details>
 
 <details>
+<summary>The 🖼 gallery on these sites</summary>
+
+On springsteenlyrics.com, jungleland.it, brucespringsteen.it, Brucebase and
+discogs.com, a table with pictures (the Cover, Art, Photo and Image columns,
+Brucebase's ringed Media icons, the 🖼 after a song's title) has a **🖼**
+right after its row count, as MusicBrainz tables do. It opens a window with
+every image of the rows that have already been read — by pointing at a row,
+clicking it, or on an earlier visit. **Opening it asks the site for
+nothing**: the rows read before come from this browser.
+
+- **The rest** are one button away, and the button says what it costs:
+  "Load the other 32 (about 35 s)". The pages are read one at a time, as
+  pointing at each row would (about a second apart; on Discogs 2.5 s, 1 s
+  with a token, and the button says both). A run of more than five minutes
+  asks first. **Stop**, ✕ or Esc end the run; what has been read stays read,
+  and the window says where it stopped when you open it again.
+- **While it runs**, a bar shows the rows from this browser (hatched), read
+  now, failed and still to go, with the counts under it and the last few
+  pages in *Recent*. A page that could not be read says why and offers
+  *Try again* (or *Retry N failed* at the end).
+- **Type chips** (Front, Back, Booklet; Cover, Scan; Photo, Ticket, News,
+  Memorabilia; primary, secondary …) narrow the images; pick several to see
+  any of them. **Compare two** puts two read rows side by side, one line per
+  type.
+- **A click on an image** opens the artwork viewer; ← → step through that
+  row's images, Shift+← → through the gallery's rows. Esc closes the viewer,
+  then the window. On a touch screen a tap outside the window closes it.
+- With a filter typed, the window covers only the rows the filter shows, and
+  says so.
+
+</details>
+
+<details>
 <summary>Titles in MusicBrainz style</summary>
 
 On springsteenlyrics.com, jungleland.it, brucespringsteen.it and Brucebase
@@ -3361,7 +3463,7 @@ that site's own switch in ⚙️ Settings:
 | 🎸 springsteenlyrics.com | *Preview item and song pages on springsteenlyrics.com lists* | the tracklist by disc, the notes (lineage, edition), the artwork scans; on the lyrics index, the version, the first lines of the lyrics and the song's info |
 | 🌴 jungleland.it         | *Preview artwork pages on the jungleland.it list*            | the uploader and the scans (front, back, discs, booklet)                                                                                                    |
 | 💿 brucespringsteen.it   | *Preview record pages in the brucespringsteen.it database*   | the tracklist, the show each track comes from, the notes, the photo                                                                                         |
-| 📚 Brucebase             | *Preview song pages on the Brucebase song list*              | the album it comes from, how often and when last it was played live, releases                                                                               |
+| 📚 Brucebase             | *Preview song pages on the Brucebase song list*              | the album it comes from, how often and when last it was played live, releases, the graph and lyric sheets                                                   |
 
 **Rest the pointer on a title** for a moment and a card opens beside it. If
 you would rather move the pointer across the table without opening cards or
@@ -3377,7 +3479,8 @@ its card opens the same way (on a touch screen, a tap there still opens the
 page; only the script's table opens the window).
 The first time, it shows "Loading the detail page…" while the page is read in
 the background. The script reads at most one page a second, and a page you
-have already seen comes back at once: it is kept for 30 days. The card's last
+have already seen comes back at once: it is kept for 30 days (half a year on
+jungleland.it and brucespringsteen.it, which barely change). The card's last
 line says whether the page was fetched now or saved earlier. Moving the
 pointer away closes the card, and so does **Esc**.
 

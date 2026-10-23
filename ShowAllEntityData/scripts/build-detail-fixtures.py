@@ -19,7 +19,10 @@ pages a row of each foreign table links to:
                            COL4942001 (official), LP1B1 (has a photo)
     brucebase.wikidot.com  song:4th-of-july-asbury-park-sandy, and the 2025
                            year page (org/iframe.org U4: the date anchor
-                           reader; captured by probe-bb-date-anchor.py)
+                           reader; captured by probe-bb-date-anchor.py),
+                           gig:1985-01-04-… and gig:1985-01-07-… (in
+                           bb-year-1985; org/foreign-images.org phase 3,
+                           debug/foreign-images/ by probe-foreign-images.py)
 
 Removed, so a spec stays network-free and the page cannot change under it:
 every `<script>`, `<noscript>`, `<iframe>` and `<link>`, and `background=`
@@ -65,6 +68,14 @@ TARGETS = [
     # scripts/probe-bb-date-anchor.py), whose #261025 the event page's
     # "reviews:" link names. Setlists are titles, not lyrics: nothing blanked.
     ('bb-year-2025.html', 'ext-bb-year-2025.html', b'name="261025"', None),
+    # org/foreign-images.org phase 3 (2026-10-23): two 1985 gig pages, linked
+    # from bb-year-1985, captured by scripts/probe-foreign-images.py. 01-04:
+    # photos (gallery:), a ticket, a clipping (news:); 01-07: a pass, a
+    # ticket, three clippings. Setlists are titles: nothing blanked.
+    ('foreign-images/brucebase.wikidot.com_gig_1985-01-04-roads-coliseum-hampton-va.html',
+     'detail-bb-gig-1985-01-04.html', b'gallery:1985-01-04-roads-coliseum-hampton-va', None),
+    ('foreign-images/brucebase.wikidot.com_gig_1985-01-07-market-square-arena-indianapolis-in.html',
+     'detail-bb-gig-1985-01-07.html', b'files:pass-1985', None),
 ]
 
 STRIP_RES = [

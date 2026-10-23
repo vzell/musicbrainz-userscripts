@@ -43,7 +43,7 @@ test('jungleland.it list: every entry becomes one row, decoded from windows-1252
 
     const headers = await page.evaluate(() => Array.from(document.querySelectorAll('table.tbl thead tr:first-child th'))
         .map((th) => th.dataset.colName || th.textContent.trim()));
-    expect(headers).toEqual(['Title', 'Date', 'Year', 'Version', 'DD', 'MM', 'YYYY', 'Day', 'Month']);
+    expect(headers).toEqual(['Art', 'Title', 'Date', 'Year', 'Version', 'DD', 'MM', 'YYYY', 'Day', 'Month']);
     expect(await page.locator('table.tbl tbody tr').count()).toBe(announced);
     // Across the whole real list: every row has a Version, every dated row
     // is split and agrees with its Date, and no undated row is split.
