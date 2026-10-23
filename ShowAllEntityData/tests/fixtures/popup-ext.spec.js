@@ -2133,3 +2133,28 @@ test.describe('the Springsteen sites across hosts (U4)', () => {
         await expect(dialog(page).locator('a[href="https://brucebase.wikidot.com/nogig:1978-07-25-civic-auditorium-jacksonville-fl"]')).toBeVisible();
     });
 });
+
+test.describe('hovering inside a Discogs window (org/dp-window-hover.org)', () => {
+    test('every link opens here: marked so, the foot line names it, Ctrl shows its card, Space opens it here', async ({ page }) => {
+        await openDiscogs(page);
+        await ctrlHover(page, probe(page, 0));
+        await expect(card(page).locator('.mb-dg-sum')).toBeVisible();
+        await page.keyboard.press('Space');
+        const d = dialog(page);
+        const credit = d.locator('[data-mb-dg-sec="credits"] a', { hasText: 'Jon Landau' }).first();
+        await expect(credit).toBeVisible();
+        await expect(credit).toHaveClass(/\bmb-dp-l-here\b/);
+        await page.mouse.move(0, 0);
+        await credit.hover();
+        await expect(d.locator('.mb-dp-wfoot')).toContainText('Opens here: ');
+        await expect(d.locator('.mb-dp-wfoot')).toContainText('Jon Landau');
+        // The page's Ctrl rule: Ctrl on the hovered link shows its card.
+        await page.keyboard.down('Control');
+        await expect(card(page)).toBeVisible();
+        await page.keyboard.up('Control');
+        await page.keyboard.press('Space');
+        await expect(card(page)).toBeHidden();
+        await expect(d.locator('button.mb-dp-tbtn', { hasText: '← Back' })).toBeVisible();
+        await expect(d.locator('button.mb-dp-tbtn', { hasText: '← Back' })).toHaveAttribute('title', /^Back to: /);
+    });
+});

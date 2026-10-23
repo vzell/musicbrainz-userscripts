@@ -2,11 +2,11 @@
   "_meta": {
     "generated_by": "scripts/dump-config-defaults.py",
     "purpose": "Generated artifact. NOTHING in the userscript reads this file. See org/config-handling.org Item 4.",
-    "script_version": "9.99.1429+2026-10-23",
-    "schema_entries": 470,
+    "script_version": "9.99.1436+2026-10-23",
+    "schema_entries": 471,
     "sections": 52,
-    "settings": 418,
-    "settings_with_default": 413,
+    "settings": 419,
+    "settings_with_default": 414,
     "settings_without_default": [
       "sa_default_hidden_columns",
       "sa_rel_other_db_classes",
@@ -15,7 +15,7 @@
       "sa_unicode_char_picker_mappings"
     ],
     "types": {
-      "checkbox": 243,
+      "checkbox": 244,
       "color_picker": 62,
       "number": 53,
       "divider": 52,
@@ -312,6 +312,7 @@
     "sa_dg_tip_images": "Image column: all images of a row on hover",
     "sa_dialog_save_export_autoclose_ms": "Save / Export dialog auto-close delay (ms)",
     "sa_dp_hover_without_ctrl": "Show every preview on a plain hover (without Ctrl)",
+    "sa_dp_window_read_ahead": "In the window, read a link ahead while the pointer rests on it",
     "sa_eaa_chip_types": "EAA type chips (Type=Letters, …)",
     "sa_edits_color_add_closed": "Edit action — Add (closed/applied)",
     "sa_edits_color_add_open": "Edit action — Add (open)",
@@ -731,6 +732,7 @@
     "sa_dg_tip_images": true,
     "sa_dialog_save_export_autoclose_ms": 1800,
     "sa_dp_hover_without_ctrl": true,
+    "sa_dp_window_read_ahead": false,
     "sa_eaa_chip_types": "Poster=P, Banner=Bn, Schedule=Sc, Setlist=Sl, Ticket=T",
     "sa_edits_color_add_closed": "#D0EBD7",
     "sa_edits_color_add_open": "lightgreen",

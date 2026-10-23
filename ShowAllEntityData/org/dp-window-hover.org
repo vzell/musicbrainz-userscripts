@@ -1,0 +1,82 @@
+#+TITLE: Hovering links and images inside the Space window (#mb-dp-dialog)
+#+STARTUP: showall
+
+* TODO Make a resting pointer useful inside the Space window
+
+In the "Space" popup-ed detail view window currently hovering a link (href) doesn't do anything.
+Make some suggestions (images should probably treated differently) and nice rich HTML based
+mockups
+
+** Answer (2026-10-23, branch =feature/dp-window-hover=, no change to the userscript)
+
+Env: 2026-10-23 · petri · WSL2 Ubuntu 24.04.3 (Linux 6.18.54.1) · browser n/a (mockup only)
+
+Mockup: =org/dp-window-hover-mockups.html= (built from a template; the published copy inlines
+the images with =scripts/build-mockup-artifact.py=): https://claude.ai/artifact/APF35bPAyvFZvKjFHGHrZU
+
+Data is real: the MusicBrainz release "Greetings From Asbury Park, N.J." from
+=tests/fixtures/ws2-pop-release-greetings.json= (artist, label and recording facts from their
+fixtures), its 8 cover-art images from the Cover Art Archive's index (one request), the Discogs
+release "Born To Run" (1874253) from =tests/fixtures/ext-discogs-release.json=.
+
+*** Today
+
+- Hovering a link in the window shows nothing: the card engine leaves the window out on purpose
+  (=_DP_PAGE_SKIP= includes =#mb-dp-dialog=; =_mbPopTarget(a, {inWindow: true})= is used only by
+  the click).
+- A plain click on a MusicBrainz link opens it in the window (=_dpDrill()=, ← Back); every link
+  in a Discogs window does too (=_extDgDrill()=); an image opens the artwork viewer
+  (=_dpArtViewerClick()=); anything else opens a new tab.
+
+*** Suggestions (each a switch in the mockup)
+
+| Id | What                                                                                         | Cost                                                                      | Verdict       |
+|----+----------------------------------------------------------------------------------------------+---------------------------------------------------------------------------+---------------|
+| H1 | The window's foot line says what a click on the hovered thing does ("Opens here: Label · …") | none                                                                      | recommended   |
+| H2 | Links marked at rest: dotted underline = opens here, ↗ = new tab, ring + zoom = image        | CSS only                                                                  | recommended   |
+| H3 | The page's card beside a link that opens here; Space opens it here, as a click               | the page's rule (rate gate, wanted while shown; a new host only on Space) | recommended   |
+| H4 | Images: resting shows the image large (Shift: larger), its type and place, "Click: viewer"   | one 500/600 px image after a 250 ms rest; no API request                  | recommended   |
+| H5 | Read ahead: 600 ms on a link reads its record so the click is instant (green dot)            | one request per link rested on; MusicBrainz only                          | optional, off |
+| H6 | ← Back (and ‹ ›) name where they go                                                          | none                                                                      | recommended   |
+
+*** Decisions (vzell, 2026-10-23)
+
+1. All six (H5 as a setting, off by default, as the mockup shows it).
+2. Inside the window the page's Ctrl rule (=sa_dp_hover_without_ctrl=).
+3. Links the window cannot open: the ↗ and the foot line only, no card.
+4. Phone: a tap stays a click; a long press shows H3's card or H4's preview.
+
+*** Open questions (as asked)
+
+1. Which ones (recommended: H1, H2, H3, H4, H6 now; H5 later as a setting).
+2. The Ctrl rule inside the window: the page's setting ("card without Ctrl"), or always Ctrl
+   inside the window, where the pointer rests on links while reading?
+3. Links the window cannot open: ↗ and the foot line only, or the generic link card?
+4. Phone: tap = click (as now), long press = H3's card / H4's preview?
+
+** Implementation (2026-10-23, same branch, WIP.1)
+
+Env: 2026-10-23T22:22+02:00 · petri · WSL2 Ubuntu 24.04.3 (Linux 6.18.54.1) · Playwright 1.62.1
+Chromium (desktop; chromium-mobile: Pixel 7 emulation), no Tampermonkey (GM stubs) · real browser
+not yet tried
+
+Built as approved, all six; design notes in docs/claude/detail-pages.md, "Hovering inside the
+window". Where the code had to decide what the mockup did not show:
+
+- =_popResolve()= is not widened (the page's tap handler and =_dpStep()= use it); only the hover,
+  focus and Ctrl paths fall back to =_dpWinTarget()=.
+- The foot line is =createInfoDialog()='s close-hint row, so the window's layout is unchanged.
+- Space on an image's preview is swallowed: it would scroll the window, the scroll hides the
+  preview, and the next Esc closed the window (found by the H4 spec).
+- The long press holds 500 ms; a move of more than 6 px cancels it.
+- An image's preview belongs to the picture, not its link (vzell's browser check: the cover's
+  link ran across the column, so the empty space beside it showed the preview). The cover's
+  link is =inline-block= now, only the pointer on the =<img>= counts, and a focus never opens
+  the preview (the viewer's focus given back made the next Esc close the preview, not the
+  window: the one failure of the first =test:full=).
+
+Specs: =popup-mb.spec.js= "hovering inside the window" (5), =popup-ext.spec.js= "hovering inside
+a Discogs window" (1), =popup-mb.mobile.spec.js= "inside the window: a long press" (1); mutations
+=scripts/mutations/dp-window-hover.json= (17, one recorded =pass=: the image's own 250 ms delay,
+which the fixtures' 0 ms tooltip delay hides); =detail-preview.spec.js= "the cover's preview
+belongs to the picture". Browser check: done by vzell on 2026-10-23, "all tested live, OK".

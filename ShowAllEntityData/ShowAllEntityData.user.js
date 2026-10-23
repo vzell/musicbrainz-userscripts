@@ -5203,7 +5203,18 @@
                          'held — hover a link with Ctrl down, or rest the pointer on it and then press Ctrl — so ' +
                          'moving the pointer neither pops up cards nor fetches anything. The release page\'s ' +
                          '"versions available in" link and its "#" cells keep their own settings. Tapping a link ' +
-                         'on a touch screen opens the window either way.'
+                         'on a touch screen opens the window either way. Inside the window the same rule applies ' +
+                         'to the cards of the links that open there.'
+        },
+
+        sa_dp_window_read_ahead: {
+            label: 'In the window, read a link ahead while the pointer rests on it',
+            type: 'checkbox',
+            default: false,
+            description: 'Off by default. When on, resting the pointer for a moment on a MusicBrainz link inside ' +
+                         'the preview window reads what it links to — one Web Service request, at the usual ' +
+                         'one-a-second pace — so a click shows it at once; such links get a small green dot. ' +
+                         'Moving on before its turn asks nothing. Links to other sites are never read ahead.'
         }
 
     };
@@ -21607,7 +21618,10 @@
         // over it (its delay is about the card's), so the titles go now.
         _dpStashTitles(t.el);
         const d = Lib.settings.sa_rich_tooltip_delay_ms;
-        _dpPeek.timer = setTimeout(() => _dpShowPeek(t), (typeof d === 'number' && d >= 0) ? d : 400);
+        // A target may bring its own delay (an image's preview in the window:
+        // 250 ms, H4).
+        const delay = typeof t.delay === 'number' ? t.delay : (typeof d === 'number' && d >= 0) ? d : 400;
+        _dpPeek.timer = setTimeout(() => _dpShowPeek(t), delay);
     }
 
     /**
@@ -21622,6 +21636,8 @@
         if (_dpPeek.link !== t.el || !t.el.isConnected || !t.src.enabled()) return;
         const el = _dpEnsurePeekEl();
         el.classList.toggle('mb-dp-wide', !!('wide' in t ? t.wide : t.src.wide));
+        // An image's preview in the window (H4) may be wider than a card.
+        el.classList.toggle('mb-dp-imgpeek', !!t.img);
         const repaint = () => {
             if (!_dpPeekShowing(t.el)) return;
             el.innerHTML = t.src.card(t, false, repaint);
@@ -22136,6 +22152,11 @@
             title.replaceChildren(...parts);
         }
         if (_dpDialog.controls && _dpDialog.controls.back) _dpDialog.controls.back.style.display = _dpDialog.stack.length ? '' : 'none';
+        // Where ← Back and ‹ › go (H6), and the foot line at rest (H1): what
+        // the pointer rested on is gone with the old content.
+        _dpWinNavTips(t);
+        _dpWin.hover = null;
+        _dpWinFoot(null);
         // "✎ Editing history": only where there is one (org/mb-edit-history.org).
         if (_dpDialog.controls && _dpDialog.controls.hist) _dpDialog.controls.hist.style.display = _mbEditsSubject(t) ? '' : 'none';
         // Where the window was opened from: the page target's note (kept
@@ -22340,6 +22361,389 @@
         _DP_ART_CTX.imagesCache.set(key, images);
         _artViewerOpen(_DP_ART_CTX, key, null, k, { opener: a, title });
         return true;
+    }
+
+    // ── Hovering inside the window (org/dp-window-hover.org) ───────────────
+    //
+    // vzell, 2026-10-23 (mockup https://claude.ai/artifact/APF35bPAyvFZvKjFHGHrZU,
+    // org/dp-window-hover-mockups.html): a resting pointer in the window's
+    // Extracted view says what a click will do. H1: the window's foot line
+    // ("Opens here: Label · Columbia"); H2: links marked at rest (dotted =
+    // opens here, ↗ = leaves the page, ring = image); H3: a link that opens
+    // here gets the page's card (its source's, under the page's Ctrl rule),
+    // Space opens it here; H4: an image shows large on a rest, Shift larger;
+    // H5: optionally a rest reads the record ahead (`sa_dp_window_read_ahead`);
+    // H6: ← Back and ‹ › name where they go. A link the window cannot open
+    // gets the ↗ and the foot line only. On touch a tap stays a click and a
+    // long press shows the card or the image.
+
+    /**
+     * The window's hover state: the link under the pointer, the read-ahead
+     * timer, the marks' pending frame and observer, the long press, whether
+     * Shift shows an image larger.
+     * @type {{hover: ?Element, ahead: number, markPending: boolean, observer: ?MutationObserver,
+     *   press: number, pressed: boolean, big: boolean}}
+     */
+    const _dpWin = { hover: null, ahead: 0, markPending: false, observer: null, press: 0, pressed: false, big: false };
+
+    /**
+     * The source of an image's preview in the window: the hover card's
+     * engine, showing `_dpImgCardHtml()`, with no Ctrl and no request.
+     * @type {object}
+     */
+    const _DP_IMG_SRC = {
+        id: 'dp-img', kind: 'Image', enabled: () => true, needsCtrl: () => false, wide: false,
+        card: (t) => _dpImgCardHtml(t.a), extracted: () => '', steps: () => [], stepId: () => '', liveUrl: () => '',
+    };
+
+    /**
+     * What a click on an element of the window's Extracted view does:
+     * `img` (the artwork viewer), `here` (it opens in the window: the
+     * target a click shows, `drilled`), `out` (the link's own new tab), or
+     * null for something no link or the window's Live page.
+     *
+     * - `here`: a MusicBrainz entity link while the entity cards are on
+     *   (`_dpDrill()`'s test), or any link a reader takes in a Discogs-family
+     *   window (`_extDgDrill()`'s, `t.reader.onAreaClick`);
+     * - an in-page anchor (`#…`) and a script link are none of them;
+     * - with `pointer`, an image link counts only on its `<img>`: a link's
+     *   box can be wider than its image (the cover's ran across the column),
+     *   and resting on the empty space beside a picture asks for nothing.
+     *
+     * @param {?EventTarget} node
+     * @param {boolean} [pointer] - Asked for the element under the pointer.
+     * @returns {?{kind: string, a: HTMLAnchorElement, t?: object}}
+     */
+    function _dpWinWhat(node, pointer) {
+        const api = _dpDialog.api;
+        const cur = _dpDialog.target;
+        if (!api || !cur || _dpDialog.view !== 'ex' || !node || !node.closest || !api.scrollArea.contains(node)) return null;
+        const a = node.closest('a[href]');
+        if (!a || !api.scrollArea.contains(a)) return null;
+        if (a.matches('a[data-mb-artv-i], a[data-mb-artv-ext]')) return pointer && !node.closest('img') ? null : { kind: 'img', a };
+        const href = a.getAttribute('href') || '';
+        if (/^(?:#|javascript:)/i.test(href)) return null;
+        const mb = _popSources().find(x => x.id === 'mb-entity');
+        if (mb && mb.enabled()) {
+            const r = _mbPopTarget(a, { inWindow: true });
+            if (r && r.key !== cur.key) return { kind: 'here', a, t: Object.assign({ src: mb, el: a, drilled: true }, r) };
+        }
+        if (cur.reader && cur.reader.onAreaClick) {
+            const r = _extTarget(a, { inWindow: true });
+            if (r && r.key !== cur.key) return { kind: 'here', a, t: Object.assign({ src: cur.src, el: a, drilled: true }, r) };
+        }
+        return { kind: 'out', a };
+    }
+
+    /**
+     * The hover card's target for an element of the window (H3, H4): what a
+     * click would open there, or an image's preview; null for a link that
+     * leaves the page (decision 3: the ↗ and the foot line only).
+     *
+     * An image's preview belongs to the `<img>` (`el`), not to its link
+     * (`a`): only the pointer on the picture shows it, leaving the picture
+     * hides it, and a focus (the one the viewer gives back on closing, too)
+     * never opens it — the next Esc would close the preview, not the window.
+     *
+     * @param {?EventTarget} node
+     * @returns {?object}
+     */
+    function _dpWinTarget(node) {
+        const w = _dpWinWhat(node, true);
+        if (!w) return null;
+        if (w.kind === 'here') return w.t;
+        if (w.kind === 'img') return { src: _DP_IMG_SRC, el: node.closest('img'), a: w.a, key: `dp-img:${w.a.href}`, url: w.a.href, img: true, delay: 250 };
+        return null;
+    }
+
+    /**
+     * Whether a target's record is in memory already, so a click or a card
+     * asks for nothing: a MusicBrainz entity's answer for any inc set
+     * (`pop:<type>:<id>:…`), another site's record by its key.
+     *
+     * @param {object} t
+     * @returns {boolean}
+     */
+    function _dpWinRead(t) {
+        if (!t) return false;
+        const done = (st) => !!st && st.status === 'done';
+        if (t.src && t.src.id === 'mb-entity' && t.type && t.id) {
+            const pre = `pop:${t.type}:${t.id}:`;
+            for (const [k, st] of _mbPop) if (k.startsWith(pre) && done(st)) return true;
+            return false;
+        }
+        return done(_mbPop.get(t.key));
+    }
+
+    /**
+     * An image link's place among the window's images, as the viewer counts
+     * them (`_dpArtViewerClick()`: each image once, archive images by their
+     * strip, another site's in their order), and its label.
+     *
+     * @param {HTMLAnchorElement} a
+     * @returns {{i: number, n: number, label: string, big: string}}
+     */
+    function _dpImgInfo(a) {
+        const area = (_dpDialog.api && _dpDialog.api.scrollArea) || a.ownerDocument;
+        const img = a.querySelector('img');
+        const span = a.querySelector('span');
+        let label = ((span && span.textContent) || (img && img.alt) || '').trim();
+        let big = a.href;
+        if (a.dataset.mbArtvExt === undefined) {
+            const ctx = a.dataset.mbArtvCtx === 'eaa' ? EAA_CTX : CAA_CTX;
+            const list = ctx.imagesCache.get(a.dataset.mbArtvPath) || [];
+            const i = Number(a.dataset.mbArtvI);
+            const im = list[i];
+            if (im) {
+                label = (im.types || []).join(' / ') + (im.comment ? ` · ${im.comment}` : '') || label;
+                const t = im.thumbnails || {};
+                big = _artViewerUrl(im, t['500'] || t.large || im.image || big);
+            }
+            return { i, n: list.length, label, big };
+        }
+        const seen = new Set();
+        const links = Array.from(area.querySelectorAll('a[data-mb-artv-ext]'))
+            .sort((x, y) => Number(x.dataset.mbArtvExt) - Number(y.dataset.mbArtvExt))
+            .filter(l => !seen.has(l.href) && seen.add(l.href));
+        return { i: links.findIndex(l => l.href === a.href), n: links.length, label, big };
+    }
+
+    /**
+     * An image's preview card (H4): the image large (the archive's 500 px
+     * rendition, another site's linked image), larger while Shift is held
+     * (`_dpWin.big`), its label, its place among the window's images and
+     * what a click does. No API request: one image.
+     *
+     * @param {HTMLAnchorElement} a
+     * @returns {string}
+     */
+    function _dpImgCardHtml(a) {
+        const info = _dpImgInfo(a);
+        const where = info.i >= 0 && info.n ? `image ${info.i + 1} of ${info.n}` : '';
+        return `<img class="mb-dp-imgprev${_dpWin.big ? ' mb-dp-imgprev-big' : ''}" src="${_mbttEscape(info.big)}" alt="" referrerpolicy="no-referrer">` +
+            `<div class="mb-tt-dim">${_mbttEscape([info.label, where].filter(Boolean).join(' · '))}</div>` +
+            `<div class="mb-tt-foot">${_dpWin.big ? 'Click: viewer' : 'Click: viewer · Shift: larger'}</div>`;
+    }
+
+    /**
+     * Shift held or let go while an image's preview shows (H4): the preview
+     * again, larger or back, placed for its new size.
+     *
+     * @param {boolean} on
+     * @returns {void}
+     */
+    function _dpWinBig(on) {
+        _dpWin.big = on;
+        const t = _dpPeek.target;
+        if (!t || !t.img || !_dpPeekShown()) return;
+        const el = _dpPeek.el;
+        el.innerHTML = _dpImgCardHtml(t.a);
+        _dpAddKindHead(el, t);
+        _dpPlacePeek(t.el);
+    }
+
+    /**
+     * H1: the window's foot line for what the pointer (or the focus) rests
+     * on, or, with nothing, the window's keys.
+     *
+     * @param {?{kind: string, a: HTMLAnchorElement, t?: object}} w - `_dpWinWhat()`'s answer.
+     * @returns {void}
+     */
+    function _dpWinFoot(w) {
+        const foot = _dpDialog.controls && _dpDialog.controls.foot;
+        if (!foot) return;
+        const span = (cls, text) => {
+            const s = document.createElement('span');
+            if (cls) s.className = cls;
+            s.textContent = text;
+            return s;
+        };
+        if (!w) {
+            const t = _dpDialog.target;
+            const keys = [];
+            if (t && t.src.steps(t).length > 1) keys.push('← → rows');
+            if (_dpDialog.stack.length) keys.push('Backspace back');
+            if (t && _mbEditsSubject(t)) keys.push('H history');
+            keys.push('Esc close');
+            foot.replaceChildren(span('mb-dp-wfoot-g', '⌨'), span(null, 'Rest on a link or an image: this line says what a click does.'),
+                span('mb-dp-wfoot-k', keys.join(' · ')));
+            return;
+        }
+        let g = '↳';
+        let lead;
+        let text;
+        let keys = '';
+        if (w.kind === 'img') {
+            const info = _dpImgInfo(w.a);
+            g = '🔍';
+            lead = 'Viewer: ';
+            text = [info.label, info.i >= 0 && info.n ? `image ${info.i + 1} of ${info.n}` : ''].filter(Boolean).join(' · ');
+            keys = 'Click: viewer · Shift: larger · Ctrl-click: new tab';
+        } else if (w.kind === 'here') {
+            lead = 'Opens here: ';
+            text = `${_dpKindLabel(w.t)} · ${w.a.textContent.replace(/\s+/g, ' ').trim()}` + (_dpWinRead(w.t) ? ' (read before, no request)' : '');
+            keys = 'Click: here · Ctrl-click: new tab';
+        } else {
+            g = '↗';
+            lead = 'New tab: ';
+            text = w.a.href.replace(/^https?:\/\//, '');
+        }
+        const main = document.createElement('span');
+        main.className = 'mb-dp-wfoot-t';
+        const b = document.createElement('b');
+        b.textContent = lead;
+        main.append(b, text);
+        foot.replaceChildren(span('mb-dp-wfoot-g', g), main, span('mb-dp-wfoot-k', keys));
+    }
+
+    /**
+     * H2: marks the Extracted view's links by what a click on them does —
+     * `mb-dp-l-here`, `mb-dp-l-out` (`mb-dp-l-noglyph` when its text already
+     * says ↗), `mb-dp-l-img` — and, with read-ahead on, `mb-dp-l-read` on a
+     * link whose record is in memory. Classes only (CSS draws the rest), on
+     * the window's own markup, never in a table.
+     *
+     * @returns {void}
+     */
+    function _dpWinMark() {
+        _dpWin.markPending = false;
+        const api = _dpDialog.api;
+        if (!api || _dpDialog.view !== 'ex') return;
+        const dots = Lib.settings.sa_dp_window_read_ahead === true;
+        api.scrollArea.querySelectorAll('a[href]').forEach(a => {
+            const w = _dpWinWhat(a);
+            a.classList.toggle('mb-dp-l-img', !!w && w.kind === 'img');
+            a.classList.toggle('mb-dp-l-here', !!w && w.kind === 'here');
+            a.classList.toggle('mb-dp-l-out', !!w && w.kind === 'out' && !a.querySelector('img'));
+            a.classList.toggle('mb-dp-l-noglyph', /↗/.test(a.textContent));
+            a.classList.toggle('mb-dp-l-read', dots && !!w && w.kind === 'here' && _dpWinRead(w.t));
+        });
+    }
+
+    /**
+     * Marks the links once in the next frame (every repaint of the
+     * Extracted view replaces them).
+     *
+     * @returns {void}
+     */
+    function _dpWinMarkSoon() {
+        if (_dpWin.markPending) return;
+        _dpWin.markPending = true;
+        requestAnimationFrame(_dpWinMark);
+    }
+
+    /**
+     * H5: reads the record of a link that opens here after a 600 ms rest,
+     * so the click shows it at once (`sa_dp_window_read_ahead`, off by
+     * default). MusicBrainz entities only, never another site; through the
+     * source's own card load, wanted while the pointer stays on the link
+     * (`_mbPopWanted()`'s `readAhead`).
+     *
+     * @param {object} t - A `here` target.
+     * @returns {void}
+     */
+    function _dpWinReadAhead(t) {
+        clearTimeout(_dpWin.ahead);
+        if (Lib.settings.sa_dp_window_read_ahead !== true || !t || t.src.id !== 'mb-entity' || _dpWinRead(t)) return;
+        _dpWin.ahead = setTimeout(() => {
+            if (!t.el.isConnected || !t.el.matches(':hover')) return;
+            t.readAhead = true;
+            t.src.card(t, true, () => {
+                _dpWinMarkSoon();
+                if (_dpWin.hover === t.el) _dpWinFoot(_dpWinWhat(t.el));
+            });
+        }, 600);
+    }
+
+    /**
+     * H6: ← Back and ‹ › name where they go — the target Back returns to,
+     * the previous and the next row of the source's steps.
+     *
+     * @param {object} t - The target shown now.
+     * @returns {void}
+     */
+    function _dpWinNavTips(t) {
+        const c = _dpDialog.controls;
+        if (!c) return;
+        const name = (x) => x ? `${_dpKindLabel(x)} · ${(x.el && x.el.textContent || x.url || '').replace(/\s+/g, ' ').trim()}` : '';
+        const prev = _dpDialog.stack[_dpDialog.stack.length - 1];
+        if (c.back) _setTip(c.back, prev ? `Back to: ${name(prev)} (Backspace, Alt+←)` : 'Back to what the window showed before (Backspace, Alt+←)');
+        const base = _dpDialog.stack.length ? _dpDialog.stack[0] : t;
+        const steps = base.src.steps(base);
+        const id = base.src.stepId(base.el);
+        const i = steps.findIndex(el => base.src.stepId(el) === id);
+        const at = (k) => {
+            const el = steps[k];
+            return el ? el.textContent.replace(/\s+/g, ' ').trim() : '';
+        };
+        if (c.prev) _setTip(c.prev, i > 0 && at(i - 1) ? `Previous row: ${at(i - 1)} (←)` : 'Previous row (←)');
+        if (c.next) _setTip(c.next, i >= 0 && at(i + 1) ? `Next row: ${at(i + 1)} (→)` : 'Next row (→)');
+    }
+
+    /**
+     * Wires the window's hover (H1–H5) and the long press, once per window:
+     * delegated on its scroll area, so every repaint is covered; the marks
+     * follow every change of its content (a MutationObserver, one pass a
+     * frame). The foot line is `createInfoDialog()`'s close hint row.
+     *
+     * @param {object} api - `createInfoDialog()`'s answer.
+     * @returns {void}
+     */
+    function _dpWinInstall(api) {
+        const area = api.scrollArea;
+        const foot = area.nextElementSibling;
+        if (foot) {
+            foot.classList.add('mb-dp-wfoot');
+            foot.replaceChildren();
+        }
+        _dpDialog.controls.foot = foot;
+        if (_dpWin.observer) _dpWin.observer.disconnect();
+        _dpWin.observer = new MutationObserver(_dpWinMarkSoon);
+        _dpWin.observer.observe(area, { childList: true, subtree: true });
+        const rest = (node, pointer) => {
+            const w = _dpWinWhat(node, pointer);
+            const el = w ? w.a : null;
+            if (el === _dpWin.hover) return;
+            _dpWin.hover = el;
+            _dpWinFoot(w);
+            if (w && w.kind === 'here') _dpWinReadAhead(w.t);
+            else clearTimeout(_dpWin.ahead);
+        };
+        area.addEventListener('mouseover', (e) => { if (!_isTouchCompatMouseEvent(e)) rest(e.target, true); });
+        area.addEventListener('focusin', (e) => rest(e.target));
+        area.addEventListener('mouseleave', () => rest(null));
+        area.addEventListener('mouseout', (e) => {
+            if (_dpWin.hover && !(e.relatedTarget && _dpWin.hover.contains(e.relatedTarget)) && _dpWin.hover.contains(e.target)) rest(null);
+        });
+        // Touch (decision 4): a tap stays a click; a long press shows the
+        // card (a link that opens here) or the image, and the click that
+        // would follow the lift is swallowed (the card stays until the next tap).
+        area.addEventListener('pointerdown', (e) => {
+            clearTimeout(_dpWin.press);
+            _dpWin.pressed = false;
+            if (e.pointerType === 'mouse') return;
+            const t = _dpWinTarget(e.target);
+            if (!t) return;
+            _dpWin.press = setTimeout(() => {
+                _dpWin.pressed = true;
+                _dpHidePeek();
+                _dpPeek.link = t.el;
+                _dpPeek.target = t;
+                _dpShowPeek(t);
+            }, 500);
+        });
+        const cancel = () => clearTimeout(_dpWin.press);
+        area.addEventListener('pointermove', (e) => { if (e.pointerType !== 'mouse' && (Math.abs(e.movementX) > 6 || Math.abs(e.movementY) > 6)) cancel(); });
+        area.addEventListener('pointercancel', cancel);
+        area.addEventListener('pointerup', cancel);
+        area.addEventListener('touchend', (e) => {
+            if (!_dpWin.pressed) return;
+            // No compatibility mousedown (which hides the card) and no click.
+            e.preventDefault();
+            _dpWin.pressed = false;
+        }, { passive: false });
+        area.addEventListener('contextmenu', (e) => { if (_dpPeekShown() && _dpPeek.target && _dpPeek.target.el.contains(e.target)) e.preventDefault(); });
+        _dpWinFoot(null);
     }
 
     // ── Foreign-site images in the tables: one card, one viewer click ──────
@@ -24463,7 +24867,10 @@
             if (_dpDialog.target && _dpDialog.target.src.onAreaInput) _dpDialog.target.src.onAreaInput(e, _dpDialog.target);
         });
         _dpDialog.api = api;
-        _dpDialog.controls = { pos, ex, live, open, back, origin, hist };
+        _dpDialog.controls = { pos, ex, live, open, back, origin, hist, prev, next };
+        // Hovering inside the window: the foot line, the marks, the cards of
+        // its links, an image's preview, the long press (org/dp-window-hover.org).
+        _dpWinInstall(api);
         back.addEventListener('click', _dpBack);
         hist.addEventListener('click', _dpOpenEdits);
         prev.addEventListener('click', () => _dpStep(-1));
@@ -24636,6 +25043,43 @@
             .mb-dp-dialog .mb-dp-pos-label { font: 12px ui-monospace, Consolas, monospace; color: #666; min-width: 4.5em; text-align: center; }
             .mb-dp-dialog .mb-dp-area { position: relative; background: #fbf8f1; }
             .mb-dp-dialog .mb-dp-area.mb-dp-area-live { overflow: hidden; }
+            /* Hovering inside the window (org/dp-window-hover.org): the foot
+               line (H1, createInfoDialog()'s close-hint row, its inline
+               padding and border overridden), the marks (H2), the read
+               dot (H5), an image's preview (H4). */
+            .mb-dp-dialog .mb-dp-wfoot {
+                display: flex;
+                gap: 10px;
+                align-items: center;
+                min-height: 20px;
+                padding: 5px 12px !important;
+                border-top: 1px solid #d9cfbd !important;
+                background: #f6f1e6;
+                color: #7a6d5c;
+                font: 12px/1.4 system-ui, Arial, sans-serif;
+            }
+            .mb-dp-dialog .mb-dp-wfoot-g { flex: none; width: 18px; text-align: center; font-size: 14px; }
+            .mb-dp-dialog .mb-dp-wfoot-t { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+            .mb-dp-dialog .mb-dp-wfoot-t b { color: #2b2622; font-weight: 600; }
+            .mb-dp-dialog .mb-dp-wfoot-k { flex: none; margin-left: auto; white-space: nowrap; }
+            .mb-dp-dialog .mb-dp-area a.mb-dp-l-here { text-decoration: underline dotted; text-underline-offset: 2px; }
+            .mb-dp-dialog .mb-dp-area a.mb-dp-l-here:hover::after { content: " \\21B3"; color: #7a6d5c; font-size: 0.85em; }
+            .mb-dp-dialog .mb-dp-area a.mb-dp-l-out:not(.mb-dp-l-noglyph)::after { content: " \\2197"; color: #7a6d5c; font-size: 0.8em; }
+            .mb-dp-dialog .mb-dp-area a.mb-dp-l-img { cursor: zoom-in; }
+            .mb-dp-dialog .mb-dp-area a.mb-dp-l-img:hover img { box-shadow: 0 0 0 2px #2f5f9e; }
+            .mb-dp-dialog .mb-dp-area a.mb-dp-l-read::before {
+                content: "";
+                display: inline-block;
+                width: 6px;
+                height: 6px;
+                margin-right: 4px;
+                border-radius: 50%;
+                background: #3f7a3a;
+                vertical-align: 1px;
+            }
+            #mb-dp-peek.mb-dp-imgpeek { max-width: 560px; }
+            #mb-dp-peek .mb-dp-imgprev { display: block; max-width: 300px; max-height: 300px; margin: 2px 0 4px; border: 1px solid #d9cfbd; }
+            #mb-dp-peek .mb-dp-imgprev-big { max-width: 520px; max-height: 520px; }
             .mb-dp-dialog .mb-dp-x {
                 display: grid;
                 grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
@@ -24651,6 +25095,9 @@
             .mb-dp-dialog .mb-dp-xtitle { font-weight: 700; font-size: 1.2em; line-height: 1.3; }
             .mb-dp-dialog .mb-dp-xsub { font-style: italic; color: #7a6d5c; }
             .mb-dp-dialog .mb-dp-xcover { display: block; max-width: 100%; max-height: 220px; margin: 8px 0; border: 1px solid #d9cfbd; }
+            /* The cover's link as wide as the picture, not the column: the
+               pointer beside it is not on the image (org/dp-window-hover.org). */
+            .mb-dp-dialog a:has(> img.mb-dp-xcover) { display: inline-block; max-width: 100%; vertical-align: top; }
             .mb-dp-dialog h4 {
                 margin: 14px 0 4px;
                 font: 600 11px/1.3 ui-monospace, Consolas, monospace;
@@ -25108,12 +25555,12 @@
     function _dpCtrlTarget() {
         const h = _dpPeek.hover;
         if (h && h.isConnected && h.matches(':hover')) {
-            const t = _popResolve(h);
+            const t = _popResolve(h) || _dpWinTarget(h);
             if (t && t.el === h) return t;
         }
         const f = document.activeElement;
         if (f && f.matches && _dpFocusVisible(f)) {
-            const t = _popResolve(f);
+            const t = _popResolve(f) || _dpWinTarget(f);
             if (t && t.el === f) return t;
         }
         return null;
@@ -25156,7 +25603,9 @@
         _installTouchInputTracker();
         _ensureDetailPreviewStyle();
         document.addEventListener('mouseover', (e) => {
-            const t = _popResolve(e.target);
+            // A link of the window's own Extracted view: what a click on it
+            // opens there, or an image's preview (`_dpWinTarget()`).
+            const t = _popResolve(e.target) || _dpWinTarget(e.target);
             if (!t || t.el === _dpPeek.link || _isTouchCompatMouseEvent(e)) return;
             _dpPeek.hover = t.el;
             // Without Ctrl held, only remember the element: pressing Ctrl on
@@ -25173,7 +25622,7 @@
             _dpHidePeek();
         }, true);
         document.addEventListener('focusin', (e) => {
-            const t = _popResolve(e.target);
+            const t = _popResolve(e.target) || _dpWinTarget(e.target);
             if (!t || t.el !== e.target || t.el === _dpPeek.link) return;
             if (_dpFocusVisible(t.el) && !t.src.needsCtrl()) _dpSchedulePeek(t);
         }, true);
@@ -25211,14 +25660,34 @@
                 _dpHidePeek();
                 return;
             }
+            // Shift on an image's preview in the window: larger while held (H4).
+            if (e.key === 'Shift' && !e.repeat && _dpPeek.target && _dpPeek.target.img) {
+                _dpWinBig(true);
+                return;
+            }
             if ((e.key === ' ' || e.code === 'Space') && !e.altKey && !e.ctrlKey && !e.metaKey) {
                 // A Space typed into a field stays the field's; the focus the
                 // render left in the global filter does not count as typing.
                 if (_dpIsTextField(e.target) && Date.now() - _dpPeek.typedAt < _DP_TYPING_GRACE_MS) return;
+                const pt = _dpPeek.target;
                 e.preventDefault();
                 e.stopImmediatePropagation();
-                _dpOpenDialog(_dpPeek.target);
+                // An image's preview pins nothing, and the Space does not
+                // scroll the window away from under it either.
+                if (pt && pt.img) return;
+                // A card of a link in the window: Space opens it there, as a
+                // click does (H3); on the page it pins the card into the window.
+                if (pt && pt.drilled && _dpDialog.api && _dpDialog.target) {
+                    _dpHidePeek();
+                    _dpDialog.stack.push(_dpDialog.target);
+                    _dpShowInDialog(pt);
+                    return;
+                }
+                _dpOpenDialog(pt);
             }
+        }, true);
+        document.addEventListener('keyup', (e) => {
+            if (e.key === 'Shift' && _dpWin.big) _dpWinBig(false);
         }, true);
         document.addEventListener('click', (e) => {
             if (e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return;
@@ -50429,7 +50898,10 @@
      * @returns {function(): boolean}
      */
     function _mbPopWanted(t) {
-        return () => _dpPeekShowing(t.el) || (!!_dpDialog.target && _dpDialog.target.key === t.key && _dpDialogShowing(_dpDialog.target));
+        // A read-ahead in the window (`_dpWinReadAhead()`): while the pointer
+        // still rests on the link.
+        return () => _dpPeekShowing(t.el) || (!!_dpDialog.target && _dpDialog.target.key === t.key && _dpDialogShowing(_dpDialog.target)) ||
+            (!!t.readAhead && t.el.isConnected && t.el.matches(':hover'));
     }
 
     /**

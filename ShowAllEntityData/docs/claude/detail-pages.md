@@ -1374,6 +1374,65 @@ new tab. Rules:
 - The side drawer of the plan was not built (the user, 2026-10-08: the
   window as it is suffices).
 
+## Hovering inside the window (2026-10-23, org/dp-window-hover.org)
+
+vzell: hovering a link in the window did nothing. Mockup
+https://claude.ai/artifact/APF35bPAyvFZvKjFHGHrZU
+(`org/dp-window-hover-mockups.html`), all six suggestions taken; grep
+`// ── Hovering inside the window`.
+
+- **One question, asked the click's way** (`_dpWinWhat()`): an image
+  (`a[data-mb-artv-i|ext]` → the viewer), `here` (the target a click would
+  show: `_mbPopTarget(a, {inWindow: true})` while `mb-entity` is on, or
+  `_extTarget(a, {inWindow: true})` in a window whose reader has
+  `onAreaClick`, the Discogs family), `out` (a new tab); `#…` and
+  `javascript:` are none. **`_popResolve()` is NOT widened**: the page's
+  click handler (taps) and `_dpStep()` use it, and a window target there
+  would open a new path instead of drilling. Only the hover, focus and Ctrl
+  paths fall back to `_dpWinTarget()`.
+- **H1 foot line** (`_dpWinFoot()`): `createInfoDialog()`'s close-hint row,
+  emptied and restyled (`.mb-dp-wfoot`; its inline padding/border need
+  `!important`), so the window's layout is unchanged. At rest the keys that
+  apply. "read before, no request" from `_dpWinRead()`: a MusicBrainz
+  entity's `pop:<type>:<id>:` entry done in `_mbPop` (any inc set), another
+  site's record by its key.
+- **H2 marks** (`_dpWinMark()`): classes `mb-dp-l-here` / `-out` /
+  `-noglyph` (its text already says ↗) / `-img` / `-read` (only with H5 on),
+  laid by a MutationObserver on the scroll area, one pass a frame: every
+  repaint path (`innerHTML`, `_dpAreaRepaint()`, a section's own toggles) is
+  covered without a hook. CSS draws the rest.
+- **H3 card**: the target is the drill target itself (`drilled: true`), so
+  its source's card, `_mbPopWanted()` and the page's Ctrl rule
+  (`needsCtrl()`, decision 2) apply unchanged, and so does "a host never
+  reached is first contacted on Space". **Space** on a `drilled` card pushes
+  the current target and shows it (as `_dpDrill()`), it does not call
+  `_dpOpenDialog()`. A link that leaves the page has no card (decision 3).
+- **H4 image preview**: a pseudo source `_DP_IMG_SRC` in the same card
+  element (`img: true`, its own `delay: 250`, which `_dpSchedulePeek()`
+  honours), no Ctrl, no request beyond the image (the archive's 500 px, or the
+  linked image). `_dpImgInfo()` counts the images as the viewer does. Shift
+  repaints it larger (`_dpWinBig()`); Space is swallowed (it would scroll the
+  window, which hides the card, and the next Esc would close the window).
+  The preview's element is the `<img>` (`t.el`; its link is `t.a`), and
+  `_dpWinWhat(node, pointer)` counts an image link only on its picture: the
+  cover's link used to span the column (now `inline-block`), and a focus —
+  the one the viewer gives back on closing, too — never opens the preview,
+  or the next Esc would close it instead of the window. The foot line still
+  names the viewer for a focused image link.
+- **H5 read-ahead** (`sa_dp_window_read_ahead`, off): after 600 ms the
+  target's own `card(t, true)` with `t.readAhead`; `_mbPopWanted()` wants it
+  while the link is still `:hover`. MusicBrainz entities only.
+- **H6** (`_dpWinNavTips()`, from `_dpShowInDialog()`): ← Back names the
+  stack's top, ‹ › the neighbouring steps' text.
+- **Touch** (decision 4): a long press (500 ms, cancelled by a move) shows the
+  card or the image; `touchend` is `preventDefault()`ed after it, so no
+  compatibility mousedown (which hides the card) and no click follow.
+- **Specs**: `popup-mb.spec.js` "hovering inside the window" (5),
+  `popup-ext.spec.js` "hovering inside a Discogs window",
+  `popup-mb.mobile.spec.js` "inside the window: a long press" (the press
+  through the DevTools protocol); mutations
+  `scripts/mutations/dp-window-hover.json`.
+
 ## Links to other sites (org/iframe.org "* generalize to URLs", U1)
 
 `_extSource()` serves a link to ANOTHER site behind ONE setting, `sa_pop_ext`

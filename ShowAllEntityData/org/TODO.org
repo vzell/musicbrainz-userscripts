@@ -4272,13 +4272,14 @@ register the third-party user script by @zabe
 
 check what it's doing
 
+
 * TODO sidebar image hover for CAA images onyl working when hovering below the image in the description
 
 sidebar  image hover for CAA images onyl working when hovering below the image in the description
 
 
 
-* TODO In the "Space" popupped detail view window currently hovering a link (href) doesn't do anything
+* DONE In the "Space" popupped detail view window currently hovering a link (href) doesn't do anything
 
 After the full-test-suite:
 
@@ -4302,5 +4303,12 @@ make the Artwork gallery popup
 resizable and movable like the other hover "Space" detail popups
 
 
+* TODO "Space" on an image should not scroll but also open the viewer
 
+"Space" on an image should not scroll but also open the viewer
+
+* DONE hovering a master image should only popup the bigger image when actually hovering the image itself and not the empty space right beside it, which stretches up to the right details
+
+hovering a master image should only popup the bigger image when actually hovering the image itself and not the empty
+space right beside it, which stretches up to the right details
 
