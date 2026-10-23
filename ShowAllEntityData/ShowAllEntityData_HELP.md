@@ -9,11 +9,8 @@ This page is the user guide. It is written to be read top to bottom the first
 time and jumped into by anchor afterwards. Reference material that most people
 will never need is folded into collapsible sections.
 
-> **Two ways to read this.** The ❓ button in the page opens this file on
-> GitHub. **Shift-click ❓** renders it inside the page instead, with a
-> quick-filter box across the whole text — useful when you want to search rather
-> than browse. From the keyboard, the prefix key then **H** opens the in-page
-> version, which carries a *📖 Open on GitHub* link of its own.
+> **Where this page opens.** *❓ Help ↗* in the ☰ SAED menu, and the prefix
+> key then **H**, open this file on GitHub in a new tab.
 
 ---
 
@@ -54,8 +51,12 @@ will never need is folded into collapsible sections.
    will fetch, for example **🧮¹ Events for Artist**. Pages that offer
    more than one listing get one button each, numbered `🧮¹ 🧮² 🧮³` so the
    keyboard can reach them.
-3. A progress bar tracks the fetch, page by page. **⏹ Stop** interrupts it and
-   keeps whatever has already arrived.
+3. The button you pressed shows the progress: it fills blue page by page and
+   reads **■ Stop · 3 / 40**, and the line under the heading says which page,
+   how many rows so far and about how long is left. **Click it to stop** (or
+   `Ctrl+M` then `O`): the page under way finishes, and whatever has arrived is
+   shown. The other fetch buttons wait meanwhile; while the rows are being
+   built the button is striped.
 4. When it finishes you get one table, a filter bar, sortable headers, and the
    controls described below.
 
@@ -84,7 +85,10 @@ The status line turns orange:
 ```
 
 The rows that did arrive are real and usable — the table is simply smaller than
-the listing. Press the action button again to start over.
+the listing. A red **🔄 N ▾** part appears on the SAED button, N being the pages
+missing: its list says which page failed and why, and **↻ Load the N missing
+pages** carries on from that page, keeping what you have (nothing is fetched
+twice). Press the action button again to start over instead.
 
 <details>
 <summary>The details worth knowing about an incomplete fetch</summary>
@@ -111,39 +115,60 @@ the listing. Press the action button again to start over.
 
 ## The buttons
 
-The controls beside the page heading are two pull-down menus plus two pinned
-buttons, and — once a page has warnings or errors to show — two more menus
-after a divider:
+Everything the script adds beside the page heading is **one button with up to
+four parts**, the SAED button. Each part does its own thing:
 
 ```
-🧮¹ …  |  📦 Data ▾   🛠 View ▾   [ ⚙️ | ❓ ]  |  ⚠️ WARNING (12) ▾   ❌ ERROR (3) ▾
+[ RGS 🧮¹ Artist | 🧮² Various Artists ‖ 📀 Discography: 📋 Complete ▾ ‖ ❌ 3 ▾ | ⚠️ 12 ▾ ‖ ☰ SAED ▾ ]
 ```
 
-| Menu                          | Rows                                                                                                                                  |
-|-------------------------------|---------------------------------------------------------------------------------------------------------------------------------------|
-| **📦 Data ▾**                 | 💾 Save to Disk · 📂 Load from Disk · 💾 Export                                                                                       |
-| **🛠 View ▾**                  | 📏 Density · 📊 Statistics · 🎹 Keyboard Shortcuts                                                                                    |
-| **⚙️ ❓**                      | Settings Manager and this help page — pinned side by side as one control, never in a menu. Shift-click ❓ reads the help in the page. |
-| **⚠️ WARNING ▾ / ❌ ERROR ▾**  | One row per kind of problem found on the page, with how many rows have it. See [Warnings and errors](#warnings-and-errors).           |
+| Part                              | What it does                                                                                                                       |
+|-----------------------------------|------------------------------------------------------------------------------------------------------------------------------------|
+| **🧮 …**                          | The page's fetch buttons, as before: each loads every page of its list into one table. While it loads, the one you pressed is the progress bar and the Stop button. |
+| **📀 Discography: … ▾**           | Artist release-group pages only, once loaded: names the view you are in and switches it.                                          |
+| **🔄 N ▾**                        | Only after a fetch that could not load every page: how many are missing, and a click offers to load them. See [When a fetch does not finish](#when-a-fetch-does-not-finish). |
+| **❌ N ▾ · ⚠️ N ▾**               | Only when the page has errors or warnings, errors first: how many rows have one, and a click lists them. See [Warnings and errors](#warnings-and-errors). |
+| **☰ SAED ▾**                      | The script's menu. Rest the pointer on it for its name, version and author.                                                       |
 
-Each row shows its own keyboard shortcut on the right. Open a menu with the
-mouse or with that shortcut — pressing `Ctrl+D` opens **🛠 View** and then the
-Density pull-down for you. Inside an open menu, ↑/↓ move between rows, Home and
-End jump to the ends, Enter activates, Escape closes. Opening one menu closes
-the other. A menu opens below its button, or above it when the button is near
-the bottom of the window; one longer than the room available scrolls.
+The **☰ SAED menu** has these groups, with a line between them:
 
-On artist release-group pages a third menu appears, **📀 Discography ▾**, whose
-own label names the view you are in — *📀 Discography: Official*.
+| Group               | Rows                                                                          |
+|---------------------|-------------------------------------------------------------------------------|
+| **Needs attention** | the same lists as the 🔄, ❌ and ⚠️ parts on the bar                           |
+| **Data**            | 💾 Save to Disk · 📂 Load from Disk · 📤 Export ▸ (CSV, JSON, Org-Mode, HTML) |
+| **View**            | 📏 Density · 📊 Statistics · 🎹 Keyboard Shortcuts                            |
+| **Help**            | ⚙️ Settings · ❓ Help ↗ (this page, on GitHub)                                 |
+| **Changelog**       | 📜 What's new ↗ · 🗒 Full development log ↗ (both on GitHub)                   |
 
-**🎹 Keyboard Shortcuts and ❓ Application Help (Shift-click) both have a
-resize handle in their lower-right corner**, and remember their own position
-and size — drag or resize either one and it reopens exactly where you left
-it, no reload needed. Each dialog's own quick-filter input (**🔍 Filter
-shortcuts…** / **🔍 Filter help text…**) highlights every match as you type;
-in the ❓ dialog this searches the whole rendered page — headings, paragraphs,
-lists and tables alike, not just code blocks — and never hides anything, so a
-long document stays readable while you search it.
+Before anything is loaded there is nothing to view, so View is left out and
+Keyboard Shortcuts sits under Help. The installed version is at the menu's
+foot. The menu's name is a setting (⚙️ Settings → 🖌️ ELEMENT UI STYLES →
+"Name of the ☰ menu").
+
+Each row shows its own keyboard shortcut on the right. Open a row with the
+mouse or with that shortcut — pressing `Ctrl+D` opens the menu and then the
+Density pull-down for you. Inside the menu, ↑/↓ move between rows, Home and
+End jump to the ends, Enter activates, Escape closes. **Export ▸** opens its
+formats beside the menu when the pointer rests on it, or with → or a click; ←
+or Escape go back to the row, a second Escape closes the menu. Ticking a
+warning or error in its list keeps the list open, so you can tick several. The
+menu opens below the button, or above it when the button is near the bottom of
+the window; one longer than the room available scrolls.
+
+**On a narrow window** (520 px or less — on a phone that is every MusicBrainz
+page) the fetch buttons leave the bar and head the menu as a "Load" group, so
+the button stays on one line, and Export's formats open in place under their
+row.
+
+**The Tampermonkey menu's 📜 ChangeLog** opens the SAED menu on its Changelog
+group: *What's new* lists what changed for you in each published version, in
+plain words; the *Full development log* has every version with its technical
+details, one page per month.
+
+**🎹 Keyboard Shortcuts has a resize handle in its lower-right corner** and
+remembers its position and size — drag or resize it and it reopens exactly
+where you left it, no reload needed. Its quick-filter input (**🔍 Filter
+shortcuts…**) highlights every match as you type.
 
 ### Beside the table, not in the bar
 
@@ -279,7 +304,7 @@ that apply to each part in brackets:
 ```
 
 **Empty sub-tables disappear.** On a page with sub-tables, while the global
-filter or a ⚠️ WARNING / ❌ ERROR menu filter is active, a sub-table left with
+filter or a ⚠️ / ❌ list filter is active, a sub-table left with
 no matching row is hidden: its heading line and the table go together. Widen or
 clear the filter and it comes back exactly as it was, collapsed or expanded,
 with its artwork strip as you left it. A sub-table with a filter of its own (a
@@ -325,7 +350,7 @@ marker — a ring rather than a fill, because the thing being marked is already
 MusicBrainz's own orange marker and painting over it would erase the signal you
 pressed the button to find. On multi-table pages each sub-section gets its own
 button and the one in the filter bar becomes a three-state master. (The
-**Pending edits** row of the ⚠️ WARNING menu is a separate filter: it narrows
+**Pending edits** row of the ⚠️ warnings list is a separate filter: it narrows
 every sub-section, and those with no pending edits are then hidden, see "Empty
 sub-tables disappear" above.)
 
@@ -642,11 +667,13 @@ whether the panel flips upward.
 Cells with a data problem are tinted: **light yellow with ⚠️** for a warning,
 **light red with ❌** for an error. Hover the cell for what is wrong.
 
-Two menus beside the page heading, after ❓ and a divider, list every kind of
-problem the page has, with how many rows have it:
+Two parts of the SAED button beside the page heading — **❌ N ▾** for errors,
+then **⚠️ N ▾** for warnings, each tinted to match — list every kind of problem
+the page has, with how many rows have it. The same two lists are rows of the
+☰ SAED menu's "Needs attention" group.
 
 ```
-⚠️ WARNING (12) ▾
+⚠️ 12 ▾
    ⏱️ Track and recording length differ          3
    🚫 Recording has no associated work           2
    🔠 Title in ALL UPPERCASE                     1
@@ -656,14 +683,14 @@ problem the page has, with how many rows have it:
 
 **Click a row to show only the rows with that problem**, in every table and
 every sub-table at once. Click it again to show everything. A ticked row is
-bold with a ✓. Rows combine with each other and with any other filter you set:
-two problems in the same column show rows with *either*, two in different
-columns show rows with *both*. **✗ Clear warning filters** (or **✗ Clear error
-filters**) removes only what that menu set. A menu is not shown at all while
-the page has nothing of its kind (except that the WARNING menu always offers
-"Check title style" on a MusicBrainz page with titles, see below), and the
-counts always describe the whole page, not just the rows a filter leaves on
-screen.
+bold with a ✓, and the list stays open so you can tick several. Rows combine
+with each other and with any other filter you set: two problems in the same
+column show rows with *either*, two in different columns show rows with
+*both*. **✗ Clear warning filters** (or **✗ Clear error filters**) removes only
+what that list set. A part is not shown at all while the page has nothing of
+its kind (except that ⚠️ always offers "Check title style" on a MusicBrainz
+page with titles, see below, and then shows without a number), and the counts
+always describe the whole page, not just the rows a filter leaves on screen.
 
 Most rows work by ticking the matching entry in the column's 📊 dropdown — the
 **Findings - Warning** / **Findings - Error** section — so you see it in that
@@ -700,7 +727,7 @@ is the day?), the text shows in one row with the part to rewrite marked.
 ### Check title style
 
 On a MusicBrainz page with titles (release groups, releases, recordings,
-works, a tracklist), the ⚠️ WARNING menu starts with **Aa Check title style
+works, a tracklist), the ⚠️ warnings list starts with **Aa Check title style
 (MB guidelines)** — even when the page has no other warning. Click it to
 check every title on the page against the MusicBrainz style guide. What it
 finds joins the menu as five more warnings:
@@ -1345,7 +1372,7 @@ and that ⏱ switches back to whole seconds. On a release tracklist the
 
 A release tracklist also gets a **Recording length** column whenever some track's
 recording length disagrees with its track length, and flags the disagreements
-with ⚠️ or ❌ past a configurable threshold; the ⚠️ WARNING and ❌ ERROR menus
+with ⚠️ or ❌ past a configurable threshold; the ⚠️ and ❌ lists
 isolate them (see [Warnings and errors](#warnings-and-errors)). Its own 📊 dropdown offers the same "Length
 info" sections as **Length** (see above), computed from its own values, and
 both columns' dropdowns add **Track vs recording** to pick the ❌ or the ⚠️
@@ -1501,8 +1528,8 @@ focused filter keeps its text. Prefix mode also ends by itself after 5 seconds.
 | `Ctrl+2` / `Ctrl+3`        | Toggle all h2 / all h3 headings                                 |
 | `Ctrl+,`                   | Settings                                                        |
 | `Escape`                   | Clear the focused filter, then remove focus; close open menus   |
-| `Ctrl+S` `Ctrl+L` `Ctrl+E` | Save · Load · Export — each opens 📦 Data first                 |
-| `Ctrl+D` `Ctrl+I`          | Density · Statistics — each opens 🛠 View first                  |
+| `Ctrl+S` `Ctrl+L` `Ctrl+E` | Save · Load · Export — each opens the ☰ SAED menu first         |
+| `Ctrl+D` `Ctrl+I`          | Density · Statistics — each opens the ☰ SAED menu first         |
 | `Ctrl+B`                   | Toggle barcode highlighting directly (no menu)                  |
 | `Ctrl+R` `Ctrl+V`          | Resize columns · Visible columns                                |
 | `Ctrl+K` `Ctrl+G` `Ctrl+C` | Shortcuts reference · Focus global filter · Focus column filter |
@@ -1572,7 +1599,7 @@ you automatically.
 | ⚡ Performance                                  | Debounce, sort chunk size, render and warning thresholds, history limit                                                                                                                                                                                               |
 | 🎨 UI features                                  | Column visibility, density control, sticky headers, default hidden columns per page type                                                                                                                                                                              |
 | 📌 Table stickiness                             | Sticky column and header configuration; sticky filter bars (the h2/h3 bars stay at the top while scrolling down); sticky page headers (the MB header, tabs and h2/h3 bars stay put while a wide table scrolls sideways)                                               |
-| 🖌️ Element UI styles                             | Action button base style, per-button colours (including the two halves of the ⚙️❓ pill), toolbar menu button colours, dividers, filter input styles, header cell colours                                                                                              |
+| 🖌️ Element UI styles                             | SAED button size and colours, the name of the ☰ menu, filter input styles, header cell colours                                                                                                                                                                        |
 | 🔗 Relationships column                         | Enable, auto-collapse threshold, cell load-state glyphs, whole-page fetching                                                                                                                                                                                          |
 | ↔️ Column resize                                 | Enable resizing; auto-resize on load                                                                                                                                                                                                                                  |
 | 📤 Export                                       | What headers and cells carry in an export                                                                                                                                                                                                                             |
@@ -1581,7 +1608,7 @@ you automatically.
 | 🔍 Expand release and release groups            | Inline ▶/▼ expanders                                                                                                                                                                                                                                                  |
 | ▶️ Expand truncated cells                        | Whether a clipped cell offers an expander, and how it looks                                                                                                                                                                                                           |
 | 📑 Show single-table                            | The client-side sub-table snapshot button and its colours                                                                                                                                                                                                             |
-| ⚠️ Findings                                      | The ⚠️ WARNING / ❌ ERROR menus on or off; one switch per newly highlighted finding (ALL UPPERCASE, truncated, track ≠ recording name, low quality, pending edits, ISRC, ISWC, barcode, live credit dates, capitalized ETI, several links to one site in Relationships, with a list of sites allowed several); the extra title information keyword list; "Check title style automatically", the five title-style warnings and their tint |
+| ⚠️ Findings                                      | The ⚠️ / ❌ parts of the SAED button on or off                                                                                                                                                                                                                                                                                                                                                                                           |
 | 💿 Release tracklist                            | Every tracklist column family, credit colours, live-date flagging, the ARs column                                                                                                                                                                                     |
 | 🔖 Barcode highlight                            | Identical-barcode highlighting                                                                                                                                                                                                                                        |
 | 🔖 Barcode validation                           | GS1 format/check-digit validation, the 📊 Validity/Format/Same As sections                                                                                                                                                                                            |
@@ -1878,7 +1905,7 @@ the event `1996‐04‐19: Saal 1, ICC Berlin, …`. A **Recorded at place** cel
 marked ❌ when a place is not named like the venue, the first part of the
 comment's location: here `Saal 1`, so the places `Internationales Congress
 Centrum Berlin` and `Festhalle Frankfurt` (for `Festhalle, Frankfurt, …`) are
-flagged. The tooltip shows both names. Both appear in the ❌ ERROR menu; the
+flagged. The tooltip shows both names. Both appear in the ❌ errors list; the
 tint can be switched off in ⚙️ Settings → ⚠️ Findings.
 
 **Video on a medium that cannot carry video.** When a recording marked as a
@@ -2852,8 +2879,8 @@ turns the over 3,500 song lines into one table:
   lists.
 
 While loading, the progress line names the letter it is on ("Loading H (9
-of 32)"). If one letter fails to load, "↻ Load remaining pages" carries on
-from that letter.
+of 32)"). If one letter fails to load, the red 🔄 part's "↻ Load the missing
+page" carries on from that letter.
 
 Cover and Title link to the item's own page on springsteenlyrics.com;
 following one asks first, as leaving any consolidated table does. To see

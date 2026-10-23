@@ -3,7 +3,7 @@
 const { test, expect } = require('../support/test');
 const { loadUserscriptPage } = require('../support/loadPage');
 const { collectPageErrors, assertGroupedRenderCompleted } = require('../support/liveAssertions');
-const { stopAfterPages } = require('../support/stopButton');
+const { stopAfterPages, RUNNING_SEGMENT } = require('../support/stopButton');
 
 // Bruce Springsteen — the same pilot artist used elsewhere in this repo's
 // tests/tasks. artist-releasegroups spans 22 native MusicBrainz pages
@@ -35,9 +35,8 @@ test('Stop button truncates a paginated fetch after ~2 pages and still renders t
 
     // assertGroupedRenderCompleted already asserts rowCount > 0 and no
     // page/console errors — a stopped fetch still completes its normal
-    // render path with whatever partial data was accumulated (see
-    // #mb-stop-btn's style.display = 'none' in every completion branch,
-    // asserted separately below).
+    // render path with whatever partial data was accumulated (the running
+    // segment gets its own label back at the end, asserted below).
     const rowCount = await assertGroupedRenderCompleted(page, pageErrors);
 
     // Real truncation happened — nowhere near the full ~2142-row catalogue.
@@ -45,7 +44,10 @@ test('Stop button truncates a paginated fetch after ~2 pages and still renders t
 
     // The click handler only sets a flag (no in-flight fetch abort — see
     // stopButton.js's own JSDoc), so the script's normal post-loop cleanup
-    // still runs, ending with the button hidden again, same as a completed
-    // (non-stopped) fetch.
-    await expect(page.locator('#mb-stop-btn')).toBeHidden();
+    // still runs, ending with the segment an ordinary action again, same as
+    // a completed (non-stopped) fetch. Stop IS the running action segment
+    // since 2026-10-23 (_saedRunStart()); there is no #mb-stop-btn.
+    await expect(page.locator(RUNNING_SEGMENT)).toHaveCount(0);
+    await expect(showAllBtn).toBeEnabled();
+    await expect(showAllBtn).toHaveText(/Artist RGs/);
 });

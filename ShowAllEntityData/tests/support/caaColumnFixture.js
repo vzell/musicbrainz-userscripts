@@ -16,6 +16,7 @@ const { loadUserscriptPage } = require('./loadPage');
 const { waitForRenderComplete } = require('./browser');
 const { clickMasterToggleAndExpandAll } = require('./liveAssertions');
 const { waitForFilterSettled } = require('./filterSortAssertions');
+const { pressAction } = require('./toolbarMenu');
 
 const RG_URL = 'https://musicbrainz.org/release-group/f83d2211-dd81-4b1e-9a02-e89733891e1c';
 const SHELL = path.join(__dirname, '..', 'snapshots', 'releasegroup-releases', 'raw.html');
@@ -143,7 +144,7 @@ async function open(page, settings = {}, { domToggle = false, hold = [] } = {}) 
     // artwork icon its size: without it the icon is 0×0 and cannot be hovered
     // or clicked. Same box as musicbrainz.org's own rule.
     await page.addStyleTag({ content: 'span.caa-icon, span.eaa-icon { display: inline-block; width: 16px; height: 16px; }' });
-    await page.click(BUTTON);
+    await pressAction(page, BUTTON);
     await waitForRenderComplete(page, { waitForAutoResize: false });
     if (domToggle) {
         await page.locator('.mb-master-toggle').evaluate((b) => b.click());

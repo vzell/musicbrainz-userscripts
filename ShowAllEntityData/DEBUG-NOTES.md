@@ -25467,3 +25467,45 @@ fixture: the harness injects regardless.
 kinds, and `/subscribers` only for artist/label/series/collection. This follows
 MusicBrainz's collection and subscription types. vzell-lap cannot reach
 MusicBrainz over IPv4, so it is left to a browser check.
+
+## 2026-10-23 — SAED button on a phone: the actions ARE in the menu, and the menu opened off-screen (branch feat/saed-toolbar)
+
+Env: 2026-10-23T02:38:31+02:00–03:04:18+02:00 · petri · WSL2 Ubuntu 24.04.3 (Linux 6.18.54.1-microsoft-standard-WSL2) · Chromium 151.0.7922.34 via Playwright 1.62.1, Pixel 7 emulation · no Tampermonkey (GM stubs)
+
+**Found by** the merge-gate `test:full` on the branch (2193 tests): 12
+failed, 11 of them `chromium-mobile` specs timing out on a tap or click.
+
+**A wrong premise, mine, from the branch's Step 4.** `saed-narrow.mobile.spec.js`
+said "MusicBrainz sets no mobile viewport, so a phone lays the page out about
+980 px wide" and pinned that the action segments STAY on the bar on a phone.
+That was read off `uniq-drop-viewport-clip.html`, a 5 KB fixture that lacks
+the tag. Every real snapshot has
+`<meta content="width=device-width, initial-scale=1" name="viewport">`
+(`event-overview.html`, `artist-releasegroups-live-titles.html`,
+`tests/snapshots/*/raw.html`), so a Pixel 7 lays MusicBrainz out 412 px wide
+and the narrow rule (≤ 520 px) applies: the actions are rows of ☰ → Load, as
+designed. The specs pressed the hidden segment with `click()`/`tap()`; the
+ones pressing it with `evaluate(b => b.click())` passed and hid the problem.
+Step 4 ran only the toolbar-related specs, never the whole mobile project.
+
+**A real bug under it.** Pressing through ☰ → Load still timed out on
+`releasegroup-releases` (`caa-column-redesign.mobile`, `caa-gallery.mobile`).
+`tests/support/probe-saed-phone-menu.js`: the page needs ≈636 px, so the layout
+viewport is 636 × 1296 while 412 × 839 shows (`visualViewport`). The menu
+placed itself against `window.innerHeight`, "fitted" below ☰ at y 817, and
+opened at y 845: under the bottom edge of the screen. A real phone user
+would have seen nothing open.
+
+**Fixed:** `_toolbarViewBox()` (the visual viewport, in layout-viewport
+coordinates) for every placement in `createToolbarMenu()`'s `open()`; the
+panel now opens upward, 429–813. Identical on a desktop, where the two boxes
+are the same. Pinned by `saed-narrow.mobile.spec.js` "the menu opens inside
+what SHOWS" (fails before: top 845 > 839) and a `saed-toolbar.json` mutation
+entry. `pressAction()` (`tests/support/toolbarMenu.js`) presses an action the
+way the screen allows; six call sites use it. The 12th failure was a stale
+Step 4 assertion in `discogs-pages.spec.js` (group labels are label segments
+now, without a colon).
+
+**Not checked:** other `position: fixed` pop-ups (the 📊 dropdown, the link
+previews, dialogs) may measure `innerWidth/innerHeight` the same way; on a
+phone page wider than the screen they would misplace too.

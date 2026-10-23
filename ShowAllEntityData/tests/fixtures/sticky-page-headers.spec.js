@@ -327,25 +327,21 @@ test.describe('sticky page headers — single-table page', () => {
                 expect(h2z.length).toBeGreaterThan(0);
                 expect(new Set(h2z)).toEqual(new Set(['auto']));
 
-                // Nor does the entity header, although its h1 toolbar holds
-                // the fetch progress fill, whose inline style keeps
-                // "display: block; position: absolute" after the fetch (inside
-                // a hidden wrapper). The open-popup rule used to take that for
+                // Nor does the entity header after a fetch. Its h1 toolbar
+                // used to hold the fetch progress fill, whose inline style
+                // kept "display: block; position: absolute" after the fetch
+                // (inside a hidden wrapper); the open-popup rule took that for
                 // an open popup, raised the entity header for good, and it
-                // then painted over MusicBrainz's own header menus.
-                const entity = await page.evaluate(() => {
+                // then painted over MusicBrainz's own header menus. Since
+                // 2026-10-23 the progress is the running segment's own
+                // background (_saedRunStart()) and that element is gone, so
+                // the premise cannot be set up any more; the outcome is still
+                // pinned.
+                const zIndex = await page.evaluate(() => {
                     const hdr = document.querySelector('#content > .seriesheader');
-                    const fill = document.getElementById('mb-fetch-progress-fill');
-                    const st = fill ? fill.getAttribute('style') || '' : '';
-                    return {
-                        fillInside: !!(hdr && fill && hdr.contains(fill)),
-                        fillLooksLikePopup: /display: block/.test(st) && /position: absolute/.test(st),
-                        zIndex: hdr ? getComputedStyle(hdr).zIndex : null,
-                    };
+                    return hdr ? getComputedStyle(hdr).zIndex : null;
                 });
-                expect(entity, 'premise: the progress fill sits in the entity header, styled like a popup')
-                    .toMatchObject({ fillInside: true, fillLooksLikePopup: true });
-                expect(entity.zIndex, 'the entity header has no base z-index').toBe('auto');
+                expect(zIndex, 'the entity header has no base z-index').toBe('auto');
 
                 // Body-level chrome WITHOUT stacking of its own (the plain MB
                 // header, the footer) does get SPH_Z_CHROME (106), so #page

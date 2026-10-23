@@ -101,20 +101,22 @@ async function settleFinding(page, level, id, checked) {
 }
 
 test.describe('findings menus — placement and counts', () => {
-    test('the menus sit after ❓ behind a visible divider, and only the levels present appear', async ({ page }) => {
+    test('the menus are indicator segments of the SAED button, and only the levels present appear', async ({ page }) => {
         await openLive(page);
-        const tail = await page.evaluate(() =>
-            Array.from(document.getElementById('mb-show-all-controls-container').children)
-                .filter((c) => c.style.display !== 'none').map((c) => c.id).filter(Boolean));
-        const help = tail.indexOf('mb-app-help-btn');
-        expect(help, '❓ is in the bar').toBeGreaterThanOrEqual(0);
-        expect(tail.slice(help, help + 3), 'divider, then ⚠️ WARNING, right after ❓')
-            .toEqual(['mb-app-help-btn', 'mb-button-divider-findings', 'mb-findings-warn-menu-btn']);
+        // The attention area of #mb-saed-bar, before ☰ SAED (docs/claude/
+        // toolbar-and-header-ui.md, "The SAED button").
+        const areas = await page.evaluate(() => Array.from(document.querySelectorAll('#mb-saed-bar > .mb-saed-area'))
+            .map((a) => [a.dataset.mbArea, Array.from(a.children).map((c) => c.id).filter(Boolean)]));
+        expect(Object.fromEntries(areas).attn).toEqual(['mb-findings-warn-menu-btn']);
+        expect(areas.map(([a]) => a).indexOf('attn')).toBeLessThan(areas.map(([a]) => a).indexOf('menu'));
 
         const warn = await findingsMenuState(page, 'warn');
         expect(warn.attached).toBe(true);
         expect(warn.rows.map((r) => [r.id, r.count])).toEqual([['no-work', 1], ['live-credit-nodate', 2]]);
-        expect(warn.label, 'the button totals its rows').toBe('⚠️ WARNING (3)');
+        expect(warn.label, 'the segment totals its rows').toBe('⚠️ 3');
+        // The same list is a row of the SAED menu's "Needs attention" group.
+        await expect(page.locator('#mb-saed-attn-row-findings-warn .mb-saed-row-count')).toHaveText('3');
+        await expect(page.locator('#mb-saed-attn-row-findings-error')).toHaveCount(0);
         expect(warn.title, 'its tooltip names each kind').toContain('Recording has no associated work (1)');
         expect(await findingsMenuState(page, 'error'), 'no ❌ menu on a page without errors').toBeNull();
     });
@@ -298,6 +300,9 @@ test.describe('findings menus — filtering', () => {
             const s = await findingsMenuState(page, level);
             expect(s === null || !s.attached, `${level} menu absent`).toBe(true);
         }
-        expect(await page.evaluate(() => document.getElementById('mb-button-divider-findings').style.display)).toBe('none');
+        // Nothing in the SAED button's attention area, and no "Needs attention" row.
+        expect(await page.evaluate(() =>
+            document.querySelector('#mb-saed-bar > [data-mb-area="attn"]').childElementCount)).toBe(0);
+        await expect(page.locator('.mb-saed-attn-row')).toHaveCount(0);
     });
 });

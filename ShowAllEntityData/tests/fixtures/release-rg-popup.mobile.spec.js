@@ -11,6 +11,7 @@ const path = require('path');
 const { test, expect } = require('../support/test');
 const { loadUserscriptPage } = require('../support/loadPage');
 const { waitForRenderComplete } = require('../support/browser');
+const { pressAction } = require('../support/toolbarMenu');
 
 const RELEASE_URL = 'https://musicbrainz.org/release/e384f062-85a3-4141-9122-0814d987cda3';
 const FIXTURE = path.join(__dirname, 'release-tracks-brixton-night.html');
@@ -30,7 +31,7 @@ test('a tap on a "#" cell opens the release group window, and shows no hover car
     await loadUserscriptPage(page, { url: RELEASE_URL, fixtureFile: FIXTURE, testMode: true, settingsOverride: { sa_rich_tooltip_delay_ms: 0 } });
     await page.route('https://musicbrainz.org/release/**', (route) => route.fulfill({ path: FIXTURE, contentType: 'text/html' }));
     // The first medium's table is open after the render; no other is needed.
-    await page.click('button[data-label="Show all Tracks for Release"]');
+    await pressAction(page, 'button[data-label="Show all Tracks for Release"]');
     await waitForRenderComplete(page, { waitForAutoResize: false });
 
     const shown = [];

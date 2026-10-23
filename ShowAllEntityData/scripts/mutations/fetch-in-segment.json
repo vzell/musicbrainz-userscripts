@@ -1,0 +1,158 @@
+[
+  {
+    "name": "the fill does not move",
+    "why": "The label counts pages while the segment's blue fill stays empty; a text-only check would pass.",
+    "edits": [
+      {
+        "find": "        _saedRun.btn.style.setProperty('--p', `${pct}%`);",
+        "replace": "        void pct;"
+      }
+    ],
+    "spec": "tests/fixtures/fetch-in-segment.spec.js",
+    "grep": "while pages load, the pressed segment is the progress bar",
+    "expect": "fail"
+  },
+  {
+    "name": "the running segment is no Stop button",
+    "why": "A click on the running segment starts the fetch handler again instead of stopping.",
+    "edits": [
+      {
+        "find": "            if (_saedRun && _saedRun.btn === eb) {",
+        "replace": "            if (false) {"
+      }
+    ],
+    "spec": "tests/fixtures/fetch-in-segment.spec.js",
+    "grep": "Stop keeps the rows loaded so far",
+    "expect": "fail"
+  },
+  {
+    "name": "Stop changes the label but not the loop",
+    "why": "The segment says Stopping… and every page still loads.",
+    "edits": [
+      {
+        "find": "        stopRequested = true;\n        _saedRun.stopping = true;",
+        "replace": "        _saedRun.stopping = true;"
+      }
+    ],
+    "spec": "tests/fixtures/fetch-in-segment.spec.js",
+    "grep": "Stop keeps the rows loaded so far",
+    "expect": "fail"
+  },
+  {
+    "name": "a stopped run reads like a complete one",
+    "why": "A short table is taken for the whole listing.",
+    "edits": [
+      {
+        "find": "            } else if (stopRequested && pagesProcessed < maxPage) {",
+        "replace": "            } else if (false) {"
+      }
+    ],
+    "spec": "tests/fixtures/fetch-in-segment.spec.js",
+    "grep": "Stop keeps the rows loaded so far",
+    "expect": "fail"
+  },
+  {
+    "name": "prefix-mode O does nothing",
+    "why": "The keyboard route to Stop is lost with the separate Stop button.",
+    "edits": [
+      {
+        "find": "        ctrlMFunctionMap['o'] = { fn: _saedRequestStop, description: 'Stop fetching' };",
+        "replace": "        ctrlMFunctionMap['o'] = { fn: () => {}, description: 'Stop fetching' };"
+      }
+    ],
+    "spec": "tests/fixtures/fetch-in-segment.spec.js",
+    "grep": "prefix-mode O stops the same way",
+    "expect": "fail"
+  },
+  {
+    "name": "the other actions are not disabled",
+    "why": "A second action could start a fetch while one runs.",
+    "edits": [
+      {
+        "find": "        allActionButtons.forEach(b => { if (b !== activeBtn) b.disabled = true; });\n        _saedRunStart(activeBtn);",
+        "replace": "        _saedRunStart(activeBtn);"
+      }
+    ],
+    "spec": "tests/fixtures/fetch-in-segment.spec.js",
+    "grep": "the other action segments wait while one runs",
+    "expect": "fail"
+  },
+  {
+    "name": "no rendering state",
+    "why": "The segment keeps reading Stop · N / N while the rows are built, and a click then does nothing visible.",
+    "edits": [
+      {
+        "find": "            _saedRunRendering(totalRows);",
+        "replace": "            void totalRows;"
+      }
+    ],
+    "spec": "tests/fixtures/fetch-in-segment.spec.js",
+    "grep": "rendering shows striped with the row count",
+    "expect": "fail"
+  },
+  {
+    "name": "the label is not given back",
+    "why": "The segment keeps reading Rendering N rows… after the render.",
+    "edits": [
+      {
+        "find": "        btn.textContent = text;\n        if (title === null)",
+        "replace": "        void text;\n        if (title === null)"
+      }
+    ],
+    "spec": "tests/fixtures/fetch-in-segment.spec.js",
+    "grep": "rendering shows striped with the row count",
+    "expect": "fail"
+  },
+  {
+    "name": "the hover card still says Stop loading",
+    "why": "After the run the segment's rich card describes a Stop it no longer does.",
+    "edits": [
+      {
+        "find": "        if (mbtt === undefined) delete btn.dataset.mbtt; else btn.dataset.mbtt = mbtt;",
+        "replace": "        void mbtt;"
+      }
+    ],
+    "spec": "tests/fixtures/fetch-in-segment.spec.js",
+    "grep": "rendering shows striped with the row count",
+    "expect": "fail"
+  },
+  {
+    "name": "a failed page leaves no 🔄 indicator",
+    "why": "The rows are missing and nothing on the bar offers to load them.",
+    "edits": [
+      {
+        "find": "        if (!st && !menu) return;",
+        "replace": "        if (true) return;"
+      }
+    ],
+    "spec": "tests/fixtures/fetch-in-segment.spec.js",
+    "grep": "a failed page ends as a red 🔄 indicator",
+    "expect": "fail"
+  },
+  {
+    "name": "the 🔄 indicator stays while the resume runs",
+    "why": "Cleared only at the end of the run; meanwhile it offers to start the same resume a second time.",
+    "edits": [
+      {
+        "find": "        _createResumeFetchButton();  // …and takes the 🔄 indicator off the bar\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/fetch-in-segment.spec.js",
+    "grep": "a failed page ends as a red 🔄 indicator",
+    "expect": "fail"
+  },
+  {
+    "name": "a load from disk keeps a stale 🔄 indicator",
+    "why": "Rows from a file have no page K to carry on from; the offer would resume against the wrong row set.",
+    "edits": [
+      {
+        "find": "            _resumeState = null;\n            _createResumeFetchButton();\n",
+        "replace": "            _resumeState = null;\n"
+      }
+    ],
+    "spec": "tests/fixtures/fetch-in-segment.spec.js",
+    "grep": "a load from disk takes the 🔄 indicator off",
+    "expect": "fail"
+  }
+]

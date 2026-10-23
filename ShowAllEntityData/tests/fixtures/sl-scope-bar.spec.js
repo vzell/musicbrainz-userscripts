@@ -776,12 +776,16 @@ test.describe('sl compact bar: the bootleg landing page', () => {
             .toEqual([0, 0, 0, 0]);
         expect(await page.$$eval('.element-buttons.mb-sl-nav-hidden a.btn', (as) => as.length)).toBe(21);
         await expect(page.locator('#mb-show-all-controls-container button[data-label]'), 'nothing to fetch').toHaveCount(0);
-        // No table, so no Data/View menus and no divider; ⚙️ and ❓ stay.
-        for (const sel of ['#mb-button-divider-initial', '#mb-data-menu-btn', '#mb-view-menu-btn']) {
-            await expect(page.locator(sel), sel).toBeHidden();
+        // No table, so the SAED menu shows no Data or View group; Help
+        // (⚙️ Settings, ❓ Help) and the Changelog stay.
+        await page.locator('#mb-saed-menu-btn').click();
+        await expect(page.locator('#mb-saed-menu-btn-panel')).toBeVisible();
+        for (const g of ['data', 'view']) {
+            await expect(page.locator(`#mb-saed-menu-btn-panel .mb-saed-group[data-mb-group="${g}"]`), g).toBeHidden();
         }
         await expect(page.locator('#mb-settings-btn')).toBeVisible();
         await expect(page.locator('#mb-app-help-btn')).toBeVisible();
+        await page.keyboard.press('Escape');
         // The page's own content below stays.
         await expect(page.locator('h3.heading', { hasText: 'Statistics' })).toBeVisible();
         expect(errors.filter((e) => /VZ-|ShowAllEntityData|Uncaught/.test(e))).toEqual([]);

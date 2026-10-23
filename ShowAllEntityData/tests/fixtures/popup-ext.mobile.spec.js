@@ -20,6 +20,7 @@ const path = require('path');
 const { test, expect } = require('../support/test');
 const { loadUserscriptPage } = require('../support/loadPage');
 const { waitForRenderComplete } = require('../support/browser');
+const { pressAction } = require('../support/toolbarMenu');
 
 const URL_EVENT = 'https://musicbrainz.org/event/3f2ca30a-7de4-4964-ad30-48376535fec8';
 const FIXTURE = path.join(__dirname, 'event-overview.html');
@@ -63,7 +64,7 @@ async function openEvent(page, settings, responses = {}) {
         settingsOverride: { sa_enable_event_overview: true, sa_event_overview_setlist: false, sa_rich_tooltip_delay_ms: 0, ...settings },
     });
     await page.route('https://musicbrainz.org/event/**', (route) => route.fulfill({ path: FIXTURE, contentType: 'text/html' }));
-    await page.click('button[data-label="Show all Relationships for Event"]');
+    await pressAction(page, 'button[data-label="Show all Relationships for Event"]');
     await waitForRenderComplete(page, { waitForAutoResize: false });
     // The "URLs" sub-table renders collapsed: open it by its own h3.
     await page.evaluate((u) => {

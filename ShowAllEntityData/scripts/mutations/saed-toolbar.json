@@ -1,0 +1,319 @@
+[
+  {
+    "name": "group row order comes from the adoption sequence, not the declared order",
+    "why": "🎹 is adopted on the initial render and would head the View group; nothing errors.",
+    "edits": [
+      {
+        "find": "            (_TOOLBAR_MENU_ROW_ORDER[menu.key] || []).forEach(id => {",
+        "replace": "            ([]).forEach(id => {"
+      }
+    ],
+    "spec": "tests/fixtures/saed-toolbar.spec.js",
+    "grep": "each group adopts the real buttons",
+    "expect": "fail"
+  },
+  {
+    "name": "a group's adopt() does not stamp the owner, so _toolbarInvoke() cannot find the host",
+    "why": "Ctrl+D then clicks a row in a closed panel: a zero rect, and the density pull-down lands in the top-left corner.",
+    "edits": [
+      {
+        "find": "                el.dataset.mbMenuOwner = key;\n                groupEl.appendChild(el);",
+        "replace": "                groupEl.appendChild(el);"
+      }
+    ],
+    "spec": "tests/fixtures/saed-toolbar.spec.js",
+    "grep": "Ctrl\\+D opens the menu",
+    "expect": "fail"
+  },
+  {
+    "name": "_toolbarInvoke() does not open the host menu first",
+    "why": "The same zero-rect corner placement, by the other half of the pair.",
+    "edits": [
+      {
+        "find": "        if (menu && !menu.isOpen()) menu.open();",
+        "replace": "        if (menu && false) menu.open();"
+      }
+    ],
+    "spec": "tests/fixtures/saed-toolbar.spec.js",
+    "grep": "Ctrl\\+D opens the menu",
+    "expect": "fail"
+  },
+  {
+    "name": "activating a row no longer closes the menu",
+    "why": "The menu would stay over the dialog or panel the row opened.",
+    "edits": [
+      {
+        "find": "            setTimeout(() => { close(); if (parent) parent.close(); }, 0);",
+        "replace": "            void 0;"
+      }
+    ],
+    "spec": "tests/fixtures/saed-toolbar.spec.js",
+    "grep": "the menu opens on click and closes on Escape",
+    "expect": "fail"
+  },
+  {
+    "name": "a choice in a submenu closes only the submenu",
+    "why": "After exporting, the SAED menu would stay open over the page.",
+    "edits": [
+      {
+        "find": "            setTimeout(() => { close(); if (parent) parent.close(); }, 0);",
+        "replace": "            setTimeout(() => { close(); }, 0);"
+      }
+    ],
+    "spec": "tests/fixtures/saed-toolbar.spec.js",
+    "grep": "choosing a format closes the submenu AND the menu",
+    "expect": "fail"
+  },
+  {
+    "name": "opening a menu does not close the others",
+    "why": "An indicator's list and the SAED menu would stack over each other.",
+    "edits": [
+      {
+        "find": "            _closeToolbarMenus(descriptor);",
+        "replace": "            void 0;"
+      }
+    ],
+    "spec": "tests/fixtures/saed-toolbar.spec.js",
+    "grep": "opening an indicator's list closes the SAED menu",
+    "expect": "fail"
+  },
+  {
+    "name": "a group's shortcut hint is appended as text instead of an attribute",
+    "why": "A read of the row would then be label plus hint.",
+    "edits": [
+      {
+        "find": "                if (hint) el.dataset.mbMenuHint = hint;\n                el.dataset.mbMenuOwner = key;\n                groupEl.appendChild(el);",
+        "replace": "                if (hint) { el.dataset.mbMenuHint = hint; el.appendChild(document.createTextNode(' ' + hint)); }\n                el.dataset.mbMenuOwner = key;\n                groupEl.appendChild(el);"
+      }
+    ],
+    "spec": "tests/fixtures/saed-toolbar.spec.js",
+    "grep": "a row carries its shortcut hint as an attribute",
+    "expect": "fail"
+  },
+  {
+    "name": "the capture-phase mousedown dismiss is dropped",
+    "why": "A link click whose leave-page confirm is cancelled never reaches a bubbling click listener.",
+    "edits": [
+      {
+        "find": "        document.addEventListener('mousedown', closeIfOutside, true);\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/saed-toolbar.spec.js",
+    "grep": "leave-page confirm is cancelled",
+    "expect": "fail"
+  },
+  {
+    "name": "the menu always opens below its segment, uncapped",
+    "why": "Near the window's bottom its rows are off-screen and unreachable.",
+    "edits": [
+      {
+        "find": "                    const up = height > below && above > below;",
+        "replace": "                    const up = false; const room0 = below; void room0;"
+      }
+    ],
+    "spec": "tests/fixtures/saed-toolbar.spec.js",
+    "grep": "fits in the window",
+    "expect": "fail"
+  },
+  {
+    "name": "Keyboard Shortcuts never moves to Help",
+    "why": "It would stay alone in View before loading, which the approved View rule forbids. (A first version of this mutation forced the row into View on the line before; the next line moved it back, so it changed nothing.)",
+    "edits": [
+      {
+        "find": "            if (!others.length && (kb.parentNode !== help || kb.nextElementSibling)) help.appendChild(kb);",
+        "replace": "            void help;"
+      }
+    ],
+    "spec": "tests/fixtures/saed-toolbar.spec.js",
+    "grep": "before anything is loaded, View is not shown",
+    "expect": "fail"
+  },
+  {
+    "name": "no area is marked first",
+    "why": "The button would start with a heavy rule on its left edge.",
+    "edits": [
+      {
+        "find": "            el.classList.toggle('mb-saed-first', shows && !found);",
+        "replace": "            el.classList.toggle('mb-saed-first', false);"
+      }
+    ],
+    "spec": "tests/fixtures/saed-toolbar.spec.js",
+    "grep": "one segmented button",
+    "expect": "fail"
+  },
+  {
+    "name": "the Tampermonkey ChangeLog entry shows every group",
+    "why": "\"📜 ChangeLog\" would open the whole menu instead of the changelog choices.",
+    "edits": [
+      {
+        "find": "            const shown = hasRow && (k !== 'load' || narrow) && (!only || k === only);",
+        "replace": "            const shown = hasRow && (k !== 'load' || narrow);"
+      }
+    ],
+    "spec": "tests/fixtures/saed-toolbar.spec.js",
+    "grep": "Tampermonkey .📜 ChangeLog. entry opens the menu",
+    "expect": "fail"
+  },
+  {
+    "name": "the narrow rule never applies",
+    "why": "On a phone the actions crowd the bar and wrap it onto several lines.",
+    "edits": [
+      {
+        "find": "        const narrow = window.matchMedia('(max-width: 520px)').matches;",
+        "replace": "        const narrow = false;"
+      }
+    ],
+    "spec": "tests/fixtures/saed-toolbar.spec.js",
+    "grep": "on a narrow screen",
+    "expect": "fail"
+  },
+  {
+    "name": "a submenu opens over its parent instead of beside it",
+    "why": "The formats would cover the menu rows the pointer is on.",
+    "edits": [
+      {
+        "find": "                let left = pr.left - w + 2;",
+        "replace": "                let left = pr.left + 30;"
+      }
+    ],
+    "spec": "tests/fixtures/saed-toolbar.spec.js",
+    "grep": "hovering Export opens the formats beside the menu",
+    "expect": "fail"
+  },
+  {
+    "name": "the parent keeps the keyboard while its submenu is open",
+    "why": "Arrow keys would move focus in both menus at once.",
+    "edits": [
+      {
+        "find": "            if (openChild()) return;",
+        "replace": "            void 0;"
+      }
+    ],
+    "spec": "tests/fixtures/saed-toolbar.spec.js",
+    "grep": "→ opens the submenu on its first format",
+    "expect": "fail"
+  },
+  {
+    "name": "the card shows over the open menu",
+    "why": "The SAED card would cover the menu it describes.",
+    "edits": [
+      {
+        "find": "            if (el.getAttribute('aria-expanded') === 'true') return;",
+        "replace": "            void 0;"
+      },
+      {
+        "find": "            if (hoverCard) hoverCard.style.display = 'none';",
+        "replace": "            void hoverCard;"
+      }
+    ],
+    "spec": "tests/fixtures/saed-toolbar.spec.js",
+    "grep": "the ☰ SAED card names the script",
+    "expect": "fail"
+  },
+  {
+    "name": "a blank menu name stays blank",
+    "why": "The segment would read \"☰\" with nothing after it.",
+    "edits": [
+      {
+        "find": "        return v || 'SAED';",
+        "replace": "        return v;"
+      }
+    ],
+    "spec": "tests/fixtures/saed-toolbar.spec.js",
+    "grep": "a blank menu name falls back to SAED",
+    "expect": "fail"
+  },
+  {
+    "name": "What's new opens the development log",
+    "why": "Users asking what changed would land on 1,600 technical entries.",
+    "edits": [
+      {
+        "find": "url: CHANGELOG_RELEASES_URL,",
+        "replace": "url: CHANGELOG_LOG_URL,"
+      }
+    ],
+    "spec": "tests/fixtures/saed-toolbar.spec.js",
+    "grep": "Help, What's new and the full log each open",
+    "expect": "fail"
+  },
+  {
+    "name": "the library's remote changelog is configured again",
+    "why": "The 1.75 MB fetch, GM cache and parse on every page would be back, with a second 📜 entry.",
+    "edits": [
+      {
+        "find": "          }, null)",
+        "replace": "          }, { changelogUrl: 'https://raw.githubusercontent.com/vzell/mb-userscripts/master/ShowAllEntityData_CHANGELOG.json' })"
+      }
+    ],
+    "spec": "tests/fixtures/saed-toolbar.spec.js",
+    "grep": "the library does not fetch, store or parse the changelog",
+    "expect": "fail"
+  },
+  {
+    "name": "the Tampermonkey ChangeLog entry is not registered",
+    "why": "The menu entry users know would silently disappear.",
+    "edits": [
+      {
+        "find": "        GM_registerMenuCommand('📜 ChangeLog', () => _saedOpenChangelog());",
+        "replace": "        void 0;"
+      }
+    ],
+    "spec": "tests/fixtures/saed-toolbar.spec.js",
+    "grep": "Tampermonkey .📜 ChangeLog. entry opens the menu",
+    "expect": "fail"
+  },
+  {
+    "name": "the Shift-click branch comes back as a dead route",
+    "why": "Shift-clicking Help would open nothing at all now that the dialog is gone.",
+    "edits": [
+      {
+        "find": "        window.open(HELP_GITHUB_URL, '_blank', 'noopener,noreferrer');",
+        "replace": "        if (window.event && window.event.shiftKey) return;\n        window.open(HELP_GITHUB_URL, '_blank', 'noopener,noreferrer');"
+      }
+    ],
+    "spec": "tests/fixtures/app-help-github.spec.js",
+    "grep": "Shift-clicked",
+    "expect": "fail"
+  },
+  {
+    "name": "prefix-mode H opens something else",
+    "why": "The keyboard route to help would be lost.",
+    "edits": [
+      {
+        "find": "        'h': { fn: openAppHelp, description: 'Open App Help on GitHub' },",
+        "replace": "        'h': { fn: () => {}, description: 'Open App Help on GitHub' },"
+      }
+    ],
+    "spec": "tests/fixtures/app-help-github.spec.js",
+    "grep": "prefix-mode H opens the GitHub help page",
+    "expect": "fail"
+  },
+  {
+    "name": "an empty indicator stays in the bar",
+    "why": "The emptiness reconcile is a second line behind lazy creation; no fixture empties a created indicator, so this is recorded rather than unmentioned.",
+    "edits": [
+      {
+        "find": "            const isEmpty = menu.key !== 'saed' && menu.isEmpty();",
+        "replace": "            const isEmpty = false;"
+      }
+    ],
+    "spec": "tests/fixtures/saed-toolbar.spec.js",
+    "grep": "one segmented button",
+    "expect": "pass"
+  },
+  {
+    "name": "the menu measures the layout viewport, not what shows",
+    "why": "On a phone page wider than the screen the ☰ SAED menu opens below the bottom edge of the screen.",
+    "edits": [
+      {
+        "find": "        const height = vv ? vv.height : window.innerHeight;",
+        "replace": "        const height = window.innerHeight;"
+      }
+    ],
+    "spec": "tests/fixtures/saed-narrow.mobile.spec.js",
+    "grep": "the menu opens inside what SHOWS",
+    "project": "chromium-mobile",
+    "expect": "fail"
+  }
+]

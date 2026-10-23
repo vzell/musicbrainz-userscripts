@@ -225,34 +225,18 @@
     const SCRIPT_ID = 'vz-mb-' + SCRIPT_BASE_NAME.replace(/([A-Z])/g, '-$1').toLowerCase().replace(/^-/, '');
     const SCRIPT_NAME = (typeof GM_info !== 'undefined' && GM_info.script) ? GM_info.script.name : SCRIPT_BASE_NAME;
 
-    // Remote URLs for changelog and help text.
-    // The changelog is fetched and the GM menu item registered by VZ_MBLibrary
-    // (via remoteConfig passed to the constructor below).
-    // The help URL is only used lazily by showAppHelp() via Lib.fetchCachedText().
-    //
-    // Help is Markdown (`_HELP.md`) since 9.99.1148 — the ❓ button's PRIMARY
-    // route is now GitHub's own rendering of that file, and the in-script
-    // dialog (Shift-click) renders the same source itself. The two URLs below
-    // are the same document served two ways: HELP_GITHUB_URL is the human
-    // /blob/ page, REMOTE_HELP_URL the raw bytes the dialog fetches. Keep them
-    // pointing at the same filename or the dialog and the button show
-    // different documents.
-    const REMOTE_BASE          = 'https://raw.githubusercontent.com/vzell/mb-userscripts/master/';
-    const REMOTE_HELP_URL      = REMOTE_BASE + SCRIPT_BASE_NAME + '_HELP.md';
-    const REMOTE_CHANGELOG_URL = REMOTE_BASE + SCRIPT_BASE_NAME + '_CHANGELOG.json';
-    const HELP_GITHUB_URL      = 'https://github.com/vzell/mb-userscripts/blob/master/'
-                                 + SCRIPT_BASE_NAME + '_HELP.md';
-    const REMOTE_CACHE_TTL_MS  = 60 * 60 * 1000; // 1 hour
-    // `-remote-help-md`, not the older `-remote-help-text`: `fetchCachedText()`
-    // keys on the cache key ALONE and stores no URL beside the bytes, so an
-    // upgrading user's cached plain-text help would otherwise be fed to the
-    // Markdown renderer for up to a TTL — every `-----` underline read as a
-    // heading rule and every hand-laid-out block reflowed. Changing the key
-    // makes the format change a cache MISS. The old value is orphaned in GM
-    // storage; it is not a `sa_*` setting and the config exporter works from
-    // an allowlist, so nothing picks it up.
-    const CACHE_KEY_HELP       = SCRIPT_BASE_NAME.toLowerCase() + '-remote-help-md';
-    const CACHE_KEY_CHANGELOG  = SCRIPT_BASE_NAME.toLowerCase() + '-remote-changelog';
+    // Help and the changelog are pages on GitHub, opened in a new tab; nothing
+    // is fetched or cached for them (2026-10-22). The library used to fetch,
+    // cache in GM storage and parse the whole JSON changelog on EVERY page for
+    // a dialog most visits never opened (org/userscript-size.org 2.3), and the
+    // ❓ Shift-click dialog cached the help the same way; both caches are
+    // deleted by `_sweepOrphanedGmValues()`. The changelog pages are generated
+    // by scripts/build-changelog-pages.py: "What's new" for users, the full
+    // development log with every version.
+    const GITHUB_BLOB_BASE       = 'https://github.com/vzell/mb-userscripts/blob/master/';
+    const HELP_GITHUB_URL        = GITHUB_BLOB_BASE + SCRIPT_BASE_NAME + '_HELP.md';
+    const CHANGELOG_RELEASES_URL = GITHUB_BLOB_BASE + SCRIPT_BASE_NAME + '_RELEASES.md';
+    const CHANGELOG_LOG_URL      = GITHUB_BLOB_BASE + SCRIPT_BASE_NAME + '_CHANGELOG.md';
 
     // Save-to-disk/Load-from-disk snapshot format version — distinct from the
     // script's own // @version. Bump whenever dataToSave's shape changes in a
@@ -1547,65 +1531,39 @@
             label: '🖌️ ELEMENT UI STYLES'
         },
 
-        // --- H1 action bar: base shape shared by all buttons ---
+        // --- H1 action bar: the SAED button's size and shape ---
         sa_ui_action_btn_style: {
             label: 'Action button base style',
             type: 'popup_dialog',
             fields: ['fontSize', 'padding', 'height', 'borderRadius'],
             default: '0.8em|2px 8px|24px|6px',
-            description: 'Base style for all h1 action-bar buttons: fontSize|padding|height|borderRadius'
+            description: 'Size and shape of the SAED button in the page heading (the one button holding the ' +
+                         'page\'s actions, the attention indicators and the ☰ menu): fontSize|padding|height|borderRadius'
         },
 
-        sa_ui_stop_btn_style: {
-            label: 'Stop button colors',
-            type: 'popup_dialog',
-            fields: ['bg', 'color', 'border'],
-            colorFields: ['bg', 'color'],
-            default: '#f44336|white|1px solid #d32f2f',
-            description: 'Stop button: bg|color|border'
-        },
-
-        sa_ui_settings_btn_style: {
-            label: 'Settings ⚙️ button colors',
-            type: 'popup_dialog',
-            fields: ['bg', 'color', 'border'],
-            colorFields: ['bg', 'color'],
-            // Same ground as sa_ui_toolbar_menu_btn_style since 9.99.1149: ⚙️
-            // and ❓ render as one segmented pill beside 📦 Data / 🛠 View, and
-            // a pill whose two halves are different colours is two buttons
-            // drawn to look like one. The old slate (#607D8B) is in
-            // _SETTINGS_MIGRATIONS, so anyone who chose their own keeps it.
-            default: '#ECEFF1|#263238|1px solid #B0BEC5',
-            description: 'Settings button, the left half of the ⚙️❓ pill: bg|color|border'
-        },
-
+        // The ⚙️ Settings / ❓ Help pill colours, the Save / Load colours and
+        // the "|" divider style were retired with the SAED button (2026-10-22):
+        // those controls are rows of one menu in one look now. The Stop
+        // button's colours followed (2026-10-23): a fetch is stopped from its
+        // own running segment, in the SAED button's look. Their stored values
+        // are deleted by _sweepOrphanedGmValues().
         sa_ui_toolbar_menu_btn_style: {
-            label: 'Toolbar menu button colors',
+            label: 'SAED button colors',
             type: 'popup_dialog',
             fields: ['bg', 'color', 'border', 'bgHover'],
             colorFields: ['bg', 'color', 'bgHover'],
             default: '#ECEFF1|#263238|1px solid #B0BEC5|#CFD8DC',
-            description: 'The 📦 Data / 🛠 View / 📀 Discography pull-down buttons: bg|color|border|bgHover'
+            description: 'The SAED button in the page heading (actions, 📀 Discography and the ☰ menu; the ' +
+                         'attention indicators keep their warning and error tints): bg|color|border|bgHover'
         },
 
-        sa_ui_help_btn_style: {
-            label: 'Help ❓ button colors',
-            type: 'popup_dialog',
-            fields: ['bg', 'color', 'border'],
-            colorFields: ['bg', 'color'],
-            // See sa_ui_settings_btn_style above — same ground, same reason.
-            default: '#ECEFF1|#263238|1px solid #B0BEC5',
-            description: 'Application-help button, the right half of the ⚙️❓ pill: bg|color|border'
-        },
-
-        // --- Button-group separator dividers ---
-        sa_ui_button_divider_style: {
-            label: 'Button divider style',
-            type: 'popup_dialog',
-            fields: ['color', 'margin'],
-            colorFields: ['color'],
-            default: '#999|0 4px',
-            description: 'Pipe separator between button groups: color|margin'
+        sa_toolbar_menu_name: {
+            label: 'Name of the ☰ menu',
+            type: 'text',
+            default: 'SAED',
+            description: 'The name the last segment of the SAED button shows after ☰ (the script\'s menu: ' +
+                         'save, load and export, view options, settings, help and the changelog). Keep it short; ' +
+                         'left empty, it is "SAED" again.'
         },
 
         // --- Global filter input (large input in the H2 bar) ---
@@ -2442,25 +2400,6 @@
             type: 'text',
             default: '0.95em',
             description: 'Font size for the load-, filter- and render-status message containers inside the "📂 Load from Disk" dialog (e.g. 0.9em, 14px, 1rem)'
-        },
-
-        // --- H1 action bar: Save / Load button colour overrides ---
-        sa_ui_save_btn_style: {
-            label: 'Save button colors',
-            type: 'popup_dialog',
-            fields: ['bg', 'color', 'border', 'bgHover'],
-            colorFields: ['bg', 'color', 'bgHover'],
-            default: '#4CAF50|white|1px solid #45a049|#45a049',
-            description: 'Save-to-Disk button: bg|color|border|bgHover'
-        },
-
-        sa_ui_load_btn_style: {
-            label: 'Load button colors',
-            type: 'popup_dialog',
-            fields: ['bg', 'color', 'border', 'bgHover'],
-            colorFields: ['bg', 'color', 'bgHover'],
-            default: '#2196F3|white|1px solid #0b7dda|#0b7dda',
-            description: 'Load-from-Disk button: bg|color|border|bgHover'
         },
 
         sa_dialog_save_export_autoclose_ms: {
@@ -5212,20 +5151,20 @@
 
     //--------------------------------------------------------------------------------
 
-    // Initialize VZ-MBLibrary (Logger + Settings + Changelog)
-    // Use a ref object to avoid circular dependency during initialization
+    // Initialize VZ-MBLibrary (Logger + Settings)
+    // Use a ref object to avoid circular dependency during initialization.
+    // No remoteConfig, deliberately: with one, the library fetches, caches in
+    // GM storage and parses the whole changelog on every page for its own
+    // 📜 dialog. This script's "📜 ChangeLog" entry opens the SAED menu's
+    // Changelog group instead, whose pages are on GitHub (see
+    // `_saedOpenChangelog()`).
     const settings = {};
-    const remoteConfig = {
-        changelogUrl:      REMOTE_CHANGELOG_URL,
-        cacheKeyChangelog: CACHE_KEY_CHANGELOG,
-        cacheTtlMs:        REMOTE_CACHE_TTL_MS
-    };
 
     const Lib = (typeof VZ_MBLibrary !== 'undefined')
           ? new VZ_MBLibrary(SCRIPT_ID, SCRIPT_NAME, configSchema, null, () => {
               // Dynamic check: returns current value of debug setting
               return settings.sa_enable_debug_logging ?? false;
-          }, remoteConfig)
+          }, null)
           : {
               settings: {},
               info: console.log, debug: console.log, error: console.error, warn: console.warn, time: console.time, timeEnd: console.timeEnd
@@ -5431,9 +5370,7 @@
         { key: 'sa_sidebar_tables_button',         was: [true] },
         { key: 'sa_ui_artist_role_guest_performer_color', was: ['#e07000'] },
         { key: 'sa_ui_artist_role_main_performer_color',  was: ['#57ff5a'] },
-        { key: 'sa_ui_help_btn_style',             was: ['#78909C|white|1px solid #607D8B'] },
         { key: 'sa_ui_row_hover_bg',               was: ['#e2e2e2'] },
-        { key: 'sa_ui_settings_btn_style',         was: ['#607D8B|white|1px solid #546E7A'] },
         { key: 'sa_uniq_dropdown_visible_rows',    was: [8] },
     ];
 
@@ -5457,8 +5394,14 @@
     const _SETTINGS_ORPHANED_KEYS = [
         'sa_area_flag_region_countries',
         'sa_sort_progress_threshold',
+        'sa_ui_button_divider_style',
         'sa_ui_download_notification_font_size',
         'sa_ui_h2_artist_rgs_global_bg',
+        'sa_ui_help_btn_style',
+        'sa_ui_load_btn_style',
+        'sa_ui_save_btn_style',
+        'sa_ui_settings_btn_style',
+        'sa_ui_stop_btn_style',
     ];
 
     /**
@@ -6186,7 +6129,123 @@
         document.body.appendChild(box);
     }
 
+    /**
+     * GM values this script once wrote and nothing reads any more.
+     *
+     * Not settings: those are {@link _SETTINGS_ORPHANED_KEYS}, removed once by
+     * `_migrateFrozenSettings()` behind its level. These are caches and
+     * hand-off values, and they matter for a reason settings do not:
+     * Tampermonkey hands a script's WHOLE GM store to every page it runs on,
+     * before a line of the script executes (org/userscript-size.org 2.3), so
+     * an orphan is paid for on every page view, by the megabyte for the big
+     * ones. `_sweepOrphanedGmValues()` deletes them whenever it finds them,
+     * not once: a deletion costs nothing when the key is already gone.
+     *
+     * @type {string[]}
+     */
+    const _GM_ORPHANED_VALUE_KEYS = [
+        // The plain-text help cache, orphaned by the Markdown help (9.99.1148),
+        // which changed the key on purpose so the new format was a cache miss.
+        SCRIPT_BASE_NAME.toLowerCase() + '-remote-help-text',
+        // Help and the changelog are GitHub pages since the SAED button
+        // (2026-10-22): the Markdown help cache of the old Shift-click dialog,
+        // and the library's whole-changelog cache (1.75 MB, re-fetched hourly)
+        // with its dialog size, are read by nothing any more.
+        SCRIPT_BASE_NAME.toLowerCase() + '-remote-help-md',
+        SCRIPT_BASE_NAME.toLowerCase() + '-remote-changelog',
+        SCRIPT_ID + '-changelog-size',
+        'sa_app_help_geometry',
+        // Toolbar colour settings retired with the SAED button. They are also
+        // in _SETTINGS_ORPHANED_KEYS (the audit's record of every removed
+        // key), but that list is applied once per profile and those profiles
+        // have long passed it; this sweep reaches them.
+        'sa_ui_settings_btn_style',
+        'sa_ui_help_btn_style',
+        'sa_ui_save_btn_style',
+        'sa_ui_load_btn_style',
+        'sa_ui_button_divider_style',
+        // …and the Stop button's, retired when a fetch moved into its segment.
+        'sa_ui_stop_btn_style',
+    ];
+
+    /** Key prefix of the "Show single-table" cross-tab hand-off payloads. */
+    const _GM_SNAPSHOT_KEY_PREFIX = 'mb_sa_subtable_snapshot_';
+
+    /**
+     * How old a hand-off payload may get before the sweep deletes it. The new
+     * tab reads (and deletes) its payload as it starts, within seconds; one
+     * still there after an hour belongs to a tab that was blocked or closed
+     * before it loaded, and nothing will ever read it.
+     */
+    const _GM_SNAPSHOT_MAX_AGE_MS = 60 * 60 * 1000;
+
+    /**
+     * When a hand-off payload was written, read from its KEY rather than its
+     * value, so the sweep never copies megabytes out of storage to decide.
+     *
+     * `openSubtableAsSingleTableTab()` names the key
+     * `<prefix><Date.now() in base 36><up to 6 random base-36 chars>`, and
+     * `Date.now()` is 8 base-36 digits until 2059. A key that does not decode
+     * to a plausible time falls back to the payload's own `timestamp`.
+     *
+     * @param {string} key - A key starting with `_GM_SNAPSHOT_KEY_PREFIX`.
+     * @param {number} now - `Date.now()`.
+     * @returns {number|null} Milliseconds since it was written, or null when
+     *   neither the key nor the payload says.
+     */
+    function _gmSnapshotAgeMs(key, now) {
+        const stamp = parseInt(key.slice(_GM_SNAPSHOT_KEY_PREFIX.length, _GM_SNAPSHOT_KEY_PREFIX.length + 8), 36);
+        // 2020-01-01 .. now plus a day of clock skew: anything else is not a stamp.
+        if (Number.isFinite(stamp) && stamp > 1577836800000 && stamp < now + 86400000) {
+            return now - stamp;
+        }
+        const payload = GM_getValue(key, null);
+        return payload && typeof payload.timestamp === 'number' ? now - payload.timestamp : null;
+    }
+
+    /**
+     * Deletes the GM values nothing reads any more: the fixed list
+     * {@link _GM_ORPHANED_VALUE_KEYS}, and "Show single-table" hand-off
+     * payloads older than {@link _GM_SNAPSHOT_MAX_AGE_MS} (or of unknown age).
+     *
+     * Run from a `setTimeout(…, 0)` after start-up, so it adds nothing to the
+     * time before the page settles and can never race the tab that is about
+     * to consume a fresh payload (that one is minutes younger than the limit
+     * anyway). Without `GM_listValues` only the fixed keys can be found.
+     *
+     * @returns {string[]} The keys it deleted.
+     */
+    function _sweepOrphanedGmValues() {
+        if (typeof GM_getValue === 'undefined' || typeof GM_deleteValue === 'undefined') return [];
+        const deleted = [];
+        let stored = null;
+        if (typeof GM_listValues === 'function') {
+            try { stored = GM_listValues(); } catch (_) { stored = null; }
+        }
+        for (const key of _GM_ORPHANED_VALUE_KEYS) {
+            const present = stored ? stored.includes(key) : GM_getValue(key, undefined) !== undefined;
+            if (!present) continue;
+            GM_deleteValue(key);
+            deleted.push(key);
+        }
+        if (stored) {
+            const now = Date.now();
+            for (const key of stored) {
+                if (!key.startsWith(_GM_SNAPSHOT_KEY_PREFIX)) continue;
+                const age = _gmSnapshotAgeMs(key, now);
+                if (age !== null && age <= _GM_SNAPSHOT_MAX_AGE_MS) continue;
+                GM_deleteValue(key);
+                deleted.push(key);
+            }
+        }
+        if (deleted.length) {
+            Lib.info('init', `Deleted ${deleted.length} GM value(s) nothing reads any more: ${deleted.join(', ')}`);
+        }
+        return deleted;
+    }
+
     _migrateFrozenSettings();
+    setTimeout(_sweepOrphanedGmValues, 0);
     _coerceNumericSettings();
     _canonicalizeSelectSettings();
     // Registered here rather than at each entry point, so the library's own two
@@ -11937,10 +11996,9 @@
                 max-width: none;
             }
             /* A navigation-only page (the bootleg landing page) has no table,
-               so no Data or View menu, and no divider before them. */
-            body.mb-sa-host-sl.mb-sa-sl-nav-only #mb-button-divider-initial,
-            body.mb-sa-host-sl.mb-sa-sl-nav-only #mb-data-menu-btn,
-            body.mb-sa-host-sl.mb-sa-sl-nav-only #mb-view-menu-btn {
+               so the SAED menu shows no Data or View group. */
+            body.mb-sa-host-sl.mb-sa-sl-nav-only .mb-saed-group[data-mb-group="data"],
+            body.mb-sa-host-sl.mb-sa-sl-nav-only .mb-saed-group[data-mb-group="view"] {
                 display: none !important;
             }
             /* The compact category/filter bar (sa_sl_compact_nav): the walls it
@@ -25255,9 +25313,9 @@
      * the fetch pipeline indefinitely. Mediums are processed sequentially so
      * their AJAX requests can't race each other.
      *
-     * Drives the same inline progress bar (`fetchProgressWrap`/-`Fill`/-`Label`,
-     * created once at UI-setup time) the paginated-fetch loop in
-     * `startFetchingProcess` uses — otherwise, on a release with an
+     * Writes the same progress line under the heading (`_saedRunStatus()`)
+     * the paginated-fetch loop in `startFetchingProcess` uses — otherwise,
+     * on a release with an
      * overflowing medium, this phase runs silently before the real fetch
      * loop even starts and can look like a hang. Updated live as each
      * medium's own AJAX response streams rows in (via the same
@@ -25284,10 +25342,10 @@
         Lib.debug('init', `loadAllOverflowMediumTracks: found ${_tbodies.length} overflowing medium(s).`);
 
         // Progress indicator, mirroring the paginated-fetch "Loading page X
-        // of Y... (Z rows) - Ns left" bar driven by startFetchingProcess's
-        // main fetch loop (fetchProgressWrap/-Fill/-Label, created once at
-        // UI-setup time — see the "Fetch progress bar" block near the
-        // controlsContainer). Each overflowing medium is its own AJAX round
+        // of Y · Z rows so far · about N s left" line written by
+        // startFetchingProcess's main fetch loop (`_saedRunStatus()`; the
+        // "Fetch progress line" block near the controlsContainer). Each
+        // overflowing medium is its own AJAX round
         // trip (see this function's own JSDoc), which on a release with
         // several such mediums can otherwise look like a hang before the
         // real per-page fetch loop even starts.
@@ -25303,10 +25361,6 @@
         // MusicBrainz's own already-known total in the progress label — see
         // _updateOverflowProgress below.
         let _currentExpectedTotal = null;
-        fetchProgressWrap.style.display = 'inline-flex';
-        fetchProgressFill.style.width = '0%';
-        fetchProgressFill.style.background = '#ffcccc';
-        fetchProgressLabel.style.color = '#333';
 
         // Unlike the per-page fetch loop (one HTTP round trip per update), a
         // single overflowing medium's own AJAX load can itself take a long
@@ -25326,11 +25380,6 @@
         // @param {number} currentMediumRows - That medium's live row count
         //   (0 once it has just finished — folded into `_tracksLoadedSoFar`).
         const _updateOverflowProgress = (currentElapsedMs = 0, currentFraction = 0, currentMediumRows = 0) => {
-            const _progress = Math.min((_mediumsCompleted + currentFraction) / _totalMediums, 1);
-            fetchProgressFill.style.width = `${Math.round(_progress * 100)}%`;
-            fetchProgressFill.style.background =
-                _progress >= 1.0 ? '#ccffcc' : (_progress >= 0.5 ? '#ffe0b2' : '#ffcccc');
-
             // Time left = (this medium's own remaining time, extrapolated from
             // its progress-so-far) + (average completed-medium time × however
             // many full mediums are still queued up after this one). Falls
@@ -25353,9 +25402,9 @@
                 ? _tracksLoadedSoFar + _currentExpectedTotal : null;
             const _tracksLabel = _grandExpectedTotal !== null
                 ? `${_totalTracksSoFar} of ${_grandExpectedTotal}` : `${_totalTracksSoFar}`;
-            fetchProgressLabel.textContent =
-                `Loading overflow tracks: medium ${_currentMediumNum} of ${_totalMediums}... ` +
-                `(${_tracksLabel} tracks) - ${_estRemainingSeconds.toFixed(1)}s left`;
+            _saedRunStatus(
+                `Loading overflow tracks: medium ${_currentMediumNum} of ${_totalMediums} · ` +
+                `${_tracksLabel} tracks · about ${_estRemainingSeconds.toFixed(1)} s left`);
         };
         _updateOverflowProgress();
 
@@ -60872,26 +60921,55 @@
     const _toolbarMenus = new Map();
 
     /**
-     * The h1 controls bar's tail, in final visual order.
+     * The SAED button (`#mb-saed-bar`), set when the h1 controls are built.
+     * Held here because the bar is still DETACHED when `_orderToolbar()` and
+     * the area lookups first run, and `getElementById()` cannot see it then.
+     *
+     * @type {HTMLElement|null}
+     */
+    let _saedBarEl = null;
+
+    /**
+     * The attention indicators, ONE registry: every entry is a menu
+     * (`createToolbarMenu()`, `segment: true`) whose button sits in the SAED
+     * bar's `attn` area while it has rows, and which also appears as a row of
+     * the SAED menu's "Needs attention" group, opening the same list beside
+     * it. Order on the bar and in the group: by level, alert first. A new
+     * indicator is one entry here plus the code that fills its menu and sets
+     * `descriptor.indicatorCount` (docs/claude/toolbar-and-header-ui.md, "The
+     * SAED button").
+     *
+     * @type {Array<{key: string, glyph: string, level: ('alert'|'warn'|'info'), label: string}>}
+     */
+    const _SAED_INDICATORS = [
+        { key: 'fetch-missing',  glyph: '🔄', level: 'alert', label: 'Missing pages' },
+        { key: 'findings-error', glyph: '❌', level: 'alert', label: 'Errors' },
+        { key: 'findings-warn',  glyph: '⚠️', level: 'warn',  label: 'Warnings' },
+    ];
+
+    /** The groups of the SAED menu, in display order: [key, caption]. */
+    const _SAED_GROUPS = [
+        ['load', 'Load'],
+        ['attn', 'Needs attention'],
+        ['data', 'Data'],
+        ['view', 'View'],
+        ['help', 'Help'],
+        ['log',  'Changelog'],
+    ];
+
+    /**
+     * The h1 controls container's tail, in final visual order: the SAED
+     * button. (A fetch's Stop and progress used to follow it; they are in
+     * the running segment and the status line now, `_saedRunStart()`.)
      *
      * Everything NOT named here keeps whatever position it was appended at —
-     * which is why the 🧮N fetch buttons, the Stop button and the hidden
-     * `<input type="file">` need no entry.
+     * which is why the hidden `<input type="file">` needs no entry. What used
+     * to be here one by one (📀, 📦, 🛠, ⚙️, ❓, the findings menus and their
+     * dividers) are segments or rows of the SAED button now, placed by
+     * `_orderToolbar()`'s area pass.
      */
     const _TOOLBAR_TAIL_ORDER = [
-        'mb-button-divider-initial',
-        'mb-disc-menu-btn',
-        'mb-data-menu-btn',
-        'mb-view-menu-btn',
-        'mb-settings-btn',
-        'mb-app-help-btn',
-        // The ⚠️ WARNING / ❌ ERROR findings menus sit after ❓, behind their
-        // own divider (org/generalize-error-warning.org). Both menus are
-        // absent on a page with no findings, and the divider is hidden then.
-        'mb-button-divider-findings',
-        'mb-findings-warn-menu-btn',
-        'mb-findings-error-menu-btn',
-        'mb-fetch-progress-wrap',
+        'mb-saed-bar',
     ];
 
     /**
@@ -60907,6 +60985,7 @@
     const _TOOLBAR_MENU_ROW_ORDER = {
         data: ['mb-save-to-disk-btn', 'mb-load-from-disk-btn', 'mb-export-btn'],
         view: ['mb-density-btn', 'mb-stats-btn', 'mb-shortcuts-help-btn'],
+        help: ['mb-settings-btn', 'mb-app-help-btn', 'mb-shortcuts-help-btn'],
         disc: ['mb-disc-complete-btn', 'mb-disc-official-btn', 'mb-disc-nonofficial-btn', 'mb-disc-merged-btn'],
     };
 
@@ -60916,12 +60995,12 @@
      * already in place is a no-op move).
      *
      * This replaces `ensureSettingsButtonIsLast()`, which had grown one ad-hoc
-     * "move X before Y" rule per button plus three divider spans. Two of those
-     * dividers (`.mb-button-divider-after-load`, `.mb-button-divider-before-shortcuts`)
-     * separated groups that no longer exist now that the tool buttons live in
-     * 📦 Data ▾ / 🛠 View ▾, so they are gone; `mb-button-divider-initial` stays,
-     * because it still separates "fetch the data" from "do something with it"
-     * and because `_injectDiscographyViewButtons()` anchors on it.
+     * "move X before Y" rule per button plus three divider spans. Since the
+     * SAED button there are no dividers at all: a menu's button goes into its
+     * AREA of `#mb-saed-bar` (`_saedAreaFor()`), indicators in registry
+     * order, and the first visible area loses its left rule
+     * (`_saedMarkFirst()`). A group of the SAED menu has no button; its rows
+     * are ordered here like a menu's.
      */
     function _orderToolbar(container) {
         // `container` is passed explicitly by the initial-render block, which
@@ -60943,20 +61022,34 @@
                 const row = menu.panel.querySelector(`#${id}`);
                 if (row) menu.panel.appendChild(row);
             });
+            if (menu.isGroup) return;
 
-            const isEmpty = menu.isEmpty();
-            if (isEmpty && menu.btn.parentNode === controlsContainer) {
+            const area = _saedAreaFor(menu.key);
+            if (!area) return;                  // a submenu: no button in the bar
+            const isEmpty = menu.key !== 'saed' && menu.isEmpty();
+            if (isEmpty && menu.btn.parentNode === area) {
                 menu.close();
-                controlsContainer.removeChild(menu.btn);
-            } else if (!isEmpty && menu.btn.parentNode !== controlsContainer) {
-                controlsContainer.appendChild(menu.btn);
+                area.removeChild(menu.btn);
+            } else if (!isEmpty && menu.btn.parentNode !== area) {
+                area.appendChild(menu.btn);
             }
         });
+
+        // Indicators: most urgent first, in registry order.
+        const attn = _saedAreaFor(_SAED_INDICATORS[0].key);
+        if (attn) {
+            _SAED_INDICATORS.forEach(ind => {
+                const m = _toolbarMenus.get(ind.key);
+                if (m && m.btn.parentNode === attn) attn.appendChild(m.btn);
+            });
+        }
 
         _TOOLBAR_TAIL_ORDER.forEach(id => {
             const el = controlsContainer.querySelector(`#${id}`);
             if (el && el.parentNode === controlsContainer) controlsContainer.appendChild(el);
         });
+        _saedMarkFirst();
+        _saedRefreshGroups();
     }
 
     /**
@@ -63755,189 +63848,60 @@ ${sections.join('\n')}
 
         const exportBtn = document.createElement('button');
         exportBtn.id = 'mb-export-btn';
-        exportBtn.innerHTML = makeButtonHTML('Export', 'E', '💾');
+        exportBtn.innerHTML = makeButtonHTML('Export', 'E', '📤');
         _setTip(exportBtn, `Export visible rows and columns to various formats (${buildShortcutHint('sa_shortcut_open_export', 'Ctrl+E', 'E')})`);
         exportBtn.style.cssText = uiActionBtnBaseCSS();
         exportBtn.type = 'button';
 
-        // Create dropdown menu with Density-style formatting
-        const exportMenu = document.createElement('div');
-        exportMenu.style.cssText = `
-            display: none;
-            position: fixed;
-            background: white;
-            border: 1px solid #ccc;
-            border-radius: 6px;
-            padding: 8px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-            z-index: 10000;
-            min-width: 220px;
-        `;
-
-        // Create menu header
-        const menuHeader = document.createElement('div');
-        menuHeader.style.cssText = 'font-weight: 600; margin-bottom: 8px; padding-bottom: 6px; border-bottom: 1px solid #ddd; color: #333;';
-        menuHeader.textContent = 'Export Format';
-        exportMenu.appendChild(menuHeader);
-
+        // Export ▸ is a SUBMENU of the SAED menu's Data group (approved
+        // mockup v2): the four formats open beside the menu after a short
+        // rest of the pointer, on → or on a click, and in place under the row
+        // on a narrow or hover-less screen. The engine does the placing, the
+        // keyboard and the closing (createToolbarMenu(), "open as a submenu").
+        // It used to be a pull-down of its own, positioned from this row's rect.
         const exportFormats = [
-            { label: 'CSV',      description: 'Comma-separated values for Excel/Sheets',        handler: exportTableToCSV },
-            { label: 'JSON',     description: 'JavaScript Object Notation',                      handler: exportTableToJSON },
-            { label: 'Org-Mode', description: 'Emacs Org-Mode table format',                    handler: exportTableToOrgMode },
-            { label: 'HTML',     description: 'Self-contained HTML with links &amp; styling',   handler: exportTableToHTML },
+            { label: 'CSV',      description: 'Comma-separated values for Excel/Sheets', handler: exportTableToCSV },
+            { label: 'JSON',     description: 'JavaScript Object Notation',              handler: exportTableToJSON },
+            { label: 'Org-Mode', description: 'Emacs Org-Mode table format',            handler: exportTableToOrgMode },
+            { label: 'HTML',     description: 'Self-contained HTML with links and styling', handler: exportTableToHTML },
         ];
-
-        // Store menu items for keyboard navigation
-        const exportMenuItems = [];
-
+        const exportSub = createToolbarMenu({ key: 'export', id: 'mb-export-sub', label: 'Export', title: '' });
+        exportSub.panel.classList.add('mb-saed-submenu');
+        exportSub.panel.setAttribute('aria-label', 'Export as');
+        const exportCap = document.createElement('div');
+        exportCap.className = 'mb-saed-cap';
+        exportCap.textContent = 'Export as';
+        exportSub.panel.appendChild(exportCap);
         exportFormats.forEach(format => {
-            const menuItem = document.createElement('button');
-            menuItem.type = 'button';
-            menuItem.dataset.formatLabel = format.label;
-            menuItem.style.cssText = `
-                display: block;
-                width: 100%;
-                padding: 8px 12px;
-                margin: 3px 0;
-                cursor: pointer;
-                border: 1px solid #ddd;
-                background: white;
-                text-align: left;
-                border-radius: 4px;
-                transition: all 0.2s;
-            `;
-
-            // Create label
-            const labelDiv = document.createElement('div');
-            labelDiv.style.cssText = 'font-weight: 600; margin-bottom: 2px;';
-            labelDiv.textContent = format.label;
-
-            // Create description
-            const descDiv = document.createElement('div');
-            descDiv.style.cssText = 'font-size: 0.85em; color: #666;';
-            descDiv.textContent = format.description;
-
-            menuItem.appendChild(labelDiv);
-            menuItem.appendChild(descDiv);
-
-            // Hover effect
-            menuItem.onmouseover = () => {
-                menuItem.style.background = '#f5f5f5';
-            };
-            menuItem.onmouseout = () => {
-                menuItem.style.background = 'white';
-            };
-
-            // Click handler
-            menuItem.onclick = () => {
-                format.handler();
-                exportMenu.style.display = 'none';
-            };
-
-            exportMenuItems.push({ element: menuItem, handler: format.handler });
-            exportMenu.appendChild(menuItem);
+            const item = document.createElement('button');
+            item.type = 'button';
+            item.dataset.formatLabel = format.label;
+            item.className = 'mb-saed-format-row';
+            const name = document.createElement('span');
+            name.className = 'mb-saed-row-label';
+            name.textContent = format.label;
+            const desc = document.createElement('span');
+            desc.className = 'mb-saed-row-desc';
+            desc.textContent = format.description;
+            item.append(name, desc);
+            item.addEventListener('click', () => format.handler());
+            exportSub.adopt(item);
         });
 
-        // Keyboard navigation state
-        let selectedExportIndex = 0;
+        const exportArrow = document.createElement('span');
+        exportArrow.className = 'mb-saed-row-arrow';
+        exportArrow.textContent = '▸';
+        exportBtn.appendChild(exportArrow);
+        exportBtn.classList.add('mb-saed-sub-row');
+        exportBtn.setAttribute('aria-haspopup', 'true');
+        exportBtn.setAttribute('aria-expanded', 'false');
+        exportBtn._mbSubOpen = (focusFirst) =>
+            exportSub.open({ parent: _saedMenu(), besideRow: exportBtn, focusFirst });
 
-        // Function to update export menu focus
-        const updateExportFocus = (index) => {
-            exportMenuItems.forEach((item, i) => {
-                if (i === index) {
-                    item.element.style.background = '#e3f2fd';
-                    item.element.style.borderColor = '#2196F3';
-                    item.element.focus();
-                } else {
-                    item.element.style.background = 'white';
-                    item.element.style.borderColor = '#ddd';
-                }
-            });
-        };
-
-        // Keyboard handler for export menu
-        const exportMenuKeyHandler = (e) => {
-            if (exportMenu.style.display !== 'block') return;
-
-            switch (e.key) {
-                case 'ArrowDown':
-                    e.preventDefault();
-                    selectedExportIndex = (selectedExportIndex + 1) % exportMenuItems.length;
-                    updateExportFocus(selectedExportIndex);
-                    break;
-
-                case 'ArrowUp':
-                    e.preventDefault();
-                    selectedExportIndex = (selectedExportIndex - 1 + exportMenuItems.length) % exportMenuItems.length;
-                    updateExportFocus(selectedExportIndex);
-                    break;
-
-                case 'Enter':
-                    e.preventDefault();
-                    exportMenuItems[selectedExportIndex].handler();
-                    exportMenu.style.display = 'none';
-                    break;
-            }
-        };
-        document.addEventListener('keydown', exportMenuKeyHandler);
-
-        // Add separator and close instruction text
-        const separator = document.createElement('div');
-        separator.style.cssText = 'border-top: 1px solid #ddd; margin: 8px 0 8px 0;';
-        exportMenu.appendChild(separator);
-
-        const closeText = document.createElement('div');
-        closeText.textContent = 'Click outside or press Escape to close';
-        closeText.style.cssText = 'font-size: 0.85em; color: #999; text-align: center; font-style: italic; padding: 4px 0;';
-        exportMenu.appendChild(closeText);
-
-        // Toggle menu visibility
-        exportBtn.onclick = (e) => {
-            e.stopPropagation();
-            const isVisible = exportMenu.style.display === 'block';
-
-            if (isVisible) {
-                exportMenu.style.display = 'none';
-            } else {
-                exportMenu.style.display = 'block';
-
-                // Position menu below button
-                const rect = exportBtn.getBoundingClientRect();
-                exportMenu.style.top = `${rect.bottom + 5}px`;
-                exportMenu.style.left = `${rect.left}px`;
-
-                // Reset selection and set focus to first option
-                selectedExportIndex = 0;
-                setTimeout(() => updateExportFocus(0), 10);
-            }
-        };
-
-        // Close menu when clicking outside
-        const closeMenu = (e) => {
-            if (!exportMenu.contains(e.target) && e.target !== exportBtn) {
-                exportMenu.style.display = 'none';
-            }
-        };
-        document.addEventListener('click', closeMenu);
-
-        // Close menu on Escape key
-        const closeMenuOnEscape = (e) => {
-            if (e.key === 'Escape' && exportMenu.style.display === 'block') {
-                exportMenu.style.display = 'none';
-            }
-        };
-        document.addEventListener('keydown', closeMenuOnEscape);
-
-        // Adopted into 📦 Data ▾ rather than appended to the bar. exportBtn's own
-        // onclick still positions exportMenu from its own rect, which is valid
-        // because a row is only clickable while its panel is open.
         _ensureDataMenu().adopt(exportBtn,
             getShortcutDisplay('sa_shortcut_open_export', 'Ctrl+E'));
-        Lib.debug('ui', 'Export button with dropdown menu added to controls');
+        Lib.debug('ui', 'Export row with its format submenu added to the SAED menu');
         ensureSettingsButtonIsLast();
-
-        // Append menu to body
-        document.body.appendChild(exportMenu);
     }
 
     /**
@@ -64040,86 +64004,9 @@ ${sections.join('\n')}
     }
 
     /**
-     * Full CSS for the Save-to-Disk button (base + color overrides).
-     * Config: sa_ui_save_btn_style — bg|color|border|bgHover
-     * Returns { css, normalBg, hoverBg }
-     */
-    function uiSaveBtnCSS() {
-        const defaults = '#4CAF50|white|1px solid #45a049|#45a049';
-        const [bg, color, border, bgHover] =
-            parseCondensedStyle(Lib.settings.sa_ui_save_btn_style, defaults);
-        return {
-            css: `${uiActionBtnBaseCSS()} background-color:${bg}; color:${color}; border:${border};`,
-            normalBg: bg,
-            hoverBg: bgHover
-        };
-    }
-
-    /**
-     * Full CSS for the Load-from-Disk button (base + color overrides).
-     * Config: sa_ui_load_btn_style — bg|color|border|bgHover
-     * Returns { css, normalBg, hoverBg }
-     */
-    function uiLoadBtnCSS() {
-        const defaults = '#2196F3|white|1px solid #0b7dda|#0b7dda';
-        const [bg, color, border, bgHover] =
-            parseCondensedStyle(Lib.settings.sa_ui_load_btn_style, defaults);
-        return {
-            css: `${uiActionBtnBaseCSS()} background-color:${bg}; color:${color}; border:${border};`,
-            normalBg: bg,
-            hoverBg: bgHover
-        };
-    }
-
-    /**
-     * Full CSS for the Stop button.
-     * Config: sa_ui_stop_btn_style — bg|color|border
-     * Note: display is kept at 'none' by the caller and toggled dynamically.
-     */
-    function uiStopBtnCSS() {
-        const defaults = '#f44336|white|1px solid #d32f2f';
-        const [bg, color, border] =
-            parseCondensedStyle(Lib.settings.sa_ui_stop_btn_style, defaults);
-        return `${uiActionBtnBaseCSS()} background-color:${bg}; color:${color}; border:${border}; display:none;`;
-    }
-
-    /**
-     * Full CSS for the Settings ⚙️ button.
-     * Config: sa_ui_settings_btn_style — bg|color|border
-     */
-    function uiSettingsBtnCSS() {
-        const defaults = '#ECEFF1|#263238|1px solid #B0BEC5';
-        const [bg, color, border] =
-            parseCondensedStyle(Lib.settings.sa_ui_settings_btn_style, defaults);
-        return `${uiActionBtnBaseCSS()} background-color:${bg}; color:${color}; border:${border};`;
-    }
-
-    /**
-     * Full CSS for the Help ❓ button.
-     * Config: sa_ui_help_btn_style — bg|color|border
-     */
-    function uiHelpBtnCSS() {
-        const defaults = '#ECEFF1|#263238|1px solid #B0BEC5';
-        const [bg, color, border] =
-            parseCondensedStyle(Lib.settings.sa_ui_help_btn_style, defaults);
-        // user-select:none prevents some browsers from rendering a text-insertion
-        // caret inside the button when the ❓ emoji is treated as a selectable glyph.
-        return `${uiActionBtnBaseCSS()} background-color:${bg}; color:${color}; border:${border}; user-select:none; -webkit-user-select:none;`;
-    }
-
-    /**
-     * CSS for button-group separator spans (" | ").
-     * Config: sa_ui_button_divider_style — color|margin
-     */
-    function uiButtonDividerCSS() {
-        const defaults = '#999|0 4px';
-        const [color, margin] =
-            parseCondensedStyle(Lib.settings.sa_ui_button_divider_style, defaults);
-        return `color:${color}; margin:${margin};`;
-    }
-
-    /**
-     * Full CSS for a toolbar pull-down button (📦 Data ▾ / 🛠 View ▾ / 📀 Discography ▾).
+     * Full CSS for a toolbar pull-down button that is NOT a segment of the
+     * SAED button (none is drawn in the bar today; a submenu's unused button
+     * gets it). The SAED button reads the same setting for its own colours.
      * Config: sa_ui_toolbar_menu_btn_style — bg|color|border|bgHover
      * Returns { css, normalBg, hoverBg }
      */
@@ -64171,7 +64058,7 @@ ${sections.join('\n')}
     //     never element text.** It keeps the hint out of the row's
     //     `textContent`, so a read of the row is its label alone — the same
     //     reason the column-header family draws its glyphs from CSS, and what
-    //     `toolbar-menus.spec.js` pins.
+    //     `saed-toolbar.spec.js` pins.
     //     **Correction (9.99.1148):** this used to say the hint had to be an
     //     attribute because `updateBarcodeHighlightBtnState()` rewrites its
     //     button's `innerHTML` wholesale. It does not — it writes
@@ -64190,12 +64077,55 @@ ${sections.join('\n')}
     // there. Do not re-declare it here.
 
     /**
-     * Closes every open toolbar menu except `except`.
+     * Closes every open toolbar menu except `except` — and except the menu
+     * `except` was opened FROM: a submenu opened beside the SAED menu
+     * (Export ▸, a "Needs attention" row) keeps its parent open. A group of
+     * the SAED menu (`_saedGroup()`) is not a menu of its own and is skipped:
+     * its close() is the SAED menu's.
      *
      * @param {object|null} [except] - Descriptor to leave alone.
      */
     function _closeToolbarMenus(except) {
-        _toolbarMenus.forEach(m => { if (m !== except) m.close(); });
+        const keep = except && typeof except.parentMenu === 'function' ? except.parentMenu() : null;
+        _toolbarMenus.forEach(m => {
+            if (m === except || m === keep || m.isGroup) return;
+            m.close();
+        });
+    }
+
+    /**
+     * Whether a submenu opens IN PLACE under its row rather than beside the
+     * menu: on a narrow window, and on a device that cannot hover (a phone),
+     * where a flyout would land off-screen or need a pointer to reach.
+     *
+     * @returns {boolean}
+     */
+    function _toolbarSubmenuInline() {
+        return window.matchMedia('(max-width: 520px), (hover: none)').matches;
+    }
+
+    /**
+     * The part of the page the user can SEE, in the coordinates a
+     * `position: fixed` panel and `getBoundingClientRect()` use (the layout
+     * viewport): the visual viewport where the browser has one.
+     *
+     * On a desktop the two are the same box. On a phone they are not when
+     * the page is wider than the screen: a MusicBrainz page laid out at
+     * device width (412 px on a Pixel 7) whose content needs 636 px gets a
+     * 636 × 1296 layout viewport while 412 × 839 of it shows. Measured
+     * against `window.innerHeight`, the ☰ SAED menu "fitted" below its
+     * segment and opened under the bottom edge of the screen
+     * (tests/support/probe-saed-phone-menu.js, 2026-10-23).
+     *
+     * @returns {{left: number, top: number, right: number, bottom: number, width: number, height: number}}
+     */
+    function _toolbarViewBox() {
+        const vv = window.visualViewport;
+        const left = vv ? vv.offsetLeft : 0;
+        const top = vv ? vv.offsetTop : 0;
+        const width = vv ? vv.width : window.innerWidth;
+        const height = vv ? vv.height : window.innerHeight;
+        return { left, top, right: left + width, bottom: top + height, width, height };
     }
 
     /**
@@ -64206,30 +64136,41 @@ ${sections.join('\n')}
      * the render tail can call this on every pass the way every other
      * `add*Button()` helper does.
      *
+     * A menu can also open as a SUBMENU of another (`open({ parent, besideRow })`):
+     * beside the parent's panel, level with the row that opened it, or in place
+     * under that row on a narrow or hover-less screen. A submenu keeps its
+     * parent open, takes the keyboard while it is open (← or Escape gives it
+     * back to the row), and a choice made in it closes both.
+     *
      * @param {object} opts
-     * @param {string} opts.key   - Short name used by `_toolbarInvoke()` ('data'|'view'|'disc').
+     * @param {string} opts.key   - Short name used by `_toolbarInvoke()` ('saed'|'disc'|'export'|'findings-warn'|…).
      * @param {string} opts.id    - Element id for the button; the panel gets `${id}-panel`.
      * @param {string} opts.label - Visible button text, WITHOUT the ▾ caret.
      * @param {string} opts.title - Tooltip.
+     * @param {boolean} [opts.segment=false] - The button is a segment of the
+     *   SAED bar (`.mb-seg`): styled by the bar's stylesheet, not inline.
      * @returns {{key: string, btn: HTMLButtonElement, panel: HTMLDivElement,
      *            adopt: Function, setLabel: Function, isEmpty: Function,
-     *            isOpen: Function, open: Function, close: Function}}
+     *            isOpen: Function, open: Function, close: Function,
+     *            parentMenu: Function, focusFirst: Function}}
      */
-    function createToolbarMenu({ key, id, label, title }) {
+    function createToolbarMenu({ key, id, label, title, segment = false }) {
         const existing = _toolbarMenus.get(key);
         if (existing) return existing;
 
         const btn = document.createElement('button');
         btn.id        = id;
         btn.type      = 'button';
-        btn.className = 'mb-toolbar-menu-btn';
+        btn.className = segment ? 'mb-toolbar-menu-btn mb-seg' : 'mb-toolbar-menu-btn';
         _setTip(btn, title);
         btn.setAttribute('aria-haspopup', 'true');
         btn.setAttribute('aria-expanded', 'false');
-        const _mStyle = uiToolbarMenuBtnCSS();
-        btn.style.cssText = _mStyle.css;
-        btn.onmouseover = () => { btn.style.backgroundColor = _mStyle.hoverBg; };
-        btn.onmouseout  = () => { btn.style.backgroundColor = _mStyle.normalBg; };
+        if (!segment) {
+            const _mStyle = uiToolbarMenuBtnCSS();
+            btn.style.cssText = _mStyle.css;
+            btn.onmouseover = () => { btn.style.backgroundColor = _mStyle.hoverBg; };
+            btn.onmouseout  = () => { btn.style.backgroundColor = _mStyle.normalBg; };
+        }
 
         // The label is its own span so setLabel() can rewrite the text half
         // without re-appending the caret — the Discography menu renames itself
@@ -64251,17 +64192,37 @@ ${sections.join('\n')}
         document.body.appendChild(panel);
 
         let focusIdx = -1;
+        // Set while this menu is open as a SUBMENU: the menu it was opened
+        // from, the row it was opened by, and whether it sits in place.
+        let parent = null;
+        let parentRow = null;
+        let inlinePlaced = false;
 
         /**
          * The rows a keyboard pass may land on: adopted buttons this menu owns
          * that are not currently hidden by their own feature gate (Save to Disk
-         * is `display:none` until there is data to save).
+         * is `display:none` until there is data to save) or by a hidden group
+         * of the SAED menu, and not rows of a submenu sitting in place inside
+         * this panel (those belong to the submenu's own keyboard).
          *
          * @returns {HTMLElement[]}
          */
-        const visibleItems = () => Array.from(panel.children).filter(
-            el => el.classList.contains('mb-toolbar-menu-item') && el.style.display !== 'none'
+        const visibleItems = () => Array.from(panel.querySelectorAll('.mb-toolbar-menu-item')).filter(
+            el => el.style.display !== 'none' && !el.closest('[hidden]')
+                && el.closest('.mb-toolbar-menu-panel') === panel
         );
+
+        /**
+         * The open submenu of this menu, if any.
+         * @returns {object|null}
+         */
+        const openChild = () => {
+            let found = null;
+            _toolbarMenus.forEach(m => {
+                if (!found && !m.isGroup && m !== descriptor && m.isOpen() && m.parentMenu() === descriptor) found = m;
+            });
+            return found;
+        };
 
         /**
          * Moves keyboard focus to the row at `idx`, wrapping at both ends.
@@ -64290,47 +64251,146 @@ ${sections.join('\n')}
          * event-overview "Save to Disk" spec's intermittent failure, where the
          * unstyled fixture puts the toolbar at the bottom of the window. Same
          * rule as the springsteenlyrics.com scope bar (`_slPlaceScopePop()`).
+         *
+         * As a submenu (`opts.parent` + `opts.besideRow`) it opens beside the
+         * parent's panel, level with that row — on the left when the parent
+         * sits at the window's right edge, as the SAED menu does — or, on a
+         * narrow or hover-less screen, in place right after the row. Without a
+         * laid-out button (`opts.topRight`, or a button that is hidden or
+         * scrolled away) it opens at the window's top right.
+         *
+         * @param {object}  [opts]
+         * @param {object}  [opts.parent]      - The menu this one opens from.
+         * @param {Element} [opts.besideRow]   - The parent's row that opened it.
+         * @param {boolean} [opts.focusFirst]  - Put keyboard focus on the first row.
+         * @param {boolean} [opts.topRight]    - Place at the window's top right.
          */
-        const open = () => {
+        const open = (opts = {}) => {
+            parent = opts.parent || null;
+            parentRow = opts.besideRow || null;
             _closeToolbarMenus(descriptor);
+            if (typeof descriptor.onOpen === 'function') descriptor.onOpen(opts);
+            // A hover card already up for the button (the ☰ SAED card) would
+            // cover the menu; the card engine shows none while it is open.
+            const hoverCard = document.getElementById('mb-stat-tooltip');
+            if (hoverCard) hoverCard.style.display = 'none';
             // flex, not block — see the blockification note in this section's header.
             panel.style.display = 'flex';
             btn.setAttribute('aria-expanded', 'true');
+            if (parentRow) parentRow.setAttribute('aria-expanded', 'true');
             panel.style.maxHeight = '';
             panel.style.overflowY = '';
-            const rect = btn.getBoundingClientRect();
-            const height = panel.offsetHeight;
-            const below = window.innerHeight - rect.bottom - 5 - 8;
-            const above = rect.top - 5 - 8;
-            const up = height > below && above > below;
-            const room = Math.max(80, Math.floor(up ? above : below));
-            if (height > room) {
-                panel.style.maxHeight = `${room}px`;
-                panel.style.overflowY = 'auto';
-            }
-            panel.style.top  = up ? `${Math.max(8, rect.top - 5 - Math.min(height, room))}px` : `${rect.bottom + 5}px`;
-            panel.style.left = `${rect.left}px`;
-            // Keep the panel inside the viewport when the button sits far right.
-            const pRect = panel.getBoundingClientRect();
-            if (pRect.right > window.innerWidth - 8) {
-                panel.style.left = `${Math.max(8, window.innerWidth - pRect.width - 8)}px`;
+            panel.style.right = '';
+            inlinePlaced = !!(parent && parentRow && _toolbarSubmenuInline());
+            panel.classList.toggle('mb-toolbar-menu-inline', inlinePlaced);
+            if (inlinePlaced) {
+                parentRow.after(panel);
+                panel.style.top = '';
+                panel.style.left = '';
+            } else if (parent && parentRow) {
+                if (panel.parentNode !== document.body) document.body.appendChild(panel);
+                const vb = _toolbarViewBox();
+                const pr = parent.panel.getBoundingClientRect();
+                const rr = parentRow.getBoundingClientRect();
+                const w = panel.offsetWidth;
+                const h = panel.offsetHeight;
+                let left = pr.left - w + 2;                       // the left side first: the SAED menu is right-aligned
+                if (left < vb.left + 8) left = Math.min(pr.right - 2, vb.right - w - 8);
+                const top = Math.max(vb.top + 8, Math.min(rr.top - 6, vb.bottom - h - 8));
+                panel.style.left = `${Math.max(vb.left + 8, left)}px`;
+                panel.style.top = `${top}px`;
+                if (h > vb.height - 16) {
+                    panel.style.maxHeight = `${vb.height - 16}px`;
+                    panel.style.overflowY = 'auto';
+                }
+            } else {
+                if (panel.parentNode !== document.body) document.body.appendChild(panel);
+                // Measured against what SHOWS, not the layout viewport (they
+                // differ on a phone whose page is wider than the screen).
+                const vb = _toolbarViewBox();
+                const rect = btn.getBoundingClientRect();
+                const laidOut = btn.isConnected && rect.width > 0 && rect.bottom > vb.top && rect.top < vb.bottom;
+                if (opts.topRight || !laidOut) {
+                    panel.style.top = `${vb.top + 48}px`;
+                    panel.style.left = `${Math.max(vb.left + 8, vb.right - panel.offsetWidth - 16)}px`;
+                } else {
+                    const height = panel.offsetHeight;
+                    const below = vb.bottom - rect.bottom - 5 - 8;
+                    const above = rect.top - vb.top - 5 - 8;
+                    const up = height > below && above > below;
+                    const room = Math.max(80, Math.floor(up ? above : below));
+                    if (height > room) {
+                        panel.style.maxHeight = `${room}px`;
+                        panel.style.overflowY = 'auto';
+                    }
+                    panel.style.top  = up ? `${Math.max(vb.top + 8, rect.top - 5 - Math.min(height, room))}px` : `${rect.bottom + 5}px`;
+                    // Right-aligned under a segment of the bar (the SAED menu
+                    // is the bar's last segment); left-aligned otherwise.
+                    panel.style.left = segment
+                        ? `${Math.max(vb.left + 8, rect.right - panel.offsetWidth)}px`
+                        : `${rect.left}px`;
+                }
+                // Keep the panel inside the visible part when the button sits far right.
+                const pRect = panel.getBoundingClientRect();
+                if (pRect.right > vb.right - 8) {
+                    panel.style.left = `${Math.max(vb.left + 8, vb.right - pRect.width - 8)}px`;
+                }
             }
             focusIdx = -1;
+            if (opts.focusFirst) moveFocusTo(0);
         };
 
-        /** Hides the panel and clears any keyboard focus tint. */
+        /** Hides the panel (and any submenu of it) and clears any keyboard focus tint. */
         const close = () => {
             if (!isOpen()) return;
+            const child = openChild();
+            if (child) child.close();
             panel.style.display = 'none';
             btn.setAttribute('aria-expanded', 'false');
-            Array.from(panel.children).forEach(el => el.classList.remove('mb-toolbar-menu-item-focus'));
+            if (parentRow) parentRow.setAttribute('aria-expanded', 'false');
+            panel.querySelectorAll('.mb-toolbar-menu-item-focus')
+                .forEach(el => el.classList.remove('mb-toolbar-menu-item-focus'));
             focusIdx = -1;
+            if (inlinePlaced) {
+                document.body.appendChild(panel);
+                panel.classList.remove('mb-toolbar-menu-inline');
+                inlinePlaced = false;
+            }
+            if (typeof descriptor.onClose === 'function') descriptor.onClose();
         };
 
         btn.onclick = (e) => {
             e.stopPropagation();
             if (isOpen()) close(); else open();
         };
+
+        // ── Rows that open a submenu (`data-mb-sub`) ─────────────────────────
+        // A row carrying `_mbSubOpen(focusFirst)` opens its submenu after a
+        // short rest of the pointer, and closes it when the pointer moves on
+        // to another row of this menu — with a grace period, so the pointer
+        // can cross to the submenu. A click or → opens it at once (and is the
+        // only way on a touch screen, where no hover happens).
+        let subOpenTimer = null;
+        let subCloseTimer = null;
+        panel.addEventListener('mouseover', (e) => {
+            if (_toolbarSubmenuInline()) return;
+            const row = e.target && e.target.closest ? e.target.closest('.mb-toolbar-menu-item') : null;
+            if (!row || row.closest('.mb-toolbar-menu-panel') !== panel) return;
+            clearTimeout(subOpenTimer);
+            const child = openChild();
+            if (typeof row._mbSubOpen === 'function') {
+                clearTimeout(subCloseTimer);
+                if (!child || child.parentRow() !== row) subOpenTimer = setTimeout(() => row._mbSubOpen(false), 150);
+            } else if (child) {
+                clearTimeout(subCloseTimer);
+                subCloseTimer = setTimeout(() => { const c = openChild(); if (c) c.close(); }, 250);
+            }
+        });
+        panel.addEventListener('mouseleave', () => { clearTimeout(subOpenTimer); });
+        panel.addEventListener('mouseenter', () => {
+            // Back in a submenu: the parent's pending close is cancelled.
+            if (parent) parent.cancelSubClose();
+        });
 
         // Activating a row closes the menu, the conventional behaviour.
         //
@@ -64344,9 +64404,25 @@ ${sections.join('\n')}
         // The close itself is still deferred by one task, so a row that
         // positions something from its OWN bounding rect has measured it while
         // the panel was still open.
+        //
+        // Three rows do NOT close: one that opens a submenu (`_mbSubOpen`),
+        // a check row (`menuitemcheckbox`: ticking several findings in a row
+        // is the point), and a disabled one. A choice made in a SUBMENU
+        // closes its parent too.
         panel.addEventListener('click', (e) => {
             const item = e.target && e.target.closest ? e.target.closest('.mb-toolbar-menu-item') : null;
-            if (item && panel.contains(item)) setTimeout(close, 0);
+            if (!item || item.closest('.mb-toolbar-menu-panel') !== panel) return;
+            if (typeof item._mbSubOpen === 'function') {
+                e.preventDefault();
+                e.stopPropagation();
+                const child = openChild();
+                if (child && child.parentRow() === item) child.close();
+                else item._mbSubOpen(true);
+                return;
+            }
+            if (item.getAttribute('role') === 'menuitemcheckbox') return;
+            if (item.getAttribute('aria-disabled') === 'true') return;
+            setTimeout(() => { close(); if (parent) parent.close(); }, 0);
         }, true);
 
         // Outside-click and Escape — the same pair addDensityControl() has used
@@ -64361,6 +64437,12 @@ ${sections.join('\n')}
         const closeIfOutside = (e) => {
             if (!isOpen()) return;
             if (panel.contains(e.target) || btn.contains(e.target) || e.target === btn) return;
+            // A press inside this menu's open submenu is inside the menu.
+            const child = openChild();
+            if (child && child.panel.contains(e.target)) return;
+            // A submenu stays while its parent's rows are used; the parent's
+            // own row handling decides what happens next.
+            if (parent && parent.panel.contains(e.target)) return;
             close();
         };
         // The press, in the CAPTURE phase, comes first. A click can be
@@ -64377,8 +64459,35 @@ ${sections.join('\n')}
         document.addEventListener('click', closeIfOutside);
         document.addEventListener('keydown', (e) => {
             if (!isOpen()) return;
+            // An open submenu takes the keyboard; it hands it back on ← or Escape.
+            if (openChild()) return;
+            const items = visibleItems();
+            const focused = items.indexOf(document.activeElement);
+            if (focused !== -1) focusIdx = focused;
+            const row = focused !== -1 ? items[focused] : null;
             switch (e.key) {
-                case 'Escape':    e.preventDefault(); close(); btn.focus();        break;
+                case 'Escape':
+                    e.preventDefault();
+                    close();
+                    if (parentRow) parentRow.focus(); else btn.focus();
+                    break;
+                case 'ArrowLeft':
+                case 'ArrowRight':
+                    if (parent && parentRow) {
+                        // Back from a submenu to the row that opened it.
+                        e.preventDefault();
+                        const back = parentRow;
+                        close();
+                        back.focus();
+                    } else if (row && typeof row._mbSubOpen === 'function') {
+                        e.preventDefault();
+                        // The submenu's own keydown listener runs later for
+                        // THIS key press, and → there means "back to the row":
+                        // without this it closes again before it is seen.
+                        e.stopImmediatePropagation();
+                        row._mbSubOpen(true);
+                    }
+                    break;
                 case 'ArrowDown': e.preventDefault(); moveFocusTo(focusIdx + 1);   break;
                 case 'ArrowUp':   e.preventDefault(); moveFocusTo(focusIdx - 1);   break;
                 case 'Home':      e.preventDefault(); moveFocusTo(0);              break;
@@ -64389,6 +64498,18 @@ ${sections.join('\n')}
 
         const descriptor = {
             key, btn, panel, isOpen, open, close,
+
+            /** @returns {object|null} The menu this one is open from, as a submenu. */
+            parentMenu() { return parent; },
+
+            /** @returns {Element|null} The parent's row that opened this submenu. */
+            parentRow() { return parentRow; },
+
+            /** Puts keyboard focus on the first visible row. */
+            focusFirst() { moveFocusTo(0); },
+
+            /** Cancels a pending "pointer moved on" close of this menu's submenu. */
+            cancelSubClose() { clearTimeout(subCloseTimer); },
 
             /**
              * Moves an existing toolbar button into this panel and restyles it as
@@ -64463,44 +64584,37 @@ ${sections.join('\n')}
     }
 
     /**
-     * The 📦 Data menu — everything that moves the dataset in or out of the
-     * page: Save to Disk, Load from Disk, Export.
+     * The SAED menu's "Data" group — everything that moves the dataset in or
+     * out of the page: Save to Disk, Load from Disk, Export ▸. (It was the
+     * 📦 Data ▾ menu of its own until the SAED button, 2026-10-22.)
      *
      * Created on first use, which is the initial render (Load from Disk is
      * offered before any fetch has happened); Export joins it from the render
      * tail once there is something to export.
      *
-     * @returns {object} The menu descriptor.
+     * @returns {object} The group descriptor (`_saedGroup()`).
      */
     function _ensureDataMenu() {
-        return createToolbarMenu({
-            key:   'data',
-            id:    'mb-data-menu-btn',
-            label: '📦 Data',
-            title: 'Save, load and export this table’s data',
-        });
+        return _saedGroup('data');
     }
 
     /**
-     * The 🛠 View menu — everything that changes how the table is presented
-     * without changing what it contains: Density, Statistics, the
+     * The SAED menu's "View" group — everything that changes how the table is
+     * presented without changing what it contains: Density, Statistics, the
      * keyboard-shortcuts reference. (Barcode highlighting used to live here
      * too; it moved into the "Barcode" column header itself, see
-     * `_initBarcodeColHeaderToggle()`.)
+     * `_initBarcodeColHeaderToggle()`.) While it would hold nothing but
+     * Keyboard Shortcuts (before anything is loaded), the group is not shown
+     * and that row sits in "Help" instead (`_saedRefreshGroups()`).
      *
      * Note 👁️ Visible and ↔️ Resize are deliberately NOT here. They act on one
      * table, so they sit beside that table’s heading next to the filter bar,
      * mirroring the per-sub-table ↔️/👁️ pair the h3 rows have always had.
      *
-     * @returns {object} The menu descriptor.
+     * @returns {object} The group descriptor (`_saedGroup()`).
      */
     function _ensureViewMenu() {
-        return createToolbarMenu({
-            key:   'view',
-            id:    'mb-view-menu-btn',
-            label: '🛠 View',
-            title: 'Table density, statistics and other view controls',
-        });
+        return _saedGroup('view');
     }
 
     /**
@@ -64514,15 +64628,473 @@ ${sections.join('\n')}
      * information the flat run never conveyed — it could only tint the active
      * button, which told you nothing until you looked at all four.
      *
+     * Since the SAED button it is its own AREA of that button (`disc`), not a
+     * group inside the menu: it shows state, which a menu row would hide.
+     *
      * @returns {object} The menu descriptor.
      */
     function _ensureDiscMenu() {
         return createToolbarMenu({
-            key:   'disc',
-            id:    'mb-disc-menu-btn',
-            label: '📀 Discography',
-            title: 'Choose which parts of the discography are shown',
+            key:     'disc',
+            id:      'mb-disc-menu-btn',
+            label:   '📀 Discography',
+            title:   'Choose which parts of the discography are shown',
+            segment: true,
         });
+    }
+
+    // ── The SAED button (approved mockup v6, 2026-10-22:
+    //    https://claude.ai/artifact/QUqoriyP6qX3D3EutjhyzX) ──────────────────
+    //
+    // Everything the script adds to the page heading is ONE segmented button,
+    // `#mb-saed-bar`, in four AREAS, each reacting on its own:
+    //
+    //   actions │ the page's "🧮 …" fetch buttons, as before
+    //   disc    │ 📀 Discography: <view> ▾ (artist-releasegroups only)
+    //   attn    │ one segment per attention INDICATOR that has something
+    //           │ (❌ 1 ▾, ⚠️ 43 ▾ …), most urgent first; each opens its list
+    //   menu    │ ☰ SAED ▾ — the script's menu (the name is a setting)
+    //
+    // The menu holds groups: Load (narrow screens only: the action segments
+    // move here), Needs attention (the same indicators as rows), Data, View,
+    // Help (Settings, Help ↗), Changelog (What's new ↗, Full development log
+    // ↗), and the installed version at its foot. Data and View used to be the
+    // 📦 Data ▾ and 🛠 View ▾ menus; their rows are the same elements, adopted
+    // into a group instead, so `_toolbarInvoke()`/`_toolbarAnchorFor()` and
+    // every id keep working.
+
+    // `_SAED_INDICATORS`, `_SAED_GROUPS` and `_saedBarEl` are declared far
+    // above, next to `_toolbarMenus`, for the same TDZ reason.
+
+    /**
+     * The menu's name on its button (`sa_toolbar_menu_name`, default "SAED");
+     * a blank setting falls back to the default.
+     *
+     * @returns {string}
+     */
+    function _saedMenuName() {
+        const v = typeof Lib.settings.sa_toolbar_menu_name === 'string' ? Lib.settings.sa_toolbar_menu_name.trim() : '';
+        return v || 'SAED';
+    }
+
+    /**
+     * The rich hover card of the ☰ SAED segment: the script's full name in
+     * bold, then version, library, script manager, browser, author, and the
+     * AI help it was written with. Built from `GM_info` and `Lib.version`
+     * only — no request. A value the manager does not report is left out.
+     *
+     * @returns {string} HTML for `data-mbtt`.
+     */
+    function _saedCardHtml() {
+        const info = typeof GM_info !== 'undefined' ? GM_info : {};
+        const script = info.script || {};
+        const [ver, stamp] = String(script.version || scriptVersion || '').split('+');
+        const date = /^\d{4}-\d{2}-\d{2}$/.test(stamp || '')
+            ? new Date(`${stamp}T12:00:00Z`).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' })
+            : '';
+        const platform = info.platform || {};
+        const browser = [platform.browserName, platform.browserVersion].filter(Boolean).join(' ')
+            + (platform.os ? ` · ${platform.os}` : '');
+        const rows = [
+            ['Version', ver ? `<code>${_mbttEscape(ver)}</code>${date ? ` · ${_mbttEscape(date)}` : ''}` : ''],
+            ['Library', `VZ_MBLibrary <code>${_mbttEscape(String(libVersion).split('+')[0])}</code>`],
+            ['Runs in', info.scriptHandler ? `${_mbttEscape(info.scriptHandler)} <code>${_mbttEscape(info.version || '')}</code>` : ''],
+            ['Browser', browser ? _mbttEscape(browser) : ''],
+            ['Author', _mbttEscape(script.author || 'vzell')],
+            ['Written with', 'AI help from Claude (Anthropic)'],
+        ].filter(([, v]) => v);
+        return `<div class="mb-tt-title">${_mbttEscape(script.name || SCRIPT_NAME)}</div>`
+            + '<table class="mb-saed-card">'
+            + rows.map(([k, v]) => `<tr><th>${k}</th><td>${v}</td></tr>`).join('')
+            + '</table>'
+            + '<div class="mb-tt-foot">Click for the menu: save, load and export, view options, settings, help and the changelog.</div>';
+    }
+
+    /**
+     * The bar's area for a menu's button: `menu` for the SAED menu, `disc`
+     * for 📀 Discography, `attn` for an indicator; null for a menu that has
+     * no button in the bar (a submenu such as Export ▸).
+     *
+     * @param {string} key - A `_toolbarMenus` key.
+     * @returns {HTMLElement|null}
+     */
+    function _saedAreaFor(key) {
+        if (!_saedBarEl) return null;
+        const area = key === 'saed' ? 'menu'
+            : key === 'disc' ? 'disc'
+            : _SAED_INDICATORS.some(i => i.key === key) ? 'attn'
+            : null;
+        return area ? _saedBarEl.querySelector(`:scope > [data-mb-area="${area}"]`) : null;
+    }
+
+    /**
+     * The first visible area of the bar loses its left rule, whichever area
+     * that is (before loading there are no indicators and no Discography; on
+     * a narrow screen the actions are in the menu).
+     *
+     * @returns {void}
+     */
+    function _saedMarkFirst() {
+        if (!_saedBarEl) return;
+        let found = false;
+        Array.from(_saedBarEl.children).forEach(el => {
+            const shows = !el.hidden && el.childElementCount > 0 && getComputedStyle(el).display !== 'none';
+            el.classList.toggle('mb-saed-first', shows && !found);
+            if (shows) found = true;
+        });
+    }
+
+    /**
+     * The SAED menu (`☰ SAED ▾`): created once, with its groups and foot.
+     *
+     * @returns {object} The `createToolbarMenu()` descriptor.
+     */
+    function _saedMenu() {
+        const existing = _toolbarMenus.get('saed');
+        if (existing) return existing;
+        const menu = createToolbarMenu({
+            key: 'saed', id: 'mb-saed-menu-btn', label: `☰ ${_saedMenuName()}`,
+            title: `${SCRIPT_NAME} — the menu: save, load and export, view options, settings, help and the changelog`,
+            segment: true,
+        });
+        menu.btn.classList.add('mb-saed-menu-btn');
+        menu.btn.dataset.mbtt = _saedCardHtml();
+        menu.panel.classList.add('mb-saed-panel');
+        menu.panel.setAttribute('aria-label', SCRIPT_NAME);
+        _SAED_GROUPS.forEach(([key, caption]) => {
+            const g = document.createElement('div');
+            g.className = 'mb-saed-group';
+            g.dataset.mbGroup = key;
+            g.setAttribute('role', 'group');
+            g.hidden = true;
+            const cap = document.createElement('div');
+            cap.className = 'mb-saed-cap';
+            cap.textContent = caption;
+            g.appendChild(cap);
+            g.setAttribute('aria-label', caption);
+            menu.panel.appendChild(g);
+        });
+        const foot = document.createElement('div');
+        foot.className = 'mb-saed-foot';
+        const [ver, stamp] = String(scriptVersion || '').split('+');
+        foot.textContent = ver ? `Installed ${ver}${stamp ? ` · ${stamp}` : ''}` : '';
+        menu.panel.appendChild(foot);
+        let only = null;
+        menu.onOpen = (opts) => { only = opts && opts.only ? opts.only : null; _saedRefreshGroups(only); };
+        menu.onClose = () => { if (only) { only = null; _saedRefreshGroups(null); } };
+        return menu;
+    }
+
+    /**
+     * One group of the SAED menu, as a menu-shaped descriptor: `adopt()`,
+     * `isEmpty()`, `open()`/`close()`/`isOpen()` (the SAED menu's), and `btn`
+     * (the ☰ SAED segment, so `_toolbarAnchorFor()` positions a row's own
+     * pop-up against something laid out). Registered in `_toolbarMenus` under
+     * its key with `isGroup`, so `_toolbarInvoke()` resolves a row's owner
+     * and `_closeToolbarMenus()` leaves it alone.
+     *
+     * @param {string} key - One of `_SAED_GROUPS`' keys.
+     * @returns {object}
+     */
+    function _saedGroup(key) {
+        const existing = _toolbarMenus.get(key);
+        if (existing) return existing;
+        const saed = _saedMenu();
+        const groupEl = saed.panel.querySelector(`:scope > .mb-saed-group[data-mb-group="${key}"]`);
+        const descriptor = {
+            key,
+            isGroup: true,
+            panel: groupEl,
+            get btn() { return saed.btn; },
+            isOpen: () => saed.isOpen(),
+            open: (opts) => saed.open(opts),
+            close: () => saed.close(),
+            parentMenu: () => null,
+            parentRow: () => null,
+            focusFirst() { saed.focusFirst(); },
+            cancelSubClose() {},
+            /**
+             * Moves a toolbar control into this group as a full-width row —
+             * the same contract as a menu's `adopt()`.
+             *
+             * @param {HTMLElement|null} el
+             * @param {string} [hint] - Keyboard hint rendered via CSS `::after`.
+             * @returns {HTMLElement|null}
+             */
+            adopt(el, hint) {
+                if (!el) return null;
+                el.classList.add('mb-toolbar-menu-item');
+                el.setAttribute('role', el.getAttribute('role') || 'menuitem');
+                if (hint) el.dataset.mbMenuHint = hint;
+                el.dataset.mbMenuOwner = key;
+                groupEl.appendChild(el);
+                _saedRefreshGroups();
+                return el;
+            },
+            setLabel() {},
+            /** @returns {boolean} True when the group holds no row at all. */
+            isEmpty() { return !groupEl.querySelector('.mb-toolbar-menu-item'); },
+        };
+        _toolbarMenus.set(key, descriptor);
+        return descriptor;
+    }
+
+    /**
+     * Brings the SAED menu's groups in line with what they hold: a group
+     * with no visible row is not shown, "Load" only on a narrow screen, the
+     * Keyboard Shortcuts row sits in View while View has anything else and in
+     * Help otherwise, and the first shown group loses its top rule. With
+     * `only`, every other group is hidden (the Tampermonkey "📜 ChangeLog"
+     * entry opens the menu on its Changelog group alone).
+     *
+     * @param {?string} [only] - A group key, or null.
+     * @returns {void}
+     */
+    function _saedRefreshGroups(only = null) {
+        const saed = _toolbarMenus.get('saed');
+        if (!saed) return;
+        const group = (k) => saed.panel.querySelector(`:scope > .mb-saed-group[data-mb-group="${k}"]`);
+        const visibleRow = (el) => el.style.display !== 'none';
+        // The View rule (approved mockup v2): Keyboard Shortcuts alone is no View group.
+        const kb = document.getElementById('mb-shortcuts-help-btn');
+        const view = group('view');
+        const help = group('help');
+        if (kb && view && help && (kb.parentNode === view || kb.parentNode === help)) {
+            const others = Array.from(view.querySelectorAll(':scope > .mb-toolbar-menu-item'))
+                .filter(el => el !== kb && visibleRow(el));
+            if (others.length && kb.parentNode !== view) view.appendChild(kb);
+            // In Help it is the last row, after Settings and Help.
+            if (!others.length && (kb.parentNode !== help || kb.nextElementSibling)) help.appendChild(kb);
+        }
+        const narrow = _saedBarEl ? _saedBarEl.classList.contains('mb-saed-narrow') : false;
+        let first = true;
+        saed.panel.querySelectorAll(':scope > .mb-saed-group').forEach(g => {
+            const k = g.dataset.mbGroup;
+            const hasRow = Array.from(g.querySelectorAll(':scope > .mb-toolbar-menu-item')).some(visibleRow);
+            const shown = hasRow && (k !== 'load' || narrow) && (!only || k === only);
+            g.hidden = !shown;
+            g.classList.toggle('mb-saed-group-first', shown && first);
+            if (shown) first = false;
+        });
+        const foot = saed.panel.querySelector(':scope > .mb-saed-foot');
+        if (foot) foot.hidden = !!only;
+    }
+
+    /**
+     * Rebuilds the "Needs attention" rows from the indicator registry: one
+     * row per indicator whose menu is in the bar, in registry order, each
+     * opening that indicator's list beside the SAED menu.
+     *
+     * @returns {void}
+     */
+    function _saedRefreshAttention() {
+        const saed = _toolbarMenus.get('saed');
+        if (!saed) return;
+        const groupEl = _saedGroup('attn').panel;
+        groupEl.querySelectorAll(':scope > .mb-toolbar-menu-item').forEach(el => el.remove());
+        _SAED_INDICATORS.forEach(ind => {
+            const m = _toolbarMenus.get(ind.key);
+            if (!m || m.isEmpty() || !m.btn.isConnected) return;
+            const row = document.createElement('button');
+            row.type = 'button';
+            row.id = `mb-saed-attn-row-${ind.key}`;
+            row.className = `mb-saed-attn-row mb-saed-lv-${ind.level}`;
+            row.setAttribute('aria-haspopup', 'true');
+            row.setAttribute('aria-expanded', 'false');
+            const g = document.createElement('span');
+            g.className = 'mb-saed-row-glyph';
+            g.textContent = ind.glyph;
+            const label = document.createElement('span');
+            label.className = 'mb-saed-row-label';
+            label.textContent = ind.label;
+            const count = document.createElement('span');
+            count.className = 'mb-saed-row-count';
+            count.textContent = m.indicatorCount ? String(m.indicatorCount) : '';
+            const arrow = document.createElement('span');
+            arrow.className = 'mb-saed-row-arrow';
+            arrow.textContent = '▸';
+            row.append(g, label, count, arrow);
+            row._mbSubOpen = (focusFirst) => m.open({ parent: saed, besideRow: row, focusFirst });
+            groupEl.appendChild(row);
+            row.classList.add('mb-toolbar-menu-item');
+            row.setAttribute('role', 'menuitem');
+            row.dataset.mbMenuOwner = 'attn';
+        });
+        _saedRefreshGroups();
+    }
+
+    /**
+     * Opens the SAED menu on its Changelog group alone: the Tampermonkey
+     * "📜 ChangeLog" entry. Under the ☰ SAED segment, or at the window's top
+     * right when that segment is hidden or scrolled out of view.
+     *
+     * @returns {void}
+     */
+    function _saedOpenChangelog() {
+        const saed = _saedMenu();
+        _saedRefreshGroups();
+        saed.open({ only: 'log', focusFirst: true });
+    }
+
+    /**
+     * Narrow screen (≤ 520 px): the action segments leave the bar and head
+     * the menu as its "Load" group, so the button stays one line.
+     *
+     * @returns {void}
+     */
+    function _saedApplyNarrow() {
+        if (!_saedBarEl) return;
+        const narrow = window.matchMedia('(max-width: 520px)').matches;
+        _saedBarEl.classList.toggle('mb-saed-narrow', narrow);
+        _saedMarkFirst();
+        _saedRefreshGroups();
+    }
+
+    // ── A fetch runs inside the segment that started it (option (b)) ─────────
+    //
+    // Approved 2026-10-22 (mockup v6, https://claude.ai/artifact/QUqoriyP6qX3D3EutjhyzX):
+    // while pages load, the pressed action segment IS the progress bar and
+    // the Stop button — a blue fill (`--p`), "■ Stop · n / N" — and the line
+    // under the heading says which page, the rows so far and the time left
+    // (`#mb-fetch-progress-wrap`, first in the status line). The other action
+    // segments are disabled. While rows are rendered it is striped; then it
+    // gets its own label back. This replaced the separate Stop button and the
+    // 600–750 px progress bar beside the toolbar.
+
+    /**
+     * The running fetch's segment, or null: `btn`, the label, tooltip and
+     * card it had before, and whether Stop was pressed.
+     *
+     * @type {?{btn: HTMLElement, text: string, title: ?string, mbtt: (string|undefined), stopping: boolean}}
+     */
+    let _saedRun = null;
+
+    /**
+     * Writes the running segment's label: a small square (the Stop glyph)
+     * and `text`.
+     *
+     * @param {string} text
+     * @returns {void}
+     */
+    function _saedRunLabel(text) {
+        if (!_saedRun) return;
+        const sq = document.createElement('span');
+        sq.className = 'mb-seg-stop-glyph';
+        sq.setAttribute('aria-hidden', 'true');
+        _saedRun.btn.replaceChildren(sq, document.createTextNode(text));
+    }
+
+    /**
+     * Turns `btn` into the running fetch's segment. Idempotent for the same
+     * segment; a different one first ends the old run.
+     *
+     * @param {?HTMLElement} btn - The pressed action segment.
+     * @returns {void}
+     */
+    function _saedRunStart(btn) {
+        if (!btn || !btn.classList) return;
+        if (_saedRun && _saedRun.btn === btn) return;
+        _saedRunEnd();
+        _saedRun = {
+            btn,
+            text: btn.textContent,
+            title: btn.getAttribute('title'),
+            mbtt: btn.dataset.mbtt,
+            stopping: false,
+        };
+        btn.classList.add('mb-seg-running');
+        btn.disabled = false;
+        btn.setAttribute('aria-label', 'Stop loading');
+        btn.style.setProperty('--p', '0%');
+        btn.dataset.mbtt = '<strong>Stop loading</strong><br>Stops after the page that is loading now. '
+            + 'The rows loaded so far stay and are shown.';
+        _setTip(btn, 'Stop loading after this page; the rows loaded so far stay');
+        _saedRunLabel('Stop');
+    }
+
+    /**
+     * Moves the running segment's fill and label on: "■ Stop · n / N".
+     *
+     * @param {number} n - Pages (or units) done.
+     * @param {number} total - All of them.
+     * @returns {void}
+     */
+    function _saedRunProgress(n, total) {
+        if (!_saedRun || _saedRun.stopping) return;
+        const pct = total > 0 ? Math.min(100, Math.round((n / total) * 100)) : 0;
+        _saedRun.btn.style.setProperty('--p', `${pct}%`);
+        _saedRunLabel(`Stop · ${n} / ${total}`);
+    }
+
+    /**
+     * Stop, from the running segment or prefix-mode O: the loop ends after
+     * the page that is loading now, and what arrived is rendered.
+     *
+     * @returns {void}
+     */
+    function _saedRequestStop() {
+        if (!_saedRun || _saedRun.stopping) return;
+        Lib.debug('cleanup', 'Stop requested by user.');
+        stopRequested = true;
+        _saedRun.stopping = true;
+        _saedRun.btn.setAttribute('aria-disabled', 'true');
+        _saedRunLabel('Stopping…');
+    }
+
+    /**
+     * The fetch is over and `rows` rows are being rendered: the segment is
+     * striped and disabled until `_saedRunEnd()`.
+     *
+     * @param {number} rows
+     * @returns {void}
+     */
+    function _saedRunRendering(rows) {
+        if (!_saedRun) return;
+        const btn = _saedRun.btn;
+        btn.classList.remove('mb-seg-running');
+        btn.classList.add('mb-seg-rendering');
+        btn.disabled = true;
+        btn.style.removeProperty('--p');
+        btn.replaceChildren(document.createTextNode(`Rendering ${Number(rows).toLocaleString('en-US')} rows…`));
+        fetchProgressLabel.textContent = `Rendering ${Number(rows).toLocaleString('en-US')} rows…`;
+    }
+
+    /**
+     * Gives the segment its label, tooltip and card back, and enables every
+     * action segment again. Focus goes back to it when nothing else has it
+     * (a disabled button drops focus); the render tail's own move to the
+     * global filter comes later and wins, as it always did. Safe to call
+     * when nothing runs.
+     *
+     * @returns {void}
+     */
+    function _saedRunEnd() {
+        fetchProgressWrap.style.display = 'none';
+        if (!_saedRun) return;
+        const { btn, text, title, mbtt } = _saedRun;
+        _saedRun = null;
+        btn.classList.remove('mb-seg-running', 'mb-seg-rendering');
+        btn.style.removeProperty('--p');
+        btn.removeAttribute('aria-label');
+        btn.removeAttribute('aria-disabled');
+        btn.textContent = text;
+        if (title === null) btn.removeAttribute('title'); else btn.setAttribute('title', title);
+        if (mbtt === undefined) delete btn.dataset.mbtt; else btn.dataset.mbtt = mbtt;
+        allActionButtons.forEach(b => { b.disabled = false; });
+        const ae = document.activeElement;
+        if (!ae || ae === document.body) btn.focus({ preventScroll: true });
+    }
+
+    /**
+     * Shows a line of fetch progress under the heading
+     * (`#mb-fetch-progress-wrap`, first in the status line).
+     *
+     * @param {string} text
+     * @returns {void}
+     */
+    function _saedRunStatus(text) {
+        fetchProgressWrap.style.display = 'inline';
+        fetchProgressLabel.textContent = text;
     }
 
     /**
@@ -65186,8 +65758,8 @@ ${sections.join('\n')}
      *   • Highlight-in-place: all occurrences of the query string inside
      *     `scrollAreaEl` are wrapped in `<mark class="mb-dialog-hl">` elements;
      *     items marked with `data-qf-item` that do not match are hidden.
-     *     A `[data-qf-freetext]` container (e.g. `#mb-app-help-body`, the
-     *     Markdown-rendered help content) and any `<pre>` are highlighted the
+     *     A `[data-qf-freetext]` container (prose, such as a Markdown-rendered
+     *     body) and any `<pre>` are highlighted the
      *     same way but NEVER hidden — hiding individual paragraphs/headings
      *     inside prose would destroy its reading order, unlike a flat list of
      *     independent `data-qf-item` rows
@@ -65950,617 +66522,27 @@ ${sections.join('\n')}
     }
 
     /**
-     * Injects the ❓ help dialog's Markdown stylesheet, once.
-     *
-     * **A stylesheet rather than per-node inline styles.** Every other panel in
-     * this script is built this way after the 9.99.736-9.99.745 CSP run, and it
-     * is far less code than setting a dozen properties on each of a long
-     * document's nodes — one place to restyle instead of fifteen.
-     *
-     * **Be precise about the CSP part, because this JSDoc was not.** It used to
-     * say a `style=` attribute is "dropped" on `/account/*`. What that run
-     * actually found is narrower: `style="…"` written into an **`innerHTML`
-     * template** is blocked there, along with `<style>` elements — CSSOM writes
-     * (`el.style.foo = …`) are not, which is why the whole toolbar sets its
-     * styles that way and renders fine on `/account/applications`. This
-     * renderer builds nodes, so it was never in the blocked case, and the
-     * original reason for choosing a stylesheet did not hold. The choice does;
-     * the reason given for it did not, and a wrong reason is worse than none
-     * because it licenses the wrong generalisation next time.
-     *
-     * @returns {void}
-     */
-    function _ensureMdHelpStyle() {
-        if (document.getElementById('mb-md-help-style')) return;
-        // No backtick may appear anywhere below, not even in a comment and not
-        // even as a balanced pair: this is inside a template literal, and a
-        // balanced pair silently closes and reopens it, disabling every rule
-        // after that point while node --check still passes. See CLAUDE.md.
-        const st = GM_addStyle(`
-            .mb-md-h1, .mb-md-h2, .mb-md-h3, .mb-md-h4 {
-                margin: 1.1em 0 0.45em; line-height: 1.25; font-weight: 700; color: #222;
-            }
-            .mb-md-h1 { font-size: 1.45em; border-bottom: 2px solid #ddd; padding-bottom: 0.2em; }
-            .mb-md-h2 { font-size: 1.25em; border-bottom: 1px solid #e6e6e6; padding-bottom: 0.15em; }
-            .mb-md-h3 { font-size: 1.10em; }
-            .mb-md-h4 { font-size: 1.00em; color: #444; }
-            .mb-md-p  { margin: 0.55em 0; }
-            .mb-md-ul, .mb-md-ol { margin: 0.45em 0; padding-left: 1.6em; }
-            .mb-md-ul .mb-md-ul, .mb-md-ol .mb-md-ol,
-            .mb-md-ul .mb-md-ol, .mb-md-ol .mb-md-ul { margin: 0.15em 0; }
-            .mb-md-li { margin: 0.18em 0; }
-            .mb-md-code {
-                font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-                font-size: 0.9em; background: #f2f2f2; border: 1px solid #e2e2e2;
-                border-radius: 3px; padding: 0 3px;
-            }
-            .mb-md-pre {
-                margin: 0.6em 0; padding: 9px 12px; overflow-x: auto;
-                background: #f6f8fa; border: 1px solid #e2e2e2; border-radius: 5px;
-                font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-                font-size: 0.88em; line-height: 1.45; white-space: pre;
-            }
-            .mb-md-quote {
-                margin: 0.6em 0; padding: 2px 0 2px 12px;
-                border-left: 4px solid #d8d8d8; color: #555;
-            }
-            .mb-md-hr { margin: 1.1em 0; border: 0; border-top: 1px solid #e0e0e0; }
-            .mb-md-a { color: #0066cc; text-decoration: none; }
-            .mb-md-a:hover { text-decoration: underline; }
-            .mb-md-table { margin: 0.6em 0; border-collapse: collapse; font-size: 0.94em; }
-            .mb-md-table th, .mb-md-table td {
-                border: 1px solid #ddd; padding: 4px 9px; text-align: left; vertical-align: top;
-            }
-            .mb-md-table th { background: #f2f2f2; font-weight: 600; }
-            .mb-md-details { margin: 0.6em 0; }
-            .mb-md-summary { cursor: pointer; font-weight: 600; color: #333; }
-        `);
-        st.id = 'mb-md-help-style';
-    }
-
-    /**
-     * GitHub's heading-anchor slug for `text`, prefixed so it cannot collide
-     * with an id MusicBrainz's own page already uses.
-     *
-     * The prefix is why a `[…](#anchor)` link cannot simply be handed to the
-     * browser: the file's own fragments are written for GitHub, which stamps
-     * the bare slug. Both sides run through here, so a table of contents
-     * written for GitHub resolves in the dialog too.
-     *
-     * @param {string} text - a heading's text, or a fragment from a link
-     * @returns {string}
-     */
-    function _mdHeadingId(text) {
-        return 'mb-md-' + String(text).toLowerCase()
-            .replace(/[^\w\s-]/g, '').trim().replace(/\s+/g, '-');
-    }
-
-    /**
-     * Renders one line of Markdown INLINE syntax into `parent` as DOM nodes.
-     *
-     * Handles, in one pass so the earliest match wins: backtick code spans,
-     * bold, italic, and links. Everything else is emitted as text.
-     *
-     * **`*italic*` only — `_italic_` is deliberately NOT supported.** Half the
-     * nouns in this script are snake_case settings keys, and an underscore rule
-     * turns `sa_enable_caa_pics` into "sa" + italic "enable_caa" + "pics". That
-     * is not a hypothetical: CommonMark itself refuses intra-word underscore
-     * emphasis for exactly this reason, so leaving the rule out makes this
-     * renderer agree with GitHub on the case that actually occurs, and disagree
-     * only on a spelling the help file does not use.
-     *
-     * **Nodes, never innerHTML.** The source is fetched over the network at
-     * runtime. It is our own file today, but "our own file" is a fact about
-     * the repository, not a guarantee about the bytes a fetch returns, and a
-     * help dialog is not the place to find out. Building nodes also means the
-     * quick-filter's TreeWalker sees exactly the text the reader sees.
-     *
-     * A link's href is admitted only when it is http(s) or a same-document
-     * anchor — so a `javascript:` URL in the source renders as inert text
-     * rather than as a link.
-     *
-     * **An in-document `#anchor` link scrolls the DIALOG, not the page.** The
-     * dialog is a fixed overlay with its own scroll area, so letting the
-     * browser follow the fragment would scroll MusicBrainz's page underneath
-     * while the table of contents appeared to do nothing. The handler resolves
-     * the heading this renderer stamped and scrolls to it instead; the `href`
-     * stays on the element so the link is focusable and reads as a link.
-     *
-     * @param {Element} parent
-     * @param {string} text - one logical line of Markdown
-     * @returns {void}
-     */
-    function _mdInline(parent, text) {
-        const RE = /(`[^`]+`)|(\*\*[^*]+\*\*)|(\*[^*\n]+\*)|(\[[^\]]*\]\([^)\s]+\))/;
-        let rest = String(text);
-        for (;;) {
-            const m = RE.exec(rest);
-            if (!m) break;
-            if (m.index > 0) parent.appendChild(document.createTextNode(rest.slice(0, m.index)));
-            const tok = m[0];
-            if (tok[0] === '`') {
-                const code = document.createElement('code');
-                code.className = 'mb-md-code';
-                code.textContent = tok.slice(1, -1);
-                parent.appendChild(code);
-            } else if (tok.startsWith('**')) {
-                const b = document.createElement('strong');
-                b.textContent = tok.slice(2, -2);
-                parent.appendChild(b);
-            } else if (tok[0] === '*') {
-                const i = document.createElement('em');
-                i.textContent = tok.slice(1, -1);
-                parent.appendChild(i);
-            } else {
-                const cut  = tok.indexOf('](');
-                const label = tok.slice(1, cut);
-                const href  = tok.slice(cut + 2, -1);
-                if (/^(https?:\/\/|#)/i.test(href)) {
-                    const a = document.createElement('a');
-                    a.className = 'mb-md-a';
-                    if (href[0] === '#') {
-                        const targetId = _mdHeadingId(href.slice(1));
-                        a.href = '#' + targetId;
-                        a.addEventListener('click', (ev) => {
-                            ev.preventDefault();
-                            const t = document.getElementById(targetId);
-                            if (t) t.scrollIntoView({ block: 'start' });
-                        });
-                    } else {
-                        a.href = href;
-                        a.target = '_blank';
-                        a.rel = 'noopener noreferrer';
-                    }
-                    _mdInline(a, label);
-                    parent.appendChild(a);
-                } else {
-                    parent.appendChild(document.createTextNode(label));
-                }
-            }
-            rest = rest.slice(m.index + tok.length);
-        }
-        if (rest) parent.appendChild(document.createTextNode(rest));
-    }
-
-    /**
-     * Renders a Markdown document into `container` as DOM nodes.
-     *
-     * Deliberately small. It covers exactly what `ShowAllEntityData_HELP.md`
-     * uses — ATX headings, fenced code, bullet and ordered lists (one nesting
-     * level), GFM pipe tables, blockquotes, rules, paragraphs, and the three
-     * HTML tags that file needs — and the coupling runs that way round: the
-     * help file is written to stay inside this renderer, not the renderer
-     * grown to chase the file. GitHub is where the full Markdown rendering
-     * lives, and the ❓ button goes there by default.
-     *
-     * **`<details>` is rendered OPEN.** Collapsed content is still in the DOM,
-     * so the dialog's quick filter would highlight matches the reader cannot
-     * see — a filter that reports hits into a closed box is worse than no
-     * filter. On GitHub the sections collapse as written; here the whole
-     * document is one searchable surface, which is what this route is for.
-     *
-     * @param {Element} container - emptied before rendering
-     * @param {string} md
-     * @returns {void}
-     */
-    function _mdRenderInto(container, md) {
-        _ensureMdHelpStyle();
-        container.textContent = '';
-
-        const lines = String(md).replace(/\r\n?/g, '\n').split('\n');
-        let i = 0;
-        // The element new blocks are appended to — the container, or an open
-        // <details> while one is being filled.
-        let sink = container;
-        let para = null;
-
-        /** Closes the paragraph being accumulated, if any. @returns {void} */
-        const flushPara = () => {
-            if (!para) return;
-            sink.appendChild(para);
-            para = null;
-        };
-
-        /** @param {string} line @returns {void} */
-        const addToPara = (line) => {
-            if (!para) {
-                para = document.createElement('p');
-                para.className = 'mb-md-p';
-            } else {
-                para.appendChild(document.createTextNode(' '));
-            }
-            _mdInline(para, line);
-        };
-
-        while (i < lines.length) {
-            const raw  = lines[i];
-            const line = raw.trim();
-
-            // ── Fenced code ────────────────────────────────────────────────
-            if (/^```/.test(line)) {
-                flushPara();
-                const body = [];
-                i++;
-                while (i < lines.length && !/^\s*```/.test(lines[i])) { body.push(lines[i]); i++; }
-                i++;                                    // consume the closing fence
-                const pre = document.createElement('pre');
-                pre.className = 'mb-md-pre';
-                pre.textContent = body.join('\n');
-                sink.appendChild(pre);
-                continue;
-            }
-
-            // ── The three HTML tags the help file uses ─────────────────────
-            if (/^<details\b[^>]*>$/i.test(line)) {
-                flushPara();
-                const d = document.createElement('details');
-                d.className = 'mb-md-details';
-                d.open = true;                          // see this function's JSDoc
-                sink.appendChild(d);
-                sink = d;
-                i++;
-                continue;
-            }
-            if (/^<\/details>$/i.test(line)) {
-                flushPara();
-                sink = sink.parentNode && sink.tagName === 'DETAILS' ? sink.parentNode : container;
-                i++;
-                continue;
-            }
-            const sum = line.match(/^<summary\b[^>]*>(.*)<\/summary>$/i);
-            if (sum) {
-                flushPara();
-                const s = document.createElement('summary');
-                s.className = 'mb-md-summary';
-                _mdInline(s, sum[1]);
-                sink.appendChild(s);
-                i++;
-                continue;
-            }
-
-            // ── Blank line ─────────────────────────────────────────────────
-            if (!line) { flushPara(); i++; continue; }
-
-            // ── Heading ────────────────────────────────────────────────────
-            const h = line.match(/^(#{1,6})\s+(.*)$/);
-            if (h) {
-                flushPara();
-                const level = Math.min(h[1].length, 4);
-                const el = document.createElement('h' + level);
-                el.className = 'mb-md-h' + level;
-                el.id = _mdHeadingId(h[2]);
-                _mdInline(el, h[2]);
-                sink.appendChild(el);
-                i++;
-                continue;
-            }
-
-            // ── Horizontal rule ────────────────────────────────────────────
-            if (/^(-{3,}|\*{3,}|_{3,})$/.test(line)) {
-                flushPara();
-                const hr = document.createElement('hr');
-                hr.className = 'mb-md-hr';
-                sink.appendChild(hr);
-                i++;
-                continue;
-            }
-
-            // ── Table ──────────────────────────────────────────────────────
-            // A pipe row followed by a |---|---| separator. Checked before
-            // lists, because a cell may legitimately start with a dash.
-            if (line[0] === '|' && i + 1 < lines.length
-                && /^\s*\|[\s:|-]+\|\s*$/.test(lines[i + 1])) {
-                flushPara();
-                /** @param {string} r @returns {string[]} */
-                const cells = (r) => r.trim().replace(/^\||\|$/g, '').split('|').map((c) => c.trim());
-                const table = document.createElement('table');
-                table.className = 'mb-md-table';
-                const thead = document.createElement('thead');
-                const htr   = document.createElement('tr');
-                cells(line).forEach((c) => {
-                    const th = document.createElement('th');
-                    _mdInline(th, c);
-                    htr.appendChild(th);
-                });
-                thead.appendChild(htr);
-                table.appendChild(thead);
-                const tbody = document.createElement('tbody');
-                i += 2;
-                while (i < lines.length && lines[i].trim()[0] === '|') {
-                    const tr = document.createElement('tr');
-                    cells(lines[i]).forEach((c) => {
-                        const td = document.createElement('td');
-                        _mdInline(td, c);
-                        tr.appendChild(td);
-                    });
-                    tbody.appendChild(tr);
-                    i++;
-                }
-                table.appendChild(tbody);
-                sink.appendChild(table);
-                continue;
-            }
-
-            // ── List ───────────────────────────────────────────────────────
-            const bullet = raw.match(/^(\s*)([-*+]|\d+\.)\s+(.*)$/);
-            if (bullet) {
-                flushPara();
-                const ordered = /\d/.test(bullet[2]);
-                const list = document.createElement(ordered ? 'ol' : 'ul');
-                list.className = ordered ? 'mb-md-ol' : 'mb-md-ul';
-                let nested = null;
-                while (i < lines.length) {
-                    const m = lines[i].match(/^(\s*)([-*+]|\d+\.)\s+(.*)$/);
-                    if (!m) {
-                        // A LAZY CONTINUATION: an indented, non-bullet line
-                        // belongs to the item above it. Without this every
-                        // wrapped bullet ends its list and reopens a new
-                        // one-item list after a stray paragraph — which is
-                        // what the whole "Supported pages" section did, and
-                        // what no assertion in the spec could see, because
-                        // each fragment is individually well-formed. Found by
-                        // scripts/probe-help-md-render.js.
-                        //
-                        // The indent requirement is what keeps it safe: a
-                        // heading, fence, table or rule starts at column 0, so
-                        // none of them can be swallowed as continuation text.
-                        const cont = lines[i].match(/^\s{2,}(\S.*)$/);
-                        const target = nested ? nested.lastElementChild : list.lastElementChild;
-                        if (cont && target) {
-                            target.appendChild(document.createTextNode(' '));
-                            _mdInline(target, cont[1]);
-                            i++;
-                            continue;
-                        }
-                        break;
-                    }
-                    const li = document.createElement('li');
-                    li.className = 'mb-md-li';
-                    _mdInline(li, m[3]);
-                    if (m[1].length >= 2) {
-                        // One nesting level, reopened whenever indentation
-                        // returns. Deeper nesting renders flat at this level,
-                        // which is why the help file does not use it.
-                        if (!nested) {
-                            nested = document.createElement(ordered ? 'ol' : 'ul');
-                            nested.className = ordered ? 'mb-md-ol' : 'mb-md-ul';
-                            (list.lastElementChild || list).appendChild(nested);
-                        }
-                        nested.appendChild(li);
-                    } else {
-                        nested = null;
-                        list.appendChild(li);
-                    }
-                    i++;
-                }
-                sink.appendChild(list);
-                continue;
-            }
-
-            // ── Blockquote ─────────────────────────────────────────────────
-            if (line[0] === '>') {
-                flushPara();
-                const q = document.createElement('div');
-                q.className = 'mb-md-quote';
-                const body = [];
-                while (i < lines.length && lines[i].trim()[0] === '>') {
-                    body.push(lines[i].trim().replace(/^>\s?/, ''));
-                    i++;
-                }
-                _mdInline(q, body.join(' '));
-                sink.appendChild(q);
-                continue;
-            }
-
-            // ── Paragraph ──────────────────────────────────────────────────
-            addToPara(line);
-            i++;
-        }
-        flushPara();
-    }
-
-    /**
-     * The ❓ button's click handler: GitHub by default, the in-script dialog on
-     * Shift-click.
+     * Opens the help page on GitHub in a new tab: the SAED menu's "❓ Help ↗"
+     * row and prefix-mode H.
      *
      * GitHub renders `ShowAllEntityData_HELP.md` with a table of contents,
-     * working anchors, collapsible `<details>` sections and syntax-highlighted
-     * blocks — everything the in-script dialog approximates at best. So the
-     * plain click goes there, and `showAppHelp()` becomes the deliberate
-     * "don't take me off this page" route rather than the only one.
+     * working anchors and collapsible sections. Until 2026-10-22 a Shift-click
+     * rendered the same file inside the page instead; that dialog moved into
+     * VZ_MBLibrary as `Lib.showMarkdownHelp()` for other scripts, and this
+     * script no longer opens it.
      *
      * **`window.open()`, NOT `GM_openInTab()`.** The latter would need a new
      * `@grant`, and adding a grant makes Tampermonkey re-prompt every existing
-     * user for permission on their next update — a real cost paid by everyone,
-     * for a tab that `window.open()` already opens. A click handler is a user
-     * gesture, so no popup blocker is involved.
+     * user for permission on their next update. A click or a key press is a
+     * user gesture, so no popup blocker is involved. `noopener,noreferrer`
+     * because the opened page must not get a `window.opener` handle back into
+     * a MusicBrainz tab this script is operating on.
      *
-     * `noopener,noreferrer` because the opened page must not get a
-     * `window.opener` handle back into a MusicBrainz tab this script is
-     * operating on.
-     *
-     * @param {MouseEvent} [e] - the click; only `shiftKey` is read.
      * @returns {void}
      */
-    function openAppHelp(e) {
-        if (e && e.shiftKey) {
-            Lib.debug('ui', 'Application help: Shift-click — opening the in-script dialog');
-            showAppHelp();
-            return;
-        }
+    function openAppHelp() {
         Lib.info('ui', `Application help: opening ${HELP_GITHUB_URL}`);
         window.open(HELP_GITHUB_URL, '_blank', 'noopener,noreferrer');
-    }
-
-    /**
-     * Show application help dialog
-     * Displays the full feature overview (fetched from GitHub) in a scrollable popup.
-     * Shows a loading spinner while fetching; uses GM cache (TTL 1 h) to avoid redundant
-     * network requests.  Falls back to a Retry button if both fetch and cache miss.
-     *
-     * Reached by Shift-clicking ❓, or by the prefix-mode `H` shortcut — which
-     * stays on this rather than on `openAppHelp()` deliberately. Prefix mode
-     * refuses Shift (`!e.shiftKey` in its own guard), so the keyboard has ONE
-     * route and it should be the one that cannot be reached any other way
-     * without a mouse; the dialog's own title bar carries a link to GitHub, so
-     * neither destination is keyboard-unreachable.
-     *
-     * The source it renders is Markdown since 9.99.1148 — see
-     * `_mdRenderInto()`, which exists because this used to drop the fetched
-     * bytes into a `<pre>`.
-     */
-    async function showAppHelp() {
-        // Build the Force-refresh link first so it can be injected as a titleBarExtra
-        const refreshLink = document.createElement('a');
-        refreshLink.textContent = '🔄 Force refresh';
-        _setTip(refreshLink, 'Bypass cache and download the latest help text from GitHub');
-        refreshLink.style.cssText = `
-            font-size: 0.82em; font-weight: 600; color: #0066cc;
-            cursor: pointer; text-decoration: none;
-            user-select: none; white-space: nowrap;
-        `;
-
-        // The keyboard's only route into help is this dialog (prefix mode
-        // refuses Shift, so there is no Ctrl+M Shift+H), which would otherwise
-        // make GitHub's rendering mouse-only. This link is what keeps both
-        // destinations reachable from either input device.
-        const githubLink = document.createElement('a');
-        githubLink.id = 'mb-app-help-github-link';
-        githubLink.textContent = '📖 Open on GitHub';
-        _setTip(githubLink, 'Open the full help page on GitHub, with its table of contents and collapsible sections');
-        githubLink.href = HELP_GITHUB_URL;
-        githubLink.target = '_blank';
-        githubLink.rel = 'noopener noreferrer';
-        githubLink.style.cssText = `
-            font-size: 0.82em; font-weight: 600; color: #0066cc;
-            cursor: pointer; text-decoration: none;
-            user-select: none; white-space: nowrap;
-        `;
-
-        const result = createInfoDialog({
-            id:                     'mb-app-help-dialog',
-            title:                  '❓ Application Help & Feature Overview',
-            width:                  'min(720px, 94vw)',
-            maxHeight:              '82vh',
-            borderRadius:           '10px',
-            zIndex:                 10002,
-            centerV:                false,        // position below page header at top:60px
-            titleBarExtras:         [githubLink, refreshLink],
-            quickFilter:            true,
-            quickFilterPlaceholder: '🔍 Filter help text…',
-            geoKey:                 'sa_app_help_geometry',
-        });
-        if (!result) return; // toggled closed
-
-        const { scrollArea: contentArea, applyQF: _helpApplyQF } = result;
-        Object.assign(contentArea.style, {
-            padding:    '20px 24px',
-            fontSize:   Lib.libPrefs.lib_content_font_size,
-            fontFamily: Lib.libPrefs.lib_content_font_family,
-            lineHeight: '1.65',
-            color:      '#333',
-        });
-
-        // The rendered Markdown goes here. It used to be a <pre> holding the
-        // whole file verbatim, which was right while the source was a
-        // hand-laid-out .txt and became wrong the moment it was not: Markdown
-        // in a <pre> shows its own syntax.
-        //
-        // data-qf-freetext marks this as a whole-content highlight target for
-        // _createInfoDialogQuickFilter()'s applyQF() — the old single-<pre>
-        // format was covered by its free-text-<pre> branch for free; this
-        // structured Markdown output (headings/paragraphs/lists/tables, none
-        // of them a <pre>, none of them a [data-qf-item] row) needs its own
-        // marker or the filter finds nothing to search at all.
-        const body = document.createElement('div');
-        body.id = 'mb-app-help-body';
-        body.dataset.qfFreetext = '1';
-
-        // Loading indicator shown while fetch is in progress
-        const loadingEl = document.createElement('div');
-        loadingEl.style.cssText = 'text-align:center; padding: 40px 0; color: #888; font-size: 1em;';
-        loadingEl.textContent = '⏳ Loading help text…';
-        contentArea.appendChild(loadingEl);
-
-        // ── Fetch help text (with cache) and render ───────────────────────────
-        /**
-         * Render the fetched text or an error/retry UI inside contentArea.
-         * @param {boolean} [forceRefresh=false] - When true, bypass cache and fetch fresh from GitHub.
-         */
-        async function loadAndRender(forceRefresh = false) {
-            loadingEl.textContent = forceRefresh ? '⏳ Force-fetching latest help text…' : '⏳ Loading help text…';
-            loadingEl.style.color = '#888';
-
-            Lib.info('ui', `Application help: fetching from ${REMOTE_HELP_URL} (forceRefresh=${forceRefresh})`);
-
-            const { data, fromCache, error } = await Lib.fetchCachedText(REMOTE_HELP_URL, CACHE_KEY_HELP, REMOTE_CACHE_TTL_MS, forceRefresh);
-
-            // Remove loading indicator and any existing content
-            if (contentArea.contains(loadingEl)) contentArea.removeChild(loadingEl);
-            if (contentArea.contains(body))      contentArea.removeChild(body);
-
-            if (data) {
-                _mdRenderInto(body, data);
-                if (fromCache && error) {
-                    // Stale cache — add a subtle warning banner
-                    const warn = document.createElement('div');
-                    warn.style.cssText = 'background:#fff3cd; border:1px solid #ffc107; border-radius:4px; padding:6px 10px; margin-bottom:12px; font-size:0.88em; color:#856404;';
-                    warn.textContent = `⚠️ ${error} — content may be outdated.`;
-                    contentArea.appendChild(warn);
-                }
-                contentArea.appendChild(body);
-                const sourceLabel = fromCache ? '📦 cache' : '🌐 network (fresh)';
-                Lib.info('ui', `Application help displayed: ${data.length} bytes, source=${sourceLabel}${error ? ' (stale, ' + error + ')' : ''}`);
-                // Re-apply any active quick-filter so matches are highlighted in
-                // the newly rendered content (e.g. after a force-refresh).
-                if (_helpApplyQF) _helpApplyQF();
-            } else {
-                // Both fetch and cache failed — show error with Retry button
-                const errEl = document.createElement('div');
-                errEl.style.cssText = 'text-align:center; padding:30px; color:#c62828;';
-                // GM_addStyle so this error message's CSS is exempt from page
-                // CSP style-src restrictions. Fully static, safe to inject once.
-                if (!document.getElementById('sa-help-error-style')) {
-                    const heStyle = GM_addStyle(`
-                        .sa-help-err-title { font-size:1.1em; margin-bottom:12px; }
-                        .sa-help-err-msg { color:#555; margin-bottom:18px; font-size:0.9em; }
-                    `);
-                    heStyle.id = 'sa-help-error-style';
-                }
-                errEl.innerHTML = `<div class="sa-help-err-title">⚠️ Could not load help text</div>
-<div class="sa-help-err-msg">${error}</div>`;
-                const retryBtn = document.createElement('button');
-                retryBtn.textContent = '↺ Retry';
-                retryBtn.style.cssText = 'padding:7px 20px; border-radius:6px; border:1px solid #888; cursor:pointer; background:#eee; font-size:0.95em;';
-                retryBtn.onclick = () => {
-                    contentArea.innerHTML = '';
-                    contentArea.appendChild(loadingEl);
-                    loadAndRender();
-                };
-                errEl.appendChild(retryBtn);
-                contentArea.appendChild(errEl);
-                Lib.warn('ui', `Application help unavailable: ${error}`);
-            }
-        }
-
-        // Wire Force refresh link
-        refreshLink.addEventListener('click', async () => {
-            refreshLink.textContent = '⏳ Refreshing…';
-            refreshLink.style.pointerEvents = 'none';
-            refreshLink.style.color = '#888';
-            contentArea.innerHTML = '';
-            contentArea.appendChild(loadingEl);
-            await loadAndRender(true);
-            refreshLink.textContent = '✅ Refreshed';
-            setTimeout(() => {
-                refreshLink.textContent = '🔄 Force refresh';
-                refreshLink.style.pointerEvents = '';
-                refreshLink.style.color = '#0066cc';
-            }, 2500);
-        });
-
-        Lib.info('ui', 'Application help dialog opened');
-        loadAndRender();
     }
 
     /**
@@ -72426,6 +72408,34 @@ a { color: #1565c0; }`;
     // ever changed.
     controlsContainer.style.cssText = '--mb-toolbar-gap:8px; display:inline-flex; flex-wrap:wrap; align-items:center; gap:var(--mb-toolbar-gap); margin-left:10px; vertical-align:middle; line-height:1;';
 
+    // The SAED button: one segmented button in four areas (see "The SAED
+    // button" above `_saedMenuName()`). Its height and font size are still
+    // `sa_ui_action_btn_style`'s, its colours `sa_ui_toolbar_menu_btn_style`'s.
+    const saedBar = document.createElement('span');
+    saedBar.id = 'mb-saed-bar';
+    saedBar.className = 'mb-saed-bar';
+    saedBar.setAttribute('role', 'toolbar');
+    saedBar.setAttribute('aria-label', SCRIPT_NAME);
+    {
+        const [fontSize, padding, height, borderRadius] =
+            parseCondensedStyle(Lib.settings.sa_ui_action_btn_style, '0.8em|2px 8px|24px|6px');
+        const [bg, color, border, bgHover] =
+            parseCondensedStyle(Lib.settings.sa_ui_toolbar_menu_btn_style, '#ECEFF1|#263238|1px solid #B0BEC5|#CFD8DC');
+        saedBar.style.cssText = `--mb-saed-font:${fontSize}; --mb-saed-pad:${padding}; --mb-saed-h:${height};`
+            + ` --mb-saed-radius:${borderRadius}; --mb-saed-bg:${bg}; --mb-saed-fg:${color};`
+            + ` --mb-saed-border:${border}; --mb-saed-hover:${bgHover};`;
+    }
+    ['actions', 'disc', 'attn', 'menu'].forEach(area => {
+        const el = document.createElement('span');
+        el.className = 'mb-saed-area';
+        el.dataset.mbArea = area;
+        el.setAttribute('role', 'group');
+        saedBar.appendChild(el);
+    });
+    const saedActions = saedBar.querySelector('[data-mb-area="actions"]');
+    controlsContainer.appendChild(saedBar);
+    _saedBarEl = saedBar;
+
     const allActionButtons = [];
 
     // The button element from the most recent startFetchingProcess() invocation —
@@ -72450,41 +72460,28 @@ a { color: #1565c0; }`;
     // Superscript numerals for Ctrl-M + 1..9 mnemonic display on action buttons
     const SUPERSCRIPT_DIGITS = ['¹', '²', '³', '⁴', '⁵', '⁶', '⁷', '⁸', '⁹'];
 
-    // A "| <Label>:" ahead of the button run, for page types whose buttons
-    // were shortened enough (e.g. "Artists"/"Various Artists") that the group
-    // they belong to ("RGs", "Releases", …) needs to be named once rather than
-    // repeated on every button — see org/remove-showall.org TODO 2. The "|"
-    // reuses the same divider style as the one between the buttons and the
-    // 📦 Data ▾ menu; the label itself is bold but deliberately smaller than
-    // the native h1 text it follows, so it reads as a caption, not a title.
+    // A label ahead of the button run, for page types whose buttons were
+    // shortened enough (e.g. "Artists"/"Various Artists") that the group they
+    // belong to ("RGs", "Releases", …) needs to be named once rather than
+    // repeated on every button — see org/remove-showall.org TODO 2. Since the
+    // SAED button it is a muted, non-clickable LABEL segment at the start of
+    // the actions area ("RGS 🧮¹ Artist | 🧮² Various Artists").
     if (activeDefinition.buttonGroupLabel) {
-        const groupDivider = document.createElement('span');
-        groupDivider.textContent = ' | ';
-        groupDivider.className = 'mb-button-group-label-divider';
-        groupDivider.style.cssText = uiButtonDividerCSS();
-        controlsContainer.appendChild(groupDivider);
-
-        const groupLabelEl = document.createElement('strong');
-        groupLabelEl.textContent = `${activeDefinition.buttonGroupLabel}:`;
-        groupLabelEl.style.cssText = 'margin-right:2px; font-size:0.65em;';
-        controlsContainer.appendChild(groupLabelEl);
+        const groupLabelEl = document.createElement('span');
+        groupLabelEl.className = 'mb-seg mb-seg-label mb-button-group-label';
+        groupLabelEl.textContent = activeDefinition.buttonGroupLabel;
+        saedActions.appendChild(groupLabelEl);
     }
 
     buttonsToRender.forEach((conf, btnIndex) => {
-        // A button that opens a group of its own: the same "| <Label>:" as
-        // buttonGroupLabel above, before it (discogs.com's label page:
-        // "Newest:" 500 1,000 5,000 "Oldest:" 500 1,000 "Then:" All).
+        // A button that opens a group of its own: the same label segment as
+        // buttonGroupLabel above, before it, after a heavier rule (discogs.com's
+        // label page: "Newest" 500 1,000 5,000 "Oldest" 500 1,000 "Then" All).
         if (conf.groupLabel) {
-            const groupDivider = document.createElement('span');
-            groupDivider.textContent = ' | ';
-            groupDivider.className = 'mb-button-group-label-divider';
-            groupDivider.style.cssText = uiButtonDividerCSS();
-            controlsContainer.appendChild(groupDivider);
-            const groupLabelEl = document.createElement('strong');
-            groupLabelEl.className = 'mb-button-group-label';
-            groupLabelEl.textContent = `${conf.groupLabel}:`;
-            groupLabelEl.style.cssText = 'margin-right:2px; font-size:0.65em;';
-            controlsContainer.appendChild(groupLabelEl);
+            const groupLabelEl = document.createElement('span');
+            groupLabelEl.className = 'mb-seg mb-seg-label mb-seg-group-start mb-button-group-label';
+            groupLabelEl.textContent = conf.groupLabel;
+            saedActions.appendChild(groupLabelEl);
         }
         const eb = document.createElement('button');
 
@@ -72640,7 +72637,7 @@ a { color: #1565c0; }`;
             ? `🧮${superscript} ` + _displayLabel.replace(/^🧮\s*/, '')
             : `🧮${superscript} ` + _displayLabel;
         eb.textContent = labelText;
-        eb.style.cssText = uiActionBtnBaseCSS();
+        eb.className = 'mb-seg mb-seg-action';
         eb.type = 'button';
 
         // Plain-text tooltip description, based on conf.label (never shortLabel) —
@@ -72700,47 +72697,41 @@ a { color: #1565c0; }`;
 
         // Pass the entire config object
         eb.dataset.label = conf.label;  // stable original label — survives superscript/textContent mutations
-        eb.onclick = (e) => startFetchingProcess(e, conf, activeDefinition);
+        // While its fetch runs the segment is the Stop button (`_saedRunStart()`).
+        eb.onclick = (e) => {
+            if (_saedRun && _saedRun.btn === eb) {
+                e.preventDefault();
+                e.stopPropagation();
+                _saedRequestStop();
+                return;
+            }
+            startFetchingProcess(e, conf, activeDefinition);
+        };
         // A button that is not part of the page type's own run ("🗂 Sidebar as
-        // tables") gets a divider first, so it does not read as one of them
-        // (or as part of their "RGs:"-style group label).
-        if (conf.ownGroup) {
-            const div = document.createElement('span');
-            div.textContent = ' | ';
-            div.className = 'mb-button-own-group-divider';
-            div.style.cssText = uiButtonDividerCSS();
-            controlsContainer.appendChild(div);
-        }
-        controlsContainer.appendChild(eb);
+        // tables") starts after a heavier rule, so it does not read as one of
+        // them (or as part of their "RGs"-style group label).
+        if (conf.ownGroup) eb.classList.add('mb-seg-group-start', 'mb-button-own-group');
+        saedActions.appendChild(eb);
         allActionButtons.push(eb);
     });
 
-    // Add divider between action buttons and Save to Disk button
-    const initialDivider = document.createElement('span');
-    initialDivider.id = 'mb-button-divider-initial';
-    initialDivider.textContent = ' | ';
-    initialDivider.className = 'mb-button-divider-initial';
-    initialDivider.style.cssText = uiButtonDividerCSS();
-    controlsContainer.appendChild(initialDivider);
-
-    // Divider between ❓ Help and the ⚠️ WARNING / ❌ ERROR findings menus.
-    // Its position comes from _TOOLBAR_TAIL_ORDER; it stays hidden until
-    // _updateFindingMenus() has attached at least one of the two menus.
-    const findingsDivider = document.createElement('span');
-    findingsDivider.id = 'mb-button-divider-findings';
-    findingsDivider.textContent = ' | ';
-    findingsDivider.className = 'mb-button-divider-findings';
-    findingsDivider.style.cssText = `${uiButtonDividerCSS()} display:none;`;
-    controlsContainer.appendChild(findingsDivider);
+    // The same actions as rows of the SAED menu's "Load" group, shown only on
+    // a narrow screen, where the action segments leave the bar
+    // (`_saedApplyNarrow()`). A row clicks its segment, so the fetch, its
+    // shortcut and its tooltip stay the segment's own.
+    allActionButtons.forEach(eb => {
+        const row = document.createElement('button');
+        row.type = 'button';
+        row.className = 'mb-saed-load-row';
+        row.textContent = eb.dataset.label ? `🧮 ${eb.dataset.label.replace(/^Show(?: all)?\s+/, '').replace(/^🧮\s*/, '')}` : eb.textContent;
+        row.addEventListener('click', () => eb.click());
+        _saedGroup('load').adopt(row);
+    });
 
     // Add Save to Disk button
     const saveToDiskBtn = document.createElement('button');
     saveToDiskBtn.id = 'mb-save-to-disk-btn';
     saveToDiskBtn.innerHTML = makeButtonHTML('Save to Disk', 'S', '💾');
-    const _saveStyle = uiSaveBtnCSS();
-    saveToDiskBtn.style.cssText = _saveStyle.css;
-    saveToDiskBtn.onmouseover = () => { saveToDiskBtn.style.backgroundColor = _saveStyle.hoverBg; };
-    saveToDiskBtn.onmouseout  = () => { saveToDiskBtn.style.backgroundColor = _saveStyle.normalBg; };
     saveToDiskBtn.type = 'button';
     _setTip(saveToDiskBtn, `Save current table data to disk in a serialized format as Gzipped JSON (${buildShortcutHint('sa_shortcut_save_to_disk', 'Ctrl+S', 'S')})`);
     saveToDiskBtn.onclick = () => saveTableDataToDisk();
@@ -72755,10 +72746,6 @@ a { color: #1565c0; }`;
     const loadFromDiskBtn = document.createElement('button');
     loadFromDiskBtn.id = 'mb-load-from-disk-btn';
     loadFromDiskBtn.innerHTML = makeButtonHTML('Load from Disk', 'L', '📂');
-    const _loadStyle = uiLoadBtnCSS();
-    loadFromDiskBtn.style.cssText = _loadStyle.css;
-    loadFromDiskBtn.onmouseover = () => { loadFromDiskBtn.style.backgroundColor = _loadStyle.hoverBg; };
-    loadFromDiskBtn.onmouseout  = () => { loadFromDiskBtn.style.backgroundColor = _loadStyle.normalBg; };
     loadFromDiskBtn.type = 'button';
     _setTip(loadFromDiskBtn, `Load table data from disk (serialized JSON file in Gzipped format) (${buildShortcutHint('sa_shortcut_load_from_disk', 'Ctrl+L', 'L')})`);
 
@@ -72793,10 +72780,15 @@ a { color: #1565c0; }`;
         controlsContainer.appendChild(fileInput);
     }
 
-    // Add global settings/configuration button
+    // The SAED menu itself, so its segment is the bar's last area from the
+    // initial render on, and its groups exist for the rows adopted below.
+    _saedMenu();
+
+    // Settings — a row of the SAED menu's "Help" group, before Help (it was
+    // the left half of the ⚙️❓ pill until the SAED button).
     const settingsBtn = document.createElement('button');
     settingsBtn.id = 'mb-settings-btn';
-    settingsBtn.textContent = '⚙️';
+    settingsBtn.innerHTML = makeButtonHTML('Settings', 'S', '⚙️');
     settingsBtn.type = 'button';
     _setTip(settingsBtn, `Open userscript settings manager to configure script behavior (${buildShortcutHint('sa_shortcut_open_settings', 'Ctrl+,', ',')})`);
     settingsBtn.onclick = () => {
@@ -72823,99 +72815,51 @@ a { color: #1565c0; }`;
             getShortcutDisplay('sa_shortcut_show_shortcuts_help', 'Ctrl+K'));
     }
 
-    // ⚙️ and ❓ stay pinned in the bar rather than folding into a menu: they are
-    // the two controls a user reaches for when something is wrong, and burying
-    // "how do I configure this" behind a menu is the opposite of what the
-    // redesign is for. _orderToolbar() keeps them last, in that order.
-    //
-    // They are also drawn as ONE segmented pill — see the `.mb-toolbar-pinned-btn`
-    // rules in the main stylesheet. A CLASS, not a wrapper element: they must
-    // stay DIRECT children of #mb-show-all-controls-container, because
-    // _TOOLBAR_TAIL_ORDER re-appends them there and toolbar-menus.spec.js reads
-    // the container's own children to assert they are the last two. A wrapper
-    // would satisfy neither.
-    settingsBtn.classList.add('mb-toolbar-pinned-btn');
-    settingsBtn.style.cssText = uiSettingsBtnCSS();
-    controlsContainer.appendChild(settingsBtn);
+    // ⚙️ Settings and ❓ Help are the SAED menu's "Help" group (approved
+    // mockup v3: Settings before Help). They used to be pinned in the bar as
+    // the ⚙️❓ pill; the whole bar is one button now, and the menu is where a
+    // user looks for "how do I configure this".
+    _saedGroup('help').adopt(settingsBtn, getShortcutDisplay('sa_shortcut_open_settings', 'Ctrl+,'));
 
-    // Add application help button (always visible, right of ⚙️ settings button)
+    // Help opens the help page on GitHub, only (2026-10-22: the in-page
+    // Shift-click dialog moved into VZ_MBLibrary as Lib.showMarkdownHelp()).
     const appHelpBtn = document.createElement('button');
     appHelpBtn.id = 'mb-app-help-btn';
-    appHelpBtn.textContent = '❓';
-    _setTip(appHelpBtn, `Open the help page on GitHub — Shift-click to read it here instead (${getPrefixDisplay()}, then H)`); // H has no direct Ctrl+H shortcut — prefix mode only
-    appHelpBtn.classList.add('mb-toolbar-pinned-btn');   // right half of the ⚙️❓ pill
-    appHelpBtn.style.cssText = uiHelpBtnCSS();
+    appHelpBtn.innerHTML = makeButtonHTML('Help ↗', 'H', '❓');
+    _setTip(appHelpBtn, `Open the help page on GitHub, in a new tab (${getPrefixDisplay()}, then H)`); // H has no direct Ctrl+H shortcut — prefix mode only
     appHelpBtn.type = 'button';
     appHelpBtn.onclick = openAppHelp;
-    controlsContainer.appendChild(appHelpBtn);
+    _saedGroup('help').adopt(appHelpBtn, `${getPrefixDisplay()} H`);
 
-    // --- Fetch progress bar (shown during data loading, hidden otherwise) ---
+    // Changelog: two pages on GitHub, one per reader (scripts/build-changelog-pages.py).
+    [
+        { id: 'mb-saed-whatsnew-btn', glyph: '📜', label: "What's new ↗", url: CHANGELOG_RELEASES_URL,
+          tip: 'What changed for you in each published version, in plain words — opens on GitHub in a new tab' },
+        { id: 'mb-saed-devlog-btn', glyph: '🗒', label: 'Full development log ↗', url: CHANGELOG_LOG_URL,
+          tip: 'Every version, with the technical details behind each change — opens on GitHub in a new tab' },
+    ].forEach(({ id, glyph, label, url, tip }) => {
+        const row = document.createElement('button');
+        row.id = id;
+        row.type = 'button';
+        row.textContent = `${glyph} ${label}`;
+        _setTip(row, tip);
+        row.addEventListener('click', () => {
+            Lib.info('ui', `Changelog: opening ${url}`);
+            window.open(url, '_blank', 'noopener,noreferrer');
+        });
+        _saedGroup('log').adopt(row);
+    });
+
+    // --- Fetch progress line (shown during data loading, hidden otherwise) ---
+    // The bar itself is the running action segment (`_saedRunStart()`); this
+    // is the words beside it, first in the status line under the heading
+    // (placed there with `statusDisplaysContainer`).
     const fetchProgressWrap = document.createElement('span');
     fetchProgressWrap.id = 'mb-fetch-progress-wrap';
-    fetchProgressWrap.style.cssText = 'display:none; align-items:center; vertical-align:middle;';
-
-    // Custom progress bar: outer track + inner fill + label all stacked in one element
-    const fetchProgressOuter = document.createElement('span');
-    fetchProgressOuter.id = 'mb-fetch-progress-outer';
-    fetchProgressOuter.style.cssText = [
-        'display:inline-block',
-        'position:relative',
-        'width:auto',
-        // min-width must fit the longest label this bar ever shows without
-        // clipping — fetchProgressFill/-Label are both position:absolute, so
-        // they contribute nothing to this element's own auto width; it always
-        // renders at exactly min-width (never grows to fit content) unless
-        // min-width itself is wide enough. 420px fit the original paginated-
-        // fetch label ("Loading page 999 of 999... (99999 rows) - 9999.9s
-        // left", ~55 chars) but not the longer overflow-tracks label
-        // ("Loading overflow tracks: medium 20 of 20... (99999 tracks) -
-        // 9999.9s left", ~73 chars) added later — see DEBUG-NOTES.md.
-        'min-width:600px',
-        'max-width:750px',
-        'height:20px',
-        'background:#e0e0e0',
-        'border-radius:4px',
-        'overflow:hidden',
-        'vertical-align:middle',
-        'border:1px solid #bbb',
-    ].join(';');
-
-    const fetchProgressFill = document.createElement('span');
-    fetchProgressFill.id = 'mb-fetch-progress-fill';
-    fetchProgressFill.style.cssText = [
-        'display:block',
-        'position:absolute',
-        'top:0',
-        'left:0',
-        'height:100%',
-        'width:0%',
-        'background:#ffcccc',     // light red — initial colour before first progress update
-        'transition:width 0.2s ease, background 0.3s ease',
-        'border-radius:3px 0 0 3px',
-    ].join(';');
-
+    fetchProgressWrap.style.cssText = 'display:none; font-size:0.95em; color:#2f5f9e; font-weight:bold; font-variant-numeric:tabular-nums; white-space:nowrap;';
     const fetchProgressLabel = document.createElement('span');
     fetchProgressLabel.id = 'mb-fetch-progress-label';
-    fetchProgressLabel.style.cssText = [
-        'position:absolute',
-        'top:0',
-        'left:0',
-        'width:100%',
-        'height:100%',
-        'display:flex',
-        'align-items:center',
-        'justify-content:center',
-        'font-size:0.75em',
-        'font-weight:bold',
-        'color:#333',           // dark text — always readable on the light pastel fill colours
-        'white-space:nowrap',
-        'pointer-events:none',
-    ].join(';');
-
-    fetchProgressOuter.appendChild(fetchProgressFill);
-    fetchProgressOuter.appendChild(fetchProgressLabel);
-    fetchProgressWrap.appendChild(fetchProgressOuter);
-    controlsContainer.appendChild(fetchProgressWrap);
+    fetchProgressWrap.appendChild(fetchProgressLabel);
 
     // Every control the initial render contributes now exists. The 📦 Data ▾ /
     // 🛠 View ▾ buttons were only adopted INTO above — this is what attaches
@@ -72972,13 +72916,6 @@ a { color: #1565c0; }`;
     const preFilterMsg = document.createElement('span');
     preFilterMsg.id = 'mb-preload-filter-msg';
     preFilterMsg.style.cssText = 'font-size:0.8em; color:red; margin-left:4px; font-weight:bold; white-space:nowrap; display:none;';
-
-    const stopBtn = document.createElement('button');
-    stopBtn.id = 'mb-stop-btn';
-    stopBtn.innerHTML = makeButtonHTML('Stop', 'o');
-    stopBtn.type = 'button';
-    stopBtn.style.cssText = uiStopBtnCSS();
-    _setTip(stopBtn, `Stop the current data fetching process from the MusicBrainz backend database (${getPrefixDisplay()}, then O)`);
 
     const globalStatusDisplay = document.createElement('span');
     globalStatusDisplay.id = 'mb-global-status-display';
@@ -74136,9 +74073,11 @@ a { color: #1565c0; }`;
     }
 
     /**
-     * Creates (once) one findings menu and paints its button in the level's
-     * colours: the warn/severe tint settings the cells use, with the summary
-     * buttons' old text and border colours.
+     * Creates (once) one findings menu: an attention INDICATOR of the SAED
+     * button (`_SAED_INDICATORS`), a segment in its `attn` area tinted by
+     * level — red for errors, amber for warnings — that reads "❌ 1 ▾" /
+     * "⚠️ 43 ▾" and opens its list; and a row of the SAED menu's "Needs
+     * attention" group opening the same list beside the menu.
      *
      * @param {('warn'|'error')} level
      * @returns {object} The `createToolbarMenu()` descriptor.
@@ -74146,25 +74085,13 @@ a { color: #1565c0; }`;
     function _ensureFindingMenu(level) {
         const isErr = level === 'error';
         const menu = createToolbarMenu({
-            key:   isErr ? 'findings-error' : 'findings-warn',
-            id:    isErr ? 'mb-findings-error-menu-btn' : 'mb-findings-warn-menu-btn',
-            label: isErr ? '❌ ERROR' : '⚠️ WARNING',
-            title: '',
+            key:     isErr ? 'findings-error' : 'findings-warn',
+            id:      isErr ? 'mb-findings-error-menu-btn' : 'mb-findings-warn-menu-btn',
+            label:   isErr ? '❌' : '⚠️',
+            title:   '',
+            segment: true,
         });
-        const btn = menu.btn;
-        if (!btn.dataset.mbFindingsStyled) {
-            btn.dataset.mbFindingsStyled = '1';
-            btn.classList.add('mb-findings-menu-btn');
-            const bg = isErr
-                ? (Lib.settings.sa_release_tracks_length_mismatch_severe_bg || '#f8d7da')
-                : (Lib.settings.sa_release_tracks_length_mismatch_warn_bg || '#fff3cd');
-            btn.style.backgroundColor = bg;
-            btn.style.color = isErr ? '#a33' : '#8a6d00';
-            btn.style.border = `1px solid ${isErr ? '#e08a8a' : '#e0c14a'}`;
-            btn.style.fontWeight = 'bold';
-            btn.onmouseover = () => { btn.style.filter = 'brightness(0.94)'; };
-            btn.onmouseout  = () => { btn.style.filter = ''; };
-        }
+        menu.btn.classList.add('mb-findings-menu-btn', 'mb-saed-attn-seg', isErr ? 'mb-saed-lv-alert' : 'mb-saed-lv-warn');
         return menu;
     }
 
@@ -74358,9 +74285,14 @@ a { color: #1565c0; }`;
             else menu.panel.querySelectorAll('.mb-toolbar-menu-item').forEach(el => el.remove());
             const total = list.reduce((s, x) => s + x.n, 0);
             const word = level === 'error' ? 'ERROR' : 'WARNING';
-            // Only the "Check title style" row: no count to show yet.
-            const count = list.length ? ` (${total})` : '';
-            menu.setLabel(level === 'error' ? `❌ ${word}${count}` : `⚠️ ${word}${count}`);
+            // Only the "Check title style" row: no count to show yet, and the
+            // segment stays (the one indicator shown at zero: it is where that
+            // check is started).
+            menu.indicatorCount = list.length ? total : 0;
+            menu.setLabel(`${level === 'error' ? '❌' : '⚠️'}${list.length ? ` ${total}` : ''}`);
+            menu.btn.setAttribute('aria-label', list.length
+                ? `${total} ${level === 'error' ? 'error' : 'warning'}${total === 1 ? '' : 's'}`
+                : 'Warnings: check title style');
             _setTip(menu.btn, list.length
                 ? `${list.length} kind${list.length === 1 ? '' : 's'} of ${word.toLowerCase()} on this page: `
                     + list.map(x => `${x.f.label} (${x.n})`).join(', ')
@@ -74368,26 +74300,17 @@ a { color: #1565c0; }`;
                 : `No ${word.toLowerCase()} on this page so far. "Check title style" checks its titles against the MusicBrainz style guide.`);
             const anyOn = list.some(x => x.state !== 'off');
             menu.btn.setAttribute('aria-pressed', anyOn ? 'true' : 'false');
-            menu.btn.style.boxShadow = anyOn ? 'inset 0 0 0 2px currentColor' : '';
         });
-        const container = document.getElementById('mb-show-all-controls-container');
-        // A menu with rows whose button is not in the bar yet (the bar was
+        // A menu with rows whose segment is not in the bar yet (the bar was
         // still detached on the pass that built its rows) needs one more
         // ordering pass; anything else unchanged costs nothing here.
         const detached = ['findings-warn', 'findings-error'].some(k => {
             const m = _toolbarMenus.get(k);
-            return m && container && !m.isEmpty() && m.btn.parentNode !== container;
+            return m && !m.isEmpty() && m.btn.parentNode !== _saedAreaFor(k);
         });
         if (changed || detached) {
             _orderToolbar();
-            const divider = document.getElementById('mb-button-divider-findings');
-            if (divider) {
-                const attached = ['findings-warn', 'findings-error'].some(k => {
-                    const m = _toolbarMenus.get(k);
-                    return m && container && m.btn.parentNode === container;
-                });
-                divider.style.display = attached ? '' : 'none';
-            }
+            _saedRefreshAttention();
         }
         _updateFindingChips();
     }
@@ -74623,7 +74546,7 @@ a { color: #1565c0; }`;
         Lib.debug('filter', `Column filters cleared for table: ${tableName}`);
     }
 
-    controlsContainer.insertBefore(stopBtn, initialDivider);
+    _orderToolbar(controlsContainer);
     // Filter container is NOT appended here anymore; moved to H2 later
 
     // GM_addStyle so this is exempt from page CSP style-src restrictions
@@ -74641,12 +74564,6 @@ a { color: #1565c0; }`;
         table.tbl { position: relative; z-index: 0; }
 
         .mb-sorting-active, .mb-sorting-active * { cursor: wait !important; }
-        button.mb-show-all-btn-loading:disabled {
-            cursor: default !important;
-            color: buttontext !important;
-            opacity: 1 !important;
-            border: 1px solid #767676 !important;
-        }
 
         /* ── Button press-down effect (active state) ──────────────────────────
            H1 action-bar buttons already carry transition:transform 0.1s,box-shadow 0.1s
@@ -74961,69 +74878,140 @@ a { color: #1565c0; }`;
             border-bottom-right-radius: 3px !important;
         }
 
-        /* The h1 toolbar's pinned pair, drawn as a FOURTH segmented run:
-           #mb-settings-btn + #mb-app-help-btn as one pill. Same idiom as the
-           three above and the same !important reason — both buttons set
-           border and border-radius inline, from uiSettingsBtnCSS() and
-           uiHelpBtnCSS(), and a normal-priority rule cannot outrank inline.
-
-           SELECTED BY CLASS, not by id prefix, because these two ids share
-           none. The run-relative pair below is deliberate and is the rule
-           CLAUDE.md records for the sort group: :first-of-type/:last-of-type
-           count elements of the same TAG, and these <button>s are neither the
-           first nor the last button among their siblings — the fetch buttons
-           and the menu buttons are buttons too.
-
-           IT CANCELS THE FLEX GAP. Unlike the h2 runs, which sit in inline
-           layout and space themselves with margins, this run lives in a
-           display:inline-flex container whose gap applies between every pair
-           of children. A flex gap cannot be suppressed for one pair, so the
-           second segment pulls back by exactly one --mb-toolbar-gap. Both
-           sides read that same custom property, so the pill cannot split open
-           if the gap is ever retuned.
-           (No backtick may appear in this comment — it sits inside a template
-           literal, and even a balanced pair closes and reopens it. This one
-           cost a debugging round on the commit that wrote it.)
-
-           BACKGROUNDS ARE NOT SET HERE, unlike the radii. They come from
-           sa_ui_settings_btn_style / sa_ui_help_btn_style, whose defaults now
-           match sa_ui_toolbar_menu_btn_style — so the pill reads as one
-           control by default while a user who has chosen their own colours
-           still gets them. Forcing one ground here would silently override
-           that choice. */
-        .mb-toolbar-pinned-btn {
-            border-radius: 0 !important;
-            border-left-width: 0 !important;
-            border-right-width: 0 !important;
+        /* The SAED button (#mb-saed-bar): everything the script adds to the
+           page heading as ONE segmented button, in four areas (actions,
+           disc, attn, menu). Hairlines split the segments of an area; a
+           heavier rule splits the areas; the first visible area has none
+           (.mb-saed-first, set by _saedMarkFirst()). Its size and colours
+           come from two settings through custom properties set on the bar
+           (sa_ui_action_btn_style, sa_ui_toolbar_menu_btn_style).
+           Approved mockup v6: https://claude.ai/artifact/QUqoriyP6qX3D3EutjhyzX
+           (No backtick may appear in this comment: template literal.) */
+        .mb-saed-bar {
+            display: inline-flex;
+            align-items: stretch;
+            max-width: 100%;
+            height: var(--mb-saed-h, 24px);
+            box-sizing: border-box;
+            border: var(--mb-saed-border, 1px solid #B0BEC5);
+            border-radius: var(--mb-saed-radius, 6px);
+            background: var(--mb-saed-bg, #ECEFF1);
+            color: var(--mb-saed-fg, #263238);
+            font-size: var(--mb-saed-font, 0.8em);
+            font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+            font-weight: normal;
+            line-height: 1;
+            overflow: hidden;
+            vertical-align: middle;
         }
-        .mb-toolbar-pinned-btn + .mb-toolbar-pinned-btn {
-            /* The single hairline between the two halves. Only the LEFT border
-               is re-grown; leaving the previous segment's right border in place
-               too would draw every divider twice. */
-            border-left-width: 1px !important;
+        .mb-saed-area {
+            display: inline-flex;
+            align-items: stretch;
+            border-left: 2px solid rgba(38, 50, 56, 0.35);
         }
-        .mb-toolbar-pinned-btn:has(+ .mb-toolbar-pinned-btn) {
-            /* The gap close, and it sits on the LEFT half deliberately.
-               The bar is flex-wrap:wrap, so at some widths the two halves land
-               on different lines — measured at 1040-1080px and 550-590px by
-               scripts/probe-toolbar-pinned-pill.js, which is ordinary window
-               territory, not an edge case. With the pull on the RIGHT half it
-               started 8px outside the bar's own left edge on the new line.
-               Here the same pull merely shortens a line that has nothing after
-               it, so a split degrades to a square left edge instead of content
-               hanging out of its container. */
-            margin-right: calc(-1 * var(--mb-toolbar-gap, 8px)) !important;
+        .mb-saed-area:empty { display: none; }
+        .mb-saed-area.mb-saed-first { border-left: 0; }
+        .mb-saed-narrow > [data-mb-area="actions"] { display: none; }
+        .mb-saed-bar .mb-seg {
+            font: inherit;
+            color: inherit;
+            background: transparent;
+            border: 0;
+            border-left: 1px solid rgba(38, 50, 56, 0.18);
+            border-radius: 0;
+            margin: 0;
+            height: auto;
+            padding: 0 9px;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            cursor: pointer;
+            white-space: nowrap;
+            box-shadow: none;
+            transition: background-color 0.1s;
         }
-        .mb-toolbar-pinned-btn:not(.mb-toolbar-pinned-btn + .mb-toolbar-pinned-btn) {
-            border-left-width: 1px !important;
-            border-top-left-radius: 6px !important;
-            border-bottom-left-radius: 6px !important;
+        .mb-saed-area > .mb-seg:first-child { border-left: 0; }
+        .mb-saed-bar .mb-seg:hover:not(:disabled):not(.mb-seg-label),
+        .mb-saed-bar .mb-seg[aria-expanded="true"] {
+            background-color: var(--mb-saed-hover, #CFD8DC);
         }
-        .mb-toolbar-pinned-btn:not(:has(+ .mb-toolbar-pinned-btn)) {
-            border-right-width: 1px !important;
-            border-top-right-radius: 6px !important;
-            border-bottom-right-radius: 6px !important;
+        .mb-saed-bar .mb-seg:focus-visible { outline: 2px solid #2f5f9e; outline-offset: -2px; }
+        .mb-saed-bar .mb-seg:disabled { opacity: 0.55; cursor: default; }
+        .mb-saed-bar .mb-seg-label {
+            font: 600 0.78em -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            opacity: 0.7;
+            cursor: default;
+            padding: 0 3px 0 9px;
         }
+        .mb-saed-bar .mb-seg-label + .mb-seg { border-left: 0; }
+        .mb-saed-bar .mb-seg.mb-seg-group-start { border-left: 2px solid rgba(38, 50, 56, 0.35); }
+        /* The ▾ that says a segment opens a list: larger than the label's
+           text (asked for 2026-10-22), relative so it scales with the bar. */
+        .mb-saed-bar .mb-toolbar-menu-caret {
+            font-size: 1.15em;
+            line-height: 1;
+            opacity: 0.8;
+            margin-left: 1px;
+        }
+        .mb-saed-menu-btn .mb-toolbar-menu-btn-label { font-weight: 600; letter-spacing: 0.02em; }
+        /* Attention indicators: tinted by level, most urgent first. */
+        .mb-saed-bar .mb-saed-attn-seg { font-weight: 600; font-variant-numeric: tabular-nums; }
+        .mb-saed-bar .mb-saed-attn-seg.mb-saed-lv-alert { background-color: #f5dcd8; color: #9b2218; }
+        .mb-saed-bar .mb-saed-attn-seg.mb-saed-lv-warn  { background-color: #f6ead0; color: #9a6a00; }
+        .mb-saed-bar .mb-saed-attn-seg.mb-saed-lv-info  { background-color: #e3ebf6; color: #2f5f9e; }
+        .mb-saed-bar .mb-saed-attn-seg:hover:not(:disabled) { filter: brightness(0.95); }
+        .mb-saed-bar .mb-saed-attn-seg[aria-pressed="true"] { box-shadow: inset 0 0 0 2px currentColor; }
+        /* A fetch runs inside the segment that started it (_saedRunStart()):
+           a blue fill to --p, then stripes while the rows are rendered (the
+           stripes move only when motion is welcome). Background IMAGES, so
+           they cover the inline background-color the segment keeps. */
+        .mb-saed-bar .mb-seg.mb-seg-running {
+            background-image: linear-gradient(to right, #c9d8ee var(--p, 0%), #e6edf7 var(--p, 0%));
+            color: #2f5f9e;
+            font-weight: 600;
+            font-variant-numeric: tabular-nums;
+            min-width: 9.5em;
+            justify-content: center;
+        }
+        .mb-saed-bar .mb-seg.mb-seg-running:hover {
+            background-image: linear-gradient(to right, #bccfe9 var(--p, 0%), #dbe5f3 var(--p, 0%));
+        }
+        .mb-saed-bar .mb-seg.mb-seg-running[aria-disabled="true"] { cursor: progress; }
+        .mb-saed-bar .mb-seg-stop-glyph {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            background: currentColor;
+            border-radius: 1px;
+        }
+        .mb-saed-bar .mb-seg.mb-seg-rendering,
+        .mb-saed-bar .mb-seg.mb-seg-rendering:disabled {
+            background-image: repeating-linear-gradient(-45deg, #e6edf7 0 6px, #d6e2f2 6px 12px);
+            background-size: 200% 100%;
+            color: #2f5f9e;
+            font-weight: 600;
+            opacity: 1;
+            cursor: progress;
+        }
+        @media (prefers-reduced-motion: no-preference) {
+            .mb-saed-bar .mb-seg.mb-seg-rendering { animation: mb-seg-slide 1s linear infinite; }
+        }
+        @keyframes mb-seg-slide { from { background-position: 0 0; } to { background-position: -34px 0; } }
+        /* The rich card of the menu segment (_saedCardHtml()). */
+        table.mb-saed-card { border-collapse: collapse; margin: 2px 0 6px; }
+        table.mb-saed-card th {
+            font-weight: normal;
+            font-style: italic;
+            color: #7a6d5c;
+            text-align: left;
+            padding: 1px 12px 1px 0;
+            vertical-align: top;
+            white-space: nowrap;
+        }
+        table.mb-saed-card td { padding: 1px 0; }
+        table.mb-saed-card code { font-family: ui-monospace, Consolas, "Liberation Mono", monospace; font-size: 0.92em; }
 
         /* Multi-sort column group tinting — two alternating shades per priority, semi-transparent   */
         /* so even/odd zebra striping remains visible underneath.                                    */
@@ -77319,14 +77307,16 @@ a { color: #1565c0; }`;
             box-shadow: 0 0 0 4px rgba(26,115,232,0.28) !important;
         }
 
-        /* ── Toolbar pull-down menus (📦 Data ▾ / 🛠 View ▾ / 📀 Discography ▾) ──
-           The panel is a COLUMN FLEX container on purpose, not a block: flex
-           items are blockified by the CSS display spec, so each adopted row's
-           own inline display:inline-flex computes to flex and lays out
-           full-width, while display:none still hides it. Layout only lives
-           here; colours, height and each button's own feature-gated display
-           value belong to whichever function built it. See
-           createToolbarMenu()'s header comment.                              */
+        /* ── Toolbar menus: the SAED menu, its submenus, the indicator lists
+           and 📀 Discography — all in the "Liner notes" look (paper, ink,
+           hairline rules, serif rows, small-caps captions). The panel is a
+           COLUMN FLEX container on purpose, not a block: flex items are
+           blockified by the CSS display spec, so a row's own inline display
+           computes to flex and lays out full-width, while display:none still
+           hides it. A SAED group is a column flex container for the same
+           reason. Colours are the design's here, not the rows' own: since
+           2026-10-22 no row carries a colour setting. See createToolbarMenu()'s
+           header comment.                                                     */
         .mb-toolbar-menu-caret {
             font-size: 0.85em;
             opacity: 0.75;
@@ -77337,42 +77327,133 @@ a { color: #1565c0; }`;
             position: fixed;
             flex-direction: column;
             align-items: stretch;
-            background: white;
-            border: 1px solid #ccc;
-            border-radius: 6px;
-            padding: 6px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            background: #fbf8f1;
+            color: #2b2622;
+            border: 1px solid #d9cfbd;
+            border-radius: 4px;
+            padding: 4px 0;
+            box-shadow: 0 10px 24px -8px rgba(60, 40, 20, 0.35);
             z-index: 10000;
-            min-width: 220px;
+            min-width: 240px;
+            max-width: min(380px, calc(100vw - 16px));
+            box-sizing: border-box;
+            font: 14px/1.35 Georgia, "Times New Roman", serif;
+        }
+        /* A submenu opened IN PLACE under its row (narrow or hover-less
+           screen): part of the parent's column, indented, no shadow. */
+        .mb-toolbar-menu-panel.mb-toolbar-menu-inline {
+            position: static;
+            box-shadow: none;
+            border: 0;
+            border-left: 2px solid #d9cfbd;
+            border-radius: 0;
+            margin: 0 0 4px 22px;
+            padding: 0;
+            min-width: 0;
+            max-width: none;
+            background: transparent;
         }
 
-        /* Layout only — colours, height and the feature gate's own display
-           value belong to whichever function built the button.               */
-        .mb-toolbar-menu-panel > .mb-toolbar-menu-item {
+        .mb-toolbar-menu-panel .mb-toolbar-menu-item {
+            display: flex;
             width: 100% !important;
             justify-content: flex-start !important;
+            align-items: center;
+            gap: 8px;
             text-align: left !important;
-            margin: 2px 0 !important;
-            padding: 6px 10px !important;
+            margin: 0 !important;
+            padding: 5px 14px !important;
             height: auto !important;
-            border-radius: 4px !important;
+            border: 0 !important;
+            border-radius: 0 !important;
+            background: transparent !important;
+            color: #2b2622 !important;
+            box-shadow: none !important;
+            font: inherit !important;
+            cursor: pointer;
+            box-sizing: border-box;
         }
+        .mb-saed-group > .mb-toolbar-menu-item { display: flex; }
 
-        /* The keyboard hint is an attribute, never element text — an innerHTML
-           rewrite (updateBarcodeHighlightBtnState) would delete a child node. */
-        .mb-toolbar-menu-panel > .mb-toolbar-menu-item[data-mb-menu-hint]::after {
+        /* The keyboard hint is an attribute, never element text, so a read of
+           the row is its label alone (saed-toolbar.spec.js pins that). */
+        .mb-toolbar-menu-panel .mb-toolbar-menu-item[data-mb-menu-hint]::after {
             content: attr(data-mb-menu-hint);
             margin-left: auto;
             padding-left: 14px;
-            font-size: 0.88em;
-            opacity: 0.6;
+            font: 11px ui-monospace, Consolas, "Liberation Mono", monospace;
+            color: #7a6d5c;
+            white-space: nowrap;
             font-variant-numeric: tabular-nums;
         }
 
-        .mb-toolbar-menu-panel > .mb-toolbar-menu-item:hover,
-        .mb-toolbar-menu-panel > .mb-toolbar-menu-item-focus {
-            filter: brightness(0.94);
-            box-shadow: inset 0 0 0 1px rgba(0,0,0,0.25);
+        .mb-toolbar-menu-panel .mb-toolbar-menu-item:hover,
+        .mb-toolbar-menu-panel .mb-toolbar-menu-item-focus,
+        .mb-toolbar-menu-panel .mb-toolbar-menu-item[aria-expanded="true"] {
+            background: #f1eadc !important;
+        }
+        .mb-toolbar-menu-panel .mb-toolbar-menu-item[aria-disabled="true"] { cursor: default; }
+        .mb-toolbar-menu-panel .mb-toolbar-menu-item[role="menuitemradio"][aria-checked="true"] {
+            font-weight: bold !important;
+            box-shadow: inset 3px 0 0 #2f5f9e !important;
+        }
+
+        /* The SAED menu's groups: a small-caps caption, a hairline between
+           groups (not above the first shown), the installed version at the foot. */
+        .mb-saed-group { display: flex; flex-direction: column; }
+        .mb-saed-group[hidden] { display: none !important; }
+        .mb-saed-group:not(.mb-saed-group-first) {
+            border-top: 1px solid #d9cfbd;
+            margin-top: 4px;
+            padding-top: 4px;
+        }
+        .mb-saed-cap {
+            font: 600 10.5px -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            color: #7a6d5c;
+            padding: 6px 14px 3px;
+        }
+        .mb-saed-foot {
+            border-top: 1px solid #d9cfbd;
+            margin-top: 4px;
+            padding: 6px 14px 4px;
+            color: #7a6d5c;
+            font-size: 12.5px;
+        }
+        .mb-saed-foot[hidden] { display: none; }
+        /* An indicator's own words above its rows (the 🔄 list: which page
+           failed and why). */
+        .mb-saed-ind-note {
+            max-width: 26em;
+            padding: 6px 14px 6px;
+            color: #9b2218;
+            font-size: 12.5px;
+            line-height: 1.4;
+            white-space: normal;
+        }
+        /* "Needs attention" rows: glyph, label, count, then the submenu arrow. */
+        .mb-saed-attn-row .mb-saed-row-glyph { width: 1.4em; text-align: center; flex-shrink: 0; }
+        .mb-saed-attn-row .mb-saed-row-count {
+            margin-left: auto;
+            font: 12px ui-monospace, Consolas, "Liberation Mono", monospace;
+            color: #7a6d5c;
+            font-variant-numeric: tabular-nums;
+        }
+        .mb-saed-attn-row .mb-saed-row-arrow { color: #7a6d5c; font-size: 14px; }
+        .mb-saed-attn-row.mb-saed-lv-alert .mb-saed-row-glyph { color: #9b2218; }
+        .mb-saed-attn-row.mb-saed-lv-warn .mb-saed-row-glyph { color: #9a6a00; }
+        /* A row that opens a submenu shows the arrow after its hint. */
+        .mb-toolbar-menu-panel .mb-saed-sub-row .mb-saed-row-arrow { margin-left: 8px; color: #7a6d5c; font-size: 14px; }
+        .mb-toolbar-menu-panel .mb-saed-sub-row[data-mb-menu-hint]::after { order: 1; }
+        .mb-toolbar-menu-panel .mb-saed-sub-row .mb-saed-row-arrow { order: 2; }
+        /* Export ▸'s format rows: the name, and what it is under it. */
+        .mb-toolbar-menu-panel .mb-saed-format-row { flex-wrap: wrap; row-gap: 1px; }
+        .mb-saed-format-row .mb-saed-row-desc {
+            flex-basis: 100%;
+            color: #7a6d5c;
+            font-size: 12.5px;
+            line-height: 1.3;
         }
 
         /* The findings menus build their own rows (_buildFindingMenuRows)
@@ -77384,11 +77465,8 @@ a { color: #1565c0; }`;
             display: flex;
             align-items: center;
             gap: 8px;
-            background: white;
-            color: #222;
             border: none;
             font: inherit;
-            font-size: 0.95em;
             cursor: pointer;
         }
         .mb-findings-item-glyph { width: 1.4em; text-align: center; flex-shrink: 0; }
@@ -77408,19 +77486,21 @@ a { color: #1565c0; }`;
             background: ${Lib.settings.sa_release_tracks_length_mismatch_severe_bg || '#f8d7da'};
             color: #a33;
         }
-        .mb-findings-menu-item[aria-checked="true"] {
-            font-weight: bold;
-            box-shadow: inset 3px 0 0 #2e8b3a;
+        /* !important and the panel prefix: the menu row rule above resets
+           weight, colour and shadow on every row. */
+        .mb-toolbar-menu-panel .mb-findings-menu-item[aria-checked="true"] {
+            font-weight: bold !important;
+            box-shadow: inset 3px 0 0 #3f7a3a !important;
         }
         .mb-findings-menu-item[aria-checked="true"] .mb-findings-item-glyph::after {
             content: '✓';
-            color: #2e8b3a;
+            color: #3f7a3a;
             font-weight: bold;
             margin-left: 1px;
         }
-        .mb-findings-clear-item {
-            color: #a33;
-            border-top: 1px solid #ddd !important;
+        .mb-toolbar-menu-panel .mb-findings-clear-item {
+            color: #9b2218 !important;
+            border-top: 1px solid #d9cfbd !important;
         }
         .mb-findings-clear-item[aria-disabled="true"] {
             opacity: 0.45;
@@ -77428,18 +77508,16 @@ a { color: #1565c0; }`;
         }
         /* The WARNING menu's "Check title style" row (_buildTitleStyleMenuRow):
            first, blue like an action rather than a finding; its status line
-           after the run is grey and inert. */
-        .mb-findings-style-item {
-            border-bottom: 1px solid #ddd !important;
-            background: #eef3ff;
-            color: #2c3e8f;
+           after the run is muted and inert. */
+        .mb-toolbar-menu-panel .mb-findings-style-item {
+            border-bottom: 1px solid #d9cfbd !important;
+            color: #2f5f9e !important;
         }
         .mb-findings-style-item .mb-findings-item-glyph { font-family: Georgia, serif; font-weight: bold; }
-        .mb-findings-style-item[aria-disabled="true"] {
-            background: white;
-            color: #666;
+        .mb-toolbar-menu-panel .mb-findings-style-item[aria-disabled="true"] {
+            color: #7a6d5c !important;
             cursor: default;
-            font-size: 0.88em;
+            font-size: 0.88em !important;
         }
 
         /* ── Fallback: browsers that don't support :focus-visible still see
@@ -77611,6 +77689,10 @@ a { color: #1565c0; }`;
     // runs long after the IIFE, so the _idbo* state it reads is initialised).
     if (typeof GM_registerMenuCommand === 'function') {
         GM_registerMenuCommand('💾 Browser cache', () => _idbOverviewOpen(null));
+        // Supported pages only (decided 2026-10-22), so it registers here,
+        // past the no-pageType gate, like 💾 Browser cache above. It opens
+        // the SAED menu on its Changelog group: two pages on GitHub.
+        GM_registerMenuCommand('📜 ChangeLog', () => _saedOpenChangelog());
     }
     initReleaseGroupLink(); // org/live-bootleg.org 4a: no request, the name is in the page
     initEventRgTooltip(); // the "#" cell's event card: delegated, requests only on hover
@@ -77632,6 +77714,10 @@ a { color: #1565c0; }`;
     } else {
         headerContainer.appendChild(controlsContainer);
     }
+    // The bar is in the page now: measure what needs layout (the first area's
+    // rule, the narrow-screen rule), and again whenever the window changes.
+    _saedApplyNarrow();
+    window.addEventListener('resize', _saedApplyNarrow, { passive: true });
 
     // ── H1 comment-span relocation ────────────────────────────────────────────
     // Two independent feature guards:
@@ -77988,6 +78074,8 @@ a { color: #1565c0; }`;
     const statusDisplaysContainer = document.createElement('div');
     statusDisplaysContainer.id = 'mb-status-displays-container';
     statusDisplaysContainer.style.cssText = 'display:inline-flex; align-items:center; gap:8px; line-height:1; vertical-align:middle;';
+    // A running fetch's progress line comes first (`_saedRunStatus()`).
+    statusDisplaysContainer.appendChild(fetchProgressWrap);
     statusDisplaysContainer.appendChild(globalStatusDisplay);
     const _statusDivider = document.createElement('span');
     _statusDivider.id = 'mb-status-divider';
@@ -78293,8 +78381,8 @@ a { color: #1565c0; }`;
     let _lastFetchIncomplete = null;
 
     /**
-     * What an interrupted fetch left behind, so the "↻ Load remaining pages"
-     * button can pick up at the page that failed instead of re-fetching
+     * What an interrupted fetch left behind, so the 🔄 indicator's "↻ Load
+     * the N missing pages" can pick up at the page that failed instead of re-fetching
      * everything from page 1.
      *
      * **Only the values that cannot be re-derived are kept here.** `maxPage`
@@ -81620,6 +81708,10 @@ a { color: #1565c0; }`;
          * @param {?string} fnHtml - The resolver's HTML, or null for `data-mbtt`.
          */
         const _showMbtt = (el, e, fnHtml) => {
+            // A toolbar menu button whose menu is open (the ☰ SAED segment)
+            // shows no card: it would cover the menu it describes. Only those:
+            // aria-expanded alone also marks every open collapsible heading.
+            if (el.classList.contains('mb-toolbar-menu-btn') && el.getAttribute('aria-expanded') === 'true') return;
             if (_target && _target !== el) _hide();
             _target = el;
             _own = false;
@@ -81650,6 +81742,9 @@ a { color: #1565c0; }`;
          * @param {string} text - The element's plain title.
          */
         const _showOwn = (text) => {
+            // Over a toolbar menu button whose menu is open: no card over the menu.
+            if (_target && _target.classList.contains('mb-toolbar-menu-btn')
+                && _target.getAttribute('aria-expanded') === 'true') return;
             // Another rich tooltip of the script already describes what is
             // under the pointer — the cover-art card and preview of a strip
             // image or thumbnail, the Relationships panel. A card would be a
@@ -90771,15 +90866,6 @@ a { color: #1565c0; }`;
         return cur.length > prev.length && cur.startsWith(prev);
     }
 
-    stopBtn.addEventListener('click', (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        Lib.debug('cleanup', 'Stop requested by user.');
-        stopRequested = true;
-        stopBtn.disabled = true;
-        stopBtn.textContent = 'Stopping...';
-    });
-
     /**
      * Returns the debounce delay to use for the current filter pass.
      * The user-configured `sa_filter_debounce_delay` is the floor (minimum).
@@ -92144,6 +92230,7 @@ a { color: #1565c0; }`;
         // is what makes a fresh press of any button remove a stale offer, and
         // what makes a resumed run that succeeds leave nothing behind.
         _resumeState = null;
+        _createResumeFetchButton();  // …and takes the 🔄 indicator off the bar
 
         // ── BEGIN: Artist-Releasegroups pre-fetch pass ────────────────────────────────────────
         //
@@ -92159,8 +92246,8 @@ a { color: #1565c0; }`;
         // whose mainLabel equals the currently-clicked button's label.
         //
         // Nothing is rendered during this pass — only h3 text content is collected.
-        // Progress is surfaced via globalStatusDisplay and fetchProgressLabel so the
-        // user can see that work is happening.
+        // Progress is surfaced on the progress line under the heading
+        // (`_saedRunStatus()`) so the user can see that work is happening.
         //
         // Reset arrays unconditionally so a second button press always gets fresh data.
         // A RESUME is the one press that is not a second one: it continues the
@@ -92195,17 +92282,13 @@ a { color: #1565c0; }`;
                 Lib.debug('fetch', `Artist-Releasegroups pre-fetch pass: using params`, _preFetchParams);
 
                 // Pass 1 of 2: determine max page for the official-only URL.
-                // Make the progress bar wrap visible NOW so fetchProgressLabel updates
-                // are actually displayed during the pre-fetch pass.  The wrap is
-                // normally shown later (after isLoaded / stopOtherScripts checks), but
-                // the pre-fetch runs before that point, so we must show it here.
-                fetchProgressWrap.style.display = 'inline-flex';
-                fetchProgressFill.style.width = '0%';
-                globalStatusDisplay.textContent = 'Loading (pass 1 of 2): getting official page count…';
-                globalStatusDisplay.style.color = '#999';
-                fetchProgressLabel.textContent  = 'Pass 1 of 2 — official headers…';
-                fetchProgressLabel.style.color  = '#333';
-                fetchProgressFill.style.background = '#b3d9ff'; // light blue for pre-fetch pass
+                // Said on the progress line under the heading. The segment
+                // itself becomes the progress bar only for pass 2 (the main
+                // fetch below): Stop is honoured from there on, and a Stop
+                // that cut this pass short would only lose the
+                // Official/Non-Official split, not save any time.
+                globalStatusDisplay.textContent = '';
+                _saedRunStatus('Loading (pass 1 of 2): getting the official page count…');
 
                 const _preMaxRes = await fetchMaxPageGeneric(path, _preFetchParams);
                 const _preMaxPage = _preMaxRes.maxPage;
@@ -92226,13 +92309,8 @@ a { color: #1565c0; }`;
                         _preUrl.searchParams.set(k, _preFetchParams[k])
                     );
 
-                    // Update progress bar and status for each pre-fetch page
-                    const _preProgress = Math.round((_pp / _preMaxPage) * 100);
-                    fetchProgressFill.style.width = `${_preProgress}%`;
-                    fetchProgressLabel.textContent =
-                        `Pass 1 of 2 — official headers: page ${_pp}/${_preMaxPage}`;
-                    globalStatusDisplay.textContent =
-                        `Loading (pass 1 of 2): fetching official page ${_pp} of ${_preMaxPage}…`;
+                    // The progress line, for each pre-fetch page
+                    _saedRunStatus(`Loading (pass 1 of 2): official page ${_pp} of ${_preMaxPage}…`);
 
                     let _preDoc;
                     try {
@@ -92298,11 +92376,8 @@ a { color: #1565c0; }`;
                     `Artist-Releasegroups pre-fetch pass complete. Official categories:`,
                     h3_official_category_header_array);
 
-                // Reset progress bar for the main fetch pass (pass 2 of 2)
-                fetchProgressFill.style.width = '0%';
-                fetchProgressFill.style.background = '#ffcccc'; // back to light red
-                fetchProgressLabel.textContent = 'Loading (pass 2 of 2)…';
-                globalStatusDisplay.textContent = 'Loading (pass 2 of 2)…';
+                // The main fetch pass (pass 2 of 2) comes next.
+                _saedRunStatus('Loading (pass 2 of 2)…');
             } else {
                 Lib.debug('fetch',
                     `Artist-Releasegroups: no matching subType button found — skipping pre-fetch pass`);
@@ -92745,6 +92820,7 @@ a { color: #1565c0; }`;
                 activeBtn.style.color = '';
                 activeBtn.disabled = false;
                 _setInfoSub('mb-info-display-generic', '');
+                _saedRunEnd();
                 return;
             }
         } else if (!_isResume && maxPage > maxThreshold) {
@@ -92759,6 +92835,7 @@ a { color: #1565c0; }`;
                 activeBtn.style.color = '';
                 activeBtn.disabled = false;
                 _setInfoSub('mb-info-display-generic', '');
+                _saedRunEnd();
                 return;
             }
         }
@@ -92800,24 +92877,18 @@ a { color: #1565c0; }`;
         removeSanojjonasContainers();
         _watchForLateSanojjonasInjections();
 
-        // Update UI state
-        activeBtn.disabled = true;
-        activeBtn.classList.add('mb-show-all-btn-loading');
+        // Update UI state: the pressed segment becomes the progress bar and
+        // the Stop button (`_saedRunStart()`), the other actions wait.
         allActionButtons.forEach(b => { if (b !== activeBtn) b.disabled = true; });
+        _saedRunStart(activeBtn);
 
-        stopBtn.style.display = 'inline-block';
-        stopBtn.disabled = false;
         const _prevCtrlMO = ctrlMFunctionMap['o']; // preserve permanent 'o' entry (Toggle Multi-Row Collapse)
-        ctrlMFunctionMap['o'] = { fn: () => stopBtn.click(), description: 'Stop fetching' };
-        globalStatusDisplay.textContent = 'Loading…';
+        ctrlMFunctionMap['o'] = { fn: _saedRequestStop, description: 'Stop fetching' };
+        // The progress line says it all while pages load; the status after it
+        // is written again when the run ends.
+        globalStatusDisplay.textContent = '';
         globalStatusDisplay.style.color = '#999';
-
-        // Show the inline fetch progress bar
-        fetchProgressWrap.style.display = 'inline-flex';
-        fetchProgressFill.style.width = '0%';
-        fetchProgressFill.style.background = '#ffcccc'; // light red, matching action-button palette
-        fetchProgressLabel.textContent = 'Loading…';
-        fetchProgressLabel.style.color = '#333';
+        _saedRunStatus('Loading…');
 
         const startTime = performance.now();
         let fetchingTimeStart = performance.now();
@@ -92946,7 +93017,7 @@ a { color: #1565c0; }`;
                     // 3-of-40 (org/503-handling.org F1). `fetchHtml()` has
                     // already spent its three attempts by the time we are here.
                     fetchIncomplete.pageFailure = { page: p, detail: _httpFailureDetail(e) };
-                    // Everything the "↻ Load remaining pages" button needs, taken
+                    // Everything the 🔄 indicator's resume needs, taken
                     // here because here is the only place all of it is in scope
                     // and correct: page `p` failed BEFORE `pagesProcessed++`, so
                     // every counter still describes pages 1..p-1 exactly.
@@ -94605,23 +94676,23 @@ a { color: #1565c0; }`;
                 const avgPageTime = cumulativeFetchTime / pagesProcessed;
                 const estRemainingSeconds = (avgPageTime * (maxPage - p)) / 1000;
 
-                // Update color on action button based on progress (red -> orange -> green)
+                // The segment's own colour once the run is over, as before the
+                // SAED button (red -> orange -> green: how much of the listing
+                // it holds); while it runs, its blue fill covers this.
                 const progress = p / maxPage;
                 let bgColor = '#ffcccc'; // light red
                 if (progress >= 1.0) bgColor = '#ccffcc'; // light green
                 else if (progress >= 0.5) bgColor = '#ffe0b2'; // light orange
                 activeBtn.style.backgroundColor = bgColor;
 
-                // Drive the inline progress bar in the h1 controls line
-                const fillPct = Math.round(progress * 100);
-                // Use the same light-toned palette as the action button backgrounds:
-                // light red → light orange → light green (mirrors #ffcccc / #ffe0b2 / #ccffcc).
-                const fillColor = progress >= 1.0 ? '#ccffcc' : (progress >= 0.5 ? '#ffe0b2' : '#ffcccc');
-                fetchProgressFill.style.width = `${fillPct}%`;
-                fetchProgressFill.style.background = fillColor;
-                fetchProgressLabel.textContent = pageKeys
-                    ? `Loading ${pageKeys[p - 1].key.toUpperCase()} (${p} of ${maxPage})... (${totalRowsAccumulated} rows) - ${estRemainingSeconds.toFixed(1)}s left`
-                    : `Loading page ${p} of ${maxPage}... (${totalRowsAccumulated} rows) - ${estRemainingSeconds.toFixed(1)}s left`;
+                // The running segment fills (blue) and counts; the line under
+                // the heading says the page, the rows so far and the time left.
+                _saedRunProgress(p, maxPage);
+                const _rowsSoFar = `${totalRowsAccumulated.toLocaleString('en-US')} row${totalRowsAccumulated === 1 ? '' : 's'} so far`;
+                const _left = `about ${estRemainingSeconds.toFixed(1)} s left`;
+                _saedRunStatus(pageKeys
+                    ? `Loading ${pageKeys[p - 1].key.toUpperCase()} (${p} of ${maxPage}) · ${_rowsSoFar} · ${_left}`
+                    : `Loading page ${p} of ${maxPage} · ${_rowsSoFar} · ${_left}`);
 
                 // Detailed statistics per page fetch
                 Lib.debug('fetch', `Page ${p}/${maxPage} processed in ${(pageDuration / 1000).toFixed(2)}s. Rows on page: ${rowsInThisPage}. Total: ${totalRowsAccumulated}`);
@@ -94669,10 +94740,7 @@ a { color: #1565c0; }`;
                     saveTableDataToDisk();
 
                     // Clean up UI
-                    activeBtn.disabled = false;
-                    activeBtn.classList.remove('mb-show-all-btn-loading');
-                    allActionButtons.forEach(b => b.disabled = false);
-                    stopBtn.style.display = 'none';
+                    _saedRunEnd();
                     if (_prevCtrlMO) ctrlMFunctionMap['o'] = _prevCtrlMO; else delete ctrlMFunctionMap['o'];
 
                     const fetchSeconds = (totalFetchingTime / 1000).toFixed(2);
@@ -94694,20 +94762,15 @@ a { color: #1565c0; }`;
                     // AFTER it, not once at the end of the function this exit
                     // never reaches.
                     _createResumeFetchButton();
-                    fetchProgressWrap.style.display = 'none';
 
                     Lib.debug('success', `Process complete. Data saved without rendering. Row Count: ${totalRows}. Fetch Time: ${fetchSeconds}s`);
                     return; // Exit without rendering
                 } else if (userChoice === 'cancel') {
                     // User cancelled
                     Lib.debug('cache', 'User cancelled the operation.');
-                    activeBtn.disabled = false;
-                    activeBtn.classList.remove('mb-show-all-btn-loading');
-                    allActionButtons.forEach(b => b.disabled = false);
-                    stopBtn.style.display = 'none';
+                    _saedRunEnd();
                     if (_prevCtrlMO) ctrlMFunctionMap['o'] = _prevCtrlMO; else delete ctrlMFunctionMap['o'];
                     globalStatusDisplay.textContent = 'Operation cancelled';
-                    fetchProgressWrap.style.display = 'none';
                     return;
                 }
                 // If userChoice === 'render', continue with normal rendering below
@@ -94728,14 +94791,10 @@ a { color: #1565c0; }`;
                 );
                 if (!proceed) {
                     Lib.warn('render', `User aborted render at warning threshold (${totalRows} rows).`);
-                    activeBtn.disabled = false;
-                    activeBtn.classList.remove('mb-show-all-btn-loading');
-                    allActionButtons.forEach(b => b.disabled = false);
-                    stopBtn.style.display = 'none';
+                    _saedRunEnd();
                     if (_prevCtrlMO) ctrlMFunctionMap['o'] = _prevCtrlMO; else delete ctrlMFunctionMap['o'];
                     globalStatusDisplay.textContent = `Render cancelled (${totalRows.toLocaleString()} rows fetched — use "Load from disk" to render later)`;
                     globalStatusDisplay.style.color = 'orange';
-                    fetchProgressWrap.style.display = 'none';
                     return;
                 }
             }
@@ -94798,12 +94857,10 @@ a { color: #1565c0; }`;
                 updateH2Count(totalRows, totalRows);
             }
 
-            activeBtn.disabled = false;
-            activeBtn.classList.remove('mb-show-all-btn-loading');
-            allActionButtons.forEach(b => b.disabled = false);
-            stopBtn.style.display = 'none';
+            // Pages are in; the segment is striped while the rows are built
+            // (`_saedRunEnd()` at the end of the render tail gives it back).
+            _saedRunRendering(totalRows);
             if (_prevCtrlMO) ctrlMFunctionMap['o'] = _prevCtrlMO; else delete ctrlMFunctionMap['o'];
-            fetchProgressWrap.style.display = 'none';
 
             // Only show filter container if it wasn't already appended to H2 (handled in updateH2Count or renderGroupedTable)
             if (!filterContainer.parentNode) {
@@ -95129,8 +95186,10 @@ a { color: #1565c0; }`;
             // time this fires (later on a busy page), the user may have opened
             // a 📊 quick filter or clicked into a column filter or MusicBrainz's
             // search box, and taking focus would send the rest of their typing
-            // to the global filter. Focus on the action button they just
-            // pressed (or on nothing) is still taken, which is the point.
+            // to the global filter. The same holds for a row of an open toolbar
+            // menu (the SAED menu, Export ▸): the arrow keys would stop moving
+            // through it. Focus on the action button they just pressed (or on
+            // nothing) is still taken, which is the point.
             setTimeout(() => {
                 if (_isTouchPrimaryDevice()) return;
                 const _gfi = document.getElementById('mb-global-filter-input') ||
@@ -95139,6 +95198,10 @@ a { color: #1565c0; }`;
                 if (_gfi && _ae && _ae !== _gfi && _ae.matches &&
                         _ae.matches('input, textarea, select, [contenteditable=""], [contenteditable="true"]')) {
                     Lib.debug('ui', 'Skipped auto-focusing the global filter: another field already has focus', _ae);
+                    return;
+                }
+                if (_ae && _ae.closest && _ae.closest('.mb-toolbar-menu-panel')) {
+                    Lib.debug('ui', 'Skipped auto-focusing the global filter: a toolbar menu has the keyboard', _ae);
                     return;
                 }
                 if (_gfi) {
@@ -95334,6 +95397,11 @@ a { color: #1565c0; }`;
                 _sdLoaded.textContent =
                     `⚠️ Loaded ${_incomplete.pagesPhrase} (${totalRows} rows)`;
                 _sdLoaded.style.color = '#b26a00';
+            } else if (stopRequested && pagesProcessed < maxPage) {
+                // Stop in the running segment (approved mockup v6): said in
+                // the user's words, so a short table is not taken for all.
+                _sdLoaded.textContent =
+                    `Stopped by you after page ${pagesProcessed} of ${maxPage} (${totalRows} rows) — the rest was not loaded`;
             } else {
                 _sdLoaded.textContent = `Loaded ${pagesProcessed} ${pageLabel} (${totalRows} rows)`;
             }
@@ -95346,7 +95414,7 @@ a { color: #1565c0; }`;
             _sdAppend(`Rendering: ${renderSeconds}s`, ', ',
                 'Time to build and insert the fetched rows into the DOM.');
             _createResumeFetchButton();
-            fetchProgressWrap.style.display = 'none';
+            _saedRunEnd();
 
             // The status block above cleared #mb-info-display-rel and reset
             // _relGlobalStatusDone, AFTER the render tail had already called
@@ -95359,8 +95427,7 @@ a { color: #1565c0; }`;
         } catch (err) {
             Lib.error('fetch', 'Critical Error during fetch:', err);
             globalStatusDisplay.textContent = 'Error during load… (repress the "Show all" button)';
-            fetchProgressWrap.style.display = 'none';
-            activeBtn.disabled = false;
+            _saedRunEnd();
             allActionButtons.forEach(b => b.disabled = false);
             activeBtn.style.backgroundColor = '';
             activeBtn.style.color = '';
@@ -99951,32 +100018,33 @@ a { color: #1565c0; }`;
      * @param {'all'|'official'|'non-official'|'merged'} activeSection
      */
     function _applyDiscButtonTints(activeSection) {
-        const _activeCss   = 'background:#c8f7c5; color:#1a5c18; font-weight:bold;';
-        const _inactiveCss = '';
         const _map = {
             'mb-disc-complete-btn':    'all',
             'mb-disc-official-btn':    'official',
             'mb-disc-nonofficial-btn': 'non-official',
             'mb-disc-merged-btn':      'merged',
         };
-        // Rewriting cssText wholesale is safe for a menu row: `adopt()` puts the
-        // row's layout in a CSS class with !important, precisely so a repaint
-        // like this one cannot flatten it back to an inline-flex bar button.
+        // A radio group: the active view's row is CHECKED (bold, with a bar;
+        // the menu stylesheet draws it). The rows are menu rows of the SAED
+        // button's 📀 segment, so no colour of their own any more.
         Object.entries(_map).forEach(([id, sec]) => {
             const _el = document.getElementById(id);
-            if (_el) _el.style.cssText = uiActionBtnBaseCSS() +
-                (sec === activeSection ? _activeCss : _inactiveCss);
+            if (!_el) return;
+            _el.style.cssText = '';
+            _el.setAttribute('role', 'menuitemradio');
+            _el.setAttribute('aria-checked', sec === activeSection ? 'true' : 'false');
         });
 
-        // The menu button names the active view — the whole reason a radio
-        // group can afford to be a menu at all.
+        // The segment names the active view — the whole reason a radio group
+        // can afford to be a menu at all (approved mockup v5: the row's own
+        // glyph and text after "Discography:").
         const _discMenu = _toolbarMenus.get('disc');
         if (_discMenu) {
             const _label = {
-                'all':          '📀 Discography: Complete',
-                'official':     '📀 Discography: Official',
-                'non-official': '📀 Discography: Non-Official',
-                'merged':       '📀 Discography: Merged',
+                'all':          '📀 Discography: 📋 Complete',
+                'official':     '📀 Discography: 📀 Official',
+                'non-official': '📀 Discography: 📼 Non-Official',
+                'merged':       '📀 Discography: 🗂️ Complete (merged)',
             }[activeSection] || '📀 Discography';
             _discMenu.setLabel(_label);
         }
@@ -114617,42 +114685,82 @@ a { color: #1565c0; }`;
      *          the three of them cannot word the same run differently.
      */
     /**
-     * Builds the "↻ Load remaining pages" button into the status line, when the
-     * run that just finished left a resume point behind.
+     * Brings the 🔄 missing-pages indicator of the SAED button in line with
+     * the resume point (`_resumeState`): a red "🔄 N ▾" segment in the bar's
+     * attention area while a run that just finished left pages behind, whose
+     * list says which page failed and why, and offers "↻ Load the N missing
+     * pages" (`#mb-resume-fetch-btn`), the existing resume. Gone again
+     * otherwise — after a fresh press, a resume that got everything, or a
+     * load from disk.
      *
-     * Placed at the END of the status block rather than beside the `⚠️ Loaded N
-     * of M pages` span it explains: that block is rebuilt wholesale by every
-     * run, and the CAA and Relationships completions append their own segments
-     * to it afterwards, so a control wedged between the segments would have to
-     * be re-created by each of them.
+     * This replaced (2026-10-23) the "↻ Load remaining pages" button at the
+     * end of the status line: a failure is something that needs attention,
+     * and the attention area is where the SAED button keeps those
+     * (`_SAED_INDICATORS`, approved mockup v6).
      *
      * Offered whenever a page fetch finally failed — including when the page
      * COUNT was never learned, where the resume is still the right move (it
-     * re-asks for the one page that failed) and only the wording of the tooltip
-     * differs.
+     * re-asks for the one page that failed) and only the wording differs:
+     * the segment then has no number.
+     *
+     * The name is the old one, kept for its three call sites and the notes
+     * that cite it.
      *
      * @returns {void}
      */
     function _createResumeFetchButton() {
-        if (!_resumeState) return;
-        if (document.getElementById('mb-resume-fetch-btn')) return;
         const st = _resumeState;
-        const _b = document.createElement('button');
-        _b.id = 'mb-resume-fetch-btn';
-        _b.type = 'button';
-        _b.textContent = '↻ Load remaining pages';
-        _b.style.cssText = _REL_RETRY_BTN_CSS;
-        _setTip(_b, st.maxPageKnown
+        let menu = _toolbarMenus.get('fetch-missing');
+        if (!st && !menu) return;
+        if (!menu) {
+            menu = createToolbarMenu({
+                key: 'fetch-missing', id: 'mb-fetch-missing-menu-btn', label: '🔄', title: '', segment: true,
+            });
+            menu.btn.classList.add('mb-saed-attn-seg', 'mb-saed-lv-alert');
+        }
+        menu.panel.querySelectorAll('.mb-toolbar-menu-item, .mb-saed-ind-note').forEach(el => el.remove());
+        if (!st) {
+            menu.indicatorCount = 0;
+            _orderToolbar();
+            _saedRefreshAttention();
+            return;
+        }
+        const missing = st.maxPageKnown ? Math.max(1, st.maxPage - st.nextPage + 1) : 0;
+        const pages = (n) => `${n} page${n === 1 ? '' : 's'}`;
+        const failure = _lastFetchIncomplete && _lastFetchIncomplete.pageFailure;
+        const why = `Page ${st.nextPage}${st.maxPageKnown ? ` of ${st.maxPage}` : ''} could not be loaded`
+            + (failure ? ` (${failure.detail})` : '');
+        const after = missing - 1;
+        const lost = !st.maxPageKnown ? 'and the page count was never learned, so the rest of the listing is missing'
+            : after === 0 ? 'so it is missing'
+            : `so it and the ${after === 1 ? 'page' : `${after} pages`} after it are missing`;
+        const shown = st.pagesProcessed === 1 ? 'The page before it is shown.'
+            : `The ${st.pagesProcessed} pages before it are shown.`;
+        const note = document.createElement('div');
+        note.className = 'mb-saed-ind-note';
+        note.textContent = `${why}, ${lost}. ${shown}`;
+        menu.panel.appendChild(note);
+        const row = document.createElement('button');
+        row.id = 'mb-resume-fetch-btn';
+        row.type = 'button';
+        row.textContent = missing === 1 ? '↻ Load the missing page'
+            : missing ? `↻ Load the ${missing} missing pages` : '↻ Load the missing pages';
+        _setTip(row, st.maxPageKnown
             ? `Continue the interrupted load at page ${st.nextPage} of ${st.maxPage}. ` +
-              `The ${st.pagesProcessed} page(s) already loaded are kept — nothing is re-fetched.`
+              `The ${pages(st.pagesProcessed)} already loaded are kept — nothing is re-fetched.`
             : `Continue the interrupted load at page ${st.nextPage}. The page count was ` +
               `never established, so this re-asks for that page and carries on from there. ` +
-              `The ${st.pagesProcessed} page(s) already loaded are kept.`);
-        _b.addEventListener('click', ev => {
-            ev.stopPropagation();
-            _resumeFetchFromFailedPage();
-        });
-        globalStatusDisplay.appendChild(_b);
+              `The ${pages(st.pagesProcessed)} already loaded are kept.`);
+        row.addEventListener('click', () => { _resumeFetchFromFailedPage(); });
+        menu.adopt(row);
+        menu.indicatorCount = missing || 1;
+        menu.setLabel(missing ? `🔄 ${missing}` : '🔄');
+        menu.btn.setAttribute('aria-label', missing ? `${pages(missing)} missing` : 'Pages missing');
+        _setTip(menu.btn, missing
+            ? `${pages(missing)} of this listing could not be loaded. Click to load them.`
+            : 'The rest of this listing could not be loaded. Click to try again.');
+        _orderToolbar();
+        _saedRefreshAttention();
     }
 
     /**
@@ -114676,7 +114784,7 @@ a { color: #1565c0; }`;
     async function _resumeFetchFromFailedPage() {
         const st = _resumeState;
         if (!st) return;
-        document.getElementById('mb-resume-fetch-btn')?.remove();
+        _closeToolbarMenus();
         Lib.debug('fetch', `Resuming interrupted fetch at page ${st.nextPage} of ${st.maxPage} ` +
                            `(${st.pagesProcessed} pages, ${st.totalRowsAccumulated} rows kept).`);
         const _synthetic = {
@@ -114785,10 +114893,10 @@ a { color: #1565c0; }`;
      * (`_HTML_FETCH_BACKOFF_MS`, 2 s then 5 s, against 1.1 s then 2.2 s). A
      * page fetch is one request per PAGE rather than one per row, so there are
      * far fewer of them and each is worth waiting longer for; and the caller
-     * has a progress bar on screen, so the wait is visible rather than dead
-     * air.
+     * has its progress on screen (the running segment), so the wait is
+     * visible rather than dead air.
      *
-     * *A pressed Stop button interrupts a pending backoff*, so the button stays
+     * *A pressed Stop interrupts a pending backoff*, so the segment stays
      * responsive instead of sitting out up to seven seconds of sleeping.
      *
      * *There is no shared budget across pages, and none is needed.* Every
@@ -115627,7 +115735,7 @@ a { color: #1565c0; }`;
             label: 'Panel geometry',
             keys: [
                 'sa_stats_panel_geometry', 'sa_load_dialog_geometry',
-                'sa_shortcuts_help_geometry', 'sa_app_help_geometry',
+                'sa_shortcuts_help_geometry',
                 MB_UNIQ_DROP_GEOMETRY_KEY,
             ],
         },
@@ -124293,11 +124401,9 @@ a { color: #1565c0; }`;
             globalStatusDisplay.innerHTML = '';
             // A resume point belongs to a FETCH of this page, not to a row set:
             // these rows came from a file and there is no page K to carry on
-            // from. The `innerHTML` clear above already removes the button, so
-            // this is the invariant said out loud rather than a live bug —
-            // `_createResumeFetchButton()` is reachable only from
-            // `startFetchingProcess()`, which clears this at its top anyway.
+            // from, so the 🔄 indicator a failed fetch left on the bar goes.
             _resumeState = null;
+            _createResumeFetchButton();
             _caaGlobalStatusDone = false;  // allow the first CAA completion to append its segment
             _relGlobalStatusDone = false;  // allow the first Rels completion to append its segment
             const _sdLoadedFromDisk = document.createElement('span');
@@ -142544,13 +142650,10 @@ a { color: #1565c0; }`;
         'e': { fn: openExportMenu, description: 'Open Export Menu' },
         'k': { fn: showShortcutsHelp, description: 'Show Keyboard Shortcuts Help' },
         ',': { fn: () => openSettingsWithConfigButtons(), description: 'Open Settings' },
-        // Deliberately showAppHelp(), NOT openAppHelp(): the ❓ button's plain
-        // click opens GitHub and its Shift-click opens this dialog, but prefix
-        // mode refuses Shift (see its own `!e.shiftKey` guard), so the keyboard
-        // gets one route and it is the one a mouse-free user cannot otherwise
-        // reach. The dialog's own title bar carries "📖 Open on GitHub", so the
-        // other destination stays one keystroke away rather than unreachable.
-        'h': { fn: showAppHelp, description: 'Show App Help' },
+        // The help page on GitHub, like the SAED menu's "❓ Help ↗" row (the
+        // in-page help dialog this key used to open is gone, 2026-10-22). A key
+        // press is a user gesture, so window.open() is not blocked.
+        'h': { fn: openAppHelp, description: 'Open App Help on GitHub' },
         'g': {
             fn: () => {
                 const fi = document.getElementById('mb-global-filter-input');
@@ -142663,7 +142766,7 @@ a { color: #1565c0; }`;
             tableRowEntity: (table) => _tableRowEntity(table),
             /**
              * Decorates a table's headers again (`makeTableSortableUnified()`),
-             * as "↻ Load remaining pages" does on the live table.
+             * as the 🔄 indicator's resume does on the live table.
              *
              * @param {HTMLTableElement} table
              * @returns {void}

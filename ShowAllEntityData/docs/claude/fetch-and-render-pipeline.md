@@ -88,6 +88,13 @@ top of every run (including a resumed one) and on a disk load. `__saTest.resumeS
 exposes it, because a resumed run that silently re-fetched everything looks
 identical on screen to one that kept its rows.
 
+The offer itself is the SAED button's red 🔄 indicator since 2026-10-23
+(`_createResumeFetchButton()` syncs it to `_resumeState` at each of those
+three points; its list row `#mb-resume-fetch-btn` runs the resume), not a
+button in the status line. Stop and the page progress live in the pressed
+action segment (`_saedRunStart()`; docs/claude/toolbar-and-header-ui.md,
+"The SAED button").
+
 ## The heading pre-processing must never touch the anchor it injected
 
 `applyInsertH2()` guards itself with a `data-mb-injected-h2="1"` marker it

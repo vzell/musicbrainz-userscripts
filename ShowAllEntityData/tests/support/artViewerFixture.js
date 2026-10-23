@@ -15,6 +15,7 @@ const path = require('path');
 const { expect } = require('./test');
 const { loadUserscriptPage } = require('./loadPage');
 const { waitForRenderComplete } = require('./browser');
+const { pressAction } = require('./toolbarMenu');
 
 const URL = 'https://musicbrainz.org/release/a9a3b139-cf22-4d28-801e-3f3d49521d0e';
 const FIXTURE = path.join(__dirname, '..', 'fixtures', 'release-tracks-medley.html');
@@ -71,7 +72,7 @@ async function openRelease(page, { settings = {} } = {}) {
     }));
     await page.route(META_RE, (route) =>
         route.fulfill({ status: 200, headers: CORS, contentType: 'application/json', body: RECORD_TEXT }));
-    await page.click('button[data-label="Show all Tracks for Release"]');
+    await pressAction(page, 'button[data-label="Show all Tracks for Release"]');
     await waitForRenderComplete(page, { waitForAutoResize: false });
     await page.locator('.mb-release-art-sec[data-mb-art-state="ok"]').waitFor({ state: 'attached', timeout: 15000 });
 }
