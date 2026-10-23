@@ -779,6 +779,12 @@ browser.
 | 14 | Publish the comment-stripped copy (2.3)                                                                                                        | yes, whole artifact   | medium                 | buys −16 % load time (0.3); full fixture suite against the stripped file first; line numbers spot-checked                                                     |
 | 15 | Phase 2 split (2.4)                                                                                                                            | no, if byte-identical | low, process cost high | SHA-256 equality on the first cut; then the freshness spec                                                                                                    |
 
+*Status 2026-10-23:* #13 is implemented on branch ~feat/saed-toolbar~ (not merged yet), further
+than the row asked: this script no longer hands the library a ~remoteConfig~, so nothing is
+fetched, stored or parsed for its changelog; help and the changelog open on GitHub. Measured on
+petri: the page settles 5 % sooner with a cached changelog, and the tab keeps ≈7.4 MiB less
+(org/userscript-size.org §8). The rest of this list is open.
+
 *Not safe, do not do as a "cleanup":* moving top-level ~const~s to group the foreign code
 (TDZ: ~_BB_*_PATH_RE~ must stay above the gate, ~_BB_YEAR_PATH_RE_KEY~ and
 ~_BS_ALL_FORMATS~ above ~pageDefinitions~); moving the pageType detection earlier to skip
@@ -818,3 +824,7 @@ memory per tab, supported initial pages, a library verdict per subsystem, REFACT
 status: [[file:userscript-size.org][org/userscript-size.org]]. Nothing above is superseded unless that file
 says so; its sections point back here for delivery (§1), the build phases (§2) and the non-MB
 inventory (§3a).
+
+2026-10-23: suggestion #13 (the lazy changelog) and the orphan sweep are implemented on
+~feat/saed-toolbar~, with predictions against one confirming run:
+[[file:userscript-size.org::*8. Implemented: the lazy changelog (#1) and the orphan sweep (#2) — 2026-10-23][org/userscript-size.org §8]].

@@ -108,6 +108,11 @@ deleted or rewritten, per this file's own rule.
 | 8 | Reorganize ~pageDefinitions~   | Unchanged.                                                                                                                                                                                                                                                                  |
 | 9 | Merge the two render functions | Unchanged.                                                                                                                                                                                                                                                                  |
 
+*2026-10-23 (petri):* none of these candidates changed. ~org/userscript-size.org~'s ranked #1
+(the lazy changelog) and #2 (the orphan sweep) are implemented on branch ~feat/saed-toolbar~
+(not merged yet; §8 there). The file is 4,905 bytes larger than ~main~ (7,907,971 bytes): ≈31 KB
+of help code left for VZ_MBLibrary, and the SAED button's menu engine came in.
+
 * TODO Consolidate the ~*-tags~ pageDefinitions cluster
 
 ** Axis

@@ -49,6 +49,25 @@ gate survives `merge-push-remove`'s fold. Run
 `scripts/check-config-defaults-gate.py` after touching the audit: it
 mutation-checks all eleven arms, and is what caught the ORPHAN case exiting 0.
 
+**Removing a setting owes two lists, and a commit order.** Name the key in
+`_SETTINGS_ORPHANED_KEYS` (the audit's record of every removed key, applied
+once per profile by the migration) AND in `_GM_ORPHANED_VALUE_KEYS`, which
+`_sweepOrphanedGmValues()` deletes on every start-up (one `setTimeout(…, 0)`
+after init) — the only route to a profile that passed the migration long ago.
+Delete its `_SETTINGS_MIGRATIONS` rows (the audit flags a row for a key that
+no longer exists), regenerate `ShowAllEntityData_CONFIG_DEFAULTS.json`, commit,
+and only THEN run `scripts/dump-default-history.py`: it reads HEAD, so before
+the commit the audit still reports the key as "a new orphan". Done this way
+for the toolbar colour settings retired with the SAED button
+(`sa_ui_settings_btn_style`, `sa_ui_help_btn_style`, `sa_ui_save_btn_style`,
+`sa_ui_load_btn_style`, `sa_ui_button_divider_style`, 2026-10-22;
+`sa_ui_stop_btn_style`, 2026-10-23). The sweep also removes values that were
+never settings: the help and changelog caches (`<script>-remote-help-text`,
+`-remote-help-md`, `-remote-changelog`, `<SCRIPT_ID>-changelog-size`),
+`sa_app_help_geometry`, and every `mb_sa_subtable_snapshot_*` older than an
+hour. The one setting the SAED button added is `sa_toolbar_menu_name` (text,
+`'SAED'`; blank falls back to SAED).
+
 **Storage holds only what the user CHANGED, and changing a `default:` now owes
 a third thing.** VZ_MBLibrary 4.1.0's SAVE deletes a value equal to its schema
 default instead of writing it, so an absent key follows the schema and a stored

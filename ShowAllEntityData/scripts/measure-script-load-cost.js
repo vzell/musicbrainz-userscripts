@@ -32,6 +32,9 @@
  *                   (`--rev`), timed in the same session as today's file so
  *                   versions are compared as ratios, never as absolutes from
  *                   two sessions. It runs against today's library.
+ *   rev:<version>+changelog  (2026-10-23) the same, with the changelog cache
+ *                   seeded: against `real+changelog`, the gain of the library
+ *                   no longer parsing it (the SAED branch)
  *   pad-code-<N>MB  one per `--pad-to` size (default 10 MB, as before)
  *
  *   --memory        after each run, drop the arm's text from the page, force a
@@ -278,8 +281,16 @@ function buildArms(src, opts) {
     };
     for (const rev of opts.revs) {
         const old = readRevision(rev);
-        arms[`rev:${old.version.split('+')[0]}`] = {
+        const name = `rev:${old.version.split('+')[0]}`;
+        arms[name] = {
             source: old.source, seedChangelog: false, runs: true, note: `${old.version} (git ${rev}), today's library`,
+        };
+        // The same older file with the changelog cache seeded: before
+        // 2026-10-23 (the SAED branch) the library parsed it on every page,
+        // so `real+changelog` against this arm is the gain of that change.
+        arms[`${name}+changelog`] = {
+            source: old.source, seedChangelog: true, runs: true,
+            note: `${old.version} (git ${rev}), changelog cache seeded, today's library`,
         };
     }
     return arms;
