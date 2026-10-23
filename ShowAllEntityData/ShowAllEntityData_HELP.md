@@ -3373,6 +3373,39 @@ answers.
 </details>
 
 <details>
+<summary>The 🖼 gallery on these sites</summary>
+
+On springsteenlyrics.com, jungleland.it, brucespringsteen.it, Brucebase and
+discogs.com, a table with pictures (the Cover, Art, Photo and Image columns,
+Brucebase's ringed Media icons, the 🖼 after a song's title) has a **🖼**
+right after its row count, as MusicBrainz tables do. It opens a window with
+every image of the rows that have already been read — by pointing at a row,
+clicking it, or on an earlier visit. **Opening it asks the site for
+nothing**: the rows read before come from this browser.
+
+- **The rest** are one button away, and the button says what it costs:
+  "Load the other 32 (about 35 s)". The pages are read one at a time, as
+  pointing at each row would (about a second apart; on Discogs 2.5 s, 1 s
+  with a token, and the button says both). A run of more than five minutes
+  asks first. **Stop**, ✕ or Esc end the run; what has been read stays read,
+  and the window says where it stopped when you open it again.
+- **While it runs**, a bar shows the rows from this browser (hatched), read
+  now, failed and still to go, with the counts under it and the last few
+  pages in *Recent*. A page that could not be read says why and offers
+  *Try again* (or *Retry N failed* at the end).
+- **Type chips** (Front, Back, Booklet; Cover, Scan; Photo, Ticket, News,
+  Memorabilia; primary, secondary …) narrow the images; pick several to see
+  any of them. **Compare two** puts two read rows side by side, one line per
+  type.
+- **A click on an image** opens the artwork viewer; ← → step through that
+  row's images, Shift+← → through the gallery's rows. Esc closes the viewer,
+  then the window. On a touch screen a tap outside the window closes it.
+- With a filter typed, the window covers only the rows the filter shows, and
+  says so.
+
+</details>
+
+<details>
 <summary>Titles in MusicBrainz style</summary>
 
 On springsteenlyrics.com, jungleland.it, brucespringsteen.it and Brucebase

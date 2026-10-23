@@ -16365,7 +16365,42 @@
             const h1 = document.querySelector('#mb-dg-root h1.mb-dg-h1 bdi');
             return h1 ? h1.textContent : '';
         },
+        peekSaved: (rows) => _dgFiPeek(rows),
+        spacingS: () => _extSpacingMs('api.discogs.com') / 1000,
+        tokenSpacingS: () => (_extDiscogsToken() ? 0 : 1),
+        kept: () => {
+            const h = Math.round(_extTtlMs() / 3600000);
+            return h % 24 ? `${h} hours` : h === 168 ? 'a week' : `${h / 24} days`;
+        },
+        gal: { heading: 'Images', where: 'Image column', point: 'its image', rows: 'rows', page: 'Discogs record', pages: 'Discogs records' },
     };
+
+    /**
+     * Puts the Discogs records of some rows that are saved in this browser
+     * in memory, as `_mbLoad()` would on a hover: one `getAll()` of the
+     * detail-page database (they are kept there as `mb:<key>`), no request to
+     * Discogs; a record of the reader's version younger than `_extTtlMs()`,
+     * not already in memory. The gallery's read at open (`_fgalOpen()`).
+     *
+     * @param {DgArtRow[]} rows
+     * @returns {Promise<number>} Records put in memory.
+     */
+    async function _dgFiPeek(rows) {
+        const want = new Map();
+        rows.forEach(r => { if (r.target && !_mbPop.has(r.target.key)) want.set(`mb:${r.target.key}`, r.target); });
+        if (!want.size) return 0;
+        const records = await _dpIdbAll().catch(() => []);
+        const ttl = _extTtlMs();
+        const now = Date.now();
+        let n = 0;
+        records.forEach(rec => {
+            const t = rec && want.get(rec.url);
+            if (!t || rec.v !== (t.reader.version || _EXT_IDB_VERSION) || now - rec.at >= ttl || _mbPop.has(t.key)) return;
+            _mbPop.set(t.key, { status: 'done', data: rec.data, at: rec.at, cached: true, detail: '', listeners: new Set(), wants: [] });
+            n++;
+        });
+        return n;
+    }
 
     /**
      * Prepares a discogs.com page at init, standing in for the MusicBrainz
@@ -22349,14 +22384,27 @@
      *   - `single`: one picture per row, so the card is that picture, big;
      *   - `lazy` / `cellView(url)`: the provider paints lazy cells
      *     (`_fiCellApply()`), and what the record says one shows (null while
-     *     there is no complete record).
+     *     there is no complete record);
+     *   - for the table-wide gallery (`_fgalOpen()`): `peekSaved(rows)` puts
+     *     the rows' records saved in this browser in memory, no request;
+     *     `spacingS()` / `tokenSpacingS()` the seconds a record costs (and,
+     *     on Discogs without a token, what one would with it; else 0);
+     *     `kept()` how long a record is kept; `gal` its words — `heading`
+     *     ("Artwork", "Images"), `where` ("Cover column"), `point` (how a
+     *     row is read by hand: "its cover in the table"), `rows` ("rows",
+     *     "entries"), `page` / `pages` ("item page"), `eligible` (the rows it
+     *     covers when that is not every row: 'with "artwork available"'),
+     *     `left` (why the others are not in it; `{n}` and `{rows}` filled in).
      * @typedef {{ctx: Object, name: string, tableSel: string, linkSel: string, cardOn: function(): boolean,
      *   rowFor: function(HTMLAnchorElement, HTMLTableElement, string): Object, hasRecord: function(Object): boolean,
      *   state: function(Object): string, request: function(Object, Object): void, images: function(Object): Object[],
      *   cardImages: ?function(Object[], Object): Object[], cardTitle?: function(Object): string,
      *   startAt?: function(Object, Object[]): number, loadingText: function(Object): string, foot: string,
      *   title: function(): string, single?: boolean, lazy?: boolean,
-     *   cellView?: function(string): ?{state: string, thumb?: string, n?: number}}} FiProvider
+     *   cellView?: function(string): ?{state: string, thumb?: string, n?: number},
+     *   peekSaved: function(Object[]): Promise<*>, spacingS: function(): number, tokenSpacingS: function(): number,
+     *   kept: function(): string, gal: {heading: string, where: string, point: string, rows: string, page: string, pages: string,
+     *   eligible?: string, left?: string}}} FiProvider
      */
 
     /**
@@ -22658,6 +22706,7 @@
      *     Title column (else that column's text);
      *   - `cardTitle(row)`, `cardImages(images, row)`, `startAt(row, images)`,
      *     optional: copied as they are (see `FiProvider`);
+     *   - `gal`: the gallery's words (see `FiProvider`);
      *   - `isNone(row)`: a row that never asks (the list says no artwork);
      *   - `noneNote`, `loadingNote`: the viewer's notes;
      *   - `ready(data)`, optional: whether a record in memory is complete
@@ -22759,6 +22808,11 @@
                 const h1 = document.querySelector(cfg.h1);
                 return h1 ? h1.textContent : '';
             },
+            peekSaved: (rows) => _fiDpPeek(new Set(rows.map(r => r.url)), _DP_SITES[cfg.host]),
+            spacingS: () => _DP_SPACING_MS / 1000 + 0.1,
+            tokenSpacingS: () => 0,
+            gal: cfg.gal,
+            kept: () => (_DP_SITES[cfg.host].ttlDays > 0 ? 'half a year' : '30 days'),
         };
         return p;
     }
@@ -22963,6 +23017,29 @@
         const site = _DP_SITES[host];
         const urls = _fiCellIndex(p);
         if (!urls.size) return 0;
+        const saved = await _fiDpPeek(new Set(urls.keys()), site);
+        // A fresh index: a re-render may have replaced the live cells meanwhile.
+        let n = 0;
+        _fiCellIndex(p).forEach((cells, url) => {
+            const view = p.cellView(url);
+            if (view) cells.forEach(a => { _fiCellApply(a, view); n++; });
+        });
+        Lib.debug('detail', `lazy cells: ${n} painted from ${saved} saved page(s).`);
+        return n;
+    }
+
+    /**
+     * Puts the saved detail pages of some URLs in memory: one `getAll()` of
+     * the detail-page database, no request to the site; a record of this
+     * parser version younger than the site's lifetime (`_dpTtlMs()`), not
+     * already in memory. The render sweep's read (`_fiAfterRender()`) and
+     * the gallery's at open (`_fgalOpen()`).
+     *
+     * @param {Set<string>} urls
+     * @param {?object}     site - Its `_DP_SITES` entry.
+     * @returns {Promise<number>} Records in the database (for the log).
+     */
+    async function _fiDpPeek(urls, site) {
         const records = await _dpIdbAll().catch(() => []);
         const ttl = _dpTtlMs(site);
         const now = Date.now();
@@ -22970,14 +23047,7 @@
             if (!rec || rec.v !== _DP_PARSER_VERSION || now - rec.at >= ttl || !urls.has(rec.url) || _dpMem.has(rec.url)) return;
             _dpMem.set(rec.url, { data: rec.data, at: rec.at });
         });
-        // A fresh index: a re-render may have replaced the live cells meanwhile.
-        let n = 0;
-        _fiCellIndex(p).forEach((cells, url) => {
-            const view = p.cellView(url);
-            if (view) cells.forEach(a => { _fiCellApply(a, view); n++; });
-        });
-        Lib.debug('detail', `lazy cells: ${n} painted from ${records.length} saved page(s).`);
-        return n;
+        return records.length;
     }
 
     /**
@@ -22992,6 +23062,9 @@
      */
     const _SL_FI = _fiDpProvider({
         key: 'sl', column: 'Cover', name: 'springsteenlyrics.com', host: 'springsteenlyrics.com',
+        gal: { heading: 'Artwork', where: 'Cover column', point: 'its cover in the table', rows: 'rows', page: 'item page',
+            pages: 'item pages', eligible: 'with "artwork available"',
+            left: '{n} {rows} the list marks "cover only" are not here: their item pages have no scans.' },
         tableSel: 'body.mb-sa-host-sl table.tbl', linkSel: 'a[data-mb-fi="sl"]', setting: 'sa_sl_tip_images',
         h1: 'h1.mb-sl-h1 bdi', pageName: 'the item page', pageLabel: 'Item page',
         needsThumb: true,
@@ -23044,6 +23117,7 @@
      */
     const _JL_FI = _fiDpProvider({
         key: 'jl', column: 'Art', name: 'jungleland.it', host: 'jungleland.it',
+        gal: { heading: 'Artwork', where: 'Art column', point: 'its Art cell', rows: 'rows', page: 'entry\'s page', pages: 'entry pages' },
         tableSel: 'body.mb-sa-host-jl table.tbl', linkSel: 'a.mb-fi-cell[data-mb-fi="jl"]', setting: 'sa_jl_tip_images',
         h1: 'h1.mb-jl-h1 bdi', pageName: 'the entry\'s page', pageLabel: 'Entry page',
         noneNote: 'The entry\'s page has no scans.',
@@ -23106,6 +23180,7 @@
      */
     const _BS_FI = _fiDpProvider({
         key: 'bs', column: 'Photo', name: 'brucespringsteen.it', host: 'brucespringsteen.it',
+        gal: { heading: 'Artwork', where: 'Photo column', point: 'its Photo cell', rows: 'records', page: 'record\'s page', pages: 'record pages' },
         tableSel: 'body.mb-sa-host-bs table.tbl', linkSel: 'a.mb-fi-cell[data-mb-fi="bs"]', setting: 'sa_bs_tip_images',
         h1: 'h1.mb-bs-h1 bdi', pageName: 'the record\'s page', pageLabel: 'Record page',
         single: true,
@@ -23171,9 +23246,37 @@
      * @returns {string}
      */
     function _fiColText(table, tr, name) {
-        const idx = Array.from(table.querySelectorAll('thead tr:first-child th')).findIndex(th => _cleanColHeaderText(th) === name);
+        const idx = _fiColIdx(table, name);
         const cell = idx >= 0 ? tr.cells[idx] : null;
         return cell ? cell.textContent.replace(/\s+/g, ' ').trim() : '';
+    }
+
+    /**
+     * Each table's column names by index, read once per header row: the
+     * gallery builds a row for every row of a table (`_fgalOpen()`), and
+     * `_cleanColHeaderText()` over every header for each of them would be
+     * O(rows × columns). A rebuilt `<thead>` row is another element, so it is
+     * read again.
+     * @type {WeakMap<HTMLTableElement, {row: Element, names: string[]}>}
+     */
+    const _fiColNames = new WeakMap();
+
+    /**
+     * The index of a table's column by its name, -1 for none.
+     *
+     * @param {HTMLTableElement} table
+     * @param {string}           name
+     * @returns {number}
+     */
+    function _fiColIdx(table, name) {
+        const row = table.querySelector('thead tr:first-child');
+        if (!row) return -1;
+        let c = _fiColNames.get(table);
+        if (!c || c.row !== row || c.names.length !== row.cells.length) {
+            c = { row, names: Array.from(row.cells, th => _cleanColHeaderText(th)) };
+            _fiColNames.set(table, c);
+        }
+        return c.names.indexOf(name);
     }
 
     /**
@@ -23189,6 +23292,9 @@
      */
     const _BB_FI = _fiDpProvider({
         key: 'bb', column: 'Media', name: 'Brucebase', host: 'brucebase.wikidot.com',
+        gal: { heading: 'Images', where: 'Media icons', point: 'one of its ringed icons', rows: 'entries', page: 'entry\'s page',
+            pages: 'entry pages', eligible: 'with a ringed Media icon',
+            left: '{n} {rows} have no ringed icon (no page of their own, or no Photo, Ticket, News or Memorabilia) and are not here.' },
         tableSel: 'body.mb-sa-host-bb table.tbl', linkSel: 'a.mb-fi-media[data-mb-fi="bb"]', setting: 'sa_bb_tip_images',
         h1: 'h1.mb-bb-h1 bdi', pageName: 'the entry\'s page', pageLabel: 'Entry page',
         noRowThumb: true,
@@ -23226,6 +23332,7 @@
      */
     const _BBS_FI = _fiDpProvider({
         key: 'bbs', column: 'Title', name: 'Brucebase', host: 'brucebase.wikidot.com',
+        gal: { heading: 'Images', where: 'Title glyph', point: 'its 🖼', rows: 'songs', page: 'song\'s page', pages: 'song pages' },
         tableSel: 'body.mb-sa-host-bb table.tbl', linkSel: 'a.mb-fi-glyph[data-mb-fi="bbs"]', setting: 'sa_bb_tip_images',
         h1: 'h1.mb-bb-h1 bdi', pageName: 'the song\'s page', pageLabel: 'Song page',
         noneNote: 'The song\'s page has no images.',
@@ -23253,6 +23360,7 @@
      */
     const _SLL_FI = _fiDpProvider({
         key: 'sll', column: 'Title', name: 'springsteenlyrics.com', host: 'springsteenlyrics.com',
+        gal: { heading: 'Images', where: 'Title glyph', point: 'its 🖼', rows: 'songs', page: 'song\'s page', pages: 'song pages' },
         tableSel: 'body.mb-sa-host-sl table.tbl', linkSel: 'a.mb-fi-glyph[data-mb-fi="sll"]', setting: 'sa_sl_tip_images',
         h1: 'h1.mb-sl-h1 bdi', pageName: 'the song\'s page', pageLabel: 'Song page',
         single: true,
@@ -23273,6 +23381,972 @@
         loadingText: 'Loading the song\'s page…',
         foot: 'Click: viewer · Ctrl-click: the song\'s page',
     });
+
+    // ── The table-wide 🖼 gallery on the foreign tables ─────────────────────
+    //
+    // vzell, 2026-10-23 (org/foreign-images.org, phase 4; mockup G2/G3,
+    // https://claude.ai/artifact/SL81qFidC4wQM6Gz2jY47Z, org/foreign-gallery-mockups.html):
+    // every image of the rows a foreign table shows, in one Liner-notes
+    // window (`#mb-fgal`) under its 🖼 in the table's heading bar, after the
+    // row count. Opening it asks the site for nothing: it shows the rows
+    // whose records are in memory or saved in this browser (the provider's
+    // `peekSaved()`, one IndexedDB read). The others are one button away,
+    // its cost named ("Load the other 32 (about 35 s)"); a run over five
+    // minutes asks first, inside the window, and the run stops when the
+    // window closes. Type chips and "Compare two" as on MusicBrainz's 🖼
+    // (`_artGallery*`, which stays as it is); a click on an image opens the
+    // artwork viewer, Shift+← → over the gallery's rows. One provider per
+    // table (`_fgalProviderFor()`), the same `FiProvider` the hover card and
+    // the viewer click use, so a row read by any of them is read for all.
+
+    /**
+     * A run longer than this, in seconds, asks before it starts (vzell,
+     * 2026-10-23: "ask").
+     * @type {number}
+     */
+    const _FGAL_ASK_OVER_S = 300;
+
+    /**
+     * How many rows not loaded yet the window names one by one; the rest
+     * are counted.
+     * @type {number}
+     */
+    const _FGAL_NAMED_COLD = 40;
+
+    /**
+     * The open gallery, or null. One at a time.
+     * @type {?Object}
+     */
+    let _fgalState = null;
+
+    /**
+     * What a table's gallery remembers between two openings for the page's
+     * life: the log, how its last run ended, the rows it read.
+     * @type {WeakMap<HTMLTableElement, {log: Object[], finished: string, stopped: string, readNow: Set<string>}>}
+     */
+    const _fgalMemo = new WeakMap();
+
+    /**
+     * The provider of a foreign table's images: the first of this host's
+     * whose triggers the table's rows hold; null for a table with none
+     * (Brucebase's Relations, Recent changes).
+     *
+     * @param {HTMLTableElement} table
+     * @returns {?FiProvider}
+     */
+    function _fgalProviderFor(table) {
+        const cands = _isDgHost ? [_DG_FI] : _isSlHost ? [_SL_FI, _SLL_FI] : _isJlHost ? [_JL_FI]
+            : _isBsHost ? [_BS_FI] : _isBbHost ? [_BB_FI, _BBS_FI] : [];
+        return cands.find(p => table.matches(p.tableSel) && table.querySelector(`tbody > tr ${p.linkSel}`)) || null;
+    }
+
+    /**
+     * Places each foreign table's 🖼 right after its heading's row count —
+     * or puts it back there: the count is rebuilt on every filter
+     * (`updateH2Count()` re-anchors `[id^="mb-fgal-btn-"]` with the other
+     * heading controls), and a multi-table page rebuilds its `<h3>`s.
+     * Called beside `_dgMbAfterRender()`: both render tails and both
+     * re-render branches of `runFilter()`. One boolean check on MusicBrainz.
+     *
+     * @returns {void}
+     */
+    function _fgalAfterRender() {
+        if (!_foreignHost) return;
+        _ensureFgalStyle();
+        document.querySelectorAll('table.tbl').forEach((table, i) => {
+            const id = `mb-fgal-btn-${i}`;
+            let btn = document.getElementById(id);
+            const p = _fgalProviderFor(table);
+            const header = p ? caaFindHeaderForTable(table) : null;
+            const anchor = header ? (header.querySelector(':scope > .mb-row-count-stat') || _hdrCtlAnchor(header)) : null;
+            if (!anchor) {
+                if (btn) btn.remove();
+                return;
+            }
+            if (!btn) {
+                btn = document.createElement('button');
+                btn.id = id;
+                btn.type = 'button';
+                btn.className = 'mb-fgal-btn';
+                btn.textContent = '🖼';
+                btn.dataset.mbttFn = 'fgal';
+                btn.setAttribute('aria-haspopup', 'dialog');
+                btn.setAttribute('aria-pressed', 'false');
+                btn.setAttribute('aria-label', 'Image gallery of this table');
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const t = _fgalTableOf(btn);
+                    if (t) _fgalOpen(t, btn);
+                });
+            }
+            if (btn.previousElementSibling !== anchor) anchor.after(btn);
+        });
+    }
+
+    /**
+     * The table a 🖼 belongs to, at click time (a re-render may have
+     * replaced it): `table.tbl` number N of `#mb-fgal-btn-N`.
+     *
+     * @param {HTMLElement} btn
+     * @returns {?HTMLTableElement}
+     */
+    function _fgalTableOf(btn) {
+        const m = btn.id.match(/^mb-fgal-btn-(\d+)$/);
+        return m ? document.querySelectorAll('table.tbl')[Number(m[1])] || null : null;
+    }
+
+    /**
+     * The table's rows with a trigger, one per row (the first trigger), as
+     * the provider takes them, and how many rows it shows in all. A row the
+     * provider has no record for, or one the list itself rules out (a
+     * springsteenlyrics bootleg marked "cover only"), is not in the gallery.
+     *
+     * @param {FiProvider}       p
+     * @param {HTMLTableElement} table
+     * @returns {{rows: Object[], total: number}}
+     */
+    function _fgalRows(p, table) {
+        const seen = new Map();
+        table.querySelectorAll(`tbody > tr ${p.linkSel}`).forEach(l => {
+            const tr = l.closest('tr');
+            if (tr.style.display !== 'none' && !seen.has(tr)) seen.set(tr, l);
+        });
+        const rows = [];
+        Array.from(seen.values()).forEach((l, i) => {
+            const row = p.rowFor(l, table, `fgal:${i}:${l.href}`);
+            row.kind = '';
+            if (!p.hasRecord(row) || p.state(row) === 'none') return;
+            rows.push({ row, key: row.url || (row.target && row.target.key) || l.href });
+        });
+        const total = Array.from(table.tBodies).reduce((n, tb) => n + Array.from(tb.rows).filter(tr => tr.style.display !== 'none').length, 0);
+        return { rows, total };
+    }
+
+    /**
+     * A gallery row as it stands: `read` (its images), `empty` (read, no
+     * image beyond a note), `failed` (with the reason), `loading` (a hover
+     * or the run is asking) or `cold`.
+     *
+     * @param {FiProvider} p
+     * @param {Object}     g - A row of `_fgalRows()`.
+     * @returns {{state: string, images: Object[], note: string}}
+     */
+    function _fgalRowState(p, g) {
+        const s = p.state(g.row);
+        if (s === 'done') {
+            const raw = p.images(g.row);
+            if (!raw.length || (raw.length === 1 && raw[0].note)) return { state: 'empty', images: [], note: '' };
+            return { state: 'read', images: p.cardImages ? p.cardImages(raw, g.row) : raw, note: '' };
+        }
+        if (s === 'failed') {
+            const raw = p.images(g.row);
+            return { state: 'failed', images: [], note: (raw[0] && raw[0].note) || 'The request failed.' };
+        }
+        return { state: s === 'loading' ? 'loading' : 'cold', images: [], note: '' };
+    }
+
+    /**
+     * "about 35 s", "about 12 min", "about 1 h 4 min" for some records.
+     *
+     * @param {number} n
+     * @param {number} spacing - Seconds a record.
+     * @returns {string}
+     */
+    function _fgalCost(n, spacing) {
+        const s = Math.round(n * spacing);
+        if (s < 90) return `about ${s} s`;
+        const m = Math.round(s / 60);
+        return m < 60 ? `about ${m} min` : `about ${Math.floor(m / 60)} h ${m % 60} min`;
+    }
+
+    /**
+     * A run's cost, with what it would be with a Discogs token where that
+     * is faster.
+     *
+     * @param {FiProvider} p
+     * @param {number}     n
+     * @returns {string}
+     */
+    function _fgalCostText(p, n) {
+        const tok = p.tokenSpacingS();
+        return _fgalCost(n, p.spacingS()) + (tok ? `; ${_fgalCost(n, tok)} with a Discogs token` : '');
+    }
+
+    /**
+     * The 🖼's hover card: what the window would show, counted from memory
+     * (no request, no database read). None while the window is open.
+     *
+     * @param {HTMLElement} btn
+     * @returns {?string}
+     */
+    function _fgalTipHtml(btn) {
+        if (_fgalState) return null;
+        const table = _fgalTableOf(btn);
+        const p = table && _fgalProviderFor(table);
+        if (!p) return null;
+        const { rows } = _fgalRows(p, table);
+        const read = rows.filter(g => p.state(g.row) === 'done').length;
+        return `<div class="mb-tt-title">${_rgEsc(p.gal.heading)} gallery</div>` +
+            `<div class="mb-tt-body">Every image of the ${_rgEsc(p.gal.rows)} this table shows that have been read: ` +
+            `${read.toLocaleString('en-US')} read, ${(rows.length - read).toLocaleString('en-US')} not yet.</div>` +
+            '<div class="mb-tt-dim">Opening it asks the site for nothing. Click to open; click again or Esc to close.</div>';
+    }
+
+    /**
+     * Opens the gallery of a table under its 🖼 — or, from the same table's
+     * 🖼 again, closes it. Another table's open gallery closes first.
+     * Renders at once from memory, then once more after the provider's
+     * `peekSaved()` has put the rows saved in this browser in memory.
+     *
+     * @param {HTMLTableElement} table
+     * @param {HTMLElement}      opener
+     * @returns {void}
+     */
+    function _fgalOpen(table, opener) {
+        const prev = _fgalState;
+        if (prev) {
+            _fgalClose();
+            if (prev.table === table) return;
+        }
+        const p = _fgalProviderFor(table);
+        if (!p) return;
+        _ensureFgalStyle();
+        const { rows, total } = _fgalRows(p, table);
+        let memo = _fgalMemo.get(table);
+        if (!memo) {
+            memo = { log: [], finished: '', stopped: '', readNow: new Set() };
+            _fgalMemo.set(table, memo);
+        }
+        const box = document.createElement('div');
+        box.id = 'mb-fgal';
+        box.className = 'mb-tt-liner';
+        box.setAttribute('role', 'dialog');
+        box.setAttribute('aria-label', `${p.gal.heading} gallery`);
+        const st = {
+            p, table, opener, box, rows, total, memo, filtered: _anyFilterActive(), run: null,
+            sel: new Set(), compare: false, ca: null, cb: null, ask: false, peeking: true, fresh: new Set(),
+            onKey: (e) => _fgalOnKey(st, e),
+            onDown: (e) => {
+                if (e.pointerType !== 'mouse' && !box.contains(e.target) && e.target !== opener && !_artViewerState) _fgalClose();
+            },
+        };
+        _fgalState = st;
+        document.body.appendChild(box);
+        box.addEventListener('click', (e) => _fgalOnClick(st, e));
+        box.addEventListener('change', (e) => _fgalOnChange(st, e));
+        box.addEventListener('keydown', (e) => {
+            if (e.key !== 'Enter' && e.key !== ' ') return;
+            const fig = e.target.closest && e.target.closest('figure.mb-fgal-tile');
+            if (!fig) return;
+            e.preventDefault();
+            _fgalOpenViewer(st, fig);
+        });
+        window.addEventListener('keydown', st.onKey, true);
+        document.addEventListener('pointerdown', st.onDown, true);
+        opener.setAttribute('aria-pressed', 'true');
+        _fgalPlace(st);
+        _fgalRender(st);
+        Promise.resolve(p.peekSaved(rows.map(g => g.row))).catch(() => 0).then(() => {
+            st.peeking = false;
+            if (_fgalState === st) _fgalRender(st);
+        });
+        Lib.debug('detail', `_fgalOpen(): ${rows.length} row(s) of ${total} in the gallery.`);
+    }
+
+    /**
+     * Closes the open gallery, stopping its run ("Stopped when the window
+     * closed"), and gives the focus back to its 🖼.
+     *
+     * @returns {void}
+     */
+    function _fgalClose() {
+        const st = _fgalState;
+        if (!st) return;
+        _fgalStop(st, 'closed');
+        _fgalState = null;
+        window.removeEventListener('keydown', st.onKey, true);
+        document.removeEventListener('pointerdown', st.onDown, true);
+        st.box.remove();
+        st.opener.setAttribute('aria-pressed', 'false');
+        if (st.opener.isConnected) st.opener.focus({ preventScroll: true });
+    }
+
+    /**
+     * Esc: the open question first, then the window. The artwork viewer
+     * owns every key while it is open.
+     *
+     * @param {Object}        st
+     * @param {KeyboardEvent} e
+     * @returns {void}
+     */
+    function _fgalOnKey(st, e) {
+        if (e.key !== 'Escape' || _artViewerState || _fgalState !== st) return;
+        e.preventDefault();
+        e.stopPropagation();
+        if (st.ask) {
+            st.ask = false;
+            _fgalRender(st);
+            return;
+        }
+        _fgalClose();
+    }
+
+    /**
+     * Puts the window under its 🖼, inside the window's width.
+     *
+     * @param {Object} st
+     * @returns {void}
+     */
+    function _fgalPlace(st) {
+        const r = st.opener.getBoundingClientRect();
+        const vw = document.documentElement.clientWidth;
+        const w = Math.min(800, vw - 16);
+        const left = Math.max(8, Math.min(r.left - 20, vw - w - 8));
+        st.box.style.width = `${w}px`;
+        st.box.style.left = `${Math.round(left + window.scrollX)}px`;
+        st.box.style.top = `${Math.round(r.bottom + window.scrollY + 6)}px`;
+    }
+
+    /**
+     * A line of the window's Recent log, newest first, at most six.
+     *
+     * @param {Object} st
+     * @param {string} what
+     * @param {string} outcome
+     * @param {string} cls - `good`, `bad` or `dim`.
+     * @returns {void}
+     */
+    function _fgalNote(st, what, outcome, cls) {
+        const d = new Date();
+        const tm = [d.getHours(), d.getMinutes(), d.getSeconds()].map(x => String(x).padStart(2, '0')).join(':');
+        st.memo.log.unshift({ tm, what, outcome, cls });
+        st.memo.log.length = Math.min(st.memo.log.length, 6);
+    }
+
+    /**
+     * Reads every row in scope not read yet (or only the failed ones), one
+     * after the other through the provider's `request()` — its rate gate,
+     * its cache, the same record a hover would read. Each request is wanted
+     * only while this run is the window's, so Stop or closing the window
+     * asks nothing more.
+     *
+     * @param {Object}  st
+     * @param {boolean} onlyFailed
+     * @returns {Promise<void>}
+     */
+    async function _fgalRun(st, onlyFailed) {
+        const p = st.p;
+        const queue = st.rows.filter(g => {
+            const s = _fgalRowState(p, g).state;
+            return onlyFailed ? s === 'failed' : (s === 'cold' || s === 'failed');
+        });
+        if (!queue.length || st.run) return;
+        const run = { queue, n: queue.length, k: 0, halt: null, stop: null };
+        run.halt = new Promise(res => { run.stop = res; });
+        st.run = run;
+        st.ask = false;
+        st.memo.finished = '';
+        st.memo.stopped = '';
+        _fgalNote(st, `${queue.length.toLocaleString('en-US')} ${queue.length === 1 ? p.gal.page : p.gal.pages}`, 'started', 'dim');
+        for (const g of queue) {
+            if (st.run !== run) return;
+            run.k++;
+            _fgalRender(st);
+            const force = _fgalRowState(p, g).state === 'failed';
+            await Promise.race([
+                new Promise(res => p.request(g.row, { force, repaint: res, wanted: () => _fgalState === st && st.run === run })),
+                run.halt,
+            ]);
+            if (st.run !== run) return;
+            const now = _fgalRowState(p, g);
+            const title = g.row.title || g.key;
+            if (now.state === 'read') {
+                st.memo.readNow.add(g.key);
+                st.fresh.add(g.key);
+                _fgalNote(st, title, `${now.images.length} image${now.images.length === 1 ? '' : 's'}`, 'good');
+            } else if (now.state === 'empty') {
+                st.memo.readNow.add(g.key);
+                _fgalNote(st, title, 'no images', 'dim');
+            } else if (now.state === 'failed') {
+                _fgalNote(st, title, `could not read the ${p.gal.page}`, 'bad');
+            }
+        }
+        st.run = null;
+        const failed = st.rows.filter(g => _fgalRowState(p, g).state === 'failed').length;
+        st.memo.finished = failed ? 'errors' : 'ok';
+        _fgalNote(st, 'run', failed ? `finished, ${failed} failed` : 'finished', failed ? 'bad' : 'good');
+        if (_fgalState === st) _fgalRender(st);
+    }
+
+    /**
+     * Stops a running gallery run, saying why: `stopped` (Stop) or
+     * `closed` (the window closed).
+     *
+     * @param {Object} st
+     * @param {string} why
+     * @returns {void}
+     */
+    function _fgalStop(st, why) {
+        const run = st.run;
+        if (!run) return;
+        st.run = null;
+        run.stop();
+        st.memo.stopped = why;
+        const left = run.queue.length - run.k + 1;
+        _fgalNote(st, 'run', `${why === 'closed' ? 'stopped: the window closed' : 'stopped'} — ${left.toLocaleString('en-US')} not read`, 'dim');
+        if (_fgalState === st) _fgalRender(st);
+    }
+
+    /**
+     * Whether an image passes the chips (none = every type, several = any).
+     *
+     * @param {Object} st
+     * @param {Object} im
+     * @returns {boolean}
+     */
+    function _fgalMatch(st, im) {
+        return !st.sel.size || st.sel.has(_fgalType(im));
+    }
+
+    /**
+     * An image's type for the chips and Compare: its first type, else
+     * "(no type)".
+     *
+     * @param {Object} im
+     * @returns {string}
+     */
+    function _fgalType(im) {
+        return (Array.isArray(im.types) && im.types[0]) || '(no type)';
+    }
+
+    /**
+     * The viewer's rows: the read rows with an image the chips let through,
+     * each with the indices of those images, in table order.
+     *
+     * @param {Object} st
+     * @returns {Array<{g: Object, images: Object[], idx: number[]}>}
+     */
+    function _fgalNav(st) {
+        const out = [];
+        st.rows.forEach(g => {
+            const s = _fgalRowState(st.p, g);
+            if (s.state !== 'read') return;
+            const idx = s.images.map((_, i) => i).filter(i => _fgalMatch(st, s.images[i]));
+            if (idx.length) out.push({ g, images: s.images, idx });
+        });
+        return out;
+    }
+
+    /**
+     * Draws the window from its state, keeping its scroll position.
+     *
+     * @param {Object} st
+     * @returns {void}
+     */
+    function _fgalRender(st) {
+        const p = st.p;
+        const old = st.box.querySelector('.mb-fgal-body');
+        const top = old ? old.scrollTop : 0;
+        const states = new Map(st.rows.map(g => [g, _fgalRowState(p, g)]));
+        const c = { cache: 0, now: 0, failed: 0, cold: 0, empty: 0, images: 0 };
+        st.rows.forEach(g => {
+            const s = states.get(g);
+            if (s.state === 'read' || s.state === 'empty') {
+                if (st.memo.readNow.has(g.key)) c.now++;
+                else c.cache++;
+                if (s.state === 'empty') c.empty++;
+                c.images += s.images.length;
+            } else if (s.state === 'failed') c.failed++;
+            else c.cold++;
+        });
+        const head = _artvEl('div', 'mb-fgal-head');
+        const t = _artvEl('div', 'mb-fgal-t');
+        const name = _fgalTableName(st.table) || p.title();
+        t.append(_artvEl('b', null, `${p.gal.heading}${name ? ' — ' + name : ''}`),
+            _artvEl('span', null, `${window.location.hostname.replace(/^www\./, '')} · ${p.gal.where} · ← → images, Shift+← → rows in the viewer`));
+        const [pc, pw] = st.run ? ['run', 'Running'] : st.memo.finished === 'errors' ? ['warn', 'Done with errors']
+            : (!c.cold && !c.failed) || st.memo.finished === 'ok' ? ['ok', 'Done'] : ['idle', 'Idle'];
+        const x = _artvEl('button', 'mb-fgal-x', '✕');
+        x.type = 'button';
+        x.dataset.mbFgalAct = 'close';
+        x.setAttribute('aria-label', 'Close (Esc)');
+        head.append(t, _artvEl('span', `mb-tt-ajpill mb-tt-ajpill-${pc}`, pw), x);
+        const body = _artvEl('div', 'mb-fgal-body');
+        body.append(_fgalPanel(st, c));
+        body.append(st.compare ? _fgalCompare(st, states) : _fgalList(st, states));
+        st.box.replaceChildren(head, body);
+        body.scrollTop = top;
+    }
+
+    /**
+     * The name of a table's heading (its first text), '' for none.
+     *
+     * @param {HTMLTableElement} table
+     * @returns {string}
+     */
+    function _fgalTableName(table) {
+        const h = caaFindHeaderForTable(table);
+        const n = h && Array.from(h.childNodes).find(x => x.nodeType === 3 && x.textContent.trim());
+        if (n) return n.textContent.replace(/\s+/g, ' ').trim();
+        const bdi = h && h.querySelector('bdi');
+        return bdi ? bdi.textContent.trim() : '';
+    }
+
+    /**
+     * The window's summary: facts, the progress bar and its counts, the
+     * actions, the question before a long run, the Recent log, why some
+     * rows are not here, and the chips.
+     *
+     * @param {Object} st
+     * @param {Object} c - `_fgalRender()`'s counts.
+     * @returns {HTMLElement}
+     */
+    function _fgalPanel(st, c) {
+        const p = st.p;
+        const g = p.gal;
+        const fmt = (n) => n.toLocaleString('en-US');
+        const eligible = st.rows.length;
+        const read = c.cache + c.now - c.empty;
+        const sp = p.spacingS();
+        const panel = _artvEl('div', 'mb-fgal-panel');
+        const facts = _artvEl('dl', 'mb-tt-ajfacts');
+        const fact = (k, v) => facts.append(_artvEl('dt', null, k), _artvEl('dd', null, v));
+        fact('Rows', st.filtered ? `only the ${fmt(eligible)} ${g.rows} the filters show`
+            : `all ${fmt(st.total)} ${g.rows}${g.eligible ? `, ${fmt(eligible)} ${g.eligible}` : ''}`);
+        fact('Shown', st.peeking ? 'reading this browser\'s saved pages…' : `${fmt(read)} ${read === 1 ? 'row' : 'rows'} · ${fmt(c.images)} images`);
+        fact('Not loaded', c.cold + c.failed ? `${fmt(c.cold + c.failed)} · each its ${g.page}, one request, ${sp} s apart` : 'none');
+        if (c.empty) fact('No images', `${fmt(c.empty)} ${c.empty === 1 ? 'row' : 'rows'} (read, nothing to show)`);
+        fact('Kept', `${p.kept()} in this browser, shared with the ${p === _DG_FI ? 'link preview' : 'preview'}`);
+        panel.append(facts);
+        const bar = _artvEl('div', 'mb-tt-ajbar');
+        const w = (n) => (eligible ? `${(100 * n / eligible).toFixed(2)}%` : '0');
+        [['c', c.cache], ['d', c.now], ['f', c.failed], [st.run ? 'q' : 'r', c.cold]].forEach(([k, n]) => {
+            const s = _artvEl('span', `mb-tt-ajbar-${k}`);
+            s.style.width = w(n);
+            bar.append(s);
+        });
+        bar.setAttribute('role', 'img');
+        bar.setAttribute('aria-label', `${c.cache} from the cache, ${c.now} loaded now, ${c.failed} failed, ${c.cold} not loaded`);
+        const counts = _artvEl('div', 'mb-fgal-counts');
+        counts.append(_artvEl('span', null, `${fmt(c.cache)} from the cache`), _artvEl('span', null, `${fmt(c.now)} loaded now`),
+            _artvEl('span', c.failed ? 'mb-tt-ajlog-bad' : null, `${fmt(c.failed)} failed`),
+            _artvEl('span', null, `${fmt(c.cold)} ${st.run ? 'queued' : 'not loaded'}`));
+        panel.append(bar, counts);
+        const acts = _artvEl('div', 'mb-tt-ajacts');
+        const btn = (label, act, cls) => {
+            const b = _artvEl('button', `mb-tt-ajact${cls ? ' mb-tt-ajact-' + cls : ''}`, label);
+            b.type = 'button';
+            b.dataset.mbFgalAct = act;
+            return b;
+        };
+        const note = (text) => _artvEl('span', 'mb-fgal-note', text);
+        const todo = c.cold + c.failed;
+        if (st.run) {
+            const left = st.run.n - st.run.k;
+            acts.append(btn('Stop', 'stop'), note(`Reading ${fmt(st.run.k)} of ${fmt(st.run.n)}, ${_fgalCost(left, sp)} left. Closing the window stops it too.`));
+        } else if (st.peeking) {
+            acts.append(note('Reading this browser\'s saved pages…'));
+        } else if (todo) {
+            if (st.memo.finished === 'errors' && !c.cold) {
+                acts.append(btn(`Retry ${fmt(c.failed)} failed`, 'retry', 'primary'));
+            } else {
+                acts.append(btn(`Load the other ${fmt(todo)} (${_fgalCostText(p, todo)})`, 'load', 'primary'));
+                if (c.failed && c.cold) acts.append(btn(`Retry ${fmt(c.failed)} failed`, 'retry'));
+                acts.append(note(st.memo.stopped === 'stopped' ? 'Stopped. The rows read so far stay read.'
+                    : st.memo.stopped === 'closed' ? 'Stopped when the window closed. The rows read so far stay read.'
+                        : 'Nothing is fetched until you press it.'));
+            }
+        } else if (eligible) {
+            acts.append(note(`Every one of these ${g.rows} has been read.`));
+        }
+        panel.append(acts);
+        if (st.ask && todo) {
+            const ask = _artvEl('div', 'mb-fgal-ask');
+            ask.setAttribute('role', 'alertdialog');
+            const q = _artvEl('div');
+            q.append(_artvEl('b', null, `Read ${fmt(todo)} ${g.pages}?`),
+                ` ${_fgalCostText(p, todo).replace(/^about/, 'About')}, one every ${sp} s, while this window stays open. ` +
+                'You can stop at any time; what is read stays read.');
+            const a2 = _artvEl('div', 'mb-tt-ajacts');
+            a2.append(btn('Start', 'start', 'primary'), btn('Cancel', 'cancel'));
+            ask.append(q, a2);
+            panel.append(ask);
+        }
+        if (st.memo.log.length) {
+            const ul = _artvEl('ul', 'mb-tt-ajlog');
+            st.memo.log.forEach(l => {
+                const li = document.createElement('li');
+                const time = _artvEl('time', null, l.tm);
+                const what = _artvEl('span');
+                what.append(`${l.what} · `, _artvEl('span', `mb-tt-ajlog-${l.cls}`, l.outcome));
+                li.append(time, what);
+                ul.append(li);
+            });
+            panel.append(_artvEl('div', 'mb-tt-ajlog-h', 'Recent'), ul);
+        }
+        const left = st.total - eligible;
+        if (g.left && left > 0 && !st.filtered) {
+            panel.append(_artvEl('div', 'mb-tt-dim', g.left.replace('{n}', fmt(left)).replace('{rows}', g.rows)));
+        }
+        const chips = _fgalChips(st);
+        if (chips) panel.append(chips);
+        return panel;
+    }
+
+    /**
+     * The chips: "All" and one per type of the read rows' images, with
+     * counts, then "Compare two". Nothing until a row has been read.
+     *
+     * @param {Object} st
+     * @returns {?HTMLElement}
+     */
+    function _fgalChips(st) {
+        const counts = new Map();
+        let all = 0;
+        st.rows.forEach(g => {
+            const s = _fgalRowState(st.p, g);
+            if (s.state !== 'read') return;
+            s.images.forEach(im => {
+                const t = _fgalType(im);
+                counts.set(t, (counts.get(t) || 0) + 1);
+                all++;
+            });
+        });
+        if (!all) return null;
+        const box = _artvEl('div', 'mb-fgal-chips');
+        box.setAttribute('role', 'group');
+        box.setAttribute('aria-label', 'Image types');
+        const chip = (label, type, n, pressed) => {
+            const b = _artvEl('button', 'mb-fgal-chip', label);
+            b.type = 'button';
+            b.dataset.mbFgalType = type;
+            b.setAttribute('aria-pressed', String(pressed));
+            if (n !== null) b.append(_artvEl('span', 'mb-fgal-n', n.toLocaleString('en-US')));
+            return b;
+        };
+        box.append(chip('All', '', all, st.sel.size === 0));
+        counts.forEach((n, t) => box.append(chip(t, t, n, st.sel.has(t))));
+        const cmp = chip('Compare two', '', null, st.compare);
+        cmp.classList.add('mb-fgal-cmp');
+        delete cmp.dataset.mbFgalType;
+        cmp.dataset.mbFgalAct = 'compare';
+        box.append(cmp);
+        return box;
+    }
+
+    /**
+     * One image tile: the 250 px thumbnail (lazy, no referrer), ★ for the
+     * main front, its type and comment.
+     *
+     * @param {Object} g - The row.
+     * @param {Object} im
+     * @param {number} i - Its index in the row's images.
+     * @returns {HTMLElement}
+     */
+    function _fgalTile(g, im, i) {
+        const fig = _artvEl('figure', 'mb-fgal-tile' + (im.front ? ' mb-fgal-main' : ''));
+        fig.dataset.mbFgalKey = g.key;
+        fig.dataset.mbFgalI = String(i);
+        fig.tabIndex = 0;
+        const img = document.createElement('img');
+        img.src = _artViewerThumbUrl(im);
+        img.alt = _fgalType(im);
+        img.loading = 'lazy';
+        img.referrerPolicy = 'no-referrer';
+        const type = _fgalType(im);
+        const cap = _artvEl('figcaption', null, im.comment && im.comment !== g.row.title ? `${type} · ${im.comment}` : type);
+        fig.setAttribute('aria-label', cap.textContent);
+        fig.append(img, cap);
+        return fig;
+    }
+
+    /**
+     * The gallery view: the read (and failed) rows first, in table order,
+     * then the ones not loaded yet, the first `_FGAL_NAMED_COLD` by name.
+     *
+     * @param {Object} st
+     * @param {Map<Object, Object>} states
+     * @returns {HTMLElement}
+     */
+    function _fgalList(st, states) {
+        const p = st.p;
+        const list = _artvEl('div', 'mb-fgal-rows');
+        const shown = st.rows.filter(g => states.get(g).state !== 'empty');
+        const done = shown.filter(g => ['read', 'failed'].includes(states.get(g).state));
+        const cold = shown.filter(g => !['read', 'failed'].includes(states.get(g).state));
+        const queued = new Set(st.run ? st.run.queue.slice(st.run.k) : []);
+        const block = (g) => {
+            const s = states.get(g);
+            const rel = _artvEl('div', 'mb-fgal-rel');
+            rel.dataset.mbFgalKey = g.key;
+            rel.dataset.mbFgalState = s.state;
+            const who = _artvEl('div', 'mb-fgal-who');
+            const a = _artvEl('a', null, g.row.title || g.key);
+            a.href = g.row.url || (g.row.target && g.row.target.url) || '#';
+            a.target = '_blank';
+            a.rel = 'noopener';
+            who.append(a, _artvEl('span', null, s.state === 'read' ? `${s.images.length} image${s.images.length === 1 ? '' : 's'} · ${st.memo.readNow.has(g.key) ? 'read now' : 'read before'}` : ''));
+            const tiles = _artvEl('div', 'mb-fgal-tiles');
+            if (s.state === 'failed') {
+                const f = _artvEl('span', 'mb-fgal-miss mb-tt-ajlog-bad', s.note);
+                const b = _artvEl('button', 'mb-tt-ajact', 'Try again');
+                b.type = 'button';
+                b.dataset.mbFgalAct = 'retry';
+                f.append(' ', b);
+                tiles.append(f);
+            } else if (s.state === 'read') {
+                const idx = s.images.map((_, i) => i).filter(i => _fgalMatch(st, s.images[i]));
+                if (!idx.length) {
+                    tiles.append(_artvEl('span', 'mb-fgal-miss', `No ${[...st.sel].join(' or ')} image.`));
+                    rel.classList.add('mb-fgal-dimmed');
+                }
+                let kind = '';
+                idx.forEach(i => {
+                    const im = s.images[i];
+                    if (p === _BB_FI && _fgalType(im) !== kind) {
+                        kind = _fgalType(im);
+                        tiles.append(_artvEl('span', 'mb-fgal-kind', kind));
+                    }
+                    tiles.append(_fgalTile(g, im, i));
+                });
+            } else {
+                tiles.append(_artvEl('span', 'mb-fgal-miss', s.state === 'loading' ? 'Loading…'
+                    : queued.has(g) ? 'Queued.' : `Not loaded yet. Point at ${p.gal.point}, or use Load.`));
+            }
+            if (st.fresh.has(g.key)) {
+                rel.classList.add('mb-fgal-new');
+                st.fresh.delete(g.key);
+            }
+            rel.append(who, tiles);
+            return rel;
+        };
+        done.forEach(g => list.append(block(g)));
+        cold.slice(0, _FGAL_NAMED_COLD).forEach(g => list.append(block(g)));
+        if (cold.length > _FGAL_NAMED_COLD) {
+            list.append(_artvEl('div', 'mb-tt-dim', `… and ${(cold.length - _FGAL_NAMED_COLD).toLocaleString('en-US')} more ${p.gal.rows} not loaded yet.`));
+        }
+        if (!shown.length) list.append(_artvEl('div', 'mb-tt-dim', st.rows.length ? 'Every row read has no image.' : 'No row in scope.'));
+        return list;
+    }
+
+    /**
+     * "Compare two": two read rows side by side, one line per type (the
+     * chips apply), "none" where a row has no image of it.
+     *
+     * @param {Object} st
+     * @param {Map<Object, Object>} states
+     * @returns {HTMLElement}
+     */
+    function _fgalCompare(st, states) {
+        const ok = st.rows.filter(g => states.get(g).state === 'read' && states.get(g).images.length);
+        if (ok.length < 2) return _artvEl('div', 'mb-tt-dim', `Comparing needs two read ${st.p.gal.rows} with images.`);
+        if (!ok.some(g => g.key === st.ca)) st.ca = ok[0].key;
+        if (!ok.some(g => g.key === st.cb) || st.cb === st.ca) st.cb = ok.find(g => g.key !== st.ca).key;
+        const sides = [st.ca, st.cb].map(k => ok.find(g => g.key === k));
+        const grid = _artvEl('div', 'mb-fgal-cmp-grid');
+        grid.append(_artvEl('div', 'mb-fgal-cmp-h', 'Type'));
+        sides.forEach((s, k) => {
+            const h = _artvEl('div', 'mb-fgal-cmp-h');
+            const sel = document.createElement('select');
+            sel.dataset.mbFgalSide = k ? 'b' : 'a';
+            sel.setAttribute('aria-label', `${k ? 'Second' : 'First'} row to compare`);
+            ok.forEach(g => {
+                const o = document.createElement('option');
+                o.value = g.key;
+                o.textContent = g.row.title || g.key;
+                if (g === s) o.selected = true;
+                sel.append(o);
+            });
+            h.append(sel);
+            grid.append(h);
+        });
+        const types = [];
+        sides.forEach(g => states.get(g).images.forEach(im => { if (!types.includes(_fgalType(im))) types.push(_fgalType(im)); }));
+        types.filter(t => !st.sel.size || st.sel.has(t)).forEach(t => {
+            grid.append(_artvEl('div', 'mb-fgal-cmp-ty', t));
+            sides.forEach(g => {
+                const cell = _artvEl('div', 'mb-fgal-tiles');
+                states.get(g).images.forEach((im, i) => { if (_fgalType(im) === t) cell.append(_fgalTile(g, im, i)); });
+                if (!cell.childNodes.length) cell.append(_artvEl('span', 'mb-fgal-miss', 'none'));
+                grid.append(cell);
+            });
+        });
+        return grid;
+    }
+
+    /**
+     * Clicks in the window (delegated): ✕, Load, Start / Cancel, Stop,
+     * Retry, a chip, "Compare two", an image.
+     *
+     * @param {Object}     st
+     * @param {MouseEvent} e
+     * @returns {void}
+     */
+    function _fgalOnClick(st, e) {
+        const t = e.target;
+        if (!(t instanceof Element)) return;
+        const act = t.closest('[data-mb-fgal-act]');
+        if (act) {
+            e.preventDefault();
+            const todo = st.rows.filter(g => ['cold', 'failed'].includes(_fgalRowState(st.p, g).state)).length;
+            switch (act.dataset.mbFgalAct) {
+                case 'close': _fgalClose(); return;
+                case 'load':
+                    if (todo * st.p.spacingS() > _FGAL_ASK_OVER_S) {
+                        st.ask = true;
+                        _fgalRender(st);
+                    } else _fgalRun(st, false);
+                    return;
+                case 'start': _fgalRun(st, false); return;
+                case 'cancel': st.ask = false; _fgalRender(st); return;
+                case 'stop': _fgalStop(st, 'stopped'); return;
+                case 'retry': _fgalRun(st, true); return;
+                case 'compare': st.compare = !st.compare; _fgalRender(st); return;
+                default: return;
+            }
+        }
+        const chip = t.closest('[data-mb-fgal-type]');
+        if (chip) {
+            const type = chip.dataset.mbFgalType;
+            if (!type) st.sel.clear();
+            else if (st.sel.has(type)) st.sel.delete(type);
+            else st.sel.add(type);
+            _fgalRender(st);
+            return;
+        }
+        const fig = t.closest('figure.mb-fgal-tile');
+        if (fig) {
+            e.preventDefault();
+            _fgalOpenViewer(st, fig);
+        }
+    }
+
+    /**
+     * A Compare side chosen.
+     *
+     * @param {Object} st
+     * @param {Event}  e
+     * @returns {void}
+     */
+    function _fgalOnChange(st, e) {
+        const sel = e.target.closest && e.target.closest('select[data-mb-fgal-side]');
+        if (!sel) return;
+        if (sel.dataset.mbFgalSide === 'a') st.ca = sel.value;
+        else st.cb = sel.value;
+        _fgalRender(st);
+    }
+
+    /**
+     * Opens the artwork viewer at a tile: that row's images the chips let
+     * through (in Compare, all of them); Shift+← → step the gallery's rows
+     * that have such an image, in table order, round.
+     *
+     * @param {Object}      st
+     * @param {HTMLElement} fig - The `figure.mb-fgal-tile`.
+     * @returns {void}
+     */
+    function _fgalOpenViewer(st, fig) {
+        const p = st.p;
+        const nav = _fgalNav(st);
+        const i = Number(fig.dataset.mbFgalI);
+        let k = nav.findIndex(n => n.g.key === fig.dataset.mbFgalKey);
+        if (k < 0) {
+            // Compare shows every image of a side, the chips' or not.
+            const g = st.rows.find(x => x.key === fig.dataset.mbFgalKey);
+            const s = g && _fgalRowState(p, g);
+            if (!s || s.state !== 'read') return;
+            nav.unshift({ g, images: s.images, idx: s.images.map((_, j) => j) });
+            k = 0;
+        }
+        const list = nav[k].idx.includes(i) ? nav[k].idx : nav[k].images.map((_, j) => j);
+        p.ctx.imagesCache.clear();
+        nav.forEach(n => p.ctx.imagesCache.set(n.g.row.path, n.images));
+        const describe = (n) => ({ entityPath: n.g.row.path, list: n.idx, title: n.g.row.title || p.title(), rowPos: { k: nav.indexOf(n) + 1, n: nav.length } });
+        const here = describe(nav[k]);
+        _artViewerOpen(p.ctx, here.entityPath, list, i, {
+            opener: fig, title: here.title, rowPos: here.rowPos,
+            onGroupStep: (d) => {
+                if (nav.length < 2) return null;
+                k = (k + d + nav.length) % nav.length;
+                return describe(nav[k]);
+            },
+        });
+    }
+
+    /**
+     * The window's look, on top of the Liner-notes card (`.mb-tt-liner`) and
+     * the async job card's rows it reuses (`.mb-tt-aj*`). Below the artwork
+     * viewer (2147483400), so an image opens over it; above the 📊 dropdown.
+     * Installed on a foreign host only.
+     *
+     * @returns {void}
+     */
+    function _ensureFgalStyle() {
+        if (document.getElementById('mb-fgal-style')) return;
+        const style = GM_addStyle(`
+            button.mb-fgal-btn { cursor: pointer; padding: 1px 4px; border: 1px solid #aaa; border-radius: 3px;
+                background: #f5f5f5; vertical-align: middle; font-size: 0.8em; margin-left: 3px; line-height: 1;
+                display: inline-flex; align-items: center; box-sizing: border-box; }
+            button.mb-fgal-btn[aria-pressed="true"] { background: #e7ddc8; border-color: #8a7d68; }
+            #mb-fgal.mb-tt-liner { position: absolute; z-index: 2147483300; padding: 0; display: flex; flex-direction: column;
+                max-height: min(600px, 80vh); font-size: 13.5px; }
+            #mb-fgal .mb-fgal-head { display: flex; gap: 10px; align-items: flex-start; padding: 11px 14px 9px; border-bottom: 1px solid #d9cfbd; }
+            #mb-fgal .mb-fgal-t { flex: 1 1 auto; min-width: 0; display: grid; gap: 2px; }
+            #mb-fgal .mb-fgal-t b { font-size: 16px; line-height: 1.25; }
+            #mb-fgal .mb-fgal-t span { color: #7a6d5c; font-size: 12px; }
+            #mb-fgal .mb-fgal-x { border: 0; background: transparent; font: 17px/1 system-ui, Arial, sans-serif; color: #7a6d5c;
+                cursor: pointer; padding: 2px 4px; }
+            #mb-fgal .mb-fgal-body { overflow: auto; padding: 11px 14px 14px; display: grid; gap: 11px; align-content: start; }
+            #mb-fgal .mb-fgal-panel { display: grid; gap: 6px; padding-bottom: 11px; border-bottom: 1px solid #d9cfbd; }
+            #mb-fgal .mb-tt-ajbar, #mb-fgal .mb-tt-ajacts { margin: 0; }
+            #mb-fgal .mb-tt-ajbar-r { background: #e4dccc; }
+            #mb-fgal .mb-fgal-counts { display: flex; flex-wrap: wrap; gap: 3px 14px; font: 12px system-ui, Arial, sans-serif;
+                color: #7a6d5c; font-variant-numeric: tabular-nums; }
+            #mb-fgal .mb-fgal-note { color: #7a6d5c; font-size: 12.5px; align-self: center; }
+            #mb-fgal .mb-fgal-ask { border: 1px solid #e3d09a; border-radius: 3px; background: #fbf3dc; padding: 8px 10px; display: grid; gap: 6px; }
+            #mb-fgal .mb-fgal-chips { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; margin-top: 2px; }
+            #mb-fgal .mb-fgal-chip { font: 600 10px/1 system-ui, Arial, sans-serif; letter-spacing: .07em; text-transform: uppercase;
+                color: #7a6d5c; background: transparent; border: 1px solid #d9cfbd; border-radius: 999px; padding: 5px 9px; cursor: pointer; }
+            #mb-fgal .mb-fgal-chip[aria-pressed="true"] { color: #2b2622; border-color: #2b2622; background: #f3ede1; }
+            #mb-fgal .mb-fgal-n { font-weight: 400; margin-left: 4px; }
+            #mb-fgal .mb-fgal-cmp { margin-left: 8px; }
+            #mb-fgal .mb-fgal-rows { display: grid; gap: 10px; }
+            #mb-fgal .mb-fgal-rel { display: grid; grid-template-columns: minmax(140px, 220px) minmax(0, 1fr); gap: 4px 14px;
+                padding-top: 10px; border-top: 1px solid #ebe3d3; }
+            #mb-fgal .mb-fgal-rel:first-child { border-top: 0; padding-top: 0; }
+            #mb-fgal .mb-fgal-rel.mb-fgal-dimmed .mb-fgal-who { opacity: .6; }
+            #mb-fgal .mb-fgal-rel.mb-fgal-new { animation: mb-fgal-arrive .6s ease-out; }
+            @keyframes mb-fgal-arrive { from { background: #e9f1e4; } to { background: transparent; } }
+            #mb-fgal .mb-fgal-who { display: grid; gap: 2px; align-content: start; min-width: 0; }
+            #mb-fgal .mb-fgal-who a { font-weight: 700; color: #2b2622; text-decoration: none; overflow-wrap: anywhere; }
+            #mb-fgal .mb-fgal-who a:hover { text-decoration: underline; }
+            #mb-fgal .mb-fgal-who span { color: #7a6d5c; font-size: 12px; }
+            #mb-fgal .mb-fgal-tiles { display: flex; flex-wrap: wrap; gap: 6px; align-items: flex-start; min-width: 0; }
+            #mb-fgal figure.mb-fgal-tile { margin: 0; width: 66px; display: grid; gap: 2px; cursor: zoom-in; position: relative; }
+            #mb-fgal figure.mb-fgal-tile img { width: 66px; height: 66px; object-fit: cover; border: 1px solid #d9cfbd; border-radius: 3px;
+                display: block; box-sizing: border-box; background: #ece5d6; }
+            #mb-fgal figure.mb-fgal-tile figcaption { font: 10px/1.2 system-ui, Arial, sans-serif; color: #7a6d5c; overflow-wrap: anywhere; }
+            #mb-fgal figure.mb-fgal-tile:focus-visible { outline: 2px solid #2f5f9e; outline-offset: 1px; }
+            #mb-fgal .mb-fgal-main::after { content: '★'; position: absolute; top: 2px; left: 4px; color: #f2c14e; font-size: 13px;
+                text-shadow: 0 0 2px #000; }
+            #mb-fgal .mb-fgal-kind { font: 600 9.5px system-ui, Arial, sans-serif; letter-spacing: .08em; text-transform: uppercase;
+                color: #7a6d5c; width: 100%; margin-top: 2px; }
+            #mb-fgal .mb-fgal-miss { color: #7a6d5c; font-size: 12.5px; font-style: italic; align-self: center; }
+            #mb-fgal .mb-fgal-miss.mb-tt-ajlog-bad { color: #9b2218; font-style: normal; }
+            #mb-fgal .mb-fgal-cmp-grid { display: grid; grid-template-columns: max-content minmax(0, 1fr) minmax(0, 1fr); gap: 8px 14px; align-items: start; }
+            #mb-fgal .mb-fgal-cmp-h, #mb-fgal .mb-fgal-cmp-ty { font: 600 10px system-ui, Arial, sans-serif; letter-spacing: .08em;
+                text-transform: uppercase; color: #7a6d5c; min-width: 0; }
+            #mb-fgal .mb-fgal-cmp-h { border-bottom: 1px solid #d9cfbd; padding-bottom: 4px; }
+            #mb-fgal .mb-fgal-cmp-h select { font: 13px Georgia, "Times New Roman", serif; max-width: 100%; text-transform: none; letter-spacing: 0; }
+            #mb-fgal .mb-fgal-cmp-ty { padding-top: 4px; }
+            @media (max-width: 620px) {
+                #mb-fgal .mb-fgal-rel { grid-template-columns: minmax(0, 1fr); }
+                #mb-fgal .mb-tt-ajfacts { grid-template-columns: minmax(0, 1fr); }
+            }
+            @media (prefers-reduced-motion: reduce) { #mb-fgal .mb-fgal-rel.mb-fgal-new { animation: none; } }
+        `);
+        style.id = 'mb-fgal-style';
+    }
 
     /**
      * Opens the pinned dialog on a target, or shows that target in the
@@ -84273,6 +85347,10 @@ a { color: #1565c0; }`;
             // selector.  The :scope > guard ensures only direct h2 children are
             // matched, so mb-rel-retry-1 / mb-rel-retry-2 … inside h3 sub-headers in
             // multi-table mode are never collected here.
+            //
+            // • A foreign table's 🖼 gallery opener (#mb-fgal-btn-N,
+            //   _fgalAfterRender()) sits right after the count too; never on
+            //   MusicBrainz.
             const globalArtBtns = Array.from(targetH2.querySelectorAll(
                 ':scope > .mb-global-art-toggle-btn,' +
                 ' :scope > .mb-eaa-art-toggle-btn,' +
@@ -84280,7 +85358,8 @@ a { color: #1565c0; }`;
                 ' :scope > [id$="-global-retry"],' +
                 ' :scope > [id^="mb-eaa-toggle-btn-retry-"],' +
                 ' :scope > [id^="mb-caa-toggle-btn-retry-"],' +
-                ' :scope > [id^="mb-rel-retry-"]'
+                ' :scope > [id^="mb-rel-retry-"],' +
+                ' :scope > [id^="mb-fgal-btn-"]'
             ));
             for (let i = globalArtBtns.length - 1; i >= 0; i--) {
                 span.after(globalArtBtns[i]);
@@ -91249,6 +92328,8 @@ a { color: #1565c0; }`;
             _recOfInitColHeaderToggles();
             // discogs.com's MusicBrainz column: its ▶ MB toggles.
             _dgMbAfterRender(false);
+            // A foreign table's 🖼 gallery opener, after its row count.
+            _fgalAfterRender();
             // Same reason as the line above: the <thead> this writes into may
             // have just been rebuilt from a clone. No-op unless the Release-events
             // lookup is loading or has failed.
@@ -91536,6 +92617,8 @@ a { color: #1565c0; }`;
                 _recOfInitColHeaderToggles();
                 // discogs.com's MusicBrainz column: its ▶ MB toggles.
                 _dgMbAfterRender(false);
+                // A foreign table's 🖼 gallery opener, after its row count.
+                _fgalAfterRender();
                 // Same reason as the line above: the <thead> this writes into may
                 // have just been rebuilt from a clone. No-op unless the Release-events
                 // lookup is loading or has failed.
@@ -96349,6 +97432,8 @@ a { color: #1565c0; }`;
             _recOfInitColHeaderToggles();
             // discogs.com's MusicBrainz column: its ▶ MB toggles, then the lookup.
             _dgMbAfterRender(true);
+            // A foreign table's 🖼 gallery opener, after its row count.
+            _fgalAfterRender();
             // jungleland.it / brucespringsteen.it lazy Art / Photo cells and
             // Brucebase / springsteenlyrics Title glyphs read before, painted
             // from the detail-page database (no request).
@@ -125381,6 +126466,8 @@ a { color: #1565c0; }`;
             _recOfInitColHeaderToggles();
             // discogs.com's MusicBrainz column: its ▶ MB toggles, then the lookup.
             _dgMbAfterRender(true);
+            // A foreign table's 🖼 gallery opener, after its row count.
+            _fgalAfterRender();
             // jungleland.it / brucespringsteen.it lazy Art / Photo cells and
             // Brucebase / springsteenlyrics Title glyphs read before, painted
             // from the detail-page database (no request).
@@ -136407,6 +137494,7 @@ a { color: #1565c0; }`;
                 // foreign-image card (_fiProviderOf() reads it as Discogs').
                 case 'fi-img':
                 case 'dg-img': return _fiCardHtml(el);
+                case 'fgal': return _fgalTipHtml(el);
                 case 'sb-pic': return _sbPicCardHtml(el);
                 case 'sb-cover': return _sbCoverCardHtml(el);
                 default: return null;

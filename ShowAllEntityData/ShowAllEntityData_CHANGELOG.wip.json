@@ -1,5 +1,23 @@
 [
     {
+        "version": "WIP.6",
+        "date": "2026-10-23",
+        "sections": [
+            {
+                "label": "🚀 Feature",
+                "items": [
+                    "A 🖼 gallery on the other sites' tables (springsteenlyrics.com, jungleland.it, brucespringsteen.it, Brucebase, discogs.com), as on MusicBrainz: the 🖼 after a table's row count opens a window with every image of the rows already read — by a hover, a click, or an earlier visit (read from this browser, no request). For the others it offers one button that says what it costs (\"Load the other 32 (about 35 s)\"; on Discogs without a token also what it would cost with one); a run over five minutes asks first, Stop or closing the window ends it, and the rows read stay read. A progress bar, counts and a Recent log show how it goes; a row that failed offers Try again. Type chips (Front, Back, Booklet; Photo, Ticket, News; primary, secondary …) narrow the images, \"Compare two\" puts two rows side by side, and a click on an image opens the artwork viewer, Shift+← → through the gallery's rows."
+                ]
+            },
+            {
+                "label": "🔧 Refactor",
+                "items": [
+                    "The foreign-image providers gained `peekSaved()`, `spacingS()`, `tokenSpacingS()`, `kept()` and their gallery words; `_fiDpPeek()` is the render sweep's saved-page read, now shared with the gallery; `_fiColIdx()` reads a table's column names once per header row. MusicBrainz: `updateH2Count()` re-anchors one more id prefix (`mb-fgal-btn-`), and `_fgalAfterRender()` beside `_dgMbAfterRender()` returns at once off the foreign hosts."
+                ]
+            }
+        ]
+    },
+    {
         "version": "WIP.5",
         "date": "2026-10-23",
         "sections": [

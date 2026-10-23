@@ -601,3 +601,13 @@ GuiBeal, vzell's submissions pages 1 and 7 — the specs serve page 1 for 2-6,
 label search pages 1-2, the support article). Mutations:
 `scripts/mutations/discogs-pages.json`, `scripts/mutations/discogs-submissions.json`,
 `scripts/mutations/discogs-links.json`, `scripts/mutations/discogs-mb-column.json`. `discogs-links.spec.js` also checks the column on a submissions list, a user's lists and its absence on a history page.
+
+## The table-wide 🖼 gallery (2026-10-23)
+
+A Discogs table with an Image column gets the foreign tables' 🖼 gallery
+(docs/claude/artwork-caa-eaa.md, "The table-wide 🖼 gallery on the foreign
+tables"): `_DG_FI`'s `peekSaved()` is `_dgFiPeek()` (the link previews'
+records are in the detail-page database as `mb:<key>`), `spacingS()` is
+`_extSpacingMs('api.discogs.com')`, and without a token the button names
+the token's pace too. On a multi-table page (dg-release) only the sub-table
+with images (Other versions) gets one.

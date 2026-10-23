@@ -25597,3 +25597,38 @@ Specs: `tests/fixtures/bb-image-card.spec.js` (18), `bb-image-card.mobile.spec.j
 `foreign-lazy-cells.json` moved with the code. Regression: the bb-*, sl-lyrics,
 the four image-card, detail-preview (desktop and mobile), popup-ext*,
 art-viewer* and mb-title-case specs.
+
+## 2026-10-23 — foreign image card phase 4: the table-wide 🖼 gallery on the foreign tables (branch feature/foreign-art-viewer)
+
+Env: 2026-10-23T19:36:02+02:00 · petri · WSL2 Ubuntu 24.04.3 (Linux 6.18.54.1) · Playwright 1.62.1 Chromium (chromium-1234; chromium-mobile: Pixel 7 emulation) · no Tampermonkey (GM stubs); real browser not yet tried
+
+`_fgal*` (docs/claude/artwork-caa-eaa.md, "The table-wide 🖼 gallery on the
+foreign tables"), built to the approved mockup v2
+(https://claude.ai/artifact/SL81qFidC4wQM6Gz2jY47Z) and vzell's four answers.
+
+**`test:full` on the uncommitted tree** (d0fbc3c + phase 4): 2,253 passed,
+0 failed, wall 12 m 10 s (19:36:02–19:48:12 CEST), 12 workers. The
+MusicBrainz-path changes are `updateH2Count()`'s re-anchor list (one more id
+prefix) and `_fgalAfterRender()` beside the four `_dgMbAfterRender()` calls
+(returns on `_foreignHost`); spec "never on MusicBrainz" pins that a
+rendered MusicBrainz table gets neither button nor style.
+
+**Mutations** (`scripts/mutations/foreign-gallery.json`): 11 caught; three
+recorded `"expect": "pass"`, each with its overlap: the `updateH2Count()`
+list entry (the single-table filter branch's `_fgalAfterRender()` re-anchors
+the 🖼 anyway), the multi-branch hook (a global filter on dg-release keeps
+its `<h3>`), the hover card's "not while open" (no spec hovers the 🖼 with
+the window open).
+
+**Touch spec, emulation only:** on the zoomed-out phone layout Playwright's
+`locator.tap()` hit-tests at the wrong place once the visual viewport is
+offset (`visualViewport.offsetTop` 436 while the window was open): the tap
+on a tile landed on the site's "Filter by title" box above, and Chromium's
+light-blue tap highlight showed as a band across the window's top. A hit
+test at the band (`elementFromPoint`) returned the window's own elements, so
+nothing covered it. The spec centres each target and taps its box
+(`page.touchscreen.tap()`).
+
+**Discogs artist captures** (`ext-discogs-artist-small-p*.json`) carry
+empty thumbnails, so no artist row has an image trigger; the multi-table
+test uses dg-release (Other versions).

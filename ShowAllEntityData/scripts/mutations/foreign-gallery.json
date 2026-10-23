@@ -1,0 +1,185 @@
+[
+    {
+        "name": "opener: not re-anchored when the row count is rebuilt",
+        "why": "Known overlap: runFilter()'s single-table branch calls _fgalAfterRender(), which re-anchors the 🖼 after the rebuilt count too, so the spec cannot see this list entry; kept for the count rebuilds outside runFilter().",
+        "edits": [
+            {
+                "find": "                ' :scope > [id^=\"mb-rel-retry-\"],' +\n                ' :scope > [id^=\"mb-fgal-btn-\"]'\n",
+                "replace": "                ' :scope > [id^=\"mb-rel-retry-\"]'\n"
+            }
+        ],
+        "spec": "tests/fixtures/foreign-gallery.spec.js",
+        "grep": "a filter re-render keeps",
+        "expect": "pass"
+    },
+    {
+        "name": "opener: a multi-table filter re-render does not put it back",
+        "why": "Known overlap: on dg-release a global filter keeps the <h3> (and its 🖼), so the hook in runFilter()'s multi branch has nothing to restore here; kept for the re-renders that do rebuild the <h3>s.",
+        "edits": [
+            {
+                "find": "            _dgMbAfterRender(false);\n            // A foreign table's 🖼 gallery opener, after its row count.\n            _fgalAfterRender();\n",
+                "replace": "            _dgMbAfterRender(false);\n"
+            }
+        ],
+        "spec": "tests/fixtures/foreign-gallery.spec.js",
+        "grep": "multi-table release page",
+        "expect": "pass"
+    },
+    {
+        "name": "MusicBrainz: the foreign-host gate is gone",
+        "why": "Nothing of the gallery may run on MusicBrainz; without the gate its style is installed on every render.",
+        "edits": [
+            {
+                "find": "    function _fgalAfterRender() {\n        if (!_foreignHost) return;\n",
+                "replace": "    function _fgalAfterRender() {\n"
+            }
+        ],
+        "spec": "tests/fixtures/foreign-gallery.spec.js",
+        "grep": "never on MusicBrainz",
+        "expect": "fail"
+    },
+    {
+        "name": "open: the saved pages are not read",
+        "why": "A row read in an earlier session is in IndexedDB, not memory; without peekSaved() the window calls it not loaded and the run would ask for it again.",
+        "edits": [
+            {
+                "find": "        Promise.resolve(p.peekSaved(rows.map(g => g.row))).catch(() => 0).then(() => {",
+                "replace": "        Promise.resolve(0).then(() => {"
+            }
+        ],
+        "spec": "tests/fixtures/foreign-gallery.spec.js",
+        "grep": "a row read before is shown at open",
+        "expect": "fail"
+    },
+    {
+        "name": "close: the run keeps going",
+        "why": "vzell: the run stops when the gallery closes.",
+        "edits": [
+            {
+                "find": "        if (!st) return;\n        _fgalStop(st, 'closed');\n        _fgalState = null;",
+                "replace": "        if (!st) return;\n        _fgalState = null;"
+            }
+        ],
+        "spec": "tests/fixtures/foreign-gallery.spec.js",
+        "grep": "closing the window stops the run",
+        "expect": "fail"
+    },
+    {
+        "name": "run: a long run starts without asking",
+        "why": "vzell: a run over five minutes asks first.",
+        "edits": [
+            {
+                "find": "                    if (todo * st.p.spacingS() > _FGAL_ASK_OVER_S) {",
+                "replace": "                    if (false) {"
+            }
+        ],
+        "spec": "tests/fixtures/foreign-gallery.spec.js",
+        "grep": "Load over five minutes asks",
+        "expect": "fail"
+    },
+    {
+        "name": "keys: Esc closes the window while the viewer is open",
+        "why": "The viewer owns every key; Esc must close the viewer only, the window on the next Esc.",
+        "edits": [
+            {
+                "find": "        if (e.key !== 'Escape' || _artViewerState || _fgalState !== st) return;",
+                "replace": "        if (e.key !== 'Escape' || _fgalState !== st) return;"
+            }
+        ],
+        "spec": "tests/fixtures/foreign-gallery.spec.js",
+        "grep": "Esc closes the viewer, then the window",
+        "expect": "fail"
+    },
+    {
+        "name": "chips: they filter nothing",
+        "why": "A picked type shows only its images.",
+        "edits": [
+            {
+                "find": "        return !st.sel.size || st.sel.has(_fgalType(im));",
+                "replace": "        return true;"
+            }
+        ],
+        "spec": "tests/fixtures/foreign-gallery.spec.js",
+        "grep": "chips filter the tiles",
+        "expect": "fail"
+    },
+    {
+        "name": "Compare: the list is shown instead",
+        "why": "Compare two puts two read rows side by side.",
+        "edits": [
+            {
+                "find": "        body.append(st.compare ? _fgalCompare(st, states) : _fgalList(st, states));",
+                "replace": "        body.append(_fgalList(st, states));"
+            }
+        ],
+        "spec": "tests/fixtures/foreign-gallery.spec.js",
+        "grep": "chips filter the tiles",
+        "expect": "fail"
+    },
+    {
+        "name": "Brucebase: the kinds are not grouped",
+        "why": "vzell (phase 3): Brucebase's images grouped by kind.",
+        "edits": [
+            {
+                "find": "                    if (p === _BB_FI && _fgalType(im) !== kind) {",
+                "replace": "                    if (false) {"
+            }
+        ],
+        "spec": "tests/fixtures/foreign-gallery.spec.js",
+        "grep": "grouped by kind",
+        "expect": "fail"
+    },
+    {
+        "name": "Discogs: the token's pace is not named",
+        "why": "Without a token the button says what the run would cost with one.",
+        "edits": [
+            {
+                "find": "        tokenSpacingS: () => (_extDiscogsToken() ? 0 : 1),",
+                "replace": "        tokenSpacingS: () => 0,"
+            }
+        ],
+        "spec": "tests/fixtures/foreign-gallery.spec.js",
+        "grep": "versions without a token",
+        "expect": "fail"
+    },
+    {
+        "name": "run: a failure is not offered again",
+        "why": "After a run with errors the window offers Retry N failed.",
+        "edits": [
+            {
+                "find": "            if (st.memo.finished === 'errors' && !c.cold) {\n                acts.append(btn(`Retry ${fmt(c.failed)} failed`, 'retry', 'primary'));",
+                "replace": "            if (st.memo.finished === 'errors' && !c.cold) {\n                acts.append(note(''));"
+            }
+        ],
+        "spec": "tests/fixtures/foreign-gallery.spec.js",
+        "grep": "a failure offers Retry",
+        "expect": "fail"
+    },
+    {
+        "name": "touch: a tap outside leaves the window open",
+        "why": "No hover-only dead ends: on touch a tap outside closes the window.",
+        "edits": [
+            {
+                "find": "                if (e.pointerType !== 'mouse' && !box.contains(e.target) && e.target !== opener && !_artViewerState) _fgalClose();",
+                "replace": "                if (false) _fgalClose();"
+            }
+        ],
+        "spec": "tests/fixtures/foreign-gallery.mobile.spec.js",
+        "project": "chromium-mobile",
+        "grep": "tap the",
+        "expect": "fail"
+    },
+    {
+        "name": "hover card: it shows over the open window",
+        "why": "Mockup: the 🖼's card never shows while the window is open. The jungleland test's second hover is after Esc closed the window, so nothing pins it.",
+        "edits": [
+            {
+                "find": "    function _fgalTipHtml(btn) {\n        if (_fgalState) return null;\n",
+                "replace": "    function _fgalTipHtml(btn) {\n"
+            }
+        ],
+        "spec": "tests/fixtures/foreign-gallery.spec.js",
+        "grep": "jungleland",
+        "expect": "pass"
+    }
+]

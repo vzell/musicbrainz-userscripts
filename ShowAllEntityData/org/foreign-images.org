@@ -164,8 +164,7 @@ and the shared path. What landed differs from the outline in these points:
 
 ** DONE Phase 2 (2026-10-23, same branch, WIP.2)
 
-Browser check: *not yet done* — the jungleland list and the brucespringsteen.it Unofficial
-and Official lists still want a look in a real browser before the branch merges.
+Browser check: vzell, 2026-10-23, on petri ("all tested live, OK", with phase 4).
 
 Decisions (vzell, 2026-10-23, answering the plan's questions): rows read in an earlier
 session show their picture at render (one IndexedDB read, no request); jungleland.it and
@@ -257,7 +256,22 @@ takes them in); decision: *all four Brucebase kinds*, grouped by kind.
   it to =tests/support/detailFixture.js='s =bb= =fileFor=. Only if those are missing:
   =python3 scripts/probe-foreign-images.py= (1.1 s between requests, ~40 s).
 
-** TODO Phase 4: the table-wide 🖼 gallery
+** DONE Phase 4: the table-wide 🖼 gallery
+
+Done 2026-10-23 on petri (same branch, WIP.6). Browser check: vzell, 2026-10-23, on petri
+("all tested live, OK").
+
+Env: 2026-10-23T19:36:02+02:00 · petri · WSL2 Ubuntu 24.04.3 (Linux 6.18.54.1) ·
+Playwright 1.62.1 Chromium, no Tampermonkey (GM stubs) · real browser not yet tried
+
+What landed (docs/claude/artwork-caa-eaa.md, "The table-wide 🖼 gallery on the foreign
+tables"): =_fgal*= with the providers' new =peekSaved()= / =spacingS()= /
+=tokenSpacingS()= / =kept()= / =gal=; the window is a =.mb-tt-liner= reusing the async job
+card's rows; MusicBrainz's own gallery (D2) is untouched. Differs from the mockup only
+where the mockup had to invent: the 🖼's hover card counts from memory (no database read
+on a hover). Specs =foreign-gallery.spec.js= (13), =foreign-gallery.mobile.spec.js= (1);
+mutations =scripts/mutations/foreign-gallery.json= (14, three ="expect": "pass"=).
+=test:full=: 2,253 passed (DEBUG-NOTES.md, 2026-10-23, phase 4).
 
 Decisions (vzell, 2026-10-23, on the G2/G3 mockup): 1. the 🖼 in the table's heading
 bar; 2. type chips *and* "Compare two"; 3. ask before a run over 5 minutes; 4. discogs.com
@@ -281,15 +295,14 @@ Discogs trio was for phase 1. The cached rows of a provider are =_dpMem= (and, o
 
 ** TODO Before the branch merges into main
 
-- Browser check of phases 2 and 3 (see their sections); phase 4 gets its own.
+- Browser checks of every phase: done (vzell, 2026-10-23).
 - =tests/live/detail-preview.spec.js='s two song locators now read =a:not(.mb-fi-glyph)=
   (the Title glyph links the same page) — updated, never re-run.
 - =npm run test:live= for the three live specs updated for the Art / Photo columns
   (=tests/live/{jl-list,bs-records,detail-preview}.spec.js=: headers, =a:not(.mb-fi-cell)=
   locators) — updated but never re-run; they reach the real sites.
-- =python3 scripts/run-test-full.py= on the merged tree: main (9.99.1429) was merged into
-  the branch on 2026-10-23 (=18e3591=) and only the foreign-image specs (125, desktop and
-  mobile) ran on the result.
+- =python3 scripts/run-test-full.py= on the merged tree: ran on the branch with phase 4
+  (2,253 passed, 2026-10-23 19:48 CEST); run again after merging main if main moved.
 - At merge (=merge-push-remove= skill, and only after vzell says so): fold WIP.1 … WIP.n of
   =ShowAllEntityData_CHANGELOG.wip.json= with =scripts/fold-wip-changelog.py=, re-read the
   HELP sections the phases touched, re-read =PERFORMANCE.org= for prose made false.
