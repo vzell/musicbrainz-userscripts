@@ -271,5 +271,35 @@
         "spec": "tests/fixtures/bb-year.spec.js",
         "grep": "2012: a setlist set all in bold",
         "expect": "fail"
+    },
+    {
+        "name": "Media: the header back at the far right, the cells second",
+        "why": "org/TODO.org Some enhancements 3d (2026-10-24): _BB_YEAR_HEADERS and _bbYearBuildRow()'s cell order must move together; a header list left behind labels every cell after Date with the wrong column.",
+        "edits": [
+            {
+                "find": "    const _BB_YEAR_HEADERS = ['Date', 'Media', 'Type', 'Venue', 'City', 'State', 'Country', 'Tour',\n        'Soundcheck', 'Setlist', 'Set note', 'Notes', 'Info wanted'];",
+                "replace": "    const _BB_YEAR_HEADERS = ['Date', 'Type', 'Venue', 'City', 'State', 'Country', 'Tour',\n        'Soundcheck', 'Setlist', 'Set note', 'Notes', 'Media', 'Info wanted'];"
+            }
+        ],
+        "spec": "tests/fixtures/bb-year.spec.js",
+        "grep": "every entry becomes one row|Media shows the site",
+        "expect": "fail"
+    },
+    {
+        "name": "Media: the cells back at the far right, the header second",
+        "why": "The other half: the header second but the cell still built after Notes puts the Type text under Media.",
+        "edits": [
+            {
+                "find": "        textCell(h.date);\n        tr.appendChild(mediaTd);\n        textCell(h.type);",
+                "replace": "        textCell(h.date);\n        textCell(h.type);"
+            },
+            {
+                "find": "        tr.appendChild(notesTd);\n\n        textCell(infoWanted ? 'yes' : '');",
+                "replace": "        tr.appendChild(notesTd);\n        tr.appendChild(mediaTd);\n\n        textCell(infoWanted ? 'yes' : '');"
+            }
+        ],
+        "spec": "tests/fixtures/bb-year.spec.js",
+        "grep": "Media shows the site|a Media filter narrows",
+        "expect": "fail"
     }
 ]

@@ -288,8 +288,9 @@ by hand, and each one was wrong at least once before the probe:
 Gated by `features.bbYearToTable`, called from the same three places as
 `applyBbSongsToTable()`. `_bbYearEntries()` collects the entries (node
 references, nothing moved), `_bbYearBuildRow()` builds each row in
-`_BB_YEAR_HEADERS` order — Date, Type, Venue, City, State, Country, Tour,
-Soundcheck, Setlist, Set note, Notes, Media, Info wanted — and a `Range` from
+`_BB_YEAR_HEADERS` order — Date, Media, Type, Venue, City, State, Country,
+Tour, Soundcheck, Setlist, Set note, Notes, Info wanted (Media second since
+2026-10-24; it was 12th, a horizontal scroll away) — and a `Range` from
 the first heading to the last entry's last block is replaced by the table:
 entries, `<hr>`s and tour boxes go; the legend, the year, "Jump to" and the
 Previous / Listing / Next line stay. On the live document

@@ -3116,6 +3116,19 @@ entry, with these columns:
   known) is left out, so `1954-10-00` reads `1954-10`. **DD**, **MM**,
   **YYYY**, **Day** and **Month** (at the end of the table) split it up as
   on MusicBrainz pages; Day stays empty when the day is not known.
+- **Media:** the wiki's own icons for what the entry's page has: Photo,
+  Ticket, Setlist, Storyteller, News, Memorabilia, Eyewitness, Video, Audio,
+  Bootleg, LiveDL, Retail, Featured. Rest the pointer on an icon for its name.
+  Type a name in the column filter (e.g. "Bootleg"), or pick one from the 📊
+  list, to see the entries that have it. **Photo, Ticket, Setlist, News and
+  Memorabilia are ringed** when the entry has a page of its own: pointing at
+  one shows a card with those images from that page (photos, tickets,
+  handwritten setlists, passes, newspaper clippings); a click opens the artwork viewer on them, with every
+  other kind one ← → away and Shift+← → for the previous or next row
+  (Ctrl/⌘-click: the page). The page is read on that first hover or click
+  only, one request for that row, kept 30 days. ⚙️ Settings → *📚 Brucebase*
+  → *Media icons and song glyphs: the page's images on hover* switches the
+  card off; a click opens the viewer either way.
 - **Type:** *Gig*, *No gig* (cancelled or postponed), *Recording*,
   *Rehearsal*, *Interview* or *No Bruce*, from the kind of page the entry
   links to.
@@ -3144,19 +3157,6 @@ entry, with these columns:
 - **Notes:** the entry's description, paragraphs and links intact. With the
   song preview switched on, a song mentioned there opens its card like a
   title on the song list.
-- **Media:** the wiki's own icons for what the entry's page has: Photo,
-  Ticket, Setlist, Storyteller, News, Memorabilia, Eyewitness, Video, Audio,
-  Bootleg, LiveDL, Retail, Featured. Rest the pointer on an icon for its name.
-  Type a name in the column filter (e.g. "Bootleg"), or pick one from the 📊
-  list, to see the entries that have it. **Photo, Ticket, Setlist, News and
-  Memorabilia are ringed** when the entry has a page of its own: pointing at
-  one shows a card with those images from that page (photos, tickets,
-  handwritten setlists, passes, newspaper clippings); a click opens the artwork viewer on them, with every
-  other kind one ← → away and Shift+← → for the previous or next row
-  (Ctrl/⌘-click: the page). The page is read on that first hover or click
-  only, one request for that row, kept 30 days. ⚙️ Settings → *📚 Brucebase*
-  → *Media icons and song glyphs: the page's images on hover* switches the
-  card off; a click opens the viewer either way.
 - **Info wanted:** *yes* where Brucebase asks for more information about the
   date (its "Help Us" icon).
 

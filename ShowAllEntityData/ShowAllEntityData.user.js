@@ -18128,8 +18128,8 @@
      * Column headers of the Brucebase year table, in order.
      * @type {string[]}
      */
-    const _BB_YEAR_HEADERS = ['Date', 'Type', 'Venue', 'City', 'State', 'Country', 'Tour',
-        'Soundcheck', 'Setlist', 'Set note', 'Notes', 'Media', 'Info wanted'];
+    const _BB_YEAR_HEADERS = ['Date', 'Media', 'Type', 'Venue', 'City', 'State', 'Country', 'Tour',
+        'Soundcheck', 'Setlist', 'Set note', 'Notes', 'Info wanted'];
 
     /**
      * An entry's Type, by the prefix of its heading link (`/gig:…`). Any
@@ -18705,35 +18705,9 @@
             tr.appendChild(td);
         };
 
-        textCell(h.date);
-        textCell(h.type);
-        const venueTd = docContext.createElement('td');
-        const venueText = h.venue || entry.heading;
-        if (href) {
-            const venueA = docContext.createElement('a');
-            venueA.setAttribute('href', _bbAbsHref(href));
-            _mbSetSiteTitle(venueA, venueText, venueTd);
-            venueTd.appendChild(venueA);
-        } else {
-            _mbSetSiteTitle(venueTd, venueText);
-        }
-        tr.appendChild(venueTd);
-        // City and Country in MusicBrainz style too ("HAMPTON" → "Hampton",
-        // "THE NETHERLANDS" → "The Netherlands"); "USA" stays as it is.
-        // State is a code ("NJ") or a region and is left alone.
-        _mbSetSiteTitle(textCell(''), h.city);
-        textCell(h.state);
-        if (h.country === 'USA') textCell(h.country);
-        else _mbSetSiteTitle(textCell(''), h.country);
-        textCell(entry.tour);
-        listCell(soundcheck);
-        listCell(setlist);
-        textCell(notes.join(' '));
-
-        const notesTd = docContext.createElement('td');
-        description.forEach(n => notesTd.appendChild(_bbCloneAbs(n, docContext)));
-        tr.appendChild(notesTd);
-
+        // Media is built here and placed second, right after Date
+        // (org/TODO.org "Some enhancements" 3d): at the far right it took a
+        // horizontal scroll to see.
         const mediaTd = docContext.createElement('td');
         if (media.length) {
             const ul = docContext.createElement('ul');
@@ -18774,7 +18748,36 @@
             });
             mediaTd.appendChild(ul);
         }
+        textCell(h.date);
         tr.appendChild(mediaTd);
+        textCell(h.type);
+        const venueTd = docContext.createElement('td');
+        const venueText = h.venue || entry.heading;
+        if (href) {
+            const venueA = docContext.createElement('a');
+            venueA.setAttribute('href', _bbAbsHref(href));
+            _mbSetSiteTitle(venueA, venueText, venueTd);
+            venueTd.appendChild(venueA);
+        } else {
+            _mbSetSiteTitle(venueTd, venueText);
+        }
+        tr.appendChild(venueTd);
+        // City and Country in MusicBrainz style too ("HAMPTON" → "Hampton",
+        // "THE NETHERLANDS" → "The Netherlands"); "USA" stays as it is.
+        // State is a code ("NJ") or a region and is left alone.
+        _mbSetSiteTitle(textCell(''), h.city);
+        textCell(h.state);
+        if (h.country === 'USA') textCell(h.country);
+        else _mbSetSiteTitle(textCell(''), h.country);
+        textCell(entry.tour);
+        listCell(soundcheck);
+        listCell(setlist);
+        textCell(notes.join(' '));
+
+        const notesTd = docContext.createElement('td');
+        description.forEach(n => notesTd.appendChild(_bbCloneAbs(n, docContext)));
+        tr.appendChild(notesTd);
+
         textCell(infoWanted ? 'yes' : '');
         return tr;
     }

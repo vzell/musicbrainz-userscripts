@@ -1,5 +1,17 @@
 [
     {
+        "version": "WIP.3",
+        "date": "2026-10-24",
+        "sections": [
+            {
+                "label": "✨ Improve",
+                "items": [
+                    "Brucebase year table: the Media column is now the second column, right after Date. Before, it came after Notes at the far right, so you had to scroll sideways to see an entry's icons."
+                ]
+            }
+        ]
+    },
+    {
         "version": "WIP.2",
         "date": "2026-10-24",
         "sections": [

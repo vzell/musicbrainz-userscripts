@@ -25,8 +25,10 @@ const { waitForRenderComplete } = require('../support/browser');
 const { waitForSortSettled, columnFilterInput } = require('../support/filterSortAssertions');
 const { clickToolbarItem } = require('../support/toolbarMenu');
 
-const HEADERS = ['Date', 'Type', 'Venue', 'City', 'State', 'Country', 'Tour',
-    'Soundcheck', 'Setlist', 'Set note', 'Notes', 'Media', 'Info wanted',
+// Media second since 2026-10-24 (org/TODO.org "Some enhancements" 3d): at
+// the far right it took a horizontal scroll to see.
+const HEADERS = ['Date', 'Media', 'Type', 'Venue', 'City', 'State', 'Country', 'Tour',
+    'Soundcheck', 'Setlist', 'Set note', 'Notes', 'Info wanted',
     'DD', 'MM', 'YYYY', 'Day', 'Month'];
 
 // The fixtures' own numbers, read from the files rather than written down,

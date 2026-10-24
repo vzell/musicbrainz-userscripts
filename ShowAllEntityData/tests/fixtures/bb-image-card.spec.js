@@ -280,8 +280,9 @@ test.describe('bb-year: the Media icons open the entry page\'s images (mockup B1
         const withPhoto = await page.evaluate(() => Array.from(document.querySelectorAll('table.tbl tbody tr'))
             .filter(tr => Array.from(tr.querySelectorAll('.mb-bb-media-label')).some(s => s.textContent === 'Photo')).length);
         expect(withPhoto).toBeGreaterThan(0);
-        const input = columnFilterInput(page, 11); // Media, as in bb-year.spec.js's HEADERS
-        await expect(page.locator('table.tbl thead th').nth(11)).toHaveAttribute('data-col-name', 'Media');
+        const at = await page.locator('table.tbl thead tr:first-child th').evaluateAll(ths => ths.map(th => th.dataset.colName).indexOf('Media'));
+        expect(at, 'the Media column').toBeGreaterThanOrEqual(0);
+        const input = columnFilterInput(page, at);
         await input.click();
         await input.pressSequentially('Photo');
         await expect.poll(() => visibleRows(page).count(), { timeout: 15000 }).toBe(withPhoto);
