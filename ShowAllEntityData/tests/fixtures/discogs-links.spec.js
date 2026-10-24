@@ -169,6 +169,22 @@ async function openHistory(page) {
 }
 
 test.describe('discogs.com: links that stay, every link in the window, View changes, dg-user (2026-10-18)', () => {
+    // org/TODO.org "some more BB and MB fixes/enhancements" 5a (2026-10-24):
+    // the older, server-rendered pages have no #app — their content is
+    // #page_content, and its links are relative. Both previewed before any
+    // render; the header still is not content.
+    test('the older layout: #page_content\'s relative links preview on the initial page; the header does not', async ({ page }) => {
+        const { errors } = await openDg(page);
+        const resolves = (sel) => page.evaluate((q) => window.__saTest.popResolve(document.querySelector(q)), sel);
+        expect(await page.locator('#mb-dg-root table.tbl').count(), 'nothing rendered yet').toBe(0);
+        const rel = '#page_content a[href^="/release/13191294-"]:not([href$="/history"])';
+        await expect(page.locator(rel).first()).toHaveAttribute('href', '/release/13191294-Bruce-Springsteen-Live-In-Dublin');
+        expect(await resolves(rel)).toBe('ext|ext:discogs:https://www.discogs.com/release/13191294-Bruce-Springsteen-Live-In-Dublin');
+        expect(await resolves('#page_content a[href$="/history"]'), 'a release\'s history: the history reader').toMatch(/^ext\|ext:dghistory:/);
+        expect(await resolves('.dg-fx-header a'), 'the header is not the page\'s content').toBeNull();
+        expect(errors).toEqual([]);
+    });
+
     test('a plain click on a table link opens the window instead of leaving; every table link would open a new tab', async ({ page }) => {
         const { errors } = await openDg(page, { url: MASTER, file: 'dg-master.html' });
         await press(page, 'Show all versions');

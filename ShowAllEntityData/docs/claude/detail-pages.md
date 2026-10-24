@@ -70,7 +70,10 @@ built once; `_popResolve(node)` finds the first enabled source whose
 `selector` matches `node.closest()` and whose `resolve()` accepts it, and
 returns a TARGET `{src, el, key, url, …}`). The four foreign sites are one
 source each (`_dpSiteSource()`, the behaviour above, unchanged); a MusicBrainz
-release page adds two (below). A source has:
+release page adds two (below). On Brucebase the MB-Event glyph is one
+(`_bbMbevSource()`), on discogs.com the MusicBrainz icons are one
+(`_dgMbSource()`, 2026-10-24: MusicBrainz's cards from another origin,
+docs/claude/discogs.md "The MusicBrainz column"). A source has:
 
 | Member                                | What it is                                                                                                                                                     |
 |---------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------|
@@ -169,7 +172,10 @@ Both share `_rgReleases` (a group's releases as far as loaded) and `_rgFacts`
   keep `_dpAwaitSlot()`: another origin, another budget.
 - **Covers only where the archive has a front**: the window's thumbnails read
   each release's own `cover-art-archive.front` (accurate:
-  org/caa-artwork-requests.org F1), and load lazily.
+  org/caa-artwork-requests.org F1), and load lazily. Each is a sidebar-cover
+  trigger since 2026-10-24 (`_mbPopCoverThumbHtml()`: card of that release's
+  images, click or Space the viewer; see the collection cards below), and so
+  is the group's own cover on the left.
 - **The Live page root is `#page`, not `#content`.** `_dpIsolateFrame()` hides
   the siblings of the root and of each ancestor: `#page` hides MusicBrainz's
   `.header`, the browser warning and `#footer`, and keeps `#content` and
@@ -966,8 +972,19 @@ a pager, covers, eight entries on the card).
   (`__saTest.mbPopStatus()` lets the spec show page 2 was not even started).
   Release and release group collections show the slice's covers as
   `coverartarchive.org/<kind>/<MBID>/front-250` images, only for rows the
-  page marks with `.caa-icon`: no CAA API request, and only in the window
-  (Space), never on a hover.
+  page marks with `.caa-icon`, and only in the window (Space), never on a
+  hover. **Since 2026-10-24 they are the table's first column**
+  (`_mbPopTableHtml()`'s `thumbs`, `td.mb-rg-thumb` as the release group's
+  window; a strip above the table before — org/TODO.org "some more BB and MB
+  fixes/enhancements" 3a). Each is `_mbPopCoverThumbHtml()`: a sidebar-cover
+  trigger (`sb-cover`, `data-mb-sb-cover`, `data-mb-sb-cover-title` the
+  row's name), so a rest shows the card of every image of THAT entity
+  (`_sbCoverCardHtml()`: one CAA index request, the first rest only), a click
+  (`_dpCoverClick()`, before `_dpArtViewerClick()` in the area's click) or
+  Space (`_artSpaceOpen()`) opens them in the viewer (`_sbOpenCover(path,
+  opener, name)`), Ctrl-click opens the entity's page. `_dpWinWhat()` takes
+  it as kind `fi`. The release group window's release covers and its own
+  cover (`_rgWindowTableHtml()`, `_rgWindowHtml()`) are the same trigger (3b).
 - **No editing history** (H, "✎ Editing history"): a collection's
   `/collection/<MBID>/edits` says "Found 0 edits" logged in and did not load
   within 90 s logged out (probed twice, 2026-10-20), so `_mbEditsSubject()`
@@ -1434,14 +1451,27 @@ https://claude.ai/artifact/APF35bPAyvFZvKjFHGHrZU
   element (`img: true`, its own `delay: 250`, which `_dpSchedulePeek()`
   honours), no Ctrl, no request beyond the image (the archive's 500 px, or the
   linked image). `_dpImgInfo()` counts the images as the viewer does. Shift
-  repaints it larger (`_dpWinBig()`); Space is swallowed (it would scroll the
-  window, which hides the card, and the next Esc would close the window).
+  repaints it larger (`_dpWinBig()`). **Space opens the viewer at that
+  image**, exactly as a click (`_dpWinImgOpen()` → `_dpArtViewerClick()` with
+  a stand-in event), the preview hidden first; before the preview has shown
+  (its 250 ms) `_dpWinImgSpace()` does the same from `_dpPeek.hover`. It used
+  to be swallowed (org/TODO.org "some more BB and MB fixes/enhancements" 1b,
+  vzell 2026-10-24: "Open the viewer at it"); Esc closes the viewer, then the
+  window. The card and the foot line say "Click or Space: viewer".
   The preview's element is the `<img>` (`t.el`; its link is `t.a`), and
   `_dpWinWhat(node, pointer)` counts an image link only on its picture: the
   cover's link used to span the column (now `inline-block`), and a focus —
   the one the viewer gives back on closing, too — never opens the preview,
   or the next Esc would close it instead of the window. The foot line still
   names the viewer for a focused image link.
+- **A foreign-image trigger in the window** (`a[data-mb-fi]`: the Discogs
+  window tables' thumbnails, `_extDgThumbHtml()`, provider `_DGW_FI`) is
+  `_dpWinWhat()`'s kind `fi`: ringed like an image, the foot line "Viewer:
+  <row> · every image of it", but no window preview — its card, click and
+  Space are the hover card's (`_fiCardHtml()`, `_fiClick()`,
+  `_onImageSpace`), the same as the page's Image column (item 1a).
+  `_extDiscogsWindow()` calls `_fiInstall()`, so on MusicBrainz the click is
+  installed once a Discogs window shows.
 - **H5 read-ahead** (`sa_dp_window_read_ahead`, off): after 600 ms the
   target's own `card(t, true)` with `t.readAhead`; `_mbPopWanted()` wants it
   while the link is still `:hover`. MusicBrainz entities only.
@@ -1450,11 +1480,13 @@ https://claude.ai/artifact/APF35bPAyvFZvKjFHGHrZU
 - **Touch** (decision 4): a long press (500 ms, cancelled by a move) shows the
   card or the image; `touchend` is `preventDefault()`ed after it, so no
   compatibility mousedown (which hides the card) and no click follow.
-- **Specs**: `popup-mb.spec.js` "hovering inside the window" (5),
-  `popup-ext.spec.js` "hovering inside a Discogs window",
-  `popup-mb.mobile.spec.js` "inside the window: a long press" (the press
-  through the DevTools protocol); mutations
-  `scripts/mutations/dp-window-hover.json`.
+- **Specs**: `popup-mb.spec.js` "hovering inside the window" (6),
+  `popup-ext.spec.js` "hovering inside a Discogs window" (with a version's
+  thumbnail and the gallery's Space), `bb-event-preview.spec.js` "Space on an
+  image opens the viewer", `popup-mb.mobile.spec.js` "inside the window: a
+  long press" (the press through the DevTools protocol); mutations
+  `scripts/mutations/dp-window-hover.json`,
+  `scripts/mutations/dp-window-images.json`.
 
 ## Links to other sites (org/iframe.org "* generalize to URLs", U1)
 
@@ -2045,7 +2077,10 @@ the header's `@connect` and `_EXT_CONNECT_HOSTS` (the parent domain covers
   origin: never `_dpFetchText()`), `_extRecord()` for its status, then the
   site's `parse(doc, finalUrl)`, unchanged, as `rec.dp`. A page the parser
   finds nothing in keeps the generic record. The HTML goes to `_dpRawMem`,
-  so the Live page reuses the hover's fetch.
+  so the Live page reuses the hover's fetch. On discogs.com only, a site's
+  `ownLinks` pages count too (Brucebase's shows, venues, people; 2026-10-24,
+  docs/claude/discogs.md "Link previews on discogs.com"); on MusicBrainz a
+  `/gig:` link stays generic (popup-ext U4 "which reader serves which link").
 - **Charset: `_extFetch()`'s `charset`** becomes `overrideMimeType`
   (`text/html; charset=windows-1252` for jungleland.it, which names none);
   `_extFetchText(url, charset)` and `_EXT_LIVE.fetchText` pass it on from

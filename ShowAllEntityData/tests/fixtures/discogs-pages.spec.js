@@ -377,9 +377,110 @@ test.describe('discogs.com pages (2026-10-18)', () => {
         // shown yet proves nothing (it waits for the hover delay).
         const resolves = (sel) => page.evaluate((q) => window.__saTest.popResolve(document.querySelector(q)), sel);
         expect(await resolves('#mb-dg-root table.tbl a[href="https://www.discogs.com/release/1874253"]')).toMatch(/^ext\|/);
-        expect(await resolves('#app a')).toMatch(/^ext\|/);
+        // Discogs writes its own links relative (org/TODO.org "some more BB
+        // and MB fixes/enhancements" 5a, 2026-10-24): read against the page.
+        await expect(page.locator('#app a').first()).toHaveAttribute('href', /^\/artist\/219986/);
+        expect(await resolves('#app a')).toBe('ext|ext:discogs:https://www.discogs.com/artist/219986-Bruce-Springsteen');
         expect(await resolves('.dg-fx-header a'), 'the header is not the page\'s content').toBeNull();
         expect(await resolves('.dg-fx-footer a'), 'nor is the footer').toBeNull();
+        expect(errors).toEqual([]);
+    });
+
+    // 5a: "all links to BB pages should open as previews when hovered" — a
+    // Brucebase link in Discogs' content (a release's notes) is the
+    // Springsteen sites' reader's, on the initial page, no render needed.
+    test('previews on discogs.com before any render: Discogs\' relative links and a Brucebase link in the content', async ({ page }) => {
+        const gig = 'https://brucebase.wikidot.com/gig:1985-01-13-carolina-coliseum-columbia-sc';
+        const gigHtml = fs.readFileSync(path.join(__dirname, 'detail-bb-gig-1985-01-13.html'), 'utf8');
+        const { errors } = await openDg(page, 'release', {
+            settings: { sa_pop_ext: true },
+            responses: { [gig]: { status: 200, responseHeaders: 'Content-Type: text/html; charset=utf-8', responseText: gigHtml } },
+        });
+        await page.evaluate((u) => {
+            const p = document.createElement('p');
+            p.className = 'dg-fx-notes';
+            p.innerHTML = `Recorded live, see <a href="${u}">Brucebase</a>.`;
+            document.querySelector('#app main').appendChild(p);
+        }, gig);
+        const resolves = (sel) => page.evaluate((q) => window.__saTest.popResolve(document.querySelector(q)), sel);
+        expect(await page.locator('#mb-dg-root table.tbl').count(), 'nothing rendered yet').toBe(0);
+        const rel = page.locator('#app a[href^="/"]').first();
+        await expect(rel).toHaveAttribute('href', /^\/(?:artist|release|master|label)\//);
+        expect(await resolves('#app a[href^="/"]')).toMatch(/^ext\|ext:discogs:https:\/\/www\.discogs\.com\//);
+        expect(await resolves('.dg-fx-notes a')).toMatch(/^ext\|ext:springsteen:/);
+        // Brucebase's own card for the show (its parser), not a generic page's.
+        const card = page.locator('#mb-dp-peek');
+        await ctrlHover(page, page.locator('.dg-fx-notes a'));
+        await expect(card).toContainText('1985-01-13');
+        await expect(card).toContainText('Carolina Coliseum');
+        await page.keyboard.press('Escape');
+        // A relative Discogs link: the Discogs card.
+        await ctrlHover(page, page.locator('#app a[href^="/release/"], #app a[href^="/master/"], #app a[href^="/artist/"]').first());
+        await expect(card).toContainText('Discogs');
+        expect(errors).toEqual([]);
+    });
+});
+
+// org/TODO.org "some more BB and MB fixes/enhancements" 5c (vzell,
+// 2026-10-24): Discogs' own page under our tables keeps its sections'
+// headings, which got our ▲ toggle but folded nothing — the content follows
+// the section's <header>, not the h2 — and hid Discogs' own show/hide button.
+test.describe('discogs.com: Discogs\' own section headings under our tables (2026-10-24)', () => {
+    /**
+     * Discogs' markup of two sections (debug/bb-release-born-to-run-with-MB-links-final.html)
+     * and its info table's "Label:" heading, put in the fixture's #app.
+     *
+     * @param {import('@playwright/test').Page} page
+     * @returns {Promise<void>}
+     */
+    async function addDiscogsSections(page) {
+        await page.evaluate(() => {
+            const sec = (id, title, body) => `<section id="${id}" class="section_Odw8o open_FaEHZ"><header class="header_BgEm1">` +
+                `<h2 class="MuiTypography-root MuiTypography-headLineLarge">${title}</h2><span class="spacer_oijWN"></span>` +
+                `<button type="button" class="toggle_YPFSg">Hide ${title}</button></header><div class="content_ETGfR">${body}</div></section>`;
+            document.querySelector('#app main').insertAdjacentHTML('beforeend',
+                '<table class="table_c5ftk"><tbody><tr><th scope="row"><h2>Label:</h2></th><td>Columbia</td></tr></tbody></table>' +
+                sec('release-tracklist', 'Tracklist', '<table class="tracklist_ZdQ0I"><tbody><tr><td>A1</td><td>Thunder Road</td></tr></tbody></table>') +
+                sec('release-credits', 'Credits', '<ul><li>Producer – Jon Landau</li></ul>'));
+        });
+    }
+
+    test('a section\'s heading folds the section\'s content, never Discogs\' own button; Ctrl+click folds Discogs\' sections only', async ({ page }) => {
+        const { errors } = await openDg(page, 'release');
+        await addDiscogsSections(page);
+        await press(page, 'Show tracklist, credits and other versions');
+        const h2 = (id) => page.locator(`#${id} > header > h2`);
+        const content = (id) => page.locator(`#${id} > div.content_ETGfR`);
+        const button = (id) => page.locator(`#${id} > header > button`);
+        await expect(h2('release-tracklist')).toHaveClass(/\bmb-toggle-h2\b/);
+        await expect(h2('release-tracklist').locator('.mb-toggle-icon')).toHaveText('▲');
+        // Collapsed as its icon says: the content, not the header's button.
+        await expect(content('release-tracklist')).toBeHidden();
+        await expect(button('release-tracklist')).toBeVisible();
+        await expect(page.locator('#app th h2'), 'the info table\'s "Label:" is no section').not.toHaveClass(/\bmb-toggle-h2\b/);
+        await expect(page.locator('#app th h2 .mb-toggle-icon')).toHaveCount(0);
+
+        await h2('release-tracklist').click();
+        await expect(content('release-tracklist')).toBeVisible();
+        await expect(h2('release-tracklist').locator('.mb-toggle-icon')).toHaveText('▼');
+        await expect(content('release-credits'), 'the other section stays').toBeHidden();
+        await h2('release-tracklist').click();
+        await expect(content('release-tracklist')).toBeHidden();
+
+        // Ctrl+click: every Discogs section; our own headings keep their state.
+        const ours = page.locator('#mb-dg-root h2.mb-toggle-h2');
+        const icons = () => ours.evaluateAll(hs => hs.map(h => h.querySelector('.mb-toggle-icon').textContent));
+        const oursBefore = await icons();
+        expect(oursBefore, 'our main heading, expanded').toContain('▼');
+        await h2('release-credits').click({ modifiers: ['Control'] });
+        await expect(content('release-tracklist')).toBeVisible();
+        await expect(content('release-credits')).toBeVisible();
+        // And folded again: a collapse would take our own heading with it if
+        // it were a peer.
+        await h2('release-credits').click({ modifiers: ['Control'] });
+        await expect(content('release-tracklist')).toBeHidden();
+        await expect(content('release-credits')).toBeHidden();
+        expect(await icons(), 'ours untouched').toEqual(oursBefore);
         expect(errors).toEqual([]);
     });
 });

@@ -142,7 +142,9 @@ async function open(page, { settings = {}, lookup = null, showAll = true, ws2 = 
     await ctx.route(/^https:\/\/(?:commons|upload)\.wikimedia\.org\//, (route) => route.fulfill({ status: 200, contentType: 'image/png', body: PNG }));
     await ctx.route('https://coverartarchive.org/**', (route) => {
         const u = new URL(route.request().url());
-        if (/^\/release\/[0-9a-f-]{36}\/?$/.test(u.pathname)) {
+        // A release group's index too (a window table's cover, 2026-10-24):
+        // the same record serves, it is only counted.
+        if (/^\/(?:release|release-group)\/[0-9a-f-]{36}\/?$/.test(u.pathname)) {
             log.caa.push(u.pathname);
             return route.fulfill({ status: 200, contentType: 'application/json', body: json('caa-release-d0adda7e.json') });
         }
@@ -1582,21 +1584,26 @@ test.describe('MusicBrainz link previews: ISRC, ISWC, disc ID, collection (WIP.5
         const h4 = dlg.locator('h4', { hasText: 'Release groups' });
         await expect(h4).toHaveText('Release groups · 1–25 of 196');
         // The page's own columns, but its stars; its tables per release group
-        // type (an h3 each) are one list, the type a column.
-        await expect(dlg.locator('.mb-rg-wtable thead th')).toHaveText(['Type', 'Year', 'Title', 'Artist', 'Releases']);
-        await expect(dlg.locator('.mb-rg-wtable tbody tr').first().locator('td').first()).toHaveText('Album');
+        // type (an h3 each) are one list, the type a column. In front, the
+        // covers' column, as in the release group's window (2026-10-24: a
+        // strip above the table before).
+        await expect(dlg.locator('.mb-rg-wtable thead th')).toHaveText(['', 'Type', 'Year', 'Title', 'Artist', 'Releases']);
+        await expect(dlg.locator('.mb-rg-wtable tbody tr').first().locator('td').nth(1)).toHaveText('Album');
         await expect(dlg.locator('.mb-rg-wtable tbody tr')).toHaveCount(25);
-        await expect(dlg.locator('.mb-rg-wtable tbody tr').first().locator('a').first()).toHaveAttribute('href', '/release-group/e05f9927-e24b-41c5-928d-d0e008a12444');
+        await expect(dlg.locator('.mb-rg-wtable tbody tr').first().locator('td:not(.mb-rg-thumb) a').first())
+            .toHaveAttribute('href', '/release-group/e05f9927-e24b-41c5-928d-d0e008a12444');
         await expect(dlg.locator('table.tbl')).toHaveCount(0);
-        // Covers: the rows' own, from the Cover Art Archive, one per row the page marks.
-        const imgs = dlg.locator('.mb-pop-coll-art img');
+        await expect(dlg.locator('.mb-pop-coll-art'), 'no strip above the table').toHaveCount(0);
+        // Covers: the rows' own, from the Cover Art Archive, one per row the
+        // page marks, each in its row's first cell.
+        const imgs = dlg.locator('.mb-rg-wtable tbody tr > td.mb-rg-thumb:first-child img');
         await expect(imgs).toHaveCount(25);
         await expect(imgs.first()).toHaveAttribute('src', 'https://coverartarchive.org/release-group/e05f9927-e24b-41c5-928d-d0e008a12444/front-250');
         const next = dlg.locator('button[data-mb-coll-act="next"]');
         for (let i = 0; i < 3; i++) await next.click();
         await expect(h4).toHaveText('Release groups · 76–100 of 196');
         // Row 100 is page 1's last table's (MusicBrainz's seven tables hold 100 rows).
-        await expect(dlg.locator('.mb-rg-wtable tbody tr').last().locator('td').first()).toHaveText('Broadcast + DJ-mix');
+        await expect(dlg.locator('.mb-rg-wtable tbody tr').last().locator('td:not(.mb-rg-thumb)').first()).toHaveText('Broadcast + DJ-mix');
         // A request started early would still be waiting for its 1/s rate
         // slot: ask the loader, so "not asked" is not just "not sent YET".
         expect(await page.evaluate((k) => window.__saTest.mbPopStatus(k), `pop:page:collection:${CV.split('/')[2]}:p2`),
@@ -1613,6 +1620,50 @@ test.describe('MusicBrainz link previews: ISRC, ISWC, disc ID, collection (WIP.5
         await dlg.locator('button[data-mb-coll-act="prev"]').click();
         await expect(h4).toHaveText('Release groups · 151–175 of 196');
         expect(log.html.filter(u => u.includes('/collection/'))).toHaveLength(2);
+    });
+
+    // org/TODO.org "some more BB and MB fixes/enhancements" 3 (vzell,
+    // 2026-10-24): a cover is the standard image hover — the card of every
+    // image of THAT release group, titled by it, and the viewer on a click
+    // or Space — not a link to the entity's page in a new tab.
+    test('a cover in the window: the card of that release group\'s images; a click or Space opens them in the viewer', async ({ page }) => {
+        // The fixture's 16 images would cut the card off at 12, where Space is
+        // the card's "every image" toggle (image-card-space.spec.js).
+        const log = await open(page, { settings: { sa_pop_mb: true, sa_caa_tip_summary_tiles: 20 }, showAll: false });
+        const a = await addLink(page, CV, 'Cover art: Video');
+        await ctrlHover(page, a);
+        await expect(card(page)).toContainText('fetched now');
+        await page.keyboard.press('Space');
+        const dlg = dialog(page);
+        const row = dlg.locator('.mb-rg-wtable tbody tr').first();
+        const name = (await row.locator('td:not(.mb-rg-thumb) a[href^="/release-group/"]').first().textContent()).trim();
+        const cover = row.locator('td.mb-rg-thumb a');
+        await expect(cover).toHaveAttribute('data-mb-sb-cover', '/release-group/e05f9927-e24b-41c5-928d-d0e008a12444');
+        expect(log.caa, 'nothing asked before a rest').toEqual([]);
+        const tip = page.locator('#mb-stat-tooltip');
+        await page.mouse.move(0, 0);
+        await cover.locator('img').hover();
+        await expect(tip.locator('.mb-tt-title')).toHaveText(name);
+        await expect(tip.locator('.mb-art-card-tile').first()).toBeVisible();
+        expect(log.caa, 'one index, of that release group').toEqual(['/release-group/e05f9927-e24b-41c5-928d-d0e008a12444']);
+        await expect(dlg.locator('.mb-dp-wfoot')).toContainText(`Viewer: ${name} · every image of it`);
+        await expect(card(page), 'no window preview over the image card').toBeHidden();
+
+        const viewer = page.locator('#mb-art-viewer');
+        await page.keyboard.press('Space');
+        await expect(viewer).toBeVisible();
+        await expect(viewer.locator('.mb-artv-title')).toHaveText(`${name} — cover art`);
+        await page.keyboard.press('Escape');
+        await expect(viewer).toBeHidden();
+        await expect(dlg).toBeVisible();
+        await expect(dlg.locator(':scope > div > span').first(), 'nothing drilled').toHaveText('Collection');
+
+        await cover.click();
+        await expect(viewer).toBeVisible();
+        await page.keyboard.press('Escape');
+        await expect(viewer).toBeHidden();
+        await expect(dlg.locator(':scope > div > span').first()).toHaveText('Collection');
+        expect(log.caa, 'the record already read').toHaveLength(1);
     });
 
     test('an empty collection says so', async ({ page }) => {
@@ -2201,7 +2252,9 @@ test.describe('MusicBrainz link previews: drill-down inside the window (Phase 5)
         await releaseWindow(page);
         await dialog(page).locator('.mb-dp-area a[href^="/release-group/"]').first().click();
         await expect(title(page)).toHaveText('Release › Release group');
-        await dialog(page).locator('.mb-rg-wtable tbody a[href^="/release/"]').first().click();
+        // A release's title link: its cover (the row's first link since
+        // 2026-10-24) opens the artwork viewer, not the release.
+        await dialog(page).locator('.mb-rg-wtable tbody td:not(.mb-rg-thumb) a[href^="/release/"]').first().click();
         await expect(title(page)).toHaveText('Release › Release group › Release');
         await page.keyboard.press('Backspace');
         await expect(title(page)).toHaveText('Release › Release group');
@@ -2331,24 +2384,52 @@ test.describe('MusicBrainz link previews: hovering inside the window (org/dp-win
         await expect(dialog(page).locator('button.mb-dp-tbtn', { hasText: '← Back' })).toHaveAttribute('title', /^Back to: Release · /);
     });
 
-    test('H4: an image shows large on a rest (no Ctrl, no request); Shift larger; Space pins nothing', async ({ page }) => {
+    // org/TODO.org "some more BB and MB fixes/enhancements" 1b (vzell,
+    // 2026-10-24): Space on an image of the window opens the viewer at it,
+    // as a click does. It used to be swallowed (pinned nothing, did
+    // nothing), which is what this test asserted before.
+    test('H4: an image shows large on a rest (no Ctrl, no request); Shift larger; Space opens the viewer at it', async ({ page }) => {
         const log = await releaseWindow(page);
         const before = log.caa.length;
-        await rest(page, area(page).locator('.mb-dp-gallery a').nth(2));
+        const viewer = page.locator('#mb-art-viewer');
+        await rest(page, area(page).locator('.mb-dp-gallery a').nth(2).locator('img'));
         await expect(card(page)).toBeVisible();
         await expect(card(page).locator('img.mb-dp-imgprev')).toHaveCount(1);
         await expect(card(page)).toContainText('image 3 of 16');
-        await expect(card(page)).toContainText('Click: viewer · Shift: larger');
+        await expect(card(page)).toContainText('Click or Space: viewer · Shift: larger');
         await page.keyboard.down('Shift');
         await expect(card(page).locator('img.mb-dp-imgprev-big')).toHaveCount(1);
         await page.keyboard.up('Shift');
         await expect(card(page).locator('img.mb-dp-imgprev-big')).toHaveCount(0);
         await page.keyboard.press('Space');
-        await expect(title(page)).toHaveText('Release');
+        await expect(viewer).toBeVisible();
+        await expect(viewer.locator('.mb-artv-pos'), 'at the image the pointer rests on').toHaveText('3 / 16');
+        await expect(card(page), 'the preview does not stay over the viewer').toBeHidden();
+        await expect(title(page), 'nothing was pinned or drilled').toHaveText('Release');
         expect(log.caa.length, 'no archive request').toBe(before);
         await page.keyboard.press('Escape');
-        await expect(card(page)).toBeHidden();
+        await expect(viewer).toBeHidden();
+        await expect(dialog(page), 'Esc closes the viewer, not the window').toBeVisible();
+    });
+
+    test('H4: Space before the image\'s preview shows opens the viewer all the same', async ({ page }) => {
+        await releaseWindow(page);
+        const viewer = page.locator('#mb-art-viewer');
+        await rest(page, area(page).locator('.mb-dp-gallery a').nth(4).locator('img'));
+        const top = await area(page).evaluate((el) => el.scrollTop);
+        // At once: the preview waits 250 ms.
+        await page.keyboard.press('Space');
+        await expect(viewer).toBeVisible();
+        await expect(viewer.locator('.mb-artv-pos')).toHaveText('5 / 16');
+        expect(await area(page).evaluate((el) => el.scrollTop), 'Space did not scroll the window').toBe(top);
+        await page.keyboard.press('Escape');
+        await expect(viewer).toBeHidden();
         await expect(dialog(page)).toBeVisible();
+        // Off the picture, Space is the window's own again (no viewer).
+        await page.mouse.move(0, 0);
+        await page.keyboard.press('Space');
+        await page.evaluate(() => new Promise(r => setTimeout(r, 300)));
+        await expect(viewer).toBeHidden();
     });
 
     test('H5 off (the default): a rest reads nothing ahead', async ({ page }) => {

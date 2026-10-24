@@ -1,0 +1,140 @@
+[
+    {
+        "name": "Discogs window thumbnail: a bare <img> again",
+        "why": "org/TODO.org 'some more BB and MB fixes/enhancements' 1a (2026-10-24): a version's thumbnail must be a trigger of the image card and viewer.",
+        "edits": [
+            {
+                "find": "        return `<a class=\"mb-dg-vthumblink\" href=\"${src}\" data-mb-fi=\"dgw\" data-mbtt-fn=\"fi-img\" target=\"_blank\" rel=\"noopener noreferrer\">` +\n            `<img class=\"mb-dg-vthumb\" src=\"${src}\" alt=\"\" referrerpolicy=\"no-referrer\" loading=\"lazy\"></a>`;",
+                "replace": "        return `<img class=\"mb-dg-vthumb\" src=\"${src}\" alt=\"\" referrerpolicy=\"no-referrer\" loading=\"lazy\">`;"
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "a version's thumbnail",
+        "expect": "fail"
+    },
+    {
+        "name": "Discogs window thumbnail: no provider for the window's tables",
+        "why": "The card and the click find their table through the provider's tableSel; the page's provider does not reach into #mb-dp-dialog.",
+        "edits": [
+            {
+                "find": "            case 'dgw': return _DGW_FI;\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "a version's thumbnail",
+        "expect": "fail"
+    },
+    {
+        "name": "Discogs window thumbnail: the click not installed on MusicBrainz",
+        "why": "On MusicBrainz only the Discogs window installs _fiClick; without it a click drills into the release instead of opening the viewer.",
+        "edits": [
+            {
+                "find": "        // on MusicBrainz nothing else installs that click.\n        _fiInstall();\n",
+                "replace": "\n"
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "a version's thumbnail",
+        "expect": "fail"
+    },
+    {
+        "name": "Discogs window thumbnail: the window takes it for a link leaving the page",
+        "why": "Without the fi kind _dpWinWhat() calls the thumbnail 'out': the foot line says 'New tab' while a click opens the viewer.",
+        "edits": [
+            {
+                "find": "        if (a.matches('a[data-mb-fi]')) return pointer && !node.closest('img') ? null : { kind: 'fi', a };\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "a version's thumbnail",
+        "expect": "fail"
+    },
+    {
+        "name": "Window image: Space swallowed again with the preview showing",
+        "why": "1b (2026-10-24): Space on an image's preview opens the viewer at it, as a click does.",
+        "edits": [
+            {
+                "find": "                if (pt && pt.img) {\n                    _dpWinImgOpen(pt.el);\n                    return;\n                }",
+                "replace": "                if (pt && pt.img) return;"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "Space opens the viewer at it",
+        "expect": "fail"
+    },
+    {
+        "name": "Window image: Space before the preview does nothing",
+        "why": "The preview waits 250 ms; Space in that time must open the viewer all the same, not scroll the window.",
+        "edits": [
+            {
+                "find": "            if (!_dpPeekShown()) {\n                _dpWinImgSpace(e);\n                return;\n            }",
+                "replace": "            if (!_dpPeekShown()) return;"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "before the image's preview shows",
+        "expect": "fail"
+    },
+    {
+        "name": "Window image: Space opens the first image, not the hovered one",
+        "why": "The viewer must open AT the image the pointer rests on.",
+        "edits": [
+            {
+                "find": "            target: img, currentTarget: api.scrollArea, preventDefault() {},",
+                "replace": "            target: api.scrollArea.querySelector('a[data-mb-artv-i] img, a[data-mb-artv-ext] img') || img, currentTarget: api.scrollArea, preventDefault() {},"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "Space opens the viewer at it|before the image's preview shows",
+        "expect": "fail"
+    },
+    {
+        "name": "Window image: Space on a Discogs gallery image does nothing",
+        "why": "The ext images (data-mb-artv-ext: Discogs and Brucebase galleries) go through the same Space as the archive's.",
+        "edits": [
+            {
+                "find": "        if (!w || w.kind !== 'img' || !_dpWinImgOpen(node)) return false;",
+                "replace": "        if (!w || w.kind !== 'img' || w.a.dataset.mbArtvExt !== undefined || !_dpWinImgOpen(node)) return false;"
+            },
+            {
+                "find": "                if (pt && pt.img) {\n                    _dpWinImgOpen(pt.el);\n                    return;\n                }",
+                "replace": "                if (pt && pt.img) {\n                    if (pt.a.dataset.mbArtvExt === undefined) _dpWinImgOpen(pt.el);\n                    return;\n                }"
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "the gallery: Space on an image",
+        "expect": "fail"
+    },
+    {
+        "name": "Window image: Space on a Brucebase window image does nothing",
+        "why": "1b names Brucebase windows: their images (data-mb-artv-ext) must open the viewer on Space, before and with the preview.",
+        "edits": [
+            {
+                "find": "            if (!_dpPeekShown()) {\n                _dpWinImgSpace(e);\n                return;\n            }",
+                "replace": "            if (!_dpPeekShown()) return;"
+            },
+            {
+                "find": "                if (pt && pt.img) {\n                    _dpWinImgOpen(pt.el);\n                    return;\n                }",
+                "replace": "                if (pt && pt.img) return;"
+            }
+        ],
+        "spec": "tests/fixtures/bb-event-preview.spec.js",
+        "grep": "Space on an image opens the viewer",
+        "expect": "fail"
+    },
+    {
+        "name": "Discogs window: a click on a version's row drills into its thumbnail",
+        "why": "The thumbnail link is now the row's first link; a click elsewhere on the row must still show the release in the window.",
+        "edits": [
+            {
+                "find": "row.querySelector('a[href]:not(.mb-dg-vthumblink)')",
+                "replace": "row.querySelector('a[href]')"
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "a master: no versions from a hover",
+        "expect": "fail"
+    }
+]

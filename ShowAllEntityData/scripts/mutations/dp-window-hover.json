@@ -27,10 +27,10 @@
     },
     {
         "name": "H4: Space on an image's preview scrolls the window",
-        "why": "An image's preview pins nothing and keeps the window where it is; a Space that scrolls hides the preview and the next Esc closes the window.",
+        "why": "Space on an image's preview opens the viewer at it (since 2026-10-24, org/TODO.org 'some more BB and MB fixes/enhancements' 1b); a Space left to the page scrolls the window, hides the preview and opens nothing.",
         "edits": [
             {
-                "find": "                const pt = _dpPeek.target;\n                e.preventDefault();\n                e.stopImmediatePropagation();\n                // An image's preview pins nothing, and the Space does not\n                // scroll the window away from under it either.\n                if (pt && pt.img) return;",
+                "find": "                const pt = _dpPeek.target;\n                e.preventDefault();\n                e.stopImmediatePropagation();\n                // An image's preview: the viewer at that image, as a click\n                // (`_dpWinImgSpace()` takes it before the preview shows).\n                if (pt && pt.img) {\n                    _dpWinImgOpen(pt.el);\n                    return;\n                }",
                 "replace": "                const pt = _dpPeek.target;\n                if (pt && pt.img) return;\n                e.preventDefault();\n                e.stopImmediatePropagation();"
             }
         ],

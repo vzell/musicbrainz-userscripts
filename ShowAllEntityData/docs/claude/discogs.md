@@ -106,6 +106,20 @@ A toolbar button may now open a group of its own (`groupLabel`: "| Newest:"),
 the same look as a pageType's `buttonGroupLabel`; its hover text says what it
 costs (`_dgCost()`, `_dgCostPer()`).
 
+**Discogs' own section headings (2026-10-24, org/TODO.org "some more BB and
+MB fixes/enhancements" 5c).** `makeH2sCollapsible()` walks every h2 of the
+document, Discogs' too. A React section is `<section> > <header> > <h2>` +
+spacer + Discogs' show/hide button, then `div.content_*`: the sibling walk
+folded the button and spacer (the content was never a sibling), and
+`stopPropagation()` kept the click from React, so a click did nothing
+visible and Discogs' own button was gone. Now (`_dgSectionHeader()`) such a
+heading folds what follows its header; an h2 in a table cell (the info
+table's "Label:", "Format:") gets no toggle; Ctrl+click's peers are the h2s
+of the same container, `#app` being one on discogs.com, so it never folds our
+own headings. Collapsed at first, as every non-main h2. Not checked live:
+whether a React re-render of a section (Discogs' own button) replaces the
+content div our toggle hid.
+
 ## Links, credits and thumbnails (vzell's browser round, 2026-10-18)
 
 - **Names without ids link Discogs' search.** The lists carry an artist and
@@ -462,8 +476,22 @@ page keeps its own behaviour. Ctrl/⌘-click: the new tab.
 ## Link previews on discogs.com
 
 `_DP_SITES['www.discogs.com']`: no detail pages of its own (`setting: null`,
-that source never switches on), `extRoot: '#app'` — Discogs' content, not its
-header or footer (vzell). `_extTarget()` takes a link to the page's own host
+that source never switches on), `extRoot: '#app, #page_content'` — Discogs'
+content, not its header or footer (vzell); `#page_content` is the older,
+server-rendered pages' (submissions, history, ratings, user), added
+2026-10-24 (org/TODO.org "some more BB and MB fixes/enhancements" 5a), and
+`_extSource()`'s selector appends `a[href]` to each root of the list.
+**Discogs writes its own links relative** (`/release/…`): `_extTarget()`
+reads a relative href against the page on discogs.com only (on MusicBrainz a
+relative link is MusicBrainz's, refused by the same-host rule anyway). Until
+then only our tables' (absolute) links previewed: the fixture builder
+(`scripts/build-discogs-fixtures.py`) made the content links absolute and so
+hid it; it keeps them relative now. A Brucebase link in the content (a show,
+venue or person page: `_DP_SITES['brucebase.wikidot.com'].ownLinks`) is the
+Springsteen reader's on discogs.com (`_extDpTest()`), Brucebase's own card;
+elsewhere such a link stays generic. The engine runs from the initial page
+(`_initDetailPreview()` right after `_dgPrepareLivePage()`), so none of this
+waits for a render. `_extTarget()` takes a link to the page's own host
 on discogs.com when a Discogs reader does (`_extDgSiteTest()`: a release,
 master, artist, label or its history, and since round 2 a user or a search), so a title
 in our table or a Discogs link in the content gets the same card and window
@@ -547,8 +575,23 @@ of ours.
   N", "pending", "error"; a ticked one rings the matched icons with the
   Relationships column's `mb-rel-icon-match` (cleared by every filter pass —
   a highlight span would not do: its reset turns its content into text).
-- A click on our MusicBrainz icons opens musicbrainz.org in a new tab: the
-  link previews skip musicbrainz.org hosts (`_EXT_SKIP_HOST_RE`).
+- ~~A click on our MusicBrainz icons opens musicbrainz.org in a new tab: the
+  link previews skip musicbrainz.org hosts (`_EXT_SKIP_HOST_RE`).~~ Since
+  2026-10-24 (org/TODO.org "some more BB and MB fixes/enhancements" 5b/5c)
+  our icons AND murdos' importer's icons in Discogs' content
+  (`#app a[href^="https://musicbrainz.org/"]`) are the source `_dgMbSource()`
+  (listed before `_extSource()`, under `sa_pop_mb`): MusicBrainz's own card
+  and window, `_MB_KINDS[kind]` unchanged. Their requests go through
+  `_mbWsLoad()` → `_rgWsGet()`, which on a foreign host asks
+  `https://musicbrainz.org/ws/2/…` through `_mbWsGetForeign()` (one GM
+  request after `_relAwaitRateSlot()`, no retry, as `_dgMbAsk()`); the
+  HTML's MusicBrainz-relative links are made absolute (`_dgMbAbs()`). No Live
+  page (MusicBrainz's browser check). An icon is an image link and gets the
+  card anyway (`_DG_MB_LINK_RE`: only `/<kind>/<MBID>`, so the importer's
+  search boxes get none). A plain click on our column's icon opens the
+  window, as every link in our tables (`_dgTableClickOpens()`); Ctrl-click
+  the new tab. Links inside the window go to musicbrainz.org in a new tab
+  (`_mbPopTarget()` is same-origin, so nothing drills there).
 
 Probe: `scripts/probe-mb-url-batch-by-discogs.py` (2026-10-19, NB-3641; its
 docstring has the results): up to 100 resources a request, the 101st DROPPED

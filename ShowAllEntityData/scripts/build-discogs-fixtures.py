@@ -10,7 +10,10 @@ reads of the page itself and what a spec checks around it:
   the page root `#app` and the footer root `#esi-footer-root`, in that order:
   our section goes between the first two;
 - in `#app`: Discogs' own <h1> and the first few Discogs links of its
-  content, made absolute (a link preview target on discogs.com);
+  content, written as Discogs writes them: RELATIVE (`/release/…`). They
+  were made absolute until 2026-10-24, which hid that the link previews
+  could not read a relative link (org/TODO.org "some more BB and MB
+  fixes/enhancements" 5a);
 - one Discogs link in the header and one in the footer, which previews
   must leave alone (content only, vzell 2026-10-18).
 
@@ -59,8 +62,6 @@ def build(kind):
     links, seen = [], set()
     for m in LINK_RE.finditer(app):
         href, label = m.group(1).split('?')[0], text(m.group(2))
-        if href.startswith('/'):
-            href = 'https://www.discogs.com' + href
         if label and href not in seen:
             seen.add(href)
             links.append((href, label))

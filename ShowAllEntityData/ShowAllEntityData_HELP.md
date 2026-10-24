@@ -2284,7 +2284,11 @@ to you; its card says so). Its window shows the whole description with its
 links, and the entries 25 at a time with the page's own columns and ◀ ▶ to
 page through them; a further page of MusicBrainz's (100 entries each) is read
 only when you get to it. A release or release group collection also shows
-those 25 entries' covers from the Cover Art Archive.
+those 25 entries' covers from the Cover Art Archive, in the table's first
+column. In such a window, and in a release group's window (its releases'
+covers and the group's own), pointing at a cover shows every image of that
+release or release group, and a click or **Space** opens them in the
+artwork viewer; Ctrl-click opens its page instead.
 An **[info]** card (the link MusicBrainz writes after each URL of a
 relationship list or a **URLs** table) shows the URL's site and address and
 which entities link it, by relationship — *Setlistfm: Event: 2025‐05‐20: Co‐op
@@ -2384,8 +2388,8 @@ the tag's own page, since MusicBrainz cannot look a tag up otherwise.
 - **Click an image** (a release's front cover or its Cover art strip, an
   event's posters, an artist's, label's or place's picture) to open it in the artwork viewer, the same one as the
   release page's Cover art, stepping through all of that release's or event's
-  images. **Esc** returns to the window; Ctrl-click opens the image in a new
-  tab instead.
+  images. **Space** on an image does the same as the click. **Esc** returns
+  to the window; Ctrl-click opens the image in a new tab instead.
 - **✎ Editing history** (or press **H**) in the window's header shows the
   entity's editing history in the same window, laid out like a Discogs
   release's history. Every entity with an MBID has one (not a collection:
@@ -2469,8 +2473,12 @@ the tag's own page, since MusicBrainz cannot look a tag up otherwise.
     (with Ctrl held, unless *Show every preview on a plain hover* is on).
     **Space** opens it in the window, as a click does.
   - An **image** shows large after a short rest on the picture itself (not on
-    the space beside it); hold **Shift** for larger, and click for the artwork
-    viewer. Space does nothing then.
+    the space beside it); hold **Shift** for larger. A click or **Space**
+    opens the artwork viewer at that image, with every image of the window.
+  - A small picture in a Discogs window's table (a master's versions, an
+    artist's discography, a label's releases) works like the Image column on
+    Discogs pages: a rest shows every image of that release, and a click or
+    **Space** opens the viewer on them (*Viewer: … · every image of it*).
   - **← Back** and **‹ ›** name where they go when you rest on them.
   - *In the window, read a link ahead while the pointer rests on it* (same
     section, off by default) reads a MusicBrainz link after a moment's rest,
@@ -2605,7 +2613,9 @@ once and without Tampermonkey asking first:
   main release and a release this page links are marked. A version's label
   links Discogs' label search for that name, in a new tab: the list of
   versions names a label without saying which one. A click on a version
-  shows it in the same window, and *Back* returns to the master. A card never
+  shows it in the same window, and *Back* returns to the master; a click (or
+  **Space**) on its small picture opens the viewer on that version's images
+  instead, and a rest on the picture shows them all. A card never
   asks for versions; once a window has, the master's card says how many there
   are.
 
@@ -3129,7 +3139,8 @@ entry, with these columns:
   folds or opens all of them at once; the people on stage,
   the songs of the setlist and the other shows are links that open in the
   window (Backspace goes back) and show their card when you point at them;
-  the images are grouped by kind, photos last. A song's window works the
+  the images are grouped by kind, photos last; a click or **Space** on one
+  opens the viewer at it. A song's window works the
   same way, its performances listed (folded at first) with each show
   linked.
 - **MB-Event:** a small glyph for the entry's kind (a microphone for a gig,
@@ -3356,7 +3367,9 @@ used up, every tab waits a minute and then asks again, and the status line
 says so. With several Discogs tabs open, the token helps most. Pointing at
 a button shows what it costs. Bruce Springsteen's discography is 68 requests, about 3
 minutes without a token; more than 50 pages asks you first, as on
-MusicBrainz. Discogs' own page stays as it is below the section. As
+MusicBrainz. Discogs' own page stays below the section, each of its headings
+(Tracklist, Credits, Videos, …) folded once the table is drawn: a click opens
+or folds that part, a Ctrl+click all of Discogs' parts at once. As
 everywhere, pressing a second button reloads the page, which then runs that
 button by itself.
 
@@ -3390,7 +3403,10 @@ table; scrolled sideways, the toolbar and the bars stay in view.
 
 With *Preview external links on hover* on, a Discogs link in the table or in
 the page's content (not Discogs' header or footer) gets the same card and
-window as on MusicBrainz. A user's name carries their own picture: in a
+window as on MusicBrainz, right away on the page as Discogs shows it, before
+you press any of the script's buttons, and on the older pages (submissions,
+a release's history, a user's ratings) too. A link to Brucebase there (a show,
+a venue, a person, a song) gets Brucebase's own card. A user's name carries their own picture: in a
 history it comes with the page; in a submissions list it is read from the
 user's profile once their row is on screen (one request each, one at a time).
 The 📊 list of that column shows each user's picture after their name too —
@@ -3423,6 +3439,12 @@ progress card) and asks again for rows that failed (⚠, also a click on the
 visit asks MusicBrainz nothing. Filter the column by a MusicBrainz ID; the
 📊 section *MusicBrainz - Links* counts the links per row (*» MB links: 0, 1,
 2 …*, and *pending* / *error* while lookups run) and rings the matched icons.
+With *Preview linked entities on hover* on (🔎 LINK PREVIEWS ON MUSICBRAINZ),
+pointing at a MusicBrainz icon (Ctrl held, unless *Show every preview on a
+plain hover* is on) shows that entity's MusicBrainz card, read from
+musicbrainz.org, and **Space** opens its window; a click on the icon opens the
+window too, Ctrl-click opens MusicBrainz in a new tab. The same goes for that
+script's own icons beside the names on Discogs' page, right away.
 Switch it off, or only the automatic lookups (then ▶ MB asks), in ⚙️
 Settings → 💿 Discogs. Without that userscript the column never appears.
 
@@ -3557,7 +3579,8 @@ type into the filter box stays in the filter box. In the window:
   the previous or next title you can see there (a hidden tab's are skipped).
 - **Extracted** shows what the script read from the page, laid out for
   reading: the fields, the scans, the notes and the whole tracklist. Click
-  the cover or a scan to open it in the artwork viewer (the same one as the
+  the cover or a scan (or point at it and press **Space**) to open it in the
+  artwork viewer (the same one as the
   release page's Cover art: zoom, ← → through every image of the page, grid,
   download; **Esc** returns to the window). Ctrl-click opens the image in a
   new tab instead. On Brucebase it also has the credits, the studio

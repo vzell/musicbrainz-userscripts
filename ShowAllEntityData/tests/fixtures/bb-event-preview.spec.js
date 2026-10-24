@@ -416,6 +416,28 @@ test.describe('the Brucebase window: collapsible, linked sections; images by kin
         expect(errors).toEqual([]);
     });
 
+    // org/TODO.org "some more BB and MB fixes/enhancements" 1b (vzell,
+    // 2026-10-24): Space on an image of a Brucebase window opens the viewer
+    // at it, as a click does; Esc closes the viewer and leaves the window.
+    test('Space on an image opens the viewer at that image, over every image of the window', async ({ page }) => {
+        const { errors } = await openWindow(page);
+        const imgs = dialog(page).locator('a[data-mb-artv-ext] img');
+        const n = await dialog(page).locator('a[data-mb-artv-ext]').evaluateAll(as => new Set(as.map(a => a.href)).size);
+        expect(n).toBeGreaterThan(2);
+        const second = imgs.nth(1);
+        await second.scrollIntoViewIfNeeded();
+        await page.mouse.move(0, 0);
+        await second.hover();
+        await page.keyboard.press('Space');
+        const viewer = page.locator('#mb-art-viewer');
+        await expect(viewer).toBeVisible();
+        await expect(viewer.locator('.mb-artv-pos')).toHaveText(`2 / ${n}`);
+        await page.keyboard.press('Escape');
+        await expect(viewer).toBeHidden();
+        await expect(dialog(page)).toBeVisible();
+        expect(errors).toEqual([]);
+    });
+
     test('a song\'s window: its sections fold and its Performances (closed at first) link every show', async ({ page }) => {
         const errors = [];
         page.on('pageerror', (e) => errors.push(String(e.stack || e.message || e)));

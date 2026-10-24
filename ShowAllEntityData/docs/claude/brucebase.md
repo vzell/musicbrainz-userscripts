@@ -623,7 +623,8 @@ card and the artwork viewer, through the shared foreign-image path
   Recent changes, the wiki's own page, a song window's Performances). A
   Media icon is an `<img>` link and stays the image card's. `isDetailUrl`
   stays `/song:`, so the Springsteen reader on other hosts (`_extDpTest()`)
-  still takes no `/gig:` link. ← → step through the rows' event links
+  still takes no `/gig:` link — except on discogs.com, where `ownLinks`
+  counts as well (2026-10-24, docs/claude/discogs.md). ← → step through the rows' event links
   (`_dpRowLinks(table, from)`: the same kind as the link opened). The
   record: `_dpParseBbPage()` (Scheduled, On stage, Setlist, images by kind,
   the tabs with content; sections for the window), `_DP_PARSER_VERSION` 5.

@@ -26088,3 +26088,163 @@ caused by this branch; not investigated further. Earlier, in a 380-test run of
 the Brucebase, preview and gallery specs, popup-ext "the Live page is prepared
 before its images are in" failed once (a 5 s wait for the frame) and passed
 3/3 alone. The live specs were not run.
+
+## 2026-10-24 — Space on images in preview windows; Discogs window thumbnails (branch feature/bb-mb-window-images-discogs, WIP.1)
+
+Env: 2026-10-24T17:47:36+02:00 · petri · WSL2 Ubuntu 24.04.3 (Linux 6.18.54.1) · Playwright 1.62.1 Chromium, no Tampermonkey (GM stubs)
+
+org/TODO.org "some more BB and MB fixes/enhancements" 1a/1b
+(`debug/discogs-master-release-images.html`: a Discogs master window reached
+from a release group's sidebar Discogs chip). Space over a version's
+thumbnail did nothing; the same over a Brucebase window's images.
+
+**Causes.**
+- `img.mb-dg-vthumb` (`_extDgVersionsListHtml()`, `_extDgArtistTableHtml()`,
+  `_extDgLabelHtml()`) was a bare `<img>`: `_dpWinWhat()` starts from
+  `closest('a[href]')`, `_artSpaceTrigger()` from `[data-mbtt-fn]`, and
+  `_DG_FI.tableSel` is `#mb-dg-root table.tbl` — nothing could see it.
+- Window gallery images (`a[data-mb-artv-ext|i]`) get the H4 preview, whose
+  Space was swallowed on purpose (`if (pt && pt.img) return;`), and
+  `_onImageSpace` stands back while a link preview shows. Before the
+  preview's 250 ms, Space scrolled the window.
+
+**Fix.**
+- `_extDgThumbHtml()`: the thumbnail is `a.mb-dg-vthumblink[data-mb-fi="dgw"][data-mbtt-fn="fi-img"]`;
+  provider `_DGW_FI` = `_DG_FI` with the window's `tableSel`/`linkSel`, its
+  own `rowFor` (`_dgWinArtRowFor()`: the row's release/master link and its
+  text, not the cell with its pills) and the window's title. `_extDiscogsWindow()`
+  calls `_fiInstall()`, so the capture click exists on MusicBrainz once a
+  Discogs window shows (the CSS it adds is scoped to the foreign-image
+  classes). `_dpWinWhat()` kind `fi`: ringed, the foot line "Viewer: … ·
+  every image of it", no window preview.
+- `_dpWinImgOpen()` / `_dpWinImgSpace()`: Space opens `_dpArtViewerClick()`
+  with a stand-in event, with or before the preview.
+
+A click elsewhere on a version row drilled into its FIRST link, now the
+thumbnail's (found by popup-ext "a master: …" on the first wide run):
+`_extDiscogsAreaClick()` takes `a[href]:not(.mb-dg-vthumblink)`.
+
+Specs: popup-mb "H4" (rewritten: it asserted "Space pins nothing") and "H4:
+Space before the image's preview shows"; popup-ext "a version's thumbnail…",
+"the gallery: Space…"; bb-event-preview "Space on an image…". Mutations
+`scripts/mutations/dp-window-images.json`; the old dp-window-hover.json H4
+mutant re-targeted to the new code.
+
+## 2026-10-24 — collection window covers as a first column; covers in windows get the image card (branch feature/bb-mb-window-images-discogs, WIP.2)
+
+Env: 2026-10-24T18:03:35+02:00 · petri · WSL2 Ubuntu 24.04.3 (Linux 6.18.54.1) · Playwright 1.62.1 Chromium, no Tampermonkey (GM stubs)
+
+org/TODO.org "some more BB and MB fixes/enhancements" 3a/3b
+(`debug/mb-collection-RGs-images.html` vs `debug/mb-RG-popup.html`).
+`_mbCollWindowHtml()` built `div.mb-pop-coll-art` above `_mbPopTableHtml()`;
+the release group window has `td.mb-rg-thumb` first. The release group
+window's covers were bare `<img>`s (no card, no viewer), its own cover a link
+to coverartarchive.org; a collection cover link with an image was `out` for
+the window (`_mbPopTarget()` refuses image links).
+
+- `_mbPopTableHtml(heads, rows, numCols, thumbs)`: an optional first column.
+- `_mbPopCoverThumbHtml(kind, id, title)`: the sidebar cover's trigger
+  (`sb-cover`) with `data-mb-sb-cover-title`; `_sbCoverCardHtml()` and
+  `_sbOpenCover(path, opener, name)` read the row's name;
+  `_artSpaceOpen()` passes it. A window click: `_dpCoverClick()` (the
+  sidebar's own click handler is `#sidebar`-only). `_dpWinWhat()` kind `fi`.
+- A 16-image record is cut off at 12, where Space is the card's "every
+  image" toggle (by design, image-card-space.spec.js): the specs seed
+  `sa_caa_tip_summary_tiles: 20`, as the sidebar's do.
+
+Specs: popup-mb "the window: the whole description…" (header and cells
+shifted by the cover column), "a cover in the window…"; release-rg-popup
+"the window's covers…" (11/11 in that file). Mutations
+`scripts/mutations/dp-window-covers.json`: 8, all fail as expected.
+
+## 2026-10-24 — discogs.com: Discogs' own links preview on the initial page; Brucebase links get Brucebase's card (branch feature/bb-mb-window-images-discogs, WIP.3)
+
+Env: 2026-10-24T18:14:46+02:00 · petri · WSL2 Ubuntu 24.04.3 (Linux 6.18.54.1) · Playwright 1.62.1 Chromium, no Tampermonkey (GM stubs)
+
+org/TODO.org "some more BB and MB fixes/enhancements" 5a ("BB" there =
+Discogs and Brucebase links, vzell's answer).
+
+**Cause.** The engine already ran on the initial page (`_initDetailPreview()`
+after `_dgPrepareLivePage()`), but `_extTarget()` gives up on an href that
+is not `^https?://`, and Discogs writes its own links relative
+(`debug/bb-release-born-to-run-with-MB-links-initial.html`: 36 artist, 32
+release, 14 label, 15 user links, all relative). Only our tables' absolute
+links previewed. The spec "previews on discogs.com" passed because
+`scripts/build-discogs-fixtures.py` made the content links absolute. The
+older pages (no `#app`) were outside `extRoot: '#app'` altogether. A
+Brucebase `/gig:` link was the generic reader's (`isDetailUrl` is `/song:`
+only, on purpose for other hosts).
+
+**Fix.** `_extTarget()`: on discogs.com a relative href is read against the
+page; `extRoot: '#app, #page_content'`, `_extSource()` appending `a[href]`
+per root; `_extDpTest()`: on discogs.com a site's `ownLinks` count. The
+fixture builder keeps relative hrefs (4 fixtures regenerated: only the hrefs
+changed).
+
+Specs: discogs-pages "previews on discogs.com…" (now relative), "…before any
+render…" (Brucebase card from detail-bb-gig-1985-01-13.html); discogs-links
+"the older layout…". Mutations `scripts/mutations/discogs-initial-previews.json`:
+6 (5 fail; the "every host" scope recorded `pass`, equivalent on MusicBrainz;
+the MusicBrainz `/gig:` guard is popup-ext U4's).
+
+## 2026-10-24 — discogs.com: MusicBrainz cards for our MusicBrainz column and murdos' importer icons (branch feature/bb-mb-window-images-discogs, WIP.4)
+
+Env: 2026-10-24T18:24:43+02:00 · petri · WSL2 Ubuntu 24.04.3 (Linux 6.18.54.1) · Playwright 1.62.1 Chromium, no Tampermonkey (GM stubs)
+
+org/TODO.org "some more BB and MB fixes/enhancements" 5b/5c(1)
+(`debug/bb-release-born-to-run-with-MB-links-initial.html`: 46
+`span.mb_wrapper` of the importer, 26 artist, 13 label, 5 place, 2 release,
+1 release-group icon; `-final.html`: our 403 MB cells, 103 links).
+
+**Cause.** No source took a musicbrainz.org link on discogs.com:
+`_mbEntitySource()` is off on a foreign host and same-origin
+(`_mbPopTarget()`), refuses image links; `_extTarget()` skips MetaBrainz
+hosts; and the cards' loaders are same-origin `fetch('/ws/2/…')`.
+
+**Fix.** `_dgMbSource()` (before `_extSource()`, under `sa_pop_mb`):
+`#mb-dg-root table.tbl > tbody` and `#app` links to
+`https://musicbrainz.org/<kind>/<MBID>` (`_DG_MB_LINK_RE`), image links
+included; `_MB_KINDS[kind].card/extracted` unchanged, their HTML made
+absolute (`_dgMbAbs()`). `_rgWsGet()`, on a foreign host, asks through
+`_mbWsGetForeign()` (one `_extGet()` after the MusicBrainz slot, as
+`_dgMbAsk()` and `_bbMbevPopLoad()`); MusicBrainz's own path is unchanged.
+A plain click on our column's icon now opens the window (every link in our
+tables does, `_dgTableClickOpens()`; vzell 2026-10-18).
+
+Specs: discogs-mb-column "MusicBrainz cards for the MusicBrainz icons" (2):
+our icon (one lookup from musicbrainz.org, no relative link in the card or
+window), the importer's (on the initial page; a search box gets nothing; the
+Discogs name beside it stays Discogs'). Mutations
+`scripts/mutations/discogs-mb-cards.json`: 5, all fail as expected. Not
+checked live: the window's extras (a release group's releases, an artist's
+release groups) go through `_mbWsLoad()` too, so they should load. The
+kinds fed by a MusicBrainz PAGE (`_mbPopPageKind()`: collection, edit,
+user, tag, …) are outside `_DG_MB_LINK_RE`, and the editing history (H) is
+off on a foreign host already (`_mbEditsSubject()`).
+
+## 2026-10-24 — discogs.com: Discogs' own section headings fold their content (branch feature/bb-mb-window-images-discogs, WIP.5)
+
+Env: 2026-10-24T18:32:59+02:00 · petri · WSL2 Ubuntu 24.04.3 (Linux 6.18.54.1) · Playwright 1.62.1 Chromium, no Tampermonkey (GM stubs)
+
+org/TODO.org "some more BB and MB fixes/enhancements" 5c(2)
+(`debug/bb-release-born-to-run-with-MB-links-final.html`: 28 `mb-toggle-h2`,
+the Tracklist h2 ▲ with its table visible).
+
+**Cause.** `makeH2sCollapsible()` takes every h2 of the document. Discogs'
+React section is `section > header > h2` + spacer + its own show/hide
+button, and the content (`div.content_*`) is the HEADER's sibling, not the
+h2's: the walk collected the spacer and the button, hid them (the button has
+no inline style on the initial page, so the hiding was ours), and left the
+content alone. `toggleFn` stops propagation, so React's own handler never
+saw the click. The info table's `<th><h2>Label:</h2>` got a toggle with
+nothing to fold.
+
+**Fix.** `_dgSectionHeader()`: in `#app` such an h2 folds what follows its
+header; an h2 in `th, td` there gets no toggle; Ctrl+click's peers keep to
+their container (`#app` vs ours). MusicBrainz: `_dgAppEl` is null, so the
+pass is unchanged.
+
+Spec: discogs-pages "Discogs' own section headings under our tables"
+(Discogs' markup injected into the fixture's `#app`). Mutations
+`scripts/mutations/discogs-section-headings.json`: 3, all fail as expected.
+Not checked live: a React re-render of a section after our toggle.

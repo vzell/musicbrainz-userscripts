@@ -1,0 +1,67 @@
+[
+    {
+        "name": "Discogs MB cards: the source is not registered",
+        "why": "org/TODO.org 'some more BB and MB fixes/enhancements' 5b/5c (2026-10-24): MusicBrainz icons on discogs.com show MusicBrainz's card.",
+        "edits": [
+            {
+                "find": ".concat([_bbMbevSource(), _dgMbSource(), _rgLinkSource(),",
+                "replace": ".concat([_bbMbevSource(), _rgLinkSource(),"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-mb-column.spec.js",
+        "grep": "MusicBrainz cards for the MusicBrainz icons",
+        "expect": "fail"
+    },
+    {
+        "name": "Discogs MB cards: the Web Service asked same-origin",
+        "why": "On discogs.com fetch('/ws/2/…') asks discogs.com; the lookup must go to musicbrainz.org through GM.",
+        "edits": [
+            {
+                "find": "        if (_foreignHost && url.startsWith('/')) return _mbWsGetForeign(url);\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/discogs-mb-column.spec.js",
+        "grep": "our MusicBrainz column: an icon",
+        "expect": "fail"
+    },
+    {
+        "name": "Discogs MB cards: relative links left in the card",
+        "why": "A MusicBrainz-relative link in the card or window would name discogs.com.",
+        "edits": [
+            {
+                "find": "        return String(html).replace(/(\\s(?:href|src)=\")\\/(?!\\/)/g, '$1https://musicbrainz.org/');",
+                "replace": "        return String(html);"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-mb-column.spec.js",
+        "grep": "our MusicBrainz column: an icon",
+        "expect": "fail"
+    },
+    {
+        "name": "Discogs MB cards: only our table, not Discogs' content",
+        "why": "5b: the importer's icons sit in Discogs' content (#app), on the initial page.",
+        "edits": [
+            {
+                "find": "        const sel = '#mb-dg-root table.tbl > tbody a[href^=\"https://musicbrainz.org/\"], #app a[href^=\"https://musicbrainz.org/\"]';",
+                "replace": "        const sel = '#mb-dg-root table.tbl > tbody a[href^=\"https://musicbrainz.org/\"]';"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-mb-column.spec.js",
+        "grep": "importer's icon in Discogs' content",
+        "expect": "fail"
+    },
+    {
+        "name": "Discogs MB cards: a search link taken for an entity",
+        "why": "The importer's search boxes are no entity; only /<kind>/<MBID> links get a card.",
+        "edits": [
+            {
+                "find": "            if (!k || !k.card) return null;\n            const id = m[2].toLowerCase();",
+                "replace": "            if (!m) return { key: 'search', url: a.href, type: 'artist', id: '', noLive: true, kind: 'Artist', wide: false, name: '', col: '' };\n            if (!k || !k.card) return null;\n            const id = m[2].toLowerCase();"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-mb-column.spec.js",
+        "grep": "importer's icon in Discogs' content",
+        "expect": "fail"
+    }
+]
