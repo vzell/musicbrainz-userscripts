@@ -89,5 +89,31 @@
         "spec": "tests/fixtures/bb-event-preview.spec.js",
         "grep": "under their kind",
         "expect": "fail"
+    },
+    {
+        "name": "Ctrl+click: only the clicked section follows",
+        "why": "vzell 2026-10-24: Ctrl-clicking a header toggles ALL sections.",
+        "edits": [
+            {
+                "find": "            win.querySelectorAll(SEC).forEach(x => { x.open = open; });\n",
+                "replace": "            d.open = open;\n"
+            }
+        ],
+        "spec": "tests/fixtures/bb-event-preview.spec.js",
+        "grep": "Ctrl\\+click on a heading",
+        "expect": "fail"
+    },
+    {
+        "name": "Ctrl+click: the browser's own toggle not prevented (the clicked one flips back)",
+        "why": "The summary's default action toggles its details after the handler set every section.",
+        "edits": [
+            {
+                "find": "            e.preventDefault();\n            const open = !d.open;\n",
+                "replace": "            const open = !d.open;\n"
+            }
+        ],
+        "spec": "tests/fixtures/bb-event-preview.spec.js",
+        "grep": "Ctrl\\+click on a heading",
+        "expect": "fail"
     }
 ]

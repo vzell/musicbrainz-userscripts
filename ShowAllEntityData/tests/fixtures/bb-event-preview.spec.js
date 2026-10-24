@@ -207,6 +207,35 @@ test.describe('the Brucebase window: collapsible, linked sections; images by kin
         expect(errors).toEqual([]);
     });
 
+    // vzell, 2026-10-24: "Ctrl-clicking one of the header toggles the
+    // collapse state of all sections". Pinned: ALL sections follow (not
+    // just the clicked one), both ways, to the state the clicked one did
+    // not have; a plain click still folds one; the state is kept for the
+    // next record like a single fold's.
+    test('Ctrl+click on a heading folds or opens every section; a plain click still folds one', async ({ page }) => {
+        const { errors } = await openWindow(page);
+        const secs = dialog(page).locator('details.mb-dp-sec');
+        const states = () => secs.evaluateAll(ds => ds.map(d => d.open));
+        const n = await secs.count();
+        expect(n, 'premise: several sections').toBeGreaterThan(3);
+        expect(await states(), 'all open at first').toEqual(Array(n).fill(true));
+        const summary = (name) => dialog(page).locator(`details.mb-dp-sec[data-mb-dp-sec="${name}"] > summary`);
+        await summary('Setlist').click({ modifiers: ['Control'] });
+        await expect.poll(states).toEqual(Array(n).fill(false));
+        // From a closed one, Ctrl+click opens them all again.
+        await summary('Performances').click({ modifiers: ['Control'] });
+        await expect.poll(states).toEqual(Array(n).fill(true));
+        await summary('On stage').click();
+        await expect.poll(states).toEqual([false, ...Array(n - 1).fill(true)]);
+        await summary('Recording').click({ modifiers: ['Control'] });
+        await expect.poll(states).toEqual(Array(n).fill(false));
+        // Kept for the next record (← to 1985-01-07, which has a fixture).
+        for (let k = 0; k < 3; k++) await page.keyboard.press('ArrowLeft');
+        await expect(dialog(page).locator('.mb-dp-xtitle')).toContainText('1985-01-07', { timeout: 15000 });
+        expect(await states()).toEqual(Array(await secs.count()).fill(false));
+        expect(errors).toEqual([]);
+    });
+
     test('On stage, Setlist and Performances are linked: people, songs, shows', async ({ page }) => {
         const { errors } = await openWindow(page);
         const links = (name) => dialog(page).locator(`details.mb-dp-sec[data-mb-dp-sec="${name}"] .mb-dp-section a`);

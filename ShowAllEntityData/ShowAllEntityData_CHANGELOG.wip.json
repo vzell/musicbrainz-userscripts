@@ -1,5 +1,17 @@
 [
     {
+        "version": "WIP.12",
+        "date": "2026-10-24",
+        "sections": [
+            {
+                "label": "✨ Improve",
+                "items": [
+                    "Brucebase windows: a Ctrl+click (⌘+click on a Mac) on a section's heading folds or opens every section at once. A plain click still folds just that one."
+                ]
+            }
+        ]
+    },
+    {
         "version": "WIP.11",
         "date": "2026-10-24",
         "sections": [

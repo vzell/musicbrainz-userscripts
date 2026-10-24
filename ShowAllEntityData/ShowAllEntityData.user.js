@@ -22980,16 +22980,31 @@
 
     /**
      * Records a collapsible section's state when the reader toggles it
-     * (capture: `toggle` does not bubble). Installed once.
+     * (capture: `toggle` does not bubble), and makes a Ctrl-click (⌘ on a
+     * Mac) on a section's header open or close EVERY section of the window:
+     * all of them take the state the clicked one did not have (vzell,
+     * 2026-10-24). Each one's `toggle` then records it. Installed once.
      *
      * @returns {void}
      */
     function _dpInitSecToggles() {
         if (_dpInitSecToggles.done) return;
         _dpInitSecToggles.done = true;
+        const SEC = 'details.mb-dp-sec[data-mb-dp-sec]';
         document.addEventListener('toggle', (e) => {
             const d = e.target;
-            if (d && d.matches && d.matches('details.mb-dp-sec[data-mb-dp-sec]') && d.closest('#mb-dp-dialog')) _dpSecState.set(d.dataset.mbDpSec, d.open);
+            if (d && d.matches && d.matches(SEC) && d.closest('#mb-dp-dialog')) _dpSecState.set(d.dataset.mbDpSec, d.open);
+        }, true);
+        document.addEventListener('click', (e) => {
+            if (!(e.ctrlKey || e.metaKey) || e.button !== 0 || !e.target.closest) return;
+            const sum = e.target.closest('summary');
+            const d = sum && sum.parentElement;
+            if (!d || !d.matches(SEC) || sum !== d.querySelector(':scope > summary')) return;
+            const win = d.closest('#mb-dp-dialog');
+            if (!win) return;
+            e.preventDefault();
+            const open = !d.open;
+            win.querySelectorAll(SEC).forEach(x => { x.open = open; });
         }, true);
     }
 
@@ -23057,7 +23072,9 @@
             // closed stays so for the page's life (`_dpSecState`).
             const name = s.label.replace(/\s*\(\d+\)$/, '');
             const open = _dpSecState.has(name) ? _dpSecState.get(name) : s.open !== false;
-            right.push(`<details class="mb-dp-sec" data-mb-dp-sec="${_mbttEscape(name)}"${open ? ' open' : ''}><summary><h4>${_mbttEscape(s.label)}</h4></summary>${body}</details>`);
+            right.push(`<details class="mb-dp-sec" data-mb-dp-sec="${_mbttEscape(name)}"${open ? ' open' : ''}>` +
+                '<summary data-mb-tip title="Click: open or close · Ctrl+click: every section">' +
+                `<h4>${_mbttEscape(s.label)}</h4></summary>${body}</details>`);
         });
         if (!right.length) right.push('<h4>Tracklist</h4><div class="mb-dp-xsub">The page has no tracklist.</div>');
         return { left, right };

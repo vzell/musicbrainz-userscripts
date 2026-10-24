@@ -632,7 +632,10 @@ card and the artwork viewer, through the shared foreign-image path
   `<details class="mb-dp-sec">`, open unless `open: false` (a song's
   Performances, 250 shows on 4th of July), and a section the reader
   toggles stays so for the page's life (`_dpSecState`, a captured
-  `toggle`) — and `imagesByKind`: the images under one `h5.mb-dp-kind` per
+  `toggle`); a Ctrl-click (⌘) on a heading gives EVERY section of the
+  window the state the clicked one did not have (a captured `click` in
+  `_dpInitSecToggles()`, its default action prevented, 2026-10-24) — and
+  `imagesByKind`: the images under one `h5.mb-dp-kind` per
   kind, in page order, Photo last; `data-mb-artv-ext` is numbered in that
   order, so the viewer follows it. Sections carry `html` (`_dpBlockHtml()`:
   the block's lines with its links and nothing else; the entry's Setlist

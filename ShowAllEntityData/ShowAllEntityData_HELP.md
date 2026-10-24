@@ -3124,7 +3124,8 @@ entry, with these columns:
   images. **Space** pins it into a window with the whole setlist, the other
   shows at that venue, the recording and the stories; ← → step through the
   rows (⚙️ Settings → *📚 Brucebase* → *Preview event, venue and people pages on hover*). In
-  the window a click on a section's heading folds it; the people on stage,
+  the window a click on a section's heading folds it, and a Ctrl+click
+  folds or opens all of them at once; the people on stage,
   the songs of the setlist and the other shows are links that open in the
   window (Backspace goes back) and show their card when you point at them;
   the images are grouped by kind, photos last. A song's window works the
