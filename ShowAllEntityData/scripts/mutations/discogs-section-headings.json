@@ -1,0 +1,41 @@
+[
+    {
+        "name": "Discogs headings: the header's siblings folded again",
+        "why": "org/TODO.org 'some more BB and MB fixes/enhancements' 5c (2026-10-24): a Discogs section's content follows its <header>; the h2's own siblings are Discogs' show/hide button.",
+        "edits": [
+            {
+                "find": "            const _dgHead = _inDgApp ? _dgSectionHeader(h2) : null;",
+                "replace": "            const _dgHead = null;"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-pages.spec.js",
+        "grep": "own section headings",
+        "expect": "fail"
+    },
+    {
+        "name": "Discogs headings: an info table's h2 gets a toggle",
+        "why": "An h2 in a table cell ('Label:') is no section.",
+        "edits": [
+            {
+                "find": "            if (_inDgApp && h2.closest('th, td')) return;\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/discogs-pages.spec.js",
+        "grep": "own section headings",
+        "expect": "fail"
+    },
+    {
+        "name": "Discogs headings: Ctrl+click takes our headings too",
+        "why": "Discogs' own page is a container of its own: Ctrl+click on its heading folds its sections, never our tables' headings.",
+        "edits": [
+            {
+                "find": "                        return peerInSidebar === isInsideSidebar && !!(_dgAppEl && _dgAppEl.contains(peer)) === isInsideDgApp;",
+                "replace": "                        return peerInSidebar === isInsideSidebar;"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-pages.spec.js",
+        "grep": "own section headings",
+        "expect": "fail"
+    }
+]

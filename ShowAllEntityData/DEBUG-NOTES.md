@@ -26221,3 +26221,30 @@ release groups) go through `_mbWsLoad()` too, so they should load. The
 kinds fed by a MusicBrainz PAGE (`_mbPopPageKind()`: collection, edit,
 user, tag, …) are outside `_DG_MB_LINK_RE`, and the editing history (H) is
 off on a foreign host already (`_mbEditsSubject()`).
+
+## 2026-10-24 — discogs.com: Discogs' own section headings fold their content (branch feature/bb-mb-window-images-discogs, WIP.5)
+
+Env: 2026-10-24T18:32:59+02:00 · petri · WSL2 Ubuntu 24.04.3 (Linux 6.18.54.1) · Playwright 1.62.1 Chromium, no Tampermonkey (GM stubs)
+
+org/TODO.org "some more BB and MB fixes/enhancements" 5c(2)
+(`debug/bb-release-born-to-run-with-MB-links-final.html`: 28 `mb-toggle-h2`,
+the Tracklist h2 ▲ with its table visible).
+
+**Cause.** `makeH2sCollapsible()` takes every h2 of the document. Discogs'
+React section is `section > header > h2` + spacer + its own show/hide
+button, and the content (`div.content_*`) is the HEADER's sibling, not the
+h2's: the walk collected the spacer and the button, hid them (the button has
+no inline style on the initial page, so the hiding was ours), and left the
+content alone. `toggleFn` stops propagation, so React's own handler never
+saw the click. The info table's `<th><h2>Label:</h2>` got a toggle with
+nothing to fold.
+
+**Fix.** `_dgSectionHeader()`: in `#app` such an h2 folds what follows its
+header; an h2 in `th, td` there gets no toggle; Ctrl+click's peers keep to
+their container (`#app` vs ours). MusicBrainz: `_dgAppEl` is null, so the
+pass is unchanged.
+
+Spec: discogs-pages "Discogs' own section headings under our tables"
+(Discogs' markup injected into the fixture's `#app`). Mutations
+`scripts/mutations/discogs-section-headings.json`: 3, all fail as expected.
+Not checked live: a React re-render of a section after our toggle.

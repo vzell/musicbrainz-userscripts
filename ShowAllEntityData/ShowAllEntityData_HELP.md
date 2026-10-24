@@ -3367,7 +3367,9 @@ used up, every tab waits a minute and then asks again, and the status line
 says so. With several Discogs tabs open, the token helps most. Pointing at
 a button shows what it costs. Bruce Springsteen's discography is 68 requests, about 3
 minutes without a token; more than 50 pages asks you first, as on
-MusicBrainz. Discogs' own page stays as it is below the section. As
+MusicBrainz. Discogs' own page stays below the section, each of its headings
+(Tracklist, Credits, Videos, …) folded once the table is drawn: a click opens
+or folds that part, a Ctrl+click all of Discogs' parts at once. As
 everywhere, pressing a second button reloads the page, which then runs that
 button by itself.
 

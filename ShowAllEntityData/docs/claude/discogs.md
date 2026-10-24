@@ -106,6 +106,20 @@ A toolbar button may now open a group of its own (`groupLabel`: "| Newest:"),
 the same look as a pageType's `buttonGroupLabel`; its hover text says what it
 costs (`_dgCost()`, `_dgCostPer()`).
 
+**Discogs' own section headings (2026-10-24, org/TODO.org "some more BB and
+MB fixes/enhancements" 5c).** `makeH2sCollapsible()` walks every h2 of the
+document, Discogs' too. A React section is `<section> > <header> > <h2>` +
+spacer + Discogs' show/hide button, then `div.content_*`: the sibling walk
+folded the button and spacer (the content was never a sibling), and
+`stopPropagation()` kept the click from React, so a click did nothing
+visible and Discogs' own button was gone. Now (`_dgSectionHeader()`) such a
+heading folds what follows its header; an h2 in a table cell (the info
+table's "Label:", "Format:") gets no toggle; Ctrl+click's peers are the h2s
+of the same container, `#app` being one on discogs.com, so it never folds our
+own headings. Collapsed at first, as every non-main h2. Not checked live:
+whether a React re-render of a section (Discogs' own button) replaces the
+content div our toggle hid.
+
 ## Links, credits and thumbnails (vzell's browser round, 2026-10-18)
 
 - **Names without ids link Discogs' search.** The lists carry an artist and

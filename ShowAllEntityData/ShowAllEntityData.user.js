@@ -105596,6 +105596,20 @@ a { color: #1565c0; }`;
     }
 
     /**
+     * The `<header>` a discogs.com section heading sits in (`<section> >
+     * <header> > <h2>`, the React page's Tracklist, Credits, Videos, …), or
+     * null for any other h2: then its section's content is what follows
+     * that header (`makeH2sCollapsible()`).
+     *
+     * @param {HTMLElement} h2
+     * @returns {?HTMLElement}
+     */
+    function _dgSectionHeader(h2) {
+        const hd = h2.parentElement;
+        return hd && hd.tagName === 'HEADER' && hd.parentElement && hd.parentElement.tagName === 'SECTION' ? hd : null;
+    }
+
+    /**
      * Makes every `<h2>` in the document a click-to-collapse/expand section
      * header, toggling visibility of every DOM node between it and the next
      * `<h2>` (walking `nextSibling`, so bare text nodes are also captured and
@@ -105617,8 +105631,16 @@ a { color: #1565c0; }`;
      *
      * Click toggles just the clicked h2; Ctrl+Click toggles every "peer" h2 —
      * every other h2 in the same container (sidebar vs. main content,
-     * determined via `#sidebar.contains(h2)`) — to the same expand/collapse
+     * determined via `#sidebar.contains(h2)`; on discogs.com Discogs' own
+     * page, `#app`, is a container of its own) — to the same expand/collapse
      * state as the clicked one.
+     *
+     * discogs.com's React page under our tables (`_dgSectionHeader()`): a
+     * section's h2 sits in the section's `<header>` beside Discogs' own
+     * show/hide button, so its content is what follows that header, never
+     * the header's own siblings; an h2 in a table cell (the release's info
+     * table: "Label:", "Format:") is no section and gets no toggle
+     * (org/TODO.org "some more BB and MB fixes/enhancements" 5c, 2026-10-24).
      */
     function makeH2sCollapsible() {
         Lib.debug('render', 'Initializing collapsible H2 headers...');
@@ -105626,6 +105648,7 @@ a { color: #1565c0; }`;
         // Capture all H2s currently in the document to allow peer filtering later
         const allH2s = Array.from(document.querySelectorAll('h2'));
         const _sbSidebarEl = document.getElementById('sidebar');
+        const _dgAppEl = _isDgHost ? document.getElementById('app') : null;
 
         // Strip any stale processed state from a previous invocation (e.g. after "Load from Disk"
         // on an already-rendered page).  The h2 DOM nodes are reused across re-renders, so their
@@ -105644,6 +105667,8 @@ a { color: #1565c0; }`;
 
         allH2s.forEach(h2 => {
             if (h2.classList.contains('mb-h2-processed')) return;
+            const _inDgApp = !!(_dgAppEl && _dgAppEl.contains(h2));
+            if (_inDgApp && h2.closest('th, td')) return;
             h2.classList.add('mb-h2-processed', 'mb-toggle-h2');
             _setTip(h2, 'Click to collapse/uncollapse section (Ctrl+Click to toggle ALL sections)');
             h2.style.cursor = 'pointer'; // Make entire H2 header indicate clickability
@@ -105660,7 +105685,9 @@ a { color: #1565c0; }`;
             // holds the next heading (Tags lives in its own div): stop there
             // too, or closing "Artist information" hides Tags with it.
             const _inSidebar = !!(_sbSidebarEl && _sbSidebarEl.contains(h2));
-            let _cur = h2.nextSibling;
+            const _dgHead = _inDgApp ? _dgSectionHeader(h2) : null;
+            let _cur = _dgHead ? null : h2.nextSibling;
+            for (let el = _dgHead && _dgHead.nextElementSibling; el; el = el.nextElementSibling) contentNodes.push(el);
             while (_cur) {
                 const _nxt = _cur.nextSibling; // save before any DOM mutation
                 if (_cur.nodeType === Node.ELEMENT_NODE && _cur.tagName === 'H2') break;
@@ -105858,14 +105885,16 @@ a { color: #1565c0; }`;
                 // All-toggle when Ctrl is held (anywhere on the h2 header).
                 // Plain clicks — including on either status span — toggle only this h2.
                 if (e.ctrlKey) {
-                    // Logic to toggle all peers in the same container (sidebar vs main)
+                    // Logic to toggle all peers in the same container (sidebar vs main;
+                    // on discogs.com Discogs' own page vs ours)
                     const sidebar = document.getElementById('sidebar');
                     const isInsideSidebar = sidebar && sidebar.contains(h2);
+                    const isInsideDgApp = !!(_dgAppEl && _dgAppEl.contains(h2));
 
                     const peers = allH2s.filter(peer => {
                         if (!document.body.contains(peer)) return false;
                         const peerInSidebar = sidebar && sidebar.contains(peer);
-                        return peerInSidebar === isInsideSidebar;
+                        return peerInSidebar === isInsideSidebar && !!(_dgAppEl && _dgAppEl.contains(peer)) === isInsideDgApp;
                     });
 
                     peers.forEach(peer => {
