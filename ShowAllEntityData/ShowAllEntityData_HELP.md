@@ -3457,7 +3457,8 @@ nothing**: the rows read before come from this browser.
   then the window. On a touch screen a tap outside the window closes it.
 - **Move it** by its title bar (by touch too) and **resize it** from its
   lower-right corner. It opens there again, at that size, the next time;
-  until you have moved or resized it once, it opens under its 🖼.
+  until you have moved or resized it once, it opens under its 🖼. It always
+  stays inside the browser window, so the corner is always within reach.
 - With a filter typed, the window covers only the rows the filter shows, and
   says so.
 

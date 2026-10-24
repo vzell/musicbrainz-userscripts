@@ -405,6 +405,54 @@ test.describe('foreign gallery: discogs.com', () => {
         expect(errors).toEqual([]);
     });
 
+    // vzell, 2026-10-24 (screenshots of a master's versions): "after opening
+    // the window and trying to click/drag the popup window its size gets so
+    // large that the resize handle is not visible anymore", and on a
+    // Brucebase year the list "automatically scrolls inside when initially
+    // resizing". The first: a drag lifted the height cap (`mb-geo-fixed`)
+    // with no height pinned, so the window grew to its whole content. The
+    // second: the body's scrollbar ran into the resize corner, so a press on
+    // the grip held the scrollbar. Pinned: the size a drag starts with is
+    // the size it ends with, the corner stays on screen, and a press held on
+    // the corner is the window's (not the list's) and scrolls nothing.
+    test('a tall list: a drag keeps the window\'s size and its corner on screen; a press on the corner scrolls nothing', async ({ page }) => {
+        const errors = await openDg(page, 'https://www.discogs.com/master/26725-Bruce-Springsteen-Born-To-Run', 'dg-master.html', { sa_pop_ext_discogs_token: '' });
+        await page.locator('#mb-dg-root button[data-label="Show all versions"]').click();
+        await waitForRenderComplete(page, { waitForAutoResize: false });
+        await opener(page).click();
+        await expect(gal(page)).toBeVisible();
+        const box = () => gal(page).evaluate((el) => {
+            const r = el.getBoundingClientRect();
+            const body = el.querySelector('.mb-fgal-body');
+            return { x: Math.round(r.left), y: Math.round(r.top), w: Math.round(r.width), h: Math.round(r.height), bottom: r.bottom,
+                bodyBottom: body.getBoundingClientRect().bottom, scrolls: body.scrollHeight > body.clientHeight + 50, scrollTop: body.scrollTop };
+        });
+        const g0 = await box();
+        expect(g0.scrolls, 'the list is taller than the window (the case reported)').toBe(true);
+        const hb = await gal(page).locator('.mb-fgal-head b').boundingBox();
+        await page.mouse.move(hb.x + 10, hb.y + 5);
+        await page.mouse.down();
+        await page.mouse.move(hb.x + 30, hb.y + 5 - Math.min(40, g0.y), { steps: 4 });
+        await page.mouse.up();
+        const g1 = await box();
+        expect(g1.h, 'the drag keeps the height').toBe(g0.h);
+        expect(g1.w, 'and the width').toBe(g0.w);
+        expect(g1.bottom, 'the corner is on screen').toBeLessThanOrEqual(page.viewportSize().height);
+        // The corner is the window's own: under it is the window, not the
+        // scrolling list, which ends above it.
+        expect(g1.bodyBottom, 'the list ends above the resize corner').toBeLessThanOrEqual(g1.bottom - 12);
+        const hit = await page.evaluate(([x, y]) => document.elementFromPoint(x, y) === document.getElementById('mb-fgal'), [g1.x + g1.w - 5, g1.y + g1.h - 5]);
+        expect(hit, 'the window itself is under the corner').toBe(true);
+        await page.mouse.move(g1.x + g1.w - 5, g1.y + g1.h - 5);
+        await page.mouse.down();
+        // Held, not moved: a press on a scrollbar's track or arrow repeats
+        // while it is held. The time is the test's subject, not a settle.
+        await page.evaluate(() => new Promise(r => setTimeout(r, 700)));
+        await page.mouse.up();
+        expect((await box()).scrollTop, 'holding the corner scrolls nothing').toBe(0);
+        expect(errors).toEqual([]);
+    });
+
     test('a multi-table release page: the sub-table with images (Other versions) has its 🖼 after its count, after a filter too; the others none', async ({ page }) => {
         const errors = await openDg(page, 'https://www.discogs.com/release/1874253-Bruce-Springsteen-Born-To-Run', 'dg-release.html', { sa_pop_ext_discogs_token: 'tok-probe' });
         await page.locator('#mb-dg-root button[data-label="Show tracklist, credits and other versions"]').click();

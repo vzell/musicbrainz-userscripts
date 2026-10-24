@@ -260,5 +260,31 @@
         "project": "chromium-mobile",
         "grep": "touch drag",
         "expect": "fail"
+    },
+    {
+        "name": "geometry: a drag does not pin the height (the window grows to its content, its corner off screen)",
+        "why": "vzell 2026-10-24, Discogs master versions: mb-geo-fixed lifts the height cap; the drag must keep the size it started with.",
+        "edits": [
+            {
+                "find": "            box.style.height = `${Math.round(r.height)}px`;\n            lastW = box.style.width;\n            lastH = box.style.height;\n            fix(r);\n            drag = {",
+                "replace": "            lastW = box.style.width;\n            lastH = box.style.height;\n            fix(r);\n            drag = {"
+            }
+        ],
+        "spec": "tests/fixtures/foreign-gallery.spec.js",
+        "grep": "tall list",
+        "expect": "fail"
+    },
+    {
+        "name": "geometry: no strip under the body (its scrollbar runs into the resize corner)",
+        "why": "vzell 2026-10-24, Brucebase 1985: a press on the grip also held the list's scrollbar and scrolled the list.",
+        "edits": [
+            {
+                "find": "            #mb-fgal.mb-tt-liner { padding-bottom: 16px; }\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/foreign-gallery.spec.js",
+        "grep": "tall list",
+        "expect": "fail"
     }
 ]

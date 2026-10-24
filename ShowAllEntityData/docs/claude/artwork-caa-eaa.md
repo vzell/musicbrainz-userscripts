@@ -712,7 +712,15 @@ MusicBrainz's.
   content-box every reopen grew by 2 px); and its 600 px height cap is
   lifted by a press on the resize corner, before the browser starts the
   resize. `createInfoDialog()` keeps its own copy of the idiom
-  (REFACTORING.org).
+  (REFACTORING.org). Two more found in a real browser the same day: a
+  DRAG lifts the cap too (`.mb-geo-fixed`: 94vh), so it pins the current
+  height first, or the window grew to its whole content (a Discogs
+  master's versions, the corner off the bottom); and the drag and a
+  restore keep the WHOLE box in the window, not just its top 40 px. And
+  the box has a 16 px strip under its scrolling body: without it the
+  body's scrollbar ran into the resize corner, and a press on the grip
+  held the scrollbar, scrolling the list while resizing.
+  `foreign-gallery.spec.js` "a tall list" pins both.
 - **Chips and Compare** (answer 2), as D2: by each image's first type
   (`_fgalType()`; Discogs' primary/secondary come through `cardImages()`);
   the viewer's Shift+← → step the read rows the chips leave, round.

@@ -26019,6 +26019,11 @@
             #mb-fgal.mb-tt-liner { position: absolute; z-index: 2147483300; padding: 0; display: flex; flex-direction: column;
                 max-height: min(600px, 80vh); font-size: 13.5px; }
             #mb-fgal.mb-tt-liner { resize: both; overflow: hidden; min-width: 340px; min-height: 220px; max-width: 96vw; }
+            /* A strip under the scrolling body for the resize corner: without
+               it the body's scrollbar ran into the corner, and a press on the
+               grip also held the scrollbar's down arrow, scrolling the list
+               while the window was resized (vzell, 2026-10-24). */
+            #mb-fgal.mb-tt-liner { padding-bottom: 16px; }
             #mb-fgal.mb-geo-fixed { position: fixed; max-height: 94vh; }
             #mb-fgal .mb-fgal-head { display: flex; gap: 10px; align-items: flex-start; padding: 11px 14px 9px; border-bottom: 1px solid #d9cfbd;
                 cursor: move; user-select: none; touch-action: none; }
@@ -70058,7 +70063,10 @@ ${sections.join('\n')}
      *   `position: fixed` and lifts its height cap. A press on the resize
      *   corner (the last 18 px of both edges) adds it first, so the very
      *   first resize is not stopped by the cap of a panel that grows with
-     *   its content.
+     *   its content; a drag pins the current height first, so lifting the
+     *   cap does not let it grow to its whole content.
+     * - A drag and a restore keep the whole panel inside the window, its
+     *   resize corner always within reach.
      *
      * @param {HTMLElement} box
      * @param {{handleSel: string, geoKey: string, minW?: number, minH?: number}} o
@@ -70075,7 +70083,8 @@ ${sections.join('\n')}
             const vw = document.documentElement.clientWidth, vh = window.innerHeight;
             const width = Math.min(Math.max(g.width, minW), vw - 16);
             const height = Math.min(Math.max(g.height, minH), vh - 16);
-            return { width, height, left: Math.min(Math.max(g.left, 0), vw - width), top: Math.min(Math.max(g.top, 0), vh - 40) };
+            // All of it on screen, the resize corner included.
+            return { width, height, left: Math.min(Math.max(g.left, 0), vw - width), top: Math.min(Math.max(g.top, 0), vh - height) };
         };
         const fix = (r) => {
             box.classList.add('mb-geo-fixed');
@@ -70092,9 +70101,11 @@ ${sections.join('\n')}
         let drag = null;
         const onMove = (e) => {
             if (!drag) return;
+            // Never past the window's right or bottom edge: the resize
+            // corner stays where the pointer can reach it.
             const vw = document.documentElement.clientWidth;
-            box.style.left = `${Math.round(Math.min(Math.max(e.clientX - drag.dx, 0), vw - 60))}px`;
-            box.style.top = `${Math.round(Math.min(Math.max(e.clientY - drag.dy, 0), window.innerHeight - 40))}px`;
+            box.style.left = `${Math.round(Math.min(Math.max(e.clientX - drag.dx, 0), Math.max(0, vw - drag.w)))}px`;
+            box.style.top = `${Math.round(Math.min(Math.max(e.clientY - drag.dy, 0), Math.max(0, window.innerHeight - drag.h)))}px`;
             e.preventDefault();
         };
         const onUp = () => {
@@ -70121,10 +70132,17 @@ ${sections.join('\n')}
             if (e.target.closest('button, a, input, select, textarea, label')) return;
             const r = box.getBoundingClientRect();
             // From page coordinates (opened under its button) to the
-            // window's: no jump when the first drag starts.
+            // window's: no jump when the first drag starts. The height is
+            // pinned too: `mb-geo-fixed` lifts the height cap, and a panel
+            // that grows with its content then grew to its whole content
+            // (a Discogs master's 26 rows), its corner off the bottom of
+            // the window (vzell, 2026-10-24).
             box.style.width = `${Math.round(r.width)}px`;
+            box.style.height = `${Math.round(r.height)}px`;
+            lastW = box.style.width;
+            lastH = box.style.height;
             fix(r);
-            drag = { dx: e.clientX - r.left, dy: e.clientY - r.top };
+            drag = { dx: e.clientX - r.left, dy: e.clientY - r.top, w: r.width, h: r.height };
             window.addEventListener('pointermove', onMove, true);
             window.addEventListener('pointerup', onUp, true);
             window.addEventListener('pointercancel', onUp, true);

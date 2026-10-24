@@ -1,5 +1,18 @@
 [
     {
+        "version": "WIP.11",
+        "date": "2026-10-24",
+        "sections": [
+            {
+                "label": "🐛 Fix",
+                "items": [
+                    "The 🖼 images gallery: dragging it by its title bar no longer makes it grow to its whole list (on a Discogs master with many versions it reached past the bottom of the screen, its resize corner out of reach). Dragged or reopened, it now always stays inside the browser window.",
+                    "Pressing on the gallery's resize corner no longer scrolls the list inside it: the list's scrollbar used to reach into that corner."
+                ]
+            }
+        ]
+    },
+    {
         "version": "WIP.10",
         "date": "2026-10-24",
         "sections": [
