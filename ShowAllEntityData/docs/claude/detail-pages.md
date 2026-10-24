@@ -169,7 +169,10 @@ Both share `_rgReleases` (a group's releases as far as loaded) and `_rgFacts`
   keep `_dpAwaitSlot()`: another origin, another budget.
 - **Covers only where the archive has a front**: the window's thumbnails read
   each release's own `cover-art-archive.front` (accurate:
-  org/caa-artwork-requests.org F1), and load lazily.
+  org/caa-artwork-requests.org F1), and load lazily. Each is a sidebar-cover
+  trigger since 2026-10-24 (`_mbPopCoverThumbHtml()`: card of that release's
+  images, click or Space the viewer; see the collection cards below), and so
+  is the group's own cover on the left.
 - **The Live page root is `#page`, not `#content`.** `_dpIsolateFrame()` hides
   the siblings of the root and of each ancestor: `#page` hides MusicBrainz's
   `.header`, the browser warning and `#footer`, and keeps `#content` and
@@ -966,8 +969,19 @@ a pager, covers, eight entries on the card).
   (`__saTest.mbPopStatus()` lets the spec show page 2 was not even started).
   Release and release group collections show the slice's covers as
   `coverartarchive.org/<kind>/<MBID>/front-250` images, only for rows the
-  page marks with `.caa-icon`: no CAA API request, and only in the window
-  (Space), never on a hover.
+  page marks with `.caa-icon`, and only in the window (Space), never on a
+  hover. **Since 2026-10-24 they are the table's first column**
+  (`_mbPopTableHtml()`'s `thumbs`, `td.mb-rg-thumb` as the release group's
+  window; a strip above the table before — org/TODO.org "some more BB and MB
+  fixes/enhancements" 3a). Each is `_mbPopCoverThumbHtml()`: a sidebar-cover
+  trigger (`sb-cover`, `data-mb-sb-cover`, `data-mb-sb-cover-title` the
+  row's name), so a rest shows the card of every image of THAT entity
+  (`_sbCoverCardHtml()`: one CAA index request, the first rest only), a click
+  (`_dpCoverClick()`, before `_dpArtViewerClick()` in the area's click) or
+  Space (`_artSpaceOpen()`) opens them in the viewer (`_sbOpenCover(path,
+  opener, name)`), Ctrl-click opens the entity's page. `_dpWinWhat()` takes
+  it as kind `fi`. The release group window's release covers and its own
+  cover (`_rgWindowTableHtml()`, `_rgWindowHtml()`) are the same trigger (3b).
 - **No editing history** (H, "✎ Editing history"): a collection's
   `/collection/<MBID>/edits` says "Found 0 edits" logged in and did not load
   within 90 s logged out (probed twice, 2026-10-20), so `_mbEditsSubject()`

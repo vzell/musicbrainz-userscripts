@@ -193,6 +193,59 @@ test.describe('the release-group popup on the popup engine (org/iframe.org Phase
         await expect(dialog(page).locator('.mb-rg-thumb img')).toHaveCount(100);
     });
 
+    // org/TODO.org "some more BB and MB fixes/enhancements" 3b (vzell,
+    // 2026-10-24): every image of the window gets the standard image hover —
+    // a release's cover shows the card of every image of THAT release, and a
+    // click or Space opens them in the viewer; the group's own cover too.
+    test('the window\'s covers: a release\'s card and viewer on a rest, a click or Space; the group\'s cover too', async ({ page }) => {
+        await open(page, { browse: (offset) => ({ status: 200, body: twoPageBrowse(offset) }), settings: { sa_caa_tip_summary_tiles: 20 } });
+        const caa = [];
+        await page.route(/^https:\/\/coverartarchive\.org\/(?:release|release-group)\/[0-9a-f-]{36}\/?$/, (route) => {
+            caa.push(new URL(route.request().url()).pathname);
+            return route.fulfill({ status: 200, contentType: 'application/json', body: json('caa-release-d0adda7e.json') });
+        });
+        await pinLink(page);
+        await expect(rows(page)).toHaveCount(150, { timeout: 20000 });
+        const row = rows(page).filter({ has: page.locator('td.mb-rg-thumb a') }).first();
+        const thumb = row.locator('td.mb-rg-thumb a');
+        const title = (await row.locator('td:not(.mb-rg-thumb) a').first().textContent()).trim();
+        const path = await thumb.getAttribute('data-mb-sb-cover');
+        expect(path).toMatch(/^\/release\/[0-9a-f-]{36}$/);
+        expect(caa, 'nothing asked before a rest').toEqual([]);
+
+        const tip = page.locator('#mb-stat-tooltip');
+        await page.mouse.move(0, 0);
+        await thumb.scrollIntoViewIfNeeded();
+        await thumb.locator('img').hover();
+        await expect(tip.locator('.mb-tt-title')).toHaveText(title);
+        await expect(tip.locator('.mb-art-card-tile').first()).toBeVisible();
+        expect(caa, 'one index, of that release').toEqual([path]);
+
+        const viewer = page.locator('#mb-art-viewer');
+        const winTitle = dialog(page).locator(':scope > div > span').first();
+        await page.keyboard.press('Space');
+        await expect(viewer).toBeVisible();
+        await expect(viewer.locator('.mb-artv-title')).toHaveText(`${title} — cover art`);
+        await page.keyboard.press('Escape');
+        await expect(viewer).toBeHidden();
+        await expect(winTitle, 'nothing drilled').toHaveText('Release group');
+        await thumb.click();
+        await expect(viewer).toBeVisible();
+        await page.keyboard.press('Escape');
+        await expect(viewer).toBeHidden();
+        expect(caa, 'the record already read').toEqual([path]);
+
+        // The group's own cover: its card and viewer, not the archive's page in a new tab.
+        const cover = dialog(page).locator('a:has(> img.mb-dp-xcover)');
+        await expect(cover).toHaveAttribute('data-mb-sb-cover', /^\/release-group\/[0-9a-f-]{36}$/);
+        await cover.click();
+        await expect(viewer).toBeVisible();
+        await page.keyboard.press('Escape');
+        await expect(viewer).toBeHidden();
+        expect(caa[1], 'the group\'s index').toMatch(/^\/release-group\//);
+        expect(pageErrors).toEqual([]);
+    });
+
     test('the window sorts by a header, empty dates last both ways', async ({ page }) => {
         await open(page, { browse: (offset) => ({ status: 200, body: twoPageBrowse(offset) }) });
         await pinLink(page);

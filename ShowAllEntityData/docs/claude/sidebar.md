@@ -188,7 +188,14 @@ the release page's "Cover art (N)" section. Never at load.
   (`data-mbtt-fn="sb-cover"` → `_sbCoverCardHtml()` → `_artRecordCardHtml()`,
   which `_artRelIconCardHtml()` now shares; Space draws every image, Shift
   bigger tiles: `sb-cover` is in `_ART_CARD_FNS`). Off with
-  `sa_caa_tip_summary`.
+  `sa_caa_tip_summary`. **Reused in the link-preview window** (2026-10-24):
+  a window table's cover (`_mbPopCoverThumbHtml()`: a release group's
+  releases, a collection's entries) and the release group window's own
+  cover carry the same trigger, plus `data-mb-sb-cover-title`, which
+  `_sbCoverCardHtml()` and `_sbOpenCover(path, opener, name)` use instead of
+  the page's `_cachedEntityName`; their click is `_dpCoverClick()`, since
+  `_sbCoverLinkClick()` only takes `#sidebar` (docs/claude/detail-pages.md,
+  collection cards).
 - **A drawing differs in three places only**: the card says "IROMBOOK"
   instead of "Wikimedia Commons"; the viewer gets no `pageUrl` (a drawing has
   no file page, so the bar shows no link); the copy beside the name carries

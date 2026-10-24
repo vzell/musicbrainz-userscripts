@@ -1,0 +1,106 @@
+[
+    {
+        "name": "Collection window: the covers above the table again",
+        "why": "org/TODO.org 'some more BB and MB fixes/enhancements' 3a (2026-10-24): the covers are the table's first column, as in the release group's window.",
+        "edits": [
+            {
+                "find": "            body = rows.length ? _mbPopTableHtml(rec.cols, rows.map(r => r.cells), [], covers) : '<div class=\"mb-dp-xsub\">This collection is empty.</div>';",
+                "replace": "            body = (covers ? '<div class=\"mb-dp-gallery mb-pop-coll-art\">' + covers.join('') + '</div>' : '') + (rows.length ? _mbPopTableHtml(rec.cols, rows.map(r => r.cells)) : '<div class=\"mb-dp-xsub\">This collection is empty.</div>');"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "the window: the whole description, 25 entries",
+        "expect": "fail"
+    },
+    {
+        "name": "Window cover: no card trigger",
+        "why": "3b: a cover in a window table is the sidebar cover's trigger (sb-cover): card of that entity's images.",
+        "edits": [
+            {
+                "find": "        return `<a class=\"mb-pop-cover-thumb\" href=\"${path}\" target=\"_blank\" rel=\"noopener\" data-mbtt-fn=\"sb-cover\" ` +",
+                "replace": "        return `<a class=\"mb-pop-cover-thumb\" href=\"${path}\" target=\"_blank\" rel=\"noopener\" ` +"
+            }
+        ],
+        "spec": "tests/fixtures/release-rg-popup.spec.js",
+        "grep": "the window's covers",
+        "expect": "fail"
+    },
+    {
+        "name": "Window cover: a click follows the link",
+        "why": "A plain click on a window table's cover opens the viewer (_dpCoverClick), never the entity's page in a new tab.",
+        "edits": [
+            {
+                "find": "            else if (_dpCoverClick(e)) return;\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "a cover in the window",
+        "expect": "fail"
+    },
+    {
+        "name": "Window cover: the card names the page's entity",
+        "why": "A window table's cover names its own row's entity, not the page's (_cachedEntityName).",
+        "edits": [
+            {
+                "find": "        const title = el.dataset.mbSbCoverTitle || _cachedEntityName || ",
+                "replace": "        const title = _cachedEntityName || "
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "a cover in the window",
+        "expect": "fail"
+    },
+    {
+        "name": "Window cover: the viewer names the page's entity",
+        "why": "The viewer's title is the row's entity's too.",
+        "edits": [
+            {
+                "find": "                { opener, title: `${name || _cachedEntityName || document.title} — ",
+                "replace": "                { opener, title: `${_cachedEntityName || document.title} — "
+            }
+        ],
+        "spec": "tests/fixtures/release-rg-popup.spec.js",
+        "grep": "the window's covers",
+        "expect": "fail"
+    },
+    {
+        "name": "Window cover: Space drops the row's name",
+        "why": "Space opens what a click opens, with the same title.",
+        "edits": [
+            {
+                "find": "            _sbOpenCover(el.dataset.mbSbCover, el, el.dataset.mbSbCoverTitle || '');",
+                "replace": "            _sbOpenCover(el.dataset.mbSbCover, el);"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "a cover in the window",
+        "expect": "fail"
+    },
+    {
+        "name": "Window cover: the foot line says New tab",
+        "why": "_dpWinWhat() takes a cover trigger as kind fi, so the foot line names the viewer.",
+        "edits": [
+            {
+                "find": "        if (a.matches('a[data-mb-fi], a[data-mbtt-fn=\"sb-cover\"]')) return",
+                "replace": "        if (a.matches('a[data-mb-fi]')) return"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "a cover in the window",
+        "expect": "fail"
+    },
+    {
+        "name": "Release group window: its own cover links the archive's page only",
+        "why": "3b: the group's cover gets the card and viewer too.",
+        "edits": [
+            {
+                "find": "            `<a href=\"https://coverartarchive.org/release-group/${gid}/front\" target=\"_blank\" rel=\"noopener\" data-mbtt-fn=\"sb-cover\" ` +\n            `data-mb-sb-cover=\"/release-group/${gid}\" data-mb-sb-cover-title=\"${_rgEsc(info.name)}\">` +",
+                "replace": "            `<a href=\"https://coverartarchive.org/release-group/${gid}/front\" target=\"_blank\" rel=\"noopener\">` +"
+            }
+        ],
+        "spec": "tests/fixtures/release-rg-popup.spec.js",
+        "grep": "the window's covers",
+        "expect": "fail"
+    }
+]

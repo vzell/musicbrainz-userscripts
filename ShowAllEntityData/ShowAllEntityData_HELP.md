@@ -2284,7 +2284,11 @@ to you; its card says so). Its window shows the whole description with its
 links, and the entries 25 at a time with the page's own columns and ◀ ▶ to
 page through them; a further page of MusicBrainz's (100 entries each) is read
 only when you get to it. A release or release group collection also shows
-those 25 entries' covers from the Cover Art Archive.
+those 25 entries' covers from the Cover Art Archive, in the table's first
+column. In such a window, and in a release group's window (its releases'
+covers and the group's own), pointing at a cover shows every image of that
+release or release group, and a click or **Space** opens them in the
+artwork viewer; Ctrl-click opens its page instead.
 An **[info]** card (the link MusicBrainz writes after each URL of a
 relationship list or a **URLs** table) shows the URL's site and address and
 which entities link it, by relationship — *Setlistfm: Event: 2025‐05‐20: Co‐op

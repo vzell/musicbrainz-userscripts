@@ -23936,6 +23936,26 @@
         return true;
     }
 
+    /**
+     * A plain click on a cover in the window that is a sidebar-cover trigger
+     * (`_mbPopCoverThumbHtml()`: a release group's releases, a collection's
+     * entries; the release group window's own cover): that entity's images
+     * in the artwork viewer at its front (`_sbOpenCover()`, asking the
+     * archive once when its card has not already), instead of following
+     * the link. Ctrl, Shift, Alt or ⌘ keep the link.
+     *
+     * @param {MouseEvent} e - A click in the window's scroll area.
+     * @returns {boolean} True when the click was taken.
+     */
+    function _dpCoverClick(e) {
+        if (e.button !== 0 || e.ctrlKey || e.shiftKey || e.altKey || e.metaKey) return false;
+        const a = e.target instanceof Element && e.target.closest('a[data-mbtt-fn="sb-cover"][data-mb-sb-cover]');
+        if (!a) return false;
+        e.preventDefault();
+        _sbOpenCover(a.dataset.mbSbCover, a, a.dataset.mbSbCoverTitle || '');
+        return true;
+    }
+
     // ── Hovering inside the window (org/dp-window-hover.org) ───────────────
     //
     // vzell, 2026-10-23 (mockup https://claude.ai/artifact/APF35bPAyvFZvKjFHGHrZU,
@@ -23997,7 +24017,7 @@
         // A foreign-image trigger (a Discogs table's thumbnail, `_DGW_FI`):
         // `fi`, whose card, click and Space are the hover card's own; the
         // window only names it in the foot line and rings it.
-        if (a.matches('a[data-mb-fi]')) return pointer && !node.closest('img') ? null : { kind: 'fi', a };
+        if (a.matches('a[data-mb-fi], a[data-mbtt-fn="sb-cover"]')) return pointer && !node.closest('img') ? null : { kind: 'fi', a };
         if (a.matches('a[data-mb-artv-i], a[data-mb-artv-ext]')) return pointer && !node.closest('img') ? null : { kind: 'img', a };
         const href = a.getAttribute('href') || '';
         if (/^(?:#|javascript:)/i.test(href)) return null;
@@ -24214,7 +24234,7 @@
             const row = table ? p.rowFor(w.a, table, '') : null;
             g = '🔍';
             lead = 'Viewer: ';
-            text = `${(row && row.title) || 'this row'} · every image of it`;
+            text = `${(row && row.title) || w.a.dataset.mbSbCoverTitle || 'this row'} · every image of it`;
             keys = 'Click or Space: viewer · Ctrl-click: new tab';
         } else if (w.kind === 'here') {
             lead = 'Opens here: ';
@@ -26510,6 +26530,9 @@
         }, true);
         api.scrollArea.addEventListener('click', (e) => {
             if (e.target.closest('.mb-dp-retry')) _dpRenderDialog(true);
+            // A table's cover (a release group's releases, a collection's
+            // entries): that entity's images in the viewer.
+            else if (_dpCoverClick(e)) return;
             // An image: the artwork viewer.
             else if (_dpArtViewerClick(e)) return;
             // An entity link: drill down (Phase 5).
@@ -27132,6 +27155,7 @@
             .mb-dp-dialog .mb-rg-num { text-align: right; font-variant-numeric: tabular-nums; }
             .mb-dp-dialog .mb-rg-thumb { width: 32px; padding-right: 0; }
             .mb-dp-dialog .mb-rg-thumb img { width: 32px; height: 32px; object-fit: cover; display: block; border: 1px solid #d9cfbd; }
+            .mb-dp-dialog a.mb-pop-cover-thumb { display: inline-block; line-height: 0; cursor: zoom-in; }
             table.tbl > tbody > tr.mb-dp-current > td {
                 background-image: linear-gradient(rgba(255, 204, 0, 0.25), rgba(255, 204, 0, 0.25));
             }
@@ -27164,7 +27188,6 @@
             .mb-dp-dialog .mb-pop-coll-desc a { color: #6b3f12; }
             .mb-dp-dialog .mb-pop-coll-pager { display: flex; align-items: center; gap: 8px; margin: 0 0 6px; font: 12px ui-monospace, Consolas, monospace; color: #7a6d5c; }
             .mb-dp-dialog .mb-pop-coll-pager button[disabled] { opacity: 0.4; cursor: default; }
-            .mb-dp-dialog .mb-pop-coll-art { margin: 0 0 8px; }
             /* Links to other sites (_extSource()): the site line with its
                status pill, the page's image beside its title. */
             #mb-dp-peek .mb-ext-card { width: 400px; max-width: 100%; }
@@ -51337,7 +51360,7 @@
                 return `<td${c.num ? ' class="mb-rg-num"' : ''}>${_rgEsc(v === '' ? '—' : v)}</td>`;
             }).join('');
             return `<tr${cur ? ' class="mb-rg-cur"' : ''}><td class="mb-rg-thumb">` +
-                (front ? `<img loading="lazy" src="https://coverartarchive.org/release/${id}/front-250" alt="">` : '') +
+                (front ? _mbPopCoverThumbHtml('release', r.id, r.title) : '') +
                 `</td>${cells}</tr>`;
         }).join('');
         return `<div class="mb-rg-wtable-wrap"><table class="mb-rg-wtable"><thead><tr>${head}</tr></thead><tbody>${rows}</tbody></table></div>`;
@@ -51395,7 +51418,8 @@
             `<div class="mb-dp-xsub">${_rgEsc([info.type, info.artist].filter(Boolean).join(' · '))}</div>` +
             `<div class="mb-rg-pills">${lead}${live && live.kind === 'valid' ? pill('✓ live title') : ''}` +
             `${count != null ? pill(`${count} release${count === 1 ? '' : 's'}`) : ''}</div>` +
-            `<a href="https://coverartarchive.org/release-group/${gid}/front" target="_blank" rel="noopener">` +
+            `<a href="https://coverartarchive.org/release-group/${gid}/front" target="_blank" rel="noopener" data-mbtt-fn="sb-cover" ` +
+            `data-mb-sb-cover="/release-group/${gid}" data-mb-sb-cover-title="${_rgEsc(info.name)}">` +
             `<img class="mb-dp-xcover" src="https://coverartarchive.org/release-group/${gid}/front-250" alt=""></a>` +
             _rgFactsHtml(f);
         const loaded = st.releases.length;
@@ -53007,16 +53031,43 @@
      * (`.mb-rg-wtable`): a header row and rows of cells that are HTML
      * already.
      *
+     * With `thumbs`, a first column of pictures as the release group's
+     * window has (`td.mb-rg-thumb`, an empty header): one HTML string per
+     * row, empty for a row without one.
+     *
      * @param {Array<string>} heads
      * @param {Array<Array<string>>} rows
      * @param {Array<number>} [numCols] - Columns aligned as numbers.
+     * @param {?Array<string>} [thumbs] - Each row's picture, or null for no such column.
      * @returns {string}
      */
-    function _mbPopTableHtml(heads, rows, numCols = []) {
-        return '<div class="mb-rg-wtable-wrap"><table class="mb-rg-wtable"><thead><tr>' +
+    function _mbPopTableHtml(heads, rows, numCols = [], thumbs = null) {
+        return '<div class="mb-rg-wtable-wrap"><table class="mb-rg-wtable"><thead><tr>' + (thumbs ? '<th></th>' : '') +
             heads.map(h => `<th>${_rgEsc(h)}</th>`).join('') + '</tr></thead><tbody>' +
-            rows.map(r => '<tr>' + r.map((c, i) => `<td${numCols.includes(i) ? ' class="mb-rg-num"' : ''}>${c}</td>`).join('') + '</tr>').join('') +
+            rows.map((r, k) => '<tr>' + (thumbs ? `<td class="mb-rg-thumb">${thumbs[k] || ''}</td>` : '') +
+                r.map((c, i) => `<td${numCols.includes(i) ? ' class="mb-rg-num"' : ''}>${c}</td>`).join('') + '</tr>').join('') +
             '</tbody></table></div>';
+    }
+
+    /**
+     * A release's or release group's cover in a window table (the release
+     * group's releases, a collection's entries): its archive's 250 px front,
+     * a trigger of the sidebar cover's card and viewer (`sb-cover`:
+     * `_sbCoverCardHtml()`, `_sbOpenCover()`), so a rest shows every image
+     * of THAT entity, and a click (`_dpCoverClick()`) or Space opens them in
+     * the viewer; Ctrl-click opens the entity's page (org/TODO.org "some more
+     * BB and MB fixes/enhancements" 3, vzell 2026-10-24).
+     *
+     * @param {('release'|'release-group')} kind
+     * @param {string} id - The MBID.
+     * @param {string} title - The card's and the viewer's title.
+     * @returns {string}
+     */
+    function _mbPopCoverThumbHtml(kind, id, title) {
+        const path = `/${_rgEsc(kind)}/${_rgEsc(id)}`;
+        return `<a class="mb-pop-cover-thumb" href="${path}" target="_blank" rel="noopener" data-mbtt-fn="sb-cover" ` +
+            `data-mb-sb-cover="${path}" data-mb-sb-cover-title="${_rgEsc(title)}">` +
+            `<img loading="lazy" src="https://coverartarchive.org${path}/front-250" alt=""></a>`;
     }
 
     /**
@@ -54708,11 +54759,12 @@
         if (rec) {
             const off = from - (n - 1) * perPage;
             const rows = rec.rows.slice(off, off + _MB_COLL_WIN_ROWS);
-            const art = (rec.kind === 'release' || rec.kind === 'release-group') ? rows.filter(r => r.art) : [];
-            const strip = art.length ? '<div class="mb-dp-gallery mb-pop-coll-art">' + art.map(r => `<a href="/${_rgEsc(rec.kind)}/${_rgEsc(r.id)}" ` +
-                `target="_blank" rel="noopener" title="${_rgEsc(r.name)}"><img src="https://coverartarchive.org/${_rgEsc(rec.kind)}/${_rgEsc(r.id)}/front-250" ` +
-                'alt="" loading="lazy"></a>').join('') + '</div>' : '';
-            body = strip + (rows.length ? _mbPopTableHtml(rec.cols, rows.map(r => r.cells)) : '<div class="mb-dp-xsub">This collection is empty.</div>');
+            // The covers as the table's first column, as in the release
+            // group's window (vzell, 2026-10-24); a strip above the table
+            // before.
+            const covers = (rec.kind === 'release' || rec.kind === 'release-group') && rows.some(r => r.art)
+                ? rows.map(r => (r.art ? _mbPopCoverThumbHtml(rec.kind, r.id, r.name) : '')) : null;
+            body = rows.length ? _mbPopTableHtml(rec.cols, rows.map(r => r.cells), [], covers) : '<div class="mb-dp-xsub">This collection is empty.</div>';
         } else if (st && st.status === 'failed') {
             body = `<div class="mb-dp-warn">Page ${n} could not be read (${_rgEsc(st.detail)}).</div>` +
                 `<p><button type="button" class="mb-dg-btn" data-mb-coll-act="retry" data-mb-coll-v="${n}">Try again</button></p>`;
@@ -107849,6 +107901,8 @@ a { color: #1565c0; }`;
      * card of every image of the record, as a CAA/EAA cell's
      * (`_artRecordCardHtml()`; the first hover asks the archive, as a
      * relationship-list cover icon does). Off with `sa_caa_tip_summary`.
+     * A cover in a window table (`_mbPopCoverThumbHtml()`) names its own
+     * entity (`data-mb-sb-cover-title`), not the page's.
      *
      * @param {HTMLElement} el
      * @returns {?string}
@@ -107857,7 +107911,7 @@ a { color: #1565c0; }`;
         const path = el.dataset.mbSbCover || '';
         if (!path || Lib.settings.sa_caa_tip_summary === false) return null;
         const label = _sbCoverLabel(path);
-        const title = _cachedEntityName || `${label.charAt(0).toUpperCase() + label.slice(1)} artwork`;
+        const title = el.dataset.mbSbCoverTitle || _cachedEntityName || `${label.charAt(0).toUpperCase() + label.slice(1)} artwork`;
         const own = el.matches('#sidebar a.artwork-image');
         return _artRecordCardHtml(el, _sbCoverCtx(path), path, title,
             own ? 'Click: viewer · Ctrl-click: MusicBrainz\'s own' : 'Click: viewer');
@@ -107890,11 +107944,13 @@ a { color: #1565c0; }`;
      * way `_artIconClick()` opens a relationship-list cover icon. When the
      * record turns out empty or the archive does not answer, nothing opens
      * (a debug line says why), and a later click asks again.
-     * @param {string} path - From `_sbCoverPath()`.
+     * @param {string} path - From `_sbCoverPath()`, or a window table's cover.
      * @param {Element} opener - Focus returns here on close.
+     * @param {string} [name] - The entity's name, for the viewer's title
+     *   (a window table's cover); else the page's.
      * @returns {void}
      */
-    function _sbOpenCover(path, opener) {
+    function _sbOpenCover(path, opener, name = '') {
         const ctx = _sbCoverCtx(path);
         const open = () => {
             const images = ctx.imagesCache.get(path) || [];
@@ -107908,7 +107964,7 @@ a { color: #1565c0; }`;
             const tip = document.getElementById('mb-stat-tooltip');
             if (tip) tip.style.display = 'none';
             _artViewerOpen(ctx, path, null, front < 0 ? 0 : front,
-                { opener, title: `${_cachedEntityName || document.title} — ${ctx.key === 'eaa' ? 'event art' : 'cover art'}` });
+                { opener, title: `${name || _cachedEntityName || document.title} — ${ctx.key === 'eaa' ? 'event art' : 'cover art'}` });
         };
         if (ctx.countCache.has(path) && !ctx.failedCache.has(path)) open();
         else {
@@ -140137,7 +140193,7 @@ a { color: #1565c0; }`;
         const fn = el.dataset.mbttFn;
         if (fn === 'sb-cover') {
             if (!el.dataset.mbSbCover) return false;
-            _sbOpenCover(el.dataset.mbSbCover, el);
+            _sbOpenCover(el.dataset.mbSbCover, el, el.dataset.mbSbCoverTitle || '');
             return true;
         }
         let target = el;

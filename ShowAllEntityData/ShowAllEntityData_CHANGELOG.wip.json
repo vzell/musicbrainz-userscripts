@@ -1,5 +1,18 @@
 [
   {
+    "version": "WIP.2",
+    "date": "2026-10-24",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "Collection preview windows: the covers of a release or release group collection are now the table's first column, next to their rows, as in a release group's window, instead of a strip above the table.",
+          "Pointing at a cover in a collection window or a release group window (each release's, and the group's own) shows every image of that release or release group, and a click or Space opens them in the artwork viewer. Ctrl-click still opens its page."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.1",
     "date": "2026-10-24",
     "sections": [

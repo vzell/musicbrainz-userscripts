@@ -26129,3 +26129,30 @@ Space before the image's preview shows"; popup-ext "a version's thumbnail…",
 "the gallery: Space…"; bb-event-preview "Space on an image…". Mutations
 `scripts/mutations/dp-window-images.json`; the old dp-window-hover.json H4
 mutant re-targeted to the new code.
+
+## 2026-10-24 — collection window covers as a first column; covers in windows get the image card (branch feature/bb-mb-window-images-discogs, WIP.2)
+
+Env: 2026-10-24T18:03:35+02:00 · petri · WSL2 Ubuntu 24.04.3 (Linux 6.18.54.1) · Playwright 1.62.1 Chromium, no Tampermonkey (GM stubs)
+
+org/TODO.org "some more BB and MB fixes/enhancements" 3a/3b
+(`debug/mb-collection-RGs-images.html` vs `debug/mb-RG-popup.html`).
+`_mbCollWindowHtml()` built `div.mb-pop-coll-art` above `_mbPopTableHtml()`;
+the release group window has `td.mb-rg-thumb` first. The release group
+window's covers were bare `<img>`s (no card, no viewer), its own cover a link
+to coverartarchive.org; a collection cover link with an image was `out` for
+the window (`_mbPopTarget()` refuses image links).
+
+- `_mbPopTableHtml(heads, rows, numCols, thumbs)`: an optional first column.
+- `_mbPopCoverThumbHtml(kind, id, title)`: the sidebar cover's trigger
+  (`sb-cover`) with `data-mb-sb-cover-title`; `_sbCoverCardHtml()` and
+  `_sbOpenCover(path, opener, name)` read the row's name;
+  `_artSpaceOpen()` passes it. A window click: `_dpCoverClick()` (the
+  sidebar's own click handler is `#sidebar`-only). `_dpWinWhat()` kind `fi`.
+- A 16-image record is cut off at 12, where Space is the card's "every
+  image" toggle (by design, image-card-space.spec.js): the specs seed
+  `sa_caa_tip_summary_tiles: 20`, as the sidebar's do.
+
+Specs: popup-mb "the window: the whole description…" (header and cells
+shifted by the cover column), "a cover in the window…"; release-rg-popup
+"the window's covers…" (11/11 in that file). Mutations
+`scripts/mutations/dp-window-covers.json`: 8, all fail as expected.
