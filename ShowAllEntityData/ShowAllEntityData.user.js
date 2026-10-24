@@ -16447,6 +16447,50 @@
     };
 
     /**
+     * One thumbnail's row in a Discogs window table (`_DGW_FI`): the row's
+     * first link to a release or master, read by the link previews'
+     * Discogs reader, and that link's text as the title (the cell also holds
+     * the format and pills such as "main"). Null target for a row without
+     * such a link.
+     *
+     * @param {HTMLAnchorElement} a - The row's `a.mb-dg-vthumblink`.
+     * @param {string} path - The viewer's key for the row.
+     * @returns {DgArtRow}
+     */
+    function _dgWinArtRowFor(a, path) {
+        const tr = a.closest('tr');
+        const ta = tr && Array.from(tr.querySelectorAll('a[href]'))
+            .find(l => l !== a && /^https:\/\/www\.discogs\.com\/(?:release|master)\/\d+/.test(l.href));
+        const target = ta ? _extTarget(ta, { inWindow: true }) : null;
+        return {
+            thumb: a.href, title: ta ? ta.textContent.trim() : '', asked: false,
+            target: target && target.reader.id === 'discogs' ? target : null, path,
+        };
+    }
+
+    /**
+     * The Discogs window's tables (a master's versions, an artist's
+     * discography, a label's releases: `table.mb-dg-vt` in `#mb-dp-dialog`)
+     * as a provider of the same card and viewer as the page's Image column
+     * (`_DG_FI`): a rest on a thumbnail shows every image of the row's
+     * release or master, a click or Space opens the viewer on them, Shift+←
+     * → steps through the table's rows (org/TODO.org "some more BB and MB
+     * fixes/enhancements" 1a, 2026-10-24). On any host a Discogs window
+     * opens on, MusicBrainz too: `_extDiscogsWindow()` installs the click.
+     * @type {FiProvider}
+     */
+    const _DGW_FI = {
+        ..._DG_FI,
+        tableSel: '#mb-dp-dialog table.mb-dg-vt',
+        linkSel: 'a.mb-dg-vthumblink',
+        rowFor: (a, table, path) => _dgWinArtRowFor(a, path),
+        title: () => {
+            const t = document.querySelector('#mb-dp-dialog .mb-dp-xtitle');
+            return t ? t.textContent.trim() : '';
+        },
+    };
+
+    /**
      * Puts the Discogs records of some rows that are saved in this browser
      * in memory, as `_mbLoad()` would on a hover: one `getAll()` of the
      * detail-page database (they are kept there as `mb:<key>`), no request to
@@ -23927,9 +23971,10 @@
 
     /**
      * What a click on an element of the window's Extracted view does:
-     * `img` (the artwork viewer), `here` (it opens in the window: the
-     * target a click shows, `drilled`), `out` (the link's own new tab), or
-     * null for something no link or the window's Live page.
+     * `img` (the artwork viewer), `fi` (a foreign-image trigger: the hover
+     * card's own card, click and Space, `_DGW_FI`), `here` (it opens in the
+     * window: the target a click shows, `drilled`), `out` (the link's own
+     * new tab), or null for something no link or the window's Live page.
      *
      * - `here`: a MusicBrainz entity link while the entity cards are on
      *   (`_dpDrill()`'s test), or any link a reader takes in a Discogs-family
@@ -23949,6 +23994,10 @@
         if (!api || !cur || _dpDialog.view !== 'ex' || !node || !node.closest || !api.scrollArea.contains(node)) return null;
         const a = node.closest('a[href]');
         if (!a || !api.scrollArea.contains(a)) return null;
+        // A foreign-image trigger (a Discogs table's thumbnail, `_DGW_FI`):
+        // `fi`, whose card, click and Space are the hover card's own; the
+        // window only names it in the foot line and rings it.
+        if (a.matches('a[data-mb-fi]')) return pointer && !node.closest('img') ? null : { kind: 'fi', a };
         if (a.matches('a[data-mb-artv-i], a[data-mb-artv-ext]')) return pointer && !node.closest('img') ? null : { kind: 'img', a };
         const href = a.getAttribute('href') || '';
         if (/^(?:#|javascript:)/i.test(href)) return null;
@@ -23991,6 +24040,49 @@
         if (w.kind === 'here') return w.t;
         if (w.kind === 'img') return { src: _DP_IMG_SRC, el: node.closest('img'), a: w.a, key: `dp-img:${w.a.href}`, url: w.a.href, img: true, delay: 250 };
         return null;
+    }
+
+    /**
+     * Opens the artwork viewer at an image of the window, exactly as a plain
+     * click on it does (`_dpArtViewerClick()`: every image of the window, in
+     * its order), hiding the image's preview first: the viewer would cover
+     * it, and the next Esc must close the viewer, then the window.
+     *
+     * @param {Element} img - The `<img>` (or its link) under the pointer.
+     * @returns {boolean} True when the viewer opened.
+     */
+    function _dpWinImgOpen(img) {
+        const api = _dpDialog.api;
+        if (!api || !img || !img.isConnected) return false;
+        if (_dpPeekShown()) _dpHidePeek();
+        return _dpArtViewerClick({
+            button: 0, ctrlKey: false, shiftKey: false, altKey: false, metaKey: false,
+            target: img, currentTarget: api.scrollArea, preventDefault() {},
+        });
+    }
+
+    /**
+     * Space over an image of the window before its preview shows (it waits
+     * 250 ms, `_DP_IMG_SRC`): the viewer at that image, as a click
+     * (org/TODO.org "some more BB and MB fixes/enhancements" 1b, vzell
+     * 2026-10-24: "Open the viewer at it"). With the preview showing, the
+     * card's own Space does the same. The image is the one the pointer
+     * rests on (`_dpPeek.hover`, set on `mouseover`), counted only on its
+     * picture (`_dpWinWhat(…, true)`). Shift, Ctrl, Alt and ⌘ leave Space
+     * alone, and so does a Space typed into a field.
+     *
+     * @param {KeyboardEvent} e
+     * @returns {boolean} True when Space was spent.
+     */
+    function _dpWinImgSpace(e) {
+        if (!(e.key === ' ' || e.code === 'Space') || e.repeat || e.shiftKey || e.ctrlKey || e.altKey || e.metaKey) return false;
+        if (_dpIsTextField(e.target) && Date.now() - _dpPeek.typedAt < _DP_TYPING_GRACE_MS) return false;
+        const node = _dpPeek.hover;
+        const w = node && node.isConnected ? _dpWinWhat(node, true) : null;
+        if (!w || w.kind !== 'img' || !_dpWinImgOpen(node)) return false;
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        return true;
     }
 
     /**
@@ -24059,7 +24151,7 @@
         const where = info.i >= 0 && info.n ? `image ${info.i + 1} of ${info.n}` : '';
         return `<img class="mb-dp-imgprev${_dpWin.big ? ' mb-dp-imgprev-big' : ''}" src="${_mbttEscape(info.big)}" alt="" referrerpolicy="no-referrer">` +
             `<div class="mb-tt-dim">${_mbttEscape([info.label, where].filter(Boolean).join(' · '))}</div>` +
-            `<div class="mb-tt-foot">${_dpWin.big ? 'Click: viewer' : 'Click: viewer · Shift: larger'}</div>`;
+            `<div class="mb-tt-foot">${_dpWin.big ? 'Click or <kbd>Space</kbd>: viewer' : 'Click or <kbd>Space</kbd>: viewer · Shift: larger'}</div>`;
     }
 
     /**
@@ -24115,7 +24207,15 @@
             g = '🔍';
             lead = 'Viewer: ';
             text = [info.label, info.i >= 0 && info.n ? `image ${info.i + 1} of ${info.n}` : ''].filter(Boolean).join(' · ');
-            keys = 'Click: viewer · Shift: larger · Ctrl-click: new tab';
+            keys = 'Click or Space: viewer · Shift: larger · Ctrl-click: new tab';
+        } else if (w.kind === 'fi') {
+            const p = _fiProviderOf(w.a);
+            const table = p && w.a.closest(p.tableSel);
+            const row = table ? p.rowFor(w.a, table, '') : null;
+            g = '🔍';
+            lead = 'Viewer: ';
+            text = `${(row && row.title) || 'this row'} · every image of it`;
+            keys = 'Click or Space: viewer · Ctrl-click: new tab';
         } else if (w.kind === 'here') {
             lead = 'Opens here: ';
             text = `${_dpKindLabel(w.t)} · ${w.a.textContent.replace(/\s+/g, ' ').trim()}` + (_dpWinRead(w.t) ? ' (read before, no request)' : '');
@@ -24149,7 +24249,7 @@
         const dots = Lib.settings.sa_dp_window_read_ahead === true;
         api.scrollArea.querySelectorAll('a[href]').forEach(a => {
             const w = _dpWinWhat(a);
-            a.classList.toggle('mb-dp-l-img', !!w && w.kind === 'img');
+            a.classList.toggle('mb-dp-l-img', !!w && (w.kind === 'img' || w.kind === 'fi'));
             a.classList.toggle('mb-dp-l-here', !!w && w.kind === 'here');
             a.classList.toggle('mb-dp-l-out', !!w && w.kind === 'out' && !a.querySelector('img'));
             a.classList.toggle('mb-dp-l-noglyph', /↗/.test(a.textContent));
@@ -24359,6 +24459,7 @@
     function _fiProvider(key) {
         switch (key) {
             case 'dg': return _DG_FI;
+            case 'dgw': return _DGW_FI;
             case 'sl': return _SL_FI;
             case 'jl': return _JL_FI;
             case 'bs': return _BS_FI;
@@ -24560,7 +24661,8 @@
      * Installs the foreign-image viewer click (`_fiClick()`) once. Called
      * by each foreign host's page preparation (`_dgPrepareLivePage()`,
      * `_slPrepareLivePage()`, `_jlPrepareLivePage()`, `_bsPrepareLivePage()`,
-     * `_bbPrepareLivePage()`), never on MusicBrainz.
+     * `_bbPrepareLivePage()`); on MusicBrainz only once a Discogs window
+     * shows (`_extDiscogsWindow()`: its tables' thumbnails, `_DGW_FI`).
      *
      * @returns {void}
      */
@@ -24575,7 +24677,9 @@
      * The lazy cells' look (`_fiCellApply()`) and the single-picture card:
      * a dashed tile until read, the front thumbnail with its count, or the
      * words "no scans" / "no photo" — all CSS, so the cell's text stays
-     * empty. Installed by `_fiInstall()`, so only on a foreign host.
+     * empty. Installed by `_fiInstall()`: on a foreign host, or on
+     * MusicBrainz once a Discogs window shows (every rule is scoped to the
+     * foreign-image classes, so nothing of MusicBrainz' own changes).
      *
      * @returns {void}
      */
@@ -26883,6 +26987,7 @@
             .mb-dp-dialog .mb-dg-vt tbody tr { cursor: pointer; }
             .mb-dp-dialog .mb-dg-vt tbody tr:hover td { background: #fbf5e7; }
             .mb-dp-dialog .mb-dg-vthumb { width: 40px; height: 40px; object-fit: cover; border: 1px solid #d9cfbd; display: block; }
+            .mb-dp-dialog a.mb-dg-vthumblink { display: inline-block; line-height: 0; cursor: zoom-in; }
             .mb-dp-dialog .mb-dg-yr { white-space: nowrap; }
             .mb-dp-dialog .mb-dg-empty { padding: 14px; font-style: italic; color: #7a6d5c; }
             #mb-dp-peek .mb-dg-sum { margin-top: 4px; }
@@ -27216,7 +27321,10 @@
                 }
                 return;
             }
-            if (!_dpPeekShown()) return;
+            if (!_dpPeekShown()) {
+                _dpWinImgSpace(e);
+                return;
+            }
             if (e.key === 'Escape') {
                 e.preventDefault();
                 e.stopImmediatePropagation();
@@ -27235,9 +27343,12 @@
                 const pt = _dpPeek.target;
                 e.preventDefault();
                 e.stopImmediatePropagation();
-                // An image's preview pins nothing, and the Space does not
-                // scroll the window away from under it either.
-                if (pt && pt.img) return;
+                // An image's preview: the viewer at that image, as a click
+                // (`_dpWinImgSpace()` takes it before the preview shows).
+                if (pt && pt.img) {
+                    _dpWinImgOpen(pt.el);
+                    return;
+                }
                 // A card of a link in the window: Space opens it there, as a
                 // click does (H3); on the page it pins the card into the window.
                 if (pt && pt.drilled && _dpDialog.api && _dpDialog.target) {
@@ -58990,6 +59101,25 @@
     }
 
     /**
+     * A row's thumbnail in a Discogs window table (a master's versions, an
+     * artist's discography, a label's releases): a trigger of the
+     * foreign-image card and viewer (`_DGW_FI`), so a rest shows every image
+     * of the row's release or master and a click or Space opens the viewer
+     * on them, as in the page's Image column (org/TODO.org "some more BB and
+     * MB fixes/enhancements" 1a, 2026-10-24). It was a bare `<img>`, which
+     * neither the card nor the window's hover could see.
+     *
+     * @param {string} thumb - Discogs' 150 px thumbnail URL, or empty.
+     * @returns {string} HTML; empty for a row without a thumbnail.
+     */
+    function _extDgThumbHtml(thumb) {
+        if (!thumb) return '';
+        const src = _rgEsc(thumb);
+        return `<a class="mb-dg-vthumblink" href="${src}" data-mb-fi="dgw" data-mbtt-fn="fi-img" target="_blank" rel="noopener noreferrer">` +
+            `<img class="mb-dg-vthumb" src="${src}" alt="" referrerpolicy="no-referrer" loading="lazy"></a>`;
+    }
+
+    /**
      * The versions' list part (re-rendered alone while typing in the
      * filter, so the field keeps its focus): what is shown of what, the
      * table, or why nothing.
@@ -59014,8 +59144,7 @@
         const th = (col, label) => `<th data-mb-dg-sort="${col}"${ui.sort === col ? ` aria-sort="${ui.dir > 0 ? 'ascending' : 'descending'}"` : ''}>${label}</th>`;
         return head + '<div class="mb-dg-vwrap" data-mb-keep-scroll="dg-versions"><table class="mb-dg-vt"><thead><tr><th class="mb-dg-nosort"></th>' +
             th('title', 'Title, format') + th('label', 'Label – Cat#') + th('country', 'Country') + th('year', 'Year') + '</tr></thead><tbody>' +
-            shown.map(v => `<tr data-mb-dg-vid="${v.id}"><td>${v.thumb
-                ? `<img class="mb-dg-vthumb" src="${_rgEsc(v.thumb)}" alt="" referrerpolicy="no-referrer" loading="lazy">` : ''}</td>` +
+            shown.map(v => `<tr data-mb-dg-vid="${v.id}"><td>${_extDgThumbHtml(v.thumb)}</td>` +
                 `<td><a href="https://www.discogs.com/release/${v.id}" target="_blank" rel="noopener noreferrer">${_rgEsc(v.title)}</a>` +
                 `${v.id === dg.mainRelease ? ' <span class="mb-dg-pill mb-dg-ok">main</span>' : ''}` +
                 `${linked.has(v.id) ? ' <span class="mb-dg-pill mb-dg-run">this page links it</span>' : ''}` +
@@ -59387,7 +59516,7 @@
             const open = r.master && ui.mopen.has(r.id);
             const exp = r.master ? `<button type="button" class="mb-dg-exp" data-mb-dg-mexp="${r.id}" aria-expanded="${open}">` +
                 `${open ? '▾' : '▸'} versions</button>` : '';
-            return `<tr><td>${r.thumb ? `<img class="mb-dg-vthumb" src="${esc(r.thumb)}" alt="" referrerpolicy="no-referrer" loading="lazy">` : ''}</td>` +
+            return `<tr><td>${_extDgThumbHtml(r.thumb)}</td>` +
                 `<td><a href="https://www.discogs.com/${kind}/${r.id}" target="_blank" rel="noopener noreferrer">${esc(r.title)}</a>` +
                 ` <span class="mb-dg-pill${r.master ? ' mb-dg-m' : ''}">${kind}</span>${exp}` +
                 `${r.master ? '' : `<div class="mb-dg-dim">${esc(r.format)}${r.label ? ` · ${esc(r.label)}` : ''}</div>`}</td>` +
@@ -59557,8 +59686,7 @@
         } else {
             table = '<div class="mb-dg-vwrap" data-mb-keep-scroll="dg-label"><table class="mb-dg-vt mb-dg-lt"><thead><tr><th class="mb-dg-nosort"></th>' +
                 `${th('artist', 'Artist')}${th('title', 'Title, format')}${th('catno', 'Cat#')}${th('year', 'Year')}</tr></thead><tbody>` +
-                rows.slice(0, ui.llimit).map(r => `<tr><td>${r.thumb
-                    ? `<img class="mb-dg-vthumb" src="${_rgEsc(r.thumb)}" alt="" referrerpolicy="no-referrer" loading="lazy">` : ''}</td>` +
+                rows.slice(0, ui.llimit).map(r => `<tr><td>${_extDgThumbHtml(r.thumb)}</td>` +
                     `<td>${_rgEsc(r.artist)}</td><td><a href="https://www.discogs.com/release/${r.id}" target="_blank" rel="noopener noreferrer">` +
                     `${_rgEsc(r.title)}</a><div class="mb-dg-dim">${_rgEsc(r.format)}</div></td>` +
                     `<td class="mb-dg-cat">${_rgEsc(r.catno)}</td><td class="mb-dg-yr">${_rgEsc(r.year || '—')}</td></tr>`).join('') + '</tbody></table>' +
@@ -59652,6 +59780,9 @@
         const out = { left: [], right: [], full: [] };
         const dg = rec.discogs;
         if (!dg) return out;
+        // The tables' thumbnails open the viewer on a click (`_DGW_FI`);
+        // on MusicBrainz nothing else installs that click.
+        _fiInstall();
         if (dg.kind === 'artist' || dg.kind === 'label') return _extDgEntityWindow(t, rec, { start, force, repaint });
         // On a submissions list a release's window opens with its edit
         // history (vzell, 2026-10-18), read by the window only.
@@ -59985,7 +60116,9 @@
         if (_extDgEntityControl(e, t)) return;
         const a = e.target.closest('a[href]');
         const row = e.target.closest('tr[data-mb-dg-vid]');
-        _extDgDrill(e, a || (row && row.querySelector('a[href]')));
+        // The row's release link, not its thumbnail's (the first link of
+        // the row since the thumbnail is a viewer trigger, `_extDgThumbHtml()`).
+        _extDgDrill(e, a || (row && row.querySelector('a[href]:not(.mb-dg-vthumblink)')));
     }
 
     /**

@@ -2164,4 +2164,80 @@ test.describe('hovering inside a Discogs window (org/dp-window-hover.org)', () =
         await expect(d.locator('button.mb-dp-tbtn', { hasText: '← Back' })).toBeVisible();
         await expect(d.locator('button.mb-dp-tbtn', { hasText: '← Back' })).toHaveAttribute('title', /^Back to: /);
     });
+
+    // org/TODO.org "some more BB and MB fixes/enhancements" 1a (vzell,
+    // 2026-10-24): a version's thumbnail was a bare <img>, so neither a rest
+    // nor Space did anything. It is now the page Image column's trigger: the
+    // card shows every image of THAT release, Space or a click opens the
+    // viewer on them, and the window stays where it was.
+    test('a version\'s thumbnail: the card of that release\'s images; Space and a click open the viewer on them, not the release', async ({ page }) => {
+        await openDiscogs(page, { settings: { sa_pop_ext_discogs_token: 'tok-probe' } });
+        await ctrlHover(page, probe(page, 1));
+        await expect(card(page).locator('.mb-dg-sum')).toHaveText('Versions: Space lists them');
+        await page.keyboard.press('Space');
+        const d = dialog(page);
+        const title = d.locator(':scope > div > span').first();
+        const vers = d.locator('[data-mb-dg-sec="versions"]');
+        await expect(vers.locator('tbody tr')).toHaveCount(100);
+        const thumb = vers.locator('tr[data-mb-dg-vid="1874253"] a.mb-dg-vthumblink');
+        await expect(thumb).toHaveCount(1);
+        await expect(thumb, 'ringed as an image, not ↗').toHaveClass(/\bmb-dp-l-img\b/);
+        await expect(thumb).not.toHaveClass(/\bmb-dp-l-out\b/);
+        const before = (await xhrFull(page)).filter(r => r.url === 'https://api.discogs.com/releases/1874253').length;
+        expect(before, 'nothing read that release yet').toBe(0);
+
+        const tip = page.locator('#mb-stat-tooltip');
+        await page.mouse.move(0, 0);
+        await thumb.scrollIntoViewIfNeeded();
+        await thumb.hover();
+        await expect(tip.locator('.mb-art-card-tile')).toHaveCount(5);
+        await expect(tip.locator('.mb-tt-title')).toContainText('Born To Run');
+        // The window's foot line names the viewer, never "New tab".
+        await expect(d.locator('.mb-dp-wfoot')).toContainText('Viewer: Born To Run · every image of it');
+        await expect(d.locator('.mb-dp-wfoot')).toContainText('Click or Space: viewer');
+        await expect(card(page), 'no window preview over the image card').toBeHidden();
+        expect((await xhrFull(page)).filter(r => r.url === 'https://api.discogs.com/releases/1874253'), 'one request, for this row')
+            .toHaveLength(1);
+
+        const viewer = page.locator('#mb-art-viewer');
+        await page.keyboard.press('Space');
+        await expect(viewer).toBeVisible();
+        await expect(viewer.locator('.mb-artv-pos')).toHaveText('1 / 5');
+        await expect(viewer.locator('.mb-artv-title'), 'the window\'s title').toHaveText('Born To Run');
+        await page.keyboard.press('Escape');
+        await expect(viewer).toBeHidden();
+        await expect(d).toBeVisible();
+        await expect(title, 'Space opened no release in the window').toHaveText('Discogs master');
+
+        // A plain click: the viewer too, never the row's drill into the release.
+        await thumb.click();
+        await expect(viewer).toBeVisible();
+        await expect(viewer.locator('.mb-artv-pos')).toHaveText('1 / 5');
+        await page.keyboard.press('Escape');
+        await expect(viewer).toBeHidden();
+        await expect(title).toHaveText('Discogs master');
+        expect((await xhrFull(page)).filter(r => r.url === 'https://api.discogs.com/releases/1874253'), 'the card\'s record, reused')
+            .toHaveLength(1);
+    });
+
+    // Item 1b: Space on a gallery image of the window opens the viewer at
+    // it, as a click does (it used to be swallowed).
+    test('the gallery: Space on an image opens the viewer at that image', async ({ page }) => {
+        await openDiscogs(page);
+        await ctrlHover(page, probe(page, 0));
+        await expect(card(page).locator('.mb-dg-sum')).toBeVisible();
+        await page.keyboard.press('Space');
+        const d = dialog(page);
+        const gal = d.locator('[data-mb-dg-sec="images"] .mb-dp-gallery a');
+        await expect(gal).toHaveCount(5);
+        await page.mouse.move(0, 0);
+        await gal.nth(3).locator('img').hover();
+        await page.keyboard.press('Space');
+        const viewer = page.locator('#mb-art-viewer');
+        await expect(viewer).toBeVisible();
+        await expect(viewer.locator('.mb-artv-pos')).toHaveText('4 / 5');
+        await page.keyboard.press('Escape');
+        await expect(viewer).toBeHidden();
+        await expect(d).toBeVisible();
+    });
 });

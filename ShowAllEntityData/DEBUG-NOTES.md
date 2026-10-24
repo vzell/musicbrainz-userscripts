@@ -26088,3 +26088,44 @@ caused by this branch; not investigated further. Earlier, in a 380-test run of
 the Brucebase, preview and gallery specs, popup-ext "the Live page is prepared
 before its images are in" failed once (a 5 s wait for the frame) and passed
 3/3 alone. The live specs were not run.
+
+## 2026-10-24 — Space on images in preview windows; Discogs window thumbnails (branch feature/bb-mb-window-images-discogs, WIP.1)
+
+Env: 2026-10-24T17:47:36+02:00 · petri · WSL2 Ubuntu 24.04.3 (Linux 6.18.54.1) · Playwright 1.62.1 Chromium, no Tampermonkey (GM stubs)
+
+org/TODO.org "some more BB and MB fixes/enhancements" 1a/1b
+(`debug/discogs-master-release-images.html`: a Discogs master window reached
+from a release group's sidebar Discogs chip). Space over a version's
+thumbnail did nothing; the same over a Brucebase window's images.
+
+**Causes.**
+- `img.mb-dg-vthumb` (`_extDgVersionsListHtml()`, `_extDgArtistTableHtml()`,
+  `_extDgLabelHtml()`) was a bare `<img>`: `_dpWinWhat()` starts from
+  `closest('a[href]')`, `_artSpaceTrigger()` from `[data-mbtt-fn]`, and
+  `_DG_FI.tableSel` is `#mb-dg-root table.tbl` — nothing could see it.
+- Window gallery images (`a[data-mb-artv-ext|i]`) get the H4 preview, whose
+  Space was swallowed on purpose (`if (pt && pt.img) return;`), and
+  `_onImageSpace` stands back while a link preview shows. Before the
+  preview's 250 ms, Space scrolled the window.
+
+**Fix.**
+- `_extDgThumbHtml()`: the thumbnail is `a.mb-dg-vthumblink[data-mb-fi="dgw"][data-mbtt-fn="fi-img"]`;
+  provider `_DGW_FI` = `_DG_FI` with the window's `tableSel`/`linkSel`, its
+  own `rowFor` (`_dgWinArtRowFor()`: the row's release/master link and its
+  text, not the cell with its pills) and the window's title. `_extDiscogsWindow()`
+  calls `_fiInstall()`, so the capture click exists on MusicBrainz once a
+  Discogs window shows (the CSS it adds is scoped to the foreign-image
+  classes). `_dpWinWhat()` kind `fi`: ringed, the foot line "Viewer: … ·
+  every image of it", no window preview.
+- `_dpWinImgOpen()` / `_dpWinImgSpace()`: Space opens `_dpArtViewerClick()`
+  with a stand-in event, with or before the preview.
+
+A click elsewhere on a version row drilled into its FIRST link, now the
+thumbnail's (found by popup-ext "a master: …" on the first wide run):
+`_extDiscogsAreaClick()` takes `a[href]:not(.mb-dg-vthumblink)`.
+
+Specs: popup-mb "H4" (rewritten: it asserted "Space pins nothing") and "H4:
+Space before the image's preview shows"; popup-ext "a version's thumbnail…",
+"the gallery: Space…"; bb-event-preview "Space on an image…". Mutations
+`scripts/mutations/dp-window-images.json`; the old dp-window-hover.json H4
+mutant re-targeted to the new code.

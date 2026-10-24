@@ -2384,8 +2384,8 @@ the tag's own page, since MusicBrainz cannot look a tag up otherwise.
 - **Click an image** (a release's front cover or its Cover art strip, an
   event's posters, an artist's, label's or place's picture) to open it in the artwork viewer, the same one as the
   release page's Cover art, stepping through all of that release's or event's
-  images. **Esc** returns to the window; Ctrl-click opens the image in a new
-  tab instead.
+  images. **Space** on an image does the same as the click. **Esc** returns
+  to the window; Ctrl-click opens the image in a new tab instead.
 - **✎ Editing history** (or press **H**) in the window's header shows the
   entity's editing history in the same window, laid out like a Discogs
   release's history. Every entity with an MBID has one (not a collection:
@@ -2469,8 +2469,12 @@ the tag's own page, since MusicBrainz cannot look a tag up otherwise.
     (with Ctrl held, unless *Show every preview on a plain hover* is on).
     **Space** opens it in the window, as a click does.
   - An **image** shows large after a short rest on the picture itself (not on
-    the space beside it); hold **Shift** for larger, and click for the artwork
-    viewer. Space does nothing then.
+    the space beside it); hold **Shift** for larger. A click or **Space**
+    opens the artwork viewer at that image, with every image of the window.
+  - A small picture in a Discogs window's table (a master's versions, an
+    artist's discography, a label's releases) works like the Image column on
+    Discogs pages: a rest shows every image of that release, and a click or
+    **Space** opens the viewer on them (*Viewer: … · every image of it*).
   - **← Back** and **‹ ›** name where they go when you rest on them.
   - *In the window, read a link ahead while the pointer rests on it* (same
     section, off by default) reads a MusicBrainz link after a moment's rest,
@@ -2605,7 +2609,9 @@ once and without Tampermonkey asking first:
   main release and a release this page links are marked. A version's label
   links Discogs' label search for that name, in a new tab: the list of
   versions names a label without saying which one. A click on a version
-  shows it in the same window, and *Back* returns to the master. A card never
+  shows it in the same window, and *Back* returns to the master; a click (or
+  **Space**) on its small picture opens the viewer on that version's images
+  instead, and a rest on the picture shows them all. A card never
   asks for versions; once a window has, the master's card says how many there
   are.
 
@@ -3129,7 +3135,8 @@ entry, with these columns:
   folds or opens all of them at once; the people on stage,
   the songs of the setlist and the other shows are links that open in the
   window (Backspace goes back) and show their card when you point at them;
-  the images are grouped by kind, photos last. A song's window works the
+  the images are grouped by kind, photos last; a click or **Space** on one
+  opens the viewer at it. A song's window works the
   same way, its performances listed (folded at first) with each show
   linked.
 - **MB-Event:** a small glyph for the entry's kind (a microphone for a gig,
@@ -3557,7 +3564,8 @@ type into the filter box stays in the filter box. In the window:
   the previous or next title you can see there (a hidden tab's are skipped).
 - **Extracted** shows what the script read from the page, laid out for
   reading: the fields, the scans, the notes and the whole tracklist. Click
-  the cover or a scan to open it in the artwork viewer (the same one as the
+  the cover or a scan (or point at it and press **Space**) to open it in the
+  artwork viewer (the same one as the
   release page's Cover art: zoom, ← → through every image of the page, grid,
   download; **Esc** returns to the window). Ctrl-click opens the image in a
   new tab instead. On Brucebase it also has the credits, the studio

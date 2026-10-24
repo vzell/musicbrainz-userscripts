@@ -2331,24 +2331,52 @@ test.describe('MusicBrainz link previews: hovering inside the window (org/dp-win
         await expect(dialog(page).locator('button.mb-dp-tbtn', { hasText: '← Back' })).toHaveAttribute('title', /^Back to: Release · /);
     });
 
-    test('H4: an image shows large on a rest (no Ctrl, no request); Shift larger; Space pins nothing', async ({ page }) => {
+    // org/TODO.org "some more BB and MB fixes/enhancements" 1b (vzell,
+    // 2026-10-24): Space on an image of the window opens the viewer at it,
+    // as a click does. It used to be swallowed (pinned nothing, did
+    // nothing), which is what this test asserted before.
+    test('H4: an image shows large on a rest (no Ctrl, no request); Shift larger; Space opens the viewer at it', async ({ page }) => {
         const log = await releaseWindow(page);
         const before = log.caa.length;
-        await rest(page, area(page).locator('.mb-dp-gallery a').nth(2));
+        const viewer = page.locator('#mb-art-viewer');
+        await rest(page, area(page).locator('.mb-dp-gallery a').nth(2).locator('img'));
         await expect(card(page)).toBeVisible();
         await expect(card(page).locator('img.mb-dp-imgprev')).toHaveCount(1);
         await expect(card(page)).toContainText('image 3 of 16');
-        await expect(card(page)).toContainText('Click: viewer · Shift: larger');
+        await expect(card(page)).toContainText('Click or Space: viewer · Shift: larger');
         await page.keyboard.down('Shift');
         await expect(card(page).locator('img.mb-dp-imgprev-big')).toHaveCount(1);
         await page.keyboard.up('Shift');
         await expect(card(page).locator('img.mb-dp-imgprev-big')).toHaveCount(0);
         await page.keyboard.press('Space');
-        await expect(title(page)).toHaveText('Release');
+        await expect(viewer).toBeVisible();
+        await expect(viewer.locator('.mb-artv-pos'), 'at the image the pointer rests on').toHaveText('3 / 16');
+        await expect(card(page), 'the preview does not stay over the viewer').toBeHidden();
+        await expect(title(page), 'nothing was pinned or drilled').toHaveText('Release');
         expect(log.caa.length, 'no archive request').toBe(before);
         await page.keyboard.press('Escape');
-        await expect(card(page)).toBeHidden();
+        await expect(viewer).toBeHidden();
+        await expect(dialog(page), 'Esc closes the viewer, not the window').toBeVisible();
+    });
+
+    test('H4: Space before the image\'s preview shows opens the viewer all the same', async ({ page }) => {
+        await releaseWindow(page);
+        const viewer = page.locator('#mb-art-viewer');
+        await rest(page, area(page).locator('.mb-dp-gallery a').nth(4).locator('img'));
+        const top = await area(page).evaluate((el) => el.scrollTop);
+        // At once: the preview waits 250 ms.
+        await page.keyboard.press('Space');
+        await expect(viewer).toBeVisible();
+        await expect(viewer.locator('.mb-artv-pos')).toHaveText('5 / 16');
+        expect(await area(page).evaluate((el) => el.scrollTop), 'Space did not scroll the window').toBe(top);
+        await page.keyboard.press('Escape');
+        await expect(viewer).toBeHidden();
         await expect(dialog(page)).toBeVisible();
+        // Off the picture, Space is the window's own again (no viewer).
+        await page.mouse.move(0, 0);
+        await page.keyboard.press('Space');
+        await page.evaluate(() => new Promise(r => setTimeout(r, 300)));
+        await expect(viewer).toBeHidden();
     });
 
     test('H5 off (the default): a rest reads nothing ahead', async ({ page }) => {

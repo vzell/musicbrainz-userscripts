@@ -1434,14 +1434,27 @@ https://claude.ai/artifact/APF35bPAyvFZvKjFHGHrZU
   element (`img: true`, its own `delay: 250`, which `_dpSchedulePeek()`
   honours), no Ctrl, no request beyond the image (the archive's 500 px, or the
   linked image). `_dpImgInfo()` counts the images as the viewer does. Shift
-  repaints it larger (`_dpWinBig()`); Space is swallowed (it would scroll the
-  window, which hides the card, and the next Esc would close the window).
+  repaints it larger (`_dpWinBig()`). **Space opens the viewer at that
+  image**, exactly as a click (`_dpWinImgOpen()` → `_dpArtViewerClick()` with
+  a stand-in event), the preview hidden first; before the preview has shown
+  (its 250 ms) `_dpWinImgSpace()` does the same from `_dpPeek.hover`. It used
+  to be swallowed (org/TODO.org "some more BB and MB fixes/enhancements" 1b,
+  vzell 2026-10-24: "Open the viewer at it"); Esc closes the viewer, then the
+  window. The card and the foot line say "Click or Space: viewer".
   The preview's element is the `<img>` (`t.el`; its link is `t.a`), and
   `_dpWinWhat(node, pointer)` counts an image link only on its picture: the
   cover's link used to span the column (now `inline-block`), and a focus —
   the one the viewer gives back on closing, too — never opens the preview,
   or the next Esc would close it instead of the window. The foot line still
   names the viewer for a focused image link.
+- **A foreign-image trigger in the window** (`a[data-mb-fi]`: the Discogs
+  window tables' thumbnails, `_extDgThumbHtml()`, provider `_DGW_FI`) is
+  `_dpWinWhat()`'s kind `fi`: ringed like an image, the foot line "Viewer:
+  <row> · every image of it", but no window preview — its card, click and
+  Space are the hover card's (`_fiCardHtml()`, `_fiClick()`,
+  `_onImageSpace`), the same as the page's Image column (item 1a).
+  `_extDiscogsWindow()` calls `_fiInstall()`, so on MusicBrainz the click is
+  installed once a Discogs window shows.
 - **H5 read-ahead** (`sa_dp_window_read_ahead`, off): after 600 ms the
   target's own `card(t, true)` with `t.readAhead`; `_mbPopWanted()` wants it
   while the link is still `:hover`. MusicBrainz entities only.
@@ -1450,11 +1463,13 @@ https://claude.ai/artifact/APF35bPAyvFZvKjFHGHrZU
 - **Touch** (decision 4): a long press (500 ms, cancelled by a move) shows the
   card or the image; `touchend` is `preventDefault()`ed after it, so no
   compatibility mousedown (which hides the card) and no click follow.
-- **Specs**: `popup-mb.spec.js` "hovering inside the window" (5),
-  `popup-ext.spec.js` "hovering inside a Discogs window",
-  `popup-mb.mobile.spec.js` "inside the window: a long press" (the press
-  through the DevTools protocol); mutations
-  `scripts/mutations/dp-window-hover.json`.
+- **Specs**: `popup-mb.spec.js` "hovering inside the window" (6),
+  `popup-ext.spec.js` "hovering inside a Discogs window" (with a version's
+  thumbnail and the gallery's Space), `bb-event-preview.spec.js` "Space on an
+  image opens the viewer", `popup-mb.mobile.spec.js` "inside the window: a
+  long press" (the press through the DevTools protocol); mutations
+  `scripts/mutations/dp-window-hover.json`,
+  `scripts/mutations/dp-window-images.json`.
 
 ## Links to other sites (org/iframe.org "* generalize to URLs", U1)
 
