@@ -4644,4 +4644,19 @@ bb-release-born-to-run-with-MB-links-final.html - FRP  - https://www.discogs.com
 #+end_example
   
 
+* TODO fix MB collection pages
 
+a.)
+
+fix MB collection pages, e.g. https://musicbrainz.org/user/ApeKattQuest%2C%20MonkeyPython/collections when the
+third-party userscript "mb. COLLECTION HIGHLIGHTER" from @jesus2099 is active
+
+b.)
+
+Tf there are sub-tables under the "<h2>Collaborative collections</h2>" h2 section. Currently the sub-tables are renderd
+(also with a column shift) under the h2 section "My collections"
+
+#+begin_example
+@debug/ - IP
+@debug/ - FRP
+#+end_example
