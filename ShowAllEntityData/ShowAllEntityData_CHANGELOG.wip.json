@@ -1,5 +1,17 @@
 [
     {
+        "version": "WIP.4",
+        "date": "2026-10-24",
+        "sections": [
+            {
+                "label": "✨ Improve",
+                "items": [
+                    "The 🖼 gallery on Discogs, the Springsteen sites and Brucebase can now be moved by its title bar (by touch too) and resized from its lower-right corner, like the window Space opens. It reopens where you left it, at that size, kept inside the browser window. Until you have moved or resized it once, it still opens under its 🖼 button. Its position and size go with the config export, as the other panels' do."
+                ]
+            }
+        ]
+    },
+    {
         "version": "WIP.3",
         "date": "2026-10-24",
         "sections": [

@@ -181,5 +181,84 @@
         "spec": "tests/fixtures/foreign-gallery.spec.js",
         "grep": "jungleland",
         "expect": "pass"
+    },
+    {
+        "name": "geometry: stored but never applied",
+        "why": "org/TODO.org Some enhancements 1 (2026-10-24): a moved or resized gallery reopens where it was left, at that size.",
+        "edits": [
+            {
+                "find": "        if (!st.geo.restore()) _fgalPlace(st);",
+                "replace": "        st.geo.restore();\n        _fgalPlace(st);"
+            }
+        ],
+        "spec": "tests/fixtures/foreign-gallery.spec.js",
+        "grep": "drag by the title bar",
+        "expect": "fail"
+    },
+    {
+        "name": "geometry: no drag",
+        "why": "The title bar moves the window.",
+        "edits": [
+            {
+                "find": "        box.addEventListener('pointerdown', onDown);\n        let t = 0;",
+                "replace": "        let t = 0;"
+            }
+        ],
+        "spec": "tests/fixtures/foreign-gallery.spec.js",
+        "grep": "drag by the title bar",
+        "expect": "fail"
+    },
+    {
+        "name": "geometry: no clamp",
+        "why": "A stored box from a bigger window must come back inside this one.",
+        "edits": [
+            {
+                "find": "                const c = clamp(g);\n                box.style.width",
+                "replace": "                const c = g;\n                box.style.width"
+            }
+        ],
+        "spec": "tests/fixtures/foreign-gallery.spec.js",
+        "grep": "larger than the window",
+        "expect": "fail"
+    },
+    {
+        "name": "geometry: content-box sizing",
+        "why": "The stored size is the border box; applied as the content box, every reopen grows by the borders.",
+        "edits": [
+            {
+                "find": "        box.style.boxSizing = 'border-box';\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/foreign-gallery.spec.js",
+        "grep": "drag by the title bar",
+        "expect": "fail"
+    },
+    {
+        "name": "geometry: saved on open",
+        "why": "Only a move or a resize stores the geometry; a window never moved keeps opening under its 🖼.",
+        "edits": [
+            {
+                "find": "                if (!g || !g.width || !g.height) {\n                    lastW = box.style.width;",
+                "replace": "                if (!g || !g.width || !g.height) {\n                    setTimeout(save, 0);\n                    lastW = box.style.width;"
+            }
+        ],
+        "spec": "tests/fixtures/foreign-gallery.spec.js",
+        "grep": "never moved",
+        "expect": "fail"
+    },
+    {
+        "name": "geometry: mouse only",
+        "why": "A touch drag on the title bar moves the window too (no hover-only, no mouse-only dead ends).",
+        "edits": [
+            {
+                "find": "            if (e.button !== 0 || !e.target.closest) return;\n            if (!e.target.closest(o.handleSel)) {",
+                "replace": "            if (e.button !== 0 || !e.target.closest || e.pointerType !== 'mouse') return;\n            if (!e.target.closest(o.handleSel)) {"
+            }
+        ],
+        "spec": "tests/fixtures/foreign-gallery.mobile.spec.js",
+        "project": "chromium-mobile",
+        "grep": "touch drag",
+        "expect": "fail"
     }
 ]

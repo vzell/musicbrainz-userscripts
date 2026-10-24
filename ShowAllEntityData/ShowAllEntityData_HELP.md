@@ -3426,6 +3426,9 @@ nothing**: the rows read before come from this browser.
 - **A click on an image** opens the artwork viewer; ← → step through that
   row's images, Shift+← → through the gallery's rows. Esc closes the viewer,
   then the window. On a touch screen a tap outside the window closes it.
+- **Move it** by its title bar (by touch too) and **resize it** from its
+  lower-right corner. It opens there again, at that size, the next time;
+  until you have moved or resized it once, it opens under its 🖼.
 - With a filter typed, the window covers only the rows the filter shows, and
   says so.
 

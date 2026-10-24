@@ -25824,3 +25824,38 @@ one recorded `pass` (the card's `_hide()`: Chromium hides the card itself
 once the viewer covers the resting pointer). Every spec that presses Space
 (19 files): 340 passed; mobile project 57 passed; image-card-space 16/16
 with `--repeat-each=4`.
+
+## 2026-10-24 — the foreign tables' 🖼 gallery moves, resizes and remembers (branch feature/bb-events-and-gallery, WIP.4)
+
+Env: 2026-10-24T03:16:49+02:00 · petri · WSL2 Ubuntu 24.04.3 (Linux 6.18.54.1) · Playwright 1.62.1 Chromium (desktop; chromium-mobile: Pixel 7 emulation), no Tampermonkey (GM stubs)
+
+org/TODO.org "Some enhancements" 1, to the mockup
+https://claude.ai/artifact/DmsNyUkUa1Hq8nPr2B5EGA (v2, vzell's answers the
+same night). New `_makeMovableResizable()`; `createInfoDialog()` untouched
+(REFACTORING.org has the follow-up).
+
+**Three things the spec runs found:**
+- **The gallery opens under its 🖼, and on a short page that is low**: on the
+  springsteenlyrics fixture the window's bottom sat at 1,167 px in a 720 px
+  viewport, so the resize corner was off screen and a drag of the corner
+  did nothing. The page cannot scroll the 🖼 up; the spec drags the window
+  to the top first.
+- **2 px per reopen.** The stored size is the border box
+  (`getBoundingClientRect()`), applied as `style.width`/`height` of a
+  content-box `.mb-tt-liner` with a 1 px border: every reopen was 2 px
+  larger each way. The helper sets `box-sizing: border-box`.
+  `createInfoDialog()` already is border-box (checked), so its dialogs never
+  grew.
+- **A touch drag through CDP** needs Playwright's `boundingBox()`
+  coordinates, not `getBoundingClientRect()`: on the zoomed-out phone layout
+  the touches landed beside the title bar and no drag started.
+
+The head is rebuilt on every `_fgalRender()`, so the drag is delegated
+from the box and listens on the window (pointer capture on a head replaced
+mid-drag would be lost). The ResizeObserver tells the corner from the
+window growing with its content by the inline `height` the corner writes.
+
+Specs: foreign-gallery 16, its mobile spec 2, config-workspace-roundtrip
+13 (the two keys now in "Panel geometry"): all passed. Mutations
+`scripts/mutations/foreign-gallery.json`: the six new ones fail as
+expected.

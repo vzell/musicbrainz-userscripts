@@ -24045,6 +24045,7 @@
         const st = {
             p, table, opener, box, rows, total, memo, filtered: _anyFilterActive(), run: null,
             sel: new Set(), compare: false, ca: null, cb: null, ask: false, peeking: true, fresh: new Set(),
+            geo: null,
             onKey: (e) => _fgalOnKey(st, e),
             onDown: (e) => {
                 if (e.pointerType !== 'mouse' && !box.contains(e.target) && e.target !== opener && !_artViewerState) _fgalClose();
@@ -24064,7 +24065,10 @@
         window.addEventListener('keydown', st.onKey, true);
         document.addEventListener('pointerdown', st.onDown, true);
         opener.setAttribute('aria-pressed', 'true');
-        _fgalPlace(st);
+        // Moved or resized once: where it was left (`sa_fgal_geometry`);
+        // never: under its 🖼.
+        st.geo = _makeMovableResizable(box, { handleSel: '.mb-fgal-head', geoKey: 'sa_fgal_geometry', minW: 340, minH: 220 });
+        if (!st.geo.restore()) _fgalPlace(st);
         _fgalRender(st);
         Promise.resolve(p.peekSaved(rows.map(g => g.row))).catch(() => 0).then(() => {
             st.peeking = false;
@@ -24086,6 +24090,7 @@
         _fgalState = null;
         window.removeEventListener('keydown', st.onKey, true);
         document.removeEventListener('pointerdown', st.onDown, true);
+        if (st.geo) st.geo.destroy();
         st.box.remove();
         st.opener.setAttribute('aria-pressed', 'false');
         if (st.opener.isConnected) st.opener.focus({ preventScroll: true });
@@ -24112,7 +24117,8 @@
     }
 
     /**
-     * Puts the window under its 🖼, inside the window's width.
+     * Puts the window under its 🖼, inside the window's width: where it
+     * opens until it has been moved or resized (`sa_fgal_geometry`).
      *
      * @param {Object} st
      * @returns {void}
@@ -24710,13 +24716,18 @@
             button.mb-fgal-btn[aria-pressed="true"] { background: #e7ddc8; border-color: #8a7d68; }
             #mb-fgal.mb-tt-liner { position: absolute; z-index: 2147483300; padding: 0; display: flex; flex-direction: column;
                 max-height: min(600px, 80vh); font-size: 13.5px; }
-            #mb-fgal .mb-fgal-head { display: flex; gap: 10px; align-items: flex-start; padding: 11px 14px 9px; border-bottom: 1px solid #d9cfbd; }
+            #mb-fgal.mb-tt-liner { resize: both; overflow: hidden; min-width: 340px; min-height: 220px; max-width: 96vw; }
+            #mb-fgal.mb-geo-fixed { position: fixed; max-height: 94vh; }
+            #mb-fgal .mb-fgal-head { display: flex; gap: 10px; align-items: flex-start; padding: 11px 14px 9px; border-bottom: 1px solid #d9cfbd;
+                cursor: move; user-select: none; touch-action: none; }
+            #mb-fgal .mb-fgal-head button { cursor: pointer; }
             #mb-fgal .mb-fgal-t { flex: 1 1 auto; min-width: 0; display: grid; gap: 2px; }
             #mb-fgal .mb-fgal-t b { font-size: 16px; line-height: 1.25; }
             #mb-fgal .mb-fgal-t span { color: #7a6d5c; font-size: 12px; }
             #mb-fgal .mb-fgal-x { border: 0; background: transparent; font: 17px/1 system-ui, Arial, sans-serif; color: #7a6d5c;
                 cursor: pointer; padding: 2px 4px; }
-            #mb-fgal .mb-fgal-body { overflow: auto; padding: 11px 14px 14px; display: grid; gap: 11px; align-content: start; }
+            #mb-fgal .mb-fgal-body { overflow: auto; padding: 11px 14px 14px; display: grid; gap: 11px; align-content: start;
+                flex: 1 1 auto; min-height: 0; }
             #mb-fgal .mb-fgal-panel { display: grid; gap: 6px; padding-bottom: 11px; border-bottom: 1px solid #d9cfbd; }
             #mb-fgal .mb-tt-ajbar, #mb-fgal .mb-tt-ajacts { margin: 0; }
             #mb-fgal .mb-tt-ajbar-r { background: #e4dccc; }
@@ -68671,6 +68682,141 @@ ${sections.join('\n')}
         });
 
         return { bar, input, applyQF };
+    }
+
+    /**
+     * Makes a floating panel movable by a handle and resizable from its
+     * corner, and remembers its position and size under `geoKey` (GM
+     * storage, `{top, left, width, height}` in viewport pixels, the shape
+     * `createInfoDialog()` stores). Built for the table-wide 🖼 gallery
+     * (org/TODO.org "Some enhancements" 1, 2026-10-24); `createInfoDialog()`
+     * keeps its own copy of the idiom, untouched so MusicBrainz's dialogs do
+     * not change (REFACTORING.org has the follow-up).
+     *
+     * - The handle is found by `handleSel` from a delegated `pointerdown` on
+     *   `box`, so a handle that is rebuilt on every render keeps working;
+     *   buttons, links and form fields in it never start a drag. Pointer
+     *   events, so a touch drags too (the handle carries
+     *   `touch-action: none` in the panel's CSS). The move listens on the
+     *   window, not by pointer capture: the handle may be replaced mid-drag.
+     * - Resize is the browser's own corner (`resize: both` in the CSS). A
+     *   `ResizeObserver` tells it from the panel growing with its content by
+     *   the inline `width`/`height` the corner writes, and saves 300 ms after
+     *   the last change.
+     * - Only a move or a resize saves, never opening or closing: a panel
+     *   never moved keeps opening where its caller places it.
+     * - Once moved, resized or restored, the panel carries the class
+     *   `mb-geo-fixed` at viewport coordinates; the panel's CSS makes that
+     *   `position: fixed` and lifts its height cap. A press on the resize
+     *   corner (the last 18 px of both edges) adds it first, so the very
+     *   first resize is not stopped by the cap of a panel that grows with
+     *   its content.
+     *
+     * @param {HTMLElement} box
+     * @param {{handleSel: string, geoKey: string, minW?: number, minH?: number}} o
+     * @returns {{restore: function(): boolean, destroy: function(): void}}
+     *   `restore()` applies a stored geometry, clamped to the window, and
+     *   says whether there was one; `destroy()` removes the listeners.
+     */
+    function _makeMovableResizable(box, o) {
+        const minW = o.minW || 320, minH = o.minH || 200;
+        // The stored size is the border box (`getBoundingClientRect()`);
+        // with content-box sizing every reopen grew by the borders (2 px).
+        box.style.boxSizing = 'border-box';
+        const clamp = (g) => {
+            const vw = document.documentElement.clientWidth, vh = window.innerHeight;
+            const width = Math.min(Math.max(g.width, minW), vw - 16);
+            const height = Math.min(Math.max(g.height, minH), vh - 16);
+            return { width, height, left: Math.min(Math.max(g.left, 0), vw - width), top: Math.min(Math.max(g.top, 0), vh - 40) };
+        };
+        const fix = (r) => {
+            box.classList.add('mb-geo-fixed');
+            box.style.left = `${Math.round(r.left)}px`;
+            box.style.top = `${Math.round(r.top)}px`;
+        };
+        let lastW = '', lastH = '';
+        const save = () => {
+            const r = box.getBoundingClientRect();
+            if (r.width < 10 || r.height < 10) return;
+            fix(r);
+            GM_setValue(o.geoKey, { top: Math.round(r.top), left: Math.round(r.left), width: Math.round(r.width), height: Math.round(r.height) });
+        };
+        let drag = null;
+        const onMove = (e) => {
+            if (!drag) return;
+            const vw = document.documentElement.clientWidth;
+            box.style.left = `${Math.round(Math.min(Math.max(e.clientX - drag.dx, 0), vw - 60))}px`;
+            box.style.top = `${Math.round(Math.min(Math.max(e.clientY - drag.dy, 0), window.innerHeight - 40))}px`;
+            e.preventDefault();
+        };
+        const onUp = () => {
+            if (!drag) return;
+            drag = null;
+            window.removeEventListener('pointermove', onMove, true);
+            window.removeEventListener('pointerup', onUp, true);
+            window.removeEventListener('pointercancel', onUp, true);
+            save();
+        };
+        const onDown = (e) => {
+            if (e.button !== 0 || !e.target.closest) return;
+            if (!e.target.closest(o.handleSel)) {
+                const r = box.getBoundingClientRect();
+                if (e.target === box && e.clientX > r.right - 18 && e.clientY > r.bottom - 18) {
+                    box.style.width = `${Math.round(r.width)}px`;
+                    box.style.height = `${Math.round(r.height)}px`;
+                    lastW = box.style.width;
+                    lastH = box.style.height;
+                    fix(r);
+                }
+                return;
+            }
+            if (e.target.closest('button, a, input, select, textarea, label')) return;
+            const r = box.getBoundingClientRect();
+            // From page coordinates (opened under its button) to the
+            // window's: no jump when the first drag starts.
+            box.style.width = `${Math.round(r.width)}px`;
+            fix(r);
+            drag = { dx: e.clientX - r.left, dy: e.clientY - r.top };
+            window.addEventListener('pointermove', onMove, true);
+            window.addEventListener('pointerup', onUp, true);
+            window.addEventListener('pointercancel', onUp, true);
+            e.preventDefault();
+        };
+        box.addEventListener('pointerdown', onDown);
+        let t = 0;
+        const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(() => {
+            if (box.style.width === lastW && box.style.height === lastH) return;
+            lastW = box.style.width;
+            lastH = box.style.height;
+            if (!box.style.height) return; // the corner writes both; growth with content writes none
+            clearTimeout(t);
+            t = setTimeout(save, 300);
+        }) : null;
+        return {
+            restore() {
+                const g = GM_getValue(o.geoKey, null);
+                if (!g || !g.width || !g.height) {
+                    lastW = box.style.width;
+                    lastH = box.style.height;
+                    if (ro) ro.observe(box);
+                    return false;
+                }
+                const c = clamp(g);
+                box.style.width = `${Math.round(c.width)}px`;
+                box.style.height = `${Math.round(c.height)}px`;
+                fix(c);
+                lastW = box.style.width;
+                lastH = box.style.height;
+                if (ro) ro.observe(box);
+                return true;
+            },
+            destroy() {
+                clearTimeout(t);
+                onUp();
+                box.removeEventListener('pointerdown', onDown);
+                if (ro) ro.disconnect();
+            },
+        };
     }
 
     /**
@@ -118490,6 +118636,7 @@ a { color: #1565c0; }`;
             keys: [
                 'sa_stats_panel_geometry', 'sa_load_dialog_geometry',
                 'sa_shortcuts_help_geometry',
+                'sa_dp_dialog_geometry', 'sa_fgal_geometry',
                 MB_UNIQ_DROP_GEOMETRY_KEY,
             ],
         },

@@ -103,6 +103,93 @@ test.describe('foreign gallery: springsteenlyrics bootlegs (G2)', () => {
     });
 });
 
+// org/TODO.org "Some enhancements" 1 (vzell, 2026-10-24): the window moves
+// by its title bar and resizes from its corner "like the other hover Space
+// detail popups", and remembers both (`sa_fgal_geometry`,
+// `_makeMovableResizable()`). Pinned: the geometry is APPLIED on reopen
+// (not merely stored), a window never moved still opens under its 🖼, and a
+// stored box larger than the window comes back inside it.
+test.describe('foreign gallery: moved and resized, it remembers where (2026-10-24)', () => {
+    /**
+     * The window's box in viewport pixels, rounded.
+     * @param {import('@playwright/test').Page} page
+     * @returns {Promise<{x: number, y: number, w: number, h: number, pos: string}>}
+     */
+    const boxOf = (page) => gal(page).evaluate((el) => {
+        const r = el.getBoundingClientRect();
+        return { x: Math.round(r.left), y: Math.round(r.top), w: Math.round(r.width), h: Math.round(r.height), pos: getComputedStyle(el).position };
+    });
+    const stored = (page) => page.evaluate(() => window.GM_getValue('sa_fgal_geometry', null));
+
+    test('never moved: it opens under its 🖼 and nothing is stored, also after closing', async ({ page }) => {
+        const { errors } = await openSl(page);
+        await opener(page).click();
+        await expect(gal(page)).toBeVisible();
+        const b = await opener(page).boundingBox();
+        const g = await boxOf(page);
+        expect(g.pos).toBe('absolute');
+        expect(Math.abs(g.y - Math.round(b.y + b.height + 6)), 'right under the 🖼').toBeLessThanOrEqual(2);
+        await page.keyboard.press('Escape');
+        await expect(gal(page)).toHaveCount(0);
+        expect(await stored(page), 'opening and closing store nothing').toBeNull();
+        expect(errors).toEqual([]);
+    });
+
+    test('drag by the title bar, resize from the corner: closed and reopened, it comes back there at that size', async ({ page }) => {
+        const { errors } = await openSl(page);
+        await opener(page).click();
+        await expect(gal(page)).toBeVisible();
+        const head = gal(page).locator('.mb-fgal-head b');
+        const hb = await head.boundingBox();
+        const g0 = await boxOf(page);
+        // Up to 20 px from the top and 120 px left: the whole window, its
+        // corner too, is then on screen (it opened under the 🖼, low down).
+        const dy = 20 - g0.y;
+        await page.mouse.move(hb.x + 10, hb.y + 5);
+        await page.mouse.down();
+        await page.mouse.move(hb.x + 10 - 120, hb.y + 5 + dy, { steps: 6 });
+        await page.mouse.up();
+        const g1 = await boxOf(page);
+        expect(g1.pos, 'a moved window stays put while the page scrolls').toBe('fixed');
+        expect(g1.x).toBe(g0.x - 120);
+        expect(g1.y).toBe(20);
+        await expect.poll(() => stored(page)).toMatchObject({ left: g1.x, top: g1.y });
+        // Resize from the lower-right corner, the browser's own handle.
+        await page.mouse.move(g1.x + g1.w - 4, g1.y + g1.h - 4);
+        await page.mouse.down();
+        await page.mouse.move(g1.x + g1.w - 4 - 100, g1.y + g1.h - 4 - 150, { steps: 6 });
+        await page.mouse.up();
+        await expect.poll(async () => (await boxOf(page)).w).toBe(g1.w - 100);
+        const g2 = await boxOf(page);
+        expect(g2.h).toBe(g1.h - 150);
+        await expect.poll(() => stored(page)).toMatchObject({ width: g2.w, height: g2.h, left: g1.x, top: g1.y });
+        // The ✕ and Esc still work in the title bar: a press on ✕ is no drag.
+        await gal(page).locator('.mb-fgal-x').click();
+        await expect(gal(page)).toHaveCount(0);
+        await page.mouse.wheel(0, 400);
+        await opener(page).evaluate(b => b.scrollIntoView({ block: 'center' }));
+        await opener(page).click();
+        await expect(gal(page)).toBeVisible();
+        expect(await boxOf(page), 'reopened where it was left, at that size').toEqual({ ...g2, pos: 'fixed' });
+        expect(errors).toEqual([]);
+    });
+
+    test('a stored geometry larger than the window comes back inside it', async ({ page }) => {
+        const { errors } = await openSl(page, { sa_fgal_geometry: { top: 5000, left: 5000, width: 9000, height: 9000 } });
+        await opener(page).click();
+        await expect(gal(page)).toBeVisible();
+        const g = await boxOf(page);
+        const vp = page.viewportSize();
+        expect(g.pos).toBe('fixed');
+        expect(g.x).toBeGreaterThanOrEqual(0);
+        expect(g.y).toBeGreaterThanOrEqual(0);
+        expect(g.x + g.w).toBeLessThanOrEqual(vp.width);
+        expect(g.y).toBeLessThanOrEqual(vp.height - 40);
+        await expect(gal(page).locator('.mb-fgal-x')).toBeInViewport();
+        expect(errors).toEqual([]);
+    });
+});
+
 test.describe('foreign gallery: the run, chips, Compare and the viewer', () => {
     /**
      * Narrows the table to the Castiles rows (4554 has an item page fixture,

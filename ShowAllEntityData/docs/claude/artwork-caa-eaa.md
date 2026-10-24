@@ -697,6 +697,22 @@ MusicBrainz's.
   key; Esc closes the question first, then the window. It reuses the async
   job card's rows (`.mb-tt-ajpill`, `-ajbar`, `-ajfacts`, `-ajlog`,
   `-ajact`). Touch: a tap outside closes it; no hover-only part.
+- **Moved and resized, it stays there** (org/TODO.org "Some enhancements"
+  1, 2026-10-24; mockup https://claude.ai/artifact/DmsNyUkUa1Hq8nPr2B5EGA):
+  `_makeMovableResizable()` — dragged by `.mb-fgal-head` (delegated from
+  the box: `_fgalRender()` rebuilds the head every time; window-level
+  pointer listeners, not capture, for the same reason; touch too), resized
+  from the CSS `resize: both` corner, stored under `sa_fgal_geometry` (the
+  "Panel geometry" export group, beside the Space window's
+  `sa_dp_dialog_geometry`, which was missing there). Only a drag or a
+  resize stores; until then it opens under its 🖼 (`_fgalPlace()`, page
+  coordinates), afterwards `position: fixed` (`.mb-geo-fixed`) at the
+  stored place, clamped to the window. Two traps: the box is
+  `box-sizing: border-box`, because the stored size is the border box (with
+  content-box every reopen grew by 2 px); and its 600 px height cap is
+  lifted by a press on the resize corner, before the browser starts the
+  resize. `createInfoDialog()` keeps its own copy of the idiom
+  (REFACTORING.org).
 - **Chips and Compare** (answer 2), as D2: by each image's first type
   (`_fgalType()`; Discogs' primary/secondary come through `cardImages()`);
   the viewer's Shift+← → step the read rows the chips leave, round.
@@ -704,7 +720,7 @@ MusicBrainz's.
   row), so a filter narrows it ("only the N rows the filters show"); a row
   the list rules out (a bootleg marked "cover only") is counted as not
   here. `_fiColIdx()` keeps `rowFor()` cheap over thousands of rows.
-- **Specs** `tests/fixtures/foreign-gallery.spec.js` (13) and
-  `foreign-gallery.mobile.spec.js`; mutations
-  `scripts/mutations/foreign-gallery.json` (14; three recorded
+- **Specs** `tests/fixtures/foreign-gallery.spec.js` (16) and
+  `foreign-gallery.mobile.spec.js` (2: tap, touch drag); mutations
+  `scripts/mutations/foreign-gallery.json` (20; three recorded
   `"expect": "pass"` with the overlap named).
