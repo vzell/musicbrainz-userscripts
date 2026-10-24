@@ -3165,7 +3165,13 @@ entry, with these columns:
   links to.
 - **Venue:** the venue, linked to the entry's own page, written the
   MusicBrainz way ("HAMPTON ROADS COLISEUM" reads "Hampton Roads Coliseum").
-  A second part such as "Summer Stage" stays with it.
+  A second part such as "Summer Stage" stays with it. Its card (Ctrl held,
+  as for Event) is the venue's own page, which the script finds through the
+  entry's page: where it is, how often Springsteen played there, the
+  first and last show, its description; **Space** opens the window with
+  every show there (each one linked), the cancelled ones and other
+  appearances, a street view link where the wiki has one, and the venue's
+  photos. ← → step from venue to venue.
 - **City**, **State** and **Country** (City and Country written the
   MusicBrainz way, "SYDNEY" reads "Sydney", "THE NETHERLANDS" "The
   Netherlands"; a country of USA, and State, as the wiki writes them): a US state or Canadian province code

@@ -1,5 +1,18 @@
 [
     {
+        "version": "WIP.14",
+        "date": "2026-10-24",
+        "sections": [
+            {
+                "label": "✨ Improve",
+                "items": [
+                    "Brucebase year table: pointing at a Venue shows the VENUE's card, no longer the show's. It names the region, how often Springsteen played there, the first and last show and the venue's description. Space opens a window with every show there (each linked), the cancelled shows and other appearances, a street view link where the wiki has one, and the venue's photos; ← → step from venue to venue.",
+                    "Venue pages get a card and window of their own wherever they are linked on Brucebase (a show's Venue link, a person's page, …)."
+                ]
+            }
+        ]
+    },
+    {
         "version": "WIP.13",
         "date": "2026-10-24",
         "sections": [

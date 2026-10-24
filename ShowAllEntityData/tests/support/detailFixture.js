@@ -66,17 +66,21 @@ const DETAIL_HOSTS = {
     },
     // A song, and (org/foreign-images.org phase 3) any entry page of a year
     // table: `/gig:`, `/nogig:`, `/recording:`, … — a wiki page name with a
-    // category prefix. The year pages themselves (`/1985`) and the wiki's
-    // system pages stay the list loaders'.
+    // category prefix; and (2026-10-24) the venue pages the Venue column's
+    // preview reads through them. The year pages themselves (`/1985`) and
+    // the wiki's system pages stay the list loaders'.
     bb: {
         isDetail: (u) => u.hostname === 'brucebase.wikidot.com' &&
-            /^\/(?:song|gig|nogig|recording|rehearsal|interview|nobruce):/.test(u.pathname),
+            /^\/(?:song|gig|nogig|recording|rehearsal|interview|nobruce|venue):/.test(u.pathname),
         fileFor: (u) => {
             const files = {
                 '/song:4th-of-july-asbury-park-sandy': 'detail-bb-4th-of-july.html',
                 '/gig:1985-01-04-roads-coliseum-hampton-va': 'detail-bb-gig-1985-01-04.html',
                 '/gig:1985-01-07-market-square-arena-indianapolis-in': 'detail-bb-gig-1985-01-07.html',
                 '/gig:1985-01-13-carolina-coliseum-columbia-sc': 'detail-bb-gig-1985-01-13.html',
+                '/venue:carolina-coliseum-columbia-sc': 'detail-bb-venue-carolina-coliseum.html',
+                '/venue:market-square-arena-indianapolis-in': 'detail-bb-venue-market-square-arena.html',
+                '/venue:paramount-theatre-asbury-park-nj': 'detail-bb-venue-paramount-theatre.html',
             };
             return files[u.pathname] ? path.join(FIXTURE_DIR, files[u.pathname]) : null;
         },

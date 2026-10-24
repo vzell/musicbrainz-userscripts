@@ -19767,7 +19767,11 @@
         const venueTd = docContext.createElement('td');
         const venueText = h.venue || entry.heading;
         if (href) {
+            // Links the entry page (the year page names no venue page);
+            // its preview is the venue's, read through that page
+            // (`_DP_SITES[…].via`, 2026-10-24).
             const venueA = docContext.createElement('a');
+            venueA.className = 'mb-bb-venue-link';
             venueA.setAttribute('href', _bbAbsHref(href));
             _mbSetSiteTitle(venueA, venueText, venueTd);
             venueTd.appendChild(venueA);
@@ -20769,9 +20773,13 @@
      * 6: Brucebase sections carry their links (`html`, `_dpBlockHtml()`),
      *    a song its Performances, and the records `collapsible` and
      *    `imagesByKind` for the window.
+     * 7: a Brucebase venue page has a reader of its own
+     *    (`_dpParseBbVenue()`), its photos (`venue:`) are of kind Photo, and
+     *    an entry page names its venue's page (`venueUrl`), which the Venue
+     *    column's preview reads through it.
      * @type {number}
      */
-    const _DP_PARSER_VERSION = 6;
+    const _DP_PARSER_VERSION = 7;
 
     /**
      * IndexedDB database of parsed detail pages. Deliberately NOT a store in
@@ -21624,11 +21632,14 @@
 
     /**
      * A Brucebase image's kind, by the wiki folder it lives in: Photo
-     * (`gallery:<page>`), Ticket (`files:ticket-YYYY`), Memorabilia
+     * (`gallery:<page>`, and a venue page's own `venue:<page>`), Ticket
+     * (`files:ticket-YYYY`), Memorabilia
      * (`files:pass-YYYY`), Setlist (`files:setlist-YYYY`), News
      * (`news:<page>`), Song graph (`files:song-graph`), Lyric sheet
      * (`files:song-lyricsheet`), else Other (scripts/probe-foreign-images.py,
-     * 2026-10-23; Setlist: scripts/probe-bb-setlist-images.py, 2026-10-24).
+     * 2026-10-23; Setlist: scripts/probe-bb-setlist-images.py, 2026-10-24;
+     * venues: scripts/probe-bb-venue-pages.py, 2026-10-24, where a venue's
+     * Gallery may also hold an older name's folder, `venue:sap-center-…`).
      *
      * @param {string} folder - The path segment after
      *   `local--resized-images/` ("files:ticket-1985", "gallery:1985-01-04-…").
@@ -21636,7 +21647,7 @@
      */
     function _bbImageKind(folder) {
         const f = String(folder || '').toLowerCase();
-        if (f.startsWith('gallery:')) return 'Photo';
+        if (f.startsWith('gallery:') || f.startsWith('venue:')) return 'Photo';
         if (f.startsWith('news:')) return 'News';
         if (f.startsWith('files:ticket-')) return 'Ticket';
         if (f.startsWith('files:pass-')) return 'Memorabilia';
@@ -21705,6 +21716,11 @@
         const data = _dpEmpty();
         data.title = _dpText(doc.getElementById('page-title') ? doc.getElementById('page-title').textContent : '');
         data.images = _bbPageImages(content, url);
+        // The venue's page, from the "Info & Setlist | Venue" line under
+        // the Scheduled block (debug/bb-event-detail.html): what the Venue
+        // column's preview reads through this page (`_DP_SITES[…].via`).
+        const venueA = Array.from(content.querySelectorAll('a[href*="/venue:"]')).find(a => _dpText(a.textContent) === 'Venue');
+        if (venueA) data.venueUrl = _dpAbsUrl(venueA.getAttribute('href'), url);
         // org/TODO.org "Some enhancements" 3b (2026-10-24): the Event
         // column's preview card and window (debug/bb-event-detail-1985-01-13.html).
         const code = content.querySelector('div.code');
@@ -21801,8 +21817,102 @@
     }
 
     /**
-     * Parses a Brucebase song page (`/song:<slug>`); any other page goes to
-     * `_dpParseBbPage()`.
+     * Parses a Brucebase venue page (`/venue:<slug>`; vzell, 2026-10-24:
+     * "parse a couple different venue links … and write a venue
+     * parser/reader"). Every venue page sampled by
+     * scripts/probe-bb-venue-pages.py (16 venues, 1973–2026, five
+     * countries) has one shape (debug/bb-venue-detail.html):
+     *
+     * - `#page-title` "Carolina Coliseum, Columbia, SC" and the breadcrumbs
+     *   "Home » … » Venues In South Carolina (SC) » …": the region is the
+     *   sub-title;
+     * - before the tabview, the description paragraphs (Wikipedia's, mostly)
+     *   and "Source: …", then "Springsteen did N performances, excl.
+     *   rehearsals, at this venue." in a `.list-pages-box`: N is the
+     *   highlight;
+     * - the tabs: Performances (every entry here, rehearsals included,
+     *   newest first), and where they apply Cancelled and Appearances
+     *   (interviews, recording sessions), Gallery (the venue's photos) and
+     *   Streetview (a Google Maps embed, a link here: the window never
+     *   loads another site's frame on its own).
+     *
+     * The card shows the region, the count, a field per list of entries
+     * ("43 · 1978-05-19 to 2020-01-18") and the description; the window
+     * adds the description with its links and every list, each entry
+     * linked, and the photos.
+     *
+     * @param {Document} doc The fetched page.
+     * @param {string}   url The page's URL.
+     * @returns {?object} The record, or null when the page has no
+     *   `#page-content`.
+     */
+    function _dpParseBbVenue(doc, url) {
+        const content = doc.getElementById('page-content');
+        if (!content) return null;
+        const data = _dpEmpty();
+        data.title = _dpText(doc.getElementById('page-title') ? doc.getElementById('page-title').textContent : '');
+        data.images = _bbPageImages(content, url);
+        const crumbs = doc.getElementById('breadcrumbs');
+        const region = crumbs ? Array.from(crumbs.querySelectorAll('a'))
+            .map(a => _dpText(a.textContent).match(/^Venues In (.+)$/i)).filter(Boolean).map(m => m[1])[0] : '';
+        if (region) data.subtitle = region;
+        const nav = content.querySelector('div.yui-navset');
+        // The intro: the paragraphs before the tabview.
+        const intro = Array.from(content.querySelectorAll('p')).filter(p =>
+            !(nav && (nav.contains(p) || (nav.compareDocumentPosition(p) & Node.DOCUMENT_POSITION_FOLLOWING))));
+        const about = doc.createElement('div');
+        intro.forEach(p => {
+            const t = _dpText(p.textContent);
+            const count = t.match(/^Springsteen did\s+([\d,]+)\s+performances?\b/i);
+            if (count) {
+                const n = Number(count[1].replace(/,/g, ''));
+                data.highlight = { value: n.toLocaleString('en-US'), label: `performance${n === 1 ? '' : 's'} here, rehearsals not counted` };
+                return;
+            }
+            if (!t) return;
+            const src = t.match(/^Source:\s*(.+)$/i);
+            if (src) data.fields.push(['Source', src[1]]);
+            about.appendChild(p.cloneNode(true));
+        });
+        const text = intro.map(p => _dpText(p.textContent)).filter(t => t && !/^Source:|^Springsteen did\s/i.test(t)).join(' ');
+        if (text) data.summary = text;
+        if (about.childNodes.length) data.sections.push({ label: 'About', text: _dpBlockText(about), html: _dpBlockHtml(about, url) });
+        if (!nav) return data;
+        const labels = Array.from(nav.querySelectorAll(':scope > ul.yui-nav > li')).map(li => _dpText(li.textContent));
+        const panels = Array.from((nav.querySelector(':scope > .yui-content') || { children: [] }).children);
+        const ENTRY = 'a[href*="/gig:"], a[href*="/nogig:"], a[href*="/recording:"], a[href*="/rehearsal:"], a[href*="/interview:"], a[href*="/nobruce:"]';
+        const filled = [];
+        labels.forEach((label, i) => {
+            const panel = panels[i];
+            if (!panel) return;
+            const entries = Array.from(panel.querySelectorAll(ENTRY));
+            if (entries.length) {
+                filled.push(label);
+                const dates = entries.map(a => (_dpText(a.textContent).match(/^\d{4}-\d\d-\d\d/) || [''])[0]).filter(Boolean).sort();
+                const span = !dates.length ? '' : dates[0] === dates[dates.length - 1] ? ` · ${dates[0]}` : ` · ${dates[0]} to ${dates[dates.length - 1]}`;
+                data.fields.push([label, `${entries.length}${span}`]);
+                data.sections.push({ label: `${label} (${entries.length})`, text: _dpBlockText(panel), html: _dpBlockHtml(panel, url) });
+                return;
+            }
+            const frame = panel.querySelector('iframe[src]');
+            const src = frame ? _dpAbsUrl(frame.getAttribute('src'), url) : '';
+            if (/^https?:/i.test(src)) {
+                filled.push(label);
+                data.sections.push({ label, text: src, html: `<a href="${_mbttEscape(src)}" target="_blank" rel="noopener">Open the ${_mbttEscape(label.toLowerCase())} (${_mbttEscape(new URL(src).hostname)})</a>` });
+                return;
+            }
+            if (panel.querySelector('.gallery-box img')) filled.push(label);
+        });
+        if (data.images.length) data.fields.push(['Images', String(data.images.length)]);
+        if (filled.length) data.fields.push(['On the page', filled.join(' · ')]);
+        data.collapsible = true;
+        data.imagesByKind = true;
+        return data;
+    }
+
+    /**
+     * Parses a Brucebase song page (`/song:<slug>`); a venue page goes to
+     * `_dpParseBbVenue()`, any other page to `_dpParseBbPage()`.
      *
      * `#page-title` is the title, and the text of `#page-content` before the
      * song's tabview is its origin ("Track 2 of The Wild, The Innocent & The
@@ -21824,6 +21934,7 @@
         try {
             path = new URL(url).pathname;
         } catch (_) { /* not a URL: read it as a song page */ }
+        if (/^\/venue:/.test(path)) return _dpParseBbVenue(doc, url);
         if (path && !/^\/song:/.test(path)) return _dpParseBbPage(doc, url);
         const content = doc.getElementById('page-content');
         if (!content) return null;
@@ -21907,8 +22018,12 @@
      * - `ownLinks`, optional: links that preview under a setting of their
      *   own (`test(u)` on the same-origin URL; `_dpOwnLinksOn()`,
      *   `_dpSiteForLink()`). Brucebase's event pages, 2026-10-24.
+     * - `via`, optional: links (`selector`) that preview not the page they
+     *   name but the one that page names (`pick(record)` → its URL, '' for
+     *   none; `what` names it in a failure): Brucebase's Venue cells, which
+     *   link the entry page, preview its venue (`_dpSiteSource()`).
      *
-     * @type {Object<string, {setting: ?string, isDetailUrl: function(URL): boolean, charset: ?string, parse: function(Document, string): ?object, liveRoot: ?function(Document): ?Element, liveHide: string[], liveCss: string, livePrepare: ?function(Document): ?function(): void, ttlDays?: number, extRoot: ?string, ownLinks?: {test: function(URL): boolean, setting: string}}>}
+     * @type {Object<string, {setting: ?string, isDetailUrl: function(URL): boolean, charset: ?string, parse: function(Document, string): ?object, liveRoot: ?function(Document): ?Element, liveHide: string[], liveCss: string, livePrepare: ?function(Document): ?function(): void, ttlDays?: number, extRoot: ?string, ownLinks?: {test: function(URL): boolean, setting: string}, via?: {selector: string, pick: function(object): string, what: string}}>}
      */
     const _DP_SITES = {
         'springsteenlyrics.com': {
@@ -21969,6 +22084,13 @@
                 test: (u) => /^\/(?:gig|nogig|recording|rehearsal|interview|nobruce|venue|relation):[^/]+$/.test(u.pathname),
                 setting: 'sa_bb_event_preview',
             },
+            // A year table's Venue cell links the ENTRY page (the year page
+            // names no venue page), and previews the venue (vzell,
+            // 2026-10-24: "the hover preview for venue columns should
+            // instead render the venue detail page … reachable from the
+            // event detail page via the href link Venue"): the entry page
+            // is read first, then the page its `venueUrl` names.
+            via: { selector: 'a.mb-bb-venue-link', pick: (data) => (data && data.venueUrl) || '', what: 'venue' },
             charset: null,
             parse: _dpParseBb,
             liveRoot: (doc) => doc.getElementById('main-content'),
@@ -22211,18 +22333,64 @@
      * and Extracted view, and ‹ › through the first detail link of every
      * visible row (`_dpRowLinks()`).
      *
+     * A link matching the site's `via.selector` (Brucebase's Venue cells)
+     * is a target of its own (key `via:<url>`): its record is the page the
+     * linked page names (`via.pick()`), read in two steps, each through
+     * `_dpGet()` (so the entry page a hover on its Event cell read already
+     * costs nothing); what the linked page named is remembered for the
+     * page's life, so a second hover answers from memory at once.
+     *
      * @param {string} host  A `_foreignHost` value.
      * @param {object} site  Its `_DP_SITES` entry.
      * @returns {object} The source.
      */
     function _dpSiteSource(host, site) {
-        // The outcome of the latest card request and window request per URL:
-        // what a repaint shows ("fetched now" until the next hover).
+        // The outcome of the latest card request and window request per
+        // target: what a repaint shows ("fetched now" until the next hover).
         const cardRes = new Map();
         const exRes = new Map();
+        const via = site.via || null;
+        const isVia = (el) => !!(via && el && el.matches && el.matches(via.selector));
+        // A via link's URL → the URL of the page its page names.
+        const viaUrl = new Map();
+        /**
+         * The page a target shows: its own, or for a via target the one its
+         * page names, '' while that is not known yet.
+         * @param {object} t
+         * @returns {string}
+         */
+        const shownUrl = (t) => {
+            if (!t.via) return t.url;
+            if (!viaUrl.has(t.url)) {
+                const e = _dpMem.get(t.url);
+                const u = e ? via.pick(e.data) : '';
+                if (u) viaUrl.set(t.url, u);
+            }
+            return viaUrl.get(t.url) || '';
+        };
+        const memOf = (t) => {
+            const u = shownUrl(t);
+            return u ? _dpMem.get(u) : null;
+        };
+        /**
+         * `_dpGet()` for a target: a via target's linked page first, then
+         * the page it names.
+         * @param {object} t
+         * @param {object} opts `_dpGet()`'s options.
+         * @returns {Promise<object>} A `_dpGet()` outcome.
+         */
+        const get = async (t, opts) => {
+            if (!t.via) return _dpGet(t.url, site, opts);
+            const first = await _dpGet(t.url, site, opts);
+            if (first.outcome !== 'ok') return first;
+            const u = via.pick(first.data);
+            if (!u) return { outcome: 'error', detail: `The entry page names no ${via.what} page.` };
+            viaUrl.set(t.url, u);
+            return _dpGet(u, site, opts);
+        };
         const head = (t) => `<div class="mb-tt-title">${_mbttEscape(_dpText(t.el.textContent))}</div>`;
         const cardLoading = (t) => head(t) +
-            '<div class="mb-tt-body mb-dp-loading"><span class="mb-dp-spin">◌</span> Loading the detail page…</div>';
+            `<div class="mb-tt-body mb-dp-loading"><span class="mb-dp-spin">◌</span> Loading the ${t.via ? `${via.what} page` : 'detail page'}…</div>`;
         const exLoading = '<div class="mb-dp-x mb-dp-loading"><span class="mb-dp-spin">◌</span> Loading the detail page…</div>';
         return {
             id: host,
@@ -22231,21 +22399,25 @@
             wide: false,
             live: site,
             enabled: () => _dpActiveSite() === site || _dpOwnLinksOn() === site,
-            resolve: (el) => (_dpSiteForLink(el) === site ? { key: el.href, url: el.href, table: el.closest('table') } : null),
+            resolve: (el) => {
+                if (_dpSiteForLink(el) !== site) return null;
+                if (isVia(el)) return { key: `via:${el.href}`, url: el.href, via: true, table: el.closest('table') };
+                return { key: el.href, url: el.href, table: el.closest('table') };
+            },
             needsCtrl: _dpNeedsCtrl,
-            liveUrl: (t) => t.url,
+            liveUrl: (t) => shownUrl(t) || t.url,
             card(t, start, repaint) {
                 if (start) {
-                    cardRes.delete(t.url);
-                    const mem = _dpMem.get(t.url);
+                    cardRes.delete(t.key);
+                    const mem = memOf(t);
                     if (mem) return _dpCardHtml(mem.data, { cached: true, at: mem.at });
-                    _dpGet(t.url, site, { wanted: () => _dpPeekShowing(t.el) }).then(res => {
-                        cardRes.set(t.url, res);
+                    get(t, { wanted: () => _dpPeekShowing(t.el) }).then(res => {
+                        cardRes.set(t.key, res);
                         repaint();
                     });
                     return cardLoading(t);
                 }
-                const res = cardRes.get(t.url);
+                const res = cardRes.get(t.key);
                 if (res && res.outcome === 'ok') return _dpCardHtml(res.data, res);
                 if (res && res.outcome === 'error') {
                     return head(t) + '<div class="mb-tt-body mb-tt-alert">Could not load the detail page.</div>' +
@@ -22255,22 +22427,24 @@
             },
             extracted(t, start, force, repaint) {
                 if (start) {
-                    exRes.delete(t.url);
-                    const mem = force ? null : _dpMem.get(t.url);
+                    exRes.delete(t.key);
+                    const mem = force ? null : memOf(t);
                     if (mem) return _dpExtractedHtml(mem.data, { cached: true, at: mem.at });
-                    _dpGet(t.url, site, { wanted: () => _dpDialogShowing(t), force }).then(res => {
-                        exRes.set(t.url, res);
+                    get(t, { wanted: () => _dpDialogShowing(t), force }).then(res => {
+                        exRes.set(t.key, res);
                         repaint();
                     });
                     return exLoading;
                 }
-                const res = exRes.get(t.url);
+                const res = exRes.get(t.key);
                 if (res && res.outcome === 'ok') return _dpExtractedHtml(res.data, res);
                 if (res && res.outcome === 'error') return _dpFailHtml(res.detail);
                 return exLoading;
             },
             steps: (t) => (t.el.closest('table.tbl > tbody') ? _dpRowLinks(t.table, t.el) : _dpPageLinks()),
-            stepId: (el) => el.href,
+            // A Venue cell and the Event cell of one row link the same page:
+            // told apart, so ‹ › from a venue land on the next venue.
+            stepId: (el) => (isVia(el) ? 'via:' : '') + el.href,
         };
     }
 
@@ -22908,7 +23082,8 @@
      * order: what ← and → step through. Of the same kind as `from`: from a
      * site's own link (a Brucebase event page) each row's first own link
      * (on a year table, its Event cell), from any other detail link (a song
-     * in Notes) the others, so a step never jumps between the two previews.
+     * in Notes) the others, so a step never jumps between the two previews;
+     * from a `via` link (a Venue cell) each row's via link.
      *
      * @param {?HTMLTableElement} table
      * @param {?Element} [from] The link the window was opened from.
@@ -22918,6 +23093,8 @@
         const t = table && table.isConnected ? table : document.querySelector('table.tbl');
         if (!t || !t.tBodies[0]) return [];
         const site = _foreignHost ? _DP_SITES[_foreignHost] : null;
+        const viaSel = site && site.via ? site.via.selector : '';
+        const fromVia = !!(viaSel && from && from.matches && from.matches(viaSel));
         const own = site && site.ownLinks ? site.ownLinks.test : null;
         const isOwn = (x) => {
             try {
@@ -22931,7 +23108,7 @@
         Array.from(t.tBodies[0].rows).forEach(tr => {
             if (tr.style.display === 'none') return;
             const a = Array.from(tr.querySelectorAll('a[href]'))
-                .find(x => (!own || isOwn(x) === ownKind) && _dpSiteForLink(x));
+                .find(x => (!viaSel || x.matches(viaSel) === fromVia) && (!own || isOwn(x) === ownKind) && _dpSiteForLink(x));
             if (a) out.push(a);
         });
         return out;

@@ -83,6 +83,17 @@ TARGETS = [
     # scripts/probe-bb-setlist-images.py.
     ('foreign-images/brucebase.wikidot.com_gig_1985-01-13-carolina-coliseum-columbia-sc.html',
      'detail-bb-gig-1985-01-13.html', b'files:setlist-1985', None),
+    # vzell, 2026-10-24: the venue reader. Captured by
+    # scripts/probe-bb-venue-pages.py: the venues of 1985-01-13 (two
+    # performances, one image) and 1985-01-07 (a Cancelled tab), and the
+    # Paramount Theatre (43 entries, an Appearances tab; its Streetview
+    # iframe is stripped like every other, the reader spec feeds one inline).
+    ('foreign-images/brucebase.wikidot.com_venue_carolina-coliseum-columbia-sc.html',
+     'detail-bb-venue-carolina-coliseum.html', b'Venues In South Carolina', None),
+    ('foreign-images/brucebase.wikidot.com_venue_market-square-arena-indianapolis-in.html',
+     'detail-bb-venue-market-square-arena.html', b'<em>Cancelled</em>', None),
+    ('foreign-images/brucebase.wikidot.com_venue_paramount-theatre-asbury-park-nj.html',
+     'detail-bb-venue-paramount-theatre.html', b'<em>Appearances</em>', None),
 ]
 
 STRIP_RES = [

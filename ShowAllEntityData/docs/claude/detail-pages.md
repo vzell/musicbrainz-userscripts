@@ -471,7 +471,12 @@ markup.
   `details.mb-dp-sec`, `_dpSecState`) and `imagesByKind` (`h5.mb-dp-kind`,
   Photo last), and a section may carry `html` (`_dpBlockHtml()`); a link in
   the window to the host's own detail page opens there (`_dpDrill()`,
-  `_dpWinWhat()`, `_dpSiteForUrl()`).
+  `_dpWinWhat()`, `_dpSiteForUrl()`). Version 7 (2026-10-24): Brucebase
+  venue pages have their own reader (`_dpParseBbVenue()`), and an entry
+  page names its venue (`venueUrl`), which a site's `via` links (the year
+  table's Venue cells) preview in its place: `_dpSiteSource()` keys such a
+  target `via:<url>` and reads the two pages in turn
+  (docs/claude/brucebase.md, "Venues").
 
 **`_dpBlockText()` collapses the source's whitespace before it turns `<br>`
 into a line break.** The sites write `line<br />\nline`; keeping that

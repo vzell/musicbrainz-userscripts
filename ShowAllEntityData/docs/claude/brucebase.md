@@ -619,7 +619,7 @@ card and the artwork viewer, through the shared foreign-image path
   `/recording:`, `/rehearsal:`, `/interview:`, `/nobruce:`; setting
   `sa_bb_event_preview`, default on) makes EVERY text link to one on a
   Brucebase page a preview target — vzell: "on all BB PTs where an event
-  href is involved in a column or elsewhere" (Event and Venue cells, Notes,
+  href is involved in a column or elsewhere" (Event cells, Notes,
   Recent changes, the wiki's own page, a song window's Performances). A
   Media icon is an `<img>` link and stays the image card's. `isDetailUrl`
   stays `/song:`, so the Springsteen reader on other hosts (`_extDpTest()`)
@@ -649,6 +649,31 @@ card and the artwork viewer, through the shared foreign-image path
   (title, images, what its tabs give).
   Specs `tests/fixtures/bb-event-preview.spec.js`; mutations
   `scripts/mutations/bb-event-preview.json`.
+- **Venues** (vzell, 2026-10-24; `_DP_PARSER_VERSION` 7). A venue page
+  has its own reader, `_dpParseBbVenue()`: every venue page sampled by
+  `scripts/probe-bb-venue-pages.py` (16, 1973–2026, five countries) has one
+  shape — title, breadcrumbs ending in "Venues In <Region> (<code>)" (the
+  sub-title), description paragraphs and "Source:", the count "Springsteen
+  did N performances, excl. rehearsals" (the highlight), then tabs:
+  Performances (rehearsals included, newest first), where they apply
+  Cancelled and Appearances (interviews, recording sessions), Gallery
+  (folder `venue:<slug>`, kind Photo; a renamed venue's Gallery holds the
+  old name's folder too) and Streetview (a Google Maps iframe, offered as a
+  link: the window never loads another site's frame by itself). Each list
+  of entries is a field ("43 · 1978-05-19 to 2020-01-18") and a linked
+  section. **A year table's Venue cell links the ENTRY page** — the year
+  page names no venue page, and an entry's venue slug is not derivable from
+  its own (`1985-03-31a-…`, truncated slugs, renamed venues). Its link is
+  `a.mb-bb-venue-link`, and `_DP_SITES[…].via` makes it a target of its own
+  (`via:<url>`): `_dpSiteSource()` reads the entry page (`_dpGet()`, so a
+  hover on the row's Event cell already paid for it), takes its
+  `venueUrl` (the "Info & Setlist | Venue" line, `_dpParseBbPage()`), and
+  shows that page; what an entry named is remembered for the page's life.
+  ← → from a venue step through the rows' venue links (`_dpRowLinks()`'s
+  `via` rule). Spec `bb-event-preview.spec.js` ("the venue reader", "a
+  Venue link previews the venue", "Space on a venue"); mutations
+  `scripts/mutations/bb-venue-preview.json`; fixtures
+  `detail-bb-venue-*.html` (`scripts/build-detail-fixtures.py`).
 - **Renditions** (HEAD 200 for a `files:`, a `gallery:` and a `news:`
   image, `scripts/probe-foreign-images.py --small`, 2026-10-23): the viewer
   record is `{image: original, thumbnails: {1200: original, large: the
