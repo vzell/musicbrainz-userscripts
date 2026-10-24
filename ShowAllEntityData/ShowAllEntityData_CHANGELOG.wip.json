@@ -1,5 +1,23 @@
 [
   {
+    "version": "WIP.3",
+    "date": "2026-10-24",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "discogs.com: Discogs' own links in the page (artists, labels, releases, masters, users) now show their preview card on hover right away, before any of the script's buttons is pressed. Only the links in the script's own tables did before. The older Discogs pages (submissions, a release's history, a user's ratings) are covered too."
+        ]
+      },
+      {
+        "label": "✨ Improve",
+        "items": [
+          "discogs.com: a link to a Brucebase show, venue or person in Discogs' content (a release's notes, for example) shows Brucebase's own card, as on Brucebase, instead of a plain web page card."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.2",
     "date": "2026-10-24",
     "sections": [

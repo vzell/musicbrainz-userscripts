@@ -3401,7 +3401,10 @@ table; scrolled sideways, the toolbar and the bars stay in view.
 
 With *Preview external links on hover* on, a Discogs link in the table or in
 the page's content (not Discogs' header or footer) gets the same card and
-window as on MusicBrainz. A user's name carries their own picture: in a
+window as on MusicBrainz, right away on the page as Discogs shows it, before
+you press any of the script's buttons, and on the older pages (submissions,
+a release's history, a user's ratings) too. A link to Brucebase there (a show,
+a venue, a person, a song) gets Brucebase's own card. A user's name carries their own picture: in a
 history it comes with the page; in a submissions list it is read from the
 user's profile once their row is on screen (one request each, one at a time).
 The 📊 list of that column shows each user's picture after their name too —

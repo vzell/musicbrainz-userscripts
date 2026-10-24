@@ -22057,7 +22057,8 @@
      *   (`_dpTtlMs()`; default 30 days).
      * - `extRoot`: the site's content area, where a link to ANOTHER site is
      *   previewed besides the table (`_extSource()` on this host, U5), or
-     *   null for the table only. Never the site's chrome: its share bar,
+     *   null for the table only; a selector list for a site with two
+     *   layouts (discogs.com: `#app, #page_content`). Never the site's chrome: its share bar,
      *   menus and footer are left out by `_EXT_SKIP_SEL`.
      * - `ownLinks`, optional: links that preview under a setting of their
      *   own (`test(u)` on the same-origin URL; `_dpOwnLinksOn()`,
@@ -22180,7 +22181,10 @@
             liveHide: [],
             liveCss: '',
             livePrepare: null,
-            extRoot: '#app'
+            // The React pages' root; the older, server-rendered ones
+            // (submissions, a release's history, a user's ratings) have no
+            // `#app`, their content is `#page_content` (5a, 2026-10-24).
+            extRoot: '#app, #page_content'
         }
     };
 
@@ -60221,14 +60225,22 @@
     }
 
     /**
-     * A detail page of one of the four sites, by that site's own test.
+     * A detail page of one of the four sites, by that site's own test. On
+     * discogs.com also a page the site previews under a setting of its own
+     * (`ownLinks`: Brucebase's show, venue and people pages), so a Brucebase
+     * link in Discogs' content gets Brucebase's card, not a generic one
+     * (org/TODO.org "some more BB and MB fixes/enhancements" 5a, vzell
+     * 2026-10-24: "Discogs + Brucebase links"). Elsewhere, MusicBrainz above
+     * all, such a link stays the generic reader's, as before.
      *
      * @param {URL} u
      * @returns {boolean}
      */
     function _extDpTest(u) {
         const key = _extDpSiteKey(u);
-        return !!key && _DP_SITES[key].isDetailUrl(u);
+        if (!key) return false;
+        const site = _DP_SITES[key];
+        return site.isDetailUrl(u) || (_isDgHost && !!site.ownLinks && site.ownLinks.test(u));
     }
 
     /**
@@ -62325,7 +62337,14 @@
         // (`//www.wikidata.org/wiki/Q…`, found by U3's live spec): read as
         // https, which is also how MusicBrainz stores that URL (the window's
         // `?resource=` lookup asks with this `href`).
-        const href = /^\/\/[^/]/.test(raw) ? `https:${raw}` : raw;
+        let href = /^\/\/[^/]/.test(raw) ? `https:${raw}` : raw;
+        // On discogs.com a link to Discogs is written relative
+        // (`/release/…`; debug/bb-release-born-to-run-with-MB-links-initial.html):
+        // read against the page, so a Discogs page's own links preview on the
+        // initial page (org/TODO.org "some more BB and MB fixes/enhancements"
+        // 5a, 2026-10-24). Only there: on MusicBrainz a relative link is
+        // MusicBrainz's, never another site's.
+        if (_isDgHost && /^\/[^/]/.test(href)) href = `${window.location.origin}${href}`;
         if (!/^https?:\/\//i.test(href)) return null;
         let u;
         try {
@@ -62385,7 +62404,9 @@
             get selector() {
                 if (_foreignHost) {
                     const root = _DP_SITES[_foreignHost].extRoot;
-                    return `table.tbl > tbody a[href]${root ? `, ${root} a[href]` : ''}`;
+                    // `extRoot` may name several roots (discogs.com's two layouts).
+                    const roots = root ? root.split(',').map(r => `, ${r.trim()} a[href]`).join('') : '';
+                    return `table.tbl > tbody a[href]${roots}`;
                 }
                 return _popSettingOn('sa_pop_mb_page') ? `${_EXT_SCOPE_SEL}, #page a[href]` : _EXT_SCOPE_SEL;
             },

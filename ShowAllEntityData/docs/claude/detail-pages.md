@@ -2074,7 +2074,10 @@ the header's `@connect` and `_EXT_CONNECT_HOSTS` (the parent domain covers
   origin: never `_dpFetchText()`), `_extRecord()` for its status, then the
   site's `parse(doc, finalUrl)`, unchanged, as `rec.dp`. A page the parser
   finds nothing in keeps the generic record. The HTML goes to `_dpRawMem`,
-  so the Live page reuses the hover's fetch.
+  so the Live page reuses the hover's fetch. On discogs.com only, a site's
+  `ownLinks` pages count too (Brucebase's shows, venues, people; 2026-10-24,
+  docs/claude/discogs.md "Link previews on discogs.com"); on MusicBrainz a
+  `/gig:` link stays generic (popup-ext U4 "which reader serves which link").
 - **Charset: `_extFetch()`'s `charset`** becomes `overrideMimeType`
   (`text/html; charset=windows-1252` for jungleland.it, which names none);
   `_extFetchText(url, charset)` and `_EXT_LIVE.fetchText` pass it on from

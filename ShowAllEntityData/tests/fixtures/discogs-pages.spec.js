@@ -377,9 +377,46 @@ test.describe('discogs.com pages (2026-10-18)', () => {
         // shown yet proves nothing (it waits for the hover delay).
         const resolves = (sel) => page.evaluate((q) => window.__saTest.popResolve(document.querySelector(q)), sel);
         expect(await resolves('#mb-dg-root table.tbl a[href="https://www.discogs.com/release/1874253"]')).toMatch(/^ext\|/);
-        expect(await resolves('#app a')).toMatch(/^ext\|/);
+        // Discogs writes its own links relative (org/TODO.org "some more BB
+        // and MB fixes/enhancements" 5a, 2026-10-24): read against the page.
+        await expect(page.locator('#app a').first()).toHaveAttribute('href', /^\/artist\/219986/);
+        expect(await resolves('#app a')).toBe('ext|ext:discogs:https://www.discogs.com/artist/219986-Bruce-Springsteen');
         expect(await resolves('.dg-fx-header a'), 'the header is not the page\'s content').toBeNull();
         expect(await resolves('.dg-fx-footer a'), 'nor is the footer').toBeNull();
+        expect(errors).toEqual([]);
+    });
+
+    // 5a: "all links to BB pages should open as previews when hovered" — a
+    // Brucebase link in Discogs' content (a release's notes) is the
+    // Springsteen sites' reader's, on the initial page, no render needed.
+    test('previews on discogs.com before any render: Discogs\' relative links and a Brucebase link in the content', async ({ page }) => {
+        const gig = 'https://brucebase.wikidot.com/gig:1985-01-13-carolina-coliseum-columbia-sc';
+        const gigHtml = fs.readFileSync(path.join(__dirname, 'detail-bb-gig-1985-01-13.html'), 'utf8');
+        const { errors } = await openDg(page, 'release', {
+            settings: { sa_pop_ext: true },
+            responses: { [gig]: { status: 200, responseHeaders: 'Content-Type: text/html; charset=utf-8', responseText: gigHtml } },
+        });
+        await page.evaluate((u) => {
+            const p = document.createElement('p');
+            p.className = 'dg-fx-notes';
+            p.innerHTML = `Recorded live, see <a href="${u}">Brucebase</a>.`;
+            document.querySelector('#app main').appendChild(p);
+        }, gig);
+        const resolves = (sel) => page.evaluate((q) => window.__saTest.popResolve(document.querySelector(q)), sel);
+        expect(await page.locator('#mb-dg-root table.tbl').count(), 'nothing rendered yet').toBe(0);
+        const rel = page.locator('#app a[href^="/"]').first();
+        await expect(rel).toHaveAttribute('href', /^\/(?:artist|release|master|label)\//);
+        expect(await resolves('#app a[href^="/"]')).toMatch(/^ext\|ext:discogs:https:\/\/www\.discogs\.com\//);
+        expect(await resolves('.dg-fx-notes a')).toMatch(/^ext\|ext:springsteen:/);
+        // Brucebase's own card for the show (its parser), not a generic page's.
+        const card = page.locator('#mb-dp-peek');
+        await ctrlHover(page, page.locator('.dg-fx-notes a'));
+        await expect(card).toContainText('1985-01-13');
+        await expect(card).toContainText('Carolina Coliseum');
+        await page.keyboard.press('Escape');
+        // A relative Discogs link: the Discogs card.
+        await ctrlHover(page, page.locator('#app a[href^="/release/"], #app a[href^="/master/"], #app a[href^="/artist/"]').first());
+        await expect(card).toContainText('Discogs');
         expect(errors).toEqual([]);
     });
 });

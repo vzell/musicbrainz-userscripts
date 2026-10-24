@@ -462,8 +462,22 @@ page keeps its own behaviour. Ctrl/⌘-click: the new tab.
 ## Link previews on discogs.com
 
 `_DP_SITES['www.discogs.com']`: no detail pages of its own (`setting: null`,
-that source never switches on), `extRoot: '#app'` — Discogs' content, not its
-header or footer (vzell). `_extTarget()` takes a link to the page's own host
+that source never switches on), `extRoot: '#app, #page_content'` — Discogs'
+content, not its header or footer (vzell); `#page_content` is the older,
+server-rendered pages' (submissions, history, ratings, user), added
+2026-10-24 (org/TODO.org "some more BB and MB fixes/enhancements" 5a), and
+`_extSource()`'s selector appends `a[href]` to each root of the list.
+**Discogs writes its own links relative** (`/release/…`): `_extTarget()`
+reads a relative href against the page on discogs.com only (on MusicBrainz a
+relative link is MusicBrainz's, refused by the same-host rule anyway). Until
+then only our tables' (absolute) links previewed: the fixture builder
+(`scripts/build-discogs-fixtures.py`) made the content links absolute and so
+hid it; it keeps them relative now. A Brucebase link in the content (a show,
+venue or person page: `_DP_SITES['brucebase.wikidot.com'].ownLinks`) is the
+Springsteen reader's on discogs.com (`_extDpTest()`), Brucebase's own card;
+elsewhere such a link stays generic. The engine runs from the initial page
+(`_initDetailPreview()` right after `_dgPrepareLivePage()`), so none of this
+waits for a render. `_extTarget()` takes a link to the page's own host
 on discogs.com when a Discogs reader does (`_extDgSiteTest()`: a release,
 master, artist, label or its history, and since round 2 a user or a search), so a title
 in our table or a Discogs link in the content gets the same card and window

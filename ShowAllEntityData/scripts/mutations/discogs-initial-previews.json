@@ -1,0 +1,80 @@
+[
+    {
+        "name": "Discogs: a relative link is not read",
+        "why": "org/TODO.org 'some more BB and MB fixes/enhancements' 5a (2026-10-24): Discogs writes its own links relative; they must preview on the initial page.",
+        "edits": [
+            {
+                "find": "        if (_isDgHost && /^\\/[^/]/.test(href)) href = `${window.location.origin}${href}`;\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/discogs-pages.spec.js",
+        "grep": "previews on discogs.com",
+        "expect": "fail"
+    },
+    {
+        "name": "Discogs: a relative link is read on every host",
+        "why": "Equivalent on MusicBrainz: a relative link resolves to MusicBrainz's own host, which the same-host rule refuses anyway. Recorded so the guard's scope is not mistaken for tested.",
+        "edits": [
+            {
+                "find": "        if (_isDgHost && /^\\/[^/]/.test(href)) href = `${window.location.origin}${href}`;\n",
+                "replace": "        if (/^\\/[^/]/.test(href)) href = `${window.location.origin}${href}`;\n"
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "which reader serves which link",
+        "expect": "pass"
+    },
+    {
+        "name": "Discogs: the older layout's #page_content left out",
+        "why": "Submissions, a release's history and a user's ratings have no #app; their content is #page_content.",
+        "edits": [
+            {
+                "find": "            extRoot: '#app, #page_content'\n",
+                "replace": "            extRoot: '#app'\n"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-links.spec.js",
+        "grep": "the older layout",
+        "expect": "fail"
+    },
+    {
+        "name": "Discogs: a root list joined as one selector",
+        "why": "'#app, #page_content a[href]' makes #app itself the match: closest() then returns the div, not the link.",
+        "edits": [
+            {
+                "find": "                    const roots = root ? root.split(',').map(r => `, ${r.trim()} a[href]`).join('') : '';",
+                "replace": "                    const roots = root ? `, ${root} a[href]` : '';"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-pages.spec.js",
+        "grep": "previews on discogs.com",
+        "expect": "fail"
+    },
+    {
+        "name": "Discogs: a Brucebase show link gets the generic card",
+        "why": "5a: on discogs.com a Brucebase show, venue or person link is Brucebase's reader's.",
+        "edits": [
+            {
+                "find": "        return site.isDetailUrl(u) || (_isDgHost && !!site.ownLinks && site.ownLinks.test(u));",
+                "replace": "        return site.isDetailUrl(u);"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-pages.spec.js",
+        "grep": "before any render",
+        "expect": "fail"
+    },
+    {
+        "name": "Brucebase show links on MusicBrainz change reader",
+        "why": "Nothing may change for MusicBrainz: there a /gig: link stays the generic reader's.",
+        "edits": [
+            {
+                "find": "        return site.isDetailUrl(u) || (_isDgHost && !!site.ownLinks && site.ownLinks.test(u));",
+                "replace": "        return site.isDetailUrl(u) || (!!site.ownLinks && site.ownLinks.test(u));"
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "which reader serves which link",
+        "expect": "fail"
+    }
+]

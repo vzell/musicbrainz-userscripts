@@ -26156,3 +26156,33 @@ Specs: popup-mb "the window: the whole description…" (header and cells
 shifted by the cover column), "a cover in the window…"; release-rg-popup
 "the window's covers…" (11/11 in that file). Mutations
 `scripts/mutations/dp-window-covers.json`: 8, all fail as expected.
+
+## 2026-10-24 — discogs.com: Discogs' own links preview on the initial page; Brucebase links get Brucebase's card (branch feature/bb-mb-window-images-discogs, WIP.3)
+
+Env: 2026-10-24T18:14:46+02:00 · petri · WSL2 Ubuntu 24.04.3 (Linux 6.18.54.1) · Playwright 1.62.1 Chromium, no Tampermonkey (GM stubs)
+
+org/TODO.org "some more BB and MB fixes/enhancements" 5a ("BB" there =
+Discogs and Brucebase links, vzell's answer).
+
+**Cause.** The engine already ran on the initial page (`_initDetailPreview()`
+after `_dgPrepareLivePage()`), but `_extTarget()` gives up on an href that
+is not `^https?://`, and Discogs writes its own links relative
+(`debug/bb-release-born-to-run-with-MB-links-initial.html`: 36 artist, 32
+release, 14 label, 15 user links, all relative). Only our tables' absolute
+links previewed. The spec "previews on discogs.com" passed because
+`scripts/build-discogs-fixtures.py` made the content links absolute. The
+older pages (no `#app`) were outside `extRoot: '#app'` altogether. A
+Brucebase `/gig:` link was the generic reader's (`isDetailUrl` is `/song:`
+only, on purpose for other hosts).
+
+**Fix.** `_extTarget()`: on discogs.com a relative href is read against the
+page; `extRoot: '#app, #page_content'`, `_extSource()` appending `a[href]`
+per root; `_extDpTest()`: on discogs.com a site's `ownLinks` count. The
+fixture builder keeps relative hrefs (4 fixtures regenerated: only the hrefs
+changed).
+
+Specs: discogs-pages "previews on discogs.com…" (now relative), "…before any
+render…" (Brucebase card from detail-bb-gig-1985-01-13.html); discogs-links
+"the older layout…". Mutations `scripts/mutations/discogs-initial-previews.json`:
+6 (5 fail; the "every host" scope recorded `pass`, equivalent on MusicBrainz;
+the MusicBrainz `/gig:` guard is popup-ext U4's).
