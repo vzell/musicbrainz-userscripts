@@ -70,7 +70,10 @@ built once; `_popResolve(node)` finds the first enabled source whose
 `selector` matches `node.closest()` and whose `resolve()` accepts it, and
 returns a TARGET `{src, el, key, url, …}`). The four foreign sites are one
 source each (`_dpSiteSource()`, the behaviour above, unchanged); a MusicBrainz
-release page adds two (below). A source has:
+release page adds two (below). On Brucebase the MB-Event glyph is one
+(`_bbMbevSource()`), on discogs.com the MusicBrainz icons are one
+(`_dgMbSource()`, 2026-10-24: MusicBrainz's cards from another origin,
+docs/claude/discogs.md "The MusicBrainz column"). A source has:
 
 | Member                                | What it is                                                                                                                                                     |
 |---------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------|

@@ -3437,6 +3437,12 @@ progress card) and asks again for rows that failed (⚠, also a click on the
 visit asks MusicBrainz nothing. Filter the column by a MusicBrainz ID; the
 📊 section *MusicBrainz - Links* counts the links per row (*» MB links: 0, 1,
 2 …*, and *pending* / *error* while lookups run) and rings the matched icons.
+With *Preview linked entities on hover* on (🔎 LINK PREVIEWS ON MUSICBRAINZ),
+pointing at a MusicBrainz icon (Ctrl held, unless *Show every preview on a
+plain hover* is on) shows that entity's MusicBrainz card, read from
+musicbrainz.org, and **Space** opens its window; a click on the icon opens the
+window too, Ctrl-click opens MusicBrainz in a new tab. The same goes for that
+script's own icons beside the names on Discogs' page, right away.
 Switch it off, or only the automatic lookups (then ▶ MB asks), in ⚙️
 Settings → 💿 Discogs. Without that userscript the column never appears.
 

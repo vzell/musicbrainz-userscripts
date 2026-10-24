@@ -394,3 +394,107 @@ test.describe('discogs.com: the MusicBrainz column (2026-10-19)', () => {
         await expect(btn).toHaveAttribute('aria-pressed', 'true');
     });
 });
+
+/**
+ * Answers the MusicBrainz cards' artist lookups (`/ws/2/artist/<id>`) with
+ * Bruce Springsteen's card answer, before the spec's own responder; every
+ * such request is logged in `window.__mbCardAsked`.
+ *
+ * @param {import('@playwright/test').Page} page
+ * @returns {Promise<void>}
+ */
+async function answerArtistCards(page) {
+    const body = fs.readFileSync(path.join(__dirname, 'ws2-pop-artist-bruce.json'), 'utf8');
+    await page.evaluate((b) => {
+        const prev = window.__gmXhrResponder;
+        window.__mbCardAsked = [];
+        window.__gmXhrResponder = (opts) => {
+            const u = new URL(opts.url);
+            if (u.origin === 'https://musicbrainz.org' && /^\/ws\/2\/artist\/[0-9a-f-]{36}$/.test(u.pathname)) {
+                window.__mbCardAsked.push(opts.url);
+                return { status: 200, responseHeaders: 'Content-Type: application/json', responseText: b };
+            }
+            return prev(opts);
+        };
+    }, body);
+}
+
+/**
+ * Hovers an element with Ctrl held, as the link preview specs do.
+ *
+ * @param {import('@playwright/test').Page} page
+ * @param {import('@playwright/test').Locator} el
+ * @returns {Promise<void>}
+ */
+async function ctrlHover(page, el) {
+    await page.mouse.move(0, 0);
+    await el.scrollIntoViewIfNeeded();
+    await page.keyboard.down('Control');
+    await el.hover();
+    await page.keyboard.up('Control');
+}
+
+// org/TODO.org "some more BB and MB fixes/enhancements" 5b/5c (vzell,
+// 2026-10-24): the MusicBrainz icons on discogs.com — ours and murdos'
+// importer's — show MusicBrainz's own card, asked from musicbrainz.org
+// through GM, with its links pointing at musicbrainz.org.
+test.describe('discogs.com: MusicBrainz cards for the MusicBrainz icons (2026-10-24)', () => {
+    test('our MusicBrainz column: an icon shows the artist\'s MusicBrainz card; Space opens its window', async ({ page }) => {
+        const { errors } = await openDg(page, 'release', { settings: { sa_pop_mb: true } });
+        await press(page, 'Show tracklist, credits and other versions');
+        await settled(page);
+        await expandAll(page);
+        await answerArtistCards(page);
+        const icon = mbCell(sub(page, 'Credits'), 'artist/219986').locator('a.mb-dg-mb-link');
+        await expect(icon).toHaveAttribute('href', `https://musicbrainz.org/artist/${MB.bruce}`);
+        expect(await icon.evaluate((a) => window.__saTest.popResolve(a))).toBe(`dg-mb|artist:${MB.bruce}`);
+        const card = page.locator('#mb-dp-peek');
+        await ctrlHover(page, icon);
+        await expect(card).toContainText('Bruce Springsteen');
+        await expect(card).toContainText('fetched now');
+        const asked = await page.evaluate(() => window.__mbCardAsked);
+        expect(asked, 'one lookup, from musicbrainz.org').toHaveLength(1);
+        expect(asked[0]).toMatch(new RegExp(`^https://musicbrainz\\.org/ws/2/artist/${MB.bruce}\\?`));
+        expect(await card.locator('a[href^="/"]').count(), 'no link names discogs.com').toBe(0);
+        await page.keyboard.press('Space');
+        const dialog = page.locator('#mb-dp-dialog');
+        await expect(dialog).toBeVisible();
+        await expect(dialog.locator('.mb-dp-area')).toContainText('Bruce Springsteen');
+        expect(await dialog.locator('.mb-dp-area a[href^="/"]').count(), 'nor in the window').toBe(0);
+        expect(errors).toEqual([]);
+    });
+
+    test('murdos\' importer\'s icon in Discogs\' content: the same card, on the initial page', async ({ page }) => {
+        // sa_pop_ext too: the Discogs name beside the icon is its preview's.
+        const { errors } = await openDg(page, 'release', { settings: { sa_pop_mb: true, sa_pop_ext: true } });
+        await answerArtistCards(page);
+        // The importer's markup (debug/bb-release-born-to-run-with-MB-links-initial.html).
+        await page.evaluate((id) => {
+            const w = document.createElement('span');
+            w.className = 'mb_wrapper';
+            w.innerHTML = `<span class="mb_valign"><a href="https://musicbrainz.org/artist/${id}" title="See this artist on MusicBrainz">` +
+                '<img src="https://musicbrainz.org/static/images/entity/artist.svg" height="16" width="16"></a> </span>' +
+                '<span class="mb_valign"><a href="/artist/219986-Bruce-Springsteen" mlink="artist/219986" mlink_done="artist">Bruce Springsteen</a></span>';
+            document.querySelector('#app h1').appendChild(w);
+        }, MB.bruce);
+        const icon = page.locator('#app .mb_wrapper a[href^="https://musicbrainz.org/"]');
+        expect(await icon.evaluate((a) => window.__saTest.popResolve(a))).toBe(`dg-mb|artist:${MB.bruce}`);
+        // The Discogs name beside it stays Discogs' (WIP.3).
+        expect(await page.locator('#app .mb_wrapper a[mlink]').evaluate((a) => window.__saTest.popResolve(a))).toMatch(/^ext\|ext:discogs:/);
+        const card = page.locator('#mb-dp-peek');
+        await ctrlHover(page, icon);
+        await expect(card).toContainText('Bruce Springsteen');
+        await expect(card.locator('.mb-pop-kind-head')).toContainText('Artist');
+        expect(await page.evaluate(() => window.__mbCardAsked)).toHaveLength(1);
+        // A search box is no entity: nothing.
+        await page.evaluate(() => {
+            const s = document.createElement('a');
+            s.className = 'mb_search_link';
+            s.href = 'https://musicbrainz.org/search?query=Columbia&type=series&indexed=1';
+            s.textContent = 'S?';
+            document.querySelector('#app h1').appendChild(s);
+        });
+        expect(await page.locator('#app a.mb_search_link').evaluate((a) => window.__saTest.popResolve(a))).toBeNull();
+        expect(errors).toEqual([]);
+    });
+});

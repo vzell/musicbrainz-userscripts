@@ -561,8 +561,23 @@ of ours.
   N", "pending", "error"; a ticked one rings the matched icons with the
   Relationships column's `mb-rel-icon-match` (cleared by every filter pass —
   a highlight span would not do: its reset turns its content into text).
-- A click on our MusicBrainz icons opens musicbrainz.org in a new tab: the
-  link previews skip musicbrainz.org hosts (`_EXT_SKIP_HOST_RE`).
+- ~~A click on our MusicBrainz icons opens musicbrainz.org in a new tab: the
+  link previews skip musicbrainz.org hosts (`_EXT_SKIP_HOST_RE`).~~ Since
+  2026-10-24 (org/TODO.org "some more BB and MB fixes/enhancements" 5b/5c)
+  our icons AND murdos' importer's icons in Discogs' content
+  (`#app a[href^="https://musicbrainz.org/"]`) are the source `_dgMbSource()`
+  (listed before `_extSource()`, under `sa_pop_mb`): MusicBrainz's own card
+  and window, `_MB_KINDS[kind]` unchanged. Their requests go through
+  `_mbWsLoad()` → `_rgWsGet()`, which on a foreign host asks
+  `https://musicbrainz.org/ws/2/…` through `_mbWsGetForeign()` (one GM
+  request after `_relAwaitRateSlot()`, no retry, as `_dgMbAsk()`); the
+  HTML's MusicBrainz-relative links are made absolute (`_dgMbAbs()`). No Live
+  page (MusicBrainz's browser check). An icon is an image link and gets the
+  card anyway (`_DG_MB_LINK_RE`: only `/<kind>/<MBID>`, so the importer's
+  search boxes get none). A plain click on our column's icon opens the
+  window, as every link in our tables (`_dgTableClickOpens()`); Ctrl-click
+  the new tab. Links inside the window go to musicbrainz.org in a new tab
+  (`_mbPopTarget()` is same-origin, so nothing drills there).
 
 Probe: `scripts/probe-mb-url-batch-by-discogs.py` (2026-10-19, NB-3641; its
 docstring has the results): up to 100 resources a request, the 101st DROPPED

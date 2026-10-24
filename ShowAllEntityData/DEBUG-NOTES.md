@@ -26186,3 +26186,38 @@ render…" (Brucebase card from detail-bb-gig-1985-01-13.html); discogs-links
 "the older layout…". Mutations `scripts/mutations/discogs-initial-previews.json`:
 6 (5 fail; the "every host" scope recorded `pass`, equivalent on MusicBrainz;
 the MusicBrainz `/gig:` guard is popup-ext U4's).
+
+## 2026-10-24 — discogs.com: MusicBrainz cards for our MusicBrainz column and murdos' importer icons (branch feature/bb-mb-window-images-discogs, WIP.4)
+
+Env: 2026-10-24T18:24:43+02:00 · petri · WSL2 Ubuntu 24.04.3 (Linux 6.18.54.1) · Playwright 1.62.1 Chromium, no Tampermonkey (GM stubs)
+
+org/TODO.org "some more BB and MB fixes/enhancements" 5b/5c(1)
+(`debug/bb-release-born-to-run-with-MB-links-initial.html`: 46
+`span.mb_wrapper` of the importer, 26 artist, 13 label, 5 place, 2 release,
+1 release-group icon; `-final.html`: our 403 MB cells, 103 links).
+
+**Cause.** No source took a musicbrainz.org link on discogs.com:
+`_mbEntitySource()` is off on a foreign host and same-origin
+(`_mbPopTarget()`), refuses image links; `_extTarget()` skips MetaBrainz
+hosts; and the cards' loaders are same-origin `fetch('/ws/2/…')`.
+
+**Fix.** `_dgMbSource()` (before `_extSource()`, under `sa_pop_mb`):
+`#mb-dg-root table.tbl > tbody` and `#app` links to
+`https://musicbrainz.org/<kind>/<MBID>` (`_DG_MB_LINK_RE`), image links
+included; `_MB_KINDS[kind].card/extracted` unchanged, their HTML made
+absolute (`_dgMbAbs()`). `_rgWsGet()`, on a foreign host, asks through
+`_mbWsGetForeign()` (one `_extGet()` after the MusicBrainz slot, as
+`_dgMbAsk()` and `_bbMbevPopLoad()`); MusicBrainz's own path is unchanged.
+A plain click on our column's icon now opens the window (every link in our
+tables does, `_dgTableClickOpens()`; vzell 2026-10-18).
+
+Specs: discogs-mb-column "MusicBrainz cards for the MusicBrainz icons" (2):
+our icon (one lookup from musicbrainz.org, no relative link in the card or
+window), the importer's (on the initial page; a search box gets nothing; the
+Discogs name beside it stays Discogs'). Mutations
+`scripts/mutations/discogs-mb-cards.json`: 5, all fail as expected. Not
+checked live: the window's extras (a release group's releases, an artist's
+release groups) go through `_mbWsLoad()` too, so they should load. The
+kinds fed by a MusicBrainz PAGE (`_mbPopPageKind()`: collection, edit,
+user, tag, …) are outside `_DG_MB_LINK_RE`, and the editing history (H) is
+off on a foreign host already (`_mbEditsSubject()`).

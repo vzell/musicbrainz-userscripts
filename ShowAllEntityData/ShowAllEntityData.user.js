@@ -17742,6 +17742,90 @@
     }
 
     /**
+     * A musicbrainz.org entity link on discogs.com, as the popup engine reads
+     * it: `https://musicbrainz.org/<kind>/<MBID>` of a kind with a card.
+     * @type {RegExp}
+     */
+    const _DG_MB_LINK_RE = /^https:\/\/musicbrainz\.org\/(artist|label|place|release|release-group|recording|work|event|series|area|instrument)\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\/?(?:[?#]|$)/i;
+
+    /**
+     * A MusicBrainz card's or window's HTML for discogs.com: its
+     * MusicBrainz-relative links and images (`/release-group/…`) made
+     * absolute, else they would name discogs.com.
+     *
+     * @param {string} html
+     * @returns {string}
+     */
+    function _dgMbAbs(html) {
+        return String(html).replace(/(\s(?:href|src)=")\/(?!\/)/g, '$1https://musicbrainz.org/');
+    }
+
+    /**
+     * MusicBrainz links on discogs.com as a source of the popup engine
+     * (org/TODO.org "some more BB and MB fixes/enhancements" 5b/5c, vzell
+     * 2026-10-24): the icons murdos' "Import Discogs releases to
+     * MusicBrainz" puts beside Discogs' names (`#app .mb_wrapper a`, any
+     * musicbrainz.org link in Discogs' content) and our MusicBrainz column's
+     * (`a.mb-dg-mb-link`). Each gets MusicBrainz's own card and window
+     * (`_MB_KINDS[kind]`), unchanged: their requests go through
+     * `_mbWsLoad()`, which on another site asks musicbrainz.org through GM
+     * (`_mbWsGetForeign()`) after the MusicBrainz rate slot; the HTML's
+     * links are made absolute (`_dgMbAbs()`). No Live page (MusicBrainz
+     * answers a script's page request with a browser check). An icon is an
+     * image link and still gets the card: here the image IS the link, as a
+     * Relationships icon on MusicBrainz. Under `sa_pop_mb`, with Ctrl as the
+     * other previews; a plain click in our table opens the window, as every
+     * link there (`_dgTableClickOpens()`).
+     *
+     * @returns {object} The source.
+     */
+    function _dgMbSource() {
+        const sel = '#mb-dg-root table.tbl > tbody a[href^="https://musicbrainz.org/"], #app a[href^="https://musicbrainz.org/"]';
+        const resolve = (a) => {
+            const m = _DG_MB_LINK_RE.exec(a.getAttribute('href') || '');
+            const type = m && m[1].toLowerCase();
+            const k = type && Object.prototype.hasOwnProperty.call(_MB_KINDS, type) ? _MB_KINDS[type] : null;
+            if (!k || !k.card) return null;
+            const id = m[2].toLowerCase();
+            const td = a.closest('td, th');
+            const table = td && td.closest('table.tbl');
+            // An icon's name: the importer's title ("See this artist on
+            // MusicBrainz") says nothing; the Discogs name beside it does (in
+            // our column, the cell's `data-mb-dg-name`).
+            const wrap = a.closest('.mb_wrapper');
+            const beside = wrap && wrap.querySelector('a[href]:not([href^="https://musicbrainz.org/"])');
+            const cell = a.closest('td.mb-dg-mb-cell');
+            const name = _dpText(a.textContent) || (beside ? _dpText(beside.textContent) : '') ||
+                (cell && cell.dataset.mbDgName) || '';
+            return {
+                key: `${type}:${id}`, url: `https://musicbrainz.org/${type}/${id}`, type, id, noLive: true,
+                kind: k.titleOf ? k.titleOf(id) : k.title, wide: !!k.wide, name,
+                col: table ? _resolveColHeaderName(table, td.cellIndex) : '',
+            };
+        };
+        return {
+            id: 'dg-mb',
+            kind: 'MusicBrainz',
+            selector: sel,
+            live: null,
+            enabled: () => !!_isDgHost && _popSettingOn('sa_pop_mb'),
+            resolve,
+            needsCtrl: _dpNeedsCtrl,
+            liveUrl: (t) => t.url,
+            card: (t, start, repaint) => _dgMbAbs(_MB_KINDS[t.type].card(t, start, repaint)),
+            extracted: (t, start, force, repaint) => _dgMbAbs(_MB_KINDS[t.type].extracted(t, start, force, repaint)),
+            // The same kind in the same block: our table's column, else
+            // Discogs' content.
+            steps: (t) => {
+                const box = t.el.closest('#mb-dg-root table.tbl') || document.getElementById('app') || document.body;
+                return Array.from(box.querySelectorAll('a[href^="https://musicbrainz.org/"]'))
+                    .filter(x => x.getClientRects().length && (resolve(x) || {}).type === t.type);
+            },
+            stepId: (a) => a.getAttribute('href'),
+        };
+    }
+
+    /**
      * Whether this page is a discogs.com submissions list (`dg-submissions`):
      * there a release's window shows its edit history first
      * (`_extDiscogsWindow()`).
@@ -22311,7 +22395,7 @@
     function _popSources() {
         if (!_popSources.list) {
             _popSources.list = Object.keys(_DP_SITES).map(host => _dpSiteSource(host, _DP_SITES[host]))
-                .concat([_bbMbevSource(), _rgLinkSource(), _eventRgSource(), _extSource(), _mbEntitySource()]);
+                .concat([_bbMbevSource(), _dgMbSource(), _rgLinkSource(), _eventRgSource(), _extSource(), _mbEntitySource()]);
         }
         return _popSources.list;
     }
@@ -50980,6 +51064,9 @@
      * popup engine's rule, as `_dpGet()` on the foreign hosts). The slot is
      * spent either way: it was reserved synchronously.
      *
+     * On another site (discogs.com: `_dgMbSource()`) the Web Service is
+     * another origin: `_mbWsGetForeign()`, after the same slot.
+     *
      * @param {string} url - Same-origin `/ws/2/...`.
      * @param {string} label - For the `rg` debug channel.
      * @param {?function(): boolean} [wanted] - Whether anyone still wants it.
@@ -50991,6 +51078,7 @@
             Lib.debug('rg', `${label}: no longer wanted, not asked: ${url}`);
             return { ok: false, status: 0, data: null, detail: 'skipped', skipped: true };
         }
+        if (_foreignHost && url.startsWith('/')) return _mbWsGetForeign(url);
         return _ws2GetJson(url, {
             tries: _RG_PREVIEW_TRIES,
             beforeRetry: async (attempt, retryAfterMs) => {
@@ -51000,6 +51088,31 @@
             dbg: (...args) => Lib.debug('rg', ...args),
             label,
         });
+    }
+
+    /**
+     * A Web Service request from another site (discogs.com, `_dgMbSource()`):
+     * `fetch()` cannot read musicbrainz.org there, so ONE `_extGet()`
+     * (GM_xmlhttpRequest, anonymous), as the MusicBrainz column's lookups
+     * (`_dgMbAsk()`) and Brucebase's MB-Event card (`_bbMbevPopLoad()`) do;
+     * the caller has taken the MusicBrainz rate slot. No retry: a failure
+     * is not kept, and the next hover asks again (`_mbLoad()`).
+     *
+     * @param {string} url - `/ws/2/...`.
+     * @returns {Promise<{ok: boolean, status: number, data: ?Object, detail: string}>}
+     */
+    async function _mbWsGetForeign(url) {
+        const res = await _extGet(`https://musicbrainz.org${url}`, {
+            gate: false, wanted: () => true,
+            fetchOpts: { accept: /\bjson\b/i, headers: { 'User-Agent': _EXT_AGENT, Accept: 'application/json' } },
+        });
+        if (res.error) return { ok: false, status: 0, data: null, detail: res.error };
+        if (res.status !== 200) return { ok: false, status: res.status, data: null, detail: `HTTP ${res.status}` };
+        try {
+            return { ok: true, status: 200, data: JSON.parse(String(res.body || '') + String(res.tail || '')), detail: '' };
+        } catch (_) {
+            return { ok: false, status: 200, data: null, detail: 'MusicBrainz did not answer JSON' };
+        }
     }
 
     /**
