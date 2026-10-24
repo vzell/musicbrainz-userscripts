@@ -1156,8 +1156,10 @@ the same way. The card shows at most 12 tiles and a "+N" for the rest
 (*Tiles shown in the artwork card*). While it shows:
 
 - **Space** draws every image; Space again goes back to the first 12. With
-  nothing cut off, or while you are typing into a field, Space keeps its usual
-  meaning.
+  nothing cut off, Space does what a click does: it opens the artwork viewer
+  (also on a cover whose card is switched off or still loading). While you
+  are typing into a field, or with Shift, Ctrl, Alt or ⌘ held, Space keeps its
+  usual meaning.
 - **Shift** held draws the tiles bigger (*Tile size in the artwork card while
   Shift is held*, 150 px), also when Shift is already down as the pointer
   reaches the icon. Release it to go back.

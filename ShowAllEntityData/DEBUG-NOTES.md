@@ -25780,3 +25780,47 @@ tiles, "Setlist ×2") and viewer (01a first). Mutations
 `scripts/mutations/bb-image-card.json`: 13, all as expected, the two new ones
 fail. Related specs (bb-year, foreign-gallery, sl-scope-bar,
 bb-image-card.mobile, detail-preview): 105 passed.
+
+## 2026-10-24 — Space on a hovered image scrolled the page (branch feature/bb-events-and-gallery, WIP.2)
+
+Env: 2026-10-24T02:33:37+02:00 · petri · WSL2 Ubuntu 24.04.3 (Linux 6.18.54.1) · Playwright 1.62.1 Chromium (desktop; chromium-mobile: Pixel 7 emulation), no Tampermonkey (GM stubs)
+
+Reported by vzell on https://www.discogs.com/release/11123984-Bruce-Springsteen-Born-To-Run
+(Image column, a 10-image card): only Shift and Click were recognised, and
+Space scrolled the page down.
+
+**Cause.** `_mbttKey()` spent Space only on a card that is cut off (more
+than `sa_caa_tip_summary_tiles`, 12) or already shows every image. A
+10-image card has no `data-mb-art-cut`, so Space went to the page. So did
+Space with no card at all (`sa_bb_tip_images` off, a single-picture card, a
+Loading card): `_onCardKey` returns early without a resolver card.
+
+**Fix.** `_onImageSpace` in `_initStatTooltip()`, registered after
+`_onCardKey`, runs the trigger's own click handler with a stand-in event
+(`_artSpaceOpen()`). Three traps, each found by a run:
+- **`:hover` lies right after the viewer closes.** The first version read the
+  trigger from `document.querySelectorAll(':hover')`; on the sidebar spec,
+  after Esc closed the viewer and the page had scrolled, Chromium listed the
+  hidden `#mb-art-viewer` as hovered, with the pointer on the cover copy
+  whose card was showing. The trigger now comes from `mouseover`
+  (`_artSpaceTrigger()`).
+- **An unspent Space scrolls SMOOTHLY.** The spec's "off an image" step let
+  Space scroll the page, and the next hover landed while the scroll still
+  ran: the row slid away and the pointer ended on another row's Type cell,
+  so the Shift and typing mutants passed. `pressSpace()` waits for ten still
+  frames, and that step runs last.
+- **`{ once: true }` on a keydown listener is used up by Shift** in
+  "Shift+Space", so the helper never saw the Space.
+
+16 images in the relationship-list and sidebar fixtures make those cards cut
+off, where Space is the "every image" toggle (kept, as planned); their Space
+tests seed `sa_caa_tip_summary_tiles: 20`. Two existing assertions changed
+meaning on purpose: discogs-image-card "Space with nothing cut off is left
+alone" and caa-column-redesign "B1 keys: Space is left alone with nothing
+cut off" now assert the viewer opens and the page does not scroll.
+
+Mutations `scripts/mutations/image-card-space.json`: 11, 10 fail as expected,
+one recorded `pass` (the card's `_hide()`: Chromium hides the card itself
+once the viewer covers the resting pointer). Every spec that presses Space
+(19 files): 340 passed; mobile project 57 passed; image-card-space 16/16
+with `--repeat-each=4`.

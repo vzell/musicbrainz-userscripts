@@ -160,6 +160,25 @@ test.describe('relationship list cover icons', () => {
         expect(log.dialogs, 'no navigation guard dialog').toEqual([]);
     });
 
+    test('Space on the hovered icon opens the same viewer as the click, and the page does not scroll (2026-10-24)', async ({ page }) => {
+        // 16 images: with the default 12 tiles the card is cut off, and
+        // Space is its "every image" toggle; 20 tiles show them all.
+        const log = await openRelList(page, { sa_caa_tip_summary_tiles: 20 });
+        const before = page.url();
+        await page.mouse.move(0, 0);
+        await page.locator('#rel-cover-icon').hover();
+        await expect(page.locator('#mb-stat-tooltip')).toBeVisible();
+        const scrollY = await page.evaluate(() => window.scrollY);
+        await page.keyboard.press('Space');
+        const viewer = page.locator('#mb-art-viewer');
+        await expect(viewer.locator('.mb-artv-title')).toHaveText('Tunnel of Love Express');
+        await expect(viewer.locator('.mb-artv-pos')).toHaveText(`1 / ${RECORD.images.length}`);
+        await expect(page.locator('#mb-stat-tooltip'), 'the card is not left over the viewer').toBeHidden();
+        expect(await page.evaluate(() => window.scrollY)).toBe(scrollY);
+        expect(page.url()).toBe(before);
+        expect(log.dialogs, 'no navigation guard dialog').toEqual([]);
+    });
+
     test('with the artwork card off: no card, the native title stays', async ({ page }) => {
         const log = await openRelList(page, { sa_caa_tip_summary: false });
         const icon = page.locator('#rel-cover-icon');

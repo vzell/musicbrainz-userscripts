@@ -219,7 +219,9 @@ test.describe('CAA/EAA column redesign', () => {
 
     // Card keys (2026-10-20). Space must DRAW every image (16 tiles, no "+N"),
     // not merely be swallowed — and must leave the page's Space alone where
-    // it has nothing to do: no card, nothing cut off, typing into a field.
+    // it has nothing to do: no card, typing into a field. With nothing cut
+    // off, Space opens the viewer as a click does (2026-10-24, org/TODO.org
+    // "Some enhancements" 2; before, it scrolled the page).
     // Shift must change the drawn TILE SIZE, measured, not a class.
 
     /**
@@ -259,14 +261,23 @@ test.describe('CAA/EAA column redesign', () => {
         await expect(tip.locator('.mb-art-card-tile'), 'a new hover starts at the cap').toHaveCount(12);
     });
 
-    test('B1 keys: Space is left alone with nothing cut off and while typing into a field', async ({ page }) => {
+    test('B1 keys: Space opens the viewer with nothing cut off, and is left alone while typing into a field', async ({ page }) => {
         test.setTimeout(120000);
         await open(page);
         const tip = page.locator('#mb-stat-tooltip');
         await cell(page, R.outside).locator('span.caa-icon').hover();
         await expect(tip.locator('.mb-art-card-tile')).toHaveCount(3);
-        expect(await spaceSpent(page), 'three images, nothing cut off').toBe(false);
         await expect(tip.locator('.mb-art-card-keys')).not.toContainText('Space');
+        const scrollY = await page.evaluate(() => window.scrollY);
+        expect(await spaceSpent(page), 'three images, nothing cut off: the viewer\'s').toBe(true);
+        const viewer = page.locator('#mb-art-viewer');
+        await expect(viewer, 'Space did what a click does').toBeVisible();
+        await expect(viewer.locator('.mb-artv-pos')).toHaveText(/^\d+ \/ 3$/);
+        await expect(tip, 'the card is not left over the viewer').toBeHidden();
+        expect(await page.evaluate(() => window.scrollY), 'the page did not scroll').toBe(scrollY);
+        await page.keyboard.press('Escape');
+        await expect(viewer).toBeHidden();
+        await page.mouse.move(0, 0);
 
         await cell(page, R.sixteen).locator('span.caa-icon').hover();
         await expect(tip.locator('.mb-art-card-tile')).toHaveCount(12);
@@ -378,6 +389,21 @@ test.describe('CAA/EAA column redesign', () => {
         await page.keyboard.press('Escape');
         expect(await page.evaluate(() => document.activeElement && document.activeElement.getAttribute('href')))
             .toBe(`/release/${R.sixteen}/cover-art`);
+    });
+
+    test('D1: Space on a hovered image of an expanded cell opens the viewer at that image, as the click does (2026-10-24)', async ({ page }) => {
+        test.setTimeout(120000);
+        await open(page);
+        await expandCell(page, R.sixteen);
+        const img = cell(page, R.sixteen).locator('li.mb-caa-art-li-image[data-mb-art-i="5"]');
+        await page.mouse.move(0, 0);
+        await img.hover();
+        const scrollY = await page.evaluate(() => window.scrollY);
+        await page.keyboard.press('Space');
+        await expect.poll(() => viewer(page)).toMatchObject({ pos: '6 / 16', rowPos: 'row 1 of 5' });
+        expect(await page.evaluate(() => window.scrollY), 'the page did not scroll').toBe(scrollY);
+        await page.keyboard.press('Escape');
+        expect(await viewer(page)).toBeNull();
     });
 
     test('D1: a plain icon click is the viewer\'s, a Ctrl-click the link\'s; with cross-rows off ← → wrap in the row', async ({ page }) => {

@@ -97,7 +97,7 @@ test.describe('discogs.com: the Image column\'s hover card (2026-10-19)', () => 
     // The card keys (2026-10-20) are shared by every card _artCardCoreHtml()
     // builds. Five images are never cut off, so Space is the page's here;
     // Shift must still draw the tiles bigger — measured, not a class.
-    test('card keys: Shift draws the tiles bigger while held; Space with nothing cut off is left alone', async ({ page }) => {
+    test('card keys: Shift draws the tiles bigger while held; Space with nothing cut off opens the viewer, as a click does', async ({ page }) => {
         const { errors, table } = await openVersions(page);
         await hover(page, thumbOf(table, RELEASE));
         const tiles = tip(page).locator('.mb-art-card-tile');
@@ -108,13 +108,14 @@ test.describe('discogs.com: the Image column\'s hover card (2026-10-19)', () => 
         await expect.poll(width).toBe(150);
         await page.keyboard.up('Shift');
         await expect.poll(width).toBe(56);
-        const spent = await page.evaluate(() => {
-            const ev = new KeyboardEvent('keydown', { key: ' ', code: 'Space', bubbles: true, cancelable: true });
-            document.body.dispatchEvent(ev);
-            return ev.defaultPrevented;
-        });
-        expect(spent).toBe(false);
-        await expect(tiles).toHaveCount(5);
+        // 2026-10-24 (org/TODO.org "Some enhancements" 2): Space used to be
+        // left to the page here, which scrolled it down under the card.
+        const scrollY = await page.evaluate(() => window.scrollY);
+        await page.keyboard.press('Space');
+        const viewer = page.locator('#mb-art-viewer');
+        await expect(viewer.locator('.mb-artv-pos')).toHaveText('1 / 5');
+        await expect(tip(page)).toBeHidden();
+        expect(await page.evaluate(() => window.scrollY), 'the page did not scroll').toBe(scrollY);
         expect(errors).toEqual([]);
     });
 

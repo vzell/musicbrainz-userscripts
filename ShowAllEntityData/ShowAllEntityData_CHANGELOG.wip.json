@@ -1,5 +1,17 @@
 [
     {
+        "version": "WIP.2",
+        "date": "2026-10-24",
+        "sections": [
+            {
+                "label": "✨ Improve",
+                "items": [
+                    "Space on a hovered image now does what a click does: it opens the artwork viewer, instead of scrolling the page under the card. This works on Discogs' Image column, the Springsteen sites' image cells and Brucebase's Media icons, and on MusicBrainz's artwork icons, relationship-list covers, the images of an expanded cell and the sidebar cover. It works even when the card is switched off or still loading. On a card with more images than it shows, Space still shows them all first, as before. Space keeps its usual meaning while you type into a field, or with Shift, Ctrl, Alt or ⌘ held."
+                ]
+            }
+        ]
+    },
+    {
         "version": "WIP.1",
         "date": "2026-10-24",
         "sections": [

@@ -506,8 +506,22 @@ Grep `// ── CAA/EAA column redesign` for the code. Rules that fail silently:
   key to `_mbttKey()` while a resolver card shows, and rebuilds the card
   through `_statTipApi.repaint()`. Late record repaints (`_artRelIconRepaint()`,
   the Discogs card) also go through that, so the fit runs on them too. Space is
-  spent ONLY when the card is cut off (`data-mb-art-cut`) or already shows every
-  image; typing into a field keeps it (`_dpPeek.typedAt`, which the tooltip
+  spent by the card ONLY when it is cut off (`data-mb-art-cut`) or already shows every
+  image; otherwise, since 2026-10-24 (org/TODO.org "Some enhancements" 2: the
+  page scrolled under the card), Space does what a plain click does —
+  `_onImageSpace`, registered AFTER `_onCardKey` so the card's toggle wins and
+  stops the event, runs `_artSpaceOpen()`: the trigger's own click handler
+  (`_fiClick()`, `_artColumnViewerOnClick()`, `_artIconClick()`) with a
+  stand-in event, or `_sbOpenCover()`; never `el.click()`, which follows the
+  link when no handler takes it. `_ART_SPACE_FNS` is `_ART_CARD_FNS` plus
+  `art-img`. The trigger comes from `mouseover` (`_artSpaceTrigger()`), card or
+  no card (switched off, loading), NOT from `:hover`: right after the viewer
+  closed and the page scrolled, Chromium still listed the hidden
+  `#mb-art-viewer` as hovered. A handler that declines leaves Space to the
+  page, as it leaves the click to the link; Shift/Ctrl/Alt/⌘ too. Specs
+  `image-card-space.spec.js` plus one Space test beside each click test
+  (rel-icons, caa-column-redesign D1, sidebar-picture, discogs-image-card);
+  mutations `scripts/mutations/image-card-space.json`. Typing into a field keeps it (`_dpPeek.typedAt`, which the tooltip
   engine now records itself, because the link preview installs nothing where
   its sources are off); a shown link preview owns it. "Every image" belongs to
   the hovered element and resets in `_mbttAfterHide()`; Shift follows the key

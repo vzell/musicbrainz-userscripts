@@ -84657,6 +84657,43 @@ a { color: #1565c0; }`;
         };
         document.addEventListener('keydown', _onCardKey, true);
         document.addEventListener('keyup', _onCardKey, true);
+
+        // The image trigger under the pointer, for `_onImageSpace`: set on
+        // every mouseover (null off a trigger), dropped when the pointer
+        // leaves the page. A tap's compatibility mouseover is no pointing.
+        let _spaceEl = null;
+        document.addEventListener('mouseover', (e) => {
+            if (!_isTouchCompatMouseEvent(e)) _spaceEl = _artSpaceTrigger(e.target);
+        }, true);
+        document.addEventListener('mouseout', (e) => {
+            if (!e.relatedTarget) _spaceEl = null;
+        }, true);
+
+        /**
+         * Space over an image trigger opens the viewer, as a click does
+         * (`_artSpaceOpen()`), instead of scrolling the page. Registered
+         * after `_onCardKey`, which keeps Space for a card's "every image"
+         * toggle and then stops the event. Card or no card (switched off,
+         * loading, nothing to show), the pointer is on the image all the
+         * same. Shift (bigger tiles), Ctrl, Alt and ⌘ leave Space alone, as
+         * they leave the click to the link; Space typed into a field stays
+         * the field's, and a link preview card keeps its own Space.
+         * @param {KeyboardEvent} e
+         */
+        const _onImageSpace = (e) => {
+            if (!(e.key === ' ' || e.code === 'Space') || e.repeat || e.defaultPrevented ||
+                    e.shiftKey || e.ctrlKey || e.altKey || e.metaKey) return;
+            if (_artViewerState) return;
+            if (_dpIsTextField(e.target) && Date.now() - _dpPeek.typedAt < _DP_TYPING_GRACE_MS) return;
+            if (_dpPeekShown()) return;
+            const el = _spaceEl;
+            if (!el || !el.isConnected || !_artSpaceOpen(el)) return;
+            e.preventDefault();
+            e.stopImmediatePropagation();
+            // The viewer opens over the pointer: the card must not stay on top.
+            if (_target) _hide();
+        };
+        document.addEventListener('keydown', _onImageSpace, true);
         // When typing happened, for `_mbttKey()`'s "a Space typed into a
         // field stays the field's". The link preview records it too, but
         // installs nothing where its sources are all off.
@@ -138083,9 +138120,10 @@ a { color: #1565c0; }`;
     /**
      * A key while a resolver card shows (`_initStatTooltip()`): Space toggles
      * every image of an artwork card that has more than its tiles show (else
-     * Space stays the page's), Shift draws bigger tiles. Space typed into a
-     * field stays the field's, and a link preview card owns Space while it
-     * shows — the link preview's own rules.
+     * Space opens the viewer, `_artSpaceOpen()`, as a click does), Shift
+     * draws bigger tiles. Space typed into a field stays the field's, and a
+     * link preview card owns Space while it shows — the link preview's own
+     * rules.
      *
      * @param   {Element}       el The card's element.
      * @param   {KeyboardEvent} e
@@ -138109,6 +138147,78 @@ a { color: #1565c0; }`;
         else if (card.hasAttribute('data-mb-art-cut')) _artCardView.allEl = el;
         else return null;
         return { repaint: true, consume: true };
+    }
+
+    /**
+     * The image triggers Space opens like a click (org/TODO.org "Some
+     * enhancements" 2, 2026-10-24): every artwork card of `_ART_CARD_FNS`,
+     * and the single image of an expanded CAA/EAA cell (`art-img`).
+     * @type {Set<string>}
+     */
+    const _ART_SPACE_FNS = new Set([..._ART_CARD_FNS, 'art-img']);
+
+    /**
+     * The image trigger a node is in, whether or not its card shows: a card
+     * switched off (`sa_bb_tip_images`), still loading or with nothing to
+     * show is pointed at all the same. Fed from `mouseover` by
+     * `_initStatTooltip()`, never from `:hover`: right after the viewer
+     * closed and the page scrolled, Chromium still listed the hidden
+     * `#mb-art-viewer` as hovered (Playwright, 2026-10-24).
+     *
+     * @param   {?EventTarget} node
+     * @returns {?HTMLElement} An element whose `data-mbtt-fn` is in `_ART_SPACE_FNS`.
+     */
+    function _artSpaceTrigger(node) {
+        if (!(node instanceof Element)) return null;
+        for (let el = node.closest('[data-mbtt-fn]'); el; el = el.parentElement && el.parentElement.closest('[data-mbtt-fn]')) {
+            if (_ART_SPACE_FNS.has(el.dataset.mbttFn)) return el;
+        }
+        return null;
+    }
+
+    /**
+     * Space on an image trigger: does what a plain left click on it does,
+     * through the same click handler, given a stand-in event — never
+     * `el.click()`, which would follow the link when no handler takes it.
+     * A handler that declines (a setting off, no images, a row not shown)
+     * leaves Space to the page, exactly as it leaves the click to the link.
+     *
+     * | `data-mbtt-fn`     | handler                                          |
+     * |--------------------|--------------------------------------------------|
+     * | `fi-img`, `dg-img` | `_fiClick()` (the foreign tables)                |
+     * | `art-sum`          | `_artColumnViewerOnClick()` at the cell's icon   |
+     * | `art-img`          | `_artColumnViewerOnClick()` at that image        |
+     * | `art-rel`          | `_artIconClick()`                                |
+     * | `sb-cover`         | `_sbOpenCover()` (the sidebar's link and copy)   |
+     *
+     * @param   {HTMLElement} el A trigger from `_artSpaceTrigger()`.
+     * @returns {boolean} Whether a viewer opening was started.
+     */
+    function _artSpaceOpen(el) {
+        const fn = el.dataset.mbttFn;
+        if (fn === 'sb-cover') {
+            if (!el.dataset.mbSbCover) return false;
+            _sbOpenCover(el.dataset.mbSbCover, el);
+            return true;
+        }
+        let target = el;
+        if (fn === 'art-sum') {
+            // The badge and the icon span are stamped too; the handler wants
+            // the summary's link.
+            const li = el.closest('li.mb-caa-art-li-summary');
+            const a = li && li.querySelector(`a[href$="${CAA_CTX.artSuffix}"], a[href$="${EAA_CTX.artSuffix}"]`);
+            if (a) target = a;
+        }
+        const handler = fn === 'fi-img' || fn === 'dg-img' ? _fiClick
+            : fn === 'art-sum' || fn === 'art-img' ? _artColumnViewerOnClick
+            : fn === 'art-rel' ? _artIconClick : null;
+        if (!handler) return false;
+        let taken = false;
+        handler({
+            type: 'click', button: 0, ctrlKey: false, shiftKey: false, altKey: false, metaKey: false, target,
+            preventDefault() { taken = true; }, stopPropagation() {}, stopImmediatePropagation() {},
+        });
+        return taken;
     }
 
     /**
