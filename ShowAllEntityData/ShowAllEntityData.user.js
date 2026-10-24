@@ -65062,7 +65062,7 @@
      */
     const _TOOLBAR_MENU_ROW_ORDER = {
         data: ['mb-save-to-disk-btn', 'mb-load-from-disk-btn', 'mb-export-btn'],
-        view: ['mb-density-btn', 'mb-stats-btn', 'mb-shortcuts-help-btn'],
+        view: ['mb-density-btn', 'mb-stats-btn', 'mb-idbo-menu-btn', 'mb-shortcuts-help-btn'],
         help: ['mb-settings-btn', 'mb-app-help-btn', 'mb-shortcuts-help-btn'],
         disc: ['mb-disc-complete-btn', 'mb-disc-official-btn', 'mb-disc-nonofficial-btn', 'mb-disc-merged-btn'],
     };
@@ -73317,6 +73317,30 @@ a { color: #1565c0; }`;
         _ensureViewMenu().adopt(statsBtn,
             getShortcutDisplay('sa_shortcut_open_statistics', 'Ctrl+I'));
         Lib.debug('ui', 'Statistics button added to controls');
+        ensureSettingsButtonIsLast();
+    }
+
+    /**
+     * Adds "💾 Browser cache" to the SAED menu's View group, after Statistics
+     * and before Keyboard Shortcuts (`_TOOLBAR_MENU_ROW_ORDER.view`; vzell,
+     * 2026-10-24): the browser cache overview (`_idbOverviewOpen()`), until
+     * now reached from ⚙️ Settings, the Statistics panel, a progress card and
+     * the Tampermonkey menu. Added by the render tail beside Statistics, so
+     * before anything is loaded View stays hidden as before. No setting of
+     * its own: the overview has none. Idempotent.
+     *
+     * @returns {void}
+     */
+    function addCacheOverviewButton() {
+        if (!document.getElementById('mb-show-all-controls-container') || document.getElementById('mb-idbo-menu-btn')) return;
+        const btn = document.createElement('button');
+        btn.id = 'mb-idbo-menu-btn';
+        btn.type = 'button';
+        btn.innerHTML = '<span>💾 Browser cache</span>';
+        _setTip(btn, 'What this script keeps in your browser: how much, how old, and what to delete');
+        btn.style.cssText = uiActionBtnBaseCSS();
+        btn.onclick = () => _idbOverviewOpen(null);
+        _ensureViewMenu().adopt(btn);
         ensureSettingsButtonIsLast();
     }
 
@@ -99455,6 +99479,8 @@ a { color: #1565c0; }`;
             if (Lib.settings.sa_enable_stats_panel) {
                 addStatsButton();
             }
+            // 💾 Browser cache, after Statistics in View (no setting of its own)
+            addCacheOverviewButton();
 
             // Initialize keyboard shortcuts
             if (Lib.settings.sa_enable_keyboard_shortcuts) {
@@ -128519,6 +128545,8 @@ a { color: #1565c0; }`;
             if (Lib.settings.sa_enable_stats_panel) {
                 addStatsButton();
             }
+            // 💾 Browser cache, after Statistics in View (no setting of its own)
+            addCacheOverviewButton();
 
             // Initialize keyboard shortcuts (if not already initialized)
             if (Lib.settings.sa_enable_keyboard_shortcuts) {

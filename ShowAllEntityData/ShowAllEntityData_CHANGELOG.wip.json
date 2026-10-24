@@ -1,5 +1,17 @@
 [
     {
+        "version": "WIP.13",
+        "date": "2026-10-24",
+        "sections": [
+            {
+                "label": "✨ Improve",
+                "items": [
+                    "The SAED menu: View has a new row, 💾 Browser cache, between Statistics and Keyboard Shortcuts. It opens the browser cache overview (what the script keeps in your browser, how old it is, and what to delete) without a trip through ⚙️ Settings or the Statistics panel."
+                ]
+            }
+        ]
+    },
+    {
         "version": "WIP.12",
         "date": "2026-10-24",
         "sections": [

@@ -136,7 +136,7 @@ The **☰ SAED menu** has these groups, with a line between them:
 |---------------------|-------------------------------------------------------------------------------|
 | **Needs attention** | the same lists as the 🔄, ❌ and ⚠️ parts on the bar                           |
 | **Data**            | 💾 Save to Disk · 📂 Load from Disk · 📤 Export ▸ (CSV, JSON, Org-Mode, HTML) |
-| **View**            | 📏 Density · 📊 Statistics · 🎹 Keyboard Shortcuts                            |
+| **View**            | 📏 Density · 📊 Statistics · 💾 Browser cache · 🎹 Keyboard Shortcuts          |
 | **Help**            | ⚙️ Settings · ❓ Help ↗ (this page, on GitHub)                                 |
 | **Changelog**       | 📜 What's new ↗ · 🗒 Full development log ↗ (both on GitHub)                   |
 
@@ -1460,7 +1460,8 @@ entries are loaded again when they are needed; the page you are on keeps what
 it already loaded. Sizes are estimates. The site storage figure counts the
 whole site, including MusicBrainz's own storage.
 
-Open it from ⚙️ Settings → 🗄️ ART ARCHIVE INDEXEDDB CACHE, from the 📊
+Open it from the SAED menu (View → **💾 Browser cache**, once a table is
+loaded), from ⚙️ Settings → 🗄️ ART ARCHIVE INDEXEDDB CACHE, from the 📊
 Statistics panel, from the Tampermonkey menu, or with **💾 Cache overview** on
 any [progress card](#the-progress-card).
 
