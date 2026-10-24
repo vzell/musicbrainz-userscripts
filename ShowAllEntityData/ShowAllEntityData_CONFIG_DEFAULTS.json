@@ -686,7 +686,7 @@
     "sa_auto_expand": 50,
     "sa_auto_resize_columns": true,
     "sa_auto_resize_columns_threshold": 10000,
-    "sa_bb_collabsable_sidebar": false,
+    "sa_bb_collabsable_sidebar": true,
     "sa_bb_detail_preview": false,
     "sa_bb_event_preview": true,
     "sa_bb_mb_event_lookup": true,

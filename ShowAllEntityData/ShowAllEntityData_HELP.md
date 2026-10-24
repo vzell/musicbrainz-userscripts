@@ -3199,12 +3199,12 @@ side bar (Site Navigation, Gig Pages, …) stays in view while you scroll: at
 the top of the window when you scroll down, and at the window's edge when
 you scroll a wide table sideways. ⚙️ Settings → *📚 Brucebase* →
 *Show the Brucebase side bar on the right* moves it to the right, as on
-MusicBrainz. *Collabsable sidebar* in the same section (off by default, and
+MusicBrainz. *Collabsable sidebar* in the same section (on by default, and
 separate from the MusicBrainz setting of that name) gives it the same handle
 as the MusicBrainz sidebar: click it (or focus it and press Enter) to show
 or hide the side bar. It then starts hidden while the MusicBrainz setting
 *Start with sidebar collapsed* is on, and collapses toward its own side.
-When you scroll a table sideways, its Date column stays in view, lined up
+When you scroll a table sideways, its first column (Event on a year page) stays in view, lined up
 under the table's heading bar, just right of the side bar.
 
 The status line ("Loaded 1 page …") sits right under the heading with the

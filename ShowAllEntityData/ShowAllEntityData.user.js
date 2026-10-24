@@ -4910,8 +4910,8 @@
         sa_bb_collabsable_sidebar: {
             label: 'Collabsable sidebar',
             type: 'checkbox',
-            default: false,
-            description: 'Off by default; needs one of the Brucebase settings above. Gives the ' +
+            default: true,
+            description: 'On by default; needs one of the Brucebase settings above. Gives the ' +
                          'wiki\'s side bar (Site Navigation, Gig Pages, …) the same collapse ' +
                          'handle as the MusicBrainz sidebar; it then starts hidden while "Start ' +
                          'with sidebar collapsed" is on, and collapses toward its own side. ' +
@@ -5477,6 +5477,9 @@
         { key: 'sa_auto_resize_columns_threshold', was: [2000] },
         // true for one day inside one branch (d60e197 → 91b558b, 2026-10-09),
         // never in a release; listed because the audit walks every revision.
+        // Off from 2026-10-09 until 2026-10-24 (vzell: "should be true by
+        // default").
+        { key: 'sa_bb_collabsable_sidebar',        was: [false] },
         { key: 'sa_bb_sidebar_right',              was: [true] },
         { key: 'sa_count_stat_tooltip_bg',         was: ['#1e1e2e'] },
         { key: 'sa_count_stat_tooltip_color',      was: ['#cdd6f4'] },
@@ -20644,8 +20647,9 @@
      * inside itself when taller), so it stays in view while the page scrolls
      * down: a year table is thousands of pixels tall, the side bar 550.
      *
-     * With `sa_bb_collabsable_sidebar` (default off; its own setting since
-     * 2026-10-09, it used to share MusicBrainz's `sa_collabsable_sidebar`)
+     * With `sa_bb_collabsable_sidebar` (default on since 2026-10-24, off
+     * before; its own setting since 2026-10-09, it used to share
+     * MusicBrainz's `sa_collabsable_sidebar`)
      * it gets the MusicBrainz sidebar's handle
      * (same look; `initSidebarCollapse()` itself is bound to MusicBrainz's
      * `#sidebar`, `#page` and `#content`), starting collapsed while

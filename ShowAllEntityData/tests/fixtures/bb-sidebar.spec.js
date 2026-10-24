@@ -6,7 +6,7 @@
 // sa_bb_sidebar_right, default off since 2026-10-09), keeps it in view while
 // the page scrolls down or sideways (sticky on both axes), and gives it the
 // MusicBrainz sidebar's collapse handle under its OWN setting
-// (sa_bb_collabsable_sidebar, default off), starting collapsed while
+// (sa_bb_collabsable_sidebar, default on since 2026-10-24), starting collapsed while
 // sa_sidebar_collapsed is on; it collapses toward its own side. Also pins
 // that the sticky Date column docks under its h2 bar when the page is
 // scrolled sideways, and masks nothing before. Fixture: the
@@ -17,7 +17,8 @@ const { loadBbYearPage } = require('../support/bbFixture');
 const { waitForRenderComplete } = require('../support/browser');
 
 // sa_bb_sidebar_right seeded as undefined: its schema default (off). The
-// handle is opt-in (sa_bb_collabsable_sidebar), so most tests turn it on.
+// handle (sa_bb_collabsable_sidebar) is on by default since 2026-10-24;
+// seeded on all the same, so these tests do not depend on that default.
 const DEFAULTS = { sa_bb_sidebar_right: undefined, sa_bb_collabsable_sidebar: true, sa_sidebar_collapsed: true };
 const RIGHT = { ...DEFAULTS, sa_bb_sidebar_right: true };
 
@@ -138,19 +139,21 @@ test('without the collapsible sidebar there is no handle and the side bar shows'
     expect(errors).toEqual([]);
 });
 
-test('the handle has its own setting: off by default, whatever MusicBrainz\'s sidebar setting says', async ({ page }) => {
-    // Requested 2026-10-09: a Brucebase-only "Collabsable sidebar", default
-    // off. MusicBrainz's sa_collabsable_sidebar (default on) no longer
-    // reaches this side bar.
+test('the handle has its own setting: on by default, whatever MusicBrainz\'s sidebar setting says', async ({ page }) => {
+    // Requested 2026-10-09: a Brucebase-only "Collabsable sidebar";
+    // MusicBrainz's sa_collabsable_sidebar no longer reaches this side bar.
+    // Its default went from off to on on 2026-10-24 (vzell: "should be true
+    // by default"): un-seeded, the handle is there; MusicBrainz's setting
+    // OFF does not take it away.
     const errors = trackPageErrors(page);
     await loadBbYearPage(page, '2026', {
-        settingsOverride: { sa_bb_collabsable_sidebar: undefined, sa_collabsable_sidebar: true, sa_sidebar_collapsed: true },
+        settingsOverride: { sa_bb_collabsable_sidebar: undefined, sa_collabsable_sidebar: false, sa_sidebar_collapsed: true },
     });
-    await expect(page.locator('h1.mb-bb-h1')).toHaveCount(1);
+    await expect(page.locator('#mb-bb-sidebar-handle')).toBeVisible();
     const l = await layout(page);
-    expect(l.handle).toBeNull();
-    expect(l.cls).toEqual(['mb-bb-cw', 'mb-bb-sb-left']);
-    expect(l.side).not.toBeNull();
+    expect(l.handle).toEqual(expect.objectContaining({ pressed: 'false', side: expect.stringContaining('mb-bb-handle-left') }));
+    expect(l.cls).toEqual(['mb-bb-cw', 'mb-bb-sb-left', 'mb-bb-sb-collapsed']);
+    expect(l.side).toBeNull();
     expect(errors).toEqual([]);
 });
 

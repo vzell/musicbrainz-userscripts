@@ -164,7 +164,8 @@ numbers:
   and borders off) and scrolling inside itself when taller.
 - **The handle** (`#mb-bb-sidebar-handle`): the MusicBrainz sidebar's look,
   behind its OWN setting since 2026-10-09, `sa_bb_collabsable_sidebar`
-  (default **off**, "Collabsable sidebar" above the right-hand option); it
+  (default **on** since 2026-10-24, off before, with its `_SETTINGS_MIGRATIONS`
+  entry; "Collabsable sidebar" above the right-hand option); it
   used to share MusicBrainz's `sa_collabsable_sidebar` (default on). It
   still starts collapsed with `sa_sidebar_collapsed`. `initSidebarCollapse()`
   itself is bound to MusicBrainz's `#sidebar`/`#page`/`#content`, so this is

@@ -1,5 +1,17 @@
 [
     {
+        "version": "WIP.10",
+        "date": "2026-10-24",
+        "sections": [
+            {
+                "label": "✨ Improve",
+                "items": [
+                    "Brucebase: \"Collabsable sidebar\" (⚙️ Settings → 📚 Brucebase) is now on by default, so the wiki's side bar gets its show/hide handle and starts hidden while \"Start with sidebar collapsed\" is on. If you never changed it, it switches on with this version."
+                ]
+            }
+        ]
+    },
+    {
         "version": "WIP.9",
         "date": "2026-10-24",
         "sections": [
