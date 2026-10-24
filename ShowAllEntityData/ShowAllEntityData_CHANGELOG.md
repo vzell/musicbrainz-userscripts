@@ -4,9 +4,50 @@ Every version, newest first, with the technical details behind each change. For 
 
 **Months:** [October 2026](ShowAllEntityData_CHANGELOG/2026-10.md) · [September 2026](ShowAllEntityData_CHANGELOG/2026-09.md) · [August 2026](ShowAllEntityData_CHANGELOG/2026-08.md) · [July 2026](ShowAllEntityData_CHANGELOG/2026-07.md) · [June 2026](ShowAllEntityData_CHANGELOG/2026-06.md) · [May 2026](ShowAllEntityData_CHANGELOG/2026-05.md) · [April 2026](ShowAllEntityData_CHANGELOG/2026-04.md) · [March 2026 (1 of 2)](ShowAllEntityData_CHANGELOG/2026-03-1.md) · [March 2026 (2 of 2)](ShowAllEntityData_CHANGELOG/2026-03-2.md) · [February 2026](ShowAllEntityData_CHANGELOG/2026-02.md) · [January 2026](ShowAllEntityData_CHANGELOG/2026-01.md)
 
-This page shows the newest 100 of 1623 versions; the month pages hold all of them.
+This page shows the newest 100 of 1628 versions; the month pages hold all of them.
 
 ---
+
+## 9.99.1457 — 2026-10-25
+
+**🐛 Fix**
+
+- discogs.com: the headings of Discogs' own page under the script's tables (Tracklist, Credits, Videos, …) now fold and open their part on a click, and a Ctrl+click folds or opens all of Discogs' parts at once without touching the script's own headings. A click used to change only the ▲/▼ and hid Discogs' own show/hide button instead. The "Label:" and "Format:" lines of the release's info table no longer get a ▲.
+
+
+## 9.99.1456 — 2026-10-25
+
+**✨ Improve**
+
+- discogs.com: pointing at a MusicBrainz icon shows that entity's MusicBrainz card, read from musicbrainz.org, and Space opens its window. This works in the MusicBrainz column of the script's tables and for the icons murdos' "Import Discogs releases to MusicBrainz" puts beside the names on Discogs' own page, right away. A click on an icon in the MusicBrainz column now opens the window, like every other link in those tables; Ctrl-click still opens MusicBrainz in a new tab.
+
+
+## 9.99.1455 — 2026-10-25
+
+**🐛 Fix**
+
+- discogs.com: Discogs' own links in the page (artists, labels, releases, masters, users) now show their preview card on hover right away, before any of the script's buttons is pressed. Only the links in the script's own tables did before. The older Discogs pages (submissions, a release's history, a user's ratings) are covered too.
+
+**✨ Improve**
+
+- discogs.com: a link to a Brucebase show, venue or person in Discogs' content (a release's notes, for example) shows Brucebase's own card, as on Brucebase, instead of a plain web page card.
+
+
+## 9.99.1454 — 2026-10-25
+
+**✨ Improve**
+
+- Collection preview windows: the covers of a release or release group collection are now the table's first column, next to their rows, as in a release group's window, instead of a strip above the table.
+- Pointing at a cover in a collection window or a release group window (each release's, and the group's own) shows every image of that release or release group, and a click or Space opens them in the artwork viewer. Ctrl-click still opens its page.
+
+
+## 9.99.1453 — 2026-10-25
+
+**✨ Improve**
+
+- Preview windows: Space on an image opens the full-screen viewer at that image, the same as a click, in Brucebase, Discogs and MusicBrainz windows alike. It used to do nothing. Esc closes the viewer and leaves the window open.
+- Discogs windows: the small pictures in a master's versions, an artist's discography and a label's releases now work like the Image column on Discogs pages. Pointing at one shows every image of that release (one request to Discogs, kept), and a click or Space opens the viewer on them, with Shift+← → to step through the rows. A click on the picture no longer opens that release in the window instead.
+
 
 ## 9.99.1452 — 2026-10-24
 
@@ -812,41 +853,6 @@ This page shows the newest 100 of 1623 versions; the month pages hold all of the
 **✨ Improve**
 
 - Annotation history pages show the Editor column first, before Old and New, so the column that stays visible when you scroll sideways is now also the leftmost one. The Old/New radios and "Compare versions" work as before.
-
-
-## 9.99.1357 — 2026-10-16
-
-**🐛 Fix**
-
-- With sticky page headers on, a table with two or more columns before its sticky column (e.g. Old and New before Editor on Annotation history) no longer shows a white strip over the right edge of the first of them that cut off its 📊 button and filter clear button.
-
-
-## 9.99.1356 — 2026-10-15
-
-**✨ Improve**
-
-- After "Show all Tracks for Release", the "Sidebar" cards (9.99.1354) open the release's Additional details, Labels and Release events cards too, next to Release information; external links and tags still start closed. Every other page still opens only its first information card. Setting: "… on a release: also Additional details, Labels and Release events" (on), which applies while "… cards that start open" is at Information card.
-
-
-## 9.99.1355 — 2026-10-15
-
-**🚀 Feature**
-
-- Settings with a fixed set of choices are now a row of buttons, one per choice, instead of a text box or a pair of checkboxes (needs VZ\_MBLibrary 4.4.0). Click one, or use the arrow keys; the Default column names the default choice and the tooltip lists them all. Converted: "Expanded CAA/EAA cell layout" (Grid / Grouped / List), "Viewer: image background" (Dark / Light / Checker), "Viewer: move a zoomed image by", "Artwork viewer image size", and the small and big CAA/EAA image fetch sizes (250 / 500 / 1200 px, which used to accept any number and so could ask the archive for a size it does not have). Your current values are kept. A configuration file with a value that is none of the choices now has that value refused on 📂 Load, like a bad number.
-
-
-## 9.99.1354 — 2026-10-15
-
-**✨ Improve**
-
-- The "Sidebar" cards (9.99.1352) now start with only the first information card open (Artist information, Release information, …); the others start closed and show ▶ before their title. Ctrl+Click (Cmd+Click) on any card's title opens or closes every card at once, following the one you clicked; a plain click still opens or closes just that card. Hovering a card's title shows what it holds, how many entries, and how it folds. Setting: "… cards that start open" (No card / Information card / Every card; default: Information card).
-
-
-## 9.99.1353 — 2026-10-15
-
-**✨ Improve**
-
-- The "🗂 Sidebar as tables" button is now off by default: the two new views (9.99.1351, 9.99.1352) show the same information beside the page's own data. Turn it back on with "'Sidebar as tables' button" in ⚙️ Settings; if you had it on because it was the default, it is switched off once.
 
 
 ---
