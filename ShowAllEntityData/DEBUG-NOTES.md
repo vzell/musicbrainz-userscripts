@@ -26026,3 +26026,9 @@ arm; it adds one event lookup to the first test's request count.
 Specs: bb-mb-event (+3 card, +3 findings tests), with bb-event-preview,
 bb-year and the findings specs: 66 passed. Mutations
 `scripts/mutations/bb-mb-event.json`: the seven new ones fail as expected.
+
+**`test:full` on the branch** (cb8482b, WIP.1–WIP.9): 06:44:35–06:57:00 CEST
+on petri, 2,304 passed, 0 failed, wall 12 m 25 s, 12 workers. popup-ext's
+"a reader who scrolls the Live page before its images are in is not pulled
+back" (−533 px once under load, WIP.6) passed. The live specs (tests/live,
+bb-year's header list updated) were not run.
