@@ -93,7 +93,7 @@ test.describe('springsteenlyrics.com: the Cover column\'s image card and viewer 
         await expect(tip(page).locator('.mb-art-card-tile.mb-art-card-main')).toHaveCount(1);
         await expect(tip(page)).toContainText('5 images · ★ primary');
         await expect(tip(page).locator('.mb-tt-pill')).toHaveText(['Cover', 'Scan ×4']);
-        await expect(tip(page)).toContainText('Click: viewer · Ctrl-click: the item page');
+        await expect(tip(page)).toContainText('Click or Space: viewer · Ctrl-click: the item page');
         // The cover comes first, the scans' thumbnails after it.
         await expect(tip(page).locator('.mb-art-card-tile img').first()).toHaveAttribute('src', `${BASE}bootlegs/aud_live1967/4554.jpg`);
         await expect(tip(page).locator('.mb-art-card-tile img').nth(1)).toHaveAttribute('src', /4554_artwork_01_tn\.jpg$/);

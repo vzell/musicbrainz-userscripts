@@ -87,7 +87,8 @@ test.describe('discogs.com: the Image column\'s hover card (2026-10-19)', () => 
         await expect(tip(page)).toContainText('5 images · ★ primary');
         await expect(tip(page)).not.toContainText('main front');
         await expect(tip(page).locator('.mb-tt-pill')).toHaveText(['primary', 'secondary ×4']);
-        await expect(tip(page)).toContainText('Click: viewer');
+        // Nothing cut off: Space opens the viewer too, and the card says so.
+        await expect(tip(page)).toContainText('Click or Space: viewer');
         expect((await apiLog(page)).slice(before), 'one request, this row only').toEqual([`${API}releases/1874253`]);
         const rel = JSON.parse(FX('discogs-release').body);
         await expect(tip(page).locator('.mb-art-card-tile img').first()).toHaveAttribute('src', rel.images[0].uri150);

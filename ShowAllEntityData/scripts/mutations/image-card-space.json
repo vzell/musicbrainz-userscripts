@@ -145,5 +145,31 @@
         "spec": "tests/fixtures/caa-column-redesign.spec.js",
         "grep": "Space on a hovered image of an expanded cell",
         "expect": "fail"
+    },
+    {
+        "name": "foot: Space not named",
+        "why": "vzell, 2026-10-24: the card must say that Space opens the viewer too.",
+        "edits": [
+            {
+                "find": "        return spaceIsViewer ? html.replace(/^Click: viewer/, 'Click or <kbd>Space</kbd>: viewer') : html;",
+                "replace": "        return html;"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-image-card.spec.js",
+        "grep": "hover: Loading with the thumbnail",
+        "expect": "fail"
+    },
+    {
+        "name": "foot: Space named on a cut-off card",
+        "why": "On a card with more images than it shows, Space is the every-image toggle, so the foot must not offer it for the viewer.",
+        "edits": [
+            {
+                "find": "${_artFootWithSpace(o.foot, !all && order.length <= cap)}",
+                "replace": "${_artFootWithSpace(o.foot, true)}"
+            }
+        ],
+        "spec": "tests/fixtures/rel-icons.spec.js",
+        "grep": "the native title held back",
+        "expect": "fail"
     }
 ]

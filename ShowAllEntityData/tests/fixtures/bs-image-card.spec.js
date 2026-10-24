@@ -72,7 +72,7 @@ test.describe('brucespringsteen.it: the lazy Photo column, its card and the view
         await hover(page, cell);
         await expect(tip(page).locator('img.mb-fi-card-big')).toHaveAttribute('src', PHOTO);
         await expect(tip(page).locator('.mb-art-card-tile')).toHaveCount(0);
-        await expect(tip(page)).toContainText('Click: viewer · Ctrl-click: the record\'s page');
+        await expect(tip(page)).toContainText('Click or Space: viewer · Ctrl-click: the record\'s page');
         expect(served).toEqual([REC('LP1B1')]);
         await expect(cell).toHaveAttribute('data-mb-fi-state', 'done');
         await expect(cell.locator('img.mb-fi-thumb')).toHaveAttribute('src', PHOTO);

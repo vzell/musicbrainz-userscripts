@@ -18739,11 +18739,17 @@
                     a.rel = 'noopener';
                     a.appendChild(img);
                     li.appendChild(a);
+                    // The name goes on the trigger, not the <li>: the image
+                    // card stashes its trigger's title while it shows, but a
+                    // title on an ancestor the browser would draw over the
+                    // card (vzell, 2026-10-24). With the card off, the
+                    // trigger's own tip still names the icon.
+                    _setTip(a, m.label);
                 } else {
                     li.appendChild(img);
                 }
                 li.appendChild(label);
-                _setTip(li, m.label);
+                if (!li.querySelector('a.mb-fi-media')) _setTip(li, m.label);
                 ul.appendChild(li);
             });
             mediaTd.appendChild(ul);
@@ -22921,7 +22927,7 @@
         // big, instead of a contact sheet of one tile.
         if (p.single && shown.length === 1) {
             return box(`<img class="mb-art-card-preview mb-fi-card-big" src="${_rgEsc(_artViewerThumbUrl(shown[0]))}" alt="" referrerpolicy="no-referrer">` +
-                (p.foot ? `<div class="mb-tt-foot">${_rgEsc(p.foot)}</div>` : ''));
+                (p.foot ? `<div class="mb-tt-foot">${_artFootWithSpace(p.foot, true)}</div>` : ''));
         }
         return _artCardCoreHtml({
             el: a, ctx: p.ctx, images: shown, order: shown.map((_, i) => i), title, hit: () => false, matches: '',
@@ -138153,6 +138159,25 @@ a { color: #1565c0; }`;
     }
 
     /**
+     * A card's foot, escaped, saying that Space opens the viewer too
+     * ("Click: viewer" → "Click or Space: viewer") where it does: not on a
+     * card whose Space is the "every image" toggle (`spaceIsViewer` false;
+     * its keys line names Space instead). A foot that offers no viewer
+     * ("Click an image of the expanded cell: viewer") is left as it is:
+     * Space over that icon opens nothing either (`_artSpaceOpen()`).
+     * vzell, 2026-10-24: "the image popup doesn't mention that Space can be
+     * used instead of Click".
+     *
+     * @param   {string}  foot
+     * @param   {boolean} spaceIsViewer
+     * @returns {string} HTML.
+     */
+    function _artFootWithSpace(foot, spaceIsViewer) {
+        const html = _rgEsc(foot);
+        return spaceIsViewer ? html.replace(/^Click: viewer/, 'Click or <kbd>Space</kbd>: viewer') : html;
+    }
+
+    /**
      * The image triggers Space opens like a click (org/TODO.org "Some
      * enhancements" 2, 2026-10-24): every artwork card of `_ART_CARD_FNS`,
      * and the single image of an expanded CAA/EAA cell (`art-img`).
@@ -138409,7 +138434,7 @@ a { color: #1565c0; }`;
             `<div class="mb-art-card-tiles"${tileSize !== 56 ? ` style="--mb-art-card-tile:${tileSize}px;"` : ''}>${tiles}</div>` +
             `<div class="mb-tt-body" style="display:flex;gap:4px;flex-wrap:wrap;">${pills}</div>` +
             (o.matches || '') +
-            (o.foot ? `<div class="mb-tt-foot">${_rgEsc(o.foot)}</div>` : '') +
+            (o.foot ? `<div class="mb-tt-foot">${_artFootWithSpace(o.foot, !all && order.length <= cap)}</div>` : '') +
             `<div class="mb-tt-foot mb-art-card-keys">${keys}</div>` +
             `</div>`;
     }

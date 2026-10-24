@@ -123,7 +123,7 @@ test.describe('jungleland.it: the lazy Art column, its card and the viewer (2026
         await expect(tip(page).locator('.mb-art-card-tile.mb-art-card-main')).toHaveCount(1);
         await expect(tip(page)).toContainText('10 images · ★ primary');
         await expect(tip(page).locator('.mb-tt-pill')).toHaveText(['Front', 'Back', 'Medium ×2', 'Booklet ×6']);
-        await expect(tip(page)).toContainText('Click: viewer · Ctrl-click: the entry\'s page');
+        await expect(tip(page)).toContainText('Click or Space: viewer · Ctrl-click: the entry\'s page');
         expect(served).toEqual([ENTRY]);
         // The cell: the front scan and the count, live and in the source row.
         await expect(art).toHaveAttribute('data-mb-fi-state', 'done');

@@ -570,7 +570,10 @@ card and the artwork viewer, through the shared foreign-image path
   entry kind, not only `/gig:` (vzell, 2026-10-23). The year page's icons
   are bare `<img>`s (only the side bar's legend links them), and the label
   span keeps its text, so the Media filter and the 📊 entries read the
-  same. Build time, so a save to disk keeps the stamps. The ring is CSS
+  same. The icon's name (`_setTip()`) goes on that `a`, never the `<li>`:
+  the card stashes its trigger's title while it shows, but an ancestor's
+  title the browser draws over the card (vzell, 2026-10-24); an unringed
+  icon keeps it on the `<li>`. Build time, so a save to disk keeps the stamps. The ring is CSS
   (`_ensureFiStyle()`). The card shows the icon's kind (`cardImages`, titled
   "date · kind"), or a note when the page has none of it; the viewer opens on
   that kind's first image (`startAt`; on an unread row the record's arrival

@@ -18,7 +18,8 @@
             {
                 "label": "✨ Improve",
                 "items": [
-                    "Space on a hovered image now does what a click does: it opens the artwork viewer, instead of scrolling the page under the card. This works on Discogs' Image column, the Springsteen sites' image cells and Brucebase's Media icons, and on MusicBrainz's artwork icons, relationship-list covers, the images of an expanded cell and the sidebar cover. It works even when the card is switched off or still loading. On a card with more images than it shows, Space still shows them all first, as before. Space keeps its usual meaning while you type into a field, or with Shift, Ctrl, Alt or ⌘ held."
+                    "Space on a hovered image now does what a click does: it opens the artwork viewer, instead of scrolling the page under the card. This works on Discogs' Image column, the Springsteen sites' image cells and Brucebase's Media icons, and on MusicBrainz's artwork icons, relationship-list covers, the images of an expanded cell and the sidebar cover. It works even when the card is switched off or still loading. On a card with more images than it shows, Space still shows them all first, as before. Space keeps its usual meaning while you type into a field, or with Shift, Ctrl, Alt or ⌘ held.",
+                    "The image card says so: its bottom line reads \"Click or Space: viewer\". On a card with more images than it shows, it stays \"Click: viewer\", because there Space shows the rest of the images."
                 ]
             }
         ]
@@ -30,7 +31,8 @@
             {
                 "label": "🐛 Fix",
                 "items": [
-                    "Brucebase year table: the Setlist icon in the Media column is now ringed like Photo, Ticket, News and Memorabilia when the entry has a page of its own. Pointing at it shows the handwritten setlists from that page (two on 1985-01-13, Columbia, SC), and a click opens them in the viewer. Before, the icon stayed plain, and the page's setlist images were counted as \"Other\"."
+                    "Brucebase year table: the Setlist icon in the Media column is now ringed like Photo, Ticket, News and Memorabilia when the entry has a page of its own. Pointing at it shows the handwritten setlists from that page (two on 1985-01-13, Columbia, SC), and a click opens them in the viewer. Before, the icon stayed plain, and the page's setlist images were counted as \"Other\".",
+                    "A ringed Media icon no longer shows the browser's own name tooltip on top of its image card. With the card switched off, the icon's name still shows on hover."
                 ]
             }
         ]

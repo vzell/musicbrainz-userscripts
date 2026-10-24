@@ -226,6 +226,37 @@ test.describe('bb-year: the Media icons open the entry page\'s images (mockup B1
         expect(errors).toEqual([]);
     });
 
+    test('a ringed icon: no native tooltip over its card, the card says Space opens the viewer; with the card off its own tip names it', async ({ page }) => {
+        const { errors } = await openYear(page);
+        const a = icon(page, GIG4, 'Photo');
+        // vzell, 2026-10-24: the <li>'s title drew the browser's own tooltip
+        // over the card. The name lives on the trigger, whose title the card
+        // stashes while it shows.
+        await expect(a.locator('xpath=..')).not.toHaveAttribute('title', /.*/);
+        await hover(page, a);
+        await expect(tip(page).locator('.mb-art-card-tile')).toHaveCount(2);
+        const titled = await a.evaluate((el) => {
+            const out = [];
+            for (let n = el; n && n.nodeType === 1; n = n.parentElement) if (n.getAttribute('title')) out.push(n.tagName + ': ' + n.getAttribute('title'));
+            return out;
+        });
+        expect(titled, 'no title on the trigger or above it while the card shows').toEqual([]);
+        await expect(tip(page).locator('.mb-tt-foot:not(.mb-art-card-keys)')).toHaveText(/^Click or Space: viewer/);
+        // An unringed icon keeps its name on the <li>.
+        const plain = page.locator('table.tbl tbody ul.mb-bb-media > li', { hasNot: page.locator('a') }).first();
+        await expect(plain).toHaveAttribute('title', /\S/);
+        expect(errors).toEqual([]);
+    });
+
+    test('a ringed icon with the card off: its own tip names the icon', async ({ page }) => {
+        const { errors } = await openYear(page, { sa_bb_tip_images: false });
+        const a = icon(page, GIG4, 'Photo');
+        await hover(page, a);
+        await expect(tip(page)).toContainText('Photo');
+        await expect(tip(page).locator('.mb-art-card-tile')).toHaveCount(0);
+        expect(errors).toEqual([]);
+    });
+
     test('hover on Memorabilia shows the pass', async ({ page }) => {
         const { errors, served } = await openYear(page);
         await hover(page, icon(page, GIG7, 'Memorabilia'));

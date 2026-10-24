@@ -168,5 +168,22 @@
         "spec": "tests/fixtures/bb-image-card.spec.js",
         "grep": "the Setlist icon is ringed|a gig page: its gallery images",
         "expect": "fail"
+    },
+    {
+        "name": "ringed icon: its name back on the <li>",
+        "why": "vzell, 2026-10-24: a title on the <li> (an ancestor of the card's trigger) draws the browser's own tooltip over the image card.",
+        "edits": [
+            {
+                "find": "                    _setTip(a, m.label);\n",
+                "replace": ""
+            },
+            {
+                "find": "                if (!li.querySelector('a.mb-fi-media')) _setTip(li, m.label);",
+                "replace": "                _setTip(li, m.label);"
+            }
+        ],
+        "spec": "tests/fixtures/bb-image-card.spec.js",
+        "grep": "no native tooltip over its card",
+        "expect": "fail"
     }
 ]

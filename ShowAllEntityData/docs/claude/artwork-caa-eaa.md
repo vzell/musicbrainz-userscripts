@@ -521,7 +521,10 @@ Grep `// ── CAA/EAA column redesign` for the code. Rules that fail silently:
   page, as it leaves the click to the link; Shift/Ctrl/Alt/⌘ too. Specs
   `image-card-space.spec.js` plus one Space test beside each click test
   (rel-icons, caa-column-redesign D1, sidebar-picture, discogs-image-card);
-  mutations `scripts/mutations/image-card-space.json`. Typing into a field keeps it (`_dpPeek.typedAt`, which the tooltip
+  mutations `scripts/mutations/image-card-space.json`. The card's foot says
+  so where it holds (`_artFootWithSpace()`: "Click: viewer" → "Click or
+  Space: viewer", not on a cut-off card, whose Space is the toggle; vzell,
+  2026-10-24). Typing into a field keeps it (`_dpPeek.typedAt`, which the tooltip
   engine now records itself, because the link preview installs nothing where
   its sources are off); a shown link preview owns it. "Every image" belongs to
   the hovered element and resets in `_mbttAfterHide()`; Shift follows the key
