@@ -23,10 +23,14 @@ const { test, expect } = require('../support/test');
 const { loadBbYearPage, BB_YEAR_BUTTON, revealPastStickyColumn } = require('../support/bbFixture');
 const { addRequiredLibs, MB_LIBRARY_PATH, USERSCRIPT_PATH } = require('../support/loadPage');
 const { waitForRenderComplete } = require('../support/browser');
-const { columnFilterInput } = require('../support/filterSortAssertions');
+const { columnFilterInput, typeGlobalFilter } = require('../support/filterSortAssertions');
+const { findingRow, clickFinding, findingRowState } = require('../support/findingsMenu');
 
 const NO_LINK = ['1985-01-07', '1985-01-08'];
 const NO_EVENT = ['1985-01-10', '1985-01-15'];
+// 1985-01-24's anchor is linked from 01-23's event (a wrong link in
+// MusicBrainz): 01-24 is found by date, and its event links no anchor.
+const WRONG_ANCHOR = { '1985-01-24': '1985-01-23' };
 
 /**
  * The fixture's entries as MusicBrainz knows them: anchor URL → date, read
@@ -56,7 +60,7 @@ const idOf = (date) => `00000000-0000-4000-8000-00${date.replace(/-/g, '')}00`;
  * @returns {Promise<void>}
  */
 async function stubMusicBrainz(page, { failYear = 0 } = {}) {
-    await page.addInitScript(([noLink, noEvent, failYearN, entries]) => {
+    await page.addInitScript(([noLink, noEvent, failYearN, entries, wrongAnchor]) => {
         const idOf = (date) => `00000000-0000-4000-8000-00${date.replace(/-/g, '')}00`;
         const json = (status, body) => ({ status, responseHeaders: 'Content-Type: application/json', responseText: JSON.stringify(body) });
         const rows = () => new Map(Object.entries(entries));
@@ -68,11 +72,21 @@ async function stubMusicBrainz(page, { failYear = 0 } = {}) {
             if (u.pathname === '/ws/2/url') {
                 const known = rows();
                 const urls = u.searchParams.getAll('resource').filter(r => known.has(r) && !noLink.includes(known.get(r)) && !noEvent.includes(known.get(r)))
-                    .map(r => ({ resource: r, relations: [{ type: 'review', event: ev(known.get(r)) }] }));
+                    .map(r => ({ resource: r, relations: [{ type: 'review', event: ev(wrongAnchor[known.get(r)] || known.get(r)) }] }));
                 return urls.length ? json(200, { 'url-count': urls.length, 'url-offset': 0, urls }) : json(404, { error: 'Not Found' });
             }
             const one = u.pathname.match(/^\/ws\/2\/event\/([0-9a-f-]+)$/);
-            if (one) return json(200, { id: one[1], relations: [] });
+            if (one) {
+                // The id carries its date (idOf()); the card's lookup gets a
+                // place and the performers, the url-rels lookup no links.
+                const d = one[1].slice(-10, -2);
+                const date = `${d.slice(0, 4)}-${d.slice(4, 6)}-${d.slice(6, 8)}`;
+                const rels = /place-rels/.test(u.searchParams.get('inc') || '') ? [
+                    { type: 'held at', direction: 'backward', 'target-type': 'place', place: { id: 'p1', name: 'Carolina Coliseum' } },
+                    { type: 'main performer', direction: 'backward', 'target-type': 'artist', artist: { id: '70248960-cb53-4ea4-943a-edb18f7d336f', name: 'Bruce Springsteen' } },
+                ] : [];
+                return json(200, { ...ev(date), relations: rels });
+            }
             if (u.pathname === '/ws/2/event') {
                 const q = u.searchParams.get('query') || '';
                 if (q.startsWith('arid:')) {
@@ -85,7 +99,7 @@ async function stubMusicBrainz(page, { failYear = 0 } = {}) {
             }
             return undefined;
         };
-    }, [NO_LINK, NO_EVENT, failYear, ENTRIES]);
+    }, [NO_LINK, NO_EVENT, failYear, ENTRIES, WRONG_ANCHOR]);
 }
 
 /**
@@ -151,7 +165,7 @@ test.describe('bb-year: the MB-Event column (2026-10-24)', () => {
         const unknown = await page.evaluate((known) => Array.from(document.querySelectorAll('table.tbl tbody td.mb-bbev-cell'))
             .filter(td => !known.includes(td.dataset.mbBbevAnchor)).length, Object.keys(ENTRIES));
         expect(unknown, 'the fixture regex knows every entry').toBe(0);
-        expect(await mbAsked(page)).toEqual({ url: 1, year: 1, name: NO_EVENT.length + unknown, event: NO_LINK.length });
+        expect(await mbAsked(page)).toEqual({ url: 1, year: 1, name: NO_EVENT.length + unknown, event: NO_LINK.length + 1 });
         expect(errors).toEqual([]);
     });
 
@@ -224,6 +238,123 @@ test.describe('bb-year: the MB-Event column (2026-10-24)', () => {
         await expect.poll(() => unsettled(page), { timeout: 30000 }).toBe(0);
         expect((await cells(page))['1985-01-13'].s).toBe('found');
         await expect(btn).toHaveAttribute('aria-pressed', 'true');
+        expect(errors).toEqual([]);
+    });
+});
+
+// org/TODO.org "Some enhancements" f (2026-10-24): the found glyph's card is
+// the MusicBrainz event's, loaded through GM from Brucebase, with the row's
+// Brucebase check under it; Space pins it into the window.
+test.describe('bb-year: the MB-Event glyph\'s card (2026-10-24)', () => {
+    const glyph = (page, date) => page.locator(`table.tbl tbody td.mb-bbev-cell[data-mb-bbev-date="${date}"] a.mb-bbev-link`);
+    /**
+     * Ctrl+hover on a row's glyph, the window wide enough to reach it.
+     * @param {import('@playwright/test').Page} page
+     * @param {string} date
+     * @returns {Promise<void>}
+     */
+    async function hoverGlyph(page, date) {
+        await page.mouse.move(0, 0);
+        await revealPastStickyColumn(page, glyph(page, date));
+        await page.keyboard.down('Control');
+        await glyph(page, date).hover();
+        await page.keyboard.up('Control');
+    }
+    test.use({ viewport: { width: 1920, height: 1000 } });
+
+    test('found by its link: the event card (name, place, line-up), how it was found, the link this entry\'s; Space: the window', async ({ page }) => {
+        const { errors } = await openYear(page);
+        await expect.poll(() => unsettled(page), { timeout: 30000 }).toBe(0);
+        await hoverGlyph(page, '1985-01-13');
+        const peek = page.locator('#mb-dp-peek');
+        await expect(peek).toContainText('1985‐01‐13: Somewhere');
+        await expect(peek).toContainText('Carolina Coliseum');
+        await expect(peek).toContainText('Bruce Springsteen');
+        await expect(peek).toContainText('Found by its Brucebase link');
+        await expect(peek).toContainText('brucebase.wikidot.com/1985#130185 ✓ this entry');
+        const asked = await page.evaluate(() => (window.__gmXhrLog || []).filter(r => /\/ws\/2\/event\/[0-9a-f-]+\?inc=artist-rels/.test(r.url)).length);
+        expect(asked, 'one lookup for the card').toBe(1);
+        await page.keyboard.press('Space');
+        const win = page.locator('#mb-dp-dialog');
+        await expect(win).toContainText('1985‐01‐13: Somewhere');
+        await expect(win).toContainText('✓ this entry');
+        expect(errors).toEqual([]);
+    });
+
+    test('found by date with no Brucebase link: the card warns; a wrong anchor: the card says ERROR, both links shown', async ({ page }) => {
+        const { errors } = await openYear(page);
+        await expect.poll(() => unsettled(page), { timeout: 30000 }).toBe(0);
+        await hoverGlyph(page, '1985-01-07');
+        const peek = page.locator('#mb-dp-peek');
+        await expect(peek).toContainText('Found by date (search)');
+        await expect(peek).toContainText('WARNING: the MusicBrainz event has no Brucebase link');
+        await hoverGlyph(page, '1985-01-24');
+        await expect(peek).toContainText('ERROR: the MusicBrainz event and this entry do not link each other');
+        await expect(peek).toContainText('brucebase.wikidot.com/1985#240185');
+        await expect(peek).toContainText('another event');
+        expect(errors).toEqual([]);
+    });
+
+    test('off with the event preview setting: no card, no card lookup', async ({ page }) => {
+        const { errors } = await openYear(page, { settings: { sa_bb_event_preview: false } });
+        await expect.poll(() => unsettled(page), { timeout: 30000 }).toBe(0);
+        await hoverGlyph(page, '1985-01-13');
+        await page.evaluate(() => new Promise(r => setTimeout(r, 600)));
+        await expect(page.locator('#mb-dp-peek')).toBeHidden();
+        expect(await page.evaluate(() => (window.__gmXhrLog || []).filter(r => /inc=artist-rels/.test(r.url)).length)).toBe(0);
+        expect(errors).toEqual([]);
+    });
+});
+
+// org/TODO.org "Some enhancements" g (2026-10-24): the event's Brucebase
+// link against the entry's own anchor. ERROR when they point elsewhere
+// (1985-01-24: its anchor is linked from 01-23's event), WARNING when the
+// event has none (01-07, 01-08). Late data: the rows are re-stamped as the
+// answers come in. Pinned: the counts (from the page), the filter, the look,
+// the tint setting, and survival across a filter re-render.
+test.describe('bb-year: the MB-Event Brucebase-link findings (2026-10-24)', () => {
+    const stamped = (page, id) => page.evaluate((fid) => Array.from(document.querySelectorAll('table.tbl tbody td.mb-bbev-cell'))
+        .filter(td => (td.dataset.mbFindings || '').split(' ').includes(fid)).map(td => td.dataset.mbBbevDate), id);
+
+    test('ERROR for a link to another entry, WARNING for none: counted, filtered, tinted', async ({ page }) => {
+        const { errors } = await openYear(page);
+        await expect.poll(() => unsettled(page), { timeout: 30000 }).toBe(0);
+        await expect.poll(() => stamped(page, 'bb-mbev-link-mismatch')).toEqual(['1985-01-24']);
+        expect((await stamped(page, 'bb-mbev-link-missing')).sort()).toEqual([...NO_LINK].sort());
+        await expect.poll(async () => (await findingRow(page, 'error', 'bb-mbev-link-mismatch') || {}).count).toBe(1);
+        await expect.poll(async () => (await findingRow(page, 'warn', 'bb-mbev-link-missing') || {}).count).toBe(NO_LINK.length);
+        const look = await page.evaluate(() => {
+            const td = document.querySelector('td.mb-bbev-cell[data-mb-bbev-date="1985-01-24"]');
+            return { level: td.dataset.mbFinding, bg: getComputedStyle(td).backgroundColor, ring: getComputedStyle(td.querySelector('.mb-bbev-g')).boxShadow };
+        });
+        expect(look.level).toBe('error');
+        expect(look.bg).not.toMatch(/^rgba?\(255, 255, 255/);
+        expect(look.ring).toContain('rgb(155, 34, 24)');
+        await clickFinding(page, 'bb-mbev-link-mismatch');
+        await expect.poll(() => findingRowState(page, 'bb-mbev-link-mismatch')).toEqual({ visible: 1, withFinding: 1 });
+        await clickFinding(page, 'bb-mbev-link-mismatch');
+        await expect.poll(async () => (await findingRowState(page, null)).visible).toBeGreaterThan(80);
+        expect(errors).toEqual([]);
+    });
+
+    test('the stamps survive a filter re-render; with the tint off the menu row stays, untinted', async ({ page }) => {
+        const { errors } = await openYear(page, { settings: { sa_findings_tint_bb_mbev_link: false } });
+        await expect.poll(() => unsettled(page), { timeout: 30000 }).toBe(0);
+        await expect.poll(() => stamped(page, 'bb-mbev-link-mismatch')).toEqual(['1985-01-24']);
+        expect(await page.evaluate(() => document.querySelector('td.mb-bbev-cell[data-mb-bbev-date="1985-01-24"]').dataset.mbFinding)).toBeUndefined();
+        await expect.poll(async () => (await findingRow(page, 'error', 'bb-mbev-link-mismatch') || {}).count).toBe(1);
+        await typeGlobalFilter(page, '1985-01-2');
+        await expect.poll(() => stamped(page, 'bb-mbev-link-mismatch')).toEqual(['1985-01-24']);
+        expect(errors).toEqual([]);
+    });
+
+    test('the settings switch each finding off', async ({ page }) => {
+        const { errors } = await openYear(page, { settings: { sa_findings_bb_mbev_link_mismatch: false, sa_findings_bb_mbev_link_missing: false } });
+        await expect.poll(() => unsettled(page), { timeout: 30000 }).toBe(0);
+        await page.evaluate(() => new Promise(r => setTimeout(r, 400)));
+        expect(await stamped(page, 'bb-mbev-link-mismatch')).toEqual([]);
+        expect(await stamped(page, 'bb-mbev-link-missing')).toEqual([]);
+        expect(await findingRow(page, 'error', 'bb-mbev-link-mismatch')).toBeUndefined();
         expect(errors).toEqual([]);
     });
 });

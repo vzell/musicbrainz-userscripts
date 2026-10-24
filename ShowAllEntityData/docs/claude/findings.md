@@ -237,6 +237,28 @@ was "Several Discogs links in Relationships", Discogs only:
   glyphs on hover, popup stack); mutations
   `scripts/mutations/link-site-uvd.json`, `scripts/mutations/rel-multi-site-and-ip.json`.
 
+### The Brucebase MB-Event column: `bb-mbev-link-mismatch`, `bb-mbev-link-missing`
+
+The third kind of late data (2026-10-24, org/TODO.org "Some enhancements"
+g; docs/claude/brucebase.md, "MB-Event"): the MB-Event cell is answered
+after the render by `_bbMbevRun()`. ❌ "MB-Event: the Brucebase link
+differs" (the event's Brucebase year link points to another entry, or the
+row's anchor is linked from another event) and ⚠️ "MB-Event: no Brucebase
+link" (the event links none), both cell scope, column MB-Event, Brucebase
+only (`enabled()` checks `_isBbHost`).
+
+- `test()` reads `_bbMbevCheck(td)`: the cell's own data attributes
+  (`data-mb-bbev-anchor`, `-links`, `-anchor-events`, `-mbid`), which
+  `_bbMbevRenderCell()` writes into the live cells AND the source rows.
+- `_bbMbevRepaint()` queues every live row it wrote
+  (`_queueFindingsRestamp()`); both ids are in `_LATE_FINDING_IDS`.
+- A generic tint (`sa_findings_tint_bb_mbev_link`) plus a ring on the glyph
+  keyed to the cell's `data-mb-finding`; enable switches
+  `sa_findings_bb_mbev_link_mismatch` / `_missing`.
+- The glyph's card says the same in words (`_bbMbevCheckHtml()`).
+- Specs `tests/fixtures/bb-mb-event.spec.js` ("the MB-Event Brucebase-link
+  findings"); mutations `scripts/mutations/bb-mb-event.json`.
+
 ## On demand: the title-style findings
 
 `title-case`, `title-typography`, `title-series-sep`, `title-feat` and

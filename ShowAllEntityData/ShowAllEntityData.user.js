@@ -2764,6 +2764,33 @@
                          'WARNING. "www." is ignored.'
         },
 
+        sa_findings_bb_mbev_link_mismatch: {
+            label: 'Find Brucebase entries whose MusicBrainz event links another entry',
+            type: 'checkbox',
+            default: true,
+            description: 'On a Brucebase year table, once the MB-Event column has found an entry\'s MusicBrainz ' +
+                         'event: the event\'s Brucebase link (its "reviews" URL, e.g. ' +
+                         'http://brucebase.wikidot.com/1985#130185) points to a different entry, or the entry\'s own ' +
+                         'anchor is linked from a different event. An ERROR ("MB-Event: the Brucebase link differs").'
+        },
+
+        sa_findings_bb_mbev_link_missing: {
+            label: 'Find Brucebase entries whose MusicBrainz event has no Brucebase link',
+            type: 'checkbox',
+            default: true,
+            description: 'On a Brucebase year table, once the MB-Event column has found an entry\'s MusicBrainz ' +
+                         'event: the event links no Brucebase year page at all. A WARNING ("MB-Event: no ' +
+                         'Brucebase link"); the cell\'s card names the link it would have.'
+        },
+
+        sa_findings_tint_bb_mbev_link: {
+            label: 'Highlight MB-Event cells whose Brucebase link differs or is missing',
+            type: 'checkbox',
+            default: true,
+            description: 'Tint the MB-Event cell light red with a ❌ when the link differs, light yellow with a ⚠️ ' +
+                         'when it is missing, and ring its glyph in the same colour.'
+        },
+
         sa_findings_nonphysical_formats: {
             label: 'Formats that have no medium to photograph',
             type: 'text',
@@ -18856,8 +18883,13 @@
         td.dataset.mbBbevState = st;
         if (rec && rec.mbid) td.dataset.mbBbevMbid = rec.mbid;
         else delete td.dataset.mbBbevMbid;
-        if (rec) td.dataset.mbBbevLinks = (rec.links || []).join(' ');
-        else delete td.dataset.mbBbevLinks;
+        if (rec) {
+            td.dataset.mbBbevLinks = (rec.links || []).join(' ');
+            td.dataset.mbBbevAnchorEvents = (rec.anchorEvents || []).join(' ');
+        } else {
+            delete td.dataset.mbBbevLinks;
+            delete td.dataset.mbBbevAnchorEvents;
+        }
         const row = td.parentElement;
         const rc = row && _rowTextCache.get(row);
         if (rc) { rc.cols = []; rc.full = null; }
@@ -18894,7 +18926,13 @@
      */
     function _bbMbevRepaint(index, keys, state = null) {
         let n = 0;
-        Array.from(keys).forEach(k => (index.get(k) || []).forEach(td => { _bbMbevRenderCell(td, state); n++; }));
+        Array.from(keys).forEach(k => (index.get(k) || []).forEach(td => {
+            _bbMbevRenderCell(td, state);
+            n++;
+            // The Brucebase-link findings read this cell (late data): the
+            // live row and its master row are re-stamped together.
+            if (td.isConnected && td.closest('table.tbl')) _queueFindingsRestamp(td.parentElement, ['bb-mbev-link-mismatch', 'bb-mbev-link-missing']);
+        }));
         if (n) _bbMbev.pendingCount = null;
         return n;
     }
@@ -19403,6 +19441,153 @@
                 ['Time', `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}${job.t1 ? '' : ' elapsed'}`],
             ],
             cache, actions,
+        };
+    }
+
+    /**
+     * The inc set of the MB-Event glyph's card: the MusicBrainz event
+     * card's own (`_MB_KINDS.event`'s `cardInc`), so its answer sits under
+     * the same `_mbPop` key and the card renders it unchanged.
+     * @type {string}
+     */
+    const _BB_MBEV_POP_INC = 'artist-rels+place-rels+event-rels+series-rels+url-rels';
+
+    /**
+     * Loads the MusicBrainz event a glyph links, for its card and window,
+     * through GM from the Brucebase page (the entity cards' `_mbWsLoad()`
+     * asks its own origin): one request in the shared rate slot, the answer
+     * kept in `_mbPop` under the key `_MB_KINDS.event.card()` reads. A load
+     * under way or done is not asked again unless `force` (⟳).
+     *
+     * @param {{id: string}} t
+     * @param {boolean} force
+     * @param {function(): void} repaint
+     * @returns {string} The `_mbPop` key.
+     */
+    function _bbMbevPopLoad(t, force, repaint) {
+        const key = `pop:event:${t.id}:${_BB_MBEV_POP_INC}`;
+        const cur = _mbPop.get(key);
+        if (cur && (cur.status === 'loading' || (!force && cur.status === 'done'))) return key;
+        const st = { status: 'loading', data: null, at: 0, cached: false, detail: '' };
+        _mbPop.set(key, st);
+        (async () => {
+            await _relAwaitRateSlot();
+            const res = await _extGet(`https://musicbrainz.org/ws/2/event/${encodeURIComponent(t.id)}?inc=${_BB_MBEV_POP_INC}&fmt=json`, {
+                gate: false, wanted: () => true,
+                fetchOpts: { accept: /\bjson\b/i, headers: { 'User-Agent': _EXT_AGENT, Accept: 'application/json' } },
+            });
+            let data = null;
+            if (!res.error && res.status === 200) {
+                try {
+                    data = JSON.parse(String(res.body || '') + String(res.tail || ''));
+                } catch (_) { /* reported below */ }
+            }
+            if (data) Object.assign(st, { status: 'done', data, at: Date.now(), cached: false });
+            else Object.assign(st, { status: 'failed', detail: res.error || `HTTP ${res.status}` });
+            repaint();
+        })();
+        return key;
+    }
+
+    /**
+     * How a row's MusicBrainz event links back to the row (item g): the
+     * row's own anchor URL against the event's Brucebase year links and the
+     * events MusicBrainz links that anchor from.
+     *
+     * - `ok`: the event links the row's anchor;
+     * - `mismatch`: it links another entry's anchor, or the row's anchor is
+     *   linked from another event;
+     * - `missing`: it links no Brucebase year page at all;
+     * - null: nothing to compare (no event, no anchor, not answered).
+     *
+     * @param {?HTMLTableCellElement} td An MB-Event cell.
+     * @returns {?{state: string, own: string, links: string[], others: string[]}}
+     */
+    function _bbMbevCheck(td) {
+        if (!td || td.dataset.mbBbevState !== 'done' || !td.dataset.mbBbevMbid) return null;
+        const own = _bbMbevNorm(td.dataset.mbBbevAnchor || '');
+        if (!own) return null;
+        const links = (td.dataset.mbBbevLinks || '').split(' ').filter(Boolean);
+        const others = (td.dataset.mbBbevAnchorEvents || '').split(' ').filter(id => id && id !== td.dataset.mbBbevMbid);
+        if (links.includes(own) && !others.length) return { state: 'ok', own, links, others };
+        if (links.length || others.length) return { state: 'mismatch', own, links, others };
+        return { state: 'missing', own, links, others };
+    }
+
+    /**
+     * The card's and window's Brucebase block for a glyph: how the event was
+     * found and whether its Brucebase link is this entry's
+     * (`_bbMbevCheck()`), the two links side by side when they differ.
+     *
+     * @param {?Element} el The glyph.
+     * @returns {string} HTML ('' when there is nothing to say).
+     */
+    function _bbMbevCheckHtml(el) {
+        const td = el && el.closest ? el.closest('td.mb-bbev-cell') : null;
+        if (!td) return '';
+        const rec = _bbMbevMem.get(td.dataset.mbBbevKey) || {};
+        const how = { link: 'by its Brucebase link', date: 'by date (search)', name: 'by name (search)' }[rec.via] || '';
+        const c = _bbMbevCheck(td);
+        const parts = [];
+        if (how) parts.push(`<div class="mb-tt-dim">Found ${_rgEsc(how)}</div>`);
+        if (c && c.state === 'ok') {
+            parts.push(`<div class="mb-tt-body">Brucebase: <code>${_rgEsc(c.own)}</code> ✓ this entry</div>`);
+        } else if (c && c.state === 'mismatch') {
+            parts.push('<div class="mb-tt-body mb-tt-alert">ERROR: the MusicBrainz event and this entry do not link each other.</div>' +
+                '<div class="mb-tt-cmp"><div class="mb-tt-cmp-grid">' +
+                `<span class="mb-tt-cmp-lbl">This row</span><span class="mb-tt-cmp-val"><code>${_rgEsc(c.own)}</code></span>` +
+                `<span class="mb-tt-cmp-lbl">MusicBrainz</span><span class="mb-tt-cmp-val">${c.links.length ? c.links.map(l => `<code>${_rgEsc(l)}</code>`).join('<br>') : 'no Brucebase link'}</span>` +
+                (c.others.length ? `<span class="mb-tt-cmp-lbl">Anchor of</span><span class="mb-tt-cmp-val">${c.others.length === 1 ? 'another event' : `${c.others.length} other events`}</span>` : '') +
+                '</div></div>');
+        } else if (c && c.state === 'missing') {
+            parts.push(`<div class="mb-tt-body"><b>WARNING:</b> the MusicBrainz event has no Brucebase link. This row's would be <code>${_rgEsc(c.own)}</code>.</div>`);
+        }
+        return parts.length ? `<div class="mb-tt-rule"></div>${parts.join('')}` : '';
+    }
+
+    /**
+     * The MB-Event glyph as a source of the popup engine (org/TODO.org "Some
+     * enhancements" f, 2026-10-24): the MusicBrainz event's own card
+     * (`_MB_KINDS.event`), loaded through GM (`_bbMbevPopLoad()`), with the
+     * row's Brucebase block under it (`_bbMbevCheckHtml()`); Space pins it
+     * into the window with the event's links. No Live page view: MusicBrainz
+     * answers a script's page request with a browser check. Under
+     * `sa_bb_event_preview`, with Ctrl as the other previews.
+     *
+     * @returns {object} The source.
+     */
+    function _bbMbevSource() {
+        const key = (t) => `pop:event:${t.id}:${_BB_MBEV_POP_INC}`;
+        return {
+            id: 'bb-mbev',
+            kind: 'MusicBrainz event',
+            selector: 'a.mb-bbev-link',
+            wide: true,
+            live: null,
+            enabled: () => !!_isBbHost && Lib.settings.sa_bb_event_preview !== false,
+            resolve(a) {
+                const m = (a.getAttribute('href') || '').match(/\/event\/([0-9a-f-]{36})(?:[?#]|$)/i);
+                if (!m) return null;
+                const name = (a.getAttribute('title') || a.dataset.mbTipSaved || '').split(' · ')[0];
+                return { key: `bbmbev:${m[1].toLowerCase()}`, url: a.href, type: 'event', id: m[1].toLowerCase(), noLive: true, name };
+            },
+            needsCtrl: _dpNeedsCtrl,
+            liveUrl: (t) => t.url,
+            card(t, start, repaint) {
+                if (start) _bbMbevPopLoad(t, false, repaint);
+                const check = _bbMbevCheckHtml(t.el);
+                return _MB_KINDS.event.card(t, false, repaint).replace(/<div class="mb-tt-foot">/, (f) => check + f);
+            },
+            extracted(t, start, force, repaint) {
+                if (start) _bbMbevPopLoad(t, force, repaint);
+                const st = _mbPop.get(key(t));
+                const card = _MB_KINDS.event.card(t, false, repaint).replace(/<div class="mb-tt-foot">[\s\S]*?<\/div>/, '');
+                const links = st && st.status === 'done' && st.data ? _mbPopUrlRowsHtml(st.data.relations) : '';
+                return `<div class="mb-dp-x"><div class="mb-dp-col">${card}${links}</div>` +
+                    `<div class="mb-dp-col"><h4>Brucebase</h4>${_bbMbevCheckHtml(t.el) || '<div class="mb-dp-xsub">Nothing to compare.</div>'}</div></div>`;
+            },
+            steps: () => Array.from(document.querySelectorAll('body.mb-sa-host-bb table.tbl tbody a.mb-bbev-link')).filter(a => a.getClientRects().length),
+            stepId: (a) => a.href,
         };
     }
 
@@ -20334,6 +20519,9 @@
             body.mb-sa-host-bb .mb-bbev-g[data-s="fail"] { color: #9a6a00; cursor: pointer; }
             body.mb-sa-host-bb .mb-bbev-g[data-s="fail"]::after { content: '⚠'; position: absolute; right: -4px; top: -5px; font-size: 10px; }
             body.mb-sa-host-bb .mb-bbev-ids { display: none; }
+            /* The Brucebase-link findings ring the glyph too (mockup). */
+            body.mb-sa-host-bb td.mb-bbev-cell[data-mb-finding="error"] .mb-bbev-g { box-shadow: 0 0 0 1.5px #9b2218; }
+            body.mb-sa-host-bb td.mb-bbev-cell[data-mb-finding="warn"] .mb-bbev-g { box-shadow: 0 0 0 1.5px #9a6a00; }
             body.mb-sa-host-bb ul.mb-bb-media {
                 list-style: none;
                 margin: 0;
@@ -21934,7 +22122,8 @@
      *     several entity kinds, `_mbEntitySource()`);
      *   - `onAreaClick(e, t)`, optional: a click in its Extracted view;
      *     `onAreaInput(e, t)`, optional: typing in a field of it.
-     * The four foreign sites are one source each (`_dpSiteSource()`); a
+     * The four foreign sites are one source each (`_dpSiteSource()`), and
+     * Brucebase's MB-Event glyph one more (`_bbMbevSource()`); a
      * MusicBrainz release page adds its two release-group sources, the
      * subheader link and the "#" cell (`_rgLinkSource()`, `_eventRgSource()`);
      * every MusicBrainz table link is the last one (`_mbEntitySource()`,
@@ -21948,7 +22137,7 @@
     function _popSources() {
         if (!_popSources.list) {
             _popSources.list = Object.keys(_DP_SITES).map(host => _dpSiteSource(host, _DP_SITES[host]))
-                .concat([_rgLinkSource(), _eventRgSource(), _extSource(), _mbEntitySource()]);
+                .concat([_bbMbevSource(), _rgLinkSource(), _eventRgSource(), _extSource(), _mbEntitySource()]);
         }
         return _popSources.list;
     }
@@ -49742,6 +49931,41 @@
             test: cell => _findCellRelSiteDupes(cell).length > 0,
             detail: cell => _relSiteDupesDetail(cell),
             tint: _findingTintSetting('sa_findings_tint_rel_multi_discogs'),
+        },
+        // The Brucebase year table's MB-Event column (org/TODO.org "Some
+        // enhancements" g, 2026-10-24): late data, as rel-multi-site — the
+        // cell's answer is written after the render (`_bbMbevRenderCell()`,
+        // master rows too) and each live row is re-stamped
+        // (`_queueFindingsRestamp()`). `_bbMbevCheck()` compares the row's
+        // own anchor with the event's Brucebase links.
+        {
+            id: 'bb-mbev-link-mismatch', level: 'error', glyph: '🔗', scope: 'cell',
+            label: 'MB-Event: the Brucebase link differs',
+            tip: 'The entry\'s MusicBrainz event and the entry do not link each other: the event\'s Brucebase link (its "reviews" URL relationship, e.g. http://brucebase.wikidot.com/1985#130185) points to another entry, or this entry\'s anchor is linked from another MusicBrainz event. Known once the MB-Event column has looked the row up, so the count grows while it runs. The glyph\'s card shows both links.',
+            enabled: () => !!_isBbHost && Lib.settings.sa_findings_bb_mbev_link_mismatch !== false,
+            cols: name => name === 'MB-Event',
+            rowGate: row => !!row.querySelector('td.mb-bbev-cell[data-mb-bbev-mbid]'),
+            test: cell => (_bbMbevCheck(cell) || {}).state === 'mismatch',
+            detail: cell => {
+                const c = _bbMbevCheck(cell);
+                return c ? `This row: ${c.own}. MusicBrainz: ${c.links.join(', ') || 'no Brucebase link'}` +
+                    (c.others.length ? `; the anchor is linked from ${c.others.length === 1 ? 'another event' : `${c.others.length} other events`}` : '') + '.' : '';
+            },
+            tint: _findingTintSetting('sa_findings_tint_bb_mbev_link'),
+        },
+        {
+            id: 'bb-mbev-link-missing', level: 'warn', glyph: '🔗', scope: 'cell',
+            label: 'MB-Event: no Brucebase link',
+            tip: 'The entry\'s MusicBrainz event links no Brucebase year page (MusicBrainz keeps it as a "reviews" URL relationship, e.g. http://brucebase.wikidot.com/1985#130185). Known once the MB-Event column has looked the row up, so the count grows while it runs. The glyph\'s card names the link it would have.',
+            enabled: () => !!_isBbHost && Lib.settings.sa_findings_bb_mbev_link_missing !== false,
+            cols: name => name === 'MB-Event',
+            rowGate: row => !!row.querySelector('td.mb-bbev-cell[data-mb-bbev-mbid]'),
+            test: cell => (_bbMbevCheck(cell) || {}).state === 'missing',
+            detail: cell => {
+                const c = _bbMbevCheck(cell);
+                return c ? `The event would link ${c.own}.` : '';
+            },
+            tint: _findingTintSetting('sa_findings_tint_bb_mbev_link'),
         },
         {
             id: 'pending', level: 'warn', glyph: '⏳', scope: 'row',
@@ -140719,7 +140943,7 @@ a { color: #1565c0; }`;
      * Relationships column (`rel-multi-site`). Each is re-stamped per row
      * through `_queueFindingsRestamp()`.
      */
-    const _LATE_FINDING_IDS = [..._ART_FINDING_IDS, 'rel-multi-site'];
+    const _LATE_FINDING_IDS = [..._ART_FINDING_IDS, 'rel-multi-site', 'bb-mbev-link-mismatch', 'bb-mbev-link-missing'];
 
     /**
      * Queues a re-stamp of a row whose late data (`_LATE_FINDING_IDS`) has

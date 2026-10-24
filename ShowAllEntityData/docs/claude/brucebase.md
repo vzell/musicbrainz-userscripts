@@ -364,6 +364,16 @@ Previous / Listing / Next line stay. On the live document
   `tests/fixtures/bb-mb-event.spec.js` (the stub answers from the FIXTURE's
   entries, never the page: a filter can empty the table while the lookup
   runs); mutations `scripts/mutations/bb-mb-event.json`.
+  **The glyph's card** (item f, `_bbMbevSource()`, a popup-engine source on
+  Brucebase only, under `sa_bb_event_preview`): MusicBrainz's own event card
+  (`_MB_KINDS.event.card(t, false, …)`), fed by `_bbMbevPopLoad()` — one GM
+  request in the shared rate slot, the answer put under the very `_mbPop`
+  key the card reads (its `cardInc`; the entity cards' own `_mbWsLoad()`
+  asks the CURRENT origin) — with the row's Brucebase block before its foot
+  (`_bbMbevCheckHtml()`: how it was found, ✓ / ERROR with both links /
+  WARNING). Space: the same card and the event's links, no Live page view.
+  **The findings** (item g): `bb-mbev-link-mismatch` (❌) and
+  `bb-mbev-link-missing` (⚠️), docs/claude/findings.md.
 - Date goes through the MusicBrainz `dateParts` extractor unchanged.
 - **The sticky column must be the FIRST one** — Event since 2026-10-24,
   Date before (the paragraph below tells it with Date). The first

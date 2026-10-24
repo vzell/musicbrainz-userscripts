@@ -25997,3 +25997,32 @@ Specs: bb-event-preview (+5 window tests), detail-preview's Brucebase
 reader (Performances (250), its `html`, the flags): 43 passed; the broad
 Brucebase/preview set 226 passed before the rename. Mutations
 `scripts/mutations/bb-window-sections.json`: 7, all fail as expected.
+
+## 2026-10-24 — Brucebase MB-Event: the event's card and the Brucebase-link findings (branch feature/bb-events-and-gallery, WIP.9)
+
+Env: 2026-10-24T06:44:29+02:00 · petri · WSL2 Ubuntu 24.04.3 (Linux 6.18.54.1) · Playwright 1.62.1 Chromium, no Tampermonkey (GM stubs)
+
+org/TODO.org "Some enhancements" f and g, mockup
+https://claude.ai/artifact/DmsNyUkUa1Hq8nPr2B5EGA.
+
+**f.** The MusicBrainz event card could not be reused as a source on
+Brucebase: `_mbEntitySource()` is off on foreign hosts, and its loader
+`_mbWsLoad()` builds `/ws/2/…` relative to the CURRENT origin. So
+`_bbMbevSource()` loads through GM (`_bbMbevPopLoad()`) and writes the
+answer under the exact `_mbPop` key `_MB_KINDS.event.card()` reads (its
+`cardInc`), then calls the card with `start` false: the card's markup is
+MusicBrainz's own, unchanged. The window is the card plus the event's links;
+`_MB_KINDS.event.extracted()` is not used, because its `pin()` would start
+same-origin lookups (recording-rels, the area chain) against Brucebase.
+The spec's stub first lacked `target-type` on its relations; the card's
+place and line-up read it (`_mbPopEventPlaceRel()`, `_mbPopRelNames()`).
+
+**g.** Late data, following rel-multi-site: `_bbMbevCheck(td)` reads only the
+cell's data attributes (written to live and source rows); `_bbMbevRepaint()`
+queues each live row for `_queueFindingsRestamp()`. A third stub case,
+1985-01-24's anchor linked from 01-23's event, exercises the "another event"
+arm; it adds one event lookup to the first test's request count.
+
+Specs: bb-mb-event (+3 card, +3 findings tests), with bb-event-preview,
+bb-year and the findings specs: 66 passed. Mutations
+`scripts/mutations/bb-mb-event.json`: the seven new ones fail as expected.

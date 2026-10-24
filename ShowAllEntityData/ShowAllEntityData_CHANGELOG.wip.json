@@ -1,5 +1,18 @@
 [
     {
+        "version": "WIP.9",
+        "date": "2026-10-24",
+        "sections": [
+            {
+                "label": "🚀 Feature",
+                "items": [
+                    "Brucebase year table: pointing at a found MB-Event glyph (with Ctrl held, unless every preview shows on a plain hover) shows the MusicBrainz event's card: its name, type, date, place and line-up. Under it, the card says how the event was found and whether its Brucebase link is this entry's. Space pins it into a window with the event's links.",
+                    "Two new findings check that link. ❌ \"MB-Event: the Brucebase link differs\": the MusicBrainz event links another Brucebase entry, or this entry's anchor is linked from another event; the card shows both links. ⚠️ \"MB-Event: no Brucebase link\": the event has none. They appear in the ❌ / ⚠️ menus, filter the table and tint the cell as the other findings do, and fill in while the column looks the events up. Each has its own switch in ⚙️ Settings → ⚠️ Findings, plus one for the tint."
+                ]
+            }
+        ]
+    },
+    {
         "version": "WIP.8",
         "date": "2026-10-24",
         "sections": [

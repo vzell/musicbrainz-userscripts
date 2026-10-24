@@ -76,5 +76,96 @@
         "spec": "tests/fixtures/bb-mb-event.spec.js",
         "grep": "late answers reach an active filter",
         "expect": "fail"
+    },
+    {
+        "name": "card: the glyph's source not registered",
+        "why": "org/TODO.org Some enhancements f: hovering the found glyph shows the MusicBrainz event's card.",
+        "edits": [
+            {
+                "find": ".concat([_bbMbevSource(), _rgLinkSource(),",
+                "replace": ".concat([_rgLinkSource(),"
+            }
+        ],
+        "spec": "tests/fixtures/bb-mb-event.spec.js",
+        "grep": "found by its link: the event card",
+        "expect": "fail"
+    },
+    {
+        "name": "card: loaded under another key than the card reads",
+        "why": "The card renders _MB_KINDS.event's own answer, so the load must use its cardInc (the _mbPop key).",
+        "edits": [
+            {
+                "find": "    const _BB_MBEV_POP_INC = 'artist-rels+place-rels+event-rels+series-rels+url-rels';",
+                "replace": "    const _BB_MBEV_POP_INC = 'artist-rels+place-rels';"
+            }
+        ],
+        "spec": "tests/fixtures/bb-mb-event.spec.js",
+        "grep": "found by its link: the event card",
+        "expect": "fail"
+    },
+    {
+        "name": "card: no Brucebase block",
+        "why": "The card says how the event was found and whether its Brucebase link is this entry's.",
+        "edits": [
+            {
+                "find": "                return _MB_KINDS.event.card(t, false, repaint).replace(/<div class=\"mb-tt-foot\">/, (f) => check + f);",
+                "replace": "                return _MB_KINDS.event.card(t, false, repaint);"
+            }
+        ],
+        "spec": "tests/fixtures/bb-mb-event.spec.js",
+        "grep": "found by date with no Brucebase link",
+        "expect": "fail"
+    },
+    {
+        "name": "finding: the anchor's other events ignored",
+        "why": "An entry whose anchor MusicBrainz links from ANOTHER event is an ERROR, even when the matched event links nothing.",
+        "edits": [
+            {
+                "find": "        const others = (td.dataset.mbBbevAnchorEvents || '').split(' ').filter(id => id && id !== td.dataset.mbBbevMbid);",
+                "replace": "        const others = [];"
+            }
+        ],
+        "spec": "tests/fixtures/bb-mb-event.spec.js",
+        "grep": "ERROR for a link to another entry",
+        "expect": "fail"
+    },
+    {
+        "name": "finding: no re-stamp after the late answer",
+        "why": "stampFindings() ran before the answers: without the per-row re-stamp nothing is ever flagged (late data, findings.md).",
+        "edits": [
+            {
+                "find": "            if (td.isConnected && td.closest('table.tbl')) _queueFindingsRestamp(td.parentElement, ['bb-mbev-link-mismatch', 'bb-mbev-link-missing']);\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/bb-mb-event.spec.js",
+        "grep": "ERROR for a link to another entry",
+        "expect": "fail"
+    },
+    {
+        "name": "finding: the tint setting ignored",
+        "why": "sa_findings_tint_bb_mbev_link off: no tint, the menu row stays.",
+        "edits": [
+            {
+                "find": "            tint: _findingTintSetting('sa_findings_tint_bb_mbev_link'),\n        },\n        {\n            id: 'bb-mbev-link-missing'",
+                "replace": "            tint: () => true,\n        },\n        {\n            id: 'bb-mbev-link-missing'"
+            }
+        ],
+        "spec": "tests/fixtures/bb-mb-event.spec.js",
+        "grep": "tint off",
+        "expect": "fail"
+    },
+    {
+        "name": "finding: the enable settings ignored",
+        "why": "Each finding has its own switch.",
+        "edits": [
+            {
+                "find": "            enabled: () => !!_isBbHost && Lib.settings.sa_findings_bb_mbev_link_mismatch !== false,",
+                "replace": "            enabled: () => !!_isBbHost,"
+            }
+        ],
+        "spec": "tests/fixtures/bb-mb-event.spec.js",
+        "grep": "switch each finding off",
+        "expect": "fail"
     }
 ]
