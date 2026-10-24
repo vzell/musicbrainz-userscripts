@@ -3122,6 +3122,17 @@ entry, with these columns:
   images. **Space** pins it into a window with the whole setlist, the other
   shows at that venue, the recording and the stories; ← → step through the
   rows (⚙️ Settings → *📚 Brucebase* → *Preview event pages on hover*).
+- **MB-Event:** a small glyph for the entry's kind (a microphone for a gig,
+  struck through for a show that did not happen, a tape reel for a
+  recording, a metronome for a rehearsal, a speech bubble for an interview,
+  two figures for an event without Bruce). Once the entry's event is found
+  on MusicBrainz the glyph links to it; a "?" means MusicBrainz has none (a
+  click searches it yourself), ⚠ that MusicBrainz did not answer (a click
+  asks again). The column looks the events up by itself after the table
+  renders, about one request a second, and remembers the answers for 90 days
+  (⚙️ Settings → *📚 Brucebase* → *MB-Event column: look the events up on
+  MusicBrainz*; off, the ▶ MB button in the column's header does it).
+  Type an event's MusicBrainz id into the column's filter to find its row.
 - **Date:** the entry's date. A day or month the wiki writes as `00` (not
   known) is left out, so `1954-10-00` reads `1954-10`. **DD**, **MM**,
   **YYYY**, **Day** and **Month** (at the end of the table) split it up as

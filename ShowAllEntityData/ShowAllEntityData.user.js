@@ -4935,6 +4935,18 @@
                          'never at load, and kept for 30 days. Independent of the song preview above.'
         },
 
+        sa_bb_mb_event_lookup: {
+            label: 'MB-Event column: look the events up on MusicBrainz',
+            type: 'checkbox',
+            default: true,
+            description: 'Needs a setting above that switches the wiki on. After a year table renders, its ' +
+                         'MB-Event column asks MusicBrainz for each entry\'s event: first by the entry\'s ' +
+                         'Brucebase link (100 entries a request), then the year\'s events by date, then by ' +
+                         'name for the rest — about one request a second, shown in the background jobs ' +
+                         'popup, with Stop. Each answer is kept 90 days ("no event" 7 days), so a second ' +
+                         'visit asks nothing. Off: the ▶ MB button in the column\'s header runs the lookup.'
+        },
+
         sa_bb_tip_images: {
             label: 'Media icons and song glyphs: the page\'s images on hover',
             type: 'checkbox',
@@ -18144,7 +18156,7 @@
      * Column headers of the Brucebase year table, in order.
      * @type {string[]}
      */
-    const _BB_YEAR_HEADERS = ['Event', 'Media', 'Date', 'Type', 'Venue', 'City', 'State', 'Country', 'Tour',
+    const _BB_YEAR_HEADERS = ['Event', 'MB-Event', 'Media', 'Date', 'Type', 'Venue', 'City', 'State', 'Country', 'Tour',
         'Soundcheck', 'Setlist', 'Set note', 'Notes', 'Info wanted'];
 
     /**
@@ -18317,8 +18329,13 @@
      * required: two entries have it in a paragraph of their own, and 712 of
      * the 5,009 carry a letter after the six digits (probe, 2026-10-09).
      *
+     * The anchor's name is returned too (`anchor`, '' for none): in the
+     * heading paragraph, or the paragraph of its own just before it. The
+     * MB-Event column compares it with the event's Brucebase link
+     * (`_bbMbevAnchorUrl()`).
+     *
      * @param {Element} el A child of `#page-content`.
-     * @returns {?{heading: string, link: ?HTMLAnchorElement}} The heading's text and link, or `null`.
+     * @returns {?{heading: string, link: ?HTMLAnchorElement, anchor: string}} The heading's text, link and anchor name, or `null`.
      */
     function _bbYearEntryHead(el) {
         if (el.tagName !== 'P') return null;
@@ -18326,7 +18343,10 @@
         if (!strong) return null;
         const heading = _bbText(strong);
         if (!/^\d{4}-\d\d-\d\d\b/.test(heading) || _bbText(el) !== heading) return null;
-        return { heading, link: strong.querySelector('a[href]') };
+        let named = el.querySelector(':scope > a[name]');
+        const prev = el.previousElementSibling;
+        if (!named && prev && prev.tagName === 'P' && !_bbText(prev)) named = prev.querySelector(':scope > a[name]');
+        return { heading, link: strong.querySelector('a[href]'), anchor: named ? named.getAttribute('name') || '' : '' };
     }
 
     /**
@@ -18371,7 +18391,7 @@
         Array.from(content.children).forEach(el => {
             const head = _bbYearEntryHead(el);
             if (head) {
-                cur = { heading: head.heading, link: head.link, tour, top: el, blocks: [] };
+                cur = { heading: head.heading, link: head.link, anchor: head.anchor, tour, top: el, blocks: [] };
                 entries.push(cur);
                 return;
             }
@@ -18653,6 +18673,738 @@
         return td;
     }
 
+    // ── The Brucebase MB-Event column ───────────────────────────────────────
+    //
+    // org/TODO.org "Some enhancements" 3c, f, g (vzell, 2026-10-24; mockup
+    // https://claude.ai/artifact/DmsNyUkUa1Hq8nPr2B5EGA). The year table's
+    // second column: a glyph for the entry's type, linked to its MusicBrainz
+    // event once found. The ws/2 answers it relies on were probed
+    // (scripts/probe-mb-event-lookups.py, scripts/probe-mb-event-anchor-coverage.py,
+    // 2026-10-24; the fields from the search server's schema, mbsssss
+    // event/conf/schema.xml, because the documentation pages answer a script
+    // with a browser check):
+    //   - `/ws/2/url?resource=…&inc=event-rels` matches the EXACT spelling
+    //     `http://brucebase.wikidot.com/1985#130185` (https and www give 404),
+    //     the fragment kept; several `resource=` per request; the relation's
+    //     event carries its `life-span`. 89 of 1985's 94 entries and 105 of
+    //     2012's 107 are linked from MusicBrainz this way.
+    //   - `/ws/2/event?query=arid:<Bruce> AND begin:[Y-01-01 TO Y-12-31]`: 93
+    //     events in 1985, no two on one date; `life-span.begin` is the day.
+    //   - the name search ("1985-01-13: Carolina Coliseum, Columbia, SC")
+    //     ranks the event first (score 100, the next 47).
+    //   - `/ws/2/event/<id>?inc=url-rels`: the Brucebase link is of type
+    //     "review".
+    // So a year costs one url lookup per 100 entries, one search per 100
+    // events, a name search per row still unmatched, and an event lookup per
+    // row matched by search whose links are not known yet; each answer is
+    // kept 90 days (7 for "no event"), so a second visit costs nothing.
+
+    /** The MB-Event column's name. */
+    const _BB_MBEV_COL = 'MB-Event';
+    /** Bruce Springsteen's MBID: the year search's `arid`. */
+    const _BB_MBEV_BRUCE = '70248960-cb53-4ea4-943a-edb18f7d336f';
+    /** How long a found event is kept. */
+    const _BB_MBEV_TTL_MS = 90 * 86400000;
+    /** How long "no event" is kept. */
+    const _BB_MBEV_NONE_TTL_MS = 7 * 86400000;
+    /** Entries per url lookup and events per search page. */
+    const _BB_MBEV_BATCH = 100;
+    const _BB_MBEV_IDB_NAME = 'vz-saed-bb-mbevents';
+    const _BB_MBEV_IDB_VERSION = 1;
+
+    /**
+     * The glyph per entry type (the heading link's prefix), 16 × 16 strokes
+     * in `currentColor`: Gig a microphone, No gig the same struck through,
+     * Recording a tape reel, Rehearsal a metronome, Interview a speech
+     * bubble, No Bruce two figures; `other` (any other type) stands in for
+     * MusicBrainz's event icon, a calendar. Approved in the mockup.
+     * @type {Object<string, string>}
+     */
+    const _BB_MBEV_GLYPHS = {
+        gig: '<rect x="6" y="1.5" width="4" height="8" rx="2"/><path d="M3.5 7.5a4.5 4.5 0 0 0 9 0M8 12v2.5M5.5 14.5h5"/>',
+        nogig: '<rect x="6" y="1.5" width="4" height="8" rx="2"/><path d="M3.5 7.5a4.5 4.5 0 0 0 9 0M8 12v2.5M5.5 14.5h5M2 2l12 12"/>',
+        recording: '<circle cx="4.5" cy="7.5" r="3"/><circle cx="11.5" cy="7.5" r="3"/><circle cx="4.5" cy="7.5" r=".6"/><circle cx="11.5" cy="7.5" r=".6"/><path d="M4.5 10.5h7"/>',
+        rehearsal: '<path d="M5 14.5 6.8 1.8h2.4L11 14.5z"/><path d="M4.5 12h7M8 11l3.2-6.5"/>',
+        interview: '<path d="M2 3h12v7.5H7.5L4 13.5v-3H2z"/><path d="M5 6.2h6M5 8.2h4"/>',
+        nobruce: '<circle cx="5" cy="5" r="2"/><circle cx="11" cy="5" r="2"/><path d="M1.5 13.5c.4-3.4 6.6-3.4 7 0M7.5 13.5c.4-3.4 6.6-3.4 7 0"/>',
+        other: '<rect x="2" y="3" width="12" height="11" rx="1.5"/><path d="M2 6.5h12M5 1.5v3M11 1.5v3"/><path d="M7.9 8.3l.7 1.4 1.5.2-1.1 1 .3 1.5-1.4-.7-1.3.7.3-1.5-1.1-1 1.5-.2z"/>',
+    };
+
+    /** Answers by row key, from our store or this page's lookups. @type {Map<string, object>} */
+    const _bbMbevMem = new Map();
+    /** The lookup's state, for the cells, the header button and the job popup. */
+    const _bbMbev = {
+        running: false, stop: false, total: 0, done: 0, failed: 0, requests: 0,
+        refreshTimer: 0, lastRefresh: 0, pendingCount: null, storeCount: null, storeCountAt: 0,
+    };
+    let _bbMbevIdbPromise = null;
+    let _bbMbevOwnPromise = null;
+
+    /**
+     * Whether the MB-Event column looks its events up by itself after a
+     * render (`sa_bb_mb_event_lookup`, default on); off, the ▶ MB header
+     * button does.
+     *
+     * @returns {boolean}
+     */
+    function _bbMbevAuto() {
+        return Lib.settings.sa_bb_mb_event_lookup !== false;
+    }
+
+    /**
+     * An entry's Brucebase anchor URL as MusicBrainz stores it: plain http,
+     * no "www.", the year page (`1949-64` before 1965, as the wiki names
+     * its first page) and the heading's `<a name>`.
+     *
+     * @param {string} name The anchor's name ("130185").
+     * @param {string} date The entry's date, YYYY first.
+     * @returns {string} '' without either.
+     */
+    function _bbMbevAnchorUrl(name, date) {
+        const y = String(date || '').slice(0, 4);
+        if (!name || !/^\d{4}$/.test(y)) return '';
+        return `http://brucebase.wikidot.com/${y >= '1965' ? y : '1949-64'}#${name}`;
+    }
+
+    /**
+     * A Brucebase year-page link normalised for comparing: no scheme, no
+     * "www.", the host in lower case ("brucebase.wikidot.com/1985#130185");
+     * null for any other link.
+     *
+     * @param {string} url
+     * @returns {?string}
+     */
+    function _bbMbevNorm(url) {
+        const m = String(url || '').match(/^(?:https?:)?\/\/(?:www\.)?brucebase\.wikidot\.com\/(\d{4}|1949-64)\/?#(\w+)$/i);
+        return m ? `brucebase.wikidot.com/${m[1]}#${m[2]}` : null;
+    }
+
+    /**
+     * The MB-Event cell of a Brucebase year row, built with the row: the
+     * type's glyph, not looked up yet. What the lookup needs is on the cell
+     * as data, so it survives clones and a save to disk: the row's key (the
+     * entry page, or its heading), type, date, its anchor URL and the name
+     * query.
+     *
+     * @param {{heading: string, anchor?: string}} entry One entry of `_bbYearEntries()`.
+     * @param {object}   h          `_bbParseHeading()` of the heading.
+     * @param {string}   href       The heading link's href, '' for none.
+     * @param {Document} docContext The document the row is built in.
+     * @returns {HTMLTableCellElement}
+     */
+    function _bbMbevCell(entry, h, href, docContext) {
+        const td = docContext.createElement('td');
+        td.className = 'mb-bbev-cell';
+        const m = href.match(/^\/?([a-z]+):/i);
+        td.dataset.mbBbevKey = href ? _bbAbsHref(href) : `heading:${entry.heading}`;
+        td.dataset.mbBbevType = m ? m[1].toLowerCase() : '';
+        td.dataset.mbBbevDate = h.date || '';
+        td.dataset.mbBbevAnchor = _bbMbevAnchorUrl(entry.anchor, h.date);
+        const where = [h.venue, h.city, h.state].filter(Boolean).join(', ');
+        td.dataset.mbBbevQ = h.date && where ? `${h.date}: ${where}` : '';
+        td.dataset.mbBbevState = 'pending';
+        td.innerHTML = _bbMbevInner(td, null, 'pending');
+        return td;
+    }
+
+    /**
+     * The cell's markup for a state: the glyph (`span`, or a link once
+     * answered) and the hidden text the filter reads (`.mb-bbev-ids`: the
+     * MBID, or "no MusicBrainz event").
+     *
+     * @param {HTMLTableCellElement} td
+     * @param {?object} rec    The row's answer, when there is one.
+     * @param {string}  state  pending | queued | run | done | error.
+     * @returns {string}
+     */
+    function _bbMbevInner(td, rec, state) {
+        const type = td.dataset.mbBbevType || '';
+        const svg = `<svg viewBox="0 0 16 16" aria-hidden="true">${_BB_MBEV_GLYPHS[type] || _BB_MBEV_GLYPHS.other}</svg>`;
+        const label = _BB_YEAR_TYPES[type] || 'Event';
+        if (state === 'done' && rec && rec.mbid) {
+            return `<a class="mb-bbev-g mb-bbev-link" data-s="found" href="https://musicbrainz.org/event/${_rgEsc(rec.mbid)}" target="_blank" rel="noopener"` +
+                ` data-mb-tip title="${_rgEsc(`${rec.name || 'MusicBrainz event'}${rec.type ? ` · ${rec.type}` : ''}`)}">${svg}</a>` +
+                `<span class="mb-bbev-ids">${_rgEsc(rec.mbid)}</span>`;
+        }
+        if (state === 'done') {
+            const q = td.dataset.mbBbevQ || td.dataset.mbBbevDate || '';
+            return `<a class="mb-bbev-g" data-s="none" href="https://musicbrainz.org/search?query=${encodeURIComponent(q)}&type=event&method=indexed" target="_blank" rel="noopener"` +
+                ` data-mb-tip title="No MusicBrainz event found for this ${_rgEsc(label.toLowerCase())}. Click: search MusicBrainz yourself.">${svg}</a>` +
+                '<span class="mb-bbev-ids">no MusicBrainz event</span>';
+        }
+        const tip = state === 'error' ? 'MusicBrainz did not answer; nothing was stored. Click: try again.'
+            : state === 'run' ? 'Looking it up on MusicBrainz now…'
+            : state === 'queued' ? 'Queued for the lookup.'
+            : _bbMbevAuto() ? `${label}: not looked up on MusicBrainz yet.` : `${label}: not looked up; ▶ MB in the header runs the lookup.`;
+        const s = state === 'error' ? 'fail' : state === 'pending' ? 'idle' : state;
+        return `<span class="mb-bbev-g" data-s="${s}"${state === 'error' ? ' role="button" tabindex="0"' : ''} data-mb-tip title="${_rgEsc(tip)}">${svg}</span>`;
+    }
+
+    /**
+     * Rewrites one cell from what is known now (our answers; `state` for a
+     * cell still waiting), and clears its row's filter text cache.
+     *
+     * @param {HTMLTableCellElement} td
+     * @param {?string} [state] queued | run | error; null: from the answers.
+     * @returns {void}
+     */
+    function _bbMbevRenderCell(td, state = null) {
+        const rec = _bbMbevMem.get(td.dataset.mbBbevKey);
+        const st = rec ? 'done' : state || 'pending';
+        td.innerHTML = _bbMbevInner(td, rec, st);
+        td.dataset.mbBbevState = st;
+        if (rec && rec.mbid) td.dataset.mbBbevMbid = rec.mbid;
+        else delete td.dataset.mbBbevMbid;
+        if (rec) td.dataset.mbBbevLinks = (rec.links || []).join(' ');
+        else delete td.dataset.mbBbevLinks;
+        const row = td.parentElement;
+        const rc = row && _rowTextCache.get(row);
+        if (rc) { rc.cols = []; rc.full = null; }
+    }
+
+    /**
+     * Every MB-Event cell per row key, live AND in the source rows the next
+     * re-render clones from (merged through a Set: a single table's live
+     * rows are its source rows).
+     *
+     * @returns {Map<string, Set<HTMLTableCellElement>>}
+     */
+    function _bbMbevCellIndex() {
+        const map = new Map();
+        const add = td => {
+            const k = td.dataset.mbBbevKey;
+            if (!k) return;
+            let s = map.get(k);
+            if (!s) { s = new Set(); map.set(k, s); }
+            s.add(td);
+        };
+        document.querySelectorAll('body.mb-sa-host-bb table.tbl td.mb-bbev-cell[data-mb-bbev-key]').forEach(add);
+        _msSourceRows().forEach(row => row.querySelectorAll('td.mb-bbev-cell[data-mb-bbev-key]').forEach(add));
+        return map;
+    }
+
+    /**
+     * Repaints every cell of the given keys.
+     *
+     * @param {Map<string, Set<HTMLTableCellElement>>} index
+     * @param {Iterable<string>} keys
+     * @param {?string} [state]
+     * @returns {number} Cells written.
+     */
+    function _bbMbevRepaint(index, keys, state = null) {
+        let n = 0;
+        Array.from(keys).forEach(k => (index.get(k) || []).forEach(td => { _bbMbevRenderCell(td, state); n++; }));
+        if (n) _bbMbev.pendingCount = null;
+        return n;
+    }
+
+    /**
+     * Rows not answered yet, counted on the source rows; cached until a cell
+     * changes.
+     *
+     * @returns {number}
+     */
+    function _bbMbevPendingCount() {
+        if (_bbMbev.pendingCount !== null) return _bbMbev.pendingCount;
+        let n = 0;
+        _msSourceRows().forEach(row => {
+            const td = row.querySelector('td.mb-bbev-cell[data-mb-bbev-key]');
+            if (td && td.dataset.mbBbevState !== 'done') n++;
+        });
+        _bbMbev.pendingCount = n;
+        return n;
+    }
+
+    /**
+     * After cells changed (docs/claude/filter-and-cache-invariants.md, the
+     * four duties of a post-render cell write; the fourth, the row text
+     * cache, is `_bbMbevRenderCell()`'s): the 📊 caches of the tables with
+     * the column, every cached filter result, the header buttons, and the
+     * filter itself when one is set — at most every 1.5 s, or at once.
+     *
+     * @param {boolean} [now]
+     * @returns {void}
+     */
+    function _bbMbevScheduleRefresh(now) {
+        clearTimeout(_bbMbev.refreshTimer);
+        const wait = now ? 0 : Math.max(0, 1500 - (Date.now() - _bbMbev.lastRefresh));
+        _bbMbev.refreshTimer = setTimeout(() => {
+            _bbMbev.lastRefresh = Date.now();
+            document.querySelectorAll('body.mb-sa-host-bb table.tbl').forEach(t => {
+                if (t.querySelector('td.mb-bbev-cell')) _invalidateUniqDropDataCacheForTable(t);
+            });
+            _invalidateFilterCache();
+            _bbMbevUpdateHdrBtns();
+            if (_anyFilterActive()) runFilter();
+        }, wait);
+    }
+
+    /**
+     * Opens (or reuses) the column's own store of answers.
+     *
+     * @returns {Promise<IDBDatabase>}
+     */
+    function _bbMbevOpenIdb() {
+        if (_bbMbevIdbPromise) return _bbMbevIdbPromise;
+        _bbMbevIdbPromise = new Promise((resolve, reject) => {
+            if (typeof indexedDB === 'undefined') {
+                reject(new Error('IndexedDB not available'));
+                return;
+            }
+            const req = indexedDB.open(_BB_MBEV_IDB_NAME, _BB_MBEV_IDB_VERSION);
+            req.onupgradeneeded = (ev) => {
+                const db = ev.target.result;
+                if (!db.objectStoreNames.contains('events')) db.createObjectStore('events', { keyPath: 'key' });
+            };
+            req.onsuccess = (ev) => {
+                const db = ev.target.result;
+                db.onversionchange = () => { db.close(); _bbMbevIdbPromise = null; };
+                db.onclose = () => { _bbMbevIdbPromise = null; };
+                resolve(db);
+            };
+            req.onerror = (ev) => { _bbMbevIdbPromise = null; reject(ev.target.error); };
+            req.onblocked = () => { _bbMbevIdbPromise = null; reject(new Error('IndexedDB open blocked by another tab')); };
+        });
+        return _bbMbevIdbPromise;
+    }
+
+    /**
+     * Loads the store into memory once a page: every answer within its keep
+     * time. Never rejects.
+     *
+     * @returns {Promise<void>}
+     */
+    function _bbMbevLoadOwn() {
+        if (_bbMbevOwnPromise) return _bbMbevOwnPromise;
+        _bbMbevOwnPromise = _bbMbevOpenIdb().then(db => new Promise(resolve => {
+            try {
+                const req = db.transaction('events', 'readonly').objectStore('events').getAll();
+                req.onsuccess = () => {
+                    const now = Date.now();
+                    (req.result || []).forEach(r => {
+                        if (!r || typeof r.key !== 'string' || typeof r.ts !== 'number') return;
+                        if (now >= r.ts + (r.mbid ? _BB_MBEV_TTL_MS : _BB_MBEV_NONE_TTL_MS)) return;
+                        if (!_bbMbevMem.has(r.key)) _bbMbevMem.set(r.key, r);
+                    });
+                    resolve();
+                };
+                req.onerror = () => resolve();
+            } catch (_) {
+                resolve();
+            }
+        })).catch(() => {});
+        return _bbMbevOwnPromise;
+    }
+
+    /**
+     * Writes answers to the store. Never rejects.
+     *
+     * @param {object[]} records
+     * @returns {Promise<void>}
+     */
+    function _bbMbevPut(records) {
+        if (!records.length) return Promise.resolve();
+        return _bbMbevOpenIdb().then(db => new Promise(resolve => {
+            try {
+                const tx = db.transaction('events', 'readwrite');
+                const st = tx.objectStore('events');
+                records.forEach(r => st.put(r));
+                tx.oncomplete = () => resolve();
+                tx.onerror = () => resolve();
+                tx.onabort = () => resolve();
+            } catch (_) {
+                resolve();
+            }
+        })).catch(() => {});
+    }
+
+    /**
+     * One ws/2 request in the shared MusicBrainz rate slot (1.1 s apart),
+     * as a GM request from the Brucebase page. A 404 is an answer ("not
+     * there"), anything else but 200 a failure.
+     *
+     * @param {string} url
+     * @returns {Promise<?{status: number, data: ?object}>} null: failed or stopped.
+     */
+    async function _bbMbevGet(url) {
+        await _relAwaitRateSlot();
+        if (_bbMbev.stop) return null;
+        _bbMbev.requests++;
+        const res = await _extGet(url, {
+            gate: false, wanted: () => !_bbMbev.stop,
+            fetchOpts: { accept: /\bjson\b/i, headers: { 'User-Agent': _EXT_AGENT, Accept: 'application/json' } },
+        });
+        if (res.skipped) return null;
+        if (res.error || (res.status !== 200 && res.status !== 404)) {
+            Lib.warn('bbmbev', `MusicBrainz did not answer ${url}: ${res.error || `HTTP ${res.status}`}`);
+            return null;
+        }
+        if (res.status === 404) return { status: 404, data: null };
+        try {
+            return { status: 200, data: JSON.parse(String(res.body || '') + String(res.tail || '')) };
+        } catch (_) {
+            return null;
+        }
+    }
+
+    /**
+     * An event of a ws/2 answer, as a row's answer keeps it.
+     *
+     * @param {object} ev
+     * @returns {{mbid: string, name: string, type: string, date: string}}
+     */
+    function _bbMbevEventOf(ev) {
+        return { mbid: ev.id, name: ev.name || '', type: ev.type || '', date: (ev['life-span'] || {}).begin || '' };
+    }
+
+    /**
+     * The event of several on one date that names the row's place: the most
+     * words of Venue and City the event's name shares (MusicBrainz names an
+     * event "1985‐01‐13: Carolina Coliseum, Columbia, SC, USA").
+     *
+     * @param {object[]} events
+     * @param {string}   q The row's name query ("date: Venue, City, ST").
+     * @returns {?object}
+     */
+    function _bbMbevPickByPlace(events, q) {
+        if (events.length < 2) return events[0] || null;
+        const words = (s) => new Set(String(s).toLowerCase().replace(/^[\d‐-]+:\s*/, '').split(/[^a-z0-9]+/).filter(w => w.length > 2));
+        const want = words(q);
+        let best = null, bestN = -1;
+        events.forEach(ev => {
+            let n = 0;
+            words(ev.name).forEach(w => { if (want.has(w)) n++; });
+            if (n > bestN) { best = ev; bestN = n; }
+        });
+        return best;
+    }
+
+    /**
+     * Escapes Lucene's special characters for the name search.
+     *
+     * @param {string} s
+     * @returns {string}
+     */
+    function _bbMbevLucene(s) {
+        return String(s).replace(/[+\-&|!(){}[\]^"~*?:\\/]/g, '\\$&');
+    }
+
+    /**
+     * Looks one year's rows up. Order: the url lookup of their anchors (an
+     * event MusicBrainz links to the row's own anchor, on the row's date, is
+     * the row's: its link is then known), the year search for the rest (by
+     * date, several on one date by place), the name search for those still
+     * without one (the top hit, only on the row's date), and an event lookup
+     * (`inc=url-rels`) for each event found by search whose Brucebase links
+     * are not known from the url lookups. Writes every answer; a request
+     * that failed leaves its rows unanswered (and they are reported back).
+     *
+     * @param {string} year
+     * @param {Array<{key: string, date: string, anchor: string, q: string}>} rows
+     * @returns {Promise<{answered: string[], failed: string[]}>}
+     */
+    async function _bbMbevAskYear(year, rows) {
+        const failed = new Set();
+        const byAnchor = new Map();   // anchor URL -> events MusicBrainz links it from
+        const linksOf = new Map();    // mbid -> Set of normalised Brucebase links
+        const addLink = (mbid, url) => {
+            const n = _bbMbevNorm(url);
+            if (!n) return;
+            if (!linksOf.has(mbid)) linksOf.set(mbid, new Set());
+            linksOf.get(mbid).add(n);
+        };
+        const anchors = rows.map(r => r.anchor).filter(Boolean);
+        for (let i = 0; i < anchors.length && !_bbMbev.stop; i += _BB_MBEV_BATCH) {
+            const batch = anchors.slice(i, i + _BB_MBEV_BATCH);
+            const res = await _bbMbevGet('https://musicbrainz.org/ws/2/url?' +
+                batch.map(u => `resource=${encodeURIComponent(u)}`).join('&') + '&inc=event-rels&fmt=json');
+            if (!res) {
+                rows.forEach(r => { if (batch.includes(r.anchor)) failed.add(r.key); });
+                continue;
+            }
+            const items = res.data ? (Array.isArray(res.data.urls) ? res.data.urls : res.data.resource ? [res.data] : []) : [];
+            items.forEach(u => {
+                const evs = (u.relations || []).filter(rel => rel && rel.event && rel.event.id).map(rel => _bbMbevEventOf(rel.event));
+                byAnchor.set(u.resource, evs);
+                evs.forEach(ev => addLink(ev.mbid, u.resource));
+            });
+        }
+        const byDate = new Map();
+        let searched = false;
+        const need = rows.filter(r => !failed.has(r.key) && !(byAnchor.get(r.anchor) || []).some(ev => ev.date === r.date));
+        if (need.length && /^\d{4}$/.test(year)) {
+            searched = true;
+            for (let offset = 0, total = 1; offset < total && !_bbMbev.stop;) {
+                const q = `arid:${_BB_MBEV_BRUCE} AND begin:[${year}-01-01 TO ${year}-12-31]`;
+                const res = await _bbMbevGet(`https://musicbrainz.org/ws/2/event?query=${encodeURIComponent(q)}&limit=${_BB_MBEV_BATCH}&offset=${offset}&fmt=json`);
+                if (!res || !res.data) {
+                    if (!res) need.forEach(r => failed.add(r.key));
+                    break;
+                }
+                const evs = res.data.events || [];
+                evs.forEach(e => {
+                    const ev = _bbMbevEventOf(e);
+                    if (!byDate.has(ev.date)) byDate.set(ev.date, []);
+                    byDate.get(ev.date).push(ev);
+                });
+                total = res.data.count || 0;
+                offset += evs.length;
+                if (!evs.length) break;
+            }
+        }
+        const found = new Map();      // row key -> {ev, via}
+        rows.forEach(r => {
+            if (failed.has(r.key)) return;
+            const own = (byAnchor.get(r.anchor) || []).find(ev => ev.date === r.date);
+            if (own) { found.set(r.key, { ev: own, via: 'link' }); return; }
+            const day = searched ? _bbMbevPickByPlace(byDate.get(r.date) || [], r.q) : null;
+            if (day) found.set(r.key, { ev: day, via: 'date' });
+        });
+        for (const r of rows) {
+            if (_bbMbev.stop) break;
+            if (failed.has(r.key) || found.has(r.key) || !r.q) continue;
+            const res = await _bbMbevGet(`https://musicbrainz.org/ws/2/event?query=${encodeURIComponent(_bbMbevLucene(r.q))}&limit=5&fmt=json`);
+            if (!res) { failed.add(r.key); continue; }
+            const top = res.data && (res.data.events || [])[0];
+            if (top && ((top['life-span'] || {}).begin || '') === r.date) found.set(r.key, { ev: _bbMbevEventOf(top), via: 'name' });
+        }
+        for (const [key, f] of found) {
+            if (_bbMbev.stop) break;
+            if (linksOf.has(f.ev.mbid) || f.via === 'link') continue;
+            const res = await _bbMbevGet(`https://musicbrainz.org/ws/2/event/${encodeURIComponent(f.ev.mbid)}?inc=url-rels&fmt=json`);
+            if (!res) { failed.add(key); continue; }
+            linksOf.set(f.ev.mbid, new Set());
+            ((res.data && res.data.relations) || []).forEach(rel => rel && rel.url && addLink(f.ev.mbid, rel.url.resource));
+        }
+        const now = Date.now();
+        const records = [];
+        const answered = [];
+        rows.forEach(r => {
+            if (failed.has(r.key) || (_bbMbev.stop && !found.has(r.key))) return;
+            const f = found.get(r.key);
+            const anchorEvs = r.anchor ? (byAnchor.get(r.anchor) || []) : [];
+            const rec = f
+                ? { key: r.key, ...f.ev, via: f.via, links: Array.from(linksOf.get(f.ev.mbid) || []), anchorEvents: anchorEvs.map(ev => ev.mbid), ts: now }
+                : { key: r.key, mbid: null, links: [], anchorEvents: anchorEvs.map(ev => ev.mbid), ts: now };
+            _bbMbevMem.set(r.key, rec);
+            records.push(rec);
+            answered.push(r.key);
+        });
+        _bbMbevPut(records);
+        return { answered, failed: Array.from(failed) };
+    }
+
+    /**
+     * Fills the MB-Event column: the store first (repainting what it
+     * answers), then — automatically after a render (`sa_bb_mb_event_lookup`),
+     * or on the ▶ MB header button or a failed cell — MusicBrainz for the
+     * rest, year by year (`_bbMbevAskYear()`), each year's answers written
+     * into its cells at once.
+     *
+     * @param {{user?: boolean, anchor?: ?Element, withFailed?: boolean}} [opts]
+     * @returns {Promise<void>}
+     */
+    async function _bbMbevRun({ user = false, anchor = null, withFailed = false } = {}) {
+        if (!_isBbHost || _bbMbev.running) return;
+        await _bbMbevLoadOwn();
+        let index = _bbMbevCellIndex();
+        if (!index.size) return;
+        const known = Array.from(index.keys()).filter(k => _bbMbevMem.has(k));
+        if (_bbMbevRepaint(index, known)) _bbMbevScheduleRefresh(true);
+        const misses = [];
+        index.forEach((cells, key) => {
+            if (_bbMbevMem.has(key)) return;
+            const td = cells.values().next().value;
+            const st = td.dataset.mbBbevState;
+            if (st === 'error' && !(withFailed || user)) return;
+            misses.push({ key, date: td.dataset.mbBbevDate || '', anchor: td.dataset.mbBbevAnchor || '', q: td.dataset.mbBbevQ || '' });
+        });
+        if (!misses.length || (!user && !_bbMbevAuto())) {
+            _bbMbevUpdateHdrBtns();
+            return;
+        }
+        _bbMbevRegisterProvider();
+        Object.assign(_bbMbev, { running: true, stop: false, total: misses.length, done: 0, failed: 0, requests: 0 });
+        _ajStart('bbmbev', null, { user, anchor });
+        _ajLog('bbmbev', null, `${misses.length} entr${misses.length === 1 ? 'y' : 'ies'} to look up on MusicBrainz`);
+        _bbMbevRepaint(index, misses.map(m => m.key), 'queued');
+        _bbMbevUpdateHdrBtns();
+        const years = new Map();
+        misses.forEach(m => {
+            const y = m.date.slice(0, 4);
+            if (!years.has(y)) years.set(y, []);
+            years.get(y).push(m);
+        });
+        for (const [year, rows] of years) {
+            if (_bbMbev.stop) break;
+            index = _bbMbevCellIndex();
+            _bbMbevRepaint(index, rows.map(r => r.key), 'run');
+            const { answered, failed } = await _bbMbevAskYear(year, rows);
+            index = _bbMbevCellIndex();
+            _bbMbevRepaint(index, answered);
+            _bbMbevRepaint(index, failed, 'error');
+            _bbMbev.done += answered.length;
+            _bbMbev.failed += failed.length;
+            const hits = answered.filter(k => (_bbMbevMem.get(k) || {}).mbid).length;
+            _ajLog('bbmbev', null, `${year || 'no date'}: ${hits} found, ${answered.length - hits} with no event` +
+                (failed.length ? `, ${failed.length} failed` : ''), failed.length ? 'bad' : 'good');
+            _ajChanged('bbmbev', null);
+            _bbMbevScheduleRefresh(false);
+        }
+        if (_bbMbev.stop) {
+            index = _bbMbevCellIndex();
+            _bbMbevRepaint(index, misses.map(m => m.key).filter(k => !_bbMbevMem.has(k) &&
+                Array.from(index.get(k) || []).some(td => td.dataset.mbBbevState !== 'error')));
+        }
+        _bbMbev.running = false;
+        _ajFinish('bbmbev', null, _bbMbev.failed);
+        _bbMbevScheduleRefresh(true);
+    }
+
+    /**
+     * The render tail on brucebase.wikidot.com: the header toggles (a
+     * re-render rebuilds every head from a clone), and — after a fresh
+     * render or a disk load — the lookup. Nothing without MB-Event cells.
+     *
+     * @param {boolean} [start] - Run the lookup.
+     * @returns {void}
+     */
+    function _bbMbevAfterRender(start) {
+        if (!_isBbHost || !document.querySelector('body.mb-sa-host-bb td.mb-bbev-cell')) return;
+        _bbMbevInitColHeaderToggles();
+        if (start) _bbMbevRun();
+    }
+
+    /**
+     * Adds the ▶ MB toggle to every MB-Event header that lacks one; installs
+     * the click delegates once.
+     *
+     * @returns {void}
+     */
+    function _bbMbevInitColHeaderToggles() {
+        _bbMbevRegisterProvider();
+        _bbMbevEnsureDelegates();
+        document.querySelectorAll('body.mb-sa-host-bb table.tbl thead th').forEach(th => {
+            if (th.dataset.colName !== _BB_MBEV_COL || th.querySelector('.mb-bbmbev-col-hdr-btn')) return;
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'mb-bbmbev-col-hdr-btn';
+            btn.dataset.mbAj = 'bbmbev';
+            btn.dataset.mbAjName = '▶ MB';
+            btn.setAttribute('aria-pressed', 'false');
+            btn.setAttribute('aria-label', 'Look up the MB-Event column on MusicBrainz');
+            const flex = th.querySelector('.mb-col-hdr-flex');
+            (flex || th).prepend(btn);
+        });
+        _bbMbevUpdateHdrBtns();
+    }
+
+    /**
+     * Repaints every ▶ MB toggle: pressed once every row is answered, a
+     * done/total badge while a lookup runs, yellow after a failure.
+     *
+     * @returns {void}
+     */
+    function _bbMbevUpdateHdrBtns() {
+        const btns = document.querySelectorAll('.mb-bbmbev-col-hdr-btn');
+        if (!btns.length) return;
+        const pending = _bbMbevPendingCount();
+        btns.forEach(b => {
+            b.setAttribute('aria-pressed', pending === 0 && !_bbMbev.running ? 'true' : 'false');
+            if (_bbMbev.running && _bbMbev.total) b.dataset.bbmbevProgress = `${_bbMbev.done}/${_bbMbev.total}`;
+            else delete b.dataset.bbmbevProgress;
+            if (!_bbMbev.running && _bbMbev.failed) b.dataset.bbmbevState = 'error';
+            else delete b.dataset.bbmbevState;
+        });
+    }
+
+    /**
+     * The delegated clicks, installed once: the ▶ MB toggle looks up every
+     * row not answered (failed ones too; capture phase, so the header's sort
+     * never sees it), a failed cell's glyph does the same.
+     *
+     * @returns {void}
+     */
+    function _bbMbevEnsureDelegates() {
+        if (_bbMbevEnsureDelegates.done) return;
+        _bbMbevEnsureDelegates.done = true;
+        document.addEventListener('click', (e) => {
+            const t = e.target;
+            const btn = t.closest && t.closest('.mb-bbmbev-col-hdr-btn');
+            const failed = !btn && t.closest && t.closest('td.mb-bbev-cell .mb-bbev-g[data-s="fail"]');
+            if (!btn && !failed) return;
+            e.preventDefault();
+            e.stopPropagation();
+            _bbMbevRun({ user: true, anchor: btn || failed, withFailed: true });
+        }, true);
+    }
+
+    /**
+     * Registers the MB-Event column's provider of the async job popup.
+     *
+     * @returns {void}
+     */
+    function _bbMbevRegisterProvider() {
+        _ajRegister('bbmbev', {
+            glyph: 'MB',
+            label: 'MusicBrainz events',
+            scopeOf: () => null,
+            snapshot: (scope, job) => _bbMbevSnapshot(job),
+            onOpen: (scope, repaint) => {
+                if (Date.now() - _bbMbev.storeCountAt < 5000) return;
+                _bbMbev.storeCountAt = Date.now();
+                _bbMbevOpenIdb().then(db => new Promise(resolve => {
+                    const req = db.transaction('events', 'readonly').objectStore('events').count();
+                    req.onsuccess = () => resolve(req.result);
+                    req.onerror = () => resolve(null);
+                })).catch(() => null).then(n => { _bbMbev.storeCount = n; repaint(); });
+            },
+            act: (scope, id) => {
+                if (id === 'retry') _bbMbevRun({ withFailed: true });
+                if (id === 'stop') _bbMbev.stop = true;
+            },
+        });
+    }
+
+    /**
+     * The progress card's content (see `_ajRender()`).
+     *
+     * @param {?object} job
+     * @returns {object}
+     */
+    function _bbMbevSnapshot(job) {
+        const fmt = n => Number(n).toLocaleString('en-US');
+        const cache = [
+            ['Store', `IndexedDB ${_BB_MBEV_IDB_NAME}, found 90 days, no event 7 days, a failure never`],
+            ['Records', _bbMbev.storeCount === null ? 'counting…' : fmt(_bbMbev.storeCount)],
+        ];
+        const actions = [];
+        if (_bbMbev.running) actions.push({ id: 'stop', label: 'Stop', kind: 'danger' });
+        else if (_bbMbev.failed) actions.push({ id: 'retry', label: `Retry ${_bbMbev.failed} failed`, kind: 'danger' });
+        if (!job) {
+            const pending = _bbMbevPendingCount();
+            return {
+                phase: 'idle',
+                summary: pending ? `${fmt(pending)} entries not looked up yet. Click ▶ MB to ask MusicBrainz.` : 'Every entry is answered.',
+                facts: [['Entries', `${fmt(pending)} not answered`]], cache, actions,
+            };
+        }
+        const s = Math.round(((job.t1 || Date.now()) - job.t0) / 1000);
+        return {
+            phase: job.phase,
+            summary: `MusicBrainz events for ${fmt(_bbMbev.total)} Brucebase entr${_bbMbev.total === 1 ? 'y' : 'ies'}`,
+            done: _bbMbev.done, total: _bbMbev.total, failed: _bbMbev.failed,
+            queued: Math.max(0, _bbMbev.total - _bbMbev.done - _bbMbev.failed), unit: 'entries',
+            facts: [
+                ['Steps', 'per year: the Brucebase links (100 a request), the year\'s events, then by name for the rest'],
+                ['Requests', `${fmt(_bbMbev.requests)} made`],
+                ['Rate', 'one per 1.1 s'],
+                ['Time', `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}${job.t1 ? '' : ' elapsed'}`],
+            ],
+            cache, actions,
+        };
+    }
+
     /**
      * Builds one table row of the Brucebase year table, in `_BB_YEAR_HEADERS`
      * order.
@@ -18768,6 +19520,9 @@
         // heading, its parts written as the Venue, City, State and Country
         // cells write them, linked to the entry's page.
         tr.appendChild(_bbYearEventCell(entry, h, href, docContext));
+        // MB-Event second (3c): the entry's MusicBrainz event, filled in
+        // after the render (`_bbMbevRun()`).
+        tr.appendChild(_bbMbevCell(entry, h, href, docContext));
         // Media is built here and placed second, right after Event
         // (org/TODO.org "Some enhancements" 3d): at the far right it took a
         // horizontal scroll to see.
@@ -19558,6 +20313,26 @@
             /* The Event column is always its whole name on one line: the
                column grows to the longest (vzell, 2026-10-24). */
             body.mb-sa-host-bb td.mb-bb-event-cell { white-space: nowrap; }
+            /* The MB-Event glyphs and their states (mockup, 2026-10-24). */
+            body.mb-sa-host-bb td.mb-bbev-cell { white-space: nowrap; text-align: center; }
+            body.mb-sa-host-bb .mb-bbev-g { display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 50%;
+                position: relative; color: #2b2622; text-decoration: none; vertical-align: middle; }
+            body.mb-sa-host-bb .mb-bbev-g svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.4;
+                stroke-linecap: round; stroke-linejoin: round; pointer-events: none; }
+            body.mb-sa-host-bb .mb-bbev-g[data-s="idle"], body.mb-sa-host-bb .mb-bbev-g[data-s="queued"] { color: #7a6d5c; opacity: .5; }
+            body.mb-sa-host-bb .mb-bbev-g[data-s="queued"]::after { content: ''; position: absolute; right: 1px; bottom: 2px; width: 5px; height: 5px;
+                border-radius: 50%; background: #7a6d5c; }
+            body.mb-sa-host-bb .mb-bbev-g[data-s="run"] { color: #2f5f9e; box-shadow: 0 0 0 1.5px #2f5f9e; animation: mb-bbev-pulse 1.1s ease-in-out infinite; }
+            @keyframes mb-bbev-pulse { 50% { box-shadow: 0 0 0 4px rgba(47,95,158,.18); } }
+            @media (prefers-reduced-motion: reduce) { body.mb-sa-host-bb .mb-bbev-g[data-s="run"] { animation: none; } }
+            body.mb-sa-host-bb .mb-bbev-g[data-s="found"] { background: #efe6d4; box-shadow: 0 0 0 1px #d9cfbd; }
+            body.mb-sa-host-bb .mb-bbev-g[data-s="found"]:hover { box-shadow: 0 0 0 1.5px #2f5f9e; color: #2f5f9e; }
+            body.mb-sa-host-bb .mb-bbev-g[data-s="none"] { color: #7a6d5c; opacity: .75; }
+            body.mb-sa-host-bb .mb-bbev-g[data-s="none"]::after { content: '?'; position: absolute; right: -2px; top: -3px;
+                font: 700 10px system-ui, Arial, sans-serif; color: #7a6d5c; }
+            body.mb-sa-host-bb .mb-bbev-g[data-s="fail"] { color: #9a6a00; cursor: pointer; }
+            body.mb-sa-host-bb .mb-bbev-g[data-s="fail"]::after { content: '⚠'; position: absolute; right: -4px; top: -5px; font-size: 10px; }
+            body.mb-sa-host-bb .mb-bbev-ids { display: none; }
             body.mb-sa-host-bb ul.mb-bb-media {
                 list-style: none;
                 margin: 0;
@@ -79496,6 +80271,7 @@ a { color: #1565c0; }`;
         .mb-rel-col-hdr-btn,
         .mb-recof-col-hdr-btn,
         .mb-dgmb-col-hdr-btn,
+        .mb-bbmbev-col-hdr-btn,
         .mb-re-col-hdr-btn,
         .mb-barcode-col-hdr-btn,
         .mb-col-collapse-hdr-btn,
@@ -79524,6 +80300,7 @@ a { color: #1565c0; }`;
         .mb-rel-col-hdr-btn:hover,
         .mb-recof-col-hdr-btn:hover,
         .mb-dgmb-col-hdr-btn:hover,
+        .mb-bbmbev-col-hdr-btn:hover,
         .mb-re-col-hdr-btn:hover,
         .mb-barcode-col-hdr-btn:hover,
         .mb-col-collapse-hdr-btn:hover,
@@ -79538,6 +80315,7 @@ a { color: #1565c0; }`;
         .mb-rel-col-hdr-btn:focus-visible,
         .mb-recof-col-hdr-btn:focus-visible,
         .mb-dgmb-col-hdr-btn:focus-visible,
+        .mb-bbmbev-col-hdr-btn:focus-visible,
         .mb-re-col-hdr-btn:focus-visible,
         .mb-barcode-col-hdr-btn:focus-visible {
             outline: 2px solid rgba(0, 100, 255, 0.55);
@@ -79553,6 +80331,7 @@ a { color: #1565c0; }`;
         .mb-rel-col-hdr-btn[aria-pressed="true"],
         .mb-recof-col-hdr-btn[aria-pressed="true"],
         .mb-dgmb-col-hdr-btn[aria-pressed="true"],
+        .mb-bbmbev-col-hdr-btn[aria-pressed="true"],
         .mb-barcode-col-hdr-btn[aria-pressed="true"],
         .mb-col-collapse-hdr-btn[aria-expanded="true"] {
             background: var(--mb-hdr-pill-engaged-bg);
@@ -79603,6 +80382,11 @@ a { color: #1565c0; }`;
         .mb-dgmb-col-hdr-btn[aria-pressed="true"]::before { content: "▼ MB"; }
         .mb-dgmb-col-hdr-btn[data-dgmb-progress]::after { content: " " attr(data-dgmb-progress); font-variant-numeric: tabular-nums; }
         .mb-dgmb-col-hdr-btn[data-dgmb-state="error"] { background: rgba(255, 193, 7, 0.55); border-color: rgba(190, 140, 0, 0.70); }
+        /* Brucebase MB-Event column toggle (_bbMbevInitColHeaderToggles). */
+        .mb-bbmbev-col-hdr-btn::before { content: "▶ MB"; }
+        .mb-bbmbev-col-hdr-btn[aria-pressed="true"]::before { content: "▼ MB"; }
+        .mb-bbmbev-col-hdr-btn[data-bbmbev-progress]::after { content: " " attr(data-bbmbev-progress); font-variant-numeric: tabular-nums; }
+        .mb-bbmbev-col-hdr-btn[data-bbmbev-state="error"] { background: rgba(255, 193, 7, 0.55); border-color: rgba(190, 140, 0, 0.70); }
         /* "Recording of" cells: the attribute words in light green italics
            (column-scoped, over the shared .mb-credit-attr colour), a
            suggested work in orange italics. */
@@ -93242,6 +94026,8 @@ a { color: #1565c0; }`;
             _recOfInitColHeaderToggles();
             // discogs.com's MusicBrainz column: its ▶ MB toggles.
             _dgMbAfterRender(false);
+            // brucebase.wikidot.com's MB-Event column, the same way.
+            _bbMbevAfterRender(false);
             // A foreign table's 🖼 gallery opener, after its row count.
             _fgalAfterRender();
             // Same reason as the line above: the <thead> this writes into may
@@ -93531,6 +94317,8 @@ a { color: #1565c0; }`;
                 _recOfInitColHeaderToggles();
                 // discogs.com's MusicBrainz column: its ▶ MB toggles.
                 _dgMbAfterRender(false);
+                // brucebase.wikidot.com's MB-Event column, the same way.
+                _bbMbevAfterRender(false);
                 // A foreign table's 🖼 gallery opener, after its row count.
                 _fgalAfterRender();
                 // Same reason as the line above: the <thead> this writes into may
@@ -98346,6 +99134,8 @@ a { color: #1565c0; }`;
             _recOfInitColHeaderToggles();
             // discogs.com's MusicBrainz column: its ▶ MB toggles, then the lookup.
             _dgMbAfterRender(true);
+            // brucebase.wikidot.com's MB-Event column, the same way.
+            _bbMbevAfterRender(true);
             // A foreign table's 🖼 gallery opener, after its row count.
             _fgalAfterRender();
             // jungleland.it / brucespringsteen.it lazy Art / Photo cells and
@@ -127381,6 +128171,8 @@ a { color: #1565c0; }`;
             _recOfInitColHeaderToggles();
             // discogs.com's MusicBrainz column: its ▶ MB toggles, then the lookup.
             _dgMbAfterRender(true);
+            // brucebase.wikidot.com's MB-Event column, the same way.
+            _bbMbevAfterRender(true);
             // A foreign table's 🖼 gallery opener, after its row count.
             _fgalAfterRender();
             // jungleland.it / brucespringsteen.it lazy Art / Photo cells and

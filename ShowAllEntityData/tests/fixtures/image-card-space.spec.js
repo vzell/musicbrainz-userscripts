@@ -22,6 +22,11 @@ const { loadBsRecordsPage } = require('../support/bsFixture');
 const { routeDetailPages } = require('../support/detailFixture');
 const { waitForRenderComplete } = require('../support/browser');
 
+// A wide window (2026-10-24): on a year page the sticky Event column (the
+// whole name on one line) and MB-Event come first, and on 1280 px the Media
+// icons sit under the sticky headers' right mask (docs/claude/brucebase.md).
+test.use({ viewport: { width: 1920, height: 1000 } });
+
 const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=', 'base64');
 const GIG4 = 'https://brucebase.wikidot.com/gig:1985-01-04-roads-coliseum-hampton-va';
 const REC = (code) => `https://www.brucespringsteen.it/DB/detrec.aspx?code=${code}`;

@@ -24,6 +24,11 @@ const { addRequiredLibs, MB_LIBRARY_PATH, USERSCRIPT_PATH } = require('../suppor
 const { waitForRenderComplete } = require('../support/browser');
 const { typeGlobalFilter, waitForSortSettled, columnFilterInput } = require('../support/filterSortAssertions');
 
+// A wide window (2026-10-24): on a year page the sticky Event column (the
+// whole name on one line) and MB-Event come first, and on 1280 px the Media
+// icons sit under the sticky headers' right mask (docs/claude/brucebase.md).
+test.use({ viewport: { width: 1920, height: 1000 } });
+
 const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=', 'base64');
 const GIG4 = 'https://brucebase.wikidot.com/gig:1985-01-04-roads-coliseum-hampton-va';
 const GIG7 = 'https://brucebase.wikidot.com/gig:1985-01-07-market-square-arena-indianapolis-in';

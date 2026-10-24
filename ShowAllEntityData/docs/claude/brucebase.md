@@ -288,7 +288,7 @@ by hand, and each one was wrong at least once before the probe:
 Gated by `features.bbYearToTable`, called from the same three places as
 `applyBbSongsToTable()`. `_bbYearEntries()` collects the entries (node
 references, nothing moved), `_bbYearBuildRow()` builds each row in
-`_BB_YEAR_HEADERS` order — Event, Media, Date, Type, Venue, City, State,
+`_BB_YEAR_HEADERS` order — Event, MB-Event, Media, Date, Type, Venue, City, State,
 Country, Tour, Soundcheck, Setlist, Set note, Notes, Info wanted (Event and
 Media in front since 2026-10-24; Media was 12th, a horizontal scroll away) —
 and a `Range` from
@@ -334,6 +334,36 @@ Previous / Listing / Next line stay. On the live document
   takes 775 px, which leaves −25 px of a 1280 px window and 615 px of a
   1920 px one beside it (2026-10-24). Specs clicking past it use a 1920 px
   window or `revealPastStickyColumn()` (`tests/support/bbFixture.js`).
+- **MB-Event** (2026-10-24, `// ── The Brucebase MB-Event column`): a
+  glyph per entry type (`_BB_MBEV_GLYPHS`, approved in the mockup; any
+  other type a calendar standing in for MusicBrainz's event icon), linked to
+  the MusicBrainz event once found. Built with the row (`_bbMbevCell()`):
+  the row key (entry page, or `heading:<text>`), type, date (00 parts
+  dropped, as MusicBrainz writes a partial date), the anchor URL
+  (`_bbMbevAnchorUrl()`: `http://`, no www, `1949-64` before 1965 — the
+  only spelling `/ws/2/url` matches) and the name query, all as data on the
+  cell. Filled after the render (`_bbMbevAfterRender()` beside
+  `_dgMbAfterRender()` in the four render tails) by `_bbMbevRun()`, year by
+  year (`_bbMbevAskYear()`): the url lookup of the anchors (100 a request;
+  an event on the row's date that MusicBrainz links to the row's own anchor
+  is the row's), the year search (`arid` + `begin` range, 100 a page; by
+  date, several on one date by place words), the name search for the rest
+  (top hit on the row's date only), and an event lookup (`inc=url-rels`)
+  for an event found by search whose Brucebase links are not known from the
+  url lookups. Every answer goes to the cells (live and source rows,
+  `_bbMbevCellIndex()`), to memory and to IndexedDB `vz-saed-bb-mbevents`
+  (90 days, 7 for no event, a failure never), and owes the four filter
+  duties (`_bbMbevScheduleRefresh()`, the row text cache in
+  `_bbMbevRenderCell()`). The column's text is the hidden MBID
+  (`.mb-bbev-ids`). Setting `sa_bb_mb_event_lookup` (default on; forced off
+  in `FIXTURE_SETTINGS_OVERRIDE`), else the ▶ MB header button
+  (`.mb-bbmbev-col-hdr-btn`, the shared header-button CSS lists); progress in
+  the async job popup (`bbmbev`). Probes `scripts/probe-mb-event-lookups.py`,
+  `scripts/probe-mb-event-anchor-coverage.py` (89/94 of 1985's entries and
+  105/107 of 2012's are linked from MusicBrainz). Specs
+  `tests/fixtures/bb-mb-event.spec.js` (the stub answers from the FIXTURE's
+  entries, never the page: a filter can empty the table while the lookup
+  runs); mutations `scripts/mutations/bb-mb-event.json`.
 - Date goes through the MusicBrainz `dateParts` extractor unchanged.
 - **The sticky column must be the FIRST one** — Event since 2026-10-24,
   Date before (the paragraph below tells it with Date). The first

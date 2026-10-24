@@ -28,7 +28,7 @@ const { clickToolbarItem } = require('../support/toolbarMenu');
 // Since 2026-10-24 (org/TODO.org "Some enhancements" 3a, 3d): Event first,
 // the sticky column; Media second (at the far right it took a horizontal
 // scroll to see).
-const HEADERS = ['Event', 'Media', 'Date', 'Type', 'Venue', 'City', 'State', 'Country', 'Tour',
+const HEADERS = ['Event', 'MB-Event', 'Media', 'Date', 'Type', 'Venue', 'City', 'State', 'Country', 'Tour',
     'Soundcheck', 'Setlist', 'Set note', 'Notes', 'Info wanted',
     'DD', 'MM', 'YYYY', 'Day', 'Month'];
 

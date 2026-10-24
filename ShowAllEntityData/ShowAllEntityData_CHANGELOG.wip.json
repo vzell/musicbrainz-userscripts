@@ -1,5 +1,17 @@
 [
     {
+        "version": "WIP.7",
+        "date": "2026-10-24",
+        "sections": [
+            {
+                "label": "🚀 Feature",
+                "items": [
+                    "Brucebase year table: a new second column, MB-Event, shows a glyph for the entry's kind (gig, no gig, recording, rehearsal, interview, no Bruce) and links it to the entry's event on MusicBrainz once found. After the table renders, the column looks the events up by itself: first by the entry's Brucebase link (100 entries a request), then the year's events by date, then by name for the rest, about one request a second, shown in the background jobs popup with Stop. A \"?\" means MusicBrainz has no event (a click searches it), ⚠ that it did not answer (a click asks again). Answers are kept 90 days (\"no event\" 7 days), so a second visit asks nothing. New setting \"MB-Event column: look the events up on MusicBrainz\" (on by default); off, the ▶ MB button in the column's header runs the lookup."
+                ]
+            }
+        ]
+    },
+    {
         "version": "WIP.6",
         "date": "2026-10-24",
         "sections": [

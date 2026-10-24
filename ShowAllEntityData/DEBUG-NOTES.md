@@ -25922,3 +25922,46 @@ popup-ext "a reader who scrolls the Live page before its images are in is
 not pulled back" (−533 px), which passed 4/4 alone: load-dependent, to watch
 in `test:full`. Mutations `scripts/mutations/bb-event-preview.json`: 7, all
 fail as expected.
+
+## 2026-10-24 — Brucebase year table: the MB-Event column (branch feature/bb-events-and-gallery, WIP.7)
+
+Env: 2026-10-24T04:35:46+02:00 · petri · WSL2 Ubuntu 24.04.3 (Linux 6.18.54.1) · Playwright 1.62.1 Chromium, no Tampermonkey (GM stubs); probes: n/a (Python, musicbrainz.org ws/2, 2026-10-24T03:59+02:00)
+
+org/TODO.org "Some enhancements" 3c, mockup
+https://claude.ai/artifact/DmsNyUkUa1Hq8nPr2B5EGA; lookup design chosen by
+vzell ("ws/2 per year, then per row"), plus the url lookup the cross-check
+(item g) needs.
+
+**Docs unreachable, schema read instead.** musicbrainz.org/doc/… and
+wiki.musicbrainz.org answered WebFetch with a browser check / Anubis. The
+event core's fields come from github.com/metabrainz/mbsssss
+event/conf/schema.xml (`arid` mbid multi, `begin`/`end` date, `eid`,
+`event`, `place`, `pid`, `type`, …).
+
+**Probes** (`scripts/probe-mb-event-lookups.py`, raw answers in
+`debug/probe-mb-event-lookups.json`; `scripts/probe-mb-event-anchor-coverage.py`):
+1985 has 93 events by `arid` + `begin` range, no two on one date, one
+without a day; the name search ranks the right event first (100, next 47);
+`/ws/2/url` matches only `http://brucebase.wikidot.com/1985#130185`
+(https, www: 404), keeps the fragment, takes several `resource=`, and its
+event carries `life-span`; the event's Brucebase link is of type "review".
+Coverage: 89/94 of 1985's entries and 105/107 of 2012's are linked from
+MusicBrainz; 15 of 2012's 120 events link no anchor of the year. A second
+coverage run's 1985 year search came back empty — a 503 the quick probe
+does not report, not a real answer (the first probe read 93).
+
+**What the spec found:** the stub first answered from the page's cells, and
+a filter typed before the lookup left the table empty, so the stub knew no
+entry (9 name searches instead of 2). It now answers from the fixture file.
+A 1985-07-00 entry is dated "1985-07" by the converter, as MusicBrainz
+writes a partial date; the stub had answered "1985-07-00". `_extGet()`
+retries a 503 once, so the failure test fails twice.
+
+Also: `FIXTURE_SETTINGS_OVERRIDE` gains `sa_bb_mb_event_lookup: false`
+(an eleventh); bb-image-card and image-card-space run in a 1920 px window
+(Event + MB-Event push the Media icons under the right mask at 1280).
+
+Specs bb-mb-event 5/5; Brucebase set (bb-year, bb-image-card, bb-home,
+bb-sidebar, mb-title-case, foreign-gallery, image-card-space,
+bb-event-preview, mobile) green after the window change. Mutations
+`scripts/mutations/bb-mb-event.json`: 6, all fail as expected.

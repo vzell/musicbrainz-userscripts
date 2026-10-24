@@ -1,0 +1,80 @@
+[
+    {
+        "name": "lookup: no url lookup of the anchors",
+        "why": "An event MusicBrainz links to the row's own Brucebase anchor is the row's, found with one request per 100 entries (probe 2026-10-24).",
+        "edits": [
+            {
+                "find": "        const anchors = rows.map(r => r.anchor).filter(Boolean);",
+                "replace": "        const anchors = [];"
+            }
+        ],
+        "spec": "tests/fixtures/bb-mb-event.spec.js",
+        "grep": "fewest requests",
+        "expect": "fail"
+    },
+    {
+        "name": "lookup: the name search's top hit on any date",
+        "why": "A name-search hit counts only on the row's own date; the top hit of \"1985-01-10: …\" may be another show at that venue.",
+        "edits": [
+            {
+                "find": "            if (top && ((top['life-span'] || {}).begin || '') === r.date) found.set(r.key, { ev: _bbMbevEventOf(top), via: 'name' });",
+                "replace": "            if (top) found.set(r.key, { ev: _bbMbevEventOf(top), via: 'name' });"
+            }
+        ],
+        "spec": "tests/fixtures/bb-mb-event.spec.js",
+        "grep": "fewest requests",
+        "expect": "fail"
+    },
+    {
+        "name": "lookup: the store is never read",
+        "why": "A second visit answers every row from the store (90 days, 7 for no event) with no request.",
+        "edits": [
+            {
+                "find": "                        if (!_bbMbevMem.has(r.key)) _bbMbevMem.set(r.key, r);",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/bb-mb-event.spec.js",
+        "grep": "a reload answers",
+        "expect": "fail"
+    },
+    {
+        "name": "lookup: a failure stored as no event",
+        "why": "A request that failed leaves its rows unanswered, shown as failed and asked again on a click; it is never stored.",
+        "edits": [
+            {
+                "find": "            if (failed.has(r.key) || (_bbMbev.stop && !found.has(r.key))) return;",
+                "replace": "            if (_bbMbev.stop && !found.has(r.key)) return;"
+            }
+        ],
+        "spec": "tests/fixtures/bb-mb-event.spec.js",
+        "grep": "failed request",
+        "expect": "fail"
+    },
+    {
+        "name": "lookup: the setting ignored",
+        "why": "sa_bb_mb_event_lookup off: nothing is asked until the ▶ MB header button.",
+        "edits": [
+            {
+                "find": "        return Lib.settings.sa_bb_mb_event_lookup !== false;",
+                "replace": "        return true;"
+            }
+        ],
+        "spec": "tests/fixtures/bb-mb-event.spec.js",
+        "grep": "lookup off",
+        "expect": "fail"
+    },
+    {
+        "name": "late write: the filter caches kept",
+        "why": "docs/claude/filter-and-cache-invariants.md: a post-render cell write invalidates the filter result cache and re-runs an active filter.",
+        "edits": [
+            {
+                "find": "            _invalidateFilterCache();\n            _bbMbevUpdateHdrBtns();",
+                "replace": "            _bbMbevUpdateHdrBtns();"
+            }
+        ],
+        "spec": "tests/fixtures/bb-mb-event.spec.js",
+        "grep": "late answers reach an active filter",
+        "expect": "fail"
+    }
+]
