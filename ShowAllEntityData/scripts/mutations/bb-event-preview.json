@@ -1,0 +1,93 @@
+[
+    {
+        "name": "event links: /gig: only",
+        "why": "vzell, 2026-10-24: every event page previews (gig, no gig, recording, rehearsal, interview, no Bruce); Recent changes links an interview page.",
+        "edits": [
+            {
+                "find": "                test: (u) => /^\\/(?:gig|nogig|recording|rehearsal|interview|nobruce):[^/]+$/.test(u.pathname),",
+                "replace": "                test: (u) => /^\\/gig:[^/]+$/.test(u.pathname),"
+            }
+        ],
+        "spec": "tests/fixtures/bb-event-preview.spec.js",
+        "grep": "Recent changes",
+        "expect": "fail"
+    },
+    {
+        "name": "event links: the Event column only",
+        "why": "Any text link to an event page previews it, not only the Event cell's (a Venue link, a heading on the unrendered page).",
+        "edits": [
+            {
+                "find": "        if (own && own.ownLinks.test(u)) return own;",
+                "replace": "        if (own && own.ownLinks.test(u) && a.matches('a.mb-bb-event-link')) return own;"
+            }
+        ],
+        "spec": "tests/fixtures/bb-event-preview.spec.js",
+        "grep": "Venue link|before any button",
+        "expect": "fail"
+    },
+    {
+        "name": "event links: the setting ignored",
+        "why": "sa_bb_event_preview off: no card, no request.",
+        "edits": [
+            {
+                "find": "        return site && site.ownLinks && Lib.settings[site.ownLinks.setting] !== false ? site : null;",
+                "replace": "        return site && site.ownLinks ? site : null;"
+            }
+        ],
+        "spec": "tests/fixtures/bb-event-preview.spec.js",
+        "grep": "its own setting",
+        "expect": "fail"
+    },
+    {
+        "name": "event links: only while the song preview is on",
+        "why": "The event preview is independent of sa_bb_detail_preview (off by default).",
+        "edits": [
+            {
+                "find": "            enabled: () => _dpActiveSite() === site || _dpOwnLinksOn() === site,",
+                "replace": "            enabled: () => _dpActiveSite() === site,"
+            }
+        ],
+        "spec": "tests/fixtures/bb-event-preview.spec.js",
+        "grep": "song preview off",
+        "expect": "fail"
+    },
+    {
+        "name": "event links: stepping takes the other kind",
+        "why": "From an event link, ← → step through the rows' event links, never into a Notes song link (or nothing).",
+        "edits": [
+            {
+                "find": "        const ownKind = !!(own && from && from.href && isOwn(from));",
+                "replace": "        const ownKind = false;"
+            }
+        ],
+        "spec": "tests/fixtures/bb-event-preview.spec.js",
+        "grep": "step through the rows",
+        "expect": "fail"
+    },
+    {
+        "name": "reader: an empty tab counts as content",
+        "why": "\"Sorry, no Media available.\" is no content; the card's \"On the page\" must not list it.",
+        "edits": [
+            {
+                "find": "            return !!t && !/^Sorry,? no\\b.*\\bavailable\\.?$/i.test(t);",
+                "replace": "            return !!t;"
+            }
+        ],
+        "spec": "tests/fixtures/bb-event-preview.spec.js",
+        "grep": "the reader",
+        "expect": "fail"
+    },
+    {
+        "name": "reader: no Scheduled",
+        "why": "The card's Scheduled line comes from the page's div.code block.",
+        "edits": [
+            {
+                "find": "        if (sched) data.fields.push(['Scheduled', sched]);",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/bb-event-preview.spec.js",
+        "grep": "the reader|Ctrl\\+hover on Event",
+        "expect": "fail"
+    }
+]

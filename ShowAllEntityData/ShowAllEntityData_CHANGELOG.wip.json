@@ -1,5 +1,17 @@
 [
     {
+        "version": "WIP.6",
+        "date": "2026-10-24",
+        "sections": [
+            {
+                "label": "🚀 Feature",
+                "items": [
+                    "Brucebase: on every Brucebase page, resting the pointer (with Ctrl held, unless every preview shows on a plain hover) on a link to an event's page — a gig, no gig, recording, rehearsal, interview or \"no Bruce\" page — shows a card of that page. This includes the year table's Event and Venue columns, Notes, Recent changes and the wiki's own lists. The card shows when it was scheduled, who was on stage, the setlist and the page's images. Space pins it into a window with the whole setlist, the other shows at that venue, the recording, the stories and the eyewitness accounts, and its \"Live page\" view shows the wiki's own page. ← → step through the rows. New setting \"Preview event pages on hover\" (on by default), independent of the song preview. The Media icons keep their image cards."
+                ]
+            }
+        ]
+    },
+    {
         "version": "WIP.5",
         "date": "2026-10-24",
         "sections": [

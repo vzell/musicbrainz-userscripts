@@ -572,9 +572,22 @@ card and the artwork viewer, through the shared foreign-image path
   (Setlist since 2026-10-24: `files:setlist-YYYY` on every sampled entry
   page with a Setlist icon, 1978–2024, `scripts/probe-bb-setlist-images.py`;
   before, such an image was Other and the Setlist icon was never ringed).
-- **Entry pages are read, never previewed.** `_dpGet()` takes any URL, so
-  `isDetailUrl` stays `/song:` only: neither the detail preview nor the
-  Springsteen reader on other hosts (`_extDpTest()`) takes a `/gig:` link.
+- **Entry pages preview under their own setting** (since 2026-10-24,
+  org/TODO.org "Some enhancements" 3b; until then "read, never previewed").
+  `_DP_SITES['brucebase.wikidot.com'].ownLinks` (`test`: `/gig:`, `/nogig:`,
+  `/recording:`, `/rehearsal:`, `/interview:`, `/nobruce:`; setting
+  `sa_bb_event_preview`, default on) makes EVERY text link to one on a
+  Brucebase page a preview target — vzell: "on all BB PTs where an event
+  href is involved in a column or elsewhere" (Event and Venue cells, Notes,
+  Recent changes, the wiki's own page, a song window's Performances). A
+  Media icon is an `<img>` link and stays the image card's. `isDetailUrl`
+  stays `/song:`, so the Springsteen reader on other hosts (`_extDpTest()`)
+  still takes no `/gig:` link. ← → step through the rows' event links
+  (`_dpRowLinks(table, from)`: the same kind as the link opened). The
+  record: `_dpParseBbPage()` (Scheduled, On stage, Setlist, images by kind,
+  the tabs with content; sections for the window), `_DP_PARSER_VERSION` 5.
+  Specs `tests/fixtures/bb-event-preview.spec.js`; mutations
+  `scripts/mutations/bb-event-preview.json`.
 - **Renditions** (HEAD 200 for a `files:`, a `gallery:` and a `news:`
   image, `scripts/probe-foreign-images.py --small`, 2026-10-23): the viewer
   record is `{image: original, thumbnails: {1200: original, large: the

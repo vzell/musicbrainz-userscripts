@@ -4919,6 +4919,22 @@
                          'title opens the window.'
         },
 
+        sa_bb_event_preview: {
+            label: 'Preview event pages on hover (gigs, recordings, …)',
+            type: 'checkbox',
+            default: true,
+            description: 'Needs a setting above that switches the wiki on. On every Brucebase page, resting the ' +
+                         'pointer on a link to an event\'s page (a gig, no gig, recording, rehearsal, interview or ' +
+                         '"no Bruce" page) — the Event and Venue columns of a year table, a mention in its Notes, ' +
+                         'the Recent changes list, the wiki\'s own lists — with Ctrl held, unless every preview ' +
+                         'shows on a plain hover, shows a card with what its page adds: when it was scheduled, ' +
+                         'who was on stage, the setlist and the page\'s images. Press Space to pin it into a ' +
+                         'window you can move and resize, with the whole setlist, the other shows at that venue, ' +
+                         'the recording, the stories and the eyewitness accounts; its "Live page" view shows the ' +
+                         'wiki\'s own page. ← and → step through the rows. The page is read when you point at it, ' +
+                         'never at load, and kept for 30 days. Independent of the song preview above.'
+        },
+
         sa_bb_tip_images: {
             label: 'Media icons and song glyphs: the page\'s images on hover',
             type: 'checkbox',
@@ -19779,9 +19795,12 @@
      *    foreign-image card and viewer (org/foreign-images.org, phase 3).
      * 4: a Brucebase setlist image (`files:setlist-YYYY`) is of kind
      *    Setlist, no longer Other (`_bbImageKind()`).
+     * 5: a Brucebase entry page (`/gig:`, `/nogig:`, …) carries its fields
+     *    and sections (`_dpParseBbPage()`: Scheduled, On stage, Setlist,
+     *    the tabs with content), for the Event column's preview.
      * @type {number}
      */
-    const _DP_PARSER_VERSION = 4;
+    const _DP_PARSER_VERSION = 5;
 
     /**
      * IndexedDB database of parsed detail pages. Deliberately NOT a store in
@@ -20665,10 +20684,16 @@
 
     /**
      * Parses any Brucebase page that is not a song: an entry of a year page
-     * (`/gig:`, `/nogig:`, `/recording:`, `/rehearsal:`, …). Only its title
-     * and its gallery images (`_bbPageImages()`), for the foreign-image card
-     * and viewer of the year table's Media icons; the detail preview does
-     * not take these pages (`isDetailUrl` is `/song:` only).
+     * (`/gig:`, `/nogig:`, `/recording:`, `/rehearsal:`, …): its title and
+     * gallery images (`_bbPageImages()`, for the foreign-image card and
+     * viewer of the year table's Media icons), and since 2026-10-24 the
+     * fields and sections of their own preview (any link to one on a
+     * Brucebase page, `_DP_SITES[…].ownLinks`): Scheduled
+     * (`_bbScheduledText()`), On stage (`_bbOnStageText()`), the Setlist's
+     * count and ends, the images by kind, the tabs with content ("Sorry, no
+     * Media available." is none); the window adds On stage, the whole
+     * setlist, Performances, Recording, Storyteller, Eyewitness and
+     * News/Memorabilia.
      *
      * @param {Document} doc The fetched page.
      * @param {string}   url The page's URL.
@@ -20681,7 +20706,88 @@
         const data = _dpEmpty();
         data.title = _dpText(doc.getElementById('page-title') ? doc.getElementById('page-title').textContent : '');
         data.images = _bbPageImages(content, url);
+        // org/TODO.org "Some enhancements" 3b (2026-10-24): the Event
+        // column's preview card and window (debug/bb-event-detail-1985-01-13.html).
+        const code = content.querySelector('div.code');
+        const sched = code ? _bbScheduledText(_dpText(code.textContent)) : '';
+        if (sched) data.fields.push(['Scheduled', sched]);
+        const nav = content.querySelector('div.yui-navset');
+        if (!nav) return data;
+        const labels = Array.from(nav.querySelectorAll(':scope > ul.yui-nav > li')).map(li => _dpText(li.textContent));
+        const panels = Array.from((nav.querySelector(':scope > .yui-content') || { children: [] }).children);
+        const tab = (name) => panels[labels.indexOf(name)] || null;
+        const has = (panel) => {
+            const t = panel ? _dpText(panel.textContent) : '';
+            return !!t && !/^Sorry,? no\b.*\bavailable\.?$/i.test(t);
+        };
+        const stage = tab('On Stage');
+        const onStage = stage ? _bbOnStageText(stage) : '';
+        if (onStage) data.fields.push(['On stage', onStage]);
+        const setPanel = tab('Setlist');
+        const songs = setPanel ? Array.from(setPanel.querySelectorAll('li')).map(li => _mbSiteTitleText(_dpText(li.textContent))).filter(Boolean) : [];
+        if (songs.length) {
+            const head = songs.slice(0, 3).join(', ');
+            data.fields.push(['Setlist', `${songs.length} song${songs.length === 1 ? '' : 's'}: ${head}` +
+                (songs.length > 4 ? ` … ${songs[songs.length - 1]}` : songs.length === 4 ? `, ${songs[3]}` : '')]);
+            data.sections.push({ label: `Setlist (${songs.length})`, text: songs.map((t, i) => `${i + 1}. ${t}`).join('\n') });
+        }
+        if (data.images.length) {
+            const kinds = new Map();
+            data.images.forEach(im => kinds.set(im.label, (kinds.get(im.label) || 0) + 1));
+            data.fields.push(['Images', `${data.images.length}: ` + Array.from(kinds, ([k, n]) => `${k} ${n}`).join(' · ')]);
+        }
+        const filled = labels.filter((l, i) => has(panels[i]));
+        if (filled.length) data.fields.push(['On the page', filled.join(' · ')]);
+        if (onStage) data.sections.unshift({ label: 'On stage', text: _dpBlockText(stage) });
+        ['Performances', 'Recording', 'Storyteller', 'Eyewitness', 'News/Memorabilia'].forEach(name => {
+            const panel = tab(name);
+            const text = has(panel) ? _dpBlockText(panel) : '';
+            if (text) data.sections.push({ label: name, text });
+        });
         return data;
+    }
+
+    /**
+     * An entry page's "Scheduled: 19:30 Local Start Time ??:?? / End Time
+     * ??:??" line (its `div.code` block) as the preview shows it: the
+     * scheduled time, then the actual start and end where the wiki knows
+     * them ("??:??" is not known). '' when the line is not there.
+     *
+     * @param {string} text The block's text, whitespace collapsed.
+     * @returns {string} "19:30 · start and end not known", "20:00 · started 20:15 · ended 23:05", …
+     */
+    function _bbScheduledText(text) {
+        const m = String(text).match(/Scheduled:\s*(\S+)(?:\s+Local)?\s+Start Time\s+(\S+)\s*\/\s*End Time\s+(\S+)/i);
+        if (!m) return '';
+        const known = (v) => v && !/\?/.test(v);
+        const parts = [known(m[1]) ? m[1] : 'time not known'];
+        if (known(m[2])) parts.push(`started ${m[2]}`);
+        if (known(m[3])) parts.push(`ended ${m[3]}`);
+        if (!known(m[2]) && !known(m[3])) parts.push('start and end not known');
+        else if (!known(m[2])) parts.push('start not known');
+        else if (!known(m[3])) parts.push('end not known');
+        return parts.join(' · ');
+    }
+
+    /**
+     * The On Stage tab of an entry page as one line: each top-level name,
+     * and a band's members after it in parentheses ("Bruce Springsteen, The
+     * E Street Band (Roy Bittan, Clarence Clemons, …)").
+     *
+     * @param {Element} panel The tab's panel.
+     * @returns {string}
+     */
+    function _bbOnStageText(panel) {
+        const list = panel.querySelector('ul, ol');
+        if (!list) return _dpText(panel.textContent);
+        const item = (li) => {
+            const sub = li.querySelector(':scope > ul, :scope > ol');
+            const own = Array.from(li.childNodes).filter(n => n !== sub).map(n => n.textContent).join(' ');
+            const members = sub ? Array.from(sub.querySelectorAll(':scope > li')).map(item).filter(Boolean) : [];
+            const name = _dpText(own);
+            return members.length ? `${name} (${members.join(', ')})` : name;
+        };
+        return Array.from(list.querySelectorAll(':scope > li')).map(item).filter(Boolean).join(', ');
     }
 
     /**
@@ -20781,8 +20887,11 @@
      *   previewed besides the table (`_extSource()` on this host, U5), or
      *   null for the table only. Never the site's chrome: its share bar,
      *   menus and footer are left out by `_EXT_SKIP_SEL`.
+     * - `ownLinks`, optional: links that preview under a setting of their
+     *   own (`test(u)` on the same-origin URL; `_dpOwnLinksOn()`,
+     *   `_dpSiteForLink()`). Brucebase's event pages, 2026-10-24.
      *
-     * @type {Object<string, {setting: ?string, isDetailUrl: function(URL): boolean, charset: ?string, parse: function(Document, string): ?object, liveRoot: ?function(Document): ?Element, liveHide: string[], liveCss: string, livePrepare: ?function(Document): ?function(): void, ttlDays?: number, extRoot: ?string}>}
+     * @type {Object<string, {setting: ?string, isDetailUrl: function(URL): boolean, charset: ?string, parse: function(Document, string): ?object, liveRoot: ?function(Document): ?Element, liveHide: string[], liveCss: string, livePrepare: ?function(Document): ?function(): void, ttlDays?: number, extRoot: ?string, ownLinks?: {test: function(URL): boolean, setting: string}}>}
      */
     const _DP_SITES = {
         'springsteenlyrics.com': {
@@ -20830,6 +20939,17 @@
         'brucebase.wikidot.com': {
             setting: 'sa_bb_detail_preview',
             isDetailUrl: (u) => /^\/song:[^/]+$/.test(u.pathname),
+            // Event pages (org/TODO.org "Some enhancements" 3b; vzell,
+            // 2026-10-24: "on all BB PTs where an event href is involved in
+            // a column or elsewhere"): any link to one previews under its
+            // own setting, whatever `setting` says. `isDetailUrl` stays
+            // /song:, so /gig: links on other hosts (`_extDpTest()`) are
+            // left as they were; a Media icon (an `<img>` link) stays the
+            // image card's.
+            ownLinks: {
+                test: (u) => /^\/(?:gig|nogig|recording|rehearsal|interview|nobruce):[^/]+$/.test(u.pathname),
+                setting: 'sa_bb_event_preview',
+            },
             charset: null,
             parse: _dpParseBb,
             liveRoot: (doc) => doc.getElementById('main-content'),
@@ -20881,6 +21001,8 @@
 
     /**
      * The `_DP_SITES` entry of this host when its preview setting is on.
+     * A site's `ownLinks` (Brucebase's Event column) have a setting of their
+     * own and are not counted here: `_dpOwnLinksOn()`.
      *
      * @returns {?object}
      */
@@ -20918,15 +21040,30 @@
         // picture or not (_fiLazyCell(), _fiGlyph()).
         if (!a || !a.matches || !a.matches('a[href]') || a.querySelector('img') || a.matches('a.mb-fi-cell, a.mb-fi-glyph')) return null;
         if (!a.closest('table.tbl > tbody') && (_isTouchPrimaryDevice() || a.closest(_DP_PAGE_SKIP))) return null;
-        const site = _dpActiveSite();
-        if (!site) return null;
         let u;
         try {
             u = new URL(a.href);
         } catch (_) {
             return null;
         }
-        return u.origin === window.location.origin && site.isDetailUrl(u) ? site : null;
+        if (u.origin !== window.location.origin) return null;
+        // A site's own links (Brucebase's event pages): their own setting.
+        const own = _dpOwnLinksOn();
+        if (own && own.ownLinks.test(u)) return own;
+        const site = _dpActiveSite();
+        return site && site.isDetailUrl(u) && !(site.ownLinks && site.ownLinks.test(u)) ? site : null;
+    }
+
+    /**
+     * The `_DP_SITES` entry of this host when its `ownLinks` (links with a
+     * preview setting of their own: Brucebase's event pages,
+     * `sa_bb_event_preview`) are on; null otherwise.
+     *
+     * @returns {?object}
+     */
+    function _dpOwnLinksOn() {
+        const site = _foreignHost ? _DP_SITES[_foreignHost] : null;
+        return site && site.ownLinks && Lib.settings[site.ownLinks.setting] !== false ? site : null;
     }
 
     /**
@@ -21059,7 +21196,7 @@
             selector: 'a[href]',
             wide: false,
             live: site,
-            enabled: () => _dpActiveSite() === site,
+            enabled: () => _dpActiveSite() === site || _dpOwnLinksOn() === site,
             resolve: (el) => (_dpSiteForLink(el) === site ? { key: el.href, url: el.href, table: el.closest('table') } : null),
             needsCtrl: _dpNeedsCtrl,
             liveUrl: (t) => t.url,
@@ -21098,7 +21235,7 @@
                 if (res && res.outcome === 'error') return _dpFailHtml(res.detail);
                 return exLoading;
             },
-            steps: (t) => (t.el.closest('table.tbl > tbody') ? _dpRowLinks(t.table) : _dpPageLinks()),
+            steps: (t) => (t.el.closest('table.tbl > tbody') ? _dpRowLinks(t.table, t.el) : _dpPageLinks()),
             stepId: (el) => el.href,
         };
     }
@@ -21734,18 +21871,33 @@
 
     /**
      * The detail links of a table's visible rows, one per row, in display
-     * order: what ← and → step through.
+     * order: what ← and → step through. Of the same kind as `from`: from a
+     * site's own link (a Brucebase event page) each row's first own link
+     * (on a year table, its Event cell), from any other detail link (a song
+     * in Notes) the others, so a step never jumps between the two previews.
      *
      * @param {?HTMLTableElement} table
+     * @param {?Element} [from] The link the window was opened from.
      * @returns {HTMLAnchorElement[]}
      */
-    function _dpRowLinks(table) {
+    function _dpRowLinks(table, from) {
         const t = table && table.isConnected ? table : document.querySelector('table.tbl');
         if (!t || !t.tBodies[0]) return [];
+        const site = _foreignHost ? _DP_SITES[_foreignHost] : null;
+        const own = site && site.ownLinks ? site.ownLinks.test : null;
+        const isOwn = (x) => {
+            try {
+                return !!own(new URL(x.href));
+            } catch (_) {
+                return false;
+            }
+        };
+        const ownKind = !!(own && from && from.href && isOwn(from));
         const out = [];
         Array.from(t.tBodies[0].rows).forEach(tr => {
             if (tr.style.display === 'none') return;
-            const a = Array.from(tr.querySelectorAll('a[href]')).find(x => _dpSiteForLink(x));
+            const a = Array.from(tr.querySelectorAll('a[href]'))
+                .find(x => (!own || isOwn(x) === ownKind) && _dpSiteForLink(x));
             if (a) out.push(a);
         });
         return out;

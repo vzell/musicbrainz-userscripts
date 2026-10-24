@@ -25892,3 +25892,33 @@ Specs: bb-year (new "Event is the whole heading …"), mb-title-case (Event
 cased per part, its tip), bb-home and bb-sidebar (the sticky first column is
 Event): 92 passed with the image-card, gallery and mobile specs. Mutations
 `scripts/mutations/bb-year.json`: the four new ones fail as expected.
+
+## 2026-10-24 — Brucebase event pages preview on hover, on every Brucebase page (branch feature/bb-events-and-gallery, WIP.6)
+
+Env: 2026-10-24T03:57:26+02:00 · petri · WSL2 Ubuntu 24.04.3 (Linux 6.18.54.1) · Playwright 1.62.1 Chromium, no Tampermonkey (GM stubs)
+
+org/TODO.org "Some enhancements" 3b, mockup
+https://claude.ai/artifact/DmsNyUkUa1Hq8nPr2B5EGA; widened mid-way by
+vzell: "on all BB PTs where an event href is involved in a column or
+elsewhere, the event detail hovering should work". So not the Event column
+only: `_DP_SITES['brucebase.wikidot.com'].ownLinks` tests the URL (the six
+entry prefixes), under `sa_bb_event_preview`; `isDetailUrl` stays `/song:`.
+
+Event links in the fixtures, counted: the year pages (Event, Venue, Notes,
+the headings before any button), Recent changes' Page column (an
+`/interview:`), a song page's Performances (279 on 4th of July, seen in a
+song window). None on the relations, songs and start pages.
+
+`_dpParseBbPage()` reads the 1985-01-13 page: 8 images (the mockup's 7 was
+a guess), "Sorry, no Media available." counted as no content. One
+deviation from the mockup: its tab chips are a plain "On the page" field,
+because the shared card renders fields, not chips.
+
+Runs: bb-event-preview 8/8; with bb-year, bb-image-card, detail-preview,
+popup-ext, bb-songs, image-card-space and the detail-preview mobile spec
+145/147 — one expected failure (bb-image-card's "the entry page is not a
+detail-preview target", rewritten: a Media icon stays the image card's) and
+popup-ext "a reader who scrolls the Live page before its images are in is
+not pulled back" (−533 px), which passed 4/4 alone: load-dependent, to watch
+in `test:full`. Mutations `scripts/mutations/bb-event-preview.json`: 7, all
+fail as expected.

@@ -3115,7 +3115,13 @@ entry, with these columns:
   Columbia, SC", linked to the entry's page: the first column, which stays
   in view when you scroll the table sideways. Its venue, city and country
   are written the way the Venue, City and Country columns write them; point
-  at it to see the name as the wiki writes it.
+  at it to see the name as the wiki writes it. With Ctrl held (or with
+  *Show every preview on a plain hover*), resting the pointer on it, or on
+  any other link to an event's page on a Brucebase page, shows a card of
+  that page: when it was scheduled, who was on stage, the setlist, the
+  images. **Space** pins it into a window with the whole setlist, the other
+  shows at that venue, the recording and the stories; ← → step through the
+  rows (⚙️ Settings → *📚 Brucebase* → *Preview event pages on hover*).
 - **Date:** the entry's date. A day or month the wiki writes as `00` (not
   known) is left out, so `1954-10-00` reads `1954-10`. **DD**, **MM**,
   **YYYY**, **Day** and **Month** (at the end of the table) split it up as
@@ -3494,6 +3500,7 @@ that site's own switch in ⚙️ Settings:
 | 🌴 jungleland.it         | *Preview artwork pages on the jungleland.it list*            | the uploader and the scans (front, back, discs, booklet)                                                                                                    |
 | 💿 brucespringsteen.it   | *Preview record pages in the brucespringsteen.it database*   | the tracklist, the show each track comes from, the notes, the photo                                                                                         |
 | 📚 Brucebase             | *Preview song pages on the Brucebase song list*              | the album it comes from, how often and when last it was played live, releases, the graph and lyric sheets                                                   |
+| 📚 Brucebase             | *Preview event pages on hover (gigs, recordings, …)*         | when it was scheduled, who was on stage, the setlist, the images; Space: the whole setlist, the other shows there, the recording                            |
 
 **Rest the pointer on a title** for a moment and a card opens beside it. If
 you would rather move the pointer across the table without opening cards or

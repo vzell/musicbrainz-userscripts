@@ -320,10 +320,13 @@ test.describe('bb-year: the Media icons open the entry page\'s images (mockup B1
         expect(errors).toEqual([]);
     });
 
-    test('the entry page is not a detail-preview target (isDetailUrl stays /song:)', async ({ page }) => {
-        const { errors, served } = await openYear(page, { sa_bb_detail_preview: true });
+    test('a ringed Media icon stays the image card\'s: never the event preview\'s, though it links the event page', async ({ page }) => {
+        // Since 2026-10-24 every TEXT link to an event page previews it
+        // (bb-event-preview.spec.js); the icon is an <img> link and keeps
+        // its image card. Card off here, so any card would be the preview's.
+        const { errors, served } = await openYear(page, { sa_bb_detail_preview: true, sa_bb_tip_images: false });
         await page.mouse.move(0, 0);
-        await page.locator(`table.tbl tbody td a:not(.mb-fi-media)[href="${GIG4}"]`).first().hover();
+        await page.locator(`table.tbl tbody td a.mb-fi-media[href="${GIG4}"]`).first().hover();
         await page.keyboard.down('Control');
         await page.evaluate(() => new Promise(r => setTimeout(r, 800)));
         await expect(page.locator('#mb-dp-peek')).toBeHidden();

@@ -459,11 +459,15 @@ markup.
   whole. Since 2026-10-23 (`_DP_PARSER_VERSION` 3, org/foreign-images.org
   phase 3) a song record carries its gallery images (`_bbPageImages()`:
   graph, lyric sheets), and any OTHER Brucebase page goes to
-  `_dpParseBbPage()` (title and images only), which only the foreign-image
-  card of the year table's Media icons asks for: `isDetailUrl` stays
-  `/song:`, so such a page is never previewed (docs/claude/brucebase.md,
-  "Images: the Media icons and the song glyph"). `_DP_PARSER_VERSION` 4
-  (2026-10-24): a `files:setlist-YYYY` image is of kind Setlist.
+  `_dpParseBbPage()`, which the foreign-image card of the year table's
+  Media icons asks for (docs/claude/brucebase.md, "Images: the Media icons
+  and the song glyph"). `_DP_PARSER_VERSION` 4 (2026-10-24): a
+  `files:setlist-YYYY` image is of kind Setlist. Version 5 (the same day):
+  such an entry page has fields and sections, and any text link to one
+  previews it under its own setting (`ownLinks`, `_dpOwnLinksOn()`,
+  `sa_bb_event_preview`) while `isDetailUrl` stays `/song:`
+  (docs/claude/brucebase.md, "Entry pages preview under their own
+  setting").
 
 **`_dpBlockText()` collapses the source's whitespace before it turns `<br>`
 into a line break.** The sites write `line<br />\nline`; keeping that
