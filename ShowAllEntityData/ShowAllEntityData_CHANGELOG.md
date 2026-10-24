@@ -4,9 +4,122 @@ Every version, newest first, with the technical details behind each change. For 
 
 **Months:** [October 2026](ShowAllEntityData_CHANGELOG/2026-10.md) · [September 2026](ShowAllEntityData_CHANGELOG/2026-09.md) · [August 2026](ShowAllEntityData_CHANGELOG/2026-08.md) · [July 2026](ShowAllEntityData_CHANGELOG/2026-07.md) · [June 2026](ShowAllEntityData_CHANGELOG/2026-06.md) · [May 2026](ShowAllEntityData_CHANGELOG/2026-05.md) · [April 2026](ShowAllEntityData_CHANGELOG/2026-04.md) · [March 2026 (1 of 2)](ShowAllEntityData_CHANGELOG/2026-03-1.md) · [March 2026 (2 of 2)](ShowAllEntityData_CHANGELOG/2026-03-2.md) · [February 2026](ShowAllEntityData_CHANGELOG/2026-02.md) · [January 2026](ShowAllEntityData_CHANGELOG/2026-01.md)
 
-This page shows the newest 100 of 1608 versions; the month pages hold all of them.
+This page shows the newest 100 of 1623 versions; the month pages hold all of them.
 
 ---
+
+## 9.99.1452 — 2026-10-24
+
+**🐛 Fix**
+
+- Opening a preview window with Space, or stepping through rows in it, no longer scrolls a wide table sideways. On a Brucebase year table the MB-Event column used to slide halfway under the Event column (with the side bar shown, almost all of it). The window still scrolls the page up or down to show its row.
+
+
+## 9.99.1451 — 2026-10-24
+
+**✨ Improve**
+
+- Brucebase year table: pointing at a Venue shows the VENUE's card, no longer the show's. It names the region, how often Springsteen played there, the first and last show and the venue's description. Space opens a window with every show there (each linked), the cancelled shows and other appearances, a street view link where the wiki has one, and the venue's photos; ← → step from venue to venue.
+- Venue pages get a card and window of their own wherever they are linked on Brucebase (a show's Venue link, a person's page, …).
+
+
+## 9.99.1450 — 2026-10-24
+
+**✨ Improve**
+
+- The SAED menu: View has a new row, 💾 Browser cache, between Statistics and Keyboard Shortcuts. It opens the browser cache overview (what the script keeps in your browser, how old it is, and what to delete) without a trip through ⚙️ Settings or the Statistics panel.
+
+
+## 9.99.1449 — 2026-10-24
+
+**✨ Improve**
+
+- Brucebase windows: a Ctrl+click (⌘+click on a Mac) on a section's heading folds or opens every section at once. A plain click still folds just that one.
+
+
+## 9.99.1448 — 2026-10-24
+
+**🐛 Fix**
+
+- The 🖼 images gallery: dragging it by its title bar no longer makes it grow to its whole list (on a Discogs master with many versions it reached past the bottom of the screen, its resize corner out of reach). Dragged or reopened, it now always stays inside the browser window.
+- Pressing on the gallery's resize corner no longer scrolls the list inside it: the list's scrollbar used to reach into that corner.
+
+
+## 9.99.1447 — 2026-10-24
+
+**✨ Improve**
+
+- Brucebase: "Collabsable sidebar" (⚙️ Settings → 📚 Brucebase) is now on by default, so the wiki's side bar gets its show/hide handle and starts hidden while "Start with sidebar collapsed" is on. If you never changed it, it switches on with this version.
+
+
+## 9.99.1446 — 2026-10-24
+
+**🚀 Feature**
+
+- Brucebase year table: pointing at a found MB-Event glyph (with Ctrl held, unless every preview shows on a plain hover) shows the MusicBrainz event's card: its name, type, date, place and line-up. Under it, the card says how the event was found and whether its Brucebase link is this entry's. Space pins it into a window with the event's links.
+- Two new findings check that link. ❌ "MB-Event: the Brucebase link differs": the MusicBrainz event links another Brucebase entry, or this entry's anchor is linked from another event; the card shows both links. ⚠️ "MB-Event: no Brucebase link": the event has none. They appear in the ❌ / ⚠️ menus, filter the table and tint the cell as the other findings do, and fill in while the column looks the events up. Each has its own switch in ⚙️ Settings → ⚠️ Findings, plus one for the tint.
+
+
+## 9.99.1445 — 2026-10-24
+
+**✨ Improve**
+
+- Brucebase windows (the one Space opens on an event or a song): every section on the right — On stage, Setlist, Performances, Credits, … — folds with a click on its heading and stays folded for the next page you open.
+- The people on stage, the songs of a setlist, the other shows at the venue and a song's credits are now links. A click opens them in the same window (Backspace goes back), and pointing at one shows its card. People and venue pages preview too, on every Brucebase page.
+- The images on the left are grouped by kind (Setlist, Ticket, News, Memorabilia, …), photos last, and the viewer steps through them in that order.
+- A song's window lists its performances (folded at first), each show linked.
+
+
+## 9.99.1444 — 2026-10-24
+
+**🚀 Feature**
+
+- Brucebase year table: a new second column, MB-Event, shows a glyph for the entry's kind (gig, no gig, recording, rehearsal, interview, no Bruce) and links it to the entry's event on MusicBrainz once found. After the table renders, the column looks the events up by itself: first by the entry's Brucebase link (100 entries a request), then the year's events by date, then by name for the rest, about one request a second, shown in the background jobs popup with Stop. A "?" means MusicBrainz has no event (a click searches it), ⚠ that it did not answer (a click asks again). Answers are kept 90 days ("no event" 7 days), so a second visit asks nothing. New setting "MB-Event column: look the events up on MusicBrainz" (on by default); off, the ▶ MB button in the column's header runs the lookup.
+
+
+## 9.99.1443 — 2026-10-24
+
+**🚀 Feature**
+
+- Brucebase: on every Brucebase page, resting the pointer (with Ctrl held, unless every preview shows on a plain hover) on a link to an event's page — a gig, no gig, recording, rehearsal, interview or "no Bruce" page — shows a card of that page. This includes the year table's Event and Venue columns, Notes, Recent changes and the wiki's own lists. The card shows when it was scheduled, who was on stage, the setlist and the page's images. Space pins it into a window with the whole setlist, the other shows at that venue, the recording, the stories and the eyewitness accounts, and its "Live page" view shows the wiki's own page. ← → step through the rows. New setting "Preview event pages on hover" (on by default), independent of the song preview. The Media icons keep their image cards.
+
+
+## 9.99.1442 — 2026-10-24
+
+**🚀 Feature**
+
+- Brucebase year table: a new first column, Event, holds each entry's whole name, for example "1985-01-13 - Carolina Coliseum, Columbia, SC", linked to the entry's page. Venue, city and country are written the way their own columns write them, and pointing at the name shows it as the wiki writes it. Event is now the column that stays in view when you scroll sideways (Date was before), and it always shows the whole name on one line.
+
+
+## 9.99.1441 — 2026-10-24
+
+**✨ Improve**
+
+- The 🖼 gallery on Discogs, the Springsteen sites and Brucebase can now be moved by its title bar (by touch too) and resized from its lower-right corner, like the window Space opens. It reopens where you left it, at that size, kept inside the browser window. Until you have moved or resized it once, it still opens under its 🖼 button. Its position and size go with the config export, as the other panels' do.
+
+
+## 9.99.1440 — 2026-10-24
+
+**✨ Improve**
+
+- Brucebase year table: the Media column is now the second column, right after Date. Before, it came after Notes at the far right, so you had to scroll sideways to see an entry's icons.
+
+
+## 9.99.1439 — 2026-10-24
+
+**✨ Improve**
+
+- Space on a hovered image now does what a click does: it opens the artwork viewer, instead of scrolling the page under the card. This works on Discogs' Image column, the Springsteen sites' image cells and Brucebase's Media icons, and on MusicBrainz's artwork icons, relationship-list covers, the images of an expanded cell and the sidebar cover. It works even when the card is switched off or still loading. On a card with more images than it shows, Space still shows them all first, as before. Space keeps its usual meaning while you type into a field, or with Shift, Ctrl, Alt or ⌘ held.
+- The image card says so: its bottom line reads "Click or Space: viewer". On a card with more images than it shows, it stays "Click: viewer", because there Space shows the rest of the images.
+
+
+## 9.99.1438 — 2026-10-24
+
+**🐛 Fix**
+
+- Brucebase year table: the Setlist icon in the Media column is now ringed like Photo, Ticket, News and Memorabilia when the entry has a page of its own. Pointing at it shows the handwritten setlists from that page (two on 1985-01-13, Columbia, SC), and a click opens them in the viewer. Before, the icon stayed plain, and the page's setlist images were counted as "Other".
+- A ringed Media icon no longer shows the browser's own name tooltip on top of its image card. With the card switched off, the icon's name still shows on hover.
+
 
 ## 9.99.1437 — 2026-10-23
 
@@ -734,160 +847,6 @@ This page shows the newest 100 of 1608 versions; the month pages hold all of the
 **✨ Improve**
 
 - The "🗂 Sidebar as tables" button is now off by default: the two new views (9.99.1351, 9.99.1352) show the same information beside the page's own data. Turn it back on with "'Sidebar as tables' button" in ⚙️ Settings; if you had it on because it was the default, it is switched off once.
-
-
-## 9.99.1352 — 2026-10-15
-
-**🚀 Feature**
-
-- After the page's own button (Tracks, Releases, Artist RGs, …) a "Sidebar" heading now follows the Credits or Relationships section (on a page without one: right above the table). It shows the sidebar's information, labels, release events, external links and tags as small read-only cards: facts as name → value lines side by side, links as chips grouped by kind, tags as pills with their votes. Each card closes on its own. Nothing is loaded. Settings: "Sidebar facts below Credits/Relationships" (on) and "… start the 'Sidebar' section closed" (off).
-
-
-## 9.99.1351 — 2026-10-15
-
-**🚀 Feature**
-
-- The Credits and Relationships views (and the place, area and instrument pages) now end with the sidebar's groups as tables of their own: "Sidebar: Release information", "Sidebar: Additional details", "Sidebar: Labels", "Sidebar: Release events", "Sidebar: External links", "Sidebar: Tags". They share the heading's filter and can be sorted and filtered like the relationship tables. A sidebar link that is already a relationship row is left out. Settings: "Sidebar tables in the Credits/Relationships view", "… skip links already in a relationship table", "… include external links", "… include tags" (all on).
-
-
-## 9.99.1350 — 2026-10-15
-
-**🐛 Fix**
-
-- Release "Credits" tables: the "Via release group" table again shows each release group as a "Release group" with its name in Target, our inline cover art and the big-image strip. jesus2099's "mb. SUPER MIND CONTROL" puts a small cover-art link in front of every release-group link. When it had done so before the table was built, that link was taken as the target: the row read "Release", the group's name moved to an extra Details column, a Picard column appeared, and no artwork was shown. Such an icon link is now skipped (also on the event page, which shares the parser).
-
-
-## 9.99.1349 — 2026-10-14
-
-**✨ Improve**
-
-- Instrument icons from the userscript "MusicBrainz: Instrument Icons Everywhere" (by Lotheric) are now also kept, counted and filterable when that script is set to show them AFTER the instrument name (its new 2026-10-12.2140 option): the 📊 "Instrument info - Icon" section shows "🎻 with instrument icon" again, "» instrument:" entries carry their icon, a copied icon stays on the side the script put it, and an icon that loads after the table is built reaches the underlying rows on multi-table pages too.
-
-
-## 9.99.1348 — 2026-10-14
-
-**🐛 Fix**
-
-- On a phone, the sidebar's ▶/◀ handle stays inside what the screen shows: MusicBrainz lays its pages out like a desktop page there, and the handle sat at the right edge of the whole page, out of sight and impossible to tap.
-
-**📝 Docs**
-
-- Tests: tests/fixtures/sidebar-collapse-handle.mobile.spec.js (1); two popup-ext.spec.js checks of a Live page now wait for the frame to be set up, column-filter-modes.spec.js compares settled column widths, and a popup-mb area chain and a sticky-page-headers sidebar check wait for the page to settle (timing failures under a full run). Mutations: 2 more in scripts/mutations/sidebar-overhaul.json (1 caught, 1 recorded as untestable: a pinch-zoom), 1 in column-filter-modes.json, caught; 3 stale anchors in scripts/mutations/sticky-page-headers.json repointed, all caught again, and the 43 left in 22 other lists repointed too (scripts/check-mutation-anchors.py: 0 bad). A fixture load no longer waits on a coverartarchive.org thumbnail in the saved page, which redirects to archive.org where no route can block it: tests/support/loadPage.js blocks the art archives' images while the page loads (fixture-load-no-archive-org-wait.spec.js, 2 more tests; 2 mutations in fixture-archive-org.json, caught).
-
-
-## 9.99.1347 — 2026-10-14
-
-**🐛 Fix**
-
-- On a page wider than the window (a release group's releases, for example), opening the sidebar with its handle shows it at the window's right edge at once. Before, its content stayed out of view and only slid in while you scrolled right.
-
-**✨ Improve**
-
-- The sidebar's ▶/◀ handle sits at the top of the sidebar instead of halfway down the window, and lines up with the sidebar's edge once it has finished sliding.
-
-**📝 Docs**
-
-- Tests: tests/fixtures/sidebar-collapse-handle.spec.js (3); 3 more mutations in scripts/mutations/sidebar-overhaul.json, all caught.
-
-
-## 9.99.1346 — 2026-10-14
-
-**🐛 Fix**
-
-- Sorted column headers no longer let table text show through while you scroll. On brucespringsteen.it, springsteenlyrics.com, jungleland.it and Brucebase, the header of a sorted non-sticky column (every sorted column after a multi-column sort) was partly transparent, so the rows scrolling under the pinned header showed through it ("gatefold" under "Notes"). The pinned header now has a solid background behind its sort colour.
-- jungleland.it: with the pointer resting on the list, its rows no longer cover the toolbar, the status line and the Bootlegs bar pinned at the top of the window.
-
-
-## 9.99.1345 — 2026-10-14
-
-**🐛 Fix**
-
-- Wide MusicBrainz pages: the collapsed sidebar no longer keeps an invisible strip about 80–120 px wide at the right end of the page. Because of that strip, every pinned h2/h3 bar stopped well short of the window's right edge, rows showed through the gap while the bars were pinned at the top, and the page could scroll past the end of the table. A collapsed sidebar now takes no space at all (it still slides in and out).
-- Wide tables now end on the same line as the h2/h3 bars above them, at every horizontal scroll position, instead of running on to the window's right edge. The bars must stay a few pixels narrower than the window to remain pinned; the table, its pinned column headers included, is now cut off at that line too, so no row text shows beside a bar pinned at the top either.
-
-
-## 9.99.1344 — 2026-10-14
-
-**✨ Improve**
-
-- The "🗂 Sidebar as tables" button (9.99.1342) is also on release, series, place, area and instrument pages. On a release it also shows the additional details, the labels with their catalog numbers, the release events and the release group's external links, each as its own table. Place, area and instrument pages keep the button with 'Relationships as tables' switched off.
-
-**🐛 Fix**
-
-- A saved "Sidebar as tables" view loads back from disk as the same tables, instead of as the page's own table.
-- On a page whose header line (the buttons and the status messages) ran just past the window's edge, for example a release group after filtering, the page no longer jumps back and forth several times a second: the sticky page headers switched on and off in a loop.
-
-**📝 Docs**
-
-- Tests: 8 more in tests/fixtures/sidebar-tables.spec.js, on the release, series, place, area and instrument captures; 9 more mutations in scripts/mutations/sidebar-overhaul.json, all caught. Merged main (9.99.1339) into the branch first: the Sidebar button now runs through main's replaceFeatures and button type (DEBUG-NOTES.md 2026-10-14).
-
-
-## 9.99.1343 — 2026-10-14
-
-**🚀 Feature**
-
-- The link previews of an artist, a label or a place show its picture: when Space opens the window, it shows the Wikimedia Commons file MusicBrainz links as the entity's image or logo, else the one its Wikidata item names (one or two small requests to Wikidata, a label's logo first). Click it for the artwork viewer, with Open on Commons. A hover never asks for it; once known, the card shows it small beside the facts, also after a reload. New setting: Pictures in artist, label and place previews.
-
-**✨ Improve**
-
-- The sidebar picture (9.99.1341) also works with MusicBrainz's own Commons picture, should MusicBrainz switch it back on: today musicbrainz.org shows none, and the picture there comes from another userscript.
-
-**📝 Docs**
-
-- Tests: tests/fixtures/pop-mb-image.spec.js (8) and its mobile twin (1), one more sidebar-picture test; 11 more mutations, all caught. Probe: scripts/probe-wikidata-image.py (DEBUG-NOTES.md 2026-10-11).
-
-
-## 9.99.1342 — 2026-10-14
-
-**🚀 Feature**
-
-- New "🗂 Sidebar as tables" button on artist, label, event, release group, recording and work pages: it shows the sidebar's information, external links (with site and kind) and tags (genre or tag, with votes) as tables you can filter, sort and use the 📊 dropdown on. It reads the page itself, so nothing is loaded, and the sidebar stays as it is. New setting: 'Sidebar as tables' button.
-
-**📝 Docs**
-
-- Tests: tests/fixtures/sidebar-tables.spec.js (5); 7 more mutations, 6 caught and 1 recorded as covered by another guard.
-- Probes: MusicBrainz's commons-image endpoint answers scripts with a browser check and a browser with no picture even where the sidebar shows one (MusicBrainz has its Commons pictures switched off), so the picture in the entity hover card takes another route (9.99.1343; DEBUG-NOTES.md 2026-10-11). Measured: the sidebar part of a render takes about 1.2 ms (tests/MEASUREMENTS.org).
-
-
-## 9.99.1341 — 2026-10-14
-
-**🚀 Feature**
-
-- The picture MusicBrainz shows at the top of the sidebar (an artist's photo, a label's logo, from Wikimedia Commons) now shows a card with its file name when you point at it and opens in the artwork viewer on a click, Enter or Space, with an Open on Commons link. A small copy sits at the start of the page heading, so it stays in sight with the sidebar closed. Nothing extra is loaded. New settings: Sidebar picture: hover card and viewer, Sidebar picture beside the name.
-
-**📝 Docs**
-
-- Tests: tests/fixtures/sidebar-picture.spec.js (5) and its mobile twin (1); 7 more mutations, all caught.
-
-
-## 9.99.1340 — 2026-10-14
-
-**✨ Improve**
-
-- The MusicBrainz sidebar remembers which sections you opened: after a table is shown, a section you opened before is open again on the same kind of page, and one you never opened starts closed. Each heading shows how many entries it holds, works with Enter and Space, and Ctrl+Click opens or closes every sidebar section. Open all / Close all sit at the top of the sidebar.
-- External links in the sidebar are grouped by kind (Official, Social, Streaming, Concerts, Lyrics, Databases, Stores, Other), each group opening and closing on its own; Genres / Other tags and the Collections lists open and close on their own too. Links are only reordered, never moved, and whatever other userscripts add stays where it is. New settings: Remember open sidebar sections, Open every sidebar section, Sidebar section counts, Group external links by kind.
-
-**🐛 Fix**
-
-- Closing "Artist information" in the sidebar no longer hides the Tags section below it (MusicBrainz wraps Tags in its own element, which was taken as part of the section above).
-
-**📝 Docs**
-
-- New docs/claude/sidebar.md. Tests: tests/fixtures/sidebar-sections.spec.js (8) and its mobile twin (1); 12 mutations, all caught.
-
-
-## 9.99.1339 — 2026-10-13
-
-**🐛 Fix**
-
-- Pages with sub-tables: a global filter that matches nothing no longer hides every sub-table. When it would empty all of them, they all stay on screen showing "(0 of N)", as before 9.99.1338, so the buttons in their column headers stay reachable. Example: on a release, "11.666" typed into the global filter while lengths are shown in seconds hid the only medium, and with it the ⏱ button that switches to the milliseconds that would have matched. Sub-tables are still hidden while at least one keeps a matching row.
-
-
-## 9.99.1338 — 2026-10-13
-
-**🚀 Feature**
-
-- Pages with sub-tables: while the global filter or a ⚠️ WARNING / ❌ ERROR menu filter is active, a sub-table with no matching row is hidden, heading line and table together, instead of staying on screen as "(0 of N)". Widen or clear the filter and it comes back as it was, collapsed or expanded, with its artwork strip as you left it. A sub-table with its own filter (a column filter, its 🔍 sub-table filter or its ⏳ toggle) stays visible even when empty, so that filter can still be reached. The row-count tooltip in the page heading says how many sub-tables are hidden. Setting: "Hide Empty Sub-tables While Filtering" (🎨 TABLE FILTER CONFIGURATION, on by default).
 
 
 ---

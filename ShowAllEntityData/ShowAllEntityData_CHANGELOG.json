@@ -1,5 +1,193 @@
 [
   {
+    "version": "9.99.1452",
+    "date": "2026-10-24",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Opening a preview window with Space, or stepping through rows in it, no longer scrolls a wide table sideways. On a Brucebase year table the MB-Event column used to slide halfway under the Event column (with the side bar shown, almost all of it). The window still scrolls the page up or down to show its row."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.1451",
+    "date": "2026-10-24",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "Brucebase year table: pointing at a Venue shows the VENUE's card, no longer the show's. It names the region, how often Springsteen played there, the first and last show and the venue's description. Space opens a window with every show there (each linked), the cancelled shows and other appearances, a street view link where the wiki has one, and the venue's photos; ← → step from venue to venue.",
+          "Venue pages get a card and window of their own wherever they are linked on Brucebase (a show's Venue link, a person's page, …)."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.1450",
+    "date": "2026-10-24",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "The SAED menu: View has a new row, 💾 Browser cache, between Statistics and Keyboard Shortcuts. It opens the browser cache overview (what the script keeps in your browser, how old it is, and what to delete) without a trip through ⚙️ Settings or the Statistics panel."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.1449",
+    "date": "2026-10-24",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "Brucebase windows: a Ctrl+click (⌘+click on a Mac) on a section's heading folds or opens every section at once. A plain click still folds just that one."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.1448",
+    "date": "2026-10-24",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "The 🖼 images gallery: dragging it by its title bar no longer makes it grow to its whole list (on a Discogs master with many versions it reached past the bottom of the screen, its resize corner out of reach). Dragged or reopened, it now always stays inside the browser window.",
+          "Pressing on the gallery's resize corner no longer scrolls the list inside it: the list's scrollbar used to reach into that corner."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.1447",
+    "date": "2026-10-24",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "Brucebase: \"Collabsable sidebar\" (⚙️ Settings → 📚 Brucebase) is now on by default, so the wiki's side bar gets its show/hide handle and starts hidden while \"Start with sidebar collapsed\" is on. If you never changed it, it switches on with this version."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.1446",
+    "date": "2026-10-24",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Brucebase year table: pointing at a found MB-Event glyph (with Ctrl held, unless every preview shows on a plain hover) shows the MusicBrainz event's card: its name, type, date, place and line-up. Under it, the card says how the event was found and whether its Brucebase link is this entry's. Space pins it into a window with the event's links.",
+          "Two new findings check that link. ❌ \"MB-Event: the Brucebase link differs\": the MusicBrainz event links another Brucebase entry, or this entry's anchor is linked from another event; the card shows both links. ⚠️ \"MB-Event: no Brucebase link\": the event has none. They appear in the ❌ / ⚠️ menus, filter the table and tint the cell as the other findings do, and fill in while the column looks the events up. Each has its own switch in ⚙️ Settings → ⚠️ Findings, plus one for the tint."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.1445",
+    "date": "2026-10-24",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "Brucebase windows (the one Space opens on an event or a song): every section on the right — On stage, Setlist, Performances, Credits, … — folds with a click on its heading and stays folded for the next page you open.",
+          "The people on stage, the songs of a setlist, the other shows at the venue and a song's credits are now links. A click opens them in the same window (Backspace goes back), and pointing at one shows its card. People and venue pages preview too, on every Brucebase page.",
+          "The images on the left are grouped by kind (Setlist, Ticket, News, Memorabilia, …), photos last, and the viewer steps through them in that order.",
+          "A song's window lists its performances (folded at first), each show linked."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.1444",
+    "date": "2026-10-24",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Brucebase year table: a new second column, MB-Event, shows a glyph for the entry's kind (gig, no gig, recording, rehearsal, interview, no Bruce) and links it to the entry's event on MusicBrainz once found. After the table renders, the column looks the events up by itself: first by the entry's Brucebase link (100 entries a request), then the year's events by date, then by name for the rest, about one request a second, shown in the background jobs popup with Stop. A \"?\" means MusicBrainz has no event (a click searches it), ⚠ that it did not answer (a click asks again). Answers are kept 90 days (\"no event\" 7 days), so a second visit asks nothing. New setting \"MB-Event column: look the events up on MusicBrainz\" (on by default); off, the ▶ MB button in the column's header runs the lookup."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.1443",
+    "date": "2026-10-24",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Brucebase: on every Brucebase page, resting the pointer (with Ctrl held, unless every preview shows on a plain hover) on a link to an event's page — a gig, no gig, recording, rehearsal, interview or \"no Bruce\" page — shows a card of that page. This includes the year table's Event and Venue columns, Notes, Recent changes and the wiki's own lists. The card shows when it was scheduled, who was on stage, the setlist and the page's images. Space pins it into a window with the whole setlist, the other shows at that venue, the recording, the stories and the eyewitness accounts, and its \"Live page\" view shows the wiki's own page. ← → step through the rows. New setting \"Preview event pages on hover\" (on by default), independent of the song preview. The Media icons keep their image cards."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.1442",
+    "date": "2026-10-24",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Brucebase year table: a new first column, Event, holds each entry's whole name, for example \"1985-01-13 - Carolina Coliseum, Columbia, SC\", linked to the entry's page. Venue, city and country are written the way their own columns write them, and pointing at the name shows it as the wiki writes it. Event is now the column that stays in view when you scroll sideways (Date was before), and it always shows the whole name on one line."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.1441",
+    "date": "2026-10-24",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "The 🖼 gallery on Discogs, the Springsteen sites and Brucebase can now be moved by its title bar (by touch too) and resized from its lower-right corner, like the window Space opens. It reopens where you left it, at that size, kept inside the browser window. Until you have moved or resized it once, it still opens under its 🖼 button. Its position and size go with the config export, as the other panels' do."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.1440",
+    "date": "2026-10-24",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "Brucebase year table: the Media column is now the second column, right after Date. Before, it came after Notes at the far right, so you had to scroll sideways to see an entry's icons."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.1439",
+    "date": "2026-10-24",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "Space on a hovered image now does what a click does: it opens the artwork viewer, instead of scrolling the page under the card. This works on Discogs' Image column, the Springsteen sites' image cells and Brucebase's Media icons, and on MusicBrainz's artwork icons, relationship-list covers, the images of an expanded cell and the sidebar cover. It works even when the card is switched off or still loading. On a card with more images than it shows, Space still shows them all first, as before. Space keeps its usual meaning while you type into a field, or with Shift, Ctrl, Alt or ⌘ held.",
+          "The image card says so: its bottom line reads \"Click or Space: viewer\". On a card with more images than it shows, it stays \"Click: viewer\", because there Space shows the rest of the images."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.1438",
+    "date": "2026-10-24",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Brucebase year table: the Setlist icon in the Media column is now ringed like Photo, Ticket, News and Memorabilia when the entry has a page of its own. Pointing at it shows the handwritten setlists from that page (two on 1985-01-13, Columbia, SC), and a click opens them in the viewer. Before, the icon stayed plain, and the page's setlist images were counted as \"Other\".",
+          "A ringed Media icon no longer shows the browser's own name tooltip on top of its image card. With the card switched off, the icon's name still shows on hover."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.1437",
     "date": "2026-10-23",
     "sections": [
