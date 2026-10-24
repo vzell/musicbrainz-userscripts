@@ -504,7 +504,7 @@ userscript reads that file.
 - **`secret: true` (`sa_pop_ext_discogs_token`) never leaves the profile**:
   not exported, never set or blanked by an import, masked in the dialog,
   never logged.
-- A fixture profile is not pristine (`FIXTURE_SETTINGS_OVERRIDE` forces ten
+- A fixture profile is not pristine (`FIXTURE_SETTINGS_OVERRIDE` forces eleven
   settings off; a spec that needs a schema default back seeds the key as
   `undefined`).
 
@@ -656,8 +656,8 @@ The harness lives under `tests/`; how to run each suite and what it costs:
   `sa_enable_caa_pics`, `sa_enable_relationships_column`,
   `sa_enable_release_tracks_cover_art`, `sa_event_overview_event_art` and the
   five link-preview keys (`sa_pop_mb`, `sa_pop_mb_page`, `sa_pop_ext`,
-  `sa_dp_hover_without_ctrl`, `sa_event_rg_tooltip_without_ctrl`) and
-  `sa_async_pop_auto_open` OFF
+  `sa_dp_hover_without_ctrl`, `sa_event_rg_tooltip_without_ctrl`),
+  `sa_async_pop_auto_open` and `sa_bb_mb_event_lookup` OFF
   — a "cannot reproduce" means nothing until they are back on. Seeding a key
   as `undefined` in `settingsOverride` un-seeds it (the schema default).
 

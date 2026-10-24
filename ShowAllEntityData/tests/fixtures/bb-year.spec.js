@@ -18,15 +18,18 @@ const os = require('os');
 const path = require('path');
 const { test, expect } = require('../support/test');
 const {
-    BB_YEAR_BUTTON, bbYearFixture, loadBbYearPage, renderedBbYearRows,
+    BB_YEAR_BUTTON, bbYearFixture, loadBbYearPage, renderedBbYearRows, revealPastStickyColumn,
 } = require('../support/bbFixture');
 const { routeDetailPages } = require('../support/detailFixture');
 const { waitForRenderComplete } = require('../support/browser');
 const { waitForSortSettled, columnFilterInput } = require('../support/filterSortAssertions');
 const { clickToolbarItem } = require('../support/toolbarMenu');
 
-const HEADERS = ['Date', 'Type', 'Venue', 'City', 'State', 'Country', 'Tour',
-    'Soundcheck', 'Setlist', 'Set note', 'Notes', 'Media', 'Info wanted',
+// Since 2026-10-24 (org/TODO.org "Some enhancements" 3a, 3d): Event first,
+// the sticky column; Media second (at the far right it took a horizontal
+// scroll to see).
+const HEADERS = ['Event', 'MB-Event', 'Media', 'Date', 'Type', 'Venue', 'City', 'State', 'Country', 'Tour',
+    'Soundcheck', 'Setlist', 'Set note', 'Notes', 'Info wanted',
     'DD', 'MM', 'YYYY', 'Day', 'Month'];
 
 // The fixtures' own numbers, read from the files rather than written down,
@@ -217,6 +220,38 @@ test.describe('bb-year 2026', () => {
         expect([...new Set(rows.map((r) => r.Type))].sort()).toEqual(['Gig', 'Interview', 'No gig', 'Recording', 'Rehearsal']);
     });
 
+    test('Event is the whole heading, linked, first and sticky, on one line; nothing is added to it', async ({ page }) => {
+        // org/TODO.org "Some enhancements" 3a (2026-10-24). Titles are off
+        // in this spec, so the text is the site's: the heading itself.
+        expect(onDate(rows, '2026-01-30')[0].Event).toBe('2026-01-30 - FIRST AVENUE, MINNEAPOLIS, MN');
+        // A 00 day stays as written; the parsed Date drops it.
+        expect(rows[0].Event).toMatch(/^2026-01-00 - STONE HILL STUDIO\b/);
+        // A heading without " - " gets one; its parts are its own (no ", USA").
+        expect(rows.find((r) => r.Venue === 'THE STONE PONY, SUMMER STAGE').Event)
+            .toBe('2026-08-28 - THE STONE PONY, SUMMER STAGE, ASBURY PARK, NJ');
+        expect(rows.filter((r) => /, USA$/.test(r.Event) && r.State)).toEqual([]);
+        const cell = await page.evaluate(() => {
+            const t = document.querySelector('table.tbl');
+            const th0 = t.tHead.rows[0].cells[0];
+            const tr = Array.from(t.tBodies[0].rows).find((r) => r.cells[0].textContent.startsWith('2026-01-30'));
+            const td = tr.cells[0];
+            const a = td.querySelector('a.mb-bb-event-link');
+            return {
+                first: th0.dataset.colName, sticky: th0.classList.contains('mb-sticky-col') && td.classList.contains('mb-sticky-col'),
+                href: a && a.getAttribute('href'), wrap: getComputedStyle(td).whiteSpace,
+                // One line box for the LONGEST name: no Event link wraps
+                // (the row itself may be taller, from the other cells).
+                oneLine: Array.from(t.querySelectorAll('tbody a.mb-bb-event-link'))
+                    .sort((x, y) => y.textContent.length - x.textContent.length)[0].getClientRects().length === 1,
+                tip: td.getAttribute('title'),
+            };
+        });
+        expect(cell).toEqual({
+            first: 'Event', sticky: true, href: 'https://brucebase.wikidot.com/gig:2026-01-30-first-avenue-minneapolis-mn',
+            wrap: 'nowrap', oneLine: true, tip: null,
+        });
+    });
+
     test('Soundcheck and Setlist hold one song per row; other prefixed sets are labelled in Setlist', () => {
         const fa = onDate(rows, '2026-01-30')[0];
         expect(fa._soundcheck).toEqual(['STREETS OF MINNEAPOLIS', 'THE GHOST OF TOM JOAD (with Tom Morello)']);
@@ -283,8 +318,12 @@ test.describe('bb-year 2026', () => {
     });
 
     test('a Media filter narrows to the entries with that icon', async ({ page }) => {
+        // Focused, not clicked: past the 807 px Event column only ~200 px
+        // of a 1280 px window are free, between it and the sticky headers'
+        // right mask (`mb-sph-rmask`), and a click lands on one of them.
         const input = columnFilterInput(page, HEADERS.indexOf('Media'));
-        await input.click();
+        await revealPastStickyColumn(page, input);
+        await input.focus();
         await input.pressSequentially('Bootleg');
         await expect.poll(async () => (await renderedBbYearRows(page)).length, {
             timeout: 15000, message: 'only the entries with a Bootleg icon remain',
@@ -293,8 +332,11 @@ test.describe('bb-year 2026', () => {
     });
 
     test('a Setlist filter finds a song, and Date sorts', async ({ page }) => {
+        // Wide: the Date sort button is clicked past the sticky Event column.
+        await page.setViewportSize({ width: 1920, height: 1000 });
         const input = columnFilterInput(page, HEADERS.indexOf('Setlist'));
-        await input.click();
+        await revealPastStickyColumn(page, input);
+        await input.focus();
         await input.pressSequentially('PURPLE RAIN');
         await expect.poll(async () => (await renderedBbYearRows(page)).length, { timeout: 15000 }).toBeLessThan(rows.length);
         const hits = await renderedBbYearRows(page);
@@ -304,6 +346,7 @@ test.describe('bb-year 2026', () => {
         await input.fill('');
         await expect.poll(async () => (await renderedBbYearRows(page)).length, { timeout: 15000 }).toBe(rows.length);
         const btn = page.locator('table.tbl thead th[data-col-name="Date"] .sort-icon-btn', { hasText: '▼' }).first();
+        await revealPastStickyColumn(page, btn);
         await waitForSortSettled(page, () => btn.click());
         const dates = (await renderedBbYearRows(page)).map((r) => r.Date);
         expect(dates.filter((d, i) => i > 0 && dates[i - 1].localeCompare(d, undefined, { numeric: true }) < 0)).toEqual([]);
@@ -402,13 +445,16 @@ test('bb-year: nothing is requested from MusicBrainz or the Cover Art Archive', 
 });
 
 test('bb-year: a song link in Notes gets the song preview', async ({ page }) => {
+    // A wide window: a hover needs the link clear of the 807 px sticky
+    // Event column AND of the sticky headers' right mask.
+    await page.setViewportSize({ width: 1920, height: 1000 });
     const errors = trackPageErrors(page);
     await loadBbYearPage(page, '2026', { settingsOverride: { sa_bb_detail_preview: true } });
     const { served } = await routeDetailPages(page, 'bb');
     await showAll(page);
     const link = page.locator('table.tbl tbody td a[href="https://brucebase.wikidot.com/song:power-to-the-people"]').first();
     await page.mouse.move(0, 0);
-    await link.scrollIntoViewIfNeeded();
+    await revealPastStickyColumn(page, link);
     await page.keyboard.down('Control');
     await link.hover();
     await page.keyboard.up('Control');

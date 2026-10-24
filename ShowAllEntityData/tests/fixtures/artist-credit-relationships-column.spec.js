@@ -84,8 +84,13 @@ test.describe('artist-credit: per-group headers and Relationships column', () =>
                 expect(shape.hasRelColumn, `${group}: expected a Relationships <th>`).toBe(true);
                 expect(shape.hasRelCell, `${group}: expected a .mb-rel-cell <td>`).toBe(true);
                 expect(shape.mbid).not.toBeNull();
+                // 20 s: each group's request goes one by one through the
+                // Relationships rate gate (about 1.1 s apart, wall-clock waits
+                // that petri's clock steps stretch by 500 ms); the last group's
+                // ran past 10 s in a 12-worker test:full (2026-10-24), as in
+                // tag-value-relationships-column.spec.js.
                 await expect.poll(() => ws2Urls.some((u) => u.includes(`/ws/2/${entityType}/`)),
-                    { timeout: 10000 }).toBe(true);
+                    { timeout: 20000 }).toBe(true);
             });
     }
 });

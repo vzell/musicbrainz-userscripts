@@ -391,6 +391,26 @@ test.describe('a release\'s or release group\'s cover beside the name', () => {
         expect(asked.length, 'one record for card and viewer').toBe(1);
     });
 
+    test('Space on the hovered cover (the sidebar\'s own, and the copy) opens our viewer, as the click does (2026-10-24)', async ({ page }, testInfo) => {
+        // 20 tiles: nothing cut off, so Space is not the card's "every
+        // image" toggle (16 images; the default 12 tiles cut it).
+        const { asked } = await openCover(page, testInfo, REL_URL, REL_FIXTURE, { settings: { sa_caa_tip_summary_tiles: 20 } });
+        const own = page.locator('#sidebar .cover-art a.artwork-image');
+        await hoverCard(page, own);
+        await expect(tip(page).locator('.mb-art-card-tile')).toHaveCount(CAA_RECORD.images.length);
+        const scrollY = await page.evaluate(() => window.scrollY);
+        await page.keyboard.press('Space');
+        await expect(viewer(page).locator('.mb-artv-pos')).toHaveText(`2 / ${CAA_RECORD.images.length}`);
+        await expect(page.locator('.ui-dialog:visible'), 'MusicBrainz\'s dialog is not opened').toHaveCount(0);
+        expect(await page.evaluate(() => window.scrollY), 'the page did not scroll').toBe(scrollY);
+        await page.keyboard.press('Escape');
+        await expect(viewer(page)).toBeHidden();
+        await hoverCard(page, avatar(page));
+        await page.keyboard.press('Space');
+        await expect(viewer(page).locator('.mb-artv-pos')).toHaveText(`2 / ${CAA_RECORD.images.length}`);
+        expect(asked.length, 'one record for both').toBe(1);
+    });
+
     test('a release group page opens its own record', async ({ page }, testInfo) => {
         const { asked } = await openCover(page, testInfo, RG_URL, RG_FIXTURE);
         await expect(avatar(page)).toHaveCount(1);

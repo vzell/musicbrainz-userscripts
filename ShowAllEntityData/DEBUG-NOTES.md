@@ -25745,3 +25745,346 @@ recorded `pass` (the image's own delay); the four new ones each fail
 
 **Merge (`main`, f8dff66 + the fold to 9.99.1437)**: `test:full`
 22:55:13–23:07:08 CEST on petri, 2,265 passed, 0 failed, wall 715 s.
+
+## 2026-10-24 — the Brucebase Setlist Media icon was never ringed (branch feature/bb-events-and-gallery, WIP.1)
+
+Env: 2026-10-24T01:59:25+02:00 · petri · WSL2 Ubuntu 24.04.3 (Linux 6.18.54.1) · Playwright 1.62.1 Chromium, no Tampermonkey (GM stubs); the probe: n/a (Python, brucebase.wikidot.com)
+
+Reported by vzell on https://brucebase.wikidot.com/1985, entry 1985-01-13
+(`debug/media-icons.html`: the cell's markup; `debug/bb-event-detail-1985-01-13.html`:
+the entry page): Photo, Ticket, News and Memorabilia ringed, Setlist a bare
+`<img>`, although the page's Setlist tab shows two handwritten setlists.
+
+**Two causes, both needed for the symptom to go away:**
+- `_BB_FI_MEDIA_KINDS` held Photo, Ticket, News and Memorabilia only, so
+  `_bbYearBuildRow()` never wrapped a Setlist icon in `a.mb-fi-media`.
+- `_bbImageKind()` had no rule for the folder `files:setlist-YYYY`: such an
+  image was "Other", so even a ringed icon's card would have said "No
+  setlist images on the entry's page".
+
+The two images are the Setlist tab's gallery box (`19850113_Setlist_01a` and
+`01b`); the tab's inline `small.jpg` of 01a is not a gallery item, so the
+reader takes it once, as it should.
+
+**Probe** `scripts/probe-bb-setlist-images.py` (new; 1.1 s apart, pages
+cached in `debug/foreign-images/`): the first entry with a Setlist icon and
+a `/gig:` page in 1978, 1985, 1993, 1999, 2003, 2009, 2012, 2016 and 2024 —
+every one holds `files:setlist-YYYY` (13 images in all; 1975 has no such
+entry). Seen on the way: `files:centermic-2016` (3 images), still "Other".
+
+Fix: Setlist in both, `_DP_PARSER_VERSION` 3 → 4 (a stored record's kinds
+change). New fixture `detail-bb-gig-1985-01-13.html`
+(`scripts/build-detail-fixtures.py`; the other fixtures rebuilt identical).
+`bb-image-card.spec.js`: the reader's Setlist kind and the icon's card (two
+tiles, "Setlist ×2") and viewer (01a first). Mutations
+`scripts/mutations/bb-image-card.json`: 13, all as expected, the two new ones
+fail. Related specs (bb-year, foreign-gallery, sl-scope-bar,
+bb-image-card.mobile, detail-preview): 105 passed.
+
+## 2026-10-24 — Space on a hovered image scrolled the page (branch feature/bb-events-and-gallery, WIP.2)
+
+Env: 2026-10-24T02:33:37+02:00 · petri · WSL2 Ubuntu 24.04.3 (Linux 6.18.54.1) · Playwright 1.62.1 Chromium (desktop; chromium-mobile: Pixel 7 emulation), no Tampermonkey (GM stubs)
+
+Reported by vzell on https://www.discogs.com/release/11123984-Bruce-Springsteen-Born-To-Run
+(Image column, a 10-image card): only Shift and Click were recognised, and
+Space scrolled the page down.
+
+**Cause.** `_mbttKey()` spent Space only on a card that is cut off (more
+than `sa_caa_tip_summary_tiles`, 12) or already shows every image. A
+10-image card has no `data-mb-art-cut`, so Space went to the page. So did
+Space with no card at all (`sa_bb_tip_images` off, a single-picture card, a
+Loading card): `_onCardKey` returns early without a resolver card.
+
+**Fix.** `_onImageSpace` in `_initStatTooltip()`, registered after
+`_onCardKey`, runs the trigger's own click handler with a stand-in event
+(`_artSpaceOpen()`). Three traps, each found by a run:
+- **`:hover` lies right after the viewer closes.** The first version read the
+  trigger from `document.querySelectorAll(':hover')`; on the sidebar spec,
+  after Esc closed the viewer and the page had scrolled, Chromium listed the
+  hidden `#mb-art-viewer` as hovered, with the pointer on the cover copy
+  whose card was showing. The trigger now comes from `mouseover`
+  (`_artSpaceTrigger()`).
+- **An unspent Space scrolls SMOOTHLY.** The spec's "off an image" step let
+  Space scroll the page, and the next hover landed while the scroll still
+  ran: the row slid away and the pointer ended on another row's Type cell,
+  so the Shift and typing mutants passed. `pressSpace()` waits for ten still
+  frames, and that step runs last.
+- **`{ once: true }` on a keydown listener is used up by Shift** in
+  "Shift+Space", so the helper never saw the Space.
+
+16 images in the relationship-list and sidebar fixtures make those cards cut
+off, where Space is the "every image" toggle (kept, as planned); their Space
+tests seed `sa_caa_tip_summary_tiles: 20`. Two existing assertions changed
+meaning on purpose: discogs-image-card "Space with nothing cut off is left
+alone" and caa-column-redesign "B1 keys: Space is left alone with nothing
+cut off" now assert the viewer opens and the page does not scroll.
+
+Mutations `scripts/mutations/image-card-space.json`: 11, 10 fail as expected,
+one recorded `pass` (the card's `_hide()`: Chromium hides the card itself
+once the viewer covers the resting pointer). Every spec that presses Space
+(19 files): 340 passed; mobile project 57 passed; image-card-space 16/16
+with `--repeat-each=4`.
+
+## 2026-10-24 — the foreign tables' 🖼 gallery moves, resizes and remembers (branch feature/bb-events-and-gallery, WIP.4)
+
+Env: 2026-10-24T03:16:49+02:00 · petri · WSL2 Ubuntu 24.04.3 (Linux 6.18.54.1) · Playwright 1.62.1 Chromium (desktop; chromium-mobile: Pixel 7 emulation), no Tampermonkey (GM stubs)
+
+org/TODO.org "Some enhancements" 1, to the mockup
+https://claude.ai/artifact/DmsNyUkUa1Hq8nPr2B5EGA (v2, vzell's answers the
+same night). New `_makeMovableResizable()`; `createInfoDialog()` untouched
+(REFACTORING.org has the follow-up).
+
+**Three things the spec runs found:**
+- **The gallery opens under its 🖼, and on a short page that is low**: on the
+  springsteenlyrics fixture the window's bottom sat at 1,167 px in a 720 px
+  viewport, so the resize corner was off screen and a drag of the corner
+  did nothing. The page cannot scroll the 🖼 up; the spec drags the window
+  to the top first.
+- **2 px per reopen.** The stored size is the border box
+  (`getBoundingClientRect()`), applied as `style.width`/`height` of a
+  content-box `.mb-tt-liner` with a 1 px border: every reopen was 2 px
+  larger each way. The helper sets `box-sizing: border-box`.
+  `createInfoDialog()` already is border-box (checked), so its dialogs never
+  grew.
+- **A touch drag through CDP** needs Playwright's `boundingBox()`
+  coordinates, not `getBoundingClientRect()`: on the zoomed-out phone layout
+  the touches landed beside the title bar and no drag started.
+
+The head is rebuilt on every `_fgalRender()`, so the drag is delegated
+from the box and listens on the window (pointer capture on a head replaced
+mid-drag would be lost). The ResizeObserver tells the corner from the
+window growing with its content by the inline `height` the corner writes.
+
+Specs: foreign-gallery 16, its mobile spec 2, config-workspace-roundtrip
+13 (the two keys now in "Panel geometry"): all passed. Mutations
+`scripts/mutations/foreign-gallery.json`: the six new ones fail as
+expected.
+
+## 2026-10-24 — Brucebase year table: the Event column, sticky and full length (branch feature/bb-events-and-gallery, WIP.5)
+
+Env: 2026-10-24T03:45:00+02:00 · petri · WSL2 Ubuntu 24.04.3 (Linux 6.18.54.1) · Playwright 1.62.1 Chromium, no Tampermonkey (GM stubs) · real browser: vzell's (screenshots, versions not given)
+
+org/TODO.org "Some enhancements" 3a, mockup
+https://claude.ai/artifact/DmsNyUkUa1Hq8nPr2B5EGA. `_bbYearEventCell()`;
+`stickyColumn` Date → Event.
+
+**The width, measured and decided.** vzell's answer: "always shown with
+their complete length". On the 2026 fixture the longest name ("… Bruce
+Springsteen Center for American Music, Monmouth University, West Long
+Branch, NJ") makes the column 807 px; docked it spans 265–1040 px, and the
+sticky headers' right mask (`#mb-sph-rmask`) starts at 1015 px of a
+1280 px window: −25 px of room beside it, 615 px at 1920 px. Asked; vzell,
+on a wide screen: "almost all columns are visible right away and I can still
+scroll horizontally". Kept full length.
+
+**What the measuring found on the way:**
+- The first version built the name from the parsed columns and appended
+  ", USA" to every US entry (the Country column derives it from the state
+  code; the heading has none). vzell's screenshot shows that version. Now
+  the name is the heading's own comma parts, cased per part.
+- Five specs could no longer click or hover past the column (Playwright's
+  "scroll into view if needed" leaves the target under the sticky cell or
+  the right mask). `revealPastStickyColumn()` in `tests/support/bbFixture.js`
+  lines the target up right of it; filter inputs are focused rather than
+  clicked; the Date sort and the Notes hover use a 1920 px window.
+
+Specs: bb-year (new "Event is the whole heading …"), mb-title-case (Event
+cased per part, its tip), bb-home and bb-sidebar (the sticky first column is
+Event): 92 passed with the image-card, gallery and mobile specs. Mutations
+`scripts/mutations/bb-year.json`: the four new ones fail as expected.
+
+## 2026-10-24 — Brucebase event pages preview on hover, on every Brucebase page (branch feature/bb-events-and-gallery, WIP.6)
+
+Env: 2026-10-24T03:57:26+02:00 · petri · WSL2 Ubuntu 24.04.3 (Linux 6.18.54.1) · Playwright 1.62.1 Chromium, no Tampermonkey (GM stubs)
+
+org/TODO.org "Some enhancements" 3b, mockup
+https://claude.ai/artifact/DmsNyUkUa1Hq8nPr2B5EGA; widened mid-way by
+vzell: "on all BB PTs where an event href is involved in a column or
+elsewhere, the event detail hovering should work". So not the Event column
+only: `_DP_SITES['brucebase.wikidot.com'].ownLinks` tests the URL (the six
+entry prefixes), under `sa_bb_event_preview`; `isDetailUrl` stays `/song:`.
+
+Event links in the fixtures, counted: the year pages (Event, Venue, Notes,
+the headings before any button), Recent changes' Page column (an
+`/interview:`), a song page's Performances (279 on 4th of July, seen in a
+song window). None on the relations, songs and start pages.
+
+`_dpParseBbPage()` reads the 1985-01-13 page: 8 images (the mockup's 7 was
+a guess), "Sorry, no Media available." counted as no content. One
+deviation from the mockup: its tab chips are a plain "On the page" field,
+because the shared card renders fields, not chips.
+
+Runs: bb-event-preview 8/8; with bb-year, bb-image-card, detail-preview,
+popup-ext, bb-songs, image-card-space and the detail-preview mobile spec
+145/147 — one expected failure (bb-image-card's "the entry page is not a
+detail-preview target", rewritten: a Media icon stays the image card's) and
+popup-ext "a reader who scrolls the Live page before its images are in is
+not pulled back" (−533 px), which passed 4/4 alone: load-dependent, to watch
+in `test:full`. Mutations `scripts/mutations/bb-event-preview.json`: 7, all
+fail as expected.
+
+## 2026-10-24 — Brucebase year table: the MB-Event column (branch feature/bb-events-and-gallery, WIP.7)
+
+Env: 2026-10-24T04:35:46+02:00 · petri · WSL2 Ubuntu 24.04.3 (Linux 6.18.54.1) · Playwright 1.62.1 Chromium, no Tampermonkey (GM stubs); probes: n/a (Python, musicbrainz.org ws/2, 2026-10-24T03:59+02:00)
+
+org/TODO.org "Some enhancements" 3c, mockup
+https://claude.ai/artifact/DmsNyUkUa1Hq8nPr2B5EGA; lookup design chosen by
+vzell ("ws/2 per year, then per row"), plus the url lookup the cross-check
+(item g) needs.
+
+**Docs unreachable, schema read instead.** musicbrainz.org/doc/… and
+wiki.musicbrainz.org answered WebFetch with a browser check / Anubis. The
+event core's fields come from github.com/metabrainz/mbsssss
+event/conf/schema.xml (`arid` mbid multi, `begin`/`end` date, `eid`,
+`event`, `place`, `pid`, `type`, …).
+
+**Probes** (`scripts/probe-mb-event-lookups.py`, raw answers in
+`debug/probe-mb-event-lookups.json`; `scripts/probe-mb-event-anchor-coverage.py`):
+1985 has 93 events by `arid` + `begin` range, no two on one date, one
+without a day; the name search ranks the right event first (100, next 47);
+`/ws/2/url` matches only `http://brucebase.wikidot.com/1985#130185`
+(https, www: 404), keeps the fragment, takes several `resource=`, and its
+event carries `life-span`; the event's Brucebase link is of type "review".
+Coverage: 89/94 of 1985's entries and 105/107 of 2012's are linked from
+MusicBrainz; 15 of 2012's 120 events link no anchor of the year. A second
+coverage run's 1985 year search came back empty — a 503 the quick probe
+does not report, not a real answer (the first probe read 93).
+
+**What the spec found:** the stub first answered from the page's cells, and
+a filter typed before the lookup left the table empty, so the stub knew no
+entry (9 name searches instead of 2). It now answers from the fixture file.
+A 1985-07-00 entry is dated "1985-07" by the converter, as MusicBrainz
+writes a partial date; the stub had answered "1985-07-00". `_extGet()`
+retries a 503 once, so the failure test fails twice.
+
+Also: `FIXTURE_SETTINGS_OVERRIDE` gains `sa_bb_mb_event_lookup: false`
+(an eleventh); bb-image-card and image-card-space run in a 1920 px window
+(Event + MB-Event push the Media icons under the right mask at 1280).
+
+Specs bb-mb-event 5/5; Brucebase set (bb-year, bb-image-card, bb-home,
+bb-sidebar, mb-title-case, foreign-gallery, image-card-space,
+bb-event-preview, mobile) green after the window change. Mutations
+`scripts/mutations/bb-mb-event.json`: 6, all fail as expected.
+
+## 2026-10-24 — Brucebase windows: collapsible, linked sections; images by kind (branch feature/bb-events-and-gallery, WIP.8)
+
+Env: 2026-10-24T04:53:00+02:00 · petri · WSL2 Ubuntu 24.04.3 (Linux 6.18.54.1) · Playwright 1.62.1 Chromium, no Tampermonkey (GM stubs)
+
+vzell, mid-session: the event window's sections collapsible; the
+relations of On stage, the songs of Setlist and the events of Performances
+hyperlinked "and support detail hovering"; the images under their type,
+Photo last; then "should also work for other BB PTs, like e.g. song pages".
+
+- Sections carry `html` (`_dpBlockHtml()`: `_dpBlockText()`'s lines with
+  the links kept, each marked by a private-use pair through the text pass —
+  ESLint's no-control-regex refused the first choice, U+0001/U+0002). A
+  song gains a Performances section (250 shows on 4th of July), closed at
+  first.
+- `collapsible` records render `details.mb-dp-sec`; a toggled section is
+  remembered by name for the page (`_dpSecState`, a captured `toggle`,
+  which does not bubble).
+- `imagesByKind`: one `h5.mb-dp-kind` per kind, Photo last; the viewer's
+  order is `data-mb-artv-ext`, numbered in render order, so it follows.
+- **Window links were `out` (a new tab) for everything but MusicBrainz and
+  Discogs-family readers.** `_dpWinWhat()` and `_dpDrill()` now take a link
+  to this host's own detail page (`_dpSiteForUrl()`, the place-free half of
+  `_dpSiteForLink()`, whose `_DP_PAGE_SKIP` excludes the window itself) as
+  `here`: card on hover, opened in the window, Backspace back.
+- `ownLinks` adds `/venue:` and `/relation:` (people); the setting reads
+  "Preview event, venue and people pages on hover".
+
+Specs: bb-event-preview (+5 window tests), detail-preview's Brucebase
+reader (Performances (250), its `html`, the flags): 43 passed; the broad
+Brucebase/preview set 226 passed before the rename. Mutations
+`scripts/mutations/bb-window-sections.json`: 7, all fail as expected.
+
+## 2026-10-24 — Brucebase MB-Event: the event's card and the Brucebase-link findings (branch feature/bb-events-and-gallery, WIP.9)
+
+Env: 2026-10-24T06:44:29+02:00 · petri · WSL2 Ubuntu 24.04.3 (Linux 6.18.54.1) · Playwright 1.62.1 Chromium, no Tampermonkey (GM stubs)
+
+org/TODO.org "Some enhancements" f and g, mockup
+https://claude.ai/artifact/DmsNyUkUa1Hq8nPr2B5EGA.
+
+**f.** The MusicBrainz event card could not be reused as a source on
+Brucebase: `_mbEntitySource()` is off on foreign hosts, and its loader
+`_mbWsLoad()` builds `/ws/2/…` relative to the CURRENT origin. So
+`_bbMbevSource()` loads through GM (`_bbMbevPopLoad()`) and writes the
+answer under the exact `_mbPop` key `_MB_KINDS.event.card()` reads (its
+`cardInc`), then calls the card with `start` false: the card's markup is
+MusicBrainz's own, unchanged. The window is the card plus the event's links;
+`_MB_KINDS.event.extracted()` is not used, because its `pin()` would start
+same-origin lookups (recording-rels, the area chain) against Brucebase.
+The spec's stub first lacked `target-type` on its relations; the card's
+place and line-up read it (`_mbPopEventPlaceRel()`, `_mbPopRelNames()`).
+
+**g.** Late data, following rel-multi-site: `_bbMbevCheck(td)` reads only the
+cell's data attributes (written to live and source rows); `_bbMbevRepaint()`
+queues each live row for `_queueFindingsRestamp()`. A third stub case,
+1985-01-24's anchor linked from 01-23's event, exercises the "another event"
+arm; it adds one event lookup to the first test's request count.
+
+Specs: bb-mb-event (+3 card, +3 findings tests), with bb-event-preview,
+bb-year and the findings specs: 66 passed. Mutations
+`scripts/mutations/bb-mb-event.json`: the seven new ones fail as expected.
+
+**`test:full` on the branch** (cb8482b, WIP.1–WIP.9): 06:44:35–06:57:00 CEST
+on petri, 2,304 passed, 0 failed, wall 12 m 25 s, 12 workers. popup-ext's
+"a reader who scrolls the Live page before its images are in is not pulled
+back" (−533 px once under load, WIP.6) passed. The live specs (tests/live,
+bb-year's header list updated) were not run.
+
+## 2026-10-24 — Brucebase follow-ups: side bar default, gallery geometry, Ctrl+click sections, SAED cache row, venues, the sideways scroll (branch feature/bb-events-and-gallery, WIP.10–WIP.15)
+
+Env: 2026-10-24T14:00:22+02:00 · petri · WSL2 Ubuntu 24.04.3 (Linux 6.18.54.1) · Playwright 1.62.1 Chromium, no Tampermonkey (GM stubs). The real-browser observations below are vzell's (browser and Tampermonkey versions: unknown).
+
+vzell's second round of the same day (org/TODO.org, real-browser screenshots;
+snapshots `debug/bb-events-MB-Event-final.html`, `-final-bug.html`,
+`-final-bug-2.html`, `debug/images-gallery.html`, `debug/bb-event-detail.html`,
+`debug/bb-venue-detail.html`).
+
+**MB-Event header half hidden after a preview window (WIP.15).** The bug
+snapshots differ from the good one by `table.mb-sph-col-docked` only, which
+`_sphUpdateColDocked()` sets on a Brucebase table once `scrollX > 0`: the page
+had scrolled sideways, sliding MB-Event under the sticky Event column while
+the pinned page headers stayed put (so nothing else looked moved). Six fixture
+repros (hover Event / Venue / MB-Event, side bar both ways, lookups on, closed
+by moving away or Esc) never scrolled, because none of them pinned the window.
+A console snippet vzell ran in the real browser logged it:
+`_dpShowInDialog()` → `tr.scrollIntoView({block: 'nearest'})` on the marked
+row, then `scrollX 0 → 39.2`. The row (5,565 px) is wider than the window, so
+`inline: 'nearest'` lined its left edge (39 px in: the theme's inset) up with
+the window's. The fixture has no theme, its rows start at 0, which is why it
+never showed; the spec gives the table a 40 px margin to reproduce it.
+`_scrollIntoViewVertically()` keeps every horizontal scroll position. Shared
+with MusicBrainz's windows.
+
+**Gallery (WIP.11).** Two causes found by reading `_makeMovableResizable()`:
+a drag added `mb-geo-fixed`, lifting the height cap to 94vh with no height
+pinned, so on a Discogs master (26 rows) the window grew past the screen; and
+the body's scrollbar ran into the box's resize corner, so pressing the grip
+held the scrollbar (track repeat) and the list scrolled while resizing.
+
+**Venues (WIP.14).** `scripts/probe-bb-venue-pages.py`: 16 venue pages, one
+shape; the year page names no venue page and the venue slug is not derivable
+from an entry's, so the Venue cell's preview reads the entry page first
+(`_DP_SITES[…].via`).
+
+**Staging trap (process, not code).** Committing items that share the
+userscript was done by applying chosen hunks of `git diff` to the index. With
+`-U1` context and earlier hunks left unstaged, `git apply --cached` matched a
+lone `}` a few lines off and staged two call sites in the wrong place. Caught
+by reading the staged diff before the commit; re-staged with `-U6`. The
+commits before it were checked against `git diff HEAD` (only the expected
+hunks remained), so none carries a misplaced hunk.
+
+**`test:full`** (0eb897e plus the WIP.15 fix in the working tree):
+14:00:22–14:13:03 CEST on petri, 2,307 passed, 3 failed, wall 12 m 41 s, 12
+workers, 2,310 tests. `tag-value-relationships-column` "Works gets the
+Relationships column" passed alone. The two `discogs-rate-limit` tests ("three
+429s in a row", "Ratelimit-Remaining: 0") fail alone as well, the pause
+measured 3,511–3,685 ms against `PAUSE_MS - 50` = 3,950, and fail the same on
+`main` (57b4d90) and on cb8482b, which passed this spec at 06:57 today: not
+caused by this branch; not investigated further. Earlier, in a 380-test run of
+the Brucebase, preview and gallery specs, popup-ext "the Live page is prepared
+before its images are in" failed once (a 5 s wait for the frame) and passed
+3/3 alone. The live specs were not run.

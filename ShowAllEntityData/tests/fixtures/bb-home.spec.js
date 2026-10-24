@@ -114,7 +114,7 @@ test('the button pages through every linked year into one table', async ({ page 
     expect(errors).toEqual([]);
 });
 
-test('Date is the first and the one sticky column; unscrolled, it masks nothing', async ({ page }) => {
+test('Event (Date before 2026-10-24) is the first and the one sticky column; unscrolled, it masks nothing', async ({ page }) => {
     // With Venue sticky, the columns before it (Date, Type) docked as well,
     // each with a gutter mask shifted left by the table's offset (the wiki's
     // side bar): Type's covered Date (reported from a real browser,
@@ -139,7 +139,7 @@ test('Date is the first and the one sticky column; unscrolled, it masks nothing'
         };
     });
     expect(state).toEqual({
-        first: 'Date', visible: true, sticky: true, stickyCount: 1, pre: null, docked: false, shadows: ['none', 'none', 'none'],
+        first: 'Event', visible: true, sticky: true, stickyCount: 1, pre: null, docked: false, shadows: ['none', 'none', 'none'],
     });
     expect(errors).toEqual([]);
 });

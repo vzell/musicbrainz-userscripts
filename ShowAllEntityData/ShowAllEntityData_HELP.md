@@ -136,7 +136,7 @@ The **☰ SAED menu** has these groups, with a line between them:
 |---------------------|-------------------------------------------------------------------------------|
 | **Needs attention** | the same lists as the 🔄, ❌ and ⚠️ parts on the bar                           |
 | **Data**            | 💾 Save to Disk · 📂 Load from Disk · 📤 Export ▸ (CSV, JSON, Org-Mode, HTML) |
-| **View**            | 📏 Density · 📊 Statistics · 🎹 Keyboard Shortcuts                            |
+| **View**            | 📏 Density · 📊 Statistics · 💾 Browser cache · 🎹 Keyboard Shortcuts          |
 | **Help**            | ⚙️ Settings · ❓ Help ↗ (this page, on GitHub)                                 |
 | **Changelog**       | 📜 What's new ↗ · 🗒 Full development log ↗ (both on GitHub)                   |
 
@@ -790,8 +790,10 @@ its own switch there, plus one for their yellow tint.
 | ⚠️     | Artwork has no Front image (releases with artwork only)         | CAA                                         |
 | ⚠️     | Physical release artwork has no Medium image                    | CAA (needs a Format column)                 |
 | ⚠️     | Several links to one site in Relationships (once loaded)        | Relationships                               |
+| ⚠️     | MB-Event: no Brucebase link (once looked up)                    | Brucebase year: MB-Event                    |
 | ⚠️     | Pending edits                                                   | any column                                  |
 | ⚠️     | Live credit without a date                                      | Release tracklist: credit columns           |
+| ❌    | MB-Event: the Brucebase link differs (once looked up)           | Brucebase year: MB-Event                    |
 | ❌    | Track and recording length far apart                            | Release tracklist: Length, Recording length |
 | ❌    | Video on a medium that cannot carry video                       | Release tracklist: Video                    |
 | ❌    | Live title with an impossible date                              | Release and release group titles            |
@@ -1156,8 +1158,10 @@ the same way. The card shows at most 12 tiles and a "+N" for the rest
 (*Tiles shown in the artwork card*). While it shows:
 
 - **Space** draws every image; Space again goes back to the first 12. With
-  nothing cut off, or while you are typing into a field, Space keeps its usual
-  meaning.
+  nothing cut off, Space does what a click does: it opens the artwork viewer
+  (also on a cover whose card is switched off or still loading). While you
+  are typing into a field, or with Shift, Ctrl, Alt or ⌘ held, Space keeps its
+  usual meaning.
 - **Shift** held draws the tiles bigger (*Tile size in the artwork card while
   Shift is held*, 150 px), also when Shift is already down as the pointer
   reaches the icon. Release it to go back.
@@ -1456,7 +1460,8 @@ entries are loaded again when they are needed; the page you are on keeps what
 it already loaded. Sizes are estimates. The site storage figure counts the
 whole site, including MusicBrainz's own storage.
 
-Open it from ⚙️ Settings → 🗄️ ART ARCHIVE INDEXEDDB CACHE, from the 📊
+Open it from the SAED menu (View → **💾 Browser cache**, once a table is
+loaded), from ⚙️ Settings → 🗄️ ART ARCHIVE INDEXEDDB CACHE, from the 📊
 Statistics panel, from the Tampermonkey menu, or with **💾 Cache overview** on
 any [progress card](#the-progress-card).
 
@@ -3109,17 +3114,64 @@ The page gets a heading with the usual toolbar and one action button,
 **Events**. Pressing it turns the year's entries into one table, one row per
 entry, with these columns:
 
-- **Date:** the entry's date, the first column, which stays in view when
-  you scroll the table sideways. A day or month the wiki writes as `00` (not
+- **Event:** the entry's whole name, "1985-01-13 - Carolina Coliseum,
+  Columbia, SC", linked to the entry's page: the first column, which stays
+  in view when you scroll the table sideways. Its venue, city and country
+  are written the way the Venue, City and Country columns write them; point
+  at it to see the name as the wiki writes it. With Ctrl held (or with
+  *Show every preview on a plain hover*), resting the pointer on it, or on
+  any other link to an event's page on a Brucebase page, shows a card of
+  that page: when it was scheduled, who was on stage, the setlist, the
+  images. **Space** pins it into a window with the whole setlist, the other
+  shows at that venue, the recording and the stories; ← → step through the
+  rows (⚙️ Settings → *📚 Brucebase* → *Preview event, venue and people pages on hover*). In
+  the window a click on a section's heading folds it, and a Ctrl+click
+  folds or opens all of them at once; the people on stage,
+  the songs of the setlist and the other shows are links that open in the
+  window (Backspace goes back) and show their card when you point at them;
+  the images are grouped by kind, photos last. A song's window works the
+  same way, its performances listed (folded at first) with each show
+  linked.
+- **MB-Event:** a small glyph for the entry's kind (a microphone for a gig,
+  struck through for a show that did not happen, a tape reel for a
+  recording, a metronome for a rehearsal, a speech bubble for an interview,
+  two figures for an event without Bruce). Once the entry's event is found
+  on MusicBrainz the glyph links to it; a "?" means MusicBrainz has none (a
+  click searches it yourself), ⚠ that MusicBrainz did not answer (a click
+  asks again). The column looks the events up by itself after the table
+  renders, about one request a second, and remembers the answers for 90 days
+  (⚙️ Settings → *📚 Brucebase* → *MB-Event column: look the events up on
+  MusicBrainz*; off, the ▶ MB button in the column's header does it).
+  Type an event's MusicBrainz id into the column's filter to find its row.
+- **Date:** the entry's date. A day or month the wiki writes as `00` (not
   known) is left out, so `1954-10-00` reads `1954-10`. **DD**, **MM**,
   **YYYY**, **Day** and **Month** (at the end of the table) split it up as
   on MusicBrainz pages; Day stays empty when the day is not known.
+- **Media:** the wiki's own icons for what the entry's page has: Photo,
+  Ticket, Setlist, Storyteller, News, Memorabilia, Eyewitness, Video, Audio,
+  Bootleg, LiveDL, Retail, Featured. Rest the pointer on an icon for its name.
+  Type a name in the column filter (e.g. "Bootleg"), or pick one from the 📊
+  list, to see the entries that have it. **Photo, Ticket, Setlist, News and
+  Memorabilia are ringed** when the entry has a page of its own: pointing at
+  one shows a card with those images from that page (photos, tickets,
+  handwritten setlists, passes, newspaper clippings); a click opens the artwork viewer on them, with every
+  other kind one ← → away and Shift+← → for the previous or next row
+  (Ctrl/⌘-click: the page). The page is read on that first hover or click
+  only, one request for that row, kept 30 days. ⚙️ Settings → *📚 Brucebase*
+  → *Media icons and song glyphs: the page's images on hover* switches the
+  card off; a click opens the viewer either way.
 - **Type:** *Gig*, *No gig* (cancelled or postponed), *Recording*,
   *Rehearsal*, *Interview* or *No Bruce*, from the kind of page the entry
   links to.
 - **Venue:** the venue, linked to the entry's own page, written the
   MusicBrainz way ("HAMPTON ROADS COLISEUM" reads "Hampton Roads Coliseum").
-  A second part such as "Summer Stage" stays with it.
+  A second part such as "Summer Stage" stays with it. Its card (Ctrl held,
+  as for Event) is the venue's own page, which the script finds through the
+  entry's page: where it is, how often Springsteen played there, the
+  first and last show, its description; **Space** opens the window with
+  every show there (each one linked), the cancelled ones and other
+  appearances, a street view link where the wiki has one, and the venue's
+  photos. ← → step from venue to venue.
 - **City**, **State** and **Country** (City and Country written the
   MusicBrainz way, "SYDNEY" reads "Sydney", "THE NETHERLANDS" "The
   Netherlands"; a country of USA, and State, as the wiki writes them): a US state or Canadian province code
@@ -3142,19 +3194,6 @@ entry, with these columns:
 - **Notes:** the entry's description, paragraphs and links intact. With the
   song preview switched on, a song mentioned there opens its card like a
   title on the song list.
-- **Media:** the wiki's own icons for what the entry's page has: Photo,
-  Ticket, Setlist, Storyteller, News, Memorabilia, Eyewitness, Video, Audio,
-  Bootleg, LiveDL, Retail, Featured. Rest the pointer on an icon for its name.
-  Type a name in the column filter (e.g. "Bootleg"), or pick one from the 📊
-  list, to see the entries that have it. **Photo, Ticket, News and
-  Memorabilia are ringed** when the entry has a page of its own: pointing at
-  one shows a card with those images from that page (photos, tickets, passes,
-  newspaper clippings); a click opens the artwork viewer on them, with every
-  other kind one ← → away and Shift+← → for the previous or next row
-  (Ctrl/⌘-click: the page). The page is read on that first hover or click
-  only, one request for that row, kept 30 days. ⚙️ Settings → *📚 Brucebase*
-  → *Media icons and song glyphs: the page's images on hover* switches the
-  card off; a click opens the viewer either way.
 - **Info wanted:** *yes* where Brucebase asks for more information about the
   date (its "Help Us" icon).
 
@@ -3168,12 +3207,12 @@ side bar (Site Navigation, Gig Pages, …) stays in view while you scroll: at
 the top of the window when you scroll down, and at the window's edge when
 you scroll a wide table sideways. ⚙️ Settings → *📚 Brucebase* →
 *Show the Brucebase side bar on the right* moves it to the right, as on
-MusicBrainz. *Collabsable sidebar* in the same section (off by default, and
+MusicBrainz. *Collabsable sidebar* in the same section (on by default, and
 separate from the MusicBrainz setting of that name) gives it the same handle
 as the MusicBrainz sidebar: click it (or focus it and press Enter) to show
 or hide the side bar. It then starts hidden while the MusicBrainz setting
 *Start with sidebar collapsed* is on, and collapses toward its own side.
-When you scroll a table sideways, its Date column stays in view, lined up
+When you scroll a table sideways, its first column (Event on a year page) stays in view, lined up
 under the table's heading bar, just right of the side bar.
 
 The status line ("Loaded 1 page …") sits right under the heading with the
@@ -3417,13 +3456,17 @@ nothing**: the rows read before come from this browser.
   now, failed and still to go, with the counts under it and the last few
   pages in *Recent*. A page that could not be read says why and offers
   *Try again* (or *Retry N failed* at the end).
-- **Type chips** (Front, Back, Booklet; Cover, Scan; Photo, Ticket, News,
-  Memorabilia; primary, secondary …) narrow the images; pick several to see
+- **Type chips** (Front, Back, Booklet; Cover, Scan; Photo, Ticket, Setlist,
+  News, Memorabilia; primary, secondary …) narrow the images; pick several to see
   any of them. **Compare two** puts two read rows side by side, one line per
   type.
 - **A click on an image** opens the artwork viewer; ← → step through that
   row's images, Shift+← → through the gallery's rows. Esc closes the viewer,
   then the window. On a touch screen a tap outside the window closes it.
+- **Move it** by its title bar (by touch too) and **resize it** from its
+  lower-right corner. It opens there again, at that size, the next time;
+  until you have moved or resized it once, it opens under its 🖼. It always
+  stays inside the browser window, so the corner is always within reach.
 - With a filter typed, the window covers only the rows the filter shows, and
   says so.
 
@@ -3485,6 +3528,7 @@ that site's own switch in ⚙️ Settings:
 | 🌴 jungleland.it         | *Preview artwork pages on the jungleland.it list*            | the uploader and the scans (front, back, discs, booklet)                                                                                                    |
 | 💿 brucespringsteen.it   | *Preview record pages in the brucespringsteen.it database*   | the tracklist, the show each track comes from, the notes, the photo                                                                                         |
 | 📚 Brucebase             | *Preview song pages on the Brucebase song list*              | the album it comes from, how often and when last it was played live, releases, the graph and lyric sheets                                                   |
+| 📚 Brucebase             | *Preview event, venue and people pages on hover*             | when it was scheduled, who was on stage, the setlist, the images; Space: the whole setlist, the other shows there, the recording                            |
 
 **Rest the pointer on a title** for a moment and a card opens beside it. If
 you would rather move the pointer across the table without opening cards or

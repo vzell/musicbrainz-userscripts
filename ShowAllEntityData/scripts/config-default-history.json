@@ -2,8 +2,8 @@
   "_meta": {
     "generated_by": "scripts/dump-default-history.py",
     "source": "ShowAllEntityData/ShowAllEntityData.user.js",
-    "head": "f8dff6608af687df657d30d40be59adb24502a37",
-    "revisions_walked": 1027
+    "head": "14d222290f91256578189900039d958eaa15e53a",
+    "revisions_walked": 1039
   },
   "changes": [
     {
@@ -257,6 +257,15 @@
       "type": "select",
       "from": "info",
       "to": "all-but-search"
+    },
+    {
+      "sha": "14d22229",
+      "date": "2026-10-24",
+      "version": "9.99.1437+2026-10-23",
+      "key": "sa_bb_collabsable_sidebar",
+      "type": "checkbox",
+      "from": false,
+      "to": true
     }
   ],
   "stale": {
@@ -426,6 +435,13 @@
       "current": "all-but-search",
       "was": [
         "info"
+      ]
+    },
+    "sa_bb_collabsable_sidebar": {
+      "type": "checkbox",
+      "current": true,
+      "was": [
+        false
       ]
     }
   },
@@ -732,6 +748,9 @@
     "sa_findings_rel_multi_discogs": true,
     "sa_findings_tint_rel_multi_discogs": true,
     "sa_findings_rel_multi_site_ignore": "",
+    "sa_findings_bb_mbev_link_mismatch": true,
+    "sa_findings_bb_mbev_link_missing": true,
+    "sa_findings_tint_bb_mbev_link": true,
     "sa_findings_nonphysical_formats": "Digital Media",
     "sa_enable_release_tracks": true,
     "sa_enable_release_tracks_acoustid_column": false,
@@ -880,9 +899,11 @@
     "sa_bs_tip_images": true,
     "sa_enable_brucebase": false,
     "sa_bb_year_pages": false,
-    "sa_bb_collabsable_sidebar": false,
+    "sa_bb_collabsable_sidebar": true,
     "sa_bb_sidebar_right": false,
     "sa_bb_detail_preview": false,
+    "sa_bb_event_preview": true,
+    "sa_bb_mb_event_lookup": true,
     "sa_bb_tip_images": true,
     "sa_enable_discogs": false,
     "sa_dg_mb_column": true,

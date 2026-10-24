@@ -290,9 +290,36 @@ async function loadBbChangesPage(page, { enabled = true, ajaxStatus = 'ok', fail
     return { requests, posts };
 }
 
+/**
+ * Scrolls the page sideways until `locator` starts just right of the year
+ * table's sticky first column (in either direction), then waits two frames.
+ * The Event column is the whole entry name on one line (org/TODO.org "Some
+ * enhancements" 3a, kept so by vzell on a wide screen): on the 2026 fixture
+ * it is 807 px wide, so Playwright's own "scroll into view if needed" leaves
+ * a column further right UNDER it, or at the window's right edge under the
+ * sticky headers' right mask (`#mb-sph-rmask`). Docked, it leaves -25 px of
+ * a 1280 px window and 615 px of a 1920 px one (measured 2026-10-24), so a
+ * spec that clicks or hovers past it sets a 1920 px window.
+ *
+ * @param {import('@playwright/test').Page} page
+ * @param {import('@playwright/test').Locator} locator
+ * @returns {Promise<void>}
+ */
+async function revealPastStickyColumn(page, locator) {
+    await locator.evaluate((el) => {
+        el.scrollIntoView({ block: 'center', inline: 'nearest' });
+        const table = el.closest('table');
+        const sticky = table && table.querySelector('thead th.mb-sticky-col');
+        const stickyRight = sticky ? sticky.getBoundingClientRect().right : 0;
+        const left = el.getBoundingClientRect().left;
+        window.scrollBy(left - stickyRight - 8, 0);
+    });
+    await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
+}
+
 module.exports = {
     BB_SONGS_URL, BB_FIXTURE, BB_BUTTON, loadBbSongsPage, renderedBbRows, renderedBbHeaders,
-    BB_YEAR_BUTTON, bbYearFixture, loadBbYearPage, renderedBbYearRows,
+    BB_YEAR_BUTTON, bbYearFixture, loadBbYearPage, renderedBbYearRows, revealPastStickyColumn,
     BB_HOME_URL, BB_HOME_BUTTON, loadBbHomePage,
     BB_RELATIONS_URL, BB_RELATIONS_FIXTURE, BB_RELATIONS_BUTTON, loadBbRelationsPage,
     BB_CHANGES_URL, BB_CHANGES_FIXTURE, BB_CHANGES_AJAX, loadBbChangesPage,

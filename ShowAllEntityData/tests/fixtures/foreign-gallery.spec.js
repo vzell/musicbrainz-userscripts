@@ -103,6 +103,93 @@ test.describe('foreign gallery: springsteenlyrics bootlegs (G2)', () => {
     });
 });
 
+// org/TODO.org "Some enhancements" 1 (vzell, 2026-10-24): the window moves
+// by its title bar and resizes from its corner "like the other hover Space
+// detail popups", and remembers both (`sa_fgal_geometry`,
+// `_makeMovableResizable()`). Pinned: the geometry is APPLIED on reopen
+// (not merely stored), a window never moved still opens under its 🖼, and a
+// stored box larger than the window comes back inside it.
+test.describe('foreign gallery: moved and resized, it remembers where (2026-10-24)', () => {
+    /**
+     * The window's box in viewport pixels, rounded.
+     * @param {import('@playwright/test').Page} page
+     * @returns {Promise<{x: number, y: number, w: number, h: number, pos: string}>}
+     */
+    const boxOf = (page) => gal(page).evaluate((el) => {
+        const r = el.getBoundingClientRect();
+        return { x: Math.round(r.left), y: Math.round(r.top), w: Math.round(r.width), h: Math.round(r.height), pos: getComputedStyle(el).position };
+    });
+    const stored = (page) => page.evaluate(() => window.GM_getValue('sa_fgal_geometry', null));
+
+    test('never moved: it opens under its 🖼 and nothing is stored, also after closing', async ({ page }) => {
+        const { errors } = await openSl(page);
+        await opener(page).click();
+        await expect(gal(page)).toBeVisible();
+        const b = await opener(page).boundingBox();
+        const g = await boxOf(page);
+        expect(g.pos).toBe('absolute');
+        expect(Math.abs(g.y - Math.round(b.y + b.height + 6)), 'right under the 🖼').toBeLessThanOrEqual(2);
+        await page.keyboard.press('Escape');
+        await expect(gal(page)).toHaveCount(0);
+        expect(await stored(page), 'opening and closing store nothing').toBeNull();
+        expect(errors).toEqual([]);
+    });
+
+    test('drag by the title bar, resize from the corner: closed and reopened, it comes back there at that size', async ({ page }) => {
+        const { errors } = await openSl(page);
+        await opener(page).click();
+        await expect(gal(page)).toBeVisible();
+        const head = gal(page).locator('.mb-fgal-head b');
+        const hb = await head.boundingBox();
+        const g0 = await boxOf(page);
+        // Up to 20 px from the top and 120 px left: the whole window, its
+        // corner too, is then on screen (it opened under the 🖼, low down).
+        const dy = 20 - g0.y;
+        await page.mouse.move(hb.x + 10, hb.y + 5);
+        await page.mouse.down();
+        await page.mouse.move(hb.x + 10 - 120, hb.y + 5 + dy, { steps: 6 });
+        await page.mouse.up();
+        const g1 = await boxOf(page);
+        expect(g1.pos, 'a moved window stays put while the page scrolls').toBe('fixed');
+        expect(g1.x).toBe(g0.x - 120);
+        expect(g1.y).toBe(20);
+        await expect.poll(() => stored(page)).toMatchObject({ left: g1.x, top: g1.y });
+        // Resize from the lower-right corner, the browser's own handle.
+        await page.mouse.move(g1.x + g1.w - 4, g1.y + g1.h - 4);
+        await page.mouse.down();
+        await page.mouse.move(g1.x + g1.w - 4 - 100, g1.y + g1.h - 4 - 150, { steps: 6 });
+        await page.mouse.up();
+        await expect.poll(async () => (await boxOf(page)).w).toBe(g1.w - 100);
+        const g2 = await boxOf(page);
+        expect(g2.h).toBe(g1.h - 150);
+        await expect.poll(() => stored(page)).toMatchObject({ width: g2.w, height: g2.h, left: g1.x, top: g1.y });
+        // The ✕ and Esc still work in the title bar: a press on ✕ is no drag.
+        await gal(page).locator('.mb-fgal-x').click();
+        await expect(gal(page)).toHaveCount(0);
+        await page.mouse.wheel(0, 400);
+        await opener(page).evaluate(b => b.scrollIntoView({ block: 'center' }));
+        await opener(page).click();
+        await expect(gal(page)).toBeVisible();
+        expect(await boxOf(page), 'reopened where it was left, at that size').toEqual({ ...g2, pos: 'fixed' });
+        expect(errors).toEqual([]);
+    });
+
+    test('a stored geometry larger than the window comes back inside it', async ({ page }) => {
+        const { errors } = await openSl(page, { sa_fgal_geometry: { top: 5000, left: 5000, width: 9000, height: 9000 } });
+        await opener(page).click();
+        await expect(gal(page)).toBeVisible();
+        const g = await boxOf(page);
+        const vp = page.viewportSize();
+        expect(g.pos).toBe('fixed');
+        expect(g.x).toBeGreaterThanOrEqual(0);
+        expect(g.y).toBeGreaterThanOrEqual(0);
+        expect(g.x + g.w).toBeLessThanOrEqual(vp.width);
+        expect(g.y).toBeLessThanOrEqual(vp.height - 40);
+        await expect(gal(page).locator('.mb-fgal-x')).toBeInViewport();
+        expect(errors).toEqual([]);
+    });
+});
+
 test.describe('foreign gallery: the run, chips, Compare and the viewer', () => {
     /**
      * Narrows the table to the Castiles rows (4554 has an item page fixture,
@@ -315,6 +402,54 @@ test.describe('foreign gallery: discogs.com', () => {
         await gal(page).locator('button[data-mb-fgal-act="load"]').click();
         await expect(gal(page).locator('.mb-fgal-ask')).toContainText(/^Read [\d,]+ Discogs records\?/);
         expect((await apiLog(page)).length, 'opening and asking request nothing').toBe(before);
+        expect(errors).toEqual([]);
+    });
+
+    // vzell, 2026-10-24 (screenshots of a master's versions): "after opening
+    // the window and trying to click/drag the popup window its size gets so
+    // large that the resize handle is not visible anymore", and on a
+    // Brucebase year the list "automatically scrolls inside when initially
+    // resizing". The first: a drag lifted the height cap (`mb-geo-fixed`)
+    // with no height pinned, so the window grew to its whole content. The
+    // second: the body's scrollbar ran into the resize corner, so a press on
+    // the grip held the scrollbar. Pinned: the size a drag starts with is
+    // the size it ends with, the corner stays on screen, and a press held on
+    // the corner is the window's (not the list's) and scrolls nothing.
+    test('a tall list: a drag keeps the window\'s size and its corner on screen; a press on the corner scrolls nothing', async ({ page }) => {
+        const errors = await openDg(page, 'https://www.discogs.com/master/26725-Bruce-Springsteen-Born-To-Run', 'dg-master.html', { sa_pop_ext_discogs_token: '' });
+        await page.locator('#mb-dg-root button[data-label="Show all versions"]').click();
+        await waitForRenderComplete(page, { waitForAutoResize: false });
+        await opener(page).click();
+        await expect(gal(page)).toBeVisible();
+        const box = () => gal(page).evaluate((el) => {
+            const r = el.getBoundingClientRect();
+            const body = el.querySelector('.mb-fgal-body');
+            return { x: Math.round(r.left), y: Math.round(r.top), w: Math.round(r.width), h: Math.round(r.height), bottom: r.bottom,
+                bodyBottom: body.getBoundingClientRect().bottom, scrolls: body.scrollHeight > body.clientHeight + 50, scrollTop: body.scrollTop };
+        });
+        const g0 = await box();
+        expect(g0.scrolls, 'the list is taller than the window (the case reported)').toBe(true);
+        const hb = await gal(page).locator('.mb-fgal-head b').boundingBox();
+        await page.mouse.move(hb.x + 10, hb.y + 5);
+        await page.mouse.down();
+        await page.mouse.move(hb.x + 30, hb.y + 5 - Math.min(40, g0.y), { steps: 4 });
+        await page.mouse.up();
+        const g1 = await box();
+        expect(g1.h, 'the drag keeps the height').toBe(g0.h);
+        expect(g1.w, 'and the width').toBe(g0.w);
+        expect(g1.bottom, 'the corner is on screen').toBeLessThanOrEqual(page.viewportSize().height);
+        // The corner is the window's own: under it is the window, not the
+        // scrolling list, which ends above it.
+        expect(g1.bodyBottom, 'the list ends above the resize corner').toBeLessThanOrEqual(g1.bottom - 12);
+        const hit = await page.evaluate(([x, y]) => document.elementFromPoint(x, y) === document.getElementById('mb-fgal'), [g1.x + g1.w - 5, g1.y + g1.h - 5]);
+        expect(hit, 'the window itself is under the corner').toBe(true);
+        await page.mouse.move(g1.x + g1.w - 5, g1.y + g1.h - 5);
+        await page.mouse.down();
+        // Held, not moved: a press on a scrollbar's track or arrow repeats
+        // while it is held. The time is the test's subject, not a settle.
+        await page.evaluate(() => new Promise(r => setTimeout(r, 700)));
+        await page.mouse.up();
+        expect((await box()).scrollTop, 'holding the corner scrolls nothing').toBe(0);
         expect(errors).toEqual([]);
     });
 

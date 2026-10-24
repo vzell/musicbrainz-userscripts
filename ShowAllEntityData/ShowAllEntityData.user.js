@@ -2764,6 +2764,33 @@
                          'WARNING. "www." is ignored.'
         },
 
+        sa_findings_bb_mbev_link_mismatch: {
+            label: 'Find Brucebase entries whose MusicBrainz event links another entry',
+            type: 'checkbox',
+            default: true,
+            description: 'On a Brucebase year table, once the MB-Event column has found an entry\'s MusicBrainz ' +
+                         'event: the event\'s Brucebase link (its "reviews" URL, e.g. ' +
+                         'http://brucebase.wikidot.com/1985#130185) points to a different entry, or the entry\'s own ' +
+                         'anchor is linked from a different event. An ERROR ("MB-Event: the Brucebase link differs").'
+        },
+
+        sa_findings_bb_mbev_link_missing: {
+            label: 'Find Brucebase entries whose MusicBrainz event has no Brucebase link',
+            type: 'checkbox',
+            default: true,
+            description: 'On a Brucebase year table, once the MB-Event column has found an entry\'s MusicBrainz ' +
+                         'event: the event links no Brucebase year page at all. A WARNING ("MB-Event: no ' +
+                         'Brucebase link"); the cell\'s card names the link it would have.'
+        },
+
+        sa_findings_tint_bb_mbev_link: {
+            label: 'Highlight MB-Event cells whose Brucebase link differs or is missing',
+            type: 'checkbox',
+            default: true,
+            description: 'Tint the MB-Event cell light red with a ❌ when the link differs, light yellow with a ⚠️ ' +
+                         'when it is missing, and ring its glyph in the same colour.'
+        },
+
         sa_findings_nonphysical_formats: {
             label: 'Formats that have no medium to photograph',
             type: 'text',
@@ -4883,8 +4910,8 @@
         sa_bb_collabsable_sidebar: {
             label: 'Collabsable sidebar',
             type: 'checkbox',
-            default: false,
-            description: 'Off by default; needs one of the Brucebase settings above. Gives the ' +
+            default: true,
+            description: 'On by default; needs one of the Brucebase settings above. Gives the ' +
                          'wiki\'s side bar (Site Navigation, Gig Pages, …) the same collapse ' +
                          'handle as the MusicBrainz sidebar; it then starts hidden while "Start ' +
                          'with sidebar collapsed" is on, and collapses toward its own side. ' +
@@ -4917,6 +4944,35 @@
                          'through the rows, and its "Live page" view shows the wiki\'s own page ' +
                          'with every tab opened. Esc closes either. On a touch screen, tapping a ' +
                          'title opens the window.'
+        },
+
+        sa_bb_event_preview: {
+            label: 'Preview event, venue and people pages on hover',
+            type: 'checkbox',
+            default: true,
+            description: 'Needs a setting above that switches the wiki on. On every Brucebase page, resting the ' +
+                         'pointer on a link to an event\'s page (a gig, no gig, recording, rehearsal, interview or ' +
+                         '"no Bruce" page), a venue or a person — the Event and Venue columns of a year table, a ' +
+                         'mention in its Notes, the Recent changes list, the wiki\'s own lists, the links in a ' +
+                         'preview window — with Ctrl held, unless every preview ' +
+                         'shows on a plain hover, shows a card with what its page adds: when it was scheduled, ' +
+                         'who was on stage, the setlist and the page\'s images. Press Space to pin it into a ' +
+                         'window you can move and resize, with the whole setlist, the other shows at that venue, ' +
+                         'the recording, the stories and the eyewitness accounts; its "Live page" view shows the ' +
+                         'wiki\'s own page. ← and → step through the rows. The page is read when you point at it, ' +
+                         'never at load, and kept for 30 days. Independent of the song preview above.'
+        },
+
+        sa_bb_mb_event_lookup: {
+            label: 'MB-Event column: look the events up on MusicBrainz',
+            type: 'checkbox',
+            default: true,
+            description: 'Needs a setting above that switches the wiki on. After a year table renders, its ' +
+                         'MB-Event column asks MusicBrainz for each entry\'s event: first by the entry\'s ' +
+                         'Brucebase link (100 entries a request), then the year\'s events by date, then by ' +
+                         'name for the rest — about one request a second, shown in the background jobs ' +
+                         'popup, with Stop. Each answer is kept 90 days ("no event" 7 days), so a second ' +
+                         'visit asks nothing. Off: the ▶ MB button in the column\'s header runs the lookup.'
         },
 
         sa_bb_tip_images: {
@@ -5421,6 +5477,9 @@
         { key: 'sa_auto_resize_columns_threshold', was: [2000] },
         // true for one day inside one branch (d60e197 → 91b558b, 2026-10-09),
         // never in a release; listed because the audit walks every revision.
+        // Off from 2026-10-09 until 2026-10-24 (vzell: "should be true by
+        // default").
+        { key: 'sa_bb_collabsable_sidebar',        was: [false] },
         { key: 'sa_bb_sidebar_right',              was: [true] },
         { key: 'sa_count_stat_tooltip_bg',         was: ['#1e1e2e'] },
         { key: 'sa_count_stat_tooltip_color',      was: ['#cdd6f4'] },
@@ -18128,8 +18187,8 @@
      * Column headers of the Brucebase year table, in order.
      * @type {string[]}
      */
-    const _BB_YEAR_HEADERS = ['Date', 'Type', 'Venue', 'City', 'State', 'Country', 'Tour',
-        'Soundcheck', 'Setlist', 'Set note', 'Notes', 'Media', 'Info wanted'];
+    const _BB_YEAR_HEADERS = ['Event', 'MB-Event', 'Media', 'Date', 'Type', 'Venue', 'City', 'State', 'Country', 'Tour',
+        'Soundcheck', 'Setlist', 'Set note', 'Notes', 'Info wanted'];
 
     /**
      * An entry's Type, by the prefix of its heading link (`/gig:…`). Any
@@ -18181,11 +18240,13 @@
     /**
      * The Media icons whose kind the entry's page holds as images (photos,
      * tickets, passes, clippings: scripts/probe-foreign-images.py,
-     * 2026-10-23): `_bbYearBuildRow()` makes them open the foreign-image
+     * 2026-10-23; setlists, `files:setlist-YYYY` on every sampled page with
+     * a Setlist icon, 1978–2024: scripts/probe-bb-setlist-images.py,
+     * 2026-10-24): `_bbYearBuildRow()` makes them open the foreign-image
      * card and viewer (`_BB_FI`). The other icons stay plain.
      * @type {Set<string>}
      */
-    const _BB_FI_MEDIA_KINDS = new Set(['Photo', 'Ticket', 'News', 'Memorabilia']);
+    const _BB_FI_MEDIA_KINDS = new Set(['Photo', 'Ticket', 'Setlist', 'News', 'Memorabilia']);
 
     /**
      * Matches a set paragraph's label, the text before its first colon
@@ -18299,8 +18360,13 @@
      * required: two entries have it in a paragraph of their own, and 712 of
      * the 5,009 carry a letter after the six digits (probe, 2026-10-09).
      *
+     * The anchor's name is returned too (`anchor`, '' for none): in the
+     * heading paragraph, or the paragraph of its own just before it. The
+     * MB-Event column compares it with the event's Brucebase link
+     * (`_bbMbevAnchorUrl()`).
+     *
      * @param {Element} el A child of `#page-content`.
-     * @returns {?{heading: string, link: ?HTMLAnchorElement}} The heading's text and link, or `null`.
+     * @returns {?{heading: string, link: ?HTMLAnchorElement, anchor: string}} The heading's text, link and anchor name, or `null`.
      */
     function _bbYearEntryHead(el) {
         if (el.tagName !== 'P') return null;
@@ -18308,7 +18374,10 @@
         if (!strong) return null;
         const heading = _bbText(strong);
         if (!/^\d{4}-\d\d-\d\d\b/.test(heading) || _bbText(el) !== heading) return null;
-        return { heading, link: strong.querySelector('a[href]') };
+        let named = el.querySelector(':scope > a[name]');
+        const prev = el.previousElementSibling;
+        if (!named && prev && prev.tagName === 'P' && !_bbText(prev)) named = prev.querySelector(':scope > a[name]');
+        return { heading, link: strong.querySelector('a[href]'), anchor: named ? named.getAttribute('name') || '' : '' };
     }
 
     /**
@@ -18353,7 +18422,7 @@
         Array.from(content.children).forEach(el => {
             const head = _bbYearEntryHead(el);
             if (head) {
-                cur = { heading: head.heading, link: head.link, tour, top: el, blocks: [] };
+                cur = { heading: head.heading, link: head.link, anchor: head.anchor, tour, top: el, blocks: [] };
                 entries.push(cur);
                 return;
             }
@@ -18593,6 +18662,939 @@
     }
 
     /**
+     * The Event cell of a Brucebase year row (org/TODO.org "Some
+     * enhancements" 3a, 2026-10-24): the entry's heading as one name, "1985-
+     * 01-13 - Carolina Coliseum, Columbia, SC", linked to the entry's page
+     * (`a.mb-bb-event-link`; plain text for a heading with no link). The
+     * date is the heading's own (a `00` day stays), then " - " and the
+     * heading's own place parts, comma by comma: none is added (a US state
+     * code gets no ", USA", which the Country column shows) and none is
+     * dropped. Each part is cased the way its column writes it: the State
+     * part and "USA" as written, every other part in MusicBrainz title
+     * style (`_mbSiteTitleText()` per part, never on the whole name: the
+     * typography rules would turn the date's hyphens into U+2010 and " - "
+     * into an en dash). While that changed anything, the cell's tooltip is
+     * the heading as the site writes it. A heading without a date shows as
+     * written, in title style.
+     *
+     * @param {{heading: string}} entry One entry of `_bbYearEntries()`.
+     * @param {object}   h          `_bbParseHeading()` of the heading.
+     * @param {string}   href       The heading link's href, '' for none.
+     * @param {Document} docContext The document the row is built in.
+     * @returns {HTMLTableCellElement}
+     */
+    function _bbYearEventCell(entry, h, href, docContext) {
+        const td = docContext.createElement('td');
+        td.className = 'mb-bb-event-cell';
+        const m = entry.heading.match(/^(\d{4}-\d\d-\d\d)\b\s*(?:-\s+)?(.*)$/);
+        const state = String(h.state || '').toUpperCase();
+        const place = m ? m[2].split(/\s*,\s*/).filter(Boolean).map(part => {
+            const up = part.toUpperCase();
+            return up === 'USA' || (state && up === state) ? part : _mbSiteTitleText(part);
+        }).join(', ') : '';
+        const shown = m && place ? `${m[1]} - ${place}` : _mbSiteTitleText(entry.heading);
+        const holder = href ? docContext.createElement('a') : td;
+        holder.textContent = shown;
+        if (href) {
+            holder.className = 'mb-bb-event-link';
+            holder.setAttribute('href', _bbAbsHref(href));
+            td.appendChild(holder);
+        }
+        if (shown !== entry.heading) _mbSiteTitleTip(td, entry.heading, shown);
+        return td;
+    }
+
+    // ── The Brucebase MB-Event column ───────────────────────────────────────
+    //
+    // org/TODO.org "Some enhancements" 3c, f, g (vzell, 2026-10-24; mockup
+    // https://claude.ai/artifact/DmsNyUkUa1Hq8nPr2B5EGA). The year table's
+    // second column: a glyph for the entry's type, linked to its MusicBrainz
+    // event once found. The ws/2 answers it relies on were probed
+    // (scripts/probe-mb-event-lookups.py, scripts/probe-mb-event-anchor-coverage.py,
+    // 2026-10-24; the fields from the search server's schema, mbsssss
+    // event/conf/schema.xml, because the documentation pages answer a script
+    // with a browser check):
+    //   - `/ws/2/url?resource=…&inc=event-rels` matches the EXACT spelling
+    //     `http://brucebase.wikidot.com/1985#130185` (https and www give 404),
+    //     the fragment kept; several `resource=` per request; the relation's
+    //     event carries its `life-span`. 89 of 1985's 94 entries and 105 of
+    //     2012's 107 are linked from MusicBrainz this way.
+    //   - `/ws/2/event?query=arid:<Bruce> AND begin:[Y-01-01 TO Y-12-31]`: 93
+    //     events in 1985, no two on one date; `life-span.begin` is the day.
+    //   - the name search ("1985-01-13: Carolina Coliseum, Columbia, SC")
+    //     ranks the event first (score 100, the next 47).
+    //   - `/ws/2/event/<id>?inc=url-rels`: the Brucebase link is of type
+    //     "review".
+    // So a year costs one url lookup per 100 entries, one search per 100
+    // events, a name search per row still unmatched, and an event lookup per
+    // row matched by search whose links are not known yet; each answer is
+    // kept 90 days (7 for "no event"), so a second visit costs nothing.
+
+    /** The MB-Event column's name. */
+    const _BB_MBEV_COL = 'MB-Event';
+    /** Bruce Springsteen's MBID: the year search's `arid`. */
+    const _BB_MBEV_BRUCE = '70248960-cb53-4ea4-943a-edb18f7d336f';
+    /** How long a found event is kept. */
+    const _BB_MBEV_TTL_MS = 90 * 86400000;
+    /** How long "no event" is kept. */
+    const _BB_MBEV_NONE_TTL_MS = 7 * 86400000;
+    /** Entries per url lookup and events per search page. */
+    const _BB_MBEV_BATCH = 100;
+    const _BB_MBEV_IDB_NAME = 'vz-saed-bb-mbevents';
+    const _BB_MBEV_IDB_VERSION = 1;
+
+    /**
+     * The glyph per entry type (the heading link's prefix), 16 × 16 strokes
+     * in `currentColor`: Gig a microphone, No gig the same struck through,
+     * Recording a tape reel, Rehearsal a metronome, Interview a speech
+     * bubble, No Bruce two figures; `other` (any other type) stands in for
+     * MusicBrainz's event icon, a calendar. Approved in the mockup.
+     * @type {Object<string, string>}
+     */
+    const _BB_MBEV_GLYPHS = {
+        gig: '<rect x="6" y="1.5" width="4" height="8" rx="2"/><path d="M3.5 7.5a4.5 4.5 0 0 0 9 0M8 12v2.5M5.5 14.5h5"/>',
+        nogig: '<rect x="6" y="1.5" width="4" height="8" rx="2"/><path d="M3.5 7.5a4.5 4.5 0 0 0 9 0M8 12v2.5M5.5 14.5h5M2 2l12 12"/>',
+        recording: '<circle cx="4.5" cy="7.5" r="3"/><circle cx="11.5" cy="7.5" r="3"/><circle cx="4.5" cy="7.5" r=".6"/><circle cx="11.5" cy="7.5" r=".6"/><path d="M4.5 10.5h7"/>',
+        rehearsal: '<path d="M5 14.5 6.8 1.8h2.4L11 14.5z"/><path d="M4.5 12h7M8 11l3.2-6.5"/>',
+        interview: '<path d="M2 3h12v7.5H7.5L4 13.5v-3H2z"/><path d="M5 6.2h6M5 8.2h4"/>',
+        nobruce: '<circle cx="5" cy="5" r="2"/><circle cx="11" cy="5" r="2"/><path d="M1.5 13.5c.4-3.4 6.6-3.4 7 0M7.5 13.5c.4-3.4 6.6-3.4 7 0"/>',
+        other: '<rect x="2" y="3" width="12" height="11" rx="1.5"/><path d="M2 6.5h12M5 1.5v3M11 1.5v3"/><path d="M7.9 8.3l.7 1.4 1.5.2-1.1 1 .3 1.5-1.4-.7-1.3.7.3-1.5-1.1-1 1.5-.2z"/>',
+    };
+
+    /** Answers by row key, from our store or this page's lookups. @type {Map<string, object>} */
+    const _bbMbevMem = new Map();
+    /** The lookup's state, for the cells, the header button and the job popup. */
+    const _bbMbev = {
+        running: false, stop: false, total: 0, done: 0, failed: 0, requests: 0,
+        refreshTimer: 0, lastRefresh: 0, pendingCount: null, storeCount: null, storeCountAt: 0,
+    };
+    let _bbMbevIdbPromise = null;
+    let _bbMbevOwnPromise = null;
+
+    /**
+     * Whether the MB-Event column looks its events up by itself after a
+     * render (`sa_bb_mb_event_lookup`, default on); off, the ▶ MB header
+     * button does.
+     *
+     * @returns {boolean}
+     */
+    function _bbMbevAuto() {
+        return Lib.settings.sa_bb_mb_event_lookup !== false;
+    }
+
+    /**
+     * An entry's Brucebase anchor URL as MusicBrainz stores it: plain http,
+     * no "www.", the year page (`1949-64` before 1965, as the wiki names
+     * its first page) and the heading's `<a name>`.
+     *
+     * @param {string} name The anchor's name ("130185").
+     * @param {string} date The entry's date, YYYY first.
+     * @returns {string} '' without either.
+     */
+    function _bbMbevAnchorUrl(name, date) {
+        const y = String(date || '').slice(0, 4);
+        if (!name || !/^\d{4}$/.test(y)) return '';
+        return `http://brucebase.wikidot.com/${y >= '1965' ? y : '1949-64'}#${name}`;
+    }
+
+    /**
+     * A Brucebase year-page link normalised for comparing: no scheme, no
+     * "www.", the host in lower case ("brucebase.wikidot.com/1985#130185");
+     * null for any other link.
+     *
+     * @param {string} url
+     * @returns {?string}
+     */
+    function _bbMbevNorm(url) {
+        const m = String(url || '').match(/^(?:https?:)?\/\/(?:www\.)?brucebase\.wikidot\.com\/(\d{4}|1949-64)\/?#(\w+)$/i);
+        return m ? `brucebase.wikidot.com/${m[1]}#${m[2]}` : null;
+    }
+
+    /**
+     * The MB-Event cell of a Brucebase year row, built with the row: the
+     * type's glyph, not looked up yet. What the lookup needs is on the cell
+     * as data, so it survives clones and a save to disk: the row's key (the
+     * entry page, or its heading), type, date, its anchor URL and the name
+     * query.
+     *
+     * @param {{heading: string, anchor?: string}} entry One entry of `_bbYearEntries()`.
+     * @param {object}   h          `_bbParseHeading()` of the heading.
+     * @param {string}   href       The heading link's href, '' for none.
+     * @param {Document} docContext The document the row is built in.
+     * @returns {HTMLTableCellElement}
+     */
+    function _bbMbevCell(entry, h, href, docContext) {
+        const td = docContext.createElement('td');
+        td.className = 'mb-bbev-cell';
+        const m = href.match(/^\/?([a-z]+):/i);
+        td.dataset.mbBbevKey = href ? _bbAbsHref(href) : `heading:${entry.heading}`;
+        td.dataset.mbBbevType = m ? m[1].toLowerCase() : '';
+        td.dataset.mbBbevDate = h.date || '';
+        td.dataset.mbBbevAnchor = _bbMbevAnchorUrl(entry.anchor, h.date);
+        const where = [h.venue, h.city, h.state].filter(Boolean).join(', ');
+        td.dataset.mbBbevQ = h.date && where ? `${h.date}: ${where}` : '';
+        td.dataset.mbBbevState = 'pending';
+        td.innerHTML = _bbMbevInner(td, null, 'pending');
+        return td;
+    }
+
+    /**
+     * The cell's markup for a state: the glyph (`span`, or a link once
+     * answered) and the hidden text the filter reads (`.mb-bbev-ids`: the
+     * MBID, or "no MusicBrainz event").
+     *
+     * @param {HTMLTableCellElement} td
+     * @param {?object} rec    The row's answer, when there is one.
+     * @param {string}  state  pending | queued | run | done | error.
+     * @returns {string}
+     */
+    function _bbMbevInner(td, rec, state) {
+        const type = td.dataset.mbBbevType || '';
+        const svg = `<svg viewBox="0 0 16 16" aria-hidden="true">${_BB_MBEV_GLYPHS[type] || _BB_MBEV_GLYPHS.other}</svg>`;
+        const label = _BB_YEAR_TYPES[type] || 'Event';
+        if (state === 'done' && rec && rec.mbid) {
+            return `<a class="mb-bbev-g mb-bbev-link" data-s="found" href="https://musicbrainz.org/event/${_rgEsc(rec.mbid)}" target="_blank" rel="noopener"` +
+                ` data-mb-tip title="${_rgEsc(`${rec.name || 'MusicBrainz event'}${rec.type ? ` · ${rec.type}` : ''}`)}">${svg}</a>` +
+                `<span class="mb-bbev-ids">${_rgEsc(rec.mbid)}</span>`;
+        }
+        if (state === 'done') {
+            const q = td.dataset.mbBbevQ || td.dataset.mbBbevDate || '';
+            return `<a class="mb-bbev-g" data-s="none" href="https://musicbrainz.org/search?query=${encodeURIComponent(q)}&type=event&method=indexed" target="_blank" rel="noopener"` +
+                ` data-mb-tip title="No MusicBrainz event found for this ${_rgEsc(label.toLowerCase())}. Click: search MusicBrainz yourself.">${svg}</a>` +
+                '<span class="mb-bbev-ids">no MusicBrainz event</span>';
+        }
+        const tip = state === 'error' ? 'MusicBrainz did not answer; nothing was stored. Click: try again.'
+            : state === 'run' ? 'Looking it up on MusicBrainz now…'
+            : state === 'queued' ? 'Queued for the lookup.'
+            : _bbMbevAuto() ? `${label}: not looked up on MusicBrainz yet.` : `${label}: not looked up; ▶ MB in the header runs the lookup.`;
+        const s = state === 'error' ? 'fail' : state === 'pending' ? 'idle' : state;
+        return `<span class="mb-bbev-g" data-s="${s}"${state === 'error' ? ' role="button" tabindex="0"' : ''} data-mb-tip title="${_rgEsc(tip)}">${svg}</span>`;
+    }
+
+    /**
+     * Rewrites one cell from what is known now (our answers; `state` for a
+     * cell still waiting), and clears its row's filter text cache.
+     *
+     * @param {HTMLTableCellElement} td
+     * @param {?string} [state] queued | run | error; null: from the answers.
+     * @returns {void}
+     */
+    function _bbMbevRenderCell(td, state = null) {
+        const rec = _bbMbevMem.get(td.dataset.mbBbevKey);
+        const st = rec ? 'done' : state || 'pending';
+        td.innerHTML = _bbMbevInner(td, rec, st);
+        td.dataset.mbBbevState = st;
+        if (rec && rec.mbid) td.dataset.mbBbevMbid = rec.mbid;
+        else delete td.dataset.mbBbevMbid;
+        if (rec) {
+            td.dataset.mbBbevLinks = (rec.links || []).join(' ');
+            td.dataset.mbBbevAnchorEvents = (rec.anchorEvents || []).join(' ');
+        } else {
+            delete td.dataset.mbBbevLinks;
+            delete td.dataset.mbBbevAnchorEvents;
+        }
+        const row = td.parentElement;
+        const rc = row && _rowTextCache.get(row);
+        if (rc) { rc.cols = []; rc.full = null; }
+    }
+
+    /**
+     * Every MB-Event cell per row key, live AND in the source rows the next
+     * re-render clones from (merged through a Set: a single table's live
+     * rows are its source rows).
+     *
+     * @returns {Map<string, Set<HTMLTableCellElement>>}
+     */
+    function _bbMbevCellIndex() {
+        const map = new Map();
+        const add = td => {
+            const k = td.dataset.mbBbevKey;
+            if (!k) return;
+            let s = map.get(k);
+            if (!s) { s = new Set(); map.set(k, s); }
+            s.add(td);
+        };
+        document.querySelectorAll('body.mb-sa-host-bb table.tbl td.mb-bbev-cell[data-mb-bbev-key]').forEach(add);
+        _msSourceRows().forEach(row => row.querySelectorAll('td.mb-bbev-cell[data-mb-bbev-key]').forEach(add));
+        return map;
+    }
+
+    /**
+     * Repaints every cell of the given keys.
+     *
+     * @param {Map<string, Set<HTMLTableCellElement>>} index
+     * @param {Iterable<string>} keys
+     * @param {?string} [state]
+     * @returns {number} Cells written.
+     */
+    function _bbMbevRepaint(index, keys, state = null) {
+        let n = 0;
+        Array.from(keys).forEach(k => (index.get(k) || []).forEach(td => {
+            _bbMbevRenderCell(td, state);
+            n++;
+            // The Brucebase-link findings read this cell (late data): the
+            // live row and its master row are re-stamped together.
+            if (td.isConnected && td.closest('table.tbl')) _queueFindingsRestamp(td.parentElement, ['bb-mbev-link-mismatch', 'bb-mbev-link-missing']);
+        }));
+        if (n) _bbMbev.pendingCount = null;
+        return n;
+    }
+
+    /**
+     * Rows not answered yet, counted on the source rows; cached until a cell
+     * changes.
+     *
+     * @returns {number}
+     */
+    function _bbMbevPendingCount() {
+        if (_bbMbev.pendingCount !== null) return _bbMbev.pendingCount;
+        let n = 0;
+        _msSourceRows().forEach(row => {
+            const td = row.querySelector('td.mb-bbev-cell[data-mb-bbev-key]');
+            if (td && td.dataset.mbBbevState !== 'done') n++;
+        });
+        _bbMbev.pendingCount = n;
+        return n;
+    }
+
+    /**
+     * After cells changed (docs/claude/filter-and-cache-invariants.md, the
+     * four duties of a post-render cell write; the fourth, the row text
+     * cache, is `_bbMbevRenderCell()`'s): the 📊 caches of the tables with
+     * the column, every cached filter result, the header buttons, and the
+     * filter itself when one is set — at most every 1.5 s, or at once.
+     *
+     * @param {boolean} [now]
+     * @returns {void}
+     */
+    function _bbMbevScheduleRefresh(now) {
+        clearTimeout(_bbMbev.refreshTimer);
+        const wait = now ? 0 : Math.max(0, 1500 - (Date.now() - _bbMbev.lastRefresh));
+        _bbMbev.refreshTimer = setTimeout(() => {
+            _bbMbev.lastRefresh = Date.now();
+            document.querySelectorAll('body.mb-sa-host-bb table.tbl').forEach(t => {
+                if (t.querySelector('td.mb-bbev-cell')) _invalidateUniqDropDataCacheForTable(t);
+            });
+            _invalidateFilterCache();
+            _bbMbevUpdateHdrBtns();
+            if (_anyFilterActive()) runFilter();
+        }, wait);
+    }
+
+    /**
+     * Opens (or reuses) the column's own store of answers.
+     *
+     * @returns {Promise<IDBDatabase>}
+     */
+    function _bbMbevOpenIdb() {
+        if (_bbMbevIdbPromise) return _bbMbevIdbPromise;
+        _bbMbevIdbPromise = new Promise((resolve, reject) => {
+            if (typeof indexedDB === 'undefined') {
+                reject(new Error('IndexedDB not available'));
+                return;
+            }
+            const req = indexedDB.open(_BB_MBEV_IDB_NAME, _BB_MBEV_IDB_VERSION);
+            req.onupgradeneeded = (ev) => {
+                const db = ev.target.result;
+                if (!db.objectStoreNames.contains('events')) db.createObjectStore('events', { keyPath: 'key' });
+            };
+            req.onsuccess = (ev) => {
+                const db = ev.target.result;
+                db.onversionchange = () => { db.close(); _bbMbevIdbPromise = null; };
+                db.onclose = () => { _bbMbevIdbPromise = null; };
+                resolve(db);
+            };
+            req.onerror = (ev) => { _bbMbevIdbPromise = null; reject(ev.target.error); };
+            req.onblocked = () => { _bbMbevIdbPromise = null; reject(new Error('IndexedDB open blocked by another tab')); };
+        });
+        return _bbMbevIdbPromise;
+    }
+
+    /**
+     * Loads the store into memory once a page: every answer within its keep
+     * time. Never rejects.
+     *
+     * @returns {Promise<void>}
+     */
+    function _bbMbevLoadOwn() {
+        if (_bbMbevOwnPromise) return _bbMbevOwnPromise;
+        _bbMbevOwnPromise = _bbMbevOpenIdb().then(db => new Promise(resolve => {
+            try {
+                const req = db.transaction('events', 'readonly').objectStore('events').getAll();
+                req.onsuccess = () => {
+                    const now = Date.now();
+                    (req.result || []).forEach(r => {
+                        if (!r || typeof r.key !== 'string' || typeof r.ts !== 'number') return;
+                        if (now >= r.ts + (r.mbid ? _BB_MBEV_TTL_MS : _BB_MBEV_NONE_TTL_MS)) return;
+                        if (!_bbMbevMem.has(r.key)) _bbMbevMem.set(r.key, r);
+                    });
+                    resolve();
+                };
+                req.onerror = () => resolve();
+            } catch (_) {
+                resolve();
+            }
+        })).catch(() => {});
+        return _bbMbevOwnPromise;
+    }
+
+    /**
+     * Writes answers to the store. Never rejects.
+     *
+     * @param {object[]} records
+     * @returns {Promise<void>}
+     */
+    function _bbMbevPut(records) {
+        if (!records.length) return Promise.resolve();
+        return _bbMbevOpenIdb().then(db => new Promise(resolve => {
+            try {
+                const tx = db.transaction('events', 'readwrite');
+                const st = tx.objectStore('events');
+                records.forEach(r => st.put(r));
+                tx.oncomplete = () => resolve();
+                tx.onerror = () => resolve();
+                tx.onabort = () => resolve();
+            } catch (_) {
+                resolve();
+            }
+        })).catch(() => {});
+    }
+
+    /**
+     * One ws/2 request in the shared MusicBrainz rate slot (1.1 s apart),
+     * as a GM request from the Brucebase page. A 404 is an answer ("not
+     * there"), anything else but 200 a failure.
+     *
+     * @param {string} url
+     * @returns {Promise<?{status: number, data: ?object}>} null: failed or stopped.
+     */
+    async function _bbMbevGet(url) {
+        await _relAwaitRateSlot();
+        if (_bbMbev.stop) return null;
+        _bbMbev.requests++;
+        const res = await _extGet(url, {
+            gate: false, wanted: () => !_bbMbev.stop,
+            fetchOpts: { accept: /\bjson\b/i, headers: { 'User-Agent': _EXT_AGENT, Accept: 'application/json' } },
+        });
+        if (res.skipped) return null;
+        if (res.error || (res.status !== 200 && res.status !== 404)) {
+            Lib.warn('bbmbev', `MusicBrainz did not answer ${url}: ${res.error || `HTTP ${res.status}`}`);
+            return null;
+        }
+        if (res.status === 404) return { status: 404, data: null };
+        try {
+            return { status: 200, data: JSON.parse(String(res.body || '') + String(res.tail || '')) };
+        } catch (_) {
+            return null;
+        }
+    }
+
+    /**
+     * An event of a ws/2 answer, as a row's answer keeps it.
+     *
+     * @param {object} ev
+     * @returns {{mbid: string, name: string, type: string, date: string}}
+     */
+    function _bbMbevEventOf(ev) {
+        return { mbid: ev.id, name: ev.name || '', type: ev.type || '', date: (ev['life-span'] || {}).begin || '' };
+    }
+
+    /**
+     * The event of several on one date that names the row's place: the most
+     * words of Venue and City the event's name shares (MusicBrainz names an
+     * event "1985‐01‐13: Carolina Coliseum, Columbia, SC, USA").
+     *
+     * @param {object[]} events
+     * @param {string}   q The row's name query ("date: Venue, City, ST").
+     * @returns {?object}
+     */
+    function _bbMbevPickByPlace(events, q) {
+        if (events.length < 2) return events[0] || null;
+        const words = (s) => new Set(String(s).toLowerCase().replace(/^[\d‐-]+:\s*/, '').split(/[^a-z0-9]+/).filter(w => w.length > 2));
+        const want = words(q);
+        let best = null, bestN = -1;
+        events.forEach(ev => {
+            let n = 0;
+            words(ev.name).forEach(w => { if (want.has(w)) n++; });
+            if (n > bestN) { best = ev; bestN = n; }
+        });
+        return best;
+    }
+
+    /**
+     * Escapes Lucene's special characters for the name search.
+     *
+     * @param {string} s
+     * @returns {string}
+     */
+    function _bbMbevLucene(s) {
+        return String(s).replace(/[+\-&|!(){}[\]^"~*?:\\/]/g, '\\$&');
+    }
+
+    /**
+     * Looks one year's rows up. Order: the url lookup of their anchors (an
+     * event MusicBrainz links to the row's own anchor, on the row's date, is
+     * the row's: its link is then known), the year search for the rest (by
+     * date, several on one date by place), the name search for those still
+     * without one (the top hit, only on the row's date), and an event lookup
+     * (`inc=url-rels`) for each event found by search whose Brucebase links
+     * are not known from the url lookups. Writes every answer; a request
+     * that failed leaves its rows unanswered (and they are reported back).
+     *
+     * @param {string} year
+     * @param {Array<{key: string, date: string, anchor: string, q: string}>} rows
+     * @returns {Promise<{answered: string[], failed: string[]}>}
+     */
+    async function _bbMbevAskYear(year, rows) {
+        const failed = new Set();
+        const byAnchor = new Map();   // anchor URL -> events MusicBrainz links it from
+        const linksOf = new Map();    // mbid -> Set of normalised Brucebase links
+        const addLink = (mbid, url) => {
+            const n = _bbMbevNorm(url);
+            if (!n) return;
+            if (!linksOf.has(mbid)) linksOf.set(mbid, new Set());
+            linksOf.get(mbid).add(n);
+        };
+        const anchors = rows.map(r => r.anchor).filter(Boolean);
+        for (let i = 0; i < anchors.length && !_bbMbev.stop; i += _BB_MBEV_BATCH) {
+            const batch = anchors.slice(i, i + _BB_MBEV_BATCH);
+            const res = await _bbMbevGet('https://musicbrainz.org/ws/2/url?' +
+                batch.map(u => `resource=${encodeURIComponent(u)}`).join('&') + '&inc=event-rels&fmt=json');
+            if (!res) {
+                rows.forEach(r => { if (batch.includes(r.anchor)) failed.add(r.key); });
+                continue;
+            }
+            const items = res.data ? (Array.isArray(res.data.urls) ? res.data.urls : res.data.resource ? [res.data] : []) : [];
+            items.forEach(u => {
+                const evs = (u.relations || []).filter(rel => rel && rel.event && rel.event.id).map(rel => _bbMbevEventOf(rel.event));
+                byAnchor.set(u.resource, evs);
+                evs.forEach(ev => addLink(ev.mbid, u.resource));
+            });
+        }
+        const byDate = new Map();
+        let searched = false;
+        const need = rows.filter(r => !failed.has(r.key) && !(byAnchor.get(r.anchor) || []).some(ev => ev.date === r.date));
+        if (need.length && /^\d{4}$/.test(year)) {
+            searched = true;
+            for (let offset = 0, total = 1; offset < total && !_bbMbev.stop;) {
+                const q = `arid:${_BB_MBEV_BRUCE} AND begin:[${year}-01-01 TO ${year}-12-31]`;
+                const res = await _bbMbevGet(`https://musicbrainz.org/ws/2/event?query=${encodeURIComponent(q)}&limit=${_BB_MBEV_BATCH}&offset=${offset}&fmt=json`);
+                if (!res || !res.data) {
+                    if (!res) need.forEach(r => failed.add(r.key));
+                    break;
+                }
+                const evs = res.data.events || [];
+                evs.forEach(e => {
+                    const ev = _bbMbevEventOf(e);
+                    if (!byDate.has(ev.date)) byDate.set(ev.date, []);
+                    byDate.get(ev.date).push(ev);
+                });
+                total = res.data.count || 0;
+                offset += evs.length;
+                if (!evs.length) break;
+            }
+        }
+        const found = new Map();      // row key -> {ev, via}
+        rows.forEach(r => {
+            if (failed.has(r.key)) return;
+            const own = (byAnchor.get(r.anchor) || []).find(ev => ev.date === r.date);
+            if (own) { found.set(r.key, { ev: own, via: 'link' }); return; }
+            const day = searched ? _bbMbevPickByPlace(byDate.get(r.date) || [], r.q) : null;
+            if (day) found.set(r.key, { ev: day, via: 'date' });
+        });
+        for (const r of rows) {
+            if (_bbMbev.stop) break;
+            if (failed.has(r.key) || found.has(r.key) || !r.q) continue;
+            const res = await _bbMbevGet(`https://musicbrainz.org/ws/2/event?query=${encodeURIComponent(_bbMbevLucene(r.q))}&limit=5&fmt=json`);
+            if (!res) { failed.add(r.key); continue; }
+            const top = res.data && (res.data.events || [])[0];
+            if (top && ((top['life-span'] || {}).begin || '') === r.date) found.set(r.key, { ev: _bbMbevEventOf(top), via: 'name' });
+        }
+        for (const [key, f] of found) {
+            if (_bbMbev.stop) break;
+            if (linksOf.has(f.ev.mbid) || f.via === 'link') continue;
+            const res = await _bbMbevGet(`https://musicbrainz.org/ws/2/event/${encodeURIComponent(f.ev.mbid)}?inc=url-rels&fmt=json`);
+            if (!res) { failed.add(key); continue; }
+            linksOf.set(f.ev.mbid, new Set());
+            ((res.data && res.data.relations) || []).forEach(rel => rel && rel.url && addLink(f.ev.mbid, rel.url.resource));
+        }
+        const now = Date.now();
+        const records = [];
+        const answered = [];
+        rows.forEach(r => {
+            if (failed.has(r.key) || (_bbMbev.stop && !found.has(r.key))) return;
+            const f = found.get(r.key);
+            const anchorEvs = r.anchor ? (byAnchor.get(r.anchor) || []) : [];
+            const rec = f
+                ? { key: r.key, ...f.ev, via: f.via, links: Array.from(linksOf.get(f.ev.mbid) || []), anchorEvents: anchorEvs.map(ev => ev.mbid), ts: now }
+                : { key: r.key, mbid: null, links: [], anchorEvents: anchorEvs.map(ev => ev.mbid), ts: now };
+            _bbMbevMem.set(r.key, rec);
+            records.push(rec);
+            answered.push(r.key);
+        });
+        _bbMbevPut(records);
+        return { answered, failed: Array.from(failed) };
+    }
+
+    /**
+     * Fills the MB-Event column: the store first (repainting what it
+     * answers), then — automatically after a render (`sa_bb_mb_event_lookup`),
+     * or on the ▶ MB header button or a failed cell — MusicBrainz for the
+     * rest, year by year (`_bbMbevAskYear()`), each year's answers written
+     * into its cells at once.
+     *
+     * @param {{user?: boolean, anchor?: ?Element, withFailed?: boolean}} [opts]
+     * @returns {Promise<void>}
+     */
+    async function _bbMbevRun({ user = false, anchor = null, withFailed = false } = {}) {
+        if (!_isBbHost || _bbMbev.running) return;
+        await _bbMbevLoadOwn();
+        let index = _bbMbevCellIndex();
+        if (!index.size) return;
+        const known = Array.from(index.keys()).filter(k => _bbMbevMem.has(k));
+        if (_bbMbevRepaint(index, known)) _bbMbevScheduleRefresh(true);
+        const misses = [];
+        index.forEach((cells, key) => {
+            if (_bbMbevMem.has(key)) return;
+            const td = cells.values().next().value;
+            const st = td.dataset.mbBbevState;
+            if (st === 'error' && !(withFailed || user)) return;
+            misses.push({ key, date: td.dataset.mbBbevDate || '', anchor: td.dataset.mbBbevAnchor || '', q: td.dataset.mbBbevQ || '' });
+        });
+        if (!misses.length || (!user && !_bbMbevAuto())) {
+            _bbMbevUpdateHdrBtns();
+            return;
+        }
+        _bbMbevRegisterProvider();
+        Object.assign(_bbMbev, { running: true, stop: false, total: misses.length, done: 0, failed: 0, requests: 0 });
+        _ajStart('bbmbev', null, { user, anchor });
+        _ajLog('bbmbev', null, `${misses.length} entr${misses.length === 1 ? 'y' : 'ies'} to look up on MusicBrainz`);
+        _bbMbevRepaint(index, misses.map(m => m.key), 'queued');
+        _bbMbevUpdateHdrBtns();
+        const years = new Map();
+        misses.forEach(m => {
+            const y = m.date.slice(0, 4);
+            if (!years.has(y)) years.set(y, []);
+            years.get(y).push(m);
+        });
+        for (const [year, rows] of years) {
+            if (_bbMbev.stop) break;
+            index = _bbMbevCellIndex();
+            _bbMbevRepaint(index, rows.map(r => r.key), 'run');
+            const { answered, failed } = await _bbMbevAskYear(year, rows);
+            index = _bbMbevCellIndex();
+            _bbMbevRepaint(index, answered);
+            _bbMbevRepaint(index, failed, 'error');
+            _bbMbev.done += answered.length;
+            _bbMbev.failed += failed.length;
+            const hits = answered.filter(k => (_bbMbevMem.get(k) || {}).mbid).length;
+            _ajLog('bbmbev', null, `${year || 'no date'}: ${hits} found, ${answered.length - hits} with no event` +
+                (failed.length ? `, ${failed.length} failed` : ''), failed.length ? 'bad' : 'good');
+            _ajChanged('bbmbev', null);
+            _bbMbevScheduleRefresh(false);
+        }
+        if (_bbMbev.stop) {
+            index = _bbMbevCellIndex();
+            _bbMbevRepaint(index, misses.map(m => m.key).filter(k => !_bbMbevMem.has(k) &&
+                Array.from(index.get(k) || []).some(td => td.dataset.mbBbevState !== 'error')));
+        }
+        _bbMbev.running = false;
+        _ajFinish('bbmbev', null, _bbMbev.failed);
+        _bbMbevScheduleRefresh(true);
+    }
+
+    /**
+     * The render tail on brucebase.wikidot.com: the header toggles (a
+     * re-render rebuilds every head from a clone), and — after a fresh
+     * render or a disk load — the lookup. Nothing without MB-Event cells.
+     *
+     * @param {boolean} [start] - Run the lookup.
+     * @returns {void}
+     */
+    function _bbMbevAfterRender(start) {
+        if (!_isBbHost || !document.querySelector('body.mb-sa-host-bb td.mb-bbev-cell')) return;
+        _bbMbevInitColHeaderToggles();
+        if (start) _bbMbevRun();
+    }
+
+    /**
+     * Adds the ▶ MB toggle to every MB-Event header that lacks one; installs
+     * the click delegates once.
+     *
+     * @returns {void}
+     */
+    function _bbMbevInitColHeaderToggles() {
+        _bbMbevRegisterProvider();
+        _bbMbevEnsureDelegates();
+        document.querySelectorAll('body.mb-sa-host-bb table.tbl thead th').forEach(th => {
+            if (th.dataset.colName !== _BB_MBEV_COL || th.querySelector('.mb-bbmbev-col-hdr-btn')) return;
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'mb-bbmbev-col-hdr-btn';
+            btn.dataset.mbAj = 'bbmbev';
+            btn.dataset.mbAjName = '▶ MB';
+            btn.setAttribute('aria-pressed', 'false');
+            btn.setAttribute('aria-label', 'Look up the MB-Event column on MusicBrainz');
+            const flex = th.querySelector('.mb-col-hdr-flex');
+            (flex || th).prepend(btn);
+        });
+        _bbMbevUpdateHdrBtns();
+    }
+
+    /**
+     * Repaints every ▶ MB toggle: pressed once every row is answered, a
+     * done/total badge while a lookup runs, yellow after a failure.
+     *
+     * @returns {void}
+     */
+    function _bbMbevUpdateHdrBtns() {
+        const btns = document.querySelectorAll('.mb-bbmbev-col-hdr-btn');
+        if (!btns.length) return;
+        const pending = _bbMbevPendingCount();
+        btns.forEach(b => {
+            b.setAttribute('aria-pressed', pending === 0 && !_bbMbev.running ? 'true' : 'false');
+            if (_bbMbev.running && _bbMbev.total) b.dataset.bbmbevProgress = `${_bbMbev.done}/${_bbMbev.total}`;
+            else delete b.dataset.bbmbevProgress;
+            if (!_bbMbev.running && _bbMbev.failed) b.dataset.bbmbevState = 'error';
+            else delete b.dataset.bbmbevState;
+        });
+    }
+
+    /**
+     * The delegated clicks, installed once: the ▶ MB toggle looks up every
+     * row not answered (failed ones too; capture phase, so the header's sort
+     * never sees it), a failed cell's glyph does the same.
+     *
+     * @returns {void}
+     */
+    function _bbMbevEnsureDelegates() {
+        if (_bbMbevEnsureDelegates.done) return;
+        _bbMbevEnsureDelegates.done = true;
+        document.addEventListener('click', (e) => {
+            const t = e.target;
+            const btn = t.closest && t.closest('.mb-bbmbev-col-hdr-btn');
+            const failed = !btn && t.closest && t.closest('td.mb-bbev-cell .mb-bbev-g[data-s="fail"]');
+            if (!btn && !failed) return;
+            e.preventDefault();
+            e.stopPropagation();
+            _bbMbevRun({ user: true, anchor: btn || failed, withFailed: true });
+        }, true);
+    }
+
+    /**
+     * Registers the MB-Event column's provider of the async job popup.
+     *
+     * @returns {void}
+     */
+    function _bbMbevRegisterProvider() {
+        _ajRegister('bbmbev', {
+            glyph: 'MB',
+            label: 'MusicBrainz events',
+            scopeOf: () => null,
+            snapshot: (scope, job) => _bbMbevSnapshot(job),
+            onOpen: (scope, repaint) => {
+                if (Date.now() - _bbMbev.storeCountAt < 5000) return;
+                _bbMbev.storeCountAt = Date.now();
+                _bbMbevOpenIdb().then(db => new Promise(resolve => {
+                    const req = db.transaction('events', 'readonly').objectStore('events').count();
+                    req.onsuccess = () => resolve(req.result);
+                    req.onerror = () => resolve(null);
+                })).catch(() => null).then(n => { _bbMbev.storeCount = n; repaint(); });
+            },
+            act: (scope, id) => {
+                if (id === 'retry') _bbMbevRun({ withFailed: true });
+                if (id === 'stop') _bbMbev.stop = true;
+            },
+        });
+    }
+
+    /**
+     * The progress card's content (see `_ajRender()`).
+     *
+     * @param {?object} job
+     * @returns {object}
+     */
+    function _bbMbevSnapshot(job) {
+        const fmt = n => Number(n).toLocaleString('en-US');
+        const cache = [
+            ['Store', `IndexedDB ${_BB_MBEV_IDB_NAME}, found 90 days, no event 7 days, a failure never`],
+            ['Records', _bbMbev.storeCount === null ? 'counting…' : fmt(_bbMbev.storeCount)],
+        ];
+        const actions = [];
+        if (_bbMbev.running) actions.push({ id: 'stop', label: 'Stop', kind: 'danger' });
+        else if (_bbMbev.failed) actions.push({ id: 'retry', label: `Retry ${_bbMbev.failed} failed`, kind: 'danger' });
+        if (!job) {
+            const pending = _bbMbevPendingCount();
+            return {
+                phase: 'idle',
+                summary: pending ? `${fmt(pending)} entries not looked up yet. Click ▶ MB to ask MusicBrainz.` : 'Every entry is answered.',
+                facts: [['Entries', `${fmt(pending)} not answered`]], cache, actions,
+            };
+        }
+        const s = Math.round(((job.t1 || Date.now()) - job.t0) / 1000);
+        return {
+            phase: job.phase,
+            summary: `MusicBrainz events for ${fmt(_bbMbev.total)} Brucebase entr${_bbMbev.total === 1 ? 'y' : 'ies'}`,
+            done: _bbMbev.done, total: _bbMbev.total, failed: _bbMbev.failed,
+            queued: Math.max(0, _bbMbev.total - _bbMbev.done - _bbMbev.failed), unit: 'entries',
+            facts: [
+                ['Steps', 'per year: the Brucebase links (100 a request), the year\'s events, then by name for the rest'],
+                ['Requests', `${fmt(_bbMbev.requests)} made`],
+                ['Rate', 'one per 1.1 s'],
+                ['Time', `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}${job.t1 ? '' : ' elapsed'}`],
+            ],
+            cache, actions,
+        };
+    }
+
+    /**
+     * The inc set of the MB-Event glyph's card: the MusicBrainz event
+     * card's own (`_MB_KINDS.event`'s `cardInc`), so its answer sits under
+     * the same `_mbPop` key and the card renders it unchanged.
+     * @type {string}
+     */
+    const _BB_MBEV_POP_INC = 'artist-rels+place-rels+event-rels+series-rels+url-rels';
+
+    /**
+     * Loads the MusicBrainz event a glyph links, for its card and window,
+     * through GM from the Brucebase page (the entity cards' `_mbWsLoad()`
+     * asks its own origin): one request in the shared rate slot, the answer
+     * kept in `_mbPop` under the key `_MB_KINDS.event.card()` reads. A load
+     * under way or done is not asked again unless `force` (⟳).
+     *
+     * @param {{id: string}} t
+     * @param {boolean} force
+     * @param {function(): void} repaint
+     * @returns {string} The `_mbPop` key.
+     */
+    function _bbMbevPopLoad(t, force, repaint) {
+        const key = `pop:event:${t.id}:${_BB_MBEV_POP_INC}`;
+        const cur = _mbPop.get(key);
+        if (cur && (cur.status === 'loading' || (!force && cur.status === 'done'))) return key;
+        const st = { status: 'loading', data: null, at: 0, cached: false, detail: '' };
+        _mbPop.set(key, st);
+        (async () => {
+            await _relAwaitRateSlot();
+            const res = await _extGet(`https://musicbrainz.org/ws/2/event/${encodeURIComponent(t.id)}?inc=${_BB_MBEV_POP_INC}&fmt=json`, {
+                gate: false, wanted: () => true,
+                fetchOpts: { accept: /\bjson\b/i, headers: { 'User-Agent': _EXT_AGENT, Accept: 'application/json' } },
+            });
+            let data = null;
+            if (!res.error && res.status === 200) {
+                try {
+                    data = JSON.parse(String(res.body || '') + String(res.tail || ''));
+                } catch (_) { /* reported below */ }
+            }
+            if (data) Object.assign(st, { status: 'done', data, at: Date.now(), cached: false });
+            else Object.assign(st, { status: 'failed', detail: res.error || `HTTP ${res.status}` });
+            repaint();
+        })();
+        return key;
+    }
+
+    /**
+     * How a row's MusicBrainz event links back to the row (item g): the
+     * row's own anchor URL against the event's Brucebase year links and the
+     * events MusicBrainz links that anchor from.
+     *
+     * - `ok`: the event links the row's anchor;
+     * - `mismatch`: it links another entry's anchor, or the row's anchor is
+     *   linked from another event;
+     * - `missing`: it links no Brucebase year page at all;
+     * - null: nothing to compare (no event, no anchor, not answered).
+     *
+     * @param {?HTMLTableCellElement} td An MB-Event cell.
+     * @returns {?{state: string, own: string, links: string[], others: string[]}}
+     */
+    function _bbMbevCheck(td) {
+        if (!td || td.dataset.mbBbevState !== 'done' || !td.dataset.mbBbevMbid) return null;
+        const own = _bbMbevNorm(td.dataset.mbBbevAnchor || '');
+        if (!own) return null;
+        const links = (td.dataset.mbBbevLinks || '').split(' ').filter(Boolean);
+        const others = (td.dataset.mbBbevAnchorEvents || '').split(' ').filter(id => id && id !== td.dataset.mbBbevMbid);
+        if (links.includes(own) && !others.length) return { state: 'ok', own, links, others };
+        if (links.length || others.length) return { state: 'mismatch', own, links, others };
+        return { state: 'missing', own, links, others };
+    }
+
+    /**
+     * The card's and window's Brucebase block for a glyph: how the event was
+     * found and whether its Brucebase link is this entry's
+     * (`_bbMbevCheck()`), the two links side by side when they differ.
+     *
+     * @param {?Element} el The glyph.
+     * @returns {string} HTML ('' when there is nothing to say).
+     */
+    function _bbMbevCheckHtml(el) {
+        const td = el && el.closest ? el.closest('td.mb-bbev-cell') : null;
+        if (!td) return '';
+        const rec = _bbMbevMem.get(td.dataset.mbBbevKey) || {};
+        const how = { link: 'by its Brucebase link', date: 'by date (search)', name: 'by name (search)' }[rec.via] || '';
+        const c = _bbMbevCheck(td);
+        const parts = [];
+        if (how) parts.push(`<div class="mb-tt-dim">Found ${_rgEsc(how)}</div>`);
+        if (c && c.state === 'ok') {
+            parts.push(`<div class="mb-tt-body">Brucebase: <code>${_rgEsc(c.own)}</code> ✓ this entry</div>`);
+        } else if (c && c.state === 'mismatch') {
+            parts.push('<div class="mb-tt-body mb-tt-alert">ERROR: the MusicBrainz event and this entry do not link each other.</div>' +
+                '<div class="mb-tt-cmp"><div class="mb-tt-cmp-grid">' +
+                `<span class="mb-tt-cmp-lbl">This row</span><span class="mb-tt-cmp-val"><code>${_rgEsc(c.own)}</code></span>` +
+                `<span class="mb-tt-cmp-lbl">MusicBrainz</span><span class="mb-tt-cmp-val">${c.links.length ? c.links.map(l => `<code>${_rgEsc(l)}</code>`).join('<br>') : 'no Brucebase link'}</span>` +
+                (c.others.length ? `<span class="mb-tt-cmp-lbl">Anchor of</span><span class="mb-tt-cmp-val">${c.others.length === 1 ? 'another event' : `${c.others.length} other events`}</span>` : '') +
+                '</div></div>');
+        } else if (c && c.state === 'missing') {
+            parts.push(`<div class="mb-tt-body"><b>WARNING:</b> the MusicBrainz event has no Brucebase link. This row's would be <code>${_rgEsc(c.own)}</code>.</div>`);
+        }
+        return parts.length ? `<div class="mb-tt-rule"></div>${parts.join('')}` : '';
+    }
+
+    /**
+     * The MB-Event glyph as a source of the popup engine (org/TODO.org "Some
+     * enhancements" f, 2026-10-24): the MusicBrainz event's own card
+     * (`_MB_KINDS.event`), loaded through GM (`_bbMbevPopLoad()`), with the
+     * row's Brucebase block under it (`_bbMbevCheckHtml()`); Space pins it
+     * into the window with the event's links. No Live page view: MusicBrainz
+     * answers a script's page request with a browser check. Under
+     * `sa_bb_event_preview`, with Ctrl as the other previews.
+     *
+     * @returns {object} The source.
+     */
+    function _bbMbevSource() {
+        const key = (t) => `pop:event:${t.id}:${_BB_MBEV_POP_INC}`;
+        return {
+            id: 'bb-mbev',
+            kind: 'MusicBrainz event',
+            selector: 'a.mb-bbev-link',
+            wide: true,
+            live: null,
+            enabled: () => !!_isBbHost && Lib.settings.sa_bb_event_preview !== false,
+            resolve(a) {
+                const m = (a.getAttribute('href') || '').match(/\/event\/([0-9a-f-]{36})(?:[?#]|$)/i);
+                if (!m) return null;
+                const name = (a.getAttribute('title') || a.dataset.mbTipSaved || '').split(' · ')[0];
+                return { key: `bbmbev:${m[1].toLowerCase()}`, url: a.href, type: 'event', id: m[1].toLowerCase(), noLive: true, name };
+            },
+            needsCtrl: _dpNeedsCtrl,
+            liveUrl: (t) => t.url,
+            card(t, start, repaint) {
+                if (start) _bbMbevPopLoad(t, false, repaint);
+                const check = _bbMbevCheckHtml(t.el);
+                return _MB_KINDS.event.card(t, false, repaint).replace(/<div class="mb-tt-foot">/, (f) => check + f);
+            },
+            extracted(t, start, force, repaint) {
+                if (start) _bbMbevPopLoad(t, force, repaint);
+                const st = _mbPop.get(key(t));
+                const card = _MB_KINDS.event.card(t, false, repaint).replace(/<div class="mb-tt-foot">[\s\S]*?<\/div>/, '');
+                const links = st && st.status === 'done' && st.data ? _mbPopUrlRowsHtml(st.data.relations) : '';
+                return `<div class="mb-dp-x"><div class="mb-dp-col">${card}${links}</div>` +
+                    `<div class="mb-dp-col"><h4>Brucebase</h4>${_bbMbevCheckHtml(t.el) || '<div class="mb-dp-xsub">Nothing to compare.</div>'}</div></div>`;
+            },
+            steps: () => Array.from(document.querySelectorAll('body.mb-sa-host-bb table.tbl tbody a.mb-bbev-link')).filter(a => a.getClientRects().length),
+            stepId: (a) => a.href,
+        };
+    }
+
+    /**
      * Builds one table row of the Brucebase year table, in `_BB_YEAR_HEADERS`
      * order.
      *
@@ -18606,7 +19608,7 @@
      * (absolute) intact, so its song links get the detail preview. Media is
      * the entry's icon row, one `<li>` per icon: the site's own image and
      * its label as text (shown by the icon, read by filters and the 📊
-     * dropdown). An unlinked Photo, Ticket, News or Memorabilia icon of an
+     * dropdown). An unlinked Photo, Ticket, Setlist, News or Memorabilia icon of an
      * entry with a page of its own links that page as the foreign-image
      * card's and viewer's trigger (`a.mb-fi-media`, `_BB_FI`; the label's
      * text is unchanged). The "Help Us" icon and the request text after it
@@ -18703,35 +19705,16 @@
             tr.appendChild(td);
         };
 
-        textCell(h.date);
-        textCell(h.type);
-        const venueTd = docContext.createElement('td');
-        const venueText = h.venue || entry.heading;
-        if (href) {
-            const venueA = docContext.createElement('a');
-            venueA.setAttribute('href', _bbAbsHref(href));
-            _mbSetSiteTitle(venueA, venueText, venueTd);
-            venueTd.appendChild(venueA);
-        } else {
-            _mbSetSiteTitle(venueTd, venueText);
-        }
-        tr.appendChild(venueTd);
-        // City and Country in MusicBrainz style too ("HAMPTON" → "Hampton",
-        // "THE NETHERLANDS" → "The Netherlands"); "USA" stays as it is.
-        // State is a code ("NJ") or a region and is left alone.
-        _mbSetSiteTitle(textCell(''), h.city);
-        textCell(h.state);
-        if (h.country === 'USA') textCell(h.country);
-        else _mbSetSiteTitle(textCell(''), h.country);
-        textCell(entry.tour);
-        listCell(soundcheck);
-        listCell(setlist);
-        textCell(notes.join(' '));
-
-        const notesTd = docContext.createElement('td');
-        description.forEach(n => notesTd.appendChild(_bbCloneAbs(n, docContext)));
-        tr.appendChild(notesTd);
-
+        // Event first (org/TODO.org "Some enhancements" 3a): the whole
+        // heading, its parts written as the Venue, City, State and Country
+        // cells write them, linked to the entry's page.
+        tr.appendChild(_bbYearEventCell(entry, h, href, docContext));
+        // MB-Event second (3c): the entry's MusicBrainz event, filled in
+        // after the render (`_bbMbevRun()`).
+        tr.appendChild(_bbMbevCell(entry, h, href, docContext));
+        // Media is built here and placed second, right after Event
+        // (org/TODO.org "Some enhancements" 3d): at the far right it took a
+        // horizontal scroll to see.
         const mediaTd = docContext.createElement('td');
         if (media.length) {
             const ul = docContext.createElement('ul');
@@ -18763,16 +19746,55 @@
                     a.rel = 'noopener';
                     a.appendChild(img);
                     li.appendChild(a);
+                    // The name goes on the trigger, not the <li>: the image
+                    // card stashes its trigger's title while it shows, but a
+                    // title on an ancestor the browser would draw over the
+                    // card (vzell, 2026-10-24). With the card off, the
+                    // trigger's own tip still names the icon.
+                    _setTip(a, m.label);
                 } else {
                     li.appendChild(img);
                 }
                 li.appendChild(label);
-                _setTip(li, m.label);
+                if (!li.querySelector('a.mb-fi-media')) _setTip(li, m.label);
                 ul.appendChild(li);
             });
             mediaTd.appendChild(ul);
         }
         tr.appendChild(mediaTd);
+        textCell(h.date);
+        textCell(h.type);
+        const venueTd = docContext.createElement('td');
+        const venueText = h.venue || entry.heading;
+        if (href) {
+            // Links the entry page (the year page names no venue page);
+            // its preview is the venue's, read through that page
+            // (`_DP_SITES[…].via`, 2026-10-24).
+            const venueA = docContext.createElement('a');
+            venueA.className = 'mb-bb-venue-link';
+            venueA.setAttribute('href', _bbAbsHref(href));
+            _mbSetSiteTitle(venueA, venueText, venueTd);
+            venueTd.appendChild(venueA);
+        } else {
+            _mbSetSiteTitle(venueTd, venueText);
+        }
+        tr.appendChild(venueTd);
+        // City and Country in MusicBrainz style too ("HAMPTON" → "Hampton",
+        // "THE NETHERLANDS" → "The Netherlands"); "USA" stays as it is.
+        // State is a code ("NJ") or a region and is left alone.
+        _mbSetSiteTitle(textCell(''), h.city);
+        textCell(h.state);
+        if (h.country === 'USA') textCell(h.country);
+        else _mbSetSiteTitle(textCell(''), h.country);
+        textCell(entry.tour);
+        listCell(soundcheck);
+        listCell(setlist);
+        textCell(notes.join(' '));
+
+        const notesTd = docContext.createElement('td');
+        description.forEach(n => notesTd.appendChild(_bbCloneAbs(n, docContext)));
+        tr.appendChild(notesTd);
+
         textCell(infoWanted ? 'yes' : '');
         return tr;
     }
@@ -19481,6 +20503,32 @@
             body.mb-sa-host-bb #mb-bb-sidebar-handle.mb-bb-handle-right.mb-bb-handle-collapsed::after { content: '◀'; }
             body.mb-sa-host-bb #mb-bb-sidebar-handle.mb-bb-handle-left::after { content: '◀'; }
             body.mb-sa-host-bb #mb-bb-sidebar-handle.mb-bb-handle-left.mb-bb-handle-collapsed::after { content: '▶'; }
+            /* The Event column is always its whole name on one line: the
+               column grows to the longest (vzell, 2026-10-24). */
+            body.mb-sa-host-bb td.mb-bb-event-cell { white-space: nowrap; }
+            /* The MB-Event glyphs and their states (mockup, 2026-10-24). */
+            body.mb-sa-host-bb td.mb-bbev-cell { white-space: nowrap; text-align: center; }
+            body.mb-sa-host-bb .mb-bbev-g { display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 50%;
+                position: relative; color: #2b2622; text-decoration: none; vertical-align: middle; }
+            body.mb-sa-host-bb .mb-bbev-g svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.4;
+                stroke-linecap: round; stroke-linejoin: round; pointer-events: none; }
+            body.mb-sa-host-bb .mb-bbev-g[data-s="idle"], body.mb-sa-host-bb .mb-bbev-g[data-s="queued"] { color: #7a6d5c; opacity: .5; }
+            body.mb-sa-host-bb .mb-bbev-g[data-s="queued"]::after { content: ''; position: absolute; right: 1px; bottom: 2px; width: 5px; height: 5px;
+                border-radius: 50%; background: #7a6d5c; }
+            body.mb-sa-host-bb .mb-bbev-g[data-s="run"] { color: #2f5f9e; box-shadow: 0 0 0 1.5px #2f5f9e; animation: mb-bbev-pulse 1.1s ease-in-out infinite; }
+            @keyframes mb-bbev-pulse { 50% { box-shadow: 0 0 0 4px rgba(47,95,158,.18); } }
+            @media (prefers-reduced-motion: reduce) { body.mb-sa-host-bb .mb-bbev-g[data-s="run"] { animation: none; } }
+            body.mb-sa-host-bb .mb-bbev-g[data-s="found"] { background: #efe6d4; box-shadow: 0 0 0 1px #d9cfbd; }
+            body.mb-sa-host-bb .mb-bbev-g[data-s="found"]:hover { box-shadow: 0 0 0 1.5px #2f5f9e; color: #2f5f9e; }
+            body.mb-sa-host-bb .mb-bbev-g[data-s="none"] { color: #7a6d5c; opacity: .75; }
+            body.mb-sa-host-bb .mb-bbev-g[data-s="none"]::after { content: '?'; position: absolute; right: -2px; top: -3px;
+                font: 700 10px system-ui, Arial, sans-serif; color: #7a6d5c; }
+            body.mb-sa-host-bb .mb-bbev-g[data-s="fail"] { color: #9a6a00; cursor: pointer; }
+            body.mb-sa-host-bb .mb-bbev-g[data-s="fail"]::after { content: '⚠'; position: absolute; right: -4px; top: -5px; font-size: 10px; }
+            body.mb-sa-host-bb .mb-bbev-ids { display: none; }
+            /* The Brucebase-link findings ring the glyph too (mockup). */
+            body.mb-sa-host-bb td.mb-bbev-cell[data-mb-finding="error"] .mb-bbev-g { box-shadow: 0 0 0 1.5px #9b2218; }
+            body.mb-sa-host-bb td.mb-bbev-cell[data-mb-finding="warn"] .mb-bbev-g { box-shadow: 0 0 0 1.5px #9a6a00; }
             body.mb-sa-host-bb ul.mb-bb-media {
                 list-style: none;
                 margin: 0;
@@ -19603,8 +20651,9 @@
      * inside itself when taller), so it stays in view while the page scrolls
      * down: a year table is thousands of pixels tall, the side bar 550.
      *
-     * With `sa_bb_collabsable_sidebar` (default off; its own setting since
-     * 2026-10-09, it used to share MusicBrainz's `sa_collabsable_sidebar`)
+     * With `sa_bb_collabsable_sidebar` (default on since 2026-10-24, off
+     * before; its own setting since 2026-10-09, it used to share
+     * MusicBrainz's `sa_collabsable_sidebar`)
      * it gets the MusicBrainz sidebar's handle
      * (same look; `initSidebarCollapse()` itself is bound to MusicBrainz's
      * `#sidebar`, `#page` and `#content`), starting collapsed while
@@ -19716,9 +20765,21 @@
      *    song's graph and lyric sheets, and the photos, tickets, passes and
      *    clippings of a year page's entry (`_dpParseBbPage()`), for the
      *    foreign-image card and viewer (org/foreign-images.org, phase 3).
+     * 4: a Brucebase setlist image (`files:setlist-YYYY`) is of kind
+     *    Setlist, no longer Other (`_bbImageKind()`).
+     * 5: a Brucebase entry page (`/gig:`, `/nogig:`, …) carries its fields
+     *    and sections (`_dpParseBbPage()`: Scheduled, On stage, Setlist,
+     *    the tabs with content), for the Event column's preview.
+     * 6: Brucebase sections carry their links (`html`, `_dpBlockHtml()`),
+     *    a song its Performances, and the records `collapsible` and
+     *    `imagesByKind` for the window.
+     * 7: a Brucebase venue page has a reader of its own
+     *    (`_dpParseBbVenue()`), its photos (`venue:`) are of kind Photo, and
+     *    an entry page names its venue's page (`venueUrl`), which the Venue
+     *    column's preview reads through it.
      * @type {number}
      */
-    const _DP_PARSER_VERSION = 3;
+    const _DP_PARSER_VERSION = 7;
 
     /**
      * IndexedDB database of parsed detail pages. Deliberately NOT a store in
@@ -20186,6 +21247,34 @@
     }
 
     /**
+     * `_dpBlockText()` with the block's links kept: the same lines, escaped,
+     * each `<a href>` of the block an absolute link (`target="_blank"`) with
+     * its own text — nothing else of the page's markup survives. For a
+     * section the window shows with its links (Brucebase's On stage,
+     * Setlist, Performances, Credits; org/TODO.org "Some enhancements",
+     * vzell 2026-10-24), which open in the window and preview on hover
+     * (`_dpWinWhat()`).
+     *
+     * @param {Element} el
+     * @param {string}  base The detail page's URL.
+     * @returns {string} HTML; its newlines are the lines (the section is `pre-wrap`).
+     */
+    function _dpBlockHtml(el, base) {
+        const c = el.cloneNode(true);
+        const links = [];
+        c.querySelectorAll('a[href]').forEach(a => {
+            const href = _dpAbsUrl(a.getAttribute('href'), base);
+            const text = _dpText(a.textContent);
+            if (!/^https?:/i.test(href) || !text) return;
+            links.push({ href, text });
+            // A private-use pair marks the link's place through the text pass.
+            a.replaceWith((c.ownerDocument || document).createTextNode(`\uE000${links.length - 1}\uE001`));
+        });
+        return _mbttEscape(_dpBlockText(c)).replace(/\uE000(\d+)\uE001/g, (_, i) =>
+            `<a href="${_mbttEscape(links[i].href)}" target="_blank" rel="noopener">${_mbttEscape(links[i].text)}</a>`);
+    }
+
+    /**
      * Resolves a link or image path of a detail page to an absolute URL.
      * jungleland.it and brucespringsteen.it write their image paths with
      * backslashes (`..\artwork\1970\thumb\…`), which a browser only
@@ -20543,10 +21632,14 @@
 
     /**
      * A Brucebase image's kind, by the wiki folder it lives in: Photo
-     * (`gallery:<page>`), Ticket (`files:ticket-YYYY`), Memorabilia
-     * (`files:pass-YYYY`), News (`news:<page>`), Song graph
-     * (`files:song-graph`), Lyric sheet (`files:song-lyricsheet`), else
-     * Other (scripts/probe-foreign-images.py, 2026-10-23).
+     * (`gallery:<page>`, and a venue page's own `venue:<page>`), Ticket
+     * (`files:ticket-YYYY`), Memorabilia
+     * (`files:pass-YYYY`), Setlist (`files:setlist-YYYY`), News
+     * (`news:<page>`), Song graph (`files:song-graph`), Lyric sheet
+     * (`files:song-lyricsheet`), else Other (scripts/probe-foreign-images.py,
+     * 2026-10-23; Setlist: scripts/probe-bb-setlist-images.py, 2026-10-24;
+     * venues: scripts/probe-bb-venue-pages.py, 2026-10-24, where a venue's
+     * Gallery may also hold an older name's folder, `venue:sap-center-…`).
      *
      * @param {string} folder - The path segment after
      *   `local--resized-images/` ("files:ticket-1985", "gallery:1985-01-04-…").
@@ -20554,10 +21647,11 @@
      */
     function _bbImageKind(folder) {
         const f = String(folder || '').toLowerCase();
-        if (f.startsWith('gallery:')) return 'Photo';
+        if (f.startsWith('gallery:') || f.startsWith('venue:')) return 'Photo';
         if (f.startsWith('news:')) return 'News';
         if (f.startsWith('files:ticket-')) return 'Ticket';
         if (f.startsWith('files:pass-')) return 'Memorabilia';
+        if (f.startsWith('files:setlist-')) return 'Setlist';
         if (f === 'files:song-graph') return 'Song graph';
         if (f === 'files:song-lyricsheet') return 'Lyric sheet';
         return 'Other';
@@ -20600,10 +21694,16 @@
 
     /**
      * Parses any Brucebase page that is not a song: an entry of a year page
-     * (`/gig:`, `/nogig:`, `/recording:`, `/rehearsal:`, …). Only its title
-     * and its gallery images (`_bbPageImages()`), for the foreign-image card
-     * and viewer of the year table's Media icons; the detail preview does
-     * not take these pages (`isDetailUrl` is `/song:` only).
+     * (`/gig:`, `/nogig:`, `/recording:`, `/rehearsal:`, …): its title and
+     * gallery images (`_bbPageImages()`, for the foreign-image card and
+     * viewer of the year table's Media icons), and since 2026-10-24 the
+     * fields and sections of their own preview (any link to one on a
+     * Brucebase page, `_DP_SITES[…].ownLinks`): Scheduled
+     * (`_bbScheduledText()`), On stage (`_bbOnStageText()`), the Setlist's
+     * count and ends, the images by kind, the tabs with content ("Sorry, no
+     * Media available." is none); the window adds On stage, the whole
+     * setlist, Performances, Recording, Storyteller, Eyewitness and
+     * News/Memorabilia.
      *
      * @param {Document} doc The fetched page.
      * @param {string}   url The page's URL.
@@ -20616,12 +21716,203 @@
         const data = _dpEmpty();
         data.title = _dpText(doc.getElementById('page-title') ? doc.getElementById('page-title').textContent : '');
         data.images = _bbPageImages(content, url);
+        // The venue's page, from the "Info & Setlist | Venue" line under
+        // the Scheduled block (debug/bb-event-detail.html): what the Venue
+        // column's preview reads through this page (`_DP_SITES[…].via`).
+        const venueA = Array.from(content.querySelectorAll('a[href*="/venue:"]')).find(a => _dpText(a.textContent) === 'Venue');
+        if (venueA) data.venueUrl = _dpAbsUrl(venueA.getAttribute('href'), url);
+        // org/TODO.org "Some enhancements" 3b (2026-10-24): the Event
+        // column's preview card and window (debug/bb-event-detail-1985-01-13.html).
+        const code = content.querySelector('div.code');
+        const sched = code ? _bbScheduledText(_dpText(code.textContent)) : '';
+        if (sched) data.fields.push(['Scheduled', sched]);
+        const nav = content.querySelector('div.yui-navset');
+        if (!nav) return data;
+        const labels = Array.from(nav.querySelectorAll(':scope > ul.yui-nav > li')).map(li => _dpText(li.textContent));
+        const panels = Array.from((nav.querySelector(':scope > .yui-content') || { children: [] }).children);
+        const tab = (name) => panels[labels.indexOf(name)] || null;
+        const has = (panel) => {
+            const t = panel ? _dpText(panel.textContent) : '';
+            return !!t && !/^Sorry,? no\b.*\bavailable\.?$/i.test(t);
+        };
+        const stage = tab('On Stage');
+        const onStage = stage ? _bbOnStageText(stage) : '';
+        if (onStage) data.fields.push(['On stage', onStage]);
+        const setPanel = tab('Setlist');
+        const songs = setPanel ? Array.from(setPanel.querySelectorAll('li')).map(li => _mbSiteTitleText(_dpText(li.textContent))).filter(Boolean) : [];
+        if (songs.length) {
+            const head = songs.slice(0, 3).join(', ');
+            data.fields.push(['Setlist', `${songs.length} song${songs.length === 1 ? '' : 's'}: ${head}` +
+                (songs.length > 4 ? ` … ${songs[songs.length - 1]}` : songs.length === 4 ? `, ${songs[3]}` : '')]);
+            const items = Array.from(setPanel.querySelectorAll('li')).filter(li => _dpText(li.textContent));
+            data.sections.push({
+                label: `Setlist (${songs.length})`, text: songs.map((t, i) => `${i + 1}. ${t}`).join('\n'),
+                html: items.map((li, i) => {
+                    const a = li.querySelector('a[href]');
+                    const href = a ? _dpAbsUrl(a.getAttribute('href'), url) : '';
+                    const t = _mbttEscape(songs[i]);
+                    return `${i + 1}. ` + (href ? `<a href="${_mbttEscape(href)}" target="_blank" rel="noopener">${t}</a>` : t);
+                }).join('\n'),
+            });
+        }
+        if (data.images.length) {
+            const kinds = new Map();
+            data.images.forEach(im => kinds.set(im.label, (kinds.get(im.label) || 0) + 1));
+            data.fields.push(['Images', `${data.images.length}: ` + Array.from(kinds, ([k, n]) => `${k} ${n}`).join(' · ')]);
+        }
+        const filled = labels.filter((l, i) => has(panels[i]));
+        if (filled.length) data.fields.push(['On the page', filled.join(' · ')]);
+        if (onStage) data.sections.unshift({ label: 'On stage', text: _dpBlockText(stage), html: _dpBlockHtml(stage, url) });
+        ['Performances', 'Recording', 'Storyteller', 'Eyewitness', 'News/Memorabilia'].forEach(name => {
+            const panel = tab(name);
+            const text = has(panel) ? _dpBlockText(panel) : '';
+            if (text) data.sections.push({ label: name, text, html: _dpBlockHtml(panel, url) });
+        });
+        data.collapsible = true;
+        data.imagesByKind = true;
         return data;
     }
 
     /**
-     * Parses a Brucebase song page (`/song:<slug>`); any other page goes to
-     * `_dpParseBbPage()`.
+     * An entry page's "Scheduled: 19:30 Local Start Time ??:?? / End Time
+     * ??:??" line (its `div.code` block) as the preview shows it: the
+     * scheduled time, then the actual start and end where the wiki knows
+     * them ("??:??" is not known). '' when the line is not there.
+     *
+     * @param {string} text The block's text, whitespace collapsed.
+     * @returns {string} "19:30 · start and end not known", "20:00 · started 20:15 · ended 23:05", …
+     */
+    function _bbScheduledText(text) {
+        const m = String(text).match(/Scheduled:\s*(\S+)(?:\s+Local)?\s+Start Time\s+(\S+)\s*\/\s*End Time\s+(\S+)/i);
+        if (!m) return '';
+        const known = (v) => v && !/\?/.test(v);
+        const parts = [known(m[1]) ? m[1] : 'time not known'];
+        if (known(m[2])) parts.push(`started ${m[2]}`);
+        if (known(m[3])) parts.push(`ended ${m[3]}`);
+        if (!known(m[2]) && !known(m[3])) parts.push('start and end not known');
+        else if (!known(m[2])) parts.push('start not known');
+        else if (!known(m[3])) parts.push('end not known');
+        return parts.join(' · ');
+    }
+
+    /**
+     * The On Stage tab of an entry page as one line: each top-level name,
+     * and a band's members after it in parentheses ("Bruce Springsteen, The
+     * E Street Band (Roy Bittan, Clarence Clemons, …)").
+     *
+     * @param {Element} panel The tab's panel.
+     * @returns {string}
+     */
+    function _bbOnStageText(panel) {
+        const list = panel.querySelector('ul, ol');
+        if (!list) return _dpText(panel.textContent);
+        const item = (li) => {
+            const sub = li.querySelector(':scope > ul, :scope > ol');
+            const own = Array.from(li.childNodes).filter(n => n !== sub).map(n => n.textContent).join(' ');
+            const members = sub ? Array.from(sub.querySelectorAll(':scope > li')).map(item).filter(Boolean) : [];
+            const name = _dpText(own);
+            return members.length ? `${name} (${members.join(', ')})` : name;
+        };
+        return Array.from(list.querySelectorAll(':scope > li')).map(item).filter(Boolean).join(', ');
+    }
+
+    /**
+     * Parses a Brucebase venue page (`/venue:<slug>`; vzell, 2026-10-24:
+     * "parse a couple different venue links … and write a venue
+     * parser/reader"). Every venue page sampled by
+     * scripts/probe-bb-venue-pages.py (16 venues, 1973–2026, five
+     * countries) has one shape (debug/bb-venue-detail.html):
+     *
+     * - `#page-title` "Carolina Coliseum, Columbia, SC" and the breadcrumbs
+     *   "Home » … » Venues In South Carolina (SC) » …": the region is the
+     *   sub-title;
+     * - before the tabview, the description paragraphs (Wikipedia's, mostly)
+     *   and "Source: …", then "Springsteen did N performances, excl.
+     *   rehearsals, at this venue." in a `.list-pages-box`: N is the
+     *   highlight;
+     * - the tabs: Performances (every entry here, rehearsals included,
+     *   newest first), and where they apply Cancelled and Appearances
+     *   (interviews, recording sessions), Gallery (the venue's photos) and
+     *   Streetview (a Google Maps embed, a link here: the window never
+     *   loads another site's frame on its own).
+     *
+     * The card shows the region, the count, a field per list of entries
+     * ("43 · 1978-05-19 to 2020-01-18") and the description; the window
+     * adds the description with its links and every list, each entry
+     * linked, and the photos.
+     *
+     * @param {Document} doc The fetched page.
+     * @param {string}   url The page's URL.
+     * @returns {?object} The record, or null when the page has no
+     *   `#page-content`.
+     */
+    function _dpParseBbVenue(doc, url) {
+        const content = doc.getElementById('page-content');
+        if (!content) return null;
+        const data = _dpEmpty();
+        data.title = _dpText(doc.getElementById('page-title') ? doc.getElementById('page-title').textContent : '');
+        data.images = _bbPageImages(content, url);
+        const crumbs = doc.getElementById('breadcrumbs');
+        const region = crumbs ? Array.from(crumbs.querySelectorAll('a'))
+            .map(a => _dpText(a.textContent).match(/^Venues In (.+)$/i)).filter(Boolean).map(m => m[1])[0] : '';
+        if (region) data.subtitle = region;
+        const nav = content.querySelector('div.yui-navset');
+        // The intro: the paragraphs before the tabview.
+        const intro = Array.from(content.querySelectorAll('p')).filter(p =>
+            !(nav && (nav.contains(p) || (nav.compareDocumentPosition(p) & Node.DOCUMENT_POSITION_FOLLOWING))));
+        const about = doc.createElement('div');
+        intro.forEach(p => {
+            const t = _dpText(p.textContent);
+            const count = t.match(/^Springsteen did\s+([\d,]+)\s+performances?\b/i);
+            if (count) {
+                const n = Number(count[1].replace(/,/g, ''));
+                data.highlight = { value: n.toLocaleString('en-US'), label: `performance${n === 1 ? '' : 's'} here, rehearsals not counted` };
+                return;
+            }
+            if (!t) return;
+            const src = t.match(/^Source:\s*(.+)$/i);
+            if (src) data.fields.push(['Source', src[1]]);
+            about.appendChild(p.cloneNode(true));
+        });
+        const text = intro.map(p => _dpText(p.textContent)).filter(t => t && !/^Source:|^Springsteen did\s/i.test(t)).join(' ');
+        if (text) data.summary = text;
+        if (about.childNodes.length) data.sections.push({ label: 'About', text: _dpBlockText(about), html: _dpBlockHtml(about, url) });
+        if (!nav) return data;
+        const labels = Array.from(nav.querySelectorAll(':scope > ul.yui-nav > li')).map(li => _dpText(li.textContent));
+        const panels = Array.from((nav.querySelector(':scope > .yui-content') || { children: [] }).children);
+        const ENTRY = 'a[href*="/gig:"], a[href*="/nogig:"], a[href*="/recording:"], a[href*="/rehearsal:"], a[href*="/interview:"], a[href*="/nobruce:"]';
+        const filled = [];
+        labels.forEach((label, i) => {
+            const panel = panels[i];
+            if (!panel) return;
+            const entries = Array.from(panel.querySelectorAll(ENTRY));
+            if (entries.length) {
+                filled.push(label);
+                const dates = entries.map(a => (_dpText(a.textContent).match(/^\d{4}-\d\d-\d\d/) || [''])[0]).filter(Boolean).sort();
+                const span = !dates.length ? '' : dates[0] === dates[dates.length - 1] ? ` · ${dates[0]}` : ` · ${dates[0]} to ${dates[dates.length - 1]}`;
+                data.fields.push([label, `${entries.length}${span}`]);
+                data.sections.push({ label: `${label} (${entries.length})`, text: _dpBlockText(panel), html: _dpBlockHtml(panel, url) });
+                return;
+            }
+            const frame = panel.querySelector('iframe[src]');
+            const src = frame ? _dpAbsUrl(frame.getAttribute('src'), url) : '';
+            if (/^https?:/i.test(src)) {
+                filled.push(label);
+                data.sections.push({ label, text: src, html: `<a href="${_mbttEscape(src)}" target="_blank" rel="noopener">Open the ${_mbttEscape(label.toLowerCase())} (${_mbttEscape(new URL(src).hostname)})</a>` });
+                return;
+            }
+            if (panel.querySelector('.gallery-box img')) filled.push(label);
+        });
+        if (data.images.length) data.fields.push(['Images', String(data.images.length)]);
+        if (filled.length) data.fields.push(['On the page', filled.join(' · ')]);
+        data.collapsible = true;
+        data.imagesByKind = true;
+        return data;
+    }
+
+    /**
+     * Parses a Brucebase song page (`/song:<slug>`); a venue page goes to
+     * `_dpParseBbVenue()`, any other page to `_dpParseBbPage()`.
      *
      * `#page-title` is the title, and the text of `#page-content` before the
      * song's tabview is its origin ("Track 2 of The Wild, The Innocent & The
@@ -20643,6 +21934,7 @@
         try {
             path = new URL(url).pathname;
         } catch (_) { /* not a URL: read it as a song page */ }
+        if (/^\/venue:/.test(path)) return _dpParseBbVenue(doc, url);
         if (path && !/^\/song:/.test(path)) return _dpParseBbPage(doc, url);
         const content = doc.getElementById('page-content');
         if (!content) return null;
@@ -20683,8 +21975,15 @@
         ['Credits', 'On The Tracks', 'Lyrics'].forEach(name => {
             const panel = tab(name);
             const text = panel ? _dpBlockText(panel) : '';
-            if (text) data.sections.push({ label: name, text });
+            if (text) data.sections.push({ label: name, text, html: name === 'Lyrics' ? '' : _dpBlockHtml(panel, url) });
         });
+        // Every performance, each show linked (2026-10-24): long, so it
+        // starts closed.
+        const shows = perf ? perf.querySelectorAll('a[href*="/gig:"], a[href*="/nogig:"], a[href*="/recording:"], a[href*="/rehearsal:"]').length : 0;
+        if (shows) data.sections.push({ label: `Performances (${shows})`, text: _dpBlockText(perf), html: _dpBlockHtml(perf, url), open: false });
+        // The window: sections collapsible, the images under their kind.
+        data.collapsible = true;
+        data.imagesByKind = true;
         return data;
     }
 
@@ -20716,8 +22015,15 @@
      *   previewed besides the table (`_extSource()` on this host, U5), or
      *   null for the table only. Never the site's chrome: its share bar,
      *   menus and footer are left out by `_EXT_SKIP_SEL`.
+     * - `ownLinks`, optional: links that preview under a setting of their
+     *   own (`test(u)` on the same-origin URL; `_dpOwnLinksOn()`,
+     *   `_dpSiteForLink()`). Brucebase's event pages, 2026-10-24.
+     * - `via`, optional: links (`selector`) that preview not the page they
+     *   name but the one that page names (`pick(record)` → its URL, '' for
+     *   none; `what` names it in a failure): Brucebase's Venue cells, which
+     *   link the entry page, preview its venue (`_dpSiteSource()`).
      *
-     * @type {Object<string, {setting: ?string, isDetailUrl: function(URL): boolean, charset: ?string, parse: function(Document, string): ?object, liveRoot: ?function(Document): ?Element, liveHide: string[], liveCss: string, livePrepare: ?function(Document): ?function(): void, ttlDays?: number, extRoot: ?string}>}
+     * @type {Object<string, {setting: ?string, isDetailUrl: function(URL): boolean, charset: ?string, parse: function(Document, string): ?object, liveRoot: ?function(Document): ?Element, liveHide: string[], liveCss: string, livePrepare: ?function(Document): ?function(): void, ttlDays?: number, extRoot: ?string, ownLinks?: {test: function(URL): boolean, setting: string}, via?: {selector: string, pick: function(object): string, what: string}}>}
      */
     const _DP_SITES = {
         'springsteenlyrics.com': {
@@ -20765,6 +22071,26 @@
         'brucebase.wikidot.com': {
             setting: 'sa_bb_detail_preview',
             isDetailUrl: (u) => /^\/song:[^/]+$/.test(u.pathname),
+            // Event pages (org/TODO.org "Some enhancements" 3b; vzell,
+            // 2026-10-24: "on all BB PTs where an event href is involved in
+            // a column or elsewhere"): any link to one previews under its
+            // own setting, whatever `setting` says. `isDetailUrl` stays
+            // /song:, so /gig: links on other hosts (`_extDpTest()`) are
+            // left as they were; a Media icon (an `<img>` link) stays the
+            // image card's.
+            ownLinks: {
+                // Venue and people pages too (2026-10-24: "all relations
+                // under On stage … should support detail hovering").
+                test: (u) => /^\/(?:gig|nogig|recording|rehearsal|interview|nobruce|venue|relation):[^/]+$/.test(u.pathname),
+                setting: 'sa_bb_event_preview',
+            },
+            // A year table's Venue cell links the ENTRY page (the year page
+            // names no venue page), and previews the venue (vzell,
+            // 2026-10-24: "the hover preview for venue columns should
+            // instead render the venue detail page … reachable from the
+            // event detail page via the href link Venue"): the entry page
+            // is read first, then the page its `venueUrl` names.
+            via: { selector: 'a.mb-bb-venue-link', pick: (data) => (data && data.venueUrl) || '', what: 'venue' },
             charset: null,
             parse: _dpParseBb,
             liveRoot: (doc) => doc.getElementById('main-content'),
@@ -20816,6 +22142,8 @@
 
     /**
      * The `_DP_SITES` entry of this host when its preview setting is on.
+     * A site's `ownLinks` (Brucebase's Event column) have a setting of their
+     * own and are not counted here: `_dpOwnLinksOn()`.
      *
      * @returns {?object}
      */
@@ -20853,15 +22181,44 @@
         // picture or not (_fiLazyCell(), _fiGlyph()).
         if (!a || !a.matches || !a.matches('a[href]') || a.querySelector('img') || a.matches('a.mb-fi-cell, a.mb-fi-glyph')) return null;
         if (!a.closest('table.tbl > tbody') && (_isTouchPrimaryDevice() || a.closest(_DP_PAGE_SKIP))) return null;
-        const site = _dpActiveSite();
-        if (!site) return null;
+        return _dpSiteForUrl(a);
+    }
+
+    /**
+     * `_dpSiteForLink()`'s test of the link's URL alone, wherever the link
+     * is: same origin, and a detail page of this host with its preview on
+     * (or one of its `ownLinks` with theirs). The window's own links go
+     * through this (`_dpWinWhat()`), which `_dpSiteForLink()`'s place rule
+     * (`_DP_PAGE_SKIP`) would refuse.
+     *
+     * @param {HTMLAnchorElement} a
+     * @returns {?object} The host's `_DP_SITES` entry, or null.
+     */
+    function _dpSiteForUrl(a) {
         let u;
         try {
             u = new URL(a.href);
         } catch (_) {
             return null;
         }
-        return u.origin === window.location.origin && site.isDetailUrl(u) ? site : null;
+        if (u.origin !== window.location.origin) return null;
+        // A site's own links (Brucebase's event pages): their own setting.
+        const own = _dpOwnLinksOn();
+        if (own && own.ownLinks.test(u)) return own;
+        const site = _dpActiveSite();
+        return site && site.isDetailUrl(u) && !(site.ownLinks && site.ownLinks.test(u)) ? site : null;
+    }
+
+    /**
+     * The `_DP_SITES` entry of this host when its `ownLinks` (links with a
+     * preview setting of their own: Brucebase's event pages,
+     * `sa_bb_event_preview`) are on; null otherwise.
+     *
+     * @returns {?object}
+     */
+    function _dpOwnLinksOn() {
+        const site = _foreignHost ? _DP_SITES[_foreignHost] : null;
+        return site && site.ownLinks && Lib.settings[site.ownLinks.setting] !== false ? site : null;
     }
 
     /**
@@ -20891,7 +22248,8 @@
      *     several entity kinds, `_mbEntitySource()`);
      *   - `onAreaClick(e, t)`, optional: a click in its Extracted view;
      *     `onAreaInput(e, t)`, optional: typing in a field of it.
-     * The four foreign sites are one source each (`_dpSiteSource()`); a
+     * The four foreign sites are one source each (`_dpSiteSource()`), and
+     * Brucebase's MB-Event glyph one more (`_bbMbevSource()`); a
      * MusicBrainz release page adds its two release-group sources, the
      * subheader link and the "#" cell (`_rgLinkSource()`, `_eventRgSource()`);
      * every MusicBrainz table link is the last one (`_mbEntitySource()`,
@@ -20905,7 +22263,7 @@
     function _popSources() {
         if (!_popSources.list) {
             _popSources.list = Object.keys(_DP_SITES).map(host => _dpSiteSource(host, _DP_SITES[host]))
-                .concat([_rgLinkSource(), _eventRgSource(), _extSource(), _mbEntitySource()]);
+                .concat([_bbMbevSource(), _rgLinkSource(), _eventRgSource(), _extSource(), _mbEntitySource()]);
         }
         return _popSources.list;
     }
@@ -20975,18 +22333,64 @@
      * and Extracted view, and ‹ › through the first detail link of every
      * visible row (`_dpRowLinks()`).
      *
+     * A link matching the site's `via.selector` (Brucebase's Venue cells)
+     * is a target of its own (key `via:<url>`): its record is the page the
+     * linked page names (`via.pick()`), read in two steps, each through
+     * `_dpGet()` (so the entry page a hover on its Event cell read already
+     * costs nothing); what the linked page named is remembered for the
+     * page's life, so a second hover answers from memory at once.
+     *
      * @param {string} host  A `_foreignHost` value.
      * @param {object} site  Its `_DP_SITES` entry.
      * @returns {object} The source.
      */
     function _dpSiteSource(host, site) {
-        // The outcome of the latest card request and window request per URL:
-        // what a repaint shows ("fetched now" until the next hover).
+        // The outcome of the latest card request and window request per
+        // target: what a repaint shows ("fetched now" until the next hover).
         const cardRes = new Map();
         const exRes = new Map();
+        const via = site.via || null;
+        const isVia = (el) => !!(via && el && el.matches && el.matches(via.selector));
+        // A via link's URL → the URL of the page its page names.
+        const viaUrl = new Map();
+        /**
+         * The page a target shows: its own, or for a via target the one its
+         * page names, '' while that is not known yet.
+         * @param {object} t
+         * @returns {string}
+         */
+        const shownUrl = (t) => {
+            if (!t.via) return t.url;
+            if (!viaUrl.has(t.url)) {
+                const e = _dpMem.get(t.url);
+                const u = e ? via.pick(e.data) : '';
+                if (u) viaUrl.set(t.url, u);
+            }
+            return viaUrl.get(t.url) || '';
+        };
+        const memOf = (t) => {
+            const u = shownUrl(t);
+            return u ? _dpMem.get(u) : null;
+        };
+        /**
+         * `_dpGet()` for a target: a via target's linked page first, then
+         * the page it names.
+         * @param {object} t
+         * @param {object} opts `_dpGet()`'s options.
+         * @returns {Promise<object>} A `_dpGet()` outcome.
+         */
+        const get = async (t, opts) => {
+            if (!t.via) return _dpGet(t.url, site, opts);
+            const first = await _dpGet(t.url, site, opts);
+            if (first.outcome !== 'ok') return first;
+            const u = via.pick(first.data);
+            if (!u) return { outcome: 'error', detail: `The entry page names no ${via.what} page.` };
+            viaUrl.set(t.url, u);
+            return _dpGet(u, site, opts);
+        };
         const head = (t) => `<div class="mb-tt-title">${_mbttEscape(_dpText(t.el.textContent))}</div>`;
         const cardLoading = (t) => head(t) +
-            '<div class="mb-tt-body mb-dp-loading"><span class="mb-dp-spin">◌</span> Loading the detail page…</div>';
+            `<div class="mb-tt-body mb-dp-loading"><span class="mb-dp-spin">◌</span> Loading the ${t.via ? `${via.what} page` : 'detail page'}…</div>`;
         const exLoading = '<div class="mb-dp-x mb-dp-loading"><span class="mb-dp-spin">◌</span> Loading the detail page…</div>';
         return {
             id: host,
@@ -20994,22 +22398,26 @@
             selector: 'a[href]',
             wide: false,
             live: site,
-            enabled: () => _dpActiveSite() === site,
-            resolve: (el) => (_dpSiteForLink(el) === site ? { key: el.href, url: el.href, table: el.closest('table') } : null),
+            enabled: () => _dpActiveSite() === site || _dpOwnLinksOn() === site,
+            resolve: (el) => {
+                if (_dpSiteForLink(el) !== site) return null;
+                if (isVia(el)) return { key: `via:${el.href}`, url: el.href, via: true, table: el.closest('table') };
+                return { key: el.href, url: el.href, table: el.closest('table') };
+            },
             needsCtrl: _dpNeedsCtrl,
-            liveUrl: (t) => t.url,
+            liveUrl: (t) => shownUrl(t) || t.url,
             card(t, start, repaint) {
                 if (start) {
-                    cardRes.delete(t.url);
-                    const mem = _dpMem.get(t.url);
+                    cardRes.delete(t.key);
+                    const mem = memOf(t);
                     if (mem) return _dpCardHtml(mem.data, { cached: true, at: mem.at });
-                    _dpGet(t.url, site, { wanted: () => _dpPeekShowing(t.el) }).then(res => {
-                        cardRes.set(t.url, res);
+                    get(t, { wanted: () => _dpPeekShowing(t.el) }).then(res => {
+                        cardRes.set(t.key, res);
                         repaint();
                     });
                     return cardLoading(t);
                 }
-                const res = cardRes.get(t.url);
+                const res = cardRes.get(t.key);
                 if (res && res.outcome === 'ok') return _dpCardHtml(res.data, res);
                 if (res && res.outcome === 'error') {
                     return head(t) + '<div class="mb-tt-body mb-tt-alert">Could not load the detail page.</div>' +
@@ -21019,22 +22427,24 @@
             },
             extracted(t, start, force, repaint) {
                 if (start) {
-                    exRes.delete(t.url);
-                    const mem = force ? null : _dpMem.get(t.url);
+                    exRes.delete(t.key);
+                    const mem = force ? null : memOf(t);
                     if (mem) return _dpExtractedHtml(mem.data, { cached: true, at: mem.at });
-                    _dpGet(t.url, site, { wanted: () => _dpDialogShowing(t), force }).then(res => {
-                        exRes.set(t.url, res);
+                    get(t, { wanted: () => _dpDialogShowing(t), force }).then(res => {
+                        exRes.set(t.key, res);
                         repaint();
                     });
                     return exLoading;
                 }
-                const res = exRes.get(t.url);
+                const res = exRes.get(t.key);
                 if (res && res.outcome === 'ok') return _dpExtractedHtml(res.data, res);
                 if (res && res.outcome === 'error') return _dpFailHtml(res.detail);
                 return exLoading;
             },
-            steps: (t) => (t.el.closest('table.tbl > tbody') ? _dpRowLinks(t.table) : _dpPageLinks()),
-            stepId: (el) => el.href,
+            steps: (t) => (t.el.closest('table.tbl > tbody') ? _dpRowLinks(t.table, t.el) : _dpPageLinks()),
+            // A Venue cell and the Event cell of one row link the same page:
+            // told apart, so ‹ › from a venue land on the next venue.
+            stepId: (el) => (isVia(el) ? 'via:' : '') + el.href,
         };
     }
 
@@ -21669,18 +23079,36 @@
 
     /**
      * The detail links of a table's visible rows, one per row, in display
-     * order: what ← and → step through.
+     * order: what ← and → step through. Of the same kind as `from`: from a
+     * site's own link (a Brucebase event page) each row's first own link
+     * (on a year table, its Event cell), from any other detail link (a song
+     * in Notes) the others, so a step never jumps between the two previews;
+     * from a `via` link (a Venue cell) each row's via link.
      *
      * @param {?HTMLTableElement} table
+     * @param {?Element} [from] The link the window was opened from.
      * @returns {HTMLAnchorElement[]}
      */
-    function _dpRowLinks(table) {
+    function _dpRowLinks(table, from) {
         const t = table && table.isConnected ? table : document.querySelector('table.tbl');
         if (!t || !t.tBodies[0]) return [];
+        const site = _foreignHost ? _DP_SITES[_foreignHost] : null;
+        const viaSel = site && site.via ? site.via.selector : '';
+        const fromVia = !!(viaSel && from && from.matches && from.matches(viaSel));
+        const own = site && site.ownLinks ? site.ownLinks.test : null;
+        const isOwn = (x) => {
+            try {
+                return !!own(new URL(x.href));
+            } catch (_) {
+                return false;
+            }
+        };
+        const ownKind = !!(own && from && from.href && isOwn(from));
         const out = [];
         Array.from(t.tBodies[0].rows).forEach(tr => {
             if (tr.style.display === 'none') return;
-            const a = Array.from(tr.querySelectorAll('a[href]')).find(x => _dpSiteForLink(x));
+            const a = Array.from(tr.querySelectorAll('a[href]'))
+                .find(x => (!viaSel || x.matches(viaSel) === fromVia) && (!own || isOwn(x) === ownKind) && _dpSiteForLink(x));
             if (a) out.push(a);
         });
         return out;
@@ -21719,6 +23147,45 @@
     }
 
     /**
+     * The window's collapsible sections the reader opened (true) or closed
+     * (false), by name without its count, for the page's life: a repaint
+     * or the next record keeps them so. Written by a delegated `toggle`
+     * (`_dpInitSecToggles()`).
+     * @type {Map<string, boolean>}
+     */
+    const _dpSecState = new Map();
+
+    /**
+     * Records a collapsible section's state when the reader toggles it
+     * (capture: `toggle` does not bubble), and makes a Ctrl-click (⌘ on a
+     * Mac) on a section's header open or close EVERY section of the window:
+     * all of them take the state the clicked one did not have (vzell,
+     * 2026-10-24). Each one's `toggle` then records it. Installed once.
+     *
+     * @returns {void}
+     */
+    function _dpInitSecToggles() {
+        if (_dpInitSecToggles.done) return;
+        _dpInitSecToggles.done = true;
+        const SEC = 'details.mb-dp-sec[data-mb-dp-sec]';
+        document.addEventListener('toggle', (e) => {
+            const d = e.target;
+            if (d && d.matches && d.matches(SEC) && d.closest('#mb-dp-dialog')) _dpSecState.set(d.dataset.mbDpSec, d.open);
+        }, true);
+        document.addEventListener('click', (e) => {
+            if (!(e.ctrlKey || e.metaKey) || e.button !== 0 || !e.target.closest) return;
+            const sum = e.target.closest('summary');
+            const d = sum && sum.parentElement;
+            if (!d || !d.matches(SEC) || sum !== d.querySelector(':scope > summary')) return;
+            const win = d.closest('#mb-dp-dialog');
+            if (!win) return;
+            e.preventDefault();
+            const open = !d.open;
+            win.querySelectorAll(SEC).forEach(x => { x.open = open; });
+        }, true);
+    }
+
+    /**
      * `_dpExtractedHtml()`'s two columns as lists of HTML parts, so a link
      * to one of the four sites from another site can add its own parts to
      * them (`_extExtracted()`, U4).
@@ -21727,6 +23194,7 @@
      * @returns {{left: string[], right: string[]}}
      */
     function _dpExtractedCols(data) {
+        if (data.collapsible) _dpInitSecToggles();
         const left = [];
         const right = [];
         left.push(`<div class="mb-dp-xtitle">${_mbttEscape(data.title || '(untitled)')}</div>`);
@@ -21743,10 +23211,20 @@
             `<img class="mb-dp-xcover" src="${_mbttEscape(data.cover)}" alt="${_mbttEscape(coverScan.label || 'cover')}"></a>`);
         if (data.fields.length) left.push('<h4>Fields</h4>' + _dpFieldsHtml(data.fields));
         const scans = data.images.filter(i => i.thumb && i.thumb !== data.cover);
-        if (scans.length) {
-            left.push(`<h4>Images (${scans.length})</h4><div class="mb-dp-gallery">` + scans.map(i =>
-                `<a href="${_mbttEscape(i.full || i.thumb)}" target="_blank" rel="noopener" data-mb-artv-ext="${artvN++}"><img src="${_mbttEscape(i.thumb)}" alt="${_mbttEscape(i.label)}">` +
-                (i.label ? `<span>${_mbttEscape(i.label)}</span>` : '') + '</a>').join('') + '</div>');
+        const tile = (i) => `<a href="${_mbttEscape(i.full || i.thumb)}" target="_blank" rel="noopener" data-mb-artv-ext="${artvN++}"><img src="${_mbttEscape(i.thumb)}" alt="${_mbttEscape(i.label)}">` +
+            (i.label ? `<span>${_mbttEscape(i.label)}</span>` : '') + '</a>';
+        if (scans.length && data.imagesByKind) {
+            // Under their kind, in page order, Photo last (vzell,
+            // 2026-10-24); the viewer follows this order (`data-mb-artv-ext`).
+            const kinds = [];
+            scans.forEach(i => { if (!kinds.includes(i.label || '')) kinds.push(i.label || ''); });
+            kinds.sort((a, b) => (a === 'Photo') - (b === 'Photo'));
+            left.push(`<h4>Images (${scans.length})</h4>` + kinds.map(k => {
+                const of = scans.filter(i => (i.label || '') === k);
+                return `<h5 class="mb-dp-kind">${_mbttEscape(k || 'Other')} <span>${of.length}</span></h5><div class="mb-dp-gallery">${of.map(tile).join('')}</div>`;
+            }).join(''));
+        } else if (scans.length) {
+            left.push(`<h4>Images (${scans.length})</h4><div class="mb-dp-gallery">` + scans.map(tile).join('') + '</div>');
         }
         if (data.notes.length) left.push('<h4>Notes</h4>' + data.notes.map(n => `<div class="mb-dp-note">${_mbttEscape(n)}</div>`).join(''));
         if (data.tracks.length) {
@@ -21760,7 +23238,21 @@
                     `<div>${disc ? `<div class="mb-dp-gname">${_mbttEscape(disc)}</div>` : ''}${_dpTrackListHtml(ts)}</div>`).join('') + '</div>');
             }
         }
-        data.sections.forEach(s => right.push(`<h4>${_mbttEscape(s.label)}</h4><div class="mb-dp-section">${_mbttEscape(s.text)}</div>`));
+        data.sections.forEach(s => {
+            const body = `<div class="mb-dp-section">${s.html || _mbttEscape(s.text)}</div>`;
+            if (!data.collapsible) {
+                right.push(`<h4>${_mbttEscape(s.label)}</h4>${body}`);
+                return;
+            }
+            // Collapsible (Brucebase, 2026-10-24): open unless the section
+            // starts closed (`open: false`); a section the reader opened or
+            // closed stays so for the page's life (`_dpSecState`).
+            const name = s.label.replace(/\s*\(\d+\)$/, '');
+            const open = _dpSecState.has(name) ? _dpSecState.get(name) : s.open !== false;
+            right.push(`<details class="mb-dp-sec" data-mb-dp-sec="${_mbttEscape(name)}"${open ? ' open' : ''}>` +
+                '<summary data-mb-tip title="Click: open or close · Ctrl+click: every section">' +
+                `<h4>${_mbttEscape(s.label)}</h4></summary>${body}</details>`);
+        });
         if (!right.length) right.push('<h4>Tracklist</h4><div class="mb-dp-xsub">The page has no tracklist.</div>');
         return { left, right };
     }
@@ -22122,6 +23614,32 @@
     }
 
     /**
+     * Brings an element into view vertically only (`block: 'nearest'`),
+     * keeping the page's horizontal scroll and that of every scrolling
+     * ancestor as they were. `scrollIntoView()` aligns on both axes, and a
+     * table row is wider than the window: its `inline: 'nearest'` then
+     * lined the row's left edge up with the window's, which on a Brucebase
+     * year page (rows 39 px in) slid the columns after the sticky one under
+     * it (vzell, 2026-10-24, a console log: `scrollIntoView`, then
+     * "scrollX 0 → 39.2"). `behavior: 'instant'` so the restore follows in
+     * the same task, before anything is painted, whatever the page's
+     * `scroll-behavior`.
+     *
+     * @param {Element} el
+     * @returns {void}
+     */
+    function _scrollIntoViewVertically(el) {
+        const kept = [];
+        for (let a = el.parentElement; a; a = a.parentElement) {
+            if (a.scrollLeft) kept.push([a, a.scrollLeft]);
+        }
+        const x = window.scrollX;
+        el.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'instant' });
+        kept.forEach(([a, left]) => { if (a.scrollLeft !== left) a.scrollLeft = left; });
+        if (window.scrollX !== x) window.scrollTo({ left: x, top: window.scrollY, behavior: 'instant' });
+    }
+
+    /**
      * Shows a target in the dialog, titles the dialog after its source and
      * marks its row.
      *
@@ -22183,7 +23701,7 @@
             _dpDialog.row = tr;
             if (tr) {
                 tr.classList.add('mb-dp-current');
-                tr.scrollIntoView({ block: 'nearest' });
+                _scrollIntoViewVertically(tr);
             }
         }
         _dpRenderDialog(false);
@@ -22220,7 +23738,10 @@
      * back stack; Ctrl, Shift, Alt or a middle click keep the link's own
      * behaviour (a new tab). Only links the MusicBrainz entity cards know
      * (`_mbPopTarget()` with `inWindow`), and only while they are on
-     * (`sa_pop_mb`). A link to what the window already shows does nothing.
+     * (`sa_pop_mb`); and, on a foreign host, a link to one of the host's
+     * own detail pages with its preview on (`_dpSiteForUrl()`: a Brucebase
+     * song, event, venue or person in a section, 2026-10-24). A link to
+     * what the window already shows does nothing.
      *
      * @param {MouseEvent} e - A click in the window's scroll area.
      * @returns {boolean} Whether the click drilled down.
@@ -22230,6 +23751,14 @@
         const a = e.target.closest ? e.target.closest('a[href]') : null;
         const cur = _dpDialog.target;
         if (!a || !cur || !_dpDialog.api || !_dpDialog.api.scrollArea.contains(a)) return false;
+        if (_foreignHost && !a.querySelector('img') && _dpSiteForUrl(a)) {
+            const siteSrc = _popSources().find(x => x.id === _foreignHost && x.enabled());
+            if (!siteSrc || a.href === cur.key) return false;
+            e.preventDefault();
+            _dpDialog.stack.push(cur);
+            _dpShowInDialog({ src: siteSrc, el: a, drilled: true, key: a.href, url: a.href, table: null });
+            return true;
+        }
         const src = _popSources().find(x => x.id === 'mb-entity');
         if (!src || !src.enabled()) return false;
         const r = _mbPopTarget(a, { inWindow: true });
@@ -22431,6 +23960,14 @@
         if (cur.reader && cur.reader.onAreaClick) {
             const r = _extTarget(a, { inWindow: true });
             if (r && r.key !== cur.key) return { kind: 'here', a, t: Object.assign({ src: cur.src, el: a, drilled: true }, r) };
+        }
+        // This host's own detail pages (a Brucebase song, event, venue or
+        // person in a section, 2026-10-24): opened in the window, previewed
+        // on hover, as on the page.
+        const site = _foreignHost && !a.querySelector('img') ? _dpSiteForUrl(a) : null;
+        const siteSrc = site && _popSources().find(x => x.id === _foreignHost && x.enabled());
+        if (siteSrc && a.href !== cur.key) {
+            return { kind: 'here', a, t: { src: siteSrc, el: a, drilled: true, key: a.href, url: a.href, table: null } };
         }
         return { kind: 'out', a };
     }
@@ -22912,7 +24449,7 @@
         // big, instead of a contact sheet of one tile.
         if (p.single && shown.length === 1) {
             return box(`<img class="mb-art-card-preview mb-fi-card-big" src="${_rgEsc(_artViewerThumbUrl(shown[0]))}" alt="" referrerpolicy="no-referrer">` +
-                (p.foot ? `<div class="mb-tt-foot">${_rgEsc(p.foot)}</div>` : ''));
+                (p.foot ? `<div class="mb-tt-foot">${_artFootWithSpace(p.foot, true)}</div>` : ''));
         }
         return _artCardCoreHtml({
             el: a, ctx: p.ctx, images: shown, order: shown.map((_, i) => i), title, hit: () => false, matches: '',
@@ -23686,7 +25223,7 @@
 
     /**
      * Brucebase's year table as a provider (mockup B1, 2026-10-23): the
-     * Media icons Photo, Ticket, Memorabilia (passes) and News of an entry
+     * Media icons Photo, Ticket, Setlist, Memorabilia (passes) and News of an entry
      * with a page of its own (`_bbYearBuildRow()` stamps them
      * `a.mb-fi-media`, `data-mb-fi-kind`). The page — a gig, or any other
      * entry — is read through `_dpGet()` (`_dpParseBbPage()`: its gallery
@@ -23699,7 +25236,7 @@
         key: 'bb', column: 'Media', name: 'Brucebase', host: 'brucebase.wikidot.com',
         gal: { heading: 'Images', where: 'Media icons', point: 'one of its ringed icons', rows: 'entries', page: 'entry\'s page',
             pages: 'entry pages', eligible: 'with a ringed Media icon',
-            left: '{n} {rows} have no ringed icon (no page of their own, or no Photo, Ticket, News or Memorabilia) and are not here.' },
+            left: '{n} {rows} have no ringed icon (no page of their own, or no Photo, Ticket, Setlist, News or Memorabilia) and are not here.' },
         tableSel: 'body.mb-sa-host-bb table.tbl', linkSel: 'a.mb-fi-media[data-mb-fi="bb"]', setting: 'sa_bb_tip_images',
         h1: 'h1.mb-bb-h1 bdi', pageName: 'the entry\'s page', pageLabel: 'Entry page',
         noRowThumb: true,
@@ -24030,6 +25567,7 @@
         const st = {
             p, table, opener, box, rows, total, memo, filtered: _anyFilterActive(), run: null,
             sel: new Set(), compare: false, ca: null, cb: null, ask: false, peeking: true, fresh: new Set(),
+            geo: null,
             onKey: (e) => _fgalOnKey(st, e),
             onDown: (e) => {
                 if (e.pointerType !== 'mouse' && !box.contains(e.target) && e.target !== opener && !_artViewerState) _fgalClose();
@@ -24049,7 +25587,10 @@
         window.addEventListener('keydown', st.onKey, true);
         document.addEventListener('pointerdown', st.onDown, true);
         opener.setAttribute('aria-pressed', 'true');
-        _fgalPlace(st);
+        // Moved or resized once: where it was left (`sa_fgal_geometry`);
+        // never: under its 🖼.
+        st.geo = _makeMovableResizable(box, { handleSel: '.mb-fgal-head', geoKey: 'sa_fgal_geometry', minW: 340, minH: 220 });
+        if (!st.geo.restore()) _fgalPlace(st);
         _fgalRender(st);
         Promise.resolve(p.peekSaved(rows.map(g => g.row))).catch(() => 0).then(() => {
             st.peeking = false;
@@ -24071,6 +25612,7 @@
         _fgalState = null;
         window.removeEventListener('keydown', st.onKey, true);
         document.removeEventListener('pointerdown', st.onDown, true);
+        if (st.geo) st.geo.destroy();
         st.box.remove();
         st.opener.setAttribute('aria-pressed', 'false');
         if (st.opener.isConnected) st.opener.focus({ preventScroll: true });
@@ -24097,7 +25639,8 @@
     }
 
     /**
-     * Puts the window under its 🖼, inside the window's width.
+     * Puts the window under its 🖼, inside the window's width: where it
+     * opens until it has been moved or resized (`sa_fgal_geometry`).
      *
      * @param {Object} st
      * @returns {void}
@@ -24695,13 +26238,23 @@
             button.mb-fgal-btn[aria-pressed="true"] { background: #e7ddc8; border-color: #8a7d68; }
             #mb-fgal.mb-tt-liner { position: absolute; z-index: 2147483300; padding: 0; display: flex; flex-direction: column;
                 max-height: min(600px, 80vh); font-size: 13.5px; }
-            #mb-fgal .mb-fgal-head { display: flex; gap: 10px; align-items: flex-start; padding: 11px 14px 9px; border-bottom: 1px solid #d9cfbd; }
+            #mb-fgal.mb-tt-liner { resize: both; overflow: hidden; min-width: 340px; min-height: 220px; max-width: 96vw; }
+            /* A strip under the scrolling body for the resize corner: without
+               it the body's scrollbar ran into the corner, and a press on the
+               grip also held the scrollbar's down arrow, scrolling the list
+               while the window was resized (vzell, 2026-10-24). */
+            #mb-fgal.mb-tt-liner { padding-bottom: 16px; }
+            #mb-fgal.mb-geo-fixed { position: fixed; max-height: 94vh; }
+            #mb-fgal .mb-fgal-head { display: flex; gap: 10px; align-items: flex-start; padding: 11px 14px 9px; border-bottom: 1px solid #d9cfbd;
+                cursor: move; user-select: none; touch-action: none; }
+            #mb-fgal .mb-fgal-head button { cursor: pointer; }
             #mb-fgal .mb-fgal-t { flex: 1 1 auto; min-width: 0; display: grid; gap: 2px; }
             #mb-fgal .mb-fgal-t b { font-size: 16px; line-height: 1.25; }
             #mb-fgal .mb-fgal-t span { color: #7a6d5c; font-size: 12px; }
             #mb-fgal .mb-fgal-x { border: 0; background: transparent; font: 17px/1 system-ui, Arial, sans-serif; color: #7a6d5c;
                 cursor: pointer; padding: 2px 4px; }
-            #mb-fgal .mb-fgal-body { overflow: auto; padding: 11px 14px 14px; display: grid; gap: 11px; align-content: start; }
+            #mb-fgal .mb-fgal-body { overflow: auto; padding: 11px 14px 14px; display: grid; gap: 11px; align-content: start;
+                flex: 1 1 auto; min-height: 0; }
             #mb-fgal .mb-fgal-panel { display: grid; gap: 6px; padding-bottom: 11px; border-bottom: 1px solid #d9cfbd; }
             #mb-fgal .mb-tt-ajbar, #mb-fgal .mb-tt-ajacts { margin: 0; }
             #mb-fgal .mb-tt-ajbar-r { background: #e4dccc; }
@@ -25383,6 +26936,16 @@
             .mb-dp-dialog .mb-dg-warnbox { border: 1px solid #e7d3a1; background: #fcf6e6; border-radius: 4px; padding: 8px 12px; margin: 6px 0 8px; }
             .mb-dp-dialog .mb-dp-note { white-space: pre-wrap; margin-bottom: 6px; }
             .mb-dp-dialog .mb-dp-section { white-space: pre-wrap; }
+            /* Collapsible sections and images by kind (Brucebase, 2026-10-24). */
+            .mb-dp-dialog details.mb-dp-sec > summary { cursor: pointer; list-style: none; display: flex; align-items: baseline; gap: 6px; }
+            .mb-dp-dialog details.mb-dp-sec > summary::-webkit-details-marker { display: none; }
+            .mb-dp-dialog details.mb-dp-sec > summary::before { content: '▶'; font-size: 9px; color: #7a6d5c; }
+            .mb-dp-dialog details.mb-dp-sec[open] > summary::before { content: '▼'; }
+            .mb-dp-dialog details.mb-dp-sec > summary h4 { margin: 14px 0 4px; }
+            .mb-dp-dialog .mb-dp-col > details.mb-dp-sec:first-child > summary h4 { margin-top: 0; }
+            .mb-dp-dialog h5.mb-dp-kind { margin: 8px 0 4px; font: 600 10px/1.3 system-ui, Arial, sans-serif; letter-spacing: .07em;
+                text-transform: uppercase; color: #7a6d5c; }
+            .mb-dp-dialog h5.mb-dp-kind span { font-weight: 400; margin-left: 3px; }
             /* auto-fit, not auto-fill: the empty tracks collapse, so one disc takes the
                whole column instead of one 180px track of it (titles wrapped beside empty space) */
             .mb-dp-dialog .mb-dp-discs { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px 16px; }
@@ -33945,8 +35508,9 @@
             // mask painted over the whole Date column and Date's over the side
             // bar (reported from a real browser, 2026-10-09; the latter is
             // why a Brucebase table docks only once scrolled,
-            // _sphUpdateColDocked()).
-            stickyColumn: 'Date'
+            // _sphUpdateColDocked()). Event since 2026-10-24 (org/TODO.org
+            // "Some enhancements" 3a), the first column; Date before.
+            stickyColumn: 'Event'
         };
     }
 
@@ -48596,6 +50160,41 @@
             test: cell => _findCellRelSiteDupes(cell).length > 0,
             detail: cell => _relSiteDupesDetail(cell),
             tint: _findingTintSetting('sa_findings_tint_rel_multi_discogs'),
+        },
+        // The Brucebase year table's MB-Event column (org/TODO.org "Some
+        // enhancements" g, 2026-10-24): late data, as rel-multi-site — the
+        // cell's answer is written after the render (`_bbMbevRenderCell()`,
+        // master rows too) and each live row is re-stamped
+        // (`_queueFindingsRestamp()`). `_bbMbevCheck()` compares the row's
+        // own anchor with the event's Brucebase links.
+        {
+            id: 'bb-mbev-link-mismatch', level: 'error', glyph: '🔗', scope: 'cell',
+            label: 'MB-Event: the Brucebase link differs',
+            tip: 'The entry\'s MusicBrainz event and the entry do not link each other: the event\'s Brucebase link (its "reviews" URL relationship, e.g. http://brucebase.wikidot.com/1985#130185) points to another entry, or this entry\'s anchor is linked from another MusicBrainz event. Known once the MB-Event column has looked the row up, so the count grows while it runs. The glyph\'s card shows both links.',
+            enabled: () => !!_isBbHost && Lib.settings.sa_findings_bb_mbev_link_mismatch !== false,
+            cols: name => name === 'MB-Event',
+            rowGate: row => !!row.querySelector('td.mb-bbev-cell[data-mb-bbev-mbid]'),
+            test: cell => (_bbMbevCheck(cell) || {}).state === 'mismatch',
+            detail: cell => {
+                const c = _bbMbevCheck(cell);
+                return c ? `This row: ${c.own}. MusicBrainz: ${c.links.join(', ') || 'no Brucebase link'}` +
+                    (c.others.length ? `; the anchor is linked from ${c.others.length === 1 ? 'another event' : `${c.others.length} other events`}` : '') + '.' : '';
+            },
+            tint: _findingTintSetting('sa_findings_tint_bb_mbev_link'),
+        },
+        {
+            id: 'bb-mbev-link-missing', level: 'warn', glyph: '🔗', scope: 'cell',
+            label: 'MB-Event: no Brucebase link',
+            tip: 'The entry\'s MusicBrainz event links no Brucebase year page (MusicBrainz keeps it as a "reviews" URL relationship, e.g. http://brucebase.wikidot.com/1985#130185). Known once the MB-Event column has looked the row up, so the count grows while it runs. The glyph\'s card names the link it would have.',
+            enabled: () => !!_isBbHost && Lib.settings.sa_findings_bb_mbev_link_missing !== false,
+            cols: name => name === 'MB-Event',
+            rowGate: row => !!row.querySelector('td.mb-bbev-cell[data-mb-bbev-mbid]'),
+            test: cell => (_bbMbevCheck(cell) || {}).state === 'missing',
+            detail: cell => {
+                const c = _bbMbevCheck(cell);
+                return c ? `The event would link ${c.own}.` : '';
+            },
+            tint: _findingTintSetting('sa_findings_tint_bb_mbev_link'),
         },
         {
             id: 'pending', level: 'warn', glyph: '⏳', scope: 'row',
@@ -63666,7 +65265,7 @@
      */
     const _TOOLBAR_MENU_ROW_ORDER = {
         data: ['mb-save-to-disk-btn', 'mb-load-from-disk-btn', 'mb-export-btn'],
-        view: ['mb-density-btn', 'mb-stats-btn', 'mb-shortcuts-help-btn'],
+        view: ['mb-density-btn', 'mb-stats-btn', 'mb-idbo-menu-btn', 'mb-shortcuts-help-btn'],
         help: ['mb-settings-btn', 'mb-app-help-btn', 'mb-shortcuts-help-btn'],
         disc: ['mb-disc-complete-btn', 'mb-disc-official-btn', 'mb-disc-nonofficial-btn', 'mb-disc-merged-btn'],
     };
@@ -68659,6 +70258,154 @@ ${sections.join('\n')}
     }
 
     /**
+     * Makes a floating panel movable by a handle and resizable from its
+     * corner, and remembers its position and size under `geoKey` (GM
+     * storage, `{top, left, width, height}` in viewport pixels, the shape
+     * `createInfoDialog()` stores). Built for the table-wide 🖼 gallery
+     * (org/TODO.org "Some enhancements" 1, 2026-10-24); `createInfoDialog()`
+     * keeps its own copy of the idiom, untouched so MusicBrainz's dialogs do
+     * not change (REFACTORING.org has the follow-up).
+     *
+     * - The handle is found by `handleSel` from a delegated `pointerdown` on
+     *   `box`, so a handle that is rebuilt on every render keeps working;
+     *   buttons, links and form fields in it never start a drag. Pointer
+     *   events, so a touch drags too (the handle carries
+     *   `touch-action: none` in the panel's CSS). The move listens on the
+     *   window, not by pointer capture: the handle may be replaced mid-drag.
+     * - Resize is the browser's own corner (`resize: both` in the CSS). A
+     *   `ResizeObserver` tells it from the panel growing with its content by
+     *   the inline `width`/`height` the corner writes, and saves 300 ms after
+     *   the last change.
+     * - Only a move or a resize saves, never opening or closing: a panel
+     *   never moved keeps opening where its caller places it.
+     * - Once moved, resized or restored, the panel carries the class
+     *   `mb-geo-fixed` at viewport coordinates; the panel's CSS makes that
+     *   `position: fixed` and lifts its height cap. A press on the resize
+     *   corner (the last 18 px of both edges) adds it first, so the very
+     *   first resize is not stopped by the cap of a panel that grows with
+     *   its content; a drag pins the current height first, so lifting the
+     *   cap does not let it grow to its whole content.
+     * - A drag and a restore keep the whole panel inside the window, its
+     *   resize corner always within reach.
+     *
+     * @param {HTMLElement} box
+     * @param {{handleSel: string, geoKey: string, minW?: number, minH?: number}} o
+     * @returns {{restore: function(): boolean, destroy: function(): void}}
+     *   `restore()` applies a stored geometry, clamped to the window, and
+     *   says whether there was one; `destroy()` removes the listeners.
+     */
+    function _makeMovableResizable(box, o) {
+        const minW = o.minW || 320, minH = o.minH || 200;
+        // The stored size is the border box (`getBoundingClientRect()`);
+        // with content-box sizing every reopen grew by the borders (2 px).
+        box.style.boxSizing = 'border-box';
+        const clamp = (g) => {
+            const vw = document.documentElement.clientWidth, vh = window.innerHeight;
+            const width = Math.min(Math.max(g.width, minW), vw - 16);
+            const height = Math.min(Math.max(g.height, minH), vh - 16);
+            // All of it on screen, the resize corner included.
+            return { width, height, left: Math.min(Math.max(g.left, 0), vw - width), top: Math.min(Math.max(g.top, 0), vh - height) };
+        };
+        const fix = (r) => {
+            box.classList.add('mb-geo-fixed');
+            box.style.left = `${Math.round(r.left)}px`;
+            box.style.top = `${Math.round(r.top)}px`;
+        };
+        let lastW = '', lastH = '';
+        const save = () => {
+            const r = box.getBoundingClientRect();
+            if (r.width < 10 || r.height < 10) return;
+            fix(r);
+            GM_setValue(o.geoKey, { top: Math.round(r.top), left: Math.round(r.left), width: Math.round(r.width), height: Math.round(r.height) });
+        };
+        let drag = null;
+        const onMove = (e) => {
+            if (!drag) return;
+            // Never past the window's right or bottom edge: the resize
+            // corner stays where the pointer can reach it.
+            const vw = document.documentElement.clientWidth;
+            box.style.left = `${Math.round(Math.min(Math.max(e.clientX - drag.dx, 0), Math.max(0, vw - drag.w)))}px`;
+            box.style.top = `${Math.round(Math.min(Math.max(e.clientY - drag.dy, 0), Math.max(0, window.innerHeight - drag.h)))}px`;
+            e.preventDefault();
+        };
+        const onUp = () => {
+            if (!drag) return;
+            drag = null;
+            window.removeEventListener('pointermove', onMove, true);
+            window.removeEventListener('pointerup', onUp, true);
+            window.removeEventListener('pointercancel', onUp, true);
+            save();
+        };
+        const onDown = (e) => {
+            if (e.button !== 0 || !e.target.closest) return;
+            if (!e.target.closest(o.handleSel)) {
+                const r = box.getBoundingClientRect();
+                if (e.target === box && e.clientX > r.right - 18 && e.clientY > r.bottom - 18) {
+                    box.style.width = `${Math.round(r.width)}px`;
+                    box.style.height = `${Math.round(r.height)}px`;
+                    lastW = box.style.width;
+                    lastH = box.style.height;
+                    fix(r);
+                }
+                return;
+            }
+            if (e.target.closest('button, a, input, select, textarea, label')) return;
+            const r = box.getBoundingClientRect();
+            // From page coordinates (opened under its button) to the
+            // window's: no jump when the first drag starts. The height is
+            // pinned too: `mb-geo-fixed` lifts the height cap, and a panel
+            // that grows with its content then grew to its whole content
+            // (a Discogs master's 26 rows), its corner off the bottom of
+            // the window (vzell, 2026-10-24).
+            box.style.width = `${Math.round(r.width)}px`;
+            box.style.height = `${Math.round(r.height)}px`;
+            lastW = box.style.width;
+            lastH = box.style.height;
+            fix(r);
+            drag = { dx: e.clientX - r.left, dy: e.clientY - r.top, w: r.width, h: r.height };
+            window.addEventListener('pointermove', onMove, true);
+            window.addEventListener('pointerup', onUp, true);
+            window.addEventListener('pointercancel', onUp, true);
+            e.preventDefault();
+        };
+        box.addEventListener('pointerdown', onDown);
+        let t = 0;
+        const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(() => {
+            if (box.style.width === lastW && box.style.height === lastH) return;
+            lastW = box.style.width;
+            lastH = box.style.height;
+            if (!box.style.height) return; // the corner writes both; growth with content writes none
+            clearTimeout(t);
+            t = setTimeout(save, 300);
+        }) : null;
+        return {
+            restore() {
+                const g = GM_getValue(o.geoKey, null);
+                if (!g || !g.width || !g.height) {
+                    lastW = box.style.width;
+                    lastH = box.style.height;
+                    if (ro) ro.observe(box);
+                    return false;
+                }
+                const c = clamp(g);
+                box.style.width = `${Math.round(c.width)}px`;
+                box.style.height = `${Math.round(c.height)}px`;
+                fix(c);
+                lastW = box.style.width;
+                lastH = box.style.height;
+                if (ro) ro.observe(box);
+                return true;
+            },
+            destroy() {
+                clearTimeout(t);
+                onUp();
+                box.removeEventListener('pointerdown', onDown);
+                if (ro) ro.disconnect();
+            },
+        };
+    }
+
+    /**
      * Creates a reusable, draggable info-dialog shell shared by all lightweight popup
      * info dialogs (Keyboard Shortcuts, Application Help, …).
      *
@@ -71773,6 +73520,30 @@ a { color: #1565c0; }`;
         _ensureViewMenu().adopt(statsBtn,
             getShortcutDisplay('sa_shortcut_open_statistics', 'Ctrl+I'));
         Lib.debug('ui', 'Statistics button added to controls');
+        ensureSettingsButtonIsLast();
+    }
+
+    /**
+     * Adds "💾 Browser cache" to the SAED menu's View group, after Statistics
+     * and before Keyboard Shortcuts (`_TOOLBAR_MENU_ROW_ORDER.view`; vzell,
+     * 2026-10-24): the browser cache overview (`_idbOverviewOpen()`), until
+     * now reached from ⚙️ Settings, the Statistics panel, a progress card and
+     * the Tampermonkey menu. Added by the render tail beside Statistics, so
+     * before anything is loaded View stays hidden as before. No setting of
+     * its own: the overview has none. Idempotent.
+     *
+     * @returns {void}
+     */
+    function addCacheOverviewButton() {
+        if (!document.getElementById('mb-show-all-controls-container') || document.getElementById('mb-idbo-menu-btn')) return;
+        const btn = document.createElement('button');
+        btn.id = 'mb-idbo-menu-btn';
+        btn.type = 'button';
+        btn.innerHTML = '<span>💾 Browser cache</span>';
+        _setTip(btn, 'What this script keeps in your browser: how much, how old, and what to delete');
+        btn.style.cssText = uiActionBtnBaseCSS();
+        btn.onclick = () => _idbOverviewOpen(null);
+        _ensureViewMenu().adopt(btn);
         ensureSettingsButtonIsLast();
     }
 
@@ -79132,6 +80903,7 @@ a { color: #1565c0; }`;
         .mb-rel-col-hdr-btn,
         .mb-recof-col-hdr-btn,
         .mb-dgmb-col-hdr-btn,
+        .mb-bbmbev-col-hdr-btn,
         .mb-re-col-hdr-btn,
         .mb-barcode-col-hdr-btn,
         .mb-col-collapse-hdr-btn,
@@ -79160,6 +80932,7 @@ a { color: #1565c0; }`;
         .mb-rel-col-hdr-btn:hover,
         .mb-recof-col-hdr-btn:hover,
         .mb-dgmb-col-hdr-btn:hover,
+        .mb-bbmbev-col-hdr-btn:hover,
         .mb-re-col-hdr-btn:hover,
         .mb-barcode-col-hdr-btn:hover,
         .mb-col-collapse-hdr-btn:hover,
@@ -79174,6 +80947,7 @@ a { color: #1565c0; }`;
         .mb-rel-col-hdr-btn:focus-visible,
         .mb-recof-col-hdr-btn:focus-visible,
         .mb-dgmb-col-hdr-btn:focus-visible,
+        .mb-bbmbev-col-hdr-btn:focus-visible,
         .mb-re-col-hdr-btn:focus-visible,
         .mb-barcode-col-hdr-btn:focus-visible {
             outline: 2px solid rgba(0, 100, 255, 0.55);
@@ -79189,6 +80963,7 @@ a { color: #1565c0; }`;
         .mb-rel-col-hdr-btn[aria-pressed="true"],
         .mb-recof-col-hdr-btn[aria-pressed="true"],
         .mb-dgmb-col-hdr-btn[aria-pressed="true"],
+        .mb-bbmbev-col-hdr-btn[aria-pressed="true"],
         .mb-barcode-col-hdr-btn[aria-pressed="true"],
         .mb-col-collapse-hdr-btn[aria-expanded="true"] {
             background: var(--mb-hdr-pill-engaged-bg);
@@ -79239,6 +81014,11 @@ a { color: #1565c0; }`;
         .mb-dgmb-col-hdr-btn[aria-pressed="true"]::before { content: "▼ MB"; }
         .mb-dgmb-col-hdr-btn[data-dgmb-progress]::after { content: " " attr(data-dgmb-progress); font-variant-numeric: tabular-nums; }
         .mb-dgmb-col-hdr-btn[data-dgmb-state="error"] { background: rgba(255, 193, 7, 0.55); border-color: rgba(190, 140, 0, 0.70); }
+        /* Brucebase MB-Event column toggle (_bbMbevInitColHeaderToggles). */
+        .mb-bbmbev-col-hdr-btn::before { content: "▶ MB"; }
+        .mb-bbmbev-col-hdr-btn[aria-pressed="true"]::before { content: "▼ MB"; }
+        .mb-bbmbev-col-hdr-btn[data-bbmbev-progress]::after { content: " " attr(data-bbmbev-progress); font-variant-numeric: tabular-nums; }
+        .mb-bbmbev-col-hdr-btn[data-bbmbev-state="error"] { background: rgba(255, 193, 7, 0.55); border-color: rgba(190, 140, 0, 0.70); }
         /* "Recording of" cells: the attribute words in light green italics
            (column-scoped, over the shared .mb-credit-attr colour), a
            suggested work in orange italics. */
@@ -84651,6 +86431,43 @@ a { color: #1565c0; }`;
         };
         document.addEventListener('keydown', _onCardKey, true);
         document.addEventListener('keyup', _onCardKey, true);
+
+        // The image trigger under the pointer, for `_onImageSpace`: set on
+        // every mouseover (null off a trigger), dropped when the pointer
+        // leaves the page. A tap's compatibility mouseover is no pointing.
+        let _spaceEl = null;
+        document.addEventListener('mouseover', (e) => {
+            if (!_isTouchCompatMouseEvent(e)) _spaceEl = _artSpaceTrigger(e.target);
+        }, true);
+        document.addEventListener('mouseout', (e) => {
+            if (!e.relatedTarget) _spaceEl = null;
+        }, true);
+
+        /**
+         * Space over an image trigger opens the viewer, as a click does
+         * (`_artSpaceOpen()`), instead of scrolling the page. Registered
+         * after `_onCardKey`, which keeps Space for a card's "every image"
+         * toggle and then stops the event. Card or no card (switched off,
+         * loading, nothing to show), the pointer is on the image all the
+         * same. Shift (bigger tiles), Ctrl, Alt and ⌘ leave Space alone, as
+         * they leave the click to the link; Space typed into a field stays
+         * the field's, and a link preview card keeps its own Space.
+         * @param {KeyboardEvent} e
+         */
+        const _onImageSpace = (e) => {
+            if (!(e.key === ' ' || e.code === 'Space') || e.repeat || e.defaultPrevented ||
+                    e.shiftKey || e.ctrlKey || e.altKey || e.metaKey) return;
+            if (_artViewerState) return;
+            if (_dpIsTextField(e.target) && Date.now() - _dpPeek.typedAt < _DP_TYPING_GRACE_MS) return;
+            if (_dpPeekShown()) return;
+            const el = _spaceEl;
+            if (!el || !el.isConnected || !_artSpaceOpen(el)) return;
+            e.preventDefault();
+            e.stopImmediatePropagation();
+            // The viewer opens over the pointer: the card must not stay on top.
+            if (_target) _hide();
+        };
+        document.addEventListener('keydown', _onImageSpace, true);
         // When typing happened, for `_mbttKey()`'s "a Space typed into a
         // field stays the field's". The link preview records it too, but
         // installs nothing where its sources are all off.
@@ -92841,6 +94658,8 @@ a { color: #1565c0; }`;
             _recOfInitColHeaderToggles();
             // discogs.com's MusicBrainz column: its ▶ MB toggles.
             _dgMbAfterRender(false);
+            // brucebase.wikidot.com's MB-Event column, the same way.
+            _bbMbevAfterRender(false);
             // A foreign table's 🖼 gallery opener, after its row count.
             _fgalAfterRender();
             // Same reason as the line above: the <thead> this writes into may
@@ -93130,6 +94949,8 @@ a { color: #1565c0; }`;
                 _recOfInitColHeaderToggles();
                 // discogs.com's MusicBrainz column: its ▶ MB toggles.
                 _dgMbAfterRender(false);
+                // brucebase.wikidot.com's MB-Event column, the same way.
+                _bbMbevAfterRender(false);
                 // A foreign table's 🖼 gallery opener, after its row count.
                 _fgalAfterRender();
                 // Same reason as the line above: the <thead> this writes into may
@@ -97861,6 +99682,8 @@ a { color: #1565c0; }`;
             if (Lib.settings.sa_enable_stats_panel) {
                 addStatsButton();
             }
+            // 💾 Browser cache, after Statistics in View (no setting of its own)
+            addCacheOverviewButton();
 
             // Initialize keyboard shortcuts
             if (Lib.settings.sa_enable_keyboard_shortcuts) {
@@ -97945,6 +99768,8 @@ a { color: #1565c0; }`;
             _recOfInitColHeaderToggles();
             // discogs.com's MusicBrainz column: its ▶ MB toggles, then the lookup.
             _dgMbAfterRender(true);
+            // brucebase.wikidot.com's MB-Event column, the same way.
+            _bbMbevAfterRender(true);
             // A foreign table's 🖼 gallery opener, after its row count.
             _fgalAfterRender();
             // jungleland.it / brucespringsteen.it lazy Art / Photo cells and
@@ -118438,6 +120263,7 @@ a { color: #1565c0; }`;
             keys: [
                 'sa_stats_panel_geometry', 'sa_load_dialog_geometry',
                 'sa_shortcuts_help_geometry',
+                'sa_dp_dialog_geometry', 'sa_fgal_geometry',
                 MB_UNIQ_DROP_GEOMETRY_KEY,
             ],
         },
@@ -126922,6 +128748,8 @@ a { color: #1565c0; }`;
             if (Lib.settings.sa_enable_stats_panel) {
                 addStatsButton();
             }
+            // 💾 Browser cache, after Statistics in View (no setting of its own)
+            addCacheOverviewButton();
 
             // Initialize keyboard shortcuts (if not already initialized)
             if (Lib.settings.sa_enable_keyboard_shortcuts) {
@@ -126979,6 +128807,8 @@ a { color: #1565c0; }`;
             _recOfInitColHeaderToggles();
             // discogs.com's MusicBrainz column: its ▶ MB toggles, then the lookup.
             _dgMbAfterRender(true);
+            // brucebase.wikidot.com's MB-Event column, the same way.
+            _bbMbevAfterRender(true);
             // A foreign table's 🖼 gallery opener, after its row count.
             _fgalAfterRender();
             // jungleland.it / brucespringsteen.it lazy Art / Photo cells and
@@ -138077,9 +139907,10 @@ a { color: #1565c0; }`;
     /**
      * A key while a resolver card shows (`_initStatTooltip()`): Space toggles
      * every image of an artwork card that has more than its tiles show (else
-     * Space stays the page's), Shift draws bigger tiles. Space typed into a
-     * field stays the field's, and a link preview card owns Space while it
-     * shows — the link preview's own rules.
+     * Space opens the viewer, `_artSpaceOpen()`, as a click does), Shift
+     * draws bigger tiles. Space typed into a field stays the field's, and a
+     * link preview card owns Space while it shows — the link preview's own
+     * rules.
      *
      * @param   {Element}       el The card's element.
      * @param   {KeyboardEvent} e
@@ -138103,6 +139934,97 @@ a { color: #1565c0; }`;
         else if (card.hasAttribute('data-mb-art-cut')) _artCardView.allEl = el;
         else return null;
         return { repaint: true, consume: true };
+    }
+
+    /**
+     * A card's foot, escaped, saying that Space opens the viewer too
+     * ("Click: viewer" → "Click or Space: viewer") where it does: not on a
+     * card whose Space is the "every image" toggle (`spaceIsViewer` false;
+     * its keys line names Space instead). A foot that offers no viewer
+     * ("Click an image of the expanded cell: viewer") is left as it is:
+     * Space over that icon opens nothing either (`_artSpaceOpen()`).
+     * vzell, 2026-10-24: "the image popup doesn't mention that Space can be
+     * used instead of Click".
+     *
+     * @param   {string}  foot
+     * @param   {boolean} spaceIsViewer
+     * @returns {string} HTML.
+     */
+    function _artFootWithSpace(foot, spaceIsViewer) {
+        const html = _rgEsc(foot);
+        return spaceIsViewer ? html.replace(/^Click: viewer/, 'Click or <kbd>Space</kbd>: viewer') : html;
+    }
+
+    /**
+     * The image triggers Space opens like a click (org/TODO.org "Some
+     * enhancements" 2, 2026-10-24): every artwork card of `_ART_CARD_FNS`,
+     * and the single image of an expanded CAA/EAA cell (`art-img`).
+     * @type {Set<string>}
+     */
+    const _ART_SPACE_FNS = new Set([..._ART_CARD_FNS, 'art-img']);
+
+    /**
+     * The image trigger a node is in, whether or not its card shows: a card
+     * switched off (`sa_bb_tip_images`), still loading or with nothing to
+     * show is pointed at all the same. Fed from `mouseover` by
+     * `_initStatTooltip()`, never from `:hover`: right after the viewer
+     * closed and the page scrolled, Chromium still listed the hidden
+     * `#mb-art-viewer` as hovered (Playwright, 2026-10-24).
+     *
+     * @param   {?EventTarget} node
+     * @returns {?HTMLElement} An element whose `data-mbtt-fn` is in `_ART_SPACE_FNS`.
+     */
+    function _artSpaceTrigger(node) {
+        if (!(node instanceof Element)) return null;
+        for (let el = node.closest('[data-mbtt-fn]'); el; el = el.parentElement && el.parentElement.closest('[data-mbtt-fn]')) {
+            if (_ART_SPACE_FNS.has(el.dataset.mbttFn)) return el;
+        }
+        return null;
+    }
+
+    /**
+     * Space on an image trigger: does what a plain left click on it does,
+     * through the same click handler, given a stand-in event — never
+     * `el.click()`, which would follow the link when no handler takes it.
+     * A handler that declines (a setting off, no images, a row not shown)
+     * leaves Space to the page, exactly as it leaves the click to the link.
+     *
+     * | `data-mbtt-fn`     | handler                                          |
+     * |--------------------|--------------------------------------------------|
+     * | `fi-img`, `dg-img` | `_fiClick()` (the foreign tables)                |
+     * | `art-sum`          | `_artColumnViewerOnClick()` at the cell's icon   |
+     * | `art-img`          | `_artColumnViewerOnClick()` at that image        |
+     * | `art-rel`          | `_artIconClick()`                                |
+     * | `sb-cover`         | `_sbOpenCover()` (the sidebar's link and copy)   |
+     *
+     * @param   {HTMLElement} el A trigger from `_artSpaceTrigger()`.
+     * @returns {boolean} Whether a viewer opening was started.
+     */
+    function _artSpaceOpen(el) {
+        const fn = el.dataset.mbttFn;
+        if (fn === 'sb-cover') {
+            if (!el.dataset.mbSbCover) return false;
+            _sbOpenCover(el.dataset.mbSbCover, el);
+            return true;
+        }
+        let target = el;
+        if (fn === 'art-sum') {
+            // The badge and the icon span are stamped too; the handler wants
+            // the summary's link.
+            const li = el.closest('li.mb-caa-art-li-summary');
+            const a = li && li.querySelector(`a[href$="${CAA_CTX.artSuffix}"], a[href$="${EAA_CTX.artSuffix}"]`);
+            if (a) target = a;
+        }
+        const handler = fn === 'fi-img' || fn === 'dg-img' ? _fiClick
+            : fn === 'art-sum' || fn === 'art-img' ? _artColumnViewerOnClick
+            : fn === 'art-rel' ? _artIconClick : null;
+        if (!handler) return false;
+        let taken = false;
+        handler({
+            type: 'click', button: 0, ctrlKey: false, shiftKey: false, altKey: false, metaKey: false, target,
+            preventDefault() { taken = true; }, stopPropagation() {}, stopImmediatePropagation() {},
+        });
+        return taken;
     }
 
     /**
@@ -138290,7 +140212,7 @@ a { color: #1565c0; }`;
             `<div class="mb-art-card-tiles"${tileSize !== 56 ? ` style="--mb-art-card-tile:${tileSize}px;"` : ''}>${tiles}</div>` +
             `<div class="mb-tt-body" style="display:flex;gap:4px;flex-wrap:wrap;">${pills}</div>` +
             (o.matches || '') +
-            (o.foot ? `<div class="mb-tt-foot">${_rgEsc(o.foot)}</div>` : '') +
+            (o.foot ? `<div class="mb-tt-foot">${_artFootWithSpace(o.foot, !all && order.length <= cap)}</div>` : '') +
             `<div class="mb-tt-foot mb-art-card-keys">${keys}</div>` +
             `</div>`;
     }
@@ -139291,7 +141213,7 @@ a { color: #1565c0; }`;
      * Relationships column (`rel-multi-site`). Each is re-stamped per row
      * through `_queueFindingsRestamp()`.
      */
-    const _LATE_FINDING_IDS = [..._ART_FINDING_IDS, 'rel-multi-site'];
+    const _LATE_FINDING_IDS = [..._ART_FINDING_IDS, 'rel-multi-site', 'bb-mbev-link-mismatch', 'bb-mbev-link-missing'];
 
     /**
      * Queues a re-stamp of a row whose late data (`_LATE_FINDING_IDS`) has

@@ -70,5 +70,17 @@
     "why": "The panel's button is never appended.",
     "edits": [{ "find": "            body.appendChild(_idboBtn);\n", "replace": "" }],
     "spec": "tests/fixtures/idb-overview.spec.js", "grep": "Statistics panel opens it", "expect": "fail"
+  },
+  {
+    "name": "SAED View: no 💾 Browser cache row",
+    "why": "vzell 2026-10-24: the overview from the SAED menu's View group too.",
+    "edits": [{ "find": "        _ensureViewMenu().adopt(btn);\n        ensureSettingsButtonIsLast();\n", "replace": "        ensureSettingsButtonIsLast();\n" }],
+    "spec": "tests/fixtures/idb-overview.spec.js", "grep": "SAED menu's View group", "expect": "fail"
+  },
+  {
+    "name": "SAED View: 💾 Browser cache not placed between Statistics and Keyboard Shortcuts",
+    "why": "vzell 2026-10-24: after Statistics, before Keyboard Shortcuts. Adopted after both on the initial render, it lands last without the row order.",
+    "edits": [{ "find": "        view: ['mb-density-btn', 'mb-stats-btn', 'mb-idbo-menu-btn', 'mb-shortcuts-help-btn'],\n", "replace": "        view: ['mb-density-btn', 'mb-stats-btn', 'mb-shortcuts-help-btn'],\n" }],
+    "spec": "tests/fixtures/idb-overview.spec.js", "grep": "SAED menu's View group", "expect": "fail"
   }
 ]

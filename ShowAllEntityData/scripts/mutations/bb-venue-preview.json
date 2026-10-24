@@ -1,0 +1,93 @@
+[
+    {
+        "name": "venue reader: a /venue: page goes to the entry reader",
+        "why": "vzell 2026-10-24: a venue parser/reader of its own.",
+        "edits": [
+            {
+                "find": "        if (/^\\/venue:/.test(path)) return _dpParseBbVenue(doc, url);\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/bb-event-preview.spec.js",
+        "grep": "the venue reader",
+        "expect": "fail"
+    },
+    {
+        "name": "venue reader: a venue's photos (venue:) are Other, not Photo",
+        "why": "The window groups images by kind; a venue's Gallery is photos.",
+        "edits": [
+            {
+                "find": "        if (f.startsWith('gallery:') || f.startsWith('venue:')) return 'Photo';\n",
+                "replace": "        if (f.startsWith('gallery:')) return 'Photo';\n"
+            }
+        ],
+        "spec": "tests/fixtures/bb-event-preview.spec.js",
+        "grep": "the venue reader",
+        "expect": "fail"
+    },
+    {
+        "name": "entry reader: the entry page does not name its venue",
+        "why": "The Venue column's preview reads the venue through the entry page's Venue link.",
+        "edits": [
+            {
+                "find": "        if (venueA) data.venueUrl = _dpAbsUrl(venueA.getAttribute('href'), url);\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/bb-event-preview.spec.js",
+        "grep": "a Venue link previews the venue",
+        "expect": "fail"
+    },
+    {
+        "name": "source: a Venue link is an ordinary target (previews the entry page)",
+        "why": "vzell 2026-10-24: the hover preview on a venue name pointed to the event.",
+        "edits": [
+            {
+                "find": "                if (isVia(el)) return { key: `via:${el.href}`, url: el.href, via: true, table: el.closest('table') };\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/bb-event-preview.spec.js",
+        "grep": "a Venue link previews the venue",
+        "expect": "fail"
+    },
+    {
+        "name": "source: the Venue cell's link loses its class",
+        "why": "The class is what marks a link as a via link; a disk save of an older render has none and previews the entry page.",
+        "edits": [
+            {
+                "find": "            venueA.className = 'mb-bb-venue-link';\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/bb-event-preview.spec.js",
+        "grep": "a Venue link previews the venue",
+        "expect": "fail"
+    },
+    {
+        "name": "steps: from a venue, the rows' first own link (their Event cells)",
+        "why": "← → in a venue's window step to the other rows' venues, not to their events.",
+        "edits": [
+            {
+                "find": "                .find(x => (!viaSel || x.matches(viaSel) === fromVia) && (!own || isOwn(x) === ownKind) && _dpSiteForLink(x));",
+                "replace": "                .find(x => (!own || isOwn(x) === ownKind) && _dpSiteForLink(x));"
+            }
+        ],
+        "spec": "tests/fixtures/bb-event-preview.spec.js",
+        "grep": "Space on a venue",
+        "expect": "fail"
+    },
+    {
+        "name": "steps: the step id does not tell a venue from its row's event",
+        "why": "Known overlap: _dpRowLinks() hands ‹ › only the rows' venue links when the window came from one, so an id shared with the same row's Event link never meets it in one list; the prefix is kept for any other list holding both.",
+        "edits": [
+            {
+                "find": "            stepId: (el) => (isVia(el) ? 'via:' : '') + el.href,\n",
+                "replace": "            stepId: (el) => el.href,\n"
+            }
+        ],
+        "spec": "tests/fixtures/bb-event-preview.spec.js",
+        "grep": "Space on a venue",
+        "expect": "pass"
+    }
+]

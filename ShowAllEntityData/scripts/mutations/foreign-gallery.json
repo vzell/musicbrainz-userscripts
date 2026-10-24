@@ -181,5 +181,110 @@
         "spec": "tests/fixtures/foreign-gallery.spec.js",
         "grep": "jungleland",
         "expect": "pass"
+    },
+    {
+        "name": "geometry: stored but never applied",
+        "why": "org/TODO.org Some enhancements 1 (2026-10-24): a moved or resized gallery reopens where it was left, at that size.",
+        "edits": [
+            {
+                "find": "        if (!st.geo.restore()) _fgalPlace(st);",
+                "replace": "        st.geo.restore();\n        _fgalPlace(st);"
+            }
+        ],
+        "spec": "tests/fixtures/foreign-gallery.spec.js",
+        "grep": "drag by the title bar",
+        "expect": "fail"
+    },
+    {
+        "name": "geometry: no drag",
+        "why": "The title bar moves the window.",
+        "edits": [
+            {
+                "find": "        box.addEventListener('pointerdown', onDown);\n        let t = 0;",
+                "replace": "        let t = 0;"
+            }
+        ],
+        "spec": "tests/fixtures/foreign-gallery.spec.js",
+        "grep": "drag by the title bar",
+        "expect": "fail"
+    },
+    {
+        "name": "geometry: no clamp",
+        "why": "A stored box from a bigger window must come back inside this one.",
+        "edits": [
+            {
+                "find": "                const c = clamp(g);\n                box.style.width",
+                "replace": "                const c = g;\n                box.style.width"
+            }
+        ],
+        "spec": "tests/fixtures/foreign-gallery.spec.js",
+        "grep": "larger than the window",
+        "expect": "fail"
+    },
+    {
+        "name": "geometry: content-box sizing",
+        "why": "The stored size is the border box; applied as the content box, every reopen grows by the borders.",
+        "edits": [
+            {
+                "find": "        box.style.boxSizing = 'border-box';\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/foreign-gallery.spec.js",
+        "grep": "drag by the title bar",
+        "expect": "fail"
+    },
+    {
+        "name": "geometry: saved on open",
+        "why": "Only a move or a resize stores the geometry; a window never moved keeps opening under its 🖼.",
+        "edits": [
+            {
+                "find": "                if (!g || !g.width || !g.height) {\n                    lastW = box.style.width;",
+                "replace": "                if (!g || !g.width || !g.height) {\n                    setTimeout(save, 0);\n                    lastW = box.style.width;"
+            }
+        ],
+        "spec": "tests/fixtures/foreign-gallery.spec.js",
+        "grep": "never moved",
+        "expect": "fail"
+    },
+    {
+        "name": "geometry: mouse only",
+        "why": "A touch drag on the title bar moves the window too (no hover-only, no mouse-only dead ends).",
+        "edits": [
+            {
+                "find": "            if (e.button !== 0 || !e.target.closest) return;\n            if (!e.target.closest(o.handleSel)) {",
+                "replace": "            if (e.button !== 0 || !e.target.closest || e.pointerType !== 'mouse') return;\n            if (!e.target.closest(o.handleSel)) {"
+            }
+        ],
+        "spec": "tests/fixtures/foreign-gallery.mobile.spec.js",
+        "project": "chromium-mobile",
+        "grep": "touch drag",
+        "expect": "fail"
+    },
+    {
+        "name": "geometry: a drag does not pin the height (the window grows to its content, its corner off screen)",
+        "why": "vzell 2026-10-24, Discogs master versions: mb-geo-fixed lifts the height cap; the drag must keep the size it started with.",
+        "edits": [
+            {
+                "find": "            box.style.height = `${Math.round(r.height)}px`;\n            lastW = box.style.width;\n            lastH = box.style.height;\n            fix(r);\n            drag = {",
+                "replace": "            lastW = box.style.width;\n            lastH = box.style.height;\n            fix(r);\n            drag = {"
+            }
+        ],
+        "spec": "tests/fixtures/foreign-gallery.spec.js",
+        "grep": "tall list",
+        "expect": "fail"
+    },
+    {
+        "name": "geometry: no strip under the body (its scrollbar runs into the resize corner)",
+        "why": "vzell 2026-10-24, Brucebase 1985: a press on the grip also held the list's scrollbar and scrolled the list.",
+        "edits": [
+            {
+                "find": "            #mb-fgal.mb-tt-liner { padding-bottom: 16px; }\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/foreign-gallery.spec.js",
+        "grep": "tall list",
+        "expect": "fail"
     }
 ]

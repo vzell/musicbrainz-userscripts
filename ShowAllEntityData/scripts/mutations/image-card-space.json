@@ -1,0 +1,175 @@
+[
+    {
+        "name": "Space: the listener is not installed",
+        "why": "org/TODO.org Some enhancements 2 (2026-10-24): Space over an image must open the viewer instead of scrolling the page.",
+        "edits": [
+            {
+                "find": "        document.addEventListener('keydown', _onImageSpace, true);\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/image-card-space.spec.js",
+        "grep": "opens the viewer on the icon",
+        "expect": "fail"
+    },
+    {
+        "name": "Space: swallowed, nothing opened",
+        "why": "The guarantee is that Space OPENS what a click opens, not merely that it stops scrolling the page.",
+        "edits": [
+            {
+                "find": "        let taken = false;\n        handler({",
+                "replace": "        let taken = true;\n        if (0) handler({"
+            }
+        ],
+        "spec": "tests/fixtures/image-card-space.spec.js",
+        "grep": "opens the viewer on the icon|single-picture card",
+        "expect": "fail"
+    },
+    {
+        "name": "Space: only while a card shows",
+        "why": "A card switched off (or loading) leaves the pointer on the image all the same; the click opens the viewer there, so Space must too.",
+        "edits": [
+            {
+                "find": "            if (_artViewerState) return;\n            if (_dpIsTextField(e.target)",
+                "replace": "            if (_artViewerState) return;\n            if (document.getElementById('mb-stat-tooltip').style.display !== 'block') return;\n            if (_dpIsTextField(e.target)"
+            }
+        ],
+        "spec": "tests/fixtures/image-card-space.spec.js",
+        "grep": "no card at all",
+        "expect": "fail"
+    },
+    {
+        "name": "Space: Shift is not left alone",
+        "why": "A Shift-click keeps the link, so Shift+Space must open nothing.",
+        "edits": [
+            {
+                "find": "            if (!(e.key === ' ' || e.code === 'Space') || e.repeat || e.defaultPrevented ||\n                    e.shiftKey || e.ctrlKey",
+                "replace": "            if (!(e.key === ' ' || e.code === 'Space') || e.repeat || e.defaultPrevented ||\n                    e.ctrlKey"
+            }
+        ],
+        "spec": "tests/fixtures/image-card-space.spec.js",
+        "grep": "Space stays the page",
+        "expect": "fail"
+    },
+    {
+        "name": "Space: typing into a field is taken",
+        "why": "A Space typed into a field stays the field's (the shared typing guard).",
+        "edits": [
+            {
+                "find": "            if (_artViewerState) return;\n            if (_dpIsTextField(e.target) && Date.now() - _dpPeek.typedAt < _DP_TYPING_GRACE_MS) return;\n            if (_dpPeekShown()) return;\n            const el = _spaceEl;",
+                "replace": "            if (_artViewerState) return;\n            if (_dpPeekShown()) return;\n            const el = _spaceEl;"
+            }
+        ],
+        "spec": "tests/fixtures/image-card-space.spec.js",
+        "grep": "Space stays the page",
+        "expect": "fail"
+    },
+    {
+        "name": "Space: the pointer leaving a trigger is not noticed",
+        "why": "With the pointer on a plain cell, Space is the page's; a trigger left behind must not be opened.",
+        "edits": [
+            {
+                "find": "            if (!_isTouchCompatMouseEvent(e)) _spaceEl = _artSpaceTrigger(e.target);",
+                "replace": "            if (!_isTouchCompatMouseEvent(e)) _spaceEl = _artSpaceTrigger(e.target) || _spaceEl;"
+            }
+        ],
+        "spec": "tests/fixtures/image-card-space.spec.js",
+        "grep": "Space stays the page",
+        "expect": "fail"
+    },
+    {
+        "name": "Space: the card stays over the viewer",
+        "why": "The viewer opens under the pointer; the card must go, as it does on a click's mousedown. Recorded \"pass\": Chromium hides the card itself — the viewer covers the resting pointer, the trigger gets its mouseout, and the tooltip engine hides the card (Playwright, 2026-10-24). The _hide() stays, so the card does not depend on that boundary event.",
+        "edits": [
+            {
+                "find": "            // The viewer opens over the pointer: the card must not stay on top.\n            if (_target) _hide();\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/image-card-space.spec.js",
+        "grep": "opens the viewer on the icon",
+        "expect": "pass"
+    },
+    {
+        "name": "Space: the cut-off card's every-image toggle loses to the viewer",
+        "why": "_onImageSpace runs after _onCardKey, which keeps Space for a cut-off card's every-image toggle and stops the event; _onImageSpace also skips a spent key (defaultPrevented). Both layers removed here: with only one gone the other still covers.",
+        "edits": [
+            {
+                "find": "        if (r.consume) {\n                e.preventDefault();\n                e.stopImmediatePropagation();\n            }\n            if (r.repaint) _statTipApi.repaint(_target);",
+                "replace": "        if (r.consume) {\n                e.preventDefault();\n            }\n            if (r.repaint) _statTipApi.repaint(_target);"
+            },
+            {
+                "find": "            if (!(e.key === ' ' || e.code === 'Space') || e.repeat || e.defaultPrevented ||\n                    e.shiftKey",
+                "replace": "            if (!(e.key === ' ' || e.code === 'Space') || e.repeat ||\n                    e.shiftKey"
+            }
+        ],
+        "spec": "tests/fixtures/caa-column-redesign.spec.js",
+        "grep": "Space draws every image and back",
+        "expect": "fail"
+    },
+    {
+        "name": "Space: art-rel goes nowhere",
+        "why": "A relationship list's cover icon: Space opens the same viewer as its click (_artIconClick()).",
+        "edits": [
+            {
+                "find": "            : fn === 'art-rel' ? _artIconClick : null;",
+                "replace": "            : null;"
+            }
+        ],
+        "spec": "tests/fixtures/rel-icons.spec.js",
+        "grep": "Space on the hovered icon",
+        "expect": "fail"
+    },
+    {
+        "name": "Space: sb-cover goes nowhere",
+        "why": "The sidebar's cover and its copy beside the name: Space opens our viewer, as their click does.",
+        "edits": [
+            {
+                "find": "            _sbOpenCover(el.dataset.mbSbCover, el);\n            return true;",
+                "replace": "            return false;"
+            }
+        ],
+        "spec": "tests/fixtures/sidebar-picture.spec.js",
+        "grep": "Space on the hovered cover",
+        "expect": "fail"
+    },
+    {
+        "name": "Space: an expanded cell's image goes nowhere",
+        "why": "art-img (one image of an expanded CAA/EAA cell) is in _ART_SPACE_FNS: Space opens the viewer at that image.",
+        "edits": [
+            {
+                "find": "    const _ART_SPACE_FNS = new Set([..._ART_CARD_FNS, 'art-img']);",
+                "replace": "    const _ART_SPACE_FNS = new Set([..._ART_CARD_FNS]);"
+            }
+        ],
+        "spec": "tests/fixtures/caa-column-redesign.spec.js",
+        "grep": "Space on a hovered image of an expanded cell",
+        "expect": "fail"
+    },
+    {
+        "name": "foot: Space not named",
+        "why": "vzell, 2026-10-24: the card must say that Space opens the viewer too.",
+        "edits": [
+            {
+                "find": "        return spaceIsViewer ? html.replace(/^Click: viewer/, 'Click or <kbd>Space</kbd>: viewer') : html;",
+                "replace": "        return html;"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-image-card.spec.js",
+        "grep": "hover: Loading with the thumbnail",
+        "expect": "fail"
+    },
+    {
+        "name": "foot: Space named on a cut-off card",
+        "why": "On a card with more images than it shows, Space is the every-image toggle, so the foot must not offer it for the viewer.",
+        "edits": [
+            {
+                "find": "${_artFootWithSpace(o.foot, !all && order.length <= cap)}",
+                "replace": "${_artFootWithSpace(o.foot, true)}"
+            }
+        ],
+        "spec": "tests/fixtures/rel-icons.spec.js",
+        "grep": "the native title held back",
+        "expect": "fail"
+    }
+]

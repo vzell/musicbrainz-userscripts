@@ -506,8 +506,25 @@ Grep `// ── CAA/EAA column redesign` for the code. Rules that fail silently:
   key to `_mbttKey()` while a resolver card shows, and rebuilds the card
   through `_statTipApi.repaint()`. Late record repaints (`_artRelIconRepaint()`,
   the Discogs card) also go through that, so the fit runs on them too. Space is
-  spent ONLY when the card is cut off (`data-mb-art-cut`) or already shows every
-  image; typing into a field keeps it (`_dpPeek.typedAt`, which the tooltip
+  spent by the card ONLY when it is cut off (`data-mb-art-cut`) or already shows every
+  image; otherwise, since 2026-10-24 (org/TODO.org "Some enhancements" 2: the
+  page scrolled under the card), Space does what a plain click does —
+  `_onImageSpace`, registered AFTER `_onCardKey` so the card's toggle wins and
+  stops the event, runs `_artSpaceOpen()`: the trigger's own click handler
+  (`_fiClick()`, `_artColumnViewerOnClick()`, `_artIconClick()`) with a
+  stand-in event, or `_sbOpenCover()`; never `el.click()`, which follows the
+  link when no handler takes it. `_ART_SPACE_FNS` is `_ART_CARD_FNS` plus
+  `art-img`. The trigger comes from `mouseover` (`_artSpaceTrigger()`), card or
+  no card (switched off, loading), NOT from `:hover`: right after the viewer
+  closed and the page scrolled, Chromium still listed the hidden
+  `#mb-art-viewer` as hovered. A handler that declines leaves Space to the
+  page, as it leaves the click to the link; Shift/Ctrl/Alt/⌘ too. Specs
+  `image-card-space.spec.js` plus one Space test beside each click test
+  (rel-icons, caa-column-redesign D1, sidebar-picture, discogs-image-card);
+  mutations `scripts/mutations/image-card-space.json`. The card's foot says
+  so where it holds (`_artFootWithSpace()`: "Click: viewer" → "Click or
+  Space: viewer", not on a cut-off card, whose Space is the toggle; vzell,
+  2026-10-24). Typing into a field keeps it (`_dpPeek.typedAt`, which the tooltip
   engine now records itself, because the link preview installs nothing where
   its sources are off); a shown link preview owns it. "Every image" belongs to
   the hovered element and resets in `_mbttAfterHide()`; Shift follows the key
@@ -680,6 +697,30 @@ MusicBrainz's.
   key; Esc closes the question first, then the window. It reuses the async
   job card's rows (`.mb-tt-ajpill`, `-ajbar`, `-ajfacts`, `-ajlog`,
   `-ajact`). Touch: a tap outside closes it; no hover-only part.
+- **Moved and resized, it stays there** (org/TODO.org "Some enhancements"
+  1, 2026-10-24; mockup https://claude.ai/artifact/DmsNyUkUa1Hq8nPr2B5EGA):
+  `_makeMovableResizable()` — dragged by `.mb-fgal-head` (delegated from
+  the box: `_fgalRender()` rebuilds the head every time; window-level
+  pointer listeners, not capture, for the same reason; touch too), resized
+  from the CSS `resize: both` corner, stored under `sa_fgal_geometry` (the
+  "Panel geometry" export group, beside the Space window's
+  `sa_dp_dialog_geometry`, which was missing there). Only a drag or a
+  resize stores; until then it opens under its 🖼 (`_fgalPlace()`, page
+  coordinates), afterwards `position: fixed` (`.mb-geo-fixed`) at the
+  stored place, clamped to the window. Two traps: the box is
+  `box-sizing: border-box`, because the stored size is the border box (with
+  content-box every reopen grew by 2 px); and its 600 px height cap is
+  lifted by a press on the resize corner, before the browser starts the
+  resize. `createInfoDialog()` keeps its own copy of the idiom
+  (REFACTORING.org). Two more found in a real browser the same day: a
+  DRAG lifts the cap too (`.mb-geo-fixed`: 94vh), so it pins the current
+  height first, or the window grew to its whole content (a Discogs
+  master's versions, the corner off the bottom); and the drag and a
+  restore keep the WHOLE box in the window, not just its top 40 px. And
+  the box has a 16 px strip under its scrolling body: without it the
+  body's scrollbar ran into the resize corner, and a press on the grip
+  held the scrollbar, scrolling the list while resizing.
+  `foreign-gallery.spec.js` "a tall list" pins both.
 - **Chips and Compare** (answer 2), as D2: by each image's first type
   (`_fgalType()`; Discogs' primary/secondary come through `cardImages()`);
   the viewer's Shift+← → step the read rows the chips leave, round.
@@ -687,7 +728,7 @@ MusicBrainz's.
   row), so a filter narrows it ("only the N rows the filters show"); a row
   the list rules out (a bootleg marked "cover only") is counted as not
   here. `_fiColIdx()` keeps `rowFor()` cheap over thousands of rows.
-- **Specs** `tests/fixtures/foreign-gallery.spec.js` (13) and
-  `foreign-gallery.mobile.spec.js`; mutations
-  `scripts/mutations/foreign-gallery.json` (14; three recorded
+- **Specs** `tests/fixtures/foreign-gallery.spec.js` (16) and
+  `foreign-gallery.mobile.spec.js` (2: tap, touch drag); mutations
+  `scripts/mutations/foreign-gallery.json` (20; three recorded
   `"expect": "pass"` with the overlap named).

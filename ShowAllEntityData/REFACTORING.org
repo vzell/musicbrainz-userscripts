@@ -510,3 +510,26 @@ publish rewrite and the version skew this project already hit once (9.99.1138 ag
 ~applyExtractTrackTitleData~. Do it only for code with a SECOND consumer — the title-case engine
 for the Springsteen scripts is the first candidate — with an immutable URL, ~#sha256=~ SRI, a
 version handshake and a publish-check entry per library.
+
+* TODO ~createInfoDialog()~ onto ~_makeMovableResizable()~
+
+Added 2026-10-24 (branch feature/bb-events-and-gallery, org/TODO.org "Some enhancements" 1).
+
+** Axis
+One copy of the move / resize / remember-geometry idiom instead of four.
+
+** Evidence
+~_makeMovableResizable()~ (the foreign tables' 🖼 gallery, ~sa_fgal_geometry~) is the
+idiom ~createInfoDialog()~ copied from ~showLoadFilterDialog()~, and the statistics panel
+has a third copy. The new one drags by touch too; the old ones drag by mouse only
+(~mousedown~). ~createInfoDialog()~ is ~box-sizing: border-box~ already, so the 2 px growth
+the gallery had before its own ~border-box~ does not apply there.
+
+** Cost / risk
+Low to medium. Every MusicBrainz dialog with a ~geoKey~ (the Space window, keyboard
+shortcuts, the MusicBrainz 🖼 gallery) changes, so ~info-dialog-resize-geometry.spec.js~ and
+the popup specs must pass unchanged.
+
+** Recommended path
+Give ~createInfoDialog()~ a ~handleSel~ for its title bar and call the helper when
+~opts.geoKey~ is set; then the load-filter dialog and the statistics panel.

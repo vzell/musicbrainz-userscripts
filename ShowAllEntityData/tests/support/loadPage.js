@@ -57,6 +57,13 @@ const USERSCRIPT_PATH = path.join(PROJECT_ROOT, 'ShowAllEntityData.user.js');
 // spec starts by clicking a column toggle would open its progress card
 // (#mb-async-pop) right under that toggle, over the header cells a spec clicks
 // next. async-pop.spec.js and the job specs that test the card seed it back on.
+//
+// `sa_bb_mb_event_lookup` (default true, 2026-10-24) is the eleventh: after a
+// Brucebase year table renders, its MB-Event column asks MusicBrainz for every
+// entry, about one GM request a second. In a spec the stub answers 404, so it
+// runs on through every row's name search while the spec interacts, and each
+// answer repaints cells and re-runs the filter. bb-mb-event.spec.js seeds it
+// back on with its own answers.
 const FIXTURE_SETTINGS_OVERRIDE = {
     sa_enable_caa_pics: false,
     sa_enable_relationships_column: false,
@@ -68,6 +75,7 @@ const FIXTURE_SETTINGS_OVERRIDE = {
     sa_dp_hover_without_ctrl: false,
     sa_event_rg_tooltip_without_ctrl: false,
     sa_async_pop_auto_open: false,
+    sa_bb_mb_event_lookup: false,
 };
 
 // `_migrateFrozenSettings()` repairs a GM profile that VZ_MBLibrary's old SAVE

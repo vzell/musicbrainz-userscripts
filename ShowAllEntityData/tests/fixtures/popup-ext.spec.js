@@ -55,6 +55,13 @@ const FIXTURE = path.join(__dirname, 'event-overview.html');
 const BUTTON = 'button[data-label="Show all Relationships for Event"]';
 const SETLIST = 'https://www.setlist.fm/setlist/bruce-springsteen/2025/co-op-live-manchester-england-43535b97.html';
 const HTML_HEADERS = 'Content-Type: text/html; charset=utf-8';
+// How long a run of Discogs pages may take before "N of N loaded": the pages
+// go through the Discogs gate one by one (1 s apart with the default token).
+// Five pages took 6.5 s alone on petri, but the third of them was still
+// queued after 20 s in a 12-worker test:full (2026-10-24), the gate's
+// wall-clock waits also stretched by that host's clock steps (500 ms back
+// every 5.5 s). 45 s: still far short of the test's own timeout.
+const DG_RUN_MS = 45000;
 const SETLIST_HTML = '<!doctype html><html lang="en"><head><title>Concert Setlist | setlist.fm</title>' +
     '<meta property="og:title" content="Bruce Springsteen Setlist at Co-op Live, Manchester">' +
     '<meta property="og:type" content="setlist"><meta property="og:site_name" content="setlist.fm">' +
@@ -1292,7 +1299,7 @@ test.describe('the Discogs window (2026-10-17)', () => {
         // and the field keeps its focus, caret and text through them.
         const q = vers.locator('.mb-dg-vq');
         await q.fill('Japan');
-        await expect(vers.locator('.mb-dg-counts').first()).toHaveText('387 of 387 loaded', { timeout: 15000 });
+        await expect(vers.locator('.mb-dg-counts').first()).toHaveText('387 of 387 loaded', { timeout: DG_RUN_MS });
         await expect(vers.locator('.mb-dg-pill').first()).toHaveText('Done');
         expect(await dgVersionsLog(page), 'one after the other, each once').toEqual(DGV);
         await expect(q).toBeFocused();
@@ -1562,7 +1569,7 @@ test.describe('the Discogs artist and label windows (2026-10-18)', () => {
         await disco.getByRole('button', { name: 'Load the other 428 (5 requests, about 5 s)' }).click();
         await expect(disco.locator('.mb-dg-pill').first()).toHaveText('Running');
         await expect(disco.getByRole('button', { name: 'Stop' })).toBeVisible();
-        await expect(disco.locator('.mb-dg-counts').first()).toHaveText('528 of 528 loaded', { timeout: 20000 });
+        await expect(disco.locator('.mb-dg-counts').first()).toHaveText('528 of 528 loaded', { timeout: DG_RUN_MS });
         await expect(disco.locator('.mb-dg-pill').first()).toHaveText('Done');
         expect(await dgListLog(page), 'one after the other, each once').toEqual(DGA.pages);
         await expect(d.locator('.mb-dg-xh')).toHaveText(['Profile', 'Images 3', 'Sites 3', 'Releases 2', 'Appearances 431',
@@ -1578,7 +1585,7 @@ test.describe('the Discogs artist and label windows (2026-10-18)', () => {
         const d = dialog(page);
         const disco = d.locator('[data-mb-dg-disco="artist"]');
         await disco.getByRole('button', { name: /^Load the other 428/ }).click();
-        await expect(disco.locator('.mb-dg-counts').first()).toHaveText('528 of 528 loaded', { timeout: 20000 });
+        await expect(disco.locator('.mb-dg-counts').first()).toHaveText('528 of 528 loaded', { timeout: DG_RUN_MS });
 
         const onRel = disco.locator('[data-mb-dg-sec="a-Appearance"]');
         await expect(onRel.locator('tbody > tr')).toHaveCount(150);

@@ -160,7 +160,8 @@ test.describe('the SAED button', () => {
         // Row order is declared by _TOOLBAR_MENU_ROW_ORDER, not by the sequence
         // the render tail happens to adopt them in — 🎹 is adopted on the
         // INITIAL render and would otherwise head the View list.
-        expect(groups.view).toEqual(['mb-density-btn', 'mb-stats-btn', 'mb-shortcuts-help-btn']);
+        // 💾 Browser cache after Statistics, before Keyboard Shortcuts (vzell, 2026-10-24).
+        expect(groups.view).toEqual(['mb-density-btn', 'mb-stats-btn', 'mb-idbo-menu-btn', 'mb-shortcuts-help-btn']);
         expect(groups.help, 'Settings before Help (approved)').toEqual(['mb-settings-btn', 'mb-app-help-btn']);
         expect(groups.log).toEqual(['mb-saed-whatsnew-btn', 'mb-saed-devlog-btn']);
         expect(groups.load, 'the Load group is for narrow screens only').toBeUndefined();
@@ -287,7 +288,11 @@ test.describe('the SAED button', () => {
         await expect(page.locator('#mb-density-btn')).toHaveCount(0);
         await openToolbarMenu(page, 'saed');
         const groups = await shownGroups(page);
-        expect(groups.view, 'every View row is gated off').toBeUndefined();
+        // Every GATED View row is off; 💾 Browser cache has no setting
+        // (2026-10-24), so it is all View holds — no empty rows beside it.
+        // An empty group not showing is pinned by "before anything is
+        // loaded, View is not shown".
+        expect(groups.view, 'every gated View row is gone').toEqual(['mb-idbo-menu-btn']);
         expect(groups.data, 'Data is untouched, so this is not "the menu failed to build"')
             .toEqual(['mb-save-to-disk-btn', 'mb-load-from-disk-btn', 'mb-export-btn']);
     });

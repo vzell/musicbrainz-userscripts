@@ -14,7 +14,7 @@
 const { test, expect } = require('../support/test');
 const CASES = require('../support/mbTitleCaseCases');
 const {
-    BB_BUTTON, BB_YEAR_BUTTON, loadBbSongsPage, loadBbYearPage, renderedBbRows, renderedBbYearRows,
+    BB_BUTTON, BB_YEAR_BUTTON, loadBbSongsPage, loadBbYearPage, renderedBbRows, renderedBbYearRows, revealPastStickyColumn,
 } = require('../support/bbFixture');
 const { JL_BUTTON, loadJlListPage, renderedJlRows } = require('../support/jlFixture');
 const { loadBsRecordsPage, renderedBsRows } = require('../support/bsFixture');
@@ -187,6 +187,13 @@ test.describe('Brucebase year pages: Venue and the songs', () => {
         expect(sydney && [sydney.State, sydney.Country]).toEqual(['NEW SOUTH WALES', 'Australia']);
         expect(rows.filter((r) => /^[A-Z ]{4,}$/.test(r.City) || (r.Country !== 'USA' && /^[A-Z ]{4,}$/.test(r.Country)))).toEqual([]);
         expect(await cellTip(page, 'City', 'Hampton')).toBe('As written on the site:\nHAMPTON');
+        // Event (2026-10-24): the heading's parts cased as their columns
+        // (State and "USA" as written), date and " - " untouched by the
+        // typography rules; the heading as written is its tooltip.
+        expect(hampton.Event).toBe('1985-01-04 - Hampton Roads Coliseum, Hampton, VA');
+        expect(await cellTip(page, 'Event', '1985-01-04 - Hampton Roads Coliseum, Hampton, VA'))
+            .toBe('As written on the site:\n1985-01-04 - HAMPTON ROADS COLISEUM, HAMPTON, VA');
+        expect(sydney.Event).toBe(`${sydney.Date} - Sydney Entertainment Centre, Sydney, NEW SOUTH WALES, Australia`);
         expect(hampton._setlist).toContain('Born in the U.S.A.');
         expect(hampton._setlist).toContain('I’m on Fire');
         expect(hampton._setlist).toContain('Santa Claus Is Comin’ to Town');
@@ -200,7 +207,10 @@ test.describe('Brucebase year pages: Venue and the songs', () => {
         expect(li).toEqual({ tip: 'As written on the site:\nBORN IN THE U.S.A.', marked: true });
 
         const input = columnFilterInput(page, Object.keys(rows[0]).indexOf('Setlist'));
-        await input.click();
+        await revealPastStickyColumn(page, input);
+        // Focused, not clicked: the sticky Event column and the sticky
+        // headers' right mask leave too little of the window to click in.
+        await input.focus();
         await input.pressSequentially('darlington county');
         await expect.poll(async () => (await renderedBbYearRows(page)).length, { timeout: 15000 }).toBeLessThan(rows.length);
         const hits = await renderedBbYearRows(page);

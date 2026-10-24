@@ -334,7 +334,15 @@ test.describe('detail-page parsers (one record per saved page)', () => {
             'Magic Tour Highlights (EP, 2008) (recorded March 20, 2008)',
             'Live From Asbury Park (2026) (recorded September 15, 2024)',
         ]);
-        expect(r.sections.map((s) => s.label)).toEqual(['Credits', 'On The Tracks', 'Lyrics']);
+        // Since 2026-10-24 a fourth, every performance with its show linked,
+        // closed at first; the sections carry their links (`html`).
+        expect(r.sections.map((s) => s.label.replace(/\(\d+\)/, '(N)'))).toEqual(['Credits', 'On The Tracks', 'Lyrics', 'Performances (N)']);
+        const perf = r.sections[3];
+        expect(perf.label).toBe('Performances (250)');
+        expect(perf.open).toBe(false);
+        expect(perf.html).toContain('<a href="https://brucebase.wikidot.com/gig:2024-09-15c-beach-asbury-park-nj"');
+        expect(r.sections[2].html, 'the lyrics have no links').toBe('');
+        expect(r.collapsible && r.imagesByKind).toBe(true);
         // The fixture's lyrics are blanked (build-detail-fixtures.py): pin the
         // shape, never the words.
         expect(r.sections[2].text.split('\n').filter(Boolean).length).toBeGreaterThan(20);
@@ -675,7 +683,12 @@ test.describe('the other hosts', () => {
         await expect(dialog).toHaveCount(0);
 
         await peekAt(page, page.locator('table.tbl tbody a:not(.mb-fi-glyph)[href$="lyrics.php?song=babyme"]'));
-        await expect(peek(page)).toContainText('Lyrics not available');
+        // 15 s, not the 5 s default: this waits for the detail pages' next
+        // rate-gate slot, which is reserved on the wall clock, and petri's
+        // wall clock steps back 500 ms every 5.5 s (2026-10-24), each step
+        // adding half a second to a pending wait; under a 12-worker
+        // test:full the 5 s ran out once (passed 3/3 alone).
+        await expect(peek(page)).toContainText('Lyrics not available', { timeout: 15000 });
         await expect(peek(page).locator('.mb-dp-excerpt')).toHaveCount(0);
         expect(errors).toEqual([]);
     });

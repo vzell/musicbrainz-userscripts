@@ -93,7 +93,7 @@ test.describe('springsteenlyrics.com: the Cover column\'s image card and viewer 
         await expect(tip(page).locator('.mb-art-card-tile.mb-art-card-main')).toHaveCount(1);
         await expect(tip(page)).toContainText('5 images · ★ primary');
         await expect(tip(page).locator('.mb-tt-pill')).toHaveText(['Cover', 'Scan ×4']);
-        await expect(tip(page)).toContainText('Click: viewer · Ctrl-click: the item page');
+        await expect(tip(page)).toContainText('Click or Space: viewer · Ctrl-click: the item page');
         // The cover comes first, the scans' thumbnails after it.
         await expect(tip(page).locator('.mb-art-card-tile img').first()).toHaveAttribute('src', `${BASE}bootlegs/aud_live1967/4554.jpg`);
         await expect(tip(page).locator('.mb-art-card-tile img').nth(1)).toHaveAttribute('src', /4554_artwork_01_tn\.jpg$/);
@@ -237,8 +237,13 @@ test.describe('springsteenlyrics.com: the Cover column\'s image card and viewer 
         await hover(page, coverOf(page, '8694'));
         await expect(tip(page)).toContainText('Loading the scans');
         await page.mouse.move(0, 0);
+        // 15 s, not the 5 s default: this waits for the detail pages' next
+        // rate-gate slot, which is reserved on the wall clock, and petri's
+        // wall clock steps back 500 ms every 5.5 s (2026-10-24), each step
+        // adding half a second to a pending wait; under a 12-worker
+        // test:full the 5 s ran out once (passed 3/3 alone).
         await expect.poll(() => logs.some(t => t.includes('no longer wanted, not asked: ') && t.includes('item=8694&')),
-            { message: 'dropped at its slot', timeout: 5000 }).toBe(true);
+            { message: 'dropped at its slot', timeout: 15000 }).toBe(true);
         expect(served).toEqual([ITEM_4554]);
     });
 });

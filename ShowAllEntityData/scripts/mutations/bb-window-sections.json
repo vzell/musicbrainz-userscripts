@@ -1,0 +1,119 @@
+[
+    {
+        "name": "window: sections not collapsible",
+        "why": "vzell, 2026-10-24: the window's sections on the right fold with a click on their heading.",
+        "edits": [
+            {
+                "find": "            if (!data.collapsible) {\n                right.push(`<h4>${_mbttEscape(s.label)}</h4>${body}`);",
+                "replace": "            if (true) {\n                right.push(`<h4>${_mbttEscape(s.label)}</h4>${body}`);"
+            }
+        ],
+        "spec": "tests/fixtures/bb-event-preview.spec.js",
+        "grep": "sections fold|song's window",
+        "expect": "fail"
+    },
+    {
+        "name": "window: a folded section forgotten",
+        "why": "A section the reader folded stays folded for the next record of the page.",
+        "edits": [
+            {
+                "find": "            const open = _dpSecState.has(name) ? _dpSecState.get(name) : s.open !== false;",
+                "replace": "            const open = s.open !== false;"
+            }
+        ],
+        "spec": "tests/fixtures/bb-event-preview.spec.js",
+        "grep": "sections fold",
+        "expect": "fail"
+    },
+    {
+        "name": "window: sections as plain text",
+        "why": "The people, songs and shows of a section are links (html, _dpBlockHtml()).",
+        "edits": [
+            {
+                "find": "            const body = `<div class=\"mb-dp-section\">${s.html || _mbttEscape(s.text)}</div>`;",
+                "replace": "            const body = `<div class=\"mb-dp-section\">${_mbttEscape(s.text)}</div>`;"
+            }
+        ],
+        "spec": "tests/fixtures/bb-event-preview.spec.js",
+        "grep": "are linked",
+        "expect": "fail"
+    },
+    {
+        "name": "window: a site link leaves the window",
+        "why": "A link to one of the host's own detail pages opens in the window (_dpDrill()), Backspace goes back.",
+        "edits": [
+            {
+                "find": "        if (_foreignHost && !a.querySelector('img') && _dpSiteForUrl(a)) {\n            const siteSrc",
+                "replace": "        if (false) {\n            const siteSrc"
+            }
+        ],
+        "spec": "tests/fixtures/bb-event-preview.spec.js",
+        "grep": "a show in Performances",
+        "expect": "fail"
+    },
+    {
+        "name": "window: no card for a site link",
+        "why": "Pointing at such a link in the window shows its card (_dpWinWhat() -> here), with Ctrl as on the page.",
+        "edits": [
+            {
+                "find": "        const site = _foreignHost && !a.querySelector('img') ? _dpSiteForUrl(a) : null;",
+                "replace": "        const site = null;"
+            }
+        ],
+        "spec": "tests/fixtures/bb-event-preview.spec.js",
+        "grep": "a show in Performances",
+        "expect": "fail"
+    },
+    {
+        "name": "window: images not by kind",
+        "why": "The images are grouped by kind, Photo last.",
+        "edits": [
+            {
+                "find": "        if (scans.length && data.imagesByKind) {",
+                "replace": "        if (scans.length && false) {"
+            }
+        ],
+        "spec": "tests/fixtures/bb-event-preview.spec.js",
+        "grep": "under their kind",
+        "expect": "fail"
+    },
+    {
+        "name": "window: Photo not last",
+        "why": "vzell: the Photo section is the last one rendered.",
+        "edits": [
+            {
+                "find": "            kinds.sort((a, b) => (a === 'Photo') - (b === 'Photo'));\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/bb-event-preview.spec.js",
+        "grep": "under their kind",
+        "expect": "fail"
+    },
+    {
+        "name": "Ctrl+click: only the clicked section follows",
+        "why": "vzell 2026-10-24: Ctrl-clicking a header toggles ALL sections.",
+        "edits": [
+            {
+                "find": "            win.querySelectorAll(SEC).forEach(x => { x.open = open; });\n",
+                "replace": "            d.open = open;\n"
+            }
+        ],
+        "spec": "tests/fixtures/bb-event-preview.spec.js",
+        "grep": "Ctrl\\+click on a heading",
+        "expect": "fail"
+    },
+    {
+        "name": "Ctrl+click: the browser's own toggle not prevented (the clicked one flips back)",
+        "why": "The summary's default action toggles its details after the handler set every section.",
+        "edits": [
+            {
+                "find": "            e.preventDefault();\n            const open = !d.open;\n",
+                "replace": "            const open = !d.open;\n"
+            }
+        ],
+        "spec": "tests/fixtures/bb-event-preview.spec.js",
+        "grep": "Ctrl\\+click on a heading",
+        "expect": "fail"
+    }
+]

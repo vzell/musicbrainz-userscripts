@@ -5,6 +5,7 @@ const { test, expect } = require('../support/test');
 const { loadUserscriptPage } = require('../support/loadPage');
 const { setupRecordingOf } = require('../support/recordingOf');
 const { seedCacheOverview } = require('../support/idbFixture');
+const { clickToolbarItem } = require('../support/toolbarMenu');
 
 // The 💾 browser cache overview (_idbo*): what the script keeps in IndexedDB,
 // for the user. Both databases are seeded before the userscript opens them:
@@ -17,7 +18,7 @@ const { seedCacheOverview } = require('../support/idbFixture');
 //     older than N days / Clear all change IndexedDB itself, not just the view;
 //   - Esc cancels a pending confirmation before it closes the dialog;
 //   - the ways in: ⚙️ Settings registry, the Statistics panel, a progress
-//     card's cache rows, the Tampermonkey menu.
+//     card's cache rows, the Tampermonkey menu, the SAED menu's View group.
 
 const URL = 'https://musicbrainz.org/artist/89729b97-90a3-4f84-9e88-e16f96cab350/recordings';
 const FIXTURE = path.join(__dirname, 'artist-recordings.html');
@@ -146,6 +147,25 @@ test.describe('💾 browser cache overview', () => {
         await expect(page.locator('#mb-idb-overview .mb-idbo-confirm')).toHaveCount(0);
         await expect(dlg(page)).toBeVisible();
         expect((await scan(page)).images.count).toBe(2);
+        await page.keyboard.press('Escape');
+        await expect(dlg(page)).toHaveCount(0);
+    });
+
+    // vzell, 2026-10-24: "browser cache overview window should be callable
+    // from our main SAED menu too … after the Statistics entry before the
+    // Keyboard Shortcuts in the VIEW section". Pinned: the row is in View,
+    // between those two, and a click on it OPENS the overview (scanned:
+    // its parts are listed), closing the menu.
+    test('the SAED menu\'s View group: 💾 Browser cache, between Statistics and Keyboard Shortcuts, opens it', async ({ page }) => {
+        await seedCacheOverview(page);
+        await setupRecordingOf(page);
+        const rows = await page.evaluate(() => Array.from(document.querySelectorAll('.mb-saed-group[data-mb-group="view"] .mb-toolbar-menu-item')).map(b => b.id));
+        expect(rows.indexOf('mb-idbo-menu-btn'), 'right after Statistics').toBe(rows.indexOf('mb-stats-btn') + 1);
+        expect(rows.indexOf('mb-shortcuts-help-btn'), 'right before Keyboard Shortcuts').toBe(rows.indexOf('mb-idbo-menu-btn') + 1);
+        await expect(page.locator('#mb-idbo-menu-btn')).toHaveText('💾 Browser cache');
+        await clickToolbarItem(page, '#mb-idbo-menu-btn');
+        await expect(row(page, 'images')).toBeVisible();
+        await expect(page.locator('#mb-saed-menu-btn-panel')).toBeHidden();
         await page.keyboard.press('Escape');
         await expect(dlg(page)).toHaveCount(0);
     });

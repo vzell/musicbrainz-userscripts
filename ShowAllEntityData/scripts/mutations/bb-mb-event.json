@@ -1,0 +1,171 @@
+[
+    {
+        "name": "lookup: no url lookup of the anchors",
+        "why": "An event MusicBrainz links to the row's own Brucebase anchor is the row's, found with one request per 100 entries (probe 2026-10-24).",
+        "edits": [
+            {
+                "find": "        const anchors = rows.map(r => r.anchor).filter(Boolean);",
+                "replace": "        const anchors = [];"
+            }
+        ],
+        "spec": "tests/fixtures/bb-mb-event.spec.js",
+        "grep": "fewest requests",
+        "expect": "fail"
+    },
+    {
+        "name": "lookup: the name search's top hit on any date",
+        "why": "A name-search hit counts only on the row's own date; the top hit of \"1985-01-10: …\" may be another show at that venue.",
+        "edits": [
+            {
+                "find": "            if (top && ((top['life-span'] || {}).begin || '') === r.date) found.set(r.key, { ev: _bbMbevEventOf(top), via: 'name' });",
+                "replace": "            if (top) found.set(r.key, { ev: _bbMbevEventOf(top), via: 'name' });"
+            }
+        ],
+        "spec": "tests/fixtures/bb-mb-event.spec.js",
+        "grep": "fewest requests",
+        "expect": "fail"
+    },
+    {
+        "name": "lookup: the store is never read",
+        "why": "A second visit answers every row from the store (90 days, 7 for no event) with no request.",
+        "edits": [
+            {
+                "find": "                        if (!_bbMbevMem.has(r.key)) _bbMbevMem.set(r.key, r);",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/bb-mb-event.spec.js",
+        "grep": "a reload answers",
+        "expect": "fail"
+    },
+    {
+        "name": "lookup: a failure stored as no event",
+        "why": "A request that failed leaves its rows unanswered, shown as failed and asked again on a click; it is never stored.",
+        "edits": [
+            {
+                "find": "            if (failed.has(r.key) || (_bbMbev.stop && !found.has(r.key))) return;",
+                "replace": "            if (_bbMbev.stop && !found.has(r.key)) return;"
+            }
+        ],
+        "spec": "tests/fixtures/bb-mb-event.spec.js",
+        "grep": "failed request",
+        "expect": "fail"
+    },
+    {
+        "name": "lookup: the setting ignored",
+        "why": "sa_bb_mb_event_lookup off: nothing is asked until the ▶ MB header button.",
+        "edits": [
+            {
+                "find": "        return Lib.settings.sa_bb_mb_event_lookup !== false;",
+                "replace": "        return true;"
+            }
+        ],
+        "spec": "tests/fixtures/bb-mb-event.spec.js",
+        "grep": "lookup off",
+        "expect": "fail"
+    },
+    {
+        "name": "late write: the filter caches kept",
+        "why": "docs/claude/filter-and-cache-invariants.md: a post-render cell write invalidates the filter result cache and re-runs an active filter.",
+        "edits": [
+            {
+                "find": "            _invalidateFilterCache();\n            _bbMbevUpdateHdrBtns();",
+                "replace": "            _bbMbevUpdateHdrBtns();"
+            }
+        ],
+        "spec": "tests/fixtures/bb-mb-event.spec.js",
+        "grep": "late answers reach an active filter",
+        "expect": "fail"
+    },
+    {
+        "name": "card: the glyph's source not registered",
+        "why": "org/TODO.org Some enhancements f: hovering the found glyph shows the MusicBrainz event's card.",
+        "edits": [
+            {
+                "find": ".concat([_bbMbevSource(), _rgLinkSource(),",
+                "replace": ".concat([_rgLinkSource(),"
+            }
+        ],
+        "spec": "tests/fixtures/bb-mb-event.spec.js",
+        "grep": "found by its link: the event card",
+        "expect": "fail"
+    },
+    {
+        "name": "card: loaded under another key than the card reads",
+        "why": "The card renders _MB_KINDS.event's own answer, so the load must use its cardInc (the _mbPop key).",
+        "edits": [
+            {
+                "find": "    const _BB_MBEV_POP_INC = 'artist-rels+place-rels+event-rels+series-rels+url-rels';",
+                "replace": "    const _BB_MBEV_POP_INC = 'artist-rels+place-rels';"
+            }
+        ],
+        "spec": "tests/fixtures/bb-mb-event.spec.js",
+        "grep": "found by its link: the event card",
+        "expect": "fail"
+    },
+    {
+        "name": "card: no Brucebase block",
+        "why": "The card says how the event was found and whether its Brucebase link is this entry's.",
+        "edits": [
+            {
+                "find": "                return _MB_KINDS.event.card(t, false, repaint).replace(/<div class=\"mb-tt-foot\">/, (f) => check + f);",
+                "replace": "                return _MB_KINDS.event.card(t, false, repaint);"
+            }
+        ],
+        "spec": "tests/fixtures/bb-mb-event.spec.js",
+        "grep": "found by date with no Brucebase link",
+        "expect": "fail"
+    },
+    {
+        "name": "finding: the anchor's other events ignored",
+        "why": "An entry whose anchor MusicBrainz links from ANOTHER event is an ERROR, even when the matched event links nothing.",
+        "edits": [
+            {
+                "find": "        const others = (td.dataset.mbBbevAnchorEvents || '').split(' ').filter(id => id && id !== td.dataset.mbBbevMbid);",
+                "replace": "        const others = [];"
+            }
+        ],
+        "spec": "tests/fixtures/bb-mb-event.spec.js",
+        "grep": "ERROR for a link to another entry",
+        "expect": "fail"
+    },
+    {
+        "name": "finding: no re-stamp after the late answer",
+        "why": "stampFindings() ran before the answers: without the per-row re-stamp nothing is ever flagged (late data, findings.md).",
+        "edits": [
+            {
+                "find": "            if (td.isConnected && td.closest('table.tbl')) _queueFindingsRestamp(td.parentElement, ['bb-mbev-link-mismatch', 'bb-mbev-link-missing']);\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/bb-mb-event.spec.js",
+        "grep": "ERROR for a link to another entry",
+        "expect": "fail"
+    },
+    {
+        "name": "finding: the tint setting ignored",
+        "why": "sa_findings_tint_bb_mbev_link off: no tint, the menu row stays.",
+        "edits": [
+            {
+                "find": "            tint: _findingTintSetting('sa_findings_tint_bb_mbev_link'),\n        },\n        {\n            id: 'bb-mbev-link-missing'",
+                "replace": "            tint: () => true,\n        },\n        {\n            id: 'bb-mbev-link-missing'"
+            }
+        ],
+        "spec": "tests/fixtures/bb-mb-event.spec.js",
+        "grep": "tint off",
+        "expect": "fail"
+    },
+    {
+        "name": "finding: the enable settings ignored",
+        "why": "Each finding has its own switch.",
+        "edits": [
+            {
+                "find": "            enabled: () => !!_isBbHost && Lib.settings.sa_findings_bb_mbev_link_mismatch !== false,",
+                "replace": "            enabled: () => !!_isBbHost,"
+            }
+        ],
+        "spec": "tests/fixtures/bb-mb-event.spec.js",
+        "grep": "switch each finding off",
+        "expect": "fail"
+    }
+]

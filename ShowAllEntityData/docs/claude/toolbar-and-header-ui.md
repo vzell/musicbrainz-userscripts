@@ -1160,15 +1160,22 @@ storage", never the script's.
 page keeps what it already loaded". Revoking the blob URLs would blank images
 on screen, so this is deliberate.
 
-**Four ways in, no toolbar row.** ⚙️ Settings (`sa_fn_idb_overview`, a
+**Five ways in.** ⚙️ Settings (`sa_fn_idb_overview`, a
 `type: 'function'` entry, in `_registerSettingsIntegration()`'s
 `functionRegistry`), a button under the 📊 Statistics panel's IndexedDB rows
 (`#mb-stats-idb-overview-btn`), the Tampermonkey menu ("💾 Browser cache"),
-and an automatic "💾 Cache overview" action on every progress card whose
+an automatic "💾 Cache overview" action on every progress card whose
 snapshot has `cache` rows (`_ajRender()` adds it; `__idb` is the framework's
-own action id, handled before the provider's `act()`). A row of the SAED menu
-(then 📦 Data) was not added: that panel lives in `<body>` on every page, so it
-would drift every snapshot baseline. The stylesheet is injected on first open (`#mb-idbo-style`)
+own action id, handled before the provider's `act()`), and since 2026-10-24
+(vzell: "callable from our main SAED menu too … after the Statistics entry
+before the Keyboard Shortcuts in the VIEW section") the SAED menu's View
+row "💾 Browser cache" (`#mb-idbo-menu-btn`, `addCacheOverviewButton()`,
+`_TOOLBAR_MENU_ROW_ORDER.view`). That row was left out at first because the
+menu's panel lives in `<body>`: it is added by the render tail beside
+Statistics, so a page before any button is unchanged, but every RENDERED
+snapshot baseline gains it at its next capture (expected drift). It has no
+setting of its own, so with Density, Statistics and Keyboard Shortcuts all
+off, View holds this one row. The stylesheet is injected on first open (`#mb-idbo-style`)
 for the same reason. z-index 2147483200: over the settings dialog and the
 Statistics panel, under the artwork viewer and every tooltip.
 

@@ -4142,7 +4142,6 @@ artist https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/open_
 
 it's the same structure as every edit PT
 
-
 * DONE userscript size and managebility
 ** DONE initial
 
@@ -4171,6 +4170,242 @@ etc.
 see [[file:userscript-size.org][org/userscript-size.org]] (follows the 2026-10-10 answer in [[file:build-framework.org][org/build-framework.org]]; REFACTORING.org has a dated
 re-evaluation and candidates #10–#13).
 
+* DONE recapture user open edits page
+
+* DONE In the "Space" popupped detail view window currently hovering a link (href) doesn't do anything
+
+After the full-test-suite:
+
+In the "Space" popup-ed detail view window currently hovering a link (href) doesn't do anything. Make some suggestions
+(images should probably treated differently) and nice rich HTML based mockups
+
+* DONE hovering a master image should only popup the bigger image when actually hovering the image itself and not the empty space right beside it, which stretches up to the right details
+
+hovering a master image should only popup the bigger image when actually hovering the image itself and not the empty
+space right beside it, which stretches up to the right details
+
+* DONE Some enhancements
+** DONE initial
+
+1.)
+
+make the Artwork gallery popup when clicking
+
+#+begin_example
+<div class="mb-fgal-head"><div class="mb-fgal-t"><b>Images — Other versions</b><span>discogs.com · Image column · ← → images, Shift+← → rows in the viewer</span></div><span class="mb-tt-ajpill mb-tt-ajpill-idle">Idle</span><button class="mb-fgal-x" type="button" data-mb-fgal-act="close" aria-label="Close (Esc)">✕</button></div>
+#+end_example
+
+on e.g. https://www.discogs.com/release/11123984-Bruce-Springsteen-Born-To-Run
+resizable and movable (and remember its postion and size) like the other hover "Space" detail popups
+
+2.)
+
+Currently when hovering an image in the "Image" column [Image #22] (but probably others too) at
+e.g. https://www.discogs.com/release/11123984-Bruce-Springsteen-Born-To-Run only "Shift" and "Click" are
+recognized. "Space" should do the same as "Click" when hovering an image. Currently the page scrolls downward.
+
+3.)
+
+On BB event PTs, e.g.
+
+#+begin_example
+@debug/bb-events-media-column-filtered-1985-01-13.html - FRP - https://brucebase.wikidot.com/1985 - filtered for the event from "1985-01-13"
+#+end_example
+
+a.)
+
+There should be a new first column called "Event" on the FRP with the whole event name, e.g "1985-01-13 - CAROLINA COLISEUM, COLUMBIA, SC"
+parsed from the IP 
+
+#+begin_example
+http://brucebase.wikidot.com/1985#130185 - IP
+#+end_example
+
+namely from the block
+
+#+begin_example
+<p><a name="130185"></a><br>
+<strong><a href="/gig:1985-01-13-carolina-coliseum-columbia-sc">1985-01-13 - CAROLINA COLISEUM, COLUMBIA, SC</a></strong></p>
+#+end_example
+
+The venue, city and when present the country name should get the same capitalization as currently the corresponding
+columns "Venue", "City" and "Country"
+
+b.)
+
+When hovering the cell data of the new "Event" column, the event detail from the underlying page should be opened in a
+popup (+ "Space" accessible)
+
+#+begin_example
+@debug/bb-event-detail-1985-01-13.html - https://brucebase.wikidot.com/gig:1985-01-13-carolina-coliseum-columbia-sc - BB IP
+#+end_example
+
+c.)
+
+There should be a new column on the second position called "MB-Event" where each cell data in each row is the BB event
+type glyph. The glyph should get an href constructed to point to the corresponding MB event page, in this case
+
+#+begin_example
+@debug/mb-event-1985-01-13.html - https://musicbrainz.org/event/ac02932d-631a-47e8-a8fe-5d793f605fc8 - MB IP for the same event from 1985-01-13
+#+end_example
+
+In order to get the event MBID,
+
+- a BB search URL for the event should be emitted in the background by using the BB event name (a colon should be added
+  after the event date), e.g.
+
+#+begin_example
+https://musicbrainz.org/search?query=1985-01-13%3A+Carolina+Coliseum%2C+Columbia%2C+SC&type=event&limit=25&method=indexed - @debug/bb-event-search-1985-01-13.html
+#+end_example
+
+- the event MBID should be parsed from the event search page (usually the first hit)
+
+d.)
+
+the "Media" column should be rendered as the second column in the table and not right now far to the right so we have to
+scroll to see it
+
+e.)
+
+why does the "Media" column for the event https://brucebase.wikidot.com/gig:1985-01-13-carolina-coliseum-columbia-sc
+doesn't show the "Setlist" icon bold circled, also there are two setlist images present on the evetn detail page
+
+#+begin_example
+@debug/media-icons.html
+#+end_example
+
+f.)
+
+when hovering the final deduced BB event URL in the new "MB-Event" column, the BB event page preview should popup
+
+g.)
+
+a cross check should be made between the href value "http://brucebase.wikidot.com/1985#130185" on the BB event page
+
+#+begin_example
+<tbody><tr><th>reviews:</th><td style="word-break:break-all"><span></span><a class="wrap-anywhere" href="http://brucebase.wikidot.com/1985#130185"><bdi>http://brucebase.wikidot.com/1985#130185</bdi></a> <!-- -->[<a href="/url/f5da6960-19f2-445a-9e11-360a9883b736">info</a>]<br></td></tr></tbody>
+#+end_example
+
+with the constructed URL from the BB event entry, by using the event year and the "a name=" anchor from the BB event page, e.g.
+
+#+begin_example
+<p><a name="130185"></a><br>
+<strong><a href="/gig:1985-01-13-carolina-coliseum-columbia-sc">1985-01-13 - CAROLINA COLISEUM, COLUMBIA, SC</a></strong></p>
+#+end_example
+
+If they do NOT match, the column should get a findings error icon
+
+h.) MB IP for the same event from 1985-01-13
+
+#+begin_example
+@debug/mb-event-1985-01-13.html - https://musicbrainz.org/event/ac02932d-631a-47e8-a8fe-5d793f605fc8 - MB IP for the same event from 1985-01-13
+#+end_example
+
+i.)
+
+on all BB PTs where an event href is involved in a column or elsewhere, the event detail hovering should work
+
+** DONE bugs
+
+1.)
+
+the config setting "sa_bb_collabsable_sidebar" should be true by default
+
+2.)
+
+a.)
+
+When it's true on e.g. https://brucebase.wikidot.com/2026
+
+#+begin_example
+@debug/bb-events-MB-Event-final.html - FRP - [Image #28]
+@debug/bb-events-MB-Event-final-bug.html - FRP - [Image #29] - after opening an event detail hover popup and closing it again, ONLY the "B" from the "▶ MB" glyph before the "MB-Event" header name is visible
+#+end_example
+
+b.)
+
+When it's false on e.g. https://brucebase.wikidot.com/2026
+
+#+begin_example
+@debug/bb-events-MB-Event-final-bug-2.html - FRP - [Image #31] - after opening an event detail hover popup and closing it again, almost the whole "MB-Event" column is NOT visible anymore and there is artifically empty whitespace on the right side of the table
+#+end_example
+
+3.)
+
+a.)
+
+[Image #30] - the hover preview on a venue name like e.g. "Ocean Grove Youth Temple" point to the event at that venue
+e.g. href "https://brucebase.wikidot.com/rehearsal:2026-03-20-youth-temple-ocean-grove-nj The hover preview for venue
+columns should instead render the venue detail page, in this case reachable from the event detail page at
+https://brucebase.wikidot.com/rehearsal:2026-03-20-youth-temple-ocean-grove-nj @debug/bb-event-detail.html via the href
+link "Venue" - https://brucebase.wikidot.com/venue:youth-temple-ocean-grove-nj @debug/bb-venue-detail.html
+
+b.)
+
+Parse a couple different venue links to get the idea about their contetn and write a venue parser/reader
+
+4.)
+
+the images gallery on BB event FRP e.g. https://brucebase.wikidot.com/1985 - @debug/images-gallery.html automatically
+scrolls inside when initially resizing the popup window
+
+5.)
+
+the section headers on the event detail popups are currently toggle collapsible by clicking them. I want that
+Ctrl-clicking one of the header toggles the collapse state of all sections
+
+6.)
+
+browser cache overview window should be callable from our main "SAED" menu too, place the menu entry after the
+"Statistics" entry before the "Keyboard SHortcuts" in the "VIEW" section
+
+** DONE console
+
+#+begin_example
+● Waiting on the background run before committing the venue work (WIP.14). In the meantime, this would catch what scrolls the page in your browser.
+
+  Paste it into the DevTools console on https://brucebase.wikidot.com/2026 after pressing Events:
+
+
+  Then point at an Event cell, press Esc, and send me the [sx] lines. Please also tell me your browser and Tampermonkey versions. The scrollX line and any call printed just before it should show whether the script or the browser itself moves the page.
+#+end_example
+
+#+begin_example
+(() => {
+    const log = (...a) => console.log('[sx]', ...a);
+    let last = scrollX;
+    addEventListener('scroll', () => { if (scrollX !== last) { log('scrollX', last, '→', scrollX); last = scrollX; } }, true);
+    addEventListener('keydown', (e) => log('key', e.key, 'focus:', document.activeElement), true);
+    for (const [obj, name] of [[Element.prototype, 'scrollIntoView'], [HTMLElement.prototype, 'focus'], [window, 'scrollTo'], [window, 'scrollBy']]) {
+        const orig = obj[name];
+        obj[name] = function (...a) { log(name, this, a, new Error().stack); return orig.apply(this, a); };
+    }
+    log('ready, scrollX =', scrollX);
+})();
+#+end_example
+
+* DONE make the sections on the right collapsable on BB event detail popups
+
+Some changes to the BB event detail popup parser:
+
+1.)
+
+make the sections on the right side like e.g. "ON STAGE", "SETLIST" , "PERFORMANCES" etc. collapsable on 
+
+2.)
+
+all relations under "ON STAGE" and songs under "SETLIST" and events under "PERFORMANCES" should be hyperlinked and
+support detail hovering
+
+3.)
+
+the images on the left "IMAGES" section should be shown under their respective type (sub-section) like e.g. "Photo",
+"Setlist" "Ticket", "News", etc. But the "Photo section should be the last section rendered
+
+4.)
+
+the hyperlinking of relations, events etc should also work for other BB PTs, like e.g. song pages https://brucebase.wikidot.com/song:the-river
+
 
 * TODO consolidate more LAF across more PTs
 
@@ -4193,13 +4428,6 @@ Suggestions for complete integration
 etc
 
 
-* TODO check discogs artist pages if really ALL master are present + implement master->release(s) drilldown
-
-* TODO Use the Discogs history diff format in other pageTypes, for example the BB “changes” button
-
-Use the Discogs history diff format in other pageTypes, for example the BB “changes” button (you have to be logged in).
-
-
 * TODO write the forum section for 9.99.167 -> 9.99.1426
 
 write the forum section for 9.99.1167 -> 9.99.1426
@@ -4212,7 +4440,7 @@ rewrite all these and combine with the latest changes
 
 
 * TODO majkinetor: "Links" column - switch of the native tooltip on the FRP
-* TODO majkinetor: async issues
+* TODO majkinetor: async issues with "ISRC" and "Link" colus on PT 'release-tracks'
 * TODO majkinetor: no icons in the lower right corner
 
 
@@ -4222,15 +4450,13 @@ rewrite all these and combine with the latest changes
 * TODO Release events - Japan need flag on the relationships area
 
 
-* TODO recapture user open edits page
-
-
 * TODO on collection pages, images should get internal viewer support + their tooltip should show a rich popup and highlight the corresponding row
 
 on collection pages, images should get internal viewer support + their tooltip should show a rich popup and highlight
 the corresponding row
 
-* TODO also the the pager framework on other detail popups like on the collections one
+* TODO also add the pager framework on other detail popups like on the collections one
+
 * TODO Scrollbars (left side) and pager (tables right side) or any table + image internal viewer support should automatically be there for ALL detail popups
 
 Scrollbars (left side) and pager (tables right side) or any table + image internal viewer support should automatically
@@ -4247,15 +4473,12 @@ Chaban
 "Work collections" -> "Onomatopoeia" - adjust scrollbars for the right window + adjust height
 #+end_example
 
-b.)
+* TODO fix image placement on collection popup pages for RGs
 
-on collection pages, images should get internal viewer support + their tooltip should show a rich popup and highlight
-the corresponding row -> image hover popup + internal viewer click
 
 
 * TODO embed YouTube videos directly in the PTs where they are referenced + the original URL as popup box as now
 
-embed YouTube videos directly in the PTs where they are referenced + the original URL as popup box as now
 
 
 * TODO add support for image URLs from the sidebar like the logo label images
@@ -4273,42 +4496,152 @@ register the third-party user script by @zabe
 check what it's doing
 
 
-* TODO sidebar image hover for CAA images onyl working when hovering below the image in the description
+* TODO sidebar image hover for CAA images only working when hovering below the image in the description
 
-sidebar  image hover for CAA images onyl working when hovering below the image in the description
-
-
-
-* DONE In the "Space" popupped detail view window currently hovering a link (href) doesn't do anything
-
-After the full-test-suite:
-
-In the "Space" popup-ed detail view window currently hovering a link (href) doesn't do anything. Make some suggestions
-(images should probably treated differently) and nice rich HTML based mockups
+sidebar image hover for CAA images only working when hovering below the image in the description
 
 
-* TODO move the BB artwork column to the second position
+* TODO The UVD in the "Media" column on PTs e.g. https://brucebase.wikidot.com/2026 should get the media icons also
 
-move the BB artwork column to the second position
+The UVD in the "Media" column on PTs e.g. https://brucebase.wikidot.com/2026 should get the media icons also
 
+* TODO on BB PTs where images are involved, parse the image filename for further details and present that info also
 
-* TODO make the Artwork gallery popup resizable and movable
+on BB PTs where images are involved, parse the image filename for further details and present that info also
 
-make the Artwork gallery popup
+* TODO check discogs artist pages if really ALL master are present + implement master->release(s) drilldown
+
+* TODO Use the Discogs history diff format in other pageTypes, for example the BB “changes” button
+
+Use the Discogs history diff format in other pageTypes, for example the BB “changes” button (you have to be logged in).
+
+* TODO recheck rendering all the right info on BB pages
+
+recheck rendering all the right info on BB pages
+* TODO make the standard BB page, renderd below our table h2/h3 click collapsable (also with Ctrl-Click for ALL sections)
+
+make the standard BB page, renderd below our table h2/h3 click collapsable (also with Ctrl-Click for ALL sections)
+
+* TODO BB Steve van Zandt detail page needs overwhole
+
+* TODO some more BB and MB fixes/enhancements
+
+1.)
+
+a.)
+
+Currently when hovering over a discogs master release preview detail popup and pressing "Space", nothing
+happens when hovering over the release images in the "VERSIONS" section table (e.g. over the image icon of the first row '<img class="mb-dg-vthumb"')
 
 #+begin_example
-<div class="mb-fgal-head"><div class="mb-fgal-t"><b>Images — Other versions</b><span>discogs.com · Image column · ← → images, Shift+← → rows in the viewer</span></div><span class="mb-tt-ajpill mb-tt-ajpill-idle">Idle</span><button class="mb-fgal-x" type="button" data-mb-fgal-act="close" aria-label="Close (Esc)">✕</button></div>
+@debug/discogs-master-release-images.html - discogs master release preview detail popup (https://www.discogs.com/master/27663) reached from https://musicbrainz.org/release-group/f83d2211-dd81-4b1e-9a02-e89733891e1c by hovering (+ "Space") on the sidebar "Discogs" chip
 #+end_example
 
-resizable and movable like the other hover "Space" detail popups
+The image hovering should get the same treatment as other release image hovering and popup all release images of the
+underlying entity
 
+b.)
 
-* TODO "Space" on an image should not scroll but also open the viewer
+the same happens on other BB based detail popups, please fix
 
-"Space" on an image should not scroll but also open the viewer
+2.)
 
-* DONE hovering a master image should only popup the bigger image when actually hovering the image itself and not the empty space right beside it, which stretches up to the right details
+Is it possible to embed YouTube videos directly in the PTs where they are referenced + the original URL as popup box as now
 
-hovering a master image should only popup the bigger image when actually hovering the image itself and not the empty
-space right beside it, which stretches up to the right details
+a.)
+
+On BB PTs we have typically the following kind of YouTube references:
+
+#+begin_example
+@debug/mb-youtube-recording-initial.html - IP - https://musicbrainz.org/recording/3e8d2331-3734-4f4b-b865-3313b7bf4303 - YouTube reference in the sidebar and under the h2 "Relationships" section
+@debug/mb-youtube-recording-final.html - FRP - all sub-secctins collapsed except "URLs" with a YouTube reference
+@debug/mb-youtube-popup.html - YouTube popup dialog when hovering and pressing "Space" on it's href
+#+end_example
+
+b.)
+
+The following are from Discogs PTs e.g. https://www.discogs.com/master/26725-Bruce-Springsteen-Born-To-Run
+
+#+begin_example
+@debug/discogs-release-born-to-run-with-youtube-videos.html - FRP
+@debug/discogs-release-born-to-run-youtube-video-detail.html - popup dialog for the release in row 1 - https://www.discogs.com/release/22770998
+#+end_example
+
+c.)
+
+these are from BB PTs e.g.
+
+#+begin_example
+@begin/bb-event-youtube.html - https://brucebase.wikidot.com/gig:2026-10-03-merriweather-post-pavilion-columbia-md - YouTube video(s) is/are under the "Media" tab
+#+end_example
+
+d.)
+
+make some nice rich HTML mockups
+
+3.)
+
+a.)
+
+on collection pages, e.g. https://musicbrainz.org/user/chaban/collections
+
+#+begin_example
+@debug/mb-collection-RGs-images.html - popup detail dialog when hovering the collection at https://musicbrainz.org/collection/75935034-3070-4913-9557-9998cf638e57
+#+end_example
+
+the RG images are rendered above the table. I want them to be rendered as the first column in the table, like what we do on e.g.
+
+#+begin_example
+@debug/mb-RG-popup.html - popup dialog of the URL https://musicbrainz.org/release-group/48e335f3-8e4a-4e38-b2df-e1514b9f9126 on e.g https://musicbrainz.org/release/babb4c54-bca0-4eb9-b444-369c34d3404d when hovering '<span class="small">(<a href="/release-group/48e335f3-8e4a-4e38-b2df-e1514b9f9126" data-mb-rg-link="29">29 versions available in <bdi>Letter to You</bdi></a>)</span>'
+#+end_example
+
+b.)
+
+all the images on the detail RG popup should get our standard image hover feature
+
+5.)
+
+a.)
+
+the hover preview feature should already work on ALL supported BB PTs right on the IP, e.g. on
+
+#+begin_example
+https://www.discogs.com/artist/219986-Bruce-Springsteen
+https://www.discogs.com/master/26725-Bruce-Springsteen-Born-To-Run
+https://www.discogs.com/release/11123984-Bruce-Springsteen-Born-To-Run
+https://www.discogs.com/label/265540-Record-Plant-NYC
+https://www.discogs.com/submissions?mode=list&id=599283&view=flat
+https://www.discogs.com/submissions?mode=list&id=599283#mode=list&id=599283&item=%2Frelease%2F38068734-Follow-That-Dream%2Fhistory
+https://www.discogs.com/release/38810400-The-Humbler/history
+https://www.discogs.com/user/vzell
+#+end_example
+
+all links to BB pages should open as previews when hovered
+
+b.)
+
+When the third-party user script "Import Discogs releases to MusicBrainz" by @murdos is active, also the MB links should
+present the MB hover popups
+
+#+begin_example
+@debug/bb-release-born-to-run-with-MB-links-initial.html - IP - https://www.discogs.com/release/11123984-Bruce-Springsteen-Born-To-Run
+#+end_example
+
+c.)
+
+On the discogs PT FRPs, e.g.
+
+#+begin_example
+bb-release-born-to-run-with-MB-links-final.html - FRP  - https://www.discogs.com/release/11123984-Bruce-Springsteen-Born-To-Run - all sub-tables uncollapsed
+#+end_example
+
+- the original BB page content is still rendered below our table(s). The MB icons in the table(s), if present, should
+  also show the hover previews of the underlying MB entities
+- the h2 headerline sections in the original content, should be toggle clickable (+ Ctrl-click for all sections together), e.g.
+
+#+begin_example
+<h2 class="MuiTypography-root MuiTypography-headLineLarge css-1l4s8ze mb-h2-processed mb-toggle-h2" data-mb-tip="" title="Click to collapse/uncollapse section (Ctrl+Click to toggle ALL sections)" style="cursor: pointer; user-select: none;"><span class="mb-toggle-icon">▲</span>Tracklist</h2>
+#+end_example
+  
+
 

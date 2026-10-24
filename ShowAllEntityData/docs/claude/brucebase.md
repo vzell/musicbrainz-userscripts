@@ -164,7 +164,8 @@ numbers:
   and borders off) and scrolling inside itself when taller.
 - **The handle** (`#mb-bb-sidebar-handle`): the MusicBrainz sidebar's look,
   behind its OWN setting since 2026-10-09, `sa_bb_collabsable_sidebar`
-  (default **off**, "Collabsable sidebar" above the right-hand option); it
+  (default **on** since 2026-10-24, off before, with its `_SETTINGS_MIGRATIONS`
+  entry; "Collabsable sidebar" above the right-hand option); it
   used to share MusicBrainz's `sa_collabsable_sidebar` (default on). It
   still starts collapsed with `sa_sidebar_collapsed`. `initSidebarCollapse()`
   itself is bound to MusicBrainz's `#sidebar`/`#page`/`#content`, so this is
@@ -288,8 +289,10 @@ by hand, and each one was wrong at least once before the probe:
 Gated by `features.bbYearToTable`, called from the same three places as
 `applyBbSongsToTable()`. `_bbYearEntries()` collects the entries (node
 references, nothing moved), `_bbYearBuildRow()` builds each row in
-`_BB_YEAR_HEADERS` order — Date, Type, Venue, City, State, Country, Tour,
-Soundcheck, Setlist, Set note, Notes, Media, Info wanted — and a `Range` from
+`_BB_YEAR_HEADERS` order — Event, MB-Event, Media, Date, Type, Venue, City, State,
+Country, Tour, Soundcheck, Setlist, Set note, Notes, Info wanted (Event and
+Media in front since 2026-10-24; Media was 12th, a horizontal scroll away) —
+and a `Range` from
 the first heading to the last entry's last block is replaced by the table:
 entries, `<hr>`s and tour boxes go; the legend, the year, "Jump to" and the
 Previous / Listing / Next line stay. On the live document
@@ -317,8 +320,64 @@ Previous / Listing / Next line stay. On the live document
   filter and the 📊 dropdown read. A cell with two or more icons lists each
   label as its own 📊 entry with no engine change (the dropdown's per-`<li>`
   item values).
+- **Event** (`_bbYearEventCell()`, 2026-10-24, mockup
+  https://claude.ai/artifact/DmsNyUkUa1Hq8nPr2B5EGA): the heading as one
+  name, "1985-01-13 - Carolina Coliseum, Columbia, SC", linked
+  (`a.mb-bb-event-link`). The heading's own date (a `00` day stays) and its
+  own comma parts, none added (a state code gets no ", USA", which the
+  Country column derives) and none dropped; each part cased as its column
+  writes it (State and "USA" as written, the rest `_mbSiteTitleText()` per
+  part — never the whole name: the typography rules would make the date's
+  hyphens U+2010 and " - " an en dash). The heading as written is the tip.
+  Always one line (`td.mb-bb-event-cell { white-space: nowrap }`), the column
+  as wide as its longest name — vzell's choice on a wide screen, kept after
+  the cost was measured: docked (scrolled sideways) the longest 2026 name
+  takes 775 px, which leaves −25 px of a 1280 px window and 615 px of a
+  1920 px one beside it (2026-10-24). Specs clicking past it use a 1920 px
+  window or `revealPastStickyColumn()` (`tests/support/bbFixture.js`).
+- **MB-Event** (2026-10-24, `// ── The Brucebase MB-Event column`): a
+  glyph per entry type (`_BB_MBEV_GLYPHS`, approved in the mockup; any
+  other type a calendar standing in for MusicBrainz's event icon), linked to
+  the MusicBrainz event once found. Built with the row (`_bbMbevCell()`):
+  the row key (entry page, or `heading:<text>`), type, date (00 parts
+  dropped, as MusicBrainz writes a partial date), the anchor URL
+  (`_bbMbevAnchorUrl()`: `http://`, no www, `1949-64` before 1965 — the
+  only spelling `/ws/2/url` matches) and the name query, all as data on the
+  cell. Filled after the render (`_bbMbevAfterRender()` beside
+  `_dgMbAfterRender()` in the four render tails) by `_bbMbevRun()`, year by
+  year (`_bbMbevAskYear()`): the url lookup of the anchors (100 a request;
+  an event on the row's date that MusicBrainz links to the row's own anchor
+  is the row's), the year search (`arid` + `begin` range, 100 a page; by
+  date, several on one date by place words), the name search for the rest
+  (top hit on the row's date only), and an event lookup (`inc=url-rels`)
+  for an event found by search whose Brucebase links are not known from the
+  url lookups. Every answer goes to the cells (live and source rows,
+  `_bbMbevCellIndex()`), to memory and to IndexedDB `vz-saed-bb-mbevents`
+  (90 days, 7 for no event, a failure never), and owes the four filter
+  duties (`_bbMbevScheduleRefresh()`, the row text cache in
+  `_bbMbevRenderCell()`). The column's text is the hidden MBID
+  (`.mb-bbev-ids`). Setting `sa_bb_mb_event_lookup` (default on; forced off
+  in `FIXTURE_SETTINGS_OVERRIDE`), else the ▶ MB header button
+  (`.mb-bbmbev-col-hdr-btn`, the shared header-button CSS lists); progress in
+  the async job popup (`bbmbev`). Probes `scripts/probe-mb-event-lookups.py`,
+  `scripts/probe-mb-event-anchor-coverage.py` (89/94 of 1985's entries and
+  105/107 of 2012's are linked from MusicBrainz). Specs
+  `tests/fixtures/bb-mb-event.spec.js` (the stub answers from the FIXTURE's
+  entries, never the page: a filter can empty the table while the lookup
+  runs); mutations `scripts/mutations/bb-mb-event.json`.
+  **The glyph's card** (item f, `_bbMbevSource()`, a popup-engine source on
+  Brucebase only, under `sa_bb_event_preview`): MusicBrainz's own event card
+  (`_MB_KINDS.event.card(t, false, …)`), fed by `_bbMbevPopLoad()` — one GM
+  request in the shared rate slot, the answer put under the very `_mbPop`
+  key the card reads (its `cardInc`; the entity cards' own `_mbWsLoad()`
+  asks the CURRENT origin) — with the row's Brucebase block before its foot
+  (`_bbMbevCheckHtml()`: how it was found, ✓ / ERROR with both links /
+  WARNING). Space: the same card and the event's links, no Live page view.
+  **The findings** (item g): `bb-mbev-link-mismatch` (❌) and
+  `bb-mbev-link-missing` (⚠️), docs/claude/findings.md.
 - Date goes through the MusicBrainz `dateParts` extractor unchanged.
-- **Date is the sticky column, and must stay the FIRST one.** The first
+- **The sticky column must be the FIRST one** — Event since 2026-10-24,
+  Date before (the paragraph below tells it with Date). The first
   version made Venue sticky. On a real page (not in a fixture: the fixtures
   carry no theme CSS) the Date column then vanished, header and all, while
   hit-testing still found it. The sticky page headers (`html.mb-sph-on`)
@@ -549,11 +608,72 @@ card and the artwork viewer, through the shared foreign-image path
   (`files:artwork-disco/…`, the same on every page), the 32 px status icons,
   the Storyteller badge and the social links. The kind is the wiki folder
   (`_bbImageKind()`): `gallery:` Photo, `files:ticket-` Ticket,
-  `files:pass-` Memorabilia, `news:` News, `files:song-graph`,
-  `files:song-lyricsheet`. `_DP_PARSER_VERSION` 3.
-- **Entry pages are read, never previewed.** `_dpGet()` takes any URL, so
-  `isDetailUrl` stays `/song:` only: neither the detail preview nor the
-  Springsteen reader on other hosts (`_extDpTest()`) takes a `/gig:` link.
+  `files:pass-` Memorabilia, `files:setlist-` Setlist, `news:` News,
+  `files:song-graph`, `files:song-lyricsheet`. `_DP_PARSER_VERSION` 4
+  (Setlist since 2026-10-24: `files:setlist-YYYY` on every sampled entry
+  page with a Setlist icon, 1978–2024, `scripts/probe-bb-setlist-images.py`;
+  before, such an image was Other and the Setlist icon was never ringed).
+- **Entry pages preview under their own setting** (since 2026-10-24,
+  org/TODO.org "Some enhancements" 3b; until then "read, never previewed").
+  `_DP_SITES['brucebase.wikidot.com'].ownLinks` (`test`: `/gig:`, `/nogig:`,
+  `/recording:`, `/rehearsal:`, `/interview:`, `/nobruce:`; setting
+  `sa_bb_event_preview`, default on) makes EVERY text link to one on a
+  Brucebase page a preview target — vzell: "on all BB PTs where an event
+  href is involved in a column or elsewhere" (Event cells, Notes,
+  Recent changes, the wiki's own page, a song window's Performances). A
+  Media icon is an `<img>` link and stays the image card's. `isDetailUrl`
+  stays `/song:`, so the Springsteen reader on other hosts (`_extDpTest()`)
+  still takes no `/gig:` link. ← → step through the rows' event links
+  (`_dpRowLinks(table, from)`: the same kind as the link opened). The
+  record: `_dpParseBbPage()` (Scheduled, On stage, Setlist, images by kind,
+  the tabs with content; sections for the window), `_DP_PARSER_VERSION` 5.
+- **The window** (vzell, the same night; `_DP_PARSER_VERSION` 6): a
+  Brucebase record (song or entry) is `collapsible` — its sections are
+  `<details class="mb-dp-sec">`, open unless `open: false` (a song's
+  Performances, 250 shows on 4th of July), and a section the reader
+  toggles stays so for the page's life (`_dpSecState`, a captured
+  `toggle`); a Ctrl-click (⌘) on a heading gives EVERY section of the
+  window the state the clicked one did not have (a captured `click` in
+  `_dpInitSecToggles()`, its default action prevented, 2026-10-24) — and
+  `imagesByKind`: the images under one `h5.mb-dp-kind` per
+  kind, in page order, Photo last; `data-mb-artv-ext` is numbered in that
+  order, so the viewer follows it. Sections carry `html` (`_dpBlockHtml()`:
+  the block's lines with its links and nothing else; the entry's Setlist
+  built from its `<li>`s, cased as the card), so On stage's people,
+  Setlist's songs, Performances' shows and a song's Credits link. In the
+  window such a link to one of this host's detail pages (`_dpSiteForUrl()`,
+  the place-free half of `_dpSiteForLink()`) opens in the window
+  (`_dpDrill()`, Back: Backspace / Alt+←) and shows its card on hover
+  (`_dpWinWhat()` → `here`), as a MusicBrainz link does. `ownLinks` takes
+  `/venue:` and `/relation:` pages too, so a person or a venue previews
+  (title, images, what its tabs give).
+  Specs `tests/fixtures/bb-event-preview.spec.js`; mutations
+  `scripts/mutations/bb-event-preview.json`.
+- **Venues** (vzell, 2026-10-24; `_DP_PARSER_VERSION` 7). A venue page
+  has its own reader, `_dpParseBbVenue()`: every venue page sampled by
+  `scripts/probe-bb-venue-pages.py` (16, 1973–2026, five countries) has one
+  shape — title, breadcrumbs ending in "Venues In <Region> (<code>)" (the
+  sub-title), description paragraphs and "Source:", the count "Springsteen
+  did N performances, excl. rehearsals" (the highlight), then tabs:
+  Performances (rehearsals included, newest first), where they apply
+  Cancelled and Appearances (interviews, recording sessions), Gallery
+  (folder `venue:<slug>`, kind Photo; a renamed venue's Gallery holds the
+  old name's folder too) and Streetview (a Google Maps iframe, offered as a
+  link: the window never loads another site's frame by itself). Each list
+  of entries is a field ("43 · 1978-05-19 to 2020-01-18") and a linked
+  section. **A year table's Venue cell links the ENTRY page** — the year
+  page names no venue page, and an entry's venue slug is not derivable from
+  its own (`1985-03-31a-…`, truncated slugs, renamed venues). Its link is
+  `a.mb-bb-venue-link`, and `_DP_SITES[…].via` makes it a target of its own
+  (`via:<url>`): `_dpSiteSource()` reads the entry page (`_dpGet()`, so a
+  hover on the row's Event cell already paid for it), takes its
+  `venueUrl` (the "Info & Setlist | Venue" line, `_dpParseBbPage()`), and
+  shows that page; what an entry named is remembered for the page's life.
+  ← → from a venue step through the rows' venue links (`_dpRowLinks()`'s
+  `via` rule). Spec `bb-event-preview.spec.js` ("the venue reader", "a
+  Venue link previews the venue", "Space on a venue"); mutations
+  `scripts/mutations/bb-venue-preview.json`; fixtures
+  `detail-bb-venue-*.html` (`scripts/build-detail-fixtures.py`).
 - **Renditions** (HEAD 200 for a `files:`, a `gallery:` and a `news:`
   image, `scripts/probe-foreign-images.py --small`, 2026-10-23): the viewer
   record is `{image: original, thumbnails: {1200: original, large: the
@@ -561,12 +681,15 @@ card and the artwork viewer, through the shared foreign-image path
   original, then `medium.jpg`, then the thumbnail; the card's tiles are
   `small.jpg`.
 - **Media icons (B1).** `_bbYearBuildRow()` wraps an UNLINKED Photo, Ticket,
-  News or Memorabilia icon (`_BB_FI_MEDIA_KINDS`) of an entry with a heading
+  Setlist, News or Memorabilia icon (`_BB_FI_MEDIA_KINDS`) of an entry with a heading
   link in `a.mb-fi-media[data-mb-fi="bb"][data-mb-fi-kind]` to that page — any
   entry kind, not only `/gig:` (vzell, 2026-10-23). The year page's icons
   are bare `<img>`s (only the side bar's legend links them), and the label
   span keeps its text, so the Media filter and the 📊 entries read the
-  same. Build time, so a save to disk keeps the stamps. The ring is CSS
+  same. The icon's name (`_setTip()`) goes on that `a`, never the `<li>`:
+  the card stashes its trigger's title while it shows, but an ancestor's
+  title the browser draws over the card (vzell, 2026-10-24); an unringed
+  icon keeps it on the `<li>`. Build time, so a save to disk keeps the stamps. The ring is CSS
   (`_ensureFiStyle()`). The card shows the icon's kind (`cardImages`, titled
   "date · kind"), or a note when the page has none of it; the viewer opens on
   that kind's first image (`startAt`; on an unread row the record's arrival

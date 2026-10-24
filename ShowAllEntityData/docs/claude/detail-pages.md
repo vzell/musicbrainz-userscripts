@@ -459,10 +459,24 @@ markup.
   whole. Since 2026-10-23 (`_DP_PARSER_VERSION` 3, org/foreign-images.org
   phase 3) a song record carries its gallery images (`_bbPageImages()`:
   graph, lyric sheets), and any OTHER Brucebase page goes to
-  `_dpParseBbPage()` (title and images only), which only the foreign-image
-  card of the year table's Media icons asks for: `isDetailUrl` stays
-  `/song:`, so such a page is never previewed (docs/claude/brucebase.md,
-  "Images: the Media icons and the song glyph").
+  `_dpParseBbPage()`, which the foreign-image card of the year table's
+  Media icons asks for (docs/claude/brucebase.md, "Images: the Media icons
+  and the song glyph"). `_DP_PARSER_VERSION` 4 (2026-10-24): a
+  `files:setlist-YYYY` image is of kind Setlist. Version 5 (the same day):
+  such an entry page has fields and sections, and any text link to one
+  previews it under its own setting (`ownLinks`, `_dpOwnLinksOn()`,
+  `sa_bb_event_preview`) while `isDetailUrl` stays `/song:`
+  (docs/claude/brucebase.md, "Entry pages preview under their own
+  setting"). Version 6: a record may be `collapsible` (sections as
+  `details.mb-dp-sec`, `_dpSecState`) and `imagesByKind` (`h5.mb-dp-kind`,
+  Photo last), and a section may carry `html` (`_dpBlockHtml()`); a link in
+  the window to the host's own detail page opens there (`_dpDrill()`,
+  `_dpWinWhat()`, `_dpSiteForUrl()`). Version 7 (2026-10-24): Brucebase
+  venue pages have their own reader (`_dpParseBbVenue()`), and an entry
+  page names its venue (`venueUrl`), which a site's `via` links (the year
+  table's Venue cells) preview in its place: `_dpSiteSource()` keys such a
+  target `via:<url>` and reads the two pages in turn
+  (docs/claude/brucebase.md, "Venues").
 
 **`_dpBlockText()` collapses the source's whitespace before it turns `<br>`
 into a line break.** The sites write `line<br />\nline`; keeping that
@@ -660,7 +674,16 @@ rows (`_dpRowLinks()`, one detail link per row, in display order). The
 current row carries `tr.mb-dp-current`, a transient class taken off by a
 `MutationObserver` when `createInfoDialog()` removes the dialog. The class is
 on a live row and never written to cell content, so the four post-render
-obligations (filter-and-cache-invariants.md) do not apply.
+obligations (filter-and-cache-invariants.md) do not apply. The row is
+brought into view VERTICALLY only (`_scrollIntoViewVertically()`): a plain
+`tr.scrollIntoView({block: 'nearest'})` also aligns inline, and a row wider
+than the window then had its left edge lined up with the window's — on a
+Brucebase year page (rows 39 px in) that slid MB-Event under the sticky
+Event column every time the window opened or stepped (vzell, 2026-10-24,
+from a console log: `scrollIntoView`, then `scrollX 0 → 39.2`). Shared with
+MusicBrainz's windows, where a wide table jumped sideways the same way.
+`bb-event-preview.spec.js` "never scroll the page sideways" (its fixture
+has no theme, so the spec gives the table the real page's 40 px inset).
 
 **Images open the artwork viewer (2026-10-09).** A plain primary click on an
 image in the window opens `#mb-art-viewer` over it. `_dpArtViewerClick()` runs
