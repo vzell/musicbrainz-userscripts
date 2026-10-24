@@ -112,8 +112,15 @@ test.describe('tag-value: Relationships column present on Labels/Release groups/
                 // wrong hint resolution (e.g. defaulting to 'release' for a
                 // 'Release groups'/'Labels'/'Works' group) shows up here even
                 // though the column itself rendered.
+                // 20 s: the groups' requests go one by one through the
+                // Relationships rate gate (_REL_WS2_SPACING_MS, about 1.1 s),
+                // Works' last of four: 5.2 s alone on petri, and 10 s ran out
+                // once in a 12-worker test:full (2026-10-24). The gate's waits
+                // are wall-clock (`_relAwaitRateSlot()`, Date.now()), and that
+                // host's clock steps back 500 ms every few seconds, which adds
+                // half a second per step on top.
                 await expect.poll(() => ws2Urls.some((u) => u.includes(`/ws/2/${entityType}/`)),
-                    { timeout: 10000 }).toBe(true);
+                    { timeout: 20000 }).toBe(true);
             });
     }
 
@@ -127,7 +134,8 @@ test.describe('tag-value: Relationships column present on Labels/Release groups/
             for (const group of ['Labels', 'Release groups', 'Releases', 'Works']) {
                 await readRelShapeForGroup(page, group);
             }
-            await expect.poll(() => ws2Urls.length, { timeout: 10000 }).toBeGreaterThanOrEqual(4);
+            // The same four requests through the same gate as above: 20 s.
+            await expect.poll(() => ws2Urls.length, { timeout: 20000 }).toBeGreaterThanOrEqual(4);
 
             const releaseGroupMbid = '/release-group/f83d2211-dd81-4b1e-9a02-e89733891e1c';
             const labelMbid = '/c595c289-47ce-4fba-b999-b87503a8db19';

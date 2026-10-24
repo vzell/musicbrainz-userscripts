@@ -683,7 +683,12 @@ test.describe('the other hosts', () => {
         await expect(dialog).toHaveCount(0);
 
         await peekAt(page, page.locator('table.tbl tbody a:not(.mb-fi-glyph)[href$="lyrics.php?song=babyme"]'));
-        await expect(peek(page)).toContainText('Lyrics not available');
+        // 15 s, not the 5 s default: this waits for the detail pages' next
+        // rate-gate slot, which is reserved on the wall clock, and petri's
+        // wall clock steps back 500 ms every 5.5 s (2026-10-24), each step
+        // adding half a second to a pending wait; under a 12-worker
+        // test:full the 5 s ran out once (passed 3/3 alone).
+        await expect(peek(page)).toContainText('Lyrics not available', { timeout: 15000 });
         await expect(peek(page).locator('.mb-dp-excerpt')).toHaveCount(0);
         expect(errors).toEqual([]);
     });

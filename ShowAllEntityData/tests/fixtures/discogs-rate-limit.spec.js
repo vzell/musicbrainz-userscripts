@@ -26,12 +26,23 @@ const MASTER_PAGE = 'https://www.discogs.com/master/26725-Bruce-Springsteen-Born
 const MASTER_API = 'https://api.discogs.com/masters/26725';
 const SLOT_KEY = 'sa_ext_next_slot:api.discogs.com';
 // Longer than the 2.5 s spacing (no token), so a pause shows apart from it.
+// A gap between two asks is measured on `performance.now()`, not
+// `Date.now()`: on petri (WSL2) the wall clock steps back 500 ms every
+// 5.5 s (2026-10-24: five steps in 30 s, nothing in systemd-timesyncd's
+// journal, so presumably WSL's own time sync), so a 4.0 s pause
+// read 3.5 s on the wall clock and both pause tests failed on every commit,
+// main included. The script waits on timers, which run on the monotonic
+// clock; only the slots tabs share are wall-clock times.
 const PAUSE_MS = 4000;
 
 /**
  * The master's answers, with `masters/26725` answered by a function: the
  * first `fails` asks get a 429, the rest the capture. Every API ask is
- * timed (`window.__apiAt`), and the answers may carry extra headers.
+ * timed (`window.__apiAt`: `at` on the wall clock, which the shared slot is
+ * kept in, `mono` on the monotonic clock, which a gap is measured on, and
+ * `skew`, the wall clock against the monotonic one: a change of it between
+ * two asks is a step of the system clock between them),
+ * and the answers may carry extra headers.
  *
  * @param {{fails?: number, headers?: string}} [opts]
  * @returns {{responses: Object, fails: number, headers: string}}
@@ -78,7 +89,7 @@ async function openMaster(page, { fails = 0, headers = '', seed = null } = {}) {
             get() { return this.__gmXhrWrapped; },
             set(fn) {
                 this.__gmXhrWrapped = function (opts) {
-                    if (String(opts.url).startsWith('https://api.discogs.com/')) window.__apiAt.push({ url: opts.url, at: Date.now() });
+                    if (String(opts.url).startsWith('https://api.discogs.com/')) window.__apiAt.push({ url: opts.url, at: Date.now(), mono: performance.now(), skew: Date.now() - performance.timeOrigin - performance.now() });
                     return fn(opts);
                 };
             },
@@ -106,6 +117,14 @@ async function showVersions(page) {
 
 const apiAt = (page) => page.evaluate(() => window.__apiAt.slice());
 
+/**
+ * The page's wall clock against its monotonic one, now (an ask's `skew`).
+ *
+ * @param {import('@playwright/test').Page} page
+ * @returns {Promise<number>} ms.
+ */
+const skewNow = (page) => page.evaluate(() => Date.now() - performance.timeOrigin - performance.now());
+
 test.describe('discogs.com: Discogs\' request limit, shared by every tab (2026-10-19)', () => {
     test('three 429s in a row: each pauses, the fourth ask gets through, and every version renders', async ({ page }) => {
         // Pins: a 429 is waited out (the pause), not retried once inside
@@ -116,7 +135,7 @@ test.describe('discogs.com: Discogs\' request limit, shared by every tab (2026-1
         const asks = (await apiAt(page)).filter(r => r.url === MASTER_API);
         expect(asks, 'the first ask and three more').toHaveLength(4);
         for (let i = 1; i < asks.length; i++) {
-            expect(asks[i].at - asks[i - 1].at, `ask ${i + 1} waited the pause`).toBeGreaterThanOrEqual(PAUSE_MS - 50);
+            expect(asks[i].mono - asks[i - 1].mono, `ask ${i + 1} waited the pause`).toBeGreaterThanOrEqual(PAUSE_MS - 50);
         }
         await expect(page.locator('#mb-dg-root table.tbl tbody > tr')).toHaveCount(387);
         expect(logs.some(t => /HTTP 429 — every tab pauses its requests/.test(t)), 'the pause is logged').toBe(true);
@@ -134,9 +153,14 @@ test.describe('discogs.com: Discogs\' request limit, shared by every tab (2026-1
     test('another tab\'s reservation is honoured: the first ask waits for the shared slot, and ours is written back', async ({ page }) => {
         const at = Date.now() + 3000;
         await openMaster(page, { seed: { [SLOT_KEY]: at } });
+        // The first ask's wait is reserved on the wall clock right after the
+        // click and slept on the monotonic one: a clock step during the
+        // sleep moves the ask's wall time by that step (seen: 470 ms early,
+        // petri). Read without it, the ask is never before the slot.
+        const s0 = await skewNow(page);
         await showVersions(page);
         const asks = await apiAt(page);
-        expect(asks[0].at, 'not before the other tab\'s slot').toBeGreaterThanOrEqual(at - 50);
+        expect(asks[0].at - (asks[0].skew - s0), 'not before the other tab\'s slot').toBeGreaterThanOrEqual(at - 50);
         // Every ask of ours moved the shared slot on: the last one 2.5 s
         // (no token) after the last ask's SLOT. The slot is the time the ask
         // was scheduled for; the ask itself goes when its timer fires, which
@@ -146,7 +170,14 @@ test.describe('discogs.com: Discogs\' request limit, shared by every tab (2026-1
         // below that. 500 ms still tells both defects apart from it: a slot
         // not written back stays at the other tab's (~10 s before the last
         // ask), and one written without the spacing sits ~2.5 s short.
-        const last = asks[asks.length - 1].at;
+        // The last ask's slot was reserved after the ask before it, on the
+        // wall clock, and the ask timed after its wait: a step of the clock
+        // in between (500 ms back, every few seconds on petri) moves the
+        // two apart by exactly that step, so the ask's time is read without
+        // it (`skew` of the last ask against the one before).
+        const n = asks.length;
+        const step = n > 1 ? asks[n - 1].skew - asks[n - 2].skew : 0;
+        const last = asks[n - 1].at - step;
         const shared = await page.evaluate((k) => window.GM_getValue(k, 0), SLOT_KEY);
         expect(shared, 'never more than one spacing past the last ask').toBeLessThanOrEqual(last + 2500 + 5);
         expect(shared, 'one spacing past the last ask, less timer lateness').toBeGreaterThanOrEqual(last + 2500 - 500);
@@ -166,7 +197,7 @@ test.describe('discogs.com: Discogs\' request limit, shared by every tab (2026-1
         const asks = await apiAt(page);
         expect(asks.length).toBeGreaterThan(1);
         for (let i = 1; i < asks.length; i++) {
-            expect(asks[i].at - asks[i - 1].at, `ask ${i + 1} after the pause`).toBeGreaterThanOrEqual(PAUSE_MS - 50);
+            expect(asks[i].mono - asks[i - 1].mono, `ask ${i + 1} after the pause`).toBeGreaterThanOrEqual(PAUSE_MS - 50);
         }
         expect(logs.some(t => /no requests left this minute/.test(t))).toBe(true);
     });
