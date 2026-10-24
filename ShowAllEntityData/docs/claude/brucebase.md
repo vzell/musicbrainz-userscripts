@@ -616,6 +616,23 @@ card and the artwork viewer, through the shared foreign-image path
   (`_dpRowLinks(table, from)`: the same kind as the link opened). The
   record: `_dpParseBbPage()` (Scheduled, On stage, Setlist, images by kind,
   the tabs with content; sections for the window), `_DP_PARSER_VERSION` 5.
+- **The window** (vzell, the same night; `_DP_PARSER_VERSION` 6): a
+  Brucebase record (song or entry) is `collapsible` — its sections are
+  `<details class="mb-dp-sec">`, open unless `open: false` (a song's
+  Performances, 250 shows on 4th of July), and a section the reader
+  toggles stays so for the page's life (`_dpSecState`, a captured
+  `toggle`) — and `imagesByKind`: the images under one `h5.mb-dp-kind` per
+  kind, in page order, Photo last; `data-mb-artv-ext` is numbered in that
+  order, so the viewer follows it. Sections carry `html` (`_dpBlockHtml()`:
+  the block's lines with its links and nothing else; the entry's Setlist
+  built from its `<li>`s, cased as the card), so On stage's people,
+  Setlist's songs, Performances' shows and a song's Credits link. In the
+  window such a link to one of this host's detail pages (`_dpSiteForUrl()`,
+  the place-free half of `_dpSiteForLink()`) opens in the window
+  (`_dpDrill()`, Back: Backspace / Alt+←) and shows its card on hover
+  (`_dpWinWhat()` → `here`), as a MusicBrainz link does. `ownLinks` takes
+  `/venue:` and `/relation:` pages too, so a person or a venue previews
+  (title, images, what its tabs give).
   Specs `tests/fixtures/bb-event-preview.spec.js`; mutations
   `scripts/mutations/bb-event-preview.json`.
 - **Renditions** (HEAD 200 for a `files:`, a `gallery:` and a `news:`

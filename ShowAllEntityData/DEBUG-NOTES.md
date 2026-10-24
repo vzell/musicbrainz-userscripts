@@ -25965,3 +25965,35 @@ Specs bb-mb-event 5/5; Brucebase set (bb-year, bb-image-card, bb-home,
 bb-sidebar, mb-title-case, foreign-gallery, image-card-space,
 bb-event-preview, mobile) green after the window change. Mutations
 `scripts/mutations/bb-mb-event.json`: 6, all fail as expected.
+
+## 2026-10-24 — Brucebase windows: collapsible, linked sections; images by kind (branch feature/bb-events-and-gallery, WIP.8)
+
+Env: 2026-10-24T04:53:00+02:00 · petri · WSL2 Ubuntu 24.04.3 (Linux 6.18.54.1) · Playwright 1.62.1 Chromium, no Tampermonkey (GM stubs)
+
+vzell, mid-session: the event window's sections collapsible; the
+relations of On stage, the songs of Setlist and the events of Performances
+hyperlinked "and support detail hovering"; the images under their type,
+Photo last; then "should also work for other BB PTs, like e.g. song pages".
+
+- Sections carry `html` (`_dpBlockHtml()`: `_dpBlockText()`'s lines with
+  the links kept, each marked by a private-use pair through the text pass —
+  ESLint's no-control-regex refused the first choice, U+0001/U+0002). A
+  song gains a Performances section (250 shows on 4th of July), closed at
+  first.
+- `collapsible` records render `details.mb-dp-sec`; a toggled section is
+  remembered by name for the page (`_dpSecState`, a captured `toggle`,
+  which does not bubble).
+- `imagesByKind`: one `h5.mb-dp-kind` per kind, Photo last; the viewer's
+  order is `data-mb-artv-ext`, numbered in render order, so it follows.
+- **Window links were `out` (a new tab) for everything but MusicBrainz and
+  Discogs-family readers.** `_dpWinWhat()` and `_dpDrill()` now take a link
+  to this host's own detail page (`_dpSiteForUrl()`, the place-free half of
+  `_dpSiteForLink()`, whose `_DP_PAGE_SKIP` excludes the window itself) as
+  `here`: card on hover, opened in the window, Backspace back.
+- `ownLinks` adds `/venue:` and `/relation:` (people); the setting reads
+  "Preview event, venue and people pages on hover".
+
+Specs: bb-event-preview (+5 window tests), detail-preview's Brucebase
+reader (Performances (250), its `html`, the flags): 43 passed; the broad
+Brucebase/preview set 226 passed before the rename. Mutations
+`scripts/mutations/bb-window-sections.json`: 7, all fail as expected.

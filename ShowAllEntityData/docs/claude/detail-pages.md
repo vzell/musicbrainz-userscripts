@@ -467,7 +467,11 @@ markup.
   previews it under its own setting (`ownLinks`, `_dpOwnLinksOn()`,
   `sa_bb_event_preview`) while `isDetailUrl` stays `/song:`
   (docs/claude/brucebase.md, "Entry pages preview under their own
-  setting").
+  setting"). Version 6: a record may be `collapsible` (sections as
+  `details.mb-dp-sec`, `_dpSecState`) and `imagesByKind` (`h5.mb-dp-kind`,
+  Photo last), and a section may carry `html` (`_dpBlockHtml()`); a link in
+  the window to the host's own detail page opens there (`_dpDrill()`,
+  `_dpWinWhat()`, `_dpSiteForUrl()`).
 
 **`_dpBlockText()` collapses the source's whitespace before it turns `<br>`
 into a line break.** The sites write `line<br />\nline`; keeping that

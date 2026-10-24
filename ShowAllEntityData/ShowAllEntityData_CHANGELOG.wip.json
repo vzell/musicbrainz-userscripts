@@ -1,5 +1,20 @@
 [
     {
+        "version": "WIP.8",
+        "date": "2026-10-24",
+        "sections": [
+            {
+                "label": "✨ Improve",
+                "items": [
+                    "Brucebase windows (the one Space opens on an event or a song): every section on the right — On stage, Setlist, Performances, Credits, … — folds with a click on its heading and stays folded for the next page you open.",
+                    "The people on stage, the songs of a setlist, the other shows at the venue and a song's credits are now links. A click opens them in the same window (Backspace goes back), and pointing at one shows its card. People and venue pages preview too, on every Brucebase page.",
+                    "The images on the left are grouped by kind (Setlist, Ticket, News, Memorabilia, …), photos last, and the viewer steps through them in that order.",
+                    "A song's window lists its performances (folded at first), each show linked."
+                ]
+            }
+        ]
+    },
+    {
         "version": "WIP.7",
         "date": "2026-10-24",
         "sections": [

@@ -334,7 +334,15 @@ test.describe('detail-page parsers (one record per saved page)', () => {
             'Magic Tour Highlights (EP, 2008) (recorded March 20, 2008)',
             'Live From Asbury Park (2026) (recorded September 15, 2024)',
         ]);
-        expect(r.sections.map((s) => s.label)).toEqual(['Credits', 'On The Tracks', 'Lyrics']);
+        // Since 2026-10-24 a fourth, every performance with its show linked,
+        // closed at first; the sections carry their links (`html`).
+        expect(r.sections.map((s) => s.label.replace(/\(\d+\)/, '(N)'))).toEqual(['Credits', 'On The Tracks', 'Lyrics', 'Performances (N)']);
+        const perf = r.sections[3];
+        expect(perf.label).toBe('Performances (250)');
+        expect(perf.open).toBe(false);
+        expect(perf.html).toContain('<a href="https://brucebase.wikidot.com/gig:2024-09-15c-beach-asbury-park-nj"');
+        expect(r.sections[2].html, 'the lyrics have no links').toBe('');
+        expect(r.collapsible && r.imagesByKind).toBe(true);
         // The fixture's lyrics are blanked (build-detail-fixtures.py): pin the
         // shape, never the words.
         expect(r.sections[2].text.split('\n').filter(Boolean).length).toBeGreaterThan(20);

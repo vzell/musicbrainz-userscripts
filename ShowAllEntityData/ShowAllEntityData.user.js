@@ -4920,13 +4920,14 @@
         },
 
         sa_bb_event_preview: {
-            label: 'Preview event pages on hover (gigs, recordings, …)',
+            label: 'Preview event, venue and people pages on hover',
             type: 'checkbox',
             default: true,
             description: 'Needs a setting above that switches the wiki on. On every Brucebase page, resting the ' +
                          'pointer on a link to an event\'s page (a gig, no gig, recording, rehearsal, interview or ' +
-                         '"no Bruce" page) — the Event and Venue columns of a year table, a mention in its Notes, ' +
-                         'the Recent changes list, the wiki\'s own lists — with Ctrl held, unless every preview ' +
+                         '"no Bruce" page), a venue or a person — the Event and Venue columns of a year table, a ' +
+                         'mention in its Notes, the Recent changes list, the wiki\'s own lists, the links in a ' +
+                         'preview window — with Ctrl held, unless every preview ' +
                          'shows on a plain hover, shows a card with what its page adds: when it was scheduled, ' +
                          'who was on stage, the setlist and the page\'s images. Press Space to pin it into a ' +
                          'window you can move and resize, with the whole setlist, the other shows at that venue, ' +
@@ -20573,9 +20574,12 @@
      * 5: a Brucebase entry page (`/gig:`, `/nogig:`, …) carries its fields
      *    and sections (`_dpParseBbPage()`: Scheduled, On stage, Setlist,
      *    the tabs with content), for the Event column's preview.
+     * 6: Brucebase sections carry their links (`html`, `_dpBlockHtml()`),
+     *    a song its Performances, and the records `collapsible` and
+     *    `imagesByKind` for the window.
      * @type {number}
      */
-    const _DP_PARSER_VERSION = 5;
+    const _DP_PARSER_VERSION = 6;
 
     /**
      * IndexedDB database of parsed detail pages. Deliberately NOT a store in
@@ -21043,6 +21047,34 @@
     }
 
     /**
+     * `_dpBlockText()` with the block's links kept: the same lines, escaped,
+     * each `<a href>` of the block an absolute link (`target="_blank"`) with
+     * its own text — nothing else of the page's markup survives. For a
+     * section the window shows with its links (Brucebase's On stage,
+     * Setlist, Performances, Credits; org/TODO.org "Some enhancements",
+     * vzell 2026-10-24), which open in the window and preview on hover
+     * (`_dpWinWhat()`).
+     *
+     * @param {Element} el
+     * @param {string}  base The detail page's URL.
+     * @returns {string} HTML; its newlines are the lines (the section is `pre-wrap`).
+     */
+    function _dpBlockHtml(el, base) {
+        const c = el.cloneNode(true);
+        const links = [];
+        c.querySelectorAll('a[href]').forEach(a => {
+            const href = _dpAbsUrl(a.getAttribute('href'), base);
+            const text = _dpText(a.textContent);
+            if (!/^https?:/i.test(href) || !text) return;
+            links.push({ href, text });
+            // A private-use pair marks the link's place through the text pass.
+            a.replaceWith((c.ownerDocument || document).createTextNode(`\uE000${links.length - 1}\uE001`));
+        });
+        return _mbttEscape(_dpBlockText(c)).replace(/\uE000(\d+)\uE001/g, (_, i) =>
+            `<a href="${_mbttEscape(links[i].href)}" target="_blank" rel="noopener">${_mbttEscape(links[i].text)}</a>`);
+    }
+
+    /**
      * Resolves a link or image path of a detail page to an absolute URL.
      * jungleland.it and brucespringsteen.it write their image paths with
      * backslashes (`..\artwork\1970\thumb\…`), which a browser only
@@ -21504,7 +21536,16 @@
             const head = songs.slice(0, 3).join(', ');
             data.fields.push(['Setlist', `${songs.length} song${songs.length === 1 ? '' : 's'}: ${head}` +
                 (songs.length > 4 ? ` … ${songs[songs.length - 1]}` : songs.length === 4 ? `, ${songs[3]}` : '')]);
-            data.sections.push({ label: `Setlist (${songs.length})`, text: songs.map((t, i) => `${i + 1}. ${t}`).join('\n') });
+            const items = Array.from(setPanel.querySelectorAll('li')).filter(li => _dpText(li.textContent));
+            data.sections.push({
+                label: `Setlist (${songs.length})`, text: songs.map((t, i) => `${i + 1}. ${t}`).join('\n'),
+                html: items.map((li, i) => {
+                    const a = li.querySelector('a[href]');
+                    const href = a ? _dpAbsUrl(a.getAttribute('href'), url) : '';
+                    const t = _mbttEscape(songs[i]);
+                    return `${i + 1}. ` + (href ? `<a href="${_mbttEscape(href)}" target="_blank" rel="noopener">${t}</a>` : t);
+                }).join('\n'),
+            });
         }
         if (data.images.length) {
             const kinds = new Map();
@@ -21513,12 +21554,14 @@
         }
         const filled = labels.filter((l, i) => has(panels[i]));
         if (filled.length) data.fields.push(['On the page', filled.join(' · ')]);
-        if (onStage) data.sections.unshift({ label: 'On stage', text: _dpBlockText(stage) });
+        if (onStage) data.sections.unshift({ label: 'On stage', text: _dpBlockText(stage), html: _dpBlockHtml(stage, url) });
         ['Performances', 'Recording', 'Storyteller', 'Eyewitness', 'News/Memorabilia'].forEach(name => {
             const panel = tab(name);
             const text = has(panel) ? _dpBlockText(panel) : '';
-            if (text) data.sections.push({ label: name, text });
+            if (text) data.sections.push({ label: name, text, html: _dpBlockHtml(panel, url) });
         });
+        data.collapsible = true;
+        data.imagesByKind = true;
         return data;
     }
 
@@ -21629,8 +21672,15 @@
         ['Credits', 'On The Tracks', 'Lyrics'].forEach(name => {
             const panel = tab(name);
             const text = panel ? _dpBlockText(panel) : '';
-            if (text) data.sections.push({ label: name, text });
+            if (text) data.sections.push({ label: name, text, html: name === 'Lyrics' ? '' : _dpBlockHtml(panel, url) });
         });
+        // Every performance, each show linked (2026-10-24): long, so it
+        // starts closed.
+        const shows = perf ? perf.querySelectorAll('a[href*="/gig:"], a[href*="/nogig:"], a[href*="/recording:"], a[href*="/rehearsal:"]').length : 0;
+        if (shows) data.sections.push({ label: `Performances (${shows})`, text: _dpBlockText(perf), html: _dpBlockHtml(perf, url), open: false });
+        // The window: sections collapsible, the images under their kind.
+        data.collapsible = true;
+        data.imagesByKind = true;
         return data;
     }
 
@@ -21722,7 +21772,9 @@
             // left as they were; a Media icon (an `<img>` link) stays the
             // image card's.
             ownLinks: {
-                test: (u) => /^\/(?:gig|nogig|recording|rehearsal|interview|nobruce):[^/]+$/.test(u.pathname),
+                // Venue and people pages too (2026-10-24: "all relations
+                // under On stage … should support detail hovering").
+                test: (u) => /^\/(?:gig|nogig|recording|rehearsal|interview|nobruce|venue|relation):[^/]+$/.test(u.pathname),
                 setting: 'sa_bb_event_preview',
             },
             charset: null,
@@ -21815,6 +21867,20 @@
         // picture or not (_fiLazyCell(), _fiGlyph()).
         if (!a || !a.matches || !a.matches('a[href]') || a.querySelector('img') || a.matches('a.mb-fi-cell, a.mb-fi-glyph')) return null;
         if (!a.closest('table.tbl > tbody') && (_isTouchPrimaryDevice() || a.closest(_DP_PAGE_SKIP))) return null;
+        return _dpSiteForUrl(a);
+    }
+
+    /**
+     * `_dpSiteForLink()`'s test of the link's URL alone, wherever the link
+     * is: same origin, and a detail page of this host with its preview on
+     * (or one of its `ownLinks` with theirs). The window's own links go
+     * through this (`_dpWinWhat()`), which `_dpSiteForLink()`'s place rule
+     * (`_DP_PAGE_SKIP`) would refuse.
+     *
+     * @param {HTMLAnchorElement} a
+     * @returns {?object} The host's `_DP_SITES` entry, or null.
+     */
+    function _dpSiteForUrl(a) {
         let u;
         try {
             u = new URL(a.href);
@@ -22711,6 +22777,30 @@
     }
 
     /**
+     * The window's collapsible sections the reader opened (true) or closed
+     * (false), by name without its count, for the page's life: a repaint
+     * or the next record keeps them so. Written by a delegated `toggle`
+     * (`_dpInitSecToggles()`).
+     * @type {Map<string, boolean>}
+     */
+    const _dpSecState = new Map();
+
+    /**
+     * Records a collapsible section's state when the reader toggles it
+     * (capture: `toggle` does not bubble). Installed once.
+     *
+     * @returns {void}
+     */
+    function _dpInitSecToggles() {
+        if (_dpInitSecToggles.done) return;
+        _dpInitSecToggles.done = true;
+        document.addEventListener('toggle', (e) => {
+            const d = e.target;
+            if (d && d.matches && d.matches('details.mb-dp-sec[data-mb-dp-sec]') && d.closest('#mb-dp-dialog')) _dpSecState.set(d.dataset.mbDpSec, d.open);
+        }, true);
+    }
+
+    /**
      * `_dpExtractedHtml()`'s two columns as lists of HTML parts, so a link
      * to one of the four sites from another site can add its own parts to
      * them (`_extExtracted()`, U4).
@@ -22719,6 +22809,7 @@
      * @returns {{left: string[], right: string[]}}
      */
     function _dpExtractedCols(data) {
+        if (data.collapsible) _dpInitSecToggles();
         const left = [];
         const right = [];
         left.push(`<div class="mb-dp-xtitle">${_mbttEscape(data.title || '(untitled)')}</div>`);
@@ -22735,10 +22826,20 @@
             `<img class="mb-dp-xcover" src="${_mbttEscape(data.cover)}" alt="${_mbttEscape(coverScan.label || 'cover')}"></a>`);
         if (data.fields.length) left.push('<h4>Fields</h4>' + _dpFieldsHtml(data.fields));
         const scans = data.images.filter(i => i.thumb && i.thumb !== data.cover);
-        if (scans.length) {
-            left.push(`<h4>Images (${scans.length})</h4><div class="mb-dp-gallery">` + scans.map(i =>
-                `<a href="${_mbttEscape(i.full || i.thumb)}" target="_blank" rel="noopener" data-mb-artv-ext="${artvN++}"><img src="${_mbttEscape(i.thumb)}" alt="${_mbttEscape(i.label)}">` +
-                (i.label ? `<span>${_mbttEscape(i.label)}</span>` : '') + '</a>').join('') + '</div>');
+        const tile = (i) => `<a href="${_mbttEscape(i.full || i.thumb)}" target="_blank" rel="noopener" data-mb-artv-ext="${artvN++}"><img src="${_mbttEscape(i.thumb)}" alt="${_mbttEscape(i.label)}">` +
+            (i.label ? `<span>${_mbttEscape(i.label)}</span>` : '') + '</a>';
+        if (scans.length && data.imagesByKind) {
+            // Under their kind, in page order, Photo last (vzell,
+            // 2026-10-24); the viewer follows this order (`data-mb-artv-ext`).
+            const kinds = [];
+            scans.forEach(i => { if (!kinds.includes(i.label || '')) kinds.push(i.label || ''); });
+            kinds.sort((a, b) => (a === 'Photo') - (b === 'Photo'));
+            left.push(`<h4>Images (${scans.length})</h4>` + kinds.map(k => {
+                const of = scans.filter(i => (i.label || '') === k);
+                return `<h5 class="mb-dp-kind">${_mbttEscape(k || 'Other')} <span>${of.length}</span></h5><div class="mb-dp-gallery">${of.map(tile).join('')}</div>`;
+            }).join(''));
+        } else if (scans.length) {
+            left.push(`<h4>Images (${scans.length})</h4><div class="mb-dp-gallery">` + scans.map(tile).join('') + '</div>');
         }
         if (data.notes.length) left.push('<h4>Notes</h4>' + data.notes.map(n => `<div class="mb-dp-note">${_mbttEscape(n)}</div>`).join(''));
         if (data.tracks.length) {
@@ -22752,7 +22853,19 @@
                     `<div>${disc ? `<div class="mb-dp-gname">${_mbttEscape(disc)}</div>` : ''}${_dpTrackListHtml(ts)}</div>`).join('') + '</div>');
             }
         }
-        data.sections.forEach(s => right.push(`<h4>${_mbttEscape(s.label)}</h4><div class="mb-dp-section">${_mbttEscape(s.text)}</div>`));
+        data.sections.forEach(s => {
+            const body = `<div class="mb-dp-section">${s.html || _mbttEscape(s.text)}</div>`;
+            if (!data.collapsible) {
+                right.push(`<h4>${_mbttEscape(s.label)}</h4>${body}`);
+                return;
+            }
+            // Collapsible (Brucebase, 2026-10-24): open unless the section
+            // starts closed (`open: false`); a section the reader opened or
+            // closed stays so for the page's life (`_dpSecState`).
+            const name = s.label.replace(/\s*\(\d+\)$/, '');
+            const open = _dpSecState.has(name) ? _dpSecState.get(name) : s.open !== false;
+            right.push(`<details class="mb-dp-sec" data-mb-dp-sec="${_mbttEscape(name)}"${open ? ' open' : ''}><summary><h4>${_mbttEscape(s.label)}</h4></summary>${body}</details>`);
+        });
         if (!right.length) right.push('<h4>Tracklist</h4><div class="mb-dp-xsub">The page has no tracklist.</div>');
         return { left, right };
     }
@@ -23212,7 +23325,10 @@
      * back stack; Ctrl, Shift, Alt or a middle click keep the link's own
      * behaviour (a new tab). Only links the MusicBrainz entity cards know
      * (`_mbPopTarget()` with `inWindow`), and only while they are on
-     * (`sa_pop_mb`). A link to what the window already shows does nothing.
+     * (`sa_pop_mb`); and, on a foreign host, a link to one of the host's
+     * own detail pages with its preview on (`_dpSiteForUrl()`: a Brucebase
+     * song, event, venue or person in a section, 2026-10-24). A link to
+     * what the window already shows does nothing.
      *
      * @param {MouseEvent} e - A click in the window's scroll area.
      * @returns {boolean} Whether the click drilled down.
@@ -23222,6 +23338,14 @@
         const a = e.target.closest ? e.target.closest('a[href]') : null;
         const cur = _dpDialog.target;
         if (!a || !cur || !_dpDialog.api || !_dpDialog.api.scrollArea.contains(a)) return false;
+        if (_foreignHost && !a.querySelector('img') && _dpSiteForUrl(a)) {
+            const siteSrc = _popSources().find(x => x.id === _foreignHost && x.enabled());
+            if (!siteSrc || a.href === cur.key) return false;
+            e.preventDefault();
+            _dpDialog.stack.push(cur);
+            _dpShowInDialog({ src: siteSrc, el: a, drilled: true, key: a.href, url: a.href, table: null });
+            return true;
+        }
         const src = _popSources().find(x => x.id === 'mb-entity');
         if (!src || !src.enabled()) return false;
         const r = _mbPopTarget(a, { inWindow: true });
@@ -23423,6 +23547,14 @@
         if (cur.reader && cur.reader.onAreaClick) {
             const r = _extTarget(a, { inWindow: true });
             if (r && r.key !== cur.key) return { kind: 'here', a, t: Object.assign({ src: cur.src, el: a, drilled: true }, r) };
+        }
+        // This host's own detail pages (a Brucebase song, event, venue or
+        // person in a section, 2026-10-24): opened in the window, previewed
+        // on hover, as on the page.
+        const site = _foreignHost && !a.querySelector('img') ? _dpSiteForUrl(a) : null;
+        const siteSrc = site && _popSources().find(x => x.id === _foreignHost && x.enabled());
+        if (siteSrc && a.href !== cur.key) {
+            return { kind: 'here', a, t: { src: siteSrc, el: a, drilled: true, key: a.href, url: a.href, table: null } };
         }
         return { kind: 'out', a };
     }
@@ -26386,6 +26518,16 @@
             .mb-dp-dialog .mb-dg-warnbox { border: 1px solid #e7d3a1; background: #fcf6e6; border-radius: 4px; padding: 8px 12px; margin: 6px 0 8px; }
             .mb-dp-dialog .mb-dp-note { white-space: pre-wrap; margin-bottom: 6px; }
             .mb-dp-dialog .mb-dp-section { white-space: pre-wrap; }
+            /* Collapsible sections and images by kind (Brucebase, 2026-10-24). */
+            .mb-dp-dialog details.mb-dp-sec > summary { cursor: pointer; list-style: none; display: flex; align-items: baseline; gap: 6px; }
+            .mb-dp-dialog details.mb-dp-sec > summary::-webkit-details-marker { display: none; }
+            .mb-dp-dialog details.mb-dp-sec > summary::before { content: '▶'; font-size: 9px; color: #7a6d5c; }
+            .mb-dp-dialog details.mb-dp-sec[open] > summary::before { content: '▼'; }
+            .mb-dp-dialog details.mb-dp-sec > summary h4 { margin: 14px 0 4px; }
+            .mb-dp-dialog .mb-dp-col > details.mb-dp-sec:first-child > summary h4 { margin-top: 0; }
+            .mb-dp-dialog h5.mb-dp-kind { margin: 8px 0 4px; font: 600 10px/1.3 system-ui, Arial, sans-serif; letter-spacing: .07em;
+                text-transform: uppercase; color: #7a6d5c; }
+            .mb-dp-dialog h5.mb-dp-kind span { font-weight: 400; margin-left: 3px; }
             /* auto-fit, not auto-fill: the empty tracks collapse, so one disc takes the
                whole column instead of one 180px track of it (titles wrapped beside empty space) */
             .mb-dp-dialog .mb-dp-discs { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px 16px; }

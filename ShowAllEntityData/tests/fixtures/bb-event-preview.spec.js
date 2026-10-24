@@ -19,7 +19,7 @@
 const fs = require('fs');
 const path = require('path');
 const { test, expect } = require('../support/test');
-const { loadBbYearPage, loadBbChangesPage, BB_YEAR_BUTTON, revealPastStickyColumn } = require('../support/bbFixture');
+const { loadBbYearPage, loadBbChangesPage, loadBbSongsPage, BB_YEAR_BUTTON, BB_BUTTON, revealPastStickyColumn } = require('../support/bbFixture');
 const { routeDetailPages } = require('../support/detailFixture');
 const { waitForRenderComplete } = require('../support/browser');
 
@@ -169,6 +169,101 @@ test.describe('bb-year: the Event column\'s preview (2026-10-24)', () => {
         await ctrlHover(page, eventLink(page, GIG13));
         await expect(peek(page)).toContainText('28 songs');
         expect(served).toEqual([GIG13]);
+        expect(errors).toEqual([]);
+    });
+});
+
+// vzell, 2026-10-24 (the same night): the window's sections collapsible;
+// the relations of On stage, the songs of Setlist and the shows of
+// Performances linked, opening in the window and previewed on hover; the
+// images under their kind, Photo last; the same on a song's window.
+test.describe('the Brucebase window: collapsible, linked sections; images by kind (2026-10-24)', () => {
+    /**
+     * Opens 1985-01-13's window from its Event cell.
+     * @param {import('@playwright/test').Page} page
+     * @param {Object<string, *>} [settings]
+     * @returns {Promise<{errors: string[], served: string[]}>}
+     */
+    async function openWindow(page, settings = {}) {
+        const r = await openYear(page, settings);
+        await ctrlHover(page, eventLink(page, GIG13));
+        await expect(peek(page)).toContainText('28 songs');
+        await page.keyboard.press('Space');
+        await expect(dialog(page).locator('.mb-dp-xtitle')).toHaveText('1985-01-13 Carolina Coliseum, Columbia, SC');
+        return r;
+    }
+
+    test('the sections fold: a click on a heading closes it, and it stays closed for the next record', async ({ page }) => {
+        const { errors } = await openWindow(page);
+        const sec = (name) => dialog(page).locator(`details.mb-dp-sec[data-mb-dp-sec="${name}"]`);
+        await expect(sec('On stage')).toHaveAttribute('open', '');
+        await sec('On stage').locator('summary').click();
+        await expect(sec('On stage')).not.toHaveAttribute('open', /.*/);
+        await expect(sec('On stage').locator('.mb-dp-section')).toBeHidden();
+        // ← three rows back: 01-10 and 01-08 have no fixture (404), 01-07 has.
+        for (let k = 0; k < 3; k++) await page.keyboard.press('ArrowLeft');
+        await expect(dialog(page).locator('.mb-dp-xtitle')).toContainText('1985-01-07', { timeout: 15000 });
+        await expect(sec('On stage')).not.toHaveAttribute('open', /.*/);
+        expect(errors).toEqual([]);
+    });
+
+    test('On stage, Setlist and Performances are linked: people, songs, shows', async ({ page }) => {
+        const { errors } = await openWindow(page);
+        const links = (name) => dialog(page).locator(`details.mb-dp-sec[data-mb-dp-sec="${name}"] .mb-dp-section a`);
+        await expect(links('On stage').first()).toHaveAttribute('href', /^https:\/\/brucebase\.wikidot\.com\/relation:/);
+        expect(await links('On stage').count()).toBeGreaterThanOrEqual(9);
+        await expect(links('Setlist')).toHaveCount(28);
+        await expect(links('Setlist').first()).toHaveAttribute('href', 'https://brucebase.wikidot.com/song:born-in-the-u-s-a');
+        await expect(links('Performances').filter({ hasText: '1981-02-22' })).toHaveAttribute('href', /\/gig:1981-02-22-/);
+        expect(errors).toEqual([]);
+    });
+
+    test('a show in Performances: Ctrl+hover shows its card, a click opens it in the window, Back returns', async ({ page }) => {
+        const { errors, served } = await openWindow(page);
+        const show = dialog(page).locator('details.mb-dp-sec[data-mb-dp-sec="Performances"] .mb-dp-section a', { hasText: '1981-02-22' });
+        await show.scrollIntoViewIfNeeded();
+        await page.mouse.move(0, 0);
+        await page.keyboard.down('Control');
+        await show.hover();
+        await page.keyboard.up('Control');
+        await expect.poll(() => served).toContain('https://brucebase.wikidot.com/gig:1981-02-22-carolina-coliseum-columbia-sc');
+        await show.click();
+        // No fixture for that page (404): the window says so, in place.
+        await expect(dialog(page)).toContainText('Could not load the detail page');
+        await page.keyboard.press('Backspace');
+        await expect(dialog(page).locator('.mb-dp-xtitle')).toHaveText('1985-01-13 Carolina Coliseum, Columbia, SC');
+        expect(errors).toEqual([]);
+    });
+
+    test('the images under their kind, in page order, Photo last; the viewer follows that order', async ({ page }) => {
+        const { errors } = await openWindow(page);
+        const kinds = await dialog(page).locator('h5.mb-dp-kind').evaluateAll(hs => hs.map(h => h.firstChild.textContent.trim()));
+        expect(kinds[kinds.length - 1]).toBe('Photo');
+        expect([...kinds].sort()).toEqual(['Memorabilia', 'News', 'Photo', 'Setlist', 'Ticket']);
+        const order = await dialog(page).locator('a[data-mb-artv-ext]').evaluateAll(as => as.map(a => Number(a.dataset.mbArtvExt)));
+        expect(order).toEqual([...order].sort((a, b) => a - b));
+        expect(errors).toEqual([]);
+    });
+
+    test('a song\'s window: its sections fold and its Performances (closed at first) link every show', async ({ page }) => {
+        const errors = [];
+        page.on('pageerror', (e) => errors.push(String(e.stack || e.message || e)));
+        await loadBbSongsPage(page, { settingsOverride: { sa_render_threshold: 100000, sa_bb_detail_preview: true } });
+        await routeDetailPages(page, 'bb');
+        await page.click(`button[data-label="${BB_BUTTON}"]`);
+        await waitForRenderComplete(page, { waitForAutoResize: false });
+        const title = page.locator('table.tbl tbody a[href="https://brucebase.wikidot.com/song:4th-of-july-asbury-park-sandy"]').first();
+        await ctrlHover(page, title);
+        await expect(peek(page)).toBeVisible();
+        await page.keyboard.press('Space');
+        const perf = dialog(page).locator('details.mb-dp-sec[data-mb-dp-sec="Performances"]');
+        await expect(perf).toHaveCount(1);
+        await expect(perf).not.toHaveAttribute('open', /.*/);
+        await perf.locator('summary').click();
+        await expect(perf.locator('.mb-dp-section a[href*="/gig:"]').first()).toBeVisible();
+        // 250 shows (and three other links of the tab's text).
+        expect(await perf.locator('.mb-dp-section a[href*="/gig:"], .mb-dp-section a[href*="/nogig:"], .mb-dp-section a[href*="/recording:"], .mb-dp-section a[href*="/rehearsal:"]').count()).toBe(250);
+        await expect(dialog(page).locator('details.mb-dp-sec[data-mb-dp-sec="Credits"]')).toHaveAttribute('open', '');
         expect(errors).toEqual([]);
     });
 });

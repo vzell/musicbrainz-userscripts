@@ -3121,7 +3121,13 @@ entry, with these columns:
   that page: when it was scheduled, who was on stage, the setlist, the
   images. **Space** pins it into a window with the whole setlist, the other
   shows at that venue, the recording and the stories; ← → step through the
-  rows (⚙️ Settings → *📚 Brucebase* → *Preview event pages on hover*).
+  rows (⚙️ Settings → *📚 Brucebase* → *Preview event, venue and people pages on hover*). In
+  the window a click on a section's heading folds it; the people on stage,
+  the songs of the setlist and the other shows are links that open in the
+  window (Backspace goes back) and show their card when you point at them;
+  the images are grouped by kind, photos last. A song's window works the
+  same way, its performances listed (folded at first) with each show
+  linked.
 - **MB-Event:** a small glyph for the entry's kind (a microphone for a gig,
   struck through for a show that did not happen, a tape reel for a
   recording, a metronome for a rehearsal, a speech bubble for an interview,
@@ -3511,7 +3517,7 @@ that site's own switch in ⚙️ Settings:
 | 🌴 jungleland.it         | *Preview artwork pages on the jungleland.it list*            | the uploader and the scans (front, back, discs, booklet)                                                                                                    |
 | 💿 brucespringsteen.it   | *Preview record pages in the brucespringsteen.it database*   | the tracklist, the show each track comes from, the notes, the photo                                                                                         |
 | 📚 Brucebase             | *Preview song pages on the Brucebase song list*              | the album it comes from, how often and when last it was played live, releases, the graph and lyric sheets                                                   |
-| 📚 Brucebase             | *Preview event pages on hover (gigs, recordings, …)*         | when it was scheduled, who was on stage, the setlist, the images; Space: the whole setlist, the other shows there, the recording                            |
+| 📚 Brucebase             | *Preview event, venue and people pages on hover*             | when it was scheduled, who was on stage, the setlist, the images; Space: the whole setlist, the other shows there, the recording                            |
 
 **Rest the pointer on a title** for a moment and a card opens beside it. If
 you would rather move the pointer across the table without opening cards or
