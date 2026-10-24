@@ -36,7 +36,7 @@ test('Brucebase year page: one row per entry heading', { tag: '@extended' }, asy
 
     const headers = await page.evaluate(() => Array.from(document.querySelectorAll('table.tbl thead tr:first-child th'))
         .map((th) => th.dataset.colName || th.textContent.trim()));
-    expect(headers.slice(0, 13)).toEqual(['Date', 'Media', 'Type', 'Venue', 'City', 'State', 'Country', 'Tour',
+    expect(headers.slice(0, 14)).toEqual(['Event', 'Media', 'Date', 'Type', 'Venue', 'City', 'State', 'Country', 'Tour',
         'Soundcheck', 'Setlist', 'Set note', 'Notes', 'Info wanted']);
     expect(await page.locator('table.tbl tbody tr').count()).toBe(expected);
     const shape = await page.evaluate(() => {

@@ -18128,7 +18128,7 @@
      * Column headers of the Brucebase year table, in order.
      * @type {string[]}
      */
-    const _BB_YEAR_HEADERS = ['Date', 'Media', 'Type', 'Venue', 'City', 'State', 'Country', 'Tour',
+    const _BB_YEAR_HEADERS = ['Event', 'Media', 'Date', 'Type', 'Venue', 'City', 'State', 'Country', 'Tour',
         'Soundcheck', 'Setlist', 'Set note', 'Notes', 'Info wanted'];
 
     /**
@@ -18595,6 +18595,49 @@
     }
 
     /**
+     * The Event cell of a Brucebase year row (org/TODO.org "Some
+     * enhancements" 3a, 2026-10-24): the entry's heading as one name, "1985-
+     * 01-13 - Carolina Coliseum, Columbia, SC", linked to the entry's page
+     * (`a.mb-bb-event-link`; plain text for a heading with no link). The
+     * date is the heading's own (a `00` day stays), then " - " and the
+     * heading's own place parts, comma by comma: none is added (a US state
+     * code gets no ", USA", which the Country column shows) and none is
+     * dropped. Each part is cased the way its column writes it: the State
+     * part and "USA" as written, every other part in MusicBrainz title
+     * style (`_mbSiteTitleText()` per part, never on the whole name: the
+     * typography rules would turn the date's hyphens into U+2010 and " - "
+     * into an en dash). While that changed anything, the cell's tooltip is
+     * the heading as the site writes it. A heading without a date shows as
+     * written, in title style.
+     *
+     * @param {{heading: string}} entry One entry of `_bbYearEntries()`.
+     * @param {object}   h          `_bbParseHeading()` of the heading.
+     * @param {string}   href       The heading link's href, '' for none.
+     * @param {Document} docContext The document the row is built in.
+     * @returns {HTMLTableCellElement}
+     */
+    function _bbYearEventCell(entry, h, href, docContext) {
+        const td = docContext.createElement('td');
+        td.className = 'mb-bb-event-cell';
+        const m = entry.heading.match(/^(\d{4}-\d\d-\d\d)\b\s*(?:-\s+)?(.*)$/);
+        const state = String(h.state || '').toUpperCase();
+        const place = m ? m[2].split(/\s*,\s*/).filter(Boolean).map(part => {
+            const up = part.toUpperCase();
+            return up === 'USA' || (state && up === state) ? part : _mbSiteTitleText(part);
+        }).join(', ') : '';
+        const shown = m && place ? `${m[1]} - ${place}` : _mbSiteTitleText(entry.heading);
+        const holder = href ? docContext.createElement('a') : td;
+        holder.textContent = shown;
+        if (href) {
+            holder.className = 'mb-bb-event-link';
+            holder.setAttribute('href', _bbAbsHref(href));
+            td.appendChild(holder);
+        }
+        if (shown !== entry.heading) _mbSiteTitleTip(td, entry.heading, shown);
+        return td;
+    }
+
+    /**
      * Builds one table row of the Brucebase year table, in `_BB_YEAR_HEADERS`
      * order.
      *
@@ -18705,7 +18748,11 @@
             tr.appendChild(td);
         };
 
-        // Media is built here and placed second, right after Date
+        // Event first (org/TODO.org "Some enhancements" 3a): the whole
+        // heading, its parts written as the Venue, City, State and Country
+        // cells write them, linked to the entry's page.
+        tr.appendChild(_bbYearEventCell(entry, h, href, docContext));
+        // Media is built here and placed second, right after Event
         // (org/TODO.org "Some enhancements" 3d): at the far right it took a
         // horizontal scroll to see.
         const mediaTd = docContext.createElement('td');
@@ -18754,8 +18801,8 @@
             });
             mediaTd.appendChild(ul);
         }
-        textCell(h.date);
         tr.appendChild(mediaTd);
+        textCell(h.date);
         textCell(h.type);
         const venueTd = docContext.createElement('td');
         const venueText = h.venue || entry.heading;
@@ -19492,6 +19539,9 @@
             body.mb-sa-host-bb #mb-bb-sidebar-handle.mb-bb-handle-right.mb-bb-handle-collapsed::after { content: '◀'; }
             body.mb-sa-host-bb #mb-bb-sidebar-handle.mb-bb-handle-left::after { content: '◀'; }
             body.mb-sa-host-bb #mb-bb-sidebar-handle.mb-bb-handle-left.mb-bb-handle-collapsed::after { content: '▶'; }
+            /* The Event column is always its whole name on one line: the
+               column grows to the longest (vzell, 2026-10-24). */
+            body.mb-sa-host-bb td.mb-bb-event-cell { white-space: nowrap; }
             body.mb-sa-host-bb ul.mb-bb-media {
                 list-style: none;
                 margin: 0;
@@ -33971,8 +34021,9 @@
             // mask painted over the whole Date column and Date's over the side
             // bar (reported from a real browser, 2026-10-09; the latter is
             // why a Brucebase table docks only once scrolled,
-            // _sphUpdateColDocked()).
-            stickyColumn: 'Date'
+            // _sphUpdateColDocked()). Event since 2026-10-24 (org/TODO.org
+            // "Some enhancements" 3a), the first column; Date before.
+            stickyColumn: 'Event'
         };
     }
 

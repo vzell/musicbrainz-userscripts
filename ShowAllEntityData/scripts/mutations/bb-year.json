@@ -301,5 +301,57 @@
         "spec": "tests/fixtures/bb-year.spec.js",
         "grep": "Media shows the site|a Media filter narrows",
         "expect": "fail"
+    },
+    {
+        "name": "Event: Date stays the sticky column",
+        "why": "org/TODO.org Some enhancements 3a (2026-10-24): Event is first, so it is the sticky column (the sticky column must be the first one).",
+        "edits": [
+            {
+                "find": "            // \"Some enhancements\" 3a), the first column; Date before.\n            stickyColumn: 'Event'",
+                "replace": "            // \"Some enhancements\" 3a), the first column; Date before.\n            stickyColumn: 'Date'"
+            }
+        ],
+        "spec": "tests/fixtures/bb-year.spec.js",
+        "grep": "Event is the whole heading",
+        "expect": "fail"
+    },
+    {
+        "name": "Event: built from the parsed columns (a ', USA' added)",
+        "why": "The Event name is the heading's own parts: a state code gets no ', USA' (the Country column derives it).",
+        "edits": [
+            {
+                "find": "        const shown = m && place ? `${m[1]} - ${place}` : _mbSiteTitleText(entry.heading);",
+                "replace": "        const shown = m && place ? `${m[1]} - ${[h.venue, h.city, h.state, h.country].filter(Boolean).join(', ')}` : _mbSiteTitleText(entry.heading);"
+            }
+        ],
+        "spec": "tests/fixtures/bb-year.spec.js",
+        "grep": "Event is the whole heading",
+        "expect": "fail"
+    },
+    {
+        "name": "Event: the whole heading through the title style",
+        "why": "Per part, never the whole name: the typography rules turn the date's hyphens into U+2010 and ' - ' into an en dash.",
+        "edits": [
+            {
+                "find": "        const shown = m && place ? `${m[1]} - ${place}` : _mbSiteTitleText(entry.heading);",
+                "replace": "        const shown = _mbSiteTitleText(entry.heading);"
+            }
+        ],
+        "spec": "tests/fixtures/mb-title-case.spec.js",
+        "grep": "1985: venues and songs",
+        "expect": "fail"
+    },
+    {
+        "name": "Event: allowed to wrap",
+        "why": "vzell, 2026-10-24: the Event column is always the whole name on one line, the column grows to fit.",
+        "edits": [
+            {
+                "find": "            body.mb-sa-host-bb td.mb-bb-event-cell { white-space: nowrap; }\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/bb-year.spec.js",
+        "grep": "Event is the whole heading",
+        "expect": "fail"
     }
 ]

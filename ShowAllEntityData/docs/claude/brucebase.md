@@ -288,9 +288,10 @@ by hand, and each one was wrong at least once before the probe:
 Gated by `features.bbYearToTable`, called from the same three places as
 `applyBbSongsToTable()`. `_bbYearEntries()` collects the entries (node
 references, nothing moved), `_bbYearBuildRow()` builds each row in
-`_BB_YEAR_HEADERS` order — Date, Media, Type, Venue, City, State, Country,
-Tour, Soundcheck, Setlist, Set note, Notes, Info wanted (Media second since
-2026-10-24; it was 12th, a horizontal scroll away) — and a `Range` from
+`_BB_YEAR_HEADERS` order — Event, Media, Date, Type, Venue, City, State,
+Country, Tour, Soundcheck, Setlist, Set note, Notes, Info wanted (Event and
+Media in front since 2026-10-24; Media was 12th, a horizontal scroll away) —
+and a `Range` from
 the first heading to the last entry's last block is replaced by the table:
 entries, `<hr>`s and tour boxes go; the legend, the year, "Jump to" and the
 Previous / Listing / Next line stay. On the live document
@@ -318,8 +319,24 @@ Previous / Listing / Next line stay. On the live document
   filter and the 📊 dropdown read. A cell with two or more icons lists each
   label as its own 📊 entry with no engine change (the dropdown's per-`<li>`
   item values).
+- **Event** (`_bbYearEventCell()`, 2026-10-24, mockup
+  https://claude.ai/artifact/DmsNyUkUa1Hq8nPr2B5EGA): the heading as one
+  name, "1985-01-13 - Carolina Coliseum, Columbia, SC", linked
+  (`a.mb-bb-event-link`). The heading's own date (a `00` day stays) and its
+  own comma parts, none added (a state code gets no ", USA", which the
+  Country column derives) and none dropped; each part cased as its column
+  writes it (State and "USA" as written, the rest `_mbSiteTitleText()` per
+  part — never the whole name: the typography rules would make the date's
+  hyphens U+2010 and " - " an en dash). The heading as written is the tip.
+  Always one line (`td.mb-bb-event-cell { white-space: nowrap }`), the column
+  as wide as its longest name — vzell's choice on a wide screen, kept after
+  the cost was measured: docked (scrolled sideways) the longest 2026 name
+  takes 775 px, which leaves −25 px of a 1280 px window and 615 px of a
+  1920 px one beside it (2026-10-24). Specs clicking past it use a 1920 px
+  window or `revealPastStickyColumn()` (`tests/support/bbFixture.js`).
 - Date goes through the MusicBrainz `dateParts` extractor unchanged.
-- **Date is the sticky column, and must stay the FIRST one.** The first
+- **The sticky column must be the FIRST one** — Event since 2026-10-24,
+  Date before (the paragraph below tells it with Date). The first
   version made Venue sticky. On a real page (not in a fixture: the fixtures
   carry no theme CSS) the Date column then vanished, header and all, while
   hit-testing still found it. The sticky page headers (`html.mb-sph-on`)

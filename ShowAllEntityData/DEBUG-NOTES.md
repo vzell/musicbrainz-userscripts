@@ -25859,3 +25859,36 @@ Specs: foreign-gallery 16, its mobile spec 2, config-workspace-roundtrip
 13 (the two keys now in "Panel geometry"): all passed. Mutations
 `scripts/mutations/foreign-gallery.json`: the six new ones fail as
 expected.
+
+## 2026-10-24 — Brucebase year table: the Event column, sticky and full length (branch feature/bb-events-and-gallery, WIP.5)
+
+Env: 2026-10-24T03:45:00+02:00 · petri · WSL2 Ubuntu 24.04.3 (Linux 6.18.54.1) · Playwright 1.62.1 Chromium, no Tampermonkey (GM stubs) · real browser: vzell's (screenshots, versions not given)
+
+org/TODO.org "Some enhancements" 3a, mockup
+https://claude.ai/artifact/DmsNyUkUa1Hq8nPr2B5EGA. `_bbYearEventCell()`;
+`stickyColumn` Date → Event.
+
+**The width, measured and decided.** vzell's answer: "always shown with
+their complete length". On the 2026 fixture the longest name ("… Bruce
+Springsteen Center for American Music, Monmouth University, West Long
+Branch, NJ") makes the column 807 px; docked it spans 265–1040 px, and the
+sticky headers' right mask (`#mb-sph-rmask`) starts at 1015 px of a
+1280 px window: −25 px of room beside it, 615 px at 1920 px. Asked; vzell,
+on a wide screen: "almost all columns are visible right away and I can still
+scroll horizontally". Kept full length.
+
+**What the measuring found on the way:**
+- The first version built the name from the parsed columns and appended
+  ", USA" to every US entry (the Country column derives it from the state
+  code; the heading has none). vzell's screenshot shows that version. Now
+  the name is the heading's own comma parts, cased per part.
+- Five specs could no longer click or hover past the column (Playwright's
+  "scroll into view if needed" leaves the target under the sticky cell or
+  the right mask). `revealPastStickyColumn()` in `tests/support/bbFixture.js`
+  lines the target up right of it; filter inputs are focused rather than
+  clicked; the Date sort and the Notes hover use a 1920 px window.
+
+Specs: bb-year (new "Event is the whole heading …"), mb-title-case (Event
+cased per part, its tip), bb-home and bb-sidebar (the sticky first column is
+Event): 92 passed with the image-card, gallery and mobile specs. Mutations
+`scripts/mutations/bb-year.json`: the four new ones fail as expected.

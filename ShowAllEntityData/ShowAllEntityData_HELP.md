@@ -3111,8 +3111,12 @@ The page gets a heading with the usual toolbar and one action button,
 **Events**. Pressing it turns the year's entries into one table, one row per
 entry, with these columns:
 
-- **Date:** the entry's date, the first column, which stays in view when
-  you scroll the table sideways. A day or month the wiki writes as `00` (not
+- **Event:** the entry's whole name, "1985-01-13 - Carolina Coliseum,
+  Columbia, SC", linked to the entry's page: the first column, which stays
+  in view when you scroll the table sideways. Its venue, city and country
+  are written the way the Venue, City and Country columns write them; point
+  at it to see the name as the wiki writes it.
+- **Date:** the entry's date. A day or month the wiki writes as `00` (not
   known) is left out, so `1954-10-00` reads `1954-10`. **DD**, **MM**,
   **YYYY**, **Day** and **Month** (at the end of the table) split it up as
   on MusicBrainz pages; Day stays empty when the day is not known.

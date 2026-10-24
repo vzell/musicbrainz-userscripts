@@ -1,5 +1,17 @@
 [
     {
+        "version": "WIP.5",
+        "date": "2026-10-24",
+        "sections": [
+            {
+                "label": "🚀 Feature",
+                "items": [
+                    "Brucebase year table: a new first column, Event, holds each entry's whole name, for example \"1985-01-13 - Carolina Coliseum, Columbia, SC\", linked to the entry's page. Venue, city and country are written the way their own columns write them, and pointing at the name shows it as the wiki writes it. Event is now the column that stays in view when you scroll sideways (Date was before), and it always shows the whole name on one line."
+                ]
+            }
+        ]
+    },
+    {
         "version": "WIP.4",
         "date": "2026-10-24",
         "sections": [

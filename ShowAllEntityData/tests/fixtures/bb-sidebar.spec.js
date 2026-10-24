@@ -297,7 +297,7 @@ async function scrollTo(page, x) {
 }
 
 for (const [name, sidebarOpen] of [['collapsed', false], ['open', true]]) {
-    test(`left side bar ${name}: scrolled sideways, Date stays under its h2 bar; unscrolled, no mask`, async ({ page }) => {
+    test(`left side bar ${name}: scrolled sideways, the sticky first column (Event) stays under its h2 bar; unscrolled, no mask`, async ({ page }) => {
         // Reported from a real browser (2026-10-09): scrolled to the right,
         // the Date column docked at the window's edge while its "Events" bar
         // stayed pinned further in. The column alignment of the sticky page
@@ -312,7 +312,7 @@ for (const [name, sidebarOpen] of [['collapsed', false], ['open', true]]) {
         await waitForRenderComplete(page, { waitForAutoResize: false });
         await scrollTo(page, 0);
         const before = await alignment(page);
-        expect(before).toEqual(expect.objectContaining({ first: 'Date', docked: false, shadow: false }));
+        expect(before).toEqual(expect.objectContaining({ first: 'Event', docked: false, shadow: false }));
         expect((await layout(page)).side !== null).toBe(sidebarOpen);
 
         await scrollTo(page, 700);
