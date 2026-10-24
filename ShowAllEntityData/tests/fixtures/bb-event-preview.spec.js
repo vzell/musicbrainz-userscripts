@@ -187,6 +187,47 @@ test.describe('bb-year: the Event column\'s preview (2026-10-24)', () => {
     // the entry page (two requests, in that order), the entry page shared
     // with the Event cell's card (no second request either way), and ← →
     // in its window step from venue to venue, not to the rows' events.
+    // vzell, 2026-10-24 (screenshots of /2026, then a console log): after
+    // the window was opened and closed with Esc, "ONLY the B from the ▶ MB
+    // glyph before the MB-Event header name is visible" — with the side bar
+    // shown, almost the whole column. The log: `_dpShowInDialog()`'s
+    // `tr.scrollIntoView({block: 'nearest'})` on the marked row, then
+    // scrollX 0 → 39.2. The row is wider than the window, so the browser
+    // lined its left edge up with the window's, sliding MB-Event under the
+    // sticky Event column. Pinned: opening the window and stepping ← → bring
+    // the row into view vertically and never move the page sideways.
+    test('opening the window and stepping through rows never scroll the page sideways', async ({ page }) => {
+        const { errors } = await openYear(page, { sa_bb_collabsable_sidebar: true, sa_sidebar_collapsed: true });
+        // The fixture has no wiki theme: its rows start at the window's
+        // edge, where there is nothing to line up. On the real page the
+        // theme's inset puts them 39 px in (the user's log); 40 px here.
+        await page.addStyleTag({ content: 'table.mb-bb-year-table { margin-left: 40px !important; }' });
+        await page.evaluate(() => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r))));
+        const premise = await page.evaluate(() => {
+            const tr = document.querySelector('table.mb-bb-year-table tbody tr');
+            return { rowLeft: tr.getBoundingClientRect().left, rowWidth: tr.getBoundingClientRect().width, vw: innerWidth, x: scrollX };
+        });
+        expect(premise.x).toBe(0);
+        expect(premise.rowWidth, 'premise: the row is wider than the window').toBeGreaterThan(premise.vw);
+        expect(premise.rowLeft, 'premise: the row starts right of the window\'s edge').toBeGreaterThan(1);
+        await ctrlHover(page, eventLink(page, GIG13));
+        await expect(peek(page)).toContainText('28 songs');
+        await page.keyboard.press('Space');
+        await expect(dialog(page).locator('.mb-dp-xtitle')).toHaveText('1985-01-13 Carolina Coliseum, Columbia, SC');
+        await expect(page.locator('table.tbl tbody tr.mb-dp-current')).toHaveCount(1);
+        expect(await page.evaluate(() => scrollX), 'opening the window').toBe(0);
+        // Ten rows on: the marked row leaves the screen at the bottom, so
+        // the page scrolls DOWN to it — and still not sideways.
+        const y0 = await page.evaluate(() => scrollY);
+        for (let k = 0; k < 10; k++) await page.keyboard.press('ArrowRight');
+        await expect.poll(() => page.evaluate(() => scrollY), 'the row is brought into view vertically').toBeGreaterThan(y0);
+        expect(await page.evaluate(() => scrollX), 'stepping').toBe(0);
+        await page.keyboard.press('Escape');
+        await expect(dialog(page)).toBeHidden();
+        expect(await page.evaluate(() => scrollX), 'closing').toBe(0);
+        expect(errors).toEqual([]);
+    });
+
     test('a Venue link previews the venue, read through the entry page; the Event cell still previews the show', async ({ page }) => {
         await page.setViewportSize({ width: 1920, height: 1000 });
         const { errors, served } = await openYear(page);

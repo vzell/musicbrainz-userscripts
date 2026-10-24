@@ -1,5 +1,17 @@
 [
     {
+        "version": "WIP.15",
+        "date": "2026-10-24",
+        "sections": [
+            {
+                "label": "🐛 Fix",
+                "items": [
+                    "Opening a preview window with Space, or stepping through rows in it, no longer scrolls a wide table sideways. On a Brucebase year table the MB-Event column used to slide halfway under the Event column (with the side bar shown, almost all of it). The window still scrolls the page up or down to show its row."
+                ]
+            }
+        ]
+    },
+    {
         "version": "WIP.14",
         "date": "2026-10-24",
         "sections": [

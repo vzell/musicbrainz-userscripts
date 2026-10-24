@@ -26032,3 +26032,59 @@ on petri, 2,304 passed, 0 failed, wall 12 m 25 s, 12 workers. popup-ext's
 "a reader who scrolls the Live page before its images are in is not pulled
 back" (−533 px once under load, WIP.6) passed. The live specs (tests/live,
 bb-year's header list updated) were not run.
+
+## 2026-10-24 — Brucebase follow-ups: side bar default, gallery geometry, Ctrl+click sections, SAED cache row, venues, the sideways scroll (branch feature/bb-events-and-gallery, WIP.10–WIP.15)
+
+Env: 2026-10-24T14:00:22+02:00 · petri · WSL2 Ubuntu 24.04.3 (Linux 6.18.54.1) · Playwright 1.62.1 Chromium, no Tampermonkey (GM stubs). The real-browser observations below are vzell's (browser and Tampermonkey versions: unknown).
+
+vzell's second round of the same day (org/TODO.org, real-browser screenshots;
+snapshots `debug/bb-events-MB-Event-final.html`, `-final-bug.html`,
+`-final-bug-2.html`, `debug/images-gallery.html`, `debug/bb-event-detail.html`,
+`debug/bb-venue-detail.html`).
+
+**MB-Event header half hidden after a preview window (WIP.15).** The bug
+snapshots differ from the good one by `table.mb-sph-col-docked` only, which
+`_sphUpdateColDocked()` sets on a Brucebase table once `scrollX > 0`: the page
+had scrolled sideways, sliding MB-Event under the sticky Event column while
+the pinned page headers stayed put (so nothing else looked moved). Six fixture
+repros (hover Event / Venue / MB-Event, side bar both ways, lookups on, closed
+by moving away or Esc) never scrolled, because none of them pinned the window.
+A console snippet vzell ran in the real browser logged it:
+`_dpShowInDialog()` → `tr.scrollIntoView({block: 'nearest'})` on the marked
+row, then `scrollX 0 → 39.2`. The row (5,565 px) is wider than the window, so
+`inline: 'nearest'` lined its left edge (39 px in: the theme's inset) up with
+the window's. The fixture has no theme, its rows start at 0, which is why it
+never showed; the spec gives the table a 40 px margin to reproduce it.
+`_scrollIntoViewVertically()` keeps every horizontal scroll position. Shared
+with MusicBrainz's windows.
+
+**Gallery (WIP.11).** Two causes found by reading `_makeMovableResizable()`:
+a drag added `mb-geo-fixed`, lifting the height cap to 94vh with no height
+pinned, so on a Discogs master (26 rows) the window grew past the screen; and
+the body's scrollbar ran into the box's resize corner, so pressing the grip
+held the scrollbar (track repeat) and the list scrolled while resizing.
+
+**Venues (WIP.14).** `scripts/probe-bb-venue-pages.py`: 16 venue pages, one
+shape; the year page names no venue page and the venue slug is not derivable
+from an entry's, so the Venue cell's preview reads the entry page first
+(`_DP_SITES[…].via`).
+
+**Staging trap (process, not code).** Committing items that share the
+userscript was done by applying chosen hunks of `git diff` to the index. With
+`-U1` context and earlier hunks left unstaged, `git apply --cached` matched a
+lone `}` a few lines off and staged two call sites in the wrong place. Caught
+by reading the staged diff before the commit; re-staged with `-U6`. The
+commits before it were checked against `git diff HEAD` (only the expected
+hunks remained), so none carries a misplaced hunk.
+
+**`test:full`** (0eb897e plus the WIP.15 fix in the working tree):
+14:00:22–14:13:03 CEST on petri, 2,307 passed, 3 failed, wall 12 m 41 s, 12
+workers, 2,310 tests. `tag-value-relationships-column` "Works gets the
+Relationships column" passed alone. The two `discogs-rate-limit` tests ("three
+429s in a row", "Ratelimit-Remaining: 0") fail alone as well, the pause
+measured 3,511–3,685 ms against `PAUSE_MS - 50` = 3,950, and fail the same on
+`main` (57b4d90) and on cb8482b, which passed this spec at 06:57 today: not
+caused by this branch; not investigated further. Earlier, in a 380-test run of
+the Brucebase, preview and gallery specs, popup-ext "the Live page is prepared
+before its images are in" failed once (a 5 s wait for the frame) and passed
+3/3 alone. The live specs were not run.

@@ -674,7 +674,16 @@ rows (`_dpRowLinks()`, one detail link per row, in display order). The
 current row carries `tr.mb-dp-current`, a transient class taken off by a
 `MutationObserver` when `createInfoDialog()` removes the dialog. The class is
 on a live row and never written to cell content, so the four post-render
-obligations (filter-and-cache-invariants.md) do not apply.
+obligations (filter-and-cache-invariants.md) do not apply. The row is
+brought into view VERTICALLY only (`_scrollIntoViewVertically()`): a plain
+`tr.scrollIntoView({block: 'nearest'})` also aligns inline, and a row wider
+than the window then had its left edge lined up with the window's — on a
+Brucebase year page (rows 39 px in) that slid MB-Event under the sticky
+Event column every time the window opened or stepped (vzell, 2026-10-24,
+from a console log: `scrollIntoView`, then `scrollX 0 → 39.2`). Shared with
+MusicBrainz's windows, where a wide table jumped sideways the same way.
+`bb-event-preview.spec.js` "never scroll the page sideways" (its fixture
+has no theme, so the spec gives the table the real page's 40 px inset).
 
 **Images open the artwork viewer (2026-10-09).** A plain primary click on an
 image in the window opens `#mb-art-viewer` over it. `_dpArtViewerClick()` runs

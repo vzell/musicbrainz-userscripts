@@ -4,8 +4,8 @@
         "why": "vzell, 2026-10-24: every event page previews (gig, no gig, recording, rehearsal, interview, no Bruce); Recent changes links an interview page.",
         "edits": [
             {
-                "find": "                test: (u) => /^\\/(?:gig|nogig|recording|rehearsal|interview|nobruce):[^/]+$/.test(u.pathname),",
-                "replace": "                test: (u) => /^\\/gig:[^/]+$/.test(u.pathname),"
+                "find": "                test: (u) => /^\\/(?:gig|nogig|recording|rehearsal|interview|nobruce|venue|relation):[^/]+$/.test(u.pathname),",
+                "replace": "                test: (u) => /^\\/(?:gig|venue|relation):[^/]+$/.test(u.pathname),"
             }
         ],
         "spec": "tests/fixtures/bb-event-preview.spec.js",
@@ -88,6 +88,19 @@
         ],
         "spec": "tests/fixtures/bb-event-preview.spec.js",
         "grep": "the reader|Ctrl\\+hover on Event",
+        "expect": "fail"
+    },
+    {
+        "name": "window: the marked row is scrolled into view on both axes",
+        "why": "vzell 2026-10-24: after the window, MB-Event was half under the sticky Event column (scrollX 0 → 39.2).",
+        "edits": [
+            {
+                "find": "                tr.classList.add('mb-dp-current');\n                _scrollIntoViewVertically(tr);\n",
+                "replace": "                tr.classList.add('mb-dp-current');\n                tr.scrollIntoView({ block: 'nearest' });\n"
+            }
+        ],
+        "spec": "tests/fixtures/bb-event-preview.spec.js",
+        "grep": "never scroll the page sideways",
         "expect": "fail"
     }
 ]

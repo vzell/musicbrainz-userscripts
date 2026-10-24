@@ -23614,6 +23614,32 @@
     }
 
     /**
+     * Brings an element into view vertically only (`block: 'nearest'`),
+     * keeping the page's horizontal scroll and that of every scrolling
+     * ancestor as they were. `scrollIntoView()` aligns on both axes, and a
+     * table row is wider than the window: its `inline: 'nearest'` then
+     * lined the row's left edge up with the window's, which on a Brucebase
+     * year page (rows 39 px in) slid the columns after the sticky one under
+     * it (vzell, 2026-10-24, a console log: `scrollIntoView`, then
+     * "scrollX 0 → 39.2"). `behavior: 'instant'` so the restore follows in
+     * the same task, before anything is painted, whatever the page's
+     * `scroll-behavior`.
+     *
+     * @param {Element} el
+     * @returns {void}
+     */
+    function _scrollIntoViewVertically(el) {
+        const kept = [];
+        for (let a = el.parentElement; a; a = a.parentElement) {
+            if (a.scrollLeft) kept.push([a, a.scrollLeft]);
+        }
+        const x = window.scrollX;
+        el.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'instant' });
+        kept.forEach(([a, left]) => { if (a.scrollLeft !== left) a.scrollLeft = left; });
+        if (window.scrollX !== x) window.scrollTo({ left: x, top: window.scrollY, behavior: 'instant' });
+    }
+
+    /**
      * Shows a target in the dialog, titles the dialog after its source and
      * marks its row.
      *
@@ -23675,7 +23701,7 @@
             _dpDialog.row = tr;
             if (tr) {
                 tr.classList.add('mb-dp-current');
-                tr.scrollIntoView({ block: 'nearest' });
+                _scrollIntoViewVertically(tr);
             }
         }
         _dpRenderDialog(false);
