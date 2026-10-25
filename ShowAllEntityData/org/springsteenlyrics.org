@@ -618,3 +618,52 @@ userscript loaded. The live test exempts that one exact message.
 Your pages load their font stylesheet over HTTP (http://fonts.googleapis.com/css?family=Open+Sans:300,400,700) from an
 HTTPS page, so browsers block it and Open Sans never loads. Changing it to https:// fixes that. Separately, adding
 autocomplete="current-password" to the login form's password field (hTxtPassword) silences Chrome's hint about it.
+
+* TODO URLify the tracklist to song URLs (SL and MB)
+
+1.)
+
+URLify the SL tracklist to SL song URLs, by constructing the song URL from parsing the song name. Create an assoc list where
+the automatic conversion does not work
+
+E.g. on https://www.springsteenlyrics.com/collection.php?item=10163
+
+Automatic:
+#+begin_example
+A1- THE E STREET SHUFFLE ==> https://www.springsteenlyrics.com/lyrics.php?song=theestreetshuffle
+A3- KITTY'S BACK ==> https://www.springsteenlyrics.com/lyrics.php?song=kittysback
+#+end_example
+
+Assco list:
+#+begin_example
+A2- 4TH OF JULY, ASBURY PARK (SANDY) ==> https://www.springsteenlyrics.com/lyrics.php?song=4thofjulyasburypark
+B2- ROSALITA (COME OUT TONIGHT) ==> https://www.springsteenlyrics.com/lyrics.php?song=rosalita
+#+end_example
+
+2.)
+
+also URLify the SL tracklist to MB song URLs
+
+* TODO Support song SL URL PTs
+
+Support song SL URL PTs, e.g. https://www.springsteenlyrics.com/lyrics.php?song=kittysback
+
+1.)
+
+parse a couple and make some suggestions, nice rich HTML based mockups
+
+- click toogle section headers (Ctrl-click all sections at once) 
+
+  
+* TODO Support bootleg SL URL PTs
+
+Support bootleg SL URL PTs e.g. https://www.springsteenlyrics.com/bootlegs.php?item=2567&category=aud_live1984
+
+1.)
+
+parse a couple and make some suggestions, nice rich HTML based mockups
+
+- click toogle section headers (Ctrl-click all sections at once) 
+- Original info file - https://www.springsteenlyrics.com/bootlegs/aud_live1984/2567_infofile.txt
+- internal viewer for image scans
+

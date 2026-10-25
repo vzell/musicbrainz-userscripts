@@ -4686,3 +4686,30 @@ on BB event pages -> place link -> hover ==> Wikipedia link should render inside
 
 * TODO on BB pages links on the form "https://brucebase.wikidot.com/1973#020373" should be rendered inline too
 
+* TODO add "SAED" menu entries for entity history
+
+add "SAED" menu entries for entity history
+
+1.)
+
+#+begin_example
+Entity history
+ predefined filters:
+  own edits
+  edits by other
+  open edits
+  open edits by other
+  all jesus2099 variants ...
+--
+Annotation history
+#+end_example
+
+* TODO On MB entity POHs we should get additional POH support for known URLs like Wikipedia/Wikidata
+
+On MB entity POHs we should get additional POH support for known URLs like Wikipedia/Wikidata
+
+* TODO "Editing history" button-menue on preview popup windows
+
+"Editing history" button ==> "Editing history" button-menue with the same option as in the "SAED" "Editing history"
+section
+

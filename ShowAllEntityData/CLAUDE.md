@@ -93,6 +93,9 @@ and context below.
 | DI           | Discogs website                                | https://www.discogs.com/                                                       |                                                                            |
 | MBID         | unique MusicBrainz identifier                  | 70248960-cb53-4ea4-943a-edb18f7d336f                                           | Bruce Springsteen                                                          |
 | LAF          | UI look and feel                               | see ~/CLAUDE.md (## UI look and feel — all projects (approved 2026-10-10))     |                                                                            |
+| POH          | popup window of hovered URL                    |                                                                                |                                                                            |
+| SB           | Sidebar                                        | MusicBrainz or BruceBase sidebar                                               |                                                                            |
+| SBC          | Sidebar chip                                   | MusicBrainz sidebar info rendered as a chip on the FRP "Sidebar" section       |                                                                            |
 
 ## Doc map — what to read, and when
 

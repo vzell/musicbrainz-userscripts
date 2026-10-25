@@ -115,3 +115,11 @@ The whole feature should be configurable (default off, as the main userscript is
 create userscript which directly scrolls to the first difference on
 http://brucebase.wikidot.com/song:streets-of-minneapolis pages when clicking history
 
+* TODO render the sidebar handle at the top (like in the MB case)
+
+render the sidebar handle at the top (like in the MB case) and not in the middle of the page
+
+* TODO support hovering for all BB PTs
+
+support hovering for all BB URLs (+ known non-BB URLs like MB/SL URLs) PTs
+
