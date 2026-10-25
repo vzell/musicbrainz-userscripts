@@ -4524,7 +4524,7 @@ make the standard BB page, renderd below our table h2/h3 click collapsable (also
 
 * TODO BB Steve van Zandt detail page needs overwhole
 
-* TODO some more BB and MB fixes/enhancements
+* DONE some more BB and MB fixes/enhancements
 
 1.)
 
@@ -4603,7 +4603,7 @@ all the images on the detail RG popup should get our standard image hover featur
 
 a.)
 
-the hover preview feature should already work on ALL supported BB PTs right on the IP, e.g. on
+the hover preview feature should already work on ALL supported Discogs PTs right on the IP, e.g. on
 
 #+begin_example
 https://www.discogs.com/artist/219986-Bruce-Springsteen
@@ -4616,7 +4616,7 @@ https://www.discogs.com/release/38810400-The-Humbler/history
 https://www.discogs.com/user/vzell
 #+end_example
 
-all links to BB pages should open as previews when hovered
+all links to Discogs pages should open as previews when hovered
 
 b.)
 
@@ -4635,7 +4635,7 @@ On the discogs PT FRPs, e.g.
 bb-release-born-to-run-with-MB-links-final.html - FRP  - https://www.discogs.com/release/11123984-Bruce-Springsteen-Born-To-Run - all sub-tables uncollapsed
 #+end_example
 
-- the original BB page content is still rendered below our table(s). The MB icons in the table(s), if present, should
+- the original Discogs page content is still rendered below our table(s). The MB icons in the table(s), if present, should
   also show the hover previews of the underlying MB entities
 - the h2 headerline sections in the original content, should be toggle clickable (+ Ctrl-click for all sections together), e.g.
 
@@ -4660,3 +4660,29 @@ Tf there are sub-tables under the "<h2>Collaborative collections</h2>" h2 sectio
 @debug/ - IP
 @debug/ - FRP
 #+end_example
+
+* TODO On https://musicbrainz.org/release-group/f83d2211-dd81-4b1e-9a02-e89733891e1c when the jesus2099 image stripe third-party userscript is active the images should get our internal viewer treatment
+
+On https://musicbrainz.org/release-group/f83d2211-dd81-4b1e-9a02-e89733891e1c when the jesus2099 image stripe
+third-party userscript is active the images should get our internal viewer treatment
+
+* TODO when hovering a value in the "LABEL-CAT#" column and the down-righ glyph shows up the label-cat# value moves to the left and back when hovering away, which lets the value kind of pump
+
+when hovering a value in the "LABEL-CAT#" column and the down-righ glyph shows up the label-cat# value moves to the left
+and back when hovering away, which lets the value kind of pump, together with is's column header
+
+#+begin_example
+@debug/mb-RG-popup.html - popup dialog of the URL https://musicbrainz.org/release-group/48e335f3-8e4a-4e38-b2df-e1514b9f9126 on e.g https://musicbrainz.org/release/babb4c54-bca0-4eb9-b444-369c34d3404d when hovering '<span class="small">(<a href="/release-group/48e335f3-8e4a-4e38-b2df-e1514b9f9126" data-mb-rg-link="29">29 versions available in <bdi>Letter to You</bdi></a>)</span>'
+#+end_example
+
+* TODO On https://musicbrainz.org/release-group/f83d2211-dd81-4b1e-9a02-e89733891e1c the "Official homepage" chip in the "Sidebar" section needs a better reader
+
+On https://musicbrainz.org/release-group/f83d2211-dd81-4b1e-9a02-e89733891e1c the "Official homepage" chip in the "Sidebar" section needs a better reader
+
+* TODO on BB event pages -> place link -> hover ==> Wikipedia link should render inside popup
+
+https://brucebase.wikidot.com/2012
+on BB event pages -> place link -> hover ==> Wikipedia link should render inside popup
+
+* TODO on BB pages links on the form "https://brucebase.wikidot.com/1973#020373" should be rendered inline too
+
