@@ -4916,6 +4916,13 @@ Implement the same Start/Stop/"Continue after closing and reopening the POH" eve
 actions (they are not interrubtable yet) and fill in the IndexedDB
 
 
+* TODO add hover functionality to the "Relationships" column for MB RGs relationship icons
+
+Add hover functionality to the "Relationships" column for MB RGs relationship icons.
+Currently the href anchors are not fully qualified and missing the https://site:port part, see e.g. https://musicbrainz.org/tag/arena%20rock
+So the do not support yet the POH
+
+
 * TODO majkinetor: "Links" column - switch of the native tooltip on the FRP
 * TODO majkinetor: no icons in the lower right corner
 * TODO majkinetor: async issues with "ISRC" and "Link" colus on PT 'release-tracks'
@@ -4943,3 +4950,16 @@ and back when hovering away, which lets the value kind of pump, together with is
 Maybe remove that icon completely (btw what is it actually good for, what is the idea of havin it and only showing when
 hovering it) and ONLY leave the icon for rendering a link in a new tab in
 
+* TODO make the non-MB site settings currently "false", default "true"
+
+make the non-MB site settings currently "false", default "true"
+
+* TODO make the "Browser cache" window movable and resizable
+
+make the "Browser cache" window movable and resizable
+
+
+* TODO create a nice dialog window (like what we do for the "Browser cache" window) for displaying/managing the tampermonkey GM store key/values
+
+create a nice dialog window (like what we do for the "Browser cache" window) for displaying/managing the tampermonkey GM
+store key/values

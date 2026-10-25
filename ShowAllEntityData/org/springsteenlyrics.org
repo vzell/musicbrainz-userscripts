@@ -651,6 +651,12 @@ also URLify the SL tracklist to MB song URLs
 
 Support song SL URL PTs, e.g. https://www.springsteenlyrics.com/lyrics.php?song=kittysback
 
+#+begin_example
+https://www.springsteenlyrics.com/lyrics.php?song=backstreets
+https://www.springsteenlyrics.com/lyrics.php?song=backstreets_unofficial1
+https://www.springsteenlyrics.com/lyrics.php?song=backstreets_1975-11-18
+#+end_example
+
 1.)
 
 parse a couple and make some suggestions, nice rich HTML based mockups
@@ -683,11 +689,21 @@ the MB icon on logged in pages should get the POH treatment
 
 add columns for the "MusicBrainz link", "Good scans" and "In Switzerland" icons with UVD sections
 
+#+begin_example
+https://www.springsteenlyrics.com/collection.php?item=8983&category=album&f_date_main=1984-06-04
+#+end_example
+
+
 * TODO bootleg pages
 
 1.)
 
 add columns for the "MusicBrainz link", " artwork available" and "original info file available"
+
+#+begin_example
+https://www.springsteenlyrics.com/bootlegs.php?item=4554&category=aud_live1967
+#+end_example
+
 
 * TODO stefano pages
 
@@ -705,6 +721,6 @@ There is a tracklistm but its MISSING from the POH on the overview page at https
 
 #+begin_example
 TRACKLIST
-The page has no tracklist.
+The page has no tracklist. - https://www.springsteenlyrics.com/brucelegs.php?item=281&f_format=vinyl
 #+end_example
 
