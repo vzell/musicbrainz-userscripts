@@ -1,0 +1,547 @@
+<title>YouTube in Place</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/* Layout: one column of three "where it shows" panels (MusicBrainz, Discogs, Brucebase), each a
+   faithful stand-in of the real context, then the open questions. "Liner notes" look (~/CLAUDE.md). */
+:root {
+    --paper: #fbf8f1;
+    --sheet: #ffffff;
+    --ink: #2b2622;
+    --rule: #d9cfbd;
+    --muted: #7a6d5c;
+    --soft: #f3ede0;
+    --ok: #3f7a3a;
+    --run: #2f5f9e;
+    --warn: #9a6a00;
+    --alert: #9b2218;
+    --screen: #1d1a17;
+    --screen-ink: #e9e1d2;
+    --shadow: 0 10px 24px -8px rgba(60, 40, 20, .35);
+    --serif: Georgia, "Times New Roman", serif;
+    --sans: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+    --mono: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+    color-scheme: light;
+}
+* { box-sizing: border-box; }
+body {
+    background: var(--paper); color: var(--ink); font: 15px/1.5 var(--serif);
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+    padding-block: 24px 48px;
+}
+main { max-width: 1040px; margin: 0 auto; display: grid; gap: 28px; }
+h1 { font-size: 28px; line-height: 1.2; margin: 0; text-wrap: balance; font-weight: normal; }
+h2 { font-size: 20px; margin: 0; font-weight: normal; text-wrap: balance; }
+h3 { font-size: 16px; margin: 0; font-weight: normal; }
+p { margin: 0; max-width: 68ch; }
+.lede { color: var(--muted); }
+.label, .pill, .btn, th, .tabs button, .kv dt.caps {
+    font-family: var(--sans); font-size: 11px; letter-spacing: .06em; text-transform: uppercase;
+}
+.mono, code { font-family: var(--mono); font-size: 12.5px; }
+.label { color: var(--muted); }
+.pill { display: inline-block; padding: 1px 7px; border-radius: 3px; border: 1px solid currentColor; line-height: 1.6; white-space: nowrap; }
+.pill.ok { color: var(--ok); } .pill.run { color: var(--run); } .pill.warn { color: var(--warn); } .pill.alert { color: var(--alert); } .pill.idle { color: var(--muted); }
+.btn { border: 1px solid var(--rule); background: var(--sheet); color: var(--ink); border-radius: 3px; padding: 4px 9px; cursor: pointer; }
+.btn:hover { border-color: var(--muted); }
+.btn.primary { border-color: var(--run); color: var(--run); }
+.btn.danger { border-color: var(--alert); color: var(--alert); }
+:focus-visible { outline: 2px solid var(--run); outline-offset: 2px; }
+
+/* the settings strip */
+.settings { display: flex; flex-wrap: wrap; gap: 8px 22px; align-items: center; padding: 10px 14px; border: 1px solid var(--rule); border-radius: 4px; background: var(--sheet); }
+.settings label { display: flex; gap: 8px; align-items: center; font-size: 14px; cursor: pointer; }
+.settings .note { flex-basis: 100%; color: var(--muted); font-size: 13px; }
+
+/* tabs */
+.tabs { display: flex; flex-wrap: wrap; gap: 6px; border-bottom: 1px solid var(--rule); }
+.tabs button { border: 1px solid var(--rule); border-bottom: none; background: var(--soft); padding: 7px 12px; border-radius: 4px 4px 0 0; cursor: pointer; color: var(--muted); }
+.tabs button[aria-selected="true"] { background: var(--sheet); color: var(--ink); position: relative; top: 1px; }
+.panel { display: grid; gap: 16px; }
+.context { border: 1px solid var(--rule); border-radius: 4px; background: var(--sheet); padding: 16px; display: grid; gap: 12px; min-width: 0; }
+.context > .where { display: flex; flex-wrap: wrap; gap: 8px; align-items: baseline; justify-content: space-between; }
+.why { font-size: 13.5px; color: var(--muted); }
+.why b { color: var(--ink); font-weight: normal; font-style: italic; }
+
+/* tables */
+.tablewrap { overflow-x: auto; }
+table.tbl { border-collapse: collapse; width: 100%; font-size: 14px; }
+table.tbl th { text-align: left; color: var(--muted); font-weight: normal; padding: 6px 8px; border-bottom: 1px solid var(--rule); }
+table.tbl td { padding: 7px 8px; border-bottom: 1px solid #efe8da; vertical-align: top; }
+table.tbl tr.playerrow > td { padding: 0 8px 12px; background: var(--paper); }
+a.link { color: var(--run); text-decoration: none; border-bottom: 1px dotted var(--run); }
+a.link:hover { border-bottom-style: solid; }
+
+/* the video tile */
+.tile { display: inline-flex; gap: 10px; align-items: center; border: 1px solid var(--rule); border-radius: 4px; background: var(--sheet); padding: 6px 10px 6px 6px; cursor: pointer; text-align: left; font: inherit; color: inherit; max-width: 100%; }
+.tile:hover { border-color: var(--muted); box-shadow: var(--shadow); }
+.tile .frame { flex: none; width: 96px; height: 54px; border-radius: 3px; position: relative; display: grid; place-items: center; overflow: hidden; }
+.tile .frame.still { background: linear-gradient(to bottom, #6b5a45, #2e2721); }
+.tile .frame.still::before { content: ""; position: absolute; inset: 0; background:
+    radial-gradient(circle at 30% 40%, rgba(255,230,190,.55) 0 18%, transparent 19%),
+    radial-gradient(circle at 70% 70%, rgba(255,255,255,.18) 0 22%, transparent 23%); }
+.tile .frame.plain { background: var(--soft); border: 1px dashed var(--rule); }
+.tile .play { position: relative; width: 28px; height: 20px; border-radius: 5px; background: rgba(155, 34, 24, .92); display: grid; place-items: center; }
+.tile .frame.plain .play { background: var(--muted); }
+.tile .play::after { content: ""; border-left: 8px solid #fff; border-top: 5px solid transparent; border-bottom: 5px solid transparent; margin-left: 2px; }
+.tile .frame .dur { position: absolute; right: 3px; bottom: 3px; background: rgba(0,0,0,.72); color: #fff; font: 10px/1.3 var(--sans); padding: 0 3px; border-radius: 2px; }
+.tile .frame .list { position: absolute; right: 0; top: 0; bottom: 0; width: 36%; background: rgba(0,0,0,.55); color: #fff; font: 10px/1.2 var(--sans); display: grid; place-items: center; text-align: center; }
+.tile .meta { display: grid; gap: 1px; min-width: 0; }
+.tile .meta .t { font-size: 14px; overflow-wrap: anywhere; }
+.tile .meta .s { font-size: 12px; color: var(--muted); }
+.tile.small .frame { width: 72px; height: 40px; }
+.tile.playing { border-color: var(--run); }
+
+/* the player */
+.player { display: grid; gap: 6px; margin-top: 8px; max-width: 640px; }
+.player .screen { aspect-ratio: 16 / 9; max-width: 100%; background: var(--screen); color: var(--screen-ink); border-radius: 4px; display: grid; grid-template-rows: 1fr auto; overflow: hidden; box-shadow: var(--shadow); }
+.player .screen .stage { display: grid; place-items: center; text-align: center; padding: 12px; gap: 6px; align-content: center; }
+.player .screen .stage .big { font-size: 17px; }
+.player .screen .stage .src { font: 11.5px var(--mono); opacity: .7; overflow-wrap: anywhere; }
+.player .screen .bar { display: flex; align-items: center; gap: 8px; padding: 6px 10px; font: 11px var(--sans); }
+.player .screen .bar .track { flex: 1; height: 3px; background: rgba(255,255,255,.2); border-radius: 2px; overflow: hidden; }
+.player .screen .bar .track i { display: block; height: 100%; width: 0; background: #d24a3a; }
+.player .foot { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; font-size: 13px; color: var(--muted); }
+.player .foot .grow { flex: 1; }
+.player.gone .screen .stage .big { color: #f0b9b0; }
+
+/* hover card and window (the popup engine, as now) */
+.card { position: fixed; z-index: 30; width: 300px; max-width: calc(100vw - 32px); background: var(--paper); border: 1px solid var(--rule); border-radius: 4px; box-shadow: var(--shadow); padding: 10px 12px; display: grid; gap: 6px; font-size: 13.5px; }
+.card .kind { font: 11px var(--sans); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.card .foot { font: 11.5px var(--sans); color: var(--muted); border-top: 1px solid var(--rule); padding-top: 6px; }
+kbd { font: 11px var(--mono); border: 1px solid var(--rule); border-bottom-width: 2px; border-radius: 3px; padding: 0 4px; background: var(--sheet); }
+.veil { position: fixed; inset: 0; background: rgba(43, 38, 34, .18); z-index: 40; display: grid; place-items: center; padding: 16px; }
+.win { width: min(760px, 100%); max-height: calc(100vh - 32px); overflow: auto; background: var(--paper); border: 1px solid var(--rule); border-radius: 4px; box-shadow: var(--shadow); }
+.win .head { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-bottom: 1px solid var(--rule); position: sticky; top: 0; background: var(--paper); }
+.win .head .ttl { flex: 1; font-size: 15px; }
+.win .body { padding: 14px; display: grid; gap: 14px; grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr); }
+.win .body > * { min-width: 0; }
+.win .wfoot { padding: 6px 12px; border-top: 1px solid var(--rule); font: 11.5px var(--sans); color: var(--muted); }
+.kv { display: grid; grid-template-columns: auto 1fr; gap: 3px 12px; margin: 0; font-size: 14px; }
+.kv dt { font-style: italic; color: var(--muted); }
+.kv dd { margin: 0; overflow-wrap: anywhere; }
+.sec h4 { margin: 0 0 6px; font: 11px var(--sans); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); border-bottom: 1px solid var(--rule); padding-bottom: 3px; }
+.vlist { display: grid; gap: 8px; }
+.vlist .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+
+/* sidebar stand-in */
+.side { border-left: 1px solid var(--rule); padding-left: 14px; display: grid; gap: 6px; font-size: 14px; }
+
+/* questions */
+.questions { border: 1px solid var(--rule); border-radius: 4px; background: var(--sheet); padding: 16px; display: grid; gap: 12px; }
+.questions ol { margin: 0; padding-left: 22px; display: grid; gap: 10px; }
+.questions li p { max-width: 80ch; }
+.choices { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.choices button { font: 12px var(--sans); border: 1px solid var(--rule); background: var(--paper); border-radius: 3px; padding: 3px 8px; cursor: pointer; color: var(--ink); }
+.choices button[aria-pressed="true"] { border-color: var(--run); color: var(--run); background: var(--sheet); }
+.log { font: 12.5px var(--mono); color: var(--muted); display: grid; gap: 2px; max-height: 120px; overflow: auto; }
+.log b { color: var(--ink); font-weight: normal; }
+
+@media (max-width: 640px) {
+    .win .body { grid-template-columns: 1fr; }
+    h1 { font-size: 23px; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .player .screen .bar .track i { transition: none !important; }
+}
+</style>
+
+<main>
+    <header style="display:grid; gap:8px;">
+        <span class="label">ShowAllEntityData · mockup · org/TODO.org "some more BB and MB fixes/enhancements" 2</span>
+        <h1>YouTube videos, played where they are listed</h1>
+        <p class="lede">A YouTube link keeps its link and its preview card exactly as now. Beside it comes a small tile; a click (or Enter) plays the video right there, in YouTube's privacy-enhanced player. Nothing is asked from YouTube before that click. Try the three pages below; Esc stops the player.</p>
+    </header>
+
+    <section class="settings" aria-label="Settings (stand-in for ⚙️ Settings)">
+        <span class="label">⚙️ Settings · 🔎 External link previews</span>
+        <label><input type="checkbox" id="setPlay" checked> Play YouTube videos in place (a click asks youtube-nocookie.com)</label>
+        <label><input type="checkbox" id="setStill"> Show the videos' still frames (asks i.ytimg.com as they come into view)</label>
+        <p class="note">Off, the still frame is a plain tile: no request at all until you press play. On, each tile's picture comes from i.ytimg.com when the row is shown. See question 1.</p>
+    </section>
+
+    <div>
+        <div class="tabs" role="tablist" aria-label="Where it shows">
+            <button role="tab" id="tab-mb" aria-selected="true" aria-controls="p-mb">MusicBrainz</button>
+            <button role="tab" id="tab-dg" aria-selected="false" aria-controls="p-dg">Discogs</button>
+            <button role="tab" id="tab-bb" aria-selected="false" aria-controls="p-bb">Brucebase</button>
+        </div>
+
+        <!-- MusicBrainz -->
+        <section class="panel" id="p-mb" role="tabpanel" aria-labelledby="tab-mb" style="padding-top:16px;">
+            <div class="context">
+                <div class="where">
+                    <h2>Recording · I'll See You in My Dreams</h2>
+                    <span class="label">musicbrainz.org/recording/3e8d2331… · after "Show all"</span>
+                </div>
+                <p class="why"><b>Where:</b> the Relationships › URLs sub-table, and the sidebar's "Play on YouTube". The URL stays a link with its card (hover, Ctrl as now; Space opens the window). The tile goes on its own line under the link.</p>
+                <div style="display:grid; grid-template-columns:minmax(0,1fr) 220px; gap:18px;" class="mbgrid">
+                    <div style="min-width:0; display:grid; gap:8px;">
+                        <h3>▼ URLs <span class="label">1 row</span></h3>
+                        <div class="tablewrap">
+                            <table class="tbl" id="mbTable">
+                                <thead><tr><th>#</th><th>Site</th><th>URL</th><th>Relationship</th></tr></thead>
+                                <tbody>
+                                    <tr data-row="mb1">
+                                        <td>1</td>
+                                        <td>youtube.com</td>
+                                        <td>
+                                            <a class="link" href="#" data-card="mb1">https://www.youtube.com/watch?v=dJkaZ8hQM60</a> <span class="label">[info]</span>
+                                            <div class="tilebox" data-video="mb1"></div>
+                                        </td>
+                                        <td>stream video for free</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <aside class="side" aria-label="Sidebar">
+                        <span class="label">External links · Social</span>
+                        <div><a class="link" href="#" data-card="mb1">Play on YouTube</a></div>
+                        <div class="tilebox" data-video="mb1s"></div>
+                        <span class="label" style="text-transform:none; letter-spacing:0;">(sidebar: question 2)</span>
+                    </aside>
+                </div>
+            </div>
+        </section>
+
+        <!-- Discogs -->
+        <section class="panel" id="p-dg" role="tabpanel" aria-labelledby="tab-dg" hidden style="padding-top:16px;">
+            <div class="context">
+                <div class="where">
+                    <h2>Discogs release window · Born To Run (Japan, 1975)</h2>
+                    <span class="label">discogs.com/release/22770998 · the preview window</span>
+                </div>
+                <p class="why"><b>Where:</b> the window's Videos section, which already lists Discogs' videos with their lengths. Each gets a tile; the player opens above the list, so the list does not jump. A link still opens the YouTube card in the window (Back returns), as now.</p>
+                <div class="sec">
+                    <h4>Videos 3</h4>
+                    <div id="dgPlayer"></div>
+                    <div class="vlist" id="dgList"></div>
+                </div>
+            </div>
+            <div class="context">
+                <div class="where">
+                    <h2>Discogs release page · a "Videos" sub-table (proposal)</h2>
+                    <span class="label">dg-release · after "Show tracklist, credits and other versions"</span>
+                </div>
+                <p class="why"><b>Not there today:</b> the release page's tables are Tracklist, Credits, Companies, Identifiers and Other versions. Discogs' API answer has the videos already, so a sixth sub-table costs no request. Question 3.</p>
+                <div class="tablewrap">
+                    <table class="tbl" id="dgTable">
+                        <thead><tr><th style="width:120px;">Play</th><th>Title</th><th>Length</th><th>URL</th></tr></thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- Brucebase -->
+        <section class="panel" id="p-bb" role="tabpanel" aria-labelledby="tab-bb" hidden style="padding-top:16px;">
+            <div class="context">
+                <div class="where">
+                    <h2>Brucebase event window · 2026-10-03 Merriweather Post Pavilion, Columbia, MD</h2>
+                    <span class="label">brucebase.wikidot.com/gig:2026-10-03-… · the preview window</span>
+                </div>
+                <p class="why"><b>Today the window drops the Media tab:</b> it holds only an embedded playlist, which the parser counts as empty. Proposed: a Media section with the playlist's tile, and a tile beside every YouTube link in the other sections (here the Recording section's). Also fixes the Live page's broken "watch?v=videoseries" link.</p>
+                <div style="display:grid; gap:14px; grid-template-columns:minmax(0,1fr) minmax(0,1.3fr);" class="bbgrid">
+                    <dl class="kv">
+                        <dt>Scheduled</dt><dd>2026-10-03</dd>
+                        <dt>Venue</dt><dd>Merriweather Post Pavilion</dd>
+                        <dt>City</dt><dd>Columbia, MD</dd>
+                        <dt>Tour</dt><dd>2026 benefit shows</dd>
+                    </dl>
+                    <div style="display:grid; gap:12px; min-width:0;">
+                        <div class="sec">
+                            <h4>▼ Media</h4>
+                            <div class="tilebox" data-video="bbList"></div>
+                        </div>
+                        <div class="sec">
+                            <h4>▼ Recording</h4>
+                            <p style="font-size:14px;">An audience video is on <a class="link" href="#" data-card="bbGone">YouTube</a>, which is no longer available, unfortunately.</p>
+                            <div class="tilebox" data-video="bbGone"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <section class="questions" aria-label="Open questions">
+        <h2>Open questions</h2>
+        <p class="lede">Your answers shape the build; anything not covered here stays out.</p>
+        <ol>
+            <li><p><b>Still frames.</b> Show the still frame from i.ytimg.com (a request to Google per tile shown), or a plain tile until you press play (no request before a click)?</p>
+                <div class="choices" data-q="1"><button>Plain tile, still frame off by default</button><button>Still frames on by default</button></div></li>
+            <li><p><b>Where on MusicBrainz.</b> The Relationships › URLs sub-table for sure. Also the sidebar's "Play on YouTube" link, and YouTube links inside annotations?</p>
+                <div class="choices" data-q="2" data-multi="1"><button>URLs sub-table</button><button>Sidebar</button><button>Annotations</button></div></li>
+            <li><p><b>Discogs.</b> The release window's Videos section; also a "Videos" sub-table on the release page, and masters' videos (the master's window reads none today)?</p>
+                <div class="choices" data-q="3" data-multi="1"><button>Release window</button><button>Release page sub-table</button><button>Master window too</button></div></li>
+            <li><p><b>One player at a time?</b> Starting a second video stops the first (as in the mockup), or several may play side by side?</p>
+                <div class="choices" data-q="4"><button>One at a time</button><button>Several</button></div></li>
+            <li><p><b>Size.</b> The player as wide as its column (up to 640 px, as here), or always 560 × 315 like YouTube's own embed code?</p>
+                <div class="choices" data-q="5"><button>Column width, max 640</button><button>Fixed 560 × 315</button></div></li>
+            <li><p><b>discogs.com</b> answered the probe with Cloudflare's check, so its real page's frame policy is unknown here. Discogs plays YouTube on its own pages, so it most likely allows it; if not, the tile there opens the video in a new tab instead. Fine?</p>
+                <div class="choices" data-q="6"><button>Yes, fall back to a new tab</button><button>No tile on Discogs then</button></div></li>
+        </ol>
+        <div>
+            <span class="label">Recent</span>
+            <div class="log" id="log" aria-live="polite"></div>
+        </div>
+    </section>
+</main>
+
+<script>
+(function () {
+    'use strict';
+    // Real data from the debug/ snapshots (2026-10-24).
+    const V = {
+        mb1: { id: 'dJkaZ8hQM60', title: "Bruce Springsteen - I'll See You In My Dreams (Lyric Video)", channel: 'Bruce Springsteen', dur: '', kind: 'video' },
+        mb1s: { id: 'dJkaZ8hQM60', title: "I'll See You In My Dreams (Lyric Video)", channel: 'Bruce Springsteen', dur: '', kind: 'video', small: true },
+        dg1: { id: 'Wu4_zVxmufY', title: 'Born to Run', channel: 'Bruce Springsteen - Topic', dur: '4:30', kind: 'video' },
+        dg2: { id: 'x1gMfIsi5Dk', title: 'Bruce Springsteen - Born to Run 明日なき暴走 (Full Album) / 1975', channel: '', dur: '39:26', kind: 'video' },
+        dg3: { id: 'VO-n2EFK6sM', title: '1975 HITS ARCHIVE: Born To Run - Bruce Springsteen (stereo 45)', channel: '', dur: '4:33', kind: 'video' },
+        bbList: { id: 'PLTejJhB5zqTA', title: 'Playlist · 2026-10-03 Merriweather Post Pavilion', channel: 'from the Media tab', dur: '', kind: 'playlist' },
+        bbGone: { id: 'MLnTqKksftM', title: 'Audience video', channel: 'from the Recording section', dur: '', kind: 'video', gone: true },
+    };
+    const $ = (s, r = document) => r.querySelector(s);
+    const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
+    const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    const setPlay = $('#setPlay');
+    const setStill = $('#setStill');
+    let playing = null; // { key, el, timer }
+
+    function log(text, cls) {
+        const t = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        const row = document.createElement('div');
+        row.innerHTML = `${t} <b>${esc(text)}</b>${cls ? ` <span class="pill ${cls}">${cls === 'ok' ? 'done' : cls === 'run' ? 'running' : cls === 'alert' ? 'failed' : 'idle'}</span>` : ''}`;
+        $('#log').prepend(row);
+    }
+
+    function embedUrl(v) {
+        return v.kind === 'playlist'
+            ? `https://www.youtube-nocookie.com/embed/videoseries?list=${v.id}`
+            : `https://www.youtube-nocookie.com/embed/${v.id}?autoplay=1`;
+    }
+    function watchUrl(v) {
+        return v.kind === 'playlist' ? `https://www.youtube.com/playlist?list=${v.id}` : `https://www.youtube.com/watch?v=${v.id}`;
+    }
+
+    function tileHtml(key) {
+        const v = V[key];
+        const still = setStill.checked;
+        const frame = `<span class="frame ${still ? 'still' : 'plain'}"><span class="play"></span>` +
+            (v.kind === 'playlist' ? '<span class="list">≡<br>list</span>' : '') +
+            (v.dur && still ? `<span class="dur">${esc(v.dur)}</span>` : '') + '</span>';
+        const sub = setPlay.checked
+            ? (v.kind === 'playlist' ? 'Play the playlist here' : `Play here${v.dur ? ` · ${esc(v.dur)}` : ''}`)
+            : 'Opens on YouTube (new tab)';
+        return `<button type="button" class="tile${v.small ? ' small' : ''}" data-play="${key}" aria-label="Play ${esc(v.title)}">${frame}` +
+            `<span class="meta"><span class="t">${esc(v.small ? '▶ Play' : v.title)}</span><span class="s">${sub}</span></span></button>`;
+    }
+
+    function renderTiles() {
+        $$('.tilebox').forEach(b => { b.innerHTML = tileHtml(b.dataset.video); });
+        $('#dgList').innerHTML = ['dg1', 'dg2', 'dg3'].map(k => `<div class="row">${tileHtml(k).replace('class="tile', 'class="tile small')}` +
+            `<a class="link" href="#" data-card="${k}">${esc(V[k].title)}</a> <span class="label">${esc(V[k].dur)}</span></div>`).join('');
+        $('#dgTable tbody').innerHTML = ['dg1', 'dg2', 'dg3'].map(k => `<tr data-row="t${k}"><td>${tileHtml(k).replace('class="tile', 'class="tile small').replace(/<span class="meta">[\s\S]*?<\/span><\/span><\/button>/, '</button>')}</td>` +
+            `<td>${esc(V[k].title)}</td><td class="mono">${esc(V[k].dur)}</td><td><a class="link" href="#" data-card="${k}">youtube.com/watch?v=${esc(V[k].id)}</a></td></tr>`).join('');
+        if (playing) markPlaying(playing.key);
+    }
+
+    function markPlaying(key) {
+        $$('.tile').forEach(t => t.classList.toggle('playing', !!key && t.dataset.play === key));
+    }
+
+    function playerHtml(v) {
+        const gone = !!v.gone;
+        return `<div class="player${gone ? ' gone' : ''}" role="region" aria-label="YouTube player">` +
+            '<div class="screen"><div class="stage">' +
+            (gone
+                ? '<div class="big">This video is not available on YouTube any more.</div>'
+                : `<div class="big">▶ ${esc(v.title)}</div>`) +
+            `<div class="src">${esc(embedUrl(v))}</div>` +
+            '<div class="src">(the real page shows YouTube\'s own player here)</div></div>' +
+            `<div class="bar"><span>${gone ? '—' : '0:00'}</span><span class="track"><i></i></span><span>${esc(v.dur || (v.kind === 'playlist' ? 'playlist' : ''))}</span></div></div>` +
+            '<div class="foot">' +
+            (gone ? '<span class="pill alert">Unavailable</span>' : '<span class="pill run">Playing</span>') +
+            `<span class="grow">${v.kind === 'playlist' ? 'Playlist' : 'Video'} <code>${esc(v.id)}</code></span>` +
+            `<a class="link" href="${esc(watchUrl(v))}" target="_blank" rel="noopener">Open on YouTube ↗</a>` +
+            '<button type="button" class="btn" data-stop="1">■ Stop <kbd>Esc</kbd></button></div></div>';
+    }
+
+    function stop(reason) {
+        if (!playing) return;
+        clearInterval(playing.timer);
+        const { el, key } = playing;
+        playing = null;
+        if (el.tagName === 'TR') el.remove(); else el.innerHTML = '';
+        markPlaying(null);
+        log(`${V[key].title.slice(0, 48)}: stopped${reason ? ` (${reason})` : ''}`, 'idle');
+        const back = $(`.tile[data-play="${key}"]`);
+        if (back) back.focus({ preventScroll: true });
+    }
+
+    function play(key, tile) {
+        const v = V[key];
+        if (!setPlay.checked) {
+            log(`${v.title.slice(0, 48)}: opened on YouTube in a new tab (playing in place is off)`, 'ok');
+            return;
+        }
+        if (playing && playing.key === key) { stop('the same tile'); return; }
+        if (playing) stop('another video started');
+        // Where the player goes: a table row gets a full-width row under it;
+        // the Discogs window's list, the slot above it; elsewhere, right
+        // under the tile.
+        let el;
+        const tr = tile.closest('tr');
+        if (tr && tr.dataset.row) {
+            el = document.createElement('tr');
+            el.className = 'playerrow';
+            el.innerHTML = `<td colspan="${tr.children.length}">${playerHtml(v)}</td>`;
+            tr.after(el);
+        } else if (tile.closest('#dgList')) {
+            el = $('#dgPlayer');
+            el.innerHTML = playerHtml(v);
+        } else {
+            el = tile.closest('.tilebox');
+            const slot = document.createElement('div');
+            slot.innerHTML = playerHtml(v);
+            el.appendChild(slot);
+            el = slot;
+        }
+        const bar = el.querySelector('.track i');
+        const clock = el.querySelector('.bar span');
+        let s = 0;
+        const timer = v.gone ? 0 : setInterval(() => {
+            s++;
+            bar.style.width = `${Math.min(100, s * 2)}%`;
+            clock.textContent = `0:${String(s % 60).padStart(2, '0')}`;
+        }, 1000);
+        playing = { key, el, timer };
+        markPlaying(key);
+        log(`${v.title.slice(0, 48)}: ${v.gone ? 'YouTube says unavailable' : 'playing (one request: youtube-nocookie.com)'}`, v.gone ? 'alert' : 'run');
+    }
+
+    // The link's card, as now (the popup engine's YouTube reader).
+    let card = null;
+    let hideTimer = 0;
+    function showCard(a) {
+        const v = V[a.dataset.card];
+        hideCard();
+        card = document.createElement('div');
+        card.className = 'card';
+        card.innerHTML = `<span class="kind">YouTube · as now</span><div>${esc(v.gone ? 'YouTube does not show this video' : v.title)}</div>` +
+            `<div style="color:var(--muted); font-size:12.5px;">${esc(v.gone ? 'It was removed or made private.' : `A ${v.kind} by ${v.channel || 'its channel'}`)}</div>` +
+            '<div class="foot"><kbd>Space</kbd> window · <kbd>Esc</kbd> close</div>';
+        document.body.appendChild(card);
+        const r = a.getBoundingClientRect();
+        const x = Math.min(window.innerWidth - card.offsetWidth - 12, r.left);
+        const y = r.bottom + 8 + card.offsetHeight > window.innerHeight ? r.top - card.offsetHeight - 8 : r.bottom + 8;
+        card.style.left = `${Math.max(12, x)}px`;
+        card.style.top = `${Math.max(12, y)}px`;
+        card.dataset.key = a.dataset.card;
+        card.addEventListener('mouseenter', () => clearTimeout(hideTimer));
+        card.addEventListener('mouseleave', () => { hideTimer = setTimeout(hideCard, 300); });
+    }
+    function hideCard() {
+        clearTimeout(hideTimer);
+        if (card) card.remove();
+        card = null;
+    }
+
+    // The window (Space): the YouTube reader as now, plus "▶ Play here".
+    let win = null;
+    function openWindow(key) {
+        hideCard();
+        const v = V[key];
+        win = document.createElement('div');
+        win.className = 'veil';
+        win.innerHTML = '<div class="win" role="dialog" aria-modal="true" aria-label="YouTube">' +
+            `<div class="head"><span class="ttl">YouTube</span><span class="label">Extracted</span><button type="button" class="btn" data-close="1">✕ <kbd>Esc</kbd></button></div>` +
+            `<div class="body"><div style="display:grid; gap:8px;"><div style="font-size:16px;">${esc(v.title)}</div>` +
+            `<div class="tilebox" data-video="${key}">${tileHtml(key)}</div>` +
+            `<dl class="kv"><dt>Type</dt><dd>${esc(v.kind)}</dd><dt>Channel</dt><dd>${esc(v.channel || '—')}</dd></dl></div>` +
+            `<div class="sec"><h4>Link</h4><div class="mono">${esc(watchUrl(v))}</div><h4 style="margin-top:12px;">On this page</h4>` +
+            '<div style="font-size:14px;">As now: where the link is used, and what MusicBrainz knows about the URL.</div></div></div>' +
+            '<div class="wfoot">As now, plus the tile: ▶ plays in the window. Esc stops the player first, then closes the window.</div></div>';
+        document.body.appendChild(win);
+        win.querySelector('[data-close]').focus();
+        log(`${v.title.slice(0, 48)}: window opened (as now)`, 'ok');
+    }
+    function closeWindow() {
+        if (!win) return;
+        if (playing && win.contains(playing.el)) stop('window closed');
+        win.remove();
+        win = null;
+    }
+
+    document.addEventListener('click', (e) => {
+        const t = e.target.closest('[data-play]');
+        if (t) { e.preventDefault(); play(t.dataset.play, t); return; }
+        if (e.target.closest('[data-stop]')) { stop('■ Stop'); return; }
+        if (e.target.closest('[data-close]') || (win && e.target === win)) { closeWindow(); return; }
+        const a = e.target.closest('a.link[data-card]');
+        if (a) { e.preventDefault(); log('a click on the link: YouTube in a new tab (as now)', 'ok'); }
+    });
+    let hoverLink = null;
+    document.addEventListener('mouseover', (e) => {
+        const a = e.target.closest('a.link[data-card]');
+        if (a && a !== hoverLink) { hoverLink = a; clearTimeout(hideTimer); hideTimer = setTimeout(() => showCard(a), 250); }
+        if (!a && hoverLink && !(card && card.contains(e.target))) {
+            hoverLink = null;
+            clearTimeout(hideTimer);
+            hideTimer = setTimeout(hideCard, 300);
+        }
+    });
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            if (playing) { e.preventDefault(); stop('Esc'); return; }
+            if (card) { hideCard(); return; }
+            if (win) { closeWindow(); return; }
+        }
+        if ((e.key === ' ' || e.code === 'Space') && card && !win) {
+            e.preventDefault();
+            openWindow(card.dataset.key);
+        }
+    });
+    // Touch: a tap on the link opens its card; a second tap the window.
+    document.addEventListener('touchend', (e) => {
+        const a = e.target.closest('a.link[data-card]');
+        if (!a) return;
+        e.preventDefault();
+        if (card && card.dataset.key === a.dataset.card) openWindow(a.dataset.card); else showCard(a);
+    }, { passive: false });
+
+    [setPlay, setStill].forEach(c => c.addEventListener('change', () => {
+        if (!setPlay.checked) stop('setting off');
+        renderTiles();
+        log(`${c === setPlay ? 'Play in place' : 'Still frames'}: ${c.checked ? 'on' : 'off'}`, 'ok');
+    }));
+
+    // Tabs
+    $$('.tabs button').forEach(b => b.addEventListener('click', () => {
+        $$('.tabs button').forEach(x => x.setAttribute('aria-selected', String(x === b)));
+        $$('.panel').forEach(p => { p.hidden = p.id !== b.getAttribute('aria-controls'); });
+        if (playing && playing.el.closest('.panel') && playing.el.closest('.panel').hidden) stop('tab changed');
+    }));
+
+    // Questions: a pick per question (several where marked).
+    $$('.choices').forEach(box => box.addEventListener('click', (e) => {
+        const b = e.target.closest('button');
+        if (!b) return;
+        const multi = box.dataset.multi === '1';
+        if (!multi) $$('button', box).forEach(x => x.setAttribute('aria-pressed', 'false'));
+        b.setAttribute('aria-pressed', String(!(multi && b.getAttribute('aria-pressed') === 'true')));
+        log(`question ${box.dataset.q}: ${$$('button[aria-pressed="true"]', box).map(x => x.textContent).join(', ') || 'nothing picked'}`);
+    }));
+
+    // Narrow screens: the MusicBrainz sidebar and the Brucebase columns stack.
+    const narrow = window.matchMedia('(max-width: 640px)');
+    function fit() {
+        $$('.mbgrid, .bbgrid').forEach(g => { g.style.gridTemplateColumns = narrow.matches ? '1fr' : ''; });
+    }
+    narrow.addEventListener('change', fit);
+    fit();
+    renderTiles();
+    log('mockup loaded · sample data from debug/ snapshots', 'ok');
+})();
+</script>

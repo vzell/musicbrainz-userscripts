@@ -1,0 +1,255 @@
+#+TITLE: YouTube videos, played where they are listed
+#+STARTUP: showall
+
+org/TODO.org "* TODO some more BB and MB fixes/enhancements", item 2 (and the
+older "* TODO embed YouTube videos directly in the PTs where they are
+referenced + the original URL as popup box as now").
+
+Branch: =feature/youtube-embeds= (from =main= at 9.99.1457+2026-10-25).
+No version bump on the branch; track the work in
+=ShowAllEntityData_CHANGELOG.wip.json= (WIP.1 …); fold at merge
+(=merge-push-remove= skill). Ask before merging.
+
+* Status
+
+- [X] Mockup published and answered (2026-10-25)
+- [X] Frame-policy probe (=scripts/probe-youtube-frame-src.py=)
+- [ ] Step 1 — the shared tile and player
+- [ ] Step 2 — MusicBrainz: URLs sub-table, sidebar, annotations
+- [ ] Step 3 — Discogs: release window, master window, release page sub-table
+- [ ] Step 4 — Brucebase: the window's Media section, links in its sections, the Live page bug
+- [ ] Step 5 — docs, HELP, CHANGELOG (WIP), DEBUG-NOTES, full suite
+
+* Mockup (approved design)
+
+- Link: https://claude.ai/artifact/GCrnEVLNyDN6gRG259LbUE
+- File: =org/youtube-embeds-mockups.html= (republish from this path to keep the link)
+- Look: "Liner notes" (~/CLAUDE.md). Build exactly what the mockup shows plus
+  the answers below; anything else is an open question to raise, not to add.
+
+What the mockup shows:
+- A YouTube link stays a link with its preview card and window exactly as
+  now (the =youtube= reader of =_EXT_READERS=). Beside it a *tile*: a still
+  frame (or plain frame) with a ▶, the title, "Play here · 4:30".
+- A click (or Enter, or a tap) on the tile plays the video *in place* in
+  YouTube's privacy-enhanced player (=youtube-nocookie.com=); nothing is asked
+  from YouTube's player host before that click.
+- Where the player opens: in a table, a full-width row under the row
+  (=tr.playerrow > td[colspan]=); in the Discogs window's Videos section, a
+  slot above the list (the list does not jump); elsewhere right under the tile.
+- Under the player: a pill (Playing / Unavailable), "Video <id>", "Open on
+  YouTube ↗", "■ Stop Esc".
+- Esc stops the player first; the next Esc closes the card/window as now.
+- The link's window (Space) gets the same tile, playing in the window.
+- A video YouTube no longer has shows "This video is not available on YouTube
+  any more." with a red *Unavailable* pill (the embed tells us; no oEmbed
+  request is needed for that).
+
+* Decisions (vzell, 2026-10-25, answers to the mockup's questions)
+
+1. *Still frames on by default*: each tile shows
+   =https://i.ytimg.com/vi/<id>/mqdefault.jpg= (=loading="lazy"=,
+   =referrerpolicy="no-referrer"=), so a request to i.ytimg.com per tile as it
+   comes into view. A setting turns it off (plain tile, no request at all
+   before a click). A playlist has no id-based still: plain tile with "≡ list"
+   (no oEmbed request just for a picture) — mention this when building.
+2. *MusicBrainz*: the Relationships › URLs sub-table, the sidebar's "Play on
+   YouTube" link, and YouTube links inside annotations — all three.
+3. *Discogs*: the release window's Videos section, the master window too (the
+   master reader reads no =videos= today), and a new "Videos" sub-table on the
+   release page — all three.
+4. *One player at a time*: starting a second video stops the first.
+5. *Size*: as wide as its column, at most 640 px, 16:9 (=aspect-ratio=).
+6. *discogs.com*: if the page's frame policy blocks the player, the tile opens
+   the video on YouTube in a new tab instead (and says so).
+
+* Findings to build on (2026-10-24/25 surveys; grep the anchors, line numbers drift)
+
+** The YouTube reader (popup card and window, unchanged)
+- =_EXT_READERS= first entry: ={ id: 'youtube', test: _extYouTubeTest, load: _extYouTubeLoad, noLive: true }=.
+- =_extYouTubeTest()=: =youtu.be/<id>=; =www./m./music.youtube.com= with
+  =/watch?v=, /playlist?list=, /v/, /shorts/, /embed/, /live/=. Channel pages
+  fall through to the generic reader.
+- =_extYouTubeLoad()=: ONE oEmbed request
+  (=https://www.youtube.com/oembed?format=json&url=…=, via =_extGet()=):
+  title, author, =thumbnail_url=, type; 400/401/403/404 → =state: 'dead'=.
+- =// @connect www.youtube.com= in the header; =www.youtube.com= in
+  =_EXT_CONNECT_HOSTS=. The player is an =<iframe>= (no GM request), the still
+  an =<img>=: neither needs an =@connect=.
+- Tests today: =tests/fixtures/popup-ext.spec.js= (one oEmbed request, no
+  Live page, the missing-video wording), =tests/live/popup-ext.spec.js=
+  (an annotation playlist).
+- New helper to write once and reuse everywhere: parse a YouTube URL to
+  ={kind: 'video'|'playlist'|'short', id, list}= (reuse =_extYouTubeTest()='s
+  shapes; =youtu.be=, =watch?v=, =shorts/=, =embed/<id>=,
+  =embed/videoseries?list==, =playlist?list==).
+
+** Iframes in the script today
+- Only one: the Live page view (=createElement('iframe')=, sandboxed, no
+  scripts, =srcdoc= from =_dpLiveDocHtml()=).
+- =_dpLiveDocHtml()= turns every embed into =<p class="mb-dp-embed"><a>▶ Watch
+  on YouTube</a>= with =/youtube(?:-nocookie)?\.com\/embed\/([\w-]+)/=.
+  *Bug:* for =embed/videoseries?list=…= (Brucebase's Media tab, the 4th of
+  July song page) it captures =videoseries= and builds the broken
+  =watch?v=videoseries=. Must become =playlist?list=<list>=. Fix in Step 4.
+- Brucebase venue windows: "the window never loads another site's frame on
+  its own" (Streetview as a link). The player keeps that rule: it loads only
+  on a click.
+- The player =<iframe>=: =src= =https://www.youtube-nocookie.com/embed/<id>?autoplay=1=
+  (playlist: =/embed/videoseries?list=<list>&autoplay=1=), =allow="autoplay;
+  encrypted-media; picture-in-picture; fullscreen"=, =allowfullscreen=,
+  =referrerpolicy="strict-origin-when-cross-origin"=, no =sandbox= (the
+  player needs scripts), =title= = the video's title.
+
+** Frame-policy probe (=scripts/probe-youtube-frame-src.py=)
+Env: 2026-10-25T02:14:51+01:00 · petri · WSL2 Ubuntu 24.04.3 (Linux 6.18.54.1) · no browser (Python urllib) · n/a
+- musicbrainz.org recording page: 200, no Content-Security-Policy → frames allowed.
+- brucebase.wikidot.com gig page: 200, no CSP → frames allowed.
+- discogs.com release and master: *403, Cloudflare's challenge page*; its CSP
+  (=frame-src 'self' https://challenges.cloudflare.com blob:=) is the
+  challenge's, not the real page's. Unknown. Discogs plays YouTube on its own
+  pages, so the real policy most likely admits it — verify in the real browser
+  (DevTools → Network → the document's response headers), record the result
+  here and next to the code. Decision 6 covers a block: listen for
+  =securitypolicyviolation= (=blockedURI= on youtube-nocookie.com) on the
+  document; on it, remove the player, open =watch?v== in a new tab, and make
+  that page's tiles say "Opens on YouTube (new tab)".
+
+** MusicBrainz
+- Snapshots: =debug/mb-youtube-recording-initial.html= (IP),
+  =debug/mb-youtube-recording-final.html= (FRP), =debug/mb-youtube-popup.html=
+  (the window). Recording 3e8d2331-3734-4f4b-b865-3313b7bf4303, video
+  =dJkaZ8hQM60= ("Bruce Springsteen - I'll See You In My Dreams (Lyric Video)").
+- URLs sub-table: h2 "Relationships" › h3 "URLs", =table.tbl= with columns
+  =#=, =Site=, =URL=, =Relationship=; URL cell
+  =<span></span><a class="wrap-anywhere mb-sb-ico" href="//www.youtube.com/watch?v=…">…</a> [<a href="/url/…">info</a>]=
+  (protocol-relative href). Built by =_eventRelColumns()= from
+  =applyRelDetailsToTables()= (=applyEventDetailsToTables()= on event pages).
+- Sidebar: =ul.external_links > li.youtube-favicon > a[href="//www.youtube.com/watch?v=…"]= "Play on YouTube";
+  after =_sbEnhance()= it carries =data-mb-sbl-kind="Social"= under the
+  "Social" group head (=_SB_LINK_KINDS=). Read docs/claude/sidebar.md first
+  (links are tagged and CSS-ordered, never moved).
+- Annotations: =.annotation= (and the annotation cells/sections) links to
+  YouTube; =tests/live/popup-ext.spec.js= already uses an annotation playlist.
+- Rules that bite here (docs/claude/filter-and-cache-invariants.md,
+  CLAUDE.md "Common pitfalls"):
+  - Put the tile in the cell when the table is BUILT (converter), not as a
+    late write; if a late write is unavoidable it owes the four things
+    (uniq cache, =_filterResultCache=, =_rowTextCache= on the SOURCE row,
+    re-run =runFilter()=).
+  - The tile's text must not leak into filtering, sorting or the 📊 dropdown:
+    give it a class and add that class to =_CLEAN_STRIP_SEL=.
+  - Rows are cloned on every sort/filter and in multi-table mode always:
+    no direct listeners — ONE delegated click/keydown handler on the document
+    (=data-mb-yt=), and the player row is never part of =allRows= (remove it
+    on re-render; a re-render stops the player).
+  - Nothing may change for MusicBrainz when the setting is off: specs with it
+    off assert no tile and no request.
+
+** Discogs
+- Snapshots: =debug/discogs-release-born-to-run-with-youtube-videos.html=
+  (the release window, release 22770998, Videos 3),
+  =debug/discogs-release-born-to-run-youtube-video-detail.html= (a video
+  drilled in the window, Back).
+- Data: Discogs API =videos= (=uri=, =title=, =duration= seconds), read in
+  =_extDiscogsLoad()= only for =kind === 'release'= →
+  =videos: [{title, url, dur}]=. *Masters*: read =d.videos= the same way
+  (bump the reader's record version so cached masters are read again).
+- Window: =_extDiscogsWindow()= → right column section
+  =data-mb-dg-sec="videos"= (=<div><a href=…>title</a> <span class="mb-dg-dim">4:30</span></div>=).
+  Add the tile per row; the player slot sits above the list (mockup).
+- Release page: =_dgToHtml()= builds page 1 (Tracklist, Credits, Companies,
+  Barcode/Identifiers; Other versions from =_EXT_DG_LISTS.versions=);
+  =_DG_HEADERS= has the sub-table headers. Add a "Videos" sub-table (Play,
+  Title, Length, URL) from the same API answer — no extra request. Read
+  docs/claude/discogs.md first ("The rows come from Discogs' API"; our
+  section is outside =#app=; the converter runs live, fetched and on disk load).
+- Fixture answers: =tests/fixtures/ext-discogs-release.json= has 3 videos
+  (=Wu4_zVxmufY= "Born to Run" 4:30, =x1gMfIsi5Dk=, =VO-n2EFK6sM=);
+  =ext-discogs-master.json= — check it carries =videos=.
+
+** Brucebase
+- Snapshot: =debug/bb-event-youtube.html= (gig 2026-10-03 Merriweather Post
+  Pavilion, Columbia, MD). Tabs =ul.yui-nav=; the Media panel =#wiki-tab-0-4=
+  is =.list-pages-box > .list-pages-item > p > iframe[src="https://www.youtube.com/embed/videoseries?si=…&list=PLTejJhB5zqTA…"]=;
+  the Recording panel has a prose link =https://www.youtube.com/watch?v=MLnTqKksftM=
+  ("which is no longer available" — a real Unavailable case).
+- =_dpParseBbPage()=: =has()= judges a panel by its TEXT, so an iframe-only
+  Media panel counts as empty; Media is not in the window's section list
+  =['Performances','Recording','Storyteller','Eyewitness','News/Memorabilia']=.
+  Add a Media section built from the panel's =iframe[src*="youtube"]= (and
+  YouTube links); sections carry =html= via =_dpBlockHtml()= (links kept).
+  Bump =_DP_PARSER_VERSION= (its output changes).
+- Other embeds to keep in mind: =debug/bb-songs.html= (stats:songs page),
+  =debug/detail-bb-song-4th-of-july.html= (videoseries),
+  springsteenlyrics.com song pages (=youtube-nocookie.com/embed/…=,
+  =_dpParseSlSong()= skips iframes) — not asked for; leave unless vzell says.
+- The year table's Media "Video" icon has no link (nothing to play) — out of scope.
+
+* Steps
+
+** Step 1 — the shared tile and player (no visible change yet)
+- Settings (=configSchema=, 🔎 External link previews group, next to
+  =sa_pop_ext*=; regenerate =ShowAllEntityData_CONFIG_DEFAULTS.json= with
+  =scripts/dump-config-defaults.py=; read docs/claude/settings-and-config.md):
+  - =sa_yt_play_in_place= (default *true*): "Play YouTube videos in place (a click asks youtube-nocookie.com)".
+  - =sa_yt_stills= (default *true*, decision 1): "Show the videos' still frames (asks i.ytimg.com as they come into view)".
+  - New keys need no migration entry (only changed defaults do).
+- =_ytParse(url)=, =_ytTileHtml(v, {small})=, =_ytPlayerHtml(v)=, =_ytPlay(tile)=,
+  =_ytStop(reason)=, one delegated handler (click, Enter/Space on a focused
+  tile, Esc while playing — Esc before the card's and the window's own Esc,
+  stopPropagation only when it stopped a player). One player at a time
+  (decision 4). Player width: =min(100%, 640px)=, =aspect-ratio: 16/9=
+  (decision 5). Unavailable: the iframe cannot tell us; show YouTube's own
+  message inside the player (the mockup's text is for the Brucebase
+  link whose oEmbed is already known dead — if the window's record says
+  =state: 'dead'=, the tile is drawn as Unavailable without a click).
+- CSS in the shared style, extending selector lists (NO backtick in a
+  =GM_addStyle= comment), "Liner notes" tokens.
+- Specs (fixtures): tile markup and settings off → nothing; a click inserts
+  ONE iframe with the nocookie =src=; a second tile stops the first; Esc
+  stops; no request to youtube.com/i.ytimg.com before a click with stills
+  off (route and count); stills on → one =i.ytimg.com= image request per tile
+  shown. Route =https://www.youtube-nocookie.com/**= to a local page in specs.
+  Mutation file =scripts/mutations/youtube-embeds.json=.
+
+** Step 2 — MusicBrainz (decision 2)
+- URLs sub-table: tile under the link in the URL cell, from the converter;
+  player in a full-width row under the row.
+- Sidebar: tile under "Play on YouTube" (sidebar width, small tile); player
+  under it, column width.
+- Annotations: tile after each YouTube link (annotation sections and the
+  Annotation column's prose cells — check the clamp/collapse:
+  =collapsableColumns=, =.mb-text-clamp-inner=).
+- The YouTube window (=_extExtracted()= for the =youtube= reader): the tile
+  in its left column, playing in the window.
+- Specs from =debug/mb-youtube-recording-*.html= (make a fixture), plus the
+  MusicBrainz suite unchanged with the setting off.
+
+** Step 3 — Discogs (decisions 3, 6)
+- Release window Videos section: tiles, player slot above the list.
+- Master: =_extDiscogsLoad()= reads =videos= for masters too; the master
+  window gets the same Videos section.
+- Release page: a "Videos" sub-table (=_dgToHtml()= / =_DG_HEADERS=), its
+  Play column first.
+- Frame policy: verify live (see the probe); the
+  =securitypolicyviolation= fallback either way (decision 6), with a spec
+  that fires the event.
+
+** Step 4 — Brucebase
+- =_dpParseBbPage()=: a Media section (the panel's YouTube iframes and
+  links), tiles in it and after YouTube links in the other sections;
+  =_DP_PARSER_VERSION= bump.
+- =_dpLiveDocHtml()=: =embed/videoseries?list== → =playlist?list== (the bug),
+  with a spec (=tests/fixtures/detail-preview.spec.js= already tests the
+  embed → link).
+- Specs from =debug/bb-event-youtube.html= (a fixture: the gig page).
+
+** Step 5 — wrap up
+- docs: a "YouTube in place" section in docs/claude/detail-pages.md (link the
+  mockup and this file), notes in discogs.md, brucebase.md, sidebar.md; HELP;
+  WIP changelog entries per step; DEBUG-NOTES entries with Env stamps;
+  =python3 scripts/lint-summary.py --check=; =python3 scripts/audit-docs.py=;
+  =python3 scripts/run-test-full.py --log <scratchpad>/test-full.log=.
+- vzell tests live (MusicBrainz recording page, the Discogs release
+  22770998 window and page, the Brucebase gig window), then merge.
