@@ -942,153 +942,6 @@ the screenshot
 
 * DONE make userscript mobile firendly
 
-
-* TODO What's left from the parking lot in AUDIT.org
-
-- that icon-mirror half
-
-* TODO 503
-** CAA/EAA and Relationships multi section button
-
-Before I leave this session, adjust the @org/503-handling.org for the following ideas:
-
-1.)
-
-Currently we have the following two buttons regarding CAA/EAA handling on tables/sub-tables:
-
-#+begin_example
-<button id="mb-caa-toggle-btn-0" type="button" class="mb-caa-art-toggle-btn" style="cursor: pointer; padding: 1px 5px 1px 3px; border: 1px solid rgb(170, 170, 170); border-radius: 3px; background: rgb(245, 245, 245); vertical-align: middle; font-size: 0.8em; margin-left: 5px; display: inline-flex; align-items: center; gap: 6px; line-height: 1; box-sizing: border-box; transition: transform 0.1s, box-shadow 0.1s;" title="Show CAA cover art image stripe for this section — keyboard: Ctrl+M then A when a column filter is focused (or enable Direct Ctrl+Letter Shortcuts for Ctrl+A)" data-art-render-gen="3"><img class="mb-caa-toggle-thumb" src="//coverartarchive.org/release/9d451257-ebce-44ec-aad8-b48609bfaf7a/front-250" style="height: 18px; width: 18px; object-fit: cover; border-radius: 2px; vertical-align: middle; display: block;"><span class="mb-caa-toggle-count">36</span></button>
-<button id="mb-caa-toggle-btn-retry-0" type="button" title="Retry loading all CAA cover art images for this table (forces network reload)" style="cursor: pointer; padding: 1px 4px; border: 1px solid rgb(170, 170, 170); border-radius: 3px; background: rgb(245, 245, 245); vertical-align: middle; font-size: 0.8em; margin-left: 3px; line-height: 1; display: inline-flex; align-items: center; box-sizing: border-box; transition: transform 0.1s, box-shadow 0.1s;">⟳</button>
-#+end_example
-
-2.)
-
-Mayb we can combine these into one button with different clickable areas on the table/sub-table level during these current 503 implementations
-
-- the CAA/EAA toggle icon thumb
-- the CAA/EAA count
-- a reload ALL section
-- a "just what failed" section
-
-3.)
-
-The situation for the "Relationships" column looks like this:
-
-#+begin_example
-<button id="mb-rel-retry-0" type="button" title="Retry loading Relationship icons for this table (network reload, clears IDB cache)" style="cursor: pointer; padding: 1px 4px; border: 1px solid rgb(170, 170, 170); border-radius: 3px; background: rgb(245, 245, 245); vertical-align: middle; font-size: 0.8em; margin-left: 3px; line-height: 1; display: inline-flex; align-items: center; box-sizing: border-box; transition: transform 0.1s, box-shadow 0.1s;">🔗⟳</button>
-#+end_example
-
-Maybe we can also extend the above ideas to that button
-
-3.)
-
-show me a mock of the buttons if that's a workable solution
-
-4.)
-
-tell me the exact prompt for you, to go on in our current implementation strategy if anything has changed after 1.)-3.)
-
-** DONE sa_art_idb_metadata_ttl_days
-
-Work on @org/503-handling.org
-
-1.)
-
-Change the "sa_art_idb_metadata_ttl_days" to 30 days
-
-2.)
-
-Is the following a good idea ?
-
-a.)
-
-work generically in a 503 branch
-
-b.)
-
-for each sub-step create a worktree and implemente/test there. let the end-user do a live test (if possible) before
-offering to merge back to the "503" branch
-
-c.)
-
-if a feature is worth implementing right away as kind of a "quick fix"/win, after an end-user live test (if possible)
-merge the worktree to main directly and afterwards right back to the "503" branch
-
-*** Answer (2026-09-19)
-
-1.) Done on =fix/caa-metadata-transient=, *together with the F5 fix, not alone*.
-The TTL could not be raised on its own: a 503 from coverartarchive.org was being
-persisted as "this release has no artwork", so 7 → 30 would have quadrupled how
-long one transient failure hid real artwork. Fixing F5 is what makes 30 safe.
-
-2.) *No umbrella =503= branch.* =main= is the trunk; one short-lived branch per
-sub-step, off =main=, live-tested, merged back. Reasons, in order of weight:
-
-- The eight items in =org/503-handling.org= are independently shippable. The one
-  real dependency (item 1, the shared transient classifier, feeding items 3-4 and
-  6) is a *sequence on main*, not a batch that must integrate first.
-- Two levels break the WIP-changelog rule: =scripts/fold-wip-changelog.py= is
-  one-level (branch → =main=) and deletes the WIP file when it folds, so entries
-  would pile up on =503= until one final fold — the whole batch shipping as a
-  single version block, which is the opposite of (c).
-- (c) is the tell: if most sub-steps go straight to =main= anyway, =503= spends
-  its life being back-merged, conflicting every time in =// @version=,
-  =ShowAllEntityData_CHANGELOG.json= and =org/503-handling.org=.
-
-*Worktrees: not per sub-step.* The script is re-imported into Tampermonkey by
-hand, so a branch switch in the main checkout costs the same and skips
-=npm install= plus a fresh =npm run auth:login= (=playwright/.auth/= is
-gitignored, so a new worktree runs live specs *logged out*, silently). Keep a
-worktree for the one case the project's rules demand it: a perf A/B, where
-=main= and the branch must be measured in one session on one host.
-
-Tracking lives in =org/503-handling.org='s Status section, on =main=.
-
-** DONE in the upcoming forum artice when releaseing new userscript version mention the "sa_art_idb_metadata_ttl_days" to 30 days change
-
-in the upcoming forum artice when releasing a new userscript version mention the "sa_art_idb_metadata_ttl_days" to 30
-days change
-
-** DONE How wide should this branch's blast radius be? The org scopes item 1 as "landing with `_ws2GetJson()` as its first consumer".
-
-❯ 1. `_ws2GetJson()` only (Recommended) Add `_isTransientHttp()` + `_parseRetryAfterMs()` as shared helpers, wire only
-     `_ws2GetJson()` (so Relationships + ⏱ batch get 429/502/504 + Retry-After). F1-F3 (fetchHtml) and F4 (release
-     events) stay for their own branches, as the org sequences them. One logical change, small live-test surface.
-  2. Also refactor the CAA art path onto the helper Additionally rewrite `_artEnrichIcon()`/`_artGmFetchBlob()`'s status
-     tests in terms of the new helper. Risk: `_ART_MISS_STATUSES` (404/410, "definitive miss") is NOT the complement of
-     transient — a 403 is neither — so this would be a behaviour change on the path 9.99.1117 just touched, not a
-     refactor.
-  3. Also route release-events (F4) through `_ws2GetJson()` Fold org item 6 into this branch:
-     `initReleaseEventsColumn()`'s bare `fetch()` becomes a `_ws2GetJson()` call, gaining retry + classification in one
-     go. Larger diff, and F4 also wants a visible column failure state that this branch would not deliver.
-
-** DONE PERFORMANCE.org
-
-Fix the 79 ~:NNNNN~ line references in PERFORMANCE.org
-
-** DONE skip tests
-
-- Is it possible to skip the tests belonging to item 7 and 5 when doing the standard testing after new implementation as
-they are very long and probaly not worth it now that I've checked in a live browser
-- Do we really need them after evey new implementation
-- Is it possible to run them only on demand
-
-** DONE pick up the segmented retry pill
-** TODO Two things this batch surfaced that aren't tracked anywhere yet
-
-if you want them written down: initRelationshipsColumn()'s candidate scan being live-DOM-only (the "not re-fetched while
-off screen" gap), and the full fixture suite producing an occasional load-dependent failure on this machine — reproduced
-on unmodified code, different spec each time.
-
-** TODO pick up the heading pre-processing defect
-
-Two honest gaps, both recorded rather than buried:
-- The Relationships half is only indirectly covered. My spec disables the rel column (its ws/2 traffic is unrouted on
-  that fixture), so _relRefreshPerTableFailedButtons() is exercised by the suite's other rel specs calling it, not by an
-  assertion on its counts. Worth a look in the browser on a multi-table page with real relationship failures.
-- Path dedup within a table isn't pinned — it needs a fixture with a sticky column over an artwork column.
-
-
 * DONE - The two recorded (unfixed) harness weaknesses:
 ** DONE i
 
@@ -1136,77 +989,6 @@ Both harness weaknesses are fixed. They are committed on harness/offline-libs-an
 ** DONE Still open
 
 ESLint for the userscript and the test harness, on its own branch. The existing .eslintrc.json uses the old format, which current ESLint (v9) no longer reads, so it needs converting.
-
-
-* TODO Two live specs that already fail on main
- - releasegroup-releases-caa-type-comment-filter.spec.js: the CAA column header button is never found.
- - caa-icon-survives-sort.spec.js: an hourglass appears after a re-render.
-  
-* TODO add acoustid support
-
-#+begin_example
-// ==UserScript==
-// @name        MusicBrainz: Compare AcoustIDs easier!
-// @namespace   https://musicbrainz.org/user/chaban
-// @version     1.1.5
-// @description Displays AcoustID fingerprints in more places at MusicBrainz.
-// @tag         ai-created
-// @author      otringal, chaban
-// @license     MIT
-// @match       *://*.musicbrainz.org/artist/*/recordings*
-// @match       *://*.musicbrainz.org/artist/*/*edits*
-// @match       *://*.musicbrainz.org/collection/*/*
-// @match       *://*.musicbrainz.org/edit/*
-// @match       *://*.musicbrainz.org/recording/*
-// @match       *://*.musicbrainz.org/release-group/*
-// @match       *://*.musicbrainz.org/release/*
-// @match       *://*.musicbrainz.org/search/*
-// @match       *://*.musicbrainz.org/user/*/edits*
-// @match       *://*.musicbrainz.org/user/*/votes*
-// @exclude     *musicbrainz.org/release/*/edit*
-// @exclude     *musicbrainz.org/release/*/edit-relationships*
-// @connect     api.acoustid.org
-// @icon        https://acoustid.org/static/acoustid-wave-12.png
-// @grant       none
-// @run-at      document-end
-// @downloadURL https://update.greasyfork.org/scripts/548262/MusicBrainz%3A%20Compare%20AcoustIDs%20easier%21.user.js
-// @updateURL https://update.greasyfork.org/scripts/548262/MusicBrainz%3A%20Compare%20AcoustIDs%20easier%21.meta.js
-// ==/UserScript==
-#+end_example
-
-
-* TODO "Description" column in "search" pages could have multiple lines
-
-"Description" column in "search" pages could have multiple lines
-e.g. https://musicbrainz.org/search?query=Born+to&type=instrument&limit=25&method=indexed
-
-#+begin_example
-<td data-mb-rest-bg="rgb(242, 242, 242)" style="background: rgb(242, 242, 242);">Not to be confused with zummara or other double clarinets with similar names.<br> For the multiple bore free reed created in 1880, see Martinshorn.<br> For the similarly named single-reed woodwind, see <a href="/instrument/e3511ed1-3d73-4340-880f-c8ccc8eda11c">chalumeau</a>.<br> For the Japanese descendant named from Portuguese, see <a href="/instrument/07b91470-b63e-41e4-88e6-11c4acac064f">charumera</a>.<br> For the Catalan shawm, see <a href="/instrument/dffe56f5-cd75-4392-ad31-1c3abf2b8e37"> tible</a>.<br> For the Italian ciaramella, see <a href="/instrument/814816db-3368-4889-a8cd-aa34bd1043f0">piffero</a>.<br> For the bagpipe, see <a href="/instrument/21d5d4ec-f8ef-44dc-b02f-e564de057dcc"> xeremies</a>.<br> European medieval and Renaissance conical bore double-reed woodwind, two types evolved; one from Middle-Eastern instruments and one from bagpipe chanters. A combination of both were used to develop the modern oboe.</td>
-#+end_example
-
-
-* TODO todo - performance
-
-1. Event-name follow-ups
-     E.g. cross-check the date in the event name against the row's Date column, or cut the +76 ms warm 📊 open cost on Event columns.
-2. Halve the live-title stamp
-    MEASUREMENTS.org 2026-10-01: on multi-table pages each row is parsed twice (live clone + master); parse once and copy the attribute (~24 ms → ~12 ms)
-
-
-* TODO bug report for "Credited as" field in real MB edit relationships page
-
-#+begin_example
-As soon as I type "U", for "UK" in the "Credited as" field
-
-<img width="1070" height="708" alt="Image" src="https://github.com/user-attachments/assets/11c8c89e-5987-4f16-ad96-b79e72ebcf46" />
-
-I get
-
-<img width="936" height="381" alt="Image" src="https://github.com/user-attachments/assets/502669d8-28b9-437e-ae67-49c268228403" />
-#+end_example
-
-
-* TODO fix my release-tracks special script
 
 * DONE integrate springsteenlyrics.com
 
@@ -1485,61 +1267,134 @@ ALWAYS be sticky too when srolling down.
 * DONE add instrument icons support (), ONLY the icon should show up in the UVD
 
 
-* TODO adapt the logging framework and orig page shine through from majkinetor
-
-* TODO add sanojjanos event stuff in a nice popup (cachable)
-
-
-* TODO menu in non-MB pages for PTs
-
-* !! separate on NB-xxxx - TODO almost feature-full - take out non MB code or try a build framework
-
-* TODO non-MB detail pages
-
-* TODO integration with my own BB userscript
-
 * DONE maybe stack the h3 header in the multi-table case when stickyness is involved
 
 * DONE IDB overwhole - show info to the end-user; age, storage, delete possibilities/merge, remove etc (nice gpahical overview, cake diagram), number of keys
-
-* TODO increase the IDB lifetime, non-MB sites should basically be there forever
-
-Planned as phase 1 of [[file:offline.org]] ("** Answer (2026-10-16, …)", "*** 7. Plan").
-
-* TODO sync add non-MB images with the CAA framework, but unlimited
-
-Planned as phase 1 of [[file:offline.org]] ("** Answer (2026-10-16, …)", "*** 7. Plan").
-* TODO storeage forever for non-MB sites, except SL
-
-Planned as phase 1 of [[file:offline.org]] ("** Answer (2026-10-16, …)", "*** 7. Plan").
-
-* TODO filter checkboxes for every filter dialog if not overwritten
 
 * DONE add support BB pages
 ** DONE https://brucebase.wikidot.com/system:recent-changes - change to 200 revisions per page beforehand
 ** DONE "Relations
 ** TODO maybe more
 
-* generalize popup framework in general (if not yet done)
+* DONE fix setlist on PT 'artist-events'
 
-* TODO label CBS
-
-https://musicbrainz.org/label/b8d33bec-92cc-40d9-bd92-4eb089b401a9
-
-#+begin_example
-@debug/CBS-initial.html - IP
-@debug/CBS-final.html - FRP
-#+end_example
+fix the "Video" column, entity glyphs and setlist on PT 'event-overview':
 
 1.)
 
-the "Renamed to" Columbia should sit directly under the "~Label" line
+https://musicbrainz.org/event/4379731e-7609-4197-bb9b-7739b326cb7c - 2024‐05‐23: Grosvenor House, London, England, UK
 
-2.) SEEMS to be working when you wait long enough
+a.)
 
-long running CAA fetches doesn't seem to be covered by the autoresize column feature:
-the CAA column breaks
+Add a new "Video" column if the video icon is present on recordings at the "Recording" column at the sub-tables
+"Recordings" and "Setlist: Songs"
 
+#+begin_example
+@debug/2024-05-23-initial.html - IP
+#+end_example
+
+b.)
+
+The glyphs currently on the entities in the data cells should go to the column header after the column names like what
+we do on 'relesase-tracks' PTs e.g.
+
+#+begin_example
+<div class="mb-col-hdr-flex" style="">Vocals <span class="artistlink" style="height: 14px; margin-left: 4px; margin-right: 4px;">
+#+end_example
+
+2.)
+
+The initial page should show an artist hyperlinked as an artist and not as a work + on the FRP concat words like "the "
+should not be rendered in the "Additional artist" C data cell
+
+https://musicbrainz.org/event/cd595883-d26a-4e76-a033-eb588e0f9c55 - 2026‐06‐04: OceanFirst Bank Center, West Long Branch, NJ, USA (2026-06-04)
+
+#+begin_example
+@debug/2026-06-04-initial.html -IP
+@debug/2026-06-04-final.html - FRP, "the New Breed Brass Band" ==> "New Breed Brass Band"
+#+end_example
+
+3.)
+
+On the FRP
+
+https://musicbrainz.org/event/26cead1c-a5fa-4677-873a-312412c6dc91 - 2001‐05‐27: The Stone Pony, Asbury Park, NJ, USA (2001-05-27)
+
+#+begin_example
+@debug/2001-05-27-initial.html - IP
+@debug/2001-05-27-final.html- "The Fever" in the "Song" C is not hyperlinked
+@debug/2001-05-27-final.html - "Bruce Springsteen" is rendered with a work anchor instead of an artist anchor
+#+end_example
+
+additionally add this bullet points
+
+4.)
+
+a.)
+
+In the "Setlist: Songs" subtable flag each cell in the "Song" and "Additional artists" columns with a warning icon (+
+descriptive tooltip) when the MBID contains uppercase characters like in e.g. "* [E497263c-4f15-36c0-B27c-Dca99482962c|The Fever] (with [70248960-Cb53-4ea4-943a-Edb18f7d336f|Bruce Springsteen])"
+
+Actually the MBIDs are still recognized when used in URLs, but the end-user should get a hint anyway so he/she can edit
+the data on MB
+
+b.)
+
+also add a UVD entry in these columns for this fact and in the '<button id="mb-findings-warn-menu-btn" type="button"' menu
+
+5.)
+
+The detail popup for work and artist URLs referenced from the "Setlist" section should aready work on the IP of PT
+'event-overview' even when the MBID contains uppercase chars
+
+6.)
+
+The following type of lines
+
+#+begin_example
+'Scheduled: 17:00 Local Start Time ??:?? / End Time ??:??'
+'Scheduled: 17:00 Local Start Time 20:00 / End Time 23:10'
+#+end_example
+
+should be indented below it's "Setlist: Songs" h3 section, see screenshot [Image #4]
+
+* DONE the detail dialog should already popup on the IP
+
+Create a new branch on top of fix/event-overview-video-glyphs:
+
+the detail dialog should already popup on the IP of ALL non-MB pages, e.g. when hovering the song "1945" on https://brucebase.wikidot.com/stats:songs
+[Image #6] - detail song page popup on the FRP
+
+* DONE BB - https://brucebase.wikidot.com/2012 - 2012-03-18
+
+On https://brucebase.wikidot.com/2012 the event on 2012-03-18 renders all songs in one long line instead of a multi-row
+cell
+
+* DONE the "CAA" column should always be wide enough to hold the image, the type glyphs + the optional warning icon (especially for large tables)
+
+1.)
+
+Is the last thing you fixed probably the same problem that I sometimes see for especially large tables, which take long
+to download all the CAA images information, and during which the "CAA" column doesn't seem to be wide enough to hold ALL
+the following information (when the auto resize feature of columns is in effect)
+
+#+begin_example
+image
+type glyphs
+optional warning icon
+#+end_example
+
+See the following screenshot, during which not all info for every row had been fetched - @debug/CAA-wrapped.png
+
+For small tables the "CAA" column seems to be ALWAYS wide enough to render all the info in ONE line
+
+2.)
+
+If my diagnosis doesn't hold true it's something we need to tackle in a separate commit
+
+3.)
+
+The CAA/EAA column should ALWAYS be wide enough to hold ALL the information even during rendering
 
 * DONE create a skill - There is a new third party userscript batch-add-recording-relationships
 ** i
@@ -1766,11 +1621,301 @@ reuse our LAF (Look and Feel) for MB PTs, maybe in UVD entity stats (hover over 
 popups)
 
 
+* TODO What's left from the parking lot in AUDIT.org
+
+- that icon-mirror half
+
+* TODO 503
+** CAA/EAA and Relationships multi section button
+
+Before I leave this session, adjust the @org/503-handling.org for the following ideas:
+
+1.)
+
+Currently we have the following two buttons regarding CAA/EAA handling on tables/sub-tables:
+
+#+begin_example
+<button id="mb-caa-toggle-btn-0" type="button" class="mb-caa-art-toggle-btn" style="cursor: pointer; padding: 1px 5px 1px 3px; border: 1px solid rgb(170, 170, 170); border-radius: 3px; background: rgb(245, 245, 245); vertical-align: middle; font-size: 0.8em; margin-left: 5px; display: inline-flex; align-items: center; gap: 6px; line-height: 1; box-sizing: border-box; transition: transform 0.1s, box-shadow 0.1s;" title="Show CAA cover art image stripe for this section — keyboard: Ctrl+M then A when a column filter is focused (or enable Direct Ctrl+Letter Shortcuts for Ctrl+A)" data-art-render-gen="3"><img class="mb-caa-toggle-thumb" src="//coverartarchive.org/release/9d451257-ebce-44ec-aad8-b48609bfaf7a/front-250" style="height: 18px; width: 18px; object-fit: cover; border-radius: 2px; vertical-align: middle; display: block;"><span class="mb-caa-toggle-count">36</span></button>
+<button id="mb-caa-toggle-btn-retry-0" type="button" title="Retry loading all CAA cover art images for this table (forces network reload)" style="cursor: pointer; padding: 1px 4px; border: 1px solid rgb(170, 170, 170); border-radius: 3px; background: rgb(245, 245, 245); vertical-align: middle; font-size: 0.8em; margin-left: 3px; line-height: 1; display: inline-flex; align-items: center; box-sizing: border-box; transition: transform 0.1s, box-shadow 0.1s;">⟳</button>
+#+end_example
+
+2.)
+
+Mayb we can combine these into one button with different clickable areas on the table/sub-table level during these current 503 implementations
+
+- the CAA/EAA toggle icon thumb
+- the CAA/EAA count
+- a reload ALL section
+- a "just what failed" section
+
+3.)
+
+The situation for the "Relationships" column looks like this:
+
+#+begin_example
+<button id="mb-rel-retry-0" type="button" title="Retry loading Relationship icons for this table (network reload, clears IDB cache)" style="cursor: pointer; padding: 1px 4px; border: 1px solid rgb(170, 170, 170); border-radius: 3px; background: rgb(245, 245, 245); vertical-align: middle; font-size: 0.8em; margin-left: 3px; line-height: 1; display: inline-flex; align-items: center; box-sizing: border-box; transition: transform 0.1s, box-shadow 0.1s;">🔗⟳</button>
+#+end_example
+
+Maybe we can also extend the above ideas to that button
+
+3.)
+
+show me a mock of the buttons if that's a workable solution
+
+4.)
+
+tell me the exact prompt for you, to go on in our current implementation strategy if anything has changed after 1.)-3.)
+
+** DONE sa_art_idb_metadata_ttl_days
+
+Work on @org/503-handling.org
+
+1.)
+
+Change the "sa_art_idb_metadata_ttl_days" to 30 days
+
+2.)
+
+Is the following a good idea ?
+
+a.)
+
+work generically in a 503 branch
+
+b.)
+
+for each sub-step create a worktree and implemente/test there. let the end-user do a live test (if possible) before
+offering to merge back to the "503" branch
+
+c.)
+
+if a feature is worth implementing right away as kind of a "quick fix"/win, after an end-user live test (if possible)
+merge the worktree to main directly and afterwards right back to the "503" branch
+
+*** Answer (2026-09-19)
+
+1.) Done on =fix/caa-metadata-transient=, *together with the F5 fix, not alone*.
+The TTL could not be raised on its own: a 503 from coverartarchive.org was being
+persisted as "this release has no artwork", so 7 → 30 would have quadrupled how
+long one transient failure hid real artwork. Fixing F5 is what makes 30 safe.
+
+2.) *No umbrella =503= branch.* =main= is the trunk; one short-lived branch per
+sub-step, off =main=, live-tested, merged back. Reasons, in order of weight:
+
+- The eight items in =org/503-handling.org= are independently shippable. The one
+  real dependency (item 1, the shared transient classifier, feeding items 3-4 and
+  6) is a *sequence on main*, not a batch that must integrate first.
+- Two levels break the WIP-changelog rule: =scripts/fold-wip-changelog.py= is
+  one-level (branch → =main=) and deletes the WIP file when it folds, so entries
+  would pile up on =503= until one final fold — the whole batch shipping as a
+  single version block, which is the opposite of (c).
+- (c) is the tell: if most sub-steps go straight to =main= anyway, =503= spends
+  its life being back-merged, conflicting every time in =// @version=,
+  =ShowAllEntityData_CHANGELOG.json= and =org/503-handling.org=.
+
+*Worktrees: not per sub-step.* The script is re-imported into Tampermonkey by
+hand, so a branch switch in the main checkout costs the same and skips
+=npm install= plus a fresh =npm run auth:login= (=playwright/.auth/= is
+gitignored, so a new worktree runs live specs *logged out*, silently). Keep a
+worktree for the one case the project's rules demand it: a perf A/B, where
+=main= and the branch must be measured in one session on one host.
+
+Tracking lives in =org/503-handling.org='s Status section, on =main=.
+
+** DONE in the upcoming forum artice when releaseing new userscript version mention the "sa_art_idb_metadata_ttl_days" to 30 days change
+
+in the upcoming forum artice when releasing a new userscript version mention the "sa_art_idb_metadata_ttl_days" to 30
+days change
+
+** DONE How wide should this branch's blast radius be? The org scopes item 1 as "landing with `_ws2GetJson()` as its first consumer".
+
+❯ 1. `_ws2GetJson()` only (Recommended) Add `_isTransientHttp()` + `_parseRetryAfterMs()` as shared helpers, wire only
+     `_ws2GetJson()` (so Relationships + ⏱ batch get 429/502/504 + Retry-After). F1-F3 (fetchHtml) and F4 (release
+     events) stay for their own branches, as the org sequences them. One logical change, small live-test surface.
+  2. Also refactor the CAA art path onto the helper Additionally rewrite `_artEnrichIcon()`/`_artGmFetchBlob()`'s status
+     tests in terms of the new helper. Risk: `_ART_MISS_STATUSES` (404/410, "definitive miss") is NOT the complement of
+     transient — a 403 is neither — so this would be a behaviour change on the path 9.99.1117 just touched, not a
+     refactor.
+  3. Also route release-events (F4) through `_ws2GetJson()` Fold org item 6 into this branch:
+     `initReleaseEventsColumn()`'s bare `fetch()` becomes a `_ws2GetJson()` call, gaining retry + classification in one
+     go. Larger diff, and F4 also wants a visible column failure state that this branch would not deliver.
+
+** DONE PERFORMANCE.org
+
+Fix the 79 ~:NNNNN~ line references in PERFORMANCE.org
+
+** DONE skip tests
+
+- Is it possible to skip the tests belonging to item 7 and 5 when doing the standard testing after new implementation as
+they are very long and probaly not worth it now that I've checked in a live browser
+- Do we really need them after evey new implementation
+- Is it possible to run them only on demand
+
+** DONE pick up the segmented retry pill
+** TODO Two things this batch surfaced that aren't tracked anywhere yet
+
+if you want them written down: initRelationshipsColumn()'s candidate scan being live-DOM-only (the "not re-fetched while
+off screen" gap), and the full fixture suite producing an occasional load-dependent failure on this machine — reproduced
+on unmodified code, different spec each time.
+
+** TODO pick up the heading pre-processing defect
+
+Two honest gaps, both recorded rather than buried:
+- The Relationships half is only indirectly covered. My spec disables the rel column (its ws/2 traffic is unrouted on
+  that fixture), so _relRefreshPerTableFailedButtons() is exercised by the suite's other rel specs calling it, not by an
+  assertion on its counts. Worth a look in the browser on a multi-table page with real relationship failures.
+- Path dedup within a table isn't pinned — it needs a fixture with a sticky column over an artwork column.
+
+
+* TODO Two live specs that already fail on main
+ - releasegroup-releases-caa-type-comment-filter.spec.js: the CAA column header button is never found.
+ - caa-icon-survives-sort.spec.js: an hourglass appears after a re-render.
+  
+* TODO add acoustid support
+
+#+begin_example
+// ==UserScript==
+// @name        MusicBrainz: Compare AcoustIDs easier!
+// @namespace   https://musicbrainz.org/user/chaban
+// @version     1.1.5
+// @description Displays AcoustID fingerprints in more places at MusicBrainz.
+// @tag         ai-created
+// @author      otringal, chaban
+// @license     MIT
+// @match       *://*.musicbrainz.org/artist/*/recordings*
+// @match       *://*.musicbrainz.org/artist/*/*edits*
+// @match       *://*.musicbrainz.org/collection/*/*
+// @match       *://*.musicbrainz.org/edit/*
+// @match       *://*.musicbrainz.org/recording/*
+// @match       *://*.musicbrainz.org/release-group/*
+// @match       *://*.musicbrainz.org/release/*
+// @match       *://*.musicbrainz.org/search/*
+// @match       *://*.musicbrainz.org/user/*/edits*
+// @match       *://*.musicbrainz.org/user/*/votes*
+// @exclude     *musicbrainz.org/release/*/edit*
+// @exclude     *musicbrainz.org/release/*/edit-relationships*
+// @connect     api.acoustid.org
+// @icon        https://acoustid.org/static/acoustid-wave-12.png
+// @grant       none
+// @run-at      document-end
+// @downloadURL https://update.greasyfork.org/scripts/548262/MusicBrainz%3A%20Compare%20AcoustIDs%20easier%21.user.js
+// @updateURL https://update.greasyfork.org/scripts/548262/MusicBrainz%3A%20Compare%20AcoustIDs%20easier%21.meta.js
+// ==/UserScript==
+#+end_example
+
+
+* TODO "Description" column in "search" pages could have multiple lines
+
+"Description" column in "search" pages could have multiple lines
+e.g. https://musicbrainz.org/search?query=Born+to&type=instrument&limit=25&method=indexed
+
+#+begin_example
+<td data-mb-rest-bg="rgb(242, 242, 242)" style="background: rgb(242, 242, 242);">Not to be confused with zummara or other double clarinets with similar names.<br> For the multiple bore free reed created in 1880, see Martinshorn.<br> For the similarly named single-reed woodwind, see <a href="/instrument/e3511ed1-3d73-4340-880f-c8ccc8eda11c">chalumeau</a>.<br> For the Japanese descendant named from Portuguese, see <a href="/instrument/07b91470-b63e-41e4-88e6-11c4acac064f">charumera</a>.<br> For the Catalan shawm, see <a href="/instrument/dffe56f5-cd75-4392-ad31-1c3abf2b8e37"> tible</a>.<br> For the Italian ciaramella, see <a href="/instrument/814816db-3368-4889-a8cd-aa34bd1043f0">piffero</a>.<br> For the bagpipe, see <a href="/instrument/21d5d4ec-f8ef-44dc-b02f-e564de057dcc"> xeremies</a>.<br> European medieval and Renaissance conical bore double-reed woodwind, two types evolved; one from Middle-Eastern instruments and one from bagpipe chanters. A combination of both were used to develop the modern oboe.</td>
+#+end_example
+
+
+* TODO todo - performance
+
+1. Event-name follow-ups
+     E.g. cross-check the date in the event name against the row's Date column, or cut the +76 ms warm 📊 open cost on Event columns.
+2. Halve the live-title stamp
+    MEASUREMENTS.org 2026-10-01: on multi-table pages each row is parsed twice (live clone + master); parse once and copy the attribute (~24 ms → ~12 ms)
+
+
+* TODO bug report for "Credited as" field in real MB edit relationships page
+
+#+begin_example
+As soon as I type "U", for "UK" in the "Credited as" field
+
+<img width="1070" height="708" alt="Image" src="https://github.com/user-attachments/assets/11c8c89e-5987-4f16-ad96-b79e72ebcf46" />
+
+I get
+
+<img width="936" height="381" alt="Image" src="https://github.com/user-attachments/assets/502669d8-28b9-437e-ae67-49c268228403" />
+#+end_example
+
+
+* TODO fix my release-tracks special script
+
+
+* TODO adapt the logging framework and orig page shine through from majkinetor
+
+
+* TODO add sanojjanos event stuff in a nice popup (cachable)
+
+
+* TODO menu in non-MB pages for PTs
+
+* !! separate on NB-xxxx - TODO almost feature-full - take out non MB code or try a build framework
+
+
+* TODO non-MB detail pages
+
+* TODO integration with my own BB userscript
+
+* TODO increase the IDB lifetime, non-MB sites should basically be there forever
+
+Planned as phase 1 of [[file:offline.org]] ("** Answer (2026-10-16, …)", "*** 7. Plan").
+
+
+* TODO sync add non-MB images with the CAA framework, but unlimited
+
+Planned as phase 1 of [[file:offline.org]] ("** Answer (2026-10-16, …)", "*** 7. Plan").
+
+* TODO storeage forever for non-MB sites, except SL
+
+Planned as phase 1 of [[file:offline.org]] ("** Answer (2026-10-16, …)", "*** 7. Plan").
+
+
+* TODO filter checkboxes for every filter dialog if not overwritten
+
+* TODO generalize popup framework in general (if not yet done)
+
+* TODO label CBS
+
+https://musicbrainz.org/label/b8d33bec-92cc-40d9-bd92-4eb089b401a9
+
+#+begin_example
+@debug/CBS-initial.html - IP
+@debug/CBS-final.html - FRP
+#+end_example
+
+1.)
+
+the "Renamed to" Columbia should sit directly under the "~Label" line
+
+2.) SEEMS to be working when you wait long enough
+
+long running CAA fetches doesn't seem to be covered by the autoresize column feature:
+the CAA column breaks
+
+
 * TODO sub-table filter (STF) on the time-sliced pass and the ⏳ card
 
 The 🔍 filter on each sub-table heading (`applySubFilter`) still filters synchronously and never shows the ⏳ progress
 card; the global and column filters do since perf/faster-filtering (WIP.9). Move STF typing onto `runFilterSliced()` on its
 own branch, with its own typed A/B (the faster-filtering measurements do not cover it).
+
+
+* TODO 'release-tracks' PTs which have an h3 "Barcode and Other Identifiers" section, should render that section as a filterable/sortable table
+
+'release-tracks' PTs which have an h3 "Barcode and Other Identifiers" section
+
+#+begin_example
+<h3 class="mb-annotation-toggle-h3 mb-annotation-h3-processed" data-mb-tip="" title="Click to collapse this sub-section (Ctrl+Click to toggle ALL sub-sections of this section)"><span class="mb-toggle-icon">▼</span>Barcode and Other Identifiers</h3>
+#+end_example
+
+should render that section as a filterable/sortable table
+
+#+begin_example
+@debug/BarcodeAnOtherIdentifiers.html - FRP of https://musicbrainz.org/release/f50fcf09-4339-4e1c-91cd-e1d2a7b3a7bc
+#+end_example
+
+
+* TODO "Name" column in https://musicbrainz.org/search?query=guit&type=instrument&method=indexed needs a UVD entry for comments
+
+"Name" column in https://musicbrainz.org/search?query=guit&type=instrument&method=indexed needs a UVD entry for comments
+
 
 
 * ---------------------------------------------------------------
@@ -1789,147 +1934,6 @@ But the new popup ONLY shows up when filtering with the global filter, not with 
 - at the very end we will run the whole testsuite
 
 instead of branching from main, add the new features/bug fixes on a branch starting from feature/instrument-icons-interop
-
-
-* DONE fix setlist on PT 'artist-events'
-
-fix the "Video" column, entity glyphs and setlist on PT 'event-overview':
-
-1.)
-
-https://musicbrainz.org/event/4379731e-7609-4197-bb9b-7739b326cb7c - 2024‐05‐23: Grosvenor House, London, England, UK
-
-a.)
-
-Add a new "Video" column if the video icon is present on recordings at the "Recording" column at the sub-tables
-"Recordings" and "Setlist: Songs"
-
-#+begin_example
-@debug/2024-05-23-initial.html - IP
-#+end_example
-
-b.)
-
-The glyphs currently on the entities in the data cells should go to the column header after the column names like what
-we do on 'relesase-tracks' PTs e.g.
-
-#+begin_example
-<div class="mb-col-hdr-flex" style="">Vocals <span class="artistlink" style="height: 14px; margin-left: 4px; margin-right: 4px;">
-#+end_example
-
-2.)
-
-The initial page should show an artist hyperlinked as an artist and not as a work + on the FRP concat words like "the "
-should not be rendered in the "Additional artist" C data cell
-
-https://musicbrainz.org/event/cd595883-d26a-4e76-a033-eb588e0f9c55 - 2026‐06‐04: OceanFirst Bank Center, West Long Branch, NJ, USA (2026-06-04)
-
-#+begin_example
-@debug/2026-06-04-initial.html -IP
-@debug/2026-06-04-final.html - FRP, "the New Breed Brass Band" ==> "New Breed Brass Band"
-#+end_example
-
-3.)
-
-On the FRP
-
-https://musicbrainz.org/event/26cead1c-a5fa-4677-873a-312412c6dc91 - 2001‐05‐27: The Stone Pony, Asbury Park, NJ, USA (2001-05-27)
-
-#+begin_example
-@debug/2001-05-27-initial.html - IP
-@debug/2001-05-27-final.html- "The Fever" in the "Song" C is not hyperlinked
-@debug/2001-05-27-final.html - "Bruce Springsteen" is rendered with a work anchor instead of an artist anchor
-#+end_example
-
-additionally add this bullet points
-
-4.)
-
-a.)
-
-In the "Setlist: Songs" subtable flag each cell in the "Song" and "Additional artists" columns with a warning icon (+
-descriptive tooltip) when the MBID contains uppercase characters like in e.g. "* [E497263c-4f15-36c0-B27c-Dca99482962c|The Fever] (with [70248960-Cb53-4ea4-943a-Edb18f7d336f|Bruce Springsteen])"
-
-Actually the MBIDs are still recognized when used in URLs, but the end-user should get a hint anyway so he/she can edit
-the data on MB
-
-b.)
-
-also add a UVD entry in these columns for this fact and in the '<button id="mb-findings-warn-menu-btn" type="button"' menu
-
-5.)
-
-The detail popup for work and artist URLs referenced from the "Setlist" section should aready work on the IP of PT
-'event-overview' even when the MBID contains uppercase chars
-
-6.)
-
-The following type of lines
-
-#+begin_example
-'Scheduled: 17:00 Local Start Time ??:?? / End Time ??:??'
-'Scheduled: 17:00 Local Start Time 20:00 / End Time 23:10'
-#+end_example
-
-should be indented below it's "Setlist: Songs" h3 section, see screenshot [Image #4]
-
-* DONE the detail dialog should already popup on the IP
-
-Create a new branch on top of fix/event-overview-video-glyphs:
-
-the detail dialog should already popup on the IP of ALL non-MB pages, e.g. when hovering the song "1945" on https://brucebase.wikidot.com/stats:songs
-[Image #6] - detail song page popup on the FRP
-
-* DONE BB - https://brucebase.wikidot.com/2012 - 2012-03-18
-
-On https://brucebase.wikidot.com/2012 the event on 2012-03-18 renders all songs in one long line instead of a multi-row
-cell
-
-* DONE the "CAA" column should always be wide enough to hold the image, the type glyphs + the optional warning icon (especially for large tables)
-
-1.)
-
-Is the last thing you fixed probably the same problem that I sometimes see for especially large tables, which take long
-to download all the CAA images information, and during which the "CAA" column doesn't seem to be wide enough to hold ALL
-the following information (when the auto resize feature of columns is in effect)
-
-#+begin_example
-image
-type glyphs
-optional warning icon
-#+end_example
-
-See the following screenshot, during which not all info for every row had been fetched - @debug/CAA-wrapped.png
-
-For small tables the "CAA" column seems to be ALWAYS wide enough to render all the info in ONE line
-
-2.)
-
-If my diagnosis doesn't hold true it's something we need to tackle in a separate commit
-
-3.)
-
-The CAA/EAA column should ALWAYS be wide enough to hold ALL the information even during rendering
-
-
-* 'release-tracks' PTs which have an h3 "Barcode and Other Identifiers" section, should render that section as a filterable/sortable table
-
-'release-tracks' PTs which have an h3 "Barcode and Other Identifiers" section
-
-#+begin_example
-<h3 class="mb-annotation-toggle-h3 mb-annotation-h3-processed" data-mb-tip="" title="Click to collapse this sub-section (Ctrl+Click to toggle ALL sub-sections of this section)"><span class="mb-toggle-icon">▼</span>Barcode and Other Identifiers</h3>
-#+end_example
-
-should render that section as a filterable/sortable table
-
-#+begin_example
-@debug/BarcodeAnOtherIdentifiers.html - FRP of https://musicbrainz.org/release/f50fcf09-4339-4e1c-91cd-e1d2a7b3a7bc
-#+end_example
-
-
-* "Name" column in https://musicbrainz.org/search?query=guit&type=instrument&method=indexed needs a UVD entry for comments
-
-"Name" column in https://musicbrainz.org/search?query=guit&type=instrument&method=indexed needs a UVD entry for comments
 
 
 * ● Your browser reaches MusicBrainz over IPv6.
@@ -2046,6 +2050,8 @@ after the merge go on with our current plan
 
 Actually not yet, first merge the branch "fix/sticky-gutter-and-sorted-thead" into our "feature/sidebar-overhaul" to
 check if something breaks now as it's also sidebar related
+
+* TODO tested live, OK; commit, push
 
 
 * DONE fix the h2/h3 stretching problem to the right browser side
@@ -4406,124 +4412,6 @@ the images on the left "IMAGES" section should be shown under their respective t
 
 the hyperlinking of relations, events etc should also work for other BB PTs, like e.g. song pages https://brucebase.wikidot.com/song:the-river
 
-
-* TODO consolidate more LAF across more PTs
-
-
-* TODO Add a must have third-party userscripts section together with the end-user visible changes and what our userscript depends on
-
-Add a must have third-party userscripts section together with the end-user visible changes and what our userscript
-depends on
-
-1.)
-
-Analyse first and give a comprehensive summary in a nice HTML based view, with URLs to the original script (downlaod URL, homepage, documentaiotn URL, etc)
-
-2.)
-
-Suggestions for complete integration
-
-3.)
-
-etc
-
-
-* TODO write the forum section for 9.99.167 -> 9.99.1426
-
-write the forum section for 9.99.1167 -> 9.99.1426
-
-9.99.1167 is the last officially published one.
-
-there are already sections after that one, that were meant to be published but never did.
-
-rewrite all these and combine with the latest changes
-
-
-* TODO majkinetor: "Links" column - switch of the native tooltip on the FRP
-* TODO majkinetor: async issues with "ISRC" and "Link" colus on PT 'release-tracks'
-* TODO majkinetor: no icons in the lower right corner
-
-
-* TODO tested live, OK; commit, push
-
-
-* TODO Release events - Japan need flag on the relationships area
-
-
-* TODO on collection pages, images should get internal viewer support + their tooltip should show a rich popup and highlight the corresponding row
-
-on collection pages, images should get internal viewer support + their tooltip should show a rich popup and highlight
-the corresponding row
-
-* TODO also add the pager framework on other detail popups like on the collections one
-
-* TODO Scrollbars (left side) and pager (tables right side) or any table + image internal viewer support should automatically be there for ALL detail popups
-
-Scrollbars (left side) and pager (tables right side) or any table + image internal viewer support should automatically
-be there for ALL detail popups, and the geometry should be based on the current and stored popup window size 
-
-a.)
-
-Chaban
-
-#+begin_example
-"Instrument collections" -> "Edit search queries" - scrollbar on the left section
-"Label collections" ->  "Artist as label" - multiple srollbars
-"Release collections" -> "Scans" - image hover popup + internal viewer click
-"Work collections" -> "Onomatopoeia" - adjust scrollbars for the right window + adjust height
-#+end_example
-
-* TODO fix image placement on collection popup pages for RGs
-
-
-
-* TODO embed YouTube videos directly in the PTs where they are referenced + the original URL as popup box as now
-
-
-
-* TODO add support for image URLs from the sidebar like the logo label images
-
-1.)
-
-register the third-party user script by @zabe
-
-#+begin_example
-@tests/fixtures/live-userscripts/entity-image.user.js
-#+end_example
-
-2.)
-
-check what it's doing
-
-
-* TODO sidebar image hover for CAA images only working when hovering below the image in the description
-
-sidebar image hover for CAA images only working when hovering below the image in the description
-
-
-* TODO The UVD in the "Media" column on PTs e.g. https://brucebase.wikidot.com/2026 should get the media icons also
-
-The UVD in the "Media" column on PTs e.g. https://brucebase.wikidot.com/2026 should get the media icons also
-
-* TODO on BB PTs where images are involved, parse the image filename for further details and present that info also
-
-on BB PTs where images are involved, parse the image filename for further details and present that info also
-
-* TODO check discogs artist pages if really ALL master are present + implement master->release(s) drilldown
-
-* TODO Use the Discogs history diff format in other pageTypes, for example the BB “changes” button
-
-Use the Discogs history diff format in other pageTypes, for example the BB “changes” button (you have to be logged in).
-
-* TODO recheck rendering all the right info on BB pages
-
-recheck rendering all the right info on BB pages
-* TODO make the standard BB page, renderd below our table h2/h3 click collapsable (also with Ctrl-Click for ALL sections)
-
-make the standard BB page, renderd below our table h2/h3 click collapsable (also with Ctrl-Click for ALL sections)
-
-* TODO BB Steve van Zandt detail page needs overwhole
-
 * DONE some more BB and MB fixes/enhancements
 
 1.)
@@ -4644,6 +4532,103 @@ bb-release-born-to-run-with-MB-links-final.html - FRP  - https://www.discogs.com
 #+end_example
   
 
+
+* TODO consolidate more LAF across more PTs
+
+* TODO Add a must have third-party userscripts section together with the end-user visible changes and what our userscript depends on
+
+Add a must have third-party userscripts section together with the end-user visible changes and what our userscript
+depends on
+
+1.)
+
+Analyse first and give a comprehensive summary in a nice HTML based view, with URLs to the original script (downlaod URL, homepage, documentaiotn URL, etc)
+
+2.)
+
+Suggestions for complete integration
+
+3.)
+
+etc
+
+
+* TODO write the forum section for 9.99.167 -> 9.99.1426
+
+write the forum section for 9.99.1167 -> 9.99.1426
+
+9.99.1167 is the last officially published one.
+
+there are already sections after that one, that were meant to be published but never did.
+
+rewrite all these and combine with the latest changes
+
+
+* TODO majkinetor: "Links" column - switch of the native tooltip on the FRP
+* TODO majkinetor: async issues with "ISRC" and "Link" colus on PT 'release-tracks'
+* TODO majkinetor: no icons in the lower right corner
+
+
+* TODO Release events - countra "Japan" need flag on the relationships area
+
+
+* DONE on collection pages, images should get internal viewer support + their tooltip should show a rich popup and highlight the corresponding row
+
+on collection pages, images should get internal viewer support + their tooltip should show a rich popup and highlight
+the corresponding row
+
+* DONE fix image placement on collection popup pages for RGs
+
+* TODO also add the pager framework on other detail popups like on the collections one
+* TODO Scrollbars (left side) and pager (tables right side) or any table + image internal viewer support should automatically be there for ALL detail popups
+
+Scrollbars (left side) and pager (tables right side) or any table + image internal viewer support should automatically
+be there for ALL detail popups, and the geometry should be based on the current and stored popup window size 
+
+a.)
+
+Chaban
+
+#+begin_example
+"Instrument collections" -> "Edit search queries" - scrollbar on the left section
+"Label collections" ->  "Artist as label" - multiple srollbars
+"Release collections" -> "Scans" - image hover popup + internal viewer click
+"Work collections" -> "Onomatopoeia" - adjust scrollbars for the right window + adjust height
+#+end_example
+
+
+* TODO embed YouTube videos directly in the PTs where they are referenced + the original URL as popup box as now
+
+* TODO add support for image URLs from the sidebar like the logo label images
+
+1.)
+
+register the third-party user script by @zabe
+
+#+begin_example
+@tests/fixtures/live-userscripts/entity-image.user.js
+#+end_example
+
+2.)
+
+check what it's doing
+
+
+* TODO sidebar image hover for CAA images only working when hovering below the image in the description
+
+sidebar image hover for CAA images only working when hovering below the image in the description
+
+
+* TODO The UVD in the "Media" column on PTs e.g. https://brucebase.wikidot.com/2026 should get the media icons also
+
+The UVD in the "Media" column on PTs e.g. https://brucebase.wikidot.com/2026 should get the media icons also
+
+
+* TODO Use the Discogs history diff format in other pageTypes, for example the BB “changes” button
+
+Use the Discogs history diff format in other pageTypes, for example the BB “changes” button (you have to be logged in).
+
+
 * TODO fix MB collection pages
 
 a.)
@@ -4653,7 +4638,7 @@ third-party userscript "mb. COLLECTION HIGHLIGHTER" from @jesus2099 is active
 
 b.)
 
-Tf there are sub-tables under the "<h2>Collaborative collections</h2>" h2 section. Currently the sub-tables are renderd
+Tf there are sub-tables under the "<h2>Collaborative collections</h2>" h2 section. Currently the sub-tables are rendered
 (also with a column shift) under the h2 section "My collections"
 
 #+begin_example
@@ -4661,30 +4646,44 @@ Tf there are sub-tables under the "<h2>Collaborative collections</h2>" h2 sectio
 @debug/ - FRP
 #+end_example
 
-* TODO On https://musicbrainz.org/release-group/f83d2211-dd81-4b1e-9a02-e89733891e1c when the jesus2099 image stripe third-party userscript is active the images should get our internal viewer treatment
 
-On https://musicbrainz.org/release-group/f83d2211-dd81-4b1e-9a02-e89733891e1c when the jesus2099 image stripe
-third-party userscript is active the images should get our internal viewer treatment
+* TODO On https://musicbrainz.org/release-group/f83d2211-dd81-4b1e-9a02-e89733891e1c when the third-party userscript "mb. FUNKEY ILLUSTRATED RECORDS" by @jesus2099 is active the images should get our internal viewer treatment
 
-* TODO when hovering a value in the "LABEL-CAT#" column and the down-righ glyph shows up the label-cat# value moves to the left and back when hovering away, which lets the value kind of pump
+On https://musicbrainz.org/release-group/f83d2211-dd81-4b1e-9a02-e89733891e1c when the third-party userscript
+"mb. FUNKEY ILLUSTRATED RECORDS" by @jesus2099 is active the images should get our internal viewer treatment
 
-when hovering a value in the "LABEL-CAT#" column and the down-righ glyph shows up the label-cat# value moves to the left
-and back when hovering away, which lets the value kind of pump, together with is's column header
+also on the following PTs
 
 #+begin_example
-@debug/mb-RG-popup.html - popup dialog of the URL https://musicbrainz.org/release-group/48e335f3-8e4a-4e38-b2df-e1514b9f9126 on e.g https://musicbrainz.org/release/babb4c54-bca0-4eb9-b444-369c34d3404d when hovering '<span class="small">(<a href="/release-group/48e335f3-8e4a-4e38-b2df-e1514b9f9126" data-mb-rg-link="29">29 versions available in <bdi>Letter to You</bdi></a>)</span>'
+https://musicbrainz.org/release-group/2872c420-5a5f-482e-b00c-199541c5b9b3 - before the "release table section(s)
+https://musicbrainz.org/tag/country - RG/R subsection
+https://musicbrainz.org/user/vzell/ratings - RG section
+https://musicbrainz.org/release/4d854621-0264-4b83-9687-8ad4b9a4e99b - "Credits" -> associated singles/EPs:
 #+end_example
+
 
 * TODO On https://musicbrainz.org/release-group/f83d2211-dd81-4b1e-9a02-e89733891e1c the "Official homepage" chip in the "Sidebar" section needs a better reader
 
 On https://musicbrainz.org/release-group/f83d2211-dd81-4b1e-9a02-e89733891e1c the "Official homepage" chip in the "Sidebar" section needs a better reader
 
-* TODO on BB event pages -> place link -> hover ==> Wikipedia link should render inside popup
 
-https://brucebase.wikidot.com/2012
+* TODO on every supported PT, e.g. -> place link -> hover ==> Wikipedia link should render inside popup
+
+Actually everywhere, on ALL PTs
+
+1.)
+
+Wikidot URLs, e.g.https://brucebase.wikidot.com/2012
 on BB event pages -> place link -> hover ==> Wikipedia link should render inside popup
 
-* TODO on BB pages links on the form "https://brucebase.wikidot.com/1973#020373" should be rendered inline too
+2.)
+
+on BB pages links on the form "https://brucebase.wikidot.com/1973#020373" should be rendered inline too
+
+* TODO On MB entity POHs we should get additional POH support for known URLs like Wikipedia/Wikidata
+
+On MB entity POHs we should get additional POH support for known URLs like Wikipedia/Wikidata
+
 
 * TODO add "SAED" menu entries for entity history
 
@@ -4704,17 +4703,13 @@ Entity history
 Annotation history
 #+end_example
 
-* TODO On MB entity POHs we should get additional POH support for known URLs like Wikipedia/Wikidata
-
-On MB entity POHs we should get additional POH support for known URLs like Wikipedia/Wikidata
-
 * TODO "Editing history" button-menue on preview popup windows
 
 "Editing history" button ==> "Editing history" button-menue with the same option as in the "SAED" "Editing history"
 section
 
 
-* TODO On MB RG POHs add the site icns if fron of the site entity name in the POH header line
+* TODO On MB RG POHs add the site icons in front of the site entity name in the POH header line
 
 On MB RG POHs add the site icons in front of the site entity name in the POH header line, e.g. https://musicbrainz.org/release-group/f83d2211-dd81-4b1e-9a02-e89733891e1c
 
@@ -4734,7 +4729,6 @@ I want:
 
 [class="discogs-favicon"][master icon] Discogs master > [artist icon] Discogs artist
 [class="MB-artist-icon"] Artist > Editing history > [artistrelease icon] Release
-
 
 
 * TODO the site icons should get a POH too with a site description (maybe wikipedia)
@@ -4778,7 +4772,6 @@ https://support.discogs.com/hc/en-us/articles/360005055493-Database-Guidelines-1
 
 
 D: M, R, L, U - guidlines - e.g. https://support.discogs.com/hc/en-us/articles/360005055493-Database-Guidelines-16-Master-Release
-
 
 * TODO Discogs entity glyphs
 
@@ -4830,32 +4823,47 @@ https://dashboardicons.com/icons/external/simpleicons/discogs
 ** working
 
 #+begin_example
-Discogs: Master
-
+MB: Collection     -> "RELEASE GROUPS"
+                   -> "WORKS"   <-- fix the "(show 70 more)" under the "Recording artists" column
 #+end_example
 
 ** missing right now
 
 #+begin_example
 Editing history (H)
-MB: Artist        -> "RELEASE GROUPS"
-                     "LINKS" - when more than 10 entries
-    Area          -> "RELATED AREAS"
-                  -> "RELATED AREAS" -> "Parts" - when more than 10 entries
-    Release       -> "TRACKLIST" -> "<medium>"
-    Recording     -> "RELEASES" - currently "The first 25 of 52; the recording's page lists them all."                  <-- should be a table with "<-" and "->" buttons as on ... TODO
-    Work          -> "RECORDINGS"  - currently "219 recordings; the first 100 here, the work's page lists them all."    <-- should be a table with "<-" and "->" buttons as on ... TODO
-                     "CODES"
-    Place         -> "EVENTS" - probably the same as for "RELEASES"/"RECORDINGS"
-                     "LINKS" - when more than 10 entries
-    Event         -> "SETLIST"
-                     "RECORDED HERE"
-                     "RECORDED HERE" -> "Recorded at (releases)"
-                     "RECORDED HERE" -> "Recorded at (recordings)"
-    Instrument    -> "RELATED INSTRUMNETS" -> "Parts" - when more than 10 entries
-                     "ALIASES"
-    Release group -> "RELEASES"                                   <== When no image available render empty place holder in the same size as a standard image so that all rows have the same height
-                     "LINKS" - when more than 10 entries
+MB: Artist         -> "RELEASE GROUPS"
+                      "LINKS" - when more than 10 entries
+    Area           -> "RELATED AREAS"
+                   -> "RELATED AREAS" -> "Parts" - when more than 10 entries
+    Release        -> "TRACKLIST" -> "<medium>"
+    Recording      -> "RELEASES" - currently "The first 25 of 52; the recording's page lists them all."                  <-- should be a table with "<-" and "->" buttons as on ... TODO
+    Work           -> "RECORDINGS"  - currently "219 recordings; the first 100 here, the work's page lists them all."    <-- should be a table with "<-" and "->" buttons as on ... TODO
+                      "CODES"
+    Place          -> "EVENTS" - probably the same as for "RELEASES"/"RECORDINGS"
+                      "LINKS" - when more than 10 entries
+    Event          -> "SETLIST"
+                      "RECORDED HERE"
+                      "RECORDED HERE" -> "Recorded at (releases)"
+                      "RECORDED HERE" -> "Recorded at (recordings)"
+    Instrument     -> "RELATED INSTRUMNETS" -> "Parts" - when more than 10 entries
+                      "ALIASES"
+    Release group  -> "RELEASES"                                   <== When no image available render empty place holder in the same size as a standard image so that all rows have the same height / "Artist AC/DC" on the left side <-- the artist should be hyperlinked with POH / "Genres arena rock, blues rock, classic rock, hard rock, heavy metal, pop rock, rock <-- should be hyperlinked with "Tags" (general/user(when Ctrl is hold at same time))
+                      "LINKS" - when more than 10 entries
+    Series         -> "ITEMS" <- "Item column should get the MB entity icon in fron of the item name + it should be rendered inside the POH and not in a new tab
+    Label          -> "LINKS" - when more than 10 entries - "Aliases CBS Sony Group; CBS Sony Inc.; CBS Sony Records; CBSソニー; 株式会社CBS・ソニー"  <- below each other
+    Tag (Editor's) -> "BY KIND" <- new renderer/reader for PT "/user/<username>/tag/<tag value>/<MB entity>" and then render inline and not on separate tab
+    Tags           -> "OTHER TAGS"
+    Tag (youtube)  -> "Releases"/"Recordings"/"Artists"/etc. - when more than 10 entries  <-- should be a table with "<-" and "->" buttons as on ... TODO
+    Ratings        -> "ARTIST"/"EVENT"/"LABEL"/etc.   - when more than 10 entries  <-- should be a table with "<-" and "->" buttons as on ... TODO
+    CD Stub        -> https://musicbrainz.org/cdstub/browse <- new renderer/reader for PT "https://musicbrainz.org/cdstub/XsbJwm0LkJCi4WXBVx9iXOXGhWk-"
+    Editor         -> "EDITS"
+    ISRC           -> "RECORDINGS" - when more than 10 entries
+    ISWC           -> "WORKS"
+    Disc ID        -> "RELESEAS"
+    Documentation  -> new PT for https://musicbrainz.org/search?query=release&type=doc&method=indexed#gsc.tab=0&gsc.q=release&gsc.page=1
+    Annotation
+           history -> "VERSIONS"
+           version -> 
 #+end_example
 
 2.)
@@ -4863,4 +4871,77 @@ MB: Artist        -> "RELEASE GROUPS"
 data list in general when more than 10 entries ==> table form
 
 
+* TODO the "Bio" section on MB user pages should be rendered collapsed
 
+Long "Bio" sections on MB user pages should be rendered collapsed e.g. on https://musicbrainz.org/user/atj
+Currently it gets truncated after a couple of lines
+
+
+* TODO DJ-mix of
+
+1.)
+
+"DJ-mix of" column should probably get an "order" attribute e.g. on https://musicbrainz.org/release/a24eb845-0b82-44a7-8227-d13d4c1200dd
+
+2.)
+
+or maybe other ordered entries
+
+
+* TODO PT 'release-tracks' needs suggestion for works in the "Recording of work" column
+
+PT 'release-tracks' needs suggestions for works in the "Recording of work" column e.g. on
+https://musicbrainz.org/release/22a6802f-d22e-4f47-9f22-6aac257a4194 with our async handling
+
+
+* TODO make suggestions for the popup tooltip about "SORT NAME", it should be included inside the initial hover summary popup window
+
+make suggestions for the popup tooltip about "SORT NAME", it should be included inside the initial hover summary popup window
+
+e.g on "LABELS" (Sidebar), or "Artist" column names at https://musicbrainz.org/release/22a6802f-d22e-4f47-9f22-6aac257a4194
+
+
+* TODO "Sidebar" -> "SEARCH" -> "Literature" -> Bookbrainz get no "Space" on hover
+
+https://musicbrainz.org/release/22a6802f-d22e-4f47-9f22-6aac257a4194
+
+"Sidebar" -> "SEARCH" -> "Literature" -> Bookbrainz get no "Space" on hover
+
+
+* TODO add a generic comparater popup window
+
+add a generic comparater popup window for
+
+1.)
+
+entity pages
+
+2.)
+
+images
+
+
+* TODO is it possible to generalize our MB table handling (sorting, table and column level filtering, filter string highlightning, column UVD handling, multi-row cell handling + maybe synthetic column handling by providing an extractor function name)
+
+is it possible to generalize our MB table handling (sorting, table and column level filtering, filter string
+highlightning, column UVD handling, multi-row cell handling + maybe synthetic column handling by providing an extractor
+function name)
+
+
+* TODO Implement the same Start/Stop/"Continue after closing and reopening the POH"
+
+Implement the same Start/Stop/"Continue after closing and reopening the POH" everywhere on MB where we async start some
+actions (they are not interrubtable yet) and fill in the IndexedDB
+
+
+* TODO when hovering a value in the "LABEL-CAT#" column and the down-right glyph shows up, the label-cat# value moves to the left and back when hovering away, which lets the value kind of pump
+
+when hovering a value in the "LABEL-CAT#" column and the down-right glyph shows up, the label-cat# value moves to the left
+and back when hovering away, which lets the value kind of pump, together with is's column header
+
+#+begin_example
+@debug/mb-RG-popup.html - popup dialog of the URL https://musicbrainz.org/release-group/48e335f3-8e4a-4e38-b2df-e1514b9f9126 on e.g https://musicbrainz.org/release/babb4c54-bca0-4eb9-b444-369c34d3404d when hovering '<span class="small">(<a href="/release-group/48e335f3-8e4a-4e38-b2df-e1514b9f9126" data-mb-rg-link="29">29 versions available in <bdi>Letter to You</bdi></a>)</span>'
+#+end_example
+
+Maybe remove that icon completely (btw what is/was it actually good for) and ONLY leave the icon for rendering a link in
+a new tab in

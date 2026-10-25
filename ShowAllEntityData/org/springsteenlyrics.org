@@ -607,6 +607,7 @@ Open questions:
 - For cards opened from MusicBrainz: public view always, or your view when
   you opt in?
 
+
 * TODO for eddy
 ** TODO Container is not defined
 
@@ -618,6 +619,8 @@ userscript loaded. The live test exempts that one exact message.
 Your pages load their font stylesheet over HTTP (http://fonts.googleapis.com/css?family=Open+Sans:300,400,700) from an
 HTTPS page, so browsers block it and Open Sans never loads. Changing it to https:// fixes that. Separately, adding
 autocomplete="current-password" to the login form's password field (hTxtPassword) silences Chrome's hint about it.
+
+
 
 * TODO URLify the tracklist to song URLs (SL and MB)
 
@@ -634,7 +637,7 @@ A1- THE E STREET SHUFFLE ==> https://www.springsteenlyrics.com/lyrics.php?song=t
 A3- KITTY'S BACK ==> https://www.springsteenlyrics.com/lyrics.php?song=kittysback
 #+end_example
 
-Assco list:
+Assoc list:
 #+begin_example
 A2- 4TH OF JULY, ASBURY PARK (SANDY) ==> https://www.springsteenlyrics.com/lyrics.php?song=4thofjulyasburypark
 B2- ROSALITA (COME OUT TONIGHT) ==> https://www.springsteenlyrics.com/lyrics.php?song=rosalita
@@ -666,4 +669,42 @@ parse a couple and make some suggestions, nice rich HTML based mockups
 - click toogle section headers (Ctrl-click all sections at once) 
 - Original info file - https://www.springsteenlyrics.com/bootlegs/aud_live1984/2567_infofile.txt
 - internal viewer for image scans
+
+  
+* TODO collection pages
+
+https://www.springsteenlyrics.com/collection.php?cmd=list&category=album&f_date_main=1984-06-04
+
+1.)
+
+the MB icon on logged in pages should get the POH treatment
+
+2.)
+
+add columns for the "MusicBrainz link", "Good scans" and "In Switzerland" icons with UVD sections
+
+* TODO bootleg pages
+
+1.)
+
+add columns for the "MusicBrainz link", " artwork available" and "original info file available"
+
+* TODO stefano pages
+
+https://www.springsteenlyrics.com/brucelegs.php?cmd=list
+
+1.)
+
+add columns for the  "PDF available" and "artwork available"
+
+2.)
+
+https://www.springsteenlyrics.com/brucelegs.php?item=281&f_format=vinyl
+
+There is a tracklistm but its MISSING from the POH on the overview page at https://www.springsteenlyrics.com/brucelegs.php?cmd=list
+
+#+begin_example
+TRACKLIST
+The page has no tracklist.
+#+end_example
 

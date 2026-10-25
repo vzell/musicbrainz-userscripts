@@ -2,6 +2,7 @@
 ** my BS edits
 ** master and releases
 
+
 * TODO On D master POH allow "Ctrl"-click for multi-select for "Format", "Country" and "Released" buttons
 
 1.)
@@ -15,5 +16,129 @@ On D master POH allow "Ctrl"-click for multi-select for "Format", "Country", "Re
 2.)
 
 
-* TODO add support for the Discogs "Apple Music Audio Player" - https://support.discogs.com/hc/en-us/articles/17114733929229-Release-Page-Guide
+* TODO remove the native artist popup text box tooltip on D PTs when on the IP
+
+remove the native artist popup text box tooltip on D PTs when on the IP
+
+
+* TODO add support for the Discogs "Apple Music Audio Player"
+
+add support for the Discogs "Apple Music Audio Player" - https://support.discogs.com/hc/en-us/articles/17114733929229-Release-Page-Guide
+
+
+* TODO check discogs artist pages if really ALL masters are present + implement master->release(s) drilldown
+
+* TODO detail popups
+
+#+begin_example
+D: Master
+
+   search -> "RESULTS - the "LINK" section should be on the left side below the heading, and the "RESULTS section as a table on the right side
+#+end_example
+
+
+* TODO on D release PTs do not show sub-tables which have zero rows initially
+
+on D release PTs do not show sub-tables which have zero rows initially
+
+* TODO On Discogs entity POHs the left and right side information should be swapped
+
+1.)
+
+Releases:
+
+a.)
+
+on D release PTs the current sections on the right should be rendered on the left side below the images and the
+"TRACKLIST" and "NOTES" section on the right side
+
+b.)
+
+the hovered MB release link e.g. https://musicbrainz.org/release/836b5924-a9d7-4291-abd4-f03a9fddbd26 need the link hovering inside the popup and NOT in a new tab
+
+2.)
+
+Artists:
+
+artists swap the left/rigth sections
+
+a.)
+
+"LINK" section below the header line + singel artist picture - left
+
+b.)
+
+"DISCOGRAPHY" - right
+
+3.)
+
+Masters:
+
+PTs also swap left/right
+
+#+begin_example
+https://www.discogs.com/master/27206 - with track credits
+#+end_example
+
+4.)
+
+Labels:
+
+a.)
+
+#+begin_example
+https://www.discogs.com/label/1866-Columbia - "SUBLABELS" section should be a table with pager handling for the curretn "+195 MORE" button '<button type="button" class="mb-dg-btn" data-mb-dg-act="moresub">+195 more</button>'
+#+end_example
+
+b.)
+
+the hovered MB label link e.g. https://musicbrainz.org/label/3d8cf8be-09b6-470c-970b-9c1c6d511507 needs more information display, actually what the MB internal hovering does
+
+
+* TODO overwhole of the Discogs release track rendering in the popup viewer
+
+overwhole of the Discogs release track rendering in the popup viewer
+
+#+begin_example
+https://www.discogs.com/release/31003849-Bruce-Springsteen-The-E-Street-Band-Travel-In-Fear - release with subsection header in a tracklist
+https://www.discogs.com/release/15993782-Bruce-Springsteen-Tunnel-Of-Love - no track credits
+https://www.discogs.com/release/30198722-MGV-Drabenderh%C3%B6he-120-Jahre-M%C3%A4nnergesangverein-Drabenderh%C3%B6he - some track credits
+#+end_example
+
+
+* TODO when filtering on Discogs detail popups, the filter string should get highlighted
+
+when filtering on Discogs detail popups, the filter string should get highlighted
+
+
+* TODO On a D master IP the release image before a release name should get our standard image handling for releases, by displaying images initally (+ full "Space" handling)
+
+On a D master IP the release image before a release name should get our standard image handling for releases, by displaying
+images initally (+ full "Space" handling)
+
+
+* TODO on D PTs, the main image + the information right beside the image should get it's own handling on the FRP
+
+on Discogs supported PTs, the main image + the information right beside the image should get it's own handling on the FRP
+
+1.)
+
+The image should be rendered in front of the entity name on the FRP
+
+2.)
+
+the information right beside the image should get it's own sub-section "Relationships" (should be the first one before
+the e.g. "Tracklist" on release pages)
+
+
+* TODO The Discogs artist FRP needs an overwhole
+
+1.)
+
+It's not yet clear how the data is derived, explain
+
+2.)
+
+The "Releases" sub-table should get another column "Release-subtype" e.g. "Album", "Single & EP", "Compilation", "Video" and "Misc"
+
 

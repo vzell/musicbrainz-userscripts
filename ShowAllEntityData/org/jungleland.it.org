@@ -46,3 +46,8 @@ Analysis, probes and mockups: [[file:detail-pages.org]] (2026-10-07). The
 detail pages are windows-1252, which =fetchHtml()= cannot decode yet.
 
     
+* TODO "Art" column should get the async download handling with storing in indexddb
+
+"Art" column should get the async download handling with storing in indexddb,
+e.g. https://www.jungleland.it/html/list.htm
+
