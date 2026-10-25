@@ -4713,3 +4713,154 @@ On MB entity POHs we should get additional POH support for known URLs like Wikip
 "Editing history" button ==> "Editing history" button-menue with the same option as in the "SAED" "Editing history"
 section
 
+
+* TODO On MB RG POHs add the site icns if fron of the site entity name in the POH header line
+
+On MB RG POHs add the site icons in front of the site entity name in the POH header line, e.g. https://musicbrainz.org/release-group/f83d2211-dd81-4b1e-9a02-e89733891e1c
+
+1.)
+
+a.)
+
+Currently we render the following when coming from the D master link/URL
+
+#+begin_example
+<span style="font-weight: 700; font-size: 1.15em; color: rgb(34, 34, 34);"><img class="mb-dp-kind-icon" alt="" src="https://musicbrainz.org/static/images/entity/release_group.svg">Discogs master › Release group</span>
+#+end_example
+
+b.)
+
+I want:
+
+[class="discogs-favicon"][master icon] Discogs master > [artist icon] Discogs artist
+[class="MB-artist-icon"] Artist > Editing history > [artistrelease icon] Release
+
+
+
+* TODO the site icons should get a POH too with a site description (maybe wikipedia)
+
+
+the site icons and si specific icons (MB: RG, R, L, A, P, I, U etc.; D: M, R, L, U) should get a POH too with
+
+1.)
+
+Site:
+
+a site description (maybe wikipedia) and some suggestions
+
+2.)
+
+Site specific icons
+
+a.)
+
+https://musicbrainz.org/doc/MusicBrainz_Entity
+https://musicbrainz.org/doc/Style
+
+https://musicbrainz.org/doc/Artist
+https://musicbrainz.org/doc/Style/Artist
+
+https://musicbrainz.org/doc/Event
+https://musicbrainz.org/doc/Style/Event
+
+
+MB: RG, R, L, A, P, I, U etc. - 
+
+
+b.)
+
+https://support.discogs.com/hc/en-us/sections/25169225080077-Database-Guidelines
+
+https://support.discogs.com/hc/en-us/articles/360005054753-Database-Guidelines-2-Artist
+
+
+https://support.discogs.com/hc/en-us/articles/360005055493-Database-Guidelines-16-Master-Release
+
+
+D: M, R, L, U - guidlines - e.g. https://support.discogs.com/hc/en-us/articles/360005055493-Database-Guidelines-16-Master-Release
+
+
+* TODO Discogs entity glyphs
+
+In the Discogs interface, specific glyphs and visual prefixes are used to uniquely identify and link database entities in search results, forums, release pages, and marketplace listings.
+The primary entity icons and their underlying database formatting codes include:
+
+💿 Master Releases
+
+• Icon: A small, transparent layered vinyl stack or folder symbol.
+• Meaning: Indicates a Database Master Release. This functions as a master folder grouping multiple physical releases, versions, reissues, or promotional pressings of the same overall album, EP, or single together.
+• Text Formatting Code: Entered as [m=Master ID] or [mID] in forums and release notes.
+
+📄 Releases
+
+• Icon: A single vinyl record or compact disc silhouette (often looking like a flat disc with a center ring).
+• Meaning: Represents a specific, standalone physical variation or catalog printing of an album.
+• Text Formatting Code: Entered as [r=Release ID] or [rID].
+
+🏷️ Labels
+
+• Icon: A vintage record label tag or a stylized graphic resembling a record spindle hole with text lines.
+• Meaning: Represents a record label, production company, distributor, or pressing plant profile page.
+• Text Formatting Code: Entered as [l=Label Name] or [lID].
+
+👤 Artists
+
+• Icon: A standard single person bust / silhouette avatar profile.
+• Meaning: Directs to the profile page of a specific band, solo artist, producer, or mastering engineer.
+• Text Formatting Code: Entered as [a=Artist Name] or [aID].
+
+💬 Users
+
+• Icon: A outlined person portrait silhouette or a standard comment bubble depending on if it's pointing to a profile or a message board.
+• Meaning: Represents a member of the Discogs community, typically an online collector, buyer, seller, or database contributor.
+• Text Formatting Code: Entered as [u=Username].
+
+If you are currently trying to link to these in a specific field, please tell me where you are editing (e.g., Release Notes, Submission Notes, or Forum) or if you are looking for the exact SVG/CSS source icons for a software integration so I can point you to the right asset folder!
+
+https://dashboardicons.com/icons/external/simpleicons/discogs
+
+🎷 Other Core Metadata
+🗺️ Geographic & Corporate Entities
+
+
+* TODO Each table POHs should get the same handling for sorting, filtering, auto-resizing columns, etc
+
+1.)
+
+** working
+
+#+begin_example
+Discogs: Master
+
+#+end_example
+
+** missing right now
+
+#+begin_example
+Editing history (H)
+MB: Artist        -> "RELEASE GROUPS"
+                     "LINKS" - when more than 10 entries
+    Area          -> "RELATED AREAS"
+                  -> "RELATED AREAS" -> "Parts" - when more than 10 entries
+    Release       -> "TRACKLIST" -> "<medium>"
+    Recording     -> "RELEASES" - currently "The first 25 of 52; the recording's page lists them all."                  <-- should be a table with "<-" and "->" buttons as on ... TODO
+    Work          -> "RECORDINGS"  - currently "219 recordings; the first 100 here, the work's page lists them all."    <-- should be a table with "<-" and "->" buttons as on ... TODO
+                     "CODES"
+    Place         -> "EVENTS" - probably the same as for "RELEASES"/"RECORDINGS"
+                     "LINKS" - when more than 10 entries
+    Event         -> "SETLIST"
+                     "RECORDED HERE"
+                     "RECORDED HERE" -> "Recorded at (releases)"
+                     "RECORDED HERE" -> "Recorded at (recordings)"
+    Instrument    -> "RELATED INSTRUMNETS" -> "Parts" - when more than 10 entries
+                     "ALIASES"
+    Release group -> "RELEASES"                                   <== When no image available render empty place holder in the same size as a standard image so that all rows have the same height
+                     "LINKS" - when more than 10 entries
+#+end_example
+
+2.)
+
+data list in general when more than 10 entries ==> table form
+
+
+

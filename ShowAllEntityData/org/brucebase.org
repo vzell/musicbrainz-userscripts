@@ -123,3 +123,4 @@ render the sidebar handle at the top (like in the MB case) and not in the middle
 
 support hovering for all BB URLs (+ known non-BB URLs like MB/SL URLs) PTs
 
+

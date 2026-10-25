@@ -1,3 +1,19 @@
 * TODO add support for discogs pages
 ** my BS edits
 ** master and releases
+
+* TODO On D master POH allow "Ctrl"-click for multi-select for "Format", "Country" and "Released" buttons
+
+1.)
+
+On D master POH allow "Ctrl"-click for multi-select for "Format", "Country", "Released" etc. of the facet buttons
+
+#+begin_example
+<div class="mb-dg-facets"><span class="mb-dg-fl">Format</span><div><button type="button" class="mb-dg-fc" data-mb-dg-f="format" data-mb-dg-v="Vinyl" aria-pressed="false">Vinyl<span class="mb-dg-n">19</span></button><button type="button" class="mb-dg-fc" data-mb-dg-f="format" data-mb-dg-v="45 RPM" aria-pressed="false">45 RPM<span class="mb-dg-n">16</span></button><button type="button" class="mb-dg-fc" data-mb-dg-f="format" data-mb-dg-v="Single" aria-pressed="false">Single<span class="mb-dg-n">15</span></button><button type="button" class="mb-dg-fc" data-mb-dg-f="format" data-mb-dg-v="7&quot;" aria-pressed="false">7"<span class="mb-dg-n">14</span></button><button type="button" class="mb-dg-fc" data-mb-dg-f="format" data-mb-dg-v="Stereo" aria-pressed="false">Stereo<span class="mb-dg-n">8</span></button><button type="button" class="mb-dg-fc" data-mb-dg-f="format" data-mb-dg-v="CD" aria-pressed="false">CD<span class="mb-dg-n">6</span></button><button type="button" class="mb-dg-fc" data-mb-dg-f="format" data-mb-dg-v="Maxi-Single" aria-pressed="false">Maxi-Single<span class="mb-dg-n">6</span></button><button type="button" class="mb-dg-fc" data-mb-dg-f="format" data-mb-dg-v="12&quot;" aria-pressed="false">12"<span class="mb-dg-n">5</span></button><button type="button" class="mb-dg-fc" data-mb-dg-f="format" data-mb-dg-v="Mini" aria-pressed="false">Mini<span class="mb-dg-n">5</span></button><button type="button" class="mb-dg-fc" data-mb-dg-f="format" data-mb-dg-v="Promo" aria-pressed="false">Promo<span class="mb-dg-n">4</span></button></div><span class="mb-dg-fl">Country</span><div><button type="button" class="mb-dg-fc" data-mb-dg-f="country" data-mb-dg-v="UK" aria-pressed="false">UK<span class="mb-dg-n">7</span></button><button type="button" class="mb-dg-fc" data-mb-dg-f="country" data-mb-dg-v="Europe" aria-pressed="false">Europe<span class="mb-dg-n">6</span></button><button type="button" class="mb-dg-fc" data-mb-dg-f="country" data-mb-dg-v="Australia" aria-pressed="false">Australia<span class="mb-dg-n">4</span></button><button type="button" class="mb-dg-fc" data-mb-dg-f="country" data-mb-dg-v="Spain" aria-pressed="false">Spain<span class="mb-dg-n">4</span></button><button type="button" class="mb-dg-fc" data-mb-dg-f="country" data-mb-dg-v="Japan" aria-pressed="false">Japan<span class="mb-dg-n">2</span></button><button type="button" class="mb-dg-fc" data-mb-dg-f="country" data-mb-dg-v="France" aria-pressed="true">France<span class="mb-dg-n">1</span></button><button type="button" class="mb-dg-fc" data-mb-dg-f="country" data-mb-dg-v="Ireland" aria-pressed="false">Ireland<span class="mb-dg-n">1</span></button><button type="button" class="mb-dg-fc" data-mb-dg-f="country" data-mb-dg-v="UK &amp; Europe" aria-pressed="false">UK &amp; Europe<span class="mb-dg-n">1</span></button></div><span class="mb-dg-fl">Released</span><div><button type="button" class="mb-dg-fc" data-mb-dg-f="decade" data-mb-dg-v="1980s" aria-pressed="false">1980s<span class="mb-dg-n">26</span></button></div></div>
+#+end_example
+
+2.)
+
+
+* TODO add support for the Discogs "Apple Music Audio Player" - https://support.discogs.com/hc/en-us/articles/17114733929229-Release-Page-Guide
+
