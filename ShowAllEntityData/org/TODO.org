@@ -1266,7 +1266,6 @@ ALWAYS be sticky too when srolling down.
 
 * DONE add instrument icons support (), ONLY the icon should show up in the UVD
 
-
 * DONE maybe stack the h3 header in the multi-table case when stickyness is involved
 
 * DONE IDB overwhole - show info to the end-user; age, storage, delete possibilities/merge, remove etc (nice gpahical overview, cake diagram), number of keys
@@ -4532,8 +4531,16 @@ bb-release-born-to-run-with-MB-links-final.html - FRP  - https://www.discogs.com
 #+end_example
   
 
+* DONE on collection pages, images should get internal viewer support + their tooltip should show a rich popup and highlight the corresponding row
+
+on collection pages, images should get internal viewer support + their tooltip should show a rich popup and highlight
+the corresponding row
+
+* DONE fix image placement on collection popup pages for RGs
+
 
 * TODO consolidate more LAF across more PTs
+
 
 * TODO Add a must have third-party userscripts section together with the end-user visible changes and what our userscript depends on
 
@@ -4564,20 +4571,11 @@ there are already sections after that one, that were meant to be published but n
 rewrite all these and combine with the latest changes
 
 
-* TODO majkinetor: "Links" column - switch of the native tooltip on the FRP
-* TODO majkinetor: async issues with "ISRC" and "Link" colus on PT 'release-tracks'
-* TODO majkinetor: no icons in the lower right corner
+* TODO Release events - country "Japan" need flag on the relationships area
 
+"RELEASE EVENTS" - country "Japan" need flag on the "Sidebar" section
 
-* TODO Release events - countra "Japan" need flag on the relationships area
-
-
-* DONE on collection pages, images should get internal viewer support + their tooltip should show a rich popup and highlight the corresponding row
-
-on collection pages, images should get internal viewer support + their tooltip should show a rich popup and highlight
-the corresponding row
-
-* DONE fix image placement on collection popup pages for RGs
+https://musicbrainz.org/release/3ec14d03-2c03-4764-a69d-8155817a040f
 
 * TODO also add the pager framework on other detail popups like on the collections one
 * TODO Scrollbars (left side) and pager (tables right side) or any table + image internal viewer support should automatically be there for ALL detail popups
@@ -4614,19 +4612,9 @@ register the third-party user script by @zabe
 check what it's doing
 
 
-* TODO sidebar image hover for CAA images only working when hovering below the image in the description
-
-sidebar image hover for CAA images only working when hovering below the image in the description
-
-
 * TODO The UVD in the "Media" column on PTs e.g. https://brucebase.wikidot.com/2026 should get the media icons also
 
 The UVD in the "Media" column on PTs e.g. https://brucebase.wikidot.com/2026 should get the media icons also
-
-
-* TODO Use the Discogs history diff format in other pageTypes, for example the BB “changes” button
-
-Use the Discogs history diff format in other pageTypes, for example the BB “changes” button (you have to be logged in).
 
 
 * TODO fix MB collection pages
@@ -4888,12 +4876,6 @@ Currently it gets truncated after a couple of lines
 or maybe other ordered entries
 
 
-* TODO PT 'release-tracks' needs suggestion for works in the "Recording of work" column
-
-PT 'release-tracks' needs suggestions for works in the "Recording of work" column e.g. on
-https://musicbrainz.org/release/22a6802f-d22e-4f47-9f22-6aac257a4194 with our async handling
-
-
 * TODO make suggestions for the popup tooltip about "SORT NAME", it should be included inside the initial hover summary popup window
 
 make suggestions for the popup tooltip about "SORT NAME", it should be included inside the initial hover summary popup window
@@ -4934,6 +4916,21 @@ Implement the same Start/Stop/"Continue after closing and reopening the POH" eve
 actions (they are not interrubtable yet) and fill in the IndexedDB
 
 
+* TODO majkinetor: "Links" column - switch of the native tooltip on the FRP
+* TODO majkinetor: no icons in the lower right corner
+* TODO majkinetor: async issues with "ISRC" and "Link" colus on PT 'release-tracks'
+
+* TODO PT 'release-tracks' needs suggestion for works in the "Recording of work" column
+
+PT 'release-tracks' needs suggestions for works in the "Recording of work" column e.g. on
+https://musicbrainz.org/release/22a6802f-d22e-4f47-9f22-6aac257a4194 with our async handling
+
+
+* TODO sidebar image hover for CAA images only working when hovering below the image in the description
+
+sidebar image hover for CAA images only working when hovering below the image in the description
+
+
 * TODO when hovering a value in the "LABEL-CAT#" column and the down-right glyph shows up, the label-cat# value moves to the left and back when hovering away, which lets the value kind of pump
 
 when hovering a value in the "LABEL-CAT#" column and the down-right glyph shows up, the label-cat# value moves to the left
@@ -4943,5 +4940,6 @@ and back when hovering away, which lets the value kind of pump, together with is
 @debug/mb-RG-popup.html - popup dialog of the URL https://musicbrainz.org/release-group/48e335f3-8e4a-4e38-b2df-e1514b9f9126 on e.g https://musicbrainz.org/release/babb4c54-bca0-4eb9-b444-369c34d3404d when hovering '<span class="small">(<a href="/release-group/48e335f3-8e4a-4e38-b2df-e1514b9f9126" data-mb-rg-link="29">29 versions available in <bdi>Letter to You</bdi></a>)</span>'
 #+end_example
 
-Maybe remove that icon completely (btw what is/was it actually good for) and ONLY leave the icon for rendering a link in
-a new tab in
+Maybe remove that icon completely (btw what is it actually good for, what is the idea of havin it and only showing when
+hovering it) and ONLY leave the icon for rendering a link in a new tab in
+

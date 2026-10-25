@@ -144,3 +144,8 @@ make the standard BB page, renderd below our table h2/h3 click collapsable (also
 
 * TODO BB Steve van Zandt detail page needs overwhole
 
+* TODO Use the Discogs history diff format in other pageTypes, for example the BB “changes” button
+
+Use the Discogs history diff format in other pageTypes, for example the BB “changes” button (you have to be logged in).
+
+
