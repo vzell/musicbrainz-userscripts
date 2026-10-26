@@ -26301,3 +26301,46 @@ Spec: `popup-mb.spec.js` "H2: a link that opens here gets no glyph on hover, so
 it never changes width" (::after is none, width equal before/after hover, ↗
 kept). Mutation-checked by restoring the rule: fails. Unrelated: popup-ext
 "Wikipedia: one REST summary …" fails identically on `main` at the same SHA.
+
+## 2026-10-26 — sidebar cover: no hover card over MusicBrainz's `<img title="">` (branch claude/keen-planck-t1lm8l, WIP.1)
+
+Env: 2026-10-26T03:53:18+01:00 · vm · Ubuntu 24.04.5 LTS (Linux 6.18.44-fc-v153) · user's browser: unknown · Tampermonkey unknown (snapshot `release-caa-sidebar-image-bug.html`, script 9.99.1457)
+
+Symptom: on https://musicbrainz.org/release/3ec14d03-2c03-4764-a69d-8155817a040f
+hovering the sidebar cover showed nothing. A click still opened the viewer.
+
+Evidence (snapshot): the wiring was there. `#sidebar .cover-art.present > a.artwork-image`
+carried `data-mbtt-fn="sb-cover"` and `data-mb-sb-cover`, but MusicBrainz's
+script had put `<img src="…thumb500.jpg" title="">` into the span. The
+pointer is over that img. `_initStatTooltip()`'s mouseover lookup,
+`closest('[data-mbtt], [data-mbtt-fn], [title], [data-mb-tip-saved]')`,
+matched the img's EMPTY `title`, so it never reached the link's resolver.
+The click works because `_sbCoverLinkClick()` has its own `closest()`.
+The fixture never had that lazily inserted img, which is why the existing
+"the sidebar's own cover" spec hovered the bare link and passed.
+
+Fix: `[title]:not([title=""])` in that lookup. An own title stashed by
+`_stashOwn()` is still found through `data-mb-tip-saved`.
+Spec: `sidebar-picture.spec.js` "the card shows over MusicBrainz's own
+<img title=""> inside the cover link".
+
+## 2026-10-26 — Relationships column: no link preview for a "single from" release group icon (branch claude/keen-planck-t1lm8l, WIP.2)
+
+Env: 2026-10-26T03:53:18+01:00 · vm · Ubuntu 24.04.5 LTS (Linux 6.18.44-fc-v153) · user's browser: unknown · Tampermonkey unknown (snapshot `tag-RG-relationship-icons.html`, /tag/arena%20rock)
+
+The snapshot's Relationships cells: 19 icons link to MusicBrainz, all
+`href="/release-group/<mbid>"` with `data-mb-rel-type="single from"`. Every
+other icon is an absolute URL to another site. The links to other sites
+have had the card since 2026-10-17 (`_extTarget()`'s `relIcon` exemption).
+`_mbPopTarget()` still turned away (a) any link in `td.mb-rel-cell` ("its
+own tooltip") and (b) any link wrapping an `<img>`. The relative href by
+itself was not the blocker, because `a.origin` resolves against the page.
+It is fully qualified now anyway, as the user asked: `_relAppendIcon()`
+takes a separate anchor `href`. The hidden filter key keeps the bare path,
+because `_findCellRelIcons()` groups a bare path by entity type, and
+`_findCellRelSiteDupes()` would otherwise count two "single from" release
+groups as one site linked twice. `_relLinkName()` treats a same-origin
+absolute href as MusicBrainz's (title from the tip). Cells built or saved
+before this keep their relative hrefs and still preview.
+Specs: `rel-icons.spec.js` "a \"single from\" release group icon …";
+`popup-mb.spec.js` "what is previewed" now expects the icon to resolve.

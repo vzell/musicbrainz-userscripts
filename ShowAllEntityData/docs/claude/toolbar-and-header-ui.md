@@ -1179,8 +1179,24 @@ off, View holds this one row. The stylesheet is injected on first open (`#mb-idb
 for the same reason. z-index 2147483200: over the settings dialog and the
 Statistics panel, under the artwork viewer and every tooltip.
 
+**Movable and resizable (2026-10-26, vzell: "make the Browser cache window
+movable and resizable").** `_makeMovableResizable()` on `.mb-idbo-dlg`, with
+the header (`.mb-idbo-h`) as the handle and the geometry in
+`sa_idbo_geometry` (in `_CFG_WORKSPACE_GROUPS`' geometry group, so the
+config file carries it). It is wired once, when the overlay is created, and
+destroyed in `_idbOverviewClose()` (`_idbo.geo`). `_idboPaint()` rebuilds
+the header with `innerHTML`, which is safe because the handle is found from
+a delegated press, and the header's buttons never start a drag. The window
+is a flex column: header and foot `flex: none`, and the body (`.mb-idbo-b`)
+is the part that shrinks and scrolls (`max-height: 92vh`). A 16 px strip
+under the foot holds the resize corner, as in the 🖼 gallery. Before this
+change the backdrop scrolled the whole dialog instead. A window never moved
+opens centred at the top, as before, and stores nothing. Its stylesheet is
+shared with 🗄️ Script storage below: every rule names
+`:is(#mb-idb-overview, #mb-gm-store)`.
+
 Specs: `idb-overview.spec.js` (8, both databases seeded before the userscript
-opens them) and `idb-overview.mobile.spec.js`; mutations
+opens them, plus 3 for the geometry) and `idb-overview.mobile.spec.js`; mutations
 `scripts/mutations/idb-overview.json` (12, all caught). The seed is
 `seedCacheOverview()` in `tests/support/idbFixture.js`, shared with the
 export/import specs below; its link-preview records have the real
@@ -1248,3 +1264,48 @@ synthetic cache compresses far better than a real one.
 Specs: `idb-export-import.spec.js` (8) and `idb-export-import.mobile.spec.js`
 (1); test hooks `__saTest.idbOverview.dump/holdAfterFlush/exportB64/perfRoundTrip`;
 mutations `scripts/mutations/idb-export-import.json` (17, all caught).
+
+## 🗄️ Script storage (`_gms*`)
+
+A dialog, `#mb-gm-store`, showing the user every key this script has in
+Tampermonkey's storage (GM storage), requested 2026-10-26. It is the GM
+counterpart of the 💾 Browser cache overview: same look (it uses the
+`mb-idbo-*` classes, and `_idboEnsureStyle()` names both dialogs, so only
+the parts specific to it are in its own `#mb-gms-style`), same z-index, Esc
+and in-dialog confirmations, and it moves and resizes the same way
+(`sa_gms_geometry`, in the geometry group).
+
+**Reading: `_gmsRead()`.** `GM_listValues()` (feature-detected, as in
+`_sweepOrphanedGmValues()`), then `GM_getValue()` for each key. Without it,
+only the keys that can be named are listed: `configSchema`, the fixed
+workspace keys (`_configWorkspaceKeys()`) and `_GM_ORPHANED_VALUE_KEYS`.
+`_gms.listed` is false then, and a notice says so. **Kinds: `_gmsKindOf()`**:
+a setting (in `configSchema`, `isDefault` by `_gmsSameAsDefault()`, which
+compares string-wise like the library's own `isSchemaDefault()`), a hand-off
+(`_GM_SNAPSHOT_KEY_PREFIX`), orphaned (`_GM_ORPHANED_VALUE_KEYS`), workspace
+(`_configWorkspaceGroupFor()`, labelled by its group), and other (install
+state such as `sa_settings_migration_level`).
+
+**Changes.** Save is `JSON.parse()` of the editor, refused with the error
+inline, and asks before `GM_setValue()`. Reset to default and Delete both
+call `GM_deleteValue()` (an absent key resolves to the schema default, the
+library's dirty-set rule). Delete leftovers calls `_sweepOrphanedGmValues()`,
+so a hand-off younger than an hour is kept. A value over `_GMS_EDIT_MAX`
+characters (a hand-off payload) is shown cut short and read-only. Changes go
+to storage only: `Lib.settings` of the open page is not touched, and the
+foot says a changed setting takes effect after a reload.
+
+**Secrets.** A `secret: true` setting (`sa_pop_ext_discogs_token`) is dots
+in the table and in the detail. It has no editor and no Copy, the filter
+never matches its value, and `_gmsExport()` leaves it out. It can only be
+deleted.
+
+**Ways in.** The SAED menu's View row "🗄️ Script storage"
+(`#mb-gms-menu-btn`, `addGmStoreButton()`, right after `mb-idbo-menu-btn`
+in `_TOOLBAR_MENU_ROW_ORDER.view`, added by the render tail beside it and
+with no setting of its own), and the Tampermonkey menu. Test hook:
+`__saTest.gmStore.open/close`.
+
+Specs: `gm-store.spec.js` (6) and `gm-store.mobile.spec.js` (1); mutations
+`scripts/mutations/gm-store.json` (11, all caught, two of them for the
+Browser cache window's geometry).

@@ -391,6 +391,25 @@ test.describe('a release\'s or release group\'s cover beside the name', () => {
         expect(asked.length, 'one record for card and viewer').toBe(1);
     });
 
+    test('the card shows over MusicBrainz\'s own <img title=""> inside the cover link (2026-10-26)', async ({ page }, testInfo) => {
+        // MusicBrainz's script puts `<img src="…thumb500.jpg" title="">` into
+        // the span after load; the pointer is over that img, not the link.
+        // The tooltip engine's lookup stopped at the img's EMPTY title and
+        // never reached the link's `data-mbtt-fn="sb-cover"` (snapshot
+        // release-caa-sidebar-image-bug.html, 9.99.1457).
+        const { asked } = await openCover(page, testInfo, REL_URL, REL_FIXTURE);
+        await page.evaluate((src) => {
+            const span = document.querySelector('#sidebar .cover-art a.artwork-image > span.artwork-image');
+            span.innerHTML = `<img src="${src}" title="" style="width: 200px; height: 200px;">`;
+        }, REL_THUMB);
+        const img = page.locator('#sidebar .cover-art a.artwork-image img[title=""]');
+        await expect(img).toHaveCount(1);
+        await hoverCard(page, img);
+        await expect(tip(page).locator('.mb-art-card-tile')).toHaveCount(Math.min(12, CAA_RECORD.images.length));
+        await expect(tip(page).locator('.mb-tt-foot:not(.mb-art-card-keys)')).toHaveText('Click: viewer · Ctrl-click: MusicBrainz\'s own');
+        expect(asked.length, 'the hover asked the record').toBe(1);
+    });
+
     test('Space on the hovered cover (the sidebar\'s own, and the copy) opens our viewer, as the click does (2026-10-24)', async ({ page }, testInfo) => {
         // 20 tiles: nothing cut off, so Space is not the card's "every
         // image" toggle (16 images; the default 12 tiles cut it).

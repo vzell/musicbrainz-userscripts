@@ -80,7 +80,7 @@
   {
     "name": "SAED View: 💾 Browser cache not placed between Statistics and Keyboard Shortcuts",
     "why": "vzell 2026-10-24: after Statistics, before Keyboard Shortcuts. Adopted after both on the initial render, it lands last without the row order.",
-    "edits": [{ "find": "        view: ['mb-density-btn', 'mb-stats-btn', 'mb-idbo-menu-btn', 'mb-shortcuts-help-btn'],\n", "replace": "        view: ['mb-density-btn', 'mb-stats-btn', 'mb-shortcuts-help-btn'],\n" }],
+    "edits": [{ "find": "        view: ['mb-density-btn', 'mb-stats-btn', 'mb-idbo-menu-btn', 'mb-gms-menu-btn', 'mb-shortcuts-help-btn'],\n", "replace": "        view: ['mb-density-btn', 'mb-stats-btn', 'mb-gms-menu-btn', 'mb-shortcuts-help-btn'],\n" }],
     "spec": "tests/fixtures/idb-overview.spec.js", "grep": "SAED menu's View group", "expect": "fail"
   }
 ]

@@ -253,6 +253,58 @@ test.describe('Relationships column icons: the link preview card', () => {
         expect(errors).toEqual([]);
     });
 
+    test('a "single from" release group icon: fully qualified href, the release group card (2026-10-26)', async ({ page }) => {
+        // /tag/arena%20rock (tag-RG-relationship-icons.html): the column's
+        // links to MusicBrainz itself were written as a bare path and
+        // `_mbPopTarget()` turned every Relationships icon away, so only the
+        // links to other sites had a card. The icon's href is now fully
+        // qualified; its hidden filter key stays the bare path, which the
+        // 📊 grouping and the rel-multi-site finding read.
+        const RG = '79c5075c-630c-498d-b7c6-d83b4a982490';
+        const errors = [];
+        page.on('pageerror', (e) => errors.push(e.message));
+        await loadUserscriptPage(page, {
+            url: SERIES_URL, fixtureFile: SERIES_SHELL, testMode: true,
+            settingsOverride: {
+                sa_enable_relationships_column: true, sa_rel_collapse_threshold: 0,
+                sa_pop_mb: true, sa_pop_ext: true, sa_dp_hover_without_ctrl: true, sa_rich_tooltip_delay_ms: 600,
+            },
+        });
+        const browses = [];
+        await page.route('**/ws/2/**', (route) => {
+            const u = route.request().url();
+            if (u.includes(`release-group=${RG}`)) {
+                browses.push(u);
+                return route.fulfill({ status: 200, contentType: 'application/json',
+                                       body: JSON.stringify({ releases: [], 'release-count': 0, 'release-offset': 0 }) });
+            }
+            return route.fulfill({
+                status: 200, contentType: 'application/json',
+                body: JSON.stringify({ relations: [{ 'target-type': 'release_group', type: 'single from',
+                                                     'release-group': { id: RG, title: 'Back in Black' } }] }),
+            });
+        });
+        await page.route('https://musicbrainz.org/series/**',
+            (route) => route.fulfill({ path: SERIES_SHELL, contentType: 'text/html' }));
+        await page.click('button[data-label="Show all Releases for Series"]');
+        await waitForRenderComplete(page, { waitForAutoResize: false });
+        await expect.poll(() => page.evaluate(() => window.__saTest.relTableStates()[0].pending),
+            { timeout: 60000 }).toBe(0);
+        const icon = page.locator('td.mb-rel-cell a[data-mb-rel-type="single from"]').first();
+        await expect(icon).toHaveAttribute('href', `https://musicbrainz.org/release-group/${RG}`);
+        await expect(icon.locator('.mb-rel-filter-key')).toHaveText(`/release-group/${RG}`);
+        await page.mouse.move(0, 0);
+        await icon.hover();
+        const peek = page.locator('#mb-dp-peek');
+        await expect(peek).toBeVisible();
+        await expect(peek).toContainText('Back in Black');
+        await expect.poll(() => browses.length, 'the release group card asked its releases').toBe(1);
+        // The icon's own box in the stack, named by the release group's title.
+        await expect(page.locator('#mb-dp-notes .mb-dp-note-title .mb-rel-lk b')).toHaveText('Back in Black');
+        await expect(page.locator('#mb-rel-tooltip')).toBeHidden();
+        expect(errors).toEqual([]);
+    });
+
     test('without a filter: the card and the icon box alone', async ({ page }) => {
         await openSeries(page);
         await page.mouse.move(0, 0);

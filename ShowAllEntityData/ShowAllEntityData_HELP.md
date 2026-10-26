@@ -34,6 +34,7 @@ will never need is folded into collapsible sections.
 - [Export](#export)
 - [Statistics](#statistics)
 - [The browser cache](#the-browser-cache)
+- [Script storage](#script-storage)
 - [Keyboard shortcuts](#keyboard-shortcuts)
 - [Settings](#settings)
 - [Supported pages](#supported-pages)
@@ -136,7 +137,7 @@ The **☰ SAED menu** has these groups, with a line between them:
 |---------------------|-------------------------------------------------------------------------------|
 | **Needs attention** | the same lists as the 🔄, ❌ and ⚠️ parts on the bar                           |
 | **Data**            | 💾 Save to Disk · 📂 Load from Disk · 📤 Export ▸ (CSV, JSON, Org-Mode, HTML) |
-| **View**            | 📏 Density · 📊 Statistics · 💾 Browser cache · 🎹 Keyboard Shortcuts          |
+| **View**            | 📏 Density · 📊 Statistics · 💾 Browser cache · 🗄️ Script storage · 🎹 Keyboard Shortcuts |
 | **Help**            | ⚙️ Settings · ❓ Help ↗ (this page, on GitHub)                                 |
 | **Changelog**       | 📜 What's new ↗ · 🗒 Full development log ↗ (both on GitHub)                   |
 
@@ -1260,7 +1261,10 @@ hide failures from it.
 SpringsteenLyrics, …), MusicBrainz's relationship type, and the full URL.
 While a filter matches the cell, a box above it lists all the row's links
 with the filter's marks and marks the icon you point at ("◂ this icon"). With
-link previews on, the link's preview card shows under those boxes.
+link previews on, the link's preview card shows under those boxes. This
+covers a link to another site and also an icon for a MusicBrainz release
+group (a "single from" icon), which gets the release group's card and
+window like any release group link.
 
 **Several links to the same site** (two Discogs pages, two amazon.de products,
 …) are a ⚠️ WARNING: the cell turns light yellow with a ⚠️ at its right edge.
@@ -1460,6 +1464,9 @@ entries are loaded again when they are needed; the page you are on keeps what
 it already loaded. Sizes are estimates. The site storage figure counts the
 whole site, including MusicBrainz's own storage.
 
+Drag the window by its title bar to move it, and drag its lower-right corner
+to resize it. It opens where you left it, at that size, the next time.
+
 Open it from the SAED menu (View → **💾 Browser cache**, once a table is
 loaded), from ⚙️ Settings → 🗄️ ART ARCHIVE INDEXEDDB CACHE, from the 📊
 Statistics panel, from the Tampermonkey menu, or with **💾 Cache overview** on
@@ -1489,6 +1496,44 @@ imported, and from which file.
 The cache belongs to one site, so an export from musicbrainz.org can only be
 imported on musicbrainz.org. A part that was written by a script with a
 different cache layout is skipped and says so; the other parts still merge.
+
+---
+
+## Script storage
+
+Besides the browser cache, the script keeps its settings and what it
+remembers between visits in Tampermonkey's own storage. Examples are the size
+and place of its windows, column visibility, and the pinned filter list.
+**🗄️ Script storage** shows every key it has stored there:
+
+- what kind of key it is: a **setting** (marked *changed* when it differs from
+  its default), saved **workspace** state (named by its group, e.g. *Panel
+  geometry*), a **hand-off** of "Show single-table" to a new tab, an
+  **orphaned** key that nothing reads any more, or **other**;
+- its type, its size and its value.
+
+The chips above the table show one kind at a time, and the search box finds a
+key by its name or by its value. Click a key, or select it and press
+<kbd>Enter</kbd>, to see its value as JSON. Then you can:
+
+- edit the value and **Save** it. The value must be valid JSON, so a text
+  value needs its quotes;
+- **Reset to default** a setting;
+- **Delete** the key;
+- **Copy** the value.
+
+**Delete leftovers** removes the orphaned keys and any hand-off older than an
+hour. **Export JSON…** saves every key and its value in one file. Every
+change asks first, inside the dialog, and <kbd>Esc</kbd> cancels the question
+before it closes the dialog. A changed setting takes effect when you reload
+the page.
+
+The Discogs token is shown only as dots. It is never copied or written to the
+export, and it can only be deleted.
+
+Like the browser cache window, this window moves by its title bar and resizes
+from its lower-right corner. Open it from the SAED menu (View → **🗄️ Script
+storage**, right below 💾 Browser cache) or from the Tampermonkey menu.
 
 ---
 

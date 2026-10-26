@@ -1,0 +1,145 @@
+[
+  {
+    "name": "the secret's value is shown in the table",
+    "why": "The masking of a secret: true setting in the row preview is dropped.",
+    "edits": [
+      {
+        "find": "const preview = r.secret ? (r.json.length > 2 ? '••••••••' : '(empty)') : (r.json.length > 160 ? `${r.json.slice(0, 160)}…` : r.json);",
+        "replace": "const preview = r.json.length > 160 ? `${r.json.slice(0, 160)}…` : r.json;"
+      }
+    ],
+    "spec": "tests/fixtures/gm-store.spec.js",
+    "grep": "lists every key",
+    "expect": "fail"
+  },
+  {
+    "name": "the filter matches a secret's value",
+    "why": "_gmsVisibleRows() searches the token's JSON too.",
+    "edits": [
+      {
+        "find": "             (!r.secret && r.json.toLowerCase().includes(q))));",
+        "replace": "             r.json.toLowerCase().includes(q)));"
+      }
+    ],
+    "spec": "tests/fixtures/gm-store.spec.js",
+    "grep": "lists every key",
+    "expect": "fail"
+  },
+  {
+    "name": "the secret gets an editor",
+    "why": "The secret branch of _gmsPaintDetail() is skipped.",
+    "edits": [
+      {
+        "find": "        if (r.secret) {\n            h += `<div>${r.json.length > 2",
+        "replace": "        if (false) {\n            h += `<div>${r.json.length > 2"
+      }
+    ],
+    "spec": "tests/fixtures/gm-store.spec.js",
+    "grep": "lists every key",
+    "expect": "fail"
+  },
+  {
+    "name": "the export carries the secret",
+    "why": "_gmsExport() no longer leaves secrets out.",
+    "edits": [
+      {
+        "find": "        for (const r of _gms.rows) if (!r.secret) out[r.key] = r.value;",
+        "replace": "        for (const r of _gms.rows) out[r.key] = r.value;"
+      }
+    ],
+    "spec": "tests/fixtures/gm-store.spec.js",
+    "grep": "Export JSON",
+    "expect": "fail"
+  },
+  {
+    "name": "invalid JSON is saved as a string",
+    "why": "Save stores the raw text when JSON.parse fails.",
+    "edits": [
+      {
+        "find": "                if (err) err.textContent = `Not valid JSON: ${x.message}`;\n                ta.focus();\n                return;",
+        "replace": "                v = ta.value;"
+      }
+    ],
+    "spec": "tests/fixtures/gm-store.spec.js",
+    "grep": "Save refuses",
+    "expect": "fail"
+  },
+  {
+    "name": "Cancel saves anyway",
+    "why": "The confirmation is decorative: Cancel runs the pending change.",
+    "edits": [
+      {
+        "find": "        if (act === 'no') { _gms.pending = null; _gmsPaintConfirm(); return; }",
+        "replace": "        if (act === 'no') { const j = _gms.pending; _gms.pending = null; if (j) j.run(); _gmsPaintConfirm(); return; }"
+      }
+    ],
+    "spec": "tests/fixtures/gm-store.spec.js",
+    "grep": "Save refuses",
+    "expect": "fail"
+  },
+  {
+    "name": "a hand-off reads as Other",
+    "why": "_gmsKindOf() loses the snapshot prefix test.",
+    "edits": [
+      {
+        "find": "        if (key.startsWith(_GM_SNAPSHOT_KEY_PREFIX)) return { kind: 'snapshot', group: '' };\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/gm-store.spec.js",
+    "grep": "lists every key",
+    "expect": "fail"
+  },
+  {
+    "name": "the menu row lands after Keyboard Shortcuts",
+    "why": "_TOOLBAR_MENU_ROW_ORDER.view loses the Script storage row.",
+    "edits": [
+      {
+        "find": "'mb-idbo-menu-btn', 'mb-gms-menu-btn', 'mb-shortcuts-help-btn'",
+        "replace": "'mb-idbo-menu-btn', 'mb-shortcuts-help-btn'"
+      }
+    ],
+    "spec": "tests/fixtures/gm-store.spec.js",
+    "grep": "the ways in",
+    "expect": "fail"
+  },
+  {
+    "name": "the Browser cache window is not movable",
+    "why": "_idbOverviewOpen() no longer wires _makeMovableResizable().",
+    "edits": [
+      {
+        "find": "            _idbo.geo.restore();\n",
+        "replace": "            _idbo.geo.destroy();\n"
+      }
+    ],
+    "spec": "tests/fixtures/idb-overview.spec.js",
+    "grep": "drag by the header",
+    "expect": "fail"
+  },
+  {
+    "name": "the Browser cache window's body does not scroll",
+    "why": "The body is not the flex child that shrinks: the foot leaves a resized window.",
+    "edits": [
+      {
+        "find": "            :is(#mb-idb-overview, #mb-gm-store) .mb-idbo-dlg > .mb-idbo-b { flex: 1 1 auto; min-height: 0; overflow: auto; }\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/idb-overview.spec.js",
+    "grep": "drag by the header",
+    "expect": "fail"
+  },
+  {
+    "name": "an empty detail box shows",
+    "why": "The shared .mb-idbo-drill display: grid overrides the hidden attribute.",
+    "edits": [
+      {
+        "find": "            #mb-gm-store .mb-idbo-drill[hidden] { display: none; }\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/gm-store.spec.js",
+    "grep": "lists every key",
+    "expect": "fail"
+  }
+]

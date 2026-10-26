@@ -161,7 +161,9 @@ test.describe('💾 browser cache overview', () => {
         await setupRecordingOf(page);
         const rows = await page.evaluate(() => Array.from(document.querySelectorAll('.mb-saed-group[data-mb-group="view"] .mb-toolbar-menu-item')).map(b => b.id));
         expect(rows.indexOf('mb-idbo-menu-btn'), 'right after Statistics').toBe(rows.indexOf('mb-stats-btn') + 1);
-        expect(rows.indexOf('mb-shortcuts-help-btn'), 'right before Keyboard Shortcuts').toBe(rows.indexOf('mb-idbo-menu-btn') + 1);
+        // 🗄️ Script storage sits between them since 2026-10-26 (gm-store.spec.js).
+        expect(rows.indexOf('mb-gms-menu-btn'), 'then Script storage').toBe(rows.indexOf('mb-idbo-menu-btn') + 1);
+        expect(rows.indexOf('mb-shortcuts-help-btn'), 'before Keyboard Shortcuts').toBe(rows.indexOf('mb-gms-menu-btn') + 1);
         await expect(page.locator('#mb-idbo-menu-btn')).toHaveText('💾 Browser cache');
         await clickToolbarItem(page, '#mb-idbo-menu-btn');
         await expect(row(page, 'images')).toBeVisible();
@@ -207,5 +209,83 @@ test.describe('💾 browser cache overview', () => {
         await page.locator('#mb-async-pop [data-mb-aj-act="__idb"]').click();
         await expect(row(page, 'images')).toBeVisible();
         await expect(page.locator('#mb-async-pop')).toBeHidden();
+    });
+});
+
+// vzell, 2026-10-26: "make the 'Browser cache' window movable and
+// resizable". `_makeMovableResizable()` on `.mb-idbo-dlg`, remembered as
+// `sa_idbo_geometry`. Pinned: a window never moved opens as before and
+// stores nothing; a drag by the header moves it and a corner drag resizes
+// it, and both are APPLIED on reopen (not merely stored); the header's
+// buttons are no drag handle; a stored box larger than the window comes
+// back inside it.
+test.describe('💾 browser cache overview: moved and resized, it remembers where (2026-10-26)', () => {
+    const box = (page) => page.locator('#mb-idb-overview .mb-idbo-dlg');
+    /**
+     * The window's box in viewport pixels, rounded.
+     * @param {import('@playwright/test').Page} page
+     * @returns {Promise<{x: number, y: number, w: number, h: number, pos: string}>}
+     */
+    const boxOf = (page) => box(page).evaluate((el) => {
+        const r = el.getBoundingClientRect();
+        return { x: Math.round(r.left), y: Math.round(r.top), w: Math.round(r.width), h: Math.round(r.height), pos: getComputedStyle(el).position };
+    });
+    const stored = (page) => page.evaluate(() => window.GM_getValue('sa_idbo_geometry', null));
+
+    test('never moved: it opens as before and nothing is stored, also after closing', async ({ page }) => {
+        await setup(page);
+        await open(page);
+        expect((await boxOf(page)).pos).not.toBe('fixed');
+        await page.keyboard.press('Escape');
+        await expect(dlg(page)).toHaveCount(0);
+        expect(await stored(page), 'opening and closing store nothing').toBeNull();
+    });
+
+    test('drag by the header, resize from the corner: closed and reopened, it comes back there at that size', async ({ page }) => {
+        const errors = [];
+        page.on('pageerror', (e) => errors.push(e.message));
+        await setup(page);
+        await open(page);
+        const hb = await page.locator('#mb-idbo-title').boundingBox();
+        const g0 = await boxOf(page);
+        await page.mouse.move(hb.x + 5, hb.y + 5);
+        await page.mouse.down();
+        await page.mouse.move(hb.x + 5 + 30, hb.y + 5 + 15, { steps: 6 });
+        await page.mouse.up();
+        const g1 = await boxOf(page);
+        expect(g1.pos, 'a moved window is fixed').toBe('fixed');
+        expect(g1.x).toBe(g0.x + 30);
+        expect(g1.y).toBe(g0.y + 15);
+        await expect.poll(() => stored(page)).toMatchObject({ left: g1.x, top: g1.y });
+        // The browser's own resize corner, in the strip under the foot.
+        await page.mouse.move(g1.x + g1.w - 4, g1.y + g1.h - 4);
+        await page.mouse.down();
+        await page.mouse.move(g1.x + g1.w - 4 - 120, g1.y + g1.h - 4 - 60, { steps: 6 });
+        await page.mouse.up();
+        await expect.poll(async () => (await boxOf(page)).w).toBe(g1.w - 120);
+        const g2 = await boxOf(page);
+        expect(g2.h).toBe(g1.h - 60);
+        await expect.poll(() => stored(page)).toMatchObject({ width: g2.w, height: g2.h, left: g1.x, top: g1.y });
+        // The body scrolls inside the smaller window; the foot stays in it.
+        const foot = await page.locator('#mb-idb-overview .mb-idbo-f-row').boundingBox();
+        expect(foot.y + foot.height, 'the foot is inside the window').toBeLessThanOrEqual(g2.y + g2.h);
+        // ✕ in the header closes: a press on a button is no drag.
+        await page.locator('#mb-idb-overview [data-idbo="close"]').click();
+        await expect(dlg(page)).toHaveCount(0);
+        await open(page);
+        expect(await boxOf(page), 'reopened where it was left, at that size').toEqual({ ...g2, pos: 'fixed' });
+        expect(errors).toEqual([]);
+    });
+
+    test('a stored geometry larger than the window comes back inside it', async ({ page }) => {
+        await setup(page, { sa_idbo_geometry: { top: 5000, left: 5000, width: 9000, height: 9000 } });
+        await open(page);
+        const g = await boxOf(page);
+        const vp = page.viewportSize();
+        expect(g.pos).toBe('fixed');
+        expect(g.x).toBeGreaterThanOrEqual(0);
+        expect(g.y).toBeGreaterThanOrEqual(0);
+        expect(g.x + g.w).toBeLessThanOrEqual(vp.width);
+        expect(g.y + g.h).toBeLessThanOrEqual(vp.height);
     });
 });
