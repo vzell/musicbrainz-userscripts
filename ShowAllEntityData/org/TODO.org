@@ -4893,7 +4893,7 @@ create a nice dialog window (like what we do for the "Browser cache" window) for
 store key/values
 
 
-* todo
+* TODO todo
 ** 1
 
 The branch is merged and pushed to main, which is now at 9.99.1463 (@version 9.99.1463+2026-10-26). One step failed: GitHub refused to delete the remote branch, so claude/keen-planck-t1lm8l is still on origin.
@@ -4930,7 +4930,7 @@ nothing is lost.
 
 The mirror repo vzell/mb-userscripts hasn’t been published to, so the HELP changes aren’t live for users yet. Run scripts/check-publish-ready.py before your next publish.
 
-** 2
+** TODO 2
 
 The flaky Wikipedia test in popup-ext.spec.js is still open; it fails about 1 run in 3–4, on main too.
 
@@ -5050,19 +5050,14 @@ The regression run is finished. Of 341 tests, 332 passed and 9 failed, but the s
 
 I also reran the 8 genre tests (1 page type, 4 popup, plus 3 existing relationship-table tests the filter picked up) against the final code, including the tightened genre-page URL match, and all pass. Nothing new needs committing; the branch is already pushed.
 
+
 ** TODO add /genres
 
 add a reader for https://musicbrainz.org/genres
 
 
-* TODO fix MB collection pages when "mb. COLLECTION HIGHLIGHTER" from @jesus2099 is active
-
-fix MB collection pages, e.g. https://musicbrainz.org/user/ApeKattQuest%2C%20MonkeyPython/collections when the
-third-party userscript "mb. COLLECTION HIGHLIGHTER" from @jesus2099 is active
-
-
 * TODO fix MB collection pages
-** initial
+** DONE initial
 
 1.)
 
@@ -5123,23 +5118,35 @@ On the FRP each sub-table should get an additional column named "Privacy" with t
 
 show me a nice rich HTML web page with mockups before implementing
 
-** questions
+** DONE questions
 
 Item 6: the value is spelled Private in English. Your note said "Privat"; say if you want that spelling instead.
 Item 1: sa_dp_window_read_ahead stays off unless you say otherwise.
 Items 2–4: is the jesus2099 list complete, or are there variants you want added or left out?
 
-** answers
+** DONE answers
 
 Item 6: the value is spelled Private in English:  "Private" is OK
 Item 1: sa_dp_window_read_ahead stays off unless you say otherwise: It should also bo ON
 Items 2–4: is the jesus2099 list complete, or are there variants you want added or left out: The list is complete
 
+** TODO Two things are still open:
+
+Probe script: please run scripts/probe-edit-search-presets.py once from your machine, since musicbrainz.org was blocked here.
+Publishing: HELP changed in this release, so it needs publishing to the vzell/mb-userscripts mirror (scripts/check-publish-ready.py before you copy).
+
+
+
+* TODO fix MB collection pages when "mb. COLLECTION HIGHLIGHTER" from @jesus2099 is active
+
+fix MB collection pages, e.g. https://musicbrainz.org/user/ApeKattQuest%2C%20MonkeyPython/collections when the
+third-party userscript "mb. COLLECTION HIGHLIGHTER" from @jesus2099 is active
 
 
 * TODO add new features
 
-add the following new new features:
+add the following new features, but store the plan in @org/MB-POH-sync-withDiscogs.org first, so I can resume on another
+machine (locally in claude code) as we probably don't have enough tokens to finish of in this cloude code session
 
 1.)
 
