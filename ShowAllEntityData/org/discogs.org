@@ -3,7 +3,7 @@
 ** master and releases
 
 
-* TODO On D master POH allow "Ctrl"-click for multi-select for "Format", "Country" and "Released" buttons
+* DONE On D master POH allow "Ctrl"-click for multi-select for "Format", "Country" and "Released" buttons
 
 1.)
 
@@ -14,7 +14,7 @@ On D master POH allow "Ctrl"-click for multi-select for "Format", "Country", "Re
 #+end_example
 
 
-* TODO remove the native artist popup text box tooltip on D PTs when on the IP
+* DONE remove the native artist popup text box tooltip on D PTs when on the IP
 
 remove the native Discogs artist popup text box tooltip on D PTs when on the IP
 
@@ -39,7 +39,7 @@ D: Master
 
 on D release PTs do not show sub-tables which have zero rows initially
 
-* TODO On Discogs entity POHs the left and right side information should be swapped
+* DONE On Discogs entity POHs the left and right side information should be swapped
 
 On Discogs entity POHs the left and right side information should be swapped
 

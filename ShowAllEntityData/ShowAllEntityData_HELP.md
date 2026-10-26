@@ -2641,8 +2641,13 @@ once and without Tampermonkey asking first:
   adds one line saying what its window holds ("8 tracks · 64 credits · 12
   companies · 12 identifiers · 5 images").
 
-  The **window** (Space) shows what the Discogs page shows, at no extra cost:
-  all images (a click opens the artwork viewer, ← → step through them), the
+  The **window** (Space) shows what the Discogs page shows, at no extra cost.
+  The left column is the information: the title and pictures, the link,
+  *Discogs says* and, for a release, the companies, credits, identifiers and
+  videos. The right column, the wider one, is the content: the tracklist and
+  notes, a master's versions, an artist's discography, a label's releases.
+  On a narrow screen the two columns become one, information first. The window
+  holds all images (a click opens the artwork viewer, ← → step through them), the
   **Tracklist** with each track's credits (closed at first: *▸ 7 credits*
   opens one track, *Show all track credits* every one), the **Notes**, and
   for a release also **Companies, etc.**, **Credits** (with the tracks they
@@ -2664,7 +2669,11 @@ once and without Tampermonkey asking first:
   nothing more. A bar shows each hundred (hatched: from the cache, green:
   loaded, red: failed, which a button asks again). Filter the versions by
   typing, or by the chips for format, country and decade (their counts cover
-  every version, loaded or not), and sort by a column heading. The master's
+  every version, loaded or not), and sort by a column heading. A click on a
+  chip shows only that value; **Ctrl-click** (⌘-click on a Mac) adds a value
+  or takes it out again, so *Vinyl* and *CD* together show either format.
+  Chips of different kinds narrow each other (*Vinyl or CD*, and *UK*); a line
+  above the table says what is chosen, and *Clear filters* lifts them all. The master's
   main release and a release this page links are marked. A version's label
   links Discogs' label search for that name, in a new tab: the list of
   versions names a label without saying which one. A click on a version
@@ -2678,11 +2687,13 @@ once and without Tampermonkey asking first:
   *Show it all* for a long one), every image — the ones behind Discogs'
   *More images* too — and, under *Discogs says*, the real name, members,
   groups, aliases and name variations, or the parent label; then the sites,
-  and for a label its contact info and sublabels. The card shows how many
+  and for a label its contact info and its **Sublabels** as a table: 25 a
+  page with ‹ › to turn the pages, a filter, and sorting by name or by status
+  (active or not). The card shows how many
   images there are and, once a window has read it, how big the discography
   or the label's list is.
 
-  Below, an artist's **Discography** is split as on Discogs: **Releases**,
+  On the right, an artist's **Discography** is split as on Discogs: **Releases**,
   **Appearances** (on releases, on tracks), **Unofficial** and **Credits**,
   each a table you can close, sort by a heading and filter (by typing, or
   *Masters* / *Releases*). Discogs lists the discography by role and then by
@@ -2707,6 +2718,15 @@ once and without Tampermonkey asking first:
   a second. The token is sent only to Discogs, shows as dots in the settings,
   is never written into a saved configuration file, and loading one leaves
   your token as it is.
+
+  On discogs.com, a **MusicBrainz link inside the window** (a label's or an
+  artist's site, a link in a release's notes) shows MusicBrainz's own card
+  on a hover and opens in the same window on a click (*Back* returns);
+  Ctrl-click opens musicbrainz.org in a new tab. A MusicBrainz label's card
+  and window show when it was founded and ended, its label code, rating, IPI
+  and ISNI, and the window also lists its people, places and series (up to
+  12 of each kind, then "+N more"). While these previews are on, Discogs'
+  own hover box on an artist name stays away, so the two never overlap.
 - A Discogs release's **edit history** (a link to its history page,
   `discogs.com/release/…/history`): the card shows the last change, how many
   changes there were and the data quality; the window lists every change —

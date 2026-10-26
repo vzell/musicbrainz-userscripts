@@ -1212,8 +1212,20 @@ test.describe('the Discogs window (2026-10-17)', () => {
         await expect(c, 'the new facts are the window\'s only').not.toContainText('Data quality');
         await page.keyboard.press('Space');
         const d = dialog(page);
-        await expect(d.locator('.mb-dg-xh')).toHaveText(['Images 5', 'Tracklist 8', 'Notes', 'Companies, etc. 12', 'Credits 18',
+        await expect(d.locator('.mb-dg-xh')).toHaveText(['Images 5', 'Companies, etc. 12', 'Credits 18',
+            'Barcode and Other Identifiers 12', 'Videos 3', 'Tracklist 8', 'Notes']);
+        // Sides swapped (2026-10-26): the info under the pictures on the
+        // left, the tracklist and notes on the right, the right one wider.
+        const cols = d.locator('.mb-dp-x.mb-dg-swap > .mb-dp-col');
+        await expect(cols).toHaveCount(2);
+        await expect(cols.nth(0).locator('.mb-dg-xh')).toHaveText(['Images 5', 'Companies, etc. 12', 'Credits 18',
             'Barcode and Other Identifiers 12', 'Videos 3']);
+        await expect(cols.nth(1).locator('.mb-dg-xh')).toHaveText(['Tracklist 8', 'Notes']);
+        await expect(cols.nth(0).locator(':scope > h4', { hasText: /^Link$/ }), 'Link on the left').toHaveCount(1);
+        await expect(cols.nth(0).locator(':scope > h4', { hasText: /^Discogs says$/ }), '"Discogs says" on the left').toHaveCount(1);
+        await expect(cols.nth(1).locator(':scope > h4')).toHaveCount(0);
+        const [w0, w1] = await cols.evaluateAll(cs => cs.map(c => c.getBoundingClientRect().width));
+        expect(w0 / w1, 'the columns 0.7 : 1.3').toBeCloseTo(0.7 / 1.3, 1);
         expect((await xhrFull(page)).map(r => r.url), 'no request more than the card\'s').toEqual(['https://api.discogs.com/releases/1874253']);
         await expect(d).toContainText(`${DG_REL.community.have.toLocaleString('en-US')} have · ${DG_REL.community.want.toLocaleString('en-US')} want`);
         await expect(d).toContainText('Needs Vote');
@@ -1281,6 +1293,9 @@ test.describe('the Discogs window (2026-10-17)', () => {
         await expect(vers.locator('.mb-dg-counts').first()).toHaveText('100 of 387 loaded');
         expect(await dgVersionsLog(page), 'page 1 only').toEqual([DGV[0]]);
         await expect(d.locator('.mb-dg-xh')).toHaveText(['Images 7', 'Tracklist 8', 'Notes', 'Versions 387']);
+        // The versions in the right column under the tracklist (2026-10-26), no full-width part.
+        await expect(d.locator('.mb-dp-x.mb-dg-swap > .mb-dp-col').nth(1).locator('.mb-dg-xh')).toHaveText(['Tracklist 8', 'Notes', 'Versions 387']);
+        await expect(d.locator('.mb-dg-full')).toHaveCount(0);
         await expect(vers.locator('.mb-dg-bar i')).toHaveCount(4);
         await expect(vers.locator('.mb-dg-bar i.mb-dg-seg-loaded')).toHaveCount(1);
         await expect(vers.locator('tbody tr')).toHaveCount(100);
@@ -1314,6 +1329,36 @@ test.describe('the Discogs window (2026-10-17)', () => {
         await expect(vers.locator('tbody tr td:nth-child(4)')).toHaveText(Array(37).fill('Japan'));
         await vers.locator('.mb-dg-fc[data-mb-dg-v="Japan"]').click();
         await expect(vers.locator('tbody tr')).toHaveCount(387);
+
+        // Ctrl-click adds a chip (2026-10-26): OR inside a facet, AND across
+        // facets; a plain click keeps only its own value.
+        const vCountries = await vers.locator('tbody tr td:nth-child(4)').allTextContents();
+        const nOf = (c) => vCountries.filter(x => x === c).length;
+        const other = await vers.locator('.mb-dg-fc[data-mb-dg-f="country"]').nth(1).getAttribute('data-mb-dg-v');
+        const second = other === 'Japan' ? await vers.locator('.mb-dg-fc[data-mb-dg-f="country"]').nth(0).getAttribute('data-mb-dg-v') : other;
+        await vers.locator('.mb-dg-fc[data-mb-dg-v="Japan"]').click();
+        await vers.locator(`.mb-dg-fc[data-mb-dg-f="country"][data-mb-dg-v="${second}"]`).click({ modifiers: ['Control'] });
+        await expect(vers.locator('.mb-dg-fc[aria-pressed="true"]')).toHaveCount(2);
+        await expect(vers.locator('tbody tr')).toHaveCount(nOf('Japan') + nOf(second));
+        await expect(vers.locator('.mb-dg-picked')).toHaveText(`Showing Country: Japan or ${second}`);
+        const fmt = vers.locator('.mb-dg-fc[data-mb-dg-f="format"]').first();
+        const fmtName = await fmt.getAttribute('data-mb-dg-v');
+        await fmt.click({ modifiers: ['Control'] });
+        await expect(vers.locator('.mb-dg-picked')).toHaveText(`Showing Format: ${fmtName} — and — Country: Japan or ${second}`);
+        const both = await vers.locator('tbody tr td:nth-child(4)').allTextContents();
+        expect(both.length, 'AND across facets: fewer rows').toBeLessThanOrEqual(nOf('Japan') + nOf(second));
+        expect(both.every(c => c === 'Japan' || c === second), 'only the two countries').toBe(true);
+        // Ctrl-click takes one out; a plain click keeps only its own value.
+        await vers.locator('.mb-dg-fc[data-mb-dg-v="Japan"]').click({ modifiers: ['Control'] });
+        await expect(vers.locator('.mb-dg-fc[aria-pressed="true"]')).toHaveCount(2);
+        await fmt.click({ modifiers: ['Control'] });
+        await vers.locator('.mb-dg-fc[data-mb-dg-v="Japan"]').click();
+        await expect(vers.locator('.mb-dg-fc[aria-pressed="true"]')).toHaveCount(1);
+        await expect(vers.locator('.mb-dg-fc[aria-pressed="true"]')).toHaveAttribute('data-mb-dg-v', 'Japan');
+        await expect(vers.locator('tbody tr')).toHaveCount(nOf('Japan'));
+        await vers.getByRole('button', { name: 'Clear filters' }).click();
+        await expect(vers.locator('tbody tr')).toHaveCount(387);
+        await expect(vers.locator('.mb-dg-fc[aria-pressed="true"]')).toHaveCount(0);
 
         // The sort ORDERS the rows (years ascending by default; a click on
         // Year descends; versions of no year stay last either way).
@@ -1541,7 +1586,10 @@ test.describe('the Discogs artist and label windows (2026-10-18)', () => {
         expect(await dgListLog(page), 'page 1 only').toEqual([DGA.pages[0]]);
         // Page 1 holds Main, the credits and the first Appearances: Releases
         // and Credits are complete (a later role has arrived), Appearances not.
-        await expect(d.locator('.mb-dg-xh')).toHaveText(['Profile', 'Images 3', 'Sites 3', 'Releases 2', 'Appearances 89 so far',
+        // Sides swapped (2026-10-26): the discography is the right column.
+        await expect(d.locator('.mb-dp-x.mb-dg-swap > .mb-dp-col').nth(1).locator(':scope > [data-mb-dg-disco="artist"]')).toHaveCount(1);
+        await expect(d.locator('.mb-dp-x.mb-dg-swap > .mb-dp-col').nth(0).locator('.mb-dg-xh')).toHaveText(['Profile', 'Sites 3', 'Images 3']);
+        await expect(d.locator('.mb-dg-xh')).toHaveText(['Profile', 'Sites 3', 'Images 3', 'Releases 2', 'Appearances 89 so far',
             'On releases 89 so far', 'On tracks …', 'Unofficial …', 'Credits 9', 'Producer 7', 'Mixed by 2']);
         await expect(disco.locator('.mb-dg-c.mb-dg-sofar')).toHaveCount(4);
         await expect(disco.locator('[data-mb-dg-sec="a-TrackAppearance"]')).toContainText('Not loaded yet');
@@ -1572,7 +1620,7 @@ test.describe('the Discogs artist and label windows (2026-10-18)', () => {
         await expect(disco.locator('.mb-dg-counts').first()).toHaveText('528 of 528 loaded', { timeout: DG_RUN_MS });
         await expect(disco.locator('.mb-dg-pill').first()).toHaveText('Done');
         expect(await dgListLog(page), 'one after the other, each once').toEqual(DGA.pages);
-        await expect(d.locator('.mb-dg-xh')).toHaveText(['Profile', 'Images 3', 'Sites 3', 'Releases 2', 'Appearances 431',
+        await expect(d.locator('.mb-dg-xh')).toHaveText(['Profile', 'Sites 3', 'Images 3', 'Releases 2', 'Appearances 431',
             'On releases 424', 'On tracks 7', 'Unofficial 86', 'Credits 9', 'Producer 7', 'Mixed by 2']);
         await expect(disco.locator('.mb-dg-c.mb-dg-sofar')).toHaveCount(0);
         await expect(disco.locator('.mb-dg-bar i.mb-dg-seg-loaded')).toHaveCount(6);
@@ -1711,10 +1759,36 @@ test.describe('the Discogs artist and label windows (2026-10-18)', () => {
         // The profile's label references by id link the label's page.
         await expect(d.locator('[data-mb-dg-sec="profile"] a[href="https://www.discogs.com/label/112015"]')).toHaveText('label 112015');
         await expect(d.locator('.mb-dg-xh', { hasText: 'Contact info' })).toBeVisible();
-        const subs = d.locator('[data-mb-dg-sec="sublabels"]');
-        await expect(subs.locator('.mb-dg-names a')).toHaveCount(24);
-        await subs.getByRole('button', { name: '+193 more' }).click();
-        await expect(subs.locator('.mb-dg-names a')).toHaveCount(217);
+        // Sides swapped (2026-10-26): the releases are the right column,
+        // the sublabels a table with a pager on the left.
+        const cols = d.locator('.mb-dp-x.mb-dg-swap > .mb-dp-col');
+        await expect(cols.nth(1).locator(':scope > [data-mb-dg-disco="label"]')).toHaveCount(1);
+        const subs = cols.nth(0).locator('[data-mb-dg-sec="sublabels"]');
+        const subRows = subs.locator('table.mb-dg-subt tbody tr');
+        await expect(subRows).toHaveCount(25);
+        await expect(subs.locator('.mb-dg-pager span')).toHaveText('1–25 of 217');
+        await expect(subs.getByRole('button', { name: 'Previous page' })).toBeDisabled();
+        const firstName = await subRows.first().locator('a').textContent();
+        await subs.getByRole('button', { name: 'Next page' }).click();
+        await expect(subs.locator('.mb-dg-pager span')).toHaveText('26–50 of 217');
+        await expect(subRows.first().locator('a')).not.toHaveText(firstName);
+        // Sorted by name: the page's names in order.
+        const names = await subRows.locator('td:first-child').evaluateAll(tds => tds.map(td => td.textContent));
+        expect(names).toEqual([...names].sort((a, b) => a.localeCompare(b, undefined, { numeric: true })));
+        // Name descending, back to page 1.
+        await subs.locator('th[data-mb-dg-ssort="name"]').click();
+        await expect(subs.locator('th[data-mb-dg-ssort="name"]')).toHaveAttribute('aria-sort', 'descending');
+        await expect(subs.locator('.mb-dg-pager span')).toHaveText('1–25 of 217');
+        // The filter: the field keeps its focus, page 1 of the matches.
+        const sq = subs.locator('.mb-dg-sq');
+        await sq.fill('Columbia');
+        await expect(sq).toBeFocused();
+        const nMatch = await subRows.count();
+        expect(nMatch).toBeGreaterThan(0);
+        expect((await subRows.locator('td:first-child').allTextContents()).every(n => /columbia/i.test(n))).toBe(true);
+        await sq.fill('');
+        await expect(subRows).toHaveCount(25);
+        await expect(subs.getByRole('button', { name: /more/ })).toHaveCount(0);
 
         await rel.getByRole('button', { name: 'Load 5 more pages (500 releases, about 5 s)' }).click();
         await expect(rel.locator('.mb-dg-counts').first()).toHaveText('600 of 396,611 loaded · one segment = 100 releases', { timeout: 20000 });

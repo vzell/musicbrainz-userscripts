@@ -99,6 +99,7 @@ const WS2_FIXTURES = [
         new RegExp(`/ws/2/release-group\\?artist=[0-9a-f-]{36}&type=${t}&`), `ws2-pop-artist-bruce-rg-${t}.json`]),
     [/\/ws\/2\/label\/[0-9a-f-]{36}\?inc=genres/, 'ws2-pop-label-columbia.json'],
     [/\/ws\/2\/label\/[0-9a-f-]{36}\?inc=url-rels/, 'ws2-pop-label-columbia-pin.json'],
+    [/\/ws\/2\/label\/[0-9a-f-]{36}\?inc=artist-rels/, 'ws2-pop-label-columbia-more.json'],
     [/\/ws\/2\/release\?label=/, 'ws2-pop-label-columbia-count.json'],
     ...Object.entries(AREA_CHAIN_FIXTURES).map(([id, f]) => [new RegExp(`/ws/2/area/${id}\\?inc=area-rels&`), f]),
     [/\/ws\/2\/area\/[0-9a-f-]{36}\?/, 'ws2-pop-area-nj.json'],
@@ -1201,9 +1202,24 @@ test.describe('MusicBrainz link previews: artist, label, area, instrument (WIP.3
         await ctrlHover(page, labelLink(page));
         await expect(card(page)).toContainText('fetched now');
         await expect(card(page).locator('.mb-tt-pill')).toContainText(['Imprint', 'LC 00162', 'United States', '1887 –']);
-        expect(log.ws2).toEqual([expect.stringContaining('/ws/2/label/011d1192-6f65-45bd-85c4-0400dd45693e?inc=genres+aliases&fmt=json')]);
+        expect(log.ws2).toEqual([expect.stringContaining('/ws/2/label/011d1192-6f65-45bd-85c4-0400dd45693e?inc=genres+ratings+aliases&fmt=json')]);
+        // The card's fields since 2026-10-26 (org/discogs.org 4b): Founded and
+        // the label code as rows too (Columbia has no IPI, ISNI or rating).
+        await expect(card(page).locator('.mb-dp-kv dt')).toContainText(['Founded', 'Label code', 'Genres', 'Also known as']);
+        await expect(card(page).locator('.mb-dp-kv')).toContainText('LC 00162');
         await page.keyboard.press('Space');
         const area = dialog(page).locator('.mb-dp-area');
+        // The window's facts, and its people, places and series (one more
+        // lookup; 14 recording contracts capped at 12, "+2 more").
+        await expect(area.locator('.mb-dp-kv').first().locator('dt')).toContainText(['Area', 'Founded', 'Label code', 'Releases']);
+        const more = area.locator('h4:text-is("People, places and series") + .mb-dp-kv');
+        await expect(more).toContainText('Artist 12');
+        await expect(more).not.toContainText('Artist 13');
+        await expect(more).toContainText('+2 more');
+        await expect(more).toContainText('Founder 01');
+        await expect(more).toContainText('Studio 01');
+        await expect(more).toContainText('Series 01');
+        expect(log.ws2.filter(u => u.includes('inc=artist-rels+place-rels+series-rels'))).toHaveLength(1);
         const related = area.locator('h4:text-is("Related labels") + .mb-dp-kv');
         await expect(related).toContainText('Vocalion');
         for (const name of ['Owns', 'Owned by', 'Imprint of']) {
@@ -2276,7 +2292,7 @@ test.describe('MusicBrainz link previews: Catalog# → its label (Phase 4)', () 
         await expect(card(page).locator('.mb-tt-title')).toHaveText('Columbia');
         await expect(card(page).locator('.mb-tt-pill')).toContainText(['LC 00162']);
         expect(log.lookups.map(l => l.url)).toEqual([expect.stringContaining(`/ws/2/release/${REL_ID}?${INC}`)]);
-        expect(log.ws2).toEqual([expect.stringContaining('/ws/2/label/011d1192-6f65-45bd-85c4-0400dd45693e?inc=genres+aliases')]);
+        expect(log.ws2).toEqual([expect.stringContaining('/ws/2/label/011d1192-6f65-45bd-85c4-0400dd45693e?inc=genres+ratings+aliases')]);
         await page.keyboard.press('Space');
         await expect(dialog(page).locator(':scope > div > span').first()).toHaveText('Catalog number');
         await expect(dialog(page).locator('h4:text-is("Related labels") + .mb-dp-kv')).toContainText('Vocalion');
