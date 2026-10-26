@@ -26248,3 +26248,36 @@ Spec: discogs-pages "Discogs' own section headings under our tables"
 (Discogs' markup injected into the fixture's `#app`). Mutations
 `scripts/mutations/discogs-section-headings.json`: 3, all fail as expected.
 Not checked live: a React re-render of a section after our toggle.
+
+## 2026-10-26 — genre pages: `genre-overview` pageType and the `genre` link preview (branch claude/keen-planck-t1lm8l, WIP.1)
+
+Env: 2026-10-26T02:24+01:00 · vm (Claude cloud session) · Ubuntu 24.04.5 LTS (Linux 6.18.44-fc-v153) · Playwright 1.63.0 Chromium headless shell · no Tampermonkey (GM stubs)
+
+Snapshot: `debug/genre-initial.html` (IP of https://musicbrainz.org/genre/883d75d5-1365-46ee-8cbe-d3ae2facdd93,
+roots rock; the `<div id="page">` only, uploaded by the user). What it shows:
+`.genreheader h1`; h2 "Associated tags" + a `table.details` ("Primary tag:" →
+`/tag/roots%20rock`); h2.wikipedia + the extract (server-rendered,
+`.wikipedia-extract-body`); an empty `div.annotation`; `h2.relationships` + two
+`table.details` — genres (subgenre of: rock; subgenres: tex-mex; influenced
+by: blues, country, r&b) and URLs (other databases: rateyourmusic; Wikidata),
+each URL followed by an "[info]" `/url/<MBID>` link. Sidebar: external links,
+Open edits / Editing history, "Found in 2 user collections", Last updated —
+no `dl.properties`, so no "Sidebar as tables" fallback for this pageType.
+
+1. **pageType `genre-overview`** = `instrument-overview` with `ownLabel: 'Genre'`;
+   `applyRelDetailsToTables()` reads only the lists under `h2.relationships`,
+   so the tag table stays native without any new code. `@include` gains `genre`.
+2. **Link preview kind `genre`**, read from the page (`_mbParseGenrePage()`),
+   not from `/ws/2/genre/<MBID>`: musicbrainz.org was not reachable from this
+   container (agent proxy: connect_rejected), so the WS answer could not be
+   probed; `scripts/probe-mb-genre-lookup.py` is written and untested. The page
+   also has what the lookup lacks (primary tag, extract, collections count).
+   `_MB_POP_PATH_RE` + `_MB_POP_EDITS_RE`/`_EDITLIST_RE`/`_ENTITY_LIST_RE` name
+   `genre`; `_MB_POP_PAGE_VERSION` 3 → 4 because `_mbParseEditPage()` and
+   `_mbParseCollectionPage()` read the same pattern and now keep genres.
+
+Specs: `rel-tables-pages.spec.js` "genre: …", `popup-mb.spec.js` "genres, read
+from the page" (4). Mutations `scripts/mutations/genre.json`: 5, all fail as
+expected. Not checked live: the user's three example pages (collections list,
+a genre collection, `/tag/roots%20rock`) in a real browser; a genre
+collection page has no fixture, so its card's genre rows are untested.

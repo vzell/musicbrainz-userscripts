@@ -70,6 +70,7 @@ const PAGES = {
     place: ['https://musicbrainz.org/place/6a59a67c-fcc5-491f-949c-bfc45bc97463', 'Show all Relationships for Place'],
     area: ['https://musicbrainz.org/area/489ce91b-6658-3307-9877-795b68554c98', 'Show all Relationships for Area'],
     instrument: ['https://musicbrainz.org/instrument/a1baa57d-6ab4-461e-89df-448d6fd2c597', 'Show all Relationships for Instrument'],
+    genre: ['https://musicbrainz.org/genre/883d75d5-1365-46ee-8cbe-d3ae2facdd93', 'Show all Relationships for Genre'],
     series: ['https://musicbrainz.org/series/f4818e95-a515-4821-ad6d-270703f72dcf', 'Show all Relationships for Series'],
     work: ['https://musicbrainz.org/work/1f573511-eb4b-3106-8fb2-f15de52e4868', 'Show all Relationships for Work'],
     'label-rels': ['https://musicbrainz.org/label/0b805b9c-ea03-4fc1-b50d-6dcef76433e0/relationships', 'Show all Relationship lists for Label'],
@@ -186,6 +187,36 @@ test.describe('relationship tables: overview pageTypes (WIP.6)', () => {
         const g = await groups(page);
         expect(sizes(g)).toEqual([['Instruments', 1], ['URLs', 3]]);
         expect(rowBy(g.Instruments, 'Instrument', 'guitar family')).toMatchObject({ Relationship: 'part of', Disambiguation: 'DO NOT USE' });
+    });
+
+    // genre-overview (2026-10-26, rel-genre-overview.html: roots rock, the
+    // page as MusicBrainz sends it, wrapped by scripts/build-genre-overview-fixture.py).
+    // Pins: the page has its one button (match + @include-free fixture
+    // injection); its genre lists become ONE "Genres" table with every phrase
+    // as the Relationship, the URLs their own table; and the "Associated
+    // tags" table.details (under its own h2, not h2.relationships) is left
+    // native, so the primary tag is neither a row nor gone. Counting rows
+    // alone passes on a converter that also swallowed the tag table (its
+    // one link is a /tag/, not a genre), so the tag table is asserted too.
+    test('genre: subgenre of / subgenres / influenced by as one Genres table; Associated tags stays native', async ({ page }) => {
+        await open(page, 'genre', { press: false });
+        expect(await page.evaluate(() => Array.from(document.querySelectorAll('button[data-label]')).map((b) => b.dataset.label)))
+            .toEqual(['Show all Relationships for Genre']);
+        await page.click('button[data-label="Show all Relationships for Genre"]');
+        await waitForRenderComplete(page, { waitForAutoResize: false });
+        const g = await groups(page);
+        expect(sizes(g)).toEqual([['Genres', 5], ['URLs', 2]]);
+        expectAligned(g);
+        expect(rowBy(g.Genres, 'Genre', 'rock').Relationship).toBe('subgenre of');
+        expect(rowBy(g.Genres, 'Genre', 'tex-mex').Relationship).toBe('subgenres');
+        expect(g.Genres.rows.filter((r) => r[g.Genres.heads.indexOf('Relationship')] === 'influenced by')
+            .map((r) => r[g.Genres.heads.indexOf('Genre')])).toEqual(['blues', 'country', 'r&b']);
+        expect(rowBy(g.URLs, 'Relationship', 'Wikidata').Site).toBe('wikidata.org');
+        const st = await page.evaluate(() => {
+            const t = Array.from(document.querySelectorAll('#content table.details')).find((x) => /Primary tag/.test(x.textContent));
+            return { tagTable: !!t, tag: t ? t.querySelector('a[href^="/tag/"]').textContent : '' };
+        });
+        expect(st, 'the primary tag table is not a relationship list').toEqual({ tagTable: true, tag: 'roots rock' });
     });
 });
 
