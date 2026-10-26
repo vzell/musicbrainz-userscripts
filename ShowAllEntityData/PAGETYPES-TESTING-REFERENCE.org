@@ -530,7 +530,8 @@ lists converted into sortable tables), tableMode =multi=.
 - Match: ~/\/user\/.*\/collections/~
 - Button: "Show all Collections for User"
 - tableMode: multi
-- Features exercised: =groupByH3=
+- Features exercised: =groupByH3=, =mergeCollaborativeCollections= (2026-10-26: the "Collaborative collections" h2 folded into the first by h3, a Privacy column on every table, per-table =data-mb-col-headers=)
+- Fixture spec: =tests/fixtures/user-collections-collaborative.spec.js= (/user/ApeKattQuest, MonkeyPython/collections)
 
 ** 41. release-collections
 - URL: [[https://musicbrainz.org/release/1d404e1d-fcb6-3a52-b478-e706e893c897/collections][/release/REL_BTR/collections]]

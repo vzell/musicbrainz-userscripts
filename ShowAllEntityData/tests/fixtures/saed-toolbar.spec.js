@@ -165,7 +165,9 @@ test.describe('the SAED button', () => {
         expect(groups.help, 'Settings before Help (approved)').toEqual(['mb-settings-btn', 'mb-app-help-btn']);
         expect(groups.log).toEqual(['mb-saed-whatsnew-btn', 'mb-saed-devlog-btn']);
         expect(groups.load, 'the Load group is for narrow screens only').toBeUndefined();
-        expect(Object.keys(groups)).toEqual(['attn', 'data', 'view', 'help', 'log']);
+        // Editing history: this page is about one artist (2026-10-26).
+        expect(groups.hist).toEqual(['mb-saed-hist-btn', 'mb-saed-annot-btn']);
+        expect(Object.keys(groups)).toEqual(['attn', 'data', 'view', 'hist', 'help', 'log']);
         await expect(page.locator(`${PANEL} .mb-saed-foot`)).toContainText('Installed');
     });
 

@@ -46,9 +46,12 @@ rules for each new one:
   is unaffected with the MusicBrainz fixture suite, not just the new site's
   specs. When in doubt, add a host-scoped branch instead of generalising
   shared behaviour.
-- **Opt-in, off by default.** Each site gets its own `sa_enable_<site>`
-  checkbox with `default: false`. Its gate exits before anything visible
-  happens on that host, and its `pageDefinitions` entries carry `host:` so
+- **Its own switch, on by default.** Each site gets its own
+  `sa_enable_<site>` checkbox. Until 2026-10-26 it was `default: false`;
+  since then every non-MB site setting defaults to `true` except
+  `sa_bb_sidebar_right` and the `… on touch devices` ones (vzell), so a
+  new site's switch starts `true` too. Its gate exits before anything
+  visible happens on that host when it is off, and its `pageDefinitions` entries carry `host:` so
   that `_foreignHost` keeps them out of MusicBrainz detection, and keeps
   MusicBrainz definitions out of the foreign site's detection.
 - **Own topic doc.** Each site gets a `docs/claude/<site>.md` and a row in the
@@ -229,6 +232,11 @@ shape:
                                       // the intro <p> gets its count (finalCleanup())
         foldAnonymousSubscribers: true, // editor/<entity>-subscribers: same for "Plus N
                                       // other anonymous users" (finalCleanup())
+        mergeCollaborativeCollections: true, // user-collections: later h2 sections folded
+                                      // into the first by h3, a Privacy column on every
+                                      // table, per-table data-mb-col-headers
+                                      // (applyMergeCollaborativeCollections(); live,
+                                      // fetched and disk-load docs)
 
         // Column pipeline:
         columnExtractors: [ { extractor: 'name', sourceColumn: 'Col', syntheticColumns: ['A','B'] } ],
@@ -467,7 +475,7 @@ Before proposing a fix for a rendering or 'element not appearing' bug, first con
 | `.mb-tt-liner`                                             | The one look of every floating tooltip (`#mb-stat-tooltip`, the cover-art card, the Relationships panels, the Ctrl+M overlay); rows use `.mb-tt-title`/`-body`/`-foot`/`-comment`/`-dim`/`-rule`/`-pill`/`-alert`, never inline colours                                                                                    |
 | `img.mb-ii-icon` / `[data-ii-processed]`                   | Third-party ("Instrument Icons Everywhere", @Lotheric): its icon BEFORE an instrument link, and its stamp ON the link. Copy such a link only via `_cloneInstrumentAnchorWithIcon()`; never strip the stamp from a copy that has its icon (see docs/claude/release-tracks-and-length.md)                                    |
 | `#mb-saed-bar` / `.mb-saed-area[data-mb-area]`             | The SAED button: the h1 controls as ONE segmented button in four areas (actions, disc, attn, menu); `.mb-seg` segments, `.mb-saed-first` on the first visible area. Place a control via `_orderToolbar()`/`_saedAreaFor()` (docs/claude/toolbar-and-header-ui.md, "The SAED button")                                       |
-| `#mb-saed-menu-btn` / `.mb-saed-group[data-mb-group]`      | ☰ SAED and its groups (load, attn, data, view, help, log); a group is `_saedGroup(key)` in `_toolbarMenus` with `isGroup`, so `_toolbarInvoke()` opens the menu for its rows; `.mb-toolbar-menu-inline`: a submenu opened in place                                                                                         |
+| `#mb-saed-menu-btn` / `.mb-saed-group[data-mb-group]`      | ☰ SAED and its groups (load, attn, data, view, hist, help, log); a group is `_saedGroup(key)` in `_toolbarMenus` with `isGroup`, so `_toolbarInvoke()` opens the menu for its rows; `.mb-toolbar-menu-inline`: a submenu opened in place                                                                                         |
 | `.mb-seg-running` / `.mb-seg-rendering`                    | The action segment a fetch runs in: blue fill to `--p`, "■ Stop · n / N", a click is Stop (`_saedRequestStop()`); then striped while rendering. Only `_saedRunStart()`/`_saedRunEnd()` set and clear them (docs/claude/toolbar-and-header-ui.md, "The SAED button")                                                        |
 | `#mb-fetch-missing-menu-btn` / `#mb-resume-fetch-btn`      | The 🔄 indicator a failed fetch leaves (`fetch-missing` in `_SAED_INDICATORS`) and its "↻ Load the N missing pages" row; synced to `_resumeState` by `_createResumeFetchButton()`                                                                                                                                          |
 
@@ -507,8 +515,8 @@ userscript reads that file.
 - **`secret: true` (`sa_pop_ext_discogs_token`) never leaves the profile**:
   not exported, never set or blanked by an import, masked in the dialog,
   never logged.
-- A fixture profile is not pristine (`FIXTURE_SETTINGS_OVERRIDE` forces eleven
-  settings off; a spec that needs a schema default back seeds the key as
+- A fixture profile is not pristine (`FIXTURE_SETTINGS_OVERRIDE` forces
+  seventeen settings off; a spec that needs a schema default back seeds the key as
   `undefined`).
 
 Full text: `docs/claude/settings-and-config.md`; design history:
@@ -660,7 +668,10 @@ The harness lives under `tests/`; how to run each suite and what it costs:
   `sa_enable_release_tracks_cover_art`, `sa_event_overview_event_art` and the
   five link-preview keys (`sa_pop_mb`, `sa_pop_mb_page`, `sa_pop_ext`,
   `sa_dp_hover_without_ctrl`, `sa_event_rg_tooltip_without_ctrl`),
-  `sa_async_pop_auto_open` and `sa_bb_mb_event_lookup` OFF
+  `sa_async_pop_auto_open`, `sa_bb_mb_event_lookup` and
+  the six foreign-site feature keys (`sa_sl_detail_preview`,
+  `sa_jl_detail_preview`, `sa_bs_detail_preview`, `sa_bb_detail_preview`,
+  `sa_sl_compact_nav`, `sa_dp_window_read_ahead`; default on since 2026-10-26) OFF
   — a "cannot reproduce" means nothing until they are back on. Seeding a key
   as `undefined` in `settingsOverride` un-seeds it (the schema default).
 

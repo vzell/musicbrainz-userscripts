@@ -1,0 +1,67 @@
+[
+    {
+        "name": "hist presets: the jesus2099 relationship form not negated",
+        "why": "Relationship edits are NOT (any condition fails): or, negation=1, every = turned into !=.",
+        "edits": [
+            {
+                "find": "                onBase([typeCond([rel])].concat(rel.link ? [linkCond(rel)] : []), { negate: true }), { indent: 1, wait: WAIT });",
+                "replace": "                onBase([typeCond([rel])].concat(rel.link ? [linkCond(rel)] : [])), { indent: 1, wait: WAIT });"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb-hist-presets.spec.js",
+        "grep": "J2:",
+        "expect": "fail"
+    },
+    {
+        "name": "hist presets: logged-in editor never found",
+        "why": "Own / Edits by others / not voted exist only with a session, read from the header's account menu.",
+        "edits": [
+            {
+                "find": "        const m = a && /\\/user\\/([^/?#]+)/.exec(a.getAttribute('href') || '');",
+                "replace": "        const m = null && a;"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb-hist-presets.spec.js",
+        "grep": "OTHERS:|NOVOTE:",
+        "expect": "fail"
+    },
+    {
+        "name": "hist presets: the refine link not read from the /edits page",
+        "why": "Every search preset builds on the entity's own Refine this search (its row id).",
+        "edits": [
+            {
+                "find": "            entries, refine: _mbEditsRefineOf(content),",
+                "replace": "            entries, refine: '',"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb-hist-presets.spec.js",
+        "grep": "LOGGEDOUT:",
+        "expect": "fail"
+    },
+    {
+        "name": "hist presets: the window's ▾ shown for an editor too",
+        "why": "An editor's history has no presets: the ▾ is an entity's only.",
+        "edits": [
+            {
+                "find": "            const withMore = !!subj && !subj.startsWith('user/');",
+                "replace": "            const withMore = !!subj;"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb-hist-presets.spec.js",
+        "grep": "EDITOR:",
+        "expect": "fail"
+    },
+    {
+        "name": "hist presets: no SAED group",
+        "why": "The SAED menu's Editing history group exists on a page about one entity.",
+        "edits": [
+            {
+                "find": "    // Editing history: the entity this page is about (`_saedHistoryGroup()`).\n    _saedHistoryGroup();\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb-hist-presets.spec.js",
+        "grep": "SAED:",
+        "expect": "fail"
+    }
+]

@@ -138,6 +138,7 @@ The **☰ SAED menu** has these groups, with a line between them:
 | **Needs attention** | the same lists as the 🔄, ❌ and ⚠️ parts on the bar                           |
 | **Data**            | 💾 Save to Disk · 📂 Load from Disk · 📤 Export ▸ (CSV, JSON, Org-Mode, HTML) |
 | **View**            | 📏 Density · 📊 Statistics · 💾 Browser cache · 🗄️ Script storage · 🎹 Keyboard Shortcuts |
+| **Editing history** | ✎ Entity history ▸ · 📝 Annotation history (on a page about one entity, e.g. an artist) |
 | **Help**            | ⚙️ Settings · ❓ Help ↗ (this page, on GitHub)                                 |
 | **Changelog**       | 📜 What's new ↗ · 🗒 Full development log ↗ (both on GitHub)                   |
 
@@ -1671,12 +1672,12 @@ you automatically.
 | 📅 Release events column                        | Enable the asynchronous release-events column                                                                                                                                                                                                                         |
 | ⏱️ Resource timing                               | Cache-hint indicators and where they appear                                                                                                                                                                                                                           |
 | 🔤 Unicode picker                               | Enable, shortcut key, and the glyph table                                                                                                                                                                                                                             |
-| 🎸 springsteenlyrics.com                        | Switch on the springsteenlyrics.com collection and bootleg lists (off by default); see [Page-specific behaviour](#page-specific-behaviour)                                                                                                                            |
-| 🔤 Titles on the other sites                    | Titles in MusicBrainz style and with typographic punctuation on the Springsteen sites (both on by default); see [Page-specific behaviour](#page-specific-behaviour)                                                                                                   |
-| 🌴 jungleland.it                                | Switch on the jungleland.it bootleg artwork list (off by default); see [Page-specific behaviour](#page-specific-behaviour)                                                                                                                                            |
-| 💿 brucespringsteen.it                          | Switch on the brucespringsteen.it record database (off by default); see [Page-specific behaviour](#page-specific-behaviour)                                                                                                                                           |
-| 📚 Brucebase                                    | Switch on the Brucebase song list, Relations and Recent changes and, separately, its year pages (all off by default); see [Page-specific behaviour](#page-specific-behaviour)                                                                                         |
-| 💿 Discogs                                      | Switch on discogs.com's master, release, artist, label, submissions, user and ratings pages (off by default), and the MusicBrainz column with murdos' importer userscript (on; its automatic lookups on); see [Page-specific behaviour](#page-specific-behaviour)                                                                                                          |
+| 🎸 springsteenlyrics.com                        | Switch on the springsteenlyrics.com collection and bootleg lists (on by default); see [Page-specific behaviour](#page-specific-behaviour)                                                                                                                             |
+| 🔤 Titles on the other sites                    | Titles in MusicBrainz style and with typographic punctuation on the Springsteen sites (both on by default); see [Page-specific behaviour](#page-specific-behaviour)                                                                                                    |
+| 🌴 jungleland.it                                | Switch on the jungleland.it bootleg artwork list (on by default); see [Page-specific behaviour](#page-specific-behaviour)                                                                                                                                             |
+| 💿 brucespringsteen.it                          | Switch on the brucespringsteen.it record database (on by default); see [Page-specific behaviour](#page-specific-behaviour)                                                                                                                                            |
+| 📚 Brucebase                                    | Switch on the Brucebase song list, Relations and Recent changes and, separately, its year pages (all on by default); see [Page-specific behaviour](#page-specific-behaviour)                                                                                          |
+| 💿 Discogs                                      | Switch on discogs.com's master, release, artist, label, submissions, user and ratings pages (on by default), and the MusicBrainz column with murdos' importer userscript (on; its automatic lookups on); see [Page-specific behaviour](#page-specific-behaviour)                                                                                                          |
 | 🔎 Link previews on MusicBrainz                 | The master switch of every link preview and the one for the page before a button is pressed; the cards of the links on MusicBrainz pages (on by default; on a phone or tablet off unless you tick the *… on touch devices* boxes), how long their answers are kept, the release group window's size; see [Page-specific behaviour](#page-specific-behaviour)     |
 | 🔎 Every preview                                | Show the MusicBrainz link previews and the Springsteen sites' detail-page previews on a plain hover (on by default), or only while Ctrl is held                                                                                                                       |
 
@@ -2249,6 +2250,14 @@ when the profile has it, *Tags and ratings*. The counts sort as numbers, so
 *Edit Notes* list, highlights, flags) are left as they are and never copied
 into the tables.
 
+**An editor's collections** (`/user/<name>/collections`) show as one
+*Collections* section, one sub-table per kind (*Artist collections*, *Release
+collections*, …). Collections from MusicBrainz's *Collaborative collections*
+section join the sub-table of the same kind instead of a section of their own.
+Every sub-table has a **Privacy** column. The collaborative rows keep the value
+MusicBrainz shows (e.g. *Public*); the others read *Private*. Each sub-table
+keeps its own column names (*Artists*, *Recordings*, …).
+
 </details>
 
 <details>
@@ -2480,6 +2489,27 @@ links have their cards too.
     no ✎ Editing history of its own.
   - So does the sidebar's **Open edits** link, titled *Open edits*: the edits
     of that entity still in their voting period.
+  - **✎ Editing history ▾**: the ▾ next to the button lists ready-made views
+    of the entity's edits, each shown in the window and titled after itself.
+    The same list is the ☰ SAED menu's *Editing history* → *Entity history ▸*
+    on the entity's own pages:
+    - *All edits*, *Own edits*, *Edits by others*, *Open edits*, *Open edits
+      by others*;
+    - jesus2099's searches from his *SUPER MIND CONTROL Ⅱ X TURBO*: *Only
+      this entity's edits* (without the edits of its releases, recordings and
+      so on), *Pure … edits*, on a release *without art* and *art only*,
+      *Relationship edits* with *Post-NGS* and *Pre-NGS* (before or after
+      2011-05-17), *Effective edits* (open or applied) and *Edits I have not
+      voted on*. The ones built on edit types exist for artists, labels,
+      recordings, releases and release groups;
+    - *Annotation history*.
+
+    The first time, the list reads the entity's editing history page (one
+    request, the same one *All edits* uses), because the searches need the
+    entity's number from it; until then those rows show "…". Logged out, the
+    rows about your own edits and votes are left out. Ctrl-click or
+    middle-click a row to open MusicBrainz's own page in a new tab. An
+    editor's window has no ▾.
 - **A track named differently from its recording.** With jesus2099's
   *mb. INLINE STUFF* installed, a track whose name differs from its recording's
   carries a note with both names. The browser used to show that note in its
@@ -2536,7 +2566,7 @@ links have their cards too.
     **Space** opens the viewer on them (*Viewer: … · every image of it*).
   - **← Back** and **‹ ›** name where they go when you rest on them.
   - *In the window, read a link ahead while the pointer rests on it* (same
-    section, off by default) reads a MusicBrainz link after a moment's rest,
+    section, on by default) reads a MusicBrainz link after a moment's rest,
     so the click shows it at once; such links get a small green dot. Links to
     other sites are never read ahead.
   - On a touch screen a tap stays a click; a **long press** shows the link's
@@ -2823,9 +2853,9 @@ Relationships column.
 <details>
 <summary>springsteenlyrics.com collection, bootleg and lyrics lists</summary>
 
-Not a MusicBrainz page at all, and **off until you switch it on**: ⚙️ Settings →
+Not a MusicBrainz page at all, and **on unless you switch it off**: ⚙️ Settings →
 *🎸 springsteenlyrics.com* → *Enable on springsteenlyrics.com collection and
-bootleg lists*. Settings are shared, so you can switch it on from a MusicBrainz
+bootleg lists*. Settings are shared, so you can switch it off or on from a MusicBrainz
 page or from the Tampermonkey menu on springsteenlyrics.com itself. While it is
 off, the script leaves that site's pages untouched.
 
@@ -2852,7 +2882,7 @@ on by default) — everything above the table stays where it is while you
 scroll sideways: the site's header and breadcrumb, the toolbar, the category
 and filter buttons and the list's heading bar.
 
-**A compact category and filter bar** (off by default): ⚙️ Settings → *🎸
+**A compact category and filter bar** (on by default): ⚙️ Settings → *🎸
 springsteenlyrics.com* → *Compact category and filter bar on
 springsteenlyrics.com lists*. On a collection list the site's rows of
 category, format, country, album, year and copies buttons become one row of
@@ -3037,9 +3067,9 @@ click opens the viewer either way.
 <details>
 <summary>jungleland.it bootleg artwork list</summary>
 
-Not a MusicBrainz page either, and **off until you switch it on**: ⚙️ Settings
+Not a MusicBrainz page either, and **on unless you switch it off**: ⚙️ Settings
 → *🌴 jungleland.it* → *Enable on the jungleland.it bootleg artwork list*.
-Settings are shared, so you can switch it on from a MusicBrainz page or from
+Settings are shared, so you can switch it off or on from a MusicBrainz page or from
 the Tampermonkey menu on jungleland.it itself. While it is off, the script
 leaves that site's pages untouched.
 
@@ -3099,9 +3129,9 @@ The Art column and the preview read the same page, once.
 <details>
 <summary>brucespringsteen.it record database</summary>
 
-Not a MusicBrainz page either, and **off until you switch it on**: ⚙️ Settings
+Not a MusicBrainz page either, and **on unless you switch it off**: ⚙️ Settings
 → *💿 brucespringsteen.it* → *Enable on the brucespringsteen.it record
-database*. Settings are shared, so you can switch it on from a MusicBrainz
+database*. Settings are shared, so you can switch it off or on from a MusicBrainz
 page or from the Tampermonkey menu on brucespringsteen.it itself. While it is
 off, the script leaves that site's pages untouched.
 
@@ -3153,9 +3183,9 @@ that button by itself.
 <details>
 <summary>Brucebase song list</summary>
 
-Not a MusicBrainz page either, and **off until you switch it on**: ⚙️ Settings
+Not a MusicBrainz page either, and **on unless you switch it off**: ⚙️ Settings
 → *📚 Brucebase* → *Enable on the Brucebase song list*. Settings are shared,
-so you can switch it on from a MusicBrainz page or from the Tampermonkey menu
+so you can switch it off or on from a MusicBrainz page or from the Tampermonkey menu
 on Brucebase itself. While it is off, the script leaves the wiki's pages
 untouched.
 
@@ -3195,8 +3225,8 @@ images on hover* switches the card off; a click opens the viewer either way.
 Brucebase lists everything Bruce Springsteen did in a year (shows, studio
 sessions, rehearsals, interviews, cancelled dates) on one page per year:
 `https://brucebase.wikidot.com/1975`, …, `/2026`, and `/1949-64` for the years
-before. These pages have a switch of their own, **off until you switch it
-on**: ⚙️ Settings → *📚 Brucebase* → *Enable on the Brucebase year pages
+before. These pages have a switch of their own, **on unless you switch it
+off**: ⚙️ Settings → *📚 Brucebase* → *Enable on the Brucebase year pages
 (event lists)*. It needs *Enable on the Brucebase song list* on as well. While
 either is off, the script leaves the year pages untouched.
 
@@ -3242,7 +3272,7 @@ entry, with these columns:
   Ticket, Setlist, Storyteller, News, Memorabilia, Eyewitness, Video, Audio,
   Bootleg, LiveDL, Retail, Featured. Rest the pointer on an icon for its name.
   Type a name in the column filter (e.g. "Bootleg"), or pick one from the 📊
-  list, to see the entries that have it. **Photo, Ticket, Setlist, News and
+  list, where each name shows its icon, to see the entries that have it. **Photo, Ticket, Setlist, News and
   Memorabilia are ringed** when the entry has a page of its own: pointing at
   one shows a card with those images from that page (photos, tickets,
   handwritten setlists, passes, newspaper clippings); a click opens the artwork viewer on them, with every
@@ -3385,7 +3415,7 @@ twice.
 <details>
 <summary>discogs.com: masters, releases, artists, labels, submissions, users and ratings</summary>
 
-With ⚙️ Settings → *💿 Discogs* → *Enable on discogs.com* on (off by
+With ⚙️ Settings → *💿 Discogs* → *Enable on discogs.com* on (on by
 default), a master, release, artist or label page on discogs.com gets a
 section of its own above Discogs' page, with the toolbar and these buttons:
 
@@ -3629,7 +3659,7 @@ page's scans on jungleland.it, a record's tracklist on brucespringsteen.it, a
 song's history on Brucebase. The preview shows that detail without leaving
 the table.
 
-It is **off until you switch it on**, for each site separately, right under
+It is **on unless you switch it off**, for each site separately, right under
 that site's own switch in ⚙️ Settings:
 
 | Site                     | Setting                                                      | The card shows                                                                                                                                              |

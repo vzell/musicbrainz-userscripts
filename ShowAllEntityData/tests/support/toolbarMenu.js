@@ -46,6 +46,7 @@ const TOOLBAR_MENU_BUTTON = {
     log: SAED_MENU_BUTTON,
     attn: SAED_MENU_BUTTON,
     load: SAED_MENU_BUTTON,
+    hist: SAED_MENU_BUTTON,
     disc: '#mb-disc-menu-btn',
     'findings-warn': '#mb-findings-warn-menu-btn',
     'findings-error': '#mb-findings-error-menu-btn',
@@ -54,6 +55,8 @@ const TOOLBAR_MENU_BUTTON = {
 /** Submenu short name → the row of the SAED menu that opens it. */
 const TOOLBAR_SUBMENU_ROW = {
     export: '#mb-export-btn',
+    // The Editing history group's "Entity history ▸" (panel #mb-saed-hist-sub-panel).
+    'saed-hist': '#mb-saed-hist-btn',
 };
 
 /**

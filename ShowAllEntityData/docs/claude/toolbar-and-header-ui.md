@@ -286,7 +286,10 @@ approved mockup; `_saedRunStart()` … `_saedRunEnd()`, state in `_saedRun`):
 
 **The ☰ SAED menu** (`_saedMenu()`, key `saed`) holds GROUPS, in this order
 (`_SAED_GROUPS`): Load (narrow screens only), Needs attention, Data, View,
-Help, Changelog; the installed version is its foot. A group is NOT a menu: it
+Editing history (on a page about one entity only: `_saedHistoryGroup()`'s
+"✎ Entity history ▸" submenu `hist-presets` and "📝 Annotation history",
+docs/claude/detail-pages.md, "Entity-history presets"), Help, Changelog; the
+installed version is its foot. A group is NOT a menu: it
 is a menu-shaped descriptor from `_saedGroup(key)` registered in
 `_toolbarMenus` with `isGroup`, whose `adopt()` puts a row in the group,
 whose `open()`/`close()` are the SAED menu's, and whose `btn` is the ☰ SAED

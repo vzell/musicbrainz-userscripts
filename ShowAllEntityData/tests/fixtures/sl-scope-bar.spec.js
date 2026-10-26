@@ -87,8 +87,16 @@ function wallTexts(page, param) {
 const query = (href) => Object.fromEntries(new URL(href).searchParams);
 
 test.describe('sl compact category/filter bar', () => {
-    test('off by default: no bar, every wall shown', async ({ page }) => {
-        await loadSlListPage(page, { kind: 'collection' });
+    test('on by default (since 2026-10-26): the schema default shows the bar', async ({ page }) => {
+        // The fixture profile forces the bar off (FIXTURE_SETTINGS_OVERRIDE);
+        // `undefined` un-seeds the key, so configSchema's default applies.
+        await loadSlListPage(page, { kind: 'collection', settingsOverride: { sa_sl_compact_nav: undefined } });
+        await expect(page.locator('h1.mb-sl-h1')).toBeVisible();
+        await expect(page.locator('.mb-sl-scope')).toHaveCount(1);
+    });
+
+    test('off: no bar, every wall shown', async ({ page }) => {
+        await loadSlListPage(page, { kind: 'collection', settingsOverride: { sa_sl_compact_nav: false } });
         await expect(page.locator('h1.mb-sl-h1')).toBeVisible();
         await expect(page.locator('.mb-sl-scope')).toHaveCount(0);
         await expect(page.locator('.mb-sl-nav-hidden')).toHaveCount(0);

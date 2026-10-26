@@ -82,7 +82,7 @@ async function loadBbSongsPage(page, { enabled = true, titles = false, settingsO
  * @param {string} year Which fixture: '2026', '1968', '1985' or '2018'.
  * @param {{ enabled?: boolean, years?: boolean, titles?: boolean, settingsOverride?: Object<string, *> }} [opts]
  *   `enabled` seeds `sa_enable_brucebase`, `years` seeds `sa_bb_year_pages`
- *   (both default `true`; both settings themselves default to OFF).
+ *   (both default `true`; both settings themselves default to ON since 2026-10-26).
  *   `titles` seeds `sa_foreign_mb_titles` and `sa_foreign_typography`
  *   (default `false` here, although both settings default to ON: these
  *   loaders serve the converter specs, which pin the site's text as
