@@ -1,0 +1,67 @@
+[
+  {
+    "name": "Discogs window not swapped",
+    "why": "org/discogs.org 1a/2/3a: without swap the generic Link / Discogs says blocks are on the right again and the tracklist on the left.",
+    "edits": [
+      {
+        "find": "        const swap = !!(readerParts && readerParts.swap);",
+        "replace": "        const swap = false;"
+      }
+    ],
+    "spec": "tests/fixtures/popup-ext.spec.js",
+    "grep": "a release: its sections from the one answer",
+    "expect": "fail"
+  },
+  {
+    "name": "Ctrl-click replaces instead of adding",
+    "why": "org/discogs.org 3b: a Ctrl-click on a master's facet chip must add its value (OR inside the facet).",
+    "edits": [
+      {
+        "find": "        if (add) return cur.includes(v) ? cur.filter(x => x !== v) : cur.concat(v);",
+        "replace": "        if (add && false) return cur;"
+      }
+    ],
+    "spec": "tests/fixtures/popup-ext.spec.js",
+    "grep": "a master: no versions from a hover",
+    "expect": "fail"
+  },
+  {
+    "name": "sublabels pager stuck on page 1",
+    "why": "org/discogs.org 4a: the pager's next button must move the table to the next 25.",
+    "edits": [
+      {
+        "find": "        case 'subnext':\n            ui.subPage++;",
+        "replace": "        case 'subnext':\n            ui.subPage += 0;"
+      }
+    ],
+    "spec": "tests/fixtures/popup-ext.spec.js",
+    "grep": "a label: page 1 newest first",
+    "expect": "fail"
+  },
+  {
+    "name": "MusicBrainz link in the window not drilled",
+    "why": "org/discogs.org 1b/4b: without _dgMbWinTarget() in _dpDrill() the click opens a new tab and the window keeps showing the link.",
+    "edits": [
+      {
+        "find": "        const dgMb = _dgMbWinTarget(a, cur);\n        if (dgMb) {",
+        "replace": "        const dgMb = null;\n        if (dgMb) {"
+      }
+    ],
+    "spec": "tests/fixtures/discogs-mb-column.spec.js",
+    "grep": "a MusicBrainz link in the window",
+    "expect": "fail"
+  },
+  {
+    "name": "Discogs' own artist hover not stopped",
+    "why": "org/discogs.org 0: the hover events of an #app artist link must stop at document.",
+    "edits": [
+      {
+        "find": "            if (!a || !a.closest('#app') || !_popSettingOn('sa_pop_ext')) return;\n            e.stopPropagation();",
+        "replace": "            if (!a || !a.closest('#app') || !_popSettingOn('sa_pop_ext')) return;"
+      }
+    ],
+    "spec": "tests/fixtures/discogs-mb-column.spec.js",
+    "grep": "no hover event reaches #app",
+    "expect": "fail"
+  }
+]

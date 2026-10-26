@@ -498,3 +498,88 @@ test.describe('discogs.com: MusicBrainz cards for the MusicBrainz icons (2026-10
         expect(errors).toEqual([]);
     });
 });
+
+// org/discogs.org 1b/4b (vzell, 2026-10-26): a musicbrainz.org link INSIDE
+// the window on discogs.com (a Discogs label's Sites, a release's Notes, a
+// MusicBrainz window's own links) shows MusicBrainz's card on a hover and
+// opens in the window on a click, instead of a new tab.
+test.describe('discogs.com: MusicBrainz links inside the window (2026-10-26)', () => {
+    test('a MusicBrainz link in the window: its card on a hover, the window on a click, Back returns', async ({ page }) => {
+        const { errors } = await openDg(page, 'release', { settings: { sa_pop_mb: true } });
+        await press(page, 'Show tracklist, credits and other versions');
+        await settled(page);
+        await expandAll(page);
+        await answerArtistCards(page);
+        await ctrlHover(page, mbCell(sub(page, 'Credits'), 'artist/219986').locator('a.mb-dg-mb-link'));
+        await expect(page.locator('#mb-dp-peek')).toContainText('Bruce Springsteen');
+        await page.keyboard.press('Space');
+        const dialog = page.locator('#mb-dp-dialog');
+        await expect(dialog.locator('.mb-dp-area')).toContainText('Bruce Springsteen');
+        // The window's own requests answered (a repaint would drop the probe link).
+        await expect.poll(() => dialog.locator('.mb-dp-area .mb-dp-spin').count(), { timeout: 15000 }).toBe(0);
+        // A link as a Discogs window carries it (target=_blank, absolute).
+        await page.evaluate((id) => {
+            const a = document.createElement('a');
+            a.id = 'probe-mb-link';
+            a.href = `https://musicbrainz.org/artist/${id}`;
+            a.target = '_blank';
+            a.textContent = 'Mike Appel';
+            document.querySelector('#mb-dp-dialog .mb-dp-area .mb-dp-col').appendChild(a);
+        }, MB.appel);
+        const link = dialog.locator('#probe-mb-link');
+        let opened = 0;
+        page.context().on('page', () => { opened++; });
+        await page.evaluate(() => { window.__mbCardAsked = []; });
+        await ctrlHover(page, link);
+        await expect(page.locator('#mb-dp-peek')).toBeVisible();
+        await expect.poll(() => page.evaluate(() => window.__mbCardAsked.length), { message: 'the card asks MusicBrainz' }).toBeGreaterThan(0);
+        expect((await page.evaluate(() => window.__mbCardAsked))[0]).toMatch(new RegExp(`^https://musicbrainz\\.org/ws/2/artist/${MB.appel}\\?`));
+        await page.keyboard.press('Escape');
+        await link.click();
+        await expect(dialog.locator('#probe-mb-link'), 'the window shows the link\'s entity').toHaveCount(0);
+        await expect(dialog.locator('.mb-dp-area')).toContainText('Bruce Springsteen');
+        expect(opened, 'no new tab').toBe(0);
+        // Back: the entity it came from (its markup again, without the probe).
+        await page.keyboard.press('Backspace');
+        await expect(dialog.locator('.mb-dp-area')).toContainText('Bruce Springsteen');
+        expect(errors).toEqual([]);
+    });
+});
+
+// org/discogs.org item 0 (vzell, 2026-10-26): Discogs' own artist hover
+// card stays off an artist link of its page while our preview covers it.
+test.describe('discogs.com: Discogs\' own artist hover card (2026-10-26)', () => {
+    /**
+     * Records the hover events a listener inside `#app` (where Discogs'
+     * React root listens) sees on an artist link of the page.
+     *
+     * @param {import('@playwright/test').Page} page
+     * @returns {Promise<string[]>} The events seen after a hover.
+     */
+    async function hoverSeen(page) {
+        await page.evaluate(() => {
+            window.__appSaw = [];
+            const app = document.getElementById('app');
+            ['mouseover', 'mouseenter', 'pointerover'].forEach(t => app.addEventListener(t, (e) => {
+                if (e.target.closest && e.target.closest('a[href^="/artist/"]')) window.__appSaw.push(t);
+            }, true));
+        });
+        await page.mouse.move(0, 0);
+        const a = page.locator('#app a[href^="/artist/219990"]').first();
+        await a.scrollIntoViewIfNeeded();
+        await a.hover();
+        return page.evaluate(() => window.__appSaw);
+    }
+
+    test('with the link previews on, no hover event reaches #app; with them off, Discogs gets its hover', async ({ page }) => {
+        const { errors } = await openDg(page, 'release', { settings: { sa_pop_ext: true } });
+        expect(await hoverSeen(page), 'Discogs never sees the hover').toEqual([]);
+        expect(errors).toEqual([]);
+    });
+
+    test('with the link previews off, Discogs\' page sees the hover as before', async ({ page }) => {
+        const { errors } = await openDg(page, 'release', { settings: { sa_pop_ext: false } });
+        expect(await hoverSeen(page)).toEqual(expect.arrayContaining(['mouseover', 'pointerover']));
+        expect(errors).toEqual([]);
+    });
+});

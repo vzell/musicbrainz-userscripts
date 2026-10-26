@@ -16572,7 +16572,42 @@
         // a picture's hover card and viewer.
         _dgAvatarInit();
         _dgAvatarUiInstall();
+        _dgMuteNativeArtistHover();
         return h1;
+    }
+
+    /**
+     * The hover events Discogs' own artist card listens for (React's
+     * onMouseEnter / onPointerEnter are built from the `*over` / `*out`
+     * pair at its root, `#app`).
+     * @type {string[]}
+     */
+    const _DG_NATIVE_HOVER_EVENTS = ['mouseover', 'mouseout', 'mouseenter', 'mouseleave', 'pointerover', 'pointerout', 'pointerenter', 'pointerleave'];
+
+    /**
+     * Keeps Discogs' own artist hover card off an artist link of its page
+     * (org/discogs.org item 0, vzell 2026-10-26) while our link preview
+     * covers that link (`sa_pop_ext`): our card and Discogs' would sit on
+     * top of each other. The hover events of `#app a[href*="/artist/"]`
+     * stop at `document` in the capture phase, so they never reach the
+     * React root inside `#app`. Every listener the script has on `document`
+     * runs anyway: a stop never skips the other listeners of the node it is
+     * on, and all of ours there are capture listeners. Discogs' card markup
+     * is not known (no snapshot of it), so nothing is hidden by selector.
+     * Installed once, from `_dgPrepareLivePage()`; the setting is read per
+     * event, so turning previews off brings Discogs' card back.
+     *
+     * @returns {void}
+     */
+    function _dgMuteNativeArtistHover() {
+        if (_dgMuteNativeArtistHover.done) return;
+        _dgMuteNativeArtistHover.done = true;
+        const stop = (e) => {
+            const a = e.target instanceof Element ? e.target.closest('a[href*="/artist/"]') : null;
+            if (!a || !a.closest('#app') || !_popSettingOn('sa_pop_ext')) return;
+            e.stopPropagation();
+        };
+        _DG_NATIVE_HOVER_EVENTS.forEach(type => document.addEventListener(type, stop, true));
     }
 
     /**
@@ -17823,6 +17858,27 @@
             },
             stepId: (a) => a.getAttribute('href'),
         };
+    }
+
+    /**
+     * A musicbrainz.org entity link inside the window on discogs.com (a
+     * Discogs label's or artist's Sites, a release's Notes, a MusicBrainz
+     * window's own links made absolute by `_dgMbAbs()`) as a target of the
+     * window: the `dg-mb` source's card and window (`_dgMbSource()`), so
+     * hovering shows MusicBrainz's card and a click opens it in the window
+     * instead of a new tab (2026-10-26, org/discogs.org 1b/4b). Null
+     * elsewhere, with `sa_pop_mb` off, or for what the window already shows.
+     *
+     * @param {HTMLAnchorElement} a
+     * @param {?object} cur - What the window shows now.
+     * @returns {?object} The target, `drilled`.
+     */
+    function _dgMbWinTarget(a, cur) {
+        if (!_isDgHost || !a || !cur) return null;
+        const src = _popSources().find(x => x.id === 'dg-mb');
+        if (!src || !src.enabled()) return null;
+        const r = src.resolve(a);
+        return r && r.key !== cur.key ? Object.assign({ src, el: a, drilled: true }, r) : null;
     }
 
     /**
@@ -23872,8 +23928,9 @@
      * (`_mbPopTarget()` with `inWindow`), and only while they are on
      * (`sa_pop_mb`); and, on a foreign host, a link to one of the host's
      * own detail pages with its preview on (`_dpSiteForUrl()`: a Brucebase
-     * song, event, venue or person in a section, 2026-10-24). A link to
-     * what the window already shows does nothing.
+     * song, event, venue or person in a section, 2026-10-24); and, on
+     * discogs.com, a musicbrainz.org entity link (`_dgMbWinTarget()`,
+     * 2026-10-26). A link to what the window already shows does nothing.
      *
      * @param {MouseEvent} e - A click in the window's scroll area.
      * @returns {boolean} Whether the click drilled down.
@@ -23889,6 +23946,13 @@
             e.preventDefault();
             _dpDialog.stack.push(cur);
             _dpShowInDialog({ src: siteSrc, el: a, drilled: true, key: a.href, url: a.href, table: null });
+            return true;
+        }
+        const dgMb = _dgMbWinTarget(a, cur);
+        if (dgMb) {
+            e.preventDefault();
+            _dpDialog.stack.push(cur);
+            _dpShowInDialog(dgMb);
             return true;
         }
         const src = _popSources().find(x => x.id === 'mb-entity');
@@ -24085,7 +24149,7 @@
      * new tab), or null for something no link or the window's Live page.
      *
      * - `here`: a MusicBrainz entity link while the entity cards are on
-     *   (`_dpDrill()`'s test), or any link a reader takes in a Discogs-family
+     *   (`_dpDrill()`'s test; on discogs.com `_dgMbWinTarget()`), or any link a reader takes in a Discogs-family
      *   window (`_extDgDrill()`'s, `t.reader.onAreaClick`);
      * - an in-page anchor (`#…`) and a script link are none of them;
      * - with `pointer`, an image link counts only on its `<img>`: a link's
@@ -24114,6 +24178,8 @@
             const r = _mbPopTarget(a, { inWindow: true });
             if (r && r.key !== cur.key) return { kind: 'here', a, t: Object.assign({ src: mb, el: a, drilled: true }, r) };
         }
+        const dgMb = _dgMbWinTarget(a, cur);
+        if (dgMb) return { kind: 'here', a, t: dgMb };
         if (cur.reader && cur.reader.onAreaClick) {
             const r = _extTarget(a, { inWindow: true });
             if (r && r.key !== cur.key) return { kind: 'here', a, t: Object.assign({ src: cur.src, el: a, drilled: true }, r) };
@@ -26858,8 +26924,11 @@
                 color: #2b2622;
                 font: 13.5px/1.5 Georgia, "Times New Roman", Times, serif;
             }
+            /* The Discogs window (2026-10-26): info on the left, the content and
+               its lists on the right, so the right column is the wider one. */
+            .mb-dp-dialog .mb-dp-x.mb-dg-swap { grid-template-columns: minmax(0, 0.7fr) minmax(0, 1.3fr); }
             @media (max-width: 640px) {
-                .mb-dp-dialog .mb-dp-x { grid-template-columns: minmax(0, 1fr); }
+                .mb-dp-dialog .mb-dp-x, .mb-dp-dialog .mb-dp-x.mb-dg-swap { grid-template-columns: minmax(0, 1fr); }
             }
             .mb-dp-dialog .mb-dp-col { min-width: 0; }
             .mb-dp-dialog .mb-dp-xtitle { font-weight: 700; font-size: 1.2em; line-height: 1.3; }
@@ -27085,7 +27154,7 @@
             .mb-dp-dialog .mb-dg-fc[aria-pressed="true"] .mb-dg-n { color: #d9cfbd; }
             .mb-dp-dialog .mb-dg-fc.mb-dg-more { color: #2f5f9e; border-style: dashed; }
             .mb-dp-dialog .mb-dg-vtools { margin: 6px 0; }
-            .mb-dp-dialog .mb-dg-vq, .mb-dp-dialog .mb-dg-aq, .mb-dp-dialog .mb-dg-lq { font: 13.5px Georgia, "Times New Roman", serif; padding: 3px 8px; border: 1px solid #d9cfbd; border-radius: 3px; width: min(340px, 100%); background: #fff; color: #2b2622; }
+            .mb-dp-dialog .mb-dg-vq, .mb-dp-dialog .mb-dg-aq, .mb-dp-dialog .mb-dg-lq, .mb-dp-dialog .mb-dg-sq { font: 13.5px Georgia, "Times New Roman", serif; padding: 3px 8px; border: 1px solid #d9cfbd; border-radius: 3px; width: min(340px, 100%); background: #fff; color: #2b2622; }
             .mb-dp-dialog .mb-dg-vwrap { overflow: auto; max-height: 460px; border: 1px solid #d9cfbd; border-radius: 3px; background: #fff; }
             .mb-dp-dialog .mb-dg-vt { width: 100%; border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; }
             .mb-dp-dialog .mb-dg-vt th {
@@ -27113,6 +27182,7 @@
             .mb-dp-dialog .mb-dg-sites { font: 12px ui-monospace, Consolas, monospace; word-break: break-all; }
             .mb-dp-dialog .mb-dg-contact { white-space: pre-wrap; }
             .mb-dp-dialog .mb-dg-disco { border-top: 1px solid #d9cfbd; padding-top: 10px; }
+            .mb-dp-dialog .mb-dp-col > .mb-dg-disco:first-child { border-top: 0; padding-top: 0; }
             .mb-dp-dialog .mb-dg-disco > h3 { margin: 0 0 6px; font: 600 12px system-ui, -apple-system, "Segoe UI", Arial, sans-serif; letter-spacing: 0.08em; text-transform: uppercase; color: #2b2622; }
             .mb-dp-dialog .mb-dg-disco .mb-dg-sec h4 { margin: 12px 0 4px; }
             .mb-dp-dialog .mb-dg-disco > .mb-dg-sec > h4 { color: #2b2622; font-size: 12px; }
@@ -27137,6 +27207,10 @@
             .mb-dp-dialog .mb-dg-seg button[disabled] { opacity: 0.5; cursor: default; }
             .mb-dp-dialog .mb-dg-lt tbody tr { cursor: auto; }
             .mb-dp-dialog .mb-dg-num { text-align: right; white-space: nowrap; }
+            .mb-dp-dialog .mb-dg-subt td { padding: 2px 8px; }
+            .mb-dp-dialog .mb-dg-pager { justify-content: center; font-variant-numeric: tabular-nums; }
+            .mb-dp-dialog .mb-dg-pager .mb-dg-btn[disabled] { opacity: 0.45; cursor: default; }
+            .mb-dp-dialog .mb-dg-picked b { color: #2b2622; font-weight: 600; }
             .mb-dp-dialog .mb-dg-lt .mb-dg-pill { margin-left: 2px; vertical-align: 1px; }
             .mb-dp-dialog .mb-dg-pill.mb-dg-m { color: #6b4a1f; background: #f6efe1; }
             .mb-dp-dialog .mb-dg-exp { all: unset; cursor: pointer; margin-left: 8px; font: 12px system-ui, -apple-system, "Segoe UI", Arial, sans-serif; color: #7a6d5c; white-space: nowrap; }
@@ -53166,6 +53240,37 @@
     }
 
     /**
+     * The label window's second lookup (2026-10-26): its people (founder,
+     * owner, personal label, recording contracts …), places and series.
+     * @type {string}
+     */
+    const _MB_POP_LABEL_MORE_INC = 'artist-rels+place-rels+series-rels';
+
+    /** How many targets a relationship type of the label window lists before "+N more". */
+    const _MB_POP_LABEL_REL_CAP = 12;
+
+    /**
+     * `_mbPopRelRows()` with each type's targets capped at `max`, the rest
+     * counted ("+N more"): a big label's recording contracts would fill
+     * the window.
+     *
+     * @param {?Array<Object>} rels
+     * @param {string} targetType
+     * @param {number} max
+     * @returns {Array<Array<string>>}
+     */
+    function _mbPopRelRowsCapped(rels, targetType, max) {
+        const totals = _mbPopRelsByType(rels, targetType).map(([, list]) => list.length);
+        const seen = new Map();
+        return _mbPopRelRows(rels, targetType, (r) => {
+            const k = `${r.type}|${r.direction || 'forward'}`;
+            seen.set(k, (seen.get(k) || 0) + 1);
+            return seen.get(k) <= max ? _mbPopRelTargetHtml(r, targetType) : '';
+        }).map(([name, html], i) => [name, html.replace(/(?:<br>)+$/, '') +
+            (totals[i] > max ? `<br><span class="mb-rg-dim">+${_rgEsc(_mbPopNum(totals[i] - max))} more</span>` : '')]);
+    }
+
+    /**
      * The names of a type's targets as text, at most `max` and "+N".
      *
      * @param {?Array<Object>} rels
@@ -56395,43 +56500,65 @@
                 });
             },
         })),
-        // Card: one lookup (genres, aliases; 1.8 KB). Window: the links and
-        // the related labels (one lookup, 33 KB for Columbia), and the
-        // release count from a browse with limit=1.
+        // Card: one lookup (genres, ratings, aliases; 1.8 KB before ratings).
+        // Window: the links and the related labels (one lookup, 33 KB for
+        // Columbia), the people, places and series (one more lookup, its
+        // lists capped: a big label's "recording contract" list is long,
+        // scripts/probe-mb-label-inc.py — not yet run, written 2026-10-26
+        // with no route to musicbrainz.org; no release-rels, which scale
+        // with the catalogue), and the release count from a browse with
+        // limit=1. Founded/Defunct, sort name, label code, rating and ISNI
+        // since 2026-10-26 (org/discogs.org 4b).
         label: Object.assign({ title: 'Label', wide: true }, _mbPopLookupKind({
-            cardInc: 'genres+aliases',
+            cardInc: 'genres+ratings+aliases',
             cardHtml(d) {
+                const ls = d['life-span'] || {};
                 const head = `<div class="mb-tt-title">${_rgEsc(d.name)}</div>` +
                     (d.disambiguation ? `<div class="mb-tt-comment">${_rgEsc(d.disambiguation)}</div>` : '') +
                     `<div class="mb-tt-body mb-rg-pills">${_mbPopPillsHtml([d.type, _mbPopLabelCode(d['label-code']),
                         _mbPopAreaChainText(d.area) || d.country, _mbPopLifeSpan(d['life-span'])])}</div><div class="mb-tt-rule"></div>`;
                 return head + _mbPopKvHtml([
+                    ['Founded', _rgEsc(ls.begin || '')],
+                    ['Defunct', _rgEsc(ls.end || (ls.ended ? 'yes' : ''))],
+                    ['Label code', _rgEsc(_mbPopLabelCode(d['label-code']))],
                     ['Genres', _rgEsc(_mbPopGenres(d.genres))],
+                    ['Rating', _rgEsc(_mbPopRating(d.rating))],
                     ['IPI', _rgEsc((d.ipis || []).join(', '))],
+                    ['ISNI', _rgEsc((d.isnis || []).join(', '))],
                     ['Also known as', _rgEsc(_mbPopAliases(d.aliases))],
                 ]);
             },
             windowHtml(d, t) {
                 const pin = _mbPopLookup(t, 'url-rels+label-rels');
+                const more = _mbPopLookup(t, _MB_POP_LABEL_MORE_INC);
                 const count = _mbPopBrowse('release', `label=${encodeURIComponent(t.id)}&limit=1`);
                 const cs = _mbPop.get(count.key);
+                const ls = d['life-span'] || {};
                 const left = `<div class="mb-dp-xtitle">${_rgEsc(d.name)}</div>` +
                     (d.disambiguation ? `<div class="mb-dp-xsub">${_rgEsc(d.disambiguation)}</div>` : '') +
                     `<div class="mb-rg-pills">${_mbPopPillsHtml([d.type, _mbPopLabelCode(d['label-code'])])}</div>` +
                     _mbPopWindowPicture(t) +
                     '<h4>Facts</h4>' + _mbPopKvHtml([
+                        ['Sort name', _rgEsc(d['sort-name'] && d['sort-name'] !== d.name ? d['sort-name'] : '')],
                         ['Area', _mbPopAreaChainHtml(d.area)],
-                        ['Active', _rgEsc(_mbPopLifeSpan(d['life-span']))],
+                        ['Founded', _rgEsc(ls.begin || '')],
+                        ['Defunct', _rgEsc(ls.end || (ls.ended ? 'yes' : ''))],
+                        ['Label code', _rgEsc(_mbPopLabelCode(d['label-code']))],
                         ['Releases', cs && cs.status === 'done' && cs.data
                             ? `<a href="/label/${_rgEsc(d.id)}" target="_blank" rel="noopener">${_rgEsc(_mbPopNum(cs.data['release-count'] || 0))}</a>`
                             : (cs && cs.status === 'failed' ? '<span class="mb-rg-dim">?</span>' : '<span class="mb-dp-spin">◌</span>')],
+                        ['Rating', _rgEsc(_mbPopRating(d.rating))],
                         ['Genres', _rgEsc(_mbPopGenres(d.genres, 99))],
                         ['IPI', _rgEsc((d.ipis || []).join(', '))],
+                        ['ISNI', _rgEsc((d.isnis || []).join(', '))],
                         ['Aliases', _rgEsc(_mbPopAliases(d.aliases, 99))],
                     ]);
                 const ps = _mbPop.get(pin.key);
                 const right = _mbPopSectionHtml('Related labels', ps, (p) => _mbPopKvHtml(_mbPopRelRows(p.relations, 'label')) ||
                     '<div class="mb-dp-xsub">None.</div>') +
+                    _mbPopSectionHtml('People, places and series', _mbPop.get(more.key), (p) => _mbPopKvHtml(['artist', 'place', 'series']
+                        .flatMap(type => _mbPopRelRowsCapped(p.relations, type, _MB_POP_LABEL_REL_CAP))) ||
+                        '<div class="mb-dp-xsub">None.</div>') +
                     (ps && ps.status === 'done' && ps.data ? _mbPopUrlLinksHtml(ps.data.relations) : '');
                 return `<div class="mb-dp-x"><div class="mb-dp-col">${left}</div><div class="mb-dp-col">${right}</div></div>`;
             },
@@ -56439,6 +56566,8 @@
             pin(t, d, again, repaint) {
                 const pin = _mbPopLookup(t, 'url-rels+label-rels');
                 _mbPopPinLoad(t, pin.key, pin.url, again, repaint);
+                const more = _mbPopLookup(t, _MB_POP_LABEL_MORE_INC);
+                _mbPopPinLoad(t, more.key, more.url, again, repaint);
                 _mbPopImageLoad(t, _mbPopLoadedRels(_mbPop.get(pin.key)), again, repaint);
                 const count = _mbPopBrowse('release', `label=${encodeURIComponent(t.id)}&limit=1`);
                 _mbPopPinLoad(t, count.key, count.url, again, repaint);
@@ -58797,6 +58926,9 @@
     /** How many rows a label's table shows before "Show all". */
     const _EXT_DG_LABEL_ROWS = 200;
 
+    /** How many sublabels a label window's Sublabels table shows per page (vzell, 2026-10-26). */
+    const _EXT_DG_SUB_ROWS = 25;
+
     /** How many versions a master row of a discography shows ("Open the master here" shows them all). */
     const _EXT_DG_NEST_ROWS = 12;
 
@@ -58804,9 +58936,9 @@
      * A Discogs target's window state (`_extDgUi`), made on first use.
      *
      * @param {object} t
-     * @returns {{open: Set<number>, allCredits: boolean, q: string, format: string, country: string, decade: string,
+     * @returns {{open: Set<number>, allCredits: boolean, q: string, format: string[], country: string[], decade: string[],
      *   sort: string, dir: number, moreCountries: boolean, runs: Map<string, Object>, profFull: boolean, moreVar: boolean,
-     *   moreSub: boolean, aq: string, atype: string, asort: Object<string, {col: string, dir: number}>,
+     *   subq: string, subPage: number, subSort: {col: string, dir: number}, aq: string, atype: string, asort: Object<string, {col: string, dir: number}>,
      *   alimit: Object<string, number>, mopen: Set<number>, lorder: string, lq: string, lfmt: string,
      *   lsort: {col: string, dir: number}, llimit: number}}
      */
@@ -58814,8 +58946,9 @@
         let ui = _extDgUi.get(t.key);
         if (!ui) {
             ui = {
-                open: new Set(), allCredits: false, q: '', format: '', country: '', decade: '', sort: 'year', dir: 1,
-                moreCountries: false, runs: new Map(), profFull: false, moreVar: false, moreSub: false,
+                open: new Set(), allCredits: false, q: '', format: [], country: [], decade: [], sort: 'year', dir: 1,
+                moreCountries: false, runs: new Map(), profFull: false, moreVar: false,
+                subq: '', subPage: 0, subSort: { col: 'name', dir: 1 },
                 aq: '', atype: '', asort: {}, alimit: {}, mopen: new Set(),
                 lorder: 'desc', lq: '', lfmt: '', lsort: { col: '', dir: 0 }, llimit: _EXT_DG_LABEL_ROWS,
             };
@@ -59426,7 +59559,9 @@
     }
 
     /**
-     * The loaded versions after the filter, the chips and the sort.
+     * The loaded versions after the filter, the chips and the sort. Several
+     * chips of one facet match any of them (OR), the facets together all
+     * (AND): Ctrl-click adds a chip (2026-10-26).
      *
      * @param {object} t
      * @param {number} masterId
@@ -59438,9 +59573,10 @@
         const q = ui.q.trim().toLowerCase();
         const decade = (y) => (parseInt(y, 10) ? `${Math.floor(parseInt(y, 10) / 10) * 10}s` : '');
         const shown = all.filter((v) => {
-            if (ui.format && !v.format.split(/,\s*/).concat(v.major).includes(ui.format)) return false;
-            if (ui.country && v.country !== ui.country) return false;
-            if (ui.decade && decade(v.year) !== ui.decade) return false;
+            const parts = v.format.split(/,\s*/).concat(v.major);
+            if (ui.format.length && !ui.format.some(f => parts.includes(f))) return false;
+            if (ui.country.length && !ui.country.includes(v.country)) return false;
+            if (ui.decade.length && !ui.decade.includes(decade(v.year))) return false;
             return !q || [v.title, v.format, v.label, v.catno, v.country, v.year].join(' ').toLowerCase().includes(q);
         });
         // Discogs' own order breaks ties; an empty value goes last either way.
@@ -59486,10 +59622,13 @@
         const dg = rec.discogs;
         const { items } = _extDgListState(t, _extDgList('versions', dg.id));
         const { all, shown } = _extDgVersionRows(t, dg.id);
-        const filtered = !!(ui.q.trim() || ui.format || ui.country || ui.decade);
+        const filtered = !!(ui.q.trim() || ui.format.length || ui.country.length || ui.decade.length);
         const linked = _extDgLinkedReleases();
         const missing = items - all.length;
-        const head = `<div class="mb-dg-counts">Showing ${shown.length} of ${all.length} loaded` +
+        const picked = [['Format', ui.format], ['Country', ui.country], ['Released', ui.decade]].filter(([, l]) => l.length)
+            .map(([k, l]) => `${k}: <b>${l.map(_rgEsc).join('</b> or <b>')}</b>`);
+        const head = `${picked.length ? `<div class="mb-dg-counts mb-dg-picked">Showing ${picked.join(' — and — ')}</div>` : ''}` +
+            `<div class="mb-dg-counts">Showing ${shown.length} of ${all.length} loaded` +
             `${missing > 0 ? ` · ${missing} not loaded yet${filtered ? ', so the filter cannot see them' : ''}` : ''}.` +
             ` The chips count all ${items}. A click on a row shows that version here.` +
             `${filtered ? ' <button type="button" class="mb-dg-btn" data-mb-dg-act="vclear">Clear filters</button>' : ''}</div>`;
@@ -59576,7 +59715,8 @@
                 if (d) decades[d] = (decades[d] || 0) + n;
             });
             const chip = (dim, v, n) => `<button type="button" class="mb-dg-fc" data-mb-dg-f="${dim}" data-mb-dg-v="${_rgEsc(v)}" ` +
-                `aria-pressed="${ui[dim] === v}">${_rgEsc(v)}<span class="mb-dg-n">${n}</span></button>`;
+                `aria-pressed="${ui[dim].includes(v)}" data-mb-tip title="Click: only this · Ctrl-click: add it or take it out">` +
+                `${_rgEsc(v)}<span class="mb-dg-n">${n}</span></button>`;
             const nCountries = Object.keys(f.country || {}).length;
             const facetRow = (label, chips) => (chips ? `<span class="mb-dg-fl">${label}</span><div>${chips}</div>` : '');
             body = `<div class="mb-dg-vstat">${pill}<span class="mb-dg-bar" aria-hidden="true">` +
@@ -59645,6 +59785,56 @@
         const r = s % 60;
         if (m < 60) return `${m} min${r ? ` ${r} s` : ''}`;
         return `${Math.floor(m / 60)} h ${m % 60} min`;
+    }
+
+    /**
+     * A facet's chosen values after a click on one of its chips (a master's
+     * versions, 2026-10-26): a plain click keeps only that value, or none
+     * when it was the only one; Ctrl/⌘-click adds it or takes it out.
+     *
+     * @param {string[]} cur - The values chosen so far.
+     * @param {string} v - The chip's value.
+     * @param {boolean} add - Whether Ctrl or ⌘ was held.
+     * @returns {string[]}
+     */
+    function _extDgChipPick(cur, v, add) {
+        if (add) return cur.includes(v) ? cur.filter(x => x !== v) : cur.concat(v);
+        return cur.length === 1 && cur[0] === v ? [] : [v];
+    }
+
+    /**
+     * A label's sublabels as a table (2026-10-26, mockup
+     * https://claude.ai/artifact/H4b3yAWX6UvHr2ASRFAjuS): a filter, Name and
+     * Status sortable, `_EXT_DG_SUB_ROWS` a page with ‹ › (the window's
+     * `subq`, `subSort`, `subPage`).
+     *
+     * @param {Array<{name: string, id: number, active: boolean}>} list
+     * @param {Object} ui - The window's state (`_extDgUiOf()`).
+     * @returns {string}
+     */
+    function _extDgSublabelsHtml(list, ui) {
+        const q = ui.subq.trim().toLowerCase();
+        const s = ui.subSort;
+        const rows = list.filter(x => !q || x.name.toLowerCase().includes(q)).sort((a, b) => (s.col === 'status'
+            ? (Number(b.active) - Number(a.active)) * s.dir || a.name.localeCompare(b.name)
+            : a.name.localeCompare(b.name, undefined, { numeric: true }) * s.dir));
+        const pages = Math.max(1, Math.ceil(rows.length / _EXT_DG_SUB_ROWS));
+        ui.subPage = Math.min(Math.max(0, ui.subPage), pages - 1);
+        const from = ui.subPage * _EXT_DG_SUB_ROWS;
+        const page = rows.slice(from, from + _EXT_DG_SUB_ROWS);
+        const th = (col, label) => `<th data-mb-dg-ssort="${col}"${s.col === col ? ` aria-sort="${s.dir > 0 ? 'ascending' : 'descending'}"` : ''}>${label}</th>`;
+        const filter = list.length > _EXT_DG_SUB_ROWS ? `<div class="mb-dg-vtools"><input type="search" class="mb-dg-sq" value="${_rgEsc(ui.subq)}" ` +
+            'data-mb-keep-focus="dg-sq" placeholder="Filter sublabels" aria-label="Filter sublabels"></div>' : '';
+        if (!page.length) return `${filter}<div class="mb-dg-vwrap"><div class="mb-dg-empty">No sublabel matches.</div></div>`;
+        const pager = rows.length > _EXT_DG_SUB_ROWS ? '<div class="mb-dg-morerow mb-dg-pager">' +
+            `<button type="button" class="mb-dg-btn" data-mb-dg-act="subprev" aria-label="Previous page"${ui.subPage ? '' : ' disabled'}>‹</button>` +
+            `<span>${from + 1}–${from + page.length} of ${rows.length}${q ? ` (${list.length} in all)` : ''}</span>` +
+            `<button type="button" class="mb-dg-btn" data-mb-dg-act="subnext" aria-label="Next page"${ui.subPage < pages - 1 ? '' : ' disabled'}>›</button></div>` : '';
+        return `${filter}<div class="mb-dg-vwrap mb-dg-subwrap" data-mb-keep-scroll="dg-sub"><table class="mb-dg-vt mb-dg-lt mb-dg-subt"><thead><tr>` +
+            `${th('name', 'Name')}${th('status', 'Status')}</tr></thead><tbody>` +
+            page.map(x => `<tr${x.active ? '' : ' class="mb-dg-inact"'}><td>${_extDgLink('label', x.id, _rgEsc(x.name))}</td>` +
+                `<td>${x.active ? '<span class="mb-dg-pill mb-dg-ok">Active</span>' : '<span class="mb-dg-pill">Inactive</span>'}</td></tr>`).join('') +
+            `</tbody></table>${pager}</div>`;
     }
 
     /**
@@ -60057,20 +60247,22 @@
 
     /**
      * The window of a Discogs artist or label (mockup approved 2026-10-18,
-     * https://claude.ai/artifact/WuBNbFTgNHJtxip4xBv6yc): on the left the
-     * profile (Discogs' links kept, "Show it all" for a long one) and every
-     * image; on the right, after the reader's "Discogs says"
-     * (`_extDiscogsFactsHtml()`), the sites and a label's contact info and
-     * sublabels; below both the artist's discography or the label's
-     * releases, whose page 1 this call asks for when the window starts.
+     * https://claude.ai/artifact/WuBNbFTgNHJtxip4xBv6yc; sides swapped
+     * 2026-10-26, https://claude.ai/artifact/H4b3yAWX6UvHr2ASRFAjuS): on the
+     * left, under the header and the generic Link / "Discogs says" blocks
+     * (`swap`), the profile (Discogs' links kept, "Show it all" for a long
+     * one), the sites, a label's contact info and sublabels table
+     * (`_extDgSublabelsHtml()`) and every image; on the right the artist's
+     * discography or the label's releases, whose page 1 this call asks for
+     * when the window starts.
      *
      * @param {object} t
      * @param {Object} rec
      * @param {{start: boolean, force: boolean, repaint: function(): void}} how
-     * @returns {{left: string[], right: string[], full: string[]}}
+     * @returns {{left: string[], right: string[], full: string[], swap: boolean}}
      */
     function _extDgEntityWindow(t, rec, how) {
-        const out = { left: [], right: [], full: [] };
+        const out = { left: [], right: [], full: [], swap: true };
         const dg = rec.discogs;
         const ui = _extDgUiOf(t);
         if (dg.profile) {
@@ -60080,25 +60272,23 @@
                 `${_extDiscogsMarkupHtml(dg.profile, { names: true })}</div>` +
                 (long ? `<button type="button" class="mb-dg-btn" data-mb-dg-act="prof">${ui.profFull ? 'Shorter' : 'Show it all'}</button>` : '')));
         }
+        if (dg.urls.length) {
+            out.left.push(_extDgSection('sites', 'Sites', dg.urls.length, '<div class="mb-dg-sites">' + dg.urls.map(u =>
+                `<div><a href="${_rgEsc(u)}" target="_blank" rel="noopener noreferrer">${_rgEsc(u)}</a></div>`).join('') + '</div>'));
+        }
+        if (dg.kind === 'label') {
+            if (dg.contact) out.left.push(_extDgSection('contact', 'Contact info', null, `<div class="mb-dg-contact">${_rgEsc(dg.contact)}</div>`));
+            if (dg.sublabels.length) out.left.push(_extDgSection('sublabels', 'Sublabels', dg.sublabels.length, _extDgSublabelsHtml(dg.sublabels, ui)));
+        }
         if (dg.images.length) {
             out.left.push(_extDgSection('images', 'Images', dg.images.length, _extDgImagesHtml(dg.images, 'primary') +
                 '<div class="mb-dg-counts">Every image Discogs has, the "More images" set included. A click shows it in the viewer; ' +
                 `<kbd>←</kbd> <kbd>→</kbd> step through all ${dg.images.length}.</div>`));
         }
-        if (dg.urls.length) {
-            out.right.push(_extDgSection('sites', 'Sites', dg.urls.length, '<div class="mb-dg-sites">' + dg.urls.map(u =>
-                `<div><a href="${_rgEsc(u)}" target="_blank" rel="noopener noreferrer">${_rgEsc(u)}</a></div>`).join('') + '</div>'));
-        }
         if (dg.kind === 'label') {
-            if (dg.contact) out.right.push(_extDgSection('contact', 'Contact info', null, `<div class="mb-dg-contact">${_rgEsc(dg.contact)}</div>`));
-            if (dg.sublabels.length) {
-                const n = dg.sublabels.length;
-                out.right.push(_extDgSection('sublabels', 'Sublabels', n, _extDgNamesHtml(ui.moreSub ? dg.sublabels : dg.sublabels.slice(0, 24), 'label') +
-                    (n > 24 ? ` <button type="button" class="mb-dg-btn" data-mb-dg-act="moresub">${ui.moreSub ? 'fewer' : `+${n - 24} more`}</button>` : '')));
-            }
             const list = _extDgList('label', `${dg.id}:${ui.lorder}`);
             _extDgListStart(t, list, how);
-            out.full.push(_extDgLabelHtml(t, rec, list));
+            out.right.push(_extDgLabelHtml(t, rec, list));
         } else {
             const list = _extDgList('artist', dg.id);
             _extDgListStart(t, list, how);
@@ -60110,16 +60300,18 @@
                     if (!_mbPop.get(_extDgListKey(v, 1))) _extDgListLoad(t, v, 1, { repaint: how.repaint });
                 });
             }
-            out.full.push(_extDgArtistHtml(t, rec, list));
+            out.right.push(_extDgArtistHtml(t, rec, list));
         }
         return out;
     }
 
     /**
      * The Discogs reader's own window sections (`_extExtracted()`'s
-     * reader hook), layout A of the mockup: on the left the images, the
-     * tracklist and the notes; on the right a release's companies, credits,
-     * identifiers and videos; below both a master's versions — whose page 1
+     * reader hook), sides swapped 2026-10-26 (`swap`; mockup
+     * https://claude.ai/artifact/H4b3yAWX6UvHr2ASRFAjuS): on the left, under
+     * the header, the images (`lead`), then the generic Link / "Discogs
+     * says" blocks and a release's companies, credits, identifiers and videos; on the
+     * right the tracklist, the notes and a master's versions — whose page 1
      * this call asks for when the window starts or ⟳ forces it (⟳ also
      * asks again every page already loaded). An artist or a label:
      * `_extDgEntityWindow()`.
@@ -60127,10 +60319,10 @@
      * @param {object} t
      * @param {Object} rec
      * @param {{start: boolean, force: boolean, repaint: function(): void}} how
-     * @returns {{left: string[], right: string[], full: string[]}}
+     * @returns {{left: string[], right: string[], full: string[], swap: boolean, lead?: string[], top?: string[]}}
      */
     function _extDiscogsWindow(t, rec, { start, force, repaint }) {
-        const out = { left: [], right: [], full: [] };
+        const out = { left: [], right: [], full: [], swap: true };
         const dg = rec.discogs;
         if (!dg) return out;
         // The tables' thumbnails open the viewer on a click (`_DGW_FI`);
@@ -60141,37 +60333,37 @@
         // history (vzell, 2026-10-18), read by the window only.
         if (dg.kind === 'release' && _dgOnSubmissions()) out.top = _extDgHistReleaseParts(t, dg.id, { start, force, repaint });
         const ui = _extDgUiOf(t);
-        if (dg.images.length) out.left.push(_extDgSection('images', 'Images', dg.images.length, _extDgImagesHtml(dg.images)));
+        if (dg.images.length) out.lead = [_extDgSection('images', 'Images', dg.images.length, _extDgImagesHtml(dg.images))];
         if (dg.tracklist.length) {
             const n = dg.tracklist.filter(x => x.type === 'track').length;
             const act = dg.tracklist.some(x => x.credits.length)
                 ? `<button type="button" class="mb-dg-btn" data-mb-dg-act="allcred">${ui.allCredits ? 'Hide' : 'Show'} all track credits</button>` : '';
-            out.left.push(_extDgSection('tracklist', 'Tracklist', n, _extDgTracklistHtml(dg.tracklist, ui), act));
+            out.right.push(_extDgSection('tracklist', 'Tracklist', n, _extDgTracklistHtml(dg.tracklist, ui), act));
         }
-        if (dg.notes) out.left.push(_extDgSection('notes', 'Notes', null, `<div class="mb-dg-notes">${_extDiscogsMarkupHtml(dg.notes)}</div>`));
+        if (dg.notes) out.right.push(_extDgSection('notes', 'Notes', null, `<div class="mb-dg-notes">${_extDiscogsMarkupHtml(dg.notes)}</div>`));
         if (dg.kind === 'release') {
             if (dg.companies.length) {
-                out.right.push(_extDgSection('companies', 'Companies, etc.', dg.companies.length, '<div class="mb-dg-lines">' +
+                out.left.push(_extDgSection('companies', 'Companies, etc.', dg.companies.length, '<div class="mb-dg-lines">' +
                     _extDgGroupBy(dg.companies, 'role').map(([role, list]) => `<div>${role ? `<span class="mb-dg-role">${_rgEsc(role)} –</span> ` : ''}` +
                         list.map(c => `${_extDgLink('label', c.id, _rgEsc(c.name))}${c.catno ? ` <span class="mb-dg-cat">${_rgEsc(c.catno)}</span>` : ''}`).join(', ') +
                         '</div>').join('') + '</div>'));
             }
-            if (dg.credits.length) out.right.push(_extDgSection('credits', 'Credits', dg.credits.length, _extDgCreditLines(dg.credits, true)));
+            if (dg.credits.length) out.left.push(_extDgSection('credits', 'Credits', dg.credits.length, _extDgCreditLines(dg.credits, true)));
             if (dg.identifiers.length) {
-                out.right.push(_extDgSection('identifiers', 'Barcode and Other Identifiers', dg.identifiers.length,
+                out.left.push(_extDgSection('identifiers', 'Barcode and Other Identifiers', dg.identifiers.length,
                     _extDgGroupBy(dg.identifiers, 'type').map(([type, list]) => `<div class="mb-dg-idg"><div class="mb-dg-it">${_rgEsc(type)}</div>` +
                         list.map(i => `<div><span class="mb-dg-cat">${_rgEsc(i.value)}</span>${i.desc ? ` <span class="mb-dg-dim">· ${_rgEsc(i.desc)}</span>` : ''}</div>`)
                             .join('') + '</div>').join('')));
             }
             if (dg.videos.length) {
                 const dur = (s) => (s ? `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}` : '');
-                out.right.push(_extDgSection('videos', 'Videos', dg.videos.length, '<div class="mb-dg-lines">' + dg.videos.map(v =>
+                out.left.push(_extDgSection('videos', 'Videos', dg.videos.length, '<div class="mb-dg-lines">' + dg.videos.map(v =>
                     `<div><a href="${_rgEsc(v.url)}" target="_blank" rel="noopener noreferrer">${_rgEsc(v.title)}</a>` +
                     `${v.dur ? ` <span class="mb-dg-dim">${dur(v.dur)}</span>` : ''}</div>`).join('') + '</div>'));
             }
         } else {
             _extDgListStart(t, _extDgList('versions', dg.id), { start, force, repaint });
-            out.full.push(_extDgVersionsHtml(t, rec));
+            out.right.push(_extDgVersionsHtml(t, rec));
         }
         return out;
     }
@@ -60294,8 +60486,11 @@
         case 'morevar':
             ui.moreVar = !ui.moreVar;
             return true;
-        case 'moresub':
-            ui.moreSub = !ui.moreSub;
+        case 'subprev':
+            ui.subPage--;
+            return true;
+        case 'subnext':
+            ui.subPage++;
             return true;
         case 'lfirst':
             if (list) _extDgListLoad(t, list, 1, { repaint: _dpDialog.repaint });
@@ -60332,7 +60527,7 @@
      * The other controls of an artist's or a label's window: the Masters /
      * Releases chips, a label's format chips and order, the tables' sort
      * headers ("Have" sorts most first; a third click goes back to Discogs'
-     * order), "Show more" / "Show all", and a master row's versions (one
+     * order; the sublabels' Name and Status), "Show more" / "Show all", and a master row's versions (one
      * request, on the click).
      *
      * @param {MouseEvent} e
@@ -60342,7 +60537,7 @@
     function _extDgEntityControl(e, t) {
         const ui = _extDgUiOf(t);
         const el = e.target.closest('[data-mb-dg-atype], [data-mb-dg-lfmt], [data-mb-dg-lorder], th[data-mb-dg-asort], th[data-mb-dg-lsort], ' +
-            '[data-mb-dg-alimit], [data-mb-dg-alimit-all], [data-mb-dg-mexp]');
+            'th[data-mb-dg-ssort], [data-mb-dg-alimit], [data-mb-dg-alimit-all], [data-mb-dg-mexp]');
         if (!el || el.disabled) return !!el;
         const d = el.dataset;
         if (d.mbDgAtype != null) {
@@ -60359,6 +60554,10 @@
             const col = d.mbDgAsort;
             const cur = ui.asort[role];
             ui.asort[role] = cur && cur.col === col ? (cur.dir > 0 ? { col, dir: -1 } : null) : { col, dir: col === 'have' ? -1 : 1 };
+        } else if (d.mbDgSsort) {
+            const col = d.mbDgSsort;
+            ui.subSort = { col, dir: ui.subSort.col === col ? -ui.subSort.dir : 1 };
+            ui.subPage = 0;
         } else if (d.mbDgLsort) {
             const col = d.mbDgLsort;
             const s = ui.lsort;
@@ -60440,7 +60639,7 @@
                 _extDgRun(t, versions).stopped = true;
                 break;
             case 'vclear':
-                Object.assign(ui, { q: '', format: '', country: '', decade: '' });
+                Object.assign(ui, { q: '', format: [], country: [], decade: [] });
                 break;
             case 'vmorec':
                 ui.moreCountries = !ui.moreCountries;
@@ -60453,8 +60652,7 @@
         }
         const chip = e.target.closest('[data-mb-dg-f]');
         if (chip) {
-            const dim = chip.dataset.mbDgF;
-            ui[dim] = ui[dim] === chip.dataset.mbDgV ? '' : chip.dataset.mbDgV;
+            ui[chip.dataset.mbDgF] = _extDgChipPick(ui[chip.dataset.mbDgF], chip.dataset.mbDgV, e.ctrlKey || e.metaKey);
             repaint();
             return;
         }
@@ -60477,7 +60675,7 @@
     /**
      * Typing in a filter of the window. The versions': only the list part
      * is drawn again, so the field keeps its focus and caret. An artist's
-     * discography or a label's releases: the whole window, which keeps the
+     * discography, a label's releases or its sublabels (back to page 1): the whole window, which keeps the
      * field's focus and caret (`data-mb-keep-focus`) and the tables' scroll.
      *
      * @param {Event} e
@@ -60485,10 +60683,15 @@
      * @returns {void}
      */
     function _extDiscogsAreaInput(e, t) {
-        if (!(e.target instanceof Element) || !e.target.matches('.mb-dg-vq, .mb-dg-aq, .mb-dg-lq')) return;
+        if (!(e.target instanceof Element) || !e.target.matches('.mb-dg-vq, .mb-dg-aq, .mb-dg-lq, .mb-dg-sq')) return;
         const st = _mbPop.get(t.key);
         const rec = st && st.status === 'done' ? st.data : null;
         if (!rec || !rec.discogs) return;
+        if (e.target.matches('.mb-dg-sq')) {
+            Object.assign(_extDgUiOf(t), { subq: e.target.value, subPage: 0 });
+            if (_dpDialog.repaint) _dpDialog.repaint();
+            return;
+        }
         if (!e.target.matches('.mb-dg-vq')) {
             _extDgUiOf(t)[e.target.matches('.mb-dg-aq') ? 'aq' : 'lq'] = e.target.value;
             if (_dpDialog.repaint) _dpDialog.repaint();
@@ -62531,9 +62734,16 @@
         }
         if (dpCols) right.push(...dpCols.right);
         // A reader's own sections (the Discogs window): added to each column,
-        // plus a full-width part below them (a master's versions).
+        // plus a full-width part below them. `swap` (the Discogs window since
+        // 2026-10-26): the generic blocks above go to the LEFT column, after
+        // the header and the reader's `lead` (a release's images), and the
+        // right column holds the reader's content only (tracklist, lists).
         const readerParts = rec.state === 'ok' && t.reader.window ? t.reader.window(t, rec, { start, force, repaint }) : null;
-        if (readerParts) {
+        const swap = !!(readerParts && readerParts.swap);
+        if (swap) {
+            left.push(...(readerParts.lead || []), ...right, ...readerParts.left);
+            right.splice(0, right.length, ...readerParts.right);
+        } else if (readerParts) {
             left.push(...readerParts.left);
             right.push(...readerParts.right);
         }
@@ -62543,7 +62753,8 @@
         const top = readerParts && readerParts.top && readerParts.top.length
             ? `<div class="mb-dg-full mb-dg-top">${readerParts.top.join('')}</div>` : '';
         const age = rec.state === 'ok' ? _dpAgeText({ cached: st.cached, at: st.at }) : 'kept until the page is reloaded';
-        return top + `<div class="mb-dp-x"><div class="mb-dp-col">${left.join('')}</div><div class="mb-dp-col">${right.join('')}</div></div>` + full +
+        return top + `<div class="mb-dp-x${swap ? ' mb-dg-swap' : ''}"><div class="mb-dp-col">${left.join('')}</div>` +
+            `<div class="mb-dp-col">${right.join('')}</div></div>` + full +
             `<div class="mb-dp-xfoot">${_rgEsc(age)} · ⟳ asks the site${mbq ? ' and MusicBrainz' : ''} again</div>`;
     }
 

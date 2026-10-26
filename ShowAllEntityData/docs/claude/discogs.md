@@ -23,6 +23,15 @@ tables opens the window; user links get a profile reader with the Recent
 activity; `dg-user` with all four lists, a button hidden when its list is
 empty or private; the Recent activity read from MusicBrainz too.
 
+**Mockup 3 (the windows' sides swapped, Ctrl-click facets, a sublabels
+table, MusicBrainz links in the window; vzell's answers 2026-10-26):**
+https://claude.ai/artifact/H4b3yAWX6UvHr2ASRFAjuS — his answers: columns
+0.7 : 1.3; 25 sublabels a page; a click on a facet chip keeps only its
+value, Ctrl-click adds or takes one out, OR inside a facet and AND across.
+The details: docs/claude/detail-pages.md, "The Discogs window's sides
+swapped". Discogs' own artist hover card on the page: see "Discogs' own
+artist hover card" below.
+
 ## What it is
 
 Seven pageTypes on discogs.com's own pages, opt-in via `sa_enable_discogs`
@@ -590,8 +599,12 @@ of ours.
   card anyway (`_DG_MB_LINK_RE`: only `/<kind>/<MBID>`, so the importer's
   search boxes get none). A plain click on our column's icon opens the
   window, as every link in our tables (`_dgTableClickOpens()`); Ctrl-click
-  the new tab. Links inside the window go to musicbrainz.org in a new tab
-  (`_mbPopTarget()` is same-origin, so nothing drills there).
+  the new tab. ~~Links inside the window go to musicbrainz.org in a new tab
+  (`_mbPopTarget()` is same-origin, so nothing drills there).~~ Since
+  2026-10-26 (org/discogs.org 1b/4b) a musicbrainz.org entity link inside
+  the window — a Discogs window's Sites or Notes, a MusicBrainz window's
+  links made absolute — is `_dgMbWinTarget()`: the `dg-mb` source's card on
+  a hover and the window on a click, *Back* returning.
 
 Probe: `scripts/probe-mb-url-batch-by-discogs.py` (2026-10-19, NB-3641; its
 docstring has the results): up to 100 resources a request, the 101st DROPPED
@@ -599,6 +612,22 @@ SILENTLY; answers in the server's order (matched by `resource`); one unknown
 alone 404, several 200 with url-count 0; no paging; several relationship
 incs in one request; `ended` per relation. Its answers are the
 `tests/fixtures/mb-url-discogs-*.json` files.
+
+### Discogs' own artist hover card
+
+org/discogs.org item 0 (vzell, 2026-10-26): Discogs' React page shows its
+own box when the pointer rests on an artist name, and with our link previews
+on it sat on top of our card. `_dgMuteNativeArtistHover()` (installed once by
+`_dgPrepareLivePage()`) stops `_DG_NATIVE_HOVER_EVENTS` (mouse/pointer
+over/out/enter/leave) of `#app a[href*="/artist/"]` at `document` in the
+capture phase while `sa_pop_ext` is on (read per event), so they never
+reach React's root in `#app`. Our own `document` listeners still run: a
+stop never skips the other listeners of its node, and all of ours there are
+capture listeners (checked 2026-10-26: the popup engine, the tooltips, the
+avatars, the async job popup). The box's markup is unknown (discogs.com was
+unreachable from the session that wrote this, and the fixtures hold none),
+so nothing is hidden by selector; a snapshot of the open box would allow a
+CSS rule in `_ensureDgStyle()` as well.
 
 ## Known differences from the mockup (raised with vzell)
 

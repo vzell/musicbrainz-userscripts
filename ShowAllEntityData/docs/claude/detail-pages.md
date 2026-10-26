@@ -1830,6 +1830,36 @@ subdomain, matched by `endsWith`), so a hover loads them from the first time.
   the same header answered 60 to `Authorization: Discogs token=…`, probed
   with the user's token 2026-10-08 12:09Z, which also confirms the header
   form).
+- **The Discogs window's sides swapped (2026-10-26, org/discogs.org, mockup
+  https://claude.ai/artifact/H4b3yAWX6UvHr2ASRFAjuS, vzell: columns 0.7 :
+  1.3, 25 sublabels a page, the facets' click/Ctrl-click as drawn).** Both
+  Discogs window hooks (`_extDiscogsWindow()`, `_extDgEntityWindow()`) return
+  `swap: true`; the assembler (the function calling `_extLeftCol()`) then
+  puts the generic blocks it builds for the RIGHT column (Link, On this page,
+  the MusicBrainz section, "<site> says", See also) into the LEFT one, after
+  the header and the reader's optional `lead` (a release's or master's Images),
+  followed by the reader's `left`; the right column is the reader's `right`
+  only, and `.mb-dp-x` gets `mb-dg-swap` (`grid-template-columns: 0.7fr
+  1.3fr`, one column under 640 px). Left: images, companies, credits,
+  identifiers, videos (release); profile, sites, contact, sublabels, images
+  (artist/label). Right: tracklist, notes, a master's versions, an artist's
+  discography, a label's releases — the lists moved from `full` into the
+  column (`full` stays for other readers). Every other reader is unchanged.
+  The master's facets are arrays now (`ui.format/country/decade`):
+  `_extDgChipPick()` (plain click: only this value, or none when it was the
+  only one; Ctrl/⌘: add or take out), OR inside a facet and AND across in
+  `_extDgVersionRows()`, the choice spelled out above the table
+  (`.mb-dg-picked`). A label's sublabels are `_extDgSublabelsHtml()`: a
+  table (Name, Status; `th[data-mb-dg-ssort]`), `_EXT_DG_SUB_ROWS` (25) a
+  page with ‹ › (`subprev`/`subnext`), a filter (`.mb-dg-sq`, whole repaint
+  with `data-mb-keep-focus`, back to page 1); `moresub` is gone. On
+  discogs.com a musicbrainz.org entity link inside ANY window (a Discogs
+  window's Sites or Notes, a MusicBrainz window's absolute links) is
+  `_dgMbWinTarget()`: the `dg-mb` source's card on a hover (`_dpWinWhat()`)
+  and the window on a click (`_dpDrill()`), so it no longer leaves for a new
+  tab. Specs: popup-ext.spec.js (columns, Ctrl-click, sublabels),
+  discogs-mb-column.spec.js (the link in the window, Discogs' own hover);
+  planted defects: `scripts/mutations/discogs-window-swap.json`.
 - **The Discogs window (2026-10-17, mockup
   https://claude.ai/artifact/49tucEnfghTCMtyvwN6qaM, layout A).** A release
   or master record keeps `rec.discogs` (`_EXT_DISCOGS_VERSION` 2 on top of

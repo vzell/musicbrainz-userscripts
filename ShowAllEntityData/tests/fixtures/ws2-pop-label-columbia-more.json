@@ -1,0 +1,24 @@
+{
+ "_comment": "SYNTHETIC (2026-10-26): the label window's second lookup (inc=artist-rels+place-rels+series-rels) as its shape is documented; the names are placeholders, not Columbia's real relationships. 14 recording contracts test the cap of 12, one place and one series the other target types.",
+ "id": "011d1192-6f65-45bd-85c4-0400dd45693e",
+ "name": "Columbia",
+ "relations": [
+  {"type": "recording contract", "direction": "backward", "target-type": "artist", "artist": {"id": "00000000-0000-4000-8000-000000000001", "name": "Artist 01"}},
+  {"type": "recording contract", "direction": "backward", "target-type": "artist", "artist": {"id": "00000000-0000-4000-8000-000000000002", "name": "Artist 02"}},
+  {"type": "recording contract", "direction": "backward", "target-type": "artist", "artist": {"id": "00000000-0000-4000-8000-000000000003", "name": "Artist 03"}},
+  {"type": "recording contract", "direction": "backward", "target-type": "artist", "artist": {"id": "00000000-0000-4000-8000-000000000004", "name": "Artist 04"}},
+  {"type": "recording contract", "direction": "backward", "target-type": "artist", "artist": {"id": "00000000-0000-4000-8000-000000000005", "name": "Artist 05"}},
+  {"type": "recording contract", "direction": "backward", "target-type": "artist", "artist": {"id": "00000000-0000-4000-8000-000000000006", "name": "Artist 06"}},
+  {"type": "recording contract", "direction": "backward", "target-type": "artist", "artist": {"id": "00000000-0000-4000-8000-000000000007", "name": "Artist 07"}},
+  {"type": "recording contract", "direction": "backward", "target-type": "artist", "artist": {"id": "00000000-0000-4000-8000-000000000008", "name": "Artist 08"}},
+  {"type": "recording contract", "direction": "backward", "target-type": "artist", "artist": {"id": "00000000-0000-4000-8000-000000000009", "name": "Artist 09"}},
+  {"type": "recording contract", "direction": "backward", "target-type": "artist", "artist": {"id": "00000000-0000-4000-8000-000000000010", "name": "Artist 10"}},
+  {"type": "recording contract", "direction": "backward", "target-type": "artist", "artist": {"id": "00000000-0000-4000-8000-000000000011", "name": "Artist 11"}},
+  {"type": "recording contract", "direction": "backward", "target-type": "artist", "artist": {"id": "00000000-0000-4000-8000-000000000012", "name": "Artist 12"}},
+  {"type": "recording contract", "direction": "backward", "target-type": "artist", "artist": {"id": "00000000-0000-4000-8000-000000000013", "name": "Artist 13"}},
+  {"type": "recording contract", "direction": "backward", "target-type": "artist", "artist": {"id": "00000000-0000-4000-8000-000000000014", "name": "Artist 14"}},
+  {"type": "label founder", "direction": "backward", "target-type": "artist", "artist": {"id": "00000000-0000-4000-8000-000000000015", "name": "Founder 01"}},
+  {"type": "owner", "direction": "forward", "target-type": "place", "place": {"id": "00000000-0000-4000-8000-000000000016", "name": "Studio 01"}},
+  {"type": "part of", "direction": "forward", "target-type": "series", "series": {"id": "00000000-0000-4000-8000-000000000017", "name": "Series 01"}}
+ ]
+}
