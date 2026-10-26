@@ -65768,7 +65768,7 @@
      */
     const _TOOLBAR_MENU_ROW_ORDER = {
         data: ['mb-save-to-disk-btn', 'mb-load-from-disk-btn', 'mb-export-btn'],
-        view: ['mb-density-btn', 'mb-stats-btn', 'mb-idbo-menu-btn', 'mb-shortcuts-help-btn'],
+        view: ['mb-density-btn', 'mb-stats-btn', 'mb-idbo-menu-btn', 'mb-gms-menu-btn', 'mb-shortcuts-help-btn'],
         help: ['mb-settings-btn', 'mb-app-help-btn', 'mb-shortcuts-help-btn'],
         disc: ['mb-disc-complete-btn', 'mb-disc-official-btn', 'mb-disc-nonofficial-btn', 'mb-disc-merged-btn'],
     };
@@ -74046,6 +74046,28 @@ a { color: #1565c0; }`;
         _setTip(btn, 'What this script keeps in your browser: how much, how old, and what to delete');
         btn.style.cssText = uiActionBtnBaseCSS();
         btn.onclick = () => _idbOverviewOpen(null);
+        _ensureViewMenu().adopt(btn);
+        ensureSettingsButtonIsLast();
+    }
+
+    /**
+     * Adds "🗄️ Script storage" to the SAED menu's View group, right below
+     * "💾 Browser cache" (`_TOOLBAR_MENU_ROW_ORDER.view`; vzell, 2026-10-26):
+     * the Tampermonkey key/values of this script (`_gmStoreOpen()`). Added
+     * by the render tail beside the Browser cache row, so before anything is
+     * loaded View stays hidden as before. No setting of its own. Idempotent.
+     *
+     * @returns {void}
+     */
+    function addGmStoreButton() {
+        if (!document.getElementById('mb-show-all-controls-container') || document.getElementById('mb-gms-menu-btn')) return;
+        const btn = document.createElement('button');
+        btn.id = 'mb-gms-menu-btn';
+        btn.type = 'button';
+        btn.innerHTML = '<span>🗄️ Script storage</span>';
+        _setTip(btn, 'What this script keeps in Tampermonkey\'s storage: every setting and saved state, to look at, edit or delete');
+        btn.style.cssText = uiActionBtnBaseCSS();
+        btn.onclick = () => _gmStoreOpen(null);
         _ensureViewMenu().adopt(btn);
         ensureSettingsButtonIsLast();
     }
@@ -82654,6 +82676,7 @@ a { color: #1565c0; }`;
     // runs long after the IIFE, so the _idbo* state it reads is initialised).
     if (typeof GM_registerMenuCommand === 'function') {
         GM_registerMenuCommand('💾 Browser cache', () => _idbOverviewOpen(null));
+        GM_registerMenuCommand('🗄️ Script storage', () => _gmStoreOpen(null));
         // Supported pages only (decided 2026-10-22), so it registers here,
         // past the no-pageType gate, like 💾 Browser cache above. It opens
         // the SAED menu on its Changelog group: two pages on GitHub.
@@ -100193,6 +100216,8 @@ a { color: #1565c0; }`;
             }
             // 💾 Browser cache, after Statistics in View (no setting of its own)
             addCacheOverviewButton();
+            // 🗄️ Script storage, right below it
+            addGmStoreButton();
 
             // Initialize keyboard shortcuts
             if (Lib.settings.sa_enable_keyboard_shortcuts) {
@@ -120806,6 +120831,7 @@ a { color: #1565c0; }`;
                 'sa_stats_panel_geometry', 'sa_load_dialog_geometry',
                 'sa_shortcuts_help_geometry',
                 'sa_dp_dialog_geometry', 'sa_fgal_geometry',
+                'sa_idbo_geometry', 'sa_gms_geometry',
                 MB_UNIQ_DROP_GEOMETRY_KEY,
             ],
         },
@@ -129307,6 +129333,8 @@ a { color: #1565c0; }`;
             }
             // 💾 Browser cache, after Statistics in View (no setting of its own)
             addCacheOverviewButton();
+            // 🗄️ Script storage, right below it
+            addGmStoreButton();
 
             // Initialize keyboard shortcuts (if not already initialized)
             if (Lib.settings.sa_enable_keyboard_shortcuts) {
@@ -131975,8 +132003,11 @@ a { color: #1565c0; }`;
         })).catch(() => {});
     }
 
-    /** Dialog state while it is open. */
-    const _idbo = { el: null, parts: [], pick: 'images', pending: null, opener: null, estimate: null, query: '' };
+    /**
+     * Dialog state while it is open; `geo` is the window's move/resize
+     * handle (`_makeMovableResizable()`), null while closed.
+     */
+    const _idbo = { el: null, parts: [], pick: 'images', pending: null, opener: null, estimate: null, query: '', geo: null };
 
     /**
      * Formats a byte count.
@@ -132002,103 +132033,117 @@ a { color: #1565c0; }`;
         return `${Math.round(d)} day${Math.round(d) === 1 ? '' : 's'}`;
     }
 
-    /** Injects the dialog's stylesheet once (lazily, so no page carries it unused). */
+    /**
+     * Injects the dialog's stylesheet once (lazily, so no page carries it
+     * unused). Shared with the 🗄️ Script storage dialog (`#mb-gm-store`,
+     * `_gmsEnsureStyle()`): every rule names both.
+     */
     function _idboEnsureStyle() {
         if (document.getElementById('mb-idbo-style')) return;
         const st = GM_addStyle(`
-            #mb-idb-overview { position: fixed; inset: 0; z-index: 2147483200; background: rgba(40, 30, 20, 0.35); display: flex; align-items: flex-start; justify-content: center; padding: 4vh 12px; overflow: auto; }
-            #mb-idb-overview .mb-idbo-dlg { width: min(1040px, 100%); background: #fbf8f1; color: #2b2622; border: 1px solid #d9cfbd; border-radius: 4px; font: 14px/1.5 Georgia, "Times New Roman", Times, serif; box-shadow: 0 1px 0 #e9e1d1, 0 18px 40px -16px rgba(60,40,20,0.45); outline: none; }
-            #mb-idb-overview .mb-idbo-h { display: flex; align-items: baseline; gap: 10px; padding: 12px 16px; border-bottom: 1px solid #d9cfbd; flex-wrap: wrap; }
-            #mb-idb-overview .mb-idbo-h b { font-size: 1.18em; flex: 1; min-width: 12ch; }
-            #mb-idb-overview .mb-idbo-dim { color: #7a6d5c; font-size: 0.88em; }
-            #mb-idb-overview .mb-idbo-b { padding: 14px 16px 16px; display: grid; gap: 16px; }
-            #mb-idb-overview .mb-idbo-strip { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
-            #mb-idb-overview .mb-idbo-stat { border: 1px solid #d9cfbd; border-radius: 3px; padding: 8px 10px; background: #fffdf8; }
-            #mb-idb-overview .mb-idbo-stat .k { font: 600 11px/1.3 system-ui, Arial, sans-serif; text-transform: uppercase; letter-spacing: 0.06em; color: #7a6d5c; }
-            #mb-idb-overview .mb-idbo-stat .v { font-size: 1.35em; font-weight: 700; font-variant-numeric: tabular-nums; }
-            #mb-idb-overview .mb-idbo-quota { height: 6px; background: #ece4d4; border-radius: 3px; overflow: hidden; margin-top: 5px; display: flex; }
-            #mb-idb-overview .mb-idbo-quota span { display: block; height: 100%; }
-            #mb-idb-overview .mb-idbo-top { display: grid; grid-template-columns: minmax(0, 240px) minmax(0, 1fr); gap: 18px; align-items: center; }
-            #mb-idb-overview .mb-idbo-donut { position: relative; max-width: 240px; margin: 0 auto; width: 100%; }
-            #mb-idb-overview .mb-idbo-donut svg { width: 100%; height: auto; display: block; }
-            #mb-idb-overview .mb-idbo-donut-c { position: absolute; inset: 0; display: grid; place-content: center; text-align: center; pointer-events: none; }
-            #mb-idb-overview .mb-idbo-donut-c b { font-size: 1.4em; font-variant-numeric: tabular-nums; }
-            #mb-idb-overview .mb-idbo-seg { cursor: pointer; opacity: 0.4; transition: opacity 0.15s; }
-            #mb-idb-overview .mb-idbo-seg:hover, #mb-idb-overview .mb-idbo-seg.on, #mb-idb-overview .mb-idbo-seg:focus-visible { opacity: 1; outline: none; }
-            #mb-idb-overview .mb-idbo-legend { display: grid; gap: 3px; }
-            #mb-idb-overview .mb-idbo-legend button { all: unset; display: grid; grid-template-columns: 12px minmax(0,1fr) max-content max-content; gap: 8px; align-items: center; padding: 3px 6px; border-radius: 3px; cursor: pointer; font-variant-numeric: tabular-nums; }
-            #mb-idb-overview .mb-idbo-legend button:hover, #mb-idb-overview .mb-idbo-legend button.on { background: #f1e9da; }
-            #mb-idb-overview .mb-idbo-legend button:focus-visible { outline: 2px solid #2f5f9e; }
-            #mb-idb-overview .mb-idbo-sw { width: 12px; height: 12px; border-radius: 2px; display: inline-block; }
-            #mb-idb-overview .mb-idbo-key { display: flex; gap: 12px; flex-wrap: wrap; font-size: 0.86em; color: #7a6d5c; margin-bottom: 6px; }
-            #mb-idb-overview .mb-idbo-key i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; vertical-align: -1px; margin-right: 4px; }
-            #mb-idb-overview .mb-idbo-scroll { overflow-x: auto; border: 1px solid #d9cfbd; border-radius: 3px; background: #fffdf8; }
-            #mb-idb-overview table.mb-idbo-t { border-collapse: collapse; width: 100%; min-width: 760px; font-size: 13px; }
-            #mb-idb-overview table.mb-idbo-t th { font: 600 11px/1.3 system-ui, Arial, sans-serif; text-transform: uppercase; letter-spacing: 0.05em; color: #7a6d5c; text-align: left; padding: 7px 8px; border-bottom: 1px solid #d9cfbd; white-space: nowrap; background: none; }
-            #mb-idb-overview table.mb-idbo-t td { padding: 6px 8px; border-bottom: 1px solid #efe7d8; vertical-align: middle; font-variant-numeric: tabular-nums; }
-            #mb-idb-overview table.mb-idbo-t tr.mb-idbo-row { cursor: pointer; }
-            #mb-idb-overview table.mb-idbo-t tr.mb-idbo-row:hover td, #mb-idb-overview table.mb-idbo-t tr.on td { background: #f6efe1; }
-            #mb-idb-overview .r { text-align: right; }
-            #mb-idb-overview .mb-idbo-agebar { display: flex; height: 9px; width: 130px; border-radius: 2px; overflow: hidden; border: 1px solid #d9cfbd; background: #fff; }
-            #mb-idb-overview .mb-idbo-agebar span, #mb-idb-overview .mb-idbo-hbar { display: block; height: 100%; }
-            #mb-idb-overview .mb-idbo-who small { display: block; color: #7a6d5c; font: 11px ui-monospace, Consolas, monospace; }
-            #mb-idb-overview .mb-idbo-act { font: 600 11.5px/1 system-ui, Arial, sans-serif; padding: 5px 8px; border-radius: 3px; border: 1px solid #cbbfa9; background: #fff; color: #2b2622; cursor: pointer; box-shadow: 0 1px 0 #cbbfa9; white-space: nowrap; }
-            #mb-idb-overview .mb-idbo-act:hover { background: #f4eee2; }
-            #mb-idb-overview .mb-idbo-act.danger { color: #9b2218; border-color: #e2b4ae; }
-            #mb-idb-overview .mb-idbo-act.primary { color: #2f5f9e; border-color: #b9c9e3; }
-            #mb-idb-overview .mb-idbo-act:focus-visible { outline: 2px solid #2f5f9e; outline-offset: 1px; }
-            #mb-idb-overview .mb-idbo-acts { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
-            #mb-idb-overview .mb-idbo-pill { display: inline-block; border: 1px solid #d9cfbd; border-radius: 3px; padding: 0 5px; font: 700 10.5px/1.6 system-ui, Arial, sans-serif; letter-spacing: 0.04em; text-transform: uppercase; background: #efe6d4; color: #4a3f33; }
-            #mb-idb-overview .mb-idbo-pill.warn { color: #9a6a00; background: #fbf3dc; border-color: #e3d09a; }
-            #mb-idb-overview .mb-idbo-drill { border: 1px solid #d9cfbd; border-radius: 3px; padding: 12px; background: #fffdf8; display: grid; gap: 12px; }
-            #mb-idb-overview .mb-idbo-drill h3 { margin: 0; font-size: 1.05em; border: none; padding: 0; }
-            #mb-idb-overview .mb-idbo-grid2 { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14px; }
-            #mb-idb-overview .mb-idbo-hist { display: grid; grid-template-columns: max-content minmax(0,1fr) max-content; gap: 4px 8px; align-items: center; font-size: 0.9em; font-variant-numeric: tabular-nums; }
-            #mb-idb-overview .mb-idbo-hbar { height: 12px; border-radius: 2px; min-width: 1px; }
-            #mb-idb-overview .mb-idbo-keys { font: 12px/1.45 ui-monospace, Consolas, monospace; max-height: 14em; overflow: auto; border: 1px solid #efe7d8; border-radius: 3px; }
-            #mb-idb-overview .mb-idbo-keys > div { display: grid; grid-template-columns: minmax(0,1fr) max-content max-content max-content; gap: 10px; padding: 3px 6px; border-bottom: 1px solid #f3ecdf; align-items: center; }
-            #mb-idb-overview .mb-idbo-keys > div > span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-            #mb-idb-overview .mb-idbo-x { all: unset; cursor: pointer; color: #9b2218; font: 700 12px/1 system-ui, Arial, sans-serif; padding: 0 4px; }
-            #mb-idb-overview .mb-idbo-x:focus-visible { outline: 2px solid #2f5f9e; }
-            #mb-idb-overview input.mb-idbo-f, #mb-idb-overview select.mb-idbo-f { font: 13px system-ui, Arial, sans-serif; padding: 4px 6px; border: 1px solid #cbbfa9; border-radius: 3px; background: #fff; color: #2b2622; }
-            #mb-idb-overview .mb-idbo-confirm { border: 1px solid #e2b4ae; background: #fbefec; border-radius: 3px; padding: 8px 10px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
-            #mb-idb-overview .mb-idbo-toast { font-size: 0.9em; color: #3f7a3a; min-height: 1.4em; }
-            #mb-idb-overview .mb-idbo-act[disabled] { opacity: 0.45; cursor: default; }
-            #mb-idb-overview .mb-idbo-act.on { background: #f1e9da; }
-            #mb-idb-overview .mb-idbo-pill.run { color: #2f5f9e; background: #e4ebf5; border-color: #b9c9e3; }
-            #mb-idb-overview .mb-idbo-pill.ok { color: #3f7a3a; background: #e8f0e4; border-color: #bcd3b5; }
-            #mb-idb-overview .mb-idbo-pill.alert { color: #9b2218; background: #fbefec; border-color: #e2b4ae; }
-            #mb-idb-overview .mb-idbx-pane { border: 1px solid #d9cfbd; border-radius: 3px; padding: 12px; background: #fffdf8; display: grid; gap: 12px; }
-            #mb-idb-overview .mb-idbx-pane h3 { margin: 0; font-size: 1.05em; display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; border: none; padding: 0; }
-            #mb-idb-overview .mb-idbx-facts { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 3px 14px; margin: 0; }
-            #mb-idb-overview .mb-idbx-facts dt { font-style: italic; color: #7a6d5c; }
-            #mb-idb-overview .mb-idbx-facts dd { margin: 0; font-variant-numeric: tabular-nums; min-width: 0; overflow-wrap: anywhere; }
-            #mb-idb-overview .mb-idbx-mono, #mb-idb-overview .mb-idbx-log { font: 12px/1.5 ui-monospace, Consolas, monospace; }
-            #mb-idb-overview .mb-idbx-notice { border: 1px solid #e3d09a; background: #fbf3dc; color: #5c4300; border-radius: 3px; padding: 8px 10px; }
-            #mb-idb-overview .mb-idbx-blue { border-color: #b9c9e3; background: #e4ebf5; }
-            #mb-idb-overview .mb-idbx-seg { display: flex; height: 8px; border-radius: 2px; overflow: hidden; border: 1px solid #d9cfbd; background: #fff; }
-            #mb-idb-overview .mb-idbx-seg span { display: block; height: 100%; }
-            #mb-idb-overview .mb-idbx-seg .done, #mb-idb-overview .mb-idbx-counts i.done { background: #3f7a3a; }
-            #mb-idb-overview .mb-idbx-seg .upd, #mb-idb-overview .mb-idbx-counts i.upd { background: #6f8fbf; }
-            #mb-idb-overview .mb-idbx-seg .fail, #mb-idb-overview .mb-idbx-counts i.fail { background: #9b2218; }
-            #mb-idb-overview .mb-idbx-seg .skip, #mb-idb-overview .mb-idbx-counts i.skip { background-color: #e7dcc6; background-image: repeating-linear-gradient(135deg, rgba(122,109,92,.35) 0 2px, transparent 2px 5px); }
-            #mb-idb-overview .mb-idbx-counts { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 12.5px; color: #7a6d5c; font-variant-numeric: tabular-nums; margin-top: 4px; }
-            #mb-idb-overview .mb-idbx-counts i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; vertical-align: -1px; margin-right: 4px; }
-            #mb-idb-overview .mb-idbx-counts .bad, #mb-idb-overview .mb-idbx-bad { color: #9b2218; }
-            #mb-idb-overview .mb-idbx-ok { color: #3f7a3a; }
-            #mb-idb-overview .mb-idbx-run { color: #2f5f9e; }
-            #mb-idb-overview .mb-idbx-drop { border: 1.5px dashed #cbbfa9; border-radius: 3px; padding: 14px; text-align: center; color: #7a6d5c; }
-            #mb-idb-overview .mb-idbx-drop.over { border-color: #2f5f9e; background: #e4ebf5; }
-            #mb-idb-overview .mb-idbx-reasons { margin: 4px 0 0; padding-left: 18px; font-size: 12.5px; }
-            #mb-idb-overview .mb-idbx-pane details summary { cursor: pointer; font-size: 0.88em; }
-            #mb-idb-overview .mb-idbx-log { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 1px 10px; }
-            #mb-idb-overview .mb-idbx-log .t { color: #7a6d5c; }
-            #mb-idb-overview tr.mb-idbx-skipped td { color: #7a6d5c; }
-            #mb-idb-overview .mb-idbx-pane table.mb-idbo-t td.r { white-space: nowrap; }
-            #mb-idb-overview .mb-idbx-pane table.mb-idbo-t tfoot td { border-top: 1px solid #d9cfbd; border-bottom: 0; font-weight: 700; color: #2b2622; }
-            #mb-idb-overview .mb-idbx-pane input[type=checkbox] { accent-color: #2f5f9e; }
-            #mb-idb-overview .mb-idbo-f-row { padding: 10px 16px; border-top: 1px solid #d9cfbd; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; font-size: 0.88em; color: #7a6d5c; }
-            @media (max-width: 720px) { #mb-idb-overview .mb-idbo-top, #mb-idb-overview .mb-idbo-grid2 { grid-template-columns: 1fr; } }
+            :is(#mb-idb-overview, #mb-gm-store) { position: fixed; inset: 0; z-index: 2147483200; background: rgba(40, 30, 20, 0.35); display: flex; align-items: flex-start; justify-content: center; padding: 4vh 12px; overflow: auto; }
+            :is(#mb-idb-overview, #mb-gm-store) .mb-idbo-dlg { width: min(1040px, 100%); background: #fbf8f1; color: #2b2622; border: 1px solid #d9cfbd; border-radius: 4px; font: 14px/1.5 Georgia, "Times New Roman", Times, serif; box-shadow: 0 1px 0 #e9e1d1, 0 18px 40px -16px rgba(60,40,20,0.45); outline: none; }
+            /* Movable by its header and resizable from its corner
+               (_makeMovableResizable(), sa_idbo_geometry): the body scrolls
+               between a fixed header and foot, and a 16 px strip under the
+               foot holds the resize corner, so no scrollbar runs into it. */
+            :is(#mb-idb-overview, #mb-gm-store) .mb-idbo-dlg { display: flex; flex-direction: column; max-height: 92vh; overflow: hidden; resize: both; min-width: min(420px, 100%); min-height: 260px; padding-bottom: 16px; }
+            :is(#mb-idb-overview, #mb-gm-store) .mb-idbo-dlg.mb-geo-fixed { position: fixed; margin: 0; max-height: none; max-width: none; }
+            :is(#mb-idb-overview, #mb-gm-store) .mb-idbo-h, :is(#mb-idb-overview, #mb-gm-store) .mb-idbo-f-row { flex: none; }
+            :is(#mb-idb-overview, #mb-gm-store) .mb-idbo-h { cursor: move; user-select: none; touch-action: none; }
+            :is(#mb-idb-overview, #mb-gm-store) .mb-idbo-h button { cursor: pointer; }
+            :is(#mb-idb-overview, #mb-gm-store) .mb-idbo-dlg > .mb-idbo-b { flex: 1 1 auto; min-height: 0; overflow: auto; }
+            :is(#mb-idb-overview, #mb-gm-store) .mb-idbo-h { display: flex; align-items: baseline; gap: 10px; padding: 12px 16px; border-bottom: 1px solid #d9cfbd; flex-wrap: wrap; }
+            :is(#mb-idb-overview, #mb-gm-store) .mb-idbo-h b { font-size: 1.18em; flex: 1; min-width: 12ch; }
+            :is(#mb-idb-overview, #mb-gm-store) .mb-idbo-dim { color: #7a6d5c; font-size: 0.88em; }
+            :is(#mb-idb-overview, #mb-gm-store) .mb-idbo-b { padding: 14px 16px 16px; display: grid; gap: 16px; }
+            :is(#mb-idb-overview, #mb-gm-store) .mb-idbo-strip { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+            :is(#mb-idb-overview, #mb-gm-store) .mb-idbo-stat { border: 1px solid #d9cfbd; border-radius: 3px; padding: 8px 10px; background: #fffdf8; }
+            :is(#mb-idb-overview, #mb-gm-store) .mb-idbo-stat .k { font: 600 11px/1.3 system-ui, Arial, sans-serif; text-transform: uppercase; letter-spacing: 0.06em; color: #7a6d5c; }
+            :is(#mb-idb-overview, #mb-gm-store) .mb-idbo-stat .v { font-size: 1.35em; font-weight: 700; font-variant-numeric: tabular-nums; }
+            :is(#mb-idb-overview, #mb-gm-store) .mb-idbo-quota { height: 6px; background: #ece4d4; border-radius: 3px; overflow: hidden; margin-top: 5px; display: flex; }
+            :is(#mb-idb-overview, #mb-gm-store) .mb-idbo-quota span { display: block; height: 100%; }
+            :is(#mb-idb-overview, #mb-gm-store) .mb-idbo-top { display: grid; grid-template-columns: minmax(0, 240px) minmax(0, 1fr); gap: 18px; align-items: center; }
+            :is(#mb-idb-overview, #mb-gm-store) .mb-idbo-donut { position: relative; max-width: 240px; margin: 0 auto; width: 100%; }
+            :is(#mb-idb-overview, #mb-gm-store) .mb-idbo-donut svg { width: 100%; height: auto; display: block; }
+            :is(#mb-idb-overview, #mb-gm-store) .mb-idbo-donut-c { position: absolute; inset: 0; display: grid; place-content: center; text-align: center; pointer-events: none; }
+            :is(#mb-idb-overview, #mb-gm-store) .mb-idbo-donut-c b { font-size: 1.4em; font-variant-numeric: tabular-nums; }
+            :is(#mb-idb-overview, #mb-gm-store) .mb-idbo-seg { cursor: pointer; opacity: 0.4; transition: opacity 0.15s; }
+            :is(#mb-idb-overview, #mb-gm-store) .mb-idbo-seg:hover, :is(#mb-idb-overview, #mb-gm-store) .mb-idbo-seg.on, :is(#mb-idb-overview, #mb-gm-store) .mb-idbo-seg:focus-visible { opacity: 1; outline: none; }
+            :is(#mb-idb-overview, #mb-gm-store) .mb-idbo-legend { display: grid; gap: 3px; }
+            :is(#mb-idb-overview, #mb-gm-store) .mb-idbo-legend button { all: unset; display: grid; grid-template-columns: 12px minmax(0,1fr) max-content max-content; gap: 8px; align-items: center; padding: 3px 6px; border-radius: 3px; cursor: pointer; font-variant-numeric: tabular-nums; }
+            :is(#mb-idb-overview, #mb-gm-store) .mb-idbo-legend button:hover, :is(#mb-idb-overview, #mb-gm-store) .mb-idbo-legend button.on { background: #f1e9da; }
+            :is(#mb-idb-overview, #mb-gm-store) .mb-idbo-legend button:focus-visible { outline: 2px solid #2f5f9e; }
+            :is(#mb-idb-overview, #mb-gm-store) .mb-idbo-sw { width: 12px; height: 12px; border-radius: 2px; display: inline-block; }
+            :is(#mb-idb-overview, #mb-gm-store) .mb-idbo-key { display: flex; gap: 12px; flex-wrap: wrap; font-size: 0.86em; color: #7a6d5c; margin-bottom: 6px; }
+            :is(#mb-idb-overview, #mb-gm-store) .mb-idbo-key i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; vertical-align: -1px; margin-right: 4px; }
+            :is(#mb-idb-overview, #mb-gm-store) .mb-idbo-scroll { overflow-x: auto; border: 1px solid #d9cfbd; border-radius: 3px; background: #fffdf8; }
+            :is(#mb-idb-overview, #mb-gm-store) table.mb-idbo-t { border-collapse: collapse; width: 100%; min-width: 760px; font-size: 13px; }
+            :is(#mb-idb-overview, #mb-gm-store) table.mb-idbo-t th { font: 600 11px/1.3 system-ui, Arial, sans-serif; text-transform: uppercase; letter-spacing: 0.05em; color: #7a6d5c; text-align: left; padding: 7px 8px; border-bottom: 1px solid #d9cfbd; white-space: nowrap; background: none; }
+            :is(#mb-idb-overview, #mb-gm-store) table.mb-idbo-t td { padding: 6px 8px; border-bottom: 1px solid #efe7d8; vertical-align: middle; font-variant-numeric: tabular-nums; }
+            :is(#mb-idb-overview, #mb-gm-store) table.mb-idbo-t tr.mb-idbo-row { cursor: pointer; }
+            :is(#mb-idb-overview, #mb-gm-store) table.mb-idbo-t tr.mb-idbo-row:hover td, :is(#mb-idb-overview, #mb-gm-store) table.mb-idbo-t tr.on td { background: #f6efe1; }
+            :is(#mb-idb-overview, #mb-gm-store) .r { text-align: right; }
+            :is(#mb-idb-overview, #mb-gm-store) .mb-idbo-agebar { display: flex; height: 9px; width: 130px; border-radius: 2px; overflow: hidden; border: 1px solid #d9cfbd; background: #fff; }
+            :is(#mb-idb-overview, #mb-gm-store) .mb-idbo-agebar span, :is(#mb-idb-overview, #mb-gm-store) .mb-idbo-hbar { display: block; height: 100%; }
+            :is(#mb-idb-overview, #mb-gm-store) .mb-idbo-who small { display: block; color: #7a6d5c; font: 11px ui-monospace, Consolas, monospace; }
+            :is(#mb-idb-overview, #mb-gm-store) .mb-idbo-act { font: 600 11.5px/1 system-ui, Arial, sans-serif; padding: 5px 8px; border-radius: 3px; border: 1px solid #cbbfa9; background: #fff; color: #2b2622; cursor: pointer; box-shadow: 0 1px 0 #cbbfa9; white-space: nowrap; }
+            :is(#mb-idb-overview, #mb-gm-store) .mb-idbo-act:hover { background: #f4eee2; }
+            :is(#mb-idb-overview, #mb-gm-store) .mb-idbo-act.danger { color: #9b2218; border-color: #e2b4ae; }
+            :is(#mb-idb-overview, #mb-gm-store) .mb-idbo-act.primary { color: #2f5f9e; border-color: #b9c9e3; }
+            :is(#mb-idb-overview, #mb-gm-store) .mb-idbo-act:focus-visible { outline: 2px solid #2f5f9e; outline-offset: 1px; }
+            :is(#mb-idb-overview, #mb-gm-store) .mb-idbo-acts { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+            :is(#mb-idb-overview, #mb-gm-store) .mb-idbo-pill { display: inline-block; border: 1px solid #d9cfbd; border-radius: 3px; padding: 0 5px; font: 700 10.5px/1.6 system-ui, Arial, sans-serif; letter-spacing: 0.04em; text-transform: uppercase; background: #efe6d4; color: #4a3f33; }
+            :is(#mb-idb-overview, #mb-gm-store) .mb-idbo-pill.warn { color: #9a6a00; background: #fbf3dc; border-color: #e3d09a; }
+            :is(#mb-idb-overview, #mb-gm-store) .mb-idbo-drill { border: 1px solid #d9cfbd; border-radius: 3px; padding: 12px; background: #fffdf8; display: grid; gap: 12px; }
+            :is(#mb-idb-overview, #mb-gm-store) .mb-idbo-drill h3 { margin: 0; font-size: 1.05em; border: none; padding: 0; }
+            :is(#mb-idb-overview, #mb-gm-store) .mb-idbo-grid2 { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14px; }
+            :is(#mb-idb-overview, #mb-gm-store) .mb-idbo-hist { display: grid; grid-template-columns: max-content minmax(0,1fr) max-content; gap: 4px 8px; align-items: center; font-size: 0.9em; font-variant-numeric: tabular-nums; }
+            :is(#mb-idb-overview, #mb-gm-store) .mb-idbo-hbar { height: 12px; border-radius: 2px; min-width: 1px; }
+            :is(#mb-idb-overview, #mb-gm-store) .mb-idbo-keys { font: 12px/1.45 ui-monospace, Consolas, monospace; max-height: 14em; overflow: auto; border: 1px solid #efe7d8; border-radius: 3px; }
+            :is(#mb-idb-overview, #mb-gm-store) .mb-idbo-keys > div { display: grid; grid-template-columns: minmax(0,1fr) max-content max-content max-content; gap: 10px; padding: 3px 6px; border-bottom: 1px solid #f3ecdf; align-items: center; }
+            :is(#mb-idb-overview, #mb-gm-store) .mb-idbo-keys > div > span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+            :is(#mb-idb-overview, #mb-gm-store) .mb-idbo-x { all: unset; cursor: pointer; color: #9b2218; font: 700 12px/1 system-ui, Arial, sans-serif; padding: 0 4px; }
+            :is(#mb-idb-overview, #mb-gm-store) .mb-idbo-x:focus-visible { outline: 2px solid #2f5f9e; }
+            :is(#mb-idb-overview, #mb-gm-store) input.mb-idbo-f, :is(#mb-idb-overview, #mb-gm-store) select.mb-idbo-f { font: 13px system-ui, Arial, sans-serif; padding: 4px 6px; border: 1px solid #cbbfa9; border-radius: 3px; background: #fff; color: #2b2622; }
+            :is(#mb-idb-overview, #mb-gm-store) .mb-idbo-confirm { border: 1px solid #e2b4ae; background: #fbefec; border-radius: 3px; padding: 8px 10px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+            :is(#mb-idb-overview, #mb-gm-store) .mb-idbo-toast { font-size: 0.9em; color: #3f7a3a; min-height: 1.4em; }
+            :is(#mb-idb-overview, #mb-gm-store) .mb-idbo-act[disabled] { opacity: 0.45; cursor: default; }
+            :is(#mb-idb-overview, #mb-gm-store) .mb-idbo-act.on { background: #f1e9da; }
+            :is(#mb-idb-overview, #mb-gm-store) .mb-idbo-pill.run { color: #2f5f9e; background: #e4ebf5; border-color: #b9c9e3; }
+            :is(#mb-idb-overview, #mb-gm-store) .mb-idbo-pill.ok { color: #3f7a3a; background: #e8f0e4; border-color: #bcd3b5; }
+            :is(#mb-idb-overview, #mb-gm-store) .mb-idbo-pill.alert { color: #9b2218; background: #fbefec; border-color: #e2b4ae; }
+            :is(#mb-idb-overview, #mb-gm-store) .mb-idbx-pane { border: 1px solid #d9cfbd; border-radius: 3px; padding: 12px; background: #fffdf8; display: grid; gap: 12px; }
+            :is(#mb-idb-overview, #mb-gm-store) .mb-idbx-pane h3 { margin: 0; font-size: 1.05em; display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; border: none; padding: 0; }
+            :is(#mb-idb-overview, #mb-gm-store) .mb-idbx-facts { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 3px 14px; margin: 0; }
+            :is(#mb-idb-overview, #mb-gm-store) .mb-idbx-facts dt { font-style: italic; color: #7a6d5c; }
+            :is(#mb-idb-overview, #mb-gm-store) .mb-idbx-facts dd { margin: 0; font-variant-numeric: tabular-nums; min-width: 0; overflow-wrap: anywhere; }
+            :is(#mb-idb-overview, #mb-gm-store) .mb-idbx-mono, :is(#mb-idb-overview, #mb-gm-store) .mb-idbx-log { font: 12px/1.5 ui-monospace, Consolas, monospace; }
+            :is(#mb-idb-overview, #mb-gm-store) .mb-idbx-notice { border: 1px solid #e3d09a; background: #fbf3dc; color: #5c4300; border-radius: 3px; padding: 8px 10px; }
+            :is(#mb-idb-overview, #mb-gm-store) .mb-idbx-blue { border-color: #b9c9e3; background: #e4ebf5; }
+            :is(#mb-idb-overview, #mb-gm-store) .mb-idbx-seg { display: flex; height: 8px; border-radius: 2px; overflow: hidden; border: 1px solid #d9cfbd; background: #fff; }
+            :is(#mb-idb-overview, #mb-gm-store) .mb-idbx-seg span { display: block; height: 100%; }
+            :is(#mb-idb-overview, #mb-gm-store) .mb-idbx-seg .done, :is(#mb-idb-overview, #mb-gm-store) .mb-idbx-counts i.done { background: #3f7a3a; }
+            :is(#mb-idb-overview, #mb-gm-store) .mb-idbx-seg .upd, :is(#mb-idb-overview, #mb-gm-store) .mb-idbx-counts i.upd { background: #6f8fbf; }
+            :is(#mb-idb-overview, #mb-gm-store) .mb-idbx-seg .fail, :is(#mb-idb-overview, #mb-gm-store) .mb-idbx-counts i.fail { background: #9b2218; }
+            :is(#mb-idb-overview, #mb-gm-store) .mb-idbx-seg .skip, :is(#mb-idb-overview, #mb-gm-store) .mb-idbx-counts i.skip { background-color: #e7dcc6; background-image: repeating-linear-gradient(135deg, rgba(122,109,92,.35) 0 2px, transparent 2px 5px); }
+            :is(#mb-idb-overview, #mb-gm-store) .mb-idbx-counts { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 12.5px; color: #7a6d5c; font-variant-numeric: tabular-nums; margin-top: 4px; }
+            :is(#mb-idb-overview, #mb-gm-store) .mb-idbx-counts i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; vertical-align: -1px; margin-right: 4px; }
+            :is(#mb-idb-overview, #mb-gm-store) .mb-idbx-counts .bad, :is(#mb-idb-overview, #mb-gm-store) .mb-idbx-bad { color: #9b2218; }
+            :is(#mb-idb-overview, #mb-gm-store) .mb-idbx-ok { color: #3f7a3a; }
+            :is(#mb-idb-overview, #mb-gm-store) .mb-idbx-run { color: #2f5f9e; }
+            :is(#mb-idb-overview, #mb-gm-store) .mb-idbx-drop { border: 1.5px dashed #cbbfa9; border-radius: 3px; padding: 14px; text-align: center; color: #7a6d5c; }
+            :is(#mb-idb-overview, #mb-gm-store) .mb-idbx-drop.over { border-color: #2f5f9e; background: #e4ebf5; }
+            :is(#mb-idb-overview, #mb-gm-store) .mb-idbx-reasons { margin: 4px 0 0; padding-left: 18px; font-size: 12.5px; }
+            :is(#mb-idb-overview, #mb-gm-store) .mb-idbx-pane details summary { cursor: pointer; font-size: 0.88em; }
+            :is(#mb-idb-overview, #mb-gm-store) .mb-idbx-log { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 1px 10px; }
+            :is(#mb-idb-overview, #mb-gm-store) .mb-idbx-log .t { color: #7a6d5c; }
+            :is(#mb-idb-overview, #mb-gm-store) tr.mb-idbx-skipped td { color: #7a6d5c; }
+            :is(#mb-idb-overview, #mb-gm-store) .mb-idbx-pane table.mb-idbo-t td.r { white-space: nowrap; }
+            :is(#mb-idb-overview, #mb-gm-store) .mb-idbx-pane table.mb-idbo-t tfoot td { border-top: 1px solid #d9cfbd; border-bottom: 0; font-weight: 700; color: #2b2622; }
+            :is(#mb-idb-overview, #mb-gm-store) .mb-idbx-pane input[type=checkbox] { accent-color: #2f5f9e; }
+            :is(#mb-idb-overview, #mb-gm-store) .mb-idbo-f-row { padding: 10px 16px; border-top: 1px solid #d9cfbd; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; font-size: 0.88em; color: #7a6d5c; }
+            @media (max-width: 720px) { :is(#mb-idb-overview, #mb-gm-store) .mb-idbo-top, :is(#mb-idb-overview, #mb-gm-store) .mb-idbo-grid2 { grid-template-columns: 1fr; } }
         `);
         st.id = 'mb-idbo-style';
     }
@@ -132138,6 +132183,12 @@ a { color: #1565c0; }`;
             document.body.appendChild(el);
             _idbo.el = el;
             window.addEventListener('keydown', _idboOnKey, true);
+            // Moved or resized once: where it was left (`sa_idbo_geometry`);
+            // never: centred at the top, as before. The header is rebuilt
+            // on every paint; the handle is found from a delegated press.
+            _idbo.geo = _makeMovableResizable(el.querySelector('.mb-idbo-dlg'),
+                { handleSel: '.mb-idbo-h', geoKey: 'sa_idbo_geometry', minW: 420, minH: 260 });
+            _idbo.geo.restore();
         }
         _idbo.opener = opener || document.activeElement;
         _idbo.pending = null;
@@ -132158,6 +132209,10 @@ a { color: #1565c0; }`;
         if (_idbo.x.ex.url) URL.revokeObjectURL(_idbo.x.ex.url);
         _idbo.x = _idbxFresh();
         window.removeEventListener('keydown', _idboOnKey, true);
+        if (_idbo.geo) {
+            _idbo.geo.destroy();
+            _idbo.geo = null;
+        }
         _idbo.el.remove();
         _idbo.el = null;
         if (_idbo.opener && _idbo.opener.isConnected && typeof _idbo.opener.focus === 'function') _idbo.opener.focus();
@@ -133353,6 +133408,484 @@ a { color: #1565c0; }`;
             return true;
         }
         return false;
+    }
+
+    // ──────────────────────────────────────────────────────────────────────────
+    // 🗄️ Script storage (_gms*) — the Tampermonkey key/values this script keeps
+    // (GM storage), for the user: every key with its kind (a setting, saved
+    // workspace state, a "Show single-table" hand-off, a key nothing reads any
+    // more, other), type, size and value; a filter and kind chips; a key's
+    // value as JSON to edit, reset to its default, delete or copy; every key
+    // as one JSON file; the orphaned keys deleted at once. Every overwrite and
+    // delete is confirmed inside the dialog. A `secret: true` setting (the
+    // Discogs token) shows as dots and can only be deleted: never copied,
+    // never exported, never logged. Looks like the 💾 Browser cache overview,
+    // and moves and resizes the same way (`sa_gms_geometry`). Requested by
+    // vzell, 2026-10-26. Talks to nothing but GM storage.
+    // ──────────────────────────────────────────────────────────────────────────
+
+    /** The kinds a key can be, in display order, with their chip labels. */
+    const _GMS_KINDS = [
+        ['setting', 'Settings'], ['workspace', 'Workspace'], ['snapshot', 'Hand-offs'],
+        ['orphaned', 'Orphaned'], ['other', 'Other'],
+    ];
+
+    /** A value bigger than this (JSON characters) is shown, not edited. */
+    const _GMS_EDIT_MAX = 200000;
+
+    /**
+     * Dialog state while it is open: the overlay, the rows read, the picked
+     * key, the kind chip (`all` or a `_GMS_KINDS` id), the filter text, a
+     * pending confirmation, the focus to give back, the move/resize handle,
+     * and whether `GM_listValues` was there to list every key.
+     */
+    const _gms = { el: null, rows: [], pick: '', kind: 'all', query: '', pending: null, opener: null, geo: null, listed: true };
+
+    /**
+     * Whether a stored value equals its schema default. Compared as JSON
+     * and, for scalars, as strings, because the settings dialog hands every
+     * non-checkbox value back as a string (`"30"` for a default of 30), as
+     * the library's own `isSchemaDefault()` does.
+     *
+     * @param {*} v
+     * @param {*} def
+     * @returns {boolean}
+     */
+    function _gmsSameAsDefault(v, def) {
+        if (JSON.stringify(v) === JSON.stringify(def)) return true;
+        const scalar = x => x === null || ['string', 'number', 'boolean'].includes(typeof x);
+        return scalar(v) && scalar(def) && String(v).toLowerCase() === String(def).toLowerCase();
+    }
+
+    /**
+     * The type name of a stored value, as the table shows it.
+     * @param {*} v
+     * @returns {string}
+     */
+    function _gmsType(v) {
+        if (v === null) return 'null';
+        if (Array.isArray(v)) return 'array';
+        return typeof v;
+    }
+
+    /**
+     * What a key is: a `configSchema` setting, workspace state the config
+     * file carries (`_configWorkspaceGroupFor()`), a "Show single-table"
+     * hand-off (`_GM_SNAPSHOT_KEY_PREFIX`), a key nothing reads any more
+     * (`_GM_ORPHANED_VALUE_KEYS`), or other (install state such as the
+     * settings migration level).
+     *
+     * @param {string} key
+     * @returns {{kind: string, group: string}} `group`: the workspace group's label.
+     */
+    function _gmsKindOf(key) {
+        if (Object.prototype.hasOwnProperty.call(configSchema, key)) return { kind: 'setting', group: '' };
+        if (key.startsWith(_GM_SNAPSHOT_KEY_PREFIX)) return { kind: 'snapshot', group: '' };
+        if (_GM_ORPHANED_VALUE_KEYS.includes(key)) return { kind: 'orphaned', group: '' };
+        const g = _configWorkspaceGroupFor(key);
+        if (g) {
+            const grp = _CFG_WORKSPACE_GROUPS.find(x => x.group === g);
+            return { kind: 'workspace', group: grp ? grp.label : g };
+        }
+        return { kind: 'other', group: '' };
+    }
+
+    /**
+     * Reads every key this script has in GM storage, with its value, kind
+     * and size. Without `GM_listValues` only the keys that can be named are
+     * found: every `configSchema` key and every fixed workspace and orphaned
+     * key that has a value (`_gms.listed` says which happened).
+     *
+     * @returns {Array<{key: string, value: *, kind: string, group: string, type: string,
+     *                  bytes: number, json: string, secret: boolean, isDefault: ?boolean}>}
+     */
+    function _gmsRead() {
+        let keys = null;
+        if (typeof GM_listValues === 'function') {
+            try { keys = GM_listValues(); } catch (_) { keys = null; }
+        }
+        _gms.listed = Array.isArray(keys);
+        if (!keys) {
+            const named = [...Object.keys(configSchema), ..._configWorkspaceKeys().map(k => k.key), ..._GM_ORPHANED_VALUE_KEYS];
+            keys = [...new Set(named)].filter(k => GM_getValue(k, undefined) !== undefined);
+        }
+        const order = _GMS_KINDS.map(k => k[0]);
+        return keys.map((key) => {
+            const value = GM_getValue(key, undefined);
+            const { kind, group } = _gmsKindOf(key);
+            const cfg = kind === 'setting' ? configSchema[key] : null;
+            let json;
+            try { json = JSON.stringify(value) || String(value); } catch (_) { json = String(value); }
+            return {
+                key, value, kind, group, type: _gmsType(value), bytes: json.length, json,
+                secret: !!(cfg && cfg.secret),
+                isDefault: cfg ? _gmsSameAsDefault(value, cfg.default) : null,
+            };
+        }).sort((a, b) => order.indexOf(a.kind) - order.indexOf(b.kind) || a.key.localeCompare(b.key));
+    }
+
+    /**
+     * Injects the dialog's stylesheet once (lazily, so no page carries it
+     * unused): the Browser cache overview's (`_idboEnsureStyle()`, whose
+     * rules name `#mb-gm-store` too), plus the parts only this dialog has —
+     * the key table, the value editor, the kind chips' pressed state.
+     */
+    function _gmsEnsureStyle() {
+        _idboEnsureStyle();
+        if (document.getElementById('mb-gms-style')) return;
+        const st = GM_addStyle(`
+            #mb-gm-store .mb-idbo-act[aria-pressed="true"] { background: #f1e9da; border-color: #8a7d68; }
+            #mb-gm-store tr.mb-gms-row:focus-visible { outline: 2px solid #2f5f9e; outline-offset: -2px; }
+            #mb-gm-store input.mb-idbo-f { min-width: 16em; }
+            #mb-gm-store .mb-gms-scroll { overflow: auto; max-height: 22em; border: 1px solid #d9cfbd; border-radius: 3px; background: #fffdf8; }
+            #mb-gm-store table.mb-gms-t { border-collapse: collapse; width: 100%; font-size: 13px; table-layout: fixed; }
+            #mb-gm-store table.mb-gms-t th { position: sticky; top: 0; background: #fffdf8; font: 600 11px/1.3 system-ui, Arial, sans-serif; text-transform: uppercase; letter-spacing: 0.05em; color: #7a6d5c; text-align: left; padding: 7px 8px; border-bottom: 1px solid #d9cfbd; white-space: nowrap; }
+            #mb-gm-store table.mb-gms-t td { padding: 5px 8px; border-bottom: 1px solid #efe7d8; vertical-align: top; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+            #mb-gm-store table.mb-gms-t td.k, #mb-gm-store table.mb-gms-t td.v { font: 12px/1.45 ui-monospace, Consolas, monospace; }
+            #mb-gm-store table.mb-gms-t td.v { color: #4a3f33; }
+            #mb-gm-store table.mb-gms-t .r { text-align: right; font-variant-numeric: tabular-nums; }
+            #mb-gm-store tr.mb-gms-row { cursor: pointer; }
+            #mb-gm-store tr.mb-gms-row:hover td, #mb-gm-store tr.mb-gms-row.on td { background: #f6efe1; }
+            #mb-gm-store .mb-idbo-drill { gap: 10px; }
+            #mb-gm-store .mb-idbo-drill[hidden] { display: none; }
+            #mb-gm-store .mb-idbo-drill h3 { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; overflow-wrap: anywhere; }
+            #mb-gm-store .mb-idbo-drill textarea { width: 100%; box-sizing: border-box; min-height: 10em; font: 12px/1.45 ui-monospace, Consolas, monospace; padding: 6px; border: 1px solid #cbbfa9; border-radius: 3px; background: #fff; color: #2b2622; resize: vertical; }
+            #mb-gm-store .mb-gms-err { color: #9b2218; font-size: 0.9em; }
+            #mb-gm-store .mb-idbo-confirm { overflow-wrap: anywhere; }
+            #mb-gm-store .mb-gms-notice { border: 1px solid #e3d09a; background: #fbf3dc; color: #5c4300; border-radius: 3px; padding: 8px 10px; }
+            #mb-gm-store .mb-idbo-b { align-content: start; gap: 14px; }
+            @media (max-width: 720px) { #mb-gm-store table.mb-gms-t col.c-type, #mb-gm-store table.mb-gms-t col.c-size { width: 0; } }
+        `);
+        st.id = 'mb-gms-style';
+    }
+
+    /**
+     * Opens the dialog (or brings an open one forward) and reads storage.
+     * Safe on any page and any host: it only reads GM storage until the
+     * user confirms a change.
+     *
+     * @param {?Element} [opener] - Focus returns here on close.
+     * @returns {void}
+     */
+    function _gmStoreOpen(opener) {
+        _gmsEnsureStyle();
+        if (!_gms.el || !_gms.el.isConnected) {
+            const el = document.createElement('div');
+            el.id = 'mb-gm-store';
+            el.innerHTML = '<div class="mb-idbo-dlg" role="dialog" aria-modal="true" aria-labelledby="mb-gms-title" tabindex="-1"></div>';
+            el.addEventListener('mousedown', (e) => { if (e.target === el) _gmStoreClose(); });
+            el.addEventListener('click', _gmsOnClick);
+            el.addEventListener('input', (e) => {
+                if (e.target.id === 'mb-gms-q') { _gms.query = e.target.value; _gmsPaintTable(); }
+            });
+            el.addEventListener('keydown', (e) => {
+                const tr = e.target.closest && e.target.closest('tr.mb-gms-row');
+                if (tr && (e.key === 'Enter' || e.key === ' ')) {
+                    e.preventDefault();
+                    _gmsPick(tr.dataset.key);
+                }
+            });
+            document.body.appendChild(el);
+            _gms.el = el;
+            window.addEventListener('keydown', _gmsOnKey, true);
+            // Moved or resized once: where it was left (`sa_gms_geometry`).
+            _gms.geo = _makeMovableResizable(el.querySelector('.mb-idbo-dlg'),
+                { handleSel: '.mb-idbo-h', geoKey: 'sa_gms_geometry', minW: 420, minH: 260 });
+            _gms.geo.restore();
+        }
+        _gms.opener = opener || document.activeElement;
+        _gms.pending = null;
+        _gms.rows = _gmsRead();
+        if (!_gms.rows.find(r => r.key === _gms.pick)) _gms.pick = '';
+        _gmsPaint();
+        _gms.el.querySelector('.mb-idbo-dlg').focus();
+    }
+
+    /** Closes the dialog and gives focus back. */
+    function _gmStoreClose() {
+        if (!_gms.el) return;
+        window.removeEventListener('keydown', _gmsOnKey, true);
+        if (_gms.geo) {
+            _gms.geo.destroy();
+            _gms.geo = null;
+        }
+        _gms.el.remove();
+        _gms.el = null;
+        _gms.pending = null;
+        if (_gms.opener && _gms.opener.isConnected && typeof _gms.opener.focus === 'function') _gms.opener.focus();
+    }
+
+    /**
+     * Esc: cancels an open confirmation first, then closes the dialog.
+     * @param {KeyboardEvent} e
+     * @returns {void}
+     */
+    function _gmsOnKey(e) {
+        if (e.key !== 'Escape' || !_gms.el) return;
+        e.preventDefault();
+        e.stopPropagation();
+        if (_gms.pending) {
+            _gms.pending = null;
+            _gmsPaintConfirm();
+            return;
+        }
+        _gmStoreClose();
+    }
+
+    /**
+     * The rows the kind chip and the filter leave: the filter matches the
+     * key, its kind's group, and (never for a secret) its value's JSON.
+     * @returns {Array<object>}
+     */
+    function _gmsVisibleRows() {
+        const q = _gms.query.trim().toLowerCase();
+        return _gms.rows.filter(r => (_gms.kind === 'all' || r.kind === _gms.kind) &&
+            (!q || r.key.toLowerCase().includes(q) || r.group.toLowerCase().includes(q) ||
+             (!r.secret && r.json.toLowerCase().includes(q))));
+    }
+
+    /** Paints the whole dialog from `_gms.rows`. */
+    function _gmsPaint() {
+        if (!_gms.el) return;
+        const rows = _gms.rows;
+        const fmtN = n => Number(n).toLocaleString('en-US');
+        const total = rows.reduce((s, r) => s + r.bytes, 0);
+        const changed = rows.filter(r => r.kind === 'setting' && !r.isDefault).length;
+        const settings = rows.filter(r => r.kind === 'setting').length;
+        const orphans = rows.filter(r => r.kind === 'orphaned' || r.kind === 'snapshot').length;
+        const count = id => rows.filter(r => r.kind === id).length;
+        const canDelete = typeof GM_deleteValue === 'function';
+        let h = '<div class="mb-idbo-h"><b id="mb-gms-title">🗄️ Script storage</b>'
+              + '<span class="mb-idbo-dim">Tampermonkey · this script only · <kbd>Esc</kbd> closes</span>'
+              + '<span class="mb-idbo-acts"><button type="button" class="mb-idbo-act primary" data-gms="export">Export JSON…</button>'
+              + '<button type="button" class="mb-idbo-act" data-gms="close" aria-label="Close">✕</button></span></div><div class="mb-idbo-b">';
+        if (!_gms.listed) {
+            h += '<div class="mb-gms-notice">Tampermonkey does not let this script list its keys, so only the keys it knows by name are shown.</div>';
+        }
+        h += '<div class="mb-idbo-strip">'
+           + `<div class="mb-idbo-stat" data-gms-stat="keys"><div class="k">Keys</div><div class="v">${fmtN(rows.length)}</div><div class="mb-idbo-dim">stored for this script</div></div>`
+           + `<div class="mb-idbo-stat" data-gms-stat="size"><div class="k">Size</div><div class="v">${_idboFmtB(total)}</div><div class="mb-idbo-dim">as JSON text</div></div>`
+           + `<div class="mb-idbo-stat" data-gms-stat="changed"><div class="k">Settings changed</div><div class="v">${fmtN(changed)}</div><div class="mb-idbo-dim">of ${fmtN(settings)} stored settings</div></div>`
+           + `<div class="mb-idbo-stat" data-gms-stat="orphans"><div class="k">Leftovers</div><div class="v">${fmtN(orphans)}</div><div class="mb-idbo-dim">orphaned keys and hand-offs</div></div>`
+           + '</div>';
+        h += '<div class="mb-idbo-acts">'
+           + `<input class="mb-idbo-f" id="mb-gms-q" placeholder="Find a key or value…" aria-label="Find a key or value" value="${_ajEsc(_gms.query)}">`
+           + `<button type="button" class="mb-idbo-act" data-gms-kind="all" aria-pressed="${_gms.kind === 'all'}">All ${fmtN(rows.length)}</button>`
+           + _GMS_KINDS.map(([id, label]) => `<button type="button" class="mb-idbo-act" data-gms-kind="${id}" aria-pressed="${_gms.kind === id}"${count(id) ? '' : ' disabled'}>${label} ${fmtN(count(id))}</button>`).join('')
+           + '</div>';
+        h += '<div class="mb-gms-scroll"><table class="mb-gms-t"><colgroup><col style="width:34%"><col style="width:14%"><col class="c-type" style="width:9%"><col class="c-size" style="width:9%"><col></colgroup>'
+           + '<thead><tr><th>Key</th><th>Kind</th><th>Type</th><th class="r">Size</th><th>Value</th></tr></thead><tbody data-gms-rows></tbody></table></div>';
+        h += '<div class="mb-idbo-drill" data-gms-detail hidden></div>';
+        h += '<div data-gms-confirm></div><div class="mb-idbo-toast" aria-live="polite" data-gms-toast></div></div>';
+        h += '<div class="mb-idbo-f-row"><div class="mb-idbo-acts">'
+           + `<button type="button" class="mb-idbo-act danger" data-gms="orphans"${orphans && canDelete ? '' : ' disabled'}>Delete leftovers</button></div>`
+           + '<span>Changes to settings take effect after a reload. The Discogs token is shown as dots and never copied or exported.</span></div>';
+        const dlg = _gms.el.querySelector('.mb-idbo-dlg');
+        const toast = (dlg.querySelector('[data-gms-toast]') || {}).textContent || '';
+        dlg.innerHTML = h;
+        dlg.querySelector('[data-gms-toast]').textContent = toast;
+        _gmsPaintTable();
+        _gmsPaintDetail();
+        _gmsPaintConfirm();
+    }
+
+    /** Paints the table body from the kind chip and the filter. */
+    function _gmsPaintTable() {
+        const body = _gms.el && _gms.el.querySelector('[data-gms-rows]');
+        if (!body) return;
+        const rows = _gmsVisibleRows();
+        const label = Object.fromEntries(_GMS_KINDS);
+        body.innerHTML = rows.map((r) => {
+            const preview = r.secret ? (r.json.length > 2 ? '••••••••' : '(empty)') : (r.json.length > 160 ? `${r.json.slice(0, 160)}…` : r.json);
+            const kind = r.kind === 'setting' ? `${label.setting.slice(0, -1)}${r.isDefault ? '' : ' · changed'}` : (r.group || label[r.kind]);
+            return `<tr class="mb-gms-row${r.key === _gms.pick ? ' on' : ''}" data-key="${_ajEsc(r.key)}" tabindex="0">`
+                + `<td class="k" title="${_ajEsc(r.key)}">${_ajEsc(r.key)}</td><td>${_ajEsc(kind)}</td><td>${r.type}</td>`
+                + `<td class="r">${_idboFmtB(r.bytes)}</td><td class="v">${_ajEsc(preview)}</td></tr>`;
+        }).join('') + (rows.length ? '' : '<tr><td colspan="5" class="mb-idbo-dim">nothing here</td></tr>');
+    }
+
+    /** Paints the picked key's detail: its facts, its value as JSON, its actions. */
+    function _gmsPaintDetail() {
+        const box = _gms.el && _gms.el.querySelector('[data-gms-detail]');
+        if (!box) return;
+        const r = _gms.rows.find(x => x.key === _gms.pick);
+        box.hidden = !r;
+        if (!r) { box.innerHTML = ''; return; }
+        const cfg = r.kind === 'setting' ? configSchema[r.key] : null;
+        const canDelete = typeof GM_deleteValue === 'function';
+        const label = Object.fromEntries(_GMS_KINDS);
+        let h = `<h3><span>${_ajEsc(r.key)}</span><span class="mb-idbo-pill">${_ajEsc(r.group || label[r.kind])}</span>`
+              + (cfg ? (r.isDefault ? '<span class="mb-idbo-pill ok">= default</span>' : '<span class="mb-idbo-pill warn">changed</span>') : '')
+              + `<span class="mb-idbo-dim">${r.type} · ${_idboFmtB(r.bytes)}</span></h3>`;
+        if (cfg) {
+            h += `<div>${_ajEsc(cfg.label || '')}</div>`;
+            if (!r.secret) h += `<div class="mb-idbo-dim">Default: <code>${_ajEsc(JSON.stringify(cfg.default))}</code></div>`;
+        }
+        if (r.secret) {
+            h += `<div>${r.json.length > 2 ? '••••••••' : '(empty)'} <span class="mb-idbo-dim">A secret: never shown, copied or exported. It can only be deleted.</span></div>`
+               + `<div class="mb-idbo-acts"><button type="button" class="mb-idbo-act danger" data-gms="delete"${canDelete ? '' : ' disabled'}>Delete</button></div>`;
+            box.innerHTML = h;
+            return;
+        }
+        const big = r.bytes > _GMS_EDIT_MAX;
+        let pretty;
+        try { pretty = big ? `${r.json.slice(0, _GMS_EDIT_MAX)}…` : JSON.stringify(r.value, null, 2); } catch (_) { pretty = r.json; }
+        h += `<textarea id="mb-gms-edit" aria-label="Value of ${_ajEsc(r.key)} as JSON" spellcheck="false"${big ? ' readonly' : ''}>${_ajEsc(pretty)}</textarea>`
+           + (big ? `<div class="mb-idbo-dim">Too large to edit here (${_idboFmtB(r.bytes)}): shown cut short.</div>` : '')
+           + '<div class="mb-gms-err" data-gms-err role="alert"></div>'
+           + '<div class="mb-idbo-acts">'
+           + (big ? '' : '<button type="button" class="mb-idbo-act primary" data-gms="save">Save</button>')
+           + (cfg ? `<button type="button" class="mb-idbo-act" data-gms="reset"${canDelete && !r.isDefault ? '' : ' disabled'}>Reset to default</button>` : '')
+           + `<button type="button" class="mb-idbo-act danger" data-gms="delete"${canDelete ? '' : ' disabled'}>Delete</button>`
+           + '<button type="button" class="mb-idbo-act" data-gms="copy">Copy</button></div>';
+        box.innerHTML = h;
+    }
+
+    /** Paints (or removes) the in-dialog confirmation. */
+    function _gmsPaintConfirm() {
+        const box = _gms.el && _gms.el.querySelector('[data-gms-confirm]');
+        if (!box) return;
+        if (!_gms.pending) { box.innerHTML = ''; return; }
+        box.innerHTML = `<div class="mb-idbo-confirm" role="alertdialog"><span>${_ajEsc(_gms.pending.text)}</span>`
+            + `<button type="button" class="mb-idbo-act ${_gms.pending.danger ? 'danger' : 'primary'}" data-gms="yes">${_ajEsc(_gms.pending.yes)}</button>`
+            + '<button type="button" class="mb-idbo-act" data-gms="no">Cancel</button></div>';
+        box.querySelector('[data-gms="yes"]').focus();
+    }
+
+    /**
+     * Asks before a change; `run` performs it and returns the toast text.
+     * @param {string} text
+     * @param {string} yes - The confirming button's label.
+     * @param {boolean} danger
+     * @param {function(): string} run
+     * @returns {void}
+     */
+    function _gmsAsk(text, yes, danger, run) {
+        _gms.pending = { text, yes, danger, run };
+        _gmsPaintConfirm();
+    }
+
+    /**
+     * Picks a key for the detail pane and repaints.
+     * @param {string} key
+     * @returns {void}
+     */
+    function _gmsPick(key) {
+        _gms.pick = key;
+        _gmsPaintTable();
+        _gmsPaintDetail();
+        const box = _gms.el && _gms.el.querySelector('[data-gms-detail]');
+        if (box && !box.hidden && box.scrollIntoView) box.scrollIntoView({ block: 'nearest' });
+    }
+
+    /**
+     * Shows a line under the confirmation.
+     * @param {string} msg
+     * @returns {void}
+     */
+    function _gmsToast(msg) {
+        const t = _gms.el && _gms.el.querySelector('[data-gms-toast]');
+        if (t) t.textContent = msg;
+    }
+
+    /**
+     * Hands every key but the secrets to the browser's download as one JSON
+     * object (`{key: value}`), named after the script and the day.
+     * @returns {void}
+     */
+    function _gmsExport() {
+        const out = {};
+        for (const r of _gms.rows) if (!r.secret) out[r.key] = r.value;
+        const blob = new Blob([JSON.stringify(out, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${SCRIPT_BASE_NAME}-script-storage-${new Date().toISOString().slice(0, 10)}.json`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 10000);
+        const left = _gms.rows.length - Object.keys(out).length;
+        _gmsToast(`Exported ${Object.keys(out).length.toLocaleString('en-US')} keys${left ? ` (${left} secret left out)` : ''}.`);
+    }
+
+    /**
+     * One delegated click handler for the whole dialog.
+     * @param {MouseEvent} e
+     * @returns {void}
+     */
+    function _gmsOnClick(e) {
+        const chip = e.target.closest('[data-gms-kind]');
+        if (chip) {
+            _gms.kind = chip.dataset.gmsKind;
+            _gmsPaint();
+            return;
+        }
+        const tr = e.target.closest('tr.mb-gms-row');
+        if (tr) { _gmsPick(tr.dataset.key); return; }
+        const t = e.target.closest('[data-gms]');
+        if (!t || t.disabled) return;
+        const act = t.dataset.gms;
+        const r = _gms.rows.find(x => x.key === _gms.pick);
+        if (act === 'close') { _gmStoreClose(); return; }
+        if (act === 'export') { _gmsExport(); return; }
+        if (act === 'no') { _gms.pending = null; _gmsPaintConfirm(); return; }
+        if (act === 'yes') {
+            const job = _gms.pending;
+            _gms.pending = null;
+            if (!job) return;
+            const msg = job.run();
+            _gms.rows = _gmsRead();
+            if (!_gms.rows.find(x => x.key === _gms.pick)) _gms.pick = '';
+            _gmsPaint();
+            _gmsToast(msg);
+            return;
+        }
+        if (act === 'orphans') {
+            const n = _gms.rows.filter(x => x.kind === 'orphaned' || x.kind === 'snapshot').length;
+            // The sweep keeps a hand-off younger than an hour: its tab may
+            // still be starting.
+            _gmsAsk(`Delete the leftovers (${n} key${n === 1 ? '' : 's'} listed): keys nothing reads any more, and "Show single-table" hand-offs older than an hour?`,
+                'Delete', true, () => {
+                    const gone = _sweepOrphanedGmValues();
+                    return `Deleted ${gone.length} key${gone.length === 1 ? '' : 's'}.`;
+                });
+            return;
+        }
+        if (!r) return;
+        if (act === 'copy') {
+            if (r.secret) return;
+            const text = JSON.stringify(r.value, null, 2);
+            Promise.resolve(navigator.clipboard && navigator.clipboard.writeText ? navigator.clipboard.writeText(text) : Promise.reject())
+                .then(() => _gmsToast(`Copied the value of ${r.key}.`), () => _gmsToast('The browser did not allow copying.'));
+            return;
+        }
+        if (act === 'delete') {
+            _gmsAsk(r.kind === 'setting' ? `Delete ${r.key}? The setting goes back to its default.` : `Delete ${r.key}?`,
+                'Delete', true, () => { GM_deleteValue(r.key); return `Deleted ${r.key}.`; });
+            return;
+        }
+        if (act === 'reset') {
+            _gmsAsk(`Reset ${r.key} to its default (${JSON.stringify(configSchema[r.key].default)})?`, 'Reset', true,
+                () => { GM_deleteValue(r.key); return `Reset ${r.key} to its default.`; });
+            return;
+        }
+        if (act === 'save') {
+            const ta = _gms.el.querySelector('#mb-gms-edit');
+            const err = _gms.el.querySelector('[data-gms-err]');
+            let v;
+            try {
+                v = JSON.parse(ta.value);
+            } catch (x) {
+                if (err) err.textContent = `Not valid JSON: ${x.message}`;
+                ta.focus();
+                return;
+            }
+            if (err) err.textContent = '';
+            if (JSON.stringify(v) === r.json) { _gmsToast('Nothing changed.'); return; }
+            _gmsAsk(`Overwrite ${r.key} with the edited value?`, 'Save', false,
+                () => { GM_setValue(r.key, v); return `Saved ${r.key}.`; });
+        }
     }
 
     /**
@@ -148097,6 +148630,11 @@ a { color: #1565c0; }`;
             sidebar: {
                 /** @returns {{passMs: number, enhanceMs: number}} The last makeH2sCollapsible() pass and its sidebar part, in ms. */
                 timing: () => ({ ..._sbTiming }),
+            },
+            /** The 🗄️ Script storage dialog (`_gms*`). */
+            gmStore: {
+                open: () => _gmStoreOpen(null),
+                close: () => _gmStoreClose(),
             },
             idbOverview: {
                 open: () => _idbOverviewOpen(null),
