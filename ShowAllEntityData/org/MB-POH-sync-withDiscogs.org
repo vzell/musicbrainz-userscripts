@@ -22,7 +22,7 @@ phase. Never touch =// @version= on the branch.
    and "Image history" (=…/images/update=), with the usual image hovering.
 4. Show a rich HTML mockup page before implementing.
 
-Uploads (local only, gitignored: =debug/poh-sync/=): =POH-DiscID.html=, =POH-ISWC.html=,
+Uploads (kept on the user's machine, not committed; save them to =debug/poh-sync/= when resuming):=POH-DiscID.html=, =POH-ISWC.html=,
 =POH-Release-Multiple-Mediums.html= (the current MB window markup), =Discogs-Images.html=,
 =Discogs-Image-history.html= (the two Discogs pages, logged in), plus three screenshots of the
 Discogs artist / master / label windows (the target look).
@@ -191,7 +191,8 @@ Tasks:
 - [ ] On discogs.com itself: pageTypes =dg-images= and =dg-image-history= (=@include=,
       =_dgPrepareLivePage()=, converter to =table.tbl=, hover via =_DG_FI=). Skill:
       =add-foreign-page-or-reader=.
-- [ ] Trimmed fixtures (scripts and the user id removed) + specs.
+- [ ] Trimmed fixtures from the two uploads (scripts, =userId= 2369911 and any other account data
+      removed) under =tests/fixtures/= + specs. Not done in the planning session on purpose.
 
 ** Phase 5 — Per phase, not at the end
 
@@ -209,4 +210,5 @@ Tasks:
 published). Sections: sort states (clickable), the two table components, before/after per MB
 entity, the Discogs Images / Image history window and page.
 
-Mockup link: (pending)
+Mockup link: https://claude.ai/artifact/TkNduhLjJmD2FrcURn5yaV (published 2026-10-26, version 1; the
+mockup draws images as coloured placeholders because the Artifact sandbox blocks outside images)
