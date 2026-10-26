@@ -4,9 +4,17 @@ Every version, newest first, with the technical details behind each change. For 
 
 **Months:** [October 2026](ShowAllEntityData_CHANGELOG/2026-10.md) · [September 2026](ShowAllEntityData_CHANGELOG/2026-09.md) · [August 2026](ShowAllEntityData_CHANGELOG/2026-08.md) · [July 2026](ShowAllEntityData_CHANGELOG/2026-07.md) · [June 2026](ShowAllEntityData_CHANGELOG/2026-06.md) · [May 2026](ShowAllEntityData_CHANGELOG/2026-05.md) · [April 2026](ShowAllEntityData_CHANGELOG/2026-04.md) · [March 2026 (1 of 2)](ShowAllEntityData_CHANGELOG/2026-03-1.md) · [March 2026 (2 of 2)](ShowAllEntityData_CHANGELOG/2026-03-2.md) · [February 2026](ShowAllEntityData_CHANGELOG/2026-02.md) · [January 2026](ShowAllEntityData_CHANGELOG/2026-01.md)
 
-This page shows the newest 100 of 1628 versions; the month pages hold all of them.
+This page shows the newest 100 of 1629 versions; the month pages hold all of them.
 
 ---
+
+## 9.99.1458 — 2026-10-26
+
+**🚀 Feature**
+
+- Genre pages (/genre/&lt;mbid&gt;): a new "Show all Relationships for Genre" button shows the genre's relationships as tables, like on place, area and instrument pages: its parent genres, subgenres and influences in one Genres table (with the relationship as a column), and its external links in a URLs table. The "Associated tags" and the Wikipedia text stay as MusicBrainz shows them.
+- Link previews: pointing at a genre link (the "Genre" of a tag page, a genre collection's rows, a genre in any relationship list) shows a genre card: its primary tag, the genres it is a subgenre of, its subgenres and influences, how many collections hold it and the start of its Wikipedia text, read from the genre's page in one request. Space opens its window, with every related genre linked so it opens its own card, the external links, the collections link and the whole Wikipedia text. A genre's "Found in N user collections", "Editing history" and "Open edits" links get their cards too.
+
 
 ## 9.99.1457 — 2026-10-25
 
@@ -846,13 +854,6 @@ This page shows the newest 100 of 1628 versions; the month pages hold all of the
 
 - Link previews: every note about the hovered link and its cell (pending edits, track name differs from recording name, no work linked, the artist's or label's sort name, …) is now stacked above the preview card, one box each, instead of covering the card or being covered by it. Neither the browser's own tooltip nor the cell's "Liner notes" card appears over the card any more; the cell's card comes back once the preview closes.
 - Link previews: the card and the Space window show MusicBrainz's own entity glyph in front of the name and in front of the kind ("Recording").
-
-
-## 9.99.1358 — 2026-10-16
-
-**✨ Improve**
-
-- Annotation history pages show the Editor column first, before Old and New, so the column that stays visible when you scroll sideways is now also the leftmost one. The Old/New radios and "Compare versions" work as before.
 
 
 ---
