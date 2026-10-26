@@ -1,0 +1,815 @@
+<title>MB POH Discogs Sync</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Libre+Caslon+Text:ital,wght@0,400;0,700;1,400&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: a working document. Page chrome is quiet; each mockup is a framed copy of the
+   userscript's #mb-dp-dialog (two columns: compact tables left, list tables right). */
+:root {
+    --page: #f6f4ef;
+    --ink: #24211d;
+    --muted: #6f6656;
+    --rule: #ddd5c6;
+    --win: #ffffff;
+    --win-head: #f8f8f8;
+    --th: #f4eee2;
+    --th-ink: #7a6d5c;
+    --row-hover: #fbf5e7;
+    --link: #3b4fa0;
+    --ok: #3f7a3a;
+    --ok-bg: #eef5ec;
+    --run: #2f5f9e;
+    --run-bg: #edf2fa;
+    --warn: #9a6a00;
+    --warn-bg: #fcf6e6;
+    --warn-line: #e7d3a1;
+    --bad: #9b2218;
+    --chip-on: #2b2622;
+    --chip-on-ink: #fbf8f1;
+    --before: #f1f1f1;
+    --before-ink: #222;
+    --new: #1d6b5f;
+    --new-bg: #e5f2ef;
+    --serif: "Libre Caslon Text", Georgia, "Times New Roman", serif;
+    --sans: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", Arial, sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+        --page: #1b1a18; --ink: #ece6da; --muted: #a59b8a; --rule: #3a362f; --win: #22201d; --win-head: #2a2824;
+        --th: #2f2b25; --th-ink: #b9ad98; --row-hover: #2d2923; --link: #9fb0f0; --ok: #7cc174; --ok-bg: #1f3320;
+        --run: #8db3ea; --run-bg: #1c2a3d; --warn: #e2b54f; --warn-bg: #352b16; --warn-line: #5d4a1e; --bad: #e0705f;
+        --chip-on: #ece6da; --chip-on-ink: #1b1a18; --before: #2a2a2a; --before-ink: #ddd; --new: #7fd0c1; --new-bg: #173430;
+        color-scheme: dark;
+    }
+}
+:root[data-theme="dark"] {
+    --page: #1b1a18; --ink: #ece6da; --muted: #a59b8a; --rule: #3a362f; --win: #22201d; --win-head: #2a2824;
+    --th: #2f2b25; --th-ink: #b9ad98; --row-hover: #2d2923; --link: #9fb0f0; --ok: #7cc174; --ok-bg: #1f3320;
+    --run: #8db3ea; --run-bg: #1c2a3d; --warn: #e2b54f; --warn-bg: #352b16; --warn-line: #5d4a1e; --bad: #e0705f;
+    --chip-on: #ece6da; --chip-on-ink: #1b1a18; --before: #2a2a2a; --before-ink: #ddd; --new: #7fd0c1; --new-bg: #173430;
+    color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+    background: var(--page); color: var(--ink); font: 15px/1.55 var(--sans);
+    padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+    padding-block: 28px 64px;
+}
+.wrap { max-width: 1320px; margin: 0 auto; display: grid; gap: 40px; }
+header.top { display: grid; gap: 10px; max-width: 80ch; }
+h1 { font: 700 2rem/1.15 var(--serif); margin: 0; text-wrap: balance; }
+h2 { font: 700 1.35rem/1.25 var(--serif); margin: 0; text-wrap: balance; }
+h3 { font: 600 0.78rem/1.3 var(--sans); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); margin: 0; }
+p { margin: 0; max-width: 72ch; }
+.lede { color: var(--muted); }
+code, kbd { font: 0.86em var(--mono); }
+kbd { border: 1px solid var(--rule); border-bottom-width: 2px; border-radius: 3px; padding: 0 4px; }
+section.part { display: grid; gap: 16px; }
+.part-head { display: grid; gap: 6px; border-top: 1px solid var(--rule); padding-top: 18px; }
+.meta { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 0.85rem; color: var(--muted); }
+.tag-new { font: 600 10.5px var(--sans); letter-spacing: 0.06em; text-transform: uppercase; color: var(--new); background: var(--new-bg); border-radius: 9px; padding: 1px 7px; }
+.qa { display: grid; gap: 10px; }
+.qa li { max-width: 80ch; }
+
+/* ---- entity picker ---- */
+.picker { display: flex; flex-wrap: wrap; gap: 6px; }
+.picker button {
+    font: 500 0.85rem var(--sans); color: var(--ink); background: var(--win); border: 1px solid var(--rule);
+    border-radius: 14px; padding: 3px 11px; cursor: pointer;
+}
+.picker button[aria-pressed="true"] { background: var(--chip-on); color: var(--chip-on-ink); border-color: var(--chip-on); }
+.picker button:focus-visible, .w button:focus-visible, .w input:focus-visible, .w th:focus-visible { outline: 2px solid var(--run); outline-offset: 1px; }
+.ent-note { font-size: 0.92rem; color: var(--muted); max-width: 90ch; }
+.ent-note b { color: var(--ink); font-weight: 600; }
+.ba { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; }
+.ba-label { font: 600 11px var(--sans); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+
+/* ---- "before": today's plain mb-rg-wtable look ---- */
+.before { background: var(--before); color: var(--before-ink); border: 1px dashed var(--rule); border-radius: 6px; padding: 12px 16px; font: 13px/1.45 -apple-system, "Segoe UI", Roboto, sans-serif; overflow-x: auto; }
+.before h4 { font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; margin: 6px 0 4px; color: #777; }
+.before table { border-collapse: collapse; }
+.before td, .before th { padding: 2px 10px 2px 0; text-align: left; vertical-align: top; }
+.before th { font-weight: 600; }
+.before .dim { color: #888; }
+.before a { color: inherit; text-decoration: underline dotted; }
+.before ol { margin: 0; padding-left: 1.4em; }
+
+/* ---- the window (#mb-dp-dialog copy) ---- */
+.w { background: var(--win); border: 1px solid var(--rule); border-radius: 8px; box-shadow: 0 8px 28px rgba(0, 0, 0, 0.12); overflow: hidden; font: 14px/1.45 var(--serif); }
+.w-head { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; justify-content: space-between; background: var(--win-head); border-bottom: 2px solid var(--rule); padding: 10px 16px; font-family: var(--sans); }
+.w-title { font: 700 1.05rem var(--sans); display: flex; align-items: center; gap: 8px; }
+.w-tools { display: flex; gap: 8px; align-items: center; font-size: 12px; color: var(--muted); }
+.w-tools span.b { border: 1px solid var(--rule); border-radius: 3px; padding: 1px 7px; background: var(--win); }
+.w-tools span.on { background: var(--chip-on); color: var(--chip-on-ink); border-color: var(--chip-on); }
+.w-body { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); gap: 24px; padding: 14px 18px 18px; }
+.w-body.single { grid-template-columns: minmax(0, 1fr); }
+.w-col { display: grid; gap: 14px; align-content: start; min-width: 0; }
+.w-foot { border-top: 1px solid var(--rule); padding: 7px 18px 9px; font: 12px var(--sans); color: var(--muted); display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.x-title { font: 700 1.15rem/1.25 var(--serif); }
+.x-sub { font-style: italic; color: var(--muted); }
+.sec { display: grid; grid-template-columns: minmax(0, 1fr); gap: 6px; min-width: 0; }
+.sec > *, .w-col > * { min-width: 0; }
+.sec > h4 { font: 600 10.5px var(--sans); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink); margin: 0; display: flex; gap: 6px; align-items: baseline; }
+.sec > h4::before { content: "▾"; color: var(--muted); }
+.sec > h4 .c { font-weight: 400; letter-spacing: 0; color: var(--muted); }
+.kv { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 3px 14px; margin: 0; }
+.kv dt { font-style: italic; color: var(--muted); }
+.kv dd { margin: 0; }
+.w a { color: var(--link); text-decoration: underline dotted; text-underline-offset: 2px; }
+.dim { color: var(--muted); font-size: 12.5px; }
+.cover { width: 120px; aspect-ratio: 1; border: 1px solid var(--rule); }
+.mono { font-family: var(--mono); font-size: 12px; }
+.icon { display: inline-grid; place-items: center; width: 16px; height: 16px; border-radius: 3px; font: 600 9px var(--sans); color: #fff; vertical-align: -3px; margin-right: 5px; flex: none; }
+.i-artist { background: #ba478f; } .i-rg { background: #4b6fb5; } .i-release { background: #e08a30; } .i-recording { background: #2b8a7a; }
+.i-work { background: #6b55b5; } .i-event { background: #b0453a; } .i-place { background: #5a8a3a; } .i-label { background: #8a6a3a; }
+
+/* tables: the Discogs .mb-dg-vt look */
+.tools { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; font-family: var(--sans); font-size: 12px; }
+.fl { font: italic 13px var(--serif); color: var(--muted); }
+.q { font: 13px var(--serif); border: 1px solid var(--rule); border-radius: 3px; padding: 3px 8px; min-width: 0; width: min(320px, 100%); background: var(--win); color: var(--ink); }
+.chip { font: 12px var(--sans); border: 1px solid var(--rule); border-radius: 11px; padding: 1px 9px; background: var(--win); color: var(--ink); cursor: pointer; }
+.chip .n { color: var(--muted); margin-left: 4px; }
+.chip[aria-pressed="true"] { background: var(--chip-on); color: var(--chip-on-ink); border-color: var(--chip-on); }
+.chip[aria-pressed="true"] .n { color: inherit; opacity: 0.7; }
+.seg { display: inline-flex; }
+.seg .chip { border-radius: 0; }
+.seg .chip:first-child { border-radius: 3px 0 0 3px; }
+.seg .chip:last-child { border-radius: 0 3px 3px 0; border-left: 0; }
+.btn { font: 600 10.5px var(--sans); letter-spacing: 0.05em; text-transform: uppercase; border: 1px solid var(--rule); border-radius: 3px; background: var(--win); color: var(--ink); padding: 2px 8px; cursor: pointer; }
+.btn.primary { color: var(--run); border-color: var(--run); }
+.btn[disabled] { opacity: 0.45; cursor: default; }
+.vwrap { overflow: auto; max-height: 340px; border: 1px solid var(--rule); border-radius: 3px; background: var(--win); }
+.vwrap.short { max-height: 230px; }
+table.vt { width: 100%; border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; }
+table.vt th {
+    position: sticky; top: 0; z-index: 1; background: var(--th); text-align: left; white-space: nowrap; user-select: none;
+    font: 600 10.5px var(--sans); letter-spacing: 0.06em; text-transform: uppercase; color: var(--th-ink);
+    padding: 6px 8px; border-bottom: 1px solid var(--rule);
+}
+table.vt th[aria-sort] { cursor: pointer; }
+table.vt th[aria-sort="ascending"]::after { content: " \25B2"; }
+table.vt th[aria-sort="descending"]::after { content: " \25BC"; }
+table.vt th[aria-sort="none"]::after { content: " \21C5"; opacity: 0.35; }
+table.vt th[aria-sort="none"]:hover::after { opacity: 0.8; }
+table.vt td { padding: 4px 8px; border-bottom: 1px solid var(--rule); vertical-align: middle; }
+table.vt tbody tr:hover td { background: var(--row-hover); }
+table.vt td.num { text-align: right; white-space: nowrap; }
+table.vt td.nw { white-space: nowrap; }
+.thumb { width: 40px; height: 40px; display: block; border: 1px solid var(--rule); }
+.thumb.none { border-style: dashed; background: repeating-linear-gradient(135deg, transparent 0 5px, var(--th) 5px 7px); }
+.pill { font: 600 10px var(--sans); letter-spacing: 0.05em; text-transform: uppercase; border: 1px solid currentColor; border-radius: 9px; padding: 0 6px; color: var(--muted); white-space: nowrap; }
+.pill.ok { color: var(--ok); background: var(--ok-bg); }
+.pill.run { color: var(--run); background: var(--run-bg); }
+.morerow, .pager { display: flex; gap: 8px; align-items: center; justify-content: center; padding: 6px; font: 12px var(--sans); color: var(--muted); border-top: 1px solid var(--rule); }
+.vstat { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font: 12px var(--sans); color: var(--muted); }
+.bar { display: inline-flex; gap: 2px; height: 7px; width: min(300px, 100%); }
+.bar i { flex: 1; border-radius: 1px; background: var(--rule); }
+.bar i.cache { background: repeating-linear-gradient(135deg, var(--ok) 0 3px, var(--ok-bg) 3px 6px); }
+.bar i.loaded { background: var(--ok); }
+.bar i.running { background: repeating-linear-gradient(90deg, var(--run) 0 6px, var(--run-bg) 6px 12px); background-size: 24px 100%; animation: slide 0.8s linear infinite; }
+@keyframes slide { to { background-position: 24px 0; } }
+@media (prefers-reduced-motion: reduce) { .bar i.running { animation: none; } }
+.warnbox { border: 1px solid var(--warn-line); background: var(--warn-bg); border-radius: 4px; padding: 7px 11px; font-size: 13px; }
+.counts { font: 12px var(--sans); color: var(--muted); }
+.hl { background: #ffe58a; color: #000; border-radius: 2px; }
+.genres { display: grid; gap: 1px; }
+.medium { border: 1px solid var(--rule); border-radius: 3px; overflow: hidden; }
+.medium > button { width: 100%; text-align: left; display: flex; gap: 10px; align-items: baseline; background: var(--th); border: 0; border-bottom: 1px solid var(--rule); padding: 5px 9px; cursor: pointer; font: 600 11px var(--sans); letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink); }
+.medium > button .dim { text-transform: none; letter-spacing: 0; font-weight: 400; }
+.medium[data-open="false"] > .vwrap { display: none; }
+.medium[data-open="false"] > button { border-bottom: 0; }
+.medium .vwrap { border: 0; border-radius: 0; max-height: none; }
+.foot-hint { font: 12px var(--sans); color: var(--muted); }
+
+/* sort demo */
+.sortdemo { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 20px; align-items: start; }
+.states { display: grid; gap: 8px; font-size: 0.92rem; }
+.state { display: grid; grid-template-columns: 7.5em minmax(0, 1fr); gap: 10px; align-items: baseline; }
+.state .g { font: 600 11px var(--sans); letter-spacing: 0.06em; text-transform: uppercase; background: var(--th); color: var(--th-ink); padding: 3px 8px; border-radius: 3px; white-space: nowrap; }
+.state .g.n::after { content: " \21C5"; opacity: 0.35; }
+.state .g.a::after { content: " \25B2"; }
+.state .g.d::after { content: " \25BC"; }
+
+/* Discogs images */
+.gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 10px; }
+.gimg { display: grid; gap: 3px; font: 11.5px var(--sans); color: var(--muted); position: relative; }
+.gimg .ph { width: 100%; aspect-ratio: 1; border: 1px solid var(--rule); display: grid; place-items: end start; padding: 4px; color: #fff; font: 600 10px var(--sans); text-shadow: 0 1px 2px rgba(0,0,0,.6); cursor: zoom-in; }
+.gimg .card {
+    display: none; position: absolute; z-index: 5; left: 50%; top: 104%; transform: translateX(-50%); width: 230px;
+    background: var(--win); color: var(--ink); border: 1px solid var(--rule); border-radius: 6px; box-shadow: 0 8px 24px rgba(0,0,0,.25);
+    padding: 8px 10px; font: 12px/1.45 var(--sans);
+}
+.gimg:hover .card, .gimg:focus-within .card { display: block; }
+.card b { font-weight: 600; }
+.card .ttl { font: 600 12.5px var(--sans); margin-bottom: 3px; }
+.avatar { display: inline-grid; place-items: center; width: 18px; height: 18px; border-radius: 50%; background: var(--th); color: var(--th-ink); font: 600 10px var(--sans); margin-right: 5px; vertical-align: -4px; }
+
+@media (max-width: 860px) {
+    .w-body, .sortdemo { grid-template-columns: minmax(0, 1fr); }
+}
+</style>
+
+<div class="wrap">
+    <header class="top">
+        <h3>ShowAllEntityData · link preview window (POH) · plan of 2026-10-26</h3>
+        <h1>MusicBrainz POH, Discogs look</h1>
+        <p class="lede">The MusicBrainz preview windows get the tables of the Discogs windows: a filter, sortable headers, 40&nbsp;px thumbnails, a load bar and "Load N more pages" instead of "the first 25 here". Everything below is clickable. Images are drawn as coloured placeholders, because this page cannot load images from other sites.</p>
+        <div class="meta"><span>Branch <code>claude/keen-planck-t1lm8l</code></span><span>Base 9.99.1469+2026-10-26</span><span>Plan: <code>ShowAllEntityData/org/MB-POH-sync-withDiscogs.org</code></span></div>
+    </header>
+
+    <!-- 1 ─ sort states -->
+    <section class="part" id="sort">
+        <div class="part-head">
+            <h3>Part 1 · Discogs windows</h3>
+            <h2>A third sort state: initial order</h2>
+            <p class="lede">Every sortable header has three states. In the initial state the rows are in the order Discogs (or MusicBrainz) gives them, and the header shows a dimmed ⇅. One click cycle everywhere: ⇅ → ▲ → ▼ → ⇅. Today the Sublabels table only toggles ▲/▼, and the other tables show nothing in the initial state.</p>
+        </div>
+        <div class="sortdemo">
+            <div class="w">
+                <div class="w-head"><span class="w-title">Discogs label</span><span class="w-tools"><span class="b">Extracted</span><span class="b">⟳</span><span class="b">↗</span></span></div>
+                <div class="w-body single"><div class="w-col" id="sort-demo"></div></div>
+            </div>
+            <div class="states">
+                <div class="state"><span class="g n">Artist</span><span><b>Initial order.</b> As the site lists it. Tip: "Initial order (as Discogs lists it) · click: ascending".</span></div>
+                <div class="state"><span class="g a">Artist</span><span><b>Ascending.</b> Empty values last.</span></div>
+                <div class="state"><span class="g d">Artist</span><span><b>Descending.</b> The next click goes back to the initial order.</span></div>
+                <p class="counts">Markup: <code>aria-sort="none" | "ascending" | "descending"</code> on the <code>th</code>. Only one column is sorted at a time; the others show ⇅.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- 2 ─ components -->
+    <section class="part" id="components">
+        <div class="part-head">
+            <h3>Part 2 · Two shared tables</h3>
+            <h2>Compact on the left, List on the right</h2>
+            <p class="lede">Both are taken from the Discogs label window and shared with the MusicBrainz windows, so there is one implementation, not one per entity. <b>Compact</b> is the Sublabels table: a filter once there are more rows than a page, sortable headers, ‹ › pages of 10. <b>List</b> is the Releases table: a load bar, filter, chips, thumbnails, and "Load 5 more pages" with the request count and the time it takes (MusicBrainz allows about one request a second).</p>
+        </div>
+        <div class="w">
+            <div class="w-head"><span class="w-title"><span class="icon i-recording">R</span>Recording</span><span class="w-tools"><span class="b">‹</span>3 / 14<span class="b">›</span><span class="b on">Extracted</span><span class="b">Live page</span><span class="b">⟳</span><span class="b">↗</span><span>✕</span></span></div>
+            <div class="w-body">
+                <div class="w-col">
+                    <div><div class="x-title">Born to Run</div><div class="x-sub"><a href="#components">Bruce Springsteen</a> · recording · 4:30</div></div>
+                    <div class="sec"><h4>ISRCs <span class="c">2</span></h4><div data-compact="isrcs"></div></div>
+                    <div class="sec"><h4>Works <span class="c">1</span></h4><div data-compact="recworks"></div></div>
+                </div>
+                <div class="w-col"><div class="sec"><h4>Releases <span class="c">80</span></h4><div data-list="recrels"></div></div></div>
+            </div>
+            <div class="w-foot"><span>⌨ Rest on a link or an image: this line says what a click does.</span><span>← → rows · H history · Esc close</span></div>
+        </div>
+    </section>
+
+    <!-- 3 ─ entities -->
+    <section class="part" id="entities">
+        <div class="part-head">
+            <h3>Part 3 · MusicBrainz windows, entity by entity</h3>
+            <h2>Before and after</h2>
+            <p class="lede">Pick an entity. "Before" is what the window shows today (taken from the uploaded window HTML where there is one); "After" is the proposal. Links marked <span class="tag-new">new</span> are readers that do not exist yet.</p>
+        </div>
+        <div class="picker" id="picker" role="toolbar" aria-label="Entity"></div>
+        <p class="ent-note" id="ent-note"></p>
+        <div class="ba">
+            <span class="ba-label">Before (today)</span>
+            <div class="before" id="ent-before"></div>
+            <span class="ba-label">After</span>
+            <div id="ent-after"></div>
+        </div>
+    </section>
+
+    <!-- 4 ─ discogs images -->
+    <section class="part" id="images">
+        <div class="part-head">
+            <h3>Part 4 · Two new Discogs pages</h3>
+            <h2>Images and Image history</h2>
+            <p class="lede">Real data from the uploaded pages of <i>Born To Run</i> (release 1313481): 17 images, uploaded by three people between 2008 and 2023. Today both URLs open the ordinary release window. They get their own window here, and their own table on discogs.com itself. Rest on an image for its card; a click opens the viewer, and <kbd>←</kbd> <kbd>→</kbd> step through all 17.</p>
+        </div>
+        <div class="w">
+            <div class="w-head"><span class="w-title">Discogs release › Images</span><span class="w-tools"><span class="b">← Back</span><span class="b on">Extracted</span><span class="b">⟳</span><span class="b">↗</span><span>✕</span></span></div>
+            <div class="w-body">
+                <div class="w-col">
+                    <div><div class="x-title">Born To Run</div><div class="x-sub">Bruce Springsteen · Discogs · images</div></div>
+                    <dl class="kv"><dt>Images</dt><dd>17 (1 primary, 16 secondary)</dd><dt>Uploaders</dt><dd>Cl0ver 11, dsmith 5, heaven83 1</dd><dt>Largest</dt><dd>2040 × 2000 px</dd></dl>
+                    <div class="sec"><h4>Uploaded by <span class="c">3</span></h4><div data-compact="uploaders"></div></div>
+                </div>
+                <div class="w-col"><div class="sec"><h4>Images <span class="c">17</span></h4><div class="gallery" id="gallery"></div></div></div>
+            </div>
+        </div>
+        <div class="w">
+            <div class="w-head"><span class="w-title">Discogs release › Image history</span><span class="w-tools"><span class="b">← Back</span><span class="b on">Extracted</span><span class="b">⟳</span><span class="b">↗</span><span>✕</span></span></div>
+            <div class="w-body single"><div class="w-col">
+                <div class="sec"><h4>Image history <span class="c">17</span></h4><div data-compact="imghist"></div></div>
+                <p class="counts">On discogs.com the page is read as you see it, logged in. From musicbrainz.org a preview is sent without your Discogs login, so only position, type and size are available there (the API's data); the Uploaded by and Date columns then read "only on discogs.com".</p>
+            </div></div>
+        </div>
+    </section>
+
+    <!-- 5 ─ questions -->
+    <section class="part" id="questions">
+        <div class="part-head"><h3>Part 5</h3><h2>Open questions</h2></div>
+        <ol class="qa">
+            <li><b>Ctrl+click on a genre.</b> You asked for a click to open the tag and Ctrl+click to open your own tag. Ctrl+click in the window opens a new tab today. Proposal: on tag links only, Ctrl opens <code>/user/&lt;you&gt;/tag/&lt;genre&gt;</code> in the window; middle-click and Shift+click still open a new tab, and the foot line says so.</li>
+            <li><b>Image history from musicbrainz.org.</b> Without the Discogs login: position, type and size only. Is that enough, or should the window send you to discogs.com?</li>
+            <li><b>Annotation version.</b> It was on the list without a wish. Leave it as it is?</li>
+            <li><b>Documentation.</b> MusicBrainz's documentation search is drawn by Google in the browser, so there is no page to read. If the wiki's own search API answers (to be probed first), the window lists the hits and opens <code>/doc/…</code> pages inline; otherwise only <code>/doc/…</code> links get a reader.</li>
+        </ol>
+    </section>
+</div>
+
+<script>
+(function () {
+    'use strict';
+
+    /** HTML-escape a value. */
+    const esc = v => String(v ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+    /** Highlight the filter text inside an escaped value. */
+    function hl(v, q) {
+        const s = esc(v);
+        if (!q) return s;
+        const i = s.toLowerCase().indexOf(esc(q).toLowerCase());
+        return i < 0 ? s : s.slice(0, i) + '<span class="hl">' + s.slice(i, i + q.length) + '</span>' + s.slice(i + q.length);
+    }
+
+    /** A stable placeholder colour for an image, from its title. */
+    function hue(s) {
+        let h = 0;
+        for (const ch of String(s)) h = (h * 31 + ch.charCodeAt(0)) % 360;
+        return h;
+    }
+
+    /** A 40 px thumbnail, or the dashed "no image" placeholder of the same size. */
+    function thumb(title, has = true) {
+        if (!has) return '<span class="thumb none" title="No cover art"></span>';
+        const h = hue(title);
+        return `<span class="thumb" style="background: linear-gradient(135deg, hsl(${h} 45% 45%), hsl(${(h + 40) % 360} 55% 30%))"></span>`;
+    }
+
+    // ── sample data (Springsteen; MusicBrainz and Discogs values as of 2026-10) ──
+    const RELS = [
+        ['Born to Run', '1975-08-25', 'US', 'Official', 'Columbia', 'PC 33795', '12" Vinyl', true],
+        ['Born to Run', '1975', 'GB', 'Official', 'CBS', 'S 69170', '12" Vinyl', true],
+        ['Born to Run', '1975', 'DE', 'Official', 'CBS', 'CBS 69170', '12" Vinyl', true],
+        ['Born to Run', '1984', 'JP', 'Official', 'CBS/Sony', '35DP 51', 'CD', true],
+        ['Born to Run', '1985', 'US', 'Official', 'Columbia', 'CK 33795', 'CD', true],
+        ['Born to Run (single)', '1975-08-25', 'US', 'Official', 'Columbia', '3-10209', '7" Vinyl', true],
+        ['Greatest Hits', '1995-02-27', 'XE', 'Official', 'Columbia', 'COL 478555 2', 'CD', true],
+        ['Greatest Hits', '1995', 'US', 'Official', 'Columbia', 'CK 67060', 'CD', true],
+        ['Live/1975–85', '1986-11-10', 'US', 'Official', 'Columbia', 'C5X 40558', '5×12" Vinyl', true],
+        ['Live/1975–85', '1986', 'XE', 'Official', 'CBS', 'CBS 450227 2', '3×CD', false],
+        ['The Essential Bruce Springsteen', '2003-11-11', 'US', 'Official', 'Columbia', 'C3K 90773', '3×CD', true],
+        ['Born to Run: 30th Anniversary Edition', '2005-11-14', 'XE', 'Official', 'Columbia', '82876 74796 2', 'CD + 2×DVD', true],
+        ['Hammersmith Odeon London \'75', '2006-02-28', 'US', 'Official', 'Columbia', '82876 74793 2', '2×CD', true],
+        ['Greatest Hits', '2009-01-13', 'US', 'Official', 'Columbia', '88697 43832 2', 'CD', true],
+        ['Collection: 1973–2012', '2013-03-22', 'XE', 'Official', 'Columbia', '88765 46125 2', 'CD', false],
+        ['Chapter and Verse', '2016-09-23', 'XW', 'Official', 'Columbia', '88985 35986 2', 'CD', true],
+        ['Born to Run', '2014-11-17', 'XE', 'Official', 'Columbia', '88875 01431 1', '12" Vinyl', true],
+        ['The Album Collection Vol. 1 1973–1984', '2014-11-17', 'XE', 'Official', 'Columbia', '88875 01446 2', '7×CD', true],
+        ['Live in Dublin', '2007-06-05', 'US', 'Official', 'Columbia', '88697 08782 2', '2×CD', false],
+        ['Springsteen on Broadway', '2018-12-14', 'XW', 'Official', 'Columbia', '19075 90452 2', '2×CD', true],
+        ['Born to Run', '1975', 'AU', 'Official', 'CBS', 'SBP 237106', '12" Vinyl', false],
+        ['Born to Run', '1975', 'NL', 'Official', 'CBS', 'CBS 69170', '12" Vinyl', true],
+        ['Born to Run', '1975', 'CA', 'Official', 'Columbia', 'PC 33795', 'Cassette', false],
+        ['The Promise (Born to Run sessions)', '2010-11-16', 'XW', 'Official', 'Columbia', '88697 76752 2', '2×CD', true],
+        ['Live 1975–85 (remaster)', '2021-05-21', 'XW', 'Official', 'Legacy', '19439 87230 2', '3×CD', true]
+    ];
+
+    // ── generic table state + renderers ──
+    const ui = new Map();
+
+    /**
+     * The Compact table (Discogs label → Sublabels): filter above when more rows than a
+     * page, three-state headers, ‹ › pages.
+     */
+    function compact(id, cfg) {
+        const st = ui.get(id) || { q: '', col: '', dir: 0, page: 0 };
+        ui.set(id, st);
+        const per = cfg.per || 10;
+        const q = st.q.trim().toLowerCase();
+        let rows = cfg.rows.map((r, i) => ({ r, i })).filter(x => !q || x.r.join(' ').toLowerCase().includes(q));
+        if (st.dir) {
+            const c = cfg.cols.findIndex(c => c.k === st.col);
+            rows.sort((a, b) => String(a.r[c] ?? '').localeCompare(String(b.r[c] ?? ''), undefined, { numeric: true }) * st.dir || a.i - b.i);
+        }
+        const pages = Math.max(1, Math.ceil(rows.length / per));
+        st.page = Math.min(st.page, pages - 1);
+        const slice = rows.slice(st.page * per, st.page * per + per);
+        const th = c => c.nosort ? `<th>${esc(c.l)}</th>`
+            : `<th tabindex="0" data-sort="${id}:${c.k}" aria-sort="${st.col === c.k && st.dir ? (st.dir > 0 ? 'ascending' : 'descending') : 'none'}" title="${st.col === c.k && st.dir ? 'Click: ' + (st.dir > 0 ? 'descending' : 'initial order') : 'Initial order (as the site lists it) · click: ascending'}">${esc(c.l)}</th>`;
+        const filter = cfg.rows.length > per ? `<div class="tools"><input class="q" type="search" id="q-${id}" data-q="${id}" value="${esc(st.q)}" placeholder="${esc(cfg.ph || 'Filter')}" aria-label="${esc(cfg.ph || 'Filter')}"></div>` : '';
+        const body = slice.length ? slice.map(x => '<tr>' + cfg.cols.map((c, ci) => `<td class="${c.cls || ''}">${c.fmt ? c.fmt(x.r[ci], x.r, st.q) : hl(x.r[ci], st.q)}</td>`).join('') + '</tr>').join('')
+            : `<tr><td colspan="${cfg.cols.length}" class="dim">No row matches.</td></tr>`;
+        const pager = rows.length > per ? `<div class="pager"><button class="btn" data-page="${id}:-1" aria-label="Previous page"${st.page ? '' : ' disabled'}>‹</button>` +
+            `<span>${st.page * per + 1}–${st.page * per + slice.length} of ${rows.length}${q ? ` (${cfg.rows.length} in all)` : ''}</span>` +
+            `<button class="btn" data-page="${id}:1" aria-label="Next page"${st.page < pages - 1 ? '' : ' disabled'}>›</button></div>` : '';
+        return `${filter}<div class="vwrap short"><table class="vt"><thead><tr>${cfg.cols.map(th).join('')}</tr></thead><tbody>${body}</tbody></table>${pager}</div>`;
+    }
+
+    /**
+     * The List table (Discogs label → Releases): load bar, "Load 5 more pages", filter,
+     * chips, thumbnails, "Show all".
+     */
+    function list(id, cfg) {
+        const st = ui.get(id) || { q: '', col: '', dir: 0, chip: '', loaded: cfg.first, running: false, limit: 12 };
+        ui.set(id, st);
+        const pageSize = cfg.pageSize || 25;
+        const totalPages = Math.ceil(cfg.total / pageSize);
+        const loadedPages = Math.ceil(st.loaded / pageSize);
+        const all = [];
+        for (let i = 0; i < st.loaded; i++) all.push(cfg.rows[i % cfg.rows.length]);
+        const q = st.q.trim().toLowerCase();
+        let rows = all.map((r, i) => ({ r, i })).filter(x => (!st.chip || cfg.chipOf(x.r) === st.chip) && (!q || x.r.join(' ').toLowerCase().includes(q)));
+        if (st.dir) {
+            const k = cfg.cols.find(c => c.k === st.col).src;
+            rows.sort((a, b) => String(a.r[k] ?? '').localeCompare(String(b.r[k] ?? ''), undefined, { numeric: true }) * st.dir || a.i - b.i);
+        }
+        const chips = {};
+        all.forEach(r => { const k = cfg.chipOf(r); chips[k] = (chips[k] || 0) + 1; });
+        const seg = (cls) => `<i class="${cls}"></i>`;
+        const segs = [];
+        for (let p = 0; p < Math.min(totalPages, 30); p++) {
+            const pp = Math.floor(p * totalPages / Math.min(totalPages, 30));
+            segs.push(seg(pp < loadedPages ? (pp === 0 ? 'cache' : 'loaded') : st.running && pp < loadedPages + 5 ? 'running' : ''));
+        }
+        const left = cfg.total - st.loaded;
+        const nextPages = Math.min(5, Math.ceil(left / pageSize));
+        const secs = Math.ceil(nextPages * 1.1);
+        const status = `<div class="vstat"><span class="pill ${st.running ? 'run' : left ? '' : 'ok'}">${st.running ? 'Running' : left ? 'Idle' : 'Done'}</span><span class="bar" aria-hidden="true">${segs.join('')}</span>` +
+            (left ? `<button class="btn primary" data-more="${id}"${st.running ? ' disabled' : ''}>Load ${nextPages} more page${nextPages > 1 ? 's' : ''} (${Math.min(left, nextPages * pageSize)} ${cfg.unit}, about ${secs} s)</button>` : '') +
+            `<span>${st.loaded} of ${cfg.total} loaded · one segment = ${pageSize} ${cfg.unit}</span></div>`;
+        const th = c => c.nosort ? `<th>${esc(c.l)}</th>` : `<th tabindex="0" data-sort="${id}:${c.k}" aria-sort="${st.col === c.k && st.dir ? (st.dir > 0 ? 'ascending' : 'descending') : 'none'}">${esc(c.l)}</th>`;
+        const shown = rows.slice(0, st.limit);
+        const body = shown.length ? shown.map(x => '<tr>' + cfg.cols.map(c => `<td class="${c.cls || ''}">${c.fmt(x.r, st.q)}</td>`).join('') + '</tr>').join('')
+            : `<tr><td colspan="${cfg.cols.length}" class="dim">No loaded row matches.</td></tr>`;
+        const more = rows.length > st.limit ? `<div class="morerow">Showing ${st.limit} of ${rows.length}. <button class="btn" data-all="${id}">Show all ${rows.length}</button></div>` : '';
+        const chipHtml = Object.entries(chips).sort((a, b) => b[1] - a[1]).slice(0, 8).map(([k, n]) =>
+            `<button class="chip" data-chip="${id}:${esc(k)}" aria-pressed="${st.chip === k}">${esc(k)}<span class="n">${n}</span></button>`).join(' ');
+        return (cfg.warn && cfg.total > 500 ? `<div class="warnbox">${cfg.warn}</div>` : '') + status +
+            `<div class="tools"><input class="q" type="search" id="q-${id}" data-q="${id}" value="${esc(st.q)}" placeholder="${esc(cfg.ph)}" aria-label="${esc(cfg.ph)}"></div>` +
+            `<div class="tools"><span class="fl">${esc(cfg.chipLabel)}</span>${chipHtml}</div>` +
+            `<div class="counts">The filter and the chips see only what is loaded (${st.loaded} of ${cfg.total}). A click on a title opens it here.</div>` +
+            `<div class="vwrap"><table class="vt"><thead><tr>${cfg.cols.map(th).join('')}</tr></thead><tbody>${body}</tbody></table>${more}</div>`;
+    }
+
+    // ── table definitions used by the parts ──
+    const releaseCols = [
+        { k: 'img', l: '', nosort: true, fmt: r => thumb(r[0] + r[2], r[7]) },
+        { k: 'title', l: 'Title, format', src: 0, fmt: (r, q) => `<a href="#entities">${hl(r[0], q)}</a><div class="dim">${hl(r[6], q)} · ${hl(r[4], q)} · ${hl(r[5], q)}</div>` },
+        { k: 'country', l: 'Country', src: 2, cls: 'nw', fmt: (r, q) => hl(r[2], q) },
+        { k: 'date', l: 'Date', src: 1, cls: 'nw', fmt: (r, q) => hl(r[1], q) },
+        { k: 'status', l: 'Status', src: 3, fmt: r => `<span class="pill">${esc(r[3])}</span>` }
+    ];
+    const LISTS = {
+        recrels: { total: 80, first: 25, rows: RELS, cols: releaseCols, unit: 'releases', pageSize: 25, chipLabel: 'Format', chipOf: r => r[6].replace(/^\d+×/, ''), ph: 'Filter loaded releases: title, format, label, cat#, country, date' },
+        workrecs: {
+            total: 219, first: 100, unit: 'recordings', pageSize: 100, chipLabel: 'Type', ph: 'Filter loaded recordings: title, artist, length, date',
+            rows: [['Born to Run', 'Bruce Springsteen', '4:30', '1975-08-25', 'studio'], ['Born to Run (live)', 'Bruce Springsteen & The E Street Band', '5:01', '1985-09-30', 'live'],
+                ['Born to Run', 'Frankie Goes to Hollywood', '4:00', '1984', 'cover'], ['Born to Run (acoustic)', 'Bruce Springsteen', '5:10', '1988-04-23', 'live'],
+                ['Born to Run (live 1975)', 'Bruce Springsteen & The E Street Band', '4:43', '1975-11-18', 'live'], ['Born to Run', 'Suzi Quatro', '3:58', '1985', 'cover'],
+                ['Born to Run (live)', 'Bruce Springsteen', '5:53', '2016-07-16', 'live'], ['Born to Run', 'Melissa Etheridge', '4:24', '2002', 'cover']],
+            chipOf: r => r[4],
+            cols: [{ k: 'title', l: 'Recording', src: 0, fmt: (r, q) => `<span class="icon i-recording">R</span><a href="#entities">${hl(r[0], q)}</a><div class="dim">${hl(r[1], q)}</div>` },
+                { k: 'len', l: 'Length', src: 2, cls: 'num', fmt: (r, q) => hl(r[2], q) }, { k: 'date', l: 'First release', src: 3, cls: 'nw', fmt: (r, q) => hl(r[3], q) }]
+        },
+        artistrgs: {
+            total: 1388, first: 100, unit: 'release groups', pageSize: 100, chipLabel: 'Type', ph: 'Filter loaded release groups: title, type, year',
+            warn: 'Bruce Springsteen has <b>1,388 release groups</b>. Loading them all takes 14 requests, about 16 s, so the window loads 5 pages at a time and the filter works on what is loaded.',
+            rows: [['Greetings From Asbury Park, N.J.', 'Album', '1973', true], ['The Wild, the Innocent & the E Street Shuffle', 'Album', '1973', true], ['Born to Run', 'Album', '1975', true],
+                ['Darkness on the Edge of Town', 'Album', '1978', true], ['The River', 'Album', '1980', true], ['Nebraska', 'Album', '1982', true], ['Born in the U.S.A.', 'Album', '1984', true],
+                ['Live/1975–85', 'Album + Live', '1986', true], ['Hungry Heart', 'Single', '1980', false], ['Dancing in the Dark', 'Single', '1984', true], ['1975‐11‐18: Hammersmith Odeon, London, UK', 'Album + Live', '2006', true],
+                ['Tunnel of Love Express I: Tougher Than the Rest', 'EP', '1988', false]],
+            chipOf: r => r[1],
+            cols: [{ k: 'img', l: '', nosort: true, fmt: r => thumb(r[0], r[3]) }, { k: 'title', l: 'Title', src: 0, fmt: (r, q) => `<a href="#entities">${hl(r[0], q)}</a>` },
+                { k: 'type', l: 'Type', src: 1, fmt: (r, q) => hl(r[1], q) }, { k: 'year', l: 'Year', src: 2, cls: 'nw', fmt: (r, q) => hl(r[2], q) }]
+        },
+        placeevents: {
+            total: 168, first: 100, unit: 'events', pageSize: 100, chipLabel: 'Year', ph: 'Filter loaded events: name, date, type',
+            rows: [['1975‐10‐17: The Roxy, West Hollywood', '1975-10-17', 'Concert'], ['1978‐07‐07: The Roxy, West Hollywood', '1978-07-07', 'Concert'], ['1975‐10‐18: The Roxy, West Hollywood', '1975-10-18', 'Concert'],
+                ['1986‐10‐13: Bridge School Benefit', '1986-10-13', 'Festival'], ['2013‐02‐07: MusiCares', '2013-02-07', 'Award ceremony']],
+            chipOf: r => r[1].slice(0, 3) + '0s',
+            cols: [{ k: 'name', l: 'Event', src: 0, fmt: (r, q) => `<span class="icon i-event">E</span><a href="#entities">${hl(r[0], q)}</a>` }, { k: 'date', l: 'Date', src: 1, cls: 'nw', fmt: (r, q) => hl(r[1], q) }, { k: 'type', l: 'Type', src: 2, fmt: (r, q) => hl(r[2], q) }]
+        },
+        tagrels: {
+            total: 9862, first: 100, unit: 'releases', pageSize: 100, chipLabel: 'Count', ph: 'Filter loaded releases: title, artist',
+            warn: '"classic rock" is on <b>9,862 releases</b>. Loading them all takes 99 page requests, about 1 min 49 s, so the window loads 5 pages at a time.',
+            rows: [['Born to Run', 'Bruce Springsteen', 12, true], ['Led Zeppelin IV', 'Led Zeppelin', 11, true], ['Back in Black', 'AC/DC', 10, true], ['Hotel California', 'Eagles', 9, true], ['Rumours', 'Fleetwood Mac', 9, false], ['Who’s Next', 'The Who', 8, true], ['Damn the Torpedoes', 'Tom Petty and the Heartbreakers', 6, false]],
+            chipOf: r => r[2] >= 10 ? '10+ votes' : '< 10 votes',
+            cols: [{ k: 'img', l: '', nosort: true, fmt: r => thumb(r[0], r[3]) }, { k: 'title', l: 'Release', src: 0, fmt: (r, q) => `<a href="#entities">${hl(r[0], q)}</a><div class="dim">${hl(r[1], q)}</div>` }, { k: 'n', l: 'Votes', src: 2, cls: 'num', fmt: r => r[2] }]
+        },
+        collrels: {
+            total: 412, first: 100, unit: 'releases', pageSize: 100, chipLabel: 'Format', ph: 'Filter loaded releases: title, artist, format',
+            rows: RELS.slice(0, 12), chipOf: r => r[6].replace(/^\d+×/, ''), cols: releaseCols
+        },
+        rgrels: { total: 247, first: 100, rows: RELS.filter(r => r[0] === 'Born to Run'), cols: releaseCols, unit: 'releases', pageSize: 100, chipLabel: 'Format', chipOf: r => r[6].replace(/^\d+×/, ''), ph: 'Filter loaded releases: title, format, label, cat#, country, date' }
+    };
+
+    const linkCols = [{ k: 'host', l: 'Site', fmt: (v, r, q) => `<span class="mono">${hl(v, q)}</span>` }, { k: 'type', l: 'Relationship' }, { k: 'url', l: 'URL', fmt: (v, r, q) => `<a href="#entities" class="mono">${hl(v, q)}</a>` }];
+    const LINKS = [['brucespringsteen.net', 'official homepage', 'https://brucespringsteen.net/'], ['wikidata.org', 'Wikidata', 'https://www.wikidata.org/wiki/Q1225'],
+        ['discogs.com', 'Discogs', 'https://www.discogs.com/artist/219986'], ['allmusic.com', 'AllMusic', 'https://www.allmusic.com/artist/mn0000530745'],
+        ['imdb.com', 'IMDb', 'https://www.imdb.com/name/nm0819803/'], ['last.fm', 'Last.fm', 'https://www.last.fm/music/Bruce+Springsteen'],
+        ['setlist.fm', 'setlist.fm', 'https://www.setlist.fm/setlists/bruce-springsteen-13d6ad55.html'], ['songkick.com', 'Songkick', 'https://www.songkick.com/artists/…'],
+        ['secondhandsongs.com', 'SecondHandSongs', 'https://secondhandsongs.com/artist/53'], ['spotify.com', 'stream for free', 'https://open.spotify.com/artist/3eqjTLE0HfPfh78zjh6TqT'],
+        ['youtube.com', 'YouTube', 'https://www.youtube.com/@BruceSpringsteenVEVO'], ['instagram.com', 'social network', 'https://www.instagram.com/springsteen/'],
+        ['bandcamp.com', 'Bandcamp', 'https://brucespringsteen.bandcamp.com/'], ['viaf.org', 'VIAF', 'http://viaf.org/viaf/…']];
+
+    const IMGHIST = [["Primary", "dsmith", "May 20, 2008 1:46 AM", "2008", "500", "500", "127KB"], ["Secondary", "dsmith", "May 20, 2008 1:47 AM", "2008", "500", "387", "97KB"], ["Secondary", "dsmith", "May 20, 2008 1:48 AM", "2008", "500", "496", "162KB"], ["Secondary", "dsmith", "May 20, 2008 1:49 AM", "2008", "500", "250", "70KB"], ["Secondary", "Cl0ver", "Jun 12, 2023 9:01 AM", "2023", "2002", "2000", "1.2MB"], ["Secondary", "Cl0ver", "Jun 12, 2023 9:01 AM", "2023", "2031", "2000", "954KB"], ["Secondary", "Cl0ver", "Jun 12, 2023 9:01 AM", "2023", "2034", "2000", "914KB"], ["Secondary", "Cl0ver", "Jun 12, 2023 9:01 AM", "2023", "2007", "2000", "1.3MB"], ["Secondary", "Cl0ver", "Jun 12, 2023 9:01 AM", "2023", "2036", "2000", "1.9MB"], ["Secondary", "Cl0ver", "Jun 12, 2023 9:01 AM", "2023", "2010", "2000", "1.8MB"], ["Secondary", "Cl0ver", "Jun 12, 2023 9:01 AM", "2023", "2014", "2000", "987KB"], ["Secondary", "Cl0ver", "Jun 12, 2023 9:01 AM", "2023", "2025", "2000", "920KB"], ["Secondary", "Cl0ver", "Jun 12, 2023 9:04 AM", "2023", "2040", "2000", "545KB"], ["Secondary", "Cl0ver", "Jun 12, 2023 9:04 AM", "2023", "2032", "2000", "540KB"], ["Secondary", "dsmith", "May 20, 2008 1:50 AM", "2008", "500", "390", "79KB"], ["Secondary", "Cl0ver", "Sep 18, 2023 3:14 PM", "2023", "1999", "2000", "3.5MB"], ["Secondary", "heaven83", "Dec 20, 2017 9:02 AM", "2017", "1655", "1427", "502KB"]];
+
+    const COMPACTS = {
+        sortdemo: null,
+        isrcs: { cols: [{ k: 'isrc', l: 'ISRC', fmt: (v, r, q) => `<a href="#components" class="mono">${hl(v, q)}</a>` }, { k: 'n', l: 'Recordings', cls: 'num' }], rows: [['USSM17500393', '3'], ['USSM10011234', '1']] },
+        recworks: { cols: [{ k: 'w', l: 'Work', fmt: (v, r, q) => `<span class="icon i-work">W</span><a href="#components">${hl(v, q)}</a>` }, { k: 't', l: 'Type' }], rows: [['Born to Run', 'Song']] },
+        links: { cols: linkCols, rows: LINKS, ph: 'Filter links' },
+        uploaders: { cols: [{ k: 'u', l: 'User', fmt: (v, r, q) => `<span class="avatar">${esc(v[0])}</span><a href="#images">${hl(v, q)}</a>` }, { k: 'n', l: 'Images', cls: 'num' }, { k: 'y', l: 'Years', cls: 'nw' }], rows: [['Cl0ver', '11', '2023'], ['dsmith', '5', '2008'], ['heaven83', '1', '2017']] },
+        imghist: {
+            per: 17, ph: 'Filter images',
+            cols: [{ k: 'pos', l: '#', cls: 'num' }, { k: 'img', l: '', nosort: true, fmt: (v, r) => thumb('img' + r[0]) }, { k: 'type', l: 'Type', fmt: v => `<span class="pill${v === 'Primary' ? ' ok' : ''}">${esc(v)}</span>` },
+                { k: 'user', l: 'Uploaded by', fmt: (v, r, q) => `<span class="avatar">${esc(v[0])}</span><a href="#images">${hl(v, q)}</a>` },
+                { k: 'date', l: 'Date', cls: 'nw', fmt: (v, r, q) => `<span title="${esc(r[8])}">${hl(v, q)}</span>` }, { k: 'dims', l: 'W × H', cls: 'num' }, { k: 'size', l: 'Size', cls: 'num' }],
+            rows: IMGHIST.map((r, i) => [String(i + 1), '', r[0], r[1], r[2].replace(/ \d+:\d+ [AP]M$/, ''), `${r[4]} × ${r[5]}`, r[6], '', r[2]])
+        }
+    };
+
+    // the sort demo: Discogs label releases, sample of CBS/Sony as in the screenshot
+    COMPACTS.sortdemo = {
+        per: 8,
+        cols: [{ k: 'img', l: '', nosort: true, fmt: (v, r) => thumb(r[2]) }, { k: 'artist', l: 'Artist' }, { k: 'title', l: 'Title, format', fmt: (v, r, q) => `<a href="#sort">${hl(v, q)}</a><div class="dim">${esc(r[5])}</div>` }, { k: 'catno', l: 'Cat#', fmt: v => `<span class="mono">${esc(v)}</span>` }, { k: 'year', l: 'Year', cls: 'nw' }],
+        rows: [['', '林憶蓮*', '新裝憶蓮 (New Song + Super Remix)', '3807139', '2021', 'CD, Comp, RE'], ['', '林憶蓮*', 'Ready', 'CBD196', '2013', 'CD, Album, Ltd, RE'],
+            ['', '徐小鳳*', '新曲與精選', 'CBD 102', '2012', 'CD, Comp, RE'], ['', 'Weather Report', 'Weather Report Live In Tokyo', 'SOPJ 12-13-XR', '2019', '2×LP, Album, RM'],
+            ['', 'Vicente Amigo', 'Amor Dulce Muerte', 'SAMPCS 4178', '1997', 'CD, Single'], ['', 'Vicente Amigo', 'Poeta', 'none', '1997', 'CD, Album'],
+            ['', 'Vicente Amigo', 'Poeta', 'COL 487502 2', '1997', 'CD, Album']]
+    };
+
+    // ── entities ──
+    const kv = pairs => '<dl class="kv">' + pairs.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${v}</dd>`).join('') + '</dl>';
+    const sec = (title, count, body) => `<div class="sec"><h4>${esc(title)}${count != null ? ` <span class="c">${count}</span>` : ''}</h4>${body}</div>`;
+    const genreLinks = gs => '<div class="genres">' + gs.map(g => `<span><a href="#entities" title="Click: the tag here · Ctrl+click: your own tag here">${esc(g)}</a></span>`).join('') + '</div>';
+    /** A Discogs-look window with a left and a right column. */
+    const win = (kind, icon, title, sub, left, right, foot = '') =>
+        `<div class="w"><div class="w-head"><span class="w-title">${icon ? `<span class="icon ${icon[0]}">${icon[1]}</span>` : ''}${esc(kind)}</span>` +
+        '<span class="w-tools"><span class="b">‹</span>1 / 1<span class="b">›</span><span class="b on">Extracted</span><span class="b">Live page</span><span class="b">⟳</span><span class="b">↗</span><span>✕</span></span></div>' +
+        `<div class="w-body${right ? '' : ' single'}"><div class="w-col"><div><div class="x-title">${title}</div>${sub ? `<div class="x-sub">${sub}</div>` : ''}</div>${left}</div>${right ? `<div class="w-col">${right}</div>` : ''}</div>` +
+        `<div class="w-foot"><span>${foot || '⌨ Rest on a link or an image: this line says what a click does.'}</span><span>Backspace back · Esc close</span></div></div>`;
+
+    const CD = [
+        ['CD 1', [['New York City Serenade', '14:08'], ['Badlands', '7:02'], ['Summertime Blues', '3:14'], ['The Ties That Bind', '3:42'], ['Sherry Darling', '5:29'], ['Jackson Cage', '3:16'], ['Two Hearts', '4:27'], ['Independence Day', '5:52'], ['Hungry Heart', '6:38'], ['Out in the Street', '6:39'], ['Boom Boom', '4:16'], ['Detroit Medley', '5:15'], ['You Can Look (but You Better Not Touch)', '3:10'], ['Death to My Hometown', '5:33']]],
+        ['CD 2', [['The Ghost of Tom Joad', '6:42'], ['The River', '8:10'], ['Point Blank', '9:28'], ['The Promised Land', '5:46'], ['Working on the Highway', '5:59'], ['Darlington County', '7:39'], ['Bobby Jean', '4:58'], ['Tougher Than the Rest', '5:58']]],
+        ['CD 3', [['Drive All Night', '10:49'], ['Because the Night', '5:53'], ['The Rising', '5:12'], ['Land of Hope and Dreams', '9:30'], ['Jungleland', '11:31']]],
+        ['CD 4', [['Born in the U.S.A.', '4:58'], ['Born to Run', '5:53'], ['Ramrod', '6:54'], ['Dancing in the Dark', '10:20'], ['Tenth Avenue Freeze‐Out', '6:09'], ['Shout', '14:52'], ['Thunder Road', '6:32']]]
+    ];
+    const mediumOpen = new Set(['CD 1']);
+    let trackQ = '';
+    /** Sum of m:ss lengths as h:mm:ss / m:ss. */
+    function total(ts) {
+        const s = ts.reduce((a, [, l]) => { const [m, ss] = l.split(':').map(Number); return a + m * 60 + ss; }, 0);
+        const h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), ss = String(s % 60).padStart(2, '0');
+        return h ? `${h}:${String(m).padStart(2, '0')}:${ss}` : `${m}:${ss}`;
+    }
+    /** The per-medium tracklist with one shared filter. */
+    function tracklist() {
+        const q = trackQ.trim().toLowerCase();
+        return `<div class="tools"><input class="q" type="search" id="q-tracks" data-tq="1" value="${esc(trackQ)}" placeholder="Filter tracks in all 4 mediums" aria-label="Filter tracks"></div>` +
+            CD.map(([name, ts]) => {
+                const hit = ts.map((t, i) => [i + 1, ...t]).filter(t => !q || t[1].toLowerCase().includes(q));
+                const open = q ? hit.length > 0 : mediumOpen.has(name);
+                return `<div class="medium" data-open="${open}"><button data-med="${name}" aria-expanded="${open}">${open ? '▾' : '▸'} ${name}<span class="dim">${ts.length} tracks · ${total(ts)}${q ? ` · ${hit.length} match` : ''}</span></button>` +
+                    `<div class="vwrap"><table class="vt"><thead><tr><th>#</th><th>Title</th><th>Length</th></tr></thead><tbody>` +
+                    hit.map(t => `<tr><td class="num">${t[0]}</td><td><span class="icon i-recording">R</span><a href="#entities">${hl(t[1], trackQ)}</a></td><td class="num">${t[2]}</td></tr>`).join('') + '</tbody></table></div></div>';
+            }).join('');
+    }
+
+    const ENT = {
+        'Artist': {
+            note: '<b>Release groups</b> becomes the real list (paged browse), with type chips and cover thumbnails; today it is a Type / Count table. <b>Links</b> moves left as a Compact table.',
+            before: '<h4>Release groups</h4><table><tr><th>Type</th><th>Count</th></tr><tr><td>Album</td><td>412</td></tr><tr><td>Single</td><td>301</td></tr><tr><td>EP</td><td>58</td></tr><tr><td>Broadcast</td><td>33</td></tr><tr><td>Other</td><td>584</td></tr></table><a href="#entities">The discography</a><h4>Links</h4>brucespringsteen.net · official homepage<br>wikidata.org · Wikidata<br>discogs.com · Discogs<br><span class="dim">… 11 more, one per line</span>',
+            after: () => win('Artist', ['i-artist', 'A'], 'Bruce Springsteen', 'Person · US · 1949‐09‐23', kv([['Area', '<a href="#entities">Long Branch</a>'], ['Genres', genreLinks(['heartland rock', 'rock', 'singer-songwriter'])]]) + sec('Links', 14, `<div data-compact="links"></div>`), sec('Release groups', '1,388', '<div data-list="artistrgs"></div>'))
+        },
+        'Release group': {
+            note: '<b>Releases</b> becomes a List table; a release without cover art gets an empty box of the same size, so every row is equally high. <b>Artist</b> is a link per credited artist, <b>Genres</b> one per line, each opening the tag here (Ctrl+click: your own tag). <b>Links</b> moves left.',
+            before: '<h4>Facts</h4><table><tr><td>Artist</td><td>AC/DC</td></tr><tr><td>Genres</td><td>arena rock, blues rock, classic rock, hard rock, heavy metal, pop rock, rock</td></tr></table><h4>Releases · 247</h4><table><tr><th></th><th>Title</th><th>Date</th><th>Country</th></tr><tr><td>▣</td><td>Back in Black</td><td>1980-07-25</td><td>AU</td></tr><tr><td></td><td>Back in Black</td><td>1980</td><td>GB</td></tr><tr><td>▣</td><td>Back in Black</td><td>1980</td><td>US</td></tr></table><span class="dim">Rows without a cover are lower than rows with one.</span>',
+            after: () => win('Release group', ['i-rg', 'RG'], 'Back in Black', 'Album · 1980', kv([['Artist', '<span class="icon i-artist">A</span><a href="#entities">AC/DC</a>'], ['Genres', genreLinks(['arena rock', 'blues rock', 'classic rock', 'hard rock', 'heavy metal', 'pop rock', 'rock'])], ['Rating', '4.6 (31)']]) + sec('Links', 14, '<div data-compact="links"></div>'), sec('Releases', 247, '<div data-list="rgrels"></div>'))
+        },
+        'Release': {
+            note: '<b>Tracklist</b>: one collapsible table per medium, its header giving the track count and length; one filter searches all mediums and opens the ones with a match (decided 2026-10-26).',
+            before: '<h4>Tracklist · 34 tracks</h4><b>CD 1</b><ol><li>New York City Serenade 14:08</li><li>Badlands 7:02</li><li>…</li></ol><b>CD 2</b><ol><li>The Ghost of Tom Joad 6:42</li><li>…</li></ol><b>CD 3</b> … <b>CD 4</b> …<br><span class="dim">All four mediums one under the other, 34 lines.</span>',
+            after: () => win('Release', ['i-release', 'R'], '2016‐07‐16: Circus Maximus, Rome, Italy', '<a href="#entities">Bruce Springsteen</a> &amp; <a href="#entities">The E Street Band</a>', kv([['Release group', '<a href="#entities">2016‐07‐16: Circus Maximus, Rome, Italy</a>'], ['Label', '<a href="#entities">nugs.net</a> · [none]'], ['Format', '4×CD · 34 tracks'], ['Packaging', 'Gatefold Cover']]), sec('Tracklist', '34 tracks · 4 mediums', '<div id="tracks">' + tracklist() + '</div>'))
+        },
+        'Recording': {
+            note: '<b>Releases</b>: the List table with the paged loader, instead of "The first 25 of 80; the recording’s page lists them all."',
+            before: '<h4>Releases</h4><table><tr><th>Release</th><th>Date</th><th>Country</th><th>Status</th></tr><tr><td>Born to Run</td><td>1975-08-25</td><td>US</td><td>Official</td></tr><tr><td colspan="4">…</td></tr></table><span class="dim">The first 25 of 80; the recording’s page lists them all.</span>',
+            after: () => win('Recording', ['i-recording', 'R'], 'Born to Run', '<a href="#entities">Bruce Springsteen</a> · 4:30', sec('ISRCs', 2, '<div data-compact="isrcs"></div>') + sec('Works', 1, '<div data-compact="recworks"></div>'), sec('Releases', 80, '<div data-list="recrels"></div>'))
+        },
+        'Work': {
+            note: '<b>Recordings</b>: List table with the paged loader (219 here: 3 pages of 100). <b>Codes</b> moves left as a Compact table.',
+            before: '<h4>Codes</h4><table><tr><td>ASCAP ID</td><td>320043018</td></tr><tr><td>BMI ID</td><td>145578</td></tr></table><h4>Recordings</h4>…<br><span class="dim">219 recordings; the first 100 here, the work’s page lists them all.</span>',
+            after: () => { COMPACTS.codes = COMPACTS.codes || { cols: [{ k: 'k', l: 'Code' }, { k: 'v', l: 'Value', fmt: (v, r, q) => `<span class="mono">${hl(v, q)}</span>` }], rows: [['ASCAP ID', '320043018'], ['BMI ID', '145578'], ['GEMA ID', '1450883-001'], ['ISWC', 'T-070.032.405-9'], ['SACEM ID', '04 024 016 11'], ['SOCAN ID', '…']] }; return win('Work', ['i-work', 'W'], 'Born to Run', 'Song · eng · <a href="#entities">Bruce Springsteen</a> (writer)', sec('Codes', 6, '<div data-compact="codes"></div>'), sec('Recordings', 219, '<div data-list="workrecs"></div>')); }
+        },
+        'Label': {
+            note: '<b>Links</b> becomes a Compact table on the left once there are more than 10; <b>Genres</b> one per line, each a tag link.',
+            before: '<h4>Facts</h4><table><tr><td>Genres</td><td>rock, pop, jazz, classical, soundtrack, …</td></tr></table><h4>Links (14)</h4>one line per link',
+            after: () => win('Label', ['i-label', 'L'], 'Columbia', 'Original Production · US · 1889', kv([['Label code', 'LC 00162'], ['Genres', genreLinks(['rock', 'pop', 'jazz', 'classical', 'soundtrack'])]]) + sec('Links', 14, '<div data-compact="links"></div>'), sec('Releases', '…', '<p class="counts">Unchanged in this round (the label’s releases stay as they are).</p>'))
+        },
+        'Event': {
+            note: '<b>Setlist</b> becomes a table (# · title · cover of · note). <b>Recorded here</b> becomes two Compact tables, releases and recordings.',
+            before: '<h4>Setlist</h4><ol><li>New York City Serenade</li><li>Badlands</li><li>Summertime Blues (Eddie Cochran cover)</li></ol><h4>Recorded here</h4><table><tr><td>(releases)</td><td>2016‐07‐16: Circus Maximus, Rome, Italy</td></tr><tr><td>(recordings)</td><td>New York City Serenade, Badlands, …</td></tr></table>',
+            after: () => {
+                COMPACTS.setlist = COMPACTS.setlist || { per: 12, ph: 'Filter the setlist', cols: [{ k: 'n', l: '#', cls: 'num' }, { k: 't', l: 'Song', fmt: (v, r, q) => `<span class="icon i-work">W</span><a href="#entities">${hl(v, q)}</a>` }, { k: 'c', l: 'Cover of' }, { k: 'd', l: 'Note', fmt: (v, r, q) => `<span class="dim">${hl(v, q)}</span>` }],
+                    rows: [['1', 'New York City Serenade', '', 'with strings'], ['2', 'Badlands', '', ''], ['3', 'Summertime Blues', 'Eddie Cochran', 'tour premiere'], ['4', 'The Ties That Bind', '', ''], ['5', 'Sherry Darling', '', ''], ['6', 'Jackson Cage', '', ''], ['7', 'Two Hearts', '', ''], ['8', 'Independence Day', '', ''], ['9', 'Hungry Heart', '', 'crowd sings verse 1'], ['10', 'Out in the Street', '', ''], ['11', 'Boom Boom', 'John Lee Hooker', 'sign request'], ['12', 'Detroit Medley', 'Mitch Ryder', ''], ['13', 'Death to My Hometown', '', ''], ['14', 'The Ghost of Tom Joad', '', '']] };
+                COMPACTS.rhrel = COMPACTS.rhrel || { cols: [{ k: 't', l: 'Release', fmt: (v, r, q) => `<span class="icon i-release">R</span><a href="#entities">${hl(v, q)}</a>` }, { k: 'd', l: 'Date', cls: 'nw' }], rows: [['2016‐07‐16: Circus Maximus, Rome, Italy', '2016-10-19']] };
+                COMPACTS.rhrec = COMPACTS.rhrec || { ph: 'Filter recordings', cols: [{ k: 't', l: 'Recording', fmt: (v, r, q) => `<span class="icon i-recording">R</span><a href="#entities">${hl(v, q)}</a>` }, { k: 'l', l: 'Length', cls: 'num' }], rows: CD.flatMap(([, ts]) => ts) };
+                return win('Event', ['i-event', 'E'], '2016‐07‐16: Circus Maximus, Rome, Italy', 'Concert · <a href="#entities">Circo Massimo</a>', sec('Recorded here (releases)', 1, '<div data-compact="rhrel"></div>') + sec('Recorded here (recordings)', 34, '<div data-compact="rhrec"></div>'), sec('Setlist', 34, '<div data-compact="setlist"></div>'));
+            }
+        },
+        'Instrument': {
+            note: '<b>Related instruments → Parts</b> and <b>Aliases</b> become Compact tables on the left.',
+            before: '<h4>Related instruments</h4><table><tr><td>Parts</td><td>neck, pickup, bridge</td></tr></table><h4>Aliases</h4><table><tr><td>de</td><td>E-Gitarre</td></tr><tr><td>fr</td><td>guitare électrique</td></tr><tr><td>…</td><td>24 more</td></tr></table>',
+            after: () => {
+                COMPACTS.parts = COMPACTS.parts || { cols: [{ k: 'n', l: 'Instrument', fmt: (v, r, q) => `<a href="#entities">${hl(v, q)}</a>` }, { k: 'r', l: 'Relationship' }], rows: [['acoustic guitar', 'type of'], ['bass guitar', 'related to'], ['lap steel guitar', 'derived from'], ['pickup', 'has part']] };
+                COMPACTS.aliases = COMPACTS.aliases || { ph: 'Filter aliases', cols: [{ k: 'a', l: 'Alias' }, { k: 'l', l: 'Locale', cls: 'nw' }, { k: 't', l: 'Type' }, { k: 'p', l: 'Primary', fmt: v => v ? '<span class="pill ok">primary</span>' : '' }],
+                    rows: [['E-Gitarre', 'de', 'Instrument name', '1'], ['guitare électrique', 'fr', 'Instrument name', '1'], ['chitarra elettrica', 'it', 'Instrument name', '1'], ['guitarra eléctrica', 'es', 'Instrument name', '1'], ['エレキギター', 'ja', 'Instrument name', '1'], ['elgitarr', 'sv', 'Instrument name', '1'], ['electric guitar', 'en', 'Instrument name', '1'], ['E-Gitarre', 'de_AT', 'Search hint', ''], ['elektrische gitaar', 'nl', 'Instrument name', '1'], ['gitara elektryczna', 'pl', 'Instrument name', '1'], ['электрогитара', 'ru', 'Instrument name', '1'], ['elektrisk gitar', 'nb', 'Instrument name', '1']] };
+                return win('Instrument', null, 'electric guitar', 'String instrument', sec('Related instruments', 4, '<div data-compact="parts"></div>') + sec('Aliases', 12, '<div data-compact="aliases"></div>'), '');
+            }
+        },
+        'Series': {
+            note: '<b>Items</b>: the entity icon before each item, and every item opens in the window. Today release-group items get <code>/release_group/…</code> (with an underscore) from the web service, which is not a valid page, so they open a broken new tab. That is a bug, fixed with its own test.',
+            before: '<h4>Items</h4><table><tr><th>#</th><th>Item</th></tr><tr><td>1</td><td>Greetings From Asbury Park, N.J. <span class="dim">↗ new tab, /release_group/…</span></td></tr><tr><td>2</td><td>The Wild, the Innocent &amp; the E Street Shuffle <span class="dim">↗</span></td></tr></table>',
+            after: () => { COMPACTS.items = COMPACTS.items || { ph: 'Filter items', cols: [{ k: 'n', l: '#', cls: 'num' }, { k: 'i', l: 'Item', fmt: (v, r, q) => `<span class="icon i-rg">RG</span><a href="#entities">${hl(v, q)}</a>` }, { k: 'y', l: 'Year', cls: 'nw' }], rows: [['1', 'Greetings From Asbury Park, N.J.', '1973'], ['2', 'The Wild, the Innocent & the E Street Shuffle', '1973'], ['3', 'Born to Run', '1975'], ['4', 'Darkness on the Edge of Town', '1978'], ['5', 'The River', '1980'], ['6', 'Nebraska', '1982'], ['7', 'Born in the U.S.A.', '1984'], ['8', 'Tunnel of Love', '1987'], ['9', 'Human Touch', '1992'], ['10', 'Lucky Town', '1992'], ['11', 'The Ghost of Tom Joad', '1995'], ['12', 'The Rising', '2002']] }; return win('Series', null, 'Bruce Springsteen studio albums', 'Release group series · ordered by number', '', sec('Items', 21, '<div data-compact="items"></div>'), 'Rest on an item: "Opens here: Release group · Born to Run".'); }
+        },
+        'Place': {
+            note: '<b>Events</b>: List table with the paged loader (today "168 events; 100 of them here, by date"). <b>Links</b>: Compact on the left.',
+            before: '<h4>Events</h4>… 100 rows …<br><span class="dim">168 events; 100 of them here, by date — the place’s page lists them all.</span><h4>Links</h4>one per line',
+            after: () => win('Place', ['i-place', 'P'], 'The Roxy Theatre', 'Venue · West Hollywood, CA', sec('Links', 14, '<div data-compact="links"></div>'), sec('Events', 168, '<div data-list="placeevents"></div>'))
+        },
+        'Area': {
+            note: '<b>Related areas → Parts</b>: Compact on the left.',
+            before: '<h4>Related areas</h4><table><tr><td>Parts</td><td>Asbury Park, Freehold, Long Branch, Neptune, Red Bank, … (53)</td></tr></table>',
+            after: () => { COMPACTS.areaparts = COMPACTS.areaparts || { ph: 'Filter parts', cols: [{ k: 'n', l: 'Area', fmt: (v, r, q) => `<a href="#entities">${hl(v, q)}</a>` }, { k: 't', l: 'Type' }], rows: [['Asbury Park', 'City'], ['Freehold Borough', 'Municipality'], ['Freehold Township', 'Municipality'], ['Long Branch', 'City'], ['Neptune Township', 'Municipality'], ['Red Bank', 'Municipality'], ['Belmar', 'Municipality'], ['Colts Neck', 'Municipality'], ['Holmdel', 'Municipality'], ['Rumson', 'Municipality'], ['Sea Girt', 'Municipality'], ['Manasquan', 'Municipality']] }; return win('Area', null, 'Monmouth County', 'County · New Jersey, United States', sec('Related areas → Parts', 53, '<div data-compact="areaparts"></div>'), ''); }
+        },
+        'Editor': {
+            note: '<b>Edits</b>: Compact table.',
+            before: '<h4>Edits</h4><table><tr><td>Total</td><td>48,211</td></tr><tr><td>Accepted</td><td>47,904</td></tr><tr><td>Auto-edits</td><td>…</td></tr></table>',
+            after: () => { COMPACTS.edits = COMPACTS.edits || { cols: [{ k: 'k', l: 'Edits' }, { k: 'n', l: 'Count', cls: 'num' }], rows: [['Total', '48,211'], ['Accepted', '47,904'], ['Auto-edits', '31,770'], ['Voted down', '117'], ['Failed', '83'], ['Open', '107'], ['Cancelled', '0'], ['Last 24 hours', '64']] }; return win('Editor', null, 'vzell', 'Editor since 2009', sec('Edits', 8, '<div data-compact="edits"></div>'), ''); }
+        },
+        'Collection': {
+            note: 'The entity list (here: <b>Releases</b>) becomes the List table with the paged loader, in place of today’s ◀ ▶ slices of 25.',
+            before: '<h4>Releases · 412</h4>25 rows<br>◀ 1–25 of 100 loaded ▶ <span class="dim">(each 100-row page one request)</span>',
+            after: () => win('Collection', null, 'Springsteen vinyl', 'Release collection · public · vzell', kv([['Entries', '412'], ['Type', 'Release']]), sec('Releases', 412, '<div data-list="collrels"></div>'))
+        },
+        'Genre': {
+            note: '<b>Links</b> moves to the left; each <b>Related genres</b> sub-section becomes a Compact table.',
+            before: '<h4>Related genres</h4><b>subgenres</b>: album rock, heartland rock, …<br><b>influenced by</b>: blues rock, rock and roll<h4>Links</h4>wikidata.org · Wikidata (right column)',
+            after: () => { COMPACTS.subg = COMPACTS.subg || { cols: [{ k: 'g', l: 'Genre', fmt: (v, r, q) => `<a href="#entities">${hl(v, q)}</a>` }, { k: 'r', l: 'Relationship' }], rows: [['album rock', 'subgenre'], ['heartland rock', 'subgenre'], ['blues rock', 'influenced by'], ['rock and roll', 'influenced by'], ['hard rock', 'fusion of']] }; return win('Genre', null, 'classic rock', 'Genre', sec('Links', 2, '<div data-compact="links"></div>') + sec('Related genres', 5, '<div data-compact="subg"></div>'), sec('Tagged', '…', '<p class="counts">The right side is the tag window (see Tag).</p>')); }
+        },
+        'Tag': {
+            note: 'Each kind (Releases, Recordings, Artists, …) becomes a List table on the right with the paged loader over <code>/tag/classic rock/release?page=n</code>, as the Discogs artist discography does per role. "By kind" stays on the left.',
+            before: '<h4>By kind</h4><table><tr><td>Release</td><td>9,862</td></tr><tr><td>Recording</td><td>24,107</td></tr><tr><td>Artist</td><td>3,016</td></tr></table><h4>Releases</h4>10 titles <a href="#entities">See all 9,862</a> <span class="dim">(new tab)</span>',
+            after: () => { COMPACTS.bykind = COMPACTS.bykind || { cols: [{ k: 'k', l: 'Kind', fmt: (v, r, q) => `<a href="#entities">${hl(v, q)}</a>` }, { k: 'n', l: 'Count', cls: 'num' }], rows: [['Release', '9,862'], ['Release group', '5,401'], ['Recording', '24,107'], ['Artist', '3,016'], ['Work', '412'], ['Label', '88']] }; return win('Tag', null, 'classic rock', 'Tag · also a genre', sec('By kind', 6, '<div data-compact="bykind"></div>'), sec('Releases', '9,862', '<div data-list="tagrels"></div>') + sec('Recordings', '24,107', '<p class="counts">Same List table, collapsed until opened, so it asks nothing before.</p>')); }
+        },
+        'Editor’s tag': {
+            note: '<span class="tag-new">new</span> A reader for <code>/user/&lt;name&gt;/tag/&lt;tag&gt;/&lt;kind&gt;</code>, so "By kind" opens in the window instead of a new tab; the right side as for Tag.',
+            before: '<h4>By kind</h4><table><tr><td>Release</td><td>212 <span class="dim">↗ new tab</span></td></tr><tr><td>Recording</td><td>1,034 <span class="dim">↗ new tab</span></td></tr></table>',
+            after: () => win('Tag', null, 'classic rock', 'vzell’s tag', sec('By kind', 6, '<div data-compact="bykind"></div>'), sec('Releases', 212, '<div data-list="tagrels"></div>'))
+        },
+        'Tags': {
+            note: '<b>Other tags</b>: Compact table (genres stay a list of links).',
+            before: '<h4>Genres</h4>rock, heartland rock, …<h4>Other tags</h4>live, bootleg, 1975, nugs, … <span class="dim">(one long list)</span>',
+            after: () => { COMPACTS.othertags = COMPACTS.othertags || { ph: 'Filter tags', cols: [{ k: 't', l: 'Tag', fmt: (v, r, q) => `<a href="#entities">${hl(v, q)}</a>` }, { k: 'n', l: 'Uses', cls: 'num' }], rows: [['live', '1,204'], ['bootleg', '611'], ['nugs', '402'], ['1975', '88'], ['radio broadcast', '73'], ['soundboard', '61'], ['audience recording', '44'], ['remaster', '19'], ['e street band', '15'], ['acoustic', '12'], ['outtake', '9'], ['demo', '7']] }; return win('Tags', null, 'vzell’s tags', 'Editor', sec('Genres', 9, genreLinks(['rock', 'heartland rock', 'folk rock'])), sec('Other tags', 12, '<div data-compact="othertags"></div>')); }
+        },
+        'Ratings': {
+            note: 'One Compact table per kind (Artist, Event, Label, …), plus the link to all.',
+            before: '<h4>Artist</h4><table><tr><td>Bruce Springsteen</td><td>★★★★★</td></tr><tr><td>…</td></tr></table><h4>Event</h4>…',
+            after: () => { COMPACTS.ratings = COMPACTS.ratings || { cols: [{ k: 'n', l: 'Artist', fmt: (v, r, q) => `<span class="icon i-artist">A</span><a href="#entities">${hl(v, q)}</a>` }, { k: 'r', l: 'Rating', fmt: v => '★'.repeat(+v) + '<span class="dim">' + '★'.repeat(5 - v) + '</span>' }], rows: [['Bruce Springsteen', '5'], ['The E Street Band', '5'], ['Patti Scialfa', '4'], ['Southside Johnny', '4'], ['Little Steven', '4']] }; return win('Ratings', null, 'vzell’s ratings', 'Editor', sec('Artist', 5, '<div data-compact="ratings"></div>'), sec('Event', 31, '<p class="counts">Same table per kind.</p>')); }
+        },
+        'CD stub': {
+            note: '<span class="tag-new">new</span> A reader for <code>/cdstub/&lt;id&gt;</code> (and links from <code>/cdstub/browse</code>): title, artist, barcode, comment, tracks.',
+            before: '<span class="dim">No window: a CD stub link opens a new tab.</span>',
+            after: () => { COMPACTS.stub = COMPACTS.stub || { cols: [{ k: 'n', l: '#', cls: 'num' }, { k: 't', l: 'Title' }, { k: 'a', l: 'Artist' }, { k: 'l', l: 'Length', cls: 'num' }], rows: [['1', 'Thunder Road', '', '4:49'], ['2', 'Tenth Avenue Freeze-Out', '', '3:11'], ['3', 'Night', '', '3:00'], ['4', 'Backstreets', '', '6:30'], ['5', 'Born to Run', '', '4:30'], ['6', 'She’s the One', '', '4:30'], ['7', 'Meeting Across the River', '', '3:18'], ['8', 'Jungleland', '', '9:34']] }; return win('CD stub', null, 'Born To Run', 'Bruce Springsteen · CD stub', kv([['Disc ID', '<span class="mono">XsbJwm0LkJCi4WXBVx9iXOXGhWk-</span>'], ['Barcode', '<span class="mono">5099749104423</span>'], ['Comment', 'remaster'], ['Lookups', '41 · last 2026-09-30']]), sec('Tracks', 8, '<div data-compact="stub"></div>')); }
+        },
+        'ISRC': {
+            note: '<b>Recordings</b>: Compact table.',
+            before: '<h4>Recordings · 3</h4><table><tr><th>Recording</th><th>Artist</th><th>Length</th></tr><tr><td>Born to Run</td><td>Bruce Springsteen</td><td>4:30</td></tr></table>',
+            after: () => { COMPACTS.isrcrecs = COMPACTS.isrcrecs || { cols: [{ k: 'r', l: 'Recording', fmt: (v, r, q) => `<span class="icon i-recording">R</span><a href="#entities">${hl(v, q)}</a>` }, { k: 'a', l: 'Artist' }, { k: 'l', l: 'Length', cls: 'num' }], rows: [['Born to Run', 'Bruce Springsteen', '4:30'], ['Born to Run (2014 remaster)', 'Bruce Springsteen', '4:31'], ['Born to Run', 'Bruce Springsteen', '4:29']] }; return win('ISRC', null, '<span class="mono">USSM17500393</span>', 'International Standard Recording Code', '', sec('Recordings', 3, '<div data-compact="isrcrecs"></div>')); }
+        },
+        'ISWC': {
+            note: '<b>Works</b>: Compact table (the uploaded window shows the plain one).',
+            before: '<b>T-011.212.406-7</b><br><span class="dim">International Standard Musical Work Code</span><h4>Works · 1</h4><table><tr><th>Work</th><th>Type</th><th>Language</th></tr><tr><td><a href="#entities">A Man and a Woman</a> <span class="dim">(U2 song)</span></td><td>Song</td><td>eng</td></tr></table>',
+            after: () => { COMPACTS.iswcworks = COMPACTS.iswcworks || { cols: [{ k: 'w', l: 'Work', fmt: (v, r, q) => `<span class="icon i-work">W</span><a href="#entities">${hl(v, q)}</a> <span class="dim">${esc(r[3])}</span>` }, { k: 't', l: 'Type' }, { k: 'l', l: 'Language' }], rows: [['A Man and a Woman', 'Song', 'eng', '(U2 song)']] }; return win('Work › ISWC', null, '<span class="mono">T-011.212.406-7</span>', 'International Standard Musical Work Code', '', sec('Works', 1, '<div data-compact="iswcworks"></div>')); }
+        },
+        'Disc ID': {
+            note: '<b>Releases</b>: Compact table, next to the table of contents (from the uploaded window).',
+            before: '<b>j25zzSWuvU1XH4A8xOI.cUynMf0-</b><h4>Table of contents · 4</h4><table><tr><th>Track</th><th>Offset</th><th>Length</th></tr><tr><td>1</td><td>150</td><td>4:38</td></tr><tr><td>2</td><td>20970</td><td>6:39</td></tr><tr><td>3</td><td>50867</td><td>4:49</td></tr><tr><td>4</td><td>72525</td><td>5:18</td></tr></table><h4>Releases · 1</h4><table><tr><th>Release</th><th>Date</th><th>Country</th></tr><tr><td><a href="#entities">Tunnel of Love Express I: Tougher Than the Rest</a></td><td>1988-09-21</td><td>JP</td></tr></table>',
+            after: () => {
+                COMPACTS.toc = COMPACTS.toc || { cols: [{ k: 't', l: 'Track', cls: 'num' }, { k: 'o', l: 'Offset', cls: 'num' }, { k: 'l', l: 'Length', cls: 'num' }], rows: [['1', '150', '4:38'], ['2', '20970', '6:39'], ['3', '50867', '4:49'], ['4', '72525', '5:18']] };
+                COMPACTS.discrels = COMPACTS.discrels || { cols: [{ k: 'r', l: 'Release', fmt: (v, r, q) => `<span class="icon i-release">R</span><a href="#entities">${hl(v, q)}</a>` }, { k: 'd', l: 'Date', cls: 'nw' }, { k: 'c', l: 'Country' }], rows: [['Tunnel of Love Express I: Tougher Than the Rest', '1988-09-21', 'JP']] };
+                return win('Disc ID', null, '<span class="mono">j25zzSWuvU1XH4A8xOI.cUynMf0-</span>', '4 tracks · 21:24', sec('Table of contents', 4, '<div data-compact="toc"></div>'), sec('Releases', 1, '<div data-compact="discrels"></div>'));
+            }
+        },
+        'Documentation': {
+            note: '<span class="tag-new">new</span> The documentation search is drawn by Google in the browser, so there is nothing to read from the page. If the wiki’s search API answers (probe first), the window lists the hits; a hit opens the <code>/doc/…</code> page in the window.',
+            before: '<span class="dim">No window: /search?type=doc and /doc/… open a new tab.</span>',
+            after: () => { COMPACTS.docs = COMPACTS.docs || { cols: [{ k: 'p', l: 'Page', fmt: (v, r, q) => `<a href="#entities">${hl(v, q)}</a><div class="dim">${esc(r[2])}</div>` }, { k: 'u', l: 'Updated', cls: 'nw' }], rows: [['Release', '2025-11-02', 'A release is any publication of one or more tracks …'], ['Style/Release', '2026-03-14', 'How to enter release titles, dates and countries …'], ['Release Group', '2025-08-21', 'A release group groups several releases …'], ['Style/Release Group', '2024-12-01', 'Release group types and titles …'], ['Release Event', '2023-06-30', 'Date and country of a release …']] }; return win('Documentation', null, 'Search: release', 'MusicBrainz documentation · 5 of 214 hits', '', sec('Pages', 214, '<div data-compact="docs"></div>')); }
+        },
+        'Annotation': {
+            note: '<b>History → Versions</b>: Compact table. <b>Version</b>: unchanged unless you want something (open question 3).',
+            before: '<h4>Versions</h4><table><tr><th>Version</th><th>Editor</th><th>Date</th><th>Summary</th></tr><tr><td>#7</td><td>vzell</td><td>2026-09-30</td><td>typos</td></tr><tr><td colspan="4">…</td></tr></table>',
+            after: () => { COMPACTS.versions = COMPACTS.versions || { cols: [{ k: 'v', l: 'Version', cls: 'num' }, { k: 'e', l: 'Editor', fmt: (v, r, q) => `<a href="#entities">${hl(v, q)}</a>` }, { k: 'd', l: 'Date', cls: 'nw' }, { k: 's', l: 'Summary' }], rows: [['7', 'vzell', '2026-09-30', 'typos'], ['6', 'vzell', '2026-04-11', 'added recording notes'], ['5', 'jesus2099', '2021-02-02', 'links'], ['4', 'reosarevok', '2019-08-17', ''], ['3', 'vzell', '2016-10-20', 'setlist source'], ['2', 'vzell', '2016-10-19', ''], ['1', 'vzell', '2016-10-19', 'first version']] }; return win('Annotation history', null, '2016‐07‐16: Circus Maximus, Rome, Italy', 'Release · 7 versions', '', sec('Versions', 7, '<div data-compact="versions"></div>')); }
+        }
+    };
+
+    // ── painting ──
+    let current = 'Recording';
+
+    /** Fill every [data-compact] / [data-list] holder below root. */
+    function fill(root) {
+        root.querySelectorAll('[data-compact]').forEach(el => { el.innerHTML = compact(el.dataset.compact, COMPACTS[el.dataset.compact]); });
+        root.querySelectorAll('[data-list]').forEach(el => { el.innerHTML = list(el.dataset.list, LISTS[el.dataset.list]); });
+        const tr = root.querySelector('#tracks');
+        if (tr) tr.innerHTML = tracklist();
+    }
+
+    /** Repaint everything, keeping the focused filter's caret. */
+    function repaint() {
+        const f = document.activeElement && document.activeElement.id;
+        const pos = f && document.activeElement.selectionStart;
+        fill(document);
+        if (f) {
+            const el = document.getElementById(f);
+            if (el) { el.focus(); if (pos != null && el.setSelectionRange) el.setSelectionRange(pos, pos); }
+        }
+    }
+
+    /** Show one entity's before/after. */
+    function show(name) {
+        current = name;
+        document.querySelectorAll('#picker button').forEach(b => b.setAttribute('aria-pressed', String(b.textContent === name)));
+        document.getElementById('ent-note').innerHTML = ENT[name].note;
+        document.getElementById('ent-before').innerHTML = ENT[name].before;
+        document.getElementById('ent-after').innerHTML = ENT[name].after();
+        fill(document.getElementById('ent-after'));
+        try { localStorage.setItem('mbpoh-ent', name); } catch (e) { /* storage unavailable */ }
+    }
+
+    document.getElementById('picker').innerHTML = Object.keys(ENT).map(n => `<button type="button" aria-pressed="false">${esc(n)}</button>`).join('');
+    document.getElementById('sort-demo').innerHTML = '<div class="sec"><h4>Releases <span class="c">27,880</span></h4><div data-compact="sortdemo"></div></div>';
+    document.getElementById('gallery').innerHTML = IMGHIST.map((r, i) => {
+        const h = hue('img' + String(i + 1));
+        const ratio = (+r[4] / +r[5]).toFixed(3);
+        return `<div class="gimg"><span class="ph" tabindex="0" style="aspect-ratio: ${ratio}; background: linear-gradient(135deg, hsl(${h} 45% 45%), hsl(${(h + 40) % 360} 55% 28%))">${i + 1}</span>` +
+            `<span>${i ? 'image ' + (i + 1) : 'front'}</span><span class="card"><span class="ttl">${r[0]} · ${i + 1} of 17</span>` +
+            `${r[4]} × ${r[5]} px · ${r[6]}<br>Uploaded by <b>${r[1]}</b>, ${r[2]}<br><span class="dim">Click: viewer · ← → all 17</span></span></div>`;
+    }).join('');
+    let start = 'Recording';
+    try { const s = localStorage.getItem('mbpoh-ent'); if (s && ENT[s]) start = s; } catch (e) { /* storage unavailable */ }
+    fill(document);
+    show(start);
+
+    // ── one delegated handler, as in the userscript ──
+    document.addEventListener('click', (e) => {
+        const t = e.target.closest('[data-sort], [data-page], [data-more], [data-all], [data-chip], [data-med], #picker button');
+        if (!t || t.disabled) return;
+        if (t.closest('#picker')) { show(t.textContent); return; }
+        const d = t.dataset;
+        if (d.sort) {
+            const [id, col] = d.sort.split(':');
+            const st = ui.get(id);
+            if (st.col === col && st.dir) Object.assign(st, st.dir > 0 ? { dir: -1 } : { col: '', dir: 0 });
+            else Object.assign(st, { col, dir: 1 });
+            st.page = 0;
+        } else if (d.page) {
+            const [id, step] = d.page.split(':');
+            ui.get(id).page += Number(step);
+        } else if (d.more) {
+            const st = ui.get(d.more);
+            const cfg = LISTS[d.more];
+            st.running = true;
+            const pages = Math.min(5, Math.ceil((cfg.total - st.loaded) / (cfg.pageSize || 25)));
+            let n = 0;
+            const tick = () => {
+                st.loaded = Math.min(cfg.total, st.loaded + (cfg.pageSize || 25));
+                n++;
+                if (n >= pages || st.loaded >= cfg.total) st.running = false;
+                repaint();
+                if (st.running) setTimeout(tick, 550);
+            };
+            setTimeout(tick, 550);
+        } else if (d.all) {
+            ui.get(d.all).limit = Infinity;
+        } else if (d.chip) {
+            const i = d.chip.indexOf(':');
+            const st = ui.get(d.chip.slice(0, i));
+            const v = d.chip.slice(i + 1);
+            st.chip = st.chip === v ? '' : v;
+        } else if (d.med) {
+            if (mediumOpen.has(d.med)) mediumOpen.delete(d.med); else mediumOpen.add(d.med);
+        }
+        repaint();
+    });
+    document.addEventListener('keydown', (e) => {
+        if ((e.key === 'Enter' || e.key === ' ') && e.target.matches('th[data-sort]')) { e.preventDefault(); e.target.click(); }
+    });
+    document.addEventListener('input', (e) => {
+        const t = e.target;
+        if (t.dataset.q) { const st = ui.get(t.dataset.q); st.q = t.value; st.page = 0; repaint(); }
+        else if (t.dataset.tq) { trackQ = t.value; repaint(); }
+    });
+})();
+</script>
