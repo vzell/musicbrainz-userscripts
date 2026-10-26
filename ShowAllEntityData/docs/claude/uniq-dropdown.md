@@ -269,6 +269,14 @@ panel. `openSeries()` waits it out.
   `discogs-submissions.spec.js` (Changed date/time; the 📊 pictures of
   "Changed by" and a history's "User", mutations
   `scripts/mutations/discogs-uvd-avatars.json`).
+- **A Brucebase Media icon on an entry** (2026-10-26, the `bb-year` Media
+  column): a value entry whose cell or `<li>` holds exactly ONE
+  `ul.mb-bb-media > li` icon shows that icon AFTER the label
+  (`_bbMediaSoleIconSrc()` → `bbMediaIconMap`, cached with the bundle;
+  drawn by `_bbMediaTrailingSlot()`, `span.mb-uniq-bb-media-icon`). The
+  per-`<li>` entries ("Photo", "Setlist", …) always have one; a whole-cell
+  entry of several icons has none, the `_iiSoleIcon()` rule. `_isBbHost`
+  only. Spec: `bb-year-media-uvd.spec.js`.
 
 ## Instrument icons and the "Instrument info - Icon" section
 

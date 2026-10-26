@@ -319,7 +319,9 @@ Previous / Listing / Next line stay. On the live document
   `display:none`, and NOT in `_CLEAN_STRIP_SEL`, because it is the text the
   filter and the 📊 dropdown read. A cell with two or more icons lists each
   label as its own 📊 entry with no engine change (the dropdown's per-`<li>`
-  item values).
+  item values). Since 2026-10-26 each such entry also shows the label's
+  icon after it (`bbMediaIconMap`, docs/claude/uniq-dropdown.md, "A
+  Brucebase Media icon on an entry").
 - **Event** (`_bbYearEventCell()`, 2026-10-24, mockup
   https://claude.ai/artifact/DmsNyUkUa1Hq8nPr2B5EGA): the heading as one
   name, "1985-01-13 - Carolina Coliseum, Columbia, SC", linked

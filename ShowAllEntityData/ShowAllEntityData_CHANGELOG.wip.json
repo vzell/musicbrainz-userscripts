@@ -1,5 +1,17 @@
 [
   {
+    "version": "WIP.2",
+    "date": "2026-10-26",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "Brucebase year pages: the 📊 list of the Media column now shows each name's icon after it (Photo, Setlist, Ticket, …), the same icon the table shows. An entry for a cell with several icons stays text only."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.1",
     "date": "2026-10-26",
     "sections": [

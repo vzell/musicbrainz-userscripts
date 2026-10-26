@@ -7169,6 +7169,54 @@
     }
 
     /**
+     * Brucebase year pages: the one Media icon of a cell or of one of its
+     * `<li>`s, for the END of its 📊 entry (vzell, 2026-10-26: "the UVD in
+     * the Media column should get the media icons also"). The cell is
+     * `ul.mb-bb-media`, one `<li>` per icon, each holding the site's own
+     * `00<kind>-32.png` and its hidden label (`_bbYearBuildRow()`). A cell
+     * with several icons has no one icon, so its whole-cell entry stays text,
+     * the rule the instrument icons follow (`_iiSoleIcon()`).
+     *
+     * @param {?Element} root - a cell, or one `<li>` of `ul.mb-bb-media`.
+     * @returns {string} the icon's `src`, or '' when there is not exactly one.
+     */
+    function _bbMediaSoleIconSrc(root) {
+        if (!root) return '';
+        const lis = root.matches('ul.mb-bb-media > li')
+            ? [root]
+            : Array.from(root.querySelectorAll('ul.mb-bb-media > li'));
+        if (lis.length !== 1) return '';
+        const img = lis[0].querySelector('img[src]');
+        return img ? img.getAttribute('src') : '';
+    }
+
+    /**
+     * A Brucebase Media icon for the END of a 📊 entry — the trailing slot
+     * an instrument icon or a Discogs picture gets (docs/claude/uniq-dropdown.md:
+     * a real image never goes in the leading marker slot), 16 px, no
+     * referrer, like `_dgAvatarTrailingSlot()`.
+     *
+     * @param {string} src - the icon's URL, from `_bbMediaSoleIconSrc()`.
+     * @returns {HTMLSpanElement}
+     */
+    function _bbMediaTrailingSlot(src) {
+        const slot = document.createElement('span');
+        slot.className = 'mb-uniq-bb-media-icon';
+        slot.setAttribute('aria-hidden', 'true');
+        slot.style.display       = 'inline-flex';
+        slot.style.alignItems    = 'center';
+        slot.style.marginLeft    = '4px';
+        slot.style.verticalAlign = 'middle';
+        const img = document.createElement('img');
+        img.src = src;
+        img.alt = '';
+        img.referrerPolicy = 'no-referrer';
+        img.style.cssText = 'width:16px;height:16px;object-fit:contain;';
+        slot.appendChild(img);
+        return slot;
+    }
+
+    /**
      * Wraps a copy of an instrument icon for the END of a 📊 entry — the
      * same trailing slot a country flag gets (docs/claude/uniq-dropdown.md:
      * a real image never goes in the leading marker slot). The script styles
@@ -110406,6 +110454,10 @@ a { color: #1565c0; }`;
         // known by then (`_dgAvatars`), at render; opening the panel asks
         // for none.
         const dgAvatarMap = _uniqCacheHit ? (_uniqCacheHit.dgAvatarMap || new Map()) : new Map();
+        // Brucebase year pages: entry value (a Media label, "Photo") → the
+        // site's icon for it, read from the cell's or `<li>`'s one
+        // `ul.mb-bb-media` icon (`_bbMediaSoleIconSrc()`; vzell, 2026-10-26).
+        const bbMediaIconMap = _uniqCacheHit ? (_uniqCacheHit.bbMediaIconMap || new Map()) : new Map();
         // EVERY column, EVERY page type: MusicBrainz's own native `<span
         // class="mp">` open-edits marker — a binary presence flag pair plus
         // one entry per distinct pending entity name (see
@@ -110747,6 +110799,10 @@ a { color: #1565c0; }`;
                     const _av = cell.querySelector('img.mb-dg-avatar[src]');
                     if (_av) dgAvatarMap.set(v, _av.getAttribute('src'));
                 }
+                if (_isBbHost && v && !bbMediaIconMap.has(v)) {
+                    const _bm = _bbMediaSoleIconSrc(cell);
+                    if (_bm) bbMediaIconMap.set(v, _bm);
+                }
                 // Count cell-structure state using expandedCells as source of truth.
                 // Counting from DOM toggle.textContent would give wrong results after a
                 // runFilter() cycle because initCollapsableColumns resets all toggles to '▶'.
@@ -110777,6 +110833,10 @@ a { color: #1565c0; }`;
                         if (_iiDropIcons && t && !iiIconMap.has(t)) {
                             const _ic = _iiSoleIcon(li);
                             if (_ic) iiIconMap.set(t, _ic);
+                        }
+                        if (_isBbHost && t && !bbMediaIconMap.has(t)) {
+                            const _bm = _bbMediaSoleIconSrc(li);
+                            if (_bm) bbMediaIconMap.set(t, _bm);
                         }
                     });
                     _rowItemTexts.forEach(t => itemValueCounts.set(t, (itemValueCounts.get(t) || 0) + 1));
@@ -111707,6 +111767,9 @@ a { color: #1565c0; }`;
                 // A Discogs user's picture, after the name (see dgAvatarMap).
                 const _dgAv = _isDgHost ? (dgAvatarMap.get(v) || _dgAvatars.get(v) || '') : '';
                 if (_dgAv) item.appendChild(_dgAvatarTrailingSlot(_dgAv));
+                // A Brucebase Media icon, after the label (see bbMediaIconMap).
+                const _bbMi = _isBbHost ? bbMediaIconMap.get(v) : '';
+                if (_bbMi) item.appendChild(_bbMediaTrailingSlot(_bbMi));
 
                 item.addEventListener('mousedown', ev => ev.preventDefault());
                 // Unify mouse hover with keyboard arrow-key focus onto the same
@@ -112554,7 +112617,7 @@ a { color: #1565c0; }`;
                 acoustidLinkedCount, acoustidUnlinkedCount,
                 localeLanguageValueCounts, localePrimaryCount, localeNotPrimaryCount,
                 instrumentHasCommentCount, instrumentHasDescriptionCount, instrumentHasCrossReferenceCount,
-                iiIconYesCount, iiIconNoCount, iiIconMap, dgAvatarMap,
+                iiIconYesCount, iiIconNoCount, iiIconMap, dgAvatarMap, bbMediaIconMap,
                 pendingEditValueCounts, pendingEditsYesCount, pendingEditsNoCount,
                 eventRoleValueCounts, roleTokenValueCounts, artTypeValueCounts, artCommentValueCounts,
                 flagIconMap, isRelCellCol, relIconCounts, relLoadStateCounts,

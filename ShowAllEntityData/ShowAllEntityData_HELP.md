@@ -3242,7 +3242,7 @@ entry, with these columns:
   Ticket, Setlist, Storyteller, News, Memorabilia, Eyewitness, Video, Audio,
   Bootleg, LiveDL, Retail, Featured. Rest the pointer on an icon for its name.
   Type a name in the column filter (e.g. "Bootleg"), or pick one from the 📊
-  list, to see the entries that have it. **Photo, Ticket, Setlist, News and
+  list, where each name shows its icon, to see the entries that have it. **Photo, Ticket, Setlist, News and
   Memorabilia are ringed** when the entry has a page of its own: pointing at
   one shows a card with those images from that page (photos, tickets,
   handwritten setlists, passes, newspaper clippings); a click opens the artwork viewer on them, with every
