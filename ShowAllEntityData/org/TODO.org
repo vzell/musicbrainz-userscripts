@@ -4617,31 +4617,6 @@ check what it's doing
 The UVD in the "Media" column on PTs e.g. https://brucebase.wikidot.com/2026 should get the media icons also
 
 
-* TODO fix MB collection pages
-
-a.)
-
-fix MB collection pages, e.g. https://musicbrainz.org/user/ApeKattQuest%2C%20MonkeyPython/collections when the
-third-party userscript "mb. COLLECTION HIGHLIGHTER" from @jesus2099 is active
-
-b.)
-
-Tf there are sub-tables under the "<h2>Collaborative collections</h2>" h2 section e.g. on
-https://musicbrainz.org/user/ApeKattQuest%2C%20MonkeyPython/collections, currently the sub-tables are rendered (also
-with a column shift) under the h2 section "My collections"
-
-#+begin_example
-@debug/collections-collaborative-initial.html - IP
-@debug/collections-collaborative-final.html - FRP
-#+end_example
-
-Maybe change the h2 headerline from "My collections" to just "Collections" and add the data under the collaborative
-collections section (actually the data under each h3 section)) in the same named h3 section of "My collections".
-
-On the FRP each sub-table should get an additional column named "Privacy" with the default column value of "Privat" and
-"Public" if the value comes from the IP "Collaborative collections"
-
-
 * TODO On https://musicbrainz.org/release-group/f83d2211-dd81-4b1e-9a02-e89733891e1c when the third-party userscript "mb. FUNKEY ILLUSTRATED RECORDS" by @jesus2099 is active the images should get our internal viewer treatment
 
 On https://musicbrainz.org/release-group/f83d2211-dd81-4b1e-9a02-e89733891e1c when the third-party userscript
@@ -4678,30 +4653,6 @@ on BB pages links on the form "https://brucebase.wikidot.com/1973#020373" should
 * TODO On MB entity POHs we should get additional POH support for known URLs like Wikipedia/Wikidata
 
 On MB entity POHs we should get additional POH support for known URLs like Wikipedia/Wikidata
-
-
-* TODO add "SAED" menu entries for entity history
-
-add "SAED" menu entries for entity history
-
-1.)
-
-#+begin_example
-Entity history
- predefined filters:
-  own edits
-  edits by other
-  open edits
-  open edits by other
-  all jesus2099 variants ...
---
-Annotation history
-#+end_example
-
-* TODO "Editing history" button-menue on preview popup windows
-
-"Editing history" button ==> "Editing history" button-menue with the same option as in the "SAED" "Editing history"
-section
 
 
 * TODO On MB RG POHs add the site icons in front of the site entity name in the POH header line
@@ -4821,49 +4772,6 @@ MB: Collection     -> "RELEASE GROUPS"
                    -> "WORKS"   <-- fix the "(show 70 more)" under the "Recording artists" column
 #+end_example
 
-** missing right now
-
-#+begin_example
-Editing history (H)
-MB: Artist         -> "RELEASE GROUPS"
-                      "LINKS" - when more than 10 entries
-    Area           -> "RELATED AREAS"
-                   -> "RELATED AREAS" -> "Parts" - when more than 10 entries
-    Release        -> "TRACKLIST" -> "<medium>"
-    Recording      -> "RELEASES" - currently "The first 25 of 52; the recording's page lists them all."                  <-- should be a table with "<-" and "->" buttons as on ... TODO
-    Work           -> "RECORDINGS"  - currently "219 recordings; the first 100 here, the work's page lists them all."    <-- should be a table with "<-" and "->" buttons as on ... TODO
-                      "CODES"
-    Place          -> "EVENTS" - probably the same as for "RELEASES"/"RECORDINGS"
-                      "LINKS" - when more than 10 entries
-    Event          -> "SETLIST"
-                      "RECORDED HERE"
-                      "RECORDED HERE" -> "Recorded at (releases)"
-                      "RECORDED HERE" -> "Recorded at (recordings)"
-    Instrument     -> "RELATED INSTRUMNETS" -> "Parts" - when more than 10 entries
-                      "ALIASES"
-    Release group  -> "RELEASES"                                   <== When no image available render empty place holder in the same size as a standard image so that all rows have the same height / "Artist AC/DC" on the left side <-- the artist should be hyperlinked with POH / "Genres arena rock, blues rock, classic rock, hard rock, heavy metal, pop rock, rock <-- should be hyperlinked with "Tags" (general/user(when Ctrl is hold at same time))
-                      "LINKS" - when more than 10 entries
-    Series         -> "ITEMS" <- "Item column should get the MB entity icon in fron of the item name + it should be rendered inside the POH and not in a new tab
-    Label          -> "LINKS" - when more than 10 entries - "Aliases CBS Sony Group; CBS Sony Inc.; CBS Sony Records; CBSソニー; 株式会社CBS・ソニー"  <- below each other
-    Tag (Editor's) -> "BY KIND" <- new renderer/reader for PT "/user/<username>/tag/<tag value>/<MB entity>" and then render inline and not on separate tab
-    Tags           -> "OTHER TAGS"
-    Tag (youtube)  -> "Releases"/"Recordings"/"Artists"/etc. - when more than 10 entries  <-- should be a table with "<-" and "->" buttons as on ... TODO
-    Ratings        -> "ARTIST"/"EVENT"/"LABEL"/etc.   - when more than 10 entries  <-- should be a table with "<-" and "->" buttons as on ... TODO
-    CD Stub        -> https://musicbrainz.org/cdstub/browse <- new renderer/reader for PT "https://musicbrainz.org/cdstub/XsbJwm0LkJCi4WXBVx9iXOXGhWk-"
-    Editor         -> "EDITS"
-    ISRC           -> "RECORDINGS" - when more than 10 entries
-    ISWC           -> "WORKS"
-    Disc ID        -> "RELESEAS"
-    Documentation  -> new PT for https://musicbrainz.org/search?query=release&type=doc&method=indexed#gsc.tab=0&gsc.q=release&gsc.page=1
-    Annotation
-           history -> "VERSIONS"
-           version -> 
-#+end_example
-
-2.)
-
-data list in general when more than 10 entries ==> table form
-
 
 * TODO the "Bio" section on MB user pages should be rendered collapsed
 
@@ -4945,11 +4853,12 @@ https://musicbrainz.org/release/22a6802f-d22e-4f47-9f22-6aac257a4194 with our as
 Make all the non-MB site settings which are currently "false" default "true", except
 
 #+begin_example
-Show the Brucebase side bar on the right
-and all the booleans which deal with "touch devices"
+"Show the Brucebase side bar on the right"
++ all the booleans which deal with "... touch devices ..."
 #+end_example
 
 These should still be false by default
+
 
 * DONE sidebar image hover for CAA images only working when hovering below the image in the description
 
@@ -4985,6 +4894,7 @@ store key/values
 
 
 * todo
+** 1
 
 The branch is merged and pushed to main, which is now at 9.99.1463 (@version 9.99.1463+2026-10-26). One step failed: GitHub refused to delete the remote branch, so claude/keen-planck-t1lm8l is still on origin.
 
@@ -5012,9 +4922,17 @@ HELP: already matched what shipped, since the branch updated it for all four ent
 Branch cleanup:
 
 Local: deleted, with git branch -d.
-Remote: the push to delete it was refused with HTTP 403. This session’s GitHub access doesn’t let me delete branches; reconnecting at https://claude.ai/connect-github may fix that. The quickest route is to run git push origin --delete claude/keen-planck-t1lm8l yourself, or delete it on GitHub. It points at c0e5b25, which is already fully merged, so nothing is lost.
+
+Remote: the push to delete it was refused with HTTP 403. This session’s GitHub access doesn’t let me delete branches;
+reconnecting at https://claude.ai/connect-github may fix that. The quickest route is to run git push origin --delete
+claude/keen-planck-t1lm8l yourself, or delete it on GitHub. It points at c0e5b25, which is already fully merged, so
+nothing is lost.
 
 The mirror repo vzell/mb-userscripts hasn’t been published to, so the HELP changes aren’t live for users yet. Run scripts/check-publish-ready.py before your next publish.
+
+** 2
+
+The flaky Wikipedia test in popup-ext.spec.js is still open; it fails about 1 run in 3–4, on main too.
 
 
 * TODO add a new genre PT
@@ -5136,3 +5054,163 @@ I also reran the 8 genre tests (1 page type, 4 popup, plus 3 existing relationsh
 
 add a reader for https://musicbrainz.org/genres
 
+
+* TODO fix MB collection pages when "mb. COLLECTION HIGHLIGHTER" from @jesus2099 is active
+
+fix MB collection pages, e.g. https://musicbrainz.org/user/ApeKattQuest%2C%20MonkeyPython/collections when the
+third-party userscript "mb. COLLECTION HIGHLIGHTER" from @jesus2099 is active
+
+
+* TODO fix MB collection pages
+** initial
+
+1.)
+
+Make all the non-MB site settings which are currently "false" default "true", except
+
+#+begin_example
+"Show the Brucebase side bar on the right"
++ all the booleans which deal with "... touch devices ..."
+#+end_example
+
+These should still be false by default
+
+2.)
+
+add "SAED" menu entries for entity history
+
+3.)
+
+#+begin_example
+Entity history
+ predefined filters:
+  own edits
+  edits by other
+  open edits
+  open edits by other
+  all jesus2099 variants ...
+--
+Annotation history
+#+end_example
+
+4.)
+
+The "Editing history" button in the POH should be a "Editing history" button-menue with the same option as in the "SAED"
+"Editing history" section
+
+5.)
+
+The UVD in the "Media" column on PTs e.g. https://brucebase.wikidot.com/2026 should get the media icons also
+
+6.)
+
+Tf there are sub-tables under the "<h2>Collaborative collections</h2>" h2 section e.g. on
+https://musicbrainz.org/user/ApeKattQuest%2C%20MonkeyPython/collections, currently the sub-tables are rendered (also
+with a column shift) under the h2 section "My collections"
+
+#+begin_example
+collections-collaborative-initial.html - IP
+collections-collaborative-final.html - FRP
+#+end_example
+
+Maybe change the h2 headerline from "My collections" to just "Collections" and add the data under the collaborative
+collections section (actually the data under each h3 section)) in the same named h3 section of "My collections".
+
+On the FRP each sub-table should get an additional column named "Privacy" with the default column value of "Privat" and
+"Public" if the value comes from the IP "Collaborative collections"
+
+7.)
+
+show me a nice rich HTML web page with mockups before implementing
+
+** questions
+
+Item 6: the value is spelled Private in English. Your note said "Privat"; say if you want that spelling instead.
+Item 1: sa_dp_window_read_ahead stays off unless you say otherwise.
+Items 2–4: is the jesus2099 list complete, or are there variants you want added or left out?
+
+** answers
+
+Item 6: the value is spelled Private in English:  "Private" is OK
+Item 1: sa_dp_window_read_ahead stays off unless you say otherwise: It should also bo ON
+Items 2–4: is the jesus2099 list complete, or are there variants you want added or left out: The list is complete
+
+
+
+* TODO add new features
+
+add the following new new features:
+
+1.)
+
+the sort glyph on Discogs POHs should get an additional state "Initial sort" (with a nice glpyh) besides the states
+
+#+begin_example
+"Ascending" (e.g. '<thdata-mb-dg-lsort="artist" aria-sort="ascending">Artist</th>')
+"Descending" (e.g. '<th data-mb-dg-lsort="artist" aria-sort="descending">Artist</th>')
+#+end_example
+
+2.)
+
+The MB POHs should get the same treatment/"look and feel" (tabelization wise) like the Discogs <entity pages>
+
+#+begin_example
+Discogs artist -  
+Discogs master - 
+Discogs label - 
+#+end_example
+
+See the uploaded raw HTML files  starting with "POH-<entity>.html which are the POH windows:
+
+#+begin_example
+MB: Artist         -> "RELEASE GROUPS"
+                      "LINKS" - should get the same kind of table like in POH "Discogs label" -> "SUBLABELS" (at the left side)
+    Release group  -> "RELEASES"   <== When no release image available render empty place holder in the same size as a standard image so that all rows have the same height / "Artist AC/DC" on the left side <-- the artist should be hyperlinked with POH / "Genres" arena rock, blues rock, classic rock, hard rock, heavy metal, pop rock, rock (each genre below each other) <-- should be hyperlinked with "Tags" (general/user(when Ctrl is hold at same time))
+                      "LINKS" - should get the same kind of table like in POH "Discogs label" -> "SUBLABELS" (at the left side)
+    Release        -> "TRACKLIST" -> "<medium>"
+    Recording      -> "RELEASES" - currently "The first 25 of 80; the recording's page lists them all." - should get the same kind of table like in POH "Discogs label" -> "RELEASES" (at the right side), with a "Load <n> more pages (<m> releases, about <l> s)"
+    Work           -> "RECORDINGS"  - currently "219 recordings; the first 100 here, the work's page lists them all." - should get the same kind of table like in POH "Discogs label" -> "RELEASES" (at the right side), with a "Load <n> more pages (<m> releases, about <l> s)"
+                      "CODES" - should get the same kind of table like in POH "Discogs label" -> "SUBLABELS" (at the left side)
+    Label          -> "LINKS" - when more than 10 entries - should get the same kind of table like in POH "Discogs label" -> "SUBLABELS" (at the left side)
+                      "FACTS" -> "Genres" - each genre below each other
+    Event          -> "SETLIST" - table with multiple columns for title, cover, disambiguation 
+                      "RECORDED HERE"
+                      "RECORDED HERE" -> "Recorded at (releases)" - should get the same kind of table like in POH "Discogs label" -> "SUBLABELS" (at the left side)
+                      "RECORDED HERE" -> "Recorded at (recordings)" - should get the same kind of table like in POH "Discogs label" -> "SUBLABELS" (at the left side)
+    Instrument     -> "RELATED INSTRUMNETS" -> "Parts" - should get the same kind of table like in POH "Discogs label" -> "SUBLABELS" (at the left side)
+                      "ALIASES" - should get the same kind of table like in POH "Discogs label" -> "SUBLABELS" (at the left side)
+    Series         -> "ITEMS" <- "Item column should get the MB entity icon in front of the item name + it should be rendered inside the POH and not in a new tab
+    Place          -> "EVENTS" - probably the same as for "RELEASES"/"RECORDINGS"
+                      "LINKS"  - should get the same kind of table like in POH "Discogs label" -> "SUBLABELS" (at the left side)
+    Area           -> "RELATED AREAS"
+                   -> "RELATED AREAS" -> "Parts" - should get the same kind of table like in POH "Discogs label" -> "SUBLABELS" (at the left side)
+    Editor         -> "EDITS"
+    Collection     -> "<ENTITY e.g ARTISTS>"
+    Genre          -> "LINKS" section should go to the left side
+                      "RELATED GENRES" - <subsection> - should get the same kind of table like in POH "Discogs label" -> "SUBLABELS" (at the left side)
+    Tag (classic rock) -> "Releases"/"Recordings"/"Artists"/etc. - should get the same kind of table like in POH "Discogs artist" -> "<differetn sections>" (at the right side), with a "Load <n> more pages (<m> releases, about <l> s)"
+    Tag (Editor's) -> "BY KIND" <- new renderer/reader for PT "/user/<username>/tag/<tag value>/<MB entity>" and then render inline and not on separate tab; the sections on the right side like "Tag (classic rock)" above
+    Tags           -> "OTHER TAGS"
+    Ratings        -> "ARTIST"/"EVENT"/"LABEL"/etc.
+    CD Stub        -> https://musicbrainz.org/cdstub/browse <- new renderer/reader for PT "https://musicbrainz.org/cdstub/XsbJwm0LkJCi4WXBVx9iXOXGhWk-"
+    ISRC           -> "RECORDINGS" - should get the same kind of table like in POH "Discogs label" -> "SUBLABELS" (at the left side)
+    ISWC           -> "WORKS"
+    Disc ID        -> "RELEASES"- should get the same kind of table like in POH "Discogs label" -> "SUBLABELS" (at the left side)
+    Documentation  -> new PT for https://musicbrainz.org/search?query=release&type=doc&method=indexed#gsc.tab=0&gsc.q=release&gsc.page=1
+    Annotation
+           history -> "VERSIONS"
+           version -> 
+#+end_example
+
+3.)
+
+add support for the following Discogs pages (with the usual image hovering treatment too)
+
+#+begin_example
+"Image history" - https://www.discogs.com/release/1313481-Born-To-Run/images/update - Discogs-Image-history.html
+"Images" - https://www.discogs.com/release/1313481-Born-To-Run/images - Discogs-Images.html
+#+end_example
+
+4.)
+
+show me a nice rich HTML web page with mockups before implementing
