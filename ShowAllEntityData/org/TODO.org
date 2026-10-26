@@ -4934,13 +4934,19 @@ So they do not support yet the POH
 * TODO majkinetor: no icons in the lower right corner
 * TODO majkinetor: async issues with "ISRC" and "Link" columns on PT 'release-tracks'
 
+
 * TODO PT 'release-tracks' needs suggestion for works in the "Recording of work" column
 
 PT 'release-tracks' needs suggestions for works in the "Recording of work" column e.g. on
 https://musicbrainz.org/release/22a6802f-d22e-4f47-9f22-6aac257a4194 with our async handling
 
 
-* TODO sidebar image hover for CAA images only working when hovering below the image in the description
+* TODO make the non-MB site settings currently "false", default "true"
+
+make the non-MB site settings currently "false", default "true"
+
+
+* DONE sidebar image hover for CAA images only working when hovering below the image in the description
 
 1.)
 
@@ -4950,7 +4956,6 @@ popup window
 #+begin_example
 @debug/release-caa-sidebar-image-bug.html - https://musicbrainz.org/release/3ec14d03-2c03-4764-a69d-8155817a040f
 #+end_example
-
 
 * DONE when hovering a value in the "LABEL-CAT#" column and the down-right glyph shows up, the label-cat# value moves to the left and back when hovering away, which lets the value kind of pump
 
@@ -4964,20 +4969,46 @@ and back when hovering away, which lets the value kind of pump, together with is
 Maybe remove that icon completely (btw what is it actually good for, what is the idea of havin it and only showing when
 hovering it) and ONLY leave the icon for rendering a link in a new tab in
 
-
-* TODO make the non-MB site settings currently "false", default "true"
-
-make the non-MB site settings currently "false", default "true"
-
-* TODO make the "Browser cache" window movable and resizable
+* DONE make the "Browser cache" window movable and resizable
 
 make the "Browser cache" window movable and resizable
 
-
-* TODO create a nice dialog window (like what we do for the "Browser cache" window) for displaying/managing the tampermonkey GM store key/values
+* DONE create a nice dialog window (like what we do for the "Browser cache" window) for displaying/managing the tampermonkey GM store key/values
 
 create a nice dialog window (like what we do for the "Browser cache" window) for displaying/managing the tampermonkey GM
 store key/values
+
+* todo
+
+The branch is merged and pushed to main, which is now at 9.99.1463 (@version 9.99.1463+2026-10-26). One step failed: GitHub refused to delete the remote branch, so claude/keen-planck-t1lm8l is still on origin.
+
+Merge commit: 803221a. Before merging, I fast-forwarded main to your 3c4cdce “add new todo entries”.
+Fold commit: d2e28e4. It rebuilt the changelog pages, and the WIP changelog file is deleted. No WIP.N cross-references needed rewriting, and every entry is dated 2026-10-26.
+WIP	Version	Change
+WIP.1	9.99.1460	Sidebar cover hover card
+WIP.2	9.99.1461	Relationships release-group icon previews
+WIP.3	9.99.1462	Browser cache window movable/resizable
+WIP.4	9.99.1463	🗄️ Script storage dialog
+
+Checks:
+
+Not run: the full suite (test:full), as you asked.
+Passed:
+the syntax check (node --check);
+the changelog and docs audits;
+the lint check;
+the gm-store spec, run once more before merging (6/6).
+Open:
+my partial npm test from earlier has no result;
+the last “empty detail box” mutation was never run.
+HELP: already matched what shipped, since the branch updated it for all four entries. No step in PERFORMANCE.org was affected.
+
+Branch cleanup:
+
+Local: deleted, with git branch -d.
+Remote: the push to delete it was refused with HTTP 403. This session’s GitHub access doesn’t let me delete branches; reconnecting at https://claude.ai/connect-github may fix that. The quickest route is to run git push origin --delete claude/keen-planck-t1lm8l yourself, or delete it on GitHub. It points at c0e5b25, which is already fully merged, so nothing is lost.
+
+The mirror repo vzell/mb-userscripts hasn’t been published to, so the HELP changes aren’t live for users yet. Run scripts/check-publish-ready.py before your next publish.
 
 * TODO add a new genre PT
 ** DONE initial
