@@ -24066,7 +24066,16 @@
         _dpWin.hover = null;
         _dpWinFoot(null);
         // "✎ Editing history": only where there is one (org/mb-edit-history.org).
-        if (_dpDialog.controls && _dpDialog.controls.hist) _dpDialog.controls.hist.style.display = _mbEditsSubject(t) ? '' : 'none';
+        if (_dpDialog.controls && _dpDialog.controls.hist) {
+            const subj = _mbEditsSubject(t);
+            const c = _dpDialog.controls;
+            (c.histSplit || c.hist).style.display = subj ? '' : 'none';
+            // The ▾ presets: an entity's only (`_mbHistPresets()`), never an editor's.
+            const withMore = !!subj && !subj.startsWith('user/');
+            if (c.histMore) c.histMore.style.display = withMore ? '' : 'none';
+            if (c.histSplit) c.histSplit.classList.toggle('mb-meh-hist-has-more', withMore);
+            _dpHistPopClose();
+        }
         // Where the window was opened from: the page target's note (kept
         // along a drill-down path, which starts from it, as ← → do).
         const badge = _dpDialog.controls && _dpDialog.controls.origin;
@@ -26841,7 +26850,18 @@
         histText.textContent = 'Editing history';
         hist.append(histGlyph, histText);
         hist.setAttribute('aria-label', 'Editing history');
-        hist.style.display = 'none';
+        // Its ▾ half (vzell, 2026-10-26): the entity-history presets, the
+        // same list as the ☰ SAED menu's "Entity history" (`_dpHistPopToggle()`).
+        // Shown for an entity only: an editor's history has no presets.
+        const histMore = btn('▾', 'More editing history views: own edits, open edits, jesus2099\'s searches, the annotation history');
+        histMore.classList.add('mb-meh-hist-more');
+        histMore.setAttribute('aria-haspopup', 'true');
+        histMore.setAttribute('aria-expanded', 'false');
+        histMore.setAttribute('aria-label', 'More editing history views');
+        const histSplit = document.createElement('span');
+        histSplit.className = 'mb-meh-hist-split';
+        histSplit.append(hist, histMore);
+        histSplit.style.display = 'none';
         const prev = btn('‹', 'Previous row (←)');
         const pos = document.createElement('span');
         pos.className = 'mb-dp-pos-label';
@@ -26868,7 +26888,7 @@
             centerV: false,
             zIndex: 10050,
             geoKey: 'sa_dp_dialog_geometry',
-            titleBarExtras: [back, hist, prev, pos, next, seg, reload, open],
+            titleBarExtras: [back, histSplit, prev, pos, next, seg, reload, open],
             // The artwork viewer an image opens (_dpArtViewerClick()) lies
             // over the window; a click in it is not a click outside.
             keepOpenWithin: ['#mb-art-viewer'],
@@ -26907,12 +26927,16 @@
             if (_dpDialog.target && _dpDialog.target.src.onAreaInput) _dpDialog.target.src.onAreaInput(e, _dpDialog.target);
         });
         _dpDialog.api = api;
-        _dpDialog.controls = { pos, ex, live, open, back, origin, hist, prev, next };
+        _dpDialog.controls = { pos, ex, live, open, back, origin, hist, histMore, histSplit, prev, next };
         // Hovering inside the window: the foot line, the marks, the cards of
         // its links, an image's preview, the long press (org/dp-window-hover.org).
         _dpWinInstall(api);
         back.addEventListener('click', _dpBack);
         hist.addEventListener('click', _dpOpenEdits);
+        histMore.addEventListener('click', (e) => {
+            e.stopPropagation();
+            _dpHistPopToggle();
+        });
         prev.addEventListener('click', () => _dpStep(-1));
         next.addEventListener('click', () => _dpStep(1));
         ex.addEventListener('click', () => { _dpDialog.view = 'ex'; _dpRenderDialog(false); });
@@ -27217,6 +27241,31 @@
                columns of the diff, and the one-column pane of an addition. */
             .mb-dp-dialog .mb-meh-hist-btn { gap: 5px; font-weight: 600; }
             .mb-dp-dialog .mb-meh-hist-btn .mb-meh-g { font-size: 14px; line-height: 1; }
+            /* "✎ Editing history ▾": one split control, the ▾ its right half. */
+            .mb-dp-dialog .mb-meh-hist-split { display: inline-flex; }
+            .mb-dp-dialog .mb-meh-hist-has-more .mb-meh-hist-btn { border-top-right-radius: 0; border-bottom-right-radius: 0; }
+            .mb-dp-dialog .mb-meh-hist-more { border-top-left-radius: 0; border-bottom-left-radius: 0; border-left: 0; padding-left: 5px; padding-right: 5px; }
+            .mb-dp-dialog .mb-meh-hist-more[aria-expanded="true"] { background: #e9e2d5; }
+            /* The entity-history presets (_mbHistFillList()): in the window's
+               pop-up under the ▾, and in the SAED menu's Entity history ▸. */
+            .mb-hist-pop {
+                position: absolute; z-index: 5; min-width: 290px; max-width: min(420px, 90%);
+                max-height: min(60vh, 520px); overflow: auto; padding: 4px 0;
+                background: #fbf8f1; border: 1px solid #c9bfae; border-radius: 6px;
+                box-shadow: 0 6px 20px rgba(0,0,0,.18); font-size: 13px; text-align: left;
+            }
+            .mb-hist-pop .mb-saed-cap, .mb-hist-submenu .mb-hist-cap { padding: 6px 12px 2px; font-size: 10.5px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: #7a6d5c; }
+            .mb-hist-sep { border-top: 1px solid #e3dccf; margin: 4px 0; }
+            .mb-hist-row {
+                display: flex; align-items: center; gap: 8px; width: 100%; box-sizing: border-box;
+                padding: 4px 12px; border: 0; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer;
+            }
+            .mb-hist-pop .mb-hist-row:hover, .mb-hist-pop .mb-hist-row:focus-visible { background: #efe8da; outline: none; }
+            .mb-hist-row[disabled] { cursor: default; opacity: .55; }
+            .mb-hist-row[data-mb-hist-indent="1"] { padding-left: 30px; }
+            .mb-hist-row[data-mb-hist-indent="2"] { padding-left: 48px; }
+            .mb-hist-row .mb-hist-g { width: 1.4em; text-align: center; flex-shrink: 0; }
+            .mb-hist-row .mb-hist-h { margin-left: auto; padding-left: 12px; color: #7a6d5c; font: 11.5px ui-monospace, Consolas, "Liberation Mono", monospace; white-space: nowrap; }
             .mb-dp-dialog .mb-dgh-pill-bad { color: #9b2218; }
             .mb-dp-dialog .mb-meh-list { max-height: min(46vh, 440px); overflow: auto; }
             .mb-dp-dialog .mb-meh-e { grid-template-columns: 8.4em 10em 12.5em minmax(0, 1fr) auto; align-items: start; cursor: pointer; padding-inline: 4px; }
@@ -52642,8 +52691,10 @@
      * (`_MB_POP_PATH_RE`), lowercased.
      * 4: an edit's entities and a collection's rows include genres
      * (`_MB_POP_PATH_RE` knows `genre`, 2026-10-26).
+     * 5: an editing history's record carries `refine`, the page's own
+     * "Refine this search" query (`_mbEditsRefineOf()`, 2026-10-26).
      */
-    const _MB_POP_PAGE_VERSION = 4;
+    const _MB_POP_PAGE_VERSION = 5;
 
     /**
      * Each entity card's Web Service answer, by cache key
@@ -55989,8 +56040,35 @@
             subject, by: _mbPopText(content.querySelector('h1 + p.subheader')).replace(/^~\s*/, ''),
             total: Number(found[2].replace(/[,.]/g, '')), atLeast: !!found[1],
             page: pag ? Number(_mbPopText(pag.querySelector('a.sel'))) || 1 : 1, pages: nums.length ? Math.max(1, ...nums) : 1,
-            entries,
+            entries, refine: _mbEditsRefineOf(content),
         };
+    }
+
+    /**
+     * An editing history page's own "Refine this search" link, as the edit
+     * search it opens: `/search/edits?…` with MusicBrainz's condition on the
+     * subject (`conditions.0.field=artist`, its numeric row id in `args.0`,
+     * its name), `form_only` dropped so the search runs. The link sits in the
+     * "Quick links" row of `table.search-help`, logged in or out (the saved
+     * pages in tests/fixtures/edits-page-*.html). The entity-history presets
+     * build on it (`_mbHistPresets()`): the row id is on no other page.
+     *
+     * @param {?Element} content - The page's `#content`.
+     * @returns {string} The search path, or '' when the page has no such link.
+     */
+    function _mbEditsRefineOf(content) {
+        const a = content && Array.from(content.querySelectorAll('table.search-help a[href*="/search/edits?"]'))
+            .find(x => /[?&]conditions\.0\.field=/.test(x.getAttribute('href') || ''));
+        if (!a) return '';
+        let u;
+        try {
+            u = new URL(a.getAttribute('href'), window.location.origin);
+        } catch (_) {
+            return '';
+        }
+        u.searchParams.delete('form_only');
+        u.searchParams.delete('page');
+        return `${u.pathname}?${u.searchParams.toString()}`;
     }
 
     /**
@@ -56094,6 +56172,12 @@
             }
         };
         if (id.startsWith('/search/')) {
+            // An entity-history preset (`_mbHistPresets()`) is named after itself.
+            const preset = _mbHistPresetHeads.get(id);
+            if (preset) {
+                return { head: preset, comment: `${preset} · edit search`, sub: `edit search · ${preset.toLowerCase()}`, name: '',
+                    none: 'No edit matches this search.', icon: '' };
+            }
             return { head: 'Edit search', comment: 'Edit search', sub: 'edit search', name: '', none: 'No edit matches this search.', icon: '' };
         }
         const l = /^\/user\/([^/]+)\/(?:edits\/(\w+)|votes)$/.exec(id);
@@ -56454,6 +56538,555 @@
             url: new URL(`/${id}/edits`, window.location.origin).href,
             kind: _MB_KINDS.edits.title, wide: true, name: cur.name || '', col: '',
         });
+    }
+
+    // ── Entity history presets (vzell, 2026-10-26) ─────────────────────────
+    // "Entity history" in the ☰ SAED menu (`_saedHistoryGroup()`) and the
+    // window's "✎ Editing history ▾" (`_dpHistPop*()`): predefined edit
+    // searches on one entity — own edits, edits by others, open edits, open
+    // edits by others, jesus2099's refined searches, the annotation history.
+    // Each opens in the window like any edit-search link
+    // (`_dpOpenHistPath()`), so it gets the editing-history view, Back and
+    // the cache rules of an edit search (memory only). Mockup:
+    // https://claude.ai/artifact/QS8dxD8FRYib8nZ6wSimqD.
+
+    /**
+     * jesus2099's per-entity edit types and relationship link types, as
+     * SUPER MIND CONTROL Ⅱ X TURBO's COOL_SEARCH_LINKS uses them
+     * (`entitySpecificEdits()`, @version 2026.10.14; GENERATED by
+     * `scripts/gen-j2-edit-types.py` from that script, never retyped).
+     * `pure`: the entity's own edits; `cover`: its artwork; `relationship`:
+     * its relationship edits, `link` the link types of its own relationships
+     * (an artist's history also lists its recordings' relationships).
+     * Keys are MusicBrainz's edit-search field names (`release_group`).
+     *
+     * @type {Object<string, Object<string, {edit: number[], link?: number[]}>>}
+     */
+    const _J2_EDIT_TYPES = {
+        pure: {
+            artist: {
+                edit: [1, 6, 5, 252, 2, 8, 9, 101, 4, 3, 7],
+            },
+            label: {
+                edit: [10, 16, 15, 11, 18, 101, 14, 13, 17, 262],
+            },
+            recording: {
+                edit: [
+                    55, 232, 76, 51, 711, 75, 216, 71, 207, 218, 52, 72, 204, 245, 713, 205, 210, 74, 56,
+                    221, 54, 220, 78, 53, 73, 712, 212, 310, 224, 211, 58, 253
+                ],
+            },
+            release: {
+                edit: [
+                    55, 232, 76, 51, 31, 216, 318, 35, 231, 249, 34, 71, 207, 218, 38, 263, 209, 213, 39, 52,
+                    32, 33, 201, 208, 226, 244, 273, 312, 320, 229, 250, 37, 101, 223, 225, 311, 56, 221, 54,
+                    220, 78, 53, 212, 310, 251, 36, 224, 211, 313, 58, 253
+                ],
+            },
+            release_group: {
+                edit: [20, 26, 25, 21, 28, 101, 24, 23, 27],
+            },
+        },
+        cover: {
+            release: {
+                edit: [314, 316, 315, 317],
+            },
+            release_group: {
+                edit: [22],
+            },
+        },
+        relationship: {
+            artist: {
+                edit: [90, 233, 91, 234, 92, 235, 99],
+                link: [
+                    102, 103, 104, 105, 106, 107, 108, 109, 110, 111, 112, 113, 292, 305, 722, 728, 847, 855,
+                    895, 965, 973, 1079, 798, 799, 800, 801, 806, 807, 893, 932, 935, 936, 1084, 1163, 1231,
+                    1232, 1233, 1234, 1255, 1256, 1260, 896, 115, 116, 117, 119, 120, 121, 723, 724, 990,
+                    991, 1081, 1258, 1259, 1266, 701, 702, 703, 704, 714, 832, 856, 923, 924, 925, 926, 937,
+                    975, 988, 1164, 1165, 1166, 1281, 122, 123, 125, 127, 128, 129, 130, 132, 133, 134, 135,
+                    136, 137, 138, 140, 141, 142, 143, 144, 146, 147, 148, 149, 150, 151, 152, 153, 154, 155,
+                    156, 157, 158, 160, 297, 298, 300, 726, 760, 858, 869, 961, 962, 986, 1011, 1186, 1230,
+                    1236, 1241, 1242, 1243, 1244, 1245, 1276, 18, 19, 20, 22, 23, 24, 25, 26, 27, 28, 29, 30,
+                    31, 32, 34, 36, 37, 38, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 53, 54, 55, 56,
+                    57, 58, 59, 60, 295, 296, 709, 710, 727, 759, 871, 927, 928, 929, 969, 987, 993, 1010,
+                    1012, 1179, 1184, 1185, 1187, 1235, 1267, 62, 63, 65, 868, 974, 750, 751, 859, 994, 996,
+                    1000, 1002, 1003, 1004, 171, 172, 173, 174, 175, 176, 177, 178, 179, 180, 182, 183, 184,
+                    185, 187, 188, 189, 190, 191, 192, 193, 194, 197, 199, 283, 291, 303, 307, 310, 352, 707,
+                    718, 754, 785, 816, 840, 841, 852, 862, 897, 902, 919, 978, 981, 1080, 1131, 1192, 1193,
+                    161, 162, 164, 165, 167, 168, 169, 170, 282, 293, 294, 834, 844, 846, 872, 889, 917, 956,
+                    972, 1257, 1285, 1286
+                ],
+            },
+            label: {
+                edit: [90, 233, 91, 234, 92, 235, 99],
+                link: [
+                    1237, 115, 116, 117, 119, 120, 121, 723, 724, 990, 991, 1081, 1258, 1259, 1266, 1168,
+                    1164, 918, 200, 201, 202, 203, 205, 725, 989, 206, 867, 945, 946, 949, 950, 998, 1178,
+                    1228, 1252, 1277, 66, 349, 359, 360, 361, 362, 708, 711, 712, 833, 848, 942, 944, 947,
+                    948, 951, 952, 955, 985, 999, 1170, 1171, 1172, 1173, 1174, 1175, 1183, 1253, 1280, 970,
+                    933, 210, 211, 212, 213, 214, 215, 216, 217, 218, 219, 221, 222, 224, 225, 290, 304, 311,
+                    313, 354, 719, 838, 851, 899, 903, 957, 958, 959, 960, 977, 982, 997, 1005, 1130, 1194,
+                    208, 890, 922, 1265
+                ],
+            },
+            recording: {
+                edit: [90, 233, 91, 234, 92, 235, 99],
+                link: [
+                    698, 758, 814, 821, 827, 830, 864, 964, 122, 123, 125, 127, 128, 129, 130, 132, 133, 134,
+                    135, 136, 137, 138, 140, 141, 142, 143, 144, 146, 147, 148, 149, 150, 151, 152, 153, 154,
+                    155, 156, 157, 158, 160, 297, 298, 300, 726, 760, 858, 869, 961, 962, 986, 1011, 1186,
+                    1230, 1236, 1241, 1242, 1243, 1244, 1245, 1276, 809, 966, 206, 867, 945, 946, 949, 950,
+                    998, 1178, 1228, 1252, 1277, 693, 694, 813, 819, 825, 829, 866, 963, 226, 227, 228, 230,
+                    231, 232, 233, 234, 236, 238, 309, 857, 1177, 1238, 1239, 69, 740, 1006, 254, 255, 256,
+                    257, 258, 268, 285, 302, 306, 905, 976, 979, 278
+                ],
+            },
+            release: {
+                edit: [90, 233, 91, 234, 92, 235, 99],
+                link: [
+                    699, 756, 757, 815, 822, 826, 831, 835, 849, 863, 967, 1181, 1268, 1269, 1270, 1271,
+                    1272, 1273, 1274, 18, 19, 20, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 34, 36, 37, 38,
+                    40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 53, 54, 55, 56, 57, 58, 59, 60, 295, 296,
+                    709, 710, 727, 759, 871, 927, 928, 929, 969, 987, 993, 1010, 1012, 1179, 1184, 1185,
+                    1187, 1235, 1267, 795, 796, 810, 66, 349, 359, 360, 361, 362, 708, 711, 712, 833, 848,
+                    942, 944, 947, 948, 951, 952, 955, 985, 999, 1170, 1171, 1172, 1173, 1174, 1175, 1183,
+                    1253, 1280, 695, 696, 697, 812, 820, 824, 828, 865, 941, 953, 954, 968, 1182, 1246, 1247,
+                    1248, 1249, 1250, 1251, 69, 1, 2, 3, 4, 6, 1009, 741, 72, 73, 74, 75, 76, 77, 78, 79, 82,
+                    83, 85, 86, 288, 301, 308, 729, 755, 850, 906, 980
+                ],
+            },
+            release_group: {
+                edit: [90, 233, 91, 234, 92, 235, 99],
+                link: [
+                    62, 63, 65, 868, 974, 797, 887, 1261, 970, 8, 9, 10, 11, 12, 13, 15, 17, 894, 1082, 1176,
+                    1229, 1240, 742, 888, 1007, 1282, 88, 89, 90, 93, 94, 96, 97, 284, 287, 353, 853, 907,
+                    1169, 1190, 1283
+                ],
+            },
+        },
+    };
+
+    /** The day the NGS schema went live: jesus2099's Pre-/Post-NGS boundary. */
+    const _J2_NGS_BEFORE = '2011-05-17';
+    const _J2_NGS_AFTER = '2011-05-16';
+
+    /** The kinds whose page has an annotation history (`/<kind>/<MBID>/annotations`). */
+    const _MB_HIST_ANNOTATED = new Set(['artist', 'release-group', 'release', 'recording', 'work', 'label',
+        'event', 'place', 'area', 'series', 'instrument']);
+
+    /**
+     * Preset searches by their path, for the window's title
+     * (`_mbEditsLabel()`): "Own edits" rather than "Edit search".
+     * @type {Map<string, string>}
+     */
+    const _mbHistPresetHeads = new Map();
+
+    /**
+     * The logged-in editor, from MusicBrainz's own header menu (its first
+     * link, "Profile", is `/user/<name>`); null when logged out. The
+     * `me` / `not_me` conditions need a session, so the presets built on
+     * them are left out without one.
+     *
+     * @returns {?{name: string, path: string}}
+     */
+    function _mbMe() {
+        const a = document.querySelector('li.account a[href^="/user/"], li.account a[href*="musicbrainz.org/user/"]');
+        const m = a && /\/user\/([^/?#]+)/.exec(a.getAttribute('href') || '');
+        if (!m) return null;
+        let name = m[1];
+        try {
+            name = decodeURIComponent(m[1]);
+        } catch (_) { /* keep it as written */ }
+        return { name, path: `user/${m[1]}` };
+    }
+
+    /**
+     * The entity the CURRENT page is about, as an editing-history subject
+     * (`<kind>/<MBID>`): any page under it (`/artist/<MBID>/releases`
+     * too), never a collection, a URL or a genre (no presets there).
+     *
+     * @returns {string} '' on any other page.
+     */
+    function _mbHistPageSubject() {
+        if (_foreignHost) return '';
+        const m = /^\/(artist|release-group|release|recording|work|label|event|place|area|series|instrument)\/([0-9a-fA-F-]{36})(?:\/|$)/
+            .exec(window.location.pathname);
+        return m ? `${m[1]}/${m[2].toLowerCase()}` : '';
+    }
+
+    /**
+     * The edit search `base` narrowed by more conditions, numbered after the
+     * ones it has. `negate` is jesus2099's relationship form: every `=`
+     * becomes `!=`, `combinator=or`, `negation=1` — NOT (any condition
+     * fails), which keeps the edits that carry no link type too.
+     *
+     * @param {string} base - `/search/edits?…` (`_mbEditsRefineOf()`).
+     * @param {Array<{field: string, op: string, args?: Array<(string|number)>, arg0?: string,
+     *   name?: string, voterId?: string}>} conds
+     * @param {{negate?: boolean}} [opts]
+     * @returns {string} The search path.
+     */
+    function _mbHistSearch(base, conds, { negate = false } = {}) {
+        const u = new URL(base, window.location.origin);
+        const p = u.searchParams;
+        let n = 0;
+        for (const k of p.keys()) {
+            const m = /^conditions\.(\d+)\./.exec(k);
+            if (m) n = Math.max(n, Number(m[1]) + 1);
+        }
+        conds.forEach(c => {
+            const i = n++;
+            p.set(`conditions.${i}.field`, c.field);
+            p.set(`conditions.${i}.operator`, c.op);
+            if (c.name) p.set(`conditions.${i}.name`, c.name);
+            if (c.voterId) p.set(`conditions.${i}.voter_id`, c.voterId);
+            if (c.arg0 !== undefined) p.set(`conditions.${i}.args.0`, c.arg0);
+            (c.args || []).forEach(a => p.append(`conditions.${i}.args`, String(a)));
+        });
+        if (negate) {
+            p.set('combinator', 'or');
+            p.set('negation', '1');
+            Array.from(p.keys()).forEach(k => {
+                if (/^conditions\.\d+\.operator$/.test(k) && p.get(k) === '=') p.set(k, '!=');
+            });
+        }
+        return `${u.pathname}?${p.toString()}`;
+    }
+
+    /**
+     * The editing history record (`_mbParseEditsPage()`) of `subject`'s
+     * first page, as far as it is known: its `refine` search is what the
+     * presets build on. With `start`, a record not yet known is asked for
+     * (`_mbPageLoad()`: the one MusicBrainz gate; the window's own "All
+     * edits" reads the same key, so opening it after costs nothing);
+     * `repaint` runs when it arrives. A repaint never starts a request.
+     *
+     * @param {string} subject - `<kind>/<MBID>` or `user/<name>`.
+     * @param {boolean} start
+     * @param {?function(): void} repaint
+     * @returns {{status: string, refine: string}} `status`: 'done', 'loading', 'failed' or 'idle'.
+     */
+    function _mbHistBase(subject, start, repaint) {
+        const key = _mbEditsKey(subject, 1);
+        const st = _mbPop.get(key);
+        if (st && st.status === 'done') return { status: 'done', refine: (st.data && st.data.refine) || '' };
+        if (start || (st && st.status === 'loading')) {
+            _mbPageLoad(key, _mbEditsUrl(subject, 1), _mbParseEditsPage, {
+                repaint, keep: d => !d.entries.some(e => e.status === 'open'),
+            });
+            const now = _mbPop.get(key);
+            if (now && now.status === 'done') return { status: 'done', refine: (now.data && now.data.refine) || '' };
+            return { status: now ? now.status : 'loading', refine: '' };
+        }
+        return { status: st ? st.status : 'idle', refine: '' };
+    }
+
+    /**
+     * The presets of one entity, in menu order. A row with `path: ''` waits
+     * for what it builds on (its `wait` says what): the entity's edit search
+     * (`base`, from its own /edits page), and for "Edits I have not voted
+     * on" the reader's numeric editor id (from their own /edits page).
+     * Rows that need a session are left out when logged out; jesus2099's
+     * type-based rows exist only for the five kinds his lists cover.
+     *
+     * Conditions as COOL_SEARCH_LINKS builds them: own and others are
+     * `editor` `me` / `not_me`; open is `status = 1`, effective `status = 1, 2`;
+     * not voted is `voter = <me> … args=no` with `editor not_me`; the
+     * type-based rows add `type = …` (and `link_type = …`), "Only this" and
+     * "Relationship edits" in the negated form, Post-NGS with
+     * `open_time > 2011-05-16`, Pre-NGS (no link types) with
+     * `open_time < 2011-05-17`. Each search path is recorded in
+     * `_mbHistPresetHeads` so the window names it.
+     *
+     * Probe: `scripts/probe-edit-search-presets.py` asks the presets that
+     * need no session against musicbrainz.org. NOT RUN yet (2026-10-26: the
+     * authoring session's network policy blocked musicbrainz.org); until it
+     * is, these conditions rest on SMC's COOL_SEARCH_LINKS, which builds the
+     * same searches in production (@version 2026.10.14). Record its output here.
+     *
+     * @param {string} subject - `<kind>/<MBID>`.
+     * @param {{base: string, myId: string, me: ?{name: string}}} ctx
+     * @returns {Array<{key: string, glyph: string, label: string, hint: string, indent: number,
+     *   group: string, path: string, wait: string}>}
+     */
+    function _mbHistPresets(subject, { base, myId, me }) {
+        const kind = subject.split('/')[0];
+        const field = kind.replace(/-/g, '_');
+        const word = kind.replace(/-/g, ' ');
+        const rows = [];
+        const add = (key, glyph, label, hint, group, path, { indent = 0, wait = '' } = {}) => {
+            if (path && path.startsWith('/search/')) _mbHistPresetHeads.set(path, label);
+            rows.push({ key, glyph, label, hint, indent, group, path: path || '', wait: path ? '' : wait });
+        };
+        const onBase = (conds, opts) => (base ? _mbHistSearch(base, conds, opts) : '');
+        const WAIT = 'reading the edit search from its editing history';
+        const typeCond = (lists) => ({ field: 'type', op: '=', args: lists.flatMap(l => (l ? l.edit : [])) });
+        const linkCond = (l) => ({ field: 'link_type', op: '=', args: l.link });
+
+        add('all', '✎', 'All edits', '/edits', 'main', `/${subject}/edits`);
+        if (me) add('own', '👤', 'Own edits', 'editor = me', 'main', onBase([{ field: 'editor', op: 'me' }]), { wait: WAIT });
+        if (me) add('others', '👥', 'Edits by others', 'editor ≠ me', 'main', onBase([{ field: 'editor', op: 'not_me' }]), { wait: WAIT });
+        add('open', '⏳', 'Open edits', '/open_edits', 'main', `/${subject}/open_edits`);
+        if (me) {
+            add('open-others', '⏳', 'Open edits by others', 'open · ≠ me', 'main',
+                onBase([{ field: 'status', op: '=', args: [1] }, { field: 'editor', op: 'not_me' }]), { wait: WAIT });
+        }
+
+        const pure = _J2_EDIT_TYPES.pure[field];
+        const cover = _J2_EDIT_TYPES.cover[field];
+        const rel = _J2_EDIT_TYPES.relationship[field];
+        if (pure) {
+            add('j2-only', '🎯', `Only this ${word}'s edits`, 'slow', 'j2',
+                onBase([typeCond([pure, cover, rel])].concat(rel && rel.link ? [linkCond(rel)] : []), { negate: true }), { wait: WAIT });
+            add('j2-pure', '·', `Pure ${word} edits`, 'edit types', 'j2', onBase([typeCond([pure, cover])]), { indent: 1, wait: WAIT });
+            if (field === 'release' && cover) {
+                add('j2-noart', '·', 'without art', 'release', 'j2', onBase([typeCond([pure])]), { indent: 2, wait: WAIT });
+                add('j2-art', '·', 'art only', 'release', 'j2', onBase([typeCond([cover])]), { indent: 2, wait: WAIT });
+            }
+        }
+        if (rel) {
+            add('j2-rel', '·', 'Relationship edits', 'slow', 'j2',
+                onBase([typeCond([rel])].concat(rel.link ? [linkCond(rel)] : []), { negate: true }), { indent: 1, wait: WAIT });
+            add('j2-post', '·', 'Post-NGS', `≥ ${_J2_NGS_BEFORE}`, 'j2',
+                onBase([typeCond([rel])].concat(rel.link ? [linkCond(rel)] : [])
+                    .concat([{ field: 'open_time', op: '>', arg0: _J2_NGS_AFTER }])), { indent: 2, wait: WAIT });
+            add('j2-pre', '·', 'Pre-NGS', `< ${_J2_NGS_BEFORE}`, 'j2',
+                onBase([typeCond([rel]), { field: 'open_time', op: '<', arg0: _J2_NGS_BEFORE }]), { indent: 2, wait: WAIT });
+        }
+        add('j2-effective', '✅', 'Effective edits', 'open or applied', 'j2',
+            onBase([{ field: 'status', op: '=', args: [1, 2] }]), { wait: WAIT });
+        if (me) {
+            const notVoted = base && myId
+                ? _mbHistSearch(base, [{ field: 'editor', op: 'not_me' },
+                    { field: 'voter', op: '=', name: me.name, voterId: myId, args: ['no'] }])
+                : '';
+            add('j2-novote', '🗳', 'Edits I have not voted on', 'voter = me · no vote', 'j2', notVoted,
+                { wait: base ? 'reading your editor id from your own editing history' : WAIT });
+        }
+        if (_MB_HIST_ANNOTATED.has(kind)) add('annot', '📝', 'Annotation history', '/annotations', 'annot', `/${subject}/annotations`);
+        return rows;
+    }
+
+    /**
+     * Everything the presets of `subject` build on, as far as it is known,
+     * and (with `start`) asks for what is missing: the entity's edit search,
+     * and when logged in the reader's own editor id (the `args.0` of the
+     * editor condition in their own history's search).
+     *
+     * @param {string} subject - `<kind>/<MBID>`.
+     * @param {boolean} start
+     * @param {?function(): void} repaint
+     * @returns {{base: string, myId: string, me: ?{name: string, path: string}, failed: boolean}}
+     */
+    function _mbHistContext(subject, start, repaint) {
+        const me = _mbMe();
+        const b = _mbHistBase(subject, start, repaint);
+        let myId = '';
+        if (me) {
+            const mine = _mbHistBase(me.path, start, repaint);
+            const m = /[?&]conditions\.0\.args\.0=(\d+)/.exec(mine.refine);
+            myId = m ? m[1] : '';
+        }
+        return { base: b.refine, myId, me, failed: b.status === 'failed' };
+    }
+
+    /**
+     * Opens a MusicBrainz path in the window as a drill-down (the window
+     * keeps what it showed on its Back stack), or opens the window on it
+     * when none is open. Routed as a link to it would be (`_mbPopTarget()`
+     * on a link that is not in the page): an edit search, an entity's open
+     * edits, an annotation history. With the MusicBrainz cards off, or a
+     * path no card reads, the page opens in a new tab instead.
+     *
+     * @param {string} path - Same-origin path with its query.
+     * @param {string} [name] - The subject's name, for the window's title.
+     * @returns {void}
+     */
+    function _dpOpenHistPath(path, name = '') {
+        const a = document.createElement('a');
+        a.href = path;
+        const src = _popSources().find(x => x.id === 'mb-entity');
+        const r = src && src.enabled() ? _mbPopTarget(a, { inWindow: true }) : null;
+        if (!r) {
+            window.open(a.href, '_blank', 'noopener');
+            return;
+        }
+        const t = Object.assign({ src, el: a, drilled: true }, r, { name: name || r.name || '' });
+        if (_dpDialog.api && _dpDialog.api.dialog.isConnected && _dpDialog.target) {
+            _dpHidePeek();
+            _dpDialog.stack.push(_dpDialog.target);
+            _dpShowInDialog(t);
+        } else {
+            _dpOpenDialog(Object.assign(t, { drilled: false }));
+        }
+    }
+
+    /**
+     * Fills `list` with the preset rows of `subject` (`_mbHistPresets()`):
+     * a caption per group, one button per preset — waiting rows disabled
+     * with what they wait for. A click opens the preset in the window;
+     * Ctrl/⌘- or middle-click opens MusicBrainz's own page in a new tab.
+     * Called again on `repaint`, it rebuilds the rows in place.
+     *
+     * @param {Element} list - The container; its own rows are replaced.
+     * @param {string} subject - `<kind>/<MBID>`.
+     * @param {{start: boolean, repaint: ?function(): void, wrap?: function(HTMLButtonElement): void,
+     *   name?: string, onPick?: function(): void}} opts - `wrap` adopts each
+     *   button into its menu; `onPick` closes that menu.
+     * @returns {void}
+     */
+    function _mbHistFillList(list, subject, { start, repaint, wrap = null, name = '', onPick = null }) {
+        const ctx = _mbHistContext(subject, start, repaint);
+        list.querySelectorAll('[data-mb-hist]').forEach(n => n.remove());
+        const CAPS = { j2: 'jesus2099 variants', annot: '' };
+        let group = '';
+        _mbHistPresets(subject, ctx).forEach(p => {
+            if (p.group !== group) {
+                if (group) {
+                    const hr = document.createElement('div');
+                    hr.className = 'mb-hist-sep';
+                    hr.dataset.mbHist = 'sep';
+                    list.appendChild(hr);
+                }
+                if (CAPS[p.group]) {
+                    const cap = document.createElement('div');
+                    cap.className = 'mb-saed-cap mb-hist-cap';
+                    cap.dataset.mbHist = 'cap';
+                    cap.textContent = CAPS[p.group];
+                    list.appendChild(cap);
+                }
+                group = p.group;
+            }
+            const b = document.createElement('button');
+            b.type = 'button';
+            b.className = 'mb-hist-row';
+            b.dataset.mbHist = p.key;
+            if (p.indent) b.dataset.mbHistIndent = String(p.indent);
+            const g = document.createElement('span');
+            g.className = 'mb-hist-g';
+            g.setAttribute('aria-hidden', 'true');
+            g.textContent = p.glyph;
+            const l = document.createElement('span');
+            l.className = 'mb-hist-l';
+            l.textContent = p.label;
+            const h = document.createElement('span');
+            h.className = 'mb-hist-h';
+            h.textContent = p.path ? p.hint : (ctx.failed ? 'unavailable' : '…');
+            b.append(g, l, h);
+            if (!p.path) {
+                b.disabled = true;
+                _setTip(b, ctx.failed ? `${p.label}: MusicBrainz did not answer for this entity's editing history.` : `${p.label}: ${p.wait}…`);
+            } else {
+                _setTip(b, `${p.label} — in the window; Ctrl-click or middle-click opens MusicBrainz's page in a new tab`);
+                const go = (e) => {
+                    if (e.ctrlKey || e.metaKey || e.button === 1) {
+                        window.open(new URL(p.path, window.location.origin).href, '_blank', 'noopener');
+                    } else {
+                        _dpOpenHistPath(p.path, name);
+                    }
+                    if (onPick) onPick();
+                };
+                b.addEventListener('click', go);
+                b.addEventListener('auxclick', (e) => {
+                    if (e.button === 1) {
+                        e.preventDefault();
+                        go(e);
+                    }
+                });
+            }
+            list.appendChild(b);
+            if (wrap) wrap(b);
+        });
+    }
+
+    /** The window's open preset list (`_dpHistPopToggle()`), and what closes it. */
+    const _dpHistPop = { el: null, off: null };
+
+    /**
+     * Closes the window's preset list, if open.
+     *
+     * @returns {void}
+     */
+    function _dpHistPopClose() {
+        if (!_dpHistPop.el) return;
+        _dpHistPop.el.remove();
+        _dpHistPop.el = null;
+        if (_dpHistPop.off) _dpHistPop.off();
+        _dpHistPop.off = null;
+        const more = _dpDialog.controls && _dpDialog.controls.histMore;
+        if (more) more.setAttribute('aria-expanded', 'false');
+    }
+
+    /**
+     * "✎ Editing history ▾": opens (or closes) the presets of the entity the
+     * window shows, under the ▾, inside the window. Opening it asks for the
+     * entity's editing history page when not known yet (the presets build on
+     * its search), and the list fills in when it arrives. A pick, a click
+     * outside, Escape or a new target closes it; ↑ ↓ move between the rows.
+     *
+     * @returns {void}
+     */
+    function _dpHistPopToggle() {
+        if (_dpHistPop.el) {
+            _dpHistPopClose();
+            return;
+        }
+        const t = _dpDialog.target;
+        const subject = _mbEditsSubject(t);
+        const more = _dpDialog.controls && _dpDialog.controls.histMore;
+        if (!subject || subject.startsWith('user/') || !more || !_dpDialog.api) return;
+        const dlg = _dpDialog.api.dialog;
+        const pop = document.createElement('div');
+        pop.id = 'mb-dp-hist-pop';
+        pop.className = 'mb-hist-pop';
+        pop.setAttribute('role', 'menu');
+        pop.setAttribute('aria-label', 'Editing history views');
+        const cap = document.createElement('div');
+        cap.className = 'mb-saed-cap mb-hist-cap';
+        cap.textContent = 'Predefined filters';
+        pop.appendChild(cap);
+        dlg.appendChild(pop);
+        const place = () => {
+            const d = dlg.getBoundingClientRect();
+            const r = more.getBoundingClientRect();
+            pop.style.top = `${Math.round(r.bottom - d.top + 4)}px`;
+            pop.style.right = `${Math.max(4, Math.round(d.right - r.right))}px`;
+        };
+        const fill = (start) => _mbHistFillList(pop, subject, {
+            start, repaint: () => { if (_dpHistPop.el === pop) fill(false); }, name: (t && t.name) || '', onPick: _dpHistPopClose,
+        });
+        fill(true);
+        place();
+        _dpHistPop.el = pop;
+        more.setAttribute('aria-expanded', 'true');
+        const outside = (e) => {
+            if (!pop.contains(e.target) && e.target !== more) _dpHistPopClose();
+        };
+        const keys = (e) => {
+            if (e.key === 'Escape') {
+                e.preventDefault();
+                e.stopImmediatePropagation();
+                _dpHistPopClose();
+                more.focus();
+                return;
+            }
+            if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
+            const rows = Array.from(pop.querySelectorAll('button.mb-hist-row:not([disabled])'));
+            if (!rows.length) return;
+            e.preventDefault();
+            e.stopImmediatePropagation();
+            const i = rows.indexOf(document.activeElement);
+            const j = i < 0 ? 0 : (i + (e.key === 'ArrowDown' ? 1 : -1) + rows.length) % rows.length;
+            rows[j].focus();
+        };
+        document.addEventListener('mousedown', outside, true);
+        window.addEventListener('keydown', keys, true);
+        _dpHistPop.off = () => {
+            document.removeEventListener('mousedown', outside, true);
+            window.removeEventListener('keydown', keys, true);
+        };
+        const first = pop.querySelector('button.mb-hist-row:not([disabled])');
+        if (first) first.focus();
     }
 
     /**
@@ -66348,6 +66981,7 @@
         ['attn', 'Needs attention'],
         ['data', 'Data'],
         ['view', 'View'],
+        ['hist', 'Editing history'],
         ['help', 'Help'],
         ['log',  'Changelog'],
     ];
@@ -70273,6 +70907,76 @@ ${sections.join('\n')}
         });
         const foot = saed.panel.querySelector(':scope > .mb-saed-foot');
         if (foot) foot.hidden = !!only;
+    }
+
+    /**
+     * The SAED menu's "Editing history" group (vzell, 2026-10-26: "add SAED
+     * menu entries for entity history"), on a MusicBrainz page about one
+     * entity (`_mbHistPageSubject()`): "✎ Entity history ▸", a submenu of
+     * that entity's presets (`_mbHistPresets()`, the same list as the
+     * window's "✎ Editing history ▾"), and "📝 Annotation history" where the
+     * entity has one. Each opens in the window (`_dpOpenHistPath()`).
+     * Opening the submenu asks for the entity's editing history page when it
+     * is not known yet (the presets build on its search); the rows waiting
+     * for it fill in when it arrives. Idempotent.
+     *
+     * @returns {void}
+     */
+    function _saedHistoryGroup() {
+        const subject = _mbHistPageSubject();
+        if (!subject || document.getElementById('mb-saed-hist-btn')) return;
+        const saed = _saedMenu();
+        const nameOf = () => {
+            const a = document.querySelector('#content h1 a, #page h1 a');
+            return a ? a.textContent.trim() : '';
+        };
+        const sub = createToolbarMenu({ key: 'hist-presets', id: 'mb-saed-hist-sub', label: 'Entity history', title: '' });
+        sub.panel.classList.add('mb-saed-submenu', 'mb-hist-submenu');
+        sub.panel.setAttribute('aria-label', 'Entity history');
+        const cap = document.createElement('div');
+        cap.className = 'mb-saed-cap';
+        cap.textContent = 'Predefined filters';
+        sub.panel.appendChild(cap);
+        const fill = (start) => _mbHistFillList(sub.panel, subject, {
+            start, name: nameOf(), wrap: (b) => sub.adopt(b),
+            repaint: () => { if (sub.isOpen()) fill(false); },
+        });
+        // The rows' look lives with the window's (`.mb-hist-*`), installed
+        // on first use: with the previews off a page carries none of it.
+        sub.onOpen = () => {
+            _ensureDetailPreviewStyle();
+            fill(true);
+        };
+
+        const row = document.createElement('button');
+        row.id = 'mb-saed-hist-btn';
+        row.type = 'button';
+        row.textContent = '✎ Entity history';
+        _setTip(row, 'Predefined edit searches on this entity — own edits, edits by others, open edits, jesus2099\'s searches — shown in the window');
+        const arrow = document.createElement('span');
+        arrow.className = 'mb-saed-row-arrow';
+        arrow.textContent = '▸';
+        row.appendChild(arrow);
+        row.classList.add('mb-saed-sub-row');
+        row.setAttribute('aria-haspopup', 'true');
+        row.setAttribute('aria-expanded', 'false');
+        row._mbSubOpen = (focusFirst) => sub.open({ parent: saed, besideRow: row, focusFirst });
+        _saedGroup('hist').adopt(row);
+
+        if (_MB_HIST_ANNOTATED.has(subject.split('/')[0])) {
+            const ann = document.createElement('button');
+            ann.id = 'mb-saed-annot-btn';
+            ann.type = 'button';
+            ann.textContent = '📝 Annotation history';
+            _setTip(ann, 'Every version of this entity\'s annotation, in the window');
+            ann.addEventListener('click', (e) => {
+                const path = `/${subject}/annotations`;
+                if (e.ctrlKey || e.metaKey) window.open(new URL(path, window.location.origin).href, '_blank', 'noopener');
+                else _dpOpenHistPath(path, nameOf());
+            });
+            _saedGroup('hist').adopt(ann);
+        }
+        Lib.debug('ui', `SAED: Editing history group for ${subject}`);
     }
 
     /**
@@ -78438,6 +79142,9 @@ a { color: #1565c0; }`;
         });
         _saedGroup('log').adopt(row);
     });
+
+    // Editing history: the entity this page is about (`_saedHistoryGroup()`).
+    _saedHistoryGroup();
 
     // --- Fetch progress line (shown during data loading, hidden otherwise) ---
     // The bar itself is the running action segment (`_saedRunStart()`); this

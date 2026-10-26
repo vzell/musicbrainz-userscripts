@@ -138,6 +138,7 @@ The **☰ SAED menu** has these groups, with a line between them:
 | **Needs attention** | the same lists as the 🔄, ❌ and ⚠️ parts on the bar                           |
 | **Data**            | 💾 Save to Disk · 📂 Load from Disk · 📤 Export ▸ (CSV, JSON, Org-Mode, HTML) |
 | **View**            | 📏 Density · 📊 Statistics · 💾 Browser cache · 🗄️ Script storage · 🎹 Keyboard Shortcuts |
+| **Editing history** | ✎ Entity history ▸ · 📝 Annotation history (on a page about one entity, e.g. an artist) |
 | **Help**            | ⚙️ Settings · ❓ Help ↗ (this page, on GitHub)                                 |
 | **Changelog**       | 📜 What's new ↗ · 🗒 Full development log ↗ (both on GitHub)                   |
 
@@ -2488,6 +2489,27 @@ links have their cards too.
     no ✎ Editing history of its own.
   - So does the sidebar's **Open edits** link, titled *Open edits*: the edits
     of that entity still in their voting period.
+  - **✎ Editing history ▾**: the ▾ next to the button lists ready-made views
+    of the entity's edits, each shown in the window and titled after itself.
+    The same list is the ☰ SAED menu's *Editing history* → *Entity history ▸*
+    on the entity's own pages:
+    - *All edits*, *Own edits*, *Edits by others*, *Open edits*, *Open edits
+      by others*;
+    - jesus2099's searches from his *SUPER MIND CONTROL Ⅱ X TURBO*: *Only
+      this entity's edits* (without the edits of its releases, recordings and
+      so on), *Pure … edits*, on a release *without art* and *art only*,
+      *Relationship edits* with *Post-NGS* and *Pre-NGS* (before or after
+      2011-05-17), *Effective edits* (open or applied) and *Edits I have not
+      voted on*. The ones built on edit types exist for artists, labels,
+      recordings, releases and release groups;
+    - *Annotation history*.
+
+    The first time, the list reads the entity's editing history page (one
+    request, the same one *All edits* uses), because the searches need the
+    entity's number from it; until then those rows show "…". Logged out, the
+    rows about your own edits and votes are left out. Ctrl-click or
+    middle-click a row to open MusicBrainz's own page in a new tab. An
+    editor's window has no ▾.
 - **A track named differently from its recording.** With jesus2099's
   *mb. INLINE STUFF* installed, a track whose name differs from its recording's
   carries a note with both names. The browser used to show that note in its

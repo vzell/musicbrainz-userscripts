@@ -1,5 +1,19 @@
 [
   {
+    "version": "WIP.4",
+    "date": "2026-10-26",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Ready-made views of an entity's edits: All edits, Own edits, Edits by others, Open edits, Open edits by others, jesus2099's searches from SUPER MIND CONTROL Ⅱ X TURBO (only this entity's edits, pure edits, on a release without art and art only, relationship edits with Post-NGS and Pre-NGS, effective edits, edits I have not voted on) and the Annotation history. Each opens in the preview window, titled after itself; Ctrl-click or middle-click opens MusicBrainz's own page.",
+          "The ☰ SAED menu has a new 'Editing history' group on a page about one entity: '✎ Entity history ▸' lists those views, and '📝 Annotation history' opens the annotation's versions.",
+          "The window's '✎ Editing history' button is now a button with a menu: the button opens all edits as before (or H), its ▾ lists the same views. An editor's window keeps the plain button."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.3",
     "date": "2026-10-26",
     "sections": [
