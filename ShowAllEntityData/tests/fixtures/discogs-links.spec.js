@@ -206,6 +206,11 @@ test.describe('discogs.com: links that stay, every link in the window, View chan
         await page.locator('#mb-dg-root table.tbl a[href="https://www.discogs.com/search/?q=Columbia&type=label"]').first().click();
         const d = dialog(page);
         await expect(d.locator('[data-mb-dg-sec="dgq-results"] .mb-dg-c')).toHaveText('25 of 2,576');
+        // Sides swapped (2026-10-26): the results on the right, Link and "Discogs says" on the left.
+        const cols = d.locator('.mb-dp-x.mb-dg-swap > .mb-dp-col');
+        await expect(cols.nth(1).locator('[data-mb-dg-sec="dgq-results"]')).toHaveCount(1);
+        await expect(cols.nth(0).locator(':scope > h4', { hasText: /^Link$/ })).toHaveCount(1);
+        await expect(d.locator('.mb-dg-full')).toHaveCount(0);
         await d.locator('[data-mb-dgq-act="more"]').click();
         // Discogs' requests are 2.5 s apart without a token.
         await expect(d.locator('.mb-dgq-row')).toHaveCount(50, { timeout: 10000 });
@@ -245,6 +250,13 @@ test.describe('discogs.com: links that stay, every link in the window, View chan
         await expect(kind(page)).toHaveText(/› Discogs user$/);
         await expect(d).toContainText('Rio Grande do Sul, Brasil');
         await expect(d.locator('[data-mb-dg-sec="dgu-activity"] .mb-dg-c')).toHaveText('7');
+        // Sides swapped (2026-10-26): the activity on the right; Link, "Discogs says" and "On Discogs" on the left.
+        const cols = d.locator('.mb-dp-x.mb-dg-swap > .mb-dp-col');
+        await expect(cols.nth(1).locator('[data-mb-dg-sec="dgu-activity"]')).toHaveCount(1);
+        await expect(cols.nth(0).locator('[data-mb-dg-sec="dgu-links"]')).toHaveCount(1);
+        await expect(cols.nth(0).locator(':scope > h4', { hasText: /^Link$/ })).toHaveCount(1);
+        await expect(cols.nth(0).locator(':scope > h4', { hasText: /says$/ })).toHaveCount(1);
+        await expect(d.locator('.mb-dg-full')).toHaveCount(0);
         await expect(d.locator('.mb-dgu-e').first()).toContainText('submitted');
         expect(asked).toContain('https://www.discogs.com/user/GuiBeal');
         await back(page).click();

@@ -1844,7 +1844,14 @@ subdomain, matched by `endsWith`), so a hover loads them from the first time.
   identifiers, videos (release); profile, sites, contact, sublabels, images
   (artist/label). Right: tracklist, notes, a master's versions, an artist's
   discography, a label's releases — the lists moved from `full` into the
-  column (`full` stays for other readers). Every other reader is unchanged.
+  column (`full` stays for other readers). The Discogs search and user
+  windows swap too since the second round (`_extDgSearchWindow()`: Results on
+  the right; `_extDgUserWindow()`: Recent activity on the right, "On Discogs"
+  on the left); every other reader is unchanged. The window's four filters
+  (versions, discography, label releases, sublabels) mark what they matched
+  in the rows they keep: `_hlEsc(text, query)` in place of `_rgEsc()` on text
+  only (never an attribute), `mark.mb-dg-hl` in the tables' filter-highlight
+  colours.
   The master's facets are arrays now (`ui.format/country/decade`):
   `_extDgChipPick()` (plain click: only this value, or none when it was the
   only one; Ctrl/⌘: add or take out), OR inside a facet and AND across in

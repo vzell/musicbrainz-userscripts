@@ -2727,6 +2727,10 @@ once and without Tampermonkey asking first:
   and ISNI, and the window also lists its people, places and series (up to
   12 of each kind, then "+N more"). While these previews are on, Discogs'
   own hover box on an artist name stays away, so the two never overlap.
+
+  Typing in a window's filter (a master's versions, a discography, a label's
+  releases or sublabels) marks what it matched in every row it keeps, in the
+  colours of the tables' filter highlight.
 - A Discogs release's **edit history** (a link to its history page,
   `discogs.com/release/…/history`): the card shows the last change, how many
   changes there were and the data quality; the window lists every change —
@@ -2747,11 +2751,12 @@ once and without Tampermonkey asking first:
   profile — name, location, member since, contributor rank, releases
   contributed, pending submissions, collection and wantlist sizes; the window
   adds their **Recent activity** (read from their page, only when you press
-  Space; from MusicBrainz it may meet Discogs' browser check) and links to
-  their pages on Discogs.
+  Space; from MusicBrainz it may meet Discogs' browser check) on the right,
+  and their pages on Discogs on the left.
 - A Discogs **search** (`discogs.com/search/?q=…`, e.g. a label cell's link
-  on the Discogs pages): how many results; the window lists them, 25 at a
-  time (*Load 25 more*, one request each), each a link. No token needed.
+  on the Discogs pages): how many results; the window lists them on the
+  right, 25 at a time (*Load 25 more*, one request each), each a link. No
+  token needed.
 - A **support.discogs.com** guideline (e.g. "RSG §6.12.2" in a history note):
   the article from Discogs' help centre, scrolled to the section the link
   names and marked; a link to another section of it scrolls there.
@@ -3409,7 +3414,15 @@ section of its own above Discogs' page, with the toolbar and these buttons:
   release matched) and **History** (its history page). These rows come from
   discogs.com's own pages, 100 a page, not from the API; pointing at the button
   shows how many pages. On this page the section sits at the very top, above
-  Discogs' header.
+  Discogs' header. Discogs' own list on the page gets a **Matched artist**
+  heading on its last column, and that column's artist name shows the card
+  of a Discogs search for that artist (Discogs links it by name, not by id).
+- **The thumbnails of Discogs' own lists** (an artist's discography, a
+  master's versions, a label's releases, before any button is pressed): a
+  rest on one shows every image of that release or master, as in our
+  tables' Image column (one request for that row, with *Image column: all
+  images of a row on hover* on); a click or **Space** opens the viewer
+  instead of Discogs' gallery, and Shift+← → steps through the list.
 - **Release history — Show the changes and the diff:** a release's history
   page (`/release/<id>/history`, also with `?diff=N`): **Changes** — when (date
   and time also apart), the user with their picture, the action, the note,

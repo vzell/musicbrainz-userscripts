@@ -1321,8 +1321,14 @@ test.describe('the Discogs window (2026-10-17)', () => {
         await expect(q).toHaveValue('Japan');
         expect(await q.evaluate(el => el.selectionStart), 'the caret where it was').toBe(5);
         await expect(vers.locator('tbody tr')).toHaveCount(37);
+        // The match is marked in every row kept (2026-10-26), in text only.
+        await expect(vers.locator('tbody tr:not(:has(mark.mb-dg-hl))'), 'every row shows its match').toHaveCount(0);
+        expect((await vers.locator('mark.mb-dg-hl').evaluateAll(ms => ms.map(m => m.textContent.toLowerCase())))
+            .every(t => t === 'japan'), 'the marks are the query').toBe(true);
+        expect(await vers.locator('[title*="<mark"], [href*="<mark"]').count(), 'no mark in an attribute').toBe(0);
         await vers.getByRole('button', { name: 'Clear filters' }).click();
         await expect(vers.locator('tbody tr')).toHaveCount(387);
+        await expect(vers.locator('mark.mb-dg-hl'), 'no query, no mark').toHaveCount(0);
         // A chip filters by its value; a second click lifts it.
         await vers.locator('.mb-dg-fc[data-mb-dg-v="Japan"]').click();
         await expect(vers.locator('tbody tr')).toHaveCount(37);
@@ -1663,6 +1669,7 @@ test.describe('the Discogs artist and label windows (2026-10-18)', () => {
         await expect(disco.locator('[data-mb-dg-sec="a-main"]')).toContainText('No loaded entry matches the filter.');
         await expect(disco.locator('[data-mb-dg-sec="a-c-Producer"] tbody > tr')).toHaveCount(1);
         await expect(disco.locator('[data-mb-dg-sec="a-c-Producer"] tbody > tr')).toContainText('Summer On Signal Hill');
+        await expect(disco.locator('[data-mb-dg-sec="a-c-Producer"] tbody > tr mark.mb-dg-hl')).toHaveText(['Signal Hill']);
         await expect(d.locator('.mb-dg-xh', { hasText: 'Producer' })).toHaveText('Producer 7');
         await disco.getByRole('button', { name: 'Clear filters' }).click();
         await expect(q).toHaveValue('');
@@ -1786,6 +1793,7 @@ test.describe('the Discogs artist and label windows (2026-10-18)', () => {
         const nMatch = await subRows.count();
         expect(nMatch).toBeGreaterThan(0);
         expect((await subRows.locator('td:first-child').allTextContents()).every(n => /columbia/i.test(n))).toBe(true);
+        await expect(subRows.locator('mark.mb-dg-hl')).toHaveCount(nMatch);
         await sq.fill('');
         await expect(subRows).toHaveCount(25);
         await expect(subs.getByRole('button', { name: /more/ })).toHaveCount(0);
@@ -1808,6 +1816,7 @@ test.describe('the Discogs artist and label windows (2026-10-18)', () => {
         await rel.getByRole('button', { name: 'Clear filters' }).click();
         await q.fill('Y4LPLY585');
         await expect(rel.locator('tbody > tr')).toHaveCount(1);
+        await expect(rel.locator('tbody > tr mark.mb-dg-hl')).toHaveText(['Y4LPLY585']);
         await expect(q).toBeFocused();
         await rel.getByRole('button', { name: 'Clear filters' }).click();
 

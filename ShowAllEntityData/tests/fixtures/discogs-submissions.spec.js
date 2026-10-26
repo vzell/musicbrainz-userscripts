@@ -119,6 +119,29 @@ async function showAll(page) {
 }
 
 test.describe('discogs.com submissions, edit history, full-size images (2026-10-18)', () => {
+    // org/discogs.org item 2 (vzell, 2026-10-26, debug/discogs-submissions-artist-bug.html):
+    // on the initial page Discogs' fourth column (the matched artist) had no
+    // heading, and its link names the artist (`/artist/Bruce+Springsteen`),
+    // which no reader took.
+    test('the initial page: the matched artist\'s column gets its heading; its name link is the artist search\'s', async ({ page }) => {
+        const { errors } = await openDg(page, { settings: { sa_pop_ext: true } });
+        await expect(page.locator('#page_content table thead th')).toHaveText(['Release', 'Changed By', 'History', 'Matched artist']);
+        const a = page.locator('#page_content a[href="/artist/Bruce+Springsteen"]').first();
+        const key = await a.evaluate(el => window.__saTest.popResolve(el));
+        expect(key).toMatch(/^ext\|ext:dgsearch:/);
+        expect(decodeURIComponent(key)).toContain('q=Bruce Springsteen');
+        expect(decodeURIComponent(key)).toContain('type=artist');
+        // An artist link by id stays the artist's own.
+        expect(await page.evaluate(() => {
+            const l = document.createElement('a');
+            l.href = '/artist/82730-Bruce-Springsteen';
+            l.textContent = 'x';
+            document.querySelector('#page_content').appendChild(l);
+            return window.__saTest.popResolve(l);
+        })).toMatch(/^ext\|ext:discogs:/);
+        expect(errors).toEqual([]);
+    });
+
     test('the flat view: our section first in <body>, the list\'s 12 flat pages same-origin, in order; Artist and Title split', async ({ page }) => {
         // Previews on: the Matched artist link must be one a reader takes.
         const { errors, fetched } = await openDg(page, { settings: { sa_pop_ext: true } });
