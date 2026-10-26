@@ -4,9 +4,24 @@ Every version, newest first, with the technical details behind each change. For 
 
 **Months:** [October 2026](ShowAllEntityData_CHANGELOG/2026-10.md) · [September 2026](ShowAllEntityData_CHANGELOG/2026-09.md) · [August 2026](ShowAllEntityData_CHANGELOG/2026-08.md) · [July 2026](ShowAllEntityData_CHANGELOG/2026-07.md) · [June 2026](ShowAllEntityData_CHANGELOG/2026-06.md) · [May 2026](ShowAllEntityData_CHANGELOG/2026-05.md) · [April 2026](ShowAllEntityData_CHANGELOG/2026-04.md) · [March 2026 (1 of 2)](ShowAllEntityData_CHANGELOG/2026-03-1.md) · [March 2026 (2 of 2)](ShowAllEntityData_CHANGELOG/2026-03-2.md) · [February 2026](ShowAllEntityData_CHANGELOG/2026-02.md) · [January 2026](ShowAllEntityData_CHANGELOG/2026-01.md)
 
-This page shows the newest 100 of 1634 versions; the month pages hold all of them.
+This page shows the newest 100 of 1635 versions; the month pages hold all of them.
 
 ---
+
+## 9.99.1464 — 2026-10-26
+
+**✨ Improve**
+
+- Discogs windows (release, master, artist, label) swap their sides. The left column now holds the information: title and pictures, the link, "Discogs says" and, for a release, the companies, credits, identifiers and videos. The wider right column (0.7 : 1.3) holds the content: tracklist and notes, a master's versions, an artist's discography, a label's releases. The lists are no longer a full-width block below the columns. On a narrow screen it stays one column, information first.
+- A master's version chips (Format, Country, Released): Ctrl-click (⌘-click) adds a value or takes it out again. A plain click still shows only that value. Values of one kind combine with "or", different kinds with "and", and a line above the table says what is chosen.
+- A Discogs label's sublabels are a table now (Name, Status) with 25 a page, ‹ › to turn the pages, a filter and sorting, instead of a list with "+N more".
+- The MusicBrainz label card and window show Founded and Defunct, the label code, rating and ISNI. The window also has the sort name and a "People, places and series" section (founders, recording contracts, owned places, series), up to 12 of each kind and then "+N more". These come from one more lookup, in the window only.
+
+**🐛 Fix**
+
+- On discogs.com, a MusicBrainz link inside a window (a label's or artist's sites, a release's notes, a link in a MusicBrainz window) shows MusicBrainz's card on a hover and opens in the same window on a click, instead of a new tab. Back returns; Ctrl-click still opens a new tab.
+- On discogs.com, Discogs' own hover box on an artist name no longer appears on top of our link preview while the previews are on.
+
 
 ## 9.99.1463 — 2026-10-26
 
@@ -831,18 +846,6 @@ This page shows the newest 100 of 1634 versions; the month pages hold all of the
 **✨ Improve**
 
 - Event pages (for example a place's Events): the card of an event image, in the big-picture strip or as an inline thumbnail, lists the line-up one artist per line, each with its role, instead of one long comma-separated paragraph.
-
-
-## 9.99.1364 — 2026-10-17
-
-**🐛 Fix**
-
-- Sidebar cards: with jesus2099's "mb. ALL LINKS" installed, a release page showed two dozen cards all named "Search in the whitelist" or "Search further", each link two or three times, and chips with hundreds of characters of run-together text after them ("DRAM By genreClassicalEletronicPsyDB…"). Each list the script nests inside another one was read as a card of its own, and an item's text included everything listed under it. Now only a section's outer list is a card, and a link's chip shows only the link itself: text another script puts next to it ("edit", "choose languages") is left out, and a link listed under it (the Wikipedia article under a Wikidata link) is a small "› en" link after it. The same applies to the Sidebar tables of the Credits/Relationships view and to "Sidebar as tables".
-
-**✨ Improve**
-
-- Sidebar cards: the script's "Search the web", "Search in the whitelist" and "Search further" lists are one "Search" card, closed at first: an index of each section (By genre, By area, …), its groups in italics and their sites, flowing into as many columns as the width allows. Variants of one site are one entry ("Prog Archives (barcode, name)"), and sections with nothing for this kind of page are named once at the foot. A switch shows one list at a time, and a box finds a site by name, variant, section or group (Esc empties it). Pointing at a link shows its site and full address, also the site behind the script's forwarding page; with link previews on, that box sits above the preview card instead of beside it. In the tables the same links are one "Sidebar: Search" table with the list, section and group of each link.
-- Sidebar cards: the facts cards (information, labels, release events) are a column on the left with the link cards beside them, so the section is about as tall as the taller of the two; in a narrow window they stack. The cards have the Liner-notes look: warm paper, hairline rules, small-caps headings. Mockup: https://claude.ai/artifact/V9Pqx5r7K37Qe3PEm93cpc.
 
 
 ---
