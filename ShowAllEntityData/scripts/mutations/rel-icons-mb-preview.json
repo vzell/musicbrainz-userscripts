@@ -1,0 +1,38 @@
+[
+  {
+    "name": "a Relationships icon is turned away again",
+    "why": "The pre-2026-10-26 exclusion: no MusicBrainz link in td.mb-rel-cell is a preview target.",
+    "edits": [{ "find": "        const relIcon = !!a.closest('td.mb-rel-cell');\n        if ((!relIcon && a.querySelector('img:not(.avatar)')) || (!inWindow && a.closest('#mb-dp-peek, #mb-dp-dialog'))) return null;\n", "replace": "        const relIcon = !!a.closest('td.mb-rel-cell');\n        if (relIcon || a.querySelector('img:not(.avatar)') || (!inWindow && a.closest('#mb-dp-peek, #mb-dp-dialog'))) return null;\n" }],
+    "spec": "tests/fixtures/rel-icons.spec.js", "grep": "single from", "expect": "fail"
+  },
+  {
+    "name": "the icon's image still rules it out",
+    "why": "A Relationships icon is an image link; without the relIcon exemption it reads as artwork.",
+    "edits": [{ "find": "        if ((!relIcon && a.querySelector('img:not(.avatar)')) || (!inWindow && a.closest('#mb-dp-peek, #mb-dp-dialog'))) return null;\n", "replace": "        if (a.querySelector('img:not(.avatar)') || (!inWindow && a.closest('#mb-dp-peek, #mb-dp-dialog'))) return null;\n" }],
+    "spec": "tests/fixtures/popup-mb.spec.js", "grep": "what is previewed", "expect": "fail"
+  },
+  {
+    "name": "the icon's href stays a bare path",
+    "why": "_relAppendIcon() is not given the fully qualified address.",
+    "edits": [{ "find": "            primary.forEach(td => _relAppendIcon(td, href, iconUrl, ended, _tooltip, relType, _abs));\n", "replace": "            primary.forEach(td => _relAppendIcon(td, href, iconUrl, ended, _tooltip, relType));\n" }],
+    "spec": "tests/fixtures/rel-icons.spec.js", "grep": "single from", "expect": "fail"
+  },
+  {
+    "name": "the filter key becomes the full address",
+    "why": "The 📊 grouping and rel-multi-site read the key; it must stay the bare path.",
+    "edits": [{ "find": "        key.textContent = url;\n", "replace": "        key.textContent = a.href;\n" }],
+    "spec": "tests/fixtures/rel-icons.spec.js", "grep": "single from", "expect": "fail"
+  },
+  {
+    "name": "a fully qualified MusicBrainz icon is named as a site",
+    "why": "_relLinkName() no longer reads the title from the tip for a same-origin absolute href.",
+    "edits": [{ "find": "                own = new URL(href, window.location.href).origin === window.location.origin;\n", "replace": "                own = false;\n" }],
+    "spec": "tests/fixtures/rel-icons.spec.js", "grep": "single from", "expect": "fail"
+  },
+  {
+    "name": "an empty title stops the hover lookup again",
+    "why": "MusicBrainz's <img title=\"\"> inside the sidebar cover link hides the link's sb-cover card.",
+    "edits": [{ "find": "const el = e.target.closest('[data-mbtt], [data-mbtt-fn], [title]:not([title=\"\"]), [data-mb-tip-saved]');", "replace": "const el = e.target.closest('[data-mbtt], [data-mbtt-fn], [title], [data-mb-tip-saved]');" }],
+    "spec": "tests/fixtures/sidebar-picture.spec.js", "grep": "img title", "expect": "fail"
+  }
+]

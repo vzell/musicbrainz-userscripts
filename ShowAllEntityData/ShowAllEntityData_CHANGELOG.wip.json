@@ -1,0 +1,26 @@
+[
+  {
+    "version": "WIP.2",
+    "date": "2026-10-26",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "Relationships column: a release group icon (\"single from\", e.g. on a tag's release groups) now gets the link preview card on hover, and the window on Space, like the column's links to other sites. The card shows the release group's title from the icon, and the icon's own box sits in its note stack. The icon's link is now a full address (https://musicbrainz.org/release-group/…). Its filter key stays the bare path, so the 📊 \"Relationship icons\" entries and the \"links to one site more than once\" warning are unchanged."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "WIP.1",
+    "date": "2026-10-26",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Sidebar cover: hovering the cover of a release, release group or event in the sidebar shows the card of all its images again. MusicBrainz puts an image with an empty title inside the cover link, and the hover card stopped at that empty title before it reached the link. Any element with an empty title is now passed over."
+        ]
+      }
+    ]
+  }
+]

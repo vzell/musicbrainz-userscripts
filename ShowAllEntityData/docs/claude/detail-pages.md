@@ -213,9 +213,14 @@ hosts (kept, decided 2026-10-07).
   and the BARE entity path only (`_MB_POP_PATH_RE`): `/cover-art` (the CAA/EAA
   icon column's anchor, and MusicBrainz's own hidden one in a native release
   list's first cell), `/edit`, `/merge` and the tabs never match. Not a link
-  wrapping an `<img>` (artwork has its own preview), not in `td.mb-rel-cell`
-  (its own tooltip), not inside the card or the window, and only a kind
-  `_MB_KINDS` knows. Its target carries `type`, `id`, `kind` (the window's
+  wrapping an `<img>` (artwork has its own preview), except a Relationships
+  icon (`td.mb-rel-cell`, a "single from" release group, since 2026-10-26;
+  its image IS the link, as for the column's links to other sites since
+  2026-10-17; named by `_relLinkName()`, because its text is the hidden
+  filter key). Not inside the card or the window, and only a kind
+  `_MB_KINDS` knows. Such an icon's `href` is fully qualified
+  (`_relAppendIcon()`'s `href` argument), while its filter key stays the
+  bare path that `_findCellRelIcons()` and `_findCellRelSiteDupes()` read. Its target carries `type`, `id`, `kind` (the window's
   title) and `wide`, and `col`, the cell's header name.
 - **The kinds: `_MB_KINDS`**, by path segment, each with `title`, `wide`,
   `card()`, `extracted()`, optional `onAreaClick()`. The release group reuses

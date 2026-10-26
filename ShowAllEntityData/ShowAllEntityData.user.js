@@ -52638,9 +52638,12 @@
      *     (an entity by MBID, a code: `_MB_POP_CODE_RE`, an edit or editor:
      *     `_MB_POP_PAGE_RE`).
      * Not an element around an image (artwork has its own preview; an
-     * editor's avatar does not count), not in the Relationships column (its
-     * own tooltip), not inside the card or the window, and — outside a table
-     * body, with the page-wide scope — not in `_MB_POP_PAGE_SKIP`.
+     * editor's avatar does not count) — except a Relationships icon, an
+     * image link that IS the link (a "single from" release group, as the
+     * column's links to other sites since 2026-10-17; named by
+     * `_relLinkName()`, its text being the hidden filter key) — not inside
+     * the card or the window, and — outside a table body, with the
+     * page-wide scope — not in `_MB_POP_PAGE_SKIP`.
      *
      * @param {Element} a
      * @param {{inWindow?: boolean}} [opts] - `inWindow`: a link in the
@@ -52687,8 +52690,10 @@
         const k = type && id && Object.prototype.hasOwnProperty.call(_MB_KINDS, type) ? _MB_KINDS[type] : null;
         if (!k) return null;
         // An image means artwork (it has its own preview) — except the
-        // avatar MusicBrainz puts inside every editor link (Phase 3).
-        if (a.querySelector('img:not(.avatar)') || a.closest(inWindow ? 'td.mb-rel-cell' : 'td.mb-rel-cell, #mb-dp-peek, #mb-dp-dialog')) return null;
+        // avatar MusicBrainz puts inside every editor link (Phase 3), and a
+        // Relationships icon, whose image is the link (2026-10-26).
+        const relIcon = !!a.closest('td.mb-rel-cell');
+        if ((!relIcon && a.querySelector('img:not(.avatar)')) || (!inWindow && a.closest('#mb-dp-peek, #mb-dp-dialog'))) return null;
         if (!a.closest('table.tbl > tbody') && a.closest(_MB_POP_PAGE_SKIP)) return null;
         const td = a.closest('td, th');
         const table = td && td.closest('table.tbl');
@@ -52698,7 +52703,10 @@
         return {
             key: `${type}:${id}`, url: new URL(where, window.location.origin).href,
             type, id, kind: k.titleOf ? k.titleOf(id) : k.title, wide: !!k.wide,
-            name: a.getAttribute('data-mb-pop-name') || (k.nameOf ? k.nameOf(a) : '') || a.textContent.trim(),
+            // An icon's text is its hidden filter key (the path): the
+            // entity's title from its tip instead.
+            name: a.getAttribute('data-mb-pop-name') || (relIcon ? _relLinkName(a) : '') ||
+                (k.nameOf ? k.nameOf(a) : '') || a.textContent.trim(),
             col: table ? _resolveColHeaderName(table, td.cellIndex) : '',
         };
     }
@@ -86819,7 +86827,13 @@ a { color: #1565c0; }`;
             // A relationship list's cover icon, put in late by another
             // script: marked for its artwork card before the lookup below.
             _artRelIconStamp(e.target);
-            const el = e.target.closest('[data-mbtt], [data-mbtt-fn], [title], [data-mb-tip-saved]');
+            // An EMPTY title has nothing to show and must not stop the walk
+            // up: MusicBrainz's script puts `<img title="">` into the
+            // sidebar cover's link, and matching that img hid the link's
+            // `data-mbtt-fn="sb-cover"` card (DEBUG-NOTES.md, 2026-10-26).
+            // An own title stashed by `_stashOwn()` is still found through
+            // `data-mb-tip-saved`.
+            const el = e.target.closest('[data-mbtt], [data-mbtt-fn], [title]:not([title=""]), [data-mb-tip-saved]');
             if (el === _target && _own) return; // still inside the same element
             // A resolver card is built once per hover: re-building it on every
             // child crossed would reload its images and flicker.
@@ -123076,11 +123090,16 @@ a { color: #1565c0; }`;
      *   "purchase for mail-order"), kept as `data-mb-rel-type` for the icon's
      *   box (`_relLinkNoteHtml()`); an attribute, so clones and saved pages
      *   keep it.
+     * @param {string}  [href] The anchor's own address when it differs from
+     *   `url`: a link to MusicBrainz itself ("single from") is written fully
+     *   qualified (2026-10-26) while its filter key stays the bare path
+     *   (`/release-group/<mbid>`), which `_findCellRelIcons()` groups by
+     *   entity type and `_findCellRelSiteDupes()` never counts as a site.
      */
-    function _relAppendIcon(cell, url, iconUrl, ended, tooltip, relType) {
+    function _relAppendIcon(cell, url, iconUrl, ended, tooltip, relType, href) {
         if (!iconUrl) return;
         const a = document.createElement('a');
-        a.href = url;
+        a.href = href || url;
         _setTip(a, tooltip || url);
         if (relType) a.dataset.mbRelType = relType;
         a.target = '_blank';
@@ -123567,7 +123586,10 @@ a { color: #1565c0; }`;
                 ? `${relType}: ${_entityTitle}\n${href}`
                 : href;
             _dbg(`_relWriteResult: non-url rel type='${relType}' href='${href}' title='${_entityTitle}' ended=${ended}`);
-            primary.forEach(td => _relAppendIcon(td, href, iconUrl, ended, _tooltip, relType));
+            // Fully qualified, as the column's other links are; the filter
+            // key and the tip keep the bare path.
+            const _abs = new URL(href, window.location.origin).href;
+            primary.forEach(td => _relAppendIcon(td, href, iconUrl, ended, _tooltip, relType, _abs));
         }
         // Immediately sync icon HTML to source-row cells so runFilter clones
         // carry the correct content even when the Phase-2 queue is still mid-flight.
@@ -125013,15 +125035,22 @@ a { color: #1565c0; }`;
     /**
      * The name a Relationships icon is shown with: the site for a URL
      * (`_REL_SITE_NAMES`, else the bare host); for a link to MusicBrainz
-     * itself (a "single from" release group), the entity's title from the
-     * icon's own tip ("single from: Title\n/release-group/…").
+     * itself (a "single from" release group: a bare path in a cell built
+     * before 2026-10-26, fully qualified on this site since), the entity's
+     * title from the icon's own tip ("single from: Title\n/release-group/…").
      *
      * @param {HTMLAnchorElement} a
      * @returns {string}
      */
     function _relLinkName(a) {
         const href = a.getAttribute('href') || '';
-        if (!/^(?:https?:)?\/\//i.test(href)) {
+        let own = !/^(?:https?:)?\/\//i.test(href);
+        if (!own) {
+            try {
+                own = new URL(href, window.location.href).origin === window.location.origin;
+            } catch (_) { /* not a URL: a site name below */ }
+        }
+        if (own) {
             const first = (_relTipText(a).split('\n')[0] || '').trim();
             const colon = first.indexOf(': ');
             return colon > 0 ? first.slice(colon + 2) : 'MusicBrainz';

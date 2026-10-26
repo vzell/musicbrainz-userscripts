@@ -1260,7 +1260,10 @@ hide failures from it.
 SpringsteenLyrics, …), MusicBrainz's relationship type, and the full URL.
 While a filter matches the cell, a box above it lists all the row's links
 with the filter's marks and marks the icon you point at ("◂ this icon"). With
-link previews on, the link's preview card shows under those boxes.
+link previews on, the link's preview card shows under those boxes. This
+covers a link to another site and also an icon for a MusicBrainz release
+group (a "single from" icon), which gets the release group's card and
+window like any release group link.
 
 **Several links to the same site** (two Discogs pages, two amazon.de products,
 …) are a ⚠️ WARNING: the cell turns light yellow with a ⚠️ at its right edge.

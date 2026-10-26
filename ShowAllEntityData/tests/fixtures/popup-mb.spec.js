@@ -376,7 +376,7 @@ test.describe('MusicBrainz link previews (sa_pop_mb)', () => {
         expect(log.lookups).toHaveLength(1);
     });
 
-    test('what is previewed: the bare entity page, not cover art, an image link or the Relationships column', async ({ page }) => {
+    test('what is previewed: the bare entity page and a Relationships icon, not cover art or an image link', async ({ page }) => {
         await open(page, { settings: { sa_pop_mb: true } });
         const r = await page.evaluate((id) => {
             const td = document.querySelector('table.tbl tbody tr td:first-child');
@@ -389,7 +389,8 @@ test.describe('MusicBrainz link previews (sa_pop_mb)', () => {
             };
             const rel = document.createElement('td');
             rel.className = 'mb-rel-cell';
-            rel.innerHTML = `<a href="/release/${id}">rel</a>`;
+            // As `_relAppendIcon()` builds it: an image link, fully qualified.
+            rel.innerHTML = `<a href="https://musicbrainz.org/release/${id}"><img alt=""><span class="mb-rel-filter-key">/release/${id}</span></a>`;
             td.parentElement.appendChild(rel);
             const res = (a) => window.__saTest.popResolve(a);
             return {
@@ -408,7 +409,9 @@ test.describe('MusicBrainz link previews (sa_pop_mb)', () => {
         expect(r.coverArt, '/cover-art is the artwork column').toBeNull();
         expect(r.edit).toBeNull();
         expect(r.image, 'a link wrapping an image keeps its artwork preview').toBeNull();
-        expect(r.relCell, 'the Relationships column has its own tooltip').toBeNull();
+        // Since 2026-10-26 a Relationships icon to MusicBrainz is previewed,
+        // as the column's links to other sites are (its image IS the link).
+        expect(r.relCell, 'a Relationships icon is previewed').toBe(`mb-entity|release:${REL_ID}`);
         expect(r.header, 'outside a table body').toBeNull();
         // An artist link is previewed once its kind exists (WIP.3).
         expect(r.artist === null || r.artist.startsWith('mb-entity|artist:')).toBe(true);

@@ -141,7 +141,11 @@ Specs:
   script puts the `<img>` into the span after load, and REPLACES the whole
   span with "Image failed to load correctly" when the thumbnail does not
   load. So `_sbWireCover()` reads `data-small-thumbnail` (made absolute)
-  straight away instead of waiting for the `<img>`. A cover with no
+  straight away instead of waiting for the `<img>`. That `<img>` carries
+  `title=""`. The tooltip engine's lookup skips an EMPTY title
+  (`[title]:not([title=""])` in `_initStatTooltip()`); before 2026-10-26 it
+  stopped at the img, so the link's card never showed. A spec that hovers
+  the cover has to hover that img, not just the bare link. A cover with no
   `.present` (no front image) gets no copy.
 - **An event's event art** (2026-10-21, 9.99.1414): the same markup in
   `#sidebar .event-art` (no `.present` class there), wired the same way with
