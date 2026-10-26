@@ -82,6 +82,10 @@ const PAGE_FIXTURES = [
     [/\/collection\/3d73c67c-76c6-459d-ac8b-3145cb49d672\/?$/, 'collection-page-coverart-video.html'],
     [/\/collection\/3d73c67c-76c6-459d-ac8b-3145cb49d672\?page=2$/, 'collection-page-coverart-video-p2.html'],
     [/\/collection\/60df131d-bdb7-3c83-840d-e31e566baabe\/?$/, 'collection-page-attending.html'],
+    // A genre's page (2026-10-26, read from the page): roots rock, as
+    // MusicBrainz sends it (debug/genre-initial.html, wrapped by
+    // scripts/build-genre-overview-fixture.py).
+    [/\/genre\/883d75d5-1365-46ee-8cbe-d3ae2facdd93\/?$/, 'rel-genre-overview.html'],
 ];
 const WS2_FIXTURES = [
     [/\/ws\/2\/recording\/[0-9a-f-]{36}\?inc=artist-credits\+isrcs/, 'ws2-pop-recording-thunder.json'],
@@ -185,8 +189,8 @@ async function open(page, { settings = {}, lookup = null, showAll = true, ws2 = 
     await ctx.route('**/ws/2/release?label=**', other);
     await ctx.route('**/ws/2/release?query=**', other);
     await ctx.route('**/ws/2/release-group?artist=**', other);
-    // Phase 3: edit, editor, tag and collection pages, by URL (`pageFixture` may answer instead).
-    await ctx.route(/^https:\/\/musicbrainz\.org\/(edit|user|tag|collection)\//, (route) => {
+    // Phase 3: edit, editor, tag, collection and genre pages, by URL (`pageFixture` may answer instead).
+    await ctx.route(/^https:\/\/musicbrainz\.org\/(edit|user|tag|collection|genre)\//, (route) => {
         const url = route.request().url();
         log.html.push(url);
         const own = pageFixture ? pageFixture(url) : null;
@@ -1924,6 +1928,97 @@ test.describe('MusicBrainz link previews: tags, read from the page', () => {
             pageFixture: () => (login ? { status: 200, contentType: 'text/html', body: '<html><body><div id="page"><h1>Log in</h1></div></body></html>' } : null),
         });
         const a = await addLink(page, TAG, 'alternative rock');
+        await ctrlHover(page, a);
+        await expect(card(page).locator('.mb-tt-alert')).toContainText('not the page expected');
+        login = false;
+        await ctrlHover(page, a);
+        await expect(card(page)).toContainText('fetched now');
+        expect(log.html).toHaveLength(2);
+    });
+});
+
+// A genre (2026-10-26), read from its page: the links of a tag page's
+// "Genre" heading, of a genre collection and of the genre lists. Pins:
+//   1. what is previewed: the bare genre page, its collections and editing
+//      history as their own kinds, never its tabs (/aliases);
+//   2. the card from ONE page request: name, pills, the primary tag, every
+//      relationship phrase with its names (three at most, "+N"), the start
+//      of the Wikipedia extract — checking only the title passes on a
+//      parser that reads nothing below the header;
+//   3. the window: each related genre LINKED to its own page (so it drills),
+//      the URLs apart from them, the collections link, the whole extract;
+//      the Live page reuses the hover's request.
+test.describe('MusicBrainz link previews: genres, read from the page', () => {
+    const GID = '883d75d5-1365-46ee-8cbe-d3ae2facdd93';
+    const GENRE = `/genre/${GID}`;
+
+    test('what is previewed: a genre, its collections and history, not its tabs', async ({ page }) => {
+        await open(page, { settings: { sa_pop_mb: true }, showAll: false });
+        const r = await page.evaluate((g) => {
+            const td = document.querySelector('table.tbl tbody tr td:first-child');
+            const res = (href) => {
+                const a = document.createElement('a');
+                a.href = href;
+                a.textContent = 'x';
+                td.appendChild(a);
+                return window.__saTest.popResolve(a);
+            };
+            return {
+                genre: res(g), upper: res(g.toUpperCase().replace('/GENRE/', '/genre/')), tab: res(`${g}/aliases`),
+                colls: res(`${g}/collections`), edits: res(`${g}/edits`), open: res(`${g}/open_edits`),
+            };
+        }, GENRE);
+        expect(r.genre).toBe(`mb-entity|genre:${GID}`);
+        expect(r.upper, 'an MBID in uppercase is the same genre').toBe(`mb-entity|genre:${GID}`);
+        expect(r.tab).toBeNull();
+        expect(r.colls).toBe(`mb-entity|collections:genre/${GID}`);
+        expect(r.edits).toBe(`mb-entity|edits:genre/${GID}`);
+        expect(r.open).toBe(`mb-entity|edits:${GENRE}/open_edits`);
+    });
+
+    test('the card: primary tag, relationships and the extract, from one page request', async ({ page }) => {
+        const log = await open(page, { settings: { sa_pop_mb: true }, showAll: false });
+        const a = await addLink(page, GENRE, 'roots rock');
+        await ctrlHover(page, a);
+        await expect(card(page)).toContainText('fetched now');
+        await expect(card(page).locator('.mb-tt-title')).toHaveText('roots rock');
+        await expect(card(page).locator('.mb-tt-pill')).toHaveText(['Genre', 'in 2 collections']);
+        const kv = card(page).locator('.mb-dp-kv');
+        await expect(kv.locator('dt')).toHaveText(['Primary tag', 'subgenre of', 'subgenres', 'influenced by']);
+        await expect(kv.locator('dd')).toHaveText(['roots rock', 'rock', 'tex-mex', 'blues, country, r&b']);
+        await expect(card(page)).toContainText('Roots rock is a genre of rock music');
+        await expect(card(page), 'the URLs are the window\'s').not.toContainText('wikidata');
+        expect(log.html).toEqual([`https://musicbrainz.org${GENRE}`]);
+    });
+
+    test('the window: related genres linked, links apart, collections, the Live page from the same request', async ({ page }) => {
+        const log = await open(page, { settings: { sa_pop_mb: true }, showAll: false });
+        const a = await addLink(page, GENRE, 'roots rock');
+        await ctrlHover(page, a);
+        await expect(card(page)).toContainText('fetched now');
+        await page.keyboard.press('Space');
+        await expect(dialog(page).locator(':scope > div > span').first()).toHaveText('Genre');
+        const area = dialog(page).locator('.mb-dp-area');
+        await expect(area.locator('a[href="/genre/0e3fc579-2d24-4f20-9dae-736e1ec78798"]')).toHaveText('rock');
+        await expect(area.locator('a[href="/genre/31be54b2-4d0c-42df-aa44-c496c7b4c3c3"]')).toHaveText('r&b');
+        await expect(area.locator('a[href="https://www.wikidata.org/wiki/Q1929352"]')).toHaveText('Q1929352');
+        await expect(area.locator('a[href^="/url/"]'), 'the "[info]" links are not targets').toHaveCount(0);
+        await expect(area.locator(`a[href="/genre/${GID}/collections"]`)).toHaveText('2');
+        await expect(area.locator('a[href="/tag/roots%20rock"]')).toHaveText('roots rock');
+        await expect(area).toContainText('Grammy Award');
+        await dialog(page).locator('button.mb-dp-tbtn', { hasText: 'Live page' }).click();
+        const frame = page.frameLocator('#mb-dp-dialog iframe');
+        await expect(frame.locator('.genreheader h1')).toContainText('roots rock', { timeout: 15000 });
+        expect(log.html, 'the Live page reuses the hover\'s page').toHaveLength(1);
+    });
+
+    test('a page that is not a genre\'s fails and is not kept', async ({ page }) => {
+        let login = true;
+        const log = await open(page, {
+            settings: { sa_pop_mb: true }, showAll: false,
+            pageFixture: () => (login ? { status: 200, contentType: 'text/html', body: '<html><body><div id="page"><h1>Log in</h1></div></body></html>' } : null),
+        });
+        const a = await addLink(page, GENRE, 'roots rock');
         await ctrlHover(page, a);
         await expect(card(page).locator('.mb-tt-alert')).toContainText('not the page expected');
         login = false;

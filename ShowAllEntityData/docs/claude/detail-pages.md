@@ -918,8 +918,8 @@ everything the card needs in one request.
   only, so it can be stored in IndexedDB for `sa_pop_mb_ttl_hours`.
 - **Card:** name, "Tag of the genre …" or "Tag", pills (Genre, the total),
   the six largest kinds with counts (`_mbPopTagKinds()`: largest first).
-  **Window:** the genre (a link to `/genre/<id>`, new tab: genres are no
-  kind), the total, a Kind/Count table linking each kind's
+  **Window:** the genre (a link to `/genre/<id>`, which since 2026-10-26
+  drills into the `genre` kind below), the total, a Kind/Count table linking each kind's
   `/tag/<name>/<slug>` (`_mbPopTagKindHref()`: the page's "See all" link,
   else `SA_TAG_VALUE_CATEGORY_SLUGS`), and per kind its entities as plain
   entity links, so they drill down (Phase 5).
@@ -932,6 +932,43 @@ everything the card needs in one request.
   (`scripts/fetch-mb-page-fixture.js /tag/alternative%20rock`). Specs:
   `popup-mb.spec.js` "tags, read from the page", `sidebar-inline.spec.js`
   "tag pills"; mutations `scripts/mutations/tag-reader.json`.
+
+## MusicBrainz: genre cards, read from the page (2026-10-26)
+
+A genre is a PAGE kind too (`genre`, `_mbPopPageKind()`), though it has an
+MBID: `_MB_POP_PATH_RE` names `genre`, so `/genre/<MBID>` resolves like any
+entity link, and the kind's `card`/`extracted` read `/genre/<MBID>` with
+`_mbParseGenrePage()` rather than the Web Service. Why the page: it carries
+the primary tag, the Wikipedia extract and the collections count, none of
+which a genre lookup returns, and the genre lookup's inc behaviour could not
+be probed when this was written (the session's container had no route to
+musicbrainz.org). `scripts/probe-mb-genre-lookup.py` sends the candidate
+inc sets; run it before moving the card to `/ws/2/genre/<MBID>`.
+
+- **`_mbParseGenrePage()`** reads `#content` (`debug/genre-initial.html`):
+  the name from `.genreheader h1 a`, a `span.comment` disambiguation, the
+  "Associated tags" `table.details` (`[phrase, names]`), the Wikipedia
+  extract and its "Continue reading" link, `div.annotation`, and every
+  `table.details` under `h2.relationships` as `{phrase, items}`. Each URL
+  row's "[info]" link (`/url/<MBID>`) is skipped, so a URL is one item;
+  `//host` hrefs get `https:`. The sidebar gives "Found in N user
+  collections" and "Last updated". Text only (IndexedDB).
+- **Card:** name, pills (Genre, "in N collections"), the primary tag and
+  the entity relationship phrases with three names each (`+N`), then the
+  first `_MB_POP_GENRE_CARD_WIKI` characters of the extract. No URLs.
+  **Window:** facts (the tag linked, the collections page, last updated),
+  the whole extract, the annotation; "Related genres" with every target
+  linked to its bare page (drills, Phase 5), and "Links" for the URL rows.
+- **Paths that came with it:** `_MB_POP_EDITS_RE`, `_MB_POP_EDITLIST_RE` and
+  `_MB_POP_ENTITY_LIST_RE` name `genre` (the sidebar's "Editing history",
+  "Open edits" and "Found in N user collections"); `_MB_KIND_ICON` has its
+  glyph. Annotation pages are not previewed for a genre.
+- **`_MB_POP_PAGE_VERSION` 4:** `_MB_POP_PATH_RE` is also read by
+  `_mbParseEditPage()` and `_mbParseCollectionPage()`, whose records now
+  include genres (an edit's entities, a genre collection's rows).
+- Fixture: `tests/fixtures/rel-genre-overview.html`, shared with the
+  `genre-overview` pageType. Specs: `popup-mb.spec.js` "genres, read from
+  the page"; mutations `scripts/mutations/genre.json`.
 
 ## MusicBrainz: collection cards, read from the page (2026-10-20)
 

@@ -16,7 +16,7 @@ same per-group columns (`_eventRelColumns()` → `data-mb-col-headers` →
 
 | Where                                   | How                                   | Runs as pageType                     |
 |-----------------------------------------|---------------------------------------|--------------------------------------|
-| `/place/<mbid>`, `/area/…`, `/instrument/…`, `/url/…` | pageTypes `place-overview`, `area-overview`, `instrument-overview`, `url-overview` | themselves |
+| `/place/<mbid>`, `/area/…`, `/instrument/…`, `/genre/…`, `/url/…` | pageTypes `place-overview`, `area-overview`, `instrument-overview`, `genre-overview`, `url-overview` | themselves |
 | series, work, release group, recording  | a second button, `_relTablesButton()` | `<entity>-relationship-tables`       |
 | artist / label `/relationships` tab     | second button "Relationship lists"    | `artist-` / `label-relationship-tables` |
 | release                                 | second button "Credits"               | `release-credit-tables`              |
@@ -152,6 +152,12 @@ attribute-driven, so no column gate and no text highlight. Entries carry the
 kind's glyph through `makeSynItem()`'s `glyphClass` argument
 (`_entityTypeGlyphClass()`, from `_eventColGlyphs()`); a kind without one (URL)
 gets "🔗" in its label. Shared with the event page.
+
+**`genre-overview`** (2026-10-26) needs `genre` in the same `@include` line.
+Its "Associated tags" `table.details` sits under its own h2, not
+`h2.relationships`, so the converter never reads it; pinned by
+`rel-tables-pages.spec.js` "genre: …". A genre has no sidebar facts list, so
+unlike place/area/instrument it has no "Sidebar as tables" fallback.
 
 **`url-overview`** needs `url` in the `@include` line for bare entity pages;
 the fixture harness injects unconditionally, so only

@@ -1,0 +1,67 @@
+[
+    {
+        "name": "genre-overview never matches",
+        "why": "Without the pageType the genre page has no button; the spec asserts its one button and the Genres/URLs groups.",
+        "edits": [
+            {
+                "find": "                path.match(/^\\/genre\\/[a-f0-9-]{36}\\/?$/),",
+                "replace": "                path.match(/^\\/genre-never\\/[a-f0-9-]{36}\\/?$/),"
+            }
+        ],
+        "spec": "tests/fixtures/rel-tables-pages.spec.js",
+        "grep": "genre: subgenre of",
+        "expect": "fail"
+    },
+    {
+        "name": "genre not a previewed entity path",
+        "why": "Without genre in _MB_POP_PATH_RE a /genre/<MBID> link resolves to nothing: no card, no request.",
+        "edits": [
+            {
+                "find": "const _MB_POP_PATH_RE = /^\\/(artist|release-group|release|recording|work|label|event|place|area|series|instrument|genre|collection|url)\\/",
+                "replace": "const _MB_POP_PATH_RE = /^\\/(artist|release-group|release|recording|work|label|event|place|area|series|instrument|collection|url)\\/"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "genres, read from the page",
+        "expect": "fail"
+    },
+    {
+        "name": "the genre parser reads no relationships",
+        "why": "A parser that only reads the header still gives a titled card; the spec asserts every relationship phrase and its names.",
+        "edits": [
+            {
+                "find": "                if (items.length) rels.push({ phrase, items });",
+                "replace": "                if (false) rels.push({ phrase, items });"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "the card: primary tag, relationships",
+        "expect": "fail"
+    },
+    {
+        "name": "the genre window shows related genres as text, not links",
+        "why": "Without links a related genre cannot drill into its own card; the spec asserts the /genre/ anchors in the window.",
+        "edits": [
+            {
+                "find": "                const right = `<h4>Related genres</h4>${_mbPopKvHtml(_mbPopGenreRelRows(d, { links: true }))",
+                "replace": "                const right = `<h4>Related genres</h4>${_mbPopKvHtml(_mbPopGenreRelRows(d, { links: false }))"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "the window: related genres linked",
+        "expect": "fail"
+    },
+    {
+        "name": "the [info] links are taken as URL targets",
+        "why": "Each URL row is followed by an [info] link to its /url/ page; reading it as a target doubles every link. The spec asserts no /url/ anchor in the window.",
+        "edits": [
+            {
+                "find": "                    if (!text || /^\\/url\\//.test(href)) return;",
+                "replace": "                    if (!text) return;"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "the window: related genres linked",
+        "expect": "fail"
+    }
+]

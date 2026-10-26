@@ -1680,7 +1680,7 @@ an import brings your deletions back.
   the whole tracklist across every medium, consolidated
 - **Event pages** (`/event/<mbid>`) — the event's relationships and setlist as
   tables, and its Event Art Archive images
-- **Relationships as tables** on place, area, instrument and URL pages, and as a
+- **Relationships as tables** on place, area, instrument, genre and URL pages, and as a
   second button on series, work, release group, recording and release pages
   and the artist and label Relationships tab
 - **Collections** — your own, subscribed ones, and their entity sub-tabs; an
@@ -2031,10 +2031,11 @@ Most entity pages list their relationships the way an event page does: short
 lists under a **Relationships** heading, one target per line. The same tables
 the event page gets are available on:
 
-- **Place, area, instrument and URL pages** (`/place/<mbid>`, `/area/<mbid>`,
-  `/instrument/<mbid>`, `/url/<mbid>`): **Relationships for Place** (Area,
-  Instrument, URL) — the only button there, since those lists are the page's
-  data. On a URL page they are the entities that link the URL; its "URL
+- **Place, area, instrument, genre and URL pages** (`/place/<mbid>`, `/area/<mbid>`,
+  `/instrument/<mbid>`, `/genre/<mbid>`, `/url/<mbid>`): **Relationships for Place** (Area,
+  Instrument, Genre, URL) — the only button there, since those lists are the page's
+  data. On a genre page they are its parent genres, subgenres, influences and
+  links; its *Associated tags* and Wikipedia text stay as MusicBrainz shows them. On a URL page they are the entities that link the URL; its "URL
   details" stay as MusicBrainz shows them.
 - **Series, work, release group and recording pages**: a **Relationships**
   button beside the page's own **Show all…** button.
@@ -2341,6 +2342,13 @@ MusicBrainz's page.
 A tag card shows whether the tag is a genre, how many entities carry it
 and the kinds with the most of them (*Recordings 129,479*); it is read from
 the tag's own page, since MusicBrainz cannot look a tag up otherwise.
+A genre card (the *Genre* link of a tag page, a genre collection's rows,
+any genre in a relationship list) shows the genre's primary tag, the genres
+it is a subgenre of, its subgenres and what it was influenced by (three
+names each, *+N* for the rest), how many collections hold it and the start
+of its Wikipedia text; it is read from the genre's own page, in one request.
+A genre's *Found in N user collections*, *Editing history* and *Open edits*
+links have their cards too.
 **Esc** or moving away closes it.
 
 **Press Space** to pin it into a window:
@@ -2370,7 +2378,9 @@ the tag's own page, since MusicBrainz cannot look a tag up otherwise.
   100 of its events by date; for a
   series, every item in order; for a tag, its genre, how many of each kind
   it carries (each linked to the tag's page of that kind) and the ten top
-  entities of every kind. An **artist, label or place** window shows its
+  entities of every kind; for a genre, its primary tag, every related genre
+  linked (each opens its own card), its external links, the collections it
+  is in and the whole Wikipedia text. An **artist, label or place** window shows its
   **picture** under the name: the Wikimedia Commons file MusicBrainz links as
   its image or logo, else the one its Wikidata item names (one or two small
   requests to Wikidata, a label's logo first). It is asked only here, never

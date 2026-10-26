@@ -13,7 +13,7 @@
 // @require      https://cdn.jsdelivr.net/npm/@jaames/iro@5
 // @require      https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js
 // @require      file:///V:/home/vzell/git/musicbrainz-userscripts/lib/VZ_MBLibrary.user.js
-// @include      /^https?:\/\/(?:[^\/]+\.)?musicbrainz\.(?:org|eu)\/(?:artist|release-group|release|work|recording|label|series|place|area|instrument|event|collection|url)\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/?(?:\?.*)?$/
+// @include      /^https?:\/\/(?:[^\/]+\.)?musicbrainz\.(?:org|eu)\/(?:artist|release-group|release|work|recording|label|series|place|area|instrument|genre|event|collection|url)\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/?(?:\?.*)?$/
 // @include      /^https?:\/\/(?:[^\/]+\.)?musicbrainz\.(?:org|eu)\/(?:artist|release-group|release|work|recording|label|series|place|area|instrument|event)\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/(?:aliases|releases|recordings|works|events|relationships|discids|fingerprints|performances|places|artists|labels|tags|users|collections|ratings|edits|open_edits|annotations|annotation(?:\/\d+)?)\/?(?:\?.*)?$/
 // @include      /^https?:\/\/(?:[^\/]+\.)?musicbrainz\.(?:org|eu)\/(?:artist|label|series|collection)\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/subscribers\/?(?:\?.*)?$/
 // @include      /^https?:\/\/(?:[^\/]+\.)?musicbrainz\.(?:org|eu)\/release\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}(?:\/disc\/\d+)?\/?(?:\?[^#]*)?(?:#.*)?$/
@@ -22971,14 +22971,14 @@
      * artist, release, release_group, recording, work, label, area, place,
      * event, series, instrument, genre, collection and editor answer 200
      * `image/svg+xml`; url, isrc, iswc, cdtoc and the hyphenated
-     * `release-group` answer 404, so those kinds have none (genre has no
-     * kind here; `user` is the editor).
+     * `release-group` answer 404, so those kinds have none (`user` is the
+     * editor; genre has its kind since 2026-10-26).
      * @type {Object<string, string>}
      */
     const _MB_KIND_ICON = {
         artist: 'artist', release: 'release', 'release-group': 'release_group', recording: 'recording',
         work: 'work', label: 'label', area: 'area', place: 'place', event: 'event', series: 'series',
-        instrument: 'instrument', collection: 'collection', user: 'editor', subscribers: 'editor',
+        instrument: 'instrument', genre: 'genre', collection: 'collection', user: 'editor', subscribers: 'editor',
         usertags: 'editor', userratings: 'editor', usertag: 'editor',
     };
 
@@ -36715,6 +36715,29 @@
                 listToTable: [ '' ]
             },
             tableMode: 'single',
+            non_paginated: true
+        },
+        // The genre overview (/genre/<mbid>, 2026-10-26): like the instrument
+        // overview, its only data is the Relationships lists under
+        // h2.relationships ("subgenre of", "subgenres", "influenced by", …
+        // and the URLs), turned into tables by applyRelDetailsToTables().
+        // The "Associated tags" table.details and the Wikipedia extract sit
+        // under their own h2s and stay native. Anchored match: the tabs
+        // (/aliases, /details) are not this page. See debug/genre-initial.html
+        // (tests/fixtures/rel-genre-overview.html). Off with
+        // sa_enable_relationship_tables.
+        {
+            type: 'genre-overview',
+            // No "🗂 Sidebar as tables" here: a genre's sidebar has no facts
+            // list (#sidebar dl.properties), so _sbTablesButtons() never
+            // offers it and nothing keeps the page type alive while the
+            // relationship tables are off.
+            match: (path) => Lib.settings.sa_enable_relationship_tables !== false &&
+                path.match(/^\/genre\/[a-f0-9-]{36}\/?$/),
+            buttons: [ { label: 'Show all Relationships for Genre', shortLabel: 'Relationships',
+                         showIf: () => Lib.settings.sa_enable_relationship_tables !== false } ],
+            features: _relTablesFeatures({ ownLabel: 'Genre' }),
+            tableMode: 'multi',
             non_paginated: true
         },
         // Top CD stubs (/cdstub/browse) — native <h1> ("Top CD stubs"), no
@@ -52170,8 +52193,10 @@
      * hosts, or users keep the old fields for `sa_pop_mb_ttl_hours`.
      * 3: an edit's entities include a link whose MBID has uppercase letters
      * (`_MB_POP_PATH_RE`), lowercased.
+     * 4: an edit's entities and a collection's rows include genres
+     * (`_MB_POP_PATH_RE` knows `genre`, 2026-10-26).
      */
-    const _MB_POP_PAGE_VERSION = 3;
+    const _MB_POP_PAGE_VERSION = 4;
 
     /**
      * Each entity card's Web Service answer, by cache key
@@ -52325,6 +52350,9 @@
      * the entity's tabs are not one. `url` (U2) is the "[info]" link beside
      * every URL relationship; `_mbParseEditPage()` reads this pattern too, so
      * an edit's entities now include URLs (`_MB_POP_PAGE_VERSION` 2).
+     * `genre` (2026-10-26) is read from its page (`_mbParseGenrePage()`);
+     * with it an edit's entities and a genre collection's rows include
+     * genres (`_MB_POP_PAGE_VERSION` 4).
      *
      * The MBID may carry uppercase letters: editors type them into setlists
      * (`[E497263c-…-Dca99482962c|The Fever]`, event 26cead1c-…), MusicBrainz
@@ -52335,7 +52363,7 @@
      * The entity type stays lowercase only — MusicBrainz's paths are.
      * @type {RegExp}
      */
-    const _MB_POP_PATH_RE = /^\/(artist|release-group|release|recording|work|label|event|place|area|series|instrument|collection|url)\/([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})\/?$/;
+    const _MB_POP_PATH_RE = /^\/(artist|release-group|release|recording|work|label|event|place|area|series|instrument|genre|collection|url)\/([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})\/?$/;
 
     /**
      * The page of a code a link may preview: an ISRC, an ISWC, a disc ID.
@@ -52378,14 +52406,15 @@
     /**
      * An editing history (org/mb-edit-history.org, 2026-10-20): an entity's
      * `/<kind>/<MBID>/edits` (every MBID kind but a collection, which is not
-     * edited through edits: "Found 0 edits", probed 2026-10-20) or an
+     * edited through edits: "Found 0 edits", probed 2026-10-20; a genre's
+     * since 2026-10-26, its sidebar links both lists) or an
      * editor's `/user/<name>/edits`. Its kind is `edits`, its id
      * `<kind>/<MBID>` or `user/<name>` (the name percent-encoded as in the
      * link, as the `user` kind's id). The MBID is lowercased, as for
      * `_MB_POP_PATH_RE`.
      * @type {RegExp}
      */
-    const _MB_POP_EDITS_RE = /^\/(?:(artist|release-group|release|recording|work|label|event|place|area|series|instrument|url)\/([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})|user\/([^/]+))\/edits\/?$/;
+    const _MB_POP_EDITS_RE = /^\/(?:(artist|release-group|release|recording|work|label|event|place|area|series|instrument|genre|url)\/([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})|user\/([^/]+))\/edits\/?$/;
 
     /**
      * An editor's other edit lists (2026-10-21), the links of a profile's
@@ -52400,7 +52429,7 @@
      * lowercases the MBID and drops a trailing slash.
      * @type {RegExp}
      */
-    const _MB_POP_EDITLIST_RE = /^\/(?:user\/[^/]+\/(?:edits\/(?:open|accepted|autoedits|applied|rejected|failed|cancelled)|votes)|(?:artist|release-group|release|recording|work|label|event|place|area|series|instrument|url)\/[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\/open_edits\/?)$/;
+    const _MB_POP_EDITLIST_RE = /^\/(?:user\/[^/]+\/(?:edits\/(?:open|accepted|autoedits|applied|rejected|failed|cancelled)|votes)|(?:artist|release-group|release|recording|work|label|event|place|area|series|instrument|genre|url)\/[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\/open_edits\/?)$/;
 
     /**
      * An entity's annotation history (`/<kind>/<MBID>/annotations`, kind
@@ -52432,12 +52461,13 @@
      * An entity's own list pages linked from its sidebar (2026-10-22):
      * "Subscribers" (`/<kind>/<MBID>/subscribers`, kind `subscribers`, as an
      * editor's) and "Found in N user collections" (`/<kind>/<MBID>/collections`,
-     * kind `collections`). The id is `<kind>/<MBID>`, the MBID lowercased.
+     * kind `collections`; a genre's since 2026-10-26, debug/genre-initial.html).
+     * The id is `<kind>/<MBID>`, the MBID lowercased.
      * Which kinds have which page: `_MB_POP_SUBSCRIBABLE`, and every kind
      * here but a collection has a collections page.
      * @type {RegExp}
      */
-    const _MB_POP_ENTITY_LIST_RE = /^\/(area|artist|collection|event|instrument|label|place|recording|release|release-group|series|work)\/([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})\/(subscribers|collections)\/?$/;
+    const _MB_POP_ENTITY_LIST_RE = /^\/(area|artist|collection|event|genre|instrument|label|place|recording|release|release-group|series|work)\/([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})\/(subscribers|collections)\/?$/;
 
     /** The entity kinds an editor can subscribe to (a subscribers page). */
     const _MB_POP_SUBSCRIBABLE = new Set(['artist', 'label', 'series', 'collection']);
@@ -54914,6 +54944,110 @@
     }
 
     /**
+     * A genre's page (`/genre/<MBID>`, 2026-10-26) as a record for its card
+     * and window. Read from the page rather than from the Web Service's
+     * genre lookup: the page carries what the lookup cannot (the primary
+     * tag, the Wikipedia extract, how many collections hold it), and the
+     * lookup could not be probed from the session that wrote this (the
+     * container had no route to musicbrainz.org; scripts/probe-mb-genre-lookup.py
+     * is there to check it). Its #content (debug/genre-initial.html, roots
+     * rock; tests/fixtures/rel-genre-overview.html): `.genreheader h1 a` (the
+     * name, a `span.comment` its disambiguation); under h2 "Associated
+     * tags" a `table.details` ("Primary tag:" → `/tag/<name>`); the
+     * Wikipedia extract (`.wikipedia-extract-body`, its "Continue reading"
+     * link); `div.annotation`; under `h2.relationships` one or more
+     * `table.details`, one `<th>phrase:</th><td>links<br>…</td>` per
+     * relationship type (genres, then "other databases", "Wikidata", … as
+     * URLs, each URL followed by an "[info]" link to its `/url/` page).
+     * The sidebar's "Found in N user collections" and "Last updated".
+     * Text only, so it can be kept. `null` when the page is not a genre's.
+     *
+     * @param {Document} doc
+     * @returns {?{id: string, name: string, comment: string, tags: Array<Array<string>>,
+     *   wiki: string, wikiUrl: string, annotation: string, collections: string, updated: string,
+     *   rels: Array<{phrase: string, items: Array<{type: string, id: string, name: string, href: string}>}>}}
+     */
+    function _mbParseGenrePage(doc) {
+        const content = doc.getElementById('content');
+        const a = content && content.querySelector('.genreheader h1 a[href^="/genre/"]');
+        const name = _mbPopText(a && (a.querySelector('bdi') || a));
+        if (!name) return null;
+        const m = _MB_POP_PATH_RE.exec(a.getAttribute('href') || '');
+        const h2Of = (el) => {
+            let p = el.previousElementSibling;
+            while (p && p.tagName !== 'H2') p = p.previousElementSibling;
+            return p;
+        };
+        const tables = Array.from(content.querySelectorAll(':scope > table.details'));
+        const tags = [];
+        const rels = [];
+        tables.forEach((t) => {
+            const h2 = h2Of(t);
+            const isRel = !!h2 && h2.classList.contains('relationships');
+            if (!isRel && !(h2 && /tags/i.test(_mbPopText(h2)))) return;
+            t.querySelectorAll(':scope > tbody > tr').forEach((tr) => {
+                const th = tr.querySelector(':scope > th');
+                const td = tr.querySelector(':scope > td');
+                if (!th || !td) return;
+                const phrase = _mbPopText(th).replace(/:$/, '');
+                if (!isRel) {
+                    const names = Array.from(td.querySelectorAll('a[href^="/tag/"]')).map(_mbPopText).filter(Boolean);
+                    if (names.length) tags.push([phrase, names.join(', ')]);
+                    return;
+                }
+                const items = [];
+                td.querySelectorAll('a[href]').forEach((x) => {
+                    const href = x.getAttribute('href') || '';
+                    const text = _mbPopText(x);
+                    // A URL's "[info]" link (/url/<MBID>) is the row's own, not a target.
+                    if (!text || /^\/url\//.test(href)) return;
+                    const p = _MB_POP_PATH_RE.exec(href);
+                    items.push(p ? { type: p[1], id: p[2].toLowerCase(), name: text, href: `/${p[1]}/${p[2].toLowerCase()}` }
+                        : { type: 'url', id: '', name: text, href: /^\/\//.test(href) ? `https:${href}` : href });
+                });
+                if (items.length) rels.push({ phrase, items });
+            });
+        });
+        const body = content.querySelector('.wikipedia-extract .wikipedia-extract-body');
+        const wikiA = Array.from(content.querySelectorAll('.wikipedia-extract > a[href]')).find(x => /Continue reading/i.test(_mbPopText(x)));
+        const colls = Array.from(doc.querySelectorAll('#sidebar a[href$="/collections"]'))
+            .map(x => /Found in ([\d,.]+) user collections?/.exec(_mbPopText(x))).find(Boolean);
+        return {
+            id: m ? m[2].toLowerCase() : '',
+            name,
+            comment: _mbPopText(content.querySelector('.genreheader h1 .comment')).replace(/^\((.*)\)$/, '$1'),
+            tags,
+            wiki: _mbPopText(body),
+            wikiUrl: wikiA ? wikiA.getAttribute('href') : '',
+            annotation: _mbPopText(content.querySelector(':scope > .annotation .annotation-body')),
+            collections: colls ? colls[1] : '',
+            updated: _mbPopText(doc.querySelector('#sidebar .lastupdate')).replace(/^Last updated on\s*/, ''),
+            rels,
+        };
+    }
+
+    /**
+     * A genre record's relationship rows as `_mbPopKvHtml()` rows: the
+     * phrase, and its targets linked (a genre link drills into its card in
+     * the window, Phase 5) or, in a card, as text with at most `max`
+     * names and "+N" for the rest.
+     *
+     * @param {Object} d - `_mbParseGenrePage()`'s record.
+     * @param {{links?: boolean, max?: number, urls?: boolean}} [opts] -
+     *   `urls`: the URL rows (default) or the entity rows (false).
+     * @returns {Array<Array<string>>}
+     */
+    function _mbPopGenreRelRows(d, { links = false, max = 99, urls = false } = {}) {
+        return (d.rels || []).filter(r => r.items.every(x => x.type === 'url') === urls).map((r) => {
+            const shown = r.items.slice(0, max).map(x => (links
+                ? `<a href="${_rgEsc(x.href)}" target="_blank" rel="noopener">${_rgEsc(x.name)}</a>`
+                : _rgEsc(x.name)));
+            const more = r.items.length - shown.length;
+            return [r.phrase, shown.join(links ? '<br>' : ', ') + (more > 0 ? ` +${more}` : '')];
+        });
+    }
+
+    /**
      * A tag's page (`/tag/<name>`) as a record for its card and window. The
      * Web Service has no lookup of a tag by name, only a search that answers
      * names and scores (MusicBrainz_API, checked 2026-10-19), so the page is
@@ -55941,6 +56075,9 @@
     /** Tracks a release card lists before "+ N more". */
     const _MB_POP_CARD_TRACKS = 6;
 
+    /** Characters of a genre's Wikipedia extract its card shows (cut at a word). */
+    const _MB_POP_GENRE_CARD_WIKI = 280;
+
     /**
      * The kinds the MusicBrainz entity cards know, by URL path segment: the
      * window's title (`title`), a wider card (`wide`), and how the card and
@@ -56350,6 +56487,43 @@
                         [a.locale || a.type || '—', _rgEsc(a.name)]))}</div>` +
                     `<div class="mb-dp-col"><h4>Related instruments</h4>${_mbPopKvHtml(_mbPopRelRows(d.relations, 'instrument')) ||
                     '<div class="mb-dp-xsub">None.</div>'}</div></div>`;
+            },
+        })),
+        // A genre (2026-10-26): read from its page (`_mbParseGenrePage()`),
+        // one request for card and window. Card: the primary tag, its
+        // parent genres, subgenres and influences (three names a row), the
+        // start of the Wikipedia extract. Window: the facts, the whole
+        // extract, every relationship linked (a genre drills into its own
+        // card), the external links.
+        genre: Object.assign({ title: 'Genre', wide: false }, _mbPopPageKind({
+            parse: _mbParseGenrePage,
+            cardHtml(d) {
+                const wiki = d.wiki.length > _MB_POP_GENRE_CARD_WIKI ? `${d.wiki.slice(0, _MB_POP_GENRE_CARD_WIKI).replace(/\s+\S*$/, '')} …` : d.wiki;
+                return `<div class="mb-tt-title">${_rgEsc(d.name)}` +
+                    `${d.comment ? ` <span class="mb-rg-dim">(${_rgEsc(d.comment)})</span>` : ''}</div>` +
+                    `<div class="mb-tt-body mb-rg-pills">${_mbPopPillsHtml(['Genre',
+                        d.collections ? `in ${d.collections} collection${d.collections === '1' ? '' : 's'}` : ''])}</div>` +
+                    '<div class="mb-tt-rule"></div>' +
+                    _mbPopKvHtml([...d.tags.map(([k, v]) => [k, _rgEsc(v)]), ..._mbPopGenreRelRows(d, { max: 3 })]) +
+                    (wiki ? `<div class="mb-tt-body">${_rgEsc(wiki)}</div>` : '');
+            },
+            windowHtml(d) {
+                const urls = (d.rels || []).filter(r => r.items.every(x => x.type === 'url'));
+                const left = `<div class="mb-dp-xtitle">${_rgEsc(d.name)}</div>` +
+                    (d.comment ? `<div class="mb-dp-xsub">${_rgEsc(d.comment)}</div>` : '') +
+                    `<div class="mb-rg-pills">${_mbPopPillsHtml(['Genre'])}</div>` +
+                    '<h4>Facts</h4>' + _mbPopKvHtml([
+                        ...d.tags.map(([k, v]) => [k, v.split(', ').map(n => `<a href="/tag/${_rgEsc(encodeURIComponent(n))}" target="_blank" rel="noopener">` +
+                            `${_rgEsc(n)}</a>`).join(', ')]),
+                        ['Collections', d.collections && d.id ? `<a href="/genre/${_rgEsc(d.id)}/collections" target="_blank" rel="noopener">${_rgEsc(d.collections)}</a>` : ''],
+                        ['Last updated', _rgEsc(d.updated)],
+                    ]) +
+                    (d.wiki ? `<h4>Wikipedia</h4><div class="mb-dp-section">${_rgEsc(d.wiki)}</div>` +
+                        (d.wikiUrl ? `<p><a href="${_rgEsc(d.wikiUrl)}" target="_blank" rel="noopener">Continue reading at Wikipedia</a></p>` : '') : '') +
+                    (d.annotation ? `<h4>Annotation</h4><div class="mb-dp-section">${_rgEsc(d.annotation)}</div>` : '');
+                const right = `<h4>Related genres</h4>${_mbPopKvHtml(_mbPopGenreRelRows(d, { links: true })) || '<div class="mb-dp-xsub">None.</div>'}` +
+                    (urls.length ? `<h4>Links</h4>${_mbPopKvHtml(_mbPopGenreRelRows(d, { links: true, urls: true }))}` : '');
+                return `<div class="mb-dp-x"><div class="mb-dp-col">${left}</div><div class="mb-dp-col">${right}</div></div>`;
             },
         })),
         // Card: one lookup with the line-up, the place, what the event is part
