@@ -206,7 +206,6 @@ kbd { font: 11px var(--mono); border: 1px solid var(--rule); border-bottom-width
 
 /* H2 — the links say what a click does, at rest. */
 .mark a.drill { text-decoration: underline dotted #0b5394 1px; text-underline-offset: 2px; }
-.mark a.drill:hover::after { content: ' ↳'; color: var(--muted); font-size: .85em; }
 .mark a.newtab::after { content: ' ↗'; font-size: .8em; color: var(--muted); }
 .mark .gallery figure:hover img, .mark .xcover:hover { box-shadow: 0 0 0 2px #2f5f9e; }
 .mark a.ready::before { content: ''; display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--ok); margin-right: 4px; vertical-align: 1px; }
@@ -337,7 +336,7 @@ kbd { font: 11px var(--mono); border: 1px solid var(--rule); border-bottom-width
             <p>The window's foot line says what the hovered thing is and what a click will do: "Opens here: Label · Columbia", "New tab: musicbrainz.org/…", "Viewer: Back · image 2 of 8". Like a browser's status bar, but in words. With nothing hovered it shows the window's keys.</p>
             <dl><dt>Cost</dt><dd>None: read from the link and the record already shown.</dd><dt>Rules</dt><dd>Keyboard focus counts as hover (Tab through the links).</dd></dl></div>
         <div class="card"><div class="top"><span class="id">H2</span><h3>Marked links</h3><span class="v rec">recommended</span></div>
-            <p>Before any hover, a link that opens here has a dotted underline (↳ on hover), one that leaves the page ↗, an image a ring and a zoom pointer. A link whose record is already read has a small green dot (with H5).</p>
+            <p>Before any hover, a link that opens here has a dotted underline, one that leaves the page ↗, an image a ring and a zoom pointer. A link whose record is already read has a small green dot (with H5).</p>
             <dl><dt>Cost</dt><dd>CSS only.</dd><dt>Rules</dt><dd>Classes set when the window's HTML is built, never in a table.</dd></dl></div>
         <div class="card"><div class="top"><span class="id">H3</span><h3>Card in the window</h3><span class="v rec">recommended</span></div>
             <p>A link that opens here gets the same card as on the page, beside the link, above the window: from memory when it was read before, "Loading…" otherwise. <kbd>Space</kbd> on it opens it here, like a click; on the page Space pins a card into the window, so the key means the same thing.</p>
