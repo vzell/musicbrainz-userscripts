@@ -27418,6 +27418,10 @@
             .mb-dp-dialog .mb-dg-vt th[aria-sort="ascending"]::after { content: " \\25B2"; }
             .mb-dp-dialog .mb-dg-vt th[aria-sort="descending"]::after { content: " \\25BC"; }
             .mb-dp-dialog .mb-dg-vt th[aria-sort="none"]::after { content: " \\21C5"; opacity: 0.35; }
+            /* The glyph in a fixed box: the initial-order arrow is often drawn from a
+               fallback font that arrives a moment later, and a header that grew then
+               moved the rows under the pointer (2026-10-26). */
+            .mb-dp-dialog .mb-dg-vt th[aria-sort]::after { display: inline-block; width: 1.4em; line-height: 1; text-align: center; }
             .mb-dp-dialog .mb-dg-vt th[aria-sort="none"]:hover::after { opacity: 0.8; }
             .mb-dp-dialog .mb-dg-vt td { padding: 4px 8px; border-bottom: 1px solid #f0eadf; vertical-align: middle; }
             .mb-dp-dialog .mb-dg-vt tbody tr { cursor: pointer; }
@@ -27571,7 +27575,10 @@
             .mb-dp-dialog .mb-rg-wtable th button {
                 border: 0; background: none; padding: 0; font: inherit; color: inherit; cursor: pointer;
             }
-            .mb-dp-dialog .mb-rg-wtable th button::after { content: " \\21C5"; opacity: 0.35; font-style: normal; }
+            .mb-dp-dialog .mb-rg-wtable th button::after {
+                content: " \\21C5"; opacity: 0.35; font-style: normal;
+                display: inline-block; width: 1.4em; line-height: 1; text-align: center;
+            }
             .mb-dp-dialog .mb-rg-wtable th[aria-sort="ascending"] button::after { content: " \\25B2"; opacity: 0.9; }
             .mb-dp-dialog .mb-rg-wtable th[aria-sort="descending"] button::after { content: " \\25BC"; opacity: 0.9; }
             .mb-dp-dialog .mb-rg-wtable tr.mb-rg-cur td { background: #f1e8d5; font-weight: 700; }

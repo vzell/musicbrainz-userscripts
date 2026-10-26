@@ -121,6 +121,19 @@ Done 2026-10-26 (cloud session, WIP.1 in =ShowAllEntityData_CHANGELOG.wip.json=)
 Note for later specs: the tooltip engine parks the =title= of the element under the pointer
 while its card shows, so assert a tip on a header the pointer is NOT on.
 
+Follow-up the same day: ⇅ comes from a fallback font that arrives late, so the header grew
+and the release-group window's covers test flaked about 1 in 5 (24/24 on the base). The glyph
+now sits in a fixed 1.4 em box (=.mb-dg-vt th[aria-sort]::after=,
+=.mb-rg-wtable th button::after=); see =DEBUG-NOTES.md= 2026-10-26 "the ⇅ sort glyph". Rule
+for Phases 2–4: any symbol outside the basic fonts (entity icons, ★, ⇅ …) in a row or header a
+pointer rests on gets a fixed box.
+
+=npm test= in the cloud container (2026-10-26T20:58+01:00 → 22:40, =vm=, 2,352 tests, 2
+workers): 2,274 passed, 78 failed. 60 are =net::ERR_TUNNEL_CONNECTION_FAILED= (specs that open
+real musicbrainz.org pages; the container's proxy refuses). 17 others failed serially too; 16
+fail identically on the base (=fdd3ac24= worktree), the 17th was the glyph flake above. So: no
+regression left from Phase 1 in this container; run =npm run test:full= locally before merging.
+
 Pre-existing, not caused by this work: =popup-ext.spec.js= "Wikipedia: one REST summary … a
 missing title" fails at line 1032 (no =upload.wikimedia.org= image) on the unchanged base too
 (cloud container, 2026-10-26). Re-check locally.

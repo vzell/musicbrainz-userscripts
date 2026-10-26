@@ -1663,7 +1663,15 @@ test.describe('the Discogs artist and label windows (2026-10-18)', () => {
         const have = onRel.locator('th[data-mb-dg-asort="have"]');
         await expect(onRel.locator('tbody > tr').first()).toContainText('Love, Love, Love');
         await expect(have).toHaveAttribute('aria-sort', 'none');
-        expect(await have.evaluate(th => getComputedStyle(th, '::after').content)).toContain('⇅');
+        // The glyph in a fixed box, so a fallback font drawing ⇅ later
+        // cannot widen the header and move the rows (release-rg-popup, 2026-10-26).
+        const glyph = await have.evaluate((th) => {
+            const cs = getComputedStyle(th, '::after');
+            return { content: cs.content, display: cs.display, width: parseFloat(cs.width), em: parseFloat(cs.fontSize) };
+        });
+        expect(glyph.content).toContain('⇅');
+        expect(glyph.display).toBe('inline-block');
+        expect(glyph.width).toBeCloseTo(glyph.em * 1.4, 1);
         await have.click();
         await expect(have).toHaveAttribute('aria-sort', 'descending');
         await expect(onRel.locator('tbody > tr').first()).toContainText('Born In The U.S.A.');

@@ -78,6 +78,32 @@
         "expect": "fail"
     },
     {
+        "name": "sort initial state: the glyph's box not fixed in the release-group window",
+        "why": "⇅ often comes from a fallback font that arrives later; without a fixed box the header grows and the rows move under the pointer (the covers test flaked about 1 in 5).",
+        "edits": [
+            {
+                "find": "                display: inline-block; width: 1.4em; line-height: 1; text-align: center;\n            }\n",
+                "replace": "            }\n"
+            }
+        ],
+        "spec": "tests/fixtures/release-rg-popup.spec.js",
+        "grep": "the window sorts by a header",
+        "expect": "fail"
+    },
+    {
+        "name": "sort initial state: the glyph's box not fixed in the Discogs tables",
+        "why": "Same reflow risk in the Discogs window tables.",
+        "edits": [
+            {
+                "find": "            .mb-dp-dialog .mb-dg-vt th[aria-sort]::after { display: inline-block; width: 1.4em; line-height: 1; text-align: center; }\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "an artist's tables",
+        "expect": "fail"
+    },
+    {
         "name": "sort initial state: the sublabels' explicit no-sort guard",
         "why": "Recorded overlap: with dir 0 the comparator returns 0 and Array.prototype.sort is stable, so Discogs' order survives without the guard; the guard states the intent.",
         "edits": [

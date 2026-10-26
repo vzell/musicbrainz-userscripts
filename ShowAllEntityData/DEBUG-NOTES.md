@@ -26344,3 +26344,32 @@ absolute href as MusicBrainz's (title from the tip). Cells built or saved
 before this keep their relative hrefs and still preview.
 Specs: `rel-icons.spec.js` "a \"single from\" release group icon …";
 `popup-mb.spec.js` "what is previewed" now expects the icon to resolve.
+
+## 2026-10-26 — window tables: the ⇅ sort glyph made the release-group window's covers test flaky (branch claude/keen-planck-t1lm8l, WIP.1)
+
+Env: 2026-10-26T23:45+01:00 · vm (Claude Code cloud container) · Ubuntu 24.04.5 LTS (Linux 6.18.44) · Playwright 1.63.0 bundled Chromium · no Tampermonkey (GM stubs)
+
+Symptom: after the third sort state (Phase 1 of `org/MB-POH-sync-withDiscogs.org`),
+`release-rg-popup.spec.js` "the window's covers: …" failed at line 227 (Space on a
+hovered thumbnail opened no viewer) about 1 run in 5: 3 of 16 and 2 of 8 with the
+change, 24 of 24 passes on the base (`fdd3ac24`, a worktree).
+
+Bisected by experiment, one change at a time, 16 repeats each:
+- the new header tips (`data-mb-tip title` on the header buttons) removed: still failing;
+- only the release-group window's glyph back from ⇅ (U+21C5) to ↕ (U+2195): 16/16.
+
+Cause: ⇅ is not in the window's first font, so Chromium draws it from a fallback
+font that arrives a moment after the first paint. The header `::after` then grows,
+the sticky header re-lays out, and the rows move under a pointer that is resting on
+a thumbnail, so the card under the pointer is no longer the one Space acts on.
+
+Fix: the glyph sits in a fixed box (`display: inline-block; width: 1.4em;
+line-height: 1; text-align: center`) on `.mb-rg-wtable th button::after` and on
+`.mb-dg-vt th[aria-sort]::after`, so the font that draws it cannot change the
+header's size. 16/16 after. Deterministic guards (the flaky test alone catches it
+only sometimes): `release-rg-popup.spec.js` "the window sorts by a header" and
+`popup-ext.spec.js` "an artist's tables" assert the box (inline-block, 1.4 em
+wide); mutation entries in `scripts/mutations/dp-sort-initial-state.json`.
+
+Rule for later glyphs in headers or other rows that a pointer rests on: a symbol
+outside the basic fonts gets a fixed box, or it can move the layout late.
