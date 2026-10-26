@@ -1,5 +1,18 @@
 [
   {
+    "version": "WIP.3",
+    "date": "2026-10-26",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "An editor's collections page with a 'Collaborative collections' section: those collections were drawn under 'My collections' with one cell too many, so from the Privacy column on every value stood under the wrong header. The page now shows one 'Collections' section: each collaborative collection joins the sub-table of its kind, and every sub-table has a Privacy column ('Private' for the editor's own collections, MusicBrainz's own value such as 'Public' for the collaborative ones).",
+          "The same page: every sub-table showed the first one's column names, so the count column read 'Artists' everywhere. Each sub-table now has its own (Recordings, Releases, Release groups, Series)."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.2",
     "date": "2026-10-26",
     "sections": [

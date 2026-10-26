@@ -2249,6 +2249,14 @@ when the profile has it, *Tags and ratings*. The counts sort as numbers, so
 *Edit Notes* list, highlights, flags) are left as they are and never copied
 into the tables.
 
+**An editor's collections** (`/user/<name>/collections`) show as one
+*Collections* section, one sub-table per kind (*Artist collections*, *Release
+collections*, …). Collections from MusicBrainz's *Collaborative collections*
+section join the sub-table of the same kind instead of a section of their own.
+Every sub-table has a **Privacy** column. The collaborative rows keep the value
+MusicBrainz shows (e.g. *Public*); the others read *Private*. Each sub-table
+keeps its own column names (*Artists*, *Recordings*, …).
+
 </details>
 
 <details>

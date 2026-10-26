@@ -29800,6 +29800,136 @@
         });
     }
 
+    /** The column `applyMergeCollaborativeCollections()` adds, and its value for a collection of the first section. */
+    const _COLL_PRIVACY_COL = 'Privacy';
+    const _COLL_PRIVACY_DEFAULT = 'Private';
+
+    /**
+     * `user-collections` (vzell, 2026-10-26): folds the "Collaborative
+     * collections" section into the first one, so the page reads as ONE
+     * section, "Collections", with one h3 table per collection type.
+     *
+     * MusicBrainz draws an editor's collections page as two h2 sections, "My
+     * collections" and "Collaborative collections", each a run of h3 +
+     * `table.tbl` pairs ("Artist collections", "Release collections", …). The
+     * collaborative tables carry one more column, "Privacy". The grouped
+     * render keys its groups on the h3 alone and copies the FIRST table's
+     * header to every group, so a collaborative table landed under "My
+     * collections" with its Privacy cell under no header and every cell from
+     * there on one column off (seen on /user/ApeKattQuest, MonkeyPython/collections).
+     *
+     * Here, before any row is read:
+     *   - every table that has no Privacy column gets one, its rows the value
+     *     `_COLL_PRIVACY_DEFAULT` ("Private"); a table that has one keeps
+     *     MusicBrainz's own value ("Public" on that page);
+     *   - each h3 table of a later section moves its rows into the
+     *     first section's table of the same h3 text, or, when there is none,
+     *     moves there whole, after the first section's last table;
+     *   - the emptied later h2s go, and the first h2 reads "Collections".
+     * So every group has the same columns, and the grouped render needs no
+     * case of its own.
+     *
+     * Runs in the same three places as `applyMoveColumnFirst()`: the live page
+     * before the fetch, each fetched page, and a Load-from-Disk. Idempotent: a
+     * page with one section only gains the Privacy column (once: a table that
+     * has it is left alone), so a second press, which finds the RENDERED
+     * tables, changes nothing. A column is matched by `data-col-name` first
+     * (a rendered header carries button glyphs), then by its trimmed text.
+     * Only rows shaped like their header (as many cells, no `colspan` > 1)
+     * gain a cell; any other row is left as it is.
+     *
+     * @param {object} def - The active merged pageDefinition object.
+     * @param {Document|Element} [docContext=document] - The live document or a
+     *   fetched page.
+     * @returns {void}
+     */
+    function applyMergeCollaborativeCollections(def, docContext = document) {
+        if (!def?.features?.mergeCollaborativeCollections) return;
+        const root = docContext.querySelector('#content') || docContext.querySelector('#page') || docContext.body || docContext;
+        const colName = (th) => th.dataset.colName || th.textContent.trim().replace(/\s+/g, ' ');
+        const headRowOf = (table) => table.querySelector(':scope > thead > tr');
+
+        // The sections: each h2 directly in `root` and the h3 + table.tbl
+        // pairs that follow it, up to the next h2.
+        const sections = [];
+        Array.from(root.children).forEach(el => {
+            if (el.tagName === 'H2') {
+                sections.push({ h2: el, pairs: [] });
+            } else if (sections.length && el.tagName === 'TABLE' && el.classList.contains('tbl')) {
+                const prev = el.previousElementSibling;
+                const h3 = prev && prev.tagName === 'H3' ? prev : null;
+                sections[sections.length - 1].pairs.push({ h3, table: el });
+            }
+        });
+        const withTables = sections.filter(s => s.pairs.length);
+        if (!withTables.length) return;
+
+        // Privacy, on every table that lacks it.
+        let added = 0;
+        withTables.forEach(s => s.pairs.forEach(({ table }) => {
+            const headRow = headRowOf(table);
+            if (!headRow) return;
+            const heads = Array.from(headRow.cells);
+            if (heads.some(th => colName(th) === _COLL_PRIVACY_COL)) return;
+            const n = heads.length;
+            const th = (table.ownerDocument || document).createElement('th');
+            th.textContent = _COLL_PRIVACY_COL;
+            headRow.appendChild(th);
+            table.querySelectorAll(':scope > tbody > tr').forEach(tr => {
+                if (tr.cells.length !== n || Array.from(tr.cells).some(c => c.colSpan > 1)) return;
+                const td = (table.ownerDocument || document).createElement('td');
+                td.textContent = _COLL_PRIVACY_DEFAULT;
+                tr.appendChild(td);
+                added++;
+            });
+        }));
+
+        // Every later section into the first, by h3 text.
+        const first = withTables[0];
+        const h3Text = (h3) => (h3 ? h3.textContent.trim().replace(/\s+/g, ' ') : '');
+        let mergedRows = 0;
+        let movedTables = 0;
+        withTables.slice(1).forEach(s => {
+            s.pairs.forEach(({ h3, table }) => {
+                const target = first.pairs.find(p => h3Text(p.h3) === h3Text(h3));
+                const targetBody = target && target.table.querySelector(':scope > tbody');
+                const body = table.querySelector(':scope > tbody');
+                if (targetBody && body) {
+                    Array.from(body.rows).forEach(tr => { targetBody.appendChild(tr); mergedRows++; });
+                    if (h3) h3.remove();
+                    table.remove();
+                } else {
+                    const last = first.pairs[first.pairs.length - 1].table;
+                    if (h3) last.after(h3);
+                    (h3 || last).after(table);
+                    first.pairs.push({ h3, table });
+                    movedTables++;
+                }
+            });
+            // The h2 goes once nothing of its own is left under it.
+            const next = s.h2.nextElementSibling;
+            if (!next || next.tagName === 'H2') s.h2.remove();
+        });
+        // Each table's own column names, so each group renders its own header
+        // ("Recordings", "Series", …) instead of a copy of the first table's
+        // ("Artists"): the fetch loop reads `data-mb-col-headers` into
+        // `group.colHeaders`.
+        first.pairs.forEach(({ table }) => {
+            const headRow = headRowOf(table);
+            if (headRow && !table.dataset.mbColHeaders) {
+                table.dataset.mbColHeaders = JSON.stringify(Array.from(headRow.cells).map(colName));
+            }
+        });
+        if (withTables.length > 1) {
+            const textNode = Array.from(first.h2.childNodes).find(nd => nd.nodeType === 3 && nd.textContent.trim());
+            if (textNode) textNode.textContent = 'Collections';
+            else if (!first.h2.children.length) first.h2.textContent = 'Collections';
+        }
+        Lib.debug('parse', `applyMergeCollaborativeCollections: ${withTables.length} section(s), ` +
+            `"${_COLL_PRIVACY_COL}" added to ${added} row(s), ${mergedRows} row(s) merged, ${movedTables} table(s) moved` +
+            (docContext === document ? ' (live page)' : ' (fetched page)'));
+    }
+
     /**
      * Clicks the "Show all tags." anchor on entity tag pages so that hidden
      * tags (score ≤ 0, downvoted) are exposed in the `<ul>` lists before the
@@ -37625,7 +37755,11 @@
                 // collections").  groupByH3 tells the fetch loop to iterate all tables
                 // in tablesToProcess and walk backwards for each table's <h3> label
                 // instead of using the single-table generic else-branch.
-                groupByH3: true
+                groupByH3: true,
+                // "Collaborative collections" folded into the first section by
+                // h3, every table with a Privacy column, the h2 "Collections"
+                // (applyMergeCollaborativeCollections(), vzell 2026-10-26).
+                mergeCollaborativeCollections: true
             }
         },
         {
@@ -98179,6 +98313,12 @@ a { color: #1565c0; }`;
         if (activeDefinition.features?.moveColumnFirst) {
             applyMoveColumnFirst(activeDefinition);
         }
+        // 'user-collections': the collaborative section folded into the
+        // first, every table with a Privacy column (see
+        // applyMergeCollaborativeCollections()).
+        if (activeDefinition.features?.mergeCollaborativeCollections) {
+            applyMergeCollaborativeCollections(activeDefinition);
+        }
 
         // Clear existing highlights immediately from DOM for visual feedback
         document.querySelectorAll('.mb-global-filter-highlight, .mb-column-filter-highlight').forEach(n => {
@@ -98705,6 +98845,9 @@ a { color: #1565c0; }`;
                 // Last, so a converter's freshly built table is reordered too.
                 if (doc !== document && activeDefinition.features?.moveColumnFirst) {
                     applyMoveColumnFirst(activeDefinition, doc);
+                }
+                if (doc !== document && activeDefinition.features?.mergeCollaborativeCollections) {
+                    applyMergeCollaborativeCollections(activeDefinition, doc);
                 }
 
                 // Use parseDocumentForTables to filter which tables we actually process
@@ -128896,6 +129039,11 @@ a { color: #1565c0; }`;
             // has its own column order again.
             if (activeDefinition.features?.moveColumnFirst) {
                 applyMoveColumnFirst(activeDefinition);
+            }
+            // And 'user-collections': the reloaded page has its two native
+            // sections again.
+            if (activeDefinition.features?.mergeCollaborativeCollections) {
+                applyMergeCollaborativeCollections(activeDefinition);
             }
 
             // Restore table headers if they were saved

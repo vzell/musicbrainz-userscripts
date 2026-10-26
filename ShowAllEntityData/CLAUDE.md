@@ -232,6 +232,11 @@ shape:
                                       // the intro <p> gets its count (finalCleanup())
         foldAnonymousSubscribers: true, // editor/<entity>-subscribers: same for "Plus N
                                       // other anonymous users" (finalCleanup())
+        mergeCollaborativeCollections: true, // user-collections: later h2 sections folded
+                                      // into the first by h3, a Privacy column on every
+                                      // table, per-table data-mb-col-headers
+                                      // (applyMergeCollaborativeCollections(); live,
+                                      // fetched and disk-load docs)
 
         // Column pipeline:
         columnExtractors: [ { extractor: 'name', sourceColumn: 'Col', syntheticColumns: ['A','B'] } ],
