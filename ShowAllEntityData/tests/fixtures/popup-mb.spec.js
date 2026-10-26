@@ -2460,6 +2460,31 @@ test.describe('MusicBrainz link previews: hovering inside the window (org/dp-win
         await expect(foot(page)).toContainText('Rest on a link or an image');
     });
 
+    test('H2: a link that opens here gets no glyph on hover, so it never changes width', async ({ page }) => {
+        // Pins: hovering a `mb-dp-l-here` link adds no generated content, so
+        // its width (and an auto-sized table column holding it) stays put.
+        // A hover-only ↳ made the LABEL-CAT# column of a release group's
+        // versions jump sideways and back. The ↗ of a new-tab link stays.
+        await releaseWindow(page);
+        const here = label(page);
+        await expect(here).toHaveClass(/\bmb-dp-l-here\b/);
+        await page.mouse.move(0, 0);
+        const before = await here.evaluate(a => a.getBoundingClientRect().width);
+        await rest(page, here);
+        await expect(foot(page)).toContainText('Opens here: ');
+        const hovered = await here.evaluate(a => ({
+            after: getComputedStyle(a, '::after').content,
+            width: a.getBoundingClientRect().width,
+        }));
+        expect(['none', 'normal']).toContain(hovered.after);
+        expect(hovered.width).toBe(before);
+        await area(page).locator('a[href^="/artist/"]').first().click();
+        await expect(title(page)).toHaveText(/Release › Artist$/);
+        const out = area(page).locator('a.mb-dp-l-out:not(.mb-dp-l-noglyph)').first();
+        await expect(out).toBeVisible();
+        expect(await out.evaluate(a => getComputedStyle(a, '::after').content)).toContain('↗');
+    });
+
     test('H3: a link that opens here gets its card under the page\'s Ctrl rule; Space opens it here', async ({ page }) => {
         const log = await releaseWindow(page);
         // The page's rule (sa_dp_hover_without_ctrl off in fixtures): a plain hover shows nothing.

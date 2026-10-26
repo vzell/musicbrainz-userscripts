@@ -26281,3 +26281,23 @@ from the page" (4). Mutations `scripts/mutations/genre.json`: 5, all fail as
 expected. Not checked live: the user's three example pages (collections list,
 a genre collection, `/tag/roots%20rock`) in a real browser; a genre
 collection page has no fixture, so its card's genre rows are untested.
+
+## 2026-10-26 — popup window: LABEL-CAT# value "pumps" on hover (hover-only ↳)
+
+Env: 2026-10-26T03:19:12+01:00 · vm (cloud session) · Ubuntu 24.04.5 LTS (Linux 6.18.44-fc-v153) · Playwright Chromium, no Tampermonkey (GM stubs) · user report: Brave, version unknown
+
+Symptom (user video + `mb-RG-popup.html`, a release group's versions window
+opened from a release page): resting on a label in the LABEL-CAT# column made
+the value and the column header slide left and back.
+
+Root cause: `.mb-dp-area a.mb-dp-l-here:hover::after { content: " \21B3" }`
+(H2 marks). Generated content that exists only on `:hover` widens the link, the
+cell, and so the auto-sized column; every row's value and the header move. The
+glyph only repeated what the dotted underline and the foot line ("↳ Opens
+here: …") already say, so the rule is removed rather than reserved space for.
+The ↗ of `mb-dp-l-out` is static (always there), so it never reflows.
+
+Spec: `popup-mb.spec.js` "H2: a link that opens here gets no glyph on hover, so
+it never changes width" (::after is none, width equal before/after hover, ↗
+kept). Mutation-checked by restoring the rule: fails. Unrelated: popup-ext
+"Wikipedia: one REST summary …" fails identically on `main` at the same SHA.

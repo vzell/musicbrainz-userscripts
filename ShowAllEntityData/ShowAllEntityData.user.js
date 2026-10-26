@@ -24346,7 +24346,10 @@
      * `mb-dp-l-here`, `mb-dp-l-out` (`mb-dp-l-noglyph` when its text already
      * says ↗), `mb-dp-l-img` — and, with read-ahead on, `mb-dp-l-read` on a
      * link whose record is in memory. Classes only (CSS draws the rest), on
-     * the window's own markup, never in a table.
+     * the window's own markup, never in a table. A link that opens here is
+     * marked by its dotted underline alone: no glyph on hover, since inline
+     * content added on hover widens the link and reflows an auto-sized
+     * table column (the foot line says ↳ instead).
      *
      * @returns {void}
      */
@@ -26831,7 +26834,6 @@
             .mb-dp-dialog .mb-dp-wfoot-t b { color: #2b2622; font-weight: 600; }
             .mb-dp-dialog .mb-dp-wfoot-k { flex: none; margin-left: auto; white-space: nowrap; }
             .mb-dp-dialog .mb-dp-area a.mb-dp-l-here { text-decoration: underline dotted; text-underline-offset: 2px; }
-            .mb-dp-dialog .mb-dp-area a.mb-dp-l-here:hover::after { content: " \\21B3"; color: #7a6d5c; font-size: 0.85em; }
             .mb-dp-dialog .mb-dp-area a.mb-dp-l-out:not(.mb-dp-l-noglyph)::after { content: " \\2197"; color: #7a6d5c; font-size: 0.8em; }
             .mb-dp-dialog .mb-dp-area a.mb-dp-l-img { cursor: zoom-in; }
             .mb-dp-dialog .mb-dp-area a.mb-dp-l-img:hover img { box-shadow: 0 0 0 2px #2f5f9e; }

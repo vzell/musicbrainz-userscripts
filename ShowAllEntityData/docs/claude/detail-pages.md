@@ -1477,7 +1477,9 @@ https://claude.ai/artifact/APF35bPAyvFZvKjFHGHrZU
   `-noglyph` (its text already says ↗) / `-img` / `-read` (only with H5 on),
   laid by a MutationObserver on the scroll area, one pass a frame: every
   repaint path (`innerHTML`, `_dpAreaRepaint()`, a section's own toggles) is
-  covered without a hook. CSS draws the rest.
+  covered without a hook. CSS draws the rest. Never generated content that
+  appears only on `:hover`: it widens the link and reflows an auto-sized
+  table column (the ↳ on `-here` did, until WIP.1 removed it).
 - **H3 card**: the target is the drill target itself (`drilled: true`), so
   its source's card, `_mbPopWanted()` and the page's Ctrl rule
   (`needsCtrl()`, decision 2) apply unchanged, and so does "a host never
