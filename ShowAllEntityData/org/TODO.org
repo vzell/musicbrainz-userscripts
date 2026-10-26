@@ -4725,7 +4725,6 @@ I want:
 [class="discogs-favicon"][master icon] Discogs master > [artist icon] Discogs artist
 [class="MB-artist-icon"] Artist > Editing history > [artistrelease icon] Release
 
-
 * TODO the site icons should get a POH too with a site description (maybe wikipedia)
 
 
@@ -4943,8 +4942,14 @@ https://musicbrainz.org/release/22a6802f-d22e-4f47-9f22-6aac257a4194 with our as
 
 * TODO make the non-MB site settings currently "false", default "true"
 
-make the non-MB site settings currently "false", default "true"
+Make all the non-MB site settings which are currently "false" default "true", except
 
+#+begin_example
+Show the Brucebase side bar on the right
+and all the booleans which deal with "touch devices"
+#+end_example
+
+These should still be false by default
 
 * DONE sidebar image hover for CAA images only working when hovering below the image in the description
 

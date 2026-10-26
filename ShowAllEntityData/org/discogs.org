@@ -118,11 +118,48 @@ make some nice rich HTML based mockups before implementing
 
 1.)
 
-swap
+swap left/right also on the following Discogs pages
 
 #+begin_example
-
+Discogs searches - https://www.discogs.com/search/?q=Peach%20Pit&type=artist - the "RESULTS" section should go on the right side, 
+Discogs user - https://www.discogs.com/user/brownjai - the "RECENT ACTIVITY section should go on the right side, "LINK" and "DISCOGS SAYS" on the left
 #+end_example
+
+2.)
+
+On the submissions page, the artist column dosn't have a header and the artist link itlsef is not hoverable
+
+#+begin_example
+discogs-submissions-artist-bug.html - IP - https://www.discogs.com/submissions?mode=list&id=599283&view=flat
+#+end_example
+
+3.)
+
+When filtering inside a POH with a filter field like e.g.
+
+#+begin_example
+<div class="mb-dg-vtools"><input type="search" class="mb-dg-vq" value="" data-mb-keep-focus="dg-vq" placeholder="Filter versions: title, label, cat#, country, year" aria-label="Filter versions"></div>
+#+end_example
+
+the filterstring in the resulting filtered rows should be highlighted
+
+4.)
+
+On a Discogs artist, master and label IP the image before a
+
+a.)
+
+#+begin_example
+master or release name - for discogs artist pages
+release name - for discogs master pages
+artist and master or release name - for discogs label pages 
+#+end_example
+
+should get our standard image handling by displaying images initally in a snmall popup (+ full "Space" handling)
+
+b.)
+
+remove the native Discogs artist popup text box tooltip on Discogs label pages when on the IP
 
 
 * TODO overwhole of the Discogs release track rendering in the popup viewer
@@ -133,7 +170,7 @@ overwhole of the Discogs release track rendering in the popup viewer
 https://www.discogs.com/release/31003849-Bruce-Springsteen-The-E-Street-Band-Travel-In-Fear - release with subsection header in a tracklist
 https://www.discogs.com/release/15993782-Bruce-Springsteen-Tunnel-Of-Love - no track credits
 https://www.discogs.com/release/30198722-MGV-Drabenderh%C3%B6he-120-Jahre-M%C3%A4nnergesangverein-Drabenderh%C3%B6he - some track credits
-#+end_examplef-
+#+end_example
 
 
 * TODO when filtering on Discogs detail popups, the filter string should get highlighted
