@@ -33,22 +33,22 @@ Discogs artist / master / label windows (the target look).
 |------------+--------------------------------------------+------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | 2026-10-26 | Release tracklist with several mediums     | One collapsible Discogs-style table per medium, header "CD 2 · 8 tracks · 52:09", one shared filter above all mediums                                            |
 | 2026-10-26 | Glyph of the "Initial sort" state          | ⇅ (U+21C5), dimmed, on every sortable header that is in initial order; ▲/▼ replace it when active. One click cycle on every table: initial → ▲ → ▼ → initial |
+| 2026-10-26 | Mockup                                     | Approved as published (version 1)                                                                                                                                |
+| 2026-10-26 | Ctrl+click on a genre / tag link           | Opens your own tag (=/user/<me>/tag/<genre>=) inside the window; middle-click and Shift+click still open a new tab; the foot line says so                       |
+| 2026-10-26 | Image history from musicbrainz.org         | API fallback: position, type, W × H, size; Uploaded by and Date read "only on discogs.com"                                                                       |
+| 2026-10-26 | Annotation version                         | Unchanged                                                                                                                                                        |
+| 2026-10-26 | Documentation                              | Probe the wiki search API first; if it answers, list the hits and open =/doc/<Page>= inline; otherwise only =/doc/<Page>= links get a reader                    |
 
-** Open questions (ask together with the mockup)
+** Background of the decisions above
 
-1. *Ctrl+click on a genre link.* The prompt wants a plain click to open the tag and Ctrl+click to
-   open the editor's own tag (=/user/<me>/tag/<genre>=). Today Ctrl+click anywhere in the window
-   opens a new tab (=_dpDrill()= bails on any modifier). Proposal: on tag links only, Ctrl opens
-   your tag in the window; middle-click and Shift still open a new tab; the foot line says so.
-2. *Image history from musicbrainz.org.* =…/images/update= is an edit page and needs the Discogs
-   login. Link previews send external requests =anonymous= (detail-pages rule), so from
-   musicbrainz.org the window can only show the API's data (type, W×H) — no uploader, no date.
-   On discogs.com itself the page is same-origin and everything is there. Accept the fallback?
-3. *Annotation version.* Listed without a wish. Leave as is?
-4. *Documentation.* =/search?type=doc= is rendered client-side by Google's custom search, so
-   there is no HTML to read. Probe =wiki.musicbrainz.org/api.php?action=query&list=search= first
-   (CLAUDE.md probe rule); if it answers, the window lists the hits and opens =/doc/<Page>=
-   inline. If not: only =/doc/<Page>= links get a reader.
+1. *Ctrl+click.* Today Ctrl+click anywhere in the window opens a new tab (=_dpDrill()= bails on
+   any modifier), so tag links need their own branch before =_dpDrill()='s modifier check.
+2. *Image history.* =…/images/update= is an edit page and needs the Discogs login. Link previews
+   send external requests =anonymous= (detail-pages rule); on discogs.com the page is
+   same-origin and everything is there.
+3. *Documentation.* =/search?type=doc= is rendered client-side by Google's custom search, so
+   there is no HTML to read. Probe =wiki.musicbrainz.org/api.php?action=query&list=search=
+   (CLAUDE.md probe rule) and record the result here.
 
 ** Code map (grep the names; line numbers drift)
 
