@@ -27417,6 +27417,8 @@
             .mb-dp-dialog .mb-dg-vt th.mb-dg-nosort { cursor: default; }
             .mb-dp-dialog .mb-dg-vt th[aria-sort="ascending"]::after { content: " \\25B2"; }
             .mb-dp-dialog .mb-dg-vt th[aria-sort="descending"]::after { content: " \\25BC"; }
+            .mb-dp-dialog .mb-dg-vt th[aria-sort="none"]::after { content: " \\21C5"; opacity: 0.35; }
+            .mb-dp-dialog .mb-dg-vt th[aria-sort="none"]:hover::after { opacity: 0.8; }
             .mb-dp-dialog .mb-dg-vt td { padding: 4px 8px; border-bottom: 1px solid #f0eadf; vertical-align: middle; }
             .mb-dp-dialog .mb-dg-vt tbody tr { cursor: pointer; }
             .mb-dp-dialog .mb-dg-vt tbody tr:hover td { background: #fbf5e7; }
@@ -27569,7 +27571,7 @@
             .mb-dp-dialog .mb-rg-wtable th button {
                 border: 0; background: none; padding: 0; font: inherit; color: inherit; cursor: pointer;
             }
-            .mb-dp-dialog .mb-rg-wtable th button::after { content: " \\2195"; opacity: 0.4; font-style: normal; }
+            .mb-dp-dialog .mb-rg-wtable th button::after { content: " \\21C5"; opacity: 0.35; font-style: normal; }
             .mb-dp-dialog .mb-rg-wtable th[aria-sort="ascending"] button::after { content: " \\25B2"; opacity: 0.9; }
             .mb-dp-dialog .mb-rg-wtable th[aria-sort="descending"] button::after { content: " \\25BC"; opacity: 0.9; }
             .mb-dp-dialog .mb-rg-wtable tr.mb-rg-cur td { background: #f1e8d5; font-weight: 700; }
@@ -51980,8 +51982,9 @@
             });
         }
         const head = '<th></th>' + _RG_COLUMNS.map(c => {
-            const sort = _rgSort.key === c.key ? (_rgSort.dir > 0 ? 'ascending' : 'descending') : 'none';
-            return `<th aria-sort="${sort}"><button type="button" data-mb-rg-sort="${c.key}">${_rgEsc(c.label)}</button></th>`;
+            const attrs = _dpSortAttrs({ col: _rgSort.key, dir: _rgSort.dir }, c.key, 'this release first, then by date');
+            const sort = attrs.match(/aria-sort="(\w+)"/)[1];
+            return `<th aria-sort="${sort}"><button type="button" data-mb-rg-sort="${c.key}"${attrs.replace(/ aria-sort="\w+"/, '')}>${_rgEsc(c.label)}</button></th>`;
         }).join('');
         const rows = rels.map(r => {
             const cur = r.id === info.releaseGid;
@@ -52115,8 +52118,9 @@
         const b = e.target.closest ? e.target.closest('button[data-mb-rg-sort]') : null;
         if (!b) return;
         const key = b.dataset.mbRgSort;
-        _rgSort.dir = _rgSort.key === key ? -_rgSort.dir : 1;
-        _rgSort.key = key;
+        const next = _dpSortNext({ col: _rgSort.key, dir: _rgSort.dir }, key);
+        _rgSort.key = next.col;
+        _rgSort.dir = next.dir || 1;
         _dpRenderDialog(false);
     }
 
@@ -60637,7 +60641,7 @@
             ` The chips count all ${items}. A click on a row shows that version here.` +
             `${filtered ? ' <button type="button" class="mb-dg-btn" data-mb-dg-act="vclear">Clear filters</button>' : ''}</div>`;
         if (!shown.length) return `${head}<div class="mb-dg-vwrap"><div class="mb-dg-empty">No loaded version matches.</div></div>`;
-        const th = (col, label) => `<th data-mb-dg-sort="${col}"${ui.sort === col ? ` aria-sort="${ui.dir > 0 ? 'ascending' : 'descending'}"` : ''}>${label}</th>`;
+        const th = (col, label) => `<th data-mb-dg-sort="${col}"${_dpSortAttrs({ col: ui.sort, dir: ui.dir }, col, 'as Discogs lists them')}>${label}</th>`;
         return head + '<div class="mb-dg-vwrap" data-mb-keep-scroll="dg-versions"><table class="mb-dg-vt"><thead><tr><th class="mb-dg-nosort"></th>' +
             th('title', 'Title, format') + th('label', 'Label – Cat#') + th('country', 'Country') + th('year', 'Year') + '</tr></thead><tbody>' +
             shown.map(v => `<tr data-mb-dg-vid="${v.id}"><td>${_extDgThumbHtml(v.thumb)}</td>` +
@@ -60792,6 +60796,44 @@
     }
 
     /**
+     * The next sort of a window table after a click on a column header
+     * (org/MB-POH-sync-withDiscogs.org, Phase 1): every sortable table
+     * cycles through three states, initial order (as the site lists it)
+     * → first direction → the other one → initial order again.
+     *
+     * @param {{col: string, dir: number}} cur - The table's sort; `col` ''
+     *     or `dir` 0 is the initial order.
+     * @param {string} col - The clicked column.
+     * @param {number} [first=1] - The first direction: 1 ascending, -1
+     *     descending (a count such as Discogs' "Have" starts high).
+     * @returns {{col: string, dir: number}}
+     */
+    function _dpSortNext(cur, col, first = 1) {
+        if (!cur || !cur.dir || cur.col !== col) return { col, dir: first };
+        return cur.dir === first ? { col, dir: -first } : { col: '', dir: 0 };
+    }
+
+    /**
+     * The attributes of a sortable column header for its state: `aria-sort`
+     * (whose CSS paints ▲, ▼ or a dimmed ⇅ for the initial order) and a hover
+     * text naming what the next click does.
+     *
+     * @param {{col: string, dir: number}} cur - The table's sort (`_dpSortNext()`).
+     * @param {string} col - The header's column.
+     * @param {string} initial - What the initial order is, e.g. "as Discogs lists it".
+     * @param {number} [first=1] - The column's first direction.
+     * @returns {string} Starting with a space, ready for a start tag.
+     */
+    function _dpSortAttrs(cur, col, initial, first = 1) {
+        const word = d => (d > 0 ? 'ascending' : 'descending');
+        if (!cur || !cur.dir || cur.col !== col) {
+            return ` aria-sort="none" data-mb-tip title="${_rgEsc(`Initial order (${initial}) · click: ${word(first)}`)}"`;
+        }
+        const next = cur.dir === first ? `click: ${word(-first)}` : 'click: back to the initial order';
+        return ` aria-sort="${word(cur.dir)}" data-mb-tip title="${_rgEsc(`${word(cur.dir)[0].toUpperCase()}${word(cur.dir).slice(1)} · ${next}`)}"`;
+    }
+
+    /**
      * A facet's chosen values after a click on one of its chips (a master's
      * versions, 2026-10-26): a plain click keeps only that value, or none
      * when it was the only one; Ctrl/⌘-click adds it or takes it out.
@@ -60809,7 +60851,8 @@
     /**
      * A label's sublabels as a table (2026-10-26, mockup
      * https://claude.ai/artifact/H4b3yAWX6UvHr2ASRFAjuS): a filter, Name and
-     * Status sortable, `_EXT_DG_SUB_ROWS` a page with ‹ › (the window's
+     * Status sortable (a third click restores Discogs' order,
+     * `_dpSortNext()`), `_EXT_DG_SUB_ROWS` a page with ‹ › (the window's
      * `subq`, `subSort`, `subPage`).
      *
      * @param {Array<{name: string, id: number, active: boolean}>} list
@@ -60819,14 +60862,18 @@
     function _extDgSublabelsHtml(list, ui) {
         const q = ui.subq.trim().toLowerCase();
         const s = ui.subSort;
-        const rows = list.filter(x => !q || x.name.toLowerCase().includes(q)).sort((a, b) => (s.col === 'status'
-            ? (Number(b.active) - Number(a.active)) * s.dir || a.name.localeCompare(b.name)
-            : a.name.localeCompare(b.name, undefined, { numeric: true }) * s.dir));
+        const rows = list.filter(x => !q || x.name.toLowerCase().includes(q));
+        // No column (the third click): Discogs' own order, untouched.
+        if (s.dir) {
+            rows.sort((a, b) => (s.col === 'status'
+                ? (Number(b.active) - Number(a.active)) * s.dir || a.name.localeCompare(b.name)
+                : a.name.localeCompare(b.name, undefined, { numeric: true }) * s.dir));
+        }
         const pages = Math.max(1, Math.ceil(rows.length / _EXT_DG_SUB_ROWS));
         ui.subPage = Math.min(Math.max(0, ui.subPage), pages - 1);
         const from = ui.subPage * _EXT_DG_SUB_ROWS;
         const page = rows.slice(from, from + _EXT_DG_SUB_ROWS);
-        const th = (col, label) => `<th data-mb-dg-ssort="${col}"${s.col === col ? ` aria-sort="${s.dir > 0 ? 'ascending' : 'descending'}"` : ''}>${label}</th>`;
+        const th = (col, label) => `<th data-mb-dg-ssort="${col}"${_dpSortAttrs(s, col, 'as Discogs lists them')}>${label}</th>`;
         const filter = list.length > _EXT_DG_SUB_ROWS ? `<div class="mb-dg-vtools"><input type="search" class="mb-dg-sq" value="${_rgEsc(ui.subq)}" ` +
             'data-mb-keep-focus="dg-sq" placeholder="Filter sublabels" aria-label="Filter sublabels"></div>' : '';
         if (!page.length) return `${filter}<div class="mb-dg-vwrap"><div class="mb-dg-empty">No sublabel matches.</div></div>`;
@@ -61057,7 +61104,7 @@
         const showArtist = role !== 'Main' || rows.some(r => r.artist !== rec.title);
         const esc = _rgEsc;
         const th = (col, label, cls = '') => `<th data-mb-dg-asort="${col}" data-mb-dg-role="${esc(role)}"${cls ? ` class="${cls}"` : ''}` +
-            `${s && s.col === col ? ` aria-sort="${s.dir > 0 ? 'ascending' : 'descending'}"` : ''}>${label}</th>`;
+            `${_dpSortAttrs(s, col, 'as Discogs lists them', col === 'have' ? -1 : 1)}>${label}</th>`;
         const body = rows.slice(0, limit).map((r) => {
             const kind = r.master ? 'master' : 'release';
             const open = r.master && ui.mopen.has(r.id);
@@ -61224,7 +61271,7 @@
                 return String(x).localeCompare(String(y), undefined, { numeric: true }) * s.dir;
             });
         }
-        const th = (col, label) => `<th data-mb-dg-lsort="${col}"${s.dir && s.col === col ? ` aria-sort="${s.dir > 0 ? 'ascending' : 'descending'}"` : ''}>${label}</th>`;
+        const th = (col, label) => `<th data-mb-dg-lsort="${col}"${_dpSortAttrs(s, col, 'as Discogs lists them')}>${label}</th>`;
         let table;
         if (!done1) {
             table = `<div class="mb-dg-state"><span class="mb-dp-spin">◌</span> Asking Discogs for the first ${_EXT_DISCOGS_PER_PAGE} releases…</div>`;
@@ -61557,15 +61604,15 @@
             const role = d.mbDgRole;
             const col = d.mbDgAsort;
             const cur = ui.asort[role];
-            ui.asort[role] = cur && cur.col === col ? (cur.dir > 0 ? { col, dir: -1 } : null) : { col, dir: col === 'have' ? -1 : 1 };
+            const next = _dpSortNext(cur, col, col === 'have' ? -1 : 1);
+            ui.asort[role] = next.dir ? next : null;
         } else if (d.mbDgSsort) {
             const col = d.mbDgSsort;
-            ui.subSort = { col, dir: ui.subSort.col === col ? -ui.subSort.dir : 1 };
+            ui.subSort = _dpSortNext(ui.subSort, col);
             ui.subPage = 0;
         } else if (d.mbDgLsort) {
             const col = d.mbDgLsort;
-            const s = ui.lsort;
-            ui.lsort = s.dir && s.col === col ? (s.dir > 0 ? { col, dir: -1 } : { col: '', dir: 0 }) : { col, dir: 1 };
+            ui.lsort = _dpSortNext(ui.lsort, col);
         } else if (d.mbDgAlimit) {
             ui.alimit[d.mbDgAlimit] = (ui.alimit[d.mbDgAlimit] || _EXT_DG_ARTIST_ROWS) + _EXT_DG_MORE_ROWS;
         } else if (d.mbDgAlimitAll) {
@@ -61662,9 +61709,9 @@
         }
         const th = e.target.closest('th[data-mb-dg-sort]');
         if (th) {
-            const col = th.dataset.mbDgSort;
-            ui.dir = ui.sort === col ? -ui.dir : 1;
-            ui.sort = col;
+            const next = _dpSortNext({ col: ui.sort, dir: ui.dir }, th.dataset.mbDgSort);
+            ui.sort = next.col;
+            ui.dir = next.dir || 1;
             repaint();
             return;
         }

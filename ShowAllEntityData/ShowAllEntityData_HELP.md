@@ -1888,8 +1888,9 @@ on the first hover (a failed load is tried again on the next hover). **Esc**
 closes the card. **Space** pins it into a window you can move and resize:
 
 - **Extracted** lists *every* release of the group, read 100 at a time, in a
-  table you can sort by clicking a column header (again to reverse it). Each
-  title opens its release in a new tab; a cover shows where the Cover Art
+  table you can sort by clicking a column header (again to reverse it, a
+  third time for the window's own order: this release first, then by date).
+  Each title opens its release in a new tab; a cover shows where the Cover Art
   Archive has one. Beside it: the group's type, first release date, artist,
   rating, genres, external links and annotation.
 - **Live page** shows the release group's own page, without the site's header
@@ -2722,6 +2723,12 @@ once and without Tampermonkey asking first:
   (active or not). The card shows how many
   images there are and, once a window has read it, how big the discography
   or the label's list is.
+
+  **Sorting a table** in these windows (and a master's versions): a click on
+  a heading sorts ascending (▲; *Have* starts with the most, ▼), the
+  next click the other way, and a third click goes back to the order Discogs
+  lists them in. A heading in that initial order shows a faint ⇅, and its
+  hover text says what the next click does.
 
   On the right, an artist's **Discography** is split as on Discogs: **Releases**,
   **Appearances** (on releases, on tracks), **Unofficial** and **Credits**,

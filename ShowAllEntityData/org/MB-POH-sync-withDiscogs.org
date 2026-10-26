@@ -96,17 +96,34 @@ Found while mapping (fix in Phase 3, own regression test):
 - Probably (unconfirmed): the =catno= path builds the label key with inc =genres+aliases= while
   the label's =cardInc= is =genres+ratings+aliases=, so its "already loaded?" check never hits.
 
-** Phase 1 — "Initial sort" state on Discogs POHs  [0/4]
+** DONE Phase 1 — "Initial sort" state on Discogs POHs  [4/4]
 
-- [ ] =_extDgEntityControl()=: one cycle everywhere, initial → asc → desc → initial (=ssort=
-      gains ={col: '', dir: 0}=; sublabels keep Discogs' order when =dir= is 0).
-- [ ] Every sortable =th= not sorted carries =aria-sort="none"= and
-      =data-mb-tip title="Initial order (as Discogs lists it) · click: ascending"=.
-- [ ] CSS beside the ▲/▼ rules: =th[aria-sort="none"]::after { content: " \\21C5"; opacity: .35 }=
-      (no backtick in the =GM_addStyle= comment). Same for =_rgWindowTableHtml()='s
-      =button[data-mb-rg-sort]=.
-- [ ] Fixture spec: three clicks on Artist, Title, Name (sublabels) walk ⇅ → ▲ → ▼ → ⇅ and the
-      row order returns to Discogs' order; mutation entry.
+Done 2026-10-26 (cloud session, WIP.1 in =ShowAllEntityData_CHANGELOG.wip.json=).
+
+- [X] One cycle everywhere through two shared helpers, =_dpSortNext(cur, col, first)= and
+      =_dpSortAttrs(cur, col, initial, first)= (beside =_extDgChipPick()=): the artist
+      discography (=asort=), label releases (=lsort=), sublabels (=ssort=), a master's versions
+      (=data-mb-dg-sort=, =ui.sort= '' = Discogs' order) and the MusicBrainz release-group window
+      (=_rgSort=, key '' = this release first, then by date). Behaviour change on purpose:
+      Discogs' *Have* (first direction ▼) used to go ▼ → off; now ▼ → ▲ → off like the rest.
+- [X] Unsorted headers carry =aria-sort="none"= and =data-mb-tip title="Initial order (…) · click:
+      ascending"=; sorted ones say what the next click does. (In the release-group window the
+      title sits on the header's button, =aria-sort= stays on the =th=.)
+- [X] CSS: =.mb-dg-vt th[aria-sort="none"]::after= ⇅ at 0.35 (0.8 on hover); the
+      release-group window's ↕ (=\2195=) became ⇅.
+- [X] Specs: =popup-ext.spec.js= (versions: third click = the exact order of the four API
+      answers; artist "Have": ▼ → ▲ → ⇅ and the computed =::after= glyph; sublabels: third click
+      neither name order nor its reverse) and =release-rg-popup.spec.js= (third click: no sorted
+      header, this release first). Mutations: =scripts/mutations/dp-sort-initial-state.json=, 6
+      fail as they should, 1 recorded overlap passes (the sublabels' explicit =if (s.dir)= guard:
+      a 0 comparator plus a stable sort keeps Discogs' order anyway).
+
+Note for later specs: the tooltip engine parks the =title= of the element under the pointer
+while its card shows, so assert a tip on a header the pointer is NOT on.
+
+Pre-existing, not caused by this work: =popup-ext.spec.js= "Wikipedia: one REST summary … a
+missing title" fails at line 1032 (no =upload.wikimedia.org= image) on the unchanged base too
+(cloud container, 2026-10-26). Re-check locally.
 
 ** Phase 2 — Shared table components  [0/5]
 

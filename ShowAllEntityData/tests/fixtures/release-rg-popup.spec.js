@@ -261,6 +261,14 @@ test.describe('the release-group popup on the popup engine (org/iframe.org Phase
         expect(d.filter((x) => x !== '—')).toEqual([...dated].sort().reverse());
         expect(d[d.length - 1]).toBe('—');
         await expect(dialog(page).locator('th[aria-sort="descending"]')).toHaveText('Date');
+        // A third click: the initial order again (this release first, then
+        // by date), every header in the initial state.
+        await dialog(page).locator('button[data-mb-rg-sort="date"]').click();
+        await expect(dialog(page).locator('.mb-rg-wtable th[aria-sort="ascending"], .mb-rg-wtable th[aria-sort="descending"]')).toHaveCount(0);
+        // (A header the pointer is not on: the tooltip engine parks the
+        // hovered one's title while it shows.)
+        await expect(dialog(page).locator('button[data-mb-rg-sort="country"]')).toHaveAttribute('title', 'Initial order (this release first, then by date) · click: ascending');
+        await expect(dialog(page).locator('.mb-rg-wtable tbody tr').first()).toHaveClass(/mb-rg-cur/);
     });
 
     test('⟳ asks MusicBrainz again for every page and the facts', async ({ page }) => {

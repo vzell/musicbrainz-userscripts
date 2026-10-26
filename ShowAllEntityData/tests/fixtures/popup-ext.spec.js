@@ -1379,6 +1379,16 @@ test.describe('the Discogs window (2026-10-17)', () => {
         ys = await years();
         expect(asNum(ys), 'descending').toEqual([...asNum(ys)].sort((a, b) => b - a));
         expect(ys.slice(ys.indexOf('—')).every(y => y === '—'), 'no year: last').toBe(true);
+        // A third click: the initial order, the rows exactly as the four
+        // answers list them, and the header says so (a dimmed ⇅).
+        await vers.locator('th[data-mb-dg-sort="year"]').click();
+        await expect(vers.locator('th[data-mb-dg-sort="year"]')).toHaveAttribute('aria-sort', 'none');
+        // (The tip of a header the pointer is not on: the one under it is
+        // parked by the tooltip engine while it shows.)
+        await expect(vers.locator('th[data-mb-dg-sort="country"]')).toHaveAttribute('title', 'Initial order (as Discogs lists them) · click: ascending');
+        const discogsOrder = [1, 2, 3, 4].flatMap(p => JSON.parse(EXT(`discogs-master-versions-p${p}`).body).versions.map(v => String(v.id)));
+        const vids = () => vers.locator('tbody tr[data-mb-dg-vid]').evaluateAll(trs => trs.map(tr => tr.dataset.mbDgVid));
+        expect(await vids(), 'Discogs\' order').toEqual(discogsOrder);
         await vers.locator('th[data-mb-dg-sort="country"]').click();
         const countries = await vers.locator('tbody tr td:nth-child(4)').allTextContents();
         expect(countries.filter(Boolean), 'countries A→Z').toEqual([...countries.filter(Boolean)].sort((a, b) => a.localeCompare(b)));
@@ -1648,15 +1658,23 @@ test.describe('the Discogs artist and label windows (2026-10-18)', () => {
         await expect(onRel.locator('tbody > tr')).toHaveCount(424);
         await expect(onRel.locator('.mb-dg-morerow')).toHaveCount(0);
 
-        // Discogs' order (by year) first; "Have" sorts most first.
+        // Discogs' order (by year) first, every header in the initial state
+        // (aria-sort "none", painted as a dimmed ⇅); "Have" sorts most first.
+        const have = onRel.locator('th[data-mb-dg-asort="have"]');
         await expect(onRel.locator('tbody > tr').first()).toContainText('Love, Love, Love');
-        await onRel.locator('th[data-mb-dg-asort="have"]').click();
-        await expect(onRel.locator('th[data-mb-dg-asort="have"]')).toHaveAttribute('aria-sort', 'descending');
+        await expect(have).toHaveAttribute('aria-sort', 'none');
+        expect(await have.evaluate(th => getComputedStyle(th, '::after').content)).toContain('⇅');
+        await have.click();
+        await expect(have).toHaveAttribute('aria-sort', 'descending');
         await expect(onRel.locator('tbody > tr').first()).toContainText('Born In The U.S.A.');
         await expect(onRel.locator('tbody > tr').first().locator('td.mb-dg-num').first()).toHaveText('63,340');
-        // A second click: back to Discogs' order.
-        await onRel.locator('th[data-mb-dg-asort="have"]').click();
-        await expect(onRel.locator('th[data-mb-dg-asort="have"]')).not.toHaveAttribute('aria-sort', /./);
+        // A second click: the other direction, fewest first.
+        await have.click();
+        await expect(have).toHaveAttribute('aria-sort', 'ascending');
+        await expect(onRel.locator('tbody > tr').first()).not.toContainText('Born In The U.S.A.');
+        // A third click: back to Discogs' order.
+        await have.click();
+        await expect(have).toHaveAttribute('aria-sort', 'none');
         await expect(onRel.locator('tbody > tr').first()).toContainText('Love, Love, Love');
 
         // The Masters chip and the filter narrow every section; the counts stay what Discogs has.
@@ -1786,6 +1804,14 @@ test.describe('the Discogs artist and label windows (2026-10-18)', () => {
         await subs.locator('th[data-mb-dg-ssort="name"]').click();
         await expect(subs.locator('th[data-mb-dg-ssort="name"]')).toHaveAttribute('aria-sort', 'descending');
         await expect(subs.locator('.mb-dg-pager span')).toHaveText('1–25 of 217');
+        // A third click: Discogs' own order (not sorted by name either way).
+        await subs.locator('th[data-mb-dg-ssort="name"]').click();
+        await expect(subs.locator('th[data-mb-dg-ssort="name"]')).toHaveAttribute('aria-sort', 'none');
+        await expect(subs.locator('th[data-mb-dg-ssort="status"]')).toHaveAttribute('aria-sort', 'none');
+        const raw = await subRows.locator('td:first-child').evaluateAll(tds => tds.map(td => td.textContent));
+        const byName = [...raw].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+        expect(raw, 'Discogs\' order is not the name order').not.toEqual(byName);
+        expect(raw, 'nor its reverse').not.toEqual([...byName].reverse());
         // The filter: the field keeps its focus, page 1 of the matches.
         const sq = subs.locator('.mb-dg-sq');
         await sq.fill('Columbia');

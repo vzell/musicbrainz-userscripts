@@ -1,0 +1,16 @@
+[
+  {
+    "version": "WIP.1",
+    "date": "2026-10-26",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "Every sortable table in a Discogs window (an artist's discography, a label's releases and sublabels, a master's versions) and the release-group window's releases table now has three sort states: ascending, descending, and a third click back to the order the site gives. A heading in that initial order shows a faint ⇅ (the release-group window's ↕ became ⇅ too), and its hover text says what the next click does.",
+          "A Discogs artist's Have heading now also sorts the other way on the second click (fewest first) before returning to Discogs' order; until now its second click went straight back.",
+          "Performance: link-preview windows only; no change to the page tables' filter, sort or render path."
+        ]
+      }
+    ]
+  }
+]
