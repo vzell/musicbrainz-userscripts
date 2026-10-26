@@ -4,9 +4,23 @@ Every version, newest first, with the technical details behind each change. For 
 
 **Months:** [October 2026](ShowAllEntityData_CHANGELOG/2026-10.md) · [September 2026](ShowAllEntityData_CHANGELOG/2026-09.md) · [August 2026](ShowAllEntityData_CHANGELOG/2026-08.md) · [July 2026](ShowAllEntityData_CHANGELOG/2026-07.md) · [June 2026](ShowAllEntityData_CHANGELOG/2026-06.md) · [May 2026](ShowAllEntityData_CHANGELOG/2026-05.md) · [April 2026](ShowAllEntityData_CHANGELOG/2026-04.md) · [March 2026 (1 of 2)](ShowAllEntityData_CHANGELOG/2026-03-1.md) · [March 2026 (2 of 2)](ShowAllEntityData_CHANGELOG/2026-03-2.md) · [February 2026](ShowAllEntityData_CHANGELOG/2026-02.md) · [January 2026](ShowAllEntityData_CHANGELOG/2026-01.md)
 
-This page shows the newest 100 of 1635 versions; the month pages hold all of them.
+This page shows the newest 100 of 1636 versions; the month pages hold all of them.
 
 ---
+
+## 9.99.1465 — 2026-10-26
+
+**✨ Improve**
+
+- The Discogs search and user windows swap their sides like the other Discogs windows: the search's Results and a user's Recent activity are on the right; Link, "Discogs says" and the user's pages on Discogs are on the left.
+- Typing in a Discogs window's filter (a master's versions, a discography, a label's releases or sublabels) marks the matched text in every row it keeps, in the colours of the tables' filter highlight.
+- On a Discogs artist, master or label page, the thumbnails of Discogs' own list get our image card: a rest shows every image of that release or master (one request for that row), a click or Space opens the viewer, and Shift+← → steps through the list. "Image column: all images of a row on hover" turns the card off.
+
+**🐛 Fix**
+
+- On a Discogs submissions list (flat view), Discogs' own table gets a "Matched artist" heading on its last column, and that artist's name (linked by name, not id) now shows the card of a Discogs search for that artist.
+- On Discogs label pages, Discogs' own artist hover card no longer opens on top of our preview. It also came through the importer's icons beside the name and when the pointer moved in from a neighbouring cell.
+
 
 ## 9.99.1464 — 2026-10-26
 
@@ -839,13 +853,6 @@ This page shows the newest 100 of 1635 versions; the month pages hold all of the
 **🐛 Fix**
 
 - Preview windows, Live page: the page is trimmed to its content as soon as its text has arrived, instead of after its last picture. On a slow site the menus, header and footer used to show for as long as the pictures took, and a Brucebase date link's year page (260 pictures) was neither marked nor scrolled to the show until then. It is now scrolled to the show at once, and again once the pictures above it have pushed it down, unless you have scrolled the page yourself by then.
-
-
-## 9.99.1365 — 2026-10-17
-
-**✨ Improve**
-
-- Event pages (for example a place's Events): the card of an event image, in the big-picture strip or as an inline thumbnail, lists the line-up one artist per line, each with its role, instead of one long comma-separated paragraph.
 
 
 ---

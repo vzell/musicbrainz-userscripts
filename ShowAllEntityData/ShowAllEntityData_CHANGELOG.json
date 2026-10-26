@@ -1,5 +1,26 @@
 [
   {
+    "version": "9.99.1465",
+    "date": "2026-10-26",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "The Discogs search and user windows swap their sides like the other Discogs windows: the search's Results and a user's Recent activity are on the right; Link, \"Discogs says\" and the user's pages on Discogs are on the left.",
+          "Typing in a Discogs window's filter (a master's versions, a discography, a label's releases or sublabels) marks the matched text in every row it keeps, in the colours of the tables' filter highlight.",
+          "On a Discogs artist, master or label page, the thumbnails of Discogs' own list get our image card: a rest shows every image of that release or master (one request for that row), a click or Space opens the viewer, and Shift+← → steps through the list. \"Image column: all images of a row on hover\" turns the card off."
+        ]
+      },
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "On a Discogs submissions list (flat view), Discogs' own table gets a \"Matched artist\" heading on its last column, and that artist's name (linked by name, not id) now shows the card of a Discogs search for that artist.",
+          "On Discogs label pages, Discogs' own artist hover card no longer opens on top of our preview. It also came through the importer's icons beside the name and when the pointer moved in from a neighbouring cell."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.1464",
     "date": "2026-10-26",
     "sections": [
