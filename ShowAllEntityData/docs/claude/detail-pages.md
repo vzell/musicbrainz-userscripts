@@ -1479,7 +1479,7 @@ https://claude.ai/artifact/APF35bPAyvFZvKjFHGHrZU
   repaint path (`innerHTML`, `_dpAreaRepaint()`, a section's own toggles) is
   covered without a hook. CSS draws the rest. Never generated content that
   appears only on `:hover`: it widens the link and reflows an auto-sized
-  table column (the ↳ on `-here` did, until WIP.1 removed it).
+  table column (the ↳ on `-here` did, until 9.99.1459 removed it).
 - **H3 card**: the target is the drill target itself (`drilled: true`), so
   its source's card, `_mbPopWanted()` and the page's Ctrl rule
   (`needsCtrl()`, decision 2) apply unchanged, and so does "a host never

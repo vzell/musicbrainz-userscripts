@@ -4,9 +4,16 @@ Every version, newest first, with the technical details behind each change. For 
 
 **Months:** [October 2026](ShowAllEntityData_CHANGELOG/2026-10.md) · [September 2026](ShowAllEntityData_CHANGELOG/2026-09.md) · [August 2026](ShowAllEntityData_CHANGELOG/2026-08.md) · [July 2026](ShowAllEntityData_CHANGELOG/2026-07.md) · [June 2026](ShowAllEntityData_CHANGELOG/2026-06.md) · [May 2026](ShowAllEntityData_CHANGELOG/2026-05.md) · [April 2026](ShowAllEntityData_CHANGELOG/2026-04.md) · [March 2026 (1 of 2)](ShowAllEntityData_CHANGELOG/2026-03-1.md) · [March 2026 (2 of 2)](ShowAllEntityData_CHANGELOG/2026-03-2.md) · [February 2026](ShowAllEntityData_CHANGELOG/2026-02.md) · [January 2026](ShowAllEntityData_CHANGELOG/2026-01.md)
 
-This page shows the newest 100 of 1629 versions; the month pages hold all of them.
+This page shows the newest 100 of 1630 versions; the month pages hold all of them.
 
 ---
+
+## 9.99.1459 — 2026-10-26
+
+**🐛 Fix**
+
+- Link previews: in a preview window, pointing at a link that opens inside the window (e.g. a label in the LABEL-CAT\# column of a release group's versions) no longer makes the value and its column header jump sideways and back. The small ↳ that appeared after such a link on hover is gone: it widened the link and so the whole column. Such links keep their dotted underline, the foot line still says "↳ Opens here", and links that open a new tab keep their ↗.
+
 
 ## 9.99.1458 — 2026-10-26
 
@@ -846,14 +853,6 @@ This page shows the newest 100 of 1629 versions; the month pages hold all of the
 - Release tracklist with the "ISRC Scout" userscript (by majkinetor): its "ISRC" column now works like the "ISRCs" column. One code per line, the column collapses like the other multi-row columns, codes are shown as CC-XXX-YY-NNNNN with ⚠️ on an invalid one, and the 📊 dropdown has the ISRC Country/Registrant/Year/Designation/Validity sections and the "Invalid ISRC format" warning.
 - Release tracklist with "ISRC Scout": its "Links" column can be filtered by platform. Type a platform name ("Spotify") into its filter, or tick one in the new 📊 section "Links info - Platform" (one entry per platform, with its row count and icon); the matching icons are outlined. The number beside 📊 now counts the different platform sets instead of the "2"/"3" link-count badges.
 - Release tracklist with "ISRC Scout" and jesus2099's "SUPER MIND CONTROL": the "Links" icons no longer wrap onto a second line. SUPER MIND CONTROL adds a red new-window marker and extra space to every link that opens in a new tab; it is left off these icons, which all open an outside page anyway.
-
-
-## 9.99.1359 — 2026-10-16
-
-**✨ Improve**
-
-- Link previews: every note about the hovered link and its cell (pending edits, track name differs from recording name, no work linked, the artist's or label's sort name, …) is now stacked above the preview card, one box each, instead of covering the card or being covered by it. Neither the browser's own tooltip nor the cell's "Liner notes" card appears over the card any more; the cell's card comes back once the preview closes.
-- Link previews: the card and the Space window show MusicBrainz's own entity glyph in front of the name and in front of the kind ("Recording").
 
 
 ---
