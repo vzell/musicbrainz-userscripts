@@ -1,5 +1,53 @@
 [
   {
+    "version": "9.99.1463",
+    "date": "2026-10-26",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "New 🗄️ Script storage window (SAED menu → View, right below 💾 Browser cache, and in the Tampermonkey menu). It lists every key the script keeps in Tampermonkey's storage, with its kind (setting, workspace state, \"Show single-table\" hand-off, orphaned key, other), type, size and value. Chips and a search box narrow the list. A key's value opens as JSON: edit and Save it (invalid JSON is refused), reset a setting to its default, delete it, or copy it. Every change asks first. \"Delete leftovers\" removes the orphaned keys and old hand-offs, and \"Export JSON…\" saves every key in one file. The Discogs token is shown as dots and is never copied or exported. The window moves and resizes like the Browser cache window."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.1462",
+    "date": "2026-10-26",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "💾 Browser cache: drag the window by its title bar to move it, and drag its lower-right corner to resize it. It opens where you left it, at that size. Its contents now scroll inside the window, between the title bar and the buttons at the bottom."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.1461",
+    "date": "2026-10-26",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "Relationships column: a release group icon (\"single from\", e.g. on a tag's release groups) now gets the link preview card on hover, and the window on Space, like the column's links to other sites. The card shows the release group's title from the icon, and the icon's own box sits in its note stack. The icon's link is now a full address (https://musicbrainz.org/release-group/…). Its filter key stays the bare path, so the 📊 \"Relationship icons\" entries and the \"links to one site more than once\" warning are unchanged."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.1460",
+    "date": "2026-10-26",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Sidebar cover: hovering the cover of a release, release group or event in the sidebar shows the card of all its images again. MusicBrainz puts an image with an empty title inside the cover link, and the hover card stopped at that empty title before it reached the link. Any element with an empty title is now passed over."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.1459",
     "date": "2026-10-26",
     "sections": [

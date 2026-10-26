@@ -4,9 +4,37 @@ Every version, newest first, with the technical details behind each change. For 
 
 **Months:** [October 2026](ShowAllEntityData_CHANGELOG/2026-10.md) · [September 2026](ShowAllEntityData_CHANGELOG/2026-09.md) · [August 2026](ShowAllEntityData_CHANGELOG/2026-08.md) · [July 2026](ShowAllEntityData_CHANGELOG/2026-07.md) · [June 2026](ShowAllEntityData_CHANGELOG/2026-06.md) · [May 2026](ShowAllEntityData_CHANGELOG/2026-05.md) · [April 2026](ShowAllEntityData_CHANGELOG/2026-04.md) · [March 2026 (1 of 2)](ShowAllEntityData_CHANGELOG/2026-03-1.md) · [March 2026 (2 of 2)](ShowAllEntityData_CHANGELOG/2026-03-2.md) · [February 2026](ShowAllEntityData_CHANGELOG/2026-02.md) · [January 2026](ShowAllEntityData_CHANGELOG/2026-01.md)
 
-This page shows the newest 100 of 1630 versions; the month pages hold all of them.
+This page shows the newest 100 of 1634 versions; the month pages hold all of them.
 
 ---
+
+## 9.99.1463 — 2026-10-26
+
+**🚀 Feature**
+
+- New 🗄️ Script storage window (SAED menu → View, right below 💾 Browser cache, and in the Tampermonkey menu). It lists every key the script keeps in Tampermonkey's storage, with its kind (setting, workspace state, "Show single-table" hand-off, orphaned key, other), type, size and value. Chips and a search box narrow the list. A key's value opens as JSON: edit and Save it (invalid JSON is refused), reset a setting to its default, delete it, or copy it. Every change asks first. "Delete leftovers" removes the orphaned keys and old hand-offs, and "Export JSON…" saves every key in one file. The Discogs token is shown as dots and is never copied or exported. The window moves and resizes like the Browser cache window.
+
+
+## 9.99.1462 — 2026-10-26
+
+**✨ Improve**
+
+- 💾 Browser cache: drag the window by its title bar to move it, and drag its lower-right corner to resize it. It opens where you left it, at that size. Its contents now scroll inside the window, between the title bar and the buttons at the bottom.
+
+
+## 9.99.1461 — 2026-10-26
+
+**✨ Improve**
+
+- Relationships column: a release group icon ("single from", e.g. on a tag's release groups) now gets the link preview card on hover, and the window on Space, like the column's links to other sites. The card shows the release group's title from the icon, and the icon's own box sits in its note stack. The icon's link is now a full address (https://musicbrainz.org/release-group/…). Its filter key stays the bare path, so the 📊 "Relationship icons" entries and the "links to one site more than once" warning are unchanged.
+
+
+## 9.99.1460 — 2026-10-26
+
+**🐛 Fix**
+
+- Sidebar cover: hovering the cover of a release, release group or event in the sidebar shows the card of all its images again. MusicBrainz puts an image with an empty title inside the cover link, and the hover card stopped at that empty title before it reached the link. Any element with an empty title is now passed over.
+
 
 ## 9.99.1459 — 2026-10-26
 
@@ -815,44 +843,6 @@ This page shows the newest 100 of 1630 versions; the month pages hold all of the
 
 - Sidebar cards: the script's "Search the web", "Search in the whitelist" and "Search further" lists are one "Search" card, closed at first: an index of each section (By genre, By area, …), its groups in italics and their sites, flowing into as many columns as the width allows. Variants of one site are one entry ("Prog Archives (barcode, name)"), and sections with nothing for this kind of page are named once at the foot. A switch shows one list at a time, and a box finds a site by name, variant, section or group (Esc empties it). Pointing at a link shows its site and full address, also the site behind the script's forwarding page; with link previews on, that box sits above the preview card instead of beside it. In the tables the same links are one "Sidebar: Search" table with the list, section and group of each link.
 - Sidebar cards: the facts cards (information, labels, release events) are a column on the left with the link cards beside them, so the section is about as tall as the taller of the two; in a narrow window they stack. The cards have the Liner-notes look: warm paper, hairline rules, small-caps headings. Mockup: https://claude.ai/artifact/V9Pqx5r7K37Qe3PEm93cpc.
-
-
-## 9.99.1363 — 2026-10-17
-
-**✨ Improve**
-
-- Relationships column: hovering an icon now says what it is (the site, MusicBrainz's relationship type, the full URL) instead of the bare URL. While a filter matches the cell, a box above it lists all the row's links with the filter's marks and marks the icon you point at. The two boxes sit one under the other instead of side by side. With link previews on, the icons get the link's preview card too, with these boxes above it.
-- A cover icon in a relationship list (for example "includes:" in a release group's Relationships section) shows the release's artwork card on hover, and a click opens the artwork viewer on its images instead of leaving the page.
-
-**🐛 Fix**
-
-- A click on an image of the big-picture strip above a table opens the artwork viewer instead of asking "You are about to leave this page". The same question no longer comes up for a Ctrl-click or Shift-click, which opens a new tab or window and loses nothing.
-
-
-## 9.99.1362 — 2026-10-17
-
-**✨ Improve**
-
-- Tooltips that compare two values now show them one under the other and mark only what differs, down to a single letter, an apostrophe ' against ’, or a hyphen ‐ against -. A line under them says in plain words what differs ("1 letter in a different case: w → W", "Only in the recording name: (single version)", "Same words in a different order."). This covers the track/recording name note above a recording's preview card, its badge in the pinned window, and the Title cell's "Track name differs from recording name" warning, which now names both names.
-- The same view for the findings that compare two values: Recorded at event and Recorded at place against the recording comment, the release group title against a main-event track, and the Recording date against the comment's date (both dates are now named in the tooltip).
-- Track and recording length mismatch: the tooltip shows the hovered cell's length over the other one, digits aligned and the differing ones marked, with the gap as an amber (⚠️) or red (❌) label. Kept through Save to Disk and Load from Disk.
-- Titles shown in MusicBrainz style on the Springsteen sites: the tooltip shows the site's text above the title as shown, with the changed letters and marks marked.
-
-
-## 9.99.1361 — 2026-10-17
-
-**🐛 Fix**
-
-- CAA/EAA column: on large pages the type letters (F B Sp M Bk T) no longer drop to a second line while the artwork is still loading. The column resize ran before most artwork had arrived and sized the column to its header; it now reserves the width of a fully loaded line (icon, count, every type letter with a repeat count) from the start, for the page-wide and the per-sub-table resize.
-
-
-## 9.99.1360 — 2026-10-16
-
-**✨ Improve**
-
-- Release tracklist with the "ISRC Scout" userscript (by majkinetor): its "ISRC" column now works like the "ISRCs" column. One code per line, the column collapses like the other multi-row columns, codes are shown as CC-XXX-YY-NNNNN with ⚠️ on an invalid one, and the 📊 dropdown has the ISRC Country/Registrant/Year/Designation/Validity sections and the "Invalid ISRC format" warning.
-- Release tracklist with "ISRC Scout": its "Links" column can be filtered by platform. Type a platform name ("Spotify") into its filter, or tick one in the new 📊 section "Links info - Platform" (one entry per platform, with its row count and icon); the matching icons are outlined. The number beside 📊 now counts the different platform sets instead of the "2"/"3" link-count badges.
-- Release tracklist with "ISRC Scout" and jesus2099's "SUPER MIND CONTROL": the "Links" icons no longer wrap onto a second line. SUPER MIND CONTROL adds a red new-window marker and extra space to every link that opens in a new tab; it is left off these icons, which all open an outside page anyway.
 
 
 ---
