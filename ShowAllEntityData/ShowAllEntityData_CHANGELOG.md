@@ -4,9 +4,40 @@ Every version, newest first, with the technical details behind each change. For 
 
 **Months:** [October 2026](ShowAllEntityData_CHANGELOG/2026-10.md) · [September 2026](ShowAllEntityData_CHANGELOG/2026-09.md) · [August 2026](ShowAllEntityData_CHANGELOG/2026-08.md) · [July 2026](ShowAllEntityData_CHANGELOG/2026-07.md) · [June 2026](ShowAllEntityData_CHANGELOG/2026-06.md) · [May 2026](ShowAllEntityData_CHANGELOG/2026-05.md) · [April 2026](ShowAllEntityData_CHANGELOG/2026-04.md) · [March 2026 (1 of 2)](ShowAllEntityData_CHANGELOG/2026-03-1.md) · [March 2026 (2 of 2)](ShowAllEntityData_CHANGELOG/2026-03-2.md) · [February 2026](ShowAllEntityData_CHANGELOG/2026-02.md) · [January 2026](ShowAllEntityData_CHANGELOG/2026-01.md)
 
-This page shows the newest 100 of 1636 versions; the month pages hold all of them.
+This page shows the newest 100 of 1640 versions; the month pages hold all of them.
 
 ---
+
+## 9.99.1469 — 2026-10-26
+
+**🚀 Feature**
+
+- Ready-made views of an entity's edits: All edits, Own edits, Edits by others, Open edits, Open edits by others, jesus2099's searches from SUPER MIND CONTROL Ⅱ X TURBO (only this entity's edits, pure edits, on a release without art and art only, relationship edits with Post-NGS and Pre-NGS, effective edits, edits I have not voted on) and the Annotation history. Each opens in the preview window, titled after itself; Ctrl-click or middle-click opens MusicBrainz's own page.
+- The ☰ SAED menu has a new 'Editing history' group on a page about one entity: '✎ Entity history ▸' lists those views, and '📝 Annotation history' opens the annotation's versions.
+- The window's '✎ Editing history' button is now a button with a menu: the button opens all edits as before (or H), its ▾ lists the same views. An editor's window keeps the plain button.
+
+
+## 9.99.1468 — 2026-10-26
+
+**🐛 Fix**
+
+- An editor's collections page with a 'Collaborative collections' section: those collections were drawn under 'My collections' with one cell too many, so from the Privacy column on every value stood under the wrong header. The page now shows one 'Collections' section: each collaborative collection joins the sub-table of its kind, and every sub-table has a Privacy column ('Private' for the editor's own collections, MusicBrainz's own value such as 'Public' for the collaborative ones).
+- The same page: every sub-table showed the first one's column names, so the count column read 'Artists' everywhere. Each sub-table now has its own (Recordings, Releases, Release groups, Series).
+
+
+## 9.99.1467 — 2026-10-26
+
+**✨ Improve**
+
+- Brucebase year pages: the 📊 list of the Media column now shows each name's icon after it (Photo, Setlist, Ticket, …), the same icon the table shows. An entry for a cell with several icons stays text only.
+
+
+## 9.99.1466 — 2026-10-26
+
+**✨ Improve**
+
+- The non-MusicBrainz site settings are now on by default: springsteenlyrics.com, jungleland.it, brucespringsteen.it, Brucebase (song list and year pages) and discogs.com are switched on, and so are the detail previews of the four Springsteen sites, the compact category and filter bar on springsteenlyrics.com, and 'In the window, read a link ahead while the pointer rests on it'. 'Show the Brucebase side bar on the right' and the '… on touch devices' settings stay off. A profile that still holds the old off value from the old default is moved to the new one once, as with earlier default changes; switch a site off again in ⚙️ Settings if you do not want it.
+
 
 ## 9.99.1465 — 2026-10-26
 
@@ -820,39 +851,6 @@ This page shows the newest 100 of 1636 versions; the month pages hold all of the
 **✨ Improve**
 
 - Sidebar cards: every card now starts open except Search, the long list of search links "mb. ALL LINKS" adds. The setting "… cards that start open" has the new choice "Every card but Search" as its default; if you had kept the old default (only the information card), you get the new one; any other choice you made stays.
-
-
-## 9.99.1369 — 2026-10-17
-
-**✨ Improve**
-
-- Sidebar cards and the Sidebar tables: each link shows the same site icon in front of its name as the real sidebar (Discogs, AllMusic, Wikidata, …, and the search sites of "mb. ALL LINKS"). In the Credits and Relationships views the URL rows of the relationship tables (a release's own links and its release group's) show it too. Nothing is loaded for it: the page shows these icons already.
-
-
-## 9.99.1368 — 2026-10-17
-
-**✨ Improve**
-
-- Discogs link previews: in the window every artist, label and company is a link to its Discogs page — in the facts, the credits, the track credits and "Companies, etc.". A click shows that page in the same window, and Back returns. The window's title says what the link is ("Discogs release", "Discogs master", "Discogs artist", "Discogs label"), and after such a click the path, for example "Discogs master › Discogs release"; card and window say it under the title too ("Discogs · master release"). In a master's list of versions, a version's label links Discogs' label search for that name (Discogs gives the versions' labels by name only), in a new tab.
-
-
-## 9.99.1367 — 2026-10-17
-
-**🚀 Feature**
-
-- Discogs link previews: the window (Space) now shows what the Discogs page shows. For a release and a master: every image (a click opens the artwork viewer), the tracklist with each track's credits (closed at first; "Show all track credits" opens them all) and the notes. For a release also "Companies, etc.", the credits with the tracks they cover, "Barcode and Other Identifiers", the videos, and how many Discogs users have or want it and its data quality. All of it comes in the answer the card already asks for: no extra request. Each heading opens and closes its section. A release's card adds one line saying what its window holds. Mockup: https://claude.ai/artifact/49tucEnfghTCMtyvwN6qaM.
-- Discogs master previews: the window lists the master's versions. Discogs sends them 100 at a time, so the window asks for the first 100 when it opens and the rest only when you press "Load the other …", which says how many requests that takes and about how long; "Stop" lets the page under way finish. A bar shows each hundred (from the cache, loaded, failed), a failed page gets its own retry button, and pages already read come from the cache next time. Filter by typing or by the format, country and decade chips, sort by a column heading; the main release and a release this page links are marked. A click on a version shows it in the same window, and Back returns to the master. A card never asks for versions.
-
-**🐛 Fix**
-
-- Preview windows: typing in a field inside the window no longer loses the focus when the window redraws under a resting mouse pointer.
-
-
-## 9.99.1366 — 2026-10-17
-
-**🐛 Fix**
-
-- Preview windows, Live page: the page is trimmed to its content as soon as its text has arrived, instead of after its last picture. On a slow site the menus, header and footer used to show for as long as the pictures took, and a Brucebase date link's year page (260 pictures) was neither marked nor scrolled to the show until then. It is now scrolled to the show at once, and again once the pictures above it have pushed it down, unless you have scrolled the page yourself by then.
 
 
 ---
