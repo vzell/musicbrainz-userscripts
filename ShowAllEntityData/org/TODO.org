@@ -4963,3 +4963,25 @@ make the "Browser cache" window movable and resizable
 
 create a nice dialog window (like what we do for the "Browser cache" window) for displaying/managing the tampermonkey GM
 store key/values
+
+* TODO add a new genre PT
+
+1.)
+
+add a new genre PT
+
+#+begin_example
+@debug/genre-initial.html - IP - https://musicbrainz.org/genre/883d75d5-1365-46ee-8cbe-d3ae2facdd93 - roots rock
+#+end_example
+
+2.)
+
+add a reader for this PT, so the POH funtionality of hovering works, e.g from the following pages at
+
+#+begin_example
+collections - https://musicbrainz.org/user/RandomMushroom128/collections
+collection - https://musicbrainz.org/collection/3b629250-10f4-4170-a443-bb06db05fbde
+tag - https://musicbrainz.org/tag/roots%20rock
+#+end_example
+
+
