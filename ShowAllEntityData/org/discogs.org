@@ -13,12 +13,10 @@ On D master POH allow "Ctrl"-click for multi-select for "Format", "Country", "Re
 <div class="mb-dg-facets"><span class="mb-dg-fl">Format</span><div><button type="button" class="mb-dg-fc" data-mb-dg-f="format" data-mb-dg-v="Vinyl" aria-pressed="false">Vinyl<span class="mb-dg-n">19</span></button><button type="button" class="mb-dg-fc" data-mb-dg-f="format" data-mb-dg-v="45 RPM" aria-pressed="false">45 RPM<span class="mb-dg-n">16</span></button><button type="button" class="mb-dg-fc" data-mb-dg-f="format" data-mb-dg-v="Single" aria-pressed="false">Single<span class="mb-dg-n">15</span></button><button type="button" class="mb-dg-fc" data-mb-dg-f="format" data-mb-dg-v="7&quot;" aria-pressed="false">7"<span class="mb-dg-n">14</span></button><button type="button" class="mb-dg-fc" data-mb-dg-f="format" data-mb-dg-v="Stereo" aria-pressed="false">Stereo<span class="mb-dg-n">8</span></button><button type="button" class="mb-dg-fc" data-mb-dg-f="format" data-mb-dg-v="CD" aria-pressed="false">CD<span class="mb-dg-n">6</span></button><button type="button" class="mb-dg-fc" data-mb-dg-f="format" data-mb-dg-v="Maxi-Single" aria-pressed="false">Maxi-Single<span class="mb-dg-n">6</span></button><button type="button" class="mb-dg-fc" data-mb-dg-f="format" data-mb-dg-v="12&quot;" aria-pressed="false">12"<span class="mb-dg-n">5</span></button><button type="button" class="mb-dg-fc" data-mb-dg-f="format" data-mb-dg-v="Mini" aria-pressed="false">Mini<span class="mb-dg-n">5</span></button><button type="button" class="mb-dg-fc" data-mb-dg-f="format" data-mb-dg-v="Promo" aria-pressed="false">Promo<span class="mb-dg-n">4</span></button></div><span class="mb-dg-fl">Country</span><div><button type="button" class="mb-dg-fc" data-mb-dg-f="country" data-mb-dg-v="UK" aria-pressed="false">UK<span class="mb-dg-n">7</span></button><button type="button" class="mb-dg-fc" data-mb-dg-f="country" data-mb-dg-v="Europe" aria-pressed="false">Europe<span class="mb-dg-n">6</span></button><button type="button" class="mb-dg-fc" data-mb-dg-f="country" data-mb-dg-v="Australia" aria-pressed="false">Australia<span class="mb-dg-n">4</span></button><button type="button" class="mb-dg-fc" data-mb-dg-f="country" data-mb-dg-v="Spain" aria-pressed="false">Spain<span class="mb-dg-n">4</span></button><button type="button" class="mb-dg-fc" data-mb-dg-f="country" data-mb-dg-v="Japan" aria-pressed="false">Japan<span class="mb-dg-n">2</span></button><button type="button" class="mb-dg-fc" data-mb-dg-f="country" data-mb-dg-v="France" aria-pressed="true">France<span class="mb-dg-n">1</span></button><button type="button" class="mb-dg-fc" data-mb-dg-f="country" data-mb-dg-v="Ireland" aria-pressed="false">Ireland<span class="mb-dg-n">1</span></button><button type="button" class="mb-dg-fc" data-mb-dg-f="country" data-mb-dg-v="UK &amp; Europe" aria-pressed="false">UK &amp; Europe<span class="mb-dg-n">1</span></button></div><span class="mb-dg-fl">Released</span><div><button type="button" class="mb-dg-fc" data-mb-dg-f="decade" data-mb-dg-v="1980s" aria-pressed="false">1980s<span class="mb-dg-n">26</span></button></div></div>
 #+end_example
 
-2.)
-
 
 * TODO remove the native artist popup text box tooltip on D PTs when on the IP
 
-remove the native artist popup text box tooltip on D PTs when on the IP
+remove the native Discogs artist popup text box tooltip on D PTs when on the IP
 
 
 * TODO add support for the Discogs "Apple Music Audio Player"
@@ -43,6 +41,12 @@ on D release PTs do not show sub-tables which have zero rows initially
 
 * TODO On Discogs entity POHs the left and right side information should be swapped
 
+On Discogs entity POHs the left and right side information should be swapped
+
+0.)
+
+remove the native Discogs artist popup text box tooltip on D PTs when on the IP
+
 1.)
 
 Releases:
@@ -60,24 +64,34 @@ the hovered MB release link e.g. https://musicbrainz.org/release/836b5924-a9d7-4
 
 Artists:
 
-artists swap the left/rigth sections
+artists should also swap the left/rigth sections
 
 a.)
 
-"LINK" section below the header line + singel artist picture - left
+"LINK" section below the header line + single artist picture should go on the left side
 
 b.)
 
-"DISCOGRAPHY" - right
+"DISCOGRAPHY" should go on the right side
 
 3.)
 
 Masters:
 
-PTs also swap left/right
+a.)
+
+PTs should also swap left/right
 
 #+begin_example
 https://www.discogs.com/master/27206 - with track credits
+#+end_example
+
+b.)
+
+On D master POH allow "Ctrl"-click for multi-select for "Format", "Country", "Released" etc. of the facet buttons
+
+#+begin_example
+<div class="mb-dg-facets"><span class="mb-dg-fl">Format</span><div><button type="button" class="mb-dg-fc" data-mb-dg-f="format" data-mb-dg-v="Vinyl" aria-pressed="false">Vinyl<span class="mb-dg-n">19</span></button><button type="button" class="mb-dg-fc" data-mb-dg-f="format" data-mb-dg-v="45 RPM" aria-pressed="false">45 RPM<span class="mb-dg-n">16</span></button><button type="button" class="mb-dg-fc" data-mb-dg-f="format" data-mb-dg-v="Single" aria-pressed="false">Single<span class="mb-dg-n">15</span></button><button type="button" class="mb-dg-fc" data-mb-dg-f="format" data-mb-dg-v="7&quot;" aria-pressed="false">7"<span class="mb-dg-n">14</span></button><button type="button" class="mb-dg-fc" data-mb-dg-f="format" data-mb-dg-v="Stereo" aria-pressed="false">Stereo<span class="mb-dg-n">8</span></button><button type="button" class="mb-dg-fc" data-mb-dg-f="format" data-mb-dg-v="CD" aria-pressed="false">CD<span class="mb-dg-n">6</span></button><button type="button" class="mb-dg-fc" data-mb-dg-f="format" data-mb-dg-v="Maxi-Single" aria-pressed="false">Maxi-Single<span class="mb-dg-n">6</span></button><button type="button" class="mb-dg-fc" data-mb-dg-f="format" data-mb-dg-v="12&quot;" aria-pressed="false">12"<span class="mb-dg-n">5</span></button><button type="button" class="mb-dg-fc" data-mb-dg-f="format" data-mb-dg-v="Mini" aria-pressed="false">Mini<span class="mb-dg-n">5</span></button><button type="button" class="mb-dg-fc" data-mb-dg-f="format" data-mb-dg-v="Promo" aria-pressed="false">Promo<span class="mb-dg-n">4</span></button></div><span class="mb-dg-fl">Country</span><div><button type="button" class="mb-dg-fc" data-mb-dg-f="country" data-mb-dg-v="UK" aria-pressed="false">UK<span class="mb-dg-n">7</span></button><button type="button" class="mb-dg-fc" data-mb-dg-f="country" data-mb-dg-v="Europe" aria-pressed="false">Europe<span class="mb-dg-n">6</span></button><button type="button" class="mb-dg-fc" data-mb-dg-f="country" data-mb-dg-v="Australia" aria-pressed="false">Australia<span class="mb-dg-n">4</span></button><button type="button" class="mb-dg-fc" data-mb-dg-f="country" data-mb-dg-v="Spain" aria-pressed="false">Spain<span class="mb-dg-n">4</span></button><button type="button" class="mb-dg-fc" data-mb-dg-f="country" data-mb-dg-v="Japan" aria-pressed="false">Japan<span class="mb-dg-n">2</span></button><button type="button" class="mb-dg-fc" data-mb-dg-f="country" data-mb-dg-v="France" aria-pressed="true">France<span class="mb-dg-n">1</span></button><button type="button" class="mb-dg-fc" data-mb-dg-f="country" data-mb-dg-v="Ireland" aria-pressed="false">Ireland<span class="mb-dg-n">1</span></button><button type="button" class="mb-dg-fc" data-mb-dg-f="country" data-mb-dg-v="UK &amp; Europe" aria-pressed="false">UK &amp; Europe<span class="mb-dg-n">1</span></button></div><span class="mb-dg-fl">Released</span><div><button type="button" class="mb-dg-fc" data-mb-dg-f="decade" data-mb-dg-v="1980s" aria-pressed="false">1980s<span class="mb-dg-n">26</span></button></div></div>
 #+end_example
 
 4.)
@@ -87,12 +101,16 @@ Labels:
 a.)
 
 #+begin_example
-https://www.discogs.com/label/1866-Columbia - "SUBLABELS" section should be a table with pager handling for the curretn "+195 MORE" button '<button type="button" class="mb-dg-btn" data-mb-dg-act="moresub">+195 more</button>'
+https://www.discogs.com/label/1866-Columbia - "SUBLABELS" section should be a table with pager handling for the current "+195 MORE" button '<button type="button" class="mb-dg-btn" data-mb-dg-act="moresub">+195 more</button>'
 #+end_example
 
 b.)
 
 the hovered MB label link e.g. https://musicbrainz.org/label/3d8cf8be-09b6-470c-970b-9c1c6d511507 needs more information display, actually what the MB internal hovering does
+
+5.)
+
+make some nice rich HTML based mockups before implementing
 
 
 * TODO overwhole of the Discogs release track rendering in the popup viewer
@@ -103,7 +121,7 @@ overwhole of the Discogs release track rendering in the popup viewer
 https://www.discogs.com/release/31003849-Bruce-Springsteen-The-E-Street-Band-Travel-In-Fear - release with subsection header in a tracklist
 https://www.discogs.com/release/15993782-Bruce-Springsteen-Tunnel-Of-Love - no track credits
 https://www.discogs.com/release/30198722-MGV-Drabenderh%C3%B6he-120-Jahre-M%C3%A4nnergesangverein-Drabenderh%C3%B6he - some track credits
-#+end_example
+#+end_examplef-
 
 
 * TODO when filtering on Discogs detail popups, the filter string should get highlighted
@@ -117,9 +135,10 @@ On a D master IP the release image before a release name should get our standard
 images initally (+ full "Space" handling)
 
 
-* TODO on D PTs, the main image + the information right beside the image should get it's own handling on the FRP
+* TODO on D PTs, the main image + the information from the right beside the image should get it's own handling on the FRP
 
-on Discogs supported PTs, the main image + the information right beside the image should get it's own handling on the FRP
+on Discogs supported PTs, the main image + the information from the right beside the image should get it's own handling
+on the FRP
 
 1.)
 

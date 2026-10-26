@@ -4626,13 +4626,20 @@ third-party userscript "mb. COLLECTION HIGHLIGHTER" from @jesus2099 is active
 
 b.)
 
-Tf there are sub-tables under the "<h2>Collaborative collections</h2>" h2 section. Currently the sub-tables are rendered
-(also with a column shift) under the h2 section "My collections"
+Tf there are sub-tables under the "<h2>Collaborative collections</h2>" h2 section e.g. on
+https://musicbrainz.org/user/ApeKattQuest%2C%20MonkeyPython/collections, currently the sub-tables are rendered (also
+with a column shift) under the h2 section "My collections"
 
 #+begin_example
-@debug/ - IP
-@debug/ - FRP
+@debug/collections-collaborative-initial.html - IP
+@debug/collections-collaborative-final.html - FRP
 #+end_example
+
+Maybe change the h2 headerline from "My collections" to just "Collections" and add the data under the collaborative
+collections section (actually the data under each h3 section)) in the same named h3 section of "My collections".
+
+On the FRP each sub-table should get an additional column named "Privacy" with the default column value of "Privat" and
+"Public" if the value comes from the IP "Collaborative collections"
 
 
 * TODO On https://musicbrainz.org/release-group/f83d2211-dd81-4b1e-9a02-e89733891e1c when the third-party userscript "mb. FUNKEY ILLUSTRATED RECORDS" by @jesus2099 is active the images should get our internal viewer treatment
@@ -4919,13 +4926,13 @@ actions (they are not interrubtable yet) and fill in the IndexedDB
 * TODO add hover functionality to the "Relationships" column for MB RGs relationship icons
 
 Add hover functionality to the "Relationships" column for MB RGs relationship icons.
-Currently the href anchors are not fully qualified and missing the https://site:port part, see e.g. https://musicbrainz.org/tag/arena%20rock
-So the do not support yet the POH
+Currently the href anchors are not fully qualified and missing the https://site:port part, see e.g. https://musicbrainz.org/tag/arena%20rock - tag-RG-relationship-icons.html
+So they do not support yet the POH
 
 
 * TODO majkinetor: "Links" column - switch of the native tooltip on the FRP
 * TODO majkinetor: no icons in the lower right corner
-* TODO majkinetor: async issues with "ISRC" and "Link" colus on PT 'release-tracks'
+* TODO majkinetor: async issues with "ISRC" and "Link" columns on PT 'release-tracks'
 
 * TODO PT 'release-tracks' needs suggestion for works in the "Recording of work" column
 
@@ -4935,10 +4942,17 @@ https://musicbrainz.org/release/22a6802f-d22e-4f47-9f22-6aac257a4194 with our as
 
 * TODO sidebar image hover for CAA images only working when hovering below the image in the description
 
-sidebar image hover for CAA images only working when hovering below the image in the description
+1.)
+
+The sidebar image hover for the CAA image doesn't do anything, instead of showing all the release images in a small
+popup window
+
+#+begin_example
+@debug/release-caa-sidebar-image-bug.html - https://musicbrainz.org/release/3ec14d03-2c03-4764-a69d-8155817a040f
+#+end_example
 
 
-* TODO when hovering a value in the "LABEL-CAT#" column and the down-right glyph shows up, the label-cat# value moves to the left and back when hovering away, which lets the value kind of pump
+* DONE when hovering a value in the "LABEL-CAT#" column and the down-right glyph shows up, the label-cat# value moves to the left and back when hovering away, which lets the value kind of pump
 
 when hovering a value in the "LABEL-CAT#" column and the down-right glyph shows up, the label-cat# value moves to the left
 and back when hovering away, which lets the value kind of pump, together with is's column header
@@ -4949,6 +4963,7 @@ and back when hovering away, which lets the value kind of pump, together with is
 
 Maybe remove that icon completely (btw what is it actually good for, what is the idea of havin it and only showing when
 hovering it) and ONLY leave the icon for rendering a link in a new tab in
+
 
 * TODO make the non-MB site settings currently "false", default "true"
 
@@ -4965,6 +4980,7 @@ create a nice dialog window (like what we do for the "Browser cache" window) for
 store key/values
 
 * TODO add a new genre PT
+** DONE initial
 
 1.)
 
@@ -4984,4 +5000,101 @@ collection - https://musicbrainz.org/collection/3b629250-10f4-4170-a443-bb06db05
 tag - https://musicbrainz.org/tag/roots%20rock
 #+end_example
 
+** DONE output
+
+Reading the project guide and the existing page-type / popup code to see how genre fits in.
+
+Probing the genre Web Service lookup against the live endpoint before writing the reader.
+
+I can't reach musicbrainz.org to probe the WS/2 lookup since the network policy blocks it, so I'll build the reader from the genre page HTML itself, like the existing `tag` kind does, using your uploaded HTML as the fixture. Checking the tag reader now.
+
+Plan settled: a `genre-overview` PT modelled on `instrument-overview` (relationship lists → tables), plus a `genre` popup kind read from the genre page. Reading the spec harness next.
+
+Now writing the genre page parser and popup kind. First checking how the tag popup is tested so the new spec follows the same harness.
+
+Writing the code now: the `@include`, the PT, the path regexes, the parser and the `genre` kind.
+
+Now the doc comments on those regexes, the icon map and the page-record version.
+
+Now the `genre-overview` PT, next to `genres-list`.
+
+Now the page parser, placed before `_mbParseTagPage`.
+
+Building the fixture as a full document around the uploaded `#page` fragment.
+
+Now the specs. First the PT test in `rel-tables-pages.spec.js`.
+
+Local Playwright is 1.62.1 but the preinstalled browser matches 1.63.0; installing the matching version without saving it.
+
+The site column strips `www.` — just my expectation; fixing it.
+
+Now the popup tests in `popup-mb.spec.js`.
+
+All four pass. Verifying they fail without the code (mutation check).
+
+All five planted defects are caught. Running the wider popup and relationship suites for regressions.
+
+While that runs: changelog (WIP file, per the project's feature-branch rule), HELP and docs.
+
+Correction: a genre page has no sidebar facts list (`dl.properties`), so "Sidebar as tables" never applies there. Fixing the PT's match and reverting the two HELP lines that over-claimed.
+
+Now the developer docs: the PT roster and the topic files.
+
+Docs done; writing the WIP changelog entry and the DEBUG-NOTES entry, then checking the test run.
+
+Regression run is still going. Meanwhile, lint and the doc/changelog audits.
+
+Lint and audits are clean. Checking my diff for tabs and trailing whitespace.
+
+Clean. Making the probe script report a blocked network instead of crashing.
+
+Waiting on the regression run.
+
+I'll wait for the regression run to finish before committing.
+
+The regression run (popup, sidebar, event-overview, rel-tables and detail-preview specs, desktop and mobile) is still going. I'll commit and push once it finishes and I've looked at the result.
+
+I've added the genre page type and the genre hover popup, committed them and pushed them to `claude/keen-planck-t1lm8l`. The new tests pass, but the wider regression run (popup, sidebar, event and relationship-table specs, desktop and mobile) hasn't finished yet. I'll report its result when it does. I tightened the genre page's URL match after that run started, so I'll rerun the genre test against the final code.
+
+**1. Genre page type (`genre-overview`)**
+- On `/genre/<mbid>`, a new **Show all Relationships for Genre** button turns the page's relationship lists into tables. It works like the existing instrument page type.
+- For roots rock that gives a **Genres** table with 5 rows (subgenre of rock, subgenres tex-mex, influenced by blues, country and r&b) and a **URLs** table with 2 rows.
+- "Associated tags" and the Wikipedia text stay as MusicBrainz shows them.
+- The script's `@include` line now covers genre pages.
+- Unlike place, area and instrument pages, a genre page gets no "Sidebar as tables" option, because its sidebar has no facts list.
+
+**2. Hover popup for genre links**
+- Hovering any `/genre/<mbid>` link shows a card: the primary tag, parent genres, subgenres and influences (up to three names each), how many collections hold the genre, and the start of the Wikipedia text.
+- Space opens the window: every related genre is a link that opens its own card, plus the external links, the collections link and the full Wikipedia text.
+- So it works from your three example pages: the tag page's "Genre" link, a genre collection's rows, and any genre link on the collections list.
+- A genre's "Found in N user collections", "Editing history" and "Open edits" links get popups too.
+- The popup reads the genre's own page rather than the MusicBrainz web service (`/ws/2/genre/…`). This session's network blocks musicbrainz.org, so I couldn't check what the web service returns, as the project guide asks. The page also has things the web service doesn't (primary tag, Wikipedia text, collections count). I wrote `scripts/probe-mb-genre-lookup.py` to check the web service later, but it has never run.
+
+**Tests**
+- One new test for the page type and four for the popup pass. The test fixture is built from your uploaded HTML.
+- I deliberately broke the new code in 5 ways (`scripts/mutations/genre.json`), and the tests caught every one.
+- Lint and the docs and changelog audits are clean.
+
+**Not tested**
+- None of this has been tried in a real browser, including your three example pages.
+- Genre collections now list their genres in the collection popup, but there is no saved collection page to test that against.
+
+**Housekeeping**
+- I left `// @version` and the main changelog alone and recorded the change as WIP.1 in `ShowAllEntityData_CHANGELOG.wip.json`, because the project's CLAUDE.md says version bumps happen on `main` at merge. That overrides your general "always bump the version" preference here.
+- Updated the HELP file, `PAGETYPES-TESTING-REFERENCE.org` (new entry #136), the relationship-tables and popup design docs, and `DEBUG-NOTES.md`.
+- I saved your snapshot as `debug/genre-initial.html`.
+- I didn't change the TODO entry in `org/TODO.org`.
+
+9 tests failed. Checking whether they also fail without my change (on the parent commit).
+
+The regression run is finished. Of 341 tests, 332 passed and 9 failed, but the same 9 also fail on the commit before my change, so my change didn't cause them.
+
+- **What fails:** five Save to Disk → Load from Disk round trips (event overview ×3, the sidebar in the Relationships view, Sidebar as tables) and four sidebar-picture tests (the instrument drawing, the release cover beside the name).
+- **How I checked:** I put the previous version of the userscript back in place and ran those 9 again. They failed the same way, mostly with 90-second timeouts. My guess is the cloud container's headless browser and its file-system handling, but I haven't looked into it. On your machine they may pass.
+
+I also reran the 8 genre tests (1 page type, 4 popup, plus 3 existing relationship-table tests the filter picked up) against the final code, including the tightened genre-page URL match, and all pass. Nothing new needs committing; the branch is already pushed.
+
+** TODO add /genres
+
+add a reader for https://musicbrainz.org/genres
 
