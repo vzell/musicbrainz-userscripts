@@ -1,0 +1,14 @@
+[
+  {
+    "version": "WIP.1",
+    "date": "2026-10-26",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "The non-MusicBrainz site settings are now on by default: springsteenlyrics.com, jungleland.it, brucespringsteen.it, Brucebase (song list and year pages) and discogs.com are switched on, and so are the detail previews of the four Springsteen sites, the compact category and filter bar on springsteenlyrics.com, and 'In the window, read a link ahead while the pointer rests on it'. 'Show the Brucebase side bar on the right' and the '… on touch devices' settings stay off. A profile that still holds the old off value from the old default is moved to the new one once, as with earlier default changes; switch a site off again in ⚙️ Settings if you do not want it."
+        ]
+      }
+    ]
+  }
+]

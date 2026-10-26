@@ -64,6 +64,17 @@ const USERSCRIPT_PATH = path.join(PROJECT_ROOT, 'ShowAllEntityData.user.js');
 // runs on through every row's name search while the spec interacts, and each
 // answer repaints cells and re-runs the filter. bb-mb-event.spec.js seeds it
 // back on with its own answers.
+//
+// The last six (all default true since 2026-10-26, when every non-MB site
+// setting went on except the Brucebase side bar and the touch ones) keep the
+// foreign-site specs where they were written: the four detail previews
+// (`sa_sl/jl/bs/bb_detail_preview`) hang a card on a resting pointer that
+// fetches the item page, the compact springsteenlyrics bar
+// (`sa_sl_compact_nav`) folds the walls a spec reads, and
+// `sa_dp_window_read_ahead` reads a MusicBrainz link ahead inside the preview
+// window, one WS/2 request per rest. The specs of each seed it back on.
+// The site gates themselves (`sa_enable_<site>`) are not here: the site
+// loaders (`slFixture.js`, `bbFixture.js`, …) already seed them.
 const FIXTURE_SETTINGS_OVERRIDE = {
     sa_enable_caa_pics: false,
     sa_enable_relationships_column: false,
@@ -76,6 +87,12 @@ const FIXTURE_SETTINGS_OVERRIDE = {
     sa_event_rg_tooltip_without_ctrl: false,
     sa_async_pop_auto_open: false,
     sa_bb_mb_event_lookup: false,
+    sa_sl_detail_preview: false,
+    sa_jl_detail_preview: false,
+    sa_bs_detail_preview: false,
+    sa_bb_detail_preview: false,
+    sa_sl_compact_nav: false,
+    sa_dp_window_read_ahead: false,
 };
 
 // `_migrateFrozenSettings()` repairs a GM profile that VZ_MBLibrary's old SAVE

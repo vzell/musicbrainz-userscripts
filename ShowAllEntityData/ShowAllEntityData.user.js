@@ -4649,8 +4649,8 @@
         sa_enable_springsteenlyrics: {
             label: 'Enable on springsteenlyrics.com collection and bootleg lists',
             type: 'checkbox',
-            default: false,
-            description: 'Off by default. When on, the script also runs on springsteenlyrics.com\'s ' +
+            default: true,
+            description: 'On by default. When on, the script also runs on springsteenlyrics.com\'s ' +
                          'paginated list pages — collection.php?cmd=list… (every category and ' +
                          'every format/country/date/… filter), the collection\'s entry page ' +
                          'collection.php ("Latest additions"), bootlegs.php?cmd=list… and the CD ' +
@@ -4667,8 +4667,8 @@
         sa_sl_detail_preview: {
             label: 'Preview item and song pages on springsteenlyrics.com lists',
             type: 'checkbox',
-            default: false,
-            description: 'Off by default; needs the setting above. When on, resting the pointer on ' +
+            default: true,
+            description: 'On by default; needs the setting above. When on, resting the pointer on ' +
                          'an item\'s title in the table with Ctrl held shows a card with what the item\'s own page ' +
                          'adds: the tracklist, the notes (lineage, edition) and the artwork scans. ' +
                          'On the lyrics index it shows the song page instead: the version, the ' +
@@ -4700,8 +4700,8 @@
         sa_sl_compact_nav: {
             label: 'Compact category and filter bar on springsteenlyrics.com lists',
             type: 'checkbox',
-            default: false,
-            description: 'Off by default; needs the setting above. When on, the collection\'s ' +
+            default: true,
+            description: 'On by default; needs the setting above. When on, the collection\'s ' +
                          'walls of category and filter buttons (category, format, country, ' +
                          'album, original year, copies) and the bootleg lists\' category ' +
                          'buttons are folded into one row of pull-down menus above the list. ' +
@@ -4772,8 +4772,8 @@
         sa_enable_jungleland: {
             label: 'Enable on the jungleland.it bootleg artwork list',
             type: 'checkbox',
-            default: false,
-            description: 'Off by default. When on, the script also runs on jungleland.it\'s ' +
+            default: true,
+            description: 'On by default. When on, the script also runs on jungleland.it\'s ' +
                          'bootleg artwork list (html/list.htm) and offers a "Show all" button ' +
                          'that turns the long list of links into one filterable, sortable table ' +
                          'with Art, Title, Date, Year and Version columns, plus the date split into ' +
@@ -4788,8 +4788,8 @@
         sa_jl_detail_preview: {
             label: 'Preview artwork pages on the jungleland.it list',
             type: 'checkbox',
-            default: false,
-            description: 'Off by default; needs the setting above. When on, resting the pointer on ' +
+            default: true,
+            description: 'On by default; needs the setting above. When on, resting the pointer on ' +
                          'a title in the table with Ctrl held shows a card with what its artwork page adds: the ' +
                          'uploader and the scans (front, back, discs, booklet). The page is ' +
                          'fetched in the background, at most one a second, and kept for half a year. ' +
@@ -4824,8 +4824,8 @@
         sa_enable_brucespringsteen: {
             label: 'Enable on the brucespringsteen.it record database',
             type: 'checkbox',
-            default: false,
-            description: 'Off by default. When on, the script also runs on brucespringsteen.it\'s ' +
+            default: true,
+            description: 'On by default. When on, the script also runs on brucespringsteen.it\'s ' +
                          'record list (DB/records.aspx) and offers two buttons, "Unofficial" and ' +
                          '"Official", which load every record of that kind, all formats ticked, ' +
                          'into one filterable, sortable table (Photo, Title, Matrix or Catalogue, Format, ' +
@@ -4840,8 +4840,8 @@
         sa_bs_detail_preview: {
             label: 'Preview record pages in the brucespringsteen.it database',
             type: 'checkbox',
-            default: false,
-            description: 'Off by default; needs the setting above. When on, resting the pointer on ' +
+            default: true,
+            description: 'On by default; needs the setting above. When on, resting the pointer on ' +
                          'a record\'s title in the table with Ctrl held shows a card with what the record\'s own ' +
                          'page adds: the tracklist with the show each track comes from, the ' +
                          'notes, and the photo when there is one. The page is fetched in the ' +
@@ -4876,8 +4876,8 @@
         sa_enable_brucebase: {
             label: 'Enable on the Brucebase song list',
             type: 'checkbox',
-            default: false,
-            description: 'Off by default. When on, the script also runs on the Brucebase wiki\'s ' +
+            default: true,
+            description: 'On by default. When on, the script also runs on the Brucebase wiki\'s ' +
                          'song list (brucebase.wikidot.com/stats:songs) and offers a "Show all ' +
                          'songs" button that turns the 28 letter tabs into one filterable, ' +
                          'sortable table with Title and Letter columns, one row per song. The ' +
@@ -4893,8 +4893,8 @@
         sa_bb_year_pages: {
             label: 'Enable on the Brucebase year pages (event lists)',
             type: 'checkbox',
-            default: false,
-            description: 'Off by default; needs the setting above. When on, the script also runs on ' +
+            default: true,
+            description: 'On by default; needs the setting above. When on, the script also runs on ' +
                          'the Brucebase year pages (brucebase.wikidot.com/1975, /2026, … and ' +
                          '/1949-64) and offers a "Show all events" button that turns the year\'s ' +
                          'shows, sessions and appearances into one filterable, sortable table: ' +
@@ -4933,8 +4933,8 @@
         sa_bb_detail_preview: {
             label: 'Preview song pages on the Brucebase song list',
             type: 'checkbox',
-            default: false,
-            description: 'Off by default; needs the setting above. When on, resting the pointer on ' +
+            default: true,
+            description: 'On by default; needs the setting above. When on, resting the pointer on ' +
                          'a song in the table with Ctrl held shows a card with what its song page adds: the ' +
                          'album it comes from, how often it was played live and when last, the ' +
                          'official releases and live downloads. The page is fetched in the ' +
@@ -5003,8 +5003,8 @@
         sa_enable_discogs: {
             label: 'Enable on discogs.com',
             type: 'checkbox',
-            default: false,
-            description: 'Off by default. When on, the script also runs on discogs.com\'s master, ' +
+            default: true,
+            description: 'On by default. When on, the script also runs on discogs.com\'s master, ' +
                          'release, artist and label pages and offers buttons that list a master\'s ' +
                          'versions, a release\'s tracklist, credits, companies, identifiers and ' +
                          'other versions, an artist\'s whole discography, or a label\'s newest or ' +
@@ -5266,8 +5266,8 @@
         sa_dp_window_read_ahead: {
             label: 'In the window, read a link ahead while the pointer rests on it',
             type: 'checkbox',
-            default: false,
-            description: 'Off by default. When on, resting the pointer for a moment on a MusicBrainz link inside ' +
+            default: true,
+            description: 'On by default. When on, resting the pointer for a moment on a MusicBrainz link inside ' +
                          'the preview window reads what it links to — one Web Service request, at the usual ' +
                          'one-a-second pace — so a click shows it at once; such links get a small green dot. ' +
                          'Moving on before its turn asks nothing. Links to other sites are never read ahead.'
@@ -5480,15 +5480,25 @@
         // Off from 2026-10-09 until 2026-10-24 (vzell: "should be true by
         // default").
         { key: 'sa_bb_collabsable_sidebar',        was: [false] },
+        { key: 'sa_bb_detail_preview',             was: [false] },
         { key: 'sa_bb_sidebar_right',              was: [true] },
+        { key: 'sa_bb_year_pages',                 was: [false] },
+        { key: 'sa_bs_detail_preview',             was: [false] },
         { key: 'sa_count_stat_tooltip_bg',         was: ['#1e1e2e'] },
         { key: 'sa_count_stat_tooltip_color',      was: ['#cdd6f4'] },
         { key: 'sa_dp_hover_without_ctrl',         was: [false] },
+        { key: 'sa_dp_window_read_ahead',          was: [false] },
         { key: 'sa_enable_annotation_auto_expand', was: [false] },
         { key: 'sa_enable_ars_collapse',           was: [true] },
+        { key: 'sa_enable_brucebase',              was: [false] },
+        { key: 'sa_enable_brucespringsteen',       was: [false] },
+        { key: 'sa_enable_discogs',                was: [false] },
         { key: 'sa_enable_dropdown_flag_icons',    was: [false] },
+        { key: 'sa_enable_jungleland',             was: [false] },
         { key: 'sa_enable_show_single_table_btn',  was: [false] },
+        { key: 'sa_enable_springsteenlyrics',      was: [false] },
         { key: 'sa_event_rg_tooltip_without_ctrl', was: [false] },
+        { key: 'sa_jl_detail_preview',             was: [false] },
         { key: 'sa_pop_ext',                       was: [false] },
         { key: 'sa_pop_mb',                        was: [false] },
         { key: 'sa_pop_mb_page',                   was: [false] },
@@ -5497,6 +5507,8 @@
         { key: 'sa_sidebar_collapsed',             was: [false] },
         { key: 'sa_sidebar_inline_cards_open',     was: ['info'] },
         { key: 'sa_sidebar_tables_button',         was: [true] },
+        { key: 'sa_sl_compact_nav',                was: [false] },
+        { key: 'sa_sl_detail_preview',             was: [false] },
         { key: 'sa_ui_artist_role_guest_performer_color', was: ['#e07000'] },
         { key: 'sa_ui_artist_role_main_performer_color',  was: ['#57ff5a'] },
         { key: 'sa_ui_row_hover_bg',               was: ['#e2e2e2'] },
@@ -6516,9 +6528,9 @@
         : _isDgHost ? 'www.discogs.com'
         : null;
 
-    // springsteenlyrics.com support is opt-in (`sa_enable_springsteenlyrics`,
-    // default off), so a published MusicBrainz script never changes another
-    // site's pages by surprise. Leave BEFORE anything visible — the migration
+    // springsteenlyrics.com support has its own switch (`sa_enable_springsteenlyrics`,
+    // default on since 2026-10-26), so a user can keep the script off another
+    // site's pages. Leave BEFORE anything visible — the migration
     // notice below, the Ctrl-M listener, the toolbar. The library's own
     // Tampermonkey menu items are already registered by now, so the setting can
     // still be switched on from this very page.
@@ -6527,8 +6539,8 @@
         return;
     }
 
-    // jungleland.it support is opt-in the same way (`sa_enable_jungleland`,
-    // default off), and gated as early for the same reason. Its list.htm is
+    // jungleland.it support has a switch the same way (`sa_enable_jungleland`,
+    // default on), and gated as early for the same reason. Its list.htm is
     // normally the narrow (25 %) left frame of the site's artwork.htm
     // frameset, and the header has no `@noframes`, so Tampermonkey runs the
     // script in that frame too: a 6,000-row table squeezed into a quarter of
@@ -6543,7 +6555,7 @@
         return;
     }
 
-    // brucespringsteen.it: opt-in (`sa_enable_brucespringsteen`, default off)
+    // brucespringsteen.it: own switch (`sa_enable_brucespringsteen`, default on)
     // and own-tab only, for the same reasons as jungleland.it — its
     // records.aspx is the 222 px left frame ("sommario") of the Blegsdx.htm
     // frameset (decided 2026-10-06; docs/claude/brucespringsteen.md).
@@ -6556,7 +6568,7 @@
         return;
     }
 
-    // Brucebase: opt-in (`sa_enable_brucebase`, default off), gated as early
+    // Brucebase: own switch (`sa_enable_brucebase`, default on), gated as early
     // as the others. No frame gate: the site is not a frameset, and the one
     // iframe on the page (an html-block at /stats:songs/html/<hash>) is kept
     // out by the @include line (docs/claude/brucebase.md).
@@ -6565,7 +6577,7 @@
         return;
     }
     // Its year pages have a switch of their own (`sa_bb_year_pages`, default
-    // off) on top of that one, gated as early — and so has the start page,
+    // on) on top of that one, gated as early — and so has the start page,
     // whose one button pages through all of them.
     if (_isBbHost && (_BB_YEAR_PATH_RE.test(window.location.pathname) || _BB_HOME_PATH_RE.test(window.location.pathname)) &&
         Lib.settings.sa_bb_year_pages !== true) {
@@ -6573,7 +6585,7 @@
         return;
     }
 
-    // discogs.com: opt-in (`sa_enable_discogs`, default off), gated as early
+    // discogs.com: own switch (`sa_enable_discogs`, default on), gated as early
     // as the others. The pages carry ad and consent frames; the script only
     // ever belongs in the top window.
     if (_isDgHost && Lib.settings.sa_enable_discogs !== true) {
@@ -21076,7 +21088,7 @@
     // card with what the page adds (the "peek"); Space pins it into a
     // dialog with an Extracted and a Live page view. Opt-in per site
     // (`sa_sl_detail_preview`, `sa_jl_detail_preview`,
-    // `sa_bs_detail_preview`, `sa_bb_detail_preview`), default off, and
+    // `sa_bs_detail_preview`, `sa_bb_detail_preview`), default on, and
     // installed only on a foreign host, so nothing here runs on MusicBrainz.
     // The detail pages match no `@include` line: the script never runs on
     // them, so they are fetched (same origin) and parsed from the list page.
@@ -24590,8 +24602,8 @@
 
     /**
      * H5: reads the record of a link that opens here after a 600 ms rest,
-     * so the click shows it at once (`sa_dp_window_read_ahead`, off by
-     * default). MusicBrainz entities only, never another site; through the
+     * so the click shows it at once (`sa_dp_window_read_ahead`, on by
+     * default since 2026-10-26). MusicBrainz entities only, never another site; through the
      * source's own card load, wanted while the pointer stays on the link
      * (`_mbPopWanted()`'s `readAhead`).
      *
