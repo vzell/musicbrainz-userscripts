@@ -26,7 +26,7 @@ add support for the Discogs "Apple Music Audio Player" - https://support.discogs
 
 * TODO check discogs artist pages if really ALL masters are present + implement master->release(s) drilldown
 
-* TODO detail popups
+* DONE detail popups
 
 #+begin_example
 D: Master
@@ -39,7 +39,7 @@ D: Master
 
 on D release PTs do not show sub-tables which have zero rows initially
 
-* TODO On Discogs entity POHs the left and right side information should be swapped
+* DONE On Discogs entity POHs the left and right side information should be swapped
 ** DONE initial
 
 
@@ -114,7 +114,7 @@ the hovered MB label link e.g. https://musicbrainz.org/label/3d8cf8be-09b6-470c-
 
 make some nice rich HTML based mockups before implementing
 
-** TODO bugs
+** DONE bugs
 
 1.)
 
@@ -173,12 +173,12 @@ https://www.discogs.com/release/30198722-MGV-Drabenderh%C3%B6he-120-Jahre-M%C3%A
 #+end_example
 
 
-* TODO when filtering on Discogs detail popups, the filter string should get highlighted
+* DONE when filtering on Discogs detail popups, the filter string should get highlighted
 
 when filtering on Discogs detail popups, the filter string should get highlighted
 
 
-* TODO On a D master IP the release image before a release name should get our standard image handling for releases, by displaying images initally (+ full "Space" handling)
+* DONE On a D master IP the release image before a release name should get our standard image handling for releases, by displaying images initally (+ full "Space" handling)
 
 On a D master IP the release image before a release name should get our standard image handling for releases, by displaying
 images initally (+ full "Space" handling)

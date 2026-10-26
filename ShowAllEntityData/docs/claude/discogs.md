@@ -621,13 +621,52 @@ on it sat on top of our card. `_dgMuteNativeArtistHover()` (installed once by
 `_dgPrepareLivePage()`) stops `_DG_NATIVE_HOVER_EVENTS` (mouse/pointer
 over/out/enter/leave) of `#app a[href*="/artist/"]` at `document` in the
 capture phase while `sa_pop_ext` is on (read per event), so they never
-reach React's root in `#app`. Our own `document` listeners still run: a
+reach React's root in `#app`. Since the second round (vzell's screenshot of
+a label page, debug/discogs-label-initial.html, 2026-10-26) "of an artist
+name" is `_dgArtistHoverHost()`: the link, or its wrapper up to 5 levels up
+holding exactly one Discogs artist link and no release, master or label
+link — a label page binds the card to `span.link_… > .mb_wrapper >
+(a.mb_search_link, a[href^="/artist/"])`, so the importer's icons beside the
+name count — and an event counts when its `target` OR its `relatedTarget`
+is one: React builds its enter from the mouseout of what the pointer left
+when it moves inside the page. The first round only stopped events whose
+target was in the link, and its spec moved in from outside `#app`, which
+never takes React's mouseout path. Our own `document` listeners still run: a
 stop never skips the other listeners of its node, and all of ours there are
 capture listeners (checked 2026-10-26: the popup engine, the tooltips, the
 avatars, the async job popup). The box's markup is unknown (discogs.com was
 unreachable from the session that wrote this, and the fixtures hold none),
 so nothing is hidden by selector; a snapshot of the open box would allow a
 CSS rule in `_ensureDgStyle()` as well.
+
+### Discogs' own lists on the initial page: the image card (2026-10-26)
+
+org/discogs.org 4a (vzell: "the image before a master or release name … should
+get our standard image handling"). An artist's, a master's and a label's
+page list rows in `#app table > tbody > tr` whose first cell is a link around
+an `i.discogs.com` thumbnail (debug/discogs-{artist,master,label}-initial.html;
+fixtures cut from them by `scripts/build-dg-ip-fixtures.py`). `_DGP_FI`
+(`'dgp'`, `..._DG_FI`) gives them our tables' card and viewer: the row is its
+first link to a release or master OTHER than the thumbnail's
+(`_dgIpArtRowFor()`: a master page's thumbnail links the master with
+`?image=…`, the version is the title's `/release/<id>`). React owns the
+nodes, so nothing is stamped up front: `_dgIpThumbInstall()` (from
+`_dgPrepareLivePage()`) stamps a whole list on `pointerover`/`focusin`
+(`_dgIpThumbStamp()`: `data-mb-fi="dgp"`, `data-mbtt-fn="fi-img"`), before
+the `mouseover` the card reads, and again on every visit. A plain click and
+Space open our viewer (window-capture `_fiClick()` stops Discogs' gallery),
+Shift+← → steps the list. `sa_dg_tip_images` turns the card off, as for our
+tables. Spec: tests/fixtures/discogs-ip-thumbs.spec.js.
+
+### The submissions list's initial page (2026-10-26)
+
+org/discogs.org item 2 (debug/discogs-submissions-artist-bug.html): Discogs'
+flat view has a fourth column, the list's matched artist, with no heading;
+`_dgSubsIpHeader()` gives the table "Matched artist". Its link names the
+artist (`/artist/Bruce+Springsteen`), which `_EXT_DISCOGS_PATH_RE` (an id)
+never took: on discogs.com `_extTarget()` reads such a link as that artist's
+search (`_extDgNamePathUrl()`), the search reader's, as our table's own cell
+(`_dgSearchCell()`) already wrote it.
 
 ## Known differences from the mockup (raised with vzell)
 

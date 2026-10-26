@@ -1,0 +1,119 @@
+[
+  {
+    "name": "search window not swapped",
+    "why": "org/discogs.org 1: the search's Results belong in the right column.",
+    "edits": [
+      {
+        "find": "        out.right.push(_extDgSection('dgq-results', 'Results',",
+        "replace": "        out.full.push(_extDgSection('dgq-results', 'Results',"
+      }
+    ],
+    "spec": "tests/fixtures/discogs-links.spec.js",
+    "grep": "a search: 25 results",
+    "expect": "fail"
+  },
+  {
+    "name": "user window not swapped",
+    "why": "org/discogs.org 1: a user's Recent activity belongs in the right column.",
+    "edits": [
+      {
+        "find": "        out.right.push(_extDgUserActivity(t, opts));",
+        "replace": "        out.full.push(_extDgUserActivity(t, opts));"
+      }
+    ],
+    "spec": "tests/fixtures/discogs-links.spec.js",
+    "grep": "in the history window: a user opens",
+    "expect": "fail"
+  },
+  {
+    "name": "submissions IP: no Matched artist heading",
+    "why": "org/discogs.org 2: the unheaded fourth column gets its heading.",
+    "edits": [
+      {
+        "find": "        _dgSubsIpHeader();\n",
+        "replace": "\n"
+      }
+    ],
+    "spec": "tests/fixtures/discogs-submissions.spec.js",
+    "grep": "the initial page: the matched artist",
+    "expect": "fail"
+  },
+  {
+    "name": "artist-by-name link not read as a search",
+    "why": "org/discogs.org 2: /artist/Bruce+Springsteen must be the dgsearch reader's.",
+    "edits": [
+      {
+        "find": "        if (_isDgHost) u = _extDgNamePathUrl(u) || u;",
+        "replace": "        if (_isDgHost) u = u || _extDgNamePathUrl(u);"
+      }
+    ],
+    "spec": "tests/fixtures/discogs-submissions.spec.js",
+    "grep": "the initial page: the matched artist",
+    "expect": "fail"
+  },
+  {
+    "name": "filter matches not marked",
+    "why": "org/discogs.org 3: the window's filtered rows show what matched.",
+    "edits": [
+      {
+        "find": "        if (!n) return _rgEsc(s);\n        const low = s.toLowerCase();",
+        "replace": "        if (n || !n) return _rgEsc(s);\n        const low = s.toLowerCase();"
+      }
+    ],
+    "spec": "tests/fixtures/popup-ext.spec.js",
+    "grep": "a master: no versions from a hover",
+    "expect": "fail"
+  },
+  {
+    "name": "IP thumbnails not stamped",
+    "why": "org/discogs.org 4a: Discogs' own list thumbnails become _DGP_FI triggers.",
+    "edits": [
+      {
+        "find": "            a.dataset.mbFi = 'dgp';\n            a.dataset.mbttFn = 'fi-img';",
+        "replace": "            a.dataset.mbFiOff = 'dgp';"
+      }
+    ],
+    "spec": "tests/fixtures/discogs-ip-thumbs.spec.js",
+    "grep": "label page: a rest on a thumbnail",
+    "expect": "fail"
+  },
+  {
+    "name": "master page takes the thumbnail's master link",
+    "why": "org/discogs.org 4a: a master page's row is the version in its title cell, not the master the thumbnail links.",
+    "edits": [
+      {
+        "find": "find(l => l !== a && re.test(l.href))) || null;",
+        "replace": "find(l => re.test(l.href))) || null;"
+      }
+    ],
+    "spec": "tests/fixtures/discogs-ip-thumbs.spec.js",
+    "grep": "master page: a rest on a thumbnail",
+    "expect": "fail"
+  },
+  {
+    "name": "hover host: relatedTarget ignored",
+    "why": "org/discogs.org 4b: React builds its enter from the mouseout whose relatedTarget is the name.",
+    "edits": [
+      {
+        "find": "            if (!_dgArtistHoverHost(e.target) && !_dgArtistHoverHost(e.relatedTarget)) return;",
+        "replace": "            if (!_dgArtistHoverHost(e.target)) return;"
+      }
+    ],
+    "spec": "tests/fixtures/discogs-ip-thumbs.spec.js",
+    "grep": "previews on: from a neighbouring cell",
+    "expect": "fail"
+  },
+  {
+    "name": "hover host: no wrapper",
+    "why": "org/discogs.org 4b: the card is bound to the span around the name and the importer icons.",
+    "edits": [
+      {
+        "find": "            if (artists.length === 1 && !n.querySelector('a[href*=\"/release/\"], a[href*=\"/master/\"], a[href*=\"/label/\"]')) return n;",
+        "replace": "            if (artists.length === 1 && false) return n;"
+      }
+    ],
+    "spec": "tests/fixtures/discogs-ip-thumbs.spec.js",
+    "grep": "previews on: from a neighbouring cell",
+    "expect": "fail"
+  }
+]

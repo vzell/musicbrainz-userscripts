@@ -16491,6 +16491,87 @@
     };
 
     /**
+     * One thumbnail's row in a list of Discogs' own page (`_DGP_FI`): the
+     * row's first link to a release or master other than the thumbnail's
+     * own — a master page's thumbnail links the master (`?image=…`), the
+     * version is the title's `/release/<id>` —, else the thumbnail's link.
+     *
+     * @param {HTMLAnchorElement} a - The row's stamped thumbnail link.
+     * @param {string} path - The viewer's key for the row.
+     * @returns {DgArtRow}
+     */
+    function _dgIpArtRowFor(a, path) {
+        const tr = a.closest('tr');
+        const re = /^https:\/\/www\.discogs\.com\/(?:[a-z]{2}(?:-[a-z]{2})?\/)?(?:release|master)\/\d+/;
+        const ta = (tr && Array.from(tr.querySelectorAll('a[href]')).find(l => l !== a && re.test(l.href))) || null;
+        const target = ta ? _extTarget(ta, { inWindow: true }) : null;
+        return {
+            thumb: (a.querySelector('img') || {}).src || a.href, title: ta ? ta.textContent.trim() : '', asked: false,
+            target: target && target.reader.id === 'discogs' ? target : null, path,
+        };
+    }
+
+    /**
+     * The thumbnails of Discogs' OWN lists on the initial page (an artist's
+     * discography, a master's versions, a label's releases: `#app table`,
+     * each row's first cell a link around an `i.discogs.com` image;
+     * debug/discogs-{artist,master,label}-initial.html, 2026-10-26) as a
+     * provider of the same card and viewer as our tables (`_DG_FI`): a rest
+     * shows every image of the row's release or master, a click or Space
+     * opens the viewer, Shift+← → steps through the list. React owns the
+     * nodes, so they are stamped when the pointer or the focus comes to a
+     * list (`_dgIpThumbStamp()`).
+     * @type {FiProvider}
+     */
+    const _DGP_FI = {
+        ..._DG_FI,
+        tableSel: '#app table',
+        linkSel: 'a[data-mb-fi="dgp"]',
+        rowFor: (a, table, path) => _dgIpArtRowFor(a, path),
+        title: () => {
+            const h1 = document.querySelector('#app h1');
+            return h1 ? h1.textContent.replace(/\s+/g, ' ').trim() : '';
+        },
+    };
+
+    /**
+     * Stamps the thumbnails of one of Discogs' own lists as `_DGP_FI`
+     * triggers (`data-mb-fi="dgp"`, `data-mbtt-fn="fi-img"`): every row's
+     * first-cell link around an `i.discogs.com` image, all rows at once, so
+     * the viewer can step through them. Again on every visit: React may
+     * render a row anew.
+     *
+     * @param {Element} table - A `table` in `#app`.
+     * @returns {void}
+     */
+    function _dgIpThumbStamp(table) {
+        table.querySelectorAll(':scope > tbody > tr > td:first-child > a').forEach((a) => {
+            if (a.dataset.mbFi || !a.querySelector('img[src*="i.discogs.com"]')) return;
+            a.dataset.mbFi = 'dgp';
+            a.dataset.mbttFn = 'fi-img';
+        });
+    }
+
+    /**
+     * Stamps a list of Discogs' own page as the pointer or the focus comes
+     * to it (`_dgIpThumbStamp()`), on `pointerover`: it comes before the
+     * `mouseover` the image card reads. Installed once, by
+     * `_dgPrepareLivePage()`.
+     *
+     * @returns {void}
+     */
+    function _dgIpThumbInstall() {
+        if (_dgIpThumbInstall.done) return;
+        _dgIpThumbInstall.done = true;
+        const stamp = (e) => {
+            const table = e.target instanceof Element ? e.target.closest('#app table') : null;
+            if (table) _dgIpThumbStamp(table);
+        };
+        document.addEventListener('pointerover', stamp, true);
+        document.addEventListener('focusin', stamp, true);
+    }
+
+    /**
      * Puts the Discogs records of some rows that are saved in this browser
      * in memory, as `_mbLoad()` would on a hover: one `getAll()` of the
      * detail-page database (they are kept there as `mb:<key>`), no request to
@@ -16573,7 +16654,64 @@
         _dgAvatarInit();
         _dgAvatarUiInstall();
         _dgMuteNativeArtistHover();
+        _dgSubsIpHeader();
+        _dgIpThumbInstall();
         return h1;
+    }
+
+    /**
+     * A submissions list's flat view names each change's matched artist in a
+     * fourth column Discogs gives no heading (debug/discogs-submissions-artist-bug.html,
+     * 2026-10-26): its table gets "Matched artist", as our table calls it.
+     * Only a table whose first row has more cells than its heading row.
+     *
+     * @returns {void}
+     */
+    function _dgSubsIpHeader() {
+        if (!document.querySelector('.browser_flat_title')) return;
+        document.querySelectorAll('#page_content table').forEach((table) => {
+            const head = table.querySelector(':scope > thead > tr');
+            const row = table.querySelector(':scope > tbody > tr');
+            if (!head || !row || head.cells.length >= row.cells.length) return;
+            const th = document.createElement('th');
+            th.align = 'left';
+            th.className = 'mb-dg-subs-th';
+            th.textContent = 'Matched artist';
+            head.appendChild(th);
+        });
+    }
+
+    /**
+     * What Discogs' own artist hover card is bound to around an element of
+     * its page: the artist link (`#app a[href*="/artist/"]`), or the
+     * nearest wrapper of one, at most 5 levels up (the importer's icon sits
+     * four below the wrapper: `small` in `a` in `span` in `.mb_wrapper`) — a label page's list
+     * binds the card to a span holding the name and murdos' importer icons
+     * beside it (debug/discogs-label-initial.html, 2026-10-26: `span.link_…
+     * > .mb_wrapper > a.mb_search_link, a[href^="/artist/"]`). A wrapper
+     * counts only while it holds exactly one artist link and no release,
+     * master or label link (an importer icon to MusicBrainz not counted),
+     * so a row or a cell never does. Class names are
+     * Discogs' hashed ones and are not used.
+     *
+     * @param {?EventTarget} el
+     * @returns {?Element} The artist link or its wrapper, or null.
+     */
+    function _dgArtistHoverHost(el) {
+        if (!(el instanceof Element)) return null;
+        const app = el.closest('#app');
+        if (!app) return null;
+        const a = el.closest('a[href*="/artist/"]');
+        if (a) return a;
+        let n = el;
+        for (let i = 0; i < 5 && n && n !== app; i++, n = n.parentElement) {
+            if (/^(?:TD|TH|TR|TABLE|TBODY|LI|UL)$/.test(n.tagName)) return null;
+            // Discogs' own artist links: an importer icon to MusicBrainz's artist is not one.
+            const artists = n.querySelectorAll('a[href*="/artist/"]:not([href^="https://musicbrainz.org/"])');
+            if (artists.length === 1 && !n.querySelector('a[href*="/release/"], a[href*="/master/"], a[href*="/label/"]')) return n;
+            if (artists.length > 1) return null;
+        }
+        return null;
     }
 
     /**
@@ -16588,14 +16726,18 @@
      * Keeps Discogs' own artist hover card off an artist link of its page
      * (org/discogs.org item 0, vzell 2026-10-26) while our link preview
      * covers that link (`sa_pop_ext`): our card and Discogs' would sit on
-     * top of each other. The hover events of `#app a[href*="/artist/"]`
-     * stop at `document` in the capture phase, so they never reach the
-     * React root inside `#app`. Every listener the script has on `document`
-     * runs anyway: a stop never skips the other listeners of the node it is
-     * on, and all of ours there are capture listeners. Discogs' card markup
-     * is not known (no snapshot of it), so nothing is hidden by selector.
-     * Installed once, from `_dgPrepareLivePage()`; the setting is read per
-     * event, so turning previews off brings Discogs' card back.
+     * top of each other. The hover events of an artist name in `#app`
+     * (`_dgArtistHoverHost()`) stop at `document` in the capture phase, so
+     * they never reach the React root inside `#app`; an event LEAVING
+     * something for an artist name too (its `relatedTarget`): React builds
+     * its mouseenter from that mouseout when the pointer moves inside its
+     * page (a label page's list, vzell 2026-10-26). Every listener the
+     * script has on `document` runs anyway: a stop never skips the other
+     * listeners of the node it is on, and all of ours there are capture
+     * listeners. Discogs' card markup is not known (no snapshot of it), so
+     * nothing is hidden by selector. Installed once, from
+     * `_dgPrepareLivePage()`; the setting is read per event, so turning
+     * previews off brings Discogs' card back.
      *
      * @returns {void}
      */
@@ -16603,8 +16745,8 @@
         if (_dgMuteNativeArtistHover.done) return;
         _dgMuteNativeArtistHover.done = true;
         const stop = (e) => {
-            const a = e.target instanceof Element ? e.target.closest('a[href*="/artist/"]') : null;
-            if (!a || !a.closest('#app') || !_popSettingOn('sa_pop_ext')) return;
+            if (!_dgArtistHoverHost(e.target) && !_dgArtistHoverHost(e.relatedTarget)) return;
+            if (!_popSettingOn('sa_pop_ext')) return;
             e.stopPropagation();
         };
         _DG_NATIVE_HOVER_EVENTS.forEach(type => document.addEventListener(type, stop, true));
@@ -24637,6 +24779,7 @@
         switch (key) {
             case 'dg': return _DG_FI;
             case 'dgw': return _DGW_FI;
+            case 'dgp': return _DGP_FI;
             case 'sl': return _SL_FI;
             case 'jl': return _JL_FI;
             case 'bs': return _BS_FI;
@@ -27207,6 +27350,12 @@
             .mb-dp-dialog .mb-dg-seg button[disabled] { opacity: 0.5; cursor: default; }
             .mb-dp-dialog .mb-dg-lt tbody tr { cursor: auto; }
             .mb-dp-dialog .mb-dg-num { text-align: right; white-space: nowrap; }
+            /* A window filter's matches (_hlEsc()), in the colours of the tables' filter highlight. */
+            .mb-dp-dialog mark.mb-dg-hl {
+                color: ${Lib.settings.sa_column_filter_highlight_color || 'inherit'};
+                background-color: ${Lib.settings.sa_column_filter_highlight_bg || '#add8e6'};
+                padding: 0;
+            }
             .mb-dp-dialog .mb-dg-subt td { padding: 2px 8px; }
             .mb-dp-dialog .mb-dg-pager { justify-content: center; font-variant-numeric: tabular-nums; }
             .mb-dp-dialog .mb-dg-pager .mb-dg-btn[disabled] { opacity: 0.45; cursor: default; }
@@ -51223,6 +51372,34 @@
     const _rgEsc = v => String(v ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
     /**
+     * `_rgEsc()` with every case-insensitive match of a filter's query
+     * marked (`mark.mb-dg-hl`): the rows a filter of the window keeps show
+     * what it matched (org/discogs.org, 2026-10-26). The matches are found
+     * in the raw text and each piece is escaped on its own, so a query
+     * holding `&` or `<` never matches an entity. For text only, never an
+     * attribute. A query spanning two fields narrows the rows (they are
+     * searched as one string) but marks nothing.
+     *
+     * @param {*} v - The text.
+     * @param {?string} q - The filter's query as typed.
+     * @returns {string} HTML.
+     */
+    function _hlEsc(v, q) {
+        const s = String(v ?? '');
+        const n = String(q ?? '').trim().toLowerCase();
+        if (!n) return _rgEsc(s);
+        const low = s.toLowerCase();
+        let out = '';
+        let i = 0;
+        let j;
+        while ((j = low.indexOf(n, i)) !== -1) {
+            out += `${_rgEsc(s.slice(i, j))}<mark class="mb-dg-hl">${_rgEsc(s.slice(j, j + n.length))}</mark>`;
+            i = j + n.length;
+        }
+        return out + _rgEsc(s.slice(i));
+    }
+
+    /**
      * The release group of the current release page, from the page's own
      * embedded JSON; `null` on any other page or when the JSON is absent.
      *
@@ -59637,18 +59814,18 @@
         return head + '<div class="mb-dg-vwrap" data-mb-keep-scroll="dg-versions"><table class="mb-dg-vt"><thead><tr><th class="mb-dg-nosort"></th>' +
             th('title', 'Title, format') + th('label', 'Label – Cat#') + th('country', 'Country') + th('year', 'Year') + '</tr></thead><tbody>' +
             shown.map(v => `<tr data-mb-dg-vid="${v.id}"><td>${_extDgThumbHtml(v.thumb)}</td>` +
-                `<td><a href="https://www.discogs.com/release/${v.id}" target="_blank" rel="noopener noreferrer">${_rgEsc(v.title)}</a>` +
+                `<td><a href="https://www.discogs.com/release/${v.id}" target="_blank" rel="noopener noreferrer">${_hlEsc(v.title, ui.q)}</a>` +
                 `${v.id === dg.mainRelease ? ' <span class="mb-dg-pill mb-dg-ok">main</span>' : ''}` +
                 `${linked.has(v.id) ? ' <span class="mb-dg-pill mb-dg-run">this page links it</span>' : ''}` +
-                `<div class="mb-dg-dim">${_rgEsc(v.format)}</div></td>` +
+                `<div class="mb-dg-dim">${_hlEsc(v.format, ui.q)}</div></td>` +
                 // Discogs' versions name a label but give no id (row fields:
                 // catno, country, format, id, label, …; checked 2026-10-17), so
                 // the label links Discogs' label search for its name (vzell's
                 // pick), in a new tab: a search is no page the window reads.
                 `<td>${v.label ? `<a class="mb-dg-label" href="https://www.discogs.com/search/?q=${encodeURIComponent(v.label)}&amp;type=label" ` +
-                    `target="_blank" rel="noopener noreferrer" data-mb-tip title="Search Discogs for the label ${_rgEsc(v.label)}">${_rgEsc(v.label)}</a>` : ''}` +
-                `${v.catno ? ` <span class="mb-dg-cat">– ${_rgEsc(v.catno)}</span>` : ''}</td>` +
-                `<td>${_rgEsc(v.country)}</td><td class="mb-dg-yr">${_rgEsc(v.year || '—')}</td></tr>`).join('') +
+                    `target="_blank" rel="noopener noreferrer" data-mb-tip title="Search Discogs for the label ${_rgEsc(v.label)}">${_hlEsc(v.label, ui.q)}</a>` : ''}` +
+                `${v.catno ? ` <span class="mb-dg-cat">– ${_hlEsc(v.catno, ui.q)}</span>` : ''}</td>` +
+                `<td>${_hlEsc(v.country, ui.q)}</td><td class="mb-dg-yr">${v.year ? _hlEsc(v.year, ui.q) : '—'}</td></tr>`).join('') +
             '</tbody></table></div>';
     }
 
@@ -59832,7 +60009,7 @@
             `<button type="button" class="mb-dg-btn" data-mb-dg-act="subnext" aria-label="Next page"${ui.subPage < pages - 1 ? '' : ' disabled'}>›</button></div>` : '';
         return `${filter}<div class="mb-dg-vwrap mb-dg-subwrap" data-mb-keep-scroll="dg-sub"><table class="mb-dg-vt mb-dg-lt mb-dg-subt"><thead><tr>` +
             `${th('name', 'Name')}${th('status', 'Status')}</tr></thead><tbody>` +
-            page.map(x => `<tr${x.active ? '' : ' class="mb-dg-inact"'}><td>${_extDgLink('label', x.id, _rgEsc(x.name))}</td>` +
+            page.map(x => `<tr${x.active ? '' : ' class="mb-dg-inact"'}><td>${_extDgLink('label', x.id, _hlEsc(x.name, ui.subq))}</td>` +
                 `<td>${x.active ? '<span class="mb-dg-pill mb-dg-ok">Active</span>' : '<span class="mb-dg-pill">Inactive</span>'}</td></tr>`).join('') +
             `</tbody></table>${pager}</div>`;
     }
@@ -60060,10 +60237,10 @@
             const exp = r.master ? `<button type="button" class="mb-dg-exp" data-mb-dg-mexp="${r.id}" aria-expanded="${open}">` +
                 `${open ? '▾' : '▸'} versions</button>` : '';
             return `<tr><td>${_extDgThumbHtml(r.thumb)}</td>` +
-                `<td><a href="https://www.discogs.com/${kind}/${r.id}" target="_blank" rel="noopener noreferrer">${esc(r.title)}</a>` +
+                `<td><a href="https://www.discogs.com/${kind}/${r.id}" target="_blank" rel="noopener noreferrer">${_hlEsc(r.title, ui.aq)}</a>` +
                 ` <span class="mb-dg-pill${r.master ? ' mb-dg-m' : ''}">${kind}</span>${exp}` +
-                `${r.master ? '' : `<div class="mb-dg-dim">${esc(r.format)}${r.label ? ` · ${esc(r.label)}` : ''}</div>`}</td>` +
-                `${showArtist ? `<td>${esc(r.artist)}</td>` : ''}<td class="mb-dg-yr">${esc(r.year || '—')}</td>` +
+                `${r.master ? '' : `<div class="mb-dg-dim">${_hlEsc(r.format, ui.aq)}${r.label ? ` · ${_hlEsc(r.label, ui.aq)}` : ''}</div>`}</td>` +
+                `${showArtist ? `<td>${_hlEsc(r.artist, ui.aq)}</td>` : ''}<td class="mb-dg-yr">${r.year ? _hlEsc(r.year, ui.aq) : '—'}</td>` +
                 `<td class="mb-dg-num">${_extDgNum(r.have)}</td><td class="mb-dg-num">${_extDgNum(r.want)}</td></tr>` +
                 (open ? `<tr class="mb-dg-nest"><td colspan="${showArtist ? 6 : 5}">${_extDgNestHtml(t, r)}</td></tr>` : '');
         }).join('');
@@ -60230,9 +60407,9 @@
             table = '<div class="mb-dg-vwrap" data-mb-keep-scroll="dg-label"><table class="mb-dg-vt mb-dg-lt"><thead><tr><th class="mb-dg-nosort"></th>' +
                 `${th('artist', 'Artist')}${th('title', 'Title, format')}${th('catno', 'Cat#')}${th('year', 'Year')}</tr></thead><tbody>` +
                 rows.slice(0, ui.llimit).map(r => `<tr><td>${_extDgThumbHtml(r.thumb)}</td>` +
-                    `<td>${_rgEsc(r.artist)}</td><td><a href="https://www.discogs.com/release/${r.id}" target="_blank" rel="noopener noreferrer">` +
-                    `${_rgEsc(r.title)}</a><div class="mb-dg-dim">${_rgEsc(r.format)}</div></td>` +
-                    `<td class="mb-dg-cat">${_rgEsc(r.catno)}</td><td class="mb-dg-yr">${_rgEsc(r.year || '—')}</td></tr>`).join('') + '</tbody></table>' +
+                    `<td>${_hlEsc(r.artist, ui.lq)}</td><td><a href="https://www.discogs.com/release/${r.id}" target="_blank" rel="noopener noreferrer">` +
+                    `${_hlEsc(r.title, ui.lq)}</a><div class="mb-dg-dim">${_hlEsc(r.format, ui.lq)}</div></td>` +
+                    `<td class="mb-dg-cat">${_hlEsc(r.catno, ui.lq)}</td><td class="mb-dg-yr">${r.year ? _hlEsc(r.year, ui.lq) : '—'}</td></tr>`).join('') + '</tbody></table>' +
                 (rows.length > ui.llimit ? `<div class="mb-dg-morerow">Showing ${_extDgNum(ui.llimit)} of ${_extDgNum(rows.length)}. ` +
                     `<button type="button" class="mb-dg-btn" data-mb-dg-act="llimit">Show all ${_extDgNum(rows.length)}</button></div>` : '') + '</div>';
         }
@@ -61441,6 +61618,29 @@
     }
 
     /**
+     * An artist page of discogs.com named by the artist's NAME, not its id
+     * (`/artist/Bruce+Springsteen`: the matched artist of a submissions list,
+     * 2026-10-26): Discogs' artist search for that name, which the search
+     * reader (`dgsearch`) takes; null for any other link (`/artist/219986-…`
+     * is an id).
+     *
+     * @param {URL} u
+     * @returns {?URL}
+     */
+    function _extDgNamePathUrl(u) {
+        if (!_extDgOnSite(u)) return null;
+        const m = /^\/(?:[a-z]{2}(?:-[a-z]{2})?\/)?artist\/([^/]+)\/?$/i.exec(u.pathname);
+        if (!m || /^\d+(?:-|$)/.test(m[1])) return null;
+        let name;
+        try {
+            name = decodeURIComponent(m[1].replace(/\+/g, ' ')).trim();
+        } catch (_) {
+            return null;
+        }
+        return name ? new URL(`https://www.discogs.com/search/?q=${encodeURIComponent(name)}&type=artist`) : null;
+    }
+
+    /**
      * A link to a Discogs user's page.
      *
      * @param {URL} u
@@ -61675,22 +61875,23 @@
     }
 
     /**
-     * The user reader's window: the counts as figures, the Recent activity,
-     * and the user's pages on Discogs.
+     * The user reader's window, sides swapped as every Discogs window
+     * (`swap`, 2026-10-26): on the left, under Link and "Discogs says", the
+     * user's pages on Discogs; on the right the Recent activity.
      *
      * @param {object} t
      * @param {Object} rec
      * @param {{start: boolean, force: boolean, repaint: function(): void}} opts
-     * @returns {{left: string[], right: string[], full: string[]}}
+     * @returns {{left: string[], right: string[], full: string[], swap: boolean}}
      */
     function _extDgUserWindow(t, rec, opts) {
-        const out = { left: [], right: [], full: [] };
+        const out = { left: [], right: [], full: [], swap: true };
         if (!rec.dgUser) return out;
         const base = rec.dgUser.uri.replace(/\/$/, '');
         const name = encodeURIComponent(rec.dgUser.name);
         const link = (u, text) => `<a class="mb-dg-btn" href="${_rgEsc(u)}" target="_blank" rel="noopener noreferrer">${_rgEsc(text)} ↗</a>`;
-        out.full.push(_extDgUserActivity(t, opts));
-        out.full.push(_extDgSection('dgu-links', 'On Discogs', null, `<div class="mb-dgu-links">${link(base, 'Profile')}` +
+        out.right.push(_extDgUserActivity(t, opts));
+        out.left.push(_extDgSection('dgu-links', 'On Discogs', null, `<div class="mb-dgu-links">${link(base, 'Profile')}` +
             `${link(`https://www.discogs.com/contributions?user=${name}`, 'Contributions')}${link(`${base}/submissions`, 'Submissions')}` +
             `${link(`${base}/collection`, 'Collection')}${link(`${base}/wantlist`, 'Wantlist')}</div>`));
         return out;
@@ -61857,14 +62058,15 @@
      * The search reader's window: the results so far — page 1 from the
      * record, the pages "Load 25 more" asked for since — each with its
      * thumbnail, a link to it (opens in the window), its type and what the
-     * API says of it; then the button while there are more.
+     * API says of it; then the button while there are more. Sides swapped
+     * (`swap`, 2026-10-26): the results are the right column.
      *
      * @param {object} t
      * @param {Object} rec
-     * @returns {{left: string[], right: string[], full: string[]}}
+     * @returns {{left: string[], right: string[], full: string[], swap: boolean}}
      */
     function _extDgSearchWindow(t, rec) {
-        const out = { left: [], right: [], full: [] };
+        const out = { left: [], right: [], full: [], swap: true };
         const s = rec.dgSearch;
         if (!s) return out;
         const ui = _extDgXUiOf(t);
@@ -61893,7 +62095,7 @@
             (failed ? `<div class="mb-dp-warn">The next 25 did not come: ${_rgEsc(failed)}.</div>` : '') +
             `<div class="mb-dgq-foot">${more && !busy ? `<button type="button" class="mb-dg-btn" data-mb-dgq-act="more">Load ${_EXT_DGQ_PER_PAGE} more</button>` : ''}` +
             `<a class="mb-dg-btn" href="${_rgEsc(t.url)}" target="_blank" rel="noopener noreferrer">All results on Discogs ↗</a></div>`;
-        out.full.push(_extDgSection('dgq-results', 'Results', `${_extDgNum(rows.length)} of ${_extDgNum(s.items)}`, body + foot));
+        out.right.push(_extDgSection('dgq-results', 'Results', `${_extDgNum(rows.length)} of ${_extDgNum(s.items)}`, body + foot));
         return out;
     }
 
@@ -62860,6 +63062,10 @@
         } catch (_) {
             return null;
         }
+        // A Discogs page names an artist by NAME in a few places (a
+        // submissions list's matched artist, `/artist/Bruce+Springsteen`):
+        // read as that artist's search, as our own table writes it.
+        if (_isDgHost) u = _extDgNamePathUrl(u) || u;
         const host = u.hostname.toLowerCase();
         const bare = (h) => h.replace(/^www\./, '');
         // A link to this site is not "another site", except on discogs.com
