@@ -4923,7 +4923,7 @@ Implement the same Start/Stop/"Continue after closing and reopening the POH" eve
 actions (they are not interrubtable yet) and fill in the IndexedDB
 
 
-* TODO add hover functionality to the "Relationships" column for MB RGs relationship icons
+* DONE add hover functionality to the "Relationships" column for MB RGs relationship icons
 
 Add hover functionality to the "Relationships" column for MB RGs relationship icons.
 Currently the href anchors are not fully qualified and missing the https://site:port part, see e.g. https://musicbrainz.org/tag/arena%20rock - tag-RG-relationship-icons.html
@@ -4978,6 +4978,7 @@ make the "Browser cache" window movable and resizable
 create a nice dialog window (like what we do for the "Browser cache" window) for displaying/managing the tampermonkey GM
 store key/values
 
+
 * todo
 
 The branch is merged and pushed to main, which is now at 9.99.1463 (@version 9.99.1463+2026-10-26). One step failed: GitHub refused to delete the remote branch, so claude/keen-planck-t1lm8l is still on origin.
@@ -5009,6 +5010,7 @@ Local: deleted, with git branch -d.
 Remote: the push to delete it was refused with HTTP 403. This session’s GitHub access doesn’t let me delete branches; reconnecting at https://claude.ai/connect-github may fix that. The quickest route is to run git push origin --delete claude/keen-planck-t1lm8l yourself, or delete it on GitHub. It points at c0e5b25, which is already fully merged, so nothing is lost.
 
 The mirror repo vzell/mb-userscripts hasn’t been published to, so the HELP changes aren’t live for users yet. Run scripts/check-publish-ready.py before your next publish.
+
 
 * TODO add a new genre PT
 ** DONE initial

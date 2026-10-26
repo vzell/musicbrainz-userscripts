@@ -39,7 +39,9 @@ D: Master
 
 on D release PTs do not show sub-tables which have zero rows initially
 
-* DONE On Discogs entity POHs the left and right side information should be swapped
+* TODO On Discogs entity POHs the left and right side information should be swapped
+** DONE initial
+
 
 On Discogs entity POHs the left and right side information should be swapped
 
@@ -111,6 +113,16 @@ the hovered MB label link e.g. https://musicbrainz.org/label/3d8cf8be-09b6-470c-
 5.)
 
 make some nice rich HTML based mockups before implementing
+
+** TODO bugs
+
+1.)
+
+swap
+
+#+begin_example
+
+#+end_example
 
 
 * TODO overwhole of the Discogs release track rendering in the popup viewer
