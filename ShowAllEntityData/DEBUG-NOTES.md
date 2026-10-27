@@ -26344,3 +26344,87 @@ absolute href as MusicBrainz's (title from the tip). Cells built or saved
 before this keep their relative hrefs and still preview.
 Specs: `rel-icons.spec.js` "a \"single from\" release group icon …";
 `popup-mb.spec.js` "what is previewed" now expects the icon to resolve.
+
+## 2026-10-26 — window tables: the ⇅ sort glyph made the release-group window's covers test flaky (branch claude/keen-planck-t1lm8l, WIP.1)
+
+Env: 2026-10-26T23:45+01:00 · vm (Claude Code cloud container) · Ubuntu 24.04.5 LTS (Linux 6.18.44) · Playwright 1.63.0 bundled Chromium · no Tampermonkey (GM stubs)
+
+Symptom: after the third sort state (Phase 1 of `org/MB-POH-sync-withDiscogs.org`),
+`release-rg-popup.spec.js` "the window's covers: …" failed at line 227 (Space on a
+hovered thumbnail opened no viewer) about 1 run in 5: 3 of 16 and 2 of 8 with the
+change, 24 of 24 passes on the base (`fdd3ac24`, a worktree).
+
+Bisected by experiment, one change at a time, 16 repeats each:
+- the new header tips (`data-mb-tip title` on the header buttons) removed: still failing;
+- only the release-group window's glyph back from ⇅ (U+21C5) to ↕ (U+2195): 16/16.
+
+Cause: ⇅ is not in the window's first font, so Chromium draws it from a fallback
+font that arrives a moment after the first paint. The header `::after` then grows,
+the sticky header re-lays out, and the rows move under a pointer that is resting on
+a thumbnail, so the card under the pointer is no longer the one Space acts on.
+
+Fix: the glyph sits in a fixed box (`display: inline-block; width: 1.4em;
+line-height: 1; text-align: center`) on `.mb-rg-wtable th button::after` and on
+`.mb-dg-vt th[aria-sort]::after`, so the font that draws it cannot change the
+header's size. 16/16 after. Deterministic guards (the flaky test alone catches it
+only sometimes): `release-rg-popup.spec.js` "the window sorts by a header" and
+`popup-ext.spec.js` "an artist's tables" assert the box (inline-block, 1.4 em
+wide); mutation entries in `scripts/mutations/dp-sort-initial-state.json`.
+
+Rule for later glyphs in headers or other rows that a pointer rests on: a symbol
+outside the basic fonts gets a fixed box, or it can move the layout late.
+
+## 2026-10-27 — the cloud session's test failures, re-checked locally (branch claude/keen-planck-t1lm8l)
+
+Env: 2026-10-27T11:09:24+01:00 → 11:25:38+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) · Playwright 1.62.1 Chromium · no Tampermonkey (GM stubs)
+
+Phase 1 of `org/MB-POH-sync-withDiscogs.org` was written in a cloud container whose
+`npm test` had 78 failures: 60 `net::ERR_TUNNEL_CONNECTION_FAILED` (the proxy),
+16 unnamed ones that failed on the base too, the ⇅ covers flake (entry above),
+and `popup-ext.spec.js` "Wikipedia: one REST summary … a missing title".
+
+`npm run test:full` here, on `a136f039`: 2,366 tests, 14 workers, 16 m 14 s,
+**2,365 passed, 1 failed**. The Wikipedia test and the release-group covers
+test passed, so both were the container, not the code. Nothing of the
+16 recurred.
+
+The one failure: `release-event-colours-rg-tooltip.spec.js:335` "another
+event: the event card above the release group card …", `TypeError: Cannot
+read properties of null (reading 'y')` at line 353: `box.boundingBox()` was
+`null` although `toBeVisible()` on the same locator had passed a few
+assertions earlier, so the event box hid in between. It then passed 10/10
+alone and 40/40 at `--repeat-each=40 --workers=14`. Phase 1's diff
+(`git diff b02d752a HEAD`) touches only the window CSS and the window
+tables' sort code, none of which this card uses. Verdict: a load-only flake,
+not a regression. To harden it, the measurement should poll (or re-assert
+visibility right next to `boundingBox()`). That is not done here; it is a
+separate change.
+
+## 2026-10-27 — window tables: the shared Compact/List tables and the MusicBrainz paged loader (branch claude/keen-planck-t1lm8l, WIP.2)
+
+Env: 2026-10-27T11:30+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) · Playwright 1.62.1 Chromium · no Tampermonkey (GM stubs)
+
+Phase 2 of `org/MB-POH-sync-withDiscogs.org`. Not a bug fix: a record of what
+the extraction had to keep, for whoever touches these tables next.
+
+- The Discogs label specs address the old names (`th[data-mb-dg-ssort]`,
+  `.mb-dg-sq`, `.mb-dg-lq`, `[data-mb-dg-lfmt]`, `table.mb-dg-subt`). The
+  shared components emit them next to the generic `data-mb-tbl-*` names
+  (options `sortAttr`, `qCls`, `chipAttr`, `cls`), so those specs ran
+  byte-unchanged across the extraction. That is the evidence that the
+  behaviour was kept. Dropping an option breaks the specs, not the feature.
+- The sublabels START sorted by name (`init: {sort: {col: 'name', dir: 1}}`).
+  Their first click on Name goes to descending, not ascending, exactly as
+  before.
+- The input handler `_dpTblInput()` runs before the source's own
+  `onAreaInput`. The old `.mb-dg-sq` branch of `_extDiscogsAreaInput()` had to
+  go, or the field would have been handled twice.
+- A placeholder thumbnail must use the same box model as the `<img>`
+  (content-box, 40 px plus a 1 px border = 42 px). A first draft with
+  `box-sizing: border-box` would have been 2 px smaller.
+- Three mutation entries pointed at the code that moved (the sublabels'
+  cycle, no-sort guard and pager) and were retargeted. One more entry,
+  "Discogs' own artist hover not stopped" in `discogs-window-swap.json`, was
+  already stale at HEAD: its anchor had been rewritten in `c59d77b0`, so it
+  reported ERROR, not a result. It is retargeted to `_dgMuteNativeArtistHover()`
+  and fails as it should again.

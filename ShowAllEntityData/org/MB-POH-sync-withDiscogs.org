@@ -1,0 +1,272 @@
+#+TITLE: MB POH ⇄ Discogs POH: look-and-feel sync
+#+STARTUP: showall
+
+* TODO MB POH sync with Discogs (resumable plan)
+
+Env: 2026-10-26 · cloud session (Claude Code on the web) · Linux 6.18.44 · browser n/a (plan + mockup only)
+
+Branch: =claude/keen-planck-t1lm8l= (restarted from =main= at =b02d752a=, 9.99.1469+2026-10-26).
+Nothing in the userscript has changed yet. To resume on another machine:
+=git fetch origin claude/keen-planck-t1lm8l && git checkout claude/keen-planck-t1lm8l=, read
+this file, open the mockup (=org/MB-POH-sync-withDiscogs-mockups.html=), then start at the first
+unchecked phase. Record a WIP changelog entry (=ShowAllEntityData_CHANGELOG.wip.json=, WIP.N) per
+phase. Never touch =// @version= on the branch.
+
+** Prompt (2026-10-26, verbatim in substance)
+
+1. The sort glyph on Discogs POHs gets a third state, "Initial sort" (with a nice glyph), besides
+   "Ascending" (=<th data-mb-dg-lsort="artist" aria-sort="ascending">=) and "Descending".
+2. The MB POHs get the same treatment / look and feel (tables) as the Discogs entity windows
+   (artist, master, label). Per entity, see the table in [[*Phase 3 — MB entity sections][Phase 3]].
+3. Support the Discogs pages "Images" (=https://www.discogs.com/release/1313481-Born-To-Run/images=)
+   and "Image history" (=…/images/update=), with the usual image hovering.
+4. Show a rich HTML mockup page before implementing.
+
+Uploads (kept on the user's machine, not committed; save them to =debug/poh-sync/= when resuming):=POH-DiscID.html=, =POH-ISWC.html=,
+=POH-Release-Multiple-Mediums.html= (the current MB window markup), =Discogs-Images.html=,
+=Discogs-Image-history.html= (the two Discogs pages, logged in), plus three screenshots of the
+Discogs artist / master / label windows (the target look).
+
+** Decisions
+
+| Date       | Question                                   | Answer                                                                                                                                                           |
+|------------+--------------------------------------------+------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| 2026-10-26 | Release tracklist with several mediums     | One collapsible Discogs-style table per medium, header "CD 2 · 8 tracks · 52:09", one shared filter above all mediums                                            |
+| 2026-10-26 | Glyph of the "Initial sort" state          | ⇅ (U+21C5), dimmed, on every sortable header that is in initial order; ▲/▼ replace it when active. One click cycle on every table: initial → ▲ → ▼ → initial |
+| 2026-10-26 | Mockup                                     | Approved as published (version 1)                                                                                                                                |
+| 2026-10-26 | Ctrl+click on a genre / tag link           | Opens your own tag (=/user/<me>/tag/<genre>=) inside the window; middle-click and Shift+click still open a new tab; the foot line says so                       |
+| 2026-10-26 | Image history from musicbrainz.org         | API fallback: position, type, W × H, size; Uploaded by and Date read "only on discogs.com"                                                                       |
+| 2026-10-26 | Annotation version                         | Unchanged                                                                                                                                                        |
+| 2026-10-26 | Documentation                              | Probe the wiki search API first; if it answers, list the hits and open =/doc/<Page>= inline; otherwise only =/doc/<Page>= links get a reader                    |
+
+** Background of the decisions above
+
+1. *Ctrl+click.* Today Ctrl+click anywhere in the window opens a new tab (=_dpDrill()= bails on
+   any modifier), so tag links need their own branch before =_dpDrill()='s modifier check.
+2. *Image history.* =…/images/update= is an edit page and needs the Discogs login. Link previews
+   send external requests =anonymous= (detail-pages rule); on discogs.com the page is
+   same-origin and everything is there.
+3. *Documentation.* =/search?type=doc= is rendered client-side by Google's custom search, so
+   there is no HTML to read. Probe =wiki.musicbrainz.org/api.php?action=query&list=search=
+   (CLAUDE.md probe rule) and record the result here.
+
+** Code map (grep the names; line numbers drift)
+
+Discogs windows:
+- =_extDgEntityControl()= — every sort click: =asort= (artist discography, per role; already
+  asc → desc → off), =lsort= (label releases; asc → desc → off), =ssort= (sublabels; toggle only).
+- =_extDgSublabelsHtml()= — the compact left table (filter, Name/Status sort, ‹ › pager,
+  =_EXT_DG_SUB_ROWS=). Model for the *Compact table*.
+- =_extDgLabelHtml()= — the right releases table: =_extDgStatusHtml()= segmented bar, Order
+  segment, filter, format chips, =llimit= "Show all", "Load 5 more pages" via =_extDgList*=,
+  =_extDgRun()=. Model for the *List table*.
+- =_extDgEntityWindow()=, =_extDgSection()=, =_extDgImagesHtml()=, =_extDgThumbHtml()=.
+- CSS: =.mb-dp-dialog .mb-dg-vt th[aria-sort="ascending"]::after= and siblings, =.mb-dg-pill=,
+  =.mb-dg-bar=, =.mb-dg-fc=, =.mb-dg-tools=, =.mb-dg-warnbox= — all scoped to =.mb-dp-dialog=,
+  so they already style a MusicBrainz window too.
+
+MusicBrainz windows (=_MB_KINDS=, =_mbEntitySource()=):
+- =_mbPopLookupKind()= / =_mbPopLookup()= (WS/2 lookups), =_mbPopPageKind()= / =_mbPageLoad()=
+  (HTML pages), =_mbPopPinLoad()=, =_mbPopBrowse()=, =_mbPopSectionHtml()= (spinner, failure,
+  ⟳ Try again).
+- =_mbPopTableHtml(heads, rows, numCols, thumbs)= — the one plain =mb-rg-wtable= helper.
+- =_rgWindowTableHtml()= + =_rgOnAreaClick()= + =_RG_COLUMNS= — the only sortable MB table.
+- =_rgReleasesLoad(info, {all})= — the only WS/2 offset loop (IDB record =rg-releases:<gid>=,
+  =wanted()=, cap =sa_rg_window_max_releases=). Model for the MB paged loader.
+- =_rgWsGet()= → =_relAwaitRateSlot()=, =_REL_WS2_SPACING_MS= = 1100 ms.
+- =_mbCollWindowHtml()= / =_mbCollLoad()= (◀ ▶ over 100-row HTML pages),
+  =_mbEditsWindowHtml()= (already uses =_extDgSection()=, chips, Newest/Oldest).
+- =_mbPopTracksHtml()=, =_mbPopSetlist()=, =_mbPopRelRows()=, =_mbPopUrlLinksHtml()=,
+  =_mbPopGenres()=, =_mbPopSeriesItems()=, =_mbPopRelTargetHtml()=, =_mbPopGenreRelRows()=,
+  =_mbPopTagWindowHtml()=, =_mbParseTagPage()=, =_mbParseUserTagPage()=,
+  =_mbParseUserRatingsPage()=, =_mbParseAnnotationsPage()=, =_mbParsePath= / =_mbPopParsePath()=,
+  =_MB_POP_PATH_RE=, =_MB_POP_USERTAG_RE=, =_MB_POP_CODE_RE=, =_MB_POP_PAGE_VERSION=.
+- In-window links: =_dpWinWhat()= / =_dpWinMark()= (=mb-dp-l-here=, =-out=, =-img=),
+  =_dpDrill()= (modifier → new tab), =_mbPopTarget(a, {inWindow: true})=.
+
+Discogs readers: =_EXT_READERS= (=discogs=), =_EXT_DISCOGS_PATH_RE= (also matches
+=/release/<id>/images= and =/images/update= today, so they open the plain release window),
+=_extDiscogsLoad()=, =_extDiscogsImages()=, =_dgArtImages()=, =_fiClick()=, =_fiCardHtml()=,
+=_DG_FI=, =_dgUserCell()=, =_dgAvatarInit()=, =_DP_SITES['www.discogs.com']=.
+
+Found while mapping (fix in Phase 3, own regression test):
+- *Series items of release groups open a broken new tab*: WS/2's =target-type= is
+  =release_group=, =_mbPopSeriesItems()= builds =/release_group/<id>=, which misses
+  =_MB_POP_PATH_RE=. Same in =_mbPopRelTargetHtml()=.
+- Probably (unconfirmed): the =catno= path builds the label key with inc =genres+aliases= while
+  the label's =cardInc= is =genres+ratings+aliases=, so its "already loaded?" check never hits.
+
+** DONE Phase 1 — "Initial sort" state on Discogs POHs  [4/4]
+
+Done 2026-10-26 (cloud session, WIP.1 in =ShowAllEntityData_CHANGELOG.wip.json=).
+
+- [X] One cycle everywhere through two shared helpers, =_dpSortNext(cur, col, first)= and
+      =_dpSortAttrs(cur, col, initial, first)= (beside =_extDgChipPick()=): the artist
+      discography (=asort=), label releases (=lsort=), sublabels (=ssort=), a master's versions
+      (=data-mb-dg-sort=, =ui.sort= '' = Discogs' order) and the MusicBrainz release-group window
+      (=_rgSort=, key '' = this release first, then by date). Behaviour change on purpose:
+      Discogs' *Have* (first direction ▼) used to go ▼ → off; now ▼ → ▲ → off like the rest.
+- [X] Unsorted headers carry =aria-sort="none"= and =data-mb-tip title="Initial order (…) · click:
+      ascending"=; sorted ones say what the next click does. (In the release-group window the
+      title sits on the header's button, =aria-sort= stays on the =th=.)
+- [X] CSS: =.mb-dg-vt th[aria-sort="none"]::after= ⇅ at 0.35 (0.8 on hover); the
+      release-group window's ↕ (=\2195=) became ⇅.
+- [X] Specs: =popup-ext.spec.js= (versions: third click = the exact order of the four API
+      answers; artist "Have": ▼ → ▲ → ⇅ and the computed =::after= glyph; sublabels: third click
+      neither name order nor its reverse) and =release-rg-popup.spec.js= (third click: no sorted
+      header, this release first). Mutations: =scripts/mutations/dp-sort-initial-state.json=, 6
+      fail as they should, 1 recorded overlap passes (the sublabels' explicit =if (s.dir)= guard:
+      a 0 comparator plus a stable sort keeps Discogs' order anyway).
+
+Note for later specs: the tooltip engine parks the =title= of the element under the pointer
+while its card shows, so assert a tip on a header the pointer is NOT on.
+
+Follow-up the same day: ⇅ comes from a fallback font that arrives late, so the header grew
+and the release-group window's covers test flaked about 1 in 5 (24/24 on the base). The glyph
+now sits in a fixed 1.4 em box (=.mb-dg-vt th[aria-sort]::after=,
+=.mb-rg-wtable th button::after=); see =DEBUG-NOTES.md= 2026-10-26 "the ⇅ sort glyph". Rule
+for Phases 2–4: any symbol outside the basic fonts (entity icons, ★, ⇅ …) in a row or header a
+pointer rests on gets a fixed box.
+
+=npm test= in the cloud container (2026-10-26T20:58+01:00 → 22:40, =vm=, 2,352 tests, 2
+workers): 2,274 passed, 78 failed. 60 are =net::ERR_TUNNEL_CONNECTION_FAILED= (specs that open
+real musicbrainz.org pages; the container's proxy refuses). 17 others failed serially too; 16
+fail identically on the base (=fdd3ac24= worktree), the 17th was the glyph flake above. So: no
+regression left from Phase 1 in this container; run =npm run test:full= locally before merging.
+
+Pre-existing, not caused by this work: =popup-ext.spec.js= "Wikipedia: one REST summary … a
+missing title" fails at line 1032 (no =upload.wikimedia.org= image) on the unchanged base too
+(cloud container, 2026-10-26). Re-check locally.
+
+*Re-checked locally* (Env: 2026-10-27T11:09:24+01:00 → 11:25:38 · NB-3641 · WSL2 Ubuntu,
+Linux 6.18.54.1 · Playwright Chromium, no Tampermonkey (GM stubs)): =npm run test:full= on
+=a136f039= (Phase 1 + the glyph box), 2,366 tests, 14 workers, 16 m 14 s: *2,365 passed, 1
+failed*. The Wikipedia test and the release-group covers test both passed, so both were the
+container (proxy, and load), not the code. The 16 unnamed cloud failures did not recur. The one
+local failure, =release-event-colours-rg-tooltip.spec.js:335= ("the event card above the release
+group card"), threw =boundingBox()= → =null= at line 353, after =toBeVisible()= had passed. It then
+passed 10/10 alone and 40/40 with 14 workers. Phase 1's diff touches no code it exercises (window
+CSS and window-table sorts only), so it is a load-only flake (the box hides between two
+assertions), not a regression. Hardening it (re-assert visibility next to the measurement) is
+left for its own change; see =DEBUG-NOTES.md= 2026-10-27.
+
+** DONE Phase 2 — Shared table components  [5/5]
+
+Done 2026-10-27 (local, NB-3641; WIP.2). Decision (vzell, 2026-10-27): every component gets a
+real first caller now: Discogs sublabels → Compact, Discogs label releases → List, MusicBrainz
+*Work → Recordings* → List + paged loader. The other Phase 3 rows stay in Phase 3. Details:
+=docs/claude/detail-pages.md= "Shared window tables and the MusicBrainz paged loader".
+
+- [X] *Compact table* =_dpCompactTableHtml(t, id, cols, rows, opts)= extracted from
+      =_extDgSublabelsHtml()=, which is now its first caller. The Discogs label specs ran
+      unchanged: the component emits their old names (=qCls=, =sortAttr=, =cls=) next to the
+      generic =data-mb-tbl-*= ones.
+- [X] Per-window table state =_dpTblUi(t, id)= (=_dpTbl=, same lifetime as =_extDgUi=); ONE
+      delegated click handler (=_dpTblClick()=) and input handler (=_dpTblInput()=) in the dialog
+      for every window, before the source's own.
+- [X] *List table* =_dpListTableHtml(t, id, cols, rows, opts)= from =_extDgLabelHtml()='s parts:
+      tools, filter, chips (top 10 + "+N more", Ctrl adds), 40 px thumbs, "Showing N of M · Show
+      all". The status bar stays the caller's.
+- [X] *MB paged loader*, named =_mbPagedStart()= / =_mbPagedRun()= / =_mbPagedStatusHtml()= /
+      =_mbPagedClick()= (not =_mbPopPagedList()=): page 1 from =pin()=, "Load 5 more pages (500
+      recordings, about 6 s)", offset += rows returned, IDB =mb:list:<key>=, =wanted()= + Stop.
+      *Deviation:* the HTML-paged adapter (=/tag/<t>/<kind>?page=n=, collections) is NOT written
+      yet. The =spec.ask(offset, wanted)= interface admits it, and it lands in Phase 3 with its
+      first caller, so no untested code goes in.
+- [X] Thumb placeholder =<span class="mb-dg-vthumb mb-dg-nothumb">= (the same 42 px box with its
+      border; asserted against a real thumbnail in =popup-ext.spec.js=).
+
+Phase 3 note: the Work row of the table below is done (Recordings → List + paged loader).
+
+Tests (Env: 2026-10-27T11:52:17+01:00 → 12:08:12 · NB-3641 · WSL2 Ubuntu 24.04.4, Linux 6.18.54.1 ·
+Playwright 1.62.1 Chromium, no Tampermonkey (GM stubs)): =npm run test:full= on =a136f039= + the
+Phase 2 changes, *2,369/2,369 passed* in 15 m 55 s. Mutations: =dp-shared-tables.json= 7/7 fail as
+they should; =dp-sort-initial-state.json= 8 fail + 1 recorded overlap pass; =discogs-window-swap.json=
+5/5 (one entry was already stale at HEAD and is retargeted). Lint is within its baseline.
+
+** Phase 3 — MB entity sections  [0/27]
+
+"Compact" = like Discogs label → Sublabels (left column). "List" = like Discogs label → Releases
+(right column) with "Load N more pages (M …, about S s)".
+
+| Entity          | Section                                     | Change                                                                                                                                                         |
+|-----------------+---------------------------------------------+----------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Artist          | Release groups                              | List: the real RGs (browse =release-group?artist== paged), type chips, CAA thumbs; today only a Type/Count table                                              |
+| Artist          | Links                                       | Compact, left (host · relationship · URL)                                                                                                                      |
+| Release group   | Releases                                    | =_rgWindowTableHtml()= → List; empty-thumb placeholder                                                                                                         |
+| Release group   | Facts: Artist                               | each credited artist a link that opens in the window                                                                                                           |
+| Release group   | Facts: Genres                               | one per line, each a link to =/tag/<genre>= in the window (Ctrl: your tag, open Q 1)                                                                          |
+| Release group   | Links                                       | Compact, left                                                                                                                                                  |
+| Release         | Tracklist → medium                          | one collapsible table per medium (pos · title · artist if ≠ release credit · length), header "CD 2 · 8 tracks · 52:09", shared filter                         |
+| Recording       | Releases                                    | List + paged loader (=release?recording==); replaces "The first 25 of 80; the recording's page lists them all."                                               |
+| Work            | Recordings                                  | List + paged loader (=recording?work==); replaces "219 recordings; the first 100 here, …"                                                                     |
+| Work            | Codes                                       | Compact, left                                                                                                                                                  |
+| Label           | Links                                       | Compact, left, when more than 10                                                                                                                               |
+| Label           | Facts: Genres                               | one per line, tag links                                                                                                                                        |
+| Event           | Setlist                                     | table: # · title · cover / notes · disambiguation                                                                                                             |
+| Event           | Recorded here (releases), (recordings)      | two Compact tables, left                                                                                                                                       |
+| Instrument      | Related instruments → Parts                 | Compact, left                                                                                                                                                  |
+| Instrument      | Aliases                                     | Compact, left (alias · locale · type · primary)                                                                                                                |
+| Series          | Items                                       | entity icon before the name; opens in the window (fix =release_group=, see Code map)                                                                          |
+| Place           | Events                                      | List + paged loader (=event?place==)                                                                                                                           |
+| Place           | Links                                       | Compact, left                                                                                                                                                  |
+| Area            | Related areas → Parts                       | Compact, left                                                                                                                                                  |
+| Editor          | Edits                                       | Compact                                                                                                                                                        |
+| Collection      | <ENTITY> list                               | List + HTML paged loader (replaces the ◀ ▶ slices)                                                                                                            |
+| Genre           | Links                                       | moves to the left                                                                                                                                              |
+| Genre           | Related genres → each sub-section           | Compact                                                                                                                                                        |
+| Tag             | Releases / Recordings / Artists / …         | List per kind on the right, HTML paged loader on =/tag/<t>/<kind>?page=n=; "By kind" stays left                                                               |
+| Editor's tag    | By kind                                     | new reader for =/user/<u>/tag/<t>/<kind>= (beside =_MB_POP_USERTAG_RE=), opens inline; right side as for Tag                                                  |
+| Tags            | Other tags                                  | Compact                                                                                                                                                        |
+| Ratings         | Artist / Event / Label / …                  | Compact per kind (+ link to all)                                                                                                                              |
+| CD stub         | —                                           | new reader =/cdstub/<id>= (page parse: title, artist, barcode, comment, tracks); entry point =https://musicbrainz.org/cdstub/browse=; bump =_MB_POP_PAGE_VERSION= |
+| ISRC            | Recordings                                  | Compact                                                                                                                                                        |
+| ISWC            | Works                                       | Compact                                                                                                                                                        |
+| Disc ID         | Releases                                    | Compact                                                                                                                                                        |
+| Documentation   | —                                           | new reader (see open Q 4)                                                                                                                                      |
+| Annotation      | History → Versions                          | Compact; Version: unchanged unless open Q 3 says otherwise                                                                                                     |
+
+Every new reader: fixture HTML in =tests/fixtures/=, a spec, the =_MB_POP_PAGE_VERSION= bump,
+a row in =docs/claude/detail-pages.md='s doc-map entry.
+
+** Phase 4 — Discogs Images / Image history  [0/4]
+
+Page structure (from the uploads, 2026-10-26):
+- =/release/<id>/images=: =<title>Images for Bruce Springsteen - Born To Run=; 17 ×
+  =span.thumbnail_link > img= (500 px =i.discogs.com= URLs), "Update these images" button.
+- =/release/<id>/images/update= (logged in): React uploader; 17 × =li.image_preview=, each with
+  =img[alt="Primary – 1 of 17"]= (type, position, total), =.user_info= ("Uploaded by" =a.user=,
+  =span[title="May 20, 2008 1:46 AM"]= "18 years ago"), W × H px, size (127KB), View / Disable
+  / Report Abuse, ↑ ↓.
+
+Tasks:
+- [ ] Reader =dgimages= ahead of =discogs= in =_EXT_READERS= (today =_EXT_DISCOGS_PATH_RE=
+      sends both URLs to the plain release window): Images → gallery-first window, every image
+      with type and W × H, the hover card (=_fiCardHtml()=), the viewer (=_fiClick()=, ← →).
+- [ ] Image history → table: # · thumb · Primary/Secondary · uploaded by (avatar,
+      =_dgUserCell()=) · date (full date in the tip) · W × H · size. On discogs.com: same-origin
+      page fetch. From musicbrainz.org: API fallback with a note (open Q 2).
+- [ ] On discogs.com itself: pageTypes =dg-images= and =dg-image-history= (=@include=,
+      =_dgPrepareLivePage()=, converter to =table.tbl=, hover via =_DG_FI=). Skill:
+      =add-foreign-page-or-reader=.
+- [ ] Trimmed fixtures from the two uploads (scripts, =userId= 2369911 and any other account data
+      removed) under =tests/fixtures/= + specs. Not done in the planning session on purpose.
+
+** Phase 5 — Per phase, not at the end
+
+- Fixture spec per change, mutation-checked (=scripts/mutation-check.py=); the Series
+  underscore fix gets a test that fails before it.
+- WIP changelog entry; HELP (=ShowAllEntityData_HELP.md=) for anything a user sees;
+  =docs/claude/detail-pages.md= and =docs/claude/discogs.md=.
+- 4 spaces, no tabs, no trailing whitespace, JSDoc on every function;
+  =python3 scripts/lint-summary.py --check=; =npm test=; =npm run test:full= before asking to
+  merge. Performance: windows only, no table hot path — say so in the WIP entry.
+
+** Mockup
+
+=org/MB-POH-sync-withDiscogs-mockups.html= — published as an Artifact (link recorded below once
+published). Sections: sort states (clickable), the two table components, before/after per MB
+entity, the Discogs Images / Image history window and page.
+
+Mockup link: https://claude.ai/artifact/TkNduhLjJmD2FrcURn5yaV (published 2026-10-26, version 1; the
+mockup draws images as coloured placeholders because the Artifact sandbox blocks outside images)

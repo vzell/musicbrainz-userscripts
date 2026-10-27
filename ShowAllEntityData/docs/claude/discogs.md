@@ -32,6 +32,14 @@ The details: docs/claude/detail-pages.md, "The Discogs window's sides
 swapped". Discogs' own artist hover card on the page: see "Discogs' own
 artist hover card" below.
 
+**Shared window tables (2026-10-27, org/MB-POH-sync-withDiscogs.org Phase
+2):** a label window's sublabels and releases are now the shared Compact and
+List tables (`_dpCompactTableHtml()`, `_dpListTableHtml()`), the same ones
+the MusicBrainz windows use; their filter, chips, sort, page and row limit
+live in `_dpTblUi(t, 'dg-sub' | 'dg-label')`, not in `_extDgUiOf()`. The
+details: docs/claude/detail-pages.md, "Shared window tables and the
+MusicBrainz paged loader".
+
 ## What it is
 
 Seven pageTypes on discogs.com's own pages, opt-in via `sa_enable_discogs`

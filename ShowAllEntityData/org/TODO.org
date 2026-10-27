@@ -5144,6 +5144,7 @@ third-party userscript "mb. COLLECTION HIGHLIGHTER" from @jesus2099 is active
 
 
 * TODO add new features
+** DONE initial
 
 add the following new features, but store the plan in @org/MB-POH-sync-withDiscogs.org first, so I can resume on another
 machine (locally in claude code) as we probably don't have enough tokens to finish of in this cloude code session
@@ -5221,3 +5222,33 @@ add support for the following Discogs pages (with the usual image hovering treat
 4.)
 
 show me a nice rich HTML web page with mockups before implementing
+
+** DONE finishing of in the cloud
+
+Phase 1 is committed and pushed as 723745f7, and the working tree is clean. The default fixture suite is still running, so it isn’t confirmed green yet; I’ll report back when it finishes.
+
+Your four decisions are in the org file’s Decisions table, committed and pushed as fdd3ac24.
+
+What Phase 1 does:
+
+Which tables: the Discogs artist discography, label releases, sublabels and master versions, plus the MusicBrainz release-group window.
+Three sort states: each header now cycles ▲ → ▼ → back to the site’s own order. In that initial order a header shows a faint ⇅, and its hover text says what the next click does.
+One place for the cycle: five hand-written sort cycles were replaced by two shared helpers, which Phase 2’s MusicBrainz tables will reuse.
+One intended behaviour change: Discogs’ Have column used to go ▼ → off. It now goes ▼ → ▲ → off like every other column.
+Bookkeeping: WIP.1 is in ShowAllEntityData_CHANGELOG.wip.json and the HELP file is updated. As the convention says, there is no @version bump on the branch.
+
+Tests so far:
+
+Four existing specs were extended to cover the third click. For example, the master’s versions must come back in exactly the order of Discogs’ API answers.
+The new mutation file plants 7 defects. 6 fail the specs as they should; the 7th is a known overlap that is expected to pass, and it is recorded as such.
+Lint is within its baseline, and there are no tabs or trailing whitespace.
+
+One failure that isn’t from this change: the Wikipedia reader test (“…a missing title”) fails here. It fails the same
+way with my changes stashed, so it was already broken before this work. It expects an image from upload.wikimedia.org;
+this container is my first suspect. It’s noted in the org file to re-check on your machine.
+
+Next, on your local machine: Phase 2 in org/MB-POH-sync-withDiscogs.org, the shared Compact and List tables plus the “Load N more pages” loader for MusicBrainz.
+
+** tackle
+
+Tackle "Phase 2" in org/MB-POH-sync-withDiscogs.org, the shared Compact and List tables plus the “Load N more pages” loader for MusicBrainz.

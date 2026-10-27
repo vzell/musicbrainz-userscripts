@@ -877,21 +877,168 @@ test.describe('MusicBrainz link previews: recording and work (WIP.2)', () => {
         expect(log.ws2).toEqual([expect.stringContaining(`/ws/2/work/${WORK_ID}?inc=artist-rels+label-rels+work-rels&fmt=json`)]);
     });
 
-    test('the work window: its first 100 recordings of 2,226, from one browse', async ({ page }) => {
-        const log = await open(page, { settings: { sa_pop_mb: true }, showAll: false });
+    // The work's recordings as the shared List table with the MusicBrainz
+    // paged loader (org/MB-POH-sync-withDiscogs.org, Phase 2). Pages past
+    // the first are the fixture's 100 rows with ids and titles of their
+    // own, so the offsets can be told apart. With `short`, the page at
+    // offset 100 holds 60 rows (as a release browse past its 500-track
+    // cap would), so the next offset must be 160, not 200.
+    const recPage = (offset, short = false) => {
+        const d = JSON.parse(json('ws2-pop-work-btr-recordings.json'));
+        d['recording-offset'] = offset;
+        if (offset) {
+            d.recordings = d.recordings.map((r, i) => Object.assign({}, r, {
+                id: `00000000-0000-4000-8000-${String(offset + i).padStart(12, '0')}`, title: `${r.title} #${offset + i}`,
+            }));
+        }
+        if (short && offset === 100) d.recordings = d.recordings.slice(0, 60);
+        return d;
+    };
+    const recOffsets = log => log.ws2.filter(u => u.includes('/ws/2/recording?work=')).map(u => Number(/[?&]offset=(\d+)/.exec(u)[1]));
+
+    /**
+     * Opens the work's window, its recording browse answered by `recPage()`
+     * unless `failAt()` names the offset (HTTP 400, not retried).
+     *
+     * @param {import('@playwright/test').Page} page
+     * @param {function(): number} [failAt]
+     * @param {boolean} [short] - As `recPage()`.
+     * @returns {Promise<{log: Object, area: import('@playwright/test').Locator}>}
+     */
+    async function openWorkWindow(page, failAt = () => -1, short = false) {
+        const log = await open(page, {
+            settings: { sa_pop_mb: true }, showAll: false,
+            ws2: (url) => {
+                const m = /\/ws\/2\/recording\?work=.*[?&]offset=(\d+)/.exec(url);
+                if (!m) return null;
+                const off = Number(m[1]);
+                return off === failAt() ? { status: 400, body: '{"error":"planted"}' } : { status: 200, body: JSON.stringify(recPage(off, short)) };
+            },
+        });
         const a = await addLink(page, `/work/${WORK_ID}`, 'Born to Run');
         await ctrlHover(page, a);
         await expect(card(page)).toContainText('fetched now');
         await page.keyboard.press('Space');
-        const area = dialog(page).locator('.mb-dp-area');
+        return { log, area: dialog(page).locator('.mb-dp-area') };
+    }
+
+    test('the work window: page 1 of its recordings on Space, then 5 pages a click, offset by the rows returned; Show all', async ({ page }) => {
+        const { log, area } = await openWorkWindow(page, () => -1, true);
         await expect(dialog(page).locator(':scope > div > span').first()).toHaveText('Work');
-        await expect(area).toContainText('2226 recordings; the first 100 here');
-        await expect(area.locator('.mb-rg-wtable tbody tr')).toHaveCount(100);
-        await expect(area.locator('.mb-rg-wtable tbody tr').first().locator('a')).toHaveAttribute('href', /^\/recording\/[0-9a-f-]{36}$/);
+        const rows = area.locator('[data-mb-tbl="work-recordings"] tbody tr');
+        await expect(area.locator('h4', { hasText: 'Recordings' })).toHaveText('Recordings · 2,226');
+        await expect(area.locator('.mb-dg-counts').first()).toHaveText('100 of 2,226 loaded · one segment = 100 recordings');
+        await expect(rows).toHaveCount(100);
+        await expect(rows.first().locator('a')).toHaveAttribute('href', /^\/recording\/[0-9a-f-]{36}$/);
         await expect(area.locator('h4', { hasText: 'Codes' })).toBeVisible();
-        expect(log.ws2.filter(u => u.includes('/ws/2/recording?work='))).toEqual([
-            expect.stringContaining(`recording?work=${WORK_ID}&limit=100&inc=artist-credits`),
+        expect(log.ws2.filter(u => u.includes('/ws/2/recording?work=')), 'page 1 only, from the window').toEqual([
+            expect.stringContaining(`recording?work=${WORK_ID}&inc=artist-credits&limit=100&offset=0&fmt=json`),
         ]);
+
+        const more = area.getByRole('button', { name: 'Load 5 more pages (500 recordings, about 6 s)' });
+        await more.click();
+        // Page 2 held 60 rows: the next offset is 160, and nothing is skipped.
+        await expect(area.locator('.mb-dg-counts').first()).toHaveText('560 of 2,226 loaded · one segment = 100 recordings', { timeout: 20000 });
+        expect(recOffsets(log), 'the batch, offset by the rows returned, and no page more').toEqual([0, 100, 160, 260, 360, 460]);
+        await expect(area.locator('.mb-dg-pill').first()).toHaveText('Idle');
+        await expect(area.getByRole('button', { name: 'Load 5 more pages (500 recordings, about 6 s)' })).toBeVisible();
+        // 200 rows, then all of them.
+        await expect(rows).toHaveCount(200);
+        await area.getByRole('button', { name: 'Show all 560' }).click();
+        await expect(rows).toHaveCount(560);
+        await expect(rows.nth(559)).toContainText('#559');
+    });
+
+    test('the work window: Stop ends a run with the page under way; a failed page keeps what loaded and "Try again" asks it; IndexedDB after a reload', async ({ page }) => {
+        let fail = -1;
+        const { log, area } = await openWorkWindow(page, () => fail);
+        await expect(area.locator('.mb-dg-counts').first()).toHaveText(/^100 of 2,226 loaded/);
+        await area.getByRole('button', { name: /^Load 5 more pages/ }).click();
+        await area.getByRole('button', { name: 'Stop' }).click();
+        await expect(area.locator('.mb-dg-pill').first()).toHaveText('Idle', { timeout: 10000 });
+        const asked = recOffsets(log).length;
+        expect(asked, 'at most the page under way after Stop').toBeLessThanOrEqual(2);
+        const grew = await expect.poll(() => recOffsets(log).length, { timeout: 2500, intervals: [250] })
+            .toBeGreaterThan(asked).then(() => true, () => false);
+        expect(grew, 'no page after Stop').toBe(false);
+        const loaded = asked * 100;
+
+        // A page that fails: the rows stay, the run ends, the button asks that page.
+        fail = loaded;
+        await area.getByRole('button', { name: /^Load 5 more pages/ }).click();
+        await expect(area.locator('.mb-dg-pill').first()).toHaveText('Done with errors', { timeout: 10000 });
+        await expect(area.locator('.mb-dg-counts').first()).toContainText(`${loaded} of 2,226 loaded`);
+        await expect(area.locator('.mb-dg-bar i.mb-dg-seg-failed')).toHaveCount(1);
+        fail = -1;
+        await area.getByRole('button', { name: `Try page ${asked + 1} again (1 request, about 1 s)` }).click();
+        await expect(area.locator('.mb-dg-counts').first()).toHaveText(`${loaded + 100} of 2,226 loaded · one segment = 100 recordings`, { timeout: 10000 });
+        expect(recOffsets(log).slice(asked), 'the failed offset, then the same offset again').toEqual([loaded, loaded]);
+
+        await reloadScript(page);
+        const before = log.ws2.length;
+        const a = await addLink(page, `/work/${WORK_ID}`, 'Born to Run');
+        await ctrlHover(page, a);
+        await expect(card(page)).toContainText('Born to Run');
+        await page.keyboard.press('Space');
+        await expect(area.locator('.mb-dg-counts').first())
+            .toHaveText(`${loaded + 100} of 2,226 loaded · ${loaded + 100} from cache · one segment = 100 recordings`);
+        await expect(area.locator('.mb-dg-bar i.mb-dg-seg-cache')).toHaveCount(asked + 1);
+        expect(recOffsets({ ws2: log.ws2.slice(before) }), 'nothing asked again').toEqual([]);
+    });
+
+    test('the work window: the filter keeps its focus, a chip per artist (Ctrl adds one), three sort states with ⇅', async ({ page }) => {
+        const { area } = await openWorkWindow(page);
+        const tbl = area.locator('[data-mb-tbl="work-recordings"]');
+        const rows = tbl.locator('tbody tr');
+        await expect(rows).toHaveCount(100);
+        const initial = await rows.locator('td:first-child').allTextContents();
+        // The filter: every row it keeps marks what it matched.
+        const q = tbl.locator('input.mb-tbl-q');
+        await q.fill('live');
+        await expect(q).toBeFocused();
+        const n = await rows.count();
+        expect(n).toBeGreaterThan(0);
+        expect(n).toBeLessThan(100);
+        await expect(rows.filter({ has: page.locator('mark.mb-dg-hl') })).toHaveCount(n);
+        await tbl.getByRole('button', { name: 'Clear filters' }).click();
+        await expect(rows).toHaveCount(100);
+        // Chips: the most frequent credit first; one keeps only its rows,
+        // Ctrl adds the second.
+        const chips = tbl.locator('.mb-dg-fc[data-mb-tbl-chip]');
+        const [a1, a2] = [await chips.nth(0).getAttribute('data-mb-tbl-chip'), await chips.nth(1).getAttribute('data-mb-tbl-chip')];
+        const n1 = Number((await chips.nth(0).locator('.mb-dg-n').textContent()).replace(/,/g, ''));
+        const n2 = Number((await chips.nth(1).locator('.mb-dg-n').textContent()).replace(/,/g, ''));
+        await chips.nth(0).click();
+        await expect(rows).toHaveCount(n1);
+        expect(new Set(await rows.locator('td:nth-child(2)').allTextContents())).toEqual(new Set([a1]));
+        await tbl.locator(`.mb-dg-fc[data-mb-tbl-chip="${a2}"]`).click({ modifiers: ['Control'] });
+        await expect(rows).toHaveCount(n1 + n2);
+        await expect(tbl.locator('.mb-dg-fc[aria-pressed="true"]')).toHaveCount(2);
+        await tbl.getByRole('button', { name: 'Clear filters' }).click();
+        await expect(rows).toHaveCount(100);
+        // 30 credits: the first 10, then "+20 more" shows them all.
+        await expect(chips).toHaveCount(10);
+        await tbl.getByRole('button', { name: '+20 more' }).click();
+        await expect(chips).toHaveCount(30);
+        await tbl.getByRole('button', { name: 'Fewer' }).click();
+        await expect(chips).toHaveCount(10);
+        // Length: ascending, descending, then the Web Service's order again.
+        const th = tbl.locator('th[data-mb-tbl-sort="length"]');
+        await expect(th).toHaveAttribute('aria-sort', 'none');
+        const ms = async () => (await rows.locator('td:nth-child(3)').allTextContents()).filter(s => s !== '—')
+            .map(s => s.split(':').reduce((acc, x) => acc * 60 + Number(x), 0));
+        await th.click();
+        await expect(th).toHaveAttribute('aria-sort', 'ascending');
+        const up = await ms();
+        expect(up).toEqual([...up].sort((x, y) => x - y));
+        await th.click();
+        await expect(th).toHaveAttribute('aria-sort', 'descending');
+        const down = await ms();
+        expect(down).toEqual([...down].sort((x, y) => y - x));
+        await th.click();
+        await expect(th).toHaveAttribute('aria-sort', 'none');
+        await expect(rows.locator('td:first-child'), 'the Web Service\'s own order').toHaveText(initial);
+        expect(await th.evaluate(el => getComputedStyle(el, '::after').content)).toBe('" ⇅"');
     });
 });
 

@@ -1,0 +1,119 @@
+[
+    {
+        "name": "sort initial state: the cycle toggles only (no third state)",
+        "why": "A third click must restore the site's order; a plain toggle stays sorted.",
+        "edits": [
+            {
+                "find": "        return cur.dir === first ? { col, dir: -first } : { col: '', dir: 0 };\n",
+                "replace": "        return { col, dir: -cur.dir };\n"
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "an artist's tables",
+        "expect": "fail"
+    },
+    {
+        "name": "sort initial state: versions table, a third click falls back to Year",
+        "why": "The versions' initial order is Discogs' own, not the default Year sort.",
+        "edits": [
+            {
+                "find": "            ui.sort = next.col;\n",
+                "replace": "            ui.sort = next.col || 'year';\n"
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "a master: no versions",
+        "expect": "fail"
+    },
+    {
+        "name": "sort initial state: sublabels, a third click falls back to Name",
+        "why": "The sublabels' initial order is Discogs' own (since Phase 2 the shared Compact table's sort, _dpTblClick()).",
+        "edits": [
+            {
+                "find": "            ui.sort = _dpSortNext(ui.sort, d.mbTblSort, Number(d.mbTblFirst) || 1);\n",
+                "replace": "            ui.sort = _dpSortNext(ui.sort, d.mbTblSort, Number(d.mbTblFirst) || 1).dir ? _dpSortNext(ui.sort, d.mbTblSort, Number(d.mbTblFirst) || 1) : { col: 'name', dir: 1 };\n"
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "a label: page 1",
+        "expect": "fail"
+    },
+    {
+        "name": "sort initial state: the release-group window keeps toggling",
+        "why": "The MusicBrainz release-group window shares the cycle; a third click returns to this release first.",
+        "edits": [
+            {
+                "find": "        _rgSort.key = next.col;\n",
+                "replace": "        _rgSort.key = next.col || key;\n"
+            }
+        ],
+        "spec": "tests/fixtures/release-rg-popup.spec.js",
+        "grep": "the window sorts by a header",
+        "expect": "fail"
+    },
+    {
+        "name": "sort initial state: no aria-sort=\"none\" on an unsorted header",
+        "why": "The ⇅ glyph and its state hang on aria-sort=\"none\".",
+        "edits": [
+            {
+                "find": "            return ` aria-sort=\"none\" data-mb-tip title=",
+                "replace": "            return ` data-mb-tip title="
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "an artist's tables",
+        "expect": "fail"
+    },
+    {
+        "name": "sort initial state: the ⇅ glyph rule missing",
+        "why": "The initial state must be visible, not only in the markup.",
+        "edits": [
+            {
+                "find": "            .mb-dp-dialog .mb-dg-vt th[aria-sort=\"none\"]::after { content: \" \\\\21C5\"; opacity: 0.35; }\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "an artist's tables",
+        "expect": "fail"
+    },
+    {
+        "name": "sort initial state: the glyph's box not fixed in the release-group window",
+        "why": "⇅ often comes from a fallback font that arrives later; without a fixed box the header grows and the rows move under the pointer (the covers test flaked about 1 in 5).",
+        "edits": [
+            {
+                "find": "                display: inline-block; width: 1.4em; line-height: 1; text-align: center;\n            }\n",
+                "replace": "            }\n"
+            }
+        ],
+        "spec": "tests/fixtures/release-rg-popup.spec.js",
+        "grep": "the window sorts by a header",
+        "expect": "fail"
+    },
+    {
+        "name": "sort initial state: the glyph's box not fixed in the Discogs tables",
+        "why": "Same reflow risk in the Discogs window tables.",
+        "edits": [
+            {
+                "find": "            .mb-dp-dialog .mb-dg-vt th[aria-sort]::after { display: inline-block; width: 1.4em; line-height: 1; text-align: center; }\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "an artist's tables",
+        "expect": "fail"
+    },
+    {
+        "name": "sort initial state: the sublabels' explicit no-sort guard",
+        "why": "Recorded overlap: _dpSortNext() returns col '' with dir 0 for the initial order, so no column matches and the order given survives without the dir guard (since Phase 2 in the shared _dpTblRows()); the guard states the intent.",
+        "edits": [
+            {
+                "find": "        const col = ui.sort.dir ? cols.find(c => c.key === ui.sort.col) : null;\n",
+                "replace": "        const col = cols.find(c => c.key === ui.sort.col) || null;\n"
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "a label: page 1",
+        "expect": "pass"
+    }
+]

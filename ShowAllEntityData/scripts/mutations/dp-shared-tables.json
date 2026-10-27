@@ -1,0 +1,93 @@
+[
+    {
+        "name": "paged list: the offset grows by the limit, not by the rows returned",
+        "why": "org/MB-POH-sync-withDiscogs.org Phase 2: a browse page may hold fewer rows than the limit (a release browse's 500-track cap); offsetting by the limit skips rows.",
+        "edits": [
+            {
+                "find": "                const res = await st.spec.ask(st.rows.length, st.wanted);\n",
+                "replace": "                const res = await st.spec.ask(Math.ceil(st.rows.length / _MB_PAGED_LIMIT) * _MB_PAGED_LIMIT, st.wanted);\n"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "the work window: page 1 of its recordings",
+        "expect": "fail"
+    },
+    {
+        "name": "paged list: a repaint starts page 1 again",
+        "why": "Detail-pages rule: only a call with start (or ⟳) may start a request; pin() runs from every repaint.",
+        "edits": [
+            {
+                "find": "        if (cur && (cur.running || (!again && (cur.rows.length || cur.detail)))) return;\n",
+                "replace": "        if (cur && cur.running) return;\n"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "the work window: page 1 of its recordings",
+        "expect": "fail"
+    },
+    {
+        "name": "paged list: no wanted() check, so Stop stops nothing",
+        "why": "Stop works through wanted(): a page whose rate slot comes up after Stop is not asked and ends the run.",
+        "edits": [
+            {
+                "find": "listeners: cur ? cur.listeners : new Set([repaint]), wanted: () => !st.stopped && wanted(),\n",
+                "replace": "listeners: cur ? cur.listeners : new Set([repaint]), wanted: () => true,\n"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "the work window: Stop ends a run",
+        "expect": "fail"
+    },
+    {
+        "name": "shared table: typing a filter keeps the page",
+        "why": "A filter starts the Compact table over on page 1 (the sublabels on page 2, then a filter).",
+        "edits": [
+            {
+                "find": "        Object.assign(_dpTblUi(t, box.dataset.mbTbl), { q: e.target.value, page: 0 });\n",
+                "replace": "        Object.assign(_dpTblUi(t, box.dataset.mbTbl), { q: e.target.value });\n"
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "keeps the thumbnail's box",
+        "expect": "fail"
+    },
+    {
+        "name": "shared table: no \"+N more\" chips",
+        "why": "A List table shows the first 10 chips, then \"+N more\" (a work with 30 credits).",
+        "edits": [
+            {
+                "find": "            (facets.length > _DP_TBL_CHIPS ? '<button type=\"button\" class=\"mb-dg-fc mb-dg-more\" data-mb-tbl-act=\"morechips\">' +\n",
+                "replace": "            (false ? '<button type=\"button\" class=\"mb-dg-fc mb-dg-more\" data-mb-tbl-act=\"morechips\">' +\n"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "the work window: the filter keeps its focus",
+        "expect": "fail"
+    },
+    {
+        "name": "shared table: an empty thumbnail is not a placeholder",
+        "why": "Every row of a List table with thumbnails is as high: an empty one keeps the 40 px box.",
+        "edits": [
+            {
+                "find": "${opts.thumb(r) || '<span class=\"mb-dg-vthumb mb-dg-nothumb\" aria-hidden=\"true\"></span>'}",
+                "replace": "${opts.thumb(r) || ''}"
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "keeps the thumbnail's box",
+        "expect": "fail"
+    },
+    {
+        "name": "shared table: a sort click is not handled",
+        "why": "The one delegated handler must serve a List table's headers (the work's Length).",
+        "edits": [
+            {
+                "find": "        if (d.mbTblSort != null) {\n",
+                "replace": "        if (d.mbTblSort != null && false) {\n"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "the work window: the filter keeps its focus",
+        "expect": "fail"
+    }
+]

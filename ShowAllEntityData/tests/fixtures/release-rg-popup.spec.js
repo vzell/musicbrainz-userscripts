@@ -261,6 +261,26 @@ test.describe('the release-group popup on the popup engine (org/iframe.org Phase
         expect(d.filter((x) => x !== '—')).toEqual([...dated].sort().reverse());
         expect(d[d.length - 1]).toBe('—');
         await expect(dialog(page).locator('th[aria-sort="descending"]')).toHaveText('Date');
+        // A third click: the initial order again (this release first, then
+        // by date), every header in the initial state.
+        await dialog(page).locator('button[data-mb-rg-sort="date"]').click();
+        await expect(dialog(page).locator('.mb-rg-wtable th[aria-sort="ascending"], .mb-rg-wtable th[aria-sort="descending"]')).toHaveCount(0);
+        // (A header the pointer is not on: the tooltip engine parks the
+        // hovered one's title while it shows.)
+        await expect(dialog(page).locator('button[data-mb-rg-sort="country"]')).toHaveAttribute('title', 'Initial order (this release first, then by date) · click: ascending');
+        await expect(dialog(page).locator('.mb-rg-wtable tbody tr').first()).toHaveClass(/mb-rg-cur/);
+        // The glyph sits in a box of its own fixed width: ⇅ often comes
+        // from a fallback font that arrives later, and a header that grew
+        // then moved the rows under the pointer (the covers test above
+        // failed about one run in five before this, 2026-10-26).
+        const box = await dialog(page).locator('button[data-mb-rg-sort="country"]').evaluate((b) => {
+            const cs = getComputedStyle(b, '::after');
+            return { display: cs.display, width: parseFloat(cs.width), em: parseFloat(cs.fontSize), lh: cs.lineHeight, glyph: cs.content };
+        });
+        expect(box.glyph).toContain('⇅');
+        expect(box.display).toBe('inline-block');
+        expect(box.width).toBeCloseTo(box.em * 1.4, 1);
+        expect(box.lh).toBe(`${box.em}px`);
     });
 
     test('⟳ asks MusicBrainz again for every page and the facts', async ({ page }) => {
