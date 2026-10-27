@@ -1907,10 +1907,10 @@ subdomain, matched by `endsWith`), so a hover loads them from the first time.
   `_extDgChipPick()` (plain click: only this value, or none when it was the
   only one; Ctrl/⌘: add or take out), OR inside a facet and AND across in
   `_extDgVersionRows()`, the choice spelled out above the table
-  (`.mb-dg-picked`). A label's sublabels are `_extDgSublabelsHtml()`: a
-  table (Name, Status; `th[data-mb-dg-ssort]`), `_EXT_DG_SUB_ROWS` (25) a
-  page with ‹ › (`subprev`/`subnext`), a filter (`.mb-dg-sq`, whole repaint
-  with `data-mb-keep-focus`, back to page 1); `moresub` is gone. On
+  (`.mb-dg-picked`). A label's sublabels are `_extDgSublabelsHtml()`, since
+  2026-10-27 a shared Compact table (see "Shared window tables" below; it
+  still emits `th[data-mb-dg-ssort]` and `.mb-dg-sq` for the specs),
+  `_EXT_DG_SUB_ROWS` (25) a page; `moresub` is gone. On
   discogs.com a musicbrainz.org entity link inside ANY window (a Discogs
   window's Sites or Notes, a MusicBrainz window's absolute links) is
   `_dgMbWinTarget()`: the `dg-mb` source's card on a hover (`_dpWinWhat()`)
@@ -2080,6 +2080,77 @@ versions, a label's order). Fixtures `ext-discogs-artist-small*`,
 `ext-discogs-artist-releases-p1`, `ext-discogs-label-releases-*`,
 `ext-discogs-master-450426-versions-p1` (captured 2026-10-18). Mutations: the
 `Discogs artist…`/`Discogs label…` entries.
+
+### Shared window tables and the MusicBrainz paged loader (2026-10-27)
+
+org/MB-POH-sync-withDiscogs.org, Phase 2; mockup
+https://claude.ai/artifact/TkNduhLjJmD2FrcURn5yaV. Every window may use two
+table components, whose look is the Discogs windows' (`mb-dg-*`, all scoped to
+`.mb-dp-dialog`):
+
+- **Compact** `_dpCompactTableHtml(t, id, cols, rows, opts)`: a filter when
+  there are more rows than a page, every column sortable through
+  `_dpSortNext()`'s three states (the third restores the order GIVEN, so
+  callers pass rows in the site's order), `perPage` (25) with ‹ ›. First
+  caller: a Discogs label's sublabels.
+- **List** `_dpListTableHtml(t, id, cols, rows, opts)`: tools row (the
+  caller's `tools`, the filter, "Clear filters"), chips from `facet(row)`
+  counting what is loaded (10, then "+N more"; click keeps one, Ctrl/⌘
+  adds, `_extDgChipPick()`), the caller's `note`, the table with 40 px
+  thumbs when `thumb` is given (an empty one is
+  `span.mb-dg-vthumb.mb-dg-nothumb`, the same 42 px box) and "Showing N of M
+  · Show all" past `limit`. Loading is the caller's: its status goes above,
+  `body` replaces the table while there is none. Callers: a Discogs label's
+  releases, a MusicBrainz work's recordings.
+
+A column is `{key, label, val(row), html(row, q), num?, cmp?(a, b, dir),
+first?, sort?, cls?}`; `html` gets the query for `_hlEsc()`. State is
+`_dpTblUi(t, id)` (`_dpTbl`, keyed `<t.key>|<id>`, as long-lived as
+`_extDgUi`), NOT the source's own ui object. The dialog delegates ONE click
+handler (`_dpTblClick()`: `[data-mb-tbl-sort]`, `[data-mb-tbl-chip]`,
+`[data-mb-tbl-act]` = prev/next/all/clear/morechips) and one input handler
+(`_dpTblInput()`: `input.mb-tbl-q`) for every window, before the source's
+`onAreaClick`/`onAreaInput`. So a MusicBrainz kind needs no click code of its
+own, and `_mbEntitySource()` has no `onAreaInput`. `qCls`, `sortAttr`,
+`chipAttr`, `cls` and `wrapCls` add the old Discogs names (`.mb-dg-sq`,
+`.mb-dg-lq`, `data-mb-dg-ssort`, `data-mb-dg-lsort`, `data-mb-dg-lfmt`,
+`.mb-dg-subt`), so the Discogs specs ran unchanged across the extraction.
+A label's Order (`lorder`) stays in `_extDgUiOf()` and resets the
+`dg-label` table's sort and limit.
+
+**MusicBrainz paged loader** `_mbPagedStart(t, key, spec, again, repaint)`
+(from a kind's `pin()`), `_mbPagedRun(key, pages)`, `_mbPagedClick()`
+(`[data-mb-pl-act]` = more/stop/retry, the key in `data-mb-pl`, delegated
+by the dialog) and `_mbPagedStatusHtml(key, unit)` (the Discogs status bar's
+look: pill, segments cache/loaded/running/queued/failed, one button, counts).
+State `_mbPaged`; IndexedDB `mb:list:<key>` (`_MB_PAGED_IDB_VERSION`, the
+cards' TTL), written after every page. Rules:
+- page 1 only from `pin()` when the list has nothing, or on ⟳ (`again`,
+  which drops what is loaded); a repaint or a failure never starts one
+  (a failure waits for "Try again" or ⟳);
+- `_MB_PAGED_LIMIT` (100) a request, `offset` = rows loaded (the rows
+  RETURNED, never pages × limit: a release browse caps at 500 tracks);
+- "Load 5 more pages" (`_MB_PAGED_BATCH`), cost text from
+  `_REL_WS2_SPACING_MS` through `_extDgDur()` (5 × 1.1 s = "about 6 s");
+- every page asks `wanted()` = the window still shows the target
+  (`_mbPopWanted()`) and Stop was not pressed: Stop lets the page under way
+  finish and asks no other;
+- the source is `spec.ask(offset, wanted)`; `_mbPagedWs(entity, query,
+  field, countField, row)` is the Web Service one, `row()` slims each row
+  for IndexedDB. An HTML-paged source (a tag's `/tag/<t>/<kind>?page=n`, a
+  collection) plugs in the same `ask` with a page parser. It lands with its
+  first caller in Phase 3, not before.
+
+First MusicBrainz caller: the work window's recordings
+(`_mbWorkRecsKey()`, `_mbWorkRecsSpec()`, `_mbWorkRecsHtml()`), which
+replaced the one-shot `limit=100` browse. Specs: popup-mb.spec.js "the work
+window: …" (three tests: offsets 0/100/160/… with a 60-row page, Stop, a
+400 page and Try again, IndexedDB after a reload, filter/chips/+N more/sort),
+popup-ext.spec.js "a row without a thumbnail keeps the thumbnail's box"
+(and a filter on page 2 back to page 1). Mutations:
+`scripts/mutations/dp-shared-tables.json`; three entries of
+`dp-sort-initial-state.json`/`discogs-window-swap.json` were retargeted to
+the shared code.
 
 ### A Discogs release's edit history (2026-10-18)
 

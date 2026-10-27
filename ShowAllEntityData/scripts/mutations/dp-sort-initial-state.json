@@ -27,11 +27,11 @@
     },
     {
         "name": "sort initial state: sublabels, a third click falls back to Name",
-        "why": "The sublabels' initial order is Discogs' own.",
+        "why": "The sublabels' initial order is Discogs' own (since Phase 2 the shared Compact table's sort, _dpTblClick()).",
         "edits": [
             {
-                "find": "            ui.subSort = _dpSortNext(ui.subSort, col);\n",
-                "replace": "            ui.subSort = _dpSortNext(ui.subSort, col).dir ? _dpSortNext(ui.subSort, col) : { col: 'name', dir: 1 };\n"
+                "find": "            ui.sort = _dpSortNext(ui.sort, d.mbTblSort, Number(d.mbTblFirst) || 1);\n",
+                "replace": "            ui.sort = _dpSortNext(ui.sort, d.mbTblSort, Number(d.mbTblFirst) || 1).dir ? _dpSortNext(ui.sort, d.mbTblSort, Number(d.mbTblFirst) || 1) : { col: 'name', dir: 1 };\n"
             }
         ],
         "spec": "tests/fixtures/popup-ext.spec.js",
@@ -105,11 +105,11 @@
     },
     {
         "name": "sort initial state: the sublabels' explicit no-sort guard",
-        "why": "Recorded overlap: with dir 0 the comparator returns 0 and Array.prototype.sort is stable, so Discogs' order survives without the guard; the guard states the intent.",
+        "why": "Recorded overlap: _dpSortNext() returns col '' with dir 0 for the initial order, so no column matches and the order given survives without the dir guard (since Phase 2 in the shared _dpTblRows()); the guard states the intent.",
         "edits": [
             {
-                "find": "        if (s.dir) {\n            rows.sort((a, b) => (s.col === 'status'",
-                "replace": "        if (true) {\n            rows.sort((a, b) => (s.col === 'status'"
+                "find": "        const col = ui.sort.dir ? cols.find(c => c.key === ui.sort.col) : null;\n",
+                "replace": "        const col = cols.find(c => c.key === ui.sort.col) || null;\n"
             }
         ],
         "spec": "tests/fixtures/popup-ext.spec.js",

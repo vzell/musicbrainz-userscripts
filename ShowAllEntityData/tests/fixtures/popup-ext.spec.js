@@ -1863,6 +1863,28 @@ test.describe('the Discogs artist and label windows (2026-10-18)', () => {
         expect(await dgListLog(page)).toEqual([...[1, 2, 3, 4, 5, 6].map(p => DGL('desc', p)), DGL('asc', 1)]);
     });
 
+    test('a label\'s releases: a row without a thumbnail keeps the thumbnail\'s box (org/MB-POH-sync-withDiscogs.org, Phase 2)', async ({ page }) => {
+        await openDiscogsEntities(page);
+        await ctrlHover(page, probe(page, 2));
+        await expect(card(page).locator('.mb-tt-title')).toHaveText('Columbia');
+        await page.keyboard.press('Space');
+        const rel = dialog(page).locator('[data-mb-dg-disco="label"]');
+        await expect(rel.locator('tbody > tr')).toHaveCount(100);
+        // Page 1 newest first has one release without a thumbnail.
+        const none = rel.locator('tbody > tr > td:first-child > .mb-dg-nothumb');
+        await expect(none).toHaveCount(1);
+        const real = await rel.locator('tbody > tr > td:first-child img.mb-dg-vthumb').first().boundingBox();
+        const blank = await none.boundingBox();
+        expect([blank.width, blank.height]).toEqual([real.width, real.height]);
+        expect(real.width).toBe(42);
+        // The sublabels (a Compact table): typing on page 2 starts over on page 1.
+        const subs = dialog(page).locator('[data-mb-dg-sec="sublabels"]');
+        await subs.getByRole('button', { name: 'Next page' }).click();
+        await expect(subs.locator('.mb-dg-pager span')).toHaveText('26–50 of 217');
+        await subs.locator('input.mb-tbl-q').fill('a');
+        await expect(subs.locator('.mb-dg-pager span')).toHaveText(/^1–25 of \d+ \(217 in all\)$/);
+    });
+
     test('a later visit: the discography from IndexedDB, hatched, without a request; Stop ends a run with the page under way', async ({ page }) => {
         await openDiscogsEntities(page);
         await ctrlHover(page, probe(page, 0));

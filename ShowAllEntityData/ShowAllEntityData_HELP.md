@@ -2416,7 +2416,12 @@ links have their cards too.
   was recorded and mixed — each studio with its city, state and country) and
   up to 25 of its releases with the real total;
   for a work, its writers, publishers and related works, its society codes,
-  and its first 100 recordings with the total; for an artist, its area and
+  and its recordings with the total — 100 when the window opens, then *Load 5
+  more pages* (500 recordings, about 6 s at MusicBrainz's rate of one request
+  a second; *Stop* ends a run after the page under way), with a filter, a
+  chip per artist credit (Ctrl-click adds one) and a three-way sort as in the
+  Discogs windows; what is loaded is kept like the card, so a later window
+  shows it without asking again; for an artist, its area and
   birthplace named as MusicBrainz does (*Long Branch, New Jersey, United
   States*), every external link and how many release groups of each type; for
   a label, its area named the same way, the labels it owns, is owned by or is
@@ -2747,7 +2752,9 @@ once and without Tampermonkey asking first:
   almost 4,000 requests), so the window loads 5 pages (500 releases) per
   *Load 5 more pages*, newest or oldest first (another order asks Discogs
   again; each is kept on its own). The filter and the format chips work on
-  what is loaded. Every list is kept for 7 days, like the card: a later
+  what is loaded; a click on a chip keeps only that format, Ctrl-click adds
+  another, and past ten formats *+N more* shows the rest. A release without a
+  picture keeps an empty square, so every row is as high. Every list is kept for 7 days, like the card: a later
   window shows it without asking again (hatched in the bar). Discogs allows a
   request every 2.5 seconds; with your own **Discogs personal access token**
   (⚙️ Settings → 🔎 EXTERNAL LINK PREVIEWS → *Discogs personal access token*;

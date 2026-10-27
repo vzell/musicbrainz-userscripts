@@ -26917,13 +26917,20 @@
             else if (_dpArtViewerClick(e)) return;
             // An entity link: drill down (Phase 5).
             else if (_dpDrill(e)) return;
+            // A shared window table's control (a Compact or List table, any
+            // source: org/MB-POH-sync-withDiscogs.org, Phase 2).
+            else if (_dpTblClick(e, _dpDialog.target)) return;
+            // A MusicBrainz paged list's "Load 5 more pages", Stop, "Try again".
+            else if (_mbPagedClick(e)) return;
             // A source's own controls in its Extracted view (a sortable
             // header): delegated here, since every repaint replaces them.
             else if (_dpDialog.target && _dpDialog.target.src.onAreaClick) _dpDialog.target.src.onAreaClick(e, _dpDialog.target);
         });
-        // A source's own text field in its Extracted view (the Discogs
-        // versions' filter), delegated for the same reason.
+        // A shared table's filter, else a source's own text field in its
+        // Extracted view (the Discogs versions' filter), delegated for the
+        // same reason.
         api.scrollArea.addEventListener('input', (e) => {
+            if (_dpTblInput(e, _dpDialog.target)) return;
             if (_dpDialog.target && _dpDialog.target.src.onAreaInput) _dpDialog.target.src.onAreaInput(e, _dpDialog.target);
         });
         _dpDialog.api = api;
@@ -27406,7 +27413,7 @@
             .mb-dp-dialog .mb-dg-fc[aria-pressed="true"] .mb-dg-n { color: #d9cfbd; }
             .mb-dp-dialog .mb-dg-fc.mb-dg-more { color: #2f5f9e; border-style: dashed; }
             .mb-dp-dialog .mb-dg-vtools { margin: 6px 0; }
-            .mb-dp-dialog .mb-dg-vq, .mb-dp-dialog .mb-dg-aq, .mb-dp-dialog .mb-dg-lq, .mb-dp-dialog .mb-dg-sq { font: 13.5px Georgia, "Times New Roman", serif; padding: 3px 8px; border: 1px solid #d9cfbd; border-radius: 3px; width: min(340px, 100%); background: #fff; color: #2b2622; }
+            .mb-dp-dialog .mb-dg-vq, .mb-dp-dialog .mb-dg-aq, .mb-dp-dialog .mb-tbl-q { font: 13.5px Georgia, "Times New Roman", serif; padding: 3px 8px; border: 1px solid #d9cfbd; border-radius: 3px; width: min(340px, 100%); background: #fff; color: #2b2622; }
             .mb-dp-dialog .mb-dg-vwrap { overflow: auto; max-height: 460px; border: 1px solid #d9cfbd; border-radius: 3px; background: #fff; }
             .mb-dp-dialog .mb-dg-vt { width: 100%; border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; }
             .mb-dp-dialog .mb-dg-vt th {
@@ -27427,6 +27434,7 @@
             .mb-dp-dialog .mb-dg-vt tbody tr { cursor: pointer; }
             .mb-dp-dialog .mb-dg-vt tbody tr:hover td { background: #fbf5e7; }
             .mb-dp-dialog .mb-dg-vthumb { width: 40px; height: 40px; object-fit: cover; border: 1px solid #d9cfbd; display: block; }
+            .mb-dp-dialog .mb-dg-nothumb { border-style: dashed; background: #f6f1e6; }
             .mb-dp-dialog a.mb-dg-vthumblink { display: inline-block; line-height: 0; cursor: zoom-in; }
             .mb-dp-dialog .mb-dg-yr { white-space: nowrap; }
             .mb-dp-dialog .mb-dg-empty { padding: 14px; font-style: italic; color: #7a6d5c; }
@@ -27471,7 +27479,7 @@
                 background-color: ${Lib.settings.sa_column_filter_highlight_bg || '#add8e6'};
                 padding: 0;
             }
-            .mb-dp-dialog .mb-dg-subt td { padding: 2px 8px; }
+            .mb-dp-dialog .mb-dg-ct td { padding: 2px 8px; }
             .mb-dp-dialog .mb-dg-pager { justify-content: center; font-variant-numeric: tabular-nums; }
             .mb-dp-dialog .mb-dg-pager .mb-dg-btn[disabled] { opacity: 0.45; cursor: default; }
             .mb-dp-dialog .mb-dg-picked b { color: #2b2622; font-weight: 600; }
@@ -53526,6 +53534,287 @@
         _mbWsLoad(key, url, { force: again, repaint, wanted: _mbPopWanted(t) });
     }
 
+    // --- The paged lists of the MusicBrainz windows
+    // (org/MB-POH-sync-withDiscogs.org, Phase 2): page 1 when the window
+    // starts, then "Load 5 more pages" a click, as a Discogs label's
+    // releases. First a work's recordings. ---
+
+    /**
+     * The rows one request of a paged list asks: the Web Service's browse
+     * maximum (https://musicbrainz.org/doc/MusicBrainz_API, `limit` 1–100).
+     */
+    const _MB_PAGED_LIMIT = 100;
+
+    /** How many pages "Load N more pages" asks a click. */
+    const _MB_PAGED_BATCH = 5;
+
+    /** The version of a paged list's IndexedDB record (`list:<key>`). */
+    const _MB_PAGED_IDB_VERSION = 1;
+
+    /**
+     * Each paged list of the MusicBrainz windows, by key: its rows so far
+     * (`cachedRows` of them from IndexedDB), the total the Web Service
+     * counts, whether a run is under way and how many pages it still asks
+     * (`left`), whether Stop was pressed, and the last failure.
+     *
+     * @type {Map<string, {spec: Object, rows: Array<Object>, total: ?number, complete: boolean, cachedRows: number,
+     *   at: number, running: boolean, left: number, stopped: boolean, detail: string,
+     *   listeners: Set<function(): void>, wanted: function(): boolean}>}
+     */
+    const _mbPaged = new Map();
+
+    /**
+     * A paged list's source in the Web Service: a browse of `entity` by
+     * `query`, `_MB_PAGED_LIMIT` rows a request, each row kept as `row(r)`
+     * makes it (only what the window shows, so the IndexedDB record stays
+     * small). The offset grows by the rows RETURNED, not by the limit: the
+     * documentation caps a release browse at 500 tracks, so a page can hold
+     * fewer (as `_rgReleasesLoad()`).
+     *
+     * @param {string} entity - What is browsed: `recording`, `release`, …
+     * @param {string} query - Without `limit`, `offset` and `fmt`.
+     * @param {string} field - The answer's list: `recordings`.
+     * @param {string} countField - Its count: `recording-count`.
+     * @param {function(Object): Object} row
+     * @returns {{ask: function(number, function(): boolean): Promise<{ok?: boolean, rows?: Array<Object>,
+     *   total?: ?number, detail?: string, skipped?: boolean}>}}
+     */
+    function _mbPagedWs(entity, query, field, countField, row) {
+        return {
+            async ask(offset, wanted) {
+                const res = await _rgWsGet(`/ws/2/${entity}?${query}&limit=${_MB_PAGED_LIMIT}&offset=${offset}&fmt=json`, '_mbPagedList', wanted);
+                if (res.skipped) return { skipped: true };
+                const rows = res.ok && res.data ? res.data[field] : null;
+                if (!Array.isArray(rows)) return { ok: false, detail: res.detail || `HTTP ${res.status}` };
+                return { ok: true, rows: rows.map(row), total: typeof res.data[countField] === 'number' ? res.data[countField] : null };
+            },
+        };
+    }
+
+    /**
+     * Starts a paged list from a window's `pin()`: when it has nothing (never
+     * asked, or its page 1 was not asked because the window had closed by
+     * its rate slot), its IndexedDB record (younger than `_mbTtlMs()`), else
+     * page 1; on ⟳ (`again`) page 1 afresh, the rows loaded so far dropped.
+     * Otherwise (a repaint, or a failure: only ⟳ or "Try again" retries) it
+     * only adds the window's repaint. Every page asks `wanted()` once its
+     * rate slot comes up: the window still shows the target and Stop was
+     * not pressed.
+     *
+     * @param {object} t - The window's target.
+     * @param {string} key
+     * @param {{ask: function}} spec - `_mbPagedWs()`.
+     * @param {boolean} again - ⟳.
+     * @param {function(): void} repaint
+     * @returns {void}
+     */
+    function _mbPagedStart(t, key, spec, again, repaint) {
+        const cur = _mbPaged.get(key);
+        if (cur) cur.listeners.add(repaint);
+        if (cur && (cur.running || (!again && (cur.rows.length || cur.detail)))) return;
+        const wanted = _mbPopWanted(t);
+        const st = {
+            spec, rows: [], total: null, complete: false, cachedRows: 0, at: 0, running: false, left: 0, stopped: false,
+            detail: '', listeners: cur ? cur.listeners : new Set([repaint]), wanted: () => !st.stopped && wanted(),
+        };
+        _mbPaged.set(key, st);
+        (async () => {
+            if (!again) {
+                const rec = await _rgIdbGet(`list:${key}`, _MB_PAGED_IDB_VERSION);
+                if (rec && Array.isArray(rec.data.rows) && rec.data.rows.length) {
+                    Object.assign(st, { rows: rec.data.rows, total: rec.data.total, complete: !!rec.data.complete, cachedRows: rec.data.rows.length, at: rec.at });
+                    _mbPagedNotify(st);
+                    return;
+                }
+            }
+            _mbPagedRun(key, 1);
+        })();
+    }
+
+    /**
+     * Tells every window waiting on a paged list that it changed.
+     *
+     * @param {Object} st - `_mbPaged` state.
+     * @returns {void}
+     */
+    function _mbPagedNotify(st) {
+        st.listeners.forEach(fn => fn());
+    }
+
+    /**
+     * Asks a paged list's next `pages` pages, one per rate slot, from the
+     * rows it has; called by `_mbPagedStart()` (page 1) and by the window's
+     * buttons ("Load 5 more pages", "Try again"). A page no one wants any
+     * more (Stop, the window moved on) is not asked and ends the run; a
+     * failure ends it too, keeping what loaded. What is loaded is kept in
+     * IndexedDB after every page.
+     *
+     * @param {string} key
+     * @param {number} pages
+     * @returns {void}
+     */
+    function _mbPagedRun(key, pages) {
+        const st = _mbPaged.get(key);
+        if (!st || st.running || st.complete) return;
+        Object.assign(st, { running: true, left: pages, stopped: false, detail: '' });
+        _mbPagedNotify(st);
+        (async () => {
+            while (st.left > 0 && !st.complete) {
+                const res = await st.spec.ask(st.rows.length, st.wanted);
+                if (res.skipped) break;
+                if (!res.ok) {
+                    st.detail = res.detail || 'The request failed.';
+                    break;
+                }
+                st.rows = st.rows.concat(res.rows);
+                if (res.total != null) st.total = res.total;
+                st.complete = !res.rows.length || (st.total != null && st.rows.length >= st.total);
+                st.left--;
+                st.at = Date.now();
+                _rgIdbPut(`list:${key}`, { rows: st.rows, total: st.total, complete: st.complete }, st.at, _MB_PAGED_IDB_VERSION);
+                if (st.left > 0 && !st.complete) _mbPagedNotify(st);
+            }
+            Object.assign(st, { running: false, left: 0, stopped: false });
+            _mbPagedNotify(st);
+        })();
+    }
+
+    /**
+     * A paged list's buttons in a window (`data-mb-pl-act` with the list's
+     * key in `data-mb-pl`, delegated by the dialog): "Load N more pages"
+     * (`more`), Stop (`stop`: the page under way finishes, no other is
+     * asked), "Try again" (`retry`: the page that failed).
+     *
+     * @param {MouseEvent} e
+     * @returns {boolean} Whether the click was one of them.
+     */
+    function _mbPagedClick(e) {
+        const b = e.target instanceof Element && e.target.closest('[data-mb-pl-act]');
+        if (!b) return false;
+        const st = _mbPaged.get(b.dataset.mbPl);
+        if (b.disabled || !st) return true;
+        const act = b.dataset.mbPlAct;
+        if (act === 'stop') {
+            st.stopped = true;
+            _mbPagedNotify(st);
+        } else {
+            _mbPagedRun(b.dataset.mbPl, act === 'more' ? _MB_PAGED_BATCH : 1);
+        }
+        return true;
+    }
+
+    /**
+     * A paged list's status in the look of a Discogs label's releases
+     * (`_extDgStatusHtml()`): the pill, a segment per page (from cache,
+     * loaded, under way, queued, failed), the one button that applies —
+     * Stop; "Try again"; "Load N more pages (M <unit>, about S s)", its
+     * time from the rate gate's spacing (`_REL_WS2_SPACING_MS`) — and the
+     * counts.
+     *
+     * @param {string} key
+     * @param {string} unit - What a row is: 'recordings'.
+     * @returns {string}
+     */
+    function _mbPagedStatusHtml(key, unit) {
+        const st = _mbPaged.get(key);
+        if (!st) return '';
+        const ref = _rgEsc(key);
+        const n = st.rows.length;
+        const total = st.total ?? n;
+        const pages = Math.ceil(n / _MB_PAGED_LIMIT);
+        const cachedPages = Math.ceil(st.cachedRows / _MB_PAGED_LIMIT);
+        const segs = Array.from({ length: pages }, (_, i) => (i < cachedPages ? 'cache' : 'loaded'));
+        if (st.running) segs.push('running', ...Array(Math.max(0, st.left - 1)).fill('queued'));
+        else if (st.detail) segs.push('failed');
+        const pill = st.running ? '<span class="mb-dg-pill mb-dg-run">Running</span>'
+            : st.detail ? '<span class="mb-dg-pill mb-dg-warn">Done with errors</span>'
+                : st.complete ? '<span class="mb-dg-pill mb-dg-ok">Done</span>' : '<span class="mb-dg-pill">Idle</span>';
+        let btn = '';
+        if (st.running) {
+            btn = st.stopped ? '<span class="mb-dg-dim">Stopping after this page…</span>'
+                : `<button type="button" class="mb-dg-btn mb-dg-danger" data-mb-pl-act="stop" data-mb-pl="${ref}">Stop</button>`;
+        } else if (st.detail) {
+            btn = `<button type="button" class="mb-dg-btn mb-dg-primary" data-mb-pl-act="retry" data-mb-pl="${ref}">` +
+                `Try page ${pages + 1} again (1 request, about ${_extDgDur(_REL_WS2_SPACING_MS)})</button>`;
+        } else if (!st.complete && st.total != null) {
+            const k = Math.min(_MB_PAGED_BATCH, Math.ceil((total - n) / _MB_PAGED_LIMIT));
+            const rows = Math.min(k * _MB_PAGED_LIMIT, total - n);
+            btn = `<button type="button" class="mb-dg-btn mb-dg-primary" data-mb-pl-act="more" data-mb-pl="${ref}">` +
+                `Load ${k} more page${k === 1 ? '' : 's'} (${_extDgNum(rows)} ${_rgEsc(unit)}, about ${_extDgDur(k * _REL_WS2_SPACING_MS)})</button>`;
+        }
+        const counts = [`${_extDgNum(n)} of ${_extDgNum(total)} loaded`];
+        if (st.cachedRows) counts.push(`${_extDgNum(st.cachedRows)} from cache`);
+        if (st.detail) counts.push(`<span class="mb-dg-bad">page ${pages + 1} failed: ${_rgEsc(st.detail)}</span>`);
+        counts.push(`one segment = ${_MB_PAGED_LIMIT} ${_rgEsc(unit)}`);
+        return `<div class="mb-dg-vstat">${pill}<span class="mb-dg-bar" aria-hidden="true" style="width: min(${Math.max(40, segs.length * 26)}px, 100%)">` +
+            segs.map(s => `<i class="mb-dg-seg-${s}"></i>`).join('') + `</span>${btn}</div>` +
+            `<div class="mb-dg-counts">${counts.join(' · ')}</div>`;
+    }
+
+    /**
+     * The paged list of a work's recordings.
+     *
+     * @param {string} id - The work's MBID.
+     * @returns {string}
+     */
+    function _mbWorkRecsKey(id) {
+        return `work-recordings:${id}`;
+    }
+
+    /**
+     * Where a work's recordings come from: the browse
+     * `/ws/2/recording?work=<id>&inc=artist-credits`, each kept as its id,
+     * title, disambiguation, credit (text) and length.
+     *
+     * @param {string} id
+     * @returns {{ask: function}}
+     */
+    function _mbWorkRecsSpec(id) {
+        return _mbPagedWs('recording', `work=${encodeURIComponent(id)}&inc=artist-credits`, 'recordings', 'recording-count', r => ({
+            id: r.id, title: r.title || '', dis: r.disambiguation || '', artist: _mbPopCreditText(r['artist-credit']),
+            length: typeof r.length === 'number' ? r.length : null,
+        }));
+    }
+
+    /**
+     * A work window's recordings (Phase 2's first MusicBrainz List table):
+     * the paged list's status, then the table — Recording, Artist, Length,
+     * each sortable through three states (the initial order is the Web
+     * Service's), a filter over title and artist, a chip per artist credit.
+     *
+     * @param {object} t - The work.
+     * @returns {string}
+     */
+    function _mbWorkRecsHtml(t) {
+        const key = _mbWorkRecsKey(t.id);
+        const st = _mbPaged.get(key);
+        const rows = st ? st.rows : [];
+        const head = `<h4>Recordings${st && st.total != null ? ` · ${_extDgNum(st.total)}` : ''}</h4>`;
+        // Nothing yet: page 1 under way, or its failure (the status above
+        // says it, with "Try again"); a work with no recordings says None.
+        let body = null;
+        if (!rows.length && st && st.detail) body = '';
+        else if (!rows.length && !(st && st.complete)) {
+            body = `<div class="mb-dg-state"><span class="mb-dp-spin">◌</span> Asking MusicBrainz for the first ${_MB_PAGED_LIMIT} recordings…</div>`;
+        }
+        return head + _mbPagedStatusHtml(key, 'recordings') + _dpListTableHtml(t, 'work-recordings', [
+            {
+                key: 'title', label: 'Recording', val: r => r.title,
+                html: (r, q) => `<a href="/recording/${_rgEsc(r.id)}" target="_blank" rel="noopener">${_hlEsc(r.title, q)}</a>` +
+                    `${r.dis ? ` <span class="mb-rg-dim">(${_hlEsc(r.dis, q)})</span>` : ''}`,
+            },
+            { key: 'artist', label: 'Artist', val: r => r.artist, html: (r, q) => _hlEsc(r.artist, q) },
+            {
+                key: 'length', label: 'Length', num: true, cls: 'mb-rg-num', val: r => r.length,
+                html: r => (r.length != null ? _msFormatSeconds(r.length) : '—'),
+            },
+        ], rows, {
+            initial: 'as MusicBrainz lists them', placeholder: 'Filter loaded recordings: title, artist',
+            search: r => `${r.title} ${r.dis} ${r.artist}`, facet: r => r.artist, chipLabel: 'Artist',
+            body, nomatch: 'No loaded recording matches.', none: 'No recordings.',
+        });
+    }
+
     /**
      * The cache key and URL of a browse (`/ws/2/<entity>?<query>`).
      *
@@ -57394,8 +57683,9 @@
             },
         })),
         // Card: one lookup (11.8 KB): type, language, ISWC, writers,
-        // publishers, other versions. Window: the same, plus the first 100
-        // recordings from a browse, with the real count.
+        // publishers, other versions. Window: the same, plus its recordings
+        // as a List table, 100 when it opens and 500 more a click
+        // (`_mbWorkRecsHtml()`).
         work: Object.assign({ title: 'Work', wide: true }, _mbPopLookupKind({
             cardInc: 'artist-rels+label-rels+work-rels',
             cardHtml(d) {
@@ -57414,7 +57704,6 @@
                 ]);
             },
             windowHtml(d, t) {
-                const browse = _mbPopBrowse('recording', `work=${encodeURIComponent(t.id)}&limit=100&inc=artist-credits`);
                 const langs = (d.languages && d.languages.length ? d.languages : [d.language]).filter(Boolean);
                 const left = `<div class="mb-dp-xtitle">${_rgEsc(d.title)}</div>` +
                     (d.disambiguation ? `<div class="mb-dp-xsub">${_rgEsc(d.disambiguation)}</div>` : '') +
@@ -57427,26 +57716,13 @@
                     ]) +
                     ((d.attributes || []).length ? `<h4>Codes · ${d.attributes.length}</h4>` + _mbPopKvHtml(d.attributes.map(a =>
                         [a.type || '', _rgEsc(a.value)])) : '');
-                const right = _mbPopSectionHtml('Recordings', _mbPop.get(browse.key), (b) => {
-                    const recs = b.recordings || [];
-                    const total = typeof b['recording-count'] === 'number' ? b['recording-count'] : recs.length;
-                    return `<div class="mb-rg-progress">${total} recording${total === 1 ? '' : 's'}` +
-                        (total > recs.length ? `; the first ${recs.length} here, <a href="/work/${_rgEsc(d.id)}" target="_blank" rel="noopener">` +
-                            'the work\'s page</a> lists them all' : '') + '.</div>' +
-                        (recs.length ? _mbPopTableHtml(['Recording', 'Artist', 'Length'], recs.map(r => [
-                            `<a href="/recording/${_rgEsc(r.id)}" target="_blank" rel="noopener">${_rgEsc(r.title)}</a>` +
-                                `${r.disambiguation ? ` <span class="mb-rg-dim">(${_rgEsc(r.disambiguation)})</span>` : ''}`,
-                            _rgEsc(_mbPopCreditText(r['artist-credit'])),
-                            typeof r.length === 'number' ? _msFormatSeconds(r.length) : '—',
-                        ]), [2]) : '');
-                });
-                return `<div class="mb-dp-x"><div class="mb-dp-col">${left}</div><div class="mb-dp-col">${right}</div></div>`;
+                return `<div class="mb-dp-x"><div class="mb-dp-col">${left}</div><div class="mb-dp-col">${_mbWorkRecsHtml(t)}</div></div>`;
             },
             // The first page of its recordings (a work can have thousands:
-            // 2,226 for "Born to Run" in Phase 0, R3), with the count.
+            // 2,226 for "Born to Run" in Phase 0, R3), with the count; the
+            // rest 5 pages a click (`_mbPagedStart()`).
             pin(t, d, again, repaint) {
-                const browse = _mbPopBrowse('recording', `work=${encodeURIComponent(t.id)}&limit=100&inc=artist-credits`);
-                _mbPopPinLoad(t, browse.key, browse.url, again, repaint);
+                _mbPagedStart(t, _mbWorkRecsKey(t.id), _mbWorkRecsSpec(t.id), again, repaint);
             },
         })),
         // Card: one lookup without url-rels (R1: 75 links were most of the
@@ -59953,9 +60229,9 @@
      * @param {object} t
      * @returns {{open: Set<number>, allCredits: boolean, q: string, format: string[], country: string[], decade: string[],
      *   sort: string, dir: number, moreCountries: boolean, runs: Map<string, Object>, profFull: boolean, moreVar: boolean,
-     *   subq: string, subPage: number, subSort: {col: string, dir: number}, aq: string, atype: string, asort: Object<string, {col: string, dir: number}>,
-     *   alimit: Object<string, number>, mopen: Set<number>, lorder: string, lq: string, lfmt: string,
-     *   lsort: {col: string, dir: number}, llimit: number}}
+     *   aq: string, atype: string, asort: Object<string, {col: string, dir: number}>,
+     *   alimit: Object<string, number>, mopen: Set<number>, lorder: string}} A label's
+     *   releases and sublabels keep theirs as shared tables (`_dpTblUi()`).
      */
     function _extDgUiOf(t) {
         let ui = _extDgUi.get(t.key);
@@ -59963,9 +60239,7 @@
             ui = {
                 open: new Set(), allCredits: false, q: '', format: [], country: [], decade: [], sort: 'year', dir: 1,
                 moreCountries: false, runs: new Map(), profFull: false, moreVar: false,
-                subq: '', subPage: 0, subSort: { col: 'name', dir: 1 },
-                aq: '', atype: '', asort: {}, alimit: {}, mopen: new Set(),
-                lorder: 'desc', lq: '', lfmt: '', lsort: { col: '', dir: 0 }, llimit: _EXT_DG_LABEL_ROWS,
+                aq: '', atype: '', asort: {}, alimit: {}, mopen: new Set(), lorder: 'desc',
             };
             _extDgUi.set(t.key, ui);
         }
@@ -60855,44 +61129,318 @@
         return cur.length === 1 && cur[0] === v ? [] : [v];
     }
 
+    // --- The window tables shared by every link-preview window
+    // (org/MB-POH-sync-withDiscogs.org, Phase 2): the Compact table (a
+    // Discogs label's sublabels) and the List table (a label's releases);
+    // their state per window and table, and ONE delegated handler in the
+    // dialog (`_dpTblClick()`, `_dpTblInput()`), so a source needs no
+    // click code of its own for them. ---
+
+    /** How many rows a Compact table shows per page. */
+    const _DP_TBL_PAGE_ROWS = 25;
+
+    /** How many chips a List table shows before "+N more". */
+    const _DP_TBL_CHIPS = 10;
+
     /**
-     * A label's sublabels as a table (2026-10-26, mockup
-     * https://claude.ai/artifact/H4b3yAWX6UvHr2ASRFAjuS): a filter, Name and
-     * Status sortable (a third click restores Discogs' order,
-     * `_dpSortNext()`), `_EXT_DG_SUB_ROWS` a page with ‹ › (the window's
-     * `subq`, `subSort`, `subPage`).
+     * Each window table's state, by `<target key>|<table id>`: its filter,
+     * chosen chips, sort, page (Compact), row limit (List) and whether all
+     * chips show. Kept as long as `_extDgUi`, so a table looks the same when
+     * its window opens again.
+     * @type {Map<string, Object>}
+     */
+    const _dpTbl = new Map();
+
+    /**
+     * A window table's state, made on first use from the defaults and
+     * `init` (a table that starts sorted, a List table's row limit).
      *
-     * @param {Array<{name: string, id: number, active: boolean}>} list
-     * @param {Object} ui - The window's state (`_extDgUiOf()`).
+     * @param {object} t - The window's target.
+     * @param {string} id - The table's id in that window.
+     * @param {?Object} [init]
+     * @returns {{q: string, chip: string[], sort: {col: string, dir: number}, page: number, limit: number, moreChips: boolean}}
+     */
+    function _dpTblUi(t, id, init = null) {
+        const k = `${t.key}|${id}`;
+        let ui = _dpTbl.get(k);
+        if (!ui) {
+            ui = Object.assign({ q: '', chip: [], sort: { col: '', dir: 0 }, page: 0, limit: Infinity, moreChips: false }, init || {});
+            _dpTbl.set(k, ui);
+        }
+        return ui;
+    }
+
+    /**
+     * A click on a window table's control (delegated by the dialog, before
+     * the source's own `onAreaClick`): a sortable header cycles its column
+     * (`_dpSortNext()`; `data-mb-tbl-first="-1"` for a column that starts
+     * descending), a chip keeps only its value or, with Ctrl/⌘, adds it
+     * (`_extDgChipPick()`), and `data-mb-tbl-act` is ‹ (`prev`), › (`next`),
+     * "Show all" (`all`), "Clear filters" (`clear`) or "+N more" chips
+     * (`morechips`). A sort, a chip and a cleared filter go back to page 1.
+     *
+     * @param {MouseEvent} e
+     * @param {?object} t - The window's target.
+     * @returns {boolean} Whether the click was a table control's.
+     */
+    function _dpTblClick(e, t) {
+        if (!t || !(e.target instanceof Element)) return false;
+        const el = e.target.closest('[data-mb-tbl-sort], [data-mb-tbl-chip], [data-mb-tbl-act]');
+        const box = el && el.closest('[data-mb-tbl]');
+        if (!box) return false;
+        if (el.disabled) return true;
+        const ui = _dpTblUi(t, box.dataset.mbTbl);
+        const d = el.dataset;
+        if (d.mbTblSort != null) {
+            ui.sort = _dpSortNext(ui.sort, d.mbTblSort, Number(d.mbTblFirst) || 1);
+            ui.page = 0;
+        } else if (d.mbTblChip != null) {
+            ui.chip = _extDgChipPick(ui.chip, d.mbTblChip, e.ctrlKey || e.metaKey);
+            ui.page = 0;
+        } else {
+            switch (d.mbTblAct) {
+            case 'prev':
+                ui.page = Math.max(0, ui.page - 1);
+                break;
+            case 'next':
+                ui.page++;
+                break;
+            case 'all':
+                ui.limit = Infinity;
+                break;
+            case 'clear':
+                Object.assign(ui, { q: '', chip: [], page: 0 });
+                break;
+            case 'morechips':
+                ui.moreChips = !ui.moreChips;
+                break;
+            default:
+                return false;
+            }
+        }
+        if (_dpDialog.repaint) _dpDialog.repaint();
+        return true;
+    }
+
+    /**
+     * Typing in a window table's filter (`input.mb-tbl-q`, delegated by the
+     * dialog): the table again from page 1; the repaint keeps the field's
+     * focus and caret (`data-mb-keep-focus`).
+     *
+     * @param {Event} e
+     * @param {?object} t - The window's target.
+     * @returns {boolean} Whether it was a table's filter.
+     */
+    function _dpTblInput(e, t) {
+        if (!t || !(e.target instanceof Element) || !e.target.matches('input.mb-tbl-q')) return false;
+        const box = e.target.closest('[data-mb-tbl]');
+        if (!box) return false;
+        Object.assign(_dpTblUi(t, box.dataset.mbTbl), { q: e.target.value, page: 0 });
+        if (_dpDialog.repaint) _dpDialog.repaint();
+        return true;
+    }
+
+    /**
+     * A window table's rows as its state shows them: those the filter
+     * matches (in `search(row)`, the columns' values unless given) and that
+     * carry a chosen chip (`facet(row)`), sorted by the sorted column —
+     * its `cmp(a, b, dir)` when it has one, else its `val()`, empty values
+     * last either way, numbers as numbers — or, with no column sorted, in
+     * the order given (the site's own).
+     *
+     * @param {Array<Object>} cols - `{key, val, num?, cmp?}`.
+     * @param {Array<Object>} rows
+     * @param {Object} ui - `_dpTblUi()`.
+     * @param {{search?: function(Object): string, facet?: function(Object): string}} opts
+     * @returns {Array<Object>} A new array.
+     */
+    function _dpTblRows(cols, rows, ui, opts) {
+        const q = ui.q.trim().toLowerCase();
+        const text = opts.search || (r => cols.map(c => (c.val ? c.val(r) : '')).join(' '));
+        let out = rows.filter(r => (!q || String(text(r)).toLowerCase().includes(q)) &&
+            (!ui.chip.length || !opts.facet || ui.chip.includes(opts.facet(r))));
+        const col = ui.sort.dir ? cols.find(c => c.key === ui.sort.col) : null;
+        if (col) {
+            const dir = ui.sort.dir;
+            out = out.slice().sort(col.cmp ? (a, b) => col.cmp(a, b, dir) : (a, b) => {
+                const x = col.val(a);
+                const y = col.val(b);
+                if ((x === '' || x == null) !== (y === '' || y == null)) return x === '' || x == null ? 1 : -1;
+                return (col.num ? x - y : String(x).localeCompare(String(y), undefined, { numeric: true })) * dir;
+            });
+        }
+        return out;
+    }
+
+    /**
+     * A window table's header cell: sortable (`data-mb-tbl-sort`, with
+     * `_dpSortAttrs()`) unless the column says `sort: false`. `attr` adds a
+     * second attribute naming the column (the Discogs label's
+     * `data-mb-dg-ssort`, which its specs address).
+     *
+     * @param {Object} c - `{key, label, first?, sort?}`.
+     * @param {Object} ui
+     * @param {string} initial - What the initial order is.
+     * @param {string} [attr]
      * @returns {string}
      */
-    function _extDgSublabelsHtml(list, ui) {
-        const q = ui.subq.trim().toLowerCase();
-        const s = ui.subSort;
-        const rows = list.filter(x => !q || x.name.toLowerCase().includes(q));
-        // No column (the third click): Discogs' own order, untouched.
-        if (s.dir) {
-            rows.sort((a, b) => (s.col === 'status'
-                ? (Number(b.active) - Number(a.active)) * s.dir || a.name.localeCompare(b.name)
-                : a.name.localeCompare(b.name, undefined, { numeric: true }) * s.dir));
+    function _dpTblThHtml(c, ui, initial, attr = '') {
+        if (c.sort === false) return `<th class="mb-dg-nosort">${_rgEsc(c.label)}</th>`;
+        const first = c.first || 1;
+        return `<th data-mb-tbl-sort="${_rgEsc(c.key)}"${first !== 1 ? ` data-mb-tbl-first="${first}"` : ''}` +
+            `${attr ? ` ${attr}="${_rgEsc(c.key)}"` : ''}${_dpSortAttrs(ui.sort, c.key, initial, first)}>${_rgEsc(c.label)}</th>`;
+    }
+
+    /**
+     * A window table's filter field (`input.mb-tbl-q`, kept focused across
+     * repaints), with an extra class when a caller's specs address it.
+     *
+     * @param {string} id
+     * @param {Object} ui
+     * @param {string} label - The placeholder, also the field's name.
+     * @param {string} [cls]
+     * @returns {string}
+     */
+    function _dpTblFilterHtml(id, ui, label, cls = '') {
+        return `<input type="search" class="mb-tbl-q${cls ? ` ${cls}` : ''}" value="${_rgEsc(ui.q)}" data-mb-keep-focus="tbl-${_rgEsc(id)}" ` +
+            `placeholder="${_rgEsc(label)}" aria-label="${_rgEsc(label)}">`;
+    }
+
+    /**
+     * The window's Compact table (Phase 2; first a Discogs label's
+     * sublabels, mockup https://claude.ai/artifact/TkNduhLjJmD2FrcURn5yaV):
+     * a filter when there are more rows than a page, every column sortable
+     * through three states (`_dpSortNext()`; the third click restores the
+     * order given), `perPage` rows a page with ‹ ›. Its state is
+     * `_dpTblUi(t, id)`, its controls `_dpTblClick()`/`_dpTblInput()`.
+     *
+     * @param {object} t - The window's target.
+     * @param {string} id - The table's id in the window.
+     * @param {Array<{key: string, label: string, val?: function(Object): *, html: function(Object, string): string,
+     *   num?: boolean, cmp?: function(Object, Object, number): number, first?: number, sort?: boolean, cls?: string}>} cols
+     * @param {Array<Object>} rows - In the site's own order.
+     * @param {{perPage?: number, initial?: string, what?: string, search?: function(Object): string,
+     *   init?: Object, cls?: string, wrapCls?: string, qCls?: string, sortAttr?: string,
+     *   rowAttrs?: function(Object): string}} [opts] - `what` names the rows ("sublabels"); `cls`,
+     *   `wrapCls`, `qCls` and `sortAttr` add names a caller's specs address.
+     * @returns {string}
+     */
+    function _dpCompactTableHtml(t, id, cols, rows, opts = {}) {
+        const per = opts.perPage || _DP_TBL_PAGE_ROWS;
+        const what = opts.what || 'rows';
+        const ui = _dpTblUi(t, id, opts.init);
+        const view = _dpTblRows(cols, rows, ui, opts);
+        const pages = Math.max(1, Math.ceil(view.length / per));
+        ui.page = Math.min(Math.max(0, ui.page), pages - 1);
+        const from = ui.page * per;
+        const page = view.slice(from, from + per);
+        const filter = rows.length > per ? `<div class="mb-dg-vtools">${_dpTblFilterHtml(id, ui, `Filter ${what}`, opts.qCls)}</div>` : '';
+        const box = body => `<div class="mb-dp-tbl" data-mb-tbl="${_rgEsc(id)}">${filter}${body}</div>`;
+        if (!page.length) return box(`<div class="mb-dg-vwrap"><div class="mb-dg-empty">${rows.length ? `No ${_rgEsc(what)} match.` : 'None.'}</div></div>`);
+        const pager = view.length > per ? '<div class="mb-dg-morerow mb-dg-pager">' +
+            `<button type="button" class="mb-dg-btn" data-mb-tbl-act="prev" aria-label="Previous page"${ui.page ? '' : ' disabled'}>‹</button>` +
+            `<span>${from + 1}–${from + page.length} of ${view.length}${view.length < rows.length ? ` (${rows.length} in all)` : ''}</span>` +
+            `<button type="button" class="mb-dg-btn" data-mb-tbl-act="next" aria-label="Next page"${ui.page < pages - 1 ? '' : ' disabled'}>›</button></div>` : '';
+        const initial = opts.initial || 'as the site lists them';
+        return box(`<div class="mb-dg-vwrap mb-dg-cwrap${opts.wrapCls ? ` ${opts.wrapCls}` : ''}" data-mb-keep-scroll="tbl-${_rgEsc(id)}">` +
+            `<table class="mb-dg-vt mb-dg-lt mb-dg-ct${opts.cls ? ` ${opts.cls}` : ''}"><thead><tr>` +
+            cols.map(c => _dpTblThHtml(c, ui, initial, opts.sortAttr)).join('') + '</tr></thead><tbody>' +
+            page.map(r => `<tr${opts.rowAttrs ? opts.rowAttrs(r) : ''}>` +
+                cols.map(c => `<td${c.cls ? ` class="${c.cls}"` : ''}>${c.html(r, ui.q)}</td>`).join('') + '</tr>').join('') +
+            `</tbody></table>${pager}</div>`);
+    }
+
+    /**
+     * The window's List table (Phase 2; first a Discogs label's releases,
+     * then a MusicBrainz work's recordings): a tools row (the caller's own
+     * controls, the filter, "Clear filters"), chips counting what is loaded
+     * by `facet(row)` (the first `_DP_TBL_CHIPS`, then "+N more"; a click
+     * keeps only its value, Ctrl/⌘ adds it), a line of the caller's, then
+     * the table — 40 px thumbnails first when `thumb` is given, an empty one
+     * a placeholder of the same box so every row is as high — at most
+     * `limit` rows with "Showing N of M · Show all". Loading is the
+     * caller's: its status goes above, and `body` stands in for the table
+     * while there is none.
+     *
+     * @param {object} t - The window's target.
+     * @param {string} id - The table's id in the window.
+     * @param {Array<Object>} cols - As `_dpCompactTableHtml()`.
+     * @param {Array<Object>} rows - What is loaded, in the site's own order.
+     * @param {{limit?: number, initial?: string, placeholder?: string, search?: function(Object): string,
+     *   facet?: function(Object): string, chipLabel?: string, thumb?: function(Object): string, tools?: string,
+     *   note?: string, body?: ?string, none?: string, nomatch?: string, qCls?: string, sortAttr?: string,
+     *   chipAttr?: string, rowAttrs?: function(Object): string}} [opts] - `qCls`, `sortAttr` and
+     *   `chipAttr` add names a caller's specs address.
+     * @returns {string}
+     */
+    function _dpListTableHtml(t, id, cols, rows, opts = {}) {
+        const ui = _dpTblUi(t, id, { limit: opts.limit || _EXT_DG_LABEL_ROWS });
+        const counts = new Map();
+        if (opts.facet) {
+            rows.forEach((r) => {
+                const v = opts.facet(r);
+                if (v) counts.set(v, (counts.get(v) || 0) + 1);
+            });
         }
-        const pages = Math.max(1, Math.ceil(rows.length / _EXT_DG_SUB_ROWS));
-        ui.subPage = Math.min(Math.max(0, ui.subPage), pages - 1);
-        const from = ui.subPage * _EXT_DG_SUB_ROWS;
-        const page = rows.slice(from, from + _EXT_DG_SUB_ROWS);
-        const th = (col, label) => `<th data-mb-dg-ssort="${col}"${_dpSortAttrs(s, col, 'as Discogs lists them')}>${label}</th>`;
-        const filter = list.length > _EXT_DG_SUB_ROWS ? `<div class="mb-dg-vtools"><input type="search" class="mb-dg-sq" value="${_rgEsc(ui.subq)}" ` +
-            'data-mb-keep-focus="dg-sq" placeholder="Filter sublabels" aria-label="Filter sublabels"></div>' : '';
-        if (!page.length) return `${filter}<div class="mb-dg-vwrap"><div class="mb-dg-empty">No sublabel matches.</div></div>`;
-        const pager = rows.length > _EXT_DG_SUB_ROWS ? '<div class="mb-dg-morerow mb-dg-pager">' +
-            `<button type="button" class="mb-dg-btn" data-mb-dg-act="subprev" aria-label="Previous page"${ui.subPage ? '' : ' disabled'}>‹</button>` +
-            `<span>${from + 1}–${from + page.length} of ${rows.length}${q ? ` (${list.length} in all)` : ''}</span>` +
-            `<button type="button" class="mb-dg-btn" data-mb-dg-act="subnext" aria-label="Next page"${ui.subPage < pages - 1 ? '' : ' disabled'}>›</button></div>` : '';
-        return `${filter}<div class="mb-dg-vwrap mb-dg-subwrap" data-mb-keep-scroll="dg-sub"><table class="mb-dg-vt mb-dg-lt mb-dg-subt"><thead><tr>` +
-            `${th('name', 'Name')}${th('status', 'Status')}</tr></thead><tbody>` +
-            page.map(x => `<tr${x.active ? '' : ' class="mb-dg-inact"'}><td>${_extDgLink('label', x.id, _hlEsc(x.name, ui.subq))}</td>` +
-                `<td>${x.active ? '<span class="mb-dg-pill mb-dg-ok">Active</span>' : '<span class="mb-dg-pill">Inactive</span>'}</td></tr>`).join('') +
-            `</tbody></table>${pager}</div>`;
+        const facets = Array.from(counts).sort((a, b) => b[1] - a[1]);
+        // A chosen chip past the first ten stays in sight.
+        const chipList = ui.moreChips ? facets : facets.filter(([v], i) => i < _DP_TBL_CHIPS || ui.chip.includes(v));
+        const chipAttr = v => (opts.chipAttr ? ` ${opts.chipAttr}="${_rgEsc(v)}"` : '');
+        const chips = chipList.map(([v, n]) => `<button type="button" class="mb-dg-fc" data-mb-tbl-chip="${_rgEsc(v)}"${chipAttr(v)} ` +
+            `aria-pressed="${ui.chip.includes(v)}">${_rgEsc(v)}<span class="mb-dg-n">${_extDgNum(n)}</span></button>`).join('') +
+            (facets.length > _DP_TBL_CHIPS ? '<button type="button" class="mb-dg-fc mb-dg-more" data-mb-tbl-act="morechips">' +
+                `${ui.moreChips ? 'Fewer' : `+${_extDgNum(facets.length - _DP_TBL_CHIPS)} more`}</button>` : '');
+        const filtered = !!ui.q.trim() || ui.chip.length > 0;
+        const tools = `<div class="mb-dg-tools">${opts.tools || ''}${_dpTblFilterHtml(id, ui, opts.placeholder || 'Filter', opts.qCls)}` +
+            `${filtered ? '<button type="button" class="mb-dg-btn" data-mb-tbl-act="clear">Clear filters</button>' : ''}</div>` +
+            (chips ? `<div class="mb-dg-tools"><span class="mb-dg-fl">${_rgEsc(opts.chipLabel || 'Type')}</span><span>${chips}</span></div>` : '') +
+            (opts.note ? `<div class="mb-dg-counts">${opts.note}</div>` : '');
+        const view = _dpTblRows(cols, rows, ui, opts);
+        let table;
+        if (opts.body != null) {
+            table = opts.body;
+        } else if (!view.length) {
+            table = `<div class="mb-dg-state">${rows.length ? _rgEsc(opts.nomatch || 'No loaded row matches.') : _rgEsc(opts.none || 'None.')}</div>`;
+        } else {
+            const initial = opts.initial || 'as the site lists them';
+            const thumb = r => `<td>${opts.thumb(r) || '<span class="mb-dg-vthumb mb-dg-nothumb" aria-hidden="true"></span>'}</td>`;
+            table = `<div class="mb-dg-vwrap" data-mb-keep-scroll="tbl-${_rgEsc(id)}"><table class="mb-dg-vt mb-dg-lt"><thead><tr>` +
+                `${opts.thumb ? '<th class="mb-dg-nosort"></th>' : ''}${cols.map(c => _dpTblThHtml(c, ui, initial, opts.sortAttr)).join('')}</tr></thead><tbody>` +
+                view.slice(0, ui.limit).map(r => `<tr${opts.rowAttrs ? opts.rowAttrs(r) : ''}>${opts.thumb ? thumb(r) : ''}` +
+                    cols.map(c => `<td${c.cls ? ` class="${c.cls}"` : ''}>${c.html(r, ui.q)}</td>`).join('') + '</tr>').join('') + '</tbody></table>' +
+                (view.length > ui.limit ? `<div class="mb-dg-morerow">Showing ${_extDgNum(ui.limit)} of ${_extDgNum(view.length)}. ` +
+                    `<button type="button" class="mb-dg-btn" data-mb-tbl-act="all">Show all ${_extDgNum(view.length)}</button></div>` : '') + '</div>';
+        }
+        return `<div class="mb-dp-tbl" data-mb-tbl="${_rgEsc(id)}">${tools}${table}</div>`;
+    }
+
+    /**
+     * A label's sublabels as a Compact table (2026-10-26, mockup
+     * https://claude.ai/artifact/H4b3yAWX6UvHr2ASRFAjuS): a filter, Name and
+     * Status sortable (a third click restores Discogs' order), sorted by
+     * name at first, `_EXT_DG_SUB_ROWS` a page with ‹ ›.
+     *
+     * @param {object} t - The window's target.
+     * @param {Array<{name: string, id: number, active: boolean}>} list
+     * @returns {string}
+     */
+    function _extDgSublabelsHtml(t, list) {
+        return _dpCompactTableHtml(t, 'dg-sub', [
+            {
+                key: 'name', label: 'Name', val: x => x.name,
+                cmp: (a, b, dir) => a.name.localeCompare(b.name, undefined, { numeric: true }) * dir,
+                html: (x, q) => _extDgLink('label', x.id, _hlEsc(x.name, q)),
+            },
+            {
+                key: 'status', label: 'Status', val: () => '',
+                cmp: (a, b, dir) => (Number(b.active) - Number(a.active)) * dir || a.name.localeCompare(b.name),
+                html: x => (x.active ? '<span class="mb-dg-pill mb-dg-ok">Active</span>' : '<span class="mb-dg-pill">Inactive</span>'),
+            },
+        ], list, {
+            perPage: _EXT_DG_SUB_ROWS, initial: 'as Discogs lists them', what: 'sublabels', search: x => x.name,
+            init: { sort: { col: 'name', dir: 1 } }, cls: 'mb-dg-subt', wrapCls: 'mb-dg-subwrap', qCls: 'mb-dg-sq',
+            sortAttr: 'data-mb-dg-ssort', rowAttrs: x => (x.active ? '' : ' class="mb-dg-inact"'),
+        });
     }
 
     /**
@@ -61258,49 +61806,25 @@
         const lock = busy ? ' disabled data-mb-tip title="Stop the running load first"' : '';
         const order = `<span class="mb-dg-seg"><button type="button" data-mb-dg-lorder="desc" aria-pressed="${ui.lorder === 'desc'}"${lock}>Newest first</button>` +
             `<button type="button" data-mb-dg-lorder="asc" aria-pressed="${ui.lorder === 'asc'}"${lock}>Oldest first</button></span>`;
-        const all = _extDgLoadedRows(vs);
-        const fmts = {};
-        all.forEach((r) => {
-            const m = _extDgMajorFormat(r.format);
-            fmts[m] = (fmts[m] || 0) + 1;
+        const col = (key, label, cls = '') => ({ key, label, cls, val: r => r[key], html: (r, q) => _hlEsc(r[key], q) });
+        const table = _dpListTableHtml(t, 'dg-label', [
+            col('artist', 'Artist'),
+            Object.assign(col('title', 'Title, format'), {
+                html: (r, q) => `<a href="https://www.discogs.com/release/${r.id}" target="_blank" rel="noopener noreferrer">` +
+                    `${_hlEsc(r.title, q)}</a><div class="mb-dg-dim">${_hlEsc(r.format, q)}</div>`,
+            }),
+            col('catno', 'Cat#', 'mb-dg-cat'),
+            Object.assign(col('year', 'Year', 'mb-dg-yr'), { html: (r, q) => (r.year ? _hlEsc(r.year, q) : '—') }),
+        ], _extDgLoadedRows(vs), {
+            initial: 'as Discogs lists them', placeholder: 'Filter loaded releases: artist, title, format, cat#, year',
+            search: r => [r.artist, r.title, r.format, r.catno, r.year].join(' '),
+            facet: r => _extDgMajorFormat(r.format), chipLabel: 'Format', thumb: r => _extDgThumbHtml(r.thumb),
+            tools: `<span class="mb-dg-fl">Order</span>${order}`,
+            note: 'Changing the order asks Discogs again (each order is cached on its own). Chips count what is loaded.',
+            body: done1 ? null : `<div class="mb-dg-state"><span class="mb-dp-spin">◌</span> Asking Discogs for the first ${_EXT_DISCOGS_PER_PAGE} releases…</div>`,
+            nomatch: 'No loaded release matches.', qCls: 'mb-dg-lq', sortAttr: 'data-mb-dg-lsort', chipAttr: 'data-mb-dg-lfmt',
         });
-        const chips = Object.entries(fmts).sort((a, b) => b[1] - a[1]).slice(0, 10).map(([v, n]) =>
-            `<button type="button" class="mb-dg-fc" data-mb-dg-lfmt="${_rgEsc(v)}" aria-pressed="${ui.lfmt === v}">${_rgEsc(v)}` +
-            `<span class="mb-dg-n">${_extDgNum(n)}</span></button>`).join('');
-        const q = ui.lq.trim().toLowerCase();
-        let rows = all.filter(r => (!ui.lfmt || _extDgMajorFormat(r.format) === ui.lfmt) &&
-            (!q || [r.artist, r.title, r.format, r.catno, r.year].join(' ').toLowerCase().includes(q)));
-        const s = ui.lsort;
-        if (s.dir) {
-            rows = rows.slice().sort((a, b) => {
-                const x = a[s.col], y = b[s.col];
-                if (!x !== !y) return x ? -1 : 1;
-                return String(x).localeCompare(String(y), undefined, { numeric: true }) * s.dir;
-            });
-        }
-        const th = (col, label) => `<th data-mb-dg-lsort="${col}"${_dpSortAttrs(s, col, 'as Discogs lists them')}>${label}</th>`;
-        let table;
-        if (!done1) {
-            table = `<div class="mb-dg-state"><span class="mb-dp-spin">◌</span> Asking Discogs for the first ${_EXT_DISCOGS_PER_PAGE} releases…</div>`;
-        } else if (!rows.length) {
-            table = `<div class="mb-dg-state">${all.length ? 'No loaded release matches.' : 'None.'}</div>`;
-        } else {
-            table = '<div class="mb-dg-vwrap" data-mb-keep-scroll="dg-label"><table class="mb-dg-vt mb-dg-lt"><thead><tr><th class="mb-dg-nosort"></th>' +
-                `${th('artist', 'Artist')}${th('title', 'Title, format')}${th('catno', 'Cat#')}${th('year', 'Year')}</tr></thead><tbody>` +
-                rows.slice(0, ui.llimit).map(r => `<tr><td>${_extDgThumbHtml(r.thumb)}</td>` +
-                    `<td>${_hlEsc(r.artist, ui.lq)}</td><td><a href="https://www.discogs.com/release/${r.id}" target="_blank" rel="noopener noreferrer">` +
-                    `${_hlEsc(r.title, ui.lq)}</a><div class="mb-dg-dim">${_hlEsc(r.format, ui.lq)}</div></td>` +
-                    `<td class="mb-dg-cat">${_hlEsc(r.catno, ui.lq)}</td><td class="mb-dg-yr">${r.year ? _hlEsc(r.year, ui.lq) : '—'}</td></tr>`).join('') + '</tbody></table>' +
-                (rows.length > ui.llimit ? `<div class="mb-dg-morerow">Showing ${_extDgNum(ui.llimit)} of ${_extDgNum(rows.length)}. ` +
-                    `<button type="button" class="mb-dg-btn" data-mb-dg-act="llimit">Show all ${_extDgNum(rows.length)}</button></div>` : '') + '</div>';
-        }
-        return `<section class="mb-dg-disco" data-mb-dg-disco="label" data-mb-dg-list="${ref}">${head}${big}${status}` +
-            `<div class="mb-dg-tools"><span class="mb-dg-fl">Order</span>${order}<input type="search" class="mb-dg-lq" value="${_rgEsc(ui.lq)}" ` +
-            'data-mb-keep-focus="dg-lq" placeholder="Filter loaded releases: artist, title, format, cat#, year" aria-label="Filter loaded releases">' +
-            `${ui.lq.trim() || ui.lfmt ? '<button type="button" class="mb-dg-btn" data-mb-dg-act="lclear">Clear filters</button>' : ''}</div>` +
-            `${chips ? `<div class="mb-dg-tools"><span class="mb-dg-fl">Format</span><span>${chips}</span></div>` : ''}` +
-            '<div class="mb-dg-counts">Changing the order asks Discogs again (each order is cached on its own). Chips count what is loaded.</div>' +
-            `${table}</section>`;
+        return `<section class="mb-dg-disco" data-mb-dg-disco="label" data-mb-dg-list="${ref}">${head}${big}${status}${table}</section>`;
     }
 
     /**
@@ -61336,7 +61860,7 @@
         }
         if (dg.kind === 'label') {
             if (dg.contact) out.left.push(_extDgSection('contact', 'Contact info', null, `<div class="mb-dg-contact">${_rgEsc(dg.contact)}</div>`));
-            if (dg.sublabels.length) out.left.push(_extDgSection('sublabels', 'Sublabels', dg.sublabels.length, _extDgSublabelsHtml(dg.sublabels, ui)));
+            if (dg.sublabels.length) out.left.push(_extDgSection('sublabels', 'Sublabels', dg.sublabels.length, _extDgSublabelsHtml(t, dg.sublabels)));
         }
         if (dg.images.length) {
             out.left.push(_extDgSection('images', 'Images', dg.images.length, _extDgImagesHtml(dg.images, 'primary') +
@@ -61527,8 +62051,8 @@
      * The window's buttons of an artist or a label (`data-mb-dg-act`):
      * the profile whole or not, all names, a list's page 1 again, its run
      * ("Load the other", a label's next batch or the missing pages), Stop,
-     * the filters cleared, a label's rows all shown, a master row's versions
-     * again.
+     * an artist's filters cleared, a master row's versions again. A label's
+     * releases and sublabels are shared tables: `_dpTblClick()`.
      *
      * @param {Element} act
      * @param {object} t
@@ -61543,12 +62067,6 @@
             return true;
         case 'morevar':
             ui.moreVar = !ui.moreVar;
-            return true;
-        case 'subprev':
-            ui.subPage--;
-            return true;
-        case 'subnext':
-            ui.subPage++;
             return true;
         case 'lfirst':
             if (list) _extDgListLoad(t, list, 1, { repaint: _dpDialog.repaint });
@@ -61567,12 +62085,6 @@
         case 'aclear':
             Object.assign(ui, { aq: '', atype: '' });
             return true;
-        case 'lclear':
-            Object.assign(ui, { lq: '', lfmt: '' });
-            return true;
-        case 'llimit':
-            ui.llimit = Infinity;
-            return true;
         case 'nvretry':
             _extDgListLoad(t, _extDgList('versions', act.dataset.mbDgId), 1, { repaint: _dpDialog.repaint });
             return true;
@@ -61583,10 +62095,12 @@
 
     /**
      * The other controls of an artist's or a label's window: the Masters /
-     * Releases chips, a label's format chips and order, the tables' sort
-     * headers ("Have" sorts most first; a third click goes back to Discogs'
-     * order; the sublabels' Name and Status), "Show more" / "Show all", and a master row's versions (one
-     * request, on the click).
+     * Releases chips, a label's order (which starts its releases' table
+     * over: Discogs' order, `_EXT_DG_LABEL_ROWS` rows), the discography's
+     * sort headers ("Have" sorts most first; a third click goes back to
+     * Discogs' order), "Show more" / "Show all", and a master row's versions
+     * (one request, on the click). A label's releases and sublabels are
+     * shared tables (`_dpTblClick()`).
      *
      * @param {MouseEvent} e
      * @param {object} t
@@ -61594,32 +62108,24 @@
      */
     function _extDgEntityControl(e, t) {
         const ui = _extDgUiOf(t);
-        const el = e.target.closest('[data-mb-dg-atype], [data-mb-dg-lfmt], [data-mb-dg-lorder], th[data-mb-dg-asort], th[data-mb-dg-lsort], ' +
-            'th[data-mb-dg-ssort], [data-mb-dg-alimit], [data-mb-dg-alimit-all], [data-mb-dg-mexp]');
+        const el = e.target.closest('[data-mb-dg-atype], [data-mb-dg-lorder], th[data-mb-dg-asort], ' +
+            '[data-mb-dg-alimit], [data-mb-dg-alimit-all], [data-mb-dg-mexp]');
         if (!el || el.disabled) return !!el;
         const d = el.dataset;
         if (d.mbDgAtype != null) {
             ui.atype = d.mbDgAtype;
-        } else if (d.mbDgLfmt != null) {
-            ui.lfmt = ui.lfmt === d.mbDgLfmt ? '' : d.mbDgLfmt;
         } else if (d.mbDgLorder) {
             // The other order is another list: the repaint below asks its
             // page 1 when this page load has none (`_extDgListStart()`).
             if (ui.lorder === d.mbDgLorder) return true;
-            Object.assign(ui, { lorder: d.mbDgLorder, lsort: { col: '', dir: 0 }, llimit: _EXT_DG_LABEL_ROWS });
+            ui.lorder = d.mbDgLorder;
+            Object.assign(_dpTblUi(t, 'dg-label'), { sort: { col: '', dir: 0 }, limit: _EXT_DG_LABEL_ROWS });
         } else if (d.mbDgAsort) {
             const role = d.mbDgRole;
             const col = d.mbDgAsort;
             const cur = ui.asort[role];
             const next = _dpSortNext(cur, col, col === 'have' ? -1 : 1);
             ui.asort[role] = next.dir ? next : null;
-        } else if (d.mbDgSsort) {
-            const col = d.mbDgSsort;
-            ui.subSort = _dpSortNext(ui.subSort, col);
-            ui.subPage = 0;
-        } else if (d.mbDgLsort) {
-            const col = d.mbDgLsort;
-            ui.lsort = _dpSortNext(ui.lsort, col);
         } else if (d.mbDgAlimit) {
             ui.alimit[d.mbDgAlimit] = (ui.alimit[d.mbDgAlimit] || _EXT_DG_ARTIST_ROWS) + _EXT_DG_MORE_ROWS;
         } else if (d.mbDgAlimitAll) {
@@ -61733,25 +62239,21 @@
     /**
      * Typing in a filter of the window. The versions': only the list part
      * is drawn again, so the field keeps its focus and caret. An artist's
-     * discography, a label's releases or its sublabels (back to page 1): the whole window, which keeps the
-     * field's focus and caret (`data-mb-keep-focus`) and the tables' scroll.
+     * discography: the whole window, which keeps the field's focus and caret
+     * (`data-mb-keep-focus`) and the tables' scroll. A label's releases and
+     * sublabels are shared tables (`_dpTblInput()`).
      *
      * @param {Event} e
      * @param {object} t
      * @returns {void}
      */
     function _extDiscogsAreaInput(e, t) {
-        if (!(e.target instanceof Element) || !e.target.matches('.mb-dg-vq, .mb-dg-aq, .mb-dg-lq, .mb-dg-sq')) return;
+        if (!(e.target instanceof Element) || !e.target.matches('.mb-dg-vq, .mb-dg-aq')) return;
         const st = _mbPop.get(t.key);
         const rec = st && st.status === 'done' ? st.data : null;
         if (!rec || !rec.discogs) return;
-        if (e.target.matches('.mb-dg-sq')) {
-            Object.assign(_extDgUiOf(t), { subq: e.target.value, subPage: 0 });
-            if (_dpDialog.repaint) _dpDialog.repaint();
-            return;
-        }
         if (!e.target.matches('.mb-dg-vq')) {
-            _extDgUiOf(t)[e.target.matches('.mb-dg-aq') ? 'aq' : 'lq'] = e.target.value;
+            _extDgUiOf(t).aq = e.target.value;
             if (_dpDialog.repaint) _dpDialog.repaint();
             return;
         }

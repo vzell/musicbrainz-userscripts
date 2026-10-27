@@ -138,23 +138,51 @@ Pre-existing, not caused by this work: =popup-ext.spec.js= "Wikipedia: one REST 
 missing title" fails at line 1032 (no =upload.wikimedia.org= image) on the unchanged base too
 (cloud container, 2026-10-26). Re-check locally.
 
-** Phase 2 — Shared table components  [0/5]
+*Re-checked locally* (Env: 2026-10-27T11:09:24+01:00 → 11:25:38 · NB-3641 · WSL2 Ubuntu,
+Linux 6.18.54.1 · Playwright Chromium, no Tampermonkey (GM stubs)): =npm run test:full= on
+=a136f039= (Phase 1 + the glyph box), 2,366 tests, 14 workers, 16 m 14 s: *2,365 passed, 1
+failed*. The Wikipedia test and the release-group covers test both passed, so both were the
+container (proxy, and load), not the code. The 16 unnamed cloud failures did not recur. The one
+local failure, =release-event-colours-rg-tooltip.spec.js:335= ("the event card above the release
+group card"), threw =boundingBox()= → =null= at line 353, after =toBeVisible()= had passed. It then
+passed 10/10 alone and 40/40 with 14 workers. Phase 1's diff touches no code it exercises (window
+CSS and window-table sorts only), so it is a load-only flake (the box hides between two
+assertions), not a regression. Hardening it (re-assert visibility next to the measurement) is
+left for its own change; see =DEBUG-NOTES.md= 2026-10-27.
 
-- [ ] *Compact table* =_dpCompactTableHtml(id, cols, rows, ui, opts)= extracted from
-      =_extDgSublabelsHtml()= (filter when more rows than a page, 3-state sort, ‹ › pager,
-      =data-mb-keep-scroll= / =data-mb-keep-focus=). Sublabels becomes its first caller; the
-      Discogs label specs must stay green unchanged.
-- [ ] Per-window table state =_dpTblUi(t, id)= (same lifetime as =_extDgUiOf()=); one delegated
-      click handler for =[data-mb-tbl-sort]=, =[data-mb-tbl-act]=.
-- [ ] *List table* =_dpListTableHtml(...)= from =_extDgLabelHtml()='s parts: status bar,
-      filter, chips (top 10 + "+N more"), 40 px thumbs, "Showing N of M · Show all".
-- [ ] *MB paged loader* =_mbPopPagedList(key, pageUrl, opts)= generalising =_rgReleasesLoad()=:
-      page 1 when the window starts; then "Load 5 more pages (500 releases, about 6 s)" per click
-      (cost from =_REL_WS2_SPACING_MS=); offset += rows returned; IDB record; =wanted()=;
-      HTML-paged sources (=/tag/<t>/<kind>?page=n=, collections) plug in a parser instead of WS/2.
-      Only a call with =start= may start a request (detail-pages rule).
-- [ ] Thumb placeholder =<span class="mb-dg-vthumb mb-dg-nothumb">= — same 40 × 40 box, so all
-      rows are equally high.
+** DONE Phase 2 — Shared table components  [5/5]
+
+Done 2026-10-27 (local, NB-3641; WIP.2). Decision (vzell, 2026-10-27): every component gets a
+real first caller now: Discogs sublabels → Compact, Discogs label releases → List, MusicBrainz
+*Work → Recordings* → List + paged loader. The other Phase 3 rows stay in Phase 3. Details:
+=docs/claude/detail-pages.md= "Shared window tables and the MusicBrainz paged loader".
+
+- [X] *Compact table* =_dpCompactTableHtml(t, id, cols, rows, opts)= extracted from
+      =_extDgSublabelsHtml()=, which is now its first caller. The Discogs label specs ran
+      unchanged: the component emits their old names (=qCls=, =sortAttr=, =cls=) next to the
+      generic =data-mb-tbl-*= ones.
+- [X] Per-window table state =_dpTblUi(t, id)= (=_dpTbl=, same lifetime as =_extDgUi=); ONE
+      delegated click handler (=_dpTblClick()=) and input handler (=_dpTblInput()=) in the dialog
+      for every window, before the source's own.
+- [X] *List table* =_dpListTableHtml(t, id, cols, rows, opts)= from =_extDgLabelHtml()='s parts:
+      tools, filter, chips (top 10 + "+N more", Ctrl adds), 40 px thumbs, "Showing N of M · Show
+      all". The status bar stays the caller's.
+- [X] *MB paged loader*, named =_mbPagedStart()= / =_mbPagedRun()= / =_mbPagedStatusHtml()= /
+      =_mbPagedClick()= (not =_mbPopPagedList()=): page 1 from =pin()=, "Load 5 more pages (500
+      recordings, about 6 s)", offset += rows returned, IDB =mb:list:<key>=, =wanted()= + Stop.
+      *Deviation:* the HTML-paged adapter (=/tag/<t>/<kind>?page=n=, collections) is NOT written
+      yet. The =spec.ask(offset, wanted)= interface admits it, and it lands in Phase 3 with its
+      first caller, so no untested code goes in.
+- [X] Thumb placeholder =<span class="mb-dg-vthumb mb-dg-nothumb">= (the same 42 px box with its
+      border; asserted against a real thumbnail in =popup-ext.spec.js=).
+
+Phase 3 note: the Work row of the table below is done (Recordings → List + paged loader).
+
+Tests (Env: 2026-10-27T11:52:17+01:00 → 12:08:12 · NB-3641 · WSL2 Ubuntu 24.04.4, Linux 6.18.54.1 ·
+Playwright 1.62.1 Chromium, no Tampermonkey (GM stubs)): =npm run test:full= on =a136f039= + the
+Phase 2 changes, *2,369/2,369 passed* in 15 m 55 s. Mutations: =dp-shared-tables.json= 7/7 fail as
+they should; =dp-sort-initial-state.json= 8 fail + 1 recorded overlap pass; =discogs-window-swap.json=
+5/5 (one entry was already stale at HEAD and is retargeted). Lint is within its baseline.
 
 ** Phase 3 — MB entity sections  [0/27]
 
