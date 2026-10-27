@@ -5216,7 +5216,7 @@ add support for the following Discogs pages (with the usual image hovering treat
 
 show me a nice rich HTML web page with mockups before implementing
 
-** TODO finishing of in the cloud
+** DONE finishing of in the cloud
 
 Phase 1 is committed and pushed as 723745f7, and the working tree is clean. The default fixture suite is still running, so it isn’t confirmed green yet; I’ll report back when it finishes.
 
@@ -5241,3 +5241,7 @@ way with my changes stashed, so it was already broken before this work. It expec
 this container is my first suspect. It’s noted in the org file to re-check on your machine.
 
 Next, on your local machine: Phase 2 in org/MB-POH-sync-withDiscogs.org, the shared Compact and List tables plus the “Load N more pages” loader for MusicBrainz.
+
+** tackle
+
+Tackle "Phase 2" in org/MB-POH-sync-withDiscogs.org, the shared Compact and List tables plus the “Load N more pages” loader for MusicBrainz.
