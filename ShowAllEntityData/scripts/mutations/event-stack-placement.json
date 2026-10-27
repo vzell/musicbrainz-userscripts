@@ -1,0 +1,28 @@
+[
+    {
+        "name": "note stack placed on the card, not above it",
+        "why": "The polled geometry check (2026-10-27, de-flaked) must still fail when the stack is never placed above the card.",
+        "edits": [
+            {
+                "find": "            o.style.top = (top - oh) + 'px';\n",
+                "replace": "            o.style.top = top + 'px';\n"
+            }
+        ],
+        "spec": "tests/fixtures/release-event-colours-rg-tooltip.spec.js",
+        "grep": "another event: the event card above the release group card",
+        "expect": "fail"
+    },
+    {
+        "name": "note stack off the card's left edge",
+        "why": "The stack shares the card's left edge; the poll checks it with the rest.",
+        "edits": [
+            {
+                "find": "            o.style.left = left + 'px';\n",
+                "replace": "            o.style.left = (left + 30) + 'px';\n"
+            }
+        ],
+        "spec": "tests/fixtures/release-event-colours-rg-tooltip.spec.js",
+        "grep": "another event: the event card above the release group card",
+        "expect": "fail"
+    }
+]

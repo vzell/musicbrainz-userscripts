@@ -26428,3 +26428,28 @@ the extraction had to keep, for whoever touches these tables next.
   already stale at HEAD: its anchor had been rewritten in `c59d77b0`, so it
   reported ERROR, not a result. It is retargeted to `_dgMuteNativeArtistHover()`
   and fails as it should again.
+
+## 2026-10-27 — the stacked event card's geometry test de-flaked (release-event-colours-rg-tooltip.spec.js:335)
+
+Env: 2026-10-27T13:45+01:00 → 14:20+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) · Playwright 1.62.1 Chromium · no Tampermonkey (GM stubs)
+
+The flake recorded above this morning failed again in the merge gate's
+`npm run test:full` on `main` (`5a2e11c0`, 2,368/2,369), this time with a
+number: `the box ends above the card`, box bottom 451.4 vs card top 373. The
+failure screenshot shows the settled layout right (box ending at about 368,
+above the card). So both symptoms (this one, and the morning's `null`
+`boundingBox()`) are one race: the test measured the stack once, between a
+change of the stack's height and the next placement (`_dpShowPeek()`'s
+repaint fills and places synchronously, so the height must change between
+two repaints; a late-loading kind-head glyph is one candidate, NOT confirmed).
+Users see at most a transient overlap that the next repaint corrects.
+
+Fix (test only): the geometry is polled (`expect.poll`, 5 s) until the box
+is above the card, on its left edge, no wider. A box that is never placed
+right still fails: `scripts/mutations/event-stack-placement.json`, 2/2
+(stack on the card; stack off its left edge). Stress: the whole file at
+`--repeat-each=30 --workers=14` twice, 1,200 runs. The hardened test failed
+0 times. Another test of the file, `:169` ("'#' card, main event"), failed
+2 of 600 in the first run and 0 of 600 in the second (30/30 alone). Its
+error message was not captured (dot reporter, `test-results/` overwritten
+by the second run), so it is noted here, not diagnosed.
