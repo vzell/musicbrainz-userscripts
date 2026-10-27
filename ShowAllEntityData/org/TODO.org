@@ -5251,4 +5251,11 @@ Next, on your local machine: Phase 2 in org/MB-POH-sync-withDiscogs.org, the sha
 
 ** tackle
 
-Tackle "Phase 2" in org/MB-POH-sync-withDiscogs.org, the shared Compact and List tables plus the “Load N more pages” loader for MusicBrainz.
+The last couple of implementation steps have been done in a Claude cloude environment as I didn't any tokens left for
+local development. A couple of tests didn't work out in that environment and I think they have been reorded in our .org
+files somewhere (or the changelog/"git history"), please check and specifically check our next full test suite run if
+these tests are still flaky or real regressions.
+
+Now tackle "Phase 2" in org/MB-POH-sync-withDiscogs.org, the shared Compact and List tables plus the “Load N more pages”
+loader for MusicBrainz.
+
