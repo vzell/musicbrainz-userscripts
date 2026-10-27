@@ -347,12 +347,19 @@ test.describe('the "#" card\'s stacked event card', () => {
         await expect(box.locator(':scope > .mb-pop-kind-head')).toHaveText('Event');
         await expect(box.locator(':scope > .mb-pop-kind-head img')).toHaveAttribute('src', /\/static\/images\/entity\/event\.svg$/);
         await expect(tip(page).locator(':scope > .mb-pop-kind-head')).toHaveText('Release group');
-        // ABOVE the card, on its left edge, no wider.
-        const b = await box.boundingBox();
-        const c = await tip(page).boundingBox();
-        expect(b.y + b.height, 'the box ends above the card').toBeLessThanOrEqual(c.y);
-        expect(Math.round(b.x)).toBe(Math.round(c.x));
-        expect(b.width).toBeLessThanOrEqual(c.width + 1);
+        // ABOVE the card, on its left edge, no wider, once the stack has
+        // settled. One measurement could catch it between two repaints:
+        // under full-suite load the box was measured overlapping the card
+        // (2026-10-27, NB-3641: bottom 451 vs card top 373) or hidden
+        // (boundingBox() null), and the final screenshot showed it right.
+        // The poll still fails on a box that is never placed above.
+        await expect.poll(async () => {
+            const b = await box.boundingBox();
+            const c = await tip(page).boundingBox();
+            if (!b || !c) return 'not shown';
+            return { above: b.y + b.height <= c.y, sameLeft: Math.round(b.x) === Math.round(c.x), noWider: b.width <= c.width + 1 };
+        }, { message: 'the event box above the card, on its left edge, no wider', timeout: 5000 })
+            .toEqual({ above: true, sameLeft: true, noWider: true });
         expect(lookups).toEqual([RAH22_ID]);
         // The other track of the same event: from memory, nothing asked.
         await hoverHash(page, 2, 10);
