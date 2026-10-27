@@ -515,8 +515,8 @@ test.describe('MusicBrainz link previews (sa_pop_mb)', () => {
         await expect(dialog(page)).toBeVisible();
         await expect(dialog(page).locator(':scope > div > span').first()).toHaveText('Release');
         const area = dialog(page).locator('.mb-dp-area');
-        await expect(area.locator('.mb-pop-tracks li')).toHaveCount(9);
-        await expect(area.locator('.mb-pop-tracks li').first().locator('a')).toHaveAttribute('href', /^\/recording\/[0-9a-f-]{36}$/);
+        await expect(area.locator('[data-mb-tbl="tracks"] tbody tr')).toHaveCount(9);
+        await expect(area.locator('[data-mb-tbl="tracks"] tbody tr').first().locator('a')).toHaveAttribute('href', /^\/recording\/[0-9a-f-]{36}$/);
         await expect(area.locator('a[href="/label/011d1192-6f65-45bd-85c4-0400dd45693e"]')).toHaveText('Columbia');
         await expect(area.locator('a[href^="/release-group/"]')).toHaveText('Greetings From Asbury Park, N.J.');
         await expect(area.locator('.mb-dp-gallery img')).toHaveCount(16);
@@ -546,7 +546,46 @@ test.describe('MusicBrainz link previews (sa_pop_mb)', () => {
 
         await dialog(page).locator('button.mb-dp-tbtn', { hasText: '⟳' }).click();
         await expect.poll(() => log.lookups.length).toBe(2);
-        await expect(area.locator('.mb-pop-tracks li')).toHaveCount(9);
+        await expect(area.locator('[data-mb-tbl="tracks"] tbody tr')).toHaveCount(9);
+    });
+
+    // org/MB-POH-sync-withDiscogs.org Phase 3e (decided 2026-10-26): a table
+    // per medium under a header that folds it, one filter for all mediums.
+    test('the release window: a table per medium under a header "CD 2 · Bonus · 3 tracks · <length>", one filter, a medium folds', async ({ page }) => {
+        const rel = JSON.parse(json('ws2-pop-release-greetings.json'));
+        const second = JSON.parse(JSON.stringify(rel.media[0]));
+        Object.assign(second, { position: 2, format: 'CD', title: 'Bonus', 'track-count': 3, tracks: second.tracks.slice(0, 3) });
+        // One track by another credit: only this medium gets an Artist column.
+        second.tracks[1]['artist-credit'] = [{ name: 'Bruce Springsteen', joinphrase: ' & ', artist: rel['artist-credit'][0].artist },
+            { name: 'The E Street Band', joinphrase: '', artist: { id: 'd6652e7b-33fe-49ef-8336-4c863b4f996f', name: 'The E Street Band' } }];
+        rel.media.push(second);
+        const ms = (tr) => tr.length ?? tr.recording.length;
+        const len = (t) => `${Math.floor(t / 60000)}:${String(Math.round(t / 1000) % 60).padStart(2, '0')}`;
+        const sum2 = second.tracks.reduce((x, tr) => x + ms(tr), 0);
+        await open(page, { settings: { sa_pop_mb: true }, lookup: () => ({ status: 200, body: JSON.stringify(rel) }) });
+        await ctrlHover(page, relLink(page));
+        await expect(card(page)).toContainText('Greetings From Asbury Park, N.J.');
+        await page.keyboard.press('Space');
+        const box = dialog(page).locator('[data-mb-tbl="tracks"]');
+        const heads = box.locator('button.mb-pop-medhead');
+        await expect(heads).toHaveText(['▾12" Vinyl 1 · 9 tracks · 36:59', `▾CD 2 · Bonus · 3 tracks · ${len(sum2)}`]);
+        const tables = box.locator('table.mb-pop-medtable');
+        await expect(tables.nth(0).locator('thead th')).toHaveText(['#', 'Title', 'Length']);
+        await expect(tables.nth(1).locator('thead th')).toHaveText(['#', 'Title', 'Artist', 'Length']);
+        await expect(tables.nth(1).locator('tbody tr').nth(1).locator('td').nth(2)).toHaveText('Bruce Springsteen & The E Street Band');
+        await expect(tables.nth(1).locator('tbody tr').nth(0).locator('td').nth(2)).toHaveText('');
+        // One filter for every medium; each header counts its matches.
+        await box.locator('input.mb-tbl-q').fill('blinded');
+        await expect(heads.nth(0)).toContainText('1 match');
+        await expect(heads.nth(1)).toContainText('1 match');
+        await expect(box.locator('tbody tr')).toHaveCount(2);
+        await expect(box.locator('tbody mark.mb-dg-hl')).toHaveText(['Blinded', 'Blinded']);
+        // A medium folds; the other stays.
+        await box.locator('input.mb-tbl-q').fill('');
+        await heads.nth(1).click();
+        await expect(heads.nth(1)).toHaveAttribute('aria-expanded', 'false');
+        await expect(tables).toHaveCount(1);
+        await expect(box.locator('tbody tr')).toHaveCount(9);
     });
 
     test('← → step down the same column, into the next sub-table', async ({ page }) => {
@@ -1584,7 +1623,8 @@ test.describe('MusicBrainz link previews: event, place, series (WIP.4)', () => {
         await page.keyboard.press('Space');
         const area = dialog(page).locator('.mb-dp-area');
         await expect(dialog(page).locator(':scope > div > span').first()).toHaveText('Event');
-        const songs = area.locator('h4:text-matches("^Setlist") ~ ol.mb-pop-tracks li');
+        // A List table since Phase 3e: # · Song · Notes.
+        const songs = area.locator('[data-mb-tbl="setlist"] tbody tr');
         await expect(songs.last()).toContainText('Chimes of Freedom');
         await expect(songs.filter({ hasText: /\[|\]/ })).toHaveCount(0);
         // Two Compact tables since Phase 3d: its releases, its recordings.
@@ -1630,13 +1670,16 @@ test.describe('MusicBrainz link previews: event, place, series (WIP.4)', () => {
         await expect(card(page).locator('.mb-pop-tracks a')).toHaveCount(0);
         await page.keyboard.press('Space');
         const area = dialog(page).locator('.mb-dp-area');
-        const songs = area.locator('h4:text-matches("^Setlist") ~ ol.mb-pop-tracks li');
+        // A List table since Phase 3e: # · Song · Notes.
+        const songs = area.locator('[data-mb-tbl="setlist"] tbody tr');
         await expect(songs).toHaveCount(20);
         await expect(songs.filter({ hasText: /\[|\]/ }), 'no raw [mbid|name] token').toHaveCount(0);
         // A mixed-case token: the work linked by its lowercased MBID, the
         // guest in "(with …)" as an artist.
         const fever = songs.nth(13);
-        await expect(fever).toContainText('The Fever (with Bruce Springsteen)');
+        // The song and the rest of its line in cells of their own (Phase 3e).
+        await expect(fever.locator('td').nth(1)).toHaveText('The Fever');
+        await expect(fever.locator('td').nth(2)).toHaveText('(with Bruce Springsteen)');
         await expect(fever.locator('a[href="/work/e497263c-4f15-36c0-b27c-dca99482962c"]')).toHaveText('The Fever');
         await expect(fever.locator('a[href="/artist/70248960-cb53-4ea4-943a-edb18f7d336f"]')).toHaveText('Bruce Springsteen');
         const hard = songs.nth(15);
@@ -1647,6 +1690,11 @@ test.describe('MusicBrainz link previews: event, place, series (WIP.4)', () => {
         // A song without a token stays text.
         await expect(songs.nth(10)).toHaveText(/You Don’t Know/);
         await expect(songs.nth(10).locator('a')).toHaveCount(0);
+        // The setlist's filter (Phase 3e): one song, its match marked.
+        await area.locator('[data-mb-tbl="setlist"] input.mb-tbl-q').fill('fever');
+        await expect(songs).toHaveCount(1);
+        await expect(songs.locator('mark.mb-dg-hl')).toHaveText(['Fever']);
+        await area.locator('[data-mb-tbl="setlist"] input.mb-tbl-q').fill('');
         // MusicBrainz's own page links the guests as works: not here.
         await expect(area.locator('a[href^="/work/70248960"], a[href^="/work/f9227504"]')).toHaveCount(0);
         // The line-up: every artist linked.
@@ -1839,6 +1887,9 @@ test.describe('MusicBrainz link previews: event, place, series (WIP.4)', () => {
         await expect(links).toHaveCount(23);
         const hrefs = await links.evaluateAll(as => as.map(x => x.getAttribute('href')));
         expect(hrefs.every(h => /^\/release-group\/[0-9a-f-]{36}$/.test(h)), `every item a release group page: ${hrefs[0]}`).toBe(true);
+        // Each item with its kind's own glyph before it (Phase 3e).
+        await expect(dialog(page).locator('.mb-dp-area .mb-rg-wtable tbody img.mb-pop-ent-icon')).toHaveCount(23);
+        await expect(dialog(page).locator('.mb-dp-area img.mb-pop-ent-icon').first()).toHaveAttribute('src', /\/static\/images\/entity\/release_group\.svg$/);
         await links.first().click();
         await expect(dialog(page).locator(':scope > div > span').first()).toHaveText('Series › Release group');
     });
@@ -2845,7 +2896,7 @@ test.describe('MusicBrainz link previews: drill-down inside the window (Phase 5)
         await ctrlHover(page, relLink(page));
         await expect(card(page)).toContainText('fetched now');
         await page.keyboard.press('Space');
-        await expect(dialog(page).locator('.mb-pop-tracks li').first()).toBeVisible();
+        await expect(dialog(page).locator('[data-mb-tbl="tracks"] tbody tr').first()).toBeVisible();
         return log;
     }
 
@@ -2863,7 +2914,7 @@ test.describe('MusicBrainz link previews: drill-down inside the window (Phase 5)
         await expect(page.locator('table.tbl tbody tr.mb-dp-current')).toHaveCount(1);
         await backBtn(page).click();
         await expect(title(page)).toHaveText('Release');
-        await expect(dialog(page).locator('.mb-pop-tracks li')).toHaveCount(9);
+        await expect(dialog(page).locator('[data-mb-tbl="tracks"] tbody tr')).toHaveCount(9);
         await expect(backBtn(page)).toBeHidden();
         expect(log.lookups, 'the release again: from memory').toHaveLength(1);
     });

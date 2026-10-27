@@ -27512,6 +27512,10 @@
                 padding: 0;
             }
             .mb-dp-dialog .mb-dg-ct td { padding: 2px 8px; }
+            .mb-dp-dialog .mb-pop-medium { margin: 0 0 8px; }
+            .mb-dp-dialog .mb-pop-medhead { display: block; width: 100%; text-align: left; border: 0; background: #efe6d4; padding: 4px 8px; font: inherit; font-style: italic; color: #2b2622; cursor: pointer; }
+            .mb-dp-dialog .mb-pop-fold { display: inline-block; width: 1.2em; text-align: center; font-style: normal; }
+            .mb-dp-dialog .mb-pop-ent-icon { display: inline-block; width: 16px; height: 16px; vertical-align: -3px; }
             .mb-dp-dialog .mb-dg-ct td.mb-pop-urlpath { overflow-wrap: anywhere; color: #7a6d5c; font-size: 12px; }
             .mb-dp-dialog .mb-dg-pager { justify-content: center; font-variant-numeric: tabular-nums; }
             .mb-dp-dialog .mb-dg-pager .mb-dg-btn[disabled] { opacity: 0.45; cursor: default; }
@@ -53640,6 +53644,58 @@
     }
 
     /**
+     * A release window's tracklist (org/MB-POH-sync-withDiscogs.org Phase 3e,
+     * decided 2026-10-26): one Discogs-style table per medium under a header
+     * that folds it ("CD 2 · Title · 8 tracks · 52:09"), and ONE filter above
+     * all of them (title, artist, position; its matches marked; each header
+     * says how many of its tracks match). Pos · Title (its recording, which
+     * opens in the window) · Artist — a column only in a medium where some
+     * track's credit is not the release's, and empty where it is — · Length.
+     * State in `_dpTblUi(t, 'tracks')` (`q`, `folded`).
+     *
+     * @param {object} t - The window's target.
+     * @param {Array<Object>} media - `media` with `tracks`.
+     * @param {string} relCredit - The release's artist credit as text.
+     * @returns {string}
+     */
+    function _mbPopTracklistHtml(t, media, relCredit) {
+        const ui = _dpTblUi(t, 'tracks', { folded: [] });
+        const q = ui.q.trim();
+        const credit = tr => _mbPopCreditText(tr['artist-credit']);
+        const ms = tr => {
+            const v = tr.length ?? (tr.recording || {}).length;
+            return typeof v === 'number' ? v : null;
+        };
+        const blocks = media.map((m, i) => {
+            const tracks = m.tracks || [];
+            const total = tracks.reduce((sum, tr) => sum + (ms(tr) || 0), 0);
+            const shown = q ? tracks.filter(tr => [tr.number || tr.position, tr.title, credit(tr)].join(' ').toLowerCase().includes(q.toLowerCase())) : tracks;
+            const artist = tracks.some(tr => credit(tr) && credit(tr) !== relCredit);
+            const open = !(ui.folded || []).includes(String(i));
+            const name = [`${m.format || 'Medium'} ${m.position || i + 1}`.trim(), m.title,
+                `${tracks.length} track${tracks.length === 1 ? '' : 's'}`, total ? _msFormatSeconds(total) : '',
+                q ? `${shown.length} match${shown.length === 1 ? '' : 'es'}` : ''].filter(Boolean).join(' · ');
+            const head = `<button type="button" class="mb-pop-medhead" data-mb-tbl-act="fold" data-mb-tbl-v="${i}" aria-expanded="${open}">` +
+                `<span class="mb-pop-fold" aria-hidden="true">${open ? '▾' : '▸'}</span>${_rgEsc(name)}</button>`;
+            if (!open) return `<div class="mb-pop-medium">${head}</div>`;
+            const rows = shown.map((tr) => {
+                const rec = tr.recording || {};
+                const title = rec.id ? `<a href="/recording/${_rgEsc(rec.id)}" target="_blank" rel="noopener">${_hlEsc(tr.title, q)}</a>` : _hlEsc(tr.title, q);
+                const by = credit(tr) && credit(tr) !== relCredit ? _hlHtml(_mbPopCreditHtml(tr['artist-credit']), q) : '';
+                return `<tr><td class="mb-rg-num">${_hlEsc(tr.number || tr.position || '·', q)}</td><td>${title}</td>` +
+                    `${artist ? `<td>${by}</td>` : ''}<td class="mb-rg-num">${ms(tr) != null ? _msFormatSeconds(ms(tr)) : '—'}</td></tr>`;
+            }).join('');
+            const table = shown.length ? '<div class="mb-dg-vwrap"><table class="mb-dg-vt mb-dg-lt mb-pop-medtable"><thead><tr>' +
+                '<th class="mb-dg-nosort">#</th><th class="mb-dg-nosort">Title</th>' + (artist ? '<th class="mb-dg-nosort">Artist</th>' : '') +
+                `<th class="mb-dg-nosort">Length</th></tr></thead><tbody>${rows}</tbody></table></div>`
+                : '<div class="mb-dg-state">No track matches.</div>';
+            return `<div class="mb-pop-medium">${head}${table}</div>`;
+        }).join('');
+        return `<div class="mb-dp-tbl" data-mb-tbl="tracks"><div class="mb-dg-vtools">` +
+            `${_dpTblFilterHtml('tracks', ui, 'Filter tracks: title, artist, position')}</div>${blocks}</div>`;
+    }
+
+    /**
      * Starts one of a window's extra requests (a second lookup, a count,
      * a browse) through `_mbWsLoad()`, from `pin()`: always on ⟳
      * (`again`), else unless it already failed. `pin()` runs from repaints
@@ -54912,7 +54968,8 @@
      *
      * @param {string} body - The line without its kind character.
      * @param {string} lineKind - `@`, `*` or `#`.
-     * @returns {{text: string, html: string}}
+     * @returns {{text: string, html: string, head: {text: string, html: string}, tail: {text: string, html: string}}}
+     *   `head` the song, `tail` the rest of the line (guests, a comment).
      */
     function _mbPopSetlistLine(body, lineKind) {
         const toks = [];
@@ -54927,20 +54984,29 @@
                 return m;
             }));
         }
-        let text = '';
-        let html = '';
-        // split() with a capture: the token indexes are the odd parts.
-        marked.split(/\uE000(\d+)\uE001/).forEach((part, i) => {
-            if (i % 2 === 0) {
-                text += part;
-                html += _rgEsc(part);
-                return;
-            }
-            const tk = toks[Number(part)];
-            text += tk.name;
-            html += tk.kind ? `<a href="/${tk.kind}/${_rgEsc(tk.id)}" target="_blank" rel="noopener">${_rgEsc(tk.name)}</a>` : _rgEsc(tk.name);
-        });
-        return { text: text.trim(), html: html.trim() };
+        const render = (m) => {
+            let text = '';
+            let html = '';
+            // split() with a capture: the token indexes are the odd parts.
+            m.split(/\uE000(\d+)\uE001/).forEach((part, i) => {
+                if (i % 2 === 0) {
+                    text += part;
+                    html += _rgEsc(part);
+                    return;
+                }
+                const tk = toks[Number(part)];
+                text += tk.name;
+                html += tk.kind ? `<a href="/${tk.kind}/${_rgEsc(tk.id)}" target="_blank" rel="noopener">${_rgEsc(tk.name)}</a>` : _rgEsc(tk.name);
+            });
+            return { text: text.trim(), html: html.trim() };
+        };
+        // The song and the rest of a song line (Phase 3e's setlist table): a
+        // line that starts with a work is that work and what follows it;
+        // any other line splits at its first " (" ("Thunder Road (with …)").
+        const lead = /^\s*\uE000(\d+)\uE001/.exec(marked);
+        let cut = lead && toks[Number(lead[1])].kind === 'work' ? lead[0].length : marked.search(/\s\(/);
+        if (cut < 0) cut = marked.length;
+        return Object.assign(render(marked), { head: render(marked.slice(0, cut)), tail: render(marked.slice(cut)) });
     }
 
     /**
@@ -54952,22 +55018,24 @@
      *
      * @param {string} text - `setlist`.
      * @returns {{lineup: string, lineupHtml: string, songs: string[], songsHtml: string[],
-     *   notes: string[], notesHtml: string[]}} The line-up as one line ("A & B
-     *   with C, D"), the songs in order, and the comments that are not
-     *   joining words.
+     *   parts: Array<{n: number, head: Object, tail: Object}>, notes: string[], notesHtml: string[]}}
+     *   The line-up as one line ("A & B with C, D"), the songs in order (and
+     *   each split into its song and the rest: `parts`), and the comments
+     *   that are not joining words.
      */
     function _mbPopSetlist(text) {
         const lineup = [];
         const lineupHtml = [];
         const songs = [];
         const songsHtml = [];
+        const parts = [];
         const notes = [];
         const notesHtml = [];
         let join = '';
         String(text || '').split(/\r?\n/).forEach(line => {
             const kind = line.charAt(0);
             const prefixed = kind === '@' || kind === '#' || kind === '*';
-            const { text: body, html } = _mbPopSetlistLine(prefixed ? line.slice(1) : line, prefixed ? kind : '*');
+            const { text: body, html, head, tail } = _mbPopSetlistLine(prefixed ? line.slice(1) : line, prefixed ? kind : '*');
             if (kind === '@' && !songs.length) {
                 // "A" + " & B" + " with C" + ", D": a joining word when the
                 // comment line before gave one, else a comma.
@@ -54979,6 +55047,7 @@
             } else if (kind === '*' || (!prefixed && line.trim())) {
                 songs.push(body);
                 songsHtml.push(html);
+                parts.push({ n: parts.length + 1, head, tail });
             } else if (kind === '#' || kind === '@') {
                 if (body) {
                     notes.push(body);
@@ -54986,7 +55055,7 @@
                 }
             }
         });
-        return { lineup: lineup.join(''), lineupHtml: lineupHtml.join(''), songs, songsHtml, notes, notesHtml };
+        return { lineup: lineup.join(''), lineupHtml: lineupHtml.join(''), songs, songsHtml, parts, notes, notesHtml };
     }
 
     /**
@@ -58217,7 +58286,7 @@
                       (more > 0 ? `<div class="mb-tt-dim">+ ${more} more</div>` : '')
                     : '');
             },
-            windowHtml(d) {
+            windowHtml(d, t) {
                 const id = _rgEsc(d.id);
                 const caa = d['cover-art-archive'] || {};
                 const rg = d['release-group'] || {};
@@ -58251,9 +58320,8 @@
                         ['Quality', _rgEsc(d.quality && d.quality !== 'normal' ? d.quality : '')],
                     ]) + gallery;
                 const relCredit = _mbPopCreditText(d['artist-credit']);
-                const right = `<h4>Tracklist · ${tracks} track${tracks === 1 ? '' : 's'}</h4>` + media.map(m =>
-                    `<div class="mb-dp-group"><div class="mb-dp-gname">${_rgEsc([`${m.format || 'Medium'} ${m.position || ''}`.trim(),
-                        m.title].filter(Boolean).join(' · '))}</div>${_mbPopTracksHtml(m.tracks || [], relCredit, true)}</div>`).join('');
+                // A table per medium, one filter for all (Phase 3e).
+                const right = `<h4>Tracklist · ${tracks} track${tracks === 1 ? '' : 's'}</h4>` + _mbPopTracklistHtml(t, media, relCredit);
                 return `<div class="mb-dp-x"><div class="mb-dp-col">${left}</div><div class="mb-dp-col">${right}</div></div>`;
             },
             // The cover strip: one index request to coverartarchive.org (its
@@ -58660,10 +58728,15 @@
                         return (rel.length ? `<div class="mb-dp-gname">Releases · ${rel.length}</div>` + _mbPopRelTableHtml(t, 'recorded-releases', rel, 'Release', 'releases') : '') +
                             (rec.length ? `<div class="mb-dp-gname">Recordings · ${rec.length}</div>` + _mbPopRelTableHtml(t, 'recorded-recordings', rec, 'Recording', 'recordings') : '');
                     });
+                // A List table (Phase 3e): # · Song · Notes (the rest of the
+                // line: guests, a remark), in the order played.
                 const right = `<h4>Setlist${sl.songs.length ? ` · ${sl.songs.length}` : ''}</h4>` +
                     (sl.lineupHtml ? `<div class="mb-dp-xsub">${sl.lineupHtml}</div>` : '') +
-                    (sl.songs.length ? '<ol class="mb-dp-tracks mb-pop-tracks">' + sl.songsHtml.map((x, i) =>
-                        `<li><span class="mb-dp-pos">${i + 1}</span><span class="mb-pop-ttl">${x}</span></li>`).join('') + '</ol>'
+                    (sl.songs.length ? _dpListTableHtml(t, 'setlist', [
+                        { key: 'n', label: '#', num: true, cls: 'mb-rg-num', val: x => x.n, html: x => String(x.n) },
+                        { key: 'song', label: 'Song', val: x => x.head.text, html: (x, q) => _hlHtml(x.head.html, q) },
+                        { key: 'notes', label: 'Notes', val: x => x.tail.text, html: (x, q) => _hlHtml(x.tail.html, q) },
+                    ], sl.parts, { initial: 'in the order played', placeholder: 'Filter the setlist: song, guests', none: 'No songs.' })
                         : '<div class="mb-dp-xsub">MusicBrainz has no setlist for it.</div>') +
                     sl.notesHtml.map(n => `<div class="mb-dp-note">${n}</div>`).join('');
                 return `<div class="mb-dp-x"><div class="mb-dp-col">${left}</div><div class="mb-dp-col">${right}</div></div>`;
@@ -58739,6 +58812,9 @@
                     `<div class="mb-rg-pills">${_mbPopPillsHtml([d.type])}</div>`;
                 const right = `<h4>Items · ${items.length}</h4>` + (items.length ? _mbPopTableHtml(['#', 'Item', 'Date'], items.map(x => [
                     _rgEsc(x.num || '—'),
+                    // MusicBrainz's own glyph of the item's kind first (Phase 3e), in a fixed box.
+                    (_MB_KIND_ICON[x.type] ? `<img class="mb-pop-ent-icon" src="${window.location.origin}/static/images/entity/${_MB_KIND_ICON[x.type]}.svg" ` +
+                        `alt="" width="16" height="16"> ` : '') +
                     `<a href="/${_rgEsc(x.type)}/${_rgEsc(x.e.id)}" target="_blank" rel="noopener">${_rgEsc(x.e.title || x.e.name)}</a>` +
                         `${x.e.disambiguation ? ` <span class="mb-rg-dim">(${_rgEsc(x.e.disambiguation)})</span>` : ''}`,
                     _rgEsc(x.e.date || x.e['first-release-date'] || (x.e['life-span'] || {}).begin || '—'),
@@ -61876,8 +61952,9 @@
      * descending), a chip keeps only its value or, with Ctrl/⌘, adds it
      * (`_extDgChipPick()`), and `data-mb-tbl-act` is ‹ (`prev`), › (`next`),
      * "Show all" (`all`), "Clear filters" (`clear`), "+N more" chips
-     * (`morechips`) or a segment (`seg`, its value in `data-mb-tbl-v`). A
-     * sort, a chip, a segment and a cleared filter go back to page 1.
+     * (`morechips`), a segment (`seg`, its value in `data-mb-tbl-v`) or a
+     * part that folds (`fold`, its index there). A sort, a chip, a segment
+     * and a cleared filter go back to page 1.
      *
      * @param {MouseEvent} e
      * @param {?object} t - The window's target.
@@ -61914,6 +61991,13 @@
             case 'morechips':
                 ui.moreChips = !ui.moreChips;
                 break;
+            case 'fold': {
+                // A part of the table that folds (a release's medium, Phase
+                // 3e): its index in `data-mb-tbl-v`, the folded ones in `ui.folded`.
+                const folded = ui.folded || [];
+                ui.folded = folded.includes(d.mbTblV) ? folded.filter(x => x !== d.mbTblV) : folded.concat(d.mbTblV);
+                break;
+            }
             case 'seg':
                 // A segment of the table's tools that shows another list (an
                 // artist's release groups of another type): its chips start

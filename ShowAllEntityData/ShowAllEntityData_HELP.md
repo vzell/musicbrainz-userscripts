@@ -2418,8 +2418,10 @@ links have their cards too.
   annotation's versions are tables you can sort by any column (a third click
   restores MusicBrainz's order), 25 rows a page with ‹ ›, and filter when
   they hold more than 25 rows.
-- **Extracted**: for a release, the whole tracklist by medium (each track
-  opens its recording), its release group, labels, release events, language,
+- **Extracted**: for a release, the whole tracklist as a table per medium
+  under a header you can click to fold it ("CD 2 · 8 tracks · 52:09"), with one
+  filter for all mediums and an Artist column where a track is not by the
+  release's artist (each track opens its recording), its release group, labels, release events, language,
   and the images in the Cover Art Archive; for a release group, every
   release in a table with a filter, format chips and a three-way sort,
   beside the group's facts (each credited artist opens in the window, the
@@ -2452,10 +2454,11 @@ links have their cards too.
   event there), what it is part of with its dates, its URLs by relationship
   (each with its **[info]** link), the whole setlist with every song linked to
   its work and every artist — the line-up, and the guests in a song's
-  "(with …)" — linked to the artist, what was recorded there and its posters;
+  "(with …)" — linked to the artist (the setlist a table: #, song, the rest
+  of its line, with a filter), what was recorded there and its posters;
   for a place, its area named the same way, a map link, its links and all
   of its events as a list like a work's recordings (type chips); for a
-  series, every item in order; for a tag, its genre and how many of each
+  series, every item in order, each with its kind's icon; for a tag, its genre and how many of each
   kind it carries; a click on a kind lists its entities on the right (the
   biggest kind at first), read from MusicBrainz's page of that kind 100 at a
   time with *Load N more pages*, most votes first, with a filter and the

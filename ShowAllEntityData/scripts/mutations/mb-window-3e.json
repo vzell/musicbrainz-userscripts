@@ -1,0 +1,67 @@
+[
+    {
+        "name": "release tracklist: a medium does not fold",
+        "why": "org/MB-POH-sync-withDiscogs.org Phase 3e: a medium's header folds its table.",
+        "edits": [
+            {
+                "find": "ui.folded = folded.includes(d.mbTblV) ? folded.filter(x => x !== d.mbTblV) : folded.concat(d.mbTblV);",
+                "replace": "ui.folded = folded;"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "a table per medium under a header",
+        "expect": "fail"
+    },
+    {
+        "name": "release tracklist: the filter does not filter",
+        "why": "org/MB-POH-sync-withDiscogs.org Phase 3e: one filter over every medium.",
+        "edits": [
+            {
+                "find": "const shown = q ? tracks.filter(tr => [tr.number || tr.position, tr.title, credit(tr)].join(' ').toLowerCase().includes(q.toLowerCase())) : tracks;",
+                "replace": "const shown = tracks;"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "a table per medium under a header",
+        "expect": "fail"
+    },
+    {
+        "name": "release tracklist: an Artist column in every medium",
+        "why": "org/MB-POH-sync-withDiscogs.org Phase 3e: the Artist column only where a track's credit is not the release's.",
+        "edits": [
+            {
+                "find": "const artist = tracks.some(tr => credit(tr) && credit(tr) !== relCredit);",
+                "replace": "const artist = true;"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "a table per medium under a header",
+        "expect": "fail"
+    },
+    {
+        "name": "setlist: a line not split into its song and the rest",
+        "why": "org/MB-POH-sync-withDiscogs.org Phase 3e: # · Song · Notes.",
+        "edits": [
+            {
+                "find": "let cut = lead && toks[Number(lead[1])].kind === 'work' ? lead[0].length : marked.search(/\\s\\(/);",
+                "replace": "let cut = marked.length;"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "links its setlist",
+        "expect": "fail"
+    },
+    {
+        "name": "series: no entity icon before an item",
+        "why": "org/MB-POH-sync-withDiscogs.org Phase 3e: each item with its kind's glyph.",
+        "edits": [
+            {
+                "find": "(_MB_KIND_ICON[x.type] ? `<img class=\"mb-pop-ent-icon\"",
+                "replace": "(false ? `<img class=\"mb-pop-ent-icon\""
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "a release-group series",
+        "expect": "fail"
+    }
+]

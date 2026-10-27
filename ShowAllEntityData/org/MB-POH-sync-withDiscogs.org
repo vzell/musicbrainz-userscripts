@@ -189,7 +189,7 @@ Phase 2 changes, *2,369/2,369 passed* in 15 m 55 s. Mutations: =dp-shared-tables
 they should; =dp-sort-initial-state.json= 8 fail + 1 recorded overlap pass; =discogs-window-swap.json=
 5/5 (one entry was already stale at HEAD and is retargeted). Lint is within its baseline.
 
-** Phase 3 — MB entity sections  [29/34]
+** Phase 3 — MB entity sections  [32/34]
 
 "Compact" = like Discogs label → Sublabels (left column). "List" = like Discogs label → Releases
 (right column) with "Load N more pages (M …, about S s)".
@@ -230,6 +230,12 @@ editor's Tags (genres and other tags), Ratings per kind, ISRC, ISWC, Disc ID, An
 versions — plus the label's aliases one per line (vzell). No new request. Left for 3e: the
 release tracklist per medium, the event setlist, the series' entity icons; 3f: CD stub and
 Documentation readers.
+
+*3e done* 2026-10-27, same branch (WIP.4): Release → Tracklist (a table per medium under a
+folding header "CD 2 · 8 tracks · 52:09", one shared filter: the decision of 2026-10-26),
+Event → Setlist (# · Song · Notes, a List table; the plan's "cover / disambiguation" are not
+in the setlist markup and would need a lookup per work, so not done), Series → Items (the
+kind's icon; opening in the window came with 3a's fix). Left: 3f, CD stub and Documentation.
 
 | Entity          | Section                                     | Change                                                                                                                                                         |
 |-----------------+---------------------------------------------+----------------------------------------------------------------------------------------------------------------------------------------------------------------|

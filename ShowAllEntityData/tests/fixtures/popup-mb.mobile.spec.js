@@ -106,7 +106,7 @@ test('a tap on a release link opens the release window, not the page, and shows 
     const dialog = page.locator('#mb-dp-dialog');
     await expect(dialog).toBeVisible();
     await expect(dialog.locator(':scope > div > span').first()).toHaveText('Release');
-    await expect(dialog.locator('.mb-pop-tracks li')).toHaveCount(9, { timeout: 20000 });
+    await expect(dialog.locator('[data-mb-tbl="tracks"] tbody tr')).toHaveCount(9, { timeout: 20000 });
     expect(log.lookups).toHaveLength(1);
     expect(log.navigations, 'the page stays').toEqual([]);
     expect(page.context().pages()).toHaveLength(1);
@@ -225,7 +225,7 @@ test('inside the window: a long press shows a link\'s card and opens nothing; a 
     const log = await openPhone(page, { sa_pop_mb: false, sa_pop_mb_on_touch: true });
     await tapLink(page, page.locator(RELEASE_LINK).first());
     const dialog = page.locator('#mb-dp-dialog');
-    await expect(dialog.locator('.mb-pop-tracks li')).toHaveCount(9, { timeout: 20000 });
+    await expect(dialog.locator('[data-mb-tbl="tracks"] tbody tr')).toHaveCount(9, { timeout: 20000 });
     await settleWindow(page);
     const artist = dialog.locator('.mb-dp-area a[href^="/artist/"]').first();
     const card = page.locator('#mb-dp-peek');

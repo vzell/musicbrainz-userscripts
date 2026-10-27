@@ -2267,6 +2267,22 @@ aliases one per line (`_mbPopAliasesHtml()`). Specs: popup-mb.spec.js
 own tests (selectors moved to `data-mb-tbl`); popup-mb-user-lists.spec.js,
 popup-mb-annotations.spec.js. Mutations: `scripts/mutations/mb-window-compact.json`.
 
+**Phase 3e (2026-10-27).** The release window's tracklist is
+`_mbPopTracklistHtml(t, media, relCredit)`: a `data-mb-tbl="tracks"` box
+with ONE filter (`ui.q`) and one table per medium (`table.mb-pop-medtable`,
+no sort), each under `button.mb-pop-medhead` that folds it through the
+shared handler's `fold` action (`ui.folded`, the medium's index; the glyph
+in a fixed 1.2 em box, the Phase 1 rule); the Artist column only in a
+medium where some credit is not the release's. The card keeps
+`_mbPopTracksHtml()`. The event's setlist is a List table (`setlist`):
+`_mbPopSetlistLine()` also returns `head` (the song: a leading work token,
+else the text before the first " (") and `tail` (the rest), and
+`_mbPopSetlist()` its `parts`. The plan's "cover / disambiguation" columns
+are not there: the setlist markup does not carry them (a lookup per work
+would). A series' items get `img.mb-pop-ent-icon` (`_MB_KIND_ICON`, 16 px
+box). Specs: popup-mb.spec.js "a table per medium …", the setlist and
+series tests; mutations `scripts/mutations/mb-window-3e.json`.
+
 ### A Discogs release's edit history (2026-10-18)
 
 Mockup https://claude.ai/artifact/Y69bUJTvYSksKTFRMcYJvZ, tab C; vzell's

@@ -1,5 +1,20 @@
 [
   {
+    "version": "WIP.4",
+    "date": "2026-10-27",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "A release's window shows its tracklist as one table per medium, under a header that folds it (\"CD 2 · 8 tracks · 52:09\"): #, title (opening its recording in the window), the artist where a track's credit is not the release's, length; one filter above all the mediums, which marks what it matched and says per medium how many tracks match.",
+          "An event's window shows its setlist as a table: #, the song, and the rest of its line (guests, a remark) in a column of its own, with a filter and sorting.",
+          "A series' window shows each item's kind with MusicBrainz's own icon before its name.",
+          "Performance: link-preview windows only; no change to the page tables' filter, sort or render path, and no new request."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.3",
     "date": "2026-10-27",
     "sections": [
