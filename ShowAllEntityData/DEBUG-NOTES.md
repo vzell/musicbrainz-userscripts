@@ -26453,3 +26453,49 @@ right still fails: `scripts/mutations/event-stack-placement.json`, 2/2
 2 of 600 in the first run and 0 of 600 in the second (30/30 alone). Its
 error message was not captured (dot reporter, `test-results/` overwritten
 by the second run), so it is noted here, not diagnosed.
+
+## 2026-10-27 — a load-dependent flake found in the Phase 3c merge gate: the Live page "not pulled back" test
+
+Env: 2026-10-27T19:23:28+01:00 → 20:05+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) · Playwright 1.62.1 Chromium · no Tampermonkey (GM stubs)
+
+`npm run test:full` on branch `mb-window-lists` (Phase 3c, uncommitted on
+`5afacc83`), 2,375 tests: 2,374 passed, 1 failed. Wall clock 23 m 36 s
+against about 16 min for the earlier runs today, so the host was busy.
+The failure: `popup-ext.spec.js:2216` "a reader who scrolls the Live page
+before its images are in is not pulled back to the show", `the show is below
+the top of the view`, -533.6 instead of > 300.
+
+Stress, `--repeat-each=20 --workers=14`: the branch failed 2 of 20; `main`
+(`8eb7e818`, a scratch worktree) failed 6 of 20. Pre-existing and
+load-dependent; Phase 3c touches none of the Live page's scroll code. Not
+fixed here. It belongs with the other load flakes (the stacked event card
+`:335`, fixed today, and `:169`, noted above).
+
+## 2026-10-27 — the Live page "not pulled back" flake: Wikidot's theme CSS from the network (popup-ext.spec.js:2216), fixed
+
+Env: 2026-10-27T20:10+01:00 → 21:05+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) · Playwright 1.62.1 Chromium · no Tampermonkey (GM stubs)
+
+Follow-up to the entry above, which left it undiagnosed. A 50 ms timeline of
+the frame (a temporary probe in the test, reverted): the first scroll put the
+show at 8 px (page 13,667 px); in the sample of the reader's wheel the page
+SHRANK by 2,281–2,303 px while scrollTop moved only the wheel's ~1,500, so the
+show landed at −534 (the failures' −533.6). No image had loaded or broken by
+then. The cause is in the fixture: `ext-bb-year-2025.html`'s own `<style>`
+`@import`s Wikidot's theme from `d3g0gp89917ko0.cloudfront.net`, which no
+spec routed. The real CSS came over the internet whenever it came and
+restyled the page. Before the reader moved, the script's re-scrolls (0.3 s,
+1.5 s) or Chrome's scroll anchoring hid it; after the wheel nothing does, by
+design (`readerMoved`).
+
+A first guess was wrong, and is recorded here so it is not tried again: that
+the site's navigation was hidden AFTER `livePrepare`'s first scroll in
+`_dpIsolateFrame()`. Moving the toggle before it changed nothing (the flake
+stayed), and a direct test of the first scroll's position failed half the
+time WITH the move and passed with the move planted back (mutation survived).
+Reverted; `_dpIsolateFrame()` is unchanged.
+
+Fix (test only): the spec serves that host an empty stylesheet, at once.
+40/40 at `--repeat-each=40 --workers=14` (before: 2/20 on the branch, 6/20 on
+`main`). Other specs that load a Brucebase page with the same `@import`s
+still reach the network for that CSS; none of them measures a scroll after a
+wheel.

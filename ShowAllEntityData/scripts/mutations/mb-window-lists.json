@@ -30,8 +30,8 @@
         "why": "3a: one genre per line, each its tag page.",
         "edits": [
             {
-                "find": "            ['Genres', _mbPopGenreLinksHtml(d.genres)],",
-                "replace": "            ['Genres', _rgEsc((d.genres || []).map(g => g.name).join(', '))],"
+                "find": "            ['Genres', _mbPopGenreLinksHtml(d.genres)],\n        ]) + _mbPopUrlLinksHtml(d.relations);",
+                "replace": "            ['Genres', _rgEsc((d.genres || []).map(g => g.name).join(', '))],\n        ]) + _mbPopUrlLinksHtml(d.relations);"
             }
         ],
         "spec": "tests/fixtures/release-rg-popup.spec.js",

@@ -927,11 +927,14 @@ MBID, and the tag search answers names and scores only (MusicBrainz_API and
 MusicBrainz_API/Search, checked 2026-10-19). Its page, `/tag/<name>`, has
 everything the card needs in one request.
 
-- **Path:** `_MB_POP_PAGE_RE`'s third branch, `/tag/<name>` bare. The id is
+- **Path:** `_MB_POP_PAGE_RE`'s third branch, `/tag/<name>`. The id is
   the name percent-encoded as in the link (`tag:alternative%20rock`), like
-  `user`. Not previewed: the tabs (`/tag/<name>/artist`) and `/tags`. An
-  editor's own tag (`/user/<name>/tag/<name>`) is its own kind since
-  2026-10-21 (`usertag`, below with the editor's lists).
+  `user`. Since Phase 3c (2026-10-27) its kind pages (`/tag/<name>/artist`,
+  group 7) are the SAME target (same key, same card), carrying `list`
+  (`_mbPopParsePath()` → `_mbPopTarget()` `t.list`), so the window opens on
+  that kind (`_mbTagKindStart()`). Not previewed: other tabs and `/tags`. An
+  editor's own tag (`/user/<name>/tag/<name>`, kind pages likewise) is its
+  own kind since 2026-10-21 (`usertag`, below with the editor's lists).
 - **`_mbParseTagPage()`** reads `#content`: the name from `.tagheader h1 a`,
   the genre from the first `a[href^="/genre/"]` (only a tag that is a genre
   has one), "N entities found", and per `h3` (one per entity kind, and only
@@ -941,11 +944,34 @@ everything the card needs in one request.
   only, so it can be stored in IndexedDB for `sa_pop_mb_ttl_hours`.
 - **Card:** name, "Tag of the genre …" or "Tag", pills (Genre, the total),
   the six largest kinds with counts (`_mbPopTagKinds()`: largest first).
-  **Window:** the genre (a link to `/genre/<id>`, which since 2026-10-26
-  drills into the `genre` kind below), the total, a Kind/Count table linking each kind's
-  `/tag/<name>/<slug>` (`_mbPopTagKindHref()`: the page's "See all" link,
-  else `SA_TAG_VALUE_CATEGORY_SLUGS`), and per kind its entities as plain
-  entity links, so they drill down (Phase 5).
+  **Window** (`_mbPopTagWindowHtml(t, d, base, …)`, since Phase 3c of
+  org/MB-POH-sync-withDiscogs.org): the genre (a link to `/genre/<id>`,
+  which drills into the `genre` kind below), the total, "By kind" — a
+  Kind/Count table whose kinds are `seg` buttons in a `data-mb-tbl="tag-kinds"`
+  box (the shared click handler), slugs from `SA_TAG_VALUE_CATEGORY_SLUGS`
+  (`_mbTagKindSlugs()`) — and on the right the chosen kind's List table
+  (`tag-kind-<slug>`), read from `<base>/<slug>?page=N` by the paged
+  loader's HTML adapter (`_mbTagKindList()`, `_mbPagedHtml()`,
+  `_mbParseTagKindPage()`: "N … found", `_mbPagerOf()`, a `ul` of 100 `li`
+  "votes - link (comment) by credit"; a link in `span.mp` when edits are
+  pending). Page 1 from the kind's `pin()` (`_mbTagKindPin()`; the page
+  kind's `pin`/`start` hooks since 3c). Votes column only when the page
+  has votes (an editor's has none). The overview's first-ten lists are
+  still parsed (the card) but no longer shown in the window.
+- **Ctrl/⌘-click on a tag link in a window** (decision 2026-10-26):
+  `_mbOwnTagTarget()` in `_dpDrill()`, before its modifier check, drills
+  to `/user/<me>/tag/<name>` (same kind page when the link names one); a
+  GENRE link (`/genre/<MBID>`) stands for the tag of its name, its text
+  encoded as a tag path (`_mbTagOfLink()`; vzell 2026-10-27: the tag window's
+  own "Genre" link opened a new tab);
+  `<me>` from MusicBrainz's header (`_mbMyEditorName()`: `.header
+  li.account a[href^="/user/"]`, debug/A-R-3rd-works.html). Logged out it
+  returns null and the link keeps its new tab. The window's foot line says
+  so on a tag or genre link (`_dpWinFoot()`'s `here` case) and, at rest,
+  names the key whenever the area holds an `a[href^="/tag/"]` or
+  `a[href^="/genre/"]` and someone is logged in;
+  `_dpAreaRepaint()` writes the line at rest again after every repaint (the
+  tag links may come after the window was shown).
 - **Where:** every `/tag/<name>` link, e.g. MusicBrainz's own
   `ul.genre-list`/`ul.tag-list`, the "Sidebar" Tags card's pills
   (`.mb-sb-pill`), tags tables. Outside a table body only with
@@ -1005,8 +1031,9 @@ https://claude.ai/artifact/KtfNY1XfjyJoPb8fGjLGeu (25 entries a window page,
 a pager, covers, eight entries on the card).
 
 - **Path:** unchanged, `_MB_POP_PATH_RE`'s `collection`. Key
-  `pop:page:collection:<MBID>`; page n > 1 of the window's pager is its own
-  record, `pop:page:collection:<MBID>:p<n>` (`_mbCollKey()`, `_mbCollLoad()`).
+  `pop:page:collection:<MBID>` (page 1, the card's record). Since Phase 3c
+  pages past 1 are the paged list `collection:<MBID>` (`_mbCollList()`,
+  `_mbPagedHtml()` with this same parser), not records of their own.
 - **`_mbParseCollectionPage()`** (selectors in DEBUG-NOTES.md, 2026-10-20 "what
   a collection page holds"): the name from `.collectionheader h1`, public from
   the subheader, the sidebar's Owner / Type / "Number of entities", the
@@ -1025,11 +1052,17 @@ a pager, covers, eight entries on the card).
   Owner, Collaborators, About (the description's text, clamped to two lines),
   the first `_MB_COLL_CARD_ROWS` (8) entries in the two-column
   `.mb-dp-tracks` list.
-- **Window:** facts and the whole description on the left; on the right
-  `_MB_COLL_WIN_ROWS` (25) entries in `_mbPopTableHtml()` (never `tbl`) with
-  ◀ ▶ (`_mbCollAreaClick()`, `_mbCollUi`). A MusicBrainz page holds 100, so
-  slices 1–4 cost nothing and slice 5 reads `?page=2` — only then
-  (`__saTest.mbPopStatus()` lets the spec show page 2 was not even started).
+- **Window:** facts and the whole description on the left; on the right,
+  since Phase 3c (2026-10-27), a List table (`data-mb-tbl="collection"`)
+  with the page's own columns (each cell's safe HTML shown, its text —
+  `texts`, `_MB_POP_PAGE_VERSION` 6 — filtered and sorted; the filter's
+  matches marked in the cell's text nodes by `_hlHtml()`, the HTML
+  sibling of `_hlEsc()`, as the tag lists' "By" credit), type chips when
+  the page is grouped (a "Type" column first), and "Load N more pages". Page 1
+  is SEEDED from the card's record (`_mbPagedSeed()`: no request; seeded
+  again when ⟳ brings another record object). The 25-row slices behind
+  ◀ ▶ (`_MB_COLL_WIN_ROWS`, `_mbCollAreaClick()`, `_mbCollUi`,
+  `_mbCollLoad()`) are gone.
   Release and release group collections show the slice's covers as
   `coverartarchive.org/<kind>/<MBID>/front-250` images, only for rows the
   page marks with `.caa-icon`, and only in the window (Space), never on a
@@ -2197,6 +2230,22 @@ Specs: popup-mb.spec.js (the recording, artist and place windows; "covers
 asked lazily"), release-rg-popup.spec.js (selectors only, plus the Facts'
 links). Mutations: `scripts/mutations/mb-window-lists.json` (also the 3a
 series and catalog-number fixes).
+
+**Phase 3c: lists read from the site's pages (2026-10-27).** The loader asks
+its source `ask(offset, wanted, page)` (`page` = pages loaded + 1; the bar's
+segments count `st.pages`/`st.cachedPages`, kept in the IndexedDB record);
+a source has `perPage` and may answer `done` (its last page).
+`_mbPagedHtml(urlOf, parse)` reads page N through `_dpGetRaw()` and
+`_MB_LIVE` (the same rate gate); a page `parse()` refuses is a failure and
+is dropped from `_dpRawMem`, so "Try again" fetches it again. `_mbPagedSeed()`
+fills page 1 from a record the window already has (a collection's). Probe:
+`scripts/probe-mb-tag-kind-pages.py` (no `table.tbl` on a tag's kind page:
+a `ul`, 100 a page). Callers: the tag and editor's-tag windows, the
+collection window (sections above). Specs: popup-mb.spec.js (the tag window,
+a kind page's link, a kind page that is not one, the collection window,
+Ctrl-click → your own tag in the label window, whose genres are tag links
+since 3c too), popup-mb-user-lists.spec.js, popup-mb.mobile.spec.js,
+sidebar-inline.spec.js. Mutations: `scripts/mutations/mb-window-html-lists.json`.
 
 ### A Discogs release's edit history (2026-10-18)
 

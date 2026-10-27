@@ -2337,11 +2337,13 @@ collection's own page: its type, size and number of pages, whether it is
 public, its owner and collaborators, the first two lines of its description
 and its first eight entries (someone else's private collection is not shown
 to you; its card says so). Its window shows the whole description with its
-links, and the entries 25 at a time with the page's own columns and ◀ ▶ to
-page through them; a further page of MusicBrainz's (100 entries each) is read
-only when you get to it. A release or release group collection also shows
-those 25 entries' covers from the Cover Art Archive, in the table's first
-column. In such a window, and in a release group's window (its releases'
+links, and the entries as a list with the page's own columns: the first
+100 come with the card (no further request), *Load N more pages* reads the
+rest, 100 a page, as for a work's recordings; with a filter over every
+column (marking what it matched), a three-way sort, and type chips for a release group collection. A
+release or release group collection also shows the entries' covers from the
+Cover Art Archive, in the table's first column (an empty square where there
+is none). In such a window, and in a release group's window (its releases'
 covers and the group's own), pointing at a cover shows every image of that
 release or release group, and a click or **Space** opens them in the
 artwork viewer; Ctrl-click opens its page instead.
@@ -2379,9 +2381,10 @@ voted for, with how many votes, the ten they used most on the card, and every
 one in the window, most used first; a tag opens its own tag card. (Downvoted
 tags have no preview.) On the editor's tags page itself, each tag link
 (*acoustic rock*, *gig*, …) shows what THAT editor tagged with it: how many
-entities, how many of each kind and the first few; its window lists each
-kind's first entries with MusicBrainz's *See all* page, and *Everyone's*
-opens the tag's own card. The *view* beside **Ratings** shows their ratings as
+entities, how many of each kind and the first few; its window lists one
+kind's entities, as a tag's window does (below), and *Everyone's* opens the
+tag's own card. A link to one kind's page of an editor's tag
+(`…/tag/live/release`) shows the same card, its window on that kind. The *view* beside **Ratings** shows their ratings as
 their ratings page does, a few per kind, each with its stars; an entity opens
 its own card, and *All … ratings* opens MusicBrainz's full list in a tab. The
 window never copies the stars, which on MusicBrainz are links that change a
@@ -2428,7 +2431,8 @@ links have their cards too.
   lists start sorted by date, since MusicBrainz returns them in no date
   order); for an artist, its area and
   birthplace named as MusicBrainz does (*Long Branch, New Jersey, United
-  States*), every external link and its release groups: a segment per
+  States*), its genres (each opening its tag) and aliases one per line, every
+  external link and its release groups: a segment per
   type (Album, Single, EP, Broadcast, Other) with its total, each a list like
   a work's recordings, with chips for Live, Compilation and the like and the
   covers, loaded as you scroll (a missing one leaves an empty square); for
@@ -2444,9 +2448,19 @@ links have their cards too.
   "(with …)" — linked to the artist, what was recorded there and its posters;
   for a place, its area named the same way, a map link, its links and all
   of its events as a list like a work's recordings (type chips); for a
-  series, every item in order; for a tag, its genre, how many of each kind
-  it carries (each linked to the tag's page of that kind) and the ten top
-  entities of every kind; for a genre, its primary tag, every related genre
+  series, every item in order; for a tag, its genre and how many of each
+  kind it carries; a click on a kind lists its entities on the right (the
+  biggest kind at first), read from MusicBrainz's page of that kind 100 at a
+  time with *Load N more pages*, most votes first, with a filter and the
+  three-way sort (a link to one kind's page, `/tag/rock/artist`, opens the
+  window on that kind); **Ctrl-click a tag or genre link** in a window (a
+  genre in a release group's or a label's facts, whose genres are listed one
+  per line) to see YOUR own tag of that name there instead, when you are
+  logged in (a genre's link stands for the tag of its name, so this works on
+  a tag window's own "Genre" too) — Shift- or middle-click still opens a new
+  tab, and the line at the window's foot names the key whenever the window
+  holds such a link; for a genre, its
+  primary tag, every related genre
   linked (each opens its own card), its external links, the collections it
   is in and the whole Wikipedia text. An **artist, label or place** window shows its
   **picture** under the name: the Wikimedia Commons file MusicBrainz links as

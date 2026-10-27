@@ -2214,6 +2214,13 @@ test.describe('the Springsteen sites across hosts (U4)', () => {
     });
 
     test('a reader who scrolls the Live page before its images are in is not pulled back to the show', async ({ page }) => {
+        // The page's own <style> @imports Wikidot's theme from cloudfront: left
+        // to the network, that CSS restyled the page whenever it came, and
+        // when it came after the reader's wheel ~2,300 px above the show
+        // collapsed and the show left the view (a 50 ms timeline, 2026-10-27,
+        // DEBUG-NOTES): the test failed 1 run in 10 under load, 3 in 10 on
+        // main. Served empty, at once.
+        await page.context().route('https://d3g0gp89917ko0.cloudfront.net/**', (route) => route.fulfill({ status: 200, contentType: 'text/css', body: '' }));
         await openEvent(page, {
             settings: { sa_pop_ext: true },
             responses: {

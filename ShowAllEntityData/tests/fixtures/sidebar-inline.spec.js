@@ -680,7 +680,8 @@ test.describe('sidebar cards: tag pills', () => {
         await expect(peek.locator('.mb-tt-pill')).toHaveText(['Genre', '212,773 entities']);
         expect(log.tagPages).toEqual(['https://musicbrainz.org/tag/heartland%20rock']);
         await page.keyboard.press('Space');
-        await expect(page.locator('#mb-dp-dialog .mb-dp-area .mb-dp-group').first()).toBeVisible();
+        // The window's "By kind" (Phase 3c: a list per kind, chosen there).
+        await expect(page.locator('#mb-dp-dialog .mb-dp-area [data-mb-tbl="tag-kinds"]')).toBeVisible();
     });
 
     test('VOTES: the number explains itself in a rich card, and is not the tag\'s preview', async ({ page }) => {

@@ -23985,6 +23985,9 @@
         const focus = act && area.contains(act) && act.dataset && act.dataset.mbKeepFocus
             ? { name: act.dataset.mbKeepFocus, from: act.selectionStart, to: act.selectionEnd } : null;
         area.innerHTML = html;
+        // The foot line at rest names keys that depend on what arrived (a
+        // tag link's Ctrl-click): written again while nothing is hovered.
+        if (!_dpWin.hover) _dpWinFoot(null);
         scrolls.forEach(([name, top, left]) => {
             const el = area.querySelector(`[data-mb-keep-scroll="${name}"]`);
             if (el) {
@@ -24142,11 +24145,24 @@
      * song, event, venue or person in a section, 2026-10-24); and, on
      * discogs.com, a musicbrainz.org entity link (`_dgMbWinTarget()`,
      * 2026-10-26). A link to what the window already shows does nothing.
+     * One modifier drills too: Ctrl/⌘-click on a tag link shows the
+     * logged-in editor's own tag (`_mbOwnTagTarget()`, Phase 3c).
      *
      * @param {MouseEvent} e - A click in the window's scroll area.
      * @returns {boolean} Whether the click drilled down.
      */
     function _dpDrill(e) {
+        const link = e.target.closest ? e.target.closest('a[href]') : null;
+        if (link && _dpDialog.target && _dpDialog.api && _dpDialog.api.scrollArea.contains(link) && !_foreignHost &&
+            _popSettingOn('sa_pop_mb')) {
+            const own = _mbOwnTagTarget(e, link);
+            if (own && own.key !== _dpDialog.target.key) {
+                e.preventDefault();
+                _dpDialog.stack.push(_dpDialog.target);
+                _dpShowInDialog(Object.assign({ src: _popSources().find(x => x.id === 'mb-entity'), el: link, drilled: true }, own));
+                return true;
+            }
+        }
         if (e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return false;
         const a = e.target.closest ? e.target.closest('a[href]') : null;
         const cur = _dpDialog.target;
@@ -24578,6 +24594,11 @@
             if (t && t.src.steps(t).length > 1) keys.push('← → rows');
             if (_dpDialog.stack.length) keys.push('Backspace back');
             if (t && _mbEditsSubject(t)) keys.push('H history');
+            // A window with a tag or genre link (a genre in the Facts, a
+            // tag's genre): the key that shows the reader's own tag there
+            // (`_mbOwnTagTarget()`; vzell 2026-10-27: say it exists).
+            const area = _dpDialog.api && _dpDialog.api.scrollArea;
+            if (!_foreignHost && area && area.querySelector('a[href^="/tag/"], a[href^="/genre/"]') && _mbMyEditorName()) keys.push('Ctrl-click a tag or genre: your own tag');
             keys.push('Esc close');
             foot.replaceChildren(span('mb-dp-wfoot-g', '⌨'), span(null, 'Rest on a link or an image: this line says what a click does.'),
                 span('mb-dp-wfoot-k', keys.join(' · ')));
@@ -24604,7 +24625,9 @@
         } else if (w.kind === 'here') {
             lead = 'Opens here: ';
             text = `${_dpKindLabel(w.t)} · ${w.a.textContent.replace(/\s+/g, ' ').trim()}` + (_dpWinRead(w.t) ? ' (read before, no request)' : '');
-            keys = 'Click: here · Ctrl-click: new tab';
+            // A tag or a genre: Ctrl shows the reader's own tag here (`_mbOwnTagTarget()`).
+            keys = (w.t.type === 'tag' || w.t.type === 'genre') && _mbMyEditorName() ? 'Click: here · Ctrl-click: your own tag · Shift- or middle-click: new tab'
+                : 'Click: here · Ctrl-click: new tab';
         } else {
             g = '↗';
             lead = 'New tab: ';
@@ -27411,6 +27434,8 @@
             .mb-dp-dialog .mb-dg-bad { color: #9b2218; }
             .mb-dp-dialog .mb-dg-facets { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 4px 12px; margin: 8px 0 4px; align-items: start; }
             .mb-dp-dialog .mb-dg-fl { font-style: italic; color: #7a6d5c; padding-top: 2px; }
+            .mb-dp-dialog .mb-pop-kindbtn { border: 0; background: none; padding: 0; font: inherit; color: #6b3f12; cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
+            .mb-dp-dialog .mb-pop-kindbtn[aria-pressed="true"] { font-weight: 700; text-decoration: none; color: #2b2622; }
             .mb-dp-dialog .mb-dg-fc {
                 font: 12px system-ui, -apple-system, "Segoe UI", Arial, sans-serif; border: 1px solid #d9cfbd; background: #fff; color: #2b2622;
                 border-radius: 999px; padding: 1px 8px; margin: 0 4px 4px 0; cursor: pointer; font-variant-numeric: tabular-nums;
@@ -27623,8 +27648,6 @@
             .mb-dp-dialog .mb-pop-coll-desc p { margin: 0 0 4px; }
             .mb-dp-dialog .mb-pop-coll-desc ul { margin: 0 0 6px; padding-left: 18px; }
             .mb-dp-dialog .mb-pop-coll-desc a { color: #6b3f12; }
-            .mb-dp-dialog .mb-pop-coll-pager { display: flex; align-items: center; gap: 8px; margin: 0 0 6px; font: 12px ui-monospace, Consolas, monospace; color: #7a6d5c; }
-            .mb-dp-dialog .mb-pop-coll-pager button[disabled] { opacity: 0.4; cursor: default; }
             /* Links to other sites (_extSource()): the site line with its
                status pill, the page's image beside its title. */
             #mb-dp-peek .mb-ext-card { width: 400px; max-width: 100%; }
@@ -51651,6 +51674,49 @@
     }
 
     /**
+     * `_hlEsc()` for HTML that is safe already (a collection's cells, a
+     * credit: `_mbEditsHtml()`'s output): every case-insensitive match of
+     * the query in its TEXT nodes marked (`mark.mb-dg-hl`), tags and
+     * attributes untouched. Parsed in an inert `<template>`, so nothing in it
+     * loads. A match across two text nodes (a link's name and the text after
+     * it) narrows the rows but marks nothing, as `_hlEsc()` across fields
+     * (2026-10-27: a collection window's filter marked nothing, vzell).
+     *
+     * @param {string} html - Safe HTML.
+     * @param {?string} q - The filter's query as typed.
+     * @returns {string} HTML.
+     */
+    function _hlHtml(html, q) {
+        const n = String(q ?? '').trim().toLowerCase();
+        if (!n || !html) return html;
+        const tpl = document.createElement('template');
+        tpl.innerHTML = html;
+        const walker = document.createTreeWalker(tpl.content, NodeFilter.SHOW_TEXT);
+        const texts = [];
+        while (walker.nextNode()) texts.push(walker.currentNode);
+        texts.forEach((t) => {
+            const s = t.nodeValue;
+            const low = s.toLowerCase();
+            let i = low.indexOf(n);
+            if (i < 0) return;
+            const frag = document.createDocumentFragment();
+            let at = 0;
+            while (i !== -1) {
+                frag.append(s.slice(at, i));
+                const m = document.createElement('mark');
+                m.className = 'mb-dg-hl';
+                m.textContent = s.slice(i, i + n.length);
+                frag.append(m);
+                at = i + n.length;
+                i = low.indexOf(n, at);
+            }
+            frag.append(s.slice(at));
+            t.replaceWith(frag);
+        });
+        return tpl.innerHTML;
+    }
+
+    /**
      * The release group of the current release page, from the page's own
      * embedded JSON; `null` on any other page or when the JSON is absent.
      *
@@ -52008,16 +52074,19 @@
 
     /**
      * Genres as links to their tag pages (`/tag/<name>`, which the window
-     * previews and opens in place: the `tag` page kind), one per line, as
-     * the window's Facts show them (org/MB-POH-sync-withDiscogs.org, Phase
-     * 3a).
+     * previews and opens in place: the `tag` page kind; Ctrl-click the
+     * reader's own tag), one per line, most votes first, as the window's
+     * Facts show them (org/MB-POH-sync-withDiscogs.org, Phase 3a: a
+     * release group's; 3c: a label's).
      *
      * @param {?Array<{name: string}>} genres - `genres` of a lookup.
      * @returns {string} HTML; empty for none.
      */
     function _mbPopGenreLinksHtml(genres) {
-        return (genres || []).map(g => g && g.name).filter(Boolean)
-            .map(n => `<a href="/tag/${encodeURIComponent(n)}" target="_blank" rel="noopener">${_rgEsc(n)}</a>`).join('<br>');
+        // Most votes first, as `_mbPopGenres()` (a stable sort keeps the
+        // Web Service's order among equals).
+        return (genres || []).filter(g => g && g.name).slice().sort((x, y) => (y.count || 0) - (x.count || 0))
+            .map(g => `<a href="/tag/${encodeURIComponent(g.name)}" target="_blank" rel="noopener">${_rgEsc(g.name)}</a>`).join('<br>');
     }
 
     /**
@@ -52697,8 +52766,11 @@
      * (`_MB_POP_PATH_RE` knows `genre`, 2026-10-26).
      * 5: an editing history's record carries `refine`, the page's own
      * "Refine this search" query (`_mbEditsRefineOf()`, 2026-10-26).
+     * 6: a collection's rows carry `texts` (each cell as text) and its
+     * record `total`, for its List table and paged loader
+     * (org/MB-POH-sync-withDiscogs.org Phase 3c, 2026-10-27).
      */
-    const _MB_POP_PAGE_VERSION = 5;
+    const _MB_POP_PAGE_VERSION = 6;
 
     /**
      * Each entity card's Web Service answer, by cache key
@@ -52884,23 +52956,27 @@
      * name percent-encoded as in the link), and a tag (`/tag/<name>`, the
      * same encoding, 2026-10-19: the Web Service has no lookup of a tag by
      * name).
-     * Their tabs (`/edit/<n>/data`, `/tag/<name>/artist`) are not previewed;
+     * Their tabs (`/edit/<n>/data`) are not previewed — except a tag's page
+     * of one kind (`/tag/<name>/artist`, group 7, since 2026-10-27, Phase
+     * 3c): the tag's own card and window, the window on that kind's list;
      * an editor's own tag (`/user/<name>/tag/<name>`) is `_MB_POP_USERTAG_RE`'s
      * (since 2026-10-21), an editor's edits (`/user/<name>/edits`) an
      * editing history (`_MB_POP_EDITS_RE`).
      * @type {RegExp}
      */
-    const _MB_POP_PAGE_RE = /^\/(?:(edit)\/(\d+)|(user)\/([^/]+)|(tag)\/([^/]+))\/?$/;
+    const _MB_POP_PAGE_RE = /^\/(?:(edit)\/(\d+)|(user)\/([^/]+)|(tag)\/([^/]+)(?:\/(area|artist|event|instrument|label|place|release-group|release|recording|series|work))?)\/?$/;
 
     /**
      * An editor's own tag page (`/user/<editor>/tag/<tag>`, 2026-10-21), the
      * links of their `/user/<editor>/tags`: kind `usertag`, id
      * `<editor>/<tag>`, both as the link spells them (percent-encoded). Its
-     * kind pages (`…/tag/<tag>/artist`) are not previewed, nor its downvotes
-     * (`?show_downvoted=1`): another list than the page the card reads.
+     * kind pages (`…/tag/<tag>/artist`, group 3) are the same card and
+     * window, the window on that kind's list (Phase 3c, 2026-10-27); its
+     * downvotes (`?show_downvoted=1`) are not previewed: another list than
+     * the page the card reads.
      * @type {RegExp}
      */
-    const _MB_POP_USERTAG_RE = /^\/user\/([^/]+)\/tag\/([^/]+)\/?$/;
+    const _MB_POP_USERTAG_RE = /^\/user\/([^/]+)\/tag\/([^/]+)(?:\/(area|artist|event|instrument|label|place|release-group|release|recording|series|work))?\/?$/;
 
     /** How many of an editor's tagged entities the `usertag` card lists. */
     const _MB_POP_USERTAG_CARD_ROWS = 6;
@@ -53018,12 +53094,13 @@
      * (`_MB_POP_ENTITY_LIST_RE`), an edit, an editor or a tag
      * (`_MB_POP_PAGE_RE`); `seg` is the path's own first segment (a disc
      * ID's page is /cdtoc/, its kind `discid`), '' when the kind's own
-     * `path()` names the page (an editing history). `null` for any other
-     * path.
+     * `path()` names the page (an editing history); `list`, a tag's or an
+     * editor's tag's kind page (`release`), which list its window opens on.
+     * `null` for any other path.
      *
      * @param {string} pathname
      * @param {string} [search] - The URL's query, for an edit search.
-     * @returns {?{seg: string, type: string, id: string}}
+     * @returns {?{seg: string, type: string, id: string, list?: string}}
      */
     function _mbPopParsePath(pathname, search = '') {
         const m = _MB_POP_PATH_RE.exec(pathname);
@@ -53056,9 +53133,9 @@
             return ok ? { seg: '', type: l[3], id: `${l[1]}/${l[2].toLowerCase()}` } : null;
         }
         const u = _MB_POP_USERTAG_RE.exec(pathname);
-        if (u) return /(?:^|[?&])show_downvoted=1(?:&|$)/.test(search) ? null : { seg: '', type: 'usertag', id: `${u[1]}/${u[2]}` };
+        if (u) return /(?:^|[?&])show_downvoted=1(?:&|$)/.test(search) ? null : { seg: '', type: 'usertag', id: `${u[1]}/${u[2]}`, list: u[3] || '' };
         const p = _MB_POP_PAGE_RE.exec(pathname);
-        if (p) return { seg: p[1] || p[3] || p[5], type: p[1] || p[3] || p[5], id: p[2] || p[4] || p[6] };
+        if (p) return { seg: p[1] || p[3] || p[5], type: p[1] || p[3] || p[5], id: p[2] || p[4] || p[6], list: p[7] || '' };
         return null;
     }
 
@@ -53156,6 +53233,7 @@
         let seg = '';
         let type = '';
         let id = '';
+        let list = '';
         const pop = a.getAttribute('data-mb-pop');
         // A barcode cell (MusicBrainz's own td.barcode-cell, plain text):
         // its digits, as the cell writes them (the search index ignores a
@@ -53184,7 +53262,7 @@
             return null;
         } else {
             const pp = _mbPopParsePath(a.pathname, a.search);
-            if (pp) ({ seg, type, id } = pp);
+            if (pp) ({ seg, type, id, list = '' } = pp);
         }
         // Own keys only: a stamped kind is a string from an attribute.
         const k = type && id && Object.prototype.hasOwnProperty.call(_MB_KINDS, type) ? _MB_KINDS[type] : null;
@@ -53208,6 +53286,8 @@
             name: a.getAttribute('data-mb-pop-name') || (relIcon ? _relLinkName(a) : '') ||
                 (k.nameOf ? k.nameOf(a) : '') || a.textContent.trim(),
             col: table ? _resolveColHeaderName(table, td.cellIndex) : '',
+            // A tag's kind page: the list its window opens on (Phase 3c).
+            list,
         };
     }
 
@@ -53293,6 +53373,63 @@
         // still rests on the link.
         return () => _dpPeekShowing(t.el) || (!!_dpDialog.target && _dpDialog.target.key === t.key && _dpDialogShowing(_dpDialog.target)) ||
             (!!t.readAhead && t.el.isConnected && t.el.matches(':hover'));
+    }
+
+    /**
+     * The logged-in editor's name as their profile link spells it
+     * (percent-encoded), from MusicBrainz's header: its account menu links
+     * `/user/<name>` first ("Profile"; debug/A-R-3rd-works.html,
+     * `li.account`); '' when nobody is logged in.
+     *
+     * @returns {string}
+     */
+    function _mbMyEditorName() {
+        const a = document.querySelector('.header li.account a[href^="/user/"]');
+        const m = a && /^\/user\/([^/?#]+)/.exec(a.getAttribute('href'));
+        return m ? m[1] : '';
+    }
+
+    /**
+     * Ctrl/⌘-click on a tag link in the window (a genre in the Facts, a
+     * tag's own link): the logged-in editor's own tag of that name
+     * (`/user/<me>/tag/<name>`, the same kind page when the link names one)
+     * in the window, as a plain click shows the tag (decided 2026-10-26,
+     * org/MB-POH-sync-withDiscogs.org). Logged out, or with Shift, Alt or
+     * a middle click, the link keeps its new tab.
+     *
+     * @param {MouseEvent} e - A click in the window's scroll area.
+     * @param {HTMLAnchorElement} a - The link.
+     * @returns {?object} The editor's tag's target, or null.
+     */
+    function _mbOwnTagTarget(e, a) {
+        if (e.button !== 0 || !(e.ctrlKey || e.metaKey) || e.shiftKey || e.altKey) return null;
+        if (a.origin !== window.location.origin) return null;
+        const tag = _mbTagOfLink(a);
+        const me = tag ? _mbMyEditorName() : '';
+        if (!me) return null;
+        const own = document.createElement('a');
+        own.href = `/user/${me}/tag/${tag.id}${tag.list ? `/${tag.list}` : ''}`;
+        own.textContent = a.textContent;
+        return _mbPopTarget(own, { inWindow: true });
+    }
+
+    /**
+     * The tag a link stands for, as its path spells it: a tag link's own
+     * (`/tag/acoustic%20rock`, with its kind page's `list`), or a GENRE
+     * link's (`/genre/<MBID>`: the genre's name, its text, encoded as
+     * MusicBrainz encodes a tag's path) — the decision of 2026-10-26 covers
+     * both, and the tag window's own facts link its genre (vzell
+     * 2026-10-27: Ctrl-click on "Genre acoustic rock" opened a new tab).
+     * null for any other link.
+     *
+     * @param {HTMLAnchorElement} a
+     * @returns {?{id: string, list: string}}
+     */
+    function _mbTagOfLink(a) {
+        const pp = _mbPopParsePath(a.pathname, a.search);
+        if (pp && pp.type === 'tag') return { id: pp.id, list: pp.list || '' };
+        const name = pp && pp.type === 'genre' ? a.textContent.replace(/\s+/g, ' ').trim() : '';
+        return name ? { id: encodeURIComponent(name), list: '' } : null;
     }
 
     /**
@@ -53538,13 +53675,15 @@
 
     /**
      * Each paged list of the MusicBrainz windows, by key: its rows so far
-     * (`cachedRows` of them from IndexedDB), the total the Web Service
-     * counts, whether a run is under way and how many pages it still asks
-     * (`left`), whether Stop was pressed, and the last failure.
+     * (`cachedRows` of them from IndexedDB), the pages they came on
+     * (`pages`, `cachedPages`), the total the source counts, whether a run
+     * is under way and how many pages it still asks (`left`), whether Stop
+     * was pressed, the last failure, and the record a list was seeded from
+     * (`seedOf`, `_mbPagedSeed()`).
      *
      * @type {Map<string, {spec: Object, rows: Array<Object>, total: ?number, complete: boolean, cachedRows: number,
-     *   at: number, running: boolean, left: number, stopped: boolean, detail: string,
-     *   listeners: Set<function(): void>, wanted: function(): boolean}>}
+     *   pages: number, cachedPages: number, at: number, running: boolean, left: number, stopped: boolean, detail: string,
+     *   seedOf: ?Object, listeners: Set<function(): void>, wanted: function(): boolean}>}
      */
     const _mbPaged = new Map();
 
@@ -53561,17 +53700,54 @@
      * @param {string} field - The answer's list: `recordings`.
      * @param {string} countField - Its count: `recording-count`.
      * @param {function(Object): Object} row
-     * @returns {{ask: function(number, function(): boolean): Promise<{ok?: boolean, rows?: Array<Object>,
-     *   total?: ?number, detail?: string, skipped?: boolean}>}}
+     * @returns {{perPage: number, ask: function(number, function(): boolean, number): Promise<{ok?: boolean,
+     *   rows?: Array<Object>, total?: ?number, done?: boolean, detail?: string, skipped?: boolean}>}} `ask(offset,
+     *   wanted, page)`: the rows from `offset` (a Web Service browse) or page
+     *   `page` from 1 (a site page, `_mbPagedHtml()`); `done`, the last page.
      */
     function _mbPagedWs(entity, query, field, countField, row) {
         return {
+            perPage: _MB_PAGED_LIMIT,
             async ask(offset, wanted) {
                 const res = await _rgWsGet(`/ws/2/${entity}?${query}&limit=${_MB_PAGED_LIMIT}&offset=${offset}&fmt=json`, '_mbPagedList', wanted);
                 if (res.skipped) return { skipped: true };
                 const rows = res.ok && res.data ? res.data[field] : null;
                 if (!Array.isArray(rows)) return { ok: false, detail: res.detail || `HTTP ${res.status}` };
                 return { ok: true, rows: rows.map(row), total: typeof res.data[countField] === 'number' ? res.data[countField] : null };
+            },
+        };
+    }
+
+    /**
+     * A paged list's source on the site itself (Phase 3c: a tag's kind page
+     * `/tag/<t>/<kind>?page=N`, a collection's `?page=N`): the Web Service
+     * has no browse by tag and no list of a collection's entities in their
+     * page's form, so page N is read through `_dpGetRaw()` and the one
+     * MusicBrainz rate gate (`_MB_LIVE`), as `_mbPageLoad()` reads a card's
+     * page, and `parse(doc)` makes its record. A page `parse()` does not
+     * recognise (a login page, the browser check) is a failure, and is
+     * forgotten by the raw memory so a retry fetches it again. 100 rows a
+     * page (probe 2026-10-27, scripts/probe-mb-tag-kind-pages.py: 15,606
+     * releases on 157 pages; a collection: 100).
+     *
+     * @param {function(number): string} urlOf - Page N's path.
+     * @param {function(Document): ?{rows: Array<Object>, total: number, page: number, pages: number}} parse
+     * @returns {{perPage: number, ask: function(number, function(): boolean, number): Promise<Object>}} As `_mbPagedWs()`.
+     */
+    function _mbPagedHtml(urlOf, parse) {
+        return {
+            perPage: 100,
+            async ask(offset, wanted, page) {
+                const url = new URL(urlOf(page), window.location.origin).href;
+                const raw = await _dpGetRaw(url, _MB_LIVE, { wanted });
+                if (raw.outcome === 'skipped') return { skipped: true };
+                if (raw.outcome !== 'ok') return { ok: false, detail: raw.detail || 'The request failed.' };
+                const rec = parse(new DOMParser().parseFromString(raw.html, 'text/html'));
+                if (!rec) {
+                    _dpRawMem.delete(url);
+                    return { ok: false, detail: _mbIsBrowserCheck(raw.html) ? _MB_BROWSER_CHECK_NOTE : 'not the page expected' };
+                }
+                return { ok: true, rows: rec.rows, total: rec.total, done: rec.page >= rec.pages };
             },
         };
     }
@@ -53597,23 +53773,67 @@
         const cur = _mbPaged.get(key);
         if (cur) cur.listeners.add(repaint);
         if (cur && (cur.running || (!again && (cur.rows.length || cur.detail)))) return;
-        const wanted = _mbPopWanted(t);
-        const st = {
-            spec, rows: [], total: null, complete: false, cachedRows: 0, at: 0, running: false, left: 0, stopped: false,
-            detail: '', listeners: cur ? cur.listeners : new Set([repaint]), wanted: () => !st.stopped && wanted(),
-        };
+        const st = _mbPagedNew(t, spec, cur ? cur.listeners : new Set([repaint]));
         _mbPaged.set(key, st);
         (async () => {
             if (!again) {
                 const rec = await _rgIdbGet(`list:${key}`, _MB_PAGED_IDB_VERSION);
                 if (rec && Array.isArray(rec.data.rows) && rec.data.rows.length) {
-                    Object.assign(st, { rows: rec.data.rows, total: rec.data.total, complete: !!rec.data.complete, cachedRows: rec.data.rows.length, at: rec.at });
+                    // A record of before page counts: one page per `perPage` rows.
+                    const pages = rec.data.pages || Math.ceil(rec.data.rows.length / (spec.perPage || _MB_PAGED_LIMIT));
+                    Object.assign(st, {
+                        rows: rec.data.rows, total: rec.data.total, complete: !!rec.data.complete, cachedRows: rec.data.rows.length,
+                        pages, cachedPages: pages, at: rec.at,
+                    });
                     _mbPagedNotify(st);
                     return;
                 }
             }
             _mbPagedRun(key, 1);
         })();
+    }
+
+    /**
+     * A new paged list's state, nothing loaded.
+     *
+     * @param {object} t - The window's target (its `wanted()`).
+     * @param {Object} spec - `_mbPagedWs()` or `_mbPagedHtml()`.
+     * @param {Set<function(): void>} listeners
+     * @returns {Object} `_mbPaged` state.
+     */
+    function _mbPagedNew(t, spec, listeners) {
+        const wanted = _mbPopWanted(t);
+        const st = {
+            spec, rows: [], total: null, complete: false, cachedRows: 0, pages: 0, cachedPages: 0, at: 0, running: false, left: 0,
+            stopped: false, detail: '', seedOf: null, listeners, wanted: () => !st.stopped && wanted(),
+        };
+        return st;
+    }
+
+    /**
+     * Seeds a paged list with page 1 the window already has (a collection's
+     * page, parsed for its card: `_mbParseCollectionPage()`), so opening
+     * the window asks for nothing more; "Load N more pages" goes on from
+     * page 2. Seeded again when the record is another one (⟳ read the page
+     * afresh), dropping what was loaded past it. Never a request.
+     *
+     * @param {object} t - The window's target.
+     * @param {string} key
+     * @param {Object} spec - `_mbPagedHtml()`.
+     * @param {{rows: Array<Object>, total: number, pages: number}} rec - Page 1's record.
+     * @param {function(): void} repaint
+     * @returns {void}
+     */
+    function _mbPagedSeed(t, key, spec, rec, repaint) {
+        const cur = _mbPaged.get(key);
+        if (cur) cur.listeners.add(repaint);
+        if (cur && (cur.seedOf === rec || cur.running)) return;
+        const st = _mbPagedNew(t, spec, cur ? cur.listeners : new Set([repaint]));
+        Object.assign(st, {
+            rows: rec.rows.slice(), total: rec.total, pages: 1, seedOf: rec,
+            complete: rec.pages <= 1 || rec.rows.length >= rec.total, at: Date.now(),
+        });
+        _mbPaged.set(key, st);
     }
 
     /**
@@ -53645,18 +53865,19 @@
         _mbPagedNotify(st);
         (async () => {
             while (st.left > 0 && !st.complete) {
-                const res = await st.spec.ask(st.rows.length, st.wanted);
+                const res = await st.spec.ask(st.rows.length, st.wanted, st.pages + 1);
                 if (res.skipped) break;
                 if (!res.ok) {
                     st.detail = res.detail || 'The request failed.';
                     break;
                 }
                 st.rows = st.rows.concat(res.rows);
+                st.pages++;
                 if (res.total != null) st.total = res.total;
-                st.complete = !res.rows.length || (st.total != null && st.rows.length >= st.total);
+                st.complete = !!res.done || !res.rows.length || (st.total != null && st.rows.length >= st.total);
                 st.left--;
                 st.at = Date.now();
-                _rgIdbPut(`list:${key}`, { rows: st.rows, total: st.total, complete: st.complete }, st.at, _MB_PAGED_IDB_VERSION);
+                _rgIdbPut(`list:${key}`, { rows: st.rows, total: st.total, complete: st.complete, pages: st.pages }, st.at, _MB_PAGED_IDB_VERSION);
                 if (st.left > 0 && !st.complete) _mbPagedNotify(st);
             }
             Object.assign(st, { running: false, left: 0, stopped: false });
@@ -53706,9 +53927,9 @@
         const ref = _rgEsc(key);
         const n = st.rows.length;
         const total = st.total ?? n;
-        const pages = Math.ceil(n / _MB_PAGED_LIMIT);
-        const cachedPages = Math.ceil(st.cachedRows / _MB_PAGED_LIMIT);
-        const segs = Array.from({ length: pages }, (_, i) => (i < cachedPages ? 'cache' : 'loaded'));
+        const per = st.spec.perPage || _MB_PAGED_LIMIT;
+        const pages = st.pages;
+        const segs = Array.from({ length: pages }, (_, i) => (i < st.cachedPages ? 'cache' : 'loaded'));
         if (st.running) segs.push('running', ...Array(Math.max(0, st.left - 1)).fill('queued'));
         else if (st.detail) segs.push('failed');
         const pill = st.running ? '<span class="mb-dg-pill mb-dg-run">Running</span>'
@@ -53722,15 +53943,15 @@
             btn = `<button type="button" class="mb-dg-btn mb-dg-primary" data-mb-pl-act="retry" data-mb-pl="${ref}">` +
                 `Try page ${pages + 1} again (1 request, about ${_extDgDur(_REL_WS2_SPACING_MS)})</button>`;
         } else if (!st.complete && st.total != null) {
-            const k = Math.min(_MB_PAGED_BATCH, Math.ceil((total - n) / _MB_PAGED_LIMIT));
-            const rows = Math.min(k * _MB_PAGED_LIMIT, total - n);
+            const k = Math.min(_MB_PAGED_BATCH, Math.ceil((total - n) / per));
+            const rows = Math.min(k * per, total - n);
             btn = `<button type="button" class="mb-dg-btn mb-dg-primary" data-mb-pl-act="more" data-mb-pl="${ref}">` +
                 `Load ${k} more page${k === 1 ? '' : 's'} (${_extDgNum(rows)} ${_rgEsc(unit)}, about ${_extDgDur(k * _REL_WS2_SPACING_MS)})</button>`;
         }
         const counts = [`${_extDgNum(n)} of ${_extDgNum(total)} loaded`];
         if (st.cachedRows) counts.push(`${_extDgNum(st.cachedRows)} from cache`);
         if (st.detail) counts.push(`<span class="mb-dg-bad">page ${pages + 1} failed: ${_rgEsc(st.detail)}</span>`);
-        counts.push(`one segment = ${_MB_PAGED_LIMIT} ${_rgEsc(unit)}`);
+        counts.push(`one segment = ${per} ${_rgEsc(unit)}`);
         return `<div class="mb-dg-vstat">${pill}<span class="mb-dg-bar" aria-hidden="true" style="width: min(${Math.max(40, segs.length * 26)}px, 100%)">` +
             segs.map(s => `<i class="mb-dg-seg-${s}"></i>`).join('') + `</span>${btn}</div>` +
             `<div class="mb-dg-counts">${counts.join(' · ')}</div>`;
@@ -54355,6 +54576,20 @@
         const names = (aliases || []).map(a => a.name + ([a.type, a.locale].filter(Boolean).length
             ? ` (${[a.type, a.locale].filter(Boolean).join(', ')})` : ''));
         return names.length > max ? `${names.slice(0, max).join('; ')} +${names.length - max}` : names.join('; ');
+    }
+
+    /**
+     * Aliases as a window's Facts list them since 2026-10-27 (an artist's,
+     * vzell): one per line, each name with its type and locale dimmed.
+     *
+     * @param {?Array<Object>} aliases
+     * @returns {string} HTML; empty for none.
+     */
+    function _mbPopAliasesHtml(aliases) {
+        return (aliases || []).filter(a => a && a.name).map((a) => {
+            const what = [a.type, a.locale].filter(Boolean).join(', ');
+            return _rgEsc(a.name) + (what ? ` <span class="mb-rg-dim">(${_rgEsc(what)})</span>` : '');
+        }).join('<br>');
     }
 
     /**
@@ -55757,12 +55992,6 @@
      */
     const _MB_COLL_SKIP_COLS = new Set(['Rating', 'Begin area', 'End area']);
 
-    /**
-     * A collection's entries the window shows at a time (mockup picked
-     * 2026-10-20: 25, with a pager; MusicBrainz's own pages hold 100).
-     * @type {number}
-     */
-    const _MB_COLL_WIN_ROWS = 25;
 
     /** A collection card's first entries (2026-10-20: eight, in two columns). */
     const _MB_COLL_CARD_ROWS = 8;
@@ -55848,18 +56077,18 @@
                 const cell = main.a.closest('td');
                 const comment = cell ? _mbPopText(cell.querySelector(':scope > .comment, :scope > .historical')).replace(/^\((.*)\)$/, '$1') : '';
                 const cells = grouped ? [_rgEsc(group)] : [];
+                const texts = grouped ? [group] : [];
                 Array.from(tr.children).forEach((td, i) => {
                     const h = heads[i] || '';
                     if (_MB_COLL_SKIP_COLS.has(h) || (kind === 'event' && h === 'Artists')) return;
                     cells.push(_mbCollCellHtml(td));
+                    texts.push(_mbPopText(td));
                 });
-                rows.push({ id: main.p[2].toLowerCase(), name: _mbPopText(main.a), comment, art: !!tr.querySelector('.caa-icon'), cells });
+                rows.push({ id: main.p[2].toLowerCase(), name: _mbPopText(main.a), comment, art: !!tr.querySelector('.caa-icon'), cells, texts });
             });
         });
         const cols = (grouped ? ['Type'] : []).concat(heads.filter(h => !_MB_COLL_SKIP_COLS.has(h) && !(kind === 'event' && h === 'Artists')));
-        const pag = content.querySelector('ul.pagination');
-        const nums = pag ? Array.from(pag.querySelectorAll('a[href*="page="]')).map(x => Number((/[?&]page=(\d+)/.exec(x.getAttribute('href')) || [])[1]) || 0) : [];
-        const sel = pag && Number(_mbPopText(pag.querySelector('a.sel')));
+        const pager = _mbPagerOf(content);
         const countDd = prop('Number of entities');
         return {
             name,
@@ -55874,8 +56103,10 @@
             kind,
             cols,
             rows,
-            page: sel || 1,
-            pages: nums.length ? Math.max(1, sel || 1, ...nums) : 1,
+            // The paged loader's name for it (`_mbPagedHtml()`).
+            total: countDd ? Number(_mbPopText(countDd).replace(/[,.]/g, '')) || 0 : rows.length,
+            page: pager.page,
+            pages: pager.pages,
         };
     }
 
@@ -55901,45 +56132,30 @@
     }
 
     /**
-     * Which slice of a collection the window shows, by collection MBID, for
-     * this page load (0: entries 1–25).
-     * @type {Map<string, number>}
-     */
-    const _mbCollUi = new Map();
-
-    /**
-     * The cache key of a collection's page n: page 1 is the card's record
-     * (`_mbPopPageKind()`'s key), every other page its own.
+     * A collection's paged list (Phase 3c): its pages `?page=N` read with
+     * the card's own parser, 100 entries each; page 1 is the card's record
+     * (`_mbPagedSeed()`), so opening the window asks for nothing more.
      *
-     * @param {string} id
-     * @param {number} n
-     * @returns {string}
+     * @param {string} id - The collection's MBID.
+     * @returns {{key: string, spec: Object}}
      */
-    function _mbCollKey(id, n) {
-        return n > 1 ? `pop:page:collection:${id}:p${n}` : `pop:page:collection:${id}`;
-    }
-
-    /**
-     * Loads page n (> 1) of a collection for the window's pager, through
-     * the one MusicBrainz gate (`_mbPageLoad()`).
-     *
-     * @param {object} t - The collection target.
-     * @param {number} n
-     * @param {{force?: boolean, repaint?: ?function(): void}} [opts]
-     * @returns {void}
-     */
-    function _mbCollLoad(t, n, opts = {}) {
-        const url = new URL(`/collection/${t.id}?page=${n}`, window.location.origin).href;
-        _mbPageLoad(_mbCollKey(t.id, n), url, _mbParseCollectionPage, Object.assign({ wanted: _mbPopWanted(t) }, opts));
+    function _mbCollList(id) {
+        return {
+            key: `collection:${id}`,
+            spec: _mbPagedHtml(n => `/collection/${id}?page=${n}`, _mbParseCollectionPage),
+        };
     }
 
     /**
      * A collection's window (Space): on the left its facts and the whole
-     * description; on the right 25 of its entries with the page's own
-     * columns, a pager over all of them (a MusicBrainz page holds 100, so
-     * four slices cost one request) and, for releases and release groups,
-     * their covers from the Cover Art Archive (only rows the page marks as
-     * having artwork; images only, no API request).
+     * description; on the right its entries as a List table (Phase 3c,
+     * which replaced 25-row slices behind ◀ ▶) with the page's own columns:
+     * page 1 from the card's record, then "Load N more pages", a filter over
+     * every column, chips by type when the page groups its entries (a
+     * release group collection), every column sortable through three states;
+     * for releases and release groups their covers from the Cover Art
+     * Archive (only rows the page marks as having artwork; images only, no
+     * API request), the empty box for the others.
      *
      * @param {object} t
      * @param {Object} d - Page 1's record.
@@ -55954,55 +56170,27 @@
                 ['Collaborators', _mbCollUsersHtml(d.collaborators)],
                 ['Holds', _rgEsc(`${_mbCollHolds(d)}${d.pages > 1 ? ` on ${d.pages} pages` : ''}`)],
             ]) + (d.description ? `<h4>Description</h4><div class="mb-pop-coll-desc">${d.description}</div>` : '');
-        const total = d.count || d.rows.length;
-        const perPage = d.pages > 1 ? Math.max(1, d.rows.length) : Math.max(1, total);
-        const slices = Math.max(1, Math.ceil(total / _MB_COLL_WIN_ROWS));
-        const sub = Math.min(_mbCollUi.get(t.id) || 0, slices - 1);
-        const from = sub * _MB_COLL_WIN_ROWS;
-        const n = Math.floor(from / perPage) + 1;
-        const st = _mbPop.get(_mbCollKey(t.id, n));
-        if (n > 1 && !st) _mbCollLoad(t, n, { repaint });
-        const rec = n === 1 ? d : st && st.status === 'done' ? st.data : null;
-        const btn = (act, label, on) => `<button type="button" class="mb-dg-btn" data-mb-coll-act="${act}"${on ? '' : ' disabled'}>${label}</button>`;
-        let body;
-        if (rec) {
-            const off = from - (n - 1) * perPage;
-            const rows = rec.rows.slice(off, off + _MB_COLL_WIN_ROWS);
-            // The covers as the table's first column, as in the release
-            // group's window (vzell, 2026-10-24); a strip above the table
-            // before.
-            const covers = (rec.kind === 'release' || rec.kind === 'release-group') && rows.some(r => r.art)
-                ? rows.map(r => (r.art ? _mbPopCoverThumbHtml(rec.kind, r.id, r.name) : '')) : null;
-            body = rows.length ? _mbPopTableHtml(rec.cols, rows.map(r => r.cells), [], covers) : '<div class="mb-dp-xsub">This collection is empty.</div>';
-        } else if (st && st.status === 'failed') {
-            body = `<div class="mb-dp-warn">Page ${n} could not be read (${_rgEsc(st.detail)}).</div>` +
-                `<p><button type="button" class="mb-dg-btn" data-mb-coll-act="retry" data-mb-coll-v="${n}">Try again</button></p>`;
-        } else {
-            body = `<div class="mb-dp-xsub"><span class="mb-dp-spin">◌</span> Reading page ${n}…</div>`;
-        }
-        const shown = total ? `${from + 1}–${Math.min(total, from + _MB_COLL_WIN_ROWS)} of ${_mbPopNum(total)}` : '0';
-        const pager = slices > 1 ? `<div class="mb-pop-coll-pager">${btn('prev', '◀', sub > 0)}<span>${_rgEsc(`${sub + 1} / ${slices}`)}</span>` +
-            `${btn('next', '▶', sub < slices - 1)}</div>` : '';
-        const right = `<h4>${_rgEsc(`${d.plural || 'Entries'} · ${shown}`)}</h4>${pager}${body}`;
+        const list = _mbCollList(t.id);
+        _mbPagedSeed(t, list.key, list.spec, d, repaint);
+        const st = _mbPaged.get(list.key);
+        const unit = (d.plural || 'entries').toLowerCase();
+        const covers = d.kind === 'release' || d.kind === 'release-group';
+        // Only a grouped page (a release group collection: a table per type)
+        // puts the 'Type' column first (`_mbParseCollectionPage()`).
+        const grouped = d.cols[0] === 'Type';
+        const cols = d.cols.map((label, i) => ({
+            key: `c${i}`, label, val: r => (r.texts || [])[i] || '', html: (r, q) => _hlHtml(r.cells[i] || '', q),
+        }));
+        const right = `<h4>${_rgEsc(`${d.plural || 'Entries'} · ${_mbPopNum(d.count || d.rows.length)}`)}</h4>` +
+            (d.pages > 1 ? _mbPagedStatusHtml(list.key, unit) : '') +
+            _dpListTableHtml(t, 'collection', cols, st ? st.rows : d.rows, {
+                initial: 'as the collection lists them', placeholder: `Filter loaded ${unit}`,
+                search: r => (r.texts || []).join(' '),
+                facet: grouped ? (r => r.texts[0]) : null, chipLabel: 'Type',
+                thumb: covers ? (r => (r.art ? _mbPopCoverThumbHtml(d.kind, r.id, r.name, 'mb-dg-vthumb') : '')) : null,
+                none: 'This collection is empty.', nomatch: `No loaded ${unit.replace(/s$/, '')} matches.`,
+            });
         return `<div class="mb-dp-x"><div class="mb-dp-col">${left}</div><div class="mb-dp-col">${right}</div></div>`;
-    }
-
-    /**
-     * A collection window's pager clicks (◀ ▶, "Try again"). Links never get
-     * here: `_dpDrill()` takes them first.
-     *
-     * @param {MouseEvent} e
-     * @param {object} t - The collection target.
-     * @returns {void}
-     */
-    function _mbCollAreaClick(e, t) {
-        const b = e.target instanceof Element && e.target.closest('[data-mb-coll-act]');
-        if (!b || b.disabled) return;
-        const sub = _mbCollUi.get(t.id) || 0;
-        if (b.dataset.mbCollAct === 'prev') _mbCollUi.set(t.id, Math.max(0, sub - 1));
-        else if (b.dataset.mbCollAct === 'next') _mbCollUi.set(t.id, sub + 1);
-        else if (b.dataset.mbCollAct === 'retry') _mbCollLoad(t, Number(b.dataset.mbCollV) || 2, { force: true, repaint: _dpDialog.repaint });
-        if (_dpDialog.repaint) _dpDialog.repaint();
     }
 
     /**
@@ -56196,6 +56384,69 @@
             editor: _mbPopText(root.querySelector(':scope > h1 bdi')),
             tag: a.getAttribute('href').split('/')[2] || '',
         }, _mbParseTagSections(root));
+    }
+
+    /**
+     * Where a MusicBrainz list page stands in its pages (`ul.pagination`):
+     * the page shown (`a.sel`) and the last one any page link names; 1 of 1
+     * without a pager.
+     *
+     * @param {Element} root - The page's `#content` (or `#page`).
+     * @returns {{page: number, pages: number}}
+     */
+    function _mbPagerOf(root) {
+        const pag = root.querySelector('ul.pagination');
+        const nums = pag ? Array.from(pag.querySelectorAll('a[href*="page="]')).map(x => Number((/[?&]page=(\d+)/.exec(x.getAttribute('href')) || [])[1]) || 0) : [];
+        const sel = (pag && Number(_mbPopText(pag.querySelector('a.sel')))) || 1;
+        return { page: sel, pages: nums.length ? Math.max(1, sel, ...nums) : 1 };
+    }
+
+    /**
+     * A tag's page of one kind (`/tag/<tag>/<kind>?page=N`) or an editor's
+     * (`/user/<editor>/tag/<tag>/<kind>`), 2026-10-27, Phase 3c: the Web
+     * Service has no browse by tag, so the windows' per-kind lists are read
+     * here. The page (debug/poh-sync/, scripts/probe-mb-tag-kind-pages.py):
+     * a "15,606 releases found" line, the pager, then a `ul` of 100 `li`,
+     * each "4 - <entity link> (<comment>) by <artist credit>" (the link in a
+     * `span.mp` when the entity has edits pending) — the leading
+     * number the tag's votes (an editor's page has none), the credit a
+     * top-level `bdi` after " by " (releases, release groups, recordings).
+     * Text and safe HTML only (`_mbEditsHtml()` for the credit), so a page
+     * can be kept. `null` for any other page.
+     *
+     * @param {Document} doc
+     * @returns {?{plural: string, total: number, page: number, pages: number,
+     *   rows: Array<{type: string, id: string, name: string, dis: string, votes: ?number, by: string, byHtml: string}>}}
+     */
+    function _mbParseTagKindPage(doc) {
+        const root = doc.getElementById('content') || doc.getElementById('page');
+        if (!root) return null;
+        let found = null;
+        const p = Array.from(root.querySelectorAll('p')).find((x) => {
+            found = /^([\d,.]+)\s+(.+?)\s+found$/.exec(_mbPopText(x));
+            return !!found;
+        });
+        if (!p) return null;
+        // The list follows the line, after the pager's `nav` when there is one.
+        let ul = p.nextElementSibling;
+        while (ul && ul.tagName !== 'UL') ul = ul.tagName === 'NAV' ? ul.nextElementSibling : null;
+        const rows = [];
+        (ul ? Array.from(ul.children) : []).forEach((li) => {
+            // An entity with edits pending has its link in `span.mp` (3 of
+            // the 100 on the recording fixture: "Creep", "Linger", …).
+            const a = Array.from(li.querySelectorAll(':scope > a[href], :scope > span.mp > a[href]'))
+                .find(x => _MB_POP_PATH_RE.test(x.getAttribute('href') || ''));
+            if (!a) return;
+            const m = _MB_POP_PATH_RE.exec(a.getAttribute('href'));
+            const votes = /^(-?\d+)\s+-\s/.exec(_mbPopText(li));
+            const by = li.querySelector(':scope > bdi');
+            rows.push({
+                type: m[1], id: m[2].toLowerCase(), name: _mbPopText(a),
+                dis: _mbPopText(li.querySelector(':scope > span.comment')).replace(/^\((.*)\)$/, '$1'),
+                votes: votes ? Number(votes[1]) : null, by: _mbPopText(by), byHtml: by ? _mbEditsHtml(by) : '',
+            });
+        });
+        return Object.assign({ plural: found[2], total: Number(found[1].replace(/[,.]/g, '')) || 0, rows }, _mbPagerOf(root));
     }
 
     // --- Editing history (org/mb-edit-history.org, 2026-10-20) ---
@@ -57626,48 +57877,123 @@
     }
 
     /**
-     * The page of a tag's entities of one kind (`/tag/<name>/artist`, an
-     * editor's `/user/<editor>/tag/<name>/artist`): the page's own "See all"
-     * link, else built from the kind's h3 name
-     * (`SA_TAG_VALUE_CATEGORY_SLUGS`); '' for a kind it does not know.
+     * The kinds a tag record lists, most entities first, each with its
+     * slug, the last path segment of its kind page (`release-group`:
+     * `SA_TAG_VALUE_CATEGORY_SLUGS`); a kind of no known slug is left out.
      *
-     * @param {string} base - The tag page's path, the tag as in its link
-     *   (percent-encoded): `/tag/<name>` or `/user/<editor>/tag/<name>`.
-     * @param {{kind: string, more: string}} s - A section of the record.
-     * @returns {string}
+     * @param {Object} d - `_mbParseTagPage()`'s or `_mbParseUserTagPage()`'s record.
+     * @returns {Array<{s: Object, slug: string}>}
      */
-    function _mbPopTagKindHref(base, s) {
-        if (s.more) return s.more;
-        const slug = SA_TAG_VALUE_CATEGORY_SLUGS[s.kind];
-        return slug ? `${base}/${slug}` : '';
+    function _mbTagKindSlugs(d) {
+        return _mbPopTagKinds(d).map(s => ({ s, slug: SA_TAG_VALUE_CATEGORY_SLUGS[s.kind] || '' })).filter(x => x.slug);
     }
 
     /**
-     * The window of a tag page or an editor's tag page: the facts on the
-     * left (`head`, then the kinds by count, each linking its page), each
-     * kind's first entries on the right, linked so they drill down (Phase
-     * 5), with "See all N" for a kind that has more.
+     * The kind a tag window lists: the one chosen ("By kind", or the kind
+     * page a link named: `t.list`), else the kind with the most entities.
      *
+     * @param {object} t - The tag's or editor's tag's target.
+     * @param {Object} d - Its record.
+     * @returns {string} A slug; '' when the tag has no entity.
+     */
+    function _mbTagKindChosen(t, d) {
+        const kinds = _mbTagKindSlugs(d);
+        // Read, not made: `_dpTblUi()` would make the state before its table.
+        const ui = _dpTbl.get(`${t.key}|tag-kinds`);
+        if (ui && ui.seg && kinds.some(k => k.slug === ui.seg)) return ui.seg;
+        return kinds.length ? kinds[0].slug : '';
+    }
+
+    /**
+     * The paged list of a tag's (or an editor's tag's) entities of one kind:
+     * its kind page, 100 a page, read from the site (`_mbPagedHtml()`,
+     * `_mbParseTagKindPage()`).
+     *
+     * @param {string} base - `/tag/<name>` or `/user/<editor>/tag/<name>`, as the link spells them.
+     * @param {string} slug - The kind: `release`, `artist`, …
+     * @returns {{key: string, spec: Object}}
+     */
+    function _mbTagKindList(base, slug) {
+        return {
+            key: `tag-kind:${base}/${slug}`,
+            spec: _mbPagedHtml(n => `${base}/${slug}${n > 1 ? `?page=${n}` : ''}`, _mbParseTagKindPage),
+        };
+    }
+
+    /**
+     * Starts a tag window's list of the chosen kind (from `pin()`: what was
+     * never asked, or everything again on ⟳).
+     *
+     * @param {object} t
+     * @param {Object} d - The tag record.
+     * @param {string} base
+     * @param {boolean} again
+     * @param {function(): void} repaint
+     * @returns {void}
+     */
+    function _mbTagKindPin(t, d, base, again, repaint) {
+        const slug = _mbTagKindChosen(t, d);
+        if (!slug) return;
+        const list = _mbTagKindList(base, slug);
+        _mbPagedStart(t, list.key, list.spec, again, repaint);
+    }
+
+    /**
+     * A tag window started from a link to one kind's page
+     * (`/tag/<name>/release`: `t.list`): that kind is the one listed.
+     *
+     * @param {object} t
+     * @returns {void}
+     */
+    function _mbTagKindStart(t) {
+        if (t.list) _dpTblUi(t, 'tag-kinds').seg = t.list;
+    }
+
+    /**
+     * The window of a tag page or an editor's tag page (Phase 3c,
+     * 2026-10-27): the facts on the left (`head`, then "By kind": every
+     * kind with its count, a click lists that kind), on the right the
+     * chosen kind's entities as a List table read page by page from its
+     * kind page — 100 when the window opens, then "Load N more pages" —
+     * in MusicBrainz's order (most votes first on a tag's; an editor's has
+     * no votes), with a filter and the three-way sort. Each entity links its
+     * page (it drills down in the window, Phase 5).
+     *
+     * @param {object} t - The target.
      * @param {Object} d - `_mbParseTagPage()`'s or `_mbParseUserTagPage()`'s record.
-     * @param {string} base - The page's path (`_mbPopTagKindHref()`).
+     * @param {string} base - The page's path (`_mbTagKindList()`).
      * @param {string} head - The left column's title and facts (HTML).
      * @param {string} empty - What an empty page means.
      * @returns {string}
      */
-    function _mbPopTagWindowHtml(d, base, head, empty) {
-        const kinds = _mbPopTagKinds(d);
-        const kindLink = (s) => {
-            const href = _mbPopTagKindHref(base, s);
-            return href ? `<a href="${_rgEsc(href)}" target="_blank" rel="noopener">${_rgEsc(s.kind)}</a>` : _rgEsc(s.kind);
-        };
-        const left = head + (kinds.length ? '<h4>By kind</h4>' + _mbPopTableHtml(['Kind', 'Count'],
-            kinds.map(s => [kindLink(s), _rgEsc(s.count.toLocaleString('en-US'))]), [1]) : '');
-        const right = kinds.length ? kinds.map(s => '<div class="mb-dp-group">' +
-            `<div class="mb-dp-gname">${_rgEsc(s.kind)} · ${_rgEsc(s.count.toLocaleString('en-US'))}</div>` +
-            '<ul class="mb-pop-taglist">' + s.items.map(e => `<li><a href="/${_rgEsc(e.type)}/${_rgEsc(e.id)}" target="_blank" rel="noopener">` +
-                `${_rgEsc(e.name)}</a>${e.extra ? ` <span class="mb-rg-dim">${_rgEsc(e.extra)}</span>` : ''}</li>`).join('') + '</ul>' +
-            (s.count > s.items.length ? `<div class="mb-dp-xsub">${kindLink({ kind: `See all ${s.count.toLocaleString('en-US')}`, more: _mbPopTagKindHref(base, s) })}</div>` : '') +
-            '</div>').join('') : `<div class="mb-dp-xsub">${_rgEsc(empty)}</div>`;
+    function _mbPopTagWindowHtml(t, d, base, head, empty) {
+        const kinds = _mbTagKindSlugs(d);
+        const slug = _mbTagKindChosen(t, d);
+        const left = head + (kinds.length ? '<h4>By kind</h4><div class="mb-dp-tbl" data-mb-tbl="tag-kinds">' + _mbPopTableHtml(['Kind', 'Count'],
+            kinds.map(k => [`<button type="button" class="mb-pop-kindbtn" data-mb-tbl-act="seg" data-mb-tbl-v="${_rgEsc(k.slug)}" ` +
+                `aria-pressed="${k.slug === slug}">${_rgEsc(k.s.kind)}</button>`, _rgEsc(k.s.count.toLocaleString('en-US'))]), [1]) + '</div>' : '');
+        if (!slug) return `<div class="mb-dp-x"><div class="mb-dp-col">${left}</div><div class="mb-dp-col"><div class="mb-dp-xsub">${_rgEsc(empty)}</div></div></div>`;
+        const sec = kinds.find(k => k.slug === slug).s;
+        const unit = sec.kind.toLowerCase();
+        const { key } = _mbTagKindList(base, slug);
+        const st = _mbPaged.get(key);
+        const rows = st ? st.rows : [];
+        const cols = [];
+        if (rows.some(r => r.votes != null)) {
+            cols.push({ key: 'votes', label: 'Votes', num: true, first: -1, cls: 'mb-rg-num', val: r => r.votes ?? '', html: r => _rgEsc(r.votes ?? '—') });
+        }
+        cols.push({
+            key: 'name', label: sec.kind.replace(/s$/, ''), val: r => r.name,
+            html: (r, q) => `<a href="/${_rgEsc(r.type)}/${_rgEsc(r.id)}" target="_blank" rel="noopener">${_hlEsc(r.name, q)}</a>` +
+                `${r.dis ? ` <span class="mb-rg-dim">(${_hlEsc(r.dis, q)})</span>` : ''}`,
+        });
+        if (rows.some(r => r.by)) cols.push({ key: 'by', label: 'By', val: r => r.by, html: (r, q) => _hlHtml(r.byHtml, q) || '—' });
+        const right = `<h4>${_rgEsc(sec.kind)} · ${_rgEsc((st && st.total != null ? st.total : sec.count).toLocaleString('en-US'))}</h4>` +
+            _mbPagedStatusHtml(key, unit) + _dpListTableHtml(t, `tag-kind-${slug}`, cols, rows, {
+                initial: rows.some(r => r.votes != null) ? 'as MusicBrainz lists them, most votes first' : 'as MusicBrainz lists them',
+                placeholder: `Filter loaded ${unit}`, search: r => `${r.name} ${r.dis} ${r.by}`,
+                body: _mbPagedBody(st, unit), nomatch: `No loaded ${unit.replace(/s$/, '')} matches.`, none: empty,
+            });
         return `<div class="mb-dp-x"><div class="mb-dp-col">${left}</div><div class="mb-dp-col">${right}</div></div>`;
     }
 
@@ -57679,8 +58005,15 @@
      * @param {{parse: function(Document): ?Object, keep?: function(Object): boolean,
      *   cardHtml: function(Object, object): string,
      *   windowHtml: function(Object, object, function(): void): string,
+     *   pin?: function(object, Object, boolean, function(): void): void,
+     *   start?: function(object): void,
      *   failNote?: function(string): string}} spec - `windowHtml` gets the
-     *   repaint too (a collection's pager loads more pages); `failNote` as
+     *   repaint too (a collection's list seeds itself from the record);
+     *   `pin(t, d, again, repaint)` starts what the window adds once the
+     *   record is there, as `_mbPopLookupKind()`'s (a tag's list of one kind,
+     *   Phase 3c), from every repaint, so it may only start what was never
+     *   asked unless `again` (⟳); `start(t)` runs when the window starts on a
+     *   target (a tag's kind page picks that kind); `failNote` as
      *   `_mbPopLookupKind()`'s.
      * @returns {{card: function(object, boolean, function(): void): string,
      *   extracted: function(object, boolean, boolean, function(): void): string}}
@@ -57693,8 +58026,19 @@
                 return _mbPopCardShell(t, _mbPop.get(key(t)), spec.cardHtml, spec.failNote);
             },
             extracted(t, start, force, repaint) {
-                if (start) _mbPageLoad(key(t), t.url, spec.parse, { force, repaint, wanted: _mbPopWanted(t), keep: spec.keep });
-                return _mbPopWindowShell(t, _mbPop.get(key(t)), (d, tt) => spec.windowHtml(d, tt, repaint), spec.failNote);
+                if (start && spec.start) spec.start(t);
+                // As `_mbPopLookupKind()`: the pin's extras start from this
+                // call when the record is there, else from the repaint its
+                // arrival causes; a ⟳ (start + force) asks them again too.
+                const later = () => {
+                    const s = _mbPop.get(key(t));
+                    if (spec.pin && s && s.status === 'done') spec.pin(t, s.data, start && force, repaint);
+                    repaint();
+                };
+                if (start) _mbPageLoad(key(t), t.url, spec.parse, { force, repaint: spec.pin ? later : repaint, wanted: _mbPopWanted(t), keep: spec.keep });
+                const st = _mbPop.get(key(t));
+                if (spec.pin && st && st.status === 'done') spec.pin(t, st.data, start && force, repaint);
+                return _mbPopWindowShell(t, st, (d, tt) => spec.windowHtml(d, tt, repaint), spec.failNote);
             },
         };
     }
@@ -57967,10 +58311,11 @@
                         [d.type === 'Person' ? 'Died' : 'Dissolved', [_rgEsc(ls.end || (ls.ended ? 'yes' : '')), _mbPopAreaChainHtml(d['end-area'])]
                             .filter(Boolean).join(' · ')],
                         ['Rating', _rgEsc(_mbPopRating(d.rating))],
-                        ['Genres', _rgEsc(_mbPopGenres(d.genres, 99))],
+                        // One per line, genres as their tags (2026-10-27, as a label's).
+                        ['Genres', _mbPopGenreLinksHtml(d.genres)],
                         ['IPI', _rgEsc((d.ipis || []).join(', '))],
                         ['ISNI', _rgEsc((d.isnis || []).join(', '))],
-                        ['Aliases', _rgEsc(_mbPopAliases(d.aliases, 99))],
+                        ['Aliases', _mbPopAliasesHtml(d.aliases)],
                     ]) +
                     _mbPopSectionHtml('Links', _mbPop.get(links.key), (p) => _mbPopUrlLinksHtml(p.relations, false) ||
                         '<div class="mb-dp-xsub">No links.</div>');
@@ -58042,7 +58387,8 @@
                             ? `<a href="/label/${_rgEsc(d.id)}" target="_blank" rel="noopener">${_rgEsc(_mbPopNum(cs.data['release-count'] || 0))}</a>`
                             : (cs && cs.status === 'failed' ? '<span class="mb-rg-dim">?</span>' : '<span class="mb-dp-spin">◌</span>')],
                         ['Rating', _rgEsc(_mbPopRating(d.rating))],
-                        ['Genres', _rgEsc(_mbPopGenres(d.genres, 99))],
+                        // One per line, each its tag (Phase 3c, as the release group's).
+                        ['Genres', _mbPopGenreLinksHtml(d.genres)],
                         ['IPI', _rgEsc((d.ipis || []).join(', '))],
                         ['ISNI', _rgEsc((d.isnis || []).join(', '))],
                         ['Aliases', _rgEsc(_mbPopAliases(d.aliases, 99))],
@@ -58395,7 +58741,7 @@
                         : '<div class="mb-tt-comment">This collection is empty.</div>');
             },
             windowHtml: (d, t, repaint) => _mbCollWindowHtml(t, d, repaint),
-        }), { onAreaClick: _mbCollAreaClick }),
+        })),
         // U2 (org/iframe.org "* generalize to URLs"): the "[info]" link
         // beside every URL relationship. One lookup with every relationship
         // include (`_MB_POP_URL_INC`, 655 bytes for the event's Brucebase
@@ -58704,7 +59050,8 @@
         // A tag (2026-10-19): read from its page (`_mbParseTagPage()`), the
         // Web Service has no lookup of a tag by name. Card: is it a genre,
         // how many entities, how many of each kind. Window: the same, plus
-        // each kind's first ten, linked so they drill down (Phase 5).
+        // one kind's entities as a List table read from its kind page
+        // (`_mbPopTagWindowHtml()`, Phase 3c), linked so they drill down.
         tag: Object.assign({ title: 'Tag', wide: false }, _mbPopPageKind({
             parse: _mbParseTagPage,
             cardHtml(d) {
@@ -58725,16 +59072,20 @@
                         ['Genre', d.genre ? `<a href="/genre/${_rgEsc(d.genre.id)}" target="_blank" rel="noopener">${_rgEsc(d.genre.name)}</a>` : 'none'],
                         ['Entities', _rgEsc(d.total)],
                     ]);
-                return _mbPopTagWindowHtml(d, `/tag/${t.id}`, head, 'Nothing is tagged with it.');
+                return _mbPopTagWindowHtml(t, d, `/tag/${t.id}`, head, 'Nothing is tagged with it.');
             },
+            // The chosen kind's list (Phase 3c): its page 1 once the record
+            // is there; a link to a kind page opens on that kind.
+            pin: (t, d, again, repaint) => _mbTagKindPin(t, d, `/tag/${t.id}`, again, repaint),
+            start: _mbTagKindStart,
         })),
         // An editor's own tag (2026-10-21, the links of `/user/<name>/tags`):
         // read from its page (`_mbParseUserTagPage()`), which has the tag
         // page's body, so the same window (`_mbPopTagWindowHtml()`). Its id
         // is `<editor>/<tag>`, both as the link spells them. Card: how many
         // entities, how many of each kind, the first few. Window: the facts,
-        // a link to everyone's tag (a drill into the tag card), each kind's
-        // first entries and their "See all" pages.
+        // a link to everyone's tag (a drill into the tag card), and one
+        // kind's entities as a List table, as a tag's (Phase 3c).
         usertag: Object.assign({ title: 'Editor\'s tag', wide: false, path: id => `/user/${id.replace('/', '/tag/')}` }, _mbPopPageKind({
             parse: _mbParseUserTagPage,
             cardHtml(d) {
@@ -58761,8 +59112,13 @@
                         ['Entities', _rgEsc(d.total)],
                         ['Everyone’s', `<a href="/tag/${_rgEsc(d.tag || tag)}" target="_blank" rel="noopener">${_rgEsc(d.name)}</a>`],
                     ]);
-                return _mbPopTagWindowHtml(d, `/user/${editor}/tag/${tag}`, head, 'They tagged nothing with it.');
+                return _mbPopTagWindowHtml(t, d, `/user/${editor}/tag/${tag}`, head, 'They tagged nothing with it.');
             },
+            pin(t, d, again, repaint) {
+                const [editor, tag] = String(t.id).split('/');
+                _mbTagKindPin(t, d, `/user/${editor}/tag/${tag}`, again, repaint);
+            },
+            start: _mbTagKindStart,
         })),
         // An editing history (org/mb-edit-history.org, 2026-10-20): an
         // entity's or editor's `/…/edits`, read from the page (the Web
