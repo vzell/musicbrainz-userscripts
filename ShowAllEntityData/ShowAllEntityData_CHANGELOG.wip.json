@@ -1,0 +1,25 @@
+[
+  {
+    "version": "WIP.1",
+    "date": "2026-10-27",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "A series of release groups: a click on one of its items in the window opened a broken page in a new tab (/release_group/…); it now opens the release group in the window.",
+          "Hovering a catalog number whose label MusicBrainz could not load no longer asks for that label again and again while the card shows; as everywhere else, ⟳ or a new hover tries again."
+        ]
+      },
+      {
+        "label": "✨ Improve",
+        "items": [
+          "The MusicBrainz windows of a recording, a place and an artist list everything, as a work's window does since the last version: 100 when the window opens, then \"Load N more pages\" with Stop and \"Try again\", a filter, chips and the three-way sort. A recording's window shows all of its releases (with covers and status chips) instead of the first 25; a place's all of its events (type chips) instead of the first 100; an artist's its release groups themselves instead of a count per type: a segment per type (Album, Single, EP, Broadcast, Other) with its total, each its own list, chips for Live, Compilation and the like, and the covers, loaded as you scroll.",
+          "These lists start sorted by date: MusicBrainz returns them in an order that is neither by date nor by title.",
+          "The release-group window's releases have a filter and format chips too, and a release without a cover keeps an empty square, so every row is as high.",
+          "In the release-group window, each credited artist opens in the window, and the genres are listed one per line, each opening its tag.",
+          "Performance: link-preview windows only; no change to the page tables' filter, sort or render path. A recording's window makes the same number of requests as before (its releases instead of a count); an artist's one more (its first 100 release groups) and asks the Cover Art Archive for the covers of the rows you scroll to."
+        ]
+      }
+    ]
+  }
+]

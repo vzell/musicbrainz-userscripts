@@ -2411,19 +2411,27 @@ links have their cards too.
 - **Extracted**: for a release, the whole tracklist by medium (each track
   opens its recording), its release group, labels, release events, language,
   and the images in the Cover Art Archive; for a release group, every
-  release in a sortable table beside the group's facts; for a recording, its
+  release in a table with a filter, format chips and a three-way sort,
+  beside the group's facts (each credited artist opens in the window, the
+  genres are listed one per line, each opening its tag); for a recording, its
   credits (performers and their instruments, producers, engineers, where it
   was recorded and mixed — each studio with its city, state and country) and
-  up to 25 of its releases with the real total;
+  all of its releases as a list like a work's recordings below (covers,
+  status chips: Official, Bootleg, …);
   for a work, its writers, publishers and related works, its society codes,
   and its recordings with the total — 100 when the window opens, then *Load 5
   more pages* (500 recordings, about 6 s at MusicBrainz's rate of one request
   a second; *Stop* ends a run after the page under way), with a filter, a
   chip per artist credit (Ctrl-click adds one) and a three-way sort as in the
   Discogs windows; what is loaded is kept like the card, so a later window
-  shows it without asking again; for an artist, its area and
+  shows it without asking again (a recording's, a place's and an artist's
+  lists start sorted by date, since MusicBrainz returns them in no date
+  order); for an artist, its area and
   birthplace named as MusicBrainz does (*Long Branch, New Jersey, United
-  States*), every external link and how many release groups of each type; for
+  States*), every external link and its release groups: a segment per
+  type (Album, Single, EP, Broadcast, Other) with its total, each a list like
+  a work's recordings, with chips for Live, Compilation and the like and the
+  covers, loaded as you scroll (a missing one leaves an empty square); for
   a label, its area named the same way, the labels it owns, is owned by or is
   an imprint of, its links and its number of releases; for an area, its parts; for an instrument, the related
   instruments and every alias (its description is on the Live page); for an
@@ -2434,8 +2442,8 @@ links have their cards too.
   (each with its **[info]** link), the whole setlist with every song linked to
   its work and every artist — the line-up, and the guests in a song's
   "(with …)" — linked to the artist, what was recorded there and its posters;
-  for a place, its area named the same way, a map link, its links and up to
-  100 of its events by date; for a
+  for a place, its area named the same way, a map link, its links and all
+  of its events as a list like a work's recordings (type chips); for a
   series, every item in order; for a tag, its genre, how many of each kind
   it carries (each linked to the tag's page of that kind) and the ten top
   entities of every kind; for a genre, its primary tag, every related genre

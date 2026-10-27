@@ -89,12 +89,17 @@ Discogs readers: =_EXT_READERS= (=discogs=), =_EXT_DISCOGS_PATH_RE= (also matche
 =_extDiscogsLoad()=, =_extDiscogsImages()=, =_dgArtImages()=, =_fiClick()=, =_fiCardHtml()=,
 =_DG_FI=, =_dgUserCell()=, =_dgAvatarInit()=, =_DP_SITES['www.discogs.com']=.
 
-Found while mapping (fix in Phase 3, own regression test):
+Found while mapping (fixed in Phase 3a, 2026-10-27, branch =mb-window-lists=, each with a
+regression test that fails before; =scripts/mutations/mb-window-lists.json=):
 - *Series items of release groups open a broken new tab*: WS/2's =target-type= is
-  =release_group=, =_mbPopSeriesItems()= builds =/release_group/<id>=, which misses
-  =_MB_POP_PATH_RE=. Same in =_mbPopRelTargetHtml()=.
-- Probably (unconfirmed): the =catno= path builds the label key with inc =genres+aliases= while
-  the label's =cardInc= is =genres+ratings+aliases=, so its "already loaded?" check never hits.
+  =release_group= (and the target sits under that key: probe 2026-10-27),
+  =_mbPopSeriesItems()= built =/release_group/<id>=, which misses =_MB_POP_PATH_RE=. Now
+  =_mbPopRelKind()=. =_mbPopRelTargetHtml()= had no caller passing the underscore form; it
+  now takes it as the page segment anyway.
+- *Confirmed*: the =catno= path built the label key with inc =genres+aliases= while the label's
+  =cardInc= is =genres+ratings+aliases=, so its "already loaded?" check never hit. Every
+  repaint counted as a start, so a FAILED label lookup was asked again on each repaint.
+  Now both use =_MB_POP_LABEL_CARD_INC=.
 
 ** DONE Phase 1 — "Initial sort" state on Discogs POHs  [4/4]
 
@@ -184,10 +189,23 @@ Phase 2 changes, *2,369/2,369 passed* in 15 m 55 s. Mutations: =dp-shared-tables
 they should; =dp-sort-initial-state.json= 8 fail + 1 recorded overlap pass; =discogs-window-swap.json=
 5/5 (one entry was already stale at HEAD and is retargeted). Lint is within its baseline.
 
-** Phase 3 — MB entity sections  [0/27]
+** Phase 3 — MB entity sections  [7/27]
 
 "Compact" = like Discogs label → Sublabels (left column). "List" = like Discogs label → Releases
 (right column) with "Load N more pages (M …, about S s)".
+
+Batches (agreed 2026-10-27): 3a fixes + Facts links; 3b List + Web Service loader; 3c List + HTML
+loader (Tag, Collection, Editor's tag); 3d the Compact rows; 3e tracklist, setlist, series icons;
+3f new readers (CD stub, Documentation).
+
+*3a + 3b done* 2026-10-27, branch =mb-window-lists= (WIP.1): rows Artist → Release groups,
+Release group → Releases, Release group → Facts: Artist, Release group → Facts: Genres (without
+Ctrl → "your tag": that waits for 3c, with the tag readers), Recording → Releases, Work →
+Recordings (Phase 2), Place → Events; the Series bug and the catalog-number key above.
+Probe first: =scripts/probe-mb-window-browses.py= (the browses' order is by no date, so these
+tables start sorted by date). Decisions (vzell, 2026-10-27): the artist's release groups get a
+*segment per primary type* with its real total, each its own paged list (the unfiltered browse
+lists Albums first); their covers are asked *lazily*, a missing one gives way to the empty box.
 
 | Entity          | Section                                     | Change                                                                                                                                                         |
 |-----------------+---------------------------------------------+----------------------------------------------------------------------------------------------------------------------------------------------------------------|

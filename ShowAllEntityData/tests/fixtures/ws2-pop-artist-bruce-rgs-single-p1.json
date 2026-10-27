@@ -1,0 +1,2778 @@
+{
+ "release-group-count": 178,
+ "release-group-offset": 0,
+ "release-groups": [
+  {
+   "secondary-types": [],
+   "id": "02fa8c5c-20f5-3b01-954d-ce765452f97f",
+   "disambiguation": "",
+   "title": "One Step Up",
+   "first-release-date": "1987-02-27",
+   "artist-credit": [
+    {
+     "name": "Bruce Springsteen",
+     "joinphrase": "",
+     "artist": {
+      "country": "US",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "type": "Person",
+      "sort-name": "Springsteen, Bruce",
+      "name": "Bruce Springsteen",
+      "disambiguation": ""
+     }
+    }
+   ],
+   "primary-type": "Single",
+   "primary-type-id": "d6038452-8ee0-3f68-affc-2de9a1ede0b9",
+   "secondary-type-ids": []
+  },
+  {
+   "id": "03e70f66-f3a2-4815-94d5-286e1e695411",
+   "secondary-types": [],
+   "disambiguation": "",
+   "title": "A Night with the Jersey Devil",
+   "first-release-date": "2008-10-31",
+   "artist-credit": [
+    {
+     "name": "Bruce Springsteen",
+     "joinphrase": "",
+     "artist": {
+      "country": "US",
+      "disambiguation": "",
+      "name": "Bruce Springsteen",
+      "sort-name": "Springsteen, Bruce",
+      "type": "Person",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f"
+     }
+    }
+   ],
+   "primary-type": "Single",
+   "primary-type-id": "d6038452-8ee0-3f68-affc-2de9a1ede0b9",
+   "secondary-type-ids": []
+  },
+  {
+   "disambiguation": "",
+   "title": "The Ties That Bind / I’m a Rocker",
+   "secondary-types": [],
+   "id": "0537c475-93b8-4cee-9eaa-0d9235ca4e68",
+   "primary-type-id": "d6038452-8ee0-3f68-affc-2de9a1ede0b9",
+   "secondary-type-ids": [],
+   "first-release-date": "1981",
+   "primary-type": "Single",
+   "artist-credit": [
+    {
+     "artist": {
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "sort-name": "Springsteen, Bruce",
+      "type": "Person",
+      "name": "Bruce Springsteen",
+      "disambiguation": "",
+      "country": "US"
+     },
+     "joinphrase": "",
+     "name": "Bruce Springsteen"
+    }
+   ]
+  },
+  {
+   "disambiguation": "",
+   "title": "57 Channels (and Nothin’ On)",
+   "id": "06a2c0aa-c865-3899-bac0-d0d87307516b",
+   "secondary-types": [],
+   "primary-type-id": "d6038452-8ee0-3f68-affc-2de9a1ede0b9",
+   "secondary-type-ids": [],
+   "first-release-date": "1992",
+   "primary-type": "Single",
+   "artist-credit": [
+    {
+     "artist": {
+      "country": "US",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "sort-name": "Springsteen, Bruce",
+      "type": "Person",
+      "disambiguation": "",
+      "name": "Bruce Springsteen"
+     },
+     "name": "Bruce Springsteen",
+     "joinphrase": ""
+    }
+   ]
+  },
+  {
+   "disambiguation": "",
+   "title": "Roll of the Dice",
+   "id": "08702681-274e-47d9-87bf-e930e469f31f",
+   "secondary-types": [
+    "Live"
+   ],
+   "primary-type-id": "d6038452-8ee0-3f68-affc-2de9a1ede0b9",
+   "secondary-type-ids": [
+    "6fd474e2-6b58-3102-9d17-d6f7eb7da0a0"
+   ],
+   "first-release-date": "1992-11-26",
+   "primary-type": "Single",
+   "artist-credit": [
+    {
+     "artist": {
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "sort-name": "Springsteen, Bruce",
+      "type": "Person",
+      "name": "Bruce Springsteen",
+      "disambiguation": "",
+      "country": "US"
+     },
+     "joinphrase": "",
+     "name": "Bruce Springsteen"
+    }
+   ]
+  },
+  {
+   "title": "History Books",
+   "disambiguation": "",
+   "id": "0b51e6fd-191e-42fa-ab4d-0bacf0bfb17c",
+   "secondary-types": [],
+   "secondary-type-ids": [],
+   "primary-type-id": "d6038452-8ee0-3f68-affc-2de9a1ede0b9",
+   "artist-credit": [
+    {
+     "artist": {
+      "id": "f208f09e-b5b3-4b06-87cd-f7230fae17e3",
+      "type-id": "e431f5f6-b5d2-343d-8b36-72607fffb74b",
+      "sort-name": "Gaslight Anthem, The",
+      "type": "Group",
+      "disambiguation": "",
+      "name": "The Gaslight Anthem",
+      "country": "US"
+     },
+     "joinphrase": " feat. ",
+     "name": "The Gaslight Anthem"
+    },
+    {
+     "artist": {
+      "country": "US",
+      "disambiguation": "",
+      "name": "Bruce Springsteen",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "sort-name": "Springsteen, Bruce",
+      "type": "Person"
+     },
+     "name": "Bruce Springsteen",
+     "joinphrase": ""
+    }
+   ],
+   "primary-type": "Single",
+   "first-release-date": "2023-07-21"
+  },
+  {
+   "title": "What Love Can Do",
+   "disambiguation": "",
+   "secondary-types": [],
+   "id": "0b9d9d1d-f9e2-4394-9a68-9770b8cb65ed",
+   "secondary-type-ids": [],
+   "primary-type-id": "d6038452-8ee0-3f68-affc-2de9a1ede0b9",
+   "artist-credit": [
+    {
+     "joinphrase": "",
+     "name": "Bruce Springsteen",
+     "artist": {
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "sort-name": "Springsteen, Bruce",
+      "type": "Person",
+      "disambiguation": "",
+      "name": "Bruce Springsteen",
+      "country": "US"
+     }
+    }
+   ],
+   "primary-type": "Single",
+   "first-release-date": "2009-04-18"
+  },
+  {
+   "id": "0c97cd77-f9c9-3efd-9471-a64b9de50070",
+   "secondary-types": [],
+   "disambiguation": "",
+   "title": "Dancing in the Dark",
+   "first-release-date": "1984-05-09",
+   "artist-credit": [
+    {
+     "name": "Bruce Springsteen",
+     "joinphrase": "",
+     "artist": {
+      "country": "US",
+      "disambiguation": "",
+      "name": "Bruce Springsteen",
+      "type": "Person",
+      "sort-name": "Springsteen, Bruce",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df"
+     }
+    }
+   ],
+   "primary-type": "Single",
+   "primary-type-id": "d6038452-8ee0-3f68-affc-2de9a1ede0b9",
+   "secondary-type-ids": []
+  },
+  {
+   "disambiguation": "",
+   "title": "Faithless",
+   "id": "0faa3fc7-e58e-4d6c-9bc8-a6c6dd0701df",
+   "secondary-types": [],
+   "primary-type-id": "d6038452-8ee0-3f68-affc-2de9a1ede0b9",
+   "secondary-type-ids": [],
+   "first-release-date": "2025-05-01",
+   "artist-credit": [
+    {
+     "artist": {
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "sort-name": "Springsteen, Bruce",
+      "type": "Person",
+      "name": "Bruce Springsteen",
+      "disambiguation": "",
+      "country": "US"
+     },
+     "name": "Bruce Springsteen",
+     "joinphrase": ""
+    }
+   ],
+   "primary-type": "Single"
+  },
+  {
+   "artist-credit": [
+    {
+     "name": "Bruce Springsteen",
+     "joinphrase": " & ",
+     "artist": {
+      "country": "US",
+      "name": "Bruce Springsteen",
+      "disambiguation": "",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "sort-name": "Springsteen, Bruce",
+      "type": "Person"
+     }
+    },
+    {
+     "name": "The E Street Band",
+     "joinphrase": "",
+     "artist": {
+      "disambiguation": "",
+      "name": "The E Street Band",
+      "id": "d6652e7b-33fe-49ef-8336-4c863b4f996f",
+      "type-id": "e431f5f6-b5d2-343d-8b36-72607fffb74b",
+      "type": "Group",
+      "sort-name": "E Street Band, The",
+      "country": "US"
+     }
+    }
+   ],
+   "primary-type": "Single",
+   "first-release-date": "1986-11-06",
+   "secondary-type-ids": [
+    "6fd474e2-6b58-3102-9d17-d6f7eb7da0a0"
+   ],
+   "primary-type-id": "d6038452-8ee0-3f68-affc-2de9a1ede0b9",
+   "id": "0fd8cf85-56d3-4514-81c1-af99ef305e84",
+   "secondary-types": [
+    "Live"
+   ],
+   "title": "War",
+   "disambiguation": ""
+  },
+  {
+   "title": "Hungry Heart / Bayou",
+   "disambiguation": "",
+   "id": "14aea9a8-a52a-4e45-aba7-cf51d83a29d3",
+   "secondary-types": [],
+   "secondary-type-ids": [],
+   "primary-type-id": "d6038452-8ee0-3f68-affc-2de9a1ede0b9",
+   "primary-type": "Single",
+   "artist-credit": [
+    {
+     "name": "Bruce Springsteen",
+     "joinphrase": " / ",
+     "artist": {
+      "country": "US",
+      "name": "Bruce Springsteen",
+      "disambiguation": "",
+      "sort-name": "Springsteen, Bruce",
+      "type": "Person",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df"
+     }
+    },
+    {
+     "artist": {
+      "country": "US",
+      "name": "Love Unlimited Orchestra",
+      "disambiguation": "",
+      "id": "8c92cef7-52ae-49cd-bf5d-97078a977d58",
+      "type-id": "e431f5f6-b5d2-343d-8b36-72607fffb74b",
+      "type": "Group",
+      "sort-name": "Love Unlimited Orchestra"
+     },
+     "name": "The Love Unlimited Orchestra",
+     "joinphrase": ""
+    }
+   ],
+   "first-release-date": "1980"
+  },
+  {
+   "disambiguation": "",
+   "title": "Sad Eyes",
+   "secondary-types": [],
+   "id": "17b42897-d9fa-4e76-b4fe-ad8689d1fe44",
+   "primary-type-id": "d6038452-8ee0-3f68-affc-2de9a1ede0b9",
+   "secondary-type-ids": [],
+   "first-release-date": "1998",
+   "artist-credit": [
+    {
+     "name": "Bruce Springsteen",
+     "joinphrase": "",
+     "artist": {
+      "country": "US",
+      "type": "Person",
+      "sort-name": "Springsteen, Bruce",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "name": "Bruce Springsteen",
+      "disambiguation": ""
+     }
+    }
+   ],
+   "primary-type": "Single"
+  },
+  {
+   "first-release-date": "2002-07-16",
+   "artist-credit": [
+    {
+     "name": "Bruce Springsteen",
+     "joinphrase": "",
+     "artist": {
+      "country": "US",
+      "name": "Bruce Springsteen",
+      "disambiguation": "",
+      "sort-name": "Springsteen, Bruce",
+      "type": "Person",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f"
+     }
+    }
+   ],
+   "primary-type": "Single",
+   "primary-type-id": "d6038452-8ee0-3f68-affc-2de9a1ede0b9",
+   "secondary-type-ids": [],
+   "id": "1be54a6a-e209-4a85-85b1-9af227e462e5",
+   "secondary-types": [],
+   "disambiguation": "",
+   "title": "The Rising"
+  },
+  {
+   "disambiguation": "",
+   "title": "Spirit in the Night",
+   "id": "1eb64a0c-29df-4e5f-abc4-16a6d0d803ed",
+   "secondary-types": [],
+   "primary-type-id": "d6038452-8ee0-3f68-affc-2de9a1ede0b9",
+   "secondary-type-ids": [],
+   "first-release-date": "1973-05-11",
+   "primary-type": "Single",
+   "artist-credit": [
+    {
+     "artist": {
+      "country": "US",
+      "disambiguation": "",
+      "name": "Bruce Springsteen",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "type": "Person",
+      "sort-name": "Springsteen, Bruce"
+     },
+     "joinphrase": "",
+     "name": "Bruce Springsteen"
+    }
+   ]
+  },
+  {
+   "id": "1f79a557-86b7-490a-92c2-354dcf72bd2b",
+   "secondary-types": [],
+   "title": "Glory Days",
+   "disambiguation": "",
+   "artist-credit": [
+    {
+     "joinphrase": "",
+     "name": "Bruce Springsteen",
+     "artist": {
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "sort-name": "Springsteen, Bruce",
+      "type": "Person",
+      "name": "Bruce Springsteen",
+      "disambiguation": "",
+      "country": "US"
+     }
+    }
+   ],
+   "primary-type": "Single",
+   "first-release-date": "1985-05",
+   "secondary-type-ids": [],
+   "primary-type-id": "d6038452-8ee0-3f68-affc-2de9a1ede0b9"
+  },
+  {
+   "title": "Blinded by the Light",
+   "disambiguation": "",
+   "id": "2744af02-7e4e-4b72-9f26-d6bc6565a8bd",
+   "secondary-types": [],
+   "secondary-type-ids": [],
+   "primary-type-id": "d6038452-8ee0-3f68-affc-2de9a1ede0b9",
+   "artist-credit": [
+    {
+     "name": "Bruce Springsteen",
+     "joinphrase": "",
+     "artist": {
+      "name": "Bruce Springsteen",
+      "disambiguation": "",
+      "type": "Person",
+      "sort-name": "Springsteen, Bruce",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "country": "US"
+     }
+    }
+   ],
+   "primary-type": "Single",
+   "first-release-date": "1973-02-23"
+  },
+  {
+   "first-release-date": "2019-05-17",
+   "primary-type": "Single",
+   "artist-credit": [
+    {
+     "name": "Bruce Springsteen",
+     "joinphrase": "",
+     "artist": {
+      "country": "US",
+      "sort-name": "Springsteen, Bruce",
+      "type": "Person",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "name": "Bruce Springsteen",
+      "disambiguation": ""
+     }
+    }
+   ],
+   "primary-type-id": "d6038452-8ee0-3f68-affc-2de9a1ede0b9",
+   "secondary-type-ids": [],
+   "secondary-types": [],
+   "id": "2a3972d8-be61-4cdb-96d2-1e52a2ce3b78",
+   "disambiguation": "",
+   "title": "There Goes My Miracle"
+  },
+  {
+   "artist-credit": [
+    {
+     "artist": {
+      "name": "Bon Jovi",
+      "disambiguation": "group",
+      "id": "5dcdb5eb-cb72-4e6e-9e63-b7bace604965",
+      "type-id": "e431f5f6-b5d2-343d-8b36-72607fffb74b",
+      "sort-name": "Bon Jovi",
+      "type": "Group",
+      "country": "US"
+     },
+     "name": "Bon Jovi",
+     "joinphrase": " & "
+    },
+    {
+     "artist": {
+      "name": "Bruce Springsteen",
+      "disambiguation": "",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "type": "Person",
+      "sort-name": "Springsteen, Bruce",
+      "country": "US"
+     },
+     "joinphrase": "",
+     "name": "Bruce Springsteen"
+    }
+   ],
+   "primary-type": "Single",
+   "first-release-date": "2025-08-29",
+   "secondary-type-ids": [],
+   "primary-type-id": "d6038452-8ee0-3f68-affc-2de9a1ede0b9",
+   "secondary-types": [],
+   "id": "2f0ed54d-8e20-41e2-b661-7923ea4457b3",
+   "title": "Hollow Man",
+   "disambiguation": ""
+  },
+  {
+   "first-release-date": "1980",
+   "primary-type": "Single",
+   "artist-credit": [
+    {
+     "artist": {
+      "country": "US",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "sort-name": "Springsteen, Bruce",
+      "type": "Person",
+      "name": "Bruce Springsteen",
+      "disambiguation": ""
+     },
+     "name": "Bruce Springsteen",
+     "joinphrase": ""
+    }
+   ],
+   "primary-type-id": "d6038452-8ee0-3f68-affc-2de9a1ede0b9",
+   "secondary-type-ids": [],
+   "secondary-types": [],
+   "id": "301762ce-a0a4-4a45-8f3e-35dac8832e03",
+   "disambiguation": "",
+   "title": "Point Blank"
+  },
+  {
+   "disambiguation": "",
+   "title": "Tenth Avenue Freeze‐Out",
+   "secondary-types": [],
+   "id": "3216e81c-509a-499b-a2a3-7aabc7cbe164",
+   "primary-type-id": "d6038452-8ee0-3f68-affc-2de9a1ede0b9",
+   "secondary-type-ids": [],
+   "first-release-date": "1975-12",
+   "primary-type": "Single",
+   "artist-credit": [
+    {
+     "artist": {
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "sort-name": "Springsteen, Bruce",
+      "type": "Person",
+      "disambiguation": "",
+      "name": "Bruce Springsteen",
+      "country": "US"
+     },
+     "joinphrase": "",
+     "name": "Bruce Springsteen"
+    }
+   ]
+  },
+  {
+   "primary-type": "Single",
+   "artist-credit": [
+    {
+     "name": "Bruce Springsteen",
+     "joinphrase": "",
+     "artist": {
+      "sort-name": "Springsteen, Bruce",
+      "type": "Person",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "name": "Bruce Springsteen",
+      "disambiguation": "",
+      "country": "US"
+     }
+    }
+   ],
+   "first-release-date": "1979",
+   "secondary-type-ids": [],
+   "primary-type-id": "d6038452-8ee0-3f68-affc-2de9a1ede0b9",
+   "id": "34a7da9a-6d71-4bd6-b49c-acd815e2426b",
+   "secondary-types": [],
+   "title": "Rosalita (Come Out Tonight)",
+   "disambiguation": ""
+  },
+  {
+   "primary-type-id": "d6038452-8ee0-3f68-affc-2de9a1ede0b9",
+   "secondary-type-ids": [],
+   "first-release-date": "2013-11-25",
+   "artist-credit": [
+    {
+     "name": "Bruce Springsteen",
+     "joinphrase": "",
+     "artist": {
+      "country": "US",
+      "name": "Bruce Springsteen",
+      "disambiguation": "",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "sort-name": "Springsteen, Bruce",
+      "type": "Person"
+     }
+    }
+   ],
+   "primary-type": "Single",
+   "disambiguation": "",
+   "title": "High Hopes",
+   "id": "36395947-73a7-484d-8e6c-c9909a4e7e8c",
+   "secondary-types": []
+  },
+  {
+   "primary-type-id": "d6038452-8ee0-3f68-affc-2de9a1ede0b9",
+   "secondary-type-ids": [],
+   "first-release-date": "1984-10",
+   "artist-credit": [
+    {
+     "artist": {
+      "country": "US",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "sort-name": "Springsteen, Bruce",
+      "type": "Person",
+      "name": "Bruce Springsteen",
+      "disambiguation": ""
+     },
+     "name": "Bruce Springsteen",
+     "joinphrase": ""
+    }
+   ],
+   "primary-type": "Single",
+   "disambiguation": "",
+   "title": "Born in the U.S.A.",
+   "secondary-types": [],
+   "id": "386bf6e7-d85f-48f0-98fb-f6224b2efaed"
+  },
+  {
+   "secondary-type-ids": [],
+   "primary-type-id": "d6038452-8ee0-3f68-affc-2de9a1ede0b9",
+   "artist-credit": [
+    {
+     "artist": {
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "type": "Person",
+      "sort-name": "Springsteen, Bruce",
+      "name": "Bruce Springsteen",
+      "disambiguation": "",
+      "country": "US"
+     },
+     "name": "Bruce Springsteen",
+     "joinphrase": ""
+    }
+   ],
+   "primary-type": "Single",
+   "first-release-date": "1992-03-19",
+   "title": "Human Touch",
+   "disambiguation": "",
+   "secondary-types": [],
+   "id": "3878f670-6eae-3dcd-b288-fc28d5cd163c"
+  },
+  {
+   "primary-type-id": "d6038452-8ee0-3f68-affc-2de9a1ede0b9",
+   "secondary-type-ids": [],
+   "first-release-date": "1992",
+   "artist-credit": [
+    {
+     "name": "Bruce Springsteen",
+     "joinphrase": "",
+     "artist": {
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "sort-name": "Springsteen, Bruce",
+      "type": "Person",
+      "name": "Bruce Springsteen",
+      "disambiguation": "",
+      "country": "US"
+     }
+    }
+   ],
+   "primary-type": "Single",
+   "disambiguation": "",
+   "title": "If I Should Fall Behind",
+   "secondary-types": [],
+   "id": "3894d27b-6e1a-4b7b-bc44-2af9cddc1747"
+  },
+  {
+   "title": "4th of July, Asbury Park (Sandy)",
+   "disambiguation": "",
+   "secondary-types": [],
+   "id": "39b4ed43-1425-46f3-8b1b-3cc703eda075",
+   "secondary-type-ids": [],
+   "primary-type-id": "d6038452-8ee0-3f68-affc-2de9a1ede0b9",
+   "primary-type": "Single",
+   "artist-credit": [
+    {
+     "joinphrase": "",
+     "name": "Bruce Springsteen",
+     "artist": {
+      "disambiguation": "",
+      "name": "Bruce Springsteen",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "type": "Person",
+      "sort-name": "Springsteen, Bruce",
+      "country": "US"
+     }
+    }
+   ],
+   "first-release-date": "1975"
+  },
+  {
+   "primary-type": "Single",
+   "artist-credit": [
+    {
+     "artist": {
+      "country": "US",
+      "name": "Bruce Springsteen",
+      "disambiguation": "",
+      "type": "Person",
+      "sort-name": "Springsteen, Bruce",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f"
+     },
+     "name": "Bruce Springsteen",
+     "joinphrase": ""
+    }
+   ],
+   "first-release-date": "1981-01",
+   "secondary-type-ids": [],
+   "primary-type-id": "d6038452-8ee0-3f68-affc-2de9a1ede0b9",
+   "id": "39bc162b-e9a3-49a2-8b42-73d213fbfec9",
+   "secondary-types": [],
+   "title": "Fade Away",
+   "disambiguation": ""
+  },
+  {
+   "secondary-types": [],
+   "id": "39c7551b-7b87-49e2-ba5f-3827db4bd7ab",
+   "title": "Prove It All Night",
+   "disambiguation": "",
+   "primary-type": "Single",
+   "artist-credit": [
+    {
+     "artist": {
+      "disambiguation": "",
+      "name": "Bruce Springsteen",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "sort-name": "Springsteen, Bruce",
+      "type": "Person",
+      "country": "US"
+     },
+     "name": "Bruce Springsteen",
+     "joinphrase": ""
+    }
+   ],
+   "first-release-date": "1978-05-23",
+   "secondary-type-ids": [],
+   "primary-type-id": "d6038452-8ee0-3f68-affc-2de9a1ede0b9"
+  },
+  {
+   "disambiguation": "",
+   "title": "Fire / Incident on 57th Street",
+   "id": "3b9fcaac-0739-4b83-af64-4068fffa7bd4",
+   "secondary-types": [
+    "Compilation",
+    "Live"
+   ],
+   "primary-type-id": "d6038452-8ee0-3f68-affc-2de9a1ede0b9",
+   "secondary-type-ids": [
+    "dd2a21e1-0c00-3729-a7a0-de60b84eb5d1",
+    "6fd474e2-6b58-3102-9d17-d6f7eb7da0a0"
+   ],
+   "first-release-date": "1987",
+   "artist-credit": [
+    {
+     "artist": {
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "sort-name": "Springsteen, Bruce",
+      "type": "Person",
+      "name": "Bruce Springsteen",
+      "disambiguation": "",
+      "country": "US"
+     },
+     "joinphrase": " & ",
+     "name": "Bruce Springsteen"
+    },
+    {
+     "joinphrase": "",
+     "name": "The E Street Band",
+     "artist": {
+      "country": "US",
+      "type": "Group",
+      "sort-name": "E Street Band, The",
+      "id": "d6652e7b-33fe-49ef-8336-4c863b4f996f",
+      "type-id": "e431f5f6-b5d2-343d-8b36-72607fffb74b",
+      "name": "The E Street Band",
+      "disambiguation": ""
+     }
+    }
+   ],
+   "primary-type": "Single"
+  },
+  {
+   "disambiguation": "",
+   "title": "Murder Incorporated",
+   "id": "3ee68846-8c74-4b34-9db6-3902f93e8da9",
+   "secondary-types": [],
+   "primary-type-id": "d6038452-8ee0-3f68-affc-2de9a1ede0b9",
+   "secondary-type-ids": [],
+   "first-release-date": "1995-03-20",
+   "artist-credit": [
+    {
+     "artist": {
+      "name": "Bruce Springsteen",
+      "disambiguation": "",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "sort-name": "Springsteen, Bruce",
+      "type": "Person",
+      "country": "US"
+     },
+     "joinphrase": "",
+     "name": "Bruce Springsteen"
+    }
+   ],
+   "primary-type": "Single"
+  },
+  {
+   "secondary-type-ids": [],
+   "primary-type-id": "d6038452-8ee0-3f68-affc-2de9a1ede0b9",
+   "artist-credit": [
+    {
+     "artist": {
+      "country": "US",
+      "name": "Bruce Springsteen",
+      "disambiguation": "",
+      "sort-name": "Springsteen, Bruce",
+      "type": "Person",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f"
+     },
+     "name": "Bruce Springsteen",
+     "joinphrase": ""
+    }
+   ],
+   "primary-type": "Single",
+   "first-release-date": "1993",
+   "title": "Streets of Philadelphia",
+   "disambiguation": "",
+   "secondary-types": [],
+   "id": "4307c90a-1aa7-3057-afe3-1914389ce257"
+  },
+  {
+   "id": "43d1aab8-fd12-409a-a64f-aa1db9b6ee79",
+   "secondary-types": [],
+   "title": "Born in the U.S.A. (Electric Nebraska)",
+   "disambiguation": "",
+   "artist-credit": [
+    {
+     "name": "Bruce Springsteen",
+     "joinphrase": "",
+     "artist": {
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "type": "Person",
+      "sort-name": "Springsteen, Bruce",
+      "name": "Bruce Springsteen",
+      "disambiguation": "",
+      "country": "US"
+     }
+    }
+   ],
+   "primary-type": "Single",
+   "first-release-date": "2025-09-04",
+   "secondary-type-ids": [],
+   "primary-type-id": "d6038452-8ee0-3f68-affc-2de9a1ede0b9"
+  },
+  {
+   "title": "Spare Parts",
+   "disambiguation": "",
+   "id": "4c36506b-6717-4557-be73-1896b5d1e69a",
+   "secondary-types": [],
+   "secondary-type-ids": [],
+   "primary-type-id": "d6038452-8ee0-3f68-affc-2de9a1ede0b9",
+   "artist-credit": [
+    {
+     "artist": {
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "type": "Person",
+      "sort-name": "Springsteen, Bruce",
+      "disambiguation": "",
+      "name": "Bruce Springsteen",
+      "country": "US"
+     },
+     "joinphrase": "",
+     "name": "Bruce Springsteen"
+    }
+   ],
+   "primary-type": "Single",
+   "first-release-date": "1988-09-23"
+  },
+  {
+   "id": "4cfbdf82-7f9a-4121-b0e0-69e16ad2ff2e",
+   "secondary-types": [
+    "Compilation"
+   ],
+   "disambiguation": "",
+   "title": "Box Set SMC",
+   "first-release-date": "",
+   "artist-credit": [
+    {
+     "artist": {
+      "country": "US",
+      "disambiguation": "",
+      "name": "Bruce Springsteen",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "sort-name": "Springsteen, Bruce",
+      "type": "Person"
+     },
+     "name": "Bruce Springsteen",
+     "joinphrase": ""
+    }
+   ],
+   "primary-type": "Single",
+   "primary-type-id": "d6038452-8ee0-3f68-affc-2de9a1ede0b9",
+   "secondary-type-ids": [
+    "dd2a21e1-0c00-3729-a7a0-de60b84eb5d1"
+   ]
+  },
+  {
+   "id": "50c9e3c7-07a1-4f35-983d-d02b7dbda484",
+   "secondary-types": [],
+   "title": "Lonely Night in the Park",
+   "disambiguation": "",
+   "artist-credit": [
+    {
+     "artist": {
+      "country": "US",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "type": "Person",
+      "sort-name": "Springsteen, Bruce",
+      "disambiguation": "",
+      "name": "Bruce Springsteen"
+     },
+     "name": "Bruce Springsteen",
+     "joinphrase": ""
+    }
+   ],
+   "primary-type": "Single",
+   "first-release-date": "2025-08-22",
+   "secondary-type-ids": [],
+   "primary-type-id": "d6038452-8ee0-3f68-affc-2de9a1ede0b9"
+  },
+  {
+   "secondary-type-ids": [],
+   "primary-type-id": "d6038452-8ee0-3f68-affc-2de9a1ede0b9",
+   "artist-credit": [
+    {
+     "artist": {
+      "country": "US",
+      "name": "Bruce Springsteen",
+      "disambiguation": "",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "type": "Person",
+      "sort-name": "Springsteen, Bruce"
+     },
+     "joinphrase": "",
+     "name": "Bruce Springsteen"
+    }
+   ],
+   "primary-type": "Single",
+   "first-release-date": "2015-10-16",
+   "title": "Meet Me in the City",
+   "disambiguation": "",
+   "id": "512f4f3b-7ee1-42ed-84d1-bdd48ec43d51",
+   "secondary-types": []
+  },
+  {
+   "disambiguation": "",
+   "title": "Do I Love You (Indeed I Do) / Turn Back the Hands of Time",
+   "id": "58f09a0f-4106-4aa3-9edc-53f49ddfc4a5",
+   "secondary-types": [],
+   "primary-type-id": "d6038452-8ee0-3f68-affc-2de9a1ede0b9",
+   "secondary-type-ids": [],
+   "first-release-date": "2022",
+   "artist-credit": [
+    {
+     "joinphrase": "",
+     "name": "Bruce Springsteen",
+     "artist": {
+      "country": "US",
+      "disambiguation": "",
+      "name": "Bruce Springsteen",
+      "sort-name": "Springsteen, Bruce",
+      "type": "Person",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df"
+     }
+    }
+   ],
+   "primary-type": "Single"
+  },
+  {
+   "first-release-date": "2008-11-24",
+   "artist-credit": [
+    {
+     "joinphrase": "",
+     "name": "Bruce Springsteen",
+     "artist": {
+      "disambiguation": "",
+      "name": "Bruce Springsteen",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "type": "Person",
+      "sort-name": "Springsteen, Bruce",
+      "country": "US"
+     }
+    }
+   ],
+   "primary-type": "Single",
+   "primary-type-id": "d6038452-8ee0-3f68-affc-2de9a1ede0b9",
+   "secondary-type-ids": [],
+   "id": "5d4399dc-bb76-328e-8568-4c46eb8d939d",
+   "secondary-types": [],
+   "disambiguation": "",
+   "title": "Working on a Dream"
+  },
+  {
+   "secondary-types": [],
+   "id": "60893eef-2440-44ee-9386-82a6876adcbd",
+   "title": "Addicted to Romance",
+   "disambiguation": "",
+   "artist-credit": [
+    {
+     "artist": {
+      "type": "Person",
+      "sort-name": "Springsteen, Bruce",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "name": "Bruce Springsteen",
+      "disambiguation": "",
+      "country": "US"
+     },
+     "name": "Bruce Springsteen",
+     "joinphrase": " & "
+    },
+    {
+     "name": "Patti Scialfa",
+     "joinphrase": "",
+     "artist": {
+      "country": "US",
+      "disambiguation": "",
+      "name": "Patti Scialfa",
+      "type": "Person",
+      "sort-name": "Scialfa, Patti",
+      "id": "f09aa40c-b613-4ea2-a8cf-6056c2657a9a",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df"
+     }
+    }
+   ],
+   "primary-type": "Single",
+   "first-release-date": "2023-09-29",
+   "secondary-type-ids": [],
+   "primary-type-id": "d6038452-8ee0-3f68-affc-2de9a1ede0b9"
+  },
+  {
+   "artist-credit": [
+    {
+     "joinphrase": " ft. ",
+     "name": "Tom Morello",
+     "artist": {
+      "name": "Tom Morello",
+      "disambiguation": "",
+      "sort-name": "Morello, Tom",
+      "type": "Person",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "id": "42a636a0-dbe4-4d0c-abe2-1590fad9531b",
+      "country": "US"
+     }
+    },
+    {
+     "artist": {
+      "name": "Bruce Springsteen",
+      "disambiguation": "",
+      "type": "Person",
+      "sort-name": "Springsteen, Bruce",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "country": "US"
+     },
+     "name": "Bruce Springsteen",
+     "joinphrase": " & "
+    },
+    {
+     "artist": {
+      "disambiguation": "",
+      "name": "Eddie Vedder",
+      "sort-name": "Vedder, Eddie",
+      "type": "Person",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "id": "1a60d6dd-9d3e-40fc-a66d-3184f9ee0d61",
+      "country": "US"
+     },
+     "name": "Eddie Vedder",
+     "joinphrase": ""
+    }
+   ],
+   "primary-type": "Single",
+   "first-release-date": "2021-08-04",
+   "secondary-type-ids": [],
+   "primary-type-id": "d6038452-8ee0-3f68-affc-2de9a1ede0b9",
+   "secondary-types": [],
+   "id": "627b4010-94e5-48a7-a6d3-d143499351c0",
+   "title": "Highway to Hell",
+   "disambiguation": ""
+  },
+  {
+   "id": "649414b1-a05f-48eb-bbb9-301e7fa4b84d",
+   "secondary-types": [],
+   "disambiguation": "",
+   "title": "I Wanna Marry You",
+   "first-release-date": "1981",
+   "primary-type": "Single",
+   "artist-credit": [
+    {
+     "joinphrase": "",
+     "name": "Bruce Springsteen",
+     "artist": {
+      "disambiguation": "",
+      "name": "Bruce Springsteen",
+      "sort-name": "Springsteen, Bruce",
+      "type": "Person",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "country": "US"
+     }
+    }
+   ],
+   "primary-type-id": "d6038452-8ee0-3f68-affc-2de9a1ede0b9",
+   "secondary-type-ids": []
+  },
+  {
+   "primary-type": "Single",
+   "artist-credit": [
+    {
+     "artist": {
+      "country": "US",
+      "disambiguation": "",
+      "name": "Bruce Springsteen",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "sort-name": "Springsteen, Bruce",
+      "type": "Person"
+     },
+     "name": "Bruce Springsteen",
+     "joinphrase": ""
+    }
+   ],
+   "first-release-date": "1992",
+   "secondary-type-ids": [],
+   "primary-type-id": "d6038452-8ee0-3f68-affc-2de9a1ede0b9",
+   "id": "6ac2004d-6df1-43a4-8174-315415e19e25",
+   "secondary-types": [],
+   "title": "Lucky Town",
+   "disambiguation": ""
+  },
+  {
+   "primary-type": "Single",
+   "artist-credit": [
+    {
+     "name": "Bruce Springsteen",
+     "joinphrase": "",
+     "artist": {
+      "country": "US",
+      "name": "Bruce Springsteen",
+      "disambiguation": "",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "sort-name": "Springsteen, Bruce",
+      "type": "Person"
+     }
+    }
+   ],
+   "first-release-date": "1981",
+   "secondary-type-ids": [],
+   "primary-type-id": "d6038452-8ee0-3f68-affc-2de9a1ede0b9",
+   "secondary-types": [],
+   "id": "7061f39f-09fc-4eb1-a7a3-649189a1f0bf",
+   "title": "Sherry Darling",
+   "disambiguation": ""
+  },
+  {
+   "artist-credit": [
+    {
+     "name": "Bruce Springsteen",
+     "joinphrase": "",
+     "artist": {
+      "country": "US",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "sort-name": "Springsteen, Bruce",
+      "type": "Person",
+      "name": "Bruce Springsteen",
+      "disambiguation": ""
+     }
+    }
+   ],
+   "primary-type": "Single",
+   "first-release-date": "2019-04-26",
+   "secondary-type-ids": [],
+   "primary-type-id": "d6038452-8ee0-3f68-affc-2de9a1ede0b9",
+   "secondary-types": [],
+   "id": "70b5c7e0-addc-4a42-acc6-f025641cff79",
+   "title": "Hello Sunshine",
+   "disambiguation": ""
+  },
+  {
+   "primary-type": "Single",
+   "artist-credit": [
+    {
+     "name": "The Killers",
+     "joinphrase": " feat. ",
+     "artist": {
+      "country": "US",
+      "sort-name": "Killers, The",
+      "type": "Group",
+      "type-id": "e431f5f6-b5d2-343d-8b36-72607fffb74b",
+      "id": "95e1ead9-4d31-4808-a7ac-32c3614c116b",
+      "disambiguation": "American rock band",
+      "name": "The Killers"
+     }
+    },
+    {
+     "artist": {
+      "country": "US",
+      "type": "Person",
+      "sort-name": "Springsteen, Bruce",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "name": "Bruce Springsteen",
+      "disambiguation": ""
+     },
+     "joinphrase": "",
+     "name": "Bruce Springsteen"
+    }
+   ],
+   "first-release-date": "2021-06-16",
+   "secondary-type-ids": [],
+   "primary-type-id": "d6038452-8ee0-3f68-affc-2de9a1ede0b9",
+   "id": "72ee1f8a-e983-48f9-8bc6-2c5424aee5e6",
+   "secondary-types": [],
+   "title": "Dustland",
+   "disambiguation": ""
+  },
+  {
+   "disambiguation": "",
+   "title": "Brilliant Disguise",
+   "secondary-types": [],
+   "id": "7628b498-2b24-4926-b2f2-c95f664fa856",
+   "primary-type-id": "d6038452-8ee0-3f68-affc-2de9a1ede0b9",
+   "secondary-type-ids": [],
+   "first-release-date": "1987-09-17",
+   "primary-type": "Single",
+   "artist-credit": [
+    {
+     "artist": {
+      "name": "Bruce Springsteen",
+      "disambiguation": "",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "sort-name": "Springsteen, Bruce",
+      "type": "Person",
+      "country": "US"
+     },
+     "joinphrase": "",
+     "name": "Bruce Springsteen"
+    }
+   ]
+  },
+  {
+   "id": "77cabd9d-1b37-4f12-a492-023ea09c97df",
+   "secondary-types": [],
+   "title": "She Don’t Love Me Now",
+   "disambiguation": "",
+   "artist-credit": [
+    {
+     "artist": {
+      "country": "US",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "id": "db0fc330-1fa1-43f8-a33f-33eaf6a97d78",
+      "type": "Person",
+      "sort-name": "Malin, Jesse",
+      "name": "Jesse Malin",
+      "disambiguation": ""
+     },
+     "name": "Jesse Malin",
+     "joinphrase": ", "
+    },
+    {
+     "artist": {
+      "sort-name": "Springsteen, Bruce",
+      "type": "Person",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "disambiguation": "",
+      "name": "Bruce Springsteen",
+      "country": "US"
+     },
+     "name": "Bruce Springsteen",
+     "joinphrase": ""
+    }
+   ],
+   "primary-type": "Single",
+   "first-release-date": "2024-08-28",
+   "secondary-type-ids": [],
+   "primary-type-id": "d6038452-8ee0-3f68-affc-2de9a1ede0b9"
+  },
+  {
+   "secondary-type-ids": [],
+   "primary-type-id": "d6038452-8ee0-3f68-affc-2de9a1ede0b9",
+   "artist-credit": [
+    {
+     "artist": {
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "type": "Person",
+      "sort-name": "Springsteen, Bruce",
+      "disambiguation": "",
+      "name": "Bruce Springsteen",
+      "country": "US"
+     },
+     "name": "Bruce Springsteen",
+     "joinphrase": ""
+    }
+   ],
+   "primary-type": "Single",
+   "first-release-date": "2022-09-29",
+   "title": "Do I Love You (Indeed I Do)",
+   "disambiguation": "",
+   "secondary-types": [],
+   "id": "7903e88c-51da-47fb-95fa-a0ebcf072472"
+  },
+  {
+   "title": "Repo Man",
+   "disambiguation": "",
+   "id": "7b0479bb-3e1f-446b-9aa9-bac64d591fc2",
+   "secondary-types": [],
+   "secondary-type-ids": [],
+   "primary-type-id": "d6038452-8ee0-3f68-affc-2de9a1ede0b9",
+   "artist-credit": [
+    {
+     "artist": {
+      "country": "US",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "sort-name": "Springsteen, Bruce",
+      "type": "Person",
+      "disambiguation": "",
+      "name": "Bruce Springsteen"
+     },
+     "joinphrase": "",
+     "name": "Bruce Springsteen"
+    }
+   ],
+   "primary-type": "Single",
+   "first-release-date": "2025-05-14"
+  },
+  {
+   "primary-type-id": "d6038452-8ee0-3f68-affc-2de9a1ede0b9",
+   "secondary-type-ids": [
+    "6fd474e2-6b58-3102-9d17-d6f7eb7da0a0"
+   ],
+   "first-release-date": "1980",
+   "primary-type": "Single",
+   "artist-credit": [
+    {
+     "artist": {
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "sort-name": "Springsteen, Bruce",
+      "type": "Person",
+      "name": "Bruce Springsteen",
+      "disambiguation": "",
+      "country": "US"
+     },
+     "joinphrase": "",
+     "name": "Bruce Springsteen"
+    }
+   ],
+   "disambiguation": "",
+   "title": "Santa Claus Is Comin’ to Town",
+   "secondary-types": [
+    "Live"
+   ],
+   "id": "80266775-42c1-4b20-84b1-d5e90212955d"
+  },
+  {
+   "disambiguation": "",
+   "title": "The River",
+   "id": "81a69727-30b8-4517-b642-96c5f446822b",
+   "secondary-types": [],
+   "primary-type-id": "d6038452-8ee0-3f68-affc-2de9a1ede0b9",
+   "secondary-type-ids": [],
+   "first-release-date": "1981",
+   "artist-credit": [
+    {
+     "artist": {
+      "disambiguation": "",
+      "name": "Bruce Springsteen",
+      "sort-name": "Springsteen, Bruce",
+      "type": "Person",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "country": "US"
+     },
+     "joinphrase": "",
+     "name": "Bruce Springsteen"
+    }
+   ],
+   "primary-type": "Single"
+  },
+  {
+   "disambiguation": "",
+   "title": "Adelita",
+   "id": "8718efcf-cfce-4593-b293-552a7c7f7e85",
+   "secondary-types": [],
+   "primary-type-id": "d6038452-8ee0-3f68-affc-2de9a1ede0b9",
+   "secondary-type-ids": [],
+   "first-release-date": "2025-05-29",
+   "artist-credit": [
+    {
+     "joinphrase": "",
+     "name": "Bruce Springsteen",
+     "artist": {
+      "country": "US",
+      "disambiguation": "",
+      "name": "Bruce Springsteen",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "type": "Person",
+      "sort-name": "Springsteen, Bruce"
+     }
+    }
+   ],
+   "primary-type": "Single"
+  },
+  {
+   "disambiguation": "",
+   "title": "Waitin’ on a Sunny Day",
+   "secondary-types": [],
+   "id": "88a698cb-ea19-4c3d-882e-87280ed7142b",
+   "primary-type-id": "d6038452-8ee0-3f68-affc-2de9a1ede0b9",
+   "secondary-type-ids": [],
+   "first-release-date": "2003-02-25",
+   "primary-type": "Single",
+   "artist-credit": [
+    {
+     "artist": {
+      "country": "US",
+      "disambiguation": "",
+      "name": "Bruce Springsteen",
+      "sort-name": "Springsteen, Bruce",
+      "type": "Person",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f"
+     },
+     "name": "Bruce Springsteen",
+     "joinphrase": ""
+    }
+   ]
+  },
+  {
+   "disambiguation": "",
+   "title": "Missing",
+   "secondary-types": [],
+   "id": "89d81c1b-f07a-4e90-880a-5e03083a8b38",
+   "primary-type-id": "d6038452-8ee0-3f68-affc-2de9a1ede0b9",
+   "secondary-type-ids": [],
+   "first-release-date": "1996",
+   "artist-credit": [
+    {
+     "artist": {
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "type": "Person",
+      "sort-name": "Springsteen, Bruce",
+      "disambiguation": "",
+      "name": "Bruce Springsteen",
+      "country": "US"
+     },
+     "joinphrase": "",
+     "name": "Bruce Springsteen"
+    }
+   ],
+   "primary-type": "Single"
+  },
+  {
+   "secondary-type-ids": [],
+   "primary-type-id": "d6038452-8ee0-3f68-affc-2de9a1ede0b9",
+   "artist-credit": [
+    {
+     "joinphrase": "",
+     "name": "Bruce Springsteen",
+     "artist": {
+      "disambiguation": "",
+      "name": "Bruce Springsteen",
+      "type": "Person",
+      "sort-name": "Springsteen, Bruce",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "country": "US"
+     }
+    }
+   ],
+   "primary-type": "Single",
+   "first-release-date": "1985",
+   "title": "I’m on Fire",
+   "disambiguation": "",
+   "id": "8eca7697-79f5-34af-bc2a-c79605f6030c",
+   "secondary-types": []
+  },
+  {
+   "disambiguation": "",
+   "title": "Better Days",
+   "id": "8f104db1-2f63-4895-949b-d66803382073",
+   "secondary-types": [],
+   "primary-type-id": "d6038452-8ee0-3f68-affc-2de9a1ede0b9",
+   "secondary-type-ids": [],
+   "first-release-date": "1992-05-05",
+   "artist-credit": [
+    {
+     "artist": {
+      "name": "Bruce Springsteen",
+      "disambiguation": "",
+      "sort-name": "Springsteen, Bruce",
+      "type": "Person",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "country": "US"
+     },
+     "joinphrase": "",
+     "name": "Bruce Springsteen"
+    }
+   ],
+   "primary-type": "Single"
+  },
+  {
+   "first-release-date": "2022-10-28",
+   "artist-credit": [
+    {
+     "name": "Bruce Springsteen",
+     "joinphrase": "",
+     "artist": {
+      "country": "US",
+      "sort-name": "Springsteen, Bruce",
+      "type": "Person",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "disambiguation": "",
+      "name": "Bruce Springsteen"
+     }
+    }
+   ],
+   "primary-type": "Single",
+   "primary-type-id": "d6038452-8ee0-3f68-affc-2de9a1ede0b9",
+   "secondary-type-ids": [],
+   "id": "8f7592fa-3392-4fe1-913d-9109307a252e",
+   "secondary-types": [],
+   "disambiguation": "",
+   "title": "Don’t Play That Song"
+  },
+  {
+   "secondary-type-ids": [],
+   "primary-type-id": "d6038452-8ee0-3f68-affc-2de9a1ede0b9",
+   "primary-type": "Single",
+   "artist-credit": [
+    {
+     "joinphrase": "",
+     "name": "Bruce Springsteen",
+     "artist": {
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "type": "Person",
+      "sort-name": "Springsteen, Bruce",
+      "name": "Bruce Springsteen",
+      "disambiguation": "",
+      "country": "US"
+     }
+    }
+   ],
+   "first-release-date": "2015-11-23",
+   "title": "Party Lights",
+   "disambiguation": "",
+   "secondary-types": [],
+   "id": "90729f8d-601f-4bd4-bb44-479c1425e17b"
+  },
+  {
+   "id": "93b33822-9fa3-4820-8966-c704e217d4be",
+   "secondary-types": [],
+   "title": "Save My Love",
+   "disambiguation": "",
+   "artist-credit": [
+    {
+     "artist": {
+      "country": "US",
+      "name": "Bruce Springsteen",
+      "disambiguation": "",
+      "sort-name": "Springsteen, Bruce",
+      "type": "Person",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f"
+     },
+     "joinphrase": "",
+     "name": "Bruce Springsteen"
+    }
+   ],
+   "primary-type": "Single",
+   "first-release-date": "2010-11-26",
+   "secondary-type-ids": [],
+   "primary-type-id": "d6038452-8ee0-3f68-affc-2de9a1ede0b9"
+  },
+  {
+   "primary-type-id": "d6038452-8ee0-3f68-affc-2de9a1ede0b9",
+   "secondary-type-ids": [],
+   "first-release-date": "1982",
+   "artist-credit": [
+    {
+     "joinphrase": "",
+     "name": "Bruce Springsteen",
+     "artist": {
+      "country": "US",
+      "disambiguation": "",
+      "name": "Bruce Springsteen",
+      "type": "Person",
+      "sort-name": "Springsteen, Bruce",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f"
+     }
+    }
+   ],
+   "primary-type": "Single",
+   "disambiguation": "",
+   "title": "Open All Night",
+   "secondary-types": [],
+   "id": "95f400a7-1889-45c6-a8c8-f93d17ee8cb6"
+  },
+  {
+   "secondary-types": [],
+   "id": "a413c6b2-71b0-4e3f-b828-ec9371e4d869",
+   "title": "Blind Spot",
+   "disambiguation": "",
+   "artist-credit": [
+    {
+     "joinphrase": "",
+     "name": "Bruce Springsteen",
+     "artist": {
+      "country": "US",
+      "name": "Bruce Springsteen",
+      "disambiguation": "",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "type": "Person",
+      "sort-name": "Springsteen, Bruce"
+     }
+    }
+   ],
+   "primary-type": "Single",
+   "first-release-date": "2025-04-17",
+   "secondary-type-ids": [],
+   "primary-type-id": "d6038452-8ee0-3f68-affc-2de9a1ede0b9"
+  },
+  {
+   "disambiguation": "",
+   "title": "Ghosts",
+   "secondary-types": [],
+   "id": "a42740cc-f203-459f-88ae-ee4ed91dfa8c",
+   "primary-type-id": "d6038452-8ee0-3f68-affc-2de9a1ede0b9",
+   "secondary-type-ids": [],
+   "first-release-date": "2020-09-24",
+   "artist-credit": [
+    {
+     "joinphrase": "",
+     "name": "Bruce Springsteen",
+     "artist": {
+      "country": "US",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "type": "Person",
+      "sort-name": "Springsteen, Bruce",
+      "name": "Bruce Springsteen",
+      "disambiguation": ""
+     }
+    }
+   ],
+   "primary-type": "Single"
+  },
+  {
+   "id": "a6ba93f4-c7d9-4b11-8c5c-f9afd669eb53",
+   "secondary-types": [],
+   "disambiguation": "",
+   "title": "Nightshift",
+   "first-release-date": "2022-10-14",
+   "primary-type": "Single",
+   "artist-credit": [
+    {
+     "artist": {
+      "country": "US",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "type": "Person",
+      "sort-name": "Springsteen, Bruce",
+      "name": "Bruce Springsteen",
+      "disambiguation": ""
+     },
+     "name": "Bruce Springsteen",
+     "joinphrase": ""
+    }
+   ],
+   "primary-type-id": "d6038452-8ee0-3f68-affc-2de9a1ede0b9",
+   "secondary-type-ids": []
+  },
+  {
+   "primary-type": "Single",
+   "artist-credit": [
+    {
+     "artist": {
+      "sort-name": "Grushecky, Joe & the Houserockers",
+      "type": "Group",
+      "id": "60890a33-fc2b-4d06-b8a0-a4599437144e",
+      "type-id": "e431f5f6-b5d2-343d-8b36-72607fffb74b",
+      "name": "Joe Grushecky & the Houserockers",
+      "disambiguation": "",
+      "country": "US"
+     },
+     "name": "Joe Grushecky & the Houserockers",
+     "joinphrase": " with "
+    },
+    {
+     "artist": {
+      "country": "US",
+      "name": "Bruce Springsteen",
+      "disambiguation": "",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "type": "Person",
+      "sort-name": "Springsteen, Bruce"
+     },
+     "name": "Bruce Springsteen",
+     "joinphrase": ""
+    }
+   ],
+   "first-release-date": "2017-04-19",
+   "secondary-type-ids": [],
+   "primary-type-id": "d6038452-8ee0-3f68-affc-2de9a1ede0b9",
+   "secondary-types": [],
+   "id": "ac79057e-3d4a-471e-a632-b518c0ccd02b",
+   "title": "That’s What Makes Us Great",
+   "disambiguation": ""
+  },
+  {
+   "primary-type-id": "d6038452-8ee0-3f68-affc-2de9a1ede0b9",
+   "secondary-type-ids": [],
+   "first-release-date": "1982",
+   "primary-type": "Single",
+   "artist-credit": [
+    {
+     "artist": {
+      "country": "US",
+      "type": "Person",
+      "sort-name": "Springsteen, Bruce",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "name": "Bruce Springsteen",
+      "disambiguation": ""
+     },
+     "name": "Bruce Springsteen",
+     "joinphrase": ""
+    }
+   ],
+   "disambiguation": "",
+   "title": "Atlantic City",
+   "id": "ad843f40-210e-4845-a0f1-042dd69da1b2",
+   "secondary-types": []
+  },
+  {
+   "artist-credit": [
+    {
+     "name": "Bruce Springsteen",
+     "joinphrase": "",
+     "artist": {
+      "country": "US",
+      "sort-name": "Springsteen, Bruce",
+      "type": "Person",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "disambiguation": "",
+      "name": "Bruce Springsteen"
+     }
+    }
+   ],
+   "primary-type": "Single",
+   "first-release-date": "2012-04-21",
+   "secondary-type-ids": [],
+   "primary-type-id": "d6038452-8ee0-3f68-affc-2de9a1ede0b9",
+   "id": "ae4d64b1-57ef-457f-8b8e-c41e1e14b507",
+   "secondary-types": [],
+   "title": "Rocky Ground",
+   "disambiguation": ""
+  },
+  {
+   "secondary-types": [],
+   "id": "b42fd088-a027-48ee-8a6a-02b5e556a146",
+   "disambiguation": "",
+   "title": "57 Channels",
+   "first-release-date": "1992",
+   "artist-credit": [
+    {
+     "name": "Bruce Springsteen",
+     "joinphrase": "",
+     "artist": {
+      "disambiguation": "",
+      "name": "Bruce Springsteen",
+      "type": "Person",
+      "sort-name": "Springsteen, Bruce",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "country": "US"
+     }
+    }
+   ],
+   "primary-type": "Single",
+   "primary-type-id": "d6038452-8ee0-3f68-affc-2de9a1ede0b9",
+   "secondary-type-ids": []
+  },
+  {
+   "title": "The Ghost of Tom Joad",
+   "disambiguation": "",
+   "secondary-types": [],
+   "id": "b5997972-f5c4-45c9-9625-29aba78dfe98",
+   "secondary-type-ids": [],
+   "primary-type-id": "d6038452-8ee0-3f68-affc-2de9a1ede0b9",
+   "artist-credit": [
+    {
+     "artist": {
+      "sort-name": "Springsteen, Bruce",
+      "type": "Person",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "name": "Bruce Springsteen",
+      "disambiguation": "",
+      "country": "US"
+     },
+     "joinphrase": "",
+     "name": "Bruce Springsteen"
+    }
+   ],
+   "primary-type": "Single",
+   "first-release-date": "1995"
+  },
+  {
+   "first-release-date": "2019-05-30",
+   "primary-type": "Single",
+   "artist-credit": [
+    {
+     "name": "Bruce Springsteen",
+     "joinphrase": "",
+     "artist": {
+      "type": "Person",
+      "sort-name": "Springsteen, Bruce",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "name": "Bruce Springsteen",
+      "disambiguation": "",
+      "country": "US"
+     }
+    }
+   ],
+   "primary-type-id": "d6038452-8ee0-3f68-affc-2de9a1ede0b9",
+   "secondary-type-ids": [],
+   "id": "b78933b9-f6c6-47ad-a8ef-7e2cefa0b7e6",
+   "secondary-types": [],
+   "disambiguation": "",
+   "title": "Tucson Train"
+  },
+  {
+   "first-release-date": "1982",
+   "primary-type": "Single",
+   "artist-credit": [
+    {
+     "name": "Bruce Springsteen",
+     "joinphrase": "",
+     "artist": {
+      "disambiguation": "",
+      "name": "Bruce Springsteen",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "sort-name": "Springsteen, Bruce",
+      "type": "Person",
+      "country": "US"
+     }
+    }
+   ],
+   "primary-type-id": "d6038452-8ee0-3f68-affc-2de9a1ede0b9",
+   "secondary-type-ids": [
+    "dd2a21e1-0c00-3729-a7a0-de60b84eb5d1"
+   ],
+   "secondary-types": [
+    "Compilation"
+   ],
+   "id": "b97e4764-8d99-4872-ac2a-b8a8acd6f0ae",
+   "disambiguation": "",
+   "title": "Hungry Heart / Fade Away"
+  },
+  {
+   "secondary-type-ids": [],
+   "primary-type-id": "d6038452-8ee0-3f68-affc-2de9a1ede0b9",
+   "primary-type": "Single",
+   "artist-credit": [
+    {
+     "joinphrase": "",
+     "name": "Bruce Springsteen",
+     "artist": {
+      "disambiguation": "",
+      "name": "Bruce Springsteen",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "type": "Person",
+      "sort-name": "Springsteen, Bruce",
+      "country": "US"
+     }
+    }
+   ],
+   "first-release-date": "1978-07-21",
+   "title": "Badlands",
+   "disambiguation": "",
+   "secondary-types": [],
+   "id": "bf9ab1d2-0a51-4028-a3cc-f6e550d85992"
+  },
+  {
+   "id": "c1a8c245-ae8f-4d00-bf26-a13060cb49b3",
+   "secondary-types": [],
+   "disambiguation": "",
+   "title": "Dead Man Walkin’",
+   "first-release-date": "1996",
+   "primary-type": "Single",
+   "artist-credit": [
+    {
+     "name": "Bruce Springsteen",
+     "joinphrase": "",
+     "artist": {
+      "country": "US",
+      "type": "Person",
+      "sort-name": "Springsteen, Bruce",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "disambiguation": "",
+      "name": "Bruce Springsteen"
+     }
+    }
+   ],
+   "primary-type-id": "d6038452-8ee0-3f68-affc-2de9a1ede0b9",
+   "secondary-type-ids": []
+  },
+  {
+   "id": "c2b61525-979a-40af-b3a9-81dbf1265298",
+   "secondary-types": [],
+   "disambiguation": "",
+   "title": "Cadillac Ranch",
+   "first-release-date": "1981",
+   "artist-credit": [
+    {
+     "name": "Bruce Springsteen",
+     "joinphrase": "",
+     "artist": {
+      "name": "Bruce Springsteen",
+      "disambiguation": "",
+      "sort-name": "Springsteen, Bruce",
+      "type": "Person",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "country": "US"
+     }
+    }
+   ],
+   "primary-type": "Single",
+   "primary-type-id": "d6038452-8ee0-3f68-affc-2de9a1ede0b9",
+   "secondary-type-ids": []
+  },
+  {
+   "id": "c61b22a7-e7a1-4e05-a3d7-85d91ca1335e",
+   "secondary-types": [],
+   "title": "Radio Nowhere",
+   "disambiguation": "",
+   "primary-type": "Single",
+   "artist-credit": [
+    {
+     "joinphrase": "",
+     "name": "Bruce Springsteen",
+     "artist": {
+      "country": "US",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "type": "Person",
+      "sort-name": "Springsteen, Bruce",
+      "name": "Bruce Springsteen",
+      "disambiguation": ""
+     }
+    }
+   ],
+   "first-release-date": "2007-08-28",
+   "secondary-type-ids": [],
+   "primary-type-id": "d6038452-8ee0-3f68-affc-2de9a1ede0b9"
+  },
+  {
+   "secondary-type-ids": [
+    "6fd474e2-6b58-3102-9d17-d6f7eb7da0a0"
+   ],
+   "primary-type-id": "d6038452-8ee0-3f68-affc-2de9a1ede0b9",
+   "primary-type": "Single",
+   "artist-credit": [
+    {
+     "artist": {
+      "country": "US",
+      "disambiguation": "",
+      "name": "Bruce Springsteen",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "type": "Person",
+      "sort-name": "Springsteen, Bruce"
+     },
+     "name": "Bruce Springsteen",
+     "joinphrase": " & "
+    },
+    {
+     "name": "The E Street Band",
+     "joinphrase": "",
+     "artist": {
+      "type": "Group",
+      "sort-name": "E Street Band, The",
+      "id": "d6652e7b-33fe-49ef-8336-4c863b4f996f",
+      "type-id": "e431f5f6-b5d2-343d-8b36-72607fffb74b",
+      "name": "The E Street Band",
+      "disambiguation": "",
+      "country": "US"
+     }
+    }
+   ],
+   "first-release-date": "1986",
+   "title": "Born to Run: Live",
+   "disambiguation": "",
+   "secondary-types": [
+    "Live"
+   ],
+   "id": "c69ff95e-c92a-410a-84b4-b1f06d01a89b"
+  },
+  {
+   "primary-type-id": "d6038452-8ee0-3f68-affc-2de9a1ede0b9",
+   "secondary-type-ids": [],
+   "first-release-date": "2026-01-28",
+   "artist-credit": [
+    {
+     "artist": {
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "type": "Person",
+      "sort-name": "Springsteen, Bruce",
+      "name": "Bruce Springsteen",
+      "disambiguation": "",
+      "country": "US"
+     },
+     "joinphrase": "",
+     "name": "Bruce Springsteen"
+    }
+   ],
+   "primary-type": "Single",
+   "disambiguation": "",
+   "title": "Streets of Minneapolis",
+   "secondary-types": [],
+   "id": "c8e768c9-448b-4ebd-8e5e-4ae95609dd0b"
+  },
+  {
+   "title": "A Rainy Night in Soho",
+   "disambiguation": "",
+   "secondary-types": [],
+   "id": "c95a36c7-2fae-43a7-a8bb-eafbb0895430",
+   "secondary-type-ids": [],
+   "primary-type-id": "d6038452-8ee0-3f68-affc-2de9a1ede0b9",
+   "artist-credit": [
+    {
+     "name": "Bruce Springsteen",
+     "joinphrase": "",
+     "artist": {
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "type": "Person",
+      "sort-name": "Springsteen, Bruce",
+      "disambiguation": "",
+      "name": "Bruce Springsteen",
+      "country": "US"
+     }
+    }
+   ],
+   "primary-type": "Single",
+   "first-release-date": "2026-03-12"
+  },
+  {
+   "id": "cef9273b-7402-43db-a280-bc3aa3b2baf2",
+   "secondary-types": [
+    "Live"
+   ],
+   "title": "Fire",
+   "disambiguation": "",
+   "primary-type": "Single",
+   "artist-credit": [
+    {
+     "name": "Bruce Springsteen",
+     "joinphrase": " & ",
+     "artist": {
+      "name": "Bruce Springsteen",
+      "disambiguation": "",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "sort-name": "Springsteen, Bruce",
+      "type": "Person",
+      "country": "US"
+     }
+    },
+    {
+     "name": "The E Street Band",
+     "joinphrase": "",
+     "artist": {
+      "country": "US",
+      "disambiguation": "",
+      "name": "The E Street Band",
+      "id": "d6652e7b-33fe-49ef-8336-4c863b4f996f",
+      "type-id": "e431f5f6-b5d2-343d-8b36-72607fffb74b",
+      "type": "Group",
+      "sort-name": "E Street Band, The"
+     }
+    }
+   ],
+   "first-release-date": "1987-01",
+   "secondary-type-ids": [
+    "6fd474e2-6b58-3102-9d17-d6f7eb7da0a0"
+   ],
+   "primary-type-id": "d6038452-8ee0-3f68-affc-2de9a1ede0b9"
+  },
+  {
+   "id": "d16b62cd-6afe-4656-b621-1842223dcf13",
+   "secondary-types": [],
+   "disambiguation": "",
+   "title": "Girls in Their Summer Clothes",
+   "first-release-date": "2008-01-08",
+   "primary-type": "Single",
+   "artist-credit": [
+    {
+     "joinphrase": "",
+     "name": "Bruce Springsteen",
+     "artist": {
+      "sort-name": "Springsteen, Bruce",
+      "type": "Person",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "name": "Bruce Springsteen",
+      "disambiguation": "",
+      "country": "US"
+     }
+    }
+   ],
+   "primary-type-id": "d6038452-8ee0-3f68-affc-2de9a1ede0b9",
+   "secondary-type-ids": []
+  },
+  {
+   "secondary-types": [],
+   "id": "d30fc12b-2437-3aa4-bfa6-4e3b0b3adef0",
+   "title": "Hungry Heart",
+   "disambiguation": "",
+   "primary-type": "Single",
+   "artist-credit": [
+    {
+     "artist": {
+      "disambiguation": "",
+      "name": "Bruce Springsteen",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "type": "Person",
+      "sort-name": "Springsteen, Bruce",
+      "country": "US"
+     },
+     "joinphrase": "",
+     "name": "Bruce Springsteen"
+    }
+   ],
+   "first-release-date": "1980-10",
+   "secondary-type-ids": [],
+   "primary-type-id": "d6038452-8ee0-3f68-affc-2de9a1ede0b9"
+  },
+  {
+   "primary-type-id": "d6038452-8ee0-3f68-affc-2de9a1ede0b9",
+   "secondary-type-ids": [],
+   "first-release-date": "1985",
+   "artist-credit": [
+    {
+     "name": "Bruce Springsteen",
+     "joinphrase": "",
+     "artist": {
+      "country": "US",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "sort-name": "Springsteen, Bruce",
+      "type": "Person",
+      "name": "Bruce Springsteen",
+      "disambiguation": ""
+     }
+    }
+   ],
+   "primary-type": "Single",
+   "disambiguation": "",
+   "title": "I’m Goin’ Down",
+   "secondary-types": [],
+   "id": "d4760667-eb2f-4eac-a716-77900efb4e18"
+  },
+  {
+   "primary-type-id": "d6038452-8ee0-3f68-affc-2de9a1ede0b9",
+   "secondary-type-ids": [],
+   "first-release-date": "1984",
+   "primary-type": "Single",
+   "artist-credit": [
+    {
+     "joinphrase": "",
+     "name": "Bruce Springsteen",
+     "artist": {
+      "name": "Bruce Springsteen",
+      "disambiguation": "",
+      "type": "Person",
+      "sort-name": "Springsteen, Bruce",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "country": "US"
+     }
+    }
+   ],
+   "disambiguation": "",
+   "title": "Cover Me",
+   "id": "d5797f1d-4699-4bba-a185-6c4db312dfa3",
+   "secondary-types": []
+  },
+  {
+   "secondary-type-ids": [],
+   "primary-type-id": "d6038452-8ee0-3f68-affc-2de9a1ede0b9",
+   "primary-type": "Single",
+   "artist-credit": [
+    {
+     "name": "Bruce Springsteen",
+     "joinphrase": "",
+     "artist": {
+      "disambiguation": "",
+      "name": "Bruce Springsteen",
+      "type": "Person",
+      "sort-name": "Springsteen, Bruce",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "country": "US"
+     }
+    }
+   ],
+   "first-release-date": "2012-01-19",
+   "title": "We Take Care of Our Own",
+   "disambiguation": "",
+   "id": "d6712e2e-17a1-421b-a053-a26017f426bd",
+   "secondary-types": []
+  },
+  {
+   "secondary-types": [],
+   "id": "d904e417-9aa1-4a31-9a31-bead5460f2de",
+   "disambiguation": "",
+   "title": "Western Stars",
+   "first-release-date": "2019-11-29",
+   "artist-credit": [
+    {
+     "joinphrase": "",
+     "name": "Bruce Springsteen",
+     "artist": {
+      "country": "US",
+      "disambiguation": "",
+      "name": "Bruce Springsteen",
+      "sort-name": "Springsteen, Bruce",
+      "type": "Person",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f"
+     }
+    }
+   ],
+   "primary-type": "Single",
+   "primary-type-id": "d6038452-8ee0-3f68-affc-2de9a1ede0b9",
+   "secondary-type-ids": []
+  },
+  {
+   "artist-credit": [
+    {
+     "name": "T.X.T",
+     "joinphrase": " / ",
+     "artist": {
+      "id": "c38491dd-cf54-4589-ad93-724c4670c7fd",
+      "type-id": "e431f5f6-b5d2-343d-8b36-72607fffb74b",
+      "type": "Group",
+      "sort-name": "T.X.T.",
+      "disambiguation": "80s German pop duo",
+      "name": "T.X.T.",
+      "country": "DE"
+     }
+    },
+    {
+     "joinphrase": "",
+     "name": "Bruce Springsteen",
+     "artist": {
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "type": "Person",
+      "sort-name": "Springsteen, Bruce",
+      "name": "Bruce Springsteen",
+      "disambiguation": "",
+      "country": "US"
+     }
+    }
+   ],
+   "primary-type": "Single",
+   "first-release-date": "1985",
+   "secondary-type-ids": [],
+   "primary-type-id": "d6038452-8ee0-3f68-affc-2de9a1ede0b9",
+   "id": "da88ec47-ad7b-4d1b-927c-787c071edc83",
+   "secondary-types": [],
+   "title": "Girl’s Got a Brand New Toy / I’m on Fire",
+   "disambiguation": ""
+  },
+  {
+   "first-release-date": "1987",
+   "primary-type": "Single",
+   "artist-credit": [
+    {
+     "artist": {
+      "country": "US",
+      "disambiguation": "",
+      "name": "Bruce Springsteen",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "type": "Person",
+      "sort-name": "Springsteen, Bruce"
+     },
+     "joinphrase": "",
+     "name": "Bruce Springsteen"
+    }
+   ],
+   "primary-type-id": "d6038452-8ee0-3f68-affc-2de9a1ede0b9",
+   "secondary-type-ids": [],
+   "id": "e0b8503a-74fb-4501-92f2-9b6b46660289",
+   "secondary-types": [],
+   "disambiguation": "",
+   "title": "Tunnel of Love"
+  },
+  {
+   "title": "Born to Run",
+   "disambiguation": "",
+   "id": "e6e5a3fc-80da-4cd9-954f-bd8b6cf1cb75",
+   "secondary-types": [],
+   "secondary-type-ids": [],
+   "primary-type-id": "d6038452-8ee0-3f68-affc-2de9a1ede0b9",
+   "primary-type": "Single",
+   "artist-credit": [
+    {
+     "joinphrase": "",
+     "name": "Bruce Springsteen",
+     "artist": {
+      "country": "US",
+      "disambiguation": "",
+      "name": "Bruce Springsteen",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "sort-name": "Springsteen, Bruce",
+      "type": "Person"
+     }
+    }
+   ],
+   "first-release-date": "1975"
+  },
+  {
+   "id": "ea40e127-dbd5-44bf-b370-2e45ff242bf9",
+   "secondary-types": [],
+   "title": "Chinatown",
+   "disambiguation": "",
+   "primary-type": "Single",
+   "artist-credit": [
+    {
+     "artist": {
+      "sort-name": "Bleachers",
+      "type": "Group",
+      "id": "58e235fc-f6ea-4614-9ed4-9855a5665ae1",
+      "type-id": "e431f5f6-b5d2-343d-8b36-72607fffb74b",
+      "name": "Bleachers",
+      "disambiguation": "",
+      "country": "US"
+     },
+     "name": "Bleachers",
+     "joinphrase": " feat. "
+    },
+    {
+     "artist": {
+      "country": "US",
+      "name": "Bruce Springsteen",
+      "disambiguation": "",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "sort-name": "Springsteen, Bruce",
+      "type": "Person"
+     },
+     "name": "Bruce Springsteen",
+     "joinphrase": ""
+    }
+   ],
+   "first-release-date": "2020-11-16",
+   "secondary-type-ids": [],
+   "primary-type-id": "d6038452-8ee0-3f68-affc-2de9a1ede0b9"
+  },
+  {
+   "secondary-type-ids": [
+    "dd2a21e1-0c00-3729-a7a0-de60b84eb5d1"
+   ],
+   "primary-type-id": "d6038452-8ee0-3f68-affc-2de9a1ede0b9",
+   "artist-credit": [
+    {
+     "joinphrase": "",
+     "name": "Bruce Springsteen",
+     "artist": {
+      "country": "US",
+      "sort-name": "Springsteen, Bruce",
+      "type": "Person",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "name": "Bruce Springsteen",
+      "disambiguation": ""
+     }
+    }
+   ],
+   "primary-type": "Single",
+   "first-release-date": "1976",
+   "title": "Born to Run / Spirit in the Night",
+   "disambiguation": "",
+   "id": "eb888b1c-1e6a-41b1-8075-f88f9d479694",
+   "secondary-types": [
+    "Compilation"
+   ]
+  },
+  {
+   "id": "ec59eef0-68b0-4d46-a4d9-c98010aa9872",
+   "secondary-types": [],
+   "title": "Leap of Faith",
+   "disambiguation": "",
+   "primary-type": "Single",
+   "artist-credit": [
+    {
+     "joinphrase": "",
+     "name": "Bruce Springsteen",
+     "artist": {
+      "disambiguation": "",
+      "name": "Bruce Springsteen",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "sort-name": "Springsteen, Bruce",
+      "type": "Person",
+      "country": "US"
+     }
+    }
+   ],
+   "first-release-date": "1992",
+   "secondary-type-ids": [],
+   "primary-type-id": "d6038452-8ee0-3f68-affc-2de9a1ede0b9"
+  },
+  {
+   "primary-type-id": "d6038452-8ee0-3f68-affc-2de9a1ede0b9",
+   "secondary-type-ids": [],
+   "first-release-date": "1976",
+   "primary-type": "Single",
+   "artist-credit": [
+    {
+     "name": "Bruce Springsteen",
+     "joinphrase": " / ",
+     "artist": {
+      "country": "US",
+      "disambiguation": "",
+      "name": "Bruce Springsteen",
+      "type": "Person",
+      "sort-name": "Springsteen, Bruce",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f"
+     }
+    },
+    {
+     "joinphrase": "",
+     "name": "Bob Dylan",
+     "artist": {
+      "disambiguation": "",
+      "name": "Bob Dylan",
+      "type": "Person",
+      "sort-name": "Dylan, Bob",
+      "id": "72c536dc-7137-4477-a521-567eeb840fa8",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "country": "US"
+     }
+    }
+   ],
+   "disambiguation": "",
+   "title": "Born to Run / Hurricane (Part I)",
+   "secondary-types": [],
+   "id": "f140126c-43b5-4732-894c-18df1976832e"
+  },
+  {
+   "disambiguation": "",
+   "title": "Letter to You",
+   "id": "f1a5194b-3a94-4064-908a-430b10df66d1",
+   "secondary-types": [],
+   "primary-type-id": "d6038452-8ee0-3f68-affc-2de9a1ede0b9",
+   "secondary-type-ids": [],
+   "first-release-date": "2020-09-10",
+   "primary-type": "Single",
+   "artist-credit": [
+    {
+     "artist": {
+      "country": "US",
+      "disambiguation": "",
+      "name": "Bruce Springsteen",
+      "sort-name": "Springsteen, Bruce",
+      "type": "Person",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df"
+     },
+     "joinphrase": "",
+     "name": "Bruce Springsteen"
+    }
+   ]
+  },
+  {
+   "secondary-types": [],
+   "id": "f3528c02-dfa0-3b65-b12d-c252a6290770",
+   "disambiguation": "",
+   "title": "Secret Garden",
+   "first-release-date": "1995-01-01",
+   "primary-type": "Single",
+   "artist-credit": [
+    {
+     "joinphrase": "",
+     "name": "Bruce Springsteen",
+     "artist": {
+      "name": "Bruce Springsteen",
+      "disambiguation": "",
+      "type": "Person",
+      "sort-name": "Springsteen, Bruce",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "country": "US"
+     }
+    }
+   ],
+   "primary-type-id": "d6038452-8ee0-3f68-affc-2de9a1ede0b9",
+   "secondary-type-ids": []
+  },
+  {
+   "secondary-types": [],
+   "id": "f587af67-470f-36a2-a9a0-88ed5e00a271",
+   "disambiguation": "",
+   "title": "My Hometown",
+   "first-release-date": "1985-11",
+   "primary-type": "Single",
+   "artist-credit": [
+    {
+     "joinphrase": "",
+     "name": "Bruce Springsteen",
+     "artist": {
+      "country": "US",
+      "disambiguation": "",
+      "name": "Bruce Springsteen",
+      "sort-name": "Springsteen, Bruce",
+      "type": "Person",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df"
+     }
+    }
+   ],
+   "primary-type-id": "d6038452-8ee0-3f68-affc-2de9a1ede0b9",
+   "secondary-type-ids": []
+  },
+  {
+   "title": "The Promised Land",
+   "disambiguation": "",
+   "id": "f6ce36e8-9cf1-4a71-a751-8670a7798bcd",
+   "secondary-types": [],
+   "secondary-type-ids": [],
+   "primary-type-id": "d6038452-8ee0-3f68-affc-2de9a1ede0b9",
+   "primary-type": "Single",
+   "artist-credit": [
+    {
+     "artist": {
+      "disambiguation": "",
+      "name": "Bruce Springsteen",
+      "sort-name": "Springsteen, Bruce",
+      "type": "Person",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "country": "US"
+     },
+     "joinphrase": "",
+     "name": "Bruce Springsteen"
+    }
+   ],
+   "first-release-date": "1978-10-27"
+  },
+  {
+   "id": "f789ffa1-80a4-4624-96ee-ba51c864e9d7",
+   "secondary-types": [],
+   "disambiguation": "",
+   "title": "Brilliant Disguise / Fake",
+   "first-release-date": "1987",
+   "artist-credit": [
+    {
+     "artist": {
+      "country": "US",
+      "disambiguation": "",
+      "name": "Bruce Springsteen",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "sort-name": "Springsteen, Bruce",
+      "type": "Person"
+     },
+     "joinphrase": " / ",
+     "name": "Bruce Springsteen"
+    },
+    {
+     "joinphrase": "",
+     "name": "Alexander O’Neal",
+     "artist": {
+      "country": "US",
+      "id": "fc4af92a-1aa8-4f35-9aea-29b2ecbe0779",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "sort-name": "O’Neal, Alexander",
+      "type": "Person",
+      "disambiguation": "",
+      "name": "Alexander O’Neal"
+     }
+    }
+   ],
+   "primary-type": "Single",
+   "primary-type-id": "d6038452-8ee0-3f68-affc-2de9a1ede0b9",
+   "secondary-type-ids": []
+  },
+  {
+   "primary-type-id": "d6038452-8ee0-3f68-affc-2de9a1ede0b9",
+   "secondary-type-ids": [],
+   "first-release-date": "1988-09-21",
+   "artist-credit": [
+    {
+     "artist": {
+      "disambiguation": "",
+      "name": "Bruce Springsteen",
+      "type": "Person",
+      "sort-name": "Springsteen, Bruce",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "country": "US"
+     },
+     "joinphrase": "",
+     "name": "Bruce Springsteen"
+    }
+   ],
+   "primary-type": "Single",
+   "disambiguation": "",
+   "title": "Tougher Than the Rest",
+   "secondary-types": [],
+   "id": "f83d2211-dd81-4b1e-9a02-e89733891e1c"
+  },
+  {
+   "secondary-type-ids": [],
+   "primary-type-id": "d6038452-8ee0-3f68-affc-2de9a1ede0b9",
+   "artist-credit": [
+    {
+     "name": "John Mellencamp",
+     "joinphrase": " + ",
+     "artist": {
+      "country": "US",
+      "sort-name": "Mellencamp, John",
+      "type": "Person",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "id": "0aad6b52-fd93-4ea4-9c5d-1f66e1bc9f0a",
+      "name": "John Mellencamp",
+      "disambiguation": ""
+     }
+    },
+    {
+     "name": "Bruce Springsteen",
+     "joinphrase": "",
+     "artist": {
+      "country": "US",
+      "name": "Bruce Springsteen",
+      "disambiguation": "",
+      "type": "Person",
+      "sort-name": "Springsteen, Bruce",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f"
+     }
+    }
+   ],
+   "primary-type": "Single",
+   "first-release-date": "2021-09-29",
+   "title": "Wasted Days",
+   "disambiguation": "",
+   "secondary-types": [],
+   "id": "fd0cb241-a69f-45d8-ad55-3eb3539b93d8"
+  },
+  {
+   "secondary-types": [],
+   "id": "fdd5c809-e852-49ed-988e-9ab0b6a6f2f6",
+   "disambiguation": "",
+   "title": "Sunday Love",
+   "first-release-date": "2025-06-12",
+   "artist-credit": [
+    {
+     "artist": {
+      "sort-name": "Springsteen, Bruce",
+      "type": "Person",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "name": "Bruce Springsteen",
+      "disambiguation": "",
+      "country": "US"
+     },
+     "name": "Bruce Springsteen",
+     "joinphrase": ""
+    }
+   ],
+   "primary-type": "Single",
+   "primary-type-id": "d6038452-8ee0-3f68-affc-2de9a1ede0b9",
+   "secondary-type-ids": []
+  },
+  {
+   "title": "Rain in the River",
+   "disambiguation": "",
+   "secondary-types": [],
+   "id": "ff6a46b5-0e5d-488e-a587-cc18c9d9a4af",
+   "secondary-type-ids": [],
+   "primary-type-id": "d6038452-8ee0-3f68-affc-2de9a1ede0b9",
+   "artist-credit": [
+    {
+     "artist": {
+      "country": "US",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "sort-name": "Springsteen, Bruce",
+      "type": "Person",
+      "name": "Bruce Springsteen",
+      "disambiguation": ""
+     },
+     "joinphrase": "",
+     "name": "Bruce Springsteen"
+    }
+   ],
+   "primary-type": "Single",
+   "first-release-date": "2025-04-03"
+  }
+ ]
+}

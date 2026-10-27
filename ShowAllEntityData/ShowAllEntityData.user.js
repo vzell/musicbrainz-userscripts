@@ -26906,7 +26906,14 @@
         if (titleSpan) titleSpan.after(origin);
         api.scrollArea.classList.add('mb-dp-area');
         api.scrollArea.addEventListener('error', (e) => {
-            if (e.target && e.target.tagName === 'IMG') e.target.remove();
+            if (!e.target || e.target.tagName !== 'IMG') return;
+            // A List table's cover the archive does not have (a release
+            // group's, which no browse flags): the empty box of the same
+            // size takes the link's place, so the row keeps its height and
+            // no viewer opens on nothing.
+            const link = e.target.closest('.mb-dp-tbl a.mb-pop-cover-thumb');
+            if (link) link.outerHTML = '<span class="mb-dg-vthumb mb-dg-nothumb" aria-hidden="true"></span>';
+            else e.target.remove();
         }, true);
         api.scrollArea.addEventListener('click', (e) => {
             if (e.target.closest('.mb-dp-retry')) _dpRenderDialog(true);
@@ -27580,16 +27587,7 @@
                 padding: 3px 6px; border-bottom: 1px solid #ece4d4; text-align: left; vertical-align: middle; white-space: nowrap;
             }
             .mb-dp-dialog .mb-rg-wtable th { background: #efe6d4; font-weight: 400; font-style: italic; color: #7a6d5c; }
-            .mb-dp-dialog .mb-rg-wtable th button {
-                border: 0; background: none; padding: 0; font: inherit; color: inherit; cursor: pointer;
-            }
-            .mb-dp-dialog .mb-rg-wtable th button::after {
-                content: " \\21C5"; opacity: 0.35; font-style: normal;
-                display: inline-block; width: 1.4em; line-height: 1; text-align: center;
-            }
-            .mb-dp-dialog .mb-rg-wtable th[aria-sort="ascending"] button::after { content: " \\25B2"; opacity: 0.9; }
-            .mb-dp-dialog .mb-rg-wtable th[aria-sort="descending"] button::after { content: " \\25BC"; opacity: 0.9; }
-            .mb-dp-dialog .mb-rg-wtable tr.mb-rg-cur td { background: #f1e8d5; font-weight: 700; }
+            .mb-dp-dialog :is(.mb-rg-wtable, .mb-dg-vt) tr.mb-rg-cur td { background: #f1e8d5; font-weight: 700; }
             .mb-dp-dialog .mb-rg-wtable a { color: #6b3f12; }
             .mb-dp-dialog .mb-rg-num { text-align: right; font-variant-numeric: tabular-nums; }
             .mb-dp-dialog .mb-rg-thumb { width: 32px; padding-right: 0; }
@@ -51550,13 +51548,6 @@
      */
     const _rgFacts = new Map();
 
-    /**
-     * The window's sort of the releases table, kept while the page is open:
-     * a `_RG_COLUMNS` key and 1 (ascending) or -1. No key: this release
-     * first, then by date and title, as on the card.
-     * @type {{key: string, dir: number}}
-     */
-    const _rgSort = { key: '', dir: 1 };
 
     /**
      * One Web Service request of the release-group popups (the releases, the
@@ -51973,57 +51964,67 @@
     ];
 
     /**
-     * The window's table of every loaded release, sorted by `_rgSort` (empty
-     * values last either way), else in the card's order. Each title links its
-     * release (a new tab); a cover shows only where the release's own
-     * `cover-art-archive.front` says the archive has one, so the table
+     * The window's table of every loaded release as a List table (Phase 3b;
+     * the shared one, `_dpListTableHtml()`): at first this release first,
+     * then by date and title, as on the card; every column sortable through
+     * three states (empty values last either way), a filter, format chips.
+     * Each title links its release; a cover shows only where the release's
+     * own `cover-art-archive.front` says the archive has one, so the table
      * requests no missing image (org/iframe.org R2; the block is accurate,
-     * org/caa-artwork-requests.org F1). The images load lazily, as the table
-     * scrolls into view.
+     * org/caa-artwork-requests.org F1), and any other row has the empty box.
+     * The images load lazily, as the table scrolls into view.
      *
+     * @param {object} t - The window's target (the table's state is kept by it).
      * @param {{releases: Array<Object>}} st - `_rgReleases` state.
      * @param {{releaseGid: string}} info
      * @returns {string}
      */
-    function _rgWindowTableHtml(st, info) {
-        let rels = _rgSortedReleases(st.releases, info.releaseGid);
-        const col = _RG_COLUMNS.find(c => c.key === _rgSort.key);
-        if (col) {
-            rels = rels.slice().sort((a, b) => {
-                const x = col.val(a);
-                const y = col.val(b);
-                if (x === '' || y === '') return (x === '') - (y === '');
-                return (col.num ? x - y : String(x).localeCompare(String(y), undefined, { numeric: true })) * _rgSort.dir;
-            });
-        }
-        const head = '<th></th>' + _RG_COLUMNS.map(c => {
-            const attrs = _dpSortAttrs({ col: _rgSort.key, dir: _rgSort.dir }, c.key, 'this release first, then by date');
-            const sort = attrs.match(/aria-sort="(\w+)"/)[1];
-            return `<th aria-sort="${sort}"><button type="button" data-mb-rg-sort="${c.key}"${attrs.replace(/ aria-sort="\w+"/, '')}>${_rgEsc(c.label)}</button></th>`;
-        }).join('');
-        const rows = rels.map(r => {
-            const cur = r.id === info.releaseGid;
-            const front = r['cover-art-archive'] && r['cover-art-archive'].front;
-            const id = _rgEsc(r.id);
-            const cells = _RG_COLUMNS.map(c => {
-                if (c.key === 'title') {
-                    return `<td>${cur ? '▸ ' : ''}<a href="/release/${id}" target="_blank" rel="noopener">${_rgEsc(r.title)}</a>` +
-                        `${r.disambiguation ? ` <span class="mb-rg-dim">(${_rgEsc(r.disambiguation)})</span>` : ''}</td>`;
-                }
-                const v = c.key === 'format' ? _rgFormatOf(r) : c.val(r);
-                return `<td${c.num ? ' class="mb-rg-num"' : ''}>${_rgEsc(v === '' ? '—' : v)}</td>`;
-            }).join('');
-            return `<tr${cur ? ' class="mb-rg-cur"' : ''}><td class="mb-rg-thumb">` +
-                (front ? _mbPopCoverThumbHtml('release', r.id, r.title) : '') +
-                `</td>${cells}</tr>`;
-        }).join('');
-        return `<div class="mb-rg-wtable-wrap"><table class="mb-rg-wtable"><thead><tr>${head}</tr></thead><tbody>${rows}</tbody></table></div>`;
+    function _rgWindowTableHtml(t, st, info) {
+        const cur = r => r.id === info.releaseGid;
+        const cols = _RG_COLUMNS.map((c) => {
+            if (c.key === 'title') {
+                return {
+                    key: c.key, label: c.label, val: c.val,
+                    html: (r, q) => `${cur(r) ? '▸ ' : ''}<a href="/release/${_rgEsc(r.id)}" target="_blank" rel="noopener">${_hlEsc(r.title, q)}</a>` +
+                        `${r.disambiguation ? ` <span class="mb-rg-dim">(${_hlEsc(r.disambiguation, q)})</span>` : ''}`,
+                };
+            }
+            return {
+                key: c.key, label: c.label, val: c.val, num: c.num, cls: c.num ? 'mb-rg-num' : '',
+                html: (r, q) => {
+                    const v = c.key === 'format' ? _rgFormatOf(r) : c.val(r);
+                    return v === '' ? '—' : _hlEsc(v, q);
+                },
+            };
+        });
+        return _dpListTableHtml(t, 'rg-releases', cols, _rgSortedReleases(st.releases, info.releaseGid), {
+            initial: 'this release first, then by date', placeholder: 'Filter loaded releases: title, format, country, label, cat#, barcode',
+            search: r => [r.title, r.disambiguation, ..._RG_COLUMNS.slice(1).map(c => (c.key === 'format' ? _rgFormatOf(r) : c.val(r)))].join(' '),
+            facet: r => _rgFormatOf(r), chipLabel: 'Format',
+            thumb: r => (r['cover-art-archive'] && r['cover-art-archive'].front ? _mbPopCoverThumbHtml('release', r.id, r.title, 'mb-dg-vthumb') : ''),
+            rowAttrs: r => (cur(r) ? ' class="mb-rg-cur"' : ''), nomatch: 'No loaded release matches.',
+        });
     }
 
     /**
-     * The facts column of the window: type, first release, artist, rating,
-     * genres, the external links and the annotation — or their loading or
-     * failure line.
+     * Genres as links to their tag pages (`/tag/<name>`, which the window
+     * previews and opens in place: the `tag` page kind), one per line, as
+     * the window's Facts show them (org/MB-POH-sync-withDiscogs.org, Phase
+     * 3a).
+     *
+     * @param {?Array<{name: string}>} genres - `genres` of a lookup.
+     * @returns {string} HTML; empty for none.
+     */
+    function _mbPopGenreLinksHtml(genres) {
+        return (genres || []).map(g => g && g.name).filter(Boolean)
+            .map(n => `<a href="/tag/${encodeURIComponent(n)}" target="_blank" rel="noopener">${_rgEsc(n)}</a>`).join('<br>');
+    }
+
+    /**
+     * The facts column of the window: type, first release, artist (each
+     * credited artist a link, opening in the window), rating, genres (one
+     * per line, each its tag page: `_mbPopGenreLinksHtml()`), the external
+     * links and the annotation — or their loading or failure line.
      *
      * @param {{status: string, data: ?Object, detail: string}} f - `_rgFacts` state.
      * @returns {string}
@@ -52037,16 +52038,15 @@
             return '<h4>Facts</h4><div class="mb-dp-xsub"><span class="mb-dp-spin">◌</span> Loading the release group…</div>';
         }
         const d = f.data;
-        const fields = [['Type', [d['primary-type'], ...(d['secondary-types'] || [])].filter(Boolean).join(' + ') || '—']];
-        if (d['first-release-date']) fields.push(['First release', d['first-release-date']]);
-        const credit = (d['artist-credit'] || []).map(c => `${c.name || ''}${c.joinphrase || ''}`).join('');
-        if (credit) fields.push(['Artist', credit]);
         const rt = d.rating || {};
         const votes = rt['votes-count'] || 0;
-        fields.push(['Rating', votes ? `${rt.value} of 5 · ${votes} vote${votes === 1 ? '' : 's'}` : 'no votes']);
-        const genres = (d.genres || []).map(g => g.name).filter(Boolean);
-        if (genres.length) fields.push(['Genres', genres.join(', ')]);
-        let html = '<h4>Facts</h4>' + _dpFieldsHtml(fields) + _mbPopUrlLinksHtml(d.relations);
+        let html = '<h4>Facts</h4>' + _mbPopKvHtml([
+            ['Type', _rgEsc([d['primary-type'], ...(d['secondary-types'] || [])].filter(Boolean).join(' + ') || '—')],
+            ['First release', _rgEsc(d['first-release-date'] || '')],
+            ['Artist', _mbPopCreditHtml(d['artist-credit'])],
+            ['Rating', _rgEsc(votes ? `${rt.value} of 5 · ${votes} vote${votes === 1 ? '' : 's'}` : 'no votes')],
+            ['Genres', _mbPopGenreLinksHtml(d.genres)],
+        ]) + _mbPopUrlLinksHtml(d.relations);
         if (d.annotation) html += `<h4>Annotation</h4><div class="mb-dp-section">${_rgEsc(d.annotation)}</div>`;
         return html;
     }
@@ -52056,12 +52056,13 @@
      * the facts on the left; every release, sortable, on the right, with the
      * load's state above the table.
      *
+     * @param {object} t - The window's target: its releases table keeps its state by it.
      * @param {{gid: string, name: string, type: string, artist: string, releaseGid: string}} info
      * @param {?number} n - Releases the group has, as `_rgCardHtml()`.
      * @param {string} [lead] - As `_rgCardHtml()`.
      * @returns {string}
      */
-    function _rgWindowHtml(info, n, lead = '') {
+    function _rgWindowHtml(t, info, n, lead = '') {
         const st = _rgReleases.get(info.gid) || { status: 'loading', releases: [], total: null };
         const f = _rgFacts.get(info.gid) || { status: 'loading', data: null, detail: '' };
         const count = st.total ?? n;
@@ -52092,7 +52093,7 @@
             state = `<div class="mb-dp-warn">Loaded ${loaded} of ${total}; the rest could not be loaded (${_rgEsc(st.detail)}).</div>` +
                 '<p><button type="button" class="mb-dp-retry">⟳ Try again</button></p>';
         }
-        const right = `<h4>Releases${count != null ? ` · ${count}` : ''}</h4>${state}` + (loaded ? _rgWindowTableHtml(st, info) : '');
+        const right = `<h4>Releases${count != null ? ` · ${count}` : ''}</h4>${state}` + (loaded ? _rgWindowTableHtml(t, st, info) : '');
         const age = st.at ? _dpAgeText({ cached: st.cached, at: st.at }) : '';
         return `<div class="mb-dp-x mb-rg-x"><div class="mb-dp-col">${left}</div><div class="mb-dp-col">${right}</div></div>` +
             `<div class="mb-dp-xfoot">${_rgEsc(age)}${age ? ' · ' : ''}click a header to sort · ⟳ asks MusicBrainz again</div>`;
@@ -52106,6 +52107,7 @@
      * for a failure, which only ⟳ or "Try again" retries: a repaint that
      * retried would loop.
      *
+     * @param {object} t - The window's target (`_rgWindowHtml()`).
      * @param {Object} info - `_releaseGroupInfo()`, or a found event's group.
      * @param {number} n
      * @param {string} lead
@@ -52114,29 +52116,12 @@
      * @param {function(): void} repaint
      * @returns {string}
      */
-    function _rgWindowFor(info, n, lead, start, force, repaint) {
+    function _rgWindowFor(t, info, n, lead, start, force, repaint) {
         const st = _rgReleases.get(info.gid);
         const firstPageOnly = st && st.status === 'done' && !st.complete && !st.capped && !st.detail;
         if (start || !st || firstPageOnly) _rgReleasesLoad(info, { all: true, force: start && force, repaint });
         if (start || !_rgFacts.get(info.gid)) _rgFactsLoad(info.gid, { force: start && force, repaint });
-        return _rgWindowHtml(info, n, lead);
-    }
-
-    /**
-     * A click in the window's Extracted view of a release group: a header
-     * sorts by its column, a second click on it reverses the order.
-     *
-     * @param {MouseEvent} e
-     * @returns {void}
-     */
-    function _rgOnAreaClick(e) {
-        const b = e.target.closest ? e.target.closest('button[data-mb-rg-sort]') : null;
-        if (!b) return;
-        const key = b.dataset.mbRgSort;
-        const next = _dpSortNext({ col: _rgSort.key, dir: _rgSort.dir }, key);
-        _rgSort.key = next.col;
-        _rgSort.dir = next.dir || 1;
-        _dpRenderDialog(false);
+        return _rgWindowHtml(t, info, n, lead);
     }
 
     /**
@@ -52426,17 +52411,19 @@
      * closest titles as links; else the search's state. With `start` (a pin,
      * a step, ⟳) it starts the search, `force` dropping a kept answer first.
      *
-     * @param {HTMLTableCellElement} td
+     * @param {object} t - The "#" cell's target (`t.el` the cell); the
+     *   release group's table keeps its state by it (`_dpTblUi()`).
      * @param {boolean} start
      * @param {boolean} force
      * @param {function(): void} repaint
      * @returns {string}
      */
-    function _eventRgWindowHtml(td, start, force, repaint) {
+    function _eventRgWindowHtml(t, start, force, repaint) {
+        const td = t.el;
         const row = td.parentElement;
         if (row.dataset.mbMainEvent === '1') {
             const info = _releaseGroupInfo();
-            if (info) return _rgWindowFor(info, _releaseGroupVersionCount(), '<span class="mb-tt-pill">main event</span>', start, force, repaint);
+            if (info) return _rgWindowFor(t, info, _releaseGroupVersionCount(), '<span class="mb-tt-pill">main event</span>', start, force, repaint);
         }
         const text = _eventSearchText(row);
         const chip = _eventChipHtml(td);
@@ -52448,7 +52435,7 @@
             _eventRgLookup(text, repaint);
         }
         const st = _eventRgSearches.get(text) || { status: 'loading', rg: null, hints: [], query: '', detail: '' };
-        if (st.status === 'done' && st.rg) return _rgWindowFor(st.rg, st.n, chip, start, force, repaint);
+        if (st.status === 'done' && st.rg) return _rgWindowFor(t, st.rg, st.n, chip, start, force, repaint);
         if (st.status === 'loading') {
             return one('<div class="mb-dp-loading"><span class="mb-dp-spin">◌</span> Searching for a release group named like this event…</div>');
         }
@@ -52585,8 +52572,7 @@
                 if (start) _rgReleasesLoad(t.info, { repaint });
                 return _rgCardHtml(t.info, t.n);
             },
-            extracted: (t, start, force, repaint) => _rgWindowFor(t.info, t.n, '', start, force, repaint),
-            onAreaClick: _rgOnAreaClick,
+            extracted: (t, start, force, repaint) => _rgWindowFor(t, t.info, t.n, '', start, force, repaint),
             steps: (t) => [t.el],
             stepId: () => 'mb-release-group',
         };
@@ -52677,8 +52663,7 @@
             },
             card: (t, start, repaint) => _eventRgCardHtml(t.el, start, repaint),
             stack: (t, start, repaint) => _eventRgEventStack(t.el, start, repaint),
-            extracted: (t, start, force, repaint) => _eventRgWindowHtml(t.el, start, force, repaint),
-            onAreaClick: _rgOnAreaClick,
+            extracted: (t, start, force, repaint) => _eventRgWindowHtml(t, start, force, repaint),
             steps: () => Array.from(document.querySelectorAll(_EVENT_RG_CELL_SEL)).filter(td => td.getClientRects().length > 0),
             stepId: (td) => td.parentElement.dataset.mbRowIdx || `${td.parentElement.dataset.mbEventKey}|${td.textContent}`,
         };
@@ -53790,13 +53775,6 @@
         const st = _mbPaged.get(key);
         const rows = st ? st.rows : [];
         const head = `<h4>Recordings${st && st.total != null ? ` · ${_extDgNum(st.total)}` : ''}</h4>`;
-        // Nothing yet: page 1 under way, or its failure (the status above
-        // says it, with "Try again"); a work with no recordings says None.
-        let body = null;
-        if (!rows.length && st && st.detail) body = '';
-        else if (!rows.length && !(st && st.complete)) {
-            body = `<div class="mb-dg-state"><span class="mb-dp-spin">◌</span> Asking MusicBrainz for the first ${_MB_PAGED_LIMIT} recordings…</div>`;
-        }
         return head + _mbPagedStatusHtml(key, 'recordings') + _dpListTableHtml(t, 'work-recordings', [
             {
                 key: 'title', label: 'Recording', val: r => r.title,
@@ -53811,8 +53789,233 @@
         ], rows, {
             initial: 'as MusicBrainz lists them', placeholder: 'Filter loaded recordings: title, artist',
             search: r => `${r.title} ${r.dis} ${r.artist}`, facet: r => r.artist, chipLabel: 'Artist',
-            body, nomatch: 'No loaded recording matches.', none: 'No recordings.',
+            body: _mbPagedBody(st, 'recordings'), nomatch: 'No loaded recording matches.', none: 'No recordings.',
         });
+    }
+
+    /**
+     * What a paged list's List table shows instead of its table while it
+     * has no row: page 1 under way (or about to be asked), or nothing when
+     * it failed (the status above says it, with "Try again"); `null` — the
+     * table, whose "None." applies — once the list is complete and empty.
+     *
+     * @param {?Object} st - `_mbPaged` state.
+     * @param {string} unit - What a row is: 'recordings'.
+     * @returns {?string}
+     */
+    function _mbPagedBody(st, unit) {
+        if (st && st.rows.length) return null;
+        if (st && st.detail) return '';
+        if (st && st.complete) return null;
+        return `<div class="mb-dg-state"><span class="mb-dp-spin">◌</span> Asking MusicBrainz for the first ${_MB_PAGED_LIMIT} ${_rgEsc(unit)}…</div>`;
+    }
+
+    /**
+     * A plain column of a window table: its value is `row[key]`, shown with
+     * the filter's matches marked, "—" when empty.
+     *
+     * @param {string} key
+     * @param {string} label
+     * @param {Object} [extra] - More of the column (`num`, `cls`, `html`, …).
+     * @returns {Object} A column of `_dpListTableHtml()`.
+     */
+    function _dpTblCol(key, label, extra = {}) {
+        return Object.assign({ key, label, val: r => r[key] ?? '', html: (r, q) => (r[key] === '' || r[key] == null ? '—' : _hlEsc(r[key], q)) }, extra);
+    }
+
+    /**
+     * A title column linking its entity's page (which the window previews
+     * and opens in place), its disambiguation dimmed after it.
+     *
+     * @param {string} kind - The page segment: `release`, `event`, …
+     * @param {string} label
+     * @param {string} [key] - The row's title field.
+     * @returns {Object} A column of `_dpListTableHtml()`.
+     */
+    function _dpTblTitleCol(kind, label, key = 'title') {
+        return {
+            key, label, val: r => r[key],
+            html: (r, q) => `<a href="/${kind}/${_rgEsc(r.id)}" target="_blank" rel="noopener">${_hlEsc(r[key], q)}</a>` +
+                `${r.dis ? ` <span class="mb-rg-dim">(${_hlEsc(r.dis, q)})</span>` : ''}`,
+        };
+    }
+
+    /**
+     * A recording window's releases (Phase 3b): every release the recording
+     * is on, a paged browse `/ws/2/release?recording=<id>&inc=media+labels`
+     * (271 for the studio "Thunder Road", probe 2026-10-27), 100 when the
+     * window opens and 500 more a click. Each kept as what the table shows;
+     * `front` from the release's own `cover-art-archive` block (on every
+     * release of the browse, scripts/probe-mb-window-browses.py), so only a
+     * cover the archive has is asked for.
+     *
+     * @param {string} id - The recording's MBID.
+     * @returns {{key: string, spec: {ask: function}}}
+     */
+    function _mbRecRelsList(id) {
+        return {
+            key: `recording-releases:${id}`,
+            spec: _mbPagedWs('release', `recording=${encodeURIComponent(id)}&inc=media+labels`, 'releases', 'release-count', r => ({
+                id: r.id, title: r.title || '', dis: r.disambiguation || '', date: r.date || '', country: r.country || '',
+                status: r.status || '', format: (r.media || []).length ? _rgFormatOf(r) : '', label: _rgLabelOf(r),
+                front: !!(r['cover-art-archive'] && r['cover-art-archive'].front),
+            })),
+        };
+    }
+
+    /**
+     * The recording window's Releases as a List table: covers, Release,
+     * Format, Date, Country, Status, Label / Cat#; status chips (Official,
+     * Bootleg, …); sorted by date at first, since the browse's own order is
+     * by neither date nor title (probe 2026-10-27).
+     *
+     * @param {object} t - The recording.
+     * @returns {string}
+     */
+    function _mbRecRelsHtml(t) {
+        const { key } = _mbRecRelsList(t.id);
+        const st = _mbPaged.get(key);
+        return `<h4>Releases${st && st.total != null ? ` · ${_extDgNum(st.total)}` : ''}</h4>` + _mbPagedStatusHtml(key, 'releases') +
+            _dpListTableHtml(t, 'recording-releases', [
+                _dpTblTitleCol('release', 'Release'), _dpTblCol('format', 'Format'), _dpTblCol('date', 'Date', { cls: 'mb-dg-yr' }),
+                _dpTblCol('country', 'Country'), _dpTblCol('status', 'Status'), _dpTblCol('label', 'Label / Cat#'),
+            ], st ? st.rows : [], {
+                init: { sort: { col: 'date', dir: 1 } }, initial: 'as MusicBrainz returns them',
+                placeholder: 'Filter loaded releases: title, format, country, label, cat#',
+                search: r => [r.title, r.dis, r.format, r.date, r.country, r.status, r.label].join(' '),
+                facet: r => r.status, chipLabel: 'Status',
+                thumb: r => (r.front ? _mbPopCoverThumbHtml('release', r.id, r.title, 'mb-dg-vthumb') : ''),
+                body: _mbPagedBody(st, 'releases'), nomatch: 'No loaded release matches.', none: 'On no release.',
+            });
+    }
+
+    /**
+     * A place's events (Phase 3b): a paged browse `/ws/2/event?place=<id>`
+     * (110 for The Stone Pony, its order by no date: probe 2026-10-27).
+     *
+     * @param {string} id - The place's MBID.
+     * @returns {{key: string, spec: {ask: function}}}
+     */
+    function _mbPlaceEventsList(id) {
+        return {
+            key: `place-events:${id}`,
+            spec: _mbPagedWs('event', `place=${encodeURIComponent(id)}`, 'events', 'event-count', (e) => {
+                const ls = e['life-span'] || {};
+                return {
+                    id: e.id, name: e.name || '', dis: e.disambiguation || '', type: e.type || '', date: ls.begin || '',
+                    end: ls.end && ls.end !== ls.begin ? ls.end : '', time: e.time || '', cancelled: !!e.cancelled,
+                };
+            }),
+        };
+    }
+
+    /**
+     * The place window's Events as a List table: Date (and time, the end
+     * when it is another day), Event (cancelled ones say so), Type; type
+     * chips; sorted by date at first.
+     *
+     * @param {object} t - The place.
+     * @returns {string}
+     */
+    function _mbPlaceEventsHtml(t) {
+        const { key } = _mbPlaceEventsList(t.id);
+        const st = _mbPaged.get(key);
+        return `<h4>Events${st && st.total != null ? ` · ${_extDgNum(st.total)}` : ''}</h4>` + _mbPagedStatusHtml(key, 'events') +
+            _dpListTableHtml(t, 'place-events', [
+                _dpTblCol('date', 'Date', {
+                    cls: 'mb-dg-yr',
+                    html: (r, q) => (r.date ? _hlEsc(r.date, q) : '—') + (r.end ? ` – ${_hlEsc(r.end, q)}` : '') +
+                        (r.time ? ` <span class="mb-rg-dim">${_rgEsc(r.time)}</span>` : ''),
+                }),
+                Object.assign(_dpTblTitleCol('event', 'Event', 'name'), {
+                    html: (r, q) => `<a href="/event/${_rgEsc(r.id)}" target="_blank" rel="noopener">${_hlEsc(r.name, q)}</a>` +
+                        `${r.cancelled ? ' <span class="mb-rg-dim">(cancelled)</span>' : ''}`,
+                }),
+                _dpTblCol('type', 'Type'),
+            ], st ? st.rows : [], {
+                init: { sort: { col: 'date', dir: 1 } }, initial: 'as MusicBrainz returns them',
+                placeholder: 'Filter loaded events: date, name, type', search: r => [r.date, r.end, r.name, r.type].join(' '),
+                facet: r => r.type, chipLabel: 'Type',
+                body: _mbPagedBody(st, 'events'), nomatch: 'No loaded event matches.', none: 'No events.',
+            });
+    }
+
+    /**
+     * An artist's release groups of one primary type (Phase 3b): a paged
+     * browse `/ws/2/release-group?artist=<id>&type=<type>&inc=artist-credits`.
+     * One list per type, since the unfiltered browse runs Album first (the
+     * first 100 of Bruce Springsteen's 2,146 are all Albums; `type=single`
+     * has its own count, 178: probe 2026-10-27).
+     *
+     * @param {string} id - The artist's MBID.
+     * @param {string} type - A primary type of `_MB_POP_RG_TYPES`.
+     * @returns {{key: string, spec: {ask: function}}}
+     */
+    function _mbArtistRgsList(id, type) {
+        return {
+            key: `artist-release-groups:${id}:${type}`,
+            spec: _mbPagedWs('release-group', `artist=${encodeURIComponent(id)}&type=${type}&inc=artist-credits`, 'release-groups',
+                'release-group-count', g => ({
+                    id: g.id, title: g.title || '', dis: g.disambiguation || '', date: g['first-release-date'] || '',
+                    secondary: (g['secondary-types'] || []).join(' + '), artist: _mbPopCreditText(g['artist-credit']),
+                })),
+        };
+    }
+
+    /**
+     * The type an artist window's release groups show: the one chosen, else
+     * the first type the count browses say it has (Album until they answer).
+     *
+     * @param {object} t - The artist.
+     * @returns {string}
+     */
+    function _mbArtistRgType(t) {
+        // Read, not made: the List table makes the state with its first sort.
+        const ui = _dpTbl.get(`${t.key}|artist-release-groups`);
+        if (ui && ui.seg) return ui.seg;
+        const has = _MB_POP_RG_TYPES.find(([type]) => {
+            const s = _mbPop.get(_mbPopBrowse('release-group', `artist=${encodeURIComponent(t.id)}&type=${type}&limit=1`).key);
+            return s && s.status === 'done' && s.data && s.data['release-group-count'] > 0;
+        });
+        return has ? has[0] : 'album';
+    }
+
+    /**
+     * The artist window's Release groups as a List table (vzell, 2026-10-27:
+     * type segments, lazy covers): a segment per primary type with its real
+     * total (the count browses, `limit=1`), each its own paged list; chips
+     * for the secondary types (Live, Compilation, …) of what is loaded;
+     * covers asked lazily (a release group's browse carries no cover-art
+     * flag, so one the archive lacks gives way to the empty box); sorted by
+     * first release at first.
+     *
+     * @param {object} t - The artist.
+     * @returns {string}
+     */
+    function _mbArtistRgsHtml(t) {
+        const type = _mbArtistRgType(t);
+        const { key } = _mbArtistRgsList(t.id, type);
+        const st = _mbPaged.get(key);
+        const segs = '<span class="mb-dg-seg">' + _MB_POP_RG_TYPES.map(([v, label]) => {
+            const s = _mbPop.get(_mbPopBrowse('release-group', `artist=${encodeURIComponent(t.id)}&type=${v}&limit=1`).key);
+            const n = s && s.status === 'done' && s.data ? _extDgNum(s.data['release-group-count'] || 0) : s && s.status === 'failed' ? '?' : '…';
+            return `<button type="button" data-mb-tbl-act="seg" data-mb-tbl-v="${v}" aria-pressed="${v === type}">${_rgEsc(label)} ` +
+                `<span class="mb-dg-n">${n}</span></button>`;
+        }).join('') + '</span>';
+        return '<h4>Release groups</h4>' + _mbPagedStatusHtml(key, 'release groups') +
+            _dpListTableHtml(t, 'artist-release-groups', [
+                _dpTblTitleCol('release-group', 'Release group'), _dpTblCol('secondary', 'Also'),
+                _dpTblCol('artist', 'Artist'), _dpTblCol('date', 'First release', { cls: 'mb-dg-yr' }),
+            ], st ? st.rows : [], {
+                init: { sort: { col: 'date', dir: 1 } }, initial: 'as MusicBrainz returns them', tools: segs,
+                placeholder: 'Filter loaded release groups: title, artist, year',
+                search: r => [r.title, r.dis, r.secondary, r.artist, r.date].join(' '),
+                facet: r => r.secondary, chipLabel: 'Also',
+                thumb: r => _mbPopCoverThumbHtml('release-group', r.id, r.title, 'mb-dg-vthumb'),
+                body: _mbPagedBody(st, 'release groups'), nomatch: 'No loaded release group matches.', none: 'None of this type.',
+            }) +
+            `<p><a href="/artist/${_rgEsc(t.id)}" target="_blank" rel="noopener">The discography</a> ` +
+            '<span class="mb-rg-dim">(official releases; the page filters the others)</span></p>';
     }
 
     /**
@@ -53885,7 +54088,9 @@
      *
      * @param {Object} r - A relation of the Web Service.
      * @param {string} type - Its target type: `artist`, `label`, `place`, `work`, …
-     *   — the page segment (`release-group`).
+     *   — the page segment (`release-group`); the Web Service's
+     *   `release_group` is taken as that segment too, so the link is one a
+     *   preview and the site know (`_mbPopSeriesItems()`).
      * @param {?Object} [entity] - The target, when not `r[type]` (a url
      *   lookup keys a release group `release_group`: `_mbPopRelEntity()`).
      * @param {string} [after] - HTML right after the name (and its
@@ -53894,16 +54099,17 @@
      * @returns {string}
      */
     function _mbPopRelTargetHtml(r, type, entity = null, after = '') {
-        const e = entity || r[type] || {};
+        const e = entity || r[type] || _mbPopRelEntity(r) || {};
+        const seg = String(type).replace(/_/g, '-');
         const name = _rgEsc(e.name || e.title || '');
         // An event target carries its own life span (probe 2026-10-08, the
         // OceanFirst show's "parts" relation): its days follow the name, as
         // MusicBrainz writes "Music America: … (2026-06-04 – 2026-06-05)".
         // Not when the name already starts with that day, as most event names
         // do ("2025‐05‐20: Co‐op Live, …", written with U+2010).
-        const days = type === 'event' && !String(e.name || '').replace(/\u2010/g, '-').includes((e['life-span'] || {}).begin || '\u0000')
+        const days = seg === 'event' && !String(e.name || '').replace(/\u2010/g, '-').includes((e['life-span'] || {}).begin || '\u0000')
             ? _mbPopEventDays(e) : '';
-        const link = (e.id ? `<a href="/${type}/${_rgEsc(e.id)}" target="_blank" rel="noopener">${name}</a>` : name) +
+        const link = (e.id ? `<a href="/${seg}/${_rgEsc(e.id)}" target="_blank" rel="noopener">${name}</a>` : name) +
             (e.disambiguation ? ` <span class="mb-rg-dim">(${_rgEsc(e.disambiguation)})</span>` : '') +
             (days ? ` <span class="mb-rg-dim">(${_rgEsc(days)})</span>` : '') + after;
         const ids = r['attribute-ids'] || {};
@@ -53967,6 +54173,16 @@
      * @type {string}
      */
     const _MB_POP_LABEL_MORE_INC = 'artist-rels+place-rels+series-rels';
+
+    /**
+     * The label card's lookup (`_MB_KINDS.label`'s `cardInc`), named once:
+     * the catalog-number card asks whether the label's answer is there by
+     * its cache key, and a key built from another `inc` never matched, so
+     * every repaint counted as a start and a failed label lookup was asked
+     * again on each one (2026-10-27).
+     * @type {string}
+     */
+    const _MB_POP_LABEL_CARD_INC = 'genres+ratings+aliases';
 
     /** How many targets a relationship type of the label window lists before "+N more". */
     const _MB_POP_LABEL_REL_CAP = 12;
@@ -54045,13 +54261,17 @@
      * @param {('release'|'release-group')} kind
      * @param {string} id - The MBID.
      * @param {string} title - The card's and the viewer's title.
+     * @param {string} [imgCls] - The image's class: `mb-dg-vthumb` in a List
+     *   table (`_dpListTableHtml()`), the 40 px box; a cover the archive
+     *   does not have then gives way to the empty box (the dialog's image
+     *   error listener).
      * @returns {string}
      */
-    function _mbPopCoverThumbHtml(kind, id, title) {
+    function _mbPopCoverThumbHtml(kind, id, title, imgCls = '') {
         const path = `/${_rgEsc(kind)}/${_rgEsc(id)}`;
         return `<a class="mb-pop-cover-thumb" href="${path}" target="_blank" rel="noopener" data-mbtt-fn="sb-cover" ` +
             `data-mb-sb-cover="${path}" data-mb-sb-cover-title="${_rgEsc(title)}">` +
-            `<img loading="lazy" src="https://coverartarchive.org${path}/front-250" alt=""></a>`;
+            `<img${imgCls ? ` class="${imgCls}"` : ''} loading="lazy" src="https://coverartarchive.org${path}/front-250" alt=""></a>`;
     }
 
     /**
@@ -54982,15 +55202,20 @@
 
     /**
      * A series' items in their order: its `part of` relations, by ordering
-     * key, each with its number (`attribute-values.number`) and target.
+     * key, each with its number (`attribute-values.number`), its kind as a
+     * page segment and its target. A release-group series' relations name
+     * the target type `release_group` and hold the target under that key
+     * (probe 2026-10-27, scripts/probe-mb-window-browses.py, series
+     * b1009dcb-…): the item's link must be `/release-group/<id>`, never
+     * `/release_group/<id>`, which no preview and no page knows.
      *
      * @param {Object} d - A series of the Web Service.
      * @returns {Array<{num: string, type: string, e: Object}>}
      */
     function _mbPopSeriesItems(d) {
-        return (d.relations || []).filter(r => r.type === 'part of' && r[r['target-type']])
+        return (d.relations || []).filter(r => r.type === 'part of' && _mbPopRelEntity(r))
             .sort((a, b) => (a['ordering-key'] ?? 1e9) - (b['ordering-key'] ?? 1e9))
-            .map(r => ({ num: (r['attribute-values'] && r['attribute-values'].number) || '', type: r['target-type'], e: r[r['target-type']] }));
+            .map(r => ({ num: (r['attribute-values'] && r['attribute-values'].number) || '', type: _mbPopRelKind(r), e: _mbPopRelEntity(r) }));
     }
 
     /** Items a series card lists before "+ N more". */
@@ -57522,9 +57747,8 @@
                 return _rgCardHtml(info, null);
             },
             extracted(t, start, force, repaint) {
-                return _rgWindowFor({ gid: t.id, name: t.name, type: '', artist: '', releaseGid: '' }, null, '', start, force, repaint);
+                return _rgWindowFor(t, { gid: t.id, name: t.name, type: '', artist: '', releaseGid: '' }, null, '', start, force, repaint);
             },
-            onAreaClick: _rgOnAreaClick,
         },
         // Card: one lookup (8.8 KB in Phase 0). Window: the same answer, plus
         // the Cover Art Archive's index when the answer says it has images.
@@ -57632,11 +57856,6 @@
             },
             windowHtml(d, t) {
                 const pin = _mbPopLookup(t, 'artist-rels+place-rels+event-rels');
-                const count = _mbPopBrowse('release', `recording=${encodeURIComponent(t.id)}&limit=1`);
-                const rels = (d.releases || []).slice().sort((a, b) => (a.date || '9999').localeCompare(b.date || '9999'));
-                const full = rels.length >= _MB_POP_SUBLIST_CAP;
-                const cs = _mbPop.get(count.key);
-                const total = !full ? rels.length : (cs && cs.status === 'done' && cs.data ? cs.data['release-count'] : null);
                 const left = `<div class="mb-dp-xtitle">${_rgEsc(d.title)}</div>` +
                     `<div class="mb-dp-xsub">${_mbPopCreditHtml(d['artist-credit'])}` +
                     `${d.disambiguation ? ` (${_rgEsc(d.disambiguation)})` : ''}</div>` +
@@ -57652,20 +57871,11 @@
                         ..._mbPopRelRows(p.relations, 'place', _mbPopPlaceRelHtml),
                         ..._mbPopRelRows(p.relations, 'event'),
                     ]) || '<div class="mb-dp-xsub">No credits.</div>');
-                const shown = full && total != null && total > rels.length
-                    ? `<div class="mb-rg-progress">The first ${rels.length} of ${total}; ` +
-                      `<a href="/recording/${_rgEsc(d.id)}" target="_blank" rel="noopener">the recording's page</a> lists them all.</div>`
-                    : '';
-                const right = `<h4>Releases${total != null ? ` · ${total}` : (full ? ` · ${rels.length}+` : '')}</h4>${shown}` +
-                    (rels.length ? _mbPopTableHtml(['Release', 'Date', 'Country', 'Status'], rels.map(r => [
-                        `<a href="/release/${_rgEsc(r.id)}" target="_blank" rel="noopener">${_rgEsc(r.title)}</a>` +
-                            `${r.disambiguation ? ` <span class="mb-rg-dim">(${_rgEsc(r.disambiguation)})</span>` : ''}`,
-                        _rgEsc(r.date || '—'), _rgEsc(r.country || '—'), _rgEsc(r.status || '—'),
-                    ])) : '<div class="mb-dp-xsub">On no release.</div>');
-                return `<div class="mb-dp-x"><div class="mb-dp-col">${left}</div><div class="mb-dp-col">${right}</div></div>`;
+                return `<div class="mb-dp-x"><div class="mb-dp-col">${left}</div><div class="mb-dp-col">${_mbRecRelsHtml(t)}</div></div>`;
             },
-            // The credits lookup (10.8 KB), and — only when the lookup's
-            // release list is full — the count, from a browse with limit=1;
+            // The credits lookup (10.8 KB), and every release as a paged
+            // list (`_mbRecRelsList()`: 100 now, 500 more a click), which
+            // replaced the lookup's first 25 and a count browse (Phase 3b);
             // once the credits are there, the area chains of their places
             // (org/event-GPE.org).
             pin(t, d, again, repaint) {
@@ -57676,10 +57886,8 @@
                     _mbPopAreaChainLoad(t, (ps.data.relations || []).filter(r => r['target-type'] === 'place' && r.place)
                         .map(r => r.place.area), again, repaint);
                 }
-                if ((d.releases || []).length >= _MB_POP_SUBLIST_CAP) {
-                    const count = _mbPopBrowse('release', `recording=${encodeURIComponent(t.id)}&limit=1`);
-                    _mbPopPinLoad(t, count.key, count.url, again, repaint);
-                }
+                const list = _mbRecRelsList(t.id);
+                _mbPagedStart(t, list.key, list.spec, again, repaint);
             },
         })),
         // Card: one lookup (11.8 KB): type, language, ISWC, writers,
@@ -57726,9 +57934,9 @@
             },
         })),
         // Card: one lookup without url-rels (R1: 75 links were most of the
-        // artist's 30 KB). Window: the links (one lookup) and the release
-        // groups per primary type, each a browse with limit=1, shown as
-        // they arrive.
+        // artist's 30 KB). Window: the links (one lookup), the count of each
+        // primary type (a browse with limit=1 each) and the chosen type's
+        // release groups as a List table (`_mbArtistRgsHtml()`).
         artist: Object.assign({ title: 'Artist', wide: true }, _mbPopLookupKind({
             cardInc: 'genres+ratings+aliases',
             cardHtml(d) {
@@ -57766,18 +57974,7 @@
                     ]) +
                     _mbPopSectionHtml('Links', _mbPop.get(links.key), (p) => _mbPopUrlLinksHtml(p.relations, false) ||
                         '<div class="mb-dp-xsub">No links.</div>');
-                const rows = _MB_POP_RG_TYPES.map(([type, label]) => {
-                    const q = _mbPopBrowse('release-group', `artist=${encodeURIComponent(t.id)}&type=${type}&limit=1`);
-                    const s = _mbPop.get(q.key);
-                    let cell = '<span class="mb-dp-spin">◌</span>';
-                    if (s && s.status === 'done' && s.data) cell = _rgEsc(_mbPopNum(s.data['release-group-count'] || 0));
-                    else if (s && s.status === 'failed') cell = '<span class="mb-rg-dim">?</span>';
-                    return [_rgEsc(label), cell];
-                });
-                const right = '<h4>Release groups</h4>' + _mbPopTableHtml(['Type', 'Count'], rows, [1]) +
-                    `<p><a href="/artist/${_rgEsc(d.id)}" target="_blank" rel="noopener">The discography</a> ` +
-                    '<span class="mb-rg-dim">(official releases; the page filters the others)</span></p>';
-                return `<div class="mb-dp-x"><div class="mb-dp-col">${left}</div><div class="mb-dp-col">${right}</div></div>`;
+                return `<div class="mb-dp-x"><div class="mb-dp-col">${left}</div><div class="mb-dp-col">${_mbArtistRgsHtml(t)}</div></div>`;
             },
             cardAside: _mbPopCardPicture,
             pin(t, d, again, repaint) {
@@ -57785,10 +57982,16 @@
                 _mbPopPinLoad(t, links.key, links.url, again, repaint);
                 _mbPopImageLoad(t, _mbPopLoadedRels(_mbPop.get(links.key)), again, repaint);
                 _mbPopAreaChainLoad(t, [d.area, d['begin-area'], d['end-area']], again, repaint);
+                // The count of each primary type (the segments' totals) …
                 _MB_POP_RG_TYPES.forEach(([type]) => {
                     const q = _mbPopBrowse('release-group', `artist=${encodeURIComponent(t.id)}&type=${type}&limit=1`);
                     _mbPopPinLoad(t, q.key, q.url, again, repaint);
                 });
+                // … and the chosen type's release groups as a paged list
+                // (Phase 3b); another segment's page 1 comes from the repaint
+                // its click causes, as a Discogs label's other order does.
+                const list = _mbArtistRgsList(t.id, _mbArtistRgType(t));
+                _mbPagedStart(t, list.key, list.spec, again, repaint);
             },
         })),
         // Card: one lookup (genres, ratings, aliases; 1.8 KB before ratings).
@@ -57801,7 +58004,7 @@
         // limit=1. Founded/Defunct, sort name, label code, rating and ISNI
         // since 2026-10-26 (org/discogs.org 4b).
         label: Object.assign({ title: 'Label', wide: true }, _mbPopLookupKind({
-            cardInc: 'genres+ratings+aliases',
+            cardInc: _MB_POP_LABEL_CARD_INC,
             cardHtml(d) {
                 const ls = d['life-span'] || {};
                 const head = `<div class="mb-tt-title">${_rgEsc(d.name)}</div>` +
@@ -58017,8 +58220,9 @@
             },
         })),
         // Card and window: one lookup (2.3 KB): type, address, area,
-        // coordinates, links. Window: up to 100 of its events from a browse,
-        // sorted by date (the browse's own order is not by date).
+        // coordinates, links. Window: its events as a List table, 100 when
+        // it opens and 500 more a click, sorted by date at first (the
+        // browse's own order is not by date): `_mbPlaceEventsHtml()`.
         place: Object.assign({ title: 'Place', wide: true }, _mbPopLookupKind({
             cardInc: 'area-rels+url-rels',
             cardHtml(d) {
@@ -58032,7 +58236,6 @@
                     ]);
             },
             windowHtml(d, t) {
-                const browse = _mbPopBrowse('event', `place=${encodeURIComponent(t.id)}&limit=100`);
                 const c = d.coordinates;
                 const map = c ? `https://www.openstreetmap.org/?mlat=${c.latitude}&mlon=${c.longitude}#map=17/${c.latitude}/${c.longitude}` : '';
                 const left = `<div class="mb-dp-xtitle">${_rgEsc(d.name)}</div>` +
@@ -58043,26 +58246,13 @@
                         ['Coordinates', c ? `<a href="${_rgEsc(map)}" target="_blank" rel="noopener">${_rgEsc(`${c.latitude}, ${c.longitude}`)}</a>` : ''],
                         ['Open', _rgEsc(_mbPopLifeSpan(d['life-span']))],
                     ]) + _mbPopUrlLinksHtml(d.relations);
-                const right = _mbPopSectionHtml('Events', _mbPop.get(browse.key), (b) => {
-                    const evs = (b.events || []).slice().sort((x, y) =>
-                        ((x['life-span'] || {}).begin || '9999').localeCompare((y['life-span'] || {}).begin || '9999'));
-                    const total = typeof b['event-count'] === 'number' ? b['event-count'] : evs.length;
-                    return `<div class="mb-rg-progress">${_mbPopNum(total)} event${total === 1 ? '' : 's'}` +
-                        (total > evs.length ? `; ${evs.length} of them here, by date — <a href="/place/${_rgEsc(d.id)}/events" ` +
-                            'target="_blank" rel="noopener">the place\'s page</a> lists them all' : '') + '.</div>' +
-                        (evs.length ? _mbPopTableHtml(['Date', 'Event', 'Type'], evs.map(x => [
-                            _rgEsc((x['life-span'] || {}).begin || '—'),
-                            `<a href="/event/${_rgEsc(x.id)}" target="_blank" rel="noopener">${_rgEsc(x.name)}</a>` +
-                                `${x.cancelled ? ' <span class="mb-rg-dim">(cancelled)</span>' : ''}`,
-                            _rgEsc(x.type || ''),
-                        ])) : '');
-                });
-                return `<div class="mb-dp-x"><div class="mb-dp-col">${left}</div><div class="mb-dp-col">${right}</div></div>`;
+                return `<div class="mb-dp-x"><div class="mb-dp-col">${left}</div><div class="mb-dp-col">${_mbPlaceEventsHtml(t)}</div></div>`;
             },
             cardAside: _mbPopCardPicture,
             pin(t, d, again, repaint) {
-                const browse = _mbPopBrowse('event', `place=${encodeURIComponent(t.id)}&limit=100`);
-                _mbPopPinLoad(t, browse.key, browse.url, again, repaint);
+                // Every event as a paged list (Phase 3b: 100 now, 500 more a click).
+                const list = _mbPlaceEventsList(t.id);
+                _mbPagedStart(t, list.key, list.spec, again, repaint);
                 // The place's own lookup carries its url-rels.
                 _mbPopImageLoad(t, d.relations || [], again, repaint);
                 _mbPopAreaChainLoad(t, [d.area], again, repaint);
@@ -58738,14 +58928,14 @@
                 card(t, start, repaint) {
                     const lt = drive(t, start, false, repaint);
                     if (!lt) return pending(t, false);
-                    const lk = _mbPopLookup(lt, 'genres+aliases').key;
+                    const lk = _mbPopLookup(lt, _MB_POP_LABEL_CARD_INC).key;
                     return _MB_KINDS.label.card(lt, start || !_mbPop.has(lk), repaint)
                         .replace('<div class="mb-pop-card">', `<div class="mb-pop-card"><div class="mb-tt-dim">${_rgEsc(parts(t).cat)} — catalog number of</div>`);
                 },
                 extracted(t, start, force, repaint) {
                     const lt = drive(t, start, force, repaint);
                     if (!lt) return pending(t, true);
-                    const lk = _mbPopLookup(lt, 'genres+aliases').key;
+                    const lk = _mbPopLookup(lt, _MB_POP_LABEL_CARD_INC).key;
                     return _MB_KINDS.label.extracted(lt, start || !_mbPop.has(lk), start && force, repaint);
                 },
                 liveUrl(t) {
@@ -61158,7 +61348,8 @@
      * @param {object} t - The window's target.
      * @param {string} id - The table's id in that window.
      * @param {?Object} [init]
-     * @returns {{q: string, chip: string[], sort: {col: string, dir: number}, page: number, limit: number, moreChips: boolean}}
+     * @returns {{q: string, chip: string[], sort: {col: string, dir: number}, page: number, limit: number, moreChips: boolean,
+     *   seg?: string}} `seg`: the chosen segment of a table that shows one of several lists.
      */
     function _dpTblUi(t, id, init = null) {
         const k = `${t.key}|${id}`;
@@ -61176,8 +61367,9 @@
      * (`_dpSortNext()`; `data-mb-tbl-first="-1"` for a column that starts
      * descending), a chip keeps only its value or, with Ctrl/⌘, adds it
      * (`_extDgChipPick()`), and `data-mb-tbl-act` is ‹ (`prev`), › (`next`),
-     * "Show all" (`all`), "Clear filters" (`clear`) or "+N more" chips
-     * (`morechips`). A sort, a chip and a cleared filter go back to page 1.
+     * "Show all" (`all`), "Clear filters" (`clear`), "+N more" chips
+     * (`morechips`) or a segment (`seg`, its value in `data-mb-tbl-v`). A
+     * sort, a chip, a segment and a cleared filter go back to page 1.
      *
      * @param {MouseEvent} e
      * @param {?object} t - The window's target.
@@ -61213,6 +61405,13 @@
                 break;
             case 'morechips':
                 ui.moreChips = !ui.moreChips;
+                break;
+            case 'seg':
+                // A segment of the table's tools that shows another list (an
+                // artist's release groups of another type): its chips start
+                // over; the repaint's `pin()` asks its page 1 when it has none.
+                if (ui.seg === d.mbTblV) return true;
+                Object.assign(ui, { seg: d.mbTblV, chip: [], page: 0 });
                 break;
             default:
                 return false;
@@ -61366,7 +61565,7 @@
      * @param {string} id - The table's id in the window.
      * @param {Array<Object>} cols - As `_dpCompactTableHtml()`.
      * @param {Array<Object>} rows - What is loaded, in the site's own order.
-     * @param {{limit?: number, initial?: string, placeholder?: string, search?: function(Object): string,
+     * @param {{limit?: number, init?: Object, initial?: string, placeholder?: string, search?: function(Object): string,
      *   facet?: function(Object): string, chipLabel?: string, thumb?: function(Object): string, tools?: string,
      *   note?: string, body?: ?string, none?: string, nomatch?: string, qCls?: string, sortAttr?: string,
      *   chipAttr?: string, rowAttrs?: function(Object): string}} [opts] - `qCls`, `sortAttr` and
@@ -61374,7 +61573,7 @@
      * @returns {string}
      */
     function _dpListTableHtml(t, id, cols, rows, opts = {}) {
-        const ui = _dpTblUi(t, id, { limit: opts.limit || _EXT_DG_LABEL_ROWS });
+        const ui = _dpTblUi(t, id, Object.assign({ limit: opts.limit || _EXT_DG_LABEL_ROWS }, opts.init));
         const counts = new Map();
         if (opts.facet) {
             rows.forEach((r) => {

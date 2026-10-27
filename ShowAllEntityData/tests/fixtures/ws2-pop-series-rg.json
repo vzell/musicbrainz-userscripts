@@ -1,0 +1,722 @@
+{
+ "id": "ff0e5033-4452-43c6-8bc1-c48d95831839",
+ "name": "A State of Trance",
+ "relations": [
+  {
+   "begin": null,
+   "target-credit": "",
+   "attribute-ids": {
+    "number": "a59c5830-5ec7-38fe-9a21-c7ea54f6650a"
+   },
+   "source-credit": "",
+   "ended": false,
+   "attributes": [
+    "number"
+   ],
+   "type": "part of",
+   "type-id": "01018437-91d8-36b9-bf89-3f885d53b5bd",
+   "target-type": "release_group",
+   "attribute-values": {
+    "number": "1"
+   },
+   "ordering-key": 1,
+   "direction": "backward",
+   "release_group": {
+    "secondary-type-ids": [],
+    "title": "A State of Trance 2004",
+    "secondary-types": [],
+    "id": "ad3b8eca-7151-350c-8427-dd2db0400ba9",
+    "first-release-date": "2004-03-23",
+    "disambiguation": "",
+    "primary-type-id": null,
+    "primary-type": null
+   },
+   "end": null
+  },
+  {
+   "attribute-ids": {
+    "number": "a59c5830-5ec7-38fe-9a21-c7ea54f6650a"
+   },
+   "begin": null,
+   "target-credit": "",
+   "ended": false,
+   "source-credit": "",
+   "type": "part of",
+   "type-id": "01018437-91d8-36b9-bf89-3f885d53b5bd",
+   "attributes": [
+    "number"
+   ],
+   "target-type": "release_group",
+   "attribute-values": {
+    "number": "2"
+   },
+   "ordering-key": 2,
+   "direction": "backward",
+   "release_group": {
+    "secondary-types": [],
+    "id": "ca660f87-876d-3195-ab81-5486a339cbfe",
+    "secondary-type-ids": [],
+    "title": "A State of Trance 2005",
+    "primary-type-id": null,
+    "primary-type": null,
+    "first-release-date": "2005-03-12",
+    "disambiguation": ""
+   },
+   "end": null
+  },
+  {
+   "ended": false,
+   "source-credit": "",
+   "attribute-ids": {
+    "number": "a59c5830-5ec7-38fe-9a21-c7ea54f6650a"
+   },
+   "begin": null,
+   "target-credit": "",
+   "target-type": "release_group",
+   "type-id": "01018437-91d8-36b9-bf89-3f885d53b5bd",
+   "type": "part of",
+   "attributes": [
+    "number"
+   ],
+   "ordering-key": 3,
+   "attribute-values": {
+    "number": "3"
+   },
+   "end": null,
+   "release_group": {
+    "primary-type": null,
+    "primary-type-id": null,
+    "first-release-date": "2006-04-17",
+    "disambiguation": "",
+    "secondary-types": [],
+    "id": "977465e6-e07b-3d85-9751-e931201037ac",
+    "title": "A State of Trance 2006",
+    "secondary-type-ids": []
+   },
+   "direction": "backward"
+  },
+  {
+   "source-credit": "",
+   "ended": false,
+   "begin": null,
+   "target-credit": "",
+   "attribute-ids": {
+    "number": "a59c5830-5ec7-38fe-9a21-c7ea54f6650a"
+   },
+   "target-type": "release_group",
+   "attributes": [
+    "number"
+   ],
+   "type": "part of",
+   "type-id": "01018437-91d8-36b9-bf89-3f885d53b5bd",
+   "ordering-key": 4,
+   "attribute-values": {
+    "number": "4"
+   },
+   "end": null,
+   "release_group": {
+    "disambiguation": "",
+    "first-release-date": "2007-05-01",
+    "primary-type-id": null,
+    "primary-type": null,
+    "secondary-type-ids": [],
+    "title": "A State of Trance 2007",
+    "id": "86b2fdd8-17c0-306c-aa7d-da8fd48b291a",
+    "secondary-types": []
+   },
+   "direction": "backward"
+  },
+  {
+   "attribute-ids": {
+    "number": "a59c5830-5ec7-38fe-9a21-c7ea54f6650a"
+   },
+   "target-credit": "",
+   "begin": null,
+   "source-credit": "",
+   "ended": false,
+   "type-id": "01018437-91d8-36b9-bf89-3f885d53b5bd",
+   "type": "part of",
+   "attributes": [
+    "number"
+   ],
+   "target-type": "release_group",
+   "attribute-values": {
+    "number": "5"
+   },
+   "ordering-key": 5,
+   "release_group": {
+    "first-release-date": "2008-09-26",
+    "disambiguation": "",
+    "primary-type": null,
+    "primary-type-id": null,
+    "title": "A State of Trance 2008",
+    "secondary-type-ids": [],
+    "secondary-types": [],
+    "id": "2d92e32c-06dd-3235-b29b-2cbb3709a3dc"
+   },
+   "direction": "backward",
+   "end": null
+  },
+  {
+   "attributes": [
+    "number"
+   ],
+   "type-id": "01018437-91d8-36b9-bf89-3f885d53b5bd",
+   "type": "part of",
+   "target-type": "release_group",
+   "begin": null,
+   "target-credit": "",
+   "attribute-ids": {
+    "number": "a59c5830-5ec7-38fe-9a21-c7ea54f6650a"
+   },
+   "source-credit": "",
+   "ended": false,
+   "direction": "backward",
+   "release_group": {
+    "primary-type-id": null,
+    "primary-type": null,
+    "first-release-date": "2009-06-08",
+    "disambiguation": "",
+    "secondary-types": [],
+    "id": "95936fb1-55c7-4001-85af-dc8b2d93b0f4",
+    "secondary-type-ids": [],
+    "title": "A State of Trance 2009"
+   },
+   "end": null,
+   "attribute-values": {
+    "number": "6"
+   },
+   "ordering-key": 6
+  },
+  {
+   "source-credit": "",
+   "ended": false,
+   "attribute-ids": {
+    "number": "a59c5830-5ec7-38fe-9a21-c7ea54f6650a"
+   },
+   "begin": null,
+   "target-credit": "",
+   "target-type": "release_group",
+   "type": "part of",
+   "type-id": "01018437-91d8-36b9-bf89-3f885d53b5bd",
+   "attributes": [
+    "number"
+   ],
+   "ordering-key": 7,
+   "attribute-values": {
+    "number": "7"
+   },
+   "end": null,
+   "release_group": {
+    "primary-type": null,
+    "primary-type-id": null,
+    "disambiguation": "",
+    "first-release-date": "2010-04-02",
+    "id": "46ba55d4-66e9-4d9e-a801-b89ed2f91788",
+    "secondary-types": [],
+    "title": "A State of Trance 2010",
+    "secondary-type-ids": []
+   },
+   "direction": "backward"
+  },
+  {
+   "begin": null,
+   "target-credit": "",
+   "attribute-ids": {
+    "number": "a59c5830-5ec7-38fe-9a21-c7ea54f6650a"
+   },
+   "ended": false,
+   "source-credit": "",
+   "attributes": [
+    "number"
+   ],
+   "type-id": "01018437-91d8-36b9-bf89-3f885d53b5bd",
+   "type": "part of",
+   "target-type": "release_group",
+   "attribute-values": {
+    "number": "8"
+   },
+   "ordering-key": 8,
+   "direction": "backward",
+   "release_group": {
+    "title": "A State of Trance 2011",
+    "secondary-type-ids": [],
+    "id": "76dc7845-2667-4081-ab2f-4ff39de120a0",
+    "secondary-types": [],
+    "disambiguation": "",
+    "first-release-date": "2011-03-18",
+    "primary-type": null,
+    "primary-type-id": null
+   },
+   "end": null
+  },
+  {
+   "end": null,
+   "release_group": {
+    "primary-type": null,
+    "primary-type-id": null,
+    "disambiguation": "",
+    "first-release-date": "2012-03-01",
+    "id": "161352d8-f47e-4e66-b4b3-d3931629a294",
+    "secondary-types": [],
+    "title": "A State of Trance 2012",
+    "secondary-type-ids": []
+   },
+   "direction": "backward",
+   "ordering-key": 9,
+   "attribute-values": {
+    "number": "9"
+   },
+   "target-type": "release_group",
+   "attributes": [
+    "number"
+   ],
+   "type-id": "01018437-91d8-36b9-bf89-3f885d53b5bd",
+   "type": "part of",
+   "ended": false,
+   "source-credit": "",
+   "target-credit": "",
+   "begin": null,
+   "attribute-ids": {
+    "number": "a59c5830-5ec7-38fe-9a21-c7ea54f6650a"
+   }
+  },
+  {
+   "attribute-values": {
+    "number": "10"
+   },
+   "ordering-key": 10,
+   "direction": "backward",
+   "release_group": {
+    "title": "A State of Trance 2013",
+    "secondary-type-ids": [],
+    "secondary-types": [],
+    "id": "82a45fb9-e81b-4305-8f00-35b5b2620454",
+    "first-release-date": "2013-02-13",
+    "disambiguation": "",
+    "primary-type": null,
+    "primary-type-id": null
+   },
+   "end": null,
+   "attribute-ids": {
+    "number": "a59c5830-5ec7-38fe-9a21-c7ea54f6650a"
+   },
+   "begin": null,
+   "target-credit": "",
+   "ended": false,
+   "source-credit": "",
+   "type": "part of",
+   "type-id": "01018437-91d8-36b9-bf89-3f885d53b5bd",
+   "attributes": [
+    "number"
+   ],
+   "target-type": "release_group"
+  },
+  {
+   "target-credit": "",
+   "begin": null,
+   "attribute-ids": {
+    "number": "a59c5830-5ec7-38fe-9a21-c7ea54f6650a"
+   },
+   "source-credit": "",
+   "ended": false,
+   "attributes": [
+    "number"
+   ],
+   "type": "part of",
+   "type-id": "01018437-91d8-36b9-bf89-3f885d53b5bd",
+   "target-type": "release_group",
+   "attribute-values": {
+    "number": "11"
+   },
+   "ordering-key": 11,
+   "release_group": {
+    "secondary-type-ids": [],
+    "title": "A State of Trance 2014",
+    "id": "4416a191-682c-486e-a8ad-4191b5fe6dba",
+    "secondary-types": [],
+    "disambiguation": "",
+    "first-release-date": "2014-03-28",
+    "primary-type-id": null,
+    "primary-type": null
+   },
+   "direction": "backward",
+   "end": null
+  },
+  {
+   "attributes": [
+    "number"
+   ],
+   "type-id": "01018437-91d8-36b9-bf89-3f885d53b5bd",
+   "type": "part of",
+   "target-type": "release_group",
+   "target-credit": "",
+   "begin": null,
+   "attribute-ids": {
+    "number": "a59c5830-5ec7-38fe-9a21-c7ea54f6650a"
+   },
+   "ended": false,
+   "source-credit": "",
+   "release_group": {
+    "disambiguation": "",
+    "first-release-date": "2015-03-27",
+    "primary-type": null,
+    "primary-type-id": null,
+    "title": "A State of Trance 2015",
+    "secondary-type-ids": [],
+    "id": "83550add-00fc-4740-b6a5-ed5f6f503019",
+    "secondary-types": []
+   },
+   "direction": "backward",
+   "end": null,
+   "attribute-values": {
+    "number": "12"
+   },
+   "ordering-key": 12
+  },
+  {
+   "ordering-key": 13,
+   "attribute-values": {
+    "number": "13"
+   },
+   "end": null,
+   "direction": "backward",
+   "release_group": {
+    "first-release-date": "2016-05-05",
+    "disambiguation": "",
+    "primary-type": null,
+    "primary-type-id": null,
+    "title": "A State of Trance 2016",
+    "secondary-type-ids": [],
+    "secondary-types": [],
+    "id": "624fadb5-34f1-4edc-a40e-4bf4053446fc"
+   },
+   "source-credit": "",
+   "ended": false,
+   "attribute-ids": {
+    "number": "a59c5830-5ec7-38fe-9a21-c7ea54f6650a"
+   },
+   "target-credit": "",
+   "begin": null,
+   "target-type": "release_group",
+   "type": "part of",
+   "type-id": "01018437-91d8-36b9-bf89-3f885d53b5bd",
+   "attributes": [
+    "number"
+   ]
+  },
+  {
+   "attribute-ids": {
+    "number": "a59c5830-5ec7-38fe-9a21-c7ea54f6650a"
+   },
+   "begin": null,
+   "target-credit": "",
+   "ended": false,
+   "source-credit": "",
+   "type": "part of",
+   "type-id": "01018437-91d8-36b9-bf89-3f885d53b5bd",
+   "attributes": [
+    "number"
+   ],
+   "target-type": "release_group",
+   "attribute-values": {
+    "number": "14"
+   },
+   "ordering-key": 14,
+   "direction": "backward",
+   "release_group": {
+    "secondary-types": [],
+    "id": "f9b03fa3-679a-4a61-9a87-b1f7250ffa54",
+    "title": "A State of Trance 2017",
+    "secondary-type-ids": [],
+    "primary-type": null,
+    "primary-type-id": null,
+    "first-release-date": "2017-04-21",
+    "disambiguation": ""
+   },
+   "end": null
+  },
+  {
+   "attribute-values": {
+    "number": "15"
+   },
+   "ordering-key": 15,
+   "direction": "backward",
+   "release_group": {
+    "id": "d284b1dc-1d20-46c7-8eb7-009dbf28d154",
+    "secondary-types": [],
+    "secondary-type-ids": [],
+    "title": "A State of Trance 2018",
+    "primary-type-id": null,
+    "primary-type": null,
+    "disambiguation": "",
+    "first-release-date": "2018-04-27"
+   },
+   "end": null,
+   "attribute-ids": {
+    "number": "a59c5830-5ec7-38fe-9a21-c7ea54f6650a"
+   },
+   "begin": null,
+   "target-credit": "",
+   "source-credit": "",
+   "ended": false,
+   "type-id": "01018437-91d8-36b9-bf89-3f885d53b5bd",
+   "type": "part of",
+   "attributes": [
+    "number"
+   ],
+   "target-type": "release_group"
+  },
+  {
+   "release_group": {
+    "first-release-date": "2019-05-02",
+    "disambiguation": "",
+    "primary-type-id": null,
+    "primary-type": null,
+    "secondary-type-ids": [],
+    "title": "A State of Trance 2019",
+    "secondary-types": [],
+    "id": "eb79bd28-9b1f-450e-8d7b-b4a4367d0042"
+   },
+   "direction": "backward",
+   "end": null,
+   "attribute-values": {
+    "number": "16"
+   },
+   "ordering-key": 16,
+   "attributes": [
+    "number"
+   ],
+   "type": "part of",
+   "type-id": "01018437-91d8-36b9-bf89-3f885d53b5bd",
+   "target-type": "release_group",
+   "begin": null,
+   "target-credit": "",
+   "attribute-ids": {
+    "number": "a59c5830-5ec7-38fe-9a21-c7ea54f6650a"
+   },
+   "source-credit": "",
+   "ended": false
+  },
+  {
+   "ordering-key": 17,
+   "attribute-values": {
+    "number": "17"
+   },
+   "end": null,
+   "direction": "backward",
+   "release_group": {
+    "disambiguation": "",
+    "first-release-date": "2020-04-24",
+    "primary-type-id": null,
+    "primary-type": null,
+    "secondary-type-ids": [],
+    "title": "A State of Trance 2020",
+    "id": "0c2b4403-c423-496c-bd01-891ebd23c486",
+    "secondary-types": []
+   },
+   "ended": false,
+   "source-credit": "",
+   "begin": null,
+   "target-credit": "",
+   "attribute-ids": {
+    "number": "a59c5830-5ec7-38fe-9a21-c7ea54f6650a"
+   },
+   "target-type": "release_group",
+   "attributes": [
+    "number"
+   ],
+   "type-id": "01018437-91d8-36b9-bf89-3f885d53b5bd",
+   "type": "part of"
+  },
+  {
+   "end": null,
+   "direction": "backward",
+   "release_group": {
+    "primary-type": null,
+    "primary-type-id": null,
+    "disambiguation": "",
+    "first-release-date": "2021-05-28",
+    "id": "69d8e479-5c49-4761-aaab-71e5e80189fe",
+    "secondary-types": [],
+    "title": "A State of Trance 2021",
+    "secondary-type-ids": []
+   },
+   "ordering-key": 18,
+   "attribute-values": {
+    "number": "18"
+   },
+   "target-type": "release_group",
+   "type-id": "01018437-91d8-36b9-bf89-3f885d53b5bd",
+   "type": "part of",
+   "attributes": [
+    "number"
+   ],
+   "ended": false,
+   "source-credit": "",
+   "attribute-ids": {
+    "number": "a59c5830-5ec7-38fe-9a21-c7ea54f6650a"
+   },
+   "begin": null,
+   "target-credit": ""
+  },
+  {
+   "attribute-values": {
+    "number": "19"
+   },
+   "ordering-key": 19,
+   "release_group": {
+    "title": "A State of Trance 2022",
+    "secondary-type-ids": [],
+    "id": "265e7041-e62b-4314-bdbf-8580569800c5",
+    "secondary-types": [],
+    "disambiguation": "",
+    "first-release-date": "2022-04-29",
+    "primary-type": null,
+    "primary-type-id": null
+   },
+   "direction": "backward",
+   "end": null,
+   "attribute-ids": {
+    "number": "a59c5830-5ec7-38fe-9a21-c7ea54f6650a"
+   },
+   "target-credit": "",
+   "begin": null,
+   "source-credit": "",
+   "ended": false,
+   "type": "part of",
+   "type-id": "01018437-91d8-36b9-bf89-3f885d53b5bd",
+   "attributes": [
+    "number"
+   ],
+   "target-type": "release_group"
+  },
+  {
+   "target-credit": "",
+   "begin": null,
+   "attribute-ids": {
+    "number": "a59c5830-5ec7-38fe-9a21-c7ea54f6650a"
+   },
+   "source-credit": "",
+   "ended": false,
+   "attributes": [
+    "number"
+   ],
+   "type-id": "01018437-91d8-36b9-bf89-3f885d53b5bd",
+   "type": "part of",
+   "target-type": "release_group",
+   "attribute-values": {
+    "number": "20"
+   },
+   "ordering-key": 20,
+   "release_group": {
+    "disambiguation": "",
+    "first-release-date": "2023-05-12",
+    "primary-type": null,
+    "primary-type-id": null,
+    "title": "A State of Trance 2023",
+    "secondary-type-ids": [],
+    "id": "43e6fd09-6d68-4610-9406-3b8895357697",
+    "secondary-types": []
+   },
+   "direction": "backward",
+   "end": null
+  },
+  {
+   "release_group": {
+    "title": "A State of Trance 2024",
+    "secondary-type-ids": [],
+    "id": "a6dac6aa-684d-4410-9771-f65f392619c6",
+    "secondary-types": [],
+    "disambiguation": "",
+    "first-release-date": "2024-05-17",
+    "primary-type": null,
+    "primary-type-id": null
+   },
+   "direction": "backward",
+   "end": null,
+   "attribute-values": {
+    "number": "21"
+   },
+   "ordering-key": 21,
+   "type-id": "01018437-91d8-36b9-bf89-3f885d53b5bd",
+   "type": "part of",
+   "attributes": [
+    "number"
+   ],
+   "target-type": "release_group",
+   "attribute-ids": {
+    "number": "a59c5830-5ec7-38fe-9a21-c7ea54f6650a"
+   },
+   "target-credit": "",
+   "begin": null,
+   "ended": false,
+   "source-credit": ""
+  },
+  {
+   "ordering-key": 22,
+   "attribute-values": {
+    "number": "22"
+   },
+   "end": null,
+   "release_group": {
+    "primary-type": null,
+    "primary-type-id": null,
+    "first-release-date": "2025-03-28",
+    "disambiguation": "",
+    "secondary-types": [],
+    "id": "fd462283-7247-4f5c-b607-ec01eda0de6f",
+    "title": "A State of Trance 2025",
+    "secondary-type-ids": []
+   },
+   "direction": "backward",
+   "source-credit": "",
+   "ended": false,
+   "attribute-ids": {
+    "number": "a59c5830-5ec7-38fe-9a21-c7ea54f6650a"
+   },
+   "begin": null,
+   "target-credit": "",
+   "target-type": "release_group",
+   "type-id": "01018437-91d8-36b9-bf89-3f885d53b5bd",
+   "type": "part of",
+   "attributes": [
+    "number"
+   ]
+  },
+  {
+   "target-type": "release_group",
+   "attributes": [
+    "number"
+   ],
+   "type-id": "01018437-91d8-36b9-bf89-3f885d53b5bd",
+   "type": "part of",
+   "ended": false,
+   "source-credit": "",
+   "target-credit": "",
+   "begin": null,
+   "attribute-ids": {
+    "number": "a59c5830-5ec7-38fe-9a21-c7ea54f6650a"
+   },
+   "end": null,
+   "direction": "backward",
+   "release_group": {
+    "id": "5e1e896e-7fb0-4bd0-a9fe-e31770ffc541",
+    "secondary-types": [],
+    "secondary-type-ids": [],
+    "title": "A State of Trance 2026",
+    "primary-type-id": null,
+    "primary-type": null,
+    "disambiguation": "",
+    "first-release-date": "2026-05-08"
+   },
+   "ordering-key": 23,
+   "attribute-values": {
+    "number": "23"
+   }
+  }
+ ],
+ "type": "Release group series",
+ "type-id": "4c1c4949-7b6c-3a2d-9d54-a50a27e4fa77",
+ "disambiguation": "annual series"
+}

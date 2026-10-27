@@ -1,0 +1,3176 @@
+{
+ "release-group-offset": 0,
+ "release-groups": [
+  {
+   "disambiguation": "",
+   "title": "The Live Series: Stripped Down",
+   "id": "012d7288-51d6-40f6-ad11-25c25bd6635f",
+   "secondary-types": [
+    "Compilation",
+    "Live"
+   ],
+   "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+   "secondary-type-ids": [
+    "dd2a21e1-0c00-3729-a7a0-de60b84eb5d1",
+    "6fd474e2-6b58-3102-9d17-d6f7eb7da0a0"
+   ],
+   "first-release-date": "2020-07-17",
+   "primary-type": "Album",
+   "artist-credit": [
+    {
+     "name": "Bruce Springsteen",
+     "joinphrase": "",
+     "artist": {
+      "country": "US",
+      "sort-name": "Springsteen, Bruce",
+      "type": "Person",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "disambiguation": "",
+      "name": "Bruce Springsteen"
+     }
+    }
+   ]
+  },
+  {
+   "primary-type": "Album",
+   "artist-credit": [
+    {
+     "joinphrase": " & ",
+     "name": "Bruce Springsteen",
+     "artist": {
+      "country": "US",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "type": "Person",
+      "sort-name": "Springsteen, Bruce",
+      "name": "Bruce Springsteen",
+      "disambiguation": ""
+     }
+    },
+    {
+     "artist": {
+      "disambiguation": "",
+      "name": "The E Street Band",
+      "type-id": "e431f5f6-b5d2-343d-8b36-72607fffb74b",
+      "id": "d6652e7b-33fe-49ef-8336-4c863b4f996f",
+      "type": "Group",
+      "sort-name": "E Street Band, The",
+      "country": "US"
+     },
+     "name": "The E Street Band",
+     "joinphrase": ""
+    }
+   ],
+   "first-release-date": "2024-10-25",
+   "secondary-type-ids": [
+    "dd2a21e1-0c00-3729-a7a0-de60b84eb5d1",
+    "6fd474e2-6b58-3102-9d17-d6f7eb7da0a0"
+   ],
+   "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+   "secondary-types": [
+    "Compilation",
+    "Live"
+   ],
+   "id": "09205013-ee8b-4a48-be3b-212f3e90df47",
+   "title": "Road Diary",
+   "disambiguation": ""
+  },
+  {
+   "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+   "secondary-type-ids": [
+    "dd2a21e1-0c00-3729-a7a0-de60b84eb5d1",
+    "6fd474e2-6b58-3102-9d17-d6f7eb7da0a0"
+   ],
+   "first-release-date": "2023-04-21",
+   "primary-type": "Album",
+   "artist-credit": [
+    {
+     "artist": {
+      "sort-name": "Springsteen, Bruce",
+      "type": "Person",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "disambiguation": "",
+      "name": "Bruce Springsteen",
+      "country": "US"
+     },
+     "name": "Bruce Springsteen",
+     "joinphrase": ""
+    }
+   ],
+   "disambiguation": "",
+   "title": "The Live Series: Songs of Character",
+   "secondary-types": [
+    "Compilation",
+    "Live"
+   ],
+   "id": "0c7f4c82-9543-47ad-afde-4b4b3e45a41c"
+  },
+  {
+   "title": "The Live Series Collection",
+   "disambiguation": "",
+   "id": "0c8d9a0b-baba-40fd-88fe-9e4c0cdd7fd3",
+   "secondary-types": [
+    "Compilation",
+    "Live"
+   ],
+   "secondary-type-ids": [
+    "dd2a21e1-0c00-3729-a7a0-de60b84eb5d1",
+    "6fd474e2-6b58-3102-9d17-d6f7eb7da0a0"
+   ],
+   "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+   "artist-credit": [
+    {
+     "artist": {
+      "name": "Bruce Springsteen",
+      "disambiguation": "",
+      "type": "Person",
+      "sort-name": "Springsteen, Bruce",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "country": "US"
+     },
+     "name": "Bruce Springsteen",
+     "joinphrase": ""
+    }
+   ],
+   "primary-type": "Album",
+   "first-release-date": "2020-06-20"
+  },
+  {
+   "secondary-type-ids": [
+    "dd2a21e1-0c00-3729-a7a0-de60b84eb5d1"
+   ],
+   "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+   "primary-type": "Album",
+   "artist-credit": [
+    {
+     "name": "Bruce Springsteen",
+     "joinphrase": "",
+     "artist": {
+      "name": "Bruce Springsteen",
+      "disambiguation": "",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "sort-name": "Springsteen, Bruce",
+      "type": "Person",
+      "country": "US"
+     }
+    }
+   ],
+   "first-release-date": "1985",
+   "title": "The Born in the U.S.A. 12″ Single Collection",
+   "disambiguation": "",
+   "id": "0d849d30-df2d-442e-bc3f-0476027faedc",
+   "secondary-types": [
+    "Compilation"
+   ]
+  },
+  {
+   "secondary-types": [
+    "Compilation",
+    "Live"
+   ],
+   "id": "113cb855-77f4-4ee3-9ad3-8b9df53ecc75",
+   "disambiguation": "",
+   "title": "The Live Series: Songs of New Jersey",
+   "first-release-date": "2023-09-22",
+   "artist-credit": [
+    {
+     "joinphrase": "",
+     "name": "Bruce Springsteen",
+     "artist": {
+      "country": "US",
+      "type": "Person",
+      "sort-name": "Springsteen, Bruce",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "disambiguation": "",
+      "name": "Bruce Springsteen"
+     }
+    }
+   ],
+   "primary-type": "Album",
+   "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+   "secondary-type-ids": [
+    "dd2a21e1-0c00-3729-a7a0-de60b84eb5d1",
+    "6fd474e2-6b58-3102-9d17-d6f7eb7da0a0"
+   ]
+  },
+  {
+   "disambiguation": "",
+   "title": "The Live Series: Songs of Summer",
+   "secondary-types": [
+    "Compilation",
+    "Live"
+   ],
+   "id": "11faa778-4ae8-46d5-b6aa-073a7dd71e83",
+   "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+   "secondary-type-ids": [
+    "dd2a21e1-0c00-3729-a7a0-de60b84eb5d1",
+    "6fd474e2-6b58-3102-9d17-d6f7eb7da0a0"
+   ],
+   "first-release-date": "2020-05-15",
+   "primary-type": "Album",
+   "artist-credit": [
+    {
+     "artist": {
+      "type": "Person",
+      "sort-name": "Springsteen, Bruce",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "name": "Bruce Springsteen",
+      "disambiguation": "",
+      "country": "US"
+     },
+     "name": "Bruce Springsteen",
+     "joinphrase": ""
+    }
+   ]
+  },
+  {
+   "title": "A Concert for the Kristen Ann Carr Fund",
+   "disambiguation": "",
+   "secondary-types": [
+    "Compilation"
+   ],
+   "id": "12099757-b8a8-45d8-b95a-9bb5dc2748e7",
+   "secondary-type-ids": [
+    "dd2a21e1-0c00-3729-a7a0-de60b84eb5d1"
+   ],
+   "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+   "artist-credit": [
+    {
+     "joinphrase": "",
+     "name": "Bruce Springsteen",
+     "artist": {
+      "disambiguation": "",
+      "name": "Bruce Springsteen",
+      "type": "Person",
+      "sort-name": "Springsteen, Bruce",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "country": "US"
+     }
+    }
+   ],
+   "primary-type": "Album",
+   "first-release-date": "1993"
+  },
+  {
+   "secondary-types": [
+    "Compilation",
+    "Live"
+   ],
+   "id": "121eb4d3-5b70-459e-898a-e9d0c4cb423a",
+   "disambiguation": "",
+   "title": "The Live Series: Songs of Introspection",
+   "first-release-date": "2023-07-28",
+   "primary-type": "Album",
+   "artist-credit": [
+    {
+     "artist": {
+      "country": "US",
+      "name": "Bruce Springsteen",
+      "disambiguation": "",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "type": "Person",
+      "sort-name": "Springsteen, Bruce"
+     },
+     "joinphrase": "",
+     "name": "Bruce Springsteen"
+    }
+   ],
+   "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+   "secondary-type-ids": [
+    "dd2a21e1-0c00-3729-a7a0-de60b84eb5d1",
+    "6fd474e2-6b58-3102-9d17-d6f7eb7da0a0"
+   ]
+  },
+  {
+   "primary-type": "Album",
+   "artist-credit": [
+    {
+     "name": "Bruce Springsteen",
+     "joinphrase": "",
+     "artist": {
+      "sort-name": "Springsteen, Bruce",
+      "type": "Person",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "disambiguation": "",
+      "name": "Bruce Springsteen",
+      "country": "US"
+     }
+    }
+   ],
+   "first-release-date": "2023-09",
+   "secondary-type-ids": [
+    "dd2a21e1-0c00-3729-a7a0-de60b84eb5d1",
+    "6fd474e2-6b58-3102-9d17-d6f7eb7da0a0"
+   ],
+   "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+   "secondary-types": [
+    "Compilation",
+    "Live"
+   ],
+   "id": "12af4ff3-1dc3-4e36-93ea-e0637b063848",
+   "title": "Born in the U.S.A. Collection",
+   "disambiguation": ""
+  },
+  {
+   "disambiguation": "",
+   "title": "The Live Series: Songs of Hope",
+   "secondary-types": [
+    "Compilation",
+    "Live"
+   ],
+   "id": "13495166-82b8-4f39-a134-2c7d744b899e",
+   "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+   "secondary-type-ids": [
+    "dd2a21e1-0c00-3729-a7a0-de60b84eb5d1",
+    "6fd474e2-6b58-3102-9d17-d6f7eb7da0a0"
+   ],
+   "first-release-date": "2019-03-29",
+   "primary-type": "Album",
+   "artist-credit": [
+    {
+     "artist": {
+      "country": "US",
+      "type": "Person",
+      "sort-name": "Springsteen, Bruce",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "name": "Bruce Springsteen",
+      "disambiguation": ""
+     },
+     "joinphrase": "",
+     "name": "Bruce Springsteen"
+    }
+   ]
+  },
+  {
+   "title": "The Darkness Tour ’78",
+   "disambiguation": "",
+   "id": "13eaa7cf-b801-4c29-8d14-a230ea6b86de",
+   "secondary-types": [
+    "Compilation",
+    "Live"
+   ],
+   "secondary-type-ids": [
+    "dd2a21e1-0c00-3729-a7a0-de60b84eb5d1",
+    "6fd474e2-6b58-3102-9d17-d6f7eb7da0a0"
+   ],
+   "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+   "primary-type": "Album",
+   "artist-credit": [
+    {
+     "artist": {
+      "country": "US",
+      "sort-name": "Springsteen, Bruce",
+      "type": "Person",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "name": "Bruce Springsteen",
+      "disambiguation": ""
+     },
+     "name": "Bruce Springsteen",
+     "joinphrase": " and "
+    },
+    {
+     "name": "The E Street Band",
+     "joinphrase": "",
+     "artist": {
+      "name": "The E Street Band",
+      "disambiguation": "",
+      "sort-name": "E Street Band, The",
+      "type": "Group",
+      "id": "d6652e7b-33fe-49ef-8336-4c863b4f996f",
+      "type-id": "e431f5f6-b5d2-343d-8b36-72607fffb74b",
+      "country": "US"
+     }
+    }
+   ],
+   "first-release-date": "2023-06-02"
+  },
+  {
+   "id": "13f3f629-65a4-46be-9317-b58d3bbec8a9",
+   "secondary-types": [
+    "Compilation",
+    "Live"
+   ],
+   "title": "Darkness on the Edge of Town Tour 1978, Vol. 1",
+   "disambiguation": "",
+   "artist-credit": [
+    {
+     "joinphrase": " & ",
+     "name": "Bruce Springsteen",
+     "artist": {
+      "country": "US",
+      "type": "Person",
+      "sort-name": "Springsteen, Bruce",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "name": "Bruce Springsteen",
+      "disambiguation": ""
+     }
+    },
+    {
+     "artist": {
+      "country": "US",
+      "type": "Group",
+      "sort-name": "E Street Band, The",
+      "id": "d6652e7b-33fe-49ef-8336-4c863b4f996f",
+      "type-id": "e431f5f6-b5d2-343d-8b36-72607fffb74b",
+      "disambiguation": "",
+      "name": "The E Street Band"
+     },
+     "name": "The E Street Band",
+     "joinphrase": ""
+    }
+   ],
+   "primary-type": "Album",
+   "first-release-date": "2021-04-05",
+   "secondary-type-ids": [
+    "dd2a21e1-0c00-3729-a7a0-de60b84eb5d1",
+    "6fd474e2-6b58-3102-9d17-d6f7eb7da0a0"
+   ],
+   "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc"
+  },
+  {
+   "first-release-date": "2024-04-19",
+   "primary-type": "Album",
+   "artist-credit": [
+    {
+     "name": "Bruce Springsteen",
+     "joinphrase": "",
+     "artist": {
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "sort-name": "Springsteen, Bruce",
+      "type": "Person",
+      "name": "Bruce Springsteen",
+      "disambiguation": "",
+      "country": "US"
+     }
+    }
+   ],
+   "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+   "secondary-type-ids": [
+    "dd2a21e1-0c00-3729-a7a0-de60b84eb5d1"
+   ],
+   "id": "14a3c52f-855e-4c76-8de6-37f395e8aeab",
+   "secondary-types": [
+    "Compilation"
+   ],
+   "disambiguation": "",
+   "title": "Best of Bruce Springsteen"
+  },
+  {
+   "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+   "secondary-type-ids": [
+    "dd2a21e1-0c00-3729-a7a0-de60b84eb5d1"
+   ],
+   "first-release-date": "2025-06-27",
+   "primary-type": "Album",
+   "artist-credit": [
+    {
+     "artist": {
+      "name": "Bruce Springsteen",
+      "disambiguation": "",
+      "sort-name": "Springsteen, Bruce",
+      "type": "Person",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "country": "US"
+     },
+     "joinphrase": "",
+     "name": "Bruce Springsteen"
+    }
+   ],
+   "disambiguation": "",
+   "title": "Lost and Found: Selections From the Lost Albums",
+   "secondary-types": [
+    "Compilation"
+   ],
+   "id": "1b16edcb-a529-4e05-85da-0e896b8a907a"
+  },
+  {
+   "secondary-type-ids": [
+    "dd2a21e1-0c00-3729-a7a0-de60b84eb5d1"
+   ],
+   "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+   "artist-credit": [
+    {
+     "artist": {
+      "country": "US",
+      "type": "Person",
+      "sort-name": "Springsteen, Bruce",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "name": "Bruce Springsteen",
+      "disambiguation": ""
+     },
+     "name": "Bruce Springsteen",
+     "joinphrase": ""
+    }
+   ],
+   "primary-type": "Album",
+   "first-release-date": "1991",
+   "title": "Nebraska / Greetings From Asbury Park, N.J.",
+   "disambiguation": "",
+   "id": "21a2cabb-d1cc-4eaf-ac0a-6bd349441f9c",
+   "secondary-types": [
+    "Compilation"
+   ]
+  },
+  {
+   "secondary-types": [],
+   "id": "220de9c6-fa5f-39e3-ae89-1faf8a8bbc67",
+   "title": "Human Touch",
+   "disambiguation": "",
+   "artist-credit": [
+    {
+     "artist": {
+      "country": "US",
+      "sort-name": "Springsteen, Bruce",
+      "type": "Person",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "disambiguation": "",
+      "name": "Bruce Springsteen"
+     },
+     "name": "Bruce Springsteen",
+     "joinphrase": ""
+    }
+   ],
+   "primary-type": "Album",
+   "first-release-date": "1992-03-26",
+   "secondary-type-ids": [],
+   "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc"
+  },
+  {
+   "secondary-types": [
+    "Compilation"
+   ],
+   "id": "229019c4-e9da-4bc4-b857-ebf1ac583f2a",
+   "disambiguation": "",
+   "title": "The Album Collection, Vol. 1: 1973–1984",
+   "first-release-date": "2014-11-14",
+   "primary-type": "Album",
+   "artist-credit": [
+    {
+     "artist": {
+      "country": "US",
+      "type": "Person",
+      "sort-name": "Springsteen, Bruce",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "name": "Bruce Springsteen",
+      "disambiguation": ""
+     },
+     "joinphrase": "",
+     "name": "Bruce Springsteen"
+    }
+   ],
+   "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+   "secondary-type-ids": [
+    "dd2a21e1-0c00-3729-a7a0-de60b84eb5d1"
+   ]
+  },
+  {
+   "artist-credit": [
+    {
+     "artist": {
+      "sort-name": "Springsteen, Bruce",
+      "type": "Person",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "name": "Bruce Springsteen",
+      "disambiguation": "",
+      "country": "US"
+     },
+     "name": "Bruce Springsteen",
+     "joinphrase": ""
+    }
+   ],
+   "primary-type": "Album",
+   "first-release-date": "2010-11-12",
+   "secondary-type-ids": [
+    "dd2a21e1-0c00-3729-a7a0-de60b84eb5d1"
+   ],
+   "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+   "id": "2872c420-5a5f-482e-b00c-199541c5b9b3",
+   "secondary-types": [
+    "Compilation"
+   ],
+   "title": "The Promise",
+   "disambiguation": ""
+  },
+  {
+   "secondary-type-ids": [
+    "dd2a21e1-0c00-3729-a7a0-de60b84eb5d1",
+    "6fd474e2-6b58-3102-9d17-d6f7eb7da0a0"
+   ],
+   "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+   "primary-type": "Album",
+   "artist-credit": [
+    {
+     "joinphrase": "",
+     "name": "Bruce Springsteen",
+     "artist": {
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "sort-name": "Springsteen, Bruce",
+      "type": "Person",
+      "name": "Bruce Springsteen",
+      "disambiguation": "",
+      "country": "US"
+     }
+    }
+   ],
+   "first-release-date": "2019-08-23",
+   "title": "The Live Series: Songs of Love",
+   "disambiguation": "",
+   "secondary-types": [
+    "Compilation",
+    "Live"
+   ],
+   "id": "287b4139-95f4-41b2-a40a-7cef683a4ada"
+  },
+  {
+   "secondary-types": [
+    "Compilation"
+   ],
+   "id": "2cdcbdc4-b5b1-4afa-853f-f84faae2a0e0",
+   "title": "The Promise: The Darkness on the Edge of Town Story",
+   "disambiguation": "",
+   "artist-credit": [
+    {
+     "joinphrase": "",
+     "name": "Bruce Springsteen",
+     "artist": {
+      "country": "US",
+      "type": "Person",
+      "sort-name": "Springsteen, Bruce",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "name": "Bruce Springsteen",
+      "disambiguation": ""
+     }
+    }
+   ],
+   "primary-type": "Album",
+   "first-release-date": "2010-11-16",
+   "secondary-type-ids": [
+    "dd2a21e1-0c00-3729-a7a0-de60b84eb5d1"
+   ],
+   "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc"
+  },
+  {
+   "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+   "secondary-type-ids": [
+    "dd2a21e1-0c00-3729-a7a0-de60b84eb5d1",
+    "6fd474e2-6b58-3102-9d17-d6f7eb7da0a0"
+   ],
+   "first-release-date": "2023-12-01",
+   "artist-credit": [
+    {
+     "joinphrase": "",
+     "name": "Bruce Springsteen",
+     "artist": {
+      "country": "US",
+      "name": "Bruce Springsteen",
+      "disambiguation": "",
+      "sort-name": "Springsteen, Bruce",
+      "type": "Person",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df"
+     }
+    }
+   ],
+   "primary-type": "Album",
+   "disambiguation": "",
+   "title": "The Live Series: Songs on Keys",
+   "secondary-types": [
+    "Compilation",
+    "Live"
+   ],
+   "id": "2e505747-7df8-4ca7-8cd3-455b5fe89ada"
+  },
+  {
+   "secondary-types": [],
+   "id": "324aee0c-36ec-35c1-9c93-b67a1d428037",
+   "title": "Nebraska",
+   "disambiguation": "",
+   "artist-credit": [
+    {
+     "joinphrase": "",
+     "name": "Bruce Springsteen",
+     "artist": {
+      "country": "US",
+      "name": "Bruce Springsteen",
+      "disambiguation": "",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "sort-name": "Springsteen, Bruce",
+      "type": "Person"
+     }
+    }
+   ],
+   "primary-type": "Album",
+   "first-release-date": "1982-09-20",
+   "secondary-type-ids": [],
+   "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc"
+  },
+  {
+   "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+   "secondary-type-ids": [
+    "dd2a21e1-0c00-3729-a7a0-de60b84eb5d1",
+    "6fd474e2-6b58-3102-9d17-d6f7eb7da0a0"
+   ],
+   "first-release-date": "2019-01-25",
+   "artist-credit": [
+    {
+     "artist": {
+      "country": "US",
+      "name": "Bruce Springsteen",
+      "disambiguation": "",
+      "sort-name": "Springsteen, Bruce",
+      "type": "Person",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f"
+     },
+     "name": "Bruce Springsteen",
+     "joinphrase": ""
+    }
+   ],
+   "primary-type": "Album",
+   "disambiguation": "",
+   "title": "The Live Series: Songs of Friendship",
+   "id": "398fc9f6-7616-4939-9169-f65cbedd0792",
+   "secondary-types": [
+    "Compilation",
+    "Live"
+   ]
+  },
+  {
+   "title": "Born to Run",
+   "disambiguation": "",
+   "id": "39b22944-7503-3937-8bba-09b17281cc6a",
+   "secondary-types": [],
+   "secondary-type-ids": [],
+   "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+   "primary-type": "Album",
+   "artist-credit": [
+    {
+     "artist": {
+      "disambiguation": "",
+      "name": "Bruce Springsteen",
+      "type": "Person",
+      "sort-name": "Springsteen, Bruce",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "country": "US"
+     },
+     "joinphrase": "",
+     "name": "Bruce Springsteen"
+    }
+   ],
+   "first-release-date": "1975-08-25"
+  },
+  {
+   "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+   "secondary-type-ids": [
+    "dd2a21e1-0c00-3729-a7a0-de60b84eb5d1"
+   ],
+   "first-release-date": "2006-09",
+   "primary-type": "Album",
+   "artist-credit": [
+    {
+     "name": "Bruce Springsteen",
+     "joinphrase": "",
+     "artist": {
+      "country": "US",
+      "sort-name": "Springsteen, Bruce",
+      "type": "Person",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "name": "Bruce Springsteen",
+      "disambiguation": ""
+     }
+    }
+   ],
+   "disambiguation": "",
+   "title": "Definitive Collection",
+   "id": "3b75264e-b299-43b1-836a-b3e65c5778ea",
+   "secondary-types": [
+    "Compilation"
+   ]
+  },
+  {
+   "title": "Born in the U.S.A.",
+   "disambiguation": "",
+   "id": "3c39a076-8e52-38f2-8076-260d0672fb23",
+   "secondary-types": [],
+   "secondary-type-ids": [],
+   "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+   "artist-credit": [
+    {
+     "artist": {
+      "name": "Bruce Springsteen",
+      "disambiguation": "",
+      "sort-name": "Springsteen, Bruce",
+      "type": "Person",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "country": "US"
+     },
+     "joinphrase": "",
+     "name": "Bruce Springsteen"
+    }
+   ],
+   "primary-type": "Album",
+   "first-release-date": "1984-05"
+  },
+  {
+   "secondary-types": [
+    "Compilation"
+   ],
+   "id": "3eb2f3c8-1975-48b2-b455-acc202057386",
+   "disambiguation": "",
+   "title": "The Collection 1973–84",
+   "first-release-date": "2010-08-13",
+   "artist-credit": [
+    {
+     "joinphrase": "",
+     "name": "Bruce Springsteen",
+     "artist": {
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "sort-name": "Springsteen, Bruce",
+      "type": "Person",
+      "disambiguation": "",
+      "name": "Bruce Springsteen",
+      "country": "US"
+     }
+    }
+   ],
+   "primary-type": "Album",
+   "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+   "secondary-type-ids": [
+    "dd2a21e1-0c00-3729-a7a0-de60b84eb5d1"
+   ]
+  },
+  {
+   "primary-type": "Album",
+   "artist-credit": [
+    {
+     "name": "Bruce Springsteen",
+     "joinphrase": " & ",
+     "artist": {
+      "country": "US",
+      "type": "Person",
+      "sort-name": "Springsteen, Bruce",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "disambiguation": "",
+      "name": "Bruce Springsteen"
+     }
+    },
+    {
+     "artist": {
+      "country": "US",
+      "sort-name": "E Street Band, The",
+      "type": "Group",
+      "type-id": "e431f5f6-b5d2-343d-8b36-72607fffb74b",
+      "id": "d6652e7b-33fe-49ef-8336-4c863b4f996f",
+      "name": "The E Street Band",
+      "disambiguation": ""
+     },
+     "name": "The E Street Band",
+     "joinphrase": ""
+    }
+   ],
+   "first-release-date": "2009-01-13",
+   "secondary-type-ids": [
+    "dd2a21e1-0c00-3729-a7a0-de60b84eb5d1"
+   ],
+   "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+   "id": "4039e96d-8312-36be-8511-d6b786043ebf",
+   "secondary-types": [
+    "Compilation"
+   ],
+   "title": "Greatest Hits",
+   "disambiguation": ""
+  },
+  {
+   "title": "Live in New York City",
+   "disambiguation": "",
+   "id": "407bbe17-0fd9-333a-94d7-382bde11080e",
+   "secondary-types": [
+    "Compilation",
+    "Live"
+   ],
+   "secondary-type-ids": [
+    "dd2a21e1-0c00-3729-a7a0-de60b84eb5d1",
+    "6fd474e2-6b58-3102-9d17-d6f7eb7da0a0"
+   ],
+   "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+   "artist-credit": [
+    {
+     "name": "Bruce Springsteen",
+     "joinphrase": " & ",
+     "artist": {
+      "sort-name": "Springsteen, Bruce",
+      "type": "Person",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "name": "Bruce Springsteen",
+      "disambiguation": "",
+      "country": "US"
+     }
+    },
+    {
+     "artist": {
+      "country": "US",
+      "type-id": "e431f5f6-b5d2-343d-8b36-72607fffb74b",
+      "id": "d6652e7b-33fe-49ef-8336-4c863b4f996f",
+      "type": "Group",
+      "sort-name": "E Street Band, The",
+      "disambiguation": "",
+      "name": "The E Street Band"
+     },
+     "name": "The E Street Band",
+     "joinphrase": ""
+    }
+   ],
+   "primary-type": "Album",
+   "first-release-date": "2001-03-15"
+  },
+  {
+   "id": "4318adaa-84bb-4f6b-8e2e-4689fc1067be",
+   "secondary-types": [
+    "Compilation"
+   ],
+   "disambiguation": "",
+   "title": "The Wild, the Innocent & the E Street Shuffle / Darkness on the Edge of Town",
+   "first-release-date": "1988",
+   "artist-credit": [
+    {
+     "artist": {
+      "country": "US",
+      "name": "Bruce Springsteen",
+      "disambiguation": "",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "sort-name": "Springsteen, Bruce",
+      "type": "Person"
+     },
+     "name": "Bruce Springsteen",
+     "joinphrase": ""
+    }
+   ],
+   "primary-type": "Album",
+   "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+   "secondary-type-ids": [
+    "dd2a21e1-0c00-3729-a7a0-de60b84eb5d1"
+   ]
+  },
+  {
+   "secondary-type-ids": [],
+   "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+   "artist-credit": [
+    {
+     "name": "Bruce Springsteen",
+     "joinphrase": "",
+     "artist": {
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "sort-name": "Springsteen, Bruce",
+      "type": "Person",
+      "name": "Bruce Springsteen",
+      "disambiguation": "",
+      "country": "US"
+     }
+    }
+   ],
+   "primary-type": "Album",
+   "first-release-date": "1995-11-21",
+   "title": "The Ghost of Tom Joad",
+   "disambiguation": "",
+   "id": "46ab3187-496d-3565-900e-57d89bacd22c",
+   "secondary-types": []
+  },
+  {
+   "id": "4851df98-1d21-4cb7-8d1f-da37fd16c443",
+   "secondary-types": [
+    "Compilation",
+    "Live"
+   ],
+   "disambiguation": "",
+   "title": "Metlife Stadium 2016",
+   "first-release-date": "2016",
+   "primary-type": "Album",
+   "artist-credit": [
+    {
+     "artist": {
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "type": "Person",
+      "sort-name": "Springsteen, Bruce",
+      "disambiguation": "",
+      "name": "Bruce Springsteen",
+      "country": "US"
+     },
+     "name": "Bruce Springsteen",
+     "joinphrase": " & "
+    },
+    {
+     "artist": {
+      "sort-name": "E Street Band, The",
+      "type": "Group",
+      "type-id": "e431f5f6-b5d2-343d-8b36-72607fffb74b",
+      "id": "d6652e7b-33fe-49ef-8336-4c863b4f996f",
+      "disambiguation": "",
+      "name": "The E Street Band",
+      "country": "US"
+     },
+     "name": "The E Street Band",
+     "joinphrase": ""
+    }
+   ],
+   "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+   "secondary-type-ids": [
+    "dd2a21e1-0c00-3729-a7a0-de60b84eb5d1",
+    "6fd474e2-6b58-3102-9d17-d6f7eb7da0a0"
+   ]
+  },
+  {
+   "disambiguation": "",
+   "title": "Letter to You",
+   "secondary-types": [],
+   "id": "48e335f3-8e4a-4e38-b2df-e1514b9f9126",
+   "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+   "secondary-type-ids": [],
+   "first-release-date": "2020-10-23",
+   "primary-type": "Album",
+   "artist-credit": [
+    {
+     "artist": {
+      "country": "US",
+      "disambiguation": "",
+      "name": "Bruce Springsteen",
+      "sort-name": "Springsteen, Bruce",
+      "type": "Person",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df"
+     },
+     "name": "Bruce Springsteen",
+     "joinphrase": ""
+    }
+   ]
+  },
+  {
+   "secondary-types": [],
+   "id": "4b443e66-52a7-3cc9-a522-0dc64a6a51dc",
+   "title": "The Wild, the Innocent & The E Street Shuffle",
+   "disambiguation": "",
+   "primary-type": "Album",
+   "artist-credit": [
+    {
+     "name": "Bruce Springsteen",
+     "joinphrase": "",
+     "artist": {
+      "disambiguation": "",
+      "name": "Bruce Springsteen",
+      "type": "Person",
+      "sort-name": "Springsteen, Bruce",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "country": "US"
+     }
+    }
+   ],
+   "first-release-date": "1973-11-05",
+   "secondary-type-ids": [],
+   "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc"
+  },
+  {
+   "secondary-types": [
+    "Compilation",
+    "Live"
+   ],
+   "id": "4c2aeda7-8633-4f96-bf5f-cc3af27792aa",
+   "title": "The Reunion Tour ’99",
+   "disambiguation": "",
+   "artist-credit": [
+    {
+     "artist": {
+      "country": "US",
+      "disambiguation": "",
+      "name": "Bruce Springsteen",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "sort-name": "Springsteen, Bruce",
+      "type": "Person"
+     },
+     "name": "Bruce Springsteen",
+     "joinphrase": " & "
+    },
+    {
+     "artist": {
+      "country": "US",
+      "name": "The E Street Band",
+      "disambiguation": "",
+      "type-id": "e431f5f6-b5d2-343d-8b36-72607fffb74b",
+      "id": "d6652e7b-33fe-49ef-8336-4c863b4f996f",
+      "sort-name": "E Street Band, The",
+      "type": "Group"
+     },
+     "name": "The E Street Band",
+     "joinphrase": ""
+    }
+   ],
+   "primary-type": "Album",
+   "first-release-date": "2024-07-26",
+   "secondary-type-ids": [
+    "dd2a21e1-0c00-3729-a7a0-de60b84eb5d1",
+    "6fd474e2-6b58-3102-9d17-d6f7eb7da0a0"
+   ],
+   "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc"
+  },
+  {
+   "id": "514ef4c3-e518-4181-947b-bba360056b62",
+   "secondary-types": [
+    "Compilation"
+   ],
+   "title": "Video Anthology / 1978–88",
+   "disambiguation": "",
+   "primary-type": "Album",
+   "artist-credit": [
+    {
+     "artist": {
+      "country": "US",
+      "sort-name": "Springsteen, Bruce",
+      "type": "Person",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "disambiguation": "",
+      "name": "Bruce Springsteen"
+     },
+     "name": "Bruce Springsteen",
+     "joinphrase": ""
+    }
+   ],
+   "first-release-date": "1989-03-21",
+   "secondary-type-ids": [
+    "dd2a21e1-0c00-3729-a7a0-de60b84eb5d1"
+   ],
+   "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc"
+  },
+  {
+   "first-release-date": "1978",
+   "artist-credit": [
+    {
+     "joinphrase": " & ",
+     "name": "Bruce Springsteen",
+     "artist": {
+      "country": "US",
+      "sort-name": "Springsteen, Bruce",
+      "type": "Person",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "disambiguation": "",
+      "name": "Bruce Springsteen"
+     }
+    },
+    {
+     "joinphrase": "",
+     "name": "The E Street Band",
+     "artist": {
+      "disambiguation": "",
+      "name": "The E Street Band",
+      "id": "d6652e7b-33fe-49ef-8336-4c863b4f996f",
+      "type-id": "e431f5f6-b5d2-343d-8b36-72607fffb74b",
+      "sort-name": "E Street Band, The",
+      "type": "Group",
+      "country": "US"
+     }
+    }
+   ],
+   "primary-type": "Album",
+   "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+   "secondary-type-ids": [
+    "6fd474e2-6b58-3102-9d17-d6f7eb7da0a0"
+   ],
+   "secondary-types": [
+    "Live"
+   ],
+   "id": "5747ee46-1a6c-3a25-b53e-cd4c7ec3bd04",
+   "disambiguation": "",
+   "title": "1978‐09‐19: Capitol Theatre, Passaic, NJ, USA"
+  },
+  {
+   "secondary-type-ids": [],
+   "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+   "artist-credit": [
+    {
+     "name": "Bruce Springsteen",
+     "joinphrase": "",
+     "artist": {
+      "country": "US",
+      "sort-name": "Springsteen, Bruce",
+      "type": "Person",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "name": "Bruce Springsteen",
+      "disambiguation": ""
+     }
+    }
+   ],
+   "primary-type": "Album",
+   "first-release-date": "2007-07-17",
+   "title": "Magic",
+   "disambiguation": "",
+   "secondary-types": [],
+   "id": "5af7998f-9b53-3ebb-8f09-ebfbca703a59"
+  },
+  {
+   "title": "The Live Series: Songs Under Cover",
+   "disambiguation": "",
+   "id": "5cc69684-9d14-440a-8852-8f6b432e8f1f",
+   "secondary-types": [
+    "Compilation",
+    "Live"
+   ],
+   "secondary-type-ids": [
+    "dd2a21e1-0c00-3729-a7a0-de60b84eb5d1",
+    "6fd474e2-6b58-3102-9d17-d6f7eb7da0a0"
+   ],
+   "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+   "artist-credit": [
+    {
+     "artist": {
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "type": "Person",
+      "sort-name": "Springsteen, Bruce",
+      "name": "Bruce Springsteen",
+      "disambiguation": "",
+      "country": "US"
+     },
+     "name": "Bruce Springsteen",
+     "joinphrase": ""
+    }
+   ],
+   "primary-type": "Album",
+   "first-release-date": "2020-02-14"
+  },
+  {
+   "id": "602387fa-a76f-3895-9039-1c812c6cb28c",
+   "secondary-types": [],
+   "disambiguation": "",
+   "title": "We Shall Overcome: The Seeger Sessions",
+   "first-release-date": "2006-04-24",
+   "primary-type": "Album",
+   "artist-credit": [
+    {
+     "artist": {
+      "country": "US",
+      "disambiguation": "",
+      "name": "Bruce Springsteen",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "sort-name": "Springsteen, Bruce",
+      "type": "Person"
+     },
+     "name": "Bruce Springsteen",
+     "joinphrase": ""
+    }
+   ],
+   "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+   "secondary-type-ids": []
+  },
+  {
+   "disambiguation": "",
+   "title": "Digital Program 2003",
+   "secondary-types": [
+    "Compilation",
+    "Live"
+   ],
+   "id": "607858fd-1f1a-4cf1-abb3-2c77cc25ac3c",
+   "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+   "secondary-type-ids": [
+    "dd2a21e1-0c00-3729-a7a0-de60b84eb5d1",
+    "6fd474e2-6b58-3102-9d17-d6f7eb7da0a0"
+   ],
+   "first-release-date": "2003",
+   "primary-type": "Album",
+   "artist-credit": [
+    {
+     "artist": {
+      "country": "US",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "type": "Person",
+      "sort-name": "Springsteen, Bruce",
+      "name": "Bruce Springsteen",
+      "disambiguation": ""
+     },
+     "joinphrase": "",
+     "name": "Bruce Springsteen"
+    }
+   ]
+  },
+  {
+   "disambiguation": "",
+   "title": "18 Tracks",
+   "secondary-types": [
+    "Compilation"
+   ],
+   "id": "609d33d6-e77e-3983-8670-1e1a0172453d",
+   "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+   "secondary-type-ids": [
+    "dd2a21e1-0c00-3729-a7a0-de60b84eb5d1"
+   ],
+   "first-release-date": "1999-03-25",
+   "primary-type": "Album",
+   "artist-credit": [
+    {
+     "name": "Bruce Springsteen",
+     "joinphrase": "",
+     "artist": {
+      "disambiguation": "",
+      "name": "Bruce Springsteen",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "sort-name": "Springsteen, Bruce",
+      "type": "Person",
+      "country": "US"
+     }
+    }
+   ]
+  },
+  {
+   "disambiguation": "",
+   "title": "Tracks",
+   "id": "60ba10e0-9f77-3237-8b0a-967b31679a1b",
+   "secondary-types": [
+    "Compilation"
+   ],
+   "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+   "secondary-type-ids": [
+    "dd2a21e1-0c00-3729-a7a0-de60b84eb5d1"
+   ],
+   "first-release-date": "1998-11-10",
+   "artist-credit": [
+    {
+     "artist": {
+      "type": "Person",
+      "sort-name": "Springsteen, Bruce",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "name": "Bruce Springsteen",
+      "disambiguation": "",
+      "country": "US"
+     },
+     "name": "Bruce Springsteen",
+     "joinphrase": ""
+    }
+   ],
+   "primary-type": "Album"
+  },
+  {
+   "artist-credit": [
+    {
+     "artist": {
+      "country": "US",
+      "name": "Bruce Springsteen",
+      "disambiguation": "",
+      "sort-name": "Springsteen, Bruce",
+      "type": "Person",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f"
+     },
+     "joinphrase": "",
+     "name": "Bruce Springsteen"
+    }
+   ],
+   "primary-type": "Album",
+   "first-release-date": "2021-03-05",
+   "secondary-type-ids": [
+    "dd2a21e1-0c00-3729-a7a0-de60b84eb5d1",
+    "6fd474e2-6b58-3102-9d17-d6f7eb7da0a0"
+   ],
+   "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+   "secondary-types": [
+    "Compilation",
+    "Live"
+   ],
+   "id": "60d5f5e6-960c-4094-bab5-ab15e36ee2a5",
+   "title": "The Live Series: Songs Under Cover, Vol. 2",
+   "disambiguation": ""
+  },
+  {
+   "secondary-types": [
+    "Live"
+   ],
+   "id": "6a118838-5cef-447f-aee4-84dda2eba8ad",
+   "disambiguation": "",
+   "title": "1978‐07‐07: The Roxy Theatre, West Hollywood, CA, USA",
+   "first-release-date": "1978",
+   "primary-type": "Album",
+   "artist-credit": [
+    {
+     "name": "Bruce Springsteen",
+     "joinphrase": " & ",
+     "artist": {
+      "country": "US",
+      "name": "Bruce Springsteen",
+      "disambiguation": "",
+      "type": "Person",
+      "sort-name": "Springsteen, Bruce",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df"
+     }
+    },
+    {
+     "artist": {
+      "country": "US",
+      "type": "Group",
+      "sort-name": "E Street Band, The",
+      "id": "d6652e7b-33fe-49ef-8336-4c863b4f996f",
+      "type-id": "e431f5f6-b5d2-343d-8b36-72607fffb74b",
+      "disambiguation": "",
+      "name": "The E Street Band"
+     },
+     "joinphrase": "",
+     "name": "The E Street Band"
+    }
+   ],
+   "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+   "secondary-type-ids": [
+    "6fd474e2-6b58-3102-9d17-d6f7eb7da0a0"
+   ]
+  },
+  {
+   "first-release-date": "1992",
+   "artist-credit": [
+    {
+     "artist": {
+      "disambiguation": "",
+      "name": "Bruce Springsteen",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "sort-name": "Springsteen, Bruce",
+      "type": "Person",
+      "country": "US"
+     },
+     "joinphrase": "",
+     "name": "Bruce Springsteen"
+    }
+   ],
+   "primary-type": "Album",
+   "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+   "secondary-type-ids": [
+    "dd2a21e1-0c00-3729-a7a0-de60b84eb5d1"
+   ],
+   "id": "6d954eab-7389-4dbb-aaca-7037b71e6e22",
+   "secondary-types": [
+    "Compilation"
+   ],
+   "disambiguation": "",
+   "title": "Nebraska / Darkness on the Edge of Town"
+  },
+  {
+   "secondary-types": [
+    "Compilation"
+   ],
+   "id": "6e44ac1b-536d-4766-9c65-3599571d3691",
+   "title": "Nebraska / Lucky Town / In Concert: MTV Plugged",
+   "disambiguation": "",
+   "artist-credit": [
+    {
+     "name": "Bruce Springsteen",
+     "joinphrase": "",
+     "artist": {
+      "disambiguation": "",
+      "name": "Bruce Springsteen",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "sort-name": "Springsteen, Bruce",
+      "type": "Person",
+      "country": "US"
+     }
+    }
+   ],
+   "primary-type": "Album",
+   "first-release-date": "2005",
+   "secondary-type-ids": [
+    "dd2a21e1-0c00-3729-a7a0-de60b84eb5d1"
+   ],
+   "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc"
+  },
+  {
+   "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+   "secondary-type-ids": [
+    "dd2a21e1-0c00-3729-a7a0-de60b84eb5d1"
+   ],
+   "first-release-date": "2013-03-08",
+   "artist-credit": [
+    {
+     "artist": {
+      "country": "US",
+      "sort-name": "Springsteen, Bruce",
+      "type": "Person",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "name": "Bruce Springsteen",
+      "disambiguation": ""
+     },
+     "joinphrase": "",
+     "name": "Bruce Springsteen"
+    }
+   ],
+   "primary-type": "Album",
+   "disambiguation": "",
+   "title": "Collection: 1973–2012",
+   "secondary-types": [
+    "Compilation"
+   ],
+   "id": "7e740659-f899-49f3-9790-66116d64e9e4"
+  },
+  {
+   "title": "The Live Series: Songs of Location",
+   "disambiguation": "",
+   "id": "7f5fa800-5f38-4f19-82ad-ae4a7369acb1",
+   "secondary-types": [
+    "Compilation",
+    "Live"
+   ],
+   "secondary-type-ids": [
+    "dd2a21e1-0c00-3729-a7a0-de60b84eb5d1",
+    "6fd474e2-6b58-3102-9d17-d6f7eb7da0a0"
+   ],
+   "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+   "primary-type": "Album",
+   "artist-credit": [
+    {
+     "name": "Bruce Springsteen",
+     "joinphrase": "",
+     "artist": {
+      "type": "Person",
+      "sort-name": "Springsteen, Bruce",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "name": "Bruce Springsteen",
+      "disambiguation": "",
+      "country": "US"
+     }
+    }
+   ],
+   "first-release-date": "2022-04-29"
+  },
+  {
+   "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+   "secondary-type-ids": [
+    "6fd474e2-6b58-3102-9d17-d6f7eb7da0a0"
+   ],
+   "first-release-date": "1978",
+   "primary-type": "Album",
+   "artist-credit": [
+    {
+     "artist": {
+      "country": "US",
+      "disambiguation": "",
+      "name": "Bruce Springsteen",
+      "type": "Person",
+      "sort-name": "Springsteen, Bruce",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df"
+     },
+     "name": "Bruce Springsteen",
+     "joinphrase": " & "
+    },
+    {
+     "joinphrase": "",
+     "name": "The E Street Band",
+     "artist": {
+      "disambiguation": "",
+      "name": "The E Street Band",
+      "id": "d6652e7b-33fe-49ef-8336-4c863b4f996f",
+      "type-id": "e431f5f6-b5d2-343d-8b36-72607fffb74b",
+      "type": "Group",
+      "sort-name": "E Street Band, The",
+      "country": "US"
+     }
+    }
+   ],
+   "disambiguation": "",
+   "title": "1978‐12‐15: Winterland Ballroom, San Francisco, CA, USA",
+   "secondary-types": [
+    "Live"
+   ],
+   "id": "7f76b82a-912f-39ee-bf39-477f3cf2c062"
+  },
+  {
+   "secondary-type-ids": [
+    "dd2a21e1-0c00-3729-a7a0-de60b84eb5d1"
+   ],
+   "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+   "artist-credit": [
+    {
+     "name": "Bruce Springsteen",
+     "joinphrase": "",
+     "artist": {
+      "disambiguation": "",
+      "name": "Bruce Springsteen",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "type": "Person",
+      "sort-name": "Springsteen, Bruce",
+      "country": "US"
+     }
+    }
+   ],
+   "primary-type": "Album",
+   "first-release-date": "1992",
+   "title": "Human Touch & Lucky Town",
+   "disambiguation": "",
+   "secondary-types": [
+    "Compilation"
+   ],
+   "id": "81e56a68-8b36-43e7-b3ab-1084f824448b"
+  },
+  {
+   "first-release-date": "1990",
+   "primary-type": "Album",
+   "artist-credit": [
+    {
+     "joinphrase": "",
+     "name": "Bruce Springsteen",
+     "artist": {
+      "type": "Person",
+      "sort-name": "Springsteen, Bruce",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "disambiguation": "",
+      "name": "Bruce Springsteen",
+      "country": "US"
+     }
+    }
+   ],
+   "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+   "secondary-type-ids": [
+    "dd2a21e1-0c00-3729-a7a0-de60b84eb5d1"
+   ],
+   "secondary-types": [
+    "Compilation"
+   ],
+   "id": "8435fc60-e3c1-439d-896d-7deb2fe4489c",
+   "disambiguation": "",
+   "title": "Greetings From Asbury Park N.J. / The Wild, the Innocent and the E Street Shuffle / Darkness on the Edge of Town"
+  },
+  {
+   "secondary-type-ids": [
+    "dd2a21e1-0c00-3729-a7a0-de60b84eb5d1",
+    "6fd474e2-6b58-3102-9d17-d6f7eb7da0a0"
+   ],
+   "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+   "artist-credit": [
+    {
+     "joinphrase": " & ",
+     "name": "Bruce Springsteen",
+     "artist": {
+      "country": "US",
+      "name": "Bruce Springsteen",
+      "disambiguation": "",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "type": "Person",
+      "sort-name": "Springsteen, Bruce"
+     }
+    },
+    {
+     "joinphrase": "",
+     "name": "The E Street Band",
+     "artist": {
+      "country": "US",
+      "type-id": "e431f5f6-b5d2-343d-8b36-72607fffb74b",
+      "id": "d6652e7b-33fe-49ef-8336-4c863b4f996f",
+      "sort-name": "E Street Band, The",
+      "type": "Group",
+      "disambiguation": "",
+      "name": "The E Street Band"
+     }
+    }
+   ],
+   "primary-type": "Album",
+   "first-release-date": "1985",
+   "title": "Live/1975–85",
+   "disambiguation": "",
+   "secondary-types": [
+    "Compilation",
+    "Live"
+   ],
+   "id": "85206823-9808-3da2-a9d7-2e9b8b0f4e99"
+  },
+  {
+   "disambiguation": "",
+   "title": "Greetings From Asbury Park, N.J. / The Wild, the Innocent and the E Street Shuffle",
+   "secondary-types": [
+    "Compilation"
+   ],
+   "id": "88813fc2-9ed6-4644-9290-df2411d1670d",
+   "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+   "secondary-type-ids": [
+    "dd2a21e1-0c00-3729-a7a0-de60b84eb5d1"
+   ],
+   "first-release-date": "1991-12-02",
+   "primary-type": "Album",
+   "artist-credit": [
+    {
+     "artist": {
+      "disambiguation": "",
+      "name": "Bruce Springsteen",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "type": "Person",
+      "sort-name": "Springsteen, Bruce",
+      "country": "US"
+     },
+     "joinphrase": "",
+     "name": "Bruce Springsteen"
+    }
+   ]
+  },
+  {
+   "first-release-date": "1980-10-10",
+   "primary-type": "Album",
+   "artist-credit": [
+    {
+     "artist": {
+      "country": "US",
+      "disambiguation": "",
+      "name": "Bruce Springsteen",
+      "sort-name": "Springsteen, Bruce",
+      "type": "Person",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f"
+     },
+     "joinphrase": "",
+     "name": "Bruce Springsteen"
+    }
+   ],
+   "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+   "secondary-type-ids": [],
+   "id": "8a6f6ede-b60a-3cad-b3b9-cfb57e9e1dbd",
+   "secondary-types": [],
+   "disambiguation": "",
+   "title": "The River"
+  },
+  {
+   "first-release-date": "1996-11-19",
+   "primary-type": "Album",
+   "artist-credit": [
+    {
+     "artist": {
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "type": "Person",
+      "sort-name": "Springsteen, Bruce",
+      "name": "Bruce Springsteen",
+      "disambiguation": "",
+      "country": "US"
+     },
+     "joinphrase": " & ",
+     "name": "Bruce Springsteen"
+    },
+    {
+     "joinphrase": "",
+     "name": "The E Street Band",
+     "artist": {
+      "sort-name": "E Street Band, The",
+      "type": "Group",
+      "type-id": "e431f5f6-b5d2-343d-8b36-72607fffb74b",
+      "id": "d6652e7b-33fe-49ef-8336-4c863b4f996f",
+      "disambiguation": "",
+      "name": "The E Street Band",
+      "country": "US"
+     }
+    }
+   ],
+   "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+   "secondary-type-ids": [
+    "dd2a21e1-0c00-3729-a7a0-de60b84eb5d1"
+   ],
+   "secondary-types": [
+    "Compilation"
+   ],
+   "id": "8c632eed-9d50-4bc8-b76d-9c99313d0113",
+   "disambiguation": "",
+   "title": "Blood Brothers"
+  },
+  {
+   "title": "Western Stars Plus Songs From the Film",
+   "disambiguation": "",
+   "secondary-types": [
+    "Compilation",
+    "Live"
+   ],
+   "id": "8d959848-4560-457d-af41-68c12d3cba13",
+   "secondary-type-ids": [
+    "dd2a21e1-0c00-3729-a7a0-de60b84eb5d1",
+    "6fd474e2-6b58-3102-9d17-d6f7eb7da0a0"
+   ],
+   "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+   "primary-type": "Album",
+   "artist-credit": [
+    {
+     "name": "Bruce Springsteen",
+     "joinphrase": "",
+     "artist": {
+      "country": "US",
+      "disambiguation": "",
+      "name": "Bruce Springsteen",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "sort-name": "Springsteen, Bruce",
+      "type": "Person"
+     }
+    }
+   ],
+   "first-release-date": "2019-10-18"
+  },
+  {
+   "id": "8de6367e-f8bb-43cd-8ad9-180cae0c6859",
+   "secondary-types": [
+    "Compilation"
+   ],
+   "disambiguation": "",
+   "title": "Chapter and Verse",
+   "first-release-date": "2016-09-23",
+   "primary-type": "Album",
+   "artist-credit": [
+    {
+     "artist": {
+      "name": "Bruce Springsteen",
+      "disambiguation": "",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "sort-name": "Springsteen, Bruce",
+      "type": "Person",
+      "country": "US"
+     },
+     "name": "Bruce Springsteen",
+     "joinphrase": ""
+    }
+   ],
+   "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+   "secondary-type-ids": [
+    "dd2a21e1-0c00-3729-a7a0-de60b84eb5d1"
+   ]
+  },
+  {
+   "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+   "secondary-type-ids": [
+    "6fd474e2-6b58-3102-9d17-d6f7eb7da0a0"
+   ],
+   "first-release-date": "1981",
+   "artist-credit": [
+    {
+     "artist": {
+      "disambiguation": "",
+      "name": "Bruce Springsteen",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "type": "Person",
+      "sort-name": "Springsteen, Bruce",
+      "country": "US"
+     },
+     "name": "Bruce Springsteen",
+     "joinphrase": " & "
+    },
+    {
+     "artist": {
+      "country": "US",
+      "name": "The E Street Band",
+      "disambiguation": "",
+      "type-id": "e431f5f6-b5d2-343d-8b36-72607fffb74b",
+      "id": "d6652e7b-33fe-49ef-8336-4c863b4f996f",
+      "sort-name": "E Street Band, The",
+      "type": "Group"
+     },
+     "joinphrase": "",
+     "name": "The E Street Band"
+    }
+   ],
+   "primary-type": "Album",
+   "disambiguation": "",
+   "title": "1980‐12‐31: Nassau Veterans Memorial Coliseum, Uniondale, NY, USA",
+   "id": "97263724-7eec-4ff0-a802-b20b9471a653",
+   "secondary-types": [
+    "Live"
+   ]
+  },
+  {
+   "secondary-types": [
+    "Compilation",
+    "Live"
+   ],
+   "id": "9a85d243-398b-4509-a912-dbd4370b2a0c",
+   "disambiguation": "",
+   "title": "The Live Series: Songs of the Road",
+   "first-release-date": "2018-11-16",
+   "artist-credit": [
+    {
+     "artist": {
+      "country": "US",
+      "name": "Bruce Springsteen",
+      "disambiguation": "",
+      "sort-name": "Springsteen, Bruce",
+      "type": "Person",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f"
+     },
+     "joinphrase": "",
+     "name": "Bruce Springsteen"
+    }
+   ],
+   "primary-type": "Album",
+   "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+   "secondary-type-ids": [
+    "dd2a21e1-0c00-3729-a7a0-de60b84eb5d1",
+    "6fd474e2-6b58-3102-9d17-d6f7eb7da0a0"
+   ]
+  },
+  {
+   "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+   "secondary-type-ids": [
+    "6fd474e2-6b58-3102-9d17-d6f7eb7da0a0"
+   ],
+   "first-release-date": "1981",
+   "artist-credit": [
+    {
+     "joinphrase": " & ",
+     "name": "Bruce Springsteen",
+     "artist": {
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "sort-name": "Springsteen, Bruce",
+      "type": "Person",
+      "disambiguation": "",
+      "name": "Bruce Springsteen",
+      "country": "US"
+     }
+    },
+    {
+     "artist": {
+      "name": "The E Street Band",
+      "disambiguation": "",
+      "id": "d6652e7b-33fe-49ef-8336-4c863b4f996f",
+      "type-id": "e431f5f6-b5d2-343d-8b36-72607fffb74b",
+      "sort-name": "E Street Band, The",
+      "type": "Group",
+      "country": "US"
+     },
+     "name": "The E Street Band",
+     "joinphrase": ""
+    }
+   ],
+   "primary-type": "Album",
+   "disambiguation": "",
+   "title": "1980‐12‐28: Nassau Veterans Memorial Coliseum, Uniondale, NY, USA",
+   "id": "9c918659-bb87-3f8e-afc9-837ea99e586d",
+   "secondary-types": [
+    "Live"
+   ]
+  },
+  {
+   "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+   "secondary-type-ids": [],
+   "first-release-date": "2008-12-03",
+   "artist-credit": [
+    {
+     "joinphrase": "",
+     "name": "Bruce Springsteen",
+     "artist": {
+      "name": "Bruce Springsteen",
+      "disambiguation": "",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "type": "Person",
+      "sort-name": "Springsteen, Bruce",
+      "country": "US"
+     }
+    }
+   ],
+   "primary-type": "Album",
+   "disambiguation": "",
+   "title": "Working on a Dream",
+   "id": "9cec178a-f785-33c5-8888-63ba27efca4c",
+   "secondary-types": []
+  },
+  {
+   "title": "1986‐10‐13: Shoreline Amphitheatre, Mountain View, CA, USA",
+   "disambiguation": "",
+   "secondary-types": [
+    "Live"
+   ],
+   "id": "9d9a13d5-b415-45e5-8f2c-4cdfdd308c44",
+   "secondary-type-ids": [
+    "6fd474e2-6b58-3102-9d17-d6f7eb7da0a0"
+   ],
+   "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+   "primary-type": "Album",
+   "artist-credit": [
+    {
+     "artist": {
+      "country": "US",
+      "name": "Bruce Springsteen",
+      "disambiguation": "",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "type": "Person",
+      "sort-name": "Springsteen, Bruce"
+     },
+     "name": "Bruce Springsteen",
+     "joinphrase": ""
+    }
+   ],
+   "first-release-date": "1986"
+  },
+  {
+   "disambiguation": "",
+   "title": "The Live Series: Songs of Conscience",
+   "secondary-types": [
+    "Compilation",
+    "Live"
+   ],
+   "id": "9eb47c27-b5c9-4018-9b58-2054f611da3d",
+   "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+   "secondary-type-ids": [
+    "dd2a21e1-0c00-3729-a7a0-de60b84eb5d1",
+    "6fd474e2-6b58-3102-9d17-d6f7eb7da0a0"
+   ],
+   "first-release-date": "2024-09-20",
+   "primary-type": "Album",
+   "artist-credit": [
+    {
+     "joinphrase": "",
+     "name": "Bruce Springsteen",
+     "artist": {
+      "country": "US",
+      "disambiguation": "",
+      "name": "Bruce Springsteen",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "sort-name": "Springsteen, Bruce",
+      "type": "Person"
+     }
+    }
+   ]
+  },
+  {
+   "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+   "secondary-type-ids": [
+    "6fd474e2-6b58-3102-9d17-d6f7eb7da0a0"
+   ],
+   "first-release-date": "1979",
+   "artist-credit": [
+    {
+     "joinphrase": " & ",
+     "name": "Bruce Springsteen",
+     "artist": {
+      "country": "US",
+      "sort-name": "Springsteen, Bruce",
+      "type": "Person",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "name": "Bruce Springsteen",
+      "disambiguation": ""
+     }
+    },
+    {
+     "artist": {
+      "name": "The E Street Band",
+      "disambiguation": "",
+      "id": "d6652e7b-33fe-49ef-8336-4c863b4f996f",
+      "type-id": "e431f5f6-b5d2-343d-8b36-72607fffb74b",
+      "sort-name": "E Street Band, The",
+      "type": "Group",
+      "country": "US"
+     },
+     "joinphrase": "",
+     "name": "The E Street Band"
+    }
+   ],
+   "primary-type": "Album",
+   "disambiguation": "",
+   "title": "1978‐08‐09: The Agora, Cleveland, OH, USA",
+   "id": "a1b6282e-a9e9-3e8a-a6e3-d25b24e712b7",
+   "secondary-types": [
+    "Live"
+   ]
+  },
+  {
+   "title": "The Live Series: Songs of Celebration",
+   "disambiguation": "",
+   "id": "a2873b00-abeb-4396-9d2a-24c1c6b9127e",
+   "secondary-types": [
+    "Compilation",
+    "Live"
+   ],
+   "secondary-type-ids": [
+    "dd2a21e1-0c00-3729-a7a0-de60b84eb5d1",
+    "6fd474e2-6b58-3102-9d17-d6f7eb7da0a0"
+   ],
+   "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+   "artist-credit": [
+    {
+     "artist": {
+      "name": "Bruce Springsteen",
+      "disambiguation": "",
+      "sort-name": "Springsteen, Bruce",
+      "type": "Person",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "country": "US"
+     },
+     "joinphrase": "",
+     "name": "Bruce Springsteen"
+    }
+   ],
+   "primary-type": "Album",
+   "first-release-date": "2024-03-15"
+  },
+  {
+   "primary-type": "Album",
+   "artist-credit": [
+    {
+     "name": "Bruce Springsteen",
+     "joinphrase": "",
+     "artist": {
+      "disambiguation": "",
+      "name": "Bruce Springsteen",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "sort-name": "Springsteen, Bruce",
+      "type": "Person",
+      "country": "US"
+     }
+    }
+   ],
+   "first-release-date": "1990",
+   "secondary-type-ids": [
+    "dd2a21e1-0c00-3729-a7a0-de60b84eb5d1"
+   ],
+   "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+   "secondary-types": [
+    "Compilation"
+   ],
+   "id": "a98a27c8-5da5-4a8d-a98f-90a91b776e0a",
+   "title": "Collected Works of Bruce Springsteen",
+   "disambiguation": ""
+  },
+  {
+   "id": "af0c4ebb-3d9c-3159-8bce-322ca62744bb",
+   "secondary-types": [
+    "Live"
+   ],
+   "title": "1975‐02‐05: The Main Point, Bryn Mawr, PA, USA",
+   "disambiguation": "",
+   "artist-credit": [
+    {
+     "joinphrase": " & ",
+     "name": "Bruce Springsteen",
+     "artist": {
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "sort-name": "Springsteen, Bruce",
+      "type": "Person",
+      "disambiguation": "",
+      "name": "Bruce Springsteen",
+      "country": "US"
+     }
+    },
+    {
+     "joinphrase": "",
+     "name": "The E Street Band",
+     "artist": {
+      "country": "US",
+      "disambiguation": "",
+      "name": "The E Street Band",
+      "type": "Group",
+      "sort-name": "E Street Band, The",
+      "id": "d6652e7b-33fe-49ef-8336-4c863b4f996f",
+      "type-id": "e431f5f6-b5d2-343d-8b36-72607fffb74b"
+     }
+    }
+   ],
+   "primary-type": "Album",
+   "first-release-date": "1976",
+   "secondary-type-ids": [
+    "6fd474e2-6b58-3102-9d17-d6f7eb7da0a0"
+   ],
+   "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc"
+  },
+  {
+   "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+   "secondary-type-ids": [
+    "dd2a21e1-0c00-3729-a7a0-de60b84eb5d1"
+   ],
+   "first-release-date": "2006-09-30",
+   "artist-credit": [
+    {
+     "artist": {
+      "country": "US",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "sort-name": "Springsteen, Bruce",
+      "type": "Person",
+      "disambiguation": "",
+      "name": "Bruce Springsteen"
+     },
+     "joinphrase": "",
+     "name": "Bruce Springsteen"
+    }
+   ],
+   "primary-type": "Album",
+   "disambiguation": "",
+   "title": "Nebraska / The Ghost of Tom Joad",
+   "id": "af4e50d8-b08e-4c60-9395-2c147ede62eb",
+   "secondary-types": [
+    "Compilation"
+   ]
+  },
+  {
+   "title": "Tunnel of Love",
+   "disambiguation": "",
+   "id": "b3559cb2-d7ad-32eb-a17e-54a873ce4122",
+   "secondary-types": [],
+   "secondary-type-ids": [],
+   "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+   "primary-type": "Album",
+   "artist-credit": [
+    {
+     "joinphrase": "",
+     "name": "Bruce Springsteen",
+     "artist": {
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "type": "Person",
+      "sort-name": "Springsteen, Bruce",
+      "disambiguation": "",
+      "name": "Bruce Springsteen",
+      "country": "US"
+     }
+    }
+   ],
+   "first-release-date": "1987-09-30"
+  },
+  {
+   "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+   "secondary-type-ids": [],
+   "first-release-date": "1978-05",
+   "primary-type": "Album",
+   "artist-credit": [
+    {
+     "artist": {
+      "country": "US",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "sort-name": "Springsteen, Bruce",
+      "type": "Person",
+      "disambiguation": "",
+      "name": "Bruce Springsteen"
+     },
+     "joinphrase": "",
+     "name": "Bruce Springsteen"
+    }
+   ],
+   "disambiguation": "",
+   "title": "Darkness on the Edge of Town",
+   "id": "b613123b-a234-3f48-9c45-e05bf4e6b9e7",
+   "secondary-types": []
+  },
+  {
+   "id": "b8353ab3-98d2-4dc8-a7e1-386a6f306727",
+   "secondary-types": [
+    "Compilation",
+    "Live"
+   ],
+   "disambiguation": "",
+   "title": "The Live Series: Songs From Around the World, Vol. 2",
+   "first-release-date": "2024-05-17",
+   "primary-type": "Album",
+   "artist-credit": [
+    {
+     "name": "Bruce Springsteen",
+     "joinphrase": "",
+     "artist": {
+      "country": "US",
+      "sort-name": "Springsteen, Bruce",
+      "type": "Person",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "disambiguation": "",
+      "name": "Bruce Springsteen"
+     }
+    }
+   ],
+   "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+   "secondary-type-ids": [
+    "dd2a21e1-0c00-3729-a7a0-de60b84eb5d1",
+    "6fd474e2-6b58-3102-9d17-d6f7eb7da0a0"
+   ]
+  },
+  {
+   "primary-type": "Album",
+   "artist-credit": [
+    {
+     "artist": {
+      "country": "US",
+      "name": "Bruce Springsteen",
+      "disambiguation": "",
+      "sort-name": "Springsteen, Bruce",
+      "type": "Person",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df"
+     },
+     "joinphrase": " & ",
+     "name": "Bruce Springsteen"
+    },
+    {
+     "artist": {
+      "id": "d6652e7b-33fe-49ef-8336-4c863b4f996f",
+      "type-id": "e431f5f6-b5d2-343d-8b36-72607fffb74b",
+      "type": "Group",
+      "sort-name": "E Street Band, The",
+      "name": "The E Street Band",
+      "disambiguation": "",
+      "country": "US"
+     },
+     "name": "The E Street Band",
+     "joinphrase": ""
+    }
+   ],
+   "first-release-date": "1981",
+   "secondary-type-ids": [
+    "6fd474e2-6b58-3102-9d17-d6f7eb7da0a0"
+   ],
+   "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+   "secondary-types": [
+    "Live"
+   ],
+   "id": "ba66b831-4810-4227-8386-cda82799a6ac",
+   "title": "1981‐06‐05: Wembley Arena, London, England, UK",
+   "disambiguation": ""
+  },
+  {
+   "primary-type": "Album",
+   "artist-credit": [
+    {
+     "artist": {
+      "country": "US",
+      "disambiguation": "",
+      "name": "Bruce Springsteen",
+      "sort-name": "Springsteen, Bruce",
+      "type": "Person",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f"
+     },
+     "name": "Bruce Springsteen",
+     "joinphrase": ""
+    }
+   ],
+   "first-release-date": "2019-05-20",
+   "secondary-type-ids": [],
+   "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+   "secondary-types": [],
+   "id": "c0ae827c-bb5b-4c98-ab3a-1d9573c110ac",
+   "title": "Western Stars",
+   "disambiguation": ""
+  },
+  {
+   "disambiguation": "",
+   "title": "Lucky Town",
+   "id": "c0e8b10a-9478-30ea-a299-90ab2b703ab0",
+   "secondary-types": [],
+   "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+   "secondary-type-ids": [],
+   "first-release-date": "1992-03-26",
+   "primary-type": "Album",
+   "artist-credit": [
+    {
+     "joinphrase": "",
+     "name": "Bruce Springsteen",
+     "artist": {
+      "country": "US",
+      "sort-name": "Springsteen, Bruce",
+      "type": "Person",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "disambiguation": "",
+      "name": "Bruce Springsteen"
+     }
+    }
+   ]
+  },
+  {
+   "secondary-type-ids": [
+    "dd2a21e1-0c00-3729-a7a0-de60b84eb5d1"
+   ],
+   "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+   "artist-credit": [
+    {
+     "joinphrase": "",
+     "name": "Bruce Springsteen",
+     "artist": {
+      "country": "US",
+      "name": "Bruce Springsteen",
+      "disambiguation": "",
+      "type": "Person",
+      "sort-name": "Springsteen, Bruce",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f"
+     }
+    }
+   ],
+   "primary-type": "Album",
+   "first-release-date": "2023-10-25",
+   "title": "Japanese Singles Collection: Greatest Hits",
+   "disambiguation": "",
+   "id": "c1fcee20-dbc4-4bea-98c3-26b2b514986d",
+   "secondary-types": [
+    "Compilation"
+   ]
+  },
+  {
+   "secondary-types": [
+    "Compilation"
+   ],
+   "id": "c3369f7a-b550-4a2f-beb9-b64675015705",
+   "title": "The Essential Bruce Springsteen",
+   "disambiguation": "",
+   "artist-credit": [
+    {
+     "joinphrase": "",
+     "name": "Bruce Springsteen",
+     "artist": {
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "sort-name": "Springsteen, Bruce",
+      "type": "Person",
+      "name": "Bruce Springsteen",
+      "disambiguation": "",
+      "country": "US"
+     }
+    }
+   ],
+   "primary-type": "Album",
+   "first-release-date": "2003-11-10",
+   "secondary-type-ids": [
+    "dd2a21e1-0c00-3729-a7a0-de60b84eb5d1"
+   ],
+   "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc"
+  },
+  {
+   "artist-credit": [
+    {
+     "artist": {
+      "country": "US",
+      "disambiguation": "",
+      "name": "Bruce Springsteen",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "type": "Person",
+      "sort-name": "Springsteen, Bruce"
+     },
+     "name": "Bruce Springsteen",
+     "joinphrase": ""
+    }
+   ],
+   "primary-type": "Album",
+   "first-release-date": "1973-01-05",
+   "secondary-type-ids": [],
+   "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+   "secondary-types": [],
+   "id": "c497fc44-ddaf-3cce-a9b4-bfec958a0f3c",
+   "title": "Greetings From Asbury Park, N.J.",
+   "disambiguation": ""
+  },
+  {
+   "artist-credit": [
+    {
+     "artist": {
+      "country": "US",
+      "disambiguation": "",
+      "name": "Bruce Springsteen",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "type": "Person",
+      "sort-name": "Springsteen, Bruce"
+     },
+     "joinphrase": "",
+     "name": "Bruce Springsteen"
+    }
+   ],
+   "primary-type": "Album",
+   "first-release-date": "1988",
+   "secondary-type-ids": [
+    "dd2a21e1-0c00-3729-a7a0-de60b84eb5d1"
+   ],
+   "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+   "id": "c760a3af-763f-48c9-bc8d-5001130c7331",
+   "secondary-types": [
+    "Compilation"
+   ],
+   "title": "The Bruce Springsteen Collection",
+   "disambiguation": ""
+  },
+  {
+   "secondary-type-ids": [
+    "dd2a21e1-0c00-3729-a7a0-de60b84eb5d1"
+   ],
+   "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+   "artist-credit": [
+    {
+     "artist": {
+      "disambiguation": "",
+      "name": "Bruce Springsteen",
+      "type": "Person",
+      "sort-name": "Springsteen, Bruce",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "country": "US"
+     },
+     "joinphrase": "",
+     "name": "Bruce Springsteen"
+    }
+   ],
+   "primary-type": "Album",
+   "first-release-date": "1995",
+   "title": "Born to Run / Darkness on the Edge of Town",
+   "disambiguation": "",
+   "secondary-types": [
+    "Compilation"
+   ],
+   "id": "c7d15bdb-2c9b-44f1-b76e-2cdde02b4d2e"
+  },
+  {
+   "primary-type": "Album",
+   "artist-credit": [
+    {
+     "artist": {
+      "country": "US",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "type": "Person",
+      "sort-name": "Springsteen, Bruce",
+      "disambiguation": "",
+      "name": "Bruce Springsteen"
+     },
+     "name": "Bruce Springsteen",
+     "joinphrase": ""
+    }
+   ],
+   "first-release-date": "2024-12-20",
+   "secondary-type-ids": [
+    "dd2a21e1-0c00-3729-a7a0-de60b84eb5d1",
+    "6fd474e2-6b58-3102-9d17-d6f7eb7da0a0"
+   ],
+   "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+   "id": "ca49a124-cd96-4d3d-be18-1fcef56243fb",
+   "secondary-types": [
+    "Compilation",
+    "Live"
+   ],
+   "title": "The Live Series: Songs Under Cover, Vol. 3",
+   "disambiguation": ""
+  },
+  {
+   "title": "Bruce Springsteen",
+   "disambiguation": "",
+   "id": "cc168b35-1bc6-4f93-baaa-c9825fcd3699",
+   "secondary-types": [
+    "Compilation"
+   ],
+   "secondary-type-ids": [
+    "dd2a21e1-0c00-3729-a7a0-de60b84eb5d1"
+   ],
+   "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+   "artist-credit": [
+    {
+     "name": "Bruce Springsteen",
+     "joinphrase": "",
+     "artist": {
+      "sort-name": "Springsteen, Bruce",
+      "type": "Person",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "name": "Bruce Springsteen",
+      "disambiguation": "",
+      "country": "US"
+     }
+    }
+   ],
+   "primary-type": "Album",
+   "first-release-date": "1982"
+  },
+  {
+   "first-release-date": "2002-07-29",
+   "artist-credit": [
+    {
+     "name": "Bruce Springsteen",
+     "joinphrase": "",
+     "artist": {
+      "country": "US",
+      "name": "Bruce Springsteen",
+      "disambiguation": "",
+      "sort-name": "Springsteen, Bruce",
+      "type": "Person",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f"
+     }
+    }
+   ],
+   "primary-type": "Album",
+   "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+   "secondary-type-ids": [],
+   "secondary-types": [],
+   "id": "d19453c0-cd72-3468-b110-0f898c111e5e",
+   "disambiguation": "",
+   "title": "The Rising"
+  },
+  {
+   "first-release-date": "2013",
+   "primary-type": "Album",
+   "artist-credit": [
+    {
+     "name": "Bruce Springsteen",
+     "joinphrase": " & ",
+     "artist": {
+      "country": "US",
+      "name": "Bruce Springsteen",
+      "disambiguation": "",
+      "sort-name": "Springsteen, Bruce",
+      "type": "Person",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f"
+     }
+    },
+    {
+     "joinphrase": "",
+     "name": "The E Street Band",
+     "artist": {
+      "disambiguation": "",
+      "name": "The E Street Band",
+      "type": "Group",
+      "sort-name": "E Street Band, The",
+      "id": "d6652e7b-33fe-49ef-8336-4c863b4f996f",
+      "type-id": "e431f5f6-b5d2-343d-8b36-72607fffb74b",
+      "country": "US"
+     }
+    }
+   ],
+   "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+   "secondary-type-ids": [
+    "dd2a21e1-0c00-3729-a7a0-de60b84eb5d1",
+    "6fd474e2-6b58-3102-9d17-d6f7eb7da0a0"
+   ],
+   "id": "d43c0c6d-c6dc-4bb3-a592-56c740bb8858",
+   "secondary-types": [
+    "Compilation",
+    "Live"
+   ],
+   "disambiguation": "",
+   "title": "2013‐05‐08: HK Areena, Turku, Finland"
+  },
+  {
+   "secondary-types": [
+    "Compilation",
+    "Live"
+   ],
+   "id": "d5e79633-a542-44b7-95ac-965d4f7f69c2",
+   "disambiguation": "",
+   "title": "The Live Series: Songs From Around the World",
+   "first-release-date": "2019-10-24",
+   "artist-credit": [
+    {
+     "artist": {
+      "disambiguation": "",
+      "name": "Bruce Springsteen",
+      "sort-name": "Springsteen, Bruce",
+      "type": "Person",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "country": "US"
+     },
+     "name": "Bruce Springsteen",
+     "joinphrase": ""
+    }
+   ],
+   "primary-type": "Album",
+   "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+   "secondary-type-ids": [
+    "dd2a21e1-0c00-3729-a7a0-de60b84eb5d1",
+    "6fd474e2-6b58-3102-9d17-d6f7eb7da0a0"
+   ]
+  },
+  {
+   "first-release-date": "2005-04-25",
+   "primary-type": "Album",
+   "artist-credit": [
+    {
+     "artist": {
+      "disambiguation": "",
+      "name": "Bruce Springsteen",
+      "type": "Person",
+      "sort-name": "Springsteen, Bruce",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "country": "US"
+     },
+     "name": "Bruce Springsteen",
+     "joinphrase": ""
+    }
+   ],
+   "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+   "secondary-type-ids": [],
+   "secondary-types": [],
+   "id": "d5f992ab-6238-3b28-bf2b-7b16d913c9f6",
+   "disambiguation": "",
+   "title": "Devils & Dust"
+  },
+  {
+   "secondary-types": [],
+   "id": "d6c1b942-edc7-4bca-bd34-6c43760272af",
+   "title": "Only the Strong Survive: Covers, Vol. 1",
+   "disambiguation": "",
+   "artist-credit": [
+    {
+     "joinphrase": "",
+     "name": "Bruce Springsteen",
+     "artist": {
+      "disambiguation": "",
+      "name": "Bruce Springsteen",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "sort-name": "Springsteen, Bruce",
+      "type": "Person",
+      "country": "US"
+     }
+    }
+   ],
+   "primary-type": "Album",
+   "first-release-date": "2022-11-11",
+   "secondary-type-ids": [],
+   "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc"
+  },
+  {
+   "disambiguation": "",
+   "title": "Wrecking Ball",
+   "id": "d875c2f0-27d5-4946-81f9-3ebaf6636ccd",
+   "secondary-types": [],
+   "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+   "secondary-type-ids": [],
+   "first-release-date": "2012-03-02",
+   "artist-credit": [
+    {
+     "artist": {
+      "country": "US",
+      "type": "Person",
+      "sort-name": "Springsteen, Bruce",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "disambiguation": "",
+      "name": "Bruce Springsteen"
+     },
+     "name": "Bruce Springsteen",
+     "joinphrase": ""
+    }
+   ],
+   "primary-type": "Album"
+  },
+  {
+   "title": "The Album Collection, Vol. 2: 1987–1996",
+   "disambiguation": "",
+   "secondary-types": [
+    "Compilation",
+    "Live"
+   ],
+   "id": "d94d0f16-8d93-4fd1-aa81-3770da717079",
+   "secondary-type-ids": [
+    "dd2a21e1-0c00-3729-a7a0-de60b84eb5d1",
+    "6fd474e2-6b58-3102-9d17-d6f7eb7da0a0"
+   ],
+   "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+   "artist-credit": [
+    {
+     "name": "Bruce Springsteen",
+     "joinphrase": "",
+     "artist": {
+      "disambiguation": "",
+      "name": "Bruce Springsteen",
+      "sort-name": "Springsteen, Bruce",
+      "type": "Person",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "country": "US"
+     }
+    }
+   ],
+   "primary-type": "Album",
+   "first-release-date": "2018-05-18"
+  },
+  {
+   "first-release-date": "2007-06-05",
+   "primary-type": "Album",
+   "artist-credit": [
+    {
+     "artist": {
+      "country": "US",
+      "sort-name": "Springsteen, Bruce",
+      "type": "Person",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "disambiguation": "",
+      "name": "Bruce Springsteen"
+     },
+     "name": "Bruce Springsteen",
+     "joinphrase": " with "
+    },
+    {
+     "name": "The Sessions Band",
+     "joinphrase": "",
+     "artist": {
+      "country": null,
+      "disambiguation": "performed with Bruce Springsteen",
+      "name": "The Sessions Band",
+      "sort-name": "Sessions Band, The",
+      "type": "Group",
+      "id": "7d5c39ac-5d48-4fdb-81df-6212e38353b3",
+      "type-id": "e431f5f6-b5d2-343d-8b36-72607fffb74b"
+     }
+    }
+   ],
+   "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+   "secondary-type-ids": [
+    "dd2a21e1-0c00-3729-a7a0-de60b84eb5d1",
+    "6fd474e2-6b58-3102-9d17-d6f7eb7da0a0"
+   ],
+   "id": "d97a6cf4-3f7e-321c-9729-9331e5c57e99",
+   "secondary-types": [
+    "Compilation",
+    "Live"
+   ],
+   "disambiguation": "",
+   "title": "Live in Dublin"
+  },
+  {
+   "secondary-type-ids": [
+    "dd2a21e1-0c00-3729-a7a0-de60b84eb5d1"
+   ],
+   "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+   "artist-credit": [
+    {
+     "joinphrase": "",
+     "name": "Bruce Springsteen",
+     "artist": {
+      "country": "US",
+      "disambiguation": "",
+      "name": "Bruce Springsteen",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "type": "Person",
+      "sort-name": "Springsteen, Bruce"
+     }
+    }
+   ],
+   "primary-type": "Album",
+   "first-release-date": "2002",
+   "title": "Nebraska / Tunnel of Love / The Ghost of Tom Joad",
+   "disambiguation": "",
+   "secondary-types": [
+    "Compilation"
+   ],
+   "id": "ddf3e647-82c7-4589-967d-30d3fde36756"
+  },
+  {
+   "secondary-types": [
+    "Compilation"
+   ],
+   "id": "dfe499e1-df9a-44df-8f95-65af2ba16eb3",
+   "title": "Retrospective",
+   "disambiguation": "",
+   "primary-type": "Album",
+   "artist-credit": [
+    {
+     "artist": {
+      "country": "US",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "type": "Person",
+      "sort-name": "Springsteen, Bruce",
+      "name": "Bruce Springsteen",
+      "disambiguation": ""
+     },
+     "name": "Bruce Springsteen",
+     "joinphrase": ""
+    }
+   ],
+   "first-release-date": "1982",
+   "secondary-type-ids": [
+    "dd2a21e1-0c00-3729-a7a0-de60b84eb5d1"
+   ],
+   "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc"
+  },
+  {
+   "id": "e5c28ba7-eff0-4b97-bbf3-afc19ee06acc",
+   "secondary-types": [
+    "Compilation",
+    "Live"
+   ],
+   "title": "Bruce Springsteen & The E Street Band – The Born in the U.S.A. Tour ’84 – ’85",
+   "disambiguation": "",
+   "primary-type": "Album",
+   "artist-credit": [
+    {
+     "artist": {
+      "disambiguation": "",
+      "name": "Bruce Springsteen",
+      "sort-name": "Springsteen, Bruce",
+      "type": "Person",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "country": "US"
+     },
+     "joinphrase": " & ",
+     "name": "Bruce Springsteen"
+    },
+    {
+     "artist": {
+      "disambiguation": "",
+      "name": "The E Street Band",
+      "type-id": "e431f5f6-b5d2-343d-8b36-72607fffb74b",
+      "id": "d6652e7b-33fe-49ef-8336-4c863b4f996f",
+      "sort-name": "E Street Band, The",
+      "type": "Group",
+      "country": "US"
+     },
+     "joinphrase": "",
+     "name": "The E Street Band"
+    }
+   ],
+   "first-release-date": "2024-06-03",
+   "secondary-type-ids": [
+    "dd2a21e1-0c00-3729-a7a0-de60b84eb5d1",
+    "6fd474e2-6b58-3102-9d17-d6f7eb7da0a0"
+   ],
+   "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc"
+  },
+  {
+   "primary-type": "Album",
+   "artist-credit": [
+    {
+     "artist": {
+      "sort-name": "Springsteen, Bruce",
+      "type": "Person",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "name": "Bruce Springsteen",
+      "disambiguation": "",
+      "country": "US"
+     },
+     "joinphrase": "",
+     "name": "Bruce Springsteen"
+    }
+   ],
+   "first-release-date": "2014-01-10",
+   "secondary-type-ids": [],
+   "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+   "id": "e9afb320-60f4-42b1-bc4d-49d7d2e49010",
+   "secondary-types": [],
+   "title": "High Hopes",
+   "disambiguation": ""
+  },
+  {
+   "disambiguation": "",
+   "title": "1988‐07‐03: Stockholms Stadion, Stockholm, Sweden",
+   "id": "e9de0d16-ee7b-4f99-a127-5d17c3dc4741",
+   "secondary-types": [
+    "Live"
+   ],
+   "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+   "secondary-type-ids": [
+    "6fd474e2-6b58-3102-9d17-d6f7eb7da0a0"
+   ],
+   "first-release-date": "1988",
+   "primary-type": "Album",
+   "artist-credit": [
+    {
+     "artist": {
+      "country": "US",
+      "name": "Bruce Springsteen",
+      "disambiguation": "",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "type": "Person",
+      "sort-name": "Springsteen, Bruce"
+     },
+     "joinphrase": " & ",
+     "name": "Bruce Springsteen"
+    },
+    {
+     "artist": {
+      "country": "US",
+      "sort-name": "E Street Band, The",
+      "type": "Group",
+      "type-id": "e431f5f6-b5d2-343d-8b36-72607fffb74b",
+      "id": "d6652e7b-33fe-49ef-8336-4c863b4f996f",
+      "disambiguation": "",
+      "name": "The E Street Band"
+     },
+     "joinphrase": "",
+     "name": "The E Street Band"
+    }
+   ]
+  },
+  {
+   "secondary-type-ids": [
+    "dd2a21e1-0c00-3729-a7a0-de60b84eb5d1",
+    "6fd474e2-6b58-3102-9d17-d6f7eb7da0a0"
+   ],
+   "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+   "primary-type": "Album",
+   "artist-credit": [
+    {
+     "artist": {
+      "country": "US",
+      "name": "Bruce Springsteen",
+      "disambiguation": "",
+      "type": "Person",
+      "sort-name": "Springsteen, Bruce",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df"
+     },
+     "joinphrase": " & ",
+     "name": "Bruce Springsteen"
+    },
+    {
+     "joinphrase": "",
+     "name": "The E Street Band",
+     "artist": {
+      "disambiguation": "",
+      "name": "The E Street Band",
+      "sort-name": "E Street Band, The",
+      "type": "Group",
+      "type-id": "e431f5f6-b5d2-343d-8b36-72607fffb74b",
+      "id": "d6652e7b-33fe-49ef-8336-4c863b4f996f",
+      "country": "US"
+     }
+    }
+   ],
+   "first-release-date": "2013",
+   "title": "Born in the U.S.A. Live: London 2013",
+   "disambiguation": "",
+   "id": "ef931ea0-e27e-42ff-b6f0-1473d61019b4",
+   "secondary-types": [
+    "Compilation",
+    "Live"
+   ]
+  },
+  {
+   "secondary-types": [
+    "Compilation"
+   ],
+   "id": "f4790d67-2e8c-42b8-828a-68d936fd119a",
+   "title": "Greetings From Asbury Park, N.J. / The Wild, the Innocent and the E Street Shuffle / Born to Run",
+   "disambiguation": "",
+   "primary-type": "Album",
+   "artist-credit": [
+    {
+     "artist": {
+      "country": "US",
+      "disambiguation": "",
+      "name": "Bruce Springsteen",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "sort-name": "Springsteen, Bruce",
+      "type": "Person"
+     },
+     "name": "Bruce Springsteen",
+     "joinphrase": ""
+    }
+   ],
+   "first-release-date": "1980",
+   "secondary-type-ids": [
+    "dd2a21e1-0c00-3729-a7a0-de60b84eb5d1"
+   ],
+   "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc"
+  },
+  {
+   "secondary-type-ids": [
+    "dd2a21e1-0c00-3729-a7a0-de60b84eb5d1"
+   ],
+   "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+   "artist-credit": [
+    {
+     "artist": {
+      "country": "US",
+      "type": "Person",
+      "sort-name": "Springsteen, Bruce",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "name": "Bruce Springsteen",
+      "disambiguation": ""
+     },
+     "joinphrase": "",
+     "name": "Bruce Springsteen"
+    }
+   ],
+   "primary-type": "Album",
+   "first-release-date": "1995-02-10",
+   "title": "Greatest Hits",
+   "disambiguation": "",
+   "id": "f722b0db-3035-3b4b-b499-57e42d4219c7",
+   "secondary-types": [
+    "Compilation"
+   ]
+  },
+  {
+   "secondary-types": [
+    "Compilation"
+   ],
+   "id": "f731060c-05d4-439d-8351-59e5e5eb91a0",
+   "disambiguation": "",
+   "title": "Tracks II: The Lost Albums",
+   "first-release-date": "2025-06-27",
+   "primary-type": "Album",
+   "artist-credit": [
+    {
+     "joinphrase": "",
+     "name": "Bruce Springsteen",
+     "artist": {
+      "country": "US",
+      "sort-name": "Springsteen, Bruce",
+      "type": "Person",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "name": "Bruce Springsteen",
+      "disambiguation": ""
+     }
+    }
+   ],
+   "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+   "secondary-type-ids": [
+    "dd2a21e1-0c00-3729-a7a0-de60b84eb5d1"
+   ]
+  }
+ ],
+ "release-group-count": 1924
+}

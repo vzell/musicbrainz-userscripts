@@ -176,6 +176,16 @@ Both share `_rgReleases` (a group's releases as far as loaded) and `_rgFacts`
   trigger since 2026-10-24 (`_mbPopCoverThumbHtml()`: card of that release's
   images, click or Space the viewer; see the collection cards below), and so
   is the group's own cover on the left.
+- **The releases are a shared List table since Phase 3b**
+  (org/MB-POH-sync-withDiscogs.org; `_rgWindowTableHtml(t, st, info)`, table
+  id `rg-releases`): its state is `_dpTblUi(t, …)` by the WINDOW'S target,
+  so `_rgWindowFor()`, `_rgWindowHtml()` and `_eventRgWindowHtml()` take `t`
+  first. The page-global `_rgSort` and `_rgOnAreaClick()` are gone: the
+  dialog's one delegated handler sorts it. Initial order: this release first,
+  then by date (`_rgSortedReleases()`); a release without a front has the
+  empty box (`.mb-dg-nothumb`). The Facts' artist credit is linked
+  (`_mbPopCreditHtml()`, so it drills in the window) and the genres are tag
+  links, one per line (`_mbPopGenreLinksHtml()`).
 - **The Live page root is `#page`, not `#content`.** `_dpIsolateFrame()` hides
   the siblings of the root and of each ancestor: `#page` hides MusicBrainz's
   `.header`, the browser warning and `#footer`, and keeps `#content` and
@@ -238,12 +248,17 @@ hosts (kept, decided 2026-10-07).
   lookup's own callback too (`start && force`).
 - **Kinds so far**: release group, release (9.99.1272); recording — card
   `artist-credits+isrcs+releases+work-rels`, window `artist-rels+place-rels+event-rels`
-  plus `release?recording=…&limit=1` ONLY when the lookup's list is full
-  (`_MB_POP_SUBLIST_CAP` 25, org/iframe.org R3); work — card
-  `artist-rels+label-rels+work-rels`, window `recording?work=…&limit=100&inc=artist-credits`
-  (9.99.1273); artist — card `genres+ratings+aliases` (url-rels left to the window,
+  plus every release as a paged list (`_mbRecRelsList()`,
+  `release?recording=…&inc=media+labels`, since Phase 3b of
+  org/MB-POH-sync-withDiscogs.org; before, the lookup's first 25 and a
+  `limit=1` count); work — card
+  `artist-rels+label-rels+work-rels`, window `recording?work=…&inc=artist-credits` as a paged
+  list (9.99.1273; paged since 9.99.1471); artist — card `genres+ratings+aliases` (url-rels left to the window,
   R1), window `url-rels` plus one `release-group?artist=…&type=<t>&limit=1`
-  per `_MB_POP_RG_TYPES`; label — card `genres+aliases`, window
+  per `_MB_POP_RG_TYPES` (the type segments' totals) and the chosen type's
+  release groups as a paged list (`_mbArtistRgsList()`, Phase 3b); label — card
+  `genres+ratings+aliases` (`_MB_POP_LABEL_CARD_INC`, which the catalog-number card
+  shares), window
   `url-rels+label-rels` plus `release?label=…&limit=1`; area — `area-rels`;
   instrument — `instrument-rels+aliases`, no description from the Web Service
   (9.99.1274); event — card `artist-rels+place-rels+event-rels+series-rels+url-rels`
@@ -255,9 +270,12 @@ hosts (kept, decided 2026-10-07).
   plus the Event Art Archive index
   (`_mbPopArtLoad(_mbPopEventArt, EAA_CTX, …)`, on pin only, R4) plus the area
   chain of "Held at" (below); place — card
-  `area-rels+url-rels`, window `event?place=…&limit=100` sorted by date (the
-  browse is not); series — one lookup with every item-kind relation (R1),
-  items by `ordering-key` (the lookup is not in order) (9.99.1275); ISRC
+  `area-rels+url-rels`, window every event as a paged list
+  (`_mbPlaceEventsList()`, Phase 3b), sorted by date at first (the browse is
+  not); series — one lookup with every item-kind relation (R1),
+  items by `ordering-key` (the lookup is not in order), each item's link
+  from `_mbPopRelKind()` (a release-group series' target type is
+  `release_group`, the page `/release-group/`) (9.99.1275); ISRC
   (`artist-credits`), ISWC and disc ID — one lookup each, no extras
   (9.99.1276); url, the "[info]" link (U2, section "MusicBrainz URL entities"
   below); tag and collection, read from their pages (sections "MusicBrainz:
@@ -2151,6 +2169,34 @@ popup-ext.spec.js "a row without a thumbnail keeps the thumbnail's box"
 `scripts/mutations/dp-shared-tables.json`; three entries of
 `dp-sort-initial-state.json`/`discogs-window-swap.json` were retargeted to
 the shared code.
+
+**Phase 3b callers (2026-10-27).** Probe first:
+`scripts/probe-mb-window-browses.py`, whose docstring has the result. The
+three browses answer in an order by neither date nor title (the docs only
+say the order is "consistent"), so these tables start sorted by date
+(`init: {sort: {col: 'date', dir: 1}}`; the third click still returns to the
+Web Service's order).
+- Recording → `_mbRecRelsList()`/`_mbRecRelsHtml()` (`release?recording=…&inc=media+labels`;
+  covers from each release's own `cover-art-archive.front`, status chips).
+- Place → `_mbPlaceEventsList()`/`_mbPlaceEventsHtml()` (`event?place=…`; type chips).
+- Artist → `_mbArtistRgsList(id, type)`/`_mbArtistRgsHtml()`: ONE paged list
+  per primary type, since the unfiltered browse runs Album first (100 of
+  2,146, all Albums). A segment per type in the List's `tools`
+  (`data-mb-tbl-act="seg"`, `data-mb-tbl-v`, state `ui.seg`, read without
+  creating by `_mbArtistRgType()`), with its total from the `limit=1` count
+  browses; the chosen type's page 1 comes from the repaint's `pin()`. Chips
+  are the secondary types. Covers are asked lazily for every row (no
+  cover-art flag on a release group's browse); a 404 swaps the link for the
+  empty box (the dialog's capture `error` listener, `.mb-dp-tbl
+  a.mb-pop-cover-thumb`), so no viewer opens on nothing (vzell, 2026-10-27).
+- Release group → the List table above (section "MusicBrainz: the
+  release-group sources").
+Helpers: `_mbPagedBody()` (spinner / nothing / table), `_dpTblCol()`,
+`_dpTblTitleCol()`, `_mbPopCoverThumbHtml(kind, id, title, imgCls)`.
+Specs: popup-mb.spec.js (the recording, artist and place windows; "covers
+asked lazily"), release-rg-popup.spec.js (selectors only, plus the Facts'
+links). Mutations: `scripts/mutations/mb-window-lists.json` (also the 3a
+series and catalog-number fixes).
 
 ### A Discogs release's edit history (2026-10-18)
 
