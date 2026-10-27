@@ -26499,3 +26499,45 @@ Fix (test only): the spec serves that host an empty stylesheet, at once.
 `main`). Other specs that load a Brucebase page with the same `@import`s
 still reach the network for that CSS; none of them measures a scroll after a
 wheel.
+
+## 2026-10-27 — Phase 3d merge gate: two specs on the old links list, two load flakes
+
+Env: 2026-10-27T21:15:37+01:00 → 21:39:40+01:00 (suite), stress to 21:50 · NB-3641 · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) · Playwright 1.62.1 Chromium · no Tampermonkey (GM stubs)
+
+`npm run test:full` on `mb-window-lists` (`86839808` + Phase 3d, uncommitted),
+2,383 tests, 24 m 3 s (a busy host again): 2,379 passed, 4 failed.
+- `pop-mb-image.spec.js:292` and `:327` waited for the window's links as the
+  old list (`.mb-rg-links > div`), which Phase 3d made a Compact table: fixed
+  to `[data-mb-tbl="links"] tbody tr` (8/8). Missed when the selectors were
+  moved because that spec was not in the run of the window specs.
+- `release-tracks-no-work-flag.spec.js:193`: `page.goto` timed out; 10/10 at
+  `--repeat-each=10 --workers=14`. Load only.
+- `sidebar-picture.spec.js:413` ("Space on the hovered cover … opens our
+  viewer"): `locator.hover` timed out. `--repeat-each=20 --workers=14`:
+  `main` (a scratch worktree) failed 5/20, the branch 7/20. A pre-existing
+  load flake, not Phase 3d's; not diagnosed here.
+
+## 2026-10-27 — sidebar-picture.spec.js "Space on the hovered cover" flake: MusicBrainz's own script from the CDN, fixed
+
+Env: 2026-10-27T21:55+01:00 → 22:20+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) · Playwright 1.62.1 Chromium · no Tampermonkey (GM stubs)
+
+Follow-up to the entry above. The hover's call log: "element is not
+visible" for all 90 s, on `#sidebar .cover-art a.artwork-image`. MusicBrainz
+serves that link's `span.artwork-image` EMPTY; its own script, from
+static.metabrainz.org, puts the `<img>` in from `data-small-thumbnail`. No
+fixture routes that CDN (the harness blocks it only under
+`PLAYWRIGHT_BLOCK_CDN`), so the test waited on the real network: when the
+script came late the link had no size. Proof: with `PLAYWRIGHT_BLOCK_CDN=1`
+the test failed 3/3.
+
+Fix (test only): `openCover()`'s copy of the fixture carries the `<img>` in
+the span, built from its `data-small-thumbnail` as MusicBrainz's script
+builds it. CDN blocked: 3/3; `--repeat-each=40 --workers=14`: 40/40 (before:
+7/20 on the branch, 5/20 on `main`); the whole spec 19/19. With the CDN
+reachable, MusicBrainz's script still runs, so "its dialog is not opened"
+keeps its meaning.
+
+The same class as the Live page flake earlier today (a fixture @importing
+CSS from cloudfront): a "fixture" test whose outcome depends on a host no
+route answers. Other specs that wait for markup MusicBrainz's scripts add
+would show it the same way; `PLAYWRIGHT_BLOCK_CDN=1 npm test` is the probe.

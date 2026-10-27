@@ -2247,6 +2247,26 @@ Ctrl-click → your own tag in the label window, whose genres are tag links
 since 3c too), popup-mb-user-lists.spec.js, popup-mb.mobile.spec.js,
 sidebar-inline.spec.js. Mutations: `scripts/mutations/mb-window-html-lists.json`.
 
+**Phase 3d: the Compact rows (2026-10-27).** No new request: the data is
+what the windows already read. `_dpCompactTableHtml()` (25 a page, filter
+past a page, three states) for: links (`_mbPopUrlLinksTableHtml(t, id,
+rels, {withHead, min})`: Site · Relationship · URL; a label's from eleven
+links, the plain `_mbPopUrlLinksHtml()` below `min`; `_rgFactsHtml(t, f)`
+takes the target for it), relations (`_mbPopRelTableRows()` +
+`_mbPopRelTableHtml()`: Relationship · target, group names from
+`_mbPopRelGroupName()`, extracted from `_mbPopRelRows()`): area parts,
+related instruments, an event's "Recorded here" (two tables); a work's
+codes, an instrument's aliases, a genre's related genres (one table per
+phrase, `genre-rel-<i>`; its links moved to the left column), an editor's
+edits, tags and genres (`genres`, `tags`), ratings (`ratings-<i>`), ISRC
+`recordings`, ISWC `works`, disc ID `releases` (its table of contents stays
+`_mbPopTableHtml()`), annotation `versions`. HTML cells mark matches with
+`_hlHtml()`. Every `windowHtml` that builds one takes `t`. The label's
+aliases one per line (`_mbPopAliasesHtml()`). Specs: popup-mb.spec.js
+"Compact tables (Phase 3d)", the genre window's tables, and the windows'
+own tests (selectors moved to `data-mb-tbl`); popup-mb-user-lists.spec.js,
+popup-mb-annotations.spec.js. Mutations: `scripts/mutations/mb-window-compact.json`.
+
 ### A Discogs release's edit history (2026-10-18)
 
 Mockup https://claude.ai/artifact/Y69bUJTvYSksKTFRMcYJvZ, tab C; vzell's

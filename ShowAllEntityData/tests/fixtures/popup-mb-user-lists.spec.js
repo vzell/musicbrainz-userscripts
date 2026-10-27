@@ -353,9 +353,11 @@ test.describe('MusicBrainz link previews: an editor\'s lists and account pages',
             .toHaveText('live 47, studio 40, interview 30, rock 15, soundcheck 11, pop 10, solo 10, missing_artwork_koenboone 8, 2024 6, multiple events 6');
         await page.keyboard.press('Space');
         await expect(title(page)).toHaveText('Tags');
-        const genres = dialog(page).locator('.mb-dp-col').first().locator('.mb-pop-taglist li');
-        await expect(genres).toHaveText(['interview 30', 'rock 15', 'pop 10', 'acoustic rock 2', 'hard rock 1']);
-        await expect(dialog(page).locator('.mb-dp-col').last().locator('.mb-pop-taglist li')).toHaveCount(107);
+        // Compact tables since Phase 3d, most votes first.
+        const genres = dialog(page).locator('[data-mb-tbl="genres"] tbody tr');
+        await expect(genres.locator('td:first-child')).toHaveText(['interview', 'rock', 'pop', 'acoustic rock', 'hard rock']);
+        await expect(genres.locator('td:last-child')).toHaveText(['30', '15', '10', '2', '1']);
+        await expect(dialog(page).locator('[data-mb-tbl="tags"] .mb-dg-pager span')).toHaveText('1–25 of 107');
         await genres.first().locator('a').click();
         await expect(title(page)).toHaveText('Tags › Tag');
         await expect.poll(() => log.html, { message: 'the drill asks the tag\'s own page' }).toEqual(['/user/vzell/tags', '/tag/interview']);
@@ -446,7 +448,8 @@ test.describe('MusicBrainz link previews: an editor\'s lists and account pages',
         await expect(card(page).locator('.mb-tt-pill')).toHaveText(['12 ratings shown', '7 kinds']);
         await page.keyboard.press('Space');
         await expect(title(page)).toHaveText('Ratings');
-        const tables = dialog(page).locator('table.mb-rg-wtable');
+        // A Compact table per kind since Phase 3d.
+        const tables = dialog(page).locator('table.mb-dg-ct');
         await expect(tables).toHaveCount(7);
         await expect(tables.first().locator('tbody td')).toHaveText(['★★★★★', 'Bruce Springsteen', '']);
         await expect(tables.nth(1).locator('tbody tr').first().locator('td').last())

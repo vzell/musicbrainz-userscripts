@@ -1,0 +1,80 @@
+[
+    {
+        "name": "label window: its links a list even past ten",
+        "why": "org/MB-POH-sync-withDiscogs.org Phase 3d: a label's links are a Compact table when there are more than ten.",
+        "edits": [
+            {
+                "find": "_mbPopUrlLinksTableHtml(t, 'links', ps.data.relations, { min: 10 })",
+                "replace": "_mbPopUrlLinksTableHtml(t, 'links', ps.data.relations, { min: 1000 })"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "a label: its 27 links a table",
+        "expect": "fail"
+    },
+    {
+        "name": "label window: aliases joined on one line again",
+        "why": "org/MB-POH-sync-withDiscogs.org Phase 3d (vzell): the label's aliases one per line, as the artist's.",
+        "edits": [
+            {
+                "find": "                        ['Aliases', _mbPopAliasesHtml(d.aliases)],\n                    ]);\n",
+                "replace": "                        ['Aliases', _rgEsc(_mbPopAliases(d.aliases, 99))],\n                    ]);\n"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "a label: its 27 links a table",
+        "expect": "fail"
+    },
+    {
+        "name": "relation tables: rows without their group's name",
+        "why": "org/MB-POH-sync-withDiscogs.org Phase 3d: each relation row names its relationship (Parts, Part of, …).",
+        "edits": [
+            {
+                "find": "return { rel: _mbPopRelGroupName(k, types, targetType), name: e.name || e.title || '',",
+                "replace": "return { rel: '', name: e.name || e.title || '',"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "the area card and window",
+        "expect": "fail"
+    },
+    {
+        "name": "genre window: the links back on the right",
+        "why": "org/MB-POH-sync-withDiscogs.org Phase 3d: a genre's links move to the left column.",
+        "edits": [
+            {
+                "find": "                    (urls.length ? `<h4>Links</h4>${_mbPopKvHtml(_mbPopGenreRelRows(d, { links: true, urls: true }))}` : '');\n",
+                "replace": "                    '';\n"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "links on the left, each related-genres relationship",
+        "expect": "fail"
+    },
+    {
+        "name": "work window: its codes all on one page",
+        "why": "org/MB-POH-sync-withDiscogs.org Phase 3d: a Compact table shows 25 a page with a pager and a filter past that.",
+        "edits": [
+            {
+                "find": "], d.attributes, { initial: 'as MusicBrainz lists them', what: 'codes' })",
+                "replace": "], d.attributes, { initial: 'as MusicBrainz lists them', what: 'codes', perPage: 100 })"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "a work's 33 codes",
+        "expect": "fail"
+    },
+    {
+        "name": "event window: no table of the recordings recorded there",
+        "why": "org/MB-POH-sync-withDiscogs.org Phase 3d: \"Recorded here\" is two Compact tables, its releases and its recordings.",
+        "edits": [
+            {
+                "find": "                            (rec.length ? `<div class=\"mb-dp-gname\">Recordings · ${rec.length}</div>` + _mbPopRelTableHtml(t, 'recorded-recordings', rec, 'Recording', 'recordings') : '');",
+                "replace": "                            '';"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "the event window: the whole setlist",
+        "expect": "fail"
+    }
+]

@@ -189,7 +189,7 @@ Phase 2 changes, *2,369/2,369 passed* in 15 m 55 s. Mutations: =dp-shared-tables
 they should; =dp-sort-initial-state.json= 8 fail + 1 recorded overlap pass; =discogs-window-swap.json=
 5/5 (one entry was already stale at HEAD and is retargeted). Lint is within its baseline.
 
-** Phase 3 — MB entity sections  [11/27]
+** Phase 3 — MB entity sections  [29/34]
 
 "Compact" = like Discogs label → Sublabels (left column). "List" = like Discogs label → Releases
 (right column) with "Load N more pages (M …, about S s)".
@@ -221,6 +221,15 @@ After vzell's browser check (2026-10-27): the artist window's genres (tag links)
 per line (=_mbPopAliasesHtml()=); the collection filter marks its matches inside the page's
 cells (=_hlHtml()=); the window's foot line names Ctrl-click on a tag at rest when the window
 holds one. The label window's aliases are still "; "-joined (not asked for).
+
+*3d done* 2026-10-27, same branch (WIP.3), in one commit (vzell: no batches): every "Compact"
+row of the table below — Links (artist, release group, label past ten, place), Work codes,
+Event "Recorded here" (two tables), Instrument aliases and related instruments, Area related
+areas, Genre related genres (one table per relationship; links moved left), Editor edits,
+editor's Tags (genres and other tags), Ratings per kind, ISRC, ISWC, Disc ID, Annotation
+versions — plus the label's aliases one per line (vzell). No new request. Left for 3e: the
+release tracklist per medium, the event setlist, the series' entity icons; 3f: CD stub and
+Documentation readers.
 
 | Entity          | Section                                     | Change                                                                                                                                                         |
 |-----------------+---------------------------------------------+----------------------------------------------------------------------------------------------------------------------------------------------------------------|

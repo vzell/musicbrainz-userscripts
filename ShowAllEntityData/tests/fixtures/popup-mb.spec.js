@@ -1300,7 +1300,9 @@ test.describe('MusicBrainz link previews: artist, label, area, instrument (WIP.3
         await expect(segs.first()).toHaveAttribute('aria-pressed', 'true');
         await expect(tbl.locator('tbody tr')).toHaveCount(100);
         await expect(area.locator('.mb-dg-counts').first()).toHaveText('100 of 1,924 loaded · one segment = 100 release groups');
-        await expect(area.locator('.mb-rg-links > div')).toHaveCount(75);
+        // A Compact table since Phase 3d: all 75, 25 a page.
+        await expect(area.locator('[data-mb-tbl="links"] .mb-dg-pager span')).toHaveText('1–25 of 75');
+        await expect(area.locator('[data-mb-tbl="links"] tbody tr')).toHaveCount(25);
         expect(log.ws2.filter(u => u.includes('inc=url-rels'))).toHaveLength(1);
         const rgAsked = () => log.ws2.filter(u => u.includes('/ws/2/release-group?artist='));
         expect(rgAsked().filter(u => u.includes('&limit=1&')), 'the five counts').toHaveLength(5);
@@ -1526,8 +1528,10 @@ test.describe('MusicBrainz link previews: artist, label, area, instrument (WIP.3
         await expect(kv).toContainText('United States');
         await expect(kv.locator('dt')).toContainText(['Part of', 'Parts']);
         await page.keyboard.press('Space');
-        const related = dialog(page).locator('h4:text-is("Related areas") + .mb-dp-kv');
-        await expect(related.locator('dd').first().locator('a')).toHaveCount(21);
+        // A Compact table since Phase 3d: one row per relation.
+        const related = dialog(page).locator('[data-mb-tbl="areas"]');
+        const rels = await related.locator('tbody td:first-child').allTextContents();
+        expect(rels.filter(x => x === 'Parts'), 'its 21 counties').toHaveLength(21);
         await expect(related).toContainText('Essex County');
         expect(log.ws2).toHaveLength(1);
     });
@@ -1542,12 +1546,13 @@ test.describe('MusicBrainz link previews: artist, label, area, instrument (WIP.3
         await page.keyboard.press('Space');
         const area = dialog(page).locator('.mb-dp-area');
         await expect(area).toContainText('The description is on the instrument\'s page (Live page).');
-        const groups = area.locator('h4:text-is("Related instruments") + .mb-dp-kv dt');
-        await expect(groups).toHaveCount(3);
-        for (const name of ['Hybrids', 'Part of', 'Subtypes']) {
-            await expect(groups.getByText(name, { exact: true })).toHaveCount(1);
-        }
+        // Compact tables since Phase 3d: one row per relation; the aliases
+        // with locale, type and primary.
+        const groups = await area.locator('[data-mb-tbl="instruments"] tbody td:first-child').allTextContents();
+        expect([...new Set(groups)].sort()).toEqual(['Hybrids', 'Part of', 'Subtypes']);
         await expect(area.locator('h4', { hasText: 'Aliases' })).toHaveText('Aliases · 27');
+        await expect(area.locator('[data-mb-tbl="aliases"] thead th')).toHaveText([/^Alias/, /^Locale/, /^Type/, /^Primary/]);
+        await expect(area.locator('[data-mb-tbl="aliases"] .mb-dg-pager span')).toHaveText('1–25 of 27');
         expect(log.ws2).toHaveLength(1);
     });
 });
@@ -1582,9 +1587,9 @@ test.describe('MusicBrainz link previews: event, place, series (WIP.4)', () => {
         const songs = area.locator('h4:text-matches("^Setlist") ~ ol.mb-pop-tracks li');
         await expect(songs.last()).toContainText('Chimes of Freedom');
         await expect(songs.filter({ hasText: /\[|\]/ })).toHaveCount(0);
-        const recorded = area.locator('h4:text-is("Recorded here") + .mb-dp-kv');
-        await expect(recorded.locator('dt')).toContainText(['Recorded at (releases)', 'Recorded at (recordings)']);
-        await expect(recorded.locator('dd').nth(1).locator('a')).toHaveCount(26);
+        // Two Compact tables since Phase 3d: its releases, its recordings.
+        await expect(area.locator('[data-mb-tbl="recorded-releases"] tbody td:first-child').first()).toHaveText('Recorded at');
+        await expect(area.locator('[data-mb-tbl="recorded-recordings"] .mb-dg-pager span')).toHaveText('1–25 of 26');
         await expect(area.locator('.mb-dp-gallery img')).not.toHaveCount(0);
         expect(log.eaa).toEqual([EVENT]);
         // A click on the event art opens the viewer on it, from the record already here.
@@ -1760,7 +1765,7 @@ test.describe('MusicBrainz link previews: event, place, series (WIP.4)', () => {
         await page.keyboard.press('Space');
         const area = dialog(page).locator('.mb-dp-area');
         await expect(area.locator('a[href^="https://www.openstreetmap.org/"]')).toHaveAttribute('href', /mlat=40\.21995&mlon=-74\.00058/);
-        await expect(area.locator('.mb-rg-links > div')).toHaveCount(5);
+        await expect(area.locator('[data-mb-tbl="links"] tbody tr')).toHaveCount(5);
         // Its events as a paged List table (Phase 3b), sorted by date at first.
         await expect(area.locator('h4', { hasText: 'Events' })).toHaveText('Events · 110');
         await expect(area.locator('.mb-dg-counts').first()).toHaveText('100 of 110 loaded · one segment = 100 events');
@@ -1839,6 +1844,70 @@ test.describe('MusicBrainz link previews: event, place, series (WIP.4)', () => {
     });
 });
 
+// org/MB-POH-sync-withDiscogs.org Phase 3d: the windows' small tables are
+// Compact tables (filter past a page, three-way sort, ‹ › pager).
+test.describe('MusicBrainz link previews: Compact tables (Phase 3d)', () => {
+    const WORK = '/work/9893a23c-f282-3b07-a2db-b4f2f3b9f4b2';
+    const LABEL = '/label/011d1192-6f65-45bd-85c4-0400dd45693e';
+
+    test('a work\'s 33 codes: a filter and a pager, the filter marks its matches and starts on page 1', async ({ page }) => {
+        await open(page, { settings: { sa_pop_mb: true }, showAll: false });
+        const a = await addLink(page, WORK, 'Born to Run');
+        await ctrlHover(page, a);
+        await expect(card(page)).toContainText('fetched now');
+        await page.keyboard.press('Space');
+        const codes = dialog(page).locator('[data-mb-tbl="codes"]');
+        await expect(codes.locator('thead th')).toHaveText([/^Type/, /^Code/]);
+        await expect(codes.locator('.mb-dg-pager span')).toHaveText('1–25 of 33');
+        await codes.getByRole('button', { name: 'Next page' }).click();
+        await expect(codes.locator('.mb-dg-pager span')).toHaveText('26–33 of 33');
+        await codes.locator('input.mb-tbl-q').fill('akm');
+        await expect(codes.locator('tbody tr')).toHaveCount(2);
+        await expect(codes.locator('tbody mark.mb-dg-hl')).toHaveText(['AKM', 'AKM']);
+    });
+
+    test('a label: its 27 links a table (more than ten), its aliases one per line', async ({ page }) => {
+        await open(page, { settings: { sa_pop_mb: true }, showAll: false });
+        const a = await addLink(page, LABEL, 'Columbia');
+        await ctrlHover(page, a);
+        await expect(card(page)).toContainText('fetched now');
+        await page.keyboard.press('Space');
+        const links = dialog(page).locator('[data-mb-tbl="links"]');
+        await expect(links.locator('thead th')).toHaveText([/^Site/, /^Relationship/, /^URL/]);
+        await expect(links.locator('.mb-dg-pager span')).toHaveText('1–25 of 27');
+        const aliases = dialog(page).locator('.mb-dp-area .mb-dp-kv dt:text-is("Aliases") + dd');
+        expect(await aliases.locator('br').count(), 'three aliases, one per line').toBe(2);
+    });
+
+    test('an ISWC\'s works and a disc ID\'s releases are Compact tables', async ({ page }) => {
+        await open(page, { settings: { sa_pop_mb: true }, showAll: false });
+        await ctrlHover(page, await addLink(page, '/iswc/T-070.246.800-1', 'T-070.246.800-1'));
+        await expect(card(page)).toContainText('fetched now');
+        await page.keyboard.press('Space');
+        await expect(dialog(page).locator('[data-mb-tbl="works"] thead th')).toHaveText([/^Work/, /^Type/, /^Language/]);
+        await expect(dialog(page).locator('[data-mb-tbl="works"] tbody tr')).toHaveCount(1);
+        await page.keyboard.press('Escape');
+        await ctrlHover(page, await addLink(page, '/cdtoc/coDDysS5IdmG1aPONqJSQd6TJws-', 'disc'));
+        await expect(card(page)).toContainText('fetched now');
+        await page.keyboard.press('Space');
+        await expect(dialog(page).locator('[data-mb-tbl="releases"] tbody tr')).toHaveCount(7);
+        // The table of contents stays a plain table.
+        await expect(dialog(page).locator('.mb-rg-wtable thead th')).toHaveText(['Track', 'Offset', 'Length']);
+    });
+
+    test('an artist\'s links: the filter narrows all 75 and marks the site', async ({ page }) => {
+        await open(page, { settings: { sa_pop_mb: true }, showAll: false });
+        await ctrlHover(page, page.locator('table.tbl tbody a[href="/artist/70248960-cb53-4ea4-943a-edb18f7d336f"]').first());
+        await expect(card(page)).toContainText('fetched now');
+        await page.keyboard.press('Space');
+        const links = dialog(page).locator('[data-mb-tbl="links"]');
+        await expect(links.locator('.mb-dg-pager span')).toHaveText('1–25 of 75');
+        await links.locator('input.mb-tbl-q').fill('discogs');
+        await expect(links.locator('tbody tr')).toHaveCount(1);
+        await expect(links.locator('tbody mark.mb-dg-hl').first()).toHaveText('discogs');
+    });
+});
+
 test.describe('MusicBrainz link previews: ISRC, ISWC, disc ID, collection (WIP.5)', () => {
     const DISCID = 'coDDysS5IdmG1aPONqJSQd6TJws-';
     const ATTENDING = '/collection/60df131d-bdb7-3c83-840d-e31e566baabe';
@@ -1855,7 +1924,7 @@ test.describe('MusicBrainz link previews: ISRC, ISWC, disc ID, collection (WIP.5
         expect(log.ws2).toEqual([expect.stringContaining('/ws/2/isrc/USSM17500803?inc=artist-credits&fmt=json')]);
         await page.keyboard.press('Space');
         await expect(dialog(page).locator(':scope > div > span').first()).toHaveText('ISRC');
-        await expect(dialog(page).locator('.mb-rg-wtable tbody tr a').first()).toHaveAttribute('href', /^\/recording\/[0-9a-f-]{36}$/);
+        await expect(dialog(page).locator('[data-mb-tbl="recordings"] tbody tr a').first()).toHaveAttribute('href', /^\/recording\/[0-9a-f-]{36}$/);
     });
 
     test('an ISWC: the works carrying it', async ({ page }) => {
@@ -2149,7 +2218,7 @@ test.describe('MusicBrainz link previews: edit and editor, read from the page (P
         expect(log.html).toEqual(['https://musicbrainz.org/user/vzell']);
         await page.keyboard.press('Space');
         await expect(dialog(page).locator(':scope > div > span').first()).toHaveText('Editor');
-        await expect(dialog(page).locator('.mb-rg-wtable tbody tr').first()).toContainText('Total');
+        await expect(dialog(page).locator('[data-mb-tbl="edits"] tbody tr').first()).toContainText('Total');
         await expect(dialog(page).locator('.mb-dp-area')).not.toContainText('Languages');
     });
 
@@ -2425,6 +2494,29 @@ test.describe('MusicBrainz link previews: genres, read from the page', () => {
         const frame = page.frameLocator('#mb-dp-dialog iframe');
         await expect(frame.locator('.genreheader h1')).toContainText('roots rock', { timeout: 15000 });
         expect(log.html, 'the Live page reuses the hover\'s page').toHaveLength(1);
+    });
+
+    // org/MB-POH-sync-withDiscogs.org Phase 3d: the links on the left, each
+    // related-genres relationship a Compact table of its own on the right.
+    test('the window: links on the left, each related-genres relationship its own table', async ({ page }) => {
+        await open(page, { settings: { sa_pop_mb: true }, showAll: false });
+        const a = await addLink(page, GENRE, 'roots rock');
+        await ctrlHover(page, a);
+        await expect(card(page)).toContainText('fetched now');
+        await page.keyboard.press('Space');
+        const cols = dialog(page).locator('.mb-dp-area .mb-dp-x > .mb-dp-col');
+        await expect(cols.nth(0).locator('a[href="https://www.wikidata.org/wiki/Q1929352"]')).toHaveText('Q1929352');
+        await expect(cols.nth(1).locator('a[href^="https://www.wikidata.org/"]')).toHaveCount(0);
+        await expect(cols.nth(1).locator('.mb-dp-gname')).toHaveText(['subgenre of · 1', 'subgenres · 1', 'influenced by · 3']);
+        const tables = cols.nth(1).locator('table.mb-dg-ct');
+        await expect(tables).toHaveCount(3);
+        await expect(tables.nth(2).locator('tbody td')).toHaveText(['blues', 'country', 'r&b']);
+        // Name descending, then the page's order again.
+        const th = tables.nth(2).locator('th[data-mb-tbl-sort="name"]');
+        await th.click();
+        await expect(th).toHaveAttribute('aria-sort', 'ascending');
+        await th.click();
+        await expect(tables.nth(2).locator('tbody td')).toHaveText(['r&b', 'country', 'blues']);
     });
 
     test('a page that is not a genre\'s fails and is not kept', async ({ page }) => {

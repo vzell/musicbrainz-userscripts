@@ -1,5 +1,19 @@
 [
   {
+    "version": "WIP.3",
+    "date": "2026-10-27",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "The smaller lists in the MusicBrainz windows are tables now, with a filter (when there are more than 25 rows; it marks what it matched), sorting by any column (ascending, descending, back to MusicBrainz's order) and 25 rows a page: an entity's links (site, relationship, address) in the artist, release group, place and label windows (a label's from eleven links on), a work's codes, an event's \"Recorded here\" (its releases and its recordings, two tables), an instrument's aliases (with locale, type and whether primary) and related instruments, an area's related areas, a genre's related genres (one table per relationship; its links moved to the left), an editor's edits, tags and genres, ratings (one table per kind), an ISRC's recordings, an ISWC's works, a disc ID's releases and an annotation's versions.",
+          "A label's window lists its aliases one per line, as an artist's does.",
+          "Performance: link-preview windows only; no change to the page tables' filter, sort or render path, and no new request."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.2",
     "date": "2026-10-27",
     "sections": [

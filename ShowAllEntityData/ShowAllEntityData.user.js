@@ -27512,6 +27512,7 @@
                 padding: 0;
             }
             .mb-dp-dialog .mb-dg-ct td { padding: 2px 8px; }
+            .mb-dp-dialog .mb-dg-ct td.mb-pop-urlpath { overflow-wrap: anywhere; color: #7a6d5c; font-size: 12px; }
             .mb-dp-dialog .mb-dg-pager { justify-content: center; font-variant-numeric: tabular-nums; }
             .mb-dp-dialog .mb-dg-pager .mb-dg-btn[disabled] { opacity: 0.45; cursor: default; }
             .mb-dp-dialog .mb-dg-picked b { color: #2b2622; font-weight: 600; }
@@ -52095,10 +52096,11 @@
      * per line, each its tag page: `_mbPopGenreLinksHtml()`), the external
      * links and the annotation — or their loading or failure line.
      *
+     * @param {object} t - The window's target (its links table's state).
      * @param {{status: string, data: ?Object, detail: string}} f - `_rgFacts` state.
      * @returns {string}
      */
-    function _rgFactsHtml(f) {
+    function _rgFactsHtml(t, f) {
         if (f.status === 'failed') {
             return `<h4>Facts</h4><div class="mb-dp-warn">Could not load the release group (${_rgEsc(f.detail)}).</div>` +
                 '<p><button type="button" class="mb-dp-retry">⟳ Try again</button></p>';
@@ -52115,7 +52117,7 @@
             ['Artist', _mbPopCreditHtml(d['artist-credit'])],
             ['Rating', _rgEsc(votes ? `${rt.value} of 5 · ${votes} vote${votes === 1 ? '' : 's'}` : 'no votes')],
             ['Genres', _mbPopGenreLinksHtml(d.genres)],
-        ]) + _mbPopUrlLinksHtml(d.relations);
+        ]) + _mbPopUrlLinksTableHtml(t, 'links', d.relations);
         if (d.annotation) html += `<h4>Annotation</h4><div class="mb-dp-section">${_rgEsc(d.annotation)}</div>`;
         return html;
     }
@@ -52145,7 +52147,7 @@
             `<a href="https://coverartarchive.org/release-group/${gid}/front" target="_blank" rel="noopener" data-mbtt-fn="sb-cover" ` +
             `data-mb-sb-cover="/release-group/${gid}" data-mb-sb-cover-title="${_rgEsc(info.name)}">` +
             `<img class="mb-dp-xcover" src="https://coverartarchive.org/release-group/${gid}/front-250" alt=""></a>` +
-            _rgFactsHtml(f);
+            _rgFactsHtml(t, f);
         const loaded = st.releases.length;
         const total = st.total;
         let state = '';
@@ -54379,13 +54381,67 @@
     function _mbPopRelRows(rels, targetType, fmt = null) {
         const groups = _mbPopRelsByType(rels, targetType);
         const types = groups.map(([k]) => k.split('|')[0]);
-        return groups.map(([k, list]) => {
-            const [type, dir] = k.split('|');
-            const both = types.filter(x => x === type).length > 1;
-            const name = _MB_POP_REL_LABELS[`${k}|${targetType}`] || _MB_POP_REL_LABELS[k] ||
-                type.charAt(0).toUpperCase() + type.slice(1) + (both ? (dir === 'forward' ? ' →' : ' ←') : '');
-            return [name, list.map(r => (fmt ? fmt(r) : _mbPopRelTargetHtml(r, targetType))).join('<br>')];
-        });
+        return groups.map(([k, list]) => [_mbPopRelGroupName(k, types, targetType),
+            list.map(r => (fmt ? fmt(r) : _mbPopRelTargetHtml(r, targetType))).join('<br>')]);
+    }
+
+    /**
+     * A relation group's name: `_MB_POP_REL_LABELS` by
+     * `<type>|<direction>|<target type>`, then by `<type>|<direction>`, else
+     * its type with the first letter up, and an arrow for the direction when
+     * the type has both (`types`: every group's type).
+     *
+     * @param {string} k - `<type>|<direction>`.
+     * @param {Array<string>} types
+     * @param {string} targetType
+     * @returns {string}
+     */
+    function _mbPopRelGroupName(k, types, targetType) {
+        const [type, dir] = k.split('|');
+        const both = types.filter(x => x === type).length > 1;
+        return _MB_POP_REL_LABELS[`${k}|${targetType}`] || _MB_POP_REL_LABELS[k] ||
+            type.charAt(0).toUpperCase() + type.slice(1) + (both ? (dir === 'forward' ? ' →' : ' ←') : '');
+    }
+
+    /**
+     * The relations of one target type as rows of a window's Compact table
+     * (org/MB-POH-sync-withDiscogs.org, Phase 3d): one row per relation, in
+     * MusicBrainz's order, with its group's name (`_mbPopRelGroupName()`),
+     * its target's name (to sort and filter by) and its HTML (`fmt`, else
+     * `_mbPopRelTargetHtml()`: the link, attributes, dates).
+     *
+     * @param {?Array<Object>} rels
+     * @param {string} targetType
+     * @param {?function(Object): string} [fmt]
+     * @returns {Array<{rel: string, name: string, html: string}>}
+     */
+    function _mbPopRelTableRows(rels, targetType, fmt = null) {
+        const groups = _mbPopRelsByType(rels, targetType);
+        const types = groups.map(([k]) => k.split('|')[0]);
+        return groups.flatMap(([k, list]) => list.map((r) => {
+            const e = r[targetType] || _mbPopRelEntity(r) || {};
+            return { rel: _mbPopRelGroupName(k, types, targetType), name: e.name || e.title || '', html: fmt ? fmt(r) : _mbPopRelTargetHtml(r, targetType) };
+        }));
+    }
+
+    /**
+     * Relation rows (`_mbPopRelTableRows()`) as a window's Compact table:
+     * Relationship · the target, every match of the filter marked
+     * (`_hlHtml()`); "None." for no row.
+     *
+     * @param {object} t - The window's target.
+     * @param {string} id - The table's id in the window.
+     * @param {Array<{rel: string, name: string, html: string}>} rows
+     * @param {string} label - The target column's header: "Area".
+     * @param {string} what - The rows: "areas".
+     * @returns {string}
+     */
+    function _mbPopRelTableHtml(t, id, rows, label, what) {
+        if (!rows.length) return '<div class="mb-dp-xsub">None.</div>';
+        return _dpCompactTableHtml(t, id, [
+            { key: 'rel', label: 'Relationship', val: r => r.rel, html: (r, q) => _hlEsc(r.rel, q) },
+            { key: 'name', label, val: r => r.name, html: (r, q) => _hlHtml(r.html, q) },
+        ], rows, { initial: 'as MusicBrainz lists them', what });
     }
 
     /**
@@ -54594,12 +54650,48 @@
 
     /**
      * An entity's external links (its `url` relations) as the window's
-     * "Links (N)" section: each host linked, its relationship type beside it.
-     * '' when it has none.
+     * "Links (N)" section, a Compact table (Phase 3d): Site (linked) ·
+     * Relationship · URL (the address past the host), filter and pager when
+     * there are many. '' when it has none; the plain list
+     * (`_mbPopUrlLinksHtml()`) for `min` links or fewer (a label's ten).
+     *
+     * @param {object} t - The window's target.
+     * @param {string} id - The table's id in the window.
+     * @param {?Array<Object>} rels - `relations`.
+     * @param {{withHead?: boolean, min?: number}} [opts] - `withHead`: with its
+     *   "Links (N)" heading; false inside a section that has its own
+     *   (`_mbPopSectionHtml()`).
+     * @returns {string}
+     */
+    function _mbPopUrlLinksTableHtml(t, id, rels, { withHead = true, min = 0 } = {}) {
+        const urls = (rels || []).filter(r => r.url && r.url.resource);
+        if (!urls.length) return '';
+        if (urls.length <= min) return _mbPopUrlLinksHtml(rels, withHead);
+        const rows = urls.map((r) => {
+            let host = r.url.resource;
+            let rest = '';
+            try {
+                const u = new URL(r.url.resource);
+                host = u.hostname.replace(/^www\./, '');
+                rest = `${u.pathname}${u.search}${u.hash}`.replace(/^\/$/, '');
+            } catch (_) { /* keep the whole address as the site */ }
+            return { host, type: r.type || '', url: r.url.resource, rest };
+        });
+        return `${withHead ? `<h4>Links (${urls.length})</h4>` : ''}` + _dpCompactTableHtml(t, id, [
+            { key: 'host', label: 'Site', val: r => r.host, html: (r, q) => `<a href="${_rgEsc(r.url)}" target="_blank" rel="noopener">${_hlEsc(r.host, q)}</a>` },
+            { key: 'type', label: 'Relationship', val: r => r.type, html: (r, q) => _hlEsc(r.type, q) },
+            { key: 'rest', label: 'URL', cls: 'mb-pop-urlpath', val: r => r.rest, html: (r, q) => (r.rest ? _hlEsc(r.rest, q) : '—') },
+        ], rows, { initial: 'as MusicBrainz lists them', what: 'links', search: r => `${r.host} ${r.type} ${r.url}` });
+    }
+
+    /**
+     * An entity's external links as the window's "Links (N)" section, as a
+     * plain list: each host linked, its relationship type beside it ('' for
+     * none). The windows use the Compact table (`_mbPopUrlLinksTableHtml()`,
+     * Phase 3d), which falls back to this list under its `min`.
      *
      * @param {?Array<Object>} rels - `relations`.
-     * @param {boolean} [withHead] - With its "Links (N)" heading; false
-     *   inside a section that has its own (`_mbPopSectionHtml()`).
+     * @param {boolean} [withHead] - With its "Links (N)" heading.
      * @returns {string}
      */
     function _mbPopUrlLinksHtml(rels, withHead = true) {
@@ -58266,8 +58358,10 @@
                         ..._mbPopRelRows(d.relations, 'label'),
                         ..._mbPopRelRows(d.relations, 'work'),
                     ]) +
-                    ((d.attributes || []).length ? `<h4>Codes · ${d.attributes.length}</h4>` + _mbPopKvHtml(d.attributes.map(a =>
-                        [a.type || '', _rgEsc(a.value)])) : '');
+                    ((d.attributes || []).length ? `<h4>Codes · ${d.attributes.length}</h4>` + _dpCompactTableHtml(t, 'codes', [
+                        { key: 'type', label: 'Type', val: a => a.type || '', html: (a, q) => _hlEsc(a.type || '—', q) },
+                        { key: 'value', label: 'Code', val: a => a.value || '', html: (a, q) => _hlEsc(a.value, q) },
+                    ], d.attributes, { initial: 'as MusicBrainz lists them', what: 'codes' }) : '');
                 return `<div class="mb-dp-x"><div class="mb-dp-col">${left}</div><div class="mb-dp-col">${_mbWorkRecsHtml(t)}</div></div>`;
             },
             // The first page of its recordings (a work can have thousands:
@@ -58317,7 +58411,7 @@
                         ['ISNI', _rgEsc((d.isnis || []).join(', '))],
                         ['Aliases', _mbPopAliasesHtml(d.aliases)],
                     ]) +
-                    _mbPopSectionHtml('Links', _mbPop.get(links.key), (p) => _mbPopUrlLinksHtml(p.relations, false) ||
+                    _mbPopSectionHtml('Links', _mbPop.get(links.key), (p) => _mbPopUrlLinksTableHtml(t, 'links', p.relations, { withHead: false }) ||
                         '<div class="mb-dp-xsub">No links.</div>');
                 return `<div class="mb-dp-x"><div class="mb-dp-col">${left}</div><div class="mb-dp-col">${_mbArtistRgsHtml(t)}</div></div>`;
             },
@@ -58391,7 +58485,7 @@
                         ['Genres', _mbPopGenreLinksHtml(d.genres)],
                         ['IPI', _rgEsc((d.ipis || []).join(', '))],
                         ['ISNI', _rgEsc((d.isnis || []).join(', '))],
-                        ['Aliases', _rgEsc(_mbPopAliases(d.aliases, 99))],
+                        ['Aliases', _mbPopAliasesHtml(d.aliases)],
                     ]);
                 const ps = _mbPop.get(pin.key);
                 const right = _mbPopSectionHtml('Related labels', ps, (p) => _mbPopKvHtml(_mbPopRelRows(p.relations, 'label')) ||
@@ -58399,7 +58493,7 @@
                     _mbPopSectionHtml('People, places and series', _mbPop.get(more.key), (p) => _mbPopKvHtml(['artist', 'place', 'series']
                         .flatMap(type => _mbPopRelRowsCapped(p.relations, type, _MB_POP_LABEL_REL_CAP))) ||
                         '<div class="mb-dp-xsub">None.</div>') +
-                    (ps && ps.status === 'done' && ps.data ? _mbPopUrlLinksHtml(ps.data.relations) : '');
+                    (ps && ps.status === 'done' && ps.data ? _mbPopUrlLinksTableHtml(t, 'links', ps.data.relations, { min: 10 }) : '');
                 return `<div class="mb-dp-x"><div class="mb-dp-col">${left}</div><div class="mb-dp-col">${right}</div></div>`;
             },
             cardAside: _mbPopCardPicture,
@@ -58431,15 +58525,15 @@
                         ['Existed', _rgEsc(_mbPopLifeSpan(d['life-span']))],
                     ]);
             },
-            windowHtml(d) {
+            windowHtml(d, t) {
                 return `<div class="mb-dp-x"><div class="mb-dp-col"><div class="mb-dp-xtitle">${_rgEsc(d.name)}</div>` +
                     (d.disambiguation ? `<div class="mb-dp-xsub">${_rgEsc(d.disambiguation)}</div>` : '') +
                     `<div class="mb-rg-pills">${_mbPopPillsHtml([d.type])}</div><h4>Facts</h4>` + _mbPopKvHtml([
                         ['ISO 3166', _rgEsc([...(d['iso-3166-1-codes'] || []), ...(d['iso-3166-2-codes'] || []),
                             ...(d['iso-3166-3-codes'] || [])].join(', '))],
                         ['Existed', _rgEsc(_mbPopLifeSpan(d['life-span']))],
-                    ]) + `</div><div class="mb-dp-col"><h4>Related areas</h4>${_mbPopKvHtml(_mbPopRelRows(d.relations, 'area')) ||
-                    '<div class="mb-dp-xsub">None.</div>'}</div></div>`;
+                    ]) + `</div><div class="mb-dp-col"><h4>Related areas</h4>${_mbPopRelTableHtml(t, 'areas',
+                    _mbPopRelTableRows(d.relations, 'area'), 'Area', 'areas')}</div></div>`;
             },
         })),
         // One lookup for card and window. The Web Service has no
@@ -58457,15 +58551,19 @@
                         ['Also known as', _rgEsc(_mbPopAliases(d.aliases))],
                     ]);
             },
-            windowHtml(d) {
+            windowHtml(d, t) {
                 return `<div class="mb-dp-x"><div class="mb-dp-col"><div class="mb-dp-xtitle">${_rgEsc(d.name)}</div>` +
                     `<div class="mb-rg-pills">${_mbPopPillsHtml([d.type])}</div>` +
                     (d.description ? `<div class="mb-dp-section">${_rgEsc(d.description)}</div>`
                         : '<div class="mb-dp-xsub">The description is on the instrument\'s page (Live page).</div>') +
-                    `<h4>Aliases · ${(d.aliases || []).length}</h4>${_mbPopKvHtml((d.aliases || []).map(a =>
-                        [a.locale || a.type || '—', _rgEsc(a.name)]))}</div>` +
-                    `<div class="mb-dp-col"><h4>Related instruments</h4>${_mbPopKvHtml(_mbPopRelRows(d.relations, 'instrument')) ||
-                    '<div class="mb-dp-xsub">None.</div>'}</div></div>`;
+                    `<h4>Aliases · ${(d.aliases || []).length}</h4>${(d.aliases || []).length ? _dpCompactTableHtml(t, 'aliases', [
+                        { key: 'name', label: 'Alias', val: a => a.name || '', html: (a, q) => _hlEsc(a.name, q) },
+                        { key: 'locale', label: 'Locale', val: a => a.locale || '', html: (a, q) => _hlEsc(a.locale || '—', q) },
+                        { key: 'type', label: 'Type', val: a => a.type || '', html: (a, q) => _hlEsc(a.type || '—', q) },
+                        { key: 'primary', label: 'Primary', val: a => (a.primary ? 'primary' : ''), html: a => (a.primary ? '✓' : '') },
+                    ], d.aliases, { initial: 'as MusicBrainz lists them', what: 'aliases' }) : '<div class="mb-dp-xsub">None.</div>'}</div>` +
+                    `<div class="mb-dp-col"><h4>Related instruments</h4>${_mbPopRelTableHtml(t, 'instruments',
+                    _mbPopRelTableRows(d.relations, 'instrument'), 'Instrument', 'instruments')}</div></div>`;
             },
         })),
         // A genre (2026-10-26): read from its page (`_mbParseGenrePage()`),
@@ -58486,7 +58584,7 @@
                     _mbPopKvHtml([...d.tags.map(([k, v]) => [k, _rgEsc(v)]), ..._mbPopGenreRelRows(d, { max: 3 })]) +
                     (wiki ? `<div class="mb-tt-body">${_rgEsc(wiki)}</div>` : '');
             },
-            windowHtml(d) {
+            windowHtml(d, t) {
                 const urls = (d.rels || []).filter(r => r.items.every(x => x.type === 'url'));
                 const left = `<div class="mb-dp-xtitle">${_rgEsc(d.name)}</div>` +
                     (d.comment ? `<div class="mb-dp-xsub">${_rgEsc(d.comment)}</div>` : '') +
@@ -58499,9 +58597,18 @@
                     ]) +
                     (d.wiki ? `<h4>Wikipedia</h4><div class="mb-dp-section">${_rgEsc(d.wiki)}</div>` +
                         (d.wikiUrl ? `<p><a href="${_rgEsc(d.wikiUrl)}" target="_blank" rel="noopener">Continue reading at Wikipedia</a></p>` : '') : '') +
-                    (d.annotation ? `<h4>Annotation</h4><div class="mb-dp-section">${_rgEsc(d.annotation)}</div>` : '');
-                const right = `<h4>Related genres</h4>${_mbPopKvHtml(_mbPopGenreRelRows(d, { links: true })) || '<div class="mb-dp-xsub">None.</div>'}` +
+                    (d.annotation ? `<h4>Annotation</h4><div class="mb-dp-section">${_rgEsc(d.annotation)}</div>` : '') +
+                    // The links on the left since Phase 3d (the plan's row).
                     (urls.length ? `<h4>Links</h4>${_mbPopKvHtml(_mbPopGenreRelRows(d, { links: true, urls: true }))}` : '');
+                // Each relationship its own Compact table (Phase 3d).
+                const secs = (d.rels || []).filter(r => !r.items.every(x => x.type === 'url'));
+                const right = '<h4>Related genres</h4>' + (secs.length ? secs.map((r, i) =>
+                    `<div class="mb-dp-gname">${_rgEsc(r.phrase)} · ${r.items.length}</div>` + _dpCompactTableHtml(t, `genre-rel-${i}`, [
+                        {
+                            key: 'name', label: 'Name', val: x => x.name,
+                            html: (x, q) => `<a href="${_rgEsc(x.href)}" target="_blank" rel="noopener">${_hlEsc(x.name, q)}</a>`,
+                        },
+                    ], r.items, { initial: 'as MusicBrainz lists them', what: 'genres' })).join('') : '<div class="mb-dp-xsub">None.</div>');
                 return `<div class="mb-dp-x"><div class="mb-dp-col">${left}</div><div class="mb-dp-col">${right}</div></div>`;
             },
         })),
@@ -58545,10 +58652,14 @@
                     ]) +
                     _mbPopUrlRowsHtml(d.relations) +
                     _mbPopGalleryHtml('Event art', _mbPopEventArt.get(d.id), 0, EAA_CTX, `/event/${d.id}`) +
-                    _mbPopSectionHtml('Recorded here', _mbPop.get(pin.key), (p) => _mbPopKvHtml([
-                        ..._mbPopRelRows(p.relations, 'release').map(([k, v]) => [`${k} (releases)`, v]),
-                        ..._mbPopRelRows(p.relations, 'recording').map(([k, v]) => [`${k} (recordings)`, v]),
-                    ]) || '<div class="mb-dp-xsub">Nothing recorded here is in MusicBrainz.</div>');
+                    _mbPopSectionHtml('Recorded here', _mbPop.get(pin.key), (p) => {
+                        // Two Compact tables (Phase 3d): its releases, its recordings.
+                        const rel = _mbPopRelTableRows(p.relations, 'release');
+                        const rec = _mbPopRelTableRows(p.relations, 'recording');
+                        if (!rel.length && !rec.length) return '<div class="mb-dp-xsub">Nothing recorded here is in MusicBrainz.</div>';
+                        return (rel.length ? `<div class="mb-dp-gname">Releases · ${rel.length}</div>` + _mbPopRelTableHtml(t, 'recorded-releases', rel, 'Release', 'releases') : '') +
+                            (rec.length ? `<div class="mb-dp-gname">Recordings · ${rec.length}</div>` + _mbPopRelTableHtml(t, 'recorded-recordings', rec, 'Recording', 'recordings') : '');
+                    });
                 const right = `<h4>Setlist${sl.songs.length ? ` · ${sl.songs.length}` : ''}</h4>` +
                     (sl.lineupHtml ? `<div class="mb-dp-xsub">${sl.lineupHtml}</div>` : '') +
                     (sl.songs.length ? '<ol class="mb-dp-tracks mb-pop-tracks">' + sl.songsHtml.map((x, i) =>
@@ -58591,7 +58702,7 @@
                         ['Area', _mbPopAreaChainHtml(d.area)],
                         ['Coordinates', c ? `<a href="${_rgEsc(map)}" target="_blank" rel="noopener">${_rgEsc(`${c.latitude}, ${c.longitude}`)}</a>` : ''],
                         ['Open', _rgEsc(_mbPopLifeSpan(d['life-span']))],
-                    ]) + _mbPopUrlLinksHtml(d.relations);
+                    ]) + _mbPopUrlLinksTableHtml(t, 'links', d.relations);
                 return `<div class="mb-dp-x"><div class="mb-dp-col">${left}</div><div class="mb-dp-col">${_mbPlaceEventsHtml(t)}</div></div>`;
             },
             cardAside: _mbPopCardPicture,
@@ -58650,16 +58761,22 @@
                         `${r['artist-credit'] ? ` <span class="mb-rg-dim">· ${_rgEsc(_mbPopCreditText(r['artist-credit']))}</span>` : ''}</span>` +
                         `${typeof r.length === 'number' ? `<span class="mb-pop-len">${_msFormatSeconds(r.length)}</span>` : ''}</li>`).join('') + '</ol>';
             },
-            windowHtml(d) {
+            windowHtml(d, t) {
                 const recs = d.recordings || [];
                 return `<div class="mb-dp-x"><div class="mb-dp-col"><div class="mb-dp-xtitle">${_rgEsc(d.isrc)}</div>` +
                     '<div class="mb-dp-xsub">International Standard Recording Code</div></div>' +
-                    `<div class="mb-dp-col"><h4>Recordings · ${recs.length}</h4>` + _mbPopTableHtml(['Recording', 'Artist', 'Length'], recs.map(r => [
-                        `<a href="/recording/${_rgEsc(r.id)}" target="_blank" rel="noopener">${_rgEsc(r.title)}</a>` +
-                            `${r.disambiguation ? ` <span class="mb-rg-dim">(${_rgEsc(r.disambiguation)})</span>` : ''}`,
-                        _mbPopCreditHtml(r['artist-credit']),
-                        typeof r.length === 'number' ? _msFormatSeconds(r.length) : '—',
-                    ]), [2]) + '</div></div>';
+                    `<div class="mb-dp-col"><h4>Recordings · ${recs.length}</h4>` + _dpCompactTableHtml(t, 'recordings', [
+                        {
+                            key: 'title', label: 'Recording', val: r => r.title || '',
+                            html: (r, q) => `<a href="/recording/${_rgEsc(r.id)}" target="_blank" rel="noopener">${_hlEsc(r.title, q)}</a>` +
+                                `${r.disambiguation ? ` <span class="mb-rg-dim">(${_hlEsc(r.disambiguation, q)})</span>` : ''}`,
+                        },
+                        { key: 'artist', label: 'Artist', val: r => _mbPopCreditText(r['artist-credit']), html: (r, q) => _hlHtml(_mbPopCreditHtml(r['artist-credit']), q) },
+                        {
+                            key: 'length', label: 'Length', num: true, cls: 'mb-rg-num', val: r => (typeof r.length === 'number' ? r.length : ''),
+                            html: r => (typeof r.length === 'number' ? _msFormatSeconds(r.length) : '—'),
+                        },
+                    ], recs, { initial: 'as MusicBrainz lists them', what: 'recordings' }) + '</div></div>';
             },
         })),
         iswc: Object.assign({ title: 'ISWC', wide: false }, _mbPopLookupKind({
@@ -58673,14 +58790,18 @@
             },
             windowHtml(d, t) {
                 const works = d.works || [];
+                const langs = w => ((w.languages && w.languages.length ? w.languages : [w.language]).filter(Boolean)).join(', ');
                 return `<div class="mb-dp-x"><div class="mb-dp-col"><div class="mb-dp-xtitle">${_rgEsc(t.id)}</div>` +
                     '<div class="mb-dp-xsub">International Standard Musical Work Code</div></div>' +
-                    `<div class="mb-dp-col"><h4>Works · ${works.length}</h4>` + _mbPopTableHtml(['Work', 'Type', 'Language'], works.map(w => [
-                        `<a href="/work/${_rgEsc(w.id)}" target="_blank" rel="noopener">${_rgEsc(w.title)}</a>` +
-                            `${w.disambiguation ? ` <span class="mb-rg-dim">(${_rgEsc(w.disambiguation)})</span>` : ''}`,
-                        _rgEsc(w.type || '—'),
-                        _rgEsc(((w.languages && w.languages.length ? w.languages : [w.language]).filter(Boolean)).join(', ') || '—'),
-                    ])) + '</div></div>';
+                    `<div class="mb-dp-col"><h4>Works · ${works.length}</h4>` + _dpCompactTableHtml(t, 'works', [
+                        {
+                            key: 'title', label: 'Work', val: w => w.title || '',
+                            html: (w, q) => `<a href="/work/${_rgEsc(w.id)}" target="_blank" rel="noopener">${_hlEsc(w.title, q)}</a>` +
+                                `${w.disambiguation ? ` <span class="mb-rg-dim">(${_hlEsc(w.disambiguation, q)})</span>` : ''}`,
+                        },
+                        { key: 'type', label: 'Type', val: w => w.type || '', html: (w, q) => _hlEsc(w.type || '—', q) },
+                        { key: 'lang', label: 'Language', val: langs, html: (w, q) => _hlEsc(langs(w) || '—', q) },
+                    ], works, { initial: 'as MusicBrainz lists them', what: 'works' }) + '</div></div>';
             },
         })),
         // A disc ID: its table of contents (offsets in CD sectors, 75 a
@@ -58697,7 +58818,7 @@
                         `${r.country ? ` <span class="mb-rg-cc">${_rgEsc(r.country)}</span>` : ''}`).join('<br>') +
                         (rels.length > _MB_POP_CARD_RELEASES ? `<br><span class="mb-rg-dim">+ ${rels.length - _MB_POP_CARD_RELEASES} more</span>` : '')]]);
             },
-            windowHtml(d) {
+            windowHtml(d, t) {
                 const offs = d.offsets || [];
                 const toc = offs.map((o, i) => {
                     const end = i + 1 < offs.length ? offs[i + 1] : d.sectors;
@@ -58706,10 +58827,14 @@
                 const rels = d.releases || [];
                 return `<div class="mb-dp-x"><div class="mb-dp-col"><div class="mb-dp-xtitle">${_rgEsc(d.id)}</div>` +
                     `<h4>Table of contents · ${offs.length}</h4>` + _mbPopTableHtml(['Track', 'Offset', 'Length'], toc, [0, 1, 2]) +
-                    `</div><div class="mb-dp-col"><h4>Releases · ${rels.length}</h4>` + _mbPopTableHtml(['Release', 'Date', 'Country'], rels.map(r => [
-                        `<a href="/release/${_rgEsc(r.id)}" target="_blank" rel="noopener">${_rgEsc(r.title)}</a>`,
-                        _rgEsc(r.date || '—'), _rgEsc(r.country || '—'),
-                    ])) + '</div></div>';
+                    `</div><div class="mb-dp-col"><h4>Releases · ${rels.length}</h4>` + _dpCompactTableHtml(t, 'releases', [
+                        {
+                            key: 'title', label: 'Release', val: r => r.title || '',
+                            html: (r, q) => `<a href="/release/${_rgEsc(r.id)}" target="_blank" rel="noopener">${_hlEsc(r.title, q)}</a>`,
+                        },
+                        { key: 'date', label: 'Date', cls: 'mb-dg-yr', val: r => r.date || '', html: (r, q) => _hlEsc(r.date || '—', q) },
+                        { key: 'country', label: 'Country', val: r => r.country || '', html: (r, q) => _hlEsc(r.country || '—', q) },
+                    ], rels, { initial: 'as MusicBrainz lists them', what: 'releases' }) + '</div></div>';
             },
         })),
         // Read from the collection's page (2026-10-20, mockup
@@ -58819,11 +58944,15 @@
                     _mbPopKvHtml(['Total', 'Accepted', 'Auto-edits', 'Voted down', 'Open'].map(l => [`${l === 'Total' ? 'Edits' : l}`,
                         _rgEsc(_mbPopStat(d, l))]).concat([['Subscribers', _rgEsc(d.subscribers)]]));
             },
-            windowHtml(d) {
+            windowHtml(d, t) {
+                const num = v => Number(String(v).replace(/[^\d]/g, '')) || 0;
                 return `<div class="mb-dp-x"><div class="mb-dp-col"><div class="mb-dp-xtitle">${_rgEsc(d.name)}</div>` +
                     `<div class="mb-rg-pills">${_mbPopPillsHtml([d.userType])}</div><h4>Editor</h4>` + _mbPopKvHtml([
                         ['Member since', _rgEsc(d.since)], ['Subscribers', _rgEsc(d.subscribers)],
-                    ]) + `</div><div class="mb-dp-col"><h4>Edits</h4>${_mbPopTableHtml(['', 'Count'], d.stats.map(([k, v]) => [_rgEsc(k), _rgEsc(v)]), [1])}` +
+                    ]) + '</div><div class="mb-dp-col"><h4>Edits</h4>' + _dpCompactTableHtml(t, 'edits', [
+                        { key: 'kind', label: 'Edits', val: s => s[0], html: (s, q) => _hlEsc(s[0], q) },
+                        { key: 'count', label: 'Count', num: true, first: -1, cls: 'mb-rg-num', val: s => num(s[1]), html: s => _rgEsc(s[1]) },
+                    ], d.stats, { initial: 'as the profile lists them', what: 'kinds' }) +
                     `<p><a href="/user/${encodeURIComponent(d.name)}/edits" target="_blank" rel="noopener">Their edits</a></p></div></div>`;
             },
         })),
@@ -58942,12 +59071,17 @@
                         : '<div class="mb-tt-comment">They have upvoted no tag.</div>');
             },
             windowHtml(d, t) {
-                const list = items => `<ul class="mb-pop-taglist">${items.slice().sort((a, b) => (b.count - a.count) || a.name.localeCompare(b.name))
-                    .map(x => `<li><a href="/tag/${encodeURIComponent(x.name)}" target="_blank" rel="noopener">${_rgEsc(x.name)}</a> ` +
-                        `<span class="mb-rg-dim">${x.count}</span></li>`).join('')}</ul>`;
+                // Each a Compact table (Phase 3d), most votes first.
+                const list = (items, id, what) => _dpCompactTableHtml(t, id, [
+                    {
+                        key: 'name', label: 'Tag', val: x => x.name,
+                        html: (x, q) => `<a href="/tag/${encodeURIComponent(x.name)}" target="_blank" rel="noopener">${_hlEsc(x.name, q)}</a>`,
+                    },
+                    { key: 'count', label: 'Votes', num: true, first: -1, cls: 'mb-rg-num', val: x => x.count, html: x => _rgEsc(x.count) },
+                ], items.slice().sort((a, b) => (b.count - a.count) || a.name.localeCompare(b.name)), { initial: 'most votes first', what });
                 const left = `<div class="mb-dp-xtitle">${_rgEsc(d.name || t.id)}</div><div class="mb-dp-xsub">MusicBrainz · editor · tags upvoted</div>` +
-                    `<h4>Genres · ${d.genres.length}</h4>` + (d.genres.length ? list(d.genres) : '<div class="mb-dp-xsub">None.</div>');
-                const right = `<h4>Other tags · ${d.tags.length}</h4>` + (d.tags.length ? list(d.tags) : '<div class="mb-dp-xsub">None.</div>');
+                    `<h4>Genres · ${d.genres.length}</h4>` + (d.genres.length ? list(d.genres, 'genres', 'genres') : '<div class="mb-dp-xsub">None.</div>');
+                const right = `<h4>Other tags · ${d.tags.length}</h4>` + (d.tags.length ? list(d.tags, 'tags', 'tags') : '<div class="mb-dp-xsub">None.</div>');
                 return `<div class="mb-dp-x"><div class="mb-dp-col">${left}</div><div class="mb-dp-col">${right}</div></div>`;
             },
         })),
@@ -58972,9 +59106,15 @@
                 const left = `<div class="mb-dp-xtitle">${_rgEsc(d.name || t.id)}</div><div class="mb-dp-xsub">MusicBrainz · editor · ratings</div>` +
                     _mbPopKvHtml(d.kinds.map(k => [k.kind, _rgEsc(String(k.items.length))])) +
                     '<p class="mb-dp-xsub">As their ratings page shows them: a few of each kind.</p>';
-                const right = d.kinds.length ? d.kinds.map(k => `<h4>${_rgEsc(k.kind)} · ${k.items.length}</h4>` +
-                    _mbPopTableHtml(['Rating', k.kind, ''], k.items.map(x => [stars(x.rating),
-                        `<a href="/${_rgEsc(x.type)}/${_rgEsc(x.id)}" target="_blank" rel="noopener">${_rgEsc(x.name)}</a>`, _rgEsc(x.extra)])) +
+                const right = d.kinds.length ? d.kinds.map((k, i) => `<h4>${_rgEsc(k.kind)} · ${k.items.length}</h4>` +
+                    _dpCompactTableHtml(t, `ratings-${i}`, [
+                        { key: 'rating', label: 'Rating', num: true, first: -1, val: x => x.rating, html: x => stars(x.rating) },
+                        {
+                            key: 'name', label: k.kind, val: x => x.name,
+                            html: (x, q) => `<a href="/${_rgEsc(x.type)}/${_rgEsc(x.id)}" target="_blank" rel="noopener">${_hlEsc(x.name, q)}</a>`,
+                        },
+                        { key: 'extra', label: '', sort: false, val: x => x.extra || '', html: (x, q) => _hlEsc(x.extra, q) },
+                    ], k.items, { initial: 'as their ratings page lists them', what: 'ratings' }) +
                     (k.more ? `<p><a href="${_rgEsc(k.more)}" target="_blank" rel="noopener">All ${_rgEsc(k.kind.toLowerCase())} ratings</a></p>` : '')).join('')
                     : '<div class="mb-dp-xsub">They have rated nothing.</div>';
                 return `<div class="mb-dp-x"><div class="mb-dp-col">${left}</div><div class="mb-dp-col">${right}</div></div>`;
@@ -59005,11 +59145,23 @@
                     `<div class="mb-dp-xsub">MusicBrainz · ${_rgEsc(d.type || t.id.split('/')[0])} · annotation history</div>` +
                     _mbPopKvHtml([['Versions', _rgEsc(String(n))], ['Latest', last ? _rgEsc(last.date) : ''], ['Latest by', last ? _rgEsc(last.editor) : '']]) +
                     (last && last.blocks.length ? `<h4>The latest text</h4>${_mbAnnotationHtml(last.blocks)}` : '');
-                const right = `<h4>Versions · ${n}</h4>` + (n ? _mbPopTableHtml(['Version', 'Editor', 'Date', 'Changelog'], d.versions.map((v, i) => [
-                    `<a href="/${_rgEsc(t.id)}/annotation/${_rgEsc(v.id)}" target="_blank" rel="noopener">Version ${n - i}</a>`,
-                    v.editorId ? `<a href="/user/${_rgEsc(v.editorId)}" target="_blank" rel="noopener">${_rgEsc(v.editor)}</a>` : _rgEsc(v.editor),
-                    _rgEsc(v.date), v.changelog ? _rgEsc(v.changelog) : '<span class="mb-rg-dim">none</span>',
-                ])) : '<div class="mb-dp-xsub">No annotation has been written.</div>');
+                // A Compact table (Phase 3d), newest first as the page lists them.
+                const rows = d.versions.map((v, i) => Object.assign({ n: n - i }, v));
+                const right = `<h4>Versions · ${n}</h4>` + (n ? _dpCompactTableHtml(t, 'versions', [
+                    {
+                        key: 'n', label: 'Version', num: true, first: -1, val: v => v.n,
+                        html: v => `<a href="/${_rgEsc(t.id)}/annotation/${_rgEsc(v.id)}" target="_blank" rel="noopener">Version ${v.n}</a>`,
+                    },
+                    {
+                        key: 'editor', label: 'Editor', val: v => v.editor || '',
+                        html: (v, q) => (v.editorId ? `<a href="/user/${_rgEsc(v.editorId)}" target="_blank" rel="noopener">${_hlEsc(v.editor, q)}</a>` : _hlEsc(v.editor, q)),
+                    },
+                    { key: 'date', label: 'Date', cls: 'mb-dg-yr', val: v => v.date || '', html: (v, q) => _hlEsc(v.date, q) },
+                    {
+                        key: 'changelog', label: 'Changelog', val: v => v.changelog || '',
+                        html: (v, q) => (v.changelog ? _hlEsc(v.changelog, q) : '<span class="mb-rg-dim">none</span>'),
+                    },
+                ], rows, { initial: 'newest first, as the page lists them', what: 'versions' }) : '<div class="mb-dp-xsub">No annotation has been written.</div>');
                 return `<div class="mb-dp-x"><div class="mb-dp-col">${left}</div><div class="mb-dp-col">${right}</div></div>`;
             },
         })),

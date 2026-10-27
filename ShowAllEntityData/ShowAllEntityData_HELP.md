@@ -2411,6 +2411,13 @@ links have their cards too.
 
 **Press Space** to pin it into a window:
 
+- **Small tables in the windows**: an entity's links, a work's codes, an
+  event's "Recorded here", an instrument's aliases and related instruments, an
+  area's parts, a genre's related genres, an editor's edits, tags and
+  ratings, an ISRC's recordings, an ISWC's works, a disc ID's releases and an
+  annotation's versions are tables you can sort by any column (a third click
+  restores MusicBrainz's order), 25 rows a page with ‹ ›, and filter when
+  they hold more than 25 rows.
 - **Extracted**: for a release, the whole tracklist by medium (each track
   opens its recording), its release group, labels, release events, language,
   and the images in the Cover Art Archive; for a release group, every
