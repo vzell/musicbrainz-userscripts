@@ -35,6 +35,7 @@
 // @include      /^https?:\/\/(?:www\.)?discogs\.com\/(?:[a-z]{2}(?:[-_][a-zA-Z]{2})?\/)?user\/[^\/?#]+\/?(?:[?#].*)?$/
 // @include      /^https?:\/\/(?:www\.)?discogs\.com\/(?:[a-z]{2}(?:[-_][a-zA-Z]{2})?\/)?users\/ratings\/[^\/?#]+\/?(?:[?#].*)?$/
 // @include      /^https?:\/\/(?:www\.)?discogs\.com\/(?:[a-z]{2}(?:[-_][a-zA-Z]{2})?\/)?release\/\d+(?:-[^\/?#]*)?\/history\/?(?:[?#].*)?$/
+// @include      /^https?:\/\/(?:www\.)?discogs\.com\/(?:[a-z]{2}(?:[-_][a-zA-Z]{2})?\/)?release\/\d+(?:-[^\/?#]*)?\/images(?:\/update)?\/?(?:[?#].*)?$/
 // @connect      raw.githubusercontent.com
 // @connect      coverartarchive.org
 // @connect      eventartarchive.org
@@ -6498,6 +6499,17 @@
     const _DG_HIST_PATH_RE = /^\/(?:[a-z]{2}(?:[-_][a-zA-Z]{2})?\/)?release\/(\d+)(?:-[^/?#]*)?\/history\/?$/;
 
     /**
+     * A discogs.com release's Images page, `/release/<id>[-slug]/images`, or
+     * its image editor, `…/images/update` ("Image history"): pageTypes
+     * `dg-images` and `dg-image-history` (Phase 4 of
+     * org/MB-POH-sync-withDiscogs.org, 2026-10-27), plain HTML without
+     * `#app`. Read by the `#app` gate below and the definitions' `match`
+     * (and kept out of `dg-release`'s).
+     * @type {RegExp}
+     */
+    const _DG_IMG_PATH_RE = /^\/(?:[a-z]{2}(?:[-_][a-zA-Z]{2})?\/)?release\/(\d+)(?:-[^/?#]*)?\/images(\/update)?\/?$/;
+
+    /**
      * A Brucebase year page's path: `/1975`, …, and the one exception
      * `/1949-64` (pageType `bb-year`, docs/claude/brucebase.md). Read by the
      * year-page opt-in gate below and by the `bb-year` definition's `match`.
@@ -6596,12 +6608,14 @@
     if (_isDgHost && window.top !== window) return;
     // Cloudflare's "Just a moment…" check answers at the same URL and has no
     // #app (seen 2026-10-18 in an automated browser): not a Discogs page.
-    // The submissions list, a user's page, their ratings and a release's
-    // history are older pages without #app:
+    // The submissions list, a user's page, their ratings, a release's
+    // history and its images (Images, the image editor) are older pages
+    // without #app:
     // plain HTML, whose content root is #page_content (the check has neither).
     if (_isDgHost && !document.getElementById('app') &&
         !((_DG_SUBS_PATH_RE.test(window.location.pathname) || _DG_USER_PATH_RE.test(window.location.pathname) ||
-           _DG_HIST_PATH_RE.test(window.location.pathname) || _DG_RATINGS_PATH_RE.test(window.location.pathname)) &&
+           _DG_HIST_PATH_RE.test(window.location.pathname) || _DG_RATINGS_PATH_RE.test(window.location.pathname) ||
+           _DG_IMG_PATH_RE.test(window.location.pathname)) &&
           document.getElementById('page_content'))) {
         Lib.info('init', 'discogs.com: no #app on this page (a security check?) — nothing to do.');
         return;
@@ -15589,7 +15603,8 @@
      * Column headers of the Discogs tables: a list per pageType, the release
      * page's per sub-table (in its order).
      * @type {{artist: string[], label: string[], master: string[], release: Object<string, string[]>, submissions: string[],
-     *   user: {releases: string[], names: string[], owned: string[]}, history: {Changes: string[], Diff: string[]}}}
+     *   user: {releases: string[], names: string[], owned: string[]}, history: {Changes: string[], Diff: string[]},
+     *   images: string[]}}
      */
     const _DG_HEADERS = {
         artist: ['Image', 'Type', 'Title', 'Artist', 'Format', 'Label', 'Year', 'Have', 'Want'],
@@ -15608,6 +15623,7 @@
             Changes: ['Changed', 'User', 'Action', 'Notes', 'Revision', 'View'],
             Diff: ['Section', 'Old', 'New', 'Marked'],
         },
+        images: ['#', 'Image', 'Type', 'Uploaded by', 'Uploaded', 'W × H', 'Size (KB)'],
         user: {
             releases: ['Image', 'Artist', 'Title', 'Format', 'Label', 'Cat#', 'Country', 'Year', 'Status', 'Added', 'Last changed'],
             names: ['Name', 'Data quality', 'Status'],
@@ -16832,7 +16848,8 @@
         const h2 = document.createElement('h2');
         h2.className = 'mb-dg-list-heading';
         h2.textContent = kind === 'user' ? (_DG_USER_LISTS[def.features.dgUserList] || {}).heading || 'Lists'
-            : { artist: 'Discography', label: 'Releases', master: 'Versions', release: 'Release', submissions: 'Submissions', history: 'History', ratings: 'Ratings' }[kind] || 'Discogs';
+            : { artist: 'Discography', label: 'Releases', master: 'Versions', release: 'Release', submissions: 'Submissions', history: 'History',
+                ratings: 'Ratings', images: 'Images' }[kind] || 'Discogs';
         const cols = kind === 'release' ? _DG_HEADERS.release.Tracklist : kind === 'user' ? _DG_HEADERS.user.releases
             : kind === 'history' ? _DG_HEADERS.history.Changes : _DG_HEADERS[kind];
         const table = document.createElement('table');
@@ -18175,6 +18192,84 @@
      */
     function _dgHistPageRequest(p) {
         return { url: _dgHistPageUrl(p), toHtml: (text) => _dgHistToHtml(text, p) };
+    }
+
+    // --- discogs.com: a release's images (pageTypes dg-images, dg-image-history)
+    // `/release/<id>/images` and `/release/<id>/images/update` (Phase 4 of
+    // org/MB-POH-sync-withDiscogs.org, 2026-10-27; vzell: the Images page
+    // gets the same table as the Image history). The rows are the images
+    // reader's (`_extDgImgLoad()`: the API, then the image editor with the
+    // session, same-origin here), so the pageTypes and the window cannot
+    // disagree. Signed out, the editor shows nothing: the API's images and
+    // types remain, the other columns empty.
+
+    /**
+     * Whether a path is a release's Images page (`editor` false) or its
+     * image editor (`editor` true): the two definitions' `match`.
+     *
+     * @param {string} path
+     * @param {boolean} editor
+     * @returns {boolean}
+     */
+    function _dgImgPathIs(path, editor) {
+        const m = _DG_IMG_PATH_RE.exec(path);
+        return !!m && !!m[2] === editor;
+    }
+
+    /**
+     * `features.pageRequest` of `dg-images` and `dg-image-history`: the one
+     * page, the images reader's record as JSON (`_dgImgFetchText()`), turned
+     * into rows by `_dgImgToHtml()`.
+     *
+     * @returns {{url: string, fetchText: function(): Promise<string>, toHtml: function(string): string}}
+     */
+    function _dgImgPageRequest() {
+        const url = _extDgImgUrl(_DG_IMG_PATH_RE.exec(window.location.pathname)[1], true);
+        return { url, fetchText: () => _dgImgFetchText(url), toHtml: _dgImgToHtml };
+    }
+
+    /**
+     * The images reader's load for this release, as the fetch loop's text:
+     * its `dgImg` part as JSON. A load that fails, or a record that is not
+     * the release's (a 404, Discogs' browser check), is an error.
+     *
+     * @param {string} url - The image editor's URL.
+     * @returns {Promise<string>}
+     * @throws {Error} With `status` (0 when no HTTP status applies).
+     */
+    async function _dgImgFetchText(url) {
+        const r = await _extDgImgLoad({ url }, () => true);
+        if (!r.ok) throw Object.assign(new Error(r.detail || 'Discogs did not answer'), { status: 0 });
+        if (r.data.state !== 'ok') throw Object.assign(new Error(_extStateText(r.data)), { status: r.data.status || 0 });
+        if (!r.data.dgImg.fromEditor) Lib.info('fetch', r.data.dgImg.note);
+        return JSON.stringify(r.data.dgImg);
+    }
+
+    /**
+     * The images as one `table.tbl` (`_DG_HEADERS.images`): position, the
+     * image (its 150 px thumbnail linking the 600 px one, for the image card
+     * and the viewer, `_DG_FI`), type, uploader (`_dgUserCell()`: the
+     * picture asked as the row shows), the date and time ("2008-05-20 01:46",
+     * split by the definition's `dateTimeParts`; Discogs' "18 years ago" on
+     * hover), W x H and the size in KB (Discogs writes "1.2MB": 1200, so the
+     * column sorts as a number). An editor's column is empty without it.
+     *
+     * @param {string} text - `_dgImgFetchText()`'s JSON.
+     * @returns {string} An HTML document.
+     */
+    function _dgImgToHtml(text) {
+        const g = JSON.parse(text);
+        const rows = g.rows.map((r) => {
+            const thumb = r.thumb ? `<a class="mb-dg-thumblink" data-mbtt-fn="fi-img" data-mb-fi="dg" href="${_rgEsc(r.full || r.thumb)}" target="_blank" rel="noopener noreferrer">` +
+                `<img class="mb-dg-thumb" src="${_rgEsc(r.thumb)}" alt="" width="40" height="40" loading="lazy" referrerpolicy="no-referrer"></a>` : '';
+            const at = _extDgHistIso(r.date);
+            const kb = _dgImgBytes(r.size);
+            return `<tr>${_dgCell(String(r.pos))}<td class="mb-dg-imgcell">${thumb}</td>${_dgCell(r.type)}` +
+                `${r.user ? _dgUserCell(r.user, new URL(r.userHref || `/user/${r.user}`, 'https://www.discogs.com').href, '') : '<td></td>'}` +
+                `<td class="mb-dg-when"${r.ago ? ` data-mb-tip title="${_rgEsc(r.ago)}"` : ''}>${_rgEsc(at)}</td>` +
+                `${_dgCell(r.w ? `${r.w} × ${r.h}` : '')}${_dgCell(kb ? String(Math.round(kb / 1000)) : '')}</tr>`;
+        });
+        return `<!DOCTYPE html><html><head><meta charset="utf-8"></head><body>${_dgTableHtml(null, _DG_HEADERS.images, rows)}</body></html>`;
     }
 
     // --- discogs.com: a user's page (pageType dg-user) -----------------------
@@ -27213,6 +27308,7 @@
             .mb-dp-dialog .mb-dp-gallery { display: flex; flex-wrap: wrap; gap: 6px; }
             .mb-dp-dialog .mb-dp-gallery a { display: inline-flex; flex-direction: column; align-items: center; gap: 2px; color: #7a6d5c; font-size: 11px; text-decoration: none; }
             .mb-dp-dialog .mb-dp-gallery img { height: 88px; max-width: 160px; object-fit: cover; border: 1px solid #d9cfbd; }
+            .mb-dp-dialog .mb-dp-gallery .mb-dg-imgcap { color: #9a8c78; font-size: 10.5px; max-width: 160px; text-align: center; }
             /* The Discogs window (_extDiscogsWindow): collapsible sections, the tracklist
                with its credits, grouped credit lines, and a master's versions below both columns */
             .mb-dp-dialog .mb-dg-sec h4 { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
@@ -40324,8 +40420,9 @@
         {
             type: 'dg-release',
             host: 'www.discogs.com',
-            // Not its history page (`dg-history`), which the path pattern takes too.
-            match: (path) => _dgPage(path)?.kind === 'release' && !_DG_HIST_PATH_RE.test(path),
+            // Not its history page (`dg-history`) nor its images (`dg-images`,
+            // `dg-image-history`), which the path pattern takes too.
+            match: (path) => _dgPage(path)?.kind === 'release' && !_DG_HIST_PATH_RE.test(path) && !_DG_IMG_PATH_RE.test(path),
             buttons: [ {
                 label: 'Show tracklist, credits and other versions', shortLabel: 'Tracklist, credits, versions',
                 get description() { return _dgCostPer('The release, then every other version of its master', 'versions', 'one request more for the release'); }
@@ -40438,6 +40535,48 @@
                 ]
             },
             tableMode: 'multi'
+        },
+        {
+            // A release's Images page (Phase 4, 2026-10-27): one table of every image, the
+            // same on both pages, read as the images reader's window reads
+            // them. See the "discogs.com: a release's images" block above
+            // _dgImgPageRequest().
+            type: 'dg-images',
+            host: 'www.discogs.com',
+            match: (path) => _dgImgPathIs(path, false),
+            buttons: [ { label: 'Show every image', shortLabel: 'Images',
+                description: 'Every image of this release with its type, uploader, date, size and file size: Discogs\' API and its image editor, two requests.' } ],
+            features: {
+                dgToTable: 'images',
+                pageRequest: () => _dgImgPageRequest(),
+                pageCountAsync: async () => 1,
+                integerColumns: [ { sourceColumn: '#', align: 'R' }, { sourceColumn: 'Size (KB)', align: 'R' } ],
+                columnExtractors: [
+                    { sourceColumn: 'Uploaded', extractor: 'dateTimeParts', syntheticColumns: ['Uploaded date', 'Uploaded time'] }
+                ]
+            },
+            tableMode: 'single'
+        },
+        {
+            // A release's image editor ("Image history") (Phase 4, 2026-10-27): one table of every image, the
+            // same on both pages, read as the images reader's window reads
+            // them. See the "discogs.com: a release's images" block above
+            // _dgImgPageRequest().
+            type: 'dg-image-history',
+            host: 'www.discogs.com',
+            match: (path) => _dgImgPathIs(path, true),
+            buttons: [ { label: 'Show every image', shortLabel: 'Images',
+                description: 'Every image of this release with its type, uploader, date, size and file size: Discogs\' API and its image editor, two requests.' } ],
+            features: {
+                dgToTable: 'images',
+                pageRequest: () => _dgImgPageRequest(),
+                pageCountAsync: async () => 1,
+                integerColumns: [ { sourceColumn: '#', align: 'R' }, { sourceColumn: 'Size (KB)', align: 'R' } ],
+                columnExtractors: [
+                    { sourceColumn: 'Uploaded', extractor: 'dateTimeParts', syntheticColumns: ['Uploaded date', 'Uploaded time'] }
+                ]
+            },
+            tableMode: 'single'
         },
         {
             // A user's page (2026-10-18): their submissions, contributions,
@@ -60216,17 +60355,21 @@
      * `unreachable`, `timeout`). With `responseType: 'blob'` (a site's icon,
      * `_extIconEnsure()`) the answer is in `blob`, not `body`. `charset`
      * decodes a page that does not name its own (jungleland.it's
-     * windows-1252, U4), through `overrideMimeType`.
+     * windows-1252, U4), through `overrideMimeType`. `session` sends the
+     * browser's cookies for that host (not `anonymous`): ONE caller, a
+     * Discogs release's image editor read from another site
+     * (`_extDgImgPageGet()`), which shows nothing without the Discogs login
+     * (vzell's consent, 2026-10-27, org/MB-POH-sync-withDiscogs.org Phase 4).
      *
      * @param {string} url
      * @param {{accept?: RegExp, maxBytes?: number, maxDownload?: number, headers?: Object<string, string>,
-     *   responseType?: string, charset?: ?string}} [opts]
+     *   responseType?: string, charset?: ?string, session?: boolean}} [opts]
      * @returns {Promise<{status: number, finalUrl: string, headers: Object<string, string>, contentType: string,
      *   bytes: number, body: string, tail: string, blob: ?Blob, aborted: string, error: string, detail: string}>}
      *   `aborted` is `type` or `size` when the body was skipped.
      */
     function _extFetch(url, { accept = /\b(?:text\/html|application\/xhtml\+xml)\b/i, maxBytes = _EXT_MAX_BYTES,
-        maxDownload = _EXT_MAX_DOWNLOAD, headers = {}, responseType = '', charset = null } = {}) {
+        maxDownload = _EXT_MAX_DOWNLOAD, headers = {}, responseType = '', charset = null, session = false } = {}) {
         return new Promise((resolve) => {
             const base = {
                 status: 0, finalUrl: url, headers: {}, contentType: '', bytes: 0, body: '', tail: '', blob: null,
@@ -60257,7 +60400,7 @@
             };
             try {
                 req = GM_xmlhttpRequest({
-                    method: 'GET', url, headers, anonymous: true, timeout: _EXT_TIMEOUT_MS,
+                    method: 'GET', url, headers, anonymous: !session, timeout: _EXT_TIMEOUT_MS,
                     ...(responseType ? { responseType } : {}),
                     ...(charset ? { overrideMimeType: `text/html; charset=${charset}` } : {}),
                     onreadystatechange: (r) => {
@@ -61773,13 +61916,16 @@
      * @param {Object[]} images - `_extDiscogsImages()`.
      * @param {string} [primary] - The primary image's caption: 'front' (a
      *   release's cover), 'primary' (an artist's or a label's picture).
+     * @param {string[]} [more] - A second caption line per image (the images
+     *   reader's size and uploader, Phase 4).
      * @returns {string}
      */
-    function _extDgImagesHtml(images, primary = 'front') {
+    function _extDgImagesHtml(images, primary = 'front', more = []) {
         return '<div class="mb-dp-gallery">' + images.map((im, i) =>
             `<a href="${_rgEsc(im.full)}" target="_blank" rel="noopener noreferrer" data-mb-artv-ext="${i + 1}">` +
             `<img src="${_rgEsc(im.thumb)}" alt="" referrerpolicy="no-referrer" loading="lazy">` +
-            `<span>${i === 0 && im.type === 'primary' ? primary : `image ${i + 1}`}</span></a>`).join('') + '</div>';
+            `<span>${i === 0 && im.type === 'primary' ? primary : `image ${i + 1}`}</span>` +
+            `${more[i] ? `<span class="mb-dg-imgcap">${_rgEsc(more[i])}</span>` : ''}</a>`).join('') + '</div>';
     }
 
     /**
@@ -64003,6 +64149,316 @@
         _extDgFamilyClick(e);
     }
 
+    // --- Discogs: a release's Images and Image history (Phase 4, 2026-10-27) ---
+    //
+    // org/MB-POH-sync-withDiscogs.org Phase 4, mockup
+    // https://claude.ai/artifact/TkNduhLjJmD2FrcURn5yaV part 4. Probe
+    // scripts/probe-dg-release-images.py (2026-10-27): the API's `images`
+    // carry type, URL and the SERVED size only (at most 600 px: "600x599" for
+    // a 2002 x 2000 original), no file size, uploader or date; both pages
+    // answer an anonymous request with Cloudflare's check, and the image
+    // editor (`/images/update`) shows nothing without the Discogs login. That
+    // editor is the one source of the rest (server-rendered: `li.image_preview`
+    // with "Primary – 1 of 17", the uploader, the date, W x H and size), so it
+    // is read with the user's session (vzell, 2026-10-27), the API giving the
+    // images themselves; the two are joined by the image's storage path,
+    // which both URLs end in.
+
+    /** A release's Images page, or its image editor (`/images/update`, "Image history"). */
+    const _EXT_DGI_PATH_RE = /^\/(?:[a-z]{2}(?:[-_][a-zA-Z]{2})?\/)?release\/(\d+)(?:-[^/?#]*)?\/images(\/update)?\/?$/i;
+
+    /**
+     * The images reader's record version (`_EXT_IDB_VERSION * 100 + this`):
+     * bump it when `_extDgImgLoad()`'s record changes.
+     * @type {number}
+     */
+    const _EXT_DGI_VERSION = 1;
+
+    /**
+     * A link to a release's Images page or its image editor on discogs.com.
+     *
+     * @param {URL} u
+     * @returns {boolean}
+     */
+    function _extDgImgTest(u) {
+        return /^(?:www\.)?discogs\.com$/.test(u.hostname.toLowerCase()) && _EXT_DGI_PATH_RE.test(u.pathname);
+    }
+
+    /**
+     * A release's Images page (or its image editor) as the cache knows it,
+     * whatever the link's slug or language.
+     *
+     * @param {number|string} id
+     * @param {boolean} editor - The image editor, `/images/update`.
+     * @returns {string}
+     */
+    function _extDgImgUrl(id, editor) {
+        return `https://www.discogs.com/release/${id}/images${editor ? '/update' : ''}`;
+    }
+
+    /**
+     * The reader's cache URL of a link (`keyUrl`).
+     *
+     * @param {URL} u
+     * @returns {string}
+     */
+    function _extDgImgKeyUrl(u) {
+        const m = _EXT_DGI_PATH_RE.exec(u.pathname);
+        return _extDgImgUrl(m[1], !!m[2]);
+    }
+
+    /**
+     * The window's title for a link (`kindFor`).
+     *
+     * @param {URL} u
+     * @returns {string}
+     */
+    function _extDgImgKind(u) {
+        return _EXT_DGI_PATH_RE.exec(u.pathname)[2] ? 'Discogs image history' : 'Discogs images';
+    }
+
+    /**
+     * An image's storage path, the same in every size Discogs serves it at:
+     * the encoded part after `/w:<n>/`, without the extension (the API's
+     * 600 px URL and the editor's 300 px thumbnail of one image share it).
+     *
+     * @param {string} url - An `i.discogs.com` URL.
+     * @returns {string} '' when the URL has none.
+     */
+    function _dgImgKey(url) {
+        const m = /\/w:\d+\/(.+?)(?:\.[a-z]+)?$/i.exec(String(url || ''));
+        return m ? m[1] : '';
+    }
+
+    /**
+     * A file size as the editor writes it ("127KB", "1.2MB") in bytes, for
+     * sorting; 0 when it is none.
+     *
+     * @param {string} s
+     * @returns {number}
+     */
+    function _dgImgBytes(s) {
+        const m = /([\d.,]+)\s*([KMG]?)B/i.exec(String(s || ''));
+        if (!m) return 0;
+        return Number(m[1].replace(/,/g, '')) * ({ '': 1, K: 1e3, M: 1e6, G: 1e9 }[m[2].toUpperCase()]);
+    }
+
+    /**
+     * A release's image editor (`/release/<id>/images/update`, logged in;
+     * debug/Discogs-Image-history.html): the release's name and page from
+     * `#editing_header h1 a`, then per `li.image_preview` of
+     * `#image_uploader_list`, in Discogs' order: its id (the "Report Abuse"
+     * link), type, position and count from the image's `alt` ("Primary – 1
+     * of 17"), the uploader (`.user_info a.user`), the date (its `title`,
+     * "May 20, 2008 1:46 AM", and the text, "18 years ago"), W x H and size
+     * ("500 × 500 px — 127KB"), the 300 px thumbnail and its storage key.
+     * `null` when the page has no such list (signed out: Discogs' login).
+     *
+     * @param {Document} doc
+     * @returns {?{name: string, url: string, items: Array<Object>}}
+     */
+    function _dgImgParseEditor(doc) {
+        const lis = Array.from(doc.querySelectorAll('#image_uploader_list li.image_preview'));
+        if (!lis.length) return null;
+        const head = doc.querySelector('#editing_header h1 a, #editing_header h2 a');
+        const text = el => (el ? el.textContent.replace(/\s+/g, ' ').trim() : '');
+        const items = lis.map((li, i) => {
+            const img = li.querySelector('.thumbnail_link img');
+            const alt = /^(\w+)\s*[–-]\s*(\d+)\s+of\s+(\d+)/.exec(img ? img.getAttribute('alt') || '' : '') || [];
+            const user = li.querySelector('.user_info a.user');
+            const when = li.querySelector('.user_info span[title]');
+            const dims = /(\d+)\s*×\s*(\d+)\s*px\s*—\s*([\d.,]+\s*[KMG]?B)/i.exec(text(li.querySelector('.user_info') && li.querySelector('.user_info').parentElement));
+            const report = li.querySelector('a[href*="/editimage/report/"]');
+            const thumb = img ? img.getAttribute('src') || '' : '';
+            return {
+                id: report ? (/(\d+)\/?$/.exec(report.getAttribute('href')) || [])[1] || '' : '',
+                pos: Number(alt[2]) || i + 1, total: Number(alt[3]) || lis.length, type: alt[1] || '',
+                user: text(user), userHref: user ? user.getAttribute('href') || '' : '',
+                date: when ? when.getAttribute('title') || '' : '', ago: text(when),
+                w: dims ? Number(dims[1]) : 0, h: dims ? Number(dims[2]) : 0, size: dims ? dims[3].replace(/\s+/g, '') : '',
+                thumb: /^https?:\/\//i.test(thumb) ? thumb : '', key: _dgImgKey(thumb),
+            };
+        });
+        const href = head ? head.getAttribute('href') || '' : '';
+        return { name: text(head), url: href ? new URL(href, 'https://www.discogs.com').href : '', items };
+    }
+
+    /**
+     * The image editor's page: on discogs.com through `_extDgHistGet()`
+     * (same-origin, the session); elsewhere `_extGet()` with the user's
+     * Discogs session (`session`), the one request of the popup engine that
+     * is not anonymous (see `_extFetch()`).
+     *
+     * @param {string} url
+     * @param {function(): boolean} wanted
+     * @returns {Promise<Object>} `_extFetch()`'s answer shape, or `{skipped: true}`.
+     */
+    function _extDgImgPageGet(url, wanted) {
+        if (_isDgHost) return _extDgHistGet(url, wanted);
+        return _extGet(url, { wanted, fetchOpts: { session: true } });
+    }
+
+    /**
+     * The images reader's load, for both pages: the release from the API
+     * (`/releases/<id>`: title, artists, every image at its served size),
+     * then the image editor (`_extDgImgPageGet()`): two requests, two
+     * hosts. Each image of the API gets the editor's data for the same
+     * storage key; without the editor (signed out of Discogs, its browser
+     * check) the record says why, and keeps the API's; without the API the
+     * editor's own 300 px thumbnails serve. `rec.dgImg` is the window's.
+     *
+     * @param {object} t
+     * @param {function(): boolean} wanted
+     * @returns {Promise<{ok?: boolean, data?: Object, detail?: string, skipped?: boolean}>}
+     */
+    async function _extDgImgLoad(t, wanted) {
+        const id = _EXT_DGI_PATH_RE.exec(new URL(t.url).pathname)[1];
+        const api = await _extGet(`https://api.discogs.com/releases/${id}`, { wanted, fetchOpts: { accept: /\bjson\b/i, headers: _extDiscogsHeaders() } });
+        if (api.skipped) return { skipped: true };
+        const d = api.status === 200 ? _extJson(api) : null;
+        const page = await _extDgImgPageGet(_extDgImgUrl(id, true), wanted);
+        if (page.skipped) return { skipped: true };
+        if (page.status > 0) _extRememberHost('www.discogs.com');
+        const ed = page.status === 200 && !_extBotCheck(page)
+            ? _dgImgParseEditor(new DOMParser().parseFromString(String(page.body || '') + String(page.tail || ''), 'text/html')) : null;
+        if (!d && !ed) {
+            const out = _extApiOutcome(t, api, 'Discogs', `Discogs has no release ${id} (its API answered 404).`);
+            return out || { ok: false, detail: 'Discogs answered, but not with the release' };
+        }
+        const byKey = new Map((ed ? ed.items : []).map(x => [x.key, x]));
+        const cap = s => (s ? s[0].toUpperCase() + s.slice(1) : '');
+        const rows = d && (d.images || []).length
+            ? _extDiscogsImages(d.images).map((im, i) => {
+                const e = byKey.get(_dgImgKey(im.full)) || null;
+                return {
+                    pos: i + 1, type: cap(im.type), full: im.full, thumb: im.thumb, servedW: im.w, servedH: im.h,
+                    id: e ? e.id : '', user: e ? e.user : '', userHref: e ? e.userHref : '', date: e ? e.date : '', ago: e ? e.ago : '',
+                    w: e ? e.w : 0, h: e ? e.h : 0, size: e ? e.size : '',
+                };
+            })
+            : (ed ? ed.items : []).map(e => Object.assign({}, e, { full: e.thumb, servedW: 0, servedH: 0 }));
+        const rec = _extApiRecord(t, 200, 'Discogs');
+        const artists = d ? (d.artists || []).map(a => `${_extDiscogsName(a.name)}${a.join ? ` ${a.join}` : ''}`).join(' ').replace(/\s+,/g, ',').trim() : '';
+        const editor = !!_EXT_DGI_PATH_RE.exec(new URL(t.url).pathname)[2];
+        const primary = rows.filter(r => /^primary$/i.test(r.type)).length;
+        const users = new Map();
+        rows.filter(r => r.user).forEach((r) => {
+            const u = users.get(r.user) || { name: r.user, href: r.userHref, n: 0, years: new Set() };
+            u.n += 1;
+            const y = /\b(\d{4})\b/.exec(r.date);
+            if (y) u.years.add(y[1]);
+            users.set(r.user, u);
+        });
+        const uploaders = Array.from(users.values()).sort((a, b) => b.n - a.n || a.name.localeCompare(b.name))
+            .map(u => ({ name: u.name, href: u.href, n: u.n, years: Array.from(u.years).sort().join(', ') }));
+        const largest = rows.filter(r => r.w && r.h).sort((a, b) => b.w * b.h - a.w * a.h)[0];
+        Object.assign(rec, {
+            title: d ? String(d.title || '') : (ed.name.split(' - ').slice(1).join(' - ') || ed.name), author: artists,
+            subtitle: `Discogs · release · ${editor ? 'image history' : 'images'}`, type: editor ? 'image history' : 'images',
+            image: rows[0] ? rows[0].thumb : '', imageFull: rows[0] ? rows[0].full : '',
+            description: artists,
+            facts: [
+                ['Images', rows.length ? `${rows.length} (${primary} primary, ${rows.length - primary} secondary)` : 'none'],
+                ['Uploaders', uploaders.map(u => `${u.name} ${u.n}`).join(', ')],
+                ['Largest', largest ? `${largest.w} × ${largest.h} px` : ''],
+            ].filter(f => f[1]),
+            dgImg: {
+                id: Number(id), editor, rows, uploaders, fromEditor: !!ed,
+                note: ed ? '' : 'Discogs did not show the image editor (signed out of discogs.com, or its browser check): ' +
+                    'the images and their types come from its API, at the size Discogs serves them; who uploaded them, when, ' +
+                    'their own size and file size are on the editor\'s page only.',
+            },
+        });
+        rec.links.push(['The release', `https://www.discogs.com/release/${id}`]);
+        rec.links.push([editor ? 'Images' : 'Image history', _extDgImgUrl(id, !editor)]);
+        return { ok: true, data: rec };
+    }
+
+    /**
+     * The image table's columns (the history window; the pageTypes build
+     * their own `table.tbl`): # · thumbnail · type · uploaded by · date ·
+     * W x H · size. Without the editor the image's served size stands in
+     * for its own, marked so, and the editor's columns are empty.
+     *
+     * @returns {Object[]} `_dpCompactTableHtml()` columns.
+     */
+    function _extDgImgCols() {
+        const link = (href, text, q) => (href
+            ? `<a href="${_rgEsc(new URL(href, 'https://www.discogs.com').href)}" target="_blank" rel="noopener noreferrer">${_hlEsc(text, q)}</a>` : _hlEsc(text, q));
+        return [
+            { key: 'pos', label: '#', cls: 'mb-rg-num', val: r => r.pos, html: r => _rgEsc(String(r.pos)) },
+            { key: 'img', label: '', sort: false, val: () => '', html: r => _extDgThumbHtml(r.thumb) },
+            {
+                key: 'type', label: 'Type', val: r => r.type,
+                html: (r, q) => `<span class="mb-dgh-pill mb-dgh-pill-${/^primary$/i.test(r.type) ? 'ok' : 'idle'}">${_hlEsc(r.type, q)}</span>`,
+            },
+            { key: 'user', label: 'Uploaded by', val: r => r.user, html: (r, q) => (r.user ? link(r.userHref, r.user, q) : '—') },
+            {
+                key: 'date', label: 'Date', cls: 'mb-dg-yr', val: r => _extDgHistIso(r.date),
+                html: (r, q) => (r.date ? `<span title="${_rgEsc(`${r.date}${r.ago ? ` (${r.ago})` : ''}`)}">${_hlEsc(_extDgHistIso(r.date).slice(0, 10), q)}</span>` : '—'),
+            },
+            {
+                key: 'dims', label: 'W × H', cls: 'mb-rg-num', val: r => (r.w * r.h) || (r.servedW * r.servedH),
+                html: r => (r.w ? _rgEsc(`${r.w} × ${r.h}`)
+                    : r.servedW ? `<span class="mb-rg-dim" title="The size Discogs serves it at, not its own">${_rgEsc(`${r.servedW} × ${r.servedH}`)} served</span>` : '—'),
+            },
+            { key: 'size', label: 'Size', cls: 'mb-rg-num', val: r => _dgImgBytes(r.size), html: r => _rgEsc(r.size || '—') },
+        ];
+    }
+
+    /**
+     * The images reader's window. Images: the uploaders as a Compact table
+     * (user · images · years) on the left, every image on the right, each
+     * captioned with its type, size and uploader; a click opens the artwork
+     * viewer at it. Image history: one Compact table of every image, full
+     * width. Without the editor's data, the reason above either.
+     *
+     * @param {object} t
+     * @param {Object} rec
+     * @returns {{left: string[], right: string[], full: string[]}}
+     */
+    function _extDgImgWindow(t, rec) {
+        const out = { left: [], right: [], full: [] };
+        const g = rec.dgImg;
+        if (!g) return out;
+        const warn = g.note ? `<div class="mb-dp-warn">${_rgEsc(g.note)}</div>` : '';
+        if (g.editor) {
+            out.full.push(_extDgSection('dgi-hist', 'Image history', g.rows.length, warn + _dpCompactTableHtml(t, 'dg-imghist', _extDgImgCols(), g.rows, {
+                perPage: 50, initial: 'in Discogs\' order', what: 'images',
+            })));
+            return out;
+        }
+        if (g.uploaders.length) {
+            out.left.push(_extDgSection('dgi-users', 'Uploaded by', g.uploaders.length, _dpCompactTableHtml(t, 'dg-imgusers', [
+                {
+                    key: 'name', label: 'User', val: u => u.name,
+                    html: (u, q) => (u.href ? `<a href="${_rgEsc(new URL(u.href, 'https://www.discogs.com').href)}" target="_blank" rel="noopener noreferrer">${_hlEsc(u.name, q)}</a>` : _hlEsc(u.name, q)),
+                },
+                { key: 'n', label: 'Images', cls: 'mb-rg-num', first: -1, val: u => u.n, html: u => _rgEsc(String(u.n)) },
+                { key: 'years', label: 'Years', cls: 'mb-dg-yr', val: u => u.years, html: u => _rgEsc(u.years || '—') },
+            ], g.uploaders, { initial: 'most images first', what: 'uploaders' })));
+        }
+        const caption = (r) => [r.w ? `${r.w} × ${r.h}` : '', r.size, r.user ? `${r.user}${/\b(\d{4})\b/.test(r.date) ? `, ${/\b(\d{4})\b/.exec(r.date)[1]}` : ''}` : '']
+            .filter(Boolean).join(' · ');
+        out.right.push(_extDgSection('dgi-gallery', 'Images', g.rows.length, warn + (g.rows.length
+            ? _extDgImagesHtml(g.rows.map(r => ({ type: r.type.toLowerCase(), full: r.full, thumb: r.thumb, w: r.w || r.servedW, h: r.h || r.servedH })),
+                'front', g.rows.map(caption))
+            : '<div class="mb-dg-state">This release has no images.</div>')));
+        return out;
+    }
+
+    /**
+     * The images reader's clicks: a section heading opens or closes it,
+     * the rest goes to the Discogs family (`_extDgFamilyClick()`: links open
+     * in the window).
+     *
+     * @param {MouseEvent} e
+     * @returns {void}
+     */
+    function _extDgImgAreaClick(e) {
+        _extDgHistAreaClick(e);
+    }
+
     // --- Discogs: users, support articles, searches (2026-10-18) ---
     //
     // vzell's second round (mockup https://claude.ai/artifact/XRTM8v1aLNj3voVt6RxVJz):
@@ -64115,8 +64571,8 @@
 
     /**
      * Whether a link on discogs.com is a Discogs page one of the readers
-     * takes (a release, master, artist or label — its history too —, a
-     * user, a search): on discogs.com itself such a link is previewed,
+     * takes (a release, master, artist or label — its history and images
+     * too —, a user, a search): on discogs.com itself such a link is previewed,
      * though it is the page's own host (`_extTarget()`).
      *
      * @param {URL} u
@@ -64881,6 +65337,13 @@
             askHost: (u) => `${_EXT_WIKIPEDIA_HOST_RE.exec(u.hostname.toLowerCase())[1]}.wikipedia.org`,
         },
         { id: 'wikidata', kind: 'Wikidata', test: _extWikidataTest, askHost: () => 'www.wikidata.org', load: _extWikidataLoad, noLive: false },
+        {
+            // Before `discogs`, whose path pattern takes `/images` too (Phase 4).
+            id: 'dgimages', kind: 'Discogs images', test: _extDgImgTest, askHost: () => 'www.discogs.com', load: _extDgImgLoad,
+            noLive: true, version: _EXT_IDB_VERSION * 100 + _EXT_DGI_VERSION, windowOnly: true, keyUrl: _extDgImgKeyUrl,
+            kindFor: _extDgImgKind, window: _extDgImgWindow, onAreaClick: _extDgImgAreaClick,
+            loadingNote: 'Reading the images from Discogs\' API and its image editor (two requests).',
+        },
         {
             // Before `discogs`, whose path pattern takes `/history` too.
             id: 'dghistory', kind: 'Discogs release history', test: _extDgHistTest, askHost: () => 'www.discogs.com', load: _extDgHistLoad,

@@ -26598,3 +26598,45 @@ The code works as designed (one page a second).
 Fix (test only): that poll gets `timeout: 15000`, with the measurement in a
 comment. 40/40 at `--workers=14`; the file 6/6. The file's other polls wait
 for one page only and passed in every run here.
+
+## 2026-10-28 — Phase 4: a Discogs release's Images and Image history (reader `dgimages`, pageTypes `dg-images`, `dg-image-history`)
+
+Env: 2026-10-27T23:45+01:00 → 2026-10-28T00:14+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) · Playwright 1.62.1 Chromium · no Tampermonkey (GM stubs); the probe: n/a
+
+Snapshots: debug/Discogs-Images.html and debug/Discogs-Image-history.html
+(vzell's uploads of 2026-10-26, logged in, `isLoggedIn: true`). Both are
+older pages (`#main_wrapper`, `#page_content`, no `#app`). The Images page
+holds the 17 images only (`#view_images span.thumbnail_link img`, 500/600
+px). The image editor's React uploader is rendered on the server
+(`data-reactid`): `li.image_preview` with the type and position in the
+image's `alt` ("Primary – 1 of 17"), `.user_info a.user`, the date in a
+`span[title]` ("May 20, 2008 1:46 AM", text "18 years ago"), then "500 ×
+500 px — 127KB". The user's id sits in a GTM script only (dropped with the
+scripts in the fixtures).
+
+Probe (scripts/probe-dg-release-images.py): the API's image keys are
+height, resource_url, type, uri, uri150, width; width/height are the size
+Discogs SERVES (500 or 600 px; "600x599" for an original of 2002 × 2000);
+no file size, uploader or date. Both pages: 403 `cf-mitigated: challenge`
+to Python. So the 2026-10-26 decision ("from musicbrainz.org: API fallback
+with position, type, W × H, size") could not be built as worded; asked
+again, vzell chose to read the editor with the Discogs session (the popup
+engine's first non-anonymous request, `_extFetch()`'s `session`), and the
+same table on the Images page.
+
+Join: the API's `uri` and the editor's 300 px thumbnail end in the same
+encoded storage path after `/w:<n>/` (`…/R-1313481-1211240808.jpeg`), so
+rows join on it (`_dgImgKey()`), not on position.
+
+Test-side corrections of mine, the code right: a first-contact card for a
+never-reached www.discogs.com ("not contacted yet"), not "Not read yet";
+the pageType's thumbnail is the API's 150 px `uri150`, not the editor's
+300 px. Mutation run 1 (11 entries): "a hover reads the images" survived,
+masked by the first-contact rule (the host never reached, so a hover could
+not ask anyway); a test with `sa_pop_ext_hosts: ['www.discogs.com']` now
+sees `windowOnly` alone. Run 2: 11/11 fail as planted.
+
+Not seen: a release whose image editor pages (17 images fit on one page);
+from MusicBrainz in a real browser, whether Cloudflare lets a
+GM_xmlhttpRequest with the session through (memory: Chrome + Tampermonkey
+passed for discogs.com before) — vzell's browser check.

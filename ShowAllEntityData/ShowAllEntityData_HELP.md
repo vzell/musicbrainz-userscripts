@@ -1753,7 +1753,7 @@ an import brings your deletions back.
   and lyrics index, the **jungleland.it**
   bootleg artwork list, the **brucespringsteen.it** record database and
   the **Brucebase** song list, year pages, Relations and Recent changes, and
-  **discogs.com**'s master, release, artist, label, submissions, user, ratings and release history pages — each off until
+  **discogs.com**'s master, release, artist, label, submissions, user, ratings, release history and release images pages — each off until
   you switch it on, see [Page-specific behaviour](#page-specific-behaviour)
 
 </details>
@@ -2842,6 +2842,21 @@ once and without Tampermonkey asking first:
   Discogs session; from MusicBrainz it is asked like any other site, and if
   Discogs answers with its browser check, the window says so — ↗ opens the
   page.
+- A Discogs release's **Images** and **Image history** (`discogs.com/release/…/images`
+  and `…/images/update`, Discogs' image editor): the window lists every image
+  — Image history as one table (#, the image, Primary or Secondary, who
+  uploaded it, when — the full time and "18 years ago" on hover —, its own
+  width × height and its file size, every column sortable), Images as a
+  gallery with each image's size and uploader under it and, on the left, the
+  uploaders with how many images each and in which years; a click opens the
+  artwork viewer. It reads Discogs' API and the image editor, two requests,
+  only when you press Space. The image editor shows nothing without your
+  Discogs login, so it is read **with your Discogs session**, also from
+  MusicBrainz (the one preview that sends your cookies, to discogs.com only;
+  every other one goes without them). Signed out, the window still lists the
+  images and their types from the API, says why the rest is missing, and
+  marks the size as the one Discogs serves (at most 600 px), not the image's
+  own.
 - A Discogs **user** (`discogs.com/user/…`): the card shows their public
   profile — name, location, member since, contributor rank, releases
   contributed, pending submissions, collection and wantlist sizes; the window
@@ -3525,6 +3540,14 @@ section of its own above Discogs' page, with the toolbar and these buttons:
   revision's changes —, and **Diff · revision 8 → 10**: each part of the
   release in the revision the page shows, old and new, *Marked* "changed"
   where Discogs marked it. Read from the page itself.
+- **Release images — Show every image:** a release's Images page
+  (`/release/<id>/images`) and its image editor (`…/images/update`, Image
+  history) get the same table: **#**, the image (hover for the card, click
+  for the viewer), **Type**, **Uploaded by** with their picture,
+  **Uploaded** (date and time also apart), **W × H** and **Size (KB)**
+  (Discogs' "1.2MB" is 1200, so it sorts). Two requests: Discogs' API and the
+  image editor, which needs you signed in to Discogs; signed out, the images
+  and their types remain and the other columns stay empty.
 - **User — Show the submissions / contributions / collection / wantlist:** a
   user's page (`/user/<name>`): their submissions (sub-tables **Releases**,
   **Artists**, **Labels**, the empty ones left out), contributions,

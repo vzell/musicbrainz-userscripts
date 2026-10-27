@@ -2387,3 +2387,139 @@ test.describe('hovering inside a Discogs window (org/dp-window-hover.org)', () =
         await expect(d).toBeVisible();
     });
 });
+
+// Phase 4 of org/MB-POH-sync-withDiscogs.org (2026-10-27): a release's
+// Images page and its image editor ("Image history") get their own reader,
+// `dgimages`, ahead of `discogs` (whose path pattern takes /images too).
+// It reads the API (the images, at the size Discogs serves them) and the
+// editor's page WITH the user's Discogs session (vzell's consent: the only
+// non-anonymous request of the popup engine), joined by the image's storage
+// path. Fixtures: ext-discogs-release-1313481.json
+// (scripts/probe-dg-release-images.py --fixture), dg-release-images-update.html
+// (scripts/build-discogs-fixtures.py). Mutations: scripts/mutations/dg-images.json.
+test.describe('Discogs Images and Image history (Phase 4)', () => {
+    const IMG = {
+        images: 'https://www.discogs.com/release/1313481-Born-To-Run/images',
+        editor: 'https://www.discogs.com/release/1313481-Born-To-Run/images/update',
+    };
+    const API = 'https://api.discogs.com/releases/1313481';
+    const EDITOR = 'https://www.discogs.com/release/1313481/images/update';
+
+    /**
+     * The event page with the two links, the API answered, the editor's page
+     * answered by `editor` (the fixture by default); `settings` over the
+     * previews' switch.
+     *
+     * @param {import('@playwright/test').Page} page
+     * @param {{editor?: ?Object, settings?: Object}} [opts]
+     * @returns {Promise<void>}
+     */
+    async function openImages(page, { editor = undefined, settings = {} } = {}) {
+        await page.context().route('https://i.discogs.com/**', (route) => route.fulfill({ status: 200, contentType: 'image/png', body: PNG }));
+        await openEvent(page, {
+            settings: { sa_pop_ext: true, ...settings },
+            responses: {
+                ...extAnswers('discogs-release-1313481'),
+                [EDITOR]: editor !== undefined ? editor
+                    : { status: 200, responseHeaders: 'Content-Type: text/html; charset=utf-8', responseText: json('dg-release-images-update.html') },
+            },
+        });
+        await addAnnotationLinks(page, [IMG.images, IMG.editor]);
+    }
+
+    test('both pages are the images reader\'s, before the release reader; slug and language do not matter', async ({ page }) => {
+        await openImages(page);
+        await addAnnotationLinks(page, ['https://www.discogs.com/de/release/1313481/images/update/', 'https://www.discogs.com/release/1313481-Born-To-Run']);
+        const keys = await page.evaluate(() => Array.from(document.querySelectorAll('.ext-probe a')).map(a => window.__saTest.popResolve(a)));
+        expect(keys).toEqual([
+            'ext|ext:dgimages:https://www.discogs.com/release/1313481/images/update',
+            'ext|ext:discogs:https://www.discogs.com/release/1313481-Born-To-Run',
+            'ext|ext:dgimages:https://www.discogs.com/release/1313481/images',
+            'ext|ext:dgimages:https://www.discogs.com/release/1313481/images/update',
+        ]);
+    });
+
+    test('Image history: the card asks nothing; Space reads the API (anonymous) and the editor (with the session); one table of every image', async ({ page }) => {
+        await openImages(page);
+        await ctrlHover(page, probe(page, 1));
+        await expect(card(page)).toContainText('not contacted yet'); // www.discogs.com, first contact: Space only
+        expect(await xhrFull(page), 'a hover reads nothing').toEqual([]);
+        await page.keyboard.press('Space');
+        const d = dialog(page);
+        await expect(d.locator(':scope > div > span').first()).toHaveText('Discogs image history');
+        const tbl = d.locator('[data-mb-tbl="dg-imghist"]');
+        const rows = tbl.locator('tbody tr');
+        await expect(rows).toHaveCount(17);
+        const log = await xhrFull(page);
+        expect(log.map(r => r.url)).toEqual([API, EDITOR]);
+        expect(log.map(r => r.anonymous), 'the API anonymous, the editor with the Discogs session').toEqual([true, false]);
+        await expect(tbl.locator('thead th')).toHaveText([/^#/, '', /^Type/, /^Uploaded by/, /^Date/, /^W × H/, /^Size/]);
+        const cells = (r) => rows.nth(r).locator('td');
+        await expect(cells(0)).toHaveText(['1', '', 'Primary', 'dsmith', '2008-05-20', '500 × 500', '127KB']);
+        await expect(cells(0).nth(4).locator('span')).toHaveAttribute('title', 'May 20, 2008 1:46 AM (18 years ago)');
+        await expect(cells(0).nth(3).locator('a')).toHaveAttribute('href', 'https://www.discogs.com/user/dsmith');
+        // The editor's own size, not the 600 px the API serves.
+        await expect(cells(4)).toHaveText(['5', '', 'Secondary', 'Cl0ver', '2023-06-12', '2002 × 2000', '1.2MB']);
+        await expect(cells(0).nth(1).locator('img.mb-dg-vthumb')).toHaveAttribute('src', /^https:\/\/i\.discogs\.com\//);
+        // The facts from both sources.
+        await expect(d).toContainText('17 (1 primary, 16 secondary)');
+        await expect(d).toContainText('Cl0ver 11, dsmith 5, heaven83 1');
+        await expect(d).toContainText('2040 × 2000 px');
+        // Size sorts by bytes: ascending, then descending.
+        await tbl.locator('th[data-mb-tbl-sort="size"]').click();
+        await expect(cells(0).nth(6)).toHaveText('70KB');
+        await tbl.locator('th[data-mb-tbl-sort="size"]').click();
+        await expect(cells(0).nth(6)).toHaveText('3.5MB');
+        await expect(d.locator('.mb-dp-warn')).toHaveCount(0);
+    });
+
+    test('with www.discogs.com contacted before, a hover still reads nothing: the session\'s page is read on Space only', async ({ page }) => {
+        // The first-contact rule no longer holds the hover back here; only
+        // the reader's `windowOnly` does.
+        await openImages(page, { settings: { sa_pop_ext_hosts: ['www.discogs.com'] } });
+        await ctrlHover(page, probe(page, 1));
+        await expect(card(page)).toContainText('Not read yet');
+        await page.evaluate(() => new Promise(r => setTimeout(r, 2500)));
+        expect(await xhrFull(page), 'a hover reads nothing, past the hosts\' gates').toEqual([]);
+        await page.keyboard.press('Space');
+        await expect(dialog(page).locator('[data-mb-tbl="dg-imghist"] tbody tr')).toHaveCount(17);
+        expect((await xhrFull(page)).map(r => r.url)).toEqual([API, EDITOR]);
+    });
+
+    test('Images: the uploaders on the left, every image captioned on the right; a click opens the viewer', async ({ page }) => {
+        await openImages(page);
+        await ctrlHover(page, probe(page, 0));
+        await expect(card(page)).toContainText('no request yet');
+        await page.keyboard.press('Space');
+        const d = dialog(page);
+        await expect(d.locator(':scope > div > span').first()).toHaveText('Discogs images');
+        const users = d.locator('[data-mb-tbl="dg-imgusers"] tbody tr');
+        await expect(users).toHaveCount(3);
+        await expect(users.first().locator('td')).toHaveText(['Cl0ver', '11', '2023']);
+        const tiles = d.locator('[data-mb-dg-sec="dgi-gallery"] .mb-dp-gallery a');
+        await expect(tiles).toHaveCount(17);
+        await expect(tiles.first()).toHaveAttribute('href', /^https:\/\/i\.discogs\.com\/.*\/w:500\//);
+        await expect(tiles.first().locator('span').first()).toHaveText('front');
+        await expect(tiles.first().locator('.mb-dg-imgcap')).toHaveText('500 × 500 · 127KB · dsmith, 2008');
+        await expect(tiles.nth(16).locator('.mb-dg-imgcap')).toHaveText('1655 × 1427 · 502KB · heaven83, 2017');
+        await tiles.nth(2).click();
+        const viewer = page.locator('#mb-art-viewer');
+        await expect(viewer).toBeVisible();
+        await page.keyboard.press('Escape');
+        await expect(viewer).toBeHidden();
+        await expect(d).toBeVisible();
+    });
+
+    test('signed out of Discogs: the editor shows no images; the API\'s images and types, the served size marked, and why', async ({ page }) => {
+        await openImages(page, { editor: { status: 200, responseHeaders: 'Content-Type: text/html', responseText: '<html><body><form id="login"></form></body></html>' } });
+        await ctrlHover(page, probe(page, 1));
+        await expect(card(page)).toContainText('no request yet');
+        await page.keyboard.press('Space');
+        const d = dialog(page);
+        const rows = d.locator('[data-mb-tbl="dg-imghist"] tbody tr');
+        await expect(rows).toHaveCount(17);
+        await expect(d.locator('.mb-dp-warn')).toContainText('Discogs did not show the image editor');
+        await expect(rows.nth(4).locator('td')).toHaveText(['5', '', 'Secondary', '—', '—', '600 × 599 served', '—']);
+        await expect(d).not.toContainText('Uploaders');
+    });
+});

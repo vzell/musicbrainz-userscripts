@@ -35,7 +35,9 @@ Discogs artist / master / label windows (the target look).
 | 2026-10-26 | Glyph of the "Initial sort" state          | ⇅ (U+21C5), dimmed, on every sortable header that is in initial order; ▲/▼ replace it when active. One click cycle on every table: initial → ▲ → ▼ → initial |
 | 2026-10-26 | Mockup                                     | Approved as published (version 1)                                                                                                                                |
 | 2026-10-26 | Ctrl+click on a genre / tag link           | Opens your own tag (=/user/<me>/tag/<genre>=) inside the window; middle-click and Shift+click still open a new tab; the foot line says so                       |
-| 2026-10-26 | Image history from musicbrainz.org         | API fallback: position, type, W × H, size; Uploaded by and Date read "only on discogs.com"                                                                       |
+| 2026-10-26 | Image history from musicbrainz.org         | API fallback: position, type, W × H, size; Uploaded by and Date read "only on discogs.com" (superseded 2026-10-27, below)                                       |
+| 2026-10-27 | Image history from musicbrainz.org (again) | The probe showed the API has no file size and only the SERVED size (≤ 600 px): read the editor WITH the Discogs session, the API as fallback                   |
+| 2026-10-27 | Table on discogs.com's Images page         | The same as the Image history (read from the editor)                                                                                                             |
 | 2026-10-26 | Annotation version                         | Unchanged                                                                                                                                                        |
 | 2026-10-26 | Documentation                              | Probe the wiki search API first; if it answers, list the hits and open =/doc/<Page>= inline; otherwise only =/doc/<Page>= links get a reader                    |
 
@@ -295,7 +297,7 @@ cached edit, editor, tag and collection page. Phase 3 is complete.
 Every new reader: fixture HTML in =tests/fixtures/=, a spec, the =_MB_POP_PAGE_VERSION= bump,
 a row in =docs/claude/detail-pages.md='s doc-map entry.
 
-** Phase 4 — Discogs Images / Image history  [0/4]
+** Phase 4 — Discogs Images / Image history  [4/4]
 
 Page structure (from the uploads, 2026-10-26):
 - =/release/<id>/images=: =<title>Images for Bruce Springsteen - Born To Run=; 17 ×
@@ -306,17 +308,31 @@ Page structure (from the uploads, 2026-10-26):
   / Report Abuse, ↑ ↓.
 
 Tasks:
-- [ ] Reader =dgimages= ahead of =discogs= in =_EXT_READERS= (today =_EXT_DISCOGS_PATH_RE=
+- [X] Reader =dgimages= ahead of =discogs= in =_EXT_READERS= (today =_EXT_DISCOGS_PATH_RE=
       sends both URLs to the plain release window): Images → gallery-first window, every image
       with type and W × H, the hover card (=_fiCardHtml()=), the viewer (=_fiClick()=, ← →).
-- [ ] Image history → table: # · thumb · Primary/Secondary · uploaded by (avatar,
+- [X] Image history → table: # · thumb · Primary/Secondary · uploaded by (avatar,
       =_dgUserCell()=) · date (full date in the tip) · W × H · size. On discogs.com: same-origin
       page fetch. From musicbrainz.org: API fallback with a note (open Q 2).
-- [ ] On discogs.com itself: pageTypes =dg-images= and =dg-image-history= (=@include=,
+- [X] On discogs.com itself: pageTypes =dg-images= and =dg-image-history= (=@include=,
       =_dgPrepareLivePage()=, converter to =table.tbl=, hover via =_DG_FI=). Skill:
       =add-foreign-page-or-reader=.
-- [ ] Trimmed fixtures from the two uploads (scripts, =userId= 2369911 and any other account data
+- [X] Trimmed fixtures from the two uploads (scripts, =userId= 2369911 and any other account data
       removed) under =tests/fixtures/= + specs. Not done in the planning session on purpose.
+
+*Phase 4 done* 2026-10-28, branch =mb-window-lists= (WIP.6), the same branch as Phase 3 (vzell).
+Probe first: =scripts/probe-dg-release-images.py= — the API's images carry type, URL and the
+SERVED size only (at most 600 px; "600x599" for a 2002 × 2000 original), no file size, uploader
+or date; both pages answer Python with Cloudflare's check; the editor needs the login. That
+overturned the 2026-10-26 answer to open Q 2 (the API could not give "W × H, size"), so vzell was
+asked again: read the editor with the Discogs session (=_extFetch()='s new =session= option, its one
+caller =_extDgImgPageGet()=), the API as the fallback; the Images page's table the same as the
+Image history's. The editor and the API are joined by the image's storage path (=_dgImgKey()=),
+which both URLs end in. Code: reader =dgimages= (=_extDgImgLoad()=, =_extDgImgWindow()=), pageTypes
+=dg-images= / =dg-image-history= (=_dgImgPageRequest()=, =_dgImgToHtml()=: the reader's record as the
+fetch loop's text). Differences from the mockup: the window's uploaders are links without the
+mockup's avatar initial (the user's window shows the picture); the gallery's hover card is the
+window's usual large preview, the image's facts in a caption line under it instead.
 
 ** Phase 5 — Per phase, not at the end
 

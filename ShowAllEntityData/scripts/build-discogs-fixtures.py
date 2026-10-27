@@ -34,7 +34,14 @@ the script DOES read:
   history page — header, every change, the rating, the latest diff;
 - dg-user-ratings.html (debug/discogs-user-ratings.html, 2026-10-19): a
   user's ratings — the user header, the top pager and the ratings table; and
-  dg-user-ratings-300.html, the same saying "of 300" (SYNTHETIC, 2 pages).
+  dg-user-ratings-300.html, the same saying "of 300" (SYNTHETIC, 2 pages);
+- dg-release-images.html (debug/Discogs-Images.html, 2026-10-26, logged in): a
+  release's Images page — its header and the 17 images (Phase 4 of
+  org/MB-POH-sync-withDiscogs.org);
+- dg-release-images-update.html (debug/Discogs-Image-history.html, the same
+  day): its image editor ("Image history") — the header and the 17
+  `li.image_preview` with uploader, date, size; React's `data-reactid` and
+  the upload form dropped, and every script (the user's id is in one).
 
 usage: python3 scripts/build-discogs-fixtures.py
 """
@@ -164,6 +171,24 @@ def build_release_history(name='discogs-release-history.html'):
     return SHELL.format(title=html.escape(title), content=squeeze(content)), title
 
 
+def build_release_images(editor=False):
+    """dg-release-images.html: a release's Images page (the header, the 17 images and the "Update these images"
+    button). With `editor`, dg-release-images-update.html: the image editor, its header and its 17
+    `li.image_preview` (type and position in the image's alt, uploader, date, W x H, size), without React's
+    data-reactid attributes and the upload form."""
+    src = read_debug('Discogs-Image-history.html' if editor else 'Discogs-Images.html')
+    title = text(re.search(r'<title[^>]*>(.*?)</title>', src, re.S).group(1))
+    head = between(src, '<div id="editing_header"', '</ul>') + '</div>'
+    if editor:
+        body = between(src, '<ul role="list" id="image_uploader_list"', '</ul>')
+        body = '<div id="image_uploader_app"><div class="uploader">' + body + '</div></div>'
+    else:
+        body = between(src, '<div id="view_images">', '<p>All images are copyrighted', include_end=False) + '</div>'
+    content = re.sub(r' data-reactid="[^"]*"', '', head + body)
+    content = re.sub(r'<script\b.*?</script>', '', content, flags=re.S)
+    return SHELL.format(title=html.escape(title), content=squeeze(content)), title
+
+
 def build_user(collection=False):
     """dg-user-vzell.html (debug/discogs-user-vzell.html): a user's page — its header (name, the
     Contributed count), the sidebar (Pending, the stats) and the Recent Activity table. With
@@ -232,7 +257,9 @@ def main():
                      ('dg-user-vzell.html', build_user),
                      ('dg-user-collection.html', lambda: build_user(collection=True)),
                      ('dg-user-ratings.html', build_ratings),
-                     ('dg-user-ratings-300.html', lambda: build_ratings(total=300))):
+                     ('dg-user-ratings-300.html', lambda: build_ratings(total=300)),
+                     ('dg-release-images.html', build_release_images),
+                     ('dg-release-images-update.html', lambda: build_release_images(editor=True))):
         out, title = fn()
         write(name, out, f'title "{title}"')
     return 0

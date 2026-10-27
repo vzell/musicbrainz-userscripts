@@ -1,0 +1,145 @@
+[
+    {
+        "name": "images reader after the release reader",
+        "why": "org/MB-POH-sync-withDiscogs.org Phase 4: _EXT_DISCOGS_PATH_RE takes /images too, so dgimages must come first.",
+        "edits": [
+            {
+                "find": "            id: 'dgimages', kind: 'Discogs images', test: _extDgImgTest,",
+                "replace": "            id: 'dgimages', kind: 'Discogs images', test: () => false,"
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "both pages are the images reader's",
+        "expect": "fail"
+    },
+    {
+        "name": "the image editor asked anonymously",
+        "why": "org/MB-POH-sync-withDiscogs.org Phase 4 (vzell's consent): from another site the editor is read with the Discogs session.",
+        "edits": [
+            {
+                "find": "method: 'GET', url, headers, anonymous: !session, timeout: _EXT_TIMEOUT_MS,",
+                "replace": "method: 'GET', url, headers, anonymous: true, timeout: _EXT_TIMEOUT_MS,"
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "Image history: the card asks nothing",
+        "expect": "fail"
+    },
+    {
+        "name": "the API asked with the session too",
+        "why": "org/MB-POH-sync-withDiscogs.org Phase 4: only the editor carries the session; every other request stays anonymous.",
+        "edits": [
+            {
+                "find": "maxDownload = _EXT_MAX_DOWNLOAD, headers = {}, responseType = '', charset = null, session = false } = {}) {",
+                "replace": "maxDownload = _EXT_MAX_DOWNLOAD, headers = {}, responseType = '', charset = null, session = /discogs/.test(url) } = {}) {"
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "Image history: the card asks nothing",
+        "expect": "fail"
+    },
+    {
+        "name": "a hover reads the images",
+        "why": "org/MB-POH-sync-withDiscogs.org Phase 4: windowOnly, a scraped page with the session is read on Space only.",
+        "edits": [
+            {
+                "find": "            noLive: true, version: _EXT_IDB_VERSION * 100 + _EXT_DGI_VERSION, windowOnly: true, keyUrl: _extDgImgKeyUrl,",
+                "replace": "            noLive: true, version: _EXT_IDB_VERSION * 100 + _EXT_DGI_VERSION, keyUrl: _extDgImgKeyUrl,"
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "with www.discogs.com contacted before",
+        "expect": "fail"
+    },
+    {
+        "name": "the storage key lost (every image the same key), so the join is wrong",
+        "why": "org/MB-POH-sync-withDiscogs.org Phase 4: the two sources are joined by the image's storage path.",
+        "edits": [
+            {
+                "find": "        const m = /\\/w:\\d+\\/(.+?)(?:\\.[a-z]+)?$/i.exec(String(url || ''));",
+                "replace": "        const m = /\\/(w):\\d+\\/(.+?)(?:\\.[a-z]+)?$/i.exec(String(url || ''));"
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "Image history: the card asks nothing",
+        "expect": "fail"
+    },
+    {
+        "name": "the window's size column sorts as text",
+        "why": "org/MB-POH-sync-withDiscogs.org Phase 4: \"127KB\" and \"1.2MB\" sort by bytes.",
+        "edits": [
+            {
+                "find": "{ key: 'size', label: 'Size', cls: 'mb-rg-num', val: r => _dgImgBytes(r.size), html: r => _rgEsc(r.size || '—') },",
+                "replace": "{ key: 'size', label: 'Size', cls: 'mb-rg-num', val: r => r.size, html: r => _rgEsc(r.size || '—') },"
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "Image history: the card asks nothing",
+        "expect": "fail"
+    },
+    {
+        "name": "signed out: the served size not marked",
+        "why": "org/MB-POH-sync-withDiscogs.org Phase 4: the API's size is the served one, never passed off as the image's own.",
+        "edits": [
+            {
+                "find": "${_rgEsc(`${r.servedW} × ${r.servedH}`)} served</span>",
+                "replace": "${_rgEsc(`${r.servedW} × ${r.servedH}`)}</span>"
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "signed out of Discogs",
+        "expect": "fail"
+    },
+    {
+        "name": "dg-release takes the image pages",
+        "why": "org/MB-POH-sync-withDiscogs.org Phase 4: dg-release's path pattern takes /images too; it must leave them to dg-images and dg-image-history.",
+        "edits": [
+            {
+                "find": "match: (path) => _dgPage(path)?.kind === 'release' && !_DG_HIST_PATH_RE.test(path) && !_DG_IMG_PATH_RE.test(path),",
+                "replace": "match: (path) => _dgPage(path)?.kind === 'release' && !_DG_HIST_PATH_RE.test(path),"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-images.spec.js",
+        "grep": "the image editor: one button",
+        "expect": "fail"
+    },
+    {
+        "name": "the #app gate stops the image pages",
+        "why": "org/MB-POH-sync-withDiscogs.org Phase 4: the image pages are older pages without #app; the gate admits them by path and #page_content.",
+        "edits": [
+            {
+                "find": "           _DG_HIST_PATH_RE.test(window.location.pathname) || _DG_RATINGS_PATH_RE.test(window.location.pathname) ||\n           _DG_IMG_PATH_RE.test(window.location.pathname)) &&",
+                "replace": "           _DG_HIST_PATH_RE.test(window.location.pathname) || _DG_RATINGS_PATH_RE.test(window.location.pathname)) &&"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-images.spec.js",
+        "grep": "the Images page: the same table",
+        "expect": "fail"
+    },
+    {
+        "name": "the pageType's size written as Discogs writes it",
+        "why": "org/MB-POH-sync-withDiscogs.org Phase 4: Size (KB) is a number column, so it sorts.",
+        "edits": [
+            {
+                "find": "`${_dgCell(r.w ? `${r.w} × ${r.h}` : '')}${_dgCell(kb ? String(Math.round(kb / 1000)) : '')}</tr>`;",
+                "replace": "`${_dgCell(r.w ? `${r.w} × ${r.h}` : '')}${_dgCell(r.size)}</tr>`;"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-images.spec.js",
+        "grep": "Size \\(KB\\) sorts as a number",
+        "expect": "fail"
+    },
+    {
+        "name": "signed out: no rows without the editor",
+        "why": "org/MB-POH-sync-withDiscogs.org Phase 4: without the editor the API's images remain.",
+        "edits": [
+            {
+                "find": "        const rows = d && (d.images || []).length\n            ? _extDiscogsImages(d.images).map((im, i) => {",
+                "replace": "        const rows = ed && d && (d.images || []).length\n            ? _extDiscogsImages(d.images).map((im, i) => {"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-images.spec.js",
+        "grep": "signed out",
+        "expect": "fail"
+    }
+]

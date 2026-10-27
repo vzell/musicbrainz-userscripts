@@ -1676,6 +1676,12 @@ generalize to URLs".
   aborted: its headers name it. The body is cut to `_EXT_MAX_BYTES` (512 KB,
   answer 4; every `og:` tag sat within 8.2 KB, X5). Never rejects: failures
   come back as `error` (`refused`, `unreachable`, `timeout`).
+  **One exception, by consent (vzell, 2026-10-27):** `session: true` sends
+  the browser's cookies — used ONLY by `_extDgImgPageGet()`, for a Discogs
+  release's image editor read from another site, which shows nothing
+  without the Discogs login (below, "A Discogs release's images"). Every
+  other caller stays anonymous; `scripts/mutations/dg-images.json` pins
+  both halves (the editor with the session, the API without).
   `_extGet()` adds the gate, `wanted()` after the slot, and one retry on a
   transient status.
 - **One rate gate per HOST: `_extAwaitSlot(host)`** (`_extSpacingMs(host)`:
@@ -2392,6 +2398,43 @@ change". **Each diff side holds the release page, whose tracklist is a
 table too:** the parser takes `:scope > thead/tbody` of `table.diff` only
 (it took a tracklist cell as the "new" side before; revision 14 came out
 right by luck).
+
+### A Discogs release's images: reader `dgimages` (Phase 4, 2026-10-27)
+
+org/MB-POH-sync-withDiscogs.org Phase 4, mockup
+https://claude.ai/artifact/TkNduhLjJmD2FrcURn5yaV part 4; the pageTypes
+on discogs.com are docs/claude/discogs.md's "A release's images".
+
+- **Reader `dgimages`, BEFORE `dghistory` and `discogs`** in
+  `_EXT_READERS`: `_EXT_DISCOGS_PATH_RE` takes `/images` too.
+  `_EXT_DGI_PATH_RE` matches `/release/<id>[-slug]/images[/update]`;
+  `keyUrl` drops slug and language (`_extDgImgUrl()`), so the two pages are
+  two keys; `kindFor`: "Discogs images" / "Discogs image history".
+  `windowOnly` (a hover never asks: the editor's request carries the
+  session); a never-contacted www.discogs.com still gets the first-contact
+  card on top of that.
+- **`_extDgImgLoad()`: two requests, two hosts.** The API
+  (`api.discogs.com/releases/<id>`, anonymous: the images at their SERVED
+  size, at most 600 px), then the image editor (`/images/update`) through
+  `_extDgImgPageGet()`: on discogs.com `_extDgHistGet()` (same-origin), else
+  `_extGet()` with `session: true`. `_dgImgParseEditor()` reads
+  `li.image_preview` (type, position and count from the `alt`, uploader,
+  the date's `title`, W × H, size, the 300 px thumbnail); the two are
+  joined by `_dgImgKey()` (the storage path after `/w:<n>/`), never by
+  position. Without the editor (signed out, the browser check) the record
+  keeps the API's images with `dgImg.note` saying why; without the API the
+  editor's thumbnails serve. Bump `_EXT_DGI_VERSION` when the record
+  changes.
+- **Window.** Image history: one Compact table (`dg-imghist`: # · thumb ·
+  Type pill · Uploaded by · Date, full date and "18 years ago" on hover ·
+  W × H · Size, sorted by bytes, `_dgImgBytes()`), full width; without the
+  editor, the served size marked "served" and the editor's cells "—".
+  Images: "Uploaded by" (`dg-imgusers`: user · images · years) on the
+  left, the gallery on the right with a second caption line per image
+  (`_extDgImagesHtml()`'s `more`: "2002 × 2000 · 1.2MB · Cl0ver, 2023"); a
+  click opens the artwork viewer.
+- Specs: popup-ext.spec.js "Discogs Images and Image history (Phase 4)";
+  mutations `scripts/mutations/dg-images.json`.
 
 ### Discogs users, searches, support articles; every link in the window (2026-10-18)
 
