@@ -4,9 +4,31 @@ Every version, newest first, with the technical details behind each change. For 
 
 **Months:** [October 2026](ShowAllEntityData_CHANGELOG/2026-10.md) · [September 2026](ShowAllEntityData_CHANGELOG/2026-09.md) · [August 2026](ShowAllEntityData_CHANGELOG/2026-08.md) · [July 2026](ShowAllEntityData_CHANGELOG/2026-07.md) · [June 2026](ShowAllEntityData_CHANGELOG/2026-06.md) · [May 2026](ShowAllEntityData_CHANGELOG/2026-05.md) · [April 2026](ShowAllEntityData_CHANGELOG/2026-04.md) · [March 2026 (1 of 2)](ShowAllEntityData_CHANGELOG/2026-03-1.md) · [March 2026 (2 of 2)](ShowAllEntityData_CHANGELOG/2026-03-2.md) · [February 2026](ShowAllEntityData_CHANGELOG/2026-02.md) · [January 2026](ShowAllEntityData_CHANGELOG/2026-01.md)
 
-This page shows the newest 100 of 1640 versions; the month pages hold all of them.
+This page shows the newest 100 of 1642 versions; the month pages hold all of them.
 
 ---
+
+## 9.99.1471 — 2026-10-27
+
+**✨ Improve**
+
+- A MusicBrainz work's window lists its recordings as the Discogs label window lists its releases: 100 when it opens, then "Load 5 more pages" (500 recordings, about 6 s), with Stop, a progress bar and "Try again" for a page that failed; a filter over title and artist, a chip per artist credit (Ctrl-click adds one, "+N more" past ten) and the three-way sort. What is loaded is kept in the browser like the card, so a later window shows it without asking again. Until now the window showed the first 100 and sent you to the work's page for the rest.
+- A Discogs label's releases: Ctrl-click on a format chip adds a second format, "+N more" shows formats past the first ten, and a release without a picture keeps an empty square so every row is as high.
+- Performance: link-preview windows only; no change to the page tables' filter, sort or render path.
+
+**🔧 Refactor**
+
+- The windows' tables are two shared components with one click handler for every window (org/MB-POH-sync-withDiscogs.org, Phase 2): a Compact table (a Discogs label's sublabels) and a List table (a label's releases, a work's recordings), plus a paged loader for MusicBrainz lists that the other MusicBrainz windows will use next.
+
+
+## 9.99.1470 — 2026-10-27
+
+**✨ Improve**
+
+- Every sortable table in a Discogs window (an artist's discography, a label's releases and sublabels, a master's versions) and the release-group window's releases table now has three sort states: ascending, descending, and a third click back to the order the site gives. A heading in that initial order shows a faint ⇅ (the release-group window's ↕ became ⇅ too), and its hover text says what the next click does.
+- A Discogs artist's Have heading now also sorts the other way on the second click (fewest first) before returning to Discogs' order; until now its second click went straight back.
+- Performance: link-preview windows only; no change to the page tables' filter, sort or render path.
+
 
 ## 9.99.1469 — 2026-10-26
 
@@ -837,20 +859,6 @@ This page shows the newest 100 of 1640 versions; the month pages hold all of the
 - Discogs artist window: the Discography, split as on Discogs into Releases, Appearances (on releases, on tracks), Unofficial and Credits. Each section is a table you can close, sort and filter (also by Masters / Releases). The first 100 entries come when the window opens; "Load the other …" brings the rest one page after the other, with a bar, Stop, and a retry for a failed page. Discogs lists the discography by role, so a count reads "so far" until its section is complete. Credits shows what Discogs' API has (the production credits) and links the full list on Discogs. A master's "▸ versions" shows its first 12 versions in place. Tables show 150 rows, then "Show 500 more" or "Show all".
 - Discogs label window: the label's releases, newest or oldest first, 5 pages (500 releases) per "Load 5 more pages", since a large label has thousands (Columbia: 396,611). The window says what loading them all would cost. A filter and format chips work on what is loaded.
 - Every list is kept for 7 days, like the card: a later window shows it without asking Discogs again. A card never asks for a list. Mockup: https://claude.ai/artifact/WuBNbFTgNHJtxip4xBv6yc
-
-
-## 9.99.1371 — 2026-10-17
-
-**🐛 Fix**
-
-- Sidebar cards: in the Search card, sites no longer run out of their column into the next one, and a name is no longer broken in two ("Web \| pages"). Each section (By genre, Lyrics, By area, …) is now a box of its own: the groups' names (Classical, Japan, …) form a column on the left, and their sites wrap beside them, each in one piece with its icon. Search the web is one row.
-
-
-## 9.99.1370 — 2026-10-17
-
-**✨ Improve**
-
-- Sidebar cards: every card now starts open except Search, the long list of search links "mb. ALL LINKS" adds. The setting "… cards that start open" has the new choice "Every card but Search" as its default; if you had kept the old default (only the information card), you get the new one; any other choice you made stays.
 
 
 ---

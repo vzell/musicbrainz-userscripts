@@ -1,5 +1,39 @@
 [
   {
+    "version": "9.99.1471",
+    "date": "2026-10-27",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "A MusicBrainz work's window lists its recordings as the Discogs label window lists its releases: 100 when it opens, then \"Load 5 more pages\" (500 recordings, about 6 s), with Stop, a progress bar and \"Try again\" for a page that failed; a filter over title and artist, a chip per artist credit (Ctrl-click adds one, \"+N more\" past ten) and the three-way sort. What is loaded is kept in the browser like the card, so a later window shows it without asking again. Until now the window showed the first 100 and sent you to the work's page for the rest.",
+          "A Discogs label's releases: Ctrl-click on a format chip adds a second format, \"+N more\" shows formats past the first ten, and a release without a picture keeps an empty square so every row is as high.",
+          "Performance: link-preview windows only; no change to the page tables' filter, sort or render path."
+        ]
+      },
+      {
+        "label": "🔧 Refactor",
+        "items": [
+          "The windows' tables are two shared components with one click handler for every window (org/MB-POH-sync-withDiscogs.org, Phase 2): a Compact table (a Discogs label's sublabels) and a List table (a label's releases, a work's recordings), plus a paged loader for MusicBrainz lists that the other MusicBrainz windows will use next."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.1470",
+    "date": "2026-10-27",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "Every sortable table in a Discogs window (an artist's discography, a label's releases and sublabels, a master's versions) and the release-group window's releases table now has three sort states: ascending, descending, and a third click back to the order the site gives. A heading in that initial order shows a faint ⇅ (the release-group window's ↕ became ⇅ too), and its hover text says what the next click does.",
+          "A Discogs artist's Have heading now also sorts the other way on the second click (fewest first) before returning to Discogs' order; until now its second click went straight back.",
+          "Performance: link-preview windows only; no change to the page tables' filter, sort or render path."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.1469",
     "date": "2026-10-26",
     "sections": [
