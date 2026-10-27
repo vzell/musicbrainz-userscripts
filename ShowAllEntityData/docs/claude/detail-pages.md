@@ -2283,6 +2283,44 @@ would). A series' items get `img.mb-pop-ent-icon` (`_MB_KIND_ICON`, 16 px
 box). Specs: popup-mb.spec.js "a table per medium …", the setlist and
 series tests; mutations `scripts/mutations/mb-window-3e.json`.
 
+**Phase 3f (2026-10-27): CD stubs and the documentation.** Three kinds,
+parsed in `_mbPopParsePath()` after the entity lists and before the
+editor's tag: `cdstub` (`_MB_POP_CDSTUB_RE`; `/cdstub/browse` is the list,
+not a stub) and `doc` (`_MB_POP_DOC_RE`, id the page's path,
+`Style/Titles`), both `_mbPopPageKind()` page kinds, and `docsearch`
+(`/search` with `type=doc` and a query; `path()` names the page).
+- `_mbParseCdStubPage()`: the `.blankheader h1` (its comment is part of the
+  title's text, no element), the subheader, the Tracklist `table.tbl` by
+  header name (an Artist column when the stub has one), the "Disc ID
+  information" `table.details`, the sidebar's `dt`s; "[none]" is no barcode.
+  The window's tracklist is a Compact table (`tracks`).
+- `_mbParseDocPage()`: `#content.wikicontent`, `h1` (its "/" spaced), the
+  status box (`table.wikitable` starting "Status:", removed from the text),
+  `#toc` (`li.toclevel-N` → `{level, text}` from `.toctext`, removed), then
+  each top-level block of `.mw-parser-output`: a heading (bare, or wrapped in
+  `div.mw-heading`, as the wiki writes them now) becomes
+  `div.mb-pop-doc-h<level>`, every other block `_mbEditsHtml()` (links kept,
+  so a `/doc/` link drills in; images only from the archives, so the wiki's
+  are dropped). The page's own HTML nests `<html><body>` inside a `div`; a
+  DOM parser drops those tags.
+- `_mbDocSearchLoad()`: the site's `/search?type=doc` is Google's custom
+  search with no results in its HTML, so the card and the window ask the
+  wiki's search API (`wiki.musicbrainz.org/api.php?action=query&list=search`,
+  `srlimit=50`) with ONE `_extGet()` (that host's own 1 s gate, anonymous,
+  `_EXT_AGENT`), through `_mbLoad()` (memory, IndexedDB, then the request).
+  The snippet's HTML (`span.searchmatch`) is reduced to text; the window's
+  filter marks the query in it. A hit links `_mbDocPath(title)` (spaces as
+  underscores, "/" kept). The host is in `@connect` and
+  `_EXT_CONNECT_HOSTS`: with only `@connect *`, Tampermonkey would ask on
+  the first hover.
+- No `_MB_POP_PAGE_VERSION` bump: the new kinds' keys held nothing before,
+  and a bump drops every cached page record.
+Probe: `scripts/probe-mb-docs-cdstub.py` (`--fixtures` writes the three
+fixtures, token scrubbed). Specs: popup-mb.spec.js "CD stubs and
+documentation (Phase 3f)"; mutations `scripts/mutations/mb-window-3f.json`
+(its last entry survives by design: the IndexedDB layer covers the memory
+guard).
+
 ### A Discogs release's edit history (2026-10-18)
 
 Mockup https://claude.ai/artifact/Y69bUJTvYSksKTFRMcYJvZ, tab C; vzell's

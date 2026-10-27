@@ -48,6 +48,7 @@
 // @connect      jungleland.it
 // @connect      brucespringsteen.it
 // @connect      brucebase.wikidot.com
+// @connect      wiki.musicbrainz.org
 // @connect      *
 // @grant        GM_xmlhttpRequest
 // @grant        GM_addStyle
@@ -27513,6 +27514,13 @@
             }
             .mb-dp-dialog .mb-dg-ct td { padding: 2px 8px; }
             .mb-dp-dialog .mb-pop-medium { margin: 0 0 8px; }
+            .mb-dp-dialog .mb-pop-doc-h { font-weight: 700; color: #2b2622; margin: 12px 0 4px; }
+            .mb-dp-dialog .mb-pop-doc-h2 { font-size: 15px; border-bottom: 1px solid #d9cfbd; }
+            .mb-dp-dialog .mb-pop-doc-h3 { font-size: 13.5px; }
+            .mb-dp-dialog .mb-pop-doc-h4, .mb-dp-dialog .mb-pop-doc-h5 { font-size: 12.5px; font-style: italic; }
+            .mb-dp-dialog .mb-pop-doc-toc { list-style: none; padding: 0; margin: 0; }
+            .mb-dp-dialog .mb-pop-doc-toc2 { padding-left: 1em; }
+            .mb-dp-dialog .mb-pop-doc-toc3 { padding-left: 2em; }
             .mb-dp-dialog .mb-pop-medhead { display: block; width: 100%; text-align: left; border: 0; background: #efe6d4; padding: 4px 8px; font: inherit; font-style: italic; color: #2b2622; cursor: pointer; }
             .mb-dp-dialog .mb-pop-fold { display: inline-block; width: 1.2em; text-align: center; font-style: normal; }
             .mb-dp-dialog .mb-pop-ent-icon { display: inline-block; width: 16px; height: 16px; vertical-align: -3px; }
@@ -52984,6 +52992,22 @@
      */
     const _MB_POP_USERTAG_RE = /^\/user\/([^/]+)\/tag\/([^/]+)(?:\/(area|artist|event|instrument|label|place|release-group|release|recording|series|work))?\/?$/;
 
+    /**
+     * A CD stub (`/cdstub/<disc ID>`, 2026-10-27, Phase 3c… 3f of
+     * org/MB-POH-sync-withDiscogs.org): kind `cdstub`, id the disc ID as the
+     * link spells it. `/cdstub/browse` is the list of them, not one.
+     * @type {RegExp}
+     */
+    const _MB_POP_CDSTUB_RE = /^\/cdstub\/(?!browse(?:\/|$))([A-Za-z0-9._-]+)\/?$/;
+
+    /**
+     * A documentation page (`/doc/<Page>`, Phase 3f): kind `doc`, id the
+     * page's path as the link spells it (`Style/Titles`, `Release_Group`);
+     * an anchor is not part of it.
+     * @type {RegExp}
+     */
+    const _MB_POP_DOC_RE = /^\/doc\/(.+?)\/?$/;
+
     /** How many of an editor's tagged entities the `usertag` card lists. */
     const _MB_POP_USERTAG_CARD_ROWS = 6;
 
@@ -53097,7 +53121,9 @@
      * (`_MB_POP_ANNOT_RE`), an editor's subscribers, tags or
      * ratings or the reader's applications (`_MB_POP_ACCOUNT_RE`; downvoted
      * tags are not previewed), an entity's subscribers or collections
-     * (`_MB_POP_ENTITY_LIST_RE`), an edit, an editor or a tag
+     * (`_MB_POP_ENTITY_LIST_RE`), a CD stub (`_MB_POP_CDSTUB_RE`), a
+     * documentation page (`_MB_POP_DOC_RE`) or search (`/search?…&type=doc`),
+     * an edit, an editor or a tag
      * (`_MB_POP_PAGE_RE`); `seg` is the path's own first segment (a disc
      * ID's page is /cdtoc/, its kind `discid`), '' when the kind's own
      * `path()` names the page (an editing history); `list`, a tag's or an
@@ -53137,6 +53163,17 @@
         if (l) {
             const ok = l[3] === 'subscribers' ? _MB_POP_SUBSCRIBABLE.has(l[1]) : l[1] !== 'collection';
             return ok ? { seg: '', type: l[3], id: `${l[1]}/${l[2].toLowerCase()}` } : null;
+        }
+        const stub = _MB_POP_CDSTUB_RE.exec(pathname);
+        if (stub) return { seg: 'cdstub', type: 'cdstub', id: stub[1] };
+        const docp = _MB_POP_DOC_RE.exec(pathname);
+        if (docp) return { seg: 'doc', type: 'doc', id: docp[1] };
+        // A documentation search (Phase 3f): the site's page is Google's
+        // custom search, so its card and window ask the wiki's search API.
+        if (/^\/search\/?$/.test(pathname)) {
+            const sp = new URLSearchParams(String(search || '').replace(/^\?/, ''));
+            const dq = sp.get('type') === 'doc' ? (sp.get('query') || '').trim() : '';
+            if (dq) return { seg: '', type: 'docsearch', id: dq };
         }
         const u = _MB_POP_USERTAG_RE.exec(pathname);
         if (u) return /(?:^|[?&])show_downvoted=1(?:&|$)/.test(search) ? null : { seg: '', type: 'usertag', id: `${u[1]}/${u[2]}`, list: u[3] || '' };
@@ -56610,6 +56647,152 @@
         return Object.assign({ plural: found[2], total: Number(found[1].replace(/[,.]/g, '')) || 0, rows }, _mbPagerOf(root));
     }
 
+    /**
+     * A CD stub's page (`/cdstub/<disc ID>`, Phase 3f; debug/poh-sync/,
+     * probe 2026-10-27): `.blankheader h1` (the title, a comment part of
+     * its text: "Blues In Orbit (mfsl-cd-sacd)"), the subheader "CD stub by
+     * <artist>", the Tracklist
+     * `table.tbl` (# · Title · [Artist] · Length), the "Disc ID information"
+     * `table.details` (Disc ID, Total tracks, Total length, Full TOC) and the
+     * sidebar's properties (Added, Last modified, Lookup count, Modify
+     * count, Barcode). Text only. `null` for any other page.
+     *
+     * @param {Document} doc
+     * @returns {?{title: string, artist: string, tracks: Array<{pos: string, title: string, artist: string, length: string}>,
+     *   discid: string, total: string, length: string, toc: string, added: string, modified: string, lookups: string,
+     *   modifies: string, barcode: string}}
+     */
+    function _mbParseCdStubPage(doc) {
+        const content = doc.getElementById('content');
+        const h1 = content && content.querySelector('.blankheader h1');
+        const table = content && content.querySelector('table.tbl');
+        if (!h1 || !table) return null;
+        const heads = Array.from(table.querySelectorAll('thead th, tr:first-child th')).map(th => _mbPopText(th));
+        const col = name => heads.findIndex(h => h === name);
+        const tracks = Array.from(table.querySelectorAll('tbody tr')).filter(tr => tr.querySelector('td')).map((tr) => {
+            const td = Array.from(tr.children).map(c => _mbPopText(c));
+            return { pos: td[col('#')] || td[0] || '', title: td[col('Title')] || '', artist: col('Artist') >= 0 ? td[col('Artist')] : '', length: td[col('Length')] || '' };
+        });
+        const detail = (label) => {
+            const th = Array.from(content.querySelectorAll('table.details th')).find(x => _mbPopText(x).replace(/:$/, '').trim() === label);
+            return th ? _mbPopText(th.nextElementSibling) : '';
+        };
+        const prop = (label) => {
+            const dt = Array.from(doc.querySelectorAll('#sidebar dt')).find(x => _mbPopText(x).replace(/:$/, '') === label);
+            return dt ? _mbPopText(dt.nextElementSibling) : '';
+        };
+        return {
+            title: _mbPopText(h1), artist: _mbPopText(content.querySelector('.blankheader .subheader')).replace(/^~?\s*CD stub by\s*/i, ''),
+            tracks, discid: detail('Disc ID'), total: detail('Total tracks'), length: detail('Total length'), toc: detail('Full TOC'),
+            added: prop('Added'), modified: prop('Last modified'), lookups: prop('Lookup count'), modifies: prop('Modify count'),
+            barcode: prop('Barcode').replace(/^\[none\]$/i, ''),
+        };
+    }
+
+    /**
+     * A documentation page (`/doc/<Page>`, Phase 3f; debug/poh-sync/, probe
+     * 2026-10-27): the wiki's text inside `#content.wikicontent`, its title
+     * in `h1.hierarchy-links` ("Style / Titles"), a status box ("Status: This
+     * is an official style guideline"), the table of contents (`#toc`), the
+     * text in `.mw-parser-output`. The text is kept as safe HTML, block by
+     * block: a heading as a line of its own (`mb-pop-doc-h<level>`), any
+     * other block through `_mbEditsHtml()` with its own tag (links kept, so
+     * another `/doc/` page opens in the window; the wiki's images dropped).
+     * `null` for any other page.
+     *
+     * @param {Document} doc
+     * @returns {?{title: string, status: string, toc: Array<{level: number, text: string}>, intro: string, html: string}}
+     */
+    function _mbParseDocPage(doc) {
+        const root = doc.querySelector('#content.wikicontent');
+        const body = root && root.querySelector('.mw-parser-output');
+        const h1 = root && root.querySelector('h1');
+        if (!body || !h1) return null;
+        const copy = body.cloneNode(true);
+        const statusBox = Array.from(copy.querySelectorAll('table.wikitable')).find(x => /^\s*Status:/.test(x.textContent));
+        const status = statusBox ? _mbPopText(statusBox).replace(/^Status:\s*/, '') : '';
+        const toc = Array.from(copy.querySelectorAll('#toc li')).map(li => ({
+            level: Number((/toclevel-(\d)/.exec(li.className) || [])[1]) || 1,
+            text: _mbPopText(li.querySelector(':scope > a .toctext') || li.querySelector(':scope > a') || li).replace(/^[\d.]+\s+/, ''),
+        }));
+        copy.querySelectorAll('#toc, .mw-editsection, script, style, .wikidoc-search').forEach(n => n.remove());
+        if (statusBox) statusBox.remove();
+        let intro = '';
+        const parts = [];
+        Array.from(copy.children).forEach((el) => {
+            const heading = el.matches('h1, h2, h3, h4, h5, h6') ? el : el.matches('.mw-heading') ? el.querySelector('h1, h2, h3, h4, h5, h6') : null;
+            if (heading) {
+                const level = Number(heading.tagName.slice(1)) || 2;
+                parts.push(`<div class="mb-pop-doc-h mb-pop-doc-h${level}">${_rgEsc(_mbPopText(heading))}</div>`);
+                return;
+            }
+            const wrap = doc.createElement('div');
+            wrap.appendChild(el.cloneNode(true));
+            const html = _mbEditsHtml(wrap);
+            if (!html) return;
+            if (!intro && el.tagName === 'P') intro = _mbEditsText(html);
+            parts.push(html);
+        });
+        return { title: _mbPopText(h1).replace(/\s*\/\s*/g, ' / '), status, toc, intro, html: parts.join('') };
+    }
+
+    /** How many hits a documentation search asks the wiki for. */
+    const _MB_POP_DOCSEARCH_LIMIT = 50;
+
+    /**
+     * Loads a documentation search's hits (Phase 3f) from the wiki's search
+     * API — `wiki.musicbrainz.org/api.php?action=query&list=search`, which
+     * answered JSON (probe 2026-10-27: totalhits, and per hit title,
+     * snippet, timestamp) — the site's own `/search?type=doc` page being
+     * Google's custom search, rendered in the browser, so no HTML to read.
+     * One request through `_extGet()` (that host's own gate), through
+     * `_mbLoad()` (memory, then IndexedDB, then the request).
+     *
+     * @param {object} t - The `docsearch` target (`t.id` the query).
+     * @param {{force?: boolean, repaint?: ?function(): void}} [opts]
+     * @returns {string} The cache key.
+     */
+    function _mbDocSearchLoad(t, { force = false, repaint = null } = {}) {
+        const key = `pop:docsearch:${t.id}`;
+        _mbLoad(key, async (wanted) => {
+            const url = 'https://wiki.musicbrainz.org/api.php?action=query&list=search&format=json' +
+                `&srlimit=${_MB_POP_DOCSEARCH_LIMIT}&srsearch=${encodeURIComponent(t.id)}`;
+            const res = await _extGet(url, { wanted, fetchOpts: { accept: /\bjson\b/i, headers: { 'User-Agent': _EXT_AGENT, Accept: 'application/json' } } });
+            if (res.skipped) return { skipped: true };
+            if (res.error) return { ok: false, detail: res.error };
+            if (res.status !== 200) return { ok: false, detail: `HTTP ${res.status}` };
+            let d;
+            try {
+                d = JSON.parse(String(res.body || '') + String(res.tail || ''));
+            } catch (_) {
+                return { ok: false, detail: 'the wiki did not answer JSON' };
+            }
+            const q = d && d.query;
+            if (!q || !Array.isArray(q.search)) return { ok: false, detail: 'the wiki did not answer a search' };
+            const text = h => new DOMParser().parseFromString(`<p>${h}</p>`, 'text/html').body.textContent.replace(/\s+/g, ' ').trim();
+            return {
+                ok: true,
+                data: {
+                    total: (q.searchinfo && q.searchinfo.totalhits) || q.search.length,
+                    hits: q.search.map(h => ({ title: String(h.title || ''), snippet: text(h.snippet || ''), date: String(h.timestamp || '').slice(0, 10) })),
+                },
+            };
+        }, { force, repaint, wanted: _mbPopWanted(t) });
+        return key;
+    }
+
+    /**
+     * A wiki page title as its documentation path: "Release Group" →
+     * `/doc/Release_Group` (spaces as underscores, the rest encoded, "/"
+     * kept: `Style/Titles`).
+     *
+     * @param {string} title
+     * @returns {string}
+     */
+    function _mbDocPath(title) {
+        return `/doc/${encodeURIComponent(String(title).replace(/ /g, '_')).replace(/%2F/gi, '/')}`;
+    }
+
     // --- Editing history (org/mb-edit-history.org, 2026-10-20) ---
     //
     // "✎ Editing history" in the window's header (`_dpOpenEdits()`, key H)
@@ -58913,6 +59096,91 @@
                     ], rels, { initial: 'as MusicBrainz lists them', what: 'releases' }) + '</div></div>';
             },
         })),
+        // A CD stub (Phase 3f): read from its page (`_mbParseCdStubPage()`).
+        // Card: title, artist, counts, the first tracks. Window: the facts
+        // on the left, the tracklist as a Compact table on the right.
+        cdstub: Object.assign({ title: 'CD stub', wide: true }, _mbPopPageKind({
+            parse: _mbParseCdStubPage,
+            cardHtml(d) {
+                return `<div class="mb-tt-title">${_rgEsc(d.title)}</div>` +
+                    `<div class="mb-tt-body">${_rgEsc(d.artist)}</div><div class="mb-tt-body mb-rg-pills">${_mbPopPillsHtml(['CD stub',
+                        `${d.tracks.length} track${d.tracks.length === 1 ? '' : 's'}`, d.length, d.lookups ? `${d.lookups} lookups` : ''])}</div>` +
+                    '<div class="mb-tt-rule"></div><ol class="mb-dp-tracks mb-pop-tracks">' + d.tracks.slice(0, _MB_POP_CARD_TRACKS).map(x =>
+                        `<li><span class="mb-dp-pos">${_rgEsc(x.pos)}</span><span class="mb-pop-ttl">${_rgEsc(x.title)}</span>` +
+                        `${x.length ? `<span class="mb-pop-len">${_rgEsc(x.length)}</span>` : ''}</li>`).join('') + '</ol>' +
+                    (d.tracks.length > _MB_POP_CARD_TRACKS ? `<div class="mb-tt-dim">+ ${d.tracks.length - _MB_POP_CARD_TRACKS} more</div>` : '');
+            },
+            windowHtml(d, t) {
+                const left = `<div class="mb-dp-xtitle">${_rgEsc(d.title)}</div>` +
+                    `<div class="mb-rg-pills">${_mbPopPillsHtml(['CD stub'])}</div><h4>Facts</h4>` + _mbPopKvHtml([
+                        ['Artist', _rgEsc(d.artist)], ['Barcode', _rgEsc(d.barcode)], ['Tracks', _rgEsc(d.total)],
+                        ['Length', _rgEsc(d.length)], ['Disc ID', _rgEsc(d.discid)], ['Added', _rgEsc(d.added)],
+                        ['Last modified', _rgEsc(d.modified)], ['Lookups', _rgEsc(d.lookups)], ['Modified', _rgEsc(d.modifies)],
+                    ]) + '<p class="mb-dp-xsub">A CD stub is not in the MusicBrainz database: the Live page offers to import it.</p>';
+                const artist = d.tracks.some(x => x.artist);
+                const right = `<h4>Tracklist · ${d.tracks.length}</h4>` + _dpCompactTableHtml(t, 'tracks', [
+                    { key: 'pos', label: '#', num: true, cls: 'mb-rg-num', val: x => Number(x.pos) || 0, html: x => _rgEsc(x.pos) },
+                    { key: 'title', label: 'Title', val: x => x.title, html: (x, q) => _hlEsc(x.title, q) },
+                    ...(artist ? [{ key: 'artist', label: 'Artist', val: x => x.artist, html: (x, q) => _hlEsc(x.artist, q) }] : []),
+                    { key: 'length', label: 'Length', cls: 'mb-rg-num', val: x => x.length, html: x => _rgEsc(x.length || '—') },
+                ], d.tracks, { perPage: 100, initial: 'as the stub lists them', what: 'tracks' });
+                return `<div class="mb-dp-x"><div class="mb-dp-col">${left}</div><div class="mb-dp-col">${right}</div></div>`;
+            },
+        })),
+        // A documentation page (Phase 3f): read from its page
+        // (`_mbParseDocPage()`). Card: title, status, the first paragraph.
+        // Window: the contents on the left, the whole text on the right.
+        doc: Object.assign({ title: 'Documentation', wide: true }, _mbPopPageKind({
+            parse: _mbParseDocPage,
+            cardHtml(d) {
+                const intro = d.intro.length > 300 ? `${d.intro.slice(0, 300).replace(/\s+\S*$/, '')} …` : d.intro;
+                return `<div class="mb-tt-title">${_rgEsc(d.title)}</div>` +
+                    (d.status ? `<div class="mb-tt-body mb-rg-pills">${_mbPopPillsHtml([d.status.replace(/^This is an?\s*/i, '').replace(/\.$/, '')])}</div>` : '') +
+                    '<div class="mb-tt-rule"></div>' + (intro ? `<div class="mb-tt-body">${_rgEsc(intro)}</div>` : '') +
+                    (d.toc.length ? `<div class="mb-tt-dim">${d.toc.filter(x => x.level === 1).length} sections</div>` : '');
+            },
+            windowHtml(d, t) {
+                const left = `<div class="mb-dp-xtitle">${_rgEsc(d.title)}</div>` +
+                    (d.status ? `<div class="mb-dp-xsub">${_rgEsc(d.status)}</div>` : '') +
+                    `<p><a href="https://wiki.musicbrainz.org/${_rgEsc(t.id)}" target="_blank" rel="noopener">On the wiki</a></p>` +
+                    (d.toc.length ? '<h4>Contents</h4><ul class="mb-pop-doc-toc">' + d.toc.map(x =>
+                        `<li class="mb-pop-doc-toc${Math.min(3, x.level)}">${_rgEsc(x.text)}</li>`).join('') + '</ul>' : '');
+                const right = `<div class="mb-pop-doc">${d.html || '<div class="mb-dp-xsub">This page is empty.</div>'}</div>`;
+                return `<div class="mb-dp-x"><div class="mb-dp-col">${left}</div><div class="mb-dp-col">${right}</div></div>`;
+            },
+        })),
+        // A documentation search (Phase 3f): the wiki's search API
+        // (`_mbDocSearchLoad()`). Card: how many pages, the first titles.
+        // Window: every hit as a List table, each page opening in the window.
+        docsearch: {
+            title: 'Documentation search', wide: true,
+            path: id => `/search?query=${encodeURIComponent(id)}&type=doc`,
+            card(t, start, repaint) {
+                const key = start ? _mbDocSearchLoad(t, { repaint }) : `pop:docsearch:${t.id}`;
+                return _mbPopCardShell(t, _mbPop.get(key), (d) => `<div class="mb-tt-title">${_rgEsc(t.id)}</div>` +
+                    `<div class="mb-tt-body mb-rg-pills">${_mbPopPillsHtml([`${d.total} page${d.total === 1 ? '' : 's'}`])}</div><div class="mb-tt-rule"></div>` +
+                    (d.hits.length ? '<ol class="mb-dp-tracks mb-pop-tracks">' + d.hits.slice(0, 6).map((h, i) =>
+                        `<li><span class="mb-dp-pos">${i + 1}</span><span class="mb-pop-ttl">${_rgEsc(h.title)}</span></li>`).join('') + '</ol>'
+                        : '<div class="mb-tt-comment">No documentation page matches.</div>'));
+            },
+            extracted(t, start, force, repaint) {
+                const key = start ? _mbDocSearchLoad(t, { force, repaint }) : `pop:docsearch:${t.id}`;
+                return _mbPopWindowShell(t, _mbPop.get(key), (d) => {
+                    const left = `<div class="mb-dp-xtitle">${_rgEsc(t.id)}</div><div class="mb-dp-xsub">MusicBrainz documentation · search</div>` +
+                        _mbPopKvHtml([['Pages', _rgEsc(String(d.total))], ['Shown', d.total > d.hits.length ? _rgEsc(`the first ${d.hits.length}`) : '']]) +
+                        '<p class="mb-dp-xsub">From the wiki\'s search; a page opens here.</p>';
+                    const right = `<h4>Pages · ${_rgEsc(String(d.total))}</h4>` + _dpListTableHtml(t, 'docsearch', [
+                        {
+                            key: 'title', label: 'Page', val: h => h.title,
+                            html: (h, q) => `<a href="${_rgEsc(_mbDocPath(h.title))}" target="_blank" rel="noopener">${_hlEsc(h.title, q)}</a>`,
+                        },
+                        { key: 'snippet', label: 'Snippet', val: h => h.snippet, html: (h, q) => _hlEsc(h.snippet, q || t.id) },
+                        { key: 'date', label: 'Updated', cls: 'mb-dg-yr', val: h => h.date, html: h => _rgEsc(h.date || '—') },
+                    ], d.hits, { initial: 'as the wiki ranks them', placeholder: 'Filter the pages', none: 'No documentation page matches.' });
+                    return `<div class="mb-dp-x"><div class="mb-dp-col">${left}</div><div class="mb-dp-col">${right}</div></div>`;
+                });
+            },
+        },
         // Read from the collection's page (2026-10-20, mockup
         // https://claude.ai/artifact/KtfNY1XfjyJoPb8fGjLGeu): the Web
         // Service has no description and no collaborators. Card: type, size,
@@ -59628,11 +59896,12 @@
      * goes here and into the header's `@connect` together: U1 has the YouTube
      * reader's (oEmbed), U3 Wikipedia's, Wikidata's and Discogs' API hosts,
      * U4 the four Springsteen sites (`_DP_SITES`, `www.` covered by the
-     * parent domain).
+     * parent domain), Phase 3f of org/MB-POH-sync-withDiscogs.org the
+     * MusicBrainz wiki's search API (`_mbDocSearchLoad()`).
      * @type {string[]}
      */
     const _EXT_CONNECT_HOSTS = ['www.youtube.com', 'wikipedia.org', 'www.wikidata.org', 'api.discogs.com',
-        'springsteenlyrics.com', 'jungleland.it', 'brucespringsteen.it', 'brucebase.wikidot.com'];
+        'springsteenlyrics.com', 'jungleland.it', 'brucespringsteen.it', 'brucebase.wikidot.com', 'wiki.musicbrainz.org'];
 
     /** The GM key of the hosts that answered once (answer 7): the script's state, not a setting, and not exported. */
     const _EXT_HOSTS_KEY = 'sa_pop_ext_hosts';

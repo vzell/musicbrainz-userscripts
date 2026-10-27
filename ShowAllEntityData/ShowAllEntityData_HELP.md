@@ -2304,8 +2304,10 @@ links of a profile's statistics), an editor's **subscribers**, **tags** and
 links), an entity's **subscribers** and **collections** (the sidebar's
 *Subscribers* and *Found in N user collections* links), an **annotation's
 history** and its **versions** (*View annotation history*, *View this
-version*, *View current revision*), and
-**tags** (a genre or tag link, also the pills of the sidebar's Tags card).
+version*, *View current revision*),
+**tags** (a genre or tag link, also the pills of the sidebar's Tags card),
+**CD stubs**, and the **documentation**: its pages (`/doc/…`) and a
+documentation search (`/search?…&type=doc`).
 A **Barcode** cell has a card too: the barcode's format and the releases
 carrying it. So does an entry of a column's **📊 dropdown** that names one
 artist, label, area or other entity: rest the pointer on it. Pinning it with Space
@@ -2407,6 +2409,15 @@ names each, *+N* for the rest), how many collections hold it and the start
 of its Wikipedia text; it is read from the genre's own page, in one request.
 A genre's *Found in N user collections*, *Editing history* and *Open edits*
 links have their cards too.
+A CD stub card shows the stub's title, artist, number of tracks, length, how
+often it was looked up and its first tracks, read from the stub's page. A
+documentation card shows the page's title, its status (*official style
+guideline*) and its first paragraph, read from the page itself. A
+documentation search card says how many pages match and names the first
+six. MusicBrainz's own documentation search is Google's, with no results
+in its page, so this card asks the MusicBrainz wiki's search instead
+(wiki.musicbrainz.org, one request a search, at most one a second; the
+userscript lists that host, so Tampermonkey does not ask first).
 **Esc** or moving away closes it.
 
 **Press Space** to pin it into a window:
@@ -2472,7 +2483,15 @@ links have their cards too.
   holds such a link; for a genre, its
   primary tag, every related genre
   linked (each opens its own card), its external links, the collections it
-  is in and the whole Wikipedia text. An **artist, label or place** window shows its
+  is in and the whole Wikipedia text; for a CD stub, its facts (barcode, disc
+  ID, added, last modified, lookups) and its tracklist as a table you can
+  filter and sort; for a documentation page, its contents on the left and
+  its whole text on the right, the headings kept and the wiki's images left
+  out (a link to another documentation page opens it here, *On the wiki*
+  opens the wiki's page); for a documentation search, up to 50 matching
+  pages as a list with a filter and the three-way sort: page, snippet (the
+  words searched for marked) and when it was last updated, each page opening
+  in the window. An **artist, label or place** window shows its
   **picture** under the name: the Wikimedia Commons file MusicBrainz links as
   its image or logo, else the one its Wikidata item names (one or two small
   requests to Wikidata, a label's logo first). It is asked only here, never

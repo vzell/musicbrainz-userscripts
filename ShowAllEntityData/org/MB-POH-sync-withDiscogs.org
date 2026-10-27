@@ -49,6 +49,10 @@ Discogs artist / master / label windows (the target look).
 3. *Documentation.* =/search?type=doc= is rendered client-side by Google's custom search, so
    there is no HTML to read. Probe =wiki.musicbrainz.org/api.php?action=query&list=search=
    (CLAUDE.md probe rule) and record the result here.
+   Result 2026-10-27 (=scripts/probe-mb-docs-cdstub.py=, NB-3641, browser n/a): JSON,
+   =query.searchinfo.totalhits= (19 for "release group") and per hit =ns=, =title=, =pageid=,
+   =size=, =wordcount=, =snippet= (HTML, =span.searchmatch=), =timestamp=. The site's page holds
+   no results (=gcse= only). So the hits are listed and =/doc/<Page>= opens inline (3f).
 
 ** Code map (grep the names; line numbers drift)
 
@@ -189,7 +193,7 @@ Phase 2 changes, *2,369/2,369 passed* in 15 m 55 s. Mutations: =dp-shared-tables
 they should; =dp-sort-initial-state.json= 8 fail + 1 recorded overlap pass; =discogs-window-swap.json=
 5/5 (one entry was already stale at HEAD and is retargeted). Lint is within its baseline.
 
-** Phase 3 — MB entity sections  [32/34]
+** Phase 3 — MB entity sections  [34/34]
 
 "Compact" = like Discogs label → Sublabels (left column). "List" = like Discogs label → Releases
 (right column) with "Load N more pages (M …, about S s)".
@@ -236,6 +240,20 @@ folding header "CD 2 · 8 tracks · 52:09", one shared filter: the decision of 2
 Event → Setlist (# · Song · Notes, a List table; the plan's "cover / disambiguation" are not
 in the setlist markup and would need a lookup per work, so not done), Series → Items (the
 kind's icon; opening in the window came with 3a's fix). Left: 3f, CD stub and Documentation.
+
+*3f done* 2026-10-27, same branch (WIP.5): CD stub (kind =cdstub=, =_mbParseCdStubPage()=: title,
+artist, tracks, the Disc ID table, the sidebar's properties; the plan's "comment" is part of the
+title's text on the page, no element of its own, so it is not split off; "[none]" is no
+barcode) and Documentation (open Q 4, probe =scripts/probe-mb-docs-cdstub.py=: the wiki's search
+API answers JSON, so both halves of the decision hold): kind =doc= for =/doc/<Page>=
+(=_mbParseDocPage()=: title, status, contents, the text block by block through =_mbEditsHtml()=,
+headings as lines of their own, images dropped) and kind =docsearch= for
+=/search?query=…&type=doc= (=_mbDocSearchLoad()=, one =_extGet()= of the API, 50 hits, a List
+table; each hit opens =/doc/<Title>= in the window). =wiki.musicbrainz.org= joined =@connect= and
+=_EXT_CONNECT_HOSTS=, or Tampermonkey would ask on the first hover. *No =_MB_POP_PAGE_VERSION=
+bump*, against the rule below: the new kinds' records live under new keys (=pop:page:cdstub:…=,
+=pop:page:doc:…=, =pop:docsearch:…=) that held nothing before, and a bump would only drop every
+cached edit, editor, tag and collection page. Phase 3 is complete.
 
 | Entity          | Section                                     | Change                                                                                                                                                         |
 |-----------------+---------------------------------------------+----------------------------------------------------------------------------------------------------------------------------------------------------------------|

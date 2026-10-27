@@ -1,5 +1,21 @@
 [
   {
+    "version": "WIP.5",
+    "date": "2026-10-27",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "CD stub links get a card and a window, read from the stub's page: title, artist, track count, length and how often it was looked up; the window lists its facts (barcode, disc ID, added, last modified) and its tracklist as a table with a filter and sorting.",
+          "Documentation links (/doc/…) get a card and a window: the card shows the page's title, its status (\"official style guideline\") and first paragraph; the window shows its contents on the left and the whole text on the right, its headings kept, and a link to another documentation page opens that page in the window.",
+          "A documentation search link (/search?…&type=doc) gets a card and a window too. MusicBrainz's own search page is Google's and has no results in it, so they come from the MusicBrainz wiki's search: the card says how many pages match and names the first ones, the window lists up to 50 of them as a table (page, snippet, last updated) with a filter, chips and sorting, and a page opens in the window.",
+          "The userscript header lists wiki.musicbrainz.org under @connect, so Tampermonkey does not ask before the first documentation search.",
+          "Performance: link-preview windows only; no change to the page tables' filter, sort or render path. A documentation search asks the wiki once (one request per search, at most one a second), then answers from memory and the browser's cache."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.4",
     "date": "2026-10-27",
     "sections": [

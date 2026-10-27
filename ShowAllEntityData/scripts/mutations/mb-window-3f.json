@@ -1,0 +1,132 @@
+[
+    {
+        "name": "CD stub: the list of stubs read as one",
+        "why": "org/MB-POH-sync-withDiscogs.org Phase 3f: /cdstub/browse is the list of CD stubs, not a stub.",
+        "edits": [
+            {
+                "find": "const _MB_POP_CDSTUB_RE = /^\\/cdstub\\/(?!browse(?:\\/|$))([A-Za-z0-9._-]+)\\/?$/;",
+                "replace": "const _MB_POP_CDSTUB_RE = /^\\/cdstub\\/([A-Za-z0-9._-]+)\\/?$/;"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "what is not previewed: the list of CD stubs",
+        "expect": "fail"
+    },
+    {
+        "name": "CD stub: \"[none]\" kept as a barcode",
+        "why": "org/MB-POH-sync-withDiscogs.org Phase 3f: a stub without a barcode shows no Barcode row.",
+        "edits": [
+            {
+                "find": "barcode: prop('Barcode').replace(/^\\[none\\]$/i, ''),",
+                "replace": "barcode: prop('Barcode'),"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "a CD stub: the card from its page",
+        "expect": "fail"
+    },
+    {
+        "name": "CD stub: the tracklist not sortable",
+        "why": "org/MB-POH-sync-withDiscogs.org Phase 3f: the tracklist is a Compact table (three-state sort).",
+        "edits": [
+            {
+                "find": "{ key: 'title', label: 'Title', val: x => x.title, html: (x, q) => _hlEsc(x.title, q) },\n                    ...(artist ?",
+                "replace": "{ key: 'title', label: 'Title', val: () => '', html: (x, q) => _hlEsc(x.title, q) },\n                    ...(artist ?"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "a CD stub: the card from its page",
+        "expect": "fail"
+    },
+    {
+        "name": "documentation: the status box left in the text",
+        "why": "org/MB-POH-sync-withDiscogs.org Phase 3f: the status is the card's pill and the window's subtitle, not repeated in the text.",
+        "edits": [
+            {
+                "find": "        if (statusBox) statusBox.remove();\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "a documentation page: the card, status",
+        "expect": "fail"
+    },
+    {
+        "name": "documentation: headings in a wrapper (div.mw-heading) dropped as plain text",
+        "why": "org/MB-POH-sync-withDiscogs.org Phase 3f: the wiki wraps its headings in div.mw-heading; each stays a line of its own.",
+        "edits": [
+            {
+                "find": ": el.matches('.mw-heading') ? el.querySelector('h1, h2, h3, h4, h5, h6') : null;",
+                "replace": ": null;"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "a documentation page: the card, status",
+        "expect": "fail"
+    },
+    {
+        "name": "documentation: the table of contents left in the text",
+        "why": "org/MB-POH-sync-withDiscogs.org Phase 3f: the contents are the window's left column, not repeated in the text.",
+        "edits": [
+            {
+                "find": "copy.querySelectorAll('#toc, .mw-editsection, script, style, .wikidoc-search').forEach(n => n.remove());",
+                "replace": "copy.querySelectorAll('.mw-editsection, script, style, .wikidoc-search').forEach(n => n.remove());"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "a documentation page: the card, status",
+        "expect": "fail"
+    },
+    {
+        "name": "documentation search: any search read as one",
+        "why": "org/MB-POH-sync-withDiscogs.org Phase 3f: only type=doc is a documentation search.",
+        "edits": [
+            {
+                "find": "const dq = sp.get('type') === 'doc' ? (sp.get('query') || '').trim() : '';",
+                "replace": "const dq = (sp.get('query') || '').trim();"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "what is not previewed: the list of CD stubs",
+        "expect": "fail"
+    },
+    {
+        "name": "documentation search: a hit's page path keeps its spaces",
+        "why": "org/MB-POH-sync-withDiscogs.org Phase 3f: a wiki title's spaces are underscores in its /doc/ path.",
+        "edits": [
+            {
+                "find": "return `/doc/${encodeURIComponent(String(title).replace(/ /g, '_')).replace(/%2F/gi, '/')}`;",
+                "replace": "return `/doc/${encodeURIComponent(String(title)).replace(/%2F/gi, '/')}`;"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "a documentation search: one request",
+        "expect": "fail"
+    },
+    {
+        "name": "documentation search: the snippet kept as the wiki's HTML",
+        "why": "org/MB-POH-sync-withDiscogs.org Phase 3f: the snippet is text, the query marked by the window's own highlight.",
+        "edits": [
+            {
+                "find": "snippet: text(h.snippet || ''),",
+                "replace": "snippet: String(h.snippet || ''),"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "a documentation search: one request",
+        "expect": "fail"
+    },
+    {
+        "name": "documentation search: the window asks the wiki again",
+        "why": "org/MB-POH-sync-withDiscogs.org Phase 3f: the window shows the card's record; one request. Survives by design (2026-10-27): without the memory guard, _mbLoad() reads the record the card's request put in IndexedDB and still asks nothing, so the spec's one-request assertion is held by either layer alone.",
+        "edits": [
+            {
+                "find": "        if (!force && cur && cur.status === 'done') return;\n        const st = {\n            status: 'loading', data: null, at: 0, cached: false, detail: '',",
+                "replace": "        if (!force && cur && cur.status === 'done' && !/^pop:docsearch:/.test(cacheKey)) return;\n        const st = {\n            status: 'loading', data: null, at: 0, cached: false, detail: '',"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "a documentation search: one request",
+        "expect": "pass"
+    }
+]

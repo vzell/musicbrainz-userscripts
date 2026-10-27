@@ -90,6 +90,10 @@ const PAGE_FIXTURES = [
     // MusicBrainz sends it (debug/genre-initial.html, wrapped by
     // scripts/build-genre-overview-fixture.py).
     [/\/genre\/883d75d5-1365-46ee-8cbe-d3ae2facdd93\/?$/, 'rel-genre-overview.html'],
+    // Phase 3f (scripts/probe-mb-docs-cdstub.py --fixtures, 2026-10-27): a
+    // CD stub (11 tracks) and a documentation page (Style / Titles).
+    [/\/cdstub\/\.0bu2pqNY67hHTrw09eWyhBPhsA-\/?$/, 'cdstub-blues-in-orbit.html'],
+    [/\/doc\/Style\/Titles\/?$/, 'doc-style-titles.html'],
 ];
 const WS2_FIXTURES = [
     [/\/ws\/2\/recording\/[0-9a-f-]{36}\?inc=artist-credits\+isrcs/, 'ws2-pop-recording-thunder.json'],
@@ -201,8 +205,9 @@ async function open(page, { settings = {}, lookup = null, showAll = true, ws2 = 
     await ctx.route('**/ws/2/release?label=**', other);
     await ctx.route('**/ws/2/release?query=**', other);
     await ctx.route('**/ws/2/release-group?artist=**', other);
-    // Phase 3: edit, editor, tag, collection and genre pages, by URL (`pageFixture` may answer instead).
-    await ctx.route(/^https:\/\/musicbrainz\.org\/(edit|user|tag|collection|genre)\//, (route) => {
+    // Phase 3: edit, editor, tag, collection, genre, CD stub and
+    // documentation pages, by URL (`pageFixture` may answer instead).
+    await ctx.route(/^https:\/\/musicbrainz\.org\/(edit|user|tag|collection|genre|cdstub|doc)\//, (route) => {
         const url = route.request().url();
         log.html.push(url);
         const own = pageFixture ? pageFixture(url) : null;
@@ -2993,7 +2998,7 @@ test.describe('MusicBrainz link previews: hovering inside the window (org/dp-win
         await ctrlHover(page, relLink(page));
         await expect(card(page)).toContainText('fetched now');
         await page.keyboard.press('Space');
-        await expect(area(page).locator('.mb-pop-tracks li')).toHaveCount(9);
+        await expect(area(page).locator('table.mb-pop-medtable tbody tr')).toHaveCount(9);
         await expect(area(page).locator('.mb-dp-gallery img')).toHaveCount(16);
         await page.mouse.move(0, 0);
         return log;
@@ -3130,7 +3135,7 @@ test.describe('MusicBrainz link previews: hovering inside the window (org/dp-win
 
     test('H5 off (the default): a rest reads nothing ahead', async ({ page }) => {
         const log = await releaseWindow(page);
-        const rec = area(page).locator('.mb-pop-tracks li').nth(1).locator('a').first();
+        const rec = area(page).locator('table.mb-pop-medtable tbody tr').nth(1).locator('a').first();
         await rest(page, rec);
         await page.evaluate(() => new Promise(r => setTimeout(r, 1500)));
         expect(log.ws2.filter(u => u.includes('/ws/2/recording/')), 'off: nothing read ahead').toEqual([]);
@@ -3139,7 +3144,7 @@ test.describe('MusicBrainz link previews: hovering inside the window (org/dp-win
 
     test('H5 on: a 600 ms rest reads the recording ahead, then the click shows it from memory', async ({ page }) => {
         const log = await releaseWindow(page, { sa_dp_window_read_ahead: true });
-        const rec = area(page).locator('.mb-pop-tracks li').nth(1).locator('a').first();
+        const rec = area(page).locator('table.mb-pop-medtable tbody tr').nth(1).locator('a').first();
         await rest(page, rec);
         await expect.poll(() => log.ws2.filter(u => u.includes('/ws/2/recording/')).length, { timeout: 5000 }).toBe(1);
         await expect(rec).toHaveClass(/\bmb-dp-l-read\b/);
@@ -3148,5 +3153,149 @@ test.describe('MusicBrainz link previews: hovering inside the window (org/dp-win
         await expect(title(page)).toHaveText(/Release › Recording$/);
         await page.evaluate(() => new Promise(r => setTimeout(r, 300)));
         expect(log.ws2.filter(u => /\/ws\/2\/recording\/[0-9a-f-]{36}\?inc=artist-credits/.test(u)), 'the card\'s lookup, once').toHaveLength(1);
+    });
+});
+
+// Phase 3f of org/MB-POH-sync-withDiscogs.org: a CD stub and the
+// documentation, read from their pages; a documentation search, from the
+// wiki's search API (the site's own search page is Google's, rendered in
+// the browser). Mutation list: scripts/mutations/mb-window-3f.json.
+test.describe('CD stubs and documentation (Phase 3f)', () => {
+    const STUB = '/cdstub/.0bu2pqNY67hHTrw09eWyhBPhsA-';
+    const DOC = '/doc/Style/Titles';
+    const SEARCH = '/search?query=release%20group&type=doc';
+    const API = 'https://wiki.musicbrainz.org/api.php?action=query&list=search&format=json&srlimit=50&srsearch=release%20group';
+    const title = (page) => dialog(page).locator(':scope > div > span').first();
+
+    /**
+     * Answers the wiki's search API (through the GM_xmlhttpRequest stub),
+     * before the page loads.
+     *
+     * @param {import('@playwright/test').Page} page
+     * @returns {Promise<void>}
+     */
+    async function answerWiki(page) {
+        await page.context().addInitScript((r) => { window.__gmXhrResponses = r; }, {
+            [API]: { status: 200, responseText: json('wiki-api-search-release-group.json'), responseHeaders: 'content-type: application/json; charset=utf-8' },
+        });
+    }
+
+    test('a CD stub: the card from its page; the window, its facts and its tracklist as a Compact table', async ({ page }) => {
+        const log = await open(page, { settings: { sa_pop_mb: true }, showAll: false });
+        const a = await addLink(page, STUB, 'Blues In Orbit');
+        await ctrlHover(page, a);
+        await expect(card(page)).toContainText('fetched now');
+        await expect(card(page).locator('.mb-tt-title')).toHaveText('Blues In Orbit (mfsl-cd-sacd)');
+        await expect(card(page).locator('.mb-tt-pill')).toHaveText(['CD stub', '11 tracks', '36:23', '621 lookups']);
+        await expect(card(page)).toContainText('Ellington, Duke');
+        await expect(card(page).locator('ol.mb-pop-tracks li')).toHaveCount(6);
+        await expect(card(page).locator('ol.mb-pop-tracks li').first()).toContainText("Three J's Blues");
+        await expect(card(page).locator('.mb-tt-dim')).toHaveText('+ 5 more');
+        await page.keyboard.press('Space');
+        const dlg = dialog(page);
+        await expect(title(page)).toHaveText('CD stub');
+        const kv = dlg.locator('.mb-dp-kv');
+        // "[none]" is no barcode: the row is left out.
+        await expect(kv.locator('dt')).toHaveText(['Artist', 'Tracks', 'Length', 'Disc ID', 'Added', 'Last modified', 'Lookups', 'Modified']);
+        await expect(kv.locator('dd').nth(3)).toHaveText('.0bu2pqNY67hHTrw09eWyhBPhsA-');
+        const tbl = dlg.locator('[data-mb-tbl="tracks"]');
+        await expect(tbl.locator('thead th')).toHaveText([/^#/, /^Title/, /^Length/]);
+        const rows = tbl.locator('tbody tr');
+        await expect(rows).toHaveCount(11);
+        await expect(rows.last().locator('td').nth(1)).toHaveText('Villes Ville Is The Place, Man');
+        // Three-state sort on Title: A first.
+        await tbl.locator('th[data-mb-tbl-sort="title"]').click();
+        await expect(rows.first().locator('td').nth(1)).toHaveText('Blues in Blueprint');
+        expect(log.html.filter(u => u.includes('/cdstub/')), 'the card\'s one page request').toEqual([`https://musicbrainz.org${STUB}`]);
+        expect(log.ws2, 'no Web Service request').toEqual([]);
+    });
+
+    test('a documentation page: the card, status and first paragraph; the window, contents and the whole text, its links drilling in', async ({ page }) => {
+        const log = await open(page, { settings: { sa_pop_mb: true }, showAll: false });
+        const a = await addLink(page, DOC, 'Style / Titles');
+        await ctrlHover(page, a);
+        await expect(card(page)).toContainText('fetched now');
+        await expect(card(page).locator('.mb-tt-title')).toHaveText('Style / Titles');
+        await expect(card(page).locator('.mb-tt-pill')).toHaveText(['official style guideline']);
+        await expect(card(page).locator('.mb-tt-body').last()).toHaveText('When entering a new release into MusicBrainz, all titles should be normalized according to the following guidelines.');
+        await expect(card(page).locator('.mb-tt-dim')).toHaveText('9 sections');
+        await page.keyboard.press('Space');
+        const dlg = dialog(page);
+        await expect(title(page)).toHaveText('Documentation');
+        await expect(dlg.locator('a', { hasText: 'On the wiki' })).toHaveAttribute('href', 'https://wiki.musicbrainz.org/Style/Titles');
+        const toc = dlg.locator('ul.mb-pop-doc-toc > li');
+        await expect(toc).toHaveCount(11);
+        await expect(toc.first()).toHaveText('Capitalization');
+        await expect(toc.nth(8)).toHaveText('OC ReMix series');
+        await expect(toc.nth(8)).toHaveClass('mb-pop-doc-toc2');
+        const text = dlg.locator('.mb-pop-doc');
+        // The headings as lines of their own, the status box and contents not repeated.
+        await expect(text.locator('.mb-pop-doc-h2').first()).toHaveText('Capitalization');
+        await expect(text.locator('.mb-pop-doc-h2')).toHaveCount(9);
+        await expect(text).not.toContainText('Status:');
+        await expect(text, 'the contents only on the left').not.toContainText('1 Capitalization');
+        await expect(text.locator('h1, h2, h3, h4, script, form, input, table.tbl')).toHaveCount(0);
+        await expect(text.locator('img'), 'the wiki\'s images are dropped').toHaveCount(0);
+        // A link to another documentation page opens it in the window (its
+        // anchor is not part of what is asked).
+        const link = text.locator('a[href^="/doc/"]').first();
+        await expect(link).toHaveAttribute('href', '/doc/Style#Language-specific_guidelines');
+        await link.click();
+        await expect(title(page)).toHaveText('Documentation › Documentation');
+        await expect.poll(() => log.html.filter(u => u.includes('/doc/'))).toEqual([`https://musicbrainz.org${DOC}`, 'https://musicbrainz.org/doc/Style']);
+    });
+
+    test('a documentation search: one request to the wiki\'s search API; the card counts, the window lists every hit and opens a page', async ({ page }) => {
+        await answerWiki(page);
+        const log = await open(page, {
+            settings: { sa_pop_mb: true }, showAll: false,
+            pageFixture: (url) => (/\/doc\//.test(url) ? 'doc-style-titles.html' : null),
+        });
+        const a = await addLink(page, SEARCH, 'release group');
+        await ctrlHover(page, a);
+        await expect(card(page)).toContainText('fetched now');
+        await expect(card(page).locator('.mb-tt-title')).toHaveText('release group');
+        await expect(card(page).locator('.mb-tt-pill')).toHaveText(['19 pages']);
+        await expect(card(page).locator('ol.mb-pop-tracks li')).toHaveCount(6);
+        await expect(card(page).locator('ol.mb-pop-tracks li').nth(1)).toContainText('Release Group');
+        const asked = await page.evaluate(() => window.__gmXhrLog.filter(x => x.url.startsWith('https://wiki.musicbrainz.org/')));
+        expect(asked.map(x => x.url), 'one request, the API').toEqual([API]);
+        expect(asked[0].anonymous, 'anonymous, as every request to another site').toBe(true);
+        await page.keyboard.press('Space');
+        const dlg = dialog(page);
+        await expect(title(page)).toHaveText('Documentation search');
+        const tbl = dlg.locator('[data-mb-tbl="docsearch"]');
+        const rows = tbl.locator('tbody tr');
+        await expect(tbl.locator('thead th')).toHaveText([/^Page/, /^Snippet/, /^Updated/]);
+        await expect(rows).toHaveCount(19);
+        await expect(rows.nth(3).locator('a')).toHaveAttribute('href', '/doc/Style/Release_Group');
+        await expect(rows.nth(1).locator('td').nth(2)).toHaveText('2023-03-10');
+        // The snippet is text, the query marked in it.
+        await expect(rows.nth(1).locator('td').nth(1).locator('span.searchmatch')).toHaveCount(0);
+        await expect(rows.nth(1).locator('td').nth(1)).not.toContainText('searchmatch');
+        await expect(rows.nth(1).locator('td').nth(1).locator('mark.mb-dg-hl').first()).toBeVisible();
+        const q = tbl.locator('input.mb-tbl-q');
+        await q.fill('edit');
+        await expect(q).toBeFocused();
+        await expect(rows.first().locator('a')).toContainText('Edit');
+        await tbl.getByRole('button', { name: 'Clear filters' }).click();
+        // The window used the card's record: still one request, past the
+        // host's 1 s spacing (a second one could not have been sent sooner).
+        await page.evaluate(() => new Promise(r => setTimeout(r, 1500)));
+        expect(await page.evaluate(() => window.__gmXhrLog.filter(x => x.url.startsWith('https://wiki.musicbrainz.org/')).length)).toBe(1);
+        await rows.nth(3).locator('a').click();
+        await expect(title(page)).toHaveText('Documentation search › Documentation');
+        expect(log.html.filter(u => u.includes('/doc/'))).toEqual(['https://musicbrainz.org/doc/Style/Release_Group']);
+    });
+
+    test('what is not previewed: the list of CD stubs, another kind of search, a search without a query', async ({ page }) => {
+        await open(page, { settings: { sa_pop_mb: true }, showAll: false });
+        for (const href of ['/cdstub/browse', '/search?query=release%20group&type=artist', '/search?query=&type=doc']) {
+            const a = await addLink(page, href, href);
+            await ctrlHover(page, a);
+            await page.evaluate(() => new Promise(r => setTimeout(r, 400)));
+            await expect(card(page), href).toBeHidden();
+        }
+        expect(await page.evaluate(() => (window.__gmXhrLog || []).filter(x => x.url.includes('wiki.musicbrainz.org')).length)).toBe(0);
     });
 });

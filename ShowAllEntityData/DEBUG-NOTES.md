@@ -26541,3 +26541,37 @@ The same class as the Live page flake earlier today (a fixture @importing
 CSS from cloudfront): a "fixture" test whose outcome depends on a host no
 route answers. Other specs that wait for markup MusicBrainz's scripts add
 would show it the same way; `PLAYWRIGHT_BLOCK_CDN=1 npm test` is the probe.
+
+## 2026-10-27 — Phase 3f: CD stub and documentation readers; the hover-in-window specs on 3e's tracklist
+
+Env: 2026-10-27T22:05+01:00 → 22:44+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) · Playwright 1.62.1 Chromium · no Tampermonkey (GM stubs); the probe: n/a
+
+Probe first (`scripts/probe-mb-docs-cdstub.py`): a CD stub's page has
+everything in text (`.blankheader h1` "Blues In Orbit (mfsl-cd-sacd)", the
+comment part of the title's text, no `.comment`); a documentation page nests
+`<html><head></head><body>` inside a `div` around `.mw-parser-output` (a DOM
+parser drops those tags, so the query still finds it), wraps every heading
+in `div.mw-heading mw-headingN`, and opens its first `<p>` without closing
+it before `#toc` (the parser closes it). The site's documentation search
+holds no results (Google custom search); the wiki's search API answers JSON.
+
+Two test assumptions of mine were wrong, the code right: the documentation
+card counts 9 sections, not 10 (the TOC's eleven entries include a level-2
+and a level-3 one), and "Blues in Blueprint" sorts before "Blues In Orbit".
+A drill on `/doc/Style#Language-specific_guidelines` asked `/doc/Style`
+(no anchor), which an `endsWith(href)` assertion could not see; its debug
+message was built before the poll, so it showed the log as it was then.
+
+Mutation run (`scripts/mutations/mb-window-3f.json`, 10 entries): 9 fail as
+they should; "the window asks the wiki again" survives by design. Without
+`_mbLoad()`'s memory guard the window's call reads the card's record from
+IndexedDB and still asks nothing. First the count assertion had also come too
+early (before the host's 1 s gate could release a second request); a 1.5 s
+settle fixed that, and the survival is the IndexedDB layer, not the race.
+
+Found on the way, not 3f's: the seven "hovering inside the window" specs
+(popup-mb.spec.js, org/dp-window-hover.org) still waited for
+`.mb-pop-tracks li` in the release WINDOW, which 3e (b9d9c29d, committed
+without a suite run) turned into `table.mb-pop-medtable`; all seven failed.
+Retargeted to `table.mb-pop-medtable tbody tr`, 7/7. The card keeps
+`.mb-pop-tracks`, so no other spec was affected.
