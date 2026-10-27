@@ -241,7 +241,11 @@ test.describe('entity-history presets (window ▾ and the SAED menu)', () => {
         const log = await open(page, { loggedIn: true });
         await pinLink(page, `/recording/${REC}`, 'She’s a Runaway');
         await histMore(page).click();
-        await expect.poll(async () => (await presetRows(pop(page)))['j2-novote']?.enabled).toBe(true);
+        // The row waits for TWO pages (the recording's /edits, then the
+        // editor's own), both behind the window's Web Service requests in
+        // the 1.1 s gate: 4.7–5.2 s after the click on NB-3641 (2026-10-27,
+        // 20 runs), so the poll's 5 s default failed about one run in three.
+        await expect.poll(async () => (await presetRows(pop(page)))['j2-novote']?.enabled, { timeout: 15000 }).toBe(true);
         expect(log.html).toContain('/user/vzell/edits');
         await pop(page).locator('button[data-mb-hist="j2-novote"]').click();
         const q = query(await nthSearch(log, 1));

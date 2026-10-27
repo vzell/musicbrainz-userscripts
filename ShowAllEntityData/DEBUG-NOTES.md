@@ -26575,3 +26575,26 @@ Found on the way, not 3f's: the seven "hovering inside the window" specs
 without a suite run) turned into `table.mb-pop-medtable`; all seven failed.
 Retargeted to `table.mb-pop-medtable tbody tr`, 7/7. The card keeps
 `.mb-pop-tracks`, so no other spec was affected.
+
+## 2026-10-27 — Full suite on mb-window-lists (3a–3f): 2,387/2,388; the NOVOTE preset test sat on its poll's 5 s default
+
+Env: 2026-10-27T23:00:34+01:00 → 23:22:56+01:00 (suite), fix until 23:40+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) · Playwright 1.62.1 Chromium · no Tampermonkey (GM stubs)
+
+`npm run test:full` on `mb-window-lists` at 5d7cc4b9: 2,388 tests, 2,387
+passed, wall 22 m 22 s. The one failure:
+`popup-mb-hist-presets.spec.js:240` "NOVOTE …" (the "Edits I have not voted
+on" row never enabled within 5 s). Not a regression of this branch:
+`--repeat-each=20` failed 6/20 on the branch AND 6/20 on `main` (c716ff11,
+a scratch worktree).
+
+Cause, measured (a temporary patch printing the time from the ▾ click to
+the row enabling, 20 runs): 4.7–5.2 s every time. The row needs two pages,
+the recording's `/edits` (the search's base) and then `/user/vzell/edits`
+(the editor id), and both queue in the 1.1 s MusicBrainz gate behind the
+window's own Web Service requests. So the test was not racing load so much
+as always sitting on `expect.poll`'s 5 s default; any slower run failed.
+The code works as designed (one page a second).
+
+Fix (test only): that poll gets `timeout: 15000`, with the measurement in a
+comment. 40/40 at `--workers=14`; the file 6/6. The file's other polls wait
+for one page only and passed in every run here.
