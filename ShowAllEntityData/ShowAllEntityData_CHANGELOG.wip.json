@@ -1,5 +1,17 @@
 [
     {
+        "version": "WIP.2",
+        "date": "2026-10-28",
+        "sections": [
+            {
+                "label": "🚀 Feature",
+                "items": [
+                    "YouTube in place on MusicBrainz (WIP.1's tile): a \"Play here\" tile under a YouTube link in the URLs table of a Relationships render (it plays in a row under the row), a small one under the sidebar's \"Play on YouTube\" (it plays under it, as wide as the sidebar), and one after every YouTube link of the page's annotation and of an Annotation column (reports, annotation search results). A link inside an annotation heading gets its tile after the heading, so the heading reads as before. The YouTube link's window (Space) shows the tile under its title, in place of the thumbnail, and plays in the window; a video YouTube no longer has is shown as unavailable there at once, and asks nothing when clicked. Filtering for the link, sorting and the 📊 values are as before: the tile's words are none of them. With 'Play YouTube videos in place' off nothing changes on any page."
+                ]
+            }
+        ]
+    },
+    {
         "version": "WIP.1",
         "date": "2026-10-28",
         "sections": [

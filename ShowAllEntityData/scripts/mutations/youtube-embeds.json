@@ -89,5 +89,83 @@
         "spec": "tests/fixtures/youtube-embeds.spec.js",
         "grep": "decision 6",
         "expect": "fail"
+    },
+    {
+        "name": "the URLs table's converter adds no tile",
+        "why": "Step 2: the tile is built with the URL cell in _eventRelColumns(); the spec asserts it under the link.",
+        "edits": [
+            {
+                "find": "            const tile = ytTile(r);\n            if (tile) {",
+                "replace": "            const tile = ytTile(r);\n            if (false) {"
+            }
+        ],
+        "spec": "tests/fixtures/youtube-embeds.spec.js",
+        "grep": "the URLs sub-table: a tile under the link",
+        "expect": "fail"
+    },
+    {
+        "name": "the tile's words reach the filters",
+        "why": "Without .mb-yt-tile in _CLEAN_STRIP_SEL a global filter for 'Play here' matches every row with a tile.",
+        "edits": [
+            {
+                "find": "        '.mb-yt-tile,' +\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/youtube-embeds.spec.js",
+        "grep": "the tile is out of every filter",
+        "expect": "fail"
+    },
+    {
+        "name": "the MusicBrainz page pass never runs",
+        "why": "The sidebar's tile and the annotation's come from _ytDecorateMbPage() at init.",
+        "edits": [
+            {
+                "find": "    // annotation's (org/youtube.org, decision 2; sa_yt_play_in_place).\n    _ytDecorateMbPage();",
+                "replace": "    // annotation's (org/youtube.org, decision 2; sa_yt_play_in_place)."
+            }
+        ],
+        "spec": "tests/fixtures/youtube-embeds.spec.js",
+        "grep": "the sidebar: a small tile",
+        "expect": "fail"
+    },
+    {
+        "name": "a heading's link gets its tile inside the heading",
+        "why": "The heading's own text (read by the collapsible headings) must not gain the tile's; the spec asserts the tile right after the h2 and the h2's text unchanged.",
+        "edits": [
+            {
+                "find": "            const at = head && root.contains(head) ? head : a;",
+                "replace": "            const at = a;"
+            }
+        ],
+        "spec": "tests/fixtures/youtube-embeds.spec.js",
+        "grep": "the annotation: a tile after the heading",
+        "expect": "fail"
+    },
+    {
+        "name": "the YouTube window has no tile",
+        "why": "The link's window gets the same tile, playing in the window.",
+        "edits": [
+            {
+                "find": "        if (!dpCols && t.reader.id === 'youtube') _ytWindowTile(t, rec, left);",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/youtube-embeds.spec.js",
+        "grep": "the window \\(Space\\)",
+        "expect": "fail"
+    },
+    {
+        "name": "a window repaint replaces a playing player",
+        "why": "Without _ytAreaRepaint() the window's repaint rebuilds its HTML and the video ends; the spec marks the frame and expects the same frame after the repaint.",
+        "edits": [
+            {
+                "find": "        if (!_ytAreaRepaint(area, html)) area.innerHTML = html;",
+                "replace": "        area.innerHTML = html;"
+            }
+        ],
+        "spec": "tests/fixtures/youtube-embeds.spec.js",
+        "grep": "the window \\(Space\\)",
+        "expect": "fail"
     }
 ]

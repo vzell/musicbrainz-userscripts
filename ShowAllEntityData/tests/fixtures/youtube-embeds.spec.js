@@ -340,3 +340,239 @@ test.describe('YouTube in place — Step 1: the shared tile and player', () => {
         expect(log.player.length, 'only the first click reached the player').toBe(1);
     });
 });
+
+// ---------------------------------------------------------------------------
+// Step 2 — MusicBrainz (decision 2): the Relationships URLs sub-table, the
+// sidebar's "Play on YouTube", the annotation, the YouTube link's window.
+//
+// Host page: tests/fixtures/recording-youtube.html — recording
+// 3e8d2331-3734-4f4b-b865-3313b7bf4303 ("I'll See You in My Dreams"), captured
+// logged out by tests/support/capture-raw-page.js on 2026-10-28: one URL
+// relationship and one sidebar link, both //www.youtube.com/watch?v=dJkaZ8hQM60.
+// ---------------------------------------------------------------------------
+
+const URL_REC = 'https://musicbrainz.org/recording/3e8d2331-3734-4f4b-b865-3313b7bf4303';
+const REC_FIXTURE = path.join(__dirname, 'recording-youtube.html');
+const REC_BUTTON = 'button[data-label="Show all Relationships for Recording"]';
+const REC_VIDEO = '//www.youtube.com/watch?v=dJkaZ8hQM60';
+const REC_OEMBED = `https://www.youtube.com/oembed?format=json&url=${encodeURIComponent('https://www.youtube.com/watch?v=dJkaZ8hQM60')}`;
+const { waitForRenderComplete } = require('../support/browser');
+
+/**
+ * Loads the recording page, YouTube hosts answered locally and counted, the
+ * Web Service's URL lookups answered 404 unless `ws2` holds them.
+ *
+ * @param {import('@playwright/test').Page} page
+ * @param {{settings?: Object, responses?: Object, ws2?: function(): Promise<void>, press?: boolean}} [opts]
+ * @returns {Promise<{player: string[], stills: string[], youtube: string[]}>}
+ */
+async function openRecording(page, { settings = {}, responses = {}, ws2 = null, press = true } = {}) {
+    const log = { player: [], stills: [], youtube: [] };
+    const ctx = page.context();
+    await ctx.route('https://www.youtube-nocookie.com/**', (route) => {
+        log.player.push(route.request().url());
+        return route.fulfill({ status: 200, contentType: 'text/html', body: '<!doctype html><title>player</title><p>player</p>' });
+    });
+    await ctx.route('https://i.ytimg.com/**', (route) => {
+        log.stills.push(route.request().url());
+        return route.fulfill({ status: 200, contentType: 'image/png', body: PNG });
+    });
+    await ctx.route(/^https:\/\/(?:www\.)?youtube\.com\//, (route) => {
+        log.youtube.push(route.request().url());
+        return route.fulfill({ status: 200, contentType: 'text/html', body: '<!doctype html><title>YouTube</title>' });
+    });
+    await ctx.route(/\/ws\/2\/url[/?]/, async (route) => {
+        if (ws2) await ws2();
+        return route.fulfill({ status: 404, contentType: 'application/json', body: '{"error":"Not Found"}' });
+    });
+    await ctx.route('https://static.metabrainz.org/**', (route) => route.abort('blockedbyclient'));
+    await ctx.addInitScript((r) => { window.__gmXhrResponses = r; }, responses);
+    await loadUserscriptPage(page, {
+        url: URL_REC, fixtureFile: REC_FIXTURE, testMode: true,
+        settingsOverride: { sa_yt_play_in_place: true, sa_yt_stills: false, sa_sidebar_open_all: true, sa_rich_tooltip_delay_ms: 0, ...settings },
+    });
+    await page.waitForFunction(() => !!window.__saTest);
+    if (press) {
+        await page.click(REC_BUTTON);
+        await waitForRenderComplete(page, { waitForAutoResize: false });
+        // The URLs sub-table may render collapsed: open it by its own h3.
+        await page.evaluate((u) => {
+            const a = document.querySelector(`table.tbl a[href="${u}"]`);
+            const t = a && a.closest('table.tbl');
+            if (!t || t.getClientRects().length) return;
+            let h = t.previousElementSibling;
+            while (h && !h.matches('h3.mb-toggle-h3')) h = h.previousElementSibling;
+            if (h) h.click();
+        }, REC_VIDEO);
+    }
+    return log;
+}
+
+const urlCell = (page) => page.locator(`table.tbl a[href="${REC_VIDEO}"]`).first().locator('xpath=ancestor::td[1]');
+
+test.describe('YouTube in place — Step 2: MusicBrainz', () => {
+    test('off (the fixture profile): no tile on the page, in the URLs table or the sidebar, no style', async ({ page }) => {
+        await openRecording(page, { settings: { sa_yt_play_in_place: false } });
+        await expect(urlCell(page)).toBeVisible();
+        await expect(page.locator('.mb-yt-tile')).toHaveCount(0);
+        await expect(page.locator('#mb-yt-style')).toHaveCount(0);
+    });
+
+    test('the sidebar: a small tile inside "Play on YouTube"\'s item, the link untouched; it plays under the tile', async ({ page }) => {
+        const log = await openRecording(page, { press: false });
+        const li = page.locator('#sidebar ul.external_links li').filter({ has: page.locator(`a[href="${REC_VIDEO}"]`) });
+        await expect(li.locator('.mb-yt-tile.mb-yt-small')).toHaveCount(1);
+        await expect(li.locator(':scope > a').first(), 'the link is neither moved nor rebuilt').toHaveAttribute('href', REC_VIDEO);
+        await expect(li.locator('.mb-yt-tile')).toContainText('▶ Play');
+        expect(log.player).toEqual([]);
+        await li.locator('.mb-yt-tile').scrollIntoViewIfNeeded();
+        await li.locator('.mb-yt-tile').click();
+        await expect(li.locator('.mb-yt-under iframe.mb-yt-frame')).toHaveAttribute('src', 'https://www.youtube-nocookie.com/embed/dJkaZ8hQM60?autoplay=1');
+        // Column width: never wider than the sidebar.
+        const side = await page.locator('#sidebar').boundingBox();
+        const frame = await li.locator('iframe.mb-yt-frame').boundingBox();
+        expect(frame.width).toBeLessThanOrEqual(side.width + 0.5);
+        await expect.poll(() => log.player.length).toBe(1);
+    });
+
+    test('the URLs sub-table: a tile under the link, built with the cell; it plays in a row under the row', async ({ page }) => {
+        const log = await openRecording(page);
+        const cell = urlCell(page);
+        await expect(cell).toBeVisible();
+        await expect(cell.locator('.mb-yt-tile')).toHaveCount(1);
+        await expect(cell.locator('.mb-yt-tile')).toHaveAttribute('data-mb-yt', 'dJkaZ8hQM60');
+        // The tile follows the link (and its [info]); the link is unchanged.
+        expect(await cell.evaluate(td => td.lastElementChild.matches('.mb-yt-tile'))).toBe(true);
+        expect(log.player).toEqual([]);
+        await cell.locator('.mb-yt-tile').click();
+        const tr = cell.locator('xpath=ancestor::tr[1]');
+        const next = tr.locator('xpath=following-sibling::tr[1]');
+        await expect(next).toHaveClass('mb-yt-playerrow');
+        await expect(next.locator('iframe.mb-yt-frame')).toHaveAttribute('src', 'https://www.youtube-nocookie.com/embed/dJkaZ8hQM60?autoplay=1');
+        await expect.poll(() => log.player.length).toBe(1);
+    });
+
+    test('the tile is out of every filter; a re-render stops the player and the re-rendered tile plays again', async ({ page }) => {
+        await openRecording(page);
+        const cell = urlCell(page);
+        await expect(cell.locator('.mb-yt-tile')).toHaveCount(1);
+        const text = await page.evaluate((u) => {
+            const td = document.querySelector(`table.tbl a[href="${u}"]`).closest('td');
+            return { clean: td.innerText };
+        }, REC_VIDEO);
+        expect(text.clean, 'the tile is in the cell').toContain('Play here');
+        await cell.locator('.mb-yt-tile').click();
+        await expect(page.locator('tr.mb-yt-playerrow')).toHaveCount(1);
+
+        // A global filter for the tile's own words finds nothing: its text is
+        // stripped from every match (_CLEAN_STRIP_SEL).
+        const gf = page.locator('#mb-global-filter-wrapper input').first();
+        await gf.fill('Play here');
+        await expect.poll(() => page.locator(`table.tbl a[href="${REC_VIDEO}"]`).count()).toBe(0);
+        await expect(page.locator('tr.mb-yt-playerrow'), 'the re-render emptied the tbody, the player with it').toHaveCount(0);
+        expect(await page.evaluate(() => window.__saTest.ytPlaying())).toBeNull();
+
+        // A filter for the link itself brings the row back, its tile unmarked and playable.
+        await gf.fill('dJkaZ8hQM60');
+        await expect(urlCell(page).locator('.mb-yt-tile')).toBeVisible();
+        await expect(urlCell(page).locator('.mb-yt-tile')).toHaveAttribute('aria-pressed', 'false');
+        await urlCell(page).locator('.mb-yt-tile').click();
+        await expect(page.locator('tr.mb-yt-playerrow iframe.mb-yt-frame')).toHaveCount(1);
+    });
+
+    test('the window (Space): the tile in its left column plays in the window, and keeps playing through a repaint', async ({ page }) => {
+        let release;
+        const held = new Promise(r => { release = r; });
+        const log = await openRecording(page, {
+            settings: { sa_pop_ext: true, sa_pop_ext_favicons: false },
+            responses: {
+                [REC_OEMBED]: {
+                    status: 200, responseHeaders: 'Content-Type: application/json',
+                    responseText: JSON.stringify({
+                        type: 'video', title: "Bruce Springsteen - I'll See You In My Dreams (Lyric Video)", author_name: 'Bruce Springsteen',
+                        thumbnail_url: 'https://i.ytimg.com/vi/dJkaZ8hQM60/hqdefault.jpg',
+                    }),
+                },
+            },
+            ws2: () => held,
+        });
+        const link = page.locator(`table.tbl a[href="${REC_VIDEO}"]`).first();
+        await page.mouse.move(0, 0);
+        await link.scrollIntoViewIfNeeded();
+        await page.keyboard.down('Control');
+        await link.hover();
+        await page.keyboard.up('Control');
+        await expect(page.locator('#mb-dp-peek')).toContainText('I\'ll See You In My Dreams');
+        await page.keyboard.press('Space');
+        const d = page.locator('#mb-dp-dialog');
+        const wTile = d.locator('.mb-yt-win .mb-yt-tile');
+        await expect(wTile).toContainText('I\'ll See You In My Dreams (Lyric Video)');
+        await expect(d.locator('img.mb-dp-xcover'), 'the tile takes the thumbnail\'s place').toHaveCount(0);
+        await wTile.click();
+        const frame = d.locator('.mb-yt-under iframe.mb-yt-frame');
+        await expect(frame).toHaveAttribute('src', 'https://www.youtube-nocookie.com/embed/dJkaZ8hQM60?autoplay=1');
+        await frame.evaluate(f => { f.__ytMark = 1; });
+
+        // The window's "MusicBrainz knows this URL" answer arrives: a repaint.
+        release();
+        await expect(d).toContainText(/not in MusicBrainz|MusicBrainz/);
+        await expect.poll(() => d.locator('.mb-yt-under iframe.mb-yt-frame').evaluate(f => f.__ytMark || 0)).toBe(1);
+        await expect(d.locator('.mb-yt-win .mb-yt-tile')).toHaveAttribute('aria-pressed', 'true');
+        // The harness's Chromium has moveBefore() (151 on 2026-10-28), which
+        // keeps the frame playing; a browser without it reloads the frame.
+        expect(await page.evaluate(() => typeof Element.prototype.moveBefore)).toBe('function');
+        expect(log.player.length, 'moveBefore() kept the frame: no second request').toBe(1);
+
+        // Esc stops the player first; the window stays; the next Esc closes it.
+        await page.keyboard.press('Escape');
+        await expect(d.locator('.mb-yt-player')).toHaveCount(0);
+        await expect(d).toBeVisible();
+        await page.keyboard.press('Escape');
+        await expect(d).toBeHidden();
+    });
+
+    test('a video YouTube no longer has: the window\'s tile says so at once, and asks nothing', async ({ page }) => {
+        const log = await openRecording(page, {
+            settings: { sa_pop_ext: true, sa_pop_ext_favicons: false },
+            responses: { [REC_OEMBED]: { status: 404, responseHeaders: 'Content-Type: text/html', responseText: 'Not Found' } },
+        });
+        const link = page.locator(`table.tbl a[href="${REC_VIDEO}"]`).first();
+        await page.mouse.move(0, 0);
+        await link.scrollIntoViewIfNeeded();
+        await page.keyboard.down('Control');
+        await link.hover();
+        await page.keyboard.up('Control');
+        await expect(page.locator('#mb-dp-peek')).toContainText('YouTube does not show this video');
+        await page.keyboard.press('Space');
+        const wTile = page.locator('#mb-dp-dialog .mb-yt-win .mb-yt-tile');
+        await expect(wTile).toHaveClass(/mb-yt-dead/);
+        await expect(wTile).toContainText('Not available on YouTube any more');
+        await wTile.click();
+        await expect(page.locator('#mb-dp-dialog .mb-yt-pill')).toHaveText('Unavailable');
+        expect(log.player).toEqual([]);
+    });
+
+    test('the annotation: a tile after the heading that holds a YouTube link, the heading\'s text unchanged', async ({ page }) => {
+        await openPage(page, { sa_yt_stills: false });
+        const h2 = page.locator('.annotation-body h2').filter({ has: page.locator('a[href*="youtube.com/playlist"]') });
+        await expect(h2).toHaveText('YouTube Playlist');
+        const after = h2.locator('xpath=following-sibling::*[1]');
+        await expect(after).toHaveClass(/mb-yt-tile/);
+        await expect(after).toHaveAttribute('data-mb-yt', 'list:PLM0aPYPhFzkrHWh8uoXwAsxdDXyFEEELt');
+        await expect(after, 'the link\'s own words name the tile').toContainText('YouTube Playlist');
+        await expect(after).toContainText('Play the playlist here');
+    });
+
+    test('an Annotation cell (ytTiles): a tile after each YouTube link, idempotent', async ({ page }) => {
+        await openPage(page, { sa_yt_stills: false });
+        const r = await page.evaluate(() => {
+            const td = document.createElement('td');
+            td.innerHTML = '<p>See <a href="https://youtu.be/MLnTqKksftM">this video</a> and <a href="/artist/x">an artist</a>.</p>';
+            window.__saTest.ytTilesExtract(td);
+            window.__saTest.ytTilesExtract(td);
+            const tiles = td.querySelectorAll('.mb-yt-tile');
+            return { n: tiles.length, prev: tiles[0] && tiles[0].previousElementSibling.textContent, key: tiles[0] && tiles[0].dataset.mbYt };
+        });
+        expect(r).toEqual({ n: 1, prev: 'this video', key: 'MLnTqKksftM' });
+    });
+});

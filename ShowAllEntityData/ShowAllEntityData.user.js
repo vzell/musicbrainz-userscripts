@@ -8736,6 +8736,25 @@
             return [tdChars];
         },
 
+        /**
+         * ytTiles — a "Play here" tile after every YouTube link of an
+         * Annotation cell (org/youtube.org, decision 2), written into the
+         * source cell itself; no column of its own (`syntheticColumns: []`).
+         * List it AFTER `numberOfChars`: the extractors run in list order, and
+         * that one counts the cell's `textContent`, so it must count the
+         * annotation before a tile is in it. A page without the column
+         * resolves it to nothing, silently. The prose clamp later wraps the
+         * tile with the text, so a collapsed cell hides it with the rest.
+         * Nothing with `sa_yt_play_in_place` off.
+         *
+         * @param   {HTMLTableCellElement} sourceCell The Annotation <td> (mutated).
+         * @returns {HTMLTableCellElement[]}           Always empty.
+         */
+        ytTiles(sourceCell) {
+            _ytDecorateLinks(sourceCell);
+            return [];
+        },
+
         // ── extractMainColumn companion extractors ────────────────────────────
         //
         // Used on pages that resolve MB-Name/Comment/Primary alias via
@@ -28729,10 +28748,23 @@
             td.dataset.mbEntityType = type;
             return td;
         };
+        // A YouTube URL's "Play here" tile under its link, built with the cell
+        // (org/youtube.org): no later write, so no cache owes anything, and
+        // its text is out of every filter (`.mb-yt-tile` in _CLEAN_STRIP_SEL).
+        const ytTile = (r) => {
+            const v = r.type === 'url' && _ytOn() ? _ytParse(r.href) : null;
+            return v ? _ytTileNode(v) : null;
+        };
         const cells = rows.map((r, k) => {
             const row = [String(k + 1)];
             if (allUrls) row.push(host(r.href));
-            row.push(withType ? typedCell(mains[k].nodes, r.type) : _eventStripGlyphs(mains[k].nodes, glyphs[targetCol]));
+            const target = withType ? typedCell(mains[k].nodes, r.type) : _eventStripGlyphs(mains[k].nodes, glyphs[targetCol]);
+            const tile = ytTile(r);
+            if (tile) {
+                if (Array.isArray(target)) target.push(tile);
+                else target.appendChild(tile);
+            }
+            row.push(target);
             if (hasVideo) row.push(_eventVideoCell(mains[k].video));
             if (withType) row.push(typedCell(_EVENT_REL_TARGET_COLS[r.type] || 'Target', r.type));
             row.push(r.phrase);
@@ -37266,7 +37298,9 @@
                     { sourceColumn: 'Area', extractor: 'splitArea', syntheticColumns: ['MB-Locality', 'MB-Region', 'MB-Country'] },
                     { sourceColumn: 'Date', extractor: 'dateParts', syntheticColumns: ['DD', 'MM', 'YYYY', 'Day', 'Month'] },
                     { sourceColumn: 'Last edited', extractor: 'dateTimeParts', syntheticColumns: ['Last edited date', 'Last edited time'] },
-                    { sourceColumn: 'Annotation', extractor: 'numberOfChars', syntheticColumns: ['Annotation chars'] }
+                    { sourceColumn: 'Annotation', extractor: 'numberOfChars', syntheticColumns: ['Annotation chars'] },
+                    // After numberOfChars, which counts the cell before a tile is in it.
+                    { sourceColumn: 'Annotation', extractor: 'ytTiles', syntheticColumns: [] }
                 ],
                 // Splits the "MB-Name" / "Comment" / "Primary alias" synthetic
                 // columns off whichever of these headers is actually present on a
@@ -38733,6 +38767,8 @@
                     stickyColumn: 'Name'
                 },
                 'Annotations': {
+                    // A "Play here" tile after each YouTube link (org/youtube.org).
+                    columnExtractors: [ { sourceColumn: 'Annotation', extractor: 'ytTiles', syntheticColumns: [] } ],
                     collapsableColumns: [ 'Annotation' ],
                     // 'Annotation' gets its own renderer (_artTooltipAnnotation):
                     // the full, uncollapsed cell markup in a wider card.
@@ -61032,6 +61068,93 @@
     }
 
     /**
+     * `_ytTileHtml()` as a node, for code that builds cells and blocks from
+     * nodes (`_eventRelColumns()`, `_ytDecorateLinks()`).
+     *
+     * @param {{kind: string, id: string, list: string}} v
+     * @param {Object} [opts] - As `_ytTileHtml()`'s.
+     * @returns {?HTMLButtonElement} Null with `sa_yt_play_in_place` off.
+     */
+    function _ytTileNode(v, opts) {
+        const html = _ytTileHtml(v, opts);
+        if (!html) return null;
+        const t = document.createElement('template');
+        t.innerHTML = html;
+        return t.content.firstElementChild;
+    }
+
+    /**
+     * A tile after every YouTube link under `root` (an annotation, the
+     * sidebar's external links, an Annotation cell): right after the link,
+     * or after its heading when the link is a heading's (an annotation's
+     * "YouTube Playlist" h2), so a heading's own text — which the collapsible
+     * headings read — never gains the tile's. A link's own words name the
+     * tile unless they are the address itself. Idempotent: a link whose tile
+     * is already there gets no second one (a second pass, a disk load).
+     *
+     * @param {?Element} root
+     * @param {{small?: boolean}} [opts]
+     * @returns {number} How many tiles were added.
+     */
+    function _ytDecorateLinks(root, opts = {}) {
+        if (!root || !_ytOn()) return 0;
+        let n = 0;
+        root.querySelectorAll('a[href]').forEach(a => {
+            if (a.closest('.mb-yt-tile, .mb-yt-player')) return;
+            const v = _ytParse(a.getAttribute('href'));
+            if (!v) return;
+            const head = a.closest('h1, h2, h3, h4, h5, h6');
+            const at = head && root.contains(head) ? head : a;
+            const next = at.nextElementSibling;
+            if (next && next.matches('.mb-yt-tile') && next.dataset.mbYt === _ytKey(v)) return;
+            const words = a.textContent.trim();
+            const address = /^(?:https?:)?\/\/|^(?:www\.|m\.)?(?:youtu\.be|youtube\.com)\//i.test(words);
+            const tile = _ytTileNode(v, { title: address ? '' : words, small: opts.small });
+            if (!tile) return;
+            at.after(tile);
+            n++;
+        });
+        return n;
+    }
+
+    /**
+     * MusicBrainz's own page (decision 2): a small tile under the sidebar's
+     * YouTube links ("Play on YouTube"; inside its `li`, the link neither
+     * moved nor rebuilt — docs/claude/sidebar.md), and a tile after every
+     * YouTube link of the page's annotation. Both are on the initial page
+     * already, so this runs once at init; the Relationships URLs table gets
+     * its tiles from its converter (`_eventRelColumns()`).
+     *
+     * @returns {void}
+     */
+    function _ytDecorateMbPage() {
+        if (_foreignHost || !_ytOn()) return;
+        document.querySelectorAll('#sidebar ul.external_links').forEach(ul => _ytDecorateLinks(ul, { small: true }));
+        document.querySelectorAll('#content .annotation-body').forEach(body => _ytDecorateLinks(body));
+    }
+
+    /**
+     * A YouTube link's window (the `youtube` reader): the tile in its left
+     * column, under the title, in place of the oEmbed thumbnail it would
+     * repeat; it plays in the window. A video the reader found gone is drawn
+     * as Unavailable at once (the mockup's "Audience video").
+     *
+     * @param {object} t - The window's target.
+     * @param {Object} rec - The reader's record.
+     * @param {string[]} left - The left column's HTML parts (mutated).
+     * @returns {void}
+     */
+    function _ytWindowTile(t, rec, left) {
+        const v = _ytParse(t.url);
+        const html = v ? _ytTileHtml(v, { title: rec.title || '', dead: rec.state === 'dead' }) : '';
+        if (!html) return;
+        const cover = left.findIndex(p => p.includes('class="mb-dp-xcover"'));
+        if (cover >= 0) left.splice(cover, 1);
+        const sub = left.findIndex(p => p.includes('class="mb-dp-xsub"'));
+        left.splice(sub >= 0 ? sub + 1 : 1, 0, `<div class="mb-yt-win">${html}</div>`);
+    }
+
+    /**
      * What a tile plays, read back from its attributes (a clone has them all).
      *
      * @param {Element} tile
@@ -66488,6 +66611,8 @@
         // site's own two columns, the link's facts added to the right one.
         const dpCols = rec.state === 'ok' && rec.dp ? _dpExtractedCols(rec.dp) : null;
         const left = dpCols ? dpCols.left : _extLeftCol(t, rec);
+        // A YouTube link's window plays it in the window (org/youtube.org).
+        if (!dpCols && t.reader.id === 'youtube') _ytWindowTile(t, rec, left);
         const link = (u, text) => `<a href="${_rgEsc(u)}" target="_blank" rel="noopener noreferrer">${_rgEsc(text)}</a>`;
         const right = ['<h4>Link</h4>' + _extSiteHtml(t, _extPillHtml(rec)) + `<div class="mb-ext-url">${link(t.url, t.href)}</div>` +
             (rec.moved ? `<div class="mb-ext-url">→ ${link(rec.finalUrl, rec.finalUrl)}</div>` : '') +
@@ -81308,6 +81433,10 @@ a { color: #1565c0; }`;
     // The sidebar picture's hover card and viewer (docs/claude/sidebar.md).
     // MusicBrainz adds the picture after load, so this only starts watching.
     _sbInitPicture();
+
+    // "Play here" tiles under the sidebar's YouTube links and after the
+    // annotation's (org/youtube.org, decision 2; sa_yt_play_in_place).
+    _ytDecorateMbPage();
 
     // The sidebar's collapse handle on the initial page, sidebar open
     // (org/initial-page-footprint.org); the render tails collapse it.
@@ -152581,6 +152710,14 @@ a { color: #1565c0; }`;
                 const v = _ytParse(href);
                 return v ? _ytTileHtml(v, opts) : '';
             },
+            /**
+             * The Annotation column's extractor (`ColumnDataExtractor.ytTiles()`,
+             * the shipping one), for a cell no fixture page carries.
+             *
+             * @param {HTMLTableCellElement} td
+             * @returns {HTMLTableCellElement[]}
+             */
+            ytTilesExtract: (td) => ColumnDataExtractor.ytTiles(td),
             /**
              * The key of the video that plays (`_ytCur()`), or null.
              *
