@@ -26688,3 +26688,12 @@ Lesson for the next foreign page: before parsing a saved page, check
 whether its markup is the server's (view-source, or a page script that
 mounts into the element) — a saved copy is the FRP unless proven
 otherwise.
+
+## 2026-10-28 — Full suite on mb-window-lists (Phase 3a–3f, Phase 4): 2,399/2,399
+
+Env: 2026-10-28T01:09:35+01:00 → 01:32:32+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) · Playwright 1.62.1 Chromium · no Tampermonkey (GM stubs)
+
+`python3 scripts/run-test-full.py` on `mb-window-lists` at 7f565497: 2,399
+tests, all passed, none flaky, wall 22 m 57 s. vzell checked Phase 3a–3f
+and Phase 4 (after the /images/data fix) live before the run. The branch
+is ready for the merge decision; nothing merged.
