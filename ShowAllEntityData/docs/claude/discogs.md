@@ -51,7 +51,7 @@ the sentence said "seven" and "three" from 2026-10-18 until then, though
 | pageType     | Page                     | Button(s)                                                         | Table                                                                                                                       |
 |--------------|--------------------------|-------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------|
 | `dg-master`  | `/master/<id>`           | Show all versions                                                 | single: Image, Title (★ main release), Format, Label, Cat#, Country, Year                                                   |
-| `dg-release` | `/release/<id>`          | Show tracklist, credits and other versions                        | multi: Tracklist, Credits, Companies, etc., Barcode and Other Identifiers, Other versions (the release itself left out)     |
+| `dg-release` | `/release/<id>`          | Show tracklist, credits and other versions                        | multi: Tracklist, Credits, Companies, etc., Barcode and Other Identifiers, Videos (when it has any), Other versions (the release itself left out) |
 | `dg-artist`  | `/artist/<id>`           | Show the whole discography                                        | multi: one sub-table per Discogs role run (Releases, Credits: Producer, …, Appearances, Track appearances, Unofficial)       |
 | `dg-label`   | `/label/<id>`            | Newest: 500 · 1,000 · 5,000 — Oldest: 500 · 1,000 — Then: All     | single: Image, Artist, Title, Format, Cat#, Year                                                                            |
 | `dg-submissions` | `/submissions?…`     | Show all submissions                                              | single: Artist, Title, Changed by, Changed, Matched artist, History (rows from the FLAT view's pages, not the API)            |
@@ -728,6 +728,26 @@ search (`_extDgNamePathUrl()`), the search reader's, as our table's own cell
 - ~~The viewer shows the lists' 150 px thumbnails, not full-size images.~~
   Full size since 2026-10-18 (above).
 - The label's "All" button cannot show the total before a request.
+
+## Videos and "Play here" (org/youtube.org, 2026-10-28)
+
+Decision 3, all three places, every one from the API answer already read:
+- the release window's Videos section and, since record version 5
+  (`_EXT_DISCOGS_VERSION`), the master window's — `_extDiscogsLoad()` reads
+  `videos` for both kinds now: `_extDgVideosHtml()`, a small tile per
+  YouTube video and the player in a slot ABOVE the list
+  (`[data-mb-yt-slots]` › `.mb-yt-slot`), so the list does not move. With
+  `sa_yt_play_in_place` off the section's markup is what it always was;
+- the release page's "Videos" sub-table after Barcode and Other Identifiers
+  (`_dgVideosTableHtml()`, `_DG_HEADERS.release.Videos`: Play, Title,
+  Length, URL), only when the release has videos, and without Play when the
+  setting is off. Page 1 only, no request of its own.
+
+The frame policy (decision 6) is the one open point: discogs.com's real
+`frame-src` was behind Cloudflare's check for the probe. The fallback
+(`_ytOnPolicy()`: a new tab, every tile saying so) works either way; read
+the document's response headers in a real browser and record them in
+org/youtube.org. Full design: docs/claude/detail-pages.md, "YouTube in place".
 
 ## Tests
 

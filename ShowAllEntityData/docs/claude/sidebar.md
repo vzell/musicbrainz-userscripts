@@ -85,6 +85,13 @@ Zero shows nothing (Rating).
   not an external site: it stays last, ungrouped and uncounted.
 - The site → kind map is `_SB_LINK_KINDS`; a new MusicBrainz favicon falls to
   "Other" until it is added there.
+- **A YouTube video's "Play here" tile** (org/youtube.org, decision 2): a
+  small tile appended INSIDE the link's `li`, after the link
+  (`_ytDecorateMbPage()` at init, idempotent), the player under it, as wide
+  as the sidebar. The link is neither moved nor rebuilt; the tile adds no
+  `li`, so the counts are as they were; "Sidebar as tables" and the Sidebar
+  cards copy only the `<a>` (`_sbCollectGroups()`), so no tile reaches them.
+  docs/claude/detail-pages.md, "YouTube in place".
 
 **Other scripts.** Nothing of theirs is read, moved or hidden. Their h2s get
 the same toggle as MusicBrainz's own, as they always did. The mockup's

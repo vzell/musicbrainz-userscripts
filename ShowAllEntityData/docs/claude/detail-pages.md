@@ -766,7 +766,10 @@ run of the page's own code. The copy:
   elements and their text stay;
 - shows every `<iframe>` as a link ("▶ Watch on YouTube" for a YouTube
   embed): a player cannot start without scripts, and YouTube's fallback image
-  then 404'd;
+  then 404'd. The link is `_ytWatchUrl(_ytParse(src))`, so a PLAYLIST player
+  (`embed/videoseries?list=…`, Brucebase's Media tab and 4th of July song
+  page) links `playlist?list=…`; until org/youtube.org Step 4 the old
+  `/embed\/([\w-]+)/` built `watch?v=videoseries`;
 - has no `<meta http-equiv="refresh">`;
 - has no `<link rel="preload|modulepreload|prefetch|preconnect|dns-prefetch">`
   (2026-10-08): with the scripts gone they only downloaded what nothing used,
@@ -1727,6 +1730,8 @@ generalize to URLs".
     unless the status is 404 or 410. `noLive`: the window hides its Live page
     button (`_dpRenderDialog()` forces Extracted for a `noLive` target).
     `www.youtube.com` is in `_EXT_CONNECT_HOSTS` and the header's `@connect`.
+    Its window also carries the "Play here" tile (`_ytWindowTile()`): section
+    "YouTube in place" below.
   - **Wikipedia, Wikidata, Discogs** (U3): section "Readers of known sites"
     below.
   - **Generic (`_extGenericLoad()`)**: the page itself, `_extRecord()`.
@@ -1880,6 +1885,92 @@ Two halves, one request and one cache key between them:
 `url-schedule`, `url-sl-bootlegs`); `openEvent()` answers `/ws/2/url`
 lookups from them, else 404, and logs each with its time. Mutations: the
 `U2:` entries of `scripts/mutations/popup-ext.json`.
+
+## YouTube in place (org/youtube.org, 2026-10-28)
+
+A YouTube link keeps its card and window (the `youtube` reader above); beside
+it a **tile** plays the video where it is listed, in YouTube's
+privacy-enhanced player. Plan and vzell's six decisions: `org/youtube.org`;
+approved mockup: `org/youtube-embeds-mockups.html`
+(https://claude.ai/artifact/GCrnEVLNyDN6gRG259LbUE). Settings (🔎 EXTERNAL
+LINK PREVIEWS): `sa_yt_play_in_place` (off: no tile, no style, no listener —
+`_ytTileHtml()` itself returns `''`) and `sa_yt_stills`; both default on and
+both forced OFF in `FIXTURE_SETTINGS_OVERRIDE`.
+
+**The shared part** (grep `// --- YouTube in place`):
+- `_ytParse(href)` → `{kind: 'video'|'short'|'playlist', id, list}`: the
+  reader's shapes plus `embed/<id>`, `embed/videoseries?list=` (a playlist,
+  never a video named "videoseries") and youtube-nocookie.com; absolute or
+  protocol-relative links only (a relative link is the page's own).
+- `_ytTileHtml(v, {title, dur, small, bare, dead})`: a `<button>` (Enter and
+  Space play it natively) with `data-mb-yt*` attributes — everything the
+  player needs survives `cloneNode(true)`. The still is
+  `i.ytimg.com/vi/<id>/mqdefault.jpg`, `loading="lazy"`, no referrer, only
+  with `sa_yt_stills`; a playlist is always a plain frame with "≡ list" (no
+  oEmbed request for a picture: decision 1).
+- **ONE delegated handler** (`_ytInit()`, installed by the first tile):
+  click (capture, on the document), Esc (capture, on the WINDOW, so before
+  the card's, the window's and a filter's own Esc; `stopImmediatePropagation`
+  only when it stopped a player; the artwork viewer keeps every key while
+  open), and `securitypolicyviolation`.
+- `_ytPlay(tile)`: one player at a time (decision 4); the playing tile clicked
+  again stops. Where it opens: in a `tr` of a tbody, a full-width
+  `tr.mb-yt-playerrow > td[colspan=999]` (the cdtoc tracklist row's idiom);
+  in a `[data-mb-yt-slots]` box, its `.mb-yt-slot` (above a list); else a
+  `div.mb-yt-under` right after the tile. The frame: `allow="autoplay;
+  encrypted-media; picture-in-picture; fullscreen"`, `allowfullscreen`,
+  `referrerpolicy="strict-origin-when-cross-origin"`, NO `sandbox` (the
+  player needs scripts), `min(100%, 640px)` wide, `aspect-ratio: 16/9`
+  (decision 5). A tile marked `dead` gets the mockup's sentence instead of a
+  frame: no request.
+- **The player row is never in `allRows`**: a re-render empties the tbody,
+  which removes it; `_ytObserve()` (a MutationObserver on the table, the box
+  or the parent, plus `<body>`'s children for a closing window) then clears
+  the state via `_ytStop()`, which unmarks EVERY `.mb-yt-playing` tile — a
+  single table's live rows are its source rows, so a re-render clones the
+  mark. `_ytCur()` self-heals the same way when nothing observed it.
+- **A window repaint keeps the player** (`_ytAreaRepaint()`, called first
+  by `_dpAreaRepaint()`): the new content goes in before the old leaves, the
+  player is moved into the new tile's place with `moveBefore()` — which keeps
+  a frame playing (Chromium 133+; the harness's 151 has it) — or
+  `insertBefore()` (the frame restarts), then the old content goes. Needed
+  because the window repaints on every answer (a Discogs master's version
+  pages, the URL lookup).
+- **Decision 6**, the frame policy: `_ytOnPolicy()` takes a
+  `securitypolicyviolation` whose `blockedURI` is youtube-nocookie.com,
+  removes the player, opens `watch?v=` in a new tab, sets `_yt.blocked`
+  (every later click opens the tab) and rewrites every tile's second line to
+  "Opens on YouTube (new tab)". Probe (`scripts/probe-youtube-frame-src.py`):
+  musicbrainz.org and brucebase.wikidot.com send no CSP; discogs.com is
+  unknown (Cloudflare's challenge answered the probe) — to be read in a real
+  browser.
+- `.mb-yt-tile` is in `_CLEAN_STRIP_SEL`: no filter, sort key or 📊 value
+  ever sees "Play here".
+
+**Where the tiles are** (each from the code that builds the place, never a
+late write into a rendered cell):
+
+| Place                                   | Built by                                                                 | Placement               |
+|-----------------------------------------|--------------------------------------------------------------------------|-------------------------|
+| Relationships › URLs sub-table, URL cell | `_eventRelColumns()` (`r.type === 'url'`)                                | row under the row       |
+| Sidebar "Play on YouTube" (small)       | `_ytDecorateMbPage()` at init, inside the `li` (docs/claude/sidebar.md)   | under the tile          |
+| The page's annotation                   | `_ytDecorateMbPage()` → `_ytDecorateLinks()`; a heading's link: after the heading | under the tile   |
+| An Annotation column (report-detail, annotation search) | `ColumnDataExtractor.ytTiles`, listed AFTER `numberOfChars` (which counts `textContent`) | row under the row |
+| The YouTube link's window               | `_ytWindowTile()` from `_extExtracted()`, in place of the thumbnail; `dead` from the reader's record | under the tile |
+| Discogs release/master window, Videos   | `_extDgVideosHtml()` (small tiles, a slot above the list)                | slot                    |
+| discogs.com release page, "Videos" sub-table | `_dgVideosTableHtml()` (bare tile in Play; no Play column when off) | row under the row      |
+| Brucebase entry window sections         | `_dpExtractedCols()` → `_ytDecorateHtml()` for a record with `ytTiles` (`_dpParseBbPage()`; Media from `_bbMediaSection()`) | under the tile |
+
+A link whose oEmbed answer is already known dead for this page load
+(`_ytKnownDead()`, the reader's `_mbPop` entry) gets an Unavailable tile.
+Not covered (not asked, org/youtube.org): springsteenlyrics.com's song
+embeds, the "Sidebar as tables" tables (their collector copies only the
+`<a>`), the year table's Media icon.
+
+**Tests**: `tests/fixtures/youtube-embeds.spec.js` (Steps 1–4, 25 tests;
+`recording-youtube.html`, `detail-bb-gig-2026-10-03.html`), the
+`videoseries` pin in `detail-preview.spec.js`'s Live page test; mutations
+`scripts/mutations/youtube-embeds.json` (21).
 
 ## Readers of known sites (org/iframe.org "* generalize to URLs", U3)
 

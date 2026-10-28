@@ -1,5 +1,17 @@
 [
     {
+        "version": "WIP.5",
+        "date": "2026-10-28",
+        "sections": [
+            {
+                "label": "📝 Docs",
+                "items": [
+                    "Help: \"Playing a YouTube video where it is listed\" under the link previews — where the tiles are (URLs table, sidebar, annotations, a YouTube link's window, Discogs' Videos, a Brucebase show's window), Esc and ■ Stop, one video at a time, the two settings, and what happens where a site refuses the player; the Discogs release page's Videos sub-table and the master window's videos (WIP.1–WIP.4)."
+                ]
+            }
+        ]
+    },
+    {
         "version": "WIP.4",
         "date": "2026-10-28",
         "sections": [
