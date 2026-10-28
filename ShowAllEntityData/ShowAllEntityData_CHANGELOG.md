@@ -4,9 +4,23 @@ Every version, newest first, with the technical details behind each change. For 
 
 **Months:** [October 2026](ShowAllEntityData_CHANGELOG/2026-10.md) · [September 2026](ShowAllEntityData_CHANGELOG/2026-09.md) · [August 2026](ShowAllEntityData_CHANGELOG/2026-08.md) · [July 2026](ShowAllEntityData_CHANGELOG/2026-07.md) · [June 2026](ShowAllEntityData_CHANGELOG/2026-06.md) · [May 2026](ShowAllEntityData_CHANGELOG/2026-05.md) · [April 2026](ShowAllEntityData_CHANGELOG/2026-04.md) · [March 2026 (1 of 2)](ShowAllEntityData_CHANGELOG/2026-03-1.md) · [March 2026 (2 of 2)](ShowAllEntityData_CHANGELOG/2026-03-2.md) · [February 2026](ShowAllEntityData_CHANGELOG/2026-02.md) · [January 2026](ShowAllEntityData_CHANGELOG/2026-01.md)
 
-This page shows the newest 100 of 1658 versions; the month pages hold all of them.
+This page shows the newest 100 of 1660 versions; the month pages hold all of them.
 
 ---
+
+## 9.99.1489 — 2026-10-28
+
+**🐛 Fix**
+
+- With jesus2099's "mb. FUNKEY ILLUSTRATED RECORDS" active, its big picture strip could still show after a render, between the script's own big image strip and the table (a release group's Relationships, debug/mb-rg-funky-final.html). That script decorates the page once, 600 ms after it has loaded; when the render started earlier — a second press reloads the page and presses the button again at once, a quick press, a load from disk — it found the script's own tables. Its strip is now removed whenever it arrives after a press or a disk load.
+
+
+## 9.99.1488 — 2026-10-28
+
+**✨ Improve**
+
+- On the initial page, the images of jesus2099's "mb. FUNKEY ILLUSTRATED RECORDS" big picture strip — above a release group's releases, in its Relationships, on a tag's release groups and releases, on an editor's ratings, in a release's Credits — behave like the script's own artwork: a hover shows the artwork card of that release or release group (every image, Space for all of them), a click opens the artwork viewer on the page, Ctrl-click still opens the release (group) page. Until now they only had their plain title.
+
 
 ## 9.99.1487 — 2026-10-28
 
@@ -864,24 +878,6 @@ This page shows the newest 100 of 1658 versions; the month pages hold all of the
 **🚀 Feature**
 
 - The "Recording of" and "Performance attributes" columns, so far only on an artist's Recordings page, are now on every list with one recording per row: recording search results, an instrument's Recordings, a series or collection of recordings, an ISRC page, an area's Recordings, a place's Performances, a work's recordings, tagged recordings (yours or everyone's), your rated recordings and an artist credit's recordings. They follow that page's own recording column (Name, Title or Recording) and load only when you click a cell's 🎼 or the header's ▶🎼, as before. A work page and a collection load many rows with one request where that is cheaper; every other page looks up one row per request. Work suggestions stay on the artist's Recordings page, the only list with a single artist. Each page group has its own checkbox under ⚙️ Settings → 🎼 RECORDING OF COLUMN (all on by default), and the first checkbox still turns the columns off everywhere.
-
-
-## 9.99.1389 — 2026-10-19
-
-**🚀 Feature**
-
-- Tag links get a link preview: hovering any link to a tag page (for example a pill in the "Sidebar" Tags card, or MusicBrainz's own genre and tag lists) shows a card with whether the tag is a genre, how many entities carry it, and how many of each kind. Space opens a window with the counts per kind, each linked to its tag page, and the ten top entities of every kind, which you can click through like any other entity in the window. The card is read from the tag's own page (one request, which the Live page view reuses), because the MusicBrainz web service cannot look up a tag by name. Uses the existing link-preview settings.
-
-**✨ Improve**
-
-- The number on each pill of the "Sidebar" Tags card has a hover card that explains it: the tag's vote total on this entity, where tagging or upvoting adds 1 and a downvote takes 1 away, and MusicBrainz shows a tag only while its total is above 0.
-
-
-## 9.99.1388 — 2026-10-19
-
-**🐛 Fix**
-
-- Tag pages (/tag/&lt;name&gt;, and an editor's /user/&lt;name&gt;/tag/&lt;name&gt;): "N entities found" stays right under the "Entities tagged as …" heading with the global filter, indented like the sub-section headings, instead of being pushed below the last table.
 
 
 ---
