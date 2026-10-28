@@ -4833,6 +4833,36 @@ loader for MusicBrainz.
 
 * DONE embed YouTube videos directly in the PTs where they are referenced + the original URL as popup box as now
 
+* DONE On https://musicbrainz.org/release-group/f83d2211-dd81-4b1e-9a02-e89733891e1c when the third-party userscript "mb. FUNKEY ILLUSTRATED RECORDS" by @jesus2099 is active the images should get our internal viewer treatment
+
+1.)
+
+register the third-party user script mb. FUNKEY ILLUSTRATED RECORDS" by @jesus2099 at @tests/fixtures/live-userscripts/mb_FUNKEY-ILLUSTRATED-RECORDS.user.js
+
+2.)
+
+a.)
+
+On https://musicbrainz.org/release-group/f83d2211-dd81-4b1e-9a02-e89733891e1c when the third-party userscript
+"mb. FUNKEY ILLUSTRATED RECORDS" by @jesus2099 is active the images should get our internal viewer treatment
+
+#+begin_example
+@debug/mb-rg-funky-initial.html - IP - the images above the table and the image in the "Relationships" section have only their native tooltip, they should get out standar on hover internal viewer treatment
+@debug/mb-rg-funky-final.html - FRP (after pressing the "Relationship" action button) - the jesus2099 images should be rendered on the FRP anymore, as our standard big image stripe feature takes over on the FRP
+#+end_example
+
+b.)
+
+same treatment also on the following PTs
+
+#+begin_example
+https://musicbrainz.org/release-group/2872c420-5a5f-482e-b00c-199541c5b9b3 - before the "release table section(s)
+https://musicbrainz.org/tag/country - RG/R subsection
+https://musicbrainz.org/user/vzell/ratings - RG section
+https://musicbrainz.org/release/4d854621-0264-4b83-9687-8ad4b9a4e99b - "Credits" -> associated singles/EPs:
+etc. (maybe I'm missing some)
+#+end_example
+
 
 * TODO consolidate more LAF across more PTs
 
@@ -4905,27 +4935,6 @@ register the third-party user script by @zabe
 check what it's doing
 
 
-* TODO On https://musicbrainz.org/release-group/f83d2211-dd81-4b1e-9a02-e89733891e1c when the third-party userscript "mb. FUNKEY ILLUSTRATED RECORDS" by @jesus2099 is active the images should get our internal viewer treatment
-
-1.)
-
-register the third-party user script mb. FUNKEY ILLUSTRATED RECORDS" by @jesus2099 at @tests/fixtures/live-userscripts/mb_FUNKEY-ILLUSTRATED-RECORDS.user.js
-
-2.)
-
-On https://musicbrainz.org/release-group/f83d2211-dd81-4b1e-9a02-e89733891e1c when the third-party userscript
-"mb. FUNKEY ILLUSTRATED RECORDS" by @jesus2099 is active the images should get our internal viewer treatment
-
-also on the following PTs
-
-#+begin_example
-https://musicbrainz.org/release-group/2872c420-5a5f-482e-b00c-199541c5b9b3 - before the "release table section(s)
-https://musicbrainz.org/tag/country - RG/R subsection
-https://musicbrainz.org/user/vzell/ratings - RG section
-https://musicbrainz.org/release/4d854621-0264-4b83-9687-8ad4b9a4e99b - "Credits" -> associated singles/EPs:
-#+end_example
-
-
 * TODO On https://musicbrainz.org/release-group/f83d2211-dd81-4b1e-9a02-e89733891e1c the "Official homepage" chip in the "Sidebar" section needs a better reader
 
 On https://musicbrainz.org/release-group/f83d2211-dd81-4b1e-9a02-e89733891e1c the "Official homepage" chip in the "Sidebar" section needs a better reader
@@ -4953,7 +4962,6 @@ On MB entity POHs we should get additional POH support for known URLs like Wikip
 
 On MB RG POHs add the site icons in front of the site entity name in the POH header line, e.g. https://musicbrainz.org/release-group/f83d2211-dd81-4b1e-9a02-e89733891e1c
 
-
 #+begin_example
 <div class="header mb-vsb-chrome"><a class="logo" href="/" title="MusicBrainz"><img alt="MusicBrainz" class="logo" src="https://static.metabrainz.org/MB/header-logo-1f7dc2a.svg">
 #+end_example
@@ -4966,7 +4974,6 @@ Work - <div class="wrap-anywhere workheader mb-vsb-head" data-mb-vsb-head="0"> -
 CD stub <div class="blankheader mb-vsb-head" data-mb-vsb-head="0"> - https://musicbrainz.org/cdstub/XsbJwm0LkJCi4WXBVx9iXOXGhWk-
 Top CD stubs - <h1 class="mb-vsb-head" data-mb-vsb-head="0"> - https://musicbrainz.org/cdstub/browse
 #+end_example
-
 
 1.)
 
@@ -4987,7 +4994,6 @@ I want:
 
 * TODO the site icons should get a POH too with a site description (maybe wikipedia)
 
-
 the site icons and si specific icons (MB: RG, R, L, A, P, I, U etc.; D: M, R, L, U) should get a POH too with
 
 1.)
@@ -4995,37 +5001,6 @@ the site icons and si specific icons (MB: RG, R, L, A, P, I, U etc.; D: M, R, L,
 Site:
 
 a site description (maybe wikipedia) and some suggestions
-
-2.)
-
-Site specific icons
-
-a.)
-
-https://musicbrainz.org/doc/MusicBrainz_Entity
-https://musicbrainz.org/doc/Style
-
-https://musicbrainz.org/doc/Artist
-https://musicbrainz.org/doc/Style/Artist
-
-https://musicbrainz.org/doc/Event
-https://musicbrainz.org/doc/Style/Event
-
-
-MB: RG, R, L, A, P, I, U etc. - 
-
-
-b.)
-
-https://support.discogs.com/hc/en-us/sections/25169225080077-Database-Guidelines
-
-https://support.discogs.com/hc/en-us/articles/360005054753-Database-Guidelines-2-Artist
-
-
-https://support.discogs.com/hc/en-us/articles/360005055493-Database-Guidelines-16-Master-Release
-
-
-D: M, R, L, U - guidelines - e.g. https://support.discogs.com/hc/en-us/articles/360005055493-Database-Guidelines-16-Master-Release
 
 
 * TODO the "Bio" section on MB user pages should be rendered collapsed
