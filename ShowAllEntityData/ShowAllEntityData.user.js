@@ -146790,9 +146790,20 @@ a { color: #1565c0; }`;
     // asked on the first hover or click. A big-picture strip image gets the
     // same click (`_artIconClick()`). Mockup approved 2026-10-17:
     // https://claude.ai/artifact/NonAS8iqfjSMRUaXojzSnT
+    //
+    // The same icon outside a relationship list (2026-10-28): that script
+    // puts it before every release group link it decorates, so also in the
+    // `ul > li` lists of /tag/<name>'s "Release groups" section and of an
+    // editor's ratings; there its own class `jesus2099userjs154481` on the
+    // span names it. A data table's icon (`table.tbl`) stays the CAA
+    // column's.
 
-    /** A cover icon's link in a relationship list. */
-    const _ART_REL_ICON_SEL = 'table.details a[href*="/cover-art"]';
+    /**
+     * A cover icon's link in a relationship list, or that script's own cover
+     * icon anywhere else.
+     */
+    const _ART_REL_ICON_SEL = 'table.details a[href*="/cover-art"], ' +
+        'a[href*="/cover-art"]:has(> span.caa-icon.jesus2099userjs154481)';
 
     /**
      * An image link of jesus2099's "mb. FUNKEY ILLUSTRATED RECORDS"
@@ -146834,7 +146845,9 @@ a { color: #1565c0; }`;
 
     /**
      * The release a relationship-list cover icon shows, or null for any other
-     * link: the entity path and the title of the release group link after it.
+     * link: the entity path and the title of the release group link after it
+     * (directly after it, or inside the `span.mp` of a pending edit that
+     * wraps it).
      *
      * @param   {?Element} a
      * @returns {?{path: string, title: string}}
@@ -146846,7 +146859,9 @@ a { color: #1565c0; }`;
             .exec(a.getAttribute('href') || '');
         if (!m) return null;
         const next = a.nextElementSibling;
-        const title = next && next.matches('a[href]') ? next.textContent.replace(/\s+/g, ' ').trim() : '';
+        const link = !next ? null : next.matches('a[href]') ? next
+            : next.matches('span.mp') ? next.querySelector(':scope > a[href]') : null;
+        const title = link ? link.textContent.replace(/\s+/g, ' ').trim() : '';
         return { path: `/release/${m[1].toLowerCase()}`, title };
     }
 
