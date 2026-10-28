@@ -2991,9 +2991,10 @@ A card that could not reach the site says why — hover again to retry. If you
 told Tampermonkey not to let the script contact a site, the window says so;
 change it in Tampermonkey's settings for this script.
 
-Not previewed: links to MusicBrainz itself and the other MetaBrainz sites, the
-artwork archives, links around a picture, share buttons, and the
-Relationships column.
+Not previewed: links to MusicBrainz itself (its pages have their own cards),
+the artwork archives, links around a picture (the Relationships column's
+icons excepted), and share buttons. The other MetaBrainz sites (BookBrainz,
+ListenBrainz, CritiqueBrainz, MetaBrainz) are previewed like any other site.
 
 </details>
 

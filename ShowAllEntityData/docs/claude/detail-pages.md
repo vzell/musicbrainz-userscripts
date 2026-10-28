@@ -1704,8 +1704,13 @@ generalize to URLs".
   string, X7). **A protocol-relative `//host/…` is read as https** (since
   U3): MusicBrainz's sidebar writes its Wikidata link that way, and until
   U3's live spec hovered it no such link had a card at all; https is also
-  how MusicBrainz stores it. Not the MetaBrainz family or the artwork archives
-  (`_EXT_SKIP_HOST_RE`), not a share button (`_EXT_SKIP_URL_RE`), not around
+  how MusicBrainz stores it. Not musicbrainz.org (its links are the entity
+  cards') or the artwork archives (`_EXT_SKIP_HOST_RE`). **The rest of the
+  MetaBrainz family is another site since 2026-10-28** (BookBrainz,
+  ListenBrainz, CritiqueBrainz, MetaBrainz, AcousticBrainz): U1 skipped the
+  whole family by kinship, not by reason, so a BookBrainz search among the
+  sidebar's Search links had no card and no Space; they now take the generic
+  reader like any other host. Not a share button (`_EXT_SKIP_URL_RE`), not around
   `img:not(.avatar)`, not in `_EXT_SKIP_SEL` (chrome, the card and the
   window, `_MB_POP_PAGE_SKIP`). **A Relationships column icon is the
   exception to both (2026-10-17):** it is an image link that IS the link, so

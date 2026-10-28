@@ -373,6 +373,31 @@ test.describe('external link previews (sa_pop_ext)', () => {
         expect(wide, 'page-wide scope (sa_pop_mb_page)').toBe('ext|ext:wikipedia:https://en.wikipedia.org/wiki/Outside');
     });
 
+    test('the MetaBrainz family beyond musicbrainz.org is another site; musicbrainz.org and the artwork archives are not', async ({ page }) => {
+        // vzell 2026-10-28: a BookBrainz search among the sidebar's Search
+        // links had no card and no Space. Only musicbrainz.org (the entity
+        // cards') and the artwork archives (their own preview) are skipped.
+        const BB = 'https://bookbrainz.org/search?type=edition&q=Verano%20%C3%89xitos%20de%20los%2080';
+        const others = [
+            BB,
+            'https://listenbrainz.org/player/release/22a6802f-d22e-4f47-9f22-6aac257a4194',
+            'https://critiquebrainz.org/release-group/2a4dbe4f-bd2a-4a5c-9bf5-2bc4f9b5e3f8',
+            'https://metabrainz.org/donate',
+            'https://acousticbrainz.org/',
+        ];
+        const skipped = [
+            'https://beta.musicbrainz.org/release/22a6802f-d22e-4f47-9f22-6aac257a4194',
+            'https://musicbrainz.eu/',
+            'https://coverartarchive.org/release/22a6802f-d22e-4f47-9f22-6aac257a4194',
+        ];
+        await openEvent(page, { settings: { sa_pop_ext: true, sa_pop_mb: true } });
+        await addAnnotationLinks(page, [...others, ...skipped]);
+        const r = await page.evaluate(() => Array.from(document.querySelectorAll('.ext-probe a'))
+            .map(a => window.__saTest.popResolve(a)));
+        others.forEach((href, i) => expect(r[i], href).toBe(`ext|ext:generic:${href}`));
+        skipped.forEach((href, i) => expect(r[others.length + i], href).toBeNull());
+    });
+
     test('first contact: a hover asks nothing; Space loads it anonymously and remembers the host', async ({ page }) => {
         await page.clock.install();
         await openEvent(page, {

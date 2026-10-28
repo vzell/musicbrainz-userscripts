@@ -338,6 +338,32 @@
         "expect": "fail"
     },
     {
+        "name": "the whole MetaBrainz family is skipped again",
+        "why": "vzell 2026-10-28: only musicbrainz.org (the entity cards') and the artwork archives are not other sites; a BookBrainz search, ListenBrainz or CritiqueBrainz link gets the generic card and Space.",
+        "edits": [
+            {
+                "find": "    const _EXT_SKIP_HOST_RE = /(?:^|\\.)musicbrainz\\.(?:org|eu)$|",
+                "replace": "    const _EXT_SKIP_HOST_RE = /(?:^|\\.)(?:musicbrainz|metabrainz|listenbrainz|critiquebrainz|acousticbrainz|bookbrainz)\\.(?:org|eu)$|"
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "MetaBrainz family beyond",
+        "expect": "fail"
+    },
+    {
+        "name": "the artwork archives count as other sites",
+        "why": "Artwork has its own preview: a coverartarchive.org link never gets the generic card.",
+        "edits": [
+            {
+                "find": "|(?:^|\\.)(?:coverartarchive|eventartarchive)\\.org$/;",
+                "replace": "|(?:^|\\.)(?:eventartarchive)\\.org$/;"
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "MetaBrainz family beyond",
+        "expect": "fail"
+    },
+    {
         "name": "a share button is previewed",
         "why": "A sharer link posts the current page somewhere; it is not a page of its own.",
         "edits": [

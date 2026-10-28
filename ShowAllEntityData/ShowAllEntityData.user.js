@@ -60944,12 +60944,17 @@
     const _extIcons = new Map();
 
     /**
-     * Hosts never previewed as another site: the MetaBrainz family (a
-     * musicbrainz.org link is the entity cards' to serve) and the artwork
-     * archives (artwork has its own preview).
+     * Hosts never previewed as another site: musicbrainz.org (and its
+     * beta/test hosts), whose links the entity cards serve, and the artwork
+     * archives (artwork has its own preview). The rest of the MetaBrainz
+     * family (BookBrainz, ListenBrainz, CritiqueBrainz, MetaBrainz,
+     * AcousticBrainz) were here too until 2026-10-28, by family rather than
+     * by reason; they are other sites like any other, so they get the
+     * generic card and Space (vzell: a BookBrainz search in the sidebar's
+     * Search links had neither).
      * @type {RegExp}
      */
-    const _EXT_SKIP_HOST_RE = /(?:^|\.)(?:musicbrainz|metabrainz|listenbrainz|critiquebrainz|acousticbrainz|bookbrainz)\.(?:org|eu)$|(?:^|\.)(?:coverartarchive|eventartarchive)\.org$/;
+    const _EXT_SKIP_HOST_RE = /(?:^|\.)musicbrainz\.(?:org|eu)$|(?:^|\.)(?:coverartarchive|eventartarchive)\.org$/;
 
     /** Share buttons: a link that posts the current page somewhere, never a page of its own. */
     const _EXT_SKIP_URL_RE = /\/sharer(?:\.php)?(?:[/?#]|$)|\/share(?:Article)?\?|\/intent\/(?:tweet|post)|whatsapp\.com\/send|\/submit\?url=/i;
