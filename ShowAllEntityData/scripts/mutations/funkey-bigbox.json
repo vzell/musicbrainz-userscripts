@@ -115,5 +115,44 @@
         "spec": "tests/fixtures/funkey-bigbox.spec.js",
         "grep": "a strip already on the page goes with the press",
         "expect": "fail"
+    },
+    {
+        "name": "the cover icon is known in relationship lists only",
+        "why": "/tag/country (vzell, 2026-10-28): that script's small icon before a release group link in a ul > li list kept its native title.",
+        "edits": [
+            {
+                "find": "    const _ART_REL_ICON_SEL = 'table.details a[href*=\"/cover-art\"], ' +\n        'a[href*=\"/cover-art\"]:has(> span.caa-icon.jesus2099userjs154481)';",
+                "replace": "    const _ART_REL_ICON_SEL = 'table.details a[href*=\"/cover-art\"]';"
+            }
+        ],
+        "spec": "tests/fixtures/funkey-bigbox.spec.js",
+        "grep": "a small cover icon in a list",
+        "expect": "fail"
+    },
+    {
+        "name": "the card title ignores a span.mp-wrapped link",
+        "why": "That script puts the icon before the span.mp of a pending edit, so the release group link is inside it.",
+        "edits": [
+            {
+                "find": "            : next.matches('span.mp') ? next.querySelector(':scope > a[href]') : null;",
+                "replace": "            : null;"
+            }
+        ],
+        "spec": "tests/fixtures/funkey-bigbox.spec.js",
+        "grep": "a small cover icon in a list",
+        "expect": "fail"
+    },
+    {
+        "name": "a data table's icon taken for a relationship-list icon",
+        "why": "In table.tbl the icon is the CAA column's (its own card and viewer); a second card would stack on it.",
+        "edits": [
+            {
+                "find": "        if (!a || !a.matches || !a.matches(_ART_REL_ICON_SEL) || a.closest('table.tbl')) return null;\n        if (!a.querySelector(':scope > span.caa-icon')) return null;",
+                "replace": "        if (!a || !a.matches || !a.matches(_ART_REL_ICON_SEL)) return null;\n        if (!a.querySelector(':scope > span.caa-icon')) return null;"
+            }
+        ],
+        "spec": "tests/fixtures/funkey-bigbox.spec.js",
+        "grep": "inside a data table stays the CAA column",
+        "expect": "fail"
     }
 ]

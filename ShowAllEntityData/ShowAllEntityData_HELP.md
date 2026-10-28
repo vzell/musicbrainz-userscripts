@@ -1201,7 +1201,8 @@ its big picture strip on the page as MusicBrainz shows it (before any "Show
 all" button: above a release group's releases, in its *Relationships*, on a
 tag's or an editor's ratings page, in a release's *Credits*) work the same
 way: a hover shows that release's or release group's artwork card, a click
-opens the viewer. After a "Show all" render that strip is gone, whenever it
+opens the viewer. So does its small cover before each release group name in
+a list (a tag's *Release groups*, an editor's ratings). After a "Show all" render that strip is gone, whenever it
 arrives; the script's own big-picture strip takes its place.
 
 **The gallery (🖼).** The 🖼 button among a table's artwork controls (after

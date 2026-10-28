@@ -577,7 +577,12 @@ Grep `// ── CAA/EAA column redesign` for the code. Rules that fail silently:
   icons: `_artJ2BigboxInfo()` (path from the href, title from `img.alt`)
   is one more branch of `_artRelIconStamp()`, `_artRelIconCardHtml()` and
   `_artIconViewerTarget()` — same gates, a release GROUP path asks the
-  CAA release-group record. On the FRP it must not exist:
+  CAA release-group record. Its SMALL icon (`a[href$=/cover-art] >
+  span.caa-icon.jesus2099userjs154481`, before each release group link)
+  is a relationship-list icon anywhere outside `table.tbl` too
+  (`_ART_REL_ICON_SEL`'s second branch: /tag/<name>'s `ul > li` lists,
+  an editor's ratings); its title is the link after it, or the one inside
+  the `span.mp` that script puts it before. On the FRP it must not exist:
   `performClutterCleanup()` removes it once, and `_watchForLateFunkeyBigbox()`,
   armed right after it (press and disk load), removes one that lands later
   — the second press's reload re-presses at `setTimeout 0`, before that

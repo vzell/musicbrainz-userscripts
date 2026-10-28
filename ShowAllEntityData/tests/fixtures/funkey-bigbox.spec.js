@@ -220,6 +220,54 @@ test.describe('FUNKEY strip on the initial page: our card and viewer', () => {
         await expect(page.locator('#mb-art-viewer .mb-artv-title')).toHaveText('Tunnel of Love Express');
     });
 
+    // /tag/country's "Release groups" list (2026-10-28, vzell's screenshot):
+    // that script's SMALL icon before each release group link, in a
+    // `ul > li`, not in a relationship list's `table.details`.
+    test('a small cover icon in a list: the card (title from the link after it, or inside span.mp) and the viewer', async ({ page }) => {
+        const { metaRequests, dialogs } = await openInitialPage(page);
+        await page.evaluate((rel) => {
+            const icon = (id) => `<a href="https://musicbrainz.org/release/${rel}/cover-art" ` +
+                `ref="/release-group/92b7f3ea-882a-4073-9e25-b3d158a67f57" title="16 images found in this release" id="${id}">` +
+                '<span class="caa-icon jesus2099userjs154481" style="display:inline-block;width:20px;height:20px;background:#333"></span></a>';
+            const ul = document.createElement('ul');
+            ul.innerHTML = `<li>${icon('j2-li-icon')}<a href="/release-group/92b7f3ea-882a-4073-9e25-b3d158a67f57"><bdi>Some Hearts</bdi></a> by Carrie Underwood</li>` +
+                `<li>${icon('j2-mp-icon')}<span class="mp"><a href="/release-group/b3559cb2-d7ad-32eb-a17e-54a873ce4122"><bdi>Breathe</bdi></a></span></li>`;
+            (document.getElementById('content') || document.body).prepend(ul);
+        }, 'd0adda7e-86de-4aef-af95-ee7da122d175');
+        const tip = page.locator('#mb-stat-tooltip');
+        const icon = page.locator('#j2-li-icon');
+        await page.mouse.move(0, 0);
+        await icon.hover();
+        await expect(tip.locator('.mb-tt-title')).toHaveText('Some Hearts');
+        await expect(tip.locator('.mb-tt-dim')).toHaveText(new RegExp(`^${RECORD.images.length} images · ★ main front`));
+        await expect(icon, 'no native box over the card').toHaveAttribute('title', '');
+        expect(metaRequests).toEqual(['https://coverartarchive.org/release/d0adda7e-86de-4aef-af95-ee7da122d175']);
+        await page.mouse.move(0, 0);
+        await expect(icon).toHaveAttribute('title', '16 images found in this release');
+        await page.locator('#j2-mp-icon').hover();
+        await expect(tip.locator('.mb-tt-title')).toHaveText('Breathe');
+        await page.mouse.move(0, 0);
+        const before = page.url();
+        await icon.click();
+        await expect(page.locator('#mb-art-viewer .mb-artv-title')).toHaveText('Some Hearts');
+        expect(page.url()).toBe(before);
+        expect(dialogs).toEqual([]);
+    });
+
+    test('that script\'s small icon inside a data table stays the CAA column\'s: no card', async ({ page }) => {
+        await openInitialPage(page);
+        await page.evaluate(() => {
+            const td = document.querySelector('table.tbl tbody tr td');
+            td.insertAdjacentHTML('afterbegin', '<a href="https://musicbrainz.org/release/d0adda7e-86de-4aef-af95-ee7da122d175/cover-art" ' +
+                'title="16 images found in this release" id="j2-tbl-icon"><span class="caa-icon jesus2099userjs154481" ' +
+                'style="display:inline-block;width:20px;height:20px;background:#333"></span></a>');
+        });
+        const icon = page.locator('#j2-tbl-icon');
+        await page.mouse.move(0, 0);
+        await icon.hover();
+        await expect(icon).not.toHaveAttribute('data-mbtt-fn', /.*/);
+    });
+
     test('with the artwork card off: nothing stamped, the native title stays', async ({ page }) => {
         const { metaRequests } = await openInitialPage(page, { sa_caa_tip_summary: false });
         const a = page.locator(`${STRIP} > a[href="/release/${FIRST_REL}"]`);
