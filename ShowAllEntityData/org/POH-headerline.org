@@ -260,9 +260,42 @@ Decisions taken while building (say if any is wrong):
 - MusicBrainz's documentation seen from discogs.com has no card (its pages need the browser check's cookie, see P1):
   the glyph opens it in a new tab and says so in its tip.
 
-** Still open
-- Step 3: Live page and ✎ Editing history ▾ for an MB window on discogs.com through the cookie-carrying request (P1);
-  the cover art (P2: console needed).
-- Step 4: ✎ Editing history on Discogs windows; master, artist and label need the =dghistory= reader extended, and
-  the specs need saved copies of such history pages (Cloudflare refuses scripts): =debug/dg-master-history.html=,
-  =debug/dg-artist-history.html=, =debug/dg-label-history.html= from vzell's browser.
+** Step 2: vzell's browser check — OK (2026-10-28, "everything else tested live and is OK")
+
+The cover art loaded on discogs.com this time, with no =caaFetchEntityImages= line in the console: the earlier
+"The archive did not answer." was a passing archive failure. Its stickiness is a defect of its own and is fixed in
+Step 3 (⟳ forgets the failure and asks again).
+
+** Step 3: MB windows on discogs.com — DONE on the branch (WIP.3), awaiting vzell's browser check
+
+=_MB_LIVE.fetchText= → =_mbPageGetForeign()= (the cookie-carrying =session= request, a second consented exception) on
+a foreign host only; =_mbOrigin()=, =_mbWinSource()=; =dg-mb= has a Live page and =onAreaClick=; =_mbEditsSubject()=,
+=_dpOpenEdits()=, =_dpOpenHistPath()= (=_mbPopTarget(…, {mbOrigin: true})=) serve =dg-mb=; =_mbPopArtLoad()= forgets a
+failed archive record on ⟳.
+
+vzell's browser check (2026-10-28): the Live page from musicbrainz.org renders inside the window on discogs.com
+("everything looks good"; Discogs' CSP does not get in its way). Two gaps found and fixed the same day:
+- the path's glyph on an MB window opened from Discogs opened the documentation in a new tab (the Step 2 decision,
+  made before the cookie request existed): =_dpDocTarget()= now asks =_mbWinSource()=, so =dg-mb= reads it;
+- "Genres -> tags link do not open inside the same window and do not have a hover window": =_dgMbWinTarget()= knew
+  entities by MBID only; it now falls back to =_mbPopTarget(a, {inWindow, mbOrigin})= for any musicbrainz.org link a
+  card reads (tags, edits, editors, documentation), and =_mbPagedHtml()= / a series window's glyph build on
+  =_mbOrigin()=.
+
+** Step 4: Discogs history pages, probed
+
+=scripts/probe-dg-history-shape.js= (headless Chromium on the saved pages, no network).
+Env: 2026-10-28T16:05+01:00 (run shortly before 16:08:19) · NB-3641 · WSL2 Ubuntu · Playwright's Chromium on
+vzell's saved copies (no Tampermonkey; browser n/a for the pages themselves).
+| page                      | rows | page of        | first row → last row      | h1 links                                  |
+|---------------------------+------+----------------+---------------------------+-------------------------------------------|
+| release 8164856 (control) |   14 | (no pages)     | 2016-02-24 → 2026-06-05   | the release                               |
+| master 27146              |   50 | 2 (1, 3)       | 2017-07-28 → 2024-04-06   | murdos' musicbrainz.org link, the master  |
+| artist 219986             |   46 | 2 (1)          | 2018-10-25 → 2026-07-25   | murdos' musicbrainz.org link, the artist  |
+| label 264352 (DADC)       |   59 | 1 (2, 3, 4)    | 2011-09-02 → 2015-05-06   | murdos' musicbrainz.org link, the label   |
+- Every page has =table#hist=, =#editing_header=, a diff table, and =tr#latest= on its LAST row (the page's latest,
+  not the history's).
+- A page runs oldest → newest, page 1 the oldest. The plain =/history= URL serves the LAST page (probe P3: 10, 46
+  and 11 rows; the artist's 46 = its page 2 of 2), so the reader's one request already gets the newest changes.
+- The saved copies passed murdos' importer: its musicbrainz.org link comes FIRST in the =h1=, so the parser must
+  read the Discogs link (the reader's own fetch has no importer, the saved fixtures do).

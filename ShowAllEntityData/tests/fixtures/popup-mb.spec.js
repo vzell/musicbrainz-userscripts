@@ -3327,6 +3327,32 @@ test.describe('MusicBrainz link previews: a window filter\'s highlight', () => {
     });
 });
 
+// A release window's cover strip after the archive did not answer (a 429 or
+// 5xx, a network error): `_artFetchEntityImages()` keeps that failure for the
+// session, so ⟳ read it back and never asked again (org/POH-headerline.org
+// item 3, P2: vzell saw "The archive did not answer." on discogs.com, and the
+// archive answered fine an hour later). `_mbPopArtLoad()` forgets it on ⟳.
+test.describe('MusicBrainz link previews: a cover strip the archive did not answer', () => {
+    test('⟳ asks the archive again, and the strip fills', async ({ page }) => {
+        const log = await open(page, { settings: { sa_pop_mb: true } });
+        let fail = true;
+        // A page route wins over open()'s context route; it passes on once
+        // the archive is back.
+        await page.route(/^https:\/\/coverartarchive\.org\/release\/[0-9a-f-]{36}\/?$/, (route) => (fail
+            ? route.fulfill({ status: 503, contentType: 'text/plain', body: 'Service Unavailable' })
+            : route.fallback()));
+        await ctrlHover(page, relLink(page));
+        await expect(card(page)).toContainText('Greetings From Asbury Park, N.J.');
+        await page.keyboard.press('Space');
+        const area = dialog(page).locator('.mb-dp-area');
+        await expect(area).toContainText('The archive did not answer.');
+        fail = false;
+        await dialog(page).locator('button.mb-dp-tbtn', { hasText: '⟳' }).click();
+        await expect(area.locator('.mb-dp-gallery img')).toHaveCount(16);
+        expect(log.caa, 'the archive asked again, once').toEqual([`/release/${REL_ID}`]);
+    });
+});
+
 // The window's path in its title bar (org/POH-headerline.org, 2026-10-28;
 // mockup https://claude.ai/artifact/YCnV4DZA5R4quLAGkmhCpC): every step a
 // glyph linking its kind's documentation and a button back to it, the oldest

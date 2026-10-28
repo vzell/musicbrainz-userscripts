@@ -82,8 +82,8 @@
         "why": "The glyph's link holds an image, and _mbPopTarget() takes a link holding an image for artwork: no documentation target, so no card and the click opens a new tab.",
         "edits": [
             {
-                "find": "            const r = _mbPopTarget(bare, { inWindow: true });",
-                "replace": "            const r = _mbPopTarget(a, { inWindow: true });"
+                "find": "            const r = _mbPopTarget(bare, { inWindow: true, mbOrigin: true });",
+                "replace": "            const r = _mbPopTarget(a, { inWindow: true, mbOrigin: true });"
             }
         ],
         "spec": "tests/fixtures/popup-mb.spec.js",
@@ -108,12 +108,103 @@
         "why": "On another site this origin's /static/images/entity/… is that site's; the glyph must come from musicbrainz.org.",
         "edits": [
             {
-                "find": "        // (org/POH-headerline.org item 3).\n        const origin = _foreignHost ? 'https://musicbrainz.org' : window.location.origin;",
+                "find": "        // (org/POH-headerline.org item 3).\n        const origin = _mbOrigin();",
                 "replace": "        // (org/POH-headerline.org item 3).\n        const origin = window.location.origin;"
             }
         ],
         "spec": "tests/fixtures/discogs-mb-column.spec.js",
         "grep": "Space opens its window",
+        "expect": "fail"
+    },
+    {
+        "name": "item 3: a MusicBrainz page read from discogs.com without the browser's cookies",
+        "why": "An anonymous request gets MusicBrainz's browser check, not the page (probe P1): the editing history never fills.",
+        "edits": [
+            {
+                "find": "        const res = await _extFetch(url, { session: true, maxBytes: _MB_FOREIGN_PAGE_MAX, maxDownload: _MB_FOREIGN_PAGE_MAX });",
+                "replace": "        const res = await _extFetch(url, { session: false, maxBytes: _MB_FOREIGN_PAGE_MAX, maxDownload: _MB_FOREIGN_PAGE_MAX });"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-mb-column.spec.js",
+        "grep": "Editing history ▾ and Live page",
+        "expect": "fail"
+    },
+    {
+        "name": "item 3: an MB window on discogs.com has no editing history",
+        "why": "_mbEditsSubject() answered null on every foreign host, so the window had no ✎ button.",
+        "edits": [
+            {
+                "find": "        if (!t || !t.src) return null;\n        const src = _mbWinSource();",
+                "replace": "        if (!t || !t.src || _foreignHost) return null;\n        const src = _mbWinSource();"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-mb-column.spec.js",
+        "grep": "Editing history ▾ and Live page",
+        "expect": "fail"
+    },
+    {
+        "name": "item 3: an MB window on discogs.com has no Live page",
+        "why": "dg-mb targets were noLive (the browser check); with the cookie request they have one.",
+        "edits": [
+            {
+                "find": "                key: `${type}:${id}`, url: `https://musicbrainz.org/${type}/${id}`, type, id,",
+                "replace": "                key: `${type}:${id}`, url: `https://musicbrainz.org/${type}/${id}`, type, id, noLive: true,"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-mb-column.spec.js",
+        "grep": "Editing history ▾ and Live page",
+        "expect": "fail"
+    },
+    {
+        "name": "item 3: an editing history's page asked on discogs.com's origin",
+        "why": "_mbEditsUrl() built on window.location.origin, which on discogs.com names discogs.com.",
+        "edits": [
+            {
+                "find": "        return new URL(n > 1 ? `${p}${p.includes('?') ? '&' : '?'}page=${n}` : p, _mbOrigin()).href;",
+                "replace": "        return new URL(n > 1 ? `${p}${p.includes('?') ? '&' : '?'}page=${n}` : p, window.location.origin).href;"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-mb-column.spec.js",
+        "grep": "Editing history ▾ and Live page",
+        "expect": "fail"
+    },
+    {
+        "name": "item 3: a genre's tag link in an MB window on discogs.com leaves the page",
+        "why": "_dgMbWinTarget() knew entities by MBID only; a genre links /tag/<name> (vzell, 2026-10-28: no card, no drill-down).",
+        "edits": [
+            {
+                "find": "        const r = src.resolve(a) || (a.origin === 'https://musicbrainz.org' ? _mbPopTarget(a, { inWindow: true, mbOrigin: true }) : null);",
+                "replace": "        const r = src.resolve(a);"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-mb-column.spec.js",
+        "grep": "a genre's tag link opens here",
+        "expect": "fail"
+    },
+    {
+        "name": "item 3: an MB glyph's documentation on discogs.com opens a new tab",
+        "why": "_dpDocTarget() read MusicBrainz's documentation on MusicBrainz only; with the cookie request discogs.com reads it too (vzell, 2026-10-28).",
+        "edits": [
+            {
+                "find": "        const mb = _mbWinSource();\n        if (mb) {\n            const r = _mbPopTarget(bare, { inWindow: true, mbOrigin: true });",
+                "replace": "        const mb = !_foreignHost && _mbWinSource();\n        if (mb) {\n            const r = _mbPopTarget(bare, { inWindow: true, mbOrigin: true });"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-mb-column.spec.js",
+        "grep": "Editing history ▾ and Live page",
+        "expect": "fail"
+    },
+    {
+        "name": "item 3 (P2): ⟳ reads back the archive's failure",
+        "why": "_artFetchEntityImages() keeps a 429/5xx for the session; without forgetting it on ⟳ the strip never asks again.",
+        "edits": [
+            {
+                "find": "        if (again && ctx.failedCache.has(path)) {\n            ctx.countCache.delete(path);",
+                "replace": "        if (false) {\n            ctx.countCache.delete(path);"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "⟳ asks the archive again",
         "expect": "fail"
     },
     {

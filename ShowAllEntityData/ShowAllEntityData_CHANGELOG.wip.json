@@ -1,5 +1,24 @@
 [
     {
+        "version": "WIP.3",
+        "date": "2026-10-28",
+        "sections": [
+            {
+                "label": "✨ Improve",
+                "items": [
+                    "On discogs.com a MusicBrainz window (from the MusicBrainz column or murdos' importer's icons) has what it has on MusicBrainz: \"✎ Editing history ▾\" (and H) and \"Live page\". Both are MusicBrainz pages, which answer a script's anonymous request with their browser check, so they are read with your musicbrainz.org cookies — the browser's own session, as when you open the page in a tab (org/POH-headerline.org item 3, by consent). If MusicBrainz still asks the browser to verify itself, open the page once in a tab and press ⟳.",
+                    "In such a window every MusicBrainz link a MusicBrainz card knows opens in the window and shows its card on a hover, as on MusicBrainz — a genre's tag, an edit, an editor, a documentation page — not only an entity (vzell: \"Genres -> tags link do not open inside the same window and do not have a hover window\"). The path's glyph reads MusicBrainz's documentation in the window there too, instead of opening a new tab."
+                ]
+            },
+            {
+                "label": "🐛 Fix",
+                "items": [
+                    "A release or event window's cover strip that said \"The archive did not answer.\" stayed so for the session: ⟳ read the failure back instead of asking the archive again. ⟳ asks again now (a release with no images is not asked again)."
+                ]
+            }
+        ]
+    },
+    {
         "version": "WIP.2",
         "date": "2026-10-28",
         "sections": [

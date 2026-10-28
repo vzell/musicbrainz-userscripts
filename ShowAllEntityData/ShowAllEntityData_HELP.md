@@ -2616,8 +2616,7 @@ userscript lists that host, so Tampermonkey does not ask first).
   - **Every step starts with its icon**, which links the documentation of
     that kind: MusicBrainz's page (its style guide named at the card's
     foot) or Discogs' Database Guidelines. Rest on it for that page's card;
-    a click reads it in the window. On discogs.com MusicBrainz's
-    documentation opens in a new tab instead.
+    a click reads it in the window, on discogs.com too.
   - A step reads the name of what it shows. The setting *In the window's
     title, each step of the path reads* (same section) switches it to the
     kind ("Recording"). An editing history, a documentation page or a
@@ -3704,7 +3703,15 @@ pointing at a MusicBrainz icon (Ctrl held, unless *Show every preview on a
 plain hover* is on) shows that entity's MusicBrainz card, read from
 musicbrainz.org, and **Space** opens its window; a click on the icon opens the
 window too, Ctrl-click opens MusicBrainz in a new tab. The same goes for that
-script's own icons beside the names on Discogs' page, right away.
+script's own icons beside the names on Discogs' page, right away. That
+window works as it does on MusicBrainz: **✎ Editing history ▾** (or **H**)
+and **Live page** are there too. Both are MusicBrainz pages, which MusicBrainz
+shows a script only with your browser's own musicbrainz.org session, so they
+are read with your musicbrainz.org cookies (as when you open the page in a
+tab). Its links open in the window and show their cards as on MusicBrainz —
+a genre's tag, an edit, an editor, a documentation page. If the window says
+MusicBrainz asked the browser to verify itself, open the page once in a tab
+(↗), then press **⟳**.
 Switch it off, or only the automatic lookups (then ▶ MB asks), in ⚙️
 Settings → 💿 Discogs. Without that userscript the column never appears.
 

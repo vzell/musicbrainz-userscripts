@@ -18115,8 +18115,12 @@
      * (`_MB_KINDS[kind]`), unchanged: their requests go through
      * `_mbWsLoad()`, which on another site asks musicbrainz.org through GM
      * (`_mbWsGetForeign()`) after the MusicBrainz rate slot; the HTML's
-     * links are made absolute (`_dgMbAbs()`). No Live page (MusicBrainz
-     * answers a script's page request with a browser check). An icon is an
+     * links are made absolute (`_dgMbAbs()`). Its Live page and its
+     * editing history (✎, H, the ▾ presets) are MusicBrainz PAGES, which
+     * answer a script's anonymous request with a browser check: they are
+     * read with the browser's musicbrainz.org cookies (`_MB_LIVE`,
+     * `_mbPageGetForeign()`; vzell's consent, org/POH-headerline.org item 3;
+     * until 2026-10-28 there was no Live page and no history here). An icon is an
      * image link and still gets the card: here the image IS the link, as a
      * Relationships icon on MusicBrainz. Under `sa_pop_mb`, with Ctrl as the
      * other previews; a plain click in our table opens the window, as every
@@ -18143,7 +18147,7 @@
             const name = _dpText(a.textContent) || (beside ? _dpText(beside.textContent) : '') ||
                 (cell && cell.dataset.mbDgName) || '';
             return {
-                key: `${type}:${id}`, url: `https://musicbrainz.org/${type}/${id}`, type, id, noLive: true,
+                key: `${type}:${id}`, url: `https://musicbrainz.org/${type}/${id}`, type, id,
                 kind: k.titleOf ? k.titleOf(id) : k.title, wide: !!k.wide, name,
                 col: table ? _resolveColHeaderName(table, td.cellIndex) : '',
             };
@@ -18152,13 +18156,20 @@
             id: 'dg-mb',
             kind: 'MusicBrainz',
             selector: sel,
-            live: null,
+            // Read with the browser's musicbrainz.org cookies (`_MB_LIVE.fetchText`).
+            live: _MB_LIVE,
             enabled: () => !!_isDgHost && _popSettingOn('sa_pop_mb'),
             resolve,
             needsCtrl: _dpNeedsCtrl,
             liveUrl: (t) => t.url,
             card: (t, start, repaint) => _dgMbAbs(_MB_KINDS[t.type].card(t, start, repaint)),
             extracted: (t, start, force, repaint) => _dgMbAbs(_MB_KINDS[t.type].extracted(t, start, force, repaint)),
+            // A kind's own controls in its window (an editing history's rows
+            // and pages), as the entity cards' source has them.
+            onAreaClick(e, t) {
+                const k = _MB_KINDS[t.type];
+                if (k && k.onAreaClick) k.onAreaClick(e, t);
+            },
             // The same kind in the same block: our table's column, else
             // Discogs' content.
             steps: (t) => {
@@ -18176,8 +18187,14 @@
      * window's own links made absolute by `_dgMbAbs()`) as a target of the
      * window: the `dg-mb` source's card and window (`_dgMbSource()`), so
      * hovering shows MusicBrainz's card and a click opens it in the window
-     * instead of a new tab (2026-10-26, org/discogs.org 1b/4b). Null
-     * elsewhere, with `sa_pop_mb` off, or for what the window already shows.
+     * instead of a new tab (2026-10-26, org/discogs.org 1b/4b). Besides an
+     * entity by MBID (`src.resolve()`), any musicbrainz.org link a
+     * MusicBrainz card reads (`_mbPopTarget()` with `mbOrigin`): a genre's
+     * or tag's, an edit's, an editor's, a documentation page — PAGES, read
+     * with the browser's cookies since 2026-10-28 (`_mbPageGetForeign()`;
+     * vzell: "Genres -> tags link do not open inside the same window and do
+     * not have a hover window"). Null elsewhere, with `sa_pop_mb` off, or for
+     * what the window already shows.
      *
      * @param {HTMLAnchorElement} a
      * @param {?object} cur - What the window shows now.
@@ -18187,7 +18204,7 @@
         if (!_isDgHost || !a || !cur) return null;
         const src = _popSources().find(x => x.id === 'dg-mb');
         if (!src || !src.enabled()) return null;
-        const r = src.resolve(a);
+        const r = src.resolve(a) || (a.origin === 'https://musicbrainz.org' ? _mbPopTarget(a, { inWindow: true, mbOrigin: true }) : null);
         return r && r.key !== cur.key ? Object.assign({ src, el: a, drilled: true }, r) : null;
     }
 
@@ -23505,7 +23522,7 @@
         // On another site (discogs.com: `_dgMbSource()`) the glyphs are
         // musicbrainz.org's; this origin's would name discogs.com
         // (org/POH-headerline.org item 3).
-        const origin = _foreignHost ? 'https://musicbrainz.org' : window.location.origin;
+        const origin = _mbOrigin();
         // The release page's own release-group sources (_rgLinkSource(),
         // _eventRgSource()) show a MusicBrainz release group too.
         if (_MB_RG_SOURCE_IDS.has(t.src.id)) return `${origin}/static/images/entity/${_MB_KIND_ICON['release-group']}.svg`;
@@ -24445,10 +24462,11 @@
 
     /**
      * The window target of a glyph's documentation link: MusicBrainz's
-     * documentation page (the `doc` kind, on MusicBrainz while its cards are
-     * on), or a Discogs help article (the `dgsupport` reader, while the
-     * external previews are on); null where neither applies (MusicBrainz's
-     * documentation seen from another site: the link opens a new tab).
+     * documentation page (the `doc` kind of the window's MusicBrainz source,
+     * `_mbWinSource()`: on MusicBrainz and on discogs.com, while its cards
+     * are on), or a Discogs help article (the `dgsupport` reader, while the
+     * external previews are on); null where neither applies (the link opens
+     * a new tab, and its tip says so).
      *
      * @param {HTMLAnchorElement} a - The glyph's link.
      * @returns {?object} A `drilled` target.
@@ -24459,9 +24477,13 @@
         // and a link holding an image is artwork to `_mbPopTarget()`.
         const bare = document.createElement('a');
         bare.href = a.href;
-        const mb = !_foreignHost && _popSources().find(x => x.id === 'mb-entity');
-        if (mb && mb.enabled()) {
-            const r = _mbPopTarget(bare, { inWindow: true });
+        // The window's MusicBrainz source here (`_mbWinSource()`): on
+        // discogs.com `dg-mb`, which reads the documentation page with the
+        // browser's cookies like any MusicBrainz page (`_mbPageGetForeign()`;
+        // vzell 2026-10-28: it opened a new tab there).
+        const mb = _mbWinSource();
+        if (mb) {
+            const r = _mbPopTarget(bare, { inWindow: true, mbOrigin: true });
             if (r) return Object.assign({ src: mb, el: a, drilled: true }, r, { name: '' });
         }
         const ext = _popSources().find(x => x.id === 'ext');
@@ -53457,19 +53479,67 @@
     }
 
     /**
+     * MusicBrainz's origin as the popup engine builds its URLs with: this
+     * page's on MusicBrainz, `https://musicbrainz.org` on another site
+     * (discogs.com's MusicBrainz windows, `_dgMbSource()`), where this
+     * page's origin would name that site.
+     *
+     * @returns {string}
+     */
+    function _mbOrigin() {
+        return _foreignHost ? 'https://musicbrainz.org' : window.location.origin;
+    }
+
+    /**
+     * The largest MusicBrainz page read from another site
+     * (`_mbPageGetForeign()`): a release page with its tracklist was 1.28 MB
+     * (scripts/probe-dg-poh-headerline.user.js, 2026-10-28), past the
+     * external readers' caps.
+     * @type {number}
+     */
+    const _MB_FOREIGN_PAGE_MAX = 8 * 1024 * 1024;
+
+    /**
+     * A MusicBrainz PAGE read from another site (discogs.com: a MusicBrainz
+     * window's editing history and Live page): ONE `_extFetch()` with the
+     * browser's musicbrainz.org cookies (`session`). An anonymous request
+     * gets MusicBrainz's "Verifying your browser" check instead of the page;
+     * one with the cookies of a session that has passed it gets the page
+     * (probed from discogs.com in vzell's browser, 2026-10-28,
+     * scripts/probe-dg-poh-headerline.user.js P1: 1394 bytes of check vs
+     * the 1.28 MB release page and its 183 KB /edits). vzell's consent:
+     * org/POH-headerline.org item 3 — the second request of the popup
+     * engine that is not anonymous (the first: `_extDgImgDataGet()`). The
+     * Web Service stays anonymous (`_mbWsGetForeign()`). The caller has
+     * taken the MusicBrainz rate slot (`_MB_LIVE.awaitSlot`).
+     *
+     * @param {string} url - An absolute musicbrainz.org page.
+     * @returns {Promise<string>} The page's HTML; rejects on a failure.
+     */
+    async function _mbPageGetForeign(url) {
+        const res = await _extFetch(url, { session: true, maxBytes: _MB_FOREIGN_PAGE_MAX, maxDownload: _MB_FOREIGN_PAGE_MAX });
+        if (res.error) throw new Error(res.error === 'refused' ? 'Tampermonkey refused the request to musicbrainz.org' : `musicbrainz.org: ${res.detail || res.error}`);
+        if (res.status !== 200) throw new Error(`HTTP ${res.status}`);
+        return String(res.body || '') + String(res.tail || '');
+    }
+
+    /**
      * The Live page view of a MusicBrainz page, for the popup engine's
      * `_dpGetRaw()` and `_dpIsolateFrame()`: fetched through the one
      * MusicBrainz rate gate; `#page` is the root, so hiding its siblings
      * hides the site's header, browser warning and footer and keeps both
      * the content and the sidebar (cover, rating, tags, links). Every page
      * probed in Phase 0 has `#page`, `/user/` and `/isrc/` too, which have no
-     * `#content` (org/iframe.org R6).
-     * @type {{charset: null, awaitSlot: function(): Promise<void>, liveRoot: function(Document): ?Element,
-     *   liveHide: string[], liveCss: string, livePrepare: null}}
+     * `#content` (org/iframe.org R6). On another site the page is read
+     * through `_mbPageGetForeign()` (its `fetch()` cannot read
+     * musicbrainz.org); on MusicBrainz through `_dpFetchText()`, as always.
+     * @type {{charset: null, awaitSlot: function(): Promise<void>, fetchText: function(string, ?string): Promise<string>,
+     *   liveRoot: function(Document): ?Element, liveHide: string[], liveCss: string, livePrepare: null}}
      */
     const _MB_LIVE = {
         charset: null,
         awaitSlot: () => _relAwaitRateSlot(),
+        fetchText: (url, charset) => (_foreignHost ? _mbPageGetForeign(url) : _dpFetchText(url, charset)),
         liveRoot: (doc) => doc.getElementById('page'),
         liveHide: [],
         liveCss: '',
@@ -54117,12 +54187,14 @@
      * page-wide scope — not in `_MB_POP_PAGE_SKIP`.
      *
      * @param {Element} a
-     * @param {{inWindow?: boolean}} [opts] - `inWindow`: a link in the
+     * @param {{inWindow?: boolean, mbOrigin?: boolean}} [opts] - `inWindow`: a link in the
      *   window's Extracted view, for a drill-down (Phase 5); otherwise the
-     *   card and the window are never targets themselves.
+     *   card and the window are never targets themselves. `mbOrigin`: a
+     *   musicbrainz.org link counts on another site too (`_mbOrigin()`;
+     *   `_dpOpenHistPath()` on discogs.com, org/POH-headerline.org item 3).
      * @returns {?{key: string, url: string, type: string, id: string, kind: string, wide: boolean, name: string, col: string}}
      */
-    function _mbPopTarget(a, { inWindow = false } = {}) {
+    function _mbPopTarget(a, { inWindow = false, mbOrigin = false } = {}) {
         if (!a || !a.getAttribute) return null;
         let seg = '';
         let type = '';
@@ -54152,7 +54224,7 @@
             const i = pop.indexOf(':');
             type = i > 0 ? pop.slice(0, i) : '';
             id = i > 0 ? pop.slice(i + 1) : '';
-        } else if (a.tagName !== 'A' || a.origin !== window.location.origin) {
+        } else if (a.tagName !== 'A' || a.origin !== (mbOrigin ? _mbOrigin() : window.location.origin)) {
             return null;
         } else {
             const pp = _mbPopParsePath(a.pathname, a.search);
@@ -54173,7 +54245,7 @@
         // /cdtoc/), else /<kind>/<id>; a link's: the path it names.
         const where = seg ? `/${seg}/${id}` : (k.path ? k.path(id) : `/${type}/${id}`);
         return {
-            key: `${type}:${id}`, url: new URL(where, window.location.origin).href,
+            key: `${type}:${id}`, url: new URL(where, _mbOrigin()).href,
             type, id, kind: k.titleOf ? k.titleOf(id) : k.title, wide: !!k.wide,
             // An icon's text is its hidden filter key (the path): the
             // entity's title from its tip instead.
@@ -54684,7 +54756,9 @@
         return {
             perPage: 100,
             async ask(offset, wanted, page) {
-                const url = new URL(urlOf(page), window.location.origin).href;
+                // musicbrainz.org's on another site (a tag's lists in a
+                // MusicBrainz window on discogs.com, read with its cookies).
+                const url = new URL(urlOf(page), _mbOrigin()).href;
                 const raw = await _dpGetRaw(url, _MB_LIVE, { wanted });
                 if (raw.outcome === 'skipped') return { skipped: true };
                 if (raw.outcome !== 'ok') return { ok: false, detail: raw.detail || 'The request failed.' };
@@ -56238,8 +56312,18 @@
      */
     function _mbPopArtLoad(map, ctx, type, id, again, repaint) {
         if (map.has(id) && !again) return;
+        const path = `/${type}/${id}`;
+        // ⟳ after the archive did not answer (a 429/5xx, a network error):
+        // `_artFetchEntityImages()` keeps that failure for the session, so it
+        // is forgotten first, or ⟳ would read it back and never ask again
+        // (org/POH-headerline.org item 3, P2). A definite "no images" stays.
+        if (again && ctx.failedCache.has(path)) {
+            ctx.countCache.delete(path);
+            ctx.imagesCache.delete(path);
+            ctx.failedCache.delete(path);
+        }
         map.set(id, { state: 'loading', images: [] });
-        _artFetchEntityImages(ctx, `/${type}/${id}`).then((r) => {
+        _artFetchEntityImages(ctx, path).then((r) => {
             map.set(id, r);
             repaint();
         }, () => {
@@ -58094,7 +58178,8 @@
      */
     function _mbEditsUrl(id, n) {
         const p = _mbEditsPagePath(id);
-        return new URL(n > 1 ? `${p}${p.includes('?') ? '&' : '?'}page=${n}` : p, window.location.origin).href;
+        // musicbrainz.org's on another site (a MusicBrainz window on discogs.com).
+        return new URL(n > 1 ? `${p}${p.includes('?') ? '&' : '?'}page=${n}` : p, _mbOrigin()).href;
     }
 
     /**
@@ -58465,28 +58550,44 @@
     }
 
     /**
+     * The source of the window's MusicBrainz targets here, while it is on:
+     * the entity cards (`mb-entity`) on MusicBrainz, discogs.com's
+     * MusicBrainz links (`dg-mb`, `_dgMbSource()`) on discogs.com
+     * (org/POH-headerline.org item 3); null elsewhere or when off.
+     *
+     * @returns {?object}
+     */
+    function _mbWinSource() {
+        const src = _popSources().find(x => x.id === (_foreignHost ? 'dg-mb' : 'mb-entity'));
+        return src && src.enabled() ? src : null;
+    }
+
+    /**
      * What a window's target has an editing history of: `<kind>/<MBID>` for
      * an entity with an MBID (from the target's own MusicBrainz URL, so a
      * release group shown by the release-group sources counts too),
      * `user/<name>` for an editor; `null` for everything else (a collection,
      * a code, an edit, a tag, another site, an editing history itself), and
-     * while the MusicBrainz cards are off (the history is one of them).
+     * while the MusicBrainz cards are off (the history is one of them). On
+     * discogs.com a MusicBrainz window's entity has one too (`_mbWinSource()`,
+     * read with the browser's cookies: `_mbPageGetForeign()`).
      *
      * @param {?object} t - A window target.
      * @returns {?string}
      */
     function _mbEditsSubject(t) {
-        if (!t || !t.src || _foreignHost) return null;
-        const src = _popSources().find(x => x.id === 'mb-entity');
-        if (!src || !src.enabled()) return null;
-        if (t.src.id === 'mb-entity' && t.type === 'user') return `user/${t.id}`;
+        if (!t || !t.src) return null;
+        const src = _mbWinSource();
+        if (!src || (_foreignHost && t.src.id !== src.id)) return null;
+        if (t.src.id === src.id && t.type === 'user') return `user/${t.id}`;
+        const origin = _mbOrigin();
         let u;
         try {
-            u = new URL(t.src.liveUrl(t), window.location.origin);
+            u = new URL(t.src.liveUrl(t), origin);
         } catch (_) {
             return null;
         }
-        if (u.origin !== window.location.origin) return null;
+        if (u.origin !== origin) return null;
         const m = _MB_POP_PATH_RE.exec(u.pathname);
         return m && m[1] !== 'collection' ? `${m[1]}/${m[2].toLowerCase()}` : null;
     }
@@ -58501,12 +58602,14 @@
     function _dpOpenEdits() {
         const cur = _dpDialog.target;
         const id = _mbEditsSubject(cur);
-        const src = _popSources().find(x => x.id === 'mb-entity');
+        // The window's MusicBrainz source here: on discogs.com `dg-mb`, its
+        // pages read with the browser's cookies (`_mbPageGetForeign()`).
+        const src = _mbWinSource();
         if (!id || !src) return;
         _dpDialog.stack.push(cur);
         _dpShowInDialog({
             src, el: cur.el, drilled: true, key: `edits:${id}`, type: 'edits', id,
-            url: new URL(`/${id}/edits`, window.location.origin).href,
+            url: new URL(`/${id}/edits`, _mbOrigin()).href,
             kind: _MB_KINDS.edits.title, wide: true, name: cur.name || '', col: '',
         });
     }
@@ -58875,9 +58978,11 @@
      */
     function _dpOpenHistPath(path, name = '') {
         const a = document.createElement('a');
-        a.href = path;
-        const src = _popSources().find(x => x.id === 'mb-entity');
-        const r = src && src.enabled() ? _mbPopTarget(a, { inWindow: true }) : null;
+        // On another site the path is musicbrainz.org's, and the window's
+        // MusicBrainz source there reads it (`_mbWinSource()`).
+        a.href = new URL(path, _mbOrigin()).href;
+        const src = _mbWinSource();
+        const r = src ? _mbPopTarget(a, { inWindow: true, mbOrigin: true }) : null;
         if (!r) {
             window.open(a.href, '_blank', 'noopener');
             return;
@@ -58951,7 +59056,7 @@
                 _setTip(b, `${p.label} — in the window; Ctrl-click or middle-click opens MusicBrainz's page in a new tab`);
                 const go = (e) => {
                     if (e.ctrlKey || e.metaKey || e.button === 1) {
-                        window.open(new URL(p.path, window.location.origin).href, '_blank', 'noopener');
+                        window.open(new URL(p.path, _mbOrigin()).href, '_blank', 'noopener');
                     } else {
                         _dpOpenHistPath(p.path, name);
                     }
@@ -59847,7 +59952,7 @@
                 const right = `<h4>Items · ${items.length}</h4>` + (items.length ? _mbPopTableHtml(['#', 'Item', 'Date'], items.map(x => [
                     _rgEsc(x.num || '—'),
                     // MusicBrainz's own glyph of the item's kind first (Phase 3e), in a fixed box.
-                    (_MB_KIND_ICON[x.type] ? `<img class="mb-pop-ent-icon" src="${window.location.origin}/static/images/entity/${_MB_KIND_ICON[x.type]}.svg" ` +
+                    (_MB_KIND_ICON[x.type] ? `<img class="mb-pop-ent-icon" src="${_mbOrigin()}/static/images/entity/${_MB_KIND_ICON[x.type]}.svg" ` +
                         `alt="" width="16" height="16"> ` : '') +
                     `<a href="/${_rgEsc(x.type)}/${_rgEsc(x.e.id)}" target="_blank" rel="noopener">${_rgEsc(x.e.title || x.e.name)}</a>` +
                         `${x.e.disambiguation ? ` <span class="mb-rg-dim">(${_rgEsc(x.e.disambiguation)})</span>` : ''}`,

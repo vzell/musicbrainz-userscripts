@@ -1585,10 +1585,12 @@ https://claude.ai/artifact/YCnV4DZA5R4quLAGkmhCpC
   pseudo source `_DP_CRUMB_SRC`: the step's own `card(t, false)` (no
   request, ever), its source's foot lines dropped (on a step Space goes
   back, `pt.crumbOf` in the Space handler), a foot of its own. A glyph is
-  `_dpDocTarget()`: MusicBrainz's `doc` kind (MusicBrainz only — on another
-  site the page needs the browser check's cookie, so the glyph opens a new
-  tab and says so) or the `dgsupport` reader. It reads a BARE copy of the
-  link: `_mbPopTarget()` takes a link holding an image for artwork.
+  `_dpDocTarget()`: MusicBrainz's `doc` kind through `_mbWinSource()` — on
+  discogs.com `dg-mb`, the page read with the browser's cookies like any
+  MusicBrainz page (until Step 3 it opened a new tab there; vzell,
+  2026-10-28) — or the `dgsupport` reader. A glyph no card reads opens a new
+  tab and says so in its tip. It reads a BARE copy of the link:
+  `_mbPopTarget()` takes a link holding an image for artwork.
 - **Glyphs** (`_dpKindGlyph()`): `_mbKindIconUrl()` (which serves `dg-mb`
   too, from musicbrainz.org on a foreign host — item 3), with
   `_MB_KIND_DOCS` (probed: `scripts/probe-mb-kind-docs.py`); Discogs by
@@ -1725,12 +1727,19 @@ generalize to URLs".
   aborted: its headers name it. The body is cut to `_EXT_MAX_BYTES` (512 KB,
   answer 4; every `og:` tag sat within 8.2 KB, X5). Never rejects: failures
   come back as `error` (`refused`, `unreachable`, `timeout`).
-  **One exception, by consent (vzell, 2026-10-27):** `session: true` sends
-  the browser's cookies — used ONLY by `_extDgImgDataGet()`, for a Discogs
+  **Two exceptions, each by consent:** `session: true` sends the browser's
+  cookies. (1) vzell, 2026-10-27: `_extDgImgDataGet()`, for a Discogs
   release's image editor's data (`/images/data`) read from another site,
-  which answers nothing without the Discogs login (below, "A Discogs release's images"). Every
-  other caller stays anonymous; `scripts/mutations/dg-images.json` pins
-  both halves (the editor with the session, the API without).
+  which answers nothing without the Discogs login (below, "A Discogs
+  release's images"); `scripts/mutations/dg-images.json` pins both halves
+  (the editor with the session, the API without). (2) vzell, 2026-10-28
+  (org/POH-headerline.org item 3): `_mbPageGetForeign()`, a musicbrainz.org
+  PAGE read from discogs.com (a MusicBrainz window's Live page and editing
+  history, through `_MB_LIVE.fetchText`), which answers an anonymous
+  request with its browser check (probe P1,
+  `scripts/probe-dg-poh-headerline.user.js`); the Web Service there stays
+  anonymous (`_mbWsGetForeign()`); `scripts/mutations/poh-headerline.json`
+  pins it. Every other caller stays anonymous.
   `_extGet()` adds the gate, `wanted()` after the slot, and one retry on a
   transient status.
 - **One rate gate per HOST: `_extAwaitSlot(host)`** (`_extSpacingMs(host)`:
