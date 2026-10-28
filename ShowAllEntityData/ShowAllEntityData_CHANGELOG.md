@@ -4,9 +4,42 @@ Every version, newest first, with the technical details behind each change. For 
 
 **Months:** [October 2026](ShowAllEntityData_CHANGELOG/2026-10.md) · [September 2026](ShowAllEntityData_CHANGELOG/2026-09.md) · [August 2026](ShowAllEntityData_CHANGELOG/2026-08.md) · [July 2026](ShowAllEntityData_CHANGELOG/2026-07.md) · [June 2026](ShowAllEntityData_CHANGELOG/2026-06.md) · [May 2026](ShowAllEntityData_CHANGELOG/2026-05.md) · [April 2026](ShowAllEntityData_CHANGELOG/2026-04.md) · [March 2026 (1 of 2)](ShowAllEntityData_CHANGELOG/2026-03-1.md) · [March 2026 (2 of 2)](ShowAllEntityData_CHANGELOG/2026-03-2.md) · [February 2026](ShowAllEntityData_CHANGELOG/2026-02.md) · [January 2026](ShowAllEntityData_CHANGELOG/2026-01.md)
 
-This page shows the newest 100 of 1662 versions; the month pages hold all of them.
+This page shows the newest 100 of 1666 versions; the month pages hold all of them.
 
 ---
+
+## 9.99.1495 — 2026-10-28
+
+**🚀 Feature**
+
+- Link previews: a link to the genre list (/genres) has a card (how many genres, the first and the last) and, on Space, a window with every genre in a table: a filter, a chip per letter (0–9, A … Z, \#) and each genre opening its own card.
+- Once the genre list has been read, a tag card names its genre's disambiguation, and an editor's Tags window links each of their genres to its genre page (a new "Genre page" column). Only a window asks for the list, never a hover.
+
+
+## 9.99.1494 — 2026-10-28
+
+**✨ Improve**
+
+- Link previews: an artist's sort name is now the first line of the artist card ("Sort name  Iglesias, Julio"), when it differs from the name, instead of a separate "Link title" box above the card.
+
+**🐛 Fix**
+
+- Link previews: a label link's box above the card said "Sort name" for what is really the label's disambiguation (e.g. Legacy: "reissue division of Sony Music Entertainment"). The box is gone; the card already shows the disambiguation under the name.
+
+
+## 9.99.1493 — 2026-10-28
+
+**🚀 Feature**
+
+- Link previews: the entity icon before a MusicBrainz page's title (the release, release group, artist… icon left of the h1) now shows that kind's documentation, as the icon before each step of the window's path does. Rest on it for the Documentation card; a click or Space reads the page in the window, Ctrl-click opens it in a new tab. Only while the MusicBrainz link previews are on.
+
+
+## 9.99.1492 — 2026-10-28
+
+**🐛 Fix**
+
+- Link previews: links to BookBrainz, ListenBrainz, CritiqueBrainz, MetaBrainz and AcousticBrainz now get a card and Space like any other site (e.g. the BookBrainz search among the sidebar's Search links). Only musicbrainz.org and the artwork archives are still left out: MusicBrainz links have their own cards, and artwork has its own preview.
+
 
 ## 9.99.1491 — 2026-10-28
 
@@ -833,51 +866,6 @@ This page shows the newest 100 of 1662 versions; the month pages hold all of the
 **✨ Improve**
 
 - Three more warnings show the rich comparison card instead of a sentence only. "Live title date uses "-"" (release and release group titles, event names, recording comments): the text over the same text with "‐" in its date, only the date's hyphens marked — a hyphen in the venue stays. "Extra title information starts uppercase": the title over the same title with its keywords in lower case, "(Live in Asbury Park 2009)" over "(live in Asbury Park 2009)". "Title truncated with "…"": the title in one row with the "…" marked, since the full title is not on the page. The cards also show in the note box above a link preview.
-
-
-## 9.99.1395 — 2026-10-20
-
-**🚀 Feature**
-
-- MusicBrainz pages: "Aa Check title style (MB guidelines)" at the top of the ⚠️ WARNING menu checks every title on the page against the MusicBrainz style guide and adds five warnings: "Title not in MB title case" ("Prayer For The Weary" → "Prayer for the Weary"), "ASCII punctuation in title" ("Don't" → "Don’t", " - " → " – ", "..." → "…"), "Series number without comma" ("Broadcasts Vol. 5" → "Broadcasts, Vol. 5"), "Featured artist in title" and "Extra title information to remove" ("(bonus track)", "\[… Cover\]"). Each filters the page from the menu and from the column's 📊 Findings - Warning section, and the hover card shows the title over its MusicBrainz style with only what differs marked. Only certain cases are flagged: titles in another language or in sentence case, live bootleg titles, phrasal "Take On Me", "& The E Street Band", lower-case words in "(…)" and anything in "\[…\]" are left alone.
-- The check runs only when asked for, since it costs about 0.2 s per 10,000 different titles; it then stays on for the page until a reload, and the menu row shows how many titles it checked and how long that took. ⚙️ Settings → ⚠️ Findings → "Check title style automatically" (off by default) runs it on every load; each of the five warnings and their tint have their own switches there. The WARNING menu now shows on every MusicBrainz page with titles, to offer the check.
-
-**🔧 Refactor**
-
-- scripts/check-mb-title-case.js --mb-sample runs the checker over the MusicBrainz titles of the snapshots and times it; scripts/mutations/foreign-titles.json: one entry's anchor followed the rename to \_mbSiteTitleTip().
-
-
-## 9.99.1394 — 2026-10-20
-
-**🐛 Fix**
-
-- Event pages: after "Show all Relationships for Event" the read-only "Sidebar" section now sits above the Relationships tables, as it does above the data on every other page, instead of below all the event tables. On an event page "Relationships" is the table itself, which the placement mistook for a side section.
-
-
-## 9.99.1393 — 2026-10-20
-
-**🚀 Feature**
-
-- Link preview window: a new "✎ Editing history" button (or press H) shows the entity's editing history in the same window, laid out like a Discogs release's history. Every entity with an MBID has one (not a collection), and so does an editor. The list has one row per edit (date, editor, a coloured type pill, what changed with the editor's note, votes or status), with chips for category and status and a Newest/Oldest switch. Click a row (or use ↑ ↓) to see that edit below: old and new values side by side with MusicBrainz's red/green marks, an edit medium's tracklist split into its old and new halves, a merge as Merge \| Into, an addition or removal in one column, then the edit notes. "Only what changed" is on by default. Cover and event art open in the artwork viewer, "Edit \#…" opens the edit's own card in the window, and ← Back returns.
-- "Load page 2 of 7" reads the next 50 edits. A busy entity only says "at least 500", so its footer has no last page. Each page is one request and selecting a row asks for nothing. A page with an open edit is read again next time, because its votes change. Logged out, the window says that MusicBrainz hides editors and notes.
-- The sidebar's "Editing history" link and an editor window's "Their edits" link now have a card of their own and open the same window.
-
-**🐛 Fix**
-
-- A dialog no longer closes when a button inside it is pressed with the keyboard (Enter on a focused chip in a Discogs history window, for example) and the button redraws its part of the dialog.
-
-**✨ Improve**
-
-- An edit, editor or tag card that gets MusicBrainz's "Verifying your browser" page instead now says so: open the page once in a tab, then press ⟳.
-
-
-## 9.99.1392 — 2026-10-20
-
-**🚀 Feature**
-
-- CAA/EAA artwork card: press Space while it shows to see every image, not just the first 12 and a "+N" (Space again goes back to 12). The card cannot scroll, so it shrinks its tiles until it fits the window. Space keeps its usual meaning when nothing is cut off, while you type into a field, and while a link preview card shows.
-- CAA/EAA artwork card: hold Shift to draw its tiles bigger (new setting "Tile size in the artwork card while Shift is held", 150 px). This also works when Shift is already down as the pointer reaches the icon, and it combines with Space. The tiles are the thumbnails the card already loads, so this costs no request.
-- The same Space and Shift keys work on the artwork cards of the relationship-list covers and of discogs.com's Image column.
 
 
 ---
