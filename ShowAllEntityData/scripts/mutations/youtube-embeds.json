@@ -186,8 +186,8 @@
         "why": "The mockup puts the player in a slot above the list so the list does not jump; without it the player opens inside a line.",
         "edits": [
             {
-                "find": "        const box = tiles ? '<div class=\"mb-dg-lines\" data-mb-yt-slots=\"\"><div class=\"mb-yt-slot\"></div>' : '<div class=\"mb-dg-lines\">';",
-                "replace": "        const box = '<div class=\"mb-dg-lines\">';"
+                "find": "            '<div class=\"mb-dg-lines mb-yt-grid\" data-mb-yt-slots=\"\"><div class=\"mb-yt-slot\"></div>' + rows.join('') + '</div>');",
+                "replace": "            '<div class=\"mb-dg-lines mb-yt-grid\">' + rows.join('') + '</div>');"
             }
         ],
         "spec": "tests/fixtures/youtube-embeds.spec.js",
@@ -270,6 +270,45 @@
         ],
         "spec": "tests/fixtures/youtube-embeds.spec.js",
         "grep": "the window: a tile after the Media playlist",
+        "expect": "fail"
+    },
+    {
+        "name": "the relationship converter reads the initial page's tile as a line",
+        "why": "_eventSplitAtBr() must skip a tile the initial page put into a table.details cell, or the URLs table gains a bogus row and a second tile.",
+        "edits": [
+            {
+                "find": "            if (n.nodeType === Node.ELEMENT_NODE && n.classList.contains('mb-yt-tile')) return;\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/youtube-embeds.spec.js",
+        "grep": "the URLs sub-table: a tile under the link",
+        "expect": "fail"
+    },
+    {
+        "name": "the initial page's Relationships get no tile",
+        "why": "vzell, 2026-10-28: the 'stream video for free' link plays on the initial page, before any button.",
+        "edits": [
+            {
+                "find": "        document.querySelectorAll('#content .annotation-body').forEach(body => _ytDecorateLinks(body));\n        _ytDecorateRelDetails();",
+                "replace": "        document.querySelectorAll('#content .annotation-body').forEach(body => _ytDecorateLinks(body));"
+            }
+        ],
+        "spec": "tests/fixtures/youtube-embeds.spec.js",
+        "grep": "the initial page: a tile after",
+        "expect": "fail"
+    },
+    {
+        "name": "the Discogs window's videos are not in columns",
+        "why": "vzell, 2026-10-28: tile, title and length line up in three columns; without display: contents each line is one grid cell.",
+        "edits": [
+            {
+                "find": "            .mb-yt-grid > .mb-yt-row { display: contents; }",
+                "replace": "            .mb-yt-grid > .mb-yt-row { display: flex; }"
+            }
+        ],
+        "spec": "tests/fixtures/youtube-embeds.spec.js",
+        "grep": "the release window: a small tile per video",
         "expect": "fail"
     }
 ]

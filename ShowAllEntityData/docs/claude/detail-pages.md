@@ -1953,11 +1953,12 @@ late write into a rendered cell):
 | Place                                                   | Built by                                                                                                                    | Placement         |
 |---------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------|-------------------|
 | Relationships › URLs sub-table, URL cell                | `_eventRelColumns()` (`r.type === 'url'`)                                                                                   | row under the row |
+| The initial page's Relationships (`table.details`)      | `_ytDecorateRelDetails()` at init, after the line's `<br>`; `_eventSplitAtBr()` skips it, so the converter builds its own   | row under the row |
 | Sidebar "Play on YouTube" (small)                       | `_ytDecorateMbPage()` at init, inside the `li` (docs/claude/sidebar.md)                                                     | under the tile    |
 | The page's annotation                                   | `_ytDecorateMbPage()` → `_ytDecorateLinks()`; a heading's link: after the heading                                           | under the tile    |
 | An Annotation column (report-detail, annotation search) | `ColumnDataExtractor.ytTiles`, listed AFTER `numberOfChars` (which counts `textContent`)                                    | row under the row |
 | The YouTube link's window                               | `_ytWindowTile()` from `_extExtracted()`, in place of the thumbnail; `dead` from the reader's record                        | under the tile    |
-| Discogs release/master window, Videos                   | `_extDgVideosHtml()` (small tiles, a slot above the list)                                                                   | slot              |
+| Discogs release/master window, Videos                   | `_extDgVideosHtml()` (small tiles, a slot above the list; `.mb-yt-grid`: tile, title, length in three columns)              | slot              |
 | discogs.com release page, "Videos" sub-table            | `_dgVideosTableHtml()` (bare tile in Play; no Play column when off)                                                         | row under the row |
 | Brucebase entry window sections                         | `_dpExtractedCols()` → `_ytDecorateHtml()` for a record with `ytTiles` (`_dpParseBbPage()`; Media from `_bbMediaSection()`) | under the tile    |
 
@@ -1967,10 +1968,11 @@ Not covered (not asked, org/youtube.org): springsteenlyrics.com's song
 embeds, the "Sidebar as tables" tables (their collector copies only the
 `<a>`), the year table's Media icon.
 
-**Tests**: `tests/fixtures/youtube-embeds.spec.js` (Steps 1–4, 25 tests;
-`recording-youtube.html`, `detail-bb-gig-2026-10-03.html`), the
-`videoseries` pin in `detail-preview.spec.js`'s Live page test; mutations
-`scripts/mutations/youtube-embeds.json` (21).
+**Tests**: `tests/fixtures/youtube-embeds.spec.js` (Steps 1–4 and the
+live-test round, 26 tests; `recording-youtube.html`,
+`detail-bb-gig-2026-10-03.html`), the `videoseries` pin in
+`detail-preview.spec.js`'s Live page test; mutations
+`scripts/mutations/youtube-embeds.json` (24).
 
 ## Readers of known sites (org/iframe.org "* generalize to URLs", U3)
 

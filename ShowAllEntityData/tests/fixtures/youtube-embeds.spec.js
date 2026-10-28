@@ -437,12 +437,37 @@ test.describe('YouTube in place — Step 2: MusicBrainz', () => {
         await expect.poll(() => log.player.length).toBe(1);
     });
 
+    test('the initial page: a tile after the "stream video for free" line; it plays in a row under the relationship', async ({ page }) => {
+        const log = await openRecording(page, { press: false });
+        const td = page.locator('#content table.details td').filter({ has: page.locator(`a[href="${REC_VIDEO}"]`) });
+        const tile = td.locator(':scope > .mb-yt-tile');
+        await expect(tile).toHaveCount(1);
+        await expect(tile).toHaveAttribute('data-mb-yt', 'dJkaZ8hQM60');
+        // After the line's <br>: the relationship's own line ("… [info]") is untouched.
+        expect(await tile.evaluate(t => t.previousElementSibling && t.previousElementSibling.tagName)).toBe('BR');
+        await expect(td).toContainText('[info]');
+        expect(log.player).toEqual([]);
+        await tile.click();
+        const tr = td.locator('xpath=ancestor::tr[1]');
+        const next = tr.locator('xpath=following-sibling::tr[1]');
+        await expect(next).toHaveClass('mb-yt-playerrow');
+        await expect(next.locator('iframe.mb-yt-frame')).toHaveAttribute('src', 'https://www.youtube-nocookie.com/embed/dJkaZ8hQM60?autoplay=1');
+        await expect.poll(() => log.player.length).toBe(1);
+        // A second run of the page pass adds nothing.
+        await page.evaluate(() => window.__saTest.ytDecorateMbPage());
+        await expect(td.locator('.mb-yt-tile')).toHaveCount(1);
+    });
+
     test('the URLs sub-table: a tile under the link, built with the cell; it plays in a row under the row', async ({ page }) => {
         const log = await openRecording(page);
         const cell = urlCell(page);
         await expect(cell).toBeVisible();
         await expect(cell.locator('.mb-yt-tile')).toHaveCount(1);
         await expect(cell.locator('.mb-yt-tile')).toHaveAttribute('data-mb-yt', 'dJkaZ8hQM60');
+        // The initial page's own tile (in the native list) was no line of
+        // its own for the converter: one row, one tile, nowhere else.
+        await expect(cell.locator('xpath=ancestor::table[1]').locator('tbody > tr')).toHaveCount(1);
+        await expect(page.locator('table.tbl .mb-yt-tile')).toHaveCount(1);
         // The tile follows the link (and its [info]); the link is unchanged.
         expect(await cell.evaluate(td => td.lastElementChild.matches('.mb-yt-tile'))).toBe(true);
         expect(log.player).toEqual([]);
@@ -647,6 +672,23 @@ test.describe('YouTube in place — Step 3: Discogs', () => {
         expect(await lines.evaluate(l => l.firstElementChild.className)).toBe('mb-yt-slot');
         await expect(lines.locator('.mb-yt-slot iframe')).toHaveCount(0);
         expect(log.player).toEqual([]);
+
+        // Three aligned columns (vzell, 2026-10-28): every tile starts at
+        // one x, every title at one x (right of the widest tile), every
+        // length ends at one x — the second video has none, its cell is
+        // there all the same.
+        const cols = await lines.locator('.mb-yt-row').evaluateAll(rs => rs.map((r) => {
+            const [a, b, c] = Array.from(r.children).map(e => e.getBoundingClientRect());
+            return { tileL: a.left, tileR: a.right, linkL: b.left, linkR: b.right, lenL: c.left, lenR: c.right, n: r.children.length };
+        }));
+        expect(cols.map(c => c.n)).toEqual([3, 3, 3]);
+        const same = (k) => cols.every(c => Math.abs(c[k] - cols[0][k]) < 0.5);
+        expect(same('tileL'), 'tiles in one column').toBe(true);
+        expect(same('linkL'), 'titles in one column').toBe(true);
+        expect(same('lenR'), 'lengths in one column').toBe(true);
+        expect(cols[0].linkL).toBeGreaterThan(Math.max(...cols.map(c => c.tileR)));
+        expect(cols[0].lenL, 'the length is not glued to the title').toBeGreaterThan(cols[0].linkR);
+        await expect(sec.locator('.mb-yt-len')).toHaveText(['4:30', '', '4:31']);
 
         const rowsBefore = await lines.locator('.mb-yt-row').evaluateAll(rs => rs.map(r => r.textContent));
         await tiles.nth(1).click();

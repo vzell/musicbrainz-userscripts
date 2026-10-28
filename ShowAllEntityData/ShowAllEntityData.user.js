@@ -28325,7 +28325,10 @@
     }
 
     /**
-     * Splits an element's child nodes into lines at each `<br>`.
+     * Splits an element's child nodes into lines at each `<br>`. A YouTube
+     * "Play here" tile the initial page put into the cell
+     * (`_ytDecorateRelDetails()`, org/youtube.org) is no part of any line:
+     * the converted table builds its own (`_eventRelColumns()`).
      *
      * @param   {Element} el
      * @returns {Node[][]}
@@ -28333,6 +28336,7 @@
     function _eventSplitAtBr(el) {
         const lines = [[]];
         el.childNodes.forEach(n => {
+            if (n.nodeType === Node.ELEMENT_NODE && n.classList.contains('mb-yt-tile')) return;
             if (n.nodeType === Node.ELEMENT_NODE && n.tagName === 'BR') lines.push([]);
             else lines[lines.length - 1].push(n);
         });
@@ -61255,6 +61259,37 @@
         if (_foreignHost || !_ytOn()) return;
         document.querySelectorAll('#sidebar ul.external_links').forEach(ul => _ytDecorateLinks(ul, { small: true }));
         document.querySelectorAll('#content .annotation-body').forEach(body => _ytDecorateLinks(body));
+        _ytDecorateRelDetails();
+    }
+
+    /**
+     * The initial page's Relationships lists (vzell, 2026-10-28: "stream
+     * video for free" should play before any button): MusicBrainz prints
+     * each relationship as a line of a `table.details` cell, ended by
+     * `<br>`. A tile goes after that `<br>` (on its own line, never in the
+     * middle of the next relationship), and plays in a full-width row under
+     * the relationship's row. The converter that turns these lists into
+     * tables skips it (`_eventSplitAtBr()`) and builds its own tile. A
+     * link's words here are its address, so the tile has no title.
+     * Idempotent.
+     *
+     * @returns {void}
+     */
+    function _ytDecorateRelDetails() {
+        document.querySelectorAll('#content table.details > tbody > tr > td').forEach(td => {
+            td.querySelectorAll(':scope > a[href]').forEach(a => {
+                const v = _ytParse(a.getAttribute('href'));
+                if (!v) return;
+                let br = a.nextSibling;
+                while (br && !(br.nodeType === Node.ELEMENT_NODE && br.tagName === 'BR')) br = br.nextSibling;
+                const next = br ? br.nextElementSibling : td.lastElementChild;
+                if (next && next.matches('.mb-yt-tile') && next.dataset.mbYt === _ytKey(v)) return;
+                const tile = _ytTileNode(v, { dead: _ytKnownDead(a.getAttribute('href')) });
+                if (!tile) return;
+                if (br) br.after(tile);
+                else td.appendChild(tile);
+            });
+        });
     }
 
     /**
@@ -61677,9 +61712,22 @@
             .mb-yt-s { color: #7a6d5c; font: 11.5px/1.3 system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif; }
             .mb-yt-tile.mb-yt-dead .mb-yt-s { color: #9b2218; }
             .mb-yt-under, .mb-yt-slot:not(:empty) { margin: 6px 0 8px; }
-            /* A list's line (the Discogs window's Videos): tile, title, length. */
+            /* A list's line: tile, title, length. In a grid list (the Discogs
+               window's Videos) the three line up in columns: each line's
+               box is dissolved into the grid, the slot spans every column
+               and takes no row while empty. */
             .mb-yt-row { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: center; }
             .mb-yt-row > .mb-yt-tile:not(.mb-yt-bare) { display: inline-flex; margin: 2px 0; }
+            .mb-yt-grid {
+                display: grid;
+                grid-template-columns: max-content minmax(0, 1fr) max-content;
+                gap: 6px 14px;
+                align-items: center;
+            }
+            .mb-yt-grid > .mb-yt-row { display: contents; }
+            .mb-yt-grid > .mb-yt-slot { grid-column: 1 / -1; }
+            .mb-yt-grid > .mb-yt-slot:empty { display: none; }
+            .mb-yt-grid .mb-yt-len { justify-self: end; font-variant-numeric: tabular-nums; white-space: nowrap; }
             tr.mb-yt-playerrow > td { padding: 0 8px 12px; background: #fbf8f1; }
             .mb-yt-player { display: grid; gap: 6px; width: min(100%, 640px); max-width: 640px; }
             .mb-yt-frame {
@@ -64071,25 +64119,31 @@
      * The Discogs window's Videos section: a line per video — its title
      * linked, its length — and (org/youtube.org) a small "Play here" tile in
      * front of each YouTube one, the player opening in a slot ABOVE the list
-     * so the list does not jump (the mockup's Discogs panel). Without a tile
-     * (`sa_yt_play_in_place` off, or no YouTube video) the section is what it
-     * always was.
+     * so the list does not jump (the mockup's Discogs panel). With tiles the
+     * list is three aligned columns — tile, title, length (vzell,
+     * 2026-10-28) — so every line has all three cells (an empty first one
+     * for a video that is not on YouTube, an empty last one without a
+     * length). Without a tile (`sa_yt_play_in_place` off, or no YouTube
+     * video) the section is what it always was.
      *
      * @param {Array<{title: string, url: string, dur: number}>} videos
      * @returns {string}
      */
     function _extDgVideosHtml(videos) {
         const dur = (s) => (s ? `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}` : '');
-        let tiles = 0;
-        const rows = videos.map((v) => {
+        const tiles = videos.map((v) => {
             const yt = _ytParse(v.url);
-            const tile = yt ? _ytTileHtml(yt, { small: true, title: v.title, dur: v.dur }) : '';
-            if (tile) tiles++;
-            return `<div${tile ? ' class="mb-yt-row"' : ''}>${tile}<a href="${_rgEsc(v.url)}" target="_blank" rel="noopener noreferrer">${_rgEsc(v.title)}</a>` +
-                `${v.dur ? ` <span class="mb-dg-dim">${dur(v.dur)}</span>` : ''}</div>`;
+            return yt ? _ytTileHtml(yt, { small: true, title: v.title, dur: v.dur }) : '';
         });
-        const box = tiles ? '<div class="mb-dg-lines" data-mb-yt-slots=""><div class="mb-yt-slot"></div>' : '<div class="mb-dg-lines">';
-        return _extDgSection('videos', 'Videos', videos.length, box + rows.join('') + '</div>');
+        const link = (v) => `<a href="${_rgEsc(v.url)}" target="_blank" rel="noopener noreferrer">${_rgEsc(v.title)}</a>`;
+        if (!tiles.some(Boolean)) {
+            return _extDgSection('videos', 'Videos', videos.length, '<div class="mb-dg-lines">' + videos.map(v =>
+                `<div>${link(v)}${v.dur ? ` <span class="mb-dg-dim">${dur(v.dur)}</span>` : ''}</div>`).join('') + '</div>');
+        }
+        const rows = videos.map((v, i) => `<div class="mb-yt-row">${tiles[i] || '<span class="mb-yt-notile"></span>'}${link(v)}` +
+            `<span class="mb-dg-dim mb-yt-len">${dur(v.dur)}</span></div>`);
+        return _extDgSection('videos', 'Videos', videos.length,
+            '<div class="mb-dg-lines mb-yt-grid" data-mb-yt-slots=""><div class="mb-yt-slot"></div>' + rows.join('') + '</div>');
     }
 
     /**
@@ -152868,6 +152922,13 @@ a { color: #1565c0; }`;
              * @returns {HTMLTableCellElement[]}
              */
             ytTilesExtract: (td) => ColumnDataExtractor.ytTiles(td),
+            /**
+             * The MusicBrainz page pass (`_ytDecorateMbPage()`, shipping), run
+             * again, so a spec can pin that it is idempotent.
+             *
+             * @returns {void}
+             */
+            ytDecorateMbPage: () => _ytDecorateMbPage(),
             /**
              * The key of the video that plays (`_ytCur()`), or null.
              *

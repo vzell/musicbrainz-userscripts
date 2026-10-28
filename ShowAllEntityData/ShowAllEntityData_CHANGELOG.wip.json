@@ -1,5 +1,17 @@
 [
     {
+        "version": "WIP.6",
+        "date": "2026-10-28",
+        "sections": [
+            {
+                "label": "✨ Improve",
+                "items": [
+                    "YouTube in place (WIP.2, WIP.3), after vzell's live test: a YouTube link in a MusicBrainz page's own Relationships list (\"stream video for free\" on a recording) gets its \"Play here\" tile on the page as it loads, before any button; it plays in a row under that relationship, and the Relationships render still builds its own tile, just one. The Discogs window's Videos line up in three columns — tile, title, length — instead of running together."
+                ]
+            }
+        ]
+    },
+    {
         "version": "WIP.5",
         "date": "2026-10-28",
         "sections": [

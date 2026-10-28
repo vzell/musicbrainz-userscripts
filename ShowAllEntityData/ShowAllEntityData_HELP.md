@@ -2722,14 +2722,17 @@ or window as usual. Under the player: *Playing*, the video's id and *Open on
 YouTube ↗*. A video YouTube no longer has is shown as *Not available on YouTube
 any more*, and its tile asks nothing. The tiles are:
 
-- in the **URLs** table of a Relationships render, under each YouTube link;
+- in a page's **Relationships** before any button (under a line such as
+  *stream video for free*), and in the **URLs** table of a Relationships
+  render, under each YouTube link;
 - in the sidebar, under **Play on YouTube**;
 - after every YouTube link in an **annotation** (the page's own, and the
   Annotation column of reports and annotation search results);
 - in a YouTube link's **window**, under its title (the video plays in the
   window);
-- in the **Videos** of a Discogs release's or master's window, and in the
-  **Videos** sub-table of a release page on discogs.com;
+- in the **Videos** of a Discogs release's or master's window (tile, title
+  and length in three columns), and in the **Videos** sub-table of a release
+  page on discogs.com;
 - in a **Brucebase** show's window: its *Media* section (the show's embedded
   video or playlist) and after every YouTube link of its other sections.
 
