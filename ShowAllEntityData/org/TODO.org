@@ -4834,6 +4834,7 @@ loader for MusicBrainz.
 * DONE embed YouTube videos directly in the PTs where they are referenced + the original URL as popup box as now
 
 * DONE On https://musicbrainz.org/release-group/f83d2211-dd81-4b1e-9a02-e89733891e1c when the third-party userscript "mb. FUNKEY ILLUSTRATED RECORDS" by @jesus2099 is active the images should get our internal viewer treatment
+** DONE initial
 
 1.)
 
@@ -4863,209 +4864,42 @@ https://musicbrainz.org/release/4d854621-0264-4b83-9687-8ad4b9a4e99b - "Credits"
 etc. (maybe I'm missing some)
 #+end_example
 
+** DONE bug
 
-* TODO consolidate more LAF across more PTs
+at https://musicbrainz.org/tag/country the small inline images before the RG names in the "Release groups" section still
+have their native tooltips instead of our image treatment - [Image #19]
 
-
-* TODO Add a must have third-party userscripts section together with the end-user visible changes and what our userscript depends on
-
-Add a must have third-party userscripts section together with the end-user visible changes and what our userscript
-depends on
-
-1.)
-
-Analyse first and give a comprehensive summary in a nice HTML based view, with URLs to the original script (downlaod URL, homepage, documentaiotn URL, etc)
-
-2.)
-
-Suggestions for complete integration
-
-3.)
-
-etc
-
-
-* TODO write the forum section for 9.99.167 -> 9.99.1426
-
-write the forum section for 9.99.1167 -> 9.99.1426
-
-9.99.1167 is the last officially published one.
-
-there are already sections after that one, that were meant to be published but never did.
-
-rewrite all these and combine with the latest changes
-
-
-* TODO Release events - country "Japan" need flag on the relationships area
-
-"RELEASE EVENTS" - country "Japan" need flag on the "Sidebar" section
-
-https://musicbrainz.org/release/3ec14d03-2c03-4764-a69d-8155817a040f
-
-* TODO also add the pager framework on other detail popups like on the collections one
-* TODO Scrollbars (left side) and pager (tables right side) or any table + image internal viewer support should automatically be there for ALL detail popups
-
-Scrollbars (left side) and pager (tables right side) or any table + image internal viewer support should automatically
-be there for ALL detail popups, and the geometry should be based on the current and stored popup window size 
-
-a.)
-
-Chaban
-
-#+begin_example
-"Instrument collections" -> "Edit search queries" - scrollbar on the left section
-"Label collections" ->  "Artist as label" - multiple srollbars
-"Release collections" -> "Scans" - image hover popup + internal viewer click
-"Work collections" -> "Onomatopoeia" - adjust scrollbars for the right window + adjust height
-#+end_example
-
-
-* TODO add support for image URLs from the sidebar like the logo label images
-
-1.)
-
-register the third-party user script by @zabe
-
-#+begin_example
-@tests/fixtures/live-userscripts/entity-image.user.js
-#+end_example
-
-2.)
-
-check what it's doing
-
-
-* TODO On https://musicbrainz.org/release-group/f83d2211-dd81-4b1e-9a02-e89733891e1c the "Official homepage" chip in the "Sidebar" section needs a better reader
-
-On https://musicbrainz.org/release-group/f83d2211-dd81-4b1e-9a02-e89733891e1c the "Official homepage" chip in the "Sidebar" section needs a better reader
-
-
-* TODO on every supported PT, e.g. -> place link -> hover ==> Wikipedia link should render inside popup
-
-Actually everywhere, on ALL PTs
-
-1.)
-
-Wikidot URLs, e.g.https://brucebase.wikidot.com/2012
-on BB event pages -> place link -> hover ==> Wikipedia link should render inside popup
-
-2.)
-
-on BB pages links on the form "https://brucebase.wikidot.com/1973#020373" should be rendered inline too
-
-* TODO On MB entity POHs we should get additional POH support for known URLs like Wikipedia/Wikidata
-
-On MB entity POHs we should get additional POH support for known URLs like Wikipedia/Wikidata
-
-
-* TODO Site icons
-
-On MB RG POHs add the site icons in front of the site entity name in the POH header line, e.g. https://musicbrainz.org/release-group/f83d2211-dd81-4b1e-9a02-e89733891e1c
-
-#+begin_example
-<div class="header mb-vsb-chrome"><a class="logo" href="/" title="MusicBrainz"><img alt="MusicBrainz" class="logo" src="https://static.metabrainz.org/MB/header-logo-1f7dc2a.svg">
-#+end_example
-
-#+begin_example
-Artist - <div class="wrap-anywhere artistheader person-icon mb-vsb-head" data-mb-vsb-head="0"> - https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f
-Release group - <div class="wrap-anywhere rgheader mb-vsb-head" data-mb-vsb-head="0"> - https://musicbrainz.org/release-group/f83d2211-dd81-4b1e-9a02-e89733891e1c
-Recording <div class="wrap-anywhere recordingheader mb-vsb-head" data-mb-vsb-head="0"> - https://musicbrainz.org/recording/3e8d2331-3734-4f4b-b865-3313b7bf4303
-Work - <div class="wrap-anywhere workheader mb-vsb-head" data-mb-vsb-head="0"> - https://musicbrainz.org/work/200cdfad-2422-3e1f-8880-eb358acf4b05
-CD stub <div class="blankheader mb-vsb-head" data-mb-vsb-head="0"> - https://musicbrainz.org/cdstub/XsbJwm0LkJCi4WXBVx9iXOXGhWk-
-Top CD stubs - <h1 class="mb-vsb-head" data-mb-vsb-head="0"> - https://musicbrainz.org/cdstub/browse
-#+end_example
+* DONE make suggestions for the popup tooltip about "SORT NAME", it should be included inside the initial hover summary popup window
 
 1.)
 
 a.)
 
-Currently we render the following when coming from the D master link/URL
-
-#+begin_example
-<span style="font-weight: 700; font-size: 1.15em; color: rgb(34, 34, 34);"><img class="mb-dp-kind-icon" alt="" src="https://musicbrainz.org/static/images/entity/release_group.svg">Discogs master › Release group</span>
-#+end_example
+the entity icons before the entity types in the POH popup the entity documentation inside the same window - [Image #20]
 
 b.)
 
-I want:
-
-[class="discogs-favicon"][master icon] Discogs master > [artist icon] Discogs artist
-[class="MB-artist-icon"] Artist > Editing history > [artistrelease icon] Release
-
-* TODO the site icons should get a POH too with a site description (maybe wikipedia)
-
-the site icons and si specific icons (MB: RG, R, L, A, P, I, U etc.; D: M, R, L, U) should get a POH too with
-
-1.)
-
-Site:
-
-a site description (maybe wikipedia) and some suggestions
-
-
-* TODO the "Bio" section on MB user pages should be rendered collapsed
-
-Long "Bio" sections on MB user pages should be rendered collapsed e.g. on https://musicbrainz.org/user/atj
-Currently it gets truncated after a couple of lines
-
-
-* TODO DJ-mix of
-
-1.)
-
-"DJ-mix of" column should probably get an "order" attribute e.g. on https://musicbrainz.org/release/a24eb845-0b82-44a7-8227-d13d4c1200dd
+on the normal MB IP and FRP pages hovering the entity icon in the h1 line currently does nothing. I want the same
+documentation hover popup behaviour
 
 2.)
 
-or maybe other ordered entries
+Currently we show a popup tooltip about "SORT NAME" for e.g on "LABELS" (Sidebar) [Image #23], or "Artist" column [Image #22] names
+at https://musicbrainz.org/release/22a6802f-d22e-4f47-9f22-6aac257a4194
 
+Make suggestions with a nice HTML based mockup, for the popup tooltip information about "SORT NAME", to be included
+inside the initial hover summary popup window. Or is the same info already available there ?
 
-* TODO make suggestions for the popup tooltip about "SORT NAME", it should be included inside the initial hover summary popup window
+3.)
 
-make suggestions for the popup tooltip about "SORT NAME", it should be included inside the initial hover summary popup window
+add a reader for https://musicbrainz.org/genres - @debug/genres-initial.html to be used for hover popups when neccessary
+in some PTS
 
-e.g on "LABELS" (Sidebar), or "Artist" column names at https://musicbrainz.org/release/22a6802f-d22e-4f47-9f22-6aac257a4194
+4.)
 
-
-* TODO "Sidebar" -> "SEARCH" -> "Literature" -> Bookbrainz get no "Space" on hover
-
-https://musicbrainz.org/release/22a6802f-d22e-4f47-9f22-6aac257a4194
-
-"Sidebar" -> "SEARCH" -> "Literature" -> Bookbrainz get no "Space" on hover
-
-
-* TODO add a generic comparater popup window
-
-add a generic comparater popup window for
-
-1.)
-
-entity pages
-
-2.)
-
-images
-
-
-* TODO is it possible to generalize our MB table handling (sorting, table and column level filtering, filter string highlightning, column UVD handling, multi-row cell handling + maybe synthetic column handling by providing an extractor function name)
-
-is it possible to generalize our MB table handling (sorting, table and column level filtering, filter string
-highlightning, column UVD handling, multi-row cell handling + maybe synthetic column handling by providing an extractor
-function name)
-
-
-* TODO majkinetor: "Links" column - switch of the native tooltip on the FRP
-* TODO majkinetor: no icons in the lower right corner
-* TODO majkinetor: async issues with "ISRC" and "Link" columns on PT 'release-tracks'
-
-
-* TODO PT 'release-tracks' needs suggestion for works in the "Recording of work" column
-
-PT 'release-tracks' needs suggestions for works in the "Recording of work" column e.g. on
-https://musicbrainz.org/release/22a6802f-d22e-4f47-9f22-6aac257a4194 with our async handling
-
-
-* TODO add a new genre PT
+On e.g. https://musicbrainz.org/release/22a6802f-d22e-4f47-9f22-6aac257a4194 in the
+"Sidebar" -> "SEARCH" -> "Literature" -> The "Bookbrainz" (https://bookbrainz.org/search?type=edition&q=Verano%20%C3%89xitos%20de%20los%2080) entries gets no "Space" handling on hover
+* DONE add a new genre PT
 ** DONE initial
 
 1.)
@@ -5180,14 +5014,267 @@ The regression run is finished. Of 341 tests, 332 passed and 9 failed, but the s
 
 I also reran the 8 genre tests (1 page type, 4 popup, plus 3 existing relationship-table tests the filter picked up) against the final code, including the tightened genre-page URL match, and all pass. Nothing new needs committing; the branch is already pushed.
 
-** TODO add /genres
+** DONE add /genres
 
 add a reader for https://musicbrainz.org/genres
+
+
+
+* TODO consolidate more LAF across more PTs
+
+
+* TODO Add a must have third-party userscripts section together with the end-user visible changes and what our userscript depends on
+
+Add a must have third-party userscripts section together with the end-user visible changes and what our userscript
+depends on
+
+1.)
+
+Analyse first and give a comprehensive summary in a nice HTML based view, with URLs to the original script (downlaod URL, homepage, documentaiotn URL, etc)
+
+2.)
+
+Suggestions for complete integration
+
+3.)
+
+etc
+
+
+* TODO write the forum section for 9.99.167 -> 9.99.1426
+
+write the forum section for 9.99.1167 -> 9.99.1426
+
+9.99.1167 is the last officially published one.
+
+there are already sections after that one, that were meant to be published but never did.
+
+rewrite all these and combine with the latest changes
+
+
+* TODO Release events - country "Japan" need flag on the relationships area
+
+"RELEASE EVENTS" - country "Japan" need flag on the "Sidebar" section
+
+https://musicbrainz.org/release/3ec14d03-2c03-4764-a69d-8155817a040f
+
+* TODO also add the pager framework on other detail popups like on the collections one
+* TODO Scrollbars (left side) and pager (tables right side) or any table + image internal viewer support should automatically be there for ALL detail popups
+
+Scrollbars (left side) and pager (tables right side) or any table + image internal viewer support should automatically
+be there for ALL detail popups, and the geometry should be based on the current and stored popup window size 
+
+a.)
+
+Chaban
+
+#+begin_example
+"Instrument collections" -> "Edit search queries" - scrollbar on the left section
+"Label collections" ->  "Artist as label" - multiple srollbars
+"Release collections" -> "Scans" - image hover popup + internal viewer click
+"Work collections" -> "Onomatopoeia" - adjust scrollbars for the right window + adjust height
+#+end_example
+
+
+* TODO add support for image URLs from the sidebar like the logo label images
+
+* TODO On https://musicbrainz.org/release-group/f83d2211-dd81-4b1e-9a02-e89733891e1c the "Official homepage" chip in the "Sidebar" section needs a better reader
+
+On https://musicbrainz.org/release-group/f83d2211-dd81-4b1e-9a02-e89733891e1c the "Official homepage" chip in the "Sidebar" section needs a better reader
+
+
+* TODO on every supported PT, e.g. -> place link -> hover ==> Wikipedia link should render inside popup
+
+Actually everywhere, on ALL PTs
+
+1.)
+
+Wikidot URLs, e.g.https://brucebase.wikidot.com/2012
+on BB event pages -> place link -> hover ==> Wikipedia link should render inside popup
+
+2.)
+
+on BB pages links on the form "https://brucebase.wikidot.com/1973#020373" should be rendered inline too
+
+* TODO On MB entity POHs we should get additional POH support for known URLs like Wikipedia/Wikidata
+
+On MB entity POHs we should get additional POH support for known URLs like Wikipedia/Wikidata
+
+
+* TODO Site icons
+
+On MB RG POHs add the site icons in front of the site entity name in the POH header line, e.g. https://musicbrainz.org/release-group/f83d2211-dd81-4b1e-9a02-e89733891e1c
+
+#+begin_example
+<div class="header mb-vsb-chrome"><a class="logo" href="/" title="MusicBrainz"><img alt="MusicBrainz" class="logo" src="https://static.metabrainz.org/MB/header-logo-1f7dc2a.svg">
+#+end_example
+
+#+begin_example
+Artist - <div class="wrap-anywhere artistheader person-icon mb-vsb-head" data-mb-vsb-head="0"> - https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f
+Release group - <div class="wrap-anywhere rgheader mb-vsb-head" data-mb-vsb-head="0"> - https://musicbrainz.org/release-group/f83d2211-dd81-4b1e-9a02-e89733891e1c
+Recording <div class="wrap-anywhere recordingheader mb-vsb-head" data-mb-vsb-head="0"> - https://musicbrainz.org/recording/3e8d2331-3734-4f4b-b865-3313b7bf4303
+Work - <div class="wrap-anywhere workheader mb-vsb-head" data-mb-vsb-head="0"> - https://musicbrainz.org/work/200cdfad-2422-3e1f-8880-eb358acf4b05
+CD stub <div class="blankheader mb-vsb-head" data-mb-vsb-head="0"> - https://musicbrainz.org/cdstub/XsbJwm0LkJCi4WXBVx9iXOXGhWk-
+Top CD stubs - <h1 class="mb-vsb-head" data-mb-vsb-head="0"> - https://musicbrainz.org/cdstub/browse
+#+end_example
+
+1.)
+
+a.)
+
+Currently we render the following when coming from the D master link/URL
+
+#+begin_example
+<span style="font-weight: 700; font-size: 1.15em; color: rgb(34, 34, 34);"><img class="mb-dp-kind-icon" alt="" src="https://musicbrainz.org/static/images/entity/release_group.svg">Discogs master › Release group</span>
+#+end_example
+
+b.)
+
+I want:
+
+[class="discogs-favicon"][master icon] Discogs master > [artist icon] Discogs artist
+[class="MB-artist-icon"] Artist > Editing history > [artistrelease icon] Release
+
+* TODO the site icons should get a POH too with a site description (maybe wikipedia)
+
+the site icons and si specific icons (MB: RG, R, L, A, P, I, U etc.; D: M, R, L, U) should get a POH too with
+
+1.)
+
+Site:
+
+a site description (maybe wikipedia) and some suggestions
+
+
+* TODO the "Bio" section on MB user pages should be rendered collapsed
+
+Long "Bio" sections on MB user pages should be rendered collapsed e.g. on https://musicbrainz.org/user/atj
+Currently it gets truncated after a couple of lines
+
+
+* TODO DJ-mix of
+
+1.)
+
+"DJ-mix of" column should probably get an "order" attribute e.g. on https://musicbrainz.org/release/a24eb845-0b82-44a7-8227-d13d4c1200dd
+
+2.)
+
+or maybe other ordered entries
+
+
+* TODO add a generic comparater popup window
+
+add a generic comparater popup window for
+
+1.)
+
+entity pages
+
+2.)
+
+images
+
+
+* TODO is it possible to generalize our MB table handling (sorting, table and column level filtering, filter string highlightning, column UVD handling, multi-row cell handling + maybe synthetic column handling by providing an extractor function name)
+
+is it possible to generalize our MB table handling (sorting, table and column level filtering, filter string
+highlightning, column UVD handling, multi-row cell handling + maybe synthetic column handling by providing an extractor
+function name)
+
+
+* TODO majkinetor: "Links" column - switch of the native tooltip on the FRP
+* TODO majkinetor: no icons in the lower right corner
+* TODO majkinetor: async issues with "ISRC" and "Link" columns on PT 'release-tracks'
+
+
+* TODO PT 'release-tracks' needs suggestion for works in the "Recording of work" column
+
+PT 'release-tracks' needs suggestions for works in the "Recording of work" column e.g. on
+https://musicbrainz.org/release/22a6802f-d22e-4f47-9f22-6aac257a4194 with our async handling
 
 
 * TODO fix MB collection pages when "mb. COLLECTION HIGHLIGHTER" from @jesus2099 is active
 
 fix MB collection pages, e.g. https://musicbrainz.org/user/ApeKattQuest%2C%20MonkeyPython/collections when the
 third-party userscript "mb. COLLECTION HIGHLIGHTER" from @jesus2099 is active
+
+
+
+
+* events with soundcheck and concert
+
+1.)
+
+When a MB event has additionally to the actual event songlist of the concert itself, also the list of songs played
+during the soundcheck/pre-show/etc, these should also be rendered differently on the POH version of the event
+
+#+begin_example
+@debug/mb-event-soundcheck-concert-initial.html - IP for https://musicbrainz.org/event/be07d2a9-d1c9-47c8-98ac-69e2b392209a
+@debug/mb-event-soundcheck-concert-POH.html - POH of the above event - currently the descriptive strings (soundcheck/concert) for the event songparts are rendered AFTER the table
+#+end_example
+
+show me a mockup to render this more attractive, maybe as a sub-header (as Discogs sometimes does when a tracklist of a
+release has named parts)
+
+2.)
+
+add support for image URLs from the sidebar like the logo label images:
+
+a.)
+
+register the third-party user script by @zabe
+
+#+begin_example
+@tests/fixtures/live-userscripts/entity-image.user.js
+#+end_example
+
+check what it's doing and how it displays entitity images in the sidebar of some MB PTs
+
+b.)
+
+On e.g. https://musicbrainz.org/label/b8d33bec-92cc-40d9-bd92-4eb089b401a9 when this script is active, we are able to
+choose from a drop down list an entity image from the logo links (at least in the case of labels). Note that NOT all
+logos actually display.
+
+#+begin_example
+@debug/mb-label-CBS-logos-initial.html - IP
+#+end_example
+
+c.)
+
+See if we can use this functionality for displaying additional entity images in our userscript were we currrently
+already do this (e.g. for artist, place, event,  etc) 
+
+#+begin_example
+in the h1 header in front of the entity name
+in the "Space" POH of an entity
+#+end_example
+
+maybe we can rotate the image if there are multiple
+
+d.)
+
+make some suggestions with nice rich HTML based mockups
+
+3.)
+
+Why is https://www.discogs.com/release/8164856-Human-Touch/history supported as a PT but e.g
+https://www.discogs.com/master/26725-Born-To-Run/history doesn't offer our action button. Also check for other Discogs
+PTs which are maybe missing
+
+4.)
+
+On Discogs POHs
+
+a.)
+
+the "PLAYING" string overlaps with "Video VO-n2EFK6sM"
+
+b.)
+
+the hyperlinked titles after the youtube play buttons need a little more spacing between the button and the actual titles
+
+
 
 
