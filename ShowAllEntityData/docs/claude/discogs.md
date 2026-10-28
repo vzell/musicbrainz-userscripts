@@ -645,8 +645,17 @@ of ours.
   `_mbWsLoad()` → `_rgWsGet()`, which on a foreign host asks
   `https://musicbrainz.org/ws/2/…` through `_mbWsGetForeign()` (one GM
   request after `_relAwaitRateSlot()`, no retry, as `_dgMbAsk()`); the
-  HTML's MusicBrainz-relative links are made absolute (`_dgMbAbs()`). No Live
-  page (MusicBrainz's browser check). An icon is an image link and gets the
+  HTML's MusicBrainz-relative links are made absolute (`_dgMbAbs()`).
+  ~~No Live page (MusicBrainz's browser check).~~ Since 2026-10-28
+  (org/POH-headerline.org item 3) the window has its Live page and its
+  editing history (✎, H, the ▾ presets): MusicBrainz PAGES, read with the
+  browser's musicbrainz.org cookies (`_MB_LIVE.fetchText` →
+  `_mbPageGetForeign()`, the second consented `session` request; probe P1:
+  an anonymous request gets the 1394-byte "Verifying your browser" page).
+  `_mbWinSource()` is the window's MusicBrainz source on either host,
+  `_mbOrigin()` its origin; `_dpOpenHistPath()` reads a preset's path with
+  `_mbPopTarget(…, {mbOrigin: true})`. The glyph is musicbrainz.org's
+  (`_mbKindIconUrl()`). An icon is an image link and gets the
   card anyway (`_DG_MB_LINK_RE`: only `/<kind>/<MBID>`, so the importer's
   search boxes get none). A plain click on our column's icon opens the
   window, as every link in our tables (`_dgTableClickOpens()`); Ctrl-click
@@ -655,7 +664,20 @@ of ours.
   2026-10-26 (org/discogs.org 1b/4b) a musicbrainz.org entity link inside
   the window — a Discogs window's Sites or Notes, a MusicBrainz window's
   links made absolute — is `_dgMbWinTarget()`: the `dg-mb` source's card on
-  a hover and the window on a click, *Back* returning.
+  a hover and the window on a click, *Back* returning. Since 2026-10-28
+  (vzell: "Genres -> tags link do not open inside the same window and do not
+  have a hover window") any musicbrainz.org link a MusicBrainz card reads is
+  one too, not only an entity by MBID: `_mbPopTarget(a, {inWindow, mbOrigin})`
+  after `src.resolve()` — a genre's `/tag/<name>`, an edit, an editor, a
+  documentation page, their pages read with the cookies. A tag's paged lists
+  build on `_mbOrigin()` (`_mbPagedHtml()`), as does a series window's item
+  glyph. The source's selector also takes our own `h1.mb-dg-h1`
+  (2026-10-28, vzell: the importer's icon there "is not hoverable"): the
+  importer processes it too (`mlink_processed`) and puts its icon in front
+  of the page's name; such an icon is named after the `<bdi>`. The SAED
+  menu's "✎ Edit history" (`_saedDgHistoryEntry()`, the Editing history
+  group) opens the page entity's Discogs edit history in the window, built
+  with the toolbar, so on the initial page and after a render alike.
 
 Probe: `scripts/probe-mb-url-batch-by-discogs.py` (2026-10-19, NB-3641; its
 docstring has the results): up to 100 resources a request, the 101st DROPPED

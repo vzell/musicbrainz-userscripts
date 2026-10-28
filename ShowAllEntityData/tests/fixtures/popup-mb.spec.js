@@ -1289,7 +1289,9 @@ test.describe('MusicBrainz link previews: the note stack and the entity glyphs (
         await page.keyboard.press('Space');
         const title = dialog(page).locator(':scope > div > span').first();
         await expect(title, 'the card and the window name the same kind').toHaveText('Recording');
-        await expect(title.locator(':scope > img.mb-dp-kind-icon:first-child')).toHaveAttribute('src', /\/recording\.svg$/);
+        // Since the path (org/POH-headerline.org): the glyph is the step's,
+        // a link to the kind's documentation before its button.
+        await expect(title.locator(':scope > .mb-dp-crumb > a.mb-dp-crumb-g:first-child > img.mb-dp-kind-icon')).toHaveAttribute('src', /\/recording\.svg$/);
         await page.keyboard.press('Escape');
         await expect(dialog(page)).toBeHidden();
 
@@ -3297,5 +3299,219 @@ test.describe('CD stubs and documentation (Phase 3f)', () => {
             await expect(card(page), href).toBeHidden();
         }
         expect(await page.evaluate(() => (window.__gmXhrLog || []).filter(x => x.url.includes('wiki.musicbrainz.org')).length)).toBe(0);
+    });
+});
+
+// A window filter's matches (`_hlEsc()`, mark.mb-dg-hl) take the tables'
+// filter-highlight colours. The library resolves an unset key to its schema
+// default, so the inline fallback counts only for a value stored empty (a
+// cleared colour picker): there the tables fall back to red, and the window
+// fell back to 'inherit' until 2026-10-28 (scripts/audit-config-defaults.py,
+// "NEW drifting fallback").
+test.describe('MusicBrainz link previews: a window filter\'s highlight', () => {
+    test('a colour stored empty falls back to the tables\' red, not to the text\'s colour', async ({ page }) => {
+        await open(page, { settings: { sa_pop_mb: true, sa_column_filter_highlight_color: '' }, showAll: false });
+        const color = await page.evaluate(() => {
+            for (const ss of Array.from(document.styleSheets)) {
+                let rules;
+                try {
+                    rules = ss.cssRules;
+                } catch (_) {
+                    continue;
+                }
+                for (const r of Array.from(rules)) if (r.selectorText === '.mb-dp-dialog mark.mb-dg-hl') return r.style.color;
+            }
+            return null;
+        });
+        expect(color, 'the window\'s rule is installed and red').toBe('red');
+    });
+});
+
+// A release window's cover strip after the archive did not answer (a 429 or
+// 5xx, a network error): `_artFetchEntityImages()` keeps that failure for the
+// session, so ⟳ read it back and never asked again (org/POH-headerline.org
+// item 3, P2: vzell saw "The archive did not answer." on discogs.com, and the
+// archive answered fine an hour later). `_mbPopArtLoad()` forgets it on ⟳.
+test.describe('MusicBrainz link previews: a cover strip the archive did not answer', () => {
+    test('⟳ asks the archive again, and the strip fills', async ({ page }) => {
+        const log = await open(page, { settings: { sa_pop_mb: true } });
+        let fail = true;
+        // A page route wins over open()'s context route; it passes on once
+        // the archive is back.
+        await page.route(/^https:\/\/coverartarchive\.org\/release\/[0-9a-f-]{36}\/?$/, (route) => (fail
+            ? route.fulfill({ status: 503, contentType: 'text/plain', body: 'Service Unavailable' })
+            : route.fallback()));
+        await ctrlHover(page, relLink(page));
+        await expect(card(page)).toContainText('Greetings From Asbury Park, N.J.');
+        await page.keyboard.press('Space');
+        const area = dialog(page).locator('.mb-dp-area');
+        await expect(area).toContainText('The archive did not answer.');
+        fail = false;
+        await dialog(page).locator('button.mb-dp-tbtn', { hasText: '⟳' }).click();
+        await expect(area.locator('.mb-dp-gallery img')).toHaveCount(16);
+        expect(log.caa, 'the archive asked again, once').toEqual([`/release/${REL_ID}`]);
+    });
+});
+
+// The window's path in its title bar (org/POH-headerline.org, 2026-10-28;
+// mockup https://claude.ai/artifact/YCnV4DZA5R4quLAGkmhCpC): every step a
+// glyph linking its kind's documentation and a button back to it, the oldest
+// behind "…". The fixture profile reads kinds (`sa_dp_path_label: 'kind'`,
+// tests/support/loadPage.js); the names test seeds the default back.
+test.describe('MusicBrainz link previews: the window\'s path (org/POH-headerline.org)', () => {
+    const title = (page) => dialog(page).locator(':scope > div > span').first();
+    const steps = (page) => title(page).locator('.mb-dp-crumb-step');
+    const glyphs = (page) => title(page).locator('.mb-dp-crumb > a.mb-dp-crumb-g');
+    const backBtn = (page) => dialog(page).locator('button.mb-dp-tbtn', { hasText: '← Back' });
+    // The release window's links: its release group, and in the release
+    // group's table a release's title (its cover opens the viewer).
+    const rgLink = (page) => dialog(page).locator('.mb-dp-area a[href^="/release-group/"]').first();
+    const relInRg = (page) => dialog(page).locator('[data-mb-tbl="rg-releases"] tbody td:nth-child(2) a[href^="/release/"]').first();
+
+    /**
+     * Opens the window on the page's first release, then drills down to its
+     * release group and one of its releases: three steps.
+     *
+     * @param {import('@playwright/test').Page} page
+     * @param {Object} [opts] - For `open()`.
+     * @returns {Promise<{log: Object, names: string[]}>} The request log, and each step's link text.
+     */
+    async function threeSteps(page, opts = {}) {
+        const log = await open(page, { showAll: false, ...opts, settings: { sa_pop_mb: true, ...(opts.settings || {}) } });
+        const names = [(await relLink(page).textContent()).trim()];
+        await ctrlHover(page, relLink(page));
+        await expect(card(page)).toContainText('fetched now');
+        await page.keyboard.press('Space');
+        await expect(dialog(page).locator('[data-mb-tbl="tracks"] tbody tr').first()).toBeVisible();
+        names.push((await rgLink(page).textContent()).trim());
+        await rgLink(page).click();
+        await expect(dialog(page).locator('[data-mb-tbl="rg-releases"] tbody tr').first()).toBeVisible();
+        names.push((await relInRg(page).textContent()).trim());
+        await relInRg(page).click();
+        await expect(steps(page)).toHaveCount(3);
+        await page.mouse.move(0, 0);
+        return { log, names };
+    }
+
+    test('every step has its glyph, linking its kind\'s documentation; the title\'s text is the kinds, as before', async ({ page }) => {
+        await threeSteps(page);
+        await expect(title(page)).toHaveText('Release › Release group › Release');
+        await expect(glyphs(page)).toHaveCount(3);
+        await expect(glyphs(page).locator('img.mb-dp-kind-icon')).toHaveCount(3);
+        expect(await glyphs(page).locator('img').evaluateAll(xs => xs.map(x => x.getAttribute('src').replace(/^.*\//, ''))))
+            .toEqual(['release.svg', 'release_group.svg', 'release.svg']);
+        expect(await glyphs(page).evaluateAll(xs => xs.map(x => x.getAttribute('href'))))
+            .toEqual(['https://musicbrainz.org/doc/Release', 'https://musicbrainz.org/doc/Release_Group', 'https://musicbrainz.org/doc/Release']);
+        // Only the step shown now is current; the others are ways back.
+        await expect(steps(page).nth(2)).toHaveAttribute('aria-current', 'step');
+        await expect(title(page).locator('[aria-current]')).toHaveCount(1);
+    });
+
+    test('names (the default): each step reads the name of what it shows; a view reads its kind', async ({ page }) => {
+        const { names } = await threeSteps(page, { settings: { sa_dp_path_label: undefined } });
+        expect(names.every(Boolean), 'the three links have names').toBe(true);
+        await expect(steps(page)).toHaveText(names);
+        await expect(title(page)).toHaveText(names.join(' › '));
+        // The editing history is a view of the release: its kind, not a name.
+        await page.keyboard.press('h');
+        await expect(steps(page)).toHaveCount(3);
+        await expect(steps(page).last()).toHaveText('Editing history');
+        await expect(title(page).locator('.mb-dp-crumb-more')).toHaveCount(1);
+    });
+
+    test('a click on an earlier step goes back to it, from memory; the steps after it go', async ({ page }) => {
+        const { log } = await threeSteps(page);
+        const asked = { lookups: log.lookups.length, browses: log.browses.length, ws2: log.ws2.length };
+        await steps(page).nth(1).click();
+        await expect(title(page)).toHaveText('Release › Release group');
+        await expect(dialog(page).locator('[data-mb-tbl="rg-releases"] tbody tr').first()).toBeVisible();
+        await expect(backBtn(page)).toBeVisible();
+        await steps(page).first().click();
+        await expect(title(page)).toHaveText('Release');
+        await expect(dialog(page).locator('[data-mb-tbl="tracks"] tbody tr').first()).toBeVisible();
+        await expect(backBtn(page)).toBeHidden();
+        // The step shown now does nothing.
+        await steps(page).first().click();
+        await expect(title(page)).toHaveText('Release');
+        expect({ lookups: log.lookups.length, browses: log.browses.length, ws2: log.ws2.length }, 'nothing asked again').toEqual(asked);
+    });
+
+    test('"…" holds the earlier steps: a menu of the whole path, a click goes back', async ({ page }) => {
+        await threeSteps(page);
+        // A fourth step: the second release's release group.
+        await rgLink(page).click();
+        await expect(steps(page)).toHaveCount(3);
+        await expect(title(page)).toHaveText('… › Release group › Release › Release group');
+        const more = title(page).locator('button.mb-dp-crumb-more');
+        await expect(more).toHaveAttribute('aria-expanded', 'false');
+        await more.click();
+        const pop = dialog(page).locator('#mb-dp-path-pop');
+        await expect(pop).toBeVisible();
+        await expect(more).toHaveAttribute('aria-expanded', 'true');
+        const rows = pop.locator('button.mb-dp-path-row');
+        await expect(rows).toHaveCount(4);
+        await expect(rows.locator('b')).toHaveText(['Release', 'Release group', 'Release', 'Release group']);
+        await expect(rows.locator('.mb-hist-h')).toHaveText(['1', 'shown', 'shown', 'now']);
+        await expect(rows.locator('img.mb-dp-kind-icon')).toHaveCount(4);
+        await expect(rows.last()).toBeDisabled();
+        // Escape closes it, and only it.
+        await page.keyboard.press('Escape');
+        await expect(pop).toHaveCount(0);
+        await expect(dialog(page)).toBeVisible();
+        await more.click();
+        await pop.locator('button.mb-dp-path-row').first().click();
+        await expect(pop).toHaveCount(0);
+        await expect(title(page)).toHaveText('Release');
+        await expect(backBtn(page)).toBeHidden();
+    });
+
+    test('a narrow window keeps two steps after "…"', async ({ page }) => {
+        await threeSteps(page);
+        await expect(title(page)).toHaveText('Release › Release group › Release');
+        await dialog(page).evaluate((d) => { d.style.width = '540px'; d.style.minWidth = '0'; });
+        await expect(title(page)).toHaveText('… › Release group › Release');
+        await dialog(page).evaluate((d) => { d.style.width = '900px'; });
+        await expect(title(page)).toHaveText('Release › Release group › Release');
+    });
+
+    test('resting on a step shows its own card from memory, no Ctrl, no request; Space goes back to it', async ({ page }) => {
+        const { log } = await threeSteps(page);
+        const asked = { lookups: log.lookups.length, browses: log.browses.length, ws2: log.ws2.length };
+        await steps(page).first().hover();
+        await expect(card(page)).toBeVisible();
+        await expect(card(page).locator(':scope > .mb-pop-kind-head')).toHaveText('Release');
+        await expect(card(page).locator(':scope > .mb-pop-kind-head img.mb-pop-kind-icon')).toHaveAttribute('src', /\/release\.svg$/);
+        await expect(card(page).locator('.mb-tt-title').first()).toHaveText(/^Greetings From Asbury Park, N\.J\./);
+        await expect(card(page).locator('.mb-tt-foot').last()).toContainText('Step 1 of 3');
+        // One foot line, the step's: the source's own ("Space more") would
+        // say what Space does on the page, not here.
+        await expect(card(page).locator('.mb-tt-foot')).toHaveCount(1);
+        await expect(dialog(page).locator('.mb-dp-wfoot')).toContainText('Back to: Release');
+        expect({ lookups: log.lookups.length, browses: log.browses.length, ws2: log.ws2.length }, 'the card asked nothing').toEqual(asked);
+        await page.keyboard.press('Space');
+        await expect(title(page)).toHaveText('Release');
+        await expect(dialog(page)).toBeVisible();
+        // The release itself, not the step's stand-in target (which is named
+        // like it and shows nothing).
+        await expect(dialog(page).locator('[data-mb-tbl="tracks"] tbody tr').first()).toBeVisible();
+        // The pointer now rests on the step shown now: its card may show,
+        // and says so; moving away hides it.
+        await page.mouse.move(0, 0);
+        await expect(card(page)).toBeHidden();
+    });
+
+    test('a glyph\'s card is its kind\'s documentation; a click shows it in the window, Back returns', async ({ page }) => {
+        const { log } = await threeSteps(page, { pageFixture: (url) => (/\/doc\/Release\/?$/.test(url) ? 'doc-style-titles.html' : null) });
+        const g = glyphs(page).last();
+        await ctrlHover(page, g);
+        await expect(card(page)).toContainText('fetched now');
+        await expect(card(page).locator(':scope > .mb-pop-kind-head')).toHaveText('Documentation');
+        await expect(dialog(page).locator('.mb-dp-wfoot')).toContainText('Documentation: musicbrainz.org/doc/Release');
+        await page.mouse.move(0, 0);
+        await g.click();
+        await expect(title(page)).toHaveText('… › Release group › Release › Documentation');
+        expect(log.html.filter(u => u.includes('/doc/'))).toEqual(['https://musicbrainz.org/doc/Release']);
+        await backBtn(page).click();
+        await expect(title(page)).toHaveText('Release › Release group › Release');
     });
 });

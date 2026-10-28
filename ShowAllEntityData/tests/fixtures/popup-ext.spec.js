@@ -1475,10 +1475,12 @@ test.describe('the Discogs window (2026-10-17)', () => {
         await openDiscogs(page);
         await ctrlHover(page, probe(page, 0));
         await expect(card(page).locator('.mb-ext-headtext .mb-tt-comment')).toHaveText('Discogs · release');
-        // A card of another site has the kind line too: the window's kind,
-        // no glyph (MusicBrainz kinds only).
+        // A card of another site has the kind line too: the window's kind;
+        // since org/POH-headerline.org a Discogs kind's emoji before it, as
+        // generated content (no image, and the line's text stays the kind).
         await expect(card(page).locator(':scope > .mb-pop-kind-head')).toHaveText('Discogs release');
         await expect(card(page).locator(':scope > .mb-pop-kind-head img')).toHaveCount(0);
+        await expect(card(page).locator(':scope > .mb-pop-kind-head > span.mb-pop-kind-icon.mb-dp-emo')).toHaveAttribute('data-mb-emo', '📄');
         await page.keyboard.press('Space');
         const d = dialog(page);
         const title = d.locator(':scope > div > span').first();
@@ -1500,6 +1502,13 @@ test.describe('the Discogs window (2026-10-17)', () => {
         await expect(title).toHaveText('Discogs release › Discogs artist');
         await expect(d).toContainText('Bruce Frederick Joseph Springsteen');
         await expect(d.locator('.mb-dp-xsub').first()).toHaveText('Discogs · artist');
+        // The path's glyphs (org/POH-headerline.org): each kind's emoji,
+        // linking its Database Guidelines article.
+        const glyphs = title.locator('.mb-dp-crumb > a.mb-dp-crumb-g');
+        expect(await glyphs.locator('span.mb-dp-emo').evaluateAll(xs => xs.map(x => x.dataset.mbEmo))).toEqual(['📄', '👤']);
+        expect(await glyphs.evaluateAll(xs => xs.map(x => x.getAttribute('href').replace(/^.*\/articles\//, '')))).toEqual([
+            '360004016474-Overview-Of-Submission-Guidelines-For-Releases', '360005054753-Database-Guidelines-2-Artist',
+        ]);
         await d.getByRole('button', { name: /Back/ }).click();
         await expect(title).toHaveText('Discogs release');
     });
@@ -2541,5 +2550,100 @@ test.describe('Discogs Images and Image history (Phase 4)', () => {
         await expect(d.locator('.mb-dp-warn')).toContainText('Discogs did not give the image editor\'s data');
         await expect(rows.nth(4).locator('td')).toHaveText(['5', '', 'Secondary', '—', '—', '600 × 599 served', '—']);
         await expect(d).not.toContainText('Uploaders');
+    });
+});
+
+// org/POH-headerline.org item 4 (vzell, 2026-10-28): a Discogs window's
+// "✎ Editing history" (no ▾) opens its subject's history page in the window
+// — a release's, a master's, an artist's or a label's — through the history
+// reader; a history of several pages shows the newest (the page the plain
+// URL serves) and reads the earlier ones on request, newest first. Fixtures:
+// tests/fixtures/dg-*-history.html (scripts/build-discogs-fixtures.py, from
+// vzell's saved pages; the artist's is its page 2 of 2).
+const histAnswer = (file) => htmlAnswer(fs.readFileSync(path.join(__dirname, file), 'utf8'));
+// The history page requests so far, and whether each was anonymous.
+const histLog = async (page) => (await xhrFull(page)).filter(r => /\/history(?:\?|$)/.test(r.url)).map(r => [r.url, r.anonymous]);
+
+test.describe('Discogs windows: ✎ Editing history (org/POH-headerline.org item 4)', () => {
+    test('a release: the button without ▾; its history page in the window, one anonymous request; H opens it too', async ({ page }) => {
+        const url = 'https://www.discogs.com/release/1874253/history';
+        await openDiscogs(page, { responses: { [url]: histAnswer('dg-release-history.html') } });
+        await ctrlHover(page, probe(page, 0));
+        await page.keyboard.press('Space');
+        const d = dialog(page);
+        const title = d.locator(':scope > div > span').first();
+        await expect(title).toHaveText('Discogs release');
+        const hist = d.locator('button.mb-meh-hist-btn');
+        await expect(hist).toBeVisible();
+        await expect(d.locator('button.mb-meh-hist-more'), 'no presets menu for Discogs').toBeHidden();
+        await expect(hist).toHaveAttribute('title', /edit history on Discogs/);
+        await hist.click();
+        await expect(title).toHaveText('Discogs release › Discogs release history');
+        await expect(d.locator('.mb-dgh-e')).toHaveCount(14);
+        await expect(d.locator('.mb-dgh-pages'), 'one page: no pages line').toHaveCount(0);
+        await d.getByRole('button', { name: /Back/ }).click();
+        await expect(title).toHaveText('Discogs release');
+        await d.locator('.mb-dp-area').click({ position: { x: 5, y: 5 } });
+        await page.keyboard.press('h');
+        await expect(title).toHaveText('Discogs release › Discogs release history');
+        expect(await histLog(page), 'one request, from memory the second time').toEqual([[url, true]]);
+    });
+
+    // vzell, 2026-10-28, a master's history: "the edit type buttons and the
+    // edit text overlap" — "EDIT MASTER RELEASE" ran past its 8.5em column.
+    test('a master: its kind pills ("Edit Master Release") stay in their column, clear of the note', async ({ page }) => {
+        const url = 'https://www.discogs.com/master/26725/history';
+        await openDiscogs(page, { responses: { [url]: histAnswer('dg-master-history.html') } });
+        await ctrlHover(page, probe(page, 1));
+        await page.keyboard.press('Space');
+        const d = dialog(page);
+        await expect(d.locator(':scope > div > span').first()).toHaveText('Discogs master');
+        await d.locator('button.mb-meh-hist-btn').click();
+        await expect(d.locator('.mb-dgh-e')).toHaveCount(50);
+        const rows = await d.locator('.mb-dgh-e').evaluateAll(es => es.map((e) => {
+            const pill = e.querySelector('.mb-dgh-pill').getBoundingClientRect();
+            const note = e.querySelector('.mb-dgh-n').getBoundingClientRect();
+            return { label: e.querySelector('.mb-dgh-pill').textContent, gap: Math.round(note.left - pill.right) };
+        }));
+        expect(rows.some(r => r.label === 'Edit Master Release'), 'the long kind is there').toBe(true);
+        expect(rows.filter(r => r.gap < 0), 'no pill runs into its note').toEqual([]);
+        await expect(d.locator('.mb-dgh-pill').first()).toHaveAttribute('title', 'Edit Master Release');
+    });
+
+    test('an artist: the newest page, then the earlier one on request; murdos\' importer\'s link is not the subject', async ({ page }) => {
+        const url = 'https://www.discogs.com/artist/219986/history';
+        await openDiscogsEntities(page, {
+            responses: {
+                [url]: histAnswer('dg-artist-history.html'),
+                // Page 1: a stand-in (the label's page 1, 59 changes): the run's
+                // mechanism, not its content.
+                [`${url}?page=1`]: histAnswer('dg-label-history.html'),
+            },
+        });
+        await ctrlHover(page, probe(page, 1));
+        await page.keyboard.press('Space');
+        const d = dialog(page);
+        const title = d.locator(':scope > div > span').first();
+        await expect(title).toHaveText('Discogs artist');
+        await expect(d.locator('button.mb-meh-hist-more')).toBeHidden();
+        await d.locator('button.mb-meh-hist-btn').click();
+        await expect(title).toHaveText('Discogs artist › Discogs artist history');
+        await expect(d.locator('.mb-dgh-e')).toHaveCount(46);
+        // The saved page carries murdos' musicbrainz.org link (and glyph)
+        // first in its <h1>: the picture is not that glyph.
+        await expect(d.locator('.mb-dp-area img[src*="musicbrainz.org"]')).toHaveCount(0);
+        const pages = d.locator('.mb-dgh-pages');
+        await expect(pages).toContainText('Page 2 of 2 shown (the newest) · 46 changes');
+        const load = pages.getByRole('button', { name: /^Load the 1 earlier page \(1 request, about \d+ s\)$/ });
+        await expect(load).toBeVisible();
+        expect(await histLog(page), 'nothing more until asked').toEqual([[url, true]]);
+        await load.click();
+        await expect(d.locator('.mb-dgh-e')).toHaveCount(105, { timeout: 15000 });
+        await expect(pages).toContainText('Pages 1–2 of 2 shown · 105 changes');
+        await expect(pages.getByRole('button'), 'every page in').toHaveCount(0);
+        // Oldest first: the earlier page's first change leads.
+        await d.getByRole('button', { name: 'Oldest first' }).click();
+        await expect(d.locator('.mb-dgh-e .mb-dgh-d').first()).toHaveText('2011-09-02 07:22');
+        expect(await histLog(page), 'one request per page, anonymous').toEqual([[url, true], [`${url}?page=1`, true]]);
     });
 });

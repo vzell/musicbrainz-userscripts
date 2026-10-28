@@ -1,0 +1,648 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<!-- SKELETON-END: everything above this line is dropped when the page is published as an Artifact. -->
+<title>POH Header Line</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<!--
+  ShowAllEntityData design study, 2026-10-28, petri (branch feature/poh-headerline).
+  vzell (org/POH-headerline.org): the window's header line needs an overhaul: an entity glyph before
+  every step of the path, rich tooltips on the glyph and on the step, the hidden steps behind "…"
+  reachable and every step navigable; an MB window opened on discogs.com as complete as on MB; a
+  Discogs window with "Editing history"; "show me some nice rich HTML based mockups before
+  implementation".
+  Data: the windows of the four screenshots attached to the request (Human Touch release
+  4e3e8020-fe43-4a72-8650-5866e489a8a0 and its three Cover Art Archive images, one request on
+  2026-10-28; The Angel; Sha-La Music, Inc.). The Discogs path's middle steps are illustrative.
+  MusicBrainz's entity glyphs are /static/images/entity/<kind>.svg (all six answered 200 on
+  2026-10-28). The published copy inlines the images (scripts/build-mockup-artifact.py).
+-->
+<!--EMBED-->
+<script type="application/json" id="mockup-images">
+{
+ "g-artist": { "u": "https://musicbrainz.org/static/images/entity/artist.svg" },
+ "g-release": { "u": "https://musicbrainz.org/static/images/entity/release.svg" },
+ "g-release-group": { "u": "https://musicbrainz.org/static/images/entity/release_group.svg" },
+ "g-recording": { "u": "https://musicbrainz.org/static/images/entity/recording.svg" },
+ "g-work": { "u": "https://musicbrainz.org/static/images/entity/work.svg" },
+ "g-label": { "u": "https://musicbrainz.org/static/images/entity/label.svg" },
+ "ht1": { "u": "https://coverartarchive.org/release/4e3e8020-fe43-4a72-8650-5866e489a8a0/26916747544-250.jpg" },
+ "ht2": { "u": "https://coverartarchive.org/release/4e3e8020-fe43-4a72-8650-5866e489a8a0/26916753032-250.jpg" },
+ "ht3": { "u": "https://coverartarchive.org/release/4e3e8020-fe43-4a72-8650-5866e489a8a0/26916755341-250.jpg" }
+}
+</script>
+<style>
+/* Layout: a review sheet in the script's "Liner notes" look. The Space window is rebuilt with its
+   title bar as it is today and as proposed; a Today/Proposed switch flips every scenario, and the
+   proposals are written up underneath. One light look on purpose, because the window has one. */
+:root {
+    --ground: #efe9dc;
+    --paper: #fbf8f1;
+    --ink: #2b2622;
+    --rule: #d9cfbd;
+    --muted: #7a6d5c;
+    --ok: #3f7a3a;
+    --run: #2f5f9e;
+    --warn: #9a6a00;
+    --alert: #9b2218;
+    --wash: #f3ede1;
+    --mb: #ba478f;
+    --dg: #222;
+    --shadow: 0 10px 24px -8px rgba(60, 40, 20, .35);
+    --serif: Georgia, "Times New Roman", serif;
+    --sans: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    color-scheme: light;
+}
+body { background: var(--ground); color: var(--ink); font: 15px/1.5 var(--serif); }
+.wrap {
+    max-width: 1180px;
+    margin: 0 auto;
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+    padding-block: 28px 64px;
+    display: grid;
+    gap: 30px;
+}
+h1, h2, h3 { font-weight: normal; margin: 0; text-wrap: balance; }
+h1 { font-size: 30px; }
+h2 { font-size: 21px; }
+h3 { font-size: 16px; }
+p { margin: 0; max-width: 72ch; }
+code { font: 12.5px var(--mono); background: var(--wash); padding: 0 3px; border-radius: 2px; }
+.lab { font: 600 10.5px/1.3 var(--sans); letter-spacing: .09em; text-transform: uppercase; color: var(--muted); }
+.intro { display: grid; gap: 10px; }
+.intro .lab { color: var(--run); }
+.today { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 10px; }
+.today div { background: var(--paper); border: 1px solid var(--rule); border-radius: 4px; padding: 10px 12px; font-size: 14px; }
+.today b { display: block; font: 600 10.5px var(--sans); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin-bottom: 2px; }
+.today .no { color: var(--alert); }
+kbd { font: 11px var(--mono); border: 1px solid var(--rule); border-bottom-width: 2px; border-radius: 3px; padding: 0 4px; background: #fff; }
+
+/* ── Controls ── */
+.ctl { display: flex; flex-wrap: wrap; gap: 8px 18px; align-items: center; }
+.tabs, .sw { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.sw .lab { margin-right: 2px; }
+.tab, .chip {
+    font: 600 10.5px/1 var(--sans);
+    letter-spacing: .07em;
+    text-transform: uppercase;
+    border: 1px solid var(--rule);
+    background: var(--paper);
+    color: var(--muted);
+    border-radius: 3px;
+    padding: 7px 10px;
+    cursor: pointer;
+}
+.chip { border-radius: 999px; }
+.tab[aria-selected="true"], .chip[aria-pressed="true"] { color: var(--ink); border-color: var(--ink); background: var(--wash); }
+.tab:focus-visible, .chip:focus-visible, button:focus-visible, a:focus-visible { outline: 2px solid var(--run); outline-offset: 1px; }
+.scen-note { font-size: 14px; color: var(--muted); font-style: italic; max-width: 90ch; }
+
+/* ── The page behind and the window ── */
+.stage { position: relative; background: #e8e8e8; border: 1px solid var(--rule); border-radius: 4px; padding: 18px; min-height: 600px; overflow: hidden; }
+.stage-cap { position: absolute; top: 6px; left: 12px; }
+.win {
+    position: relative;
+    margin: 18px auto 0;
+    max-width: 1060px;
+    background: #fff;
+    border: 1px solid #aaa;
+    border-radius: 4px;
+    box-shadow: 0 12px 36px -10px rgba(0, 0, 0, .45);
+    display: flex;
+    flex-direction: column;
+    max-height: 560px;
+}
+.wbar { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; padding: 7px 9px; border-bottom: 1px solid #ccc; background: #f7f7f7; font: 13px/1.2 var(--sans); }
+.ttl { display: flex; align-items: center; gap: 4px; font: 600 14px var(--serif); margin-right: auto; min-width: 0; flex-wrap: wrap; }
+.ttl .plain { display: inline-flex; align-items: center; gap: 6px; }
+.ttl img.g, .ttl .g { width: 18px; height: 18px; flex: none; }
+.sep { color: #888; font-weight: normal; padding: 0 1px; }
+
+/* Proposed: every step a crumb; its glyph a link to the kind's documentation. */
+.crumb { display: inline-flex; align-items: center; gap: 4px; border-radius: 3px; padding: 1px 3px; }
+.crumb a.glyph { display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 3px; text-decoration: none; }
+.crumb a.glyph:hover { background: #ece4f0; box-shadow: 0 0 0 1px #c9a3bd; }
+.crumb a.glyph.dgk:hover { background: #e9e9e9; box-shadow: 0 0 0 1px #999; }
+.crumb button.step { font: inherit; color: #0b5394; background: none; border: 0; padding: 1px 2px; cursor: pointer; text-decoration: underline dotted #0b5394 1px; text-underline-offset: 3px; max-width: 16em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.crumb button.step:hover { background: #eef3fa; }
+.crumb.cur button.step { color: var(--ink); text-decoration: none; cursor: default; }
+.crumb.cur button.step:hover { background: none; }
+.emo { font: 15px/1 "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif; }
+.dgmark { display: inline-grid; place-items: center; width: 16px; height: 16px; border-radius: 50%; background: var(--dg); color: #fff; font: 700 9px/1 var(--sans); }
+.more { font: 600 13px/1 var(--sans); border: 1px solid #bbb; background: #fff; border-radius: 3px; padding: 3px 6px; cursor: pointer; color: #333; }
+.more[aria-expanded="true"] { background: #2b2622; color: #fbf8f1; border-color: #2b2622; }
+
+.tbtn { display: inline-flex; align-items: center; justify-content: center; gap: 5px; min-width: 26px; height: 26px; padding: 0 7px; border: 1px solid #ccc; border-radius: 3px; background: #fff; color: #222; font: 13px/1 var(--sans); cursor: pointer; text-decoration: none; }
+.tbtn:hover { background: #f0f0f0; }
+.tbtn[disabled] { opacity: .45; cursor: default; }
+.split { display: inline-flex; }
+.split .tbtn:first-child { border-radius: 3px 0 0 3px; }
+.split .tbtn + .tbtn { border-left: 0; border-radius: 0 3px 3px 0; padding: 0 5px; }
+.seg { display: inline-flex; }
+.seg .tbtn { border-radius: 0; }
+.seg .tbtn + .tbtn { border-left: 0; }
+.seg .tbtn[aria-pressed="true"] { background: #2b2622; color: #fbf8f1; border-color: #2b2622; }
+.pos { font: 12px var(--mono); color: #666; min-width: 3.5em; text-align: center; }
+.newflag { font: 700 9px/1 var(--sans); letter-spacing: .06em; text-transform: uppercase; color: var(--ok); border: 1px solid currentColor; border-radius: 999px; padding: 2px 5px 1px; }
+.tbtn.ext::after { content: "↗"; font-size: 10px; color: var(--muted); }
+
+.area { overflow: auto; background: var(--paper); flex: 1 1 auto; min-height: 0; }
+.x { display: grid; grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr); gap: 22px; padding: 14px 18px; font: 13.5px/1.5 var(--serif); }
+.x .xtitle { font-weight: 700; font-size: 1.2em; line-height: 1.3; }
+.x .xsub { font-style: italic; color: var(--muted); }
+.x h4 { margin: 14px 0 4px; font: 600 11px/1.3 var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.x .col > h4:first-child { margin-top: 0; }
+.x dl { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 1px 10px; margin: 4px 0 0; }
+.x dt { font-style: italic; color: var(--muted); }
+.x dd { margin: 0; min-width: 0; }
+.x a { color: #0b5394; }
+.x .pills { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+.x .pill { background: #efe6d4; border: 1px solid var(--rule); border-radius: 3px; padding: 0 5px; font-size: .88em; font-weight: 700; }
+.x ol { margin: 3px 0 0; padding: 0; list-style: none; }
+.x ol li { display: grid; grid-template-columns: 2.4em minmax(0, 1fr) max-content; gap: 8px; border-bottom: 1px solid #eee5d4; padding: 1px 0; }
+.x .tpos, .x .tlen { color: var(--muted); font-variant-numeric: tabular-nums; }
+.gallery { display: flex; flex-wrap: wrap; gap: 8px; }
+.gallery figure { margin: 0; display: inline-flex; flex-direction: column; align-items: center; gap: 2px; color: var(--muted); font-size: 11px; }
+.gallery img, .gallery .fb { height: 84px; width: auto; max-width: 140px; object-fit: cover; border: 1px solid var(--rule); }
+.fb { display: grid; place-items: center; color: #fff; font: 600 10px var(--sans); background: #8a7d68; width: 84px; }
+.fail { color: var(--alert); font-style: italic; }
+.histrow { display: grid; grid-template-columns: 9em 9em minmax(0, 1fr); gap: 10px; border-bottom: 1px solid #eee5d4; padding: 3px 0; font-size: 13px; }
+.histrow b { font-weight: 600; }
+
+.wfoot { display: flex; gap: 10px; align-items: center; padding: 5px 10px; border-top: 1px solid var(--rule); background: #f6f1e6; font: 12px/1.4 var(--sans); color: var(--muted); min-height: 30px; }
+.wfoot b { color: var(--ink); font-weight: 600; }
+.wfoot .k { margin-left: auto; white-space: nowrap; }
+
+/* Cards: the step's own card, the glyph's documentation card, the "…" menu. */
+.peek {
+    position: absolute;
+    z-index: 20;
+    width: min(320px, calc(100% - 16px));
+    background: var(--paper);
+    border: 1px solid var(--rule);
+    border-radius: 3px;
+    box-shadow: 0 1px 0 #e9e1d1, var(--shadow);
+    padding: 8px 12px 9px;
+    font: 13px/1.5 var(--serif);
+    display: grid;
+    gap: 3px;
+}
+.peek[hidden] { display: none; }
+.peek .kh { display: flex; gap: 6px; align-items: center; font: 700 12px var(--serif); color: #4a3f33; border-bottom: 1px solid var(--rule); padding-bottom: 5px; margin-bottom: 3px; }
+.peek .kh img, .peek .kh .emo, .peek .kh .dgmark { width: 16px; height: 16px; font-size: 13px; }
+.peek .t { font-weight: 700; font-size: 1.05em; }
+.peek .d { color: var(--muted); font-size: .92em; }
+.peek .q { font-style: italic; }
+.peek dl { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 0 8px; margin: 2px 0 0; font-size: .95em; }
+.peek dt { font-style: italic; color: var(--muted); }
+.peek dd { margin: 0; }
+.peek .f { font-style: italic; color: var(--muted); font-size: .92em; border-top: 1px solid var(--rule); padding-top: 4px; margin-top: 3px; }
+.peek .f a { color: #0b5394; font-style: normal; }
+.peek .read { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--ok); margin-right: 4px; vertical-align: 1px; }
+.menu { position: absolute; z-index: 25; background: var(--paper); border: 1px solid var(--rule); border-radius: 3px; box-shadow: var(--shadow); padding: 4px 0; min-width: 260px; font: 13px/1.4 var(--serif); }
+.menu[hidden] { display: none; }
+.menu .mh { padding: 3px 12px 5px; border-bottom: 1px solid var(--rule); margin-bottom: 3px; }
+.menu button { display: grid; grid-template-columns: 22px minmax(0, 1fr) auto; gap: 8px; align-items: center; width: 100%; text-align: left; font: inherit; background: none; border: 0; padding: 4px 12px; cursor: pointer; color: var(--ink); }
+.menu button:hover, .menu button:focus-visible { background: var(--wash); }
+.menu .mk { font-weight: 700; }
+.menu .mn { color: var(--muted); font-style: italic; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.menu .mi { font: 11px var(--mono); color: var(--muted); }
+.menu .cur { color: var(--muted); cursor: default; }
+.toast { position: absolute; left: 50%; bottom: 46px; transform: translateX(-50%); z-index: 22; background: #2b2622; color: #fbf8f1; border-radius: 3px; padding: 6px 12px; font: 12.5px var(--sans); white-space: nowrap; }
+.toast[hidden] { display: none; }
+
+/* ── Write-up ── */
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(330px, 1fr)); gap: 12px; }
+.card { background: var(--paper); border: 1px solid var(--rule); border-radius: 4px; padding: 12px 14px; display: grid; gap: 6px; align-content: start; }
+.card .top { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+.card .id { font: 600 12px var(--mono); color: var(--muted); }
+.v { font: 600 9.5px/1 var(--sans); letter-spacing: .08em; text-transform: uppercase; padding: 4px 7px 3px; border-radius: 999px; border: 1px solid currentColor; }
+.v.rec { color: var(--ok); }
+.v.probe { color: var(--warn); }
+.card dl { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 2px 10px; margin: 0; font-size: 13.5px; }
+.card dt { font-style: italic; color: var(--muted); }
+.card dd { margin: 0; min-width: 0; }
+.glyphs { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 6px 14px; font-size: 13.5px; }
+.glyphs div { display: flex; gap: 8px; align-items: center; }
+.glyphs img, .glyphs .emo, .glyphs .dgmark { width: 18px; height: 18px; flex: none; text-align: center; }
+.qs { display: grid; gap: 10px; }
+.q { background: var(--paper); border: 1px solid var(--rule); border-radius: 4px; padding: 10px 14px; display: grid; gap: 4px; }
+.q .rec { font: 600 10px var(--sans); letter-spacing: .08em; text-transform: uppercase; color: var(--ok); }
+@media (max-width: 760px) {
+    .x { grid-template-columns: minmax(0, 1fr); }
+    .stage { padding: 10px; }
+    .ttl { flex-basis: 100%; }
+    .wfoot .k { display: none; }
+    .histrow { grid-template-columns: minmax(0, 1fr); gap: 0; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="intro">
+    <span class="lab">ShowAllEntityData · the Space window (#mb-dp-dialog) · branch feature/poh-headerline</span>
+    <h1>The window's header line</h1>
+    <p>When you follow links inside the Space window, its title becomes the path you took ("… › Release group › Release › Recording"). Today the path is plain text, it keeps only the last three steps, and the "…" hides the rest for good. Below, the same four windows as in your screenshots, as they are today and as proposed. Rest on a step, on its glyph or on the "…" to try the proposal.</p>
+    <div class="today">
+        <div><b>The path, today</b>Text only. The last three steps; <span class="no">"…" says nothing and leads nowhere.</span> ← Back walks one step at a time.</div>
+        <div><b>Glyphs, today</b>One MusicBrainz glyph, before the whole path, for the step shown now. <span class="no">None on Discogs steps.</span></div>
+        <div><b>An MB window on discogs.com</b><span class="no">No glyph, no ✎ Editing history, no Live page; "The archive did not answer."</span></div>
+        <div><b>A Discogs window</b><span class="no">No Editing history,</span> although a Discogs release's history has a reader already.</div>
+    </div>
+</header>
+
+<section aria-labelledby="try" style="display: grid; gap: 12px;">
+    <h2 id="try">Try it</h2>
+    <div class="ctl">
+        <div class="tabs" role="tablist" aria-label="Window">
+            <button type="button" class="tab" role="tab" id="tab-a" data-scen="a" aria-selected="true">MB drill path</button>
+            <button type="button" class="tab" role="tab" id="tab-b" data-scen="b" aria-selected="false">Discogs drill path</button>
+            <button type="button" class="tab" role="tab" id="tab-c" data-scen="c" aria-selected="false">MB release on discogs.com</button>
+            <button type="button" class="tab" role="tab" id="tab-d" data-scen="d" aria-selected="false">Discogs release history</button>
+        </div>
+        <div class="sw" role="group" aria-label="Version">
+            <span class="lab">Show</span>
+            <button type="button" class="chip" id="mode-today" data-mode="today" aria-pressed="false">Today</button>
+            <button type="button" class="chip" id="mode-new" data-mode="new" aria-pressed="true">Proposed</button>
+        </div>
+        <div class="sw" role="group" aria-label="A step reads">
+            <span class="lab">A step reads</span>
+            <button type="button" class="chip" id="lbl-name" data-lbl="name" aria-pressed="true">Name</button>
+            <button type="button" class="chip" id="lbl-kind" data-lbl="kind" aria-pressed="false">Kind</button>
+        </div>
+        <button type="button" class="chip" id="reset">Restore the path</button>
+    </div>
+    <p class="scen-note" id="scen-note"></p>
+    <div class="stage" id="stage">
+        <span class="lab stage-cap" id="stage-cap"></span>
+        <div class="win" id="win">
+            <div class="wbar" id="wbar"></div>
+            <div class="area" id="area"></div>
+            <div class="wfoot" id="wfoot"></div>
+        </div>
+        <div class="peek" id="peek" role="tooltip" hidden></div>
+        <div class="menu" id="menu" role="menu" hidden></div>
+        <div class="toast" id="toast" role="status" hidden></div>
+    </div>
+</section>
+
+<section aria-labelledby="props" style="display: grid; gap: 12px;">
+    <h2 id="props">What changes</h2>
+    <div class="cards">
+        <div class="card">
+            <div class="top"><span class="id">P1</span><h3>Every step a way back</h3><span class="v rec">recommended</span></div>
+            <p>Each step of the path is a button. A click shows that step again and drops the steps after it, which is what ← Back pressed several times would do. Nothing is fetched: the step's window comes from memory. The step shown now is plain text.</p>
+            <dl><dt>"…"</dt><dd>A button. It opens a menu of the hidden steps, oldest first, each with its glyph, kind and name. The menu also lists the visible steps, greyed, so the whole path is in one place.</dd>
+            <dt>Keys</dt><dd>Backspace and Alt+← stay as they are.</dd></dl>
+        </div>
+        <div class="card">
+            <div class="top"><span class="id">P2</span><h3>A glyph before every step</h3><span class="v rec">recommended</span></div>
+            <p>MusicBrainz steps get MusicBrainz's own entity glyphs, the ones the table headers already use. Discogs steps get the glyphs you listed. Steps of other kinds (a Discogs search, a help article, an image set) get a small Discogs mark.</p>
+            <div class="glyphs" id="glyph-legend"></div>
+        </div>
+        <div class="card">
+            <div class="top"><span class="id">P3</span><h3>Two rich cards</h3><span class="v rec">recommended</span></div>
+            <dl><dt>On a step</dt><dd>That entity's own card, the one its link shows on the page. It is already in memory, so resting on it asks nothing. Its foot says "Click: back to this step".</dd>
+            <dt>On a glyph</dt><dd>The documentation card: MusicBrainz's <code>/doc/&lt;Kind&gt;</code> page with its <code>/doc/Style/&lt;Kind&gt;</code> page linked in the foot, or Discogs' Database Guidelines article. Both come from readers we already have, with their usual rules. A click or Space reads the page in this window, and ← Back returns.</dd></dl>
+        </div>
+        <div class="card">
+            <div class="top"><span class="id">P4</span><h3>An MB window on discogs.com, complete</h3><span class="v probe">needs a probe</span></div>
+            <dl><dt>Glyph</dt><dd>Read from musicbrainz.org instead of discogs.com.</dd>
+            <dt>Cover art</dt><dd>Asked through Tampermonkey (GM) on another site, the same way the Web Service already is. On MusicBrainz nothing changes.</dd>
+            <dt>Live page, ✎ Editing history ▾</dt><dd>MusicBrainz shows an anonymous script its browser check. A probe tries the request with your musicbrainz.org cookies. If it passes, both work in the window. If not, both open musicbrainz.org in a new tab (the ↗ on the buttons in this mockup).</dd></dl>
+        </div>
+        <div class="card">
+            <div class="top"><span class="id">P5</span><h3>Discogs: ✎ Editing history</h3><span class="v rec">recommended</span></div>
+            <p>A Discogs release window gets the button, without the ▾ menu. A click (or H) shows the release's history in the window, as "View changes" does from a submissions page today. Masters, artists and labels get it only if a probe finds a history page for them.</p>
+        </div>
+    </div>
+</section>
+
+<section aria-labelledby="oq" style="display: grid; gap: 10px;">
+    <h2 id="oq">Decided (vzell, 2026-10-28)</h2>
+    <div class="qs">
+        <div class="q"><b>Q1. Does a step read its kind or its name?</b><p>Both, as a setting. A step reads the entity's name by default ("The Angel"), cut at about 16 characters with the whole name in its card; the setting switches every path to kinds ("Recording").</p><span class="rec">Decided: a setting, default Name.</span></div>
+        <div class="q"><b>Q2. Discogs glyphs: emoji, or drawn glyphs?</b><p>💿 master, 📄 release, 🏷️ label, 👤 artist, 💬 user; the small Discogs mark for the other Discogs steps.</p><span class="rec">Decided: emoji.</span></div>
+        <div class="q"><b>Q3. How many steps before "…"?</b><p>Resize this page below 760 px to see two.</p><span class="rec">Decided: three, two in a narrow window.</span></div>
+        <div class="q"><b>Q4. Which Discogs articles?</b><p>Read off the Database Guidelines section you saved: Artist → 2. Artist (and 18. Updating An Artist Profile), Label → 4. Label / Catalog Number (and 19. Updating A Label Profile), Release → Overview Of Submission Guidelines For Releases (and 1. General Rules), Master → 16. Master Release, User → Community Guidelines, a release's history → 14. Updating Information (and 20. Voting Guidelines). The second article sits in the card's foot, where MusicBrainz's Style page does.</p><span class="rec">Decided: as listed.</span></div>
+    </div>
+</section>
+
+</div>
+
+<script>
+(() => {
+    const IMGS = JSON.parse(document.getElementById('mockup-images').textContent);
+    const EMBED = window.__EMBED || {};
+    const img = (k) => EMBED[k] || IMGS[k].u;
+    const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+    // Kinds: glyph, documentation link, the documentation card's text.
+    const MBDOC = 'https://musicbrainz.org/doc/';
+    const DGHELP = 'https://support.discogs.com/hc/en-us/';
+    const KINDS = {
+        artist: { mb: 'g-artist', label: 'Artist', doc: 'Artist', text: 'An artist is generally a musician (or musician persona), group of musicians, or other music professional (like a producer or engineer).' },
+        'release-group': { mb: 'g-release-group', label: 'Release group', doc: 'Release_Group', text: 'A release group, just as the name suggests, is used to group several different releases into a single logical entity.' },
+        release: { mb: 'g-release', label: 'Release', doc: 'Release', text: 'A release represents the unique release (i.e. issuing) of a product on a specific date with specific release information such as the country, label, barcode and packaging.' },
+        recording: { mb: 'g-recording', label: 'Recording', doc: 'Recording', text: 'A recording can be linked to tracks on releases. Each track must always be associated with a single recording, but a recording can be linked to any number of tracks.' },
+        work: { mb: 'g-work', label: 'Work', doc: 'Work', text: 'A work is a distinct intellectual or artistic creation, which can be expressed in the form of one or more audio recordings.' },
+        label: { mb: 'g-label', label: 'Label', doc: 'Label', text: 'Labels are one of the most complicated and controversial parts of the music industry.' },
+        // The articles, from the Database Guidelines section saved by vzell (debug/discogs-guidelines.html,
+        // 2026-10-28): a main article per kind and, where there is one, a second one, as MusicBrainz's Style page.
+        'dg-master': { emo: '💿', label: 'Discogs master', help: 'articles/360005055493-Database-Guidelines-16-Master-Release', art: 'Database Guidelines 16. Master Release' },
+        'dg-release': { emo: '📄', label: 'Discogs release', help: 'articles/360004016474-Overview-Of-Submission-Guidelines-For-Releases', art: 'Overview Of Submission Guidelines For Releases', help2: ['articles/360005006334-Database-Guidelines-1-General-Rules', '1. General Rules'] },
+        'dg-label': { emo: '🏷️', label: 'Discogs label', help: 'articles/360005006614-Database-Guidelines-4-Label-Catalog-Number', art: 'Database Guidelines 4. Label / Catalog Number', help2: ['articles/360005055533-Database-Guidelines-19-Updating-A-Label-Profile', '19. Updating A Label Profile'] },
+        'dg-artist': { emo: '👤', label: 'Discogs artist', help: 'articles/360005054753-Database-Guidelines-2-Artist', art: 'Database Guidelines 2. Artist', help2: ['articles/360005055513-Database-Guidelines-18-Updating-An-Artist-Profile', '18. Updating An Artist Profile'] },
+        'dg-user': { emo: '💬', label: 'Discogs user', help: 'articles/360005353933-Community-Guidelines', art: 'Community Guidelines' },
+        'dg-history': { mark: true, label: 'Discogs release history', help: 'articles/360005055413-Database-Guidelines-14-Updating-Information', art: 'Database Guidelines 14. Updating Information', help2: ['articles/360005055593-Database-Guidelines-20-Voting-Guidelines', '20. Voting Guidelines'] },
+    };
+    const glyphHtml = (k, cls = 'g') => {
+        const K = KINDS[k];
+        if (K.mb) return `<img class="${cls}" src="${esc(img(K.mb))}" alt="">`;
+        if (K.emo) return `<span class="emo ${cls}" aria-hidden="true">${K.emo}</span>`;
+        return `<span class="dgmark ${cls}" aria-hidden="true">D</span>`;
+    };
+    const docUrl = (k) => KINDS[k].mb ? MBDOC + KINDS[k].doc : DGHELP + KINDS[k].help;
+
+    // Extracted views, by step.
+    const tracks = [['A1', 'Human Touch', '6:31'], ['A2', 'Soul Driver', '4:39'], ['A3', '57 Channels (And Nothin’ On)', '2:28'], ['A4', 'Cross My Heart', '3:51'], ['A5', 'Gloria’s Eyes', '3:46'], ['A6', 'With Every Wish', '4:39'], ['A7', 'Roll of the Dice', '4:17'], ['B1', 'Real World', '5:26'], ['B2', 'All or Nothin’ at All', '3:23'], ['B3', 'Man’s Job', '4:37'], ['B4', 'I Wish I Were Blind', '4:48'], ['B5', 'The Long Goodbye', '3:30'], ['B6', 'Real Man', '4:33'], ['B7', 'Pony Boy', '2:14']];
+    const tracklist = (h) => `<h4>${h}</h4><ol>${tracks.map(t => `<li><span class="tpos">${t[0]}</span><a href="#">${esc(t[1])}</a><span class="tlen">${t[2]}</span></li>`).join('')}</ol>`;
+    const art = (ok) => ok
+        ? `<h4>Cover art · 3</h4><div class="gallery"><figure><img src="${esc(img('ht1'))}" alt="">Front, Obi</figure><figure><img src="${esc(img('ht2'))}" alt="">Back, Obi</figure><figure><img src="${esc(img('ht3'))}" alt="">Spine</figure></div>`
+        : '<h4>Cover art · 3</h4><div class="fail">The archive did not answer.</div>';
+    const humanTouch = (okArt) => `<div class="x"><div class="col"><div class="xtitle">Human Touch</div><div class="xsub"><a href="#">Bruce Springsteen</a></div>` +
+        '<div class="pills"><span class="pill">Official</span><span class="pill">Album</span><span class="pill">Cassette</span><span class="pill">14 tracks</span></div>' +
+        `<h4>Facts</h4><dl><dt>Release group</dt><dd><a href="#">Human Touch</a> 1992-03-26</dd><dt>Release events</dt><dd>1992 GR</dd><dt>Label</dt><dd><a href="#">Columbia</a> · 471423 4<br><a href="#">Columbia</a> · COL 471423 4</dd><dt>Barcode</dt><dd>5099747142345</dd><dt>Packaging</dt><dd>Cassette Case</dd></dl>` +
+        `${art(okArt)}</div><div class="col">${tracklist('Tracklist · 14 tracks')}</div></div>`;
+    const simple = (title, sub, facts, right) => `<div class="x"><div class="col"><div class="xtitle">${esc(title)}</div><div class="xsub">${sub}</div><h4>Facts</h4><dl>${facts.map(f => `<dt>${f[0]}</dt><dd>${f[1]}</dd>`).join('')}</dl></div><div class="col">${right}</div></div>`;
+
+    // The four scenarios. Each step: kind, name, the facts its card shows, its Extracted view.
+    const SCEN = {
+        a: {
+            cap: 'musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f',
+            note: 'On MusicBrainz: Space on the artist, then a click on a release group, a release, a recording and its work. Five steps; today only the last three show.',
+            steps: [
+                { k: 'artist', name: 'Bruce Springsteen', facts: [['Type', 'Person'], ['Born', '1949-09-23, Long Branch']], view: () => simple('Bruce Springsteen', 'Person · United States', [['Born', '1949-09-23'], ['Legal name', 'Bruce Frederick Joseph Springsteen']], '<h4>Release groups</h4><p>Greetings From Asbury Park, N.J. · The Wild, the Innocent &amp; the E Street Shuffle · Born to Run · …</p>') },
+                { k: 'release-group', name: 'Greetings From Asbury Park, N.J.', facts: [['Type', 'Album'], ['First release', '1973-01-05']], view: () => simple('Greetings From Asbury Park, N.J.', '<a href="#">Bruce Springsteen</a> · Album', [['First release', '1973-01-05'], ['Releases', '180']], '<h4>Releases · 180</h4><p>Cassette 1973 US Columbia JCT 31903 · Cassette 1973 BR · 12″ Vinyl 1973 CA …</p>') },
+                { k: 'release', name: 'Greetings From Asbury Park, N.J.', facts: [['Format', 'Cassette'], ['Released', '1973 US'], ['Label', 'Columbia · JCT 31903']], view: () => simple('Greetings From Asbury Park, N.J.', '<a href="#">Bruce Springsteen</a>', [['Format', 'Cassette'], ['Release events', '1973 US'], ['Label', 'Columbia · JCT 31903']], '<h4>Tracklist</h4><p>A1 Blinded by the Light · A2 Growin’ Up · A3 Mary Queen of Arkansas · …</p>') },
+                { k: 'recording', name: 'The Angel', facts: [['Length', '3:23'], ['ISRC', 'USSM17300690'], ['First release', '1973-01-05']], view: () => simple('The Angel', '<a href="#">Bruce Springsteen</a> (studio, version 4c)', [['First release', '1973-01-05'], ['ISRC', 'USSM17300690'], ['Performance', '<a href="#">The Angel</a> 1972-06-27 – 1972-10-26'], ['Producer', '<a href="#">Mike Appel</a>, <a href="#">Jim Cretecos</a>'], ['Recorded at', '<a href="#">914 Sound Studios</a>']], '<h4>Releases · 180</h4><p>Greetings From Asbury Park, N.J. · Cassette 1973 US · …</p>') },
+                { k: 'work', name: 'The Angel', facts: [['Type', 'Song'], ['Writer', 'Bruce Springsteen']], view: () => simple('The Angel', 'Song', [['Writer', '<a href="#">Bruce Springsteen</a>']], '<h4>Recordings</h4><p>The Angel (studio, version 4c) 3:23 · …</p>') },
+            ],
+        },
+        b: {
+            cap: 'www.discogs.com/master/26725-Bruce-Springsteen-Born-To-Run',
+            note: 'On discogs.com: Space on the master, then a click on a version, a credited artist, one of their releases and its label: the path of your first screenshot.',
+            steps: [
+                { k: 'dg-master', name: 'Born To Run', facts: [['Artist', 'Bruce Springsteen'], ['Year', '1975']], view: () => simple('Born To Run', 'Bruce Springsteen · Discogs master', [['Year', '1975'], ['Versions', '387']], '<h4>Versions · 387</h4><p>…</p>') },
+                { k: 'dg-release', name: 'Born To Run', facts: [['Format', 'Vinyl, LP, Album'], ['Year', '1975']], view: () => simple('Born To Run', 'Bruce Springsteen · Discogs release', [['Format', 'Vinyl, LP, Album'], ['Year', '1975']], '<h4>Tracklist</h4><p>A1 Thunder Road · A2 Tenth Avenue Freeze-Out · …</p>') },
+                { k: 'dg-artist', name: 'Max Weinberg', facts: [['Profile', 'Drummer, E Street Band']], view: () => simple('Max Weinberg', 'Discogs artist', [['Profile', 'Drummer of the E Street Band']], '<h4>Releases</h4><p>…</p>') },
+                { k: 'dg-release', name: 'On E Street', facts: [['Artist', 'DownTown Mystic* Featuring Garry W. Tallent* &amp; Max Weinberg'], ['Format', '4xFile, MP3, EP'], ['Year', '2015']], view: () => simple('On E Street', 'DownTown Mystic* Featuring Garry W. Tallent* &amp; Max Weinberg', [['Format', '4xFile, MP3, EP, 256'], ['Year', '2015'], ['Label', '<a href="#">Sha-La Music, Inc.</a> · none']], '<h4>Tracklist</h4><p>…</p>') },
+                { k: 'dg-label', name: 'Sha-La Music, Inc.', facts: [['Releases', '20'], ['Data quality', 'Needs Major Changes']], view: () => simple('Sha-La Music, Inc.', 'Discogs · label', [['Releases', '20'], ['Data quality', 'Needs Major Changes'], ['Sublabels', '<a href="#">Sha-La Music</a>, <a href="#">Sha-La Records</a>']], '<h4>Releases · 20</h4><p>DownTown Mystic* · Think A Little Louder · File, MP3, Single · 2018 …</p>') },
+            ],
+        },
+        c: {
+            cap: 'www.discogs.com/master/27146-Bruce-Springsteen-Human-Touch',
+            note: 'On discogs.com: Space on the MusicBrainz icon in the MusicBrainz column. Today this window lacks four things the same release has on MusicBrainz (your third and fourth screenshots). Switch Today / Proposed.',
+            onDiscogs: true,
+            steps: [
+                { k: 'release', name: 'Human Touch', facts: [['Format', 'Cassette'], ['Released', '1992 GR'], ['Label', 'Columbia · 471423 4']], view: (today) => humanTouch(!today) },
+            ],
+        },
+        d: {
+            cap: 'musicbrainz.org/release/4e3e8020-fe43-4a72-8650-5866e489a8a0',
+            note: 'On MusicBrainz: Space on the release, then its Discogs link. The Discogs release window gets ✎ Editing history, without ▾. Click it to see the history step join the path.',
+            steps: [
+                { k: 'release', name: 'Human Touch', facts: [['Format', 'Cassette'], ['Released', '1992 GR']], view: (today) => humanTouch(true) },
+                { k: 'dg-release', name: 'Human Touch', facts: [['Format', 'Cassette, Album'], ['Country', 'Greece'], ['Year', '1992']], view: () => simple('Human Touch', 'Bruce Springsteen · Discogs release', [['Format', 'Cassette, Album'], ['Country', 'Greece'], ['Year', '1992'], ['Label', '<a href="#">Columbia</a> · 471423 4']], tracklist('Tracklist · 14 tracks')) },
+            ],
+            history: { k: 'dg-history', name: 'Human Touch', facts: [['Changes', 'Every submission, newest first']], view: () => '<div class="x" style="grid-template-columns: minmax(0, 1fr);"><div class="col"><h4>Changes</h4>' +
+                ['Version 4', 'Version 3', 'Version 2', 'Version 1'].map((v, i) => `<div class="histrow"><b>${v}</b><span>Submitted by a user</span><a href="#">View changes</a></div>`).join('') +
+                '<p class="xsub" style="margin-top: 8px;">The history reader\'s view, unchanged (Discogs release history, 2026-10-18).</p></div></div>' },
+        },
+    };
+
+    const st = { scen: 'a', mode: 'new', lbl: 'name', path: [] };
+    const $ = (id) => document.getElementById(id);
+    const stage = $('stage');
+
+    function reset() {
+        st.path = SCEN[st.scen].steps.slice();
+        render();
+    }
+
+    function stepText(s) {
+        return st.lbl === 'name' ? s.name : KINDS[s.k].label;
+    }
+
+    function barHtml() {
+        const S = SCEN[st.scen];
+        const p = st.path;
+        const cur = p[p.length - 1];
+        const today = st.mode === 'today';
+        const isMb = !!KINDS[cur.k].mb;
+        let ttl;
+        if (today) {
+            const kinds = p.map(s => KINDS[s.k].label);
+            const txt = (kinds.length > 3 ? ['…', ...kinds.slice(-3)] : kinds).join(' › ');
+            // Today: one glyph, MusicBrainz kinds only, and none on discogs.com.
+            const g = isMb && !S.onDiscogs ? glyphHtml(cur.k) : '';
+            ttl = `<span class="plain">${g}<span>${esc(txt)}</span></span>`;
+        } else {
+            // Three steps, two in a narrow window (vzell, 2026-10-28).
+            const keep = window.matchMedia('(max-width: 760px)').matches ? 2 : 3;
+            const shown = Math.min(keep, p.length);
+            const first = p.length - shown;
+            const parts = [];
+            if (first > 0) parts.push(`<button type="button" class="more" id="more" aria-haspopup="menu" aria-expanded="false" aria-label="${first} more step${first > 1 ? 's' : ''}">…</button>`);
+            p.slice(first).forEach((s, j) => {
+                const i = first + j;
+                const isCur = i === p.length - 1;
+                parts.push(`<span class="crumb${isCur ? ' cur' : ''}"><a class="glyph${KINDS[s.k].mb ? '' : ' dgk'}" href="${esc(docUrl(s.k))}" data-doc="${i}" target="_blank" rel="noopener" aria-label="${esc(KINDS[s.k].label)}: documentation">${glyphHtml(s.k)}</a>` +
+                    `<button type="button" class="step" data-i="${i}"${isCur ? ' aria-current="step"' : ''}>${esc(stepText(s))}</button></span>`);
+            });
+            ttl = parts.join('<span class="sep">›</span>');
+        }
+        const back = p.length > 1 ? '<button type="button" class="tbtn" id="back">← Back</button>' : '';
+        // Editing history: MB on MB has it with ▾; MB on discogs.com only with the proposal;
+        // a Discogs release only with the proposal and without ▾.
+        let hist = '';
+        const mbHist = '<span class="split"><button type="button" class="tbtn" id="hist">✎ Editing history</button><button type="button" class="tbtn" aria-label="More editing history views">▾</button></span>';
+        if (isMb && !S.onDiscogs) hist = mbHist;
+        else if (isMb && S.onDiscogs && !today) hist = '<span class="split"><button type="button" class="tbtn" id="hist">✎ Editing history <span class="newflag">new</span></button><button type="button" class="tbtn" aria-label="More editing history views">▾</button></span>';
+        else if (cur.k === 'dg-release' && !today) hist = '<button type="button" class="tbtn" id="hist">✎ Editing history <span class="newflag">new</span></button>';
+        const liveOn = !(S.onDiscogs && today) && cur.k !== 'dg-history' && isMb;
+        const live = liveOn ? `<button type="button" class="tbtn" aria-pressed="false">Live page${S.onDiscogs ? ' <span class="newflag">new</span>' : ''}</button>` : '';
+        return `<span class="ttl" id="ttl">${ttl}</span>${back}${hist}<button type="button" class="tbtn" disabled>‹</button><span class="pos">1 / ${S.onDiscogs ? 83 : 1}</span><button type="button" class="tbtn" disabled>›</button>` +
+            `<span class="seg"><button type="button" class="tbtn" aria-pressed="true">Extracted</button>${live}</span><button type="button" class="tbtn">⟳</button><button type="button" class="tbtn">↗</button><button type="button" class="tbtn" aria-label="Close">✕</button>`;
+    }
+
+    function render() {
+        const S = SCEN[st.scen];
+        $('stage-cap').textContent = S.cap;
+        $('scen-note').textContent = S.note;
+        $('wbar').innerHTML = barHtml();
+        const cur = st.path[st.path.length - 1];
+        $('area').innerHTML = cur.view(st.mode === 'today');
+        $('area').scrollTop = 0;
+        foot(null);
+        hidePeek();
+        hideMenu();
+        wireBar();
+    }
+
+    function foot(html) {
+        $('wfoot').innerHTML = html || (st.mode === 'new'
+            ? '<span>Rest on a step: its card. On its glyph: the documentation. Click a step to go back to it.</span><span class="k">Backspace back · H history · Esc close</span>'
+            : '<span>Rest on a link or an image: this line says what a click does.</span><span class="k">Backspace back · H history · Esc close</span>');
+    }
+
+    // ── Cards ──
+    function place(el, anchor) {
+        const s = stage.getBoundingClientRect();
+        const a = anchor.getBoundingClientRect();
+        el.hidden = false;
+        const w = el.offsetWidth;
+        let left = a.left - s.left;
+        left = Math.max(8, Math.min(left, stage.clientWidth - w - 8));
+        el.style.left = `${left}px`;
+        el.style.top = `${a.bottom - s.top + 6}px`;
+    }
+    function hidePeek() { $('peek').hidden = true; }
+    function stepCard(i) {
+        const s = st.path[i];
+        const K = KINDS[s.k];
+        const isCur = i === st.path.length - 1;
+        return `<div class="kh">${glyphHtml(s.k, '')}${esc(K.label)}</div><div class="t">${esc(s.name)}</div>` +
+            `<dl>${s.facts.map(f => `<dt>${f[0]}</dt><dd>${f[1]}</dd>`).join('')}</dl>` +
+            `<div class="f"><span class="read"></span>${isCur ? 'Shown now.' : `Step ${i + 1} of ${st.path.length}. Click: back to this step; ${st.path.length - 1 - i} step${st.path.length - 1 - i > 1 ? 's' : ''} after it are dropped.`} From memory, no request.</div>`;
+    }
+    function docCard(i) {
+        const s = st.path[i];
+        const K = KINDS[s.k];
+        if (K.mb) {
+            return `<div class="kh">${glyphHtml(s.k, '')}MusicBrainz documentation</div>` +
+                `<div class="t">${esc(K.label)}</div><div class="q">${esc(K.text)}</div>` +
+                `<div class="f">Style guide: <a href="${MBDOC}Style/${esc(K.doc)}" target="_blank" rel="noopener">Style/${esc(K.doc)}</a> · Click or Space: read it in this window</div>`;
+        }
+        return '<div class="kh"><span class="dgmark" aria-hidden="true">D</span>Discogs help</div>' +
+            `<div class="t">${esc(K.art)}</div><div class="d">The article's first paragraph, as the Discogs help reader shows it.</div>` +
+            '<div class="f">' + (K.help2 ? `See also: <a href="${DGHELP}${K.help2[0]}" target="_blank" rel="noopener">${esc(K.help2[1])}</a> · ` : '') +
+            'All: <a href="' + DGHELP + 'sections/25169225080077-Database-Guidelines" target="_blank" rel="noopener">Database Guidelines</a> · Click or Space: read it in this window</div>';
+    }
+
+    // ── The "…" menu ──
+    function hideMenu() {
+        $('menu').hidden = true;
+        const m = $('more');
+        if (m) m.setAttribute('aria-expanded', 'false');
+    }
+    function showMenu(btn) {
+        const p = st.path;
+        const hidden = p.length - 3;
+        $('menu').innerHTML = `<div class="mh lab">The whole path · ${p.length} steps</div>` + p.map((s, i) => {
+            const isCur = i === p.length - 1;
+            const vis = i >= hidden;
+            return `<button type="button" role="menuitem" data-i="${i}"${isCur ? ' class="cur" aria-current="step"' : ''}>${glyphHtml(s.k, '')}<span><span class="mk">${esc(KINDS[s.k].label)}</span> <span class="mn">${esc(s.name)}</span></span><span class="mi">${vis ? (isCur ? 'now' : 'shown') : i + 1}</span></button>`;
+        }).join('');
+        btn.setAttribute('aria-expanded', 'true');
+        place($('menu'), btn);
+        $('menu').querySelectorAll('button[data-i]').forEach(b => b.addEventListener('click', () => jump(Number(b.dataset.i))));
+        const first = $('menu').querySelector('button');
+        if (first) first.focus({ preventScroll: true });
+    }
+
+    function jump(i) {
+        const dropped = st.path.length - 1 - i;
+        if (dropped <= 0) { hideMenu(); return; }
+        const to = st.path[i];
+        st.path = st.path.slice(0, i + 1);
+        render();
+        toast(`Back to ${KINDS[to.k].label} · ${dropped} step${dropped > 1 ? 's' : ''} dropped`);
+    }
+
+    let toastT = 0;
+    function toast(msg) {
+        const t = $('toast');
+        t.textContent = msg;
+        t.hidden = false;
+        clearTimeout(toastT);
+        toastT = setTimeout(() => { t.hidden = true; }, 2200);
+    }
+
+    function wireBar() {
+        const bar = $('wbar');
+        bar.querySelectorAll('button.step').forEach(b => {
+            const i = Number(b.dataset.i);
+            b.addEventListener('mouseenter', () => { $('peek').innerHTML = stepCard(i); place($('peek'), b); foot(`<b>${esc(KINDS[st.path[i].k].label)}</b>&nbsp;${esc(st.path[i].name)} · ${i === st.path.length - 1 ? 'shown now' : 'click: back to this step'}`); });
+            b.addEventListener('focus', () => { $('peek').innerHTML = stepCard(i); place($('peek'), b); });
+            b.addEventListener('mouseleave', () => { hidePeek(); foot(null); });
+            b.addEventListener('blur', hidePeek);
+            b.addEventListener('click', () => jump(i));
+        });
+        bar.querySelectorAll('a.glyph').forEach(a => {
+            const i = Number(a.dataset.doc);
+            a.addEventListener('mouseenter', () => { $('peek').innerHTML = docCard(i); place($('peek'), a); foot(`<b>Documentation</b>&nbsp;${esc(a.href)} · click or Space: read it here`); });
+            a.addEventListener('mouseleave', () => { hidePeek(); foot(null); });
+            a.addEventListener('click', (e) => { e.preventDefault(); toast('Would show the documentation in this window; ← Back returns'); });
+        });
+        const more = $('more');
+        if (more) {
+            more.addEventListener('click', (e) => {
+                e.stopPropagation();
+                if ($('menu').hidden) showMenu(more);
+                else hideMenu();
+            });
+        }
+        const back = $('back');
+        if (back) back.addEventListener('click', () => jump(st.path.length - 2));
+        const hist = $('hist');
+        if (hist) {
+            hist.addEventListener('click', () => {
+                const S = SCEN[st.scen];
+                const cur = st.path[st.path.length - 1];
+                if (cur.k === 'dg-release' && S.history) {
+                    st.path = st.path.concat([S.history]);
+                    render();
+                } else toast(S.onDiscogs ? 'Would show its editing history (if the cookie probe passes; else musicbrainz.org in a new tab)' : 'Would show its editing history in this window');
+            });
+        }
+    }
+
+    document.addEventListener('click', (e) => {
+        if (!$('menu').hidden && !e.target.closest('#menu')) hideMenu();
+    });
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') { hideMenu(); hidePeek(); }
+    });
+
+    document.querySelectorAll('.tab').forEach(t => t.addEventListener('click', () => {
+        document.querySelectorAll('.tab').forEach(x => x.setAttribute('aria-selected', String(x === t)));
+        st.scen = t.dataset.scen;
+        reset();
+    }));
+    document.querySelectorAll('[data-mode]').forEach(c => c.addEventListener('click', () => {
+        document.querySelectorAll('[data-mode]').forEach(x => x.setAttribute('aria-pressed', String(x === c)));
+        st.mode = c.dataset.mode;
+        render();
+    }));
+    document.querySelectorAll('[data-lbl]').forEach(c => c.addEventListener('click', () => {
+        document.querySelectorAll('[data-lbl]').forEach(x => x.setAttribute('aria-pressed', String(x === c)));
+        st.lbl = c.dataset.lbl;
+        render();
+    }));
+    $('reset').addEventListener('click', reset);
+    window.matchMedia('(max-width: 760px)').addEventListener('change', render);
+
+    $('glyph-legend').innerHTML = ['artist', 'release-group', 'release', 'recording', 'work', 'label', 'dg-master', 'dg-release', 'dg-label', 'dg-artist', 'dg-user', 'dg-history']
+        .map(k => `<div>${glyphHtml(k, '')}<span>${esc(KINDS[k].label)}</span></div>`).join('');
+
+    reset();
+})();
+</script>
+</body>
+</html>

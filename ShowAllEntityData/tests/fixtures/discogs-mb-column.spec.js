@@ -19,6 +19,7 @@ const { test, expect } = require('../support/test');
 const { loadUserscriptPage } = require('../support/loadPage');
 const { waitForRenderComplete } = require('../support/browser');
 const { waitForSortSettled } = require('../support/filterSortAssertions');
+const { clickToolbarItem } = require('../support/toolbarMenu');
 
 const FX = (name) => JSON.parse(fs.readFileSync(path.join(__dirname, `ext-${name}.json`), 'utf8'));
 const answers = (...names) => Object.fromEntries(names.map((n) => {
@@ -420,6 +421,40 @@ async function answerArtistCards(page) {
 }
 
 /**
+ * MusicBrainz PAGES as musicbrainz.org answers a script from discogs.com
+ * (org/POH-headerline.org item 3, probe P1): the browser check for an
+ * anonymous request; with the cookies a documentation page (`/doc/…`), a
+ * tag page (`/tag/…`) or, for anything else, an artist's editing history.
+ * Every page request is logged in `window.__mbPageAsked` (path, anonymous).
+ * MusicBrainz's entity glyphs are served too (a card drops an image that
+ * does not load).
+ *
+ * @param {import('@playwright/test').Page} page
+ * @returns {Promise<void>}
+ */
+async function answerMbPages(page) {
+    const read = (name) => fs.readFileSync(path.join(__dirname, name), 'utf8');
+    await page.route('https://musicbrainz.org/static/images/entity/**', (route) => route.fulfill({
+        status: 200, contentType: 'image/svg+xml', body: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"/>',
+    }));
+    await page.evaluate(([edits, doc, tag]) => {
+        const prev = window.__gmXhrResponder;
+        window.__mbPageAsked = [];
+        window.__gmXhrResponder = (opts) => {
+            const u = new URL(opts.url);
+            if (u.origin === 'https://musicbrainz.org' && !/^\/(?:ws\/2|static)\//.test(u.pathname)) {
+                window.__mbPageAsked.push({ path: u.pathname, anonymous: opts.anonymous === true });
+                const body = opts.anonymous
+                    ? '<html><head><title>Verifying your browser</title></head><body><form action="/__meb_verify"></form></body></html>'
+                    : (u.pathname.startsWith('/doc/') ? doc : u.pathname.startsWith('/tag/') ? tag : edits);
+                return { status: 200, responseHeaders: 'Content-Type: text/html; charset=utf-8', responseText: body };
+            }
+            return prev(opts);
+        };
+    }, [read('edits-page-artist.html'), read('doc-style-titles.html'), read('tag-page-alternative-rock.html')]);
+}
+
+/**
  * Hovers an element with Ctrl held, as the link preview specs do.
  *
  * @param {import('@playwright/test').Page} page
@@ -441,6 +476,11 @@ async function ctrlHover(page, el) {
 test.describe('discogs.com: MusicBrainz cards for the MusicBrainz icons (2026-10-24)', () => {
     test('our MusicBrainz column: an icon shows the artist\'s MusicBrainz card; Space opens its window', async ({ page }) => {
         const { errors } = await openDg(page, 'release', { settings: { sa_pop_mb: true } });
+        // MusicBrainz's entity glyphs load (the card drops an image that does
+        // not); registered after openDg()'s abort-all, so this one wins.
+        await page.route('https://musicbrainz.org/static/images/entity/**', (route) => route.fulfill({
+            status: 200, contentType: 'image/svg+xml', body: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"/>',
+        }));
         await press(page, 'Show tracklist, credits and other versions');
         await settled(page);
         await expandAll(page);
@@ -456,11 +496,152 @@ test.describe('discogs.com: MusicBrainz cards for the MusicBrainz icons (2026-10
         expect(asked, 'one lookup, from musicbrainz.org').toHaveLength(1);
         expect(asked[0]).toMatch(new RegExp(`^https://musicbrainz\\.org/ws/2/artist/${MB.bruce}\\?`));
         expect(await card.locator('a[href^="/"]').count(), 'no link names discogs.com').toBe(0);
+        // MusicBrainz's glyph, from musicbrainz.org: on discogs.com this
+        // origin's /static/… is Discogs' (org/POH-headerline.org item 3).
+        const GLYPH = 'https://musicbrainz.org/static/images/entity/artist.svg';
+        await expect(card.locator(':scope > .mb-pop-kind-head > img.mb-pop-kind-icon')).toHaveAttribute('src', GLYPH);
         await page.keyboard.press('Space');
         const dialog = page.locator('#mb-dp-dialog');
         await expect(dialog).toBeVisible();
         await expect(dialog.locator('.mb-dp-area')).toContainText('Bruce Springsteen');
         expect(await dialog.locator('.mb-dp-area a[href^="/"]').count(), 'nor in the window').toBe(0);
+        const glyph = dialog.locator(':scope > div > span').first().locator('.mb-dp-crumb > a.mb-dp-crumb-g');
+        await expect(glyph.locator('img.mb-dp-kind-icon')).toHaveAttribute('src', GLYPH);
+        // MusicBrainz's documentation is read here too (since Step 3, with the
+        // browser's cookies): no "opens in a new tab" tip on the glyph.
+        await expect(glyph).toHaveAttribute('href', 'https://musicbrainz.org/doc/Artist');
+        expect(await glyph.getAttribute('data-mb-tip'), 'a card reads it').toBeNull();
+        expect(errors).toEqual([]);
+    });
+
+    // org/POH-headerline.org item 3 (vzell, 2026-10-28): the window has its
+    // editing history and its Live page here too. Both are MusicBrainz PAGES,
+    // which answer an anonymous request with the browser check: they are read
+    // with the browser's cookies (`_mbPageGetForeign()`, probed from
+    // discogs.com: scripts/probe-dg-poh-headerline.user.js P1). The stub
+    // answers an anonymous page request with the check, as MusicBrainz does.
+    test('a MusicBrainz window: ✎ Editing history ▾ and Live page, its pages read with the browser\'s cookies', async ({ page }) => {
+        const { errors } = await openDg(page, 'release', { settings: { sa_pop_mb: true } });
+        await press(page, 'Show tracklist, credits and other versions');
+        await settled(page);
+        await expandAll(page);
+        await answerArtistCards(page);
+        await answerMbPages(page);
+        await ctrlHover(page, mbCell(sub(page, 'Credits'), 'artist/219986').locator('a.mb-dg-mb-link'));
+        await expect(page.locator('#mb-dp-peek')).toContainText('fetched now');
+        await page.keyboard.press('Space');
+        const dialog = page.locator('#mb-dp-dialog');
+        const title = dialog.locator(':scope > div > span').first();
+        await expect(title).toHaveText('Artist');
+        const hist = dialog.locator('button.mb-meh-hist-btn');
+        await expect(hist).toBeVisible();
+        await expect(dialog.locator('button.mb-meh-hist-more'), 'the presets too: an entity\'s').toBeVisible();
+        const live = dialog.locator('button.mb-dp-tbtn', { hasText: 'Live page' });
+        await expect(live).toBeVisible();
+        await hist.click();
+        await expect(title).toHaveText('Artist › Editing history');
+        // Behind the one MusicBrainz gate, which the column's lookups and the
+        // artist window's own lists keep busy here.
+        await expect(dialog.locator('.mb-meh-e').first()).toBeVisible({ timeout: 30000 });
+        await expect(dialog.locator('.mb-dp-area')).not.toContainText('verify itself');
+        await dialog.getByRole('button', { name: /Back/ }).click();
+        await expect(title).toHaveText('Artist');
+        // The path's glyph: MusicBrainz's documentation, its card on a rest
+        // and the page in the window on a click (vzell, 2026-10-28: it
+        // opened a new tab here).
+        const glyph = title.locator('.mb-dp-crumb > a.mb-dp-crumb-g');
+        await ctrlHover(page, glyph);
+        await expect(page.locator('#mb-dp-peek > .mb-pop-kind-head')).toHaveText('Documentation', { timeout: 30000 });
+        await page.mouse.move(0, 0);
+        await glyph.click();
+        await expect(title).toHaveText('Artist › Documentation');
+        await expect(dialog.locator('.mb-dp-area .mb-dp-xtitle')).toHaveText('Style / Titles', { timeout: 30000 });
+        await dialog.getByRole('button', { name: /Back/ }).click();
+        await expect(title).toHaveText('Artist');
+        await live.click();
+        await expect(dialog.locator('.mb-dp-live iframe')).toHaveCount(1);
+        await expect.poll(() => page.evaluate(() => window.__mbPageAsked.map(x => x.path)), { timeout: 30000 }).toEqual([
+            `/artist/${MB.bruce}/edits`, '/doc/Artist', `/artist/${MB.bruce}`,
+        ]);
+        expect(await page.evaluate(() => window.__mbPageAsked.every(x => !x.anonymous)), 'with the browser\'s cookies').toBe(true);
+        expect(errors).toEqual([]);
+    });
+
+    // vzell, 2026-10-28: "Genres -> tags link do not open inside the same
+    // window and do not have a hover window". A genre's link is /tag/<name>,
+    // not an entity by MBID: `_dgMbWinTarget()` now reads every link a
+    // MusicBrainz card knows, its page with the browser's cookies.
+    test('in a MusicBrainz window, a genre\'s tag link opens here and has its card', async ({ page }) => {
+        const { errors } = await openDg(page, 'release', { settings: { sa_pop_mb: true } });
+        await press(page, 'Show tracklist, credits and other versions');
+        await settled(page);
+        await expandAll(page);
+        await answerArtistCards(page);
+        await answerMbPages(page);
+        await ctrlHover(page, mbCell(sub(page, 'Credits'), 'artist/219986').locator('a.mb-dg-mb-link'));
+        await expect(page.locator('#mb-dp-peek')).toContainText('fetched now');
+        await page.keyboard.press('Space');
+        const dialog = page.locator('#mb-dp-dialog');
+        const title = dialog.locator(':scope > div > span').first();
+        const genre = dialog.locator('.mb-dp-area a[href="https://musicbrainz.org/tag/americana"]');
+        await expect(genre).toBeVisible();
+        // Marked as opening here, not as leaving the page (↗).
+        await expect(genre).toHaveClass(/\bmb-dp-l-here\b/);
+        await expect(genre).not.toHaveClass(/\bmb-dp-l-out\b/);
+        await ctrlHover(page, genre);
+        await expect(page.locator('#mb-dp-peek > .mb-pop-kind-head')).toHaveText('Tag', { timeout: 30000 });
+        await expect(page.locator('#mb-dp-peek')).toContainText('fetched now', { timeout: 30000 });
+        await page.mouse.move(0, 0);
+        await genre.click();
+        await expect(title).toHaveText('Artist › Tag');
+        expect(await page.evaluate(() => window.__mbPageAsked), 'the tag page, with the browser\'s cookies, once')
+            .toEqual([{ path: '/tag/americana', anonymous: false }]);
+        expect(errors).toEqual([]);
+    });
+
+    // vzell, 2026-10-28: "in the h1 line of discogs IPs the MB icon in front
+    // of the page title is not hoverable" — murdos' importer puts its icon
+    // in our <h1 class="mb-dg-h1"> too (`mlink_processed`), outside the
+    // source's table-body and #app scopes. Its markup as the importer writes
+    // it beside a name (.mb_wrapper around the link and its image).
+    test('murdos\' importer\'s icon in our page heading: its card, named after the page', async ({ page }) => {
+        const { errors } = await openDg(page, 'release', { settings: { sa_pop_mb: true } });
+        await answerArtistCards(page);
+        await answerMbPages(page);
+        await page.evaluate((mbid) => {
+            const h1 = document.querySelector('#mb-dg-root h1.mb-dg-h1');
+            h1.setAttribute('mlink_processed', '2');
+            const wrap = document.createElement('span');
+            wrap.className = 'mb_wrapper';
+            wrap.innerHTML = `<a href="https://musicbrainz.org/artist/${mbid}" title="See this artist on MusicBrainz">` +
+                '<img src="https://musicbrainz.org/static/images/entity/artist.svg" width="16" height="16" alt=""></a>';
+            h1.prepend(wrap);
+        }, MB.bruce);
+        const icon = page.locator('#mb-dg-root h1.mb-dg-h1 .mb_wrapper a');
+        expect(await icon.evaluate((a) => window.__saTest.popResolve(a))).toBe(`dg-mb|artist:${MB.bruce}`);
+        await ctrlHover(page, icon);
+        const card = page.locator('#mb-dp-peek');
+        await expect(card).toContainText('fetched now');
+        await expect(card.locator(':scope > .mb-pop-kind-head')).toHaveText('Artist');
+        await page.keyboard.press('Space');
+        await expect(page.locator('#mb-dp-dialog .mb-dp-area')).toContainText('Bruce Springsteen');
+        expect(errors).toEqual([]);
+    });
+
+    // vzell, 2026-10-28: "the SAED menu should also get a menu entry for the
+    // 'Edit history' of the underlying entity on the IP and FRP" — built
+    // with the toolbar, so on the page as it loads; the window it opens is a
+    // Discogs window's ✎ one (same-origin here, with the browser's session).
+    test('the SAED menu\'s "✎ Edit history" on the initial page: the release\'s Discogs history in the window', async ({ page }) => {
+        const { errors } = await openDg(page, 'release', { settings: { sa_pop_ext: true } });
+        await page.route('https://www.discogs.com/release/1874253/history', (route) => route.fulfill({
+            path: path.join(__dirname, 'dg-release-history.html'), contentType: 'text/html; charset=utf-8',
+        }));
+        await expect(page.locator('#mb-saed-dghist-btn')).toHaveAttribute('title', /This release's edit history on Discogs/);
+        await clickToolbarItem(page, '#mb-saed-dghist-btn');
+        const dialog = page.locator('#mb-dp-dialog');
+        await expect(dialog.locator(':scope > div > span').first()).toHaveText('Discogs release history');
+        await expect(dialog.locator('.mb-dgh-e')).toHaveCount(14);
         expect(errors).toEqual([]);
     });
 

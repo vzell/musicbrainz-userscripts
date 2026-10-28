@@ -1550,9 +1550,57 @@ new tab. Rules:
   true})` (without it the card and the window exclude themselves), and only
   while `sa_pop_mb` is on (the `mb-entity` source must be enabled — a release
   page's own release-group window then drills too).
-- The title is the path of kinds, its last three ("… › Release group ›
+- The title is the path, its last three steps ("… › Release group ›
   Release"); **← Back**, Backspace and Alt+← pop the stack (`_dpBack()`); the
-  answer comes from memory.
+  answer comes from memory. Since 2026-10-28 the path is built by
+  `_dpCrumbsRender()` (see "The window's path" below).
+
+### The window's path (2026-10-28, org/POH-headerline.org)
+
+vzell: a glyph before every step, rich cards on the glyph and the step, the
+hidden steps reachable, every step navigable. Mockup
+https://claude.ai/artifact/YCnV4DZA5R4quLAGkmhCpC
+(`org/POH-headerline-mockups.html`); grep `// ── The window's path`.
+
+- **A step** is `span.mb-dp-crumb`: the glyph (`a.mb-dp-crumb-g`, linking
+  the kind's documentation) and `button.mb-dp-crumb-step[data-mb-step]`. A
+  click goes back to it (`_dpJumpTo(i)`: `stack.slice(0, i)`, then
+  `_dpShowInDialog()`, from memory), the current one (`aria-current`) does
+  nothing. Buttons and links, so `createInfoDialog()`'s drag skips them.
+- **The title's text stays the labels and " › "** — the 38 `title(page)`
+  assertions across the popup specs read it. So a glyph is an `<img>` or,
+  for Discogs, a span whose emoji is CSS generated content (`data-mb-emo`,
+  `_dpGlyphEl()`); writing the emoji as text changes every Discogs title
+  (mutation `scripts/mutations/poh-headerline.json`).
+- **Labels** (`_dpStepLabel()`): the name by default, the kind with
+  `sa_dp_path_label: 'kind'`. A view (`_DP_VIEW_TYPES`: edits, doc,
+  subscribers, …; a Discogs step with the mark) reads its kind either way.
+  The fixture profile reads `'kind'` (`FIXTURE_SETTINGS_OVERRIDE`); a spec
+  loaded without a fixture file gets the default.
+- **"…"** (`button.mb-dp-crumb-more`) opens `#mb-dp-path-pop`, the whole
+  path in the look of the history presets (`.mb-hist-pop`), shown steps
+  marked, the current one disabled. Three steps, two below
+  `_DP_PATH_NARROW_PX` (620) — a `ResizeObserver` re-renders on crossing it.
+- **Cards**: `_dpWinTarget()` asks `_dpCrumbTarget()` first. A step is the
+  pseudo source `_DP_CRUMB_SRC`: the step's own `card(t, false)` (no
+  request, ever), its source's foot lines dropped (on a step Space goes
+  back, `pt.crumbOf` in the Space handler), a foot of its own. A glyph is
+  `_dpDocTarget()`: MusicBrainz's `doc` kind through `_mbWinSource()` — on
+  discogs.com `dg-mb`, the page read with the browser's cookies like any
+  MusicBrainz page (until Step 3 it opened a new tab there; vzell,
+  2026-10-28) — or the `dgsupport` reader. A glyph no card reads opens a new
+  tab and says so in its tip. It reads a BARE copy of the link:
+  `_mbPopTarget()` takes a link holding an image for artwork.
+- **Glyphs** (`_dpKindGlyph()`): `_mbKindIconUrl()` (which serves `dg-mb`
+  too, from musicbrainz.org on a foreign host — item 3), with
+  `_MB_KIND_DOCS` (probed: `scripts/probe-mb-kind-docs.py`); Discogs by
+  reader and path (`_DG_KIND_GLYPHS`, `_DG_HISTORY_DOCS`, the articles read
+  off vzell's saved Database Guidelines page). A card's kind line uses the
+  same glyph (`_dpAddKindHead()`, `crumbOf` for a step's card).
+- **Specs**: `popup-mb.spec.js` "the window's path" (7),
+  `popup-ext.spec.js` "names link their Discogs pages" (emoji, articles),
+  `discogs-mb-column.spec.js` "Space opens its window" (musicbrainz.org's
+  glyph; the test serves the SVG, since the card drops an image that fails).
 - A drilled target (`drilled: true`) never takes the page row's
   `tr.mb-dp-current`: its element is a row of the window's own table.
 - ‹ › and ← → step from the PAGE target the drill-down started from
@@ -1679,12 +1727,19 @@ generalize to URLs".
   aborted: its headers name it. The body is cut to `_EXT_MAX_BYTES` (512 KB,
   answer 4; every `og:` tag sat within 8.2 KB, X5). Never rejects: failures
   come back as `error` (`refused`, `unreachable`, `timeout`).
-  **One exception, by consent (vzell, 2026-10-27):** `session: true` sends
-  the browser's cookies — used ONLY by `_extDgImgDataGet()`, for a Discogs
+  **Two exceptions, each by consent:** `session: true` sends the browser's
+  cookies. (1) vzell, 2026-10-27: `_extDgImgDataGet()`, for a Discogs
   release's image editor's data (`/images/data`) read from another site,
-  which answers nothing without the Discogs login (below, "A Discogs release's images"). Every
-  other caller stays anonymous; `scripts/mutations/dg-images.json` pins
-  both halves (the editor with the session, the API without).
+  which answers nothing without the Discogs login (below, "A Discogs
+  release's images"); `scripts/mutations/dg-images.json` pins both halves
+  (the editor with the session, the API without). (2) vzell, 2026-10-28
+  (org/POH-headerline.org item 3): `_mbPageGetForeign()`, a musicbrainz.org
+  PAGE read from discogs.com (a MusicBrainz window's Live page and editing
+  history, through `_MB_LIVE.fetchText`), which answers an anonymous
+  request with its browser check (probe P1,
+  `scripts/probe-dg-poh-headerline.user.js`); the Web Service there stays
+  anonymous (`_mbWsGetForeign()`); `scripts/mutations/poh-headerline.json`
+  pins it. Every other caller stays anonymous.
   `_extGet()` adds the gate, `wanted()` after the slot, and one retry on a
   transient status.
 - **One rate gate per HOST: `_extAwaitSlot(host)`** (`_extSpacingMs(host)`:
@@ -2425,6 +2480,44 @@ guard).
 Mockup https://claude.ai/artifact/Y69bUJTvYSksKTFRMcYJvZ, tab C; vzell's
 answers: on discogs.com AND on MusicBrainz; on a submissions list a title
 opens "History, then the release" (docs/claude/discogs.md, "Submissions").
+
+**Since 2026-10-28 (org/POH-headerline.org item 4): every subject, every
+page, and a button.**
+- `_EXT_DGH_PATH_RE` takes `release|master|artist|label` ([1] kind, [2] id;
+  probed: `scripts/probe-dg-history-shape.js` on vzell's saved pages — same
+  markup). The state, the diff and page keys are by SUBJECT,
+  `_extDgHistIdOf()` → `"<kind>/<id>"` (they were by release id, and an
+  artist and a release can share a number); `_extDgHistUrl(hid)`,
+  `_extDgHistTarget(hid, of)`, `kindFor: _extDgHistKind`.
+- **Pages**: about 50 changes each, page 1 the OLDEST, each page oldest →
+  newest; the plain URL serves the LAST page (probe P3), which is what the
+  reader reads. `_extDgHistParse()` adds `page`/`pages` (`.pagination_links`)
+  and a per-entry `key` `<page>:<row>` (a note's open state survives a merge);
+  `tr#latest` is the PAGE's last row, so an earlier page's is cleared.
+  "Load the N earlier pages" (`_extDgHistPagesRun()`): newest first, one
+  `_extDgHistGet()` each through Discogs' slot, kept like a revision's diff
+  (a numbered page never changes), Stop after the page under way, a failure
+  ends the run and the button asks that page again;
+  `_extDgHistPagesMerged()` puts the contiguous run of pages read in front.
+- **murdos' importer**: a page saved from a browser has its
+  musicbrainz.org link AND glyph first in the `<h1>`; the subject's link and
+  picture skip `a[href^="https://musicbrainz.org"]` / `.mb_wrapper`
+  (`_EXT_DGH_VERSION` 4). The reader's own fetch has no importer; the
+  fixtures (`dg-{master,artist,label}-history.html`) keep it on purpose.
+- **✎ in a Discogs window**: `_dgHistSubject(t)` (the `discogs` reader's
+  release/master/artist/label) → `_dpOpenEdits()` drills to
+  `_extDgHistTarget()` with the window's own source; no ▾ (vzell: "without
+  the menu structure"); H and the foot line ask `_dpHasHistory()`. On
+  discogs.com the SAED menu's "✎ Edit history" (`_saedDgHistoryEntry()`)
+  opens the same window for the page's own entity.
+- **The kind column** is 12em (`.mb-dgh-e`; a master's "Edit Master
+  Release" ran into the note at 8.5em, vzell 2026-10-28), its cell
+  `.mb-dgh-k` clips and the pill ends in an ellipsis with its whole label as
+  a tip. Every row is a grid of its own, so the column cannot size to its
+  content without misaligning the rows.
+- Specs: `popup-ext.spec.js` "Discogs windows: ✎ Editing history" (a
+  release; an artist with an earlier page — its page 1 a stand-in, the
+  label's page 1). Mutations: `scripts/mutations/poh-headerline.json`.
 
 - **Reader `dghistory`, BEFORE `discogs` in `_EXT_READERS`**:
   `_EXT_DISCOGS_PATH_RE` ends in `(?:[-/]|$)`, so the Discogs reader takes

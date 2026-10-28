@@ -5297,6 +5297,22 @@
                          'the preview window reads what it links to — one Web Service request, at the usual ' +
                          'one-a-second pace — so a click shows it at once; such links get a small green dot. ' +
                          'Moving on before its turn asks nothing. Links to other sites are never read ahead.'
+        },
+
+        sa_dp_path_label: {
+            label: 'In the window\'s title, each step of the path reads',
+            type: 'select',
+            default: 'name',
+            options: [
+                { value: 'name', label: 'its name ("The Angel")' },
+                { value: 'kind', label: 'its kind ("Recording")' },
+            ],
+            description: 'Following links inside the preview window builds a path in its title bar, its last ' +
+                         'three steps after "…" (two in a narrow window). Every step has its glyph, which links ' +
+                         'that kind\'s documentation, and is a way back: click it. Name (the default) shows ' +
+                         'what each step is, cut short when long; kind shows what sort of thing it is. Either ' +
+                         'way the glyph and the step\'s card on a hover tell the other. A step that is a view ' +
+                         '(an editing history, a documentation page, a Discogs search) always reads its kind.'
         }
 
     };
@@ -18099,8 +18115,12 @@
      * (`_MB_KINDS[kind]`), unchanged: their requests go through
      * `_mbWsLoad()`, which on another site asks musicbrainz.org through GM
      * (`_mbWsGetForeign()`) after the MusicBrainz rate slot; the HTML's
-     * links are made absolute (`_dgMbAbs()`). No Live page (MusicBrainz
-     * answers a script's page request with a browser check). An icon is an
+     * links are made absolute (`_dgMbAbs()`). Its Live page and its
+     * editing history (✎, H, the ▾ presets) are MusicBrainz PAGES, which
+     * answer a script's anonymous request with a browser check: they are
+     * read with the browser's musicbrainz.org cookies (`_MB_LIVE`,
+     * `_mbPageGetForeign()`; vzell's consent, org/POH-headerline.org item 3;
+     * until 2026-10-28 there was no Live page and no history here). An icon is an
      * image link and still gets the card: here the image IS the link, as a
      * Relationships icon on MusicBrainz. Under `sa_pop_mb`, with Ctrl as the
      * other previews; a plain click in our table opens the window, as every
@@ -18109,7 +18129,11 @@
      * @returns {object} The source.
      */
     function _dgMbSource() {
-        const sel = '#mb-dg-root table.tbl > tbody a[href^="https://musicbrainz.org/"], #app a[href^="https://musicbrainz.org/"]';
+        // Also our own <h1> (`_dgPrepareLivePage()`): murdos' importer puts
+        // its icon in front of the page's name there too (vzell, 2026-10-28:
+        // it had no card).
+        const sel = '#mb-dg-root table.tbl > tbody a[href^="https://musicbrainz.org/"], #app a[href^="https://musicbrainz.org/"], ' +
+            '#mb-dg-root h1.mb-dg-h1 a[href^="https://musicbrainz.org/"]';
         const resolve = (a) => {
             const m = _DG_MB_LINK_RE.exec(a.getAttribute('href') || '');
             const type = m && m[1].toLowerCase();
@@ -18124,10 +18148,12 @@
             const wrap = a.closest('.mb_wrapper');
             const beside = wrap && wrap.querySelector('a[href]:not([href^="https://musicbrainz.org/"])');
             const cell = a.closest('td.mb-dg-mb-cell');
+            // In our <h1>: the page's name, its <bdi>.
+            const h1 = a.closest('h1.mb-dg-h1');
             const name = _dpText(a.textContent) || (beside ? _dpText(beside.textContent) : '') ||
-                (cell && cell.dataset.mbDgName) || '';
+                (cell && cell.dataset.mbDgName) || (h1 ? _dpText((h1.querySelector('bdi') || {}).textContent || '') : '') || '';
             return {
-                key: `${type}:${id}`, url: `https://musicbrainz.org/${type}/${id}`, type, id, noLive: true,
+                key: `${type}:${id}`, url: `https://musicbrainz.org/${type}/${id}`, type, id,
                 kind: k.titleOf ? k.titleOf(id) : k.title, wide: !!k.wide, name,
                 col: table ? _resolveColHeaderName(table, td.cellIndex) : '',
             };
@@ -18136,13 +18162,20 @@
             id: 'dg-mb',
             kind: 'MusicBrainz',
             selector: sel,
-            live: null,
+            // Read with the browser's musicbrainz.org cookies (`_MB_LIVE.fetchText`).
+            live: _MB_LIVE,
             enabled: () => !!_isDgHost && _popSettingOn('sa_pop_mb'),
             resolve,
             needsCtrl: _dpNeedsCtrl,
             liveUrl: (t) => t.url,
             card: (t, start, repaint) => _dgMbAbs(_MB_KINDS[t.type].card(t, start, repaint)),
             extracted: (t, start, force, repaint) => _dgMbAbs(_MB_KINDS[t.type].extracted(t, start, force, repaint)),
+            // A kind's own controls in its window (an editing history's rows
+            // and pages), as the entity cards' source has them.
+            onAreaClick(e, t) {
+                const k = _MB_KINDS[t.type];
+                if (k && k.onAreaClick) k.onAreaClick(e, t);
+            },
             // The same kind in the same block: our table's column, else
             // Discogs' content.
             steps: (t) => {
@@ -18160,8 +18193,14 @@
      * window's own links made absolute by `_dgMbAbs()`) as a target of the
      * window: the `dg-mb` source's card and window (`_dgMbSource()`), so
      * hovering shows MusicBrainz's card and a click opens it in the window
-     * instead of a new tab (2026-10-26, org/discogs.org 1b/4b). Null
-     * elsewhere, with `sa_pop_mb` off, or for what the window already shows.
+     * instead of a new tab (2026-10-26, org/discogs.org 1b/4b). Besides an
+     * entity by MBID (`src.resolve()`), any musicbrainz.org link a
+     * MusicBrainz card reads (`_mbPopTarget()` with `mbOrigin`): a genre's
+     * or tag's, an edit's, an editor's, a documentation page — PAGES, read
+     * with the browser's cookies since 2026-10-28 (`_mbPageGetForeign()`;
+     * vzell: "Genres -> tags link do not open inside the same window and do
+     * not have a hover window"). Null elsewhere, with `sa_pop_mb` off, or for
+     * what the window already shows.
      *
      * @param {HTMLAnchorElement} a
      * @param {?object} cur - What the window shows now.
@@ -18171,7 +18210,7 @@
         if (!_isDgHost || !a || !cur) return null;
         const src = _popSources().find(x => x.id === 'dg-mb');
         if (!src || !src.enabled()) return null;
-        const r = src.resolve(a);
+        const r = src.resolve(a) || (a.origin === 'https://musicbrainz.org' ? _mbPopTarget(a, { inWindow: true, mbOrigin: true }) : null);
         return r && r.key !== cur.key ? Object.assign({ src, el: a, drilled: true }, r) : null;
     }
 
@@ -23438,7 +23477,7 @@
         ).join('');
         notes.forEach((n, i) => {
             if (n.target) _dpAddKindHead(box.children[i], n.target);
-            else if (n.label) _dpPrependKindHead(box.children[i], n.label, '');
+            else if (n.label) _dpPrependKindHead(box.children[i], n.label, null);
         });
     }
 
@@ -23486,16 +23525,131 @@
      */
     function _mbKindIconUrl(t) {
         if (!t || !t.src) return '';
+        // On another site (discogs.com: `_dgMbSource()`) the glyphs are
+        // musicbrainz.org's; this origin's would name discogs.com
+        // (org/POH-headerline.org item 3).
+        const origin = _mbOrigin();
         // The release page's own release-group sources (_rgLinkSource(),
         // _eventRgSource()) show a MusicBrainz release group too.
-        if (_MB_RG_SOURCE_IDS.has(t.src.id)) return `${window.location.origin}/static/images/entity/${_MB_KIND_ICON['release-group']}.svg`;
-        if (t.src.id !== 'mb-entity') return '';
+        if (_MB_RG_SOURCE_IDS.has(t.src.id)) return `${origin}/static/images/entity/${_MB_KIND_ICON['release-group']}.svg`;
+        if (t.src.id !== 'mb-entity' && t.src.id !== 'dg-mb') return '';
         // An editing history shows the glyph of what it is the history of;
         // an annotation the glyph of the entity it annotates.
         const type = t.type === 'edits' ? _mbEditsLabel(String(t.id || '')).icon
             : (_MB_KIND_ICON_FROM_ID.has(t.type) && String(t.id || '').includes('/') ? String(t.id).split('/')[0] : t.type);
         const stem = Object.prototype.hasOwnProperty.call(_MB_KIND_ICON, type) ? _MB_KIND_ICON[type] : '';
-        return stem ? `${window.location.origin}/static/images/entity/${stem}.svg` : '';
+        return stem ? `${origin}/static/images/entity/${stem}.svg` : '';
+    }
+
+    /**
+     * MusicBrainz's documentation of each kind with a glyph: the wiki page
+     * behind `/doc/<page>`, and its style guide `/doc/Style/<page>` where
+     * there is one. Probed 2026-10-28 (`scripts/probe-mb-kind-docs.py`, the
+     * wiki's API): every page exists; Style/Label, Style/Area,
+     * Style/Instrument, Style/Genre, Style/Collections and Style/Editor do
+     * not, so those kinds have no style guide here.
+     * @type {Object<string, {page: string, style: boolean}>}
+     */
+    const _MB_KIND_DOCS = {
+        artist: { page: 'Artist', style: true }, release: { page: 'Release', style: true },
+        'release-group': { page: 'Release_Group', style: true }, recording: { page: 'Recording', style: true },
+        work: { page: 'Work', style: true }, label: { page: 'Label', style: false }, area: { page: 'Area', style: false },
+        place: { page: 'Place', style: true }, event: { page: 'Event', style: true }, series: { page: 'Series', style: true },
+        instrument: { page: 'Instrument', style: false }, genre: { page: 'Genre', style: false },
+        collection: { page: 'Collections', style: false }, user: { page: 'Editor', style: false },
+    };
+
+    /** Discogs' Database Guidelines section: the documentation of a Discogs step without an article of its own. */
+    const _DG_GUIDELINES_URL = 'https://support.discogs.com/hc/en-us/sections/25169225080077-Database-Guidelines';
+
+    /**
+     * The glyph and the documentation of each Discogs kind in the window's
+     * path (org/POH-headerline.org, vzell 2026-10-28: these emoji). `doc` is
+     * the kind's article, `see` a second one for the card's foot, as
+     * MusicBrainz's style guide; both read off the Database Guidelines
+     * section vzell saved (`debug/discogs-guidelines.html`). A Discogs step
+     * of another kind (a search, a help article, an image set) has the
+     * Discogs mark and the section.
+     * @type {Object<string, {emo: string, doc: string, see?: string}>}
+     */
+    const _DG_KIND_GLYPHS = {
+        master: { emo: '💿', doc: 'https://support.discogs.com/hc/en-us/articles/360005055493-Database-Guidelines-16-Master-Release' },
+        release: {
+            emo: '📄', doc: 'https://support.discogs.com/hc/en-us/articles/360004016474-Overview-Of-Submission-Guidelines-For-Releases',
+            see: 'https://support.discogs.com/hc/en-us/articles/360005006334-Database-Guidelines-1-General-Rules',
+        },
+        label: {
+            emo: '🏷️', doc: 'https://support.discogs.com/hc/en-us/articles/360005006614-Database-Guidelines-4-Label-Catalog-Number',
+            see: 'https://support.discogs.com/hc/en-us/articles/360005055533-Database-Guidelines-19-Updating-A-Label-Profile',
+        },
+        artist: {
+            emo: '👤', doc: 'https://support.discogs.com/hc/en-us/articles/360005054753-Database-Guidelines-2-Artist',
+            see: 'https://support.discogs.com/hc/en-us/articles/360005055513-Database-Guidelines-18-Updating-An-Artist-Profile',
+        },
+        user: { emo: '💬', doc: 'https://support.discogs.com/hc/en-us/articles/360005353933-Community-Guidelines' },
+    };
+
+    /** The documentation of a Discogs history step (any kind's). */
+    const _DG_HISTORY_DOCS = {
+        doc: 'https://support.discogs.com/hc/en-us/articles/360005055413-Database-Guidelines-14-Updating-Information',
+        see: 'https://support.discogs.com/hc/en-us/articles/360005055593-Database-Guidelines-20-Voting-Guidelines',
+    };
+
+    /**
+     * What stands before a target's kind (the window's path, a card's kind
+     * line) and what its glyph links: MusicBrainz's own entity glyph (`src`)
+     * with the kind's documentation and style guide; a Discogs entity's emoji
+     * (`emo`) or, for Discogs' other steps, its mark (`mark`), with its
+     * Database Guidelines article. Null for a target of neither site.
+     *
+     * @param {?object} t - A target (`_popResolve()`, a window step).
+     * @returns {?{src?: string, emo?: string, mark?: boolean, doc: string, see: string}}
+     */
+    function _dpKindGlyph(t) {
+        if (!t || !t.src) return null;
+        const src = _mbKindIconUrl(t);
+        if (src) {
+            const type = _MB_RG_SOURCE_IDS.has(t.src.id) ? 'release-group'
+                : (t.type === 'edits' ? '' : (_MB_KIND_ICON_FROM_ID.has(t.type) && String(t.id || '').includes('/') ? String(t.id).split('/')[0] : t.type));
+            const d = Object.prototype.hasOwnProperty.call(_MB_KIND_DOCS, type) ? _MB_KIND_DOCS[type] : null;
+            const base = 'https://musicbrainz.org/doc/';
+            return { src, doc: d ? base + d.page : '', see: d && d.style ? `${base}Style/${d.page}` : '' };
+        }
+        const reader = t.reader && t.reader.id;
+        if (!reader || (!/^dg/.test(reader) && reader !== 'discogs')) return null;
+        let u = null;
+        try {
+            u = new URL(t.url);
+        } catch (_) { /* no URL: the mark */ }
+        if (reader === 'dghistory') return { mark: true, doc: _DG_HISTORY_DOCS.doc, see: _DG_HISTORY_DOCS.see };
+        const m = reader === 'discogs' && u ? _EXT_DISCOGS_PATH_RE.exec(u.pathname) : null;
+        const g = m ? _DG_KIND_GLYPHS[m[1].toLowerCase()] : (reader === 'dguser' ? _DG_KIND_GLYPHS.user : null);
+        return g ? { emo: g.emo, doc: g.doc, see: g.see || '' } : { mark: true, doc: _DG_GUIDELINES_URL, see: '' };
+    }
+
+    /**
+     * A glyph as an element: MusicBrainz's `<img>`, a Discogs emoji or the
+     * Discogs mark as a `<span>` whose glyph is CSS generated content
+     * (`data-mb-emo`), so the text of the line it sits in stays the kinds
+     * alone (the window's title, a card's kind line).
+     *
+     * @param {{src?: string, emo?: string, mark?: boolean}} g - `_dpKindGlyph()`'s answer.
+     * @param {string} cls - The element's class.
+     * @returns {HTMLElement}
+     */
+    function _dpGlyphEl(g, cls) {
+        if (g.src) {
+            const img = document.createElement('img');
+            img.className = cls;
+            img.alt = '';
+            img.src = g.src;
+            return img;
+        }
+        const s = document.createElement('span');
+        s.className = `${cls} ${g.emo ? 'mb-dp-emo' : 'mb-dp-dgmark'}`;
+        s.setAttribute('aria-hidden', 'true');
+        s.dataset.mbEmo = g.emo || 'D';
+        return s;
     }
 
     /**
@@ -23511,41 +23665,38 @@
     }
 
     /**
-     * Puts the card's kind line on top of it: the target's entity glyph
-     * (MusicBrainz kinds only) and its kind, a small version of the window's
-     * title bar. A DOM step after every paint, so every source's card HTML,
-     * the loading and the failed shells get it; a repaint replaces the
-     * card's HTML, and the line with it, so it is added once per paint.
+     * Puts the card's kind line on top of it: the target's glyph
+     * (`_dpKindGlyph()`: MusicBrainz's entity glyph, a Discogs emoji or
+     * mark) and its kind, a small version of the window's title bar. A DOM
+     * step after every paint, so every source's card HTML, the loading and
+     * the failed shells get it; a repaint replaces the card's HTML, and the
+     * line with it, so it is added once per paint. A step of the window's
+     * path (`crumbOf`) names the step it shows.
      *
      * @param {HTMLElement} el - `#mb-dp-peek`.
      * @param {object} t - Its target.
      * @returns {void}
      */
     function _dpAddKindHead(el, t) {
-        _dpPrependKindHead(el, _dpKindLabel(t), _mbKindIconUrl(t));
+        const k = t.crumbOf || t;
+        _dpPrependKindHead(el, _dpKindLabel(k), _dpKindGlyph(k));
     }
 
     /**
-     * Puts a kind line on top of a box: a glyph (when `src` names one) and
+     * Puts a kind line on top of a box: a glyph (when there is one) and
      * the label, the hairline under it (CSS). Once per box: a box that
      * already starts with one keeps it.
      *
      * @param {HTMLElement} el - The card, or a box of the stack above it.
      * @param {string} label
-     * @param {string} src - The glyph's URL, '' for none.
+     * @param {?{src?: string, emo?: string, mark?: boolean}} glyph - `_dpKindGlyph()`'s answer, null for none.
      * @returns {void}
      */
-    function _dpPrependKindHead(el, label, src) {
+    function _dpPrependKindHead(el, label, glyph) {
         if (!label || el.querySelector(':scope > .mb-pop-kind-head')) return;
         const head = document.createElement('div');
         head.className = 'mb-pop-kind-head';
-        if (src) {
-            const img = document.createElement('img');
-            img.className = 'mb-pop-kind-icon';
-            img.alt = '';
-            img.src = src;
-            head.append(img);
-        }
+        if (glyph) head.append(_dpGlyphEl(glyph, 'mb-pop-kind-icon'));
         head.append(label);
         el.prepend(head);
     }
@@ -24258,6 +24409,386 @@
         if (window.scrollX !== x) window.scrollTo({ left: x, top: window.scrollY, behavior: 'instant' });
     }
 
+    // ── The window's path (org/POH-headerline.org, vzell 2026-10-28) ────────
+    // The title bar's path of what the window showed: every step a glyph
+    // (`_dpKindGlyph()`, linking the kind's documentation) and a button back
+    // to it; the oldest steps behind "…", a menu of the whole path. Resting
+    // on a step shows that step's own card from memory (`_DP_CRUMB_SRC`), on
+    // a glyph the documentation's card (`_dpDocTarget()`). Mockup:
+    // https://claude.ai/artifact/YCnV4DZA5R4quLAGkmhCpC.
+
+    /**
+     * MusicBrainz kinds that are a view of something rather than a thing
+     * with a name of its own: their step reads the kind ("Editing history",
+     * "Documentation") whatever `sa_dp_path_label` says.
+     * @type {Set<string>}
+     */
+    const _DP_VIEW_TYPES = new Set(['edits', 'doc', 'docsearch', 'collections', 'applications', 'usertags', 'userratings',
+        'usertag', 'annotations', 'annotation', 'subscribers']);
+
+    /** Below this width (px) the window's path keeps two steps instead of three. */
+    const _DP_PATH_NARROW_PX = 620;
+
+    /**
+     * A step's name in the window's path: the entity's name for a thing
+     * with one, '' for a view (an editing history, a documentation page, a
+     * Discogs search or history: `_DP_VIEW_TYPES`, the Discogs mark).
+     *
+     * @param {object} t - A target.
+     * @returns {string}
+     */
+    function _dpStepName(t) {
+        if (t.src && (t.src.id === 'mb-entity' || t.src.id === 'dg-mb') && _DP_VIEW_TYPES.has(t.type)) return '';
+        const g = _dpKindGlyph(t);
+        if (g && g.mark) return '';
+        return String(t.name || '').replace(/\s+/g, ' ').trim();
+    }
+
+    /**
+     * What a step of the window's path reads: the entity's name (the
+     * default), or its kind (`sa_dp_path_label: 'kind'`, the path as it was
+     * before 2026-10-28). A step without a name reads its kind either way.
+     *
+     * @param {object} t - A target.
+     * @returns {string}
+     */
+    function _dpStepLabel(t) {
+        const kind = _dpKindLabel(t);
+        return Lib.settings.sa_dp_path_label === 'kind' ? kind : (_dpStepName(t) || kind);
+    }
+
+    /**
+     * The window's whole path: the steps it came through, then what it shows.
+     *
+     * @returns {object[]}
+     */
+    function _dpPathSteps() {
+        return _dpDialog.target ? _dpDialog.stack.concat([_dpDialog.target]) : _dpDialog.stack.slice();
+    }
+
+    /**
+     * The window target of a glyph's documentation link: MusicBrainz's
+     * documentation page (the `doc` kind of the window's MusicBrainz source,
+     * `_mbWinSource()`: on MusicBrainz and on discogs.com, while its cards
+     * are on), or a Discogs help article (the `dgsupport` reader, while the
+     * external previews are on); null where neither applies (the link opens
+     * a new tab, and its tip says so).
+     *
+     * @param {HTMLAnchorElement} a - The glyph's link.
+     * @returns {?object} A `drilled` target.
+     */
+    function _dpDocTarget(a) {
+        if (!a || !a.getAttribute('href')) return null;
+        // Read from a bare copy of the link: the glyph's own holds an image,
+        // and a link holding an image is artwork to `_mbPopTarget()`.
+        const bare = document.createElement('a');
+        bare.href = a.href;
+        // The window's MusicBrainz source here (`_mbWinSource()`): on
+        // discogs.com `dg-mb`, which reads the documentation page with the
+        // browser's cookies like any MusicBrainz page (`_mbPageGetForeign()`;
+        // vzell 2026-10-28: it opened a new tab there).
+        const mb = _mbWinSource();
+        if (mb) {
+            const r = _mbPopTarget(bare, { inWindow: true, mbOrigin: true });
+            if (r) return Object.assign({ src: mb, el: a, drilled: true }, r, { name: '' });
+        }
+        const ext = _popSources().find(x => x.id === 'ext');
+        if (ext && ext.enabled()) {
+            const r = _extTarget(bare, { inWindow: true });
+            if (r) return Object.assign({ src: ext, el: a, drilled: true }, r, { name: '' });
+        }
+        return null;
+    }
+
+    /**
+     * The source of a path step's card: the step's own card, from memory
+     * only (`start` false: resting on a step never asks anyone), and a foot
+     * line saying where a click goes.
+     * @type {object}
+     */
+    const _DP_CRUMB_SRC = {
+        id: 'dp-crumb', kind: '', enabled: () => true, needsCtrl: () => false, wide: false,
+        card(t, start, repaint) {
+            const n = _dpPathSteps().length;
+            const after = n - 1 - t.crumb;
+            const foot = after > 0
+                ? `Step ${t.crumb + 1} of ${n}. Click or <kbd>Space</kbd>: back to it (the ${after === 1 ? 'step' : `${after} steps`} after it go).`
+                : 'Shown now.';
+            // The source's own foot lines ("Space more") say what Space does
+            // on the page; here it goes back, which this card's foot says.
+            const tpl = document.createElement('template');
+            tpl.innerHTML = t.crumbOf.src.card(t.crumbOf, false, repaint);
+            tpl.content.querySelectorAll('.mb-tt-foot').forEach(f => f.remove());
+            return tpl.innerHTML + `<div class="mb-tt-foot">${foot}</div>`;
+        },
+        extracted: () => '', steps: () => [], stepId: () => '', liveUrl: () => '',
+    };
+
+    /**
+     * The hover card's target for an element of the window's path: a step
+     * (its own card, `_DP_CRUMB_SRC`) or a glyph (its documentation's,
+     * `_dpDocTarget()`); `undefined` for an element outside the path, so
+     * the caller asks the window's content instead.
+     *
+     * @param {?EventTarget} node
+     * @returns {?object|undefined}
+     */
+    function _dpCrumbTarget(node) {
+        const strip = _dpDialog.controls && _dpDialog.controls.title;
+        if (!_dpDialog.api || !strip || !node || !node.closest || !strip.contains(node)) return undefined;
+        const step = node.closest('.mb-dp-crumb-step');
+        if (step) {
+            const i = Number(step.dataset.mbStep);
+            const s = _dpPathSteps()[i];
+            if (!s) return null;
+            return { src: _DP_CRUMB_SRC, el: step, crumbOf: s, crumb: i, key: `crumb:${i}:${s.key}`, kind: _dpKindLabel(s), wide: 'wide' in s ? s.wide : s.src.wide };
+        }
+        const g = node.closest('a.mb-dp-crumb-g');
+        return g ? _dpDocTarget(g) : null;
+    }
+
+    /**
+     * Goes back to step `i` of the window's path: it shows that step again,
+     * from memory, and the steps after it are dropped (← Back pressed that
+     * many times). Nothing for the step shown now.
+     *
+     * @param {number} i
+     * @returns {void}
+     */
+    function _dpJumpTo(i) {
+        const stack = _dpDialog.stack;
+        if (!(i >= 0 && i < stack.length)) return;
+        const to = stack[i];
+        _dpDialog.stack = stack.slice(0, i);
+        _dpHidePeek();
+        _dpShowInDialog(to);
+    }
+
+    /**
+     * Fills the window's title with its path: each step its glyph (a link
+     * to the kind's documentation) and a button reading its name or kind
+     * (`_dpStepLabel()`), " › " between them; the last three steps (two in
+     * a narrow window, `_DP_PATH_NARROW_PX`), and before them "…", which
+     * opens the whole path (`_dpPathPopToggle()`). The title's text stays
+     * the labels and separators alone ("… › Release group › Release"): the
+     * glyphs are images or CSS generated content.
+     *
+     * @param {HTMLElement} title - The title bar's title span.
+     * @returns {void}
+     */
+    function _dpCrumbsRender(title) {
+        const steps = _dpPathSteps();
+        const dlg = _dpDialog.api && _dpDialog.api.dialog;
+        const keep = dlg && dlg.clientWidth && dlg.clientWidth < _DP_PATH_NARROW_PX ? 2 : 3;
+        const first = Math.max(0, steps.length - keep);
+        _dpDialog.pathKeep = keep;
+        const parts = [];
+        if (first > 0) {
+            const more = document.createElement('button');
+            more.type = 'button';
+            more.className = 'mb-dp-crumb-more';
+            more.textContent = '…';
+            more.setAttribute('aria-haspopup', 'menu');
+            more.setAttribute('aria-expanded', 'false');
+            _setTip(more, `${first} earlier step${first === 1 ? '' : 's'}: the whole path`);
+            parts.push(more, ' › ');
+        }
+        steps.slice(first).forEach((s, j) => {
+            const i = first + j;
+            const crumb = document.createElement('span');
+            crumb.className = 'mb-dp-crumb';
+            const g = _dpKindGlyph(s);
+            if (g) {
+                const el = _dpGlyphEl(g, 'mb-dp-kind-icon');
+                if (g.doc) {
+                    const a = document.createElement('a');
+                    a.className = 'mb-dp-crumb-g';
+                    a.href = g.doc;
+                    a.target = '_blank';
+                    a.rel = 'noopener';
+                    a.setAttribute('aria-label', `${_dpKindLabel(s)}: documentation`);
+                    a.append(el);
+                    // A link no card reads (MusicBrainz's documentation seen
+                    // from another site) says where it goes.
+                    if (!_dpDocTarget(a)) _setTip(a, `${_dpKindLabel(s)}: documentation (opens ${a.hostname} in a new tab)`);
+                    crumb.append(a);
+                } else crumb.append(el);
+            }
+            const b = document.createElement('button');
+            b.type = 'button';
+            b.className = 'mb-dp-crumb-step';
+            b.dataset.mbStep = String(i);
+            b.textContent = _dpStepLabel(s);
+            if (i === steps.length - 1) b.setAttribute('aria-current', 'step');
+            crumb.append(b);
+            if (j) parts.push(' › ');
+            parts.push(crumb);
+        });
+        title.replaceChildren(...parts);
+    }
+
+    /** The window's open path menu (`_dpPathPopToggle()`), and what closes it. */
+    const _dpPathPop = { el: null, off: null };
+
+    /**
+     * Closes the window's path menu, if open.
+     *
+     * @returns {void}
+     */
+    function _dpPathPopClose() {
+        if (!_dpPathPop.el) return;
+        _dpPathPop.el.remove();
+        _dpPathPop.el = null;
+        if (_dpPathPop.off) _dpPathPop.off();
+        _dpPathPop.off = null;
+        const title = _dpDialog.controls && _dpDialog.controls.title;
+        const more = title && title.querySelector('.mb-dp-crumb-more');
+        if (more) more.setAttribute('aria-expanded', 'false');
+    }
+
+    /**
+     * "…" in the window's path: opens (or closes) the whole path under it,
+     * oldest first — each step's glyph, kind and name; a click on one goes
+     * back to it (`_dpJumpTo()`). The steps the title shows are listed too,
+     * marked "shown", what the window shows "now" and not clickable. A pick,
+     * a click outside, Escape or a new target closes it; ↑ ↓ move.
+     *
+     * @param {HTMLElement} more - The "…" button.
+     * @returns {void}
+     */
+    function _dpPathPopToggle(more) {
+        if (_dpPathPop.el) {
+            _dpPathPopClose();
+            return;
+        }
+        if (!_dpDialog.api) return;
+        const dlg = _dpDialog.api.dialog;
+        const steps = _dpPathSteps();
+        const shownFrom = Math.max(0, steps.length - (_dpDialog.pathKeep || 3));
+        const pop = document.createElement('div');
+        pop.id = 'mb-dp-path-pop';
+        pop.className = 'mb-hist-pop';
+        pop.setAttribute('role', 'menu');
+        pop.setAttribute('aria-label', 'The whole path');
+        const cap = document.createElement('div');
+        cap.className = 'mb-saed-cap mb-hist-cap';
+        cap.textContent = `The whole path · ${steps.length} steps`;
+        pop.appendChild(cap);
+        steps.forEach((s, i) => {
+            const b = document.createElement('button');
+            b.type = 'button';
+            b.className = 'mb-hist-row mb-dp-path-row';
+            b.setAttribute('role', 'menuitem');
+            b.dataset.mbStep = String(i);
+            const g = _dpKindGlyph(s);
+            const gw = document.createElement('span');
+            gw.className = 'mb-hist-g';
+            if (g) gw.append(_dpGlyphEl(g, 'mb-dp-kind-icon'));
+            const kind = document.createElement('b');
+            kind.textContent = _dpKindLabel(s);
+            const name = document.createElement('span');
+            name.className = 'mb-dp-path-name';
+            name.textContent = _dpStepName(s);
+            const where = document.createElement('span');
+            where.className = 'mb-hist-h';
+            where.textContent = i === steps.length - 1 ? 'now' : (i >= shownFrom ? 'shown' : String(i + 1));
+            b.append(gw, kind, name, where);
+            if (i === steps.length - 1) {
+                b.disabled = true;
+                b.setAttribute('aria-current', 'step');
+            } else {
+                b.addEventListener('click', () => {
+                    _dpPathPopClose();
+                    _dpJumpTo(i);
+                });
+            }
+            pop.appendChild(b);
+        });
+        dlg.appendChild(pop);
+        const d = dlg.getBoundingClientRect();
+        const r = more.getBoundingClientRect();
+        pop.style.top = `${Math.round(r.bottom - d.top + 4)}px`;
+        pop.style.left = `${Math.max(4, Math.round(r.left - d.left))}px`;
+        _dpPathPop.el = pop;
+        more.setAttribute('aria-expanded', 'true');
+        const outside = (e) => {
+            if (!pop.contains(e.target) && e.target !== more) _dpPathPopClose();
+        };
+        const keys = (e) => {
+            if (e.key === 'Escape') {
+                e.preventDefault();
+                e.stopImmediatePropagation();
+                _dpPathPopClose();
+                more.focus();
+                return;
+            }
+            if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
+            const rows = Array.from(pop.querySelectorAll('button.mb-hist-row:not([disabled])'));
+            if (!rows.length) return;
+            e.preventDefault();
+            e.stopImmediatePropagation();
+            const i = rows.indexOf(document.activeElement);
+            const j = i < 0 ? 0 : (i + (e.key === 'ArrowDown' ? 1 : -1) + rows.length) % rows.length;
+            rows[j].focus();
+        };
+        document.addEventListener('mousedown', outside, true);
+        window.addEventListener('keydown', keys, true);
+        _dpPathPop.off = () => {
+            document.removeEventListener('mousedown', outside, true);
+            window.removeEventListener('keydown', keys, true);
+        };
+        const firstRow = pop.querySelector('button.mb-hist-row:not([disabled])');
+        if (firstRow) firstRow.focus();
+    }
+
+    /**
+     * Wires the window's path, once per window, delegated on the title so
+     * every repaint of the path is covered: a click on a step goes back to
+     * it, on "…" opens the whole path, on a glyph shows its documentation in
+     * the window when a card reads it (else the link opens its new tab);
+     * resting on any of them writes the foot line.
+     *
+     * @param {HTMLElement} title - The title bar's title span.
+     * @returns {void}
+     */
+    function _dpCrumbsInstall(title) {
+        title.addEventListener('click', (e) => {
+            const more = e.target.closest('.mb-dp-crumb-more');
+            if (more) {
+                e.preventDefault();
+                e.stopPropagation();
+                _dpPathPopToggle(more);
+                return;
+            }
+            const step = e.target.closest('.mb-dp-crumb-step');
+            if (step) {
+                _dpJumpTo(Number(step.dataset.mbStep));
+                return;
+            }
+            const g = e.target.closest('a.mb-dp-crumb-g');
+            const cur = _dpDialog.target;
+            if (!g || !cur || e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return;
+            const t = _dpDocTarget(g);
+            if (!t || t.key === cur.key) return;
+            e.preventDefault();
+            _dpDialog.stack.push(cur);
+            _dpShowInDialog(t);
+        });
+        title.addEventListener('mouseover', (e) => {
+            if (_isTouchCompatMouseEvent(e)) return;
+            const t = _dpCrumbTarget(e.target);
+            const g = e.target.closest && e.target.closest('a.mb-dp-crumb-g');
+            const el = (t && t.el) || g || null;
+            if (el === _dpWin.hover) return;
+            _dpWin.hover = el;
+            _dpWinFoot(t && t.crumbOf ? { kind: 'crumb', t } : (g ? { kind: 'doc', a: g, t } : null));
+        });
+        title.addEventListener('mouseleave', () => {
+            _dpWin.hover = null;
+            _dpWinFoot(null);
+        });
+    }
+
     /**
      * Shows a target in the dialog, titles the dialog after its source and
      * marks its row.
@@ -24269,25 +24800,11 @@
         _dpDialog.target = t;
         _dpDialog.url = t.url;
         // createInfoDialog()'s title bar is its first child, the title its
-        // first span: the target's kind, after a drill-down the path to it
-        // ("Release group › Release"), its last three steps.
-        const title = _dpDialog.api ? _dpDialog.api.dialog.querySelector(':scope > div > span') : null;
-        const kinds = _dpDialog.stack.concat([t]).map(_dpKindLabel);
-        if (title) {
-            // MusicBrainz's glyph of the kind shown now, in front of the
-            // path: inside the span, so the bar's space-between leaves no
-            // gap, and the span's text stays the kinds alone.
-            const icon = _mbKindIconUrl(t);
-            const parts = [(kinds.length > 3 ? ['…', ...kinds.slice(-3)] : kinds).join(' › ')];
-            if (icon) {
-                const img = document.createElement('img');
-                img.className = 'mb-dp-kind-icon';
-                img.alt = '';
-                img.src = icon;
-                parts.unshift(img);
-            }
-            title.replaceChildren(...parts);
-        }
+        // first span: the path to the target (`_dpCrumbsRender()`, every
+        // step a glyph and a way back), its last three steps after "…".
+        _dpPathPopClose();
+        const title = _dpDialog.controls && _dpDialog.controls.title;
+        if (title) _dpCrumbsRender(title);
         if (_dpDialog.controls && _dpDialog.controls.back) _dpDialog.controls.back.style.display = _dpDialog.stack.length ? '' : 'none';
         // Where ← Back and ‹ › go (H6), and the foot line at rest (H1): what
         // the pointer rested on is gone with the old content.
@@ -24297,8 +24814,13 @@
         // "✎ Editing history": only where there is one (org/mb-edit-history.org).
         if (_dpDialog.controls && _dpDialog.controls.hist) {
             const subj = _mbEditsSubject(t);
+            // A Discogs release, master, artist or label has one too, without
+            // the ▾ (org/POH-headerline.org item 4).
+            const dg = subj ? '' : _dgHistSubject(t);
             const c = _dpDialog.controls;
-            (c.histSplit || c.hist).style.display = subj ? '' : 'none';
+            (c.histSplit || c.hist).style.display = subj || dg ? '' : 'none';
+            _setTip(c.hist, dg ? `This ${dg.split('/')[0]}'s edit history on Discogs, in this window (H)`
+                : 'This entity\'s editing history on MusicBrainz, in this window (H)');
             // The ▾ presets: an entity's only (`_mbHistPresets()`), never an editor's.
             const withMore = !!subj && !subj.startsWith('user/');
             if (c.histMore) c.histMore.style.display = withMore ? '' : 'none';
@@ -24443,7 +24965,7 @@
         if (_dpIsTextField(e.target)) return;
         // H: the editing history of what the window shows, where it has one
         // (org/mb-edit-history.org); the history's own row keys.
-        if ((e.key === 'h' || e.key === 'H') && !e.altKey && !e.ctrlKey && !e.metaKey && _mbEditsSubject(_dpDialog.target)) {
+        if ((e.key === 'h' || e.key === 'H') && !e.altKey && !e.ctrlKey && !e.metaKey && _dpHasHistory(_dpDialog.target)) {
             e.preventDefault();
             e.stopPropagation();
             _dpOpenEdits();
@@ -24662,6 +25184,10 @@
      * @returns {?object}
      */
     function _dpWinTarget(node) {
+        // The window's path in the title bar: a step's own card, a glyph's
+        // documentation (`_dpCrumbTarget()`).
+        const c = _dpCrumbTarget(node);
+        if (c !== undefined) return c;
         const w = _dpWinWhat(node, true);
         if (!w) return null;
         if (w.kind === 'here') return w.t;
@@ -24802,7 +25328,9 @@
      * H1: the window's foot line for what the pointer (or the focus) rests
      * on, or, with nothing, the window's keys.
      *
-     * @param {?{kind: string, a: HTMLAnchorElement, t?: object}} w - `_dpWinWhat()`'s answer.
+     * @param {?{kind: string, a?: HTMLAnchorElement, t?: object}} w - `_dpWinWhat()`'s answer, or one of the
+     *   window's path (`_dpCrumbsInstall()`): `crumb` (a step, `t` its `_dpCrumbTarget()`), `doc` (a glyph
+     *   `a`, `t` its documentation's target or null).
      * @returns {void}
      */
     function _dpWinFoot(w) {
@@ -24819,7 +25347,7 @@
             const keys = [];
             if (t && t.src.steps(t).length > 1) keys.push('← → rows');
             if (_dpDialog.stack.length) keys.push('Backspace back');
-            if (t && _mbEditsSubject(t)) keys.push('H history');
+            if (t && _dpHasHistory(t)) keys.push('H history');
             // A window with a tag or genre link (a genre in the Facts, a
             // tag's genre): the key that shows the reader's own tag there
             // (`_mbOwnTagTarget()`; vzell 2026-10-27: say it exists).
@@ -24834,7 +25362,21 @@
         let lead;
         let text;
         let keys = '';
-        if (w.kind === 'img') {
+        const named = (x) => [_dpKindLabel(x), _dpStepName(x)].filter(Boolean).join(' · ');
+        if (w.kind === 'crumb') {
+            // A step of the window's path (`_dpCrumbsInstall()`).
+            const now = w.t.crumb === _dpPathSteps().length - 1;
+            g = now ? '•' : '↩';
+            lead = now ? 'Shown now: ' : 'Back to: ';
+            text = named(w.t.crumbOf);
+            keys = now ? '' : 'Click or Space: back to it';
+        } else if (w.kind === 'doc') {
+            // A step's glyph: its kind's documentation.
+            g = '📖';
+            lead = 'Documentation: ';
+            text = w.a.href.replace(/^https?:\/\//, '');
+            keys = w.t ? 'Click or Space: here · Ctrl-click: new tab' : 'Click: new tab';
+        } else if (w.kind === 'img') {
             const info = _dpImgInfo(w.a);
             g = '🔍';
             lead = 'Viewer: ';
@@ -27190,7 +27732,24 @@
             if (_dpDialog.target && _dpDialog.target.src.onAreaInput) _dpDialog.target.src.onAreaInput(e, _dpDialog.target);
         });
         _dpDialog.api = api;
-        _dpDialog.controls = { pos, ex, live, open, back, origin, hist, histMore, histSplit, prev, next };
+        _dpDialog.controls = { pos, ex, live, open, back, origin, hist, histMore, histSplit, prev, next, title: titleSpan };
+        // The path in the title (`_dpCrumbsRender()`): its clicks and foot
+        // line, and two steps instead of three once the window is narrow.
+        if (titleSpan) {
+            titleSpan.classList.add('mb-dp-crumbs');
+            _dpCrumbsInstall(titleSpan);
+            if (typeof ResizeObserver === 'function') {
+                const narrow = new ResizeObserver(() => {
+                    if (!api.dialog.isConnected) {
+                        narrow.disconnect();
+                        return;
+                    }
+                    const keep = api.dialog.clientWidth < _DP_PATH_NARROW_PX ? 2 : 3;
+                    if (_dpDialog.api === api && _dpDialog.target && keep !== _dpDialog.pathKeep) _dpCrumbsRender(titleSpan);
+                });
+                narrow.observe(api.dialog);
+            }
+        }
         // Hovering inside the window: the foot line, the marks, the cards of
         // its links, an image's preview, the long press (org/dp-window-hover.org).
         _dpWinInstall(api);
@@ -27211,6 +27770,8 @@
         const gone = new MutationObserver(() => {
             if (api.dialog.isConnected) return;
             gone.disconnect();
+            // The path menu's document listeners go with it.
+            _dpPathPopClose();
             if (_dpDialog.row) _dpDialog.row.classList.remove('mb-dp-current');
             _dpDialog.row = null;
             if (_dpDialog.api === api) {
@@ -27305,6 +27866,32 @@
                 margin-right: 6px;
                 vertical-align: -3px;
             }
+            /* The window's path (_dpCrumbsRender()): every step a glyph that
+               links its kind's documentation and a button back to it; the
+               oldest steps behind the "..." button. */
+            .mb-dp-dialog .mb-dp-crumbs { display: inline-flex; flex-wrap: wrap; align-items: center; min-width: 0; white-space: pre; }
+            .mb-dp-dialog .mb-dp-crumb { display: inline-flex; align-items: center; min-width: 0; white-space: nowrap; }
+            .mb-dp-dialog .mb-dp-crumb-g { display: inline-flex; align-items: center; margin-right: 3px; padding: 1px; border-radius: 3px; text-decoration: none; }
+            .mb-dp-dialog .mb-dp-crumb-g:hover, .mb-dp-dialog .mb-dp-crumb-g:focus-visible { background: #ece4f0; box-shadow: 0 0 0 1px #c9a3bd; outline: none; }
+            .mb-dp-dialog .mb-dp-crumb-g .mb-dp-kind-icon { margin-right: 0; }
+            .mb-dp-dialog .mb-dp-crumb-step {
+                max-width: 16em; padding: 0 2px; border: 0; border-radius: 2px; background: none; color: #0b5394; font: inherit; cursor: pointer;
+                overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+                text-decoration: underline dotted 1px; text-underline-offset: 3px;
+            }
+            .mb-dp-dialog .mb-dp-crumb-step:hover, .mb-dp-dialog .mb-dp-crumb-step:focus-visible { background: #eef3fa; outline: none; }
+            .mb-dp-dialog .mb-dp-crumb-step[aria-current] { color: inherit; text-decoration: none; cursor: default; }
+            .mb-dp-dialog .mb-dp-crumb-step[aria-current]:hover { background: none; }
+            .mb-dp-dialog .mb-dp-crumb-more { padding: 2px 6px; border: 1px solid #bbb; border-radius: 3px; background: #fff; color: #333; font: 600 12px/1 system-ui, sans-serif; cursor: pointer; }
+            .mb-dp-dialog .mb-dp-crumb-more[aria-expanded="true"] { background: #2b2622; border-color: #2b2622; color: #fbf8f1; }
+            .mb-dp-dialog .mb-dp-path-row .mb-dp-path-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #7a6d5c; font-style: italic; }
+            .mb-dp-dialog .mb-dp-path-row .mb-dp-kind-icon { width: 16px; height: 16px; margin-right: 0; vertical-align: -3px; }
+            /* A Discogs glyph: its emoji, or the Discogs mark, as generated
+               content, so the text of the line it is in stays the labels. */
+            span.mb-dp-emo, span.mb-dp-dgmark { display: inline-grid; place-items: center; }
+            .mb-dp-emo::before { content: attr(data-mb-emo); font: 14px/1 "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif; }
+            span.mb-dp-dgmark { border-radius: 50%; background: #222; color: #fff; }
+            .mb-dp-dgmark::before { content: attr(data-mb-emo); font: 700 9px/1 system-ui, sans-serif; }
             /* The window's badge: where it was opened from, after the title. */
             .mb-dp-dialog .mb-dp-origin {
                 flex: 0 1 auto;
@@ -27466,10 +28053,18 @@
             .mb-dp-dialog .mb-dgh-seg .mb-dg-btn:last-child { border-radius: 0 3px 3px 0; }
             .mb-dp-dialog .mb-dgh-seg .mb-dg-btn[aria-pressed="true"] { background: #2b2622; color: #fbf8f1; border-color: #2b2622; }
             .mb-dp-dialog .mb-dgh-seg + .mb-dgh-seg { margin-left: 6px; }
+            /* A history of several pages: which are shown, "Load the N earlier pages" (_extDgHistSectionsHtml()). */
+            .mb-dp-dialog .mb-dgh-pages { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: center; margin: 2px 0 6px; font-size: 12.5px; }
+            .mb-dp-dialog .mb-dgh-pages .mb-dp-warn { margin: 0; }
+            /* The kind column fits Discogs' longest kinds ("Edit Master Release",
+               a master's history: it ran into the note at 8.5em, vzell
+               2026-10-28); a longer one is cut, its whole label in its tip. */
             .mb-dp-dialog .mb-dgh-e {
-                display: grid; grid-template-columns: 8.6em 9em 8.5em minmax(0, 1fr) auto; gap: 3px 10px;
+                display: grid; grid-template-columns: 8.6em 9em 12em minmax(0, 1fr) auto; gap: 3px 10px;
                 padding: 5px 0; border-bottom: 1px dotted #d9cfbd; align-items: baseline;
             }
+            .mb-dp-dialog .mb-dgh-e > .mb-dgh-k { min-width: 0; overflow: hidden; }
+            .mb-dp-dialog .mb-dgh-e > .mb-dgh-k > .mb-dgh-pill { max-width: 100%; box-sizing: border-box; overflow: hidden; text-overflow: ellipsis; vertical-align: 1px; }
             .mb-dp-dialog .mb-dgh-latest { background: #eef2f8; }
             .mb-dp-dialog .mb-dgh-d { font: 12px ui-monospace, Consolas, monospace; font-variant-numeric: tabular-nums; color: #7a6d5c; }
             .mb-dp-dialog .mb-dgh-u, .mb-dp-dialog .mb-dgh-n { min-width: 0; overflow-wrap: anywhere; }
@@ -27734,7 +28329,7 @@
             .mb-dp-dialog .mb-dg-num { text-align: right; white-space: nowrap; }
             /* A window filter's matches (_hlEsc()), in the colours of the tables' filter highlight. */
             .mb-dp-dialog mark.mb-dg-hl {
-                color: ${Lib.settings.sa_column_filter_highlight_color || 'inherit'};
+                color: ${Lib.settings.sa_column_filter_highlight_color || 'red'};
                 background-color: ${Lib.settings.sa_column_filter_highlight_bg || '#add8e6'};
                 padding: 0;
             }
@@ -28069,6 +28664,13 @@
                 // (`_dpWinImgSpace()` takes it before the preview shows).
                 if (pt && pt.img) {
                     _dpWinImgOpen(pt.el);
+                    return;
+                }
+                // A step of the window's path: back to it, as a click
+                // (`_dpJumpTo()`; nothing for the step shown now).
+                if (pt && pt.crumbOf) {
+                    _dpHidePeek();
+                    _dpJumpTo(pt.crumb);
                     return;
                 }
                 // A card of a link in the window: Space opens it there, as a
@@ -52896,19 +53498,67 @@
     }
 
     /**
+     * MusicBrainz's origin as the popup engine builds its URLs with: this
+     * page's on MusicBrainz, `https://musicbrainz.org` on another site
+     * (discogs.com's MusicBrainz windows, `_dgMbSource()`), where this
+     * page's origin would name that site.
+     *
+     * @returns {string}
+     */
+    function _mbOrigin() {
+        return _foreignHost ? 'https://musicbrainz.org' : window.location.origin;
+    }
+
+    /**
+     * The largest MusicBrainz page read from another site
+     * (`_mbPageGetForeign()`): a release page with its tracklist was 1.28 MB
+     * (scripts/probe-dg-poh-headerline.user.js, 2026-10-28), past the
+     * external readers' caps.
+     * @type {number}
+     */
+    const _MB_FOREIGN_PAGE_MAX = 8 * 1024 * 1024;
+
+    /**
+     * A MusicBrainz PAGE read from another site (discogs.com: a MusicBrainz
+     * window's editing history and Live page): ONE `_extFetch()` with the
+     * browser's musicbrainz.org cookies (`session`). An anonymous request
+     * gets MusicBrainz's "Verifying your browser" check instead of the page;
+     * one with the cookies of a session that has passed it gets the page
+     * (probed from discogs.com in vzell's browser, 2026-10-28,
+     * scripts/probe-dg-poh-headerline.user.js P1: 1394 bytes of check vs
+     * the 1.28 MB release page and its 183 KB /edits). vzell's consent:
+     * org/POH-headerline.org item 3 — the second request of the popup
+     * engine that is not anonymous (the first: `_extDgImgDataGet()`). The
+     * Web Service stays anonymous (`_mbWsGetForeign()`). The caller has
+     * taken the MusicBrainz rate slot (`_MB_LIVE.awaitSlot`).
+     *
+     * @param {string} url - An absolute musicbrainz.org page.
+     * @returns {Promise<string>} The page's HTML; rejects on a failure.
+     */
+    async function _mbPageGetForeign(url) {
+        const res = await _extFetch(url, { session: true, maxBytes: _MB_FOREIGN_PAGE_MAX, maxDownload: _MB_FOREIGN_PAGE_MAX });
+        if (res.error) throw new Error(res.error === 'refused' ? 'Tampermonkey refused the request to musicbrainz.org' : `musicbrainz.org: ${res.detail || res.error}`);
+        if (res.status !== 200) throw new Error(`HTTP ${res.status}`);
+        return String(res.body || '') + String(res.tail || '');
+    }
+
+    /**
      * The Live page view of a MusicBrainz page, for the popup engine's
      * `_dpGetRaw()` and `_dpIsolateFrame()`: fetched through the one
      * MusicBrainz rate gate; `#page` is the root, so hiding its siblings
      * hides the site's header, browser warning and footer and keeps both
      * the content and the sidebar (cover, rating, tags, links). Every page
      * probed in Phase 0 has `#page`, `/user/` and `/isrc/` too, which have no
-     * `#content` (org/iframe.org R6).
-     * @type {{charset: null, awaitSlot: function(): Promise<void>, liveRoot: function(Document): ?Element,
-     *   liveHide: string[], liveCss: string, livePrepare: null}}
+     * `#content` (org/iframe.org R6). On another site the page is read
+     * through `_mbPageGetForeign()` (its `fetch()` cannot read
+     * musicbrainz.org); on MusicBrainz through `_dpFetchText()`, as always.
+     * @type {{charset: null, awaitSlot: function(): Promise<void>, fetchText: function(string, ?string): Promise<string>,
+     *   liveRoot: function(Document): ?Element, liveHide: string[], liveCss: string, livePrepare: null}}
      */
     const _MB_LIVE = {
         charset: null,
         awaitSlot: () => _relAwaitRateSlot(),
+        fetchText: (url, charset) => (_foreignHost ? _mbPageGetForeign(url) : _dpFetchText(url, charset)),
         liveRoot: (doc) => doc.getElementById('page'),
         liveHide: [],
         liveCss: '',
@@ -53556,12 +54206,14 @@
      * page-wide scope — not in `_MB_POP_PAGE_SKIP`.
      *
      * @param {Element} a
-     * @param {{inWindow?: boolean}} [opts] - `inWindow`: a link in the
+     * @param {{inWindow?: boolean, mbOrigin?: boolean}} [opts] - `inWindow`: a link in the
      *   window's Extracted view, for a drill-down (Phase 5); otherwise the
-     *   card and the window are never targets themselves.
+     *   card and the window are never targets themselves. `mbOrigin`: a
+     *   musicbrainz.org link counts on another site too (`_mbOrigin()`;
+     *   `_dpOpenHistPath()` on discogs.com, org/POH-headerline.org item 3).
      * @returns {?{key: string, url: string, type: string, id: string, kind: string, wide: boolean, name: string, col: string}}
      */
-    function _mbPopTarget(a, { inWindow = false } = {}) {
+    function _mbPopTarget(a, { inWindow = false, mbOrigin = false } = {}) {
         if (!a || !a.getAttribute) return null;
         let seg = '';
         let type = '';
@@ -53591,7 +54243,7 @@
             const i = pop.indexOf(':');
             type = i > 0 ? pop.slice(0, i) : '';
             id = i > 0 ? pop.slice(i + 1) : '';
-        } else if (a.tagName !== 'A' || a.origin !== window.location.origin) {
+        } else if (a.tagName !== 'A' || a.origin !== (mbOrigin ? _mbOrigin() : window.location.origin)) {
             return null;
         } else {
             const pp = _mbPopParsePath(a.pathname, a.search);
@@ -53612,7 +54264,7 @@
         // /cdtoc/), else /<kind>/<id>; a link's: the path it names.
         const where = seg ? `/${seg}/${id}` : (k.path ? k.path(id) : `/${type}/${id}`);
         return {
-            key: `${type}:${id}`, url: new URL(where, window.location.origin).href,
+            key: `${type}:${id}`, url: new URL(where, _mbOrigin()).href,
             type, id, kind: k.titleOf ? k.titleOf(id) : k.title, wide: !!k.wide,
             // An icon's text is its hidden filter key (the path): the
             // entity's title from its tip instead.
@@ -54123,7 +54775,9 @@
         return {
             perPage: 100,
             async ask(offset, wanted, page) {
-                const url = new URL(urlOf(page), window.location.origin).href;
+                // musicbrainz.org's on another site (a tag's lists in a
+                // MusicBrainz window on discogs.com, read with its cookies).
+                const url = new URL(urlOf(page), _mbOrigin()).href;
                 const raw = await _dpGetRaw(url, _MB_LIVE, { wanted });
                 if (raw.outcome === 'skipped') return { skipped: true };
                 if (raw.outcome !== 'ok') return { ok: false, detail: raw.detail || 'The request failed.' };
@@ -55677,8 +56331,18 @@
      */
     function _mbPopArtLoad(map, ctx, type, id, again, repaint) {
         if (map.has(id) && !again) return;
+        const path = `/${type}/${id}`;
+        // ⟳ after the archive did not answer (a 429/5xx, a network error):
+        // `_artFetchEntityImages()` keeps that failure for the session, so it
+        // is forgotten first, or ⟳ would read it back and never ask again
+        // (org/POH-headerline.org item 3, P2). A definite "no images" stays.
+        if (again && ctx.failedCache.has(path)) {
+            ctx.countCache.delete(path);
+            ctx.imagesCache.delete(path);
+            ctx.failedCache.delete(path);
+        }
         map.set(id, { state: 'loading', images: [] });
-        _artFetchEntityImages(ctx, `/${type}/${id}`).then((r) => {
+        _artFetchEntityImages(ctx, path).then((r) => {
             map.set(id, r);
             repaint();
         }, () => {
@@ -57533,7 +58197,8 @@
      */
     function _mbEditsUrl(id, n) {
         const p = _mbEditsPagePath(id);
-        return new URL(n > 1 ? `${p}${p.includes('?') ? '&' : '?'}page=${n}` : p, window.location.origin).href;
+        // musicbrainz.org's on another site (a MusicBrainz window on discogs.com).
+        return new URL(n > 1 ? `${p}${p.includes('?') ? '&' : '?'}page=${n}` : p, _mbOrigin()).href;
     }
 
     /**
@@ -57904,28 +58569,77 @@
     }
 
     /**
+     * What a Discogs window shows an edit history of: "<kind>/<id>" for a
+     * release, master, artist or label (the `discogs` reader's targets: on
+     * any host), '' for everything else. Its "✎ Editing history" opens the
+     * history reader's window (`_extDgHistTarget()`; org/POH-headerline.org
+     * item 4, vzell 2026-10-28: the button "without the menu structure").
+     *
+     * @param {?object} t - A window target.
+     * @returns {string}
+     */
+    function _dgHistSubject(t) {
+        if (!t || !t.reader || t.reader.id !== 'discogs' || !t.url) return '';
+        let u;
+        try {
+            u = new URL(t.url);
+        } catch (_) {
+            return '';
+        }
+        const m = _EXT_DISCOGS_PATH_RE.exec(u.pathname);
+        return m ? `${m[1].toLowerCase()}/${m[2]}` : '';
+    }
+
+    /**
+     * Whether a window target has an editing history to show (✎, H): a
+     * MusicBrainz one (`_mbEditsSubject()`) or a Discogs one (`_dgHistSubject()`).
+     *
+     * @param {?object} t
+     * @returns {boolean}
+     */
+    function _dpHasHistory(t) {
+        return !!(_mbEditsSubject(t) || _dgHistSubject(t));
+    }
+
+    /**
+     * The source of the window's MusicBrainz targets here, while it is on:
+     * the entity cards (`mb-entity`) on MusicBrainz, discogs.com's
+     * MusicBrainz links (`dg-mb`, `_dgMbSource()`) on discogs.com
+     * (org/POH-headerline.org item 3); null elsewhere or when off.
+     *
+     * @returns {?object}
+     */
+    function _mbWinSource() {
+        const src = _popSources().find(x => x.id === (_foreignHost ? 'dg-mb' : 'mb-entity'));
+        return src && src.enabled() ? src : null;
+    }
+
+    /**
      * What a window's target has an editing history of: `<kind>/<MBID>` for
      * an entity with an MBID (from the target's own MusicBrainz URL, so a
      * release group shown by the release-group sources counts too),
      * `user/<name>` for an editor; `null` for everything else (a collection,
      * a code, an edit, a tag, another site, an editing history itself), and
-     * while the MusicBrainz cards are off (the history is one of them).
+     * while the MusicBrainz cards are off (the history is one of them). On
+     * discogs.com a MusicBrainz window's entity has one too (`_mbWinSource()`,
+     * read with the browser's cookies: `_mbPageGetForeign()`).
      *
      * @param {?object} t - A window target.
      * @returns {?string}
      */
     function _mbEditsSubject(t) {
-        if (!t || !t.src || _foreignHost) return null;
-        const src = _popSources().find(x => x.id === 'mb-entity');
-        if (!src || !src.enabled()) return null;
-        if (t.src.id === 'mb-entity' && t.type === 'user') return `user/${t.id}`;
+        if (!t || !t.src) return null;
+        const src = _mbWinSource();
+        if (!src || (_foreignHost && t.src.id !== src.id)) return null;
+        if (t.src.id === src.id && t.type === 'user') return `user/${t.id}`;
+        const origin = _mbOrigin();
         let u;
         try {
-            u = new URL(t.src.liveUrl(t), window.location.origin);
+            u = new URL(t.src.liveUrl(t), origin);
         } catch (_) {
             return null;
         }
-        if (u.origin !== window.location.origin) return null;
+        if (u.origin !== origin) return null;
         const m = _MB_POP_PATH_RE.exec(u.pathname);
         return m && m[1] !== 'collection' ? `${m[1]}/${m[2].toLowerCase()}` : null;
     }
@@ -57940,12 +58654,22 @@
     function _dpOpenEdits() {
         const cur = _dpDialog.target;
         const id = _mbEditsSubject(cur);
-        const src = _popSources().find(x => x.id === 'mb-entity');
+        // A Discogs release, master, artist or label: its edit history page
+        // in the window, through the same source (org/POH-headerline.org item 4).
+        const dg = id ? '' : _dgHistSubject(cur);
+        if (dg) {
+            _dpDialog.stack.push(cur);
+            _dpShowInDialog(Object.assign(_extDgHistTarget(dg, cur), { src: cur.src, drilled: true }));
+            return;
+        }
+        // The window's MusicBrainz source here: on discogs.com `dg-mb`, its
+        // pages read with the browser's cookies (`_mbPageGetForeign()`).
+        const src = _mbWinSource();
         if (!id || !src) return;
         _dpDialog.stack.push(cur);
         _dpShowInDialog({
             src, el: cur.el, drilled: true, key: `edits:${id}`, type: 'edits', id,
-            url: new URL(`/${id}/edits`, window.location.origin).href,
+            url: new URL(`/${id}/edits`, _mbOrigin()).href,
             kind: _MB_KINDS.edits.title, wide: true, name: cur.name || '', col: '',
         });
     }
@@ -58314,9 +59038,11 @@
      */
     function _dpOpenHistPath(path, name = '') {
         const a = document.createElement('a');
-        a.href = path;
-        const src = _popSources().find(x => x.id === 'mb-entity');
-        const r = src && src.enabled() ? _mbPopTarget(a, { inWindow: true }) : null;
+        // On another site the path is musicbrainz.org's, and the window's
+        // MusicBrainz source there reads it (`_mbWinSource()`).
+        a.href = new URL(path, _mbOrigin()).href;
+        const src = _mbWinSource();
+        const r = src ? _mbPopTarget(a, { inWindow: true, mbOrigin: true }) : null;
         if (!r) {
             window.open(a.href, '_blank', 'noopener');
             return;
@@ -58390,7 +59116,7 @@
                 _setTip(b, `${p.label} — in the window; Ctrl-click or middle-click opens MusicBrainz's page in a new tab`);
                 const go = (e) => {
                     if (e.ctrlKey || e.metaKey || e.button === 1) {
-                        window.open(new URL(p.path, window.location.origin).href, '_blank', 'noopener');
+                        window.open(new URL(p.path, _mbOrigin()).href, '_blank', 'noopener');
                     } else {
                         _dpOpenHistPath(p.path, name);
                     }
@@ -59286,7 +60012,7 @@
                 const right = `<h4>Items · ${items.length}</h4>` + (items.length ? _mbPopTableHtml(['#', 'Item', 'Date'], items.map(x => [
                     _rgEsc(x.num || '—'),
                     // MusicBrainz's own glyph of the item's kind first (Phase 3e), in a fixed box.
-                    (_MB_KIND_ICON[x.type] ? `<img class="mb-pop-ent-icon" src="${window.location.origin}/static/images/entity/${_MB_KIND_ICON[x.type]}.svg" ` +
+                    (_MB_KIND_ICON[x.type] ? `<img class="mb-pop-ent-icon" src="${_mbOrigin()}/static/images/entity/${_MB_KIND_ICON[x.type]}.svg" ` +
                         `alt="" width="16" height="16"> ` : '') +
                     `<a href="/${_rgEsc(x.type)}/${_rgEsc(x.e.id)}" target="_blank" rel="noopener">${_rgEsc(x.e.title || x.e.name)}</a>` +
                         `${x.e.disambiguation ? ` <span class="mb-rg-dim">(${_rgEsc(x.e.disambiguation)})</span>` : ''}`,
@@ -64082,7 +64808,7 @@
         if (dg.kind === 'artist' || dg.kind === 'label') return _extDgEntityWindow(t, rec, { start, force, repaint });
         // On a submissions list a release's window opens with its edit
         // history (vzell, 2026-10-18), read by the window only.
-        if (dg.kind === 'release' && _dgOnSubmissions()) out.top = _extDgHistReleaseParts(t, dg.id, { start, force, repaint });
+        if (dg.kind === 'release' && _dgOnSubmissions()) out.top = _extDgHistReleaseParts(t, `release/${dg.id}`, { start, force, repaint });
         const ui = _extDgUiOf(t);
         if (dg.images.length) out.lead = [_extDgSection('images', 'Images', dg.images.length, _extDgImagesHtml(dg.images))];
         if (dg.tracklist.length) {
@@ -64171,7 +64897,7 @@
             // the window has read it (the card never asks for it).
             let hist = '';
             if (_dgOnSubmissions()) {
-                const hs = _mbPop.get(`ext:dghistory:${_extDgHistUrl(dg.id)}`);
+                const hs = _mbPop.get(`ext:dghistory:${_extDgHistUrl(`${dg.kind}/${dg.id}`)}`);
                 const h = hs && hs.status === 'done' && hs.data && hs.data.dgHist;
                 const last = h && h.entries[h.entries.length - 1];
                 hist = last ? `<div class="mb-tt-dim mb-dg-sum">Last change ${_rgEsc(_extDgHistLine(last))} · ` +
@@ -64559,31 +65285,44 @@
     // browser's own session (same-origin `fetch()`), elsewhere as every other
     // site, `_extGet()`. Only on Space (`windowOnly`), never from a hover.
 
-    /** A release's history page, a language prefix and a slug allowed. */
-    const _EXT_DGH_PATH_RE = /^\/(?:[a-z]{2}(?:[-_][a-zA-Z]{2})?\/)?release\/(\d+)(?:-[^/?#]*)?\/history\/?$/i;
+    /**
+     * A release's, master's, artist's or label's history page, a language
+     * prefix and a slug allowed: [1] the kind, [2] the id. Releases only
+     * until 2026-10-28; the other three have the same page (probed:
+     * scripts/probe-dg-history-shape.js on vzell's saved copies,
+     * org/POH-headerline.org Step 4).
+     */
+    const _EXT_DGH_PATH_RE = /^\/(?:[a-z]{2}(?:[-_][a-zA-Z]{2})?\/)?(release|master|artist|label)\/(\d+)(?:-[^/?#]*)?\/history\/?$/i;
 
     /**
      * Version of the parsed history records kept in IndexedDB; bump when
      * `_extDgHistParse()`'s output changes. 2 since each change keeps its
      * revision (`rev`), for "View changes"; 3 since each change keeps its
-     * user's picture (`avatar`; 2026-10-18).
+     * user's picture (`avatar`; 2026-10-18); 4 since a page knows its place
+     * among the history's pages (`page`) and its subject's link skips
+     * murdos' importer's (2026-10-28).
      * @type {number}
      */
-    const _EXT_DGH_VERSION = 3;
+    const _EXT_DGH_VERSION = 4;
 
     /**
-     * Each history window's state, by release id: the kind of change shown
+     * Each history window's state, by its subject (`_extDgHistIdOf()`,
+     * "release/<id>", "artist/<id>"…): the kind of change shown
      * (`group`: 'all', 'edits', 'images', 'merges', 'comments'), the order
-     * ('new' first or 'old'), the whole release in the diff (`diffAll`), and
-     * the notes opened in full, and the revision whose changes the second
-     * section shows (`rev`, 0: the latest change; "View changes"), and the
-     * window target a `?diff=` link last set it for (`revFor`).
-     * @type {Map<number, {group: string, order: string, diffAll: boolean, open: Set<number>, rev: number, revFor?: ?object}>}
+     * ('new' first or 'old'), the whole release in the diff (`diffAll`), the
+     * notes opened in full (by entry key, `<page>:<row>`), the revision
+     * whose changes the second section shows (`rev`, 0: the latest change;
+     * "View changes"), the window target a `?diff=` link last set it for
+     * (`revFor`), and the run reading the earlier pages (`pagesRun`,
+     * `pagesStop`).
+     * @type {Map<string, {group: string, order: string, diffAll: boolean, open: Set<string>, rev: number, revFor?: ?object,
+     *   pagesRun: boolean, pagesStop: boolean}>}
      */
     const _extDgHistUi = new Map();
 
     /**
-     * A link to a release's history page on discogs.com.
+     * A link to a release's, master's, artist's or label's history page on
+     * discogs.com.
      *
      * @param {URL} u
      * @returns {boolean}
@@ -64593,25 +65332,50 @@
     }
 
     /**
-     * A release's history page as the cache knows it, whatever the link's
-     * slug or language: `https://www.discogs.com/release/<id>/history`.
+     * A history page's subject, "<kind>/<id>" ("release/8164856",
+     * "artist/219986"): the key of its window's state and of its pages.
      *
-     * @param {number|string} id
+     * @param {URL} u - A history page (`_extDgHistTest()`).
      * @returns {string}
      */
-    function _extDgHistUrl(id) {
-        return `https://www.discogs.com/release/${id}/history`;
+    function _extDgHistIdOf(u) {
+        const m = _EXT_DGH_PATH_RE.exec(u.pathname);
+        return `${m[1].toLowerCase()}/${m[2]}`;
     }
 
     /**
-     * The reader's cache URL of a link (`keyUrl`): the release's
+     * A subject's history page as the cache knows it, whatever the link's
+     * slug or language: `https://www.discogs.com/<kind>/<id>/history`. The
+     * page Discogs serves there is the NEWEST of the history's pages (probe
+     * P3: the artist's 46 rows were its page 2 of 2).
+     *
+     * @param {string} hid - "<kind>/<id>" (`_extDgHistIdOf()`).
+     * @returns {string}
+     */
+    function _extDgHistUrl(hid) {
+        return `https://www.discogs.com/${hid}/history`;
+    }
+
+    /**
+     * The reader's cache URL of a link (`keyUrl`): its subject's
      * `_extDgHistUrl()`.
      *
      * @param {URL} u
      * @returns {string}
      */
     function _extDgHistKeyUrl(u) {
-        return _extDgHistUrl(_EXT_DGH_PATH_RE.exec(u.pathname)[1]);
+        return _extDgHistUrl(_extDgHistIdOf(u));
+    }
+
+    /**
+     * What a history window is, for its title: "Discogs release history",
+     * "Discogs artist history" (the reader's `kindFor`).
+     *
+     * @param {URL} u
+     * @returns {string}
+     */
+    function _extDgHistKind(u) {
+        return `Discogs ${_extDgHistIdOf(u).split('/')[0]} history`;
     }
 
     /**
@@ -64699,14 +65463,19 @@
     }
 
     /**
-     * A release's history page (or the browser view's `#historyData` pane):
-     * its release (name, link, 100 px picture, `[r…]` code), the data
-     * quality, every change of `table#hist` in Discogs' order (oldest first)
-     * with its user, kind (Discogs' own label: "Edit Release", "Images",
-     * "Merge Pending"; none for a comment), note, date, and Discogs' View,
-     * Changes and Images links, and the latest change's diff as named
-     * blocks on each side, `changed` when either side carries a mark. Null
-     * when the page has no history table (a browser check, a sign-in page).
+     * A history page of a release, master, artist or label (or the browser
+     * view's `#historyData` pane): its subject (name, link, 100 px picture,
+     * `[r…]` code), the data quality, every change of `table#hist` in
+     * Discogs' order (oldest first) with its user, kind (Discogs' own label:
+     * "Edit Release", "Edit Artist", "Images", "Merge Pending"; none for a
+     * comment), note, date, and Discogs' View, Changes and Images links, the
+     * latest change's diff as named blocks on each side, `changed` when
+     * either side carries a mark, and the page's place among the history's
+     * pages (`page`, `pages`: `.pagination_links`; 1 and 1 without a pager).
+     * Null when the page has no history table (a browser check, a sign-in
+     * page). A page saved from a browser may carry murdos' importer's
+     * musicbrainz.org link (and its glyph) first in its `<h1>`
+     * (debug/dg-*-history.html): the subject is the first OTHER link.
      *
      * @param {Document} doc
      * @param {string} base - The page's URL.
@@ -64717,11 +65486,18 @@
         const hist = root.querySelector('table#hist');
         if (!hist) return null;
         const head = root.querySelector('#editing_header');
-        const rel = head && head.querySelector('h1 a[href]');
-        const img = head && head.querySelector('img[src]');
+        const own = (el) => !el.closest('a[href^="https://musicbrainz.org"], .mb_wrapper');
+        const rel = head && Array.from(head.querySelectorAll('h1 a[href]')).find(own);
+        const img = head && Array.from(head.querySelectorAll('img[src]')).find(own);
+        // Pages run oldest → newest, page 1 the oldest; the plain URL serves
+        // the last (scripts/probe-dg-history-shape.js).
+        const pager = root.querySelector('.pagination_links');
+        const pageNo = (el) => Number((/[?&]page=(\d+)/.exec(el.getAttribute('href') || '') || [])[1]) || 0;
+        const cur = pager ? Number(_dpText((pager.querySelector('.currentpage') || {}).textContent || '')) || 1 : 1;
+        const pages = pager ? Math.max(cur, ...Array.from(pager.querySelectorAll('a[href]')).map(pageNo)) : 1;
         const code = head && head.querySelector('.copy_shortcut_code');
         const href = (el) => (el ? _dpAbsUrl(el.getAttribute('href') || el.dataset.sbNavigate || '', base) : '');
-        const entries = Array.from(hist.querySelectorAll('tbody > tr.datarow')).map((tr) => {
+        const entries = Array.from(hist.querySelectorAll('tbody > tr.datarow')).map((tr, row) => {
             const user = tr.querySelector('.linked_username');
             const avatar = tr.querySelector('.user_thumbnail_with_username img[src]');
             const date = tr.querySelector('td span[title]');
@@ -64739,7 +65515,10 @@
                 notes: notes ? _extDgHistHtml(notes, base) : '',
                 at: date ? _extDgHistIso(date.getAttribute('title')) : '', ago: date ? _dpText(date.textContent) : '',
                 view, changes, images, rev: Number((/[?&](?:diff|rev)=(\d+)/.exec(changes || view) || [])[1]) || 0,
+                // The PAGE's latest: on a page before the last it is not the history's.
                 latest: tr.id === 'latest',
+                // Stable across pages read later (a note opened stays open).
+                key: `${cur}:${row}`,
             };
         });
         const table = root.querySelector('table.diff');
@@ -64768,7 +65547,7 @@
             thumb: img && /^https?:\/\//i.test(img.getAttribute('src')) ? img.getAttribute('src') : '',
             code: code ? _dpText(code.textContent).replace(/^\[|\]$/g, '') : '',
             quality: _dpText((root.querySelector('#rating .vote_info_helper') || doc.querySelector('#rating .vote_info_helper') || {}).textContent || ''),
-            entries, diff,
+            entries, diff, page: cur, pages,
         };
     }
 
@@ -64838,69 +65617,171 @@
     }
 
     /**
-     * The history reader's load: ONE request for the release's history page
-     * (`_extDgHistGet()`), parsed by `_extDgHistParse()`. The record's card
-     * facts are the latest change, how many, and the data quality; the
-     * parsed page is `rec.dgHist`, for the window.
+     * The history reader's load: ONE request for the subject's history page
+     * (`_extDgHistGet()`: the newest of its pages), parsed by
+     * `_extDgHistParse()`. The record's card facts are the latest change,
+     * how many, and the data quality (and, for a history of one page, its
+     * first change; of several, how many pages); the parsed page is
+     * `rec.dgHist`, for the window, which reads the earlier pages on request
+     * (`_extDgHistPagesRun()`).
      *
      * @param {object} t
      * @param {function(): boolean} wanted
      * @returns {Promise<{ok?: boolean, data?: Object, detail?: string, skipped?: boolean}>}
      */
     async function _extDgHistLoad(t, wanted) {
+        const kind = _extDgHistIdOf(new URL(t.url)).split('/')[0];
         const res = await _extDgHistGet(t.url, wanted);
         if (res.skipped) return { skipped: true };
         if (res.status > 0) _extRememberHost('www.discogs.com');
-        const out = _extApiOutcome(t, res, 'Discogs', 'Discogs has no such release (its history page answered 404).');
+        const out = _extApiOutcome(t, res, 'Discogs', `Discogs has no such ${kind} (its history page answered 404).`);
         if (out) return out;
         const h = _extDgHistParse(new DOMParser().parseFromString(String(res.body || '') + String(res.tail || ''), 'text/html'), res.finalUrl || t.url);
         if (!h) return { ok: false, detail: 'Discogs answered, but not with the edit history (signed out, or a browser check?)' };
         const rec = _extApiRecord(t, res.status, 'Discogs');
         const last = h.entries[h.entries.length - 1];
         const first = h.entries[0];
+        const paged = h.pages > 1;
         Object.assign(rec, {
-            title: h.name || t.name, subtitle: 'Discogs · release · edit history', type: 'edit history', image: h.thumb,
+            title: h.name || t.name, subtitle: `Discogs · ${kind} · edit history`, type: 'edit history', image: h.thumb,
             description: last && last.notes ? _dpText(last.notes.replace(/<br>/g, ' ').replace(/<[^>]+>/g, '')) : '',
             facts: [
                 ['Last change', last ? _extDgHistLine(last) : ''],
-                ['Changes', _extDgHistCounts(h.entries)],
+                [paged ? 'Newest page' : 'Changes', _extDgHistCounts(h.entries)],
+                ['Pages', paged ? `${h.pages} (about 50 changes each)` : ''],
                 ['Data quality', h.quality],
-                ['First', first && first !== last ? _extDgHistLine(first) : ''],
+                ['First', !paged && first && first !== last ? _extDgHistLine(first) : ''],
             ].filter(f => f[1]),
             dgHist: h,
         });
-        if (h.url) rec.links.push(['The release', h.url]);
+        if (h.url) rec.links.push([`The ${kind}`, h.url]);
         return { ok: true, data: rec };
     }
 
     /**
-     * The history reader's target for a release, as `_extTarget()` would
-     * make it for a link to `_extDgHistUrl(id)` (the same cache key), for
-     * the history part of a release's window.
+     * The history reader's target for a subject, as `_extTarget()` would
+     * make it for a link to `_extDgHistUrl(hid)` (the same cache key): the
+     * history part of a release's window on a submissions list, and a
+     * Discogs window's "✎ Editing history" (`_dpOpenEdits()`,
+     * org/POH-headerline.org item 4).
      *
-     * @param {number} id
-     * @param {object} of - The release's own target (its element, its name).
+     * @param {string} hid - "<kind>/<id>".
+     * @param {object} of - The subject's own target (its element, its name).
      * @returns {object}
      */
-    function _extDgHistTarget(id, of) {
-        const url = _extDgHistUrl(id);
+    function _extDgHistTarget(hid, of) {
+        const url = _extDgHistUrl(hid);
         const reader = _EXT_READERS.find(r => r.id === 'dghistory');
         return {
             key: `ext:dghistory:${url}`, url, href: url, host: 'www.discogs.com', askHost: 'www.discogs.com', reader,
-            noLive: true, kind: 'Discogs release history', live: null, liveUrl: '', name: of.name, col: '', el: of.el,
+            noLive: true, kind: `Discogs ${hid.split('/')[0]} history`, live: null, liveUrl: '', name: of.name, col: '', el: of.el,
         };
     }
 
     /**
      * A history window's state (`_extDgHistUi`), made on first use.
      *
-     * @param {number|string} id - The release id.
-     * @returns {{group: string, order: string, diffAll: boolean, open: Set<number>, rev: number, revFor?: ?object}}
+     * @param {string} hid - "<kind>/<id>" (`_extDgHistIdOf()`).
+     * @returns {{group: string, order: string, diffAll: boolean, open: Set<string>, rev: number, revFor?: ?object,
+     *   pagesRun: boolean, pagesStop: boolean}}
      */
-    function _extDgHistUiOf(id) {
-        const k = Number(id);
-        if (!_extDgHistUi.has(k)) _extDgHistUi.set(k, { group: 'all', order: 'new', diffAll: false, open: new Set(), rev: 0 });
+    function _extDgHistUiOf(hid) {
+        const k = String(hid);
+        if (!_extDgHistUi.has(k)) {
+            _extDgHistUi.set(k, { group: 'all', order: 'new', diffAll: false, open: new Set(), rev: 0, pagesRun: false, pagesStop: false });
+        }
         return _extDgHistUi.get(k);
+    }
+
+    /**
+     * The cache key of one earlier page of a history (`_extDgHistPagesRun()`).
+     *
+     * @param {string} hid - "<kind>/<id>".
+     * @param {number} p - The page (1: the oldest).
+     * @returns {string}
+     */
+    function _extDgHistPageKey(hid, p) {
+        return `ext:dghistory-page:${hid}:${p}`;
+    }
+
+    /**
+     * A history with the earlier pages read so far put in front of the
+     * newest (`h`, the reader's page), oldest first as Discogs lists them,
+     * and where the reading stands: `next` (the next page to read, 0 when
+     * every one is in), `failed` (that page's failure, '' for none). Only
+     * the run of pages right below the newest counts, so the list never has
+     * a gap. An earlier page's own "latest" row is not the history's.
+     *
+     * @param {string} hid - "<kind>/<id>".
+     * @param {Object} h - `_extDgHistParse()`'s answer for the newest page.
+     * @returns {{h: Object, next: number, failed: string, read: number}} `read`: the earlier pages in.
+     */
+    function _extDgHistPagesMerged(hid, h) {
+        const older = [];
+        let next = 0;
+        let failed = '';
+        for (let p = h.page - 1; p >= 1; p--) {
+            const st = _mbPop.get(_extDgHistPageKey(hid, p));
+            if (!st || st.status !== 'done') {
+                next = p;
+                if (st && st.status === 'failed') failed = st.detail || 'the request failed';
+                break;
+            }
+            older.unshift(st.data.entries.map(e => Object.assign({}, e, { latest: false })));
+        }
+        return { h: Object.assign({}, h, { entries: [].concat(...older, h.entries) }), next, failed, read: older.length };
+    }
+
+    /**
+     * "Load the N earlier pages" of a history window (vzell, 2026-10-28:
+     * on request, newest first): reads page `h.page - 1` down to 1, ONE
+     * request each through Discogs' slot (`_extDgHistGet()`), parsed by
+     * `_extDgHistParse()`, the window repainted after each. A page Discogs
+     * has numbered never changes (they fill from the oldest), so it is kept
+     * like a revision's changes (IndexedDB, `_extTtlMs()`). Stop (`pagesStop`)
+     * ends the run after the page under way; a failed page ends it too, and
+     * the button asks that page again.
+     *
+     * @param {string} hid - "<kind>/<id>".
+     * @param {Object} h - The newest page's `_extDgHistParse()` answer.
+     * @returns {Promise<void>}
+     */
+    async function _extDgHistPagesRun(hid, h) {
+        const ui = _extDgHistUiOf(hid);
+        if (ui.pagesRun) return;
+        ui.pagesRun = true;
+        ui.pagesStop = false;
+        const repaint = () => { if (_dpDialog.repaint) _dpDialog.repaint(); };
+        repaint();
+        try {
+            for (let p = h.page - 1; p >= 1 && !ui.pagesStop; p--) {
+                const key = _extDgHistPageKey(hid, p);
+                const cur = _mbPop.get(key);
+                if (cur && cur.status === 'done') continue;
+                const url = `${_extDgHistUrl(hid)}?page=${p}`;
+                const settled = () => { const s = _mbPop.get(key); return !!s && s.status !== 'loading'; };
+                await new Promise((resolve) => {
+                    _mbLoad(key, async () => {
+                        const res = await _extDgHistGet(url, () => true);
+                        if (_extBotCheck(res)) return { ok: false, detail: 'Discogs answered with its browser check' };
+                        if (res.error || res.status !== 200) return { ok: false, detail: res.error ? _extFailText(res) : `Discogs answered HTTP ${res.status}` };
+                        const ph = _extDgHistParse(new DOMParser().parseFromString(String(res.body || '') + String(res.tail || ''), 'text/html'), res.finalUrl || url);
+                        return ph ? { ok: true, data: { entries: ph.entries } } : { ok: false, detail: 'Discogs answered, but not with the edit history' };
+                    }, {
+                        force: !!(cur && cur.status === 'failed'),
+                        repaint: () => { if (settled()) resolve(); },
+                        version: _EXT_IDB_VERSION * 100 + _EXT_DGH_VERSION, ttlMs: _extTtlMs(),
+                    });
+                    if (settled()) resolve();
+                });
+                repaint();
+                const st = _mbPop.get(key);
+                if (!st || st.status !== 'done') break;
+            }
+        } finally {
+            ui.pagesRun = false;
+            repaint();
+        }
     }
 
     /**
@@ -64912,14 +65793,23 @@
      * filter and the order as a switch; then "Latest change", or "Change"
      * of the revision "View changes" picked (Discogs' diff: old and new side
      * by side, only the blocks with a mark unless the whole release is asked
-     * for; `_extDgHistDiff()`).
+     * for; `_extDgHistDiff()`). A history of several pages shows the newest
+     * with the earlier ones read so far in front of it
+     * (`_extDgHistPagesMerged()`), and a line saying which pages are shown,
+     * with "Load the N earlier pages" / Stop / "Try again"
+     * (`_extDgHistPagesRun()`).
      *
-     * @param {number|string} id - The release id (the state's key).
-     * @param {Object} h - `_extDgHistParse()`'s answer.
+     * @param {string} id - The subject, "<kind>/<id>" (the state's key).
+     * @param {Object} newest - `_extDgHistParse()`'s answer for the newest page.
      * @returns {string[]} HTML parts.
      */
-    function _extDgHistSectionsHtml(id, h) {
+    function _extDgHistSectionsHtml(id, newest) {
         const ui = _extDgHistUiOf(id);
+        // The earlier pages read so far in front of the newest
+        // (`_extDgHistPagesRun()`); "Load …" below needs the newest page.
+        ui.newest = newest;
+        const merged = _extDgHistPagesMerged(id, newest);
+        const h = merged.h;
         const counts = {};
         h.entries.forEach((e) => { const g = _extDgHistGroup(e.action); counts[g] = (counts[g] || 0) + 1; });
         const btn = (act, v, label, on) =>
@@ -64931,10 +65821,13 @@
         const pill = (a) => {
             const g = _extDgHistGroup(a);
             const cls = g === 'comments' ? 'idle' : g === 'merges' ? 'warn' : /submit/i.test(a) ? 'ok' : 'run';
-            return `<span class="mb-dgh-pill mb-dgh-pill-${cls}">${_rgEsc(a || 'Comment')}</span>`;
+            // Its whole label in its tip: a kind longer than the column is cut.
+            return `<span class="mb-dgh-pill mb-dgh-pill-${cls}" data-mb-tip title="${_rgEsc(a || 'Comment')}">${_rgEsc(a || 'Comment')}</span>`;
         };
         const link = (u, text) => (u ? `<a href="${_rgEsc(u)}" target="_blank" rel="noopener noreferrer">${text}</a>` : '');
-        let list = h.entries.map((e, i) => ({ e, i }));
+        // A note's key is its page and row (`e.key`), so one opened stays
+        // open when earlier pages come in front of it.
+        let list = h.entries.map((e, i) => ({ e, i: e.key || String(i) }));
         if (ui.group !== 'all') list = list.filter(x => _extDgHistGroup(x.e.action) === ui.group);
         if (ui.order === 'new') list.reverse();
         const rows = list.map(({ e, i }) => {
@@ -64947,13 +65840,34 @@
             return `<div class="mb-dgh-e${cur ? ' mb-dgh-latest' : ''}">` +
                 `<span class="mb-dgh-d"${e.ago ? ` data-mb-tip title="${_rgEsc(e.ago)}"` : ''}>${_rgEsc(e.at)}</span>` +
                 `<span class="mb-dgh-u">${e.user ? `${_dgAvatarImg(e.avatar)}${link(e.userUrl, _rgEsc(e.user)) || _rgEsc(e.user)}` : '<i>Discogs</i>'}</span>` +
-                `<span>${pill(e.action)}</span>` +
+                `<span class="mb-dgh-k">${pill(e.action)}</span>` +
                 `<span class="mb-dgh-n${long && !open ? ' mb-dgh-clamp' : ''}">${e.notes}</span>` +
                 `<span class="mb-dgh-lk">${viewBtn}${link(e.images, 'Images')}` +
                 `${long ? `<button type="button" class="mb-dgh-more" data-mb-dgh-act="note" data-mb-dgh-v="${i}" data-mb-dgh-id="${_rgEsc(id)}">${open ? 'less' : 'more'}</button>` : ''}</span></div>`;
         }).join('');
+        // A history of several pages (about 50 changes each, page 1 the
+        // oldest): the newest is shown, the earlier ones read on request.
+        let pagesLine = '';
+        if (newest.pages > 1) {
+            const earlier = newest.page - 1;
+            const left = merged.next;
+            const from = left ? left + 1 : 1;
+            const shown = from === newest.page ? `Page ${newest.page} of ${newest.pages} shown (the newest)` : `Pages ${from}–${newest.page} of ${newest.pages} shown`;
+            const secs = Math.max(1, Math.round(left * _extSpacingMs('www.discogs.com') / 1000));
+            const go = (label) => `<button type="button" class="mb-dg-btn mb-dg-primary" data-mb-dgh-act="pages" data-mb-dgh-v="1" data-mb-dgh-id="${_rgEsc(id)}">${label}</button>`;
+            let ctl = '';
+            if (ui.pagesRun) {
+                ctl = `<span class="mb-dp-spin">◌</span> Reading page ${left || 1} from discogs.com… ` +
+                    `<button type="button" class="mb-dg-btn" data-mb-dgh-act="pagesstop" data-mb-dgh-v="1" data-mb-dgh-id="${_rgEsc(id)}">Stop</button>`;
+            } else if (merged.failed) {
+                ctl = `<span class="mb-dp-warn">Page ${left} failed: ${_rgEsc(merged.failed)}.</span> ${go('Try again')}`;
+            } else if (left) {
+                ctl = go(`Load the ${left === earlier ? '' : 'other '}${left} earlier page${left === 1 ? '' : 's'} (${left} request${left === 1 ? '' : 's'}, about ${secs} s)`);
+            }
+            pagesLine = `<div class="mb-dgh-pages"><span class="mb-dg-dim">${shown} · ${h.entries.length} changes</span> ${ctl}</div>`;
+        }
         const parts = [_extDgSection('dgh-hist', 'History', h.entries.length,
-            `<div class="mb-dgh-list">${rows || '<div class="mb-dg-dim">No changes of this kind.</div>'}</div>`, act)];
+            `${pagesLine}<div class="mb-dgh-list">${rows || '<div class="mb-dg-dim">No changes of this kind.</div>'}</div>`, act)];
         // The revision "View changes" picked, once its page is in; until then
         // what it is doing (the latest change's diff is not shown meanwhile).
         let diff = h.diff;
@@ -64989,7 +65903,7 @@
     /**
      * The cache key of one revision's changes ("View changes").
      *
-     * @param {number|string} id - The release id.
+     * @param {string} id - The subject, "<kind>/<id>" (`_extDgHistIdOf()`).
      * @param {number} rev
      * @returns {string}
      */
@@ -65005,7 +65919,7 @@
      * discogs.com) and kept like the history. Started by the click only;
      * wanted while a window is open.
      *
-     * @param {number|string} id - The release id.
+     * @param {string} id - The subject, "<kind>/<id>".
      * @param {number} rev
      * @param {string} url - Discogs' "Changes" link of that revision.
      * @returns {void}
@@ -65034,7 +65948,7 @@
      * (`start`), then its sections — or what it is doing, or why it failed.
      *
      * @param {object} t - The release's target.
-     * @param {number} id - The release id.
+     * @param {string} id - "release/<id>".
      * @param {{start: boolean, force: boolean, repaint: function(): void}} opts
      * @returns {string[]} HTML parts.
      */
@@ -65071,7 +65985,7 @@
         const out = { left: [], right: [], full: [] };
         if (!rec.dgHist) return out;
         const u = new URL(t.url);
-        const id = _EXT_DGH_PATH_RE.exec(u.pathname)[1];
+        const id = _extDgHistIdOf(u);
         // A link to one revision's changes (`?diff=<rev>`: a dg-history
         // table's "View changes") opens with that diff, once per opening.
         const rev = Number(u.searchParams.get('diff')) || 0;
@@ -65106,12 +66020,19 @@
             ui.rev = Number(v) || 0;
             if (ui.rev) _extDgHistDiffLoad(b.dataset.mbDghId, ui.rev, b.dataset.mbDghU || '');
             break;
-        case 'note': {
-            const i = Number(v);
-            if (ui.open.has(i)) ui.open.delete(i);
-            else ui.open.add(i);
+        case 'note':
+            // By the entry's key (`<page>:<row>`).
+            if (ui.open.has(v)) ui.open.delete(v);
+            else ui.open.add(v);
             break;
-        }
+        // The earlier pages of a history (`_extDgHistPagesRun()`): it
+        // repaints the window itself as it goes.
+        case 'pages':
+            if (ui.newest) _extDgHistPagesRun(b.dataset.mbDghId, ui.newest);
+            return true;
+        case 'pagesstop':
+            ui.pagesStop = true;
+            break;
         default: return false;
         }
         if (_dpDialog.repaint) _dpDialog.repaint();
@@ -66346,7 +67267,7 @@
         {
             // Before `discogs`, whose path pattern takes `/history` too.
             id: 'dghistory', kind: 'Discogs release history', test: _extDgHistTest, askHost: () => 'www.discogs.com', load: _extDgHistLoad,
-            noLive: true, version: _EXT_IDB_VERSION * 100 + _EXT_DGH_VERSION, windowOnly: true, keyUrl: _extDgHistKeyUrl,
+            noLive: true, version: _EXT_IDB_VERSION * 100 + _EXT_DGH_VERSION, windowOnly: true, keyUrl: _extDgHistKeyUrl, kindFor: _extDgHistKind,
             window: _extDgHistWindow, onAreaClick: _extDgHistAreaClick,
             loadingNote: 'Reading the edit history from discogs.com (one request).',
         },
@@ -74057,6 +74978,43 @@ ${sections.join('\n')}
             _saedGroup('hist').adopt(ann);
         }
         Lib.debug('ui', `SAED: Editing history group for ${subject}`);
+    }
+
+    /**
+     * The SAED menu's "✎ Edit history" on a discogs.com page of a release,
+     * master, artist or label (vzell, 2026-10-28: "the SAED menu should also
+     * get a menu entry for the 'Edit history' of the underlying entity on
+     * the IP and FRP"): that entity's Discogs edit history in the window,
+     * the history reader's (`_extDgHistTarget()`, the same window as a
+     * Discogs window's ✎). Built once with the toolbar, so the page before
+     * and after a render have it. Ctrl/⌘-click, or the external previews
+     * off, opens Discogs' own history page in a new tab. Idempotent.
+     *
+     * @returns {void}
+     */
+    function _saedDgHistoryEntry() {
+        if (!_isDgHost || document.getElementById('mb-saed-dghist-btn')) return;
+        const m = _EXT_DISCOGS_PATH_RE.exec(window.location.pathname);
+        if (!m) return;
+        const hid = `${m[1].toLowerCase()}/${m[2]}`;
+        const kind = hid.split('/')[0];
+        const row = document.createElement('button');
+        row.id = 'mb-saed-dghist-btn';
+        row.type = 'button';
+        row.textContent = '✎ Edit history';
+        _setTip(row, `This ${kind}'s edit history on Discogs, in the window; Ctrl-click opens Discogs' page in a new tab`);
+        row.addEventListener('click', (e) => {
+            const url = _extDgHistUrl(hid);
+            const src = _popSources().find(x => x.id === 'ext');
+            if (e.ctrlKey || e.metaKey || !src || !src.enabled()) {
+                window.open(url, '_blank', 'noopener');
+                return;
+            }
+            const bdi = document.querySelector('#mb-dg-root h1.mb-dg-h1 bdi');
+            _dpOpenDialog(Object.assign(_extDgHistTarget(hid, { name: bdi ? _dpText(bdi.textContent) : '', el: row }), { src }));
+        });
+        _saedGroup('hist').adopt(row);
+        Lib.debug('ui', `SAED: Discogs edit history entry for ${hid}`);
     }
 
     /**
@@ -82227,8 +83185,10 @@ a { color: #1565c0; }`;
         _saedGroup('log').adopt(row);
     });
 
-    // Editing history: the entity this page is about (`_saedHistoryGroup()`).
+    // Editing history: the entity this page is about (`_saedHistoryGroup()`;
+    // on discogs.com its Discogs edit history, `_saedDgHistoryEntry()`).
     _saedHistoryGroup();
+    _saedDgHistoryEntry();
 
     // --- Fetch progress line (shown during data loading, hidden otherwise) ---
     // The bar itself is the running action segment (`_saedRunStart()`); this

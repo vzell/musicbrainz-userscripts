@@ -138,7 +138,7 @@ The **☰ SAED menu** has these groups, with a line between them:
 | **Needs attention** | the same lists as the 🔄, ❌ and ⚠️ parts on the bar                           |
 | **Data**            | 💾 Save to Disk · 📂 Load from Disk · 📤 Export ▸ (CSV, JSON, Org-Mode, HTML) |
 | **View**            | 📏 Density · 📊 Statistics · 💾 Browser cache · 🗄️ Script storage · 🎹 Keyboard Shortcuts |
-| **Editing history** | ✎ Entity history ▸ · 📝 Annotation history (on a page about one entity, e.g. an artist) |
+| **Editing history** | ✎ Entity history ▸ · 📝 Annotation history (on a page about one entity, e.g. an artist); on discogs.com ✎ Edit history (a release, master, artist or label page) |
 | **Help**            | ⚙️ Settings · ❓ Help ↗ (this page, on GitHub)                                 |
 | **Changelog**       | 📜 What's new ↗ · 🗒 Full development log ↗ (both on GitHub)                   |
 
@@ -2593,8 +2593,9 @@ userscript lists that host, so Tampermonkey does not ask first).
   shows ("Recording", "Release group", "Discogs release", "Wikipedia"), the
   same words as the window's title bar, so you know what Space will open.
   For MusicBrainz kinds it starts with MusicBrainz's own icon of the kind
-  (artist, release, recording, work, …), which the window's title bar shows
-  too.
+  (artist, release, recording, work, …), for Discogs with the kind's emoji
+  (💿 master, 📄 release, 🏷️ label, 👤 artist, 💬 user), as in the window's
+  path.
 - **‹ ›** or **← →** step to the same kind of link in the **same column** of
   the next or previous row, on into the next sub-table. A row links a
   release, an artist and a label; the arrows stay with the one you started
@@ -2602,9 +2603,24 @@ userscript lists that host, so Tampermonkey does not ask first).
 - **⟳** asks MusicBrainz again; **↗** opens the page in a new tab.
 - **Click a link inside the window** (a release in a release group's list, a
   release's release group, a label, a recording in a tracklist) to show that
-  entity in the same window; the title shows the path, for example *Release
-  group › Release*. **← Back**, **Backspace** or **Alt+←** return. Ctrl-click
-  (or a middle click) still opens the link in a new tab.
+  entity in the same window; the title shows the path, for example *Greetings
+  From Asbury Park, N.J. › The Angel*. **← Back**, **Backspace** or **Alt+←**
+  return. Ctrl-click (or a middle click) still opens the link in a new tab.
+- **The path in the title bar** is a way back:
+  - **Click a step** and the window shows it again, from memory; the steps
+    after it are dropped.
+  - Only the last three steps show (two in a narrow window). **…** before
+    them opens the whole path, and a click there goes back to any step.
+  - **Rest on a step** to see its own card (no Ctrl needed, nothing is
+    asked); **Space** goes back to it.
+  - **Every step starts with its icon**, which links the documentation of
+    that kind: MusicBrainz's page (its style guide named at the card's
+    foot) or Discogs' Database Guidelines. Rest on it for that page's card;
+    a click reads it in the window, on discogs.com too.
+  - A step reads the name of what it shows. The setting *In the window's
+    title, each step of the path reads* (same section) switches it to the
+    kind ("Recording"). An editing history, a documentation page or a
+    Discogs search always reads its kind.
 - **Rest the pointer on something inside the window** to see what a click on
   it does, before you click. The window's bottom line names it: *Opens here:
   Label · Columbia* (with *read before, no request* when it already is), *New
@@ -2778,9 +2794,10 @@ once and without Tampermonkey asking first:
   from the artist's Discogs name has Discogs' `*`; point at it for the
   Discogs name. Every artist, label and company is a link to its Discogs
   page; a click shows that page in the same window (*Back* returns), and
-  Ctrl-click opens it in a new tab. The window's title says what the link is
-  — *Discogs release*, *Discogs master*, *Discogs artist*, *Discogs label* —
-  and after such a click the path, e.g. *Discogs master › Discogs release*.
+  Ctrl-click opens it in a new tab. The window's title shows what the link
+  is, with its kind's icon (💿 master, 📄 release, 👤 artist, 🏷️ label), and
+  after such a click the path, e.g. *💿 Born To Run › 📄 Born To Run*; with
+  the path set to kinds, *Discogs master › Discogs release*.
   Each heading opens and closes its section; a closed one
   stays closed in the next Discogs window until the page is reloaded.
 
@@ -2861,8 +2878,10 @@ once and without Tampermonkey asking first:
   Typing in a window's filter (a master's versions, a discography, a label's
   releases or sublabels) marks what it matched in every row it keeps, in the
   colours of the tables' filter highlight.
-- A Discogs release's **edit history** (a link to its history page,
-  `discogs.com/release/…/history`): the card shows the last change, how many
+- A Discogs **edit history** of a release, master, artist or label (a link to
+  its history page, `discogs.com/release/…/history`, or **✎ Editing history**
+  — or **H** — in that entity's Discogs window; there is no ▾ for Discogs):
+  the card shows the last change, how many
   changes there were and the data quality; the window lists every change —
   date, user, what it was (*Submit Release*, *Edit Release*, *Images*,
   *Merge Pending*, a comment …), the note, and **View changes** (an image
@@ -2876,7 +2895,11 @@ once and without Tampermonkey asking first:
   you press Space, never on a hover. On discogs.com it is read with your own
   Discogs session; from MusicBrainz it is asked like any other site, and if
   Discogs answers with its browser check, the window says so — ↗ opens the
-  page.
+  page. A long history spans pages of about 50 changes: the window shows the
+  newest and says so (*Page 3 of 3 shown (the newest)*); **Load the 2 earlier
+  pages** reads the others one request at a time (**Stop** ends it; a page
+  that failed can be tried again), and they join the same list, the filter
+  and *Oldest first* included.
 - A Discogs release's **Images** and **Image history** (`discogs.com/release/…/images`
   and `…/images/update`, Discogs' image editor): the window lists every image
   — Image history as one table (#, the image, Primary or Secondary, who
@@ -3686,7 +3709,16 @@ pointing at a MusicBrainz icon (Ctrl held, unless *Show every preview on a
 plain hover* is on) shows that entity's MusicBrainz card, read from
 musicbrainz.org, and **Space** opens its window; a click on the icon opens the
 window too, Ctrl-click opens MusicBrainz in a new tab. The same goes for that
-script's own icons beside the names on Discogs' page, right away.
+script's own icons beside the names on Discogs' page, right away, and its icon
+in front of the page's name in the script's own heading. That
+window works as it does on MusicBrainz: **✎ Editing history ▾** (or **H**)
+and **Live page** are there too. Both are MusicBrainz pages, which MusicBrainz
+shows a script only with your browser's own musicbrainz.org session, so they
+are read with your musicbrainz.org cookies (as when you open the page in a
+tab). Its links open in the window and show their cards as on MusicBrainz —
+a genre's tag, an edit, an editor, a documentation page. If the window says
+MusicBrainz asked the browser to verify itself, open the page once in a tab
+(↗), then press **⟳**.
 Switch it off, or only the automatic lookups (then ▶ MB asks), in ⚙️
 Settings → 💿 Discogs. Without that userscript the column never appears.
 

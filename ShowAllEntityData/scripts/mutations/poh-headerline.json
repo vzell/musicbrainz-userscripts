@@ -1,0 +1,353 @@
+[
+    {
+        "name": "path: a click on a step keeps the step in the back stack",
+        "why": "_dpJumpTo(i) shows step i and keeps the steps BEFORE it; keeping step i too puts what the window shows on its own back stack, so the path repeats it.",
+        "edits": [
+            {
+                "find": "        _dpDialog.stack = stack.slice(0, i);",
+                "replace": "        _dpDialog.stack = stack.slice(0, i + 1);"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "a click on an earlier step goes back to it",
+        "expect": "fail"
+    },
+    {
+        "name": "path: a narrow window keeps three steps",
+        "why": "Below _DP_PATH_NARROW_PX the path keeps two steps after \"…\" (vzell, 2026-10-28).",
+        "edits": [
+            {
+                "find": "        const keep = dlg && dlg.clientWidth && dlg.clientWidth < _DP_PATH_NARROW_PX ? 2 : 3;",
+                "replace": "        const keep = 3;"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "a narrow window keeps two steps",
+        "expect": "fail"
+    },
+    {
+        "name": "path: steps read their kind whatever the setting says",
+        "why": "The default (sa_dp_path_label 'name') reads each step's name; a step reading its kind would pass every kind-path spec and fail only the names test.",
+        "edits": [
+            {
+                "find": "        return Lib.settings.sa_dp_path_label === 'kind' ? kind : (_dpStepName(t) || kind);",
+                "replace": "        return kind;"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "names \\(the default\\)",
+        "expect": "fail"
+    },
+    {
+        "name": "path: an editing history reads a name",
+        "why": "A view (_DP_VIEW_TYPES) reads its kind even in names mode; without 'edits' in the set the history step reads the release's name.",
+        "edits": [
+            {
+                "find": "    const _DP_VIEW_TYPES = new Set(['edits', 'doc',",
+                "replace": "    const _DP_VIEW_TYPES = new Set(['doc',"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "names \\(the default\\)",
+        "expect": "fail"
+    },
+    {
+        "name": "path: Space on a step's card pins nothing and goes nowhere",
+        "why": "Space on a step's card goes back to that step, as a click; without the branch the card falls through to _dpOpenDialog(), which starts a new path on a target the dialog cannot show.",
+        "edits": [
+            {
+                "find": "                if (pt && pt.crumbOf) {\n                    _dpHidePeek();\n                    _dpJumpTo(pt.crumb);\n                    return;\n                }",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "resting on a step shows its own card",
+        "expect": "fail"
+    },
+    {
+        "name": "path: a step's card keeps its source's \"Space more\" foot",
+        "why": "On a step Space goes back; the source's own foot line would say it shows more.",
+        "edits": [
+            {
+                "find": "            tpl.content.querySelectorAll('.mb-tt-foot').forEach(f => f.remove());",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "resting on a step shows its own card",
+        "expect": "fail"
+    },
+    {
+        "name": "path: a glyph's documentation is read from the glyph's own link",
+        "why": "The glyph's link holds an image, and _mbPopTarget() takes a link holding an image for artwork: no documentation target, so no card and the click opens a new tab.",
+        "edits": [
+            {
+                "find": "            const r = _mbPopTarget(bare, { inWindow: true, mbOrigin: true });",
+                "replace": "            const r = _mbPopTarget(a, { inWindow: true, mbOrigin: true });"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "a glyph's card is its kind's documentation",
+        "expect": "fail"
+    },
+    {
+        "name": "item 3: an MB card on discogs.com has no glyph",
+        "why": "_mbKindIconUrl() served the mb-entity source only; discogs.com's MusicBrainz links are the dg-mb source.",
+        "edits": [
+            {
+                "find": "        if (t.src.id !== 'mb-entity' && t.src.id !== 'dg-mb') return '';",
+                "replace": "        if (t.src.id !== 'mb-entity') return '';"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-mb-column.spec.js",
+        "grep": "Space opens its window",
+        "expect": "fail"
+    },
+    {
+        "name": "item 3: an MB glyph on discogs.com names discogs.com",
+        "why": "On another site this origin's /static/images/entity/… is that site's; the glyph must come from musicbrainz.org.",
+        "edits": [
+            {
+                "find": "        // (org/POH-headerline.org item 3).\n        const origin = _mbOrigin();",
+                "replace": "        // (org/POH-headerline.org item 3).\n        const origin = window.location.origin;"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-mb-column.spec.js",
+        "grep": "Space opens its window",
+        "expect": "fail"
+    },
+    {
+        "name": "item 3: a MusicBrainz page read from discogs.com without the browser's cookies",
+        "why": "An anonymous request gets MusicBrainz's browser check, not the page (probe P1): the editing history never fills.",
+        "edits": [
+            {
+                "find": "        const res = await _extFetch(url, { session: true, maxBytes: _MB_FOREIGN_PAGE_MAX, maxDownload: _MB_FOREIGN_PAGE_MAX });",
+                "replace": "        const res = await _extFetch(url, { session: false, maxBytes: _MB_FOREIGN_PAGE_MAX, maxDownload: _MB_FOREIGN_PAGE_MAX });"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-mb-column.spec.js",
+        "grep": "Editing history ▾ and Live page",
+        "expect": "fail"
+    },
+    {
+        "name": "item 3: an MB window on discogs.com has no editing history",
+        "why": "_mbEditsSubject() answered null on every foreign host, so the window had no ✎ button.",
+        "edits": [
+            {
+                "find": "        if (!t || !t.src) return null;\n        const src = _mbWinSource();",
+                "replace": "        if (!t || !t.src || _foreignHost) return null;\n        const src = _mbWinSource();"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-mb-column.spec.js",
+        "grep": "Editing history ▾ and Live page",
+        "expect": "fail"
+    },
+    {
+        "name": "item 3: an MB window on discogs.com has no Live page",
+        "why": "dg-mb targets were noLive (the browser check); with the cookie request they have one.",
+        "edits": [
+            {
+                "find": "                key: `${type}:${id}`, url: `https://musicbrainz.org/${type}/${id}`, type, id,",
+                "replace": "                key: `${type}:${id}`, url: `https://musicbrainz.org/${type}/${id}`, type, id, noLive: true,"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-mb-column.spec.js",
+        "grep": "Editing history ▾ and Live page",
+        "expect": "fail"
+    },
+    {
+        "name": "item 3: an editing history's page asked on discogs.com's origin",
+        "why": "_mbEditsUrl() built on window.location.origin, which on discogs.com names discogs.com.",
+        "edits": [
+            {
+                "find": "        return new URL(n > 1 ? `${p}${p.includes('?') ? '&' : '?'}page=${n}` : p, _mbOrigin()).href;",
+                "replace": "        return new URL(n > 1 ? `${p}${p.includes('?') ? '&' : '?'}page=${n}` : p, window.location.origin).href;"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-mb-column.spec.js",
+        "grep": "Editing history ▾ and Live page",
+        "expect": "fail"
+    },
+    {
+        "name": "item 3: a genre's tag link in an MB window on discogs.com leaves the page",
+        "why": "_dgMbWinTarget() knew entities by MBID only; a genre links /tag/<name> (vzell, 2026-10-28: no card, no drill-down).",
+        "edits": [
+            {
+                "find": "        const r = src.resolve(a) || (a.origin === 'https://musicbrainz.org' ? _mbPopTarget(a, { inWindow: true, mbOrigin: true }) : null);",
+                "replace": "        const r = src.resolve(a);"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-mb-column.spec.js",
+        "grep": "a genre's tag link opens here",
+        "expect": "fail"
+    },
+    {
+        "name": "item 3: an MB glyph's documentation on discogs.com opens a new tab",
+        "why": "_dpDocTarget() read MusicBrainz's documentation on MusicBrainz only; with the cookie request discogs.com reads it too (vzell, 2026-10-28).",
+        "edits": [
+            {
+                "find": "        const mb = _mbWinSource();\n        if (mb) {\n            const r = _mbPopTarget(bare, { inWindow: true, mbOrigin: true });",
+                "replace": "        const mb = !_foreignHost && _mbWinSource();\n        if (mb) {\n            const r = _mbPopTarget(bare, { inWindow: true, mbOrigin: true });"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-mb-column.spec.js",
+        "grep": "Editing history ▾ and Live page",
+        "expect": "fail"
+    },
+    {
+        "name": "item 3 (P2): ⟳ reads back the archive's failure",
+        "why": "_artFetchEntityImages() keeps a 429/5xx for the session; without forgetting it on ⟳ the strip never asks again.",
+        "edits": [
+            {
+                "find": "        if (again && ctx.failedCache.has(path)) {\n            ctx.countCache.delete(path);",
+                "replace": "        if (false) {\n            ctx.countCache.delete(path);"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "⟳ asks the archive again",
+        "expect": "fail"
+    },
+    {
+        "name": "settings audit: a window filter's highlight falls back to the text's colour",
+        "why": "With sa_column_filter_highlight_color stored empty the tables fall back to red; the window's mark.mb-dg-hl fell back to 'inherit' (the audit's drifting fallback, fixed 2026-10-28).",
+        "edits": [
+            {
+                "find": "                color: ${Lib.settings.sa_column_filter_highlight_color || 'red'};\n                background-color: ${Lib.settings.sa_column_filter_highlight_bg || '#add8e6'};\n                padding: 0;",
+                "replace": "                color: ${Lib.settings.sa_column_filter_highlight_color || 'inherit'};\n                background-color: ${Lib.settings.sa_column_filter_highlight_bg || '#add8e6'};\n                padding: 0;"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "a colour stored empty falls back",
+        "expect": "fail"
+    },
+    {
+        "name": "Discogs glyph: the emoji as text changes the title's text",
+        "why": "The glyph is CSS generated content so the title (and a card's kind line) reads the labels alone; as text, 'Discogs release › Discogs artist' gains its emoji.",
+        "edits": [
+            {
+                "find": "        s.dataset.mbEmo = g.emo || 'D';",
+                "replace": "        s.dataset.mbEmo = g.emo || 'D';\n        s.textContent = g.emo || 'D';"
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "names link their Discogs pages",
+        "expect": "fail"
+    },
+    {
+        "name": "item 4: a Discogs window has no ✎ Editing history",
+        "why": "_dgHistSubject() names what a Discogs window has a history of; answering '' hides the button and H.",
+        "edits": [
+            {
+                "find": "        const m = _EXT_DISCOGS_PATH_RE.exec(u.pathname);\n        return m ? `${m[1].toLowerCase()}/${m[2]}` : '';",
+                "replace": "        const m = _EXT_DISCOGS_PATH_RE.exec(u.pathname);\n        return m ? '' : '';"
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "a release: the button without",
+        "expect": "fail"
+    },
+    {
+        "name": "item 4: a Discogs window's ✎ gets the MusicBrainz presets' ▾",
+        "why": "vzell: the button 'without the menu structure'; the ▾ is a MusicBrainz entity's only.",
+        "edits": [
+            {
+                "find": "            const withMore = !!subj && !subj.startsWith('user/');\n            if (c.histMore)",
+                "replace": "            const withMore = !!(subj || dg) && !String(subj).startsWith('user/');\n            if (c.histMore)"
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "a release: the button without",
+        "expect": "fail"
+    },
+    {
+        "name": "item 4: H does nothing in a Discogs window",
+        "why": "H asked _mbEditsSubject() only; a Discogs window has a history too (_dpHasHistory()).",
+        "edits": [
+            {
+                "find": "&& !e.metaKey && _dpHasHistory(_dpDialog.target)) {",
+                "replace": "&& !e.metaKey && _mbEditsSubject(_dpDialog.target)) {"
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "a release: the button without",
+        "expect": "fail"
+    },
+    {
+        "name": "item 4: the history reader reads releases only",
+        "why": "_EXT_DGH_PATH_RE took /release/<id>/history only; an artist's history link was then the plain Discogs reader's.",
+        "edits": [
+            {
+                "find": "(?:[a-z]{2}(?:[-_][a-zA-Z]{2})?\\/)?(release|master|artist|label)\\/(\\d+)(?:-[^/?#]*)?\\/history\\/?$/i;",
+                "replace": "(?:[a-z]{2}(?:[-_][a-zA-Z]{2})?\\/)?(release)\\/(\\d+)(?:-[^/?#]*)?\\/history\\/?$/i;"
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "an artist: the newest page",
+        "expect": "fail"
+    },
+    {
+        "name": "item 4: murdos' importer's glyph taken for the subject's picture",
+        "why": "A page saved from a browser carries the importer's musicbrainz.org link and glyph first in its <h1>; the parser must skip them.",
+        "edits": [
+            {
+                "find": "        const img = head && Array.from(head.querySelectorAll('img[src]')).find(own);",
+                "replace": "        const img = head && head.querySelector('img[src]');"
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "an artist: the newest page",
+        "expect": "fail"
+    },
+    {
+        "name": "history window: the kind column as it was (8.5em, the pill not cut)",
+        "why": "vzell, 2026-10-28: 'Edit Master Release' ran into the note. Both halves restored, since the ellipsis alone would also keep the pill in its column.",
+        "edits": [
+            {
+                "find": "                display: grid; grid-template-columns: 8.6em 9em 12em minmax(0, 1fr) auto; gap: 3px 10px;\n                padding: 5px 0; border-bottom: 1px dotted #d9cfbd; align-items: baseline;\n            }\n            .mb-dp-dialog .mb-dgh-e > .mb-dgh-k { min-width: 0; overflow: hidden; }\n            .mb-dp-dialog .mb-dgh-e > .mb-dgh-k > .mb-dgh-pill { max-width: 100%; box-sizing: border-box; overflow: hidden; text-overflow: ellipsis; vertical-align: 1px; }",
+                "replace": "                display: grid; grid-template-columns: 8.6em 9em 8.5em minmax(0, 1fr) auto; gap: 3px 10px;\n                padding: 5px 0; border-bottom: 1px dotted #d9cfbd; align-items: baseline;\n            }"
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "a master: its kind pills",
+        "expect": "fail"
+    },
+    {
+        "name": "discogs.com: the importer's icon in our heading has no card",
+        "why": "_dgMbSource()'s selector covered our table bodies and Discogs' #app only (vzell, 2026-10-28).",
+        "edits": [
+            {
+                "find": "            '#mb-dg-root h1.mb-dg-h1 a[href^=\"https://musicbrainz.org/\"]';",
+                "replace": "            '#mb-dg-root h1.mb-dg-h1 a[href^=\"https://musicbrainz.org/x-none/\"]';"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-mb-column.spec.js",
+        "grep": "our page heading",
+        "expect": "fail"
+    },
+    {
+        "name": "discogs.com: no \"✎ Edit history\" in the SAED menu",
+        "why": "vzell, 2026-10-28: the menu gets the page entity's Discogs edit history on the IP and the FRP.",
+        "edits": [
+            {
+                "find": "    _saedHistoryGroup();\n    _saedDgHistoryEntry();",
+                "replace": "    _saedHistoryGroup();"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-mb-column.spec.js",
+        "grep": "Edit history\\\" on the initial page",
+        "expect": "fail"
+    },
+    {
+        "name": "item 4: an earlier page read is not shown",
+        "why": "_extDgHistPagesMerged() puts the earlier pages read in front of the newest; without them the window shows the newest page only.",
+        "edits": [
+            {
+                "find": "            older.unshift(st.data.entries.map(e => Object.assign({}, e, { latest: false })));",
+                "replace": "            older.unshift([]);"
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "an artist: the newest page",
+        "expect": "fail"
+    }
+]
