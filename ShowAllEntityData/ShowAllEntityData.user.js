@@ -103295,6 +103295,9 @@ a { color: #1565c0; }`;
 
         // Run refactored clutter removal
         performClutterCleanup();
+        // FUNKEY's one-shot strip pass may still be pending (a press quicker
+        // than its 600 ms timer, the reload's re-press at setTimeout 0).
+        _watchForLateFunkeyBigbox();
 
         removeSanojjonasContainers();
         _watchForLateSanojjonasInjections();
@@ -106589,6 +106592,69 @@ a { color: #1565c0; }`;
             document.querySelectorAll('table.tbl a').forEach(_stripJesus2099CaaAnchor);
             Lib.debug('cleanup', '_watchForLateJesus2099Injections: watch window elapsed, observer disconnected.');
         }, SA_JESUS2099_WATCH_MS);
+    }
+
+    /**
+     * Removes jesus2099's "mb. FUNKEY ILLUSTRATED RECORDS" big-picture strip
+     * (`div.jesus2099userjs154481bigbox`) when it arrives AFTER a fetch or a
+     * disk load has started — armed right after `performClutterCleanup()`,
+     * whose one-shot removal it extends.
+     *
+     * That script decorates the page in ONE pass, a `setTimeout` of 600 ms
+     * after document-idle (1000 ms on `/release/`), and never again. When
+     * our own press comes first — the second press's reload presses the
+     * button again at `setTimeout 0` (`_autoRepressAfterReload()`), or a
+     * quick manual press, or a disk load — its pass finds OUR rendered
+     * tables and puts a strip in front of them: between our
+     * `div.mb-caa-bigbox` and the table on a release group's Relationships
+     * render (debug/mb-rg-funky-final.html, 2026-10-28), where it also stops
+     * every h3 → table walk that only skips our own bigboxes.
+     *
+     * Cheap on purpose, since it can be live during a render: it looks only
+     * at each added node ITSELF (that script inserts the empty div, then
+     * fills it), never into an added subtree. It disconnects after the first
+     * batch that removed a strip (that script's pass is synchronous, so all
+     * its strips arrive in one batch) or after `FUNKEY_WATCH_MS`, with a
+     * last sweep; arming it again replaces the armed one (kept on the
+     * function, `.armed`: its first call site sits above this line, so a
+     * module `let` could be read before it is declared). Never on the
+     * foreign hosts, like `performClutterCleanup()`.
+     *
+     * @returns {void}
+     */
+    function _watchForLateFunkeyBigbox() {
+        if (_foreignHost || !document.body) return;
+        const FUNKEY_WATCH_MS = 10000;
+        const CLS = 'jesus2099userjs154481bigbox';
+        const disarm = () => {
+            const armed = _watchForLateFunkeyBigbox.armed;
+            if (!armed) return;
+            armed.observer.disconnect();
+            clearTimeout(armed.timer);
+            _watchForLateFunkeyBigbox.armed = null;
+        };
+        disarm();
+        const observer = new MutationObserver((mutations) => {
+            let removed = 0;
+            for (const mutation of mutations) {
+                for (const node of mutation.addedNodes) {
+                    if (node.nodeType === Node.ELEMENT_NODE && node.classList.contains(CLS) && node.isConnected) {
+                        node.remove();
+                        removed++;
+                    }
+                }
+            }
+            if (!removed) return;
+            Lib.debug('cleanup', `_watchForLateFunkeyBigbox: removed ${removed} late FUNKEY bigbox element(s); observer disconnected.`);
+            disarm();
+        });
+        observer.observe(document.body, { childList: true, subtree: true });
+        const timer = setTimeout(() => {
+            disarm();
+            document.querySelectorAll('div.' + CLS).forEach(div => div.remove());
+            Lib.debug('cleanup', '_watchForLateFunkeyBigbox: watch window elapsed, observer disconnected.');
+        }, FUNKEY_WATCH_MS);
+        _watchForLateFunkeyBigbox.armed = { observer, timer };
     }
 
     /**
@@ -133709,6 +133775,7 @@ a { color: #1565c0; }`;
             // relationship-tables button) is loaded the way that button runs.
             _activateButtonForSavedPageType(data.pageType);
             performClutterCleanup();
+            _watchForLateFunkeyBigbox();
             cleanupAfterInitialLoad();
 
             // ── DOM pre-processing for listToTable pages (e.g. artist-credit) ───
@@ -146726,6 +146793,37 @@ a { color: #1565c0; }`;
     const _ART_REL_ICON_SEL = 'table.details a[href*="/cover-art"]';
 
     /**
+     * An image link of jesus2099's "mb. FUNKEY ILLUSTRATED RECORDS"
+     * big-picture strip on the initial page (2026-10-28): `<div
+     * class="jesus2099userjs154481bigbox"><a href="/release/<mbid>"
+     * title="…"><img alt="…" src="//coverartarchive.org/…/front-250">`, put
+     * before every table or list of release / release group links
+     * (debug/mb-rg-funky-initial.html). After a render the strip is removed
+     * (`performClutterCleanup()`, `_watchForLateFunkeyBigbox()`).
+     */
+    const _ART_J2_BIGBOX_SEL = 'div.jesus2099userjs154481bigbox > a[href]';
+
+    /**
+     * The release or release group an image of FUNKEY's big-picture strip
+     * shows, or null for any other link: the entity path (`/release/<mbid>`
+     * or `/release-group/<mbid>`) and its title (the image's alt, which is
+     * the link text, else the first line of the anchor's title).
+     *
+     * @param   {?Element} a
+     * @returns {?{path: string, title: string, rg: boolean}}
+     */
+    function _artJ2BigboxInfo(a) {
+        if (!a || !a.matches || !a.matches(_ART_J2_BIGBOX_SEL) || a.closest('table.tbl')) return null;
+        const m = /^\/(release|release-group)\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/i
+            .exec(a.getAttribute('href') || '');
+        if (!m) return null;
+        const img = a.querySelector(':scope > img');
+        const saved = a.dataset.mbttSavedTitle || a.getAttribute('title') || '';
+        const title = ((img && img.getAttribute('alt')) || saved.split('\n')[0] || '').replace(/\s+/g, ' ').trim();
+        return { path: `/${m[1].toLowerCase()}/${m[2].toLowerCase()}`, title, rg: m[1].toLowerCase() === 'release-group' };
+    }
+
+    /**
      * The relationship-list icons' records being asked, by entity path: who
      * waits for each (the hover's repaint, a click's viewer).
      * @type {Map<string, Array<function(): void>>}
@@ -146773,17 +146871,19 @@ a { color: #1565c0; }`;
     }
 
     /**
-     * Marks a relationship-list cover icon under the pointer for
+     * Marks a relationship-list cover icon, or an image of FUNKEY's
+     * big-picture strip (`_artJ2BigboxInfo()`), under the pointer for
      * `#mb-stat-tooltip`'s resolver cards (`data-mbtt-fn="art-rel"`). Called
      * at the top of that engine's mouseover, before it looks for a target,
-     * because the icon is put in late by another script.
+     * because both are put in late by another script.
      *
      * @param   {?EventTarget} node
      * @returns {void}
      */
     function _artRelIconStamp(node) {
-        const a = node && node.closest ? node.closest(_ART_REL_ICON_SEL) : null;
-        if (!a || a.dataset.mbttFn || !_artRelIconCardOn() || !_artRelIconInfo(a)) return;
+        if (!node || !node.closest) return;
+        const a = node.closest(_ART_REL_ICON_SEL) || node.closest(_ART_J2_BIGBOX_SEL);
+        if (!a || a.dataset.mbttFn || !_artRelIconCardOn() || !(_artRelIconInfo(a) || _artJ2BigboxInfo(a))) return;
         a.dataset.mbttFn = 'art-rel';
     }
 
@@ -146821,10 +146921,16 @@ a { color: #1565c0; }`;
      * @returns {?string}
      */
     function _artRelIconCardHtml(a) {
+        if (!_artRelIconCardOn()) return null;
         const info = _artRelIconInfo(a);
-        if (!info || !_artRelIconCardOn()) return null;
-        return _artRecordCardHtml(a, CAA_CTX, info.path, info.title || 'Cover art',
-            _artRelIconViewerOn() ? 'Click: viewer · Ctrl-click: the artwork page' : '');
+        if (info) {
+            return _artRecordCardHtml(a, CAA_CTX, info.path, info.title || 'Cover art',
+                _artRelIconViewerOn() ? 'Click: viewer · Ctrl-click: the artwork page' : '');
+        }
+        const strip = _artJ2BigboxInfo(a);
+        if (!strip) return null;
+        return _artRecordCardHtml(a, CAA_CTX, strip.path, strip.title || 'Cover art',
+            _artRelIconViewerOn() ? `Click: viewer · Ctrl-click: the release${strip.rg ? ' group' : ''} page` : '');
     }
 
     /**
@@ -146846,7 +146952,8 @@ a { color: #1565c0; }`;
         const archive = ctx.key === 'eaa' ? 'Event Art Archive' : 'Cover Art Archive';
         if (!ctx.countCache.has(path)) {
             _artRelIconLoad(path, () => _artRelIconRepaint(el), ctx);
-            return `<div style="max-width:310px;">${head}<div class="mb-tt-comment"><span class="mb-dp-spin">◌</span> Loading the ${ctx.key === 'eaa' ? 'event' : 'release'}'s artwork…</div></div>`;
+            const whose = ctx.key === 'eaa' ? 'event' : path.startsWith('/release-group/') ? 'release group' : 'release';
+            return `<div style="max-width:310px;">${head}<div class="mb-tt-comment"><span class="mb-dp-spin">◌</span> Loading the ${whose}'s artwork…</div></div>`;
         }
         const images = ctx.imagesCache.get(path) || [];
         if (!images.length) {
@@ -146873,10 +146980,11 @@ a { color: #1565c0; }`;
 
     /**
      * What a click opens in the viewer, or null: a relationship-list cover
-     * icon (`_artRelIconInfo()`, its release) or an image of a big-picture
-     * strip above a table (`.mb-caa-bigbox` / `.mb-eaa-bigbox`, whose
-     * wrapper links the row's entity: `/release/…`, `/release-group/…`,
-     * `/event/…`).
+     * icon (`_artRelIconInfo()`, its release), an image of FUNKEY's
+     * big-picture strip on the initial page (`_artJ2BigboxInfo()`, its
+     * release or release group) or an image of a big-picture strip above a
+     * table (`.mb-caa-bigbox` / `.mb-eaa-bigbox`, whose wrapper links the
+     * row's entity: `/release/…`, `/release-group/…`, `/event/…`).
      *
      * @param   {?EventTarget} node
      * @returns {?{ctx: Object, path: string, title: string, a: HTMLAnchorElement}}
@@ -146886,6 +146994,9 @@ a { color: #1565c0; }`;
         const rel = node.closest(_ART_REL_ICON_SEL);
         const info = _artRelIconInfo(rel);
         if (info) return { ctx: CAA_CTX, path: info.path, title: info.title || 'Cover art', a: rel };
+        const strip = node.closest(_ART_J2_BIGBOX_SEL);
+        const sInfo = _artJ2BigboxInfo(strip);
+        if (sInfo) return { ctx: CAA_CTX, path: sInfo.path, title: sInfo.title || 'Cover art', a: strip };
         for (const ctx of [CAA_CTX, EAA_CTX]) {
             const a = node.closest(`.${ctx.boxClass} a[href]`);
             if (!a) continue;

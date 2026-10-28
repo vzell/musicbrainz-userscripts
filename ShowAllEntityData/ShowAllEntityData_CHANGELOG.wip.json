@@ -1,0 +1,26 @@
+[
+  {
+    "version": "WIP.2",
+    "date": "2026-10-28",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "With jesus2099's \"mb. FUNKEY ILLUSTRATED RECORDS\" active, its big picture strip could still show after a render, between the script's own big image strip and the table (a release group's Relationships, debug/mb-rg-funky-final.html). That script decorates the page once, 600 ms after it has loaded; when the render started earlier — a second press reloads the page and presses the button again at once, a quick press, a load from disk — it found the script's own tables. Its strip is now removed whenever it arrives after a press or a disk load."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "WIP.1",
+    "date": "2026-10-28",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "On the initial page, the images of jesus2099's \"mb. FUNKEY ILLUSTRATED RECORDS\" big picture strip — above a release group's releases, in its Relationships, on a tag's release groups and releases, on an editor's ratings, in a release's Credits — behave like the script's own artwork: a hover shows the artwork card of that release or release group (every image, Space for all of them), a click opens the artwork viewer on the page, Ctrl-click still opens the release (group) page. Until now they only had their plain title."
+        ]
+      }
+    ]
+  }
+]

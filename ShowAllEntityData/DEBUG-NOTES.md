@@ -26878,3 +26878,44 @@ Traps worth keeping:
 The full suite was not run at the merge, on vzell's word (every change
 tested live); the 13 affected spec files (291 passed) and the 27 mutations
 ran on the final code.
+
+## 2026-10-28 — jesus2099's FUNKEY strip: our card and viewer on the IP, never on the FRP
+
+Env: 2026-10-28T21:00:09+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) · Playwright 1.62.1 Chromium (build 1234) · no Tampermonkey (GM stubs). The two snapshots came from vzell's browser (version unknown).
+
+Snapshots: `debug/mb-rg-funky-initial.html` (IP of
+release-group/f83d2211-dd81-4b1e-9a02-e89733891e1c) and
+`debug/mb-rg-funky-final.html` (after "Relationships"). The real script,
+2026.6.5, is in `tests/fixtures/live-userscripts/` (gitignored, registered in the
+manifest as `jesus2099-funkey`).
+
+- **Whose markup.** `div.jesus2099userjs154481bigbox` and the
+  `span.caa-icon.jesus2099userjs154481` anchors belong to "mb. FUNKEY
+  ILLUSTRATED RECORDS" (`let userjs = "jesus2099userjs154481"`). SUPER MIND
+  CONTROL has no `154481` at all. Several older comments in the userscript
+  credit SUPER MIND CONTROL with that markup. Left as they are: the code is
+  right, only the attribution is wrong.
+- **IP.** Two strips: one before the "Single" release table, one under
+  "Relationships". Their images had only the native `title`. The
+  2026-10-17 relationship-icon work (`_artRelIconInfo()`) covered
+  `table.details a[href*="/cover-art"]` only, and the click branch covered
+  only our own `.mb-caa-bigbox`. Fix: `_artJ2BigboxInfo()` as one more branch
+  of the stamp, the card and the click target.
+- **FRP.** A strip sat between our `div.mb-caa-bigbox` and our first
+  relationship `table.tbl`. It listed the TWO release groups of our rendered
+  table, while the IP strip listed one, so it was built from our table. That
+  script makes ONE pass, `setTimeout` 600 ms after document-idle, and no
+  observer. Three triggers put our render first: the second press's reload
+  (`_autoRepressAfterReload()` presses at `setTimeout 0`), a quick manual
+  press, and a disk load. `performClutterCleanup()` removes strips once, and
+  `_watchForLateJesus2099Injections()` runs on the snapshot-handoff path only.
+  Fix: `_watchForLateFunkeyBigbox()`, armed after both
+  `performClutterCleanup()` calls. It checks only the added node itself, is
+  spent after its first removal batch, and stops after 10 s at most. Besides
+  the double strip, a late strip also breaks every h3 → table walk that skips
+  only our own bigboxes.
+- Tests: `tests/fixtures/funkey-bigbox.spec.js` (9) with the simulator
+  `tests/fixtures/thirdPartyScripts/funkey-bigbox.js`, all passing. The
+  mutation list `scripts/mutations/funkey-bigbox.json` has 9 entries, all
+  failing as expected. Regression set rel-icons / bigbox-tooltip /
+  image-card-space / caa-column-redesign / reload-auto-repress: 44 passed.
