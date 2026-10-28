@@ -19,7 +19,8 @@ No version bump on the branch; track the work in
 - [X] Step 3 — Discogs: release window, master window, release page sub-table (2026-10-28, WIP.3;
   discogs.com's real frame-src still to be read in vzell's browser, see the probe section)
 - [X] Step 4 — Brucebase: the window's Media section, links in its sections, the Live page bug (2026-10-28, WIP.4)
-- [ ] Step 5 — docs, HELP, CHANGELOG (WIP), DEBUG-NOTES, full suite
+- [X] Step 5 — docs, HELP, CHANGELOG (WIP), DEBUG-NOTES, full suite (2026-10-28: 2,424/2,424
+  on NB-3641 at 2c44e1d1, 22 m 54 s); left: vzell's live test, discogs.com's frame-src, the merge
 
 * Mockup (approved design)
 

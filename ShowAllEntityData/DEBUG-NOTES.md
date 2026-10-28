@@ -26751,3 +26751,9 @@ joined `FIXTURE_SETTINGS_OVERRIDE` (now nineteen). Spec
 youtube-embeds.spec.js 25/25; mutations scripts/mutations/youtube-embeds.json
 21/21 fail as planted; nearby suites green per step (MusicBrainz 187,
 Discogs + popups 177, Brucebase + detail 189).
+
+Full suite: Env: 2026-10-28T02:42:55+01:00 → 03:05:49+01:00 · NB-3641 ·
+WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) · Playwright 1.62.1 Chromium · no
+Tampermonkey (GM stubs). `python3 scripts/run-test-full.py` on
+`feature/youtube-embeds` at 2c44e1d1: 2,424 tests, all passed, none flaky,
+wall 22 m 54 s. Nothing merged; vzell's live test comes first.
