@@ -126,6 +126,24 @@ const hashCell = (page, t, r) => page.locator('table.tbl').nth(t).locator('tbody
 const rows = (page) => dialog(page).locator('[data-mb-tbl="rg-releases"] tbody tr');
 
 /**
+ * Waits for the release group window's LAST repaint: its own lookup (type,
+ * first release, artist) may answer after all 150 releases are in, and its
+ * repaint rebuilds the whole Extracted view (`_dpAreaRepaint()`), so a cover
+ * found before it is detached by the time it is hovered. Measured
+ * 2026-10-28 on NB-3641: one such repaint 26–457 ms after the 150th row in
+ * 13 of 14 parallel runs, "◌ Loading the release group…" → its facts every
+ * time; a hovered cover was detached under `scrollIntoViewIfNeeded()` in 5
+ * of 24.
+ *
+ * @param {import('@playwright/test').Page} page
+ * @returns {Promise<void>}
+ */
+async function groupLoaded(page) {
+    await expect(dialog(page).locator('.mb-dp-area')).not.toContainText('Loading the release group');
+    await expect(dialog(page).locator('.mb-dp-area')).toContainText('First release');
+}
+
+/**
  * Hovers the subheader link with a plain pointer and pins its card.
  *
  * @param {import('@playwright/test').Page} page
@@ -214,6 +232,7 @@ test.describe('the release-group popup on the popup engine (org/iframe.org Phase
         });
         await pinLink(page);
         await expect(rows(page)).toHaveCount(150, { timeout: 20000 });
+        await groupLoaded(page);
         const row = rows(page).filter({ has: page.locator('td:first-child a.mb-pop-cover-thumb') }).first();
         const thumb = row.locator('td:first-child a.mb-pop-cover-thumb');
         const title = (await row.locator('td:nth-child(2) a').first().textContent()).trim();
@@ -231,6 +250,16 @@ test.describe('the release-group popup on the popup engine (org/iframe.org Phase
 
         const viewer = page.locator('#mb-art-viewer');
         const winTitle = dialog(page).locator(':scope > div > span').first();
+        // An answer may repaint the window while the pointer rests on the
+        // cover: put one there on purpose. The hovered image is then a
+        // detached copy; Space must still open THIS release's covers. It
+        // does because Chromium sends a new mouseover for the node now under
+        // a resting pointer about one frame after the DOM changed (probed
+        // 2026-10-28, NB-3641: 19–22 ms, 4 of 4 runs), which
+        // `_initStatTooltip()`'s mouseover listener takes.
+        const hovered = await thumb.elementHandle();
+        expect(await page.evaluate(() => window.__saTest.dpRepaint())).toBe(true);
+        expect(await hovered.evaluate(el => el.isConnected), 'the repaint replaced the hovered cover').toBe(false);
         await page.keyboard.press('Space');
         await expect(viewer).toBeVisible();
         await expect(viewer.locator('.mb-artv-title')).toHaveText(`${title} — cover art`);
@@ -281,11 +310,27 @@ test.describe('the release-group popup on the popup engine (org/iframe.org Phase
         // from a fallback font that arrives later, and a header that grew
         // then moved the rows under the pointer (the covers test above
         // failed about one run in five before this, 2026-10-26).
-        const box = await dialog(page).locator('th[data-mb-tbl-sort="country"]').evaluate((b) => {
+        // The header is found INSIDE the one page call that reads its style,
+        // from the dialog (which no repaint replaces), and read again until
+        // that read lands on a header in the page: the window repaints its
+        // HTML as answers arrive, and a header resolved by a locator before
+        // such a repaint is detached by the time its style is read — and a
+        // detached element's computed style is all empty strings. That is
+        // how this failed once in a full run on main (2026-10-28, NB-3641:
+        // content "" instead of ⇅; scratch probe: a live header reads " ⇅",
+        // the same one detached reads "", display ""). A glyph that is
+        // really missing still fails, when the poll times out.
+        const readBox = () => dialog(page).evaluate((d) => {
+            const b = d.querySelector('th[data-mb-tbl-sort="country"]');
+            if (!b || !b.isConnected) return null;
             const cs = getComputedStyle(b, '::after');
             return { display: cs.display, width: parseFloat(cs.width), em: parseFloat(cs.fontSize), lh: cs.lineHeight, glyph: cs.content };
         });
-        expect(box.glyph).toContain('⇅');
+        let box = null;
+        await expect.poll(async () => {
+            box = await readBox();
+            return box ? box.glyph : '';
+        }).toContain('⇅');
         expect(box.display).toBe('inline-block');
         expect(box.width).toBeCloseTo(box.em * 1.4, 1);
         expect(box.lh).toBe(`${box.em}px`);

@@ -152930,6 +152930,19 @@ a { color: #1565c0; }`;
              */
             ytDecorateMbPage: () => _ytDecorateMbPage(),
             /**
+             * One repaint of the pinned window's Extracted view
+             * (`_dpDialog.repaint`, the shipping one an arriving answer
+             * calls), so a spec can put a repaint exactly where an answer
+             * may land: between a hover and the key that follows it.
+             *
+             * @returns {boolean} Whether there was a window to repaint.
+             */
+            dpRepaint: () => {
+                if (!_dpDialog.repaint) return false;
+                _dpDialog.repaint();
+                return true;
+            },
+            /**
              * The key of the video that plays (`_ytCur()`), or null.
              *
              * @returns {?string}

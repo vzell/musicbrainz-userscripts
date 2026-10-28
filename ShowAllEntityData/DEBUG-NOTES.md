@@ -26757,3 +26757,48 @@ WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) · Playwright 1.62.1 Chromium · no
 Tampermonkey (GM stubs). `python3 scripts/run-test-full.py` on
 `feature/youtube-embeds` at 2c44e1d1: 2,424 tests, all passed, none flaky,
 wall 22 m 54 s. Nothing merged; vzell's live test comes first.
+
+## 2026-10-28 — release-rg-popup.spec.js: two flaky tests, both a late window repaint
+
+Env: 2026-10-28T13:30+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) · Playwright 1.62.1 Chromium 151.0.7922.34 · no Tampermonkey (GM stubs)
+
+The merge-time full suite of feature/youtube-embeds on main (5ad0ee7f,
+12:05 CET) failed 1 of 2,425: "the window sorts by a header, empty dates
+last both ways" read the Country header's `::after` `content` as "" instead
+of ⇅. Not the branch's code (its next full run, 6a4cd8af, was 2,425/2,425).
+Stressing the spec (`--repeat-each=8 --workers=14`) then showed a second,
+more frequent flake in the same file: "the window's covers … the group's
+cover too", 2 of 8, Space not opening the viewer or (in an instrumented copy)
+the hovered cover "not attached to the DOM" under `scrollIntoViewIfNeeded()`,
+5 of 24.
+
+Both are the same cause, measured in scratch copies of the spec:
+- After all 150 rows are in, the window repaints ONCE more (13 of 14 runs,
+  26–457 ms later): the release group's own lookup arriving, "◌ Loading the
+  release group…" → Type / First release / Artist. `_dpAreaRepaint()`
+  replaces the whole view, so any element a test resolved before it is
+  detached.
+- A detached element's computed style is all empty strings (probe: a live
+  header's `::after` reads `" ⇅"`, the same one detached `""`, display
+  `""`) — the sort test's failure exactly: `locator.evaluate()` resolves the
+  element and evaluates in two steps, and a repaint can fall between them.
+
+Fixes, test only:
+- the sort test finds the header INSIDE the one page call that reads its
+  style, from the dialog (never replaced), polled until the read lands on a
+  connected header;
+- the covers test waits for the group's lookup (`groupLoaded()`: no
+  "Loading the release group", "First release" shown) before it touches a
+  cover — a semantic wait; a 400 ms "no repaint" window was tried first and
+  still lost 2 of 88, since the repaint can come later than that.
+
+Also tried and REVERTED: re-resolving `_onImageSpace()`'s trigger from the
+pointer's position when the remembered image is detached. Its mutation
+passed: Chromium sends a fresh mouseover for the node under a resting
+pointer ~20 ms after the DOM changes (probe: 19–22 ms, 4 of 4), so the
+stale trigger lives one frame and the script needs no fix. The covers test
+keeps a forced repaint between hover and Space (`__saTest.dpRepaint()`) as
+coverage of that path.
+
+Result: `--repeat-each=12 --workers=14` of release-rg-popup (desktop +
+mobile) 144/144, against 2 of 88 failing before.
