@@ -219,5 +219,57 @@
         "spec": "tests/fixtures/youtube-embeds.spec.js",
         "grep": "the release page: a Videos sub-table",
         "expect": "fail"
+    },
+    {
+        "name": "the Live page builds watch?v=videoseries again",
+        "why": "Step 4's bug: a playlist player must become playlist?list=<list>, never a video named videoseries.",
+        "edits": [
+            {
+                "find": "                a.href = yt ? _ytWatchUrl(yt) : src;",
+                "replace": "                a.href = yt ? `https://www.youtube.com/watch?v=${yt.id || 'videoseries'}` : src;"
+            }
+        ],
+        "spec": "tests/fixtures/detail-preview.spec.js",
+        "grep": "the Live page view's copy",
+        "expect": "fail"
+    },
+    {
+        "name": "a Brucebase entry has no Media section",
+        "why": "Step 4: the Media tab's players become a section of links in the window.",
+        "edits": [
+            {
+                "find": "                if (media) data.sections.push(media);",
+                "replace": "                if (false) data.sections.push(media);"
+            }
+        ],
+        "spec": "tests/fixtures/youtube-embeds.spec.js",
+        "grep": "the reader: a Media section",
+        "expect": "fail"
+    },
+    {
+        "name": "a Media tab that is only a player counts as empty",
+        "why": "has() judged a panel by its text, so an iframe-only Media tab was left out of 'On the page'.",
+        "edits": [
+            {
+                "find": "            return (!!t && !/^Sorry,? no\\b.*\\bavailable\\.?$/i.test(t)) || !!(panel && panel.querySelector('iframe[src*=\"youtube\"]'));",
+                "replace": "            return !!t && !/^Sorry,? no\\b.*\\bavailable\\.?$/i.test(t);"
+            }
+        ],
+        "spec": "tests/fixtures/youtube-embeds.spec.js",
+        "grep": "the reader: a Media section",
+        "expect": "fail"
+    },
+    {
+        "name": "the detail window's sections get no tiles",
+        "why": "The tiles are added at render (the cached record has none), only for a record marked ytTiles.",
+        "edits": [
+            {
+                "find": "            const html = s.html && data.ytTiles ? _ytDecorateHtml(s.html) : s.html;",
+                "replace": "            const html = s.html;"
+            }
+        ],
+        "spec": "tests/fixtures/youtube-embeds.spec.js",
+        "grep": "the window: a tile after the Media playlist",
+        "expect": "fail"
     }
 ]

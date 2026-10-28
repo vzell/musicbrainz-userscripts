@@ -78,6 +78,9 @@ const DETAIL_HOSTS = {
                 '/gig:1985-01-04-roads-coliseum-hampton-va': 'detail-bb-gig-1985-01-04.html',
                 '/gig:1985-01-07-market-square-arena-indianapolis-in': 'detail-bb-gig-1985-01-07.html',
                 '/gig:1985-01-13-carolina-coliseum-columbia-sc': 'detail-bb-gig-1985-01-13.html',
+                // org/youtube.org Step 4: a Media tab that is one YouTube
+                // playlist (scripts/build-bb-youtube-gig-fixture.py).
+                '/gig:2026-10-03-merriweather-post-pavilion-columbia-md': 'detail-bb-gig-2026-10-03.html',
                 '/venue:carolina-coliseum-columbia-sc': 'detail-bb-venue-carolina-coliseum.html',
                 '/venue:market-square-arena-indianapolis-in': 'detail-bb-venue-market-square-arena.html',
                 '/venue:paramount-theatre-asbury-park-nj': 'detail-bb-venue-paramount-theatre.html',

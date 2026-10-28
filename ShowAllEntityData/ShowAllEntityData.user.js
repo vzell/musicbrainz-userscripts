@@ -21333,9 +21333,13 @@
      *    (`_dpParseBbVenue()`), its photos (`venue:`) are of kind Photo, and
      *    an entry page names its venue's page (`venueUrl`), which the Venue
      *    column's preview reads through it.
+     * 8: a Brucebase entry page has a Media section (`_bbMediaSection()`:
+     *    its YouTube players as links; a Media tab that is only a player
+     *    counts as content), and the record is `ytTiles`, so the window puts
+     *    a "Play here" tile after each YouTube link (org/youtube.org, Step 4).
      * @type {number}
      */
-    const _DP_PARSER_VERSION = 7;
+    const _DP_PARSER_VERSION = 8;
 
     /**
      * IndexedDB database of parsed detail pages. Deliberately NOT a store in
@@ -22289,7 +22293,9 @@
         const tab = (name) => panels[labels.indexOf(name)] || null;
         const has = (panel) => {
             const t = panel ? _dpText(panel.textContent) : '';
-            return !!t && !/^Sorry,? no\b.*\bavailable\.?$/i.test(t);
+            // A Media tab may be nothing but an embedded YouTube player
+            // (debug/bb-event-youtube.html): that is content too.
+            return (!!t && !/^Sorry,? no\b.*\bavailable\.?$/i.test(t)) || !!(panel && panel.querySelector('iframe[src*="youtube"]'));
         };
         const stage = tab('On Stage');
         const onStage = stage ? _bbOnStageText(stage) : '';
@@ -22319,14 +22325,57 @@
         const filled = labels.filter((l, i) => has(panels[i]));
         if (filled.length) data.fields.push(['On the page', filled.join(' · ')]);
         if (onStage) data.sections.unshift({ label: 'On stage', text: _dpBlockText(stage), html: _dpBlockHtml(stage, url) });
-        ['Performances', 'Recording', 'Storyteller', 'Eyewitness', 'News/Memorabilia'].forEach(name => {
+        // Media in the page's own order, between Performances and Recording.
+        ['Performances', 'Media', 'Recording', 'Storyteller', 'Eyewitness', 'News/Memorabilia'].forEach(name => {
             const panel = tab(name);
+            if (name === 'Media') {
+                const media = panel ? _bbMediaSection(panel, url) : null;
+                if (media) data.sections.push(media);
+                return;
+            }
             const text = has(panel) ? _dpBlockText(panel) : '';
             if (text) data.sections.push({ label: name, text, html: _dpBlockHtml(panel, url) });
         });
         data.collapsible = true;
         data.imagesByKind = true;
+        // The window adds a "Play here" tile after each YouTube link of the
+        // sections (`_dpExtractedCols()`, org/youtube.org); as a flag, so the
+        // cached record does not depend on the setting.
+        data.ytTiles = true;
         return data;
+    }
+
+    /**
+     * An entry page's Media tab as a section of the window (org/youtube.org,
+     * Step 4): each embedded YouTube player (an `<iframe>`, which the window
+     * never shows) becomes a link to the video or playlist on YouTube, and the
+     * tab's own words and links follow (`_dpBlockHtml()`). The window puts a
+     * "Play here" tile after each link. Null for a tab with neither ("Sorry,
+     * no Media available.").
+     *
+     * @param {Element} panel - The Media tab's panel.
+     * @param {string} url - The page's URL.
+     * @returns {?{label: string, text: string, html: string}}
+     */
+    function _bbMediaSection(panel, url) {
+        const seen = new Set();
+        const items = [];
+        panel.querySelectorAll('iframe[src]').forEach(fr => {
+            const v = _ytParse(_dpAbsUrl(fr.getAttribute('src'), url));
+            if (!v || seen.has(_ytKey(v))) return;
+            seen.add(_ytKey(v));
+            items.push({ v, label: v.kind === 'playlist' ? 'YouTube playlist' : 'YouTube video' });
+        });
+        const t = _dpText(panel.textContent);
+        const textual = !!t && !/^Sorry,? no\b.*\bavailable\.?$/i.test(t);
+        if (!items.length && !textual) return null;
+        const lines = items.map(x => ({ href: _ytWatchUrl(x.v), label: x.label }));
+        return {
+            label: 'Media',
+            text: lines.map(x => `${x.label}: ${x.href}`).concat(textual ? [_dpBlockText(panel)] : []).join('\n'),
+            html: lines.map(x => `<div><a href="${_mbttEscape(x.href)}" target="_blank" rel="noopener">${_mbttEscape(x.label)}</a></div>`).join('') +
+                (textual ? _dpBlockHtml(panel, url) : ''),
+        };
     }
 
     /**
@@ -23799,7 +23848,9 @@
             }
         }
         data.sections.forEach(s => {
-            const body = `<div class="mb-dp-section">${s.html || _mbttEscape(s.text)}</div>`;
+            // A Brucebase entry's sections: a "Play here" tile after each YouTube link (org/youtube.org).
+            const html = s.html && data.ytTiles ? _ytDecorateHtml(s.html) : s.html;
+            const body = `<div class="mb-dp-section">${html || _mbttEscape(s.text)}</div>`;
             if (!data.collapsible) {
                 right.push(`<h4>${_mbttEscape(s.label)}</h4>${body}`);
                 return;
@@ -23898,12 +23949,16 @@
         });
         doc.querySelectorAll('iframe').forEach(fr => {
             const src = _dpAbsUrl(fr.getAttribute('src'), url);
-            const yt = src.match(/^https?:\/\/(?:www\.)?youtube(?:-nocookie)?\.com\/embed\/([\w-]+)/);
+            // A playlist's player (`embed/videoseries?list=…`, Brucebase's
+            // Media tab and its 4th of July song page) is the playlist, never
+            // a video named "videoseries" (org/youtube.org Step 4: the old
+            // pattern built `watch?v=videoseries`).
+            const yt = _ytParse(src);
             const p = doc.createElement('p');
             p.className = 'mb-dp-embed';
             if (src) {
                 const a = doc.createElement('a');
-                a.href = yt ? `https://www.youtube.com/watch?v=${yt[1]}` : src;
+                a.href = yt ? _ytWatchUrl(yt) : src;
                 a.textContent = yt ? '▶ Watch on YouTube' : '▶ Open the embedded page';
                 p.appendChild(a);
             }
@@ -61140,12 +61195,50 @@
             if (next && next.matches('.mb-yt-tile') && next.dataset.mbYt === _ytKey(v)) return;
             const words = a.textContent.trim();
             const address = /^(?:https?:)?\/\/|^(?:www\.|m\.)?(?:youtu\.be|youtube\.com)\//i.test(words);
-            const tile = _ytTileNode(v, { title: address ? '' : words, small: opts.small });
+            const tile = _ytTileNode(v, { title: address ? '' : words, small: opts.small, dead: _ytKnownDead(a.getAttribute('href')) });
             if (!tile) return;
             at.after(tile);
             n++;
         });
         return n;
+    }
+
+    /**
+     * Whether the YouTube reader already knows a link to be gone — its
+     * oEmbed answered 400/401/403/404 for this page load (a card or window
+     * of the link was shown): then its tile is drawn as Unavailable and a
+     * click asks nothing (the mockup's Brucebase "Audience video"). Never a
+     * request of its own.
+     *
+     * @param {string} href - As written (protocol-relative read as https,
+     *        as `_extTarget()` keys it).
+     * @returns {boolean}
+     */
+    function _ytKnownDead(href) {
+        let u;
+        try {
+            u = new URL(/^\/\/[^/]/.test(href || '') ? `https:${href}` : href);
+        } catch (_) {
+            return false;
+        }
+        const st = _mbPop.get(`ext:youtube:${u.href}`);
+        return !!(st && st.status === 'done' && st.data && st.data.state === 'dead');
+    }
+
+    /**
+     * A tile after every YouTube link of a piece of HTML (`_ytDecorateLinks()`
+     * on a parsed copy): a detail window's section, whose HTML the parser
+     * cached without tiles, so the setting decides at each render. The HTML
+     * as it was with `sa_yt_play_in_place` off or no YouTube link in it.
+     *
+     * @param {string} html
+     * @returns {string}
+     */
+    function _ytDecorateHtml(html) {
+        if (!html || !_ytOn() || !/youtu/i.test(html)) return html;
+        const t = document.createElement('template');
+        t.innerHTML = html;
+        return _ytDecorateLinks(t.content) ? t.innerHTML : html;
     }
 
     /**

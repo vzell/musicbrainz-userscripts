@@ -1,5 +1,23 @@
 [
     {
+        "version": "WIP.4",
+        "date": "2026-10-28",
+        "sections": [
+            {
+                "label": "🚀 Feature",
+                "items": [
+                    "YouTube in place on Brucebase (WIP.1's tile): a show's window (an Event link's preview, Space) gets a Media section from the page's Media tab — its embedded YouTube player as a link to the video or playlist, with a \"Play here\" tile that plays it in the section — and a tile after every YouTube link in the other sections (the Recording tab's audience video, for one). A Media tab that is only a player now counts in the card's \"On the page\". Cached show pages are read again once."
+                ]
+            },
+            {
+                "label": "🐛 Fix",
+                "items": [
+                    "A detail window's Live page turned an embedded YouTube PLAYLIST (Brucebase's Media tab, its 4th of July song page) into a broken \"watch?v=videoseries\" link; it now links the playlist."
+                ]
+            }
+        ]
+    },
+    {
         "version": "WIP.3",
         "date": "2026-10-28",
         "sections": [

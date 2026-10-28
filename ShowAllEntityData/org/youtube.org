@@ -18,7 +18,7 @@ No version bump on the branch; track the work in
 - [X] Step 2 — MusicBrainz: URLs sub-table, sidebar, annotations (2026-10-28, WIP.2)
 - [X] Step 3 — Discogs: release window, master window, release page sub-table (2026-10-28, WIP.3;
   discogs.com's real frame-src still to be read in vzell's browser, see the probe section)
-- [ ] Step 4 — Brucebase: the window's Media section, links in its sections, the Live page bug
+- [X] Step 4 — Brucebase: the window's Media section, links in its sections, the Live page bug (2026-10-28, WIP.4)
 - [ ] Step 5 — docs, HELP, CHANGELOG (WIP), DEBUG-NOTES, full suite
 
 * Mockup (approved design)

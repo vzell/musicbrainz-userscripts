@@ -201,6 +201,14 @@ test.describe('detail-page parsers (one record per saved page)', () => {
         expect(sl.bases).toEqual([['https://www.springsteenlyrics.com/lyrics.php?song=badlands', null]]);
         expect(sl.text).toContain('Song text');
 
+        // A playlist's player (Brucebase's Media tab, its 4th of July song
+        // page): the playlist on YouTube, never `watch?v=videoseries`
+        // (org/youtube.org Step 4).
+        const media = await clean('<!DOCTYPE html><html><head></head><body>' +
+            '<iframe src="https://www.youtube.com/embed/videoseries?si=1gd8SSo8gw0nAhYn&amp;list=PLTejJhB5zqTA"></iframe></body></html>',
+        'https://brucebase.wikidot.com/gig:2026-10-03-merriweather-post-pavilion-columbia-md');
+        expect(media.links).toEqual([['▶ Watch on YouTube', 'https://www.youtube.com/playlist?list=PLTejJhB5zqTA']]);
+
         // A jungleland.it-like page: no doctype (quirks mode stays), its own
         // <base target> keeps its target and gains the page's address.
         const jl = await clean('<html><head><title>Artwork</title><base target="_self"></head><body><b>Title: X</b></body></html>',

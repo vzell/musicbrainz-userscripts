@@ -724,3 +724,105 @@ test.describe('YouTube in place — Step 3: Discogs', () => {
         expect(errors).toEqual([]);
     });
 });
+
+// ---------------------------------------------------------------------------
+// Step 4 — Brucebase: the entry window's Media section (`_bbMediaSection()`),
+// tiles after the YouTube links of its sections (`data.ytTiles`, decorated at
+// render by `_ytDecorateHtml()`), and the Live page's `videoseries` link (in
+// detail-preview.spec.js, beside the embed → link pins).
+//
+// Page: tests/fixtures/detail-bb-gig-2026-10-03.html
+// (scripts/build-bb-youtube-gig-fixture.py from debug/bb-event-youtube.html):
+// the Media tab is one playlist player, the Recording tab links MLnTqKksftM.
+// ---------------------------------------------------------------------------
+
+const { loadBbYearPage, BB_YEAR_BUTTON } = require('../support/bbFixture');
+const { routeDetailPages } = require('../support/detailFixture');
+const GIG_YT = 'https://brucebase.wikidot.com/gig:2026-10-03-merriweather-post-pavilion-columbia-md';
+
+test.describe('YouTube in place — Step 4: Brucebase', () => {
+    test('the reader: a Media section from the playlist player, Media counted on the page, the record marked for tiles', async ({ page }) => {
+        await loadBbYearPage(page, '2026');
+        const html = fs.readFileSync(path.join(__dirname, 'detail-bb-gig-2026-10-03.html'), 'utf8');
+        const rec = await page.evaluate(([h, u]) => window.__saTest.dpParse('brucebase.wikidot.com', h, u), [html, GIG_YT]);
+        const labels = rec.sections.map(s => s.label);
+        expect(labels).toContain('Media');
+        const at = (l) => labels.indexOf(l);
+        expect(at('Recording'), 'the fixture\'s Recording tab has its text').toBeGreaterThan(-1);
+        expect(at('Media'), 'the page\'s own order').toBeLessThan(at('Recording'));
+        const media = rec.sections.find(s => s.label === 'Media');
+        expect(media.html).toContain('href="https://www.youtube.com/playlist?list=PLTejJhB5zqTA"');
+        expect(media.html, 'never a video named videoseries').not.toContain('videoseries');
+        expect(media.html, 'the player itself is never in the window').not.toContain('<iframe');
+        expect(Object.fromEntries(rec.fields)['On the page'].split(' · '), 'a tab that is only a player is content').toContain('Media');
+        expect(rec.ytTiles).toBe(true);
+        expect(rec.sections.map(s => s.html).join(''), 'the cached record carries no tile').not.toContain('mb-yt-tile');
+    });
+
+    test('the window: a tile after the Media playlist and after the Recording link; the playlist plays in the section', async ({ page }) => {
+        const errors = [];
+        page.on('pageerror', (e) => errors.push(String(e.stack || e.message || e)));
+        await loadBbYearPage(page, '2026', {
+            settingsOverride: { sa_render_threshold: 100000, sa_yt_play_in_place: true, sa_yt_stills: false, sa_rich_tooltip_delay_ms: 0 },
+        });
+        await routeDetailPages(page, 'bb');
+        await page.route(/^https:\/\/brucebase\.wdfiles\.com\//, (route) => route.fulfill({ status: 200, contentType: 'image/png', body: PNG }));
+        const player = [];
+        await page.route('https://www.youtube-nocookie.com/**', (route) => {
+            player.push(route.request().url());
+            return route.fulfill({ status: 200, contentType: 'text/html', body: '<!doctype html><title>player</title>' });
+        });
+        await page.click(`button[data-label="${BB_YEAR_BUTTON}"]`);
+        await waitForRenderComplete(page, { waitForAutoResize: false });
+        const link = page.locator(`table.tbl tbody a.mb-bb-event-link[href="${GIG_YT}"]`).first();
+        await page.mouse.move(0, 0);
+        await link.scrollIntoViewIfNeeded();
+        await page.keyboard.down('Control');
+        await link.hover();
+        await page.keyboard.up('Control');
+        await expect(page.locator('#mb-dp-peek')).toContainText('Merriweather Post Pavilion');
+        await page.keyboard.press('Space');
+        const d = page.locator('#mb-dp-dialog');
+        const media = d.locator('details.mb-dp-sec[data-mb-dp-sec="Media"]');
+        await expect(media).toHaveCount(1);
+        if (!await media.evaluate(x => x.open)) await media.locator('summary').click();
+        const listTile = media.locator('.mb-yt-tile');
+        await expect(listTile).toHaveCount(1);
+        await expect(listTile).toHaveAttribute('data-mb-yt', 'list:PLTejJhB5zqTA');
+        await expect(listTile).toContainText('Play the playlist here');
+        const rec = d.locator('details.mb-dp-sec[data-mb-dp-sec="Recording"]');
+        await expect(rec.locator('.mb-yt-tile[data-mb-yt="MLnTqKksftM"]')).toHaveCount(1);
+        // Not a video: the wiki's YouTube channel and a news article about YouTube get none.
+        await expect(d.locator('.mb-yt-tile')).toHaveCount(2);
+        expect(player, 'nothing asked before a click').toEqual([]);
+
+        await listTile.click();
+        await expect(media.locator('.mb-yt-under iframe.mb-yt-frame'))
+            .toHaveAttribute('src', 'https://www.youtube-nocookie.com/embed/videoseries?list=PLTejJhB5zqTA&autoplay=1');
+        await expect.poll(() => player.length).toBe(1);
+        // Esc: the player first, the window stays.
+        await page.keyboard.press('Escape');
+        await expect(d.locator('.mb-yt-player')).toHaveCount(0);
+        await expect(d).toBeVisible();
+        expect(errors).toEqual([]);
+    });
+
+    test('off: the window\'s sections carry no tile; the Media section is there all the same', async ({ page }) => {
+        await loadBbYearPage(page, '2026', { settingsOverride: { sa_render_threshold: 100000, sa_rich_tooltip_delay_ms: 0 } });
+        await routeDetailPages(page, 'bb');
+        await page.route(/^https:\/\/brucebase\.wdfiles\.com\//, (route) => route.fulfill({ status: 200, contentType: 'image/png', body: PNG }));
+        await page.click(`button[data-label="${BB_YEAR_BUTTON}"]`);
+        await waitForRenderComplete(page, { waitForAutoResize: false });
+        const link = page.locator(`table.tbl tbody a.mb-bb-event-link[href="${GIG_YT}"]`).first();
+        await page.mouse.move(0, 0);
+        await link.scrollIntoViewIfNeeded();
+        await page.keyboard.down('Control');
+        await link.hover();
+        await page.keyboard.up('Control');
+        await expect(page.locator('#mb-dp-peek')).toContainText('Merriweather Post Pavilion');
+        await page.keyboard.press('Space');
+        const d = page.locator('#mb-dp-dialog');
+        await expect(d.locator('details.mb-dp-sec[data-mb-dp-sec="Media"]')).toHaveCount(1);
+        await expect(d.locator('.mb-yt-tile')).toHaveCount(0);
+    });
+});
