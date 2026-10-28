@@ -857,5 +857,109 @@
         "spec": "tests/fixtures/popup-mb.spec.js",
         "grep": "keeps the link.s own new tab",
         "expect": "fail"
+    },
+    {
+        "name": "the h1's entity icon gets no documentation link",
+        "why": "vzell 2026-10-28: the icon before a MusicBrainz page's h1 shows its kind's documentation, as the glyph in the window's path does (_h1KindDocInstall()).",
+        "edits": [
+            {
+                "find": "        _ensureDetailPreviewStyle();\n        _h1KindDocInstall();\n",
+                "replace": "        _ensureDetailPreviewStyle();\n"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "over the icon, after the render",
+        "expect": "fail"
+    },
+    {
+        "name": "the h1's header reads as the wrong kind",
+        "why": "A release group's header (div.rgheader) links the Release Group documentation, not another kind's.",
+        "edits": [
+            {
+                "find": "        artistheader: 'artist', rgheader: 'release-group', releaseheader: 'release',",
+                "replace": "        artistheader: 'artist', rgheader: 'release', releaseheader: 'release',"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "over the icon, after the render",
+        "expect": "fail"
+    },
+    {
+        "name": "a click on the h1's entity icon follows the link",
+        "why": "vzell 2026-10-28: a plain click opens the documentation in the window, as Space does; only Ctrl-click leaves the page.",
+        "edits": [
+            {
+                "find": " &&\n                !t.el.classList.contains('mb-h1-kind-doc')) return;",
+                "replace": ") return;"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "over the icon, after the render",
+        "expect": "fail"
+    },
+    {
+        "name": "the h1's entity icon is linked with the MusicBrainz cards off",
+        "why": "Nothing changes on the page while sa_pop_mb is off: the link exists only for the cards.",
+        "edits": [
+            {
+                "find": "        if (_foreignHost || !_popSettingOn('sa_pop_mb') || document.querySelector('a.mb-h1-kind-doc')) return;",
+                "replace": "        if (_foreignHost || document.querySelector('a.mb-h1-kind-doc')) return;"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "no link while the MusicBrainz cards are off",
+        "expect": "fail"
+    },
+    {
+        "name": "sort name: the artist card has no Sort name row",
+        "why": "vzell 2026-10-28 (mockup variant B): the sort name is the artist card's first row, when it is not the name.",
+        "edits": [
+            {
+                "find": "                return head + _mbPopKvHtml([\n                    ['Sort name', _rgEsc(_mbPopSortName(d))],\n                    [d.type === 'Person'",
+                "replace": "                return head + _mbPopKvHtml([\n                    [d.type === 'Person'"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "an artist link.s sort name: the card.s first row",
+        "expect": "fail"
+    },
+    {
+        "name": "sort name: a row even when it is the name",
+        "why": "A sort name that is the name says nothing: no row (and a label's always is its name).",
+        "edits": [
+            {
+                "find": "        return s && s !== d.name ? s : '';",
+                "replace": "        return s || '';"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "a sort name that is the name has no row",
+        "expect": "fail"
+    },
+    {
+        "name": "sort name: the artist/label link title is a box again",
+        "why": "The card shows the sort name and the disambiguation, so MusicBrainz's link title on an artist or label link is no box; a label's was labelled 'Sort name' though it is the disambiguation.",
+        "edits": [
+            {
+                "find": "            if (n === own && sortName) return null;\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "sort name: the card.s first row|label link.s title",
+        "expect": "fail"
+    },
+    {
+        "name": "sort name: every link's own title is dropped",
+        "why": "Only an artist's or label's MusicBrainz title is what the card shows; any other link's own title is still a 'Link title' box.",
+        "edits": [
+            {
+                "find": "            if (n === own && sortName) return null;\n",
+                "replace": "            if (n === own) return null;\n"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "another link.s own title is still",
+        "expect": "fail"
     }
 ]

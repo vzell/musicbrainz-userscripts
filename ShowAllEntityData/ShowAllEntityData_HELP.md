@@ -2591,7 +2591,9 @@ userscript lists that host, so Tampermonkey does not ask first).
   none covering the card or each other: the cell's warnings first (*Pending
   edits*, *Track name differs from recording name*, *This recording is not
   linked to any work*, …), then the link's own notes (the track/recording
-  names above, an artist's or label's **Sort name**). Like the card, each box
+  names above, another script's or a page's hover text). An artist's **sort
+  name** is no box: it is the first line of the artist card itself, when it
+  differs from the name. Like the card, each box
   opens with a small header saying what it is (*Finding*, *Note*, *Track ≠
   recording*, *Link title*, *Link*, *Filter*) and a thin line under it. Neither the browser's
   own grey tooltip nor the cell's "Liner notes" card appears over the card
@@ -2626,6 +2628,10 @@ userscript lists that host, so Tampermonkey does not ask first).
     that kind: MusicBrainz's page (its style guide named at the card's
     foot) or Discogs' Database Guidelines. Rest on it for that page's card;
     a click reads it in the window, on discogs.com too.
+  - **The icon before a MusicBrainz page's own title** (the release, release
+    group, artist… icon left of the h1) works the same way: rest on it for
+    the kind's documentation card; a click or Space reads it in the window,
+    Ctrl-click opens it in a new tab.
   - A step reads the name of what it shows. The setting *In the window's
     title, each step of the path reads* (same section) switches it to the
     kind ("Recording"). An editing history, a documentation page or a

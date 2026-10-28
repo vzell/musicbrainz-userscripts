@@ -1,5 +1,35 @@
 [
     {
+        "version": "WIP.3",
+        "date": "2026-10-28",
+        "sections": [
+            {
+                "label": "✨ Improve",
+                "items": [
+                    "Link previews: an artist's sort name is now the first line of the artist card (\"Sort name  Iglesias, Julio\"), when it differs from the name, instead of a separate \"Link title\" box above the card."
+                ]
+            },
+            {
+                "label": "🐛 Fix",
+                "items": [
+                    "Link previews: a label link's box above the card said \"Sort name\" for what is really the label's disambiguation (e.g. Legacy: \"reissue division of Sony Music Entertainment\"). The box is gone; the card already shows the disambiguation under the name."
+                ]
+            }
+        ]
+    },
+    {
+        "version": "WIP.2",
+        "date": "2026-10-28",
+        "sections": [
+            {
+                "label": "🚀 Feature",
+                "items": [
+                    "Link previews: the entity icon before a MusicBrainz page's title (the release, release group, artist… icon left of the h1) now shows that kind's documentation, as the icon before each step of the window's path does. Rest on it for the Documentation card; a click or Space reads the page in the window, Ctrl-click opens it in a new tab. Only while the MusicBrainz link previews are on."
+                ]
+            }
+        ]
+    },
+    {
         "version": "WIP.1",
         "date": "2026-10-28",
         "sections": [

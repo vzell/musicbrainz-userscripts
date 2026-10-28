@@ -21733,10 +21733,14 @@
                 return { kind: 'tip', html: _tipTextToHtml(text, n, { noOrigin: hasOrigin }), label: n.dataset.mbFindingTip ? 'Finding' : 'Note' };
             }
             if (n === own && squash(text) === squash(n.textContent)) return null;
+            // An artist's or label's own link title is MusicBrainz's: the
+            // artist's sort name and disambiguation ("Iglesias, Julio",
+            // "Hood, William (producer)"), a label's disambiguation (Legacy:
+            // "reissue division of Sony Music Entertainment", shown here as
+            // its "Sort name" until 2026-10-28). The card shows both, the
+            // sort name as its first row, so no box (vzell, mockup variant B).
+            if (n === own && sortName) return null;
             const label = n === own ? 'Link title' : 'Note';
-            if (n === own && sortName) {
-                return { kind: 'title', html: `<dl class="mb-dp-origin-kv"><dt>Sort name</dt><dd>${_mbttEscape(text)}</dd></dl>`, label };
-            }
             return { kind: 'title', html: `<div class="mb-tt-body">${text.split('\n').map(_mbttEscape).join('<br>')}</div>`, label };
         }).filter(Boolean);
         if (own && own.dataset && own.dataset.mbtt) notes.push({ kind: 'tip', html: own.dataset.mbtt, label: 'Link' });
@@ -23625,6 +23629,52 @@
         const m = reader === 'discogs' && u ? _EXT_DISCOGS_PATH_RE.exec(u.pathname) : null;
         const g = m ? _DG_KIND_GLYPHS[m[1].toLowerCase()] : (reader === 'dguser' ? _DG_KIND_GLYPHS.user : null);
         return g ? { emo: g.emo, doc: g.doc, see: g.see || '' } : { mark: true, doc: _DG_GUIDELINES_URL, see: '' };
+    }
+
+    /**
+     * MusicBrainz's entity header classes (`div.<kind>header` around the
+     * h1, whose 32px icon is a CSS background in its left padding) and the
+     * kind each stands for in `_MB_KIND_DOCS`.
+     * @type {Object<string, string>}
+     */
+    const _MB_HEADER_KINDS = {
+        artistheader: 'artist', rgheader: 'release-group', releaseheader: 'release', recordingheader: 'recording',
+        workheader: 'work', labelheader: 'label', areaheader: 'area', placeheader: 'place', eventheader: 'event',
+        seriesheader: 'series', instrumentheader: 'instrument', genreheader: 'genre', collectionheader: 'collection',
+    };
+
+    /**
+     * Makes the entity icon before a MusicBrainz page's h1 a documentation
+     * link, as the glyph before a kind is in the window's path (vzell
+     * 2026-10-28): hovering it shows the kind's Documentation card, Space or
+     * a click opens the page in the window, Ctrl-click in a new tab. The
+     * icon is MusicBrainz's CSS background, not an element, so an empty
+     * `a.mb-h1-kind-doc` is laid over it, stamped `data-mb-pop="doc:<page>"`
+     * so the entity cards resolve it whatever `sa_pop_mb_page` says. No
+     * `title`: it would become a "Link title" note. Once per page, only
+     * while the MusicBrainz cards are on; the header is never re-rendered,
+     * so the link outlives the render.
+     *
+     * @returns {void}
+     */
+    function _h1KindDocInstall() {
+        if (_foreignHost || !_popSettingOn('sa_pop_mb') || document.querySelector('a.mb-h1-kind-doc')) return;
+        const sel = Object.keys(_MB_HEADER_KINDS).map(c => `#content div.${c}`).join(', ');
+        const head = document.querySelector(sel);
+        if (!head) return;
+        const cls = Object.keys(_MB_HEADER_KINDS).find(c => head.classList.contains(c));
+        const d = _MB_KIND_DOCS[_MB_HEADER_KINDS[cls]];
+        if (!d) return;
+        const name = d.page.replace(/_/g, ' ');
+        const a = document.createElement('a');
+        a.className = 'mb-h1-kind-doc';
+        a.href = `/doc/${d.page}`;
+        a.setAttribute('data-mb-pop', `doc:${d.page}`);
+        a.setAttribute('data-mb-pop-name', name);
+        a.setAttribute('aria-label', `${name} documentation`);
+        head.classList.add('mb-h1-kind-doc-host');
+        head.prepend(a);
+        Lib.debug('detail', `Entity icon of the h1 links the ${name} documentation.`);
     }
 
     /**
@@ -27803,6 +27853,21 @@
                 max-width: 420px;
                 pointer-events: none;
             }
+            /* The h1's entity icon as a documentation link (_h1KindDocInstall()):
+               an empty link over MusicBrainz's 32px background icon. :where()
+               keeps the host's position below a sticky head's (.mb-vsb-head). */
+            :where(.mb-h1-kind-doc-host) {
+                position: relative;
+            }
+            a.mb-h1-kind-doc {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 32px;
+                height: 32px;
+                cursor: help;
+                z-index: 1;
+            }
             /* The stack of notes above the card (_dpCollectNotes()): the
                cell's own tip, then the link's titles; one box each, with a
                left rule per kind. The track/recording note (#mb-dp-origin)
@@ -28587,6 +28652,7 @@
         _initDetailPreview.done = true;
         _installTouchInputTracker();
         _ensureDetailPreviewStyle();
+        _h1KindDocInstall();
         document.addEventListener('mouseover', (e) => {
             // A link of the window's own Extracted view: what a click on it
             // opens there, or an image's preview (`_dpWinTarget()`).
@@ -28691,7 +28757,10 @@
             if (e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return;
             const t = _popResolve(e.target);
             if (!t) return;
-            if (!_isTouchCompatMouseEvent(e) && !_isTouchPrimaryDevice() && !_dgTableClickOpens(t.el)) return;
+            // A mouse click opens the window only on our discogs.com tables'
+            // links and on the h1's entity icon (`_h1KindDocInstall()`).
+            if (!_isTouchCompatMouseEvent(e) && !_isTouchPrimaryDevice() && !_dgTableClickOpens(t.el) &&
+                !t.el.classList.contains('mb-h1-kind-doc')) return;
             e.preventDefault();
             e.stopPropagation();
             _dpOpenDialog(t);
@@ -54540,6 +54609,19 @@
     }
 
     /**
+     * An artist's or label's sort name for its card, empty when it is the
+     * name itself (a label's always is: MusicBrainz dropped label sort
+     * names, and the Web Service repeats the name).
+     *
+     * @param {Object} d - An artist or label of the Web Service.
+     * @returns {string}
+     */
+    function _mbPopSortName(d) {
+        const s = d && d['sort-name'];
+        return s && s !== d.name ? s : '';
+    }
+
+    /**
      * A kind whose card is one lookup (`cardInc`), rendered by `cardHtml`,
      * and whose window shows the same answer through `windowHtml`, plus
      * whatever `pin(t, d, start, repaint)` starts once the answer is there:
@@ -59649,7 +59731,11 @@
                     `${d.disambiguation ? ` <span class="mb-rg-dim">(${_rgEsc(d.disambiguation)})</span>` : ''}</div>` +
                     `<div class="mb-tt-body mb-rg-pills">${_mbPopPillsHtml([d.type, d.gender && d.gender !== 'Not applicable' ? d.gender : '',
                         _mbPopAreaChainText(d.area) || d.country, _mbPopLifeSpan(d['life-span'])])}</div><div class="mb-tt-rule"></div>`;
+                // The sort name first, when it is not the name (vzell
+                // 2026-10-28, mockup variant B): it was the link's
+                // "Link title" box, which `_dpCollectNotes()` now drops.
                 return head + _mbPopKvHtml([
+                    ['Sort name', _rgEsc(_mbPopSortName(d))],
                     [d.type === 'Person' ? 'Born in' : 'Founded in', _rgEsc(_mbPopAreaChainText(d['begin-area']))],
                     ['Genres', _rgEsc(_mbPopGenres(d.genres))],
                     ['Rating', _rgEsc(_mbPopRating(d.rating))],
@@ -59718,6 +59804,7 @@
                     `<div class="mb-tt-body mb-rg-pills">${_mbPopPillsHtml([d.type, _mbPopLabelCode(d['label-code']),
                         _mbPopAreaChainText(d.area) || d.country, _mbPopLifeSpan(d['life-span'])])}</div><div class="mb-tt-rule"></div>`;
                 return head + _mbPopKvHtml([
+                    ['Sort name', _rgEsc(_mbPopSortName(d))],
                     ['Founded', _rgEsc(ls.begin || '')],
                     ['Defunct', _rgEsc(ls.end || (ls.ended ? 'yes' : ''))],
                     ['Label code', _rgEsc(_mbPopLabelCode(d['label-code']))],

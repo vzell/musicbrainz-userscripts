@@ -561,10 +561,18 @@ floating hover tooltip.
     `_tipTextToHtml()`, exactly as the "Liner notes" card it replaces
     (`.mb-dp-note-tip`, amber rule). A native title is plain text;
   - the link's own title: the "≠" note as `#mb-dp-origin` (below), its own
-    `data-mb-tip` as a tip, else plain text (`.mb-dp-note-title`). On an
-    artist or label target it is MusicBrainz's sort name and is labelled
-    "Sort name". A title that only repeats the link's text (MusicBrainz's on
-    a recording with a disambiguation, debug/expand.html) gets NO box.
+    `data-mb-tip` as a tip, else plain text (`.mb-dp-note-title`). **On an
+    artist or label target it gets NO box since 2026-10-28** (vzell, mockup
+    variant B, https://claude.ai/artifact/BBy3heEk6Ao9k4X1oxAhEy): it is
+    MusicBrainz's — the artist's sort name and disambiguation ("Hood,
+    William (producer)"), a LABEL's disambiguation (MusicBrainz has no label
+    sort names; until then that comment was labelled "Sort name", vzell's
+    Legacy screenshot) — and the card shows both, the sort name as its first
+    `dl.mb-dp-kv` row when it is not the name (`_mbPopSortName()`; the WS/2
+    record always carried `sort-name`, so no inc change and no cache bump:
+    the lookup kinds store the raw answer). It is still parked. A title that
+    only repeats the link's text (MusicBrainz's on a recording with a
+    disambiguation, debug/expand.html) gets NO box either.
   - last, the link's own ready-made card: a `data-mbtt` ON THE LINK (the
     Sidebar cards' links, `_sbLinkTip()`, 2026-10-17), its HTML as is
     (`.mb-dp-note-tip`). Before, that card and the preview showed side by
@@ -1597,6 +1605,21 @@ https://claude.ai/artifact/YCnV4DZA5R4quLAGkmhCpC
   reader and path (`_DG_KIND_GLYPHS`, `_DG_HISTORY_DOCS`, the articles read
   off vzell's saved Database Guidelines page). A card's kind line uses the
   same glyph (`_dpAddKindHead()`, `crumbOf` for a step's card).
+- **The h1's entity icon** (2026-10-28, `_h1KindDocInstall()`): the same
+  documentation card on the page itself. MusicBrainz draws that icon as the
+  32px CSS background of `div.<kind>header` (`debug/mb-icons.css`), so no
+  element can be hovered; an EMPTY `a.mb-h1-kind-doc` is laid over it
+  (absolute, in a `:where(.mb-h1-kind-doc-host)` so a sticky head keeps
+  `position: sticky`), stamped `data-mb-pop="doc:<page>"` — the entity
+  cards' selector has `[data-mb-pop]` in both scopes, so no resolver change
+  and no `sa_pop_mb_page` dependency. No `title` (it would become a "Link
+  title" note), no image inside (artwork to `_mbPopTarget()`). Header class
+  → kind: `_MB_HEADER_KINDS`, then `_MB_KIND_DOCS`. Installed once from
+  `_initDetailPreview()`, only while `sa_pop_mb` (its touch twin on touch)
+  is on; the header div is never re-rendered, so it outlives the render. A
+  plain mouse click opens the window: the click handler's second exception
+  after `_dgTableClickOpens()`. Specs: `popup-mb.spec.js` "the h1's entity
+  icon" (2); mutations in `scripts/mutations/popup-mb.json` (4).
 - **Specs**: `popup-mb.spec.js` "the window's path" (7),
   `popup-ext.spec.js` "names link their Discogs pages" (emoji, articles),
   `discogs-mb-column.spec.js` "Space opens its window" (musicbrainz.org's
