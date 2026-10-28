@@ -4,9 +4,16 @@ Every version, newest first, with the technical details behind each change. For 
 
 **Months:** [October 2026](ShowAllEntityData_CHANGELOG/2026-10.md) · [September 2026](ShowAllEntityData_CHANGELOG/2026-09.md) · [August 2026](ShowAllEntityData_CHANGELOG/2026-08.md) · [July 2026](ShowAllEntityData_CHANGELOG/2026-07.md) · [June 2026](ShowAllEntityData_CHANGELOG/2026-06.md) · [May 2026](ShowAllEntityData_CHANGELOG/2026-05.md) · [April 2026](ShowAllEntityData_CHANGELOG/2026-04.md) · [March 2026 (1 of 2)](ShowAllEntityData_CHANGELOG/2026-03-1.md) · [March 2026 (2 of 2)](ShowAllEntityData_CHANGELOG/2026-03-2.md) · [February 2026](ShowAllEntityData_CHANGELOG/2026-02.md) · [January 2026](ShowAllEntityData_CHANGELOG/2026-01.md)
 
-This page shows the newest 100 of 1661 versions; the month pages hold all of them.
+This page shows the newest 100 of 1662 versions; the month pages hold all of them.
 
 ---
+
+## 9.99.1491 — 2026-10-28
+
+**🐛 Fix**
+
+- With jesus2099's "mb. FUNKEY ILLUSTRATED RECORDS" active, its small cover before each release group name in a list — /tag/&lt;name&gt;'s "Release groups", an editor's ratings — kept its plain title ("N images found in this release"). It now shows the artwork card of that release on a hover and opens the viewer on a click, as the same icon already did in a release group's Relationships section.
+
 
 ## 9.99.1490 — 2026-10-28
 
@@ -871,13 +878,6 @@ This page shows the newest 100 of 1661 versions; the month pages hold all of the
 - CAA/EAA artwork card: press Space while it shows to see every image, not just the first 12 and a "+N" (Space again goes back to 12). The card cannot scroll, so it shrinks its tiles until it fits the window. Space keeps its usual meaning when nothing is cut off, while you type into a field, and while a link preview card shows.
 - CAA/EAA artwork card: hold Shift to draw its tiles bigger (new setting "Tile size in the artwork card while Shift is held", 150 px). This also works when Shift is already down as the pointer reaches the icon, and it combines with Space. The tiles are the thumbnails the card already loads, so this costs no request.
 - The same Space and Shift keys work on the artwork cards of the relationship-list covers and of discogs.com's Image column.
-
-
-## 9.99.1391 — 2026-10-20
-
-**✨ Improve**
-
-- Instrument pages: the IROMBOOK drawing MusicBrainz shows at the top of the sidebar now works like an artist's or label's sidebar picture — a hover card, a click (or Enter/Space) opens it in the artwork viewer, and a small copy leads the page heading on every instrument tab, before and after the table is loaded. The copy shows the whole drawing instead of cropping it, and the viewer bar has no Commons link (a drawing has no Commons page). Same switches: 'Sidebar picture: hover card and viewer' and 'Sidebar picture beside the name'.
 
 
 ---
