@@ -2593,8 +2593,9 @@ userscript lists that host, so Tampermonkey does not ask first).
   shows ("Recording", "Release group", "Discogs release", "Wikipedia"), the
   same words as the window's title bar, so you know what Space will open.
   For MusicBrainz kinds it starts with MusicBrainz's own icon of the kind
-  (artist, release, recording, work, …), which the window's title bar shows
-  too.
+  (artist, release, recording, work, …), for Discogs with the kind's emoji
+  (💿 master, 📄 release, 🏷️ label, 👤 artist, 💬 user), as in the window's
+  path.
 - **‹ ›** or **← →** step to the same kind of link in the **same column** of
   the next or previous row, on into the next sub-table. A row links a
   release, an artist and a label; the arrows stay with the one you started
@@ -2602,9 +2603,25 @@ userscript lists that host, so Tampermonkey does not ask first).
 - **⟳** asks MusicBrainz again; **↗** opens the page in a new tab.
 - **Click a link inside the window** (a release in a release group's list, a
   release's release group, a label, a recording in a tracklist) to show that
-  entity in the same window; the title shows the path, for example *Release
-  group › Release*. **← Back**, **Backspace** or **Alt+←** return. Ctrl-click
-  (or a middle click) still opens the link in a new tab.
+  entity in the same window; the title shows the path, for example *Greetings
+  From Asbury Park, N.J. › The Angel*. **← Back**, **Backspace** or **Alt+←**
+  return. Ctrl-click (or a middle click) still opens the link in a new tab.
+- **The path in the title bar** is a way back:
+  - **Click a step** and the window shows it again, from memory; the steps
+    after it are dropped.
+  - Only the last three steps show (two in a narrow window). **…** before
+    them opens the whole path, and a click there goes back to any step.
+  - **Rest on a step** to see its own card (no Ctrl needed, nothing is
+    asked); **Space** goes back to it.
+  - **Every step starts with its icon**, which links the documentation of
+    that kind: MusicBrainz's page (its style guide named at the card's
+    foot) or Discogs' Database Guidelines. Rest on it for that page's card;
+    a click reads it in the window. On discogs.com MusicBrainz's
+    documentation opens in a new tab instead.
+  - A step reads the name of what it shows. The setting *In the window's
+    title, each step of the path reads* (same section) switches it to the
+    kind ("Recording"). An editing history, a documentation page or a
+    Discogs search always reads its kind.
 - **Rest the pointer on something inside the window** to see what a click on
   it does, before you click. The window's bottom line names it: *Opens here:
   Label · Columbia* (with *read before, no request* when it already is), *New
@@ -2778,9 +2795,10 @@ once and without Tampermonkey asking first:
   from the artist's Discogs name has Discogs' `*`; point at it for the
   Discogs name. Every artist, label and company is a link to its Discogs
   page; a click shows that page in the same window (*Back* returns), and
-  Ctrl-click opens it in a new tab. The window's title says what the link is
-  — *Discogs release*, *Discogs master*, *Discogs artist*, *Discogs label* —
-  and after such a click the path, e.g. *Discogs master › Discogs release*.
+  Ctrl-click opens it in a new tab. The window's title shows what the link
+  is, with its kind's icon (💿 master, 📄 release, 👤 artist, 🏷️ label), and
+  after such a click the path, e.g. *💿 Born To Run › 📄 Born To Run*; with
+  the path set to kinds, *Discogs master › Discogs release*.
   Each heading opens and closes its section; a closed one
   stays closed in the next Discogs window until the page is reloaded.
 

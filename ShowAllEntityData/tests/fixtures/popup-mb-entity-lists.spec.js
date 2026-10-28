@@ -136,7 +136,10 @@ test.describe('MusicBrainz link previews: an entity\'s subscribers and collectio
         await expect(dialog(page).locator('.mb-pop-taglist a')).toHaveCount(28);
         await expect(dialog(page).locator('.mb-dp-xsub').first()).toHaveText('MusicBrainz · artist · subscribers');
         await dialog(page).locator('.mb-pop-taglist a').first().click();
-        await expect(title(page)).toHaveText('Subscribers › Editor');
+        // The path's steps read names by default (org/POH-headerline.org;
+        // this spec loads without a fixture file, so with the schema's
+        // default): the subscriber's name; the list, a view, its kind.
+        await expect(title(page)).toHaveText('Subscribers › editor-1');
         await expect.poll(() => log.html).toEqual([`/artist/${MBID}/subscribers`, '/user/editor-1']);
     });
 

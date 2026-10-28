@@ -5297,6 +5297,22 @@
                          'the preview window reads what it links to — one Web Service request, at the usual ' +
                          'one-a-second pace — so a click shows it at once; such links get a small green dot. ' +
                          'Moving on before its turn asks nothing. Links to other sites are never read ahead.'
+        },
+
+        sa_dp_path_label: {
+            label: 'In the window\'s title, each step of the path reads',
+            type: 'select',
+            default: 'name',
+            options: [
+                { value: 'name', label: 'its name ("The Angel")' },
+                { value: 'kind', label: 'its kind ("Recording")' },
+            ],
+            description: 'Following links inside the preview window builds a path in its title bar, its last ' +
+                         'three steps after "…" (two in a narrow window). Every step has its glyph, which links ' +
+                         'that kind\'s documentation, and is a way back: click it. Name (the default) shows ' +
+                         'what each step is, cut short when long; kind shows what sort of thing it is. Either ' +
+                         'way the glyph and the step\'s card on a hover tell the other. A step that is a view ' +
+                         '(an editing history, a documentation page, a Discogs search) always reads its kind.'
         }
 
     };
@@ -23438,7 +23454,7 @@
         ).join('');
         notes.forEach((n, i) => {
             if (n.target) _dpAddKindHead(box.children[i], n.target);
-            else if (n.label) _dpPrependKindHead(box.children[i], n.label, '');
+            else if (n.label) _dpPrependKindHead(box.children[i], n.label, null);
         });
     }
 
@@ -23486,16 +23502,131 @@
      */
     function _mbKindIconUrl(t) {
         if (!t || !t.src) return '';
+        // On another site (discogs.com: `_dgMbSource()`) the glyphs are
+        // musicbrainz.org's; this origin's would name discogs.com
+        // (org/POH-headerline.org item 3).
+        const origin = _foreignHost ? 'https://musicbrainz.org' : window.location.origin;
         // The release page's own release-group sources (_rgLinkSource(),
         // _eventRgSource()) show a MusicBrainz release group too.
-        if (_MB_RG_SOURCE_IDS.has(t.src.id)) return `${window.location.origin}/static/images/entity/${_MB_KIND_ICON['release-group']}.svg`;
-        if (t.src.id !== 'mb-entity') return '';
+        if (_MB_RG_SOURCE_IDS.has(t.src.id)) return `${origin}/static/images/entity/${_MB_KIND_ICON['release-group']}.svg`;
+        if (t.src.id !== 'mb-entity' && t.src.id !== 'dg-mb') return '';
         // An editing history shows the glyph of what it is the history of;
         // an annotation the glyph of the entity it annotates.
         const type = t.type === 'edits' ? _mbEditsLabel(String(t.id || '')).icon
             : (_MB_KIND_ICON_FROM_ID.has(t.type) && String(t.id || '').includes('/') ? String(t.id).split('/')[0] : t.type);
         const stem = Object.prototype.hasOwnProperty.call(_MB_KIND_ICON, type) ? _MB_KIND_ICON[type] : '';
-        return stem ? `${window.location.origin}/static/images/entity/${stem}.svg` : '';
+        return stem ? `${origin}/static/images/entity/${stem}.svg` : '';
+    }
+
+    /**
+     * MusicBrainz's documentation of each kind with a glyph: the wiki page
+     * behind `/doc/<page>`, and its style guide `/doc/Style/<page>` where
+     * there is one. Probed 2026-10-28 (`scripts/probe-mb-kind-docs.py`, the
+     * wiki's API): every page exists; Style/Label, Style/Area,
+     * Style/Instrument, Style/Genre, Style/Collections and Style/Editor do
+     * not, so those kinds have no style guide here.
+     * @type {Object<string, {page: string, style: boolean}>}
+     */
+    const _MB_KIND_DOCS = {
+        artist: { page: 'Artist', style: true }, release: { page: 'Release', style: true },
+        'release-group': { page: 'Release_Group', style: true }, recording: { page: 'Recording', style: true },
+        work: { page: 'Work', style: true }, label: { page: 'Label', style: false }, area: { page: 'Area', style: false },
+        place: { page: 'Place', style: true }, event: { page: 'Event', style: true }, series: { page: 'Series', style: true },
+        instrument: { page: 'Instrument', style: false }, genre: { page: 'Genre', style: false },
+        collection: { page: 'Collections', style: false }, user: { page: 'Editor', style: false },
+    };
+
+    /** Discogs' Database Guidelines section: the documentation of a Discogs step without an article of its own. */
+    const _DG_GUIDELINES_URL = 'https://support.discogs.com/hc/en-us/sections/25169225080077-Database-Guidelines';
+
+    /**
+     * The glyph and the documentation of each Discogs kind in the window's
+     * path (org/POH-headerline.org, vzell 2026-10-28: these emoji). `doc` is
+     * the kind's article, `see` a second one for the card's foot, as
+     * MusicBrainz's style guide; both read off the Database Guidelines
+     * section vzell saved (`debug/discogs-guidelines.html`). A Discogs step
+     * of another kind (a search, a help article, an image set) has the
+     * Discogs mark and the section.
+     * @type {Object<string, {emo: string, doc: string, see?: string}>}
+     */
+    const _DG_KIND_GLYPHS = {
+        master: { emo: '💿', doc: 'https://support.discogs.com/hc/en-us/articles/360005055493-Database-Guidelines-16-Master-Release' },
+        release: {
+            emo: '📄', doc: 'https://support.discogs.com/hc/en-us/articles/360004016474-Overview-Of-Submission-Guidelines-For-Releases',
+            see: 'https://support.discogs.com/hc/en-us/articles/360005006334-Database-Guidelines-1-General-Rules',
+        },
+        label: {
+            emo: '🏷️', doc: 'https://support.discogs.com/hc/en-us/articles/360005006614-Database-Guidelines-4-Label-Catalog-Number',
+            see: 'https://support.discogs.com/hc/en-us/articles/360005055533-Database-Guidelines-19-Updating-A-Label-Profile',
+        },
+        artist: {
+            emo: '👤', doc: 'https://support.discogs.com/hc/en-us/articles/360005054753-Database-Guidelines-2-Artist',
+            see: 'https://support.discogs.com/hc/en-us/articles/360005055513-Database-Guidelines-18-Updating-An-Artist-Profile',
+        },
+        user: { emo: '💬', doc: 'https://support.discogs.com/hc/en-us/articles/360005353933-Community-Guidelines' },
+    };
+
+    /** The documentation of a Discogs history step (any kind's). */
+    const _DG_HISTORY_DOCS = {
+        doc: 'https://support.discogs.com/hc/en-us/articles/360005055413-Database-Guidelines-14-Updating-Information',
+        see: 'https://support.discogs.com/hc/en-us/articles/360005055593-Database-Guidelines-20-Voting-Guidelines',
+    };
+
+    /**
+     * What stands before a target's kind (the window's path, a card's kind
+     * line) and what its glyph links: MusicBrainz's own entity glyph (`src`)
+     * with the kind's documentation and style guide; a Discogs entity's emoji
+     * (`emo`) or, for Discogs' other steps, its mark (`mark`), with its
+     * Database Guidelines article. Null for a target of neither site.
+     *
+     * @param {?object} t - A target (`_popResolve()`, a window step).
+     * @returns {?{src?: string, emo?: string, mark?: boolean, doc: string, see: string}}
+     */
+    function _dpKindGlyph(t) {
+        if (!t || !t.src) return null;
+        const src = _mbKindIconUrl(t);
+        if (src) {
+            const type = _MB_RG_SOURCE_IDS.has(t.src.id) ? 'release-group'
+                : (t.type === 'edits' ? '' : (_MB_KIND_ICON_FROM_ID.has(t.type) && String(t.id || '').includes('/') ? String(t.id).split('/')[0] : t.type));
+            const d = Object.prototype.hasOwnProperty.call(_MB_KIND_DOCS, type) ? _MB_KIND_DOCS[type] : null;
+            const base = 'https://musicbrainz.org/doc/';
+            return { src, doc: d ? base + d.page : '', see: d && d.style ? `${base}Style/${d.page}` : '' };
+        }
+        const reader = t.reader && t.reader.id;
+        if (!reader || (!/^dg/.test(reader) && reader !== 'discogs')) return null;
+        let u = null;
+        try {
+            u = new URL(t.url);
+        } catch (_) { /* no URL: the mark */ }
+        if (reader === 'dghistory') return { mark: true, doc: _DG_HISTORY_DOCS.doc, see: _DG_HISTORY_DOCS.see };
+        const m = reader === 'discogs' && u ? _EXT_DISCOGS_PATH_RE.exec(u.pathname) : null;
+        const g = m ? _DG_KIND_GLYPHS[m[1].toLowerCase()] : (reader === 'dguser' ? _DG_KIND_GLYPHS.user : null);
+        return g ? { emo: g.emo, doc: g.doc, see: g.see || '' } : { mark: true, doc: _DG_GUIDELINES_URL, see: '' };
+    }
+
+    /**
+     * A glyph as an element: MusicBrainz's `<img>`, a Discogs emoji or the
+     * Discogs mark as a `<span>` whose glyph is CSS generated content
+     * (`data-mb-emo`), so the text of the line it sits in stays the kinds
+     * alone (the window's title, a card's kind line).
+     *
+     * @param {{src?: string, emo?: string, mark?: boolean}} g - `_dpKindGlyph()`'s answer.
+     * @param {string} cls - The element's class.
+     * @returns {HTMLElement}
+     */
+    function _dpGlyphEl(g, cls) {
+        if (g.src) {
+            const img = document.createElement('img');
+            img.className = cls;
+            img.alt = '';
+            img.src = g.src;
+            return img;
+        }
+        const s = document.createElement('span');
+        s.className = `${cls} ${g.emo ? 'mb-dp-emo' : 'mb-dp-dgmark'}`;
+        s.setAttribute('aria-hidden', 'true');
+        s.dataset.mbEmo = g.emo || 'D';
+        return s;
     }
 
     /**
@@ -23511,41 +23642,38 @@
     }
 
     /**
-     * Puts the card's kind line on top of it: the target's entity glyph
-     * (MusicBrainz kinds only) and its kind, a small version of the window's
-     * title bar. A DOM step after every paint, so every source's card HTML,
-     * the loading and the failed shells get it; a repaint replaces the
-     * card's HTML, and the line with it, so it is added once per paint.
+     * Puts the card's kind line on top of it: the target's glyph
+     * (`_dpKindGlyph()`: MusicBrainz's entity glyph, a Discogs emoji or
+     * mark) and its kind, a small version of the window's title bar. A DOM
+     * step after every paint, so every source's card HTML, the loading and
+     * the failed shells get it; a repaint replaces the card's HTML, and the
+     * line with it, so it is added once per paint. A step of the window's
+     * path (`crumbOf`) names the step it shows.
      *
      * @param {HTMLElement} el - `#mb-dp-peek`.
      * @param {object} t - Its target.
      * @returns {void}
      */
     function _dpAddKindHead(el, t) {
-        _dpPrependKindHead(el, _dpKindLabel(t), _mbKindIconUrl(t));
+        const k = t.crumbOf || t;
+        _dpPrependKindHead(el, _dpKindLabel(k), _dpKindGlyph(k));
     }
 
     /**
-     * Puts a kind line on top of a box: a glyph (when `src` names one) and
+     * Puts a kind line on top of a box: a glyph (when there is one) and
      * the label, the hairline under it (CSS). Once per box: a box that
      * already starts with one keeps it.
      *
      * @param {HTMLElement} el - The card, or a box of the stack above it.
      * @param {string} label
-     * @param {string} src - The glyph's URL, '' for none.
+     * @param {?{src?: string, emo?: string, mark?: boolean}} glyph - `_dpKindGlyph()`'s answer, null for none.
      * @returns {void}
      */
-    function _dpPrependKindHead(el, label, src) {
+    function _dpPrependKindHead(el, label, glyph) {
         if (!label || el.querySelector(':scope > .mb-pop-kind-head')) return;
         const head = document.createElement('div');
         head.className = 'mb-pop-kind-head';
-        if (src) {
-            const img = document.createElement('img');
-            img.className = 'mb-pop-kind-icon';
-            img.alt = '';
-            img.src = src;
-            head.append(img);
-        }
+        if (glyph) head.append(_dpGlyphEl(glyph, 'mb-pop-kind-icon'));
         head.append(label);
         el.prepend(head);
     }
@@ -24258,6 +24386,381 @@
         if (window.scrollX !== x) window.scrollTo({ left: x, top: window.scrollY, behavior: 'instant' });
     }
 
+    // ── The window's path (org/POH-headerline.org, vzell 2026-10-28) ────────
+    // The title bar's path of what the window showed: every step a glyph
+    // (`_dpKindGlyph()`, linking the kind's documentation) and a button back
+    // to it; the oldest steps behind "…", a menu of the whole path. Resting
+    // on a step shows that step's own card from memory (`_DP_CRUMB_SRC`), on
+    // a glyph the documentation's card (`_dpDocTarget()`). Mockup:
+    // https://claude.ai/artifact/YCnV4DZA5R4quLAGkmhCpC.
+
+    /**
+     * MusicBrainz kinds that are a view of something rather than a thing
+     * with a name of its own: their step reads the kind ("Editing history",
+     * "Documentation") whatever `sa_dp_path_label` says.
+     * @type {Set<string>}
+     */
+    const _DP_VIEW_TYPES = new Set(['edits', 'doc', 'docsearch', 'collections', 'applications', 'usertags', 'userratings',
+        'usertag', 'annotations', 'annotation', 'subscribers']);
+
+    /** Below this width (px) the window's path keeps two steps instead of three. */
+    const _DP_PATH_NARROW_PX = 620;
+
+    /**
+     * A step's name in the window's path: the entity's name for a thing
+     * with one, '' for a view (an editing history, a documentation page, a
+     * Discogs search or history: `_DP_VIEW_TYPES`, the Discogs mark).
+     *
+     * @param {object} t - A target.
+     * @returns {string}
+     */
+    function _dpStepName(t) {
+        if (t.src && (t.src.id === 'mb-entity' || t.src.id === 'dg-mb') && _DP_VIEW_TYPES.has(t.type)) return '';
+        const g = _dpKindGlyph(t);
+        if (g && g.mark) return '';
+        return String(t.name || '').replace(/\s+/g, ' ').trim();
+    }
+
+    /**
+     * What a step of the window's path reads: the entity's name (the
+     * default), or its kind (`sa_dp_path_label: 'kind'`, the path as it was
+     * before 2026-10-28). A step without a name reads its kind either way.
+     *
+     * @param {object} t - A target.
+     * @returns {string}
+     */
+    function _dpStepLabel(t) {
+        const kind = _dpKindLabel(t);
+        return Lib.settings.sa_dp_path_label === 'kind' ? kind : (_dpStepName(t) || kind);
+    }
+
+    /**
+     * The window's whole path: the steps it came through, then what it shows.
+     *
+     * @returns {object[]}
+     */
+    function _dpPathSteps() {
+        return _dpDialog.target ? _dpDialog.stack.concat([_dpDialog.target]) : _dpDialog.stack.slice();
+    }
+
+    /**
+     * The window target of a glyph's documentation link: MusicBrainz's
+     * documentation page (the `doc` kind, on MusicBrainz while its cards are
+     * on), or a Discogs help article (the `dgsupport` reader, while the
+     * external previews are on); null where neither applies (MusicBrainz's
+     * documentation seen from another site: the link opens a new tab).
+     *
+     * @param {HTMLAnchorElement} a - The glyph's link.
+     * @returns {?object} A `drilled` target.
+     */
+    function _dpDocTarget(a) {
+        if (!a || !a.getAttribute('href')) return null;
+        // Read from a bare copy of the link: the glyph's own holds an image,
+        // and a link holding an image is artwork to `_mbPopTarget()`.
+        const bare = document.createElement('a');
+        bare.href = a.href;
+        const mb = !_foreignHost && _popSources().find(x => x.id === 'mb-entity');
+        if (mb && mb.enabled()) {
+            const r = _mbPopTarget(bare, { inWindow: true });
+            if (r) return Object.assign({ src: mb, el: a, drilled: true }, r, { name: '' });
+        }
+        const ext = _popSources().find(x => x.id === 'ext');
+        if (ext && ext.enabled()) {
+            const r = _extTarget(bare, { inWindow: true });
+            if (r) return Object.assign({ src: ext, el: a, drilled: true }, r, { name: '' });
+        }
+        return null;
+    }
+
+    /**
+     * The source of a path step's card: the step's own card, from memory
+     * only (`start` false: resting on a step never asks anyone), and a foot
+     * line saying where a click goes.
+     * @type {object}
+     */
+    const _DP_CRUMB_SRC = {
+        id: 'dp-crumb', kind: '', enabled: () => true, needsCtrl: () => false, wide: false,
+        card(t, start, repaint) {
+            const n = _dpPathSteps().length;
+            const after = n - 1 - t.crumb;
+            const foot = after > 0
+                ? `Step ${t.crumb + 1} of ${n}. Click or <kbd>Space</kbd>: back to it (the ${after === 1 ? 'step' : `${after} steps`} after it go).`
+                : 'Shown now.';
+            // The source's own foot lines ("Space more") say what Space does
+            // on the page; here it goes back, which this card's foot says.
+            const tpl = document.createElement('template');
+            tpl.innerHTML = t.crumbOf.src.card(t.crumbOf, false, repaint);
+            tpl.content.querySelectorAll('.mb-tt-foot').forEach(f => f.remove());
+            return tpl.innerHTML + `<div class="mb-tt-foot">${foot}</div>`;
+        },
+        extracted: () => '', steps: () => [], stepId: () => '', liveUrl: () => '',
+    };
+
+    /**
+     * The hover card's target for an element of the window's path: a step
+     * (its own card, `_DP_CRUMB_SRC`) or a glyph (its documentation's,
+     * `_dpDocTarget()`); `undefined` for an element outside the path, so
+     * the caller asks the window's content instead.
+     *
+     * @param {?EventTarget} node
+     * @returns {?object|undefined}
+     */
+    function _dpCrumbTarget(node) {
+        const strip = _dpDialog.controls && _dpDialog.controls.title;
+        if (!_dpDialog.api || !strip || !node || !node.closest || !strip.contains(node)) return undefined;
+        const step = node.closest('.mb-dp-crumb-step');
+        if (step) {
+            const i = Number(step.dataset.mbStep);
+            const s = _dpPathSteps()[i];
+            if (!s) return null;
+            return { src: _DP_CRUMB_SRC, el: step, crumbOf: s, crumb: i, key: `crumb:${i}:${s.key}`, kind: _dpKindLabel(s), wide: 'wide' in s ? s.wide : s.src.wide };
+        }
+        const g = node.closest('a.mb-dp-crumb-g');
+        return g ? _dpDocTarget(g) : null;
+    }
+
+    /**
+     * Goes back to step `i` of the window's path: it shows that step again,
+     * from memory, and the steps after it are dropped (← Back pressed that
+     * many times). Nothing for the step shown now.
+     *
+     * @param {number} i
+     * @returns {void}
+     */
+    function _dpJumpTo(i) {
+        const stack = _dpDialog.stack;
+        if (!(i >= 0 && i < stack.length)) return;
+        const to = stack[i];
+        _dpDialog.stack = stack.slice(0, i);
+        _dpHidePeek();
+        _dpShowInDialog(to);
+    }
+
+    /**
+     * Fills the window's title with its path: each step its glyph (a link
+     * to the kind's documentation) and a button reading its name or kind
+     * (`_dpStepLabel()`), " › " between them; the last three steps (two in
+     * a narrow window, `_DP_PATH_NARROW_PX`), and before them "…", which
+     * opens the whole path (`_dpPathPopToggle()`). The title's text stays
+     * the labels and separators alone ("… › Release group › Release"): the
+     * glyphs are images or CSS generated content.
+     *
+     * @param {HTMLElement} title - The title bar's title span.
+     * @returns {void}
+     */
+    function _dpCrumbsRender(title) {
+        const steps = _dpPathSteps();
+        const dlg = _dpDialog.api && _dpDialog.api.dialog;
+        const keep = dlg && dlg.clientWidth && dlg.clientWidth < _DP_PATH_NARROW_PX ? 2 : 3;
+        const first = Math.max(0, steps.length - keep);
+        _dpDialog.pathKeep = keep;
+        const parts = [];
+        if (first > 0) {
+            const more = document.createElement('button');
+            more.type = 'button';
+            more.className = 'mb-dp-crumb-more';
+            more.textContent = '…';
+            more.setAttribute('aria-haspopup', 'menu');
+            more.setAttribute('aria-expanded', 'false');
+            _setTip(more, `${first} earlier step${first === 1 ? '' : 's'}: the whole path`);
+            parts.push(more, ' › ');
+        }
+        steps.slice(first).forEach((s, j) => {
+            const i = first + j;
+            const crumb = document.createElement('span');
+            crumb.className = 'mb-dp-crumb';
+            const g = _dpKindGlyph(s);
+            if (g) {
+                const el = _dpGlyphEl(g, 'mb-dp-kind-icon');
+                if (g.doc) {
+                    const a = document.createElement('a');
+                    a.className = 'mb-dp-crumb-g';
+                    a.href = g.doc;
+                    a.target = '_blank';
+                    a.rel = 'noopener';
+                    a.setAttribute('aria-label', `${_dpKindLabel(s)}: documentation`);
+                    a.append(el);
+                    // A link no card reads (MusicBrainz's documentation seen
+                    // from another site) says where it goes.
+                    if (!_dpDocTarget(a)) _setTip(a, `${_dpKindLabel(s)}: documentation (opens ${a.hostname} in a new tab)`);
+                    crumb.append(a);
+                } else crumb.append(el);
+            }
+            const b = document.createElement('button');
+            b.type = 'button';
+            b.className = 'mb-dp-crumb-step';
+            b.dataset.mbStep = String(i);
+            b.textContent = _dpStepLabel(s);
+            if (i === steps.length - 1) b.setAttribute('aria-current', 'step');
+            crumb.append(b);
+            if (j) parts.push(' › ');
+            parts.push(crumb);
+        });
+        title.replaceChildren(...parts);
+    }
+
+    /** The window's open path menu (`_dpPathPopToggle()`), and what closes it. */
+    const _dpPathPop = { el: null, off: null };
+
+    /**
+     * Closes the window's path menu, if open.
+     *
+     * @returns {void}
+     */
+    function _dpPathPopClose() {
+        if (!_dpPathPop.el) return;
+        _dpPathPop.el.remove();
+        _dpPathPop.el = null;
+        if (_dpPathPop.off) _dpPathPop.off();
+        _dpPathPop.off = null;
+        const title = _dpDialog.controls && _dpDialog.controls.title;
+        const more = title && title.querySelector('.mb-dp-crumb-more');
+        if (more) more.setAttribute('aria-expanded', 'false');
+    }
+
+    /**
+     * "…" in the window's path: opens (or closes) the whole path under it,
+     * oldest first — each step's glyph, kind and name; a click on one goes
+     * back to it (`_dpJumpTo()`). The steps the title shows are listed too,
+     * marked "shown", what the window shows "now" and not clickable. A pick,
+     * a click outside, Escape or a new target closes it; ↑ ↓ move.
+     *
+     * @param {HTMLElement} more - The "…" button.
+     * @returns {void}
+     */
+    function _dpPathPopToggle(more) {
+        if (_dpPathPop.el) {
+            _dpPathPopClose();
+            return;
+        }
+        if (!_dpDialog.api) return;
+        const dlg = _dpDialog.api.dialog;
+        const steps = _dpPathSteps();
+        const shownFrom = Math.max(0, steps.length - (_dpDialog.pathKeep || 3));
+        const pop = document.createElement('div');
+        pop.id = 'mb-dp-path-pop';
+        pop.className = 'mb-hist-pop';
+        pop.setAttribute('role', 'menu');
+        pop.setAttribute('aria-label', 'The whole path');
+        const cap = document.createElement('div');
+        cap.className = 'mb-saed-cap mb-hist-cap';
+        cap.textContent = `The whole path · ${steps.length} steps`;
+        pop.appendChild(cap);
+        steps.forEach((s, i) => {
+            const b = document.createElement('button');
+            b.type = 'button';
+            b.className = 'mb-hist-row mb-dp-path-row';
+            b.setAttribute('role', 'menuitem');
+            b.dataset.mbStep = String(i);
+            const g = _dpKindGlyph(s);
+            const gw = document.createElement('span');
+            gw.className = 'mb-hist-g';
+            if (g) gw.append(_dpGlyphEl(g, 'mb-dp-kind-icon'));
+            const kind = document.createElement('b');
+            kind.textContent = _dpKindLabel(s);
+            const name = document.createElement('span');
+            name.className = 'mb-dp-path-name';
+            name.textContent = _dpStepName(s);
+            const where = document.createElement('span');
+            where.className = 'mb-hist-h';
+            where.textContent = i === steps.length - 1 ? 'now' : (i >= shownFrom ? 'shown' : String(i + 1));
+            b.append(gw, kind, name, where);
+            if (i === steps.length - 1) {
+                b.disabled = true;
+                b.setAttribute('aria-current', 'step');
+            } else {
+                b.addEventListener('click', () => {
+                    _dpPathPopClose();
+                    _dpJumpTo(i);
+                });
+            }
+            pop.appendChild(b);
+        });
+        dlg.appendChild(pop);
+        const d = dlg.getBoundingClientRect();
+        const r = more.getBoundingClientRect();
+        pop.style.top = `${Math.round(r.bottom - d.top + 4)}px`;
+        pop.style.left = `${Math.max(4, Math.round(r.left - d.left))}px`;
+        _dpPathPop.el = pop;
+        more.setAttribute('aria-expanded', 'true');
+        const outside = (e) => {
+            if (!pop.contains(e.target) && e.target !== more) _dpPathPopClose();
+        };
+        const keys = (e) => {
+            if (e.key === 'Escape') {
+                e.preventDefault();
+                e.stopImmediatePropagation();
+                _dpPathPopClose();
+                more.focus();
+                return;
+            }
+            if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
+            const rows = Array.from(pop.querySelectorAll('button.mb-hist-row:not([disabled])'));
+            if (!rows.length) return;
+            e.preventDefault();
+            e.stopImmediatePropagation();
+            const i = rows.indexOf(document.activeElement);
+            const j = i < 0 ? 0 : (i + (e.key === 'ArrowDown' ? 1 : -1) + rows.length) % rows.length;
+            rows[j].focus();
+        };
+        document.addEventListener('mousedown', outside, true);
+        window.addEventListener('keydown', keys, true);
+        _dpPathPop.off = () => {
+            document.removeEventListener('mousedown', outside, true);
+            window.removeEventListener('keydown', keys, true);
+        };
+        const firstRow = pop.querySelector('button.mb-hist-row:not([disabled])');
+        if (firstRow) firstRow.focus();
+    }
+
+    /**
+     * Wires the window's path, once per window, delegated on the title so
+     * every repaint of the path is covered: a click on a step goes back to
+     * it, on "…" opens the whole path, on a glyph shows its documentation in
+     * the window when a card reads it (else the link opens its new tab);
+     * resting on any of them writes the foot line.
+     *
+     * @param {HTMLElement} title - The title bar's title span.
+     * @returns {void}
+     */
+    function _dpCrumbsInstall(title) {
+        title.addEventListener('click', (e) => {
+            const more = e.target.closest('.mb-dp-crumb-more');
+            if (more) {
+                e.preventDefault();
+                e.stopPropagation();
+                _dpPathPopToggle(more);
+                return;
+            }
+            const step = e.target.closest('.mb-dp-crumb-step');
+            if (step) {
+                _dpJumpTo(Number(step.dataset.mbStep));
+                return;
+            }
+            const g = e.target.closest('a.mb-dp-crumb-g');
+            const cur = _dpDialog.target;
+            if (!g || !cur || e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return;
+            const t = _dpDocTarget(g);
+            if (!t || t.key === cur.key) return;
+            e.preventDefault();
+            _dpDialog.stack.push(cur);
+            _dpShowInDialog(t);
+        });
+        title.addEventListener('mouseover', (e) => {
+            if (_isTouchCompatMouseEvent(e)) return;
+            const t = _dpCrumbTarget(e.target);
+            const g = e.target.closest && e.target.closest('a.mb-dp-crumb-g');
+            const el = (t && t.el) || g || null;
+            if (el === _dpWin.hover) return;
+            _dpWin.hover = el;
+            _dpWinFoot(t && t.crumbOf ? { kind: 'crumb', t } : (g ? { kind: 'doc', a: g, t } : null));
+        });
+        title.addEventListener('mouseleave', () => {
+            _dpWin.hover = null;
+            _dpWinFoot(null);
+        });
+    }
+
     /**
      * Shows a target in the dialog, titles the dialog after its source and
      * marks its row.
@@ -24269,25 +24772,11 @@
         _dpDialog.target = t;
         _dpDialog.url = t.url;
         // createInfoDialog()'s title bar is its first child, the title its
-        // first span: the target's kind, after a drill-down the path to it
-        // ("Release group › Release"), its last three steps.
-        const title = _dpDialog.api ? _dpDialog.api.dialog.querySelector(':scope > div > span') : null;
-        const kinds = _dpDialog.stack.concat([t]).map(_dpKindLabel);
-        if (title) {
-            // MusicBrainz's glyph of the kind shown now, in front of the
-            // path: inside the span, so the bar's space-between leaves no
-            // gap, and the span's text stays the kinds alone.
-            const icon = _mbKindIconUrl(t);
-            const parts = [(kinds.length > 3 ? ['…', ...kinds.slice(-3)] : kinds).join(' › ')];
-            if (icon) {
-                const img = document.createElement('img');
-                img.className = 'mb-dp-kind-icon';
-                img.alt = '';
-                img.src = icon;
-                parts.unshift(img);
-            }
-            title.replaceChildren(...parts);
-        }
+        // first span: the path to the target (`_dpCrumbsRender()`, every
+        // step a glyph and a way back), its last three steps after "…".
+        _dpPathPopClose();
+        const title = _dpDialog.controls && _dpDialog.controls.title;
+        if (title) _dpCrumbsRender(title);
         if (_dpDialog.controls && _dpDialog.controls.back) _dpDialog.controls.back.style.display = _dpDialog.stack.length ? '' : 'none';
         // Where ← Back and ‹ › go (H6), and the foot line at rest (H1): what
         // the pointer rested on is gone with the old content.
@@ -24662,6 +25151,10 @@
      * @returns {?object}
      */
     function _dpWinTarget(node) {
+        // The window's path in the title bar: a step's own card, a glyph's
+        // documentation (`_dpCrumbTarget()`).
+        const c = _dpCrumbTarget(node);
+        if (c !== undefined) return c;
         const w = _dpWinWhat(node, true);
         if (!w) return null;
         if (w.kind === 'here') return w.t;
@@ -24802,7 +25295,9 @@
      * H1: the window's foot line for what the pointer (or the focus) rests
      * on, or, with nothing, the window's keys.
      *
-     * @param {?{kind: string, a: HTMLAnchorElement, t?: object}} w - `_dpWinWhat()`'s answer.
+     * @param {?{kind: string, a?: HTMLAnchorElement, t?: object}} w - `_dpWinWhat()`'s answer, or one of the
+     *   window's path (`_dpCrumbsInstall()`): `crumb` (a step, `t` its `_dpCrumbTarget()`), `doc` (a glyph
+     *   `a`, `t` its documentation's target or null).
      * @returns {void}
      */
     function _dpWinFoot(w) {
@@ -24834,7 +25329,21 @@
         let lead;
         let text;
         let keys = '';
-        if (w.kind === 'img') {
+        const named = (x) => [_dpKindLabel(x), _dpStepName(x)].filter(Boolean).join(' · ');
+        if (w.kind === 'crumb') {
+            // A step of the window's path (`_dpCrumbsInstall()`).
+            const now = w.t.crumb === _dpPathSteps().length - 1;
+            g = now ? '•' : '↩';
+            lead = now ? 'Shown now: ' : 'Back to: ';
+            text = named(w.t.crumbOf);
+            keys = now ? '' : 'Click or Space: back to it';
+        } else if (w.kind === 'doc') {
+            // A step's glyph: its kind's documentation.
+            g = '📖';
+            lead = 'Documentation: ';
+            text = w.a.href.replace(/^https?:\/\//, '');
+            keys = w.t ? 'Click or Space: here · Ctrl-click: new tab' : 'Click: new tab';
+        } else if (w.kind === 'img') {
             const info = _dpImgInfo(w.a);
             g = '🔍';
             lead = 'Viewer: ';
@@ -27190,7 +27699,24 @@
             if (_dpDialog.target && _dpDialog.target.src.onAreaInput) _dpDialog.target.src.onAreaInput(e, _dpDialog.target);
         });
         _dpDialog.api = api;
-        _dpDialog.controls = { pos, ex, live, open, back, origin, hist, histMore, histSplit, prev, next };
+        _dpDialog.controls = { pos, ex, live, open, back, origin, hist, histMore, histSplit, prev, next, title: titleSpan };
+        // The path in the title (`_dpCrumbsRender()`): its clicks and foot
+        // line, and two steps instead of three once the window is narrow.
+        if (titleSpan) {
+            titleSpan.classList.add('mb-dp-crumbs');
+            _dpCrumbsInstall(titleSpan);
+            if (typeof ResizeObserver === 'function') {
+                const narrow = new ResizeObserver(() => {
+                    if (!api.dialog.isConnected) {
+                        narrow.disconnect();
+                        return;
+                    }
+                    const keep = api.dialog.clientWidth < _DP_PATH_NARROW_PX ? 2 : 3;
+                    if (_dpDialog.api === api && _dpDialog.target && keep !== _dpDialog.pathKeep) _dpCrumbsRender(titleSpan);
+                });
+                narrow.observe(api.dialog);
+            }
+        }
         // Hovering inside the window: the foot line, the marks, the cards of
         // its links, an image's preview, the long press (org/dp-window-hover.org).
         _dpWinInstall(api);
@@ -27211,6 +27737,8 @@
         const gone = new MutationObserver(() => {
             if (api.dialog.isConnected) return;
             gone.disconnect();
+            // The path menu's document listeners go with it.
+            _dpPathPopClose();
             if (_dpDialog.row) _dpDialog.row.classList.remove('mb-dp-current');
             _dpDialog.row = null;
             if (_dpDialog.api === api) {
@@ -27305,6 +27833,32 @@
                 margin-right: 6px;
                 vertical-align: -3px;
             }
+            /* The window's path (_dpCrumbsRender()): every step a glyph that
+               links its kind's documentation and a button back to it; the
+               oldest steps behind the "..." button. */
+            .mb-dp-dialog .mb-dp-crumbs { display: inline-flex; flex-wrap: wrap; align-items: center; min-width: 0; white-space: pre; }
+            .mb-dp-dialog .mb-dp-crumb { display: inline-flex; align-items: center; min-width: 0; white-space: nowrap; }
+            .mb-dp-dialog .mb-dp-crumb-g { display: inline-flex; align-items: center; margin-right: 3px; padding: 1px; border-radius: 3px; text-decoration: none; }
+            .mb-dp-dialog .mb-dp-crumb-g:hover, .mb-dp-dialog .mb-dp-crumb-g:focus-visible { background: #ece4f0; box-shadow: 0 0 0 1px #c9a3bd; outline: none; }
+            .mb-dp-dialog .mb-dp-crumb-g .mb-dp-kind-icon { margin-right: 0; }
+            .mb-dp-dialog .mb-dp-crumb-step {
+                max-width: 16em; padding: 0 2px; border: 0; border-radius: 2px; background: none; color: #0b5394; font: inherit; cursor: pointer;
+                overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+                text-decoration: underline dotted 1px; text-underline-offset: 3px;
+            }
+            .mb-dp-dialog .mb-dp-crumb-step:hover, .mb-dp-dialog .mb-dp-crumb-step:focus-visible { background: #eef3fa; outline: none; }
+            .mb-dp-dialog .mb-dp-crumb-step[aria-current] { color: inherit; text-decoration: none; cursor: default; }
+            .mb-dp-dialog .mb-dp-crumb-step[aria-current]:hover { background: none; }
+            .mb-dp-dialog .mb-dp-crumb-more { padding: 2px 6px; border: 1px solid #bbb; border-radius: 3px; background: #fff; color: #333; font: 600 12px/1 system-ui, sans-serif; cursor: pointer; }
+            .mb-dp-dialog .mb-dp-crumb-more[aria-expanded="true"] { background: #2b2622; border-color: #2b2622; color: #fbf8f1; }
+            .mb-dp-dialog .mb-dp-path-row .mb-dp-path-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #7a6d5c; font-style: italic; }
+            .mb-dp-dialog .mb-dp-path-row .mb-dp-kind-icon { width: 16px; height: 16px; margin-right: 0; vertical-align: -3px; }
+            /* A Discogs glyph: its emoji, or the Discogs mark, as generated
+               content, so the text of the line it is in stays the labels. */
+            span.mb-dp-emo, span.mb-dp-dgmark { display: inline-grid; place-items: center; }
+            .mb-dp-emo::before { content: attr(data-mb-emo); font: 14px/1 "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif; }
+            span.mb-dp-dgmark { border-radius: 50%; background: #222; color: #fff; }
+            .mb-dp-dgmark::before { content: attr(data-mb-emo); font: 700 9px/1 system-ui, sans-serif; }
             /* The window's badge: where it was opened from, after the title. */
             .mb-dp-dialog .mb-dp-origin {
                 flex: 0 1 auto;
@@ -27734,7 +28288,7 @@
             .mb-dp-dialog .mb-dg-num { text-align: right; white-space: nowrap; }
             /* A window filter's matches (_hlEsc()), in the colours of the tables' filter highlight. */
             .mb-dp-dialog mark.mb-dg-hl {
-                color: ${Lib.settings.sa_column_filter_highlight_color || 'inherit'};
+                color: ${Lib.settings.sa_column_filter_highlight_color || 'red'};
                 background-color: ${Lib.settings.sa_column_filter_highlight_bg || '#add8e6'};
                 padding: 0;
             }
@@ -28069,6 +28623,13 @@
                 // (`_dpWinImgSpace()` takes it before the preview shows).
                 if (pt && pt.img) {
                     _dpWinImgOpen(pt.el);
+                    return;
+                }
+                // A step of the window's path: back to it, as a click
+                // (`_dpJumpTo()`; nothing for the step shown now).
+                if (pt && pt.crumbOf) {
+                    _dpHidePeek();
+                    _dpJumpTo(pt.crumb);
                     return;
                 }
                 // A card of a link in the window: Space opens it there, as a

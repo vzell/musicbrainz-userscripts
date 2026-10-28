@@ -1475,10 +1475,12 @@ test.describe('the Discogs window (2026-10-17)', () => {
         await openDiscogs(page);
         await ctrlHover(page, probe(page, 0));
         await expect(card(page).locator('.mb-ext-headtext .mb-tt-comment')).toHaveText('Discogs · release');
-        // A card of another site has the kind line too: the window's kind,
-        // no glyph (MusicBrainz kinds only).
+        // A card of another site has the kind line too: the window's kind;
+        // since org/POH-headerline.org a Discogs kind's emoji before it, as
+        // generated content (no image, and the line's text stays the kind).
         await expect(card(page).locator(':scope > .mb-pop-kind-head')).toHaveText('Discogs release');
         await expect(card(page).locator(':scope > .mb-pop-kind-head img')).toHaveCount(0);
+        await expect(card(page).locator(':scope > .mb-pop-kind-head > span.mb-pop-kind-icon.mb-dp-emo')).toHaveAttribute('data-mb-emo', '📄');
         await page.keyboard.press('Space');
         const d = dialog(page);
         const title = d.locator(':scope > div > span').first();
@@ -1500,6 +1502,13 @@ test.describe('the Discogs window (2026-10-17)', () => {
         await expect(title).toHaveText('Discogs release › Discogs artist');
         await expect(d).toContainText('Bruce Frederick Joseph Springsteen');
         await expect(d.locator('.mb-dp-xsub').first()).toHaveText('Discogs · artist');
+        // The path's glyphs (org/POH-headerline.org): each kind's emoji,
+        // linking its Database Guidelines article.
+        const glyphs = title.locator('.mb-dp-crumb > a.mb-dp-crumb-g');
+        expect(await glyphs.locator('span.mb-dp-emo').evaluateAll(xs => xs.map(x => x.dataset.mbEmo))).toEqual(['📄', '👤']);
+        expect(await glyphs.evaluateAll(xs => xs.map(x => x.getAttribute('href').replace(/^.*\/articles\//, '')))).toEqual([
+            '360004016474-Overview-Of-Submission-Guidelines-For-Releases', '360005054753-Database-Guidelines-2-Artist',
+        ]);
         await d.getByRole('button', { name: /Back/ }).click();
         await expect(title).toHaveText('Discogs release');
     });

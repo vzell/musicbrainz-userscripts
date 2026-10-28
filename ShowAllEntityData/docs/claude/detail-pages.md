@@ -1550,9 +1550,55 @@ new tab. Rules:
   true})` (without it the card and the window exclude themselves), and only
   while `sa_pop_mb` is on (the `mb-entity` source must be enabled — a release
   page's own release-group window then drills too).
-- The title is the path of kinds, its last three ("… › Release group ›
+- The title is the path, its last three steps ("… › Release group ›
   Release"); **← Back**, Backspace and Alt+← pop the stack (`_dpBack()`); the
-  answer comes from memory.
+  answer comes from memory. Since 2026-10-28 the path is built by
+  `_dpCrumbsRender()` (see "The window's path" below).
+
+### The window's path (2026-10-28, org/POH-headerline.org)
+
+vzell: a glyph before every step, rich cards on the glyph and the step, the
+hidden steps reachable, every step navigable. Mockup
+https://claude.ai/artifact/YCnV4DZA5R4quLAGkmhCpC
+(`org/POH-headerline-mockups.html`); grep `// ── The window's path`.
+
+- **A step** is `span.mb-dp-crumb`: the glyph (`a.mb-dp-crumb-g`, linking
+  the kind's documentation) and `button.mb-dp-crumb-step[data-mb-step]`. A
+  click goes back to it (`_dpJumpTo(i)`: `stack.slice(0, i)`, then
+  `_dpShowInDialog()`, from memory), the current one (`aria-current`) does
+  nothing. Buttons and links, so `createInfoDialog()`'s drag skips them.
+- **The title's text stays the labels and " › "** — the 38 `title(page)`
+  assertions across the popup specs read it. So a glyph is an `<img>` or,
+  for Discogs, a span whose emoji is CSS generated content (`data-mb-emo`,
+  `_dpGlyphEl()`); writing the emoji as text changes every Discogs title
+  (mutation `scripts/mutations/poh-headerline.json`).
+- **Labels** (`_dpStepLabel()`): the name by default, the kind with
+  `sa_dp_path_label: 'kind'`. A view (`_DP_VIEW_TYPES`: edits, doc,
+  subscribers, …; a Discogs step with the mark) reads its kind either way.
+  The fixture profile reads `'kind'` (`FIXTURE_SETTINGS_OVERRIDE`); a spec
+  loaded without a fixture file gets the default.
+- **"…"** (`button.mb-dp-crumb-more`) opens `#mb-dp-path-pop`, the whole
+  path in the look of the history presets (`.mb-hist-pop`), shown steps
+  marked, the current one disabled. Three steps, two below
+  `_DP_PATH_NARROW_PX` (620) — a `ResizeObserver` re-renders on crossing it.
+- **Cards**: `_dpWinTarget()` asks `_dpCrumbTarget()` first. A step is the
+  pseudo source `_DP_CRUMB_SRC`: the step's own `card(t, false)` (no
+  request, ever), its source's foot lines dropped (on a step Space goes
+  back, `pt.crumbOf` in the Space handler), a foot of its own. A glyph is
+  `_dpDocTarget()`: MusicBrainz's `doc` kind (MusicBrainz only — on another
+  site the page needs the browser check's cookie, so the glyph opens a new
+  tab and says so) or the `dgsupport` reader. It reads a BARE copy of the
+  link: `_mbPopTarget()` takes a link holding an image for artwork.
+- **Glyphs** (`_dpKindGlyph()`): `_mbKindIconUrl()` (which serves `dg-mb`
+  too, from musicbrainz.org on a foreign host — item 3), with
+  `_MB_KIND_DOCS` (probed: `scripts/probe-mb-kind-docs.py`); Discogs by
+  reader and path (`_DG_KIND_GLYPHS`, `_DG_HISTORY_DOCS`, the articles read
+  off vzell's saved Database Guidelines page). A card's kind line uses the
+  same glyph (`_dpAddKindHead()`, `crumbOf` for a step's card).
+- **Specs**: `popup-mb.spec.js` "the window's path" (7),
+  `popup-ext.spec.js` "names link their Discogs pages" (emoji, articles),
+  `discogs-mb-column.spec.js` "Space opens its window" (musicbrainz.org's
+  glyph; the test serves the SVG, since the card drops an image that fails).
 - A drilled target (`drilled: true`) never takes the page row's
   `tr.mb-dp-current`: its element is a row of the window's own table.
 - ‹ › and ← → step from the PAGE target the drill-down started from

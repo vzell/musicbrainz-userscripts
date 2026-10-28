@@ -441,6 +441,11 @@ async function ctrlHover(page, el) {
 test.describe('discogs.com: MusicBrainz cards for the MusicBrainz icons (2026-10-24)', () => {
     test('our MusicBrainz column: an icon shows the artist\'s MusicBrainz card; Space opens its window', async ({ page }) => {
         const { errors } = await openDg(page, 'release', { settings: { sa_pop_mb: true } });
+        // MusicBrainz's entity glyphs load (the card drops an image that does
+        // not); registered after openDg()'s abort-all, so this one wins.
+        await page.route('https://musicbrainz.org/static/images/entity/**', (route) => route.fulfill({
+            status: 200, contentType: 'image/svg+xml', body: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"/>',
+        }));
         await press(page, 'Show tracklist, credits and other versions');
         await settled(page);
         await expandAll(page);
@@ -456,11 +461,21 @@ test.describe('discogs.com: MusicBrainz cards for the MusicBrainz icons (2026-10
         expect(asked, 'one lookup, from musicbrainz.org').toHaveLength(1);
         expect(asked[0]).toMatch(new RegExp(`^https://musicbrainz\\.org/ws/2/artist/${MB.bruce}\\?`));
         expect(await card.locator('a[href^="/"]').count(), 'no link names discogs.com').toBe(0);
+        // MusicBrainz's glyph, from musicbrainz.org: on discogs.com this
+        // origin's /static/… is Discogs' (org/POH-headerline.org item 3).
+        const GLYPH = 'https://musicbrainz.org/static/images/entity/artist.svg';
+        await expect(card.locator(':scope > .mb-pop-kind-head > img.mb-pop-kind-icon')).toHaveAttribute('src', GLYPH);
         await page.keyboard.press('Space');
         const dialog = page.locator('#mb-dp-dialog');
         await expect(dialog).toBeVisible();
         await expect(dialog.locator('.mb-dp-area')).toContainText('Bruce Springsteen');
         expect(await dialog.locator('.mb-dp-area a[href^="/"]').count(), 'nor in the window').toBe(0);
+        const glyph = dialog.locator(':scope > div > span').first().locator('.mb-dp-crumb > a.mb-dp-crumb-g');
+        await expect(glyph.locator('img.mb-dp-kind-icon')).toHaveAttribute('src', GLYPH);
+        // MusicBrainz's documentation has no card on another site: the link
+        // opens it in a new tab, and says so.
+        await expect(glyph).toHaveAttribute('href', 'https://musicbrainz.org/doc/Artist');
+        await expect(glyph).toHaveAttribute('data-mb-tip', '');
         expect(errors).toEqual([]);
     });
 
