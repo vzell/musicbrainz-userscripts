@@ -15659,6 +15659,9 @@
             'Companies, etc.': ['Role', 'Name', 'Cat#'],
             'Barcode and Other Identifiers': ['Type', 'Value', 'Description'],
             'Other versions': ['Image', 'Title', 'Format', 'Label', 'Cat#', 'Country', 'Year'],
+            // Page 1 only, after the identifiers, when the release has videos
+            // (org/youtube.org); Play only with sa_yt_play_in_place.
+            Videos: ['Play', 'Title', 'Length', 'URL'],
         },
         submissions: ['Artist', 'Title', 'Changed by', 'Changed', 'Matched artist', 'History'],
         ratings: ['Image', 'Artist', 'Title', 'Format', 'Label', 'Cat#', 'Year', 'Rating', 'Data quality'],
@@ -16267,6 +16270,32 @@
     }
 
     /**
+     * The release page's "Videos" sub-table (org/youtube.org, decision 3),
+     * from the release's own API answer — no request of its own: Play (a
+     * "Play here" tile, the player in a row under the row), Title, Length,
+     * URL. Play is left out with `sa_yt_play_in_place` off; a release without
+     * videos gets no sub-table.
+     *
+     * @param {?Array<{uri: string, title: string, duration: number}>} list - The API's `videos`.
+     * @returns {string}
+     */
+    function _dgVideosTableHtml(list) {
+        const videos = (list || []).filter(v => v && /^https?:\/\//i.test(v.uri || ''));
+        if (!videos.length) return '';
+        const play = _ytOn();
+        const cols = _DG_HEADERS.release.Videos.filter(c => play || c !== 'Play');
+        const rows = videos.map((v) => {
+            const yt = play ? _ytParse(v.uri) : null;
+            const title = String(v.title || v.uri).trim();
+            const tile = yt ? _ytTileHtml(yt, { bare: true, title, dur: Number(v.duration) || 0 }) : '';
+            const shown = v.uri.replace(/^https?:\/\/(?:www\.)?/i, '');
+            return `<tr>${play ? `<td class="mb-dg-playcell">${tile}</td>` : ''}${_dgCell(title)}` +
+                `<td class="mb-dg-when">${_rgEsc(_ytDurText(Number(v.duration) || 0))}</td>${_dgCell(shown, v.uri)}</tr>`;
+        });
+        return _dgTableHtml('Videos', cols, rows);
+    }
+
+    /**
      * A version's row (a master's versions, a release's other versions),
      * in `_DG_HEADERS.master` order; the master's main release marked ★.
      *
@@ -16320,7 +16349,7 @@
                 `${_dgCell(String(i.value).trim())}${_dgCell(String(i.description || '').trim())}</tr>`);
             body = _dgTableHtml('Tracklist', H.Tracklist, tracks) + _dgTableHtml('Credits', H.Credits, crs) +
                 _dgTableHtml('Companies, etc.', H['Companies, etc.'], cos) +
-                _dgTableHtml('Barcode and Other Identifiers', H['Barcode and Other Identifiers'], ids);
+                _dgTableHtml('Barcode and Other Identifiers', H['Barcode and Other Identifiers'], ids) + _dgVideosTableHtml(d.videos);
         } else {
             const kind = pg.kind === 'artist' ? 'artist' : pg.kind === 'label' ? 'label' : 'versions';
             const spec = _EXT_DG_LISTS[kind];
@@ -16392,6 +16421,8 @@
             body.mb-sa-host-dg #mb-dg-root h3 { font: 700 15px/1.3 Arial, Helvetica, sans-serif; color: #222; }
             body.mb-sa-host-dg #mb-dg-root table.tbl a { color: #1f4f99; }
             body.mb-sa-host-dg td.mb-dg-imgcell { width: 44px; padding: 2px !important; }
+            /* The Videos sub-table's Play column: a bare "Play here" tile (org/youtube.org). */
+            body.mb-sa-host-dg td.mb-dg-playcell { width: 82px; padding: 2px !important; }
             body.mb-sa-host-dg img.mb-dg-thumb { display: block; width: 40px; height: 40px; object-fit: cover; border: 1px solid #ddd; }
             body.mb-sa-host-dg .mb-dg-main { color: #b8860b; cursor: help; }
             body.mb-sa-host-dg td.mb-dg-when { white-space: nowrap; font-variant-numeric: tabular-nums; }
@@ -61553,6 +61584,9 @@
             .mb-yt-s { color: #7a6d5c; font: 11.5px/1.3 system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif; }
             .mb-yt-tile.mb-yt-dead .mb-yt-s { color: #9b2218; }
             .mb-yt-under, .mb-yt-slot:not(:empty) { margin: 6px 0 8px; }
+            /* A list's line (the Discogs window's Videos): tile, title, length. */
+            .mb-yt-row { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: center; }
+            .mb-yt-row > .mb-yt-tile:not(.mb-yt-bare) { display: inline-flex; margin: 2px 0; }
             tr.mb-yt-playerrow > td { padding: 0 8px 12px; background: #fbf8f1; }
             .mb-yt-player { display: grid; gap: 6px; width: min(100%, 640px); max-width: 640px; }
             .mb-yt-frame {
@@ -61880,11 +61914,12 @@
      * credits, identifiers, notes, images, videos), which a version-1 record
      * does not carry; 3 since every artist, label and company keeps its
      * Discogs id, for its link; 4 since an artist or a label has a window of
-     * its own (profile, images, names with ids, sites: 2026-10-18). Only
-     * Discogs records are read again.
+     * its own (profile, images, names with ids, sites: 2026-10-18); 5 since a
+     * master carries its videos too (org/youtube.org, decision 3: the master
+     * window's Videos section). Only Discogs records are read again.
      * @type {number}
      */
-    const _EXT_DISCOGS_VERSION = 4;
+    const _EXT_DISCOGS_VERSION = 5;
 
     /**
      * How many rows of a list one request asks for (a master's versions, an
@@ -62070,6 +62105,10 @@
                 labels: (d.labels || []).filter(l => l && l.name).map(l => ({
                     name: _extDiscogsName(l.name), catno: l.catno && l.catno !== 'none' ? String(l.catno).trim() : '', id: Number(l.id) || 0,
                 })),
+                // A release's and (since record version 5) a master's.
+                videos: (d.videos || []).filter(v => /^https?:\/\//i.test(v.uri || '')).map(v => ({
+                    title: String(v.title || v.uri).trim(), url: v.uri, dur: Number(v.duration) || 0,
+                })),
             };
             if (kind === 'release') {
                 Object.assign(rec.discogs, {
@@ -62080,9 +62119,6 @@
                     })),
                     identifiers: (d.identifiers || []).filter(i => i && i.value).map(i => ({
                         type: String(i.type || '').trim(), value: String(i.value).trim(), desc: String(i.description || '').trim(),
-                    })),
-                    videos: (d.videos || []).filter(v => /^https?:\/\//i.test(v.uri || '')).map(v => ({
-                        title: String(v.title || v.uri).trim(), url: v.uri, dur: Number(v.duration) || 0,
                     })),
                 });
             } else {
@@ -63929,17 +63965,38 @@
                         list.map(i => `<div><span class="mb-dg-cat">${_rgEsc(i.value)}</span>${i.desc ? ` <span class="mb-dg-dim">· ${_rgEsc(i.desc)}</span>` : ''}</div>`)
                             .join('') + '</div>').join('')));
             }
-            if (dg.videos.length) {
-                const dur = (s) => (s ? `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}` : '');
-                out.left.push(_extDgSection('videos', 'Videos', dg.videos.length, '<div class="mb-dg-lines">' + dg.videos.map(v =>
-                    `<div><a href="${_rgEsc(v.url)}" target="_blank" rel="noopener noreferrer">${_rgEsc(v.title)}</a>` +
-                    `${v.dur ? ` <span class="mb-dg-dim">${dur(v.dur)}</span>` : ''}</div>`).join('') + '</div>'));
-            }
         } else {
             _extDgListStart(t, _extDgList('versions', dg.id), { start, force, repaint });
             out.right.push(_extDgVersionsHtml(t, rec));
         }
+        // A release's videos, and a master's (decision 3, record version 5).
+        if ((dg.videos || []).length) out.left.push(_extDgVideosHtml(dg.videos));
         return out;
+    }
+
+    /**
+     * The Discogs window's Videos section: a line per video — its title
+     * linked, its length — and (org/youtube.org) a small "Play here" tile in
+     * front of each YouTube one, the player opening in a slot ABOVE the list
+     * so the list does not jump (the mockup's Discogs panel). Without a tile
+     * (`sa_yt_play_in_place` off, or no YouTube video) the section is what it
+     * always was.
+     *
+     * @param {Array<{title: string, url: string, dur: number}>} videos
+     * @returns {string}
+     */
+    function _extDgVideosHtml(videos) {
+        const dur = (s) => (s ? `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}` : '');
+        let tiles = 0;
+        const rows = videos.map((v) => {
+            const yt = _ytParse(v.url);
+            const tile = yt ? _ytTileHtml(yt, { small: true, title: v.title, dur: v.dur }) : '';
+            if (tile) tiles++;
+            return `<div${tile ? ' class="mb-yt-row"' : ''}>${tile}<a href="${_rgEsc(v.url)}" target="_blank" rel="noopener noreferrer">${_rgEsc(v.title)}</a>` +
+                `${v.dur ? ` <span class="mb-dg-dim">${dur(v.dur)}</span>` : ''}</div>`;
+        });
+        const box = tiles ? '<div class="mb-dg-lines" data-mb-yt-slots=""><div class="mb-yt-slot"></div>' : '<div class="mb-dg-lines">';
+        return _extDgSection('videos', 'Videos', videos.length, box + rows.join('') + '</div>');
     }
 
     /**

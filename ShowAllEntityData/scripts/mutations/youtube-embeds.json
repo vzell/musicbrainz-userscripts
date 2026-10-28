@@ -167,5 +167,57 @@
         "spec": "tests/fixtures/youtube-embeds.spec.js",
         "grep": "the window \\(Space\\)",
         "expect": "fail"
+    },
+    {
+        "name": "the master window shows no videos",
+        "why": "Decision 3: the master reader reads videos (record version 5) and the master window gets the same Videos section.",
+        "edits": [
+            {
+                "find": "        if ((dg.videos || []).length) out.left.push(_extDgVideosHtml(dg.videos));",
+                "replace": "        if (dg.kind === 'release' && (dg.videos || []).length) out.left.push(_extDgVideosHtml(dg.videos));"
+            }
+        ],
+        "spec": "tests/fixtures/youtube-embeds.spec.js",
+        "grep": "the master window: its videos too",
+        "expect": "fail"
+    },
+    {
+        "name": "the Discogs window's Videos have no slot above the list",
+        "why": "The mockup puts the player in a slot above the list so the list does not jump; without it the player opens inside a line.",
+        "edits": [
+            {
+                "find": "        const box = tiles ? '<div class=\"mb-dg-lines\" data-mb-yt-slots=\"\"><div class=\"mb-yt-slot\"></div>' : '<div class=\"mb-dg-lines\">';",
+                "replace": "        const box = '<div class=\"mb-dg-lines\">';"
+            }
+        ],
+        "spec": "tests/fixtures/youtube-embeds.spec.js",
+        "grep": "the release window: a small tile per video",
+        "expect": "fail"
+    },
+    {
+        "name": "the release page has no Videos sub-table",
+        "why": "Decision 3: a Videos sub-table from the same API answer.",
+        "edits": [
+            {
+                "find": "_dgTableHtml('Barcode and Other Identifiers', H['Barcode and Other Identifiers'], ids) + _dgVideosTableHtml(d.videos);",
+                "replace": "_dgTableHtml('Barcode and Other Identifiers', H['Barcode and Other Identifiers'], ids);"
+            }
+        ],
+        "spec": "tests/fixtures/youtube-embeds.spec.js",
+        "grep": "the release page: a Videos sub-table",
+        "expect": "fail"
+    },
+    {
+        "name": "the Videos sub-table's Play column is empty",
+        "why": "Play holds a bare tile per YouTube video; the spec counts three and plays the first.",
+        "edits": [
+            {
+                "find": "            const tile = yt ? _ytTileHtml(yt, { bare: true, title, dur: Number(v.duration) || 0 }) : '';",
+                "replace": "            const tile = '';"
+            }
+        ],
+        "spec": "tests/fixtures/youtube-embeds.spec.js",
+        "grep": "the release page: a Videos sub-table",
+        "expect": "fail"
     }
 ]

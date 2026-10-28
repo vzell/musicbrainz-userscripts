@@ -51,11 +51,13 @@ const LIST = 'https://www.youtube.com/playlist?list=PLM0aPYPhFzkrHWh8uoXwAsxdDXy
  *
  * @param {import('@playwright/test').Page} page
  * @param {Object} [settings] - On top of both YouTube settings on.
+ * @param {Object} [responses] - GM_xmlhttpRequest answers by URL (the stub's).
  * @returns {Promise<{player: string[], stills: string[], youtube: string[]}>}
  */
-async function openPage(page, settings = {}) {
+async function openPage(page, settings = {}, responses = {}) {
     const log = { player: [], stills: [], youtube: [] };
     const ctx = page.context();
+    await ctx.addInitScript((r) => { window.__gmXhrResponses = r; }, responses);
     await ctx.route('https://www.youtube-nocookie.com/**', (route) => {
         log.player.push(route.request().url());
         return route.fulfill({ status: 200, contentType: 'text/html', body: '<!doctype html><title>player</title><p>player</p>' });
@@ -574,5 +576,151 @@ test.describe('YouTube in place — Step 2: MusicBrainz', () => {
             return { n: tiles.length, prev: tiles[0] && tiles[0].previousElementSibling.textContent, key: tiles[0] && tiles[0].dataset.mbYt };
         });
         expect(r).toEqual({ n: 1, prev: 'this video', key: 'MLnTqKksftM' });
+    });
+});
+
+// ---------------------------------------------------------------------------
+// Step 3 — Discogs (decisions 3, 6): the release window's Videos, the master
+// window's (the master reader reads videos since record version 5), and a
+// "Videos" sub-table on the release page. The frame-policy fallback itself is
+// Step 1's last test.
+//
+// Answers: tests/fixtures/ext-discogs-release.json (release 1874253, three
+// videos: Wu4_zVxmufY "Born to Run" 4:30, x1gMfIsi5Dk, VO-n2EFK6sM) and
+// ext-discogs-master.json (master 26725, three videos).
+// ---------------------------------------------------------------------------
+
+const fs = require('fs');
+const DG_FX = (name) => JSON.parse(fs.readFileSync(path.join(__dirname, `ext-${name}.json`), 'utf8'));
+const dgAnswers = (...names) => Object.fromEntries(names.map((n) => {
+    const f = DG_FX(n);
+    return [f.url, { status: f.status, responseHeaders: `Content-Type: ${f.contentType}`, responseText: f.body }];
+}));
+const DG_RELEASE_VIDEOS = JSON.parse(DG_FX('discogs-release').body).videos;
+const DG_MASTER_VIDEOS = JSON.parse(DG_FX('discogs-master').body).videos;
+
+/**
+ * Opens a Discogs link's window from the event page: the link is added to
+ * the annotation, hovered with Ctrl, then pinned with Space.
+ *
+ * @param {import('@playwright/test').Page} page
+ * @param {string} href
+ * @returns {Promise<import('@playwright/test').Locator>} The dialog.
+ */
+async function openDgWindow(page, href) {
+    await page.evaluate((h) => {
+        const host = document.querySelector('.annotation .annotation-body') || document.querySelector('.annotation');
+        const p = document.createElement('p');
+        p.className = 'dg-probe';
+        p.innerHTML = `<a href="${h}" rel="nofollow">a Discogs link</a>`;
+        host.insertBefore(p, host.firstChild);
+    }, href);
+    const a = page.locator('.dg-probe a');
+    if (!await a.isVisible()) await page.locator('.annotation h2').first().click();
+    await page.mouse.move(0, 0);
+    await a.scrollIntoViewIfNeeded();
+    await page.keyboard.down('Control');
+    await a.hover();
+    await page.keyboard.up('Control');
+    await expect(page.locator('#mb-dp-peek')).toBeVisible();
+    await page.keyboard.press('Space');
+    const d = page.locator('#mb-dp-dialog');
+    await expect(d).toBeVisible();
+    return d;
+}
+
+test.describe('YouTube in place — Step 3: Discogs', () => {
+    test('the release window: a small tile per video, the player in the slot above the list', async ({ page }) => {
+        expect(DG_RELEASE_VIDEOS.length, 'the capture carries the videos').toBe(3);
+        const log = await openPage(page, { sa_pop_ext: true, sa_pop_ext_favicons: false, sa_rich_tooltip_delay_ms: 0 },
+            dgAnswers('discogs-release', 'discogs-master', 'discogs-master-versions-p1'));
+        const d = await openDgWindow(page, 'https://www.discogs.com/release/1874253-Bruce-Springsteen-Born-To-Run');
+        const sec = d.locator('[data-mb-dg-sec="videos"]');
+        await expect(sec.locator('.mb-dg-xh')).toHaveText('Videos 3');
+        const tiles = sec.locator('.mb-yt-tile.mb-yt-small');
+        await expect(tiles).toHaveCount(3);
+        await expect(tiles.first()).toHaveAttribute('data-mb-yt', 'Wu4_zVxmufY');
+        await expect(sec.locator('.mb-yt-row').first()).toContainText('4:30');
+        // The slot is the list's first child, empty until a click.
+        const lines = sec.locator('[data-mb-yt-slots]');
+        await expect(lines.locator(':scope > .mb-yt-slot')).toHaveCount(1);
+        expect(await lines.evaluate(l => l.firstElementChild.className)).toBe('mb-yt-slot');
+        await expect(lines.locator('.mb-yt-slot iframe')).toHaveCount(0);
+        expect(log.player).toEqual([]);
+
+        const rowsBefore = await lines.locator('.mb-yt-row').evaluateAll(rs => rs.map(r => r.textContent));
+        await tiles.nth(1).click();
+        await expect(lines.locator('.mb-yt-slot iframe.mb-yt-frame')).toHaveAttribute('src', /\/embed\/x1gMfIsi5Dk\?autoplay=1$/);
+        // The list itself is as it was: same lines, same order, no player among them.
+        expect(await lines.locator('.mb-yt-row').evaluateAll(rs => rs.map(r => r.textContent))).toEqual(rowsBefore);
+        await expect(lines.locator('.mb-yt-row .mb-yt-player')).toHaveCount(0);
+        // Another tile of the same list: the same slot, one player.
+        await tiles.nth(0).click();
+        await expect(lines.locator('iframe.mb-yt-frame')).toHaveCount(1);
+        await expect(lines.locator('.mb-yt-slot iframe.mb-yt-frame')).toHaveAttribute('src', /\/embed\/Wu4_zVxmufY\?autoplay=1$/);
+        await expect.poll(() => log.player.length).toBe(2);
+    });
+
+    test('the master window: its videos too (record version 5), with tiles', async ({ page }) => {
+        expect(DG_MASTER_VIDEOS.length, 'the capture carries the videos').toBeGreaterThan(0);
+        await openPage(page, { sa_pop_ext: true, sa_pop_ext_favicons: false, sa_rich_tooltip_delay_ms: 0 },
+            dgAnswers('discogs-master', 'discogs-master-versions-p1'));
+        const d = await openDgWindow(page, 'https://www.discogs.com/master/26725-Bruce-Springsteen-Born-To-Run');
+        const sec = d.locator('[data-mb-dg-sec="videos"]');
+        await expect(sec.locator('.mb-dg-xh')).toHaveText(`Videos ${DG_MASTER_VIDEOS.length}`);
+        await expect(sec.locator('.mb-yt-tile')).toHaveCount(DG_MASTER_VIDEOS.filter(v => /youtu/.test(v.uri)).length);
+    });
+
+    test('the window with play-in-place off: the Videos section as it always was', async ({ page }) => {
+        await openPage(page, { sa_yt_play_in_place: false, sa_pop_ext: true, sa_pop_ext_favicons: false, sa_rich_tooltip_delay_ms: 0 },
+            dgAnswers('discogs-release', 'discogs-master', 'discogs-master-versions-p1'));
+        const d = await openDgWindow(page, 'https://www.discogs.com/release/1874253-Bruce-Springsteen-Born-To-Run');
+        const sec = d.locator('[data-mb-dg-sec="videos"]');
+        await expect(sec.locator('.mb-dg-xh')).toHaveText('Videos 3');
+        await expect(sec.locator('.mb-yt-tile, .mb-yt-slot, [data-mb-yt-slots], .mb-yt-row')).toHaveCount(0);
+        await expect(sec.locator('.mb-dg-lines > div > a')).toHaveCount(3);
+    });
+
+    test('the release page: a Videos sub-table, Play first; a tile plays in a row under its row', async ({ page }) => {
+        const errors = [];
+        page.on('pageerror', (e) => errors.push(String(e.stack || e.message || e)));
+        await page.route(/^https?:\/\//, (route) => route.abort('blockedbyclient'));
+        await page.route('https://i.discogs.com/**', (route) => route.fulfill({ status: 200, contentType: 'image/png', body: PNG }));
+        const player = [];
+        await page.route('https://www.youtube-nocookie.com/**', (route) => {
+            player.push(route.request().url());
+            return route.fulfill({ status: 200, contentType: 'text/html', body: '<!doctype html><title>player</title>' });
+        });
+        await page.context().addInitScript((r) => { window.__gmXhrResponses = r; },
+            dgAnswers('discogs-release', ...[1, 2, 3, 4].map(p => `discogs-master-versions-p${p}`)));
+        await loadUserscriptPage(page, {
+            url: 'https://www.discogs.com/release/1874253-Bruce-Springsteen-Born-To-Run',
+            fixtureFile: path.join(__dirname, 'dg-release.html'),
+            testMode: true,
+            settingsOverride: {
+                sa_enable_discogs: true, sa_pop_ext_discogs_token: 'tok-probe', sa_render_threshold: 100000,
+                sa_yt_play_in_place: true, sa_yt_stills: false,
+            },
+        });
+        await page.locator('#mb-dg-root button[data-label="Show tracklist, credits and other versions"]').click();
+        await waitForRenderComplete(page, { waitForAutoResize: false });
+        // The heading carries its toggle and count around the name.
+        const h3 = page.locator('#mb-dg-root h3').filter({ hasText: 'Videos' });
+        await expect(h3).toHaveCount(1);
+        if (!await page.locator('#mb-dg-root td.mb-dg-playcell').first().isVisible()) await h3.click();
+        const table = page.locator('#mb-dg-root table.tbl').filter({ has: page.locator('td.mb-dg-playcell') });
+        const heads = await table.locator('thead th').evaluateAll(ths => ths.map(th => (th.dataset.colName || th.textContent).trim()));
+        expect(heads.slice(0, 4).map(h => h.split(/\s/)[0])).toEqual(['Play', 'Title', 'Length', 'URL']);
+        await expect(table.locator('tbody .mb-yt-tile.mb-yt-bare')).toHaveCount(3);
+        const first = table.locator('tbody > tr').first();
+        await expect(first).toContainText('4:30');
+        await expect(first.locator('a[href="https://www.youtube.com/watch?v=Wu4_zVxmufY"]')).toHaveText('youtube.com/watch?v=Wu4_zVxmufY');
+        expect(player).toEqual([]);
+        await first.locator('.mb-yt-tile').click();
+        const next = first.locator('xpath=following-sibling::tr[1]');
+        await expect(next).toHaveClass('mb-yt-playerrow');
+        await expect(next.locator('iframe.mb-yt-frame')).toHaveAttribute('src', 'https://www.youtube-nocookie.com/embed/Wu4_zVxmufY?autoplay=1');
+        await expect.poll(() => player.length).toBe(1);
+        expect(errors).toEqual([]);
     });
 });
