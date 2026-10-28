@@ -18129,7 +18129,11 @@
      * @returns {object} The source.
      */
     function _dgMbSource() {
-        const sel = '#mb-dg-root table.tbl > tbody a[href^="https://musicbrainz.org/"], #app a[href^="https://musicbrainz.org/"]';
+        // Also our own <h1> (`_dgPrepareLivePage()`): murdos' importer puts
+        // its icon in front of the page's name there too (vzell, 2026-10-28:
+        // it had no card).
+        const sel = '#mb-dg-root table.tbl > tbody a[href^="https://musicbrainz.org/"], #app a[href^="https://musicbrainz.org/"], ' +
+            '#mb-dg-root h1.mb-dg-h1 a[href^="https://musicbrainz.org/"]';
         const resolve = (a) => {
             const m = _DG_MB_LINK_RE.exec(a.getAttribute('href') || '');
             const type = m && m[1].toLowerCase();
@@ -18144,8 +18148,10 @@
             const wrap = a.closest('.mb_wrapper');
             const beside = wrap && wrap.querySelector('a[href]:not([href^="https://musicbrainz.org/"])');
             const cell = a.closest('td.mb-dg-mb-cell');
+            // In our <h1>: the page's name, its <bdi>.
+            const h1 = a.closest('h1.mb-dg-h1');
             const name = _dpText(a.textContent) || (beside ? _dpText(beside.textContent) : '') ||
-                (cell && cell.dataset.mbDgName) || '';
+                (cell && cell.dataset.mbDgName) || (h1 ? _dpText((h1.querySelector('bdi') || {}).textContent || '') : '') || '';
             return {
                 key: `${type}:${id}`, url: `https://musicbrainz.org/${type}/${id}`, type, id,
                 kind: k.titleOf ? k.titleOf(id) : k.title, wide: !!k.wide, name,
@@ -24808,8 +24814,13 @@
         // "✎ Editing history": only where there is one (org/mb-edit-history.org).
         if (_dpDialog.controls && _dpDialog.controls.hist) {
             const subj = _mbEditsSubject(t);
+            // A Discogs release, master, artist or label has one too, without
+            // the ▾ (org/POH-headerline.org item 4).
+            const dg = subj ? '' : _dgHistSubject(t);
             const c = _dpDialog.controls;
-            (c.histSplit || c.hist).style.display = subj ? '' : 'none';
+            (c.histSplit || c.hist).style.display = subj || dg ? '' : 'none';
+            _setTip(c.hist, dg ? `This ${dg.split('/')[0]}'s edit history on Discogs, in this window (H)`
+                : 'This entity\'s editing history on MusicBrainz, in this window (H)');
             // The ▾ presets: an entity's only (`_mbHistPresets()`), never an editor's.
             const withMore = !!subj && !subj.startsWith('user/');
             if (c.histMore) c.histMore.style.display = withMore ? '' : 'none';
@@ -24954,7 +24965,7 @@
         if (_dpIsTextField(e.target)) return;
         // H: the editing history of what the window shows, where it has one
         // (org/mb-edit-history.org); the history's own row keys.
-        if ((e.key === 'h' || e.key === 'H') && !e.altKey && !e.ctrlKey && !e.metaKey && _mbEditsSubject(_dpDialog.target)) {
+        if ((e.key === 'h' || e.key === 'H') && !e.altKey && !e.ctrlKey && !e.metaKey && _dpHasHistory(_dpDialog.target)) {
             e.preventDefault();
             e.stopPropagation();
             _dpOpenEdits();
@@ -25336,7 +25347,7 @@
             const keys = [];
             if (t && t.src.steps(t).length > 1) keys.push('← → rows');
             if (_dpDialog.stack.length) keys.push('Backspace back');
-            if (t && _mbEditsSubject(t)) keys.push('H history');
+            if (t && _dpHasHistory(t)) keys.push('H history');
             // A window with a tag or genre link (a genre in the Facts, a
             // tag's genre): the key that shows the reader's own tag there
             // (`_mbOwnTagTarget()`; vzell 2026-10-27: say it exists).
@@ -28042,10 +28053,18 @@
             .mb-dp-dialog .mb-dgh-seg .mb-dg-btn:last-child { border-radius: 0 3px 3px 0; }
             .mb-dp-dialog .mb-dgh-seg .mb-dg-btn[aria-pressed="true"] { background: #2b2622; color: #fbf8f1; border-color: #2b2622; }
             .mb-dp-dialog .mb-dgh-seg + .mb-dgh-seg { margin-left: 6px; }
+            /* A history of several pages: which are shown, "Load the N earlier pages" (_extDgHistSectionsHtml()). */
+            .mb-dp-dialog .mb-dgh-pages { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: center; margin: 2px 0 6px; font-size: 12.5px; }
+            .mb-dp-dialog .mb-dgh-pages .mb-dp-warn { margin: 0; }
+            /* The kind column fits Discogs' longest kinds ("Edit Master Release",
+               a master's history: it ran into the note at 8.5em, vzell
+               2026-10-28); a longer one is cut, its whole label in its tip. */
             .mb-dp-dialog .mb-dgh-e {
-                display: grid; grid-template-columns: 8.6em 9em 8.5em minmax(0, 1fr) auto; gap: 3px 10px;
+                display: grid; grid-template-columns: 8.6em 9em 12em minmax(0, 1fr) auto; gap: 3px 10px;
                 padding: 5px 0; border-bottom: 1px dotted #d9cfbd; align-items: baseline;
             }
+            .mb-dp-dialog .mb-dgh-e > .mb-dgh-k { min-width: 0; overflow: hidden; }
+            .mb-dp-dialog .mb-dgh-e > .mb-dgh-k > .mb-dgh-pill { max-width: 100%; box-sizing: border-box; overflow: hidden; text-overflow: ellipsis; vertical-align: 1px; }
             .mb-dp-dialog .mb-dgh-latest { background: #eef2f8; }
             .mb-dp-dialog .mb-dgh-d { font: 12px ui-monospace, Consolas, monospace; font-variant-numeric: tabular-nums; color: #7a6d5c; }
             .mb-dp-dialog .mb-dgh-u, .mb-dp-dialog .mb-dgh-n { min-width: 0; overflow-wrap: anywhere; }
@@ -58550,6 +58569,39 @@
     }
 
     /**
+     * What a Discogs window shows an edit history of: "<kind>/<id>" for a
+     * release, master, artist or label (the `discogs` reader's targets: on
+     * any host), '' for everything else. Its "✎ Editing history" opens the
+     * history reader's window (`_extDgHistTarget()`; org/POH-headerline.org
+     * item 4, vzell 2026-10-28: the button "without the menu structure").
+     *
+     * @param {?object} t - A window target.
+     * @returns {string}
+     */
+    function _dgHistSubject(t) {
+        if (!t || !t.reader || t.reader.id !== 'discogs' || !t.url) return '';
+        let u;
+        try {
+            u = new URL(t.url);
+        } catch (_) {
+            return '';
+        }
+        const m = _EXT_DISCOGS_PATH_RE.exec(u.pathname);
+        return m ? `${m[1].toLowerCase()}/${m[2]}` : '';
+    }
+
+    /**
+     * Whether a window target has an editing history to show (✎, H): a
+     * MusicBrainz one (`_mbEditsSubject()`) or a Discogs one (`_dgHistSubject()`).
+     *
+     * @param {?object} t
+     * @returns {boolean}
+     */
+    function _dpHasHistory(t) {
+        return !!(_mbEditsSubject(t) || _dgHistSubject(t));
+    }
+
+    /**
      * The source of the window's MusicBrainz targets here, while it is on:
      * the entity cards (`mb-entity`) on MusicBrainz, discogs.com's
      * MusicBrainz links (`dg-mb`, `_dgMbSource()`) on discogs.com
@@ -58602,6 +58654,14 @@
     function _dpOpenEdits() {
         const cur = _dpDialog.target;
         const id = _mbEditsSubject(cur);
+        // A Discogs release, master, artist or label: its edit history page
+        // in the window, through the same source (org/POH-headerline.org item 4).
+        const dg = id ? '' : _dgHistSubject(cur);
+        if (dg) {
+            _dpDialog.stack.push(cur);
+            _dpShowInDialog(Object.assign(_extDgHistTarget(dg, cur), { src: cur.src, drilled: true }));
+            return;
+        }
         // The window's MusicBrainz source here: on discogs.com `dg-mb`, its
         // pages read with the browser's cookies (`_mbPageGetForeign()`).
         const src = _mbWinSource();
@@ -64748,7 +64808,7 @@
         if (dg.kind === 'artist' || dg.kind === 'label') return _extDgEntityWindow(t, rec, { start, force, repaint });
         // On a submissions list a release's window opens with its edit
         // history (vzell, 2026-10-18), read by the window only.
-        if (dg.kind === 'release' && _dgOnSubmissions()) out.top = _extDgHistReleaseParts(t, dg.id, { start, force, repaint });
+        if (dg.kind === 'release' && _dgOnSubmissions()) out.top = _extDgHistReleaseParts(t, `release/${dg.id}`, { start, force, repaint });
         const ui = _extDgUiOf(t);
         if (dg.images.length) out.lead = [_extDgSection('images', 'Images', dg.images.length, _extDgImagesHtml(dg.images))];
         if (dg.tracklist.length) {
@@ -64837,7 +64897,7 @@
             // the window has read it (the card never asks for it).
             let hist = '';
             if (_dgOnSubmissions()) {
-                const hs = _mbPop.get(`ext:dghistory:${_extDgHistUrl(dg.id)}`);
+                const hs = _mbPop.get(`ext:dghistory:${_extDgHistUrl(`${dg.kind}/${dg.id}`)}`);
                 const h = hs && hs.status === 'done' && hs.data && hs.data.dgHist;
                 const last = h && h.entries[h.entries.length - 1];
                 hist = last ? `<div class="mb-tt-dim mb-dg-sum">Last change ${_rgEsc(_extDgHistLine(last))} · ` +
@@ -65225,31 +65285,44 @@
     // browser's own session (same-origin `fetch()`), elsewhere as every other
     // site, `_extGet()`. Only on Space (`windowOnly`), never from a hover.
 
-    /** A release's history page, a language prefix and a slug allowed. */
-    const _EXT_DGH_PATH_RE = /^\/(?:[a-z]{2}(?:[-_][a-zA-Z]{2})?\/)?release\/(\d+)(?:-[^/?#]*)?\/history\/?$/i;
+    /**
+     * A release's, master's, artist's or label's history page, a language
+     * prefix and a slug allowed: [1] the kind, [2] the id. Releases only
+     * until 2026-10-28; the other three have the same page (probed:
+     * scripts/probe-dg-history-shape.js on vzell's saved copies,
+     * org/POH-headerline.org Step 4).
+     */
+    const _EXT_DGH_PATH_RE = /^\/(?:[a-z]{2}(?:[-_][a-zA-Z]{2})?\/)?(release|master|artist|label)\/(\d+)(?:-[^/?#]*)?\/history\/?$/i;
 
     /**
      * Version of the parsed history records kept in IndexedDB; bump when
      * `_extDgHistParse()`'s output changes. 2 since each change keeps its
      * revision (`rev`), for "View changes"; 3 since each change keeps its
-     * user's picture (`avatar`; 2026-10-18).
+     * user's picture (`avatar`; 2026-10-18); 4 since a page knows its place
+     * among the history's pages (`page`) and its subject's link skips
+     * murdos' importer's (2026-10-28).
      * @type {number}
      */
-    const _EXT_DGH_VERSION = 3;
+    const _EXT_DGH_VERSION = 4;
 
     /**
-     * Each history window's state, by release id: the kind of change shown
+     * Each history window's state, by its subject (`_extDgHistIdOf()`,
+     * "release/<id>", "artist/<id>"…): the kind of change shown
      * (`group`: 'all', 'edits', 'images', 'merges', 'comments'), the order
-     * ('new' first or 'old'), the whole release in the diff (`diffAll`), and
-     * the notes opened in full, and the revision whose changes the second
-     * section shows (`rev`, 0: the latest change; "View changes"), and the
-     * window target a `?diff=` link last set it for (`revFor`).
-     * @type {Map<number, {group: string, order: string, diffAll: boolean, open: Set<number>, rev: number, revFor?: ?object}>}
+     * ('new' first or 'old'), the whole release in the diff (`diffAll`), the
+     * notes opened in full (by entry key, `<page>:<row>`), the revision
+     * whose changes the second section shows (`rev`, 0: the latest change;
+     * "View changes"), the window target a `?diff=` link last set it for
+     * (`revFor`), and the run reading the earlier pages (`pagesRun`,
+     * `pagesStop`).
+     * @type {Map<string, {group: string, order: string, diffAll: boolean, open: Set<string>, rev: number, revFor?: ?object,
+     *   pagesRun: boolean, pagesStop: boolean}>}
      */
     const _extDgHistUi = new Map();
 
     /**
-     * A link to a release's history page on discogs.com.
+     * A link to a release's, master's, artist's or label's history page on
+     * discogs.com.
      *
      * @param {URL} u
      * @returns {boolean}
@@ -65259,25 +65332,50 @@
     }
 
     /**
-     * A release's history page as the cache knows it, whatever the link's
-     * slug or language: `https://www.discogs.com/release/<id>/history`.
+     * A history page's subject, "<kind>/<id>" ("release/8164856",
+     * "artist/219986"): the key of its window's state and of its pages.
      *
-     * @param {number|string} id
+     * @param {URL} u - A history page (`_extDgHistTest()`).
      * @returns {string}
      */
-    function _extDgHistUrl(id) {
-        return `https://www.discogs.com/release/${id}/history`;
+    function _extDgHistIdOf(u) {
+        const m = _EXT_DGH_PATH_RE.exec(u.pathname);
+        return `${m[1].toLowerCase()}/${m[2]}`;
     }
 
     /**
-     * The reader's cache URL of a link (`keyUrl`): the release's
+     * A subject's history page as the cache knows it, whatever the link's
+     * slug or language: `https://www.discogs.com/<kind>/<id>/history`. The
+     * page Discogs serves there is the NEWEST of the history's pages (probe
+     * P3: the artist's 46 rows were its page 2 of 2).
+     *
+     * @param {string} hid - "<kind>/<id>" (`_extDgHistIdOf()`).
+     * @returns {string}
+     */
+    function _extDgHistUrl(hid) {
+        return `https://www.discogs.com/${hid}/history`;
+    }
+
+    /**
+     * The reader's cache URL of a link (`keyUrl`): its subject's
      * `_extDgHistUrl()`.
      *
      * @param {URL} u
      * @returns {string}
      */
     function _extDgHistKeyUrl(u) {
-        return _extDgHistUrl(_EXT_DGH_PATH_RE.exec(u.pathname)[1]);
+        return _extDgHistUrl(_extDgHistIdOf(u));
+    }
+
+    /**
+     * What a history window is, for its title: "Discogs release history",
+     * "Discogs artist history" (the reader's `kindFor`).
+     *
+     * @param {URL} u
+     * @returns {string}
+     */
+    function _extDgHistKind(u) {
+        return `Discogs ${_extDgHistIdOf(u).split('/')[0]} history`;
     }
 
     /**
@@ -65365,14 +65463,19 @@
     }
 
     /**
-     * A release's history page (or the browser view's `#historyData` pane):
-     * its release (name, link, 100 px picture, `[r…]` code), the data
-     * quality, every change of `table#hist` in Discogs' order (oldest first)
-     * with its user, kind (Discogs' own label: "Edit Release", "Images",
-     * "Merge Pending"; none for a comment), note, date, and Discogs' View,
-     * Changes and Images links, and the latest change's diff as named
-     * blocks on each side, `changed` when either side carries a mark. Null
-     * when the page has no history table (a browser check, a sign-in page).
+     * A history page of a release, master, artist or label (or the browser
+     * view's `#historyData` pane): its subject (name, link, 100 px picture,
+     * `[r…]` code), the data quality, every change of `table#hist` in
+     * Discogs' order (oldest first) with its user, kind (Discogs' own label:
+     * "Edit Release", "Edit Artist", "Images", "Merge Pending"; none for a
+     * comment), note, date, and Discogs' View, Changes and Images links, the
+     * latest change's diff as named blocks on each side, `changed` when
+     * either side carries a mark, and the page's place among the history's
+     * pages (`page`, `pages`: `.pagination_links`; 1 and 1 without a pager).
+     * Null when the page has no history table (a browser check, a sign-in
+     * page). A page saved from a browser may carry murdos' importer's
+     * musicbrainz.org link (and its glyph) first in its `<h1>`
+     * (debug/dg-*-history.html): the subject is the first OTHER link.
      *
      * @param {Document} doc
      * @param {string} base - The page's URL.
@@ -65383,11 +65486,18 @@
         const hist = root.querySelector('table#hist');
         if (!hist) return null;
         const head = root.querySelector('#editing_header');
-        const rel = head && head.querySelector('h1 a[href]');
-        const img = head && head.querySelector('img[src]');
+        const own = (el) => !el.closest('a[href^="https://musicbrainz.org"], .mb_wrapper');
+        const rel = head && Array.from(head.querySelectorAll('h1 a[href]')).find(own);
+        const img = head && Array.from(head.querySelectorAll('img[src]')).find(own);
+        // Pages run oldest → newest, page 1 the oldest; the plain URL serves
+        // the last (scripts/probe-dg-history-shape.js).
+        const pager = root.querySelector('.pagination_links');
+        const pageNo = (el) => Number((/[?&]page=(\d+)/.exec(el.getAttribute('href') || '') || [])[1]) || 0;
+        const cur = pager ? Number(_dpText((pager.querySelector('.currentpage') || {}).textContent || '')) || 1 : 1;
+        const pages = pager ? Math.max(cur, ...Array.from(pager.querySelectorAll('a[href]')).map(pageNo)) : 1;
         const code = head && head.querySelector('.copy_shortcut_code');
         const href = (el) => (el ? _dpAbsUrl(el.getAttribute('href') || el.dataset.sbNavigate || '', base) : '');
-        const entries = Array.from(hist.querySelectorAll('tbody > tr.datarow')).map((tr) => {
+        const entries = Array.from(hist.querySelectorAll('tbody > tr.datarow')).map((tr, row) => {
             const user = tr.querySelector('.linked_username');
             const avatar = tr.querySelector('.user_thumbnail_with_username img[src]');
             const date = tr.querySelector('td span[title]');
@@ -65405,7 +65515,10 @@
                 notes: notes ? _extDgHistHtml(notes, base) : '',
                 at: date ? _extDgHistIso(date.getAttribute('title')) : '', ago: date ? _dpText(date.textContent) : '',
                 view, changes, images, rev: Number((/[?&](?:diff|rev)=(\d+)/.exec(changes || view) || [])[1]) || 0,
+                // The PAGE's latest: on a page before the last it is not the history's.
                 latest: tr.id === 'latest',
+                // Stable across pages read later (a note opened stays open).
+                key: `${cur}:${row}`,
             };
         });
         const table = root.querySelector('table.diff');
@@ -65434,7 +65547,7 @@
             thumb: img && /^https?:\/\//i.test(img.getAttribute('src')) ? img.getAttribute('src') : '',
             code: code ? _dpText(code.textContent).replace(/^\[|\]$/g, '') : '',
             quality: _dpText((root.querySelector('#rating .vote_info_helper') || doc.querySelector('#rating .vote_info_helper') || {}).textContent || ''),
-            entries, diff,
+            entries, diff, page: cur, pages,
         };
     }
 
@@ -65504,69 +65617,171 @@
     }
 
     /**
-     * The history reader's load: ONE request for the release's history page
-     * (`_extDgHistGet()`), parsed by `_extDgHistParse()`. The record's card
-     * facts are the latest change, how many, and the data quality; the
-     * parsed page is `rec.dgHist`, for the window.
+     * The history reader's load: ONE request for the subject's history page
+     * (`_extDgHistGet()`: the newest of its pages), parsed by
+     * `_extDgHistParse()`. The record's card facts are the latest change,
+     * how many, and the data quality (and, for a history of one page, its
+     * first change; of several, how many pages); the parsed page is
+     * `rec.dgHist`, for the window, which reads the earlier pages on request
+     * (`_extDgHistPagesRun()`).
      *
      * @param {object} t
      * @param {function(): boolean} wanted
      * @returns {Promise<{ok?: boolean, data?: Object, detail?: string, skipped?: boolean}>}
      */
     async function _extDgHistLoad(t, wanted) {
+        const kind = _extDgHistIdOf(new URL(t.url)).split('/')[0];
         const res = await _extDgHistGet(t.url, wanted);
         if (res.skipped) return { skipped: true };
         if (res.status > 0) _extRememberHost('www.discogs.com');
-        const out = _extApiOutcome(t, res, 'Discogs', 'Discogs has no such release (its history page answered 404).');
+        const out = _extApiOutcome(t, res, 'Discogs', `Discogs has no such ${kind} (its history page answered 404).`);
         if (out) return out;
         const h = _extDgHistParse(new DOMParser().parseFromString(String(res.body || '') + String(res.tail || ''), 'text/html'), res.finalUrl || t.url);
         if (!h) return { ok: false, detail: 'Discogs answered, but not with the edit history (signed out, or a browser check?)' };
         const rec = _extApiRecord(t, res.status, 'Discogs');
         const last = h.entries[h.entries.length - 1];
         const first = h.entries[0];
+        const paged = h.pages > 1;
         Object.assign(rec, {
-            title: h.name || t.name, subtitle: 'Discogs · release · edit history', type: 'edit history', image: h.thumb,
+            title: h.name || t.name, subtitle: `Discogs · ${kind} · edit history`, type: 'edit history', image: h.thumb,
             description: last && last.notes ? _dpText(last.notes.replace(/<br>/g, ' ').replace(/<[^>]+>/g, '')) : '',
             facts: [
                 ['Last change', last ? _extDgHistLine(last) : ''],
-                ['Changes', _extDgHistCounts(h.entries)],
+                [paged ? 'Newest page' : 'Changes', _extDgHistCounts(h.entries)],
+                ['Pages', paged ? `${h.pages} (about 50 changes each)` : ''],
                 ['Data quality', h.quality],
-                ['First', first && first !== last ? _extDgHistLine(first) : ''],
+                ['First', !paged && first && first !== last ? _extDgHistLine(first) : ''],
             ].filter(f => f[1]),
             dgHist: h,
         });
-        if (h.url) rec.links.push(['The release', h.url]);
+        if (h.url) rec.links.push([`The ${kind}`, h.url]);
         return { ok: true, data: rec };
     }
 
     /**
-     * The history reader's target for a release, as `_extTarget()` would
-     * make it for a link to `_extDgHistUrl(id)` (the same cache key), for
-     * the history part of a release's window.
+     * The history reader's target for a subject, as `_extTarget()` would
+     * make it for a link to `_extDgHistUrl(hid)` (the same cache key): the
+     * history part of a release's window on a submissions list, and a
+     * Discogs window's "✎ Editing history" (`_dpOpenEdits()`,
+     * org/POH-headerline.org item 4).
      *
-     * @param {number} id
-     * @param {object} of - The release's own target (its element, its name).
+     * @param {string} hid - "<kind>/<id>".
+     * @param {object} of - The subject's own target (its element, its name).
      * @returns {object}
      */
-    function _extDgHistTarget(id, of) {
-        const url = _extDgHistUrl(id);
+    function _extDgHistTarget(hid, of) {
+        const url = _extDgHistUrl(hid);
         const reader = _EXT_READERS.find(r => r.id === 'dghistory');
         return {
             key: `ext:dghistory:${url}`, url, href: url, host: 'www.discogs.com', askHost: 'www.discogs.com', reader,
-            noLive: true, kind: 'Discogs release history', live: null, liveUrl: '', name: of.name, col: '', el: of.el,
+            noLive: true, kind: `Discogs ${hid.split('/')[0]} history`, live: null, liveUrl: '', name: of.name, col: '', el: of.el,
         };
     }
 
     /**
      * A history window's state (`_extDgHistUi`), made on first use.
      *
-     * @param {number|string} id - The release id.
-     * @returns {{group: string, order: string, diffAll: boolean, open: Set<number>, rev: number, revFor?: ?object}}
+     * @param {string} hid - "<kind>/<id>" (`_extDgHistIdOf()`).
+     * @returns {{group: string, order: string, diffAll: boolean, open: Set<string>, rev: number, revFor?: ?object,
+     *   pagesRun: boolean, pagesStop: boolean}}
      */
-    function _extDgHistUiOf(id) {
-        const k = Number(id);
-        if (!_extDgHistUi.has(k)) _extDgHistUi.set(k, { group: 'all', order: 'new', diffAll: false, open: new Set(), rev: 0 });
+    function _extDgHistUiOf(hid) {
+        const k = String(hid);
+        if (!_extDgHistUi.has(k)) {
+            _extDgHistUi.set(k, { group: 'all', order: 'new', diffAll: false, open: new Set(), rev: 0, pagesRun: false, pagesStop: false });
+        }
         return _extDgHistUi.get(k);
+    }
+
+    /**
+     * The cache key of one earlier page of a history (`_extDgHistPagesRun()`).
+     *
+     * @param {string} hid - "<kind>/<id>".
+     * @param {number} p - The page (1: the oldest).
+     * @returns {string}
+     */
+    function _extDgHistPageKey(hid, p) {
+        return `ext:dghistory-page:${hid}:${p}`;
+    }
+
+    /**
+     * A history with the earlier pages read so far put in front of the
+     * newest (`h`, the reader's page), oldest first as Discogs lists them,
+     * and where the reading stands: `next` (the next page to read, 0 when
+     * every one is in), `failed` (that page's failure, '' for none). Only
+     * the run of pages right below the newest counts, so the list never has
+     * a gap. An earlier page's own "latest" row is not the history's.
+     *
+     * @param {string} hid - "<kind>/<id>".
+     * @param {Object} h - `_extDgHistParse()`'s answer for the newest page.
+     * @returns {{h: Object, next: number, failed: string, read: number}} `read`: the earlier pages in.
+     */
+    function _extDgHistPagesMerged(hid, h) {
+        const older = [];
+        let next = 0;
+        let failed = '';
+        for (let p = h.page - 1; p >= 1; p--) {
+            const st = _mbPop.get(_extDgHistPageKey(hid, p));
+            if (!st || st.status !== 'done') {
+                next = p;
+                if (st && st.status === 'failed') failed = st.detail || 'the request failed';
+                break;
+            }
+            older.unshift(st.data.entries.map(e => Object.assign({}, e, { latest: false })));
+        }
+        return { h: Object.assign({}, h, { entries: [].concat(...older, h.entries) }), next, failed, read: older.length };
+    }
+
+    /**
+     * "Load the N earlier pages" of a history window (vzell, 2026-10-28:
+     * on request, newest first): reads page `h.page - 1` down to 1, ONE
+     * request each through Discogs' slot (`_extDgHistGet()`), parsed by
+     * `_extDgHistParse()`, the window repainted after each. A page Discogs
+     * has numbered never changes (they fill from the oldest), so it is kept
+     * like a revision's changes (IndexedDB, `_extTtlMs()`). Stop (`pagesStop`)
+     * ends the run after the page under way; a failed page ends it too, and
+     * the button asks that page again.
+     *
+     * @param {string} hid - "<kind>/<id>".
+     * @param {Object} h - The newest page's `_extDgHistParse()` answer.
+     * @returns {Promise<void>}
+     */
+    async function _extDgHistPagesRun(hid, h) {
+        const ui = _extDgHistUiOf(hid);
+        if (ui.pagesRun) return;
+        ui.pagesRun = true;
+        ui.pagesStop = false;
+        const repaint = () => { if (_dpDialog.repaint) _dpDialog.repaint(); };
+        repaint();
+        try {
+            for (let p = h.page - 1; p >= 1 && !ui.pagesStop; p--) {
+                const key = _extDgHistPageKey(hid, p);
+                const cur = _mbPop.get(key);
+                if (cur && cur.status === 'done') continue;
+                const url = `${_extDgHistUrl(hid)}?page=${p}`;
+                const settled = () => { const s = _mbPop.get(key); return !!s && s.status !== 'loading'; };
+                await new Promise((resolve) => {
+                    _mbLoad(key, async () => {
+                        const res = await _extDgHistGet(url, () => true);
+                        if (_extBotCheck(res)) return { ok: false, detail: 'Discogs answered with its browser check' };
+                        if (res.error || res.status !== 200) return { ok: false, detail: res.error ? _extFailText(res) : `Discogs answered HTTP ${res.status}` };
+                        const ph = _extDgHistParse(new DOMParser().parseFromString(String(res.body || '') + String(res.tail || ''), 'text/html'), res.finalUrl || url);
+                        return ph ? { ok: true, data: { entries: ph.entries } } : { ok: false, detail: 'Discogs answered, but not with the edit history' };
+                    }, {
+                        force: !!(cur && cur.status === 'failed'),
+                        repaint: () => { if (settled()) resolve(); },
+                        version: _EXT_IDB_VERSION * 100 + _EXT_DGH_VERSION, ttlMs: _extTtlMs(),
+                    });
+                    if (settled()) resolve();
+                });
+                repaint();
+                const st = _mbPop.get(key);
+                if (!st || st.status !== 'done') break;
+            }
+        } finally {
+            ui.pagesRun = false;
+            repaint();
+        }
     }
 
     /**
@@ -65578,14 +65793,23 @@
      * filter and the order as a switch; then "Latest change", or "Change"
      * of the revision "View changes" picked (Discogs' diff: old and new side
      * by side, only the blocks with a mark unless the whole release is asked
-     * for; `_extDgHistDiff()`).
+     * for; `_extDgHistDiff()`). A history of several pages shows the newest
+     * with the earlier ones read so far in front of it
+     * (`_extDgHistPagesMerged()`), and a line saying which pages are shown,
+     * with "Load the N earlier pages" / Stop / "Try again"
+     * (`_extDgHistPagesRun()`).
      *
-     * @param {number|string} id - The release id (the state's key).
-     * @param {Object} h - `_extDgHistParse()`'s answer.
+     * @param {string} id - The subject, "<kind>/<id>" (the state's key).
+     * @param {Object} newest - `_extDgHistParse()`'s answer for the newest page.
      * @returns {string[]} HTML parts.
      */
-    function _extDgHistSectionsHtml(id, h) {
+    function _extDgHistSectionsHtml(id, newest) {
         const ui = _extDgHistUiOf(id);
+        // The earlier pages read so far in front of the newest
+        // (`_extDgHistPagesRun()`); "Load …" below needs the newest page.
+        ui.newest = newest;
+        const merged = _extDgHistPagesMerged(id, newest);
+        const h = merged.h;
         const counts = {};
         h.entries.forEach((e) => { const g = _extDgHistGroup(e.action); counts[g] = (counts[g] || 0) + 1; });
         const btn = (act, v, label, on) =>
@@ -65597,10 +65821,13 @@
         const pill = (a) => {
             const g = _extDgHistGroup(a);
             const cls = g === 'comments' ? 'idle' : g === 'merges' ? 'warn' : /submit/i.test(a) ? 'ok' : 'run';
-            return `<span class="mb-dgh-pill mb-dgh-pill-${cls}">${_rgEsc(a || 'Comment')}</span>`;
+            // Its whole label in its tip: a kind longer than the column is cut.
+            return `<span class="mb-dgh-pill mb-dgh-pill-${cls}" data-mb-tip title="${_rgEsc(a || 'Comment')}">${_rgEsc(a || 'Comment')}</span>`;
         };
         const link = (u, text) => (u ? `<a href="${_rgEsc(u)}" target="_blank" rel="noopener noreferrer">${text}</a>` : '');
-        let list = h.entries.map((e, i) => ({ e, i }));
+        // A note's key is its page and row (`e.key`), so one opened stays
+        // open when earlier pages come in front of it.
+        let list = h.entries.map((e, i) => ({ e, i: e.key || String(i) }));
         if (ui.group !== 'all') list = list.filter(x => _extDgHistGroup(x.e.action) === ui.group);
         if (ui.order === 'new') list.reverse();
         const rows = list.map(({ e, i }) => {
@@ -65613,13 +65840,34 @@
             return `<div class="mb-dgh-e${cur ? ' mb-dgh-latest' : ''}">` +
                 `<span class="mb-dgh-d"${e.ago ? ` data-mb-tip title="${_rgEsc(e.ago)}"` : ''}>${_rgEsc(e.at)}</span>` +
                 `<span class="mb-dgh-u">${e.user ? `${_dgAvatarImg(e.avatar)}${link(e.userUrl, _rgEsc(e.user)) || _rgEsc(e.user)}` : '<i>Discogs</i>'}</span>` +
-                `<span>${pill(e.action)}</span>` +
+                `<span class="mb-dgh-k">${pill(e.action)}</span>` +
                 `<span class="mb-dgh-n${long && !open ? ' mb-dgh-clamp' : ''}">${e.notes}</span>` +
                 `<span class="mb-dgh-lk">${viewBtn}${link(e.images, 'Images')}` +
                 `${long ? `<button type="button" class="mb-dgh-more" data-mb-dgh-act="note" data-mb-dgh-v="${i}" data-mb-dgh-id="${_rgEsc(id)}">${open ? 'less' : 'more'}</button>` : ''}</span></div>`;
         }).join('');
+        // A history of several pages (about 50 changes each, page 1 the
+        // oldest): the newest is shown, the earlier ones read on request.
+        let pagesLine = '';
+        if (newest.pages > 1) {
+            const earlier = newest.page - 1;
+            const left = merged.next;
+            const from = left ? left + 1 : 1;
+            const shown = from === newest.page ? `Page ${newest.page} of ${newest.pages} shown (the newest)` : `Pages ${from}–${newest.page} of ${newest.pages} shown`;
+            const secs = Math.max(1, Math.round(left * _extSpacingMs('www.discogs.com') / 1000));
+            const go = (label) => `<button type="button" class="mb-dg-btn mb-dg-primary" data-mb-dgh-act="pages" data-mb-dgh-v="1" data-mb-dgh-id="${_rgEsc(id)}">${label}</button>`;
+            let ctl = '';
+            if (ui.pagesRun) {
+                ctl = `<span class="mb-dp-spin">◌</span> Reading page ${left || 1} from discogs.com… ` +
+                    `<button type="button" class="mb-dg-btn" data-mb-dgh-act="pagesstop" data-mb-dgh-v="1" data-mb-dgh-id="${_rgEsc(id)}">Stop</button>`;
+            } else if (merged.failed) {
+                ctl = `<span class="mb-dp-warn">Page ${left} failed: ${_rgEsc(merged.failed)}.</span> ${go('Try again')}`;
+            } else if (left) {
+                ctl = go(`Load the ${left === earlier ? '' : 'other '}${left} earlier page${left === 1 ? '' : 's'} (${left} request${left === 1 ? '' : 's'}, about ${secs} s)`);
+            }
+            pagesLine = `<div class="mb-dgh-pages"><span class="mb-dg-dim">${shown} · ${h.entries.length} changes</span> ${ctl}</div>`;
+        }
         const parts = [_extDgSection('dgh-hist', 'History', h.entries.length,
-            `<div class="mb-dgh-list">${rows || '<div class="mb-dg-dim">No changes of this kind.</div>'}</div>`, act)];
+            `${pagesLine}<div class="mb-dgh-list">${rows || '<div class="mb-dg-dim">No changes of this kind.</div>'}</div>`, act)];
         // The revision "View changes" picked, once its page is in; until then
         // what it is doing (the latest change's diff is not shown meanwhile).
         let diff = h.diff;
@@ -65655,7 +65903,7 @@
     /**
      * The cache key of one revision's changes ("View changes").
      *
-     * @param {number|string} id - The release id.
+     * @param {string} id - The subject, "<kind>/<id>" (`_extDgHistIdOf()`).
      * @param {number} rev
      * @returns {string}
      */
@@ -65671,7 +65919,7 @@
      * discogs.com) and kept like the history. Started by the click only;
      * wanted while a window is open.
      *
-     * @param {number|string} id - The release id.
+     * @param {string} id - The subject, "<kind>/<id>".
      * @param {number} rev
      * @param {string} url - Discogs' "Changes" link of that revision.
      * @returns {void}
@@ -65700,7 +65948,7 @@
      * (`start`), then its sections — or what it is doing, or why it failed.
      *
      * @param {object} t - The release's target.
-     * @param {number} id - The release id.
+     * @param {string} id - "release/<id>".
      * @param {{start: boolean, force: boolean, repaint: function(): void}} opts
      * @returns {string[]} HTML parts.
      */
@@ -65737,7 +65985,7 @@
         const out = { left: [], right: [], full: [] };
         if (!rec.dgHist) return out;
         const u = new URL(t.url);
-        const id = _EXT_DGH_PATH_RE.exec(u.pathname)[1];
+        const id = _extDgHistIdOf(u);
         // A link to one revision's changes (`?diff=<rev>`: a dg-history
         // table's "View changes") opens with that diff, once per opening.
         const rev = Number(u.searchParams.get('diff')) || 0;
@@ -65772,12 +66020,19 @@
             ui.rev = Number(v) || 0;
             if (ui.rev) _extDgHistDiffLoad(b.dataset.mbDghId, ui.rev, b.dataset.mbDghU || '');
             break;
-        case 'note': {
-            const i = Number(v);
-            if (ui.open.has(i)) ui.open.delete(i);
-            else ui.open.add(i);
+        case 'note':
+            // By the entry's key (`<page>:<row>`).
+            if (ui.open.has(v)) ui.open.delete(v);
+            else ui.open.add(v);
             break;
-        }
+        // The earlier pages of a history (`_extDgHistPagesRun()`): it
+        // repaints the window itself as it goes.
+        case 'pages':
+            if (ui.newest) _extDgHistPagesRun(b.dataset.mbDghId, ui.newest);
+            return true;
+        case 'pagesstop':
+            ui.pagesStop = true;
+            break;
         default: return false;
         }
         if (_dpDialog.repaint) _dpDialog.repaint();
@@ -67012,7 +67267,7 @@
         {
             // Before `discogs`, whose path pattern takes `/history` too.
             id: 'dghistory', kind: 'Discogs release history', test: _extDgHistTest, askHost: () => 'www.discogs.com', load: _extDgHistLoad,
-            noLive: true, version: _EXT_IDB_VERSION * 100 + _EXT_DGH_VERSION, windowOnly: true, keyUrl: _extDgHistKeyUrl,
+            noLive: true, version: _EXT_IDB_VERSION * 100 + _EXT_DGH_VERSION, windowOnly: true, keyUrl: _extDgHistKeyUrl, kindFor: _extDgHistKind,
             window: _extDgHistWindow, onAreaClick: _extDgHistAreaClick,
             loadingNote: 'Reading the edit history from discogs.com (one request).',
         },
@@ -74723,6 +74978,43 @@ ${sections.join('\n')}
             _saedGroup('hist').adopt(ann);
         }
         Lib.debug('ui', `SAED: Editing history group for ${subject}`);
+    }
+
+    /**
+     * The SAED menu's "✎ Edit history" on a discogs.com page of a release,
+     * master, artist or label (vzell, 2026-10-28: "the SAED menu should also
+     * get a menu entry for the 'Edit history' of the underlying entity on
+     * the IP and FRP"): that entity's Discogs edit history in the window,
+     * the history reader's (`_extDgHistTarget()`, the same window as a
+     * Discogs window's ✎). Built once with the toolbar, so the page before
+     * and after a render have it. Ctrl/⌘-click, or the external previews
+     * off, opens Discogs' own history page in a new tab. Idempotent.
+     *
+     * @returns {void}
+     */
+    function _saedDgHistoryEntry() {
+        if (!_isDgHost || document.getElementById('mb-saed-dghist-btn')) return;
+        const m = _EXT_DISCOGS_PATH_RE.exec(window.location.pathname);
+        if (!m) return;
+        const hid = `${m[1].toLowerCase()}/${m[2]}`;
+        const kind = hid.split('/')[0];
+        const row = document.createElement('button');
+        row.id = 'mb-saed-dghist-btn';
+        row.type = 'button';
+        row.textContent = '✎ Edit history';
+        _setTip(row, `This ${kind}'s edit history on Discogs, in the window; Ctrl-click opens Discogs' page in a new tab`);
+        row.addEventListener('click', (e) => {
+            const url = _extDgHistUrl(hid);
+            const src = _popSources().find(x => x.id === 'ext');
+            if (e.ctrlKey || e.metaKey || !src || !src.enabled()) {
+                window.open(url, '_blank', 'noopener');
+                return;
+            }
+            const bdi = document.querySelector('#mb-dg-root h1.mb-dg-h1 bdi');
+            _dpOpenDialog(Object.assign(_extDgHistTarget(hid, { name: bdi ? _dpText(bdi.textContent) : '', el: row }), { src }));
+        });
+        _saedGroup('hist').adopt(row);
+        Lib.debug('ui', `SAED: Discogs edit history entry for ${hid}`);
     }
 
     /**
@@ -82893,8 +83185,10 @@ a { color: #1565c0; }`;
         _saedGroup('log').adopt(row);
     });
 
-    // Editing history: the entity this page is about (`_saedHistoryGroup()`).
+    // Editing history: the entity this page is about (`_saedHistoryGroup()`;
+    // on discogs.com its Discogs edit history, `_saedDgHistoryEntry()`).
     _saedHistoryGroup();
+    _saedDgHistoryEntry();
 
     // --- Fetch progress line (shown during data loading, hidden otherwise) ---
     // The bar itself is the running action segment (`_saedRunStart()`); this

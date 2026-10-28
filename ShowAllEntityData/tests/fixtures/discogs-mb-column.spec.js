@@ -19,6 +19,7 @@ const { test, expect } = require('../support/test');
 const { loadUserscriptPage } = require('../support/loadPage');
 const { waitForRenderComplete } = require('../support/browser');
 const { waitForSortSettled } = require('../support/filterSortAssertions');
+const { clickToolbarItem } = require('../support/toolbarMenu');
 
 const FX = (name) => JSON.parse(fs.readFileSync(path.join(__dirname, `ext-${name}.json`), 'utf8'));
 const answers = (...names) => Object.fromEntries(names.map((n) => {
@@ -595,6 +596,52 @@ test.describe('discogs.com: MusicBrainz cards for the MusicBrainz icons (2026-10
         await expect(title).toHaveText('Artist › Tag');
         expect(await page.evaluate(() => window.__mbPageAsked), 'the tag page, with the browser\'s cookies, once')
             .toEqual([{ path: '/tag/americana', anonymous: false }]);
+        expect(errors).toEqual([]);
+    });
+
+    // vzell, 2026-10-28: "in the h1 line of discogs IPs the MB icon in front
+    // of the page title is not hoverable" — murdos' importer puts its icon
+    // in our <h1 class="mb-dg-h1"> too (`mlink_processed`), outside the
+    // source's table-body and #app scopes. Its markup as the importer writes
+    // it beside a name (.mb_wrapper around the link and its image).
+    test('murdos\' importer\'s icon in our page heading: its card, named after the page', async ({ page }) => {
+        const { errors } = await openDg(page, 'release', { settings: { sa_pop_mb: true } });
+        await answerArtistCards(page);
+        await answerMbPages(page);
+        await page.evaluate((mbid) => {
+            const h1 = document.querySelector('#mb-dg-root h1.mb-dg-h1');
+            h1.setAttribute('mlink_processed', '2');
+            const wrap = document.createElement('span');
+            wrap.className = 'mb_wrapper';
+            wrap.innerHTML = `<a href="https://musicbrainz.org/artist/${mbid}" title="See this artist on MusicBrainz">` +
+                '<img src="https://musicbrainz.org/static/images/entity/artist.svg" width="16" height="16" alt=""></a>';
+            h1.prepend(wrap);
+        }, MB.bruce);
+        const icon = page.locator('#mb-dg-root h1.mb-dg-h1 .mb_wrapper a');
+        expect(await icon.evaluate((a) => window.__saTest.popResolve(a))).toBe(`dg-mb|artist:${MB.bruce}`);
+        await ctrlHover(page, icon);
+        const card = page.locator('#mb-dp-peek');
+        await expect(card).toContainText('fetched now');
+        await expect(card.locator(':scope > .mb-pop-kind-head')).toHaveText('Artist');
+        await page.keyboard.press('Space');
+        await expect(page.locator('#mb-dp-dialog .mb-dp-area')).toContainText('Bruce Springsteen');
+        expect(errors).toEqual([]);
+    });
+
+    // vzell, 2026-10-28: "the SAED menu should also get a menu entry for the
+    // 'Edit history' of the underlying entity on the IP and FRP" — built
+    // with the toolbar, so on the page as it loads; the window it opens is a
+    // Discogs window's ✎ one (same-origin here, with the browser's session).
+    test('the SAED menu\'s "✎ Edit history" on the initial page: the release\'s Discogs history in the window', async ({ page }) => {
+        const { errors } = await openDg(page, 'release', { settings: { sa_pop_ext: true } });
+        await page.route('https://www.discogs.com/release/1874253/history', (route) => route.fulfill({
+            path: path.join(__dirname, 'dg-release-history.html'), contentType: 'text/html; charset=utf-8',
+        }));
+        await expect(page.locator('#mb-saed-dghist-btn')).toHaveAttribute('title', /This release's edit history on Discogs/);
+        await clickToolbarItem(page, '#mb-saed-dghist-btn');
+        const dialog = page.locator('#mb-dp-dialog');
+        await expect(dialog.locator(':scope > div > span').first()).toHaveText('Discogs release history');
+        await expect(dialog.locator('.mb-dgh-e')).toHaveCount(14);
         expect(errors).toEqual([]);
     });
 

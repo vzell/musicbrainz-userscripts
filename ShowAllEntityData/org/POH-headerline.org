@@ -299,3 +299,23 @@ vzell's saved copies (no Tampermonkey; browser n/a for the pages themselves).
   and 11 rows; the artist's 46 = its page 2 of 2), so the reader's one request already gets the newest changes.
 - The saved copies passed murdos' importer: its musicbrainz.org link comes FIRST in the =h1=, so the parser must
   read the Discogs link (the reader's own fetch has no importer, the saved fixtures do).
+
+** Step 3: vzell's browser check — OK (2026-10-28, "both tested live, OK"); committed 5220fc89 and pushed.
+
+** Step 4: Discogs "✎ Editing history" — DONE on the branch (WIP.4), awaiting vzell's browser check
+
+Decided (vzell): the earlier pages load on request ("Load the N earlier pages", one request each, Stop).
+=_EXT_DGH_PATH_RE= takes release|master|artist|label; state keyed "<kind>/<id>" (=_extDgHistIdOf()=);
+=_extDgHistPagesRun()= / =_extDgHistPagesMerged()=; =_dgHistSubject()= / =_dpHasHistory()= for the button, H and the
+foot line; the parser skips murdos' importer's link and glyph. Fixtures: =dg-{master,artist,label}-history.html=
+(=scripts/build-discogs-fixtures.py=). The artist spec's page 1 is a stand-in (the label's page 1): a real
+=/artist/219986-Bruce-Springsteen/history?page=1= saved from the browser would make it the artist's own.
+
+vzell's browser check (2026-10-28), three findings, fixed the same day:
+- a master's history: "the edit type buttons and the edit text overlap" — the kind column was 8.5em and the pill
+  never wraps ("EDIT MASTER RELEASE"): now 12em, the cell clips, the pill ends in an ellipsis with its whole label as
+  a tip;
+- "in the h1 line of discogs IPs the MB icon in front of the page title is not hoverable": murdos' importer
+  processes our own =h1.mb-dg-h1= too; =_dgMbSource()='s selector now takes it;
+- "the SAED menu should also get a menu entry for the 'Edit history' of the underlying entity on the IP and FRP":
+  =_saedDgHistoryEntry()= ("✎ Edit history", Editing history group), built with the toolbar.

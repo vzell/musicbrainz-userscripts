@@ -32,6 +32,12 @@ the script DOES read:
   locks the window's scrolling);
 - dg-release-history.html (debug/discogs-release-history.html): a release's
   history page — header, every change, the rating, the latest diff;
+- dg-{master,artist,label}-history.html (debug/dg-<kind>-history.html, saved by
+  vzell 2026-10-28, org/POH-headerline.org Step 4): the same for a master
+  (27146, its page 2 of 3), an artist (219986, page 2 of 2: the newest) and a
+  label (264352, page 1 of 4), cut the same way; each keeps its pager, and
+  murdos' importer's musicbrainz.org link that the saved copy carries first
+  in its <h1>;
 - dg-user-ratings.html (debug/discogs-user-ratings.html, 2026-10-19): a
   user's ratings — the user header, the top pager and the ratings table; and
   dg-user-ratings-300.html, the same saying "of 300" (SYNTHETIC, 2 pages);
@@ -262,6 +268,9 @@ def main():
     for name, fn in (('dg-submissions-flat.html', build_submissions_flat), ('dg-submissions-browser.html', build_submissions_browser),
                      ('dg-release-history.html', build_release_history),
                      ('dg-release-history-diff.html', lambda: build_release_history('discogs-release-history-diff.html')),
+                     ('dg-master-history.html', lambda: build_release_history('dg-master-history.html')),
+                     ('dg-artist-history.html', lambda: build_release_history('dg-artist-history.html')),
+                     ('dg-label-history.html', lambda: build_release_history('dg-label-history.html')),
                      ('dg-user-vzell.html', build_user),
                      ('dg-user-collection.html', lambda: build_user(collection=True)),
                      ('dg-user-ratings.html', build_ratings),

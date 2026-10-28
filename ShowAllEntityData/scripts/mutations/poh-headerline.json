@@ -232,5 +232,122 @@
         "spec": "tests/fixtures/popup-ext.spec.js",
         "grep": "names link their Discogs pages",
         "expect": "fail"
+    },
+    {
+        "name": "item 4: a Discogs window has no ✎ Editing history",
+        "why": "_dgHistSubject() names what a Discogs window has a history of; answering '' hides the button and H.",
+        "edits": [
+            {
+                "find": "        const m = _EXT_DISCOGS_PATH_RE.exec(u.pathname);\n        return m ? `${m[1].toLowerCase()}/${m[2]}` : '';",
+                "replace": "        const m = _EXT_DISCOGS_PATH_RE.exec(u.pathname);\n        return m ? '' : '';"
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "a release: the button without",
+        "expect": "fail"
+    },
+    {
+        "name": "item 4: a Discogs window's ✎ gets the MusicBrainz presets' ▾",
+        "why": "vzell: the button 'without the menu structure'; the ▾ is a MusicBrainz entity's only.",
+        "edits": [
+            {
+                "find": "            const withMore = !!subj && !subj.startsWith('user/');\n            if (c.histMore)",
+                "replace": "            const withMore = !!(subj || dg) && !String(subj).startsWith('user/');\n            if (c.histMore)"
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "a release: the button without",
+        "expect": "fail"
+    },
+    {
+        "name": "item 4: H does nothing in a Discogs window",
+        "why": "H asked _mbEditsSubject() only; a Discogs window has a history too (_dpHasHistory()).",
+        "edits": [
+            {
+                "find": "&& !e.metaKey && _dpHasHistory(_dpDialog.target)) {",
+                "replace": "&& !e.metaKey && _mbEditsSubject(_dpDialog.target)) {"
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "a release: the button without",
+        "expect": "fail"
+    },
+    {
+        "name": "item 4: the history reader reads releases only",
+        "why": "_EXT_DGH_PATH_RE took /release/<id>/history only; an artist's history link was then the plain Discogs reader's.",
+        "edits": [
+            {
+                "find": "(?:[a-z]{2}(?:[-_][a-zA-Z]{2})?\\/)?(release|master|artist|label)\\/(\\d+)(?:-[^/?#]*)?\\/history\\/?$/i;",
+                "replace": "(?:[a-z]{2}(?:[-_][a-zA-Z]{2})?\\/)?(release)\\/(\\d+)(?:-[^/?#]*)?\\/history\\/?$/i;"
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "an artist: the newest page",
+        "expect": "fail"
+    },
+    {
+        "name": "item 4: murdos' importer's glyph taken for the subject's picture",
+        "why": "A page saved from a browser carries the importer's musicbrainz.org link and glyph first in its <h1>; the parser must skip them.",
+        "edits": [
+            {
+                "find": "        const img = head && Array.from(head.querySelectorAll('img[src]')).find(own);",
+                "replace": "        const img = head && head.querySelector('img[src]');"
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "an artist: the newest page",
+        "expect": "fail"
+    },
+    {
+        "name": "history window: the kind column as it was (8.5em, the pill not cut)",
+        "why": "vzell, 2026-10-28: 'Edit Master Release' ran into the note. Both halves restored, since the ellipsis alone would also keep the pill in its column.",
+        "edits": [
+            {
+                "find": "                display: grid; grid-template-columns: 8.6em 9em 12em minmax(0, 1fr) auto; gap: 3px 10px;\n                padding: 5px 0; border-bottom: 1px dotted #d9cfbd; align-items: baseline;\n            }\n            .mb-dp-dialog .mb-dgh-e > .mb-dgh-k { min-width: 0; overflow: hidden; }\n            .mb-dp-dialog .mb-dgh-e > .mb-dgh-k > .mb-dgh-pill { max-width: 100%; box-sizing: border-box; overflow: hidden; text-overflow: ellipsis; vertical-align: 1px; }",
+                "replace": "                display: grid; grid-template-columns: 8.6em 9em 8.5em minmax(0, 1fr) auto; gap: 3px 10px;\n                padding: 5px 0; border-bottom: 1px dotted #d9cfbd; align-items: baseline;\n            }"
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "a master: its kind pills",
+        "expect": "fail"
+    },
+    {
+        "name": "discogs.com: the importer's icon in our heading has no card",
+        "why": "_dgMbSource()'s selector covered our table bodies and Discogs' #app only (vzell, 2026-10-28).",
+        "edits": [
+            {
+                "find": "            '#mb-dg-root h1.mb-dg-h1 a[href^=\"https://musicbrainz.org/\"]';",
+                "replace": "            '#mb-dg-root h1.mb-dg-h1 a[href^=\"https://musicbrainz.org/x-none/\"]';"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-mb-column.spec.js",
+        "grep": "our page heading",
+        "expect": "fail"
+    },
+    {
+        "name": "discogs.com: no \"✎ Edit history\" in the SAED menu",
+        "why": "vzell, 2026-10-28: the menu gets the page entity's Discogs edit history on the IP and the FRP.",
+        "edits": [
+            {
+                "find": "    _saedHistoryGroup();\n    _saedDgHistoryEntry();",
+                "replace": "    _saedHistoryGroup();"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-mb-column.spec.js",
+        "grep": "Edit history\\\" on the initial page",
+        "expect": "fail"
+    },
+    {
+        "name": "item 4: an earlier page read is not shown",
+        "why": "_extDgHistPagesMerged() puts the earlier pages read in front of the newest; without them the window shows the newest page only.",
+        "edits": [
+            {
+                "find": "            older.unshift(st.data.entries.map(e => Object.assign({}, e, { latest: false })));",
+                "replace": "            older.unshift([]);"
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "an artist: the newest page",
+        "expect": "fail"
     }
 ]

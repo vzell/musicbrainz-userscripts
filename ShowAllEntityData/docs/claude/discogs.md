@@ -671,7 +671,13 @@ of ours.
   after `src.resolve()` — a genre's `/tag/<name>`, an edit, an editor, a
   documentation page, their pages read with the cookies. A tag's paged lists
   build on `_mbOrigin()` (`_mbPagedHtml()`), as does a series window's item
-  glyph.
+  glyph. The source's selector also takes our own `h1.mb-dg-h1`
+  (2026-10-28, vzell: the importer's icon there "is not hoverable"): the
+  importer processes it too (`mlink_processed`) and puts its icon in front
+  of the page's name; such an icon is named after the `<bdi>`. The SAED
+  menu's "✎ Edit history" (`_saedDgHistoryEntry()`, the Editing history
+  group) opens the page entity's Discogs edit history in the window, built
+  with the toolbar, so on the initial page and after a render alike.
 
 Probe: `scripts/probe-mb-url-batch-by-discogs.py` (2026-10-19, NB-3641; its
 docstring has the results): up to 100 resources a request, the 101st DROPPED

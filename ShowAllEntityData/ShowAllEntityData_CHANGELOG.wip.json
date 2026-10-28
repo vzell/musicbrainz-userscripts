@@ -1,5 +1,27 @@
 [
     {
+        "version": "WIP.4",
+        "date": "2026-10-28",
+        "sections": [
+            {
+                "label": "🚀 Feature",
+                "items": [
+                    "A Discogs window — a release, a master, an artist or a label — has \"✎ Editing history\" (or H), without the ▾ MusicBrainz's has (org/POH-headerline.org item 4, vzell). It shows that entity's edit history page from discogs.com in the window: every change with its user, kind and note, \"View changes\" for a revision's diff, the latest change's diff. Until now only a release's history could be read, and only from a link to it.",
+                    "A long history spans pages of about 50 changes on Discogs. The window shows the newest page and says which pages it shows; \"Load the N earlier pages\" reads the others one request at a time (Stop ends it, a failed page can be tried again), and they join the same list, so the filter and the order work on all of it.",
+                    "On a discogs.com release, master, artist or label page the ☰ SAED menu has \"✎ Edit history\" (Editing history group), before and after a render: that entity's Discogs edit history in the window. Ctrl-click opens Discogs' own page."
+                ]
+            },
+            {
+                "label": "🐛 Fix",
+                "items": [
+                    "A Discogs history page read with murdos' \"Import Discogs releases to MusicBrainz\" active in the browser carries that script's MusicBrainz link and icon first in its heading; the window no longer takes them for the entity's name and picture.",
+                    "In a Discogs history window a long kind (\"Edit Master Release\") ran into the note beside it; the kind column is wider, and a longer kind is cut with its whole name on a hover.",
+                    "On discogs.com the MusicBrainz icon murdos' importer puts in front of the page's name in the script's own heading shows its MusicBrainz card on a hover, as the importer's icons in Discogs' content do."
+                ]
+            }
+        ]
+    },
+    {
         "version": "WIP.3",
         "date": "2026-10-28",
         "sections": [

@@ -2481,6 +2481,44 @@ Mockup https://claude.ai/artifact/Y69bUJTvYSksKTFRMcYJvZ, tab C; vzell's
 answers: on discogs.com AND on MusicBrainz; on a submissions list a title
 opens "History, then the release" (docs/claude/discogs.md, "Submissions").
 
+**Since 2026-10-28 (org/POH-headerline.org item 4): every subject, every
+page, and a button.**
+- `_EXT_DGH_PATH_RE` takes `release|master|artist|label` ([1] kind, [2] id;
+  probed: `scripts/probe-dg-history-shape.js` on vzell's saved pages — same
+  markup). The state, the diff and page keys are by SUBJECT,
+  `_extDgHistIdOf()` → `"<kind>/<id>"` (they were by release id, and an
+  artist and a release can share a number); `_extDgHistUrl(hid)`,
+  `_extDgHistTarget(hid, of)`, `kindFor: _extDgHistKind`.
+- **Pages**: about 50 changes each, page 1 the OLDEST, each page oldest →
+  newest; the plain URL serves the LAST page (probe P3), which is what the
+  reader reads. `_extDgHistParse()` adds `page`/`pages` (`.pagination_links`)
+  and a per-entry `key` `<page>:<row>` (a note's open state survives a merge);
+  `tr#latest` is the PAGE's last row, so an earlier page's is cleared.
+  "Load the N earlier pages" (`_extDgHistPagesRun()`): newest first, one
+  `_extDgHistGet()` each through Discogs' slot, kept like a revision's diff
+  (a numbered page never changes), Stop after the page under way, a failure
+  ends the run and the button asks that page again;
+  `_extDgHistPagesMerged()` puts the contiguous run of pages read in front.
+- **murdos' importer**: a page saved from a browser has its
+  musicbrainz.org link AND glyph first in the `<h1>`; the subject's link and
+  picture skip `a[href^="https://musicbrainz.org"]` / `.mb_wrapper`
+  (`_EXT_DGH_VERSION` 4). The reader's own fetch has no importer; the
+  fixtures (`dg-{master,artist,label}-history.html`) keep it on purpose.
+- **✎ in a Discogs window**: `_dgHistSubject(t)` (the `discogs` reader's
+  release/master/artist/label) → `_dpOpenEdits()` drills to
+  `_extDgHistTarget()` with the window's own source; no ▾ (vzell: "without
+  the menu structure"); H and the foot line ask `_dpHasHistory()`. On
+  discogs.com the SAED menu's "✎ Edit history" (`_saedDgHistoryEntry()`)
+  opens the same window for the page's own entity.
+- **The kind column** is 12em (`.mb-dgh-e`; a master's "Edit Master
+  Release" ran into the note at 8.5em, vzell 2026-10-28), its cell
+  `.mb-dgh-k` clips and the pill ends in an ellipsis with its whole label as
+  a tip. Every row is a grid of its own, so the column cannot size to its
+  content without misaligning the rows.
+- Specs: `popup-ext.spec.js` "Discogs windows: ✎ Editing history" (a
+  release; an artist with an earlier page — its page 1 a stand-in, the
+  label's page 1). Mutations: `scripts/mutations/poh-headerline.json`.
+
 - **Reader `dghistory`, BEFORE `discogs` in `_EXT_READERS`**:
   `_EXT_DISCOGS_PATH_RE` ends in `(?:[-/]|$)`, so the Discogs reader takes
   `/release/<id>/history` too — `_extDgHistTest()` must win first.

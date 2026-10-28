@@ -138,7 +138,7 @@ The **☰ SAED menu** has these groups, with a line between them:
 | **Needs attention** | the same lists as the 🔄, ❌ and ⚠️ parts on the bar                           |
 | **Data**            | 💾 Save to Disk · 📂 Load from Disk · 📤 Export ▸ (CSV, JSON, Org-Mode, HTML) |
 | **View**            | 📏 Density · 📊 Statistics · 💾 Browser cache · 🗄️ Script storage · 🎹 Keyboard Shortcuts |
-| **Editing history** | ✎ Entity history ▸ · 📝 Annotation history (on a page about one entity, e.g. an artist) |
+| **Editing history** | ✎ Entity history ▸ · 📝 Annotation history (on a page about one entity, e.g. an artist); on discogs.com ✎ Edit history (a release, master, artist or label page) |
 | **Help**            | ⚙️ Settings · ❓ Help ↗ (this page, on GitHub)                                 |
 | **Changelog**       | 📜 What's new ↗ · 🗒 Full development log ↗ (both on GitHub)                   |
 
@@ -2878,8 +2878,10 @@ once and without Tampermonkey asking first:
   Typing in a window's filter (a master's versions, a discography, a label's
   releases or sublabels) marks what it matched in every row it keeps, in the
   colours of the tables' filter highlight.
-- A Discogs release's **edit history** (a link to its history page,
-  `discogs.com/release/…/history`): the card shows the last change, how many
+- A Discogs **edit history** of a release, master, artist or label (a link to
+  its history page, `discogs.com/release/…/history`, or **✎ Editing history**
+  — or **H** — in that entity's Discogs window; there is no ▾ for Discogs):
+  the card shows the last change, how many
   changes there were and the data quality; the window lists every change —
   date, user, what it was (*Submit Release*, *Edit Release*, *Images*,
   *Merge Pending*, a comment …), the note, and **View changes** (an image
@@ -2893,7 +2895,11 @@ once and without Tampermonkey asking first:
   you press Space, never on a hover. On discogs.com it is read with your own
   Discogs session; from MusicBrainz it is asked like any other site, and if
   Discogs answers with its browser check, the window says so — ↗ opens the
-  page.
+  page. A long history spans pages of about 50 changes: the window shows the
+  newest and says so (*Page 3 of 3 shown (the newest)*); **Load the 2 earlier
+  pages** reads the others one request at a time (**Stop** ends it; a page
+  that failed can be tried again), and they join the same list, the filter
+  and *Oldest first* included.
 - A Discogs release's **Images** and **Image history** (`discogs.com/release/…/images`
   and `…/images/update`, Discogs' image editor): the window lists every image
   — Image history as one table (#, the image, Primary or Secondary, who
@@ -3703,7 +3709,8 @@ pointing at a MusicBrainz icon (Ctrl held, unless *Show every preview on a
 plain hover* is on) shows that entity's MusicBrainz card, read from
 musicbrainz.org, and **Space** opens its window; a click on the icon opens the
 window too, Ctrl-click opens MusicBrainz in a new tab. The same goes for that
-script's own icons beside the names on Discogs' page, right away. That
+script's own icons beside the names on Discogs' page, right away, and its icon
+in front of the page's name in the script's own heading. That
 window works as it does on MusicBrainz: **✎ Editing history ▾** (or **H**)
 and **Live page** are there too. Both are MusicBrainz pages, which MusicBrainz
 shows a script only with your browser's own musicbrainz.org session, so they
