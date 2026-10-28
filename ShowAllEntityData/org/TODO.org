@@ -4530,13 +4530,16 @@ bb-release-born-to-run-with-MB-links-final.html - FRP  - https://www.discogs.com
 <h2 class="MuiTypography-root MuiTypography-headLineLarge css-1l4s8ze mb-h2-processed mb-toggle-h2" data-mb-tip="" title="Click to collapse/uncollapse section (Ctrl+Click to toggle ALL sections)" style="cursor: pointer; user-select: none;"><span class="mb-toggle-icon">▲</span>Tracklist</h2>
 #+end_example
   
-
 * DONE on collection pages, images should get internal viewer support + their tooltip should show a rich popup and highlight the corresponding row
 
 on collection pages, images should get internal viewer support + their tooltip should show a rich popup and highlight
 the corresponding row
 
 * DONE fix image placement on collection popup pages for RGs
+
+* DONE The UVD in the "Media" column on PTs e.g. https://brucebase.wikidot.com/2026 should get the media icons also
+
+The UVD in the "Media" column on PTs e.g. https://brucebase.wikidot.com/2026 should get the media icons also
 
 
 * TODO consolidate more LAF across more PTs
@@ -4597,6 +4600,7 @@ Chaban
 
 * TODO embed YouTube videos directly in the PTs where they are referenced + the original URL as popup box as now
 
+
 * TODO add support for image URLs from the sidebar like the logo label images
 
 1.)
@@ -4610,11 +4614,6 @@ register the third-party user script by @zabe
 2.)
 
 check what it's doing
-
-
-* TODO The UVD in the "Media" column on PTs e.g. https://brucebase.wikidot.com/2026 should get the media icons also
-
-The UVD in the "Media" column on PTs e.g. https://brucebase.wikidot.com/2026 should get the media icons also
 
 
 * TODO On https://musicbrainz.org/release-group/f83d2211-dd81-4b1e-9a02-e89733891e1c when the third-party userscript "mb. FUNKEY ILLUSTRATED RECORDS" by @jesus2099 is active the images should get our internal viewer treatment
@@ -4761,18 +4760,6 @@ https://dashboardicons.com/icons/external/simpleicons/discogs
 🗺️ Geographic & Corporate Entities
 
 
-* TODO Each table POHs should get the same handling for sorting, filtering, auto-resizing columns, etc
-
-1.)
-
-** working
-
-#+begin_example
-MB: Collection     -> "RELEASE GROUPS"
-                   -> "WORKS"   <-- fix the "(show 70 more)" under the "Recording artists" column
-#+end_example
-
-
 * TODO the "Bio" section on MB user pages should be rendered collapsed
 
 Long "Bio" sections on MB user pages should be rendered collapsed e.g. on https://musicbrainz.org/user/atj
@@ -4824,11 +4811,10 @@ highlightning, column UVD handling, multi-row cell handling + maybe synthetic co
 function name)
 
 
-* TODO Implement the same Start/Stop/"Continue after closing and reopening the POH"
+* DONE Implement the same Start/Stop/"Continue after closing and reopening the POH"
 
 Implement the same Start/Stop/"Continue after closing and reopening the POH" everywhere on MB where we async start some
 actions (they are not interrubtable yet) and fill in the IndexedDB
-
 
 * DONE add hover functionality to the "Relationships" column for MB RGs relationship icons
 
@@ -4848,7 +4834,7 @@ PT 'release-tracks' needs suggestions for works in the "Recording of work" colum
 https://musicbrainz.org/release/22a6802f-d22e-4f47-9f22-6aac257a4194 with our async handling
 
 
-* TODO make the non-MB site settings currently "false", default "true"
+* DONE make the non-MB site settings currently "false", default "true"
 
 Make all the non-MB site settings which are currently "false" default "true", except
 
@@ -4858,7 +4844,6 @@ Make all the non-MB site settings which are currently "false" default "true", ex
 #+end_example
 
 These should still be false by default
-
 
 * DONE sidebar image hover for CAA images only working when hovering below the image in the description
 
