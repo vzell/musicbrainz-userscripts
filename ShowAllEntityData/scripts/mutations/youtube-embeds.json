@@ -1,0 +1,93 @@
+[
+    {
+        "name": "Esc stops the player but lets the key go on",
+        "why": "The first Esc must stop the player and reach nothing else (the window, a card, a filter); the spec counts Esc keydowns that reach the document.",
+        "edits": [
+            {
+                "find": "        _ytStop('Esc');\n        e.preventDefault();\n        e.stopImmediatePropagation();",
+                "replace": "        _ytStop('Esc');\n        e.preventDefault();"
+            }
+        ],
+        "spec": "tests/fixtures/youtube-embeds.spec.js",
+        "grep": "Esc stops the player and nothing else sees it",
+        "expect": "fail"
+    },
+    {
+        "name": "a second video does not stop the first",
+        "why": "Decision 4, one player at a time: the spec asserts a single frame after a second tile is clicked.",
+        "edits": [
+            {
+                "find": "        if (cur) _ytStop('another video');\n        if (_yt.blocked && !v.dead) {",
+                "replace": "        if (_yt.blocked && !v.dead) {"
+            }
+        ],
+        "spec": "tests/fixtures/youtube-embeds.spec.js",
+        "grep": "one player at a time",
+        "expect": "fail"
+    },
+    {
+        "name": "the still frame ignores sa_yt_stills",
+        "why": "Stills off means no request to i.ytimg.com before a click; the spec counts them.",
+        "edits": [
+            {
+                "find": "        const still = Lib.settings.sa_yt_stills === true && !playlist && !!v.id;",
+                "replace": "        const still = !playlist && !!v.id;"
+            }
+        ],
+        "spec": "tests/fixtures/youtube-embeds.spec.js",
+        "grep": "nothing is asked before a click",
+        "expect": "fail"
+    },
+    {
+        "name": "a table tile plays under the tile, not in a row of its own",
+        "why": "In a table the player is a full-width tr.mb-yt-playerrow under the row (the mockup); the spec asserts that row.",
+        "edits": [
+            {
+                "find": "        } else if (tr && tr.parentElement && /^(?:TBODY|TABLE)$/.test(tr.parentElement.tagName)) {\n            mode = 'row';",
+                "replace": "        } else if (false) {\n            mode = 'row';"
+            }
+        ],
+        "spec": "tests/fixtures/youtube-embeds.spec.js",
+        "grep": "in a table: a full-width row under the row",
+        "expect": "fail"
+    },
+    {
+        "name": "stopping unmarks only the tile that played",
+        "why": "A re-render clones a marked source row; once the player is gone, the copy must not stay marked as playing.",
+        "edits": [
+            {
+                "find": "        [cur.tile, ...document.querySelectorAll('.mb-yt-tile.mb-yt-playing')].forEach(t => {",
+                "replace": "        [cur.tile].forEach(t => {"
+            }
+        ],
+        "spec": "tests/fixtures/youtube-embeds.spec.js",
+        "grep": "in a table: a full-width row under the row",
+        "expect": "fail"
+    },
+    {
+        "name": "a tile known dead still asks the player",
+        "why": "A video the reader's oEmbed called dead shows the sentence and asks nothing; the spec asserts no frame and no request.",
+        "edits": [
+            {
+                "find": "        const screen = v.dead\n",
+                "replace": "        const screen = false\n"
+            }
+        ],
+        "spec": "tests/fixtures/youtube-embeds.spec.js",
+        "grep": "a tile known dead",
+        "expect": "fail"
+    },
+    {
+        "name": "a frame-policy refusal is not remembered",
+        "why": "Decision 6: after the refusal every tile says it opens YouTube and does so; the spec clicks a second tile and expects a new tab, no player.",
+        "edits": [
+            {
+                "find": "        const was = _yt.blocked;\n        _yt.blocked = true;",
+                "replace": "        const was = _yt.blocked;\n        _yt.blocked = false;"
+            }
+        ],
+        "spec": "tests/fixtures/youtube-embeds.spec.js",
+        "grep": "decision 6",
+        "expect": "fail"
+    }
+]

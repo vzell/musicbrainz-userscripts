@@ -14,7 +14,7 @@ No version bump on the branch; track the work in
 
 - [X] Mockup published and answered (2026-10-25)
 - [X] Frame-policy probe (=scripts/probe-youtube-frame-src.py=)
-- [ ] Step 1 — the shared tile and player
+- [X] Step 1 — the shared tile and player (2026-10-28, WIP.1)
 - [ ] Step 2 — MusicBrainz: URLs sub-table, sidebar, annotations
 - [ ] Step 3 — Discogs: release window, master window, release page sub-table
 - [ ] Step 4 — Brucebase: the window's Media section, links in its sections, the Live page bug

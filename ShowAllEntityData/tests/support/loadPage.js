@@ -75,6 +75,12 @@ const USERSCRIPT_PATH = path.join(PROJECT_ROOT, 'ShowAllEntityData.user.js');
 // window, one WS/2 request per rest. The specs of each seed it back on.
 // The site gates themselves (`sa_enable_<site>`) are not here: the site
 // loaders (`slFixture.js`, `bbFixture.js`, …) already seed them.
+//
+// `sa_yt_play_in_place` and `sa_yt_stills` (org/youtube.org, default true)
+// are the last two: every YouTube link would otherwise gain a "Play here"
+// tile, whose still frame is a request to i.ytimg.com — the network — and
+// whose markup every spec that reads a URL cell, the sidebar or an annotation
+// would see. youtube-embeds.spec.js seeds them back on.
 const FIXTURE_SETTINGS_OVERRIDE = {
     sa_enable_caa_pics: false,
     sa_enable_relationships_column: false,
@@ -93,6 +99,8 @@ const FIXTURE_SETTINGS_OVERRIDE = {
     sa_bb_detail_preview: false,
     sa_sl_compact_nav: false,
     sa_dp_window_read_ahead: false,
+    sa_yt_play_in_place: false,
+    sa_yt_stills: false,
 };
 
 // `_migrateFrozenSettings()` repairs a GM profile that VZ_MBLibrary's old SAVE

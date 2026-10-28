@@ -1,0 +1,20 @@
+[
+    {
+        "version": "WIP.1",
+        "date": "2026-10-28",
+        "sections": [
+            {
+                "label": "🚀 Feature",
+                "items": [
+                    "YouTube in place (org/youtube.org), the shared part: a \"Play here\" tile for a YouTube link — a still frame (or a plain frame) with ▶, the title and \"Play here · 4:30\" — that plays the video where it is listed, in YouTube's privacy-enhanced player (youtube-nocookie.com). Nothing is asked from the player before a click. In a table the player opens in a full-width row under the row, in a list's box in a slot above the list, elsewhere right under the tile; it is as wide as its column, at most 640 px, 16:9. One video plays at a time. Esc stops it before anything else sees the key (the next Esc closes the card or window as before); \"■ Stop\" does the same. A video YouTube no longer has shows \"This video is not available on YouTube any more.\" with a red Unavailable pill. Where a page's frame policy refuses the player, the video opens on YouTube in a new tab, and every tile of that page says \"Opens on YouTube (new tab)\" from then on. A player that plays in a link's window keeps playing while the window repaints. The tile's text never reaches filtering, sorting or the 📊 dropdown."
+                ]
+            },
+            {
+                "label": "✨ Improve",
+                "items": [
+                    "Two new settings in 🔎 EXTERNAL LINK PREVIEWS, both on by default: 'Play YouTube videos in place (a click asks youtube-nocookie.com)' (off: no tiles at all) and 'Show the videos' still frames (asks i.ytimg.com as they come into view)' (off: plain frames, so no request to YouTube before a click). A playlist always has a plain frame with \"≡ list\"."
+                ]
+            }
+        ]
+    }
+]
