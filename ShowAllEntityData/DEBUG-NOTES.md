@@ -26804,3 +26804,77 @@ Result: `--repeat-each=12 --workers=14` of release-rg-popup (desktop +
 mobile) 144/144, against 2 of 88 failing before. Full suite on main at
 9009482f (2026-10-28T13:07:43+01:00 → 13:31:54+01:00, NB-3641): 2,425/2,425,
 wall 24 m 11 s.
+
+## 2026-10-28 — The window's header line (org/POH-headerline.org): path, discogs.com, Discogs history
+
+Env: 2026-10-28T14:00+01:00 → 20:32+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) · Playwright 1.62.1 Chromium (fixture specs, no Tampermonkey: GM stubs); vzell's live checks and probe: his browser, Chrome 152 (DevTools device emulation on for the probe), Tampermonkey unknown
+
+Shipped as 9.99.1484–9.99.1487 (merge 72ff7ed7, fold 565eaf64). Mockup
+https://claude.ai/artifact/YCnV4DZA5R4quLAGkmhCpC. Root causes and traps,
+each with its spec and an entry in `scripts/mutations/poh-headerline.json`
+(27, all caught):
+
+- **An MB window on discogs.com had no glyph**: `_mbKindIconUrl()` served the
+  `mb-entity` source only (discogs.com's MusicBrainz links are `dg-mb`) and
+  built the URL on `window.location.origin` — discogs.com there. Now
+  `_mbOrigin()`.
+- **No Live page and no editing history there**: both are MusicBrainz PAGES,
+  and an anonymous script gets the 1394-byte "Verifying your browser" check
+  instead (probe `scripts/probe-dg-poh-headerline.user.js` P1, run by vzell
+  on discogs.com; with the cookies: the 1.28 MB release page, its 183 KB
+  /edits). Fixed by a cookie-carrying `session` request, `_mbPageGetForeign()`
+  through `_MB_LIVE.fetchText` on a foreign host only — the second consented
+  exception to "external requests are anonymous" (CLAUDE.md's doc map rule
+  line updated). Several other places built MB URLs on this origin
+  (`_mbEditsUrl()`, `_mbPagedHtml()`, a series window's item glyph) or hard-
+  coded the `mb-entity` source (`_mbEditsSubject()`, `_dpOpenEdits()`,
+  `_dpOpenHistPath()`, `_dpDocTarget()`): `_mbWinSource()`.
+- **"The archive did not answer." on discogs.com** was NOT Discogs' CSP or
+  CORS (probe P2: the page's `fetch()` of coverartarchive.org answered 200,
+  the image loaded, no `securitypolicyviolation`), and it did not recur. The
+  defect it exposed is real everywhere: `_artFetchEntityImages()` keeps a
+  429/5xx for the session (count 0 + `failedCache`), so ⟳ in a window read
+  the failure back and never asked again. `_mbPopArtLoad()` forgets it on ⟳.
+- **A glyph's documentation never resolved**: `_mbPopTarget()` takes a link
+  holding an image for artwork and returns null, and the glyph's link holds
+  its `<img>`. `_dpDocTarget()` reads a BARE copy of the link.
+- **Genre/tag links in an MB window on discogs.com left the page**:
+  `_dgMbWinTarget()` knew entities by MBID only (`_DG_MB_LINK_RE`); it now
+  falls back to `_mbPopTarget(a, {inWindow, mbOrigin})`.
+- **Discogs history pages** of a master, artist and label have the release's
+  markup (`scripts/probe-dg-history-shape.js` on vzell's saved copies). Pages
+  hold about 50 changes, page 1 the OLDEST, each oldest → newest, and the
+  plain `/history` URL serves the LAST page (P3: 10, 46, 11 rows). `tr#latest`
+  is the page's last row, not the history's. Pages saved from a browser
+  carry murdos' importer's musicbrainz.org link AND glyph first in the
+  `<h1>`: the parser took them for the subject's name and picture.
+- **"EDIT MASTER RELEASE" overlapped the note**: the kind column was a fixed
+  8.5em and the pill `white-space: nowrap`. Each row is a grid of its own, so
+  the column stays fixed (12em) and the pill gets an ellipsis.
+- **The importer's icon in our discogs.com `<h1>` had no card**: the importer
+  processes `h1.mb-dg-h1` too (`mlink_processed`), outside `_dgMbSource()`'s
+  table-body and `#app` scopes.
+
+Traps worth keeping:
+- A Discogs emoji written as TEXT changes every title's `textContent`, which
+  38 path assertions read: it is CSS generated content (`data-mb-emo`).
+- The fixture profile reads the path's KIND (`FIXTURE_SETTINGS_OVERRIDE`
+  `sa_dp_path_label: 'kind'`), but a spec loaded WITHOUT a fixture file gets
+  the default (names): popup-mb-entity-lists.spec.js now asserts a name.
+- discogs-mb-column.spec.js's MB-page tests take ~33 s: their requests wait
+  behind the one MusicBrainz gate, which that page's MusicBrainz-column
+  lookups keep busy. A first run looked like a hang ("Loading…", no request
+  logged); debug logging showed the release-group list waiting 9 s for its
+  slot. Timeouts of 30 s, not a code change.
+- A step's card reappears right after a jump back: the pointer now rests on
+  the step shown ("Shown now.", Chromium's fresh mouseover for a stationary
+  pointer, see the previous entry); the spec moves away before asserting it
+  hidden.
+- A mutation's `find` must be unique: `const origin = … window.location.origin`
+  already existed elsewhere, so the first run refused it; and a Space test
+  passed with its branch removed because the fallthrough's stand-in target
+  was named like the step — the test now also asserts the window's content.
+
+The full suite was not run at the merge, on vzell's word (every change
+tested live); the 13 affected spec files (291 passed) and the 27 mutations
+ran on the final code.
