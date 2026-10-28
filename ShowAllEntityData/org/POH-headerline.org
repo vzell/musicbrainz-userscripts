@@ -1,4 +1,4 @@
-* TODO The header line in a POH need a overwhole
+* DONE The header line in a POH need a overwhole
 ** initial
 
 The header line in a POH need a overwhole. Currently when starting from either a Discogs or MB IP or FRP and traversing
@@ -168,7 +168,7 @@ Still open, and what I need from you
 4. Commit: should I commit Step 2 on the branch now? Step 3 (Live page and Editing history on discogs.com via your cookies) doesn't depend on your answers, so I can start it next either way.
    
 
-* Decisions and plan (2026-10-28, branch feature/poh-headerline)
+* DONE Decisions and plan (2026-10-28, branch feature/poh-headerline)
 
 Mockups: https://claude.ai/artifact/YCnV4DZA5R4quLAGkmhCpC (=org/POH-headerline-mockups.html=,
 published copy built by =scripts/build-mockup-artifact.py=).

@@ -4907,6 +4907,12 @@ check what it's doing
 
 * TODO On https://musicbrainz.org/release-group/f83d2211-dd81-4b1e-9a02-e89733891e1c when the third-party userscript "mb. FUNKEY ILLUSTRATED RECORDS" by @jesus2099 is active the images should get our internal viewer treatment
 
+1.)
+
+register the third-party user script mb. FUNKEY ILLUSTRATED RECORDS" by @jesus2099 at @tests/fixtures/live-userscripts/mb_FUNKEY-ILLUSTRATED-RECORDS.user.js
+
+2.)
+
 On https://musicbrainz.org/release-group/f83d2211-dd81-4b1e-9a02-e89733891e1c when the third-party userscript
 "mb. FUNKEY ILLUSTRATED RECORDS" by @jesus2099 is active the images should get our internal viewer treatment
 
@@ -5198,7 +5204,6 @@ The regression run is finished. Of 341 tests, 332 passed and 9 failed, but the s
 - **How I checked:** I put the previous version of the userscript back in place and ran those 9 again. They failed the same way, mostly with 90-second timeouts. My guess is the cloud container's headless browser and its file-system handling, but I haven't looked into it. On your machine they may pass.
 
 I also reran the 8 genre tests (1 page type, 4 popup, plus 3 existing relationship-table tests the filter picked up) against the final code, including the tightened genre-page URL match, and all pass. Nothing new needs committing; the branch is already pushed.
-
 
 ** TODO add /genres
 
