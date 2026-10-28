@@ -1,0 +1,112 @@
+* TODO The header line in a POH need a overwhole
+
+The header line in a POH need a overwhole. Currently when starting from either a Discogs or MB IP or FRP and traversing
+further entities inside the popup window
+
+#+begin_example
+[Image #6] - starting from https://www.discogs.com/master/26725-Bruce-Springsteen-Born-To-Run -> then following the following link chain: Discogs release -> Discogs artist -> Discogs release -> Discogs label
+[Image #7] - starting from https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f -> then following the following link chain: Release group -> Release -Recording
+[Image #8] - starting from https://www.discogs.com/master/27146-Bruce-Springsteen-Human-Touch then "Space" hovering the MB icon in the "MusicBrainz" column
+[Image #9] - same release: starting from https://musicbrainz.org/release/4e3e8020-fe43-4a72-8650-5866e489a8a0 and "Space" hovering the release name in the h1 line itself
+#+end_example
+
+in the resulting popup headerline hover chain (it even gets truncated as "... >" when there are too many entries) I want
+to have the entity icon rendered before the actual entity and rich tooltips for both the entity icon and entity itself
+
+for the tooltips we could probably use the fact that we now support (at least for the MB site) POH for documentation links
+
+#+begin_example
+https://musicbrainz.org/doc/MusicBrainz_Entity
+https://musicbrainz.org/doc/Style
+
+https://musicbrainz.org/doc/Artist
+https://musicbrainz.org/doc/Style/Artist
+
+https://musicbrainz.org/doc/Event
+https://musicbrainz.org/doc/Style/Event
+#+end_example
+
+For Discogs we should probably do the same
+
+#+begin_example
+https://support.discogs.com/hc/en-us/sections/25169225080077-Database-Guidelines
+https://support.discogs.com/hc/en-us/articles/360005054753-Database-Guidelines-2-Artist
+https://support.discogs.com/hc/en-us/articles/360005055493-Database-Guidelines-16-Master-Release
+#+end_example
+
+
+0.)
+
+Somehow the "... >" should tell us (maybe via a tooltip or as a menu button) the invisible hover chain.
+Each part of the chain should be directly navigable back in addition to the current "<= Back" button
+
+1.)
+
+for MB entities use their own glyphs (what we already use on some MB PTs in specific header columns
+
+2.)
+
+for Discogs entity use the following glyphs:
+
+#+begin_example
+In the Discogs interface, specific glyphs and visual prefixes are used to uniquely identify and link database entities in search results, forums, release pages, and marketplace listings.
+The primary entity icons and their underlying database formatting codes include:
+
+💿 Master Releases
+
+• Icon: A small, transparent layered vinyl stack or folder symbol.
+• Meaning: Indicates a Database Master Release. This functions as a master folder grouping multiple physical releases, versions, reissues, or promotional pressings of the same overall album, EP, or single together.
+• Text Formatting Code: Entered as [m=Master ID] or [mID] in forums and release notes.
+
+📄 Releases
+
+• Icon: A single vinyl record or compact disc silhouette (often looking like a flat disc with a center ring).
+• Meaning: Represents a specific, standalone physical variation or catalog printing of an album.
+• Text Formatting Code: Entered as [r=Release ID] or [rID].
+
+🏷️ Labels
+
+• Icon: A vintage record label tag or a stylized graphic resembling a record spindle hole with text lines.
+• Meaning: Represents a record label, production company, distributor, or pressing plant profile page.
+• Text Formatting Code: Entered as [l=Label Name] or [lID].
+
+👤 Artists
+
+• Icon: A standard single person bust / silhouette avatar profile.
+• Meaning: Directs to the profile page of a specific band, solo artist, producer, or mastering engineer.
+• Text Formatting Code: Entered as [a=Artist Name] or [aID].
+
+💬 Users
+
+• Icon: A outlined person portrait silhouette or a standard comment bubble depending on if it's pointing to a profile or a message board.
+• Meaning: Represents a member of the Discogs community, typically an online collector, buyer, seller, or database contributor.
+• Text Formatting Code: Entered as [u=Username].
+
+If you are currently trying to link to these in a specific field, please tell me where you are editing (e.g., Release Notes, Submission Notes, or Forum) or if you are looking for the exact SVG/CSS source icons for a software integration so I can point you to the right asset folder!
+
+https://dashboardicons.com/icons/external/simpleicons/discogs
+
+🎷 Other Core Metadata
+🗺️ Geographic & Corporate Entities
+#+end_example
+
+3.)
+
+The MB release hover popups render the headerline differetnly when they are reached from a Discogs site as starting
+point
+
+#+begin_example
+currently the MB entity glyph is missing
+the "Editing history" button menu is missing
+the "Live page" button is missing
+the "COVER ART" section says: "The archive did not answer."
+#+end_example
+
+4.)
+
+A hovered popup which represent a Discogs entity should also get the "Editing history" button, but without the menu
+structure (which we have on MB entities)
+
+5.)
+
+show me some nice rich HTML based mockups before implementation

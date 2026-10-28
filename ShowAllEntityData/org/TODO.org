@@ -4541,6 +4541,298 @@ the corresponding row
 
 The UVD in the "Media" column on PTs e.g. https://brucebase.wikidot.com/2026 should get the media icons also
 
+* DONE Implement the same Start/Stop/"Continue after closing and reopening the POH"
+
+Implement the same Start/Stop/"Continue after closing and reopening the POH" everywhere on MB where we async start some
+actions (they are not interrubtable yet) and fill in the IndexedDB
+
+* DONE add hover functionality to the "Relationships" column for MB RGs relationship icons
+
+Add hover functionality to the "Relationships" column for MB RGs relationship icons.
+Currently the href anchors are not fully qualified and missing the https://site:port part, see e.g. https://musicbrainz.org/tag/arena%20rock - tag-RG-relationship-icons.html
+So they do not support yet the POH
+
+* DONE make the non-MB site settings currently "false", default "true"
+
+Make all the non-MB site settings which are currently "false" default "true", except
+
+#+begin_example
+"Show the Brucebase side bar on the right"
++ all the booleans which deal with "... touch devices ..."
+#+end_example
+
+These should still be false by default
+
+* DONE sidebar image hover for CAA images only working when hovering below the image in the description
+
+1.)
+
+The sidebar image hover for the CAA image doesn't do anything, instead of showing all the release images in a small
+popup window
+
+#+begin_example
+@debug/release-caa-sidebar-image-bug.html - https://musicbrainz.org/release/3ec14d03-2c03-4764-a69d-8155817a040f
+#+end_example
+
+* DONE when hovering a value in the "LABEL-CAT#" column and the down-right glyph shows up, the label-cat# value moves to the left and back when hovering away, which lets the value kind of pump
+
+when hovering a value in the "LABEL-CAT#" column and the down-right glyph shows up, the label-cat# value moves to the left
+and back when hovering away, which lets the value kind of pump, together with is's column header
+
+#+begin_example
+@debug/mb-RG-popup.html - popup dialog of the URL https://musicbrainz.org/release-group/48e335f3-8e4a-4e38-b2df-e1514b9f9126 on e.g https://musicbrainz.org/release/babb4c54-bca0-4eb9-b444-369c34d3404d when hovering '<span class="small">(<a href="/release-group/48e335f3-8e4a-4e38-b2df-e1514b9f9126" data-mb-rg-link="29">29 versions available in <bdi>Letter to You</bdi></a>)</span>'
+#+end_example
+
+Maybe remove that icon completely (btw what is it actually good for, what is the idea of havin it and only showing when
+hovering it) and ONLY leave the icon for rendering a link in a new tab in
+
+* DONE make the "Browser cache" window movable and resizable
+
+make the "Browser cache" window movable and resizable
+
+* DONE create a nice dialog window (like what we do for the "Browser cache" window) for displaying/managing the tampermonkey GM store key/values
+
+create a nice dialog window (like what we do for the "Browser cache" window) for displaying/managing the tampermonkey GM
+store key/values
+
+* DONE flaky Wikipedia test in popup-ext.spec.js
+** 1
+
+The branch is merged and pushed to main, which is now at 9.99.1463 (@version 9.99.1463+2026-10-26). One step failed: GitHub refused to delete the remote branch, so claude/keen-planck-t1lm8l is still on origin.
+
+Merge commit: 803221a. Before merging, I fast-forwarded main to your 3c4cdce “add new todo entries”.
+Fold commit: d2e28e4. It rebuilt the changelog pages, and the WIP changelog file is deleted. No WIP.N cross-references needed rewriting, and every entry is dated 2026-10-26.
+WIP	Version	Change
+WIP.1	9.99.1460	Sidebar cover hover card
+WIP.2	9.99.1461	Relationships release-group icon previews
+WIP.3	9.99.1462	Browser cache window movable/resizable
+WIP.4	9.99.1463	🗄️ Script storage dialog
+
+Checks:
+
+Not run: the full suite (test:full), as you asked.
+Passed:
+the syntax check (node --check);
+the changelog and docs audits;
+the lint check;
+the gm-store spec, run once more before merging (6/6).
+Open:
+my partial npm test from earlier has no result;
+the last “empty detail box” mutation was never run.
+HELP: already matched what shipped, since the branch updated it for all four entries. No step in PERFORMANCE.org was affected.
+
+Branch cleanup:
+
+Local: deleted, with git branch -d.
+
+Remote: the push to delete it was refused with HTTP 403. This session’s GitHub access doesn’t let me delete branches;
+reconnecting at https://claude.ai/connect-github may fix that. The quickest route is to run git push origin --delete
+claude/keen-planck-t1lm8l yourself, or delete it on GitHub. It points at c0e5b25, which is already fully merged, so
+nothing is lost.
+
+The mirror repo vzell/mb-userscripts hasn’t been published to, so the HELP changes aren’t live for users yet. Run scripts/check-publish-ready.py before your next publish.
+
+** DONE 2
+
+The flaky Wikipedia test in popup-ext.spec.js is still open; it fails about 1 run in 3–4, on main too.
+
+* DONE fix MB collection pages
+** DONE initial
+
+1.)
+
+Make all the non-MB site settings which are currently "false" default "true", except
+
+#+begin_example
+"Show the Brucebase side bar on the right"
++ all the booleans which deal with "... touch devices ..."
+#+end_example
+
+These should still be false by default
+
+2.)
+
+add "SAED" menu entries for entity history
+
+3.)
+
+#+begin_example
+Entity history
+ predefined filters:
+  own edits
+  edits by other
+  open edits
+  open edits by other
+  all jesus2099 variants ...
+--
+Annotation history
+#+end_example
+
+4.)
+
+The "Editing history" button in the POH should be a "Editing history" button-menue with the same option as in the "SAED"
+"Editing history" section
+
+5.)
+
+The UVD in the "Media" column on PTs e.g. https://brucebase.wikidot.com/2026 should get the media icons also
+
+6.)
+
+Tf there are sub-tables under the "<h2>Collaborative collections</h2>" h2 section e.g. on
+https://musicbrainz.org/user/ApeKattQuest%2C%20MonkeyPython/collections, currently the sub-tables are rendered (also
+with a column shift) under the h2 section "My collections"
+
+#+begin_example
+collections-collaborative-initial.html - IP
+collections-collaborative-final.html - FRP
+#+end_example
+
+Maybe change the h2 headerline from "My collections" to just "Collections" and add the data under the collaborative
+collections section (actually the data under each h3 section)) in the same named h3 section of "My collections".
+
+On the FRP each sub-table should get an additional column named "Privacy" with the default column value of "Privat" and
+"Public" if the value comes from the IP "Collaborative collections"
+
+7.)
+
+show me a nice rich HTML web page with mockups before implementing
+
+** DONE questions
+
+Item 6: the value is spelled Private in English. Your note said "Privat"; say if you want that spelling instead.
+Item 1: sa_dp_window_read_ahead stays off unless you say otherwise.
+Items 2–4: is the jesus2099 list complete, or are there variants you want added or left out?
+
+** DONE answers
+
+Item 6: the value is spelled Private in English:  "Private" is OK
+Item 1: sa_dp_window_read_ahead stays off unless you say otherwise: It should also bo ON
+Items 2–4: is the jesus2099 list complete, or are there variants you want added or left out: The list is complete
+
+** DONE Two things are still open:
+
+Probe script: please run scripts/probe-edit-search-presets.py once from your machine, since musicbrainz.org was blocked here.
+Publishing: HELP changed in this release, so it needs publishing to the vzell/mb-userscripts mirror (scripts/check-publish-ready.py before you copy).
+
+* DONE add new features
+** DONE initial
+
+add the following new features, but store the plan in @org/MB-POH-sync-withDiscogs.org first, so I can resume on another
+machine (locally in claude code) as we probably don't have enough tokens to finish of in this cloude code session
+
+1.)
+
+the sort glyph on Discogs POHs should get an additional state "Initial sort" (with a nice glpyh) besides the states
+
+#+begin_example
+"Ascending" (e.g. '<thdata-mb-dg-lsort="artist" aria-sort="ascending">Artist</th>')
+"Descending" (e.g. '<th data-mb-dg-lsort="artist" aria-sort="descending">Artist</th>')
+#+end_example
+
+2.)
+
+The MB POHs should get the same treatment/"look and feel" (tabelization wise) like the Discogs <entity pages>
+
+#+begin_example
+Discogs artist -  
+Discogs master - 
+Discogs label - 
+#+end_example
+
+See the uploaded raw HTML files  starting with "POH-<entity>.html which are the POH windows:
+
+#+begin_example
+MB: Artist         -> "RELEASE GROUPS"
+                      "LINKS" - should get the same kind of table like in POH "Discogs label" -> "SUBLABELS" (at the left side)
+    Release group  -> "RELEASES"   <== When no release image available render empty place holder in the same size as a standard image so that all rows have the same height / "Artist AC/DC" on the left side <-- the artist should be hyperlinked with POH / "Genres" arena rock, blues rock, classic rock, hard rock, heavy metal, pop rock, rock (each genre below each other) <-- should be hyperlinked with "Tags" (general/user(when Ctrl is hold at same time))
+                      "LINKS" - should get the same kind of table like in POH "Discogs label" -> "SUBLABELS" (at the left side)
+    Release        -> "TRACKLIST" -> "<medium>"
+    Recording      -> "RELEASES" - currently "The first 25 of 80; the recording's page lists them all." - should get the same kind of table like in POH "Discogs label" -> "RELEASES" (at the right side), with a "Load <n> more pages (<m> releases, about <l> s)"
+    Work           -> "RECORDINGS"  - currently "219 recordings; the first 100 here, the work's page lists them all." - should get the same kind of table like in POH "Discogs label" -> "RELEASES" (at the right side), with a "Load <n> more pages (<m> releases, about <l> s)"
+                      "CODES" - should get the same kind of table like in POH "Discogs label" -> "SUBLABELS" (at the left side)
+    Label          -> "LINKS" - when more than 10 entries - should get the same kind of table like in POH "Discogs label" -> "SUBLABELS" (at the left side)
+                      "FACTS" -> "Genres" - each genre below each other
+    Event          -> "SETLIST" - table with multiple columns for title, cover, disambiguation 
+                      "RECORDED HERE"
+                      "RECORDED HERE" -> "Recorded at (releases)" - should get the same kind of table like in POH "Discogs label" -> "SUBLABELS" (at the left side)
+                      "RECORDED HERE" -> "Recorded at (recordings)" - should get the same kind of table like in POH "Discogs label" -> "SUBLABELS" (at the left side)
+    Instrument     -> "RELATED INSTRUMNETS" -> "Parts" - should get the same kind of table like in POH "Discogs label" -> "SUBLABELS" (at the left side)
+                      "ALIASES" - should get the same kind of table like in POH "Discogs label" -> "SUBLABELS" (at the left side)
+    Series         -> "ITEMS" <- "Item column should get the MB entity icon in front of the item name + it should be rendered inside the POH and not in a new tab
+    Place          -> "EVENTS" - probably the same as for "RELEASES"/"RECORDINGS"
+                      "LINKS"  - should get the same kind of table like in POH "Discogs label" -> "SUBLABELS" (at the left side)
+    Area           -> "RELATED AREAS"
+                   -> "RELATED AREAS" -> "Parts" - should get the same kind of table like in POH "Discogs label" -> "SUBLABELS" (at the left side)
+    Editor         -> "EDITS"
+    Collection     -> "<ENTITY e.g ARTISTS>"
+    Genre          -> "LINKS" section should go to the left side
+                      "RELATED GENRES" - <subsection> - should get the same kind of table like in POH "Discogs label" -> "SUBLABELS" (at the left side)
+    Tag (classic rock) -> "Releases"/"Recordings"/"Artists"/etc. - should get the same kind of table like in POH "Discogs artist" -> "<differetn sections>" (at the right side), with a "Load <n> more pages (<m> releases, about <l> s)"
+    Tag (Editor's) -> "BY KIND" <- new renderer/reader for PT "/user/<username>/tag/<tag value>/<MB entity>" and then render inline and not on separate tab; the sections on the right side like "Tag (classic rock)" above
+    Tags           -> "OTHER TAGS"
+    Ratings        -> "ARTIST"/"EVENT"/"LABEL"/etc.
+    CD Stub        -> https://musicbrainz.org/cdstub/browse <- new renderer/reader for PT "https://musicbrainz.org/cdstub/XsbJwm0LkJCi4WXBVx9iXOXGhWk-"
+    ISRC           -> "RECORDINGS" - should get the same kind of table like in POH "Discogs label" -> "SUBLABELS" (at the left side)
+    ISWC           -> "WORKS"
+    Disc ID        -> "RELEASES"- should get the same kind of table like in POH "Discogs label" -> "SUBLABELS" (at the left side)
+    Documentation  -> new PT for https://musicbrainz.org/search?query=release&type=doc&method=indexed#gsc.tab=0&gsc.q=release&gsc.page=1
+    Annotation
+           history -> "VERSIONS"
+           version -> 
+#+end_example
+
+3.)
+
+add support for the following Discogs pages (with the usual image hovering treatment too)
+
+#+begin_example
+"Image history" - https://www.discogs.com/release/1313481-Born-To-Run/images/update - Discogs-Image-history.html
+"Images" - https://www.discogs.com/release/1313481-Born-To-Run/images - Discogs-Images.html
+#+end_example
+
+4.)
+
+show me a nice rich HTML web page with mockups before implementing
+
+** DONE finishing of in the cloud
+
+Phase 1 is committed and pushed as 723745f7, and the working tree is clean. The default fixture suite is still running, so it isn’t confirmed green yet; I’ll report back when it finishes.
+
+Your four decisions are in the org file’s Decisions table, committed and pushed as fdd3ac24.
+
+What Phase 1 does:
+
+Which tables: the Discogs artist discography, label releases, sublabels and master versions, plus the MusicBrainz release-group window.
+Three sort states: each header now cycles ▲ → ▼ → back to the site’s own order. In that initial order a header shows a faint ⇅, and its hover text says what the next click does.
+One place for the cycle: five hand-written sort cycles were replaced by two shared helpers, which Phase 2’s MusicBrainz tables will reuse.
+One intended behaviour change: Discogs’ Have column used to go ▼ → off. It now goes ▼ → ▲ → off like every other column.
+Bookkeeping: WIP.1 is in ShowAllEntityData_CHANGELOG.wip.json and the HELP file is updated. As the convention says, there is no @version bump on the branch.
+
+Tests so far:
+
+Four existing specs were extended to cover the third click. For example, the master’s versions must come back in exactly the order of Discogs’ API answers.
+The new mutation file plants 7 defects. 6 fail the specs as they should; the 7th is a known overlap that is expected to pass, and it is recorded as such.
+Lint is within its baseline, and there are no tabs or trailing whitespace.
+
+One failure that isn’t from this change: the Wikipedia reader test (“…a missing title”) fails here. It fails the same
+way with my changes stashed, so it was already broken before this work. It expects an image from upload.wikimedia.org;
+this container is my first suspect. It’s noted in the org file to re-check on your machine.
+
+Next, on your local machine: Phase 2 in org/MB-POH-sync-withDiscogs.org, the shared Compact and List tables plus the “Load N more pages” loader for MusicBrainz.
+
+** DONE tackle
+
+The last couple of implementation steps have been done in a Claude cloude environment as I didn't any tokens left for
+local development. A couple of tests didn't work out in that environment and I think they have been reorded in our .org
+files somewhere (or the changelog/"git history"), please check and specifically check our next full test suite run if
+these tests are still flaky or real regressions.
+
+Now tackle "Phase 2" in org/MB-POH-sync-withDiscogs.org, the shared Compact and List tables plus the “Load N more pages”
+loader for MusicBrainz.
+
+* DONE embed YouTube videos directly in the PTs where they are referenced + the original URL as popup box as now
+
 
 * TODO consolidate more LAF across more PTs
 
@@ -4598,9 +4890,6 @@ Chaban
 #+end_example
 
 
-* TODO embed YouTube videos directly in the PTs where they are referenced + the original URL as popup box as now
-
-
 * TODO add support for image URLs from the sidebar like the logo label images
 
 1.)
@@ -4654,9 +4943,24 @@ on BB pages links on the form "https://brucebase.wikidot.com/1973#020373" should
 On MB entity POHs we should get additional POH support for known URLs like Wikipedia/Wikidata
 
 
-* TODO On MB RG POHs add the site icons in front of the site entity name in the POH header line
+* TODO Site icons
 
 On MB RG POHs add the site icons in front of the site entity name in the POH header line, e.g. https://musicbrainz.org/release-group/f83d2211-dd81-4b1e-9a02-e89733891e1c
+
+
+#+begin_example
+<div class="header mb-vsb-chrome"><a class="logo" href="/" title="MusicBrainz"><img alt="MusicBrainz" class="logo" src="https://static.metabrainz.org/MB/header-logo-1f7dc2a.svg">
+#+end_example
+
+#+begin_example
+Artist - <div class="wrap-anywhere artistheader person-icon mb-vsb-head" data-mb-vsb-head="0"> - https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f
+Release group - <div class="wrap-anywhere rgheader mb-vsb-head" data-mb-vsb-head="0"> - https://musicbrainz.org/release-group/f83d2211-dd81-4b1e-9a02-e89733891e1c
+Recording <div class="wrap-anywhere recordingheader mb-vsb-head" data-mb-vsb-head="0"> - https://musicbrainz.org/recording/3e8d2331-3734-4f4b-b865-3313b7bf4303
+Work - <div class="wrap-anywhere workheader mb-vsb-head" data-mb-vsb-head="0"> - https://musicbrainz.org/work/200cdfad-2422-3e1f-8880-eb358acf4b05
+CD stub <div class="blankheader mb-vsb-head" data-mb-vsb-head="0"> - https://musicbrainz.org/cdstub/XsbJwm0LkJCi4WXBVx9iXOXGhWk-
+Top CD stubs - <h1 class="mb-vsb-head" data-mb-vsb-head="0"> - https://musicbrainz.org/cdstub/browse
+#+end_example
+
 
 1.)
 
@@ -4715,49 +5019,7 @@ https://support.discogs.com/hc/en-us/articles/360005054753-Database-Guidelines-2
 https://support.discogs.com/hc/en-us/articles/360005055493-Database-Guidelines-16-Master-Release
 
 
-D: M, R, L, U - guidlines - e.g. https://support.discogs.com/hc/en-us/articles/360005055493-Database-Guidelines-16-Master-Release
-
-* TODO Discogs entity glyphs
-
-In the Discogs interface, specific glyphs and visual prefixes are used to uniquely identify and link database entities in search results, forums, release pages, and marketplace listings.
-The primary entity icons and their underlying database formatting codes include:
-
-💿 Master Releases
-
-• Icon: A small, transparent layered vinyl stack or folder symbol.
-• Meaning: Indicates a Database Master Release. This functions as a master folder grouping multiple physical releases, versions, reissues, or promotional pressings of the same overall album, EP, or single together.
-• Text Formatting Code: Entered as [m=Master ID] or [mID] in forums and release notes.
-
-📄 Releases
-
-• Icon: A single vinyl record or compact disc silhouette (often looking like a flat disc with a center ring).
-• Meaning: Represents a specific, standalone physical variation or catalog printing of an album.
-• Text Formatting Code: Entered as [r=Release ID] or [rID].
-
-🏷️ Labels
-
-• Icon: A vintage record label tag or a stylized graphic resembling a record spindle hole with text lines.
-• Meaning: Represents a record label, production company, distributor, or pressing plant profile page.
-• Text Formatting Code: Entered as [l=Label Name] or [lID].
-
-👤 Artists
-
-• Icon: A standard single person bust / silhouette avatar profile.
-• Meaning: Directs to the profile page of a specific band, solo artist, producer, or mastering engineer.
-• Text Formatting Code: Entered as [a=Artist Name] or [aID].
-
-💬 Users
-
-• Icon: A outlined person portrait silhouette or a standard comment bubble depending on if it's pointing to a profile or a message board.
-• Meaning: Represents a member of the Discogs community, typically an online collector, buyer, seller, or database contributor.
-• Text Formatting Code: Entered as [u=Username].
-
-If you are currently trying to link to these in a specific field, please tell me where you are editing (e.g., Release Notes, Submission Notes, or Forum) or if you are looking for the exact SVG/CSS source icons for a software integration so I can point you to the right asset folder!
-
-https://dashboardicons.com/icons/external/simpleicons/discogs
-
-🎷 Other Core Metadata
-🗺️ Geographic & Corporate Entities
+D: M, R, L, U - guidelines - e.g. https://support.discogs.com/hc/en-us/articles/360005055493-Database-Guidelines-16-Master-Release
 
 
 * TODO the "Bio" section on MB user pages should be rendered collapsed
@@ -4811,18 +5073,6 @@ highlightning, column UVD handling, multi-row cell handling + maybe synthetic co
 function name)
 
 
-* DONE Implement the same Start/Stop/"Continue after closing and reopening the POH"
-
-Implement the same Start/Stop/"Continue after closing and reopening the POH" everywhere on MB where we async start some
-actions (they are not interrubtable yet) and fill in the IndexedDB
-
-* DONE add hover functionality to the "Relationships" column for MB RGs relationship icons
-
-Add hover functionality to the "Relationships" column for MB RGs relationship icons.
-Currently the href anchors are not fully qualified and missing the https://site:port part, see e.g. https://musicbrainz.org/tag/arena%20rock - tag-RG-relationship-icons.html
-So they do not support yet the POH
-
-
 * TODO majkinetor: "Links" column - switch of the native tooltip on the FRP
 * TODO majkinetor: no icons in the lower right corner
 * TODO majkinetor: async issues with "ISRC" and "Link" columns on PT 'release-tracks'
@@ -4832,92 +5082,6 @@ So they do not support yet the POH
 
 PT 'release-tracks' needs suggestions for works in the "Recording of work" column e.g. on
 https://musicbrainz.org/release/22a6802f-d22e-4f47-9f22-6aac257a4194 with our async handling
-
-
-* DONE make the non-MB site settings currently "false", default "true"
-
-Make all the non-MB site settings which are currently "false" default "true", except
-
-#+begin_example
-"Show the Brucebase side bar on the right"
-+ all the booleans which deal with "... touch devices ..."
-#+end_example
-
-These should still be false by default
-
-* DONE sidebar image hover for CAA images only working when hovering below the image in the description
-
-1.)
-
-The sidebar image hover for the CAA image doesn't do anything, instead of showing all the release images in a small
-popup window
-
-#+begin_example
-@debug/release-caa-sidebar-image-bug.html - https://musicbrainz.org/release/3ec14d03-2c03-4764-a69d-8155817a040f
-#+end_example
-
-* DONE when hovering a value in the "LABEL-CAT#" column and the down-right glyph shows up, the label-cat# value moves to the left and back when hovering away, which lets the value kind of pump
-
-when hovering a value in the "LABEL-CAT#" column and the down-right glyph shows up, the label-cat# value moves to the left
-and back when hovering away, which lets the value kind of pump, together with is's column header
-
-#+begin_example
-@debug/mb-RG-popup.html - popup dialog of the URL https://musicbrainz.org/release-group/48e335f3-8e4a-4e38-b2df-e1514b9f9126 on e.g https://musicbrainz.org/release/babb4c54-bca0-4eb9-b444-369c34d3404d when hovering '<span class="small">(<a href="/release-group/48e335f3-8e4a-4e38-b2df-e1514b9f9126" data-mb-rg-link="29">29 versions available in <bdi>Letter to You</bdi></a>)</span>'
-#+end_example
-
-Maybe remove that icon completely (btw what is it actually good for, what is the idea of havin it and only showing when
-hovering it) and ONLY leave the icon for rendering a link in a new tab in
-
-* DONE make the "Browser cache" window movable and resizable
-
-make the "Browser cache" window movable and resizable
-
-* DONE create a nice dialog window (like what we do for the "Browser cache" window) for displaying/managing the tampermonkey GM store key/values
-
-create a nice dialog window (like what we do for the "Browser cache" window) for displaying/managing the tampermonkey GM
-store key/values
-
-
-* TODO todo
-** 1
-
-The branch is merged and pushed to main, which is now at 9.99.1463 (@version 9.99.1463+2026-10-26). One step failed: GitHub refused to delete the remote branch, so claude/keen-planck-t1lm8l is still on origin.
-
-Merge commit: 803221a. Before merging, I fast-forwarded main to your 3c4cdce “add new todo entries”.
-Fold commit: d2e28e4. It rebuilt the changelog pages, and the WIP changelog file is deleted. No WIP.N cross-references needed rewriting, and every entry is dated 2026-10-26.
-WIP	Version	Change
-WIP.1	9.99.1460	Sidebar cover hover card
-WIP.2	9.99.1461	Relationships release-group icon previews
-WIP.3	9.99.1462	Browser cache window movable/resizable
-WIP.4	9.99.1463	🗄️ Script storage dialog
-
-Checks:
-
-Not run: the full suite (test:full), as you asked.
-Passed:
-the syntax check (node --check);
-the changelog and docs audits;
-the lint check;
-the gm-store spec, run once more before merging (6/6).
-Open:
-my partial npm test from earlier has no result;
-the last “empty detail box” mutation was never run.
-HELP: already matched what shipped, since the branch updated it for all four entries. No step in PERFORMANCE.org was affected.
-
-Branch cleanup:
-
-Local: deleted, with git branch -d.
-
-Remote: the push to delete it was refused with HTTP 403. This session’s GitHub access doesn’t let me delete branches;
-reconnecting at https://claude.ai/connect-github may fix that. The quickest route is to run git push origin --delete
-claude/keen-planck-t1lm8l yourself, or delete it on GitHub. It points at c0e5b25, which is already fully merged, so
-nothing is lost.
-
-The mirror repo vzell/mb-userscripts hasn’t been published to, so the HELP changes aren’t live for users yet. Run scripts/check-publish-ready.py before your next publish.
-
-** TODO 2
-
-The flaky Wikipedia test in popup-ext.spec.js is still open; it fails about 1 run in 3–4, on main too.
 
 
 * TODO add a new genre PT
@@ -5041,205 +5205,9 @@ I also reran the 8 genre tests (1 page type, 4 popup, plus 3 existing relationsh
 add a reader for https://musicbrainz.org/genres
 
 
-* TODO fix MB collection pages
-** DONE initial
-
-1.)
-
-Make all the non-MB site settings which are currently "false" default "true", except
-
-#+begin_example
-"Show the Brucebase side bar on the right"
-+ all the booleans which deal with "... touch devices ..."
-#+end_example
-
-These should still be false by default
-
-2.)
-
-add "SAED" menu entries for entity history
-
-3.)
-
-#+begin_example
-Entity history
- predefined filters:
-  own edits
-  edits by other
-  open edits
-  open edits by other
-  all jesus2099 variants ...
---
-Annotation history
-#+end_example
-
-4.)
-
-The "Editing history" button in the POH should be a "Editing history" button-menue with the same option as in the "SAED"
-"Editing history" section
-
-5.)
-
-The UVD in the "Media" column on PTs e.g. https://brucebase.wikidot.com/2026 should get the media icons also
-
-6.)
-
-Tf there are sub-tables under the "<h2>Collaborative collections</h2>" h2 section e.g. on
-https://musicbrainz.org/user/ApeKattQuest%2C%20MonkeyPython/collections, currently the sub-tables are rendered (also
-with a column shift) under the h2 section "My collections"
-
-#+begin_example
-collections-collaborative-initial.html - IP
-collections-collaborative-final.html - FRP
-#+end_example
-
-Maybe change the h2 headerline from "My collections" to just "Collections" and add the data under the collaborative
-collections section (actually the data under each h3 section)) in the same named h3 section of "My collections".
-
-On the FRP each sub-table should get an additional column named "Privacy" with the default column value of "Privat" and
-"Public" if the value comes from the IP "Collaborative collections"
-
-7.)
-
-show me a nice rich HTML web page with mockups before implementing
-
-** DONE questions
-
-Item 6: the value is spelled Private in English. Your note said "Privat"; say if you want that spelling instead.
-Item 1: sa_dp_window_read_ahead stays off unless you say otherwise.
-Items 2–4: is the jesus2099 list complete, or are there variants you want added or left out?
-
-** DONE answers
-
-Item 6: the value is spelled Private in English:  "Private" is OK
-Item 1: sa_dp_window_read_ahead stays off unless you say otherwise: It should also bo ON
-Items 2–4: is the jesus2099 list complete, or are there variants you want added or left out: The list is complete
-
-** TODO Two things are still open:
-
-Probe script: please run scripts/probe-edit-search-presets.py once from your machine, since musicbrainz.org was blocked here.
-Publishing: HELP changed in this release, so it needs publishing to the vzell/mb-userscripts mirror (scripts/check-publish-ready.py before you copy).
-
-
 * TODO fix MB collection pages when "mb. COLLECTION HIGHLIGHTER" from @jesus2099 is active
 
 fix MB collection pages, e.g. https://musicbrainz.org/user/ApeKattQuest%2C%20MonkeyPython/collections when the
 third-party userscript "mb. COLLECTION HIGHLIGHTER" from @jesus2099 is active
 
-
-* DONE add new features
-** DONE initial
-
-add the following new features, but store the plan in @org/MB-POH-sync-withDiscogs.org first, so I can resume on another
-machine (locally in claude code) as we probably don't have enough tokens to finish of in this cloude code session
-
-1.)
-
-the sort glyph on Discogs POHs should get an additional state "Initial sort" (with a nice glpyh) besides the states
-
-#+begin_example
-"Ascending" (e.g. '<thdata-mb-dg-lsort="artist" aria-sort="ascending">Artist</th>')
-"Descending" (e.g. '<th data-mb-dg-lsort="artist" aria-sort="descending">Artist</th>')
-#+end_example
-
-2.)
-
-The MB POHs should get the same treatment/"look and feel" (tabelization wise) like the Discogs <entity pages>
-
-#+begin_example
-Discogs artist -  
-Discogs master - 
-Discogs label - 
-#+end_example
-
-See the uploaded raw HTML files  starting with "POH-<entity>.html which are the POH windows:
-
-#+begin_example
-MB: Artist         -> "RELEASE GROUPS"
-                      "LINKS" - should get the same kind of table like in POH "Discogs label" -> "SUBLABELS" (at the left side)
-    Release group  -> "RELEASES"   <== When no release image available render empty place holder in the same size as a standard image so that all rows have the same height / "Artist AC/DC" on the left side <-- the artist should be hyperlinked with POH / "Genres" arena rock, blues rock, classic rock, hard rock, heavy metal, pop rock, rock (each genre below each other) <-- should be hyperlinked with "Tags" (general/user(when Ctrl is hold at same time))
-                      "LINKS" - should get the same kind of table like in POH "Discogs label" -> "SUBLABELS" (at the left side)
-    Release        -> "TRACKLIST" -> "<medium>"
-    Recording      -> "RELEASES" - currently "The first 25 of 80; the recording's page lists them all." - should get the same kind of table like in POH "Discogs label" -> "RELEASES" (at the right side), with a "Load <n> more pages (<m> releases, about <l> s)"
-    Work           -> "RECORDINGS"  - currently "219 recordings; the first 100 here, the work's page lists them all." - should get the same kind of table like in POH "Discogs label" -> "RELEASES" (at the right side), with a "Load <n> more pages (<m> releases, about <l> s)"
-                      "CODES" - should get the same kind of table like in POH "Discogs label" -> "SUBLABELS" (at the left side)
-    Label          -> "LINKS" - when more than 10 entries - should get the same kind of table like in POH "Discogs label" -> "SUBLABELS" (at the left side)
-                      "FACTS" -> "Genres" - each genre below each other
-    Event          -> "SETLIST" - table with multiple columns for title, cover, disambiguation 
-                      "RECORDED HERE"
-                      "RECORDED HERE" -> "Recorded at (releases)" - should get the same kind of table like in POH "Discogs label" -> "SUBLABELS" (at the left side)
-                      "RECORDED HERE" -> "Recorded at (recordings)" - should get the same kind of table like in POH "Discogs label" -> "SUBLABELS" (at the left side)
-    Instrument     -> "RELATED INSTRUMNETS" -> "Parts" - should get the same kind of table like in POH "Discogs label" -> "SUBLABELS" (at the left side)
-                      "ALIASES" - should get the same kind of table like in POH "Discogs label" -> "SUBLABELS" (at the left side)
-    Series         -> "ITEMS" <- "Item column should get the MB entity icon in front of the item name + it should be rendered inside the POH and not in a new tab
-    Place          -> "EVENTS" - probably the same as for "RELEASES"/"RECORDINGS"
-                      "LINKS"  - should get the same kind of table like in POH "Discogs label" -> "SUBLABELS" (at the left side)
-    Area           -> "RELATED AREAS"
-                   -> "RELATED AREAS" -> "Parts" - should get the same kind of table like in POH "Discogs label" -> "SUBLABELS" (at the left side)
-    Editor         -> "EDITS"
-    Collection     -> "<ENTITY e.g ARTISTS>"
-    Genre          -> "LINKS" section should go to the left side
-                      "RELATED GENRES" - <subsection> - should get the same kind of table like in POH "Discogs label" -> "SUBLABELS" (at the left side)
-    Tag (classic rock) -> "Releases"/"Recordings"/"Artists"/etc. - should get the same kind of table like in POH "Discogs artist" -> "<differetn sections>" (at the right side), with a "Load <n> more pages (<m> releases, about <l> s)"
-    Tag (Editor's) -> "BY KIND" <- new renderer/reader for PT "/user/<username>/tag/<tag value>/<MB entity>" and then render inline and not on separate tab; the sections on the right side like "Tag (classic rock)" above
-    Tags           -> "OTHER TAGS"
-    Ratings        -> "ARTIST"/"EVENT"/"LABEL"/etc.
-    CD Stub        -> https://musicbrainz.org/cdstub/browse <- new renderer/reader for PT "https://musicbrainz.org/cdstub/XsbJwm0LkJCi4WXBVx9iXOXGhWk-"
-    ISRC           -> "RECORDINGS" - should get the same kind of table like in POH "Discogs label" -> "SUBLABELS" (at the left side)
-    ISWC           -> "WORKS"
-    Disc ID        -> "RELEASES"- should get the same kind of table like in POH "Discogs label" -> "SUBLABELS" (at the left side)
-    Documentation  -> new PT for https://musicbrainz.org/search?query=release&type=doc&method=indexed#gsc.tab=0&gsc.q=release&gsc.page=1
-    Annotation
-           history -> "VERSIONS"
-           version -> 
-#+end_example
-
-3.)
-
-add support for the following Discogs pages (with the usual image hovering treatment too)
-
-#+begin_example
-"Image history" - https://www.discogs.com/release/1313481-Born-To-Run/images/update - Discogs-Image-history.html
-"Images" - https://www.discogs.com/release/1313481-Born-To-Run/images - Discogs-Images.html
-#+end_example
-
-4.)
-
-show me a nice rich HTML web page with mockups before implementing
-
-** DONE finishing of in the cloud
-
-Phase 1 is committed and pushed as 723745f7, and the working tree is clean. The default fixture suite is still running, so it isn’t confirmed green yet; I’ll report back when it finishes.
-
-Your four decisions are in the org file’s Decisions table, committed and pushed as fdd3ac24.
-
-What Phase 1 does:
-
-Which tables: the Discogs artist discography, label releases, sublabels and master versions, plus the MusicBrainz release-group window.
-Three sort states: each header now cycles ▲ → ▼ → back to the site’s own order. In that initial order a header shows a faint ⇅, and its hover text says what the next click does.
-One place for the cycle: five hand-written sort cycles were replaced by two shared helpers, which Phase 2’s MusicBrainz tables will reuse.
-One intended behaviour change: Discogs’ Have column used to go ▼ → off. It now goes ▼ → ▲ → off like every other column.
-Bookkeeping: WIP.1 is in ShowAllEntityData_CHANGELOG.wip.json and the HELP file is updated. As the convention says, there is no @version bump on the branch.
-
-Tests so far:
-
-Four existing specs were extended to cover the third click. For example, the master’s versions must come back in exactly the order of Discogs’ API answers.
-The new mutation file plants 7 defects. 6 fail the specs as they should; the 7th is a known overlap that is expected to pass, and it is recorded as such.
-Lint is within its baseline, and there are no tabs or trailing whitespace.
-
-One failure that isn’t from this change: the Wikipedia reader test (“…a missing title”) fails here. It fails the same
-way with my changes stashed, so it was already broken before this work. It expects an image from upload.wikimedia.org;
-this container is my first suspect. It’s noted in the org file to re-check on your machine.
-
-Next, on your local machine: Phase 2 in org/MB-POH-sync-withDiscogs.org, the shared Compact and List tables plus the “Load N more pages” loader for MusicBrainz.
-
-** DONE tackle
-
-The last couple of implementation steps have been done in a Claude cloude environment as I didn't any tokens left for
-local development. A couple of tests didn't work out in that environment and I think they have been reorded in our .org
-files somewhere (or the changelog/"git history"), please check and specifically check our next full test suite run if
-these tests are still flaky or real regressions.
-
-Now tackle "Phase 2" in org/MB-POH-sync-withDiscogs.org, the shared Compact and List tables plus the “Load N more pages”
-loader for MusicBrainz.
 
