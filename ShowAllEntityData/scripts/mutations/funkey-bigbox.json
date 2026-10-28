@@ -1,0 +1,119 @@
+[
+    {
+        "name": "the strip anchor is no artwork link (info returns null)",
+        "why": "Without _artJ2BigboxInfo() neither the stamp, the card nor the click knows a FUNKEY strip image: the native title is all there is (debug/mb-rg-funky-initial.html, the report).",
+        "edits": [
+            {
+                "find": "        if (!a || !a.matches || !a.matches(_ART_J2_BIGBOX_SEL) || a.closest('table.tbl')) return null;",
+                "replace": "        return null;"
+            }
+        ],
+        "spec": "tests/fixtures/funkey-bigbox.spec.js",
+        "grep": "hover: the release's artwork card",
+        "expect": "fail"
+    },
+    {
+        "name": "the stamp ignores the strip",
+        "why": "The card is a resolver card: an unstamped strip anchor shows its native title instead.",
+        "edits": [
+            {
+                "find": "        const a = node.closest(_ART_REL_ICON_SEL) || node.closest(_ART_J2_BIGBOX_SEL);",
+                "replace": "        const a = node.closest(_ART_REL_ICON_SEL);"
+            }
+        ],
+        "spec": "tests/fixtures/funkey-bigbox.spec.js",
+        "grep": "hover: the release's artwork card",
+        "expect": "fail"
+    },
+    {
+        "name": "the click target ignores the strip",
+        "why": "A plain click then follows the link (leaves the page) instead of opening the viewer.",
+        "edits": [
+            {
+                "find": "        if (sInfo) return { ctx: CAA_CTX, path: sInfo.path, title: sInfo.title || 'Cover art', a: strip };",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/funkey-bigbox.spec.js",
+        "grep": "click: our viewer at the main front",
+        "expect": "fail"
+    },
+    {
+        "name": "a release group strip image read as a release",
+        "why": "The archive is asked /release/<rg mbid>, which is not the record the image shows.",
+        "edits": [
+            {
+                "find": "        return { path: `/${m[1].toLowerCase()}/${m[2].toLowerCase()}`, title, rg: m[1].toLowerCase() === 'release-group' };",
+                "replace": "        return { path: `/release/${m[2].toLowerCase()}`, title, rg: m[1].toLowerCase() === 'release-group' };"
+            }
+        ],
+        "spec": "tests/fixtures/funkey-bigbox.spec.js",
+        "grep": "a release group strip image",
+        "expect": "fail"
+    },
+    {
+        "name": "the strip card ignores the card setting",
+        "why": "sa_caa_tip_summary off must leave the native title alone, as for the relationship-list icons.",
+        "edits": [
+            {
+                "find": "        if (!a || a.dataset.mbttFn || !_artRelIconCardOn() || !(_artRelIconInfo(a) || _artJ2BigboxInfo(a))) return;",
+                "replace": "        if (!a || a.dataset.mbttFn || !(_artRelIconInfo(a) || _artJ2BigboxInfo(a))) return;"
+            }
+        ],
+        "spec": "tests/fixtures/funkey-bigbox.spec.js",
+        "grep": "with the artwork card off",
+        "expect": "fail"
+    },
+    {
+        "name": "the press arms no late-strip watcher",
+        "why": "debug/mb-rg-funky-final.html: that script's one pass lands after our render and its strip stays between our bigbox and the table.",
+        "edits": [
+            {
+                "find": "        // than its 600 ms timer, the reload's re-press at setTimeout 0).\n        _watchForLateFunkeyBigbox();",
+                "replace": "        // than its 600 ms timer, the reload's re-press at setTimeout 0)."
+            }
+        ],
+        "spec": "tests/fixtures/funkey-bigbox.spec.js",
+        "grep": "after the render \\(that script|the second press's reload",
+        "expect": "fail"
+    },
+    {
+        "name": "the disk load arms no late-strip watcher",
+        "why": "The same race on the Load-from-disk path.",
+        "edits": [
+            {
+                "find": "            performClutterCleanup();\n            _watchForLateFunkeyBigbox();",
+                "replace": "            performClutterCleanup();"
+            }
+        ],
+        "spec": "tests/fixtures/funkey-bigbox.spec.js",
+        "grep": "after a disk load",
+        "expect": "fail"
+    },
+    {
+        "name": "the watcher stays live after that script's pass",
+        "why": "The watcher must be spent once the one pass is removed, so it is not live through a long render for the rest of its window.",
+        "edits": [
+            {
+                "find": "            Lib.debug('cleanup', `_watchForLateFunkeyBigbox: removed ${removed} late FUNKEY bigbox element(s); observer disconnected.`);\n            disarm();",
+                "replace": "            Lib.debug('cleanup', `_watchForLateFunkeyBigbox: removed ${removed} late FUNKEY bigbox element(s); observer disconnected.`);"
+            }
+        ],
+        "spec": "tests/fixtures/funkey-bigbox.spec.js",
+        "grep": "the watcher is spent",
+        "expect": "fail"
+    },
+    {
+        "name": "the one-shot cleanup no longer removes the strip",
+        "why": "The one-shot pass is the only remover of a strip already on the page: the late-strip watcher sees added nodes only, and its window-end sweep comes 10 s later.",
+        "edits": [
+            {
+                "find": "        document.querySelectorAll('div.jesus2099userjs154481bigbox').forEach(div => div.remove());\n        if (bigBoxCount > 0)",
+                "replace": "        if (bigBoxCount > 0)"
+            }
+        ],
+        "spec": "tests/fixtures/funkey-bigbox.spec.js",
+        "grep": "a strip already on the page goes with the press",
+        "expect": "fail"
+    }
+]

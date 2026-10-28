@@ -34,6 +34,24 @@
             ]
         },
         {
+            "id": "jesus2099-funkey",
+            "file": "mb_FUNKEY-ILLUSTRATED-RECORDS.user.js",
+            "author": "jesus2099",
+            "version": "2026.6.5",
+            "when": "now",
+            "touches": [
+                "@run-at document-idle, and its whole big/small-pics pass is ONE setTimeout: 600 ms after it runs, 1000 ms on /release/ ('React hydrate imposes delay'). No MutationObserver, no interval — it decorates whatever DOM exists at that moment, once. If a ShowAllEntityData render is already on the page by then (the second-press reload's _autoRepressAfterReload() presses at setTimeout 0; a quick manual press; a disk load), it decorates OUR rendered tables (debug/mb-rg-funky-final.html).",
+                "BIG PICS (GM 'bigpics', default on; off on artist recordings/relationships and recording pages): for every 'tr > td a[href^=/release(-group)/<mbid>]' (and 'div#page.fullwidth ul:not(.tabs) > li a', '.entered-from a') it inserts ONE 'div.jesus2099userjs154481bigbox' right before the link's closest table/ul/.entered-from, and appends per link an '<a href=\"/release/<mbid>\" title=\"<link text>[\\n<artist>]\">' holding '⌛' and an '<img src=\"//coverartarchive.org/<type>/<mbid>/front-250\" alt=\"<link text>\">' (max-height 125px, box-shadow; error removes the anchor). Skips links inside td.relationships. Matches table.tbl — so also ShowAllEntityData's own tables if they exist when the timer fires.",
+                "ShowAllEntityData already knows the strip: performClutterCleanup() removes every div.jesus2099userjs154481bigbox once per render, _watchForLateJesus2099Injections() (snapshot-handoff path only) and the late-strip watcher remove late ones, _j2IsArtworkFamily() matches /bigbox$/. On the initial page the strip's images get ShowAllEntityData's B1 artwork card and viewer (_artJ2BigboxInfo()). NOTE: the 'jesus2099userjs154481' ID is THIS script's (let userjs = \"jesus2099userjs154481\"), not SUPER MIND CONTROL's, although several ShowAllEntityData comments attribute the caa-icon/bigbox markup to SUPER MIND CONTROL.",
+                "SMALL PICS (GM 'smallpics', default on; off on search/edits and */edits pages): every 'a[href$=/cover-art] > span.caa-icon' (MusicBrainz's own CAA icon, in table.tbl rows too) gets an inline background-image of //coverartarchive.org/…/front-250 (loadCaaIcon()); for release-group links it asks coverartarchive.org/release-group/<mbid> (plain XMLHttpRequest, not GM) and inserts its own '<a href=\"<release>/cover-art\" ref=\"/release-group/…\" title=\"N images found in this release\"><span class=\"caa-icon jesus2099userjs154481\">' before the link — the anchor the 'jesus2099' columnEraser, _stripJesus2099CaaAnchor() and the relationship-list cover-icon card (_artRelIconInfo(), table.details) all key on.",
+                "On artist relationships / cdtoc / recording / edit pages it also inserts that caa-icon anchor before every 'tbody > tr > td a[href^=/release/]' and '.entered-from' release link.",
+                "Live stylesheet rule (insertRule, matches forever): 'table.tbl > tbody > tr > td > a[href$=/cover-art][ref^=/release-group/] ~ span.caa-icon { display: none; }' — hides MusicBrainz's own release-group CAA icon (MBS-11059) after its own anchor, in ShowAllEntityData's tables too.",
+                "mouseover/mouseout listeners (updateBig) on each strip's host table/ul: hovering a row draws a 4px yellow border round the matching strip image; hovering a strip image (updateA) paints every 'tr > td a[href=…]' / list link to the same entity yellow. Direct listeners on the native element — gone from ShowAllEntityData's clones, but still on a table it decorated after a render.",
+                "Non-visual: GM_registerMenuCommand 'BIG PICS' / 'SMALL PICS' toggles (GM_getValue/GM_setValue 'bigpics'/'smallpics'); network to coverartarchive.org (images and the release-group JSON).",
+                "Harness: classic GM_* only (stubbed by gmStubs.js), no top-level await. '@require https://github.com/jesus2099/konami-command/raw/de88f870…/lib/SUPER.js' (createTag, removeNode, getSibling) is fetched by injectOne() over the network before the body — without it every createTag call throws."
+            ]
+        },
+        {
             "id": "right-side-flags-everywhere",
             "file": "MusicBrainz_Right_Side_Flags_Everywhere.user.js",
             "author": "Lotheric",
@@ -168,6 +186,7 @@
     ],
     "combinations": {
         "jesus2099-only": ["jesus2099-inline-stuff", "jesus2099-supermind"],
+        "jesus2099-funkey-only": ["jesus2099-funkey"],
         "right-side-flags-only": ["right-side-flags-everywhere"],
         "sanojjonas-only": ["sanojjonas-visualise"],
         "nuclear-tags-only": ["aerozol-nuclear-tags"],
@@ -176,6 +195,6 @@
         "lotheric-instrument-icons-only": ["lotheric-instrument-icons"],
         "majkinetor-isrc-scout-only": ["majkinetor-isrc-scout"],
         "murdos-discogs-importer-only": ["murdos-discogs-importer"],
-        "kitchen-sink": ["jesus2099-supermind", "jesus2099-inline-stuff", "right-side-flags-everywhere", "sanojjonas-visualise", "aerozol-nuclear-tags", "wiencek-batch-performance", "lotheric-instrument-icons", "majkinetor-isrc-scout"]
+        "kitchen-sink": ["jesus2099-supermind", "jesus2099-inline-stuff", "jesus2099-funkey", "right-side-flags-everywhere", "sanojjonas-visualise", "aerozol-nuclear-tags", "wiencek-batch-performance", "lotheric-instrument-icons", "majkinetor-isrc-scout"]
     }
 }

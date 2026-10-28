@@ -568,6 +568,25 @@ Grep `// ── CAA/EAA column redesign` for the code. Rules that fail silently:
   `sa_caa_viewer_icon_click` (click). Mockup
   https://claude.ai/artifact/NonAS8iqfjSMRUaXojzSnT; `rel-icons.spec.js`,
   `bigbox-tooltip.spec.js`, mutations `rel-icons.json`.
+- **jesus2099's FUNKEY strip (2026-10-28).** "mb. FUNKEY ILLUSTRATED
+  RECORDS" (the owner of the `jesus2099userjs154481` id, not SUPER MIND
+  CONTROL) puts `div.jesus2099userjs154481bigbox > a[href="/release(-group)/<mbid>"]
+  > img` before every table/list of release links, in ONE pass, a
+  `setTimeout` of 600 ms after document-idle (1000 ms on `/release/`). On the
+  IP its images get the same `art-rel` card and click as the relationship
+  icons: `_artJ2BigboxInfo()` (path from the href, title from `img.alt`)
+  is one more branch of `_artRelIconStamp()`, `_artRelIconCardHtml()` and
+  `_artIconViewerTarget()` — same gates, a release GROUP path asks the
+  CAA release-group record. On the FRP it must not exist:
+  `performClutterCleanup()` removes it once, and `_watchForLateFunkeyBigbox()`,
+  armed right after it (press and disk load), removes one that lands later
+  — the second press's reload re-presses at `setTimeout 0`, before that
+  script's timer, so it decorated OUR table (debug/mb-rg-funky-final.html).
+  The watcher looks at each added node ITSELF only (cheap during a render)
+  and is spent after the first batch it removed (the pass is synchronous)
+  or after 10 s. Spec `funkey-bigbox.spec.js`, simulator
+  `tests/fixtures/thirdPartyScripts/funkey-bigbox.js`, mutations
+  `funkey-bigbox.json`.
 - **The viewer steps the VISIBLE rows** (`_artColumnViewerRows()`: the live
   tbody, which `runFilter()` empties of rejected rows) with art in the cache,
   wrapping. `_artViewerStep()` crosses into the next row at either end only

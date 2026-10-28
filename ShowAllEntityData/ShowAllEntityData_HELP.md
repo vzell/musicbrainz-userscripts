@@ -1196,6 +1196,14 @@ where hovering that cover shows the release's artwork card (its images, count
 and types). The card's record is fetched on the first hover, one request.
 Ctrl-click follows the link in a new tab, and asks nothing.
 
+With jesus2099's *mb. FUNKEY ILLUSTRATED RECORDS* installed, the images of
+its big picture strip on the page as MusicBrainz shows it (before any "Show
+all" button: above a release group's releases, in its *Relationships*, on a
+tag's or an editor's ratings page, in a release's *Credits*) work the same
+way: a hover shows that release's or release group's artwork card, a click
+opens the viewer. After a "Show all" render that strip is gone, whenever it
+arrives; the script's own big-picture strip takes its place.
+
 **The gallery (🖼).** The 🖼 button among a table's artwork controls (after
 📊), or **🖼 Open gallery** in its 📊 summary, opens a window with every image
 of the releases the table currently shows — the rows the filters leave, in
