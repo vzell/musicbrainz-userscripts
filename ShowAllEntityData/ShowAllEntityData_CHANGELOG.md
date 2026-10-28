@@ -4,9 +4,16 @@ Every version, newest first, with the technical details behind each change. For 
 
 **Months:** [October 2026](ShowAllEntityData_CHANGELOG/2026-10.md) · [September 2026](ShowAllEntityData_CHANGELOG/2026-09.md) · [August 2026](ShowAllEntityData_CHANGELOG/2026-08.md) · [July 2026](ShowAllEntityData_CHANGELOG/2026-07.md) · [June 2026](ShowAllEntityData_CHANGELOG/2026-06.md) · [May 2026](ShowAllEntityData_CHANGELOG/2026-05.md) · [April 2026](ShowAllEntityData_CHANGELOG/2026-04.md) · [March 2026 (1 of 2)](ShowAllEntityData_CHANGELOG/2026-03-1.md) · [March 2026 (2 of 2)](ShowAllEntityData_CHANGELOG/2026-03-2.md) · [February 2026](ShowAllEntityData_CHANGELOG/2026-02.md) · [January 2026](ShowAllEntityData_CHANGELOG/2026-01.md)
 
-This page shows the newest 100 of 1660 versions; the month pages hold all of them.
+This page shows the newest 100 of 1661 versions; the month pages hold all of them.
 
 ---
+
+## 9.99.1490 — 2026-10-28
+
+**📝 Docs**
+
+- The setting "Watch for late jesus2099 cover-art icon re-injection" named the wrong userscript: that cover-art icon (and the big picture strip above tables) comes from jesus2099's "mb. FUNKEY ILLUSTRATED RECORDS", not from "mb. SUPER MIND CONTROL". The same credit is corrected in the script's comments.
+
 
 ## 9.99.1489 — 2026-10-28
 
@@ -871,13 +878,6 @@ This page shows the newest 100 of 1660 versions; the month pages hold all of the
 **✨ Improve**
 
 - Instrument pages: the IROMBOOK drawing MusicBrainz shows at the top of the sidebar now works like an artist's or label's sidebar picture — a hover card, a click (or Enter/Space) opens it in the artwork viewer, and a small copy leads the page heading on every instrument tab, before and after the table is loaded. The copy shows the whole drawing instead of cropping it, and the viewer bar has no Commons link (a drawing has no Commons page). Same switches: 'Sidebar picture: hover card and viewer' and 'Sidebar picture beside the name'.
-
-
-## 9.99.1390 — 2026-10-20
-
-**🚀 Feature**
-
-- The "Recording of" and "Performance attributes" columns, so far only on an artist's Recordings page, are now on every list with one recording per row: recording search results, an instrument's Recordings, a series or collection of recordings, an ISRC page, an area's Recordings, a place's Performances, a work's recordings, tagged recordings (yours or everyone's), your rated recordings and an artist credit's recordings. They follow that page's own recording column (Name, Title or Recording) and load only when you click a cell's 🎼 or the header's ▶🎼, as before. A work page and a collection load many rows with one request where that is cheaper; every other page looks up one row per request. Work suggestions stay on the artist's Recordings page, the only list with a single artist. Each page group has its own checkbox under ⚙️ Settings → 🎼 RECORDING OF COLUMN (all on by default), and the first checkbox still turns the columns off everywhere.
 
 
 ---

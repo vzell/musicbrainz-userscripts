@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VZ: MusicBrainz - Show All Entity Data In A Consolidated View With Filtering And Multi-Sorting Capabilities
 // @namespace    https://github.com/vzell/mb-userscripts
-// @version      9.99.1489+2026-10-28
+// @version      9.99.1490+2026-10-28
 // @description  Consolidation tool to accumulate paginated and non-paginated (tables with subheadings) MusicBrainz table lists (Events, Recordings, Releases, Works, etc.) into a single view with real-time filtering and sorting. Optionally also springsteenlyrics.com collection and bootleg lists, the jungleland.it bootleg artwork list and the brucespringsteen.it record database.
 // @author       vzell
 // @tag          AI generated
@@ -3570,7 +3570,7 @@
             label: 'Watch for late jesus2099 cover-art icon re-injection',
             type: 'checkbox',
             default: true,
-            description: 'The third-party "mb. SUPER MIND CONTROL" userscript (jesus2099) does its own ' +
+            description: 'The third-party "mb. FUNKEY ILLUSTRATED RECORDS" userscript (jesus2099) does its own ' +
                          'asynchronous cover-art lookup and injects its own <a href="…/cover-art"><span ' +
                          'class="caa-icon jesus2099userjs154481"> icon independently of this script — normally ' +
                          'harmless, but on a "Show single-table" snapshot tab (a real page load, where jesus2099 ' +
@@ -8238,8 +8238,8 @@
                 } else {
                     // --- Path B: bare artwork span (no wrapping anchor) ---
                     //
-                    // On artist-releasegroups pages when the jesus2099 "mb. SUPER MIND
-                    // CONTROL" script is active, MusicBrainz renders TWO artwork nodes
+                    // On artist-releasegroups pages when the jesus2099 "mb. FUNKEY
+                    // ILLUSTRATED RECORDS" script is active, MusicBrainz renders TWO artwork nodes
                     // in the Title cell:
                     //   (1) <a href=".../cover-art">               <- jesus2099 thumbnail
                     //         <span class="caa-icon jesus2099userjs154481">
@@ -9652,7 +9652,7 @@
      *   '➕'       — removes <span style="cursor:pointer; color:rgb(119,119,119); float:right;">➕\n</span>
      *   'jesus2099' — removes the wrapping <a href="…/cover-art"> anchor that contains a
      *                 <span class="caa-icon jesus2099userjs154481"> (cover-art icon injected
-     *                 by the jesus2099 "mb. SUPER MIND CONTROL" userscript); detection is
+     *                 by the jesus2099 "mb. FUNKEY ILLUSTRATED RECORDS" userscript); detection is
      *                 class-based and independent of the span's style attribute or href value
      *   'jesus2099-any' — removes ANY element whose class list contains a class starting
      *                 with "jesus2099userjs" (prefix match, any numeric ID suffix). Use only
@@ -9786,7 +9786,7 @@
      *    All <a> descendants of the cell are inspected; an anchor is removed when it
      *    contains at least one child <span class="caa-icon jesus2099userjs154481">.
      *    This covers both the background-image variant and the plain variant of the
-     *    cover-art icon injected by the jesus2099 "mb. SUPER MIND CONTROL" userscript.
+     *    cover-art icon injected by the jesus2099 "mb. FUNKEY ILLUSTRATED RECORDS" userscript.
      *
      * 3. **jesus2099 generic marker-element erasure** (sentinel string `'jesus2099-any'`):
      *    Removes ANY element (any tag) whose class list contains a class starting with
@@ -28994,8 +28994,8 @@
      *     of the area column (debug/area-USA-initial.html, 2026-10-12).
      *
      * Always (with or without `opts.rel`): a text-less link holding only an
-     * artwork icon before the target is dropped. jesus2099's "mb. SUPER MIND
-     * CONTROL" puts `<a href="…/release/<mbid>/cover-art" ref="/release-group/…">
+     * artwork icon before the target is dropped. jesus2099's "mb. FUNKEY
+     * ILLUSTRATED RECORDS" puts `<a href="…/release/<mbid>/cover-art" ref="/release-group/…">
      * <span class="caa-icon jesus2099userjs154481"></span></a>` before every
      * release-group link of a release's "Via release group" lists, once its
      * own lookup returns (so only when it ran first). Taken as the target it
@@ -35885,7 +35885,7 @@
     }
 
     /**
-     * Removes a late-arriving jesus2099 "mb. SUPER MIND CONTROL" cover-art
+     * Removes a late-arriving jesus2099 "mb. FUNKEY ILLUSTRATED RECORDS" cover-art
      * icon anchor (`<a>` wrapping `span.caa-icon.jesus2099userjs154481`)
      * from `td`, but only when this script's OWN inline CAA/EAA thumbnail
      * (`.mb-caa-inline-ph` / `.mb-eaa-inline-ph`, injected by
@@ -37172,8 +37172,8 @@
             buttons: [ { label: 'Show all Artist-Credit Entities' } ],
             entityFeatures: {
                 'Release groups': {
-                    // 'jesus2099' eraser: erase the jesus2099 "mb. SUPER MIND
-                    // CONTROL" userscript's native cover-art icon before addCAA
+                    // 'jesus2099' eraser: erase the jesus2099 "mb. FUNKEY
+                    // ILLUSTRATED RECORDS" userscript's native cover-art icon before addCAA
                     // below adds its own inline thumbnail, or the cover art shows
                     // twice (see debug/cell.html, WIP.81).
                     columnErasers: [ { sourceColumn: 'Release group', erasers: ['jesus2099'] } ],
@@ -37224,8 +37224,8 @@
             buttons: [ { label: 'Show all Artist-Credit Uses' } ],
             entityFeatures: {
                 'Release groups': {
-                    // 'jesus2099' eraser: erase the jesus2099 "mb. SUPER MIND
-                    // CONTROL" userscript's native cover-art icon before addCAA
+                    // 'jesus2099' eraser: erase the jesus2099 "mb. FUNKEY
+                    // ILLUSTRATED RECORDS" userscript's native cover-art icon before addCAA
                     // below adds its own inline thumbnail, or the cover art shows
                     // twice (see debug/cell.html, WIP.81).
                     columnErasers: [ { sourceColumn: 'Release group', erasers: ['jesus2099'] } ],
@@ -37638,7 +37638,7 @@
                 'Places': {},
                 'Release groups': {
                     // 'jesus2099' eraser: the source <li> list carries the jesus2099
-                    // "mb. SUPER MIND CONTROL" userscript's own <a href=".../cover-art">
+                    // "mb. FUNKEY ILLUSTRATED RECORDS" userscript's own <a href=".../cover-art">
                     // <span class="caa-icon jesus2099userjs…"></span></a> cover-art icon
                     // natively (see debug/cell.html) — without erasing it first, addCAA
                     // below ALSO injects its own inline thumbnail into the same cell,
@@ -37744,7 +37744,7 @@
                 'Places': {},
                 'Release groups': {
                     // 'jesus2099' eraser: /user/<username>/ratings' "Release group
-                    // ratings" <li>s carry the jesus2099 "mb. SUPER MIND CONTROL"
+                    // ratings" <li>s carry the jesus2099 "mb. FUNKEY ILLUSTRATED RECORDS"
                     // userscript's own <a href=".../cover-art"><span class="caa-icon
                     // jesus2099userjs…"></span></a> cover-art icon natively (see
                     // debug/cell.html) — without erasing it first, addCAA below
@@ -38402,8 +38402,8 @@
                 },
                 'Places': {},
                 'Release groups': {
-                    // 'jesus2099' eraser: erase the jesus2099 "mb. SUPER MIND
-                    // CONTROL" userscript's native cover-art icon before addCAA
+                    // 'jesus2099' eraser: erase the jesus2099 "mb. FUNKEY
+                    // ILLUSTRATED RECORDS" userscript's native cover-art icon before addCAA
                     // below adds its own inline thumbnail, or the cover art shows
                     // twice (see debug/cell.html, WIP.81).
                     columnErasers: [ { sourceColumn: 'Release group', erasers: ['jesus2099'] } ],
@@ -38477,8 +38477,8 @@
                 },
                 'Places': {},
                 'Release groups': {
-                    // 'jesus2099' eraser: erase the jesus2099 "mb. SUPER MIND
-                    // CONTROL" userscript's native cover-art icon before addCAA
+                    // 'jesus2099' eraser: erase the jesus2099 "mb. FUNKEY
+                    // ILLUSTRATED RECORDS" userscript's native cover-art icon before addCAA
                     // below adds its own inline thumbnail, or the cover art shows
                     // twice (see debug/cell.html, WIP.81).
                     columnErasers: [ { sourceColumn: 'Release group', erasers: ['jesus2099'] } ],
@@ -38562,8 +38562,8 @@
                     integerColumns: [ {sourceColumn: 'Tag count', align: 'R'} ]
                 },
                 'Release groups': {
-                    // 'jesus2099' eraser: erase the jesus2099 "mb. SUPER MIND
-                    // CONTROL" userscript's native cover-art icon before addCAA
+                    // 'jesus2099' eraser: erase the jesus2099 "mb. FUNKEY
+                    // ILLUSTRATED RECORDS" userscript's native cover-art icon before addCAA
                     // below adds its own inline thumbnail, or the cover art shows
                     // twice (see debug/cell.html, WIP.81).
                     columnErasers: [ { sourceColumn: 'Release group', erasers: ['jesus2099'] } ],
@@ -38646,8 +38646,8 @@
                 },
                 'Places': {},
                 'Release groups': {
-                    // 'jesus2099' eraser: erase the jesus2099 "mb. SUPER MIND
-                    // CONTROL" userscript's native cover-art icon before addCAA
+                    // 'jesus2099' eraser: erase the jesus2099 "mb. FUNKEY
+                    // ILLUSTRATED RECORDS" userscript's native cover-art icon before addCAA
                     // below adds its own inline thumbnail, or the cover art shows
                     // twice (see debug/cell.html, WIP.81).
                     columnErasers: [ { sourceColumn: 'Release group', erasers: ['jesus2099'] } ],
@@ -88376,8 +88376,9 @@ a { color: #1565c0; }`;
                 // JSDoc for the full "multiple h3 based subtables still
                 // showing" bug this fixes.
                 _clearNativeTableSectionsForSnapshot();
-                // Start watching for late jesus2099 "mb. SUPER MIND CONTROL"
-                // injections as early as possible in this bootstrap — see
+                // Start watching for late third-party injections (jesus2099's
+                // "mb. FUNKEY ILLUSTRATED RECORDS" cover-art icons and bigbox,
+                // among others) as early as possible in this bootstrap — see
                 // _watchForLateJesus2099Injections' JSDoc for why the normal
                 // one-shot performClutterCleanup()/initTreleasesObserver
                 // measures aren't sufficient on this fast-bootstrapping path.
@@ -106378,9 +106379,10 @@ a { color: #1565c0; }`;
     }
 
     /**
-     * Watches for jesus2099 "mb. SUPER MIND CONTROL" content that gets
-     * injected (or re-injected) AFTER this function's caller already ran its
-     * own one-shot cleanup pass, and removes it live.
+     * Watches for third-party content — jesus2099's "mb. FUNKEY ILLUSTRATED
+     * RECORDS" cover-art icon anchors and bigbox, a foreign "relationships"
+     * column — that gets injected (or re-injected) AFTER this function's
+     * caller already ran its own one-shot cleanup pass, and removes it live.
      *
      * `performClutterCleanup()` already strips `div.jesus2099userjs154481bigbox`
      * once, and `initTreleasesObserver()` already watches for jesus2099's
@@ -106484,7 +106486,7 @@ a { color: #1565c0; }`;
                 Lib.debug('cleanup', `_watchForLateJesus2099Injections: removed a late foreign header <th> ("${txt}").`);
             }
         };
-        // jesus2099's "mb. SUPER MIND CONTROL" cover-art icon: unlike the
+        // jesus2099's "mb. FUNKEY ILLUSTRATED RECORDS" cover-art icon: unlike the
         // "relationships" td/th above (which only ever showed up on
         // releasegroup-releases), this one is a generic, page-wide
         // enhancement — jesus2099 independently scans the whole live page
@@ -126054,7 +126056,7 @@ a { color: #1565c0; }`;
         // pageDefinition explicitly configured an eraser for. That
         // extraction-time eraser runs exactly once, when a row is first
         // built from a freshly-fetched page; it does not run again later.
-        // On artist-releasegroups, jesus2099's "mb. SUPER MIND CONTROL"
+        // On artist-releasegroups, jesus2099's "mb. FUNKEY ILLUSTRATED RECORDS"
         // userscript re-injects this same <a href="…/cover-art"><span
         // class="caa-icon jesus2099userjs154481"> icon into the live DOM
         // asynchronously, well after that one-time erasure already ran —
@@ -146772,7 +146774,7 @@ a { color: #1565c0; }`;
 
     // ── Cover icons in relationship lists (2026-10-17) ───────────────────────
     //
-    // jesus2099's "mb. SUPER MIND CONTROL" puts a cover icon before a release
+    // jesus2099's "mb. FUNKEY ILLUSTRATED RECORDS" puts a cover icon before a release
     // group link in a relationship list (`table.details`, e.g. the release
     // group page's "Relationships" section: "single/EP which was taken
     // from:", "includes:"): `<a href="…/release/<mbid>/cover-art"

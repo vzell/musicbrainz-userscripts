@@ -118,7 +118,7 @@ wraps an area's glyph, link, flag image and the ", " before its parent chain
 in one `span.mfe-flag-wrapper` (`AREA_ICON_WRAPPER_SEL`). With `opts.rel` the
 comma is moved back out of the target, or the chain lands in Details.
 
-jesus2099's "mb. SUPER MIND CONTROL" puts a text-less cover-art link
+jesus2099's "mb. FUNKEY ILLUSTRATED RECORDS" puts a text-less cover-art link
 (`<a href="…/release/<mbid>/cover-art"><span class="caa-icon
 jesus2099userjs154481">`) before every release-group link of a release's
 "Via release group" lists, and its own `div.…bigbox` above them. It does this
