@@ -1,5 +1,89 @@
 [
   {
+    "version": "9.99.1483",
+    "date": "2026-10-28",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "YouTube in place (9.99.1479, 9.99.1480), after vzell's live test: a YouTube link in a MusicBrainz page's own Relationships list (\"stream video for free\" on a recording) gets its \"Play here\" tile on the page as it loads, before any button; it plays in a row under that relationship, and the Relationships render still builds its own tile, just one. The Discogs window's Videos line up in three columns — tile, title, length — instead of running together."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.1482",
+    "date": "2026-10-28",
+    "sections": [
+      {
+        "label": "📝 Docs",
+        "items": [
+          "Help: \"Playing a YouTube video where it is listed\" under the link previews — where the tiles are (URLs table, sidebar, annotations, a YouTube link's window, Discogs' Videos, a Brucebase show's window), Esc and ■ Stop, one video at a time, the two settings, and what happens where a site refuses the player; the Discogs release page's Videos sub-table and the master window's videos (9.99.1478–9.99.1481)."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.1481",
+    "date": "2026-10-28",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "YouTube in place on Brucebase (9.99.1478's tile): a show's window (an Event link's preview, Space) gets a Media section from the page's Media tab — its embedded YouTube player as a link to the video or playlist, with a \"Play here\" tile that plays it in the section — and a tile after every YouTube link in the other sections (the Recording tab's audience video, for one). A Media tab that is only a player now counts in the card's \"On the page\". Cached show pages are read again once."
+        ]
+      },
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "A detail window's Live page turned an embedded YouTube PLAYLIST (Brucebase's Media tab, its 4th of July song page) into a broken \"watch?v=videoseries\" link; it now links the playlist."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.1480",
+    "date": "2026-10-28",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "YouTube in place on Discogs (9.99.1478's tile): the Discogs release window's Videos section puts a small \"Play here\" tile in front of each YouTube video, and the player opens in a slot above the list, which stays as it was. A Discogs master's window now has its Videos section too (its cached answers are read again once). discogs.com's release page gets a \"Videos\" sub-table (Play, Title, Length, URL) from the release's own answer, no extra request; a tile plays in a row under its row. Without 'Play YouTube videos in place' the windows' Videos are as before and the sub-table has no Play column. Where discogs.com's frame policy refuses YouTube's player, the video opens on YouTube in a new tab instead, and the tiles say so (9.99.1478)."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.1479",
+    "date": "2026-10-28",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "YouTube in place on MusicBrainz (9.99.1478's tile): a \"Play here\" tile under a YouTube link in the URLs table of a Relationships render (it plays in a row under the row), a small one under the sidebar's \"Play on YouTube\" (it plays under it, as wide as the sidebar), and one after every YouTube link of the page's annotation and of an Annotation column (reports, annotation search results). A link inside an annotation heading gets its tile after the heading, so the heading reads as before. The YouTube link's window (Space) shows the tile under its title, in place of the thumbnail, and plays in the window; a video YouTube no longer has is shown as unavailable there at once, and asks nothing when clicked. Filtering for the link, sorting and the 📊 values are as before: the tile's words are none of them. With 'Play YouTube videos in place' off nothing changes on any page."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.1478",
+    "date": "2026-10-28",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "YouTube in place (org/youtube.org), the shared part: a \"Play here\" tile for a YouTube link — a still frame (or a plain frame) with ▶, the title and \"Play here · 4:30\" — that plays the video where it is listed, in YouTube's privacy-enhanced player (youtube-nocookie.com). Nothing is asked from the player before a click. In a table the player opens in a full-width row under the row, in a list's box in a slot above the list, elsewhere right under the tile; it is as wide as its column, at most 640 px, 16:9. One video plays at a time. Esc stops it before anything else sees the key (the next Esc closes the card or window as before); \"■ Stop\" does the same. A video YouTube no longer has shows \"This video is not available on YouTube any more.\" with a red Unavailable pill. Where a page's frame policy refuses the player, the video opens on YouTube in a new tab, and every tile of that page says \"Opens on YouTube (new tab)\" from then on. A player that plays in a link's window keeps playing while the window repaints. The tile's text never reaches filtering, sorting or the 📊 dropdown."
+        ]
+      },
+      {
+        "label": "✨ Improve",
+        "items": [
+          "Two new settings in 🔎 EXTERNAL LINK PREVIEWS, both on by default: 'Play YouTube videos in place (a click asks youtube-nocookie.com)' (off: no tiles at all) and 'Show the videos' still frames (asks i.ytimg.com as they come into view)' (off: plain frames, so no request to YouTube before a click). A playlist always has a plain frame with \"≡ list\"."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.1477",
     "date": "2026-10-28",
     "sections": [

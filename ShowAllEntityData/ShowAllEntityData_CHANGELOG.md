@@ -4,9 +4,59 @@ Every version, newest first, with the technical details behind each change. For 
 
 **Months:** [October 2026](ShowAllEntityData_CHANGELOG/2026-10.md) · [September 2026](ShowAllEntityData_CHANGELOG/2026-09.md) · [August 2026](ShowAllEntityData_CHANGELOG/2026-08.md) · [July 2026](ShowAllEntityData_CHANGELOG/2026-07.md) · [June 2026](ShowAllEntityData_CHANGELOG/2026-06.md) · [May 2026](ShowAllEntityData_CHANGELOG/2026-05.md) · [April 2026](ShowAllEntityData_CHANGELOG/2026-04.md) · [March 2026 (1 of 2)](ShowAllEntityData_CHANGELOG/2026-03-1.md) · [March 2026 (2 of 2)](ShowAllEntityData_CHANGELOG/2026-03-2.md) · [February 2026](ShowAllEntityData_CHANGELOG/2026-02.md) · [January 2026](ShowAllEntityData_CHANGELOG/2026-01.md)
 
-This page shows the newest 100 of 1648 versions; the month pages hold all of them.
+This page shows the newest 100 of 1654 versions; the month pages hold all of them.
 
 ---
+
+## 9.99.1483 — 2026-10-28
+
+**✨ Improve**
+
+- YouTube in place (9.99.1479, 9.99.1480), after vzell's live test: a YouTube link in a MusicBrainz page's own Relationships list ("stream video for free" on a recording) gets its "Play here" tile on the page as it loads, before any button; it plays in a row under that relationship, and the Relationships render still builds its own tile, just one. The Discogs window's Videos line up in three columns — tile, title, length — instead of running together.
+
+
+## 9.99.1482 — 2026-10-28
+
+**📝 Docs**
+
+- Help: "Playing a YouTube video where it is listed" under the link previews — where the tiles are (URLs table, sidebar, annotations, a YouTube link's window, Discogs' Videos, a Brucebase show's window), Esc and ■ Stop, one video at a time, the two settings, and what happens where a site refuses the player; the Discogs release page's Videos sub-table and the master window's videos (9.99.1478–9.99.1481).
+
+
+## 9.99.1481 — 2026-10-28
+
+**🚀 Feature**
+
+- YouTube in place on Brucebase (9.99.1478's tile): a show's window (an Event link's preview, Space) gets a Media section from the page's Media tab — its embedded YouTube player as a link to the video or playlist, with a "Play here" tile that plays it in the section — and a tile after every YouTube link in the other sections (the Recording tab's audience video, for one). A Media tab that is only a player now counts in the card's "On the page". Cached show pages are read again once.
+
+**🐛 Fix**
+
+- A detail window's Live page turned an embedded YouTube PLAYLIST (Brucebase's Media tab, its 4th of July song page) into a broken "watch?v=videoseries" link; it now links the playlist.
+
+
+## 9.99.1480 — 2026-10-28
+
+**🚀 Feature**
+
+- YouTube in place on Discogs (9.99.1478's tile): the Discogs release window's Videos section puts a small "Play here" tile in front of each YouTube video, and the player opens in a slot above the list, which stays as it was. A Discogs master's window now has its Videos section too (its cached answers are read again once). discogs.com's release page gets a "Videos" sub-table (Play, Title, Length, URL) from the release's own answer, no extra request; a tile plays in a row under its row. Without 'Play YouTube videos in place' the windows' Videos are as before and the sub-table has no Play column. Where discogs.com's frame policy refuses YouTube's player, the video opens on YouTube in a new tab instead, and the tiles say so (9.99.1478).
+
+
+## 9.99.1479 — 2026-10-28
+
+**🚀 Feature**
+
+- YouTube in place on MusicBrainz (9.99.1478's tile): a "Play here" tile under a YouTube link in the URLs table of a Relationships render (it plays in a row under the row), a small one under the sidebar's "Play on YouTube" (it plays under it, as wide as the sidebar), and one after every YouTube link of the page's annotation and of an Annotation column (reports, annotation search results). A link inside an annotation heading gets its tile after the heading, so the heading reads as before. The YouTube link's window (Space) shows the tile under its title, in place of the thumbnail, and plays in the window; a video YouTube no longer has is shown as unavailable there at once, and asks nothing when clicked. Filtering for the link, sorting and the 📊 values are as before: the tile's words are none of them. With 'Play YouTube videos in place' off nothing changes on any page.
+
+
+## 9.99.1478 — 2026-10-28
+
+**🚀 Feature**
+
+- YouTube in place (org/youtube.org), the shared part: a "Play here" tile for a YouTube link — a still frame (or a plain frame) with ▶, the title and "Play here · 4:30" — that plays the video where it is listed, in YouTube's privacy-enhanced player (youtube-nocookie.com). Nothing is asked from the player before a click. In a table the player opens in a full-width row under the row, in a list's box in a slot above the list, elsewhere right under the tile; it is as wide as its column, at most 640 px, 16:9. One video plays at a time. Esc stops it before anything else sees the key (the next Esc closes the card or window as before); "■ Stop" does the same. A video YouTube no longer has shows "This video is not available on YouTube any more." with a red Unavailable pill. Where a page's frame policy refuses the player, the video opens on YouTube in a new tab, and every tile of that page says "Opens on YouTube (new tab)" from then on. A player that plays in a link's window keeps playing while the window repaints. The tile's text never reaches filtering, sorting or the 📊 dropdown.
+
+**✨ Improve**
+
+- Two new settings in 🔎 EXTERNAL LINK PREVIEWS, both on by default: 'Play YouTube videos in place (a click asks youtube-nocookie.com)' (off: no tiles at all) and 'Show the videos' still frames (asks i.ytimg.com as they come into view)' (off: plain frames, so no request to YouTube before a click). A playlist always has a plain frame with "≡ list".
+
 
 ## 9.99.1477 — 2026-10-28
 
@@ -810,49 +860,6 @@ This page shows the newest 100 of 1648 versions; the month pages hold all of the
 **🐛 Fix**
 
 - The "YouTube Music Lookup" button of the "MBz YouTube Music Lookup" userscript (by @afro) is now removed after the release page's Credits button too, not only after Tracks.
-
-
-## 9.99.1383 — 2026-10-19
-
-**🐛 Fix**
-
-- Event page: a link in the "URLs" table now shows the site icon the sidebar shows for it, as on the other relationship tables — a review link, for example, had its icon only in the sidebar.
-
-
-## 9.99.1382 — 2026-10-19
-
-**✨ Improve**
-
-- discogs.com: the 📊 list of a submissions list's "Changed by" column and of a release history's "User" column shows each user's picture after their name, as in the table. A submissions list loads pictures only for rows you have scrolled to, so the list shows the pictures known by then; opening it asks Discogs for none.
-
-
-## 9.99.1381 — 2026-10-19
-
-**🚀 Feature**
-
-- discogs.com: pointing at a thumbnail in the Image column of a Discogs table shows a card with every image of that release or master — the primary one starred, how many primary and secondary — as the Cover Art column's card does on MusicBrainz. The first time, it is one request to Discogs for that row only (a row you only pass over costs nothing), and the artwork viewer and the link preview then reuse it. New setting ⚙️ Settings → 💿 Discogs → "Image column: all images of a row on hover" (on).
-
-
-## 9.99.1380 — 2026-10-19
-
-**🐛 Fix**
-
-- discogs.com (and Discogs previews anywhere): with several Discogs tabs open, and above all without a Discogs token, the buttons failed with "HTTP 429 from Discogs" — Discogs allows 25 requests a minute for your whole connection (60 with a token), and each tab spaced only its own requests. All tabs now share one spacing for Discogs' API. When Discogs says the minute's requests are used up, every tab waits a minute and asks again (up to four times; before, one retry 1.5 s later could never succeed), the status line says so, and Stop still stops at once.
-
-
-## 9.99.1379 — 2026-10-19
-
-**🚀 Feature**
-
-- discogs.com: a user's ratings page (/users/ratings/&lt;name&gt;) gets a "Show all ratings" button: every release the user rated in one table — thumbnail, Artist, Title, Format, Label, Cat\#, Year, Rating (1 to 5, sorted as a number) and Discogs' Data quality, plus the MusicBrainz column when murdos' importer is installed. The rows are read from discogs.com's own pages, 250 a page (Discogs' API has no list of a user's ratings); the sort you chose on the page is kept, and pointing at the button shows how many pages it asks for. A click on a thumbnail opens the artwork viewer, as on the other Discogs pages.
-- discogs.com, with murdos' importer installed: the Picard column now shows on every Discogs table whose MusicBrainz column looks up releases — the ratings page too — from the start, not only when MusicBrainz's answers happened to be cached already (so far master and release pages had it, the ratings page never). Opened (▶♪), a row gets its ♪ as soon as MusicBrainz names its release, and the button says which release it sends. Picard is sent the release's MusicBrainz page, not the Discogs page you are on.
-
-
-## 9.99.1378 — 2026-10-19
-
-**🐛 Fix**
-
-- discogs.com, a list's submissions in Discogs' browser view (the list on the left, a release's history on the right): after "Show all submissions" the page could not be scrolled — only one window's worth of rows was visible, the columns past the right edge were out of reach, and there were no scrollbars. Discogs' own style for that view switches off the window's scrolling (its two panes scroll inside themselves); it is now switched back on for that view only, so the page scrolls down and to the right, and Discogs' panes still work below the table.
 
 
 ---
