@@ -1,5 +1,83 @@
 [
   {
+    "version": "9.99.1487",
+    "date": "2026-10-28",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "A Discogs window — a release, a master, an artist or a label — has \"✎ Editing history\" (or H), without the ▾ MusicBrainz's has (org/POH-headerline.org item 4, vzell). It shows that entity's edit history page from discogs.com in the window: every change with its user, kind and note, \"View changes\" for a revision's diff, the latest change's diff. Until now only a release's history could be read, and only from a link to it.",
+          "A long history spans pages of about 50 changes on Discogs. The window shows the newest page and says which pages it shows; \"Load the N earlier pages\" reads the others one request at a time (Stop ends it, a failed page can be tried again), and they join the same list, so the filter and the order work on all of it.",
+          "On a discogs.com release, master, artist or label page the ☰ SAED menu has \"✎ Edit history\" (Editing history group), before and after a render: that entity's Discogs edit history in the window. Ctrl-click opens Discogs' own page."
+        ]
+      },
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "A Discogs history page read with murdos' \"Import Discogs releases to MusicBrainz\" active in the browser carries that script's MusicBrainz link and icon first in its heading; the window no longer takes them for the entity's name and picture.",
+          "In a Discogs history window a long kind (\"Edit Master Release\") ran into the note beside it; the kind column is wider, and a longer kind is cut with its whole name on a hover.",
+          "On discogs.com the MusicBrainz icon murdos' importer puts in front of the page's name in the script's own heading shows its MusicBrainz card on a hover, as the importer's icons in Discogs' content do."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.1486",
+    "date": "2026-10-28",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "On discogs.com a MusicBrainz window (from the MusicBrainz column or murdos' importer's icons) has what it has on MusicBrainz: \"✎ Editing history ▾\" (and H) and \"Live page\". Both are MusicBrainz pages, which answer a script's anonymous request with their browser check, so they are read with your musicbrainz.org cookies — the browser's own session, as when you open the page in a tab (org/POH-headerline.org item 3, by consent). If MusicBrainz still asks the browser to verify itself, open the page once in a tab and press ⟳.",
+          "In such a window every MusicBrainz link a MusicBrainz card knows opens in the window and shows its card on a hover, as on MusicBrainz — a genre's tag, an edit, an editor, a documentation page — not only an entity (vzell: \"Genres -> tags link do not open inside the same window and do not have a hover window\"). The path's glyph reads MusicBrainz's documentation in the window there too, instead of opening a new tab."
+        ]
+      },
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "A release or event window's cover strip that said \"The archive did not answer.\" stayed so for the session: ⟳ read the failure back instead of asking the archive again. ⟳ asks again now (a release with no images is not asked again)."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.1485",
+    "date": "2026-10-28",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "A window filter's matches (a Discogs window's versions, a collection's entries) lost their colour when \"Column Filter Highlight Color\" was saved empty: the tables fall back to red there, the window fell back to the text's own colour. Both fall back to red now (found by the settings audit, scripts/audit-config-defaults.py)."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.1484",
+    "date": "2026-10-28",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "The preview window's path (org/POH-headerline.org, vzell): following links inside the window builds a path in its title bar, and now every step of it has its glyph — MusicBrainz's own entity glyph, or for Discogs 💿 master, 📄 release, 🏷️ label, 👤 artist, 💬 user (the Discogs mark for a search, a help article, images or a history) — and is a way back: click a step and the window shows it again, from memory, the steps after it dropped. The earlier steps behind \"…\" are a menu of the whole path. Resting on a step shows that step's own card (no Ctrl, nothing asked; Space goes back to it); resting on its glyph shows its kind's documentation — MusicBrainz's /doc/<Kind> page, its style guide named in the card's foot, or Discogs' Database Guidelines article — and a click reads it in the window. A narrow window keeps two steps instead of three.",
+          "New setting \"In the window's title, each step of the path reads\": its name (the default, e.g. \"The Angel\") or its kind (\"Recording\", the path as it was). A view — an editing history, a documentation page, a Discogs search — always reads its kind."
+        ]
+      },
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "On discogs.com a MusicBrainz card and window (the MusicBrainz column, murdos' importer's icons) had no entity glyph: it was only drawn for MusicBrainz's own pages, and its address named discogs.com. It is musicbrainz.org's now (org/POH-headerline.org item 3)."
+        ]
+      },
+      {
+        "label": "✨ Improve",
+        "items": [
+          "A Discogs card's kind line carries its kind's emoji too, as the window's path does."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.1483",
     "date": "2026-10-28",
     "sections": [

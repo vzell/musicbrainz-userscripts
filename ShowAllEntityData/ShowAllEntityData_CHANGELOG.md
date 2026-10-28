@@ -4,9 +4,59 @@ Every version, newest first, with the technical details behind each change. For 
 
 **Months:** [October 2026](ShowAllEntityData_CHANGELOG/2026-10.md) · [September 2026](ShowAllEntityData_CHANGELOG/2026-09.md) · [August 2026](ShowAllEntityData_CHANGELOG/2026-08.md) · [July 2026](ShowAllEntityData_CHANGELOG/2026-07.md) · [June 2026](ShowAllEntityData_CHANGELOG/2026-06.md) · [May 2026](ShowAllEntityData_CHANGELOG/2026-05.md) · [April 2026](ShowAllEntityData_CHANGELOG/2026-04.md) · [March 2026 (1 of 2)](ShowAllEntityData_CHANGELOG/2026-03-1.md) · [March 2026 (2 of 2)](ShowAllEntityData_CHANGELOG/2026-03-2.md) · [February 2026](ShowAllEntityData_CHANGELOG/2026-02.md) · [January 2026](ShowAllEntityData_CHANGELOG/2026-01.md)
 
-This page shows the newest 100 of 1654 versions; the month pages hold all of them.
+This page shows the newest 100 of 1658 versions; the month pages hold all of them.
 
 ---
+
+## 9.99.1487 — 2026-10-28
+
+**🚀 Feature**
+
+- A Discogs window — a release, a master, an artist or a label — has "✎ Editing history" (or H), without the ▾ MusicBrainz's has (org/POH-headerline.org item 4, vzell). It shows that entity's edit history page from discogs.com in the window: every change with its user, kind and note, "View changes" for a revision's diff, the latest change's diff. Until now only a release's history could be read, and only from a link to it.
+- A long history spans pages of about 50 changes on Discogs. The window shows the newest page and says which pages it shows; "Load the N earlier pages" reads the others one request at a time (Stop ends it, a failed page can be tried again), and they join the same list, so the filter and the order work on all of it.
+- On a discogs.com release, master, artist or label page the ☰ SAED menu has "✎ Edit history" (Editing history group), before and after a render: that entity's Discogs edit history in the window. Ctrl-click opens Discogs' own page.
+
+**🐛 Fix**
+
+- A Discogs history page read with murdos' "Import Discogs releases to MusicBrainz" active in the browser carries that script's MusicBrainz link and icon first in its heading; the window no longer takes them for the entity's name and picture.
+- In a Discogs history window a long kind ("Edit Master Release") ran into the note beside it; the kind column is wider, and a longer kind is cut with its whole name on a hover.
+- On discogs.com the MusicBrainz icon murdos' importer puts in front of the page's name in the script's own heading shows its MusicBrainz card on a hover, as the importer's icons in Discogs' content do.
+
+
+## 9.99.1486 — 2026-10-28
+
+**✨ Improve**
+
+- On discogs.com a MusicBrainz window (from the MusicBrainz column or murdos' importer's icons) has what it has on MusicBrainz: "✎ Editing history ▾" (and H) and "Live page". Both are MusicBrainz pages, which answer a script's anonymous request with their browser check, so they are read with your musicbrainz.org cookies — the browser's own session, as when you open the page in a tab (org/POH-headerline.org item 3, by consent). If MusicBrainz still asks the browser to verify itself, open the page once in a tab and press ⟳.
+- In such a window every MusicBrainz link a MusicBrainz card knows opens in the window and shows its card on a hover, as on MusicBrainz — a genre's tag, an edit, an editor, a documentation page — not only an entity (vzell: "Genres -&gt; tags link do not open inside the same window and do not have a hover window"). The path's glyph reads MusicBrainz's documentation in the window there too, instead of opening a new tab.
+
+**🐛 Fix**
+
+- A release or event window's cover strip that said "The archive did not answer." stayed so for the session: ⟳ read the failure back instead of asking the archive again. ⟳ asks again now (a release with no images is not asked again).
+
+
+## 9.99.1485 — 2026-10-28
+
+**🐛 Fix**
+
+- A window filter's matches (a Discogs window's versions, a collection's entries) lost their colour when "Column Filter Highlight Color" was saved empty: the tables fall back to red there, the window fell back to the text's own colour. Both fall back to red now (found by the settings audit, scripts/audit-config-defaults.py).
+
+
+## 9.99.1484 — 2026-10-28
+
+**🚀 Feature**
+
+- The preview window's path (org/POH-headerline.org, vzell): following links inside the window builds a path in its title bar, and now every step of it has its glyph — MusicBrainz's own entity glyph, or for Discogs 💿 master, 📄 release, 🏷️ label, 👤 artist, 💬 user (the Discogs mark for a search, a help article, images or a history) — and is a way back: click a step and the window shows it again, from memory, the steps after it dropped. The earlier steps behind "…" are a menu of the whole path. Resting on a step shows that step's own card (no Ctrl, nothing asked; Space goes back to it); resting on its glyph shows its kind's documentation — MusicBrainz's /doc/&lt;Kind&gt; page, its style guide named in the card's foot, or Discogs' Database Guidelines article — and a click reads it in the window. A narrow window keeps two steps instead of three.
+- New setting "In the window's title, each step of the path reads": its name (the default, e.g. "The Angel") or its kind ("Recording", the path as it was). A view — an editing history, a documentation page, a Discogs search — always reads its kind.
+
+**🐛 Fix**
+
+- On discogs.com a MusicBrainz card and window (the MusicBrainz column, murdos' importer's icons) had no entity glyph: it was only drawn for MusicBrainz's own pages, and its address named discogs.com. It is musicbrainz.org's now (org/POH-headerline.org item 3).
+
+**✨ Improve**
+
+- A Discogs card's kind line carries its kind's emoji too, as the window's path does.
+
 
 ## 9.99.1483 — 2026-10-28
 
@@ -832,34 +882,6 @@ This page shows the newest 100 of 1654 versions; the month pages hold all of the
 **🐛 Fix**
 
 - Tag pages (/tag/&lt;name&gt;, and an editor's /user/&lt;name&gt;/tag/&lt;name&gt;): "N entities found" stays right under the "Entities tagged as …" heading with the global filter, indented like the sub-section headings, instead of being pushed below the last table.
-
-
-## 9.99.1387 — 2026-10-19
-
-**🚀 Feature**
-
-- New ⚠️ WARNING "Several Discogs links in Relationships": a Relationships column cell showing two or more different Discogs URLs (a link and the same link with "?…" count once) is tinted with a ⚠️ and listed in the ⚠️ WARNING menu, where one click filters every table to those rows. It is known once the column has loaded, so the count grows while it loads. Two new settings in ⚙️ Settings → ⚠️ FINDINGS turn the finding and its tint on or off.
-
-
-## 9.99.1386 — 2026-10-19
-
-**✨ Improve**
-
-- The 📊 list of the Relationships column has a new "Relationship icons - Site kind" section: one entry for a site whatever its country or subdomain, so amazon.com, amazon.de and amazon.co.uk are counted together as "amazon.\*". It appears when some site has two or more such hosts; the per-host entries stay.
-
-
-## 9.99.1385 — 2026-10-19
-
-**✨ Improve**
-
-- The link columns of the Credits/Relationships tables, the event page's tables and the sidebar tables — "URL" (URLs), "Target" (Via release group, Via series) and "Link" (Sidebar: …) — have two new 📊 sections: "Links info - Site", one entry per site with the number of rows linking to it and the same site icon the link shows, and "Links info - Site kind", which counts a site whatever its country or subdomain ("amazon.\*", "bandcamp.\*") when some site has two or more such hosts. Ticking a site marks its address in the link text.
-
-
-## 9.99.1384 — 2026-10-19
-
-**🐛 Fix**
-
-- The "YouTube Music Lookup" button of the "MBz YouTube Music Lookup" userscript (by @afro) is now removed after the release page's Credits button too, not only after Tracks.
 
 
 ---
