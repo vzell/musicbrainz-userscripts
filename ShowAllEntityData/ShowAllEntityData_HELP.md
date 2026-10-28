@@ -2710,6 +2710,40 @@ that is gone or private says so. Their window has no *Live page*: a YouTube
 page shows nothing without its scripts, so ↗ is the way to watch it. A link to
 a YouTube channel gets the ordinary card.
 
+**Playing a YouTube video where it is listed.** Beside a YouTube link a tile
+shows a still frame of the video with ▶, its title and *Play here · 4:30*.
+Click it (or press Enter on it) and the video plays right there, in YouTube's
+privacy-enhanced player (youtube-nocookie.com): in a table in a row under the
+link's row, in a list in the space above the list, elsewhere under the tile.
+Nothing is asked from YouTube's player before you click. One video plays at a
+time — starting another stops the first, and clicking the playing tile again
+stops it. **Esc** (or *■ Stop*) stops the video; the next Esc closes the card
+or window as usual. Under the player: *Playing*, the video's id and *Open on
+YouTube ↗*. A video YouTube no longer has is shown as *Not available on YouTube
+any more*, and its tile asks nothing. The tiles are:
+
+- in a page's **Relationships** before any button (under a line such as
+  *stream video for free*), and in the **URLs** table of a Relationships
+  render, under each YouTube link;
+- in the sidebar, under **Play on YouTube**;
+- after every YouTube link in an **annotation** (the page's own, and the
+  Annotation column of reports and annotation search results);
+- in a YouTube link's **window**, under its title (the video plays in the
+  window);
+- in the **Videos** of a Discogs release's or master's window (tile, title
+  and length in three columns), and in the **Videos** sub-table of a release
+  page on discogs.com;
+- in a **Brucebase** show's window: its *Media* section (the show's embedded
+  video or playlist) and after every YouTube link of its other sections.
+
+A playlist's tile has a plain frame with *≡ list*. The tile's words never
+count for filtering, sorting or the 📊 values. Two settings under 🔎 EXTERNAL
+LINK PREVIEWS: *Play YouTube videos in place* (off: no tiles at all) and *Show
+the videos' still frames* (off: plain frames, so YouTube is asked for nothing
+before you click). Where a site's own rules refuse YouTube's player, the
+video opens on YouTube in a new tab instead, and its tiles then say *Opens on
+YouTube (new tab)*.
+
 Three more sites are read through their own services instead of the page, at
 once and without Tampermonkey asking first:
 
@@ -2738,7 +2772,8 @@ once and without Tampermonkey asking first:
   **Tracklist** with each track's credits (closed at first: *▸ 7 credits*
   opens one track, *Show all track credits* every one), the **Notes**, and
   for a release also **Companies, etc.**, **Credits** (with the tracks they
-  cover), **Barcode and Other Identifiers**, **Videos**, and how many Discogs
+  cover), **Barcode and Other Identifiers**, **Videos** (a master shows its
+  videos too; each with a *Play here* tile), and how many Discogs
   users have or want it and its data quality. A name credited differently
   from the artist's Discogs name has Discogs' `*`; point at it for the
   Discogs name. Every artist, label and company is a link to its Discogs
@@ -3505,7 +3540,8 @@ section of its own above Discogs' page, with the toolbar and these buttons:
 - **Release — Show tracklist, credits and other versions:** five sub-tables:
   **Tracklist** (with each track's credits), **Credits**, **Companies, etc.**,
   **Barcode and Other Identifiers** and **Other versions** (every other
-  version of its master).
+  version of its master) — and a sixth, **Videos** (Play, Title, Length,
+  URL), when the release has videos: *Play* plays one in a row under it.
 - **Artist — Show the whole discography:** one sub-table per Discogs role, in
   Discogs' order: **Releases**, the credits Discogs' API gives (*Credits:
   Producer*, …), **Appearances**, **Track appearances**, **Unofficial**; with
@@ -3798,7 +3834,7 @@ type into the filter box stays in the filter box. In the window:
   navigation* removes the site's menus, header and footer so only the content
   is left. The page's own scripts do not run there: on Brucebase every tab is
   shown, one under the other, and an embedded video is a "▶ Watch on YouTube"
-  link instead of a player. A page you have just hovered opens without being
+  link instead of a player (an embedded playlist links the playlist). A page you have just hovered opens without being
   read again. The page is trimmed as soon as its text is in, without waiting
   for its pictures.
 - **⟳** reads the page again instead of using the saved copy.

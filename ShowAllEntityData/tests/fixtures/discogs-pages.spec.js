@@ -229,12 +229,13 @@ test.describe('discogs.com pages (2026-10-18)', () => {
         expect(errors).toEqual([]);
     });
 
-    test('a release: the release, then its master\'s versions — five sub-tables, the release itself not among its other versions', async ({ page }) => {
+    test('a release: the release, then its master\'s versions — six sub-tables, the release itself not among its other versions', async ({ page }) => {
         const { errors } = await openDg(page, 'release');
         await press(page, 'Show tracklist, credits and other versions');
         expect(await apiLog(page)).toEqual([`${API}releases/1874253`, ...VERSIONS]);
-        expect(await h3s(page)).toEqual(['Tracklist', 'Credits', 'Companies, etc.', 'Barcode and Other Identifiers', 'Other versions']);
-        expect(await groupRows(page)).toEqual([8, 18, 12, 12, 386]);
+        // Videos since org/youtube.org (decision 3): from the same answer, no request of its own.
+        expect(await h3s(page)).toEqual(['Tracklist', 'Credits', 'Companies, etc.', 'Barcode and Other Identifiers', 'Videos', 'Other versions']);
+        expect(await groupRows(page)).toEqual([8, 18, 12, 12, 3, 386]);
         const tl = page.locator('#mb-dg-root table.tbl').nth(0);
         expect(await heads(tl)).toEqual(expect.arrayContaining(['Pos', 'Title', 'Duration', 'Credits']));
         await expect(tl.locator('tbody tr').first()).toContainText('Thunder Road');
@@ -245,7 +246,12 @@ test.describe('discogs.com pages (2026-10-18)', () => {
         await expect(cr.locator('li').first()).toHaveText('Backing Vocals – Mike Appel');
         await expect(cr.locator('li a[href="https://www.discogs.com/artist/219990"]')).toHaveText('Mike Appel');
         await expect(cr.locator('.mb-cell-collapse-toggle')).toHaveCount(1);
-        const other = page.locator('#mb-dg-root table.tbl').nth(4);
+        // The fixture profile has sa_yt_play_in_place off: no Play column.
+        const vids = page.locator('#mb-dg-root table.tbl').nth(4);
+        expect(await heads(vids)).toEqual(expect.arrayContaining(['Title', 'Length', 'URL']));
+        expect(await heads(vids)).not.toEqual(expect.arrayContaining(['Play']));
+        await expect(vids.locator('.mb-yt-tile')).toHaveCount(0);
+        const other = page.locator('#mb-dg-root table.tbl').nth(5);
         expect(await heads(other)).toEqual(expect.arrayContaining(['Image', 'Title', 'Country']));
         await expect(other.locator('a[href="https://www.discogs.com/release/1874253"]')).toHaveCount(0);
         expect(errors).toEqual([]);

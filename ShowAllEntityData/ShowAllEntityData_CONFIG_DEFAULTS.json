@@ -2,11 +2,11 @@
   "_meta": {
     "generated_by": "scripts/dump-config-defaults.py",
     "purpose": "Generated artifact. NOTHING in the userscript reads this file. See org/config-handling.org Item 4.",
-    "script_version": "9.99.1465+2026-10-26",
-    "schema_entries": 476,
+    "script_version": "9.99.1477+2026-10-28",
+    "schema_entries": 478,
     "sections": 52,
-    "settings": 424,
-    "settings_with_default": 419,
+    "settings": 426,
+    "settings_with_default": 421,
     "settings_without_default": [
       "sa_default_hidden_columns",
       "sa_rel_other_db_classes",
@@ -15,7 +15,7 @@
       "sa_unicode_char_picker_mappings"
     ],
     "types": {
-      "checkbox": 249,
+      "checkbox": 251,
       "color_picker": 62,
       "number": 53,
       "divider": 52,
@@ -661,7 +661,9 @@
     "sa_uvd_event_name_columns": "Unique-Values Dropdown: Event Name Info On These Columns Too",
     "sa_uvd_grouped_sections": "Unique-Values Dropdown: Group Sections By Topic",
     "sa_uvd_recording_comment_columns": "Unique-Values Dropdown: Columns Holding A Recording Comment As Text",
-    "sa_uvd_title_info_columns": "Unique-Values Dropdown: Title Info On These Columns Too"
+    "sa_uvd_title_info_columns": "Unique-Values Dropdown: Title Info On These Columns Too",
+    "sa_yt_play_in_place": "Play YouTube videos in place (a click asks youtube-nocookie.com)",
+    "sa_yt_stills": "Show the videos' still frames (asks i.ytimg.com as they come into view)"
   },
   "defaults": {
     "sa_annotation_column_max_height_em": 5.6,
@@ -1082,7 +1084,9 @@
     "sa_uvd_event_name_columns": "",
     "sa_uvd_grouped_sections": true,
     "sa_uvd_recording_comment_columns": "Disambiguation",
-    "sa_uvd_title_info_columns": "Name, Recording, Release, Release group, Release groups, Work"
+    "sa_uvd_title_info_columns": "Name, Recording, Release, Release group, Release groups, Work",
+    "sa_yt_play_in_place": true,
+    "sa_yt_stills": true
   },
   "tables": {
     "sa_default_hidden_columns": {

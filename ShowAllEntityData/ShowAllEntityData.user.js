@@ -5241,6 +5241,30 @@
                          'a loaded configuration file leaves it as it is.'
         },
 
+        // org/youtube.org (decisions of 2026-10-25): a tile beside a YouTube
+        // link plays it where it is listed; `_ytOn()`, `_ytTileHtml()`.
+        sa_yt_play_in_place: {
+            label: 'Play YouTube videos in place (a click asks youtube-nocookie.com)',
+            type: 'checkbox',
+            default: true,
+            description: 'On by default. Beside a YouTube link — the URLs of a Relationships render, the sidebar\'s ' +
+                         '"Play on YouTube", an annotation, a Discogs release\'s videos, a Brucebase show\'s Media — ' +
+                         'a tile with "▶ Play here" plays the video right there (in a table, in a row under the ' +
+                         'link), in YouTube\'s privacy-enhanced player (youtube-nocookie.com). Nothing is asked from ' +
+                         'YouTube\'s player before you click a tile. One video plays at a time; Esc or "■ Stop" ends ' +
+                         'it. The link itself, its card and its window stay as they are. Off: no tiles.'
+        },
+
+        sa_yt_stills: {
+            label: 'Show the videos\' still frames (asks i.ytimg.com as they come into view)',
+            type: 'checkbox',
+            default: true,
+            description: 'On by default. Each tile shows a still frame of its video, asked from YouTube\'s image ' +
+                         'server (i.ytimg.com, without a referrer) when the tile comes into view. A playlist shows ' +
+                         'a plain frame either way. Off: plain frames, and no request to YouTube at all before you ' +
+                         'click a tile.'
+        },
+
         // ============================================================
         // EVERY PREVIEW (MusicBrainz links and the non-MusicBrainz sites above)
         // ============================================================
@@ -8710,6 +8734,25 @@
             tdChars.style.fontVariantNumeric  = 'tabular-nums';
 
             return [tdChars];
+        },
+
+        /**
+         * ytTiles — a "Play here" tile after every YouTube link of an
+         * Annotation cell (org/youtube.org, decision 2), written into the
+         * source cell itself; no column of its own (`syntheticColumns: []`).
+         * List it AFTER `numberOfChars`: the extractors run in list order, and
+         * that one counts the cell's `textContent`, so it must count the
+         * annotation before a tile is in it. A page without the column
+         * resolves it to nothing, silently. The prose clamp later wraps the
+         * tile with the text, so a collapsed cell hides it with the rest.
+         * Nothing with `sa_yt_play_in_place` off.
+         *
+         * @param   {HTMLTableCellElement} sourceCell The Annotation <td> (mutated).
+         * @returns {HTMLTableCellElement[]}           Always empty.
+         */
+        ytTiles(sourceCell) {
+            _ytDecorateLinks(sourceCell);
+            return [];
         },
 
         // ── extractMainColumn companion extractors ────────────────────────────
@@ -15616,6 +15659,9 @@
             'Companies, etc.': ['Role', 'Name', 'Cat#'],
             'Barcode and Other Identifiers': ['Type', 'Value', 'Description'],
             'Other versions': ['Image', 'Title', 'Format', 'Label', 'Cat#', 'Country', 'Year'],
+            // Page 1 only, after the identifiers, when the release has videos
+            // (org/youtube.org); Play only with sa_yt_play_in_place.
+            Videos: ['Play', 'Title', 'Length', 'URL'],
         },
         submissions: ['Artist', 'Title', 'Changed by', 'Changed', 'Matched artist', 'History'],
         ratings: ['Image', 'Artist', 'Title', 'Format', 'Label', 'Cat#', 'Year', 'Rating', 'Data quality'],
@@ -16224,6 +16270,32 @@
     }
 
     /**
+     * The release page's "Videos" sub-table (org/youtube.org, decision 3),
+     * from the release's own API answer — no request of its own: Play (a
+     * "Play here" tile, the player in a row under the row), Title, Length,
+     * URL. Play is left out with `sa_yt_play_in_place` off; a release without
+     * videos gets no sub-table.
+     *
+     * @param {?Array<{uri: string, title: string, duration: number}>} list - The API's `videos`.
+     * @returns {string}
+     */
+    function _dgVideosTableHtml(list) {
+        const videos = (list || []).filter(v => v && /^https?:\/\//i.test(v.uri || ''));
+        if (!videos.length) return '';
+        const play = _ytOn();
+        const cols = _DG_HEADERS.release.Videos.filter(c => play || c !== 'Play');
+        const rows = videos.map((v) => {
+            const yt = play ? _ytParse(v.uri) : null;
+            const title = String(v.title || v.uri).trim();
+            const tile = yt ? _ytTileHtml(yt, { bare: true, title, dur: Number(v.duration) || 0 }) : '';
+            const shown = v.uri.replace(/^https?:\/\/(?:www\.)?/i, '');
+            return `<tr>${play ? `<td class="mb-dg-playcell">${tile}</td>` : ''}${_dgCell(title)}` +
+                `<td class="mb-dg-when">${_rgEsc(_ytDurText(Number(v.duration) || 0))}</td>${_dgCell(shown, v.uri)}</tr>`;
+        });
+        return _dgTableHtml('Videos', cols, rows);
+    }
+
+    /**
      * A version's row (a master's versions, a release's other versions),
      * in `_DG_HEADERS.master` order; the master's main release marked ★.
      *
@@ -16277,7 +16349,7 @@
                 `${_dgCell(String(i.value).trim())}${_dgCell(String(i.description || '').trim())}</tr>`);
             body = _dgTableHtml('Tracklist', H.Tracklist, tracks) + _dgTableHtml('Credits', H.Credits, crs) +
                 _dgTableHtml('Companies, etc.', H['Companies, etc.'], cos) +
-                _dgTableHtml('Barcode and Other Identifiers', H['Barcode and Other Identifiers'], ids);
+                _dgTableHtml('Barcode and Other Identifiers', H['Barcode and Other Identifiers'], ids) + _dgVideosTableHtml(d.videos);
         } else {
             const kind = pg.kind === 'artist' ? 'artist' : pg.kind === 'label' ? 'label' : 'versions';
             const spec = _EXT_DG_LISTS[kind];
@@ -16349,6 +16421,8 @@
             body.mb-sa-host-dg #mb-dg-root h3 { font: 700 15px/1.3 Arial, Helvetica, sans-serif; color: #222; }
             body.mb-sa-host-dg #mb-dg-root table.tbl a { color: #1f4f99; }
             body.mb-sa-host-dg td.mb-dg-imgcell { width: 44px; padding: 2px !important; }
+            /* The Videos sub-table's Play column: a bare "Play here" tile (org/youtube.org). */
+            body.mb-sa-host-dg td.mb-dg-playcell { width: 82px; padding: 2px !important; }
             body.mb-sa-host-dg img.mb-dg-thumb { display: block; width: 40px; height: 40px; object-fit: cover; border: 1px solid #ddd; }
             body.mb-sa-host-dg .mb-dg-main { color: #b8860b; cursor: help; }
             body.mb-sa-host-dg td.mb-dg-when { white-space: nowrap; font-variant-numeric: tabular-nums; }
@@ -21259,9 +21333,13 @@
      *    (`_dpParseBbVenue()`), its photos (`venue:`) are of kind Photo, and
      *    an entry page names its venue's page (`venueUrl`), which the Venue
      *    column's preview reads through it.
+     * 8: a Brucebase entry page has a Media section (`_bbMediaSection()`:
+     *    its YouTube players as links; a Media tab that is only a player
+     *    counts as content), and the record is `ytTiles`, so the window puts
+     *    a "Play here" tile after each YouTube link (org/youtube.org, Step 4).
      * @type {number}
      */
-    const _DP_PARSER_VERSION = 7;
+    const _DP_PARSER_VERSION = 8;
 
     /**
      * IndexedDB database of parsed detail pages. Deliberately NOT a store in
@@ -22215,7 +22293,9 @@
         const tab = (name) => panels[labels.indexOf(name)] || null;
         const has = (panel) => {
             const t = panel ? _dpText(panel.textContent) : '';
-            return !!t && !/^Sorry,? no\b.*\bavailable\.?$/i.test(t);
+            // A Media tab may be nothing but an embedded YouTube player
+            // (debug/bb-event-youtube.html): that is content too.
+            return (!!t && !/^Sorry,? no\b.*\bavailable\.?$/i.test(t)) || !!(panel && panel.querySelector('iframe[src*="youtube"]'));
         };
         const stage = tab('On Stage');
         const onStage = stage ? _bbOnStageText(stage) : '';
@@ -22245,14 +22325,57 @@
         const filled = labels.filter((l, i) => has(panels[i]));
         if (filled.length) data.fields.push(['On the page', filled.join(' · ')]);
         if (onStage) data.sections.unshift({ label: 'On stage', text: _dpBlockText(stage), html: _dpBlockHtml(stage, url) });
-        ['Performances', 'Recording', 'Storyteller', 'Eyewitness', 'News/Memorabilia'].forEach(name => {
+        // Media in the page's own order, between Performances and Recording.
+        ['Performances', 'Media', 'Recording', 'Storyteller', 'Eyewitness', 'News/Memorabilia'].forEach(name => {
             const panel = tab(name);
+            if (name === 'Media') {
+                const media = panel ? _bbMediaSection(panel, url) : null;
+                if (media) data.sections.push(media);
+                return;
+            }
             const text = has(panel) ? _dpBlockText(panel) : '';
             if (text) data.sections.push({ label: name, text, html: _dpBlockHtml(panel, url) });
         });
         data.collapsible = true;
         data.imagesByKind = true;
+        // The window adds a "Play here" tile after each YouTube link of the
+        // sections (`_dpExtractedCols()`, org/youtube.org); as a flag, so the
+        // cached record does not depend on the setting.
+        data.ytTiles = true;
         return data;
+    }
+
+    /**
+     * An entry page's Media tab as a section of the window (org/youtube.org,
+     * Step 4): each embedded YouTube player (an `<iframe>`, which the window
+     * never shows) becomes a link to the video or playlist on YouTube, and the
+     * tab's own words and links follow (`_dpBlockHtml()`). The window puts a
+     * "Play here" tile after each link. Null for a tab with neither ("Sorry,
+     * no Media available.").
+     *
+     * @param {Element} panel - The Media tab's panel.
+     * @param {string} url - The page's URL.
+     * @returns {?{label: string, text: string, html: string}}
+     */
+    function _bbMediaSection(panel, url) {
+        const seen = new Set();
+        const items = [];
+        panel.querySelectorAll('iframe[src]').forEach(fr => {
+            const v = _ytParse(_dpAbsUrl(fr.getAttribute('src'), url));
+            if (!v || seen.has(_ytKey(v))) return;
+            seen.add(_ytKey(v));
+            items.push({ v, label: v.kind === 'playlist' ? 'YouTube playlist' : 'YouTube video' });
+        });
+        const t = _dpText(panel.textContent);
+        const textual = !!t && !/^Sorry,? no\b.*\bavailable\.?$/i.test(t);
+        if (!items.length && !textual) return null;
+        const lines = items.map(x => ({ href: _ytWatchUrl(x.v), label: x.label }));
+        return {
+            label: 'Media',
+            text: lines.map(x => `${x.label}: ${x.href}`).concat(textual ? [_dpBlockText(panel)] : []).join('\n'),
+            html: lines.map(x => `<div><a href="${_mbttEscape(x.href)}" target="_blank" rel="noopener">${_mbttEscape(x.label)}</a></div>`).join('') +
+                (textual ? _dpBlockHtml(panel, url) : ''),
+        };
     }
 
     /**
@@ -23725,7 +23848,9 @@
             }
         }
         data.sections.forEach(s => {
-            const body = `<div class="mb-dp-section">${s.html || _mbttEscape(s.text)}</div>`;
+            // A Brucebase entry's sections: a "Play here" tile after each YouTube link (org/youtube.org).
+            const html = s.html && data.ytTiles ? _ytDecorateHtml(s.html) : s.html;
+            const body = `<div class="mb-dp-section">${html || _mbttEscape(s.text)}</div>`;
             if (!data.collapsible) {
                 right.push(`<h4>${_mbttEscape(s.label)}</h4>${body}`);
                 return;
@@ -23824,12 +23949,16 @@
         });
         doc.querySelectorAll('iframe').forEach(fr => {
             const src = _dpAbsUrl(fr.getAttribute('src'), url);
-            const yt = src.match(/^https?:\/\/(?:www\.)?youtube(?:-nocookie)?\.com\/embed\/([\w-]+)/);
+            // A playlist's player (`embed/videoseries?list=…`, Brucebase's
+            // Media tab and its 4th of July song page) is the playlist, never
+            // a video named "videoseries" (org/youtube.org Step 4: the old
+            // pattern built `watch?v=videoseries`).
+            const yt = _ytParse(src);
             const p = doc.createElement('p');
             p.className = 'mb-dp-embed';
             if (src) {
                 const a = doc.createElement('a');
-                a.href = yt ? `https://www.youtube.com/watch?v=${yt[1]}` : src;
+                a.href = yt ? _ytWatchUrl(yt) : src;
                 a.textContent = yt ? '▶ Watch on YouTube' : '▶ Open the embedded page';
                 p.appendChild(a);
             }
@@ -24080,7 +24209,8 @@
         const act = document.activeElement;
         const focus = act && area.contains(act) && act.dataset && act.dataset.mbKeepFocus
             ? { name: act.dataset.mbKeepFocus, from: act.selectionStart, to: act.selectionEnd } : null;
-        area.innerHTML = html;
+        // A YouTube player that plays in the window keeps playing (org/youtube.org).
+        if (!_ytAreaRepaint(area, html)) area.innerHTML = html;
         // The foot line at rest names keys that depend on what arrived (a
         // tag link's Ctrl-click): written again while nothing is hovered.
         if (!_dpWin.hover) _dpWinFoot(null);
@@ -28195,7 +28325,10 @@
     }
 
     /**
-     * Splits an element's child nodes into lines at each `<br>`.
+     * Splits an element's child nodes into lines at each `<br>`. A YouTube
+     * "Play here" tile the initial page put into the cell
+     * (`_ytDecorateRelDetails()`, org/youtube.org) is no part of any line:
+     * the converted table builds its own (`_eventRelColumns()`).
      *
      * @param   {Element} el
      * @returns {Node[][]}
@@ -28203,6 +28336,7 @@
     function _eventSplitAtBr(el) {
         const lines = [[]];
         el.childNodes.forEach(n => {
+            if (n.nodeType === Node.ELEMENT_NODE && n.classList.contains('mb-yt-tile')) return;
             if (n.nodeType === Node.ELEMENT_NODE && n.tagName === 'BR') lines.push([]);
             else lines[lines.length - 1].push(n);
         });
@@ -28704,10 +28838,23 @@
             td.dataset.mbEntityType = type;
             return td;
         };
+        // A YouTube URL's "Play here" tile under its link, built with the cell
+        // (org/youtube.org): no later write, so no cache owes anything, and
+        // its text is out of every filter (`.mb-yt-tile` in _CLEAN_STRIP_SEL).
+        const ytTile = (r) => {
+            const v = r.type === 'url' && _ytOn() ? _ytParse(r.href) : null;
+            return v ? _ytTileNode(v) : null;
+        };
         const cells = rows.map((r, k) => {
             const row = [String(k + 1)];
             if (allUrls) row.push(host(r.href));
-            row.push(withType ? typedCell(mains[k].nodes, r.type) : _eventStripGlyphs(mains[k].nodes, glyphs[targetCol]));
+            const target = withType ? typedCell(mains[k].nodes, r.type) : _eventStripGlyphs(mains[k].nodes, glyphs[targetCol]);
+            const tile = ytTile(r);
+            if (tile) {
+                if (Array.isArray(target)) target.push(tile);
+                else target.appendChild(tile);
+            }
+            row.push(target);
             if (hasVideo) row.push(_eventVideoCell(mains[k].video));
             if (withType) row.push(typedCell(_EVENT_REL_TARGET_COLS[r.type] || 'Target', r.type));
             row.push(r.phrase);
@@ -37241,7 +37388,9 @@
                     { sourceColumn: 'Area', extractor: 'splitArea', syntheticColumns: ['MB-Locality', 'MB-Region', 'MB-Country'] },
                     { sourceColumn: 'Date', extractor: 'dateParts', syntheticColumns: ['DD', 'MM', 'YYYY', 'Day', 'Month'] },
                     { sourceColumn: 'Last edited', extractor: 'dateTimeParts', syntheticColumns: ['Last edited date', 'Last edited time'] },
-                    { sourceColumn: 'Annotation', extractor: 'numberOfChars', syntheticColumns: ['Annotation chars'] }
+                    { sourceColumn: 'Annotation', extractor: 'numberOfChars', syntheticColumns: ['Annotation chars'] },
+                    // After numberOfChars, which counts the cell before a tile is in it.
+                    { sourceColumn: 'Annotation', extractor: 'ytTiles', syntheticColumns: [] }
                 ],
                 // Splits the "MB-Name" / "Comment" / "Primary alias" synthetic
                 // columns off whichever of these headers is actually present on a
@@ -38708,6 +38857,8 @@
                     stickyColumn: 'Name'
                 },
                 'Annotations': {
+                    // A "Play here" tile after each YouTube link (org/youtube.org).
+                    columnExtractors: [ { sourceColumn: 'Annotation', extractor: 'ytTiles', syntheticColumns: [] } ],
                     collapsableColumns: [ 'Annotation' ],
                     // 'Annotation' gets its own renderer (_artTooltipAnnotation):
                     // the full, uncollapsed cell markup in a wider card.
@@ -60826,6 +60977,816 @@
         return { ok: true, data: Object.assign(rec, { state: 'http' }) };
     }
 
+    // --- YouTube in place (org/youtube.org; mockup org/youtube-embeds-mockups.html) ---
+    //
+    // A YouTube link keeps its card and its window (the `youtube` reader
+    // above). Beside it a tile (`_ytTileHtml()`) plays the video where it is
+    // listed, in YouTube's privacy-enhanced player (youtube-nocookie.com).
+    // Nothing is asked from the player's host before a click; the still frame
+    // (i.ytimg.com, `sa_yt_stills`) is the only request a tile makes before
+    // one. One player at a time (decision 4); Esc stops it before anything
+    // else sees the key. Every tile is wired by ONE delegated handler
+    // (`_ytInit()`), so a tile survives the cloneNode(true) re-renders.
+
+    /**
+     * The one player that plays. `cur` while a video plays:
+     * `{tile, v, mode, el, player}` — `mode` `'row'` (a `tr.mb-yt-playerrow`
+     * after the tile's row; `el` that row), `'slot'` (the `.mb-yt-slot` of the
+     * tile's `[data-mb-yt-slots]` box, a list's slot above it; `el` the slot)
+     * or `'under'` (a `div.mb-yt-under` right after the tile; `el` that div),
+     * `player` the `.mb-yt-player`. `blocked`: the page's frame policy refused
+     * the player (decision 6, `_ytBlocked()`), so a tile opens YouTube in a
+     * new tab instead.
+     * @type {{cur: ?Object, obs: ?MutationObserver, blocked: boolean, init: boolean}}
+     */
+    const _yt = { cur: null, obs: null, blocked: false, init: false };
+
+    /**
+     * Whether tiles are built at all (`sa_yt_play_in_place`). Off, nothing of
+     * this section runs: no tile, no style, no listener, no request.
+     *
+     * @returns {boolean}
+     */
+    function _ytOn() {
+        return Lib.settings.sa_yt_play_in_place === true;
+    }
+
+    /**
+     * A YouTube link as something to play: a video (`watch?v=`, `youtu.be/`,
+     * `/v/`, `/live/`, `/embed/<id>`), a short (`/shorts/<id>`) or a playlist
+     * (`/playlist?list=`, `/embed/videoseries?list=`), on youtube.com (www.,
+     * m., music.) or youtube-nocookie.com — `_extYouTubeTest()`'s shapes plus
+     * the embeds. An absolute or protocol-relative link only (MusicBrainz
+     * writes `//www.youtube.com/…`); a relative one is the page's own. A
+     * video's `list` (a `watch?v=…&list=…`) is kept but plays the video.
+     *
+     * @param {string} href
+     * @returns {?{kind: string, id: string, list: string}} `kind` `'video'`,
+     *          `'short'` or `'playlist'` (whose `id` is empty).
+     */
+    function _ytParse(href) {
+        const s = String(href || '').trim();
+        if (!/^(?:https?:)?\/\//i.test(s)) return null;
+        let u;
+        try {
+            u = new URL(s, 'https://www.youtube.com/');
+        } catch (_) {
+            return null;
+        }
+        const host = u.hostname.toLowerCase();
+        const list = /^[\w-]{2,}$/.test(u.searchParams.get('list') || '') ? u.searchParams.get('list') : '';
+        let m;
+        if (host === 'youtu.be') {
+            m = /^\/([\w-]{6,})/.exec(u.pathname);
+            return m ? { kind: 'video', id: m[1], list } : null;
+        }
+        if (!/^(?:www\.|m\.|music\.)?youtube(?:-nocookie)?\.com$/.test(host)) return null;
+        if (/^\/watch\/?$/.test(u.pathname)) {
+            const v = u.searchParams.get('v') || '';
+            return /^[\w-]{6,}$/.test(v) ? { kind: 'video', id: v, list } : null;
+        }
+        if (/^\/(?:playlist|embed\/videoseries)\/?$/.test(u.pathname)) return list ? { kind: 'playlist', id: '', list } : null;
+        if ((m = /^\/(v|shorts|embed|live)\/([\w-]{6,})/.exec(u.pathname))) {
+            return { kind: m[1] === 'shorts' ? 'short' : 'video', id: m[2], list };
+        }
+        return null;
+    }
+
+    /**
+     * What tells two tiles of the same thing apart from others: a video's
+     * id, or `list:<id>` for a playlist.
+     *
+     * @param {{kind: string, id: string, list: string}} v
+     * @returns {string}
+     */
+    function _ytKey(v) {
+        return v.kind === 'playlist' ? `list:${v.list}` : v.id;
+    }
+
+    /**
+     * The page on YouTube: a playlist's, a short's or a video's.
+     *
+     * @param {{kind: string, id: string, list: string}} v
+     * @returns {string}
+     */
+    function _ytWatchUrl(v) {
+        if (v.kind === 'playlist') return `https://www.youtube.com/playlist?list=${encodeURIComponent(v.list)}`;
+        if (v.kind === 'short') return `https://www.youtube.com/shorts/${encodeURIComponent(v.id)}`;
+        return `https://www.youtube.com/watch?v=${encodeURIComponent(v.id)}`;
+    }
+
+    /**
+     * The privacy-enhanced player's address, started at once (the click on
+     * the tile was the request to play).
+     *
+     * @param {{kind: string, id: string, list: string}} v
+     * @returns {string}
+     */
+    function _ytEmbedUrl(v) {
+        return v.kind === 'playlist'
+            ? `https://www.youtube-nocookie.com/embed/videoseries?list=${encodeURIComponent(v.list)}&autoplay=1`
+            : `https://www.youtube-nocookie.com/embed/${encodeURIComponent(v.id)}?autoplay=1`;
+    }
+
+    /**
+     * A length as a tile shows it: seconds as `m:ss` (or `h:mm:ss`), a text
+     * as it is, nothing as `''`.
+     *
+     * @param {number|string|undefined} d
+     * @returns {string}
+     */
+    function _ytDurText(d) {
+        if (typeof d === 'string') return d.trim();
+        const s = Math.round(Number(d) || 0);
+        if (s <= 0) return '';
+        const two = n => String(n).padStart(2, '0');
+        return s >= 3600 ? `${Math.floor(s / 3600)}:${two(Math.floor(s / 60) % 60)}:${two(s % 60)}` : `${Math.floor(s / 60)}:${two(s % 60)}`;
+    }
+
+    /**
+     * A tile's second line: what a click does.
+     *
+     * @param {{kind: string}} v
+     * @param {{dead?: boolean, dur?: string}} o
+     * @returns {string}
+     */
+    function _ytSubText(v, o) {
+        if (o.dead) return 'Not available on YouTube any more';
+        if (_yt.blocked) return 'Opens on YouTube (new tab)';
+        if (v.kind === 'playlist') return 'Play the playlist here';
+        return `Play here${o.dur ? ` · ${o.dur}` : ''}`;
+    }
+
+    /**
+     * A tile: a still frame (or a plain frame) with a ▶, the title and "Play
+     * here · 4:30" (the mockup). A `<button>`, so Enter and Space play it as a
+     * click does. The still is `i.ytimg.com/vi/<id>/mqdefault.jpg`, lazy and
+     * without a referrer, only with `sa_yt_stills`; a playlist has no id of a
+     * picture, so its frame is plain with "≡ list" (decision 1: no oEmbed
+     * request for a picture). Its text is decoration to filtering, sorting
+     * and the 📊 dropdown (`.mb-yt-tile` is in `_CLEAN_STRIP_SEL`).
+     *
+     * @param {{kind: string, id: string, list: string}} v - `_ytParse()`'s answer.
+     * @param {{title?: string, dur?: number|string, small?: boolean, bare?: boolean, dead?: boolean}} [opts]
+     *        `small`: the sidebar's and the lists' tile ("▶ Play"); `bare`:
+     *        the frame alone (a table's Play column); `dead`: YouTube is
+     *        known not to show it (the reader's oEmbed said so), drawn as
+     *        Unavailable, and a click asks nothing.
+     * @returns {string} Empty with `sa_yt_play_in_place` off.
+     */
+    function _ytTileHtml(v, opts = {}) {
+        if (!_ytOn()) return '';
+        _ytInit();
+        const title = String(opts.title || '').trim();
+        const dur = _ytDurText(opts.dur);
+        const playlist = v.kind === 'playlist';
+        const still = Lib.settings.sa_yt_stills === true && !playlist && !!v.id;
+        const label = title || (playlist ? 'YouTube playlist' : 'YouTube video');
+        const pic = `<span class="mb-yt-pic${still ? ' mb-yt-has-still' : ''}">` +
+            (still ? `<img src="https://i.ytimg.com/vi/${encodeURIComponent(v.id)}/mqdefault.jpg" alt="" loading="lazy" referrerpolicy="no-referrer">` : '') +
+            '<span class="mb-yt-btn"></span>' +
+            (playlist ? '<span class="mb-yt-list">≡<br>list</span>' : '') +
+            (dur && still ? `<span class="mb-yt-dur">${_rgEsc(dur)}</span>` : '') + '</span>';
+        const meta = opts.bare ? '' : '<span class="mb-yt-meta">' +
+            `<span class="mb-yt-t">${_rgEsc(opts.small ? '▶ Play' : label)}</span>` +
+            `<span class="mb-yt-s">${_rgEsc(_ytSubText(v, { dead: opts.dead, dur }))}</span></span>`;
+        const cls = `mb-yt-tile${opts.small ? ' mb-yt-small' : ''}${opts.bare ? ' mb-yt-bare' : ''}${opts.dead ? ' mb-yt-dead' : ''}`;
+        return `<button type="button" class="${cls}" data-mb-yt="${_rgEsc(_ytKey(v))}" data-mb-yt-kind="${_rgEsc(v.kind)}" ` +
+            `data-mb-yt-id="${_rgEsc(v.id)}" data-mb-yt-list="${_rgEsc(v.list || '')}" data-mb-yt-title="${_rgEsc(title)}"` +
+            `${dur ? ` data-mb-yt-dur="${_rgEsc(dur)}"` : ''}${opts.dead ? ' data-mb-yt-dead=""' : ''} aria-pressed="false" ` +
+            `aria-label="${_rgEsc(`Play ${label}`)}">${pic}${meta}</button>`;
+    }
+
+    /**
+     * `_ytTileHtml()` as a node, for code that builds cells and blocks from
+     * nodes (`_eventRelColumns()`, `_ytDecorateLinks()`).
+     *
+     * @param {{kind: string, id: string, list: string}} v
+     * @param {Object} [opts] - As `_ytTileHtml()`'s.
+     * @returns {?HTMLButtonElement} Null with `sa_yt_play_in_place` off.
+     */
+    function _ytTileNode(v, opts) {
+        const html = _ytTileHtml(v, opts);
+        if (!html) return null;
+        const t = document.createElement('template');
+        t.innerHTML = html;
+        return t.content.firstElementChild;
+    }
+
+    /**
+     * A tile after every YouTube link under `root` (an annotation, the
+     * sidebar's external links, an Annotation cell): right after the link,
+     * or after its heading when the link is a heading's (an annotation's
+     * "YouTube Playlist" h2), so a heading's own text — which the collapsible
+     * headings read — never gains the tile's. A link's own words name the
+     * tile unless they are the address itself. Idempotent: a link whose tile
+     * is already there gets no second one (a second pass, a disk load).
+     *
+     * @param {?Element} root
+     * @param {{small?: boolean}} [opts]
+     * @returns {number} How many tiles were added.
+     */
+    function _ytDecorateLinks(root, opts = {}) {
+        if (!root || !_ytOn()) return 0;
+        let n = 0;
+        root.querySelectorAll('a[href]').forEach(a => {
+            if (a.closest('.mb-yt-tile, .mb-yt-player')) return;
+            const v = _ytParse(a.getAttribute('href'));
+            if (!v) return;
+            const head = a.closest('h1, h2, h3, h4, h5, h6');
+            const at = head && root.contains(head) ? head : a;
+            const next = at.nextElementSibling;
+            if (next && next.matches('.mb-yt-tile') && next.dataset.mbYt === _ytKey(v)) return;
+            const words = a.textContent.trim();
+            const address = /^(?:https?:)?\/\/|^(?:www\.|m\.)?(?:youtu\.be|youtube\.com)\//i.test(words);
+            const tile = _ytTileNode(v, { title: address ? '' : words, small: opts.small, dead: _ytKnownDead(a.getAttribute('href')) });
+            if (!tile) return;
+            at.after(tile);
+            n++;
+        });
+        return n;
+    }
+
+    /**
+     * Whether the YouTube reader already knows a link to be gone — its
+     * oEmbed answered 400/401/403/404 for this page load (a card or window
+     * of the link was shown): then its tile is drawn as Unavailable and a
+     * click asks nothing (the mockup's Brucebase "Audience video"). Never a
+     * request of its own.
+     *
+     * @param {string} href - As written (protocol-relative read as https,
+     *        as `_extTarget()` keys it).
+     * @returns {boolean}
+     */
+    function _ytKnownDead(href) {
+        let u;
+        try {
+            u = new URL(/^\/\/[^/]/.test(href || '') ? `https:${href}` : href);
+        } catch (_) {
+            return false;
+        }
+        const st = _mbPop.get(`ext:youtube:${u.href}`);
+        return !!(st && st.status === 'done' && st.data && st.data.state === 'dead');
+    }
+
+    /**
+     * A tile after every YouTube link of a piece of HTML (`_ytDecorateLinks()`
+     * on a parsed copy): a detail window's section, whose HTML the parser
+     * cached without tiles, so the setting decides at each render. The HTML
+     * as it was with `sa_yt_play_in_place` off or no YouTube link in it.
+     *
+     * @param {string} html
+     * @returns {string}
+     */
+    function _ytDecorateHtml(html) {
+        if (!html || !_ytOn() || !/youtu/i.test(html)) return html;
+        const t = document.createElement('template');
+        t.innerHTML = html;
+        return _ytDecorateLinks(t.content) ? t.innerHTML : html;
+    }
+
+    /**
+     * MusicBrainz's own page (decision 2): a small tile under the sidebar's
+     * YouTube links ("Play on YouTube"; inside its `li`, the link neither
+     * moved nor rebuilt — docs/claude/sidebar.md), and a tile after every
+     * YouTube link of the page's annotation. Both are on the initial page
+     * already, so this runs once at init; the Relationships URLs table gets
+     * its tiles from its converter (`_eventRelColumns()`).
+     *
+     * @returns {void}
+     */
+    function _ytDecorateMbPage() {
+        if (_foreignHost || !_ytOn()) return;
+        document.querySelectorAll('#sidebar ul.external_links').forEach(ul => _ytDecorateLinks(ul, { small: true }));
+        document.querySelectorAll('#content .annotation-body').forEach(body => _ytDecorateLinks(body));
+        _ytDecorateRelDetails();
+    }
+
+    /**
+     * The initial page's Relationships lists (vzell, 2026-10-28: "stream
+     * video for free" should play before any button): MusicBrainz prints
+     * each relationship as a line of a `table.details` cell, ended by
+     * `<br>`. A tile goes after that `<br>` (on its own line, never in the
+     * middle of the next relationship), and plays in a full-width row under
+     * the relationship's row. The converter that turns these lists into
+     * tables skips it (`_eventSplitAtBr()`) and builds its own tile. A
+     * link's words here are its address, so the tile has no title.
+     * Idempotent.
+     *
+     * @returns {void}
+     */
+    function _ytDecorateRelDetails() {
+        document.querySelectorAll('#content table.details > tbody > tr > td').forEach(td => {
+            td.querySelectorAll(':scope > a[href]').forEach(a => {
+                const v = _ytParse(a.getAttribute('href'));
+                if (!v) return;
+                let br = a.nextSibling;
+                while (br && !(br.nodeType === Node.ELEMENT_NODE && br.tagName === 'BR')) br = br.nextSibling;
+                const next = br ? br.nextElementSibling : td.lastElementChild;
+                if (next && next.matches('.mb-yt-tile') && next.dataset.mbYt === _ytKey(v)) return;
+                const tile = _ytTileNode(v, { dead: _ytKnownDead(a.getAttribute('href')) });
+                if (!tile) return;
+                if (br) br.after(tile);
+                else td.appendChild(tile);
+            });
+        });
+    }
+
+    /**
+     * A YouTube link's window (the `youtube` reader): the tile in its left
+     * column, under the title, in place of the oEmbed thumbnail it would
+     * repeat; it plays in the window. A video the reader found gone is drawn
+     * as Unavailable at once (the mockup's "Audience video").
+     *
+     * @param {object} t - The window's target.
+     * @param {Object} rec - The reader's record.
+     * @param {string[]} left - The left column's HTML parts (mutated).
+     * @returns {void}
+     */
+    function _ytWindowTile(t, rec, left) {
+        const v = _ytParse(t.url);
+        const html = v ? _ytTileHtml(v, { title: rec.title || '', dead: rec.state === 'dead' }) : '';
+        if (!html) return;
+        const cover = left.findIndex(p => p.includes('class="mb-dp-xcover"'));
+        if (cover >= 0) left.splice(cover, 1);
+        const sub = left.findIndex(p => p.includes('class="mb-dp-xsub"'));
+        left.splice(sub >= 0 ? sub + 1 : 1, 0, `<div class="mb-yt-win">${html}</div>`);
+    }
+
+    /**
+     * What a tile plays, read back from its attributes (a clone has them all).
+     *
+     * @param {Element} tile
+     * @returns {?{kind: string, id: string, list: string, title: string, dur: string, dead: boolean}}
+     */
+    function _ytFromTile(tile) {
+        const d = tile.dataset;
+        if (!d.mbYtKind || (!d.mbYtId && !d.mbYtList)) return null;
+        return {
+            kind: d.mbYtKind, id: d.mbYtId || '', list: d.mbYtList || '',
+            title: d.mbYtTitle || '', dur: d.mbYtDur || '', dead: d.mbYtDead !== undefined,
+        };
+    }
+
+    /**
+     * The player and the line under it: a pill (Playing / Unavailable),
+     * "Video <id>", "Open on YouTube ↗", "■ Stop Esc" (the mockup). The frame
+     * carries no `sandbox` (the player needs its scripts) and is as wide as
+     * its column, at most 640 px, 16:9 (decision 5, CSS). A video known to be
+     * gone gets the mockup's sentence instead of a frame: nothing to ask.
+     * Otherwise YouTube's own player tells it, in its own words.
+     *
+     * @param {{kind: string, id: string, list: string, title?: string, dead?: boolean}} v
+     * @returns {string}
+     */
+    function _ytPlayerHtml(v) {
+        const what = v.kind === 'playlist' ? 'Playlist' : 'Video';
+        const screen = v.dead
+            ? '<div class="mb-yt-gone">This video is not available on YouTube any more.</div>'
+            : `<iframe class="mb-yt-frame" src="${_rgEsc(_ytEmbedUrl(v))}" title="${_rgEsc(v.title || `YouTube ${what.toLowerCase()}`)}" ` +
+              'allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen ' +
+              'referrerpolicy="strict-origin-when-cross-origin"></iframe>';
+        return `<div class="mb-yt-player" role="region" aria-label="YouTube player">${screen}<div class="mb-yt-foot">` +
+            (v.dead ? '<span class="mb-yt-pill mb-yt-pill-alert">Unavailable</span>' : '<span class="mb-yt-pill mb-yt-pill-run">Playing</span>') +
+            `<span class="mb-yt-grow">${what} <code>${_rgEsc(v.kind === 'playlist' ? v.list : v.id)}</code></span>` +
+            `<a href="${_rgEsc(_ytWatchUrl(v))}" target="_blank" rel="noopener noreferrer">Open on YouTube ↗</a>` +
+            '<button type="button" class="mb-yt-stop">■ Stop <kbd>Esc</kbd></button></div></div>';
+    }
+
+    /**
+     * The player that plays, or null — and if its player has left the page
+     * (a re-render emptied the table, the window closed), the state is
+     * cleared first.
+     *
+     * @returns {?Object} `_yt.cur`.
+     */
+    function _ytCur() {
+        if (_yt.cur && !_yt.cur.player.isConnected) _ytStop('gone');
+        return _yt.cur;
+    }
+
+    /**
+     * Plays a tile's video where the mockup puts it: in a table, a
+     * full-width row under the tile's row (`tr.mb-yt-playerrow`, never one of
+     * `allRows`: a re-render empties the tbody and so stops it); in a box
+     * with a slot (`[data-mb-yt-slots]` › `.mb-yt-slot`, the Discogs window's
+     * Videos), the slot above its list, so the list does not jump; elsewhere
+     * right under the tile. A second video stops the first (decision 4); the
+     * tile that plays, clicked again, stops it. Once the frame policy has
+     * refused the player (`_yt.blocked`), the tile opens YouTube in a new tab.
+     *
+     * @param {Element} tile
+     * @returns {void}
+     */
+    function _ytPlay(tile) {
+        const v = _ytFromTile(tile);
+        if (!v) return;
+        const cur = _ytCur();
+        if (cur && cur.tile === tile) {
+            _ytStop('the same tile');
+            return;
+        }
+        if (cur) _ytStop('another video');
+        if (_yt.blocked && !v.dead) {
+            window.open(_ytWatchUrl(v), '_blank', 'noopener');
+            return;
+        }
+        const html = _ytPlayerHtml(v);
+        const doc = tile.ownerDocument;
+        const box = tile.closest('[data-mb-yt-slots]');
+        const slot = box && box.querySelector('.mb-yt-slot');
+        const tr = tile.closest('tr');
+        let mode, el;
+        if (slot) {
+            mode = 'slot';
+            el = slot;
+            slot.innerHTML = html;
+        } else if (tr && tr.parentElement && /^(?:TBODY|TABLE)$/.test(tr.parentElement.tagName)) {
+            mode = 'row';
+            el = doc.createElement('tr');
+            el.className = 'mb-yt-playerrow';
+            const td = doc.createElement('td');
+            // Every column, however many the script added (the cdtoc
+            // tracklist row's idiom).
+            td.colSpan = 999;
+            td.innerHTML = html;
+            el.appendChild(td);
+            tr.after(el);
+        } else {
+            mode = 'under';
+            el = doc.createElement('div');
+            el.className = 'mb-yt-under';
+            el.innerHTML = html;
+            tile.after(el);
+        }
+        tile.classList.add('mb-yt-playing');
+        tile.setAttribute('aria-pressed', 'true');
+        _yt.cur = { tile, v, mode, el, player: el.querySelector('.mb-yt-player') };
+        _ytObserve();
+        Lib.debug('yt', `play ${_ytKey(v)} (${mode})`);
+    }
+
+    /**
+     * Watches for the player leaving the page — the table it is in
+     * re-rendered, its box replaced, the window closed (the dialog leaves
+     * `<body>`) — and clears the state then, so the tile is not left marked.
+     *
+     * @returns {void}
+     */
+    function _ytObserve() {
+        if (_yt.obs) _yt.obs.disconnect();
+        const cur = _yt.cur;
+        if (!cur) return;
+        const root = (cur.mode === 'row' && cur.el.closest('table')) ||
+            (cur.mode === 'slot' && cur.el.closest('[data-mb-yt-slots]')) || cur.el.parentElement;
+        _yt.obs = new MutationObserver(() => {
+            if (_yt.cur && !_yt.cur.player.isConnected) _ytStop('removed');
+        });
+        if (root) _yt.obs.observe(root, { childList: true, subtree: true });
+        if (document.body) _yt.obs.observe(document.body, { childList: true });
+    }
+
+    /**
+     * Stops the player: its row or wrapper goes, a slot is emptied, and no
+     * tile is marked as playing any more — the one that played, and any copy
+     * a re-render made of it while it was marked (a single table's live rows
+     * ARE its source rows, so a re-render clones the mark).
+     *
+     * @param {string} [reason] - For the debug log.
+     * @returns {boolean} Whether a player was stopped.
+     */
+    function _ytStop(reason) {
+        const cur = _yt.cur;
+        if (!cur) return false;
+        _yt.cur = null;
+        if (_yt.obs) {
+            _yt.obs.disconnect();
+            _yt.obs = null;
+        }
+        if (cur.mode === 'slot') cur.el.replaceChildren();
+        else cur.el.remove();
+        [cur.tile, ...document.querySelectorAll('.mb-yt-tile.mb-yt-playing')].forEach(t => {
+            t.classList.remove('mb-yt-playing');
+            t.setAttribute('aria-pressed', 'false');
+        });
+        Lib.debug('yt', `stop ${_ytKey(cur.v)}${reason ? ` (${reason})` : ''}`);
+        return true;
+    }
+
+    /**
+     * The tiles' one click handler (capture, on the document): a tile plays
+     * or stops, "■ Stop" stops and gives the focus back to the tile. Enter
+     * and Space on a focused tile arrive here as its click.
+     *
+     * @param {MouseEvent} e
+     * @returns {void}
+     */
+    function _ytOnClick(e) {
+        const t = e.target instanceof Element ? e.target : null;
+        if (!t || e.button !== 0) return;
+        if (t.closest('.mb-yt-stop')) {
+            e.preventDefault();
+            e.stopPropagation();
+            const cur = _ytCur();
+            const tile = cur && cur.tile;
+            _ytStop('■ Stop');
+            if (tile && tile.isConnected) tile.focus({ preventScroll: true });
+            return;
+        }
+        const tile = t.closest('.mb-yt-tile[data-mb-yt]');
+        if (!tile) return;
+        e.preventDefault();
+        e.stopPropagation();
+        _ytPlay(tile);
+    }
+
+    /**
+     * Esc stops the player first (capture, on the window: before the card's,
+     * the window's and a filter's own Esc); the next Esc does what it did.
+     * The artwork viewer owns every key while it is open. A key pressed
+     * inside YouTube's player belongs to its frame and never reaches here.
+     *
+     * @param {KeyboardEvent} e
+     * @returns {void}
+     */
+    function _ytOnKey(e) {
+        if (e.key !== 'Escape' || e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
+        if (_artViewerState || !_ytCur()) return;
+        const tile = _yt.cur.tile;
+        _ytStop('Esc');
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        if (tile.isConnected) tile.focus({ preventScroll: true });
+    }
+
+    /**
+     * Decision 6: where the page's frame policy (its Content-Security-Policy
+     * `frame-src`) refuses youtube-nocookie.com, the browser reports it; the
+     * player goes, the video opens on YouTube in a new tab, and from then on
+     * every tile of the page says "Opens on YouTube (new tab)" and does so.
+     * (discogs.com is the one host where this is unknown: its documents were
+     * behind Cloudflare's check for scripts/probe-youtube-frame-src.py.)
+     *
+     * @param {SecurityPolicyViolationEvent} e
+     * @returns {void}
+     */
+    function _ytOnPolicy(e) {
+        if (!/^https?:\/\/(?:www\.)?youtube-nocookie\.com\//i.test(e.blockedURI || '')) return;
+        const was = _yt.blocked;
+        _yt.blocked = true;
+        const cur = _ytCur();
+        if (cur) {
+            const v = cur.v;
+            _ytStop('frame policy');
+            window.open(_ytWatchUrl(v), '_blank', 'noopener');
+        }
+        if (!was) Lib.debug('yt', `the page's frame policy refuses ${e.blockedURI}: tiles open YouTube instead`);
+        document.querySelectorAll('.mb-yt-tile:not(.mb-yt-dead) .mb-yt-s').forEach(s => { s.textContent = 'Opens on YouTube (new tab)'; });
+    }
+
+    /**
+     * Installs the style and the three listeners, once per page, the first
+     * time a tile is built (so nothing of this exists while no YouTube link
+     * is shown, or with `sa_yt_play_in_place` off).
+     *
+     * @returns {void}
+     */
+    function _ytInit() {
+        if (_yt.init) return;
+        _yt.init = true;
+        _ensureYtStyle();
+        document.addEventListener('click', _ytOnClick, true);
+        window.addEventListener('keydown', _ytOnKey, true);
+        document.addEventListener('securitypolicyviolation', _ytOnPolicy);
+    }
+
+    /**
+     * Keeps a playing player through a repaint of the window's Extracted view
+     * (`_dpAreaRepaint()`): the window repaints whenever an answer arrives (a
+     * Discogs master's versions, page after page), and replacing its HTML
+     * would end the video. The new content goes in BEFORE the old leaves, the
+     * player moves into the new tile's place while both are in the page —
+     * `moveBefore()` keeps a frame playing; where the browser has no
+     * `moveBefore()`, `insertBefore()` moves it and the frame starts again —
+     * then the old content goes. Without the same tile in the new content
+     * the player stops with the old.
+     *
+     * @param {HTMLElement} area - The window's scroll area.
+     * @param {string} html - Its new content.
+     * @returns {boolean} Whether this did the repaint (else the caller does).
+     */
+    function _ytAreaRepaint(area, html) {
+        const cur = _ytCur();
+        if (!cur || !area.contains(cur.player)) return false;
+        const t = document.createElement('template');
+        t.innerHTML = html;
+        const fresh = Array.from(t.content.childNodes);
+        const old = Array.from(area.childNodes);
+        const key = cur.tile.dataset.mbYt;
+        let tile = null;
+        fresh.some(n => {
+            if (n.nodeType !== Node.ELEMENT_NODE) return false;
+            tile = Array.from(n.querySelectorAll('.mb-yt-tile[data-mb-yt]')).find(x => x.dataset.mbYt === key) || null;
+            return !!tile;
+        });
+        area.prepend(...fresh);
+        const move = (parent, node, ref) => (typeof parent.moveBefore === 'function' ? parent.moveBefore(node, ref) : parent.insertBefore(node, ref));
+        if (tile) {
+            const box = tile.closest('[data-mb-yt-slots]');
+            const slot = box && box.querySelector('.mb-yt-slot');
+            const tr = tile.closest('tr');
+            if (cur.mode === 'slot' && slot) {
+                move(slot, cur.player, null);
+                cur.el = slot;
+            } else if (cur.mode === 'row' && tr) {
+                move(tr.parentNode, cur.el, tr.nextSibling);
+            } else if (cur.mode === 'under') {
+                move(tile.parentNode, cur.el, tile.nextSibling);
+            } else {
+                tile = null;
+            }
+        }
+        old.forEach(n => n.remove());
+        if (!tile) {
+            // The player left with the old content: clear the state now.
+            _ytCur();
+            return true;
+        }
+        cur.tile = tile;
+        tile.classList.add('mb-yt-playing');
+        tile.setAttribute('aria-pressed', 'true');
+        _ytObserve();
+        return true;
+    }
+
+    /**
+     * The tiles' and the player's stylesheet ("Liner notes", the mockup's
+     * tokens), once per document.
+     *
+     * @returns {void}
+     */
+    function _ensureYtStyle() {
+        if (document.getElementById('mb-yt-style')) return;
+        // GM_addStyle so this is exempt from page CSP style-src restrictions.
+        const style = GM_addStyle(`
+            .mb-yt-tile {
+                display: inline-flex;
+                gap: 10px;
+                align-items: center;
+                max-width: 100%;
+                margin: 4px 0;
+                padding: 6px 10px 6px 6px;
+                border: 1px solid #d9cfbd;
+                border-radius: 4px;
+                background: #fff;
+                color: #2b2622;
+                font: 13px/1.35 Georgia, "Times New Roman", Times, serif;
+                text-align: left;
+                vertical-align: middle;
+                cursor: pointer;
+            }
+            .mb-yt-tile:hover { border-color: #7a6d5c; box-shadow: 0 10px 24px -8px rgba(60, 40, 20, .35); }
+            .mb-yt-tile:focus-visible { outline: 2px solid #2f5f9e; outline-offset: 2px; }
+            .mb-yt-tile.mb-yt-playing { border-color: #2f5f9e; }
+            .mb-yt-tile.mb-yt-bare { padding: 3px; margin: 0; }
+            /* A table cell or a list item: the tile on its own line, under the link. */
+            :is(td, li, div) > .mb-yt-tile:not(.mb-yt-bare) { display: flex; width: fit-content; }
+            .mb-yt-pic {
+                position: relative;
+                flex: none;
+                display: grid;
+                place-items: center;
+                width: 96px;
+                height: 54px;
+                border: 1px dashed #d9cfbd;
+                border-radius: 3px;
+                background: #f3ede0;
+                overflow: hidden;
+            }
+            .mb-yt-pic.mb-yt-has-still { border: 0; background: #2e2721; }
+            .mb-yt-pic img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+            .mb-yt-tile.mb-yt-small .mb-yt-pic, .mb-yt-tile.mb-yt-bare .mb-yt-pic { width: 72px; height: 40px; }
+            .mb-yt-btn {
+                position: relative;
+                display: grid;
+                place-items: center;
+                width: 28px;
+                height: 20px;
+                border-radius: 5px;
+                background: rgba(155, 34, 24, .92);
+            }
+            .mb-yt-pic:not(.mb-yt-has-still) .mb-yt-btn { background: #7a6d5c; }
+            .mb-yt-tile.mb-yt-dead .mb-yt-btn { background: #b9ad99; }
+            .mb-yt-btn::after {
+                content: "";
+                margin-left: 2px;
+                border-left: 8px solid #fff;
+                border-top: 5px solid transparent;
+                border-bottom: 5px solid transparent;
+            }
+            .mb-yt-dur {
+                position: absolute;
+                right: 3px;
+                bottom: 3px;
+                padding: 0 3px;
+                border-radius: 2px;
+                background: rgba(0, 0, 0, .72);
+                color: #fff;
+                font: 10px/1.3 system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+            }
+            .mb-yt-list {
+                position: absolute;
+                top: 0;
+                right: 0;
+                bottom: 0;
+                display: grid;
+                place-items: center;
+                width: 36%;
+                background: rgba(0, 0, 0, .55);
+                color: #fff;
+                font: 10px/1.2 system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+                text-align: center;
+            }
+            .mb-yt-meta { display: grid; gap: 1px; min-width: 0; }
+            .mb-yt-t { font-size: 13.5px; overflow-wrap: anywhere; }
+            .mb-yt-s { color: #7a6d5c; font: 11.5px/1.3 system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif; }
+            .mb-yt-tile.mb-yt-dead .mb-yt-s { color: #9b2218; }
+            .mb-yt-under, .mb-yt-slot:not(:empty) { margin: 6px 0 8px; }
+            /* A list's line: tile, title, length. In a grid list (the Discogs
+               window's Videos) the three line up in columns: each line's
+               box is dissolved into the grid, the slot spans every column
+               and takes no row while empty. */
+            .mb-yt-row { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: center; }
+            .mb-yt-row > .mb-yt-tile:not(.mb-yt-bare) { display: inline-flex; margin: 2px 0; }
+            .mb-yt-grid {
+                display: grid;
+                grid-template-columns: max-content minmax(0, 1fr) max-content;
+                gap: 6px 14px;
+                align-items: center;
+            }
+            .mb-yt-grid > .mb-yt-row { display: contents; }
+            .mb-yt-grid > .mb-yt-slot { grid-column: 1 / -1; }
+            .mb-yt-grid > .mb-yt-slot:empty { display: none; }
+            .mb-yt-grid .mb-yt-len { justify-self: end; font-variant-numeric: tabular-nums; white-space: nowrap; }
+            tr.mb-yt-playerrow > td { padding: 0 8px 12px; background: #fbf8f1; }
+            .mb-yt-player { display: grid; gap: 6px; width: min(100%, 640px); max-width: 640px; }
+            .mb-yt-frame {
+                display: block;
+                width: 100%;
+                height: auto;
+                aspect-ratio: 16 / 9;
+                border: 0;
+                border-radius: 4px;
+                background: #1d1a17;
+                box-shadow: 0 10px 24px -8px rgba(60, 40, 20, .35);
+            }
+            .mb-yt-gone {
+                display: grid;
+                place-items: center;
+                aspect-ratio: 16 / 9;
+                padding: 12px;
+                border-radius: 4px;
+                background: #1d1a17;
+                color: #f0b9b0;
+                font: 16px/1.4 Georgia, "Times New Roman", Times, serif;
+                text-align: center;
+            }
+            .mb-yt-foot {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 6px 12px;
+                align-items: center;
+                color: #7a6d5c;
+                font: 12.5px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+            }
+            .mb-yt-foot code { font: 11.5px ui-monospace, Consolas, monospace; color: #2b2622; }
+            .mb-yt-grow { flex: 1; }
+            .mb-yt-pill, .mb-yt-stop {
+                font: 600 10.5px/1.6 system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+                letter-spacing: .06em;
+                text-transform: uppercase;
+                border: 1px solid currentColor;
+                border-radius: 3px;
+                white-space: nowrap;
+            }
+            .mb-yt-pill { padding: 0 7px; }
+            .mb-yt-pill-run { color: #2f5f9e; }
+            .mb-yt-pill-alert { color: #9b2218; }
+            .mb-yt-stop { padding: 2px 8px; border-color: #d9cfbd; background: #fff; color: #2b2622; cursor: pointer; }
+            .mb-yt-stop:hover { border-color: #7a6d5c; }
+            .mb-yt-stop kbd {
+                padding: 0 4px;
+                border: 1px solid #d9cfbd;
+                border-bottom-width: 2px;
+                border-radius: 3px;
+                background: #fbf8f1;
+                font: 10.5px ui-monospace, Consolas, monospace;
+                text-transform: none;
+            }
+        `);
+        if (style) style.id = 'mb-yt-style';
+    }
+
     // --- U3: readers of known sites' APIs (org/iframe.org, U0 X1, X2, X4) ---
     //
     // An API answers what a card shows as data, in a few KB, where the page
@@ -61094,11 +62055,12 @@
      * credits, identifiers, notes, images, videos), which a version-1 record
      * does not carry; 3 since every artist, label and company keeps its
      * Discogs id, for its link; 4 since an artist or a label has a window of
-     * its own (profile, images, names with ids, sites: 2026-10-18). Only
-     * Discogs records are read again.
+     * its own (profile, images, names with ids, sites: 2026-10-18); 5 since a
+     * master carries its videos too (org/youtube.org, decision 3: the master
+     * window's Videos section). Only Discogs records are read again.
      * @type {number}
      */
-    const _EXT_DISCOGS_VERSION = 4;
+    const _EXT_DISCOGS_VERSION = 5;
 
     /**
      * How many rows of a list one request asks for (a master's versions, an
@@ -61284,6 +62246,10 @@
                 labels: (d.labels || []).filter(l => l && l.name).map(l => ({
                     name: _extDiscogsName(l.name), catno: l.catno && l.catno !== 'none' ? String(l.catno).trim() : '', id: Number(l.id) || 0,
                 })),
+                // A release's and (since record version 5) a master's.
+                videos: (d.videos || []).filter(v => /^https?:\/\//i.test(v.uri || '')).map(v => ({
+                    title: String(v.title || v.uri).trim(), url: v.uri, dur: Number(v.duration) || 0,
+                })),
             };
             if (kind === 'release') {
                 Object.assign(rec.discogs, {
@@ -61294,9 +62260,6 @@
                     })),
                     identifiers: (d.identifiers || []).filter(i => i && i.value).map(i => ({
                         type: String(i.type || '').trim(), value: String(i.value).trim(), desc: String(i.description || '').trim(),
-                    })),
-                    videos: (d.videos || []).filter(v => /^https?:\/\//i.test(v.uri || '')).map(v => ({
-                        title: String(v.title || v.uri).trim(), url: v.uri, dur: Number(v.duration) || 0,
                     })),
                 });
             } else {
@@ -63143,17 +64106,44 @@
                         list.map(i => `<div><span class="mb-dg-cat">${_rgEsc(i.value)}</span>${i.desc ? ` <span class="mb-dg-dim">· ${_rgEsc(i.desc)}</span>` : ''}</div>`)
                             .join('') + '</div>').join('')));
             }
-            if (dg.videos.length) {
-                const dur = (s) => (s ? `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}` : '');
-                out.left.push(_extDgSection('videos', 'Videos', dg.videos.length, '<div class="mb-dg-lines">' + dg.videos.map(v =>
-                    `<div><a href="${_rgEsc(v.url)}" target="_blank" rel="noopener noreferrer">${_rgEsc(v.title)}</a>` +
-                    `${v.dur ? ` <span class="mb-dg-dim">${dur(v.dur)}</span>` : ''}</div>`).join('') + '</div>'));
-            }
         } else {
             _extDgListStart(t, _extDgList('versions', dg.id), { start, force, repaint });
             out.right.push(_extDgVersionsHtml(t, rec));
         }
+        // A release's videos, and a master's (decision 3, record version 5).
+        if ((dg.videos || []).length) out.left.push(_extDgVideosHtml(dg.videos));
         return out;
+    }
+
+    /**
+     * The Discogs window's Videos section: a line per video — its title
+     * linked, its length — and (org/youtube.org) a small "Play here" tile in
+     * front of each YouTube one, the player opening in a slot ABOVE the list
+     * so the list does not jump (the mockup's Discogs panel). With tiles the
+     * list is three aligned columns — tile, title, length (vzell,
+     * 2026-10-28) — so every line has all three cells (an empty first one
+     * for a video that is not on YouTube, an empty last one without a
+     * length). Without a tile (`sa_yt_play_in_place` off, or no YouTube
+     * video) the section is what it always was.
+     *
+     * @param {Array<{title: string, url: string, dur: number}>} videos
+     * @returns {string}
+     */
+    function _extDgVideosHtml(videos) {
+        const dur = (s) => (s ? `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}` : '');
+        const tiles = videos.map((v) => {
+            const yt = _ytParse(v.url);
+            return yt ? _ytTileHtml(yt, { small: true, title: v.title, dur: v.dur }) : '';
+        });
+        const link = (v) => `<a href="${_rgEsc(v.url)}" target="_blank" rel="noopener noreferrer">${_rgEsc(v.title)}</a>`;
+        if (!tiles.some(Boolean)) {
+            return _extDgSection('videos', 'Videos', videos.length, '<div class="mb-dg-lines">' + videos.map(v =>
+                `<div>${link(v)}${v.dur ? ` <span class="mb-dg-dim">${dur(v.dur)}</span>` : ''}</div>`).join('') + '</div>');
+        }
+        const rows = videos.map((v, i) => `<div class="mb-yt-row">${tiles[i] || '<span class="mb-yt-notile"></span>'}${link(v)}` +
+            `<span class="mb-dg-dim mb-yt-len">${dur(v.dur)}</span></div>`);
+        return _extDgSection('videos', 'Videos', videos.length,
+            '<div class="mb-dg-lines mb-yt-grid" data-mb-yt-slots=""><div class="mb-yt-slot"></div>' + rows.join('') + '</div>');
     }
 
     /**
@@ -65825,6 +66815,8 @@
         // site's own two columns, the link's facts added to the right one.
         const dpCols = rec.state === 'ok' && rec.dp ? _dpExtractedCols(rec.dp) : null;
         const left = dpCols ? dpCols.left : _extLeftCol(t, rec);
+        // A YouTube link's window plays it in the window (org/youtube.org).
+        if (!dpCols && t.reader.id === 'youtube') _ytWindowTile(t, rec, left);
         const link = (u, text) => `<a href="${_rgEsc(u)}" target="_blank" rel="noopener noreferrer">${_rgEsc(text)}</a>`;
         const right = ['<h4>Link</h4>' + _extSiteHtml(t, _extPillHtml(rec)) + `<div class="mb-ext-url">${link(t.url, t.href)}</div>` +
             (rec.moved ? `<div class="mb-ext-url">→ ${link(rec.finalUrl, rec.finalUrl)}</div>` : '') +
@@ -80646,6 +81638,10 @@ a { color: #1565c0; }`;
     // MusicBrainz adds the picture after load, so this only starts watching.
     _sbInitPicture();
 
+    // "Play here" tiles under the sidebar's YouTube links and after the
+    // annotation's (org/youtube.org, decision 2; sa_yt_play_in_place).
+    _ytDecorateMbPage();
+
     // The sidebar's collapse handle on the initial page, sidebar open
     // (org/initial-page-footprint.org); the render tails collapse it.
     // MusicBrainz only: the foreign sites' sidebars have their own.
@@ -91903,6 +92899,11 @@ a { color: #1565c0; }`;
         // "R?" and the link count badge are decoration; the column's text is
         // the hidden .mb-dg-mb-ids ("release <mbid> …"), which stays.
         '.mb-dg-mb-search,.mb-dg-mb-n,' +
+        // .mb-yt-tile: a YouTube link's "Play here" tile (_ytTileHtml(),
+        // org/youtube.org) — its title and "Play here · 4:30" repeat or
+        // describe the link beside it, so a filter for "play" or the 📊
+        // values must never see them.
+        '.mb-yt-tile,' +
         // .mb-cell-collapse-toggle is the UI widget injected into multi-row cells
         // (Catalog#, Label, …) that shows "▶ 2 ▤" (glyph + item-count + rack icon).
         // Its text content — especially the numeric count such as "2" — must never
@@ -151892,6 +152893,51 @@ a { color: #1565c0; }`;
     // that is what keeps it honest.
     if (typeof window !== 'undefined' && window.__SA_TEST_MODE__) {
         window.__saTest = {
+            /**
+             * A YouTube link as something to play (`_ytParse()`), so a spec
+             * can pin every URL shape without a page for each.
+             *
+             * @param {string} href
+             * @returns {?{kind: string, id: string, list: string}}
+             */
+            ytParse: (href) => _ytParse(href),
+            /**
+             * A "Play here" tile's markup (`_ytTileHtml()`, the shipping
+             * builder, which also installs the one delegated handler), so a
+             * spec can drive the player before any page shows a tile.
+             *
+             * @param {string} href - A YouTube link.
+             * @param {Object} [opts] - As `_ytTileHtml()`'s.
+             * @returns {string} Empty when the link is no YouTube video.
+             */
+            ytTileHtml: (href, opts) => {
+                const v = _ytParse(href);
+                return v ? _ytTileHtml(v, opts) : '';
+            },
+            /**
+             * The Annotation column's extractor (`ColumnDataExtractor.ytTiles()`,
+             * the shipping one), for a cell no fixture page carries.
+             *
+             * @param {HTMLTableCellElement} td
+             * @returns {HTMLTableCellElement[]}
+             */
+            ytTilesExtract: (td) => ColumnDataExtractor.ytTiles(td),
+            /**
+             * The MusicBrainz page pass (`_ytDecorateMbPage()`, shipping), run
+             * again, so a spec can pin that it is idempotent.
+             *
+             * @returns {void}
+             */
+            ytDecorateMbPage: () => _ytDecorateMbPage(),
+            /**
+             * The key of the video that plays (`_ytCur()`), or null.
+             *
+             * @returns {?string}
+             */
+            ytPlaying: () => {
+                const cur = _ytCur();
+                return cur ? _ytKey(cur.v) : null;
+            },
             /**
              * The Title cell's "track name ≠ recording name" flag
              * (`_titleHasRecNameMismatch()`), which must still hold while the

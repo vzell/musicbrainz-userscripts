@@ -1292,7 +1292,8 @@ test.describe('the Discogs window (2026-10-17)', () => {
         const vers = d.locator('[data-mb-dg-sec="versions"]');
         await expect(vers.locator('.mb-dg-counts').first()).toHaveText('100 of 387 loaded');
         expect(await dgVersionsLog(page), 'page 1 only').toEqual([DGV[0]]);
-        await expect(d.locator('.mb-dg-xh')).toHaveText(['Images 7', 'Tracklist 8', 'Notes', 'Versions 387']);
+        // A master's videos since org/youtube.org (decision 3, record version 5).
+        await expect(d.locator('.mb-dg-xh')).toHaveText(['Images 7', 'Videos 3', 'Tracklist 8', 'Notes', 'Versions 387']);
         // The versions in the right column under the tracklist (2026-10-26), no full-width part.
         await expect(d.locator('.mb-dp-x.mb-dg-swap > .mb-dp-col').nth(1).locator('.mb-dg-xh')).toHaveText(['Tracklist 8', 'Notes', 'Versions 387']);
         await expect(d.locator('.mb-dg-full')).toHaveCount(0);

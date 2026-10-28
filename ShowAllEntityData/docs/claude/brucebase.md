@@ -630,6 +630,18 @@ card and the artwork viewer, through the shared foreign-image path
   (`_dpRowLinks(table, from)`: the same kind as the link opened). The
   record: `_dpParseBbPage()` (Scheduled, On stage, Setlist, images by kind,
   the tabs with content; sections for the window), `_DP_PARSER_VERSION` 5.
+- **Media and "Play here"** (org/youtube.org Step 4, `_DP_PARSER_VERSION` 8):
+  a Media tab that is only a YouTube player (an `<iframe>`, no text —
+  debug/bb-event-youtube.html) counts in "On the page", and becomes a Media
+  section between Performances and Recording (`_bbMediaSection()`: each
+  player as a link to the video or `playlist?list=`, then the tab's own
+  words). The record is `ytTiles`; the window adds a "Play here" tile after
+  every YouTube link of its sections at RENDER (`_ytDecorateHtml()`), so the
+  cached record never depends on `sa_yt_play_in_place`. The player loads only
+  on a click, as the venue window's "never another site's frame on its own"
+  asks. Fixture: tests/fixtures/detail-bb-gig-2026-10-03.html
+  (scripts/build-bb-youtube-gig-fixture.py keeps the YouTube iframe, unlike
+  build-detail-fixtures.py). docs/claude/detail-pages.md, "YouTube in place".
 - **The window** (vzell, the same night; `_DP_PARSER_VERSION` 6): a
   Brucebase record (song or entry) is `collapsible` — its sections are
   `<details class="mb-dp-sec">`, open unless `open: false` (a song's

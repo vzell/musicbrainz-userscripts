@@ -26697,3 +26697,63 @@ Env: 2026-10-28T01:09:35+01:00 → 01:32:32+01:00 · NB-3641 · WSL2 Ubuntu 24.0
 tests, all passed, none flaky, wall 22 m 57 s. vzell checked Phase 3a–3f
 and Phase 4 (after the /images/data fix) live before the run. The branch
 is ready for the merge decision; nothing merged.
+
+## 2026-10-28 — YouTube in place (org/youtube.org Steps 1–4): tiles, one player, the `videoseries` link
+
+Env: 2026-10-28T02:41:59+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) · Playwright 1.62.1 Chromium 151.0.7922.34 · no Tampermonkey (GM stubs)
+
+Branch `feature/youtube-embeds` (fast-forwarded to main d55d8915 first; its
+two remote-only commits were TODO notes already in main). Design in
+docs/claude/detail-pages.md, "YouTube in place"; this entry records what was
+found on the way.
+
+- **The `videoseries` bug (Step 4).** `_dpLiveDocHtml()` matched
+  `/youtube(?:-nocookie)?\.com\/embed\/([\w-]+)/` and so read
+  `embed/videoseries?list=PLTejJhB5zqTA` (debug/bb-event-youtube.html, the
+  Media tab of gig 2026-10-03; also detail-bb-song-4th-of-july) as a video
+  named `videoseries`: the Live page's link was `watch?v=videoseries`. Now
+  `_ytWatchUrl(_ytParse(src))` → `playlist?list=…`; pinned in
+  detail-preview.spec.js's Live page test, mutation-checked.
+- **An iframe-only Media tab counted as empty**: `_dpParseBbPage()`'s `has()`
+  judged a panel by its text, so "On the page" left out Media whenever the
+  tab was just a player. It now counts an `iframe[src*="youtube"]` too.
+  The "Sorry, no Media available." tab (gig 1985-01-13) is still empty
+  (bb-event-preview.spec.js unchanged and green).
+- **A window repaint would end a playing video**: `_dpAreaRepaint()` sets
+  `innerHTML`, and a Discogs master's window repaints on every versions page.
+  `_ytAreaRepaint()` inserts the new content first and moves the player with
+  `moveBefore()` (Chromium 133+; probed 151 in the harness:
+  `typeof Element.prototype.moveBefore === 'function'`), so the frame keeps
+  playing: the spec marks the frame, holds the window's URL lookup, releases
+  it and finds the same frame and ONE player request.
+- **A tile's words must not name a heading**: an annotation's
+  `<h2><a href="…playlist…">YouTube Playlist</a></h2>`
+  (tests/fixtures/event-overview.html) gets its tile AFTER the h2, never in it
+  — the collapsible headings read the h2's text.
+- **A link's own words vs its address**: the first "is it just the address"
+  test (`/youtu\.?be/i`) matched "YouTube Playlist" and dropped the title;
+  caught by the annotation spec, fixed to an anchored address pattern.
+- **An Annotation column counts characters** (`numberOfChars` reads
+  `textContent`): the `ytTiles` extractor is a PRIMARY column extractor
+  listed after it (extractors run in list order). A synthetic extractor would
+  have run later too, but warns once per row on every report without an
+  Annotation column (report-detail serves 117 reports).
+- **discogs.com's frame policy is still unknown**: the probe of 2026-10-25
+  got Cloudflare's challenge. The fallback (decision 6) is built and tested
+  with a synthetic `SecurityPolicyViolationEvent`; the real headers need
+  vzell's browser.
+
+Fixtures: tests/fixtures/recording-youtube.html (capture-raw-page.js,
+logged out, this session; no Mapbox token), detail-bb-gig-2026-10-03.html
+(scripts/build-bb-youtube-gig-fixture.py from debug/bb-event-youtube.html,
+the YouTube iframe kept). Settings `sa_yt_play_in_place`, `sa_yt_stills`
+joined `FIXTURE_SETTINGS_OVERRIDE` (now nineteen). Spec
+youtube-embeds.spec.js 25/25; mutations scripts/mutations/youtube-embeds.json
+21/21 fail as planted; nearby suites green per step (MusicBrainz 187,
+Discogs + popups 177, Brucebase + detail 189).
+
+Full suite: Env: 2026-10-28T02:42:55+01:00 → 03:05:49+01:00 · NB-3641 ·
+WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) · Playwright 1.62.1 Chromium · no
+Tampermonkey (GM stubs). `python3 scripts/run-test-full.py` on
+`feature/youtube-embeds` at 2c44e1d1: 2,424 tests, all passed, none flaky,
+wall 22 m 54 s. Nothing merged; vzell's live test comes first.

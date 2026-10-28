@@ -1,0 +1,314 @@
+[
+    {
+        "name": "Esc stops the player but lets the key go on",
+        "why": "The first Esc must stop the player and reach nothing else (the window, a card, a filter); the spec counts Esc keydowns that reach the document.",
+        "edits": [
+            {
+                "find": "        _ytStop('Esc');\n        e.preventDefault();\n        e.stopImmediatePropagation();",
+                "replace": "        _ytStop('Esc');\n        e.preventDefault();"
+            }
+        ],
+        "spec": "tests/fixtures/youtube-embeds.spec.js",
+        "grep": "Esc stops the player and nothing else sees it",
+        "expect": "fail"
+    },
+    {
+        "name": "a second video does not stop the first",
+        "why": "Decision 4, one player at a time: the spec asserts a single frame after a second tile is clicked.",
+        "edits": [
+            {
+                "find": "        if (cur) _ytStop('another video');\n        if (_yt.blocked && !v.dead) {",
+                "replace": "        if (_yt.blocked && !v.dead) {"
+            }
+        ],
+        "spec": "tests/fixtures/youtube-embeds.spec.js",
+        "grep": "one player at a time",
+        "expect": "fail"
+    },
+    {
+        "name": "the still frame ignores sa_yt_stills",
+        "why": "Stills off means no request to i.ytimg.com before a click; the spec counts them.",
+        "edits": [
+            {
+                "find": "        const still = Lib.settings.sa_yt_stills === true && !playlist && !!v.id;",
+                "replace": "        const still = !playlist && !!v.id;"
+            }
+        ],
+        "spec": "tests/fixtures/youtube-embeds.spec.js",
+        "grep": "nothing is asked before a click",
+        "expect": "fail"
+    },
+    {
+        "name": "a table tile plays under the tile, not in a row of its own",
+        "why": "In a table the player is a full-width tr.mb-yt-playerrow under the row (the mockup); the spec asserts that row.",
+        "edits": [
+            {
+                "find": "        } else if (tr && tr.parentElement && /^(?:TBODY|TABLE)$/.test(tr.parentElement.tagName)) {\n            mode = 'row';",
+                "replace": "        } else if (false) {\n            mode = 'row';"
+            }
+        ],
+        "spec": "tests/fixtures/youtube-embeds.spec.js",
+        "grep": "in a table: a full-width row under the row",
+        "expect": "fail"
+    },
+    {
+        "name": "stopping unmarks only the tile that played",
+        "why": "A re-render clones a marked source row; once the player is gone, the copy must not stay marked as playing.",
+        "edits": [
+            {
+                "find": "        [cur.tile, ...document.querySelectorAll('.mb-yt-tile.mb-yt-playing')].forEach(t => {",
+                "replace": "        [cur.tile].forEach(t => {"
+            }
+        ],
+        "spec": "tests/fixtures/youtube-embeds.spec.js",
+        "grep": "in a table: a full-width row under the row",
+        "expect": "fail"
+    },
+    {
+        "name": "a tile known dead still asks the player",
+        "why": "A video the reader's oEmbed called dead shows the sentence and asks nothing; the spec asserts no frame and no request.",
+        "edits": [
+            {
+                "find": "        const screen = v.dead\n",
+                "replace": "        const screen = false\n"
+            }
+        ],
+        "spec": "tests/fixtures/youtube-embeds.spec.js",
+        "grep": "a tile known dead",
+        "expect": "fail"
+    },
+    {
+        "name": "a frame-policy refusal is not remembered",
+        "why": "Decision 6: after the refusal every tile says it opens YouTube and does so; the spec clicks a second tile and expects a new tab, no player.",
+        "edits": [
+            {
+                "find": "        const was = _yt.blocked;\n        _yt.blocked = true;",
+                "replace": "        const was = _yt.blocked;\n        _yt.blocked = false;"
+            }
+        ],
+        "spec": "tests/fixtures/youtube-embeds.spec.js",
+        "grep": "decision 6",
+        "expect": "fail"
+    },
+    {
+        "name": "the URLs table's converter adds no tile",
+        "why": "Step 2: the tile is built with the URL cell in _eventRelColumns(); the spec asserts it under the link.",
+        "edits": [
+            {
+                "find": "            const tile = ytTile(r);\n            if (tile) {",
+                "replace": "            const tile = ytTile(r);\n            if (false) {"
+            }
+        ],
+        "spec": "tests/fixtures/youtube-embeds.spec.js",
+        "grep": "the URLs sub-table: a tile under the link",
+        "expect": "fail"
+    },
+    {
+        "name": "the tile's words reach the filters",
+        "why": "Without .mb-yt-tile in _CLEAN_STRIP_SEL a global filter for 'Play here' matches every row with a tile.",
+        "edits": [
+            {
+                "find": "        '.mb-yt-tile,' +\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/youtube-embeds.spec.js",
+        "grep": "the tile is out of every filter",
+        "expect": "fail"
+    },
+    {
+        "name": "the MusicBrainz page pass never runs",
+        "why": "The sidebar's tile and the annotation's come from _ytDecorateMbPage() at init.",
+        "edits": [
+            {
+                "find": "    // annotation's (org/youtube.org, decision 2; sa_yt_play_in_place).\n    _ytDecorateMbPage();",
+                "replace": "    // annotation's (org/youtube.org, decision 2; sa_yt_play_in_place)."
+            }
+        ],
+        "spec": "tests/fixtures/youtube-embeds.spec.js",
+        "grep": "the sidebar: a small tile",
+        "expect": "fail"
+    },
+    {
+        "name": "a heading's link gets its tile inside the heading",
+        "why": "The heading's own text (read by the collapsible headings) must not gain the tile's; the spec asserts the tile right after the h2 and the h2's text unchanged.",
+        "edits": [
+            {
+                "find": "            const at = head && root.contains(head) ? head : a;",
+                "replace": "            const at = a;"
+            }
+        ],
+        "spec": "tests/fixtures/youtube-embeds.spec.js",
+        "grep": "the annotation: a tile after the heading",
+        "expect": "fail"
+    },
+    {
+        "name": "the YouTube window has no tile",
+        "why": "The link's window gets the same tile, playing in the window.",
+        "edits": [
+            {
+                "find": "        if (!dpCols && t.reader.id === 'youtube') _ytWindowTile(t, rec, left);",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/youtube-embeds.spec.js",
+        "grep": "the window \\(Space\\)",
+        "expect": "fail"
+    },
+    {
+        "name": "a window repaint replaces a playing player",
+        "why": "Without _ytAreaRepaint() the window's repaint rebuilds its HTML and the video ends; the spec marks the frame and expects the same frame after the repaint.",
+        "edits": [
+            {
+                "find": "        if (!_ytAreaRepaint(area, html)) area.innerHTML = html;",
+                "replace": "        area.innerHTML = html;"
+            }
+        ],
+        "spec": "tests/fixtures/youtube-embeds.spec.js",
+        "grep": "the window \\(Space\\)",
+        "expect": "fail"
+    },
+    {
+        "name": "the master window shows no videos",
+        "why": "Decision 3: the master reader reads videos (record version 5) and the master window gets the same Videos section.",
+        "edits": [
+            {
+                "find": "        if ((dg.videos || []).length) out.left.push(_extDgVideosHtml(dg.videos));",
+                "replace": "        if (dg.kind === 'release' && (dg.videos || []).length) out.left.push(_extDgVideosHtml(dg.videos));"
+            }
+        ],
+        "spec": "tests/fixtures/youtube-embeds.spec.js",
+        "grep": "the master window: its videos too",
+        "expect": "fail"
+    },
+    {
+        "name": "the Discogs window's Videos have no slot above the list",
+        "why": "The mockup puts the player in a slot above the list so the list does not jump; without it the player opens inside a line.",
+        "edits": [
+            {
+                "find": "            '<div class=\"mb-dg-lines mb-yt-grid\" data-mb-yt-slots=\"\"><div class=\"mb-yt-slot\"></div>' + rows.join('') + '</div>');",
+                "replace": "            '<div class=\"mb-dg-lines mb-yt-grid\">' + rows.join('') + '</div>');"
+            }
+        ],
+        "spec": "tests/fixtures/youtube-embeds.spec.js",
+        "grep": "the release window: a small tile per video",
+        "expect": "fail"
+    },
+    {
+        "name": "the release page has no Videos sub-table",
+        "why": "Decision 3: a Videos sub-table from the same API answer.",
+        "edits": [
+            {
+                "find": "_dgTableHtml('Barcode and Other Identifiers', H['Barcode and Other Identifiers'], ids) + _dgVideosTableHtml(d.videos);",
+                "replace": "_dgTableHtml('Barcode and Other Identifiers', H['Barcode and Other Identifiers'], ids);"
+            }
+        ],
+        "spec": "tests/fixtures/youtube-embeds.spec.js",
+        "grep": "the release page: a Videos sub-table",
+        "expect": "fail"
+    },
+    {
+        "name": "the Videos sub-table's Play column is empty",
+        "why": "Play holds a bare tile per YouTube video; the spec counts three and plays the first.",
+        "edits": [
+            {
+                "find": "            const tile = yt ? _ytTileHtml(yt, { bare: true, title, dur: Number(v.duration) || 0 }) : '';",
+                "replace": "            const tile = '';"
+            }
+        ],
+        "spec": "tests/fixtures/youtube-embeds.spec.js",
+        "grep": "the release page: a Videos sub-table",
+        "expect": "fail"
+    },
+    {
+        "name": "the Live page builds watch?v=videoseries again",
+        "why": "Step 4's bug: a playlist player must become playlist?list=<list>, never a video named videoseries.",
+        "edits": [
+            {
+                "find": "                a.href = yt ? _ytWatchUrl(yt) : src;",
+                "replace": "                a.href = yt ? `https://www.youtube.com/watch?v=${yt.id || 'videoseries'}` : src;"
+            }
+        ],
+        "spec": "tests/fixtures/detail-preview.spec.js",
+        "grep": "the Live page view's copy",
+        "expect": "fail"
+    },
+    {
+        "name": "a Brucebase entry has no Media section",
+        "why": "Step 4: the Media tab's players become a section of links in the window.",
+        "edits": [
+            {
+                "find": "                if (media) data.sections.push(media);",
+                "replace": "                if (false) data.sections.push(media);"
+            }
+        ],
+        "spec": "tests/fixtures/youtube-embeds.spec.js",
+        "grep": "the reader: a Media section",
+        "expect": "fail"
+    },
+    {
+        "name": "a Media tab that is only a player counts as empty",
+        "why": "has() judged a panel by its text, so an iframe-only Media tab was left out of 'On the page'.",
+        "edits": [
+            {
+                "find": "            return (!!t && !/^Sorry,? no\\b.*\\bavailable\\.?$/i.test(t)) || !!(panel && panel.querySelector('iframe[src*=\"youtube\"]'));",
+                "replace": "            return !!t && !/^Sorry,? no\\b.*\\bavailable\\.?$/i.test(t);"
+            }
+        ],
+        "spec": "tests/fixtures/youtube-embeds.spec.js",
+        "grep": "the reader: a Media section",
+        "expect": "fail"
+    },
+    {
+        "name": "the detail window's sections get no tiles",
+        "why": "The tiles are added at render (the cached record has none), only for a record marked ytTiles.",
+        "edits": [
+            {
+                "find": "            const html = s.html && data.ytTiles ? _ytDecorateHtml(s.html) : s.html;",
+                "replace": "            const html = s.html;"
+            }
+        ],
+        "spec": "tests/fixtures/youtube-embeds.spec.js",
+        "grep": "the window: a tile after the Media playlist",
+        "expect": "fail"
+    },
+    {
+        "name": "the relationship converter reads the initial page's tile as a line",
+        "why": "_eventSplitAtBr() must skip a tile the initial page put into a table.details cell, or the URLs table gains a bogus row and a second tile.",
+        "edits": [
+            {
+                "find": "            if (n.nodeType === Node.ELEMENT_NODE && n.classList.contains('mb-yt-tile')) return;\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/youtube-embeds.spec.js",
+        "grep": "the URLs sub-table: a tile under the link",
+        "expect": "fail"
+    },
+    {
+        "name": "the initial page's Relationships get no tile",
+        "why": "vzell, 2026-10-28: the 'stream video for free' link plays on the initial page, before any button.",
+        "edits": [
+            {
+                "find": "        document.querySelectorAll('#content .annotation-body').forEach(body => _ytDecorateLinks(body));\n        _ytDecorateRelDetails();",
+                "replace": "        document.querySelectorAll('#content .annotation-body').forEach(body => _ytDecorateLinks(body));"
+            }
+        ],
+        "spec": "tests/fixtures/youtube-embeds.spec.js",
+        "grep": "the initial page: a tile after",
+        "expect": "fail"
+    },
+    {
+        "name": "the Discogs window's videos are not in columns",
+        "why": "vzell, 2026-10-28: tile, title and length line up in three columns; without display: contents each line is one grid cell.",
+        "edits": [
+            {
+                "find": "            .mb-yt-grid > .mb-yt-row { display: contents; }",
+                "replace": "            .mb-yt-grid > .mb-yt-row { display: flex; }"
+            }
+        ],
+        "spec": "tests/fixtures/youtube-embeds.spec.js",
+        "grep": "the release window: a small tile per video",
+        "expect": "fail"
+    }
+]
