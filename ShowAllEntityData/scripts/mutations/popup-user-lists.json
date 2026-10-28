@@ -180,5 +180,18 @@
         "spec": "tests/fixtures/popup-mb-user-lists.spec.js",
         "grep": "RATINGS",
         "expect": "fail"
+    },
+    {
+        "name": "genres: the editor's tags window never asks for the genre list",
+        "why": "2026-10-28: the Genres table's 'Genre page' column comes from the genre list, which the window (never the card) asks for once.",
+        "edits": [
+            {
+                "find": "                if (d.genres.length) _mbGenreLookup(true, repaint);",
+                "replace": "                if (d.genres.length) _mbGenreLookup(false, repaint);"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb-user-lists.spec.js",
+        "grep": "TAGS: tags, genres and votes",
+        "expect": "fail"
     }
 ]

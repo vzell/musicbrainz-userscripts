@@ -23499,7 +23499,7 @@
         artist: 'artist', release: 'release', 'release-group': 'release_group', recording: 'recording',
         work: 'work', label: 'label', area: 'area', place: 'place', event: 'event', series: 'series',
         instrument: 'instrument', genre: 'genre', collection: 'collection', user: 'editor', subscribers: 'editor',
-        usertags: 'editor', userratings: 'editor', usertag: 'editor',
+        usertags: 'editor', userratings: 'editor', usertag: 'editor', genres: 'genre',
     };
 
     /**
@@ -23561,6 +23561,7 @@
         place: { page: 'Place', style: true }, event: { page: 'Event', style: true }, series: { page: 'Series', style: true },
         instrument: { page: 'Instrument', style: false }, genre: { page: 'Genre', style: false },
         collection: { page: 'Collections', style: false }, user: { page: 'Editor', style: false },
+        genres: { page: 'Genre', style: false },
     };
 
     /** Discogs' Database Guidelines section: the documentation of a Discogs step without an article of its own. */
@@ -24474,7 +24475,7 @@
      * @type {Set<string>}
      */
     const _DP_VIEW_TYPES = new Set(['edits', 'doc', 'docsearch', 'collections', 'applications', 'usertags', 'userratings',
-        'usertag', 'annotations', 'annotation', 'subscribers']);
+        'usertag', 'annotations', 'annotation', 'subscribers', 'genres']);
 
     /** Below this width (px) the window's path keeps two steps instead of three. */
     const _DP_PATH_NARROW_PX = 620;
@@ -54017,6 +54018,14 @@
      */
     const _MB_POP_DOC_RE = /^\/doc\/(.+?)\/?$/;
 
+    /**
+     * The list of every genre (`/genres`, 2026-10-28): kind `genres`, id
+     * `all` (there is one list). Read by `_mbParseGenresPage()`, and the
+     * same record answers `_mbGenreLookup()`.
+     * @type {RegExp}
+     */
+    const _MB_POP_GENRES_RE = /^\/genres\/?$/;
+
     /** How many of an editor's tagged entities the `usertag` card lists. */
     const _MB_POP_USERTAG_CARD_ROWS = 6;
 
@@ -54177,6 +54186,7 @@
         if (stub) return { seg: 'cdstub', type: 'cdstub', id: stub[1] };
         const docp = _MB_POP_DOC_RE.exec(pathname);
         if (docp) return { seg: 'doc', type: 'doc', id: docp[1] };
+        if (_MB_POP_GENRES_RE.test(pathname)) return { seg: '', type: 'genres', id: 'all' };
         // A documentation search (Phase 3f): the site's page is Google's
         // custom search, so its card and window ask the wiki's search API.
         if (/^\/search\/?$/.test(pathname)) {
@@ -57772,6 +57782,106 @@
         return { title: _mbPopText(h1).replace(/\s*\/\s*/g, ' / '), status, toc, intro, html: parts.join('') };
     }
 
+    /**
+     * The genre list (`/genres`, 2026-10-28, debug/genres-initial.html): one
+     * bare `ul` under `#content`, an `li` per genre holding its
+     * `/genre/<MBID>` link and, for a few (32 of 2,215 when captured), a
+     * `span.comment` "(disambiguation)"; the paragraphs before it are the
+     * intro. One page, no pager, A–Z as MusicBrainz sorts it. The HTML page
+     * rather than `/ws/2/genre/all`: one request instead of ~23 pages of
+     * 100, ids and disambiguations included. `null` without that list (a
+     * login page, an error page).
+     *
+     * @param {Document} doc
+     * @returns {?{intro: string, genres: Array<{id: string, name: string, comment: string}>}}
+     */
+    function _mbParseGenresPage(doc) {
+        const content = doc.getElementById('content');
+        const ul = content && Array.from(content.children)
+            .find(el => el.tagName === 'UL' && el.querySelector(':scope > li > a[href^="/genre/"]'));
+        if (!ul) return null;
+        const genres = Array.from(ul.children).map((li) => {
+            const a = li.querySelector(':scope > a[href^="/genre/"]');
+            if (!a) return null;
+            const c = li.querySelector(':scope > .comment');
+            return {
+                id: (a.getAttribute('href').split('/')[2] || '').toLowerCase(), name: _mbPopText(a),
+                comment: c ? _mbPopText(c).replace(/^\((.*)\)$/, '$1') : '',
+            };
+        }).filter(g => g && g.id && g.name);
+        const intro = Array.from(content.children).filter(el => el.tagName === 'P' &&
+            el.compareDocumentPosition(ul) & Node.DOCUMENT_POSITION_FOLLOWING).map(p => _mbPopText(p)).join(' ');
+        return { intro, genres };
+    }
+
+    /**
+     * Every genre by its lower-cased name, from the `/genres` record the
+     * `genres` kind keeps (`pop:page:genres:all`): what tells a tag that is
+     * a genre from one that is not (the editor's tag window, the Tags
+     * column's 📊). `start` asks for the record (once: `_mbLoad()` joins a
+     * load under way, and memory, then IndexedDB, answer before the
+     * network); without it only what is already in memory answers, so a
+     * repaint never asks. The Map is built once per record.
+     *
+     * @param {boolean} [start] - May start the request (a `start`/pin path only).
+     * @param {?function(): void} [repaint] - Called when the record arrives.
+     * @returns {?Map<string, {id: string, name: string, comment: string}>} null until the record is there.
+     */
+    function _mbGenreLookup(start = false, repaint = null) {
+        const key = 'pop:page:genres:all';
+        if (start) _mbPageLoad(key, new URL('/genres', _mbOrigin()).href, _mbParseGenresPage, { repaint });
+        const st = _mbPop.get(key);
+        if (!st || st.status !== 'done' || !st.data) return null;
+        if (_mbGenreLookup.rec !== st.data) {
+            _mbGenreLookup.rec = st.data;
+            _mbGenreLookup.map = new Map(st.data.genres.map(g => [g.name.toLowerCase(), g]));
+        }
+        return _mbGenreLookup.map;
+    }
+
+    /**
+     * The letter a genre is filed under in the genre list's window: its
+     * first letter without accents, upper-cased; "0–9" for a digit ("2
+     * tone"), "#" for anything else — an uncased letter too, such as the
+     * ʻokina that opens a Hawaiian genre's name.
+     *
+     * @param {string} name
+     * @returns {string}
+     */
+    function _mbGenreLetter(name) {
+        const c = String(name || '').normalize('NFD').charAt(0).toUpperCase();
+        if (/[0-9]/.test(c)) return '0–9';
+        return /\p{Lu}/u.test(c) ? c : '#';
+    }
+
+    /**
+     * The order of the genre list's letter chips (`_dpListTableHtml()`'s
+     * `facetSort`): "0–9", then A–Z, then "#".
+     *
+     * @param {Array} a - `[letter, count]`.
+     * @param {Array} b - `[letter, count]`.
+     * @returns {number}
+     */
+    function _mbGenreLetterOrder(a, b) {
+        const rank = v => (v === '0–9' ? 0 : v === '#' ? 2 : 1);
+        return (rank(a[0]) - rank(b[0])) || a[0].localeCompare(b[0]);
+    }
+
+    /**
+     * A genre's disambiguation as " (…)" in dim type, from the genre list
+     * when it is already in memory (`_mbGenreLookup()` without `start`: a
+     * tag's card never asks for the list); '' otherwise. A tag's own page
+     * names its genre but not the genre's disambiguation.
+     *
+     * @param {string} name - The genre's name.
+     * @returns {string} HTML.
+     */
+    function _mbGenreCommentHtml(name) {
+        const map = _mbGenreLookup();
+        const g = map && map.get(String(name || '').toLowerCase());
+        return g && g.comment ? ` <span class="mb-rg-dim">(${_rgEsc(g.comment)})</span>` : '';
+    }
+
     /** How many hits a documentation search asks the wiki for. */
     const _MB_POP_DOCSEARCH_LIMIT = 50;
 
@@ -59966,6 +60076,45 @@
                 return `<div class="mb-dp-x"><div class="mb-dp-col">${left}</div><div class="mb-dp-col">${right}</div></div>`;
             },
         })),
+        // The genre list (`/genres`, 2026-10-28): read from its page
+        // (`_mbParseGenresPage()`), one request for card, window and
+        // `_mbGenreLookup()`. Card: how many, the first and the last, the
+        // intro. Window: every genre as a List table, letters as chips,
+        // each genre drilling into its own card.
+        genres: Object.assign({ title: 'Genre list', wide: true, path: () => '/genres' }, _mbPopPageKind({
+            parse: _mbParseGenresPage,
+            cardHtml(d) {
+                const n = d.genres.length;
+                const withComment = d.genres.filter(g => g.comment).length;
+                return '<div class="mb-tt-title">Genre list</div>' +
+                    `<div class="mb-tt-body mb-rg-pills">${_mbPopPillsHtml([`${n.toLocaleString('en-US')} genre${n === 1 ? '' : 's'}`])}</div>` +
+                    '<div class="mb-tt-rule"></div>' + _mbPopKvHtml([
+                        ['From', n ? `${_rgEsc(d.genres[0].name)} to ${_rgEsc(d.genres[n - 1].name)}` : ''],
+                        ['Disambiguated', withComment ? _rgEsc(withComment.toLocaleString('en-US')) : ''],
+                    ]) + (d.intro ? `<div class="mb-tt-body">${_rgEsc(d.intro)}</div>` : '');
+            },
+            windowHtml(d, t) {
+                const n = d.genres.length;
+                const left = '<div class="mb-dp-xtitle">Genre list</div><div class="mb-dp-xsub">MusicBrainz · every genre</div>' +
+                    '<h4>Facts</h4>' + _mbPopKvHtml([
+                        ['Genres', _rgEsc(n.toLocaleString('en-US'))],
+                        ['Disambiguated', _rgEsc(d.genres.filter(g => g.comment).length.toLocaleString('en-US'))],
+                    ]) + (d.intro ? `<div class="mb-dp-section">${_rgEsc(d.intro)}</div>` : '') +
+                    '<p class="mb-dp-xsub">A genre opens here. To give an entity a genre, tag it with the genre\'s name.</p>';
+                const right = `<h4>Genres · ${_rgEsc(n.toLocaleString('en-US'))}</h4>` + _dpListTableHtml(t, 'genres', [
+                    {
+                        key: 'name', label: 'Genre', val: g => g.name,
+                        html: (g, q) => `<a href="/genre/${_rgEsc(g.id)}" target="_blank" rel="noopener">${_hlEsc(g.name, q)}</a>`,
+                    },
+                    { key: 'comment', label: 'Disambiguation', val: g => g.comment, html: (g, q) => (g.comment ? _hlEsc(g.comment, q) : '') },
+                ], d.genres, {
+                    initial: 'A–Z, as MusicBrainz lists them', placeholder: 'Filter the genres', search: g => `${g.name} ${g.comment}`,
+                    facet: g => _mbGenreLetter(g.name), chipLabel: 'Letter', facetSort: _mbGenreLetterOrder,
+                    none: 'No genres.', nomatch: 'No genre matches.',
+                });
+                return `<div class="mb-dp-x"><div class="mb-dp-col">${left}</div><div class="mb-dp-col">${right}</div></div>`;
+            },
+        })),
         // Card: one lookup with the line-up, the place, what the event is part
         // of and its URLs (16 KB for the Manchester show, 6.3 KB for the
         // OceanFirst one: probe 2026-10-08); the setlist is a field of the
@@ -60518,18 +60667,37 @@
                         : '<div class="mb-tt-comment">They have upvoted no tag.</div>');
             },
             windowHtml(d, t) {
+                // The genres' own pages (2026-10-28), from the genre list
+                // the pin asked for (`_mbGenreLookup()`): "…" until it is in.
+                const genres = _mbGenreLookup();
+                const genreCol = {
+                    key: 'genre', label: 'Genre page', sort: false,
+                    html: (x) => {
+                        const g = genres && genres.get(x.name.toLowerCase());
+                        if (!genres) return '<span class="mb-rg-dim">…</span>';
+                        return g ? `<a href="/genre/${_rgEsc(g.id)}" target="_blank" rel="noopener">${_rgEsc(g.name)}</a>` +
+                            (g.comment ? ` <span class="mb-rg-dim">(${_rgEsc(g.comment)})</span>` : '') : '';
+                    },
+                };
                 // Each a Compact table (Phase 3d), most votes first.
-                const list = (items, id, what) => _dpCompactTableHtml(t, id, [
+                const list = (items, id, what, extra = []) => _dpCompactTableHtml(t, id, [
                     {
                         key: 'name', label: 'Tag', val: x => x.name,
                         html: (x, q) => `<a href="/tag/${encodeURIComponent(x.name)}" target="_blank" rel="noopener">${_hlEsc(x.name, q)}</a>`,
                     },
                     { key: 'count', label: 'Votes', num: true, first: -1, cls: 'mb-rg-num', val: x => x.count, html: x => _rgEsc(x.count) },
+                    ...extra,
                 ], items.slice().sort((a, b) => (b.count - a.count) || a.name.localeCompare(b.name)), { initial: 'most votes first', what });
                 const left = `<div class="mb-dp-xtitle">${_rgEsc(d.name || t.id)}</div><div class="mb-dp-xsub">MusicBrainz · editor · tags upvoted</div>` +
-                    `<h4>Genres · ${d.genres.length}</h4>` + (d.genres.length ? list(d.genres, 'genres', 'genres') : '<div class="mb-dp-xsub">None.</div>');
+                    `<h4>Genres · ${d.genres.length}</h4>` + (d.genres.length ? list(d.genres, 'genres', 'genres', [genreCol]) : '<div class="mb-dp-xsub">None.</div>');
                 const right = `<h4>Other tags · ${d.tags.length}</h4>` + (d.tags.length ? list(d.tags, 'tags', 'tags') : '<div class="mb-dp-xsub">None.</div>');
                 return `<div class="mb-dp-x"><div class="mb-dp-col">${left}</div><div class="mb-dp-col">${right}</div></div>`;
+            },
+            // The genre list, for the Genres table's "Genre page" column:
+            // asked once the window has the editor's tags (a window, never
+            // a hover), joined if under way, from memory/IndexedDB first.
+            pin: (t, d, again, repaint) => {
+                if (d.genres.length) _mbGenreLookup(true, repaint);
             },
         })),
         // An editor's ratings (2026-10-21), the profile's "Ratings … view":
@@ -60657,7 +60825,7 @@
                 const kinds = _mbPopTagKinds(d);
                 const shown = kinds.slice(0, 6);
                 return `<div class="mb-tt-title">${_rgEsc(d.name)}</div>` +
-                    `<div class="mb-tt-comment">${d.genre ? `Tag of the genre ${_rgEsc(d.genre.name)}` : 'Tag'}</div>` +
+                    `<div class="mb-tt-comment">${d.genre ? `Tag of the genre ${_rgEsc(d.genre.name)}${_mbGenreCommentHtml(d.genre.name)}` : 'Tag'}</div>` +
                     `<div class="mb-tt-body mb-rg-pills">${_mbPopPillsHtml([d.genre ? 'Genre' : '',
                         d.total ? `${d.total} ${d.total === '1' ? 'entity' : 'entities'}` : ''])}</div>` +
                     '<div class="mb-tt-rule"></div>' +
@@ -60668,7 +60836,8 @@
             windowHtml(d, t) {
                 const head = `<div class="mb-dp-xtitle">${_rgEsc(d.name)}</div>` +
                     `<div class="mb-rg-pills">${_mbPopPillsHtml([d.genre ? 'Genre' : 'Tag'])}</div><h4>Tag</h4>` + _mbPopKvHtml([
-                        ['Genre', d.genre ? `<a href="/genre/${_rgEsc(d.genre.id)}" target="_blank" rel="noopener">${_rgEsc(d.genre.name)}</a>` : 'none'],
+                        ['Genre', d.genre ? `<a href="/genre/${_rgEsc(d.genre.id)}" target="_blank" rel="noopener">${_rgEsc(d.genre.name)}</a>` +
+                            _mbGenreCommentHtml(d.genre.name) : 'none'],
                         ['Entities', _rgEsc(d.total)],
                     ]);
                 return _mbPopTagWindowHtml(t, d, `/tag/${t.id}`, head, 'Nothing is tagged with it.');
@@ -64356,8 +64525,11 @@
      * @param {{limit?: number, init?: Object, initial?: string, placeholder?: string, search?: function(Object): string,
      *   facet?: function(Object): string, chipLabel?: string, thumb?: function(Object): string, tools?: string,
      *   note?: string, body?: ?string, none?: string, nomatch?: string, qCls?: string, sortAttr?: string,
-     *   chipAttr?: string, rowAttrs?: function(Object): string}} [opts] - `qCls`, `sortAttr` and
-     *   `chipAttr` add names a caller's specs address.
+     *   chipAttr?: string, rowAttrs?: function(Object): string,
+     *   facetSort?: function(Array, Array): number}} [opts] - `qCls`, `sortAttr` and
+     *   `chipAttr` add names a caller's specs address; `facetSort` orders the
+     *   chips' `[value, count]` pairs (most rows first by default; the genre
+     *   list's letters A–Z).
      * @returns {string}
      */
     function _dpListTableHtml(t, id, cols, rows, opts = {}) {
@@ -64369,7 +64541,7 @@
                 if (v) counts.set(v, (counts.get(v) || 0) + 1);
             });
         }
-        const facets = Array.from(counts).sort((a, b) => b[1] - a[1]);
+        const facets = Array.from(counts).sort(opts.facetSort || ((a, b) => b[1] - a[1]));
         // A chosen chip past the first ten stays in sight.
         const chipList = ui.moreChips ? facets : facets.filter(([v], i) => i < _DP_TBL_CHIPS || ui.chip.includes(v));
         const chipAttr = v => (opts.chipAttr ? ` ${opts.chipAttr}="${_rgEsc(v)}"` : '');

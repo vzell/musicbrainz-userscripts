@@ -3560,6 +3560,98 @@ test.describe('MusicBrainz link previews: the window\'s path (org/POH-headerline
     });
 });
 
+// The genre list (`/genres`, vzell 2026-10-28): read from the page
+// (`_mbParseGenresPage()`, tests/fixtures/genres-list.html, built from
+// debug/genres-initial.html by scripts/build-genres-fixture.py).
+test.describe('MusicBrainz link previews: the genre list (/genres)', () => {
+    /**
+     * Opens the host page with the MusicBrainz cards on, serving /genres
+     * from its fixture, and adds a link to it.
+     *
+     * @param {import('@playwright/test').Page} page
+     * @returns {Promise<{log: Object, a: import('@playwright/test').Locator}>}
+     */
+    async function genresLink(page) {
+        const log = await open(page, { settings: { sa_pop_mb: true }, showAll: false });
+        await page.context().route(/^https:\/\/musicbrainz\.org\/genres\/?$/, (route) => {
+            log.html.push(route.request().url());
+            return route.fulfill({ path: path.join(__dirname, 'genres-list.html'), contentType: 'text/html' });
+        });
+        return { log, a: await addLink(page, '/genres', 'genres') };
+    }
+
+    test('the card: how many, from and to, how many disambiguated, the intro; one request', async ({ page }) => {
+        const { log, a } = await genresLink(page);
+        await ctrlHover(page, a);
+        await expect(card(page)).toContainText('fetched now');
+        await expect(card(page).locator(':scope > .mb-pop-kind-head')).toHaveText('Genre list');
+        await expect(card(page).locator('.mb-tt-pill')).toHaveText(['2,215 genres']);
+        const kv = await card(page).locator('dl.mb-dp-kv').evaluate(dl => Array.from(dl.children).map(x => x.textContent));
+        expect(kv.slice(0, 2)).toEqual(['From', '2 tone to zydeco']);
+        expect(kv.slice(2)).toEqual(['Disambiguated', '32']);
+        await expect(card(page)).toContainText('These are all the genres currently available for use in MusicBrainz.');
+        expect(log.html).toEqual(['https://musicbrainz.org/genres']);
+    });
+
+    test('the window: every genre, letters A–Z as chips, a filter, a disambiguation; a genre drills into its card', async ({ page }) => {
+        const { log, a } = await genresLink(page);
+        await ctrlHover(page, a);
+        await expect(card(page)).toContainText('fetched now');
+        await page.keyboard.press('Space');
+        const tbl = dialog(page).locator('[data-mb-tbl="genres"]');
+        await expect(tbl.locator('.mb-dg-morerow')).toContainText('Showing 200 of 2,215');
+        await expect(tbl.locator('tbody tr').first().locator('td').first()).toHaveText('2 tone');
+        const chips = tbl.locator('.mb-dg-fc[data-mb-tbl-chip]');
+        expect(await chips.evaluateAll(xs => xs.map(x => x.getAttribute('data-mb-tbl-chip'))), 'A–Z, not by count')
+            .toEqual(['0–9', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I']);
+        await tbl.locator('.mb-dg-more[data-mb-tbl-act="morechips"]').click();
+        await expect(chips.last(), 'anything not a cased letter (an ʻokina) last').toHaveAttribute('data-mb-tbl-chip', '#');
+        await tbl.locator('.mb-dg-fc[data-mb-tbl-chip="Z"]').click();
+        const firsts = await tbl.locator('tbody tr td:first-child').allTextContents();
+        expect(firsts.length).toBeGreaterThan(0);
+        expect(firsts.every(x => /^z/i.test(x)), firsts.join(', ')).toBe(true);
+        await tbl.locator('[data-mb-tbl-act="clear"]').click();
+        // The filter reads the disambiguation too.
+        await tbl.locator('input.mb-tbl-q').fill('not rock from Asia');
+        await expect(tbl.locator('tbody tr')).toHaveCount(1);
+        await expect(tbl.locator('tbody tr td').first()).toHaveText('asian rock');
+        await expect(tbl.locator('tbody tr td').nth(1)).toHaveText('pluggnb subgenre - not rock from Asia');
+        await tbl.locator('input.mb-tbl-q').fill('roots rock');
+        await tbl.locator('tbody tr td:first-child a', { hasText: /^roots rock$/ }).click();
+        await expect(dialog(page).locator(':scope > div > span').first()).toHaveText('Genre list › Genre');
+        await expect.poll(() => log.html).toEqual(['https://musicbrainz.org/genres', 'https://musicbrainz.org/genre/883d75d5-1365-46ee-8cbe-d3ae2facdd93']);
+    });
+
+    test('a tag\'s card adds its genre\'s disambiguation once the list is in memory; it never asks for the list', async ({ page }) => {
+        const COMMENT = 'a test disambiguation';
+        const log = await open(page, { settings: { sa_pop_mb: true }, showAll: false });
+        // alternative rock has none: the list served here gives it one.
+        const html = fs.readFileSync(path.join(__dirname, 'genres-list.html'), 'utf8')
+            .replace('<bdi>alternative rock</bdi></a>', `<bdi>alternative rock</bdi></a> <span class="comment">(<bdi>${COMMENT}</bdi>)</span>`);
+        await page.context().route(/^https:\/\/musicbrainz\.org\/genres\/?$/, (route) => {
+            log.html.push(route.request().url());
+            return route.fulfill({ status: 200, contentType: 'text/html', body: html });
+        });
+        const tag = await addLink(page, '/tag/alternative%20rock', 'alternative rock');
+        await ctrlHover(page, tag);
+        await expect(card(page)).toContainText('fetched now');
+        await expect(card(page).locator('.mb-tt-comment').first()).toHaveText('Tag of the genre alternative rock');
+        // Not the request log: a request would only leave after the rate
+        // gate. `_mbLoad()` marks a record loading at once.
+        expect(await page.evaluate(() => window.__saTest.mbPopStatus('pop:page:genres:all')), 'a tag card asks no genre list').toBeNull();
+        await page.mouse.move(0, 0);
+        await expect(card(page)).toBeHidden();
+        const list = await addLink(page, '/genres', 'genres');
+        await ctrlHover(page, list);
+        await expect(card(page)).toContainText('fetched now');
+        await page.mouse.move(0, 0);
+        await expect(card(page)).toBeHidden();
+        await ctrlHover(page, tag);
+        await expect(card(page).locator('.mb-tt-comment').first()).toHaveText(`Tag of the genre alternative rock (${COMMENT})`);
+        expect(log.html.filter(u => u.endsWith('/genres'))).toHaveLength(1);
+    });
+});
+
 // The h1's entity icon (vzell 2026-10-28): MusicBrainz draws it as the
 // header div's CSS background, so an empty link is laid over it
 // (`_h1KindDocInstall()`); it shows the kind's documentation as the glyph

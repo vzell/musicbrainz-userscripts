@@ -1030,6 +1030,42 @@ inc sets; run it before moving the card to `/ws/2/genre/<MBID>`.
   `genre-overview` pageType. Specs: `popup-mb.spec.js` "genres, read from
   the page"; mutations `scripts/mutations/genre.json`.
 
+### The genre list (`/genres`, 2026-10-28) and `_mbGenreLookup()`
+
+vzell: "a reader for /genres, to be used for hover popups when necessary".
+- **Kind `genres`, id `all`** (`_MB_POP_GENRES_RE`, `path: () =>
+  '/genres'`), a `_mbPopPageKind()` read by `_mbParseGenresPage()`: the one
+  bare `ul` under `#content` (2,215 `li`s on 2026-10-28, 32 with a
+  `span.comment`), the paragraphs before it as the intro. The HTML page,
+  not `/ws/2/genre/all`: one request instead of ~23 pages of 100, with
+  ids and disambiguations. Card: count, "From <first> to <last>",
+  "Disambiguated", the intro. Window: a `_dpListTableHtml()` List table
+  (filter over name + disambiguation, Genre/Disambiguation columns), the
+  letters as chips (`_mbGenreLetter()`: accents folded, "0–9", "#" for
+  anything not a CASED letter — the ʻokina of a Hawaiian genre is `\p{L}`
+  but not `\p{Lu}`), ordered by `_mbGenreLetterOrder()` through the List
+  table's new `facetSort` option (default: most rows first). Each genre
+  links `/genre/<MBID>`, so it drills into the genre card. It is a view
+  (`_DP_VIEW_TYPES`) with the genre glyph and `/doc/Genre` (`_MB_KIND_DOCS`).
+- **`_mbGenreLookup(start, repaint)`**: the same record
+  (`pop:page:genres:all`) as a Map by lower-cased name, rebuilt only when
+  the record object changes. Only a `start`/pin path passes `start`; a
+  hover reads memory only (`_mbGenreCommentHtml()` on the tag card and
+  window: "Tag of the genre X (disambiguation)" once the list is in
+  memory). The editor's tags window (`usertags`) asks for it from its
+  `pin` and shows a "Genre page" column in its Genres table ("…" until
+  the list is in). MusicBrainz's own tag pages already say which tags are
+  genres (the tag page links its genre; `/user/<name>/tags` has a
+  "Genres" `ul.genre-list`), so the lookup adds the genre's own page and
+  disambiguation there, not the genre/tag split.
+- Fixture `tests/fixtures/genres-list.html`, built from vzell's
+  `debug/genres-initial.html` by `scripts/build-genres-fixture.py` (our
+  toolbar dropped). Specs: `popup-mb.spec.js` "the genre list (/genres)"
+  (3), `popup-mb-user-lists.spec.js` "TAGS" (2); mutations in
+  `popup-mb.json` (6, "genres:") and `popup-user-lists.json` (1). "Never
+  asked" is pinned by `__saTest.mbPopStatus()` (null), not the request
+  log: a request leaves only after the rate gate.
+
 ## MusicBrainz: collection cards, read from the page (2026-10-20)
 
 The collection kind was a Web Service lookup until 2026-10-20; it is now a

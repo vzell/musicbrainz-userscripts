@@ -1,5 +1,18 @@
 [
     {
+        "version": "WIP.4",
+        "date": "2026-10-28",
+        "sections": [
+            {
+                "label": "🚀 Feature",
+                "items": [
+                    "Link previews: a link to the genre list (/genres) has a card (how many genres, the first and the last) and, on Space, a window with every genre in a table: a filter, a chip per letter (0–9, A … Z, #) and each genre opening its own card.",
+                    "Once the genre list has been read, a tag card names its genre's disambiguation, and an editor's Tags window links each of their genres to its genre page (a new \"Genre page\" column). Only a window asks for the list, never a hover."
+                ]
+            }
+        ]
+    },
+    {
         "version": "WIP.3",
         "date": "2026-10-28",
         "sections": [

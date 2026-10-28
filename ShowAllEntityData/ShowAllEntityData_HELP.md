@@ -2336,7 +2336,8 @@ recording card shows its length, artist, ISRCs, first release date, the work
 it performs and its earliest releases ("on 25+ releases" when there are more
 than MusicBrainz lists at once). A work card shows its type, language, ISWC,
 composer, lyricist and publishers. An artist card shows the type, area, life
-span, birthplace, genres, rating, IPI and ISNI; a label card the type, label
+span, birthplace, genres, rating, IPI and ISNI, and the sort name first when
+it differs from the name ("Iglesias, Julio"); a label card the type, label
 code, area, years active and genres; an area card what it is part of and how
 many parts it has; an instrument card its type, subtypes and other names; an
 event card its date and time, place, what it is part of, line-up and first
@@ -2418,6 +2419,14 @@ names each, *+N* for the rest), how many collections hold it and the start
 of its Wikipedia text; it is read from the genre's own page, in one request.
 A genre's *Found in N user collections*, *Editing history* and *Open edits*
 links have their cards too.
+A link to the **genre list** (*/genres*, e.g. in the documentation of
+genres) shows how many genres there are and the first and last of them;
+**Space** shows every genre in a table with a filter and a chip per letter
+(*0–9*, *A* … *Z*, *#*), each genre opening its own card in the window.
+Once the genre list has been read, a tag card names its genre's
+disambiguation too, and an editor's *Tags* window links each of their
+genres to the genre's own page (*Genre page*). The list is asked for by a
+window, never by a hover.
 A CD stub card shows the stub's title, artist, number of tracks, length, how
 often it was looked up and its first tracks, read from the stub's page. A
 documentation card shows the page's title, its status (*official style

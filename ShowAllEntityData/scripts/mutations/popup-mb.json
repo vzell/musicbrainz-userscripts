@@ -961,5 +961,83 @@
         "spec": "tests/fixtures/popup-mb.spec.js",
         "grep": "another link.s own title is still",
         "expect": "fail"
+    },
+    {
+        "name": "genres: a /genres link is no kind",
+        "why": "2026-10-28: /genres gets the genre list's card and window (_MB_POP_GENRES_RE).",
+        "edits": [
+            {
+                "find": "        if (_MB_POP_GENRES_RE.test(pathname)) return { seg: '', type: 'genres', id: 'all' };\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "the genre list .*the card: how many",
+        "expect": "fail"
+    },
+    {
+        "name": "genres: the parser drops the disambiguations",
+        "why": "A genre's span.comment is its disambiguation: in the window's table and the filter.",
+        "edits": [
+            {
+                "find": "                comment: c ? _mbPopText(c).replace(/^\\((.*)\\)$/, '$1') : '',",
+                "replace": "                comment: '',"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "the window: every genre, letters",
+        "expect": "fail"
+    },
+    {
+        "name": "genres: the letter chips by count",
+        "why": "The genre list's letters are an A-Z index (facetSort), not the most-rows-first chips of other List tables.",
+        "edits": [
+            {
+                "find": "        const facets = Array.from(counts).sort(opts.facetSort || ((a, b) => b[1] - a[1]));",
+                "replace": "        const facets = Array.from(counts).sort((a, b) => b[1] - a[1]);"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "the window: every genre, letters",
+        "expect": "fail"
+    },
+    {
+        "name": "genres: an uncased letter gets a chip of its own",
+        "why": "Only a cased letter is a chip; the ʻokina of a Hawaiian genre goes under '#', last.",
+        "edits": [
+            {
+                "find": "        return /\\p{Lu}/u.test(c) ? c : '#';",
+                "replace": "        return /\\p{L}/u.test(c) ? c : '#';"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "the window: every genre, letters",
+        "expect": "fail"
+    },
+    {
+        "name": "genres: a tag card asks for the genre list",
+        "why": "A tag's card only reads the genre list from memory: a hover never costs a 200 KB page.",
+        "edits": [
+            {
+                "find": "        const map = _mbGenreLookup();\n        const g = map && map.get(String(name || '').toLowerCase());",
+                "replace": "        const map = _mbGenreLookup(true);\n        const g = map && map.get(String(name || '').toLowerCase());"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "genre.s disambiguation once",
+        "expect": "fail"
+    },
+    {
+        "name": "genres: a tag card shows no genre disambiguation",
+        "why": "A tag's page names its genre but not the genre's disambiguation; the genre list in memory adds it.",
+        "edits": [
+            {
+                "find": "        return g && g.comment ? ` <span class=\"mb-rg-dim\">(${_rgEsc(g.comment)})</span>` : '';",
+                "replace": "        return '';"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "genre.s disambiguation once",
+        "expect": "fail"
     }
 ]
