@@ -1753,7 +1753,7 @@ an import brings your deletions back.
   and lyrics index, the **jungleland.it**
   bootleg artwork list, the **brucespringsteen.it** record database and
   the **Brucebase** song list, year pages, Relations and Recent changes, and
-  **discogs.com**'s master, release, artist, label, submissions, user, ratings and release history pages — each off until
+  **discogs.com**'s master, release, artist, label, submissions, user, ratings, release history and release images pages — each off until
   you switch it on, see [Page-specific behaviour](#page-specific-behaviour)
 
 </details>
@@ -2304,8 +2304,10 @@ links of a profile's statistics), an editor's **subscribers**, **tags** and
 links), an entity's **subscribers** and **collections** (the sidebar's
 *Subscribers* and *Found in N user collections* links), an **annotation's
 history** and its **versions** (*View annotation history*, *View this
-version*, *View current revision*), and
-**tags** (a genre or tag link, also the pills of the sidebar's Tags card).
+version*, *View current revision*),
+**tags** (a genre or tag link, also the pills of the sidebar's Tags card),
+**CD stubs**, and the **documentation**: its pages (`/doc/…`) and a
+documentation search (`/search?…&type=doc`).
 A **Barcode** cell has a card too: the barcode's format and the releases
 carrying it. So does an entry of a column's **📊 dropdown** that names one
 artist, label, area or other entity: rest the pointer on it. Pinning it with Space
@@ -2337,11 +2339,13 @@ collection's own page: its type, size and number of pages, whether it is
 public, its owner and collaborators, the first two lines of its description
 and its first eight entries (someone else's private collection is not shown
 to you; its card says so). Its window shows the whole description with its
-links, and the entries 25 at a time with the page's own columns and ◀ ▶ to
-page through them; a further page of MusicBrainz's (100 entries each) is read
-only when you get to it. A release or release group collection also shows
-those 25 entries' covers from the Cover Art Archive, in the table's first
-column. In such a window, and in a release group's window (its releases'
+links, and the entries as a list with the page's own columns: the first
+100 come with the card (no further request), *Load N more pages* reads the
+rest, 100 a page, as for a work's recordings; with a filter over every
+column (marking what it matched), a three-way sort, and type chips for a release group collection. A
+release or release group collection also shows the entries' covers from the
+Cover Art Archive, in the table's first column (an empty square where there
+is none). In such a window, and in a release group's window (its releases'
 covers and the group's own), pointing at a cover shows every image of that
 release or release group, and a click or **Space** opens them in the
 artwork viewer; Ctrl-click opens its page instead.
@@ -2379,9 +2383,10 @@ voted for, with how many votes, the ten they used most on the card, and every
 one in the window, most used first; a tag opens its own tag card. (Downvoted
 tags have no preview.) On the editor's tags page itself, each tag link
 (*acoustic rock*, *gig*, …) shows what THAT editor tagged with it: how many
-entities, how many of each kind and the first few; its window lists each
-kind's first entries with MusicBrainz's *See all* page, and *Everyone's*
-opens the tag's own card. The *view* beside **Ratings** shows their ratings as
+entities, how many of each kind and the first few; its window lists one
+kind's entities, as a tag's window does (below), and *Everyone's* opens the
+tag's own card. A link to one kind's page of an editor's tag
+(`…/tag/live/release`) shows the same card, its window on that kind. The *view* beside **Ratings** shows their ratings as
 their ratings page does, a few per kind, each with its stars; an entity opens
 its own card, and *All … ratings* opens MusicBrainz's full list in a tab. The
 window never copies the stars, which on MusicBrainz are links that change a
@@ -2404,26 +2409,53 @@ names each, *+N* for the rest), how many collections hold it and the start
 of its Wikipedia text; it is read from the genre's own page, in one request.
 A genre's *Found in N user collections*, *Editing history* and *Open edits*
 links have their cards too.
+A CD stub card shows the stub's title, artist, number of tracks, length, how
+often it was looked up and its first tracks, read from the stub's page. A
+documentation card shows the page's title, its status (*official style
+guideline*) and its first paragraph, read from the page itself. A
+documentation search card says how many pages match and names the first
+six. MusicBrainz's own documentation search is Google's, with no results
+in its page, so this card asks the MusicBrainz wiki's search instead
+(wiki.musicbrainz.org, one request a search, at most one a second; the
+userscript lists that host, so Tampermonkey does not ask first).
 **Esc** or moving away closes it.
 
 **Press Space** to pin it into a window:
 
-- **Extracted**: for a release, the whole tracklist by medium (each track
-  opens its recording), its release group, labels, release events, language,
+- **Small tables in the windows**: an entity's links, a work's codes, an
+  event's "Recorded here", an instrument's aliases and related instruments, an
+  area's parts, a genre's related genres, an editor's edits, tags and
+  ratings, an ISRC's recordings, an ISWC's works, a disc ID's releases and an
+  annotation's versions are tables you can sort by any column (a third click
+  restores MusicBrainz's order), 25 rows a page with ‹ ›, and filter when
+  they hold more than 25 rows.
+- **Extracted**: for a release, the whole tracklist as a table per medium
+  under a header you can click to fold it ("CD 2 · 8 tracks · 52:09"), with one
+  filter for all mediums and an Artist column where a track is not by the
+  release's artist (each track opens its recording), its release group, labels, release events, language,
   and the images in the Cover Art Archive; for a release group, every
-  release in a sortable table beside the group's facts; for a recording, its
+  release in a table with a filter, format chips and a three-way sort,
+  beside the group's facts (each credited artist opens in the window, the
+  genres are listed one per line, each opening its tag); for a recording, its
   credits (performers and their instruments, producers, engineers, where it
   was recorded and mixed — each studio with its city, state and country) and
-  up to 25 of its releases with the real total;
+  all of its releases as a list like a work's recordings below (covers,
+  status chips: Official, Bootleg, …);
   for a work, its writers, publishers and related works, its society codes,
   and its recordings with the total — 100 when the window opens, then *Load 5
   more pages* (500 recordings, about 6 s at MusicBrainz's rate of one request
   a second; *Stop* ends a run after the page under way), with a filter, a
   chip per artist credit (Ctrl-click adds one) and a three-way sort as in the
   Discogs windows; what is loaded is kept like the card, so a later window
-  shows it without asking again; for an artist, its area and
+  shows it without asking again (a recording's, a place's and an artist's
+  lists start sorted by date, since MusicBrainz returns them in no date
+  order); for an artist, its area and
   birthplace named as MusicBrainz does (*Long Branch, New Jersey, United
-  States*), every external link and how many release groups of each type; for
+  States*), its genres (each opening its tag) and aliases one per line, every
+  external link and its release groups: a segment per
+  type (Album, Single, EP, Broadcast, Other) with its total, each a list like
+  a work's recordings, with chips for Live, Compilation and the like and the
+  covers, loaded as you scroll (a missing one leaves an empty square); for
   a label, its area named the same way, the labels it owns, is owned by or is
   an imprint of, its links and its number of releases; for an area, its parts; for an instrument, the related
   instruments and every alias (its description is on the Live page); for an
@@ -2433,14 +2465,33 @@ links have their cards too.
   event there), what it is part of with its dates, its URLs by relationship
   (each with its **[info]** link), the whole setlist with every song linked to
   its work and every artist — the line-up, and the guests in a song's
-  "(with …)" — linked to the artist, what was recorded there and its posters;
-  for a place, its area named the same way, a map link, its links and up to
-  100 of its events by date; for a
-  series, every item in order; for a tag, its genre, how many of each kind
-  it carries (each linked to the tag's page of that kind) and the ten top
-  entities of every kind; for a genre, its primary tag, every related genre
+  "(with …)" — linked to the artist (the setlist a table: #, song, the rest
+  of its line, with a filter), what was recorded there and its posters;
+  for a place, its area named the same way, a map link, its links and all
+  of its events as a list like a work's recordings (type chips); for a
+  series, every item in order, each with its kind's icon; for a tag, its genre and how many of each
+  kind it carries; a click on a kind lists its entities on the right (the
+  biggest kind at first), read from MusicBrainz's page of that kind 100 at a
+  time with *Load N more pages*, most votes first, with a filter and the
+  three-way sort (a link to one kind's page, `/tag/rock/artist`, opens the
+  window on that kind); **Ctrl-click a tag or genre link** in a window (a
+  genre in a release group's or a label's facts, whose genres are listed one
+  per line) to see YOUR own tag of that name there instead, when you are
+  logged in (a genre's link stands for the tag of its name, so this works on
+  a tag window's own "Genre" too) — Shift- or middle-click still opens a new
+  tab, and the line at the window's foot names the key whenever the window
+  holds such a link; for a genre, its
+  primary tag, every related genre
   linked (each opens its own card), its external links, the collections it
-  is in and the whole Wikipedia text. An **artist, label or place** window shows its
+  is in and the whole Wikipedia text; for a CD stub, its facts (barcode, disc
+  ID, added, last modified, lookups) and its tracklist as a table you can
+  filter and sort; for a documentation page, its contents on the left and
+  its whole text on the right, the headings kept and the wiki's images left
+  out (a link to another documentation page opens it here, *On the wiki*
+  opens the wiki's page); for a documentation search, up to 50 matching
+  pages as a list with a filter and the three-way sort: page, snippet (the
+  words searched for marked) and when it was last updated, each page opening
+  in the window. An **artist, label or place** window shows its
   **picture** under the name: the Wikimedia Commons file MusicBrainz links as
   its image or logo, else the one its Wikidata item names (one or two small
   requests to Wikidata, a label's logo first). It is asked only here, never
@@ -2791,6 +2842,21 @@ once and without Tampermonkey asking first:
   Discogs session; from MusicBrainz it is asked like any other site, and if
   Discogs answers with its browser check, the window says so — ↗ opens the
   page.
+- A Discogs release's **Images** and **Image history** (`discogs.com/release/…/images`
+  and `…/images/update`, Discogs' image editor): the window lists every image
+  — Image history as one table (#, the image, Primary or Secondary, who
+  uploaded it, when — the full time and "18 years ago" on hover —, its own
+  width × height and its file size, every column sortable), Images as a
+  gallery with each image's size and uploader under it and, on the left, the
+  uploaders with how many images each and in which years; a click opens the
+  artwork viewer. It reads Discogs' API and the image editor, two requests,
+  only when you press Space. The image editor's data comes only with your
+  Discogs login, so it is read **with your Discogs session**, also from
+  MusicBrainz (the one preview that sends your cookies, to discogs.com only;
+  every other one goes without them). Signed out, the window still lists the
+  images and their types from the API, says why the rest is missing, and
+  marks the size as the one Discogs serves (at most 600 px), not the image's
+  own.
 - A Discogs **user** (`discogs.com/user/…`): the card shows their public
   profile — name, location, member since, contributor rank, releases
   contributed, pending submissions, collection and wantlist sizes; the window
@@ -3474,6 +3540,14 @@ section of its own above Discogs' page, with the toolbar and these buttons:
   revision's changes —, and **Diff · revision 8 → 10**: each part of the
   release in the revision the page shows, old and new, *Marked* "changed"
   where Discogs marked it. Read from the page itself.
+- **Release images — Show every image:** a release's Images page
+  (`/release/<id>/images`) and its image editor (`…/images/update`, Image
+  history) get the same table: **#**, the image (hover for the card, click
+  for the viewer), **Type**, **Uploaded by** with their picture,
+  **Uploaded** (in your time zone, date and time also apart), **W × H** and
+  **Size (KB)** (a number, so it sorts). Two requests: Discogs' API and the
+  image editor's data, which needs you signed in to Discogs; signed out, the
+  images and their types remain and the other columns stay empty.
 - **User — Show the submissions / contributions / collection / wantlist:** a
   user's page (`/user/<name>`): their submissions (sub-tables **Releases**,
   **Artists**, **Labels**, the empty ones left out), contributions,

@@ -1,0 +1,119 @@
+[
+    {
+        "name": "series: a release-group item links /release_group/",
+        "why": "org/MB-POH-sync-withDiscogs.org 3a: the Web Service's target-type is release_group; the page segment is release-group.",
+        "edits": [
+            {
+                "find": "type: _mbPopRelKind(r), e: _mbPopRelEntity(r) }));",
+                "replace": "type: r['target-type'], e: _mbPopRelEntity(r) }));"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "a release-group series",
+        "expect": "fail"
+    },
+    {
+        "name": "catalog number: the label's answer looked up under another inc",
+        "why": "3a: a key of another inc set is never there, so every repaint is a start and a failed label lookup is asked again on each.",
+        "edits": [
+            {
+                "find": "                    const lk = _mbPopLookup(lt, _MB_POP_LABEL_CARD_INC).key;\n                    return _MB_KINDS.label.card(lt, start || !_mbPop.has(lk), repaint)",
+                "replace": "                    const lk = _mbPopLookup(lt, 'genres+aliases').key;\n                    return _MB_KINDS.label.card(lt, start || !_mbPop.has(lk), repaint)"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "a failed label lookup is asked once",
+        "expect": "fail"
+    },
+    {
+        "name": "release group facts: genres as plain text again",
+        "why": "3a: one genre per line, each its tag page.",
+        "edits": [
+            {
+                "find": "            ['Genres', _mbPopGenreLinksHtml(d.genres)],\n        ]) + _mbPopUrlLinksHtml(d.relations);",
+                "replace": "            ['Genres', _rgEsc((d.genres || []).map(g => g.name).join(', '))],\n        ]) + _mbPopUrlLinksHtml(d.relations);"
+            }
+        ],
+        "spec": "tests/fixtures/release-rg-popup.spec.js",
+        "grep": "the window: every release, paged",
+        "expect": "fail"
+    },
+    {
+        "name": "release group facts: the artist credit as plain text again",
+        "why": "3a: each credited artist a link, opening in the window.",
+        "edits": [
+            {
+                "find": "            ['Artist', _mbPopCreditHtml(d['artist-credit'])],",
+                "replace": "            ['Artist', _rgEsc(_mbPopCreditText(d['artist-credit']))],"
+            }
+        ],
+        "spec": "tests/fixtures/release-rg-popup.spec.js",
+        "grep": "the window: every release, paged",
+        "expect": "fail"
+    },
+    {
+        "name": "recording window: its releases never asked",
+        "why": "3b: pin() starts the paged list of every release.",
+        "edits": [
+            {
+                "find": "                const list = _mbRecRelsList(t.id);\n",
+                "replace": "                const list = { key: 'none', spec: { ask: async () => ({ skipped: true }) } };\n"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "the recording window: credits and its releases",
+        "expect": "fail"
+    },
+    {
+        "name": "recording window: no first sort by date",
+        "why": "3b: the browse's own order is by no date (probe 2026-10-27); the table starts sorted by Date.",
+        "edits": [
+            {
+                "find": "                init: { sort: { col: 'date', dir: 1 } }, initial: 'as MusicBrainz returns them',\n                placeholder: 'Filter loaded releases",
+                "replace": "                initial: 'as MusicBrainz returns them',\n                placeholder: 'Filter loaded releases"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "covers only where the archive has a front, status chips",
+        "expect": "fail"
+    },
+    {
+        "name": "place window: its events never asked",
+        "why": "3b: pin() starts the paged list of the place's events.",
+        "edits": [
+            {
+                "find": "                const list = _mbPlaceEventsList(t.id);\n",
+                "replace": "                const list = { key: 'none', spec: { ask: async () => ({ skipped: true }) } };\n"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "the place card and window",
+        "expect": "fail"
+    },
+    {
+        "name": "artist window: a type segment does not switch the list",
+        "why": "3b (vzell 2026-10-27): each primary type is its own paged list, chosen by its segment.",
+        "edits": [
+            {
+                "find": "                Object.assign(ui, { seg: d.mbTblV, chip: [], page: 0 });",
+                "replace": "                Object.assign(ui, { chip: [], page: 0 });"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "the artist window: its links and release groups",
+        "expect": "fail"
+    },
+    {
+        "name": "List table: a missing cover leaves a collapsed cell",
+        "why": "3b: a release group's cover the archive lacks gives way to the empty 42 px box.",
+        "edits": [
+            {
+                "find": "            if (link) link.outerHTML = '<span class=\"mb-dg-vthumb mb-dg-nothumb\" aria-hidden=\"true\"></span>';",
+                "replace": "            if (link) e.target.remove();"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "covers asked lazily",
+        "expect": "fail"
+    }
+]

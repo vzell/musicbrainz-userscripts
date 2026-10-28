@@ -63,7 +63,7 @@ test('a tap on a "#" cell opens the release group window, and shows no hover car
     const dialog = page.locator('#mb-dp-dialog');
     await expect(dialog).toBeVisible();
     await expect(dialog.locator(':scope > div > span').first()).toHaveText('Release group');
-    await expect(dialog.locator('.mb-rg-wtable tbody tr')).toHaveCount(5, { timeout: 20000 });
+    await expect(dialog.locator('[data-mb-tbl="rg-releases"] tbody tr')).toHaveCount(5, { timeout: 20000 });
     await expect(dialog).toContainText('main event');
     expect(page.context().pages()).toHaveLength(1);
     expect(shown).toEqual([]);

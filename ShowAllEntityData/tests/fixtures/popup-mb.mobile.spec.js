@@ -106,7 +106,7 @@ test('a tap on a release link opens the release window, not the page, and shows 
     const dialog = page.locator('#mb-dp-dialog');
     await expect(dialog).toBeVisible();
     await expect(dialog.locator(':scope > div > span').first()).toHaveText('Release');
-    await expect(dialog.locator('.mb-pop-tracks li')).toHaveCount(9, { timeout: 20000 });
+    await expect(dialog.locator('[data-mb-tbl="tracks"] tbody tr')).toHaveCount(9, { timeout: 20000 });
     expect(log.lookups).toHaveLength(1);
     expect(log.navigations, 'the page stays').toEqual([]);
     expect(page.context().pages()).toHaveLength(1);
@@ -145,12 +145,15 @@ test('with sa_pop_mb_page_on_touch on, a tap on a link outside the tables opens 
 });
 
 // A collection is read from its page (2026-10-20): on a phone the tap opens
-// its window, and the pager's ▶ answers a tap as it does a click.
-test('a tap on a collection link opens its window; ▶ steps through its entries', async ({ page }) => {
+// its window, and its "Load 1 more page" answers a tap as it does a click
+// (Phase 3c: a List table and the paged loader, no longer ◀ ▶ slices).
+test('a tap on a collection link opens its window; "Load 1 more page" answers a tap', async ({ page }) => {
     const pages = [];
     await page.context().route(/^https:\/\/musicbrainz\.org\/collection\//, (route) => {
-        pages.push(route.request().url());
-        return route.fulfill({ path: path.join(__dirname, 'collection-page-coverart-video.html'), contentType: 'text/html' });
+        const url = route.request().url();
+        pages.push(url);
+        const file = /\?page=2$/.test(url) ? 'collection-page-coverart-video-p2.html' : 'collection-page-coverart-video.html';
+        return route.fulfill({ path: path.join(__dirname, file), contentType: 'text/html' });
     });
     const log = await openPhone(page, { sa_pop_mb_on_touch: true });
     await page.evaluate(() => {
@@ -163,14 +166,15 @@ test('a tap on a collection link opens its window; ▶ steps through its entries
     await tapLink(page, page.locator('a.pop-probe'));
     const dialog = page.locator('#mb-dp-dialog');
     await expect(dialog.locator(':scope > div > span').first()).toHaveText('Collection');
-    const h4 = dialog.locator('h4', { hasText: 'Release groups' });
-    await expect(h4).toHaveText('Release groups · 1–25 of 196');
-    const next = dialog.locator('button[data-mb-coll-act="next"]');
-    await next.scrollIntoViewIfNeeded();
-    const box = await next.boundingBox();
+    await expect(dialog.locator('h4', { hasText: 'Release groups' })).toHaveText('Release groups · 196');
+    const counts = dialog.locator('.mb-dg-counts').first();
+    await expect(counts).toHaveText(/^100 of 196 loaded/);
+    const more = dialog.getByRole('button', { name: /^Load 1 more page/ });
+    await more.scrollIntoViewIfNeeded();
+    const box = await more.boundingBox();
     await page.touchscreen.tap(box.x + box.width / 2, box.y + box.height / 2);
-    await expect(h4).toHaveText('Release groups · 26–50 of 196');
-    expect(pages).toHaveLength(1);
+    await expect(counts).toHaveText(/^196 of 196 loaded/, { timeout: 15000 });
+    expect(pages).toHaveLength(2);
     expect(log.navigations, 'the page stays').toEqual([]);
 });
 
@@ -221,7 +225,7 @@ test('inside the window: a long press shows a link\'s card and opens nothing; a 
     const log = await openPhone(page, { sa_pop_mb: false, sa_pop_mb_on_touch: true });
     await tapLink(page, page.locator(RELEASE_LINK).first());
     const dialog = page.locator('#mb-dp-dialog');
-    await expect(dialog.locator('.mb-pop-tracks li')).toHaveCount(9, { timeout: 20000 });
+    await expect(dialog.locator('[data-mb-tbl="tracks"] tbody tr')).toHaveCount(9, { timeout: 20000 });
     await settleWindow(page);
     const artist = dialog.locator('.mb-dp-area a[href^="/artist/"]').first();
     const card = page.locator('#mb-dp-peek');

@@ -302,7 +302,7 @@ test.describe('the entity picture in the link previews (sa_pop_mb_image)', () =>
 
         await reloadScript(page);
         await pin(page, artistLink(page));
-        await expect(dialog(page).locator('.mb-rg-links > div').first()).toBeVisible();
+        await expect(dialog(page).locator('[data-mb-tbl="links"] tbody tr').first()).toBeVisible();
         await expect(winPic(page)).toHaveCount(0);
         expect(await wdLog(page)).toEqual([]);
     });
@@ -331,7 +331,7 @@ test.describe('the entity picture in the link previews (sa_pop_mb_image)', () =>
             responses: { [WD('Q1225', 'P18')]: claims('P18', [['normal', 'Bruce Springsteen 2025.jpg']]) },
         });
         await pin(page, artistLink(page));
-        await expect(dialog(page).locator('.mb-rg-links > div').first()).toBeVisible();
+        await expect(dialog(page).locator('[data-mb-tbl="links"] tbody tr').first()).toBeVisible();
         await expect(winPic(page)).toHaveCount(0);
         expect(await wdLog(page)).toEqual([]);
     });

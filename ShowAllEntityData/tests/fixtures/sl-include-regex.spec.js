@@ -329,6 +329,24 @@ test.describe('@include coverage', () => {
         expect(others.filter((u) => injected(u))).toEqual([]);
     });
 
+    test('discogs.com: a release\'s Images page and image editor (dg-images, dg-image-history; Phase 4)', () => {
+        const pages = [
+            'https://www.discogs.com/release/1313481-Born-To-Run/images',
+            'https://www.discogs.com/release/1313481-Born-To-Run/images/update',
+            'https://www.discogs.com/release/1313481/images/',
+            'https://www.discogs.com/de/release/1313481-Born-To-Run/images/update?x=1',
+            'https://www.discogs.com/pt_BR/release/1313481/images',
+        ];
+        const others = [
+            'https://www.discogs.com/release/1313481-Born-To-Run/imagesx',
+            'https://www.discogs.com/release/1313481-Born-To-Run/images/update/more',
+            'https://www.discogs.com/master/26725/images',
+            'https://www.discogs.com/release/1874253-Bruce-Springsteen-Born-To-Run/image/SW1hZ2U6NDYwODA1ODY=',
+        ];
+        expect(pages.filter((u) => !injected(u))).toEqual([]);
+        expect(others.filter((u) => injected(u))).toEqual([]);
+    });
+
     test('discogs.com: a user\'s page (dg-user), a language prefix; not its sub-pages', () => {
         const pages = [
             'https://www.discogs.com/user/vzell',

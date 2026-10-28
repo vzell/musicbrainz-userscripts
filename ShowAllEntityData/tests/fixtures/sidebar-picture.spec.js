@@ -315,7 +315,14 @@ const CAA_RECORD = JSON.parse(require('fs').readFileSync(path.join(__dirname, 'c
 async function openCover(page, testInfo, url, fixture, { settings = {}, edit = (h) => h } = {}) {
     const fs = require('fs');
     const copy = testInfo.outputPath(path.basename(fixture));
-    fs.writeFileSync(copy, edit(fs.readFileSync(fixture, 'utf8').split('//archive.org/download/').join(`//${THUMB_HOST}/download/`)));
+    // The cover's <img> as MusicBrainz's own script puts it into the span
+    // (from its data-small-thumbnail): that script comes from
+    // static.metabrainz.org, which no fixture routes, and when it was late
+    // the link stayed empty, "not visible", and the hover timed out — about
+    // 1 run in 4 under load, on main too (2026-10-27; with the CDN blocked,
+    // PLAYWRIGHT_BLOCK_CDN=1, every run). In the copy, at once.
+    const withImg = (h) => h.replace(/(<span class="artwork-image"[^>]*data-small-thumbnail="([^"]+)"[^>]*>)/g, '$1<img src="$2" alt="" title="">');
+    fs.writeFileSync(copy, edit(withImg(fs.readFileSync(fixture, 'utf8').split('//archive.org/download/').join(`//${THUMB_HOST}/download/`))));
     const asked = [];
     const images = CAA_RECORD.images.slice();
     const fi = images.findIndex((im) => im.front);

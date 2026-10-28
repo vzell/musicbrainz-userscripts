@@ -35,7 +35,9 @@ Discogs artist / master / label windows (the target look).
 | 2026-10-26 | Glyph of the "Initial sort" state          | ⇅ (U+21C5), dimmed, on every sortable header that is in initial order; ▲/▼ replace it when active. One click cycle on every table: initial → ▲ → ▼ → initial |
 | 2026-10-26 | Mockup                                     | Approved as published (version 1)                                                                                                                                |
 | 2026-10-26 | Ctrl+click on a genre / tag link           | Opens your own tag (=/user/<me>/tag/<genre>=) inside the window; middle-click and Shift+click still open a new tab; the foot line says so                       |
-| 2026-10-26 | Image history from musicbrainz.org         | API fallback: position, type, W × H, size; Uploaded by and Date read "only on discogs.com"                                                                       |
+| 2026-10-26 | Image history from musicbrainz.org         | API fallback: position, type, W × H, size; Uploaded by and Date read "only on discogs.com" (superseded 2026-10-27, below)                                       |
+| 2026-10-27 | Image history from musicbrainz.org (again) | The probe showed the API has no file size and only the SERVED size (≤ 600 px): read the editor WITH the Discogs session, the API as fallback                   |
+| 2026-10-27 | Table on discogs.com's Images page         | The same as the Image history (read from the editor)                                                                                                             |
 | 2026-10-26 | Annotation version                         | Unchanged                                                                                                                                                        |
 | 2026-10-26 | Documentation                              | Probe the wiki search API first; if it answers, list the hits and open =/doc/<Page>= inline; otherwise only =/doc/<Page>= links get a reader                    |
 
@@ -49,6 +51,10 @@ Discogs artist / master / label windows (the target look).
 3. *Documentation.* =/search?type=doc= is rendered client-side by Google's custom search, so
    there is no HTML to read. Probe =wiki.musicbrainz.org/api.php?action=query&list=search=
    (CLAUDE.md probe rule) and record the result here.
+   Result 2026-10-27 (=scripts/probe-mb-docs-cdstub.py=, NB-3641, browser n/a): JSON,
+   =query.searchinfo.totalhits= (19 for "release group") and per hit =ns=, =title=, =pageid=,
+   =size=, =wordcount=, =snippet= (HTML, =span.searchmatch=), =timestamp=. The site's page holds
+   no results (=gcse= only). So the hits are listed and =/doc/<Page>= opens inline (3f).
 
 ** Code map (grep the names; line numbers drift)
 
@@ -89,12 +95,17 @@ Discogs readers: =_EXT_READERS= (=discogs=), =_EXT_DISCOGS_PATH_RE= (also matche
 =_extDiscogsLoad()=, =_extDiscogsImages()=, =_dgArtImages()=, =_fiClick()=, =_fiCardHtml()=,
 =_DG_FI=, =_dgUserCell()=, =_dgAvatarInit()=, =_DP_SITES['www.discogs.com']=.
 
-Found while mapping (fix in Phase 3, own regression test):
+Found while mapping (fixed in Phase 3a, 2026-10-27, branch =mb-window-lists=, each with a
+regression test that fails before; =scripts/mutations/mb-window-lists.json=):
 - *Series items of release groups open a broken new tab*: WS/2's =target-type= is
-  =release_group=, =_mbPopSeriesItems()= builds =/release_group/<id>=, which misses
-  =_MB_POP_PATH_RE=. Same in =_mbPopRelTargetHtml()=.
-- Probably (unconfirmed): the =catno= path builds the label key with inc =genres+aliases= while
-  the label's =cardInc= is =genres+ratings+aliases=, so its "already loaded?" check never hits.
+  =release_group= (and the target sits under that key: probe 2026-10-27),
+  =_mbPopSeriesItems()= built =/release_group/<id>=, which misses =_MB_POP_PATH_RE=. Now
+  =_mbPopRelKind()=. =_mbPopRelTargetHtml()= had no caller passing the underscore form; it
+  now takes it as the page segment anyway.
+- *Confirmed*: the =catno= path built the label key with inc =genres+aliases= while the label's
+  =cardInc= is =genres+ratings+aliases=, so its "already loaded?" check never hit. Every
+  repaint counted as a start, so a FAILED label lookup was asked again on each repaint.
+  Now both use =_MB_POP_LABEL_CARD_INC=.
 
 ** DONE Phase 1 — "Initial sort" state on Discogs POHs  [4/4]
 
@@ -184,10 +195,67 @@ Phase 2 changes, *2,369/2,369 passed* in 15 m 55 s. Mutations: =dp-shared-tables
 they should; =dp-sort-initial-state.json= 8 fail + 1 recorded overlap pass; =discogs-window-swap.json=
 5/5 (one entry was already stale at HEAD and is retargeted). Lint is within its baseline.
 
-** Phase 3 — MB entity sections  [0/27]
+** Phase 3 — MB entity sections  [34/34]
 
 "Compact" = like Discogs label → Sublabels (left column). "List" = like Discogs label → Releases
 (right column) with "Load N more pages (M …, about S s)".
+
+Batches (agreed 2026-10-27): 3a fixes + Facts links; 3b List + Web Service loader; 3c List + HTML
+loader (Tag, Collection, Editor's tag); 3d the Compact rows; 3e tracklist, setlist, series icons;
+3f new readers (CD stub, Documentation).
+
+*3a + 3b done* 2026-10-27, branch =mb-window-lists= (WIP.1): rows Artist → Release groups,
+Release group → Releases, Release group → Facts: Artist, Release group → Facts: Genres (without
+Ctrl → "your tag": that waits for 3c, with the tag readers), Recording → Releases, Work →
+Recordings (Phase 2), Place → Events; the Series bug and the catalog-number key above.
+Probe first: =scripts/probe-mb-window-browses.py= (the browses' order is by no date, so these
+tables start sorted by date). Decisions (vzell, 2026-10-27): the artist's release groups get a
+*segment per primary type* with its real total, each its own paged list (the unfiltered browse
+lists Albums first); their covers are asked *lazily*, a missing one gives way to the empty box.
+
+*3c done* 2026-10-27, same branch (WIP.2): rows Tag → per kind, Editor's tag → By kind (the
+reader for =/user/<u>/tag/<t>/<kind>= links, and =/tag/<t>/<kind>= too), Collection → List,
+Label → Facts: Genres; and Release group → Facts: Genres' Ctrl-click → your own tag (decision
+2026-10-26), for every tag link in a window. The HTML-paged adapter Phase 2 deferred
+(=_mbPagedHtml()=) came with these callers. Probe first: =scripts/probe-mb-tag-kind-pages.py=
+(a kind page is a =ul=, not a table, 100 a page; a pending edit wraps the link in =span.mp=:
+3 of 100 on the recording page, found by the spec, not the probe). Design: "By kind" on the
+left chooses the list (no segment bar: up to eleven kinds); a collection's page 1 is the
+card's record (=_mbPagedSeed()=), so its window asks nothing more.
+
+After vzell's browser check (2026-10-27): the artist window's genres (tag links) and aliases one
+per line (=_mbPopAliasesHtml()=); the collection filter marks its matches inside the page's
+cells (=_hlHtml()=); the window's foot line names Ctrl-click on a tag at rest when the window
+holds one. The label window's aliases are still "; "-joined (not asked for).
+
+*3d done* 2026-10-27, same branch (WIP.3), in one commit (vzell: no batches): every "Compact"
+row of the table below — Links (artist, release group, label past ten, place), Work codes,
+Event "Recorded here" (two tables), Instrument aliases and related instruments, Area related
+areas, Genre related genres (one table per relationship; links moved left), Editor edits,
+editor's Tags (genres and other tags), Ratings per kind, ISRC, ISWC, Disc ID, Annotation
+versions — plus the label's aliases one per line (vzell). No new request. Left for 3e: the
+release tracklist per medium, the event setlist, the series' entity icons; 3f: CD stub and
+Documentation readers.
+
+*3e done* 2026-10-27, same branch (WIP.4): Release → Tracklist (a table per medium under a
+folding header "CD 2 · 8 tracks · 52:09", one shared filter: the decision of 2026-10-26),
+Event → Setlist (# · Song · Notes, a List table; the plan's "cover / disambiguation" are not
+in the setlist markup and would need a lookup per work, so not done), Series → Items (the
+kind's icon; opening in the window came with 3a's fix). Left: 3f, CD stub and Documentation.
+
+*3f done* 2026-10-27, same branch (WIP.5): CD stub (kind =cdstub=, =_mbParseCdStubPage()=: title,
+artist, tracks, the Disc ID table, the sidebar's properties; the plan's "comment" is part of the
+title's text on the page, no element of its own, so it is not split off; "[none]" is no
+barcode) and Documentation (open Q 4, probe =scripts/probe-mb-docs-cdstub.py=: the wiki's search
+API answers JSON, so both halves of the decision hold): kind =doc= for =/doc/<Page>=
+(=_mbParseDocPage()=: title, status, contents, the text block by block through =_mbEditsHtml()=,
+headings as lines of their own, images dropped) and kind =docsearch= for
+=/search?query=…&type=doc= (=_mbDocSearchLoad()=, one =_extGet()= of the API, 50 hits, a List
+table; each hit opens =/doc/<Title>= in the window). =wiki.musicbrainz.org= joined =@connect= and
+=_EXT_CONNECT_HOSTS=, or Tampermonkey would ask on the first hover. *No =_MB_POP_PAGE_VERSION=
+bump*, against the rule below: the new kinds' records live under new keys (=pop:page:cdstub:…=,
+=pop:page:doc:…=, =pop:docsearch:…=) that held nothing before, and a bump would only drop every
+cached edit, editor, tag and collection page. Phase 3 is complete.
 
 | Entity          | Section                                     | Change                                                                                                                                                         |
 |-----------------+---------------------------------------------+----------------------------------------------------------------------------------------------------------------------------------------------------------------|
@@ -229,7 +297,7 @@ they should; =dp-sort-initial-state.json= 8 fail + 1 recorded overlap pass; =dis
 Every new reader: fixture HTML in =tests/fixtures/=, a spec, the =_MB_POP_PAGE_VERSION= bump,
 a row in =docs/claude/detail-pages.md='s doc-map entry.
 
-** Phase 4 — Discogs Images / Image history  [0/4]
+** Phase 4 — Discogs Images / Image history  [4/4]
 
 Page structure (from the uploads, 2026-10-26):
 - =/release/<id>/images=: =<title>Images for Bruce Springsteen - Born To Run=; 17 ×
@@ -240,17 +308,34 @@ Page structure (from the uploads, 2026-10-26):
   / Report Abuse, ↑ ↓.
 
 Tasks:
-- [ ] Reader =dgimages= ahead of =discogs= in =_EXT_READERS= (today =_EXT_DISCOGS_PATH_RE=
+- [X] Reader =dgimages= ahead of =discogs= in =_EXT_READERS= (today =_EXT_DISCOGS_PATH_RE=
       sends both URLs to the plain release window): Images → gallery-first window, every image
       with type and W × H, the hover card (=_fiCardHtml()=), the viewer (=_fiClick()=, ← →).
-- [ ] Image history → table: # · thumb · Primary/Secondary · uploaded by (avatar,
+- [X] Image history → table: # · thumb · Primary/Secondary · uploaded by (avatar,
       =_dgUserCell()=) · date (full date in the tip) · W × H · size. On discogs.com: same-origin
       page fetch. From musicbrainz.org: API fallback with a note (open Q 2).
-- [ ] On discogs.com itself: pageTypes =dg-images= and =dg-image-history= (=@include=,
+- [X] On discogs.com itself: pageTypes =dg-images= and =dg-image-history= (=@include=,
       =_dgPrepareLivePage()=, converter to =table.tbl=, hover via =_DG_FI=). Skill:
       =add-foreign-page-or-reader=.
-- [ ] Trimmed fixtures from the two uploads (scripts, =userId= 2369911 and any other account data
+- [X] Trimmed fixtures from the two uploads (scripts, =userId= 2369911 and any other account data
       removed) under =tests/fixtures/= + specs. Not done in the planning session on purpose.
+
+*Phase 4 done* 2026-10-28, branch =mb-window-lists= (WIP.6), the same branch as Phase 3 (vzell).
+Probe first: =scripts/probe-dg-release-images.py= — the API's images carry type, URL and the
+SERVED size only (at most 600 px; "600x599" for a 2002 × 2000 original), no file size, uploader
+or date; both pages answer Python with Cloudflare's check; the editor needs the login. That
+overturned the 2026-10-26 answer to open Q 2 (the API could not give "W × H, size"), so vzell was
+asked again: read the editor with the Discogs session (=_extFetch()='s new =session= option, its one
+caller =_extDgImgDataGet()=), the API as the fallback; the Images page's table the same as the
+Image history's. *Corrected 2026-10-28 after vzell's browser check*: the editor's page is sent
+with an empty =#image_uploader_app= (its script draws the list), so the first build, which parsed
+a SAVED page and joined it to the API by storage path, found nothing; the data now comes from
+=/release/<id>/images/data= (JSON, every field; =scripts/probe-dg-image-uploader.py=, vzell's
+copy of the answer). DEBUG-NOTES 2026-10-28. Code: reader =dgimages= (=_extDgImgLoad()=, =_extDgImgWindow()=), pageTypes
+=dg-images= / =dg-image-history= (=_dgImgPageRequest()=, =_dgImgToHtml()=: the reader's record as the
+fetch loop's text). Differences from the mockup: the window's uploaders are links without the
+mockup's avatar initial (the user's window shows the picture); the gallery's hover card is the
+window's usual large preview, the image's facts in a caption line under it instead.
 
 ** Phase 5 — Per phase, not at the end
 

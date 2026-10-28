@@ -1,0 +1,7324 @@
+{
+ "release-count": 271,
+ "release-offset": 0,
+ "releases": [
+  {
+   "release-events": [
+    {
+     "date": "1993",
+     "area": {
+      "iso-3166-1-codes": [
+       "CN"
+      ],
+      "type-id": null,
+      "id": "7c81bb69-a99b-3487-b6d4-0f76d7a29ca0",
+      "type": null,
+      "sort-name": "China",
+      "disambiguation": "",
+      "name": "China"
+     }
+    }
+   ],
+   "packaging": "Jewel Case",
+   "label-info": [
+    {
+     "catalog-number": "E-1145",
+     "label": {
+      "disambiguation": "unofficial",
+      "name": "Elite Music Co. Ltd.",
+      "sort-name": "Elite Music Co. Ltd.",
+      "type": null,
+      "type-id": null,
+      "id": "8c0ebf16-e2a3-4d8c-a6b5-69c18c72eb70",
+      "label-code": null
+     }
+    }
+   ],
+   "packaging-id": "ec27701a-4a22-37f4-bfac-6616e0f9750a",
+   "disambiguation": "",
+   "media": [
+    {
+     "format": "CD",
+     "format-id": "9712d52a-4509-3d4b-a1a2-67c88c643e31",
+     "track-count": 32,
+     "id": "d7952bbb-f947-324e-8baa-28649b94a172",
+     "position": 1,
+     "title": ""
+    }
+   ],
+   "barcode": "9787885846945",
+   "title": "流行天王最佳金曲",
+   "status-id": "1156806e-d06a-38bd-83f0-cf2284a808b9",
+   "status": "Bootleg",
+   "asin": null,
+   "text-representation": {
+    "language": "zho",
+    "script": "Qaaa"
+   },
+   "country": "CN",
+   "date": "1993",
+   "cover-art-archive": {
+    "front": true,
+    "darkened": false,
+    "back": true,
+    "artwork": true,
+    "count": 4
+   },
+   "id": "05f000c1-89a6-42a2-95fc-1e9a309e9b10",
+   "quality": "normal"
+  },
+  {
+   "barcode": "",
+   "title": "Born to Run",
+   "media": [
+    {
+     "title": "",
+     "position": 1,
+     "format-id": "3e9080b0-5e6c-34ab-bd15-f526b6306a64",
+     "track-count": 8,
+     "id": "b8c0eacf-59f5-3c9a-a7ab-715b7fa9efb3",
+     "format": "12\" Vinyl"
+    }
+   ],
+   "disambiguation": "Australia, version 1",
+   "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+   "release-events": [
+    {
+     "area": {
+      "type-id": null,
+      "id": "106e0bec-b638-3b37-b731-f53d507dc00e",
+      "sort-name": "Australia",
+      "type": null,
+      "disambiguation": "",
+      "name": "Australia",
+      "iso-3166-1-codes": [
+       "AU"
+      ]
+     },
+     "date": "1975"
+    }
+   ],
+   "label-info": [
+    {
+     "label": {
+      "label-code": 149,
+      "disambiguation": "CBS Records’ international imprint from 1962–1990; renamed since 1991 as Columbia",
+      "name": "CBS",
+      "id": "b8d33bec-92cc-40d9-bd92-4eb089b401a9",
+      "type-id": "b6285b2a-3514-3d43-80df-fcf528824ded",
+      "sort-name": "CBS",
+      "type": "Imprint"
+     },
+     "catalog-number": "SBP 234729"
+    }
+   ],
+   "packaging-id": "e724a489-a7e8-30a1-a17c-30dfd6831202",
+   "packaging": "Gatefold Cover",
+   "cover-art-archive": {
+    "artwork": true,
+    "count": 7,
+    "darkened": false,
+    "front": true,
+    "back": false
+   },
+   "id": "06730cbe-8796-4016-b903-36370c06cf21",
+   "quality": "normal",
+   "status": "Official",
+   "asin": null,
+   "text-representation": {
+    "script": "Latn",
+    "language": "eng"
+   },
+   "date": "1975",
+   "country": "AU"
+  },
+  {
+   "barcode": "",
+   "title": "Bruce Springsteen",
+   "disambiguation": "",
+   "media": [
+    {
+     "format": "Data CD",
+     "title": "",
+     "position": 1,
+     "format-id": "37cceb6f-7ca2-321f-b2c5-12312a1a1df1",
+     "track-count": 155,
+     "id": "bcfb1c63-141a-3b04-8a7e-cd45d9dccdda"
+    }
+   ],
+   "status-id": "1156806e-d06a-38bd-83f0-cf2284a808b9",
+   "release-events": [
+    {
+     "area": {
+      "disambiguation": "",
+      "name": "Russia",
+      "type-id": null,
+      "id": "1f1fc3a4-9500-39b8-9f10-f0a465557eef",
+      "sort-name": "Russia",
+      "type": null,
+      "iso-3166-1-codes": [
+       "RU"
+      ]
+     },
+     "date": "2000"
+    }
+   ],
+   "label-info": [
+    {
+     "catalog-number": "AAA-1352",
+     "label": {
+      "label-code": null,
+      "disambiguation": "",
+      "name": "Домашняя Коллекция",
+      "type": "Bootleg Production",
+      "sort-name": "Домашняя Коллекция",
+      "id": "1c024aa7-6bb4-4e9a-87a3-470739f1f646",
+      "type-id": "fdac9b96-359b-3488-9322-ad99c2473636"
+     }
+    }
+   ],
+   "packaging-id": "ec27701a-4a22-37f4-bfac-6616e0f9750a",
+   "packaging": "Jewel Case",
+   "cover-art-archive": {
+    "artwork": true,
+    "count": 4,
+    "darkened": false,
+    "front": true,
+    "back": true
+   },
+   "id": "0a6256e3-8a8f-49f7-811b-45226053d49a",
+   "quality": "normal",
+   "asin": null,
+   "status": "Bootleg",
+   "text-representation": {
+    "language": "eng",
+    "script": "Latn"
+   },
+   "date": "2000",
+   "country": "RU"
+  },
+  {
+   "id": "0df6f868-821d-4599-a8a3-414986aff109",
+   "quality": "normal",
+   "cover-art-archive": {
+    "count": 2,
+    "artwork": true,
+    "back": true,
+    "darkened": false,
+    "front": true
+   },
+   "date": "1992",
+   "country": "JP",
+   "status": "Promotion",
+   "asin": null,
+   "text-representation": {
+    "language": "eng",
+    "script": "Latn"
+   },
+   "status-id": "518ffc83-5cde-34df-8627-81bff5093d92",
+   "barcode": "",
+   "title": "A Whole Bunch of Bruce Springsteen",
+   "media": [
+    {
+     "title": "",
+     "position": 1,
+     "format-id": "f5e6e254-8f39-331c-936b-9c69d686dc47",
+     "id": "4a3f1be4-f957-3cf8-a99e-7a772ce0dca6",
+     "track-count": 12,
+     "format": "Cassette"
+    }
+   ],
+   "disambiguation": "",
+   "label-info": [
+    {
+     "catalog-number": "XCTS 92005",
+     "label": {
+      "label-code": null,
+      "disambiguation": "Japanese imprint",
+      "name": "Sony Records",
+      "sort-name": "Sony Records",
+      "type": "Imprint",
+      "type-id": "b6285b2a-3514-3d43-80df-fcf528824ded",
+      "id": "dee62e1a-cfd1-466f-b578-846a0fdf435a"
+     }
+    }
+   ],
+   "packaging-id": "f7101ce3-0384-39ce-9fde-fbbd0044d35f",
+   "packaging": "Cardboard/Paper Sleeve",
+   "release-events": [
+    {
+     "date": "1992",
+     "area": {
+      "iso-3166-1-codes": [
+       "JP"
+      ],
+      "id": "2db42837-c832-3c27-b4a3-08198f75693c",
+      "type-id": null,
+      "type": null,
+      "sort-name": "Japan",
+      "name": "Japan",
+      "disambiguation": ""
+     }
+    }
+   ]
+  },
+  {
+   "status": "Official",
+   "asin": null,
+   "text-representation": {
+    "language": "eng",
+    "script": "Latn"
+   },
+   "date": "1995",
+   "country": "US",
+   "cover-art-archive": {
+    "count": 9,
+    "artwork": true,
+    "back": true,
+    "darkened": false,
+    "front": true
+   },
+   "id": "120638f0-595f-4f51-b7d0-823257441d0e",
+   "quality": "normal",
+   "release-events": [
+    {
+     "date": "1995",
+     "area": {
+      "disambiguation": "",
+      "name": "United States",
+      "type-id": null,
+      "id": "489ce91b-6658-3307-9877-795b68554c98",
+      "sort-name": "United States",
+      "type": null,
+      "iso-3166-1-codes": [
+       "US"
+      ]
+     }
+    }
+   ],
+   "packaging": "Jewel Case",
+   "label-info": [
+    {
+     "catalog-number": "CK 67060",
+     "label": {
+      "label-code": 162,
+      "sort-name": "Columbia",
+      "type": "Imprint",
+      "type-id": "b6285b2a-3514-3d43-80df-fcf528824ded",
+      "id": "011d1192-6f65-45bd-85c4-0400dd45693e",
+      "name": "Columbia",
+      "disambiguation": "owned by Sony Music Entertainment, worldwide except JP; formerly owned by CBS between 1938–1990 within US/CA/MX"
+     }
+    },
+    {
+     "label": {
+      "type-id": "53ab8dcc-9946-3b62-966e-7634d78e5034",
+      "id": "9a7d39a4-a887-40f3-a645-a9a136d1f13f",
+      "sort-name": "BMG Direct Marketing, Inc.",
+      "type": "Distributor",
+      "name": "BMG Direct Marketing, Inc.",
+      "disambiguation": "BMG company that owned their direct marketing company/club editions",
+      "label-code": null
+     },
+     "catalog-number": "D 105204"
+    }
+   ],
+   "packaging-id": "ec27701a-4a22-37f4-bfac-6616e0f9750a",
+   "disambiguation": "BMG club edition",
+   "media": [
+    {
+     "format": "CD",
+     "title": "",
+     "position": 1,
+     "track-count": 18,
+     "id": "8df08931-cfc0-39ba-b9f4-9eef30b58048",
+     "format-id": "9712d52a-4509-3d4b-a1a2-67c88c643e31"
+    }
+   ],
+   "barcode": "",
+   "title": "Greatest Hits",
+   "status-id": "4e304316-386d-3409-af2e-78857eec5cfe"
+  },
+  {
+   "media": [
+    {
+     "title": "",
+     "position": 1,
+     "track-count": 9,
+     "id": "4c02fd0e-ad3b-3b25-9a23-5b4714c20b3d",
+     "format-id": "3e9080b0-5e6c-34ab-bd15-f526b6306a64",
+     "format": "12\" Vinyl"
+    }
+   ],
+   "disambiguation": "",
+   "barcode": "",
+   "title": "Royality of Rock: Bruce Springsteen I",
+   "status-id": "1156806e-d06a-38bd-83f0-cf2284a808b9",
+   "release-events": [
+    {
+     "date": "1982",
+     "area": {
+      "iso-3166-1-codes": [
+       "US"
+      ],
+      "type-id": null,
+      "id": "489ce91b-6658-3307-9877-795b68554c98",
+      "type": null,
+      "sort-name": "United States",
+      "disambiguation": "",
+      "name": "United States"
+     }
+    }
+   ],
+   "packaging": "Cardboard/Paper Sleeve",
+   "packaging-id": "f7101ce3-0384-39ce-9fde-fbbd0044d35f",
+   "label-info": [
+    {
+     "label": {
+      "label-code": null,
+      "name": "TM Special Projects",
+      "disambiguation": "",
+      "id": "e9aa26f8-82ce-4153-a802-ed1fcf5551a7",
+      "type-id": null,
+      "sort-name": "TM Special Projects",
+      "type": null
+     },
+     "catalog-number": "[none]"
+    }
+   ],
+   "cover-art-archive": {
+    "back": false,
+    "front": true,
+    "darkened": false,
+    "artwork": true,
+    "count": 4
+   },
+   "quality": "normal",
+   "id": "12dde582-bc2d-4880-945a-b52dae9a4a75",
+   "text-representation": {
+    "script": "Latn",
+    "language": "eng"
+   },
+   "asin": null,
+   "status": "Bootleg",
+   "country": "US",
+   "date": "1982"
+  },
+  {
+   "date": "1980",
+   "country": "US",
+   "text-representation": {
+    "script": "Latn",
+    "language": "eng"
+   },
+   "asin": null,
+   "status": "Official",
+   "quality": "normal",
+   "id": "147361ed-e865-4dd3-86fc-4fc1e36022ec",
+   "cover-art-archive": {
+    "front": true,
+    "darkened": false,
+    "back": true,
+    "count": 14,
+    "artwork": true
+   },
+   "packaging-id": "e724a489-a7e8-30a1-a17c-30dfd6831202",
+   "label-info": [
+    {
+     "label": {
+      "label-code": 162,
+      "sort-name": "Columbia",
+      "type": "Imprint",
+      "id": "011d1192-6f65-45bd-85c4-0400dd45693e",
+      "type-id": "b6285b2a-3514-3d43-80df-fcf528824ded",
+      "name": "Columbia",
+      "disambiguation": "owned by Sony Music Entertainment, worldwide except JP; formerly owned by CBS between 1938–1990 within US/CA/MX"
+     },
+     "catalog-number": "HC 33795"
+    }
+   ],
+   "packaging": "Gatefold Cover",
+   "release-events": [
+    {
+     "area": {
+      "iso-3166-1-codes": [
+       "US"
+      ],
+      "id": "489ce91b-6658-3307-9877-795b68554c98",
+      "type-id": null,
+      "sort-name": "United States",
+      "type": null,
+      "name": "United States",
+      "disambiguation": ""
+     },
+     "date": "1980"
+    }
+   ],
+   "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+   "title": "Born to Run",
+   "barcode": "074643379502",
+   "disambiguation": "half‐speed master",
+   "media": [
+    {
+     "format": "12\" Vinyl",
+     "position": 1,
+     "track-count": 8,
+     "id": "145eb6cf-eb0e-3305-927f-b63b7e56c4a8",
+     "format-id": "3e9080b0-5e6c-34ab-bd15-f526b6306a64",
+     "title": ""
+    }
+   ]
+  },
+  {
+   "cover-art-archive": {
+    "artwork": true,
+    "count": 6,
+    "front": true,
+    "darkened": false,
+    "back": true
+   },
+   "quality": "normal",
+   "id": "14a40ece-68a7-4f3e-89a9-702290125abd",
+   "text-representation": {
+    "language": "eng",
+    "script": "Latn"
+   },
+   "status": "Official",
+   "asin": null,
+   "country": "XE",
+   "date": "1980",
+   "barcode": "",
+   "title": "Born to Run",
+   "media": [
+    {
+     "format": "Cassette",
+     "title": "",
+     "format-id": "f5e6e254-8f39-331c-936b-9c69d686dc47",
+     "track-count": 8,
+     "id": "cc557623-6d60-30a8-b928-adefdd7949ef",
+     "position": 1
+    }
+   ],
+   "disambiguation": "raised 100 Ꞌ Ꞌ Ꞌ Ꞌ 5’0 Ꞌ Ꞌ Ꞌ Ꞌ 0 tape scale",
+   "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+   "release-events": [
+    {
+     "date": "1980",
+     "area": {
+      "disambiguation": "",
+      "name": "Europe",
+      "sort-name": "Europe",
+      "type": null,
+      "type-id": null,
+      "id": "89a675c2-3e37-3518-b83c-418bad59a85a",
+      "iso-3166-1-codes": [
+       "XE"
+      ]
+     }
+    }
+   ],
+   "packaging-id": "c70b737a-0114-39a9-88f7-82843e54f906",
+   "label-info": [
+    {
+     "catalog-number": "40-80959",
+     "label": {
+      "disambiguation": "CBS Records’ international imprint from 1962–1990; renamed since 1991 as Columbia",
+      "name": "CBS",
+      "sort-name": "CBS",
+      "type": "Imprint",
+      "type-id": "b6285b2a-3514-3d43-80df-fcf528824ded",
+      "id": "b8d33bec-92cc-40d9-bd92-4eb089b401a9",
+      "label-code": 149
+     }
+    }
+   ],
+   "packaging": "Cassette Case"
+  },
+  {
+   "date": "1993",
+   "country": "US",
+   "asin": null,
+   "status": "Official",
+   "text-representation": {
+    "script": "Latn",
+    "language": "eng"
+   },
+   "id": "180a83d7-de47-446f-9a95-42b5e39c7777",
+   "quality": "normal",
+   "cover-art-archive": {
+    "back": true,
+    "darkened": false,
+    "front": true,
+    "count": 31,
+    "artwork": true
+   },
+   "packaging": "Box",
+   "label-info": [
+    {
+     "label": {
+      "label-code": 162,
+      "id": "011d1192-6f65-45bd-85c4-0400dd45693e",
+      "type-id": "b6285b2a-3514-3d43-80df-fcf528824ded",
+      "type": "Imprint",
+      "sort-name": "Columbia",
+      "name": "Columbia",
+      "disambiguation": "owned by Sony Music Entertainment, worldwide except JP; formerly owned by CBS between 1938–1990 within US/CA/MX"
+     },
+     "catalog-number": null
+    }
+   ],
+   "packaging-id": "c1668fc7-8944-4a00-bc3e-46e8d861d211",
+   "release-events": [
+    {
+     "area": {
+      "iso-3166-1-codes": [
+       "US"
+      ],
+      "type-id": null,
+      "id": "489ce91b-6658-3307-9877-795b68554c98",
+      "sort-name": "United States",
+      "type": null,
+      "disambiguation": "",
+      "name": "United States"
+     },
+     "date": "1993"
+    }
+   ],
+   "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+   "disambiguation": "",
+   "media": [
+    {
+     "title": "Greetings From Asbury Park, N.J.",
+     "position": 1,
+     "track-count": 9,
+     "format-id": "9712d52a-4509-3d4b-a1a2-67c88c643e31",
+     "id": "3d3ae011-4bf0-3f57-8b4e-5e7cc05c87ec",
+     "format": "CD"
+    },
+    {
+     "format": "CD",
+     "title": "The Wild, the Innocent & The E Street Shuffle",
+     "position": 2,
+     "id": "9afbd4e6-bb8b-36b0-a307-ad3bed24fd2b",
+     "format-id": "9712d52a-4509-3d4b-a1a2-67c88c643e31",
+     "track-count": 7
+    },
+    {
+     "format": "CD",
+     "title": "Born to Run",
+     "position": 3,
+     "track-count": 8,
+     "format-id": "9712d52a-4509-3d4b-a1a2-67c88c643e31",
+     "id": "807e0785-9b66-3902-ba6d-8f61a52dc184"
+    },
+    {
+     "format": "CD",
+     "id": "4bb9b103-e295-3fbf-80c3-d8965aa3a9e9",
+     "format-id": "9712d52a-4509-3d4b-a1a2-67c88c643e31",
+     "track-count": 10,
+     "position": 4,
+     "title": "Darkness on the Edge of Town"
+    },
+    {
+     "title": "The River",
+     "track-count": 11,
+     "id": "440bd017-b4f6-391b-ad6b-1e21316d4306",
+     "format-id": "9712d52a-4509-3d4b-a1a2-67c88c643e31",
+     "position": 5,
+     "format": "CD"
+    },
+    {
+     "format": "CD",
+     "format-id": "9712d52a-4509-3d4b-a1a2-67c88c643e31",
+     "track-count": 9,
+     "id": "fa556b63-9168-3c3d-a6f1-a12aadc5e2d5",
+     "position": 6,
+     "title": "The River"
+    },
+    {
+     "format": "CD",
+     "position": 7,
+     "track-count": 10,
+     "format-id": "9712d52a-4509-3d4b-a1a2-67c88c643e31",
+     "id": "457c633b-55b7-3f94-87f0-e86506cb8259",
+     "title": "Nebraska"
+    },
+    {
+     "format": "CD",
+     "format-id": "9712d52a-4509-3d4b-a1a2-67c88c643e31",
+     "id": "2833d023-8372-370f-ae1c-2a410e469569",
+     "track-count": 12,
+     "position": 8,
+     "title": "Born in the U.S.A."
+    },
+    {
+     "format": "CD",
+     "track-count": 12,
+     "format-id": "9712d52a-4509-3d4b-a1a2-67c88c643e31",
+     "id": "cc6858a7-b9d7-3a6a-bc2e-08bfbf67e4f6",
+     "position": 9,
+     "title": "Tunnel of Love"
+    },
+    {
+     "title": "Human Touch",
+     "position": 10,
+     "format-id": "9712d52a-4509-3d4b-a1a2-67c88c643e31",
+     "track-count": 14,
+     "id": "761519cd-8678-347d-86fa-c77d59e3a03d",
+     "format": "CD"
+    },
+    {
+     "format-id": "9712d52a-4509-3d4b-a1a2-67c88c643e31",
+     "track-count": 10,
+     "id": "cdf6bfd8-aafb-35ee-a934-f3b8cb56c4e3",
+     "position": 11,
+     "title": "Lucky Town",
+     "format": "CD"
+    },
+    {
+     "title": "In Concert: MTV Plugged",
+     "track-count": 13,
+     "id": "1a829518-8d96-3a3f-b418-075f36e88b3a",
+     "format-id": "9712d52a-4509-3d4b-a1a2-67c88c643e31",
+     "position": 12,
+     "format": "CD"
+    }
+   ],
+   "barcode": "",
+   "title": "A Concert for the Kristen Ann Carr Fund"
+  },
+  {
+   "packaging-id": "c70b737a-0114-39a9-88f7-82843e54f906",
+   "label-info": [
+    {
+     "catalog-number": "60 696",
+     "label": {
+      "name": "Columbia",
+      "disambiguation": "owned by Sony Music Entertainment, worldwide except JP; formerly owned by CBS between 1938–1990 within US/CA/MX",
+      "type-id": "b6285b2a-3514-3d43-80df-fcf528824ded",
+      "id": "011d1192-6f65-45bd-85c4-0400dd45693e",
+      "sort-name": "Columbia",
+      "type": "Imprint",
+      "label-code": 162
+     }
+    },
+    {
+     "label": {
+      "label-code": 162,
+      "type-id": "b6285b2a-3514-3d43-80df-fcf528824ded",
+      "id": "011d1192-6f65-45bd-85c4-0400dd45693e",
+      "sort-name": "Columbia",
+      "type": "Imprint",
+      "name": "Columbia",
+      "disambiguation": "owned by Sony Music Entertainment, worldwide except JP; formerly owned by CBS between 1938–1990 within US/CA/MX"
+     },
+     "catalog-number": "60.696"
+    }
+   ],
+   "packaging": "Cassette Case",
+   "release-events": [
+    {
+     "date": "1975",
+     "area": {
+      "disambiguation": "",
+      "name": "Argentina",
+      "id": "0df04709-c7d8-3b55-a6ea-f3e5069a947b",
+      "type-id": null,
+      "type": null,
+      "sort-name": "Argentina",
+      "iso-3166-1-codes": [
+       "AR"
+      ]
+     }
+    }
+   ],
+   "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+   "barcode": "",
+   "title": "Born to Run",
+   "media": [
+    {
+     "title": "",
+     "position": 1,
+     "track-count": 8,
+     "format-id": "f5e6e254-8f39-331c-936b-9c69d686dc47",
+     "id": "3ffdee6b-6b86-3b4a-a5c5-223c36718c61",
+     "format": "Cassette"
+    }
+   ],
+   "disambiguation": "",
+   "country": "AR",
+   "date": "1975",
+   "text-representation": {
+    "language": "eng",
+    "script": "Latn"
+   },
+   "asin": null,
+   "status": "Official",
+   "quality": "normal",
+   "id": "1929d226-f145-414d-8f1c-0c85f3adad62",
+   "cover-art-archive": {
+    "artwork": true,
+    "count": 5,
+    "back": true,
+    "front": true,
+    "darkened": false
+   }
+  },
+  {
+   "release-events": [
+    {
+     "date": "1986",
+     "area": {
+      "sort-name": "Sweden",
+      "type": null,
+      "type-id": null,
+      "id": "23d10872-f5ae-3f0c-bf55-332788a16ecb",
+      "disambiguation": "",
+      "name": "Sweden",
+      "iso-3166-1-codes": [
+       "SE"
+      ]
+     }
+    }
+   ],
+   "packaging": "Other",
+   "label-info": [
+    {
+     "label": {
+      "label-code": null,
+      "type-id": null,
+      "id": "c2211b59-d604-41ca-b9f0-a7df474e472b",
+      "type": null,
+      "sort-name": "Scandinavian Music Club",
+      "name": "Scandinavian Music Club",
+      "disambiguation": ""
+     },
+     "catalog-number": "003 217"
+    }
+   ],
+   "packaging-id": "815b7785-8284-3926-8f04-e48bc6c4d102",
+   "disambiguation": "2nd edition",
+   "media": [
+    {
+     "format": "12\" Vinyl",
+     "title": "Greetings From Asbury Park, N.J.",
+     "track-count": 9,
+     "id": "941a12fb-83f8-35b8-8f28-0282c1b627d9",
+     "format-id": "3e9080b0-5e6c-34ab-bd15-f526b6306a64",
+     "position": 1
+    },
+    {
+     "format-id": "3e9080b0-5e6c-34ab-bd15-f526b6306a64",
+     "track-count": 7,
+     "id": "c6a7f492-9e9a-3361-bf87-9798a9124dad",
+     "position": 2,
+     "title": "The Wild, The Innocent & The E Street Shuffle",
+     "format": "12\" Vinyl"
+    },
+    {
+     "format": "12\" Vinyl",
+     "position": 3,
+     "track-count": 8,
+     "format-id": "3e9080b0-5e6c-34ab-bd15-f526b6306a64",
+     "id": "17ccdec0-6074-31e2-b374-c262a314953d",
+     "title": "Born to Run"
+    },
+    {
+     "title": "Darkness on the Edge of Town",
+     "format-id": "3e9080b0-5e6c-34ab-bd15-f526b6306a64",
+     "track-count": 10,
+     "id": "96f20ae7-4c79-37bf-96e6-e2455393ed1a",
+     "position": 4,
+     "format": "12\" Vinyl"
+    },
+    {
+     "format": "12\" Vinyl",
+     "track-count": 11,
+     "format-id": "3e9080b0-5e6c-34ab-bd15-f526b6306a64",
+     "id": "c29f0955-3f70-3189-8e0d-606804a39436",
+     "position": 5,
+     "title": "The River"
+    },
+    {
+     "format": "12\" Vinyl",
+     "title": "The River",
+     "id": "7e1ca75b-0879-35a4-af65-10ae6d93ad33",
+     "format-id": "3e9080b0-5e6c-34ab-bd15-f526b6306a64",
+     "track-count": 9,
+     "position": 6
+    },
+    {
+     "format": "12\" Vinyl",
+     "position": 7,
+     "track-count": 10,
+     "id": "8da33540-5ac3-3eac-8ff1-c02dde3ce699",
+     "format-id": "3e9080b0-5e6c-34ab-bd15-f526b6306a64",
+     "title": "Nebraska"
+    },
+    {
+     "track-count": 12,
+     "format-id": "3e9080b0-5e6c-34ab-bd15-f526b6306a64",
+     "id": "4a1276cd-9baa-389b-8e6b-5cb1d6da6a36",
+     "position": 8,
+     "title": "Born in the U.S.A.",
+     "format": "12\" Vinyl"
+    }
+   ],
+   "barcode": null,
+   "title": "Complete",
+   "status-id": "1156806e-d06a-38bd-83f0-cf2284a808b9",
+   "status": "Bootleg",
+   "asin": null,
+   "text-representation": {
+    "language": "eng",
+    "script": "Latn"
+   },
+   "country": "SE",
+   "date": "1986",
+   "cover-art-archive": {
+    "count": 23,
+    "artwork": true,
+    "darkened": false,
+    "front": true,
+    "back": true
+   },
+   "id": "1af3c95f-9293-4103-84e5-9becca2fa6c9",
+   "quality": "normal"
+  },
+  {
+   "status": "Official",
+   "asin": null,
+   "text-representation": {
+    "language": "eng",
+    "script": "Latn"
+   },
+   "country": "US",
+   "date": "1975-08-25",
+   "cover-art-archive": {
+    "front": true,
+    "darkened": false,
+    "back": false,
+    "artwork": true,
+    "count": 2
+   },
+   "id": "1d404e1d-fcb6-3a52-b478-e706e893c897",
+   "quality": "normal",
+   "release-events": [
+    {
+     "area": {
+      "sort-name": "United States",
+      "type": null,
+      "type-id": null,
+      "id": "489ce91b-6658-3307-9877-795b68554c98",
+      "disambiguation": "",
+      "name": "United States",
+      "iso-3166-1-codes": [
+       "US"
+      ]
+     },
+     "date": "1975-08-25"
+    }
+   ],
+   "label-info": [
+    {
+     "label": {
+      "label-code": 162,
+      "name": "Columbia",
+      "disambiguation": "owned by Sony Music Entertainment, worldwide except JP; formerly owned by CBS between 1938–1990 within US/CA/MX",
+      "type": "Imprint",
+      "sort-name": "Columbia",
+      "type-id": "b6285b2a-3514-3d43-80df-fcf528824ded",
+      "id": "011d1192-6f65-45bd-85c4-0400dd45693e"
+     },
+     "catalog-number": "PC 33795"
+    }
+   ],
+   "packaging-id": "f7101ce3-0384-39ce-9fde-fbbd0044d35f",
+   "packaging": "Cardboard/Paper Sleeve",
+   "title": "Born to Run",
+   "barcode": "",
+   "media": [
+    {
+     "position": 1,
+     "track-count": 8,
+     "format-id": "3e9080b0-5e6c-34ab-bd15-f526b6306a64",
+     "id": "ad2f4fec-5b7c-31d7-ae82-0e2183fc76b5",
+     "title": "",
+     "format": "12\" Vinyl"
+    }
+   ],
+   "disambiguation": "",
+   "status-id": "4e304316-386d-3409-af2e-78857eec5cfe"
+  },
+  {
+   "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+   "disambiguation": "“Historia De La Musica Rock” reissue",
+   "media": [
+    {
+     "format": "12\" Vinyl",
+     "title": "",
+     "format-id": "3e9080b0-5e6c-34ab-bd15-f526b6306a64",
+     "track-count": 8,
+     "id": "f65cecd5-b244-3b91-b607-27fcc59f14be",
+     "position": 1
+    }
+   ],
+   "barcode": "",
+   "title": "Born to Run",
+   "packaging": "Cardboard/Paper Sleeve",
+   "label-info": [
+    {
+     "label": {
+      "name": "CBS",
+      "disambiguation": "CBS Records’ international imprint from 1962–1990; renamed since 1991 as Columbia",
+      "type": "Imprint",
+      "sort-name": "CBS",
+      "id": "b8d33bec-92cc-40d9-bd92-4eb089b401a9",
+      "type-id": "b6285b2a-3514-3d43-80df-fcf528824ded",
+      "label-code": 149
+     },
+     "catalog-number": "LSP 15482"
+    }
+   ],
+   "packaging-id": "f7101ce3-0384-39ce-9fde-fbbd0044d35f",
+   "release-events": [
+    {
+     "area": {
+      "iso-3166-1-codes": [
+       "ES"
+      ],
+      "sort-name": "Spain",
+      "type": null,
+      "type-id": null,
+      "id": "471c46a7-afc5-31c4-923c-d0444f5053a4",
+      "disambiguation": "",
+      "name": "Spain"
+     },
+     "date": "1983"
+    }
+   ],
+   "id": "1e057aa1-ed51-49d7-8a5b-567da7da65b2",
+   "quality": "normal",
+   "cover-art-archive": {
+    "front": true,
+    "darkened": false,
+    "back": true,
+    "count": 11,
+    "artwork": true
+   },
+   "country": "ES",
+   "date": "1983",
+   "asin": null,
+   "status": "Official",
+   "text-representation": {
+    "script": "Latn",
+    "language": "eng"
+   }
+  },
+  {
+   "release-events": [
+    {
+     "date": "1975",
+     "area": {
+      "iso-3166-1-codes": [
+       "GB"
+      ],
+      "sort-name": "United Kingdom",
+      "type": null,
+      "type-id": null,
+      "id": "8a754a16-0027-3a29-b6d7-2b40ea0481ed",
+      "name": "United Kingdom",
+      "disambiguation": ""
+     }
+    }
+   ],
+   "packaging-id": "e724a489-a7e8-30a1-a17c-30dfd6831202",
+   "label-info": [
+    {
+     "catalog-number": "69170",
+     "label": {
+      "id": "b8d33bec-92cc-40d9-bd92-4eb089b401a9",
+      "type-id": "b6285b2a-3514-3d43-80df-fcf528824ded",
+      "type": "Imprint",
+      "sort-name": "CBS",
+      "name": "CBS",
+      "disambiguation": "CBS Records’ international imprint from 1962–1990; renamed since 1991 as Columbia",
+      "label-code": 149
+     }
+    },
+    {
+     "label": {
+      "label-code": 149,
+      "disambiguation": "CBS Records’ international imprint from 1962–1990; renamed since 1991 as Columbia",
+      "name": "CBS",
+      "id": "b8d33bec-92cc-40d9-bd92-4eb089b401a9",
+      "type-id": "b6285b2a-3514-3d43-80df-fcf528824ded",
+      "type": "Imprint",
+      "sort-name": "CBS"
+     },
+     "catalog-number": "S 69170"
+    }
+   ],
+   "packaging": "Gatefold Cover",
+   "title": "Born to Run",
+   "barcode": "",
+   "disambiguation": "UK, version 6",
+   "media": [
+    {
+     "format": "12\" Vinyl",
+     "id": "4201767c-5032-35ba-82c3-11bccb9d17ae",
+     "format-id": "3e9080b0-5e6c-34ab-bd15-f526b6306a64",
+     "track-count": 8,
+     "position": 1,
+     "title": ""
+    }
+   ],
+   "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+   "text-representation": {
+    "script": "Latn",
+    "language": "eng"
+   },
+   "status": "Official",
+   "asin": null,
+   "country": "GB",
+   "date": "1975",
+   "cover-art-archive": {
+    "back": true,
+    "front": true,
+    "darkened": false,
+    "count": 5,
+    "artwork": true
+   },
+   "quality": "normal",
+   "id": "1e212454-76da-4b04-8649-0c877d765e76"
+  },
+  {
+   "packaging": "Jewel Case",
+   "label-info": [
+    {
+     "catalog-number": "478555 2",
+     "label": {
+      "label-code": 162,
+      "type-id": "b6285b2a-3514-3d43-80df-fcf528824ded",
+      "id": "011d1192-6f65-45bd-85c4-0400dd45693e",
+      "type": "Imprint",
+      "sort-name": "Columbia",
+      "disambiguation": "owned by Sony Music Entertainment, worldwide except JP; formerly owned by CBS between 1938–1990 within US/CA/MX",
+      "name": "Columbia"
+     }
+    }
+   ],
+   "packaging-id": "ec27701a-4a22-37f4-bfac-6616e0f9750a",
+   "release-events": [
+    {
+     "date": "1995-02-27",
+     "area": {
+      "name": "United Kingdom",
+      "disambiguation": "",
+      "type-id": null,
+      "id": "8a754a16-0027-3a29-b6d7-2b40ea0481ed",
+      "type": null,
+      "sort-name": "United Kingdom",
+      "iso-3166-1-codes": [
+       "GB"
+      ]
+     }
+    }
+   ],
+   "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+   "media": [
+    {
+     "title": "",
+     "position": 1,
+     "format-id": "9712d52a-4509-3d4b-a1a2-67c88c643e31",
+     "track-count": 18,
+     "id": "a65cc1c4-aaff-37ff-9066-f2fb94f02a41",
+     "format": "CD"
+    }
+   ],
+   "disambiguation": "",
+   "barcode": "5099747855528",
+   "title": "Greatest Hits",
+   "country": "GB",
+   "date": "1995-02-27",
+   "asin": null,
+   "status": "Official",
+   "text-representation": {
+    "script": "Latn",
+    "language": "eng"
+   },
+   "id": "211883ff-740c-48c9-aef7-87f31574b18d",
+   "quality": "normal",
+   "cover-art-archive": {
+    "count": 15,
+    "artwork": true,
+    "back": true,
+    "darkened": false,
+    "front": true
+   }
+  },
+  {
+   "title": "Greatest Hits",
+   "barcode": "074646706022",
+   "disambiguation": "Pitman pressing",
+   "media": [
+    {
+     "title": "",
+     "track-count": 18,
+     "id": "ae6b6bc9-700b-3dff-9c06-1653dc103d8a",
+     "format-id": "9712d52a-4509-3d4b-a1a2-67c88c643e31",
+     "position": 1,
+     "format": "CD"
+    }
+   ],
+   "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+   "release-events": [
+    {
+     "area": {
+      "iso-3166-1-codes": [
+       "US"
+      ],
+      "name": "United States",
+      "disambiguation": "",
+      "id": "489ce91b-6658-3307-9877-795b68554c98",
+      "type-id": null,
+      "sort-name": "United States",
+      "type": null
+     },
+     "date": "1995-02-28"
+    }
+   ],
+   "label-info": [
+    {
+     "label": {
+      "type-id": "b6285b2a-3514-3d43-80df-fcf528824ded",
+      "id": "011d1192-6f65-45bd-85c4-0400dd45693e",
+      "type": "Imprint",
+      "sort-name": "Columbia",
+      "name": "Columbia",
+      "disambiguation": "owned by Sony Music Entertainment, worldwide except JP; formerly owned by CBS between 1938–1990 within US/CA/MX",
+      "label-code": 162
+     },
+     "catalog-number": "CK 67060"
+    }
+   ],
+   "packaging-id": "ec27701a-4a22-37f4-bfac-6616e0f9750a",
+   "packaging": "Jewel Case",
+   "cover-art-archive": {
+    "count": 7,
+    "artwork": true,
+    "front": true,
+    "darkened": false,
+    "back": true
+   },
+   "id": "2294b386-0c2b-3077-9018-2c278eabe495",
+   "quality": "normal",
+   "status": "Official",
+   "asin": "B000002B30",
+   "text-representation": {
+    "script": "Latn",
+    "language": "eng"
+   },
+   "country": "US",
+   "date": "1995-02-28"
+  },
+  {
+   "cover-art-archive": {
+    "back": true,
+    "front": true,
+    "darkened": false,
+    "artwork": true,
+    "count": 5
+   },
+   "id": "2f762434-1566-458d-b596-88da10d73854",
+   "quality": "normal",
+   "status": "Official",
+   "asin": null,
+   "text-representation": {
+    "language": "eng",
+    "script": "Latn"
+   },
+   "country": "US",
+   "date": "1992",
+   "disambiguation": "",
+   "media": [
+    {
+     "format": "MiniDisc",
+     "format-id": "671c5ed4-20e3-3a62-b6ea-f155cde04258",
+     "id": "ae6d4bcc-c2f3-37a0-8af1-385512466048",
+     "track-count": 8,
+     "position": 1,
+     "title": ""
+    }
+   ],
+   "barcode": "074643379588",
+   "title": "Born to Run",
+   "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+   "release-events": [
+    {
+     "date": "1992",
+     "area": {
+      "type-id": null,
+      "id": "489ce91b-6658-3307-9877-795b68554c98",
+      "sort-name": "United States",
+      "type": null,
+      "name": "United States",
+      "disambiguation": "",
+      "iso-3166-1-codes": [
+       "US"
+      ]
+     }
+    }
+   ],
+   "packaging": "Jewel Case",
+   "label-info": [
+    {
+     "label": {
+      "label-code": 162,
+      "type": "Imprint",
+      "sort-name": "Columbia",
+      "type-id": "b6285b2a-3514-3d43-80df-fcf528824ded",
+      "id": "011d1192-6f65-45bd-85c4-0400dd45693e",
+      "name": "Columbia",
+      "disambiguation": "owned by Sony Music Entertainment, worldwide except JP; formerly owned by CBS between 1938–1990 within US/CA/MX"
+     },
+     "catalog-number": "CM 33795"
+    }
+   ],
+   "packaging-id": "ec27701a-4a22-37f4-bfac-6616e0f9750a"
+  },
+  {
+   "quality": "normal",
+   "id": "3240d0c7-13e3-40d8-845b-3bd113354d2f",
+   "cover-art-archive": {
+    "count": 5,
+    "artwork": true,
+    "back": true,
+    "front": true,
+    "darkened": false
+   },
+   "date": "1975",
+   "country": "US",
+   "text-representation": {
+    "script": "Latn",
+    "language": "eng"
+   },
+   "status": "Official",
+   "asin": null,
+   "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+   "barcode": "",
+   "title": "Born to Run",
+   "disambiguation": "US 8‐track, version 3",
+   "media": [
+    {
+     "id": "bf1a4f68-cbd2-31b4-9c26-086ac66f491f",
+     "format-id": "49b49ca7-d2d8-4d36-a7dd-d61363ee3697",
+     "track-count": 9,
+     "position": 1,
+     "title": "",
+     "format": "8-Track Cartridge"
+    }
+   ],
+   "packaging-id": "815b7785-8284-3926-8f04-e48bc6c4d102",
+   "label-info": [
+    {
+     "catalog-number": "PCA 33795",
+     "label": {
+      "label-code": 162,
+      "id": "011d1192-6f65-45bd-85c4-0400dd45693e",
+      "type-id": "b6285b2a-3514-3d43-80df-fcf528824ded",
+      "type": "Imprint",
+      "sort-name": "Columbia",
+      "disambiguation": "owned by Sony Music Entertainment, worldwide except JP; formerly owned by CBS between 1938–1990 within US/CA/MX",
+      "name": "Columbia"
+     }
+    }
+   ],
+   "packaging": "Other",
+   "release-events": [
+    {
+     "date": "1975",
+     "area": {
+      "iso-3166-1-codes": [
+       "US"
+      ],
+      "type-id": null,
+      "id": "489ce91b-6658-3307-9877-795b68554c98",
+      "sort-name": "United States",
+      "type": null,
+      "disambiguation": "",
+      "name": "United States"
+     }
+    }
+   ]
+  },
+  {
+   "date": "1977",
+   "country": "US",
+   "text-representation": {
+    "language": "eng",
+    "script": "Latn"
+   },
+   "asin": null,
+   "status": "Official",
+   "quality": "normal",
+   "id": "34af0e97-b43e-433d-aa07-c669bc5af74e",
+   "cover-art-archive": {
+    "artwork": true,
+    "count": 6,
+    "back": true,
+    "darkened": false,
+    "front": true
+   },
+   "packaging-id": "f7101ce3-0384-39ce-9fde-fbbd0044d35f",
+   "label-info": [
+    {
+     "catalog-number": "JC 33795",
+     "label": {
+      "sort-name": "Columbia",
+      "type": "Imprint",
+      "type-id": "b6285b2a-3514-3d43-80df-fcf528824ded",
+      "id": "011d1192-6f65-45bd-85c4-0400dd45693e",
+      "name": "Columbia",
+      "disambiguation": "owned by Sony Music Entertainment, worldwide except JP; formerly owned by CBS between 1938–1990 within US/CA/MX",
+      "label-code": 162
+     }
+    }
+   ],
+   "packaging": "Cardboard/Paper Sleeve",
+   "release-events": [
+    {
+     "date": "1977",
+     "area": {
+      "name": "United States",
+      "disambiguation": "",
+      "type": null,
+      "sort-name": "United States",
+      "type-id": null,
+      "id": "489ce91b-6658-3307-9877-795b68554c98",
+      "iso-3166-1-codes": [
+       "US"
+      ]
+     }
+    }
+   ],
+   "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+   "barcode": "074643379519",
+   "title": "Born to Run",
+   "disambiguation": "",
+   "media": [
+    {
+     "format": "12\" Vinyl",
+     "track-count": 8,
+     "format-id": "3e9080b0-5e6c-34ab-bd15-f526b6306a64",
+     "id": "0aaaf398-3fac-3479-af3b-610d2836807b",
+     "position": 1,
+     "title": ""
+    }
+   ]
+  },
+  {
+   "cover-art-archive": {
+    "darkened": false,
+    "front": true,
+    "back": true,
+    "count": 3,
+    "artwork": true
+   },
+   "id": "384d53a3-ea13-4dc7-bb2a-87a5b764f9f8",
+   "quality": "normal",
+   "status": "Official",
+   "asin": null,
+   "text-representation": {
+    "language": "eng",
+    "script": "Latn"
+   },
+   "date": "1975",
+   "country": "GB",
+   "disambiguation": "anti‐forgery pattern on the reverse tracklist flap",
+   "media": [
+    {
+     "title": "",
+     "position": 1,
+     "track-count": 8,
+     "id": "f1df5d90-f117-397f-a4e9-cd629a50ade7",
+     "format-id": "f5e6e254-8f39-331c-936b-9c69d686dc47",
+     "format": "Cassette"
+    }
+   ],
+   "barcode": "",
+   "title": "Born to Run",
+   "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+   "release-events": [
+    {
+     "date": "1975",
+     "area": {
+      "type": null,
+      "sort-name": "United Kingdom",
+      "id": "8a754a16-0027-3a29-b6d7-2b40ea0481ed",
+      "type-id": null,
+      "name": "United Kingdom",
+      "disambiguation": "",
+      "iso-3166-1-codes": [
+       "GB"
+      ]
+     }
+    }
+   ],
+   "packaging": "Cassette Case",
+   "label-info": [
+    {
+     "catalog-number": "40-69170",
+     "label": {
+      "label-code": 149,
+      "id": "b8d33bec-92cc-40d9-bd92-4eb089b401a9",
+      "type-id": "b6285b2a-3514-3d43-80df-fcf528824ded",
+      "type": "Imprint",
+      "sort-name": "CBS",
+      "name": "CBS",
+      "disambiguation": "CBS Records’ international imprint from 1962–1990; renamed since 1991 as Columbia"
+     }
+    }
+   ],
+   "packaging-id": "c70b737a-0114-39a9-88f7-82843e54f906"
+  },
+  {
+   "barcode": "",
+   "title": "Greetings From Asbury Park, N.J. / The Wild, the Innocent and the E Street Shuffle / Born to Run",
+   "disambiguation": "",
+   "media": [
+    {
+     "format": "12\" Vinyl",
+     "format-id": "3e9080b0-5e6c-34ab-bd15-f526b6306a64",
+     "track-count": 7,
+     "id": "226a3148-2b7d-3659-a9fd-d6c6e5eb11f1",
+     "position": 1,
+     "title": "The Wild, the Innocent & The E Street Shuffle"
+    },
+    {
+     "format": "12\" Vinyl",
+     "title": "Born to Run",
+     "position": 2,
+     "format-id": "3e9080b0-5e6c-34ab-bd15-f526b6306a64",
+     "id": "4606bb1f-8b55-3f8f-8ac8-fe998cc6de2d",
+     "track-count": 8
+    },
+    {
+     "format": "12\" Vinyl",
+     "track-count": 9,
+     "format-id": "3e9080b0-5e6c-34ab-bd15-f526b6306a64",
+     "id": "401e46a4-04e9-326a-b0d1-044392c3f898",
+     "position": 3,
+     "title": "Greetings From Asbury Park, N.J."
+    }
+   ],
+   "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+   "release-events": [
+    {
+     "area": {
+      "name": "Australia",
+      "disambiguation": "",
+      "sort-name": "Australia",
+      "type": null,
+      "id": "106e0bec-b638-3b37-b731-f53d507dc00e",
+      "type-id": null,
+      "iso-3166-1-codes": [
+       "AU"
+      ]
+     },
+     "date": "1980"
+    }
+   ],
+   "label-info": [
+    {
+     "label": {
+      "label-code": 149,
+      "disambiguation": "CBS Records’ international imprint from 1962–1990; renamed since 1991 as Columbia",
+      "name": "CBS",
+      "id": "b8d33bec-92cc-40d9-bd92-4eb089b401a9",
+      "type-id": "b6285b2a-3514-3d43-80df-fcf528824ded",
+      "sort-name": "CBS",
+      "type": "Imprint"
+     },
+     "catalog-number": "S3BP220504"
+    }
+   ],
+   "packaging-id": "c1668fc7-8944-4a00-bc3e-46e8d861d211",
+   "packaging": "Box",
+   "cover-art-archive": {
+    "darkened": false,
+    "front": true,
+    "back": true,
+    "count": 11,
+    "artwork": true
+   },
+   "id": "3e63326c-307a-4076-bef2-91a74744dadb",
+   "quality": "normal",
+   "asin": null,
+   "status": "Official",
+   "text-representation": {
+    "language": "eng",
+    "script": "Latn"
+   },
+   "country": "AU",
+   "date": "1980"
+  },
+  {
+   "id": "46e5c6a9-b0a7-4e42-9162-8f412705b09d",
+   "quality": "normal",
+   "cover-art-archive": {
+    "count": 1,
+    "artwork": true,
+    "darkened": false,
+    "front": true,
+    "back": false
+   },
+   "date": "1975-08-25",
+   "country": "XE",
+   "asin": null,
+   "status": "Official",
+   "text-representation": {
+    "script": "Latn",
+    "language": "eng"
+   },
+   "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+   "media": [
+    {
+     "position": 1,
+     "track-count": 8,
+     "format-id": "3e9080b0-5e6c-34ab-bd15-f526b6306a64",
+     "id": "5577f639-8f98-300c-9a83-40caca5bfd3e",
+     "title": "",
+     "format": "12\" Vinyl"
+    }
+   ],
+   "disambiguation": "",
+   "title": "Born to Run",
+   "barcode": null,
+   "packaging": null,
+   "label-info": [
+    {
+     "catalog-number": "80959",
+     "label": {
+      "type": "Imprint",
+      "sort-name": "CBS",
+      "id": "b8d33bec-92cc-40d9-bd92-4eb089b401a9",
+      "type-id": "b6285b2a-3514-3d43-80df-fcf528824ded",
+      "name": "CBS",
+      "disambiguation": "CBS Records’ international imprint from 1962–1990; renamed since 1991 as Columbia",
+      "label-code": 149
+     }
+    }
+   ],
+   "packaging-id": null,
+   "release-events": [
+    {
+     "date": "1975-08-25",
+     "area": {
+      "disambiguation": "",
+      "name": "Europe",
+      "type": null,
+      "sort-name": "Europe",
+      "type-id": null,
+      "id": "89a675c2-3e37-3518-b83c-418bad59a85a",
+      "iso-3166-1-codes": [
+       "XE"
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "quality": "normal",
+   "id": "4c072b08-0941-4a6f-abc7-4d2f309a1a08",
+   "cover-art-archive": {
+    "count": 5,
+    "artwork": true,
+    "back": false,
+    "front": true,
+    "darkened": false
+   },
+   "country": "IT",
+   "date": "1982",
+   "text-representation": {
+    "script": "Latn",
+    "language": "eng"
+   },
+   "status": "Official",
+   "asin": null,
+   "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+   "barcode": "",
+   "title": "Bruce Springsteen",
+   "media": [
+    {
+     "title": "",
+     "position": 1,
+     "track-count": 7,
+     "format-id": "f5e6e254-8f39-331c-936b-9c69d686dc47",
+     "id": "139a913c-68a1-3e99-809b-1d781a5a32e5",
+     "format": "Cassette"
+    }
+   ],
+   "disambiguation": "",
+   "packaging-id": "c70b737a-0114-39a9-88f7-82843e54f906",
+   "label-info": [
+    {
+     "catalog-number": "ROCK 05",
+     "label": {
+      "name": "Gruppo Editoriale Fabbri",
+      "disambiguation": "used as logo on some releases, late 70s‐90s",
+      "id": "c2af8ff1-e10c-44f8-a402-0e7d5ba179ba",
+      "type-id": null,
+      "type": null,
+      "sort-name": "Gruppo Editoriale Fabbri",
+      "label-code": null
+     }
+    },
+    {
+     "catalog-number": null,
+     "label": {
+      "label-code": 149,
+      "sort-name": "CBS",
+      "type": "Imprint",
+      "type-id": "b6285b2a-3514-3d43-80df-fcf528824ded",
+      "id": "b8d33bec-92cc-40d9-bd92-4eb089b401a9",
+      "name": "CBS",
+      "disambiguation": "CBS Records’ international imprint from 1962–1990; renamed since 1991 as Columbia"
+     }
+    }
+   ],
+   "packaging": "Cassette Case",
+   "release-events": [
+    {
+     "area": {
+      "iso-3166-1-codes": [
+       "IT"
+      ],
+      "type": null,
+      "sort-name": "Italy",
+      "id": "c6500277-9a3d-349b-bf30-41afdbf42add",
+      "type-id": null,
+      "disambiguation": "",
+      "name": "Italy"
+     },
+     "date": "1982"
+    }
+   ]
+  },
+  {
+   "status-id": "518ffc83-5cde-34df-8627-81bff5093d92",
+   "disambiguation": "",
+   "media": [
+    {
+     "format": "CD",
+     "title": "",
+     "position": 1,
+     "format-id": "9712d52a-4509-3d4b-a1a2-67c88c643e31",
+     "track-count": 16,
+     "id": "bf6cd280-e336-3bd6-bbf8-0701eff56b66"
+    }
+   ],
+   "barcode": "",
+   "title": "Bruce Springsteen",
+   "packaging": "Jewel Case",
+   "packaging-id": "ec27701a-4a22-37f4-bfac-6616e0f9750a",
+   "label-info": [
+    {
+     "label": {
+      "type": "Imprint",
+      "sort-name": "Sony Records",
+      "type-id": "b6285b2a-3514-3d43-80df-fcf528824ded",
+      "id": "dee62e1a-cfd1-466f-b578-846a0fdf435a",
+      "name": "Sony Records",
+      "disambiguation": "Japanese imprint",
+      "label-code": null
+     },
+     "catalog-number": "XDDP 93084"
+    }
+   ],
+   "release-events": [
+    {
+     "area": {
+      "iso-3166-1-codes": [
+       "JP"
+      ],
+      "sort-name": "Japan",
+      "type": null,
+      "id": "2db42837-c832-3c27-b4a3-08198f75693c",
+      "type-id": null,
+      "name": "Japan",
+      "disambiguation": ""
+     },
+     "date": "1992"
+    }
+   ],
+   "quality": "normal",
+   "id": "4f3c8a0b-26a0-4ad8-95cc-86fdff222ee5",
+   "cover-art-archive": {
+    "count": 4,
+    "artwork": true,
+    "darkened": false,
+    "front": true,
+    "back": true
+   },
+   "date": "1992",
+   "country": "JP",
+   "text-representation": {
+    "script": "Latn",
+    "language": "eng"
+   },
+   "asin": null,
+   "status": "Promotion"
+  },
+  {
+   "asin": null,
+   "status": "Bootleg",
+   "text-representation": {
+    "script": "Latn",
+    "language": "eng"
+   },
+   "date": "1983",
+   "country": "US",
+   "cover-art-archive": {
+    "artwork": true,
+    "count": 2,
+    "back": false,
+    "front": false,
+    "darkened": false
+   },
+   "id": "50e397f4-db5a-4e14-8a11-ab68cbb044a7",
+   "quality": "normal",
+   "release-events": [
+    {
+     "area": {
+      "iso-3166-1-codes": [
+       "US"
+      ],
+      "disambiguation": "",
+      "name": "United States",
+      "type": null,
+      "sort-name": "United States",
+      "id": "489ce91b-6658-3307-9877-795b68554c98",
+      "type-id": null
+     },
+     "date": "1983"
+    }
+   ],
+   "packaging": "Cardboard/Paper Sleeve",
+   "label-info": [
+    {
+     "catalog-number": "[none]",
+     "label": {
+      "label-code": null,
+      "name": "Rko Radio Networks",
+      "disambiguation": "",
+      "type-id": null,
+      "id": "c5ca8d18-9ca9-4a56-b6a1-1df1b6d12208",
+      "sort-name": "Rko Radio Networks",
+      "type": null
+     }
+    }
+   ],
+   "packaging-id": "f7101ce3-0384-39ce-9fde-fbbd0044d35f",
+   "disambiguation": "",
+   "media": [
+    {
+     "format": "12\" Vinyl",
+     "title": "",
+     "id": "f269d5c0-494d-364c-b30b-d699873ee04f",
+     "track-count": 9,
+     "format-id": "3e9080b0-5e6c-34ab-bd15-f526b6306a64",
+     "position": 1
+    }
+   ],
+   "barcode": "",
+   "title": "Royality of Rock: Bruce Springsteen I",
+   "status-id": "1156806e-d06a-38bd-83f0-cf2284a808b9"
+  },
+  {
+   "country": "FR",
+   "date": "1996-07-18",
+   "text-representation": {
+    "language": "eng",
+    "script": "Latn"
+   },
+   "status": "Official",
+   "asin": "B000007W1A",
+   "quality": "normal",
+   "id": "5350a612-e545-3dee-8539-da95bf600ee3",
+   "cover-art-archive": {
+    "back": true,
+    "darkened": false,
+    "front": true,
+    "count": 6,
+    "artwork": true
+   },
+   "packaging-id": "ec27701a-4a22-37f4-bfac-6616e0f9750a",
+   "label-info": [
+    {
+     "catalog-number": "478555 6",
+     "label": {
+      "label-code": 162,
+      "disambiguation": "owned by Sony Music Entertainment, worldwide except JP; formerly owned by CBS between 1938–1990 within US/CA/MX",
+      "name": "Columbia",
+      "type-id": "b6285b2a-3514-3d43-80df-fcf528824ded",
+      "id": "011d1192-6f65-45bd-85c4-0400dd45693e",
+      "sort-name": "Columbia",
+      "type": "Imprint"
+     }
+    }
+   ],
+   "packaging": "Jewel Case",
+   "release-events": [
+    {
+     "area": {
+      "sort-name": "France",
+      "type": null,
+      "type-id": null,
+      "id": "08310658-51eb-3801-80de-5a0739207115",
+      "name": "France",
+      "disambiguation": "",
+      "iso-3166-1-codes": [
+       "FR"
+      ]
+     },
+     "date": "1996-07-18"
+    }
+   ],
+   "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+   "barcode": "5099747855566",
+   "title": "Greatest Hits",
+   "disambiguation": "limited 2‐disc edition, with french sticker",
+   "media": [
+    {
+     "format": "CD",
+     "id": "ed131eb9-2766-3472-94df-4c338012310e",
+     "format-id": "9712d52a-4509-3d4b-a1a2-67c88c643e31",
+     "track-count": 18,
+     "position": 1,
+     "title": ""
+    },
+    {
+     "format": "CD",
+     "position": 2,
+     "track-count": 4,
+     "id": "f1ccc089-71fe-3c9f-a1d9-36973c63913c",
+     "format-id": "9712d52a-4509-3d4b-a1a2-67c88c643e31",
+     "title": "Missing"
+    }
+   ]
+  },
+  {
+   "id": "55b45a84-f86d-3d00-95fd-05b1a666f8ec",
+   "quality": "normal",
+   "cover-art-archive": {
+    "artwork": true,
+    "count": 5,
+    "darkened": false,
+    "front": true,
+    "back": true
+   },
+   "country": "JP",
+   "date": "1999-08-21",
+   "asin": "B000026X4V",
+   "status": "Official",
+   "text-representation": {
+    "language": "eng",
+    "script": "Latn"
+   },
+   "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+   "title": "Born to Run",
+   "barcode": "4988009898391",
+   "disambiguation": "Japan, 1999 picture disc reissue",
+   "media": [
+    {
+     "format": "CD",
+     "title": "",
+     "position": 1,
+     "id": "8d7b9bf6-839d-33be-adae-6b6e9c3aa232",
+     "format-id": "9712d52a-4509-3d4b-a1a2-67c88c643e31",
+     "track-count": 8
+    }
+   ],
+   "label-info": [
+    {
+     "catalog-number": "SRCS 8983",
+     "label": {
+      "disambiguation": "Japanese imprint – not equivalent to “Sony Music Entertainment”",
+      "name": "SME Records",
+      "type": "Imprint",
+      "sort-name": "SME Records",
+      "type-id": "b6285b2a-3514-3d43-80df-fcf528824ded",
+      "id": "7c614735-33ba-4bed-bbb7-89b7e72ce9bb",
+      "label-code": null
+     }
+    }
+   ],
+   "packaging-id": "ec27701a-4a22-37f4-bfac-6616e0f9750a",
+   "packaging": "Jewel Case",
+   "release-events": [
+    {
+     "area": {
+      "iso-3166-1-codes": [
+       "JP"
+      ],
+      "sort-name": "Japan",
+      "type": null,
+      "type-id": null,
+      "id": "2db42837-c832-3c27-b4a3-08198f75693c",
+      "disambiguation": "",
+      "name": "Japan"
+     },
+     "date": "1999-08-21"
+    }
+   ]
+  },
+  {
+   "label-info": [
+    {
+     "label": {
+      "label-code": 149,
+      "name": "CBS",
+      "disambiguation": "CBS Records’ international imprint from 1962–1990; renamed since 1991 as Columbia",
+      "id": "b8d33bec-92cc-40d9-bd92-4eb089b401a9",
+      "type-id": "b6285b2a-3514-3d43-80df-fcf528824ded",
+      "sort-name": "CBS",
+      "type": "Imprint"
+     },
+     "catalog-number": "69170"
+    },
+    {
+     "catalog-number": "S 69170",
+     "label": {
+      "type": "Imprint",
+      "sort-name": "CBS",
+      "id": "b8d33bec-92cc-40d9-bd92-4eb089b401a9",
+      "type-id": "b6285b2a-3514-3d43-80df-fcf528824ded",
+      "disambiguation": "CBS Records’ international imprint from 1962–1990; renamed since 1991 as Columbia",
+      "name": "CBS",
+      "label-code": 149
+     }
+    }
+   ],
+   "packaging-id": "e724a489-a7e8-30a1-a17c-30dfd6831202",
+   "packaging": "Gatefold Cover",
+   "release-events": [
+    {
+     "area": {
+      "iso-3166-1-codes": [
+       "GB"
+      ],
+      "disambiguation": "",
+      "name": "United Kingdom",
+      "sort-name": "United Kingdom",
+      "type": null,
+      "id": "8a754a16-0027-3a29-b6d7-2b40ea0481ed",
+      "type-id": null
+     },
+     "date": "1975"
+    }
+   ],
+   "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+   "barcode": "",
+   "title": "Born to Run",
+   "media": [
+    {
+     "format": "12\" Vinyl",
+     "position": 1,
+     "format-id": "3e9080b0-5e6c-34ab-bd15-f526b6306a64",
+     "track-count": 8,
+     "id": "3f2e1039-5bf6-346a-b89e-442fe1e7c077",
+     "title": ""
+    }
+   ],
+   "disambiguation": "UK, version 5",
+   "date": "1975",
+   "country": "GB",
+   "status": "Official",
+   "asin": null,
+   "text-representation": {
+    "language": "eng",
+    "script": "Latn"
+   },
+   "id": "5742feac-769f-4e8c-a7e1-0ced9bd2bd6c",
+   "quality": "normal",
+   "cover-art-archive": {
+    "artwork": true,
+    "count": 10,
+    "darkened": false,
+    "front": true,
+    "back": false
+   }
+  },
+  {
+   "date": "2000",
+   "country": "NL",
+   "text-representation": {
+    "script": "Latn",
+    "language": "eng"
+   },
+   "status": "Promotion",
+   "asin": null,
+   "quality": "normal",
+   "id": "58bcf685-a7b3-48ad-8577-fefbc6eed6db",
+   "cover-art-archive": {
+    "artwork": true,
+    "count": 4,
+    "back": true,
+    "front": true,
+    "darkened": false
+   },
+   "packaging-id": "f7101ce3-0384-39ce-9fde-fbbd0044d35f",
+   "label-info": [
+    {
+     "catalog-number": "0561190000",
+     "label": {
+      "label-code": null,
+      "name": "Sony Music Entertainment (Holland) B.V.",
+      "disambiguation": "Sony Music Entertainment's NL subsidiary until 2004",
+      "type-id": "43f31a62-97e4-36f6-9752-453c131b71ed",
+      "id": "8b98bc9d-f1e7-4672-8d14-7a47288d4b78",
+      "type": "Holding",
+      "sort-name": "Sony Music Entertainment (Holland) B.V."
+     }
+    }
+   ],
+   "packaging": "Cardboard/Paper Sleeve",
+   "release-events": [
+    {
+     "date": "2000",
+     "area": {
+      "iso-3166-1-codes": [
+       "NL"
+      ],
+      "name": "Netherlands",
+      "disambiguation": "",
+      "type": null,
+      "sort-name": "Netherlands",
+      "id": "ef1b7cc0-cd26-36f4-8ea0-04d9623786c7",
+      "type-id": null
+     }
+    }
+   ],
+   "status-id": "518ffc83-5cde-34df-8627-81bff5093d92",
+   "barcode": "",
+   "title": "The Complete Discography: The Studio Recordings 1973–1995",
+   "media": [
+    {
+     "title": "Greetings From Asbury Park, N.J.",
+     "position": 1,
+     "format-id": "9712d52a-4509-3d4b-a1a2-67c88c643e31",
+     "track-count": 9,
+     "id": "c53a5a9a-14a4-3638-854d-b282f1646bf0",
+     "format": "CD"
+    },
+    {
+     "format": "CD",
+     "title": "The Wild, the Innocent & The E Street Shuffle",
+     "track-count": 7,
+     "format-id": "9712d52a-4509-3d4b-a1a2-67c88c643e31",
+     "id": "3a881f74-289e-3f8b-b893-93070d409bd1",
+     "position": 2
+    },
+    {
+     "format": "CD",
+     "title": "Born to Run",
+     "format-id": "9712d52a-4509-3d4b-a1a2-67c88c643e31",
+     "track-count": 8,
+     "id": "cfca5e8d-9417-3df3-b9b8-1fc53e3a01e8",
+     "position": 3
+    },
+    {
+     "position": 4,
+     "id": "24b0d1b1-e7d0-3471-8e2d-7249c43f048a",
+     "format-id": "9712d52a-4509-3d4b-a1a2-67c88c643e31",
+     "track-count": 10,
+     "title": "Darkness on the Edge of Town",
+     "format": "CD"
+    },
+    {
+     "title": "The River",
+     "format-id": "9712d52a-4509-3d4b-a1a2-67c88c643e31",
+     "track-count": 11,
+     "id": "1f31b249-95a8-3507-992d-f9987bfeba99",
+     "position": 5,
+     "format": "CD"
+    },
+    {
+     "format": "CD",
+     "title": "The River",
+     "format-id": "9712d52a-4509-3d4b-a1a2-67c88c643e31",
+     "track-count": 9,
+     "id": "fb242629-3fcd-3f4f-b12d-d7c13b0f0f29",
+     "position": 6
+    },
+    {
+     "format": "CD",
+     "title": "Nebraska",
+     "position": 7,
+     "format-id": "9712d52a-4509-3d4b-a1a2-67c88c643e31",
+     "id": "2ce537bc-f649-3a39-8fde-b667436600bc",
+     "track-count": 10
+    },
+    {
+     "title": "Born in the U.S.A.",
+     "id": "b33c3716-03d5-303c-b5c1-25804638f291",
+     "track-count": 12,
+     "format-id": "9712d52a-4509-3d4b-a1a2-67c88c643e31",
+     "position": 8,
+     "format": "CD"
+    },
+    {
+     "format": "CD",
+     "title": "Tunnel of Love",
+     "position": 9,
+     "format-id": "9712d52a-4509-3d4b-a1a2-67c88c643e31",
+     "track-count": 12,
+     "id": "e82e8a95-272a-33c7-90ed-ab5d23dca9de"
+    },
+    {
+     "position": 10,
+     "format-id": "9712d52a-4509-3d4b-a1a2-67c88c643e31",
+     "track-count": 10,
+     "id": "9972b10b-0837-38c5-9624-d9eb3e93325b",
+     "title": "Lucky Town",
+     "format": "CD"
+    },
+    {
+     "format": "CD",
+     "position": 11,
+     "format-id": "9712d52a-4509-3d4b-a1a2-67c88c643e31",
+     "id": "a5eccdcf-c0c9-3aa6-a380-b224bd62b22a",
+     "track-count": 14,
+     "title": "Human Touch"
+    },
+    {
+     "title": "The Ghost of Tom Joad",
+     "position": 12,
+     "format-id": "9712d52a-4509-3d4b-a1a2-67c88c643e31",
+     "id": "9f43a3ff-0750-3ad1-b27a-450a0993971c",
+     "track-count": 12,
+     "format": "CD"
+    }
+   ],
+   "disambiguation": ""
+  },
+  {
+   "title": "Best ’99",
+   "barcode": "639842510721",
+   "disambiguation": "",
+   "media": [
+    {
+     "track-count": 17,
+     "id": "fb8db72c-62f1-319c-af33-d44030341e13",
+     "format-id": "9712d52a-4509-3d4b-a1a2-67c88c643e31",
+     "position": 1,
+     "title": "",
+     "format": "CD"
+    }
+   ],
+   "status-id": "1156806e-d06a-38bd-83f0-cf2284a808b9",
+   "release-events": [
+    {
+     "date": "1999",
+     "area": {
+      "iso-3166-1-codes": [
+       "XE"
+      ],
+      "name": "Europe",
+      "disambiguation": "",
+      "id": "89a675c2-3e37-3518-b83c-418bad59a85a",
+      "type-id": null,
+      "sort-name": "Europe",
+      "type": null
+     }
+    }
+   ],
+   "packaging-id": "ec27701a-4a22-37f4-bfac-6616e0f9750a",
+   "label-info": [
+    {
+     "label": {
+      "id": "157afde4-4bf5-4039-8ad2-5a15acc85176",
+      "type-id": "a2426aab-2dd4-339c-b47d-b4923a241678",
+      "sort-name": "[no label]",
+      "type": "Production",
+      "disambiguation": "Special purpose label – white labels, self-published releases and other “no label” releases",
+      "name": "[no label]",
+      "label-code": null
+     },
+     "catalog-number": "BS-90117-B"
+    }
+   ],
+   "packaging": "Jewel Case",
+   "cover-art-archive": {
+    "back": true,
+    "darkened": false,
+    "front": true,
+    "count": 3,
+    "artwork": true
+   },
+   "quality": "normal",
+   "id": "5b153cb2-58d4-4170-b492-4b192e39f8a6",
+   "text-representation": {
+    "language": "eng",
+    "script": "Latn"
+   },
+   "asin": null,
+   "status": "Bootleg",
+   "country": "XE",
+   "date": "1999"
+  },
+  {
+   "packaging": "Jewel Case",
+   "label-info": [
+    {
+     "label": {
+      "type-id": "a2426aab-2dd4-339c-b47d-b4923a241678",
+      "id": "157afde4-4bf5-4039-8ad2-5a15acc85176",
+      "sort-name": "[no label]",
+      "type": "Production",
+      "name": "[no label]",
+      "disambiguation": "Special purpose label – white labels, self-published releases and other “no label” releases",
+      "label-code": null
+     },
+     "catalog-number": "BS-90117-B"
+    }
+   ],
+   "packaging-id": "ec27701a-4a22-37f4-bfac-6616e0f9750a",
+   "release-events": [
+    {
+     "date": "1999",
+     "area": {
+      "sort-name": "Europe",
+      "type": null,
+      "type-id": null,
+      "id": "89a675c2-3e37-3518-b83c-418bad59a85a",
+      "name": "Europe",
+      "disambiguation": "",
+      "iso-3166-1-codes": [
+       "XE"
+      ]
+     }
+    }
+   ],
+   "status-id": "1156806e-d06a-38bd-83f0-cf2284a808b9",
+   "disambiguation": "",
+   "media": [
+    {
+     "title": "",
+     "position": 1,
+     "format-id": "9712d52a-4509-3d4b-a1a2-67c88c643e31",
+     "id": "a716bbc6-b3c2-3381-ad79-98734e984b0c",
+     "track-count": 17,
+     "format": "CD"
+    }
+   ],
+   "title": "Best ’99",
+   "barcode": "345673345660",
+   "date": "1999",
+   "country": "XE",
+   "status": "Bootleg",
+   "asin": null,
+   "text-representation": {
+    "language": "eng",
+    "script": "Latn"
+   },
+   "id": "62806f29-2e00-4fcc-ac0f-05050671e1aa",
+   "quality": "normal",
+   "cover-art-archive": {
+    "count": 5,
+    "artwork": true,
+    "darkened": false,
+    "front": true,
+    "back": true
+   }
+  },
+  {
+   "text-representation": {
+    "script": "Latn",
+    "language": "eng"
+   },
+   "asin": null,
+   "status": "Promotion",
+   "date": "1999",
+   "country": "JP",
+   "cover-art-archive": {
+    "count": 4,
+    "artwork": true,
+    "darkened": false,
+    "front": true,
+    "back": true
+   },
+   "quality": "normal",
+   "id": "6557fe54-e2fa-4281-b1cc-70c71298d1c0",
+   "release-events": [
+    {
+     "area": {
+      "disambiguation": "",
+      "name": "Japan",
+      "type": null,
+      "sort-name": "Japan",
+      "id": "2db42837-c832-3c27-b4a3-08198f75693c",
+      "type-id": null,
+      "iso-3166-1-codes": [
+       "JP"
+      ]
+     },
+     "date": "1999"
+    }
+   ],
+   "packaging": "Cassette Case",
+   "packaging-id": "c70b737a-0114-39a9-88f7-82843e54f906",
+   "label-info": [
+    {
+     "catalog-number": "[none]",
+     "label": {
+      "label-code": null,
+      "type": "Imprint",
+      "sort-name": "SME Records",
+      "type-id": "b6285b2a-3514-3d43-80df-fcf528824ded",
+      "id": "7c614735-33ba-4bed-bbb7-89b7e72ce9bb",
+      "disambiguation": "Japanese imprint – not equivalent to “Sony Music Entertainment”",
+      "name": "SME Records"
+     }
+    }
+   ],
+   "disambiguation": "",
+   "media": [
+    {
+     "title": "",
+     "track-count": 15,
+     "id": "bc00e361-4209-3f7a-b69c-269a0105fbee",
+     "format-id": "f5e6e254-8f39-331c-936b-9c69d686dc47",
+     "position": 1,
+     "format": "Cassette"
+    }
+   ],
+   "barcode": "",
+   "title": "Bruce Springsteen 1973–1995 ダイジェスト",
+   "status-id": "518ffc83-5cde-34df-8627-81bff5093d92"
+  },
+  {
+   "release-events": [
+    {
+     "area": {
+      "iso-3166-1-codes": [
+       "NL"
+      ],
+      "name": "Netherlands",
+      "disambiguation": "",
+      "sort-name": "Netherlands",
+      "type": null,
+      "type-id": null,
+      "id": "ef1b7cc0-cd26-36f4-8ea0-04d9623786c7"
+     },
+     "date": "1975-08-25"
+    }
+   ],
+   "packaging": "Gatefold Cover",
+   "label-info": [
+    {
+     "label": {
+      "label-code": 149,
+      "id": "b8d33bec-92cc-40d9-bd92-4eb089b401a9",
+      "type-id": "b6285b2a-3514-3d43-80df-fcf528824ded",
+      "sort-name": "CBS",
+      "type": "Imprint",
+      "disambiguation": "CBS Records’ international imprint from 1962–1990; renamed since 1991 as Columbia",
+      "name": "CBS"
+     },
+     "catalog-number": "80959"
+    }
+   ],
+   "packaging-id": "e724a489-a7e8-30a1-a17c-30dfd6831202",
+   "disambiguation": "Holland, version 4",
+   "media": [
+    {
+     "title": "",
+     "position": 1,
+     "id": "e4ae4a09-f9af-3458-bd05-2f863cf70010",
+     "format-id": "3e9080b0-5e6c-34ab-bd15-f526b6306a64",
+     "track-count": 8,
+     "format": "12\" Vinyl"
+    }
+   ],
+   "barcode": "",
+   "title": "Born to Run",
+   "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+   "status": "Official",
+   "asin": null,
+   "text-representation": {
+    "script": "Latn",
+    "language": "eng"
+   },
+   "date": "1975-08-25",
+   "country": "NL",
+   "cover-art-archive": {
+    "back": true,
+    "front": true,
+    "darkened": false,
+    "artwork": true,
+    "count": 6
+   },
+   "id": "6a1afc01-ef92-4176-801a-1cd5fa94ba8a",
+   "quality": "normal"
+  },
+  {
+   "release-events": [
+    {
+     "area": {
+      "iso-3166-1-codes": [
+       "AU"
+      ],
+      "disambiguation": "",
+      "name": "Australia",
+      "type-id": null,
+      "id": "106e0bec-b638-3b37-b731-f53d507dc00e",
+      "sort-name": "Australia",
+      "type": null
+     },
+     "date": "1975"
+    }
+   ],
+   "packaging": "Cassette Case",
+   "label-info": [
+    {
+     "catalog-number": "PC 4729",
+     "label": {
+      "type": "Imprint",
+      "sort-name": "CBS",
+      "id": "b8d33bec-92cc-40d9-bd92-4eb089b401a9",
+      "type-id": "b6285b2a-3514-3d43-80df-fcf528824ded",
+      "disambiguation": "CBS Records’ international imprint from 1962–1990; renamed since 1991 as Columbia",
+      "name": "CBS",
+      "label-code": 149
+     }
+    }
+   ],
+   "packaging-id": "c70b737a-0114-39a9-88f7-82843e54f906",
+   "media": [
+    {
+     "track-count": 8,
+     "format-id": "f5e6e254-8f39-331c-936b-9c69d686dc47",
+     "id": "50e3830d-dba2-39eb-a08d-39213556ad47",
+     "position": 1,
+     "title": "",
+     "format": "Cassette"
+    }
+   ],
+   "disambiguation": "white shell, paper labels",
+   "title": "Born to Run",
+   "barcode": "",
+   "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+   "asin": null,
+   "status": "Official",
+   "text-representation": {
+    "script": "Latn",
+    "language": "eng"
+   },
+   "country": "AU",
+   "date": "1975",
+   "cover-art-archive": {
+    "artwork": true,
+    "count": 4,
+    "darkened": false,
+    "front": true,
+    "back": true
+   },
+   "id": "6ac146df-601c-4cc0-94f2-1649b1668430",
+   "quality": "normal"
+  },
+  {
+   "release-events": [
+    {
+     "area": {
+      "id": "89a675c2-3e37-3518-b83c-418bad59a85a",
+      "type-id": null,
+      "type": null,
+      "sort-name": "Europe",
+      "name": "Europe",
+      "disambiguation": "",
+      "iso-3166-1-codes": [
+       "XE"
+      ]
+     },
+     "date": "1975"
+    }
+   ],
+   "label-info": [
+    {
+     "catalog-number": "CBS 80959",
+     "label": {
+      "id": "b8d33bec-92cc-40d9-bd92-4eb089b401a9",
+      "type-id": "b6285b2a-3514-3d43-80df-fcf528824ded",
+      "type": "Imprint",
+      "sort-name": "CBS",
+      "disambiguation": "CBS Records’ international imprint from 1962–1990; renamed since 1991 as Columbia",
+      "name": "CBS",
+      "label-code": 149
+     }
+    }
+   ],
+   "packaging-id": "e724a489-a7e8-30a1-a17c-30dfd6831202",
+   "packaging": "Gatefold Cover",
+   "title": "Born to Run",
+   "barcode": "",
+   "disambiguation": "",
+   "media": [
+    {
+     "format": "12\" Vinyl",
+     "title": "",
+     "position": 1,
+     "track-count": 8,
+     "format-id": "3e9080b0-5e6c-34ab-bd15-f526b6306a64",
+     "id": "2396ec6f-f414-3fc5-a972-94b7a097316e"
+    }
+   ],
+   "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+   "status": "Official",
+   "asin": null,
+   "text-representation": {
+    "language": "eng",
+    "script": "Latn"
+   },
+   "date": "1975",
+   "country": "XE",
+   "cover-art-archive": {
+    "artwork": true,
+    "count": 6,
+    "back": true,
+    "darkened": false,
+    "front": true
+   },
+   "id": "70ea470d-9b89-43bf-a9fb-37017d6f7e44",
+   "quality": "normal"
+  },
+  {
+   "packaging": "Digipak",
+   "label-info": [
+    {
+     "catalog-number": "512726 2",
+     "label": {
+      "name": "Columbia",
+      "disambiguation": "owned by Sony Music Entertainment, worldwide except JP; formerly owned by CBS between 1938–1990 within US/CA/MX",
+      "type-id": "b6285b2a-3514-3d43-80df-fcf528824ded",
+      "id": "011d1192-6f65-45bd-85c4-0400dd45693e",
+      "type": "Imprint",
+      "sort-name": "Columbia",
+      "label-code": 162
+     }
+    }
+   ],
+   "packaging-id": "8f931351-d2e2-310f-afc6-37b89ddba246",
+   "release-events": [
+    {
+     "date": "2003-11-03",
+     "area": {
+      "iso-3166-1-codes": [
+       "GB"
+      ],
+      "disambiguation": "",
+      "name": "United Kingdom",
+      "type": null,
+      "sort-name": "United Kingdom",
+      "id": "8a754a16-0027-3a29-b6d7-2b40ea0481ed",
+      "type-id": null
+     }
+    }
+   ],
+   "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+   "media": [
+    {
+     "title": "",
+     "position": 1,
+     "format-id": "9712d52a-4509-3d4b-a1a2-67c88c643e31",
+     "track-count": 18,
+     "id": "8b297735-c188-39eb-9bb4-8994249aaa73",
+     "format": "CD"
+    }
+   ],
+   "disambiguation": "",
+   "title": "A Selection of Music from 31 Songs",
+   "barcode": "5099751272625",
+   "date": "2003-11-03",
+   "country": "GB",
+   "status": "Official",
+   "asin": "B0000SZ5D4",
+   "text-representation": {
+    "script": "Latn",
+    "language": "eng"
+   },
+   "id": "729b42d8-39f7-4a45-8312-7cc87a64ba38",
+   "quality": "normal",
+   "cover-art-archive": {
+    "front": true,
+    "darkened": false,
+    "back": true,
+    "count": 5,
+    "artwork": true
+   }
+  },
+  {
+   "status": "Official",
+   "asin": null,
+   "text-representation": {
+    "script": "Latn",
+    "language": "eng"
+   },
+   "country": "GB",
+   "date": "1975",
+   "cover-art-archive": {
+    "count": 8,
+    "artwork": true,
+    "darkened": false,
+    "front": true,
+    "back": true
+   },
+   "id": "7409d74d-d88a-4321-ba11-81499c3a21b1",
+   "quality": "normal",
+   "release-events": [
+    {
+     "date": "1975",
+     "area": {
+      "iso-3166-1-codes": [
+       "GB"
+      ],
+      "type-id": null,
+      "id": "8a754a16-0027-3a29-b6d7-2b40ea0481ed",
+      "sort-name": "United Kingdom",
+      "type": null,
+      "disambiguation": "",
+      "name": "United Kingdom"
+     }
+    }
+   ],
+   "label-info": [
+    {
+     "label": {
+      "label-code": 149,
+      "name": "CBS",
+      "disambiguation": "CBS Records’ international imprint from 1962–1990; renamed since 1991 as Columbia",
+      "id": "b8d33bec-92cc-40d9-bd92-4eb089b401a9",
+      "type-id": "b6285b2a-3514-3d43-80df-fcf528824ded",
+      "sort-name": "CBS",
+      "type": "Imprint"
+     },
+     "catalog-number": "69170"
+    },
+    {
+     "catalog-number": "PC 33795",
+     "label": {
+      "label-code": 149,
+      "disambiguation": "CBS Records’ international imprint from 1962–1990; renamed since 1991 as Columbia",
+      "name": "CBS",
+      "type": "Imprint",
+      "sort-name": "CBS",
+      "id": "b8d33bec-92cc-40d9-bd92-4eb089b401a9",
+      "type-id": "b6285b2a-3514-3d43-80df-fcf528824ded"
+     }
+    }
+   ],
+   "packaging-id": "e724a489-a7e8-30a1-a17c-30dfd6831202",
+   "packaging": "Gatefold Cover",
+   "title": "Born to Run",
+   "barcode": "",
+   "media": [
+    {
+     "format": "12\" Vinyl",
+     "track-count": 8,
+     "format-id": "3e9080b0-5e6c-34ab-bd15-f526b6306a64",
+     "id": "142ad2dd-5c86-35ab-a121-e4bdb74ff08f",
+     "position": 1,
+     "title": ""
+    }
+   ],
+   "disambiguation": "UK, version 1",
+   "status-id": "4e304316-386d-3409-af2e-78857eec5cfe"
+  },
+  {
+   "release-events": [
+    {
+     "date": "1989",
+     "area": {
+      "name": "Australia",
+      "disambiguation": "",
+      "id": "106e0bec-b638-3b37-b731-f53d507dc00e",
+      "type-id": null,
+      "type": null,
+      "sort-name": "Australia",
+      "iso-3166-1-codes": [
+       "AU"
+      ]
+     }
+    }
+   ],
+   "packaging": "Cardboard/Paper Sleeve",
+   "packaging-id": "f7101ce3-0384-39ce-9fde-fbbd0044d35f",
+   "label-info": [
+    {
+     "label": {
+      "label-code": 149,
+      "id": "b8d33bec-92cc-40d9-bd92-4eb089b401a9",
+      "type-id": "b6285b2a-3514-3d43-80df-fcf528824ded",
+      "type": "Imprint",
+      "sort-name": "CBS",
+      "name": "CBS",
+      "disambiguation": "CBS Records’ international imprint from 1962–1990; renamed since 1991 as Columbia"
+     },
+     "catalog-number": "SBP 234729"
+    }
+   ],
+   "media": [
+    {
+     "format": "12\" Vinyl",
+     "position": 1,
+     "format-id": "3e9080b0-5e6c-34ab-bd15-f526b6306a64",
+     "id": "761c75f1-bb85-3767-a18c-5059a658c5e4",
+     "track-count": 8,
+     "title": ""
+    }
+   ],
+   "disambiguation": "Australia, version 5",
+   "title": "Born to Run",
+   "barcode": "",
+   "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+   "text-representation": {
+    "script": "Latn",
+    "language": "eng"
+   },
+   "status": "Official",
+   "asin": null,
+   "date": "1989",
+   "country": "AU",
+   "cover-art-archive": {
+    "count": 4,
+    "artwork": true,
+    "back": true,
+    "front": true,
+    "darkened": false
+   },
+   "quality": "normal",
+   "id": "74c8465a-94a3-4f13-b751-6c4c6cae6e07"
+  },
+  {
+   "status-id": "1156806e-d06a-38bd-83f0-cf2284a808b9",
+   "barcode": "345673345660",
+   "title": "Best ’99",
+   "disambiguation": "",
+   "media": [
+    {
+     "format": "CD",
+     "title": "",
+     "position": 1,
+     "track-count": 17,
+     "format-id": "9712d52a-4509-3d4b-a1a2-67c88c643e31",
+     "id": "c3f2c927-a2df-3e78-8426-9cfde2615f85"
+    }
+   ],
+   "label-info": [
+    {
+     "catalog-number": "[none]",
+     "label": {
+      "type": "Production",
+      "sort-name": "[no label]",
+      "type-id": "a2426aab-2dd4-339c-b47d-b4923a241678",
+      "id": "157afde4-4bf5-4039-8ad2-5a15acc85176",
+      "disambiguation": "Special purpose label – white labels, self-published releases and other “no label” releases",
+      "name": "[no label]",
+      "label-code": null
+     }
+    }
+   ],
+   "packaging-id": null,
+   "packaging": null,
+   "release-events": [
+    {
+     "area": {
+      "iso-3166-1-codes": [
+       "RU"
+      ],
+      "sort-name": "Russia",
+      "type": null,
+      "id": "1f1fc3a4-9500-39b8-9f10-f0a465557eef",
+      "type-id": null,
+      "disambiguation": "",
+      "name": "Russia"
+     },
+     "date": "1999"
+    }
+   ],
+   "id": "74e4a30a-1f5b-4792-942c-2ce2a43abd21",
+   "quality": "normal",
+   "cover-art-archive": {
+    "count": 1,
+    "artwork": true,
+    "front": true,
+    "darkened": false,
+    "back": false
+   },
+   "country": "RU",
+   "date": "1999",
+   "status": "Bootleg",
+   "asin": null,
+   "text-representation": {
+    "language": "eng",
+    "script": "Latn"
+   }
+  },
+  {
+   "release-events": [
+    {
+     "area": {
+      "sort-name": "United States",
+      "type": null,
+      "type-id": null,
+      "id": "489ce91b-6658-3307-9877-795b68554c98",
+      "disambiguation": "",
+      "name": "United States",
+      "iso-3166-1-codes": [
+       "US"
+      ]
+     },
+     "date": "2001"
+    }
+   ],
+   "label-info": [
+    {
+     "label": {
+      "type": "Reissue Production",
+      "sort-name": "Westwood One",
+      "type-id": "88ee6ae7-f413-3490-a1d2-54f6a9f0838c",
+      "id": "a445ab0f-9f34-4221-86ea-e6c34bc245e1",
+      "name": "Westwood One",
+      "disambiguation": "",
+      "label-code": null
+     },
+     "catalog-number": "WK0114-A-032901 00023"
+    }
+   ],
+   "packaging-id": null,
+   "packaging": null,
+   "barcode": null,
+   "title": "Off the Record Classic",
+   "media": [
+    {
+     "title": "",
+     "track-count": 11,
+     "id": "9073f0f6-7532-32fd-a90a-42a2b404eb2f",
+     "format-id": "9712d52a-4509-3d4b-a1a2-67c88c643e31",
+     "position": 1,
+     "format": "CD"
+    }
+   ],
+   "disambiguation": "",
+   "status-id": "518ffc83-5cde-34df-8627-81bff5093d92",
+   "status": "Promotion",
+   "asin": null,
+   "text-representation": {
+    "script": "Latn",
+    "language": "eng"
+   },
+   "country": "US",
+   "date": "2001",
+   "cover-art-archive": {
+    "front": true,
+    "darkened": false,
+    "back": true,
+    "artwork": true,
+    "count": 3
+   },
+   "id": "7b3ee89c-cfd1-4c7d-bf51-1e3f32d9d9a7",
+   "quality": "normal"
+  },
+  {
+   "text-representation": {
+    "language": "eng",
+    "script": "Latn"
+   },
+   "asin": null,
+   "status": "Official",
+   "date": "1975",
+   "country": "GB",
+   "cover-art-archive": {
+    "back": false,
+    "front": true,
+    "darkened": false,
+    "artwork": true,
+    "count": 5
+   },
+   "quality": "normal",
+   "id": "7c09dca0-f3c0-46aa-8fbb-f03ffe8923c6",
+   "release-events": [
+    {
+     "date": "1975",
+     "area": {
+      "sort-name": "United Kingdom",
+      "type": null,
+      "id": "8a754a16-0027-3a29-b6d7-2b40ea0481ed",
+      "type-id": null,
+      "name": "United Kingdom",
+      "disambiguation": "",
+      "iso-3166-1-codes": [
+       "GB"
+      ]
+     }
+    }
+   ],
+   "packaging": "Gatefold Cover",
+   "packaging-id": "e724a489-a7e8-30a1-a17c-30dfd6831202",
+   "label-info": [
+    {
+     "label": {
+      "label-code": 149,
+      "sort-name": "CBS",
+      "type": "Imprint",
+      "type-id": "b6285b2a-3514-3d43-80df-fcf528824ded",
+      "id": "b8d33bec-92cc-40d9-bd92-4eb089b401a9",
+      "disambiguation": "CBS Records’ international imprint from 1962–1990; renamed since 1991 as Columbia",
+      "name": "CBS"
+     },
+     "catalog-number": "69170"
+    },
+    {
+     "catalog-number": "S 69170",
+     "label": {
+      "label-code": 149,
+      "type-id": "b6285b2a-3514-3d43-80df-fcf528824ded",
+      "id": "b8d33bec-92cc-40d9-bd92-4eb089b401a9",
+      "sort-name": "CBS",
+      "type": "Imprint",
+      "name": "CBS",
+      "disambiguation": "CBS Records’ international imprint from 1962–1990; renamed since 1991 as Columbia"
+     }
+    }
+   ],
+   "media": [
+    {
+     "format": "12\" Vinyl",
+     "track-count": 8,
+     "format-id": "3e9080b0-5e6c-34ab-bd15-f526b6306a64",
+     "id": "6243487c-76f8-37f0-af54-eff7fa0eb7ef",
+     "position": 1,
+     "title": ""
+    }
+   ],
+   "disambiguation": "UK, version 7",
+   "barcode": "",
+   "title": "Born to Run",
+   "status-id": "4e304316-386d-3409-af2e-78857eec5cfe"
+  },
+  {
+   "text-representation": {
+    "script": "Latn",
+    "language": "eng"
+   },
+   "status": "Official",
+   "asin": null,
+   "country": "GB",
+   "date": "1990",
+   "cover-art-archive": {
+    "artwork": true,
+    "count": 56,
+    "darkened": false,
+    "front": true,
+    "back": true
+   },
+   "quality": "normal",
+   "id": "7c8fde1b-cb3d-404c-a446-40effc1bfcd9",
+   "release-events": [
+    {
+     "area": {
+      "iso-3166-1-codes": [
+       "GB"
+      ],
+      "name": "United Kingdom",
+      "disambiguation": "",
+      "id": "8a754a16-0027-3a29-b6d7-2b40ea0481ed",
+      "type-id": null,
+      "sort-name": "United Kingdom",
+      "type": null
+     },
+     "date": "1990"
+    }
+   ],
+   "packaging-id": "c1668fc7-8944-4a00-bc3e-46e8d861d211",
+   "label-info": [
+    {
+     "label": {
+      "disambiguation": "CBS Records’ international imprint from 1962–1990; renamed since 1991 as Columbia",
+      "name": "CBS",
+      "type-id": "b6285b2a-3514-3d43-80df-fcf528824ded",
+      "id": "b8d33bec-92cc-40d9-bd92-4eb089b401a9",
+      "type": "Imprint",
+      "sort-name": "CBS",
+      "label-code": 149
+     },
+     "catalog-number": "LSP 980636 1"
+    }
+   ],
+   "packaging": "Box",
+   "title": "Collected Works of Bruce Springsteen",
+   "barcode": "",
+   "media": [
+    {
+     "format": "12\" Vinyl",
+     "track-count": 9,
+     "format-id": "3e9080b0-5e6c-34ab-bd15-f526b6306a64",
+     "id": "20c62ecc-b19a-33e0-b991-bf523eef88d8",
+     "position": 1,
+     "title": "Greetings From Asbury Park, N.J."
+    },
+    {
+     "format": "12\" Vinyl",
+     "title": "The Wild, the Innocent & The E Street Shuffle",
+     "position": 2,
+     "format-id": "3e9080b0-5e6c-34ab-bd15-f526b6306a64",
+     "id": "aac10e81-4857-3eef-a92c-d223e3c6ab14",
+     "track-count": 7
+    },
+    {
+     "position": 3,
+     "id": "f3069a2b-c1d2-3858-b164-35e8a4f10bb2",
+     "track-count": 8,
+     "format-id": "3e9080b0-5e6c-34ab-bd15-f526b6306a64",
+     "title": "Born to Run",
+     "format": "12\" Vinyl"
+    },
+    {
+     "title": "Darkness on the Edge of Town",
+     "format-id": "3e9080b0-5e6c-34ab-bd15-f526b6306a64",
+     "id": "62d563f4-c877-353f-aa58-731e55f1eedf",
+     "track-count": 10,
+     "position": 4,
+     "format": "12\" Vinyl"
+    },
+    {
+     "position": 5,
+     "format-id": "3e9080b0-5e6c-34ab-bd15-f526b6306a64",
+     "track-count": 11,
+     "id": "95408bab-12a6-3852-a9d4-67518828bbdf",
+     "title": "The River",
+     "format": "12\" Vinyl"
+    },
+    {
+     "id": "77d59692-3fed-3cea-8f04-4c013ff746d8",
+     "format-id": "3e9080b0-5e6c-34ab-bd15-f526b6306a64",
+     "track-count": 9,
+     "position": 6,
+     "title": "The River",
+     "format": "12\" Vinyl"
+    },
+    {
+     "title": "Nebraska",
+     "format-id": "3e9080b0-5e6c-34ab-bd15-f526b6306a64",
+     "id": "ca487e10-534a-3507-9f9e-1b2af069e578",
+     "track-count": 10,
+     "position": 7,
+     "format": "12\" Vinyl"
+    },
+    {
+     "title": "Born in the U.S.A.",
+     "format-id": "3e9080b0-5e6c-34ab-bd15-f526b6306a64",
+     "id": "65395809-1571-36b1-9c53-567e26b462bc",
+     "track-count": 12,
+     "position": 8,
+     "format": "12\" Vinyl"
+    }
+   ],
+   "disambiguation": "",
+   "status-id": "4e304316-386d-3409-af2e-78857eec5cfe"
+  },
+  {
+   "cover-art-archive": {
+    "count": 3,
+    "artwork": true,
+    "back": false,
+    "darkened": false,
+    "front": true
+   },
+   "quality": "normal",
+   "id": "7cfa8460-7fbc-49cd-9cc0-7010d33b2e88",
+   "text-representation": {
+    "script": "Latn",
+    "language": "eng"
+   },
+   "status": "Promotion",
+   "asin": null,
+   "date": "1980",
+   "country": "AU",
+   "barcode": "",
+   "title": "Born to Run",
+   "media": [
+    {
+     "track-count": 8,
+     "id": "04c27c0a-3808-3731-ab4d-d35feabf882a",
+     "format-id": "3e9080b0-5e6c-34ab-bd15-f526b6306a64",
+     "position": 1,
+     "title": "",
+     "format": "12\" Vinyl"
+    }
+   ],
+   "disambiguation": "",
+   "status-id": "518ffc83-5cde-34df-8627-81bff5093d92",
+   "release-events": [
+    {
+     "area": {
+      "iso-3166-1-codes": [
+       "AU"
+      ],
+      "disambiguation": "",
+      "name": "Australia",
+      "sort-name": "Australia",
+      "type": null,
+      "id": "106e0bec-b638-3b37-b731-f53d507dc00e",
+      "type-id": null
+     },
+     "date": "1980"
+    }
+   ],
+   "packaging-id": "e724a489-a7e8-30a1-a17c-30dfd6831202",
+   "label-info": [
+    {
+     "label": {
+      "type": "Imprint",
+      "sort-name": "CBS",
+      "type-id": "b6285b2a-3514-3d43-80df-fcf528824ded",
+      "id": "b8d33bec-92cc-40d9-bd92-4eb089b401a9",
+      "disambiguation": "CBS Records’ international imprint from 1962–1990; renamed since 1991 as Columbia",
+      "name": "CBS",
+      "label-code": 149
+     },
+     "catalog-number": "SBP 234729"
+    }
+   ],
+   "packaging": "Gatefold Cover"
+  },
+  {
+   "release-events": [
+    {
+     "date": "1975",
+     "area": {
+      "iso-3166-1-codes": [
+       "AR"
+      ],
+      "id": "0df04709-c7d8-3b55-a6ea-f3e5069a947b",
+      "type-id": null,
+      "type": null,
+      "sort-name": "Argentina",
+      "name": "Argentina",
+      "disambiguation": ""
+     }
+    }
+   ],
+   "packaging": "Cardboard/Paper Sleeve",
+   "label-info": [
+    {
+     "catalog-number": "20.696",
+     "label": {
+      "sort-name": "Discos CBS",
+      "type": "Imprint",
+      "id": "3d8cf8be-09b6-470c-970b-9c1c6d511507",
+      "type-id": "b6285b2a-3514-3d43-80df-fcf528824ded",
+      "name": "Discos CBS",
+      "disambiguation": "imprint used by Discos CBS, S.A. branches in various Spanish‐speaking markets, see notes",
+      "label-code": null
+     }
+    }
+   ],
+   "packaging-id": "f7101ce3-0384-39ce-9fde-fbbd0044d35f",
+   "media": [
+    {
+     "position": 1,
+     "format-id": "3e9080b0-5e6c-34ab-bd15-f526b6306a64",
+     "id": "4d0ae69b-765f-3bae-b884-76212ab7acf9",
+     "track-count": 8,
+     "title": "",
+     "format": "12\" Vinyl"
+    }
+   ],
+   "disambiguation": "",
+   "barcode": "",
+   "title": "Born to Run",
+   "status-id": "518ffc83-5cde-34df-8627-81bff5093d92",
+   "status": "Promotion",
+   "asin": null,
+   "text-representation": {
+    "script": "Latn",
+    "language": "eng"
+   },
+   "country": "AR",
+   "date": "1975",
+   "cover-art-archive": {
+    "artwork": true,
+    "count": 5,
+    "back": true,
+    "darkened": false,
+    "front": true
+   },
+   "id": "836b5924-a9d7-4291-abd4-f03a9fddbd26",
+   "quality": "normal"
+  },
+  {
+   "date": "1982",
+   "country": "CA",
+   "status": "Promotion",
+   "asin": null,
+   "text-representation": {
+    "script": "Latn",
+    "language": "eng"
+   },
+   "id": "846af04a-127a-42ad-891b-c2f00a2ddde5",
+   "quality": "normal",
+   "cover-art-archive": {
+    "front": true,
+    "darkened": false,
+    "back": true,
+    "count": 8,
+    "artwork": true
+   },
+   "label-info": [
+    {
+     "label": {
+      "name": "Columbia",
+      "disambiguation": "owned by Sony Music Entertainment, worldwide except JP; formerly owned by CBS between 1938–1990 within US/CA/MX",
+      "id": "011d1192-6f65-45bd-85c4-0400dd45693e",
+      "type-id": "b6285b2a-3514-3d43-80df-fcf528824ded",
+      "sort-name": "Columbia",
+      "type": "Imprint",
+      "label-code": 162
+     },
+     "catalog-number": "CDN-57"
+    }
+   ],
+   "packaging-id": "f7101ce3-0384-39ce-9fde-fbbd0044d35f",
+   "packaging": "Cardboard/Paper Sleeve",
+   "release-events": [
+    {
+     "date": "1982",
+     "area": {
+      "iso-3166-1-codes": [
+       "CA"
+      ],
+      "type": null,
+      "sort-name": "Canada",
+      "id": "71bbafaa-e825-3e15-8ca9-017dcad1748b",
+      "type-id": null,
+      "name": "Canada",
+      "disambiguation": ""
+     }
+    }
+   ],
+   "status-id": "518ffc83-5cde-34df-8627-81bff5093d92",
+   "barcode": "",
+   "title": "Sampler",
+   "media": [
+    {
+     "title": "",
+     "id": "4038e5ff-07ca-379c-b5e9-99b4cb55e465",
+     "track-count": 10,
+     "format-id": "3e9080b0-5e6c-34ab-bd15-f526b6306a64",
+     "position": 1,
+     "format": "12\" Vinyl"
+    }
+   ],
+   "disambiguation": ""
+  },
+  {
+   "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+   "barcode": "",
+   "title": "Born to Run",
+   "media": [
+    {
+     "format": "CD",
+     "position": 1,
+     "id": "cc48511f-2f05-3a7d-85b5-7606a0d4c170",
+     "track-count": 8,
+     "format-id": "9712d52a-4509-3d4b-a1a2-67c88c643e31",
+     "title": ""
+    }
+   ],
+   "disambiguation": "Japan for Europe 35DP-21",
+   "label-info": [
+    {
+     "catalog-number": "CDCBS 80959",
+     "label": {
+      "label-code": 149,
+      "type-id": "b6285b2a-3514-3d43-80df-fcf528824ded",
+      "id": "b8d33bec-92cc-40d9-bd92-4eb089b401a9",
+      "sort-name": "CBS",
+      "type": "Imprint",
+      "disambiguation": "CBS Records’ international imprint from 1962–1990; renamed since 1991 as Columbia",
+      "name": "CBS"
+     }
+    },
+    {
+     "catalog-number": "CDCBS80959",
+     "label": {
+      "label-code": 149,
+      "disambiguation": "CBS Records’ international imprint from 1962–1990; renamed since 1991 as Columbia",
+      "name": "CBS",
+      "type": "Imprint",
+      "sort-name": "CBS",
+      "type-id": "b6285b2a-3514-3d43-80df-fcf528824ded",
+      "id": "b8d33bec-92cc-40d9-bd92-4eb089b401a9"
+     }
+    }
+   ],
+   "packaging-id": "ec27701a-4a22-37f4-bfac-6616e0f9750a",
+   "packaging": "Jewel Case",
+   "release-events": [
+    {
+     "date": "1985",
+     "area": {
+      "disambiguation": "",
+      "name": "Europe",
+      "id": "89a675c2-3e37-3518-b83c-418bad59a85a",
+      "type-id": null,
+      "sort-name": "Europe",
+      "type": null,
+      "iso-3166-1-codes": [
+       "XE"
+      ]
+     }
+    }
+   ],
+   "id": "850804ac-897e-4c00-bc6b-1ea478bd80c5",
+   "quality": "normal",
+   "cover-art-archive": {
+    "front": true,
+    "darkened": false,
+    "back": true,
+    "count": 14,
+    "artwork": true
+   },
+   "date": "1985",
+   "country": "XE",
+   "asin": null,
+   "status": "Official",
+   "text-representation": {
+    "script": "Latn",
+    "language": "eng"
+   }
+  },
+  {
+   "cover-art-archive": {
+    "count": 3,
+    "artwork": true,
+    "darkened": false,
+    "front": true,
+    "back": false
+   },
+   "id": "88942991-153a-47b7-a34d-4285d2799bf5",
+   "quality": "normal",
+   "asin": null,
+   "status": "Official",
+   "text-representation": {
+    "script": "Latn",
+    "language": "eng"
+   },
+   "date": "1989",
+   "country": "AU",
+   "media": [
+    {
+     "format": "Cassette",
+     "title": "Greetings From Asbury Park, N.J.",
+     "position": 1,
+     "track-count": 9,
+     "format-id": "f5e6e254-8f39-331c-936b-9c69d686dc47",
+     "id": "0ac53c14-8b94-3286-af14-dae0634a1589"
+    },
+    {
+     "format": "Cassette",
+     "title": "The Wild, the Innocent and the E Street Shuffle",
+     "format-id": "f5e6e254-8f39-331c-936b-9c69d686dc47",
+     "id": "1933d4f5-f0ea-3dc6-93d8-ab0c5ef8cf2c",
+     "track-count": 7,
+     "position": 2
+    },
+    {
+     "format": "Cassette",
+     "format-id": "f5e6e254-8f39-331c-936b-9c69d686dc47",
+     "id": "725d5e17-12b1-318e-81bc-46c7bead84af",
+     "track-count": 8,
+     "position": 3,
+     "title": "Born to Run"
+    },
+    {
+     "format": "Cassette",
+     "format-id": "f5e6e254-8f39-331c-936b-9c69d686dc47",
+     "track-count": 10,
+     "id": "037f6ae7-e5d1-399c-a617-cc8ecb3d7b6d",
+     "position": 4,
+     "title": "Darkness on the Edge of Town"
+    },
+    {
+     "title": "Born in the U.S.A.",
+     "position": 5,
+     "track-count": 12,
+     "id": "2d899a91-3443-353b-a420-b797cb7d51ed",
+     "format-id": "f5e6e254-8f39-331c-936b-9c69d686dc47",
+     "format": "Cassette"
+    },
+    {
+     "format": "Cassette",
+     "format-id": "f5e6e254-8f39-331c-936b-9c69d686dc47",
+     "track-count": 12,
+     "id": "76360583-d0ba-3180-afae-a80d156e496d",
+     "position": 6,
+     "title": "Tunnel of Love"
+    }
+   ],
+   "disambiguation": "",
+   "barcode": "9399746592049",
+   "title": "The Bruce Springsteen Collection",
+   "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+   "release-events": [
+    {
+     "date": "1989",
+     "area": {
+      "iso-3166-1-codes": [
+       "AU"
+      ],
+      "disambiguation": "",
+      "name": "Australia",
+      "id": "106e0bec-b638-3b37-b731-f53d507dc00e",
+      "type-id": null,
+      "sort-name": "Australia",
+      "type": null
+     }
+    }
+   ],
+   "packaging": "Box",
+   "label-info": [
+    {
+     "catalog-number": "465920 4",
+     "label": {
+      "type-id": "b6285b2a-3514-3d43-80df-fcf528824ded",
+      "id": "b8d33bec-92cc-40d9-bd92-4eb089b401a9",
+      "sort-name": "CBS",
+      "type": "Imprint",
+      "name": "CBS",
+      "disambiguation": "CBS Records’ international imprint from 1962–1990; renamed since 1991 as Columbia",
+      "label-code": 149
+     }
+    }
+   ],
+   "packaging-id": "c1668fc7-8944-4a00-bc3e-46e8d861d211"
+  },
+  {
+   "packaging": "Longbox",
+   "label-info": [
+    {
+     "label": {
+      "disambiguation": "owned by Sony Music Entertainment, worldwide except JP; formerly owned by CBS between 1938–1990 within US/CA/MX",
+      "name": "Columbia",
+      "type": "Imprint",
+      "sort-name": "Columbia",
+      "id": "011d1192-6f65-45bd-85c4-0400dd45693e",
+      "type-id": "b6285b2a-3514-3d43-80df-fcf528824ded",
+      "label-code": 162
+     },
+     "catalog-number": "CSK-5033"
+    },
+    {
+     "catalog-number": "CSK-5033",
+     "label": {
+      "name": "Epic",
+      "disambiguation": "US label founded by CBS in 1953, now owned by Sony",
+      "type": "Imprint",
+      "sort-name": "Epic",
+      "type-id": "b6285b2a-3514-3d43-80df-fcf528824ded",
+      "id": "8f638ddb-131a-4cc3-b3d4-7ebdac201b55",
+      "label-code": 199
+     }
+    },
+    {
+     "label": {
+      "name": "Legacy",
+      "disambiguation": "reissue division of Sony Music Entertainment",
+      "type": "Reissue Production",
+      "sort-name": "Legacy",
+      "type-id": "88ee6ae7-f413-3490-a1d2-54f6a9f0838c",
+      "id": "45ffe1d8-92da-4750-9a4a-f42861f46e2c",
+      "label-code": 2361
+     },
+     "catalog-number": "CSK-5033"
+    }
+   ],
+   "packaging-id": "4172d0bd-f980-4e5d-8994-0530f16151ab",
+   "release-events": [
+    {
+     "date": "1993",
+     "area": {
+      "type-id": null,
+      "id": "489ce91b-6658-3307-9877-795b68554c98",
+      "sort-name": "United States",
+      "type": null,
+      "disambiguation": "",
+      "name": "United States",
+      "iso-3166-1-codes": [
+       "US"
+      ]
+     }
+    }
+   ],
+   "status-id": "518ffc83-5cde-34df-8627-81bff5093d92",
+   "disambiguation": "",
+   "media": [
+    {
+     "format": "CD",
+     "position": 1,
+     "id": "4cca76f6-44cc-33f6-9830-c88b9120e7d1",
+     "format-id": "9712d52a-4509-3d4b-a1a2-67c88c643e31",
+     "track-count": 9,
+     "title": ""
+    }
+   ],
+   "barcode": "",
+   "title": "Stereo Review MasterSound Sampler",
+   "date": "1993",
+   "country": "US",
+   "asin": null,
+   "status": "Promotion",
+   "text-representation": {
+    "language": "eng",
+    "script": "Latn"
+   },
+   "id": "89f1ee2d-c684-48b5-b475-113851eafb4c",
+   "quality": "normal",
+   "cover-art-archive": {
+    "darkened": false,
+    "front": true,
+    "back": true,
+    "artwork": true,
+    "count": 4
+   }
+  },
+  {
+   "label-info": [
+    {
+     "label": {
+      "disambiguation": "owned by Sony Music Entertainment, worldwide except JP; formerly owned by CBS between 1938–1990 within US/CA/MX",
+      "name": "Columbia",
+      "sort-name": "Columbia",
+      "type": "Imprint",
+      "type-id": "b6285b2a-3514-3d43-80df-fcf528824ded",
+      "id": "011d1192-6f65-45bd-85c4-0400dd45693e",
+      "label-code": 162
+     },
+     "catalog-number": "COL 478555 8"
+    }
+   ],
+   "packaging-id": "ec27701a-4a22-37f4-bfac-6616e0f9750a",
+   "packaging": "Jewel Case",
+   "release-events": [
+    {
+     "date": "1995",
+     "area": {
+      "disambiguation": "",
+      "name": "Europe",
+      "id": "89a675c2-3e37-3518-b83c-418bad59a85a",
+      "type-id": null,
+      "sort-name": "Europe",
+      "type": null,
+      "iso-3166-1-codes": [
+       "XE"
+      ]
+     }
+    }
+   ],
+   "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+   "title": "Greatest Hits",
+   "barcode": "5099747855580",
+   "media": [
+    {
+     "title": "",
+     "position": 1,
+     "id": "45f93434-76ef-341c-91a9-a67df1ba5ffa",
+     "format-id": "671c5ed4-20e3-3a62-b6ea-f155cde04258",
+     "track-count": 18,
+     "format": "MiniDisc"
+    }
+   ],
+   "disambiguation": "",
+   "date": "1995",
+   "country": "XE",
+   "asin": null,
+   "status": "Official",
+   "text-representation": {
+    "language": "eng",
+    "script": "Latn"
+   },
+   "id": "8baec294-2a8a-44e0-b5b1-7e522b11d0bb",
+   "quality": "normal",
+   "cover-art-archive": {
+    "back": true,
+    "front": true,
+    "darkened": false,
+    "artwork": true,
+    "count": 5
+   }
+  },
+  {
+   "release-events": [
+    {
+     "area": {
+      "type": null,
+      "sort-name": "United States",
+      "type-id": null,
+      "id": "489ce91b-6658-3307-9877-795b68554c98",
+      "disambiguation": "",
+      "name": "United States",
+      "iso-3166-1-codes": [
+       "US"
+      ]
+     },
+     "date": "1975"
+    }
+   ],
+   "packaging": "Other",
+   "packaging-id": "815b7785-8284-3926-8f04-e48bc6c4d102",
+   "label-info": [
+    {
+     "label": {
+      "name": "Columbia",
+      "disambiguation": "owned by Sony Music Entertainment, worldwide except JP; formerly owned by CBS between 1938–1990 within US/CA/MX",
+      "type": "Imprint",
+      "sort-name": "Columbia",
+      "id": "011d1192-6f65-45bd-85c4-0400dd45693e",
+      "type-id": "b6285b2a-3514-3d43-80df-fcf528824ded",
+      "label-code": 162
+     },
+     "catalog-number": "33795"
+    },
+    {
+     "label": {
+      "label-code": 162,
+      "id": "011d1192-6f65-45bd-85c4-0400dd45693e",
+      "type-id": "b6285b2a-3514-3d43-80df-fcf528824ded",
+      "type": "Imprint",
+      "sort-name": "Columbia",
+      "disambiguation": "owned by Sony Music Entertainment, worldwide except JP; formerly owned by CBS between 1938–1990 within US/CA/MX",
+      "name": "Columbia"
+     },
+     "catalog-number": "JCA 33795"
+    }
+   ],
+   "media": [
+    {
+     "format": "8-Track Cartridge",
+     "format-id": "49b49ca7-d2d8-4d36-a7dd-d61363ee3697",
+     "track-count": 9,
+     "id": "23b35f4f-4a32-3c12-bfb9-726657d24f74",
+     "position": 1,
+     "title": ""
+    }
+   ],
+   "disambiguation": "US 8‐track, version 5, matt black cartridge, Columbia TC8 Stereo slipcase",
+   "title": "Born to Run",
+   "barcode": "074643379588",
+   "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+   "text-representation": {
+    "script": "Latn",
+    "language": "eng"
+   },
+   "asin": null,
+   "status": "Official",
+   "date": "1975",
+   "country": "US",
+   "cover-art-archive": {
+    "count": 4,
+    "artwork": true,
+    "back": true,
+    "darkened": false,
+    "front": true
+   },
+   "quality": "normal",
+   "id": "8be63550-81da-451a-b23d-2be1b6a92fe8"
+  },
+  {
+   "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+   "disambiguation": "",
+   "media": [
+    {
+     "format": "12\" Vinyl",
+     "position": 1,
+     "format-id": "3e9080b0-5e6c-34ab-bd15-f526b6306a64",
+     "track-count": 8,
+     "id": "a8aa760b-be48-3b24-83d7-69a615e97af2",
+     "title": ""
+    }
+   ],
+   "title": "Born to Run",
+   "barcode": "",
+   "packaging": "Cardboard/Paper Sleeve",
+   "label-info": [
+    {
+     "catalog-number": "20.696",
+     "label": {
+      "type": "Imprint",
+      "sort-name": "Columbia",
+      "type-id": "b6285b2a-3514-3d43-80df-fcf528824ded",
+      "id": "011d1192-6f65-45bd-85c4-0400dd45693e",
+      "disambiguation": "owned by Sony Music Entertainment, worldwide except JP; formerly owned by CBS between 1938–1990 within US/CA/MX",
+      "name": "Columbia",
+      "label-code": 162
+     }
+    }
+   ],
+   "packaging-id": "f7101ce3-0384-39ce-9fde-fbbd0044d35f",
+   "release-events": [
+    {
+     "area": {
+      "iso-3166-1-codes": [
+       "AR"
+      ],
+      "disambiguation": "",
+      "name": "Argentina",
+      "id": "0df04709-c7d8-3b55-a6ea-f3e5069a947b",
+      "type-id": null,
+      "type": null,
+      "sort-name": "Argentina"
+     },
+     "date": "1975"
+    }
+   ],
+   "id": "8c93e07d-c7ca-4249-8e8d-f86ec5896637",
+   "quality": "normal",
+   "cover-art-archive": {
+    "darkened": false,
+    "front": true,
+    "back": false,
+    "artwork": true,
+    "count": 2
+   },
+   "date": "1975",
+   "country": "AR",
+   "asin": null,
+   "status": "Official",
+   "text-representation": {
+    "script": "Latn",
+    "language": "eng"
+   }
+  },
+  {
+   "status": "Promotion",
+   "asin": null,
+   "text-representation": {
+    "language": "eng",
+    "script": "Latn"
+   },
+   "country": "AU",
+   "date": "1975",
+   "cover-art-archive": {
+    "count": 5,
+    "artwork": true,
+    "back": true,
+    "darkened": false,
+    "front": true
+   },
+   "id": "8cabdc3f-f8ec-429e-a770-6bfff5308533",
+   "quality": "normal",
+   "release-events": [
+    {
+     "area": {
+      "disambiguation": "",
+      "name": "Australia",
+      "type-id": null,
+      "id": "106e0bec-b638-3b37-b731-f53d507dc00e",
+      "sort-name": "Australia",
+      "type": null,
+      "iso-3166-1-codes": [
+       "AU"
+      ]
+     },
+     "date": "1975"
+    }
+   ],
+   "packaging": "Gatefold Cover",
+   "label-info": [
+    {
+     "label": {
+      "type": "Imprint",
+      "sort-name": "CBS",
+      "id": "b8d33bec-92cc-40d9-bd92-4eb089b401a9",
+      "type-id": "b6285b2a-3514-3d43-80df-fcf528824ded",
+      "disambiguation": "CBS Records’ international imprint from 1962–1990; renamed since 1991 as Columbia",
+      "name": "CBS",
+      "label-code": 149
+     },
+     "catalog-number": "SBP 234729"
+    }
+   ],
+   "packaging-id": "e724a489-a7e8-30a1-a17c-30dfd6831202",
+   "media": [
+    {
+     "format": "12\" Vinyl",
+     "position": 1,
+     "track-count": 8,
+     "id": "d833004c-7aae-3146-8265-4ad624800d26",
+     "format-id": "3e9080b0-5e6c-34ab-bd15-f526b6306a64",
+     "title": ""
+    }
+   ],
+   "disambiguation": "Australia, version 1; promo stamped",
+   "barcode": "",
+   "title": "Born to Run",
+   "status-id": "518ffc83-5cde-34df-8627-81bff5093d92"
+  },
+  {
+   "cover-art-archive": {
+    "back": false,
+    "front": true,
+    "darkened": false,
+    "count": 7,
+    "artwork": true
+   },
+   "quality": "normal",
+   "id": "93f9c352-4204-45f4-acd7-3916e1474548",
+   "text-representation": {
+    "script": "Latn",
+    "language": "eng"
+   },
+   "status": "Official",
+   "asin": null,
+   "date": "1985",
+   "country": "AU",
+   "title": "Born to Run",
+   "barcode": "",
+   "media": [
+    {
+     "id": "8cf63372-3c44-30e7-b7bb-47f0ef3375d6",
+     "format-id": "3e9080b0-5e6c-34ab-bd15-f526b6306a64",
+     "track-count": 8,
+     "position": 1,
+     "title": "",
+     "format": "12\" Vinyl"
+    }
+   ],
+   "disambiguation": "Australia, version 4",
+   "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+   "release-events": [
+    {
+     "area": {
+      "name": "Australia",
+      "disambiguation": "",
+      "sort-name": "Australia",
+      "type": null,
+      "type-id": null,
+      "id": "106e0bec-b638-3b37-b731-f53d507dc00e",
+      "iso-3166-1-codes": [
+       "AU"
+      ]
+     },
+     "date": "1985"
+    }
+   ],
+   "packaging-id": "e724a489-a7e8-30a1-a17c-30dfd6831202",
+   "label-info": [
+    {
+     "label": {
+      "label-code": 149,
+      "name": "CBS",
+      "disambiguation": "CBS Records’ international imprint from 1962–1990; renamed since 1991 as Columbia",
+      "id": "b8d33bec-92cc-40d9-bd92-4eb089b401a9",
+      "type-id": "b6285b2a-3514-3d43-80df-fcf528824ded",
+      "type": "Imprint",
+      "sort-name": "CBS"
+     },
+     "catalog-number": "SBP 234729"
+    }
+   ],
+   "packaging": "Gatefold Cover"
+  },
+  {
+   "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+   "title": "Greatest Hits",
+   "barcode": "074646706084",
+   "media": [
+    {
+     "format": "MiniDisc",
+     "track-count": 18,
+     "format-id": "671c5ed4-20e3-3a62-b6ea-f155cde04258",
+     "id": "a8cfa77a-6912-343c-b92b-618834e9d47d",
+     "position": 1,
+     "title": ""
+    }
+   ],
+   "disambiguation": "",
+   "packaging-id": "ec27701a-4a22-37f4-bfac-6616e0f9750a",
+   "label-info": [
+    {
+     "catalog-number": "67060",
+     "label": {
+      "disambiguation": "owned by Sony Music Entertainment, worldwide except JP; formerly owned by CBS between 1938–1990 within US/CA/MX",
+      "name": "Columbia",
+      "type-id": "b6285b2a-3514-3d43-80df-fcf528824ded",
+      "id": "011d1192-6f65-45bd-85c4-0400dd45693e",
+      "sort-name": "Columbia",
+      "type": "Imprint",
+      "label-code": 162
+     }
+    },
+    {
+     "catalog-number": "CM 67060",
+     "label": {
+      "label-code": 162,
+      "name": "Columbia",
+      "disambiguation": "owned by Sony Music Entertainment, worldwide except JP; formerly owned by CBS between 1938–1990 within US/CA/MX",
+      "id": "011d1192-6f65-45bd-85c4-0400dd45693e",
+      "type-id": "b6285b2a-3514-3d43-80df-fcf528824ded",
+      "sort-name": "Columbia",
+      "type": "Imprint"
+     }
+    }
+   ],
+   "packaging": "Jewel Case",
+   "release-events": [
+    {
+     "area": {
+      "id": "489ce91b-6658-3307-9877-795b68554c98",
+      "type-id": null,
+      "sort-name": "United States",
+      "type": null,
+      "disambiguation": "",
+      "name": "United States",
+      "iso-3166-1-codes": [
+       "US"
+      ]
+     },
+     "date": "1995"
+    }
+   ],
+   "quality": "normal",
+   "id": "95312ff8-043d-4e1a-aff1-691a2453ce21",
+   "cover-art-archive": {
+    "count": 5,
+    "artwork": true,
+    "front": true,
+    "darkened": false,
+    "back": true
+   },
+   "country": "US",
+   "date": "1995",
+   "text-representation": {
+    "language": "eng",
+    "script": "Latn"
+   },
+   "status": "Official",
+   "asin": null
+  },
+  {
+   "barcode": "5099751130123",
+   "title": "Born to Run",
+   "media": [
+    {
+     "track-count": 8,
+     "id": "a1da647f-25f0-3d45-b2d8-2a0e3942b71c",
+     "format-id": "9712d52a-4509-3d4b-a1a2-67c88c643e31",
+     "position": 1,
+     "title": "",
+     "format": "CD"
+    }
+   ],
+   "disambiguation": "",
+   "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+   "release-events": [
+    {
+     "area": {
+      "disambiguation": "",
+      "name": "United Kingdom",
+      "id": "8a754a16-0027-3a29-b6d7-2b40ea0481ed",
+      "type-id": null,
+      "sort-name": "United Kingdom",
+      "type": null,
+      "iso-3166-1-codes": [
+       "GB"
+      ]
+     },
+     "date": "2003-05-05"
+    }
+   ],
+   "label-info": [
+    {
+     "catalog-number": "COL 511301 2",
+     "label": {
+      "label-code": 162,
+      "type": "Imprint",
+      "sort-name": "Columbia",
+      "id": "011d1192-6f65-45bd-85c4-0400dd45693e",
+      "type-id": "b6285b2a-3514-3d43-80df-fcf528824ded",
+      "disambiguation": "owned by Sony Music Entertainment, worldwide except JP; formerly owned by CBS between 1938–1990 within US/CA/MX",
+      "name": "Columbia"
+     }
+    }
+   ],
+   "packaging-id": "ec27701a-4a22-37f4-bfac-6616e0f9750a",
+   "packaging": "Jewel Case",
+   "cover-art-archive": {
+    "darkened": false,
+    "front": true,
+    "back": true,
+    "artwork": true,
+    "count": 6
+   },
+   "id": "96c2c341-6a63-31c4-8453-1db79f881e78",
+   "quality": "normal",
+   "asin": "B00008Z5GB",
+   "status": "Official",
+   "text-representation": {
+    "script": "Latn",
+    "language": "eng"
+   },
+   "date": "2003-05-05",
+   "country": "GB"
+  },
+  {
+   "quality": "normal",
+   "id": "97cfffa7-dd6a-4b6d-b0f4-13a7014c8881",
+   "cover-art-archive": {
+    "artwork": true,
+    "count": 4,
+    "darkened": false,
+    "front": true,
+    "back": true
+   },
+   "date": "1975",
+   "country": "AR",
+   "text-representation": {
+    "script": "Latn",
+    "language": "eng"
+   },
+   "asin": null,
+   "status": "Promotion",
+   "status-id": "518ffc83-5cde-34df-8627-81bff5093d92",
+   "title": "Born to Run",
+   "barcode": "",
+   "disambiguation": "",
+   "media": [
+    {
+     "format-id": "3e9080b0-5e6c-34ab-bd15-f526b6306a64",
+     "track-count": 8,
+     "id": "f9cd9ad7-ccea-389e-abbe-30531731e97c",
+     "position": 1,
+     "title": "",
+     "format": "12\" Vinyl"
+    }
+   ],
+   "packaging-id": "f7101ce3-0384-39ce-9fde-fbbd0044d35f",
+   "label-info": [
+    {
+     "label": {
+      "label-code": 162,
+      "id": "011d1192-6f65-45bd-85c4-0400dd45693e",
+      "type-id": "b6285b2a-3514-3d43-80df-fcf528824ded",
+      "type": "Imprint",
+      "sort-name": "Columbia",
+      "disambiguation": "owned by Sony Music Entertainment, worldwide except JP; formerly owned by CBS between 1938–1990 within US/CA/MX",
+      "name": "Columbia"
+     },
+     "catalog-number": "20.696"
+    }
+   ],
+   "packaging": "Cardboard/Paper Sleeve",
+   "release-events": [
+    {
+     "area": {
+      "iso-3166-1-codes": [
+       "AR"
+      ],
+      "name": "Argentina",
+      "disambiguation": "",
+      "sort-name": "Argentina",
+      "type": null,
+      "type-id": null,
+      "id": "0df04709-c7d8-3b55-a6ea-f3e5069a947b"
+     },
+     "date": "1975"
+    }
+   ]
+  },
+  {
+   "title": "Born to Run",
+   "barcode": "",
+   "media": [
+    {
+     "format-id": "49b49ca7-d2d8-4d36-a7dd-d61363ee3697",
+     "id": "57ada52e-7d7e-3850-86e3-d10f5f1da8d1",
+     "track-count": 9,
+     "position": 1,
+     "title": "",
+     "format": "8-Track Cartridge"
+    }
+   ],
+   "disambiguation": "US 8‐track, version 2",
+   "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+   "release-events": [
+    {
+     "date": "1975",
+     "area": {
+      "id": "489ce91b-6658-3307-9877-795b68554c98",
+      "type-id": null,
+      "sort-name": "United States",
+      "type": null,
+      "disambiguation": "",
+      "name": "United States",
+      "iso-3166-1-codes": [
+       "US"
+      ]
+     }
+    }
+   ],
+   "packaging-id": "815b7785-8284-3926-8f04-e48bc6c4d102",
+   "label-info": [
+    {
+     "catalog-number": "PCA 33795",
+     "label": {
+      "label-code": 162,
+      "name": "Columbia",
+      "disambiguation": "owned by Sony Music Entertainment, worldwide except JP; formerly owned by CBS between 1938–1990 within US/CA/MX",
+      "type-id": "b6285b2a-3514-3d43-80df-fcf528824ded",
+      "id": "011d1192-6f65-45bd-85c4-0400dd45693e",
+      "sort-name": "Columbia",
+      "type": "Imprint"
+     }
+    }
+   ],
+   "packaging": "Other",
+   "cover-art-archive": {
+    "darkened": false,
+    "front": true,
+    "back": true,
+    "count": 3,
+    "artwork": true
+   },
+   "quality": "normal",
+   "id": "9946af79-6237-4f3c-9c41-1387076b857c",
+   "text-representation": {
+    "script": "Latn",
+    "language": "eng"
+   },
+   "asin": null,
+   "status": "Official",
+   "date": "1975",
+   "country": "US"
+  },
+  {
+   "text-representation": {
+    "script": "Latn",
+    "language": "eng"
+   },
+   "asin": null,
+   "status": "Official",
+   "date": "1980",
+   "country": "GB",
+   "cover-art-archive": {
+    "front": true,
+    "darkened": false,
+    "back": true,
+    "artwork": true,
+    "count": 30
+   },
+   "quality": "normal",
+   "id": "9ad1f06d-6be8-45ce-ae4e-87a8552c2d1f",
+   "release-events": [
+    {
+     "area": {
+      "iso-3166-1-codes": [
+       "GB"
+      ],
+      "disambiguation": "",
+      "name": "United Kingdom",
+      "type": null,
+      "sort-name": "United Kingdom",
+      "type-id": null,
+      "id": "8a754a16-0027-3a29-b6d7-2b40ea0481ed"
+     },
+     "date": "1980"
+    }
+   ],
+   "packaging": "Box",
+   "packaging-id": "c1668fc7-8944-4a00-bc3e-46e8d861d211",
+   "label-info": [
+    {
+     "label": {
+      "label-code": 149,
+      "sort-name": "CBS",
+      "type": "Imprint",
+      "id": "b8d33bec-92cc-40d9-bd92-4eb089b401a9",
+      "type-id": "b6285b2a-3514-3d43-80df-fcf528824ded",
+      "disambiguation": "CBS Records’ international imprint from 1962–1990; renamed since 1991 as Columbia",
+      "name": "CBS"
+     },
+     "catalog-number": "66353"
+    }
+   ],
+   "media": [
+    {
+     "format": "12\" Vinyl",
+     "position": 1,
+     "id": "0d32b86d-a0a9-3363-9a83-8e5ad4f4c7c8",
+     "format-id": "3e9080b0-5e6c-34ab-bd15-f526b6306a64",
+     "track-count": 7,
+     "title": "The Wild, the Innocent & The E Street Shuffle"
+    },
+    {
+     "format": "12\" Vinyl",
+     "track-count": 8,
+     "format-id": "3e9080b0-5e6c-34ab-bd15-f526b6306a64",
+     "id": "3a53edae-b6d5-34e6-b963-c3700231d8af",
+     "position": 2,
+     "title": "Born to Run"
+    },
+    {
+     "format-id": "3e9080b0-5e6c-34ab-bd15-f526b6306a64",
+     "track-count": 9,
+     "id": "01f155e7-6d6b-3c02-a6ec-85c9bb124bda",
+     "position": 3,
+     "title": "Greetings From Asbury Park, N.J.",
+     "format": "12\" Vinyl"
+    }
+   ],
+   "disambiguation": "horizontal obi strip",
+   "title": "Greetings From Asbury Park, N.J. / The Wild, the Innocent and the E Street Shuffle / Born to Run",
+   "barcode": "",
+   "status-id": "4e304316-386d-3409-af2e-78857eec5cfe"
+  },
+  {
+   "release-events": [
+    {
+     "date": "1995-02-28",
+     "area": {
+      "iso-3166-1-codes": [
+       "CA"
+      ],
+      "name": "Canada",
+      "disambiguation": "",
+      "id": "71bbafaa-e825-3e15-8ca9-017dcad1748b",
+      "type-id": null,
+      "type": null,
+      "sort-name": "Canada"
+     }
+    }
+   ],
+   "packaging": "Jewel Case",
+   "packaging-id": "ec27701a-4a22-37f4-bfac-6616e0f9750a",
+   "label-info": [
+    {
+     "label": {
+      "label-code": 162,
+      "type": "Imprint",
+      "sort-name": "Columbia",
+      "type-id": "b6285b2a-3514-3d43-80df-fcf528824ded",
+      "id": "011d1192-6f65-45bd-85c4-0400dd45693e",
+      "disambiguation": "owned by Sony Music Entertainment, worldwide except JP; formerly owned by CBS between 1938–1990 within US/CA/MX",
+      "name": "Columbia"
+     },
+     "catalog-number": "CK 67060"
+    }
+   ],
+   "media": [
+    {
+     "format": "CD",
+     "title": "",
+     "id": "fc881ba3-0248-3d9a-9197-5bd9a27ef74f",
+     "format-id": "9712d52a-4509-3d4b-a1a2-67c88c643e31",
+     "track-count": 18,
+     "position": 1
+    }
+   ],
+   "disambiguation": "",
+   "title": "Greatest Hits",
+   "barcode": "074646706022",
+   "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+   "text-representation": {
+    "script": "Latn",
+    "language": "eng"
+   },
+   "asin": null,
+   "status": "Official",
+   "date": "1995-02-28",
+   "country": "CA",
+   "cover-art-archive": {
+    "artwork": true,
+    "count": 18,
+    "darkened": false,
+    "front": true,
+    "back": true
+   },
+   "quality": "normal",
+   "id": "9ed31aca-5eb9-4162-8cd0-a4e849488da5"
+  },
+  {
+   "release-events": [
+    {
+     "date": "1975",
+     "area": {
+      "type-id": null,
+      "id": "8a754a16-0027-3a29-b6d7-2b40ea0481ed",
+      "type": null,
+      "sort-name": "United Kingdom",
+      "disambiguation": "",
+      "name": "United Kingdom",
+      "iso-3166-1-codes": [
+       "GB"
+      ]
+     }
+    }
+   ],
+   "packaging": "Gatefold Cover",
+   "packaging-id": "e724a489-a7e8-30a1-a17c-30dfd6831202",
+   "label-info": [
+    {
+     "label": {
+      "type-id": "b6285b2a-3514-3d43-80df-fcf528824ded",
+      "id": "b8d33bec-92cc-40d9-bd92-4eb089b401a9",
+      "type": "Imprint",
+      "sort-name": "CBS",
+      "disambiguation": "CBS Records’ international imprint from 1962–1990; renamed since 1991 as Columbia",
+      "name": "CBS",
+      "label-code": 149
+     },
+     "catalog-number": "69170"
+    },
+    {
+     "catalog-number": "S 69170",
+     "label": {
+      "label-code": 149,
+      "type-id": "b6285b2a-3514-3d43-80df-fcf528824ded",
+      "id": "b8d33bec-92cc-40d9-bd92-4eb089b401a9",
+      "type": "Imprint",
+      "sort-name": "CBS",
+      "disambiguation": "CBS Records’ international imprint from 1962–1990; renamed since 1991 as Columbia",
+      "name": "CBS"
+     }
+    }
+   ],
+   "disambiguation": "UK, version 6; upside down",
+   "media": [
+    {
+     "format": "12\" Vinyl",
+     "position": 1,
+     "track-count": 8,
+     "format-id": "3e9080b0-5e6c-34ab-bd15-f526b6306a64",
+     "id": "26a2816b-e319-3832-ad20-3ebe0ef7d925",
+     "title": ""
+    }
+   ],
+   "title": "Born to Run",
+   "barcode": "",
+   "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+   "text-representation": {
+    "language": "eng",
+    "script": "Latn"
+   },
+   "asin": null,
+   "status": "Official",
+   "country": "GB",
+   "date": "1975",
+   "cover-art-archive": {
+    "back": true,
+    "darkened": false,
+    "front": true,
+    "count": 6,
+    "artwork": true
+   },
+   "quality": "normal",
+   "id": "a0b5713b-76e0-42d1-9fc3-762e98f01d8d"
+  },
+  {
+   "date": "1978",
+   "country": "JP",
+   "text-representation": {
+    "language": "eng",
+    "script": "Latn"
+   },
+   "status": "Promotion",
+   "asin": null,
+   "quality": "normal",
+   "id": "a2a60b32-cb1e-4ee2-9838-a56e608adad8",
+   "cover-art-archive": {
+    "count": 6,
+    "artwork": true,
+    "back": true,
+    "front": true,
+    "darkened": false
+   },
+   "packaging": "Cardboard/Paper Sleeve",
+   "packaging-id": "f7101ce3-0384-39ce-9fde-fbbd0044d35f",
+   "label-info": [
+    {
+     "catalog-number": "YAPC 95",
+     "label": {
+      "label-code": null,
+      "name": "CBS/Sony",
+      "disambiguation": "imprint used in Japan, South Korea and Southeast Asia 1968–1991; also used in Spain until 1997",
+      "type-id": "b6285b2a-3514-3d43-80df-fcf528824ded",
+      "id": "08f37a61-1c54-4257-b31d-810fa2ac5cd5",
+      "sort-name": "CBS/Sony",
+      "type": "Imprint"
+     }
+    }
+   ],
+   "release-events": [
+    {
+     "area": {
+      "iso-3166-1-codes": [
+       "JP"
+      ],
+      "type": null,
+      "sort-name": "Japan",
+      "type-id": null,
+      "id": "2db42837-c832-3c27-b4a3-08198f75693c",
+      "name": "Japan",
+      "disambiguation": ""
+     },
+     "date": "1978"
+    }
+   ],
+   "status-id": "518ffc83-5cde-34df-8627-81bff5093d92",
+   "disambiguation": "",
+   "media": [
+    {
+     "title": "",
+     "position": 1,
+     "format-id": "3e9080b0-5e6c-34ab-bd15-f526b6306a64",
+     "track-count": 10,
+     "id": "75e020ff-185c-3fd3-b60b-d3345625caf1",
+     "format": "12\" Vinyl"
+    }
+   ],
+   "title": "Last American Hero From Asbury Park",
+   "barcode": ""
+  },
+  {
+   "country": "JP",
+   "date": "1988-09-21",
+   "status": "Official",
+   "asin": null,
+   "text-representation": {
+    "script": "Latn",
+    "language": "eng"
+   },
+   "id": "a86d5294-573e-4f6a-9744-921afb9108ed",
+   "quality": "normal",
+   "cover-art-archive": {
+    "count": 8,
+    "artwork": true,
+    "darkened": false,
+    "front": true,
+    "back": true
+   },
+   "label-info": [
+    {
+     "catalog-number": "25DP 5242",
+     "label": {
+      "label-code": null,
+      "type-id": "b6285b2a-3514-3d43-80df-fcf528824ded",
+      "id": "08f37a61-1c54-4257-b31d-810fa2ac5cd5",
+      "sort-name": "CBS/Sony",
+      "type": "Imprint",
+      "name": "CBS/Sony",
+      "disambiguation": "imprint used in Japan, South Korea and Southeast Asia 1968–1991; also used in Spain until 1997"
+     }
+    }
+   ],
+   "packaging-id": "ec27701a-4a22-37f4-bfac-6616e0f9750a",
+   "packaging": "Jewel Case",
+   "release-events": [
+    {
+     "area": {
+      "type": null,
+      "sort-name": "Japan",
+      "id": "2db42837-c832-3c27-b4a3-08198f75693c",
+      "type-id": null,
+      "name": "Japan",
+      "disambiguation": "",
+      "iso-3166-1-codes": [
+       "JP"
+      ]
+     },
+     "date": "1988-09-21"
+    }
+   ],
+   "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+   "title": "Born to Run",
+   "barcode": "4988009620152",
+   "media": [
+    {
+     "position": 1,
+     "id": "ec9cb736-5fb3-345a-be48-903210076881",
+     "track-count": 8,
+     "format-id": "9712d52a-4509-3d4b-a1a2-67c88c643e31",
+     "title": "",
+     "format": "CD"
+    }
+   ],
+   "disambiguation": ""
+  },
+  {
+   "date": "1995",
+   "country": "US",
+   "status": "Official",
+   "asin": "B00000DSHR",
+   "text-representation": {
+    "script": "Latn",
+    "language": "eng"
+   },
+   "id": "a9856cd2-c168-4bbe-b49e-c489e9e0a0c2",
+   "quality": "normal",
+   "cover-art-archive": {
+    "front": true,
+    "darkened": false,
+    "back": true,
+    "count": 6,
+    "artwork": true
+   },
+   "packaging": "Other",
+   "label-info": [
+    {
+     "catalog-number": "CK 52859",
+     "label": {
+      "label-code": 162,
+      "disambiguation": "owned by Sony Music Entertainment, worldwide except JP; formerly owned by CBS between 1938–1990 within US/CA/MX",
+      "name": "Columbia",
+      "type": "Imprint",
+      "sort-name": "Columbia",
+      "id": "011d1192-6f65-45bd-85c4-0400dd45693e",
+      "type-id": "b6285b2a-3514-3d43-80df-fcf528824ded"
+     }
+    },
+    {
+     "catalog-number": null,
+     "label": {
+      "label-code": 2361,
+      "id": "45ffe1d8-92da-4750-9a4a-f42861f46e2c",
+      "type-id": "88ee6ae7-f413-3490-a1d2-54f6a9f0838c",
+      "sort-name": "Legacy",
+      "type": "Reissue Production",
+      "disambiguation": "reissue division of Sony Music Entertainment",
+      "name": "Legacy"
+     }
+    }
+   ],
+   "packaging-id": "815b7785-8284-3926-8f04-e48bc6c4d102",
+   "release-events": [
+    {
+     "date": "1995",
+     "area": {
+      "disambiguation": "",
+      "name": "United States",
+      "type": null,
+      "sort-name": "United States",
+      "id": "489ce91b-6658-3307-9877-795b68554c98",
+      "type-id": null,
+      "iso-3166-1-codes": [
+       "US"
+      ]
+     }
+    }
+   ],
+   "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+   "media": [
+    {
+     "format": "CD",
+     "position": 1,
+     "format-id": "9712d52a-4509-3d4b-a1a2-67c88c643e31",
+     "track-count": 8,
+     "id": "beb827ed-4185-3135-ac66-568ea30722c6",
+     "title": ""
+    }
+   ],
+   "disambiguation": "",
+   "barcode": "074645285924",
+   "title": "Born to Run"
+  },
+  {
+   "asin": null,
+   "status": "Official",
+   "text-representation": {
+    "language": "eng",
+    "script": "Latn"
+   },
+   "date": "1988",
+   "country": "AU",
+   "cover-art-archive": {
+    "front": true,
+    "darkened": false,
+    "back": false,
+    "artwork": true,
+    "count": 5
+   },
+   "id": "ab38ba70-89b1-405a-b7ad-5b2ff3cedf56",
+   "quality": "normal",
+   "release-events": [
+    {
+     "area": {
+      "name": "Australia",
+      "disambiguation": "",
+      "id": "106e0bec-b638-3b37-b731-f53d507dc00e",
+      "type-id": null,
+      "type": null,
+      "sort-name": "Australia",
+      "iso-3166-1-codes": [
+       "AU"
+      ]
+     },
+     "date": "1988"
+    }
+   ],
+   "packaging": "Box",
+   "label-info": [
+    {
+     "catalog-number": "465920 1",
+     "label": {
+      "label-code": 149,
+      "id": "b8d33bec-92cc-40d9-bd92-4eb089b401a9",
+      "type-id": "b6285b2a-3514-3d43-80df-fcf528824ded",
+      "sort-name": "CBS",
+      "type": "Imprint",
+      "disambiguation": "CBS Records’ international imprint from 1962–1990; renamed since 1991 as Columbia",
+      "name": "CBS"
+     }
+    }
+   ],
+   "packaging-id": "c1668fc7-8944-4a00-bc3e-46e8d861d211",
+   "media": [
+    {
+     "format": "12\" Vinyl",
+     "track-count": 9,
+     "id": "3d118c06-e9de-321d-bc36-54afa3f9bf8a",
+     "format-id": "3e9080b0-5e6c-34ab-bd15-f526b6306a64",
+     "position": 1,
+     "title": "Greetings From Asbury Park, N.J."
+    },
+    {
+     "title": "The Wild, the Innocent & The E Street Shuffle",
+     "position": 2,
+     "format-id": "3e9080b0-5e6c-34ab-bd15-f526b6306a64",
+     "id": "b155db53-4e79-33a0-8ae5-dd24350a8a5f",
+     "track-count": 7,
+     "format": "12\" Vinyl"
+    },
+    {
+     "format": "12\" Vinyl",
+     "title": "Born to Run",
+     "position": 3,
+     "id": "0795a1db-02a4-3a26-ac91-c654c651d662",
+     "track-count": 8,
+     "format-id": "3e9080b0-5e6c-34ab-bd15-f526b6306a64"
+    },
+    {
+     "format": "12\" Vinyl",
+     "title": "Darkness on the Edge of Town",
+     "track-count": 10,
+     "format-id": "3e9080b0-5e6c-34ab-bd15-f526b6306a64",
+     "id": "4e2b4e1b-ed8b-3bb3-9ddb-065dea1d31bb",
+     "position": 4
+    },
+    {
+     "format": "12\" Vinyl",
+     "format-id": "3e9080b0-5e6c-34ab-bd15-f526b6306a64",
+     "track-count": 12,
+     "id": "b9aea715-141a-34e5-a22e-de4e169d8ee6",
+     "position": 5,
+     "title": "Born in the U.S.A."
+    },
+    {
+     "title": "Tunnel of Love",
+     "position": 6,
+     "format-id": "3e9080b0-5e6c-34ab-bd15-f526b6306a64",
+     "id": "fbdfc958-a8f9-382e-9c29-fbb65cea4dc6",
+     "track-count": 12,
+     "format": "12\" Vinyl"
+    }
+   ],
+   "disambiguation": "",
+   "barcode": "9399746592018",
+   "title": "The Bruce Springsteen Collection",
+   "status-id": "4e304316-386d-3409-af2e-78857eec5cfe"
+  },
+  {
+   "id": "abb3db7f-315a-4ceb-9d71-7a11c54ff95d",
+   "quality": "normal",
+   "cover-art-archive": {
+    "artwork": true,
+    "count": 8,
+    "darkened": false,
+    "front": true,
+    "back": true
+   },
+   "date": "1980",
+   "country": "NZ",
+   "status": "Official",
+   "asin": null,
+   "text-representation": {
+    "language": "eng",
+    "script": "Latn"
+   },
+   "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+   "barcode": "",
+   "title": "Greetings From Asbury Park, N.J. / The Wild, the Innocent and the E Street Shuffle / Born to Run",
+   "media": [
+    {
+     "format": "12\" Vinyl",
+     "track-count": 7,
+     "format-id": "3e9080b0-5e6c-34ab-bd15-f526b6306a64",
+     "id": "f6363500-8ab1-3efa-bfc9-2aa63426073e",
+     "position": 1,
+     "title": "The Wild, the Innocent & The E Street Shuffle"
+    },
+    {
+     "track-count": 8,
+     "id": "a715d2fa-cda6-375f-8d98-6af77446631d",
+     "format-id": "3e9080b0-5e6c-34ab-bd15-f526b6306a64",
+     "position": 2,
+     "title": "Born to Run",
+     "format": "12\" Vinyl"
+    },
+    {
+     "title": "Greetings From Asbury Park, N.J.",
+     "track-count": 9,
+     "format-id": "3e9080b0-5e6c-34ab-bd15-f526b6306a64",
+     "id": "41b0a3a0-c6c7-3486-b48f-bceb33abdc15",
+     "position": 3,
+     "format": "12\" Vinyl"
+    }
+   ],
+   "disambiguation": "",
+   "label-info": [
+    {
+     "catalog-number": "S3BP220504",
+     "label": {
+      "type-id": "b6285b2a-3514-3d43-80df-fcf528824ded",
+      "id": "b8d33bec-92cc-40d9-bd92-4eb089b401a9",
+      "sort-name": "CBS",
+      "type": "Imprint",
+      "disambiguation": "CBS Records’ international imprint from 1962–1990; renamed since 1991 as Columbia",
+      "name": "CBS",
+      "label-code": 149
+     }
+    }
+   ],
+   "packaging-id": "c1668fc7-8944-4a00-bc3e-46e8d861d211",
+   "packaging": "Box",
+   "release-events": [
+    {
+     "date": "1980",
+     "area": {
+      "sort-name": "New Zealand",
+      "type": null,
+      "id": "8524c7d9-f472-3890-a458-f28d5081d9c4",
+      "type-id": null,
+      "disambiguation": "",
+      "name": "New Zealand",
+      "iso-3166-1-codes": [
+       "NZ"
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "release-events": [
+    {
+     "date": "1986",
+     "area": {
+      "iso-3166-1-codes": [
+       "ID"
+      ],
+      "id": "d3a68bd0-7419-3f99-a5bd-204d6e057089",
+      "type-id": null,
+      "sort-name": "Indonesia",
+      "type": null,
+      "disambiguation": "",
+      "name": "Indonesia"
+     }
+    }
+   ],
+   "packaging-id": null,
+   "label-info": [
+    {
+     "label": {
+      "label-code": null,
+      "name": "A Private Collection",
+      "disambiguation": "",
+      "id": "af05390f-0fc2-46bf-8586-a6e0622bfbc0",
+      "type-id": null,
+      "type": null,
+      "sort-name": "A Private Collection"
+     },
+     "catalog-number": "96005"
+    }
+   ],
+   "packaging": null,
+   "barcode": null,
+   "title": "Born to Run / The Wild, the Innocent & The E Street Shuffle",
+   "media": [
+    {
+     "format": "Cassette",
+     "format-id": "f5e6e254-8f39-331c-936b-9c69d686dc47",
+     "track-count": 17,
+     "id": "646e677b-6cb6-39dd-96c1-0c2b5dc01acf",
+     "position": 1,
+     "title": ""
+    }
+   ],
+   "disambiguation": "",
+   "status-id": "1156806e-d06a-38bd-83f0-cf2284a808b9",
+   "text-representation": {
+    "language": "eng",
+    "script": "Latn"
+   },
+   "asin": null,
+   "status": "Bootleg",
+   "date": "1986",
+   "country": "ID",
+   "cover-art-archive": {
+    "count": 0,
+    "artwork": false,
+    "back": false,
+    "front": false,
+    "darkened": false
+   },
+   "quality": "normal",
+   "id": "b3a6cf69-0c56-487b-9887-76ab461a942a"
+  },
+  {
+   "status-id": "1156806e-d06a-38bd-83f0-cf2284a808b9",
+   "disambiguation": "",
+   "media": [
+    {
+     "format": "CD",
+     "position": 1,
+     "id": "64f6e4ab-2d33-302c-b6fb-22d0a98af12f",
+     "format-id": "9712d52a-4509-3d4b-a1a2-67c88c643e31",
+     "track-count": 17,
+     "title": ""
+    }
+   ],
+   "title": "Best ’99",
+   "barcode": "4904109533",
+   "packaging": "Jewel Case",
+   "label-info": [
+    {
+     "label": {
+      "label-code": null,
+      "type": "Production",
+      "sort-name": "[no label]",
+      "id": "157afde4-4bf5-4039-8ad2-5a15acc85176",
+      "type-id": "a2426aab-2dd4-339c-b47d-b4923a241678",
+      "disambiguation": "Special purpose label – white labels, self-published releases and other “no label” releases",
+      "name": "[no label]"
+     },
+     "catalog-number": "BS-90117-B"
+    }
+   ],
+   "packaging-id": "ec27701a-4a22-37f4-bfac-6616e0f9750a",
+   "release-events": [
+    {
+     "area": {
+      "iso-3166-1-codes": [
+       "XE"
+      ],
+      "disambiguation": "",
+      "name": "Europe",
+      "type-id": null,
+      "id": "89a675c2-3e37-3518-b83c-418bad59a85a",
+      "type": null,
+      "sort-name": "Europe"
+     },
+     "date": "1999"
+    }
+   ],
+   "id": "b4041db4-7021-47e0-8d1c-89666207e119",
+   "quality": "normal",
+   "cover-art-archive": {
+    "count": 3,
+    "artwork": true,
+    "back": true,
+    "darkened": false,
+    "front": true
+   },
+   "date": "1999",
+   "country": "XE",
+   "asin": null,
+   "status": "Bootleg",
+   "text-representation": {
+    "script": "Latn",
+    "language": "eng"
+   }
+  },
+  {
+   "status-id": "1156806e-d06a-38bd-83f0-cf2284a808b9",
+   "title": "The Best of Bruce Springsteen",
+   "barcode": "",
+   "media": [
+    {
+     "position": 1,
+     "format-id": "3e9080b0-5e6c-34ab-bd15-f526b6306a64",
+     "id": "25feb760-7375-3f7e-ac83-da1dce2a218f",
+     "track-count": 11,
+     "title": "",
+     "format": "12\" Vinyl"
+    }
+   ],
+   "disambiguation": "",
+   "packaging-id": "f7101ce3-0384-39ce-9fde-fbbd0044d35f",
+   "label-info": [
+    {
+     "label": {
+      "label-code": null,
+      "name": "Hansori Records Co., Ltd.",
+      "disambiguation": "",
+      "type-id": null,
+      "id": "87e53b17-9543-44b0-ba86-0c2d5a120ab7",
+      "type": null,
+      "sort-name": "Hansori Records Co., Ltd."
+     },
+     "catalog-number": "MHRL-1066"
+    }
+   ],
+   "packaging": "Cardboard/Paper Sleeve",
+   "release-events": [
+    {
+     "area": {
+      "iso-3166-1-codes": [
+       "KR"
+      ],
+      "type-id": null,
+      "id": "b9f7d640-46e8-313e-b158-ded6d18593b3",
+      "type": null,
+      "sort-name": "South Korea",
+      "disambiguation": "",
+      "name": "South Korea"
+     },
+     "date": "1991"
+    }
+   ],
+   "quality": "normal",
+   "id": "b6dcd1a4-2687-41bf-9978-7aece2baffbf",
+   "cover-art-archive": {
+    "artwork": true,
+    "count": 5,
+    "back": true,
+    "darkened": false,
+    "front": true
+   },
+   "date": "1991",
+   "country": "KR",
+   "text-representation": {
+    "script": "Latn",
+    "language": "eng"
+   },
+   "asin": null,
+   "status": "Bootleg"
+  },
+  {
+   "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+   "title": "Born to Run",
+   "barcode": "5099708095925",
+   "media": [
+    {
+     "format-id": "9712d52a-4509-3d4b-a1a2-67c88c643e31",
+     "id": "eeae96f3-64c3-3c72-807c-21dad6fa953b",
+     "track-count": 8,
+     "position": 1,
+     "title": "",
+     "format": "CD"
+    }
+   ],
+   "disambiguation": "",
+   "label-info": [
+    {
+     "catalog-number": "CD 80959",
+     "label": {
+      "label-code": 149,
+      "name": "CBS",
+      "disambiguation": "CBS Records’ international imprint from 1962–1990; renamed since 1991 as Columbia",
+      "sort-name": "CBS",
+      "type": "Imprint",
+      "id": "b8d33bec-92cc-40d9-bd92-4eb089b401a9",
+      "type-id": "b6285b2a-3514-3d43-80df-fcf528824ded"
+     }
+    }
+   ],
+   "packaging-id": "ec27701a-4a22-37f4-bfac-6616e0f9750a",
+   "packaging": "Jewel Case",
+   "release-events": [
+    {
+     "area": {
+      "disambiguation": "",
+      "name": "Europe",
+      "id": "89a675c2-3e37-3518-b83c-418bad59a85a",
+      "type-id": null,
+      "sort-name": "Europe",
+      "type": null,
+      "iso-3166-1-codes": [
+       "XE"
+      ]
+     },
+     "date": "1988"
+    }
+   ],
+   "id": "ba387f9a-6770-4ed7-a108-e0fa946f070f",
+   "quality": "normal",
+   "cover-art-archive": {
+    "count": 3,
+    "artwork": true,
+    "back": true,
+    "darkened": false,
+    "front": true
+   },
+   "date": "1988",
+   "country": "XE",
+   "status": "Official",
+   "asin": "B000026621",
+   "text-representation": {
+    "language": "eng",
+    "script": "Latn"
+   }
+  },
+  {
+   "release-events": [
+    {
+     "area": {
+      "iso-3166-1-codes": [
+       "US"
+      ],
+      "disambiguation": "",
+      "name": "United States",
+      "type": null,
+      "sort-name": "United States",
+      "type-id": null,
+      "id": "489ce91b-6658-3307-9877-795b68554c98"
+     },
+     "date": "1975"
+    }
+   ],
+   "packaging-id": "815b7785-8284-3926-8f04-e48bc6c4d102",
+   "label-info": [
+    {
+     "catalog-number": "33795",
+     "label": {
+      "sort-name": "Columbia",
+      "type": "Imprint",
+      "id": "011d1192-6f65-45bd-85c4-0400dd45693e",
+      "type-id": "b6285b2a-3514-3d43-80df-fcf528824ded",
+      "disambiguation": "owned by Sony Music Entertainment, worldwide except JP; formerly owned by CBS between 1938–1990 within US/CA/MX",
+      "name": "Columbia",
+      "label-code": 162
+     }
+    },
+    {
+     "catalog-number": "JCA 33795",
+     "label": {
+      "sort-name": "Columbia",
+      "type": "Imprint",
+      "type-id": "b6285b2a-3514-3d43-80df-fcf528824ded",
+      "id": "011d1192-6f65-45bd-85c4-0400dd45693e",
+      "name": "Columbia",
+      "disambiguation": "owned by Sony Music Entertainment, worldwide except JP; formerly owned by CBS between 1938–1990 within US/CA/MX",
+      "label-code": 162
+     }
+    }
+   ],
+   "packaging": "Other",
+   "barcode": "074643379588",
+   "title": "Born to Run",
+   "media": [
+    {
+     "title": "",
+     "position": 1,
+     "track-count": 9,
+     "format-id": "49b49ca7-d2d8-4d36-a7dd-d61363ee3697",
+     "id": "8505ca3c-9c79-349d-bc97-1c62a78e69d1",
+     "format": "8-Track Cartridge"
+    }
+   ],
+   "disambiguation": "US 8‐track, version 5, glossy black cartridge",
+   "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+   "text-representation": {
+    "script": "Latn",
+    "language": "eng"
+   },
+   "asin": null,
+   "status": "Official",
+   "date": "1975",
+   "country": "US",
+   "cover-art-archive": {
+    "artwork": true,
+    "count": 4,
+    "darkened": false,
+    "front": true,
+    "back": true
+   },
+   "quality": "normal",
+   "id": "ba5ea9ed-6bca-4bdb-9622-4bfd6fdca878"
+  },
+  {
+   "disambiguation": "Mastersound issue, version 2",
+   "media": [
+    {
+     "position": 1,
+     "format-id": "9712d52a-4509-3d4b-a1a2-67c88c643e31",
+     "track-count": 8,
+     "id": "c4e201ac-6dfd-3f21-b63d-fa09fb2e80f6",
+     "title": "",
+     "format": "CD"
+    }
+   ],
+   "barcode": "074646440629",
+   "title": "Born to Run",
+   "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+   "release-events": [
+    {
+     "area": {
+      "iso-3166-1-codes": [
+       "US"
+      ],
+      "id": "489ce91b-6658-3307-9877-795b68554c98",
+      "type-id": null,
+      "type": null,
+      "sort-name": "United States",
+      "disambiguation": "",
+      "name": "United States"
+     },
+     "date": "1994"
+    }
+   ],
+   "packaging": "Jewel Case",
+   "label-info": [
+    {
+     "label": {
+      "id": "011d1192-6f65-45bd-85c4-0400dd45693e",
+      "type-id": "b6285b2a-3514-3d43-80df-fcf528824ded",
+      "type": "Imprint",
+      "sort-name": "Columbia",
+      "name": "Columbia",
+      "disambiguation": "owned by Sony Music Entertainment, worldwide except JP; formerly owned by CBS between 1938–1990 within US/CA/MX",
+      "label-code": 162
+     },
+     "catalog-number": "CK 64406"
+    },
+    {
+     "label": {
+      "type-id": "88ee6ae7-f413-3490-a1d2-54f6a9f0838c",
+      "id": "45ffe1d8-92da-4750-9a4a-f42861f46e2c",
+      "type": "Reissue Production",
+      "sort-name": "Legacy",
+      "name": "Legacy",
+      "disambiguation": "reissue division of Sony Music Entertainment",
+      "label-code": 2361
+     },
+     "catalog-number": "CK 64406"
+    }
+   ],
+   "packaging-id": "ec27701a-4a22-37f4-bfac-6616e0f9750a",
+   "cover-art-archive": {
+    "count": 4,
+    "artwork": true,
+    "back": true,
+    "front": true,
+    "darkened": false
+   },
+   "id": "c1db9324-857a-4706-92bb-1f7d97c56843",
+   "quality": "normal",
+   "status": "Official",
+   "asin": "B000002A6Q",
+   "text-representation": {
+    "language": "eng",
+    "script": "Latn"
+   },
+   "date": "1994",
+   "country": "US"
+  },
+  {
+   "cover-art-archive": {
+    "artwork": true,
+    "count": 1,
+    "back": false,
+    "front": true,
+    "darkened": false
+   },
+   "id": "c46d8e49-959b-4a2e-80e3-390797419726",
+   "quality": "normal",
+   "status": "Official",
+   "asin": null,
+   "text-representation": {
+    "language": "eng",
+    "script": "Latn"
+   },
+   "country": "GB",
+   "date": "1980",
+   "barcode": "",
+   "title": "Greetings From Asbury Park, N.J. / The Wild, the Innocent and the E Street Shuffle / Born to Run",
+   "disambiguation": "oblong sticker",
+   "media": [
+    {
+     "format": "12\" Vinyl",
+     "position": 1,
+     "format-id": "3e9080b0-5e6c-34ab-bd15-f526b6306a64",
+     "id": "a3e57901-32e0-3946-b677-c6b6672c7087",
+     "track-count": 7,
+     "title": "The Wild, the Innocent & The E Street Shuffle"
+    },
+    {
+     "format-id": "3e9080b0-5e6c-34ab-bd15-f526b6306a64",
+     "track-count": 8,
+     "id": "4dd5298e-dd5d-3926-beb9-c877f28c4608",
+     "position": 2,
+     "title": "Born to Run",
+     "format": "12\" Vinyl"
+    },
+    {
+     "format": "12\" Vinyl",
+     "title": "Greetings From Asbury Park, N.J.",
+     "position": 3,
+     "track-count": 9,
+     "format-id": "3e9080b0-5e6c-34ab-bd15-f526b6306a64",
+     "id": "f5337bd1-b244-3f16-b48b-633ce2ce4422"
+    }
+   ],
+   "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+   "release-events": [
+    {
+     "area": {
+      "iso-3166-1-codes": [
+       "GB"
+      ],
+      "id": "8a754a16-0027-3a29-b6d7-2b40ea0481ed",
+      "type-id": null,
+      "sort-name": "United Kingdom",
+      "type": null,
+      "disambiguation": "",
+      "name": "United Kingdom"
+     },
+     "date": "1980"
+    }
+   ],
+   "label-info": [
+    {
+     "catalog-number": "66353",
+     "label": {
+      "disambiguation": "CBS Records’ international imprint from 1962–1990; renamed since 1991 as Columbia",
+      "name": "CBS",
+      "sort-name": "CBS",
+      "type": "Imprint",
+      "id": "b8d33bec-92cc-40d9-bd92-4eb089b401a9",
+      "type-id": "b6285b2a-3514-3d43-80df-fcf528824ded",
+      "label-code": 149
+     }
+    }
+   ],
+   "packaging-id": "815b7785-8284-3926-8f04-e48bc6c4d102",
+   "packaging": "Other"
+  },
+  {
+   "release-events": [
+    {
+     "date": "1992",
+     "area": {
+      "iso-3166-1-codes": [
+       "US"
+      ],
+      "name": "United States",
+      "disambiguation": "",
+      "id": "489ce91b-6658-3307-9877-795b68554c98",
+      "type-id": null,
+      "type": null,
+      "sort-name": "United States"
+     }
+    }
+   ],
+   "packaging": "Discbox Slider",
+   "label-info": [
+    {
+     "catalog-number": "314 515 913-2",
+     "label": {
+      "name": "PolyGram Records, Inc.",
+      "disambiguation": "not for release label use! US division of PolyGram",
+      "type": "Holding",
+      "sort-name": "PolyGram Records, Inc.",
+      "type-id": "43f31a62-97e4-36f6-9752-453c131b71ed",
+      "id": "dd9b460c-c27b-424c-8e25-7bb441ed8618",
+      "label-code": null
+     }
+    }
+   ],
+   "packaging-id": "21179778-2f98-3d11-816e-42b469a0c924",
+   "media": [
+    {
+     "position": 1,
+     "id": "eaacf5e1-fb30-347d-886d-a6f229a73d6f",
+     "format-id": "9712d52a-4509-3d4b-a1a2-67c88c643e31",
+     "track-count": 12,
+     "title": "",
+     "format": "CD"
+    },
+    {
+     "title": "",
+     "track-count": 13,
+     "format-id": "9712d52a-4509-3d4b-a1a2-67c88c643e31",
+     "id": "9706933f-c3a1-3aee-9041-d5bc051c436e",
+     "position": 2,
+     "format": "CD"
+    },
+    {
+     "id": "4e21661e-0fd7-3c6d-b77f-acd87f802bb5",
+     "format-id": "9712d52a-4509-3d4b-a1a2-67c88c643e31",
+     "track-count": 12,
+     "position": 3,
+     "title": "",
+     "format": "CD"
+    },
+    {
+     "position": 4,
+     "id": "30d335a8-e6b7-369a-a484-ea89503b442b",
+     "track-count": 12,
+     "format-id": "9712d52a-4509-3d4b-a1a2-67c88c643e31",
+     "title": "",
+     "format": "CD"
+    }
+   ],
+   "disambiguation": "",
+   "title": "Classic Rock Box: WNEW-FM 25th Anniversary Collection",
+   "barcode": "731451591327",
+   "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+   "status": "Official",
+   "asin": "B000001DZF",
+   "text-representation": {
+    "script": "Latn",
+    "language": "eng"
+   },
+   "country": "US",
+   "date": "1992",
+   "cover-art-archive": {
+    "artwork": true,
+    "count": 1,
+    "back": false,
+    "darkened": false,
+    "front": true
+   },
+   "id": "c9db4695-8108-4384-a1e1-0c2e41fc9602",
+   "quality": "normal"
+  },
+  {
+   "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+   "media": [
+    {
+     "format": "CD",
+     "title": "",
+     "track-count": 18,
+     "id": "d61f82de-8a90-3bc1-b674-096a1c5f220d",
+     "format-id": "9712d52a-4509-3d4b-a1a2-67c88c643e31",
+     "position": 1
+    }
+   ],
+   "disambiguation": "",
+   "title": "Greatest Hits",
+   "barcode": "6001208561533",
+   "packaging": null,
+   "label-info": [
+    {
+     "catalog-number": "CDCOL 3975 D",
+     "label": {
+      "label-code": 162,
+      "type-id": "b6285b2a-3514-3d43-80df-fcf528824ded",
+      "id": "011d1192-6f65-45bd-85c4-0400dd45693e",
+      "type": "Imprint",
+      "sort-name": "Columbia",
+      "disambiguation": "owned by Sony Music Entertainment, worldwide except JP; formerly owned by CBS between 1938–1990 within US/CA/MX",
+      "name": "Columbia"
+     }
+    }
+   ],
+   "packaging-id": null,
+   "release-events": [
+    {
+     "date": "1995",
+     "area": {
+      "type": null,
+      "sort-name": "South Africa",
+      "type-id": null,
+      "id": "50cc7852-862e-30ae-aa82-385fe7135b7f",
+      "disambiguation": "",
+      "name": "South Africa",
+      "iso-3166-1-codes": [
+       "ZA"
+      ]
+     }
+    }
+   ],
+   "id": "ce73ebd3-5ae0-35a0-93e8-187bcc7fa47a",
+   "quality": "normal",
+   "cover-art-archive": {
+    "front": true,
+    "darkened": false,
+    "back": true,
+    "artwork": true,
+    "count": 6
+   },
+   "date": "1995",
+   "country": "ZA",
+   "status": "Official",
+   "asin": null,
+   "text-representation": {
+    "script": "Latn",
+    "language": "eng"
+   }
+  },
+  {
+   "release-events": [
+    {
+     "date": "1985",
+     "area": {
+      "iso-3166-1-codes": [
+       "US"
+      ],
+      "sort-name": "United States",
+      "type": null,
+      "id": "489ce91b-6658-3307-9877-795b68554c98",
+      "type-id": null,
+      "disambiguation": "",
+      "name": "United States"
+     }
+    }
+   ],
+   "packaging-id": "ec27701a-4a22-37f4-bfac-6616e0f9750a",
+   "label-info": [
+    {
+     "label": {
+      "label-code": 162,
+      "sort-name": "Columbia",
+      "type": "Imprint",
+      "type-id": "b6285b2a-3514-3d43-80df-fcf528824ded",
+      "id": "011d1192-6f65-45bd-85c4-0400dd45693e",
+      "disambiguation": "owned by Sony Music Entertainment, worldwide except JP; formerly owned by CBS between 1938–1990 within US/CA/MX",
+      "name": "Columbia"
+     },
+     "catalog-number": "CK 33795"
+    }
+   ],
+   "packaging": "Jewel Case",
+   "barcode": "074643379526",
+   "title": "Born to Run",
+   "media": [
+    {
+     "title": "",
+     "position": 1,
+     "id": "b500b01c-2253-4ab6-baf8-e92c4ebea6af",
+     "track-count": 8,
+     "format-id": "9712d52a-4509-3d4b-a1a2-67c88c643e31",
+     "format": "CD"
+    }
+   ],
+   "disambiguation": "disc made in Switzerland",
+   "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+   "text-representation": {
+    "language": "eng",
+    "script": "Latn"
+   },
+   "asin": null,
+   "status": "Official",
+   "date": "1985",
+   "country": "US",
+   "cover-art-archive": {
+    "back": false,
+    "front": false,
+    "darkened": false,
+    "artwork": false,
+    "count": 0
+   },
+   "quality": "normal",
+   "id": "cf2d3e91-83f6-4603-bab8-c2e346c31421"
+  },
+  {
+   "media": [
+    {
+     "title": "",
+     "id": "848059e9-6018-3f97-a92f-ec12233809a0",
+     "track-count": 8,
+     "format-id": "f5e6e254-8f39-331c-936b-9c69d686dc47",
+     "position": 1,
+     "format": "Cassette"
+    }
+   ],
+   "disambiguation": "black shell with red paper labels",
+   "title": "Born to Run",
+   "barcode": "",
+   "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+   "release-events": [
+    {
+     "area": {
+      "iso-3166-1-codes": [
+       "GB"
+      ],
+      "disambiguation": "",
+      "name": "United Kingdom",
+      "sort-name": "United Kingdom",
+      "type": null,
+      "type-id": null,
+      "id": "8a754a16-0027-3a29-b6d7-2b40ea0481ed"
+     },
+     "date": "1975"
+    }
+   ],
+   "packaging": "Cassette Case",
+   "label-info": [
+    {
+     "label": {
+      "disambiguation": "CBS Records’ international imprint from 1962–1990; renamed since 1991 as Columbia",
+      "name": "CBS",
+      "type": "Imprint",
+      "sort-name": "CBS",
+      "type-id": "b6285b2a-3514-3d43-80df-fcf528824ded",
+      "id": "b8d33bec-92cc-40d9-bd92-4eb089b401a9",
+      "label-code": 149
+     },
+     "catalog-number": "40-69170"
+    }
+   ],
+   "packaging-id": "c70b737a-0114-39a9-88f7-82843e54f906",
+   "cover-art-archive": {
+    "artwork": true,
+    "count": 4,
+    "darkened": false,
+    "front": true,
+    "back": false
+   },
+   "id": "cf54548e-aee9-4ffb-9d88-ba39e4bcb9df",
+   "quality": "normal",
+   "asin": null,
+   "status": "Official",
+   "text-representation": {
+    "script": "Latn",
+    "language": "eng"
+   },
+   "country": "GB",
+   "date": "1975"
+  },
+  {
+   "release-events": [
+    {
+     "area": {
+      "iso-3166-1-codes": [
+       "ID"
+      ],
+      "type-id": null,
+      "id": "d3a68bd0-7419-3f99-a5bd-204d6e057089",
+      "sort-name": "Indonesia",
+      "type": null,
+      "disambiguation": "",
+      "name": "Indonesia"
+     },
+     "date": "1975"
+    }
+   ],
+   "label-info": [
+    {
+     "catalog-number": "C - 0740888",
+     "label": {
+      "label-code": 149,
+      "type": "Imprint",
+      "sort-name": "CBS",
+      "id": "b8d33bec-92cc-40d9-bd92-4eb089b401a9",
+      "type-id": "b6285b2a-3514-3d43-80df-fcf528824ded",
+      "disambiguation": "CBS Records’ international imprint from 1962–1990; renamed since 1991 as Columbia",
+      "name": "CBS"
+     }
+    }
+   ],
+   "packaging-id": "c70b737a-0114-39a9-88f7-82843e54f906",
+   "packaging": "Cassette Case",
+   "title": "Born to Run",
+   "barcode": "",
+   "media": [
+    {
+     "id": "6b9c197e-5d47-3f9b-90d2-8fd6aad1def7",
+     "format-id": "f5e6e254-8f39-331c-936b-9c69d686dc47",
+     "track-count": 8,
+     "position": 1,
+     "title": "",
+     "format": "Cassette"
+    }
+   ],
+   "disambiguation": "",
+   "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+   "status": "Official",
+   "asin": null,
+   "text-representation": {
+    "script": "Latn",
+    "language": "eng"
+   },
+   "country": "ID",
+   "date": "1975",
+   "cover-art-archive": {
+    "artwork": true,
+    "count": 5,
+    "back": true,
+    "front": true,
+    "darkened": false
+   },
+   "id": "d07b52b5-6140-41df-bbd3-c5d07ed4e87e",
+   "quality": "normal"
+  },
+  {
+   "release-events": [
+    {
+     "date": "1975",
+     "area": {
+      "name": "United Kingdom",
+      "disambiguation": "",
+      "id": "8a754a16-0027-3a29-b6d7-2b40ea0481ed",
+      "type-id": null,
+      "type": null,
+      "sort-name": "United Kingdom",
+      "iso-3166-1-codes": [
+       "GB"
+      ]
+     }
+    }
+   ],
+   "packaging": "Gatefold Cover",
+   "packaging-id": "e724a489-a7e8-30a1-a17c-30dfd6831202",
+   "label-info": [
+    {
+     "catalog-number": "S 69170",
+     "label": {
+      "disambiguation": "CBS Records’ international imprint from 1962–1990; renamed since 1991 as Columbia",
+      "name": "CBS",
+      "type-id": "b6285b2a-3514-3d43-80df-fcf528824ded",
+      "id": "b8d33bec-92cc-40d9-bd92-4eb089b401a9",
+      "sort-name": "CBS",
+      "type": "Imprint",
+      "label-code": 149
+     }
+    }
+   ],
+   "media": [
+    {
+     "track-count": 8,
+     "format-id": "3e9080b0-5e6c-34ab-bd15-f526b6306a64",
+     "id": "9347e9ba-48e3-3297-a2ea-95492aabf11c",
+     "position": 1,
+     "title": "",
+     "format": "12\" Vinyl"
+    }
+   ],
+   "disambiguation": "",
+   "barcode": "",
+   "title": "Born to Run",
+   "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+   "text-representation": {
+    "script": "Latn",
+    "language": "eng"
+   },
+   "status": "Official",
+   "asin": null,
+   "country": "GB",
+   "date": "1975",
+   "cover-art-archive": {
+    "count": 5,
+    "artwork": true,
+    "darkened": false,
+    "front": true,
+    "back": true
+   },
+   "quality": "normal",
+   "id": "d143caf4-66e7-445b-9831-2c11ba9b6f89"
+  },
+  {
+   "disambiguation": "",
+   "media": [
+    {
+     "format": "CD",
+     "title": "",
+     "format-id": "9712d52a-4509-3d4b-a1a2-67c88c643e31",
+     "track-count": 8,
+     "id": "e83daf20-fa01-3647-b048-6910b79d2bed",
+     "position": 1
+    }
+   ],
+   "title": "Born to Run",
+   "barcode": "5099748041623",
+   "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+   "release-events": [
+    {
+     "area": {
+      "iso-3166-1-codes": [
+       "XE"
+      ],
+      "sort-name": "Europe",
+      "type": null,
+      "type-id": null,
+      "id": "89a675c2-3e37-3518-b83c-418bad59a85a",
+      "disambiguation": "",
+      "name": "Europe"
+     },
+     "date": "1994"
+    },
+    {
+     "date": "1994",
+     "area": {
+      "type-id": null,
+      "id": "8a754a16-0027-3a29-b6d7-2b40ea0481ed",
+      "sort-name": "United Kingdom",
+      "type": null,
+      "name": "United Kingdom",
+      "disambiguation": "",
+      "iso-3166-1-codes": [
+       "GB"
+      ]
+     }
+    }
+   ],
+   "packaging": "Jewel Case",
+   "label-info": [
+    {
+     "label": {
+      "sort-name": "Legacy",
+      "type": "Reissue Production",
+      "id": "45ffe1d8-92da-4750-9a4a-f42861f46e2c",
+      "type-id": "88ee6ae7-f413-3490-a1d2-54f6a9f0838c",
+      "disambiguation": "reissue division of Sony Music Entertainment",
+      "name": "Legacy",
+      "label-code": 2361
+     },
+     "catalog-number": "480416 2"
+    },
+    {
+     "catalog-number": "COL 480416 2",
+     "label": {
+      "label-code": 2361,
+      "sort-name": "Legacy",
+      "type": "Reissue Production",
+      "id": "45ffe1d8-92da-4750-9a4a-f42861f46e2c",
+      "type-id": "88ee6ae7-f413-3490-a1d2-54f6a9f0838c",
+      "disambiguation": "reissue division of Sony Music Entertainment",
+      "name": "Legacy"
+     }
+    }
+   ],
+   "packaging-id": "ec27701a-4a22-37f4-bfac-6616e0f9750a",
+   "cover-art-archive": {
+    "back": true,
+    "front": true,
+    "darkened": false,
+    "artwork": true,
+    "count": 10
+   },
+   "id": "d226c8cc-f58c-3b1f-997b-8243180870df",
+   "quality": "normal",
+   "status": "Official",
+   "asin": "B00000255F",
+   "text-representation": {
+    "script": "Latn",
+    "language": "eng"
+   },
+   "country": "XE",
+   "date": "1994"
+  },
+  {
+   "release-events": [
+    {
+     "area": {
+      "disambiguation": "",
+      "name": "United States",
+      "sort-name": "United States",
+      "type": null,
+      "type-id": null,
+      "id": "489ce91b-6658-3307-9877-795b68554c98",
+      "iso-3166-1-codes": [
+       "US"
+      ]
+     },
+     "date": "1975"
+    }
+   ],
+   "packaging": "Other",
+   "packaging-id": "815b7785-8284-3926-8f04-e48bc6c4d102",
+   "label-info": [
+    {
+     "catalog-number": "PCA 33795",
+     "label": {
+      "label-code": 162,
+      "name": "Columbia",
+      "disambiguation": "owned by Sony Music Entertainment, worldwide except JP; formerly owned by CBS between 1938–1990 within US/CA/MX",
+      "sort-name": "Columbia",
+      "type": "Imprint",
+      "id": "011d1192-6f65-45bd-85c4-0400dd45693e",
+      "type-id": "b6285b2a-3514-3d43-80df-fcf528824ded"
+     }
+    }
+   ],
+   "disambiguation": "US 8‐track, version 1",
+   "media": [
+    {
+     "format": "8-Track Cartridge",
+     "position": 1,
+     "format-id": "49b49ca7-d2d8-4d36-a7dd-d61363ee3697",
+     "track-count": 9,
+     "id": "b7a47bba-2950-3d3c-a808-902b7c4d3193",
+     "title": ""
+    }
+   ],
+   "barcode": "",
+   "title": "Born to Run",
+   "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+   "text-representation": {
+    "language": "eng",
+    "script": "Latn"
+   },
+   "asin": null,
+   "status": "Official",
+   "date": "1975",
+   "country": "US",
+   "cover-art-archive": {
+    "front": true,
+    "darkened": false,
+    "back": true,
+    "artwork": true,
+    "count": 3
+   },
+   "quality": "normal",
+   "id": "dd9e6581-f441-40b9-b938-36224d70ec06"
+  },
+  {
+   "cover-art-archive": {
+    "front": true,
+    "darkened": false,
+    "back": true,
+    "count": 10,
+    "artwork": true
+   },
+   "quality": "normal",
+   "id": "de1ea6ac-f289-4056-a1ab-2f37b92b9b59",
+   "text-representation": {
+    "script": "Latn",
+    "language": "eng"
+   },
+   "status": "Official",
+   "asin": null,
+   "date": "1994",
+   "country": "US",
+   "barcode": "074646440629",
+   "title": "Born to Run",
+   "disambiguation": "Mastersound issue, version 1",
+   "media": [
+    {
+     "format": "CD",
+     "id": "7dd0639f-3d37-473c-ae27-82f8985a0bd2",
+     "track-count": 8,
+     "format-id": "9712d52a-4509-3d4b-a1a2-67c88c643e31",
+     "position": 1,
+     "title": ""
+    }
+   ],
+   "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+   "release-events": [
+    {
+     "date": "1994",
+     "area": {
+      "disambiguation": "",
+      "name": "United States",
+      "sort-name": "United States",
+      "type": null,
+      "type-id": null,
+      "id": "489ce91b-6658-3307-9877-795b68554c98",
+      "iso-3166-1-codes": [
+       "US"
+      ]
+     }
+    }
+   ],
+   "packaging-id": "ec27701a-4a22-37f4-bfac-6616e0f9750a",
+   "label-info": [
+    {
+     "catalog-number": "CK 64406",
+     "label": {
+      "name": "Columbia",
+      "disambiguation": "owned by Sony Music Entertainment, worldwide except JP; formerly owned by CBS between 1938–1990 within US/CA/MX",
+      "type-id": "b6285b2a-3514-3d43-80df-fcf528824ded",
+      "id": "011d1192-6f65-45bd-85c4-0400dd45693e",
+      "type": "Imprint",
+      "sort-name": "Columbia",
+      "label-code": 162
+     }
+    },
+    {
+     "label": {
+      "label-code": 2361,
+      "sort-name": "Legacy",
+      "type": "Reissue Production",
+      "id": "45ffe1d8-92da-4750-9a4a-f42861f46e2c",
+      "type-id": "88ee6ae7-f413-3490-a1d2-54f6a9f0838c",
+      "disambiguation": "reissue division of Sony Music Entertainment",
+      "name": "Legacy"
+     },
+     "catalog-number": "CK 64406"
+    }
+   ],
+   "packaging": "Jewel Case"
+  },
+  {
+   "title": "Retrospective",
+   "barcode": "",
+   "media": [
+    {
+     "format": "12\" Vinyl",
+     "position": 1,
+     "format-id": "3e9080b0-5e6c-34ab-bd15-f526b6306a64",
+     "track-count": 9,
+     "id": "1fc8328a-40d0-31c9-9123-40ff5c42bb0c",
+     "title": ""
+    },
+    {
+     "title": "",
+     "position": 2,
+     "id": "27925fba-d01c-3cc8-b6f8-3ad1ed0a76ca",
+     "format-id": "3e9080b0-5e6c-34ab-bd15-f526b6306a64",
+     "track-count": 7,
+     "format": "12\" Vinyl"
+    },
+    {
+     "format": "12\" Vinyl",
+     "title": "",
+     "track-count": 8,
+     "format-id": "3e9080b0-5e6c-34ab-bd15-f526b6306a64",
+     "id": "f3b16242-478c-3f3c-919a-1a8a7b51b5bd",
+     "position": 3
+    },
+    {
+     "format": "12\" Vinyl",
+     "format-id": "3e9080b0-5e6c-34ab-bd15-f526b6306a64",
+     "track-count": 10,
+     "id": "60d4e9f2-10df-3c93-8bbd-d6cf570fbb7e",
+     "position": 4,
+     "title": ""
+    }
+   ],
+   "disambiguation": "",
+   "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+   "release-events": [
+    {
+     "area": {
+      "iso-3166-1-codes": [
+       "NO"
+      ],
+      "type": null,
+      "sort-name": "Norway",
+      "type-id": null,
+      "id": "6743d351-6f37-3049-9724-5041161fff4d",
+      "disambiguation": "",
+      "name": "Norway"
+     },
+     "date": "1982"
+    }
+   ],
+   "packaging-id": "c1668fc7-8944-4a00-bc3e-46e8d861d211",
+   "label-info": [
+    {
+     "label": {
+      "label-code": null,
+      "disambiguation": "",
+      "name": "Bokklubben Nye Bøker",
+      "id": "448879e1-0042-44f4-ac7a-57bce5222603",
+      "type-id": null,
+      "sort-name": "Bokklubben Nye Bøker",
+      "type": null
+     },
+     "catalog-number": "CBS-BNB NR-8068"
+    }
+   ],
+   "packaging": "Box",
+   "cover-art-archive": {
+    "front": true,
+    "darkened": false,
+    "back": false,
+    "artwork": true,
+    "count": 3
+   },
+   "quality": "normal",
+   "id": "de756f5d-a51e-4afa-a6eb-f6df7b80a871",
+   "text-representation": {
+    "script": "Latn",
+    "language": "eng"
+   },
+   "status": "Official",
+   "asin": null,
+   "date": "1982",
+   "country": "NO"
+  },
+  {
+   "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+   "title": "Born to Run",
+   "barcode": "074643379526",
+   "media": [
+    {
+     "format": "CD",
+     "title": "",
+     "track-count": 8,
+     "format-id": "9712d52a-4509-3d4b-a1a2-67c88c643e31",
+     "id": "f69db178-e388-31f9-9b7d-d3dd7e922ddb",
+     "position": 1
+    }
+   ],
+   "disambiguation": "CBS logo on CD / Made in USA",
+   "label-info": [
+    {
+     "label": {
+      "label-code": 149,
+      "disambiguation": "CBS Records’ international imprint from 1962–1990; renamed since 1991 as Columbia",
+      "name": "CBS",
+      "id": "b8d33bec-92cc-40d9-bd92-4eb089b401a9",
+      "type-id": "b6285b2a-3514-3d43-80df-fcf528824ded",
+      "type": "Imprint",
+      "sort-name": "CBS"
+     },
+     "catalog-number": "CK 33795"
+    }
+   ],
+   "packaging-id": "ec27701a-4a22-37f4-bfac-6616e0f9750a",
+   "packaging": "Jewel Case",
+   "release-events": [
+    {
+     "area": {
+      "iso-3166-1-codes": [
+       "US"
+      ],
+      "name": "United States",
+      "disambiguation": "",
+      "id": "489ce91b-6658-3307-9877-795b68554c98",
+      "type-id": null,
+      "sort-name": "United States",
+      "type": null
+     },
+     "date": "1990"
+    }
+   ],
+   "id": "e1964ba2-63fe-4745-849b-95c3a2092d3c",
+   "quality": "normal",
+   "cover-art-archive": {
+    "count": 4,
+    "artwork": true,
+    "back": true,
+    "darkened": false,
+    "front": true
+   },
+   "country": "US",
+   "date": "1990",
+   "status": "Official",
+   "asin": null,
+   "text-representation": {
+    "language": "eng",
+    "script": "Latn"
+   }
+  },
+  {
+   "label-info": [
+    {
+     "catalog-number": "1R1 6449",
+     "label": {
+      "label-code": 162,
+      "name": "Columbia",
+      "disambiguation": "owned by Sony Music Entertainment, worldwide except JP; formerly owned by CBS between 1938–1990 within US/CA/MX",
+      "type-id": "b6285b2a-3514-3d43-80df-fcf528824ded",
+      "id": "011d1192-6f65-45bd-85c4-0400dd45693e",
+      "type": "Imprint",
+      "sort-name": "Columbia"
+     }
+    }
+   ],
+   "packaging-id": "815b7785-8284-3926-8f04-e48bc6c4d102",
+   "packaging": "Other",
+   "release-events": [
+    {
+     "date": "1975",
+     "area": {
+      "iso-3166-1-codes": [
+       "US"
+      ],
+      "id": "489ce91b-6658-3307-9877-795b68554c98",
+      "type-id": null,
+      "type": null,
+      "sort-name": "United States",
+      "name": "United States",
+      "disambiguation": ""
+     }
+    }
+   ],
+   "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+   "barcode": "",
+   "title": "Born to Run",
+   "media": [
+    {
+     "format": "Reel-to-reel",
+     "title": "",
+     "track-count": 8,
+     "format-id": "58016447-3617-3da2-b1d0-7646c2a7797e",
+     "id": "acc65c4e-ecee-3928-9efc-3ee6d62c685a",
+     "position": 1
+    }
+   ],
+   "disambiguation": "",
+   "date": "1975",
+   "country": "US",
+   "asin": null,
+   "status": "Official",
+   "text-representation": {
+    "language": "eng",
+    "script": "Latn"
+   },
+   "id": "e323e33b-9729-406a-bf3d-b3b60319ce7d",
+   "quality": "normal",
+   "cover-art-archive": {
+    "front": true,
+    "darkened": false,
+    "back": true,
+    "artwork": true,
+    "count": 5
+   }
+  },
+  {
+   "release-events": [
+    {
+     "area": {
+      "iso-3166-1-codes": [
+       "XE"
+      ],
+      "name": "Europe",
+      "disambiguation": "",
+      "sort-name": "Europe",
+      "type": null,
+      "id": "89a675c2-3e37-3518-b83c-418bad59a85a",
+      "type-id": null
+     },
+     "date": "1995"
+    }
+   ],
+   "packaging": "Cassette Case",
+   "label-info": [
+    {
+     "catalog-number": "478555 4",
+     "label": {
+      "label-code": 162,
+      "disambiguation": "owned by Sony Music Entertainment, worldwide except JP; formerly owned by CBS between 1938–1990 within US/CA/MX",
+      "name": "Columbia",
+      "type-id": "b6285b2a-3514-3d43-80df-fcf528824ded",
+      "id": "011d1192-6f65-45bd-85c4-0400dd45693e",
+      "sort-name": "Columbia",
+      "type": "Imprint"
+     }
+    },
+    {
+     "catalog-number": "COL 478555 4",
+     "label": {
+      "name": "Columbia",
+      "disambiguation": "owned by Sony Music Entertainment, worldwide except JP; formerly owned by CBS between 1938–1990 within US/CA/MX",
+      "id": "011d1192-6f65-45bd-85c4-0400dd45693e",
+      "type-id": "b6285b2a-3514-3d43-80df-fcf528824ded",
+      "type": "Imprint",
+      "sort-name": "Columbia",
+      "label-code": 162
+     }
+    }
+   ],
+   "packaging-id": "c70b737a-0114-39a9-88f7-82843e54f906",
+   "media": [
+    {
+     "position": 1,
+     "track-count": 18,
+     "format-id": "f5e6e254-8f39-331c-936b-9c69d686dc47",
+     "id": "af37d165-924d-3581-bede-edd6689434de",
+     "title": "",
+     "format": "Cassette"
+    }
+   ],
+   "disambiguation": "",
+   "barcode": "5099747855542",
+   "title": "Greatest Hits",
+   "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+   "asin": null,
+   "status": "Official",
+   "text-representation": {
+    "language": "eng",
+    "script": "Latn"
+   },
+   "country": "XE",
+   "date": "1995",
+   "cover-art-archive": {
+    "darkened": false,
+    "front": true,
+    "back": true,
+    "count": 7,
+    "artwork": true
+   },
+   "id": "e36e6790-083a-48dc-a95b-1f27638064ad",
+   "quality": "normal"
+  },
+  {
+   "barcode": "",
+   "title": "Born to Run",
+   "media": [
+    {
+     "track-count": 8,
+     "format-id": "58016447-3617-3da2-b1d0-7646c2a7797e",
+     "id": "ecf4d1f7-fd2c-384d-8d0c-3ce29731c39a",
+     "position": 1,
+     "title": "",
+     "format": "Reel-to-reel"
+    }
+   ],
+   "disambiguation": "safety master",
+   "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+   "release-events": [
+    {
+     "date": "1982",
+     "area": {
+      "name": "Netherlands",
+      "disambiguation": "",
+      "id": "ef1b7cc0-cd26-36f4-8ea0-04d9623786c7",
+      "type-id": null,
+      "sort-name": "Netherlands",
+      "type": null,
+      "iso-3166-1-codes": [
+       "NL"
+      ]
+     }
+    }
+   ],
+   "packaging-id": "815b7785-8284-3926-8f04-e48bc6c4d102",
+   "label-info": [
+    {
+     "catalog-number": "40-80959",
+     "label": {
+      "type-id": "e1db00ba-f002-4edc-bc02-6f48e58e2a2e",
+      "id": "0cddcfd6-7714-462e-89cc-a165a19473d2",
+      "sort-name": "CBS International Manufacturing And Service Center",
+      "type": "Manufacturer",
+      "disambiguation": "",
+      "name": "CBS International Manufacturing And Service Center",
+      "label-code": null
+     }
+    }
+   ],
+   "packaging": "Other",
+   "cover-art-archive": {
+    "artwork": true,
+    "count": 4,
+    "back": true,
+    "darkened": false,
+    "front": true
+   },
+   "quality": "normal",
+   "id": "e580ecb9-aba7-4042-a859-e64d97f28df9",
+   "text-representation": {
+    "language": "eng",
+    "script": "Latn"
+   },
+   "status": "Official",
+   "asin": null,
+   "country": "NL",
+   "date": "1982"
+  },
+  {
+   "packaging-id": "815b7785-8284-3926-8f04-e48bc6c4d102",
+   "label-info": [
+    {
+     "label": {
+      "sort-name": "Columbia",
+      "type": "Imprint",
+      "type-id": "b6285b2a-3514-3d43-80df-fcf528824ded",
+      "id": "011d1192-6f65-45bd-85c4-0400dd45693e",
+      "name": "Columbia",
+      "disambiguation": "owned by Sony Music Entertainment, worldwide except JP; formerly owned by CBS between 1938–1990 within US/CA/MX",
+      "label-code": 162
+     },
+     "catalog-number": "33795"
+    },
+    {
+     "label": {
+      "label-code": 162,
+      "type": "Imprint",
+      "sort-name": "Columbia",
+      "id": "011d1192-6f65-45bd-85c4-0400dd45693e",
+      "type-id": "b6285b2a-3514-3d43-80df-fcf528824ded",
+      "disambiguation": "owned by Sony Music Entertainment, worldwide except JP; formerly owned by CBS between 1938–1990 within US/CA/MX",
+      "name": "Columbia"
+     },
+     "catalog-number": "JCA 33795"
+    }
+   ],
+   "packaging": "Other",
+   "release-events": [
+    {
+     "area": {
+      "iso-3166-1-codes": [
+       "US"
+      ],
+      "id": "489ce91b-6658-3307-9877-795b68554c98",
+      "type-id": null,
+      "sort-name": "United States",
+      "type": null,
+      "name": "United States",
+      "disambiguation": ""
+     },
+     "date": "1975"
+    }
+   ],
+   "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+   "barcode": "",
+   "title": "Born to Run",
+   "disambiguation": "US 8‐track, version 4",
+   "media": [
+    {
+     "format-id": "49b49ca7-d2d8-4d36-a7dd-d61363ee3697",
+     "track-count": 9,
+     "id": "2e000f1b-6584-38ed-970f-2e509c8ce8f9",
+     "position": 1,
+     "title": "",
+     "format": "8-Track Cartridge"
+    }
+   ],
+   "country": "US",
+   "date": "1975",
+   "text-representation": {
+    "script": "Latn",
+    "language": "eng"
+   },
+   "status": "Official",
+   "asin": null,
+   "quality": "normal",
+   "id": "e6caecf1-405d-4dbe-b876-508c40b66a79",
+   "cover-art-archive": {
+    "artwork": true,
+    "count": 5,
+    "front": true,
+    "darkened": false,
+    "back": true
+   }
+  },
+  {
+   "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+   "disambiguation": "",
+   "media": [
+    {
+     "format": "CD",
+     "title": "Greetings From Asbury Park, N.J.",
+     "position": 1,
+     "id": "a7cafb55-3830-3598-80f0-c0ef5902359a",
+     "track-count": 9,
+     "format-id": "9712d52a-4509-3d4b-a1a2-67c88c643e31"
+    },
+    {
+     "title": "The Wild, the Innocent & The E Street Shuffle",
+     "position": 2,
+     "id": "082afc81-1eea-3f1f-b5c6-ef9c1509448c",
+     "format-id": "9712d52a-4509-3d4b-a1a2-67c88c643e31",
+     "track-count": 7,
+     "format": "CD"
+    },
+    {
+     "position": 3,
+     "id": "b8b5fcde-8046-3ed4-9dec-9938449451ae",
+     "track-count": 8,
+     "format-id": "9712d52a-4509-3d4b-a1a2-67c88c643e31",
+     "title": "Born to Run",
+     "format": "CD"
+    },
+    {
+     "title": "Darkness on the Edge of Town",
+     "id": "d3eaf276-ff66-3ee1-bf3b-8dfb201ebe6f",
+     "format-id": "9712d52a-4509-3d4b-a1a2-67c88c643e31",
+     "track-count": 10,
+     "position": 4,
+     "format": "CD"
+    },
+    {
+     "title": "Born in the U.S.A.",
+     "position": 5,
+     "id": "208a9fe4-7cfd-373b-993a-4ff491904509",
+     "track-count": 12,
+     "format-id": "9712d52a-4509-3d4b-a1a2-67c88c643e31",
+     "format": "CD"
+    },
+    {
+     "format": "CD",
+     "track-count": 12,
+     "id": "2b825922-af49-3879-9ed2-ea4930a15b4c",
+     "format-id": "9712d52a-4509-3d4b-a1a2-67c88c643e31",
+     "position": 6,
+     "title": "Tunnel of Love"
+    }
+   ],
+   "title": "The Bruce Springsteen Collection",
+   "barcode": "9399746592025",
+   "packaging": "Box",
+   "packaging-id": "c1668fc7-8944-4a00-bc3e-46e8d861d211",
+   "label-info": [
+    {
+     "label": {
+      "type-id": "b6285b2a-3514-3d43-80df-fcf528824ded",
+      "id": "b8d33bec-92cc-40d9-bd92-4eb089b401a9",
+      "sort-name": "CBS",
+      "type": "Imprint",
+      "disambiguation": "CBS Records’ international imprint from 1962–1990; renamed since 1991 as Columbia",
+      "name": "CBS",
+      "label-code": 149
+     },
+     "catalog-number": "465920 2"
+    }
+   ],
+   "release-events": [
+    {
+     "date": "1989",
+     "area": {
+      "disambiguation": "",
+      "name": "Australia",
+      "id": "106e0bec-b638-3b37-b731-f53d507dc00e",
+      "type-id": null,
+      "type": null,
+      "sort-name": "Australia",
+      "iso-3166-1-codes": [
+       "AU"
+      ]
+     }
+    }
+   ],
+   "quality": "normal",
+   "id": "e7576e02-b7cb-4c66-b34b-738637b0c83b",
+   "cover-art-archive": {
+    "back": false,
+    "front": true,
+    "darkened": false,
+    "artwork": true,
+    "count": 6
+   },
+   "country": "AU",
+   "date": "1989",
+   "text-representation": {
+    "language": "eng",
+    "script": "Latn"
+   },
+   "asin": null,
+   "status": "Official"
+  },
+  {
+   "quality": "normal",
+   "id": "e7d580b7-a502-46ff-8f25-40343c84f61e",
+   "cover-art-archive": {
+    "back": true,
+    "front": true,
+    "darkened": false,
+    "count": 3,
+    "artwork": true
+   },
+   "date": "1995-03-24",
+   "country": "JP",
+   "text-representation": {
+    "script": "Latn",
+    "language": "eng"
+   },
+   "asin": null,
+   "status": "Official",
+   "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+   "disambiguation": "",
+   "media": [
+    {
+     "track-count": 18,
+     "format-id": "671c5ed4-20e3-3a62-b6ea-f155cde04258",
+     "id": "d85b30c4-c348-3715-a72f-2cf79ffb800a",
+     "position": 1,
+     "title": "",
+     "format": "MiniDisc"
+    }
+   ],
+   "title": "Greatest Hits",
+   "barcode": "4988009111964",
+   "packaging": "Jewel Case",
+   "packaging-id": "ec27701a-4a22-37f4-bfac-6616e0f9750a",
+   "label-info": [
+    {
+     "catalog-number": "SRYS 1119",
+     "label": {
+      "label-code": null,
+      "disambiguation": "Japanese imprint",
+      "name": "Sony Records",
+      "sort-name": "Sony Records",
+      "type": "Imprint",
+      "id": "dee62e1a-cfd1-466f-b578-846a0fdf435a",
+      "type-id": "b6285b2a-3514-3d43-80df-fcf528824ded"
+     }
+    }
+   ],
+   "release-events": [
+    {
+     "date": "1995-03-24",
+     "area": {
+      "id": "2db42837-c832-3c27-b4a3-08198f75693c",
+      "type-id": null,
+      "sort-name": "Japan",
+      "type": null,
+      "name": "Japan",
+      "disambiguation": "",
+      "iso-3166-1-codes": [
+       "JP"
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "label-info": [
+    {
+     "catalog-number": "CSP 40-15482",
+     "label": {
+      "name": "CBS",
+      "disambiguation": "CBS Records’ international imprint from 1962–1990; renamed since 1991 as Columbia",
+      "id": "b8d33bec-92cc-40d9-bd92-4eb089b401a9",
+      "type-id": "b6285b2a-3514-3d43-80df-fcf528824ded",
+      "type": "Imprint",
+      "sort-name": "CBS",
+      "label-code": 149
+     }
+    }
+   ],
+   "packaging-id": "c70b737a-0114-39a9-88f7-82843e54f906",
+   "packaging": "Cassette Case",
+   "release-events": [
+    {
+     "area": {
+      "name": "Spain",
+      "disambiguation": "",
+      "sort-name": "Spain",
+      "type": null,
+      "type-id": null,
+      "id": "471c46a7-afc5-31c4-923c-d0444f5053a4",
+      "iso-3166-1-codes": [
+       "ES"
+      ]
+     },
+     "date": "1983-10"
+    }
+   ],
+   "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+   "title": "Born to Run",
+   "barcode": "",
+   "media": [
+    {
+     "format": "Cassette",
+     "title": "",
+     "id": "f2802a86-38d4-3e9f-bc82-a2e1fa73b1e3",
+     "track-count": 8,
+     "format-id": "f5e6e254-8f39-331c-936b-9c69d686dc47",
+     "position": 1
+    }
+   ],
+   "disambiguation": "“Historia De La Musica Rock” reissue",
+   "date": "1983-10",
+   "country": "ES",
+   "asin": null,
+   "status": "Official",
+   "text-representation": {
+    "language": "eng",
+    "script": "Latn"
+   },
+   "id": "ebfca51d-ffce-49bb-9b31-d51c91bfc3c0",
+   "quality": "normal",
+   "cover-art-archive": {
+    "front": true,
+    "darkened": false,
+    "back": true,
+    "count": 7,
+    "artwork": true
+   }
+  },
+  {
+   "release-events": [
+    {
+     "date": "1975",
+     "area": {
+      "name": "Canada",
+      "disambiguation": "",
+      "type-id": null,
+      "id": "71bbafaa-e825-3e15-8ca9-017dcad1748b",
+      "type": null,
+      "sort-name": "Canada",
+      "iso-3166-1-codes": [
+       "CA"
+      ]
+     }
+    }
+   ],
+   "packaging": "Cardboard/Paper Sleeve",
+   "label-info": [
+    {
+     "label": {
+      "id": "011d1192-6f65-45bd-85c4-0400dd45693e",
+      "type-id": "b6285b2a-3514-3d43-80df-fcf528824ded",
+      "sort-name": "Columbia",
+      "type": "Imprint",
+      "disambiguation": "owned by Sony Music Entertainment, worldwide except JP; formerly owned by CBS between 1938–1990 within US/CA/MX",
+      "name": "Columbia",
+      "label-code": 162
+     },
+     "catalog-number": "PC 33795"
+    }
+   ],
+   "packaging-id": "f7101ce3-0384-39ce-9fde-fbbd0044d35f",
+   "media": [
+    {
+     "id": "551f2a69-b150-326f-9637-0bada978ca00",
+     "track-count": 8,
+     "format-id": "3e9080b0-5e6c-34ab-bd15-f526b6306a64",
+     "position": 1,
+     "title": "",
+     "format": "12\" Vinyl"
+    }
+   ],
+   "disambiguation": "",
+   "title": "Born to Run",
+   "barcode": "",
+   "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+   "asin": null,
+   "status": "Official",
+   "text-representation": {
+    "script": "Latn",
+    "language": "eng"
+   },
+   "country": "CA",
+   "date": "1975",
+   "cover-art-archive": {
+    "darkened": false,
+    "front": true,
+    "back": true,
+    "artwork": true,
+    "count": 4
+   },
+   "id": "ec7acb3a-8025-4ee2-9f7a-12f51ae3971c",
+   "quality": "normal"
+  },
+  {
+   "cover-art-archive": {
+    "count": 4,
+    "artwork": true,
+    "front": true,
+    "darkened": false,
+    "back": true
+   },
+   "quality": "normal",
+   "id": "ef1ec91d-259f-4419-920f-7c37cb0d942b",
+   "text-representation": {
+    "script": null,
+    "language": "eng"
+   },
+   "status": "Official",
+   "asin": null,
+   "date": "1995",
+   "country": "US",
+   "title": "Greatest Hits",
+   "barcode": "888750238023",
+   "disambiguation": "",
+   "media": [
+    {
+     "title": "",
+     "position": 1,
+     "format-id": "9712d52a-4509-3d4b-a1a2-67c88c643e31",
+     "track-count": 18,
+     "id": "d6024769-8f24-3131-8249-80522c075350",
+     "format": "CD"
+    }
+   ],
+   "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+   "release-events": [
+    {
+     "date": "1995",
+     "area": {
+      "iso-3166-1-codes": [
+       "US"
+      ],
+      "name": "United States",
+      "disambiguation": "",
+      "type-id": null,
+      "id": "489ce91b-6658-3307-9877-795b68554c98",
+      "sort-name": "United States",
+      "type": null
+     }
+    }
+   ],
+   "packaging-id": "ec27701a-4a22-37f4-bfac-6616e0f9750a",
+   "label-info": [
+    {
+     "label": {
+      "label-code": 162,
+      "name": "Columbia",
+      "disambiguation": "owned by Sony Music Entertainment, worldwide except JP; formerly owned by CBS between 1938–1990 within US/CA/MX",
+      "id": "011d1192-6f65-45bd-85c4-0400dd45693e",
+      "type-id": "b6285b2a-3514-3d43-80df-fcf528824ded",
+      "sort-name": "Columbia",
+      "type": "Imprint"
+     },
+     "catalog-number": "88875 02380 2"
+    }
+   ],
+   "packaging": "Jewel Case"
+  },
+  {
+   "cover-art-archive": {
+    "darkened": false,
+    "front": true,
+    "back": true,
+    "count": 16,
+    "artwork": true
+   },
+   "id": "f08adc20-5891-4d62-a07e-16f65a75a0c4",
+   "quality": "normal",
+   "asin": null,
+   "status": "Official",
+   "text-representation": {
+    "language": "eng",
+    "script": "Latn"
+   },
+   "date": "1995",
+   "country": "US",
+   "media": [
+    {
+     "track-count": 18,
+     "format-id": "9712d52a-4509-3d4b-a1a2-67c88c643e31",
+     "id": "1d0c395f-a41a-32fc-aa33-0fba0b0d53f6",
+     "position": 1,
+     "title": "",
+     "format": "CD"
+    }
+   ],
+   "disambiguation": "",
+   "barcode": "074646706022",
+   "title": "Greatest Hits",
+   "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+   "release-events": [
+    {
+     "date": "1995",
+     "area": {
+      "iso-3166-1-codes": [
+       "US"
+      ],
+      "disambiguation": "",
+      "name": "United States",
+      "type": null,
+      "sort-name": "United States",
+      "type-id": null,
+      "id": "489ce91b-6658-3307-9877-795b68554c98"
+     }
+    }
+   ],
+   "packaging": "Cardboard/Paper Sleeve",
+   "label-info": [
+    {
+     "catalog-number": "CK 67060",
+     "label": {
+      "label-code": 162,
+      "sort-name": "Columbia",
+      "type": "Imprint",
+      "id": "011d1192-6f65-45bd-85c4-0400dd45693e",
+      "type-id": "b6285b2a-3514-3d43-80df-fcf528824ded",
+      "disambiguation": "owned by Sony Music Entertainment, worldwide except JP; formerly owned by CBS between 1938–1990 within US/CA/MX",
+      "name": "Columbia"
+     }
+    }
+   ],
+   "packaging-id": "f7101ce3-0384-39ce-9fde-fbbd0044d35f"
+  },
+  {
+   "quality": "normal",
+   "id": "f15a6f35-0130-4157-8514-51b9ecd69e1b",
+   "cover-art-archive": {
+    "artwork": true,
+    "count": 18,
+    "front": true,
+    "darkened": false,
+    "back": true
+   },
+   "country": "XE",
+   "date": "1995-02-27",
+   "text-representation": {
+    "language": "eng",
+    "script": "Latn"
+   },
+   "asin": "B000025T76",
+   "status": "Official",
+   "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+   "media": [
+    {
+     "format": "CD",
+     "track-count": 18,
+     "format-id": "9712d52a-4509-3d4b-a1a2-67c88c643e31",
+     "id": "ce0da16c-cce9-3ee3-a7f0-2e230219af10",
+     "position": 1,
+     "title": ""
+    }
+   ],
+   "disambiguation": "",
+   "barcode": "5099747855528",
+   "title": "Greatest Hits",
+   "packaging": "Jewel Case",
+   "packaging-id": "ec27701a-4a22-37f4-bfac-6616e0f9750a",
+   "label-info": [
+    {
+     "catalog-number": "0019526",
+     "label": {
+      "disambiguation": "owned by Sony Music Entertainment, worldwide except JP; formerly owned by CBS between 1938–1990 within US/CA/MX",
+      "name": "Columbia",
+      "id": "011d1192-6f65-45bd-85c4-0400dd45693e",
+      "type-id": "b6285b2a-3514-3d43-80df-fcf528824ded",
+      "type": "Imprint",
+      "sort-name": "Columbia",
+      "label-code": 162
+     }
+    },
+    {
+     "catalog-number": "COL 478555 2",
+     "label": {
+      "type-id": "b6285b2a-3514-3d43-80df-fcf528824ded",
+      "id": "011d1192-6f65-45bd-85c4-0400dd45693e",
+      "type": "Imprint",
+      "sort-name": "Columbia",
+      "disambiguation": "owned by Sony Music Entertainment, worldwide except JP; formerly owned by CBS between 1938–1990 within US/CA/MX",
+      "name": "Columbia",
+      "label-code": 162
+     }
+    }
+   ],
+   "release-events": [
+    {
+     "area": {
+      "iso-3166-1-codes": [
+       "XE"
+      ],
+      "sort-name": "Europe",
+      "type": null,
+      "id": "89a675c2-3e37-3518-b83c-418bad59a85a",
+      "type-id": null,
+      "name": "Europe",
+      "disambiguation": ""
+     },
+     "date": "1995-02-27"
+    }
+   ]
+  },
+  {
+   "date": "2001",
+   "country": "RU",
+   "text-representation": {
+    "language": "rus",
+    "script": "Cyrl"
+   },
+   "status": "Bootleg",
+   "asin": null,
+   "quality": "normal",
+   "id": "f1806249-0f9c-4374-9e5b-12a447397fd1",
+   "cover-art-archive": {
+    "artwork": true,
+    "count": 18,
+    "darkened": false,
+    "front": true,
+    "back": true
+   },
+   "packaging-id": "815b7785-8284-3926-8f04-e48bc6c4d102",
+   "label-info": [
+    {
+     "label": {
+      "label-code": null,
+      "name": "WFR Records",
+      "disambiguation": "",
+      "sort-name": "WFR Records",
+      "type": null,
+      "type-id": null,
+      "id": "2c7bbfd3-ab61-43e9-9e5f-30a1197b9ab8"
+     },
+     "catalog-number": "[none]"
+    }
+   ],
+   "packaging": "Other",
+   "release-events": [
+    {
+     "area": {
+      "iso-3166-1-codes": [
+       "RU"
+      ],
+      "id": "1f1fc3a4-9500-39b8-9f10-f0a465557eef",
+      "type-id": null,
+      "type": null,
+      "sort-name": "Russia",
+      "name": "Russia",
+      "disambiguation": ""
+     },
+     "date": "2001"
+    }
+   ],
+   "status-id": "1156806e-d06a-38bd-83f0-cf2284a808b9",
+   "barcode": "4602249742105",
+   "title": "Золотая Коллекция",
+   "media": [
+    {
+     "format": "Cassette",
+     "title": "",
+     "position": 1,
+     "track-count": 14,
+     "id": "34a2feec-25b7-3563-bbf1-55448ef43d1d",
+     "format-id": "f5e6e254-8f39-331c-936b-9c69d686dc47"
+    },
+    {
+     "format": "Cassette",
+     "title": "",
+     "position": 2,
+     "track-count": 16,
+     "format-id": "f5e6e254-8f39-331c-936b-9c69d686dc47",
+     "id": "92c49068-a04f-3cdd-9a72-2719a0aa6729"
+    },
+    {
+     "format": "Cassette",
+     "format-id": "f5e6e254-8f39-331c-936b-9c69d686dc47",
+     "track-count": 12,
+     "id": "bdf7fa2a-3d5d-35aa-aeed-89b2ece608c4",
+     "position": 3,
+     "title": ""
+    }
+   ],
+   "disambiguation": ""
+  },
+  {
+   "barcode": "9399747855525",
+   "title": "Greatest Hits",
+   "disambiguation": "",
+   "media": [
+    {
+     "format": "CD",
+     "title": "",
+     "format-id": "9712d52a-4509-3d4b-a1a2-67c88c643e31",
+     "id": "f38b283a-ad91-376c-ac4c-ab9464162329",
+     "track-count": 18,
+     "position": 1
+    }
+   ],
+   "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+   "release-events": [
+    {
+     "date": "1995",
+     "area": {
+      "iso-3166-1-codes": [
+       "AU"
+      ],
+      "disambiguation": "",
+      "name": "Australia",
+      "type-id": null,
+      "id": "106e0bec-b638-3b37-b731-f53d507dc00e",
+      "sort-name": "Australia",
+      "type": null
+     }
+    }
+   ],
+   "label-info": [
+    {
+     "label": {
+      "disambiguation": "owned by Sony Music Entertainment, worldwide except JP; formerly owned by CBS between 1938–1990 within US/CA/MX",
+      "name": "Columbia",
+      "id": "011d1192-6f65-45bd-85c4-0400dd45693e",
+      "type-id": "b6285b2a-3514-3d43-80df-fcf528824ded",
+      "sort-name": "Columbia",
+      "type": "Imprint",
+      "label-code": 162
+     },
+     "catalog-number": "478555 2"
+    }
+   ],
+   "packaging-id": "ec27701a-4a22-37f4-bfac-6616e0f9750a",
+   "packaging": "Jewel Case",
+   "cover-art-archive": {
+    "count": 17,
+    "artwork": true,
+    "darkened": false,
+    "front": true,
+    "back": true
+   },
+   "id": "f686c47c-6709-450e-99be-c6cb2e3416e8",
+   "quality": "normal",
+   "asin": null,
+   "status": "Official",
+   "text-representation": {
+    "language": "eng",
+    "script": "Latn"
+   },
+   "date": "1995",
+   "country": "AU"
+  },
+  {
+   "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+   "title": "Born to Run",
+   "barcode": "",
+   "disambiguation": "",
+   "media": [
+    {
+     "title": "",
+     "position": 1,
+     "track-count": 8,
+     "id": "9b78f62a-b986-3b66-ac0a-7a96cc9a328d",
+     "format-id": "f5e6e254-8f39-331c-936b-9c69d686dc47",
+     "format": "Cassette"
+    }
+   ],
+   "label-info": [
+    {
+     "label": {
+      "label-code": 149,
+      "type": "Imprint",
+      "sort-name": "CBS",
+      "id": "b8d33bec-92cc-40d9-bd92-4eb089b401a9",
+      "type-id": "b6285b2a-3514-3d43-80df-fcf528824ded",
+      "disambiguation": "CBS Records’ international imprint from 1962–1990; renamed since 1991 as Columbia",
+      "name": "CBS"
+     },
+     "catalog-number": "CTTE 5846"
+    }
+   ],
+   "packaging-id": "c70b737a-0114-39a9-88f7-82843e54f906",
+   "packaging": "Cassette Case",
+   "release-events": [
+    {
+     "date": "1975",
+     "area": {
+      "iso-3166-1-codes": [
+       "MX"
+      ],
+      "type-id": null,
+      "id": "3e08b2cd-69f3-317c-b1e4-e71be581839e",
+      "type": null,
+      "sort-name": "Mexico",
+      "name": "Mexico",
+      "disambiguation": ""
+     }
+    }
+   ],
+   "id": "f7e4b1d7-a065-45b8-b45a-5fcb08955a6c",
+   "quality": "normal",
+   "cover-art-archive": {
+    "count": 3,
+    "artwork": true,
+    "back": true,
+    "front": true,
+    "darkened": false
+   },
+   "date": "1975",
+   "country": "MX",
+   "asin": null,
+   "status": "Official",
+   "text-representation": {
+    "script": "Latn",
+    "language": "eng"
+   }
+  },
+  {
+   "status": "Promotion",
+   "asin": null,
+   "text-representation": {
+    "script": "Latn",
+    "language": "eng"
+   },
+   "date": "1975",
+   "country": "US",
+   "cover-art-archive": {
+    "count": 2,
+    "artwork": true,
+    "back": true,
+    "front": true,
+    "darkened": false
+   },
+   "id": "f9e4a09a-6bb2-4609-b090-a344617fbb27",
+   "quality": "normal",
+   "release-events": [
+    {
+     "area": {
+      "iso-3166-1-codes": [
+       "US"
+      ],
+      "type": null,
+      "sort-name": "United States",
+      "type-id": null,
+      "id": "489ce91b-6658-3307-9877-795b68554c98",
+      "name": "United States",
+      "disambiguation": ""
+     },
+     "date": "1975"
+    }
+   ],
+   "packaging": "Cardboard/Paper Sleeve",
+   "label-info": [
+    {
+     "catalog-number": "RL 13-6",
+     "label": {
+      "type": null,
+      "sort-name": "AFRTS",
+      "id": "58b0a587-8b24-4ba7-a5fe-249c0cbab442",
+      "type-id": null,
+      "disambiguation": "",
+      "name": "AFRTS",
+      "label-code": null
+     }
+    }
+   ],
+   "packaging-id": "f7101ce3-0384-39ce-9fde-fbbd0044d35f",
+   "disambiguation": "",
+   "media": [
+    {
+     "format": "12\" Vinyl",
+     "position": 1,
+     "id": "83b4cf55-864a-3b0e-80de-dc91efa3b352",
+     "format-id": "3e9080b0-5e6c-34ab-bd15-f526b6306a64",
+     "track-count": 9,
+     "title": ""
+    }
+   ],
+   "barcode": "",
+   "title": "Born to Run / E. C. Was Here",
+   "status-id": "518ffc83-5cde-34df-8627-81bff5093d92"
+  },
+  {
+   "id": "fdfb1d8d-ed26-4bab-ad70-6a73af7d4bfc",
+   "quality": "normal",
+   "cover-art-archive": {
+    "back": true,
+    "front": true,
+    "darkened": false,
+    "count": 5,
+    "artwork": true
+   },
+   "country": "GB",
+   "date": "1975",
+   "status": "Official",
+   "asin": null,
+   "text-representation": {
+    "script": "Latn",
+    "language": "eng"
+   },
+   "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+   "media": [
+    {
+     "title": "",
+     "position": 1,
+     "id": "a39f1877-ac0a-3c1b-8213-26c5b3467924",
+     "track-count": 10,
+     "format-id": "49b49ca7-d2d8-4d36-a7dd-d61363ee3697",
+     "format": "8-Track Cartridge"
+    }
+   ],
+   "disambiguation": "",
+   "title": "Born to Run",
+   "barcode": "",
+   "packaging": "Cardboard/Paper Sleeve",
+   "label-info": [
+    {
+     "label": {
+      "id": "b8d33bec-92cc-40d9-bd92-4eb089b401a9",
+      "type-id": "b6285b2a-3514-3d43-80df-fcf528824ded",
+      "type": "Imprint",
+      "sort-name": "CBS",
+      "name": "CBS",
+      "disambiguation": "CBS Records’ international imprint from 1962–1990; renamed since 1991 as Columbia",
+      "label-code": 149
+     },
+     "catalog-number": "42-69170"
+    }
+   ],
+   "packaging-id": "f7101ce3-0384-39ce-9fde-fbbd0044d35f",
+   "release-events": [
+    {
+     "date": "1975",
+     "area": {
+      "disambiguation": "",
+      "name": "United Kingdom",
+      "type-id": null,
+      "id": "8a754a16-0027-3a29-b6d7-2b40ea0481ed",
+      "type": null,
+      "sort-name": "United Kingdom",
+      "iso-3166-1-codes": [
+       "GB"
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "quality": "normal",
+   "id": "fedb807e-8f90-4993-bef2-7e936d1feb02",
+   "cover-art-archive": {
+    "back": true,
+    "front": true,
+    "darkened": false,
+    "artwork": true,
+    "count": 11
+   },
+   "date": "1995",
+   "country": "US",
+   "text-representation": {
+    "language": "eng",
+    "script": "Latn"
+   },
+   "status": "Official",
+   "asin": "B000002B2Z",
+   "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+   "disambiguation": "",
+   "media": [
+    {
+     "track-count": 9,
+     "id": "06f6415f-0d1c-35c1-9536-25b7405e9b2f",
+     "format-id": "3e9080b0-5e6c-34ab-bd15-f526b6306a64",
+     "position": 1,
+     "title": "",
+     "format": "12\" Vinyl"
+    },
+    {
+     "format": "12\" Vinyl",
+     "title": "",
+     "position": 2,
+     "id": "5fadad91-1e10-3489-8510-56b6f713fb9a",
+     "format-id": "3e9080b0-5e6c-34ab-bd15-f526b6306a64",
+     "track-count": 9
+    }
+   ],
+   "barcode": "074646706015",
+   "title": "Greatest Hits",
+   "packaging": "Cardboard/Paper Sleeve",
+   "packaging-id": "f7101ce3-0384-39ce-9fde-fbbd0044d35f",
+   "label-info": [
+    {
+     "label": {
+      "label-code": 162,
+      "type-id": "b6285b2a-3514-3d43-80df-fcf528824ded",
+      "id": "011d1192-6f65-45bd-85c4-0400dd45693e",
+      "type": "Imprint",
+      "sort-name": "Columbia",
+      "disambiguation": "owned by Sony Music Entertainment, worldwide except JP; formerly owned by CBS between 1938–1990 within US/CA/MX",
+      "name": "Columbia"
+     },
+     "catalog-number": "C2 67060"
+    }
+   ],
+   "release-events": [
+    {
+     "area": {
+      "iso-3166-1-codes": [
+       "US"
+      ],
+      "disambiguation": "",
+      "name": "United States",
+      "id": "489ce91b-6658-3307-9877-795b68554c98",
+      "type-id": null,
+      "type": null,
+      "sort-name": "United States"
+     },
+     "date": "1995"
+    }
+   ]
+  }
+ ]
+}

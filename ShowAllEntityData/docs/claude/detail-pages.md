@@ -176,6 +176,16 @@ Both share `_rgReleases` (a group's releases as far as loaded) and `_rgFacts`
   trigger since 2026-10-24 (`_mbPopCoverThumbHtml()`: card of that release's
   images, click or Space the viewer; see the collection cards below), and so
   is the group's own cover on the left.
+- **The releases are a shared List table since Phase 3b**
+  (org/MB-POH-sync-withDiscogs.org; `_rgWindowTableHtml(t, st, info)`, table
+  id `rg-releases`): its state is `_dpTblUi(t, …)` by the WINDOW'S target,
+  so `_rgWindowFor()`, `_rgWindowHtml()` and `_eventRgWindowHtml()` take `t`
+  first. The page-global `_rgSort` and `_rgOnAreaClick()` are gone: the
+  dialog's one delegated handler sorts it. Initial order: this release first,
+  then by date (`_rgSortedReleases()`); a release without a front has the
+  empty box (`.mb-dg-nothumb`). The Facts' artist credit is linked
+  (`_mbPopCreditHtml()`, so it drills in the window) and the genres are tag
+  links, one per line (`_mbPopGenreLinksHtml()`).
 - **The Live page root is `#page`, not `#content`.** `_dpIsolateFrame()` hides
   the siblings of the root and of each ancestor: `#page` hides MusicBrainz's
   `.header`, the browser warning and `#footer`, and keeps `#content` and
@@ -238,12 +248,17 @@ hosts (kept, decided 2026-10-07).
   lookup's own callback too (`start && force`).
 - **Kinds so far**: release group, release (9.99.1272); recording — card
   `artist-credits+isrcs+releases+work-rels`, window `artist-rels+place-rels+event-rels`
-  plus `release?recording=…&limit=1` ONLY when the lookup's list is full
-  (`_MB_POP_SUBLIST_CAP` 25, org/iframe.org R3); work — card
-  `artist-rels+label-rels+work-rels`, window `recording?work=…&limit=100&inc=artist-credits`
-  (9.99.1273); artist — card `genres+ratings+aliases` (url-rels left to the window,
+  plus every release as a paged list (`_mbRecRelsList()`,
+  `release?recording=…&inc=media+labels`, since Phase 3b of
+  org/MB-POH-sync-withDiscogs.org; before, the lookup's first 25 and a
+  `limit=1` count); work — card
+  `artist-rels+label-rels+work-rels`, window `recording?work=…&inc=artist-credits` as a paged
+  list (9.99.1273; paged since 9.99.1471); artist — card `genres+ratings+aliases` (url-rels left to the window,
   R1), window `url-rels` plus one `release-group?artist=…&type=<t>&limit=1`
-  per `_MB_POP_RG_TYPES`; label — card `genres+aliases`, window
+  per `_MB_POP_RG_TYPES` (the type segments' totals) and the chosen type's
+  release groups as a paged list (`_mbArtistRgsList()`, Phase 3b); label — card
+  `genres+ratings+aliases` (`_MB_POP_LABEL_CARD_INC`, which the catalog-number card
+  shares), window
   `url-rels+label-rels` plus `release?label=…&limit=1`; area — `area-rels`;
   instrument — `instrument-rels+aliases`, no description from the Web Service
   (9.99.1274); event — card `artist-rels+place-rels+event-rels+series-rels+url-rels`
@@ -255,9 +270,12 @@ hosts (kept, decided 2026-10-07).
   plus the Event Art Archive index
   (`_mbPopArtLoad(_mbPopEventArt, EAA_CTX, …)`, on pin only, R4) plus the area
   chain of "Held at" (below); place — card
-  `area-rels+url-rels`, window `event?place=…&limit=100` sorted by date (the
-  browse is not); series — one lookup with every item-kind relation (R1),
-  items by `ordering-key` (the lookup is not in order) (9.99.1275); ISRC
+  `area-rels+url-rels`, window every event as a paged list
+  (`_mbPlaceEventsList()`, Phase 3b), sorted by date at first (the browse is
+  not); series — one lookup with every item-kind relation (R1),
+  items by `ordering-key` (the lookup is not in order), each item's link
+  from `_mbPopRelKind()` (a release-group series' target type is
+  `release_group`, the page `/release-group/`) (9.99.1275); ISRC
   (`artist-credits`), ISWC and disc ID — one lookup each, no extras
   (9.99.1276); url, the "[info]" link (U2, section "MusicBrainz URL entities"
   below); tag and collection, read from their pages (sections "MusicBrainz:
@@ -909,11 +927,14 @@ MBID, and the tag search answers names and scores only (MusicBrainz_API and
 MusicBrainz_API/Search, checked 2026-10-19). Its page, `/tag/<name>`, has
 everything the card needs in one request.
 
-- **Path:** `_MB_POP_PAGE_RE`'s third branch, `/tag/<name>` bare. The id is
+- **Path:** `_MB_POP_PAGE_RE`'s third branch, `/tag/<name>`. The id is
   the name percent-encoded as in the link (`tag:alternative%20rock`), like
-  `user`. Not previewed: the tabs (`/tag/<name>/artist`) and `/tags`. An
-  editor's own tag (`/user/<name>/tag/<name>`) is its own kind since
-  2026-10-21 (`usertag`, below with the editor's lists).
+  `user`. Since Phase 3c (2026-10-27) its kind pages (`/tag/<name>/artist`,
+  group 7) are the SAME target (same key, same card), carrying `list`
+  (`_mbPopParsePath()` → `_mbPopTarget()` `t.list`), so the window opens on
+  that kind (`_mbTagKindStart()`). Not previewed: other tabs and `/tags`. An
+  editor's own tag (`/user/<name>/tag/<name>`, kind pages likewise) is its
+  own kind since 2026-10-21 (`usertag`, below with the editor's lists).
 - **`_mbParseTagPage()`** reads `#content`: the name from `.tagheader h1 a`,
   the genre from the first `a[href^="/genre/"]` (only a tag that is a genre
   has one), "N entities found", and per `h3` (one per entity kind, and only
@@ -923,11 +944,34 @@ everything the card needs in one request.
   only, so it can be stored in IndexedDB for `sa_pop_mb_ttl_hours`.
 - **Card:** name, "Tag of the genre …" or "Tag", pills (Genre, the total),
   the six largest kinds with counts (`_mbPopTagKinds()`: largest first).
-  **Window:** the genre (a link to `/genre/<id>`, which since 2026-10-26
-  drills into the `genre` kind below), the total, a Kind/Count table linking each kind's
-  `/tag/<name>/<slug>` (`_mbPopTagKindHref()`: the page's "See all" link,
-  else `SA_TAG_VALUE_CATEGORY_SLUGS`), and per kind its entities as plain
-  entity links, so they drill down (Phase 5).
+  **Window** (`_mbPopTagWindowHtml(t, d, base, …)`, since Phase 3c of
+  org/MB-POH-sync-withDiscogs.org): the genre (a link to `/genre/<id>`,
+  which drills into the `genre` kind below), the total, "By kind" — a
+  Kind/Count table whose kinds are `seg` buttons in a `data-mb-tbl="tag-kinds"`
+  box (the shared click handler), slugs from `SA_TAG_VALUE_CATEGORY_SLUGS`
+  (`_mbTagKindSlugs()`) — and on the right the chosen kind's List table
+  (`tag-kind-<slug>`), read from `<base>/<slug>?page=N` by the paged
+  loader's HTML adapter (`_mbTagKindList()`, `_mbPagedHtml()`,
+  `_mbParseTagKindPage()`: "N … found", `_mbPagerOf()`, a `ul` of 100 `li`
+  "votes - link (comment) by credit"; a link in `span.mp` when edits are
+  pending). Page 1 from the kind's `pin()` (`_mbTagKindPin()`; the page
+  kind's `pin`/`start` hooks since 3c). Votes column only when the page
+  has votes (an editor's has none). The overview's first-ten lists are
+  still parsed (the card) but no longer shown in the window.
+- **Ctrl/⌘-click on a tag link in a window** (decision 2026-10-26):
+  `_mbOwnTagTarget()` in `_dpDrill()`, before its modifier check, drills
+  to `/user/<me>/tag/<name>` (same kind page when the link names one); a
+  GENRE link (`/genre/<MBID>`) stands for the tag of its name, its text
+  encoded as a tag path (`_mbTagOfLink()`; vzell 2026-10-27: the tag window's
+  own "Genre" link opened a new tab);
+  `<me>` from MusicBrainz's header (`_mbMyEditorName()`: `.header
+  li.account a[href^="/user/"]`, debug/A-R-3rd-works.html). Logged out it
+  returns null and the link keeps its new tab. The window's foot line says
+  so on a tag or genre link (`_dpWinFoot()`'s `here` case) and, at rest,
+  names the key whenever the area holds an `a[href^="/tag/"]` or
+  `a[href^="/genre/"]` and someone is logged in;
+  `_dpAreaRepaint()` writes the line at rest again after every repaint (the
+  tag links may come after the window was shown).
 - **Where:** every `/tag/<name>` link, e.g. MusicBrainz's own
   `ul.genre-list`/`ul.tag-list`, the "Sidebar" Tags card's pills
   (`.mb-sb-pill`), tags tables. Outside a table body only with
@@ -987,8 +1031,9 @@ https://claude.ai/artifact/KtfNY1XfjyJoPb8fGjLGeu (25 entries a window page,
 a pager, covers, eight entries on the card).
 
 - **Path:** unchanged, `_MB_POP_PATH_RE`'s `collection`. Key
-  `pop:page:collection:<MBID>`; page n > 1 of the window's pager is its own
-  record, `pop:page:collection:<MBID>:p<n>` (`_mbCollKey()`, `_mbCollLoad()`).
+  `pop:page:collection:<MBID>` (page 1, the card's record). Since Phase 3c
+  pages past 1 are the paged list `collection:<MBID>` (`_mbCollList()`,
+  `_mbPagedHtml()` with this same parser), not records of their own.
 - **`_mbParseCollectionPage()`** (selectors in DEBUG-NOTES.md, 2026-10-20 "what
   a collection page holds"): the name from `.collectionheader h1`, public from
   the subheader, the sidebar's Owner / Type / "Number of entities", the
@@ -1007,11 +1052,17 @@ a pager, covers, eight entries on the card).
   Owner, Collaborators, About (the description's text, clamped to two lines),
   the first `_MB_COLL_CARD_ROWS` (8) entries in the two-column
   `.mb-dp-tracks` list.
-- **Window:** facts and the whole description on the left; on the right
-  `_MB_COLL_WIN_ROWS` (25) entries in `_mbPopTableHtml()` (never `tbl`) with
-  ◀ ▶ (`_mbCollAreaClick()`, `_mbCollUi`). A MusicBrainz page holds 100, so
-  slices 1–4 cost nothing and slice 5 reads `?page=2` — only then
-  (`__saTest.mbPopStatus()` lets the spec show page 2 was not even started).
+- **Window:** facts and the whole description on the left; on the right,
+  since Phase 3c (2026-10-27), a List table (`data-mb-tbl="collection"`)
+  with the page's own columns (each cell's safe HTML shown, its text —
+  `texts`, `_MB_POP_PAGE_VERSION` 6 — filtered and sorted; the filter's
+  matches marked in the cell's text nodes by `_hlHtml()`, the HTML
+  sibling of `_hlEsc()`, as the tag lists' "By" credit), type chips when
+  the page is grouped (a "Type" column first), and "Load N more pages". Page 1
+  is SEEDED from the card's record (`_mbPagedSeed()`: no request; seeded
+  again when ⟳ brings another record object). The 25-row slices behind
+  ◀ ▶ (`_MB_COLL_WIN_ROWS`, `_mbCollAreaClick()`, `_mbCollUi`,
+  `_mbCollLoad()`) are gone.
   Release and release group collections show the slice's covers as
   `coverartarchive.org/<kind>/<MBID>/front-250` images, only for rows the
   page marks with `.caa-icon`, and only in the window (Space), never on a
@@ -1625,6 +1676,12 @@ generalize to URLs".
   aborted: its headers name it. The body is cut to `_EXT_MAX_BYTES` (512 KB,
   answer 4; every `og:` tag sat within 8.2 KB, X5). Never rejects: failures
   come back as `error` (`refused`, `unreachable`, `timeout`).
+  **One exception, by consent (vzell, 2026-10-27):** `session: true` sends
+  the browser's cookies — used ONLY by `_extDgImgDataGet()`, for a Discogs
+  release's image editor's data (`/images/data`) read from another site,
+  which answers nothing without the Discogs login (below, "A Discogs release's images"). Every
+  other caller stays anonymous; `scripts/mutations/dg-images.json` pins
+  both halves (the editor with the session, the API without).
   `_extGet()` adds the gate, `wanted()` after the slot, and one retry on a
   transient status.
 - **One rate gate per HOST: `_extAwaitSlot(host)`** (`_extSpacingMs(host)`:
@@ -2152,6 +2209,124 @@ popup-ext.spec.js "a row without a thumbnail keeps the thumbnail's box"
 `dp-sort-initial-state.json`/`discogs-window-swap.json` were retargeted to
 the shared code.
 
+**Phase 3b callers (2026-10-27).** Probe first:
+`scripts/probe-mb-window-browses.py`, whose docstring has the result. The
+three browses answer in an order by neither date nor title (the docs only
+say the order is "consistent"), so these tables start sorted by date
+(`init: {sort: {col: 'date', dir: 1}}`; the third click still returns to the
+Web Service's order).
+- Recording → `_mbRecRelsList()`/`_mbRecRelsHtml()` (`release?recording=…&inc=media+labels`;
+  covers from each release's own `cover-art-archive.front`, status chips).
+- Place → `_mbPlaceEventsList()`/`_mbPlaceEventsHtml()` (`event?place=…`; type chips).
+- Artist → `_mbArtistRgsList(id, type)`/`_mbArtistRgsHtml()`: ONE paged list
+  per primary type, since the unfiltered browse runs Album first (100 of
+  2,146, all Albums). A segment per type in the List's `tools`
+  (`data-mb-tbl-act="seg"`, `data-mb-tbl-v`, state `ui.seg`, read without
+  creating by `_mbArtistRgType()`), with its total from the `limit=1` count
+  browses; the chosen type's page 1 comes from the repaint's `pin()`. Chips
+  are the secondary types. Covers are asked lazily for every row (no
+  cover-art flag on a release group's browse); a 404 swaps the link for the
+  empty box (the dialog's capture `error` listener, `.mb-dp-tbl
+  a.mb-pop-cover-thumb`), so no viewer opens on nothing (vzell, 2026-10-27).
+- Release group → the List table above (section "MusicBrainz: the
+  release-group sources").
+Helpers: `_mbPagedBody()` (spinner / nothing / table), `_dpTblCol()`,
+`_dpTblTitleCol()`, `_mbPopCoverThumbHtml(kind, id, title, imgCls)`.
+Specs: popup-mb.spec.js (the recording, artist and place windows; "covers
+asked lazily"), release-rg-popup.spec.js (selectors only, plus the Facts'
+links). Mutations: `scripts/mutations/mb-window-lists.json` (also the 3a
+series and catalog-number fixes).
+
+**Phase 3c: lists read from the site's pages (2026-10-27).** The loader asks
+its source `ask(offset, wanted, page)` (`page` = pages loaded + 1; the bar's
+segments count `st.pages`/`st.cachedPages`, kept in the IndexedDB record);
+a source has `perPage` and may answer `done` (its last page).
+`_mbPagedHtml(urlOf, parse)` reads page N through `_dpGetRaw()` and
+`_MB_LIVE` (the same rate gate); a page `parse()` refuses is a failure and
+is dropped from `_dpRawMem`, so "Try again" fetches it again. `_mbPagedSeed()`
+fills page 1 from a record the window already has (a collection's). Probe:
+`scripts/probe-mb-tag-kind-pages.py` (no `table.tbl` on a tag's kind page:
+a `ul`, 100 a page). Callers: the tag and editor's-tag windows, the
+collection window (sections above). Specs: popup-mb.spec.js (the tag window,
+a kind page's link, a kind page that is not one, the collection window,
+Ctrl-click → your own tag in the label window, whose genres are tag links
+since 3c too), popup-mb-user-lists.spec.js, popup-mb.mobile.spec.js,
+sidebar-inline.spec.js. Mutations: `scripts/mutations/mb-window-html-lists.json`.
+
+**Phase 3d: the Compact rows (2026-10-27).** No new request: the data is
+what the windows already read. `_dpCompactTableHtml()` (25 a page, filter
+past a page, three states) for: links (`_mbPopUrlLinksTableHtml(t, id,
+rels, {withHead, min})`: Site · Relationship · URL; a label's from eleven
+links, the plain `_mbPopUrlLinksHtml()` below `min`; `_rgFactsHtml(t, f)`
+takes the target for it), relations (`_mbPopRelTableRows()` +
+`_mbPopRelTableHtml()`: Relationship · target, group names from
+`_mbPopRelGroupName()`, extracted from `_mbPopRelRows()`): area parts,
+related instruments, an event's "Recorded here" (two tables); a work's
+codes, an instrument's aliases, a genre's related genres (one table per
+phrase, `genre-rel-<i>`; its links moved to the left column), an editor's
+edits, tags and genres (`genres`, `tags`), ratings (`ratings-<i>`), ISRC
+`recordings`, ISWC `works`, disc ID `releases` (its table of contents stays
+`_mbPopTableHtml()`), annotation `versions`. HTML cells mark matches with
+`_hlHtml()`. Every `windowHtml` that builds one takes `t`. The label's
+aliases one per line (`_mbPopAliasesHtml()`). Specs: popup-mb.spec.js
+"Compact tables (Phase 3d)", the genre window's tables, and the windows'
+own tests (selectors moved to `data-mb-tbl`); popup-mb-user-lists.spec.js,
+popup-mb-annotations.spec.js. Mutations: `scripts/mutations/mb-window-compact.json`.
+
+**Phase 3e (2026-10-27).** The release window's tracklist is
+`_mbPopTracklistHtml(t, media, relCredit)`: a `data-mb-tbl="tracks"` box
+with ONE filter (`ui.q`) and one table per medium (`table.mb-pop-medtable`,
+no sort), each under `button.mb-pop-medhead` that folds it through the
+shared handler's `fold` action (`ui.folded`, the medium's index; the glyph
+in a fixed 1.2 em box, the Phase 1 rule); the Artist column only in a
+medium where some credit is not the release's. The card keeps
+`_mbPopTracksHtml()`. The event's setlist is a List table (`setlist`):
+`_mbPopSetlistLine()` also returns `head` (the song: a leading work token,
+else the text before the first " (") and `tail` (the rest), and
+`_mbPopSetlist()` its `parts`. The plan's "cover / disambiguation" columns
+are not there: the setlist markup does not carry them (a lookup per work
+would). A series' items get `img.mb-pop-ent-icon` (`_MB_KIND_ICON`, 16 px
+box). Specs: popup-mb.spec.js "a table per medium …", the setlist and
+series tests; mutations `scripts/mutations/mb-window-3e.json`.
+
+**Phase 3f (2026-10-27): CD stubs and the documentation.** Three kinds,
+parsed in `_mbPopParsePath()` after the entity lists and before the
+editor's tag: `cdstub` (`_MB_POP_CDSTUB_RE`; `/cdstub/browse` is the list,
+not a stub) and `doc` (`_MB_POP_DOC_RE`, id the page's path,
+`Style/Titles`), both `_mbPopPageKind()` page kinds, and `docsearch`
+(`/search` with `type=doc` and a query; `path()` names the page).
+- `_mbParseCdStubPage()`: the `.blankheader h1` (its comment is part of the
+  title's text, no element), the subheader, the Tracklist `table.tbl` by
+  header name (an Artist column when the stub has one), the "Disc ID
+  information" `table.details`, the sidebar's `dt`s; "[none]" is no barcode.
+  The window's tracklist is a Compact table (`tracks`).
+- `_mbParseDocPage()`: `#content.wikicontent`, `h1` (its "/" spaced), the
+  status box (`table.wikitable` starting "Status:", removed from the text),
+  `#toc` (`li.toclevel-N` → `{level, text}` from `.toctext`, removed), then
+  each top-level block of `.mw-parser-output`: a heading (bare, or wrapped in
+  `div.mw-heading`, as the wiki writes them now) becomes
+  `div.mb-pop-doc-h<level>`, every other block `_mbEditsHtml()` (links kept,
+  so a `/doc/` link drills in; images only from the archives, so the wiki's
+  are dropped). The page's own HTML nests `<html><body>` inside a `div`; a
+  DOM parser drops those tags.
+- `_mbDocSearchLoad()`: the site's `/search?type=doc` is Google's custom
+  search with no results in its HTML, so the card and the window ask the
+  wiki's search API (`wiki.musicbrainz.org/api.php?action=query&list=search`,
+  `srlimit=50`) with ONE `_extGet()` (that host's own 1 s gate, anonymous,
+  `_EXT_AGENT`), through `_mbLoad()` (memory, IndexedDB, then the request).
+  The snippet's HTML (`span.searchmatch`) is reduced to text; the window's
+  filter marks the query in it. A hit links `_mbDocPath(title)` (spaces as
+  underscores, "/" kept). The host is in `@connect` and
+  `_EXT_CONNECT_HOSTS`: with only `@connect *`, Tampermonkey would ask on
+  the first hover.
+- No `_MB_POP_PAGE_VERSION` bump: the new kinds' keys held nothing before,
+  and a bump drops every cached page record.
+Probe: `scripts/probe-mb-docs-cdstub.py` (`--fixtures` writes the three
+fixtures, token scrubbed). Specs: popup-mb.spec.js "CD stubs and
+documentation (Phase 3f)"; mutations `scripts/mutations/mb-window-3f.json`
+(its last entry survives by design: the IndexedDB layer covers the memory
+guard).
+
 ### A Discogs release's edit history (2026-10-18)
 
 Mockup https://claude.ai/artifact/Y69bUJTvYSksKTFRMcYJvZ, tab C; vzell's
@@ -2223,6 +2398,45 @@ change". **Each diff side holds the release page, whose tracklist is a
 table too:** the parser takes `:scope > thead/tbody` of `table.diff` only
 (it took a tracklist cell as the "new" side before; revision 14 came out
 right by luck).
+
+### A Discogs release's images: reader `dgimages` (Phase 4, 2026-10-27)
+
+org/MB-POH-sync-withDiscogs.org Phase 4, mockup
+https://claude.ai/artifact/TkNduhLjJmD2FrcURn5yaV part 4; the pageTypes
+on discogs.com are docs/claude/discogs.md's "A release's images".
+
+- **Reader `dgimages`, BEFORE `dghistory` and `discogs`** in
+  `_EXT_READERS`: `_EXT_DISCOGS_PATH_RE` takes `/images` too.
+  `_EXT_DGI_PATH_RE` matches `/release/<id>[-slug]/images[/update]`;
+  `keyUrl` drops slug and language (`_extDgImgUrl()`), so the two pages are
+  two keys; `kindFor`: "Discogs images" / "Discogs image history".
+  `windowOnly` (a hover never asks: the editor's request carries the
+  session); a never-contacted www.discogs.com still gets the first-contact
+  card on top of that.
+- **`_extDgImgLoad()`: two requests, two hosts.** The API
+  (`api.discogs.com/releases/<id>`, anonymous: the images at their SERVED
+  size, at most 600 px, and the title), then the image editor's DATA
+  (`/release/<id>/images/data`, JSON — the editor's page is sent with an
+  empty `#image_uploader_app`, its own script draws it from this) through
+  `_extDgImgDataGet()`: on discogs.com a same-origin `fetch()`, else
+  `_extGet()` with `session: true`, both with `X-Requested-With`.
+  `_dgImgParseData()` takes every field (a leading BOM dropped: a GM
+  `responseText` keeps one, a `fetch().text()` does not); the date is
+  shown in the browser's time zone (`_dgImgWhen()`), the size as Discogs
+  writes it (`_dgImgSizeText()`: "127KB", "1.2MB"). Without the data
+  (signed out, the browser check) the record keeps the API's images with
+  `dgImg.note` saying why. Bump `_EXT_DGI_VERSION` when the record changes
+  (2 since the data replaced the page, 2026-10-28).
+- **Window.** Image history: one Compact table (`dg-imghist`: # · thumb ·
+  Type pill (and "pending", "disabled") · Uploaded by · Date, local time
+  and UTC on hover · W × H · Size, sorted by bytes), full width; without the
+  editor, the served size marked "served" and the editor's cells "—".
+  Images: "Uploaded by" (`dg-imgusers`: user · images · years) on the
+  left, the gallery on the right with a second caption line per image
+  (`_extDgImagesHtml()`'s `more`: "2002 × 2000 · 1.2MB · Cl0ver, 2023"); a
+  click opens the artwork viewer.
+- Specs: popup-ext.spec.js "Discogs Images and Image history (Phase 4)";
+  mutations `scripts/mutations/dg-images.json`.
 
 ### Discogs users, searches, support articles; every link in the window (2026-10-18)
 

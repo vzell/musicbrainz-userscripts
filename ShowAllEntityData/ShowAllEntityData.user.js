@@ -35,6 +35,7 @@
 // @include      /^https?:\/\/(?:www\.)?discogs\.com\/(?:[a-z]{2}(?:[-_][a-zA-Z]{2})?\/)?user\/[^\/?#]+\/?(?:[?#].*)?$/
 // @include      /^https?:\/\/(?:www\.)?discogs\.com\/(?:[a-z]{2}(?:[-_][a-zA-Z]{2})?\/)?users\/ratings\/[^\/?#]+\/?(?:[?#].*)?$/
 // @include      /^https?:\/\/(?:www\.)?discogs\.com\/(?:[a-z]{2}(?:[-_][a-zA-Z]{2})?\/)?release\/\d+(?:-[^\/?#]*)?\/history\/?(?:[?#].*)?$/
+// @include      /^https?:\/\/(?:www\.)?discogs\.com\/(?:[a-z]{2}(?:[-_][a-zA-Z]{2})?\/)?release\/\d+(?:-[^\/?#]*)?\/images(?:\/update)?\/?(?:[?#].*)?$/
 // @connect      raw.githubusercontent.com
 // @connect      coverartarchive.org
 // @connect      eventartarchive.org
@@ -48,6 +49,7 @@
 // @connect      jungleland.it
 // @connect      brucespringsteen.it
 // @connect      brucebase.wikidot.com
+// @connect      wiki.musicbrainz.org
 // @connect      *
 // @grant        GM_xmlhttpRequest
 // @grant        GM_addStyle
@@ -6497,6 +6499,17 @@
     const _DG_HIST_PATH_RE = /^\/(?:[a-z]{2}(?:[-_][a-zA-Z]{2})?\/)?release\/(\d+)(?:-[^/?#]*)?\/history\/?$/;
 
     /**
+     * A discogs.com release's Images page, `/release/<id>[-slug]/images`, or
+     * its image editor, `…/images/update` ("Image history"): pageTypes
+     * `dg-images` and `dg-image-history` (Phase 4 of
+     * org/MB-POH-sync-withDiscogs.org, 2026-10-27), plain HTML without
+     * `#app`. Read by the `#app` gate below and the definitions' `match`
+     * (and kept out of `dg-release`'s).
+     * @type {RegExp}
+     */
+    const _DG_IMG_PATH_RE = /^\/(?:[a-z]{2}(?:[-_][a-zA-Z]{2})?\/)?release\/(\d+)(?:-[^/?#]*)?\/images(\/update)?\/?$/;
+
+    /**
      * A Brucebase year page's path: `/1975`, …, and the one exception
      * `/1949-64` (pageType `bb-year`, docs/claude/brucebase.md). Read by the
      * year-page opt-in gate below and by the `bb-year` definition's `match`.
@@ -6595,12 +6608,14 @@
     if (_isDgHost && window.top !== window) return;
     // Cloudflare's "Just a moment…" check answers at the same URL and has no
     // #app (seen 2026-10-18 in an automated browser): not a Discogs page.
-    // The submissions list, a user's page, their ratings and a release's
-    // history are older pages without #app:
+    // The submissions list, a user's page, their ratings, a release's
+    // history and its images (Images, the image editor) are older pages
+    // without #app:
     // plain HTML, whose content root is #page_content (the check has neither).
     if (_isDgHost && !document.getElementById('app') &&
         !((_DG_SUBS_PATH_RE.test(window.location.pathname) || _DG_USER_PATH_RE.test(window.location.pathname) ||
-           _DG_HIST_PATH_RE.test(window.location.pathname) || _DG_RATINGS_PATH_RE.test(window.location.pathname)) &&
+           _DG_HIST_PATH_RE.test(window.location.pathname) || _DG_RATINGS_PATH_RE.test(window.location.pathname) ||
+           _DG_IMG_PATH_RE.test(window.location.pathname)) &&
           document.getElementById('page_content'))) {
         Lib.info('init', 'discogs.com: no #app on this page (a security check?) — nothing to do.');
         return;
@@ -15588,7 +15603,8 @@
      * Column headers of the Discogs tables: a list per pageType, the release
      * page's per sub-table (in its order).
      * @type {{artist: string[], label: string[], master: string[], release: Object<string, string[]>, submissions: string[],
-     *   user: {releases: string[], names: string[], owned: string[]}, history: {Changes: string[], Diff: string[]}}}
+     *   user: {releases: string[], names: string[], owned: string[]}, history: {Changes: string[], Diff: string[]},
+     *   images: string[]}}
      */
     const _DG_HEADERS = {
         artist: ['Image', 'Type', 'Title', 'Artist', 'Format', 'Label', 'Year', 'Have', 'Want'],
@@ -15607,6 +15623,7 @@
             Changes: ['Changed', 'User', 'Action', 'Notes', 'Revision', 'View'],
             Diff: ['Section', 'Old', 'New', 'Marked'],
         },
+        images: ['#', 'Image', 'Type', 'Uploaded by', 'Uploaded', 'W × H', 'Size (KB)'],
         user: {
             releases: ['Image', 'Artist', 'Title', 'Format', 'Label', 'Cat#', 'Country', 'Year', 'Status', 'Added', 'Last changed'],
             names: ['Name', 'Data quality', 'Status'],
@@ -16831,7 +16848,8 @@
         const h2 = document.createElement('h2');
         h2.className = 'mb-dg-list-heading';
         h2.textContent = kind === 'user' ? (_DG_USER_LISTS[def.features.dgUserList] || {}).heading || 'Lists'
-            : { artist: 'Discography', label: 'Releases', master: 'Versions', release: 'Release', submissions: 'Submissions', history: 'History', ratings: 'Ratings' }[kind] || 'Discogs';
+            : { artist: 'Discography', label: 'Releases', master: 'Versions', release: 'Release', submissions: 'Submissions', history: 'History',
+                ratings: 'Ratings', images: 'Images' }[kind] || 'Discogs';
         const cols = kind === 'release' ? _DG_HEADERS.release.Tracklist : kind === 'user' ? _DG_HEADERS.user.releases
             : kind === 'history' ? _DG_HEADERS.history.Changes : _DG_HEADERS[kind];
         const table = document.createElement('table');
@@ -18174,6 +18192,84 @@
      */
     function _dgHistPageRequest(p) {
         return { url: _dgHistPageUrl(p), toHtml: (text) => _dgHistToHtml(text, p) };
+    }
+
+    // --- discogs.com: a release's images (pageTypes dg-images, dg-image-history)
+    // `/release/<id>/images` and `/release/<id>/images/update` (Phase 4 of
+    // org/MB-POH-sync-withDiscogs.org, 2026-10-27; vzell: the Images page
+    // gets the same table as the Image history). The rows are the images
+    // reader's (`_extDgImgLoad()`: the API, then the image editor's data,
+    // `/images/data`, same-origin here), so the pageTypes and the window
+    // cannot disagree. Never the live page's own list: the server sends it
+    // empty. Signed out the data is Discogs' login page: the API's images and
+    // types remain, the other columns empty.
+
+    /**
+     * Whether a path is a release's Images page (`editor` false) or its
+     * image editor (`editor` true): the two definitions' `match`.
+     *
+     * @param {string} path
+     * @param {boolean} editor
+     * @returns {boolean}
+     */
+    function _dgImgPathIs(path, editor) {
+        const m = _DG_IMG_PATH_RE.exec(path);
+        return !!m && !!m[2] === editor;
+    }
+
+    /**
+     * `features.pageRequest` of `dg-images` and `dg-image-history`: the one
+     * page, the images reader's record as JSON (`_dgImgFetchText()`), turned
+     * into rows by `_dgImgToHtml()`.
+     *
+     * @returns {{url: string, fetchText: function(): Promise<string>, toHtml: function(string): string}}
+     */
+    function _dgImgPageRequest() {
+        const url = _extDgImgUrl(_DG_IMG_PATH_RE.exec(window.location.pathname)[1], true);
+        // The reader's target is the editor's page; its load asks /images/data.
+        return { url, fetchText: () => _dgImgFetchText(url), toHtml: _dgImgToHtml };
+    }
+
+    /**
+     * The images reader's load for this release, as the fetch loop's text:
+     * its `dgImg` part as JSON. A load that fails, or a record that is not
+     * the release's (a 404, Discogs' browser check), is an error.
+     *
+     * @param {string} url - The image editor's URL.
+     * @returns {Promise<string>}
+     * @throws {Error} With `status` (0 when no HTTP status applies).
+     */
+    async function _dgImgFetchText(url) {
+        const r = await _extDgImgLoad({ url }, () => true);
+        if (!r.ok) throw Object.assign(new Error(r.detail || 'Discogs did not answer'), { status: 0 });
+        if (r.data.state !== 'ok') throw Object.assign(new Error(_extStateText(r.data)), { status: r.data.status || 0 });
+        if (!r.data.dgImg.fromEditor) Lib.info('fetch', r.data.dgImg.note);
+        return JSON.stringify(r.data.dgImg);
+    }
+
+    /**
+     * The images as one `table.tbl` (`_DG_HEADERS.images`): position, the
+     * image (its thumbnail linking the 600 px one, for the image card and
+     * the viewer, `_DG_FI`), type, uploader (`_dgUserCell()`: the picture
+     * asked as the row shows), the date and time in the browser's time zone
+     * ("2008-05-20 01:46", split by the definition's `dateTimeParts`; the UTC
+     * time on hover), W x H and the size in KB (1,167,852 bytes: 1168, a
+     * number column). An editor's column is empty without its data.
+     *
+     * @param {string} text - `_dgImgFetchText()`'s JSON.
+     * @returns {string} An HTML document.
+     */
+    function _dgImgToHtml(text) {
+        const g = JSON.parse(text);
+        const rows = g.rows.map((r) => {
+            const thumb = r.thumb ? `<a class="mb-dg-thumblink" data-mbtt-fn="fi-img" data-mb-fi="dg" href="${_rgEsc(r.full || r.thumb)}" target="_blank" rel="noopener noreferrer">` +
+                `<img class="mb-dg-thumb" src="${_rgEsc(r.thumb)}" alt="" width="40" height="40" loading="lazy" referrerpolicy="no-referrer"></a>` : '';
+            return `<tr>${_dgCell(String(r.pos))}<td class="mb-dg-imgcell">${thumb}</td>${_dgCell(r.type)}` +
+                `${r.user ? _dgUserCell(r.user, new URL(r.userHref || `/user/${r.user}`, 'https://www.discogs.com').href, '') : '<td></td>'}` +
+                `<td class="mb-dg-when"${r.iso ? ` data-mb-tip title="${_rgEsc(`${r.iso} (UTC)`)}"` : ''}>${_rgEsc(r.at)}</td>` +
+                `${_dgCell(r.w ? `${r.w} × ${r.h}` : '')}${_dgCell(r.bytes ? String(Math.round(r.bytes / 1e3)) : '')}</tr>`;
+        });
+        return `<!DOCTYPE html><html><head><meta charset="utf-8"></head><body>${_dgTableHtml(null, _DG_HEADERS.images, rows)}</body></html>`;
     }
 
     // --- discogs.com: a user's page (pageType dg-user) -----------------------
@@ -23985,6 +24081,9 @@
         const focus = act && area.contains(act) && act.dataset && act.dataset.mbKeepFocus
             ? { name: act.dataset.mbKeepFocus, from: act.selectionStart, to: act.selectionEnd } : null;
         area.innerHTML = html;
+        // The foot line at rest names keys that depend on what arrived (a
+        // tag link's Ctrl-click): written again while nothing is hovered.
+        if (!_dpWin.hover) _dpWinFoot(null);
         scrolls.forEach(([name, top, left]) => {
             const el = area.querySelector(`[data-mb-keep-scroll="${name}"]`);
             if (el) {
@@ -24142,11 +24241,24 @@
      * song, event, venue or person in a section, 2026-10-24); and, on
      * discogs.com, a musicbrainz.org entity link (`_dgMbWinTarget()`,
      * 2026-10-26). A link to what the window already shows does nothing.
+     * One modifier drills too: Ctrl/⌘-click on a tag link shows the
+     * logged-in editor's own tag (`_mbOwnTagTarget()`, Phase 3c).
      *
      * @param {MouseEvent} e - A click in the window's scroll area.
      * @returns {boolean} Whether the click drilled down.
      */
     function _dpDrill(e) {
+        const link = e.target.closest ? e.target.closest('a[href]') : null;
+        if (link && _dpDialog.target && _dpDialog.api && _dpDialog.api.scrollArea.contains(link) && !_foreignHost &&
+            _popSettingOn('sa_pop_mb')) {
+            const own = _mbOwnTagTarget(e, link);
+            if (own && own.key !== _dpDialog.target.key) {
+                e.preventDefault();
+                _dpDialog.stack.push(_dpDialog.target);
+                _dpShowInDialog(Object.assign({ src: _popSources().find(x => x.id === 'mb-entity'), el: link, drilled: true }, own));
+                return true;
+            }
+        }
         if (e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return false;
         const a = e.target.closest ? e.target.closest('a[href]') : null;
         const cur = _dpDialog.target;
@@ -24578,6 +24690,11 @@
             if (t && t.src.steps(t).length > 1) keys.push('← → rows');
             if (_dpDialog.stack.length) keys.push('Backspace back');
             if (t && _mbEditsSubject(t)) keys.push('H history');
+            // A window with a tag or genre link (a genre in the Facts, a
+            // tag's genre): the key that shows the reader's own tag there
+            // (`_mbOwnTagTarget()`; vzell 2026-10-27: say it exists).
+            const area = _dpDialog.api && _dpDialog.api.scrollArea;
+            if (!_foreignHost && area && area.querySelector('a[href^="/tag/"], a[href^="/genre/"]') && _mbMyEditorName()) keys.push('Ctrl-click a tag or genre: your own tag');
             keys.push('Esc close');
             foot.replaceChildren(span('mb-dp-wfoot-g', '⌨'), span(null, 'Rest on a link or an image: this line says what a click does.'),
                 span('mb-dp-wfoot-k', keys.join(' · ')));
@@ -24604,7 +24721,9 @@
         } else if (w.kind === 'here') {
             lead = 'Opens here: ';
             text = `${_dpKindLabel(w.t)} · ${w.a.textContent.replace(/\s+/g, ' ').trim()}` + (_dpWinRead(w.t) ? ' (read before, no request)' : '');
-            keys = 'Click: here · Ctrl-click: new tab';
+            // A tag or a genre: Ctrl shows the reader's own tag here (`_mbOwnTagTarget()`).
+            keys = (w.t.type === 'tag' || w.t.type === 'genre') && _mbMyEditorName() ? 'Click: here · Ctrl-click: your own tag · Shift- or middle-click: new tab'
+                : 'Click: here · Ctrl-click: new tab';
         } else {
             g = '↗';
             lead = 'New tab: ';
@@ -26906,7 +27025,14 @@
         if (titleSpan) titleSpan.after(origin);
         api.scrollArea.classList.add('mb-dp-area');
         api.scrollArea.addEventListener('error', (e) => {
-            if (e.target && e.target.tagName === 'IMG') e.target.remove();
+            if (!e.target || e.target.tagName !== 'IMG') return;
+            // A List table's cover the archive does not have (a release
+            // group's, which no browse flags): the empty box of the same
+            // size takes the link's place, so the row keeps its height and
+            // no viewer opens on nothing.
+            const link = e.target.closest('.mb-dp-tbl a.mb-pop-cover-thumb');
+            if (link) link.outerHTML = '<span class="mb-dg-vthumb mb-dg-nothumb" aria-hidden="true"></span>';
+            else e.target.remove();
         }, true);
         api.scrollArea.addEventListener('click', (e) => {
             if (e.target.closest('.mb-dp-retry')) _dpRenderDialog(true);
@@ -27182,6 +27308,7 @@
             .mb-dp-dialog .mb-dp-gallery { display: flex; flex-wrap: wrap; gap: 6px; }
             .mb-dp-dialog .mb-dp-gallery a { display: inline-flex; flex-direction: column; align-items: center; gap: 2px; color: #7a6d5c; font-size: 11px; text-decoration: none; }
             .mb-dp-dialog .mb-dp-gallery img { height: 88px; max-width: 160px; object-fit: cover; border: 1px solid #d9cfbd; }
+            .mb-dp-dialog .mb-dp-gallery .mb-dg-imgcap { color: #9a8c78; font-size: 10.5px; max-width: 160px; text-align: center; }
             /* The Discogs window (_extDiscogsWindow): collapsible sections, the tracklist
                with its credits, grouped credit lines, and a master's versions below both columns */
             .mb-dp-dialog .mb-dg-sec h4 { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
@@ -27404,6 +27531,8 @@
             .mb-dp-dialog .mb-dg-bad { color: #9b2218; }
             .mb-dp-dialog .mb-dg-facets { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 4px 12px; margin: 8px 0 4px; align-items: start; }
             .mb-dp-dialog .mb-dg-fl { font-style: italic; color: #7a6d5c; padding-top: 2px; }
+            .mb-dp-dialog .mb-pop-kindbtn { border: 0; background: none; padding: 0; font: inherit; color: #6b3f12; cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
+            .mb-dp-dialog .mb-pop-kindbtn[aria-pressed="true"] { font-weight: 700; text-decoration: none; color: #2b2622; }
             .mb-dp-dialog .mb-dg-fc {
                 font: 12px system-ui, -apple-system, "Segoe UI", Arial, sans-serif; border: 1px solid #d9cfbd; background: #fff; color: #2b2622;
                 border-radius: 999px; padding: 1px 8px; margin: 0 4px 4px 0; cursor: pointer; font-variant-numeric: tabular-nums;
@@ -27480,6 +27609,18 @@
                 padding: 0;
             }
             .mb-dp-dialog .mb-dg-ct td { padding: 2px 8px; }
+            .mb-dp-dialog .mb-pop-medium { margin: 0 0 8px; }
+            .mb-dp-dialog .mb-pop-doc-h { font-weight: 700; color: #2b2622; margin: 12px 0 4px; }
+            .mb-dp-dialog .mb-pop-doc-h2 { font-size: 15px; border-bottom: 1px solid #d9cfbd; }
+            .mb-dp-dialog .mb-pop-doc-h3 { font-size: 13.5px; }
+            .mb-dp-dialog .mb-pop-doc-h4, .mb-dp-dialog .mb-pop-doc-h5 { font-size: 12.5px; font-style: italic; }
+            .mb-dp-dialog .mb-pop-doc-toc { list-style: none; padding: 0; margin: 0; }
+            .mb-dp-dialog .mb-pop-doc-toc2 { padding-left: 1em; }
+            .mb-dp-dialog .mb-pop-doc-toc3 { padding-left: 2em; }
+            .mb-dp-dialog .mb-pop-medhead { display: block; width: 100%; text-align: left; border: 0; background: #efe6d4; padding: 4px 8px; font: inherit; font-style: italic; color: #2b2622; cursor: pointer; }
+            .mb-dp-dialog .mb-pop-fold { display: inline-block; width: 1.2em; text-align: center; font-style: normal; }
+            .mb-dp-dialog .mb-pop-ent-icon { display: inline-block; width: 16px; height: 16px; vertical-align: -3px; }
+            .mb-dp-dialog .mb-dg-ct td.mb-pop-urlpath { overflow-wrap: anywhere; color: #7a6d5c; font-size: 12px; }
             .mb-dp-dialog .mb-dg-pager { justify-content: center; font-variant-numeric: tabular-nums; }
             .mb-dp-dialog .mb-dg-pager .mb-dg-btn[disabled] { opacity: 0.45; cursor: default; }
             .mb-dp-dialog .mb-dg-picked b { color: #2b2622; font-weight: 600; }
@@ -27580,16 +27721,7 @@
                 padding: 3px 6px; border-bottom: 1px solid #ece4d4; text-align: left; vertical-align: middle; white-space: nowrap;
             }
             .mb-dp-dialog .mb-rg-wtable th { background: #efe6d4; font-weight: 400; font-style: italic; color: #7a6d5c; }
-            .mb-dp-dialog .mb-rg-wtable th button {
-                border: 0; background: none; padding: 0; font: inherit; color: inherit; cursor: pointer;
-            }
-            .mb-dp-dialog .mb-rg-wtable th button::after {
-                content: " \\21C5"; opacity: 0.35; font-style: normal;
-                display: inline-block; width: 1.4em; line-height: 1; text-align: center;
-            }
-            .mb-dp-dialog .mb-rg-wtable th[aria-sort="ascending"] button::after { content: " \\25B2"; opacity: 0.9; }
-            .mb-dp-dialog .mb-rg-wtable th[aria-sort="descending"] button::after { content: " \\25BC"; opacity: 0.9; }
-            .mb-dp-dialog .mb-rg-wtable tr.mb-rg-cur td { background: #f1e8d5; font-weight: 700; }
+            .mb-dp-dialog :is(.mb-rg-wtable, .mb-dg-vt) tr.mb-rg-cur td { background: #f1e8d5; font-weight: 700; }
             .mb-dp-dialog .mb-rg-wtable a { color: #6b3f12; }
             .mb-dp-dialog .mb-rg-num { text-align: right; font-variant-numeric: tabular-nums; }
             .mb-dp-dialog .mb-rg-thumb { width: 32px; padding-right: 0; }
@@ -27625,8 +27757,6 @@
             .mb-dp-dialog .mb-pop-coll-desc p { margin: 0 0 4px; }
             .mb-dp-dialog .mb-pop-coll-desc ul { margin: 0 0 6px; padding-left: 18px; }
             .mb-dp-dialog .mb-pop-coll-desc a { color: #6b3f12; }
-            .mb-dp-dialog .mb-pop-coll-pager { display: flex; align-items: center; gap: 8px; margin: 0 0 6px; font: 12px ui-monospace, Consolas, monospace; color: #7a6d5c; }
-            .mb-dp-dialog .mb-pop-coll-pager button[disabled] { opacity: 0.4; cursor: default; }
             /* Links to other sites (_extSource()): the site line with its
                status pill, the page's image beside its title. */
             #mb-dp-peek .mb-ext-card { width: 400px; max-width: 100%; }
@@ -40290,8 +40420,9 @@
         {
             type: 'dg-release',
             host: 'www.discogs.com',
-            // Not its history page (`dg-history`), which the path pattern takes too.
-            match: (path) => _dgPage(path)?.kind === 'release' && !_DG_HIST_PATH_RE.test(path),
+            // Not its history page (`dg-history`) nor its images (`dg-images`,
+            // `dg-image-history`), which the path pattern takes too.
+            match: (path) => _dgPage(path)?.kind === 'release' && !_DG_HIST_PATH_RE.test(path) && !_DG_IMG_PATH_RE.test(path),
             buttons: [ {
                 label: 'Show tracklist, credits and other versions', shortLabel: 'Tracklist, credits, versions',
                 get description() { return _dgCostPer('The release, then every other version of its master', 'versions', 'one request more for the release'); }
@@ -40404,6 +40535,48 @@
                 ]
             },
             tableMode: 'multi'
+        },
+        {
+            // A release's Images page (Phase 4, 2026-10-27): one table of every image, the
+            // same on both pages, read as the images reader's window reads
+            // them. See the "discogs.com: a release's images" block above
+            // _dgImgPageRequest().
+            type: 'dg-images',
+            host: 'www.discogs.com',
+            match: (path) => _dgImgPathIs(path, false),
+            buttons: [ { label: 'Show every image', shortLabel: 'Images',
+                description: 'Every image of this release with its type, uploader, date, size and file size: Discogs\' API and its image editor, two requests.' } ],
+            features: {
+                dgToTable: 'images',
+                pageRequest: () => _dgImgPageRequest(),
+                pageCountAsync: async () => 1,
+                integerColumns: [ { sourceColumn: '#', align: 'R' }, { sourceColumn: 'Size (KB)', align: 'R' } ],
+                columnExtractors: [
+                    { sourceColumn: 'Uploaded', extractor: 'dateTimeParts', syntheticColumns: ['Uploaded date', 'Uploaded time'] }
+                ]
+            },
+            tableMode: 'single'
+        },
+        {
+            // A release's image editor ("Image history") (Phase 4, 2026-10-27): one table of every image, the
+            // same on both pages, read as the images reader's window reads
+            // them. See the "discogs.com: a release's images" block above
+            // _dgImgPageRequest().
+            type: 'dg-image-history',
+            host: 'www.discogs.com',
+            match: (path) => _dgImgPathIs(path, true),
+            buttons: [ { label: 'Show every image', shortLabel: 'Images',
+                description: 'Every image of this release with its type, uploader, date, size and file size: Discogs\' API and its image editor, two requests.' } ],
+            features: {
+                dgToTable: 'images',
+                pageRequest: () => _dgImgPageRequest(),
+                pageCountAsync: async () => 1,
+                integerColumns: [ { sourceColumn: '#', align: 'R' }, { sourceColumn: 'Size (KB)', align: 'R' } ],
+                columnExtractors: [
+                    { sourceColumn: 'Uploaded', extractor: 'dateTimeParts', syntheticColumns: ['Uploaded date', 'Uploaded time'] }
+                ]
+            },
+            tableMode: 'single'
         },
         {
             // A user's page (2026-10-18): their submissions, contributions,
@@ -51550,13 +51723,6 @@
      */
     const _rgFacts = new Map();
 
-    /**
-     * The window's sort of the releases table, kept while the page is open:
-     * a `_RG_COLUMNS` key and 1 (ascending) or -1. No key: this release
-     * first, then by date and title, as on the card.
-     * @type {{key: string, dir: number}}
-     */
-    const _rgSort = { key: '', dir: 1 };
 
     /**
      * One Web Service request of the release-group popups (the releases, the
@@ -51657,6 +51823,49 @@
             i = j + n.length;
         }
         return out + _rgEsc(s.slice(i));
+    }
+
+    /**
+     * `_hlEsc()` for HTML that is safe already (a collection's cells, a
+     * credit: `_mbEditsHtml()`'s output): every case-insensitive match of
+     * the query in its TEXT nodes marked (`mark.mb-dg-hl`), tags and
+     * attributes untouched. Parsed in an inert `<template>`, so nothing in it
+     * loads. A match across two text nodes (a link's name and the text after
+     * it) narrows the rows but marks nothing, as `_hlEsc()` across fields
+     * (2026-10-27: a collection window's filter marked nothing, vzell).
+     *
+     * @param {string} html - Safe HTML.
+     * @param {?string} q - The filter's query as typed.
+     * @returns {string} HTML.
+     */
+    function _hlHtml(html, q) {
+        const n = String(q ?? '').trim().toLowerCase();
+        if (!n || !html) return html;
+        const tpl = document.createElement('template');
+        tpl.innerHTML = html;
+        const walker = document.createTreeWalker(tpl.content, NodeFilter.SHOW_TEXT);
+        const texts = [];
+        while (walker.nextNode()) texts.push(walker.currentNode);
+        texts.forEach((t) => {
+            const s = t.nodeValue;
+            const low = s.toLowerCase();
+            let i = low.indexOf(n);
+            if (i < 0) return;
+            const frag = document.createDocumentFragment();
+            let at = 0;
+            while (i !== -1) {
+                frag.append(s.slice(at, i));
+                const m = document.createElement('mark');
+                m.className = 'mb-dg-hl';
+                m.textContent = s.slice(i, i + n.length);
+                frag.append(m);
+                at = i + n.length;
+                i = low.indexOf(n, at);
+            }
+            frag.append(s.slice(at));
+            t.replaceWith(frag);
+        });
+        return tpl.innerHTML;
     }
 
     /**
@@ -51973,62 +52182,76 @@
     ];
 
     /**
-     * The window's table of every loaded release, sorted by `_rgSort` (empty
-     * values last either way), else in the card's order. Each title links its
-     * release (a new tab); a cover shows only where the release's own
-     * `cover-art-archive.front` says the archive has one, so the table
+     * The window's table of every loaded release as a List table (Phase 3b;
+     * the shared one, `_dpListTableHtml()`): at first this release first,
+     * then by date and title, as on the card; every column sortable through
+     * three states (empty values last either way), a filter, format chips.
+     * Each title links its release; a cover shows only where the release's
+     * own `cover-art-archive.front` says the archive has one, so the table
      * requests no missing image (org/iframe.org R2; the block is accurate,
-     * org/caa-artwork-requests.org F1). The images load lazily, as the table
-     * scrolls into view.
+     * org/caa-artwork-requests.org F1), and any other row has the empty box.
+     * The images load lazily, as the table scrolls into view.
      *
+     * @param {object} t - The window's target (the table's state is kept by it).
      * @param {{releases: Array<Object>}} st - `_rgReleases` state.
      * @param {{releaseGid: string}} info
      * @returns {string}
      */
-    function _rgWindowTableHtml(st, info) {
-        let rels = _rgSortedReleases(st.releases, info.releaseGid);
-        const col = _RG_COLUMNS.find(c => c.key === _rgSort.key);
-        if (col) {
-            rels = rels.slice().sort((a, b) => {
-                const x = col.val(a);
-                const y = col.val(b);
-                if (x === '' || y === '') return (x === '') - (y === '');
-                return (col.num ? x - y : String(x).localeCompare(String(y), undefined, { numeric: true })) * _rgSort.dir;
-            });
-        }
-        const head = '<th></th>' + _RG_COLUMNS.map(c => {
-            const attrs = _dpSortAttrs({ col: _rgSort.key, dir: _rgSort.dir }, c.key, 'this release first, then by date');
-            const sort = attrs.match(/aria-sort="(\w+)"/)[1];
-            return `<th aria-sort="${sort}"><button type="button" data-mb-rg-sort="${c.key}"${attrs.replace(/ aria-sort="\w+"/, '')}>${_rgEsc(c.label)}</button></th>`;
-        }).join('');
-        const rows = rels.map(r => {
-            const cur = r.id === info.releaseGid;
-            const front = r['cover-art-archive'] && r['cover-art-archive'].front;
-            const id = _rgEsc(r.id);
-            const cells = _RG_COLUMNS.map(c => {
-                if (c.key === 'title') {
-                    return `<td>${cur ? '▸ ' : ''}<a href="/release/${id}" target="_blank" rel="noopener">${_rgEsc(r.title)}</a>` +
-                        `${r.disambiguation ? ` <span class="mb-rg-dim">(${_rgEsc(r.disambiguation)})</span>` : ''}</td>`;
-                }
-                const v = c.key === 'format' ? _rgFormatOf(r) : c.val(r);
-                return `<td${c.num ? ' class="mb-rg-num"' : ''}>${_rgEsc(v === '' ? '—' : v)}</td>`;
-            }).join('');
-            return `<tr${cur ? ' class="mb-rg-cur"' : ''}><td class="mb-rg-thumb">` +
-                (front ? _mbPopCoverThumbHtml('release', r.id, r.title) : '') +
-                `</td>${cells}</tr>`;
-        }).join('');
-        return `<div class="mb-rg-wtable-wrap"><table class="mb-rg-wtable"><thead><tr>${head}</tr></thead><tbody>${rows}</tbody></table></div>`;
+    function _rgWindowTableHtml(t, st, info) {
+        const cur = r => r.id === info.releaseGid;
+        const cols = _RG_COLUMNS.map((c) => {
+            if (c.key === 'title') {
+                return {
+                    key: c.key, label: c.label, val: c.val,
+                    html: (r, q) => `${cur(r) ? '▸ ' : ''}<a href="/release/${_rgEsc(r.id)}" target="_blank" rel="noopener">${_hlEsc(r.title, q)}</a>` +
+                        `${r.disambiguation ? ` <span class="mb-rg-dim">(${_hlEsc(r.disambiguation, q)})</span>` : ''}`,
+                };
+            }
+            return {
+                key: c.key, label: c.label, val: c.val, num: c.num, cls: c.num ? 'mb-rg-num' : '',
+                html: (r, q) => {
+                    const v = c.key === 'format' ? _rgFormatOf(r) : c.val(r);
+                    return v === '' ? '—' : _hlEsc(v, q);
+                },
+            };
+        });
+        return _dpListTableHtml(t, 'rg-releases', cols, _rgSortedReleases(st.releases, info.releaseGid), {
+            initial: 'this release first, then by date', placeholder: 'Filter loaded releases: title, format, country, label, cat#, barcode',
+            search: r => [r.title, r.disambiguation, ..._RG_COLUMNS.slice(1).map(c => (c.key === 'format' ? _rgFormatOf(r) : c.val(r)))].join(' '),
+            facet: r => _rgFormatOf(r), chipLabel: 'Format',
+            thumb: r => (r['cover-art-archive'] && r['cover-art-archive'].front ? _mbPopCoverThumbHtml('release', r.id, r.title, 'mb-dg-vthumb') : ''),
+            rowAttrs: r => (cur(r) ? ' class="mb-rg-cur"' : ''), nomatch: 'No loaded release matches.',
+        });
     }
 
     /**
-     * The facts column of the window: type, first release, artist, rating,
-     * genres, the external links and the annotation — or their loading or
-     * failure line.
+     * Genres as links to their tag pages (`/tag/<name>`, which the window
+     * previews and opens in place: the `tag` page kind; Ctrl-click the
+     * reader's own tag), one per line, most votes first, as the window's
+     * Facts show them (org/MB-POH-sync-withDiscogs.org, Phase 3a: a
+     * release group's; 3c: a label's).
      *
+     * @param {?Array<{name: string}>} genres - `genres` of a lookup.
+     * @returns {string} HTML; empty for none.
+     */
+    function _mbPopGenreLinksHtml(genres) {
+        // Most votes first, as `_mbPopGenres()` (a stable sort keeps the
+        // Web Service's order among equals).
+        return (genres || []).filter(g => g && g.name).slice().sort((x, y) => (y.count || 0) - (x.count || 0))
+            .map(g => `<a href="/tag/${encodeURIComponent(g.name)}" target="_blank" rel="noopener">${_rgEsc(g.name)}</a>`).join('<br>');
+    }
+
+    /**
+     * The facts column of the window: type, first release, artist (each
+     * credited artist a link, opening in the window), rating, genres (one
+     * per line, each its tag page: `_mbPopGenreLinksHtml()`), the external
+     * links and the annotation — or their loading or failure line.
+     *
+     * @param {object} t - The window's target (its links table's state).
      * @param {{status: string, data: ?Object, detail: string}} f - `_rgFacts` state.
      * @returns {string}
      */
-    function _rgFactsHtml(f) {
+    function _rgFactsHtml(t, f) {
         if (f.status === 'failed') {
             return `<h4>Facts</h4><div class="mb-dp-warn">Could not load the release group (${_rgEsc(f.detail)}).</div>` +
                 '<p><button type="button" class="mb-dp-retry">⟳ Try again</button></p>';
@@ -52037,16 +52260,15 @@
             return '<h4>Facts</h4><div class="mb-dp-xsub"><span class="mb-dp-spin">◌</span> Loading the release group…</div>';
         }
         const d = f.data;
-        const fields = [['Type', [d['primary-type'], ...(d['secondary-types'] || [])].filter(Boolean).join(' + ') || '—']];
-        if (d['first-release-date']) fields.push(['First release', d['first-release-date']]);
-        const credit = (d['artist-credit'] || []).map(c => `${c.name || ''}${c.joinphrase || ''}`).join('');
-        if (credit) fields.push(['Artist', credit]);
         const rt = d.rating || {};
         const votes = rt['votes-count'] || 0;
-        fields.push(['Rating', votes ? `${rt.value} of 5 · ${votes} vote${votes === 1 ? '' : 's'}` : 'no votes']);
-        const genres = (d.genres || []).map(g => g.name).filter(Boolean);
-        if (genres.length) fields.push(['Genres', genres.join(', ')]);
-        let html = '<h4>Facts</h4>' + _dpFieldsHtml(fields) + _mbPopUrlLinksHtml(d.relations);
+        let html = '<h4>Facts</h4>' + _mbPopKvHtml([
+            ['Type', _rgEsc([d['primary-type'], ...(d['secondary-types'] || [])].filter(Boolean).join(' + ') || '—')],
+            ['First release', _rgEsc(d['first-release-date'] || '')],
+            ['Artist', _mbPopCreditHtml(d['artist-credit'])],
+            ['Rating', _rgEsc(votes ? `${rt.value} of 5 · ${votes} vote${votes === 1 ? '' : 's'}` : 'no votes')],
+            ['Genres', _mbPopGenreLinksHtml(d.genres)],
+        ]) + _mbPopUrlLinksTableHtml(t, 'links', d.relations);
         if (d.annotation) html += `<h4>Annotation</h4><div class="mb-dp-section">${_rgEsc(d.annotation)}</div>`;
         return html;
     }
@@ -52056,12 +52278,13 @@
      * the facts on the left; every release, sortable, on the right, with the
      * load's state above the table.
      *
+     * @param {object} t - The window's target: its releases table keeps its state by it.
      * @param {{gid: string, name: string, type: string, artist: string, releaseGid: string}} info
      * @param {?number} n - Releases the group has, as `_rgCardHtml()`.
      * @param {string} [lead] - As `_rgCardHtml()`.
      * @returns {string}
      */
-    function _rgWindowHtml(info, n, lead = '') {
+    function _rgWindowHtml(t, info, n, lead = '') {
         const st = _rgReleases.get(info.gid) || { status: 'loading', releases: [], total: null };
         const f = _rgFacts.get(info.gid) || { status: 'loading', data: null, detail: '' };
         const count = st.total ?? n;
@@ -52075,7 +52298,7 @@
             `<a href="https://coverartarchive.org/release-group/${gid}/front" target="_blank" rel="noopener" data-mbtt-fn="sb-cover" ` +
             `data-mb-sb-cover="/release-group/${gid}" data-mb-sb-cover-title="${_rgEsc(info.name)}">` +
             `<img class="mb-dp-xcover" src="https://coverartarchive.org/release-group/${gid}/front-250" alt=""></a>` +
-            _rgFactsHtml(f);
+            _rgFactsHtml(t, f);
         const loaded = st.releases.length;
         const total = st.total;
         let state = '';
@@ -52092,7 +52315,7 @@
             state = `<div class="mb-dp-warn">Loaded ${loaded} of ${total}; the rest could not be loaded (${_rgEsc(st.detail)}).</div>` +
                 '<p><button type="button" class="mb-dp-retry">⟳ Try again</button></p>';
         }
-        const right = `<h4>Releases${count != null ? ` · ${count}` : ''}</h4>${state}` + (loaded ? _rgWindowTableHtml(st, info) : '');
+        const right = `<h4>Releases${count != null ? ` · ${count}` : ''}</h4>${state}` + (loaded ? _rgWindowTableHtml(t, st, info) : '');
         const age = st.at ? _dpAgeText({ cached: st.cached, at: st.at }) : '';
         return `<div class="mb-dp-x mb-rg-x"><div class="mb-dp-col">${left}</div><div class="mb-dp-col">${right}</div></div>` +
             `<div class="mb-dp-xfoot">${_rgEsc(age)}${age ? ' · ' : ''}click a header to sort · ⟳ asks MusicBrainz again</div>`;
@@ -52106,6 +52329,7 @@
      * for a failure, which only ⟳ or "Try again" retries: a repaint that
      * retried would loop.
      *
+     * @param {object} t - The window's target (`_rgWindowHtml()`).
      * @param {Object} info - `_releaseGroupInfo()`, or a found event's group.
      * @param {number} n
      * @param {string} lead
@@ -52114,29 +52338,12 @@
      * @param {function(): void} repaint
      * @returns {string}
      */
-    function _rgWindowFor(info, n, lead, start, force, repaint) {
+    function _rgWindowFor(t, info, n, lead, start, force, repaint) {
         const st = _rgReleases.get(info.gid);
         const firstPageOnly = st && st.status === 'done' && !st.complete && !st.capped && !st.detail;
         if (start || !st || firstPageOnly) _rgReleasesLoad(info, { all: true, force: start && force, repaint });
         if (start || !_rgFacts.get(info.gid)) _rgFactsLoad(info.gid, { force: start && force, repaint });
-        return _rgWindowHtml(info, n, lead);
-    }
-
-    /**
-     * A click in the window's Extracted view of a release group: a header
-     * sorts by its column, a second click on it reverses the order.
-     *
-     * @param {MouseEvent} e
-     * @returns {void}
-     */
-    function _rgOnAreaClick(e) {
-        const b = e.target.closest ? e.target.closest('button[data-mb-rg-sort]') : null;
-        if (!b) return;
-        const key = b.dataset.mbRgSort;
-        const next = _dpSortNext({ col: _rgSort.key, dir: _rgSort.dir }, key);
-        _rgSort.key = next.col;
-        _rgSort.dir = next.dir || 1;
-        _dpRenderDialog(false);
+        return _rgWindowHtml(t, info, n, lead);
     }
 
     /**
@@ -52426,17 +52633,19 @@
      * closest titles as links; else the search's state. With `start` (a pin,
      * a step, ⟳) it starts the search, `force` dropping a kept answer first.
      *
-     * @param {HTMLTableCellElement} td
+     * @param {object} t - The "#" cell's target (`t.el` the cell); the
+     *   release group's table keeps its state by it (`_dpTblUi()`).
      * @param {boolean} start
      * @param {boolean} force
      * @param {function(): void} repaint
      * @returns {string}
      */
-    function _eventRgWindowHtml(td, start, force, repaint) {
+    function _eventRgWindowHtml(t, start, force, repaint) {
+        const td = t.el;
         const row = td.parentElement;
         if (row.dataset.mbMainEvent === '1') {
             const info = _releaseGroupInfo();
-            if (info) return _rgWindowFor(info, _releaseGroupVersionCount(), '<span class="mb-tt-pill">main event</span>', start, force, repaint);
+            if (info) return _rgWindowFor(t, info, _releaseGroupVersionCount(), '<span class="mb-tt-pill">main event</span>', start, force, repaint);
         }
         const text = _eventSearchText(row);
         const chip = _eventChipHtml(td);
@@ -52448,7 +52657,7 @@
             _eventRgLookup(text, repaint);
         }
         const st = _eventRgSearches.get(text) || { status: 'loading', rg: null, hints: [], query: '', detail: '' };
-        if (st.status === 'done' && st.rg) return _rgWindowFor(st.rg, st.n, chip, start, force, repaint);
+        if (st.status === 'done' && st.rg) return _rgWindowFor(t, st.rg, st.n, chip, start, force, repaint);
         if (st.status === 'loading') {
             return one('<div class="mb-dp-loading"><span class="mb-dp-spin">◌</span> Searching for a release group named like this event…</div>');
         }
@@ -52585,8 +52794,7 @@
                 if (start) _rgReleasesLoad(t.info, { repaint });
                 return _rgCardHtml(t.info, t.n);
             },
-            extracted: (t, start, force, repaint) => _rgWindowFor(t.info, t.n, '', start, force, repaint),
-            onAreaClick: _rgOnAreaClick,
+            extracted: (t, start, force, repaint) => _rgWindowFor(t, t.info, t.n, '', start, force, repaint),
             steps: (t) => [t.el],
             stepId: () => 'mb-release-group',
         };
@@ -52677,8 +52885,7 @@
             },
             card: (t, start, repaint) => _eventRgCardHtml(t.el, start, repaint),
             stack: (t, start, repaint) => _eventRgEventStack(t.el, start, repaint),
-            extracted: (t, start, force, repaint) => _eventRgWindowHtml(t.el, start, force, repaint),
-            onAreaClick: _rgOnAreaClick,
+            extracted: (t, start, force, repaint) => _eventRgWindowHtml(t, start, force, repaint),
             steps: () => Array.from(document.querySelectorAll(_EVENT_RG_CELL_SEL)).filter(td => td.getClientRects().length > 0),
             stepId: (td) => td.parentElement.dataset.mbRowIdx || `${td.parentElement.dataset.mbEventKey}|${td.textContent}`,
         };
@@ -52712,8 +52919,11 @@
      * (`_MB_POP_PATH_RE` knows `genre`, 2026-10-26).
      * 5: an editing history's record carries `refine`, the page's own
      * "Refine this search" query (`_mbEditsRefineOf()`, 2026-10-26).
+     * 6: a collection's rows carry `texts` (each cell as text) and its
+     * record `total`, for its List table and paged loader
+     * (org/MB-POH-sync-withDiscogs.org Phase 3c, 2026-10-27).
      */
-    const _MB_POP_PAGE_VERSION = 5;
+    const _MB_POP_PAGE_VERSION = 6;
 
     /**
      * Each entity card's Web Service answer, by cache key
@@ -52899,23 +53109,43 @@
      * name percent-encoded as in the link), and a tag (`/tag/<name>`, the
      * same encoding, 2026-10-19: the Web Service has no lookup of a tag by
      * name).
-     * Their tabs (`/edit/<n>/data`, `/tag/<name>/artist`) are not previewed;
+     * Their tabs (`/edit/<n>/data`) are not previewed — except a tag's page
+     * of one kind (`/tag/<name>/artist`, group 7, since 2026-10-27, Phase
+     * 3c): the tag's own card and window, the window on that kind's list;
      * an editor's own tag (`/user/<name>/tag/<name>`) is `_MB_POP_USERTAG_RE`'s
      * (since 2026-10-21), an editor's edits (`/user/<name>/edits`) an
      * editing history (`_MB_POP_EDITS_RE`).
      * @type {RegExp}
      */
-    const _MB_POP_PAGE_RE = /^\/(?:(edit)\/(\d+)|(user)\/([^/]+)|(tag)\/([^/]+))\/?$/;
+    const _MB_POP_PAGE_RE = /^\/(?:(edit)\/(\d+)|(user)\/([^/]+)|(tag)\/([^/]+)(?:\/(area|artist|event|instrument|label|place|release-group|release|recording|series|work))?)\/?$/;
 
     /**
      * An editor's own tag page (`/user/<editor>/tag/<tag>`, 2026-10-21), the
      * links of their `/user/<editor>/tags`: kind `usertag`, id
      * `<editor>/<tag>`, both as the link spells them (percent-encoded). Its
-     * kind pages (`…/tag/<tag>/artist`) are not previewed, nor its downvotes
-     * (`?show_downvoted=1`): another list than the page the card reads.
+     * kind pages (`…/tag/<tag>/artist`, group 3) are the same card and
+     * window, the window on that kind's list (Phase 3c, 2026-10-27); its
+     * downvotes (`?show_downvoted=1`) are not previewed: another list than
+     * the page the card reads.
      * @type {RegExp}
      */
-    const _MB_POP_USERTAG_RE = /^\/user\/([^/]+)\/tag\/([^/]+)\/?$/;
+    const _MB_POP_USERTAG_RE = /^\/user\/([^/]+)\/tag\/([^/]+)(?:\/(area|artist|event|instrument|label|place|release-group|release|recording|series|work))?\/?$/;
+
+    /**
+     * A CD stub (`/cdstub/<disc ID>`, 2026-10-27, Phase 3c… 3f of
+     * org/MB-POH-sync-withDiscogs.org): kind `cdstub`, id the disc ID as the
+     * link spells it. `/cdstub/browse` is the list of them, not one.
+     * @type {RegExp}
+     */
+    const _MB_POP_CDSTUB_RE = /^\/cdstub\/(?!browse(?:\/|$))([A-Za-z0-9._-]+)\/?$/;
+
+    /**
+     * A documentation page (`/doc/<Page>`, Phase 3f): kind `doc`, id the
+     * page's path as the link spells it (`Style/Titles`, `Release_Group`);
+     * an anchor is not part of it.
+     * @type {RegExp}
+     */
+    const _MB_POP_DOC_RE = /^\/doc\/(.+?)\/?$/;
 
     /** How many of an editor's tagged entities the `usertag` card lists. */
     const _MB_POP_USERTAG_CARD_ROWS = 6;
@@ -53030,15 +53260,18 @@
      * (`_MB_POP_ANNOT_RE`), an editor's subscribers, tags or
      * ratings or the reader's applications (`_MB_POP_ACCOUNT_RE`; downvoted
      * tags are not previewed), an entity's subscribers or collections
-     * (`_MB_POP_ENTITY_LIST_RE`), an edit, an editor or a tag
+     * (`_MB_POP_ENTITY_LIST_RE`), a CD stub (`_MB_POP_CDSTUB_RE`), a
+     * documentation page (`_MB_POP_DOC_RE`) or search (`/search?…&type=doc`),
+     * an edit, an editor or a tag
      * (`_MB_POP_PAGE_RE`); `seg` is the path's own first segment (a disc
      * ID's page is /cdtoc/, its kind `discid`), '' when the kind's own
-     * `path()` names the page (an editing history). `null` for any other
-     * path.
+     * `path()` names the page (an editing history); `list`, a tag's or an
+     * editor's tag's kind page (`release`), which list its window opens on.
+     * `null` for any other path.
      *
      * @param {string} pathname
      * @param {string} [search] - The URL's query, for an edit search.
-     * @returns {?{seg: string, type: string, id: string}}
+     * @returns {?{seg: string, type: string, id: string, list?: string}}
      */
     function _mbPopParsePath(pathname, search = '') {
         const m = _MB_POP_PATH_RE.exec(pathname);
@@ -53070,10 +53303,21 @@
             const ok = l[3] === 'subscribers' ? _MB_POP_SUBSCRIBABLE.has(l[1]) : l[1] !== 'collection';
             return ok ? { seg: '', type: l[3], id: `${l[1]}/${l[2].toLowerCase()}` } : null;
         }
+        const stub = _MB_POP_CDSTUB_RE.exec(pathname);
+        if (stub) return { seg: 'cdstub', type: 'cdstub', id: stub[1] };
+        const docp = _MB_POP_DOC_RE.exec(pathname);
+        if (docp) return { seg: 'doc', type: 'doc', id: docp[1] };
+        // A documentation search (Phase 3f): the site's page is Google's
+        // custom search, so its card and window ask the wiki's search API.
+        if (/^\/search\/?$/.test(pathname)) {
+            const sp = new URLSearchParams(String(search || '').replace(/^\?/, ''));
+            const dq = sp.get('type') === 'doc' ? (sp.get('query') || '').trim() : '';
+            if (dq) return { seg: '', type: 'docsearch', id: dq };
+        }
         const u = _MB_POP_USERTAG_RE.exec(pathname);
-        if (u) return /(?:^|[?&])show_downvoted=1(?:&|$)/.test(search) ? null : { seg: '', type: 'usertag', id: `${u[1]}/${u[2]}` };
+        if (u) return /(?:^|[?&])show_downvoted=1(?:&|$)/.test(search) ? null : { seg: '', type: 'usertag', id: `${u[1]}/${u[2]}`, list: u[3] || '' };
         const p = _MB_POP_PAGE_RE.exec(pathname);
-        if (p) return { seg: p[1] || p[3] || p[5], type: p[1] || p[3] || p[5], id: p[2] || p[4] || p[6] };
+        if (p) return { seg: p[1] || p[3] || p[5], type: p[1] || p[3] || p[5], id: p[2] || p[4] || p[6], list: p[7] || '' };
         return null;
     }
 
@@ -53171,6 +53415,7 @@
         let seg = '';
         let type = '';
         let id = '';
+        let list = '';
         const pop = a.getAttribute('data-mb-pop');
         // A barcode cell (MusicBrainz's own td.barcode-cell, plain text):
         // its digits, as the cell writes them (the search index ignores a
@@ -53199,7 +53444,7 @@
             return null;
         } else {
             const pp = _mbPopParsePath(a.pathname, a.search);
-            if (pp) ({ seg, type, id } = pp);
+            if (pp) ({ seg, type, id, list = '' } = pp);
         }
         // Own keys only: a stamped kind is a string from an attribute.
         const k = type && id && Object.prototype.hasOwnProperty.call(_MB_KINDS, type) ? _MB_KINDS[type] : null;
@@ -53223,6 +53468,8 @@
             name: a.getAttribute('data-mb-pop-name') || (relIcon ? _relLinkName(a) : '') ||
                 (k.nameOf ? k.nameOf(a) : '') || a.textContent.trim(),
             col: table ? _resolveColHeaderName(table, td.cellIndex) : '',
+            // A tag's kind page: the list its window opens on (Phase 3c).
+            list,
         };
     }
 
@@ -53308,6 +53555,63 @@
         // still rests on the link.
         return () => _dpPeekShowing(t.el) || (!!_dpDialog.target && _dpDialog.target.key === t.key && _dpDialogShowing(_dpDialog.target)) ||
             (!!t.readAhead && t.el.isConnected && t.el.matches(':hover'));
+    }
+
+    /**
+     * The logged-in editor's name as their profile link spells it
+     * (percent-encoded), from MusicBrainz's header: its account menu links
+     * `/user/<name>` first ("Profile"; debug/A-R-3rd-works.html,
+     * `li.account`); '' when nobody is logged in.
+     *
+     * @returns {string}
+     */
+    function _mbMyEditorName() {
+        const a = document.querySelector('.header li.account a[href^="/user/"]');
+        const m = a && /^\/user\/([^/?#]+)/.exec(a.getAttribute('href'));
+        return m ? m[1] : '';
+    }
+
+    /**
+     * Ctrl/⌘-click on a tag link in the window (a genre in the Facts, a
+     * tag's own link): the logged-in editor's own tag of that name
+     * (`/user/<me>/tag/<name>`, the same kind page when the link names one)
+     * in the window, as a plain click shows the tag (decided 2026-10-26,
+     * org/MB-POH-sync-withDiscogs.org). Logged out, or with Shift, Alt or
+     * a middle click, the link keeps its new tab.
+     *
+     * @param {MouseEvent} e - A click in the window's scroll area.
+     * @param {HTMLAnchorElement} a - The link.
+     * @returns {?object} The editor's tag's target, or null.
+     */
+    function _mbOwnTagTarget(e, a) {
+        if (e.button !== 0 || !(e.ctrlKey || e.metaKey) || e.shiftKey || e.altKey) return null;
+        if (a.origin !== window.location.origin) return null;
+        const tag = _mbTagOfLink(a);
+        const me = tag ? _mbMyEditorName() : '';
+        if (!me) return null;
+        const own = document.createElement('a');
+        own.href = `/user/${me}/tag/${tag.id}${tag.list ? `/${tag.list}` : ''}`;
+        own.textContent = a.textContent;
+        return _mbPopTarget(own, { inWindow: true });
+    }
+
+    /**
+     * The tag a link stands for, as its path spells it: a tag link's own
+     * (`/tag/acoustic%20rock`, with its kind page's `list`), or a GENRE
+     * link's (`/genre/<MBID>`: the genre's name, its text, encoded as
+     * MusicBrainz encodes a tag's path) — the decision of 2026-10-26 covers
+     * both, and the tag window's own facts link its genre (vzell
+     * 2026-10-27: Ctrl-click on "Genre acoustic rock" opened a new tab).
+     * null for any other link.
+     *
+     * @param {HTMLAnchorElement} a
+     * @returns {?{id: string, list: string}}
+     */
+    function _mbTagOfLink(a) {
+        const pp = _mbPopParsePath(a.pathname, a.search);
+        if (pp && pp.type === 'tag') return { id: pp.id, list: pp.list || '' };
+        const name = pp && pp.type === 'genre' ? a.textContent.replace(/\s+/g, ' ').trim() : '';
+        return name ? { id: encodeURIComponent(name), list: '' } : null;
     }
 
     /**
@@ -53516,6 +53820,58 @@
     }
 
     /**
+     * A release window's tracklist (org/MB-POH-sync-withDiscogs.org Phase 3e,
+     * decided 2026-10-26): one Discogs-style table per medium under a header
+     * that folds it ("CD 2 · Title · 8 tracks · 52:09"), and ONE filter above
+     * all of them (title, artist, position; its matches marked; each header
+     * says how many of its tracks match). Pos · Title (its recording, which
+     * opens in the window) · Artist — a column only in a medium where some
+     * track's credit is not the release's, and empty where it is — · Length.
+     * State in `_dpTblUi(t, 'tracks')` (`q`, `folded`).
+     *
+     * @param {object} t - The window's target.
+     * @param {Array<Object>} media - `media` with `tracks`.
+     * @param {string} relCredit - The release's artist credit as text.
+     * @returns {string}
+     */
+    function _mbPopTracklistHtml(t, media, relCredit) {
+        const ui = _dpTblUi(t, 'tracks', { folded: [] });
+        const q = ui.q.trim();
+        const credit = tr => _mbPopCreditText(tr['artist-credit']);
+        const ms = tr => {
+            const v = tr.length ?? (tr.recording || {}).length;
+            return typeof v === 'number' ? v : null;
+        };
+        const blocks = media.map((m, i) => {
+            const tracks = m.tracks || [];
+            const total = tracks.reduce((sum, tr) => sum + (ms(tr) || 0), 0);
+            const shown = q ? tracks.filter(tr => [tr.number || tr.position, tr.title, credit(tr)].join(' ').toLowerCase().includes(q.toLowerCase())) : tracks;
+            const artist = tracks.some(tr => credit(tr) && credit(tr) !== relCredit);
+            const open = !(ui.folded || []).includes(String(i));
+            const name = [`${m.format || 'Medium'} ${m.position || i + 1}`.trim(), m.title,
+                `${tracks.length} track${tracks.length === 1 ? '' : 's'}`, total ? _msFormatSeconds(total) : '',
+                q ? `${shown.length} match${shown.length === 1 ? '' : 'es'}` : ''].filter(Boolean).join(' · ');
+            const head = `<button type="button" class="mb-pop-medhead" data-mb-tbl-act="fold" data-mb-tbl-v="${i}" aria-expanded="${open}">` +
+                `<span class="mb-pop-fold" aria-hidden="true">${open ? '▾' : '▸'}</span>${_rgEsc(name)}</button>`;
+            if (!open) return `<div class="mb-pop-medium">${head}</div>`;
+            const rows = shown.map((tr) => {
+                const rec = tr.recording || {};
+                const title = rec.id ? `<a href="/recording/${_rgEsc(rec.id)}" target="_blank" rel="noopener">${_hlEsc(tr.title, q)}</a>` : _hlEsc(tr.title, q);
+                const by = credit(tr) && credit(tr) !== relCredit ? _hlHtml(_mbPopCreditHtml(tr['artist-credit']), q) : '';
+                return `<tr><td class="mb-rg-num">${_hlEsc(tr.number || tr.position || '·', q)}</td><td>${title}</td>` +
+                    `${artist ? `<td>${by}</td>` : ''}<td class="mb-rg-num">${ms(tr) != null ? _msFormatSeconds(ms(tr)) : '—'}</td></tr>`;
+            }).join('');
+            const table = shown.length ? '<div class="mb-dg-vwrap"><table class="mb-dg-vt mb-dg-lt mb-pop-medtable"><thead><tr>' +
+                '<th class="mb-dg-nosort">#</th><th class="mb-dg-nosort">Title</th>' + (artist ? '<th class="mb-dg-nosort">Artist</th>' : '') +
+                `<th class="mb-dg-nosort">Length</th></tr></thead><tbody>${rows}</tbody></table></div>`
+                : '<div class="mb-dg-state">No track matches.</div>';
+            return `<div class="mb-pop-medium">${head}${table}</div>`;
+        }).join('');
+        return `<div class="mb-dp-tbl" data-mb-tbl="tracks"><div class="mb-dg-vtools">` +
+            `${_dpTblFilterHtml('tracks', ui, 'Filter tracks: title, artist, position')}</div>${blocks}</div>`;
+    }
+
+    /**
      * Starts one of a window's extra requests (a second lookup, a count,
      * a browse) through `_mbWsLoad()`, from `pin()`: always on ⟳
      * (`again`), else unless it already failed. `pin()` runs from repaints
@@ -53553,13 +53909,15 @@
 
     /**
      * Each paged list of the MusicBrainz windows, by key: its rows so far
-     * (`cachedRows` of them from IndexedDB), the total the Web Service
-     * counts, whether a run is under way and how many pages it still asks
-     * (`left`), whether Stop was pressed, and the last failure.
+     * (`cachedRows` of them from IndexedDB), the pages they came on
+     * (`pages`, `cachedPages`), the total the source counts, whether a run
+     * is under way and how many pages it still asks (`left`), whether Stop
+     * was pressed, the last failure, and the record a list was seeded from
+     * (`seedOf`, `_mbPagedSeed()`).
      *
      * @type {Map<string, {spec: Object, rows: Array<Object>, total: ?number, complete: boolean, cachedRows: number,
-     *   at: number, running: boolean, left: number, stopped: boolean, detail: string,
-     *   listeners: Set<function(): void>, wanted: function(): boolean}>}
+     *   pages: number, cachedPages: number, at: number, running: boolean, left: number, stopped: boolean, detail: string,
+     *   seedOf: ?Object, listeners: Set<function(): void>, wanted: function(): boolean}>}
      */
     const _mbPaged = new Map();
 
@@ -53576,17 +53934,54 @@
      * @param {string} field - The answer's list: `recordings`.
      * @param {string} countField - Its count: `recording-count`.
      * @param {function(Object): Object} row
-     * @returns {{ask: function(number, function(): boolean): Promise<{ok?: boolean, rows?: Array<Object>,
-     *   total?: ?number, detail?: string, skipped?: boolean}>}}
+     * @returns {{perPage: number, ask: function(number, function(): boolean, number): Promise<{ok?: boolean,
+     *   rows?: Array<Object>, total?: ?number, done?: boolean, detail?: string, skipped?: boolean}>}} `ask(offset,
+     *   wanted, page)`: the rows from `offset` (a Web Service browse) or page
+     *   `page` from 1 (a site page, `_mbPagedHtml()`); `done`, the last page.
      */
     function _mbPagedWs(entity, query, field, countField, row) {
         return {
+            perPage: _MB_PAGED_LIMIT,
             async ask(offset, wanted) {
                 const res = await _rgWsGet(`/ws/2/${entity}?${query}&limit=${_MB_PAGED_LIMIT}&offset=${offset}&fmt=json`, '_mbPagedList', wanted);
                 if (res.skipped) return { skipped: true };
                 const rows = res.ok && res.data ? res.data[field] : null;
                 if (!Array.isArray(rows)) return { ok: false, detail: res.detail || `HTTP ${res.status}` };
                 return { ok: true, rows: rows.map(row), total: typeof res.data[countField] === 'number' ? res.data[countField] : null };
+            },
+        };
+    }
+
+    /**
+     * A paged list's source on the site itself (Phase 3c: a tag's kind page
+     * `/tag/<t>/<kind>?page=N`, a collection's `?page=N`): the Web Service
+     * has no browse by tag and no list of a collection's entities in their
+     * page's form, so page N is read through `_dpGetRaw()` and the one
+     * MusicBrainz rate gate (`_MB_LIVE`), as `_mbPageLoad()` reads a card's
+     * page, and `parse(doc)` makes its record. A page `parse()` does not
+     * recognise (a login page, the browser check) is a failure, and is
+     * forgotten by the raw memory so a retry fetches it again. 100 rows a
+     * page (probe 2026-10-27, scripts/probe-mb-tag-kind-pages.py: 15,606
+     * releases on 157 pages; a collection: 100).
+     *
+     * @param {function(number): string} urlOf - Page N's path.
+     * @param {function(Document): ?{rows: Array<Object>, total: number, page: number, pages: number}} parse
+     * @returns {{perPage: number, ask: function(number, function(): boolean, number): Promise<Object>}} As `_mbPagedWs()`.
+     */
+    function _mbPagedHtml(urlOf, parse) {
+        return {
+            perPage: 100,
+            async ask(offset, wanted, page) {
+                const url = new URL(urlOf(page), window.location.origin).href;
+                const raw = await _dpGetRaw(url, _MB_LIVE, { wanted });
+                if (raw.outcome === 'skipped') return { skipped: true };
+                if (raw.outcome !== 'ok') return { ok: false, detail: raw.detail || 'The request failed.' };
+                const rec = parse(new DOMParser().parseFromString(raw.html, 'text/html'));
+                if (!rec) {
+                    _dpRawMem.delete(url);
+                    return { ok: false, detail: _mbIsBrowserCheck(raw.html) ? _MB_BROWSER_CHECK_NOTE : 'not the page expected' };
+                }
+                return { ok: true, rows: rec.rows, total: rec.total, done: rec.page >= rec.pages };
             },
         };
     }
@@ -53612,23 +54007,67 @@
         const cur = _mbPaged.get(key);
         if (cur) cur.listeners.add(repaint);
         if (cur && (cur.running || (!again && (cur.rows.length || cur.detail)))) return;
-        const wanted = _mbPopWanted(t);
-        const st = {
-            spec, rows: [], total: null, complete: false, cachedRows: 0, at: 0, running: false, left: 0, stopped: false,
-            detail: '', listeners: cur ? cur.listeners : new Set([repaint]), wanted: () => !st.stopped && wanted(),
-        };
+        const st = _mbPagedNew(t, spec, cur ? cur.listeners : new Set([repaint]));
         _mbPaged.set(key, st);
         (async () => {
             if (!again) {
                 const rec = await _rgIdbGet(`list:${key}`, _MB_PAGED_IDB_VERSION);
                 if (rec && Array.isArray(rec.data.rows) && rec.data.rows.length) {
-                    Object.assign(st, { rows: rec.data.rows, total: rec.data.total, complete: !!rec.data.complete, cachedRows: rec.data.rows.length, at: rec.at });
+                    // A record of before page counts: one page per `perPage` rows.
+                    const pages = rec.data.pages || Math.ceil(rec.data.rows.length / (spec.perPage || _MB_PAGED_LIMIT));
+                    Object.assign(st, {
+                        rows: rec.data.rows, total: rec.data.total, complete: !!rec.data.complete, cachedRows: rec.data.rows.length,
+                        pages, cachedPages: pages, at: rec.at,
+                    });
                     _mbPagedNotify(st);
                     return;
                 }
             }
             _mbPagedRun(key, 1);
         })();
+    }
+
+    /**
+     * A new paged list's state, nothing loaded.
+     *
+     * @param {object} t - The window's target (its `wanted()`).
+     * @param {Object} spec - `_mbPagedWs()` or `_mbPagedHtml()`.
+     * @param {Set<function(): void>} listeners
+     * @returns {Object} `_mbPaged` state.
+     */
+    function _mbPagedNew(t, spec, listeners) {
+        const wanted = _mbPopWanted(t);
+        const st = {
+            spec, rows: [], total: null, complete: false, cachedRows: 0, pages: 0, cachedPages: 0, at: 0, running: false, left: 0,
+            stopped: false, detail: '', seedOf: null, listeners, wanted: () => !st.stopped && wanted(),
+        };
+        return st;
+    }
+
+    /**
+     * Seeds a paged list with page 1 the window already has (a collection's
+     * page, parsed for its card: `_mbParseCollectionPage()`), so opening
+     * the window asks for nothing more; "Load N more pages" goes on from
+     * page 2. Seeded again when the record is another one (⟳ read the page
+     * afresh), dropping what was loaded past it. Never a request.
+     *
+     * @param {object} t - The window's target.
+     * @param {string} key
+     * @param {Object} spec - `_mbPagedHtml()`.
+     * @param {{rows: Array<Object>, total: number, pages: number}} rec - Page 1's record.
+     * @param {function(): void} repaint
+     * @returns {void}
+     */
+    function _mbPagedSeed(t, key, spec, rec, repaint) {
+        const cur = _mbPaged.get(key);
+        if (cur) cur.listeners.add(repaint);
+        if (cur && (cur.seedOf === rec || cur.running)) return;
+        const st = _mbPagedNew(t, spec, cur ? cur.listeners : new Set([repaint]));
+        Object.assign(st, {
+            rows: rec.rows.slice(), total: rec.total, pages: 1, seedOf: rec,
+            complete: rec.pages <= 1 || rec.rows.length >= rec.total, at: Date.now(),
+        });
+        _mbPaged.set(key, st);
     }
 
     /**
@@ -53660,18 +54099,19 @@
         _mbPagedNotify(st);
         (async () => {
             while (st.left > 0 && !st.complete) {
-                const res = await st.spec.ask(st.rows.length, st.wanted);
+                const res = await st.spec.ask(st.rows.length, st.wanted, st.pages + 1);
                 if (res.skipped) break;
                 if (!res.ok) {
                     st.detail = res.detail || 'The request failed.';
                     break;
                 }
                 st.rows = st.rows.concat(res.rows);
+                st.pages++;
                 if (res.total != null) st.total = res.total;
-                st.complete = !res.rows.length || (st.total != null && st.rows.length >= st.total);
+                st.complete = !!res.done || !res.rows.length || (st.total != null && st.rows.length >= st.total);
                 st.left--;
                 st.at = Date.now();
-                _rgIdbPut(`list:${key}`, { rows: st.rows, total: st.total, complete: st.complete }, st.at, _MB_PAGED_IDB_VERSION);
+                _rgIdbPut(`list:${key}`, { rows: st.rows, total: st.total, complete: st.complete, pages: st.pages }, st.at, _MB_PAGED_IDB_VERSION);
                 if (st.left > 0 && !st.complete) _mbPagedNotify(st);
             }
             Object.assign(st, { running: false, left: 0, stopped: false });
@@ -53721,9 +54161,9 @@
         const ref = _rgEsc(key);
         const n = st.rows.length;
         const total = st.total ?? n;
-        const pages = Math.ceil(n / _MB_PAGED_LIMIT);
-        const cachedPages = Math.ceil(st.cachedRows / _MB_PAGED_LIMIT);
-        const segs = Array.from({ length: pages }, (_, i) => (i < cachedPages ? 'cache' : 'loaded'));
+        const per = st.spec.perPage || _MB_PAGED_LIMIT;
+        const pages = st.pages;
+        const segs = Array.from({ length: pages }, (_, i) => (i < st.cachedPages ? 'cache' : 'loaded'));
         if (st.running) segs.push('running', ...Array(Math.max(0, st.left - 1)).fill('queued'));
         else if (st.detail) segs.push('failed');
         const pill = st.running ? '<span class="mb-dg-pill mb-dg-run">Running</span>'
@@ -53737,15 +54177,15 @@
             btn = `<button type="button" class="mb-dg-btn mb-dg-primary" data-mb-pl-act="retry" data-mb-pl="${ref}">` +
                 `Try page ${pages + 1} again (1 request, about ${_extDgDur(_REL_WS2_SPACING_MS)})</button>`;
         } else if (!st.complete && st.total != null) {
-            const k = Math.min(_MB_PAGED_BATCH, Math.ceil((total - n) / _MB_PAGED_LIMIT));
-            const rows = Math.min(k * _MB_PAGED_LIMIT, total - n);
+            const k = Math.min(_MB_PAGED_BATCH, Math.ceil((total - n) / per));
+            const rows = Math.min(k * per, total - n);
             btn = `<button type="button" class="mb-dg-btn mb-dg-primary" data-mb-pl-act="more" data-mb-pl="${ref}">` +
                 `Load ${k} more page${k === 1 ? '' : 's'} (${_extDgNum(rows)} ${_rgEsc(unit)}, about ${_extDgDur(k * _REL_WS2_SPACING_MS)})</button>`;
         }
         const counts = [`${_extDgNum(n)} of ${_extDgNum(total)} loaded`];
         if (st.cachedRows) counts.push(`${_extDgNum(st.cachedRows)} from cache`);
         if (st.detail) counts.push(`<span class="mb-dg-bad">page ${pages + 1} failed: ${_rgEsc(st.detail)}</span>`);
-        counts.push(`one segment = ${_MB_PAGED_LIMIT} ${_rgEsc(unit)}`);
+        counts.push(`one segment = ${per} ${_rgEsc(unit)}`);
         return `<div class="mb-dg-vstat">${pill}<span class="mb-dg-bar" aria-hidden="true" style="width: min(${Math.max(40, segs.length * 26)}px, 100%)">` +
             segs.map(s => `<i class="mb-dg-seg-${s}"></i>`).join('') + `</span>${btn}</div>` +
             `<div class="mb-dg-counts">${counts.join(' · ')}</div>`;
@@ -53790,13 +54230,6 @@
         const st = _mbPaged.get(key);
         const rows = st ? st.rows : [];
         const head = `<h4>Recordings${st && st.total != null ? ` · ${_extDgNum(st.total)}` : ''}</h4>`;
-        // Nothing yet: page 1 under way, or its failure (the status above
-        // says it, with "Try again"); a work with no recordings says None.
-        let body = null;
-        if (!rows.length && st && st.detail) body = '';
-        else if (!rows.length && !(st && st.complete)) {
-            body = `<div class="mb-dg-state"><span class="mb-dp-spin">◌</span> Asking MusicBrainz for the first ${_MB_PAGED_LIMIT} recordings…</div>`;
-        }
         return head + _mbPagedStatusHtml(key, 'recordings') + _dpListTableHtml(t, 'work-recordings', [
             {
                 key: 'title', label: 'Recording', val: r => r.title,
@@ -53811,8 +54244,233 @@
         ], rows, {
             initial: 'as MusicBrainz lists them', placeholder: 'Filter loaded recordings: title, artist',
             search: r => `${r.title} ${r.dis} ${r.artist}`, facet: r => r.artist, chipLabel: 'Artist',
-            body, nomatch: 'No loaded recording matches.', none: 'No recordings.',
+            body: _mbPagedBody(st, 'recordings'), nomatch: 'No loaded recording matches.', none: 'No recordings.',
         });
+    }
+
+    /**
+     * What a paged list's List table shows instead of its table while it
+     * has no row: page 1 under way (or about to be asked), or nothing when
+     * it failed (the status above says it, with "Try again"); `null` — the
+     * table, whose "None." applies — once the list is complete and empty.
+     *
+     * @param {?Object} st - `_mbPaged` state.
+     * @param {string} unit - What a row is: 'recordings'.
+     * @returns {?string}
+     */
+    function _mbPagedBody(st, unit) {
+        if (st && st.rows.length) return null;
+        if (st && st.detail) return '';
+        if (st && st.complete) return null;
+        return `<div class="mb-dg-state"><span class="mb-dp-spin">◌</span> Asking MusicBrainz for the first ${_MB_PAGED_LIMIT} ${_rgEsc(unit)}…</div>`;
+    }
+
+    /**
+     * A plain column of a window table: its value is `row[key]`, shown with
+     * the filter's matches marked, "—" when empty.
+     *
+     * @param {string} key
+     * @param {string} label
+     * @param {Object} [extra] - More of the column (`num`, `cls`, `html`, …).
+     * @returns {Object} A column of `_dpListTableHtml()`.
+     */
+    function _dpTblCol(key, label, extra = {}) {
+        return Object.assign({ key, label, val: r => r[key] ?? '', html: (r, q) => (r[key] === '' || r[key] == null ? '—' : _hlEsc(r[key], q)) }, extra);
+    }
+
+    /**
+     * A title column linking its entity's page (which the window previews
+     * and opens in place), its disambiguation dimmed after it.
+     *
+     * @param {string} kind - The page segment: `release`, `event`, …
+     * @param {string} label
+     * @param {string} [key] - The row's title field.
+     * @returns {Object} A column of `_dpListTableHtml()`.
+     */
+    function _dpTblTitleCol(kind, label, key = 'title') {
+        return {
+            key, label, val: r => r[key],
+            html: (r, q) => `<a href="/${kind}/${_rgEsc(r.id)}" target="_blank" rel="noopener">${_hlEsc(r[key], q)}</a>` +
+                `${r.dis ? ` <span class="mb-rg-dim">(${_hlEsc(r.dis, q)})</span>` : ''}`,
+        };
+    }
+
+    /**
+     * A recording window's releases (Phase 3b): every release the recording
+     * is on, a paged browse `/ws/2/release?recording=<id>&inc=media+labels`
+     * (271 for the studio "Thunder Road", probe 2026-10-27), 100 when the
+     * window opens and 500 more a click. Each kept as what the table shows;
+     * `front` from the release's own `cover-art-archive` block (on every
+     * release of the browse, scripts/probe-mb-window-browses.py), so only a
+     * cover the archive has is asked for.
+     *
+     * @param {string} id - The recording's MBID.
+     * @returns {{key: string, spec: {ask: function}}}
+     */
+    function _mbRecRelsList(id) {
+        return {
+            key: `recording-releases:${id}`,
+            spec: _mbPagedWs('release', `recording=${encodeURIComponent(id)}&inc=media+labels`, 'releases', 'release-count', r => ({
+                id: r.id, title: r.title || '', dis: r.disambiguation || '', date: r.date || '', country: r.country || '',
+                status: r.status || '', format: (r.media || []).length ? _rgFormatOf(r) : '', label: _rgLabelOf(r),
+                front: !!(r['cover-art-archive'] && r['cover-art-archive'].front),
+            })),
+        };
+    }
+
+    /**
+     * The recording window's Releases as a List table: covers, Release,
+     * Format, Date, Country, Status, Label / Cat#; status chips (Official,
+     * Bootleg, …); sorted by date at first, since the browse's own order is
+     * by neither date nor title (probe 2026-10-27).
+     *
+     * @param {object} t - The recording.
+     * @returns {string}
+     */
+    function _mbRecRelsHtml(t) {
+        const { key } = _mbRecRelsList(t.id);
+        const st = _mbPaged.get(key);
+        return `<h4>Releases${st && st.total != null ? ` · ${_extDgNum(st.total)}` : ''}</h4>` + _mbPagedStatusHtml(key, 'releases') +
+            _dpListTableHtml(t, 'recording-releases', [
+                _dpTblTitleCol('release', 'Release'), _dpTblCol('format', 'Format'), _dpTblCol('date', 'Date', { cls: 'mb-dg-yr' }),
+                _dpTblCol('country', 'Country'), _dpTblCol('status', 'Status'), _dpTblCol('label', 'Label / Cat#'),
+            ], st ? st.rows : [], {
+                init: { sort: { col: 'date', dir: 1 } }, initial: 'as MusicBrainz returns them',
+                placeholder: 'Filter loaded releases: title, format, country, label, cat#',
+                search: r => [r.title, r.dis, r.format, r.date, r.country, r.status, r.label].join(' '),
+                facet: r => r.status, chipLabel: 'Status',
+                thumb: r => (r.front ? _mbPopCoverThumbHtml('release', r.id, r.title, 'mb-dg-vthumb') : ''),
+                body: _mbPagedBody(st, 'releases'), nomatch: 'No loaded release matches.', none: 'On no release.',
+            });
+    }
+
+    /**
+     * A place's events (Phase 3b): a paged browse `/ws/2/event?place=<id>`
+     * (110 for The Stone Pony, its order by no date: probe 2026-10-27).
+     *
+     * @param {string} id - The place's MBID.
+     * @returns {{key: string, spec: {ask: function}}}
+     */
+    function _mbPlaceEventsList(id) {
+        return {
+            key: `place-events:${id}`,
+            spec: _mbPagedWs('event', `place=${encodeURIComponent(id)}`, 'events', 'event-count', (e) => {
+                const ls = e['life-span'] || {};
+                return {
+                    id: e.id, name: e.name || '', dis: e.disambiguation || '', type: e.type || '', date: ls.begin || '',
+                    end: ls.end && ls.end !== ls.begin ? ls.end : '', time: e.time || '', cancelled: !!e.cancelled,
+                };
+            }),
+        };
+    }
+
+    /**
+     * The place window's Events as a List table: Date (and time, the end
+     * when it is another day), Event (cancelled ones say so), Type; type
+     * chips; sorted by date at first.
+     *
+     * @param {object} t - The place.
+     * @returns {string}
+     */
+    function _mbPlaceEventsHtml(t) {
+        const { key } = _mbPlaceEventsList(t.id);
+        const st = _mbPaged.get(key);
+        return `<h4>Events${st && st.total != null ? ` · ${_extDgNum(st.total)}` : ''}</h4>` + _mbPagedStatusHtml(key, 'events') +
+            _dpListTableHtml(t, 'place-events', [
+                _dpTblCol('date', 'Date', {
+                    cls: 'mb-dg-yr',
+                    html: (r, q) => (r.date ? _hlEsc(r.date, q) : '—') + (r.end ? ` – ${_hlEsc(r.end, q)}` : '') +
+                        (r.time ? ` <span class="mb-rg-dim">${_rgEsc(r.time)}</span>` : ''),
+                }),
+                Object.assign(_dpTblTitleCol('event', 'Event', 'name'), {
+                    html: (r, q) => `<a href="/event/${_rgEsc(r.id)}" target="_blank" rel="noopener">${_hlEsc(r.name, q)}</a>` +
+                        `${r.cancelled ? ' <span class="mb-rg-dim">(cancelled)</span>' : ''}`,
+                }),
+                _dpTblCol('type', 'Type'),
+            ], st ? st.rows : [], {
+                init: { sort: { col: 'date', dir: 1 } }, initial: 'as MusicBrainz returns them',
+                placeholder: 'Filter loaded events: date, name, type', search: r => [r.date, r.end, r.name, r.type].join(' '),
+                facet: r => r.type, chipLabel: 'Type',
+                body: _mbPagedBody(st, 'events'), nomatch: 'No loaded event matches.', none: 'No events.',
+            });
+    }
+
+    /**
+     * An artist's release groups of one primary type (Phase 3b): a paged
+     * browse `/ws/2/release-group?artist=<id>&type=<type>&inc=artist-credits`.
+     * One list per type, since the unfiltered browse runs Album first (the
+     * first 100 of Bruce Springsteen's 2,146 are all Albums; `type=single`
+     * has its own count, 178: probe 2026-10-27).
+     *
+     * @param {string} id - The artist's MBID.
+     * @param {string} type - A primary type of `_MB_POP_RG_TYPES`.
+     * @returns {{key: string, spec: {ask: function}}}
+     */
+    function _mbArtistRgsList(id, type) {
+        return {
+            key: `artist-release-groups:${id}:${type}`,
+            spec: _mbPagedWs('release-group', `artist=${encodeURIComponent(id)}&type=${type}&inc=artist-credits`, 'release-groups',
+                'release-group-count', g => ({
+                    id: g.id, title: g.title || '', dis: g.disambiguation || '', date: g['first-release-date'] || '',
+                    secondary: (g['secondary-types'] || []).join(' + '), artist: _mbPopCreditText(g['artist-credit']),
+                })),
+        };
+    }
+
+    /**
+     * The type an artist window's release groups show: the one chosen, else
+     * the first type the count browses say it has (Album until they answer).
+     *
+     * @param {object} t - The artist.
+     * @returns {string}
+     */
+    function _mbArtistRgType(t) {
+        // Read, not made: the List table makes the state with its first sort.
+        const ui = _dpTbl.get(`${t.key}|artist-release-groups`);
+        if (ui && ui.seg) return ui.seg;
+        const has = _MB_POP_RG_TYPES.find(([type]) => {
+            const s = _mbPop.get(_mbPopBrowse('release-group', `artist=${encodeURIComponent(t.id)}&type=${type}&limit=1`).key);
+            return s && s.status === 'done' && s.data && s.data['release-group-count'] > 0;
+        });
+        return has ? has[0] : 'album';
+    }
+
+    /**
+     * The artist window's Release groups as a List table (vzell, 2026-10-27:
+     * type segments, lazy covers): a segment per primary type with its real
+     * total (the count browses, `limit=1`), each its own paged list; chips
+     * for the secondary types (Live, Compilation, …) of what is loaded;
+     * covers asked lazily (a release group's browse carries no cover-art
+     * flag, so one the archive lacks gives way to the empty box); sorted by
+     * first release at first.
+     *
+     * @param {object} t - The artist.
+     * @returns {string}
+     */
+    function _mbArtistRgsHtml(t) {
+        const type = _mbArtistRgType(t);
+        const { key } = _mbArtistRgsList(t.id, type);
+        const st = _mbPaged.get(key);
+        const segs = '<span class="mb-dg-seg">' + _MB_POP_RG_TYPES.map(([v, label]) => {
+            const s = _mbPop.get(_mbPopBrowse('release-group', `artist=${encodeURIComponent(t.id)}&type=${v}&limit=1`).key);
+            const n = s && s.status === 'done' && s.data ? _extDgNum(s.data['release-group-count'] || 0) : s && s.status === 'failed' ? '?' : '…';
+            return `<button type="button" data-mb-tbl-act="seg" data-mb-tbl-v="${v}" aria-pressed="${v === type}">${_rgEsc(label)} ` +
+                `<span class="mb-dg-n">${n}</span></button>`;
+        }).join('') + '</span>';
+        return '<h4>Release groups</h4>' + _mbPagedStatusHtml(key, 'release groups') +
+            _dpListTableHtml(t, 'artist-release-groups', [
+                _dpTblTitleCol('release-group', 'Release group'), _dpTblCol('secondary', 'Also'),
+                _dpTblCol('artist', 'Artist'), _dpTblCol('date', 'First release', { cls: 'mb-dg-yr' }),
+            ], st ? st.rows : [], {
+                init: { sort: { col: 'date', dir: 1 } }, initial: 'as MusicBrainz returns them', tools: segs,
+                placeholder: 'Filter loaded release groups: title, artist, year',
+                search: r => [r.title, r.dis, r.secondary, r.artist, r.date].join(' '),
+                facet: r => r.secondary, chipLabel: 'Also',
+                thumb: r => _mbPopCoverThumbHtml('release-group', r.id, r.title, 'mb-dg-vthumb'),
+                body: _mbPagedBody(st, 'release groups'), nomatch: 'No loaded release group matches.', none: 'None of this type.',
+            }) +
+            `<p><a href="/artist/${_rgEsc(t.id)}" target="_blank" rel="noopener">The discography</a> ` +
+            '<span class="mb-rg-dim">(official releases; the page filters the others)</span></p>';
     }
 
     /**
@@ -53885,7 +54543,9 @@
      *
      * @param {Object} r - A relation of the Web Service.
      * @param {string} type - Its target type: `artist`, `label`, `place`, `work`, …
-     *   — the page segment (`release-group`).
+     *   — the page segment (`release-group`); the Web Service's
+     *   `release_group` is taken as that segment too, so the link is one a
+     *   preview and the site know (`_mbPopSeriesItems()`).
      * @param {?Object} [entity] - The target, when not `r[type]` (a url
      *   lookup keys a release group `release_group`: `_mbPopRelEntity()`).
      * @param {string} [after] - HTML right after the name (and its
@@ -53894,16 +54554,17 @@
      * @returns {string}
      */
     function _mbPopRelTargetHtml(r, type, entity = null, after = '') {
-        const e = entity || r[type] || {};
+        const e = entity || r[type] || _mbPopRelEntity(r) || {};
+        const seg = String(type).replace(/_/g, '-');
         const name = _rgEsc(e.name || e.title || '');
         // An event target carries its own life span (probe 2026-10-08, the
         // OceanFirst show's "parts" relation): its days follow the name, as
         // MusicBrainz writes "Music America: … (2026-06-04 – 2026-06-05)".
         // Not when the name already starts with that day, as most event names
         // do ("2025‐05‐20: Co‐op Live, …", written with U+2010).
-        const days = type === 'event' && !String(e.name || '').replace(/\u2010/g, '-').includes((e['life-span'] || {}).begin || '\u0000')
+        const days = seg === 'event' && !String(e.name || '').replace(/\u2010/g, '-').includes((e['life-span'] || {}).begin || '\u0000')
             ? _mbPopEventDays(e) : '';
-        const link = (e.id ? `<a href="/${type}/${_rgEsc(e.id)}" target="_blank" rel="noopener">${name}</a>` : name) +
+        const link = (e.id ? `<a href="/${seg}/${_rgEsc(e.id)}" target="_blank" rel="noopener">${name}</a>` : name) +
             (e.disambiguation ? ` <span class="mb-rg-dim">(${_rgEsc(e.disambiguation)})</span>` : '') +
             (days ? ` <span class="mb-rg-dim">(${_rgEsc(days)})</span>` : '') + after;
         const ids = r['attribute-ids'] || {};
@@ -53952,13 +54613,67 @@
     function _mbPopRelRows(rels, targetType, fmt = null) {
         const groups = _mbPopRelsByType(rels, targetType);
         const types = groups.map(([k]) => k.split('|')[0]);
-        return groups.map(([k, list]) => {
-            const [type, dir] = k.split('|');
-            const both = types.filter(x => x === type).length > 1;
-            const name = _MB_POP_REL_LABELS[`${k}|${targetType}`] || _MB_POP_REL_LABELS[k] ||
-                type.charAt(0).toUpperCase() + type.slice(1) + (both ? (dir === 'forward' ? ' →' : ' ←') : '');
-            return [name, list.map(r => (fmt ? fmt(r) : _mbPopRelTargetHtml(r, targetType))).join('<br>')];
-        });
+        return groups.map(([k, list]) => [_mbPopRelGroupName(k, types, targetType),
+            list.map(r => (fmt ? fmt(r) : _mbPopRelTargetHtml(r, targetType))).join('<br>')]);
+    }
+
+    /**
+     * A relation group's name: `_MB_POP_REL_LABELS` by
+     * `<type>|<direction>|<target type>`, then by `<type>|<direction>`, else
+     * its type with the first letter up, and an arrow for the direction when
+     * the type has both (`types`: every group's type).
+     *
+     * @param {string} k - `<type>|<direction>`.
+     * @param {Array<string>} types
+     * @param {string} targetType
+     * @returns {string}
+     */
+    function _mbPopRelGroupName(k, types, targetType) {
+        const [type, dir] = k.split('|');
+        const both = types.filter(x => x === type).length > 1;
+        return _MB_POP_REL_LABELS[`${k}|${targetType}`] || _MB_POP_REL_LABELS[k] ||
+            type.charAt(0).toUpperCase() + type.slice(1) + (both ? (dir === 'forward' ? ' →' : ' ←') : '');
+    }
+
+    /**
+     * The relations of one target type as rows of a window's Compact table
+     * (org/MB-POH-sync-withDiscogs.org, Phase 3d): one row per relation, in
+     * MusicBrainz's order, with its group's name (`_mbPopRelGroupName()`),
+     * its target's name (to sort and filter by) and its HTML (`fmt`, else
+     * `_mbPopRelTargetHtml()`: the link, attributes, dates).
+     *
+     * @param {?Array<Object>} rels
+     * @param {string} targetType
+     * @param {?function(Object): string} [fmt]
+     * @returns {Array<{rel: string, name: string, html: string}>}
+     */
+    function _mbPopRelTableRows(rels, targetType, fmt = null) {
+        const groups = _mbPopRelsByType(rels, targetType);
+        const types = groups.map(([k]) => k.split('|')[0]);
+        return groups.flatMap(([k, list]) => list.map((r) => {
+            const e = r[targetType] || _mbPopRelEntity(r) || {};
+            return { rel: _mbPopRelGroupName(k, types, targetType), name: e.name || e.title || '', html: fmt ? fmt(r) : _mbPopRelTargetHtml(r, targetType) };
+        }));
+    }
+
+    /**
+     * Relation rows (`_mbPopRelTableRows()`) as a window's Compact table:
+     * Relationship · the target, every match of the filter marked
+     * (`_hlHtml()`); "None." for no row.
+     *
+     * @param {object} t - The window's target.
+     * @param {string} id - The table's id in the window.
+     * @param {Array<{rel: string, name: string, html: string}>} rows
+     * @param {string} label - The target column's header: "Area".
+     * @param {string} what - The rows: "areas".
+     * @returns {string}
+     */
+    function _mbPopRelTableHtml(t, id, rows, label, what) {
+        if (!rows.length) return '<div class="mb-dp-xsub">None.</div>';
+        return _dpCompactTableHtml(t, id, [
+            { key: 'rel', label: 'Relationship', val: r => r.rel, html: (r, q) => _hlEsc(r.rel, q) },
+            { key: 'name', label, val: r => r.name, html: (r, q) => _hlHtml(r.html, q) },
+        ], rows, { initial: 'as MusicBrainz lists them', what });
     }
 
     /**
@@ -53967,6 +54682,16 @@
      * @type {string}
      */
     const _MB_POP_LABEL_MORE_INC = 'artist-rels+place-rels+series-rels';
+
+    /**
+     * The label card's lookup (`_MB_KINDS.label`'s `cardInc`), named once:
+     * the catalog-number card asks whether the label's answer is there by
+     * its cache key, and a key built from another `inc` never matched, so
+     * every repaint counted as a start and a failed label lookup was asked
+     * again on each one (2026-10-27).
+     * @type {string}
+     */
+    const _MB_POP_LABEL_CARD_INC = 'genres+ratings+aliases';
 
     /** How many targets a relationship type of the label window lists before "+N more". */
     const _MB_POP_LABEL_REL_CAP = 12;
@@ -54045,13 +54770,17 @@
      * @param {('release'|'release-group')} kind
      * @param {string} id - The MBID.
      * @param {string} title - The card's and the viewer's title.
+     * @param {string} [imgCls] - The image's class: `mb-dg-vthumb` in a List
+     *   table (`_dpListTableHtml()`), the 40 px box; a cover the archive
+     *   does not have then gives way to the empty box (the dialog's image
+     *   error listener).
      * @returns {string}
      */
-    function _mbPopCoverThumbHtml(kind, id, title) {
+    function _mbPopCoverThumbHtml(kind, id, title, imgCls = '') {
         const path = `/${_rgEsc(kind)}/${_rgEsc(id)}`;
         return `<a class="mb-pop-cover-thumb" href="${path}" target="_blank" rel="noopener" data-mbtt-fn="sb-cover" ` +
             `data-mb-sb-cover="${path}" data-mb-sb-cover-title="${_rgEsc(title)}">` +
-            `<img loading="lazy" src="https://coverartarchive.org${path}/front-250" alt=""></a>`;
+            `<img${imgCls ? ` class="${imgCls}"` : ''} loading="lazy" src="https://coverartarchive.org${path}/front-250" alt=""></a>`;
     }
 
     /**
@@ -54138,13 +54867,63 @@
     }
 
     /**
+     * Aliases as a window's Facts list them since 2026-10-27 (an artist's,
+     * vzell): one per line, each name with its type and locale dimmed.
+     *
+     * @param {?Array<Object>} aliases
+     * @returns {string} HTML; empty for none.
+     */
+    function _mbPopAliasesHtml(aliases) {
+        return (aliases || []).filter(a => a && a.name).map((a) => {
+            const what = [a.type, a.locale].filter(Boolean).join(', ');
+            return _rgEsc(a.name) + (what ? ` <span class="mb-rg-dim">(${_rgEsc(what)})</span>` : '');
+        }).join('<br>');
+    }
+
+    /**
      * An entity's external links (its `url` relations) as the window's
-     * "Links (N)" section: each host linked, its relationship type beside it.
-     * '' when it has none.
+     * "Links (N)" section, a Compact table (Phase 3d): Site (linked) ·
+     * Relationship · URL (the address past the host), filter and pager when
+     * there are many. '' when it has none; the plain list
+     * (`_mbPopUrlLinksHtml()`) for `min` links or fewer (a label's ten).
+     *
+     * @param {object} t - The window's target.
+     * @param {string} id - The table's id in the window.
+     * @param {?Array<Object>} rels - `relations`.
+     * @param {{withHead?: boolean, min?: number}} [opts] - `withHead`: with its
+     *   "Links (N)" heading; false inside a section that has its own
+     *   (`_mbPopSectionHtml()`).
+     * @returns {string}
+     */
+    function _mbPopUrlLinksTableHtml(t, id, rels, { withHead = true, min = 0 } = {}) {
+        const urls = (rels || []).filter(r => r.url && r.url.resource);
+        if (!urls.length) return '';
+        if (urls.length <= min) return _mbPopUrlLinksHtml(rels, withHead);
+        const rows = urls.map((r) => {
+            let host = r.url.resource;
+            let rest = '';
+            try {
+                const u = new URL(r.url.resource);
+                host = u.hostname.replace(/^www\./, '');
+                rest = `${u.pathname}${u.search}${u.hash}`.replace(/^\/$/, '');
+            } catch (_) { /* keep the whole address as the site */ }
+            return { host, type: r.type || '', url: r.url.resource, rest };
+        });
+        return `${withHead ? `<h4>Links (${urls.length})</h4>` : ''}` + _dpCompactTableHtml(t, id, [
+            { key: 'host', label: 'Site', val: r => r.host, html: (r, q) => `<a href="${_rgEsc(r.url)}" target="_blank" rel="noopener">${_hlEsc(r.host, q)}</a>` },
+            { key: 'type', label: 'Relationship', val: r => r.type, html: (r, q) => _hlEsc(r.type, q) },
+            { key: 'rest', label: 'URL', cls: 'mb-pop-urlpath', val: r => r.rest, html: (r, q) => (r.rest ? _hlEsc(r.rest, q) : '—') },
+        ], rows, { initial: 'as MusicBrainz lists them', what: 'links', search: r => `${r.host} ${r.type} ${r.url}` });
+    }
+
+    /**
+     * An entity's external links as the window's "Links (N)" section, as a
+     * plain list: each host linked, its relationship type beside it ('' for
+     * none). The windows use the Compact table (`_mbPopUrlLinksTableHtml()`,
+     * Phase 3d), which falls back to this list under its `min`.
      *
      * @param {?Array<Object>} rels - `relations`.
-     * @param {boolean} [withHead] - With its "Links (N)" heading; false
-     *   inside a section that has its own (`_mbPopSectionHtml()`).
+     * @param {boolean} [withHead] - With its "Links (N)" heading.
      * @returns {string}
      */
     function _mbPopUrlLinksHtml(rels, withHead = true) {
@@ -54365,7 +55144,8 @@
      *
      * @param {string} body - The line without its kind character.
      * @param {string} lineKind - `@`, `*` or `#`.
-     * @returns {{text: string, html: string}}
+     * @returns {{text: string, html: string, head: {text: string, html: string}, tail: {text: string, html: string}}}
+     *   `head` the song, `tail` the rest of the line (guests, a comment).
      */
     function _mbPopSetlistLine(body, lineKind) {
         const toks = [];
@@ -54380,20 +55160,29 @@
                 return m;
             }));
         }
-        let text = '';
-        let html = '';
-        // split() with a capture: the token indexes are the odd parts.
-        marked.split(/\uE000(\d+)\uE001/).forEach((part, i) => {
-            if (i % 2 === 0) {
-                text += part;
-                html += _rgEsc(part);
-                return;
-            }
-            const tk = toks[Number(part)];
-            text += tk.name;
-            html += tk.kind ? `<a href="/${tk.kind}/${_rgEsc(tk.id)}" target="_blank" rel="noopener">${_rgEsc(tk.name)}</a>` : _rgEsc(tk.name);
-        });
-        return { text: text.trim(), html: html.trim() };
+        const render = (m) => {
+            let text = '';
+            let html = '';
+            // split() with a capture: the token indexes are the odd parts.
+            m.split(/\uE000(\d+)\uE001/).forEach((part, i) => {
+                if (i % 2 === 0) {
+                    text += part;
+                    html += _rgEsc(part);
+                    return;
+                }
+                const tk = toks[Number(part)];
+                text += tk.name;
+                html += tk.kind ? `<a href="/${tk.kind}/${_rgEsc(tk.id)}" target="_blank" rel="noopener">${_rgEsc(tk.name)}</a>` : _rgEsc(tk.name);
+            });
+            return { text: text.trim(), html: html.trim() };
+        };
+        // The song and the rest of a song line (Phase 3e's setlist table): a
+        // line that starts with a work is that work and what follows it;
+        // any other line splits at its first " (" ("Thunder Road (with …)").
+        const lead = /^\s*\uE000(\d+)\uE001/.exec(marked);
+        let cut = lead && toks[Number(lead[1])].kind === 'work' ? lead[0].length : marked.search(/\s\(/);
+        if (cut < 0) cut = marked.length;
+        return Object.assign(render(marked), { head: render(marked.slice(0, cut)), tail: render(marked.slice(cut)) });
     }
 
     /**
@@ -54405,22 +55194,24 @@
      *
      * @param {string} text - `setlist`.
      * @returns {{lineup: string, lineupHtml: string, songs: string[], songsHtml: string[],
-     *   notes: string[], notesHtml: string[]}} The line-up as one line ("A & B
-     *   with C, D"), the songs in order, and the comments that are not
-     *   joining words.
+     *   parts: Array<{n: number, head: Object, tail: Object}>, notes: string[], notesHtml: string[]}}
+     *   The line-up as one line ("A & B with C, D"), the songs in order (and
+     *   each split into its song and the rest: `parts`), and the comments
+     *   that are not joining words.
      */
     function _mbPopSetlist(text) {
         const lineup = [];
         const lineupHtml = [];
         const songs = [];
         const songsHtml = [];
+        const parts = [];
         const notes = [];
         const notesHtml = [];
         let join = '';
         String(text || '').split(/\r?\n/).forEach(line => {
             const kind = line.charAt(0);
             const prefixed = kind === '@' || kind === '#' || kind === '*';
-            const { text: body, html } = _mbPopSetlistLine(prefixed ? line.slice(1) : line, prefixed ? kind : '*');
+            const { text: body, html, head, tail } = _mbPopSetlistLine(prefixed ? line.slice(1) : line, prefixed ? kind : '*');
             if (kind === '@' && !songs.length) {
                 // "A" + " & B" + " with C" + ", D": a joining word when the
                 // comment line before gave one, else a comma.
@@ -54432,6 +55223,7 @@
             } else if (kind === '*' || (!prefixed && line.trim())) {
                 songs.push(body);
                 songsHtml.push(html);
+                parts.push({ n: parts.length + 1, head, tail });
             } else if (kind === '#' || kind === '@') {
                 if (body) {
                     notes.push(body);
@@ -54439,7 +55231,7 @@
                 }
             }
         });
-        return { lineup: lineup.join(''), lineupHtml: lineupHtml.join(''), songs, songsHtml, notes, notesHtml };
+        return { lineup: lineup.join(''), lineupHtml: lineupHtml.join(''), songs, songsHtml, parts, notes, notesHtml };
     }
 
     /**
@@ -54982,15 +55774,20 @@
 
     /**
      * A series' items in their order: its `part of` relations, by ordering
-     * key, each with its number (`attribute-values.number`) and target.
+     * key, each with its number (`attribute-values.number`), its kind as a
+     * page segment and its target. A release-group series' relations name
+     * the target type `release_group` and hold the target under that key
+     * (probe 2026-10-27, scripts/probe-mb-window-browses.py, series
+     * b1009dcb-…): the item's link must be `/release-group/<id>`, never
+     * `/release_group/<id>`, which no preview and no page knows.
      *
      * @param {Object} d - A series of the Web Service.
      * @returns {Array<{num: string, type: string, e: Object}>}
      */
     function _mbPopSeriesItems(d) {
-        return (d.relations || []).filter(r => r.type === 'part of' && r[r['target-type']])
+        return (d.relations || []).filter(r => r.type === 'part of' && _mbPopRelEntity(r))
             .sort((a, b) => (a['ordering-key'] ?? 1e9) - (b['ordering-key'] ?? 1e9))
-            .map(r => ({ num: (r['attribute-values'] && r['attribute-values'].number) || '', type: r['target-type'], e: r[r['target-type']] }));
+            .map(r => ({ num: (r['attribute-values'] && r['attribute-values'].number) || '', type: _mbPopRelKind(r), e: _mbPopRelEntity(r) }));
     }
 
     /** Items a series card lists before "+ N more". */
@@ -55532,12 +56329,6 @@
      */
     const _MB_COLL_SKIP_COLS = new Set(['Rating', 'Begin area', 'End area']);
 
-    /**
-     * A collection's entries the window shows at a time (mockup picked
-     * 2026-10-20: 25, with a pager; MusicBrainz's own pages hold 100).
-     * @type {number}
-     */
-    const _MB_COLL_WIN_ROWS = 25;
 
     /** A collection card's first entries (2026-10-20: eight, in two columns). */
     const _MB_COLL_CARD_ROWS = 8;
@@ -55623,18 +56414,18 @@
                 const cell = main.a.closest('td');
                 const comment = cell ? _mbPopText(cell.querySelector(':scope > .comment, :scope > .historical')).replace(/^\((.*)\)$/, '$1') : '';
                 const cells = grouped ? [_rgEsc(group)] : [];
+                const texts = grouped ? [group] : [];
                 Array.from(tr.children).forEach((td, i) => {
                     const h = heads[i] || '';
                     if (_MB_COLL_SKIP_COLS.has(h) || (kind === 'event' && h === 'Artists')) return;
                     cells.push(_mbCollCellHtml(td));
+                    texts.push(_mbPopText(td));
                 });
-                rows.push({ id: main.p[2].toLowerCase(), name: _mbPopText(main.a), comment, art: !!tr.querySelector('.caa-icon'), cells });
+                rows.push({ id: main.p[2].toLowerCase(), name: _mbPopText(main.a), comment, art: !!tr.querySelector('.caa-icon'), cells, texts });
             });
         });
         const cols = (grouped ? ['Type'] : []).concat(heads.filter(h => !_MB_COLL_SKIP_COLS.has(h) && !(kind === 'event' && h === 'Artists')));
-        const pag = content.querySelector('ul.pagination');
-        const nums = pag ? Array.from(pag.querySelectorAll('a[href*="page="]')).map(x => Number((/[?&]page=(\d+)/.exec(x.getAttribute('href')) || [])[1]) || 0) : [];
-        const sel = pag && Number(_mbPopText(pag.querySelector('a.sel')));
+        const pager = _mbPagerOf(content);
         const countDd = prop('Number of entities');
         return {
             name,
@@ -55649,8 +56440,10 @@
             kind,
             cols,
             rows,
-            page: sel || 1,
-            pages: nums.length ? Math.max(1, sel || 1, ...nums) : 1,
+            // The paged loader's name for it (`_mbPagedHtml()`).
+            total: countDd ? Number(_mbPopText(countDd).replace(/[,.]/g, '')) || 0 : rows.length,
+            page: pager.page,
+            pages: pager.pages,
         };
     }
 
@@ -55676,45 +56469,30 @@
     }
 
     /**
-     * Which slice of a collection the window shows, by collection MBID, for
-     * this page load (0: entries 1–25).
-     * @type {Map<string, number>}
-     */
-    const _mbCollUi = new Map();
-
-    /**
-     * The cache key of a collection's page n: page 1 is the card's record
-     * (`_mbPopPageKind()`'s key), every other page its own.
+     * A collection's paged list (Phase 3c): its pages `?page=N` read with
+     * the card's own parser, 100 entries each; page 1 is the card's record
+     * (`_mbPagedSeed()`), so opening the window asks for nothing more.
      *
-     * @param {string} id
-     * @param {number} n
-     * @returns {string}
+     * @param {string} id - The collection's MBID.
+     * @returns {{key: string, spec: Object}}
      */
-    function _mbCollKey(id, n) {
-        return n > 1 ? `pop:page:collection:${id}:p${n}` : `pop:page:collection:${id}`;
-    }
-
-    /**
-     * Loads page n (> 1) of a collection for the window's pager, through
-     * the one MusicBrainz gate (`_mbPageLoad()`).
-     *
-     * @param {object} t - The collection target.
-     * @param {number} n
-     * @param {{force?: boolean, repaint?: ?function(): void}} [opts]
-     * @returns {void}
-     */
-    function _mbCollLoad(t, n, opts = {}) {
-        const url = new URL(`/collection/${t.id}?page=${n}`, window.location.origin).href;
-        _mbPageLoad(_mbCollKey(t.id, n), url, _mbParseCollectionPage, Object.assign({ wanted: _mbPopWanted(t) }, opts));
+    function _mbCollList(id) {
+        return {
+            key: `collection:${id}`,
+            spec: _mbPagedHtml(n => `/collection/${id}?page=${n}`, _mbParseCollectionPage),
+        };
     }
 
     /**
      * A collection's window (Space): on the left its facts and the whole
-     * description; on the right 25 of its entries with the page's own
-     * columns, a pager over all of them (a MusicBrainz page holds 100, so
-     * four slices cost one request) and, for releases and release groups,
-     * their covers from the Cover Art Archive (only rows the page marks as
-     * having artwork; images only, no API request).
+     * description; on the right its entries as a List table (Phase 3c,
+     * which replaced 25-row slices behind ◀ ▶) with the page's own columns:
+     * page 1 from the card's record, then "Load N more pages", a filter over
+     * every column, chips by type when the page groups its entries (a
+     * release group collection), every column sortable through three states;
+     * for releases and release groups their covers from the Cover Art
+     * Archive (only rows the page marks as having artwork; images only, no
+     * API request), the empty box for the others.
      *
      * @param {object} t
      * @param {Object} d - Page 1's record.
@@ -55729,55 +56507,27 @@
                 ['Collaborators', _mbCollUsersHtml(d.collaborators)],
                 ['Holds', _rgEsc(`${_mbCollHolds(d)}${d.pages > 1 ? ` on ${d.pages} pages` : ''}`)],
             ]) + (d.description ? `<h4>Description</h4><div class="mb-pop-coll-desc">${d.description}</div>` : '');
-        const total = d.count || d.rows.length;
-        const perPage = d.pages > 1 ? Math.max(1, d.rows.length) : Math.max(1, total);
-        const slices = Math.max(1, Math.ceil(total / _MB_COLL_WIN_ROWS));
-        const sub = Math.min(_mbCollUi.get(t.id) || 0, slices - 1);
-        const from = sub * _MB_COLL_WIN_ROWS;
-        const n = Math.floor(from / perPage) + 1;
-        const st = _mbPop.get(_mbCollKey(t.id, n));
-        if (n > 1 && !st) _mbCollLoad(t, n, { repaint });
-        const rec = n === 1 ? d : st && st.status === 'done' ? st.data : null;
-        const btn = (act, label, on) => `<button type="button" class="mb-dg-btn" data-mb-coll-act="${act}"${on ? '' : ' disabled'}>${label}</button>`;
-        let body;
-        if (rec) {
-            const off = from - (n - 1) * perPage;
-            const rows = rec.rows.slice(off, off + _MB_COLL_WIN_ROWS);
-            // The covers as the table's first column, as in the release
-            // group's window (vzell, 2026-10-24); a strip above the table
-            // before.
-            const covers = (rec.kind === 'release' || rec.kind === 'release-group') && rows.some(r => r.art)
-                ? rows.map(r => (r.art ? _mbPopCoverThumbHtml(rec.kind, r.id, r.name) : '')) : null;
-            body = rows.length ? _mbPopTableHtml(rec.cols, rows.map(r => r.cells), [], covers) : '<div class="mb-dp-xsub">This collection is empty.</div>';
-        } else if (st && st.status === 'failed') {
-            body = `<div class="mb-dp-warn">Page ${n} could not be read (${_rgEsc(st.detail)}).</div>` +
-                `<p><button type="button" class="mb-dg-btn" data-mb-coll-act="retry" data-mb-coll-v="${n}">Try again</button></p>`;
-        } else {
-            body = `<div class="mb-dp-xsub"><span class="mb-dp-spin">◌</span> Reading page ${n}…</div>`;
-        }
-        const shown = total ? `${from + 1}–${Math.min(total, from + _MB_COLL_WIN_ROWS)} of ${_mbPopNum(total)}` : '0';
-        const pager = slices > 1 ? `<div class="mb-pop-coll-pager">${btn('prev', '◀', sub > 0)}<span>${_rgEsc(`${sub + 1} / ${slices}`)}</span>` +
-            `${btn('next', '▶', sub < slices - 1)}</div>` : '';
-        const right = `<h4>${_rgEsc(`${d.plural || 'Entries'} · ${shown}`)}</h4>${pager}${body}`;
+        const list = _mbCollList(t.id);
+        _mbPagedSeed(t, list.key, list.spec, d, repaint);
+        const st = _mbPaged.get(list.key);
+        const unit = (d.plural || 'entries').toLowerCase();
+        const covers = d.kind === 'release' || d.kind === 'release-group';
+        // Only a grouped page (a release group collection: a table per type)
+        // puts the 'Type' column first (`_mbParseCollectionPage()`).
+        const grouped = d.cols[0] === 'Type';
+        const cols = d.cols.map((label, i) => ({
+            key: `c${i}`, label, val: r => (r.texts || [])[i] || '', html: (r, q) => _hlHtml(r.cells[i] || '', q),
+        }));
+        const right = `<h4>${_rgEsc(`${d.plural || 'Entries'} · ${_mbPopNum(d.count || d.rows.length)}`)}</h4>` +
+            (d.pages > 1 ? _mbPagedStatusHtml(list.key, unit) : '') +
+            _dpListTableHtml(t, 'collection', cols, st ? st.rows : d.rows, {
+                initial: 'as the collection lists them', placeholder: `Filter loaded ${unit}`,
+                search: r => (r.texts || []).join(' '),
+                facet: grouped ? (r => r.texts[0]) : null, chipLabel: 'Type',
+                thumb: covers ? (r => (r.art ? _mbPopCoverThumbHtml(d.kind, r.id, r.name, 'mb-dg-vthumb') : '')) : null,
+                none: 'This collection is empty.', nomatch: `No loaded ${unit.replace(/s$/, '')} matches.`,
+            });
         return `<div class="mb-dp-x"><div class="mb-dp-col">${left}</div><div class="mb-dp-col">${right}</div></div>`;
-    }
-
-    /**
-     * A collection window's pager clicks (◀ ▶, "Try again"). Links never get
-     * here: `_dpDrill()` takes them first.
-     *
-     * @param {MouseEvent} e
-     * @param {object} t - The collection target.
-     * @returns {void}
-     */
-    function _mbCollAreaClick(e, t) {
-        const b = e.target instanceof Element && e.target.closest('[data-mb-coll-act]');
-        if (!b || b.disabled) return;
-        const sub = _mbCollUi.get(t.id) || 0;
-        if (b.dataset.mbCollAct === 'prev') _mbCollUi.set(t.id, Math.max(0, sub - 1));
-        else if (b.dataset.mbCollAct === 'next') _mbCollUi.set(t.id, sub + 1);
-        else if (b.dataset.mbCollAct === 'retry') _mbCollLoad(t, Number(b.dataset.mbCollV) || 2, { force: true, repaint: _dpDialog.repaint });
-        if (_dpDialog.repaint) _dpDialog.repaint();
     }
 
     /**
@@ -55971,6 +56721,215 @@
             editor: _mbPopText(root.querySelector(':scope > h1 bdi')),
             tag: a.getAttribute('href').split('/')[2] || '',
         }, _mbParseTagSections(root));
+    }
+
+    /**
+     * Where a MusicBrainz list page stands in its pages (`ul.pagination`):
+     * the page shown (`a.sel`) and the last one any page link names; 1 of 1
+     * without a pager.
+     *
+     * @param {Element} root - The page's `#content` (or `#page`).
+     * @returns {{page: number, pages: number}}
+     */
+    function _mbPagerOf(root) {
+        const pag = root.querySelector('ul.pagination');
+        const nums = pag ? Array.from(pag.querySelectorAll('a[href*="page="]')).map(x => Number((/[?&]page=(\d+)/.exec(x.getAttribute('href')) || [])[1]) || 0) : [];
+        const sel = (pag && Number(_mbPopText(pag.querySelector('a.sel')))) || 1;
+        return { page: sel, pages: nums.length ? Math.max(1, sel, ...nums) : 1 };
+    }
+
+    /**
+     * A tag's page of one kind (`/tag/<tag>/<kind>?page=N`) or an editor's
+     * (`/user/<editor>/tag/<tag>/<kind>`), 2026-10-27, Phase 3c: the Web
+     * Service has no browse by tag, so the windows' per-kind lists are read
+     * here. The page (debug/poh-sync/, scripts/probe-mb-tag-kind-pages.py):
+     * a "15,606 releases found" line, the pager, then a `ul` of 100 `li`,
+     * each "4 - <entity link> (<comment>) by <artist credit>" (the link in a
+     * `span.mp` when the entity has edits pending) — the leading
+     * number the tag's votes (an editor's page has none), the credit a
+     * top-level `bdi` after " by " (releases, release groups, recordings).
+     * Text and safe HTML only (`_mbEditsHtml()` for the credit), so a page
+     * can be kept. `null` for any other page.
+     *
+     * @param {Document} doc
+     * @returns {?{plural: string, total: number, page: number, pages: number,
+     *   rows: Array<{type: string, id: string, name: string, dis: string, votes: ?number, by: string, byHtml: string}>}}
+     */
+    function _mbParseTagKindPage(doc) {
+        const root = doc.getElementById('content') || doc.getElementById('page');
+        if (!root) return null;
+        let found = null;
+        const p = Array.from(root.querySelectorAll('p')).find((x) => {
+            found = /^([\d,.]+)\s+(.+?)\s+found$/.exec(_mbPopText(x));
+            return !!found;
+        });
+        if (!p) return null;
+        // The list follows the line, after the pager's `nav` when there is one.
+        let ul = p.nextElementSibling;
+        while (ul && ul.tagName !== 'UL') ul = ul.tagName === 'NAV' ? ul.nextElementSibling : null;
+        const rows = [];
+        (ul ? Array.from(ul.children) : []).forEach((li) => {
+            // An entity with edits pending has its link in `span.mp` (3 of
+            // the 100 on the recording fixture: "Creep", "Linger", …).
+            const a = Array.from(li.querySelectorAll(':scope > a[href], :scope > span.mp > a[href]'))
+                .find(x => _MB_POP_PATH_RE.test(x.getAttribute('href') || ''));
+            if (!a) return;
+            const m = _MB_POP_PATH_RE.exec(a.getAttribute('href'));
+            const votes = /^(-?\d+)\s+-\s/.exec(_mbPopText(li));
+            const by = li.querySelector(':scope > bdi');
+            rows.push({
+                type: m[1], id: m[2].toLowerCase(), name: _mbPopText(a),
+                dis: _mbPopText(li.querySelector(':scope > span.comment')).replace(/^\((.*)\)$/, '$1'),
+                votes: votes ? Number(votes[1]) : null, by: _mbPopText(by), byHtml: by ? _mbEditsHtml(by) : '',
+            });
+        });
+        return Object.assign({ plural: found[2], total: Number(found[1].replace(/[,.]/g, '')) || 0, rows }, _mbPagerOf(root));
+    }
+
+    /**
+     * A CD stub's page (`/cdstub/<disc ID>`, Phase 3f; debug/poh-sync/,
+     * probe 2026-10-27): `.blankheader h1` (the title, a comment part of
+     * its text: "Blues In Orbit (mfsl-cd-sacd)"), the subheader "CD stub by
+     * <artist>", the Tracklist
+     * `table.tbl` (# · Title · [Artist] · Length), the "Disc ID information"
+     * `table.details` (Disc ID, Total tracks, Total length, Full TOC) and the
+     * sidebar's properties (Added, Last modified, Lookup count, Modify
+     * count, Barcode). Text only. `null` for any other page.
+     *
+     * @param {Document} doc
+     * @returns {?{title: string, artist: string, tracks: Array<{pos: string, title: string, artist: string, length: string}>,
+     *   discid: string, total: string, length: string, toc: string, added: string, modified: string, lookups: string,
+     *   modifies: string, barcode: string}}
+     */
+    function _mbParseCdStubPage(doc) {
+        const content = doc.getElementById('content');
+        const h1 = content && content.querySelector('.blankheader h1');
+        const table = content && content.querySelector('table.tbl');
+        if (!h1 || !table) return null;
+        const heads = Array.from(table.querySelectorAll('thead th, tr:first-child th')).map(th => _mbPopText(th));
+        const col = name => heads.findIndex(h => h === name);
+        const tracks = Array.from(table.querySelectorAll('tbody tr')).filter(tr => tr.querySelector('td')).map((tr) => {
+            const td = Array.from(tr.children).map(c => _mbPopText(c));
+            return { pos: td[col('#')] || td[0] || '', title: td[col('Title')] || '', artist: col('Artist') >= 0 ? td[col('Artist')] : '', length: td[col('Length')] || '' };
+        });
+        const detail = (label) => {
+            const th = Array.from(content.querySelectorAll('table.details th')).find(x => _mbPopText(x).replace(/:$/, '').trim() === label);
+            return th ? _mbPopText(th.nextElementSibling) : '';
+        };
+        const prop = (label) => {
+            const dt = Array.from(doc.querySelectorAll('#sidebar dt')).find(x => _mbPopText(x).replace(/:$/, '') === label);
+            return dt ? _mbPopText(dt.nextElementSibling) : '';
+        };
+        return {
+            title: _mbPopText(h1), artist: _mbPopText(content.querySelector('.blankheader .subheader')).replace(/^~?\s*CD stub by\s*/i, ''),
+            tracks, discid: detail('Disc ID'), total: detail('Total tracks'), length: detail('Total length'), toc: detail('Full TOC'),
+            added: prop('Added'), modified: prop('Last modified'), lookups: prop('Lookup count'), modifies: prop('Modify count'),
+            barcode: prop('Barcode').replace(/^\[none\]$/i, ''),
+        };
+    }
+
+    /**
+     * A documentation page (`/doc/<Page>`, Phase 3f; debug/poh-sync/, probe
+     * 2026-10-27): the wiki's text inside `#content.wikicontent`, its title
+     * in `h1.hierarchy-links` ("Style / Titles"), a status box ("Status: This
+     * is an official style guideline"), the table of contents (`#toc`), the
+     * text in `.mw-parser-output`. The text is kept as safe HTML, block by
+     * block: a heading as a line of its own (`mb-pop-doc-h<level>`), any
+     * other block through `_mbEditsHtml()` with its own tag (links kept, so
+     * another `/doc/` page opens in the window; the wiki's images dropped).
+     * `null` for any other page.
+     *
+     * @param {Document} doc
+     * @returns {?{title: string, status: string, toc: Array<{level: number, text: string}>, intro: string, html: string}}
+     */
+    function _mbParseDocPage(doc) {
+        const root = doc.querySelector('#content.wikicontent');
+        const body = root && root.querySelector('.mw-parser-output');
+        const h1 = root && root.querySelector('h1');
+        if (!body || !h1) return null;
+        const copy = body.cloneNode(true);
+        const statusBox = Array.from(copy.querySelectorAll('table.wikitable')).find(x => /^\s*Status:/.test(x.textContent));
+        const status = statusBox ? _mbPopText(statusBox).replace(/^Status:\s*/, '') : '';
+        const toc = Array.from(copy.querySelectorAll('#toc li')).map(li => ({
+            level: Number((/toclevel-(\d)/.exec(li.className) || [])[1]) || 1,
+            text: _mbPopText(li.querySelector(':scope > a .toctext') || li.querySelector(':scope > a') || li).replace(/^[\d.]+\s+/, ''),
+        }));
+        copy.querySelectorAll('#toc, .mw-editsection, script, style, .wikidoc-search').forEach(n => n.remove());
+        if (statusBox) statusBox.remove();
+        let intro = '';
+        const parts = [];
+        Array.from(copy.children).forEach((el) => {
+            const heading = el.matches('h1, h2, h3, h4, h5, h6') ? el : el.matches('.mw-heading') ? el.querySelector('h1, h2, h3, h4, h5, h6') : null;
+            if (heading) {
+                const level = Number(heading.tagName.slice(1)) || 2;
+                parts.push(`<div class="mb-pop-doc-h mb-pop-doc-h${level}">${_rgEsc(_mbPopText(heading))}</div>`);
+                return;
+            }
+            const wrap = doc.createElement('div');
+            wrap.appendChild(el.cloneNode(true));
+            const html = _mbEditsHtml(wrap);
+            if (!html) return;
+            if (!intro && el.tagName === 'P') intro = _mbEditsText(html);
+            parts.push(html);
+        });
+        return { title: _mbPopText(h1).replace(/\s*\/\s*/g, ' / '), status, toc, intro, html: parts.join('') };
+    }
+
+    /** How many hits a documentation search asks the wiki for. */
+    const _MB_POP_DOCSEARCH_LIMIT = 50;
+
+    /**
+     * Loads a documentation search's hits (Phase 3f) from the wiki's search
+     * API — `wiki.musicbrainz.org/api.php?action=query&list=search`, which
+     * answered JSON (probe 2026-10-27: totalhits, and per hit title,
+     * snippet, timestamp) — the site's own `/search?type=doc` page being
+     * Google's custom search, rendered in the browser, so no HTML to read.
+     * One request through `_extGet()` (that host's own gate), through
+     * `_mbLoad()` (memory, then IndexedDB, then the request).
+     *
+     * @param {object} t - The `docsearch` target (`t.id` the query).
+     * @param {{force?: boolean, repaint?: ?function(): void}} [opts]
+     * @returns {string} The cache key.
+     */
+    function _mbDocSearchLoad(t, { force = false, repaint = null } = {}) {
+        const key = `pop:docsearch:${t.id}`;
+        _mbLoad(key, async (wanted) => {
+            const url = 'https://wiki.musicbrainz.org/api.php?action=query&list=search&format=json' +
+                `&srlimit=${_MB_POP_DOCSEARCH_LIMIT}&srsearch=${encodeURIComponent(t.id)}`;
+            const res = await _extGet(url, { wanted, fetchOpts: { accept: /\bjson\b/i, headers: { 'User-Agent': _EXT_AGENT, Accept: 'application/json' } } });
+            if (res.skipped) return { skipped: true };
+            if (res.error) return { ok: false, detail: res.error };
+            if (res.status !== 200) return { ok: false, detail: `HTTP ${res.status}` };
+            let d;
+            try {
+                d = JSON.parse(String(res.body || '') + String(res.tail || ''));
+            } catch (_) {
+                return { ok: false, detail: 'the wiki did not answer JSON' };
+            }
+            const q = d && d.query;
+            if (!q || !Array.isArray(q.search)) return { ok: false, detail: 'the wiki did not answer a search' };
+            const text = h => new DOMParser().parseFromString(`<p>${h}</p>`, 'text/html').body.textContent.replace(/\s+/g, ' ').trim();
+            return {
+                ok: true,
+                data: {
+                    total: (q.searchinfo && q.searchinfo.totalhits) || q.search.length,
+                    hits: q.search.map(h => ({ title: String(h.title || ''), snippet: text(h.snippet || ''), date: String(h.timestamp || '').slice(0, 10) })),
+                },
+            };
+        }, { force, repaint, wanted: _mbPopWanted(t) });
+        return key;
+    }
+
+    /**
+     * A wiki page title as its documentation path: "Release Group" →
+     * `/doc/Release_Group` (spaces as underscores, the rest encoded, "/"
+     * kept: `Style/Titles`).
+     *
+     * @param {string} title
+     * @returns {string}
+     */
+    function _mbDocPath(title) {
+        return `/doc/${encodeURIComponent(String(title).replace(/ /g, '_')).replace(/%2F/gi, '/')}`;
     }
 
     // --- Editing history (org/mb-edit-history.org, 2026-10-20) ---
@@ -57401,48 +58360,123 @@
     }
 
     /**
-     * The page of a tag's entities of one kind (`/tag/<name>/artist`, an
-     * editor's `/user/<editor>/tag/<name>/artist`): the page's own "See all"
-     * link, else built from the kind's h3 name
-     * (`SA_TAG_VALUE_CATEGORY_SLUGS`); '' for a kind it does not know.
+     * The kinds a tag record lists, most entities first, each with its
+     * slug, the last path segment of its kind page (`release-group`:
+     * `SA_TAG_VALUE_CATEGORY_SLUGS`); a kind of no known slug is left out.
      *
-     * @param {string} base - The tag page's path, the tag as in its link
-     *   (percent-encoded): `/tag/<name>` or `/user/<editor>/tag/<name>`.
-     * @param {{kind: string, more: string}} s - A section of the record.
-     * @returns {string}
+     * @param {Object} d - `_mbParseTagPage()`'s or `_mbParseUserTagPage()`'s record.
+     * @returns {Array<{s: Object, slug: string}>}
      */
-    function _mbPopTagKindHref(base, s) {
-        if (s.more) return s.more;
-        const slug = SA_TAG_VALUE_CATEGORY_SLUGS[s.kind];
-        return slug ? `${base}/${slug}` : '';
+    function _mbTagKindSlugs(d) {
+        return _mbPopTagKinds(d).map(s => ({ s, slug: SA_TAG_VALUE_CATEGORY_SLUGS[s.kind] || '' })).filter(x => x.slug);
     }
 
     /**
-     * The window of a tag page or an editor's tag page: the facts on the
-     * left (`head`, then the kinds by count, each linking its page), each
-     * kind's first entries on the right, linked so they drill down (Phase
-     * 5), with "See all N" for a kind that has more.
+     * The kind a tag window lists: the one chosen ("By kind", or the kind
+     * page a link named: `t.list`), else the kind with the most entities.
      *
+     * @param {object} t - The tag's or editor's tag's target.
+     * @param {Object} d - Its record.
+     * @returns {string} A slug; '' when the tag has no entity.
+     */
+    function _mbTagKindChosen(t, d) {
+        const kinds = _mbTagKindSlugs(d);
+        // Read, not made: `_dpTblUi()` would make the state before its table.
+        const ui = _dpTbl.get(`${t.key}|tag-kinds`);
+        if (ui && ui.seg && kinds.some(k => k.slug === ui.seg)) return ui.seg;
+        return kinds.length ? kinds[0].slug : '';
+    }
+
+    /**
+     * The paged list of a tag's (or an editor's tag's) entities of one kind:
+     * its kind page, 100 a page, read from the site (`_mbPagedHtml()`,
+     * `_mbParseTagKindPage()`).
+     *
+     * @param {string} base - `/tag/<name>` or `/user/<editor>/tag/<name>`, as the link spells them.
+     * @param {string} slug - The kind: `release`, `artist`, …
+     * @returns {{key: string, spec: Object}}
+     */
+    function _mbTagKindList(base, slug) {
+        return {
+            key: `tag-kind:${base}/${slug}`,
+            spec: _mbPagedHtml(n => `${base}/${slug}${n > 1 ? `?page=${n}` : ''}`, _mbParseTagKindPage),
+        };
+    }
+
+    /**
+     * Starts a tag window's list of the chosen kind (from `pin()`: what was
+     * never asked, or everything again on ⟳).
+     *
+     * @param {object} t
+     * @param {Object} d - The tag record.
+     * @param {string} base
+     * @param {boolean} again
+     * @param {function(): void} repaint
+     * @returns {void}
+     */
+    function _mbTagKindPin(t, d, base, again, repaint) {
+        const slug = _mbTagKindChosen(t, d);
+        if (!slug) return;
+        const list = _mbTagKindList(base, slug);
+        _mbPagedStart(t, list.key, list.spec, again, repaint);
+    }
+
+    /**
+     * A tag window started from a link to one kind's page
+     * (`/tag/<name>/release`: `t.list`): that kind is the one listed.
+     *
+     * @param {object} t
+     * @returns {void}
+     */
+    function _mbTagKindStart(t) {
+        if (t.list) _dpTblUi(t, 'tag-kinds').seg = t.list;
+    }
+
+    /**
+     * The window of a tag page or an editor's tag page (Phase 3c,
+     * 2026-10-27): the facts on the left (`head`, then "By kind": every
+     * kind with its count, a click lists that kind), on the right the
+     * chosen kind's entities as a List table read page by page from its
+     * kind page — 100 when the window opens, then "Load N more pages" —
+     * in MusicBrainz's order (most votes first on a tag's; an editor's has
+     * no votes), with a filter and the three-way sort. Each entity links its
+     * page (it drills down in the window, Phase 5).
+     *
+     * @param {object} t - The target.
      * @param {Object} d - `_mbParseTagPage()`'s or `_mbParseUserTagPage()`'s record.
-     * @param {string} base - The page's path (`_mbPopTagKindHref()`).
+     * @param {string} base - The page's path (`_mbTagKindList()`).
      * @param {string} head - The left column's title and facts (HTML).
      * @param {string} empty - What an empty page means.
      * @returns {string}
      */
-    function _mbPopTagWindowHtml(d, base, head, empty) {
-        const kinds = _mbPopTagKinds(d);
-        const kindLink = (s) => {
-            const href = _mbPopTagKindHref(base, s);
-            return href ? `<a href="${_rgEsc(href)}" target="_blank" rel="noopener">${_rgEsc(s.kind)}</a>` : _rgEsc(s.kind);
-        };
-        const left = head + (kinds.length ? '<h4>By kind</h4>' + _mbPopTableHtml(['Kind', 'Count'],
-            kinds.map(s => [kindLink(s), _rgEsc(s.count.toLocaleString('en-US'))]), [1]) : '');
-        const right = kinds.length ? kinds.map(s => '<div class="mb-dp-group">' +
-            `<div class="mb-dp-gname">${_rgEsc(s.kind)} · ${_rgEsc(s.count.toLocaleString('en-US'))}</div>` +
-            '<ul class="mb-pop-taglist">' + s.items.map(e => `<li><a href="/${_rgEsc(e.type)}/${_rgEsc(e.id)}" target="_blank" rel="noopener">` +
-                `${_rgEsc(e.name)}</a>${e.extra ? ` <span class="mb-rg-dim">${_rgEsc(e.extra)}</span>` : ''}</li>`).join('') + '</ul>' +
-            (s.count > s.items.length ? `<div class="mb-dp-xsub">${kindLink({ kind: `See all ${s.count.toLocaleString('en-US')}`, more: _mbPopTagKindHref(base, s) })}</div>` : '') +
-            '</div>').join('') : `<div class="mb-dp-xsub">${_rgEsc(empty)}</div>`;
+    function _mbPopTagWindowHtml(t, d, base, head, empty) {
+        const kinds = _mbTagKindSlugs(d);
+        const slug = _mbTagKindChosen(t, d);
+        const left = head + (kinds.length ? '<h4>By kind</h4><div class="mb-dp-tbl" data-mb-tbl="tag-kinds">' + _mbPopTableHtml(['Kind', 'Count'],
+            kinds.map(k => [`<button type="button" class="mb-pop-kindbtn" data-mb-tbl-act="seg" data-mb-tbl-v="${_rgEsc(k.slug)}" ` +
+                `aria-pressed="${k.slug === slug}">${_rgEsc(k.s.kind)}</button>`, _rgEsc(k.s.count.toLocaleString('en-US'))]), [1]) + '</div>' : '');
+        if (!slug) return `<div class="mb-dp-x"><div class="mb-dp-col">${left}</div><div class="mb-dp-col"><div class="mb-dp-xsub">${_rgEsc(empty)}</div></div></div>`;
+        const sec = kinds.find(k => k.slug === slug).s;
+        const unit = sec.kind.toLowerCase();
+        const { key } = _mbTagKindList(base, slug);
+        const st = _mbPaged.get(key);
+        const rows = st ? st.rows : [];
+        const cols = [];
+        if (rows.some(r => r.votes != null)) {
+            cols.push({ key: 'votes', label: 'Votes', num: true, first: -1, cls: 'mb-rg-num', val: r => r.votes ?? '', html: r => _rgEsc(r.votes ?? '—') });
+        }
+        cols.push({
+            key: 'name', label: sec.kind.replace(/s$/, ''), val: r => r.name,
+            html: (r, q) => `<a href="/${_rgEsc(r.type)}/${_rgEsc(r.id)}" target="_blank" rel="noopener">${_hlEsc(r.name, q)}</a>` +
+                `${r.dis ? ` <span class="mb-rg-dim">(${_hlEsc(r.dis, q)})</span>` : ''}`,
+        });
+        if (rows.some(r => r.by)) cols.push({ key: 'by', label: 'By', val: r => r.by, html: (r, q) => _hlHtml(r.byHtml, q) || '—' });
+        const right = `<h4>${_rgEsc(sec.kind)} · ${_rgEsc((st && st.total != null ? st.total : sec.count).toLocaleString('en-US'))}</h4>` +
+            _mbPagedStatusHtml(key, unit) + _dpListTableHtml(t, `tag-kind-${slug}`, cols, rows, {
+                initial: rows.some(r => r.votes != null) ? 'as MusicBrainz lists them, most votes first' : 'as MusicBrainz lists them',
+                placeholder: `Filter loaded ${unit}`, search: r => `${r.name} ${r.dis} ${r.by}`,
+                body: _mbPagedBody(st, unit), nomatch: `No loaded ${unit.replace(/s$/, '')} matches.`, none: empty,
+            });
         return `<div class="mb-dp-x"><div class="mb-dp-col">${left}</div><div class="mb-dp-col">${right}</div></div>`;
     }
 
@@ -57454,8 +58488,15 @@
      * @param {{parse: function(Document): ?Object, keep?: function(Object): boolean,
      *   cardHtml: function(Object, object): string,
      *   windowHtml: function(Object, object, function(): void): string,
+     *   pin?: function(object, Object, boolean, function(): void): void,
+     *   start?: function(object): void,
      *   failNote?: function(string): string}} spec - `windowHtml` gets the
-     *   repaint too (a collection's pager loads more pages); `failNote` as
+     *   repaint too (a collection's list seeds itself from the record);
+     *   `pin(t, d, again, repaint)` starts what the window adds once the
+     *   record is there, as `_mbPopLookupKind()`'s (a tag's list of one kind,
+     *   Phase 3c), from every repaint, so it may only start what was never
+     *   asked unless `again` (⟳); `start(t)` runs when the window starts on a
+     *   target (a tag's kind page picks that kind); `failNote` as
      *   `_mbPopLookupKind()`'s.
      * @returns {{card: function(object, boolean, function(): void): string,
      *   extracted: function(object, boolean, boolean, function(): void): string}}
@@ -57468,8 +58509,19 @@
                 return _mbPopCardShell(t, _mbPop.get(key(t)), spec.cardHtml, spec.failNote);
             },
             extracted(t, start, force, repaint) {
-                if (start) _mbPageLoad(key(t), t.url, spec.parse, { force, repaint, wanted: _mbPopWanted(t), keep: spec.keep });
-                return _mbPopWindowShell(t, _mbPop.get(key(t)), (d, tt) => spec.windowHtml(d, tt, repaint), spec.failNote);
+                if (start && spec.start) spec.start(t);
+                // As `_mbPopLookupKind()`: the pin's extras start from this
+                // call when the record is there, else from the repaint its
+                // arrival causes; a ⟳ (start + force) asks them again too.
+                const later = () => {
+                    const s = _mbPop.get(key(t));
+                    if (spec.pin && s && s.status === 'done') spec.pin(t, s.data, start && force, repaint);
+                    repaint();
+                };
+                if (start) _mbPageLoad(key(t), t.url, spec.parse, { force, repaint: spec.pin ? later : repaint, wanted: _mbPopWanted(t), keep: spec.keep });
+                const st = _mbPop.get(key(t));
+                if (spec.pin && st && st.status === 'done') spec.pin(t, st.data, start && force, repaint);
+                return _mbPopWindowShell(t, st, (d, tt) => spec.windowHtml(d, tt, repaint), spec.failNote);
             },
         };
     }
@@ -57522,9 +58574,8 @@
                 return _rgCardHtml(info, null);
             },
             extracted(t, start, force, repaint) {
-                return _rgWindowFor({ gid: t.id, name: t.name, type: '', artist: '', releaseGid: '' }, null, '', start, force, repaint);
+                return _rgWindowFor(t, { gid: t.id, name: t.name, type: '', artist: '', releaseGid: '' }, null, '', start, force, repaint);
             },
-            onAreaClick: _rgOnAreaClick,
         },
         // Card: one lookup (8.8 KB in Phase 0). Window: the same answer, plus
         // the Cover Art Archive's index when the answer says it has images.
@@ -57557,7 +58608,7 @@
                       (more > 0 ? `<div class="mb-tt-dim">+ ${more} more</div>` : '')
                     : '');
             },
-            windowHtml(d) {
+            windowHtml(d, t) {
                 const id = _rgEsc(d.id);
                 const caa = d['cover-art-archive'] || {};
                 const rg = d['release-group'] || {};
@@ -57591,9 +58642,8 @@
                         ['Quality', _rgEsc(d.quality && d.quality !== 'normal' ? d.quality : '')],
                     ]) + gallery;
                 const relCredit = _mbPopCreditText(d['artist-credit']);
-                const right = `<h4>Tracklist · ${tracks} track${tracks === 1 ? '' : 's'}</h4>` + media.map(m =>
-                    `<div class="mb-dp-group"><div class="mb-dp-gname">${_rgEsc([`${m.format || 'Medium'} ${m.position || ''}`.trim(),
-                        m.title].filter(Boolean).join(' · '))}</div>${_mbPopTracksHtml(m.tracks || [], relCredit, true)}</div>`).join('');
+                // A table per medium, one filter for all (Phase 3e).
+                const right = `<h4>Tracklist · ${tracks} track${tracks === 1 ? '' : 's'}</h4>` + _mbPopTracklistHtml(t, media, relCredit);
                 return `<div class="mb-dp-x"><div class="mb-dp-col">${left}</div><div class="mb-dp-col">${right}</div></div>`;
             },
             // The cover strip: one index request to coverartarchive.org (its
@@ -57632,11 +58682,6 @@
             },
             windowHtml(d, t) {
                 const pin = _mbPopLookup(t, 'artist-rels+place-rels+event-rels');
-                const count = _mbPopBrowse('release', `recording=${encodeURIComponent(t.id)}&limit=1`);
-                const rels = (d.releases || []).slice().sort((a, b) => (a.date || '9999').localeCompare(b.date || '9999'));
-                const full = rels.length >= _MB_POP_SUBLIST_CAP;
-                const cs = _mbPop.get(count.key);
-                const total = !full ? rels.length : (cs && cs.status === 'done' && cs.data ? cs.data['release-count'] : null);
                 const left = `<div class="mb-dp-xtitle">${_rgEsc(d.title)}</div>` +
                     `<div class="mb-dp-xsub">${_mbPopCreditHtml(d['artist-credit'])}` +
                     `${d.disambiguation ? ` (${_rgEsc(d.disambiguation)})` : ''}</div>` +
@@ -57652,20 +58697,11 @@
                         ..._mbPopRelRows(p.relations, 'place', _mbPopPlaceRelHtml),
                         ..._mbPopRelRows(p.relations, 'event'),
                     ]) || '<div class="mb-dp-xsub">No credits.</div>');
-                const shown = full && total != null && total > rels.length
-                    ? `<div class="mb-rg-progress">The first ${rels.length} of ${total}; ` +
-                      `<a href="/recording/${_rgEsc(d.id)}" target="_blank" rel="noopener">the recording's page</a> lists them all.</div>`
-                    : '';
-                const right = `<h4>Releases${total != null ? ` · ${total}` : (full ? ` · ${rels.length}+` : '')}</h4>${shown}` +
-                    (rels.length ? _mbPopTableHtml(['Release', 'Date', 'Country', 'Status'], rels.map(r => [
-                        `<a href="/release/${_rgEsc(r.id)}" target="_blank" rel="noopener">${_rgEsc(r.title)}</a>` +
-                            `${r.disambiguation ? ` <span class="mb-rg-dim">(${_rgEsc(r.disambiguation)})</span>` : ''}`,
-                        _rgEsc(r.date || '—'), _rgEsc(r.country || '—'), _rgEsc(r.status || '—'),
-                    ])) : '<div class="mb-dp-xsub">On no release.</div>');
-                return `<div class="mb-dp-x"><div class="mb-dp-col">${left}</div><div class="mb-dp-col">${right}</div></div>`;
+                return `<div class="mb-dp-x"><div class="mb-dp-col">${left}</div><div class="mb-dp-col">${_mbRecRelsHtml(t)}</div></div>`;
             },
-            // The credits lookup (10.8 KB), and — only when the lookup's
-            // release list is full — the count, from a browse with limit=1;
+            // The credits lookup (10.8 KB), and every release as a paged
+            // list (`_mbRecRelsList()`: 100 now, 500 more a click), which
+            // replaced the lookup's first 25 and a count browse (Phase 3b);
             // once the credits are there, the area chains of their places
             // (org/event-GPE.org).
             pin(t, d, again, repaint) {
@@ -57676,10 +58712,8 @@
                     _mbPopAreaChainLoad(t, (ps.data.relations || []).filter(r => r['target-type'] === 'place' && r.place)
                         .map(r => r.place.area), again, repaint);
                 }
-                if ((d.releases || []).length >= _MB_POP_SUBLIST_CAP) {
-                    const count = _mbPopBrowse('release', `recording=${encodeURIComponent(t.id)}&limit=1`);
-                    _mbPopPinLoad(t, count.key, count.url, again, repaint);
-                }
+                const list = _mbRecRelsList(t.id);
+                _mbPagedStart(t, list.key, list.spec, again, repaint);
             },
         })),
         // Card: one lookup (11.8 KB): type, language, ISWC, writers,
@@ -57714,8 +58748,10 @@
                         ..._mbPopRelRows(d.relations, 'label'),
                         ..._mbPopRelRows(d.relations, 'work'),
                     ]) +
-                    ((d.attributes || []).length ? `<h4>Codes · ${d.attributes.length}</h4>` + _mbPopKvHtml(d.attributes.map(a =>
-                        [a.type || '', _rgEsc(a.value)])) : '');
+                    ((d.attributes || []).length ? `<h4>Codes · ${d.attributes.length}</h4>` + _dpCompactTableHtml(t, 'codes', [
+                        { key: 'type', label: 'Type', val: a => a.type || '', html: (a, q) => _hlEsc(a.type || '—', q) },
+                        { key: 'value', label: 'Code', val: a => a.value || '', html: (a, q) => _hlEsc(a.value, q) },
+                    ], d.attributes, { initial: 'as MusicBrainz lists them', what: 'codes' }) : '');
                 return `<div class="mb-dp-x"><div class="mb-dp-col">${left}</div><div class="mb-dp-col">${_mbWorkRecsHtml(t)}</div></div>`;
             },
             // The first page of its recordings (a work can have thousands:
@@ -57726,9 +58762,9 @@
             },
         })),
         // Card: one lookup without url-rels (R1: 75 links were most of the
-        // artist's 30 KB). Window: the links (one lookup) and the release
-        // groups per primary type, each a browse with limit=1, shown as
-        // they arrive.
+        // artist's 30 KB). Window: the links (one lookup), the count of each
+        // primary type (a browse with limit=1 each) and the chosen type's
+        // release groups as a List table (`_mbArtistRgsHtml()`).
         artist: Object.assign({ title: 'Artist', wide: true }, _mbPopLookupKind({
             cardInc: 'genres+ratings+aliases',
             cardHtml(d) {
@@ -57759,25 +58795,15 @@
                         [d.type === 'Person' ? 'Died' : 'Dissolved', [_rgEsc(ls.end || (ls.ended ? 'yes' : '')), _mbPopAreaChainHtml(d['end-area'])]
                             .filter(Boolean).join(' · ')],
                         ['Rating', _rgEsc(_mbPopRating(d.rating))],
-                        ['Genres', _rgEsc(_mbPopGenres(d.genres, 99))],
+                        // One per line, genres as their tags (2026-10-27, as a label's).
+                        ['Genres', _mbPopGenreLinksHtml(d.genres)],
                         ['IPI', _rgEsc((d.ipis || []).join(', '))],
                         ['ISNI', _rgEsc((d.isnis || []).join(', '))],
-                        ['Aliases', _rgEsc(_mbPopAliases(d.aliases, 99))],
+                        ['Aliases', _mbPopAliasesHtml(d.aliases)],
                     ]) +
-                    _mbPopSectionHtml('Links', _mbPop.get(links.key), (p) => _mbPopUrlLinksHtml(p.relations, false) ||
+                    _mbPopSectionHtml('Links', _mbPop.get(links.key), (p) => _mbPopUrlLinksTableHtml(t, 'links', p.relations, { withHead: false }) ||
                         '<div class="mb-dp-xsub">No links.</div>');
-                const rows = _MB_POP_RG_TYPES.map(([type, label]) => {
-                    const q = _mbPopBrowse('release-group', `artist=${encodeURIComponent(t.id)}&type=${type}&limit=1`);
-                    const s = _mbPop.get(q.key);
-                    let cell = '<span class="mb-dp-spin">◌</span>';
-                    if (s && s.status === 'done' && s.data) cell = _rgEsc(_mbPopNum(s.data['release-group-count'] || 0));
-                    else if (s && s.status === 'failed') cell = '<span class="mb-rg-dim">?</span>';
-                    return [_rgEsc(label), cell];
-                });
-                const right = '<h4>Release groups</h4>' + _mbPopTableHtml(['Type', 'Count'], rows, [1]) +
-                    `<p><a href="/artist/${_rgEsc(d.id)}" target="_blank" rel="noopener">The discography</a> ` +
-                    '<span class="mb-rg-dim">(official releases; the page filters the others)</span></p>';
-                return `<div class="mb-dp-x"><div class="mb-dp-col">${left}</div><div class="mb-dp-col">${right}</div></div>`;
+                return `<div class="mb-dp-x"><div class="mb-dp-col">${left}</div><div class="mb-dp-col">${_mbArtistRgsHtml(t)}</div></div>`;
             },
             cardAside: _mbPopCardPicture,
             pin(t, d, again, repaint) {
@@ -57785,10 +58811,16 @@
                 _mbPopPinLoad(t, links.key, links.url, again, repaint);
                 _mbPopImageLoad(t, _mbPopLoadedRels(_mbPop.get(links.key)), again, repaint);
                 _mbPopAreaChainLoad(t, [d.area, d['begin-area'], d['end-area']], again, repaint);
+                // The count of each primary type (the segments' totals) …
                 _MB_POP_RG_TYPES.forEach(([type]) => {
                     const q = _mbPopBrowse('release-group', `artist=${encodeURIComponent(t.id)}&type=${type}&limit=1`);
                     _mbPopPinLoad(t, q.key, q.url, again, repaint);
                 });
+                // … and the chosen type's release groups as a paged list
+                // (Phase 3b); another segment's page 1 comes from the repaint
+                // its click causes, as a Discogs label's other order does.
+                const list = _mbArtistRgsList(t.id, _mbArtistRgType(t));
+                _mbPagedStart(t, list.key, list.spec, again, repaint);
             },
         })),
         // Card: one lookup (genres, ratings, aliases; 1.8 KB before ratings).
@@ -57801,7 +58833,7 @@
         // limit=1. Founded/Defunct, sort name, label code, rating and ISNI
         // since 2026-10-26 (org/discogs.org 4b).
         label: Object.assign({ title: 'Label', wide: true }, _mbPopLookupKind({
-            cardInc: 'genres+ratings+aliases',
+            cardInc: _MB_POP_LABEL_CARD_INC,
             cardHtml(d) {
                 const ls = d['life-span'] || {};
                 const head = `<div class="mb-tt-title">${_rgEsc(d.name)}</div>` +
@@ -57839,10 +58871,11 @@
                             ? `<a href="/label/${_rgEsc(d.id)}" target="_blank" rel="noopener">${_rgEsc(_mbPopNum(cs.data['release-count'] || 0))}</a>`
                             : (cs && cs.status === 'failed' ? '<span class="mb-rg-dim">?</span>' : '<span class="mb-dp-spin">◌</span>')],
                         ['Rating', _rgEsc(_mbPopRating(d.rating))],
-                        ['Genres', _rgEsc(_mbPopGenres(d.genres, 99))],
+                        // One per line, each its tag (Phase 3c, as the release group's).
+                        ['Genres', _mbPopGenreLinksHtml(d.genres)],
                         ['IPI', _rgEsc((d.ipis || []).join(', '))],
                         ['ISNI', _rgEsc((d.isnis || []).join(', '))],
-                        ['Aliases', _rgEsc(_mbPopAliases(d.aliases, 99))],
+                        ['Aliases', _mbPopAliasesHtml(d.aliases)],
                     ]);
                 const ps = _mbPop.get(pin.key);
                 const right = _mbPopSectionHtml('Related labels', ps, (p) => _mbPopKvHtml(_mbPopRelRows(p.relations, 'label')) ||
@@ -57850,7 +58883,7 @@
                     _mbPopSectionHtml('People, places and series', _mbPop.get(more.key), (p) => _mbPopKvHtml(['artist', 'place', 'series']
                         .flatMap(type => _mbPopRelRowsCapped(p.relations, type, _MB_POP_LABEL_REL_CAP))) ||
                         '<div class="mb-dp-xsub">None.</div>') +
-                    (ps && ps.status === 'done' && ps.data ? _mbPopUrlLinksHtml(ps.data.relations) : '');
+                    (ps && ps.status === 'done' && ps.data ? _mbPopUrlLinksTableHtml(t, 'links', ps.data.relations, { min: 10 }) : '');
                 return `<div class="mb-dp-x"><div class="mb-dp-col">${left}</div><div class="mb-dp-col">${right}</div></div>`;
             },
             cardAside: _mbPopCardPicture,
@@ -57882,15 +58915,15 @@
                         ['Existed', _rgEsc(_mbPopLifeSpan(d['life-span']))],
                     ]);
             },
-            windowHtml(d) {
+            windowHtml(d, t) {
                 return `<div class="mb-dp-x"><div class="mb-dp-col"><div class="mb-dp-xtitle">${_rgEsc(d.name)}</div>` +
                     (d.disambiguation ? `<div class="mb-dp-xsub">${_rgEsc(d.disambiguation)}</div>` : '') +
                     `<div class="mb-rg-pills">${_mbPopPillsHtml([d.type])}</div><h4>Facts</h4>` + _mbPopKvHtml([
                         ['ISO 3166', _rgEsc([...(d['iso-3166-1-codes'] || []), ...(d['iso-3166-2-codes'] || []),
                             ...(d['iso-3166-3-codes'] || [])].join(', '))],
                         ['Existed', _rgEsc(_mbPopLifeSpan(d['life-span']))],
-                    ]) + `</div><div class="mb-dp-col"><h4>Related areas</h4>${_mbPopKvHtml(_mbPopRelRows(d.relations, 'area')) ||
-                    '<div class="mb-dp-xsub">None.</div>'}</div></div>`;
+                    ]) + `</div><div class="mb-dp-col"><h4>Related areas</h4>${_mbPopRelTableHtml(t, 'areas',
+                    _mbPopRelTableRows(d.relations, 'area'), 'Area', 'areas')}</div></div>`;
             },
         })),
         // One lookup for card and window. The Web Service has no
@@ -57908,15 +58941,19 @@
                         ['Also known as', _rgEsc(_mbPopAliases(d.aliases))],
                     ]);
             },
-            windowHtml(d) {
+            windowHtml(d, t) {
                 return `<div class="mb-dp-x"><div class="mb-dp-col"><div class="mb-dp-xtitle">${_rgEsc(d.name)}</div>` +
                     `<div class="mb-rg-pills">${_mbPopPillsHtml([d.type])}</div>` +
                     (d.description ? `<div class="mb-dp-section">${_rgEsc(d.description)}</div>`
                         : '<div class="mb-dp-xsub">The description is on the instrument\'s page (Live page).</div>') +
-                    `<h4>Aliases · ${(d.aliases || []).length}</h4>${_mbPopKvHtml((d.aliases || []).map(a =>
-                        [a.locale || a.type || '—', _rgEsc(a.name)]))}</div>` +
-                    `<div class="mb-dp-col"><h4>Related instruments</h4>${_mbPopKvHtml(_mbPopRelRows(d.relations, 'instrument')) ||
-                    '<div class="mb-dp-xsub">None.</div>'}</div></div>`;
+                    `<h4>Aliases · ${(d.aliases || []).length}</h4>${(d.aliases || []).length ? _dpCompactTableHtml(t, 'aliases', [
+                        { key: 'name', label: 'Alias', val: a => a.name || '', html: (a, q) => _hlEsc(a.name, q) },
+                        { key: 'locale', label: 'Locale', val: a => a.locale || '', html: (a, q) => _hlEsc(a.locale || '—', q) },
+                        { key: 'type', label: 'Type', val: a => a.type || '', html: (a, q) => _hlEsc(a.type || '—', q) },
+                        { key: 'primary', label: 'Primary', val: a => (a.primary ? 'primary' : ''), html: a => (a.primary ? '✓' : '') },
+                    ], d.aliases, { initial: 'as MusicBrainz lists them', what: 'aliases' }) : '<div class="mb-dp-xsub">None.</div>'}</div>` +
+                    `<div class="mb-dp-col"><h4>Related instruments</h4>${_mbPopRelTableHtml(t, 'instruments',
+                    _mbPopRelTableRows(d.relations, 'instrument'), 'Instrument', 'instruments')}</div></div>`;
             },
         })),
         // A genre (2026-10-26): read from its page (`_mbParseGenrePage()`),
@@ -57937,7 +58974,7 @@
                     _mbPopKvHtml([...d.tags.map(([k, v]) => [k, _rgEsc(v)]), ..._mbPopGenreRelRows(d, { max: 3 })]) +
                     (wiki ? `<div class="mb-tt-body">${_rgEsc(wiki)}</div>` : '');
             },
-            windowHtml(d) {
+            windowHtml(d, t) {
                 const urls = (d.rels || []).filter(r => r.items.every(x => x.type === 'url'));
                 const left = `<div class="mb-dp-xtitle">${_rgEsc(d.name)}</div>` +
                     (d.comment ? `<div class="mb-dp-xsub">${_rgEsc(d.comment)}</div>` : '') +
@@ -57950,9 +58987,18 @@
                     ]) +
                     (d.wiki ? `<h4>Wikipedia</h4><div class="mb-dp-section">${_rgEsc(d.wiki)}</div>` +
                         (d.wikiUrl ? `<p><a href="${_rgEsc(d.wikiUrl)}" target="_blank" rel="noopener">Continue reading at Wikipedia</a></p>` : '') : '') +
-                    (d.annotation ? `<h4>Annotation</h4><div class="mb-dp-section">${_rgEsc(d.annotation)}</div>` : '');
-                const right = `<h4>Related genres</h4>${_mbPopKvHtml(_mbPopGenreRelRows(d, { links: true })) || '<div class="mb-dp-xsub">None.</div>'}` +
+                    (d.annotation ? `<h4>Annotation</h4><div class="mb-dp-section">${_rgEsc(d.annotation)}</div>` : '') +
+                    // The links on the left since Phase 3d (the plan's row).
                     (urls.length ? `<h4>Links</h4>${_mbPopKvHtml(_mbPopGenreRelRows(d, { links: true, urls: true }))}` : '');
+                // Each relationship its own Compact table (Phase 3d).
+                const secs = (d.rels || []).filter(r => !r.items.every(x => x.type === 'url'));
+                const right = '<h4>Related genres</h4>' + (secs.length ? secs.map((r, i) =>
+                    `<div class="mb-dp-gname">${_rgEsc(r.phrase)} · ${r.items.length}</div>` + _dpCompactTableHtml(t, `genre-rel-${i}`, [
+                        {
+                            key: 'name', label: 'Name', val: x => x.name,
+                            html: (x, q) => `<a href="${_rgEsc(x.href)}" target="_blank" rel="noopener">${_hlEsc(x.name, q)}</a>`,
+                        },
+                    ], r.items, { initial: 'as MusicBrainz lists them', what: 'genres' })).join('') : '<div class="mb-dp-xsub">None.</div>');
                 return `<div class="mb-dp-x"><div class="mb-dp-col">${left}</div><div class="mb-dp-col">${right}</div></div>`;
             },
         })),
@@ -57996,14 +59042,23 @@
                     ]) +
                     _mbPopUrlRowsHtml(d.relations) +
                     _mbPopGalleryHtml('Event art', _mbPopEventArt.get(d.id), 0, EAA_CTX, `/event/${d.id}`) +
-                    _mbPopSectionHtml('Recorded here', _mbPop.get(pin.key), (p) => _mbPopKvHtml([
-                        ..._mbPopRelRows(p.relations, 'release').map(([k, v]) => [`${k} (releases)`, v]),
-                        ..._mbPopRelRows(p.relations, 'recording').map(([k, v]) => [`${k} (recordings)`, v]),
-                    ]) || '<div class="mb-dp-xsub">Nothing recorded here is in MusicBrainz.</div>');
+                    _mbPopSectionHtml('Recorded here', _mbPop.get(pin.key), (p) => {
+                        // Two Compact tables (Phase 3d): its releases, its recordings.
+                        const rel = _mbPopRelTableRows(p.relations, 'release');
+                        const rec = _mbPopRelTableRows(p.relations, 'recording');
+                        if (!rel.length && !rec.length) return '<div class="mb-dp-xsub">Nothing recorded here is in MusicBrainz.</div>';
+                        return (rel.length ? `<div class="mb-dp-gname">Releases · ${rel.length}</div>` + _mbPopRelTableHtml(t, 'recorded-releases', rel, 'Release', 'releases') : '') +
+                            (rec.length ? `<div class="mb-dp-gname">Recordings · ${rec.length}</div>` + _mbPopRelTableHtml(t, 'recorded-recordings', rec, 'Recording', 'recordings') : '');
+                    });
+                // A List table (Phase 3e): # · Song · Notes (the rest of the
+                // line: guests, a remark), in the order played.
                 const right = `<h4>Setlist${sl.songs.length ? ` · ${sl.songs.length}` : ''}</h4>` +
                     (sl.lineupHtml ? `<div class="mb-dp-xsub">${sl.lineupHtml}</div>` : '') +
-                    (sl.songs.length ? '<ol class="mb-dp-tracks mb-pop-tracks">' + sl.songsHtml.map((x, i) =>
-                        `<li><span class="mb-dp-pos">${i + 1}</span><span class="mb-pop-ttl">${x}</span></li>`).join('') + '</ol>'
+                    (sl.songs.length ? _dpListTableHtml(t, 'setlist', [
+                        { key: 'n', label: '#', num: true, cls: 'mb-rg-num', val: x => x.n, html: x => String(x.n) },
+                        { key: 'song', label: 'Song', val: x => x.head.text, html: (x, q) => _hlHtml(x.head.html, q) },
+                        { key: 'notes', label: 'Notes', val: x => x.tail.text, html: (x, q) => _hlHtml(x.tail.html, q) },
+                    ], sl.parts, { initial: 'in the order played', placeholder: 'Filter the setlist: song, guests', none: 'No songs.' })
                         : '<div class="mb-dp-xsub">MusicBrainz has no setlist for it.</div>') +
                     sl.notesHtml.map(n => `<div class="mb-dp-note">${n}</div>`).join('');
                 return `<div class="mb-dp-x"><div class="mb-dp-col">${left}</div><div class="mb-dp-col">${right}</div></div>`;
@@ -58017,8 +59072,9 @@
             },
         })),
         // Card and window: one lookup (2.3 KB): type, address, area,
-        // coordinates, links. Window: up to 100 of its events from a browse,
-        // sorted by date (the browse's own order is not by date).
+        // coordinates, links. Window: its events as a List table, 100 when
+        // it opens and 500 more a click, sorted by date at first (the
+        // browse's own order is not by date): `_mbPlaceEventsHtml()`.
         place: Object.assign({ title: 'Place', wide: true }, _mbPopLookupKind({
             cardInc: 'area-rels+url-rels',
             cardHtml(d) {
@@ -58032,7 +59088,6 @@
                     ]);
             },
             windowHtml(d, t) {
-                const browse = _mbPopBrowse('event', `place=${encodeURIComponent(t.id)}&limit=100`);
                 const c = d.coordinates;
                 const map = c ? `https://www.openstreetmap.org/?mlat=${c.latitude}&mlon=${c.longitude}#map=17/${c.latitude}/${c.longitude}` : '';
                 const left = `<div class="mb-dp-xtitle">${_rgEsc(d.name)}</div>` +
@@ -58042,27 +59097,14 @@
                         ['Area', _mbPopAreaChainHtml(d.area)],
                         ['Coordinates', c ? `<a href="${_rgEsc(map)}" target="_blank" rel="noopener">${_rgEsc(`${c.latitude}, ${c.longitude}`)}</a>` : ''],
                         ['Open', _rgEsc(_mbPopLifeSpan(d['life-span']))],
-                    ]) + _mbPopUrlLinksHtml(d.relations);
-                const right = _mbPopSectionHtml('Events', _mbPop.get(browse.key), (b) => {
-                    const evs = (b.events || []).slice().sort((x, y) =>
-                        ((x['life-span'] || {}).begin || '9999').localeCompare((y['life-span'] || {}).begin || '9999'));
-                    const total = typeof b['event-count'] === 'number' ? b['event-count'] : evs.length;
-                    return `<div class="mb-rg-progress">${_mbPopNum(total)} event${total === 1 ? '' : 's'}` +
-                        (total > evs.length ? `; ${evs.length} of them here, by date — <a href="/place/${_rgEsc(d.id)}/events" ` +
-                            'target="_blank" rel="noopener">the place\'s page</a> lists them all' : '') + '.</div>' +
-                        (evs.length ? _mbPopTableHtml(['Date', 'Event', 'Type'], evs.map(x => [
-                            _rgEsc((x['life-span'] || {}).begin || '—'),
-                            `<a href="/event/${_rgEsc(x.id)}" target="_blank" rel="noopener">${_rgEsc(x.name)}</a>` +
-                                `${x.cancelled ? ' <span class="mb-rg-dim">(cancelled)</span>' : ''}`,
-                            _rgEsc(x.type || ''),
-                        ])) : '');
-                });
-                return `<div class="mb-dp-x"><div class="mb-dp-col">${left}</div><div class="mb-dp-col">${right}</div></div>`;
+                    ]) + _mbPopUrlLinksTableHtml(t, 'links', d.relations);
+                return `<div class="mb-dp-x"><div class="mb-dp-col">${left}</div><div class="mb-dp-col">${_mbPlaceEventsHtml(t)}</div></div>`;
             },
             cardAside: _mbPopCardPicture,
             pin(t, d, again, repaint) {
-                const browse = _mbPopBrowse('event', `place=${encodeURIComponent(t.id)}&limit=100`);
-                _mbPopPinLoad(t, browse.key, browse.url, again, repaint);
+                // Every event as a paged list (Phase 3b: 100 now, 500 more a click).
+                const list = _mbPlaceEventsList(t.id);
+                _mbPagedStart(t, list.key, list.spec, again, repaint);
                 // The place's own lookup carries its url-rels.
                 _mbPopImageLoad(t, d.relations || [], again, repaint);
                 _mbPopAreaChainLoad(t, [d.area], again, repaint);
@@ -58092,6 +59134,9 @@
                     `<div class="mb-rg-pills">${_mbPopPillsHtml([d.type])}</div>`;
                 const right = `<h4>Items · ${items.length}</h4>` + (items.length ? _mbPopTableHtml(['#', 'Item', 'Date'], items.map(x => [
                     _rgEsc(x.num || '—'),
+                    // MusicBrainz's own glyph of the item's kind first (Phase 3e), in a fixed box.
+                    (_MB_KIND_ICON[x.type] ? `<img class="mb-pop-ent-icon" src="${window.location.origin}/static/images/entity/${_MB_KIND_ICON[x.type]}.svg" ` +
+                        `alt="" width="16" height="16"> ` : '') +
                     `<a href="/${_rgEsc(x.type)}/${_rgEsc(x.e.id)}" target="_blank" rel="noopener">${_rgEsc(x.e.title || x.e.name)}</a>` +
                         `${x.e.disambiguation ? ` <span class="mb-rg-dim">(${_rgEsc(x.e.disambiguation)})</span>` : ''}`,
                     _rgEsc(x.e.date || x.e['first-release-date'] || (x.e['life-span'] || {}).begin || '—'),
@@ -58114,16 +59159,22 @@
                         `${r['artist-credit'] ? ` <span class="mb-rg-dim">· ${_rgEsc(_mbPopCreditText(r['artist-credit']))}</span>` : ''}</span>` +
                         `${typeof r.length === 'number' ? `<span class="mb-pop-len">${_msFormatSeconds(r.length)}</span>` : ''}</li>`).join('') + '</ol>';
             },
-            windowHtml(d) {
+            windowHtml(d, t) {
                 const recs = d.recordings || [];
                 return `<div class="mb-dp-x"><div class="mb-dp-col"><div class="mb-dp-xtitle">${_rgEsc(d.isrc)}</div>` +
                     '<div class="mb-dp-xsub">International Standard Recording Code</div></div>' +
-                    `<div class="mb-dp-col"><h4>Recordings · ${recs.length}</h4>` + _mbPopTableHtml(['Recording', 'Artist', 'Length'], recs.map(r => [
-                        `<a href="/recording/${_rgEsc(r.id)}" target="_blank" rel="noopener">${_rgEsc(r.title)}</a>` +
-                            `${r.disambiguation ? ` <span class="mb-rg-dim">(${_rgEsc(r.disambiguation)})</span>` : ''}`,
-                        _mbPopCreditHtml(r['artist-credit']),
-                        typeof r.length === 'number' ? _msFormatSeconds(r.length) : '—',
-                    ]), [2]) + '</div></div>';
+                    `<div class="mb-dp-col"><h4>Recordings · ${recs.length}</h4>` + _dpCompactTableHtml(t, 'recordings', [
+                        {
+                            key: 'title', label: 'Recording', val: r => r.title || '',
+                            html: (r, q) => `<a href="/recording/${_rgEsc(r.id)}" target="_blank" rel="noopener">${_hlEsc(r.title, q)}</a>` +
+                                `${r.disambiguation ? ` <span class="mb-rg-dim">(${_hlEsc(r.disambiguation, q)})</span>` : ''}`,
+                        },
+                        { key: 'artist', label: 'Artist', val: r => _mbPopCreditText(r['artist-credit']), html: (r, q) => _hlHtml(_mbPopCreditHtml(r['artist-credit']), q) },
+                        {
+                            key: 'length', label: 'Length', num: true, cls: 'mb-rg-num', val: r => (typeof r.length === 'number' ? r.length : ''),
+                            html: r => (typeof r.length === 'number' ? _msFormatSeconds(r.length) : '—'),
+                        },
+                    ], recs, { initial: 'as MusicBrainz lists them', what: 'recordings' }) + '</div></div>';
             },
         })),
         iswc: Object.assign({ title: 'ISWC', wide: false }, _mbPopLookupKind({
@@ -58137,14 +59188,18 @@
             },
             windowHtml(d, t) {
                 const works = d.works || [];
+                const langs = w => ((w.languages && w.languages.length ? w.languages : [w.language]).filter(Boolean)).join(', ');
                 return `<div class="mb-dp-x"><div class="mb-dp-col"><div class="mb-dp-xtitle">${_rgEsc(t.id)}</div>` +
                     '<div class="mb-dp-xsub">International Standard Musical Work Code</div></div>' +
-                    `<div class="mb-dp-col"><h4>Works · ${works.length}</h4>` + _mbPopTableHtml(['Work', 'Type', 'Language'], works.map(w => [
-                        `<a href="/work/${_rgEsc(w.id)}" target="_blank" rel="noopener">${_rgEsc(w.title)}</a>` +
-                            `${w.disambiguation ? ` <span class="mb-rg-dim">(${_rgEsc(w.disambiguation)})</span>` : ''}`,
-                        _rgEsc(w.type || '—'),
-                        _rgEsc(((w.languages && w.languages.length ? w.languages : [w.language]).filter(Boolean)).join(', ') || '—'),
-                    ])) + '</div></div>';
+                    `<div class="mb-dp-col"><h4>Works · ${works.length}</h4>` + _dpCompactTableHtml(t, 'works', [
+                        {
+                            key: 'title', label: 'Work', val: w => w.title || '',
+                            html: (w, q) => `<a href="/work/${_rgEsc(w.id)}" target="_blank" rel="noopener">${_hlEsc(w.title, q)}</a>` +
+                                `${w.disambiguation ? ` <span class="mb-rg-dim">(${_hlEsc(w.disambiguation, q)})</span>` : ''}`,
+                        },
+                        { key: 'type', label: 'Type', val: w => w.type || '', html: (w, q) => _hlEsc(w.type || '—', q) },
+                        { key: 'lang', label: 'Language', val: langs, html: (w, q) => _hlEsc(langs(w) || '—', q) },
+                    ], works, { initial: 'as MusicBrainz lists them', what: 'works' }) + '</div></div>';
             },
         })),
         // A disc ID: its table of contents (offsets in CD sectors, 75 a
@@ -58161,7 +59216,7 @@
                         `${r.country ? ` <span class="mb-rg-cc">${_rgEsc(r.country)}</span>` : ''}`).join('<br>') +
                         (rels.length > _MB_POP_CARD_RELEASES ? `<br><span class="mb-rg-dim">+ ${rels.length - _MB_POP_CARD_RELEASES} more</span>` : '')]]);
             },
-            windowHtml(d) {
+            windowHtml(d, t) {
                 const offs = d.offsets || [];
                 const toc = offs.map((o, i) => {
                     const end = i + 1 < offs.length ? offs[i + 1] : d.sectors;
@@ -58170,12 +59225,101 @@
                 const rels = d.releases || [];
                 return `<div class="mb-dp-x"><div class="mb-dp-col"><div class="mb-dp-xtitle">${_rgEsc(d.id)}</div>` +
                     `<h4>Table of contents · ${offs.length}</h4>` + _mbPopTableHtml(['Track', 'Offset', 'Length'], toc, [0, 1, 2]) +
-                    `</div><div class="mb-dp-col"><h4>Releases · ${rels.length}</h4>` + _mbPopTableHtml(['Release', 'Date', 'Country'], rels.map(r => [
-                        `<a href="/release/${_rgEsc(r.id)}" target="_blank" rel="noopener">${_rgEsc(r.title)}</a>`,
-                        _rgEsc(r.date || '—'), _rgEsc(r.country || '—'),
-                    ])) + '</div></div>';
+                    `</div><div class="mb-dp-col"><h4>Releases · ${rels.length}</h4>` + _dpCompactTableHtml(t, 'releases', [
+                        {
+                            key: 'title', label: 'Release', val: r => r.title || '',
+                            html: (r, q) => `<a href="/release/${_rgEsc(r.id)}" target="_blank" rel="noopener">${_hlEsc(r.title, q)}</a>`,
+                        },
+                        { key: 'date', label: 'Date', cls: 'mb-dg-yr', val: r => r.date || '', html: (r, q) => _hlEsc(r.date || '—', q) },
+                        { key: 'country', label: 'Country', val: r => r.country || '', html: (r, q) => _hlEsc(r.country || '—', q) },
+                    ], rels, { initial: 'as MusicBrainz lists them', what: 'releases' }) + '</div></div>';
             },
         })),
+        // A CD stub (Phase 3f): read from its page (`_mbParseCdStubPage()`).
+        // Card: title, artist, counts, the first tracks. Window: the facts
+        // on the left, the tracklist as a Compact table on the right.
+        cdstub: Object.assign({ title: 'CD stub', wide: true }, _mbPopPageKind({
+            parse: _mbParseCdStubPage,
+            cardHtml(d) {
+                return `<div class="mb-tt-title">${_rgEsc(d.title)}</div>` +
+                    `<div class="mb-tt-body">${_rgEsc(d.artist)}</div><div class="mb-tt-body mb-rg-pills">${_mbPopPillsHtml(['CD stub',
+                        `${d.tracks.length} track${d.tracks.length === 1 ? '' : 's'}`, d.length, d.lookups ? `${d.lookups} lookups` : ''])}</div>` +
+                    '<div class="mb-tt-rule"></div><ol class="mb-dp-tracks mb-pop-tracks">' + d.tracks.slice(0, _MB_POP_CARD_TRACKS).map(x =>
+                        `<li><span class="mb-dp-pos">${_rgEsc(x.pos)}</span><span class="mb-pop-ttl">${_rgEsc(x.title)}</span>` +
+                        `${x.length ? `<span class="mb-pop-len">${_rgEsc(x.length)}</span>` : ''}</li>`).join('') + '</ol>' +
+                    (d.tracks.length > _MB_POP_CARD_TRACKS ? `<div class="mb-tt-dim">+ ${d.tracks.length - _MB_POP_CARD_TRACKS} more</div>` : '');
+            },
+            windowHtml(d, t) {
+                const left = `<div class="mb-dp-xtitle">${_rgEsc(d.title)}</div>` +
+                    `<div class="mb-rg-pills">${_mbPopPillsHtml(['CD stub'])}</div><h4>Facts</h4>` + _mbPopKvHtml([
+                        ['Artist', _rgEsc(d.artist)], ['Barcode', _rgEsc(d.barcode)], ['Tracks', _rgEsc(d.total)],
+                        ['Length', _rgEsc(d.length)], ['Disc ID', _rgEsc(d.discid)], ['Added', _rgEsc(d.added)],
+                        ['Last modified', _rgEsc(d.modified)], ['Lookups', _rgEsc(d.lookups)], ['Modified', _rgEsc(d.modifies)],
+                    ]) + '<p class="mb-dp-xsub">A CD stub is not in the MusicBrainz database: the Live page offers to import it.</p>';
+                const artist = d.tracks.some(x => x.artist);
+                const right = `<h4>Tracklist · ${d.tracks.length}</h4>` + _dpCompactTableHtml(t, 'tracks', [
+                    { key: 'pos', label: '#', num: true, cls: 'mb-rg-num', val: x => Number(x.pos) || 0, html: x => _rgEsc(x.pos) },
+                    { key: 'title', label: 'Title', val: x => x.title, html: (x, q) => _hlEsc(x.title, q) },
+                    ...(artist ? [{ key: 'artist', label: 'Artist', val: x => x.artist, html: (x, q) => _hlEsc(x.artist, q) }] : []),
+                    { key: 'length', label: 'Length', cls: 'mb-rg-num', val: x => x.length, html: x => _rgEsc(x.length || '—') },
+                ], d.tracks, { perPage: 100, initial: 'as the stub lists them', what: 'tracks' });
+                return `<div class="mb-dp-x"><div class="mb-dp-col">${left}</div><div class="mb-dp-col">${right}</div></div>`;
+            },
+        })),
+        // A documentation page (Phase 3f): read from its page
+        // (`_mbParseDocPage()`). Card: title, status, the first paragraph.
+        // Window: the contents on the left, the whole text on the right.
+        doc: Object.assign({ title: 'Documentation', wide: true }, _mbPopPageKind({
+            parse: _mbParseDocPage,
+            cardHtml(d) {
+                const intro = d.intro.length > 300 ? `${d.intro.slice(0, 300).replace(/\s+\S*$/, '')} …` : d.intro;
+                return `<div class="mb-tt-title">${_rgEsc(d.title)}</div>` +
+                    (d.status ? `<div class="mb-tt-body mb-rg-pills">${_mbPopPillsHtml([d.status.replace(/^This is an?\s*/i, '').replace(/\.$/, '')])}</div>` : '') +
+                    '<div class="mb-tt-rule"></div>' + (intro ? `<div class="mb-tt-body">${_rgEsc(intro)}</div>` : '') +
+                    (d.toc.length ? `<div class="mb-tt-dim">${d.toc.filter(x => x.level === 1).length} sections</div>` : '');
+            },
+            windowHtml(d, t) {
+                const left = `<div class="mb-dp-xtitle">${_rgEsc(d.title)}</div>` +
+                    (d.status ? `<div class="mb-dp-xsub">${_rgEsc(d.status)}</div>` : '') +
+                    `<p><a href="https://wiki.musicbrainz.org/${_rgEsc(t.id)}" target="_blank" rel="noopener">On the wiki</a></p>` +
+                    (d.toc.length ? '<h4>Contents</h4><ul class="mb-pop-doc-toc">' + d.toc.map(x =>
+                        `<li class="mb-pop-doc-toc${Math.min(3, x.level)}">${_rgEsc(x.text)}</li>`).join('') + '</ul>' : '');
+                const right = `<div class="mb-pop-doc">${d.html || '<div class="mb-dp-xsub">This page is empty.</div>'}</div>`;
+                return `<div class="mb-dp-x"><div class="mb-dp-col">${left}</div><div class="mb-dp-col">${right}</div></div>`;
+            },
+        })),
+        // A documentation search (Phase 3f): the wiki's search API
+        // (`_mbDocSearchLoad()`). Card: how many pages, the first titles.
+        // Window: every hit as a List table, each page opening in the window.
+        docsearch: {
+            title: 'Documentation search', wide: true,
+            path: id => `/search?query=${encodeURIComponent(id)}&type=doc`,
+            card(t, start, repaint) {
+                const key = start ? _mbDocSearchLoad(t, { repaint }) : `pop:docsearch:${t.id}`;
+                return _mbPopCardShell(t, _mbPop.get(key), (d) => `<div class="mb-tt-title">${_rgEsc(t.id)}</div>` +
+                    `<div class="mb-tt-body mb-rg-pills">${_mbPopPillsHtml([`${d.total} page${d.total === 1 ? '' : 's'}`])}</div><div class="mb-tt-rule"></div>` +
+                    (d.hits.length ? '<ol class="mb-dp-tracks mb-pop-tracks">' + d.hits.slice(0, 6).map((h, i) =>
+                        `<li><span class="mb-dp-pos">${i + 1}</span><span class="mb-pop-ttl">${_rgEsc(h.title)}</span></li>`).join('') + '</ol>'
+                        : '<div class="mb-tt-comment">No documentation page matches.</div>'));
+            },
+            extracted(t, start, force, repaint) {
+                const key = start ? _mbDocSearchLoad(t, { force, repaint }) : `pop:docsearch:${t.id}`;
+                return _mbPopWindowShell(t, _mbPop.get(key), (d) => {
+                    const left = `<div class="mb-dp-xtitle">${_rgEsc(t.id)}</div><div class="mb-dp-xsub">MusicBrainz documentation · search</div>` +
+                        _mbPopKvHtml([['Pages', _rgEsc(String(d.total))], ['Shown', d.total > d.hits.length ? _rgEsc(`the first ${d.hits.length}`) : '']]) +
+                        '<p class="mb-dp-xsub">From the wiki\'s search; a page opens here.</p>';
+                    const right = `<h4>Pages · ${_rgEsc(String(d.total))}</h4>` + _dpListTableHtml(t, 'docsearch', [
+                        {
+                            key: 'title', label: 'Page', val: h => h.title,
+                            html: (h, q) => `<a href="${_rgEsc(_mbDocPath(h.title))}" target="_blank" rel="noopener">${_hlEsc(h.title, q)}</a>`,
+                        },
+                        { key: 'snippet', label: 'Snippet', val: h => h.snippet, html: (h, q) => _hlEsc(h.snippet, q || t.id) },
+                        { key: 'date', label: 'Updated', cls: 'mb-dg-yr', val: h => h.date, html: h => _rgEsc(h.date || '—') },
+                    ], d.hits, { initial: 'as the wiki ranks them', placeholder: 'Filter the pages', none: 'No documentation page matches.' });
+                    return `<div class="mb-dp-x"><div class="mb-dp-col">${left}</div><div class="mb-dp-col">${right}</div></div>`;
+                });
+            },
+        },
         // Read from the collection's page (2026-10-20, mockup
         // https://claude.ai/artifact/KtfNY1XfjyJoPb8fGjLGeu): the Web
         // Service has no description and no collaborators. Card: type, size,
@@ -58205,7 +59349,7 @@
                         : '<div class="mb-tt-comment">This collection is empty.</div>');
             },
             windowHtml: (d, t, repaint) => _mbCollWindowHtml(t, d, repaint),
-        }), { onAreaClick: _mbCollAreaClick }),
+        })),
         // U2 (org/iframe.org "* generalize to URLs"): the "[info]" link
         // beside every URL relationship. One lookup with every relationship
         // include (`_MB_POP_URL_INC`, 655 bytes for the event's Brucebase
@@ -58283,11 +59427,15 @@
                     _mbPopKvHtml(['Total', 'Accepted', 'Auto-edits', 'Voted down', 'Open'].map(l => [`${l === 'Total' ? 'Edits' : l}`,
                         _rgEsc(_mbPopStat(d, l))]).concat([['Subscribers', _rgEsc(d.subscribers)]]));
             },
-            windowHtml(d) {
+            windowHtml(d, t) {
+                const num = v => Number(String(v).replace(/[^\d]/g, '')) || 0;
                 return `<div class="mb-dp-x"><div class="mb-dp-col"><div class="mb-dp-xtitle">${_rgEsc(d.name)}</div>` +
                     `<div class="mb-rg-pills">${_mbPopPillsHtml([d.userType])}</div><h4>Editor</h4>` + _mbPopKvHtml([
                         ['Member since', _rgEsc(d.since)], ['Subscribers', _rgEsc(d.subscribers)],
-                    ]) + `</div><div class="mb-dp-col"><h4>Edits</h4>${_mbPopTableHtml(['', 'Count'], d.stats.map(([k, v]) => [_rgEsc(k), _rgEsc(v)]), [1])}` +
+                    ]) + '</div><div class="mb-dp-col"><h4>Edits</h4>' + _dpCompactTableHtml(t, 'edits', [
+                        { key: 'kind', label: 'Edits', val: s => s[0], html: (s, q) => _hlEsc(s[0], q) },
+                        { key: 'count', label: 'Count', num: true, first: -1, cls: 'mb-rg-num', val: s => num(s[1]), html: s => _rgEsc(s[1]) },
+                    ], d.stats, { initial: 'as the profile lists them', what: 'kinds' }) +
                     `<p><a href="/user/${encodeURIComponent(d.name)}/edits" target="_blank" rel="noopener">Their edits</a></p></div></div>`;
             },
         })),
@@ -58406,12 +59554,17 @@
                         : '<div class="mb-tt-comment">They have upvoted no tag.</div>');
             },
             windowHtml(d, t) {
-                const list = items => `<ul class="mb-pop-taglist">${items.slice().sort((a, b) => (b.count - a.count) || a.name.localeCompare(b.name))
-                    .map(x => `<li><a href="/tag/${encodeURIComponent(x.name)}" target="_blank" rel="noopener">${_rgEsc(x.name)}</a> ` +
-                        `<span class="mb-rg-dim">${x.count}</span></li>`).join('')}</ul>`;
+                // Each a Compact table (Phase 3d), most votes first.
+                const list = (items, id, what) => _dpCompactTableHtml(t, id, [
+                    {
+                        key: 'name', label: 'Tag', val: x => x.name,
+                        html: (x, q) => `<a href="/tag/${encodeURIComponent(x.name)}" target="_blank" rel="noopener">${_hlEsc(x.name, q)}</a>`,
+                    },
+                    { key: 'count', label: 'Votes', num: true, first: -1, cls: 'mb-rg-num', val: x => x.count, html: x => _rgEsc(x.count) },
+                ], items.slice().sort((a, b) => (b.count - a.count) || a.name.localeCompare(b.name)), { initial: 'most votes first', what });
                 const left = `<div class="mb-dp-xtitle">${_rgEsc(d.name || t.id)}</div><div class="mb-dp-xsub">MusicBrainz · editor · tags upvoted</div>` +
-                    `<h4>Genres · ${d.genres.length}</h4>` + (d.genres.length ? list(d.genres) : '<div class="mb-dp-xsub">None.</div>');
-                const right = `<h4>Other tags · ${d.tags.length}</h4>` + (d.tags.length ? list(d.tags) : '<div class="mb-dp-xsub">None.</div>');
+                    `<h4>Genres · ${d.genres.length}</h4>` + (d.genres.length ? list(d.genres, 'genres', 'genres') : '<div class="mb-dp-xsub">None.</div>');
+                const right = `<h4>Other tags · ${d.tags.length}</h4>` + (d.tags.length ? list(d.tags, 'tags', 'tags') : '<div class="mb-dp-xsub">None.</div>');
                 return `<div class="mb-dp-x"><div class="mb-dp-col">${left}</div><div class="mb-dp-col">${right}</div></div>`;
             },
         })),
@@ -58436,9 +59589,15 @@
                 const left = `<div class="mb-dp-xtitle">${_rgEsc(d.name || t.id)}</div><div class="mb-dp-xsub">MusicBrainz · editor · ratings</div>` +
                     _mbPopKvHtml(d.kinds.map(k => [k.kind, _rgEsc(String(k.items.length))])) +
                     '<p class="mb-dp-xsub">As their ratings page shows them: a few of each kind.</p>';
-                const right = d.kinds.length ? d.kinds.map(k => `<h4>${_rgEsc(k.kind)} · ${k.items.length}</h4>` +
-                    _mbPopTableHtml(['Rating', k.kind, ''], k.items.map(x => [stars(x.rating),
-                        `<a href="/${_rgEsc(x.type)}/${_rgEsc(x.id)}" target="_blank" rel="noopener">${_rgEsc(x.name)}</a>`, _rgEsc(x.extra)])) +
+                const right = d.kinds.length ? d.kinds.map((k, i) => `<h4>${_rgEsc(k.kind)} · ${k.items.length}</h4>` +
+                    _dpCompactTableHtml(t, `ratings-${i}`, [
+                        { key: 'rating', label: 'Rating', num: true, first: -1, val: x => x.rating, html: x => stars(x.rating) },
+                        {
+                            key: 'name', label: k.kind, val: x => x.name,
+                            html: (x, q) => `<a href="/${_rgEsc(x.type)}/${_rgEsc(x.id)}" target="_blank" rel="noopener">${_hlEsc(x.name, q)}</a>`,
+                        },
+                        { key: 'extra', label: '', sort: false, val: x => x.extra || '', html: (x, q) => _hlEsc(x.extra, q) },
+                    ], k.items, { initial: 'as their ratings page lists them', what: 'ratings' }) +
                     (k.more ? `<p><a href="${_rgEsc(k.more)}" target="_blank" rel="noopener">All ${_rgEsc(k.kind.toLowerCase())} ratings</a></p>` : '')).join('')
                     : '<div class="mb-dp-xsub">They have rated nothing.</div>';
                 return `<div class="mb-dp-x"><div class="mb-dp-col">${left}</div><div class="mb-dp-col">${right}</div></div>`;
@@ -58469,11 +59628,23 @@
                     `<div class="mb-dp-xsub">MusicBrainz · ${_rgEsc(d.type || t.id.split('/')[0])} · annotation history</div>` +
                     _mbPopKvHtml([['Versions', _rgEsc(String(n))], ['Latest', last ? _rgEsc(last.date) : ''], ['Latest by', last ? _rgEsc(last.editor) : '']]) +
                     (last && last.blocks.length ? `<h4>The latest text</h4>${_mbAnnotationHtml(last.blocks)}` : '');
-                const right = `<h4>Versions · ${n}</h4>` + (n ? _mbPopTableHtml(['Version', 'Editor', 'Date', 'Changelog'], d.versions.map((v, i) => [
-                    `<a href="/${_rgEsc(t.id)}/annotation/${_rgEsc(v.id)}" target="_blank" rel="noopener">Version ${n - i}</a>`,
-                    v.editorId ? `<a href="/user/${_rgEsc(v.editorId)}" target="_blank" rel="noopener">${_rgEsc(v.editor)}</a>` : _rgEsc(v.editor),
-                    _rgEsc(v.date), v.changelog ? _rgEsc(v.changelog) : '<span class="mb-rg-dim">none</span>',
-                ])) : '<div class="mb-dp-xsub">No annotation has been written.</div>');
+                // A Compact table (Phase 3d), newest first as the page lists them.
+                const rows = d.versions.map((v, i) => Object.assign({ n: n - i }, v));
+                const right = `<h4>Versions · ${n}</h4>` + (n ? _dpCompactTableHtml(t, 'versions', [
+                    {
+                        key: 'n', label: 'Version', num: true, first: -1, val: v => v.n,
+                        html: v => `<a href="/${_rgEsc(t.id)}/annotation/${_rgEsc(v.id)}" target="_blank" rel="noopener">Version ${v.n}</a>`,
+                    },
+                    {
+                        key: 'editor', label: 'Editor', val: v => v.editor || '',
+                        html: (v, q) => (v.editorId ? `<a href="/user/${_rgEsc(v.editorId)}" target="_blank" rel="noopener">${_hlEsc(v.editor, q)}</a>` : _hlEsc(v.editor, q)),
+                    },
+                    { key: 'date', label: 'Date', cls: 'mb-dg-yr', val: v => v.date || '', html: (v, q) => _hlEsc(v.date, q) },
+                    {
+                        key: 'changelog', label: 'Changelog', val: v => v.changelog || '',
+                        html: (v, q) => (v.changelog ? _hlEsc(v.changelog, q) : '<span class="mb-rg-dim">none</span>'),
+                    },
+                ], rows, { initial: 'newest first, as the page lists them', what: 'versions' }) : '<div class="mb-dp-xsub">No annotation has been written.</div>');
                 return `<div class="mb-dp-x"><div class="mb-dp-col">${left}</div><div class="mb-dp-col">${right}</div></div>`;
             },
         })),
@@ -58514,7 +59685,8 @@
         // A tag (2026-10-19): read from its page (`_mbParseTagPage()`), the
         // Web Service has no lookup of a tag by name. Card: is it a genre,
         // how many entities, how many of each kind. Window: the same, plus
-        // each kind's first ten, linked so they drill down (Phase 5).
+        // one kind's entities as a List table read from its kind page
+        // (`_mbPopTagWindowHtml()`, Phase 3c), linked so they drill down.
         tag: Object.assign({ title: 'Tag', wide: false }, _mbPopPageKind({
             parse: _mbParseTagPage,
             cardHtml(d) {
@@ -58535,16 +59707,20 @@
                         ['Genre', d.genre ? `<a href="/genre/${_rgEsc(d.genre.id)}" target="_blank" rel="noopener">${_rgEsc(d.genre.name)}</a>` : 'none'],
                         ['Entities', _rgEsc(d.total)],
                     ]);
-                return _mbPopTagWindowHtml(d, `/tag/${t.id}`, head, 'Nothing is tagged with it.');
+                return _mbPopTagWindowHtml(t, d, `/tag/${t.id}`, head, 'Nothing is tagged with it.');
             },
+            // The chosen kind's list (Phase 3c): its page 1 once the record
+            // is there; a link to a kind page opens on that kind.
+            pin: (t, d, again, repaint) => _mbTagKindPin(t, d, `/tag/${t.id}`, again, repaint),
+            start: _mbTagKindStart,
         })),
         // An editor's own tag (2026-10-21, the links of `/user/<name>/tags`):
         // read from its page (`_mbParseUserTagPage()`), which has the tag
         // page's body, so the same window (`_mbPopTagWindowHtml()`). Its id
         // is `<editor>/<tag>`, both as the link spells them. Card: how many
         // entities, how many of each kind, the first few. Window: the facts,
-        // a link to everyone's tag (a drill into the tag card), each kind's
-        // first entries and their "See all" pages.
+        // a link to everyone's tag (a drill into the tag card), and one
+        // kind's entities as a List table, as a tag's (Phase 3c).
         usertag: Object.assign({ title: 'Editor\'s tag', wide: false, path: id => `/user/${id.replace('/', '/tag/')}` }, _mbPopPageKind({
             parse: _mbParseUserTagPage,
             cardHtml(d) {
@@ -58571,8 +59747,13 @@
                         ['Entities', _rgEsc(d.total)],
                         ['Everyone’s', `<a href="/tag/${_rgEsc(d.tag || tag)}" target="_blank" rel="noopener">${_rgEsc(d.name)}</a>`],
                     ]);
-                return _mbPopTagWindowHtml(d, `/user/${editor}/tag/${tag}`, head, 'They tagged nothing with it.');
+                return _mbPopTagWindowHtml(t, d, `/user/${editor}/tag/${tag}`, head, 'They tagged nothing with it.');
             },
+            pin(t, d, again, repaint) {
+                const [editor, tag] = String(t.id).split('/');
+                _mbTagKindPin(t, d, `/user/${editor}/tag/${tag}`, again, repaint);
+            },
+            start: _mbTagKindStart,
         })),
         // An editing history (org/mb-edit-history.org, 2026-10-20): an
         // entity's or editor's `/…/edits`, read from the page (the Web
@@ -58738,14 +59919,14 @@
                 card(t, start, repaint) {
                     const lt = drive(t, start, false, repaint);
                     if (!lt) return pending(t, false);
-                    const lk = _mbPopLookup(lt, 'genres+aliases').key;
+                    const lk = _mbPopLookup(lt, _MB_POP_LABEL_CARD_INC).key;
                     return _MB_KINDS.label.card(lt, start || !_mbPop.has(lk), repaint)
                         .replace('<div class="mb-pop-card">', `<div class="mb-pop-card"><div class="mb-tt-dim">${_rgEsc(parts(t).cat)} — catalog number of</div>`);
                 },
                 extracted(t, start, force, repaint) {
                     const lt = drive(t, start, force, repaint);
                     if (!lt) return pending(t, true);
-                    const lk = _mbPopLookup(lt, 'genres+aliases').key;
+                    const lk = _mbPopLookup(lt, _MB_POP_LABEL_CARD_INC).key;
                     return _MB_KINDS.label.extracted(lt, start || !_mbPop.has(lk), start && force, repaint);
                 },
                 liveUrl(t) {
@@ -58854,11 +60035,12 @@
      * goes here and into the header's `@connect` together: U1 has the YouTube
      * reader's (oEmbed), U3 Wikipedia's, Wikidata's and Discogs' API hosts,
      * U4 the four Springsteen sites (`_DP_SITES`, `www.` covered by the
-     * parent domain).
+     * parent domain), Phase 3f of org/MB-POH-sync-withDiscogs.org the
+     * MusicBrainz wiki's search API (`_mbDocSearchLoad()`).
      * @type {string[]}
      */
     const _EXT_CONNECT_HOSTS = ['www.youtube.com', 'wikipedia.org', 'www.wikidata.org', 'api.discogs.com',
-        'springsteenlyrics.com', 'jungleland.it', 'brucespringsteen.it', 'brucebase.wikidot.com'];
+        'springsteenlyrics.com', 'jungleland.it', 'brucespringsteen.it', 'brucebase.wikidot.com', 'wiki.musicbrainz.org'];
 
     /** The GM key of the hosts that answered once (answer 7): the script's state, not a setting, and not exported. */
     const _EXT_HOSTS_KEY = 'sa_pop_ext_hosts';
@@ -59173,17 +60355,21 @@
      * `unreachable`, `timeout`). With `responseType: 'blob'` (a site's icon,
      * `_extIconEnsure()`) the answer is in `blob`, not `body`. `charset`
      * decodes a page that does not name its own (jungleland.it's
-     * windows-1252, U4), through `overrideMimeType`.
+     * windows-1252, U4), through `overrideMimeType`. `session` sends the
+     * browser's cookies for that host (not `anonymous`): ONE caller, a
+     * Discogs release's image editor's data read from another site
+     * (`_extDgImgDataGet()`), which answers nothing without the Discogs login
+     * (vzell's consent, 2026-10-27, org/MB-POH-sync-withDiscogs.org Phase 4).
      *
      * @param {string} url
      * @param {{accept?: RegExp, maxBytes?: number, maxDownload?: number, headers?: Object<string, string>,
-     *   responseType?: string, charset?: ?string}} [opts]
+     *   responseType?: string, charset?: ?string, session?: boolean}} [opts]
      * @returns {Promise<{status: number, finalUrl: string, headers: Object<string, string>, contentType: string,
      *   bytes: number, body: string, tail: string, blob: ?Blob, aborted: string, error: string, detail: string}>}
      *   `aborted` is `type` or `size` when the body was skipped.
      */
     function _extFetch(url, { accept = /\b(?:text\/html|application\/xhtml\+xml)\b/i, maxBytes = _EXT_MAX_BYTES,
-        maxDownload = _EXT_MAX_DOWNLOAD, headers = {}, responseType = '', charset = null } = {}) {
+        maxDownload = _EXT_MAX_DOWNLOAD, headers = {}, responseType = '', charset = null, session = false } = {}) {
         return new Promise((resolve) => {
             const base = {
                 status: 0, finalUrl: url, headers: {}, contentType: '', bytes: 0, body: '', tail: '', blob: null,
@@ -59214,7 +60400,7 @@
             };
             try {
                 req = GM_xmlhttpRequest({
-                    method: 'GET', url, headers, anonymous: true, timeout: _EXT_TIMEOUT_MS,
+                    method: 'GET', url, headers, anonymous: !session, timeout: _EXT_TIMEOUT_MS,
                     ...(responseType ? { responseType } : {}),
                     ...(charset ? { overrideMimeType: `text/html; charset=${charset}` } : {}),
                     onreadystatechange: (r) => {
@@ -60730,13 +61916,16 @@
      * @param {Object[]} images - `_extDiscogsImages()`.
      * @param {string} [primary] - The primary image's caption: 'front' (a
      *   release's cover), 'primary' (an artist's or a label's picture).
+     * @param {string[]} [more] - A second caption line per image (the images
+     *   reader's size and uploader, Phase 4).
      * @returns {string}
      */
-    function _extDgImagesHtml(images, primary = 'front') {
+    function _extDgImagesHtml(images, primary = 'front', more = []) {
         return '<div class="mb-dp-gallery">' + images.map((im, i) =>
             `<a href="${_rgEsc(im.full)}" target="_blank" rel="noopener noreferrer" data-mb-artv-ext="${i + 1}">` +
             `<img src="${_rgEsc(im.thumb)}" alt="" referrerpolicy="no-referrer" loading="lazy">` +
-            `<span>${i === 0 && im.type === 'primary' ? primary : `image ${i + 1}`}</span></a>`).join('') + '</div>';
+            `<span>${i === 0 && im.type === 'primary' ? primary : `image ${i + 1}`}</span>` +
+            `${more[i] ? `<span class="mb-dg-imgcap">${_rgEsc(more[i])}</span>` : ''}</a>`).join('') + '</div>';
     }
 
     /**
@@ -61158,7 +62347,8 @@
      * @param {object} t - The window's target.
      * @param {string} id - The table's id in that window.
      * @param {?Object} [init]
-     * @returns {{q: string, chip: string[], sort: {col: string, dir: number}, page: number, limit: number, moreChips: boolean}}
+     * @returns {{q: string, chip: string[], sort: {col: string, dir: number}, page: number, limit: number, moreChips: boolean,
+     *   seg?: string}} `seg`: the chosen segment of a table that shows one of several lists.
      */
     function _dpTblUi(t, id, init = null) {
         const k = `${t.key}|${id}`;
@@ -61176,8 +62366,10 @@
      * (`_dpSortNext()`; `data-mb-tbl-first="-1"` for a column that starts
      * descending), a chip keeps only its value or, with Ctrl/⌘, adds it
      * (`_extDgChipPick()`), and `data-mb-tbl-act` is ‹ (`prev`), › (`next`),
-     * "Show all" (`all`), "Clear filters" (`clear`) or "+N more" chips
-     * (`morechips`). A sort, a chip and a cleared filter go back to page 1.
+     * "Show all" (`all`), "Clear filters" (`clear`), "+N more" chips
+     * (`morechips`), a segment (`seg`, its value in `data-mb-tbl-v`) or a
+     * part that folds (`fold`, its index there). A sort, a chip, a segment
+     * and a cleared filter go back to page 1.
      *
      * @param {MouseEvent} e
      * @param {?object} t - The window's target.
@@ -61213,6 +62405,20 @@
                 break;
             case 'morechips':
                 ui.moreChips = !ui.moreChips;
+                break;
+            case 'fold': {
+                // A part of the table that folds (a release's medium, Phase
+                // 3e): its index in `data-mb-tbl-v`, the folded ones in `ui.folded`.
+                const folded = ui.folded || [];
+                ui.folded = folded.includes(d.mbTblV) ? folded.filter(x => x !== d.mbTblV) : folded.concat(d.mbTblV);
+                break;
+            }
+            case 'seg':
+                // A segment of the table's tools that shows another list (an
+                // artist's release groups of another type): its chips start
+                // over; the repaint's `pin()` asks its page 1 when it has none.
+                if (ui.seg === d.mbTblV) return true;
+                Object.assign(ui, { seg: d.mbTblV, chip: [], page: 0 });
                 break;
             default:
                 return false;
@@ -61366,7 +62572,7 @@
      * @param {string} id - The table's id in the window.
      * @param {Array<Object>} cols - As `_dpCompactTableHtml()`.
      * @param {Array<Object>} rows - What is loaded, in the site's own order.
-     * @param {{limit?: number, initial?: string, placeholder?: string, search?: function(Object): string,
+     * @param {{limit?: number, init?: Object, initial?: string, placeholder?: string, search?: function(Object): string,
      *   facet?: function(Object): string, chipLabel?: string, thumb?: function(Object): string, tools?: string,
      *   note?: string, body?: ?string, none?: string, nomatch?: string, qCls?: string, sortAttr?: string,
      *   chipAttr?: string, rowAttrs?: function(Object): string}} [opts] - `qCls`, `sortAttr` and
@@ -61374,7 +62580,7 @@
      * @returns {string}
      */
     function _dpListTableHtml(t, id, cols, rows, opts = {}) {
-        const ui = _dpTblUi(t, id, { limit: opts.limit || _EXT_DG_LABEL_ROWS });
+        const ui = _dpTblUi(t, id, Object.assign({ limit: opts.limit || _EXT_DG_LABEL_ROWS }, opts.init));
         const counts = new Map();
         if (opts.facet) {
             rows.forEach((r) => {
@@ -62943,6 +64149,325 @@
         _extDgFamilyClick(e);
     }
 
+    // --- Discogs: a release's Images and Image history (Phase 4, 2026-10-27) ---
+    //
+    // org/MB-POH-sync-withDiscogs.org Phase 4, mockup
+    // https://claude.ai/artifact/TkNduhLjJmD2FrcURn5yaV part 4. Probe
+    // scripts/probe-dg-release-images.py (2026-10-27): the API's `images`
+    // carry type, URL and the SERVED size only (at most 600 px: "600x599" for
+    // a 2002 x 2000 original), no file size, uploader or date; both pages
+    // answer an anonymous request with Cloudflare's check. The image editor
+    // (`/images/update`) is sent with an EMPTY `#image_uploader_app`: Discogs'
+    // uploader script draws it from ONE JSON request,
+    // `/release/<id>/images/data` (scripts/probe-dg-image-uploader.py,
+    // 2026-10-28; vzell's answer, debug/discogs-release-images-data.json):
+    // per image its id, `primary` ("true"/"false"), `sortOrder`, the served
+    // `originalSrc` (600 px) and `thumbSrc` (300 px), `width`/`height` (served)
+    // and `original_width`/`original_height` (its own), `size` in bytes,
+    // `username`, `userUrl`, `timestamp` (ISO, UTC), `pending`, `disabled`.
+    // It needs the Discogs login, so it is read with the user's session
+    // (vzell, 2026-10-27); the API gives the title and, signed out, the
+    // images. (The first build parsed a SAVED editor page, whose list the
+    // browser had drawn: a fetched page never has it. DEBUG-NOTES 2026-10-28.)
+
+    /** A release's Images page, or its image editor (`/images/update`, "Image history"). */
+    const _EXT_DGI_PATH_RE = /^\/(?:[a-z]{2}(?:[-_][a-zA-Z]{2})?\/)?release\/(\d+)(?:-[^/?#]*)?\/images(\/update)?\/?$/i;
+
+    /**
+     * The images reader's record version (`_EXT_IDB_VERSION * 100 + this`):
+     * bump it when `_extDgImgLoad()`'s record changes.
+     * @type {number}
+     */
+    const _EXT_DGI_VERSION = 2;
+
+    /**
+     * A link to a release's Images page or its image editor on discogs.com.
+     *
+     * @param {URL} u
+     * @returns {boolean}
+     */
+    function _extDgImgTest(u) {
+        return /^(?:www\.)?discogs\.com$/.test(u.hostname.toLowerCase()) && _EXT_DGI_PATH_RE.test(u.pathname);
+    }
+
+    /**
+     * A release's Images page (or its image editor) as the cache knows it,
+     * whatever the link's slug or language.
+     *
+     * @param {number|string} id
+     * @param {boolean} editor - The image editor, `/images/update`.
+     * @returns {string}
+     */
+    function _extDgImgUrl(id, editor) {
+        return `https://www.discogs.com/release/${id}/images${editor ? '/update' : ''}`;
+    }
+
+    /**
+     * The reader's cache URL of a link (`keyUrl`).
+     *
+     * @param {URL} u
+     * @returns {string}
+     */
+    function _extDgImgKeyUrl(u) {
+        const m = _EXT_DGI_PATH_RE.exec(u.pathname);
+        return _extDgImgUrl(m[1], !!m[2]);
+    }
+
+    /**
+     * The window's title for a link (`kindFor`).
+     *
+     * @param {URL} u
+     * @returns {string}
+     */
+    function _extDgImgKind(u) {
+        return _EXT_DGI_PATH_RE.exec(u.pathname)[2] ? 'Discogs image history' : 'Discogs images';
+    }
+
+    /**
+     * The JSON the image editor's own script reads: `/release/<id>/images/data`.
+     *
+     * @param {number|string} id
+     * @returns {string}
+     */
+    function _extDgImgDataUrl(id) {
+        return `https://www.discogs.com/release/${id}/images/data`;
+    }
+
+    /**
+     * A file size as Discogs' editor writes it: "127KB" under a megabyte,
+     * else "1.2MB" (its own rounding: 126,806 bytes are 127KB).
+     *
+     * @param {number} bytes
+     * @returns {string} '' for none.
+     */
+    function _dgImgSizeText(bytes) {
+        if (!(bytes > 0)) return '';
+        return bytes < 1e6 ? `${Math.round(bytes / 1e3)}KB` : `${(bytes / 1e6).toFixed(1)}MB`;
+    }
+
+    /**
+     * An image's upload time (ISO, UTC) in the browser's own time zone, as
+     * the editor shows it: "2008-05-20 01:46" for 2008-05-19T23:46:48+00:00
+     * in Berlin.
+     *
+     * @param {string} iso
+     * @returns {string} '' when it is not a date.
+     */
+    function _dgImgWhen(iso) {
+        const d = new Date(String(iso || ''));
+        if (Number.isNaN(d.getTime())) return '';
+        const p = n => String(n).padStart(2, '0');
+        return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
+    }
+
+    /**
+     * The image editor's data (`_extDgImgDataUrl()`) as the table's rows, in
+     * Discogs' order (`sortOrder`): `null` when the answer is not that list
+     * (signed out: Discogs' login page).
+     *
+     * @param {string} text
+     * @returns {?Array<Object>}
+     */
+    function _dgImgParseData(text) {
+        let list;
+        try {
+            // A leading BOM (vzell's saved copy had one) is not JSON.
+            list = JSON.parse(String(text || '').replace(/^\uFEFF/, ''));
+        } catch (_) {
+            return null;
+        }
+        if (!Array.isArray(list)) return null;
+        const url = u => (/^https?:\/\//i.test(String(u || '')) ? String(u) : '');
+        return list.filter(x => x && typeof x === 'object').sort((a, b) => (Number(a.sortOrder) || 0) - (Number(b.sortOrder) || 0))
+            .map((x, i) => ({
+                pos: i + 1, id: String(x.id || ''), type: String(x.primary) === 'true' ? 'Primary' : 'Secondary',
+                full: url(x.originalSrc) || url(x.thumbSrc), thumb: url(x.thumbSrc) || url(x.originalSrc),
+                servedW: Number(x.width) || 0, servedH: Number(x.height) || 0,
+                w: Number(x.original_width) || 0, h: Number(x.original_height) || 0, bytes: Number(x.size) || 0,
+                user: String(x.username || ''), userHref: String(x.userUrl || ''), iso: String(x.timestamp || ''), at: _dgImgWhen(x.timestamp),
+                pending: x.pending === true, disabled: x.disabled === true,
+            }));
+    }
+
+    /**
+     * The image editor's data: on discogs.com a same-origin `fetch()` with
+     * the session (through the host's slot, as `_extDgHistGet()`); elsewhere
+     * `_extGet()` with the user's Discogs session (`session`), the one request
+     * of the popup engine that is not anonymous (see `_extFetch()`). Asked
+     * as Discogs' own script asks it (`X-Requested-With`, jQuery's `$.get`).
+     *
+     * @param {string} url
+     * @param {function(): boolean} wanted
+     * @returns {Promise<Object>} `_extFetch()`'s answer shape, or `{skipped: true}`.
+     */
+    async function _extDgImgDataGet(url, wanted) {
+        const headers = { Accept: 'application/json, text/javascript, */*; q=0.01', 'X-Requested-With': 'XMLHttpRequest' };
+        if (!_isDgHost) return _extGet(url, { wanted, fetchOpts: { session: true, accept: /./, headers } });
+        await _extAwaitSlot('www.discogs.com');
+        if (wanted && !wanted()) return { skipped: true };
+        try {
+            const r = await fetch(url, { credentials: 'same-origin', headers });
+            const body = await r.text();
+            return {
+                status: r.status, finalUrl: r.url || url, contentType: (r.headers.get('content-type') || '').toLowerCase(),
+                headers: { 'cf-mitigated': r.headers.get('cf-mitigated') || '' }, bytes: body.length, body, tail: '',
+            };
+        } catch (e) {
+            return { error: 'unreachable', detail: (e && e.message) || String(e) };
+        }
+    }
+
+    /**
+     * The images reader's load, for both pages: the release from the API
+     * (`/releases/<id>`: title, artists, every image at its served size),
+     * then the image editor's data (`_extDgImgDataGet()`): two requests, two
+     * hosts. With the editor's data the rows are its own (every field);
+     * without it (signed out of Discogs, its browser check) the record says
+     * why and keeps the API's images. `rec.dgImg` is the window's.
+     *
+     * @param {object} t
+     * @param {function(): boolean} wanted
+     * @returns {Promise<{ok?: boolean, data?: Object, detail?: string, skipped?: boolean}>}
+     */
+    async function _extDgImgLoad(t, wanted) {
+        const id = _EXT_DGI_PATH_RE.exec(new URL(t.url).pathname)[1];
+        const api = await _extGet(`https://api.discogs.com/releases/${id}`, { wanted, fetchOpts: { accept: /\bjson\b/i, headers: _extDiscogsHeaders() } });
+        if (api.skipped) return { skipped: true };
+        const d = api.status === 200 ? _extJson(api) : null;
+        const data = await _extDgImgDataGet(_extDgImgDataUrl(id), wanted);
+        if (data.skipped) return { skipped: true };
+        if (data.status > 0) _extRememberHost('www.discogs.com');
+        const ed = data.status === 200 && !_extBotCheck(data) ? _dgImgParseData(String(data.body || '') + String(data.tail || '')) : null;
+        if (!d && !ed) {
+            const out = _extApiOutcome(t, api, 'Discogs', `Discogs has no release ${id} (its API answered 404).`);
+            return out || { ok: false, detail: 'Discogs answered, but not with the release' };
+        }
+        const rows = ed || _extDiscogsImages(d.images).map((im, i) => ({
+            pos: i + 1, id: '', type: im.type === 'primary' ? 'Primary' : 'Secondary', full: im.full, thumb: im.thumb,
+            servedW: im.w, servedH: im.h, w: 0, h: 0, bytes: 0, user: '', userHref: '', iso: '', at: '', pending: false, disabled: false,
+        }));
+        const rec = _extApiRecord(t, 200, 'Discogs');
+        const artists = d ? (d.artists || []).map(a => `${_extDiscogsName(a.name)}${a.join ? ` ${a.join}` : ''}`).join(' ').replace(/\s+,/g, ',').trim() : '';
+        const editor = !!_EXT_DGI_PATH_RE.exec(new URL(t.url).pathname)[2];
+        const primary = rows.filter(r => r.type === 'Primary').length;
+        const users = new Map();
+        rows.filter(r => r.user).forEach((r) => {
+            const u = users.get(r.user) || { name: r.user, href: r.userHref, n: 0, years: new Set() };
+            u.n += 1;
+            if (r.at) u.years.add(r.at.slice(0, 4));
+            users.set(r.user, u);
+        });
+        const uploaders = Array.from(users.values()).sort((a, b) => b.n - a.n || a.name.localeCompare(b.name))
+            .map(u => ({ name: u.name, href: u.href, n: u.n, years: Array.from(u.years).sort().join(', ') }));
+        const largest = rows.filter(r => r.w && r.h).sort((a, b) => b.w * b.h - a.w * a.h)[0];
+        Object.assign(rec, {
+            title: d ? String(d.title || '') : `Release ${id}`, author: artists,
+            subtitle: `Discogs · release · ${editor ? 'image history' : 'images'}`, type: editor ? 'image history' : 'images',
+            image: rows[0] ? rows[0].thumb : '', imageFull: rows[0] ? rows[0].full : '',
+            description: artists,
+            facts: [
+                ['Images', rows.length ? `${rows.length} (${primary} primary, ${rows.length - primary} secondary)` : 'none'],
+                ['Uploaders', uploaders.map(u => `${u.name} ${u.n}`).join(', ')],
+                ['Largest', largest ? `${largest.w} × ${largest.h} px` : ''],
+            ].filter(f => f[1]),
+            dgImg: {
+                id: Number(id), editor, rows, uploaders, fromEditor: !!ed,
+                note: ed ? '' : 'Discogs did not give the image editor\'s data (signed out of discogs.com, or its browser check): ' +
+                    'the images and their types come from its API, at the size Discogs serves them; who uploaded them, when, ' +
+                    'their own size and file size come with the editor only.',
+            },
+        });
+        rec.links.push(['The release', `https://www.discogs.com/release/${id}`]);
+        rec.links.push([editor ? 'Images' : 'Image history', _extDgImgUrl(id, !editor)]);
+        return { ok: true, data: rec };
+    }
+
+    /**
+     * The image table's columns (the history window; the pageTypes build
+     * their own `table.tbl`): # · thumbnail · type · uploaded by · date ·
+     * W x H · size. Without the editor the image's served size stands in
+     * for its own, marked so, and the editor's columns are empty.
+     *
+     * @returns {Object[]} `_dpCompactTableHtml()` columns.
+     */
+    function _extDgImgCols() {
+        const link = (href, text, q) => (href
+            ? `<a href="${_rgEsc(new URL(href, 'https://www.discogs.com').href)}" target="_blank" rel="noopener noreferrer">${_hlEsc(text, q)}</a>` : _hlEsc(text, q));
+        return [
+            { key: 'pos', label: '#', cls: 'mb-rg-num', val: r => r.pos, html: r => _rgEsc(String(r.pos)) },
+            { key: 'img', label: '', sort: false, val: () => '', html: r => _extDgThumbHtml(r.thumb) },
+            {
+                key: 'type', label: 'Type', val: r => r.type,
+                html: (r, q) => `<span class="mb-dgh-pill mb-dgh-pill-${r.type === 'Primary' ? 'ok' : 'idle'}">${_hlEsc(r.type, q)}</span>` +
+                    `${r.pending ? ' <span class="mb-dgh-pill mb-dgh-pill-run">pending</span>' : ''}${r.disabled ? ' <span class="mb-dgh-pill mb-dgh-pill-warn">disabled</span>' : ''}`,
+            },
+            { key: 'user', label: 'Uploaded by', val: r => r.user, html: (r, q) => (r.user ? link(r.userHref, r.user, q) : '—') },
+            {
+                key: 'date', label: 'Date', cls: 'mb-dg-yr', val: r => r.iso,
+                html: (r, q) => (r.at ? `<span title="${_rgEsc(`${r.at} · ${r.iso} (UTC)`)}">${_hlEsc(r.at.slice(0, 10), q)}</span>` : '—'),
+            },
+            {
+                key: 'dims', label: 'W × H', cls: 'mb-rg-num', val: r => (r.w * r.h) || (r.servedW * r.servedH),
+                html: r => (r.w ? _rgEsc(`${r.w} × ${r.h}`)
+                    : r.servedW ? `<span class="mb-rg-dim" title="The size Discogs serves it at, not its own">${_rgEsc(`${r.servedW} × ${r.servedH}`)} served</span>` : '—'),
+            },
+            { key: 'size', label: 'Size', cls: 'mb-rg-num', val: r => r.bytes, html: r => _rgEsc(_dgImgSizeText(r.bytes) || '—') },
+        ];
+    }
+
+    /**
+     * The images reader's window. Images: the uploaders as a Compact table
+     * (user · images · years) on the left, every image on the right, each
+     * captioned with its type, size and uploader; a click opens the artwork
+     * viewer at it. Image history: one Compact table of every image, full
+     * width. Without the editor's data, the reason above either.
+     *
+     * @param {object} t
+     * @param {Object} rec
+     * @returns {{left: string[], right: string[], full: string[]}}
+     */
+    function _extDgImgWindow(t, rec) {
+        const out = { left: [], right: [], full: [] };
+        const g = rec.dgImg;
+        if (!g) return out;
+        const warn = g.note ? `<div class="mb-dp-warn">${_rgEsc(g.note)}</div>` : '';
+        if (g.editor) {
+            out.full.push(_extDgSection('dgi-hist', 'Image history', g.rows.length, warn + _dpCompactTableHtml(t, 'dg-imghist', _extDgImgCols(), g.rows, {
+                perPage: 50, initial: 'in Discogs\' order', what: 'images',
+            })));
+            return out;
+        }
+        if (g.uploaders.length) {
+            out.left.push(_extDgSection('dgi-users', 'Uploaded by', g.uploaders.length, _dpCompactTableHtml(t, 'dg-imgusers', [
+                {
+                    key: 'name', label: 'User', val: u => u.name,
+                    html: (u, q) => (u.href ? `<a href="${_rgEsc(new URL(u.href, 'https://www.discogs.com').href)}" target="_blank" rel="noopener noreferrer">${_hlEsc(u.name, q)}</a>` : _hlEsc(u.name, q)),
+                },
+                { key: 'n', label: 'Images', cls: 'mb-rg-num', first: -1, val: u => u.n, html: u => _rgEsc(String(u.n)) },
+                { key: 'years', label: 'Years', cls: 'mb-dg-yr', val: u => u.years, html: u => _rgEsc(u.years || '—') },
+            ], g.uploaders, { initial: 'most images first', what: 'uploaders' })));
+        }
+        const caption = (r) => [r.w ? `${r.w} × ${r.h}` : '', _dgImgSizeText(r.bytes), r.user ? `${r.user}${r.at ? `, ${r.at.slice(0, 4)}` : ''}` : '']
+            .filter(Boolean).join(' · ');
+        out.right.push(_extDgSection('dgi-gallery', 'Images', g.rows.length, warn + (g.rows.length
+            ? _extDgImagesHtml(g.rows.map(r => ({ type: r.type.toLowerCase(), full: r.full, thumb: r.thumb, w: r.servedW, h: r.servedH })),
+                'front', g.rows.map(caption))
+            : '<div class="mb-dg-state">This release has no images.</div>')));
+        return out;
+    }
+
+    /**
+     * The images reader's clicks: a section heading opens or closes it,
+     * the rest goes to the Discogs family (`_extDgFamilyClick()`: links open
+     * in the window).
+     *
+     * @param {MouseEvent} e
+     * @returns {void}
+     */
+    function _extDgImgAreaClick(e) {
+        _extDgHistAreaClick(e);
+    }
+
     // --- Discogs: users, support articles, searches (2026-10-18) ---
     //
     // vzell's second round (mockup https://claude.ai/artifact/XRTM8v1aLNj3voVt6RxVJz):
@@ -63055,8 +64580,8 @@
 
     /**
      * Whether a link on discogs.com is a Discogs page one of the readers
-     * takes (a release, master, artist or label — its history too —, a
-     * user, a search): on discogs.com itself such a link is previewed,
+     * takes (a release, master, artist or label — its history and images
+     * too —, a user, a search): on discogs.com itself such a link is previewed,
      * though it is the page's own host (`_extTarget()`).
      *
      * @param {URL} u
@@ -63821,6 +65346,13 @@
             askHost: (u) => `${_EXT_WIKIPEDIA_HOST_RE.exec(u.hostname.toLowerCase())[1]}.wikipedia.org`,
         },
         { id: 'wikidata', kind: 'Wikidata', test: _extWikidataTest, askHost: () => 'www.wikidata.org', load: _extWikidataLoad, noLive: false },
+        {
+            // Before `discogs`, whose path pattern takes `/images` too (Phase 4).
+            id: 'dgimages', kind: 'Discogs images', test: _extDgImgTest, askHost: () => 'www.discogs.com', load: _extDgImgLoad,
+            noLive: true, version: _EXT_IDB_VERSION * 100 + _EXT_DGI_VERSION, windowOnly: true, keyUrl: _extDgImgKeyUrl,
+            kindFor: _extDgImgKind, window: _extDgImgWindow, onAreaClick: _extDgImgAreaClick,
+            loadingNote: 'Reading the images from Discogs\' API and its image editor (two requests).',
+        },
         {
             // Before `discogs`, whose path pattern takes `/history` too.
             id: 'dghistory', kind: 'Discogs release history', test: _extDgHistTest, askHost: () => 'www.discogs.com', load: _extDgHistLoad,

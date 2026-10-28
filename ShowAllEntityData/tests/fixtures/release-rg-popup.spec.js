@@ -121,7 +121,9 @@ const dialog = (page) => page.locator('#mb-dp-dialog');
 /** The "#" cell of row `r` of table `t`. */
 const hashCell = (page, t, r) => page.locator('table.tbl').nth(t).locator('tbody tr').nth(r).locator('td').first();
 /** The window's release rows. */
-const rows = (page) => dialog(page).locator('.mb-rg-wtable tbody tr');
+// The window's releases are a shared List table since Phase 3b
+// (org/MB-POH-sync-withDiscogs.org): `[data-mb-tbl="rg-releases"]`.
+const rows = (page) => dialog(page).locator('[data-mb-tbl="rg-releases"] tbody tr');
 
 /**
  * Hovers the subheader link with a plain pointer and pins its card.
@@ -173,7 +175,11 @@ test.describe('the release-group popup on the popup engine (org/iframe.org Phase
         await expect(rows(page)).toHaveCount(150, { timeout: 20000 });
         expect(log.browses.map((b) => b.offset), 'offset grows by the 90 returned').toEqual([0, 90]);
         await expect(dialog(page)).toContainText('Album + Live');
-        await expect(dialog(page)).toContainText('rock, rock and roll');
+        // Genres one per line, each its tag page (Phase 3a).
+        const genres = dialog(page).locator('.mb-dp-kv dt:text-is("Genres") + dd a');
+        await expect(genres).toHaveText(['rock', 'rock and roll']);
+        await expect(genres.nth(1)).toHaveAttribute('href', '/tag/rock%20and%20roll');
+        await expect(dialog(page).locator('.mb-dp-kv dt:text-is("Artist") + dd a')).toHaveAttribute('href', /^\/artist\/[0-9a-f-]{36}$/);
         await expect(dialog(page)).toContainText('no votes');
         await expect(dialog(page)).toContainText('Links (2)');
         expect(log.lookups).toHaveLength(1);
@@ -189,8 +195,10 @@ test.describe('the release-group popup on the popup engine (org/iframe.org Phase
         await expect(first).toContainText('▸ Release 042');
         await expect(first.locator('a')).toHaveAttribute('href', `/release/${RELEASE_GID}`);
         await expect(first.locator('a')).toHaveAttribute('target', '_blank');
-        // Every third release (0, 3, …, 147: 50 of them) has no front cover.
-        await expect(dialog(page).locator('.mb-rg-thumb img')).toHaveCount(100);
+        // Every third release (0, 3, …, 147: 50 of them) has no front cover:
+        // the empty box instead, never a request.
+        await expect(dialog(page).locator('[data-mb-tbl="rg-releases"] img.mb-dg-vthumb')).toHaveCount(100);
+        await expect(dialog(page).locator('[data-mb-tbl="rg-releases"] .mb-dg-nothumb')).toHaveCount(50);
     });
 
     // org/TODO.org "some more BB and MB fixes/enhancements" 3b (vzell,
@@ -206,9 +214,9 @@ test.describe('the release-group popup on the popup engine (org/iframe.org Phase
         });
         await pinLink(page);
         await expect(rows(page)).toHaveCount(150, { timeout: 20000 });
-        const row = rows(page).filter({ has: page.locator('td.mb-rg-thumb a') }).first();
-        const thumb = row.locator('td.mb-rg-thumb a');
-        const title = (await row.locator('td:not(.mb-rg-thumb) a').first().textContent()).trim();
+        const row = rows(page).filter({ has: page.locator('td:first-child a.mb-pop-cover-thumb') }).first();
+        const thumb = row.locator('td:first-child a.mb-pop-cover-thumb');
+        const title = (await row.locator('td:nth-child(2) a').first().textContent()).trim();
         const path = await thumb.getAttribute('data-mb-sb-cover');
         expect(path).toMatch(/^\/release\/[0-9a-f-]{36}$/);
         expect(caa, 'nothing asked before a rest').toEqual([]);
@@ -250,30 +258,30 @@ test.describe('the release-group popup on the popup engine (org/iframe.org Phase
         await open(page, { browse: (offset) => ({ status: 200, body: twoPageBrowse(offset) }) });
         await pinLink(page);
         await expect(rows(page)).toHaveCount(150, { timeout: 20000 });
-        const dates = () => dialog(page).locator('.mb-rg-wtable tbody tr td:nth-child(5)').allTextContents();
-        await dialog(page).locator('button[data-mb-rg-sort="date"]').click();
+        const dates = () => rows(page).locator('td:nth-child(5)').allTextContents();
+        await dialog(page).locator('th[data-mb-tbl-sort="date"]').click();
         let d = await dates();
         const dated = d.filter((x) => x !== '—');
         expect(dated).toEqual([...dated].sort());
         expect(d.slice(dated.length).every((x) => x === '—'), 'undated last').toBe(true);
-        await dialog(page).locator('button[data-mb-rg-sort="date"]').click();
+        await dialog(page).locator('th[data-mb-tbl-sort="date"]').click();
         d = await dates();
         expect(d.filter((x) => x !== '—')).toEqual([...dated].sort().reverse());
         expect(d[d.length - 1]).toBe('—');
         await expect(dialog(page).locator('th[aria-sort="descending"]')).toHaveText('Date');
         // A third click: the initial order again (this release first, then
         // by date), every header in the initial state.
-        await dialog(page).locator('button[data-mb-rg-sort="date"]').click();
-        await expect(dialog(page).locator('.mb-rg-wtable th[aria-sort="ascending"], .mb-rg-wtable th[aria-sort="descending"]')).toHaveCount(0);
+        await dialog(page).locator('th[data-mb-tbl-sort="date"]').click();
+        await expect(dialog(page).locator('[data-mb-tbl="rg-releases"] th[aria-sort="ascending"], [data-mb-tbl="rg-releases"] th[aria-sort="descending"]')).toHaveCount(0);
         // (A header the pointer is not on: the tooltip engine parks the
         // hovered one's title while it shows.)
-        await expect(dialog(page).locator('button[data-mb-rg-sort="country"]')).toHaveAttribute('title', 'Initial order (this release first, then by date) · click: ascending');
-        await expect(dialog(page).locator('.mb-rg-wtable tbody tr').first()).toHaveClass(/mb-rg-cur/);
+        await expect(dialog(page).locator('th[data-mb-tbl-sort="country"]')).toHaveAttribute('title', 'Initial order (this release first, then by date) · click: ascending');
+        await expect(rows(page).first()).toHaveClass(/mb-rg-cur/);
         // The glyph sits in a box of its own fixed width: ⇅ often comes
         // from a fallback font that arrives later, and a header that grew
         // then moved the rows under the pointer (the covers test above
         // failed about one run in five before this, 2026-10-26).
-        const box = await dialog(page).locator('button[data-mb-rg-sort="country"]').evaluate((b) => {
+        const box = await dialog(page).locator('th[data-mb-tbl-sort="country"]').evaluate((b) => {
             const cs = getComputedStyle(b, '::after');
             return { display: cs.display, width: parseFloat(cs.width), em: parseFloat(cs.fontSize), lh: cs.lineHeight, glyph: cs.content };
         });

@@ -4,8 +4,8 @@
         "why": "org/MB-POH-sync-withDiscogs.org Phase 2: a browse page may hold fewer rows than the limit (a release browse's 500-track cap); offsetting by the limit skips rows.",
         "edits": [
             {
-                "find": "                const res = await st.spec.ask(st.rows.length, st.wanted);\n",
-                "replace": "                const res = await st.spec.ask(Math.ceil(st.rows.length / _MB_PAGED_LIMIT) * _MB_PAGED_LIMIT, st.wanted);\n"
+                "find": "                const res = await st.spec.ask(st.rows.length, st.wanted, st.pages + 1);\n",
+                "replace": "                const res = await st.spec.ask(Math.ceil(st.rows.length / _MB_PAGED_LIMIT) * _MB_PAGED_LIMIT, st.wanted, st.pages + 1);\n"
             }
         ],
         "spec": "tests/fixtures/popup-mb.spec.js",
@@ -30,8 +30,8 @@
         "why": "Stop works through wanted(): a page whose rate slot comes up after Stop is not asked and ends the run.",
         "edits": [
             {
-                "find": "listeners: cur ? cur.listeners : new Set([repaint]), wanted: () => !st.stopped && wanted(),\n",
-                "replace": "listeners: cur ? cur.listeners : new Set([repaint]), wanted: () => true,\n"
+                "find": "stopped: false, detail: '', seedOf: null, listeners, wanted: () => !st.stopped && wanted(),\n",
+                "replace": "stopped: false, detail: '', seedOf: null, listeners, wanted: () => true,\n"
             }
         ],
         "spec": "tests/fixtures/popup-mb.spec.js",

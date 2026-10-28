@@ -1,0 +1,171 @@
+[
+    {
+        "name": "tag kind page: an entity with edits pending is left out",
+        "why": "org/MB-POH-sync-withDiscogs.org 3c: a pending edit wraps the entity link in span.mp (3 of the 100 on the recording fixture).",
+        "edits": [
+            {
+                "find": "':scope > a[href], :scope > span.mp > a[href]'",
+                "replace": "':scope > a[href]'"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "the biggest kind's list from its page",
+        "expect": "fail"
+    },
+    {
+        "name": "tag window: \"By kind\" does not choose the list",
+        "why": "3c: a click on a kind lists that kind (the shared seg action).",
+        "edits": [
+            {
+                "find": "            kinds.map(k => [`<button type=\"button\" class=\"mb-pop-kindbtn\" data-mb-tbl-act=\"seg\" ",
+                "replace": "            kinds.map(k => [`<button type=\"button\" class=\"mb-pop-kindbtn\" data-mb-tbl-act=\"none\" "
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "the biggest kind's list from its page",
+        "expect": "fail"
+    },
+    {
+        "name": "tag window: a kind page's link opens on the biggest kind",
+        "why": "3c: /tag/<t>/<kind> opens the tag's window on that kind (t.list).",
+        "edits": [
+            {
+                "find": "        if (t.list) _dpTblUi(t, 'tag-kinds').seg = t.list;\n",
+                "replace": "        if (t.list && false) _dpTblUi(t, 'tag-kinds').seg = t.list;\n"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "a link to a tag's kind page",
+        "expect": "fail"
+    },
+    {
+        "name": "paged HTML list: a page that is not one stays in the raw memory",
+        "why": "3c: a login page answered for a kind page must be asked again by \"Try again\", not read back.",
+        "edits": [
+            {
+                "find": "                if (!rec) {\n                    _dpRawMem.delete(url);\n",
+                "replace": "                if (!rec) {\n"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "a kind page that is not one",
+        "expect": "fail"
+    },
+    {
+        "name": "paged list: the source is asked the page it has, not the next",
+        "why": "3c: an HTML-paged source is asked page N+1 after N pages (a collection's page 2 after its seeded page 1).",
+        "edits": [
+            {
+                "find": "                const res = await st.spec.ask(st.rows.length, st.wanted, st.pages + 1);\n",
+                "replace": "                const res = await st.spec.ask(st.rows.length, st.wanted, st.pages);\n"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "its entries as a List table, page 1 from the card",
+        "expect": "fail"
+    },
+    {
+        "name": "collection window: page 1 asked again instead of seeded",
+        "why": "3c: page 1 is the card's own record; opening the window asks nothing.",
+        "edits": [
+            {
+                "find": "        _mbPagedSeed(t, list.key, list.spec, d, repaint);\n",
+                "replace": "        _mbPagedStart(t, list.key, list.spec, false, repaint);\n"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "its entries as a List table, page 1 from the card",
+        "expect": "fail"
+    },
+    {
+        "name": "Ctrl-click on a tag: an editor's tag even when nobody is logged in",
+        "why": "Decision 2026-10-26: logged out, Ctrl-click keeps the link's new tab.",
+        "edits": [
+            {
+                "find": "        const me = tag ? _mbMyEditorName() : '';\n",
+                "replace": "        const me = tag ? (_mbMyEditorName() || 'vzell') : '';\n"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "Ctrl-click opens your own tag",
+        "expect": "fail"
+    },
+    {
+        "name": "Ctrl-click on a tag: the editor's own tag never opens",
+        "why": "Decision 2026-10-26: logged in, Ctrl-click shows the reader's own tag in the window.",
+        "edits": [
+            {
+                "find": "        const me = tag ? _mbMyEditorName() : '';\n",
+                "replace": "        const me = '';\n"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "Ctrl-click opens your own tag",
+        "expect": "fail"
+    },
+    {
+        "name": "collection window: the filter marks nothing in the page's cells",
+        "why": "vzell 2026-10-27: a collection's filter must mark what it matched; its cells are safe HTML, marked in their text nodes (_hlHtml()).",
+        "edits": [
+            {
+                "find": "html: (r, q) => _hlHtml(r.cells[i] || '', q),",
+                "replace": "html: r => r.cells[i] || '',"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "its entries as a List table, page 1 from the card",
+        "expect": "fail"
+    },
+    {
+        "name": "foot line at rest: no word of Ctrl-click on a tag",
+        "why": "vzell 2026-10-27: the bottom line must say that the key exists.",
+        "edits": [
+            {
+                "find": "keys.push('Ctrl-click a tag or genre: your own tag');",
+                "replace": "keys.push();"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "foot line at rest names Ctrl-click",
+        "expect": "fail"
+    },
+    {
+        "name": "foot line at rest: not written again after a repaint",
+        "why": "The line at rest is written when a target is shown, before its content (and its tag links) may be there.",
+        "edits": [
+            {
+                "find": "        if (!_dpWin.hover) _dpWinFoot(null);\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "foot line at rest names Ctrl-click",
+        "expect": "fail"
+    },
+    {
+        "name": "artist window: aliases joined on one line again",
+        "why": "vzell 2026-10-27: an artist's aliases one per line.",
+        "edits": [
+            {
+                "find": "                        ['Aliases', _mbPopAliasesHtml(d.aliases)],",
+                "replace": "                        ['Aliases', _rgEsc(_mbPopAliases(d.aliases, 99))],"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "the artist window: genres one per line",
+        "expect": "fail"
+    },
+    {
+        "name": "Ctrl-click: a genre link is no tag",
+        "why": "vzell 2026-10-27: the decision covers genre links; the tag window's own facts link its genre.",
+        "edits": [
+            {
+                "find": "        const name = pp && pp.type === 'genre' ? a.textContent.replace(/\\s+/g, ' ').trim() : '';\n",
+                "replace": "        const name = '';\n"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "Ctrl-click on the tag window's Genre link",
+        "expect": "fail"
+    }
+]

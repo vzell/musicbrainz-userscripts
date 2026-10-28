@@ -26453,3 +26453,247 @@ right still fails: `scripts/mutations/event-stack-placement.json`, 2/2
 2 of 600 in the first run and 0 of 600 in the second (30/30 alone). Its
 error message was not captured (dot reporter, `test-results/` overwritten
 by the second run), so it is noted here, not diagnosed.
+
+## 2026-10-27 — a load-dependent flake found in the Phase 3c merge gate: the Live page "not pulled back" test
+
+Env: 2026-10-27T19:23:28+01:00 → 20:05+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) · Playwright 1.62.1 Chromium · no Tampermonkey (GM stubs)
+
+`npm run test:full` on branch `mb-window-lists` (Phase 3c, uncommitted on
+`5afacc83`), 2,375 tests: 2,374 passed, 1 failed. Wall clock 23 m 36 s
+against about 16 min for the earlier runs today, so the host was busy.
+The failure: `popup-ext.spec.js:2216` "a reader who scrolls the Live page
+before its images are in is not pulled back to the show", `the show is below
+the top of the view`, -533.6 instead of > 300.
+
+Stress, `--repeat-each=20 --workers=14`: the branch failed 2 of 20; `main`
+(`8eb7e818`, a scratch worktree) failed 6 of 20. Pre-existing and
+load-dependent; Phase 3c touches none of the Live page's scroll code. Not
+fixed here. It belongs with the other load flakes (the stacked event card
+`:335`, fixed today, and `:169`, noted above).
+
+## 2026-10-27 — the Live page "not pulled back" flake: Wikidot's theme CSS from the network (popup-ext.spec.js:2216), fixed
+
+Env: 2026-10-27T20:10+01:00 → 21:05+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) · Playwright 1.62.1 Chromium · no Tampermonkey (GM stubs)
+
+Follow-up to the entry above, which left it undiagnosed. A 50 ms timeline of
+the frame (a temporary probe in the test, reverted): the first scroll put the
+show at 8 px (page 13,667 px); in the sample of the reader's wheel the page
+SHRANK by 2,281–2,303 px while scrollTop moved only the wheel's ~1,500, so the
+show landed at −534 (the failures' −533.6). No image had loaded or broken by
+then. The cause is in the fixture: `ext-bb-year-2025.html`'s own `<style>`
+`@import`s Wikidot's theme from `d3g0gp89917ko0.cloudfront.net`, which no
+spec routed. The real CSS came over the internet whenever it came and
+restyled the page. Before the reader moved, the script's re-scrolls (0.3 s,
+1.5 s) or Chrome's scroll anchoring hid it; after the wheel nothing does, by
+design (`readerMoved`).
+
+A first guess was wrong, and is recorded here so it is not tried again: that
+the site's navigation was hidden AFTER `livePrepare`'s first scroll in
+`_dpIsolateFrame()`. Moving the toggle before it changed nothing (the flake
+stayed), and a direct test of the first scroll's position failed half the
+time WITH the move and passed with the move planted back (mutation survived).
+Reverted; `_dpIsolateFrame()` is unchanged.
+
+Fix (test only): the spec serves that host an empty stylesheet, at once.
+40/40 at `--repeat-each=40 --workers=14` (before: 2/20 on the branch, 6/20 on
+`main`). Other specs that load a Brucebase page with the same `@import`s
+still reach the network for that CSS; none of them measures a scroll after a
+wheel.
+
+## 2026-10-27 — Phase 3d merge gate: two specs on the old links list, two load flakes
+
+Env: 2026-10-27T21:15:37+01:00 → 21:39:40+01:00 (suite), stress to 21:50 · NB-3641 · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) · Playwright 1.62.1 Chromium · no Tampermonkey (GM stubs)
+
+`npm run test:full` on `mb-window-lists` (`86839808` + Phase 3d, uncommitted),
+2,383 tests, 24 m 3 s (a busy host again): 2,379 passed, 4 failed.
+- `pop-mb-image.spec.js:292` and `:327` waited for the window's links as the
+  old list (`.mb-rg-links > div`), which Phase 3d made a Compact table: fixed
+  to `[data-mb-tbl="links"] tbody tr` (8/8). Missed when the selectors were
+  moved because that spec was not in the run of the window specs.
+- `release-tracks-no-work-flag.spec.js:193`: `page.goto` timed out; 10/10 at
+  `--repeat-each=10 --workers=14`. Load only.
+- `sidebar-picture.spec.js:413` ("Space on the hovered cover … opens our
+  viewer"): `locator.hover` timed out. `--repeat-each=20 --workers=14`:
+  `main` (a scratch worktree) failed 5/20, the branch 7/20. A pre-existing
+  load flake, not Phase 3d's; not diagnosed here.
+
+## 2026-10-27 — sidebar-picture.spec.js "Space on the hovered cover" flake: MusicBrainz's own script from the CDN, fixed
+
+Env: 2026-10-27T21:55+01:00 → 22:20+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) · Playwright 1.62.1 Chromium · no Tampermonkey (GM stubs)
+
+Follow-up to the entry above. The hover's call log: "element is not
+visible" for all 90 s, on `#sidebar .cover-art a.artwork-image`. MusicBrainz
+serves that link's `span.artwork-image` EMPTY; its own script, from
+static.metabrainz.org, puts the `<img>` in from `data-small-thumbnail`. No
+fixture routes that CDN (the harness blocks it only under
+`PLAYWRIGHT_BLOCK_CDN`), so the test waited on the real network: when the
+script came late the link had no size. Proof: with `PLAYWRIGHT_BLOCK_CDN=1`
+the test failed 3/3.
+
+Fix (test only): `openCover()`'s copy of the fixture carries the `<img>` in
+the span, built from its `data-small-thumbnail` as MusicBrainz's script
+builds it. CDN blocked: 3/3; `--repeat-each=40 --workers=14`: 40/40 (before:
+7/20 on the branch, 5/20 on `main`); the whole spec 19/19. With the CDN
+reachable, MusicBrainz's script still runs, so "its dialog is not opened"
+keeps its meaning.
+
+The same class as the Live page flake earlier today (a fixture @importing
+CSS from cloudfront): a "fixture" test whose outcome depends on a host no
+route answers. Other specs that wait for markup MusicBrainz's scripts add
+would show it the same way; `PLAYWRIGHT_BLOCK_CDN=1 npm test` is the probe.
+
+## 2026-10-27 — Phase 3f: CD stub and documentation readers; the hover-in-window specs on 3e's tracklist
+
+Env: 2026-10-27T22:05+01:00 → 22:44+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) · Playwright 1.62.1 Chromium · no Tampermonkey (GM stubs); the probe: n/a
+
+Probe first (`scripts/probe-mb-docs-cdstub.py`): a CD stub's page has
+everything in text (`.blankheader h1` "Blues In Orbit (mfsl-cd-sacd)", the
+comment part of the title's text, no `.comment`); a documentation page nests
+`<html><head></head><body>` inside a `div` around `.mw-parser-output` (a DOM
+parser drops those tags, so the query still finds it), wraps every heading
+in `div.mw-heading mw-headingN`, and opens its first `<p>` without closing
+it before `#toc` (the parser closes it). The site's documentation search
+holds no results (Google custom search); the wiki's search API answers JSON.
+
+Two test assumptions of mine were wrong, the code right: the documentation
+card counts 9 sections, not 10 (the TOC's eleven entries include a level-2
+and a level-3 one), and "Blues in Blueprint" sorts before "Blues In Orbit".
+A drill on `/doc/Style#Language-specific_guidelines` asked `/doc/Style`
+(no anchor), which an `endsWith(href)` assertion could not see; its debug
+message was built before the poll, so it showed the log as it was then.
+
+Mutation run (`scripts/mutations/mb-window-3f.json`, 10 entries): 9 fail as
+they should; "the window asks the wiki again" survives by design. Without
+`_mbLoad()`'s memory guard the window's call reads the card's record from
+IndexedDB and still asks nothing. First the count assertion had also come too
+early (before the host's 1 s gate could release a second request); a 1.5 s
+settle fixed that, and the survival is the IndexedDB layer, not the race.
+
+Found on the way, not 3f's: the seven "hovering inside the window" specs
+(popup-mb.spec.js, org/dp-window-hover.org) still waited for
+`.mb-pop-tracks li` in the release WINDOW, which 3e (b9d9c29d, committed
+without a suite run) turned into `table.mb-pop-medtable`; all seven failed.
+Retargeted to `table.mb-pop-medtable tbody tr`, 7/7. The card keeps
+`.mb-pop-tracks`, so no other spec was affected.
+
+## 2026-10-27 — Full suite on mb-window-lists (3a–3f): 2,387/2,388; the NOVOTE preset test sat on its poll's 5 s default
+
+Env: 2026-10-27T23:00:34+01:00 → 23:22:56+01:00 (suite), fix until 23:40+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) · Playwright 1.62.1 Chromium · no Tampermonkey (GM stubs)
+
+`npm run test:full` on `mb-window-lists` at 5d7cc4b9: 2,388 tests, 2,387
+passed, wall 22 m 22 s. The one failure:
+`popup-mb-hist-presets.spec.js:240` "NOVOTE …" (the "Edits I have not voted
+on" row never enabled within 5 s). Not a regression of this branch:
+`--repeat-each=20` failed 6/20 on the branch AND 6/20 on `main` (c716ff11,
+a scratch worktree).
+
+Cause, measured (a temporary patch printing the time from the ▾ click to
+the row enabling, 20 runs): 4.7–5.2 s every time. The row needs two pages,
+the recording's `/edits` (the search's base) and then `/user/vzell/edits`
+(the editor id), and both queue in the 1.1 s MusicBrainz gate behind the
+window's own Web Service requests. So the test was not racing load so much
+as always sitting on `expect.poll`'s 5 s default; any slower run failed.
+The code works as designed (one page a second).
+
+Fix (test only): that poll gets `timeout: 15000`, with the measurement in a
+comment. 40/40 at `--workers=14`; the file 6/6. The file's other polls wait
+for one page only and passed in every run here.
+
+## 2026-10-28 — Phase 4: a Discogs release's Images and Image history (reader `dgimages`, pageTypes `dg-images`, `dg-image-history`)
+
+Env: 2026-10-27T23:45+01:00 → 2026-10-28T00:14+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) · Playwright 1.62.1 Chromium · no Tampermonkey (GM stubs); the probe: n/a
+
+Snapshots: debug/Discogs-Images.html and debug/Discogs-Image-history.html
+(vzell's uploads of 2026-10-26, logged in, `isLoggedIn: true`). Both are
+older pages (`#main_wrapper`, `#page_content`, no `#app`). The Images page
+holds the 17 images only (`#view_images span.thumbnail_link img`, 500/600
+px). The image editor's React uploader is rendered on the server
+(`data-reactid`): `li.image_preview` with the type and position in the
+image's `alt` ("Primary – 1 of 17"), `.user_info a.user`, the date in a
+`span[title]` ("May 20, 2008 1:46 AM", text "18 years ago"), then "500 ×
+500 px — 127KB". The user's id sits in a GTM script only (dropped with the
+scripts in the fixtures).
+
+Probe (scripts/probe-dg-release-images.py): the API's image keys are
+height, resource_url, type, uri, uri150, width; width/height are the size
+Discogs SERVES (500 or 600 px; "600x599" for an original of 2002 × 2000);
+no file size, uploader or date. Both pages: 403 `cf-mitigated: challenge`
+to Python. So the 2026-10-26 decision ("from musicbrainz.org: API fallback
+with position, type, W × H, size") could not be built as worded; asked
+again, vzell chose to read the editor with the Discogs session (the popup
+engine's first non-anonymous request, `_extFetch()`'s `session`), and the
+same table on the Images page.
+
+Join: the API's `uri` and the editor's 300 px thumbnail end in the same
+encoded storage path after `/w:<n>/` (`…/R-1313481-1211240808.jpeg`), so
+rows join on it (`_dgImgKey()`), not on position.
+
+Test-side corrections of mine, the code right: a first-contact card for a
+never-reached www.discogs.com ("not contacted yet"), not "Not read yet";
+the pageType's thumbnail is the API's 150 px `uri150`, not the editor's
+300 px. Mutation run 1 (11 entries): "a hover reads the images" survived,
+masked by the first-contact rule (the host never reached, so a hover could
+not ask anyway); a test with `sa_pop_ext_hosts: ['www.discogs.com']` now
+sees `windowOnly` alone. Run 2: 11/11 fail as planted.
+
+Not seen: a release whose image editor pages (17 images fit on one page);
+from MusicBrainz in a real browser, whether Cloudflare lets a
+GM_xmlhttpRequest with the session through (memory: Chrome + Tampermonkey
+passed for discogs.com before) — vzell's browser check.
+
+## 2026-10-28 — Phase 4 correction: the image editor's PAGE holds no image; its data is /release/<id>/images/data
+
+Env: 2026-10-28T00:25+01:00 → 01:05+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) · Playwright 1.62.1 Chromium · no Tampermonkey (GM stubs); vzell's check: real browser, versions not stated (unknown)
+
+vzell's browser check of 838b6b34 on discogs.com
+(debug/discogs-release-image-update-final.html, the final rendered page):
+the dg-image-history table had 17 rows with # and Type only; Uploaded by,
+Uploaded, W × H and Size empty: the signed-out path, though signed in.
+
+Root cause: the entry above ("Phase 4 …") called the editor
+"server-rendered (`data-reactid`)". It is not: React 0.14 writes
+`data-reactid` when it renders in the BROWSER too, and no saved copy has a
+`data-react-checksum` (the mark of a server render). The page's inline
+script `ds(function(require){ require("imageUploaderApp"); })` loads
+`image-uploader-app.js`, which fetches `/release/<id>/images/data` and
+draws `#image_uploader_list`. debug/Discogs-Image-history.html was saved
+AFTER that, so the fixture built from it held a list the server never
+sends; `_dgImgParseEditor()` worked on the fixture and found nothing on a
+fetched page. The tests asserted "the parser reads a drawn list", not "we
+get the list".
+
+Probe: scripts/probe-dg-image-uploader.py (the public script: the
+endpoint and the fields). vzell saved the answer
+(debug/discogs-release-images-data.json): every field the table needs, in
+one request — so the storage-path join with the API (`_dgImgKey()`) and the
+HTML parser are gone. The saved copy began with a UTF-8 BOM, which
+JSON.parse rejects: `_dgImgParseData()` drops one. A same-origin
+`fetch().text()` drops it by itself (the first BOM test, on discogs.com,
+survived its mutation for that reason); GM_xmlhttpRequest's responseText
+keeps it, so the test is on the MusicBrainz path.
+
+Fix: `_extDgImgDataGet()` (same-origin fetch on discogs.com, else
+`_extGet()` with `session`, both with `X-Requested-With` as jQuery's $.get),
+`_dgImgParseData()`, the date in the browser's time zone (`_dgImgWhen()`:
+01:46 in Berlin for 23:46 UTC, as the editor shows it), sizes from bytes;
+`_EXT_DGI_VERSION` 2 (vzell's browser cached version-1 records without the
+editor's data). Fixture dg-release-images-update.html is now the page as
+the server sends it (`#image_uploader_app` empty, SYNTHETIC from the saved
+page), dg-release-images-data.json the answer (BOM dropped). Specs pin
+`timezoneId: 'Europe/Berlin'`. Mutations (scripts/mutations/dg-images.json,
+13): the page read instead of the data, the BOM, UTC instead of local time
+added; 13/13 fail as planted. Discogs + popup-ext + include specs 137/137.
+
+Lesson for the next foreign page: before parsing a saved page, check
+whether its markup is the server's (view-source, or a page script that
+mounts into the element) — a saved copy is the FRP unless proven
+otherwise.
+
+## 2026-10-28 — Full suite on mb-window-lists (Phase 3a–3f, Phase 4): 2,399/2,399
+
+Env: 2026-10-28T01:09:35+01:00 → 01:32:32+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) · Playwright 1.62.1 Chromium · no Tampermonkey (GM stubs)
+
+`python3 scripts/run-test-full.py` on `mb-window-lists` at 7f565497: 2,399
+tests, all passed, none flaky, wall 22 m 57 s. vzell checked Phase 3a–3f
+and Phase 4 (after the /images/data fix) live before the run. The branch
+is ready for the merge decision; nothing merged.

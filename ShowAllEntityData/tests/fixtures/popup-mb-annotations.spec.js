@@ -174,7 +174,8 @@ test.describe('MusicBrainz link previews: an annotation\'s history and versions'
         await expect(card(page)).toContainText('Comes in a 6x3‐inch snap‐pack');
         await page.keyboard.press('Space');
         await expect(title(page)).toHaveText('Annotation history');
-        const rows = dialog(page).locator('table.mb-rg-wtable tbody tr');
+        // A Compact table since Phase 3d.
+        const rows = dialog(page).locator('[data-mb-tbl="versions"] tbody tr');
         await expect(rows).toHaveCount(3);
         await expect(rows.locator('td:first-child')).toHaveText(['Version 3', 'Version 2', 'Version 1']);
         await expect(rows.first().locator('td')).toHaveText(['Version 3', 'vzell', '2022-11-08 22:48 GMT+1', 'none']);

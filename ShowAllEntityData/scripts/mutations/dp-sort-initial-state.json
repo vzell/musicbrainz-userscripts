@@ -40,11 +40,11 @@
     },
     {
         "name": "sort initial state: the release-group window keeps toggling",
-        "why": "The MusicBrainz release-group window shares the cycle; a third click returns to this release first.",
+        "why": "The MusicBrainz release-group window shares the cycle; a third click returns to this release first (since Phase 3b through the shared _dpTblClick(), its table a List table).",
         "edits": [
             {
-                "find": "        _rgSort.key = next.col;\n",
-                "replace": "        _rgSort.key = next.col || key;\n"
+                "find": "            ui.sort = _dpSortNext(ui.sort, d.mbTblSort, Number(d.mbTblFirst) || 1);\n",
+                "replace": "            ui.sort = _dpSortNext(ui.sort, d.mbTblSort, Number(d.mbTblFirst) || 1).dir ? _dpSortNext(ui.sort, d.mbTblSort, Number(d.mbTblFirst) || 1) : { col: d.mbTblSort, dir: 1 };\n"
             }
         ],
         "spec": "tests/fixtures/release-rg-popup.spec.js",
@@ -79,11 +79,11 @@
     },
     {
         "name": "sort initial state: the glyph's box not fixed in the release-group window",
-        "why": "⇅ often comes from a fallback font that arrives later; without a fixed box the header grows and the rows move under the pointer (the covers test flaked about 1 in 5).",
+        "why": "⇅ often comes from a fallback font that arrives later; without a fixed box the header grows and the rows move under the pointer (the covers test flaked about 1 in 5). Since Phase 3b the window is a List table: the Discogs tables' fixed box (.mb-dg-vt th[aria-sort]::after) is its box.",
         "edits": [
             {
-                "find": "                display: inline-block; width: 1.4em; line-height: 1; text-align: center;\n            }\n",
-                "replace": "            }\n"
+                "find": "            .mb-dp-dialog .mb-dg-vt th[aria-sort]::after { display: inline-block; width: 1.4em; line-height: 1; text-align: center; }\n",
+                "replace": ""
             }
         ],
         "spec": "tests/fixtures/release-rg-popup.spec.js",

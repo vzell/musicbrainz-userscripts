@@ -42,9 +42,11 @@ MusicBrainz paged loader".
 
 ## What it is
 
-Seven pageTypes on discogs.com's own pages, opt-in via `sa_enable_discogs`
-(default off; the gate exits before anything visible, as for every foreign
-site), `host: 'www.discogs.com'`, three `@include` lines:
+Ten pageTypes on discogs.com's own pages, opt-in via `sa_enable_discogs`
+(the gate exits before anything visible, as for every foreign site),
+`host: 'www.discogs.com'`, six `@include` lines (counted 2026-10-27, Phase 4;
+the sentence said "seven" and "three" from 2026-10-18 until then, though
+`dg-history` and `dg-ratings` had joined):
 
 | pageType     | Page                     | Button(s)                                                         | Table                                                                                                                       |
 |--------------|--------------------------|-------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------|
@@ -54,6 +56,9 @@ site), `host: 'www.discogs.com'`, three `@include` lines:
 | `dg-label`   | `/label/<id>`            | Newest: 500 · 1,000 · 5,000 — Oldest: 500 · 1,000 — Then: All     | single: Image, Artist, Title, Format, Cat#, Year                                                                            |
 | `dg-submissions` | `/submissions?…`     | Show all submissions                                              | single: Artist, Title, Changed by, Changed, Matched artist, History (rows from the FLAT view's pages, not the API)            |
 | `dg-user`    | `/user/<name>`           | Submissions · Contributions · Collection · Wantlist (shown when the page counts them) | multi: Releases / Artists / Labels (submissions), or one table; + Status, or Added (collection, wantlist) |
+| `dg-history` | `/release/<id>/history`  | Show the changes and the diff                                     | multi: Changes, and on page 1 the Diff (below)                                                                              |
+| `dg-ratings` | `/users/ratings/<name>`  | Show all ratings                                                  | single: the user's ratings, 250 a page (below)                                                                              |
+| `dg-images` / `dg-image-history` | `/release/<id>/images`, `…/images/update` | Show every image                  | single: #, Image, Type, Uploaded by, Uploaded (date, time), W × H, Size (KB) — the same on both (below)                     |
 
 A language prefix (`/de/release/…`) and a slug are allowed; a page's
 sub-pages (`/release/<id>-…/image/…`) are not (`sl-include-regex.spec.js`).
@@ -298,6 +303,44 @@ Marked). Pages: the pager's "Jump to" when there is one — a long history's
 pager was not seen yet. A plain click on "View changes" opens the window;
 the history reader reads `?diff=<rev>` from the link and opens on that
 revision (`revFor`: once per opening).
+
+## A release's images (`dg-images`, `dg-image-history`, Phase 4, 2026-10-27)
+
+`/release/<id>[-slug]/images` and its image editor `…/images/update`
+("Image history"; org/MB-POH-sync-withDiscogs.org Phase 4, mockup
+https://claude.ai/artifact/TkNduhLjJmD2FrcURn5yaV part 4). Probe first
+(`scripts/probe-dg-release-images.py`): the API's `images` carry type, URL
+and the SERVED size only (at most 600 px), no uploader, date or file size;
+both pages answer Python with Cloudflare's check; the editor needs the
+login. **The editor's page holds no image**: the server sends an empty
+`#image_uploader_app`, and Discogs' uploader script (`image-uploader-app.js`,
+`scripts/probe-dg-image-uploader.py`) draws the list from ONE JSON request,
+`/release/<id>/images/data` — per image `primary` ("true"/"false"),
+`sortOrder`, `originalSrc` (600 px) and `thumbSrc` (300 px), the served
+`width`/`height`, `original_width`/`original_height`, `size` in bytes,
+`username`, `userUrl`, `timestamp` (ISO, UTC), `pending`, `disabled`
+(vzell's copy: debug/discogs-release-images-data.json). The first build
+parsed a SAVED editor page, whose list the browser had drawn, and found
+nothing in vzell's browser (DEBUG-NOTES 2026-10-28). vzell's answers: the Images page gets the SAME table as the Image history;
+from MusicBrainz, the editor is read with the user's Discogs session (the
+popup engine's one non-anonymous request; docs/claude/detail-pages.md).
+
+- Both are older pages (gate: `_DG_IMG_PATH_RE` with `#page_content`);
+  **`dg-release` must exclude them** (`_EXT_DISCOGS_PATH_RE` takes
+  `/images`); `_dgImgPathIs()` tells the two apart; one `@include` line.
+- The rows are the images READER's load (`_extDgImgLoad()`, as `dg-history`
+  uses its reader's parser): `fetchText()` (`_dgImgFetchText()`) returns its
+  `dgImg` as JSON — the API (`/releases/<id>`, through `_extGet()`: the
+  title), then the editor's data (`/images/data`, same-origin here,
+  `_extDgImgDataGet()`, with `X-Requested-With` as Discogs' `$.get`) — and
+  `_dgImgToHtml()` builds the table. Never the live page's own list. The
+  Image cell's link is the 600 px `originalSrc` (the card's and the
+  viewer's, `_DG_FI`), its `<img>` the 300 px `thumbSrc`. Size is "Size
+  (KB)", an integer column (bytes / 1000: 1,167,852 is 1168), the date and
+  time in the browser's time zone (the UTC time on hover), split by
+  `dateTimeParts`, the uploader through `_dgUserCell()`.
+- Signed out the data is Discogs' login page: the API's images, types and
+  order remain, the editor's columns empty (logged with the reason).
 
 ## A user's ratings (`dg-ratings`, 2026-10-19)
 
@@ -692,7 +735,8 @@ search (`_extDgNamePathUrl()`), the search reader's, as our table's own cell
 |-----------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | `tests/fixtures/discogs-pages.spec.js`        | gate off: nothing; the section between the header root and `#app`, no request before the press; master: `masters/<id>` then versions p1-4 in order, 387 rows, one ★, thumbnails; release: the five sub-tables 8/18/12/12/386 and the release not among its versions; artist (Max Weinberg, 6 pages): the role groups in order with their counts, the toolbar named from `#app h1`; Springsteen's 68 pages meet High Page Count ("This list"), Cancel asks nothing more; label: the three button groups, Newest 500 = desc p1-5 and 500 rows, Oldest 500 = asc p1-5; previews: a table link and a content link get the card, the header and footer do not |
 | `tests/fixtures/discogs-pages.mobile.spec.js` | a tap loads the master's versions; a tap on a version opens its window, the page stays                                                                                                                                                                                                                                                                               |
-| `tests/fixtures/sl-include-regex.spec.js`     | the `@include` line: the four page kinds (slug, language prefix, query, no www), not the image pages, search, sell, user pages or the API host                                                                                                                                                                                                                         |
+| `tests/fixtures/sl-include-regex.spec.js`     | the `@include` line: the four page kinds (slug, language prefix, query, no www), not a single image's page (`/image/…`), search, sell, user pages or the API host; since Phase 4 a release's `/images` and `/images/update` (not `/imagesx`, not a master's)                                                                                                         |
+| `tests/fixtures/discogs-images.spec.js`       | dg-images / dg-image-history: one button, one API and one editor request after the press, 17 rows with uploader, date and time, own W × H, Size (KB), the thumbnail linking the 600 px image; Size (KB) sorts as a number; signed out, the API's 17 images. The reader's window from MusicBrainz: `popup-ext.spec.js` "Discogs Images and Image history (Phase 4)" |
 | `tests/fixtures/discogs-submissions.spec.js`  | submissions: flat view (section first in `<body>`, 12 flat pages same-origin in order, the split, every column), browser view (flat pages, the title), the check at a submissions URL; the history: a history link (card asks nothing, Space one request, 14 changes, filter, order, diff marked blocks / whole release, memory), a title ("History, then the release", one request each), a sign-in page; full size: a row's 5 images from one request, ← →, Shift+← →, back from the cache, a failure and "Try again"; MusicBrainz: a history link, an anonymous request on Space |
 | `tests/fixtures/discogs-links.spec.js`        | round 2: a plain click opens the window (every table link a new tab, the page stays); a search (25, Load 25 more = page 2, a result drilled, Back); in the history window a user (profile, the activity from their page, Back) and RSG §6.12.2 (the article, the section marked and in view, Back); View changes (6 buttons, 2 Images links, revision 8 → 10 only the Notes, Back to the latest, asked once); dg-user (only Submissions and Contributions, 642 in 7 requests, Releases 641 + Labels 1, columns; Contributions 3; the synthetic collection page: Collection, 2 pages, Added) |
 | `tests/fixtures/discogs-ratings.spec.js`      | dg-ratings: the section first, the name, the button's count, nothing before the press; one page `limit=250&page=1&layout=med`, every column (links absolute, Cat# "none" dropped, Rating 5/4, Data quality); Rating ▲/▼; 300 ratings = 2 pages with the page's sort kept; a sign-in page fails, logged; a thumbnail opens the viewer |
@@ -712,14 +756,15 @@ since 2026-10-18 also `dg-submissions-flat.html`, `dg-submissions-browser.html`
 and `dg-release-history.html`, the older pages' `#main_wrapper` shell;
 round 2: `dg-release-history-diff.html`, `dg-user-vzell.html`, the synthetic
 `dg-user-collection.html`; 2026-10-19: `dg-user-ratings.html` and the synthetic
-`dg-user-ratings-300.html`);
+`dg-user-ratings-300.html`; Phase 4, 2026-10-27: `dg-release-images.html`
+and `dg-release-images-update.html`, scripts and `data-reactid` dropped);
 the API answers are `scripts/capture-ext-fixtures.py`'s `ext-discogs-*.json`
 (Columbia oldest-first pages 2-5 added 2026-10-18; round 2: users vzell and
 GuiBeal, vzell's submissions pages 1 and 7 — the specs serve page 1 for 2-6,
 ~600 KB a page —, contributions, GuiBeal's collection page 1, the Columbia
 label search pages 1-2, the support article). Mutations:
 `scripts/mutations/discogs-pages.json`, `scripts/mutations/discogs-submissions.json`,
-`scripts/mutations/discogs-links.json`, `scripts/mutations/discogs-mb-column.json`. `discogs-links.spec.js` also checks the column on a submissions list, a user's lists and its absence on a history page.
+`scripts/mutations/discogs-links.json`, `scripts/mutations/discogs-mb-column.json`, `scripts/mutations/dg-images.json`. `discogs-links.spec.js` also checks the column on a submissions list, a user's lists and its absence on a history page.
 
 ## The table-wide 🖼 gallery (2026-10-23)
 

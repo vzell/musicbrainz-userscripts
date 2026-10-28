@@ -58,6 +58,8 @@ const PAGES = [
     [/\/account\/applications$/, 'applications-page-vzell.html'],
     [/\/user\/vzell\/tags$/, 'user-tags-page-vzell.html'],
     [/\/user\/vzell\/tag\/live$/, 'user-tag-page-vzell-live.html'],
+    // Its biggest kind's page, the window's list (Phase 3c; 44 releases, one page).
+    [/\/user\/vzell\/tag\/live\/release$/, 'user-tag-kind-vzell-live-release-p1.html'],
     [/\/user\/vzell\/tag\/acoustic%20rock$/, 'user-tag-page-vzell-acoustic-rock.html'],
     [/\/user\/vzell\/tag\/gig$/, 'user-tag-page-vzell-gig.html'],
     [/\/user\/vzell\/ratings$/, 'user-ratings-page-vzell.html'],
@@ -218,11 +220,12 @@ test.describe('MusicBrainz link previews: an editor\'s lists and account pages',
         expect(r.tags).toBe('mb-entity|usertags:vzell');
         expect(r.down, 'downvoted tags are another list than the card reads').toBeNull();
         expect(r.ratings).toBe('mb-entity|userratings:vzell');
-        // An editor's own tag (2026-10-21): editor and tag as spelled; not its
-        // kind pages, not its downvotes.
+        // An editor's own tag (2026-10-21): editor and tag as spelled; its
+        // kind pages the same card since Phase 3c (the window on that kind);
+        // not its downvotes.
         expect(r.userTag).toBe('mb-entity|usertag:vzell/rock');
         expect(r.userTagSp).toBe('mb-entity|usertag:Some%20One/acoustic%20rock');
-        expect(r.userTagTab, 'a kind page of it').toBeNull();
+        expect(r.userTagTab, 'a kind page of it').toBe('mb-entity|usertag:vzell/live');
         expect(r.userTagDown, 'its downvotes are another list').toBeNull();
         expect(r.history, 'the editor\'s history as before').toBe('mb-entity|edits:user/vzell');
     });
@@ -350,9 +353,11 @@ test.describe('MusicBrainz link previews: an editor\'s lists and account pages',
             .toHaveText('live 47, studio 40, interview 30, rock 15, soundcheck 11, pop 10, solo 10, missing_artwork_koenboone 8, 2024 6, multiple events 6');
         await page.keyboard.press('Space');
         await expect(title(page)).toHaveText('Tags');
-        const genres = dialog(page).locator('.mb-dp-col').first().locator('.mb-pop-taglist li');
-        await expect(genres).toHaveText(['interview 30', 'rock 15', 'pop 10', 'acoustic rock 2', 'hard rock 1']);
-        await expect(dialog(page).locator('.mb-dp-col').last().locator('.mb-pop-taglist li')).toHaveCount(107);
+        // Compact tables since Phase 3d, most votes first.
+        const genres = dialog(page).locator('[data-mb-tbl="genres"] tbody tr');
+        await expect(genres.locator('td:first-child')).toHaveText(['interview', 'rock', 'pop', 'acoustic rock', 'hard rock']);
+        await expect(genres.locator('td:last-child')).toHaveText(['30', '15', '10', '2', '1']);
+        await expect(dialog(page).locator('[data-mb-tbl="tags"] .mb-dg-pager span')).toHaveText('1–25 of 107');
         await genres.first().locator('a').click();
         await expect(title(page)).toHaveText('Tags › Tag');
         await expect.poll(() => log.html, { message: 'the drill asks the tag\'s own page' }).toEqual(['/user/vzell/tags', '/tag/interview']);
@@ -383,7 +388,7 @@ test.describe('MusicBrainz link previews: an editor\'s lists and account pages',
         expect(log.html).toEqual(['/user/vzell/tag/live']);
     });
 
-    test('USER TAG: the window: editor, entities, everyone\'s tag (a drill), each kind\'s "See all" page', async ({ page }) => {
+    test('USER TAG: the window: editor, entities, everyone\'s tag (a drill); the biggest kind\'s list from its page, no votes', async ({ page }) => {
         const log = await open(page, { url: TAGS_URL, fixtureFile: TAGS_FIXTURE });
         await pin(page, page.locator('#all-tags a[href="/user/vzell/tag/live"]'));
         await expect(title(page)).toHaveText('Editor\'s tag');
@@ -391,11 +396,20 @@ test.describe('MusicBrainz link previews: an editor\'s lists and account pages',
         await expect(left.locator('.mb-dp-kv dt')).toHaveText(['Editor', 'Entities', 'Everyone’s']);
         await expect(left.locator('.mb-dp-kv a[href="/user/vzell"]')).toHaveText('vzell');
         const right = dialog(page).locator('.mb-dp-col').last();
-        await expect(right.locator('.mb-dp-gname')).toHaveText(['Releases · 44', 'Release groups · 3']);
-        await expect(right.locator('a', { hasText: 'See all 44' })).toHaveAttribute('href', '/user/vzell/tag/live/release');
+        // "By kind" chooses the list (Phase 3c): the biggest kind first.
+        await expect(left.locator('[data-mb-tbl="tag-kinds"] button')).toHaveText(['Releases', 'Release groups']);
+        await expect(left.locator('[data-mb-tbl="tag-kinds"] button[aria-pressed="true"]')).toHaveText('Releases');
+        await expect(right.locator('h4')).toHaveText('Releases · 44');
+        const tbl = right.locator('[data-mb-tbl="tag-kind-release"]');
+        await expect(tbl.locator('tbody tr')).toHaveCount(44);
+        // An editor's page has no votes: no Votes column; one page, done.
+        await expect(tbl.locator('thead th')).toHaveText([/^Release/, /^By/]);
+        await expect(right.locator('.mb-dg-pill').first()).toHaveText('Done');
+        await expect(right.getByRole('button', { name: /^Load/ })).toHaveCount(0);
         await left.locator('.mb-dp-kv a[href="/tag/live"]').click();
         await expect(title(page)).toHaveText('Editor\'s tag › Tag');
-        await expect.poll(() => log.html, { message: 'the drill asks everyone\'s tag page' }).toEqual(['/user/vzell/tag/live', '/tag/live']);
+        await expect.poll(() => log.html.slice(0, 3), { message: 'the kind page, then the drill asks everyone\'s tag page' })
+            .toEqual(['/user/vzell/tag/live', '/user/vzell/tag/live/release', '/tag/live']);
     });
 
     test('USER TAG: a small tag, one kind each; the table render\'s links have the card too', async ({ page }) => {
@@ -434,7 +448,8 @@ test.describe('MusicBrainz link previews: an editor\'s lists and account pages',
         await expect(card(page).locator('.mb-tt-pill')).toHaveText(['12 ratings shown', '7 kinds']);
         await page.keyboard.press('Space');
         await expect(title(page)).toHaveText('Ratings');
-        const tables = dialog(page).locator('table.mb-rg-wtable');
+        // A Compact table per kind since Phase 3d.
+        const tables = dialog(page).locator('table.mb-dg-ct');
         await expect(tables).toHaveCount(7);
         await expect(tables.first().locator('tbody td')).toHaveText(['★★★★★', 'Bruce Springsteen', '']);
         await expect(tables.nth(1).locator('tbody tr').first().locator('td').last())
