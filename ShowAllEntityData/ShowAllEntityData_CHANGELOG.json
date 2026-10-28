@@ -1,5 +1,105 @@
 [
   {
+    "version": "9.99.1477",
+    "date": "2026-10-28",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Links to a Discogs release's Images page and its image editor (\"Image history\") get their own window instead of the plain release window: Image history lists every image in a table (#, the image, Primary or Secondary, who uploaded it, when, its own width × height and file size, every column sortable); Images shows a gallery with each image's size and uploader, the uploaders on the left, and a click opens the artwork viewer.",
+          "The image editor's data is the only place with the uploader, the date and the image's own size, and it comes only with the Discogs login, so it is read with your Discogs session — also from MusicBrainz (the one link preview that sends cookies, to discogs.com only). Signed out, the window keeps the images and their types from Discogs' API, says why the rest is missing and marks the size as the one Discogs serves.",
+          "On discogs.com itself, a release's Images page and its image editor get a \"Show every image\" button: one table of every image (#, image with its hover card and the viewer, type, uploaded by with the user's picture, date and time in your time zone, W × H, size in KB), the same on both pages.",
+          "Performance: link-preview windows and two new discogs.com pageTypes only; no change to MusicBrainz's tables. An images window costs two requests (the API and the editor), on Space only."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.1476",
+    "date": "2026-10-28",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "CD stub links get a card and a window, read from the stub's page: title, artist, track count, length and how often it was looked up; the window lists its facts (barcode, disc ID, added, last modified) and its tracklist as a table with a filter and sorting.",
+          "Documentation links (/doc/…) get a card and a window: the card shows the page's title, its status (\"official style guideline\") and first paragraph; the window shows its contents on the left and the whole text on the right, its headings kept, and a link to another documentation page opens that page in the window.",
+          "A documentation search link (/search?…&type=doc) gets a card and a window too. MusicBrainz's own search page is Google's and has no results in it, so they come from the MusicBrainz wiki's search: the card says how many pages match and names the first ones, the window lists up to 50 of them as a table (page, snippet, last updated) with a filter, chips and sorting, and a page opens in the window.",
+          "The userscript header lists wiki.musicbrainz.org under @connect, so Tampermonkey does not ask before the first documentation search.",
+          "Performance: link-preview windows only; no change to the page tables' filter, sort or render path. A documentation search asks the wiki once (one request per search, at most one a second), then answers from memory and the browser's cache."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.1475",
+    "date": "2026-10-28",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "A release's window shows its tracklist as one table per medium, under a header that folds it (\"CD 2 · 8 tracks · 52:09\"): #, title (opening its recording in the window), the artist where a track's credit is not the release's, length; one filter above all the mediums, which marks what it matched and says per medium how many tracks match.",
+          "An event's window shows its setlist as a table: #, the song, and the rest of its line (guests, a remark) in a column of its own, with a filter and sorting.",
+          "A series' window shows each item's kind with MusicBrainz's own icon before its name.",
+          "Performance: link-preview windows only; no change to the page tables' filter, sort or render path, and no new request."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.1474",
+    "date": "2026-10-28",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "The smaller lists in the MusicBrainz windows are tables now, with a filter (when there are more than 25 rows; it marks what it matched), sorting by any column (ascending, descending, back to MusicBrainz's order) and 25 rows a page: an entity's links (site, relationship, address) in the artist, release group, place and label windows (a label's from eleven links on), a work's codes, an event's \"Recorded here\" (its releases and its recordings, two tables), an instrument's aliases (with locale, type and whether primary) and related instruments, an area's related areas, a genre's related genres (one table per relationship; its links moved to the left), an editor's edits, tags and genres, ratings (one table per kind), an ISRC's recordings, an ISWC's works, a disc ID's releases and an annotation's versions.",
+          "A label's window lists its aliases one per line, as an artist's does.",
+          "Performance: link-preview windows only; no change to the page tables' filter, sort or render path, and no new request."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.1473",
+    "date": "2026-10-28",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "A tag's window and an editor's tag window list the tagged entities themselves: a click on a kind under \"By kind\" lists that kind (the biggest one at first), read from MusicBrainz's page of that kind 100 at a time with \"Load N more pages\", most votes first, with a filter and the three-way sort. Until now each kind showed its first ten and a \"See all\" link to the site.",
+          "A link to one kind's page of a tag or of an editor's tag (/tag/rock/artist, /user/…/tag/live/release) now has the tag's card, and its window opens on that kind.",
+          "Ctrl-click on a tag or genre link in a window (a genre in the facts, a tag's own genre) opens YOUR own tag of that name in the window, when you are logged in; Shift- or middle-click still opens a new tab. The line at the window's foot says so on such a link, and names the key at rest whenever the window holds one.",
+          "A collection's window lists its entries in a table with a filter (which marks what it matched, inside links too), the three-way sort and, for a release group collection, type chips; its first 100 come with the card, \"Load N more pages\" reads the rest. It replaces the 25-row slices behind ◀ ▶.",
+          "A label's and an artist's window list their genres one per line, most votes first, each opening its tag, as a release group's does; an artist's aliases are one per line too, each with its type and locale.",
+          "Performance: link-preview windows only; no change to the page tables' filter, sort or render path. A tag's and an editor's tag's window read one more page when they open (the first kind's list); a collection's none."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.1472",
+    "date": "2026-10-28",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "A series of release groups: a click on one of its items in the window opened a broken page in a new tab (/release_group/…); it now opens the release group in the window.",
+          "Hovering a catalog number whose label MusicBrainz could not load no longer asks for that label again and again while the card shows; as everywhere else, ⟳ or a new hover tries again."
+        ]
+      },
+      {
+        "label": "✨ Improve",
+        "items": [
+          "The MusicBrainz windows of a recording, a place and an artist list everything, as a work's window does since the last version: 100 when the window opens, then \"Load N more pages\" with Stop and \"Try again\", a filter, chips and the three-way sort. A recording's window shows all of its releases (with covers and status chips) instead of the first 25; a place's all of its events (type chips) instead of the first 100; an artist's its release groups themselves instead of a count per type: a segment per type (Album, Single, EP, Broadcast, Other) with its total, each its own list, chips for Live, Compilation and the like, and the covers, loaded as you scroll.",
+          "These lists start sorted by date: MusicBrainz returns them in an order that is neither by date nor by title.",
+          "The release-group window's releases have a filter and format chips too, and a release without a cover keeps an empty square, so every row is as high.",
+          "In the release-group window, each credited artist opens in the window, and the genres are listed one per line, each opening its tag.",
+          "Performance: link-preview windows only; no change to the page tables' filter, sort or render path. A recording's window makes the same number of requests as before (its releases instead of a count); an artist's one more (its first 100 release groups) and asks the Cover Art Archive for the covers of the rows you scroll to."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.1471",
     "date": "2026-10-27",
     "sections": [

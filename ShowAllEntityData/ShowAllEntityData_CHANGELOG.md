@@ -4,9 +4,77 @@ Every version, newest first, with the technical details behind each change. For 
 
 **Months:** [October 2026](ShowAllEntityData_CHANGELOG/2026-10.md) · [September 2026](ShowAllEntityData_CHANGELOG/2026-09.md) · [August 2026](ShowAllEntityData_CHANGELOG/2026-08.md) · [July 2026](ShowAllEntityData_CHANGELOG/2026-07.md) · [June 2026](ShowAllEntityData_CHANGELOG/2026-06.md) · [May 2026](ShowAllEntityData_CHANGELOG/2026-05.md) · [April 2026](ShowAllEntityData_CHANGELOG/2026-04.md) · [March 2026 (1 of 2)](ShowAllEntityData_CHANGELOG/2026-03-1.md) · [March 2026 (2 of 2)](ShowAllEntityData_CHANGELOG/2026-03-2.md) · [February 2026](ShowAllEntityData_CHANGELOG/2026-02.md) · [January 2026](ShowAllEntityData_CHANGELOG/2026-01.md)
 
-This page shows the newest 100 of 1642 versions; the month pages hold all of them.
+This page shows the newest 100 of 1648 versions; the month pages hold all of them.
 
 ---
+
+## 9.99.1477 — 2026-10-28
+
+**🚀 Feature**
+
+- Links to a Discogs release's Images page and its image editor ("Image history") get their own window instead of the plain release window: Image history lists every image in a table (\#, the image, Primary or Secondary, who uploaded it, when, its own width × height and file size, every column sortable); Images shows a gallery with each image's size and uploader, the uploaders on the left, and a click opens the artwork viewer.
+- The image editor's data is the only place with the uploader, the date and the image's own size, and it comes only with the Discogs login, so it is read with your Discogs session — also from MusicBrainz (the one link preview that sends cookies, to discogs.com only). Signed out, the window keeps the images and their types from Discogs' API, says why the rest is missing and marks the size as the one Discogs serves.
+- On discogs.com itself, a release's Images page and its image editor get a "Show every image" button: one table of every image (\#, image with its hover card and the viewer, type, uploaded by with the user's picture, date and time in your time zone, W × H, size in KB), the same on both pages.
+- Performance: link-preview windows and two new discogs.com pageTypes only; no change to MusicBrainz's tables. An images window costs two requests (the API and the editor), on Space only.
+
+
+## 9.99.1476 — 2026-10-28
+
+**🚀 Feature**
+
+- CD stub links get a card and a window, read from the stub's page: title, artist, track count, length and how often it was looked up; the window lists its facts (barcode, disc ID, added, last modified) and its tracklist as a table with a filter and sorting.
+- Documentation links (/doc/…) get a card and a window: the card shows the page's title, its status ("official style guideline") and first paragraph; the window shows its contents on the left and the whole text on the right, its headings kept, and a link to another documentation page opens that page in the window.
+- A documentation search link (/search?…&type=doc) gets a card and a window too. MusicBrainz's own search page is Google's and has no results in it, so they come from the MusicBrainz wiki's search: the card says how many pages match and names the first ones, the window lists up to 50 of them as a table (page, snippet, last updated) with a filter, chips and sorting, and a page opens in the window.
+- The userscript header lists wiki.musicbrainz.org under @connect, so Tampermonkey does not ask before the first documentation search.
+- Performance: link-preview windows only; no change to the page tables' filter, sort or render path. A documentation search asks the wiki once (one request per search, at most one a second), then answers from memory and the browser's cache.
+
+
+## 9.99.1475 — 2026-10-28
+
+**✨ Improve**
+
+- A release's window shows its tracklist as one table per medium, under a header that folds it ("CD 2 · 8 tracks · 52:09"): \#, title (opening its recording in the window), the artist where a track's credit is not the release's, length; one filter above all the mediums, which marks what it matched and says per medium how many tracks match.
+- An event's window shows its setlist as a table: \#, the song, and the rest of its line (guests, a remark) in a column of its own, with a filter and sorting.
+- A series' window shows each item's kind with MusicBrainz's own icon before its name.
+- Performance: link-preview windows only; no change to the page tables' filter, sort or render path, and no new request.
+
+
+## 9.99.1474 — 2026-10-28
+
+**✨ Improve**
+
+- The smaller lists in the MusicBrainz windows are tables now, with a filter (when there are more than 25 rows; it marks what it matched), sorting by any column (ascending, descending, back to MusicBrainz's order) and 25 rows a page: an entity's links (site, relationship, address) in the artist, release group, place and label windows (a label's from eleven links on), a work's codes, an event's "Recorded here" (its releases and its recordings, two tables), an instrument's aliases (with locale, type and whether primary) and related instruments, an area's related areas, a genre's related genres (one table per relationship; its links moved to the left), an editor's edits, tags and genres, ratings (one table per kind), an ISRC's recordings, an ISWC's works, a disc ID's releases and an annotation's versions.
+- A label's window lists its aliases one per line, as an artist's does.
+- Performance: link-preview windows only; no change to the page tables' filter, sort or render path, and no new request.
+
+
+## 9.99.1473 — 2026-10-28
+
+**✨ Improve**
+
+- A tag's window and an editor's tag window list the tagged entities themselves: a click on a kind under "By kind" lists that kind (the biggest one at first), read from MusicBrainz's page of that kind 100 at a time with "Load N more pages", most votes first, with a filter and the three-way sort. Until now each kind showed its first ten and a "See all" link to the site.
+- A link to one kind's page of a tag or of an editor's tag (/tag/rock/artist, /user/…/tag/live/release) now has the tag's card, and its window opens on that kind.
+- Ctrl-click on a tag or genre link in a window (a genre in the facts, a tag's own genre) opens YOUR own tag of that name in the window, when you are logged in; Shift- or middle-click still opens a new tab. The line at the window's foot says so on such a link, and names the key at rest whenever the window holds one.
+- A collection's window lists its entries in a table with a filter (which marks what it matched, inside links too), the three-way sort and, for a release group collection, type chips; its first 100 come with the card, "Load N more pages" reads the rest. It replaces the 25-row slices behind ◀ ▶.
+- A label's and an artist's window list their genres one per line, most votes first, each opening its tag, as a release group's does; an artist's aliases are one per line too, each with its type and locale.
+- Performance: link-preview windows only; no change to the page tables' filter, sort or render path. A tag's and an editor's tag's window read one more page when they open (the first kind's list); a collection's none.
+
+
+## 9.99.1472 — 2026-10-28
+
+**🐛 Fix**
+
+- A series of release groups: a click on one of its items in the window opened a broken page in a new tab (/release\_group/…); it now opens the release group in the window.
+- Hovering a catalog number whose label MusicBrainz could not load no longer asks for that label again and again while the card shows; as everywhere else, ⟳ or a new hover tries again.
+
+**✨ Improve**
+
+- The MusicBrainz windows of a recording, a place and an artist list everything, as a work's window does since the last version: 100 when the window opens, then "Load N more pages" with Stop and "Try again", a filter, chips and the three-way sort. A recording's window shows all of its releases (with covers and status chips) instead of the first 25; a place's all of its events (type chips) instead of the first 100; an artist's its release groups themselves instead of a count per type: a segment per type (Album, Single, EP, Broadcast, Other) with its total, each its own list, chips for Live, Compilation and the like, and the covers, loaded as you scroll.
+- These lists start sorted by date: MusicBrainz returns them in an order that is neither by date nor by title.
+- The release-group window's releases have a filter and format chips too, and a release without a cover keeps an empty square, so every row is as high.
+- In the release-group window, each credited artist opens in the window, and the genres are listed one per line, each opening its tag.
+- Performance: link-preview windows only; no change to the page tables' filter, sort or render path. A recording's window makes the same number of requests as before (its releases instead of a count); an artist's one more (its first 100 release groups) and asks the Cover Art Archive for the covers of the rows you scroll to.
+
 
 ## 9.99.1471 — 2026-10-27
 
@@ -785,80 +853,6 @@ This page shows the newest 100 of 1642 versions; the month pages hold all of the
 **🐛 Fix**
 
 - discogs.com, a list's submissions in Discogs' browser view (the list on the left, a release's history on the right): after "Show all submissions" the page could not be scrolled — only one window's worth of rows was visible, the columns past the right edge were out of reach, and there were no scrollbars. Discogs' own style for that view switches off the window's scrolling (its two panes scroll inside themselves); it is now switched back on for that view only, so the page scrolls down and to the right, and Discogs' panes still work below the table.
-
-
-## 9.99.1377 — 2026-10-19
-
-**🚀 Feature**
-
-- discogs.com, with the "Import Discogs releases to MusicBrainz" userscript (murdos) installed: every Discogs table whose rows are releases, masters, artists or labels gets a "MusicBrainz" column right after Title or Name — the master's versions, a release's Credits, Companies and Other versions, an artist's discography, a label's releases, a submissions list and a user's lists. Each cell shows, on one line, every MusicBrainz entity linked to that Discogs page (the entity icons that script puts on Discogs' own page only), a yellow search box for each kind without one, a grey icon for an ended link and a count from two links up. A company is first looked for as a MusicBrainz place (a studio, a pressing plant), as that script does. The links come from that script's own cache first (read only, its data is never changed), then from this script's own store, then from MusicBrainz in the background, 100 Discogs links a request, one request a second; a header button (▶ MB) shows the progress and asks again for failed rows, and so does a click on a failed row's ⚠. Settings: "MusicBrainz column (with the Discogs importer userscript)" and "MusicBrainz column: look up missing rows automatically", both on. Without that userscript nothing changes. Mockup: https://claude.ai/artifact/6CmnUoNf4LHd44yxvp3rvu
-- 📊 dropdown on that column: a "MusicBrainz - Links" section with the number of MusicBrainz links per row (» MB links: 0, 1, 2, …) and, while rows are still looked up or failed, "pending" and "error"; a ticked entry rings the matched icons and keeps up as answers arrive.
-
-
-## 9.99.1376 — 2026-10-19
-
-**🐛 Fix**
-
-- Tag pages (/tag/&lt;tag&gt;, /user/&lt;name&gt;/tag/&lt;tag&gt;) whose first section is Artists: the Release groups, Releases and Recordings tables were missing their "Artist" header, so every header from the second column on stood over the wrong column ("MB-Name" over the artist, "Comment" over the title, …), and the cover art card showed the artist as the title and no artist line.
-- Tag pages, including a single entity's (/tag/&lt;tag&gt;/release-group, …): the Comment column of a release group, release or recording no longer shows its artist's disambiguation ("Back in Black by AC/DC (Australian hard rock band)" had "Australian hard rock band" as Comment). Only the entity's own comment shows there.
-
-
-## 9.99.1375 — 2026-10-18
-
-**🚀 Feature**
-
-- discogs.com: a user's page (/user/&lt;name&gt;) gets buttons for their Submissions (as Releases, Artists and Labels), Contributions, Collection and Wantlist, read from Discogs' API, no token needed. A button shows only when the page counts that list, so an empty or private one has none.
-- Every link in a Discogs preview window now opens in that same window, with ← Back (Backspace, Alt+←): releases, masters, artists and labels as before, and now users, Discogs searches, support.discogs.com guidelines and other sites too, also in the history window.
-- Link previews: a Discogs user shows their public profile (name, location, member since, rank, contributions, collection and wantlist sizes) and, in the window, their Recent activity from their page. A Discogs search shows its results, 25 at a time with "Load 25 more", each one a link. A support.discogs.com guideline opens as the article, scrolled to the section the link names (e.g. §6.12.2) and marked.
-- In the edit history, Discogs' separate View and Changes links became one "View changes" button: it shows that revision's changes in the second section ("Change · revision 8 → 10", Discogs' own numbers), and "Back to the latest change" returns. One request per revision, only on the click.
-
-**🐛 Fix**
-
-- discogs.com: a release's history page (/release/&lt;id&gt;/history, also with ?diff=N) gets "Show the changes and the diff": a Changes sub-table (date and time apart, user, action, notes, revision, "View changes") and a Diff sub-table of the revision the page shows (each part of the release, old and new, marked where Discogs marked it). A plain click on "View changes" opens the preview window on that revision's changes.
-- A user's picture: pointing at it shows a card with the picture at its largest (500 px, the largest Discogs serves); a click opens it in the artwork viewer.
-- Discogs users' own pictures before their names: in a history (page and window) from the page itself, in a submissions list's "Changed by" from their profile — one request per user whose row comes on screen, one at a time, kept like every preview.
-- Discogs pages, 📊 dropdown: a release's Credits column gets a "Credit details - Role" section (each Discogs role: Backing Vocals, Guitar, Producer …) and its "\[…\]" modifiers the Attribute section, as MusicBrainz's Instruments column; Cat\# gets MusicBrainz's Catalog\# treatment (several numbers one row each, collapsible, the "Catalog info" sections); Year gets the Date column's sections (Decade, Year).
-- Discogs pages: date and time as separate columns, as on MusicBrainz's pages — a submissions list's Changed, and a user's lists' Added and Last changed (the release's dates: when it entered Discogs and when anyone last changed it; the user's own edit date is only in the release's history). The date columns get the Date info sections, the time columns "Time info - Time of day".
-- A Discogs search's results with pictures (artists, with a token) now open in the window too, with Back.
-- A Discogs release history's Diff table and a user's Artists and Labels tables no longer get two extra cells without a header: the date/time split of another sub-table ran on them.
-- On Discogs' older pages (a submissions list, a user's page) the column filter fields no longer run past their columns: Discogs' own stylesheet made them wider by their padding.
-- A user's Submissions: one sub-table per kind (Releases, Artists, Labels), whatever page of the list a row came from; they were split into a new sub-table each time the kind changed from one page to the next.
-- On a Discogs submissions page the Matched artist column links Discogs' artist search, as the Artist column does, so it gets the preview and opens in the window (Discogs links it by name only).
-- On the Discogs pages a plain click on a link in our tables (a title, an artist or label search) no longer leaves the page through the "You are about to leave this page" question: it opens the preview window, and Ctrl/⌘-click a new tab. With link previews off, every such link opens a new tab. Mockup: https://claude.ai/artifact/XRTM8v1aLNj3voVt6RxVJz
-
-
-## 9.99.1374 — 2026-10-18
-
-**🚀 Feature**
-
-- discogs.com: a list's submissions page (e.g. Submissions from List, /submissions?mode=list&id=…) gets a "Show all submissions" button, in the flat view and in the browser view. It reads every page of the list from discogs.com itself (100 a page; pointing at the button shows how many) into one filterable, sortable table: Artist, Title, Changed by, Changed (date and time; the "6 minutes ago" on hover), Matched artist (the list's artist the release matched) and History. Behind the same "Enable on discogs.com" setting. On these pages our section sits at the very top, above Discogs' header.
-- Link previews: a release's edit history. A link to a Discogs release's history page (on discogs.com or on MusicBrainz) gets a card with the last change, how many changes and the data quality, and a window with every change: date, user, what it was (Submit Release, Edit Release, Images, Merge Pending, comments …), the note, and Discogs' own View / Changes / Images links. Filter by kind, newest or oldest first. Below, the latest change as Discogs shows it, old and new side by side with the changes marked: only the parts that changed, or the whole release. The history is read only when you press Space, never on a mere hover; on discogs.com with your own Discogs session.
-- On a submissions page, a release title's window opens with its edit history, then the release as on every Discogs page. Once read, the title's card also shows the last change.
-- Discogs pages: a click on a thumbnail now opens the artwork viewer on that row's images at full size, all of them (a master's own images for a master). The thumbnail shows at once with "Loading the full size…"; the full images replace it when Discogs' answer arrives, one request per row and only for the rows you look at. A release you already previewed costs nothing. ← → step through the row's images, Shift+← → through the rows. If Discogs does not answer, the viewer says why and offers "Try again". Mockup: https://claude.ai/artifact/Y69bUJTvYSksKTFRMcYJvZ
-
-
-## 9.99.1373 — 2026-10-18
-
-**🚀 Feature**
-
-- discogs.com: with the new setting "Enable on discogs.com" (⚙️ Settings → 💿 Discogs, off by default), a master, release, artist or label page on discogs.com gets a section of its own above Discogs' page, with the toolbar and filterable, sortable tables. Master: all its versions, the main release marked ★. Release: Tracklist, Credits, Companies, Barcode and Other Identifiers, and Other versions. Artist: the whole discography, one sub-table per Discogs role (Releases, the producer credits, Appearances, Track appearances, Unofficial). Label: the newest 500, 1,000 or 5,000 releases, the oldest 500 or 1,000, or all of them. Every list has a thumbnail column.
-- The rows come from Discogs' API through the same readers as the link previews, 100 a request: a request every 2.5 seconds, or every second with your Discogs token. Pointing at a button shows what it costs, and more than 50 pages asks first, as on MusicBrainz.
-- On these pages titles link their Discogs pages, a track's credits are one row each with their names linked (a long list collapses), and artists and labels, which Discogs' lists name without saying which one, link Discogs' search. A click on a thumbnail opens the artwork viewer. The section starts at the window's left edge and grows with its widest table; scrolled sideways, the toolbar and the bars stay in view.
-- Link previews on discogs.com: with "Preview external links on hover" on, a Discogs link in the table or in the page's content gets the same card and window as on MusicBrainz. Mockup: https://claude.ai/artifact/KTtCM7SaYVHZDaQdNqjUAK
-
-**✨ Improve**
-
-- The "High Page Count" question on another site (the Springsteen sites, Discogs) now says "This list has N pages" instead of calling it a MusicBrainz entity.
-
-
-## 9.99.1372 — 2026-10-18
-
-**🚀 Feature**
-
-- Link previews: a link to a Discogs artist or label now opens a full window, as release and master links already do. It shows the profile with its links, every image (the ones behind Discogs' "More images" too), the names (groups, aliases, name variations, or the parent label and sublabels), the sites, and a label's contact info.
-- Discogs artist window: the Discography, split as on Discogs into Releases, Appearances (on releases, on tracks), Unofficial and Credits. Each section is a table you can close, sort and filter (also by Masters / Releases). The first 100 entries come when the window opens; "Load the other …" brings the rest one page after the other, with a bar, Stop, and a retry for a failed page. Discogs lists the discography by role, so a count reads "so far" until its section is complete. Credits shows what Discogs' API has (the production credits) and links the full list on Discogs. A master's "▸ versions" shows its first 12 versions in place. Tables show 150 rows, then "Show 500 more" or "Show all".
-- Discogs label window: the label's releases, newest or oldest first, 5 pages (500 releases) per "Load 5 more pages", since a large label has thousands (Columbia: 396,611). The window says what loading them all would cost. A filter and format chips work on what is loaded.
-- Every list is kept for 7 days, like the card: a later window shows it without asking Discogs again. A card never asks for a list. Mockup: https://claude.ai/artifact/WuBNbFTgNHJtxip4xBv6yc
 
 
 ---
