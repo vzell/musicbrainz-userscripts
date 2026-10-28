@@ -1950,16 +1950,16 @@ both forced OFF in `FIXTURE_SETTINGS_OVERRIDE`.
 **Where the tiles are** (each from the code that builds the place, never a
 late write into a rendered cell):
 
-| Place                                   | Built by                                                                 | Placement               |
-|-----------------------------------------|--------------------------------------------------------------------------|-------------------------|
-| Relationships › URLs sub-table, URL cell | `_eventRelColumns()` (`r.type === 'url'`)                                | row under the row       |
-| Sidebar "Play on YouTube" (small)       | `_ytDecorateMbPage()` at init, inside the `li` (docs/claude/sidebar.md)   | under the tile          |
-| The page's annotation                   | `_ytDecorateMbPage()` → `_ytDecorateLinks()`; a heading's link: after the heading | under the tile   |
-| An Annotation column (report-detail, annotation search) | `ColumnDataExtractor.ytTiles`, listed AFTER `numberOfChars` (which counts `textContent`) | row under the row |
-| The YouTube link's window               | `_ytWindowTile()` from `_extExtracted()`, in place of the thumbnail; `dead` from the reader's record | under the tile |
-| Discogs release/master window, Videos   | `_extDgVideosHtml()` (small tiles, a slot above the list)                | slot                    |
-| discogs.com release page, "Videos" sub-table | `_dgVideosTableHtml()` (bare tile in Play; no Play column when off) | row under the row      |
-| Brucebase entry window sections         | `_dpExtractedCols()` → `_ytDecorateHtml()` for a record with `ytTiles` (`_dpParseBbPage()`; Media from `_bbMediaSection()`) | under the tile |
+| Place                                                   | Built by                                                                                                                    | Placement         |
+|---------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------|-------------------|
+| Relationships › URLs sub-table, URL cell                | `_eventRelColumns()` (`r.type === 'url'`)                                                                                   | row under the row |
+| Sidebar "Play on YouTube" (small)                       | `_ytDecorateMbPage()` at init, inside the `li` (docs/claude/sidebar.md)                                                     | under the tile    |
+| The page's annotation                                   | `_ytDecorateMbPage()` → `_ytDecorateLinks()`; a heading's link: after the heading                                           | under the tile    |
+| An Annotation column (report-detail, annotation search) | `ColumnDataExtractor.ytTiles`, listed AFTER `numberOfChars` (which counts `textContent`)                                    | row under the row |
+| The YouTube link's window                               | `_ytWindowTile()` from `_extExtracted()`, in place of the thumbnail; `dead` from the reader's record                        | under the tile    |
+| Discogs release/master window, Videos                   | `_extDgVideosHtml()` (small tiles, a slot above the list)                                                                   | slot              |
+| discogs.com release page, "Videos" sub-table            | `_dgVideosTableHtml()` (bare tile in Play; no Play column when off)                                                         | row under the row |
+| Brucebase entry window sections                         | `_dpExtractedCols()` → `_ytDecorateHtml()` for a record with `ytTiles` (`_dpParseBbPage()`; Media from `_bbMediaSection()`) | under the tile    |
 
 A link whose oEmbed answer is already known dead for this page load
 (`_ytKnownDead()`, the reader's `_mbPop` entry) gets an Unavailable tile.
