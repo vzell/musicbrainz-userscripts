@@ -2391,19 +2391,23 @@ test.describe('hovering inside a Discogs window (org/dp-window-hover.org)', () =
 // Phase 4 of org/MB-POH-sync-withDiscogs.org (2026-10-27): a release's
 // Images page and its image editor ("Image history") get their own reader,
 // `dgimages`, ahead of `discogs` (whose path pattern takes /images too).
-// It reads the API (the images, at the size Discogs serves them) and the
-// editor's page WITH the user's Discogs session (vzell's consent: the only
-// non-anonymous request of the popup engine), joined by the image's storage
-// path. Fixtures: ext-discogs-release-1313481.json
-// (scripts/probe-dg-release-images.py --fixture), dg-release-images-update.html
-// (scripts/build-discogs-fixtures.py). Mutations: scripts/mutations/dg-images.json.
+// It reads the API (the title; signed out, the images at the size Discogs
+// serves them) and the image editor's data, `/release/<id>/images/data`
+// (what Discogs' own uploader script reads: the editor's PAGE is sent empty),
+// WITH the user's Discogs session (vzell's consent: the only non-anonymous
+// request of the popup engine). Fixtures: ext-discogs-release-1313481.json
+// (scripts/probe-dg-release-images.py --fixture), dg-release-images-data.json
+// (vzell's copy, scripts/build-discogs-fixtures.py). Dates are the browser's
+// local time: Berlin here. Mutations: scripts/mutations/dg-images.json.
 test.describe('Discogs Images and Image history (Phase 4)', () => {
+    test.use({ timezoneId: 'Europe/Berlin' });
     const IMG = {
         images: 'https://www.discogs.com/release/1313481-Born-To-Run/images',
         editor: 'https://www.discogs.com/release/1313481-Born-To-Run/images/update',
     };
     const API = 'https://api.discogs.com/releases/1313481';
-    const EDITOR = 'https://www.discogs.com/release/1313481/images/update';
+    // The editor's data (the page itself never holds the images).
+    const EDITOR = 'https://www.discogs.com/release/1313481/images/data';
 
     /**
      * The event page with the two links, the API answered, the editor's page
@@ -2421,7 +2425,7 @@ test.describe('Discogs Images and Image history (Phase 4)', () => {
             responses: {
                 ...extAnswers('discogs-release-1313481'),
                 [EDITOR]: editor !== undefined ? editor
-                    : { status: 200, responseHeaders: 'Content-Type: text/html; charset=utf-8', responseText: json('dg-release-images-update.html') },
+                    : { status: 200, responseHeaders: 'Content-Type: application/json', responseText: json('dg-release-images-data.json') },
             },
         });
         await addAnnotationLinks(page, [IMG.images, IMG.editor]);
@@ -2456,7 +2460,9 @@ test.describe('Discogs Images and Image history (Phase 4)', () => {
         await expect(tbl.locator('thead th')).toHaveText([/^#/, '', /^Type/, /^Uploaded by/, /^Date/, /^W × H/, /^Size/]);
         const cells = (r) => rows.nth(r).locator('td');
         await expect(cells(0)).toHaveText(['1', '', 'Primary', 'dsmith', '2008-05-20', '500 × 500', '127KB']);
-        await expect(cells(0).nth(4).locator('span')).toHaveAttribute('title', 'May 20, 2008 1:46 AM (18 years ago)');
+        // 2008-05-19T23:46:48 UTC is 01:46 the next day in Berlin, as the editor shows it.
+        await expect(cells(0).nth(4).locator('span')).toHaveAttribute('title', '2008-05-20 01:46 · 2008-05-19T23:46:48+00:00 (UTC)');
+        expect(log[1].headers['X-Requested-With'], 'asked as Discogs\' own script asks').toBe('XMLHttpRequest');
         await expect(cells(0).nth(3).locator('a')).toHaveAttribute('href', 'https://www.discogs.com/user/dsmith');
         // The editor's own size, not the 600 px the API serves.
         await expect(cells(4)).toHaveText(['5', '', 'Secondary', 'Cl0ver', '2023-06-12', '2002 × 2000', '1.2MB']);
@@ -2510,6 +2516,19 @@ test.describe('Discogs Images and Image history (Phase 4)', () => {
         await expect(d).toBeVisible();
     });
 
+    // Here, not on discogs.com: a same-origin fetch()'s text() drops a
+    // leading BOM itself, GM_xmlhttpRequest's responseText keeps it.
+    test('the editor\'s data with a leading BOM (vzell\'s saved copy had one) is still read', async ({ page }) => {
+        await openImages(page, { editor: { status: 200, responseHeaders: 'Content-Type: application/json', responseText: `\uFEFF${json('dg-release-images-data.json')}` } });
+        await ctrlHover(page, probe(page, 1));
+        await expect(card(page)).toContainText('no request yet');
+        await page.keyboard.press('Space');
+        const rows = dialog(page).locator('[data-mb-tbl="dg-imghist"] tbody tr');
+        await expect(rows).toHaveCount(17);
+        await expect(rows.first().locator('td').nth(3)).toHaveText('dsmith');
+        await expect(dialog(page).locator('.mb-dp-warn')).toHaveCount(0);
+    });
+
     test('signed out of Discogs: the editor shows no images; the API\'s images and types, the served size marked, and why', async ({ page }) => {
         await openImages(page, { editor: { status: 200, responseHeaders: 'Content-Type: text/html', responseText: '<html><body><form id="login"></form></body></html>' } });
         await ctrlHover(page, probe(page, 1));
@@ -2518,7 +2537,7 @@ test.describe('Discogs Images and Image history (Phase 4)', () => {
         const d = dialog(page);
         const rows = d.locator('[data-mb-tbl="dg-imghist"] tbody tr');
         await expect(rows).toHaveCount(17);
-        await expect(d.locator('.mb-dp-warn')).toContainText('Discogs did not show the image editor');
+        await expect(d.locator('.mb-dp-warn')).toContainText('Discogs did not give the image editor\'s data');
         await expect(rows.nth(4).locator('td')).toHaveText(['5', '', 'Secondary', '—', '—', '600 × 599 served', '—']);
         await expect(d).not.toContainText('Uploaders');
     });

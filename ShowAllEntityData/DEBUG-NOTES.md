@@ -26640,3 +26640,51 @@ Not seen: a release whose image editor pages (17 images fit on one page);
 from MusicBrainz in a real browser, whether Cloudflare lets a
 GM_xmlhttpRequest with the session through (memory: Chrome + Tampermonkey
 passed for discogs.com before) — vzell's browser check.
+
+## 2026-10-28 — Phase 4 correction: the image editor's PAGE holds no image; its data is /release/<id>/images/data
+
+Env: 2026-10-28T00:25+01:00 → 01:05+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) · Playwright 1.62.1 Chromium · no Tampermonkey (GM stubs); vzell's check: real browser, versions not stated (unknown)
+
+vzell's browser check of 838b6b34 on discogs.com
+(debug/discogs-release-image-update-final.html, the final rendered page):
+the dg-image-history table had 17 rows with # and Type only; Uploaded by,
+Uploaded, W × H and Size empty: the signed-out path, though signed in.
+
+Root cause: the entry above ("Phase 4 …") called the editor
+"server-rendered (`data-reactid`)". It is not: React 0.14 writes
+`data-reactid` when it renders in the BROWSER too, and no saved copy has a
+`data-react-checksum` (the mark of a server render). The page's inline
+script `ds(function(require){ require("imageUploaderApp"); })` loads
+`image-uploader-app.js`, which fetches `/release/<id>/images/data` and
+draws `#image_uploader_list`. debug/Discogs-Image-history.html was saved
+AFTER that, so the fixture built from it held a list the server never
+sends; `_dgImgParseEditor()` worked on the fixture and found nothing on a
+fetched page. The tests asserted "the parser reads a drawn list", not "we
+get the list".
+
+Probe: scripts/probe-dg-image-uploader.py (the public script: the
+endpoint and the fields). vzell saved the answer
+(debug/discogs-release-images-data.json): every field the table needs, in
+one request — so the storage-path join with the API (`_dgImgKey()`) and the
+HTML parser are gone. The saved copy began with a UTF-8 BOM, which
+JSON.parse rejects: `_dgImgParseData()` drops one. A same-origin
+`fetch().text()` drops it by itself (the first BOM test, on discogs.com,
+survived its mutation for that reason); GM_xmlhttpRequest's responseText
+keeps it, so the test is on the MusicBrainz path.
+
+Fix: `_extDgImgDataGet()` (same-origin fetch on discogs.com, else
+`_extGet()` with `session`, both with `X-Requested-With` as jQuery's $.get),
+`_dgImgParseData()`, the date in the browser's time zone (`_dgImgWhen()`:
+01:46 in Berlin for 23:46 UTC, as the editor shows it), sizes from bytes;
+`_EXT_DGI_VERSION` 2 (vzell's browser cached version-1 records without the
+editor's data). Fixture dg-release-images-update.html is now the page as
+the server sends it (`#image_uploader_app` empty, SYNTHETIC from the saved
+page), dg-release-images-data.json the answer (BOM dropped). Specs pin
+`timezoneId: 'Europe/Berlin'`. Mutations (scripts/mutations/dg-images.json,
+13): the page read instead of the data, the BOM, UTC instead of local time
+added; 13/13 fail as planted. Discogs + popup-ext + include specs 137/137.
+
+Lesson for the next foreign page: before parsing a saved page, check
+whether its markup is the server's (view-source, or a page script that
+mounts into the element) — a saved copy is the FRP unless proven
+otherwise.

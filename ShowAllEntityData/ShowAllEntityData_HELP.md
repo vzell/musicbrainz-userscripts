@@ -2850,7 +2850,7 @@ once and without Tampermonkey asking first:
   gallery with each image's size and uploader under it and, on the left, the
   uploaders with how many images each and in which years; a click opens the
   artwork viewer. It reads Discogs' API and the image editor, two requests,
-  only when you press Space. The image editor shows nothing without your
+  only when you press Space. The image editor's data comes only with your
   Discogs login, so it is read **with your Discogs session**, also from
   MusicBrainz (the one preview that sends your cookies, to discogs.com only;
   every other one goes without them). Signed out, the window still lists the
@@ -3544,10 +3544,10 @@ section of its own above Discogs' page, with the toolbar and these buttons:
   (`/release/<id>/images`) and its image editor (`…/images/update`, Image
   history) get the same table: **#**, the image (hover for the card, click
   for the viewer), **Type**, **Uploaded by** with their picture,
-  **Uploaded** (date and time also apart), **W × H** and **Size (KB)**
-  (Discogs' "1.2MB" is 1200, so it sorts). Two requests: Discogs' API and the
-  image editor, which needs you signed in to Discogs; signed out, the images
-  and their types remain and the other columns stay empty.
+  **Uploaded** (in your time zone, date and time also apart), **W × H** and
+  **Size (KB)** (a number, so it sorts). Two requests: Discogs' API and the
+  image editor's data, which needs you signed in to Discogs; signed out, the
+  images and their types remain and the other columns stay empty.
 - **User — Show the submissions / contributions / collection / wantlist:** a
   user's page (`/user/<name>`): their submissions (sub-tables **Releases**,
   **Artists**, **Labels**, the empty ones left out), contributions,

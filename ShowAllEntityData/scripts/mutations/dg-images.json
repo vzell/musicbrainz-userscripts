@@ -52,25 +52,12 @@
         "expect": "fail"
     },
     {
-        "name": "the storage key lost (every image the same key), so the join is wrong",
-        "why": "org/MB-POH-sync-withDiscogs.org Phase 4: the two sources are joined by the image's storage path.",
-        "edits": [
-            {
-                "find": "        const m = /\\/w:\\d+\\/(.+?)(?:\\.[a-z]+)?$/i.exec(String(url || ''));",
-                "replace": "        const m = /\\/(w):\\d+\\/(.+?)(?:\\.[a-z]+)?$/i.exec(String(url || ''));"
-            }
-        ],
-        "spec": "tests/fixtures/popup-ext.spec.js",
-        "grep": "Image history: the card asks nothing",
-        "expect": "fail"
-    },
-    {
         "name": "the window's size column sorts as text",
-        "why": "org/MB-POH-sync-withDiscogs.org Phase 4: \"127KB\" and \"1.2MB\" sort by bytes.",
+        "why": "org/MB-POH-sync-withDiscogs.org Phase 4: the size sorts by bytes, though shown as \"127KB\" / \"1.2MB\".",
         "edits": [
             {
-                "find": "{ key: 'size', label: 'Size', cls: 'mb-rg-num', val: r => _dgImgBytes(r.size), html: r => _rgEsc(r.size || '—') },",
-                "replace": "{ key: 'size', label: 'Size', cls: 'mb-rg-num', val: r => r.size, html: r => _rgEsc(r.size || '—') },"
+                "find": "{ key: 'size', label: 'Size', cls: 'mb-rg-num', val: r => r.bytes, html: r => _rgEsc(_dgImgSizeText(r.bytes) || '—') },",
+                "replace": "{ key: 'size', label: 'Size', cls: 'mb-rg-num', val: r => _dgImgSizeText(r.bytes), html: r => _rgEsc(_dgImgSizeText(r.bytes) || '—') },"
             }
         ],
         "spec": "tests/fixtures/popup-ext.spec.js",
@@ -121,8 +108,8 @@
         "why": "org/MB-POH-sync-withDiscogs.org Phase 4: Size (KB) is a number column, so it sorts.",
         "edits": [
             {
-                "find": "`${_dgCell(r.w ? `${r.w} × ${r.h}` : '')}${_dgCell(kb ? String(Math.round(kb / 1000)) : '')}</tr>`;",
-                "replace": "`${_dgCell(r.w ? `${r.w} × ${r.h}` : '')}${_dgCell(r.size)}</tr>`;"
+                "find": "${_dgCell(r.bytes ? String(Math.round(r.bytes / 1e3)) : '')}</tr>`;",
+                "replace": "${_dgCell(_dgImgSizeText(r.bytes))}</tr>`;"
             }
         ],
         "spec": "tests/fixtures/discogs-images.spec.js",
@@ -134,12 +121,51 @@
         "why": "org/MB-POH-sync-withDiscogs.org Phase 4: without the editor the API's images remain.",
         "edits": [
             {
-                "find": "        const rows = d && (d.images || []).length\n            ? _extDiscogsImages(d.images).map((im, i) => {",
-                "replace": "        const rows = ed && d && (d.images || []).length\n            ? _extDiscogsImages(d.images).map((im, i) => {"
+                "find": "        const rows = ed || _extDiscogsImages(d.images).map((im, i) => ({",
+                "replace": "        const rows = ed || [].map((im, i) => ({"
             }
         ],
         "spec": "tests/fixtures/discogs-images.spec.js",
         "grep": "signed out",
+        "expect": "fail"
+    },
+    {
+        "name": "the editor's PAGE read instead of its data",
+        "why": "DEBUG-NOTES 2026-10-28: the server sends /images/update with an empty #image_uploader_app; the images are in /images/data.",
+        "edits": [
+            {
+                "find": "        return `https://www.discogs.com/release/${id}/images/data`;",
+                "replace": "        return `https://www.discogs.com/release/${id}/images/update`;"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-images.spec.js",
+        "grep": "the image editor: one button",
+        "expect": "fail"
+    },
+    {
+        "name": "a leading BOM breaks the data",
+        "why": "DEBUG-NOTES 2026-10-28: vzell's saved answer began with a BOM; JSON.parse rejects one. Tested from MusicBrainz: GM_xmlhttpRequest keeps a BOM, a same-origin fetch().text() drops it.",
+        "edits": [
+            {
+                "find": "            list = JSON.parse(String(text || '').replace(/^\\uFEFF/, ''));",
+                "replace": "            list = JSON.parse(String(text || ''));"
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "leading BOM",
+        "expect": "fail"
+    },
+    {
+        "name": "the upload time shown in UTC, not the browser's time",
+        "why": "org/MB-POH-sync-withDiscogs.org Phase 4: the editor shows its local time (01:46 in Berlin for 23:46 UTC).",
+        "edits": [
+            {
+                "find": "        return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;",
+                "replace": "        return `${d.getUTCFullYear()}-${p(d.getUTCMonth() + 1)}-${p(d.getUTCDate())} ${p(d.getUTCHours())}:${p(d.getUTCMinutes())}`;"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-images.spec.js",
+        "grep": "the image editor: one button",
         "expect": "fail"
     }
 ]

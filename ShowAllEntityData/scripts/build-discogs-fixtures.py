@@ -39,9 +39,13 @@ the script DOES read:
   release's Images page — its header and the 17 images (Phase 4 of
   org/MB-POH-sync-withDiscogs.org);
 - dg-release-images-update.html (debug/Discogs-Image-history.html, the same
-  day): its image editor ("Image history") — the header and the 17
-  `li.image_preview` with uploader, date, size; React's `data-reactid` and
-  the upload form dropped, and every script (the user's id is in one).
+  day): its image editor ("Image history") AS THE SERVER SENDS IT — the
+  header and an EMPTY `#image_uploader_app` (SYNTHETIC from the saved page,
+  whose list the browser had drawn: Discogs' uploader script fills it from
+  `/images/data`, DEBUG-NOTES 2026-10-28); every script dropped (the user's
+  id is in one). The data itself is dg-release-images-data.json, vzell's
+  copy of that answer (debug/discogs-release-images-data.json), its leading
+  BOM (the browser's save added it) dropped.
 
 usage: python3 scripts/build-discogs-fixtures.py
 """
@@ -173,15 +177,13 @@ def build_release_history(name='discogs-release-history.html'):
 
 def build_release_images(editor=False):
     """dg-release-images.html: a release's Images page (the header, the 17 images and the "Update these images"
-    button). With `editor`, dg-release-images-update.html: the image editor, its header and its 17
-    `li.image_preview` (type and position in the image's alt, uploader, date, W x H, size), without React's
-    data-reactid attributes and the upload form."""
+    button). With `editor`, dg-release-images-update.html: the image editor as the server sends it, its header
+    and an EMPTY `#image_uploader_app` (the saved page's list was drawn by Discogs' script)."""
     src = read_debug('Discogs-Image-history.html' if editor else 'Discogs-Images.html')
     title = text(re.search(r'<title[^>]*>(.*?)</title>', src, re.S).group(1))
     head = between(src, '<div id="editing_header"', '</ul>') + '</div>'
     if editor:
-        body = between(src, '<ul role="list" id="image_uploader_list"', '</ul>')
-        body = '<div id="image_uploader_app"><div class="uploader">' + body + '</div></div>'
+        body = '<div id="image_uploader_app"></div>'
     else:
         body = between(src, '<div id="view_images">', '<p>All images are copyrighted', include_end=False) + '</div>'
     content = re.sub(r' data-reactid="[^"]*"', '', head + body)
@@ -238,6 +240,12 @@ def build_ratings(total=None):
     return re.sub(r'<script\b.*?</script>', '', page, flags=re.S), title
 
 
+def copy_images_data():
+    """dg-release-images-data.json: the image editor's data (`/release/1313481/images/data`), vzell's copy, its BOM dropped."""
+    src = read_debug('discogs-release-images-data.json').lstrip('\ufeff')
+    return src if src.endswith('\n') else src + '\n', 'images data'
+
+
 def write(name, out, note):
     """Writes one fixture and reports it."""
     dst = os.path.join(ROOT, 'tests', 'fixtures', name)
@@ -259,7 +267,8 @@ def main():
                      ('dg-user-ratings.html', build_ratings),
                      ('dg-user-ratings-300.html', lambda: build_ratings(total=300)),
                      ('dg-release-images.html', build_release_images),
-                     ('dg-release-images-update.html', lambda: build_release_images(editor=True))):
+                     ('dg-release-images-update.html', lambda: build_release_images(editor=True)),
+                     ('dg-release-images-data.json', copy_images_data)):
         out, title = fn()
         write(name, out, f'title "{title}"')
     return 0

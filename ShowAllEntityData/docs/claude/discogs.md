@@ -312,10 +312,16 @@ https://claude.ai/artifact/TkNduhLjJmD2FrcURn5yaV part 4). Probe first
 (`scripts/probe-dg-release-images.py`): the API's `images` carry type, URL
 and the SERVED size only (at most 600 px), no uploader, date or file size;
 both pages answer Python with Cloudflare's check; the editor needs the
-login. The editor is server-rendered (React's `data-reactid`): per
-`li.image_preview` the type and position in the image's `alt` ("Primary –
-1 of 17"), the uploader, the date in a `title`, "2002 × 2000 px — 1.2MB".
-vzell's answers: the Images page gets the SAME table as the Image history;
+login. **The editor's page holds no image**: the server sends an empty
+`#image_uploader_app`, and Discogs' uploader script (`image-uploader-app.js`,
+`scripts/probe-dg-image-uploader.py`) draws the list from ONE JSON request,
+`/release/<id>/images/data` — per image `primary` ("true"/"false"),
+`sortOrder`, `originalSrc` (600 px) and `thumbSrc` (300 px), the served
+`width`/`height`, `original_width`/`original_height`, `size` in bytes,
+`username`, `userUrl`, `timestamp` (ISO, UTC), `pending`, `disabled`
+(vzell's copy: debug/discogs-release-images-data.json). The first build
+parsed a SAVED editor page, whose list the browser had drawn, and found
+nothing in vzell's browser (DEBUG-NOTES 2026-10-28). vzell's answers: the Images page gets the SAME table as the Image history;
 from MusicBrainz, the editor is read with the user's Discogs session (the
 popup engine's one non-anonymous request; docs/claude/detail-pages.md).
 
@@ -324,15 +330,16 @@ popup engine's one non-anonymous request; docs/claude/detail-pages.md).
   `/images`); `_dgImgPathIs()` tells the two apart; one `@include` line.
 - The rows are the images READER's load (`_extDgImgLoad()`, as `dg-history`
   uses its reader's parser): `fetchText()` (`_dgImgFetchText()`) returns its
-  `dgImg` as JSON — the API (`/releases/<id>`, through `_extGet()`), then
-  the editor (same-origin here, `_extDgHistGet()`) — and `_dgImgToHtml()`
-  builds the table. The two sources are joined by the image's storage path
-  (`_dgImgKey()`: the encoded part after `/w:<n>/`, the same in every size),
-  not by position. The Image cell's link is the API's 600 px image (the
-  card's and the viewer's, `_DG_FI`), its `<img>` the 150 px one. Size is
-  "Size (KB)", an integer column (Discogs writes "1.2MB": 1200), the date
-  split by `dateTimeParts`, the uploader through `_dgUserCell()`.
-- Signed out the editor shows a login page: the API's images, types and
+  `dgImg` as JSON — the API (`/releases/<id>`, through `_extGet()`: the
+  title), then the editor's data (`/images/data`, same-origin here,
+  `_extDgImgDataGet()`, with `X-Requested-With` as Discogs' `$.get`) — and
+  `_dgImgToHtml()` builds the table. Never the live page's own list. The
+  Image cell's link is the 600 px `originalSrc` (the card's and the
+  viewer's, `_DG_FI`), its `<img>` the 300 px `thumbSrc`. Size is "Size
+  (KB)", an integer column (bytes / 1000: 1,167,852 is 1168), the date and
+  time in the browser's time zone (the UTC time on hover), split by
+  `dateTimeParts`, the uploader through `_dgUserCell()`.
+- Signed out the data is Discogs' login page: the API's images, types and
   order remain, the editor's columns empty (logged with the reason).
 
 ## A user's ratings (`dg-ratings`, 2026-10-19)

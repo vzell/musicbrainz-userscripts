@@ -1677,9 +1677,9 @@ generalize to URLs".
   answer 4; every `og:` tag sat within 8.2 KB, X5). Never rejects: failures
   come back as `error` (`refused`, `unreachable`, `timeout`).
   **One exception, by consent (vzell, 2026-10-27):** `session: true` sends
-  the browser's cookies — used ONLY by `_extDgImgPageGet()`, for a Discogs
-  release's image editor read from another site, which shows nothing
-  without the Discogs login (below, "A Discogs release's images"). Every
+  the browser's cookies — used ONLY by `_extDgImgDataGet()`, for a Discogs
+  release's image editor's data (`/images/data`) read from another site,
+  which answers nothing without the Discogs login (below, "A Discogs release's images"). Every
   other caller stays anonymous; `scripts/mutations/dg-images.json` pins
   both halves (the editor with the session, the API without).
   `_extGet()` adds the gate, `wanted()` after the slot, and one retry on a
@@ -2415,19 +2415,21 @@ on discogs.com are docs/claude/discogs.md's "A release's images".
   card on top of that.
 - **`_extDgImgLoad()`: two requests, two hosts.** The API
   (`api.discogs.com/releases/<id>`, anonymous: the images at their SERVED
-  size, at most 600 px), then the image editor (`/images/update`) through
-  `_extDgImgPageGet()`: on discogs.com `_extDgHistGet()` (same-origin), else
-  `_extGet()` with `session: true`. `_dgImgParseEditor()` reads
-  `li.image_preview` (type, position and count from the `alt`, uploader,
-  the date's `title`, W × H, size, the 300 px thumbnail); the two are
-  joined by `_dgImgKey()` (the storage path after `/w:<n>/`), never by
-  position. Without the editor (signed out, the browser check) the record
-  keeps the API's images with `dgImg.note` saying why; without the API the
-  editor's thumbnails serve. Bump `_EXT_DGI_VERSION` when the record
-  changes.
+  size, at most 600 px, and the title), then the image editor's DATA
+  (`/release/<id>/images/data`, JSON — the editor's page is sent with an
+  empty `#image_uploader_app`, its own script draws it from this) through
+  `_extDgImgDataGet()`: on discogs.com a same-origin `fetch()`, else
+  `_extGet()` with `session: true`, both with `X-Requested-With`.
+  `_dgImgParseData()` takes every field (a leading BOM dropped: a GM
+  `responseText` keeps one, a `fetch().text()` does not); the date is
+  shown in the browser's time zone (`_dgImgWhen()`), the size as Discogs
+  writes it (`_dgImgSizeText()`: "127KB", "1.2MB"). Without the data
+  (signed out, the browser check) the record keeps the API's images with
+  `dgImg.note` saying why. Bump `_EXT_DGI_VERSION` when the record changes
+  (2 since the data replaced the page, 2026-10-28).
 - **Window.** Image history: one Compact table (`dg-imghist`: # · thumb ·
-  Type pill · Uploaded by · Date, full date and "18 years ago" on hover ·
-  W × H · Size, sorted by bytes, `_dgImgBytes()`), full width; without the
+  Type pill (and "pending", "disabled") · Uploaded by · Date, local time
+  and UTC on hover · W × H · Size, sorted by bytes), full width; without the
   editor, the served size marked "served" and the editor's cells "—".
   Images: "Uploaded by" (`dg-imgusers`: user · images · years) on the
   left, the gallery on the right with a second caption line per image

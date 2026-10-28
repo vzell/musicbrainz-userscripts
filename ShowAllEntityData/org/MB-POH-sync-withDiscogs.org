@@ -326,9 +326,12 @@ SERVED size only (at most 600 px; "600x599" for a 2002 × 2000 original), no fil
 or date; both pages answer Python with Cloudflare's check; the editor needs the login. That
 overturned the 2026-10-26 answer to open Q 2 (the API could not give "W × H, size"), so vzell was
 asked again: read the editor with the Discogs session (=_extFetch()='s new =session= option, its one
-caller =_extDgImgPageGet()=), the API as the fallback; the Images page's table the same as the
-Image history's. The editor and the API are joined by the image's storage path (=_dgImgKey()=),
-which both URLs end in. Code: reader =dgimages= (=_extDgImgLoad()=, =_extDgImgWindow()=), pageTypes
+caller =_extDgImgDataGet()=), the API as the fallback; the Images page's table the same as the
+Image history's. *Corrected 2026-10-28 after vzell's browser check*: the editor's page is sent
+with an empty =#image_uploader_app= (its script draws the list), so the first build, which parsed
+a SAVED page and joined it to the API by storage path, found nothing; the data now comes from
+=/release/<id>/images/data= (JSON, every field; =scripts/probe-dg-image-uploader.py=, vzell's
+copy of the answer). DEBUG-NOTES 2026-10-28. Code: reader =dgimages= (=_extDgImgLoad()=, =_extDgImgWindow()=), pageTypes
 =dg-images= / =dg-image-history= (=_dgImgPageRequest()=, =_dgImgToHtml()=: the reader's record as the
 fetch loop's text). Differences from the mockup: the window's uploaders are links without the
 mockup's avatar initial (the user's window shows the picture); the gallery's hover card is the

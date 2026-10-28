@@ -7,8 +7,8 @@
         "label": "🚀 Feature",
         "items": [
           "Links to a Discogs release's Images page and its image editor (\"Image history\") get their own window instead of the plain release window: Image history lists every image in a table (#, the image, Primary or Secondary, who uploaded it, when, its own width × height and file size, every column sortable); Images shows a gallery with each image's size and uploader, the uploaders on the left, and a click opens the artwork viewer.",
-          "The image editor is the only place with the uploader, the date and the image's own size, and it shows nothing without the Discogs login, so it is read with your Discogs session — also from MusicBrainz (the one link preview that sends cookies, to discogs.com only). Signed out, the window keeps the images and their types from Discogs' API, says why the rest is missing and marks the size as the one Discogs serves.",
-          "On discogs.com itself, a release's Images page and its image editor get a \"Show every image\" button: one table of every image (#, image with its hover card and the viewer, type, uploaded by with the user's picture, date and time, W × H, size in KB), the same on both pages.",
+          "The image editor's data is the only place with the uploader, the date and the image's own size, and it comes only with the Discogs login, so it is read with your Discogs session — also from MusicBrainz (the one link preview that sends cookies, to discogs.com only). Signed out, the window keeps the images and their types from Discogs' API, says why the rest is missing and marks the size as the one Discogs serves.",
+          "On discogs.com itself, a release's Images page and its image editor get a \"Show every image\" button: one table of every image (#, image with its hover card and the viewer, type, uploaded by with the user's picture, date and time in your time zone, W × H, size in KB), the same on both pages.",
           "Performance: link-preview windows and two new discogs.com pageTypes only; no change to MusicBrainz's tables. An images window costs two requests (the API and the editor), on Space only."
         ]
       }
