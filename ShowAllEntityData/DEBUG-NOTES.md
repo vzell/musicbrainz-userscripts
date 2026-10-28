@@ -26760,7 +26760,7 @@ wall 22 m 54 s. Nothing merged; vzell's live test comes first.
 
 ## 2026-10-28 — release-rg-popup.spec.js: two flaky tests, both a late window repaint
 
-Env: 2026-10-28T13:30+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) · Playwright 1.62.1 Chromium 151.0.7922.34 · no Tampermonkey (GM stubs)
+Env: 2026-10-28T12:58+01:00 → 13:06+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) · Playwright 1.62.1 Chromium 151.0.7922.34 · no Tampermonkey (GM stubs)
 
 The merge-time full suite of feature/youtube-embeds on main (5ad0ee7f,
 12:05 CET) failed 1 of 2,425: "the window sorts by a header, empty dates
@@ -26801,4 +26801,6 @@ keeps a forced repaint between hover and Space (`__saTest.dpRepaint()`) as
 coverage of that path.
 
 Result: `--repeat-each=12 --workers=14` of release-rg-popup (desktop +
-mobile) 144/144, against 2 of 88 failing before.
+mobile) 144/144, against 2 of 88 failing before. Full suite on main at
+9009482f (2026-10-28T13:07:43+01:00 → 13:31:54+01:00, NB-3641): 2,425/2,425,
+wall 24 m 11 s.
