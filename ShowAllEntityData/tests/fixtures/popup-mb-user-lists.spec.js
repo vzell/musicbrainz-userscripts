@@ -84,7 +84,13 @@ async function open(page, { url = RG_URL, fixtureFile = RG_FIXTURE, pageFixture 
     const ctx = page.context();
     await ctx.route('https://static.metabrainz.org/**', (route) => route.abort('blockedbyclient'));
     await ctx.route(/\/ws\/2\//, (route) => route.fulfill({ status: 404, contentType: 'application/json', body: '{"error":"no fixture"}' }));
-    await ctx.route(/^https:\/\/musicbrainz\.org\/(user|account|search|tag)\//, (route) => {
+    // The genre list (2026-10-28): the editor's tags window asks it for its
+    // "Genre page" column (`_mbGenreLookup()`).
+    await ctx.route(/^https:\/\/musicbrainz\.org\/genres\/?$/, (route) => {
+        log.html.push('/genres');
+        return route.fulfill({ path: path.join(__dirname, 'genres-list.html'), contentType: 'text/html' });
+    });
+    await ctx.route(/^https:\/\/musicbrainz\.org\/(user|account|search|tag|genre)\//, (route) => {
         const u = route.request().url();
         if (u === url) return route.fulfill({ path: fixtureFile, contentType: 'text/html' });
         log.html.push(u.replace('https://musicbrainz.org', ''));
@@ -356,11 +362,30 @@ test.describe('MusicBrainz link previews: an editor\'s lists and account pages',
         // Compact tables since Phase 3d, most votes first.
         const genres = dialog(page).locator('[data-mb-tbl="genres"] tbody tr');
         await expect(genres.locator('td:first-child')).toHaveText(['interview', 'rock', 'pop', 'acoustic rock', 'hard rock']);
-        await expect(genres.locator('td:last-child')).toHaveText(['30', '15', '10', '2', '1']);
+        await expect(genres.locator('td:nth-child(2)')).toHaveText(['30', '15', '10', '2', '1']);
         await expect(dialog(page).locator('[data-mb-tbl="tags"] .mb-dg-pager span')).toHaveText('1–25 of 107');
-        await genres.first().locator('a').click();
+        // The genres' own pages, from the genre list the window asked for
+        // once (2026-10-28); "Other tags" has no such column.
+        await expect(genres.locator('td:nth-child(3) a').first()).toHaveAttribute('href', '/genre/629103ac-e282-47ab-9793-59eee88eb548');
+        await expect(genres.locator('td:nth-child(3) a')).toHaveCount(5);
+        await expect(dialog(page).locator('[data-mb-tbl="tags"] thead th')).toHaveCount(2);
+        await genres.first().locator('td:first-child a').click();
         await expect(title(page)).toHaveText('Tags › Tag');
-        await expect.poll(() => log.html, { message: 'the drill asks the tag\'s own page' }).toEqual(['/user/vzell/tags', '/tag/interview']);
+        await expect.poll(() => log.html, { message: 'the genre list once, then the drill asks the tag\'s own page' })
+            .toEqual(['/user/vzell/tags', '/genres', '/tag/interview']);
+    });
+
+    test('TAGS: a genre\'s own page drills into the genre\'s card; a hover never asks for the genre list', async ({ page }) => {
+        const log = await open(page);
+        await hover(page, await addLink(page, '/user/vzell/tags', 'view'));
+        await expect(card(page).locator('.mb-tt-title')).toHaveText('vzell');
+        expect(log.html, 'the card asks no genre list').toEqual(['/user/vzell/tags']);
+        await page.keyboard.press('Space');
+        const genreLink = dialog(page).locator('[data-mb-tbl="genres"] tbody tr td:nth-child(3) a').nth(1);
+        await expect(genreLink).toHaveText('rock');
+        await genreLink.click();
+        await expect(title(page)).toHaveText('Tags › Genre');
+        await expect.poll(() => log.html).toEqual(['/user/vzell/tags', '/genres', '/genre/0e3fc579-2d24-4f20-9dae-736e1ec78798']);
     });
 
     // An editor's own tag (2026-10-21): the links of /user/<name>/tags, read

@@ -26919,3 +26919,46 @@ manifest as `jesus2099-funkey`).
   mutation list `scripts/mutations/funkey-bigbox.json` has 9 entries, all
   failing as expected. Regression set rel-icons / bigbox-tooltip /
   image-card-space / caa-column-redesign / reload-auto-repress: 44 passed.
+
+## 2026-10-28 — Previews: h1 entity icon, sort name, /genres, MetaBrainz-family links (feature/poh-doc-icon-genres)
+
+Env: 2026-10-28T23:05:27+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) · Playwright 1.62.1 Chromium · no Tampermonkey (GM stubs). The screenshots came from vzell's browser (version unknown).
+
+Four requests from vzell's screenshots; the snapshot is `debug/genres-initial.html`.
+- **BookBrainz search links had no card or Space (WIP.1).** Root cause:
+  `_EXT_SKIP_HOST_RE` has skipped the whole MetaBrainz family since U1
+  (`4983e291`). Its stated reasons only cover musicbrainz.org (the entity
+  cards' links) and the artwork archives. The other family hosts now take
+  the generic reader.
+- **The h1's entity icon did nothing (WIP.2).** It is not an element: MB's
+  CSS draws it as the 32px background of `div.<kind>header`
+  (`debug/mb-icons.css`). Fix: `_h1KindDocInstall()` lays an empty
+  `a.mb-h1-kind-doc[data-mb-pop="doc:<page>"]` over it.
+- **The label "SORT NAME" box was wrong (WIP.3).** MusicBrainz sets a label
+  link's `title` to the label's DISAMBIGUATION. Labels have had no sort
+  names for years, and the WS/2 `sort-name` repeats the name. But
+  `_dpCollectNotes()` labelled every artist/label link title "Sort name".
+  An artist's title is "Sort, Name (comment)" too, so its box also mixed
+  in the comment. Fix (vzell picked mockup variant B,
+  https://claude.ai/artifact/BBy3heEk6Ao9k4X1oxAhEy): the sort name is the
+  card's first row, and that title gets no box.
+- **/genres reader (WIP.4).** `_mbParseGenresPage()` reads 2,215 genres
+  (32 with a disambiguation). One genre starts with an ʻokina (U+02BB):
+  `\p{L}` but not `\p{Lu}`, so it would have made a letter chip of its
+  own. It is filed under "#".
+- **Dropped: a 📊 "Genre / Not a genre" section on a Tags column (planned
+  WIP.5).** No MusicBrainz table has a column that mixes genres and tags:
+  entity `/tags` pages, `/user/<name>/tags`, `/tags` and the sidebar all
+  split them already. No Discogs table has a Genre/Style column yet
+  (`_DG_HEADERS`). vzell: a later branch, starting with an API probe of
+  which Discogs answers carry genres/styles (the collection/wantlist
+  `basic_information` is the likely one).
+- **Test pitfall:** I ran a mutation check while a spec run was going.
+  `mutation-check.py` rewrites the userscript in place, so the run's
+  result was discarded and repeated. Never overlap the two (see the
+  memory note on Tampermonkey re-imports, the same mechanism).
+- **"Never asked" in a spec:** use `__saTest.mbPopStatus(key)`, which is
+  null until something asks. `_mbLoad()` marks a record loading
+  synchronously, while the request log only shows a request after the
+  rate gate. A log-based check let the mutation "a tag card asks for the
+  genre list" survive.

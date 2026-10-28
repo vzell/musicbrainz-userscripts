@@ -1115,8 +1115,10 @@ test.describe('MusicBrainz link previews: the note stack and the entity glyphs (
     //   - every box of the stack sits above the card, none overlaps another,
     //     all share the card's left edge; the cell's tip on top, the link's
     //     note under it;
-    //   - an artist link's MusicBrainz title (its sort name) is parked and is
-    //     a "Sort name" box; it comes back when the card closes;
+    //   - an artist link's MusicBrainz title (its sort name) is parked and
+    //     comes back when the card closes; since 2026-10-28 it is no box: the
+    //     card's first row is the sort name (a label's title, its
+    //     disambiguation, is no box either); any other link title still is;
     //   - MusicBrainz's entity glyph sits in front of the card's title and of
     //     the window's kind, and a kind without a glyph (ISRC) has none.
     // Mutation list: scripts/mutations/gpe-art-viewer.json.
@@ -1246,21 +1248,63 @@ test.describe('MusicBrainz link previews: the note stack and the entity glyphs (
         expect(Math.abs(b1.x - cb.x)).toBeLessThan(1);
     });
 
-    test('an artist link\'s sort name: parked, a "Sort name" box, given back on Esc', async ({ page }) => {
+    // vzell 2026-10-28 (mockup variant B): the sort name is the card's
+    // first row, and the link's MusicBrainz title — which said it — is no
+    // box of its own any more. Until then it was a "Link title" box headed
+    // "Sort name", for a label too, whose title is its disambiguation.
+    const kvRows = (page) => card(page).locator('dl.mb-dp-kv > dt').allTextContents();
+
+    test('an artist link\'s sort name: the card\'s first row, no Link-title box; its title parked, given back on Esc', async ({ page }) => {
         await open(page, { settings: { sa_pop_mb: true }, showAll: false });
         const a = await addLink(page, ARTIST, 'Bruce Springsteen');
         await a.evaluate((el) => el.setAttribute('title', 'Springsteen, Bruce'));
         await ctrlHover(page, a);
-        await expect(card(page)).toContainText('Bruce Springsteen');
-        const box = stack(page).locator('.mb-dp-note-title');
-        await expect(box).toBeVisible();
-        await expect(box.locator('dt')).toHaveText('Sort name');
-        await expect(box.locator('dd')).toHaveText('Springsteen, Bruce');
-        expect(await boxHead(box)).toEqual(['Link title', '1px solid']);
+        await expect(card(page)).toContainText('fetched now');
+        expect((await kvRows(page))[0]).toBe('Sort name');
+        await expect(card(page).locator('dl.mb-dp-kv > dd').first()).toHaveText('Springsteen, Bruce');
+        await expect(stack(page).locator('.mb-dp-note-title'), 'the card says it: no box').toHaveCount(0);
         await expect(a).not.toHaveAttribute('title', /./);
         await page.keyboard.press('Escape');
-        await expect(stack(page)).toBeHidden();
+        await expect(card(page)).toBeHidden();
         await expect(a).toHaveAttribute('title', 'Springsteen, Bruce');
+    });
+
+    test('a sort name that is the name has no row', async ({ page }) => {
+        const same = JSON.parse(json('ws2-pop-artist-bruce.json'));
+        same['sort-name'] = same.name;
+        await open(page, {
+            settings: { sa_pop_mb: true }, showAll: false,
+            ws2: (url) => (/\/ws\/2\/artist\/[0-9a-f-]{36}\?inc=genres/.test(url) ? { status: 200, body: JSON.stringify(same) } : null),
+        });
+        const a = await addLink(page, ARTIST, 'Bruce Springsteen');
+        await ctrlHover(page, a);
+        await expect(card(page)).toContainText('fetched now');
+        expect(await kvRows(page)).not.toContain('Sort name');
+    });
+
+    test('a label link\'s title (its disambiguation) is no "Sort name" box; the card shows the disambiguation', async ({ page }) => {
+        const COMMENT = 'owned by Sony Music Entertainment, worldwide except JP; formerly owned by CBS between 1938–1990 within US/CA/MX';
+        await open(page, { settings: { sa_pop_mb: true }, showAll: false });
+        const a = await addLink(page, '/label/011d1192-6f65-45bd-85c4-0400dd45693e', 'Columbia');
+        await a.evaluate((el, c) => el.setAttribute('title', c), COMMENT);
+        await ctrlHover(page, a);
+        await expect(card(page)).toContainText('fetched now');
+        await expect(stack(page).locator('.mb-dp-note-title')).toHaveCount(0);
+        await expect(card(page).locator('.mb-tt-comment').first()).toHaveText(COMMENT);
+        expect(await kvRows(page), 'a label\'s sort name is its name').not.toContain('Sort name');
+    });
+
+    test('another link\'s own title is still a "Link title" box', async ({ page }) => {
+        await open(page, { settings: { sa_pop_mb: true }, showAll: false });
+        const a = await addLink(page, `/recording/${REC_ID}`, 'Thunder Road');
+        await a.evaluate((el) => el.setAttribute('title', 'live, 1975-10-18'));
+        await ctrlHover(page, a);
+        await expect(card(page)).toContainText('fetched now');
+        const box = stack(page).locator('.mb-dp-note-title');
+        await expect(box).toBeVisible();
+        await expect(box).toContainText('live, 1975-10-18');
+        expect(await boxHead(box)).toEqual(['Link title', '1px solid']);
+        await expect(box.locator('dt')).toHaveCount(0);
     });
 
     test('the kind line: glyph and kind on top of the card (loaded and failed), the window\'s kind; no glyph for an ISRC', async ({ page }) => {
@@ -3513,5 +3557,137 @@ test.describe('MusicBrainz link previews: the window\'s path (org/POH-headerline
         expect(log.html.filter(u => u.includes('/doc/'))).toEqual(['https://musicbrainz.org/doc/Release']);
         await backBtn(page).click();
         await expect(title(page)).toHaveText('Release › Release group › Release');
+    });
+});
+
+// The genre list (`/genres`, vzell 2026-10-28): read from the page
+// (`_mbParseGenresPage()`, tests/fixtures/genres-list.html, built from
+// debug/genres-initial.html by scripts/build-genres-fixture.py).
+test.describe('MusicBrainz link previews: the genre list (/genres)', () => {
+    /**
+     * Opens the host page with the MusicBrainz cards on, serving /genres
+     * from its fixture, and adds a link to it.
+     *
+     * @param {import('@playwright/test').Page} page
+     * @returns {Promise<{log: Object, a: import('@playwright/test').Locator}>}
+     */
+    async function genresLink(page) {
+        const log = await open(page, { settings: { sa_pop_mb: true }, showAll: false });
+        await page.context().route(/^https:\/\/musicbrainz\.org\/genres\/?$/, (route) => {
+            log.html.push(route.request().url());
+            return route.fulfill({ path: path.join(__dirname, 'genres-list.html'), contentType: 'text/html' });
+        });
+        return { log, a: await addLink(page, '/genres', 'genres') };
+    }
+
+    test('the card: how many, from and to, how many disambiguated, the intro; one request', async ({ page }) => {
+        const { log, a } = await genresLink(page);
+        await ctrlHover(page, a);
+        await expect(card(page)).toContainText('fetched now');
+        await expect(card(page).locator(':scope > .mb-pop-kind-head')).toHaveText('Genre list');
+        await expect(card(page).locator('.mb-tt-pill')).toHaveText(['2,215 genres']);
+        const kv = await card(page).locator('dl.mb-dp-kv').evaluate(dl => Array.from(dl.children).map(x => x.textContent));
+        expect(kv.slice(0, 2)).toEqual(['From', '2 tone to zydeco']);
+        expect(kv.slice(2)).toEqual(['Disambiguated', '32']);
+        await expect(card(page)).toContainText('These are all the genres currently available for use in MusicBrainz.');
+        expect(log.html).toEqual(['https://musicbrainz.org/genres']);
+    });
+
+    test('the window: every genre, letters A–Z as chips, a filter, a disambiguation; a genre drills into its card', async ({ page }) => {
+        const { log, a } = await genresLink(page);
+        await ctrlHover(page, a);
+        await expect(card(page)).toContainText('fetched now');
+        await page.keyboard.press('Space');
+        const tbl = dialog(page).locator('[data-mb-tbl="genres"]');
+        await expect(tbl.locator('.mb-dg-morerow')).toContainText('Showing 200 of 2,215');
+        await expect(tbl.locator('tbody tr').first().locator('td').first()).toHaveText('2 tone');
+        const chips = tbl.locator('.mb-dg-fc[data-mb-tbl-chip]');
+        expect(await chips.evaluateAll(xs => xs.map(x => x.getAttribute('data-mb-tbl-chip'))), 'A–Z, not by count')
+            .toEqual(['0–9', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I']);
+        await tbl.locator('.mb-dg-more[data-mb-tbl-act="morechips"]').click();
+        await expect(chips.last(), 'anything not a cased letter (an ʻokina) last').toHaveAttribute('data-mb-tbl-chip', '#');
+        await tbl.locator('.mb-dg-fc[data-mb-tbl-chip="Z"]').click();
+        const firsts = await tbl.locator('tbody tr td:first-child').allTextContents();
+        expect(firsts.length).toBeGreaterThan(0);
+        expect(firsts.every(x => /^z/i.test(x)), firsts.join(', ')).toBe(true);
+        await tbl.locator('[data-mb-tbl-act="clear"]').click();
+        // The filter reads the disambiguation too.
+        await tbl.locator('input.mb-tbl-q').fill('not rock from Asia');
+        await expect(tbl.locator('tbody tr')).toHaveCount(1);
+        await expect(tbl.locator('tbody tr td').first()).toHaveText('asian rock');
+        await expect(tbl.locator('tbody tr td').nth(1)).toHaveText('pluggnb subgenre - not rock from Asia');
+        await tbl.locator('input.mb-tbl-q').fill('roots rock');
+        await tbl.locator('tbody tr td:first-child a', { hasText: /^roots rock$/ }).click();
+        await expect(dialog(page).locator(':scope > div > span').first()).toHaveText('Genre list › Genre');
+        await expect.poll(() => log.html).toEqual(['https://musicbrainz.org/genres', 'https://musicbrainz.org/genre/883d75d5-1365-46ee-8cbe-d3ae2facdd93']);
+    });
+
+    test('a tag\'s card adds its genre\'s disambiguation once the list is in memory; it never asks for the list', async ({ page }) => {
+        const COMMENT = 'a test disambiguation';
+        const log = await open(page, { settings: { sa_pop_mb: true }, showAll: false });
+        // alternative rock has none: the list served here gives it one.
+        const html = fs.readFileSync(path.join(__dirname, 'genres-list.html'), 'utf8')
+            .replace('<bdi>alternative rock</bdi></a>', `<bdi>alternative rock</bdi></a> <span class="comment">(<bdi>${COMMENT}</bdi>)</span>`);
+        await page.context().route(/^https:\/\/musicbrainz\.org\/genres\/?$/, (route) => {
+            log.html.push(route.request().url());
+            return route.fulfill({ status: 200, contentType: 'text/html', body: html });
+        });
+        const tag = await addLink(page, '/tag/alternative%20rock', 'alternative rock');
+        await ctrlHover(page, tag);
+        await expect(card(page)).toContainText('fetched now');
+        await expect(card(page).locator('.mb-tt-comment').first()).toHaveText('Tag of the genre alternative rock');
+        // Not the request log: a request would only leave after the rate
+        // gate. `_mbLoad()` marks a record loading at once.
+        expect(await page.evaluate(() => window.__saTest.mbPopStatus('pop:page:genres:all')), 'a tag card asks no genre list').toBeNull();
+        await page.mouse.move(0, 0);
+        await expect(card(page)).toBeHidden();
+        const list = await addLink(page, '/genres', 'genres');
+        await ctrlHover(page, list);
+        await expect(card(page)).toContainText('fetched now');
+        await page.mouse.move(0, 0);
+        await expect(card(page)).toBeHidden();
+        await ctrlHover(page, tag);
+        await expect(card(page).locator('.mb-tt-comment').first()).toHaveText(`Tag of the genre alternative rock (${COMMENT})`);
+        expect(log.html.filter(u => u.endsWith('/genres'))).toHaveLength(1);
+    });
+});
+
+// The h1's entity icon (vzell 2026-10-28): MusicBrainz draws it as the
+// header div's CSS background, so an empty link is laid over it
+// (`_h1KindDocInstall()`); it shows the kind's documentation as the glyph
+// in the window's path does.
+test.describe('MusicBrainz link previews: the h1\'s entity icon links its kind\'s documentation', () => {
+    const icon = (page) => page.locator('div.rgheader > a.mb-h1-kind-doc');
+    const docFixture = (url) => (/\/doc\/Release_Group\/?$/.test(url) ? 'doc-style-titles.html' : null);
+
+    test('over the icon, after the render; hover shows the Documentation card, a click opens it in the window', async ({ page }) => {
+        const log = await open(page, { settings: { sa_pop_mb: true }, pageFixture: docFixture });
+        await expect(icon(page)).toHaveCount(1);
+        await expect(icon(page)).toHaveAttribute('data-mb-pop', 'doc:Release_Group');
+        await expect(icon(page)).toHaveAttribute('href', '/doc/Release_Group');
+        expect(await icon(page).getAttribute('title'), 'no title: it would be a "Link title" note').toBeNull();
+        // It covers the 32px background icon, in the header's top-left corner.
+        const box = await icon(page).boundingBox();
+        const head = await page.locator('div.rgheader').boundingBox();
+        expect({ w: box.width, h: box.height, dx: Math.round(box.x - head.x), dy: Math.round(box.y - head.y) })
+            .toEqual({ w: 32, h: 32, dx: 0, dy: 0 });
+        await ctrlHover(page, icon(page));
+        await expect(card(page)).toContainText('fetched now');
+        await expect(card(page).locator(':scope > .mb-pop-kind-head')).toHaveText('Documentation');
+        expect(log.html.filter(u => u.includes('/doc/'))).toEqual(['https://musicbrainz.org/doc/Release_Group']);
+        await page.mouse.move(0, 0);
+        await expect(card(page)).toBeHidden();
+        await icon(page).click();
+        await expect(dialog(page)).toBeVisible();
+        await expect(dialog(page).locator(':scope > div > span').first()).toHaveText('Documentation');
+        await expect(dialog(page).locator('.mb-pop-doc')).toBeVisible();
+        expect(page.url(), 'the click stayed on the page').toBe(RG_URL);
+        expect(log.html.filter(u => u.includes('/doc/')), 'the window used the card\'s record').toHaveLength(1);
+    });
+
+    test('no link while the MusicBrainz cards are off', async ({ page }) => {
+        await open(page, { showAll: false, settings: { sa_pop_mb: false, sa_pop_ext: true } });
+        await expect(page.locator('a.mb-h1-kind-doc')).toHaveCount(0);
+        await expect(page.locator('.mb-h1-kind-doc-host')).toHaveCount(0);
     });
 });

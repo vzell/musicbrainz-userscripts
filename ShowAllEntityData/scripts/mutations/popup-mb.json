@@ -857,5 +857,187 @@
         "spec": "tests/fixtures/popup-mb.spec.js",
         "grep": "keeps the link.s own new tab",
         "expect": "fail"
+    },
+    {
+        "name": "the h1's entity icon gets no documentation link",
+        "why": "vzell 2026-10-28: the icon before a MusicBrainz page's h1 shows its kind's documentation, as the glyph in the window's path does (_h1KindDocInstall()).",
+        "edits": [
+            {
+                "find": "        _ensureDetailPreviewStyle();\n        _h1KindDocInstall();\n",
+                "replace": "        _ensureDetailPreviewStyle();\n"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "over the icon, after the render",
+        "expect": "fail"
+    },
+    {
+        "name": "the h1's header reads as the wrong kind",
+        "why": "A release group's header (div.rgheader) links the Release Group documentation, not another kind's.",
+        "edits": [
+            {
+                "find": "        artistheader: 'artist', rgheader: 'release-group', releaseheader: 'release',",
+                "replace": "        artistheader: 'artist', rgheader: 'release', releaseheader: 'release',"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "over the icon, after the render",
+        "expect": "fail"
+    },
+    {
+        "name": "a click on the h1's entity icon follows the link",
+        "why": "vzell 2026-10-28: a plain click opens the documentation in the window, as Space does; only Ctrl-click leaves the page.",
+        "edits": [
+            {
+                "find": " &&\n                !t.el.classList.contains('mb-h1-kind-doc')) return;",
+                "replace": ") return;"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "over the icon, after the render",
+        "expect": "fail"
+    },
+    {
+        "name": "the h1's entity icon is linked with the MusicBrainz cards off",
+        "why": "Nothing changes on the page while sa_pop_mb is off: the link exists only for the cards.",
+        "edits": [
+            {
+                "find": "        if (_foreignHost || !_popSettingOn('sa_pop_mb') || document.querySelector('a.mb-h1-kind-doc')) return;",
+                "replace": "        if (_foreignHost || document.querySelector('a.mb-h1-kind-doc')) return;"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "no link while the MusicBrainz cards are off",
+        "expect": "fail"
+    },
+    {
+        "name": "sort name: the artist card has no Sort name row",
+        "why": "vzell 2026-10-28 (mockup variant B): the sort name is the artist card's first row, when it is not the name.",
+        "edits": [
+            {
+                "find": "                return head + _mbPopKvHtml([\n                    ['Sort name', _rgEsc(_mbPopSortName(d))],\n                    [d.type === 'Person'",
+                "replace": "                return head + _mbPopKvHtml([\n                    [d.type === 'Person'"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "an artist link.s sort name: the card.s first row",
+        "expect": "fail"
+    },
+    {
+        "name": "sort name: a row even when it is the name",
+        "why": "A sort name that is the name says nothing: no row (and a label's always is its name).",
+        "edits": [
+            {
+                "find": "        return s && s !== d.name ? s : '';",
+                "replace": "        return s || '';"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "a sort name that is the name has no row",
+        "expect": "fail"
+    },
+    {
+        "name": "sort name: the artist/label link title is a box again",
+        "why": "The card shows the sort name and the disambiguation, so MusicBrainz's link title on an artist or label link is no box; a label's was labelled 'Sort name' though it is the disambiguation.",
+        "edits": [
+            {
+                "find": "            if (n === own && sortName) return null;\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "sort name: the card.s first row|label link.s title",
+        "expect": "fail"
+    },
+    {
+        "name": "sort name: every link's own title is dropped",
+        "why": "Only an artist's or label's MusicBrainz title is what the card shows; any other link's own title is still a 'Link title' box.",
+        "edits": [
+            {
+                "find": "            if (n === own && sortName) return null;\n",
+                "replace": "            if (n === own) return null;\n"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "another link.s own title is still",
+        "expect": "fail"
+    },
+    {
+        "name": "genres: a /genres link is no kind",
+        "why": "2026-10-28: /genres gets the genre list's card and window (_MB_POP_GENRES_RE).",
+        "edits": [
+            {
+                "find": "        if (_MB_POP_GENRES_RE.test(pathname)) return { seg: '', type: 'genres', id: 'all' };\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "the genre list .*the card: how many",
+        "expect": "fail"
+    },
+    {
+        "name": "genres: the parser drops the disambiguations",
+        "why": "A genre's span.comment is its disambiguation: in the window's table and the filter.",
+        "edits": [
+            {
+                "find": "                comment: c ? _mbPopText(c).replace(/^\\((.*)\\)$/, '$1') : '',",
+                "replace": "                comment: '',"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "the window: every genre, letters",
+        "expect": "fail"
+    },
+    {
+        "name": "genres: the letter chips by count",
+        "why": "The genre list's letters are an A-Z index (facetSort), not the most-rows-first chips of other List tables.",
+        "edits": [
+            {
+                "find": "        const facets = Array.from(counts).sort(opts.facetSort || ((a, b) => b[1] - a[1]));",
+                "replace": "        const facets = Array.from(counts).sort((a, b) => b[1] - a[1]);"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "the window: every genre, letters",
+        "expect": "fail"
+    },
+    {
+        "name": "genres: an uncased letter gets a chip of its own",
+        "why": "Only a cased letter is a chip; the ʻokina of a Hawaiian genre goes under '#', last.",
+        "edits": [
+            {
+                "find": "        return /\\p{Lu}/u.test(c) ? c : '#';",
+                "replace": "        return /\\p{L}/u.test(c) ? c : '#';"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "the window: every genre, letters",
+        "expect": "fail"
+    },
+    {
+        "name": "genres: a tag card asks for the genre list",
+        "why": "A tag's card only reads the genre list from memory: a hover never costs a 200 KB page.",
+        "edits": [
+            {
+                "find": "        const map = _mbGenreLookup();\n        const g = map && map.get(String(name || '').toLowerCase());",
+                "replace": "        const map = _mbGenreLookup(true);\n        const g = map && map.get(String(name || '').toLowerCase());"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "genre.s disambiguation once",
+        "expect": "fail"
+    },
+    {
+        "name": "genres: a tag card shows no genre disambiguation",
+        "why": "A tag's page names its genre but not the genre's disambiguation; the genre list in memory adds it.",
+        "edits": [
+            {
+                "find": "        return g && g.comment ? ` <span class=\"mb-rg-dim\">(${_rgEsc(g.comment)})</span>` : '';",
+                "replace": "        return '';"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "genre.s disambiguation once",
+        "expect": "fail"
     }
 ]

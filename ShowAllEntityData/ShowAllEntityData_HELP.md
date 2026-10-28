@@ -2336,7 +2336,8 @@ recording card shows its length, artist, ISRCs, first release date, the work
 it performs and its earliest releases ("on 25+ releases" when there are more
 than MusicBrainz lists at once). A work card shows its type, language, ISWC,
 composer, lyricist and publishers. An artist card shows the type, area, life
-span, birthplace, genres, rating, IPI and ISNI; a label card the type, label
+span, birthplace, genres, rating, IPI and ISNI, and the sort name first when
+it differs from the name ("Iglesias, Julio"); a label card the type, label
 code, area, years active and genres; an area card what it is part of and how
 many parts it has; an instrument card its type, subtypes and other names; an
 event card its date and time, place, what it is part of, line-up and first
@@ -2418,6 +2419,14 @@ names each, *+N* for the rest), how many collections hold it and the start
 of its Wikipedia text; it is read from the genre's own page, in one request.
 A genre's *Found in N user collections*, *Editing history* and *Open edits*
 links have their cards too.
+A link to the **genre list** (*/genres*, e.g. in the documentation of
+genres) shows how many genres there are and the first and last of them;
+**Space** shows every genre in a table with a filter and a chip per letter
+(*0–9*, *A* … *Z*, *#*), each genre opening its own card in the window.
+Once the genre list has been read, a tag card names its genre's
+disambiguation too, and an editor's *Tags* window links each of their
+genres to the genre's own page (*Genre page*). The list is asked for by a
+window, never by a hover.
 A CD stub card shows the stub's title, artist, number of tracks, length, how
 often it was looked up and its first tracks, read from the stub's page. A
 documentation card shows the page's title, its status (*official style
@@ -2591,7 +2600,9 @@ userscript lists that host, so Tampermonkey does not ask first).
   none covering the card or each other: the cell's warnings first (*Pending
   edits*, *Track name differs from recording name*, *This recording is not
   linked to any work*, …), then the link's own notes (the track/recording
-  names above, an artist's or label's **Sort name**). Like the card, each box
+  names above, another script's or a page's hover text). An artist's **sort
+  name** is no box: it is the first line of the artist card itself, when it
+  differs from the name. Like the card, each box
   opens with a small header saying what it is (*Finding*, *Note*, *Track ≠
   recording*, *Link title*, *Link*, *Filter*) and a thin line under it. Neither the browser's
   own grey tooltip nor the cell's "Liner notes" card appears over the card
@@ -2626,6 +2637,10 @@ userscript lists that host, so Tampermonkey does not ask first).
     that kind: MusicBrainz's page (its style guide named at the card's
     foot) or Discogs' Database Guidelines. Rest on it for that page's card;
     a click reads it in the window, on discogs.com too.
+  - **The icon before a MusicBrainz page's own title** (the release, release
+    group, artist… icon left of the h1) works the same way: rest on it for
+    the kind's documentation card; a click or Space reads it in the window,
+    Ctrl-click opens it in a new tab.
   - A step reads the name of what it shows. The setting *In the window's
     title, each step of the path reads* (same section) switches it to the
     kind ("Recording"). An editing history, a documentation page or a
@@ -2991,9 +3006,10 @@ A card that could not reach the site says why — hover again to retry. If you
 told Tampermonkey not to let the script contact a site, the window says so;
 change it in Tampermonkey's settings for this script.
 
-Not previewed: links to MusicBrainz itself and the other MetaBrainz sites, the
-artwork archives, links around a picture, share buttons, and the
-Relationships column.
+Not previewed: links to MusicBrainz itself (its pages have their own cards),
+the artwork archives, links around a picture (the Relationships column's
+icons excepted), and share buttons. The other MetaBrainz sites (BookBrainz,
+ListenBrainz, CritiqueBrainz, MetaBrainz) are previewed like any other site.
 
 </details>
 

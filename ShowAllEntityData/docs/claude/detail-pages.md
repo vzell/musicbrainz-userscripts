@@ -561,10 +561,18 @@ floating hover tooltip.
     `_tipTextToHtml()`, exactly as the "Liner notes" card it replaces
     (`.mb-dp-note-tip`, amber rule). A native title is plain text;
   - the link's own title: the "≠" note as `#mb-dp-origin` (below), its own
-    `data-mb-tip` as a tip, else plain text (`.mb-dp-note-title`). On an
-    artist or label target it is MusicBrainz's sort name and is labelled
-    "Sort name". A title that only repeats the link's text (MusicBrainz's on
-    a recording with a disambiguation, debug/expand.html) gets NO box.
+    `data-mb-tip` as a tip, else plain text (`.mb-dp-note-title`). **On an
+    artist or label target it gets NO box since 2026-10-28** (vzell, mockup
+    variant B, https://claude.ai/artifact/BBy3heEk6Ao9k4X1oxAhEy): it is
+    MusicBrainz's — the artist's sort name and disambiguation ("Hood,
+    William (producer)"), a LABEL's disambiguation (MusicBrainz has no label
+    sort names; until then that comment was labelled "Sort name", vzell's
+    Legacy screenshot) — and the card shows both, the sort name as its first
+    `dl.mb-dp-kv` row when it is not the name (`_mbPopSortName()`; the WS/2
+    record always carried `sort-name`, so no inc change and no cache bump:
+    the lookup kinds store the raw answer). It is still parked. A title that
+    only repeats the link's text (MusicBrainz's on a recording with a
+    disambiguation, debug/expand.html) gets NO box either.
   - last, the link's own ready-made card: a `data-mbtt` ON THE LINK (the
     Sidebar cards' links, `_sbLinkTip()`, 2026-10-17), its HTML as is
     (`.mb-dp-note-tip`). Before, that card and the preview showed side by
@@ -1021,6 +1029,42 @@ inc sets; run it before moving the card to `/ws/2/genre/<MBID>`.
 - Fixture: `tests/fixtures/rel-genre-overview.html`, shared with the
   `genre-overview` pageType. Specs: `popup-mb.spec.js` "genres, read from
   the page"; mutations `scripts/mutations/genre.json`.
+
+### The genre list (`/genres`, 2026-10-28) and `_mbGenreLookup()`
+
+vzell: "a reader for /genres, to be used for hover popups when necessary".
+- **Kind `genres`, id `all`** (`_MB_POP_GENRES_RE`, `path: () =>
+  '/genres'`), a `_mbPopPageKind()` read by `_mbParseGenresPage()`: the one
+  bare `ul` under `#content` (2,215 `li`s on 2026-10-28, 32 with a
+  `span.comment`), the paragraphs before it as the intro. The HTML page,
+  not `/ws/2/genre/all`: one request instead of ~23 pages of 100, with
+  ids and disambiguations. Card: count, "From <first> to <last>",
+  "Disambiguated", the intro. Window: a `_dpListTableHtml()` List table
+  (filter over name + disambiguation, Genre/Disambiguation columns), the
+  letters as chips (`_mbGenreLetter()`: accents folded, "0–9", "#" for
+  anything not a CASED letter — the ʻokina of a Hawaiian genre is `\p{L}`
+  but not `\p{Lu}`), ordered by `_mbGenreLetterOrder()` through the List
+  table's new `facetSort` option (default: most rows first). Each genre
+  links `/genre/<MBID>`, so it drills into the genre card. It is a view
+  (`_DP_VIEW_TYPES`) with the genre glyph and `/doc/Genre` (`_MB_KIND_DOCS`).
+- **`_mbGenreLookup(start, repaint)`**: the same record
+  (`pop:page:genres:all`) as a Map by lower-cased name, rebuilt only when
+  the record object changes. Only a `start`/pin path passes `start`; a
+  hover reads memory only (`_mbGenreCommentHtml()` on the tag card and
+  window: "Tag of the genre X (disambiguation)" once the list is in
+  memory). The editor's tags window (`usertags`) asks for it from its
+  `pin` and shows a "Genre page" column in its Genres table ("…" until
+  the list is in). MusicBrainz's own tag pages already say which tags are
+  genres (the tag page links its genre; `/user/<name>/tags` has a
+  "Genres" `ul.genre-list`), so the lookup adds the genre's own page and
+  disambiguation there, not the genre/tag split.
+- Fixture `tests/fixtures/genres-list.html`, built from vzell's
+  `debug/genres-initial.html` by `scripts/build-genres-fixture.py` (our
+  toolbar dropped). Specs: `popup-mb.spec.js` "the genre list (/genres)"
+  (3), `popup-mb-user-lists.spec.js` "TAGS" (2); mutations in
+  `popup-mb.json` (6, "genres:") and `popup-user-lists.json` (1). "Never
+  asked" is pinned by `__saTest.mbPopStatus()` (null), not the request
+  log: a request leaves only after the rate gate.
 
 ## MusicBrainz: collection cards, read from the page (2026-10-20)
 
@@ -1597,6 +1641,21 @@ https://claude.ai/artifact/YCnV4DZA5R4quLAGkmhCpC
   reader and path (`_DG_KIND_GLYPHS`, `_DG_HISTORY_DOCS`, the articles read
   off vzell's saved Database Guidelines page). A card's kind line uses the
   same glyph (`_dpAddKindHead()`, `crumbOf` for a step's card).
+- **The h1's entity icon** (2026-10-28, `_h1KindDocInstall()`): the same
+  documentation card on the page itself. MusicBrainz draws that icon as the
+  32px CSS background of `div.<kind>header` (`debug/mb-icons.css`), so no
+  element can be hovered; an EMPTY `a.mb-h1-kind-doc` is laid over it
+  (absolute, in a `:where(.mb-h1-kind-doc-host)` so a sticky head keeps
+  `position: sticky`), stamped `data-mb-pop="doc:<page>"` — the entity
+  cards' selector has `[data-mb-pop]` in both scopes, so no resolver change
+  and no `sa_pop_mb_page` dependency. No `title` (it would become a "Link
+  title" note), no image inside (artwork to `_mbPopTarget()`). Header class
+  → kind: `_MB_HEADER_KINDS`, then `_MB_KIND_DOCS`. Installed once from
+  `_initDetailPreview()`, only while `sa_pop_mb` (its touch twin on touch)
+  is on; the header div is never re-rendered, so it outlives the render. A
+  plain mouse click opens the window: the click handler's second exception
+  after `_dgTableClickOpens()`. Specs: `popup-mb.spec.js` "the h1's entity
+  icon" (2); mutations in `scripts/mutations/popup-mb.json` (4).
 - **Specs**: `popup-mb.spec.js` "the window's path" (7),
   `popup-ext.spec.js` "names link their Discogs pages" (emoji, articles),
   `discogs-mb-column.spec.js` "Space opens its window" (musicbrainz.org's
@@ -1704,8 +1763,13 @@ generalize to URLs".
   string, X7). **A protocol-relative `//host/…` is read as https** (since
   U3): MusicBrainz's sidebar writes its Wikidata link that way, and until
   U3's live spec hovered it no such link had a card at all; https is also
-  how MusicBrainz stores it. Not the MetaBrainz family or the artwork archives
-  (`_EXT_SKIP_HOST_RE`), not a share button (`_EXT_SKIP_URL_RE`), not around
+  how MusicBrainz stores it. Not musicbrainz.org (its links are the entity
+  cards') or the artwork archives (`_EXT_SKIP_HOST_RE`). **The rest of the
+  MetaBrainz family is another site since 2026-10-28** (BookBrainz,
+  ListenBrainz, CritiqueBrainz, MetaBrainz, AcousticBrainz): U1 skipped the
+  whole family by kinship, not by reason, so a BookBrainz search among the
+  sidebar's Search links had no card and no Space; they now take the generic
+  reader like any other host. Not a share button (`_EXT_SKIP_URL_RE`), not around
   `img:not(.avatar)`, not in `_EXT_SKIP_SEL` (chrome, the card and the
   window, `_MB_POP_PAGE_SKIP`). **A Relationships column icon is the
   exception to both (2026-10-17):** it is an image link that IS the link, so
