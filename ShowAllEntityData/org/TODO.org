@@ -5757,7 +5757,17 @@ test:full before any merge. I’ll ask before merging.
 - A 📊 behaviour you might notice: if you scroll down, open 📊 and tick an entry that shortens the page a lot, the panel
   can close, even though multi-select is meant to keep it open. I haven't changed this; tell me if you want it fixed.
 
+
 * TODO move the "WARNING/ERROR buttons in their own button
+
+move the "WARNING/ERROR button menus in their own corner-round-shaded button area
+
+On e.g. https://musicbrainz.org/release/22a6802f-d22e-4f47-9f22-6aac257a4194
+
+#+begin_example
+@debug/mb-saed-area.html - FRP - action button area of the WARNING/ERROR button menus
+#+end_example
+
 
 * TODO move the "LINKS" section from right to left in the POH of Discogs labels
 
