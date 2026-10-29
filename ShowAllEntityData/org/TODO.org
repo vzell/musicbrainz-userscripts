@@ -5287,3 +5287,9 @@ the "PLAYING" string overlaps with "Video VO-n2EFK6sM"
 b.)
 
 the hyperlinked titles after the youtube play buttons need a little more spacing between the button and the actual titles
+
+* TODO Still open:
+
+The 2-of-100-pages search question. Did you pick a limit in the dialog, or did pages fail? If they failed, hovering the 🔄 button shows the reason.
+The two public-list snapshots for 7e, debug/dg-list-public.html and debug/dg-list-public-p2.html, plus the page-2 URL.
+test:full before any merge. I’ll ask before merging.
