@@ -703,6 +703,54 @@ test.describe('YouTube in place — Step 3: Discogs', () => {
         await expect.poll(() => log.player.length).toBe(2);
     });
 
+    test('the window: the PLAYING pill holds its own text, and each title\'s text starts clear of its tile', async ({ page }) => {
+        // vzell, 2026-10-29 (a Discogs master window, screenshot): "PLAYING"
+        // overlapped "Video <id>", and the titles sat right against their
+        // tiles. The window's `.mb-dg-lines > div` rule (padding-left: 1em;
+        // text-indent: -1em) reached the Videos list's slot and rows, and
+        // text-indent is inherited: each text started 1em left of its box.
+        // Boxes alone cannot see that, so this measures the TEXT (a Range).
+        await openPage(page, { sa_pop_ext: true, sa_pop_ext_favicons: false, sa_rich_tooltip_delay_ms: 0 },
+            dgAnswers('discogs-release', 'discogs-master', 'discogs-master-versions-p1'));
+        const d = await openDgWindow(page, 'https://www.discogs.com/release/1874253-Bruce-Springsteen-Born-To-Run');
+        const sec = d.locator('[data-mb-dg-sec="videos"]');
+        await sec.locator('.mb-yt-tile.mb-yt-small').first().click();
+        await expect(sec.locator('.mb-yt-slot iframe.mb-yt-frame')).toHaveCount(1);
+        // The window repaints around a click: measure once the foot is there.
+        await expect(sec.locator('.mb-yt-foot .mb-yt-pill')).toBeVisible();
+        const m = await sec.evaluate((s) => {
+            const textBox = (el) => {
+                const r = document.createRange();
+                r.selectNodeContents(el);
+                return r.getBoundingClientRect();
+            };
+            const pill = s.querySelector('.mb-yt-foot .mb-yt-pill');
+            const grow = s.querySelector('.mb-yt-foot .mb-yt-grow');
+            if (!pill || !grow) return { missing: s.innerHTML.slice(0, 600) };
+            const p = pill.getBoundingClientRect();
+            const rows = Array.from(s.querySelectorAll('.mb-yt-row')).map((r) => {
+                const tileEl = r.querySelector('.mb-yt-tile, .mb-yt-notile');
+                if (!tileEl) return { gap: 'no tile: ' + r.outerHTML.slice(0, 200) };
+                const tile = tileEl.getBoundingClientRect();
+                const a = r.querySelector('a');
+                return { gap: textBox(a).left - tile.right };
+            });
+            return {
+                pillTextL: textBox(pill).left - p.left,
+                pillTextR: p.right - textBox(pill).right,
+                growTextL: textBox(grow).left - p.right,
+                indent: getComputedStyle(grow).textIndent,
+                rows,
+            };
+        });
+        expect(m.missing, 'the player foot is in the section').toBeUndefined();
+        expect(m.indent).toBe('0px');
+        expect(m.pillTextL, '"Playing" starts inside its pill').toBeGreaterThanOrEqual(2);
+        expect(m.pillTextR, '"Playing" ends inside its pill').toBeGreaterThanOrEqual(2);
+        expect(m.growTextL, '"Video <id>" starts right of the pill').toBeGreaterThanOrEqual(8);
+        m.rows.forEach((r, i) => expect(r.gap, `title ${i + 1}'s text starts clear of its tile`).toBeGreaterThanOrEqual(14));
+    });
+
     test('the master window: its videos too (record version 5), with tiles', async ({ page }) => {
         expect(DG_MASTER_VIDEOS.length, 'the capture carries the videos').toBeGreaterThan(0);
         await openPage(page, { sa_pop_ext: true, sa_pop_ext_favicons: false, sa_rich_tooltip_delay_ms: 0 },

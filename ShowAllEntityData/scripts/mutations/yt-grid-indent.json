@@ -1,0 +1,45 @@
+[
+  {
+    "name": "the window's hanging indent reaches the Videos grid again",
+    "why": "Without the .mb-yt-grid override every title's text starts 1em left of its box, back against its tile; the player keeps its own text-indent: 0, so only the title gap can see this.",
+    "edits": [
+      {
+        "find": "            .mb-dp-dialog .mb-dg-lines.mb-yt-grid > div { padding-left: 0; text-indent: 0; }",
+        "replace": "            .mb-dp-dialog .mb-dg-lines.mb-yt-grid > div { padding-left: 0; }"
+      }
+    ],
+    "spec": "tests/fixtures/youtube-embeds.spec.js",
+    "grep": "PLAYING pill holds its own text",
+    "expect": "fail"
+  },
+  {
+    "name": "the player has no text-indent of its own",
+    "why": "The grid override already resets the slot, so inside the Discogs window this guard is covered by the first one; it is there for a player in any other container with a hanging indent.",
+    "edits": [
+      {
+        "find": "max-width: 640px; text-indent: 0; }",
+        "replace": "max-width: 640px; }"
+      }
+    ],
+    "spec": "tests/fixtures/youtube-embeds.spec.js",
+    "grep": "PLAYING pill holds its own text",
+    "expect": "pass"
+  },
+  {
+    "name": "both guards gone: the PLAYING pill overlaps Video <id>",
+    "why": "The reported symptom: the inherited -1em indent moves the pill's text out of its border and the next text onto it.",
+    "edits": [
+      {
+        "find": "            .mb-dp-dialog .mb-dg-lines.mb-yt-grid > div { padding-left: 0; text-indent: 0; }",
+        "replace": ""
+      },
+      {
+        "find": "max-width: 640px; text-indent: 0; }",
+        "replace": "max-width: 640px; }"
+      }
+    ],
+    "spec": "tests/fixtures/youtube-embeds.spec.js",
+    "grep": "PLAYING pill holds its own text",
+    "expect": "fail"
+  }
+]

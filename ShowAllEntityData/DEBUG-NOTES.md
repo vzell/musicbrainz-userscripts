@@ -27013,3 +27013,26 @@ failed before the fix at the toggle assertion. `scripts/mutations/collapse-unlai
 2/2 caught (no watch; watch without the re-run).
 
 **Confirmed live** by vzell in the real browser (2026-10-29), on /user/atj.
+
+## 2026-10-29 — Discogs window Videos: "PLAYING" over "Video <id>", titles against their tiles (WIP.2)
+
+Env: 2026-10-29T01:00+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) · Playwright 1.62.1 (bundled Chromium), no Tampermonkey (GM stubs); the report: a screenshot of a Discogs master window (Born To Run), browser unknown
+
+**Cause, measured.** The window's `.mb-dp-dialog .mb-dg-lines > div { padding-left:
+1em; text-indent: -1em }` (a hanging indent for plain lines) also matches the
+Videos list (`div.mb-dg-lines.mb-yt-grid`): its slot and its rows. text-indent
+is inherited: `getComputedStyle(.mb-yt-grow).textIndent` read `-13.5px`, so in
+the player's foot each item's text started 1em left of its box ("Playing" out
+of its pill, "Video <id>" onto it), and each title's text 1em back towards its
+tile, eating the grid's 14 px gap. The tile is a `<button>`, which resets
+text-indent, so it did not move. The existing alignment test measured the
+`<a>` BOXES, which never moved; that is why it passed all along.
+
+**Fix.** `.mb-dp-dialog .mb-dg-lines.mb-yt-grid > div { padding-left: 0;
+text-indent: 0 }` beside the hanging-indent rule, and `text-indent: 0` on
+`.mb-yt-player` itself (any container). **Test** (`youtube-embeds.spec.js`,
+"the PLAYING pill holds its own text …") measures the TEXT with a Range: the
+pill's text inside its border, "Video <id>" ≥ 8 px right of the pill, each
+title ≥ 14 px clear of its tile. `scripts/mutations/yt-grid-indent.json`: the
+grid override and both guards caught; the player's own reset alone is covered
+inside the window by the grid override (`"expect": "pass"`).

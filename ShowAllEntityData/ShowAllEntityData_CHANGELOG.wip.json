@@ -1,5 +1,17 @@
 [
   {
+    "version": "WIP.2",
+    "date": "2026-10-29",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Discogs windows, Videos: the \"Playing\" label under the player no longer runs into \"Video <id>\", and each video's title has its proper gap after its ▶ Play tile."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.1",
     "date": "2026-10-29",
     "sections": [

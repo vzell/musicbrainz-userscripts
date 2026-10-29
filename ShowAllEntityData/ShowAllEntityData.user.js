@@ -28288,6 +28288,11 @@
             .mb-dp-dialog .mb-dg-tcred { margin: 3px 0 4px; font-size: 13px; }
             .mb-dp-dialog .mb-dg-lines > div { padding-left: 1em; text-indent: -1em; }
             .mb-dp-dialog .mb-dg-lines > div + div { margin-top: 2px; }
+            /* The Videos list is a .mb-dg-lines too, but a grid of tiles, titles
+               and the player: the hanging indent above is inherited by every
+               text in it, so "Playing" slid out of its pill onto "Video <id>"
+               and each title's text 1em back towards its tile (vzell, 2026-10-29). */
+            .mb-dp-dialog .mb-dg-lines.mb-yt-grid > div { padding-left: 0; text-indent: 0; }
             .mb-dp-dialog .mb-dg-role, .mb-dp-dialog .mb-dg-dim { color: #7a6d5c; }
             .mb-dp-dialog .mb-dg-dim { font-size: 12.5px; }
             .mb-dp-dialog .mb-dg-anv { border-bottom: 1px dotted #7a6d5c; }
@@ -62716,7 +62721,9 @@
             .mb-yt-grid > .mb-yt-slot:empty { display: none; }
             .mb-yt-grid .mb-yt-len { justify-self: end; font-variant-numeric: tabular-nums; white-space: nowrap; }
             tr.mb-yt-playerrow > td { padding: 0 8px 12px; background: #fbf8f1; }
-            .mb-yt-player { display: grid; gap: 6px; width: min(100%, 640px); max-width: 640px; }
+            /* text-indent: 0, so a hanging indent of the container it plays in
+               never reaches the foot's pill and text. */
+            .mb-yt-player { display: grid; gap: 6px; width: min(100%, 640px); max-width: 640px; text-indent: 0; }
             .mb-yt-frame {
                 display: block;
                 width: 100%;
