@@ -4,9 +4,90 @@ Every version, newest first, with the technical details behind each change. For 
 
 **Months:** [October 2026](ShowAllEntityData_CHANGELOG/2026-10.md) · [September 2026](ShowAllEntityData_CHANGELOG/2026-09.md) · [August 2026](ShowAllEntityData_CHANGELOG/2026-08.md) · [July 2026](ShowAllEntityData_CHANGELOG/2026-07.md) · [June 2026](ShowAllEntityData_CHANGELOG/2026-06.md) · [May 2026](ShowAllEntityData_CHANGELOG/2026-05.md) · [April 2026](ShowAllEntityData_CHANGELOG/2026-04.md) · [March 2026 (1 of 2)](ShowAllEntityData_CHANGELOG/2026-03-1.md) · [March 2026 (2 of 2)](ShowAllEntityData_CHANGELOG/2026-03-2.md) · [February 2026](ShowAllEntityData_CHANGELOG/2026-02.md) · [January 2026](ShowAllEntityData_CHANGELOG/2026-01.md)
 
-This page shows the newest 100 of 1676 versions; the month pages hold all of them.
+This page shows the newest 100 of 1683 versions; the month pages hold all of them.
 
 ---
+
+## 9.99.1512 — 2026-10-29
+
+**✨ Improve**
+
+- Link previews: in an event's window, "Recorded here" has a filter on both its tables, also when there are only a few releases (it used to appear only above 25 rows). The filter looks at the name and its comment ("live, 1988-03-28 …", "version 1"), and the heading counts what it shows ("Recordings · 3 of 40"). "Releases" and "Recordings" fold: click a heading to fold it, Ctrl-click to fold or open both; the next event you open keeps them as you left them.
+
+**🔧 Refactor**
+
+- \_dpFoldGroupHtml() / \_dpFoldClick() / \_dpFolded (a group that folds, Ctrl/⌘ every group of the window, from \_dpTblClick()); \_mbPopRelGroupHtml() and \_mbPopRelTableCols(); \_dpCompactTableHtml() takes filter; \_mbPopRelTableRows() rows carry comment. Mockup 2f: https://claude.ai/artifact/URrn3dps1EMtnkjKBvsvag. Tests: popup-mb.spec.js (the event window's filter and groups; a new test of the filter, the count, folding, Ctrl-click and the memory); scripts/mutations/poh-fixes.json (+6, all caught). docs/claude/detail-pages.md, HELP.
+
+
+## 9.99.1511 — 2026-10-29
+
+**🐛 Fix**
+
+- Link previews: with "MusicBrainz Right Side Flags Everywhere" installed, a country's flag in a window no longer covers the green dot of the name after it, and no longer blinks when you click in the window. That script put its own, wider flag into the window's.
+
+**✨ Improve**
+
+- Link previews: the green dot in a window (the link is already loaded, so a click opens it at once) no longer pushes the text: every link that opens in the window keeps its place. When you rest on a link that has the dot, a small note above its card says what the dot means.
+
+**🔧 Refactor**
+
+- \_mbPopFlagHtml(): span.flag-XX.mb-pop-flag (no flag class) with data-hq-skip, the slot overflow: hidden. \_dpWinMark() puts mb-dp-dots on the area while sa\_dp\_window\_read\_ahead is on; every mb-dp-l-here link keeps the dot's ::before, transparent until mb-dp-l-read. \_dpShowPeek() records t.wasRead as the card comes up; \_dpCollectNotes() adds a kind-read box (\_dpReadNoteHtml()). Mockup 2e: https://claude.ai/artifact/URrn3dps1EMtnkjKBvsvag. Tests: popup-mb.spec.js H5 on/off (the link's box unchanged when read, the note on a dotted link's card and not on another's); pop-area-flags.spec.js gains a Right Side Flags stand-in test; scripts/mutations/poh-fixes.json (+7, all caught). DEBUG-NOTES.md, docs/claude/detail-pages.md, HELP.
+
+
+## 9.99.1510 — 2026-10-29
+
+**✨ Improve**
+
+- Link previews: in an artist's or a label's window, the ISNI is a link to its record on isni.org (a new tab), written in groups of four as ISNI does (0000 0001 2141 8834).
+
+**🔧 Refactor**
+
+- \_mbPopIsniHtml() in the artist and label kinds' windowHtml; the cards keep the text. Tests: popup-mb.spec.js (the artist's ISNI; a new label test with two ISNIs, one ending in X); scripts/mutations/poh-fixes.json (+3, all caught). docs/claude/detail-pages.md, HELP.
+
+
+## 9.99.1509 — 2026-10-29
+
+**🐛 Fix**
+
+- Link previews: with "MusicBrainz More Flags Everywhere" installed, the areas in a window (an artist's Area and Born, a label's or place's Area, an event's Held at) no longer jump. That script added its flag a moment after every change of the window, so the names moved while the window loaded and flicked when you clicked in it (a release-group type, a chip). The window now draws the flags itself, in a place of fixed size: each country's, and each state's (read from Wikidata the first time a window shows that state, then kept; on discogs.com a country shows its code).
+
+**🔧 Refactor**
+
+- \_mbPopAreaHtml() stamps data-flag-processed and puts \_mbPopFlagHtml() before the link (.mb-pop-flag, 16 × 11): a country MusicBrainz's span.flag.flag-XX, off musicbrainz.org its ISO code; a state (\_mbPopIsState()) its Wikidata P41 through \_mbPopFlagLoad() / \_mbPopFlagRecordFor() (area url-rels, wbgetclaims; key pop:flag:area:&lt;id&gt;, \_MB\_POP\_FLAG\_VERSION 1), started from \_mbPopAreaChainLoad(). \_\_saTest.mbPopFlagHtml(). Tests: new pop-area-flags.spec.js (3); popup-mb.spec.js counts flag lookups apart from chain steps; scripts/mutations/poh-fixes.json (+8, all caught). DEBUG-NOTES.md, docs/claude/detail-pages.md, HELP.
+
+
+## 9.99.1508 — 2026-10-29
+
+**✨ Improve**
+
+- Link previews: a MusicBrainz label's window (on MusicBrainz, and from the MusicBrainz column on discogs.com) shows its links on the left, under its facts, as an artist's window does; the right side keeps the related labels, people, places and series.
+
+**🔧 Refactor**
+
+- The label kind's windowHtml puts \_mbPopUrlLinksTableHtml() after the facts in the first column. Test: popup-mb.spec.js "the label card and window"; scripts/mutations/poh-fixes.json (+1, caught). docs/claude/detail-pages.md, HELP.
+
+
+## 9.99.1507 — 2026-10-29
+
+**✨ Improve**
+
+- Link previews: in a tag's window, each kind under "By kind" now says what a click does when you rest the pointer on it, e.g. "Show the 661,243 recordings tagged rock on the right, most votes first: the first 100 now, 100 more a page on demand"; the kind already listed says so. An editor's tag window names the editor.
+
+**🔧 Refactor**
+
+- \_mbTagKindTip() gives each mb-pop-kindbtn its data-mb-tip text in \_mbPopTagWindowHtml(); \_MB\_POP\_TAG\_KIND\_PAGE (100). Tests: popup-mb.spec.js and popup-mb-user-lists.spec.js assert the words; scripts/mutations/poh-fixes.json (4, all caught). docs/claude/detail-pages.md, HELP.
+
+
+## 9.99.1506 — 2026-10-29
+
+**✨ Improve**
+
+- Page heading: the ❌ errors and ⚠️ warnings buttons, and 🔄 when pages failed to load, moved out of the SAED button into a small rounded bar of their own right after it. The SAED button keeps the same shape on every page; the second bar appears only when the page has something to show. ⚠️ still shows at 0 where it starts the title-style check.
+
+**🔧 Refactor**
+
+- The attn area is the one area of \#mb-saed-attn-bar (class mb-saed-bar, the same custom properties), built next to \#mb-saed-bar and held in \_saedAttnBarEl; \_saedAreaFor() resolves attn there, \_saedMarkFirst() marks each bar, \_orderToolbar() hides the bar while it is empty (.mb-saed-bar\[hidden\], since the bar's display beats the browser's own rule), and \_TOOLBAR\_TAIL\_ORDER names both bars. Approved mockup https://claude.ai/artifact/URrn3dps1EMtnkjKBvsvag. Tests: saed-toolbar, findings-menus (placement, rounded corners, hidden when empty) and fetch-in-segment updated; scripts/mutations/saed-attn-bar.json (6, all caught). docs/claude/toolbar-and-header-ui.md, findings.md, CLAUDE.md, HELP.
+
 
 ## 9.99.1505 — 2026-10-29
 
@@ -828,56 +909,6 @@ This page shows the newest 100 of 1676 versions; the month pages hold all of the
 **🐛 Fix**
 
 - MusicBrainz's own pop-up windows, such as the one a click on the sidebar's cover opens on release, release group and event pages, now cover the whole page. The script's buttons beside the title, the headings that stay at the top while scrolling and the sidebar handle no longer show through them.
-
-
-## 9.99.1412 — 2026-10-21
-
-**✨ Improve**
-
-- The live near misses get the rich comparison card: a recording comment that "almost follows 'live, YYYY-MM-DD: Venue, City, …'", and a release, release group title or event name that starts with a date but is not quite in the live form, now show the text over the form it almost has, the difference marked ("live, 1993-4-21: …" over "live, 1993‐04‐21: …", "Live, …" over "live, …", "1975‐02‐05 The Main Point, …" over "1975‐02‐05: The Main Point, …"). Only a fix that cannot be read two ways is proposed, and only when the result is itself in the live form; when there is no single answer ("05.02.1975": which part is the day?), the text shows in one row with the part to rewrite marked.
-
-
-## 9.99.1411 — 2026-10-21
-
-**✨ Improve**
-
-- Release tracklist: the hover card of a "Live credit without a date" cell now names the date the credit is most likely from: the recording's own "live recording of" date, which the credit was checked against ("⚠️ Live credit without a date: probably 1988-04-27, …"). It stays there after filtering, sorting and loading the page from disk.
-
-
-## 9.99.1410 — 2026-10-21
-
-**✨ Improve**
-
-- Link previews for annotations: "View annotation history" (under an annotation and in the sidebar, on every kind of page that has one) shows how many versions the annotation has and the latest one's date, editor, changelog and first lines; its window lists every version, newest first, and a version opens its own card. MusicBrainz shows the history only to a logged-in editor, and logged out the card says so. "View this version" and "View current revision" show that version's date, editor, changelog and text. An annotation is copied as plain text, never as markup.
-
-
-## 9.99.1409 — 2026-10-21
-
-**✨ Improve**
-
-- Release and release group pages: the front cover from the sidebar now also appears at the start of the page heading, as an artist's photo, a label's logo or an instrument's drawing already did, so it stays in sight with the sidebar closed. A click, Enter or Space on it opens all of the release's Cover Art Archive images in the artwork viewer, starting at the front cover; they are asked for on that click only. The sidebar's own cover keeps MusicBrainz's link. Switches: "Sidebar picture: hover card and viewer" and "Sidebar picture beside the name".
-
-
-## 9.99.1408 — 2026-10-21
-
-**✨ Improve**
-
-- Link previews on an editor's profile, "Tags and ratings": the "view" beside Tags upvoted shows how many tags and genres they voted for and with how many votes, the most used first; a tag opens its own tag card. The "view" beside Ratings shows their ratings as their ratings page does, a few per kind with their stars; an entity opens its own card. The stars on MusicBrainz's page are links that change a rating, and the window never copies them. Downvoted tags have no preview.
-
-
-## 9.99.1407 — 2026-10-21
-
-**✨ Improve**
-
-- Link previews on an editor's profile: every "view", "N%" and "View all" link of the statistics now has a card and a window. An editor's Open, Accepted, Auto-edits, Applied, Rejected, Failed and Cancelled edits, their Votes, and every edit search ("Last 24 hours", the edit types' percentages) open in the editing-history window, titled by what they list. An edit search is read again on every page load. The two "view list" links show the editor's subscribers (names, and how many are anonymous; a name opens that editor's card) and your authorized and registered applications (name, access, last token, digest authentication). An application's OAuth client ID or secret and its "Revoke access" link are never shown, and that page is never kept after a page load.
-
-
-## 9.99.1406 — 2026-10-21
-
-**✨ Improve**
-
-- Column header tooltips name their column in bold, with the explanation below it. This applies to every column the script adds (derived, extracted and injected columns such as Event-Date, MB-Name, Recording of), and "Work" / "Perf." (9.99.1404) show their full names there.
-- MusicBrainz's own columns now have a header tooltip too, saying what the column holds: Artist, Title, Catalog\#, Country/Date, Format, Tracks, ISRCs, Rating and about 60 more. Where a name means different things the text fits the table: "Type" on an artist's Events page is the kind of event, on a release-group list the primary and secondary types. New setting "Explain MusicBrainz columns in header tooltips" (🎨 UI FEATURES, on). Not on other sites, whose columns these texts do not describe. A pageType can add or override texts with features.columnDescriptions.
 
 
 ---
