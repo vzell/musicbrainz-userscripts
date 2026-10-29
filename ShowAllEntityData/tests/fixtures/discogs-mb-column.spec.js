@@ -463,7 +463,18 @@ async function answerMbPages(page) {
  */
 async function ctrlHover(page, el) {
     await page.mouse.move(0, 0);
-    await el.scrollIntoViewIfNeeded();
+    // A MusicBrainz window repaints on every answer of its follow-up requests
+    // in its first seconds and replaces its links; a link it detaches while
+    // this scrolls throws instead of resolving again (11 of 40 runs at 20
+    // workers, DEBUG-NOTES 2026-10-29), so the locator gets a few more tries.
+    for (let i = 0; ; i++) {
+        try {
+            await el.scrollIntoViewIfNeeded();
+            break;
+        } catch (e) {
+            if (i >= 4 || !/not attached/i.test(String(e && e.message))) throw e;
+        }
+    }
     await page.keyboard.down('Control');
     await el.hover();
     await page.keyboard.up('Control');
@@ -596,6 +607,66 @@ test.describe('discogs.com: MusicBrainz cards for the MusicBrainz icons (2026-10
         await expect(title).toHaveText('Artist › Tag');
         expect(await page.evaluate(() => window.__mbPageAsked), 'the tag page, with the browser\'s cookies, once')
             .toEqual([{ path: '/tag/americana', anonymous: false }]);
+        expect(errors).toEqual([]);
+    });
+
+    // The test above failed about half its runs (9 of 18, before and after
+    // the 9.99.1503 merge alike): a freshly opened window repaints on every
+    // answer of its follow-up requests (URL relationships, area, release-group
+    // counts, one per 1.1 s rate slot), and a repaint replaces every link, so
+    // a card waiting its delay for the old link was dropped (DEBUG-NOTES
+    // 2026-10-29). These two force the repaint instead of waiting for one:
+    // `innerHTML = innerHTML` is what `_dpAreaRepaint()` does.
+    /**
+     * Opens Bruce Springsteen's MusicBrainz window from the Credits table and
+     * returns its "americana" genre link.
+     *
+     * @param {import('@playwright/test').Page} page
+     * @param {Object} settings
+     */
+    async function openGenreWindow(page, settings) {
+        const { errors } = await openDg(page, 'release', { settings: { sa_pop_mb: true, ...settings } });
+        await press(page, 'Show tracklist, credits and other versions');
+        await settled(page);
+        await expandAll(page);
+        await answerArtistCards(page);
+        await answerMbPages(page);
+        await ctrlHover(page, mbCell(sub(page, 'Credits'), 'artist/219986').locator('a.mb-dg-mb-link'));
+        await expect(page.locator('#mb-dp-peek')).toContainText('fetched now');
+        await page.keyboard.press('Space');
+        const genre = page.locator('#mb-dp-dialog .mb-dp-area a[href="https://musicbrainz.org/tag/americana"]');
+        await expect(genre).toHaveClass(/\bmb-dp-l-here\b/);
+        return { errors, genre };
+    }
+
+    /** Repaints the window's Extracted view the way `_dpAreaRepaint()` does. */
+    const repaintWindow = (page) => page.evaluate(() => {
+        const area = document.querySelector('#mb-dp-dialog .mb-dp-area');
+        const html = area.innerHTML;
+        area.innerHTML = html;
+    });
+
+    test('in a MusicBrainz window, a card due while the window repaints is shown for the new link', async ({ page }) => {
+        // A long delay, so the forced repaint surely falls inside it.
+        const { errors, genre } = await openGenreWindow(page, { sa_rich_tooltip_delay_ms: 1500 });
+        const before = await genre.elementHandle();
+        await ctrlHover(page, genre);
+        await repaintWindow(page);
+        expect(await before.evaluate((el) => el.isConnected), 'premise: the link was replaced').toBe(false);
+        await expect(page.locator('#mb-dp-peek > .mb-pop-kind-head')).toHaveText('Tag', { timeout: 10000 });
+        await expect(page.locator('#mb-dp-peek')).toBeVisible();
+        expect(errors).toEqual([]);
+    });
+
+    test('in a MusicBrainz window, a card showing through a repaint still hides when the pointer leaves', async ({ page }) => {
+        const { errors, genre } = await openGenreWindow(page, {});
+        await ctrlHover(page, genre);
+        await expect(page.locator('#mb-dp-peek > .mb-pop-kind-head')).toHaveText('Tag', { timeout: 30000 });
+        await repaintWindow(page);
+        // The marks pass after the repaint (the same pass moves the card).
+        await expect(genre).toHaveClass(/\bmb-dp-l-here\b/);
+        await page.mouse.move(0, 0);
+        await expect(page.locator('#mb-dp-peek')).toBeHidden();
         expect(errors).toEqual([]);
     });
 

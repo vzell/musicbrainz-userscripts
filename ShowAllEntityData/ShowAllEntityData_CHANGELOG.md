@@ -4,9 +4,16 @@ Every version, newest first, with the technical details behind each change. For 
 
 **Months:** [October 2026](ShowAllEntityData_CHANGELOG/2026-10.md) · [September 2026](ShowAllEntityData_CHANGELOG/2026-09.md) · [August 2026](ShowAllEntityData_CHANGELOG/2026-08.md) · [July 2026](ShowAllEntityData_CHANGELOG/2026-07.md) · [June 2026](ShowAllEntityData_CHANGELOG/2026-06.md) · [May 2026](ShowAllEntityData_CHANGELOG/2026-05.md) · [April 2026](ShowAllEntityData_CHANGELOG/2026-04.md) · [March 2026 (1 of 2)](ShowAllEntityData_CHANGELOG/2026-03-1.md) · [March 2026 (2 of 2)](ShowAllEntityData_CHANGELOG/2026-03-2.md) · [February 2026](ShowAllEntityData_CHANGELOG/2026-02.md) · [January 2026](ShowAllEntityData_CHANGELOG/2026-01.md)
 
-This page shows the newest 100 of 1675 versions; the month pages hold all of them.
+This page shows the newest 100 of 1676 versions; the month pages hold all of them.
 
 ---
+
+## 9.99.1505 — 2026-10-29
+
+**🐛 Fix**
+
+- A MusicBrainz window (on MusicBrainz and on discogs.com): Ctrl+hovering a link in it during its first seconds now shows the card. The window keeps loading for a few seconds after it opens (an artist's links, its area, its release-group counts, about one a second) and rebuilds its content with each answer; a card waiting for its short delay was dropped when that happened, and one already showing stayed up after the pointer left. The card now follows the link through the rebuild.
+
 
 ## 9.99.1504 — 2026-10-29
 
@@ -871,13 +878,6 @@ This page shows the newest 100 of 1675 versions; the month pages hold all of the
 
 - Column header tooltips name their column in bold, with the explanation below it. This applies to every column the script adds (derived, extracted and injected columns such as Event-Date, MB-Name, Recording of), and "Work" / "Perf." (9.99.1404) show their full names there.
 - MusicBrainz's own columns now have a header tooltip too, saying what the column holds: Artist, Title, Catalog\#, Country/Date, Format, Tracks, ISRCs, Rating and about 60 more. Where a name means different things the text fits the table: "Type" on an artist's Events page is the kind of event, on a release-group list the primary and secondary types. New setting "Explain MusicBrainz columns in header tooltips" (🎨 UI FEATURES, on). Not on other sites, whose columns these texts do not describe. A pageType can add or override texts with features.columnDescriptions.
-
-
-## 9.99.1405 — 2026-10-21
-
-**🐛 Fix**
-
-- Fixed a test flake in discogs-links.spec.js ("in the history window: … a support link with its section"): it failed about 1 run in 28 when many tests ran in parallel. The help-centre window asks for the site's icon after the article answers. Under load that icon request (support.discogs.com/favicon.ico) arrived before the check that only the article was requested. The check now leaves the icon request out; icons have their own tests in popup-ext.spec.js. The userscript is unchanged.
 
 
 ---

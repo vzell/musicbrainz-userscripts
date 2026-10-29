@@ -1,5 +1,17 @@
 [
   {
+    "version": "9.99.1505",
+    "date": "2026-10-29",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "A MusicBrainz window (on MusicBrainz and on discogs.com): Ctrl+hovering a link in it during its first seconds now shows the card. The window keeps loading for a few seconds after it opens (an artist's links, its area, its release-group counts, about one a second) and rebuilds its content with each answer; a card waiting for its short delay was dropped when that happened, and one already showing stayed up after the pointer left. The card now follows the link through the rebuild."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.1504",
     "date": "2026-10-29",
     "sections": [

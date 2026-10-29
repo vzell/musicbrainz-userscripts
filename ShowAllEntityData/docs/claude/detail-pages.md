@@ -1750,6 +1750,21 @@ https://claude.ai/artifact/APF35bPAyvFZvKjFHGHrZU
   while the link is still `:hover`. MusicBrainz entities only.
 - **H6** (`_dpWinNavTips()`, from `_dpShowInDialog()`): ← Back names the
   stack's top, ‹ › the neighbouring steps' text.
+- **A repaint does not drop the card** (2026-10-29). Every repaint of the
+  Extracted view replaces its links, and a freshly opened window repaints on
+  every answer of its follow-up requests (an artist's URL relationships, its
+  area, its release-group counts: one per 1.1 s rate slot for several
+  seconds). A card waiting its delay for a replaced link used to be dropped
+  (`_dpShowPeek()`'s `isConnected` test), a shown one stayed on the dead link,
+  so leaving the new one did not hide it. `_dpRefindInWindow()` finds the new
+  element by the target's `key`, from `elementFromPoint()` at the last
+  mouseover position (`_dpPeek.px/py`; `:hover` follows a frame later) or the
+  focus; `_dpShowPeek()` uses it for a due card, `_dpWinMark()` (the marks
+  pass every repaint already runs) for a shown one. Found as a ~50 % flake of
+  `discogs-mb-column.spec.js` "a genre's tag link … has its card" (9 of 18 on
+  `main` before and after the 9.99.1503 merge; 18 of 18 after). Specs: the two
+  "… repaint …" tests beside it force the repaint (`innerHTML = innerHTML`);
+  mutations `scripts/mutations/dp-window-repaint-card.json`.
 - **Touch** (decision 4): a long press (500 ms, cancelled by a move) shows the
   card or the image; `touchend` is `preventDefault()`ed after it, so no
   compatibility mousedown (which hides the card) and no click follow.

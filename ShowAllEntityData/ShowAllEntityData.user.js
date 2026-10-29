@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VZ: MusicBrainz - Show All Entity Data In A Consolidated View With Filtering And Multi-Sorting Capabilities
 // @namespace    https://github.com/vzell/mb-userscripts
-// @version      9.99.1504+2026-10-29
+// @version      9.99.1505+2026-10-29
 // @description  Consolidation tool to accumulate paginated and non-paginated (tables with subheadings) MusicBrainz table lists (Events, Recordings, Releases, Works, etc.) into a single view with real-time filtering and sorting. Optionally also springsteenlyrics.com collection and bootleg lists, the jungleland.it bootleg artwork list and the brucespringsteen.it record database.
 // @author       vzell
 // @tag          AI generated
@@ -21929,10 +21929,12 @@
      * element under the pointer (`hover`, kept whether or not a card is due,
      * so that pressing Ctrl on it can show one). `notes` is the stack of
      * boxes above the card (`_dpCollectNotes()`); `stashed` says a title is
-     * parked in `data-mb-dp-saved-title` (`_dpStashTitles()`).
-     * @type {{el: ?HTMLElement, link: ?Element, target: ?object, timer: number, typedAt: number, hover: ?Element, notes: ?HTMLElement, stashed: boolean}}
+     * parked in `data-mb-dp-saved-title` (`_dpStashTitles()`). `px`/`py`
+     * are where the pointer last entered an element, which
+     * `_dpRefindInWindow()` reads after a window repaint.
+     * @type {{el: ?HTMLElement, link: ?Element, target: ?object, timer: number, typedAt: number, hover: ?Element, notes: ?HTMLElement, stashed: boolean, px: number, py: number}}
      */
-    const _dpPeek = { el: null, link: null, target: null, timer: 0, typedAt: 0, hover: null, notes: null, stashed: false };
+    const _dpPeek = { el: null, link: null, target: null, timer: 0, typedAt: 0, hover: null, notes: null, stashed: false, px: -1, py: -1 };
 
     /**
      * `#mb-stat-tooltip`'s hooks for the hover card, set by
@@ -23373,6 +23375,44 @@
     }
 
     /**
+     * The element a window repaint put in place of a card's link: what is
+     * under the pointer where it last entered an element (`elementFromPoint()`
+     * lays out first, unlike `:hover`, which follows a frame later), else the
+     * focused element, if it is inside the window's scroll area and resolves
+     * to the same target (`key`). Every repaint of the Extracted view
+     * replaces its links (`_dpAreaRepaint()`'s `innerHTML`), and a window
+     * repaints on every answer it gets in its first seconds (an artist's URL
+     * relationships, its area, its release-group counts, one per rate slot),
+     * so without this a card due in that time was dropped.
+     *
+     * @param {object} t - The card's target, its `el` detached.
+     * @returns {?object} The new target, or null.
+     */
+    function _dpRefindInWindow(t) {
+        const area = _dpDialog.api && _dpDialog.api.scrollArea;
+        if (!area || !t || !t.key) return null;
+        const under = _dpPeek.px >= 0 ? document.elementFromPoint(_dpPeek.px, _dpPeek.py) : null;
+        for (const node of [under, document.activeElement]) {
+            if (!node || !area.contains(node)) continue;
+            const n = _popResolve(node) || _dpWinTarget(node);
+            if (n && n.key === t.key && n.el.isConnected) return n;
+        }
+        return null;
+    }
+
+    /**
+     * Points the card's state at a re-found target (`_dpRefindInWindow()`).
+     *
+     * @param {object} n - The new target.
+     * @returns {void}
+     */
+    function _dpPeekMoveTo(n) {
+        _dpPeek.link = n.el;
+        _dpPeek.target = n;
+        _dpPeek.hover = n.el;
+    }
+
+    /**
      * Whether the window is open on target `t`.
      *
      * @param {object} t A target (`_popResolve()`).
@@ -24271,7 +24311,16 @@
      * @returns {void}
      */
     function _dpShowPeek(t) {
-        if (_dpPeek.link !== t.el || !t.el.isConnected || !t.src.enabled()) return;
+        if (_dpPeek.link !== t.el || !t.src.enabled()) return;
+        if (!t.el.isConnected) {
+            // The window repainted during the card's delay (it does on every
+            // answer of its own follow-up requests): the card is for the
+            // same link, now a new element.
+            const n = _dpRefindInWindow(t);
+            if (!n) return;
+            _dpPeekMoveTo(n);
+            t = n;
+        }
         const el = _dpEnsurePeekEl();
         el.classList.toggle('mb-dp-wide', !!('wide' in t ? t.wide : t.src.wide));
         // An image's preview in the window (H4) may be wider than a card.
@@ -25939,6 +25988,17 @@
         _dpWin.markPending = false;
         const api = _dpDialog.api;
         if (!api || _dpDialog.view !== 'ex') return;
+        // A card showing for a link this repaint replaced follows the new
+        // element, so leaving it still hides the card (mouseout reads
+        // `_dpPeek.link`).
+        const pt = _dpPeek.target;
+        if (pt && pt.el && !pt.el.isConnected && _dpPeekShown()) {
+            const n = _dpRefindInWindow(pt);
+            if (n) {
+                _dpPeekMoveTo(n);
+                _dpShowPeek(n);
+            }
+        }
         const dots = Lib.settings.sa_dp_window_read_ahead === true;
         api.scrollArea.querySelectorAll('a[href]').forEach(a => {
             const w = _dpWinWhat(a);
@@ -29162,6 +29222,8 @@
         _ensureDetailPreviewStyle();
         _h1KindDocInstall();
         document.addEventListener('mouseover', (e) => {
+            _dpPeek.px = e.clientX;
+            _dpPeek.py = e.clientY;
             // A link of the window's own Extracted view: what a click on it
             // opens there, or an image's preview (`_dpWinTarget()`).
             const t = _popResolve(e.target) || _dpWinTarget(e.target);

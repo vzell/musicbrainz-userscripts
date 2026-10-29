@@ -1,0 +1,28 @@
+[
+  {
+    "name": "a card due during a window repaint is dropped",
+    "why": "_dpShowPeek() no longer re-finds a link the repaint replaced: the card waiting its delay is never shown (the 9-of-18 flake of the genre test).",
+    "edits": [
+      {
+        "find": "            const n = _dpRefindInWindow(t);\n            if (!n) return;\n            _dpPeekMoveTo(n);\n            t = n;\n",
+        "replace": "            return;\n"
+      }
+    ],
+    "spec": "tests/fixtures/discogs-mb-column.spec.js",
+    "grep": "a card due while the window repaints",
+    "expect": "fail"
+  },
+  {
+    "name": "a card showing through a repaint stays on the old link",
+    "why": "The marks pass no longer moves a shown card to the new element: leaving the link does not hide the card (mouseout reads the dead link).",
+    "edits": [
+      {
+        "find": "            if (n) {\n                _dpPeekMoveTo(n);\n                _dpShowPeek(n);\n            }\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/discogs-mb-column.spec.js",
+    "grep": "a card showing through a repaint",
+    "expect": "fail"
+  }
+]

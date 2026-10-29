@@ -27372,3 +27372,43 @@ answer that host from a disk cache (`tests/support/test.js`,
 0 served, 20 blocked). Same probe with the cache warm: median 7.4 s, worst
 9.6 s, 120/120, jQuery defined in every load (MusicBrainz's scripts still
 run).
+
+## 2026-10-29 — A MusicBrainz window's repaints dropped a pending hover card (discogs-mb-column flake)
+Env: 2026-10-29T11:20 → 12:30+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.54.1) · Playwright 1.62.1 Chromium, no Tampermonkey (GM stubs)
+
+The third failure of the merge gate on `main` (after the 9.99.1503 merge):
+`discogs-mb-column.spec.js` "in a MusicBrainz window, a genre's tag link opens
+here and has its card", added 2026-10-28 17:01. Not the merge's: 9 of 18 at
+`0a1cd2bb` (before it) and 9 of 18 at `ef45c604` (the feature commit). An
+earlier "6 of 6 at the feature commit" was a small sample; 18 runs settled it.
+
+Probes (a copy of the test with logging): the pointer IS on the "americana"
+link, `#mb-dp-peek` stays hidden with the earlier Artist card in it (that is
+the "Artist" the assertion read), and nothing is asked. Event log: the
+Ctrl+mouseover at ~392 ms schedules the card for ~792 ms; at ~658 ms a NEW
+`A` with the same href and no `mb-dp-l-here` class is under the pointer,
+again every ~1100 ms. An `innerHTML` setter hook gave the stack:
+`_dpAreaRepaint()` ← the window's repaint ← `_mbLoad()`'s `notify`; a request
+log showed why every 1.1 s: the window's follow-up loads (`/ws/2/artist/…?inc=url-rels`,
+`/ws/2/area/…?inc=area-rels`, `/ws/2/release-group?…&type=album&limit=1`,
+`…&type=single…`), one per rate slot. Not a request loop: each is asked once.
+`_dpShowPeek()` then saw a detached link and returned. Real users meet it too:
+a Ctrl-hover in the first seconds of a window could show nothing.
+
+Fix (popup engine): `_dpRefindInWindow()` re-finds the link by the target's
+`key` (`elementFromPoint()` at the last mouseover position, or the focus);
+`_dpShowPeek()` uses it for a due card, `_dpWinMark()` for a shown one.
+Two tests force the repaint; both mutations
+(`scripts/mutations/dp-window-repaint-card.json`) fail as they should. The
+original test: 18 of 18 at 6 workers (was 9 of 18).
+
+The merge gate after this fix (`16e32202`, 2026-10-29T11:53 → 12:11+01:00,
+2501 passed, 1 failed) failed the same test once more, as "no card" ("Artist"
+read). Stressing it with the event-log probe at 20 workers then showed a
+SECOND repaint race, in the spec's own `ctrlHover()`: 11 of 40 runs threw
+"locator.scrollIntoViewIfNeeded: Element is not attached to the DOM" when a
+repaint detached the link mid-scroll (the 29 that got through all showed the
+Tag card). `ctrlHover()` now gives the locator up to five tries on that error:
+40 of 40. The gate's own "no card" failure was not reproduced in those 69
+runs, and its trace was overwritten by the probe runs, so its cause is still
+open; the next gate keeps `test-results/` untouched.
