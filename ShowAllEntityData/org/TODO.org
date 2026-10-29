@@ -5733,9 +5733,47 @@ such). please extend what we just did for wikidata, wikipedia and setlist.fm cha
 add a rich tooltip for the site icons with a good description
 
 
+* DONE redesign the "Aa Check title style (MB guidelines)" WARNING-menu entry
+
+redesign the "Aa Check title style (MB guidelines)" WARNING-menu entry; it should be more prominent; currently the
+end-user will NOT know that it even exists until by chance clicking the WARNINGS button.
+
+maybe even position it in the global (single PT) or sub-table level (multi-table PTs) filter head lines, if that is feasible
+
+make some nice rich HTML based mockups fist
+
+
+* DONE Aa button for events and maybe other entities
+
+The Aa button follows the title-style check's scope, and that scope never included events. The new button didn't change it.
+
+  Why nothing appears on artist-events
+
+  The check reads only titles of recordings, releases, release groups, works and tracks. Two things decide that:
+
+  - Which links count as a title. _TITLE_ENTITY_HREF_RE (ShowAllEntityData.user.js:50801) accepts only /recording/, /release/, /release-group/, /work/ and /track/ links. Your Event column links to /event/…, so _findCellTitleEl() finds no title in those cells.
+  - Which columns are read. Only Title plus sa_uvd_title_info_columns (default: Name, Recording, Release, Release group, Release groups, Work). "Event" isn't in that list.
+
+  So stampFindings() sees no title column on this page, _titleStyleAvail stays false, and nothing is offered: no Aa button and no row in the ⚠️ list. That's the gate working as intended. The button would have nothing to check here.
+
+  Why events were left out
+
+  Event names follow a different guideline. A name like "2026-11-09: David Geffen Hall, Lincoln Center, New York City, NY, USA" is mostly a date and place names. The title-case rule would be wrong for place names, and series commas, "feat." and extra title information don't
+  apply. Event names have their own findings instead: the live-date and event-name checks in the ⚠️ list.
+
+  What could reasonably carry over
+
+  Only the typography warning: straight ' and ", a hyphen-minus where a dash belongs, ... for …. Adding it would mean:
+
+  - letting title-typography also read event links, or giving events their own event-typography finding;
+  - adding "Event" to the columns the check offers itself on;
+  - checking it against the event-name findings already there, so the date's hyphens aren't flagged twice.
+
+  That's a separate change with its own mockup question (does the panel show one warning, or five with four always greyed out?). I'd do it in its own branch after this one. Do you want events covered, and if so only for typography?
+
+
 
 * TODO consolidate more LAF across more PTs
-
 
 * TODO Add a must have third-party userscripts section together with the end-user visible changes and what our userscript depends on
 
@@ -5871,9 +5909,53 @@ highlightning, column UVD handling, multi-row cell handling + maybe synthetic co
 function name)
 
 
+* TODO majkinetor: async issues with "ISRC" and "Link" columns on PT 'release-tracks'
+
 * TODO majkinetor: "Links" column - switch of the native tooltip on the FRP
 * TODO majkinetor: no icons in the lower right corner
-* TODO majkinetor: async issues with "ISRC" and "Link" columns on PT 'release-tracks'
+
+When the third-party userscripts https://github.com/majkinetor/musicbrainz-userscripts (a Musicbrainz Toolset or a
+bundle called "String Theory" which I have installed - see [Image #]) from @majkinetor are active, they render on the MB PTs (IP) by default in the lower right
+corner of the visible browser window the PT specific icons for the toolset specific settings and other actins when
+clicking them (left or right mouse click)
+
+I don't want them to be rendered on our FRPs e.g. for https://musicbrainz.org/recording/3e8d2331-3734-4f4b-b865-3313b7bf4303
+
+#+begin_example
+@debug/mb-recording-with-majkinetor-initial.html - IP
+@debug/mb-recording-with-majkinetor-final.html - FRP
+#+end_example
+
+Typical icons showing up ath the lower right corner of a MB PT:
+
+#+begin_example
+<button id="eh-launch" type="button" aria-label="Event Horizon" data-mb-corner="br" data-mb-corner-order="50" style="bottom: 14px; right: 62.3999px; left: auto;" data-tip="Event Horizon
+Click: Event Horizon
+Right-click: settings"><svg width="30" height="30" viewBox="0 0 128 128" aria-hidden="true"><path d="M4 64 A60 16 0 0 1 124 64" fill="none" stroke="#eb743b" stroke-width="7" stroke-linecap="round" transform="rotate(-15 64 64)"></path><polygon points="62.3,16.4 21.5,40.2 21.5,87.8 62.3,111.6" fill="#ba478f"></polygon><polygon points="65.7,16.4 106.5,40.2 106.5,87.8 65.7,111.6" fill="#eb743b"></polygon><path d="M4 64 A60 16 0 0 0 124 64" fill="none" stroke="#ffc94a" stroke-width="7" stroke-linecap="round" transform="rotate(-15 64 64)"></path></svg></button>
+#+end_example
+
+#+begin_example
+<button class="fs-launch" id="fs-launch" type="button" data-tip="Fusion — merge recordings
+Right-click: settings" data-mb-corner="br" data-mb-corner-order="30" data-mb-corner-label="Fusion" data-mb-corner-paths="^/(release|release-group|recording)/|^/artist/[^/]+/recordings" style="bottom: 14px; right: 14.3999px; left: auto;" aria-label="Fusion — merge recordings"><img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMjggMTI4IiB3aWR0aD0iMTI4IiBoZWlnaHQ9IjEyOCI+CiAgPHRpdGxlPkZ1c2lvbjwvdGl0bGU+CiAgPGcgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjYTE4NGY4IiBzdHJva2Utd2lkdGg9IjUuNSI+CiAgICA8ZWxsaXBzZSBjeD0iNjQiIGN5PSI2NCIgcng9IjUyIiByeT0iMjIiLz4KICAgIDxlbGxpcHNlIGN4PSI2NCIgY3k9IjY0IiByeD0iNTIiIHJ5PSIyMiIgdHJhbnNmb3JtPSJyb3RhdGUoNjAgNjQgNjQpIi8+CiAgICA8ZWxsaXBzZSBjeD0iNjQiIGN5PSI2NCIgcng9IjUyIiByeT0iMjIiIHRyYW5zZm9ybT0icm90YXRlKDEyMCA2NCA2NCkiLz4KICA8L2c+CiAgPGNpcmNsZSBjeD0iNjQiIGN5PSI2NCIgcj0iMTEiIGZpbGw9IiM3YzRkZmYiLz4KPC9zdmc+Cg==" alt=""></button>
+#+end_example
+
+#+begin_example
+<button type="button" id="falcon-launcher" data-mb-corner-paths="^/(release|release-group|series)/[0-9a-fA-F-]{36}/?$" data-tip="Falcon — bulk MusicBrainz editor
+Click / Ctrl+Alt+F: open the panel
+Right-click: settings" data-mb-corner="br" data-mb-corner-order="90" data-mb-corner-label="Falcon" style="position: fixed; right: 173.6px; bottom: 14px; z-index: 2147483000; width: 40px; height: 40px; border-radius: 50%; border-width: medium; border-style: none; border-color: currentcolor; border-image: none; cursor: pointer; display: flex; align-items: center; justify-content: center; background: transparent; box-shadow: none; transition: background 0.15s, transform 0.1s; opacity: 0.55; left: auto; transform: scale(1);" aria-label="Falcon — bulk MusicBrainz editor"><img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMjggMTI4IiB3aWR0aD0iMTI4IiBoZWlnaHQ9IjEyOCI+Cjx0aXRsZT5GYWxjb248L3RpdGxlPgo8Y2lyY2xlIGN4PSI2NCIgY3k9IjY0IiByPSI1OCIgZmlsbD0iI2Y2ZWZlMiIgc3Ryb2tlPSIjMWIyYTRhIiBzdHJva2Utd2lkdGg9IjYiLz48cGF0aCBkPSJNMTA1LjYgNDAuMCBBNDggNDggMCAwIDEgMTA1LjYgODguMCIgc3Ryb2tlPSIjZDYyODI4IiBzdHJva2Utd2lkdGg9IjciIGZpbGw9Im5vbmUiLz4KPGcgc3Ryb2tlPSIjMWIyYTRhIiBzdHJva2UtbGluZWNhcD0icm91bmQiPjxwYXRoIGQ9Ik0yMC43IDg5LjAgTDI5LjQgODQuMCIgc3Ryb2tlLXdpZHRoPSIzIi8+PHBhdGggZD0iTTE0LjMgNjkuMiBMMjQuMiA2OC4yIiBzdHJva2Utd2lkdGg9IjMiLz48cGF0aCBkPSJNMTYuNCA0OC41IEwyNi4wIDUxLjYiIHN0cm9rZS13aWR0aD0iMyIvPjxwYXRoIGQ9Ik0yNi44IDMwLjUgTDM0LjMgMzcuMiIgc3Ryb2tlLXdpZHRoPSIzIi8+PHBhdGggZD0iTTQzLjcgMTguMyBMNDcuNyAyNy41IiBzdHJva2Utd2lkdGg9IjMiLz48cGF0aCBkPSJNNjQuMCAxNC4wIEw2NC4wIDI0LjAiIHN0cm9rZS13aWR0aD0iMyIvPjxwYXRoIGQ9Ik04NC4zIDE4LjMgTDgwLjMgMjcuNSIgc3Ryb2tlLXdpZHRoPSIzIi8+PHBhdGggZD0iTTEwMS4yIDMwLjUgTDkzLjcgMzcuMiIgc3Ryb2tlLXdpZHRoPSIzIi8+PHBhdGggZD0iTTExMS42IDQ4LjUgTDEwMi4wIDUxLjYiIHN0cm9rZS13aWR0aD0iMyIvPjxwYXRoIGQ9Ik0xMTMuNyA2OS4yIEwxMDMuOCA2OC4yIiBzdHJva2Utd2lkdGg9IjMiLz48cGF0aCBkPSJNMTA3LjMgODkuMCBMOTguNiA4NC4wIiBzdHJva2Utd2lkdGg9IjMiLz48L2c+PGcgdHJhbnNmb3JtPSJ0cmFuc2xhdGUoNjQgOTQpIHJvdGF0ZSgwKSBzY2FsZSgwLjE2KSB0cmFuc2xhdGUoLTY0IC02NCkiPjxwYXRoIGQ9Ik02NCAyNiBDNjcgMjYgNzAgMzAgNzAgMzYgQzcyIDQwIDc0IDQyIDc2IDQ0IEM5MiA0MiAxMDggMzYgMTI0IDM0IEMxMTIgNDQgOTYgNTQgNzggNjIgQzc2IDY4IDc0IDc0IDc0IDgwIEw4MCAxMDAgQzc0IDEwNCA2OCAxMDQgNjQgMTA0IFoiIGZpbGw9IiM0YTVhNzgiLz48cGF0aCBkPSJNNjQgMjYgQzY3IDI2IDcwIDMwIDcwIDM2IEM3MiA0MCA3NCA0MiA3NiA0NCBDOTIgNDIgMTA4IDM2IDEyNCAzNCBDMTEyIDQ0IDk2IDU0IDc4IDYyIEM3NiA2OCA3NCA3NCA3NCA4MCBMODAgMTAwIEM3NCAxMDQgNjggMTA0IDY0IDEwNCBaIiBmaWxsPSIjNGE1YTc4IiB0cmFuc2Zvcm09InRyYW5zbGF0ZSgxMjggMCkgc2NhbGUoLTEgMSkiLz48L2c+PGcgdHJhbnNmb3JtPSJ0cmFuc2xhdGUoNjQgNjQpIHJvdGF0ZSgxMTIpIj48cGF0aCBkPSJNMCAtNDYgTDQgMCBMLTQgMFoiIGZpbGw9IiMxYjJhNGEiLz48L2c+CjxjaXJjbGUgY3g9IjY0IiBjeT0iNjQiIHI9IjciIGZpbGw9IiMxYjJhNGEiLz4KPC9zdmc+Cg==" alt="" style="width: 34px; height: 34px; display: block; pointer-events: none;"></button>
+#+end_example
+
+#+begin_example
+<button class="mc-launch" id="mc-launch" type="button" data-tip="Mission Control
+Right-click: settings" data-mb-corner="br" data-mb-corner-order="5" data-mb-corner-label="Mission Control" data-mb-corner-paths="^/release/" style="bottom: 14px; right: 29.6001px; left: auto;"><img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMjggMTI4IiB3aWR0aD0iMTI4IiBoZWlnaHQ9IjEyOCI+Cjx0aXRsZT5NaXNzaW9uIENvbnRyb2w8L3RpdGxlPgo8ZGVmcz48ZmlsdGVyIGlkPSJtY28xMy1oIiB4PSItMTAlIiB5PSItMTAlIiB3aWR0aD0iMTIwJSIgaGVpZ2h0PSIxMjAlIj48ZmVNb3JwaG9sb2d5IGluPSJTb3VyY2VBbHBoYSIgb3BlcmF0b3I9ImRpbGF0ZSIgcmFkaXVzPSIxLjUiIHJlc3VsdD0iZCIvPjxmZUZsb29kIGZsb29kLWNvbG9yPSIjZmZmIiBmbG9vZC1vcGFjaXR5PSIuNyIvPjxmZUNvbXBvc2l0ZSBpbjI9ImQiIG9wZXJhdG9yPSJpbiIvPjxmZU1lcmdlPjxmZU1lcmdlTm9kZS8+PGZlTWVyZ2VOb2RlIGluPSJTb3VyY2VHcmFwaGljIi8+PC9mZU1lcmdlPjwvZmlsdGVyPjwvZGVmcz48ZyBmaWx0ZXI9InVybCgjbWNvMTMtaCkiPjxwYXRoIGQ9Ik03NyAzNS41IEw2NCA0MyBMNTEgMzUuNSBMNTEgMjAuNSBMNjQgMTMgTDc3IDIwLjVaIiBmaWxsPSIjN2E1N2U4IiBzdHJva2U9IiMyMjIyM2IiIHN0cm9rZS13aWR0aD0iNCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPjxwYXRoIGQ9Ik01OS43IDc3LjUgTDQ2LjcgODUgTDMzLjcgNzcuNSBMMzMuNyA2Mi41IEw0Ni43IDU1IEw1OS43IDYyLjVaIiBmaWxsPSIjZmZjOTRhIiBzdHJva2U9IiMyMjIyM2IiIHN0cm9rZS13aWR0aD0iNCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPjxwYXRoIGQ9Ik05NC4zIDc3LjUgTDgxLjMgODUgTDY4LjMgNzcuNSBMNjguMyA2Mi41IEw4MS4zIDU1IEw5NC4zIDYyLjVaIiBmaWxsPSIjZmZjOTRhIiBzdHJva2U9IiMyMjIyM2IiIHN0cm9rZS13aWR0aD0iNCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPjxwYXRoIGQ9Ik00Mi4zIDEwNy41IEwyOS40IDExNSBMMTYuNCAxMDcuNSBMMTYuNCA5Mi41IEwyOS40IDg1IEw0Mi4zIDkyLjVaIiBmaWxsPSIjZmZjOTRhIiBzdHJva2U9IiMyMjIyM2IiIHN0cm9rZS13aWR0aD0iNCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPjxwYXRoIGQ9Ik03NyAxMDcuNSBMNjQgMTE1IEw1MSAxMDcuNSBMNTEgOTIuNSBMNjQgODUgTDc3IDkyLjVaIiBmaWxsPSIjZmZjOTRhIiBzdHJva2U9IiMyMjIyM2IiIHN0cm9rZS13aWR0aD0iNCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPjxwYXRoIGQ9Ik0xMTEuNiAxMDcuNSBMOTguNiAxMTUgTDg1LjcgMTA3LjUgTDg1LjcgOTIuNSBMOTguNiA4NSBMMTExLjYgOTIuNVoiIGZpbGw9IiNmZmM5NGEiIHN0cm9rZT0iIzIyMjIzYiIgc3Ryb2tlLXdpZHRoPSI0IiBzdHJva2UtbGluZWpvaW49InJvdW5kIi8+PC9nPgo8L3N2Zz4K" alt=""></button>
+#+end_example
+
+#+begin_example
+<button type="button" id="tc-launch" data-mb-corner="br" data-mb-corner-order="10" data-mb-corner-dock="hide" class="on" data-tip="Apollo Editor is on
+Click: show MusicBrainz’s own editor
+On every tab, until you switch back.
+Right-click: settings" style="bottom: 14px; right: 14.3999px; left: auto;" aria-label="Apollo Editor is on"><img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMjggMTI4IiB3aWR0aD0iMTI4IiBoZWlnaHQ9IjEyOCI+Cjx0aXRsZT5BcG9sbG8gRWRpdG9yPC90aXRsZT4KPG1hc2sgaWQ9ImFwLW0iIG1hc2tVbml0cz0idXNlclNwYWNlT25Vc2UiIHg9IjAiIHk9IjAiIHdpZHRoPSIxMjgiIGhlaWdodD0iMTI4Ij48Zz48ZyBmaWxsPSIjZmZmIj48cGF0aCBkPSJNNDIgNjQgQzI4IDcyIDIyIDkwIDI0IDExMCBMNDIgOTggWiIvPjxwYXRoIGQ9Ik04NiA2NCBDMTAwIDcyIDEwNiA5MCAxMDQgMTEwIEw4NiA5OCBaIi8+PC9nPjxnIGZpbGw9IiNmZmYiPjxwYXRoIGQ9Ik02NCA4IEM4NCAyNCA5MCA1MiA4OCA5MCBMNDAgOTAgQzM4IDUyIDQ0IDI0IDY0IDggWiIvPjxwYXRoIGQ9Ik00OCA5MCBMODAgOTAgTDc2IDEwMCBMNTIgMTAwIFoiLz48L2c+PGcgc3Ryb2tlPSIjMDAwIiBzdHJva2Utd2lkdGg9IjMuNSI+PHBhdGggZD0iTTM2IDkwLjUgTDkyIDkwLjUiLz48L2c+PGNpcmNsZSBjeD0iNjQiIGN5PSI1MCIgcj0iOCIgZmlsbD0iIzAwMCIvPjwvZz48L21hc2s+PGc+PHBhdGggZD0iTTUyIDEwMCBDNTQgMTEyIDYwIDExOCA2NCAxMjYgQzY4IDExOCA3NCAxMTIgNzYgMTAwIFoiIGZpbGw9IiNlYjc0M2IiIHRyYW5zZm9ybT0idHJhbnNsYXRlKDAgMykiLz48L2c+PHJlY3Qgd2lkdGg9IjEyOCIgaGVpZ2h0PSIxMjgiIGZpbGw9IiNiYTQ3OGYiIG1hc2s9InVybCgjYXAtbSkiLz4KPC9zdmc+Cg==" alt=""></button>
+#+end_example
 
 
 * TODO fix MB collection pages when "mb. COLLECTION HIGHLIGHTER" from @jesus2099 is active
@@ -5913,18 +5995,171 @@ Place - https://musicbrainz.org/place/bffa8343-2160-497c-937b-60369749eb11 - Los
 #+end_example
 
 
-* TODO redesign the "Aa Check title style (MB guidelines)" WARNING-menu entry
-
-redesign the "Aa Check title style (MB guidelines)" WARNING-menu entry; it should be more prominent; currently the
-end-user will NOT know that it even exists until by chance clicking the WARNINGS button.
-
-maybe even position it in the global (single PT) or sub-table level (multi-table PTs) filter head lines, if that is feasible
-
-make some nice rich HTML based mockups fist
-
-
-* TODO play video from setlist.fm and my NS when hovering a song
+* TODO play video from setlist.fm and my NAS when hovering a song and also from archive.org for bootlegs
 
 play video from setlist.fm and my NS when hovering a song and also from archive.org for bootlegs
 
+
 * TODO make proper PTs from wikipedia/wikidata and setlist.fm
+
+* TODO On discogs submission page when hovering a release in the left sidebar, ONLY the newest change should be shown in a POH diff view
+
+On discogs https://www.discogs.com/submissions?mode=list&id=599283#mode=list&id=599283&item=%2Frelease%2F1752289-Born-In-The-USA%2Fhistory
+when hovering a release in the left sidebar, ONLY the newest change should be shown in a POH diff view
+
+
+* TODO BB detail page POHs should also get a history diff view of the current entity
+
+BB detail page POHs should alos get a history diff view of the current entity
+
+
+* TODO statusline.sh
+
+#+begin_src bash
+cat > statusline.sh <<-"_EOF"
+#!/bin/bash
+input=$(cat)
+
+MODEL=$(echo "$input" | jq -r '.model.display_name')
+DIR=$(echo "$input" | jq -r '.workspace.current_dir')
+COST=$(echo "$input" | jq -r '.cost.total_cost_usd // 0')
+PCT=$(echo "$input" | jq -r '.context_window.used_percentage // 0' | cut -d. -f1)
+DURATION_MS=$(echo "$input" | jq -r '.cost.total_duration_ms // 0')
+
+CYAN='\033[36m'; GREEN='\033[32m'; YELLOW='\033[33m'; RED='\033[31m'; RESET='\033[0m'
+
+# Pick bar color based on context usage
+if [ "$PCT" -ge 90 ]; then BAR_COLOR="$RED"
+elif [ "$PCT" -ge 70 ]; then BAR_COLOR="$YELLOW"
+else BAR_COLOR="$GREEN"; fi
+
+FILLED=$((PCT / 10)); EMPTY=$((10 - FILLED))
+printf -v FILL "%${FILLED}s"; printf -v PAD "%${EMPTY}s"
+BAR="${FILL// /█}${PAD// /░}"
+
+MINS=$((DURATION_MS / 60000)); SECS=$(((DURATION_MS % 60000) / 1000))
+
+BRANCH=""
+git rev-parse --git-dir > /dev/null 2>&1 && BRANCH=" | 🌿 $(git branch --show-current 2>/dev/null)"
+
+echo -e "${CYAN}[$MODEL]${RESET} 📁 ${DIR##*/}$BRANCH"
+COST_FMT=$(printf '$%.2f' "$COST")
+echo -e "${BAR_COLOR}${BAR}${RESET} ${PCT}% | ${YELLOW}${COST_FMT}${RESET} | ⏱️ ${MINS}m ${SECS}s"
+
+# Claude.ai subscription rate limits (only present for subscribers)
+FIVE_PCT=$(echo "$input" | jq -r '.rate_limits.five_hour.used_percentage // empty')
+FIVE_RESET=$(echo "$input" | jq -r '.rate_limits.five_hour.resets_at // empty')
+WEEK_PCT=$(echo "$input" | jq -r '.rate_limits.seven_day.used_percentage // empty')
+WEEK_RESET=$(echo "$input" | jq -r '.rate_limits.seven_day.resets_at // empty')
+
+pct_color() {
+    local p=$1
+    if [ "$p" -ge 90 ]; then echo "$RED"
+    elif [ "$p" -ge 70 ]; then echo "$YELLOW"
+    else echo "$GREEN"; fi
+}
+
+# Berlin wall time plus zone ("07:24:28 CEST") for any stamp date -d parses:
+# the newer "+02:00" stamps and the older "Z" ones alike. $2 = time format.
+bt() {
+    TZ=Europe/Berlin date -d "$1" "+${2:-%H:%M:%S} %Z"
+}
+
+fmt_remaining() {
+    local reset_epoch=$1 now diff h m
+    now=$(date +%s)
+    diff=$((reset_epoch - now)); [ "$diff" -lt 0 ] && diff=0
+    h=$((diff / 3600)); m=$(((diff % 3600) / 60))
+    printf "%dh %dm" "$h" "$m"
+}
+
+RATE_LINE=""
+if [ -n "$FIVE_PCT" ]; then
+    FIVE_INT=$(printf '%.0f' "$FIVE_PCT")
+    RATE_LINE="$(pct_color "$FIVE_INT")⏳ Session ${FIVE_INT}%${RESET} (${FIVE_RESET:+$(fmt_remaining "$FIVE_RESET")})"
+fi
+if [ -n "$WEEK_PCT" ]; then
+    WEEK_INT=$(printf '%.0f' "$WEEK_PCT")
+    WEEK_SEG="$(pct_color "$WEEK_INT")📆 Week ${WEEK_INT}%${RESET} (${WEEK_RESET:+$(fmt_remaining "$WEEK_RESET")})"
+    RATE_LINE="${RATE_LINE:+$RATE_LINE | }$WEEK_SEG"
+fi
+[ -n "$RATE_LINE" ] && echo -e "$RATE_LINE"
+
+# ShowAllEntityData test run (test:full or --script), written by scripts/run-test-full.py.
+# Shown while it runs, and for an hour after it finishes.
+TF_FILE="$HOME/.cache/sa-test-full/status.json"
+if [ -f "$TF_FILE" ]; then
+    IFS=$'\t' read -r TF_STATE TF_HOST TF_BRANCH TF_SHA TF_START TF_TOTAL TF_PASS TF_FAIL TF_ETA TF_FINISH TF_WALL TF_PID TF_SCRIPT < <(
+        jq -r '[.state, .host, .branch, .sha, .start, (.total // 0), .passed, .failed,
+                (.eta // "-"), (.finish // "-"), (.wall_s // 0), (.pid // 0),
+                (.script // "test:full")] | @tsv' "$TF_FILE" 2>/dev/null)
+    NOW=$(date +%s)
+    # The npm script that ran (run-test-full.py --script; older files: test:full).
+    TF_HEAD="🧪 ${TF_SCRIPT:-test:full} · ${TF_HOST} · ${TF_BRANCH}@${TF_SHA}"
+    if [ "$TF_STATE" = "running" ]; then
+        if ! kill -0 "$TF_PID" 2>/dev/null; then
+            echo -e "${RED}${TF_HEAD} · started $(bt "$TF_START") · interrupted (${TF_PASS} passed, ${TF_FAIL} failed)${RESET}"
+        else
+            DONE=$((TF_PASS + TF_FAIL))
+            if [ "$TF_ETA" != "-" ]; then
+                ETA_TXT="ETA ~$(bt "$TF_ETA" %H:%M)"
+            elif [ "$DONE" -gt 0 ] && [ "$TF_TOTAL" -gt 0 ]; then
+                S0=$(date -d "$TF_START" +%s)
+                ETA_TXT="ETA ~$(bt "@$((S0 + (NOW - S0) * TF_TOTAL / DONE))" %H:%M) (extrapolated)"
+            else
+                ETA_TXT="ETA unknown"
+            fi
+            FAIL_TXT=""; [ "$TF_FAIL" -gt 0 ] && FAIL_TXT=" · ${RED}${TF_FAIL} failed${YELLOW}"
+            if [ "$TF_TOTAL" -gt 0 ]; then
+                echo -e "${YELLOW}${TF_HEAD} · since $(bt "$TF_START") · ${DONE}/${TF_TOTAL}${FAIL_TXT} · ${ETA_TXT}${RESET}"
+            else
+                echo -e "${YELLOW}${TF_HEAD} · since $(bt "$TF_START") · starting…${RESET}"
+            fi
+        fi
+    elif [ "$TF_FINISH" != "-" ]; then
+        AGE=$((NOW - $(date -d "$TF_FINISH" +%s)))
+        if [ "$AGE" -lt 3600 ]; then
+            WALL_TXT="$((TF_WALL / 60))m $((TF_WALL % 60))s"
+            if [ "$TF_STATE" = "passed" ]; then
+                echo -e "${GREEN}${TF_HEAD} · ✅ ${TF_PASS} passed in ${WALL_TXT} · finished $(bt "$TF_FINISH")${RESET}"
+            else
+                echo -e "${RED}${TF_HEAD} · ❌ ${TF_FAIL} failed, ${TF_PASS} passed in ${WALL_TXT} · finished $(bt "$TF_FINISH")${RESET}"
+            fi
+        fi
+    fi
+fi
+
+# ShowAllEntityData interaction-perf arms, written by scripts/run-perf-arms.py.
+# Shown while they run, and for an hour after they finish.
+PF_FILE="$HOME/.cache/sa-perf/status.json"
+if [ -f "$PF_FILE" ]; then
+    IFS=$'\t' read -r PF_STATE PF_HOST PF_BRANCH PF_SHA PF_START PF_NARMS PF_IDX PF_ARM PF_METRIC PF_SAMPLE PF_SAMPLES PF_STEP PF_TOTAL PF_ETA PF_FINISH PF_PID PF_RESULTS < <(
+        jq -r '[.state, .host, .branch, .sha, .start, (.arms | length), (.index // 0), (.arm // "-"),
+                ((.metric // "") | if . == "" then "-" else . end), (.sample // 0), (.samples // 0), (.step // 0), (.total // 0),
+                (.eta // "-"), (.finish // "-"), (.pid // 0),
+                ([.results[]? | "\(.arm) \(.wall_s / 60 | floor)m\(.wall_s % 60)s"] | join(", ") | if . == "" then "-" else . end)] | @tsv' "$PF_FILE" 2>/dev/null)
+    NOW=$(date +%s)
+    PF_HEAD="📈 perf · ${PF_HOST} · ${PF_BRANCH}@${PF_SHA}"
+    if [ "$PF_STATE" = "running" ]; then
+        if ! kill -0 "$PF_PID" 2>/dev/null; then
+            echo -e "${RED}${PF_HEAD} · started $(bt "$PF_START") · interrupted at arm $((PF_IDX + 1))/${PF_NARMS} ${PF_ARM}${RESET}"
+        else
+            ETA_TXT="ETA unknown"; [ "$PF_ETA" != "-" ] && ETA_TXT="ETA ~$(bt "$PF_ETA" %H:%M)"
+            STEP_TXT="starting…"
+            [ "$PF_TOTAL" -gt 0 ] && STEP_TXT="${PF_METRIC} · sample ${PF_SAMPLE}/${PF_SAMPLES} (${PF_STEP}/${PF_TOTAL})"
+            echo -e "${YELLOW}${PF_HEAD} · arm $((PF_IDX + 1))/${PF_NARMS} ${PF_ARM} · ${STEP_TXT} · ${ETA_TXT}${RESET}"
+        fi
+    elif [ "$PF_FINISH" != "-" ]; then
+        AGE=$((NOW - $(date -d "$PF_FINISH" +%s)))
+        if [ "$AGE" -lt 3600 ]; then
+            if [ "$PF_STATE" = "passed" ]; then
+                echo -e "${GREEN}${PF_HEAD} · ✅ ${PF_RESULTS} · finished $(bt "$PF_FINISH")${RESET}"
+            else
+                echo -e "${RED}${PF_HEAD} · ❌ ${PF_RESULTS} · finished $(bt "$PF_FINISH")${RESET}"
+            fi
+        fi
+    fi
+fi
+exit 0
+_EOF
+#+end_src
