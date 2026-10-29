@@ -37,6 +37,7 @@
 // @include      /^https?:\/\/(?:www\.)?discogs\.com\/(?:[a-z]{2}(?:[-_][a-zA-Z]{2})?\/)?users\/ratings\/[^\/?#]+\/?(?:[?#].*)?$/
 // @include      /^https?:\/\/(?:www\.)?discogs\.com\/(?:[a-z]{2}(?:[-_][a-zA-Z]{2})?\/)?(?:release|master|artist|label)\/\d+(?:-[^\/?#]*)?\/history\/?(?:[?#].*)?$/
 // @include      /^https?:\/\/(?:www\.)?discogs\.com\/(?:[a-z]{2}(?:[-_][a-zA-Z]{2})?\/)?release\/\d+(?:-[^\/?#]*)?\/images(?:\/update)?\/?(?:[?#].*)?$/
+// @include      /^https?:\/\/(?:www\.)?discogs\.com\/(?:[a-z]{2}(?:[-_][a-zA-Z]{2})?\/)?(?:master|artist|label)\/\d+(?:-[^\/?#]*)?\/images\/?(?:[?#].*)?$/
 // @connect      raw.githubusercontent.com
 // @connect      coverartarchive.org
 // @connect      eventartarchive.org
@@ -6572,6 +6573,16 @@
     const _DG_IMG_PATH_RE = /^\/(?:[a-z]{2}(?:[-_][a-zA-Z]{2})?\/)?release\/(\d+)(?:-[^/?#]*)?\/images(\/update)?\/?$/;
 
     /**
+     * A discogs.com master's, artist's or label's Images page,
+     * `/<kind>/<id>[-slug]/images` (pageType `dg-entity-images`, 2026-10-29):
+     * plain HTML without `#app`, like a release's. Group 1 the kind, 2 the
+     * id. Read by the `#app` gate below, the definition's `match` and
+     * `_dgEntityPageIs()`.
+     * @type {RegExp}
+     */
+    const _DG_ENT_IMG_PATH_RE = /^\/(?:[a-z]{2}(?:[-_][a-zA-Z]{2})?\/)?(master|artist|label)\/(\d+)(?:-[^/?#]*)?\/images\/?$/;
+
+    /**
      * A Brucebase year page's path: `/1975`, …, and the one exception
      * `/1949-64` (pageType `bb-year`, docs/claude/brucebase.md). Read by the
      * year-page opt-in gate below and by the `bb-year` definition's `match`.
@@ -6678,7 +6689,7 @@
         !((_DG_SUBS_PATH_RE.test(window.location.pathname) || _DG_USER_PATH_RE.test(window.location.pathname) ||
            _DG_USER_LIST_PATH_RE.test(window.location.pathname) ||
            _DG_HIST_PATH_RE.test(window.location.pathname) || _DG_RATINGS_PATH_RE.test(window.location.pathname) ||
-           _DG_IMG_PATH_RE.test(window.location.pathname)) &&
+           _DG_IMG_PATH_RE.test(window.location.pathname) || _DG_ENT_IMG_PATH_RE.test(window.location.pathname)) &&
           document.getElementById('page_content'))) {
         Lib.info('init', 'discogs.com: no #app on this page (a security check?) — nothing to do.');
         return;
@@ -15709,6 +15720,9 @@
             Diff: ['Section', 'Old', 'New', 'Marked'],
         },
         images: ['#', 'Image', 'Type', 'Uploaded by', 'Uploaded', 'W × H', 'Size (KB)'],
+        // A master's, artist's or label's images (dg-entity-images, 2026-10-29):
+        // what the API gives; no image editor's data for these kinds.
+        entityImages: ['#', 'Image', 'Type', 'W × H'],
         user: {
             releases: ['Image', 'Artist', 'Title', 'Format', 'Label', 'Cat#', 'Country', 'Year', 'Status', 'Added', 'Last changed'],
             names: ['Name', 'Data quality', 'Status'],
@@ -15768,7 +15782,7 @@
      * @returns {boolean}
      */
     function _dgEntityPageIs(path, kind) {
-        return _dgPage(path)?.kind === kind && !_DG_HIST_PATH_RE.test(path) && !_DG_IMG_PATH_RE.test(path);
+        return _dgPage(path)?.kind === kind && !_DG_HIST_PATH_RE.test(path) && !_DG_IMG_PATH_RE.test(path) && !_DG_ENT_IMG_PATH_RE.test(path);
     }
 
     /**
@@ -16978,7 +16992,7 @@
         h2.className = 'mb-dg-list-heading';
         h2.textContent = kind === 'user' ? (_DG_USER_LISTS[def.features.dgUserList] || {}).heading || 'Lists'
             : { artist: 'Discography', label: 'Releases', master: 'Versions', release: 'Release', submissions: 'Submissions', history: 'History',
-                ratings: 'Ratings', images: 'Images' }[kind] || 'Discogs';
+                ratings: 'Ratings', images: 'Images', entityImages: 'Images' }[kind] || 'Discogs';
         const cols = kind === 'release' ? _DG_HEADERS.release.Tracklist : kind === 'user' ? _DG_HEADERS.user.releases
             : kind === 'history' ? _DG_HEADERS.history.Changes : _DG_HEADERS[kind];
         const table = document.createElement('table');
@@ -18429,6 +18443,57 @@
                 `${_dgCell(r.w ? `${r.w} × ${r.h}` : '')}${_dgCell(r.bytes ? String(Math.round(r.bytes / 1e3)) : '')}</tr>`;
         });
         return `<!DOCTYPE html><html><head><meta charset="utf-8"></head><body>${_dgTableHtml(null, _DG_HEADERS.images, rows)}</body></html>`;
+    }
+
+    // --- discogs.com: a master's, artist's or label's images (dg-entity-images)
+    // `/<kind>/<id>/images` (2026-10-29; vzell: "Other missing Discogs pages
+    // should also get a PT"). The page lists only the images, at 600 px, with
+    // no type, uploader or size (debug/dg-<kind>-images.html); the API's
+    // `<kind>s/<id>` answers them all without a token, with their type and
+    // the size it serves them at (27 for the artist, 7 for the master — its
+    // main release's — as the pages show). These kinds have no image editor's
+    // data (`/images/data` is the release's), so the table is shorter than
+    // a release's.
+
+    /**
+     * This page's kind and id: 'master', 'artist' or 'label'.
+     * @returns {?{kind: string, id: string}}
+     */
+    function _dgEntImgPage() {
+        const m = _DG_ENT_IMG_PATH_RE.exec(window.location.pathname);
+        return m ? { kind: m[1], id: m[2] } : null;
+    }
+
+    /**
+     * `features.pageRequest` of `dg-entity-images`: the one API answer,
+     * through the API's gate and headers (`_dgFetchText()`).
+     * @returns {{url: string, fetchText: function(): Promise<string>, toHtml: function(string): string}}
+     */
+    function _dgEntImgPageRequest() {
+        const p = _dgEntImgPage();
+        const url = `https://api.discogs.com/${p.kind}s/${p.id}`;
+        return { url, fetchText: () => _dgFetchText(url), toHtml: _dgEntImgToHtml };
+    }
+
+    /**
+     * A master's, artist's or label's images as one `table.tbl`
+     * (`_DG_HEADERS.entityImages`): position, the image (its thumbnail
+     * linking the full one, for the image card and the viewer, `_DG_FI`),
+     * Discogs' type, and the size it serves the image at.
+     * @param {string} text - The API's answer.
+     * @returns {string} An HTML document.
+     * @throws {Error} When the answer is not the entity (`status` 0).
+     */
+    function _dgEntImgToHtml(text) {
+        const d = _dgJson(text);
+        if (!d || !d.id) throw Object.assign(new Error('Discogs answered, but not with this page\'s images'), { status: 0 });
+        const rows = _extDiscogsImages(d.images).map((im, i) => {
+            const thumb = `<a class="mb-dg-thumblink" data-mbtt-fn="fi-img" data-mb-fi="dg" href="${_rgEsc(im.full)}" target="_blank" rel="noopener noreferrer">` +
+                `<img class="mb-dg-thumb" src="${_rgEsc(im.thumb)}" alt="" width="40" height="40" loading="lazy" referrerpolicy="no-referrer"></a>`;
+            return `<tr>${_dgCell(String(i + 1))}<td class="mb-dg-imgcell">${thumb}</td>${_dgCell(im.type === 'primary' ? 'Primary' : 'Secondary')}` +
+                `${_dgCell(im.w ? `${im.w} × ${im.h}` : '')}</tr>`;
+        });
+        return `<!DOCTYPE html><html><head><meta charset="utf-8"></head><body>${_dgTableHtml(null, _DG_HEADERS.entityImages, rows)}</body></html>`;
     }
 
     // --- discogs.com: a user's page (pageType dg-user) -----------------------
@@ -41613,6 +41678,25 @@
                 columnExtractors: [
                     { sourceColumn: 'Uploaded', extractor: 'dateTimeParts', syntheticColumns: ['Uploaded date', 'Uploaded time'] }
                 ]
+            },
+            tableMode: 'single'
+        },
+        {
+            // A master's, artist's or label's Images page (2026-10-29): every
+            // image from the API. See the "discogs.com: a master's, artist's
+            // or label's images" block above _dgEntImgPage().
+            type: 'dg-entity-images',
+            host: 'www.discogs.com',
+            match: (path) => _DG_ENT_IMG_PATH_RE.test(path),
+            buttons: [ { label: 'Show every image', shortLabel: 'Images',
+                get description() {
+                    return `Every image of this ${(_dgEntImgPage() || {}).kind || 'page'} with its type and size, from Discogs' API: one request.`;
+                } } ],
+            features: {
+                dgToTable: 'entityImages',
+                pageRequest: () => _dgEntImgPageRequest(),
+                pageCountAsync: async () => 1,
+                integerColumns: [ { sourceColumn: '#', align: 'R' } ]
             },
             tableMode: 'single'
         },

@@ -60,6 +60,7 @@ the sentence said "seven" and "three" from 2026-10-18 until then, though
 | `dg-history` | `/<kind>/<id>/history`   | Show the changes and the diff                                     | multi: Changes, and on page 1 the Diff (below)                                                                              |
 | `dg-ratings` | `/users/ratings/<name>`  | Show all ratings                                                  | single: the user's ratings, 250 a page (below)                                                                              |
 | `dg-images` / `dg-image-history` | `/release/<id>/images`, `…/images/update` | Show every image                  | single: #, Image, Type, Uploaded by, Uploaded (date, time), W × H, Size (KB) — the same on both (below)                     |
+| `dg-entity-images` | `/master|artist|label/<id>/images` | Show every image | single: #, Image, Type, W × H (2026-10-29): the API's `<kind>s/<id>` images, one request; the page lists only the images, and these kinds have no image editor's data |
 
 A language prefix (`/de/release/…`) and a slug are allowed; a page's
 sub-pages (`/release/<id>-…/image/…`) are not (`sl-include-regex.spec.js`).

@@ -1774,7 +1774,7 @@ an import brings your deletions back.
   and lyrics index, the **jungleland.it**
   bootleg artwork list, the **brucespringsteen.it** record database and
   the **Brucebase** song list, year pages, Relations and Recent changes, and
-  **discogs.com**'s master, release, artist, label, submissions, user, ratings, collection, wantlist, history (release, master, artist, label) and release images pages — each off until
+  **discogs.com**'s master, release, artist, label, submissions, user, ratings, collection, wantlist, history (release, master, artist, label) and images (release, master, artist, label) pages — each off until
   you switch it on, see [Page-specific behaviour](#page-specific-behaviour)
 
 </details>
@@ -3664,6 +3664,13 @@ section of its own above Discogs' page, with the toolbar and these buttons:
   list: an empty or private collection or wantlist has none. Columns as on the
   other Discogs pages, plus Discogs' **Status** (the collection and wantlist:
   **Added**). Here too the section sits at the very top.
+- **Images of a master, artist or label — Show every image:** their Images
+  page (`/master/<id>/images`, `/artist/<id>/images`, `/label/<id>/images`;
+  a master's are its main release's): every image with **#**, the image
+  (hover for the card, click for the viewer), its **Type** (Primary,
+  Secondary) and **W × H** as Discogs serves it, from Discogs' API in one
+  request. Who uploaded an image and when is known for a release's images
+  only.
 - **Collection / Wantlist — Show the collection / Show the wantlist:** a
   user's collection or wantlist as a page of its own
   (`/user/<name>/collection`, `/user/<name>/wantlist`, `/wantlist?user=<name>`,

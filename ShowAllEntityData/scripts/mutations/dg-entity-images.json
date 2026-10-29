@@ -1,0 +1,41 @@
+[
+  {
+    "name": "the entity pageType takes its own Images page",
+    "why": "_dgPage()'s path pattern is not anchored at the end: without the exclusion dg-master (earlier in pageDefinitions) claims /master/<id>/images with its Versions button.",
+    "edits": [
+      {
+        "find": "!_DG_IMG_PATH_RE.test(path) && !_DG_ENT_IMG_PATH_RE.test(path);",
+        "replace": "!_DG_IMG_PATH_RE.test(path);"
+      }
+    ],
+    "spec": "tests/fixtures/discogs-images.spec.js",
+    "grep": "the master's Images page",
+    "expect": "fail"
+  },
+  {
+    "name": "the Images pages are not let past the #app gate",
+    "why": "Older pages without #app, like Cloudflare's check: without their path in the gate the script stops there.",
+    "edits": [
+      {
+        "find": "_DG_IMG_PATH_RE.test(window.location.pathname) || _DG_ENT_IMG_PATH_RE.test(window.location.pathname)) &&",
+        "replace": "_DG_IMG_PATH_RE.test(window.location.pathname)) &&"
+      }
+    ],
+    "spec": "tests/fixtures/discogs-images.spec.js",
+    "grep": "the artist's Images page",
+    "expect": "fail"
+  },
+  {
+    "name": "the type column says the API's lowercase word",
+    "why": "Primary / Secondary, as a release's Images table writes them.",
+    "edits": [
+      {
+        "find": "${_dgCell(im.type === 'primary' ? 'Primary' : 'Secondary')}",
+        "replace": "${_dgCell(im.type)}"
+      }
+    ],
+    "spec": "tests/fixtures/discogs-images.spec.js",
+    "grep": "the label's Images page",
+    "expect": "fail"
+  }
+]

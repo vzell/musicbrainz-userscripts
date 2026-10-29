@@ -362,11 +362,17 @@ test.describe('@include coverage', () => {
             'https://www.discogs.com/release/1313481/images/',
             'https://www.discogs.com/de/release/1313481-Born-To-Run/images/update?x=1',
             'https://www.discogs.com/pt_BR/release/1313481/images',
+            // A master's, artist's or label's (dg-entity-images, 2026-10-29).
+            'https://www.discogs.com/master/26725/images',
+            'https://www.discogs.com/master/26725-Bruce-Springsteen-Born-To-Run/images',
+            'https://www.discogs.com/artist/219986-Bruce-Springsteen/images',
+            'https://www.discogs.com/de/label/264352-DADC/images',
         ];
         const others = [
             'https://www.discogs.com/release/1313481-Born-To-Run/imagesx',
             'https://www.discogs.com/release/1313481-Born-To-Run/images/update/more',
-            'https://www.discogs.com/master/26725/images',
+            'https://www.discogs.com/master/26725/images/update',
+            'https://www.discogs.com/artist/219986/imagesx',
             'https://www.discogs.com/release/1874253-Bruce-Springsteen-Born-To-Run/image/SW1hZ2U6NDYwODA1ODY=',
         ];
         expect(pages.filter((u) => !injected(u))).toEqual([]);

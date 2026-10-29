@@ -87,6 +87,9 @@ FIXTURES = {
     # A public wantlist of its own page (dg-user-list, 2026-10-29:
     # debug/dg-user-wantlist.html, 138 wants).
     'discogs-user-disckid-wants-p1': DG + 'users/disc-kid/wants?per_page=100&page=1',
+    # A label's Images page (dg-entity-images, 2026-10-29: debug/dg-label-images.html,
+    # 10 images); the master's and the artist's are discogs-master / discogs-artist.
+    'discogs-label-dadc': DG + 'labels/264352',
     # A label cell's search link (25 a request, vzell): pages 1 and 2.
     **{f'discogs-search-columbia-label-p{p}': DG + f'database/search?q=Columbia&type=label&per_page=25&page={p}' for p in (1, 2)},
     # A submissions row's Artist search: results WITH thumbnails (a result

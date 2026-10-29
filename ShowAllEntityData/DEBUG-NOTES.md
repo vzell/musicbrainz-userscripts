@@ -27243,3 +27243,15 @@ wants page 1 (`capture-ext-fixtures.py`, 138 in 2 pages, as the page says).
 **Tests.** discogs-links.spec.js (4), sl-include-regex.spec.js (the collection
 URL moved from "not injected" to injected; near misses); mutations
 `dg-user-list.json` 5/5. The eight Discogs specs: 147/147.
+
+**WIP.7 (b): dg-entity-images** (`/master|artist|label/<id>/images`). The page
+lists the images only; the API's `<kind>s/<id>` answers every one WITHOUT a
+token, with type and served size (artist 27, master 7, label DADC 10 — the
+pages' counts; the master's are its main release's). These kinds have no image
+editor's data (`/images/data` is the release's), so a table of its own
+(`_DG_HEADERS.entityImages`: #, Image, Type, W × H) under its own definition;
+`_DG_IMG_PATH_RE` stays release-only (its groups are read elsewhere) and
+`_DG_ENT_IMG_PATH_RE` joins the gate and `_dgEntityPageIs()`. Tests:
+discogs-images.spec.js (one per kind: one button, one API request, no
+`/images/data`, the four columns, Primary first); mutations
+`dg-entity-images.json` 3/3. The eight Discogs specs: 150/150.

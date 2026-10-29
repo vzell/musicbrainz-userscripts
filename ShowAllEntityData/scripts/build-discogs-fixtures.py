@@ -252,6 +252,19 @@ def build_ratings(total=None):
     return re.sub(r'<script\b.*?</script>', '', page, flags=re.S), title
 
 
+def build_entity_images(kind):
+    """dg-<kind>-images.html (debug/dg-<kind>-images.html, saved by vzell 2026-10-29, logged in): a master's,
+    artist's or label's Images page — its header (`#editing_header`, its links) and its images as Discogs
+    lists them (`#view_images`). The rows come from Discogs' API (dg-entity-images), never from the page."""
+    src = read_debug(f'dg-{kind}-images.html')
+    title = text(re.search(r'<title[^>]*>(.*?)</title>', src, re.S).group(1))
+    head = between(src, '<div id="editing_header"', '</ul>') + '</div>'
+    body = between(src, '<div id="view_images">', '<p>All images are copyrighted', include_end=False) + '</div>'
+    content = re.sub(r' data-reactid="[^"]*"', '', head + body)
+    content = re.sub(r'<script\b.*?</script>', '', content, flags=re.S)
+    return SHELL.format(title=html.escape(title), content=squeeze(content)), title
+
+
 def build_user_wantlist():
     """dg-user-wantlist.html (debug/dg-user-wantlist.html, saved by vzell 2026-10-29, logged in): disc-kid's
     public wantlist page (`/wantlist?user=disc-kid`) — its title and the top pager ("1 – 138 of 138"). The rows
@@ -330,7 +343,10 @@ def main():
                      ('dg-user-wantlist.html', build_user_wantlist),
                      ('dg-mywantlist.html', build_mywantlist),
                      ('dg-mywantlist-3.html', lambda: build_mywantlist(wants=3)),
-                     ('dg-collection-page.html', build_collection_page)):
+                     ('dg-collection-page.html', build_collection_page),
+                     ('dg-master-images.html', lambda: build_entity_images('master')),
+                     ('dg-artist-images.html', lambda: build_entity_images('artist')),
+                     ('dg-label-images.html', lambda: build_entity_images('label'))):
         out, title = fn()
         write(name, out, f'title "{title}"')
     return 0
