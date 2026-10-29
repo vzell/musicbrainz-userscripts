@@ -1001,6 +1001,18 @@ close every sidebar section; the headings of the main page are left alone.
   sidebar's cover still opens MusicBrainz's own window.
   Switches: *Sidebar picture: hover card and viewer*, *Sidebar picture beside
   the name*.
+- **Every picture of the entity's links.** An artist, label, place, series,
+  instrument or area often links pictures MusicBrainz itself does not show: a
+  label's logos, an artist's photo on Wikimedia Commons, a poster. The script
+  shows them in the copy at the start of the heading: one picture, or several
+  that fade from one to the next every 6 seconds (not while you point at it).
+  Point at it for ‹ › (or press ← →) and the card of the one shown; a click
+  opens all of them in the viewer. A picture link that does not load is left
+  out. To find them the script asks MusicBrainz once for the entity's links,
+  a few seconds after the page opens, and remembers the answer (the preview
+  window uses the same one); with the *MusicBrainz Entity Images* userscript
+  installed it uses that script's pictures and asks nothing. Switch: *Entity
+  pictures from its links*.
 - **The picture in previews.** The link previews of an artist, a label or a
   place show its picture too, once you have pressed Space on one: see
   *Link previews on MusicBrainz* under [Page-specific
@@ -1762,7 +1774,7 @@ an import brings your deletions back.
   and lyrics index, the **jungleland.it**
   bootleg artwork list, the **brucespringsteen.it** record database and
   the **Brucebase** song list, year pages, Relations and Recent changes, and
-  **discogs.com**'s master, release, artist, label, submissions, user, ratings, release history and release images pages — each off until
+  **discogs.com**'s master, release, artist, label, submissions, user, ratings, collection, wantlist, history (release, master, artist, label), images (release, master, artist, label), release Marketplace and search pages — each off until
   you switch it on, see [Page-specific behaviour](#page-specific-behaviour)
 
 </details>
@@ -2484,7 +2496,10 @@ userscript lists that host, so Tampermonkey does not ask first).
   (each with its **[info]** link), the whole setlist with every song linked to
   its work and every artist — the line-up, and the guests in a song's
   "(with …)" — linked to the artist (the setlist a table: #, song, the rest
-  of its line, with a filter), what was recorded there and its posters;
+  of its line, with a filter; a setlist in parts — *Soundcheck*, *Concert*,
+  *Encore* — gets a heading row per part, numbers starting over in each,
+  a chip per part, and "↺ also in …" on a song played in two parts; the
+  card shows the longest part), what was recorded there and its posters;
   for a place, its area named the same way, a map link, its links and all
   of its events as a list like a work's recordings (type chips); for a
   series, every item in order, each with its kind's icon; for a tag, its genre and how many of each
@@ -2510,11 +2525,14 @@ userscript lists that host, so Tampermonkey does not ask first).
   pages as a list with a filter and the three-way sort: page, snippet (the
   words searched for marked) and when it was last updated, each page opening
   in the window. An **artist, label or place** window shows its
-  **picture** under the name: the Wikimedia Commons file MusicBrainz links as
-  its image or logo, else the one its Wikidata item names (one or two small
-  requests to Wikidata, a label's logo first). It is asked only here, never
-  for a card; after that the card shows it too, small, beside the facts, also
-  after a reload. Click it for the artwork viewer, with *Open on Commons*.
+  **pictures** under the name: every image, logo and poster MusicBrainz links
+  (Wikimedia Commons files first), else the one its Wikidata item names (one
+  or two small requests to Wikidata, a label's logo first). One is large,
+  with where it comes from; a strip under it shows the others (click one to
+  make it the large one), and a line names the links that did not load. It is
+  asked only here, never for a card; after that the card shows the first too,
+  small, beside the facts, with "+N" for the others, also after a reload.
+  Click the large one for the artwork viewer, on all of them.
   Switch: *Pictures in artist, label and place previews*. A part that could not be loaded says so, with
   **Try again**. Areas are named down from the city, as on MusicBrainz's
   own pages: the window looks up each area above, one per level, and
@@ -2626,6 +2644,10 @@ userscript lists that host, so Tampermonkey does not ask first).
   entity in the same window; the title shows the path, for example *Greetings
   From Asbury Park, N.J. › The Angel*. **← Back**, **Backspace** or **Alt+←**
   return. Ctrl-click (or a middle click) still opens the link in a new tab.
+  A link to a **Brucebase** show or page, or to another Springsteen site's
+  page (springsteenlyrics.com, jungleland.it, brucespringsteen.it), opens
+  in the window too (an event's *Review* link, for example), when
+  *Preview external links on hover* is on.
 - **The path in the title bar** is a way back:
   - **Click a step** and the window shows it again, from memory; the steps
     after it are dropped.
@@ -3617,13 +3639,15 @@ section of its own above Discogs' page, with the toolbar and these buttons:
   tables' Image column (one request for that row, with *Image column: all
   images of a row on hover* on); a click or **Space** opens the viewer
   instead of Discogs' gallery, and Shift+← → steps through the list.
-- **Release history — Show the changes and the diff:** a release's history
-  page (`/release/<id>/history`, also with `?diff=N`): **Changes** — when (date
-  and time also apart), the user with their picture, the action, the note,
-  the revision and *View changes*, which opens the preview window on that
-  revision's changes —, and **Diff · revision 8 → 10**: each part of the
-  release in the revision the page shows, old and new, *Marked* "changed"
-  where Discogs marked it. Read from the page itself.
+- **History — Show the changes and the diff:** the history page of a
+  release, master, artist or label (`/release/<id>/history`,
+  `/master/<id>/history`, …, also with `?diff=N`), every page of it:
+  **Changes** — when (date and time also apart), the user with their
+  picture, the action, the note, the revision and *View changes*, which
+  opens the preview window on that revision's changes —, and **Diff ·
+  revision 8 → 10**: each part of the release (master, artist, label) in
+  the revision the page shows, old and new, *Marked* "changed" where
+  Discogs marked it. Read from the page itself.
 - **Release images — Show every image:** a release's Images page
   (`/release/<id>/images`) and its image editor (`…/images/update`, Image
   history) get the same table: **#**, the image (hover for the card, click
@@ -3640,6 +3664,31 @@ section of its own above Discogs' page, with the toolbar and these buttons:
   list: an empty or private collection or wantlist has none. Columns as on the
   other Discogs pages, plus Discogs' **Status** (the collection and wantlist:
   **Added**). Here too the section sits at the very top.
+- **Images of a master, artist or label — Show every image:** their Images
+  page (`/master/<id>/images`, `/artist/<id>/images`, `/label/<id>/images`;
+  a master's are its main release's): every image with **#**, the image
+  (hover for the card, click for the viewer), its **Type** (Primary,
+  Secondary) and **W × H** as Discogs serves it, from Discogs' API in one
+  request. Who uploaded an image and when is known for a release's images
+  only.
+- **Search — Show all results:** a search page (`/search?q=…`): its results
+  in one table (**Type**, **Title**, **Format**, **Label**, **Year**; the
+  thumbnails with a Discogs token only), from Discogs' API, 100 a request.
+  Discogs' API gives at most the first 10,000 results of a search; the
+  button says so when there are more.
+- **For sale — Show every listing:** a release's Marketplace page
+  (`/sell/release/<id>`): every listing in one table, read from the page's
+  own pages, 250 at a time, in the order you chose there: the **Item**,
+  **Media** and **Sleeve** condition, the seller's **Comments**, the
+  **Seller** with their **Rating** and number of **Ratings**, **Ships from**,
+  the **Price** as listed, its **Shipping**, and **About**: the price in your
+  currency as Discogs converts it, the column to compare.
+- **Collection / Wantlist — Show the collection / Show the wantlist:** a
+  user's collection or wantlist as a page of its own
+  (`/user/<name>/collection`, `/user/<name>/wantlist`, `/wantlist?user=<name>`,
+  and your own `/mywantlist`): the same table as the user page's button for
+  it, read from Discogs' API. The button names how many entries the page
+  counts, and does not show when the page says the list is empty.
 - **Ratings — Show all ratings:** a user's ratings page
   (`/users/ratings/<name>`): every release they rated in one table: a
   thumbnail, **Artist**, **Title**, **Format**, **Label**, **Cat#**, **Year**,

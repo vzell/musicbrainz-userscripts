@@ -1,0 +1,28 @@
+[
+  {
+    "name": "a single Discogs table's head gets the MusicBrainz column though its rows never do",
+    "why": "vzell's search-page screenshot: every heading after the column sat one column off its cells.",
+    "edits": [
+      {
+        "find": "        if (def.tableMode === 'single' && _dgMbOn() && typeof def.features.decorateDoc === 'function') _dgMbDecorateTable(table, '');",
+        "replace": "        if (def.tableMode === 'single' && _dgMbOn()) _dgMbDecorateTable(table, '');"
+      }
+    ],
+    "spec": "tests/fixtures/discogs-search-page.spec.js",
+    "grep": "with the importer installed",
+    "expect": "fail"
+  },
+  {
+    "name": "the same on the Marketplace page (covered: no Title or Name column)",
+    "why": "_dgMbDecorateTable() puts the column after a 'Title' or 'Name' heading; the Marketplace and images tables have neither, so the old condition never reached them. Only the search table (Title) was broken. The spec still pins the Marketplace table's shape.",
+    "edits": [
+      {
+        "find": "        if (def.tableMode === 'single' && _dgMbOn() && typeof def.features.decorateDoc === 'function') _dgMbDecorateTable(table, '');",
+        "replace": "        if (def.tableMode === 'single' && _dgMbOn()) _dgMbDecorateTable(table, '');"
+      }
+    ],
+    "spec": "tests/fixtures/discogs-sell.spec.js",
+    "grep": "with the importer installed",
+    "expect": "pass"
+  }
+]

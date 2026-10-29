@@ -26962,3 +26962,332 @@ Four requests from vzell's screenshots; the snapshot is `debug/genres-initial.ht
   synchronously, while the request log only shows a request after the
   rate gate. A log-based check let the mutation "a tag card asks for the
   genre list" survive.
+
+## 2026-10-29 — A prose cell measured in a hidden sub-table never got its toggle (user-profile Bio; feature/poh-setlist-images-dg-history, WIP.1)
+
+Env: 2026-10-29T00:38+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) · Playwright 1.62.1 (bundled Chromium), no Tampermonkey (GM stubs); the user's snapshots: browser and Tampermonkey 5.5.1 (version per the SAED card in the snapshot), browser version unknown
+
+**Symptom.** On https://musicbrainz.org/user/atj the profile's "Bio" (a long
+wiki text: `<p>` headings with a `<ul>` under each) is cut off after a few
+lines in the Value column, with no ▶ more toggle (`debug/mb-user-atj.html` IP,
+`debug/mb-user-atj-final.html` FRP: the cell carries `mb-text-clamp-inner`,
+the page has zero `.mb-cell-collapse-toggle`, and the Bio td lacks
+`mb-collapse-col-pad`, so its column pass ended with "none overflowed").
+
+**Root cause, measured.** The five groups render hidden (`renderGroupedTable()`'s
+`shouldStayOpen` is false for them), and `initCollapsableColumns()` runs right
+after, on the hidden table. A probe that wrapped `Element.prototype.scrollHeight`
+logged ONE read of the Bio: `scrollHeight 0, clientHeight 0, getClientRects()
+0, table display none`, taken in the driver's batched overflow read. 0 > 0 + 1
+is false, so the cell counted as short: clamp kept, no toggle, and opening the
+sub-table only flips `display`, it never measures again. This is the exact trap
+the "2026-08-07 — ARs/AcoustID/ISRC collapse toggle never appears on
+multi-medium releases" entry worked around
+for one pageType by keeping every medium open; it was never fixed generally,
+so every prose column (Annotation, Edit notes, Bio) in a sub-table that starts
+hidden had it.
+
+**Fix (general, no new layout read).** In the driver, a prose cell whose
+`scrollHeight` is 0 — the value it already read — is "not laid out", not
+"short" (a prose candidate has text, so a laid-out one is never 0 px). Those
+wrappers go to `_collapseWatchUnlaid(table, inners)`: one ResizeObserver per
+table (a WeakMap); the first time a watched cell has a height and is cut off,
+the observer disconnects and runs `initCollapsableColumns(table)` again
+(idempotent; `expandedCells` keeps the state), then in multi mode
+`updateSubTableCollapseButton()` and `rewireGlobalCollapseButtonMulti()`, as
+`renderGroupedTable()` does. Cells still without a size are watched again.
+Every `initCollapsableColumns()` call stops the table's previous observer
+first. The column pass itself is unchanged, so the batching of PERFORMANCE.org
+Step 40 holds (`collapse-measure-batched.spec.js` passes).
+
+**Not fixed here, same cause:** a LIST column's `maxFirstLiWidth` and
+`makeColumnsResizable()`'s header minimum are also measured as 0 on a hidden
+table. Their toggles still exist, so nothing is lost, only a minimum width.
+
+**Test.** `user-profile.spec.js` "a long Bio left in a hidden sub-table gets
+its ▶ more toggle once the sub-table opens": it plants atj's Bio
+(`tests/fixtures/user-bio-atj.html`, cut from the IP) into the vzell fixture,
+asserts the group renders hidden (the precondition), opens it, and expects
+the toggle, the column header toggle, and the full height after a click. It
+failed before the fix at the toggle assertion. `scripts/mutations/collapse-unlaid-prose.json`:
+2/2 caught (no watch; watch without the re-run).
+
+**Confirmed live** by vzell in the real browser (2026-10-29), on /user/atj.
+
+## 2026-10-29 — Discogs window Videos: "PLAYING" over "Video <id>", titles against their tiles (WIP.2)
+
+Env: 2026-10-29T01:00+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) · Playwright 1.62.1 (bundled Chromium), no Tampermonkey (GM stubs); the report: a screenshot of a Discogs master window (Born To Run), browser unknown
+
+**Cause, measured.** The window's `.mb-dp-dialog .mb-dg-lines > div { padding-left:
+1em; text-indent: -1em }` (a hanging indent for plain lines) also matches the
+Videos list (`div.mb-dg-lines.mb-yt-grid`): its slot and its rows. text-indent
+is inherited: `getComputedStyle(.mb-yt-grow).textIndent` read `-13.5px`, so in
+the player's foot each item's text started 1em left of its box ("Playing" out
+of its pill, "Video <id>" onto it), and each title's text 1em back towards its
+tile, eating the grid's 14 px gap. The tile is a `<button>`, which resets
+text-indent, so it did not move. The existing alignment test measured the
+`<a>` BOXES, which never moved; that is why it passed all along.
+
+**Fix.** `.mb-dp-dialog .mb-dg-lines.mb-yt-grid > div { padding-left: 0;
+text-indent: 0 }` beside the hanging-indent rule, and `text-indent: 0` on
+`.mb-yt-player` itself (any container). **Test** (`youtube-embeds.spec.js`,
+"the PLAYING pill holds its own text …") measures the TEXT with a Range: the
+pill's text inside its border, "Video <id>" ≥ 8 px right of the pill, each
+title ≥ 14 px clear of its tile. `scripts/mutations/yt-grid-indent.json`: the
+grid override and both guards caught; the player's own reset alone is covered
+inside the window by the grid override (`"expect": "pass"`).
+
+## 2026-10-29 — dg-history for masters, artists and labels; every page read; an artist's diff (WIP.3)
+
+Env: 2026-10-29T01:11+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) · Playwright 1.62.1 (bundled Chromium), no Tampermonkey (GM stubs)
+
+**Question (vzell):** why does /release/8164856-Human-Touch/history get the
+button and /master/26725-Born-To-Run/history not? **Four blocks, each enough
+alone:** the history `@include` line named `release` only (and
+`sl-include-regex.spec.js` asserted /master/27146/history is NOT injected); the
+master/artist/label `@include` allows nothing after the slug;
+`_DG_HIST_PATH_RE` (also the `#app` gate: history pages have no `#app`) named
+`release` only; and `dg-master`/`dg-artist`/`dg-label` come first in
+`pageDefinitions` and `_dgPage()`'s pattern is not anchored at the end, so they
+would have claimed the page. Deliberate at the time (org/POH-headerline.org
+item 4: "master/artist/label only if the probe finds a history page shaped like
+a release's"); the probe found exactly that, and the window's reader was widened
+on 2026-10-28, the pageType not.
+
+**Two bugs found on the way, both measured on the saved pages:**
+- `_dgHistPageCount()` read `nav.pagination input[name=page][max]`; no history
+  page has one (they use `.pagination_links`), so the count was always 1 and
+  `pageRequest` asked `?page=1`, the OLDEST page — for releases too. Now
+  `_extDgHistParse(document).pages`: master 3, artist 2, label 4.
+- `_extDgHistBlocks()` read `.profile .head` and `div.section`; an artist's or
+  label's diff cell holds bare `div.head` + `div.content` pairs, so its diff had
+  zero blocks (the pageType's "Diff" table AND the window). Added a
+  `:scope > .head` arm.
+
+**Tests.** `discogs-links.spec.js`: per kind (master, artist, label) the button
+alone, every page requested (1..N), and the diff's Section column holding
+Title / Real Name / Profile; a routing test through the new read-only
+`__saTest.pageTypesFor(path)`. `scripts/mutations/dg-history-kinds.json` 4/4.
+The six Discogs specs: 130/130. **Confirmed live** by vzell (2026-10-29), with WIP.1 and WIP.2.
+
+## 2026-10-29 — The event window's setlist in parts (WIP.4, mockup A1)
+
+Env: 2026-10-29T01:22+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) · Playwright 1.62.1 (bundled Chromium), no Tampermonkey (GM stubs); live check by vzell, browser unknown
+
+**Symptom** (`debug/mb-event-soundcheck-concert-POH.html`, event be07d2a9): the
+window numbered all 26 songs 1–26 and showed "Soundcheck" and "Concert" as two
+`div.mb-dp-note` lines AFTER the table. **Cause:** `_mbPopSetlist()` (the
+window reads the Web Service's `setlist` markup, not the page's
+`p.setlist`) put every `#` comment that is not a billing word into `notes`
+and never tracked blank lines; the event page's own tables
+(`_eventSetlistParse()`) had the part rule all along.
+
+**Change.** The same rule in `_mbPopSetlist()`: `#` after a blank line, not a
+billing word, not `_eventSetlistIsNote()`, starts a part; rows numbered within
+it; `also` by work MBID. `_dpListTableHtml()` got an opt-in grouping (heading
+rows only while unsorted, a part tag on the Song cell while sorted). Variant A1
+of the mockup page (https://claude.ai/artifact/BL4JPmGMBzfhT7yGKepiBr), chosen by
+vzell. **No new fixture:** the Manchester capture (`ws2-pop-event-manchester.json`)
+has "# Soundcheck" (3) and "# Concert" (26) with a "# Scheduled: …" line right
+under "# Concert" (no blank line: that part's note); the Stone Pony and
+OceanFirst captures open with "# Scheduled: …" after a blank line, which the
+note rule keeps a note (their specs' row counts unchanged).
+
+**Trap for specs:** the heading rows are `tbody tr` too. The old card test's
+`.mb-tt-dim` became ambiguous when the part line used that class; the part line
+has its own class (`.mb-pop-partline`). The card list keeps each song's whole
+line ("Land of Hope and Dreams / People Get Ready"), as before.
+
+**Tests.** `popup-mb.spec.js` "a setlist in parts, a heading row each, numbered
+within the part": card line and list, 2 heading rows with counts and the
+Concert note, numbering 1–3 then 1–26, no loose notes, 6 "also in" marks, chip,
+"n of N" while filtering, no heading rows and 29 part tags when sorted.
+`scripts/mutations/setlist-parts.json` 5/5 (among them: the note rule kept off
+"# Scheduled: …", caught by the Stone Pony spec's row count). The 23 popup and
+Discogs specs (`_dpListTableHtml()` is shared): 421/421. **Confirmed live** by vzell.
+
+## 2026-10-29 — A Brucebase link in a MusicBrainz window opens in the window (WIP.5)
+
+Env: 2026-10-29T01:49+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) · Playwright 1.62.1 (bundled Chromium), no Tampermonkey (GM stubs)
+
+**Report (vzell):** on event be07d2a9's window the "Review" link to
+http://brucebase.wikidot.com/2002#100802 opened a new tab; it should open in
+the same window. **Cause:** two separate lists decide what a window link does.
+`_dpWinWhat()` (marking, hover, foot line) and `_dpDrill()` (the click) both
+knew MusicBrainz entities, the foreign host's own pages and, on discogs.com,
+musicbrainz.org links; another site's link drilled only inside a window that
+was itself a reader's with `onAreaClick` (the Discogs family). In a
+MusicBrainz window a Brucebase link was `out`. The readers existed already:
+`bbdate` (`/<year>#<ddmmyy>`, `_extBbDateLoad()`) and `springsteen`
+(`_extDpLoad()`).
+
+**Change:** `_dpWinExtTarget(a, cur)`, ONE helper both lists call: with
+`sa_pop_ext` on, `_extTarget(a, {inWindow: true})` and its reader in
+`_DP_WIN_EXT_READERS` (`bbdate`, `springsteen`) → a drilled target of the `ext`
+source. First tried in `_dpWinWhat()` alone: the link was marked
+`mb-dp-l-here` and a click still opened a new tab — exactly the drift the
+shared helper prevents (the first mutation re-creates it). A hover in the window
+goes through the `ext` source, so the first-contact rule (`askHost`) holds.
+Every other site's link keeps its new tab (pinned by a setlist.fm link in the
+spec).
+
+**Tests.** `popup-mb.spec.js` "a Brucebase review link opens in the window":
+the Stone Pony capture with its review link pointed at the saved 2025 year page
+(#261025) and a setlist.fm link added; marked here vs out, click → "Brucebase
+show", no popup, Back → the event. `scripts/mutations/win-ext-bb.json` 3/3. The
+44 window-related specs (popup, Discogs, the Springsteen sites, detail pages):
+693/693.
+
+## 2026-10-29 — Every picture of an entity's links: beside the name and in the window (WIP.6, mockups B2 + B4)
+
+Env: 2026-10-29T02:13+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) · Playwright 1.62.1 (bundled Chromium), no Tampermonkey (GM stubs); the user's snapshot debug/mb-label-CBS-logos-initial.html: Tampermonkey 5.5.1, browser unknown
+
+**Request (vzell):** zabe's "MusicBrainz Entity Images" userscript (registered
+as `zabe-entity-image` in tests/fixtures/live-userscripts/manifest.json, code
+read whole) shows a label's logo links in the sidebar with a drop-down, "NOT
+all logos actually display"; use this where the script already shows a picture
+(the heading, the Space window), rotating when there are several. Mockups:
+https://claude.ai/artifact/BL4JPmGMBzfhT7yGKepiBr; vzell chose B2 (heading
+crossfade) and B4 (window picture + strip).
+
+**Facts first.** The logo links are not on the page: MusicBrainz hides them
+(only jesus2099's "Hidden links" shows them in the snapshot, `li[ref=logo]`),
+so a heading needs one url-rels lookup. Probe
+(`scripts/probe-entity-image-rels.py`): CBS label six `logo` links, one of them
+http-only (logos-vector.com: an https page cannot show it); Bruce Springsteen
+and Capital One Arena one Commons `image` each; this series, event and
+instrument none. Why some logos do not show: http (mixed content), and Google
+image-search thumbnails (encrypted-tbn0.gstatic.com) that may refuse.
+
+**Design decisions.**
+- One list builder (`_eiImagesFrom()`): Commons files first (no request:
+  `Special:FilePath`; zabe's api.wikimedia.org call is not copied, so no new
+  `@connect`), then image/logo/poster links, an http one tried on https.
+- Shown only once known to load (`_eiProbe()`, a no-referrer `Image()` per
+  address, remembered for the page load). The window names the others in a
+  `details` line.
+- The page shares the WINDOW's url-rels lookup key (`_mbPopLookup(t,
+  'url-rels')`), checks memory and IndexedDB first, waits 2.5 s for zabe's
+  markup before asking, and never writes the window's picture record (a
+  heading with no link picture must not stand in for the window's Wikidata
+  answer — caught while writing `_mbPopImageRecordFor()`).
+- The record went to version 2 (`images`); the caption keeps version 1's words
+  for Commons and Wikidata pictures (`pop-mb-image.spec.js` pins them).
+- TDZ: `_eiInitPage()` runs at init beside `_sbInitPicture()`, before the end
+  of the file is evaluated, so its constants live in the 56k block and the
+  work starts a turn later.
+- `_sbInitPicture()` fixed on the way: zabe's SHOWN picture
+  (`.picture:not([hidden])`), and a picture it cannot wire no longer ends its
+  watch.
+- The spec's negative cases first slept 3.5 s (`no-wait-for-timeout` rose in
+  the lint baseline); the decision is now on `#sidebar[data-mb-ei]` and the
+  specs wait for it.
+
+**Performance.** Nothing on the filter/sort/render path. One rate-limited
+url-rels request per entity page load (none when known or when zabe's script
+is there) and one image load per picture link.
+
+**Tests.** `entity-images.spec.js` (4: one request and four of six logos,
+fade, ‹ ›, card, viewer; zabe read, nothing asked; known links, nothing asked;
+off), `pop-mb-image.spec.js` 9th test (B4: strip of four, two named as not
+loading, pick, viewer at the pick, card "+3"), `sidebar-picture.spec.js` (the
+watch fix). `scripts/mutations/entity-images.json` 7/7. The picture specs 32/32
+plus mobile 2/2; settings specs 47/47 (`sa_entity_images` joined
+`FIXTURE_SETTINGS_OVERRIDE`; CLAUDE.md and settings-and-config.md now say
+twenty). The 56 window, sidebar, settings and entity-image specs: 852/852.
+**Confirmed live** by vzell (2026-10-29), with WIP.5.
+
+## 2026-10-29 — The remaining Discogs pages: what they are; dg-user-list (WIP.7)
+
+Env: 2026-10-29T02:48+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) · Playwright 1.62.1 (bundled Chromium), no Tampermonkey (GM stubs); the snapshots: vzell's browser, logged in (`isLoggedIn:true`), browser unknown
+
+**The survey** (vzell saved eleven pages, debug/dg-*.html, 2026-10-29; read whole):
+- `/release/<id>/stats` does not exist: debug/dg-release-stats.html is
+  Discogs' 404 page ("broken record"). Nothing to support.
+- `/release/<id>/images/history?rev=N` lands on `/release/<id>/images/update?rev=N`
+  (every hreflang link of debug/dg-image-history-rev.html), the image editor:
+  already `dg-image-history`, already injected (its `@include` takes a query).
+- master/artist/label `/images`: older pages; `#view_images > p >
+  span.thumbnail_link > img` only (7, 27, 10 images), no type or uploader;
+  a master's are its main release's ("Edit Images" → `/release/13896528/images/update`).
+- `/lists/<name>/<id>`: React; its items in `#dsdata`'s Apollo cache
+  (`CuratedList…offsetItems({pagination:{page,perPage}})`); vzell's is
+  PRIVATE (the API cannot read it) and has 2 items: no page 2 to see.
+- `/user/vzell/collection` (React, rows drawn later) and `/mywantlist`
+  (older, "You haven't added anything") are EMPTY: vzell has neither
+  (`userNumCollection:0`, `userNumWantlist:0`), not a login problem;
+  `/wantlist?user=disc-kid` is a public wantlist, 138 rows server-side, a
+  pager "1 – 138 of 138".
+- `/sell/release/<id>`: older page, `table.mpitems` listings (3), pager with
+  `?page=&limit=&sort=`.
+- `/search?q=…`: a Next.js app (no `#app`, no `#page_content`), results in an
+  RSC stream, page buttons without hrefs (cap 400). The `dgsearch` reader
+  already reads the same results from the API.
+
+**WIP.7 (a): dg-user-list.** The collection and wantlist pages reuse
+dg-user's API lists (`_dgUserFeatures()` now builds both definitions'
+features; `dgUserList` per button). One button, the page's own list
+(`_dgUserListKind()`), hidden when the page says it is empty
+(`_dgUserListCount()`: pager total, the empty block, the config's
+`userNumWantlist`). **The user:** path, else `?user=`/`?username=` (Discogs'
+own og:url says `username=`), else on `/mywantlist` the page config's
+`username` (`_dgLoggedInUser()`). Trap: the config's `username` is the
+READER — debug/dg-user-wantlist.html, disc-kid's list saved by vzell, says
+"vzell" (a mutation pins it). The wantlist pages have no `#app`: their path
+joined the gate. `dg-user-list` joined the fetch loop's per-table extractor
+list (the skill's trap: its sub-tables differ). Fixtures (builder): the
+pager, a SYNTHETIC minimal config (`username`, `userNumWantlist` only: the
+saved one carries more of the account), the React shell; API: disc-kid's
+wants page 1 (`capture-ext-fixtures.py`, 138 in 2 pages, as the page says).
+
+**Tests.** discogs-links.spec.js (4), sl-include-regex.spec.js (the collection
+URL moved from "not injected" to injected; near misses); mutations
+`dg-user-list.json` 5/5. The eight Discogs specs: 147/147.
+
+**WIP.7 (b): dg-entity-images** (`/master|artist|label/<id>/images`). The page
+lists the images only; the API's `<kind>s/<id>` answers every one WITHOUT a
+token, with type and served size (artist 27, master 7, label DADC 10 — the
+pages' counts; the master's are its main release's). These kinds have no image
+editor's data (`/images/data` is the release's), so a table of its own
+(`_DG_HEADERS.entityImages`: #, Image, Type, W × H) under its own definition;
+`_DG_IMG_PATH_RE` stays release-only (its groups are read elsewhere) and
+`_DG_ENT_IMG_PATH_RE` joins the gate and `_dgEntityPageIs()`. Tests:
+discogs-images.spec.js (one per kind: one button, one API request, no
+`/images/data`, the four columns, Primary first); mutations
+`dg-entity-images.json` 3/3. The eight Discogs specs: 150/150.
+
+**WIP.7 (c): dg-sell** (`/sell/release/<id>`). No listings list in the API, so
+`table.mpitems` of the page's own pages, same-origin, 250 a page, the page's
+`sort` kept (`_dgSellPageUrl()`). Cells: the media grade is a span holding a
+hidden tooltip ("A nearly perfect disc…") — dropped; the shipping span holds a
+"shipping" button — dropped; the converted price is its text nodes only
+("about €53.93 +VAT…" → "€53.93"). Tests: discogs-sell.spec.js (2: the first
+listing's eleven cells, absolute links, limit/page/sort asked);
+`dg-sell.json` 4/4. Unseen: several pages (the snapshot has 3 listings).
+
+**WIP.7 (d): dg-search** (`/search?q=…`). A Next.js app-router page: no `#app`,
+no `#page_content`, results in an RSC stream, pager buttons without hrefs. The
+gate gained a third arm (path + `<main>`; Cloudflare's check has no `<main>`).
+Rows from the API's `database/search` with the search reader's query
+(`_extDgSearchSub()`), 100 a page. **Measured:** the API counts 24,128 results
+for "bruce springsteen" but `pagination.pages` is 100 at per_page 100 — it
+serves the first 10,000 only (`_DG_SEARCH_MAX`); the button says "The first
+10,000 of 24,128". **Not checked:** our section goes first in `<body>`; whether
+Next.js's hydration (it owns the whole document) leaves it alone can only be
+seen live. Tests: discogs-search-page.spec.js (2); `dg-search.json` 3/3. The ten
+Discogs specs: 156/156.
+
+**Live (vzell, 2026-10-29, screenshot of the search page):** a "MusicBrainz"
+heading over the formats, every later heading one column right of its cells.
+Cause: `applyDgToTable()` gave a single table's EMPTY live head the
+MusicBrainz column whenever murdos' importer is present (`_dgMbOn()`), while
+only pageTypes with `features.decorateDoc` give their fetched rows the cell.
+dg-search has no decorateDoc (the importer does nothing on a search page), so
+head and rows disagreed. Fix: the head too only with `decorateDoc`. Only the
+search table showed it: `_dgMbDecorateTable()` places the column after a
+"Title" or "Name" heading, which the images and Marketplace tables lack (the
+Marketplace mutation passes and is recorded as covered). Tests: both specs
+assert no MusicBrainz heading and cells-per-row equal to the headings with the
+importer simulated; `dg-mb-head.json` 1 fail + 1 recorded pass. Also on that
+screenshot: "Loaded 2 of 100 pages … INCOMPLETE", 98 pages missing — cause
+not known yet (Discogs' rate limit without a token? a dialog choice?); asked.

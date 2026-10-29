@@ -1,0 +1,110 @@
+[
+  {
+    "version": "WIP.7",
+    "date": "2026-10-29",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "discogs.com: a user's collection or wantlist page of its own (/user/<name>/collection, /wantlist?user=<name>, your /mywantlist) gets the \"Show the collection\" or \"Show the wantlist\" button, the same table as on the user's page, read from Discogs' API. The button says how many entries the page counts, and stays away when the page says the list is empty.",
+          "discogs.com: a master's, artist's or label's Images page gets \"Show every image\": every image with its type and size, from Discogs' API in one request.",
+          "discogs.com: a release's Marketplace page (/sell/release/<id>) gets \"Show every listing\": every listing in one table with its conditions, seller and rating, where it ships from, price, shipping, and the price in your currency to compare.",
+          "discogs.com: the search page gets \"Show all results\": the results in one table from Discogs' API, 100 a request (Discogs' API gives at most the first 10,000 of a search; the button says so)."
+        ]
+      },
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "discogs.com search results: with the \"Import Discogs releases to MusicBrainz\" userscript installed, the table no longer gets a MusicBrainz column header without its cells, which put every later heading over the wrong column."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "WIP.6",
+    "date": "2026-10-29",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Every picture an artist, label, place, series, instrument or area links (its image, logo and poster links, its Wikimedia Commons files), which MusicBrainz itself does not show, now appears beside its name: one, or several fading from one to the next every 6 seconds, with ‹ › on hover and a click opening them all in the viewer. A picture link that does not load is left out. The script asks MusicBrainz once for the links and remembers them; with the \"MusicBrainz Entity Images\" userscript installed it uses that script's pictures instead. New setting: \"Entity pictures from its links\" (on).",
+          "Link previews: an artist's, label's or place's window shows all of these pictures: one large, a strip of the others (click one to make it the large one), and a line naming the links that did not load. The card shows the first with \"+N\"."
+        ]
+      },
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "The sidebar picture: with the \"MusicBrainz Entity Images\" userscript showing a logo link first, a Wikimedia Commons picture shown after it no longer goes without its card and viewer, and the picture used is the one that script shows."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "WIP.5",
+    "date": "2026-10-29",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "Link previews: in a preview window, a link to a Brucebase show or page (an event's \"Review\" link to brucebase.wikidot.com/2002#100802, for example) or to another Springsteen site's page now opens in the same window, with Back, instead of a new tab."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "WIP.4",
+    "date": "2026-10-29",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "Link previews, an event's window: a setlist in parts (Soundcheck, Concert, Encore, …) shows a heading row for each part with its number of songs and its notes, numbers its songs within each part, and gets a chip per part to show only that part. A song played in two parts says so (\"↺ also in Soundcheck\"). Before, every song was numbered in one run and the part names were loose lines under the table.",
+          "The event card previews the setlist's longest part (usually the concert, not the soundcheck) and names the other parts."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "WIP.3",
+    "date": "2026-10-29",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "discogs.com: the history page of a master, an artist or a label (e.g. /master/26725-Born-To-Run/history) now has the \"Show the changes and the diff\" button too, as a release's has had."
+        ]
+      },
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "discogs.com history pages: \"Show the changes and the diff\" read only the first page of a longer history, which holds the oldest changes. It now reads every page.",
+          "An artist's or label's edit history: the diff of a change came out empty, on the history page and in the preview window. It now shows each field (Real Name, Profile, Sites, …), old and new."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "WIP.2",
+    "date": "2026-10-29",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Discogs windows, Videos: the \"Playing\" label under the player no longer runs into \"Video <id>\", and each video's title has its proper gap after its ▶ Play tile."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "WIP.1",
+    "date": "2026-10-29",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "A long text cell (an editor profile's Bio, an Annotation, edit notes) in a sub-table that starts collapsed now gets its ▶ more toggle when the sub-table is opened. Before, its text was cut off after a few lines with no way to read the rest (reported on https://musicbrainz.org/user/atj)."
+        ]
+      }
+    ]
+  }
+]

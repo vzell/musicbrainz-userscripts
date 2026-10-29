@@ -1,0 +1,67 @@
+[
+  {
+    "name": "the list pages are not let past the #app gate",
+    "why": "/wantlist and /mywantlist are older pages without #app, like Cloudflare's check: without their path in the gate the script stops there.",
+    "edits": [
+      {
+        "find": "           _DG_USER_LIST_PATH_RE.test(window.location.pathname) ||",
+        "replace": "           false ||"
+      }
+    ],
+    "spec": "tests/fixtures/discogs-links.spec.js",
+    "grep": "names its 138 wants",
+    "expect": "fail"
+  },
+  {
+    "name": "an empty /mywantlist still shows the button",
+    "why": "The page says the list is empty (its block, its config's count): a press would ask the API for nothing.",
+    "edits": [
+      {
+        "find": "            showIf: () => _dgUserListKind() === kind && _dgUserListCount() !== 0,",
+        "replace": "            showIf: () => _dgUserListKind() === kind,"
+      }
+    ],
+    "spec": "tests/fixtures/discogs-links.spec.js",
+    "grep": "empty, no button",
+    "expect": "fail"
+  },
+  {
+    "name": "the wantlist's owner is the reader (the page's config), not the query's user",
+    "why": "/wantlist?user=disc-kid saved by vzell names vzell in its config: the list is disc-kid's.",
+    "edits": [
+      {
+        "find": "(l[1] || q.get('user') || q.get('username') || (l[3] === 'mywantlist' ? _dgLoggedInUser() : ''))",
+        "replace": "(l[1] || _dgLoggedInUser())"
+      }
+    ],
+    "spec": "tests/fixtures/discogs-links.spec.js",
+    "grep": "names its 138 wants",
+    "expect": "fail"
+  },
+  {
+    "name": "/mywantlist names no user",
+    "why": "Its path names no one: the logged-in user comes from the page's own config.",
+    "edits": [
+      {
+        "find": "(l[3] === 'mywantlist' ? _dgLoggedInUser() : '')",
+        "replace": "''"
+      }
+    ],
+    "spec": "tests/fixtures/discogs-links.spec.js",
+    "grep": "reads the logged-in user",
+    "expect": "fail"
+  },
+  {
+    "name": "a list page shows both buttons",
+    "why": "A collection page's list is the collection: one button, the page's own.",
+    "edits": [
+      {
+        "find": "            showIf: () => _dgUserListKind() === kind && _dgUserListCount() !== 0,",
+        "replace": "            showIf: () => _dgUserListCount() !== 0,"
+      }
+    ],
+    "spec": "tests/fixtures/discogs-links.spec.js",
+    "grep": "has the Collection button alone",
+    "expect": "fail"
+  }
+]

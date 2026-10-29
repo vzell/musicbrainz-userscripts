@@ -1,0 +1,93 @@
+[
+  {
+    "name": "pictures are shown without knowing they load",
+    "why": "Two of the CBS label's six logo links do not load (a 404, an http-only host): shown unchecked they are broken images beside the name.",
+    "edits": [
+      {
+        "find": "            if (ok.length) _eiAvatar(ent, ok);",
+        "replace": "            if (ok.length) _eiAvatar(ent, images);"
+      }
+    ],
+    "spec": "tests/fixtures/entity-images.spec.js",
+    "grep": "one request; the four logos",
+    "expect": "fail"
+  },
+  {
+    "name": "the page asks at once instead of waiting for zabe's pictures",
+    "why": "With zabe's script on the page both would ask MusicBrainz for the same url-rels.",
+    "edits": [
+      {
+        "find": "    const _EI_ZABE_WAIT_MS = 2500;",
+        "replace": "    const _EI_ZABE_WAIT_MS = 0;"
+      }
+    ],
+    "spec": "tests/fixtures/entity-images.spec.js",
+    "grep": "zabe's pictures on the page are read",
+    "expect": "fail"
+  },
+  {
+    "name": "the links in IndexedDB are not used: every page load asks",
+    "why": "The window's url-rels record is shared: a page whose links are known asks nothing.",
+    "edits": [
+      {
+        "find": "            if (rec && rec.data) {\n                _eiDecided(sidebar, 'known');",
+        "replace": "            if (false && rec && rec.data) {\n                _eiDecided(sidebar, 'known');"
+      }
+    ],
+    "spec": "tests/fixtures/entity-images.spec.js",
+    "grep": "links already known",
+    "expect": "fail"
+  },
+  {
+    "name": "the pictures do not fade on by themselves",
+    "why": "Mockup B2: several pictures take turns every 6 s.",
+    "edits": [
+      {
+        "find": "            if (!held && !document.hidden) _eiStep(box, 1);",
+        "replace": "            void held;"
+      }
+    ],
+    "spec": "tests/fixtures/entity-images.spec.js",
+    "grep": "one request; the four logos",
+    "expect": "fail"
+  },
+  {
+    "name": "a thumbnail of the window's strip opens the viewer instead of picking",
+    "why": "Mockup B4: a thumbnail makes its picture the large one.",
+    "edits": [
+      {
+        "find": "            else if (_eiWinPickClick(e)) return;",
+        "replace": "            else if (false) return;"
+      }
+    ],
+    "spec": "tests/fixtures/pop-mb-image.spec.js",
+    "grep": "six logo links",
+    "expect": "fail"
+  },
+  {
+    "name": "the window shows only the first picture of the links (version 1)",
+    "why": "Every picture of the links, not the first Commons one.",
+    "edits": [
+      {
+        "find": "        if (images.length) return { ok: true, data: { images, file: images[0].file, from: 'rels', item } };",
+        "replace": "        if (images.length) return { ok: true, data: { images: images.slice(0, 1), file: images[0].file, from: 'rels', item } };"
+      }
+    ],
+    "spec": "tests/fixtures/pop-mb-image.spec.js",
+    "grep": "six logo links",
+    "expect": "fail"
+  },
+  {
+    "name": "the sidebar picture's watch ends at a picture it cannot wire",
+    "why": "zabe's first picture may be a logo link: ending the watch there left a later Commons picture unwired.",
+    "edits": [
+      {
+        "find": "                _sbWirePicture(img);\n                return !!img.dataset.mbSbPic;",
+        "replace": "                _sbWirePicture(img);\n                return true;"
+      }
+    ],
+    "spec": "tests/fixtures/sidebar-picture.spec.js",
+    "grep": "zabe's pictures: a non-Commons one first",
+    "expect": "fail"
+  }
+]

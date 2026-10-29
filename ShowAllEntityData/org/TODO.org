@@ -5018,7 +5018,18 @@ I also reran the 8 genre tests (1 page type, 4 popup, plus 3 existing relationsh
 
 add a reader for https://musicbrainz.org/genres
 
+* DONE add support for image URLs from the sidebar like the logo label images
+* DONE the "Bio" section on MB user pages should be rendered collapsed
 
+Long "Bio" sections on MB user pages should be rendered collapsed e.g. on https://musicbrainz.org/user/atj
+Currently it gets truncated after a couple of lines
+
+* DONE add BB URL "SPACE" POH treatment on MB event popup windows
+
+add BB URL "SPACE" POH treatment on MB event popup windows:
+
+e.g. on the POH of https://brucebase.wikidot.com/gig:2002-08-10-mci-center-washington-dc there is a "Review" URL link pointing to 
+http://brucebase.wikidot.com/2002#100802, it should be rendered in the same window
 
 * TODO consolidate more LAF across more PTs
 
@@ -5075,8 +5086,6 @@ Chaban
 "Work collections" -> "Onomatopoeia" - adjust scrollbars for the right window + adjust height
 #+end_example
 
-
-* TODO add support for image URLs from the sidebar like the logo label images
 
 * TODO On https://musicbrainz.org/release-group/f83d2211-dd81-4b1e-9a02-e89733891e1c the "Official homepage" chip in the "Sidebar" section needs a better reader
 
@@ -5146,12 +5155,6 @@ Site:
 a site description (maybe wikipedia) and some suggestions
 
 
-* TODO the "Bio" section on MB user pages should be rendered collapsed
-
-Long "Bio" sections on MB user pages should be rendered collapsed e.g. on https://musicbrainz.org/user/atj
-Currently it gets truncated after a couple of lines
-
-
 * TODO DJ-mix of
 
 1.)
@@ -5176,7 +5179,7 @@ entity pages
 images
 
 
-* TODO is it possible to generalize our MB table handling (sorting, table and column level filtering, filter string highlightning, column UVD handling, multi-row cell handling + maybe synthetic column handling by providing an extractor function name)
+* TODO is it possible to generalize our MB table handling
 
 is it possible to generalize our MB table handling (sorting, table and column level filtering, filter string
 highlightning, column UVD handling, multi-row cell handling + maybe synthetic column handling by providing an extractor
@@ -5190,8 +5193,18 @@ function name)
 
 * TODO PT 'release-tracks' needs suggestion for works in the "Recording of work" column
 
-PT 'release-tracks' needs suggestions for works in the "Recording of work" column e.g. on
-https://musicbrainz.org/release/22a6802f-d22e-4f47-9f22-6aac257a4194 with our async handling
+Currently for example on https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/recordings we are able to
+suggest MB works based on the recordings
+
+Is it possible on the PT 'release-tracks' to also suggests missing works in the "Recording of work" column e.g. on
+https://musicbrainz.org/release/22a6802f-d22e-4f47-9f22-6aac257a4194 with our async handling, but only in the column
+cells where the data is really missing
+
+#+begin_example
+@debug/MB-release-tracks-fill-work-suggestions.html - FRP - https://musicbrainz.org/release/22a6802f-d22e-4f47-9f22-6aac257a4194
+#+end_example
+
+Show me some nice HTML based mockup before implementation
 
 
 * TODO fix MB collection pages when "mb. COLLECTION HIGHLIGHTER" from @jesus2099 is active
@@ -5275,6 +5288,8 @@ b.)
 
 the hyperlinked titles after the youtube play buttons need a little more spacing between the button and the actual titles
 
+* TODO Still open:
 
-
-
+The 2-of-100-pages search question. Did you pick a limit in the dialog, or did pages fail? If they failed, hovering the 🔄 button shows the reason.
+The two public-list snapshots for 7e, debug/dg-list-public.html and debug/dg-list-public-p2.html, plus the page-2 URL.
+test:full before any merge. I’ll ask before merging.

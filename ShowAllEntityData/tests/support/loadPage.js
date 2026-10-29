@@ -82,6 +82,13 @@ const USERSCRIPT_PATH = path.join(PROJECT_ROOT, 'ShowAllEntityData.user.js');
 // whose markup every spec that reads a URL cell, the sidebar or an annotation
 // would see. youtube-embeds.spec.js seeds them back on.
 //
+// `sa_entity_images` (default true, 2026-10-29) is off for the same reason
+// as the network ones above: on an artist, label, place, series, instrument
+// or area page it asks MusicBrainz for the entity's url-rels a few seconds
+// after load (`_eiStart()`, after waiting for zabe's pictures) and loads
+// every picture it finds, so a spec that counts requests or reads the
+// heading would see it. entity-images.spec.js seeds it back on.
+//
 // `sa_dp_path_label` (org/POH-headerline.org, default 'name' since
 // 2026-10-28) is the one that is not switched off but set back: the window's
 // path in its title bar reads each step's KIND with it, the way every spec
@@ -107,6 +114,7 @@ const FIXTURE_SETTINGS_OVERRIDE = {
     sa_dp_window_read_ahead: false,
     sa_yt_play_in_place: false,
     sa_yt_stills: false,
+    sa_entity_images: false,
     sa_dp_path_label: 'kind',
 };
 

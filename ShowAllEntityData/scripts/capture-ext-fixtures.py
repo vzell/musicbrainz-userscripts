@@ -84,6 +84,15 @@ FIXTURES = {
     **{f'discogs-user-vzell-submissions-p{p}': DG + f'users/vzell/submissions?per_page=100&page={p}' for p in (1, 7)},
     'discogs-user-vzell-contributions-p1': DG + 'users/vzell/contributions?sort=added&sort_order=desc&per_page=100&page=1',
     'discogs-user-guibeal-collection-p1': DG + 'users/GuiBeal/collection/folders/0/releases?sort=added&sort_order=desc&per_page=100&page=1',
+    # A public wantlist of its own page (dg-user-list, 2026-10-29:
+    # debug/dg-user-wantlist.html, 138 wants).
+    'discogs-user-disckid-wants-p1': DG + 'users/disc-kid/wants?per_page=100&page=1',
+    # A label's Images page (dg-entity-images, 2026-10-29: debug/dg-label-images.html,
+    # 10 images); the master's and the artist's are discogs-master / discogs-artist.
+    'discogs-label-dadc': DG + 'labels/264352',
+    # discogs.com's search page (dg-search, 2026-10-29: debug/dg-search.html,
+    # "bruce springsteen", everything): page 1 at 100 a page.
+    'discogs-search-springsteen-all-p1': DG + 'database/search?q=bruce%20springsteen&per_page=100&page=1',
     # A label cell's search link (25 a request, vzell): pages 1 and 2.
     **{f'discogs-search-columbia-label-p{p}': DG + f'database/search?q=Columbia&type=label&per_page=25&page={p}' for p in (1, 2)},
     # A submissions row's Artist search: results WITH thumbnails (a result

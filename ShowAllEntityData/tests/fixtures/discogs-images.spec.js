@@ -157,3 +157,51 @@ test.describe('discogs.com: a release\'s Images and Image history (Phase 4)', ()
         expect(errors).toEqual([]);
     });
 });
+
+// dg-entity-images (2026-10-29; vzell: "Other missing Discogs pages should
+// also get a PT"): a master's, artist's or label's Images page. The page
+// lists only the images (debug/dg-<kind>-images.html); the API's
+// `<kind>s/<id>` gives every one with its type and served size, without a
+// token. One request; never the page's own list, never `/images/data`.
+test.describe('discogs.com: a master\'s, artist\'s or label\'s Images page (dg-entity-images)', () => {
+    const fx = (name) => JSON.parse(fs.readFileSync(path.join(__dirname, `ext-${name}.json`), 'utf8'));
+    for (const [kind, url, file, api, n] of [
+        ['master', 'https://www.discogs.com/master/26725-Bruce-Springsteen-Born-To-Run/images', 'dg-master-images.html', 'discogs-master', 7],
+        ['artist', 'https://www.discogs.com/artist/219986-Bruce-Springsteen/images', 'dg-artist-images.html', 'discogs-artist', 27],
+        ['label', 'https://www.discogs.com/label/264352-DADC/images', 'dg-label-images.html', 'discogs-label-dadc', 10],
+    ]) {
+        test(`the ${kind}'s Images page: one button, one API request, every image with its type and size`, async ({ page }) => {
+            const errors = [];
+            page.on('pageerror', (e) => errors.push(String(e.stack || e.message || e)));
+            const asked = [];
+            await page.route(/^https?:\/\//, (route) => route.abort('blockedbyclient'));
+            await page.route('https://i.discogs.com/**', (route) => route.fulfill({ status: 200, contentType: 'image/png', body: PNG }));
+            await page.route(/\/images\/data/, (route) => {
+                asked.push(route.request().url());
+                return route.fulfill({ status: 404, body: '' });
+            });
+            const a = fx(api);
+            await page.context().addInitScript((r) => { window.__gmXhrResponses = r; },
+                { [a.url]: { status: a.status, responseHeaders: `Content-Type: ${a.contentType}`, responseText: a.body } });
+            await loadUserscriptPage(page, {
+                url, fixtureFile: path.join(__dirname, file), testMode: true,
+                settingsOverride: { sa_enable_discogs: true, sa_render_threshold: 100000 },
+            });
+            const root = page.locator('#mb-dg-root');
+            // Its own button only: the entity pageType's path pattern takes /images too.
+            expect(await root.locator('button[data-label^="Show "]').evaluateAll(bs => bs.map(b => b.dataset.label))).toEqual(['Show every image']);
+            expect(await apiLog(page), 'nothing before the press').toEqual([]);
+            const table = await showImages(page);
+            expect(await apiLog(page)).toEqual([a.url]);
+            expect(asked, 'no image editor data for these kinds').toEqual([]);
+            expect((await heads(table)).filter(Boolean)).toEqual(['#', 'Image', 'Type', 'W × H']);
+            await expect(table.locator('tbody > tr')).toHaveCount(n);
+            const first = await rowOf(table, 0);
+            expect(first['#']).toBe('1');
+            expect(first.Type).toBe('Primary');
+            expect(first['W × H']).toMatch(/^\d+ × \d+$/);
+            await expect(table.locator('tbody > tr').first().locator('a.mb-dg-thumblink img')).toHaveAttribute('src', /^https:\/\/i\.discogs\.com\//);
+            expect(errors).toEqual([]);
+        });
+    }
+});

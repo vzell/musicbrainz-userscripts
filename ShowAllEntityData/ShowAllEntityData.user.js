@@ -33,9 +33,13 @@
 // @include      /^https?:\/\/(?:www\.)?discogs\.com\/(?:[a-z]{2}(?:-[a-z]{2})?\/)?(?:master|release|artist|label)\/\d+(?:-[^\/?#]*)?\/?(?:[?#].*)?$/
 // @include      /^https?:\/\/(?:www\.)?discogs\.com\/(?:[a-z]{2}(?:[-_][a-zA-Z]{2})?\/)?submissions\/?(?:[?#].*)?$/
 // @include      /^https?:\/\/(?:www\.)?discogs\.com\/(?:[a-z]{2}(?:[-_][a-zA-Z]{2})?\/)?user\/[^\/?#]+\/?(?:[?#].*)?$/
+// @include      /^https?:\/\/(?:www\.)?discogs\.com\/(?:[a-z]{2}(?:[-_][a-zA-Z]{2})?\/)?(?:user\/[^\/?#]+\/(?:collection|wantlist)|mywantlist|wantlist)\/?(?:[?#].*)?$/
 // @include      /^https?:\/\/(?:www\.)?discogs\.com\/(?:[a-z]{2}(?:[-_][a-zA-Z]{2})?\/)?users\/ratings\/[^\/?#]+\/?(?:[?#].*)?$/
-// @include      /^https?:\/\/(?:www\.)?discogs\.com\/(?:[a-z]{2}(?:[-_][a-zA-Z]{2})?\/)?release\/\d+(?:-[^\/?#]*)?\/history\/?(?:[?#].*)?$/
+// @include      /^https?:\/\/(?:www\.)?discogs\.com\/(?:[a-z]{2}(?:[-_][a-zA-Z]{2})?\/)?(?:release|master|artist|label)\/\d+(?:-[^\/?#]*)?\/history\/?(?:[?#].*)?$/
 // @include      /^https?:\/\/(?:www\.)?discogs\.com\/(?:[a-z]{2}(?:[-_][a-zA-Z]{2})?\/)?release\/\d+(?:-[^\/?#]*)?\/images(?:\/update)?\/?(?:[?#].*)?$/
+// @include      /^https?:\/\/(?:www\.)?discogs\.com\/(?:[a-z]{2}(?:[-_][a-zA-Z]{2})?\/)?(?:master|artist|label)\/\d+(?:-[^\/?#]*)?\/images\/?(?:[?#].*)?$/
+// @include      /^https?:\/\/(?:www\.)?discogs\.com\/(?:[a-z]{2}(?:[-_][a-zA-Z]{2})?\/)?sell\/release\/\d+\/?(?:[?#].*)?$/
+// @include      /^https?:\/\/(?:www\.)?discogs\.com\/(?:[a-z]{2}(?:[-_][a-zA-Z]{2})?\/)?search\/?\?(?:[^#]*&)?q=[^&#]+.*$/
 // @connect      raw.githubusercontent.com
 // @connect      coverartarchive.org
 // @connect      eventartarchive.org
@@ -512,6 +516,13 @@
             type: "checkbox",
             default: true,
             description: "Also show a small copy of the sidebar picture at the start of the page heading, so it stays in sight with the sidebar closed. Same hover card and viewer. On a release, release group or event page it is the front cover (the event art); its card shows every image and a click opens them all in the viewer (asked on the first hover or click). Needs 'Sidebar picture: hover card and viewer'."
+        },
+
+        sa_entity_images: {
+            label: "Entity pictures from its links",
+            type: "checkbox",
+            default: true,
+            description: "An artist's, label's, place's, series', instrument's or area's pictures from its image, logo and poster links and its Wikimedia Commons files, which MusicBrainz itself does not show: beside the name, fading from one to the next every 6 seconds when there are several (‹ › on hover, a click opens them all in the viewer), and in the preview window as a picture with a strip of the others. A picture that does not load is left out. Asks MusicBrainz once a page for the entity's links, kept like the preview window's; not when the 'MusicBrainz Entity Images' userscript already shows them. Needs 'Sidebar picture beside the name' for the heading."
         },
 
         sa_sidebar_tables_button: {
@@ -6522,6 +6533,18 @@
     const _DG_USER_PATH_RE = /^\/(?:[a-z]{2}(?:[-_][a-zA-Z]{2})?\/)?user\/([^/?#]+)\/?$/;
 
     /**
+     * A discogs.com user's collection or wantlist as its own page
+     * (pageType `dg-user-list`, 2026-10-29): `/user/<name>/collection` (React,
+     * with `#app`), `/user/<name>/wantlist`, `/wantlist?user=<name>` and the
+     * logged-in user's `/mywantlist` (older pages, `#page_content`). Group 1
+     * the user of the path, 2 its list, 3 a wantlist page without a user in
+     * the path. Read by the `#app` gate below, the definition's `match`,
+     * `_dgUserListKind()` and `_dgUserName()`.
+     * @type {RegExp}
+     */
+    const _DG_USER_LIST_PATH_RE = /^\/(?:[a-z]{2}(?:[-_][a-zA-Z]{2})?\/)?(?:user\/([^/?#]+)\/(collection|wantlist)|(mywantlist|wantlist))\/?$/;
+
+    /**
      * A discogs.com user's ratings, `/users/ratings/<name>` (language prefix
      * allowed): pageType `dg-ratings` (2026-10-19), plain HTML without
      * `#app`. Read by the `#app` gate below and the definition's `match`.
@@ -6530,13 +6553,15 @@
     const _DG_RATINGS_PATH_RE = /^\/(?:[a-z]{2}(?:[-_][a-zA-Z]{2})?\/)?users\/ratings\/([^/?#]+)\/?$/;
 
     /**
-     * A discogs.com release's history page, `/release/<id>[-slug]/history`
-     * (with or without `?diff=<rev>`): pageType `dg-history` (2026-10-18),
-     * plain HTML without `#app`. Read by the `#app` gate below, the
-     * definition's `match` and `dg-release`'s (whose path pattern takes it too).
+     * A discogs.com history page of a release, master, artist or label,
+     * `/<kind>/<id>[-slug]/history` (with or without `?diff=<rev>`):
+     * pageType `dg-history` (releases 2026-10-18, the other three
+     * 2026-10-29), plain HTML without `#app`. Read by the `#app` gate below,
+     * the definition's `match` and `_dgEntityPageIs()` (the four entity
+     * pageTypes' path pattern takes it too).
      * @type {RegExp}
      */
-    const _DG_HIST_PATH_RE = /^\/(?:[a-z]{2}(?:[-_][a-zA-Z]{2})?\/)?release\/(\d+)(?:-[^/?#]*)?\/history\/?$/;
+    const _DG_HIST_PATH_RE = /^\/(?:[a-z]{2}(?:[-_][a-zA-Z]{2})?\/)?(?:release|master|artist|label)\/(\d+)(?:-[^/?#]*)?\/history\/?$/;
 
     /**
      * A discogs.com release's Images page, `/release/<id>[-slug]/images`, or
@@ -6548,6 +6573,34 @@
      * @type {RegExp}
      */
     const _DG_IMG_PATH_RE = /^\/(?:[a-z]{2}(?:[-_][a-zA-Z]{2})?\/)?release\/(\d+)(?:-[^/?#]*)?\/images(\/update)?\/?$/;
+
+    /**
+     * A discogs.com master's, artist's or label's Images page,
+     * `/<kind>/<id>[-slug]/images` (pageType `dg-entity-images`, 2026-10-29):
+     * plain HTML without `#app`, like a release's. Group 1 the kind, 2 the
+     * id. Read by the `#app` gate below, the definition's `match` and
+     * `_dgEntityPageIs()`.
+     * @type {RegExp}
+     */
+    const _DG_ENT_IMG_PATH_RE = /^\/(?:[a-z]{2}(?:[-_][a-zA-Z]{2})?\/)?(master|artist|label)\/(\d+)(?:-[^/?#]*)?\/images\/?$/;
+
+    /**
+     * A release's Marketplace page, `/sell/release/<id>` (pageType `dg-sell`,
+     * 2026-10-29): plain HTML without `#app`, the listings in
+     * `table.mpitems`. Read by the `#app` gate below and the definition's
+     * `match`. Not `/sell/list` (every listing of a master, a search).
+     * @type {RegExp}
+     */
+    const _DG_SELL_PATH_RE = /^\/(?:[a-z]{2}(?:[-_][a-zA-Z]{2})?\/)?sell\/release\/(\d+)\/?$/;
+
+    /**
+     * discogs.com's search, `/search?q=…` (pageType `dg-search`, 2026-10-29):
+     * a Next.js page, with neither `#app` nor `#page_content`
+     * (debug/dg-search.html); the gate below lets it through by this path and
+     * its `<main>`, which Cloudflare's check has none of.
+     * @type {RegExp}
+     */
+    const _DG_SEARCH_PATH_RE = /^\/(?:[a-z]{2}(?:[-_][a-zA-Z]{2})?\/)?search\/?$/;
 
     /**
      * A Brucebase year page's path: `/1975`, …, and the one exception
@@ -6654,9 +6707,13 @@
     // plain HTML, whose content root is #page_content (the check has neither).
     if (_isDgHost && !document.getElementById('app') &&
         !((_DG_SUBS_PATH_RE.test(window.location.pathname) || _DG_USER_PATH_RE.test(window.location.pathname) ||
+           _DG_USER_LIST_PATH_RE.test(window.location.pathname) ||
            _DG_HIST_PATH_RE.test(window.location.pathname) || _DG_RATINGS_PATH_RE.test(window.location.pathname) ||
-           _DG_IMG_PATH_RE.test(window.location.pathname)) &&
-          document.getElementById('page_content'))) {
+           _DG_IMG_PATH_RE.test(window.location.pathname) || _DG_ENT_IMG_PATH_RE.test(window.location.pathname) ||
+           _DG_SELL_PATH_RE.test(window.location.pathname)) &&
+          document.getElementById('page_content')) &&
+        // The search (2026-10-29): a Next.js page, its content in <main>.
+        !(_DG_SEARCH_PATH_RE.test(window.location.pathname) && document.querySelector('body main'))) {
         Lib.info('init', 'discogs.com: no #app on this page (a security check?) — nothing to do.');
         return;
     }
@@ -15686,6 +15743,13 @@
             Diff: ['Section', 'Old', 'New', 'Marked'],
         },
         images: ['#', 'Image', 'Type', 'Uploaded by', 'Uploaded', 'W × H', 'Size (KB)'],
+        // A master's, artist's or label's images (dg-entity-images, 2026-10-29):
+        // what the API gives; no image editor's data for these kinds.
+        entityImages: ['#', 'Image', 'Type', 'W × H'],
+        // A release's Marketplace listings (dg-sell, 2026-10-29).
+        sell: ['Item', 'Media', 'Sleeve', 'Comments', 'Seller', 'Rating', 'Ratings', 'Ships from', 'Price', 'Shipping', 'About'],
+        // A search's results (dg-search, 2026-10-29), as the API gives them.
+        search: ['Image', 'Type', 'Title', 'Format', 'Label', 'Year'],
         user: {
             releases: ['Image', 'Artist', 'Title', 'Format', 'Label', 'Cat#', 'Country', 'Year', 'Status', 'Added', 'Last changed'],
             names: ['Name', 'Data quality', 'Status'],
@@ -15730,6 +15794,22 @@
     function _dgPage(path = window.location.pathname) {
         const m = _EXT_DISCOGS_PATH_RE.exec(path);
         return m ? { kind: m[1].toLowerCase(), id: Number(m[2]) } : null;
+    }
+
+    /**
+     * Whether a path is the main page of a release, master, artist or label
+     * of this `kind`, not one of its own pages under it: the history
+     * (`dg-history`) or the images (`dg-images`, `dg-image-history`), which
+     * `_dgPage()`'s path pattern takes too. The four entity definitions'
+     * `match` (before 2026-10-29 only `dg-release` excluded them; the other
+     * three had no history pageType to give way to).
+     *
+     * @param {string} path
+     * @param {string} kind - 'release', 'master', 'artist' or 'label'.
+     * @returns {boolean}
+     */
+    function _dgEntityPageIs(path, kind) {
+        return _dgPage(path)?.kind === kind && !_DG_HIST_PATH_RE.test(path) && !_DG_IMG_PATH_RE.test(path) && !_DG_ENT_IMG_PATH_RE.test(path);
     }
 
     /**
@@ -16939,7 +17019,7 @@
         h2.className = 'mb-dg-list-heading';
         h2.textContent = kind === 'user' ? (_DG_USER_LISTS[def.features.dgUserList] || {}).heading || 'Lists'
             : { artist: 'Discography', label: 'Releases', master: 'Versions', release: 'Release', submissions: 'Submissions', history: 'History',
-                ratings: 'Ratings', images: 'Images' }[kind] || 'Discogs';
+                ratings: 'Ratings', images: 'Images', entityImages: 'Images', sell: 'For sale', search: 'Search results' }[kind] || 'Discogs';
         const cols = kind === 'release' ? _DG_HEADERS.release.Tracklist : kind === 'user' ? _DG_HEADERS.user.releases
             : kind === 'history' ? _DG_HEADERS.history.Changes : _DG_HEADERS[kind];
         const table = document.createElement('table');
@@ -16948,7 +17028,11 @@
         // A single table renders into THIS table's tbody, so its head needs
         // the MusicBrainz column the fetched pages get (_dgMbDecorateDoc());
         // a multi-table render builds every head from the fetched pages.
-        if (def.tableMode === 'single' && _dgMbOn()) _dgMbDecorateTable(table, '');
+        // Only when they DO get it (`features.decorateDoc`): the images,
+        // Marketplace and search tables have none, and a head with the column
+        // over rows without it put every later heading one column off
+        // (vzell, 2026-10-29, the search page's screenshot).
+        if (def.tableMode === 'single' && _dgMbOn() && typeof def.features.decorateDoc === 'function') _dgMbDecorateTable(table, '');
         root.append(h2, table);
         Lib.debug('init', `applyDgToTable: empty ${kind} table in place for the fetched pages.`);
     }
@@ -18225,7 +18309,10 @@
         return _isDgHost && _DG_SUBS_PATH_RE.test(window.location.pathname);
     }
 
-    // --- discogs.com: a release's history page (pageType dg-history) ---------
+    // --- discogs.com: a history page (pageType dg-history) --------------------
+    // A master's, artist's or label's history since 2026-10-29: the same page
+    // shape, read by the same parser (only their diffs differ, see
+    // `_extDgHistBlocks()`).
     // `/release/<id>/history[?diff=<rev>]` (vzell, 2026-10-18: "natively
     // support … as PTs"; his answers: the changes AND the diff, "View changes"
     // opens the preview window). The page is read by the history reader's own
@@ -18249,15 +18336,19 @@
     }
 
     /**
-     * `features.pageCountAsync` of `dg-history`: the pager's "Jump to"
-     * (`max`) when the page has one, else 1 — the saved histories (14
-     * changes) fit on one page; a longer one's pager was not seen yet.
+     * `features.pageCountAsync` of `dg-history`: how many pages the history
+     * has, as the history reader counts them (`_extDgHistParse()`'s `pages`,
+     * from `.pagination_links`). Until 2026-10-29 this read a
+     * `nav.pagination` "Jump to" box that no history page has, so it was
+     * always 1 and only page 1 was read: the OLDEST changes (pages run
+     * oldest → newest), never the latest (tests/fixtures/dg-master-history.html,
+     * page 2 of 3).
      *
      * @returns {Promise<number>}
      */
     async function _dgHistPageCount() {
-        const jump = Number(document.querySelector('nav.pagination input[name="page"][max]')?.getAttribute('max'));
-        return jump >= 1 ? jump : 1;
+        const h = _extDgHistParse(document, window.location.href);
+        return h && h.pages >= 1 ? h.pages : 1;
     }
 
     /**
@@ -18385,6 +18476,217 @@
         return `<!DOCTYPE html><html><head><meta charset="utf-8"></head><body>${_dgTableHtml(null, _DG_HEADERS.images, rows)}</body></html>`;
     }
 
+    // --- discogs.com: a master's, artist's or label's images (dg-entity-images)
+    // `/<kind>/<id>/images` (2026-10-29; vzell: "Other missing Discogs pages
+    // should also get a PT"). The page lists only the images, at 600 px, with
+    // no type, uploader or size (debug/dg-<kind>-images.html); the API's
+    // `<kind>s/<id>` answers them all without a token, with their type and
+    // the size it serves them at (27 for the artist, 7 for the master — its
+    // main release's — as the pages show). These kinds have no image editor's
+    // data (`/images/data` is the release's), so the table is shorter than
+    // a release's.
+
+    /**
+     * This page's kind and id: 'master', 'artist' or 'label'.
+     * @returns {?{kind: string, id: string}}
+     */
+    function _dgEntImgPage() {
+        const m = _DG_ENT_IMG_PATH_RE.exec(window.location.pathname);
+        return m ? { kind: m[1], id: m[2] } : null;
+    }
+
+    /**
+     * `features.pageRequest` of `dg-entity-images`: the one API answer,
+     * through the API's gate and headers (`_dgFetchText()`).
+     * @returns {{url: string, fetchText: function(): Promise<string>, toHtml: function(string): string}}
+     */
+    function _dgEntImgPageRequest() {
+        const p = _dgEntImgPage();
+        const url = `https://api.discogs.com/${p.kind}s/${p.id}`;
+        return { url, fetchText: () => _dgFetchText(url), toHtml: _dgEntImgToHtml };
+    }
+
+    /**
+     * A master's, artist's or label's images as one `table.tbl`
+     * (`_DG_HEADERS.entityImages`): position, the image (its thumbnail
+     * linking the full one, for the image card and the viewer, `_DG_FI`),
+     * Discogs' type, and the size it serves the image at.
+     * @param {string} text - The API's answer.
+     * @returns {string} An HTML document.
+     * @throws {Error} When the answer is not the entity (`status` 0).
+     */
+    function _dgEntImgToHtml(text) {
+        const d = _dgJson(text);
+        if (!d || !d.id) throw Object.assign(new Error('Discogs answered, but not with this page\'s images'), { status: 0 });
+        const rows = _extDiscogsImages(d.images).map((im, i) => {
+            const thumb = `<a class="mb-dg-thumblink" data-mbtt-fn="fi-img" data-mb-fi="dg" href="${_rgEsc(im.full)}" target="_blank" rel="noopener noreferrer">` +
+                `<img class="mb-dg-thumb" src="${_rgEsc(im.thumb)}" alt="" width="40" height="40" loading="lazy" referrerpolicy="no-referrer"></a>`;
+            return `<tr>${_dgCell(String(i + 1))}<td class="mb-dg-imgcell">${thumb}</td>${_dgCell(im.type === 'primary' ? 'Primary' : 'Secondary')}` +
+                `${_dgCell(im.w ? `${im.w} × ${im.h}` : '')}</tr>`;
+        });
+        return `<!DOCTYPE html><html><head><meta charset="utf-8"></head><body>${_dgTableHtml(null, _DG_HEADERS.entityImages, rows)}</body></html>`;
+    }
+
+    // --- discogs.com: a release's Marketplace page (pageType dg-sell) --------
+    // `/sell/release/<id>` (2026-10-29): older plain HTML, the listings in
+    // `table.mpitems` (debug/dg-sell-release.html: 3 listings). Not in the API
+    // as a list, so the rows come from these pages themselves, same-origin,
+    // `_DG_SELL_PER_PAGE` a page, the page's own sort kept.
+
+    /** Listings a page asked (Discogs' largest `limit`). */
+    const _DG_SELL_PER_PAGE = 250;
+
+    /**
+     * Page `p` of this Marketplace page: its own URL (its sort kept) at
+     * `_DG_SELL_PER_PAGE` a page.
+     * @param {number} p - From 1.
+     * @returns {string}
+     */
+    function _dgSellPageUrl(p) {
+        const u = new URL(window.location.href);
+        u.hash = '';
+        u.searchParams.set('limit', String(_DG_SELL_PER_PAGE));
+        u.searchParams.set('page', String(p));
+        return u.href;
+    }
+
+    /**
+     * How many listings the live page counts ("1 – 3 of 3"), no request, and
+     * the pages at `_DG_SELL_PER_PAGE` a page; total 0 when it says nothing.
+     * @returns {{total: number, pages: number}}
+     */
+    function _dgSellSize() {
+        const el = document.querySelector('.pagination_total');
+        const m = el && /\bof\s+([\d,.]+)/.exec(el.textContent);
+        const total = m ? Number(m[1].replace(/[,.]/g, '')) : 0;
+        return { total, pages: Math.max(1, Math.ceil(total / _DG_SELL_PER_PAGE)) };
+    }
+
+    /**
+     * One page of a release's listings as a `table.tbl` (`_DG_HEADERS.sell`):
+     * the item (its own page), media and sleeve condition, the seller's
+     * comments, the seller, their rating (%) and its count, where it ships
+     * from, the price as listed, its shipping, and "about" that in the
+     * reader's currency (Discogs' own conversion: the one column that compares
+     * across sellers).
+     * @param {string} text - The page's HTML.
+     * @returns {string} An HTML document.
+     * @throws {Error} When the page holds no listing table (`status` 0).
+     */
+    function _dgSellToHtml(text) {
+        const doc = new DOMParser().parseFromString(text, 'text/html');
+        const table = doc.querySelector('table.mpitems');
+        if (!table) throw Object.assign(new Error('Discogs answered, but not with the listings'), { status: 0 });
+        const abs = (a) => (a ? new URL(a.getAttribute('href') || '', 'https://www.discogs.com').href : '');
+        const t = (el) => (el ? _dpText(el.textContent) : '');
+        const link = (a) => (a ? `<td><a href="${_rgEsc(abs(a))}"${_DG_NEW_TAB}>${_rgEsc(t(a))}</a></td>` : '<td></td>');
+        const rows = Array.from(table.querySelectorAll(':scope > tbody > tr.shortcut_navigable')).map((tr) => {
+            const cond = tr.querySelector('p.item_condition');
+            const mediaSpan = cond && Array.from(cond.children).find(x => x.tagName === 'SPAN' &&
+                !x.classList.contains('mplabel') && !x.classList.contains('item_sleeve_condition'));
+            let media = '';
+            if (mediaSpan) {
+                const c = mediaSpan.cloneNode(true);
+                c.querySelectorAll('.has-tooltip').forEach(n => n.remove());
+                media = t(c);
+            }
+            const comments = Array.from(tr.querySelectorAll('td.item_description > p.hide_mobile')).filter(p => !p.classList.contains('label_and_cat'))
+                .map(t).filter(Boolean).join(' ');
+            const seller = tr.querySelector('td.seller_info .seller_block a');
+            const stars = tr.querySelector('td.seller_info .star_rating');
+            const rating = stars ? t(stars.parentElement.querySelector('strong')) : '';
+            const count = t(tr.querySelector('td.seller_info a.section_link')).replace(/\D+/g, '');
+            const ships = Array.from(tr.querySelectorAll('td.seller_info li')).find(li => /Ships From:/i.test(li.textContent));
+            const price = tr.querySelector('td.item_price span.price');
+            const shipping = tr.querySelector('td.item_price .item_shipping');
+            let ship = '';
+            if (shipping) {
+                const c = shipping.cloneNode(true);
+                c.querySelectorAll('button').forEach(n => n.remove());
+                ship = t(c);
+            }
+            const conv = tr.querySelector('td.item_price .converted_price');
+            const about = conv ? _dpText(Array.from(conv.childNodes).filter(n => n.nodeType === 3).map(n => n.nodeValue).join(' ')).replace(/^about\s+/i, '') : '';
+            return `<tr>${link(tr.querySelector('a.item_description_title'))}${_dgCell(media)}${_dgCell(t(tr.querySelector('.item_sleeve_condition')))}` +
+                `${_dgCell(comments)}${link(seller)}${_dgCell(rating)}${_dgCell(count)}` +
+                `${_dgCell(ships ? t(ships).replace(/^Ships From:\s*/i, '') : '')}` +
+                `<td${price ? ` data-mb-currency="${_rgEsc(price.dataset.currency || '')}" data-mb-value="${_rgEsc(price.dataset.pricevalue || '')}"` : ''}>${_rgEsc(t(price))}</td>` +
+                `${_dgCell(ship)}${_dgCell(about)}</tr>`;
+        });
+        return `<!DOCTYPE html><html><head><meta charset="utf-8"></head><body>${_dgTableHtml(null, _DG_HEADERS.sell, rows)}</body></html>`;
+    }
+
+    // --- discogs.com: a search (pageType dg-search) ---------------------------
+    // `/search?q=…[&type=…]` (2026-10-29). The page is Next.js: its results
+    // in a streamed payload, its pager buttons without hrefs (cap 400 pages,
+    // debug/dg-search.html). The API's `database/search` answers the same
+    // query without a token (the search reader's, `_extDgSearchSub()`), 100 a
+    // page: the rows come from there.
+
+    /**
+     * How many results of a search Discogs' API gives at most: it counts them
+     * all ("items": 24,128 for "bruce springsteen") but serves 100 pages of
+     * 100 (capture ext-discogs-search-springsteen-all-p1.json, 2026-10-29:
+     * "pages": 100).
+     */
+    const _DG_SEARCH_MAX = 10000;
+
+    /**
+     * Page `p` of this search in the API, 100 a page.
+     * @param {number} p - From 1.
+     * @returns {string}
+     */
+    function _dgSearchPageUrl(p) {
+        return `https://api.discogs.com/database/search?${_extDgSearchSub(new URL(window.location.href))}` +
+            `&per_page=${_EXT_DISCOGS_PER_PAGE}&page=${p}`;
+    }
+
+    /**
+     * How many results the live page says ("1 - 25 of 24,128"), no request;
+     * 0 when it says nothing.
+     * @returns {number}
+     */
+    function _dgSearchTotal() {
+        const p = Array.from(document.querySelectorAll('main p')).find(x => /^\s*[\d,]+\s*-\s*[\d,]+\s+of\s+[\d,]+\s*$/.test(x.textContent));
+        const m = p && /of\s+([\d,]+)/.exec(p.textContent);
+        return m ? Number(m[1].replace(/,/g, '')) : 0;
+    }
+
+    /**
+     * `features.pageCountAsync` of `dg-search`: page 1 asked once (kept in
+     * `_dgTexts` for the loop), its `pagination.pages`.
+     * @returns {Promise<number>}
+     */
+    async function _dgSearchPageCount() {
+        _dgTexts.clear();
+        const url = _dgSearchPageUrl(1);
+        const text = await _dgFetchText(url, false);
+        _dgTexts.set(url, text);
+        const d = _dgJson(text);
+        return Math.max(1, Number(d && d.pagination && d.pagination.pages) || 1);
+    }
+
+    /**
+     * One API page of the search as a `table.tbl` (`_DG_HEADERS.search`):
+     * the thumbnail (empty without a token: the API sends none), the kind,
+     * the title linking its page, format, label and year, as the search
+     * reader reads a result (`_extDgSearchRow()`).
+     * @param {string} text
+     * @returns {string} An HTML document.
+     * @throws {Error} When the answer holds no results (`status` 0).
+     */
+    function _dgSearchToHtml(text) {
+        const d = _dgJson(text);
+        if (!d || !Array.isArray(d.results)) throw Object.assign(new Error('Discogs answered, but not with search results'), { status: 0 });
+        const rows = d.results.map(_extDgSearchRow).filter(r => r.url).map(r => {
+            const img = r.thumb ? `<a class="mb-dg-thumblink" data-mbtt-fn="fi-img" data-mb-fi="dg" href="${_rgEsc(r.thumb)}" target="_blank" rel="noopener noreferrer">` +
+                `<img class="mb-dg-thumb" src="${_rgEsc(r.thumb)}" alt="" width="40" height="40" loading="lazy" referrerpolicy="no-referrer"></a>` : '';
+            return `<tr><td class="mb-dg-imgcell">${img}</td>${_dgCell(r.type ? r.type.charAt(0).toUpperCase() + r.type.slice(1) : '')}` +
+                `<td><a href="${_rgEsc(r.url)}"${_DG_NEW_TAB}>${_rgEsc(r.title)}</a></td>${_dgCell(r.format)}${_dgCell(r.label)}${_dgCell(r.year)}</tr>`;
+        });
+        return `<!DOCTYPE html><html><head><meta charset="utf-8"></head><body>${_dgTableHtml(null, _DG_HEADERS.search, rows)}</body></html>`;
+    }
+
     // --- discogs.com: a user's page (pageType dg-user) -----------------------
     // `/user/<name>` (vzell, 2026-10-18; mockup
     // https://claude.ai/artifact/XRTM8v1aLNj3voVt6RxVJz, tab D): plain HTML
@@ -18413,13 +18715,87 @@
      * @returns {string}
      */
     function _dgUserName() {
-        const m = _DG_USER_PATH_RE.exec(window.location.pathname);
-        if (!m) return '';
+        const path = window.location.pathname;
+        const m = _DG_USER_PATH_RE.exec(path);
+        const l = _DG_USER_LIST_PATH_RE.exec(path);
+        // A list page (2026-10-29): the user of its path, else of its query
+        // (`/wantlist?user=disc-kid`; Discogs' own og:url says `username=`),
+        // else, on `/mywantlist`, the logged-in user (`_dgLoggedInUser()`).
+        const q = new URLSearchParams(window.location.search);
+        const raw = m ? m[1] : l ? (l[1] || q.get('user') || q.get('username') || (l[3] === 'mywantlist' ? _dgLoggedInUser() : '')) : '';
         try {
-            return decodeURIComponent(m[1]);
+            return decodeURIComponent(raw);
         } catch (_) {
-            return m[1];
+            return raw;
         }
+    }
+
+    /**
+     * The logged-in user as the page's own config names it: older pages
+     * carry `<script id="dsdata">function dsdata(){return {…"username":"vzell"…}}</script>`
+     * (debug/dg-wantlist.html, 2026-10-29). '' when not logged in or not said.
+     * Only for `/mywantlist`, whose path names no one: elsewhere the config's
+     * user is the READER, not the list's owner (`/wantlist?user=disc-kid`
+     * saved by vzell says "vzell").
+     * @returns {string}
+     */
+    function _dgLoggedInUser() {
+        const s = document.getElementById('dsdata');
+        const m = s && /["']?username["']?\s*:\s*"([^"]+)"/.exec(s.textContent || '');
+        return m ? m[1] : '';
+    }
+
+    /**
+     * The list a `dg-user-list` page shows: 'collection' or 'wantlist'; ''
+     * on any other page.
+     * @param {string} [path]
+     * @returns {string}
+     */
+    function _dgUserListKind(path = window.location.pathname) {
+        const l = _DG_USER_LIST_PATH_RE.exec(path);
+        return l ? (l[2] || 'wantlist') : '';
+    }
+
+    /**
+     * How many entries a `dg-user-list` page says its list has, read from
+     * the live page (no request): an older page's pager total ("1 – 138 of
+     * 138", debug/dg-user-wantlist.html); 0 for `/mywantlist`'s "You haven't
+     * added anything" block or its config's `userNumWantlist: 0`
+     * (debug/dg-wantlist.html); -1 when the page does not say (the React
+     * collection page draws its rows later).
+     * @returns {number}
+     */
+    function _dgUserListCount() {
+        const total = document.querySelector('nav.pagination strong.pagination_total');
+        const m = total && /of\s+([\d,.]+)/.exec(total.textContent);
+        if (m) return Number(m[1].replace(/[,.]/g, '')) || 0;
+        if (document.getElementById('wantlist-empty')) return 0;
+        const s = document.getElementById('dsdata');
+        const n = s && /["']?userNumWantlist["']?\s*:\s*(\d+)/.exec(s.textContent || '');
+        if (n && _dgUserListKind() === 'wantlist' && /^\/(?:[a-z]{2}(?:[-_][a-zA-Z]{2})?\/)?mywantlist\/?$/.test(window.location.pathname)) return Number(n[1]);
+        return -1;
+    }
+
+    /**
+     * The one button of a `dg-user-list` page: its list, read from Discogs'
+     * API as `dg-user`'s button for it reads it (`dgUserList`, the same
+     * pages and converter). Shown only on that list's page and unless the
+     * page says it is empty; its hover text what it costs when the page
+     * counts it.
+     * @param {string} kind - 'collection' or 'wantlist'.
+     * @returns {Object} A button config.
+     */
+    function _dgUserListButton(kind) {
+        const L = _DG_USER_LISTS[kind];
+        return {
+            label: `Show the ${L.heading.toLowerCase()}`, shortLabel: L.heading, features: { dgUserList: kind },
+            showIf: () => _dgUserListKind() === kind && _dgUserListCount() !== 0,
+            get description() {
+                const n = _dgUserListCount();
+                return n > 0 ? _dgCost(`${_extDgNum(n)} ${L.what}`, Math.max(1, Math.ceil(n / _EXT_DISCOGS_PER_PAGE)))
+                    : `Every one of ${_dgUserName() || 'this user'}'s ${L.what}, from Discogs' API (one request per ${_EXT_DISCOGS_PER_PAGE}).`;
+            },
+        };
     }
 
     /**
@@ -18437,6 +18813,31 @@
             .find(x => re.test(x.getAttribute('href') || ''));
         const small = a && a.querySelector('small');
         return small ? Number(small.textContent.replace(/[^\d]/g, '')) || 0 : 0;
+    }
+
+    /**
+     * The features of `dg-user` and `dg-user-list` (one list of a user, from
+     * Discogs' API), made fresh for each definition.
+     * @returns {Object}
+     */
+    function _dgUserFeatures() {
+        return {
+            dgToTable: 'user',
+            decorateDoc: (doc) => _dgMbDecorateDoc(doc),
+            groupByH3: true,
+            // Each API page has its own Releases / Artists / Labels.
+            groupMergeByName: true,
+            collapsableColumns: [ 'Cat#' ],
+            // Date and time as separate columns, as on MusicBrainz's
+            // pageTypes (vzell, 2026-10-18).
+            columnExtractors: [
+                { sourceColumn: 'Added', extractor: 'dateTimeParts', syntheticColumns: ['Added date', 'Added time'] },
+                { sourceColumn: 'Last changed', extractor: 'dateTimeParts', syntheticColumns: ['Last changed date', 'Last changed time'] }
+            ],
+            pageRequest: (p, def) => _dgUserPageRequest(p, def),
+            pageCountAsync: (def) => _dgUserPageCount(def),
+            integerColumns: [ { sourceColumn: 'Year', align: 'R' } ]
+        };
     }
 
     /**
@@ -24943,7 +25344,9 @@
      * own detail pages with its preview on (`_dpSiteForUrl()`: a Brucebase
      * song, event, venue or person in a section, 2026-10-24); and, on
      * discogs.com, a musicbrainz.org entity link (`_dgMbWinTarget()`,
-     * 2026-10-26). A link to what the window already shows does nothing.
+     * 2026-10-26); and, from any window, a Brucebase show or a Springsteen
+     * site's detail page (`_dpWinExtTarget()`, 2026-10-29). A link to what
+     * the window already shows does nothing.
      * One modifier drills too: Ctrl/⌘-click on a tag link shows the
      * logged-in editor's own tag (`_mbOwnTagTarget()`, Phase 3c).
      *
@@ -24979,6 +25382,14 @@
             e.preventDefault();
             _dpDialog.stack.push(cur);
             _dpShowInDialog(dgMb);
+            return true;
+        }
+        // A Brucebase show or a Springsteen site's detail page (2026-10-29).
+        const extT = _dpWinExtTarget(a, cur);
+        if (extT) {
+            e.preventDefault();
+            _dpDialog.stack.push(cur);
+            _dpShowInDialog(extT);
             return true;
         }
         const src = _popSources().find(x => x.id === 'mb-entity');
@@ -25218,7 +25629,43 @@
         if (siteSrc && a.href !== cur.key) {
             return { kind: 'here', a, t: { src: siteSrc, el: a, drilled: true, key: a.href, url: a.href, table: null } };
         }
+        const extT = _dpWinExtTarget(a, cur);
+        if (extT) return { kind: 'here', a, t: extT };
         return { kind: 'out', a };
+    }
+
+    /**
+     * The link previews' readers whose pages open IN any window rather than
+     * in a new tab (`_dpWinExtTarget()`, 2026-10-29): a Brucebase show on its
+     * year page (`bbdate`, `_extBbDateLoad()`) and a Springsteen site's detail
+     * page (`springsteen`, `_extDpLoad()`: a Brucebase gig, venue or person,
+     * springsteenlyrics.com, jungleland.it, brucespringsteen.it). Every other
+     * reader's link keeps its new tab outside a Discogs-family window.
+     * @type {Set<string>}
+     */
+    const _DP_WIN_EXT_READERS = new Set(['bbdate', 'springsteen']);
+
+    /**
+     * What a click on a link to a Brucebase show or a Springsteen site's
+     * detail page shows in the window, from any window (vzell, 2026-10-29: a
+     * MusicBrainz event's "Review" link to http://brucebase.wikidot.com/2002#100802
+     * opened a new tab): the link previews' own target (`_extTarget()`), so
+     * the page is read and kept as its card reads it, with Back. Only while
+     * previews of other sites are on (`sa_pop_ext`), only the readers of
+     * `_DP_WIN_EXT_READERS`, never what the window already shows. Shared by
+     * the click (`_dpDrill()`) and the marking and hover (`_dpWinWhat()`), so
+     * a link marked "opens here" is one a click opens here.
+     *
+     * @param {HTMLAnchorElement} a
+     * @param {object} cur - What the window shows now.
+     * @returns {?object} The target, `drilled`.
+     */
+    function _dpWinExtTarget(a, cur) {
+        const ext = _popSources().find(x => x.id === 'ext');
+        if (!ext || !ext.enabled()) return null;
+        const r = _extTarget(a, { inWindow: true });
+        if (!r || !_DP_WIN_EXT_READERS.has(r.reader.id) || r.key === cur.key) return null;
+        return Object.assign({ src: ext, el: a, drilled: true }, r);
     }
 
     /**
@@ -27762,6 +28209,8 @@
             // A table's cover (a release group's releases, a collection's
             // entries): that entity's images in the viewer.
             else if (_dpCoverClick(e)) return;
+            // A thumbnail of an entity's picture strip: that picture large.
+            else if (_eiWinPickClick(e)) return;
             // An image: the artwork viewer.
             else if (_dpArtViewerClick(e)) return;
             // An entity link: drill down (Phase 5).
@@ -28282,12 +28731,29 @@
             .mb-dp-dialog .mb-dg-dur { width: 3.4em; text-align: right; color: #7a6d5c; }
             .mb-dp-dialog .mb-dg-tt { font-weight: 600; }
             .mb-dp-dialog .mb-dg-thead td { font-style: italic; color: #7a6d5c; padding-top: 8px; }
+            /* A List table's part heading row (_dpListTableHtml() group, an
+               event's "Soundcheck" / "Concert", 2026-10-29): not a row to
+               click, so no hover tint and no pointer. While the table is
+               sorted the part rides each row as a small tag instead. */
+            .mb-dp-dialog .mb-dg-vt tbody tr.mb-dp-tsec > td,
+            .mb-dp-dialog .mb-dg-vt tbody tr.mb-dp-tsec:hover > td { background: #efe6d4; padding: 5px 8px; border-bottom: 1px solid #d9cfbd; cursor: default; }
+            .mb-dp-dialog .mb-dp-tsec-n { font: 600 10.5px system-ui, -apple-system, "Segoe UI", Arial, sans-serif; letter-spacing: 0.1em; text-transform: uppercase; color: #2b2622; }
+            .mb-dp-dialog .mb-dp-tsec-c { margin-left: 8px; font-style: italic; color: #7a6d5c; }
+            .mb-dp-dialog .mb-dp-tsec-note { font-style: italic; color: #7a6d5c; margin-top: 2px; }
+            .mb-dp-dialog .mb-dp-tpart { margin-left: 6px; padding: 0 4px; border: 1px solid #d9cfbd; border-radius: 3px; white-space: nowrap;
+                font: 600 10px system-ui, -apple-system, "Segoe UI", Arial, sans-serif; letter-spacing: 0.05em; text-transform: uppercase; color: #7a6d5c; }
+            .mb-dp-dialog .mb-dp-also { font: 11px system-ui, -apple-system, "Segoe UI", Arial, sans-serif; color: #7a6d5c; white-space: nowrap; }
             .mb-dp-dialog .mb-dg-cr { all: unset; cursor: pointer; margin-left: 8px; font: 12px system-ui, -apple-system, "Segoe UI", Arial, sans-serif; color: #7a6d5c; }
             .mb-dp-dialog .mb-dg-cr:hover { color: #2b2622; text-decoration: underline; }
             .mb-dp-dialog .mb-dg-cr:focus-visible { outline: 2px solid #2f5f9e; outline-offset: 1px; }
             .mb-dp-dialog .mb-dg-tcred { margin: 3px 0 4px; font-size: 13px; }
             .mb-dp-dialog .mb-dg-lines > div { padding-left: 1em; text-indent: -1em; }
             .mb-dp-dialog .mb-dg-lines > div + div { margin-top: 2px; }
+            /* The Videos list is a .mb-dg-lines too, but a grid of tiles, titles
+               and the player: the hanging indent above is inherited by every
+               text in it, so "Playing" slid out of its pill onto "Video <id>"
+               and each title's text 1em back towards its tile (vzell, 2026-10-29). */
+            .mb-dp-dialog .mb-dg-lines.mb-yt-grid > div { padding-left: 0; text-indent: 0; }
             .mb-dp-dialog .mb-dg-role, .mb-dp-dialog .mb-dg-dim { color: #7a6d5c; }
             .mb-dp-dialog .mb-dg-dim { font-size: 12.5px; }
             .mb-dp-dialog .mb-dg-anv { border-bottom: 1px dotted #7a6d5c; }
@@ -28528,9 +28994,34 @@
                known only after a Space: 64 px beside the facts. */
             #mb-dp-peek .mb-pop-card-pic { display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: 10px; align-items: start; }
             #mb-dp-peek .mb-pop-pic img { display: block; width: 64px; height: 80px; object-fit: cover; border: 1px solid #d9cfbd; border-radius: 2px; background: #f3eee3; }
+            /* More pictures than the card shows (2026-10-29): "+N" on its corner. */
+            #mb-dp-peek .mb-pop-pic { position: relative; }
+            #mb-dp-peek .mb-pop-pic-more { position: absolute; right: 2px; bottom: 2px; padding: 0 4px; border-radius: 3px;
+                font: 700 10px system-ui, -apple-system, "Segoe UI", Arial, sans-serif; background: rgba(43, 38, 34, 0.82); color: #fbf8f1; }
             #mb-dp-peek .mb-pop-main { min-width: 0; }
+            /* An event card's setlist in parts: the part its songs are from. */
+            :is(#mb-dp-peek, .mb-dp-note-event) .mb-pop-partline { margin-top: 4px; font: 600 10.5px system-ui, -apple-system, "Segoe UI", Arial, sans-serif;
+                letter-spacing: 0.08em; text-transform: uppercase; color: #7a6d5c; }
             .mb-dp-dialog .mb-pop-xpic { margin: 6px 0 4px; }
             .mb-dp-dialog .mb-pop-xpic .mb-dp-xcover { margin: 0 0 3px; cursor: zoom-in; }
+            /* Every picture of an entity's links (mockup B4, 2026-10-29): the
+               chosen one large and fitted whole (a logo is often wide), where
+               it came from with its place, a strip of the others, a line for
+               the links that did not load. */
+            .mb-dp-dialog .mb-ei-win .mb-dp-xcover { object-fit: contain; background: #fff; max-height: 230px; }
+            .mb-dp-dialog .mb-ei-win figcaption { display: flex; flex-wrap: wrap; gap: 2px 8px; justify-content: space-between; }
+            .mb-dp-dialog .mb-ei-pos { font-variant-numeric: tabular-nums; }
+            .mb-dp-dialog .mb-ei-strip { display: flex; gap: 6px; overflow-x: auto; margin: 6px 0 2px; padding-bottom: 2px; }
+            .mb-dp-dialog .mb-ei-strip a { flex: none; display: block; width: 52px; height: 44px; padding: 3px; box-sizing: border-box;
+                border: 1px solid #d9cfbd; border-radius: 3px; background: #fff; }
+            .mb-dp-dialog .mb-ei-strip a[aria-current="true"] { border-color: #2b2622; box-shadow: 0 0 0 1px #2b2622; }
+            .mb-dp-dialog .mb-ei-strip a:focus-visible { outline: 2px solid #2f5f9e; outline-offset: 1px; }
+            .mb-dp-dialog .mb-ei-thumb { display: block; width: 100%; height: 100%; object-fit: contain; }
+            .mb-dp-dialog .mb-ei-bad { margin-top: 6px; padding-top: 4px; border-top: 1px dashed #d9cfbd;
+                font: 12px system-ui, -apple-system, "Segoe UI", Arial, sans-serif; color: #7a6d5c; }
+            .mb-dp-dialog .mb-ei-bad summary { cursor: pointer; }
+            .mb-dp-dialog .mb-ei-bad ul { margin: 4px 0 0; padding-left: 16px; }
+            .mb-dp-dialog .mb-ei-bad a { overflow-wrap: anywhere; }
             :is(#mb-dp-peek, .mb-dp-note-event) .mb-pop-tracks { columns: 1; }
             :is(#mb-dp-peek, .mb-dp-note-event, .mb-dp-dialog) .mb-pop-tracks li { display: flex; gap: 6px; align-items: baseline; }
             :is(#mb-dp-peek, .mb-dp-note-event, .mb-dp-dialog) .mb-pop-tracks .mb-dp-pos { flex: none; min-width: 1.6em; margin-right: 0; }
@@ -41227,7 +41718,7 @@
         {
             type: 'dg-master',
             host: 'www.discogs.com',
-            match: (path) => _dgPage(path)?.kind === 'master',
+            match: (path) => _dgEntityPageIs(path, 'master'),
             buttons: [ { label: 'Show all versions', shortLabel: 'Versions', get description() { return _dgCostPer('Every version of this master', 'versions', 'Born To Run: 387 versions, 4 requests'); } } ],
             features: {
                 dgToTable: 'master',
@@ -41243,9 +41734,7 @@
         {
             type: 'dg-release',
             host: 'www.discogs.com',
-            // Not its history page (`dg-history`) nor its images (`dg-images`,
-            // `dg-image-history`), which the path pattern takes too.
-            match: (path) => _dgPage(path)?.kind === 'release' && !_DG_HIST_PATH_RE.test(path) && !_DG_IMG_PATH_RE.test(path),
+            match: (path) => _dgEntityPageIs(path, 'release'),
             buttons: [ {
                 label: 'Show tracklist, credits and other versions', shortLabel: 'Tracklist, credits, versions',
                 get description() { return _dgCostPer('The release, then every other version of its master', 'versions', 'one request more for the release'); }
@@ -41265,7 +41754,7 @@
         {
             type: 'dg-artist',
             host: 'www.discogs.com',
-            match: (path) => _dgPage(path)?.kind === 'artist',
+            match: (path) => _dgEntityPageIs(path, 'artist'),
             buttons: [ {
                 label: 'Show the whole discography', shortLabel: 'Discography',
                 get description() { return _dgCostPer('Every entry of the discography, by Discogs\' role', 'entries', 'Bruce Springsteen: 6,782 entries, 68 requests'); }
@@ -41283,7 +41772,7 @@
         {
             type: 'dg-label',
             host: 'www.discogs.com',
-            match: (path) => _dgPage(path)?.kind === 'label',
+            match: (path) => _dgEntityPageIs(path, 'label'),
             // Newest 500 / 1,000 / 5,000, oldest 500 / 1,000, then all (vzell,
             // 2026-10-18): a large label has thousands of pages (Columbia
             // 3,967), so "All" meets "⚠️ High Page Count" first.
@@ -41338,14 +41827,17 @@
             tableMode: 'single'
         },
         {
-            // A release's history page (2026-10-18): its changes and its diff,
-            // read with the history reader's parser. See the "discogs.com: a
-            // release's history page" block above _dgHistPageUrl().
+            // A release's history page (2026-10-18), and a master's, artist's
+            // or label's (2026-10-29): its changes and its diff, read with
+            // the history reader's parser. See the "discogs.com: a history
+            // page" block above _dgHistPageUrl().
             type: 'dg-history',
             host: 'www.discogs.com',
             match: (path) => _DG_HIST_PATH_RE.test(path),
             buttons: [ { label: 'Show the changes and the diff', shortLabel: 'History',
-                description: 'Every change of this release and the diff this page shows, read from this page on discogs.com: one request a page.' } ],
+                get description() {
+                    return `Every change of this ${_dgPage()?.kind || 'release'} and the diff this page shows, read from this page on discogs.com: one request a page.`;
+                } } ],
             features: {
                 dgToTable: 'history',
                 groupByH3: true,
@@ -41381,6 +41873,25 @@
             tableMode: 'single'
         },
         {
+            // A master's, artist's or label's Images page (2026-10-29): every
+            // image from the API. See the "discogs.com: a master's, artist's
+            // or label's images" block above _dgEntImgPage().
+            type: 'dg-entity-images',
+            host: 'www.discogs.com',
+            match: (path) => _DG_ENT_IMG_PATH_RE.test(path),
+            buttons: [ { label: 'Show every image', shortLabel: 'Images',
+                get description() {
+                    return `Every image of this ${(_dgEntImgPage() || {}).kind || 'page'} with its type and size, from Discogs' API: one request.`;
+                } } ],
+            features: {
+                dgToTable: 'entityImages',
+                pageRequest: () => _dgEntImgPageRequest(),
+                pageCountAsync: async () => 1,
+                integerColumns: [ { sourceColumn: '#', align: 'R' } ]
+            },
+            tableMode: 'single'
+        },
+        {
             // A release's image editor ("Image history") (Phase 4, 2026-10-27): one table of every image, the
             // same on both pages, read as the images reader's window reads
             // them. See the "discogs.com: a release's images" block above
@@ -41410,23 +41921,17 @@
             host: 'www.discogs.com',
             match: (path) => _DG_USER_PATH_RE.test(path),
             buttons: ['submissions', 'contributions', 'collection', 'wantlist'].map(_dgUserButton),
-            features: {
-                dgToTable: 'user',
-                decorateDoc: (doc) => _dgMbDecorateDoc(doc),
-                groupByH3: true,
-                // Each API page has its own Releases / Artists / Labels.
-                groupMergeByName: true,
-                collapsableColumns: [ 'Cat#' ],
-                // Date and time as separate columns, as on MusicBrainz's
-                // pageTypes (vzell, 2026-10-18).
-                columnExtractors: [
-                    { sourceColumn: 'Added', extractor: 'dateTimeParts', syntheticColumns: ['Added date', 'Added time'] },
-                    { sourceColumn: 'Last changed', extractor: 'dateTimeParts', syntheticColumns: ['Last changed date', 'Last changed time'] }
-                ],
-                pageRequest: (p, def) => _dgUserPageRequest(p, def),
-                pageCountAsync: (def) => _dgUserPageCount(def),
-                integerColumns: [ { sourceColumn: 'Year', align: 'R' } ]
-            },
+            features: _dgUserFeatures(),
+            tableMode: 'multi'
+        },
+        {
+            // A user's collection or wantlist page of its own (2026-10-29):
+            // the same list as dg-user's button, read the same way.
+            type: 'dg-user-list',
+            host: 'www.discogs.com',
+            match: (path) => _DG_USER_LIST_PATH_RE.test(path),
+            buttons: ['collection', 'wantlist'].map(_dgUserListButton),
+            features: _dgUserFeatures(),
             tableMode: 'multi'
         },
         {
@@ -41448,6 +41953,58 @@
                 pageCountAsync: () => _dgRatingsPageCount(),
                 collapsableColumns: [ 'Cat#' ],
                 integerColumns: [ { sourceColumn: 'Year', align: 'R' }, { sourceColumn: 'Rating', align: 'R' } ]
+            },
+            tableMode: 'single'
+        },
+        {
+            // A release's Marketplace page (2026-10-29): every listing, from
+            // these pages themselves. See the "discogs.com: a release's
+            // Marketplace page" block above _dgSellPageUrl().
+            type: 'dg-sell',
+            host: 'www.discogs.com',
+            match: (path) => _DG_SELL_PATH_RE.test(path),
+            buttons: [ {
+                label: 'Show every listing', shortLabel: 'For sale',
+                showIf: () => !!document.querySelector('table.mpitems tr.shortcut_navigable') || _dgSellSize().total > 0,
+                get description() {
+                    const { total, pages } = _dgSellSize();
+                    return `${total ? `All ${total.toLocaleString('en-US')} listings` : 'Every listing'} of this release, from discogs.com's own ` +
+                        `pages (${_DG_SELL_PER_PAGE} a page): ${pages} request${pages === 1 ? '' : 's'}.`;
+                }
+            } ],
+            features: {
+                dgToTable: 'sell',
+                pageRequest: (p) => ({ url: _dgSellPageUrl(p), toHtml: (text) => _dgSellToHtml(text) }),
+                pageCountAsync: async () => _dgSellSize().pages,
+                integerColumns: [ { sourceColumn: 'Ratings', align: 'R' } ]
+            },
+            tableMode: 'single'
+        },
+        {
+            // discogs.com's search (2026-10-29): the results from the API.
+            // See the "discogs.com: a search" block above _dgSearchPageUrl().
+            type: 'dg-search',
+            host: 'www.discogs.com',
+            match: (path) => _DG_SEARCH_PATH_RE.test(path),
+            buttons: [ {
+                label: 'Show all results', shortLabel: 'Results',
+                showIf: () => !!new URLSearchParams(window.location.search).get('q'),
+                get description() {
+                    const n = _dgSearchTotal();
+                    const shown = Math.min(n, _DG_SEARCH_MAX);
+                    return n ? _dgCost(`${n > _DG_SEARCH_MAX ? `The first ${_extDgNum(shown)} of ${_extDgNum(n)}` : _extDgNum(n)} results`,
+                        Math.max(1, Math.ceil(shown / _EXT_DISCOGS_PER_PAGE)))
+                        : `Every result of this search, from Discogs' API (one request per ${_EXT_DISCOGS_PER_PAGE}).`;
+                }
+            } ],
+            features: {
+                dgToTable: 'search',
+                pageRequest: (p) => {
+                    const url = _dgSearchPageUrl(p);
+                    return { url, fetchText: () => _dgFetchText(url), toHtml: (text) => _dgSearchToHtml(text) };
+                },
+                pageCountAsync: () => _dgSearchPageCount(),
+                integerColumns: [ { sourceColumn: 'Year', align: 'R' } ]
             },
             tableMode: 'single'
         }
@@ -54653,7 +55210,7 @@
                 if (start) _mbWsLoad(q.key, q.url, { repaint, wanted: _mbPopWanted(t) });
                 // A picture only from this browser's storage: a hover asks no one.
                 if (start && spec.cardAside) _mbPopImagePeek(t, repaint);
-                return _mbPopCardShell(t, _mbPop.get(q.key), spec.cardHtml, spec.failNote, spec.cardAside ? spec.cardAside(t) : '');
+                return _mbPopCardShell(t, _mbPop.get(q.key), spec.cardHtml, spec.failNote, spec.cardAside ? spec.cardAside(t, repaint) : '');
             },
             extracted(t, start, force, repaint) {
                 const q = spec.query ? spec.query(t) : _mbPopLookup(t, spec.cardInc);
@@ -56089,12 +56646,27 @@
      * a blank line a break. Each part comes as text (the card) and as HTML
      * with its `[mbid|name]` tokens linked (the window, `_mbPopSetlistLine()`).
      *
+     * The setlist's parts ("Soundcheck", "Concert", "Encore", 2026-10-29):
+     * a `#` comment right after a blank line starts one, unless it is a
+     * joining word of the line-up or reads like a note ("Scheduled: 19:00",
+     * a clock time: `_eventSetlistIsNote()`) — the rules of the event page's
+     * own setlist tables (`_eventSetlistParse()`, which reads the rendered
+     * page instead). Songs before any such heading form a part without a
+     * name, so a setlist without parts is one nameless part. Each song is
+     * numbered within its part; a part's other comments are its notes.
+     * Before 2026-10-29 the window numbered every song in one run and listed
+     * "Soundcheck" and "Concert" as loose notes under the table
+     * (debug/mb-event-soundcheck-concert-POH.html).
+     *
      * @param {string} text - `setlist`.
      * @returns {{lineup: string, lineupHtml: string, songs: string[], songsHtml: string[],
-     *   parts: Array<{n: number, head: Object, tail: Object}>, notes: string[], notesHtml: string[]}}
+     *   parts: Array<{n: number, part: string, also: string[], head: Object, tail: Object}>,
+     *   sections: Array<{name: string, count: number, notes: string[], notesHtml: string[]}>,
+     *   notes: string[], notesHtml: string[]}}
      *   The line-up as one line ("A & B with C, D"), the songs in order (and
-     *   each split into its song and the rest: `parts`), and the comments
-     *   that are not joining words.
+     *   each split into its song and the rest: `parts`, with its part's name
+     *   and the other parts that play its work: `also`), the parts in order,
+     *   and the comments before the first part that are not joining words.
      */
     function _mbPopSetlist(text) {
         const lineup = [];
@@ -56102,9 +56674,12 @@
         const songs = [];
         const songsHtml = [];
         const parts = [];
+        const sections = [];
         const notes = [];
         const notesHtml = [];
         let join = '';
+        let sec = null;
+        let prevBlank = true;
         String(text || '').split(/\r?\n/).forEach(line => {
             const kind = line.charAt(0);
             const prefixed = kind === '@' || kind === '#' || kind === '*';
@@ -56117,18 +56692,37 @@
                 join = '';
             } else if (kind === '#' && !songs.length && lineup.length && /^(&|and|with|feat\.?|featuring)$/i.test(body)) {
                 join = ` ${body}`;
+            } else if (kind === '#' && prevBlank && body && !_eventSetlistIsNote(body)) {
+                sec = { name: body, count: 0, notes: [], notesHtml: [] };
+                sections.push(sec);
             } else if (kind === '*' || (!prefixed && line.trim())) {
+                if (!sec) {
+                    sec = { name: '', count: 0, notes: [], notesHtml: [] };
+                    sections.push(sec);
+                }
+                sec.count++;
                 songs.push(body);
                 songsHtml.push(html);
-                parts.push({ n: parts.length + 1, head, tail });
+                parts.push({ n: sec.count, part: sec.name, also: [], head, tail });
             } else if (kind === '#' || kind === '@') {
                 if (body) {
-                    notes.push(body);
-                    notesHtml.push(html);
+                    (sec ? sec.notes : notes).push(body);
+                    (sec ? sec.notesHtml : notesHtml).push(html);
                 }
             }
+            prevBlank = !line.trim();
         });
-        return { lineup: lineup.join(''), lineupHtml: lineupHtml.join(''), songs, songsHtml, parts, notes, notesHtml };
+        // "↺ also in …": the other parts that play the same work (by its
+        // MBID; a song without a work link by its text).
+        const workOf = x => (/\/work\/([0-9a-f-]{36})/.exec(x.head.html) || [])[1] || x.head.text.toLowerCase();
+        const where = new Map();
+        parts.forEach((x) => {
+            const k = workOf(x);
+            if (!where.has(k)) where.set(k, []);
+            if (!where.get(k).includes(x.part)) where.get(k).push(x.part);
+        });
+        parts.forEach((x) => { x.also = where.get(workOf(x)).filter(p => p !== x.part); });
+        return { lineup: lineup.join(''), lineupHtml: lineupHtml.join(''), songs, songsHtml, parts, sections, notes, notesHtml };
     }
 
     /**
@@ -56444,15 +57038,22 @@
     }
 
     // ── The entity's picture (docs/claude/sidebar.md, part 4) ────────────────
-    // What musicbrainz-server's Controller/Role/CommonsImage.pm would answer
-    // if its Commons switch were on (it is off on musicbrainz.org, DEBUG-NOTES
-    // 2026-10-11): an `image`/`logo` relationship to a Commons file, else the
-    // entity's Wikidata item's image (P18) or logo (P154). Asked only when
-    // Space opens the window, once its url-rels are there; a card shows it
-    // from memory or IndexedDB only. "No picture" is kept too.
+    // Every picture of the entity's links since 2026-10-29 (`_eiImagesFrom()`:
+    // its image, logo and poster links and its Commons files; version 1 took
+    // the first `image`/`logo` link to a Commons file only, what
+    // musicbrainz-server's Controller/Role/CommonsImage.pm would answer if its
+    // Commons switch were on — it is off on musicbrainz.org, DEBUG-NOTES
+    // 2026-10-11), else the entity's Wikidata item's image (P18) or logo
+    // (P154). Asked only when Space opens the window, once its url-rels are
+    // there; a card shows it from memory or IndexedDB only. "No picture" is
+    // kept too.
 
-    /** Version of the picture records kept in IndexedDB (`_mbPopImageLoad()`); bump when their shape changes. */
-    const _MB_POP_IMG_VERSION = 1;
+    /**
+     * Version of the picture records kept in IndexedDB (`_mbPopImageLoad()`);
+     * bump when their shape changes. 2 (2026-10-29): every picture of the
+     * entity's links (`images`), not one Commons file.
+     */
+    const _MB_POP_IMG_VERSION = 2;
 
     /**
      * The kinds that show a picture, and the Wikidata properties each asks,
@@ -56486,27 +57087,6 @@
      */
     function _mbPopImgOn(t) {
         return Lib.settings.sa_pop_mb_image !== false && Object.prototype.hasOwnProperty.call(_MB_POP_IMG_PROPS, t.type);
-    }
-
-    /**
-     * The Commons file of the first `image` or `logo` relationship that
-     * points at one (`https://commons.wikimedia.org/wiki/File:…`), '' when
-     * none; as the server's `relationships_by_link_type_names('image', 'logo')`.
-     * @param {Array<Object>} relations - The entity's url-rels.
-     * @returns {string} The file name with spaces.
-     */
-    function _mbPopCommonsFile(relations) {
-        for (const r of relations || []) {
-            if (r.type !== 'image' && r.type !== 'logo') continue;
-            const m = /^https?:\/\/commons\.wikimedia\.org\/wiki\/File:(.+)$/i.exec((r.url && r.url.resource) || '');
-            if (!m) continue;
-            try {
-                return decodeURIComponent(m[1]).replace(/_/g, ' ');
-            } catch (_) {
-                return m[1].replace(/_/g, ' ');
-            }
-        }
-        return '';
     }
 
     /**
@@ -56555,6 +57135,161 @@
         };
     }
 
+    // ── Every picture of an entity's links (2026-10-29) ──────────────────────
+    // zabe's "MusicBrainz Entity Images" userscript showed the way
+    // (tests/fixtures/live-userscripts/manifest.json, zabe-entity-image):
+    // an entity's url-rels of type image, logo or poster, and any Wikimedia
+    // Commons File: link, are pictures. MusicBrainz shows none of them (its
+    // Commons switch is off; a logo link sits among the hidden links).
+    // Probe: scripts/probe-entity-image-rels.py (label CBS: six `logo` links,
+    // one http-only; Bruce Springsteen: one `image`, a Commons file). Used by
+    // the window (`_mbPopImageLoad()`, `_mbPopWindowPicture()`) and the page
+    // heading (`_eiInitPage()`), which share the lookup and the record.
+
+    /** The url-rel types whose target is a picture (zabe's three). */
+    const _EI_PIC_TYPES = new Set(['image', 'logo', 'poster']);
+
+    /**
+     * How long a page waits for zabe's pictures (`div.entity-image`, its own
+     * url-rels request about a second after load) before asking MusicBrainz
+     * itself (`_eiStart()`), so the two never ask twice.
+     */
+    const _EI_ZABE_WAIT_MS = 2500;
+
+    /** How long each picture beside the name stays before the next fades in (mockup B2). */
+    const _EI_ROTATE_MS = 6000;
+
+    /**
+     * An entity's pictures from its url-rels, in order: the Commons files
+     * first (they load reliably and ask nothing: `Special:FilePath`), then
+     * the other image, logo and poster links in MusicBrainz's order, once
+     * each. A picture link on http is tried on https (an https page shows no
+     * http image); `url` keeps the link as MusicBrainz has it.
+     *
+     * @param {Array<Object>} relations
+     * @returns {Array<{src: string, thumb: string, large: string, page: string, url: string,
+     *   type: string, file: string, host: string}>}
+     */
+    function _eiImagesFrom(relations) {
+        const commons = [];
+        const other = [];
+        const seen = new Set();
+        for (const r of relations || []) {
+            const url = (r.url && r.url.resource) || '';
+            if (!url || seen.has(url)) continue;
+            const m = /^https?:\/\/commons\.wikimedia\.org\/wiki\/File:(.+)$/i.exec(url);
+            if (m) {
+                let file = m[1];
+                try {
+                    file = decodeURIComponent(file);
+                } catch (_) { /* keep it as written */ }
+                file = file.replace(/_/g, ' ');
+                const u = _mbPopImgUrls(file);
+                seen.add(url);
+                commons.push({ src: u.thumb, thumb: u.thumb, large: u.large, page: u.page, url, type: r.type || 'image', file, host: 'commons.wikimedia.org' });
+            } else if (_EI_PIC_TYPES.has(r.type) && /^https?:\/\//i.test(url)) {
+                const https = url.replace(/^http:/i, 'https:');
+                let host;
+                try {
+                    host = new URL(https).hostname;
+                } catch (_) {
+                    continue;
+                }
+                seen.add(url);
+                other.push({ src: https, thumb: https, large: https, page: '', url, type: r.type, file: '', host });
+            }
+        }
+        return commons.concat(other);
+    }
+
+    /**
+     * A picture from the entity's Wikidata item (P18 image, P154 logo): one
+     * Commons file, in the shape of `_eiImagesFrom()`'s.
+     * @param {string} file
+     * @param {string} prop - 'P18' or 'P154'.
+     * @returns {Object}
+     */
+    function _eiWikidataImage(file, prop) {
+        const u = _mbPopImgUrls(file);
+        return { src: u.thumb, thumb: u.thumb, large: u.large, page: u.page, url: u.page, type: prop === 'P154' ? 'logo' : 'image', file, host: 'commons.wikimedia.org', prop };
+    }
+
+    /**
+     * Whether each picture address loads, by address: 'ok', 'bad' or
+     * 'pending' (`_eiProbe()`). For the page load; a picture is never shown
+     * before it is known to load.
+     * @type {Map<string, string>}
+     */
+    const _eiLoadState = new Map();
+
+    /** Who waits for a probe's answer, by address. */
+    const _eiLoadWaiters = new Map();
+
+    /**
+     * Loads a picture once to learn whether it shows (no referrer, as every
+     * picture of the window), then calls `done(state)`; at once when known.
+     * A picture that answers but is 0 px wide counts as broken.
+     *
+     * @param {string} src
+     * @param {function(string): void} done
+     * @returns {void}
+     */
+    function _eiProbe(src, done) {
+        const st = _eiLoadState.get(src);
+        if (st === 'ok' || st === 'bad') {
+            done(st);
+            return;
+        }
+        if (!_eiLoadWaiters.has(src)) _eiLoadWaiters.set(src, []);
+        _eiLoadWaiters.get(src).push(done);
+        if (st === 'pending') return;
+        _eiLoadState.set(src, 'pending');
+        const img = new Image();
+        img.referrerPolicy = 'no-referrer';
+        const end = (state) => {
+            _eiLoadState.set(src, state);
+            const ws = _eiLoadWaiters.get(src) || [];
+            _eiLoadWaiters.delete(src);
+            ws.forEach(fn => fn(state));
+        };
+        img.onload = () => end(img.naturalWidth > 0 ? 'ok' : 'bad');
+        img.onerror = () => end('bad');
+        img.src = src;
+    }
+
+    /**
+     * Probes every picture of a list and calls `done(ok, bad)` once all are
+     * known, each list in the given order.
+     *
+     * @param {Array<Object>} images - `_eiImagesFrom()`'s.
+     * @param {function(Array<Object>, Array<Object>): void} done
+     * @returns {void}
+     */
+    function _eiProbeAll(images, done) {
+        let left = images.length;
+        if (!left) {
+            done([], []);
+            return;
+        }
+        images.forEach(im => _eiProbe(im.src, () => {
+            left--;
+            if (left) return;
+            done(images.filter(x => _eiLoadState.get(x.src) === 'ok'), images.filter(x => _eiLoadState.get(x.src) === 'bad'));
+        }));
+    }
+
+    /**
+     * Where a picture comes from, in words: "logo link · seeklogo.com",
+     * "Wikimedia Commons", "Wikidata P154 (logo)".
+     * @param {Object} im
+     * @returns {string}
+     */
+    function _eiOrigin(im) {
+        if (im.prop) return `Wikidata ${im.prop} (${im.prop === 'P154' ? 'logo' : 'image'})`;
+        if (im.file) return 'Wikimedia Commons';
+        return `${im.type} link · ${im.host.replace(/^www\./, '')}`;
+    }
+
     /**
      * Starts the entity's picture lookup, from a kind's `pin()` (the window
      * only). `relations` is null while the url-rels are still on their way:
@@ -56578,24 +57313,42 @@
         const force = _mbPopImgAgain.delete(key);
         const s = _mbPop.get(key);
         if (!force && s && s.status === 'failed') return;
-        _mbLoad(key, async (wanted) => {
-            const file = _mbPopCommonsFile(relations);
-            if (file) return { ok: true, data: { file, from: 'commons-rel', item: '' } };
-            const item = _mbPopWikidataItem(relations);
-            for (const prop of item ? _MB_POP_IMG_PROPS[t.type] : []) {
-                const url = `https://www.wikidata.org/w/api.php?action=wbgetclaims&format=json&entity=${item}&property=${prop}`;
-                const res = await _extGet(url, { wanted, fetchOpts: { accept: /\bjson\b/i, headers: { 'Api-User-Agent': _EXT_AGENT } } });
-                if (res.skipped) return { skipped: true };
-                if (res.error || res.status !== 200) return { ok: false, detail: _extFailText(res) };
-                const d = _extJson(res);
-                if (!d) return { ok: false, detail: 'Wikidata answered, but not with JSON' };
-                // An item Wikidata does not have (deleted, never existed): no picture.
-                if (d.error) break;
-                const f = _mbPopClaimFile(d, prop);
-                if (f) return { ok: true, data: { file: f, from: prop, item } };
-            }
-            return { ok: true, data: { file: '', from: '', item } };
-        }, { force, repaint, wanted: _mbPopWanted(t), version: _MB_POP_IMG_VERSION });
+        _mbLoad(key, async (wanted) => _mbPopImageRecordFor(t, relations, wanted),
+            { force, repaint, wanted: _mbPopWanted(t), version: _MB_POP_IMG_VERSION });
+    }
+
+    /**
+     * The picture record of an entity: every picture of its links
+     * (`_eiImagesFrom()`, asks nothing), else the one its Wikidata item names
+     * (one `wbgetclaims` per property of `_MB_POP_IMG_PROPS`, through
+     * `_extGet()`: Wikidata's own rate gate, anonymous). `file` and `from`
+     * keep version 1's meaning for the first picture. The window only: the
+     * page heading (`_eiInitPage()`) shares the url-rels lookup, never this
+     * record, so a heading that found no picture in the links never stands
+     * in for the window's Wikidata answer.
+     *
+     * @param {object} t
+     * @param {Array<Object>} relations
+     * @param {function(): boolean} wanted
+     * @returns {Promise<{ok?: boolean, data?: Object, detail?: string, skipped?: boolean}>}
+     */
+    async function _mbPopImageRecordFor(t, relations, wanted) {
+        const images = _eiImagesFrom(relations);
+        const item = _mbPopWikidataItem(relations);
+        if (images.length) return { ok: true, data: { images, file: images[0].file, from: 'rels', item } };
+        for (const prop of item ? (_MB_POP_IMG_PROPS[t.type] || []) : []) {
+            const url = `https://www.wikidata.org/w/api.php?action=wbgetclaims&format=json&entity=${item}&property=${prop}`;
+            const res = await _extGet(url, { wanted, fetchOpts: { accept: /\bjson\b/i, headers: { 'Api-User-Agent': _EXT_AGENT } } });
+            if (res.skipped) return { skipped: true };
+            if (res.error || res.status !== 200) return { ok: false, detail: _extFailText(res) };
+            const d = _extJson(res);
+            if (!d) return { ok: false, detail: 'Wikidata answered, but not with JSON' };
+            // An item Wikidata does not have (deleted, never existed): no picture.
+            if (d.error) break;
+            const f = _mbPopClaimFile(d, prop);
+            if (f) return { ok: true, data: { images: [_eiWikidataImage(f, prop)], file: f, from: prop, item } };
+        }
+        return { ok: true, data: { images: [], file: '', from: '', item } };
     }
 
     /**
@@ -56614,7 +57367,7 @@
         Promise.resolve(_rgIdbGet(key, _MB_POP_IMG_VERSION)).then((rec) => {
             if (!rec || !rec.data) return;
             _mbPopImgPeek.set(key, rec.data);
-            if (rec.data.file && repaint) repaint();
+            if ((rec.data.images || []).length && repaint) repaint();
         }, () => {});
     }
 
@@ -56632,22 +57385,63 @@
     }
 
     /**
-     * The card's picture, 64 px beside the facts, '' when none is known.
+     * The card's picture, 64 px beside the facts, '' when none is known: the
+     * first that loads, "+N" for the others (a card never asks: only what a
+     * window or an earlier page load put in memory or IndexedDB). A picture
+     * not yet known to load is checked first (an `<img>`, as version 1's
+     * Commons thumbnail was), and the card repaints once all are known.
      * @param {object} t
+     * @param {?function(): void} [repaint] - The card's.
      * @returns {string}
      */
-    function _mbPopCardPicture(t) {
+    function _mbPopCardPicture(t, repaint) {
         if (!_mbPopImgOn(t)) return '';
         const rec = _mbPopImageRecord(t);
-        if (!rec || !rec.file) return '';
-        return `<div class="mb-pop-pic"><img src="${_rgEsc(_mbPopImgUrls(rec.file).thumb)}" alt="" referrerpolicy="no-referrer"></div>`;
+        const images = (rec && rec.images) || [];
+        if (images.some(im => _eiLoadState.get(im.src) !== 'ok' && _eiLoadState.get(im.src) !== 'bad')) {
+            _eiProbeAll(images, () => { if (repaint) repaint(); });
+        }
+        const ok = images.filter(im => _eiLoadState.get(im.src) === 'ok');
+        if (!ok.length) return '';
+        return `<div class="mb-pop-pic"><img src="${_rgEsc(ok[0].thumb)}" alt="" referrerpolicy="no-referrer">` +
+            `${ok.length > 1 ? `<span class="mb-pop-pic-more">+${ok.length - 1}</span>` : ''}</div>`;
     }
 
     /**
-     * The window's picture for its CURRENT state: a loading line, the
-     * failure with "Try again" (⟳), nothing when there is none, else the
-     * picture, which opens the artwork viewer (`_dpArtViewerClick()`), with
-     * where it came from.
+     * Which picture of an entity's window is the large one (B4: a click on a
+     * thumbnail of the strip picks it), by window target key.
+     * @type {Map<string, number>}
+     */
+    const _eiWinPick = new Map();
+
+    /**
+     * A plain click on a thumbnail of a window's picture strip: that picture
+     * becomes the large one (the window repaints). A click on the large one
+     * is the artwork viewer's (`_dpArtViewerClick()`), which steps through
+     * every picture: they are all `data-mb-artv-ext` links, in order.
+     *
+     * @param {MouseEvent} e
+     * @returns {boolean} Whether it was a thumbnail's click.
+     */
+    function _eiWinPickClick(e) {
+        if (e.button !== 0 || e.ctrlKey || e.shiftKey || e.altKey || e.metaKey || !(e.target instanceof Element)) return false;
+        const a = e.target.closest('a[data-mb-ei-pick]');
+        if (!a || !_dpDialog.target) return false;
+        e.preventDefault();
+        _eiWinPick.set(_dpDialog.target.key, Number(a.dataset.mbEiPick));
+        if (_dpDialog.repaint) _dpDialog.repaint();
+        return true;
+    }
+
+    /**
+     * The window's picture for its CURRENT state (mockup B4, 2026-10-29): a
+     * loading line, the failure with "Try again" (⟳), nothing when there is
+     * none, else the chosen picture large, where it came from ("logo link ·
+     * seeklogo.com · 2 / 4"), a strip of every picture that loads (a click
+     * picks one) and a "didn't load" line naming the links that do not.
+     * Every picture is a `data-mb-artv-ext` link, so a click on the large one
+     * opens the viewer on all of them. A picture not yet probed is left out
+     * until its probe repaints the window.
      * @param {object} t
      * @returns {string}
      */
@@ -56661,13 +57455,45 @@
                 '<p><button type="button" class="mb-dp-retry">⟳ Try again</button></p>';
         }
         const rec = s.data || {};
-        if (!rec.file) return '';
-        const u = _mbPopImgUrls(rec.file);
-        const from = rec.from === 'P18' || rec.from === 'P154' ? ` · from Wikidata ${rec.item} (${rec.from === 'P154' ? 'logo' : 'image'})` : '';
-        return `<figure class="mb-pop-xpic"><a href="${_rgEsc(u.large)}" target="_blank" rel="noopener noreferrer" data-mb-artv-ext="0" ` +
-            `data-mb-artv-page="${_rgEsc(u.page)}"><img class="mb-dp-xcover" src="${_rgEsc(u.thumb)}" alt="${_rgEsc(rec.file)}" ` +
-            `referrerpolicy="no-referrer"></a><figcaption class="mb-dp-xsub"><a href="${_rgEsc(u.page)}" target="_blank" ` +
-            `rel="noopener noreferrer">Wikimedia Commons</a> · ${_rgEsc(rec.file)}${_rgEsc(from)}</figcaption></figure>`;
+        const images = rec.images || [];
+        if (!images.length) return '';
+        const key = t.key;
+        let waiting = 0;
+        images.forEach((im) => {
+            if (_eiLoadState.get(im.src) === 'ok' || _eiLoadState.get(im.src) === 'bad') return;
+            waiting++;
+            _eiProbe(im.src, () => {
+                if (_dpDialog.target && _dpDialog.target.key === key && _dpDialog.repaint) _dpDialog.repaint();
+            });
+        });
+        const ok = images.filter(im => _eiLoadState.get(im.src) === 'ok');
+        const bad = images.filter(im => _eiLoadState.get(im.src) === 'bad');
+        const badHtml = bad.length ? `<details class="mb-ei-bad"><summary>${bad.length} picture link${bad.length === 1 ? '' : 's'} did not load</summary><ul>` +
+            bad.map(im => `<li><a href="${_rgEsc(im.url)}" target="_blank" rel="noopener noreferrer">${_rgEsc(im.url)}</a>` +
+                `${/^http:/i.test(im.url) ? ' <span class="mb-rg-dim">(http only: an https page cannot show it)</span>' : ''}</li>`).join('') +
+            '</ul></details>' : '';
+        if (!ok.length) {
+            return waiting ? '<div class="mb-dp-xsub mb-pop-xpic-wait"><span class="mb-dp-spin">◌</span> Loading the pictures…</div>' : badHtml;
+        }
+        const pick = Math.min(Math.max(0, _eiWinPick.get(key) || 0), ok.length - 1);
+        const cur = ok[pick];
+        const link = (im, i, inner, extra = '') => `<a href="${_rgEsc(im.large)}" target="_blank" rel="noopener noreferrer" data-mb-artv-ext="${i}"` +
+            `${im.page ? ` data-mb-artv-page="${_rgEsc(im.page)}"` : ''}${extra}>${inner}</a>`;
+        const img = (im, cls) => `<img class="${cls}" src="${_rgEsc(im.thumb)}" alt="${_rgEsc(_eiOrigin(im))}" referrerpolicy="no-referrer">`;
+        // A Commons file as version 1 named it ("Wikimedia Commons · file",
+        // "· from Wikidata Q… (logo)" when Wikidata named it); a link by its
+        // kind and host.
+        const where = im => (im.file
+            ? `<a href="${_rgEsc(im.page)}" target="_blank" rel="noopener noreferrer">Wikimedia Commons</a> · ${_rgEsc(im.file)}` +
+                (im.prop ? ` · from Wikidata ${_rgEsc(rec.item)} (${im.prop === 'P154' ? 'logo' : 'image'})` : '')
+            : `<a href="${_rgEsc(im.url)}" target="_blank" rel="noopener noreferrer">${_rgEsc(_eiOrigin(im))}</a>`);
+        return '<figure class="mb-pop-xpic mb-ei-win">' + link(cur, pick, img(cur, 'mb-dp-xcover')) +
+            `<figcaption class="mb-dp-xsub"><span>${where(cur)}</span>` +
+            `${ok.length > 1 ? `<span class="mb-ei-pos">${pick + 1} / ${ok.length}</span>` : ''}</figcaption>` +
+            (ok.length > 1 ? '<div class="mb-ei-strip" role="group" aria-label="Pictures">' + ok.map((im, i) => link(im, i, img(im, 'mb-ei-thumb'),
+                ` data-mb-ei-pick="${i}" aria-current="${i === pick}" aria-label="Picture ${i + 1}: ${_rgEsc(_eiOrigin(im))}"`)).join('') + '</div>' : '') +
+            (waiting ? '<div class="mb-dp-xsub"><span class="mb-dp-spin">◌</span> Checking more pictures…</div>' : '') +
+            badHtml + '</figure>';
     }
 
     /**
@@ -60130,15 +60956,25 @@
                 const head = `<div class="mb-tt-title">${_rgEsc(d.name)}</div>` +
                     `<div class="mb-tt-body mb-rg-pills">${_mbPopPillsHtml([d.type, _mbPopEventWhen(d), d.cancelled ? 'cancelled' : '',
                         sl.songs.length ? `${sl.songs.length} song${sl.songs.length === 1 ? '' : 's'}` : ''])}</div><div class="mb-tt-rule"></div>`;
-                const more = sl.songs.length - _MB_POP_CARD_SONGS;
+                // A setlist in parts (2026-10-29): the card previews its
+                // longest part (the first is often only a soundcheck), named
+                // above the list, and names the others under it.
+                const secs = sl.sections;
+                const main = secs.some(s => s.name) ? secs.reduce((a, b) => (b.count >= a.count ? b : a)) : null;
+                const list = main ? sl.songs.filter((x, i) => sl.parts[i].part === main.name) : sl.songs;
+                const more = list.length - _MB_POP_CARD_SONGS;
+                const others = main ? secs.filter(s => s !== main).map(s => `${s.name || 'Songs'} (${s.count})`) : [];
                 return head + _mbPopKvHtml([
                     ['Place', _rgEsc(_mbPopHeldAtText(place))],
                     ['Part of', _rgEsc(_mbPopEventPartOf(d))],
                     ['Line-up', _rgEsc(sl.lineup || _mbPopRelNames(d.relations, 'artist', ['main performer', 'support act', 'guest performer']))],
                 ]) + (sl.songs.length
-                    ? '<ol class="mb-dp-tracks mb-pop-tracks">' + sl.songs.slice(0, _MB_POP_CARD_SONGS).map((x, i) =>
+                    ? (main ? `<div class="mb-pop-partline">${main.name ? `${_rgEsc(main.name)} · ` : ''}${main.count} song${main.count === 1 ? '' : 's'}` +
+                        `${more > 0 ? `, the first ${_MB_POP_CARD_SONGS}` : ''}</div>` : '') +
+                      '<ol class="mb-dp-tracks mb-pop-tracks">' + list.slice(0, _MB_POP_CARD_SONGS).map((x, i) =>
                         `<li><span class="mb-dp-pos">${i + 1}</span><span class="mb-pop-ttl">${_rgEsc(x)}</span></li>`).join('') + '</ol>' +
-                      (more > 0 ? `<div class="mb-tt-dim">+ ${more} more</div>` : '')
+                      (more > 0 || others.length ? `<div class="mb-tt-dim">${[more > 0 ? `+ ${more} more` : '',
+                          others.length ? `also ${_rgEsc(others.join(', '))}` : ''].filter(Boolean).join(' · ')}</div>` : '')
                     : '');
             },
             windowHtml(d, t) {
@@ -60164,16 +61000,43 @@
                             (rec.length ? `<div class="mb-dp-gname">Recordings · ${rec.length}</div>` + _mbPopRelTableHtml(t, 'recorded-recordings', rec, 'Recording', 'recordings') : '');
                     });
                 // A List table (Phase 3e): # · Song · Notes (the rest of the
-                // line: guests, a remark), in the order played.
-                const right = `<h4>Setlist${sl.songs.length ? ` · ${sl.songs.length}` : ''}</h4>` +
+                // line: guests, a remark), in the order played. A setlist in
+                // parts (2026-10-29, mockup A1 of
+                // https://claude.ai/artifact/BL4JPmGMBzfhT7yGKepiBr): a heading
+                // row per named part with its count and notes, numbers starting
+                // over in each part, a Part chip each when there are two or more.
+                const secs = sl.sections;
+                const named = secs.filter(s => s.name);
+                const partOf = p => p || 'Songs';
+                const songWord = n => `${n} song${n === 1 ? '' : 's'}`;
+                const right = `<h4>Setlist${sl.songs.length ? ` · ${sl.songs.length}${named.length ? ` in ${secs.length} parts` : ''}` : ''}</h4>` +
                     (sl.lineupHtml ? `<div class="mb-dp-xsub">${sl.lineupHtml}</div>` : '') +
                     (sl.songs.length ? _dpListTableHtml(t, 'setlist', [
                         { key: 'n', label: '#', num: true, cls: 'mb-rg-num', val: x => x.n, html: x => String(x.n) },
-                        { key: 'song', label: 'Song', val: x => x.head.text, html: (x, q) => _hlHtml(x.head.html, q) },
+                        {
+                            key: 'song', label: 'Song', val: x => x.head.text,
+                            html: (x, q) => _hlHtml(x.head.html, q) +
+                                (x.also.length ? ` <span class="mb-dp-also">↺ also in ${_rgEsc(x.also.map(partOf).join(', '))}</span>` : ''),
+                        },
                         { key: 'notes', label: 'Notes', val: x => x.tail.text, html: (x, q) => _hlHtml(x.tail.html, q) },
-                    ], sl.parts, { initial: 'in the order played', placeholder: 'Filter the setlist: song, guests', none: 'No songs.' })
+                    ], sl.parts, Object.assign({ initial: 'in the order played', placeholder: 'Filter the setlist: song, guests', none: 'No songs.' },
+                        named.length ? {
+                            group: x => x.part, groupCol: 'song',
+                            groupHead: (g, n, total) => {
+                                const sec = secs.find(s => s.name === g);
+                                return g ? `<span class="mb-dp-tsec-n">${_rgEsc(g)}</span>` +
+                                    `<span class="mb-dp-tsec-c">${n < total ? `${n} of ${songWord(total)}` : songWord(total)}</span>` +
+                                    sec.notesHtml.map(x => `<div class="mb-dp-tsec-note">${x}</div>`).join('') : '';
+                            },
+                        } : {},
+                        secs.length >= 2 ? {
+                            facet: x => partOf(x.part), chipLabel: 'Part',
+                            facetSort: (a, b) => secs.findIndex(s => partOf(s.name) === a[0]) - secs.findIndex(s => partOf(s.name) === b[0]),
+                        } : {}))
                         : '<div class="mb-dp-xsub">MusicBrainz has no setlist for it.</div>') +
-                    sl.notesHtml.map(n => `<div class="mb-dp-note">${n}</div>`).join('');
+                    // The comments before the first part, and those of a part
+                    // without a name (no heading row to carry them).
+                    sl.notesHtml.concat(...secs.filter(s => !s.name).map(s => s.notesHtml)).map(n => `<div class="mb-dp-note">${n}</div>`).join('');
                 return `<div class="mb-dp-x"><div class="mb-dp-col">${left}</div><div class="mb-dp-col">${right}</div></div>`;
             },
             pin(t, d, again, repaint) {
@@ -62716,7 +63579,9 @@
             .mb-yt-grid > .mb-yt-slot:empty { display: none; }
             .mb-yt-grid .mb-yt-len { justify-self: end; font-variant-numeric: tabular-nums; white-space: nowrap; }
             tr.mb-yt-playerrow > td { padding: 0 8px 12px; background: #fbf8f1; }
-            .mb-yt-player { display: grid; gap: 6px; width: min(100%, 640px); max-width: 640px; }
+            /* text-indent: 0, so a hanging indent of the container it plays in
+               never reaches the foot's pill and text. */
+            .mb-yt-player { display: grid; gap: 6px; width: min(100%, 640px); max-width: 640px; text-indent: 0; }
             .mb-yt-frame {
                 display: block;
                 width: 100%;
@@ -64526,10 +65391,16 @@
      *   facet?: function(Object): string, chipLabel?: string, thumb?: function(Object): string, tools?: string,
      *   note?: string, body?: ?string, none?: string, nomatch?: string, qCls?: string, sortAttr?: string,
      *   chipAttr?: string, rowAttrs?: function(Object): string,
-     *   facetSort?: function(Array, Array): number}} [opts] - `qCls`, `sortAttr` and
+     *   facetSort?: function(Array, Array): number, group?: function(Object): string,
+     *   groupHead?: function(string, number, number): string, groupCol?: string}} [opts] - `qCls`, `sortAttr` and
      *   `chipAttr` add names a caller's specs address; `facetSort` orders the
      *   chips' `[value, count]` pairs (most rows first by default; the genre
-     *   list's letters A–Z).
+     *   list's letters A–Z). `group` names a row's part (an event's
+     *   "Soundcheck", "Concert", 2026-10-29): while no column is sorted a
+     *   heading row (`tr.mb-dp-tsec`, `groupHead(name, shown, total)`, none
+     *   when it returns '') opens each part where it starts; while sorted the
+     *   parts are mixed, so the `groupCol` column's cell carries its part's
+     *   name instead (`span.mb-dp-tpart`).
      * @returns {string}
      */
     function _dpListTableHtml(t, id, cols, rows, opts = {}) {
@@ -64563,10 +65434,25 @@
         } else {
             const initial = opts.initial || 'as the site lists them';
             const thumb = r => `<td>${opts.thumb(r) || '<span class="mb-dg-vthumb mb-dg-nothumb" aria-hidden="true"></span>'}</td>`;
+            const sorted = !!ui.sort.dir;
+            const count = (list) => list.reduce((m, r) => m.set(opts.group(r), (m.get(opts.group(r)) || 0) + 1), new Map());
+            const totals = opts.group ? count(rows) : null;
+            const shown = opts.group ? count(view) : null;
+            let prevGroup = null;
+            const groupRow = (r) => {
+                if (!opts.group || sorted) return '';
+                const g = opts.group(r);
+                if (g === prevGroup) return '';
+                prevGroup = g;
+                const head = opts.groupHead ? opts.groupHead(g, shown.get(g), totals.get(g)) : _rgEsc(g);
+                return head ? `<tr class="mb-dp-tsec"><td colspan="${cols.length + (opts.thumb ? 1 : 0)}">${head}</td></tr>` : '';
+            };
+            const partTag = (r, c) => (opts.group && sorted && c.key === opts.groupCol && opts.group(r)
+                ? `<span class="mb-dp-tpart">${_rgEsc(opts.group(r))}</span>` : '');
             table = `<div class="mb-dg-vwrap" data-mb-keep-scroll="tbl-${_rgEsc(id)}"><table class="mb-dg-vt mb-dg-lt"><thead><tr>` +
                 `${opts.thumb ? '<th class="mb-dg-nosort"></th>' : ''}${cols.map(c => _dpTblThHtml(c, ui, initial, opts.sortAttr)).join('')}</tr></thead><tbody>` +
-                view.slice(0, ui.limit).map(r => `<tr${opts.rowAttrs ? opts.rowAttrs(r) : ''}>${opts.thumb ? thumb(r) : ''}` +
-                    cols.map(c => `<td${c.cls ? ` class="${c.cls}"` : ''}>${c.html(r, ui.q)}</td>`).join('') + '</tr>').join('') + '</tbody></table>' +
+                view.slice(0, ui.limit).map(r => `${groupRow(r)}<tr${opts.rowAttrs ? opts.rowAttrs(r) : ''}>${opts.thumb ? thumb(r) : ''}` +
+                    cols.map(c => `<td${c.cls ? ` class="${c.cls}"` : ''}>${c.html(r, ui.q)}${partTag(r, c)}</td>`).join('') + '</tr>').join('') + '</tbody></table>' +
                 (view.length > ui.limit ? `<div class="mb-dg-morerow">Showing ${_extDgNum(ui.limit)} of ${_extDgNum(view.length)}. ` +
                     `<button type="button" class="mb-dg-btn" data-mb-tbl-act="all">Show all ${_extDgNum(view.length)}</button></div>` : '') + '</div>';
         }
@@ -65696,10 +66582,14 @@
 
     /**
      * One side of the history page's diff (`table.diff`, a cell holding the
-     * release page as it was) as named blocks: the profile's facts (Label,
-     * Format, …), then each section (Tracklist, Companies, Notes, Barcode
-     * and Other Identifiers, Credits) with its lines — a list's items, a
-     * table's rows, or the section's text — each as `_extDgHistHtml()`.
+     * page as it was) as named blocks: the profile's facts (Label, Format,
+     * …), then each section (Tracklist, Companies, Notes, Barcode and Other
+     * Identifiers, Credits) with its lines — a list's items, a table's rows,
+     * or the section's text — each as `_extDgHistHtml()`. A release's or a
+     * master's facts sit in `.profile`; an artist's or a label's (Real Name,
+     * Profile, Sites, Aliases, …) are bare `div.head` + `div.content` pairs
+     * right in the cell, with no section at all (tests/fixtures/dg-artist-history.html,
+     * dg-label-history.html): before 2026-10-29 such a diff came out empty.
      *
      * @param {Element} td
      * @param {string} base
@@ -65709,7 +66599,7 @@
         const out = [];
         const title = td.querySelector('#profile_title, .profile h1');
         if (title) out.push({ name: 'Title', lines: [_extDgHistHtml(title, base)] });
-        td.querySelectorAll('.profile .head').forEach((h) => {
+        td.querySelectorAll('.profile .head, :scope > .head').forEach((h) => {
             const c = h.nextElementSibling;
             if (c && c.classList.contains('content')) out.push({ name: _dpText(h.textContent).replace(/:$/, ''), lines: [_extDgHistHtml(c, base)] });
         });
@@ -66154,7 +67044,7 @@
                 (shown.length ? shown.map(b => side(b, 'old') + side(b, 'new')).join('') : '<div class="mb-dg-dim">Nothing marked as changed.</div><div></div>') + '</div>' +
                 '<div class="mb-dgh-legend"><span class="mb-dgh-rem">removed</span> <span class="mb-dgh-chg">changed</span> <span class="mb-dgh-add">added</span></div>';
             const of = picked || h.entries.find(e => e.latest) || h.entries[h.entries.length - 1];
-            const dact = back + btn('diffall', ui.diffAll ? '0' : '1', ui.diffAll ? 'Only what changed' : 'The whole release', ui.diffAll) +
+            const dact = back + btn('diffall', ui.diffAll ? '0' : '1', ui.diffAll ? 'Only what changed' : `The whole ${id.split('/')[0]}`, ui.diffAll) +
                 (of && of.changes ? link(of.changes, 'Changes on Discogs ↗').replace('<a ', '<a class="mb-dg-btn" ') : '');
             // Discogs' own numbers: revision 10 is compared with 8 when 9
             // changed no data (debug/discogs-release-history-diff.html).
@@ -67530,7 +68420,7 @@
         },
         {
             // Before `discogs`, whose path pattern takes `/history` too.
-            id: 'dghistory', kind: 'Discogs release history', test: _extDgHistTest, askHost: () => 'www.discogs.com', load: _extDgHistLoad,
+            id: 'dghistory', kind: 'Discogs edit history', test: _extDgHistTest, askHost: () => 'www.discogs.com', load: _extDgHistLoad,
             noLive: true, version: _EXT_IDB_VERSION * 100 + _EXT_DGH_VERSION, windowOnly: true, keyUrl: _extDgHistKeyUrl, kindFor: _extDgHistKind,
             window: _extDgHistWindow, onAreaClick: _extDgHistAreaClick,
             loadingNote: 'Reading the edit history from discogs.com (one request).',
@@ -82859,6 +83749,10 @@ a { color: #1565c0; }`;
     // The sidebar picture's hover card and viewer (docs/claude/sidebar.md).
     // MusicBrainz adds the picture after load, so this only starts watching.
     _sbInitPicture();
+
+    // Every picture of the entity's links beside the name (sa_entity_images,
+    // 2026-10-29): starts a turn later.
+    _eiInitPage();
 
     // "Play here" tiles under the sidebar's YouTube links and after the
     // annotation's (org/youtube.org, decision 2; sa_yt_play_in_place).
@@ -104588,8 +105482,9 @@ a { color: #1565c0; }`;
                         // Labels) — the Changes table's date/time split ran on the Diff
                         // table's first column ("Companies, etc." → "Companies," /
                         // "etc." under no header: vzell's debug/2columns-missing.html).
+                        // 'dg-user-list' (2026-10-29) shares dg-user's lists.
                         if (pageType === 'tag-value' || pageType === 'user-tag-value' || pageType === 'user-ratings' || pageType === 'instrument-list' || pageType === 'artist-credit' || pageType === 'event-overview' || _isRelTablesRun() ||
-                            pageType === 'dg-history' || pageType === 'dg-user') {
+                            pageType === 'dg-history' || pageType === 'dg-user' || pageType === 'dg-user-list') {
                             // Rebuild the active extractors/integer-columns/erasers from this
                             // group's own entity-specific features (entityFeatures map, if any),
                             // merged with the base features (listToTable, removeSelector, etc.) —
@@ -109661,14 +110556,14 @@ a { color: #1565c0; }`;
                 // categories 'album'/'official' have a small enough row count, OR this is
                 // release-tracks (every medium — "1 - CD", "2 - DVD-Video", … — always
                 // stays open; hiding mediums by default works against the whole point of
-                // consolidating a release's tracklists into one view). The release-tracks
-                // case also fixes a real bug, not just a UX preference: initCollapsableColumns()/
+                // consolidating a release's tracklists into one view). It was also how a
+                // real bug was first sidestepped: initCollapsableColumns()/
                 // makeColumnsResizable() run synchronously right after this, in the same
-                // pass — measuring scrollHeight/clientHeight on a `display:none` table
-                // always reads 0/0 in a real browser, so any collapsable column
-                // (ARs/AcoustID/ISRC) on a table left hidden here permanently never gets
-                // its overflow-triggered toggle, even after the user later expands the
-                // section manually (see DEBUG-NOTES.md).
+                // pass, and on a `display:none` table scrollHeight/clientHeight read 0/0,
+                // so a prose column's cut-off cells got no toggle. Since 2026-10-29
+                // _collapseWatchUnlaid() measures those cells again once the table is
+                // shown, for every pageType (see DEBUG-NOTES.md); list columns' minimum
+                // widths are still measured as 0 on a hidden table.
                 const isSingleSubTable = dataArray.length === 1;
                 const isReleaseTracks = activeDefinition?.type === 'release-tracks';
                 const shouldStayOpen = isSingleSubTable || isReleaseTracks ||
@@ -113922,6 +114817,25 @@ a { color: #1565c0; }`;
             .mb-sb-avatar img { display: block; width: 100%; height: 100%; object-fit: cover; }
             .mb-sb-avatar.mb-sb-avatar-contain { background: #fff; }
             .mb-sb-avatar.mb-sb-avatar-contain img { object-fit: contain; }
+            /* The pictures of the entity's links beside the name (_eiAvatar(),
+               mockup B2, 2026-10-29): stacked in one box, fading, fitted whole
+               on white (a logo is often wide); the arrows inside its edges on
+               hover, the dots just under it. */
+            .mb-ei-avatar { position: relative; overflow: visible; background: #fff; }
+            .mb-ei-avatar .mb-ei-clip { position: absolute; inset: 0; overflow: hidden; border-radius: 2px; }
+            .mb-ei-avatar .mb-ei-clip img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; transition: opacity 0.9s ease; }
+            .mb-ei-avatar .mb-ei-arr { position: absolute; top: 50%; z-index: 1; width: 12px; height: 20px; padding: 0; transform: translateY(-50%);
+                border: 0; border-radius: 2px; background: rgba(43, 38, 34, 0.78); color: #fbf8f1; font: 12px/20px system-ui, sans-serif;
+                cursor: pointer; opacity: 0; transition: opacity 0.15s; }
+            .mb-ei-avatar .mb-ei-prev { left: 0; }
+            .mb-ei-avatar .mb-ei-next { right: 0; }
+            .mb-ei-avatar:hover .mb-ei-arr, .mb-ei-avatar:focus-within .mb-ei-arr { opacity: 1; }
+            .mb-ei-avatar .mb-ei-dots { position: absolute; left: 50%; bottom: -7px; display: flex; gap: 2px; transform: translateX(-50%); pointer-events: none; }
+            .mb-ei-avatar .mb-ei-dots i { width: 4px; height: 4px; border-radius: 50%; background: #c9bfae; }
+            .mb-ei-avatar .mb-ei-dots i.mb-ei-on { background: #2b2622; }
+            @media (prefers-reduced-motion: reduce) {
+                .mb-ei-avatar .mb-ei-clip img, .mb-ei-avatar .mb-ei-arr { transition: none; }
+            }
         `);
         st.id = 'mb-sb-pic-style';
     }
@@ -114132,15 +115046,306 @@ a { color: #1565c0; }`;
             if (cover) _sbWireCover(cover);
             return;
         }
+        // zabe's script shows one of its pictures and hides the others
+        // (`hidden` on its div.picture): the one shown. A picture it cannot
+        // wire (not a Commons file: a logo link) keeps the watch going
+        // instead of ending it, so a Commons picture arriving later is still
+        // wired (2026-10-29; before, the first img found ended the watch).
         const find = () => {
-            const img = sidebar.querySelector('.entity-image .picture img, .commons-image .picture img, :scope > .picture img');
-            if (img && (img.currentSrc || img.src)) { _sbWirePicture(img); return true; }
+            const img = sidebar.querySelector('.entity-image .picture:not([hidden]) img, .commons-image .picture img, :scope > .picture img');
+            if (img && (img.currentSrc || img.src)) {
+                _sbWirePicture(img);
+                return !!img.dataset.mbSbPic;
+            }
             return false;
         };
         if (find()) return;
         const mo = new MutationObserver(() => { if (find()) { mo.disconnect(); clearTimeout(timer); } });
         mo.observe(sidebar, { childList: true, subtree: true, attributes: true, attributeFilter: ['src'] });
         const timer = setTimeout(() => mo.disconnect(), 15000);
+    }
+
+    // ── The entity's pictures beside the name (sa_entity_images, 2026-10-29) ──
+    // Every picture of the entity's links (`_eiImagesFrom()`), which
+    // MusicBrainz itself does not show, beside the name: one, or several
+    // fading from one to the next (mockup B2,
+    // https://claude.ai/artifact/BL4JPmGMBzfhT7yGKepiBr). The links come from
+    // the preview window's own lookup (`_mbPopLookup(t, 'url-rels')`: same key,
+    // same IndexedDB record), so a page and a window ask once between them;
+    // with zabe's "MusicBrainz Entity Images" userscript on the page, its
+    // pictures are read instead (`div.entity-image`, the user's consent of
+    // 2026-10-11 covers reading its img addresses) and nothing is asked. A
+    // picture is shown only once it is known to load (`_eiProbeAll()`). It
+    // takes the place of the single sidebar copy (`_sbHeaderCopy()`); both
+    // carry `.mb-sb-avatar`, so neither adds a second.
+
+    /**
+     * The entity of this page whose pictures the heading may show: an artist,
+     * label, place, series, instrument or area, on any of its tabs; null
+     * elsewhere (a release's, release group's or event's heading shows its
+     * cover, `_sbWireCover()`).
+     * @returns {?{type: string, id: string}}
+     */
+    function _eiPageEntity() {
+        const m = location.pathname.match(/^\/(artist|label|place|series|instrument|area)\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})(?:\/|$)/i);
+        return m ? { type: m[1], id: m[2].toLowerCase() } : null;
+    }
+
+    /**
+     * Starts the heading's pictures at init: MusicBrainz pages only, with
+     * `sa_entity_images`, the sidebar picture and its copy beside the name on.
+     * Everything else waits a turn: this runs at init, before the end of the
+     * file is evaluated (TDZ).
+     * @returns {void}
+     */
+    function _eiInitPage() {
+        const S = Lib.settings;
+        const ent = _foreignHost ? null : _eiPageEntity();
+        const sidebar = document.getElementById('sidebar');
+        if (!ent || !sidebar) return;
+        if (S.sa_entity_images === false || S.sa_sidebar_picture === false || S.sa_sidebar_picture_in_header === false) {
+            _eiDecided(sidebar, 'off');
+            return;
+        }
+        setTimeout(() => _eiStart(ent, sidebar), 0);
+    }
+
+    /**
+     * Records on the sidebar where the heading's pictures came from
+     * (`data-mb-ei`): `known` (the links were in memory or IndexedDB), `zabe`
+     * (zabe's pictures), `asked` (one url-rels lookup), `off`. For a reader
+     * of the page and the specs, which wait for it instead of for time.
+     * @param {HTMLElement} sidebar
+     * @param {string} how
+     * @returns {void}
+     */
+    function _eiDecided(sidebar, how) {
+        sidebar.dataset.mbEi = how;
+    }
+
+    /**
+     * Finds the entity's pictures, asking as little as possible: the links
+     * already in memory or IndexedDB (a window or an earlier page asked
+     * them) at once; else zabe's pictures, if they arrive within
+     * `_EI_ZABE_WAIT_MS`; else one url-rels lookup (`_mbWsLoad()`, the
+     * MusicBrainz rate gate).
+     * @param {{type: string, id: string}} ent
+     * @param {HTMLElement} sidebar
+     * @returns {void}
+     */
+    function _eiStart(ent, sidebar) {
+        const lookup = _mbPopLookup(ent, 'url-rels');
+        const fromRels = () => {
+            const st = _mbPop.get(lookup.key);
+            if (!st || st.status !== 'done') return false;
+            _eiShow(ent, _eiImagesFrom((st.data && st.data.relations) || []));
+            return true;
+        };
+        if (fromRels()) {
+            _eiDecided(sidebar, 'known');
+            return;
+        }
+        const zabe = () => Array.from(sidebar.querySelectorAll('.entity-image .picture img'));
+        Promise.resolve(_rgIdbGet(lookup.key, _MB_POP_IDB_VERSION)).catch(() => null).then((rec) => {
+            if (rec && rec.data) {
+                _eiDecided(sidebar, 'known');
+                _eiShow(ent, _eiImagesFrom(rec.data.relations || []));
+                return;
+            }
+            let done = false;
+            const fromZabe = () => {
+                const imgs = zabe().filter(i => i.getAttribute('src'));
+                if (done || !imgs.length) return false;
+                done = true;
+                _eiDecided(sidebar, 'zabe');
+                _eiShow(ent, _eiFromZabe(sidebar, imgs));
+                return true;
+            };
+            if (fromZabe()) return;
+            const mo = new MutationObserver(() => {
+                if (fromZabe()) {
+                    mo.disconnect();
+                    clearTimeout(timer);
+                }
+            });
+            mo.observe(sidebar, { childList: true, subtree: true });
+            const timer = setTimeout(() => {
+                mo.disconnect();
+                if (done) return;
+                done = true;
+                _eiDecided(sidebar, 'asked');
+                _mbWsLoad(lookup.key, lookup.url, { repaint: fromRels });
+            }, _EI_ZABE_WAIT_MS);
+        });
+    }
+
+    /**
+     * zabe's pictures as `_eiImagesFrom()`'s: a Commons thumbnail (its
+     * api.wikimedia.org answer) as that file, anything else as its address;
+     * the kind from its selector's option ("logo relationship").
+     * @param {HTMLElement} sidebar
+     * @param {HTMLImageElement[]} imgs
+     * @returns {Array<Object>}
+     */
+    function _eiFromZabe(sidebar, imgs) {
+        const opts = Array.from(sidebar.querySelectorAll('.entity-image select option'));
+        const seen = new Set();
+        return imgs.map((img, i) => {
+            const src = img.getAttribute('src');
+            const type = (/^(\w+) relationship$/.exec((opts[i] && opts[i].textContent) || '') || [])[1] || 'image';
+            const file = _sbCommonsFile(src);
+            if (file) {
+                const u = _mbPopImgUrls(file);
+                return { src: u.thumb, thumb: u.thumb, large: u.large, page: u.page, url: u.page, type, file, host: 'commons.wikimedia.org' };
+            }
+            let host;
+            try {
+                host = new URL(src, location.href).hostname;
+            } catch (_) {
+                return null;
+            }
+            return { src, thumb: src, large: src, page: '', url: src, type, file: '', host };
+        }).filter(im => im && !seen.has(im.src) && seen.add(im.src));
+    }
+
+    /**
+     * Shows the pictures that load beside the name; nothing when none does.
+     * @param {{type: string, id: string}} ent
+     * @param {Array<Object>} images
+     * @returns {void}
+     */
+    function _eiShow(ent, images) {
+        if (!images.length) return;
+        _eiProbeAll(images, (ok) => {
+            if (ok.length) _eiAvatar(ent, ok);
+        });
+    }
+
+    /**
+     * The pictures beside the name: one still, or several in one 34 px box
+     * fading from one to the next every `_EI_ROTATE_MS` (not while the
+     * pointer or focus is on it, the tab is hidden, or motion is reduced),
+     * ‹ › on hover, dots for how many. A click (Enter, Space) opens them all
+     * in the viewer at the one shown; ← → step. Replaces the single copy
+     * `_sbHeaderCopy()` made, keeping its picture when the links lack it (an
+     * instrument's IROMBOOK drawing).
+     * @param {{type: string, id: string}} ent
+     * @param {Array<Object>} list
+     * @returns {void}
+     */
+    function _eiAvatar(ent, list) {
+        const h1 = headerContainer && headerContainer.tagName === 'H1' ? headerContainer : document.querySelector('#content h1, h1');
+        if (!h1 || h1.querySelector('.mb-ei-avatar')) return;
+        _sbEnsurePictureStyle();
+        const old = h1.querySelector('.mb-sb-avatar');
+        const oldSrc = old && old.querySelector('img') ? old.querySelector('img').getAttribute('src') : '';
+        const oldFile = oldSrc ? _sbCommonsFile(oldSrc) : '';
+        if (oldSrc && !list.some(im => im.src === oldSrc || (oldFile && im.file === oldFile))) {
+            list = [{ src: oldSrc, thumb: oldSrc, large: oldSrc, page: '', url: oldSrc, type: 'image', file: oldFile, host: '' }].concat(list);
+        }
+        const many = list.length > 1;
+        const box = document.createElement('span');
+        box.className = `mb-sb-avatar mb-ei-avatar${many ? ' mb-ei-rot' : ''}`;
+        box.innerHTML = '<span class="mb-ei-clip">' + list.map((im, i) =>
+            `<img src="${_rgEsc(im.thumb)}" alt="" referrerpolicy="no-referrer" style="opacity:${i ? 0 : 1}">`).join('') + '</span>' +
+            (many ? '<button type="button" class="mb-ei-arr mb-ei-prev" tabindex="-1" aria-label="Previous picture">‹</button>' +
+                '<button type="button" class="mb-ei-arr mb-ei-next" tabindex="-1" aria-label="Next picture">›</button>' +
+                `<span class="mb-ei-dots" aria-hidden="true">${list.map((_, i) => `<i${i ? '' : ' class="mb-ei-on"'}></i>`).join('')}</span>` : '');
+        box._eiList = list;
+        box.dataset.mbEiI = '0';
+        box.dataset.mbttFn = 'ei-pic';
+        box.setAttribute('role', 'button');
+        box.tabIndex = 0;
+        const type = _sbEntityType();
+        box.setAttribute('aria-label', many ? `Open the ${type}'s ${list.length} pictures` : `Open the ${type} picture`);
+        if (old) old.replaceWith(box);
+        else h1.prepend(box);
+        box.addEventListener('click', (e) => {
+            if (e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey) return;
+            e.preventDefault();
+            e.stopPropagation();
+            const arr = e.target.closest('.mb-ei-arr');
+            if (arr) _eiStep(box, arr.classList.contains('mb-ei-prev') ? -1 : 1);
+            else _eiOpenViewer(box);
+        });
+        box.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                _eiOpenViewer(box);
+            } else if (many && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
+                e.preventDefault();
+                _eiStep(box, e.key === 'ArrowLeft' ? -1 : 1);
+            }
+        });
+        if (!many) return;
+        let held = false;
+        ['mouseenter', 'focusin'].forEach(ev => box.addEventListener(ev, () => { held = true; }));
+        ['mouseleave', 'focusout'].forEach(ev => box.addEventListener(ev, () => { held = false; }));
+        const still = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        if (still) return;
+        const timer = setInterval(() => {
+            if (!box.isConnected) {
+                clearInterval(timer);
+                return;
+            }
+            if (!held && !document.hidden) _eiStep(box, 1);
+        }, _EI_ROTATE_MS);
+    }
+
+    /**
+     * Shows another picture of the box beside the name: `delta` steps on,
+     * round the list.
+     * @param {HTMLElement} box - `.mb-ei-avatar`.
+     * @param {number} delta
+     * @returns {void}
+     */
+    function _eiStep(box, delta) {
+        const n = box._eiList.length;
+        const i = (((Number(box.dataset.mbEiI) || 0) + delta) % n + n) % n;
+        box.dataset.mbEiI = String(i);
+        box.querySelectorAll('.mb-ei-clip img').forEach((img, k) => { img.style.opacity = k === i ? '1' : '0'; });
+        box.querySelectorAll('.mb-ei-dots i').forEach((d, k) => d.classList.toggle('mb-ei-on', k === i));
+    }
+
+    /**
+     * Opens every picture beside the name in the artwork viewer, at the one
+     * shown; a picture's bar links its Commons page or its link.
+     * @param {HTMLElement} box - `.mb-ei-avatar`.
+     * @returns {void}
+     */
+    function _eiOpenViewer(box) {
+        const images = box._eiList.map(im => ({
+            image: im.large, thumbnails: { 250: im.thumb }, types: [], external: true,
+            comment: [_eiOrigin(im), im.file].filter(Boolean).join(' · '),
+            pageUrl: im.page || im.url, pageLabel: im.file ? 'Open on Commons' : 'Open the link',
+        }));
+        _SB_PIC_CTX.imagesCache.clear();
+        _SB_PIC_CTX.imagesCache.set('sidebar', images);
+        _artViewerOpen(_SB_PIC_CTX, 'sidebar', null, Number(box.dataset.mbEiI) || 0,
+            { opener: box, title: `${_cachedEntityName || document.title} — ${_sbEntityType()} pictures` });
+    }
+
+    /**
+     * The hover card of the pictures beside the name (`data-mbtt-fn="ei-pic"`):
+     * the picture shown, which of how many, where it came from. Built from
+     * what is shown: nothing is asked.
+     * @param {HTMLElement} el
+     * @returns {?string}
+     */
+    function _eiCardHtml(el) {
+        const box = el.closest('.mb-ei-avatar');
+        const list = box && box._eiList;
+        if (!list || !list.length) return null;
+        const i = Number(box.dataset.mbEiI) || 0;
+        const im = list[i] || list[0];
+        const type = _sbEntityType();
+        return `<div style="max-width:${_artNumSetting('sa_caa_tip_image_size', 200, 40) + 20}px;min-width:200px;">` +
+            `<div class="mb-tt-title">${_rgEsc(type.charAt(0).toUpperCase() + type.slice(1))} picture${list.length > 1 ? ` ${i + 1} of ${list.length}` : ''}</div>` +
+            `<img class="mb-art-card-preview" src="${_rgEsc(im.thumb)}" alt="" referrerpolicy="no-referrer" style="background:#ffffff;">` +
+            `<div class="mb-tt-body" style="display:flex;gap:4px;flex-wrap:wrap;"><span class="mb-tt-pill">${_rgEsc(_eiOrigin(im))}</span></div>` +
+            (im.file ? `<div class="mb-tt-comment">${_rgEsc(im.file)}</div>` : '') +
+            '<div class="mb-tt-rule"></div>' +
+            `<div class="mb-tt-foot">Click: viewer${list.length > 1 ? ' · ‹ › or ← →: the others' : ''}</div></div>`;
     }
 
     /**
@@ -121205,6 +122410,61 @@ a { color: #1565c0; }`;
     }
 
     /**
+     * The ResizeObserver of each table's prose cells that `initCollapsableColumns()`
+     * could not measure, by table (`_collapseWatchUnlaid()`).
+     * @type {WeakMap<HTMLTableElement, ResizeObserver>}
+     */
+    const _collapseUnlaidObservers = new WeakMap();
+
+    /**
+     * Watches the prose cells of `table` that `initCollapsableColumns()` measured
+     * while they were not laid out, typically because their sub-table was
+     * rendered hidden (`renderGroupedTable()`'s `shouldStayOpen`). There both
+     * `scrollHeight` and `clientHeight` read 0, so such a cell kept its height
+     * clamp but never got its ▶ more toggle, and opening the sub-table later
+     * never measured it again: the text stayed cut off for good (a long "Bio"
+     * on user-profile, debug/mb-user-atj-final.html, 2026-10-29; the same trap
+     * release-tracks once sidestepped by keeping every medium open, see
+     * DEBUG-NOTES.md).
+     *
+     * The first time one of them gets a height and is cut off, the whole table
+     * is set up again: `initCollapsableColumns()` is idempotent and keeps each
+     * cell's state (`expandedCells`). Cells still without a size are watched
+     * again. Replaces the table's previous observer; called with `[]` at the
+     * start of every `initCollapsableColumns()`, which stops it.
+     *
+     * @param {HTMLTableElement} table
+     * @param {HTMLElement[]} inners - The cells' `.mb-text-clamp-inner` wrappers.
+     */
+    function _collapseWatchUnlaid(table, inners) {
+        const prev = _collapseUnlaidObservers.get(table);
+        if (prev) {
+            prev.disconnect();
+            _collapseUnlaidObservers.delete(table);
+        }
+        if (!inners.length || typeof ResizeObserver !== 'function') return;
+        const ro = new ResizeObserver((entries) => {
+            if (!entries.some(e => e.contentRect.height > 0)) return;
+            ro.disconnect();
+            _collapseUnlaidObservers.delete(table);
+            if (!table.isConnected) return;
+            const live = inners.filter(inner => inner.isConnected && table.contains(inner));
+            if (live.some(inner => inner.scrollHeight > inner.clientHeight + 1)) {
+                Lib.debug('collapse', '_collapseWatchUnlaid: a prose cell measured while hidden is cut off; setting the table up again.');
+                initCollapsableColumns(table);
+                if (activeDefinition && activeDefinition.tableMode === 'multi') {
+                    updateSubTableCollapseButton(table);
+                    rewireGlobalCollapseButtonMulti();
+                }
+                return;
+            }
+            _collapseWatchUnlaid(table, live.filter(inner => inner.scrollHeight === 0));
+        });
+        inners.forEach(inner => ro.observe(inner));
+        _collapseUnlaidObservers.set(table, ro);
+    }
+
+    /**
      * Wires the single global ▶/◀ toggle button for multi-table mode.
      *
      * In multi-table mode `initCollapsableColumns` is called once per sub-table,
@@ -122051,6 +123311,7 @@ a { color: #1565c0; }`;
      */
     function initCollapsableColumns(table) {
         if (!activeDefinition || !activeDefinition.features) return;
+        _collapseWatchUnlaid(table, []);
         const collapsableColumns = activeDefinition.features.collapsableColumns;
         if (!Array.isArray(collapsableColumns) || collapsableColumns.length === 0) {
             const globalBtn = document.getElementById('mb-col-collapse-all-btn');
@@ -122779,9 +124040,20 @@ a { color: #1565c0; }`;
         const _widths = _colPasses.map(p => p.req.firstLis.reduce(
             (m, li) => Math.max(m, Math.ceil(li.getBoundingClientRect().width)), 0));
         _allFirstLis.forEach(li => { li.style.width = ''; });
-        const _overflowing = _colPasses.map(p => p.req.prose.filter(({ inner }) =>
-            inner.scrollHeight > inner.clientHeight + 1));
+        // A prose cell has text, so a laid-out one is never 0 px high: 0 means
+        // it is not laid out (a sub-table rendered hidden), not that it fits.
+        // Those are watched until they get a size (_collapseWatchUnlaid()).
+        const _unlaid = [];
+        const _overflowing = _colPasses.map(p => p.req.prose.filter(({ inner }) => {
+            const sh = inner.scrollHeight;
+            if (sh === 0) {
+                _unlaid.push(inner);
+                return false;
+            }
+            return sh > inner.clientHeight + 1;
+        }));
         _colPasses.forEach((p, i) => p.g.next({ maxFirstLiWidth: _widths[i], overflowing: _overflowing[i] }));
+        _collapseWatchUnlaid(table, _unlaid);
 
         // ── Wire global ▶/◀ toggle button ────────────────────────────────────
         // In single-table mode: wire directly here (only one table to handle).
@@ -146658,6 +147930,7 @@ a { color: #1565c0; }`;
                 case 'dg-img': return _fiCardHtml(el);
                 case 'fgal': return _fgalTipHtml(el);
                 case 'sb-pic': return _sbPicCardHtml(el);
+                case 'ei-pic': return _eiCardHtml(el);
                 case 'sb-cover': return _sbCoverCardHtml(el);
                 default: return null;
             }
@@ -154358,6 +155631,17 @@ a { color: #1565c0; }`;
              * @returns {string}
              */
             siteFamilyOf: (host) => _siteFamilyOf(host),
+            /**
+             * Every pageType of this page's host whose shipping `match` takes
+             * `path` (with `search`, the query without "?"), in
+             * `pageDefinitions` order: detection takes the first. Read-only.
+             * @param {string} path
+             * @param {string} [search]
+             * @returns {string[]}
+             */
+            pageTypesFor: (path, search = '') => pageDefinitions
+                .filter(d => (d.host || 'musicbrainz.org') === window.location.hostname && d.match(path, new URLSearchParams(search)))
+                .map(d => d.type),
             /**
              * The "Instrument Icons Everywhere" icon an instrument anchor
              * owns (`_findInstrumentLinkIcon()`): before it, after it, or

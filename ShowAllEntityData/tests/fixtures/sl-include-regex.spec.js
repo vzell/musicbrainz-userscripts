@@ -282,14 +282,66 @@ test.describe('@include coverage', () => {
         ];
         const others = [
             'https://www.discogs.com/',
-            'https://www.discogs.com/search/?q=Springsteen&type=all',
             'https://www.discogs.com/sell/list?master_id=26725',
             'https://www.discogs.com/release/1874253-Bruce-Springsteen-Born-To-Run/image/SW1hZ2U6NDYwODA1ODY=',
-            'https://www.discogs.com/user/vzell/collection',
             'https://www.discogs.com/artist/Bruce-Springsteen',
             'https://api.discogs.com/releases/1874253',
             'https://www.discogs.com.example.org/release/1874253',
             'https://example.org/www.discogs.com/release/1874253',
+        ];
+        expect(pages.filter((u) => !injected(u))).toEqual([]);
+        expect(others.filter((u) => injected(u))).toEqual([]);
+    });
+
+    test('discogs.com: a user\'s collection or wantlist page (dg-user-list, 2026-10-29); no near miss', () => {
+        const pages = [
+            'https://www.discogs.com/user/vzell/collection',
+            'https://www.discogs.com/user/vzell/collection?folder_id=0',
+            'https://www.discogs.com/user/disc-kid/wantlist',
+            'https://www.discogs.com/wantlist?user=disc-kid',
+            'https://www.discogs.com/wantlist?user=disc-kid&page=2&limit=250',
+            'https://www.discogs.com/mywantlist',
+            'https://www.discogs.com/de/mywantlist',
+        ];
+        const others = [
+            'https://www.discogs.com/user/vzell/collectionx',
+            'https://www.discogs.com/user/vzell/collection/stats',
+            'https://www.discogs.com/wantlistx',
+            'https://www.discogs.com/mywantlist/export',
+            'https://www.discogs.com/user/vzell/lists',
+        ];
+        expect(pages.filter((u) => !injected(u))).toEqual([]);
+        expect(others.filter((u) => injected(u))).toEqual([]);
+    });
+
+    test('discogs.com: a release\'s Marketplace page (dg-sell, 2026-10-29); not /sell/list or an item', () => {
+        const pages = [
+            'https://www.discogs.com/sell/release/8164856',
+            'https://www.discogs.com/sell/release/8164856?sort=price%2Casc&limit=250&page=2',
+            'https://www.discogs.com/de/sell/release/8164856',
+        ];
+        const others = [
+            'https://www.discogs.com/sell/list?master_id=26725',
+            'https://www.discogs.com/sell/item/4033083994',
+            'https://www.discogs.com/sell/release/8164856x',
+            'https://www.discogs.com/sell/release/',
+        ];
+        expect(pages.filter((u) => !injected(u))).toEqual([]);
+        expect(others.filter((u) => injected(u))).toEqual([]);
+    });
+
+    test('discogs.com: a search with a query (dg-search, 2026-10-29); not one without', () => {
+        const pages = [
+            'https://www.discogs.com/search/?q=Springsteen&type=all',
+            'https://www.discogs.com/search?q=bruce+springsteen&type=all',
+            'https://www.discogs.com/search?type=master&q=born+to+run',
+            'https://www.discogs.com/de/search?q=springsteen',
+        ];
+        const others = [
+            'https://www.discogs.com/search',
+            'https://www.discogs.com/search?type=all',
+            'https://www.discogs.com/search?q=&type=all',
+            'https://www.discogs.com/searchx?q=springsteen',
         ];
         expect(pages.filter((u) => !injected(u))).toEqual([]);
         expect(others.filter((u) => injected(u))).toEqual([]);
@@ -313,17 +365,23 @@ test.describe('@include coverage', () => {
         expect(others.filter((u) => injected(u))).toEqual([]);
     });
 
-    test('discogs.com: a release\'s history page (dg-history), with or without ?diff=', () => {
+    test('discogs.com: a release\'s, master\'s, artist\'s or label\'s history page (dg-history), with or without ?diff=', () => {
         const pages = [
             'https://www.discogs.com/release/8164856-Human-Touch/history?diff=10&page=1',
             'https://www.discogs.com/release/8164856-Human-Touch/history',
             'https://www.discogs.com/release/8164856/history',
             'https://www.discogs.com/de/release/8164856-Human-Touch/history?rev=4',
+            // Since 2026-10-29 (vzell: the master's history had no button).
+            'https://www.discogs.com/master/27146/history',
+            'https://www.discogs.com/master/26725-Born-To-Run/history',
+            'https://www.discogs.com/artist/219986-Bruce-Springsteen/history?page=2',
+            'https://www.discogs.com/label/264352-DADC/history',
         ];
         const others = [
             'https://www.discogs.com/release/8164856-Human-Touch/images/history?rev=7',
-            'https://www.discogs.com/master/27146/history',
             'https://www.discogs.com/release/8164856-Human-Touch/historyx',
+            'https://www.discogs.com/user/vzell/history',
+            'https://www.discogs.com/master/26725-Born-To-Run/history/more',
         ];
         expect(pages.filter((u) => !injected(u))).toEqual([]);
         expect(others.filter((u) => injected(u))).toEqual([]);
@@ -336,18 +394,24 @@ test.describe('@include coverage', () => {
             'https://www.discogs.com/release/1313481/images/',
             'https://www.discogs.com/de/release/1313481-Born-To-Run/images/update?x=1',
             'https://www.discogs.com/pt_BR/release/1313481/images',
+            // A master's, artist's or label's (dg-entity-images, 2026-10-29).
+            'https://www.discogs.com/master/26725/images',
+            'https://www.discogs.com/master/26725-Bruce-Springsteen-Born-To-Run/images',
+            'https://www.discogs.com/artist/219986-Bruce-Springsteen/images',
+            'https://www.discogs.com/de/label/264352-DADC/images',
         ];
         const others = [
             'https://www.discogs.com/release/1313481-Born-To-Run/imagesx',
             'https://www.discogs.com/release/1313481-Born-To-Run/images/update/more',
-            'https://www.discogs.com/master/26725/images',
+            'https://www.discogs.com/master/26725/images/update',
+            'https://www.discogs.com/artist/219986/imagesx',
             'https://www.discogs.com/release/1874253-Bruce-Springsteen-Born-To-Run/image/SW1hZ2U6NDYwODA1ODY=',
         ];
         expect(pages.filter((u) => !injected(u))).toEqual([]);
         expect(others.filter((u) => injected(u))).toEqual([]);
     });
 
-    test('discogs.com: a user\'s page (dg-user), a language prefix; not its sub-pages', () => {
+    test('discogs.com: a user\'s page (dg-user), a language prefix; not its sub-pages (but collection and wantlist: dg-user-list)', () => {
         const pages = [
             'https://www.discogs.com/user/vzell',
             'https://www.discogs.com/user/vzell/',
@@ -356,7 +420,6 @@ test.describe('@include coverage', () => {
             'https://www.discogs.com/pt_BR/user/vzell',
         ];
         const others = [
-            'https://www.discogs.com/user/vzell/collection',
             'https://www.discogs.com/user/vzell/submissions',
             'https://www.discogs.com/user/',
         ];

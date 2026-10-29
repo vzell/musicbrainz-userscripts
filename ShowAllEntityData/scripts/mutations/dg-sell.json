@@ -1,0 +1,54 @@
+[
+  {
+    "name": "the Marketplace page is not let past the #app gate",
+    "why": "An older page without #app, like Cloudflare's check: without its path in the gate the script stops there.",
+    "edits": [
+      {
+        "find": "           _DG_SELL_PATH_RE.test(window.location.pathname)) &&",
+        "replace": "           false) &&"
+      }
+    ],
+    "spec": "tests/fixtures/discogs-sell.spec.js",
+    "grep": "one button with the count",
+    "expect": "fail"
+  },
+  {
+    "name": "pages are asked at Discogs' default 25, not 250",
+    "why": "A page of 25 makes ten times the requests for a popular release.",
+    "edits": [
+      {
+        "find": "        u.searchParams.set('limit', String(_DG_SELL_PER_PAGE));",
+        "replace": "        void _DG_SELL_PER_PAGE;"
+      }
+    ],
+    "spec": "tests/fixtures/discogs-sell.spec.js",
+    "grep": "one button with the count",
+    "expect": "fail"
+  },
+  {
+    "name": "the media condition keeps its tooltip text",
+    "why": "Each grade carries a hidden explanation (\"A nearly perfect disc…\"): the cell is the grade only.",
+    "edits": [
+      {
+        "find": "                c.querySelectorAll('.has-tooltip').forEach(n => n.remove());\n                media = t(c);",
+        "replace": "                media = t(c);"
+      }
+    ],
+    "spec": "tests/fixtures/discogs-sell.spec.js",
+    "grep": "one button with the count",
+    "expect": "fail"
+  },
+  {
+    "name": "the converted price keeps its \"about\" and the VAT note",
+    "why": "The column is the amount in the reader's currency, comparable across sellers.",
+    "edits": [
+      {
+        "find": "            const about = conv ? _dpText(Array.from(conv.childNodes).filter(n => n.nodeType === 3).map(n => n.nodeValue).join(' ')).replace(/^about\\s+/i, '') : '';",
+        "replace": "            const about = conv ? t(conv) : '';"
+      }
+    ],
+    "spec": "tests/fixtures/discogs-sell.spec.js",
+    "grep": "one button with the count",
+    "expect": "fail"
+  }
+]

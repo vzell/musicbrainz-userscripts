@@ -157,6 +157,13 @@ declared column — no separate feature key or page-definition change needed:
   a "more"/"less" label instead of a count. Only cells that actually overflow
   the clamp get a toggle. When the setting is off, cells stay bare (full,
   unclamped text, no toggle).
+  **A cell measured while not laid out reads 0/0, which is not "short".** A
+  sub-table rendered hidden is measured anyway, so the driver hands every
+  prose cell with `scrollHeight === 0` to `_collapseWatchUnlaid()`. That is a
+  ResizeObserver per table, which re-runs `initCollapsableColumns(table)` the
+  first time one of those cells has a height and is cut off (2026-10-29; a
+  long user-profile Bio was cut off with no toggle). Never decide "no toggle"
+  from a 0-height read.
 
 Two prose-cell columns carve out their own gating, independent of the
 generic `sa_enable_annotation_collapse` behavior described above:

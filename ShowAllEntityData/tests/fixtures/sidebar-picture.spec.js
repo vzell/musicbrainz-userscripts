@@ -154,6 +154,26 @@ test.describe('the sidebar picture', () => {
         await expect(avatar(page)).toHaveCount(0);
     });
 
+    // 2026-10-29: zabe's script can show a logo link first (not a Commons
+    // file) and hide the rest. The watch used to END at the first img it
+    // found, wired or not, so a Commons picture arriving later stayed
+    // unwired; and it took the first img, not the one zabe shows.
+    test('zabe\'s pictures: a non-Commons one first does not end the watch; the one shown is wired, not a hidden one', async ({ page }) => {
+        await open(page);
+        await addPicture(page, 'https://seeklogo.com/images/D/logo.png');
+        await observerRan(page);
+        await expect(avatar(page)).toHaveCount(0);
+        // Later: zabe's next picture, the Commons file, shown; the logo hidden.
+        await page.evaluate((s) => {
+            const box = document.querySelector('#sidebar .entity-image');
+            box.querySelector('.picture').hidden = true;
+            box.insertAdjacentHTML('beforeend', `<div class="picture"><img src="${s}" alt="" style="width: 120px; height: 120px; margin-left: 40px;"></div>`);
+        }, SRC);
+        await observerRan(page);
+        await expect(page.locator('#sidebar .entity-image .picture:not([hidden]) img')).toHaveClass(/mb-sb-pic/);
+        await expect(avatar(page)).toHaveCount(1);
+    });
+
     test('the setting off leaves the picture alone; the copy has its own switch', async ({ page }) => {
         await open(page, { sa_sidebar_picture: false });
         await addPicture(page);

@@ -51,7 +51,13 @@ the script DOES read:
   `/images/data`, DEBUG-NOTES 2026-10-28); every script dropped (the user's
   id is in one). The data itself is dg-release-images-data.json, vzell's
   copy of that answer (debug/discogs-release-images-data.json), its leading
-  BOM (the browser's save added it) dropped.
+  BOM (the browser's save added it) dropped;
+- dg-user-wantlist.html, dg-mywantlist.html (+ the SYNTHETIC
+  dg-mywantlist-3.html) and dg-collection-page.html (debug/dg-user-wantlist.html,
+  dg-wantlist.html, dg-collection.html, saved by vzell 2026-10-29): a user's
+  wantlist and collection as pages of their own (pageType dg-user-list) — what
+  the page says of the list (a pager total, the config's user and count, the
+  empty block); the rows come from the API.
 
 usage: python3 scripts/build-discogs-fixtures.py
 """
@@ -246,6 +252,92 @@ def build_ratings(total=None):
     return re.sub(r'<script\b.*?</script>', '', page, flags=re.S), title
 
 
+def build_entity_images(kind):
+    """dg-<kind>-images.html (debug/dg-<kind>-images.html, saved by vzell 2026-10-29, logged in): a master's,
+    artist's or label's Images page — its header (`#editing_header`, its links) and its images as Discogs
+    lists them (`#view_images`). The rows come from Discogs' API (dg-entity-images), never from the page."""
+    src = read_debug(f'dg-{kind}-images.html')
+    title = text(re.search(r'<title[^>]*>(.*?)</title>', src, re.S).group(1))
+    head = between(src, '<div id="editing_header"', '</ul>') + '</div>'
+    body = between(src, '<div id="view_images">', '<p>All images are copyrighted', include_end=False) + '</div>'
+    content = re.sub(r' data-reactid="[^"]*"', '', head + body)
+    content = re.sub(r'<script\b.*?</script>', '', content, flags=re.S)
+    return SHELL.format(title=html.escape(title), content=squeeze(content)), title
+
+
+def build_sell_release():
+    """dg-sell-release.html (debug/dg-sell-release.html, saved by vzell 2026-10-29, logged in): a release's
+    Marketplace page (`/sell/release/8164856`) — its title, the top pager ("1 – 3 of 3", its sort and limit) and
+    the listings table (3 listings: BRL, EUR, USD). dg-sell reads the table from the fetched pages."""
+    src = read_debug('dg-sell-release.html')
+    title = text(re.search(r'<title[^>]*>(.*?)</title>', src, re.S).group(1))
+    pager = between(src, '<nav aria-label="Pagination" class="pagination top', '</nav>')
+    table = between(src, '<table class="table_block mpitems', '</table>')
+    content = re.sub(r'<script\b.*?</script>', '', pager + table, flags=re.S)
+    content = re.sub(r'<!--.*?-->', '', content, flags=re.S)
+    return SHELL.format(title=html.escape(title), content=squeeze(content)), title
+
+
+def build_search():
+    """dg-search.html (debug/dg-search.html, saved by vzell 2026-10-29, logged in): discogs.com's search page
+    (`/search?q=bruce+springsteen&type=all`), a Next.js page with neither #app nor #page_content — its title and,
+    in <main>, the count line ("1 - 25 of 24,128") the button reads. The rows come from Discogs' API."""
+    src = read_debug('dg-search.html')
+    title = text(re.search(r'<title[^>]*>(.*?)</title>', src, re.S).group(1))
+    m = re.search(r'<p class="hifi-body hifi-body-medium">(\d[\d,]* - \d[\d,]* of \d[\d,]*)<', src)
+    if not m or '<main' not in src or 'id="app"' in src or 'id="page_content"' in src:
+        sys.exit('dg-search.html: not the Next.js search page with its count')
+    return ('<!DOCTYPE html>\n<html lang="en"><head><meta charset="utf-8">'
+            f'<title>{html.escape(title)}</title></head><body>\n'
+            '<div id="__header_root_8239"><header class="dg-fx-header"><a href="https://www.discogs.com/release/1874253">Header link</a></header></div>\n'
+            f'<main><p class="hifi-body hifi-body-medium">{m.group(1)}</p><div role="list"></div></main>\n'
+            '<div id="esi-footer-root"><footer class="dg-fx-footer"><a href="https://www.discogs.com/master/26725">Footer link</a></footer></div>\n'
+            '</body></html>\n'), title
+
+
+def build_user_wantlist():
+    """dg-user-wantlist.html (debug/dg-user-wantlist.html, saved by vzell 2026-10-29, logged in): disc-kid's
+    public wantlist page (`/wantlist?user=disc-kid`) — its title and the top pager ("1 – 138 of 138"). The rows
+    come from Discogs' API (ext-discogs-user-disckid-wants-p1.json), never from the page."""
+    src = read_debug('dg-user-wantlist.html')
+    title = text(re.search(r'<title[^>]*>(.*?)</title>', src, re.S).group(1))
+    pager = between(src, '<nav aria-label="Pagination" class="pagination top', '</nav>')
+    pager = re.sub(r'<script\b.*?</script>', '', pager, flags=re.S)
+    return SHELL.format(title=html.escape(title), content=squeeze(pager)), title
+
+
+def build_mywantlist(wants=0):
+    """dg-mywantlist.html (debug/dg-wantlist.html, saved by vzell 2026-10-29, logged in, no wants): the logged-in
+    user's `/mywantlist` — its title, its config script SYNTHETIC (only `username` and `userNumWantlist`: the
+    saved one carries more of the account; the format, `function dsdata(){return {…}}`, as saved) and the
+    "You haven't added anything" block's first line. With `wants`, dg-mywantlist-<wants>.html: the same page with
+    that many wants and no empty block (SYNTHETIC: vzell has none)."""
+    src = read_debug('dg-wantlist.html')
+    title = text(re.search(r'<title[^>]*>(.*?)</title>', src, re.S).group(1))
+    if not re.search(r'["\']?username["\']?\s*:\s*"vzell"', src) or 'id="wantlist-empty"' not in src:
+        sys.exit('dg-wantlist.html: no username or no empty block')
+    cfg = f'<script id="dsdata">function dsdata(){{return {{"username":"vzell","userNumWantlist":{wants}}}}}</script>'
+    empty = '' if wants else ('<div id="wantlist-empty" class="how-to-steps"><p>'
+                              "You haven't added anything to your Wantlist yet.</p></div>")
+    return SHELL.format(title=html.escape(title), content=cfg + empty), title
+
+
+def build_collection_page():
+    """dg-collection-page.html (debug/dg-collection.html, saved by vzell 2026-10-29, logged in): a collection page
+    (`/user/<name>/collection`), React with `#app` and no <h1>; its grid drawn later (vzell's is empty). Made
+    GuiBeal's (SYNTHETIC: the title's name), whose public collection the API captures have."""
+    src = read_debug('dg-collection.html')
+    title = text(re.search(r'<title[^>]*>(.*?)</title>', src, re.S).group(1)).replace('vzell', 'GuiBeal')
+    if '<div id="app"' not in src:
+        sys.exit('dg-collection.html: no #app')
+    return ('<!DOCTYPE html>\n<html lang="en"><head><meta charset="utf-8">'
+            f'<title>{html.escape(title)}</title></head><body>\n'
+            '<div id="__header_root_8239"><header class="dg-fx-header"><a href="https://www.discogs.com/release/1874253">Header link</a></header></div>\n'
+            '<div id="app"><div id="page"><main class="content_YtwRX"><div role="grid" class="MuiDataGrid-root"></div></main></div></div>\n'
+            '<div id="esi-footer-root"><footer class="dg-fx-footer"><a href="https://www.discogs.com/master/26725">Footer link</a></footer></div>\n'
+            '</body></html>\n'), title
+
+
 def copy_images_data():
     """dg-release-images-data.json: the image editor's data (`/release/1313481/images/data`), vzell's copy, its BOM dropped."""
     src = read_debug('discogs-release-images-data.json').lstrip('\ufeff')
@@ -277,7 +369,16 @@ def main():
                      ('dg-user-ratings-300.html', lambda: build_ratings(total=300)),
                      ('dg-release-images.html', build_release_images),
                      ('dg-release-images-update.html', lambda: build_release_images(editor=True)),
-                     ('dg-release-images-data.json', copy_images_data)):
+                     ('dg-release-images-data.json', copy_images_data),
+                     ('dg-user-wantlist.html', build_user_wantlist),
+                     ('dg-mywantlist.html', build_mywantlist),
+                     ('dg-mywantlist-3.html', lambda: build_mywantlist(wants=3)),
+                     ('dg-collection-page.html', build_collection_page),
+                     ('dg-master-images.html', lambda: build_entity_images('master')),
+                     ('dg-artist-images.html', lambda: build_entity_images('artist')),
+                     ('dg-label-images.html', lambda: build_entity_images('label')),
+                     ('dg-sell-release.html', build_sell_release),
+                     ('dg-search.html', build_search)):
         out, title = fn()
         write(name, out, f'title "{title}"')
     return 0

@@ -312,6 +312,23 @@ hosts (kept, decided 2026-10-07).
   — not a model to copy. The card keeps names only (plain text). (The
   event-overview page's `_eventSetlistParse()` reads the rendered HTML, a
   different input.)
+- **A setlist in parts** (2026-10-29, mockup A1,
+  https://claude.ai/artifact/BL4JPmGMBzfhT7yGKepiBr): a `#` comment right
+  after a blank line starts a part ("Soundcheck", "Concert", "Encore")
+  unless it is a billing word or reads like a note (`_eventSetlistIsNote()`:
+  "Scheduled: 19:00 …" opens the Stone Pony and OceanFirst setlists after a
+  blank line and must stay a note) — the event page's own rules.
+  `_mbPopSetlist()` returns `sections` and gives each row its `part`, its
+  number within the part and `also` (the other parts playing its work, by
+  MBID). The window's List table groups by part through
+  `_dpListTableHtml()`'s opt-in `group`/`groupHead`/`groupCol`: a heading row
+  (`tr.mb-dp-tsec`: name, "N songs" or "n of N songs" while filtering, the
+  part's notes) only while unsorted; sorted, a `span.mb-dp-tpart` tag on the
+  Song cell instead; Part chips from two parts up. The card previews the
+  LONGEST part (`.mb-pop-partline`), not the first (often a soundcheck), and
+  names the others. Songs before any heading are a nameless part: no heading
+  row, so a setlist without parts renders as before. The heading rows are
+  `tbody tr` too: a spec counting songs counts `tr:not(.mb-dp-tsec)`.
 - **An area is named in its area chain** (`_mbPopAreaChain()`, WIP.2):
   "OceanFirst Bank Center in West Long Branch, New Jersey, United States", as
   MusicBrainz writes it — an event's "Held at" and a recording's "Recorded at"
@@ -2767,6 +2784,16 @@ the header's `@connect` and `_EXT_CONNECT_HOSTS` (the parent domain covers
   card and window say it).
 - **Different origins, different caches.** IndexedDB is per origin: a card
   cached on brucebase.wikidot.com's own list is not seen on musicbrainz.org.
+- **A Springsteen site's link opens IN any window** (2026-10-29; vzell: an
+  event window's "Review" link to http://brucebase.wikidot.com/2002#100802
+  opened a new tab). `_dpWinExtTarget()` decides for BOTH the marking/hover
+  (`_dpWinWhat()`) and the click (`_dpDrill()`), which used to keep two
+  separate lists: a link marked `mb-dp-l-here` that a click sent to a new
+  tab is exactly the bug a second list invites. Only the readers of
+  `_DP_WIN_EXT_READERS` (`bbdate`, `springsteen`) and only with `sa_pop_ext`;
+  every other site's link keeps its new tab outside a Discogs-family window.
+  A hover over such a link in the window goes through the `ext` source, so
+  the first-contact rule (`askHost`) holds there as on the page.
 - **The Brucebase date anchor (`_extBbDateTest()`, `_extBbDateLoad()`; U0
   X8).** MusicBrainz links a show as `/<year>#<ddmmyy>`: the year page,
   scrolled to `<a name="ddmmyy">`. `_extBbYear()` reads the year page ONCE
