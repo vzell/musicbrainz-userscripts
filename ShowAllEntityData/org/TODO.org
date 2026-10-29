@@ -5180,6 +5180,7 @@ cells where the data is really missing
 #+end_example
 
 Show me some nice HTML based mockup before implementation
+
 * DONE events with soundcheck and concert
 
 1.)
@@ -5259,6 +5260,186 @@ the hyperlinked titles after the youtube play buttons need a little more spacing
 @debug/discogs-add-images.html - POH of the release history popup
 @debug/discogs-release-images-history-revision.html - IP - https://www.discogs.com/release/38816589-Rondes-Et-Chansons-De-France-No-1/images/history?rev=4
 #+end_example
+
+Here they are. Please save each as the initial page (Ctrl+S or your snapshot tool, before pressing our button), logged in to Discogs, into debug/ under the name given:
+
+#	URL	Save as
+1	https://www.discogs.com/master/26725-Bruce-Springsteen-Born-To-Run/images	debug/dg-master-images.html
+2	https://www.discogs.com/artist/219986-Bruce-Springsteen/images	debug/dg-artist-images.html
+3	https://www.discogs.com/label/264352-DADC/images	debug/dg-label-images.html
+4	An image change of a release: on https://www.discogs.com/release/8164856-Human-Touch/history, click the Images link of any image change (it opens …/images/history?rev=N)	debug/dg-image-history-rev.html
+5	https://www.discogs.com/release/8164856-Bruce-Springsteen-Human-Touch/stats	debug/dg-release-stats.html
+6	Any Discogs list, one of yours or a public one (https://www.discogs.com/lists/<name>/<id>)	debug/dg-list.html
+7	https://www.discogs.com/user/vzell/collection	debug/dg-collection.html
+8	https://www.discogs.com/mywantlist	debug/dg-wantlist.html
+9	https://www.discogs.com/sell/release/8164856	debug/dg-sell-release.html
+10	https://www.discogs.com/search?q=bruce+springsteen&type=all	debug/dg-search.html
+
+* DONE add hover functionality to the "Relationships" column for MB RGs relationship icons
+
+Add hover functionality to the "Relationships" column for MB RGs relationship icons.
+Currently the href anchors are not fully qualified and missing the https://site:port part, see e.g. https://musicbrainz.org/tag/arena%20rock - tag-RG-relationship-icons.html
+So they do not support yet the POH
+
+* DONE make the non-MB site settings currently "false", default "true"
+
+Make all the non-MB site settings which are currently "false" default "true", except
+
+#+begin_example
+"Show the Brucebase side bar on the right"
++ all the booleans which deal with "... touch devices ..."
+#+end_example
+
+These should still be false by default
+
+* DONE sidebar image hover for CAA images only working when hovering below the image in the description
+
+1.)
+
+The sidebar image hover for the CAA image doesn't do anything, instead of showing all the release images in a small
+popup window
+
+#+begin_example
+@debug/release-caa-sidebar-image-bug.html - https://musicbrainz.org/release/3ec14d03-2c03-4764-a69d-8155817a040f
+#+end_example
+
+* DONE when hovering a value in the "LABEL-CAT#" column and the down-right glyph shows up, the label-cat# value moves to the left and back when hovering away, which lets the value kind of pump
+
+when hovering a value in the "LABEL-CAT#" column and the down-right glyph shows up, the label-cat# value moves to the left
+and back when hovering away, which lets the value kind of pump, together with is's column header
+
+#+begin_example
+@debug/mb-RG-popup.html - popup dialog of the URL https://musicbrainz.org/release-group/48e335f3-8e4a-4e38-b2df-e1514b9f9126 on e.g https://musicbrainz.org/release/babb4c54-bca0-4eb9-b444-369c34d3404d when hovering '<span class="small">(<a href="/release-group/48e335f3-8e4a-4e38-b2df-e1514b9f9126" data-mb-rg-link="29">29 versions available in <bdi>Letter to You</bdi></a>)</span>'
+#+end_example
+
+Maybe remove that icon completely (btw what is it actually good for, what is the idea of havin it and only showing when
+hovering it) and ONLY leave the icon for rendering a link in a new tab in
+
+* DONE make the "Browser cache" window movable and resizable
+
+make the "Browser cache" window movable and resizable
+
+* DONE create a nice dialog window (like what we do for the "Browser cache" window) for displaying/managing the tampermonkey GM store key/values
+
+create a nice dialog window (like what we do for the "Browser cache" window) for displaying/managing the tampermonkey GM
+store key/values
+
+
+ 
+ * TODO consolidate more LAF across more PTs
+ 
+@@ -4830,13 +4879,6 @@ Implement the same Start/Stop/"Continue after closing and reopening the POH" eve
+ actions (they are not interrubtable yet) and fill in the IndexedDB
+ 
+* DONE add hover functionality to the "Relationships" column for MB RGs relationship icons
+
+Add hover functionality to the "Relationships" column for MB RGs relationship icons.
+Currently the href anchors are not fully qualified and missing the https://site:port part, see e.g. https://musicbrainz.org/tag/arena%20rock - tag-RG-relationship-icons.html
+So they do not support yet the POH
+
+
+ * TODO majkinetor: "Links" column - switch of the native tooltip on the FRP
+ * TODO majkinetor: no icons in the lower right corner
+ * TODO majkinetor: async issues with "ISRC" and "Link" columns on PT 'release-tracks'
+@@ -4848,51 +4890,6 @@ PT 'release-tracks' needs suggestions for works in the "Recording of work" colum
+ https://musicbrainz.org/release/22a6802f-d22e-4f47-9f22-6aac257a4194 with our async handling
+ 
+* DONE make the non-MB site settings currently "false", default "true"
+
+Make all the non-MB site settings which are currently "false" default "true", except
+
+#+begin_example
+"Show the Brucebase side bar on the right"
++ all the booleans which deal with "... touch devices ..."
+#+end_example
+
+These should still be false by default
+
+* DONE sidebar image hover for CAA images only working when hovering below the image in the description
+
+1.)
+
+The sidebar image hover for the CAA image doesn't do anything, instead of showing all the release images in a small
+popup window
+
+#+begin_example
+@debug/release-caa-sidebar-image-bug.html - https://musicbrainz.org/release/3ec14d03-2c03-4764-a69d-8155817a040f
+#+end_example
+
+* DONE when hovering a value in the "LABEL-CAT#" column and the down-right glyph shows up, the label-cat# value moves to the left and back when hovering away, which lets the value kind of pump
+
+when hovering a value in the "LABEL-CAT#" column and the down-right glyph shows up, the label-cat# value moves to the left
+and back when hovering away, which lets the value kind of pump, together with is's column header
+
+#+begin_example
+@debug/mb-RG-popup.html - popup dialog of the URL https://musicbrainz.org/release-group/48e335f3-8e4a-4e38-b2df-e1514b9f9126 on e.g https://musicbrainz.org/release/babb4c54-bca0-4eb9-b444-369c34d3404d when hovering '<span class="small">(<a href="/release-group/48e335f3-8e4a-4e38-b2df-e1514b9f9126" data-mb-rg-link="29">29 versions available in <bdi>Letter to You</bdi></a>)</span>'
+#+end_example
+
+Maybe remove that icon completely (btw what is it actually good for, what is the idea of havin it and only showing when
+hovering it) and ONLY leave the icon for rendering a link in a new tab in
+
+* DONE make the "Browser cache" window movable and resizable
+
+make the "Browser cache" window movable and resizable
+
+* DONE create a nice dialog window (like what we do for the "Browser cache" window) for displaying/managing the tampermonkey GM store key/values
+
+create a nice dialog window (like what we do for the "Browser cache" window) for displaying/managing the tampermonkey GM
+store key/values
+
+
+ * todo
+ ** 1
+ 
+@@ -5061,7 +5058,7 @@ fix MB collection pages, e.g. https://musicbrainz.org/user/ApeKattQuest%2C%20Mon
+ third-party userscript "mb. COLLECTION HIGHLIGHTER" from @jesus2099 is active
+ 
+* DONE fix MB collection pages
+ ** initial
+ 
+ 1.)
+
+Recent commits
+41055d76 origin/claude/keen-planck-t1lm8l add finish off in the cloude
+723745f7 [ShowAllEntityData] Window tables: a third sort state, the initial order
+fdd3ac24 [ShowAllEntityData] Plan: record the four decisions
+e2ec9c89 [ShowAllEntityData] Plan: record the mockup link
+550ea4af [ShowAllEntityData] Plan and mockup: MB link-preview windows in the Discogs look
+b02d752a [ShowAllEntityData] docs: bump to 9.99.1469, fold WIP changelog
+e8e8169b [ShowAllEntityData] Merge claude/keen-planck-t1lm8l into main
+ca095855 add todos
+a64b942e [ShowAllEntityData] Entity-history presets in SAED and the window
+f850d50f [ShowAllEntityData] user-collections: fold Collaborative collections, add Privacy
+
+
+
+* TODO artist name is NOT hyperlinked
+
+https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/releases
+
+
+* TODO Areas NOT aligned
+
+1)
+   
+On an artist POH under "FACTS" (left) there is
+
+#+begin_example
+too much empty space between "Area" string and the actual area name
+too much empty space between "Area" parts after "Born, it also pumps during fetching
+#+end_example
+
+
+#+begin_example
+Facts
+Sort name Springsteen, Bruce
+Area      * United States
+Born 1949-09-23 ·   Long Branch,   New Jersey,   United States
+#+end_example
+
+2.)
+
+ISNI 0000000121418834 - value not hyperlinked
 
 
 * TODO consolidate more LAF across more PTs
