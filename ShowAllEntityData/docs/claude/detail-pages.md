@@ -329,6 +329,28 @@ hosts (kept, decided 2026-10-07).
   names the others. Songs before any heading are a nameless part: no heading
   row, so a setlist without parts renders as before. The heading rows are
   `tbody tr` too: a spec counting songs counts `tr:not(.mb-dp-tsec)`.
+- **The window's area links keep still** (vzell 2026-10-29, mockup
+  https://claude.ai/artifact/URrn3dps1EMtnkjKBvsvag; DEBUG-NOTES.md
+  2026-10-29): every link `_mbPopAreaHtml()` writes is stamped
+  `data-flag-processed`, which "MusicBrainz More Flags Everywhere" skips —
+  it would otherwise put its flag and a space before each one a moment after
+  EVERY repaint (each chain step, a segment click), so the text jumped. The
+  window draws its own flag first (`_mbPopFlagHtml()`), in one fixed 16 × 11
+  slot (`.mb-pop-flag`): a Country (`_mbPopIsCountry()`) gets MusicBrainz's
+  own `span.flag.flag-XX` on musicbrainz.org (its CSS is on every page), its
+  ISO code in a box elsewhere (discogs.com: `_foreignHost`); a state
+  (`_mbPopIsState()`: `type` Subdivision, or an untyped own area with an ISO
+  3166-2 code) its Wikidata item's P41 on Commons (`Special:FilePath?width=32`),
+  its slot empty while that loads and gone once its record says "none"; any
+  other area none. The state's record (`_mbPopFlagLoad()`,
+  `_mbPopFlagRecordFor()`, key `pop:flag:area:<id>`, `_MB_POP_FLAG_VERSION`):
+  its `url-rels` lookup (the `wikidata` link) and one `wbgetclaims P41`
+  through `_extGet()`, started from `_mbPopAreaChainLoad()` (the window only,
+  never a hover), a failure not retried by repaints, kept in IndexedDB "none"
+  included — two requests per state, once. Specs: pop-area-flags.spec.js (a
+  stand-in for that script's observer; the chain's last link sampled every
+  frame of a repaint), popup-mb.spec.js (`flagLookups()` apart from the
+  chain's `areaLookups()`); mutations in scripts/mutations/poh-fixes.json.
 - **An area is named in its area chain** (`_mbPopAreaChain()`, WIP.2):
   "OceanFirst Bank Center in West Long Branch, New Jersey, United States", as
   MusicBrainz writes it — an event's "Held at" and a recording's "Recorded at"

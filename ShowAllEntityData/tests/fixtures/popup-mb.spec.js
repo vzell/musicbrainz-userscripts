@@ -63,7 +63,11 @@ const AREA_CHAIN_FIXTURES = {
     '74e50e58-5deb-4b99-93a2-decbb365c07f': 'ws2-pop-area-74e50e58.json', // New York (City)
     '75e398a3-5f3f-4224-9cd8-0fe44715bc95': 'ws2-pop-area-75e398a3.json', // New York (Subdivision)
 };
-const areaLookups = (log) => log.ws2.filter(u => u.includes('/ws/2/area/')).map(u => u.match(/area\/([0-9a-f-]{36})/)[1]);
+// An area chain's steps (`inc=area-rels`), and a state's flag lookups
+// (`inc=url-rels`, `_mbPopFlagRecordFor()`, since 2026-10-29), apart: a flag
+// lookup is its own request, asked once per state, never a step asked again.
+const areaLookups = (log) => log.ws2.filter(u => /\/ws\/2\/area\/[0-9a-f-]{36}\?inc=area-rels&/.test(u)).map(u => u.match(/area\/([0-9a-f-]{36})/)[1]);
+const flagLookups = (log) => log.ws2.filter(u => /\/ws\/2\/area\/[0-9a-f-]{36}\?inc=url-rels&/.test(u)).map(u => u.match(/area\/([0-9a-f-]{36})/)[1]);
 // Real captures (scripts/capture-ws2-fixtures.py), by the request each answers.
 // Phase 3's pages, captured with scripts/fetch-mb-page-fixture.js: the user's
 // own applied edit logged in (--auth: editor and notes shown), an open edit
@@ -877,6 +881,9 @@ test.describe('MusicBrainz link previews: recording and work (WIP.2)', () => {
         const ids = areaLookups(log);
         expect(ids.slice().sort()).toEqual(['edd27a39-ff8a-4af4-8bbf-f369b0fb1899', '261962ea-d8c2-4eaf-a80c-f14376ffadb0',
             '74e50e58-5deb-4b99-93a2-decbb365c07f', '75e398a3-5f3f-4224-9cd8-0fe44715bc95'].sort());
+        // The state of New York's flag: asked once for both chains; no
+        // city's, no country's (MusicBrainz's own flag CSS draws that one).
+        await expect.poll(() => flagLookups(log)).toEqual(['75e398a3-5f3f-4224-9cd8-0fe44715bc95']);
     });
 
     test('the recording window\'s releases: covers only where the archive has a front, status chips, by date at first', async ({ page }) => {
@@ -1462,6 +1469,17 @@ test.describe('MusicBrainz link previews: artist, label, area, instrument (WIP.3
         // Its links and five release-group counts take their rate slots first.
         await expect(facts.locator('dt:text-is("Born") + dd')).toHaveText('1949-09-23 · Long Branch, New Jersey, United States', { timeout: 20000 });
         await expect(facts.locator('dt:text-is("Born") + dd a')).toHaveCount(3);
+        // Every area link is marked for "More Flags Everywhere", which then
+        // leaves it alone (vzell 2026-10-29); the flags are the window's own,
+        // each in a fixed slot: the country's from MusicBrainz's flag CSS, the
+        // state's slot waiting for (here: no) Wikidata flag, none for a city.
+        await expect(facts.locator('dd a[href^="/area/"]:not([data-flag-processed="1"])')).toHaveCount(0);
+        await expect(facts.locator('dt:text-is("Area") + dd > span.flag.flag-US.mb-pop-flag + a')).toHaveText('United States');
+        await expect(facts.locator('dt:text-is("Born") + dd > span.flag.flag-US.mb-pop-flag + a')).toHaveText('United States');
+        await expect(facts.locator('dt:text-is("Born") + dd > .mb-pop-flag + a[href="/area/bb0af2e9-6ae0-4c4f-b729-c8d6444d6380"]'),
+            'no flag for a city').toHaveCount(0);
+        await expect.poll(() => flagLookups(log), { message: 'the state is asked for its flag; a country never', timeout: 15000 })
+            .toEqual(['a36544c1-cb40-4f44-9e0e-7a5a69e403a8']);
         // The artist's own area has no type: the ISO code says "country".
         await expect(facts.locator('dt:text-is("Area") + dd')).toHaveText('United States');
         expect(areaLookups(log)).toEqual(['bb0af2e9-6ae0-4c4f-b729-c8d6444d6380', '604b7841-36b7-4bea-9bdc-7eeb52520e35',
@@ -1959,6 +1977,8 @@ test.describe('MusicBrainz link previews: event, place, series (WIP.4)', () => {
         await page.clock.fastForward(5000);
         await expect.poll(() => page.evaluate(() => window.__saTest.mbRateSlotWaitMs())).toBe(0);
         expect(nj(), 'no repaint asks a failed step again').toBe(tries);
+        // Its flag lookup failed too (500): asked once, not by the repaints.
+        expect(flagLookups(log).filter(id => id.startsWith('a36544c1-')), 'a failed flag is not asked again').toHaveLength(1);
         failNj = false;
         await dialog(page).locator('button.mb-dp-tbtn', { hasText: '⟳' }).click();
         await expect(heldAt).toHaveText('OceanFirst Bank Center in West Long Branch, New Jersey, United States');

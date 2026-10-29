@@ -63,5 +63,109 @@
     "spec": "tests/fixtures/popup-mb.spec.js",
     "grep": "the label card and window",
     "expect": "fail"
+  },
+  {
+    "name": "the window's area links are not stamped for More Flags Everywhere",
+    "why": "The other script puts its flag and a space before each one a moment after every repaint: Area and Born jump (vzell 2026-10-29).",
+    "edits": [
+      {
+        "find": "            `data-flag-processed=\"1\">${_rgEsc(a.name)}</a>` : '';",
+        "replace": "            `>${_rgEsc(a.name)}</a>` : '';"
+      }
+    ],
+    "spec": "tests/fixtures/pop-area-flags.spec.js",
+    "grep": "More Flags Everywhere finds nothing to do",
+    "expect": "fail"
+  },
+  {
+    "name": "a state's flag slot appears only once its flag is known",
+    "why": "The slot arriving late shifts the rest of the chain by 20 px: the jump this fixes, made by the window itself.",
+    "edits": [
+      {
+        "find": "        if (!s || s.status === 'loading') return '<span class=\"mb-pop-flag mb-pop-flag-wait\" aria-hidden=\"true\"></span>';",
+        "replace": "        if (!s || s.status === 'loading') return '';"
+      }
+    ],
+    "spec": "tests/fixtures/pop-area-flags.spec.js",
+    "grep": "a country: MusicBrainz",
+    "expect": "fail"
+  },
+  {
+    "name": "the flag slot has no fixed size",
+    "why": "An empty slot collapses and a loaded one takes the picture's size: the text after it moves.",
+    "edits": [
+      {
+        "find": "                display: inline-block; box-sizing: border-box; width: 16px; height: 11px; padding: 0; margin: 0 4px 0 0;",
+        "replace": "                display: inline; box-sizing: border-box; padding: 0; margin: 0 4px 0 0;"
+      }
+    ],
+    "spec": "tests/fixtures/pop-area-flags.spec.js",
+    "grep": "asked only after Space",
+    "expect": "fail"
+  },
+  {
+    "name": "flags are asked for every area of a chain, a country's and a city's too",
+    "why": "A Wikidata request per city and per country; MusicBrainz's CSS already has every country's flag.",
+    "edits": [
+      {
+        "find": "        areas.forEach(a => _mbPopAreaChain(a).areas.forEach(x => { if (_mbPopIsState(x)) states.set(x.id, x); }));",
+        "replace": "        areas.forEach(a => _mbPopAreaChain(a).areas.forEach(x => { if (x.id) states.set(x.id, x); }));"
+      }
+    ],
+    "spec": "tests/fixtures/popup-mb.spec.js",
+    "grep": "area and birthplace in their area chains",
+    "expect": "fail"
+  },
+  {
+    "name": "a state's flag is never asked",
+    "why": "The slot waits forever and no state ever shows its flag.",
+    "edits": [
+      {
+        "find": "        states.forEach(x => _mbPopFlagLoad(t, x, again, repaint));",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/pop-area-flags.spec.js",
+    "grep": "asked only after Space",
+    "expect": "fail"
+  },
+  {
+    "name": "a failed flag lookup is asked again by every repaint",
+    "why": "A state whose lookup failed loops one request a repaint; a failure must wait for ⟳.",
+    "edits": [
+      {
+        "find": "        const key = _mbPopFlagKey(area.id);\n        const s = _mbPop.get(key);\n        if (!again && s && s.status === 'failed') return;",
+        "replace": "        const key = _mbPopFlagKey(area.id);\n        const s = _mbPop.get(key);\n        if (false && s) return;"
+      }
+    ],
+    "spec": "tests/fixtures/popup-mb.spec.js",
+    "grep": "a failed step of the area chain",
+    "expect": "fail"
+  },
+  {
+    "name": "a country's flag the same everywhere, MusicBrainz's CSS class on discogs.com too",
+    "why": "On discogs.com MusicBrainz's flag CSS is absent: an empty slot instead of the ISO code.",
+    "edits": [
+      {
+        "find": "            return onMb ? `<span class=\"flag flag-${code} mb-pop-flag\"",
+        "replace": "            return true ? `<span class=\"flag flag-${code} mb-pop-flag\""
+      }
+    ],
+    "spec": "tests/fixtures/pop-area-flags.spec.js",
+    "grep": "a country: MusicBrainz",
+    "expect": "fail"
+  },
+  {
+    "name": "an entity's own state area (type null) is not a state",
+    "why": "An artist based in or born in a state (its own area, untyped) gets no state flag.",
+    "edits": [
+      {
+        "find": "        return !!a && !!a.id && (a.type === 'Subdivision' || (!a.type && (a['iso-3166-2-codes'] || []).length > 0));",
+        "replace": "        return !!a && !!a.id && a.type === 'Subdivision';"
+      }
+    ],
+    "spec": "tests/fixtures/pop-area-flags.spec.js",
+    "grep": "a country: MusicBrainz",
+    "expect": "fail"
   }
 ]

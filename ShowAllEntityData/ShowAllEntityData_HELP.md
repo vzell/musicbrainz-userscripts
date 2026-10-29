@@ -2508,7 +2508,8 @@ userscript lists that host, so Tampermonkey does not ask first).
   lists start sorted by date, since MusicBrainz returns them in no date
   order); for an artist, its area and
   birthplace named as MusicBrainz does (*Long Branch, New Jersey, United
-  States*), its genres (each opening its tag) and aliases one per line, every
+  States*, a flag before each country and state; a state's flag is read from
+  Wikidata the first time a window shows it, then kept), its genres (each opening its tag) and aliases one per line, every
   external link and its release groups: a segment per
   type (Album, Single, EP, Broadcast, Other) with its total, each a list like
   a work's recordings, with chips for Live, Compilation and the like and the

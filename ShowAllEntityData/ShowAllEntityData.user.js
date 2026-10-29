@@ -28866,6 +28866,16 @@
             .mb-dp-dialog .mb-dg-fl { font-style: italic; color: #7a6d5c; padding-top: 2px; }
             .mb-dp-dialog .mb-pop-kindbtn { border: 0; background: none; padding: 0; font: inherit; color: #6b3f12; cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
             .mb-dp-dialog .mb-pop-kindbtn[aria-pressed="true"] { font-weight: 700; text-decoration: none; color: #2b2622; }
+            /* An area's flag (_mbPopFlagHtml()): one fixed slot, whatever fills it, so the text after it never moves. */
+            .mb-dp-dialog .mb-pop-flag {
+                display: inline-block; box-sizing: border-box; width: 16px; height: 11px; padding: 0; margin: 0 4px 0 0;
+                vertical-align: -1px; background-position: center; background-size: 16px 11px; background-repeat: no-repeat;
+            }
+            .mb-dp-dialog .mb-pop-flag img { display: block; width: 16px; height: 11px; object-fit: contain; }
+            .mb-dp-dialog .mb-pop-flag-iso {
+                width: 20px; height: 13px; vertical-align: -2px; border: 1px solid #d9cfbd; border-radius: 2px; color: #7a6d5c;
+                font: 600 9px/11px system-ui, -apple-system, "Segoe UI", Arial, sans-serif; letter-spacing: 0.04em; text-align: center;
+            }
             .mb-dp-dialog .mb-dg-fc {
                 font: 12px system-ui, -apple-system, "Segoe UI", Arial, sans-serif; border: 1px solid #d9cfbd; background: #fff; color: #2b2622;
                 border-radius: 999px; padding: 1px 8px; margin: 0 4px 4px 0; cursor: pointer; font-variant-numeric: tabular-nums;
@@ -56375,13 +56385,125 @@
     }
 
     /**
-     * An area of the Web Service as a link (a new tab), '' for none.
+     * An area of the Web Service as a link (a new tab), '' for none, after
+     * its flag (`_mbPopFlagHtml()`). The link is stamped
+     * `data-flag-processed`: "MusicBrainz More Flags Everywhere" (@Lotheric)
+     * skips a link so stamped, where it would put its own flag and a space
+     * before every area link a moment after it appears — and a window
+     * replaces its links on every repaint (each step of an area chain, a
+     * click on a segment), so its flags arrived late each time and the text
+     * jumped (vzell 2026-10-29, mockup
+     * https://claude.ai/artifact/URrn3dps1EMtnkjKBvsvag; DEBUG-NOTES.md).
      *
      * @param {?Object} a
      * @returns {string}
      */
     function _mbPopAreaHtml(a) {
-        return a && a.id ? `<a href="/area/${_rgEsc(a.id)}" target="_blank" rel="noopener">${_rgEsc(a.name)}</a>` : '';
+        return a && a.id ? `${_mbPopFlagHtml(a)}<a href="/area/${_rgEsc(a.id)}" target="_blank" rel="noopener" ` +
+            `data-flag-processed="1">${_rgEsc(a.name)}</a>` : '';
+    }
+
+    /** Version of a Subdivision's flag record in IndexedDB (`_mbPopFlagLoad()`). */
+    const _MB_POP_FLAG_VERSION = 1;
+
+    /**
+     * The cache key of an area's flag record.
+     * @param {string} id - The area's MBID.
+     * @returns {string}
+     */
+    function _mbPopFlagKey(id) {
+        return `pop:flag:area:${id}`;
+    }
+
+    /**
+     * An area's flag in a slot of fixed width (16 × 11, `.mb-pop-flag`), so
+     * nothing after it moves when it arrives; '' for an area that has none
+     * to show. A Country (its ISO 3166-1 code): MusicBrainz's own flag
+     * (`span.flag.flag-XX`, whose CSS is on every musicbrainz.org page),
+     * elsewhere the code in a small box (on discogs.com MusicBrainz's CSS
+     * is not there). A Subdivision: its Wikidata item's flag (P41,
+     * `_mbPopFlagLoad()`), the slot empty while that loads; a state with no
+     * flag loses the slot once its record says so (then kept). Other area
+     * types (a city, a county): none.
+     *
+     * @param {Object} a - An area of the Web Service.
+     * @param {boolean} [onMb] - On musicbrainz.org (its flag CSS present).
+     * @returns {string}
+     */
+    function _mbPopFlagHtml(a, onMb = _foreignHost === null) {
+        const code = String((a['iso-3166-1-codes'] || [])[0] || '');
+        if (/^[A-Z]{2}$/.test(code) && _mbPopIsCountry(a)) {
+            return onMb ? `<span class="flag flag-${code} mb-pop-flag" role="img" aria-label="${_rgEsc(a.name)}"></span>`
+                : `<span class="mb-pop-flag mb-pop-flag-iso" aria-hidden="true">${code}</span>`;
+        }
+        if (!_mbPopIsState(a)) return '';
+        const s = _mbPop.get(_mbPopFlagKey(a.id));
+        if (!s || s.status === 'loading') return '<span class="mb-pop-flag mb-pop-flag-wait" aria-hidden="true"></span>';
+        if (s.status !== 'done' || !s.data || !s.data.file) return '';
+        const name = encodeURIComponent(s.data.file.replace(/ /g, '_'));
+        return `<span class="mb-pop-flag mb-pop-flag-img" role="img" aria-label="${_rgEsc(a.name)}">` +
+            `<img src="https://commons.wikimedia.org/wiki/Special:FilePath/${name}?width=32" alt="" ` +
+            'referrerpolicy="no-referrer" decoding="async"></span>';
+    }
+
+    /**
+     * Whether an area is a state (a Subdivision): a relation's area says so
+     * by its `type`; an entity's own `area`/`begin-area`/`end-area` has
+     * `type: null`, so there its ISO 3166-2 code decides, as the ISO 3166-1
+     * code does for a country (`_mbPopIsCountry()`).
+     *
+     * @param {?Object} a - An area of the Web Service.
+     * @returns {boolean}
+     */
+    function _mbPopIsState(a) {
+        return !!a && !!a.id && (a.type === 'Subdivision' || (!a.type && (a['iso-3166-2-codes'] || []).length > 0));
+    }
+
+    /**
+     * Starts a Subdivision's flag record from a window's `pin()` (through
+     * `_mbPopAreaChainLoad()`: the window only, never a hover), always on ⟳,
+     * else unless it already failed. Kept in `_mbPop` and IndexedDB, "no
+     * flag" included, so each state costs its two requests once.
+     *
+     * @param {object} t - The window's target.
+     * @param {Object} area - A Subdivision.
+     * @param {boolean} again - ⟳.
+     * @param {function(): void} repaint
+     * @returns {void}
+     */
+    function _mbPopFlagLoad(t, area, again, repaint) {
+        const key = _mbPopFlagKey(area.id);
+        const s = _mbPop.get(key);
+        if (!again && s && s.status === 'failed') return;
+        _mbLoad(key, (wanted) => _mbPopFlagRecordFor(area.id, wanted),
+            { force: again, repaint, wanted: _mbPopWanted(t), version: _MB_POP_FLAG_VERSION });
+    }
+
+    /**
+     * A Subdivision's flag record: its `url-rels` (one Web Service lookup,
+     * for its `wikidata` link), then its item's P41 (one `wbgetclaims`
+     * through `_extGet()`: Wikidata's own rate gate, anonymous), as
+     * `_mbPopImageRecordFor()` asks P18. No Wikidata link, no P41, or an item
+     * Wikidata does not have: `file` ''.
+     *
+     * @param {string} id - The area's MBID.
+     * @param {function(): boolean} wanted
+     * @returns {Promise<{ok?: boolean, data?: Object, detail?: string, skipped?: boolean}>}
+     */
+    async function _mbPopFlagRecordFor(id, wanted) {
+        const q = _mbPopLookup({ type: 'area', id }, 'url-rels');
+        const mb = await _rgWsGet(q.url, '_mbPopFlagRecordFor', wanted);
+        if (mb.skipped) return { skipped: true };
+        if (!mb.ok || !mb.data) return { ok: false, detail: mb.detail || `HTTP ${mb.status}` };
+        const item = _mbPopWikidataItem(mb.data.relations);
+        if (!item) return { ok: true, data: { file: '', item: '' } };
+        const url = `https://www.wikidata.org/w/api.php?action=wbgetclaims&format=json&entity=${item}&property=P41`;
+        const res = await _extGet(url, { wanted, fetchOpts: { accept: /\bjson\b/i, headers: { 'Api-User-Agent': _EXT_AGENT } } });
+        if (res.skipped) return { skipped: true };
+        if (res.error || res.status !== 200) return { ok: false, detail: _extFailText(res) };
+        const d = _extJson(res);
+        if (!d) return { ok: false, detail: 'Wikidata answered, but not with JSON' };
+        return { ok: true, data: { file: d.error ? '' : _mbPopClaimFile(d, 'P41'), item } };
     }
 
     /**
@@ -56906,6 +57028,10 @@
             const q = _mbPopLookup({ type: 'area', id }, 'area-rels');
             _mbPopPinLoad(t, q.key, q.url, again, repaint);
         });
+        // The flag of each state the chains show so far (`_mbPopFlagHtml()`).
+        const states = new Map();
+        areas.forEach(a => _mbPopAreaChain(a).areas.forEach(x => { if (_mbPopIsState(x)) states.set(x.id, x); }));
+        states.forEach(x => _mbPopFlagLoad(t, x, again, repaint));
     }
 
     /**
@@ -156461,6 +156587,16 @@ a { color: #1565c0; }`;
              * @returns {?{kind: string, id: string, list: string}}
              */
             ytParse: (href) => _ytParse(href),
+            /**
+             * An area's flag markup (`_mbPopFlagHtml()`, the shipping
+             * builder) as on musicbrainz.org or on another host, so a spec
+             * can pin the discogs.com box without a page there.
+             *
+             * @param {Object} area - An area of the Web Service.
+             * @param {boolean} onMb
+             * @returns {string}
+             */
+            mbPopFlagHtml: (area, onMb) => _mbPopFlagHtml(area, onMb),
             /**
              * A "Play here" tile's markup (`_ytTileHtml()`, the shipping
              * builder, which also installs the one delegated handler), so a

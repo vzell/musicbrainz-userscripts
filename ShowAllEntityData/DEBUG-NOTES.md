@@ -27412,3 +27412,40 @@ Tag card). `ctrlHover()` now gives the locator up to five tries on that error:
 40 of 40. The gate's own "no card" failure was not reproduced in those 69
 runs, and its trace was overwritten by the probe runs, so its cause is still
 open; the next gate keeps `test-results/` untouched.
+
+## 2026-10-29 — A window's area chains jumped: More Flags Everywhere re-flagged every repaint (saed-attn-bar-poh-fixes, WIP.4)
+
+Env: 2026-10-29T16:09+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.54.1-microsoft-standard-WSL2) · user's report: Vivaldi (version unknown) with "MusicBrainz More Flags Everywhere" installed · fixes checked in Playwright 1.62.1 Chromium, no Tampermonkey (GM stubs)
+
+**Symptom (vzell, `debug/Bruce Springsteen - Releases - MusicBrainz - Vivaldi
+2026-10-29 14-40-36.mp4`):** in an artist's window, "Facts" showed too much
+space between "Area" and "United States" and between the parts of "Born"; the
+parts "pumped" while the chain loaded, and a click on a release-group segment
+("Compilation 35") made them all flick left and back.
+
+**Cause (code, not guessed):** the third-party script's observer
+(`tests/fixtures/live-userscripts/MusicBrainz_More_Flags_Everywhere.user.js`,
+`processLink()` l.1311, the debounced `MutationObserver` l.1380) inserts a
+flag span and a `' '` before every `a[href*="/area/"]` that has no
+`data-flag-processed`, a moment after it appears. A window replaces its
+links on every repaint — each step of the area chain, a segment click — so
+the flags (and the space) arrived late every time: the text first appears
+without them, then shifts right. No CSS of ours was involved.
+
+**Fix:** `_mbPopAreaHtml()` stamps `data-flag-processed="1"` (the script
+skips such a link) and draws the window's own flag before it in a fixed
+16 × 11 slot (`_mbPopFlagHtml()`): a country MusicBrainz's own
+`span.flag.flag-XX` (its ISO code in a box off musicbrainz.org), a state its
+Wikidata P41 from Commons (`_mbPopFlagLoad()`: one url-rels lookup and one
+`wbgetclaims`, window only, kept), the slot present while it loads. Decided
+with vzell on mockup https://claude.ai/artifact/URrn3dps1EMtnkjKBvsvag
+("countries and states").
+
+**Regression test:** `tests/fixtures/pop-area-flags.spec.js` injects a
+stand-in for the script's observer (same debounce shape, a span and a space
+before every unstamped area link) and samples the "Born" chain's last link in
+every animation frame for 400 ms after a segment click: one x throughout, no
+stand-in span in the window. Unstamping the links fails it (mutation in
+`scripts/mutations/poh-fixes.json`). Two popup-mb.spec.js tests counted
+every `/ws/2/area/` request; the chain's steps (`inc=area-rels`) and the
+flag lookups (`inc=url-rels`) are counted apart now, each asserted.

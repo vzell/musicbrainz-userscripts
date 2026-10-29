@@ -1,5 +1,23 @@
 [
   {
+    "version": "WIP.4",
+    "date": "2026-10-29",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Link previews: with \"MusicBrainz More Flags Everywhere\" installed, the areas in a window (an artist's Area and Born, a label's or place's Area, an event's Held at) no longer jump. That script added its flag a moment after every change of the window, so the names moved while the window loaded and flicked when you clicked in it (a release-group type, a chip). The window now draws the flags itself, in a place of fixed size: each country's, and each state's (read from Wikidata the first time a window shows that state, then kept; on discogs.com a country shows its code)."
+        ]
+      },
+      {
+        "label": "🔧 Refactor",
+        "items": [
+          "_mbPopAreaHtml() stamps data-flag-processed and puts _mbPopFlagHtml() before the link (.mb-pop-flag, 16 × 11): a country MusicBrainz's span.flag.flag-XX, off musicbrainz.org its ISO code; a state (_mbPopIsState()) its Wikidata P41 through _mbPopFlagLoad() / _mbPopFlagRecordFor() (area url-rels, wbgetclaims; key pop:flag:area:<id>, _MB_POP_FLAG_VERSION 1), started from _mbPopAreaChainLoad(). __saTest.mbPopFlagHtml(). Tests: new pop-area-flags.spec.js (3); popup-mb.spec.js counts flag lookups apart from chain steps; scripts/mutations/poh-fixes.json (+8, all caught). DEBUG-NOTES.md, docs/claude/detail-pages.md, HELP."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.3",
     "date": "2026-10-29",
     "sections": [
