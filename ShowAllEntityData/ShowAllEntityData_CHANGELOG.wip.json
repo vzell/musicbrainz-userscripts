@@ -1,5 +1,29 @@
 [
   {
+    "version": "WIP.6",
+    "date": "2026-10-29",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Link previews: with \"MusicBrainz Right Side Flags Everywhere\" installed, a country's flag in a window no longer covers the green dot of the name after it, and no longer blinks when you click in the window. That script put its own, wider flag into the window's."
+        ]
+      },
+      {
+        "label": "✨ Improve",
+        "items": [
+          "Link previews: the green dot in a window (the link is already loaded, so a click opens it at once) no longer pushes the text: every link that opens in the window keeps its place. When you rest on a link that has the dot, a small note above its card says what the dot means."
+        ]
+      },
+      {
+        "label": "🔧 Refactor",
+        "items": [
+          "_mbPopFlagHtml(): span.flag-XX.mb-pop-flag (no flag class) with data-hq-skip, the slot overflow: hidden. _dpWinMark() puts mb-dp-dots on the area while sa_dp_window_read_ahead is on; every mb-dp-l-here link keeps the dot's ::before, transparent until mb-dp-l-read. _dpShowPeek() records t.wasRead as the card comes up; _dpCollectNotes() adds a kind-read box (_dpReadNoteHtml()). Mockup 2e: https://claude.ai/artifact/URrn3dps1EMtnkjKBvsvag. Tests: popup-mb.spec.js H5 on/off (the link's box unchanged when read, the note on a dotted link's card and not on another's); pop-area-flags.spec.js gains a Right Side Flags stand-in test; scripts/mutations/poh-fixes.json (+7, all caught). DEBUG-NOTES.md, docs/claude/detail-pages.md, HELP."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.5",
     "date": "2026-10-29",
     "sections": [

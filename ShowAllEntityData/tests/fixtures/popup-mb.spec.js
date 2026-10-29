@@ -1481,8 +1481,8 @@ test.describe('MusicBrainz link previews: artist, label, area, instrument (WIP.3
         // each in a fixed slot: the country's from MusicBrainz's flag CSS, the
         // state's slot waiting for (here: no) Wikidata flag, none for a city.
         await expect(facts.locator('dd a[href^="/area/"]:not([data-flag-processed="1"])')).toHaveCount(0);
-        await expect(facts.locator('dt:text-is("Area") + dd > span.flag.flag-US.mb-pop-flag + a')).toHaveText('United States');
-        await expect(facts.locator('dt:text-is("Born") + dd > span.flag.flag-US.mb-pop-flag + a')).toHaveText('United States');
+        await expect(facts.locator('dt:text-is("Area") + dd > span.flag-US.mb-pop-flag[data-hq-skip="true"]:not(.flag) + a')).toHaveText('United States');
+        await expect(facts.locator('dt:text-is("Born") + dd > span.flag-US.mb-pop-flag[data-hq-skip="true"]:not(.flag) + a')).toHaveText('United States');
         await expect(facts.locator('dt:text-is("Born") + dd > .mb-pop-flag + a[href="/area/bb0af2e9-6ae0-4c4f-b729-c8d6444d6380"]'),
             'no flag for a city').toHaveCount(0);
         await expect.poll(() => flagLookups(log), { message: 'the state is asked for its flag; a country never', timeout: 15000 })
@@ -3347,19 +3347,59 @@ test.describe('MusicBrainz link previews: hovering inside the window (org/dp-win
         await page.evaluate(() => new Promise(r => setTimeout(r, 1500)));
         expect(log.ws2.filter(u => u.includes('/ws/2/recording/')), 'off: nothing read ahead').toEqual([]);
         await expect(rec).not.toHaveClass(/\bmb-dp-l-read\b/);
+        // Off, no dot can appear: no place is kept for one.
+        expect(await rec.evaluate(a => getComputedStyle(a, '::before').content)).toBe('none');
     });
 
     test('H5 on: a 600 ms rest reads the recording ahead, then the click shows it from memory', async ({ page }) => {
         const log = await releaseWindow(page, { sa_dp_window_read_ahead: true });
         const rec = area(page).locator('table.mb-pop-medtable tbody tr').nth(1).locator('a').first();
+        const recId = (await rec.getAttribute('href')).match(/[0-9a-f-]{36}/)[0];
+        const box = async () => rec.evaluate(a => { const r = a.getBoundingClientRect(); return [Math.round(r.left), Math.round(r.width)]; });
+        const before = await box();
         await rest(page, rec);
         await expect.poll(() => log.ws2.filter(u => u.includes('/ws/2/recording/')).length, { timeout: 5000 }).toBe(1);
         await expect(rec).toHaveClass(/\bmb-dp-l-read\b/);
+        // The dot has its place before it is read (vzell 2026-10-29): the
+        // link neither moves nor grows when it appears.
+        expect(await box(), 'the dot fills a place kept for it').toEqual(before);
+        expect(await rec.evaluate(a => getComputedStyle(a, '::before').width), 'the place is the dot\'s width').toBe('6px');
         await expect(foot(page)).toContainText('(read before, no request)');
+        // Its card (Ctrl: the fixtures keep sa_dp_hover_without_ctrl off) has
+        // the note on the dot right above it (vzell 2026-10-29, mockup 2e) …
+        const peek = page.locator('#mb-dp-peek');
+        const note = page.locator('#mb-dp-notes .mb-dp-note-read');
+        const ctrlRest = async (el) => {
+            await rest(page, el);
+            await page.keyboard.down('Control');
+            await el.hover({ position: { x: 4, y: 4 } });
+            await page.keyboard.up('Control');
+        };
+        await ctrlRest(rec);
+        await expect(peek).toBeVisible();
+        await expect(note).toBeVisible();
+        await expect(note).toContainText('Already loaded: a click opens it at once, with no new request to MusicBrainz.');
+        await expect(note.locator('.mb-dp-read-dot')).toHaveCount(1);
+        const [nb, cb] = await Promise.all([note.boundingBox(), page.locator('#mb-dp-peek').boundingBox()]);
+        expect(nb.y + nb.height, 'the note sits above the card').toBeLessThanOrEqual(cb.y);
+        // … and a link not read before its card came up gets the card alone,
+        // even once that card's own lookup has read it.
+        const other = area(page).locator('table.mb-pop-medtable tbody tr').nth(2).locator('a').first();
+        await expect(other).not.toHaveClass(/\bmb-dp-l-read\b/);
+        await page.mouse.move(0, 0);
+        await expect(peek).toBeHidden();
+        await page.keyboard.down('Control');
+        await other.hover();
+        await page.keyboard.up('Control');
+        await expect(peek).toBeVisible();
+        await expect(peek).toContainText('fetched now', { timeout: 5000 });
+        await expect(note).toHaveCount(0);
+        await page.mouse.move(0, 0);
         await rec.click();
         await expect(title(page)).toHaveText(/Release › Recording$/);
         await page.evaluate(() => new Promise(r => setTimeout(r, 300)));
-        expect(log.ws2.filter(u => /\/ws\/2\/recording\/[0-9a-f-]{36}\?inc=artist-credits/.test(u)), 'the card\'s lookup, once').toHaveLength(1);
+        // The other link's card asked its own recording; this one's lookup is still the one read ahead.
+        expect(log.ws2.filter(u => u.includes(`/ws/2/recording/${recId}?inc=artist-credits`)), 'the card\'s lookup, once').toHaveLength(1);
     });
 });
 

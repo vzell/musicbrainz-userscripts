@@ -22163,7 +22163,28 @@
             return { kind: 'title', html: `<div class="mb-tt-body">${text.split('\n').map(_mbttEscape).join('<br>')}</div>`, label };
         }).filter(Boolean);
         if (own && own.dataset && own.dataset.mbtt) notes.push({ kind: 'tip', html: own.dataset.mbtt, label: 'Link' });
+        // A window link that had the green dot when its card came up
+        // (`t.wasRead`, `_dpShowPeek()`): what the dot means, right above
+        // the card (vzell 2026-10-29, mockup 2e,
+        // https://claude.ai/artifact/URrn3dps1EMtnkjKBvsvag).
+        if (t.wasRead) notes.push({ kind: 'read', html: _dpReadNoteHtml(t), label: '' });
         return notes;
+    }
+
+    /**
+     * The note on a window link's green dot (`mb-dp-l-read`, `_dpWinMark()`):
+     * its record is in memory, so a click opens it at once without a
+     * request; how a link gets it, and the setting's name.
+     *
+     * @param {object} t - A target (`_popResolve()`).
+     * @returns {string}
+     */
+    function _dpReadNoteHtml(t) {
+        const where = t.src && t.src.id === 'mb-entity' ? ' to MusicBrainz' : '';
+        return '<div class="mb-tt-body"><span class="mb-dp-read-dot" aria-hidden="true"></span>' +
+            `<b>Already loaded</b>: a click opens it at once, with no new request${where}.</div>` +
+            '<div class="mb-tt-foot">Resting on a link for a moment loads it ahead. Settings: “In the window, ' +
+            'read a link ahead while the pointer rests on it”.</div>';
     }
 
     /**
@@ -24312,6 +24333,10 @@
      */
     function _dpShowPeek(t) {
         if (_dpPeek.link !== t.el || !t.src.enabled()) return;
+        // The green dot as the card comes up: the card's own lookup may
+        // mark the link read a moment later, and that is no "already
+        // loaded" (`_dpReadNoteHtml()`).
+        const wasRead = t.el.classList.contains('mb-dp-l-read');
         if (!t.el.isConnected) {
             // The window repainted during the card's delay (it does on every
             // answer of its own follow-up requests): the card is for the
@@ -24321,6 +24346,7 @@
             _dpPeekMoveTo(n);
             t = n;
         }
+        t.wasRead = wasRead;
         const el = _dpEnsurePeekEl();
         el.classList.toggle('mb-dp-wide', !!('wide' in t ? t.wide : t.src.wide));
         // An image's preview in the window (H4) may be wider than a card.
@@ -26000,6 +26026,9 @@
             }
         }
         const dots = Lib.settings.sa_dp_window_read_ahead === true;
+        // With read-ahead on, every link that opens here keeps the dot's
+        // place, empty until it is read, so nothing moves when it appears.
+        api.scrollArea.classList.toggle('mb-dp-dots', dots);
         api.scrollArea.querySelectorAll('a[href]').forEach(a => {
             const w = _dpWinWhat(a);
             a.classList.toggle('mb-dp-l-img', !!w && (w.kind === 'img' || w.kind === 'fi'));
@@ -28571,15 +28600,24 @@
             .mb-dp-dialog .mb-dp-area a.mb-dp-l-out:not(.mb-dp-l-noglyph)::after { content: " \\2197"; color: #7a6d5c; font-size: 0.8em; }
             .mb-dp-dialog .mb-dp-area a.mb-dp-l-img { cursor: zoom-in; }
             .mb-dp-dialog .mb-dp-area a.mb-dp-l-img:hover img { box-shadow: 0 0 0 2px #2f5f9e; }
-            .mb-dp-dialog .mb-dp-area a.mb-dp-l-read::before {
+            /* The green dot (_dpWinMark()) has a reserved place: while
+               read-ahead is on (.mb-dp-dots), every link that opens here
+               keeps it, empty until the link is read, so nothing moves when
+               the dot appears (vzell 2026-10-29, mockup 2e). */
+            .mb-dp-dialog .mb-dp-area.mb-dp-dots a.mb-dp-l-here::before {
                 content: "";
                 display: inline-block;
                 width: 6px;
                 height: 6px;
                 margin-right: 4px;
                 border-radius: 50%;
-                background: #3f7a3a;
+                background: transparent;
                 vertical-align: 1px;
+            }
+            .mb-dp-dialog .mb-dp-area.mb-dp-dots a.mb-dp-l-here.mb-dp-l-read::before { background: #3f7a3a; }
+            #mb-dp-notes .mb-dp-read-dot {
+                display: inline-block; width: 7px; height: 7px; margin-right: 6px; border-radius: 50%;
+                background: #3f7a3a; vertical-align: 1px;
             }
             #mb-dp-peek.mb-dp-imgpeek { max-width: 560px; }
             #mb-dp-peek .mb-dp-imgprev { display: block; max-width: 300px; max-height: 300px; margin: 2px 0 4px; border: 1px solid #d9cfbd; }
@@ -28870,6 +28908,7 @@
             .mb-dp-dialog .mb-pop-flag {
                 display: inline-block; box-sizing: border-box; width: 16px; height: 11px; padding: 0; margin: 0 4px 0 0;
                 vertical-align: -1px; background-position: center; background-size: 16px 11px; background-repeat: no-repeat;
+                overflow: hidden;
             }
             .mb-dp-dialog .mb-pop-flag img { display: block; width: 16px; height: 11px; object-fit: contain; }
             .mb-dp-dialog .mb-pop-flag-iso {
@@ -56419,7 +56458,11 @@
      * An area's flag in a slot of fixed width (16 × 11, `.mb-pop-flag`), so
      * nothing after it moves when it arrives; '' for an area that has none
      * to show. A Country (its ISO 3166-1 code): MusicBrainz's own flag
-     * (`span.flag.flag-XX`, whose CSS is on every musicbrainz.org page),
+     * (`.flag-XX`, whose CSS is on every musicbrainz.org page) — without the
+     * `flag` class and stamped `data-hq-skip`: "Right Side Flags Everywhere"
+     * (@Lotheric) blanks every `.flag` until its next frame and appends its
+     * own, wider flag inside it, which spilled over the link's green dot and
+     * flickered on every repaint (vzell 2026-10-29),
      * elsewhere the code in a small box (on discogs.com MusicBrainz's CSS
      * is not there). A Subdivision: its Wikidata item's flag (P41,
      * `_mbPopFlagLoad()`), the slot empty while that loads; a state with no
@@ -56433,7 +56476,7 @@
     function _mbPopFlagHtml(a, onMb = _foreignHost === null) {
         const code = String((a['iso-3166-1-codes'] || [])[0] || '');
         if (/^[A-Z]{2}$/.test(code) && _mbPopIsCountry(a)) {
-            return onMb ? `<span class="flag flag-${code} mb-pop-flag" role="img" aria-label="${_rgEsc(a.name)}"></span>`
+            return onMb ? `<span class="flag-${code} mb-pop-flag" data-hq-skip="true" role="img" aria-label="${_rgEsc(a.name)}"></span>`
                 : `<span class="mb-pop-flag mb-pop-flag-iso" aria-hidden="true">${code}</span>`;
         }
         if (!_mbPopIsState(a)) return '';

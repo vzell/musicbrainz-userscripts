@@ -2714,8 +2714,12 @@ userscript lists that host, so Tampermonkey does not ask first).
   - **← Back** and **‹ ›** name where they go when you rest on them.
   - *In the window, read a link ahead while the pointer rests on it* (same
     section, on by default) reads a MusicBrainz link after a moment's rest,
-    so the click shows it at once; such links get a small green dot. Links to
-    other sites are never read ahead.
+    so the click shows it at once; such links get a small green dot (links
+    the window loaded for itself, such as the places of an area, have it
+    too). Every link that opens in the window keeps the dot's place, so
+    nothing moves when it appears, and a dotted link's card says what the
+    dot means in a small note above it. Links to other sites are never read
+    ahead.
   - On a touch screen a tap stays a click; a **long press** shows the link's
     card or the image.
 

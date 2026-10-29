@@ -73,13 +73,17 @@ const p41 = (file) => ({
  * P41 answered; anything else of the Web Service 404. `mfe`: a stand-in
  * for More Flags Everywhere's observer (its l.1311–1394: debounced, a
  * span and a space before every area link not stamped
- * `data-flag-processed`).
+ * `data-flag-processed`). `rsfe`: a stand-in for Right Side Flags
+ * Everywhere (its `processFlags()` l.1318 and `injectLoadingStyle()`
+ * l.1979): `.flag:not([data-hq-processed]):not([data-hq-skip])` blanked by an
+ * `!important` rule, then, on the next frame, a 30 px flag image appended
+ * inside each such element that holds no area link.
  *
  * @param {import('@playwright/test').Page} page
- * @param {{mfe?: boolean}} [opts]
+ * @param {{mfe?: boolean, rsfe?: boolean}} [opts]
  * @returns {Promise<{ws2: string[]}>}
  */
-async function open(page, { mfe = false } = {}) {
+async function open(page, { mfe = false, rsfe = false } = {}) {
     const log = { ws2: [] };
     const ctx = page.context();
     await ctx.route('https://static.metabrainz.org/**', (route) => route.abort('blockedbyclient'));
@@ -110,10 +114,16 @@ async function open(page, { mfe = false } = {}) {
                 s.style.cssText = 'display:inline-block;width:18px;height:12px';
                 a.before(s, document.createTextNode(' '));
             };
+            // Idle once a flush has run after the last mutation it saw.
+            window.__mfeFlushes = 0;
+            window.__mfePending = false;
             new MutationObserver((muts) => {
                 muts.forEach(m => m.addedNodes.forEach(n => { if (n.nodeType === 1) pending.push(n); }));
+                window.__mfePending = true;
                 clearTimeout(timer);
                 timer = setTimeout(() => {
+                    window.__mfePending = false;
+                    window.__mfeFlushes++;
                     const nodes = pending;
                     pending = [];
                     nodes.filter(n => n.isConnected).forEach((n) => {
@@ -121,6 +131,35 @@ async function open(page, { mfe = false } = {}) {
                         n.querySelectorAll('a[href*="/area/"]').forEach(flag);
                     });
                 }, 30);
+            }).observe(document, { childList: true, subtree: true });
+        });
+    }
+    if (rsfe) {
+        await ctx.addInitScript(() => {
+            const SEL = '.flag:not([data-hq-processed]):not([data-hq-skip])';
+            const style = () => {
+                if (document.getElementById('rsfe-stub-style') || !document.head) return;
+                const st = document.createElement('style');
+                st.id = 'rsfe-stub-style';
+                st.textContent = `${SEL} { background-image: none !important; }`;
+                document.head.appendChild(st);
+            };
+            let raf = false;
+            new MutationObserver(() => {
+                style();
+                if (raf) return;
+                raf = true;
+                requestAnimationFrame(() => {
+                    raf = false;
+                    document.querySelectorAll(SEL).forEach((el) => {
+                        if (el.querySelector('a[href*="/area/"]')) return;
+                        const img = document.createElement('img');
+                        img.className = 'mb-hq-flag-img';
+                        img.style.cssText = 'width:30px;height:11px;display:inline-block';
+                        el.appendChild(img);
+                        el.dataset.hqProcessed = 'true';
+                    });
+                });
             }).observe(document, { childList: true, subtree: true });
         });
     }
@@ -187,7 +226,8 @@ test.describe('the windows\' area links keep still (own flags, More Flags Everyw
     test('More Flags Everywhere finds nothing to do, and a repaint moves no area link in any frame', async ({ page }) => {
         await open(page, { mfe: true });
         await pinArtist(page);
-        await page.waitForTimeout(200);
+        await expect.poll(() => page.evaluate(() => window.__mfeFlushes > 0 && !window.__mfePending),
+            { message: 'the stand-in has looked at everything the window added' }).toBe(true);
         await expect(dialog(page).locator('.mfe-stub'), 'the other script left the window alone').toHaveCount(0);
         // A segment click repaints the whole window; sample the chain's last
         // link (re-found each frame: the repaint replaces it) for 400 ms.
@@ -209,6 +249,22 @@ test.describe('the windows\' area links keep still (own flags, More Flags Everyw
         });
         expect(new Set(xs), `"United States" stays at one x in every frame: ${xs.join(',')}`).toEqual(new Set([xs[0]]));
         await expect(dialog(page).locator('.mfe-stub')).toHaveCount(0);
+    });
+
+    test('Right Side Flags Everywhere leaves the window\'s country flags alone: no image spilling over the dot, no blanking', async ({ page }) => {
+        await open(page, { rsfe: true });
+        await pinArtist(page);
+        // A segment click repaints; the stand-in runs on the next frame.
+        await dialog(page).locator('[data-mb-tbl-act="seg"][data-mb-tbl-v="single"]').click();
+        await expect(born(page)).toHaveText('1949-09-23 · Long Branch, New Jersey, United States');
+        await page.evaluate(() => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r))));
+        const flags = dialog(page).locator('.mb-pop-flag');
+        expect(await flags.count()).toBeGreaterThan(1);
+        await expect(dialog(page).locator('.mb-pop-flag img.mb-hq-flag-img'), 'no second flag inside ours').toHaveCount(0);
+        expect(await flags.evaluateAll(els => els.filter(e => e.matches('.flag:not([data-hq-processed]):not([data-hq-skip])')).length),
+            'none of ours is a .flag that script blanks').toBe(0);
+        // The slot clips whatever might be put in it.
+        expect(await flags.first().evaluate(e => getComputedStyle(e).overflow)).toBe('hidden');
     });
 
     test('a state\'s flag is its Wikidata item\'s P41: asked only after Space, once, then kept', async ({ page }) => {
@@ -243,7 +299,7 @@ test.describe('the windows\' area links keep still (own flags, More Flags Everyw
         await open(page);
         const html = (area, onMb) => page.evaluate(([a, m]) => window.__saTest.mbPopFlagHtml(a, m), [area, onMb]);
         const us = { id: '489ce91b-6658-3307-9877-795b68554c98', name: 'United States', type: 'Country', 'iso-3166-1-codes': ['US'] };
-        expect(await html(us, true)).toBe('<span class="flag flag-US mb-pop-flag" role="img" aria-label="United States"></span>');
+        expect(await html(us, true)).toBe('<span class="flag-US mb-pop-flag" data-hq-skip="true" role="img" aria-label="United States"></span>');
         expect(await html(us, false)).toBe('<span class="mb-pop-flag mb-pop-flag-iso" aria-hidden="true">US</span>');
         // The artist's own area has no type: its ISO code says "country".
         expect(await html({ id: us.id, name: 'United States', 'iso-3166-1-codes': ['US'] }, false)).toContain('>US<');

@@ -147,8 +147,8 @@
     "why": "On discogs.com MusicBrainz's flag CSS is absent: an empty slot instead of the ISO code.",
     "edits": [
       {
-        "find": "            return onMb ? `<span class=\"flag flag-${code} mb-pop-flag\"",
-        "replace": "            return true ? `<span class=\"flag flag-${code} mb-pop-flag\""
+        "find": "            return onMb ? `<span class=\"flag-${code} mb-pop-flag\"",
+        "replace": "            return true ? `<span class=\"flag-${code} mb-pop-flag\""
       }
     ],
     "spec": "tests/fixtures/pop-area-flags.spec.js",
@@ -205,6 +205,97 @@
     ],
     "spec": "tests/fixtures/popup-mb.spec.js",
     "grep": "each ISNI links its record",
+    "expect": "fail"
+  },
+  {
+    "name": "the dot's place is made only once the link is read",
+    "why": "A link grows by 10 px when it is read: every name after it in an area chain moves (vzell 2026-10-29: \"a reserved place, nothing moves when it appears\").",
+    "edits": [
+      {
+        "find": "            .mb-dp-dialog .mb-dp-area.mb-dp-dots a.mb-dp-l-here::before {",
+        "replace": "            .mb-dp-dialog .mb-dp-area.mb-dp-dots a.mb-dp-l-read::before {"
+      }
+    ],
+    "spec": "tests/fixtures/popup-mb.spec.js",
+    "grep": "H5 on",
+    "expect": "fail"
+  },
+  {
+    "name": "the window area never says read-ahead is on",
+    "why": "No place is kept and no dot is drawn: a read link looks unread.",
+    "edits": [
+      {
+        "find": "        api.scrollArea.classList.toggle('mb-dp-dots', dots);\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/popup-mb.spec.js",
+    "grep": "H5 on",
+    "expect": "fail"
+  },
+  {
+    "name": "a place is kept with read-ahead off",
+    "why": "Every link that opens here gains a 10 px gap for a dot that can never appear.",
+    "edits": [
+      {
+        "find": "        api.scrollArea.classList.toggle('mb-dp-dots', dots);",
+        "replace": "        api.scrollArea.classList.toggle('mb-dp-dots', true);"
+      }
+    ],
+    "spec": "tests/fixtures/popup-mb.spec.js",
+    "grep": "H5 off",
+    "expect": "fail"
+  },
+  {
+    "name": "no note on the green dot",
+    "why": "The dot says nothing about itself (vzell 2026-10-29).",
+    "edits": [
+      {
+        "find": "        if (t.wasRead) notes.push({ kind: 'read', html: _dpReadNoteHtml(t), label: '' });\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/popup-mb.spec.js",
+    "grep": "H5 on",
+    "expect": "fail"
+  },
+  {
+    "name": "the note asks the link's class at every repaint, not at show",
+    "why": "The card's own lookup reads the link a moment after it shows; the note then claims \"already loaded\" for a link that was not.",
+    "edits": [
+      {
+        "find": "        t.wasRead = wasRead;\n",
+        "replace": "        t.wasRead = true;\n"
+      }
+    ],
+    "spec": "tests/fixtures/popup-mb.spec.js",
+    "grep": "H5 on",
+    "expect": "fail"
+  },
+  {
+    "name": "our country flag is a .flag again",
+    "why": "Right Side Flags Everywhere blanks it and appends its own wider flag inside it: over the green dot, flickering on every repaint.",
+    "edits": [
+      {
+        "find": "            return onMb ? `<span class=\"flag-${code} mb-pop-flag\" data-hq-skip=\"true\" role=\"img\"",
+        "replace": "            return onMb ? `<span class=\"flag flag-${code} mb-pop-flag\" role=\"img\""
+      }
+    ],
+    "spec": "tests/fixtures/pop-area-flags.spec.js",
+    "grep": "Right Side Flags Everywhere leaves",
+    "expect": "fail"
+  },
+  {
+    "name": "the flag slot does not clip",
+    "why": "Anything put into it (another script's image) spills over the link and its dot.",
+    "edits": [
+      {
+        "find": "                vertical-align: -1px; background-position: center; background-size: 16px 11px; background-repeat: no-repeat;\n                overflow: hidden;\n",
+        "replace": "                vertical-align: -1px; background-position: center; background-size: 16px 11px; background-repeat: no-repeat;\n"
+      }
+    ],
+    "spec": "tests/fixtures/pop-area-flags.spec.js",
+    "grep": "Right Side Flags Everywhere leaves",
     "expect": "fail"
   }
 ]

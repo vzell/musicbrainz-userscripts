@@ -1778,6 +1778,20 @@ https://claude.ai/artifact/APF35bPAyvFZvKjFHGHrZU
 - **H5 read-ahead** (`sa_dp_window_read_ahead`, off): after 600 ms the
   target's own `card(t, true)` with `t.readAhead`; `_mbPopWanted()` wants it
   while the link is still `:hover`. MusicBrainz entities only.
+  **The green dot** (`mb-dp-l-read`: the link's record is in memory,
+  `_dpWinRead()` — read ahead, or loaded by the window itself, an area
+  chain's steps) has a RESERVED place since 2026-10-29 (vzell, mockup 2e,
+  https://claude.ai/artifact/URrn3dps1EMtnkjKBvsvag): while H5 is on,
+  `_dpWinMark()` puts `mb-dp-dots` on the area and every `mb-dp-l-here`
+  link keeps an empty 6 px + 4 px `::before`, green once read, so nothing
+  moves when it appears (it used to push an area chain right). With H5 off,
+  no place. **Its note**: a card that comes up for a dotted link has a box
+  right above it in the stack (`_dpCollectNotes()`, kind `read`,
+  `_dpReadNoteHtml()`): "Already loaded: a click opens it at once, with no
+  new request", the setting's name at its foot. Whether the link was dotted
+  is read as the card comes up (`t.wasRead`, `_dpShowPeek()`, before a
+  repaint may replace the link), so the card's own lookup marking the link
+  a moment later adds no note.
 - **H6** (`_dpWinNavTips()`, from `_dpShowInDialog()`): ← Back names the
   stack's top, ‹ › the neighbouring steps' text.
 - **A repaint does not drop the card** (2026-10-29). Every repaint of the
