@@ -707,7 +707,8 @@ test.describe('external link previews (sa_pop_ext)', () => {
         const PNG_B64 = PNG.toString('base64');
         const png = { status: 200, responseHeaders: 'Content-Type: image/png', base64: PNG_B64, contentType: 'image/png' };
         await openEvent(page, {
-            settings: { sa_pop_ext: true, sa_pop_ext_favicons: true, sa_pop_ext_hosts: ['www.setlist.fm', 'icon.example', 'cdn-icon.example'] },
+            // sa_pop_mb: the "[info]" link's window is a MusicBrainz preview.
+            settings: { sa_pop_ext: true, sa_pop_mb: true, sa_pop_ext_favicons: true, sa_rich_tooltip_delay_ms: 0, sa_pop_ext_hosts: ['www.setlist.fm', 'icon.example', 'cdn-icon.example'] },
             responses: {
                 [SETLIST]: { status: 200, responseHeaders: HTML_HEADERS, responseText: SETLIST_HTML },
                 'https://www.setlist.fm/favicon.ico': png,
@@ -729,6 +730,42 @@ test.describe('external link previews (sa_pop_ext)', () => {
         await ctrlHover(page, setlistLink(page));
         await expect(c.locator('img.mb-ext-favimg')).toBeVisible();
         expect(await xhrLog(page), 'once per site: memory').toHaveLength(2);
+        // The window's path shows the site's icon on its step (vzell
+        // 2026-10-29: every other site, not only Wikidata and the like) …
+        await page.keyboard.press('Space');
+        const step = dialog(page).locator('.mb-dp-crumb').last();
+        await expect(step.locator('img.mb-dp-kind-icon')).toHaveAttribute('src', /^data:image\/png;base64,/);
+        // Its rich tooltip (vzell 2026-10-29): the site, what the step read,
+        // where the icon comes from — a "Liner notes" card.
+        // A link to the site's home page, with the finger as the MusicBrainz glyph has.
+        const icon = step.locator('a.mb-dp-crumb-site');
+        await expect(icon).toHaveAttribute('href', 'https://www.setlist.fm/');
+        await expect(icon).toHaveAttribute('target', '_blank');
+        expect(await icon.locator('img').evaluate(i => getComputedStyle(i).cursor), 'the finger, not the title bar\'s move').toBe('pointer');
+        await expect(icon).toHaveAttribute('data-mb-tip', '');
+        await expect(icon).toHaveAttribute('title', /^setlist\.fm\nThis step of the window shows a page of setlist\.fm\.\nRead from the page itself/);
+        await expect(icon).toHaveAttribute('title', /\nClick: setlist\.fm's home page in a new tab\.$/);
+        await icon.hover();
+        const tip = page.locator('#mb-stat-tooltip');
+        await expect(tip).toBeVisible();
+        await expect(tip.locator('.mb-tt-title')).toHaveText('setlist.fm');
+        await expect(tip).toContainText('asked once from www.setlist.fm and kept for a month; a hover never asks for it');
+        await page.mouse.move(0, 0);
+        await page.keyboard.press('Escape');
+        await expect(dialog(page)).toBeHidden();
+        // … and so does a MusicBrainz URL entity's window, the icon of the
+        // site its URL names (the same one, from memory: no request).
+        await ctrlHover(page, infoLink(page));
+        await expect(c).toContainText('1 relationship');
+        await page.keyboard.press('Space');
+        await expect(dialog(page).locator(':scope > div > span').first()).toHaveText('URL');
+        await expect(dialog(page).locator('.mb-dp-crumb').last().locator('img.mb-dp-kind-icon'))
+            .toHaveAttribute('src', /^data:image\/png;base64,/);
+        await expect(dialog(page).locator('.mb-dp-crumb').last().locator('a.mb-dp-crumb-site'))
+            .toHaveAttribute('title', /^setlist\.fm\nThe icon of the site this MusicBrainz URL names\./);
+        await page.keyboard.press('Escape');
+        await expect(dialog(page)).toBeHidden();
+        expect((await xhrLog(page)).filter(r => r.url.endsWith('/favicon.ico')), 'the icon asked once').toHaveLength(1);
 
         await addAnnotationLinks(page, [ICONHOST, CDNICON, NEWSITE]);
         await ctrlHover(page, page.locator('.ext-probe a').nth(0));
@@ -746,6 +783,30 @@ test.describe('external link previews (sa_pop_ext)', () => {
         expect(urls.some(u => u.includes('cdn.elsewhere.example')), 'never another host').toBe(false);
         expect(urls.some(u => u.includes('new.example')), 'a site not contacted yet: no icon either').toBe(false);
         expect((await xhrLog(page)).every(r => r.anonymous)).toBe(true);
+    });
+
+    test('a URL entity\'s window opened before its lookup answered: its path gets the site\'s icon once the address is known', async ({ page }) => {
+        let release;
+        const held = new Promise((r) => { release = r; });
+        const png = { status: 200, responseHeaders: 'Content-Type: image/png', base64: PNG.toString('base64'), contentType: 'image/png' };
+        await openEvent(page, {
+            settings: { sa_pop_ext: true, sa_pop_mb: true, sa_pop_ext_favicons: true, sa_pop_ext_hosts: ['www.setlist.fm'] },
+            responses: { [SETLIST]: { status: 200, responseHeaders: HTML_HEADERS, responseText: SETLIST_HTML }, 'https://www.setlist.fm/favicon.ico': png },
+            ws2: async () => { await held; return null; },
+        });
+        // The site's icon is known (its card read it) …
+        await ctrlHover(page, setlistLink(page));
+        await expect(card(page).locator('img.mb-ext-favimg')).toBeVisible();
+        // … the "[info]" window opens while its lookup is held: no address, no icon yet.
+        await ctrlHover(page, infoLink(page));
+        await expect(card(page)).toContainText('Loading');
+        await page.keyboard.press('Space');
+        const icon = dialog(page).locator('.mb-dp-crumb').last().locator('img.mb-dp-kind-icon');
+        await expect(dialog(page).locator(':scope > div > span').first()).toHaveText(/URL|www\.setlist\.fm|setlist/);
+        await expect(icon).toHaveCount(0);
+        release();
+        await expect(dialog(page)).toContainText('Linked from · 1');
+        await expect(icon).toHaveAttribute('src', /^data:image\/png;base64,/);
     });
 
     test('site icons off: letters only, no icon request', async ({ page }) => {
@@ -1006,6 +1067,263 @@ const probe = (page, i) => page.locator('.ext-probe a').nth(i);
 const xhrFull = (page) => page.evaluate(() => (window.__gmXhrLog || [])
     .filter(r => !/^https:\/\/raw\.githubusercontent\.com\//.test(r.url)));
 
+// setlist.fm through its API with the user's key (branch B, mockup 4 of
+// https://claude.ai/artifact/URrn3dps1EMtnkjKBvsvag). The answers are
+// vzell's probe of 2026-10-29 (scripts/probe-setlistfm-api.py,
+// tests/fixtures/ext-sfm-*.json), served by the GM_xmlhttpRequest stub; the
+// artist search and a second page of setlists are built from them (the
+// probe asked neither). Mutation list: scripts/mutations/wiki-setlistfm.json.
+const SFM_API = 'https://api.setlist.fm/rest/1.0';
+const SFM = {
+    setlist: 'https://www.setlist.fm/setlist/bruce-springsteen/2016/los-angeles-sports-arena-los-angeles-ca-4bf0375a.html',
+    artist: 'https://www.setlist.fm/setlists/bruce-springsteen-2bd6dcce.html',
+    venue: 'https://www.setlist.fm/venue/los-angeles-sports-arena-los-angeles-ca-usa-3d6c967.html',
+    stats: 'https://www.setlist.fm/stats/bruce-springsteen-2bd6dcce.html',
+};
+const SFM_MBID = '70248960-cb53-4ea4-943a-edb18f7d336f';
+const sfmJson = (body, status = 200) => ({ status, responseHeaders: 'Content-Type: application/json;charset=UTF-8', responseText: body });
+const sfmAnswers = () => {
+    const p1 = JSON.parse(json('ext-sfm-artist-setlists-p1.json'));
+    const p2 = Object.assign({}, p1, { page: 2, setlist: p1.setlist.map(x => Object.assign({}, x, { id: `p2${x.id}` })) });
+    return {
+        [`${SFM_API}/setlist/4bf0375a`]: sfmJson(json('ext-sfm-setlist.json')),
+        [`${SFM_API}/venue/3d6c967`]: sfmJson(json('ext-sfm-venue.json')),
+        [`${SFM_API}/venue/3d6c967/setlists?p=1`]: sfmJson(json('ext-sfm-venue-setlists-p1.json')),
+        [`${SFM_API}/search/artists?artistName=bruce%20springsteen&sort=relevance`]:
+            sfmJson(JSON.stringify({ type: 'artists', itemsPerPage: 30, page: 1, total: 1, artist: [JSON.parse(json('ext-sfm-artist.json'))] })),
+        [`${SFM_API}/artist/${SFM_MBID}/setlists?p=1`]: sfmJson(JSON.stringify(p1)),
+        [`${SFM_API}/artist/${SFM_MBID}/setlists?p=2`]: sfmJson(JSON.stringify(p2)),
+    };
+};
+const SFM_KEY = 'sfm-probe-key';
+
+test.describe('setlist.fm through its API (branch B)', () => {
+    test('which reader takes which link: setlist.fm\'s only with a key; its other pages, and every page without a key, the generic one', async ({ page }) => {
+        await openEvent(page, { settings: { sa_pop_ext: true, sa_pop_ext_setlistfm_key: '' } });
+        await addAnnotationLinks(page, [SFM.setlist, SFM.artist, SFM.venue, SFM.stats]);
+        const keys = () => page.evaluate(() => Array.from(document.querySelectorAll('.ext-probe a'))
+            .map(a => (window.__saTest.popResolve(a) || '').split(':').slice(0, 2).join(':')));
+        expect(await keys(), 'no key: as before the reader').toEqual(['ext|ext:generic', 'ext|ext:generic', 'ext|ext:generic', 'ext|ext:generic']);
+        expect((await xhrFull(page)).filter(r => r.url.startsWith(SFM_API)), 'nothing asked of the API').toEqual([]);
+    });
+
+    test('a setlist: the card from one API request with the key; the window: its parts, covers linked to MusicBrainz, notes, attribution; the venue opens in the window', async ({ page }) => {
+        await openEvent(page, { settings: { sa_pop_ext: true, sa_pop_ext_setlistfm_key: SFM_KEY }, responses: sfmAnswers() });
+        await addAnnotationLinks(page, [SFM.setlist, SFM.artist, SFM.venue, SFM.stats]);
+        const keys = await page.evaluate(() => Array.from(document.querySelectorAll('.ext-probe a'))
+            .map(a => (window.__saTest.popResolve(a) || '').split(':').slice(0, 2).join(':')));
+        expect(keys, 'with a key: the three pages the reader knows; its other pages stay generic')
+            .toEqual(['ext|ext:setlistfm', 'ext|ext:setlistfm', 'ext|ext:setlistfm', 'ext|ext:generic']);
+        await ctrlHover(page, probe(page, 0));
+        const c = card(page);
+        await expect(c.locator('.mb-tt-title')).toHaveText('Bruce Springsteen at Los Angeles Sports Arena');
+        await expect(c).toContainText('2016-03-19');
+        await expect(c).toContainText('The River Tour 2016');
+        await expect(c).toContainText('35');
+        const log = (await xhrFull(page)).filter(r => r.url.startsWith(SFM_API));
+        expect(log.map(r => r.url), 'one API request, never the page').toEqual([`${SFM_API}/setlist/4bf0375a`]);
+        expect(log[0].headers['x-api-key']).toBe(SFM_KEY);
+        expect(log[0].headers.Accept).toBe('application/json');
+        expect(log[0].anonymous).toBe(true);
+
+        await page.keyboard.press('Space');
+        const d = dialog(page);
+        const area = d.locator('.mb-dp-area');
+        await expect(d.locator(':scope > div > span').first()).toHaveText('setlist.fm setlist');
+        const songs = area.locator('[data-mb-tbl="sfm-setlist"] tbody tr:not(.mb-dp-tsec)');
+        await expect(songs).toHaveCount(35);
+        await expect(area.locator('[data-mb-tbl="sfm-setlist"] .mb-dp-tsec-n')).toHaveText(['The River', 'Encore']);
+        const cover = songs.filter({ hasText: 'Because the Night' });
+        await expect(cover).toContainText('Patti Smith Group cover');
+        await expect(cover.locator('a')).toHaveAttribute('href', 'https://musicbrainz.org/artist/26638df8-ef34-40d1-8d93-616836b72878');
+        await expect(area).toContainText('forthcoming demolition');
+        await expect(area.locator('.mb-dg-counts a', { hasText: 'setlist.fm' })).toHaveAttribute('href', SFM.setlist);
+        await expect(area.locator('dt:text-is("Where") + dd')).toContainText('Los Angeles, California (CA), United States');
+        await expect(area.locator('dt:text-is("Where") + dd a', { hasText: 'map' })).toHaveAttribute('href', /openstreetmap\.org\/\?mlat=34\.052&mlon=-118\.244/);
+        // The venue opens in the window, through the API, and Back returns.
+        const pages = [];
+        page.on('popup', (pp) => pages.push(pp.url()));
+        await area.locator(`a[href="${SFM.venue}"]`).first().click();
+        await expect(d.locator(':scope > div > span').first()).toHaveText(/setlist\.fm venue$/);
+        await expect(area.locator('[data-mb-tbl="sfm-venue"] tbody tr')).toHaveCount(20);
+        expect(pages, 'no new tab').toEqual([]);
+        await d.locator('button', { hasText: 'Back' }).click();
+        await expect(songs).toHaveCount(35);
+    });
+
+    test('an artist: found by its slug\'s name, 20 setlists a page, "Load 20 more" asks the next; what the loaded setlists show is counted', async ({ page }) => {
+        await openEvent(page, { settings: { sa_pop_ext: true, sa_pop_ext_setlistfm_key: SFM_KEY }, responses: sfmAnswers() });
+        await addAnnotationLinks(page, [SFM.artist]);
+        await ctrlHover(page, probe(page, 0));
+        await expect(card(page).locator('.mb-tt-title')).toHaveText('Bruce Springsteen');
+        await expect(card(page)).toContainText('3,003');
+        await page.keyboard.press('Space');
+        const area = dialog(page).locator('.mb-dp-area');
+        const rows = area.locator('[data-mb-tbl="sfm-artist"] tbody tr');
+        await expect(rows).toHaveCount(20);
+        await expect(area).toContainText('20 of 3,003 loaded');
+        await expect(area.locator('dt:text-is("On MusicBrainz") + dd a')).toHaveAttribute('href', `https://musicbrainz.org/artist/${SFM_MBID}`);
+        await expect(area.locator('h4', { hasText: 'In the loaded setlists' })).toHaveText('In the loaded setlists · 20');
+        await area.locator('[data-mb-sfm-act="more"]').click();
+        await expect(area).toContainText('40 of 3,003 loaded');
+        await expect(area.locator('h4', { hasText: 'In the loaded setlists' })).toHaveText('In the loaded setlists · 40');
+        expect((await xhrFull(page)).map(r => r.url).filter(u => u.startsWith(SFM_API))).toEqual([
+            `${SFM_API}/search/artists?artistName=bruce%20springsteen&sort=relevance`,
+            `${SFM_API}/artist/${SFM_MBID}/setlists?p=1`, `${SFM_API}/artist/${SFM_MBID}/setlists?p=2`]);
+    });
+
+    test('a key setlist.fm refuses: the card says so, and nothing is kept', async ({ page }) => {
+        await openEvent(page, {
+            settings: { sa_pop_ext: true, sa_pop_ext_setlistfm_key: SFM_KEY },
+            responses: { [`${SFM_API}/setlist/4bf0375a`]: sfmJson('{"code":403,"status":"Forbidden","message":"Forbidden"}', 403) },
+        });
+        await addAnnotationLinks(page, [SFM.setlist]);
+        await ctrlHover(page, probe(page, 0));
+        await expect(card(page)).toContainText('setlist.fm did not accept the API key (HTTP 403)');
+        await page.mouse.move(0, 0);
+        await ctrlHover(page, probe(page, 0));
+        await expect(card(page)).toContainText('did not accept the API key');
+        expect((await xhrFull(page)).filter(r => r.url.startsWith(SFM_API)), 'not kept: asked again').toHaveLength(2);
+    });
+});
+
+// The rich Wikidata and Wikipedia windows (branch B; the mockup's tabs
+// "Wikidata" and "Wikipedia"). Answers: scripts/probe-wiki-rich.py --save
+// (2026-10-29), served by URL pattern through `__gmXhrResponder`; the card
+// keeps its one small request. Mutation list: scripts/mutations/wiki-setlistfm.json.
+const WIKI_FIX = {
+    claims: 'ext-wd-claims-Q1225.json', props: 'ext-wd-props-Q1225-en.json',
+    itemsEn: 'ext-wd-items-Q1225-en.json', itemsDe: 'ext-wd-items-Q1225-de.json',
+    s0: 'ext-wp-en-Bruce_Springsteen-s0.json', sections: 'ext-wp-en-Bruce_Springsteen-sections.json', s1: 'ext-wp-en-Bruce_Springsteen-s1.json',
+};
+const WP_BRUCE = 'https://en.wikipedia.org/wiki/Bruce_Springsteen';
+const WP_SUMMARY = 'https://en.wikipedia.org/api/rest_v1/page/summary/Bruce_Springsteen';
+
+/**
+ * Answers the rich windows' requests from the captures, by URL pattern.
+ * @param {import('@playwright/test').Page} page
+ * @returns {Promise<void>}
+ */
+async function answerWiki(page) {
+    const bodies = Object.fromEntries(Object.entries(WIKI_FIX).map(([k, f]) => [k, json(f)]));
+    bodies.png = PNG.toString('base64');
+    bodies.summary = JSON.stringify({ type: 'standard', title: 'Bruce Springsteen', lang: 'en', titles: { canonical: 'Bruce_Springsteen' },
+        description: 'American musician (born 1949)', extract: 'Bruce Frederick Joseph Springsteen is an American singer, songwriter, and musician.',
+        wikibase_item: 'Q1225', timestamp: '2026-10-28T00:00:00Z' });
+    await page.context().addInitScript((b) => {
+        const ok = body => ({ status: 200, responseHeaders: 'Content-Type: application/json; charset=utf-8', responseText: body });
+        window.__gmXhrResponder = (opts) => {
+            const u = opts.url;
+            if (u.startsWith('https://www.wikidata.org/w/api.php') && u.includes('props=claims')) return ok(b.claims);
+            if (u.startsWith('https://query.wikidata.org/sparql')) {
+                const q = decodeURIComponent(u.split('query=')[1] || '');
+                if (q.includes('?p ?l ?f ?a')) return ok(b.props);
+                return ok(q.includes('"de"') ? b.itemsDe : b.itemsEn);
+            }
+            if (u.startsWith('https://en.wikipedia.org/w/api.php')) {
+                if (u.includes('section=0')) return ok(b.s0);
+                if (u.includes('prop=sections')) return ok(b.sections);
+                if (u.includes('section=1')) return ok(b.s1);
+            }
+            if (u === 'https://en.wikipedia.org/api/rest_v1/page/summary/Bruce_Springsteen') return ok(b.summary);
+            // The sites' icons (the window asks them once, `_extIconEnsure()`).
+            if (/^https:\/\/(www\.wikidata|en\.wikipedia)\.org\/favicon\.ico$/.test(u)) {
+                return { status: 200, responseHeaders: 'Content-Type: image/png', base64: b.png, contentType: 'image/png' };
+            }
+            return undefined;
+        };
+    }, bodies);
+}
+
+test.describe('the rich Wikidata and Wikipedia windows (branch B)', () => {
+    test('Wikidata: the card asks once; Space: statements, identifiers in groups through Wikidata\'s own address patterns, a filter, the articles; another language asks only its names', async ({ page }) => {
+        await answerWiki(page);
+        await openEvent(page, { settings: { sa_pop_ext: true, sa_pop_ext_favicons: true }, responses: extAnswers('wikidata-q1225') });
+        await addAnnotationLinks(page, [WD.item]);
+        await ctrlHover(page, probe(page, 0));
+        await expect(card(page)).toContainText('fetched now');
+        expect((await xhrFull(page)).map(r => r.url).filter(u => !u.endsWith('/favicon.ico')), 'the card: one small request')
+            .toEqual([EXT('wikidata-q1225').url]);
+        await page.keyboard.press('Space');
+        const area = dialog(page).locator('.mb-dp-area');
+        const kv = area.locator('h4', { hasText: /^Statements/ }).locator('xpath=following-sibling::dl[1]');
+        await expect(kv.locator('dt:text-is("date of birth") + dd')).toHaveText('1949-09-23', { timeout: 15000 });
+        await expect(kv.locator('dt:text-is("place of birth") + dd a')).toHaveText('Long Branch');
+        await expect(kv.locator('dt:text-is("place of birth") + dd a')).toHaveAttribute('href', 'https://www.wikidata.org/wiki/Q995231');
+        // Identifiers: Music first, MusicBrainz's through its formatter URL.
+        const mb = area.locator('[data-mb-fold="wd-ids-music"] .mb-wd-idrow', { hasText: 'MusicBrainz artist ID' });
+        await expect(mb.locator('a')).toHaveAttribute('href', 'https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f');
+        const auth = area.locator('[data-mb-fold-act="wd-ids-auth"] .mb-dp-foldn');
+        expect(Number((await auth.textContent()).replace(/\D/g, '')), 'most identifiers are authority files').toBeGreaterThan(100);
+        await area.locator('input[data-mb-wiki-q]').fill('isni');
+        await expect(area.locator('[data-mb-fold="wd-ids-auth"] .mb-wd-idrow')).toHaveCount(1);
+        // The match is marked, as in the window's tables (vzell 2026-10-29).
+        await expect(area.locator('[data-mb-fold="wd-ids-auth"] .mb-wd-idrow mark.mb-dg-hl')).toHaveText(['ISNI']);
+        // Its site's icon heads its step in the window's path, from the icon
+        // the window asked once (a hover asks none).
+        await expect(dialog(page).locator('.mb-dp-crumb img.mb-dp-kind-icon').last()).toHaveAttribute('src', /^data:image\/png;base64,/);
+        await expect(area.locator('[data-mb-fold="wd-ids-auth"] .mb-wd-idrow a')).toHaveAttribute('href', 'https://isni.org/isni/0000000121418834');
+        await expect(area.locator('h4', { hasText: /^Wikipedia · / })).toHaveText(/^Wikipedia · \d{2,}$/);
+        const wdReq = async () => (await xhrFull(page)).map(r => r.url).filter(u => !u.startsWith(EXT('wikidata-q1225').url) && !u.endsWith('/favicon.ico'));
+        const before = await wdReq();
+        expect(before.filter(u => u.includes('props=claims')), 'the claims, once').toHaveLength(1);
+        expect(before.filter(u => u.startsWith('https://query.wikidata.org/')), 'two SPARQL queries').toHaveLength(2);
+        // An authority file is an instance of a SUBCLASS of Q18614948 too
+        // (the direct P31 found 5 of 183: probe 2026-10-29).
+        expect(before.map(u => decodeURIComponent(u)).some(u => u.includes('wdt:P31/wdt:P279* wd:Q18614948')),
+            'the authority test follows subclass of').toBe(true);
+        expect((await xhrFull(page)).filter(r => !r.url.endsWith('/favicon.ico'))
+            .every(r => r.anonymous && /^ShowAllEntityData\//.test(r.headers['Api-User-Agent'] || '')),
+        'the API requests: anonymous, named as Wikimedia asks').toBe(true);
+        // Another language: its names only (two queries), the claims not again.
+        await area.locator('select[data-mb-wiki-lang]').selectOption('de');
+        await expect(kv.locator('dt:text-is("country of citizenship") + dd a')).toHaveText('Vereinigte Staaten');
+        const after = await wdReq();
+        expect(after.filter(u => u.includes('props=claims'))).toHaveLength(1);
+        expect(after.filter(u => u.startsWith('https://query.wikidata.org/'))).toHaveLength(4);
+    });
+
+    test('Wikipedia: Space reads the infobox, the opening and the sections; a section is read when opened, once; links open in the window; no table, picture or note mark from the article', async ({ page }) => {
+        await answerWiki(page);
+        await openEvent(page, { settings: { sa_pop_ext: true } });
+        await addAnnotationLinks(page, [WP_BRUCE]);
+        await ctrlHover(page, probe(page, 0));
+        await expect(card(page)).toContainText('fetched now');
+        expect((await xhrFull(page)).map(r => r.url)).toEqual([WP_SUMMARY]);
+        await page.keyboard.press('Space');
+        const area = dialog(page).locator('.mb-dp-area');
+        const info = area.locator('h4:text-is("Infobox") + .mb-dp-kv');
+        await expect(info.locator('dt', { hasText: 'Born' })).toHaveCount(1, { timeout: 15000 });
+        await expect(info).toContainText('Long Branch');
+        await expect(area.locator('.mb-wp-text').first()).toContainText('is an American singer');
+        await expect(area.locator('.mb-wp-text').first()).not.toContainText('[1]');
+        await expect(area.locator('h4', { hasText: /^Sections/ })).toHaveText('Sections · 12');
+        await expect(area.locator('h4', { hasText: /^Other languages/ })).toHaveText('Other languages · 92');
+        await expect(area.locator('.mb-wd-wikis a', { hasText: 'Deutsch' })).toHaveAttribute('href', 'https://de.wikipedia.org/wiki/Bruce_Springsteen');
+        const sec = area.locator('[data-mb-wp-sec="1"]');
+        await expect(sec).toContainText('Early life and education');
+        await sec.click();
+        const body = area.locator('.mb-wp-sec', { has: page.locator('[data-mb-wp-sec="1"]') }).locator('.mb-wp-text');
+        await expect(body).toContainText('Long Branch');
+        await expect(body.locator('table, img, script, style, sup')).toHaveCount(0);
+        await expect(body, 'no "[1]" note marks (section 1 has 27 references)').not.toContainText(/\[\d+\]/);
+        await expect(body.locator('a[href^="https://en.wikipedia.org/wiki/"]').first()).toBeVisible();
+        expect(await body.locator('a').evaluateAll(as => as.every(a => /^https?:\/\//.test(a.getAttribute('href')))), 'links absolute').toBe(true);
+        await sec.click();
+        await expect(body).toHaveCount(0);
+        await sec.click();
+        await expect(area.locator('.mb-wp-sec .mb-wp-text')).toContainText('Long Branch');
+        expect((await xhrFull(page)).map(r => r.url).filter(u => u.includes('section=1')), 'the section, once').toHaveLength(1);
+        // A link in the text opens in the window.
+        const pages = [];
+        page.on('popup', (pp) => pages.push(pp.url()));
+        await area.locator('.mb-wp-text a[href^="https://en.wikipedia.org/wiki/"]').first().click();
+        await expect(dialog(page).locator(':scope > div > span').first(), 'a step deeper in the same window').toHaveText(/^Wikipedia › Wikipedia$/);
+        await expect(dialog(page).locator('button', { hasText: 'Back' })).toBeVisible();
+        expect(pages, 'no new tab').toEqual([]);
+    });
+});
+
 test.describe('readers of known sites (U3): Wikipedia, Wikidata, Discogs', () => {
     test('which reader serves which link; the others stay generic', async ({ page }) => {
         await openEvent(page, { settings: { sa_pop_ext: true } });
@@ -1104,7 +1422,11 @@ test.describe('readers of known sites (U3): Wikipedia, Wikidata, Discogs', () =>
             if (!doc || !doc.documentElement || !doc.documentElement.dataset.mbDpDone) return null;
             return ['header.probe-head', 'nav.probe-nav', '#content'].map(s => doc.querySelector(s).classList.contains('mb-dp-hide'));
         }), 'the header and menus hidden, the article shown').toEqual([true, true, false]);
-        expect((await xhrFull(page)).map(r => r.url)).toEqual([EXT('wikipedia-greetings').url, W.greet]);
+        // The card's summary, the rich window's opening (branch B: section 0;
+        // unanswered here, so no section list follows), the Live page.
+        expect((await xhrFull(page)).map(r => r.url)).toEqual([EXT('wikipedia-greetings').url,
+            'https://en.wikipedia.org/w/api.php?action=parse&format=json&formatversion=2&redirects=1' +
+            '&page=Greetings_from_Asbury_Park%2C_N.J.&prop=text%7Clanglinks&section=0', W.greet]);
     });
 
     test('Wikidata: one wbgetentities in the browser\'s language and English; a missing item', async ({ page }) => {

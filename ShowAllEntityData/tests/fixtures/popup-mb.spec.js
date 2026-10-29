@@ -1873,7 +1873,7 @@ test.describe('MusicBrainz link previews: event, place, series (WIP.4)', () => {
                 if (url.includes(`/ws/2${PONY_EV}?inc=artist-rels`)) {
                     const d = JSON.parse(json('ws2-pop-event-stonepony.json'));
                     d.relations.forEach((r) => { if (r.url && /brucebase/.test(r.url.resource)) r.url.resource = REVIEW; });
-                    // Another site's link beside it, which keeps its new tab.
+                    // Another site's link beside it, which opens here too (2026-10-29).
                     const bb = d.relations.find(r => r.url && r.url.resource === REVIEW);
                     d.relations.push(Object.assign({}, bb, { type: 'setlistfm',
                         url: { id: '00000000-0000-4000-8000-000000000001', resource: SETLISTFM } }));
@@ -1893,8 +1893,10 @@ test.describe('MusicBrainz link previews: event, place, series (WIP.4)', () => {
         // Marked as a link that opens here, not one that leaves (↗).
         await expect(review).toHaveClass(/\bmb-dp-l-here\b/);
         await expect(review).not.toHaveClass(/\bmb-dp-l-out\b/);
-        // Only the Springsteen sites: another site's link still leaves (↗).
-        await expect(area.locator(`a[href="${SETLISTFM}"]`)).toHaveClass(/\bmb-dp-l-out\b/);
+        // Since 2026-10-29 (vzell: "the Links … inside the same window …
+        // for all entity POHs") another site's link opens here too.
+        await expect(area.locator(`a[href="${SETLISTFM}"]`)).toHaveClass(/\bmb-dp-l-here\b/);
+        await expect(area.locator(`a[href="${SETLISTFM}"]`)).not.toHaveClass(/\bmb-dp-l-out\b/);
         const pages = [];
         page.on('popup', (p) => pages.push(p.url()));
         await review.click();
@@ -1906,6 +1908,20 @@ test.describe('MusicBrainz link previews: event, place, series (WIP.4)', () => {
         await dialog(page).locator('button', { hasText: 'Back' }).click();
         await expect(title).toContainText('Event');
         await expect(area.locator(`a[href="${REVIEW}"]`)).toHaveCount(1);
+        // The setlist.fm link: in the window too (its reader's own window),
+        // no new tab, and Back returns to the event.
+        await area.locator(`a[href="${SETLISTFM}"]`).click();
+        await expect(title, 'a step deeper in the same window').toHaveText(/^Event › \S/);
+        await expect(dialog(page).locator('.mb-ext-url a').first()).toHaveAttribute('href', SETLISTFM);
+        expect(pages, 'no new tab').toEqual([]);
+        await dialog(page).locator('button', { hasText: 'Back' }).click();
+        await expect(title).toHaveText('Event');
+        // Ctrl-click still opens a new tab.
+        const [tab] = await Promise.all([page.context().waitForEvent('page'),
+            area.locator(`a[href="${SETLISTFM}"]`).click({ modifiers: ['Control'] })]);
+        await tab.waitForURL(SETLISTFM, { waitUntil: 'commit' }).catch(() => {});
+        expect(tab.url()).toBe(SETLISTFM);
+        await tab.close();
     });
 
     // org/event-GPE.org. Real captures (scripts/probe-mb-entity-lookups.py

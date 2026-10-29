@@ -17,8 +17,8 @@ stay that way.
 
 **A `secret: true` setting never leaves this profile** (since U3, 2026-10-08;
 org/iframe.org "* generalize to URLs", "What the answers change", 3). Its
-first and so far only one is `sa_pop_ext_discogs_token`, a Discogs personal
-access token. The config file is meant to be shared or moved to another
+first one is `sa_pop_ext_discogs_token`, a Discogs personal access token; the
+second `sa_pop_ext_setlistfm_key` (branch B, 2026-10-29), setlist.fm's API key. The config file is meant to be shared or moved to another
 machine, so: `_buildConfigJson()` leaves a secret out; `_applyConfigSettings()`
 counts one in a file as skipped and writes nothing, so a file neither sets it
 (only a hand-written file can hold one) nor blanks it (the key's absence

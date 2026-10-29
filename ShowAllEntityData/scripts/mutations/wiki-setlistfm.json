@@ -1,0 +1,396 @@
+[
+  {
+    "name": "a MusicBrainz entity window sends other sites' links to a new tab again",
+    "why": "vzell 2026-10-29: \"the Links section should render the actual links inside the same window instead of a new tab, for all entity POHs\".",
+    "edits": [
+      {
+        "find": "        const all = !!((cur.src && _DP_WIN_ALL_LINKS_SOURCES.has(cur.src.id)) || (cur.reader && _DP_WIN_ALL_LINKS_READERS.has(cur.reader.id)));",
+        "replace": "        const all = !!(cur.reader && _DP_WIN_ALL_LINKS_READERS.has(cur.reader.id));"
+      }
+    ],
+    "spec": "tests/fixtures/popup-mb.spec.js",
+    "grep": "Brucebase review link opens in the window",
+    "expect": "fail"
+  },
+  {
+    "name": "the setlist.fm reader takes its links without a key",
+    "why": "A profile without a key loses the plain web-page card it had for setlist.fm links.",
+    "edits": [
+      {
+        "find": "        return !!_extSfmPage(u) && !!_extSfmKey();",
+        "replace": "        return !!_extSfmPage(u);"
+      }
+    ],
+    "spec": "tests/fixtures/popup-ext.spec.js",
+    "grep": "which reader takes which link: setlist.fm",
+    "expect": "fail"
+  },
+  {
+    "name": "setlist.fm's other pages go to the reader",
+    "why": "A statistics page is no setlist, artist or venue: the reader would ask the API for nothing it can show.",
+    "edits": [
+      {
+        "find": "        if (!m) return null;\n        if (m[1]) return { kind: 'setlist',",
+        "replace": "        if (!m) return { kind: 'setlist', id: '0', name: '' };\n        if (m[1]) return { kind: 'setlist',"
+      }
+    ],
+    "spec": "tests/fixtures/popup-ext.spec.js",
+    "grep": "a setlist: the card from one API request",
+    "expect": "fail"
+  },
+  {
+    "name": "the API request goes without the key",
+    "why": "setlist.fm answers every request without x-api-key with 403.",
+    "edits": [
+      {
+        "find": "headers: { Accept: 'application/json', 'x-api-key': _extSfmKey() } },",
+        "replace": "headers: { Accept: 'application/json' } },"
+      }
+    ],
+    "spec": "tests/fixtures/popup-ext.spec.js",
+    "grep": "a setlist: the card from one API request",
+    "expect": "fail"
+  },
+  {
+    "name": "a setlist's sets read only as the docs' example writes them",
+    "why": "The live API answers sets.set (probe 2026-10-29): no songs at all.",
+    "edits": [
+      {
+        "find": "        const raw = d.set || (d.sets && d.sets.set) || [];",
+        "replace": "        const raw = d.set || [];"
+      }
+    ],
+    "spec": "tests/fixtures/popup-ext.spec.js",
+    "grep": "a setlist: the card from one API request",
+    "expect": "fail"
+  },
+  {
+    "name": "a cover's original artist is not linked",
+    "why": "The API names the cover's artist by MBID; the window links it to MusicBrainz.",
+    "edits": [
+      {
+        "find": "            if (g.cover) bits.push(`${_extSfmArtistHtml(g.cover)} cover`);",
+        "replace": "            if (g.cover) bits.push(`${_rgEsc(g.cover.name)} cover`);"
+      }
+    ],
+    "spec": "tests/fixtures/popup-ext.spec.js",
+    "grep": "a setlist: the card from one API request",
+    "expect": "fail"
+  },
+  {
+    "name": "no attribution",
+    "why": "setlist.fm's API terms: each setlist's page linked wherever its data is shown.",
+    "edits": [
+      {
+        "find": "        return `<div class=\"mb-dg-counts\">Data from ${_extSfmLinkHtml(url, 'setlist.fm')}, read through its API with your key.</div>`;",
+        "replace": "        return '';"
+      }
+    ],
+    "spec": "tests/fixtures/popup-ext.spec.js",
+    "grep": "a setlist: the card from one API request",
+    "expect": "fail"
+  },
+  {
+    "name": "setlist.fm links in its own window leave for a new tab",
+    "why": "The venue, an artist's setlists and a setlist open in the window, with Back.",
+    "edits": [
+      {
+        "find": "    const _DP_WIN_EXT_READERS = new Set(['bbdate', 'springsteen', 'setlistfm']);",
+        "replace": "    const _DP_WIN_EXT_READERS = new Set(['bbdate', 'springsteen']);"
+      },
+      {
+        "find": "            window: _extSfmWindow, onAreaClick: _extSfmAreaClick, factsHtml: _extSfmFactsHtml,",
+        "replace": "            window: _extSfmWindow, factsHtml: _extSfmFactsHtml,"
+      }
+    ],
+    "spec": "tests/fixtures/popup-ext.spec.js",
+    "grep": "a setlist: the card from one API request",
+    "expect": "fail"
+  },
+  {
+    "name": "an artist's link is read as setlist.fm's own artist id",
+    "why": "The API wants the MusicBrainz MBID; setlist.fm's id (2bd6dcce) answers 404.",
+    "edits": [
+      {
+        "find": "        const id = pg.kind === 'artist' ? mbid : pg.id;",
+        "replace": "        const id = pg.id;"
+      }
+    ],
+    "spec": "tests/fixtures/popup-ext.spec.js",
+    "grep": "an artist: found by its slug",
+    "expect": "fail"
+  },
+  {
+    "name": "Load 20 more does nothing",
+    "why": "An artist has 3,003 setlists; the window would show the first 20 for ever.",
+    "edits": [
+      {
+        "find": "            ui.pages++;\n            _extSfmPageLoad(t, rec.sfm, ui.pages, { repaint });",
+        "replace": "            _extSfmPageLoad(t, rec.sfm, ui.pages, { repaint });"
+      }
+    ],
+    "spec": "tests/fixtures/popup-ext.spec.js",
+    "grep": "an artist: found by its slug",
+    "expect": "fail"
+  },
+  {
+    "name": "a refused key is kept as an http record",
+    "why": "Once the key is fixed in Settings, the card would still show the 403 from the cache.",
+    "edits": [
+      {
+        "find": "        if (res.status === 401 || res.status === 403) {",
+        "replace": "        if (false) {"
+      }
+    ],
+    "spec": "tests/fixtures/popup-ext.spec.js",
+    "grep": "a key setlist.fm refuses",
+    "expect": "fail"
+  },
+  {
+    "name": "links inside a Wikipedia window leave for a new tab",
+    "why": "vzell 2026-10-29: links in Wiki text open in the same window.",
+    "edits": [
+      {
+        "find": "    const _DP_WIN_ALL_LINKS_READERS = new Set(['wikipedia', 'wikidata', 'setlistfm']);",
+        "replace": "    const _DP_WIN_ALL_LINKS_READERS = new Set(['setlistfm']);"
+      }
+    ],
+    "spec": "tests/fixtures/popup-ext.spec.js",
+    "grep": "Wikipedia: Space reads the infobox",
+    "expect": "fail"
+  },
+  {
+    "name": "the Wikipedia window is the summary again",
+    "why": "No infobox, no sections: the window says what the card says.",
+    "edits": [
+      {
+        "find": "            window: _extWpWindow, onAreaClick: _extWpAreaClick,\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/popup-ext.spec.js",
+    "grep": "Wikipedia: Space reads the infobox",
+    "expect": "fail"
+  },
+  {
+    "name": "a section is asked again on every opening",
+    "why": "48 KB a click for a section already read.",
+    "edits": [
+      {
+        "find": "                force: !!(ss && ss.status === 'failed'), repaint, wanted: _extWikiWanted(t),",
+        "replace": "                force: true, repaint, wanted: _extWikiWanted(t),"
+      }
+    ],
+    "spec": "tests/fixtures/popup-ext.spec.js",
+    "grep": "Wikipedia: Space reads the infobox",
+    "expect": "fail"
+  },
+  {
+    "name": "Wikipedia's note marks and tables come through",
+    "why": "\"[1]\" in every sentence and wide tables in a narrow column.",
+    "edits": [
+      {
+        "find": "        const SKIP = 'sup.reference, .reference, .mw-editsection,",
+        "replace": "        const SKIP = '.mw-editsection,"
+      }
+    ],
+    "spec": "tests/fixtures/popup-ext.spec.js",
+    "grep": "Wikipedia: Space reads the infobox",
+    "expect": "fail"
+  },
+  {
+    "name": "an article link stays relative",
+    "why": "A relative /wiki/ link names musicbrainz.org: it would open a MusicBrainz 404.",
+    "edits": [
+      {
+        "find": "                if (href.startsWith('/wiki/')) return `<a href=\"https://${_rgEsc(lang)}.wikipedia.org${_rgEsc(href)}\"",
+        "replace": "                if (href.startsWith('/wiki/')) return `<a href=\"${_rgEsc(href)}\""
+      }
+    ],
+    "spec": "tests/fixtures/popup-ext.spec.js",
+    "grep": "Wikipedia: Space reads the infobox",
+    "expect": "fail"
+  },
+  {
+    "name": "the Wikidata window is the card's facts again",
+    "why": "No statements, no identifiers.",
+    "edits": [
+      {
+        "find": "            window: _extWdWindow, onAreaClick: _extWdAreaClick, onAreaInput: _extWdAreaInput,\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/popup-ext.spec.js",
+    "grep": "Wikidata: the card asks once",
+    "expect": "fail"
+  },
+  {
+    "name": "an identifier ignores its formatter URL",
+    "why": "The 225 identifiers are plain text, none reachable.",
+    "edits": [
+      {
+        "find": "            html = f ? link(f.replace('$1', String(v.v).replace(/ /g, '%20')), v.v) : _rgEsc(v.v);",
+        "replace": "            html = _rgEsc(v.v);"
+      }
+    ],
+    "spec": "tests/fixtures/popup-ext.spec.js",
+    "grep": "Wikidata: the card asks once",
+    "expect": "fail"
+  },
+  {
+    "name": "the authority test asks the direct instance only",
+    "why": "5 of 183 authority files found (probe 2026-10-29): the rest land in Other.",
+    "edits": [
+      {
+        "find": "            'OPTIONAL { ?p wdt:P31/wdt:P279* wd:Q18614948 . BIND(1 AS ?a) } }', wanted);",
+        "replace": "            'OPTIONAL { ?p wdt:P31 wd:Q18614948 . BIND(1 AS ?a) } }', wanted);"
+      }
+    ],
+    "spec": "tests/fixtures/popup-ext.spec.js",
+    "grep": "Wikidata: the card asks once",
+    "expect": "fail"
+  },
+  {
+    "name": "another language asks the claims again",
+    "why": "214 KB again for names that are 17 KB.",
+    "edits": [
+      {
+        "find": "        if (st && st.status === 'done') return Promise.resolve({ ok: true, data: st.data });\n        if (_extWdClaimsP.has(q)) return _extWdClaimsP.get(q);",
+        "replace": "        _mbPop.delete(key);"
+      }
+    ],
+    "spec": "tests/fixtures/popup-ext.spec.js",
+    "grep": "Wikidata: the card asks once",
+    "expect": "fail"
+  },
+  {
+    "name": "the names keep the first label, not the window's language",
+    "why": "A German window would show English names whenever SPARQL lists English first. NOT seen by the spec: the German capture (probe --save) asked \"de\" alone, so every row is German and the first label is already the right one; a capture of \"de\" and \"en\" would see it.",
+    "edits": [
+      {
+        "find": "                if (!cur || (cur.lang !== lang && l['xml:lang'] === lang)) out[id] = { name: l.value, lang: l['xml:lang'] };",
+        "replace": "                if (!cur) out[id] = { name: l.value, lang: l['xml:lang'] };"
+      }
+    ],
+    "spec": "tests/fixtures/popup-ext.spec.js",
+    "grep": "Wikidata: the card asks once",
+    "expect": "pass"
+  },
+  {
+    "name": "the identifiers' filter marks nothing",
+    "why": "vzell 2026-10-29: \"when filtering on IDENTIFIERS on a wikidata POH there is NO highlighting\".",
+    "edits": [
+      {
+        "find": "        const rows = list => list.filter(hit).map(p => `<div class=\"mb-wd-idrow\"><span class=\"mb-rg-dim\">${_hlEsc(pname(p), ui.q)}</span>` +",
+        "replace": "        const rows = list => list.filter(hit).map(p => `<div class=\"mb-wd-idrow\"><span class=\"mb-rg-dim\">${_rgEsc(pname(p))}</span>` +"
+      }
+    ],
+    "spec": "tests/fixtures/popup-ext.spec.js",
+    "grep": "Wikidata: the card asks once",
+    "expect": "fail"
+  },
+  {
+    "name": "an other site's step of the path has no icon",
+    "why": "vzell 2026-10-29: the path's other-site steps start with their site's icon (first Wikidata, Wikipedia, setlist.fm; then every site).",
+    "edits": [
+      {
+        "find": "            return url ? _dpSiteIconGlyph(_extHostOf(url)) : null;",
+        "replace": "            return null;"
+      }
+    ],
+    "spec": "tests/fixtures/popup-ext.spec.js",
+    "grep": "Wikidata: the card asks once",
+    "expect": "fail"
+  },
+  {
+    "name": "the path is not drawn again when a site's icon arrives",
+    "why": "The path is drawn on a step only; the icon comes a moment later and would show only after the next step.",
+    "edits": [
+      {
+        "find": "            if (title && _dpDialog.target) _dpCrumbsRender(title);\n        };",
+        "replace": "        };"
+      }
+    ],
+    "spec": "tests/fixtures/popup-ext.spec.js",
+    "grep": "Wikidata: the card asks once",
+    "expect": "fail"
+  },
+  {
+    "name": "a generic page's step of the path has no icon",
+    "why": "vzell 2026-10-29: \"always show the respective site icons\" — every other site, not only Wikidata, Wikipedia and setlist.fm.",
+    "edits": [
+      {
+        "find": "        if (reader && !/^dg/.test(reader) && reader !== 'discogs') {",
+        "replace": "        if (reader && ['wikidata', 'wikipedia', 'setlistfm'].includes(reader)) {"
+      }
+    ],
+    "spec": "tests/fixtures/popup-ext.spec.js",
+    "grep": "site icons \\(sa_pop_ext_favicons\\)",
+    "expect": "fail"
+  },
+  {
+    "name": "a MusicBrainz URL entity's step has no icon",
+    "why": "The \"[info]\" window names a site; its step shows that site's icon.",
+    "edits": [
+      {
+        "find": "            return r && Lib.settings.sa_pop_ext_favicons === true ? _dpSiteIconGlyph(_extHostOf(r)) : null;",
+        "replace": "            return null;"
+      }
+    ],
+    "spec": "tests/fixtures/popup-ext.spec.js",
+    "grep": "site icons \\(sa_pop_ext_favicons\\)",
+    "expect": "fail"
+  },
+  {
+    "name": "the URL window's path is not drawn again once its address is known",
+    "why": "Space before the card's lookup answered: the path is drawn without the address, so without the icon, and nothing draws it again (the icon is already known).",
+    "edits": [
+      {
+        "find": "        if (t && !_mbPopUrlPathIconDrawn.has(t.key) && _dpSiteIconGlyph(_extHostOf(resource))) {",
+        "replace": "        if (false) {"
+      }
+    ],
+    "spec": "tests/fixtures/popup-ext.spec.js",
+    "grep": "opened before its lookup answered",
+    "expect": "fail"
+  },
+  {
+    "name": "a site's icon in the path has no tooltip",
+    "why": "vzell 2026-10-29: \"add a rich tooltip for the site icons with a good description\".",
+    "edits": [
+      {
+        "find": "                    if (g.tip) _setTip(a, g.tip);\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/popup-ext.spec.js",
+    "grep": "site icons \\(sa_pop_ext_favicons\\)",
+    "expect": "fail"
+  },
+  {
+    "name": "the tooltip says nothing of what the step read",
+    "why": "A bare site name says no more than the icon; the description names how the page was read.",
+    "edits": [
+      {
+        "find": "        return `${kind}${site}\\nThis step of the window shows a page of ${site}.\\n${reads}\\n` +",
+        "replace": "        return `${kind}${site}\\nThis step of the window shows a page of ${site}.\\n` +"
+      }
+    ],
+    "spec": "tests/fixtures/popup-ext.spec.js",
+    "grep": "site icons \\(sa_pop_ext_favicons\\)",
+    "expect": "fail"
+  },
+  {
+    "name": "a site's icon is no link: the title bar's move cursor over it",
+    "why": "vzell 2026-10-29: \"the mouse pointer changes to a cross instead of a finger like in the MB glyph case\".",
+    "edits": [
+      {
+        "find": "                } else if (g.home) {",
+        "replace": "                } else if (false) {"
+      }
+    ],
+    "spec": "tests/fixtures/popup-ext.spec.js",
+    "grep": "site icons \\(sa_pop_ext_favicons\\)",
+    "expect": "fail"
+  }
+]

@@ -1,0 +1,3552 @@
+{
+ "type": "setlists",
+ "itemsPerPage": 20,
+ "page": 1,
+ "total": 3003,
+ "setlist": [
+  {
+   "id": "3b7c34e0",
+   "versionId": "g230904a7",
+   "eventDate": "16-10-2026",
+   "lastUpdated": "2026-10-18T18:48:18.108+0000",
+   "artist": {
+    "mbid": "70248960-cb53-4ea4-943a-edb18f7d336f",
+    "name": "Bruce Springsteen",
+    "sortName": "Springsteen, Bruce",
+    "disambiguation": "",
+    "url": "https://www.setlist.fm/setlists/bruce-springsteen-2bd6dcce.html"
+   },
+   "venue": {
+    "id": "3d1012f",
+    "name": "Transparent Clinch Gallery",
+    "city": {
+     "id": "5095281",
+     "name": "Asbury Park",
+     "state": "New Jersey",
+     "stateCode": "NJ",
+     "coords": {
+      "lat": 40.2203907,
+      "long": -74.0120817
+     },
+     "country": {
+      "code": "US",
+      "name": "United States"
+     }
+    },
+    "url": "https://www.setlist.fm/venue/transparent-clinch-gallery-asbury-park-nj-usa-3d1012f.html"
+   },
+   "sets": {
+    "set": [
+     {
+      "name": "Solo Acoustic",
+      "song": [
+       {
+        "name": "Stones",
+        "info": "first time since 2019"
+       },
+       {
+        "name": "Hello Sunshine",
+        "info": "first time since 2019"
+       },
+       {
+        "name": "Moonlight Motel",
+        "info": "first time since 2019"
+       }
+      ]
+     },
+     {
+      "name": "With the jam band",
+      "song": [
+       {
+        "name": "The Ghost of Tom Joad",
+        "with": {
+         "mbid": "42a636a0-dbe4-4d0c-abe2-1590fad9531b",
+         "name": "Tom Morello",
+         "sortName": "Morello, Tom",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/tom-morello-13d689dd.html"
+        }
+       },
+       {
+        "name": "This Land Is Your Land",
+        "cover": {
+         "mbid": "cbd827e1-4e38-427e-a436-642683433732",
+         "name": "Woody Guthrie",
+         "sortName": "Guthrie, Woody",
+         "disambiguation": "American singer-songwriter",
+         "url": "https://www.setlist.fm/setlists/woody-guthrie-7bd6264c.html"
+        },
+        "with": {
+         "mbid": "42a636a0-dbe4-4d0c-abe2-1590fad9531b",
+         "name": "Tom Morello",
+         "sortName": "Morello, Tom",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/tom-morello-13d689dd.html"
+        }
+       }
+      ]
+     }
+    ]
+   },
+   "info": "Bruce joins Tom Morello's private jam session, which lasted about three hours. Other performers include Dave Matthews, \nJesse Malin, Adam Weiner, Corey Glover,\nVernon Reid, Daryl \"DMC\" McDaniels, Taylor Momsen, Anne Preven, D.B. Weiss, and Ike Reilly",
+   "url": "https://www.setlist.fm/setlist/bruce-springsteen/2026/transparent-clinch-gallery-asbury-park-nj-3b7c34e0.html"
+  },
+  {
+   "id": "37589df",
+   "versionId": "g330894a1",
+   "eventDate": "03-10-2026",
+   "lastUpdated": "2026-10-07T12:58:26.509+0000",
+   "artist": {
+    "mbid": "70248960-cb53-4ea4-943a-edb18f7d336f",
+    "name": "Bruce Springsteen",
+    "sortName": "Springsteen, Bruce",
+    "disambiguation": "",
+    "url": "https://www.setlist.fm/setlists/bruce-springsteen-2bd6dcce.html"
+   },
+   "venue": {
+    "id": "3bdf28a0",
+    "name": "Pavilion Stage",
+    "city": {
+     "id": "4352053",
+     "name": "Columbia",
+     "state": "Maryland",
+     "stateCode": "MD",
+     "coords": {
+      "lat": 39.2403841,
+      "long": -76.8394184
+     },
+     "country": {
+      "code": "US",
+      "name": "United States"
+     }
+    },
+    "url": "https://www.setlist.fm/venue/pavilion-stage-columbia-md-usa-3bdf28a0.html"
+   },
+   "sets": {
+    "set": [
+     {
+      "song": [
+       {
+        "name": "Streets of Minneapolis",
+        "info": "acoustic, Bruce solo"
+       },
+       {
+        "name": "Chimes of Freedom",
+        "cover": {
+         "mbid": "72c536dc-7137-4477-a521-567eeb840fa8",
+         "name": "Bob Dylan",
+         "sortName": "Dylan, Bob",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/bob-dylan-1bd6adb8.html"
+        },
+        "info": "acoustic",
+        "with": {
+         "mbid": "92d37892-6186-4459-9cc1-f0dde57652d0",
+         "name": "Joan Baez",
+         "sortName": "Baez, Joan",
+         "disambiguation": "US folk singer",
+         "url": "https://www.setlist.fm/setlists/joan-baez-73d62621.html"
+        }
+       },
+       {
+        "name": "Clampdown",
+        "cover": {
+         "mbid": "8f92558c-2baa-4758-8c38-615519e9deda",
+         "name": "The Clash",
+         "sortName": "Clash, The",
+         "disambiguation": "70s–80s British punk rock band",
+         "url": "https://www.setlist.fm/setlists/the-clash-bd6a53e.html"
+        },
+        "with": {
+         "mbid": "42a636a0-dbe4-4d0c-abe2-1590fad9531b",
+         "name": "Tom Morello",
+         "sortName": "Morello, Tom",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/tom-morello-13d689dd.html"
+        }
+       },
+       {
+        "name": "The Ghost of Tom Joad",
+        "with": {
+         "mbid": "42a636a0-dbe4-4d0c-abe2-1590fad9531b",
+         "name": "Tom Morello",
+         "sortName": "Morello, Tom",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/tom-morello-13d689dd.html"
+        }
+       },
+       {
+        "name": "Fortunate Son",
+        "cover": {
+         "mbid": "109958eb-a335-4c5e-907e-597ff4c6af46",
+         "name": "Creedence Clearwater Revival",
+         "sortName": "Creedence Clearwater Revival",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/creedence-clearwater-revival-5bd69794.html"
+        },
+        "info": "+ with Tom Morello & Nathaniel Rateliff; first time since 2014",
+        "with": {
+         "mbid": "2fa95b32-3c11-42d7-b495-12fc6be0a024",
+         "name": "Dave Matthews",
+         "sortName": "Matthews, Dave",
+         "disambiguation": "of Dave Matthews Band",
+         "url": "https://www.setlist.fm/setlists/dave-matthews-5bd6e7dc.html"
+        }
+       },
+       {
+        "name": "Rockin' in the Free World",
+        "cover": {
+         "mbid": "75167b8b-44e4-407b-9d35-effe87b223cf",
+         "name": "Neil Young",
+         "sortName": "Young, Neil",
+         "disambiguation": "Canadian singer, songwriter & musician",
+         "url": "https://www.setlist.fm/setlists/neil-young-6bd6b662.html"
+        },
+        "info": "+ Dave Matthews & Tom Morello; first time since 2004",
+        "with": {
+         "mbid": "4d5f891d-9bce-45ae-ad86-912dd27252fa",
+         "name": "Dave Grohl",
+         "sortName": "Grohl, Dave",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/dave-grohl-3d689b7.html"
+        }
+       },
+       {
+        "name": "This Land Is Your Land",
+        "cover": {
+         "mbid": "cbd827e1-4e38-427e-a436-642683433732",
+         "name": "Woody Guthrie",
+         "sortName": "Guthrie, Woody",
+         "disambiguation": "American singer-songwriter",
+         "url": "https://www.setlist.fm/setlists/woody-guthrie-7bd6264c.html"
+        },
+        "info": "with the ensemble"
+       },
+       {
+        "name": "Power to the People",
+        "cover": {
+         "mbid": "4d5447d7-c61c-4120-ba1b-d7f471d385b9",
+         "name": "John Lennon",
+         "sortName": "Lennon, John",
+         "disambiguation": "The Beatles",
+         "url": "https://www.setlist.fm/setlists/john-lennon-33d68875.html"
+        },
+        "info": "with the ensemble"
+       },
+       {
+        "name": "Bella ciao",
+        "tape": true,
+        "cover": {
+         "mbid": "91a2d53d-ed47-496c-a6a2-7ed06d8c96e8",
+         "name": "Fonola Band",
+         "sortName": "Fonola Band",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/fonola-band-4bf1a77e.html"
+        }
+       }
+      ]
+     }
+    ]
+   },
+   "info": "Bruce Springsteen backed by Tom Morello's band for \"Clampdown\" and all songs afterward",
+   "url": "https://www.setlist.fm/setlist/bruce-springsteen/2026/pavilion-stage-columbia-md-37589df.html"
+  },
+  {
+   "id": "37005e3",
+   "versionId": "g230384e3",
+   "eventDate": "01-08-2026",
+   "lastUpdated": "2026-08-03T21:17:11.367+0000",
+   "artist": {
+    "mbid": "70248960-cb53-4ea4-943a-edb18f7d336f",
+    "name": "Bruce Springsteen",
+    "sortName": "Springsteen, Bruce",
+    "disambiguation": "",
+    "url": "https://www.setlist.fm/setlists/bruce-springsteen-2bd6dcce.html"
+   },
+   "venue": {
+    "id": "53d30b75",
+    "name": "Private Venue",
+    "city": {
+     "id": "5096813",
+     "name": "Colts Neck",
+     "state": "New Jersey",
+     "stateCode": "NJ",
+     "coords": {
+      "lat": 40.28761,
+      "long": -74.17237
+     },
+     "country": {
+      "code": "US",
+      "name": "United States"
+     }
+    },
+    "url": "https://www.setlist.fm/venue/private-venue-colts-neck-nj-usa-53d30b75.html"
+   },
+   "sets": {
+    "set": [
+     {
+      "song": [
+       {
+        "name": "Born to Run"
+       }
+      ]
+     }
+    ]
+   },
+   "info": "Solo acoustic; Virtual appearance at Dana-Farber Cancer Institute's \"State of the Pan-Mass Challenge\" event at the College of the Holy Cross in Worcester, MA.",
+   "url": "https://www.setlist.fm/setlist/bruce-springsteen/2026/private-venue-colts-neck-nj-37005e3.html"
+  },
+  {
+   "id": "7b708690",
+   "versionId": "g1302bd4d",
+   "eventDate": "24-07-2026",
+   "lastUpdated": "2026-07-26T01:12:07.209+0000",
+   "artist": {
+    "mbid": "70248960-cb53-4ea4-943a-edb18f7d336f",
+    "name": "Bruce Springsteen",
+    "sortName": "Springsteen, Bruce",
+    "disambiguation": "",
+    "url": "https://www.setlist.fm/setlists/bruce-springsteen-2bd6dcce.html"
+   },
+   "venue": {
+    "id": "63d676f3",
+    "name": "Hilton Hotel International Ballroom",
+    "city": {
+     "id": "4140963",
+     "name": "Washington",
+     "state": "Washington, D.C.",
+     "stateCode": "DC",
+     "coords": {
+      "lat": 38.895,
+      "long": -77.036
+     },
+     "country": {
+      "code": "US",
+      "name": "United States"
+     }
+    },
+    "url": "https://www.setlist.fm/venue/hilton-hotel-international-ballroom-washington-dc-usa-63d676f3.html"
+   },
+   "sets": {
+    "set": [
+     {
+      "song": [
+       {
+        "name": "Streets of Minneapolis"
+       }
+      ]
+     }
+    ]
+   },
+   "info": "Solo acoustic. Bruce received the ACLU's inaugural Ralph Ellison Award for Defenders of Civil Rights and Civil Liberties in the Arts, Business, Science, and Sports.",
+   "url": "https://www.setlist.fm/setlist/bruce-springsteen/2026/hilton-hotel-international-ballroom-washington-dc-7b708690.html"
+  },
+  {
+   "id": "1b7281fc",
+   "versionId": "g6b19baae",
+   "eventDate": "18-06-2026",
+   "lastUpdated": "2026-06-18T18:45:55.132+0000",
+   "artist": {
+    "mbid": "70248960-cb53-4ea4-943a-edb18f7d336f",
+    "name": "Bruce Springsteen",
+    "sortName": "Springsteen, Bruce",
+    "disambiguation": "",
+    "url": "https://www.setlist.fm/setlists/bruce-springsteen-2bd6dcce.html"
+   },
+   "venue": {
+    "id": "6bdfea8e",
+    "name": "Obama Presidential Center",
+    "city": {
+     "id": "4887398",
+     "name": "Chicago",
+     "state": "Illinois",
+     "stateCode": "IL",
+     "coords": {
+      "lat": 41.850033,
+      "long": -87.6500523
+     },
+     "country": {
+      "code": "US",
+      "name": "United States"
+     }
+    },
+    "url": "https://www.setlist.fm/venue/obama-presidential-center-chicago-il-usa-6bdfea8e.html"
+   },
+   "sets": {
+    "set": [
+     {
+      "song": [
+       {
+        "name": "Land of Hope and Dreams"
+       }
+      ]
+     }
+    ]
+   },
+   "url": "https://www.setlist.fm/setlist/bruce-springsteen/2026/obama-presidential-center-chicago-il-1b7281fc.html"
+  },
+  {
+   "id": "1372ada5",
+   "versionId": "g6b0a3e0a",
+   "eventDate": "13-06-2026",
+   "lastUpdated": "2026-09-25T12:16:01.076+0000",
+   "artist": {
+    "mbid": "70248960-cb53-4ea4-943a-edb18f7d336f",
+    "name": "Bruce Springsteen",
+    "sortName": "Springsteen, Bruce",
+    "disambiguation": "",
+    "url": "https://www.setlist.fm/setlists/bruce-springsteen-2bd6dcce.html"
+   },
+   "venue": {
+    "id": "23d7e83f",
+    "name": "Tribeca Performing Arts Center",
+    "city": {
+     "id": "5128581",
+     "name": "New York",
+     "state": "New York",
+     "stateCode": "NY",
+     "coords": {
+      "lat": 40.7142691,
+      "long": -74.0059729
+     },
+     "country": {
+      "code": "US",
+      "name": "United States"
+     }
+    },
+    "url": "https://www.setlist.fm/venue/tribeca-performing-arts-center-new-york-ny-usa-23d7e83f.html"
+   },
+   "sets": {
+    "set": [
+     {
+      "song": [
+       {
+        "name": "Land of Hope and Dreams"
+       }
+      ]
+     }
+    ]
+   },
+   "info": "Recipient of the Harry Belafonte Voices for Social Justice Award at the Tribeca Festival. Interviewed by Bono, introduced by Robert DeNiro. Also joined Patti Smith on reprise bgvs with Bono during her performance of \"People Have the Power\".",
+   "url": "https://www.setlist.fm/setlist/bruce-springsteen/2026/tribeca-performing-arts-center-new-york-ny-1372ada5.html"
+  },
+  {
+   "id": "7b7652c8",
+   "versionId": "gb1b355a",
+   "eventDate": "05-06-2026",
+   "lastUpdated": "2026-06-06T19:41:14.854+0000",
+   "artist": {
+    "mbid": "70248960-cb53-4ea4-943a-edb18f7d336f",
+    "name": "Bruce Springsteen",
+    "sortName": "Springsteen, Bruce",
+    "disambiguation": "",
+    "url": "https://www.setlist.fm/setlists/bruce-springsteen-2bd6dcce.html"
+   },
+   "venue": {
+    "id": "5bd3f748",
+    "name": "OceanFirst Bank Center",
+    "city": {
+     "id": "5106275",
+     "name": "West Long Branch",
+     "state": "New Jersey",
+     "stateCode": "NJ",
+     "coords": {
+      "lat": 40.2903891,
+      "long": -74.0176381
+     },
+     "country": {
+      "code": "US",
+      "name": "United States"
+     }
+    },
+    "url": "https://www.setlist.fm/venue/oceanfirst-bank-center-west-long-branch-nj-usa-5bd3f748.html"
+   },
+   "sets": {
+    "set": [
+     {
+      "song": [
+       {
+        "name": "Jailhouse Rock",
+        "cover": {
+         "mbid": "01809552-4f87-45b0-afff-2c6f0730a3be",
+         "name": "Elvis Presley",
+         "sortName": "Presley, Elvis",
+         "disambiguation": "“The King of Rock and Roll”",
+         "url": "https://www.setlist.fm/setlists/elvis-presley-73d6a2b1.html"
+        },
+        "info": "first time since 2013"
+       },
+       {
+        "name": "Burning Love",
+        "cover": {
+         "mbid": "eb44372f-07ba-482f-a1af-4a8a52557162",
+         "name": "Dennis Linde",
+         "sortName": "Linde, Dennis",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/dennis-linde-33d74479.html"
+        },
+        "info": "first time since 2014"
+       },
+       {
+        "name": "I Shall Be Released",
+        "cover": {
+         "mbid": "72c536dc-7137-4477-a521-567eeb840fa8",
+         "name": "Bob Dylan",
+         "sortName": "Dylan, Bob",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/bob-dylan-1bd6adb8.html"
+        },
+        "info": "first time by Bruce",
+        "with": {
+         "mbid": "80ccfede-c258-4575-a7ad-c982e9932e0f",
+         "name": "Sheryl Crow",
+         "sortName": "Crow, Sheryl",
+         "disambiguation": "American singer-songwriter and musician",
+         "url": "https://www.setlist.fm/setlists/sheryl-crow-73d6be4d.html"
+        }
+       },
+       {
+        "name": "Farther Up the Road",
+        "cover": {
+         "mbid": "66ebc271-6a26-4fe7-848b-f217da119d92",
+         "name": "Bobby “Blue” Bland",
+         "sortName": "Bland, Bobby “Blue”",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/bobby-blue-bland-4bd7b36e.html"
+        },
+        "info": "first time by Bruce",
+        "with": {
+         "mbid": "c733c4e6-22a2-499d-ace7-17b832356aff",
+         "name": "Gary Clark Jr.",
+         "sortName": "Clark, Gary, Jr.",
+         "disambiguation": "American musician",
+         "url": "https://www.setlist.fm/setlists/gary-clark-jr-13d215ed.html"
+        }
+       },
+       {
+        "name": "Raise Your Hand",
+        "cover": {
+         "mbid": "484e8d72-ad54-43cf-bceb-283529ac2b62",
+         "name": "Eddie Floyd",
+         "sortName": "Floyd, Eddie",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/eddie-floyd-53d6b77d.html"
+        },
+        "with": {
+         "mbid": "9659f4dc-358c-4eb3-8a16-27fb983a9650",
+         "name": "Little Steven",
+         "sortName": "Little Steven",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/little-steven-2bd67072.html"
+        }
+       },
+       {
+        "name": "I Don't Want to Go Home",
+        "cover": {
+         "mbid": "d7bc97fb-4bd3-453b-98a1-9081f89c52f0",
+         "name": "Southside Johnny & The Asbury Jukes",
+         "sortName": "Southside Johnny & The Asbury Jukes",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/southside-johnny-and-the-asbury-jukes-33d67075.html"
+        },
+        "with": {
+         "mbid": "9659f4dc-358c-4eb3-8a16-27fb983a9650",
+         "name": "Little Steven",
+         "sortName": "Little Steven",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/little-steven-2bd67072.html"
+        }
+       },
+       {
+        "name": "Land of Hope and Dreams",
+        "info": "acoustic"
+       }
+      ]
+     }
+    ]
+   },
+   "info": "Disciples of Soul served as the house band.",
+   "url": "https://www.setlist.fm/setlist/bruce-springsteen/2026/oceanfirst-bank-center-west-long-branch-nj-7b7652c8.html"
+  },
+  {
+   "id": "737652e9",
+   "versionId": "g431b3b1b",
+   "eventDate": "04-06-2026",
+   "lastUpdated": "2026-06-06T18:54:16.939+0000",
+   "artist": {
+    "mbid": "70248960-cb53-4ea4-943a-edb18f7d336f",
+    "name": "Bruce Springsteen",
+    "sortName": "Springsteen, Bruce",
+    "disambiguation": "",
+    "url": "https://www.setlist.fm/setlists/bruce-springsteen-2bd6dcce.html"
+   },
+   "venue": {
+    "id": "5bd3f748",
+    "name": "OceanFirst Bank Center",
+    "city": {
+     "id": "5106275",
+     "name": "West Long Branch",
+     "state": "New Jersey",
+     "stateCode": "NJ",
+     "coords": {
+      "lat": 40.2903891,
+      "long": -74.0176381
+     },
+     "country": {
+      "code": "US",
+      "name": "United States"
+     }
+    },
+    "url": "https://www.setlist.fm/venue/oceanfirst-bank-center-west-long-branch-nj-usa-5bd3f748.html"
+   },
+   "sets": {
+    "set": [
+     {
+      "song": [
+       {
+        "name": "Deportee (Plane Wreck at Los Gatos)",
+        "cover": {
+         "mbid": "cbd827e1-4e38-427e-a436-642683433732",
+         "name": "Woody Guthrie",
+         "sortName": "Guthrie, Woody",
+         "disambiguation": "American singer-songwriter",
+         "url": "https://www.setlist.fm/setlists/woody-guthrie-7bd6264c.html"
+        },
+        "info": "first time since 2021",
+        "with": {
+         "mbid": "5ff6f6eb-31ad-4903-a3c3-4c9283fcde8b",
+         "name": "Rosanne Cash",
+         "sortName": "Cash, Rosanne",
+         "disambiguation": "country and pop singer-songwriter",
+         "url": "https://www.setlist.fm/setlists/rosanne-cash-3d6b1f7.html"
+        }
+       },
+       {
+        "name": "This Land Is Your Land",
+        "cover": {
+         "mbid": "cbd827e1-4e38-427e-a436-642683433732",
+         "name": "Woody Guthrie",
+         "sortName": "Guthrie, Woody",
+         "disambiguation": "American singer-songwriter",
+         "url": "https://www.setlist.fm/setlists/woody-guthrie-7bd6264c.html"
+        },
+        "with": {
+         "mbid": "5dca4d22-d6c8-4e70-8ca1-4543e43353c7",
+         "name": "Kenny Chesney",
+         "sortName": "Chesney, Kenny",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/kenny-chesney-3bd6bc8c.html"
+        }
+       },
+       {
+        "name": "I'm Shipping Up to Boston",
+        "cover": {
+         "mbid": "e8374874-4178-4869-b92e-fef6bf30dc04",
+         "name": "Dropkick Murphys",
+         "sortName": "Dropkick Murphys",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/dropkick-murphys-63d6d2b7.html"
+        },
+        "with": {
+         "mbid": "e8374874-4178-4869-b92e-fef6bf30dc04",
+         "name": "Dropkick Murphys",
+         "sortName": "Dropkick Murphys",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/dropkick-murphys-63d6d2b7.html"
+        }
+       },
+       {
+        "name": "American Land",
+        "with": {
+         "mbid": "e8374874-4178-4869-b92e-fef6bf30dc04",
+         "name": "Dropkick Murphys",
+         "sortName": "Dropkick Murphys",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/dropkick-murphys-63d6d2b7.html"
+        }
+       },
+       {
+        "name": "When the Saints Go Marching In",
+        "cover": {
+         "mbid": "9be7f096-97ec-4615-8957-8d40b5dcbc41",
+         "name": "[traditional]",
+         "sortName": "[traditional]",
+         "disambiguation": "special purpose artist",
+         "url": "https://www.setlist.fm/setlists/traditional-5bd2f7e4.html"
+        },
+        "info": "first time since 2014",
+        "with": {
+         "mbid": "ebc0f4e7-f709-4790-a7d7-4915004927be",
+         "name": "Trombone Shorty & Orleans Avenue",
+         "sortName": "Trombone Shorty & Orleans Avenue",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/trombone-shorty-and-orleans-avenue-53d5bfed.html"
+        }
+       }
+      ]
+     }
+    ]
+   },
+   "info": "Disciples of Soul served as the house band.",
+   "url": "https://www.setlist.fm/setlist/bruce-springsteen/2026/oceanfirst-bank-center-west-long-branch-nj-737652e9.html"
+  },
+  {
+   "id": "2b4b60da",
+   "versionId": "g6b1a1a8e",
+   "eventDate": "30-05-2026",
+   "lastUpdated": "2026-05-31T13:39:38.314+0000",
+   "artist": {
+    "mbid": "70248960-cb53-4ea4-943a-edb18f7d336f",
+    "name": "Bruce Springsteen",
+    "sortName": "Springsteen, Bruce",
+    "disambiguation": "",
+    "url": "https://www.setlist.fm/setlists/bruce-springsteen-2bd6dcce.html"
+   },
+   "venue": {
+    "id": "3bde3018",
+    "name": "Xfinity Mobile Arena",
+    "city": {
+     "id": "4560349",
+     "name": "Philadelphia",
+     "state": "Pennsylvania",
+     "stateCode": "PA",
+     "coords": {
+      "lat": 39.952335,
+      "long": -75.163789
+     },
+     "country": {
+      "code": "US",
+      "name": "United States"
+     }
+    },
+    "url": "https://www.setlist.fm/venue/xfinity-mobile-arena-philadelphia-pa-usa-3bde3018.html"
+   },
+   "tour": {
+    "name": "Land of Hope & Dreams American Tour"
+   },
+   "sets": {
+    "set": [
+     {
+      "song": [
+       {
+        "name": "War",
+        "cover": {
+         "mbid": "d8df96ae-8fcf-4997-b3e6-e5d1aaf0f69e",
+         "name": "The Temptations",
+         "sortName": "Temptations, The",
+         "disambiguation": "Motown soul vocal group",
+         "url": "https://www.setlist.fm/setlists/the-temptations-13d6b941.html"
+        },
+        "with": {
+         "mbid": "42a636a0-dbe4-4d0c-abe2-1590fad9531b",
+         "name": "Tom Morello",
+         "sortName": "Morello, Tom",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/tom-morello-13d689dd.html"
+        }
+       },
+       {
+        "name": "Born in the U.S.A.",
+        "with": {
+         "mbid": "42a636a0-dbe4-4d0c-abe2-1590fad9531b",
+         "name": "Tom Morello",
+         "sortName": "Morello, Tom",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/tom-morello-13d689dd.html"
+        }
+       },
+       {
+        "name": "Death to My Hometown",
+        "with": {
+         "mbid": "42a636a0-dbe4-4d0c-abe2-1590fad9531b",
+         "name": "Tom Morello",
+         "sortName": "Morello, Tom",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/tom-morello-13d689dd.html"
+        }
+       },
+       {
+        "name": "Clampdown",
+        "cover": {
+         "mbid": "8f92558c-2baa-4758-8c38-615519e9deda",
+         "name": "The Clash",
+         "sortName": "Clash, The",
+         "disambiguation": "70s–80s British punk rock band",
+         "url": "https://www.setlist.fm/setlists/the-clash-bd6a53e.html"
+        },
+        "with": {
+         "mbid": "42a636a0-dbe4-4d0c-abe2-1590fad9531b",
+         "name": "Tom Morello",
+         "sortName": "Morello, Tom",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/tom-morello-13d689dd.html"
+        }
+       },
+       {
+        "name": "No Surrender"
+       },
+       {
+        "name": "Darkness on the Edge of Town"
+       },
+       {
+        "name": "Streets of Minneapolis"
+       },
+       {
+        "name": "The Promised Land"
+       },
+       {
+        "name": "Two Hearts",
+        "info": "with \"It Takes Two\" snippet interpolated"
+       },
+       {
+        "name": "Hungry Heart"
+       },
+       {
+        "name": "Youngstown"
+       },
+       {
+        "name": "Murder Incorporated"
+       },
+       {
+        "name": "American Skin (41 Shots)",
+        "with": {
+         "mbid": "42a636a0-dbe4-4d0c-abe2-1590fad9531b",
+         "name": "Tom Morello",
+         "sortName": "Morello, Tom",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/tom-morello-13d689dd.html"
+        }
+       },
+       {
+        "name": "Long Walk Home",
+        "with": {
+         "mbid": "42a636a0-dbe4-4d0c-abe2-1590fad9531b",
+         "name": "Tom Morello",
+         "sortName": "Morello, Tom",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/tom-morello-13d689dd.html"
+        }
+       },
+       {
+        "name": "House of a Thousand Guitars",
+        "info": "Bruce solo acoustic"
+       },
+       {
+        "name": "My City of Ruins"
+       },
+       {
+        "name": "Because the Night",
+        "cover": {
+         "mbid": "26638df8-ef34-40d1-8d93-616836b72878",
+         "name": "Patti Smith Group",
+         "sortName": "Smith, Patti, Group",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/patti-smith-group-53d657bd.html"
+        }
+       },
+       {
+        "name": "Wrecking Ball"
+       },
+       {
+        "name": "The Rising"
+       },
+       {
+        "name": "The Ghost of Tom Joad",
+        "with": {
+         "mbid": "42a636a0-dbe4-4d0c-abe2-1590fad9531b",
+         "name": "Tom Morello",
+         "sortName": "Morello, Tom",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/tom-morello-13d689dd.html"
+        }
+       },
+       {
+        "name": "Badlands",
+        "with": {
+         "mbid": "42a636a0-dbe4-4d0c-abe2-1590fad9531b",
+         "name": "Tom Morello",
+         "sortName": "Morello, Tom",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/tom-morello-13d689dd.html"
+        }
+       },
+       {
+        "name": "Land of Hope and Dreams",
+        "with": {
+         "mbid": "42a636a0-dbe4-4d0c-abe2-1590fad9531b",
+         "name": "Tom Morello",
+         "sortName": "Morello, Tom",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/tom-morello-13d689dd.html"
+        }
+       }
+      ]
+     },
+     {
+      "encore": 1,
+      "song": [
+       {
+        "name": "American Land",
+        "with": {
+         "mbid": "42a636a0-dbe4-4d0c-abe2-1590fad9531b",
+         "name": "Tom Morello",
+         "sortName": "Morello, Tom",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/tom-morello-13d689dd.html"
+        }
+       },
+       {
+        "name": "Born to Run"
+       },
+       {
+        "name": "Dancing in the Dark",
+        "info": "followed by band introductions; with shoutout for Tom Morello's birthday"
+       },
+       {
+        "name": "Tenth Avenue Freeze-Out",
+        "with": {
+         "mbid": "42a636a0-dbe4-4d0c-abe2-1590fad9531b",
+         "name": "Tom Morello",
+         "sortName": "Morello, Tom",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/tom-morello-13d689dd.html"
+        }
+       },
+       {
+        "name": "Chimes of Freedom",
+        "cover": {
+         "mbid": "72c536dc-7137-4477-a521-567eeb840fa8",
+         "name": "Bob Dylan",
+         "sortName": "Dylan, Bob",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/bob-dylan-1bd6adb8.html"
+        },
+        "with": {
+         "mbid": "42a636a0-dbe4-4d0c-abe2-1590fad9531b",
+         "name": "Tom Morello",
+         "sortName": "Morello, Tom",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/tom-morello-13d689dd.html"
+        }
+       },
+       {
+        "name": "This Land Is Your Land",
+        "tape": true,
+        "cover": {
+         "mbid": "cbd827e1-4e38-427e-a436-642683433732",
+         "name": "Woody Guthrie",
+         "sortName": "Guthrie, Woody",
+         "disambiguation": "American singer-songwriter",
+         "url": "https://www.setlist.fm/setlists/woody-guthrie-7bd6264c.html"
+        }
+       }
+      ]
+     }
+    ]
+   },
+   "info": "Rescheduled from May 8, 2026 and the final show of Land of Hope & Dreams American Tour.",
+   "url": "https://www.setlist.fm/setlist/bruce-springsteen/2026/xfinity-mobile-arena-philadelphia-pa-2b4b60da.html"
+  },
+  {
+   "id": "2b4b60d2",
+   "versionId": "gb085532",
+   "eventDate": "27-05-2026",
+   "lastUpdated": "2026-10-12T18:25:37.535+0000",
+   "artist": {
+    "mbid": "70248960-cb53-4ea4-943a-edb18f7d336f",
+    "name": "Bruce Springsteen",
+    "sortName": "Springsteen, Bruce",
+    "disambiguation": "",
+    "url": "https://www.setlist.fm/setlists/bruce-springsteen-2bd6dcce.html"
+   },
+   "venue": {
+    "id": "33d654f5",
+    "name": "Nationals Park",
+    "city": {
+     "id": "4140963",
+     "name": "Washington",
+     "state": "Washington, D.C.",
+     "stateCode": "DC",
+     "coords": {
+      "lat": 38.895,
+      "long": -77.036
+     },
+     "country": {
+      "code": "US",
+      "name": "United States"
+     }
+    },
+    "url": "https://www.setlist.fm/venue/nationals-park-washington-dc-usa-33d654f5.html"
+   },
+   "tour": {
+    "name": "Land of Hope & Dreams American Tour"
+   },
+   "sets": {
+    "set": [
+     {
+      "song": [
+       {
+        "name": "War",
+        "cover": {
+         "mbid": "d8df96ae-8fcf-4997-b3e6-e5d1aaf0f69e",
+         "name": "The Temptations",
+         "sortName": "Temptations, The",
+         "disambiguation": "Motown soul vocal group",
+         "url": "https://www.setlist.fm/setlists/the-temptations-13d6b941.html"
+        },
+        "with": {
+         "mbid": "42a636a0-dbe4-4d0c-abe2-1590fad9531b",
+         "name": "Tom Morello",
+         "sortName": "Morello, Tom",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/tom-morello-13d689dd.html"
+        }
+       },
+       {
+        "name": "Born in the U.S.A.",
+        "with": {
+         "mbid": "42a636a0-dbe4-4d0c-abe2-1590fad9531b",
+         "name": "Tom Morello",
+         "sortName": "Morello, Tom",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/tom-morello-13d689dd.html"
+        }
+       },
+       {
+        "name": "Death to My Hometown",
+        "with": {
+         "mbid": "42a636a0-dbe4-4d0c-abe2-1590fad9531b",
+         "name": "Tom Morello",
+         "sortName": "Morello, Tom",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/tom-morello-13d689dd.html"
+        }
+       },
+       {
+        "name": "Clampdown",
+        "cover": {
+         "mbid": "8f92558c-2baa-4758-8c38-615519e9deda",
+         "name": "The Clash",
+         "sortName": "Clash, The",
+         "disambiguation": "70s–80s British punk rock band",
+         "url": "https://www.setlist.fm/setlists/the-clash-bd6a53e.html"
+        },
+        "with": {
+         "mbid": "42a636a0-dbe4-4d0c-abe2-1590fad9531b",
+         "name": "Tom Morello",
+         "sortName": "Morello, Tom",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/tom-morello-13d689dd.html"
+        }
+       },
+       {
+        "name": "No Surrender"
+       },
+       {
+        "name": "Darkness on the Edge of Town"
+       },
+       {
+        "name": "Streets of Minneapolis",
+        "info": "Bruce tells the audience, “Let ‘em hear you at the f-ing White House!”"
+       },
+       {
+        "name": "The Promised Land"
+       },
+       {
+        "name": "Two Hearts"
+       },
+       {
+        "name": "Hungry Heart"
+       },
+       {
+        "name": "Youngstown"
+       },
+       {
+        "name": "Murder Incorporated"
+       },
+       {
+        "name": "American Skin (41 Shots)",
+        "with": {
+         "mbid": "42a636a0-dbe4-4d0c-abe2-1590fad9531b",
+         "name": "Tom Morello",
+         "sortName": "Morello, Tom",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/tom-morello-13d689dd.html"
+        }
+       },
+       {
+        "name": "Long Walk Home",
+        "with": {
+         "mbid": "42a636a0-dbe4-4d0c-abe2-1590fad9531b",
+         "name": "Tom Morello",
+         "sortName": "Morello, Tom",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/tom-morello-13d689dd.html"
+        }
+       },
+       {
+        "name": "House of a Thousand Guitars",
+        "info": "solo acoustic"
+       },
+       {
+        "name": "My City of Ruins"
+       },
+       {
+        "name": "Because the Night",
+        "cover": {
+         "mbid": "26638df8-ef34-40d1-8d93-616836b72878",
+         "name": "Patti Smith Group",
+         "sortName": "Smith, Patti, Group",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/patti-smith-group-53d657bd.html"
+        }
+       },
+       {
+        "name": "Wrecking Ball"
+       },
+       {
+        "name": "The Rising"
+       },
+       {
+        "name": "The Ghost of Tom Joad",
+        "with": {
+         "mbid": "42a636a0-dbe4-4d0c-abe2-1590fad9531b",
+         "name": "Tom Morello",
+         "sortName": "Morello, Tom",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/tom-morello-13d689dd.html"
+        }
+       },
+       {
+        "name": "Badlands",
+        "with": {
+         "mbid": "42a636a0-dbe4-4d0c-abe2-1590fad9531b",
+         "name": "Tom Morello",
+         "sortName": "Morello, Tom",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/tom-morello-13d689dd.html"
+        }
+       },
+       {
+        "name": "Land of Hope and Dreams",
+        "with": {
+         "mbid": "42a636a0-dbe4-4d0c-abe2-1590fad9531b",
+         "name": "Tom Morello",
+         "sortName": "Morello, Tom",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/tom-morello-13d689dd.html"
+        }
+       }
+      ]
+     },
+     {
+      "encore": 1,
+      "song": [
+       {
+        "name": "American Land",
+        "with": {
+         "mbid": "42a636a0-dbe4-4d0c-abe2-1590fad9531b",
+         "name": "Tom Morello",
+         "sortName": "Morello, Tom",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/tom-morello-13d689dd.html"
+        }
+       },
+       {
+        "name": "Born to Run"
+       },
+       {
+        "name": "Dancing in the Dark",
+        "info": "followed by band introductions"
+       },
+       {
+        "name": "Tenth Avenue Freeze-Out",
+        "with": {
+         "mbid": "42a636a0-dbe4-4d0c-abe2-1590fad9531b",
+         "name": "Tom Morello",
+         "sortName": "Morello, Tom",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/tom-morello-13d689dd.html"
+        }
+       },
+       {
+        "name": "Chimes of Freedom",
+        "cover": {
+         "mbid": "72c536dc-7137-4477-a521-567eeb840fa8",
+         "name": "Bob Dylan",
+         "sortName": "Dylan, Bob",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/bob-dylan-1bd6adb8.html"
+        },
+        "with": {
+         "mbid": "42a636a0-dbe4-4d0c-abe2-1590fad9531b",
+         "name": "Tom Morello",
+         "sortName": "Morello, Tom",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/tom-morello-13d689dd.html"
+        }
+       },
+       {
+        "name": "This Land Is Your Land",
+        "tape": true,
+        "cover": {
+         "mbid": "cbd827e1-4e38-427e-a436-642683433732",
+         "name": "Woody Guthrie",
+         "sortName": "Guthrie, Woody",
+         "disambiguation": "American singer-songwriter",
+         "url": "https://www.setlist.fm/setlists/woody-guthrie-7bd6264c.html"
+        }
+       }
+      ]
+     }
+    ]
+   },
+   "url": "https://www.setlist.fm/setlist/bruce-springsteen/2026/nationals-park-washington-dc-2b4b60d2.html"
+  },
+  {
+   "id": "334b60dd",
+   "versionId": "g331d5c61",
+   "eventDate": "24-05-2026",
+   "lastUpdated": "2026-05-25T06:23:15.607+0000",
+   "artist": {
+    "mbid": "70248960-cb53-4ea4-943a-edb18f7d336f",
+    "name": "Bruce Springsteen",
+    "sortName": "Springsteen, Bruce",
+    "disambiguation": "",
+    "url": "https://www.setlist.fm/setlists/bruce-springsteen-2bd6dcce.html"
+   },
+   "venue": {
+    "id": "3bd61414",
+    "name": "TD Garden",
+    "city": {
+     "id": "4930956",
+     "name": "Boston",
+     "state": "Massachusetts",
+     "stateCode": "MA",
+     "coords": {
+      "lat": 42.3584308,
+      "long": -71.0597732
+     },
+     "country": {
+      "code": "US",
+      "name": "United States"
+     }
+    },
+    "url": "https://www.setlist.fm/venue/td-garden-boston-ma-usa-3bd61414.html"
+   },
+   "tour": {
+    "name": "Land of Hope & Dreams American Tour"
+   },
+   "sets": {
+    "set": [
+     {
+      "song": [
+       {
+        "name": "War",
+        "cover": {
+         "mbid": "d8df96ae-8fcf-4997-b3e6-e5d1aaf0f69e",
+         "name": "The Temptations",
+         "sortName": "Temptations, The",
+         "disambiguation": "Motown soul vocal group",
+         "url": "https://www.setlist.fm/setlists/the-temptations-13d6b941.html"
+        },
+        "with": {
+         "mbid": "42a636a0-dbe4-4d0c-abe2-1590fad9531b",
+         "name": "Tom Morello",
+         "sortName": "Morello, Tom",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/tom-morello-13d689dd.html"
+        }
+       },
+       {
+        "name": "Born in the U.S.A.",
+        "with": {
+         "mbid": "42a636a0-dbe4-4d0c-abe2-1590fad9531b",
+         "name": "Tom Morello",
+         "sortName": "Morello, Tom",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/tom-morello-13d689dd.html"
+        }
+       },
+       {
+        "name": "Death to My Hometown",
+        "with": {
+         "mbid": "42a636a0-dbe4-4d0c-abe2-1590fad9531b",
+         "name": "Tom Morello",
+         "sortName": "Morello, Tom",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/tom-morello-13d689dd.html"
+        }
+       },
+       {
+        "name": "Clampdown",
+        "cover": {
+         "mbid": "8f92558c-2baa-4758-8c38-615519e9deda",
+         "name": "The Clash",
+         "sortName": "Clash, The",
+         "disambiguation": "70s–80s British punk rock band",
+         "url": "https://www.setlist.fm/setlists/the-clash-bd6a53e.html"
+        },
+        "with": {
+         "mbid": "42a636a0-dbe4-4d0c-abe2-1590fad9531b",
+         "name": "Tom Morello",
+         "sortName": "Morello, Tom",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/tom-morello-13d689dd.html"
+        }
+       },
+       {
+        "name": "No Surrender"
+       },
+       {
+        "name": "Darkness on the Edge of Town"
+       },
+       {
+        "name": "Streets of Minneapolis"
+       },
+       {
+        "name": "The Promised Land"
+       },
+       {
+        "name": "Two Hearts"
+       },
+       {
+        "name": "Hungry Heart"
+       },
+       {
+        "name": "Youngstown"
+       },
+       {
+        "name": "Murder Incorporated"
+       },
+       {
+        "name": "American Skin (41 Shots)",
+        "with": {
+         "mbid": "42a636a0-dbe4-4d0c-abe2-1590fad9531b",
+         "name": "Tom Morello",
+         "sortName": "Morello, Tom",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/tom-morello-13d689dd.html"
+        }
+       },
+       {
+        "name": "Long Walk Home",
+        "with": {
+         "mbid": "42a636a0-dbe4-4d0c-abe2-1590fad9531b",
+         "name": "Tom Morello",
+         "sortName": "Morello, Tom",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/tom-morello-13d689dd.html"
+        }
+       },
+       {
+        "name": "House of a Thousand Guitars",
+        "info": "solo acoustic"
+       },
+       {
+        "name": "My City of Ruins"
+       },
+       {
+        "name": "Because the Night",
+        "cover": {
+         "mbid": "26638df8-ef34-40d1-8d93-616836b72878",
+         "name": "Patti Smith Group",
+         "sortName": "Smith, Patti, Group",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/patti-smith-group-53d657bd.html"
+        }
+       },
+       {
+        "name": "Wrecking Ball"
+       },
+       {
+        "name": "The Rising"
+       },
+       {
+        "name": "The Ghost of Tom Joad",
+        "with": {
+         "mbid": "42a636a0-dbe4-4d0c-abe2-1590fad9531b",
+         "name": "Tom Morello",
+         "sortName": "Morello, Tom",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/tom-morello-13d689dd.html"
+        }
+       },
+       {
+        "name": "Badlands",
+        "with": {
+         "mbid": "42a636a0-dbe4-4d0c-abe2-1590fad9531b",
+         "name": "Tom Morello",
+         "sortName": "Morello, Tom",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/tom-morello-13d689dd.html"
+        }
+       },
+       {
+        "name": "Land of Hope and Dreams",
+        "with": {
+         "mbid": "42a636a0-dbe4-4d0c-abe2-1590fad9531b",
+         "name": "Tom Morello",
+         "sortName": "Morello, Tom",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/tom-morello-13d689dd.html"
+        }
+       }
+      ]
+     },
+     {
+      "encore": 1,
+      "song": [
+       {
+        "name": "American Land",
+        "with": {
+         "mbid": "42a636a0-dbe4-4d0c-abe2-1590fad9531b",
+         "name": "Tom Morello",
+         "sortName": "Morello, Tom",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/tom-morello-13d689dd.html"
+        }
+       },
+       {
+        "name": "Born to Run"
+       },
+       {
+        "name": "Dancing in the Dark",
+        "info": "followed by band introductions"
+       },
+       {
+        "name": "Tenth Avenue Freeze-Out",
+        "with": {
+         "mbid": "42a636a0-dbe4-4d0c-abe2-1590fad9531b",
+         "name": "Tom Morello",
+         "sortName": "Morello, Tom",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/tom-morello-13d689dd.html"
+        }
+       },
+       {
+        "name": "Chimes of Freedom",
+        "cover": {
+         "mbid": "72c536dc-7137-4477-a521-567eeb840fa8",
+         "name": "Bob Dylan",
+         "sortName": "Dylan, Bob",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/bob-dylan-1bd6adb8.html"
+        },
+        "with": {
+         "mbid": "42a636a0-dbe4-4d0c-abe2-1590fad9531b",
+         "name": "Tom Morello",
+         "sortName": "Morello, Tom",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/tom-morello-13d689dd.html"
+        }
+       }
+      ]
+     }
+    ]
+   },
+   "url": "https://www.setlist.fm/setlist/bruce-springsteen/2026/td-garden-boston-ma-334b60dd.html"
+  },
+  {
+   "id": "2b4b60de",
+   "versionId": "g6b1a66be",
+   "eventDate": "22-05-2026",
+   "lastUpdated": "2026-06-01T20:03:16.400+0000",
+   "artist": {
+    "mbid": "70248960-cb53-4ea4-943a-edb18f7d336f",
+    "name": "Bruce Springsteen",
+    "sortName": "Springsteen, Bruce",
+    "disambiguation": "",
+    "url": "https://www.setlist.fm/setlists/bruce-springsteen-2bd6dcce.html"
+   },
+   "venue": {
+    "id": "bded19a",
+    "name": "Rocket Arena",
+    "city": {
+     "id": "5150529",
+     "name": "Cleveland",
+     "state": "Ohio",
+     "stateCode": "OH",
+     "coords": {
+      "lat": 41.4994954,
+      "long": -81.6954088
+     },
+     "country": {
+      "code": "US",
+      "name": "United States"
+     }
+    },
+    "url": "https://www.setlist.fm/venue/rocket-arena-cleveland-oh-usa-bded19a.html"
+   },
+   "tour": {
+    "name": "Land of Hope & Dreams American Tour"
+   },
+   "sets": {
+    "set": [
+     {
+      "song": [
+       {
+        "name": "War",
+        "cover": {
+         "mbid": "d8df96ae-8fcf-4997-b3e6-e5d1aaf0f69e",
+         "name": "The Temptations",
+         "sortName": "Temptations, The",
+         "disambiguation": "Motown soul vocal group",
+         "url": "https://www.setlist.fm/setlists/the-temptations-13d6b941.html"
+        },
+        "with": {
+         "mbid": "42a636a0-dbe4-4d0c-abe2-1590fad9531b",
+         "name": "Tom Morello",
+         "sortName": "Morello, Tom",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/tom-morello-13d689dd.html"
+        }
+       },
+       {
+        "name": "Born in the U.S.A.",
+        "with": {
+         "mbid": "42a636a0-dbe4-4d0c-abe2-1590fad9531b",
+         "name": "Tom Morello",
+         "sortName": "Morello, Tom",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/tom-morello-13d689dd.html"
+        }
+       },
+       {
+        "name": "Death to My Hometown",
+        "with": {
+         "mbid": "42a636a0-dbe4-4d0c-abe2-1590fad9531b",
+         "name": "Tom Morello",
+         "sortName": "Morello, Tom",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/tom-morello-13d689dd.html"
+        }
+       },
+       {
+        "name": "Clampdown",
+        "cover": {
+         "mbid": "8f92558c-2baa-4758-8c38-615519e9deda",
+         "name": "The Clash",
+         "sortName": "Clash, The",
+         "disambiguation": "70s–80s British punk rock band",
+         "url": "https://www.setlist.fm/setlists/the-clash-bd6a53e.html"
+        },
+        "with": {
+         "mbid": "42a636a0-dbe4-4d0c-abe2-1590fad9531b",
+         "name": "Tom Morello",
+         "sortName": "Morello, Tom",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/tom-morello-13d689dd.html"
+        }
+       },
+       {
+        "name": "No Surrender"
+       },
+       {
+        "name": "Darkness on the Edge of Town"
+       },
+       {
+        "name": "Streets of Minneapolis"
+       },
+       {
+        "name": "The Promised Land"
+       },
+       {
+        "name": "Two Hearts",
+        "info": "with Marvin Gaye & Kim Weston's \"It Takes Two\" ending"
+       },
+       {
+        "name": "Hungry Heart"
+       },
+       {
+        "name": "Youngstown"
+       },
+       {
+        "name": "Murder Incorporated"
+       },
+       {
+        "name": "American Skin (41 Shots)",
+        "with": {
+         "mbid": "42a636a0-dbe4-4d0c-abe2-1590fad9531b",
+         "name": "Tom Morello",
+         "sortName": "Morello, Tom",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/tom-morello-13d689dd.html"
+        }
+       },
+       {
+        "name": "Long Walk Home",
+        "with": {
+         "mbid": "42a636a0-dbe4-4d0c-abe2-1590fad9531b",
+         "name": "Tom Morello",
+         "sortName": "Morello, Tom",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/tom-morello-13d689dd.html"
+        }
+       },
+       {
+        "name": "House of a Thousand Guitars",
+        "info": "solo acoustic"
+       },
+       {
+        "name": "My City of Ruins"
+       },
+       {
+        "name": "Because the Night",
+        "cover": {
+         "mbid": "26638df8-ef34-40d1-8d93-616836b72878",
+         "name": "Patti Smith Group",
+         "sortName": "Smith, Patti, Group",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/patti-smith-group-53d657bd.html"
+        }
+       },
+       {
+        "name": "Wrecking Ball"
+       },
+       {
+        "name": "The Rising"
+       },
+       {
+        "name": "The Ghost of Tom Joad",
+        "with": {
+         "mbid": "42a636a0-dbe4-4d0c-abe2-1590fad9531b",
+         "name": "Tom Morello",
+         "sortName": "Morello, Tom",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/tom-morello-13d689dd.html"
+        }
+       },
+       {
+        "name": "Badlands",
+        "with": {
+         "mbid": "42a636a0-dbe4-4d0c-abe2-1590fad9531b",
+         "name": "Tom Morello",
+         "sortName": "Morello, Tom",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/tom-morello-13d689dd.html"
+        }
+       },
+       {
+        "name": "Land of Hope and Dreams",
+        "with": {
+         "mbid": "42a636a0-dbe4-4d0c-abe2-1590fad9531b",
+         "name": "Tom Morello",
+         "sortName": "Morello, Tom",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/tom-morello-13d689dd.html"
+        }
+       }
+      ]
+     },
+     {
+      "encore": 1,
+      "song": [
+       {
+        "name": "American Land",
+        "with": {
+         "mbid": "42a636a0-dbe4-4d0c-abe2-1590fad9531b",
+         "name": "Tom Morello",
+         "sortName": "Morello, Tom",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/tom-morello-13d689dd.html"
+        }
+       },
+       {
+        "name": "Born to Run"
+       },
+       {
+        "name": "Dancing in the Dark",
+        "info": "followed by band introductions"
+       },
+       {
+        "name": "Tenth Avenue Freeze-Out",
+        "with": {
+         "mbid": "42a636a0-dbe4-4d0c-abe2-1590fad9531b",
+         "name": "Tom Morello",
+         "sortName": "Morello, Tom",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/tom-morello-13d689dd.html"
+        }
+       },
+       {
+        "name": "Chimes of Freedom",
+        "cover": {
+         "mbid": "72c536dc-7137-4477-a521-567eeb840fa8",
+         "name": "Bob Dylan",
+         "sortName": "Dylan, Bob",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/bob-dylan-1bd6adb8.html"
+        },
+        "with": {
+         "mbid": "42a636a0-dbe4-4d0c-abe2-1590fad9531b",
+         "name": "Tom Morello",
+         "sortName": "Morello, Tom",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/tom-morello-13d689dd.html"
+        }
+       },
+       {
+        "name": "This Land Is Your Land",
+        "tape": true,
+        "cover": {
+         "mbid": "cbd827e1-4e38-427e-a436-642683433732",
+         "name": "Woody Guthrie",
+         "sortName": "Guthrie, Woody",
+         "disambiguation": "American singer-songwriter",
+         "url": "https://www.setlist.fm/setlists/woody-guthrie-7bd6264c.html"
+        }
+       }
+      ]
+     }
+    ]
+   },
+   "url": "https://www.setlist.fm/setlist/bruce-springsteen/2026/rocket-arena-cleveland-oh-2b4b60de.html"
+  },
+  {
+   "id": "33743049",
+   "versionId": "g3b1decfc",
+   "eventDate": "20-05-2026",
+   "lastUpdated": "2026-05-21T03:46:52.080+0000",
+   "artist": {
+    "mbid": "70248960-cb53-4ea4-943a-edb18f7d336f",
+    "name": "Bruce Springsteen",
+    "sortName": "Springsteen, Bruce",
+    "disambiguation": "",
+    "url": "https://www.setlist.fm/setlists/bruce-springsteen-2bd6dcce.html"
+   },
+   "venue": {
+    "id": "63d592a3",
+    "name": "Late Show With Stephen Colbert",
+    "city": {
+     "id": "5128581",
+     "name": "New York",
+     "state": "New York",
+     "stateCode": "NY",
+     "coords": {
+      "lat": 40.7142691,
+      "long": -74.0059729
+     },
+     "country": {
+      "code": "US",
+      "name": "United States"
+     }
+    },
+    "url": "https://www.setlist.fm/venue/late-show-with-stephen-colbert-new-york-ny-usa-63d592a3.html"
+   },
+   "sets": {
+    "set": [
+     {
+      "song": [
+       {
+        "name": "Streets of Minneapolis"
+       }
+      ]
+     }
+    ]
+   },
+   "url": "https://www.setlist.fm/setlist/bruce-springsteen/2026/late-show-with-stephen-colbert-new-york-ny-33743049.html"
+  },
+  {
+   "id": "234b60df",
+   "versionId": "g4b1d8b52",
+   "eventDate": "19-05-2026",
+   "lastUpdated": "2026-05-20T06:00:55.242+0000",
+   "artist": {
+    "mbid": "70248960-cb53-4ea4-943a-edb18f7d336f",
+    "name": "Bruce Springsteen",
+    "sortName": "Springsteen, Bruce",
+    "disambiguation": "",
+    "url": "https://www.setlist.fm/setlists/bruce-springsteen-2bd6dcce.html"
+   },
+   "venue": {
+    "id": "73d51671",
+    "name": "PPG Paints Arena",
+    "city": {
+     "id": "5206379",
+     "name": "Pittsburgh",
+     "state": "Pennsylvania",
+     "stateCode": "PA",
+     "coords": {
+      "lat": 40.4406248,
+      "long": -79.9958864
+     },
+     "country": {
+      "code": "US",
+      "name": "United States"
+     }
+    },
+    "url": "https://www.setlist.fm/venue/ppg-paints-arena-pittsburgh-pa-usa-73d51671.html"
+   },
+   "tour": {
+    "name": "Land of Hope & Dreams American Tour"
+   },
+   "sets": {
+    "set": [
+     {
+      "song": [
+       {
+        "name": "War",
+        "cover": {
+         "mbid": "d8df96ae-8fcf-4997-b3e6-e5d1aaf0f69e",
+         "name": "The Temptations",
+         "sortName": "Temptations, The",
+         "disambiguation": "Motown soul vocal group",
+         "url": "https://www.setlist.fm/setlists/the-temptations-13d6b941.html"
+        },
+        "with": {
+         "mbid": "42a636a0-dbe4-4d0c-abe2-1590fad9531b",
+         "name": "Tom Morello",
+         "sortName": "Morello, Tom",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/tom-morello-13d689dd.html"
+        }
+       },
+       {
+        "name": "Born in the U.S.A.",
+        "with": {
+         "mbid": "42a636a0-dbe4-4d0c-abe2-1590fad9531b",
+         "name": "Tom Morello",
+         "sortName": "Morello, Tom",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/tom-morello-13d689dd.html"
+        }
+       },
+       {
+        "name": "Death to My Hometown",
+        "with": {
+         "mbid": "42a636a0-dbe4-4d0c-abe2-1590fad9531b",
+         "name": "Tom Morello",
+         "sortName": "Morello, Tom",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/tom-morello-13d689dd.html"
+        }
+       },
+       {
+        "name": "Clampdown",
+        "cover": {
+         "mbid": "8f92558c-2baa-4758-8c38-615519e9deda",
+         "name": "The Clash",
+         "sortName": "Clash, The",
+         "disambiguation": "70s–80s British punk rock band",
+         "url": "https://www.setlist.fm/setlists/the-clash-bd6a53e.html"
+        },
+        "with": {
+         "mbid": "42a636a0-dbe4-4d0c-abe2-1590fad9531b",
+         "name": "Tom Morello",
+         "sortName": "Morello, Tom",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/tom-morello-13d689dd.html"
+        }
+       },
+       {
+        "name": "No Surrender"
+       },
+       {
+        "name": "Darkness on the Edge of Town"
+       },
+       {
+        "name": "Streets of Minneapolis"
+       },
+       {
+        "name": "The Promised Land"
+       },
+       {
+        "name": "Two Hearts",
+        "info": "with Marvin Gaye & Kim Weston's \"It Takes Two\" ending"
+       },
+       {
+        "name": "Hungry Heart"
+       },
+       {
+        "name": "Youngstown"
+       },
+       {
+        "name": "Murder Incorporated"
+       },
+       {
+        "name": "American Skin (41 Shots)",
+        "with": {
+         "mbid": "42a636a0-dbe4-4d0c-abe2-1590fad9531b",
+         "name": "Tom Morello",
+         "sortName": "Morello, Tom",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/tom-morello-13d689dd.html"
+        }
+       },
+       {
+        "name": "Long Walk Home",
+        "with": {
+         "mbid": "42a636a0-dbe4-4d0c-abe2-1590fad9531b",
+         "name": "Tom Morello",
+         "sortName": "Morello, Tom",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/tom-morello-13d689dd.html"
+        }
+       },
+       {
+        "name": "House of a Thousand Guitars",
+        "info": "solo acoustic"
+       },
+       {
+        "name": "My City of Ruins"
+       },
+       {
+        "name": "Because the Night",
+        "cover": {
+         "mbid": "26638df8-ef34-40d1-8d93-616836b72878",
+         "name": "Patti Smith Group",
+         "sortName": "Smith, Patti, Group",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/patti-smith-group-53d657bd.html"
+        }
+       },
+       {
+        "name": "Wrecking Ball"
+       },
+       {
+        "name": "The Rising"
+       },
+       {
+        "name": "The Ghost of Tom Joad",
+        "with": {
+         "mbid": "42a636a0-dbe4-4d0c-abe2-1590fad9531b",
+         "name": "Tom Morello",
+         "sortName": "Morello, Tom",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/tom-morello-13d689dd.html"
+        }
+       },
+       {
+        "name": "Badlands",
+        "with": {
+         "mbid": "42a636a0-dbe4-4d0c-abe2-1590fad9531b",
+         "name": "Tom Morello",
+         "sortName": "Morello, Tom",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/tom-morello-13d689dd.html"
+        }
+       },
+       {
+        "name": "Land of Hope and Dreams",
+        "info": "with The Impressions' \"People Get Ready\" ending",
+        "with": {
+         "mbid": "42a636a0-dbe4-4d0c-abe2-1590fad9531b",
+         "name": "Tom Morello",
+         "sortName": "Morello, Tom",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/tom-morello-13d689dd.html"
+        }
+       }
+      ]
+     },
+     {
+      "encore": 1,
+      "song": [
+       {
+        "name": "American Land",
+        "with": {
+         "mbid": "42a636a0-dbe4-4d0c-abe2-1590fad9531b",
+         "name": "Tom Morello",
+         "sortName": "Morello, Tom",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/tom-morello-13d689dd.html"
+        }
+       },
+       {
+        "name": "Born to Run"
+       },
+       {
+        "name": "Dancing in the Dark",
+        "info": "followed by band introductions"
+       },
+       {
+        "name": "Tenth Avenue Freeze-Out",
+        "with": {
+         "mbid": "42a636a0-dbe4-4d0c-abe2-1590fad9531b",
+         "name": "Tom Morello",
+         "sortName": "Morello, Tom",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/tom-morello-13d689dd.html"
+        }
+       },
+       {
+        "name": "Chimes of Freedom",
+        "cover": {
+         "mbid": "72c536dc-7137-4477-a521-567eeb840fa8",
+         "name": "Bob Dylan",
+         "sortName": "Dylan, Bob",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/bob-dylan-1bd6adb8.html"
+        },
+        "with": {
+         "mbid": "42a636a0-dbe4-4d0c-abe2-1590fad9531b",
+         "name": "Tom Morello",
+         "sortName": "Morello, Tom",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/tom-morello-13d689dd.html"
+        }
+       },
+       {
+        "name": "This Land Is Your Land",
+        "tape": true,
+        "cover": {
+         "mbid": "cbd827e1-4e38-427e-a436-642683433732",
+         "name": "Woody Guthrie",
+         "sortName": "Guthrie, Woody",
+         "disambiguation": "American singer-songwriter",
+         "url": "https://www.setlist.fm/setlists/woody-guthrie-7bd6264c.html"
+        }
+       }
+      ]
+     }
+    ]
+   },
+   "url": "https://www.setlist.fm/setlist/bruce-springsteen/2026/ppg-paints-arena-pittsburgh-pa-234b60df.html"
+  },
+  {
+   "id": "3b4b6038",
+   "versionId": "gb1c65b6",
+   "eventDate": "16-05-2026",
+   "lastUpdated": "2026-05-17T03:55:03.442+0000",
+   "artist": {
+    "mbid": "70248960-cb53-4ea4-943a-edb18f7d336f",
+    "name": "Bruce Springsteen",
+    "sortName": "Springsteen, Bruce",
+    "disambiguation": "",
+    "url": "https://www.setlist.fm/setlists/bruce-springsteen-2bd6dcce.html"
+   },
+   "venue": {
+    "id": "23d63cc7",
+    "name": "Madison Square Garden",
+    "city": {
+     "id": "5128581",
+     "name": "New York",
+     "state": "New York",
+     "stateCode": "NY",
+     "coords": {
+      "lat": 40.7142691,
+      "long": -74.0059729
+     },
+     "country": {
+      "code": "US",
+      "name": "United States"
+     }
+    },
+    "url": "https://www.setlist.fm/venue/madison-square-garden-new-york-ny-usa-23d63cc7.html"
+   },
+   "tour": {
+    "name": "Land of Hope & Dreams American Tour"
+   },
+   "sets": {
+    "set": [
+     {
+      "song": [
+       {
+        "name": "War",
+        "cover": {
+         "mbid": "d8df96ae-8fcf-4997-b3e6-e5d1aaf0f69e",
+         "name": "The Temptations",
+         "sortName": "Temptations, The",
+         "disambiguation": "Motown soul vocal group",
+         "url": "https://www.setlist.fm/setlists/the-temptations-13d6b941.html"
+        },
+        "with": {
+         "mbid": "42a636a0-dbe4-4d0c-abe2-1590fad9531b",
+         "name": "Tom Morello",
+         "sortName": "Morello, Tom",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/tom-morello-13d689dd.html"
+        }
+       },
+       {
+        "name": "Born in the U.S.A.",
+        "with": {
+         "mbid": "42a636a0-dbe4-4d0c-abe2-1590fad9531b",
+         "name": "Tom Morello",
+         "sortName": "Morello, Tom",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/tom-morello-13d689dd.html"
+        }
+       },
+       {
+        "name": "Death to My Hometown",
+        "with": {
+         "mbid": "42a636a0-dbe4-4d0c-abe2-1590fad9531b",
+         "name": "Tom Morello",
+         "sortName": "Morello, Tom",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/tom-morello-13d689dd.html"
+        }
+       },
+       {
+        "name": "Clampdown",
+        "cover": {
+         "mbid": "8f92558c-2baa-4758-8c38-615519e9deda",
+         "name": "The Clash",
+         "sortName": "Clash, The",
+         "disambiguation": "70s–80s British punk rock band",
+         "url": "https://www.setlist.fm/setlists/the-clash-bd6a53e.html"
+        },
+        "info": "Tom on shared vocals",
+        "with": {
+         "mbid": "42a636a0-dbe4-4d0c-abe2-1590fad9531b",
+         "name": "Tom Morello",
+         "sortName": "Morello, Tom",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/tom-morello-13d689dd.html"
+        }
+       },
+       {
+        "name": "No Surrender"
+       },
+       {
+        "name": "Darkness on the Edge of Town"
+       },
+       {
+        "name": "Streets of Minneapolis"
+       },
+       {
+        "name": "The Promised Land"
+       },
+       {
+        "name": "Two Hearts",
+        "info": "with snippet of Marvin Gaye & Kim Weston's \"It Takes Two\" to end song"
+       },
+       {
+        "name": "Hungry Heart"
+       },
+       {
+        "name": "Youngstown"
+       },
+       {
+        "name": "Murder Incorporated"
+       },
+       {
+        "name": "American Skin (41 Shots)",
+        "with": {
+         "mbid": "42a636a0-dbe4-4d0c-abe2-1590fad9531b",
+         "name": "Tom Morello",
+         "sortName": "Morello, Tom",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/tom-morello-13d689dd.html"
+        }
+       },
+       {
+        "name": "Long Walk Home",
+        "info": "introduced as “a prayer for our country”",
+        "with": {
+         "mbid": "42a636a0-dbe4-4d0c-abe2-1590fad9531b",
+         "name": "Tom Morello",
+         "sortName": "Morello, Tom",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/tom-morello-13d689dd.html"
+        }
+       },
+       {
+        "name": "House of a Thousand Guitars",
+        "info": "solo acoustic"
+       },
+       {
+        "name": "My City of Ruins"
+       },
+       {
+        "name": "Because the Night",
+        "cover": {
+         "mbid": "26638df8-ef34-40d1-8d93-616836b72878",
+         "name": "Patti Smith Group",
+         "sortName": "Smith, Patti, Group",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/patti-smith-group-53d657bd.html"
+        }
+       },
+       {
+        "name": "Wrecking Ball"
+       },
+       {
+        "name": "The Rising"
+       },
+       {
+        "name": "The Ghost of Tom Joad",
+        "info": "Tom on shared vocals",
+        "with": {
+         "mbid": "42a636a0-dbe4-4d0c-abe2-1590fad9531b",
+         "name": "Tom Morello",
+         "sortName": "Morello, Tom",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/tom-morello-13d689dd.html"
+        }
+       },
+       {
+        "name": "Badlands",
+        "with": {
+         "mbid": "42a636a0-dbe4-4d0c-abe2-1590fad9531b",
+         "name": "Tom Morello",
+         "sortName": "Morello, Tom",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/tom-morello-13d689dd.html"
+        }
+       },
+       {
+        "name": "Land of Hope and Dreams",
+        "info": "with snippet of The Impressions’ “People Get Ready” to end song",
+        "with": {
+         "mbid": "42a636a0-dbe4-4d0c-abe2-1590fad9531b",
+         "name": "Tom Morello",
+         "sortName": "Morello, Tom",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/tom-morello-13d689dd.html"
+        }
+       }
+      ]
+     },
+     {
+      "encore": 1,
+      "song": [
+       {
+        "name": "American Land",
+        "with": {
+         "mbid": "42a636a0-dbe4-4d0c-abe2-1590fad9531b",
+         "name": "Tom Morello",
+         "sortName": "Morello, Tom",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/tom-morello-13d689dd.html"
+        }
+       },
+       {
+        "name": "Born to Run"
+       },
+       {
+        "name": "Dancing in the Dark",
+        "info": "followed by band introductions"
+       },
+       {
+        "name": "Tenth Avenue Freeze-Out",
+        "info": "pictures of Clarence Clemons and Danny Federici on screen",
+        "with": {
+         "mbid": "42a636a0-dbe4-4d0c-abe2-1590fad9531b",
+         "name": "Tom Morello",
+         "sortName": "Morello, Tom",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/tom-morello-13d689dd.html"
+        }
+       },
+       {
+        "name": "Chimes of Freedom",
+        "cover": {
+         "mbid": "72c536dc-7137-4477-a521-567eeb840fa8",
+         "name": "Bob Dylan",
+         "sortName": "Dylan, Bob",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/bob-dylan-1bd6adb8.html"
+        },
+        "with": {
+         "mbid": "42a636a0-dbe4-4d0c-abe2-1590fad9531b",
+         "name": "Tom Morello",
+         "sortName": "Morello, Tom",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/tom-morello-13d689dd.html"
+        }
+       },
+       {
+        "name": "This Land Is Your Land",
+        "tape": true,
+        "cover": {
+         "mbid": "cbd827e1-4e38-427e-a436-642683433732",
+         "name": "Woody Guthrie",
+         "sortName": "Guthrie, Woody",
+         "disambiguation": "American singer-songwriter",
+         "url": "https://www.setlist.fm/setlists/woody-guthrie-7bd6264c.html"
+        }
+       }
+      ]
+     }
+    ]
+   },
+   "url": "https://www.setlist.fm/setlist/bruce-springsteen/2026/madison-square-garden-new-york-ny-3b4b6038.html"
+  },
+  {
+   "id": "3b4b60d8",
+   "versionId": "g531c0f4d",
+   "eventDate": "14-05-2026",
+   "lastUpdated": "2026-05-15T22:48:55.712+0000",
+   "artist": {
+    "mbid": "70248960-cb53-4ea4-943a-edb18f7d336f",
+    "name": "Bruce Springsteen",
+    "sortName": "Springsteen, Bruce",
+    "disambiguation": "",
+    "url": "https://www.setlist.fm/setlists/bruce-springsteen-2bd6dcce.html"
+   },
+   "venue": {
+    "id": "2bd77066",
+    "name": "Barclays Center",
+    "city": {
+     "id": "5110302",
+     "name": "Brooklyn",
+     "state": "New York",
+     "stateCode": "NY",
+     "coords": {
+      "lat": 40.65,
+      "long": -73.95
+     },
+     "country": {
+      "code": "US",
+      "name": "United States"
+     }
+    },
+    "url": "https://www.setlist.fm/venue/barclays-center-brooklyn-ny-usa-2bd77066.html"
+   },
+   "tour": {
+    "name": "Land of Hope & Dreams American Tour"
+   },
+   "sets": {
+    "set": [
+     {
+      "song": [
+       {
+        "name": "War",
+        "cover": {
+         "mbid": "d8df96ae-8fcf-4997-b3e6-e5d1aaf0f69e",
+         "name": "The Temptations",
+         "sortName": "Temptations, The",
+         "disambiguation": "Motown soul vocal group",
+         "url": "https://www.setlist.fm/setlists/the-temptations-13d6b941.html"
+        },
+        "with": {
+         "mbid": "42a636a0-dbe4-4d0c-abe2-1590fad9531b",
+         "name": "Tom Morello",
+         "sortName": "Morello, Tom",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/tom-morello-13d689dd.html"
+        }
+       },
+       {
+        "name": "Born in the U.S.A.",
+        "with": {
+         "mbid": "42a636a0-dbe4-4d0c-abe2-1590fad9531b",
+         "name": "Tom Morello",
+         "sortName": "Morello, Tom",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/tom-morello-13d689dd.html"
+        }
+       },
+       {
+        "name": "Death to My Hometown",
+        "with": {
+         "mbid": "42a636a0-dbe4-4d0c-abe2-1590fad9531b",
+         "name": "Tom Morello",
+         "sortName": "Morello, Tom",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/tom-morello-13d689dd.html"
+        }
+       },
+       {
+        "name": "Clampdown",
+        "cover": {
+         "mbid": "8f92558c-2baa-4758-8c38-615519e9deda",
+         "name": "The Clash",
+         "sortName": "Clash, The",
+         "disambiguation": "70s–80s British punk rock band",
+         "url": "https://www.setlist.fm/setlists/the-clash-bd6a53e.html"
+        },
+        "with": {
+         "mbid": "42a636a0-dbe4-4d0c-abe2-1590fad9531b",
+         "name": "Tom Morello",
+         "sortName": "Morello, Tom",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/tom-morello-13d689dd.html"
+        }
+       },
+       {
+        "name": "No Surrender"
+       },
+       {
+        "name": "Darkness on the Edge of Town"
+       },
+       {
+        "name": "Streets of Minneapolis"
+       },
+       {
+        "name": "The Promised Land"
+       },
+       {
+        "name": "Two Hearts",
+        "info": "with “It Takes Two” outro"
+       },
+       {
+        "name": "Hungry Heart"
+       },
+       {
+        "name": "Youngstown"
+       },
+       {
+        "name": "Murder Incorporated"
+       },
+       {
+        "name": "American Skin (41 Shots)",
+        "with": {
+         "mbid": "42a636a0-dbe4-4d0c-abe2-1590fad9531b",
+         "name": "Tom Morello",
+         "sortName": "Morello, Tom",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/tom-morello-13d689dd.html"
+        }
+       },
+       {
+        "name": "Long Walk Home",
+        "with": {
+         "mbid": "42a636a0-dbe4-4d0c-abe2-1590fad9531b",
+         "name": "Tom Morello",
+         "sortName": "Morello, Tom",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/tom-morello-13d689dd.html"
+        }
+       },
+       {
+        "name": "House of a Thousand Guitars",
+        "info": "Acoustic"
+       },
+       {
+        "name": "My City of Ruins"
+       },
+       {
+        "name": "Because the Night",
+        "cover": {
+         "mbid": "26638df8-ef34-40d1-8d93-616836b72878",
+         "name": "Patti Smith Group",
+         "sortName": "Smith, Patti, Group",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/patti-smith-group-53d657bd.html"
+        }
+       },
+       {
+        "name": "Wrecking Ball"
+       },
+       {
+        "name": "The Rising"
+       },
+       {
+        "name": "The Ghost of Tom Joad",
+        "with": {
+         "mbid": "42a636a0-dbe4-4d0c-abe2-1590fad9531b",
+         "name": "Tom Morello",
+         "sortName": "Morello, Tom",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/tom-morello-13d689dd.html"
+        }
+       },
+       {
+        "name": "Badlands",
+        "with": {
+         "mbid": "42a636a0-dbe4-4d0c-abe2-1590fad9531b",
+         "name": "Tom Morello",
+         "sortName": "Morello, Tom",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/tom-morello-13d689dd.html"
+        }
+       },
+       {
+        "name": "Land of Hope and Dreams",
+        "info": "with “People Get Ready” outro",
+        "with": {
+         "mbid": "42a636a0-dbe4-4d0c-abe2-1590fad9531b",
+         "name": "Tom Morello",
+         "sortName": "Morello, Tom",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/tom-morello-13d689dd.html"
+        }
+       }
+      ]
+     },
+     {
+      "encore": 1,
+      "song": [
+       {
+        "name": "American Land",
+        "with": {
+         "mbid": "42a636a0-dbe4-4d0c-abe2-1590fad9531b",
+         "name": "Tom Morello",
+         "sortName": "Morello, Tom",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/tom-morello-13d689dd.html"
+        }
+       },
+       {
+        "name": "Born to Run"
+       },
+       {
+        "name": "Dancing in the Dark"
+       },
+       {
+        "name": "Tenth Avenue Freeze-Out",
+        "with": {
+         "mbid": "42a636a0-dbe4-4d0c-abe2-1590fad9531b",
+         "name": "Tom Morello",
+         "sortName": "Morello, Tom",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/tom-morello-13d689dd.html"
+        }
+       },
+       {
+        "name": "Chimes of Freedom",
+        "cover": {
+         "mbid": "72c536dc-7137-4477-a521-567eeb840fa8",
+         "name": "Bob Dylan",
+         "sortName": "Dylan, Bob",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/bob-dylan-1bd6adb8.html"
+        },
+        "with": {
+         "mbid": "42a636a0-dbe4-4d0c-abe2-1590fad9531b",
+         "name": "Tom Morello",
+         "sortName": "Morello, Tom",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/tom-morello-13d689dd.html"
+        }
+       },
+       {
+        "name": "This Land Is Your Land",
+        "tape": true,
+        "cover": {
+         "mbid": "cbd827e1-4e38-427e-a436-642683433732",
+         "name": "Woody Guthrie",
+         "sortName": "Guthrie, Woody",
+         "disambiguation": "American singer-songwriter",
+         "url": "https://www.setlist.fm/setlists/woody-guthrie-7bd6264c.html"
+        }
+       }
+      ]
+     }
+    ]
+   },
+   "url": "https://www.setlist.fm/setlist/bruce-springsteen/2026/barclays-center-brooklyn-ny-3b4b60d8.html"
+  },
+  {
+   "id": "334b6039",
+   "versionId": "g331cd451",
+   "eventDate": "11-05-2026",
+   "lastUpdated": "2026-05-13T18:02:44.077+0000",
+   "artist": {
+    "mbid": "70248960-cb53-4ea4-943a-edb18f7d336f",
+    "name": "Bruce Springsteen",
+    "sortName": "Springsteen, Bruce",
+    "disambiguation": "",
+    "url": "https://www.setlist.fm/setlists/bruce-springsteen-2bd6dcce.html"
+   },
+   "venue": {
+    "id": "23d63cc7",
+    "name": "Madison Square Garden",
+    "city": {
+     "id": "5128581",
+     "name": "New York",
+     "state": "New York",
+     "stateCode": "NY",
+     "coords": {
+      "lat": 40.7142691,
+      "long": -74.0059729
+     },
+     "country": {
+      "code": "US",
+      "name": "United States"
+     }
+    },
+    "url": "https://www.setlist.fm/venue/madison-square-garden-new-york-ny-usa-23d63cc7.html"
+   },
+   "tour": {
+    "name": "Land of Hope & Dreams American Tour"
+   },
+   "sets": {
+    "set": [
+     {
+      "song": [
+       {
+        "name": "War",
+        "cover": {
+         "mbid": "d8df96ae-8fcf-4997-b3e6-e5d1aaf0f69e",
+         "name": "The Temptations",
+         "sortName": "Temptations, The",
+         "disambiguation": "Motown soul vocal group",
+         "url": "https://www.setlist.fm/setlists/the-temptations-13d6b941.html"
+        },
+        "with": {
+         "mbid": "42a636a0-dbe4-4d0c-abe2-1590fad9531b",
+         "name": "Tom Morello",
+         "sortName": "Morello, Tom",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/tom-morello-13d689dd.html"
+        }
+       },
+       {
+        "name": "Born in the U.S.A.",
+        "with": {
+         "mbid": "42a636a0-dbe4-4d0c-abe2-1590fad9531b",
+         "name": "Tom Morello",
+         "sortName": "Morello, Tom",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/tom-morello-13d689dd.html"
+        }
+       },
+       {
+        "name": "Death to My Hometown",
+        "with": {
+         "mbid": "42a636a0-dbe4-4d0c-abe2-1590fad9531b",
+         "name": "Tom Morello",
+         "sortName": "Morello, Tom",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/tom-morello-13d689dd.html"
+        }
+       },
+       {
+        "name": "Clampdown",
+        "cover": {
+         "mbid": "8f92558c-2baa-4758-8c38-615519e9deda",
+         "name": "The Clash",
+         "sortName": "Clash, The",
+         "disambiguation": "70s–80s British punk rock band",
+         "url": "https://www.setlist.fm/setlists/the-clash-bd6a53e.html"
+        },
+        "with": {
+         "mbid": "42a636a0-dbe4-4d0c-abe2-1590fad9531b",
+         "name": "Tom Morello",
+         "sortName": "Morello, Tom",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/tom-morello-13d689dd.html"
+        }
+       },
+       {
+        "name": "No Surrender"
+       },
+       {
+        "name": "Darkness on the Edge of Town"
+       },
+       {
+        "name": "Streets of Minneapolis"
+       },
+       {
+        "name": "The Promised Land"
+       },
+       {
+        "name": "Two Hearts",
+        "info": "With “It Takes Two” outro"
+       },
+       {
+        "name": "Hungry Heart"
+       },
+       {
+        "name": "Youngstown"
+       },
+       {
+        "name": "Murder Incorporated"
+       },
+       {
+        "name": "American Skin (41 Shots)",
+        "with": {
+         "mbid": "42a636a0-dbe4-4d0c-abe2-1590fad9531b",
+         "name": "Tom Morello",
+         "sortName": "Morello, Tom",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/tom-morello-13d689dd.html"
+        }
+       },
+       {
+        "name": "Long Walk Home",
+        "with": {
+         "mbid": "42a636a0-dbe4-4d0c-abe2-1590fad9531b",
+         "name": "Tom Morello",
+         "sortName": "Morello, Tom",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/tom-morello-13d689dd.html"
+        }
+       },
+       {
+        "name": "House of a Thousand Guitars",
+        "info": "Acoustic"
+       },
+       {
+        "name": "My City of Ruins"
+       },
+       {
+        "name": "Because the Night",
+        "cover": {
+         "mbid": "26638df8-ef34-40d1-8d93-616836b72878",
+         "name": "Patti Smith Group",
+         "sortName": "Smith, Patti, Group",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/patti-smith-group-53d657bd.html"
+        }
+       },
+       {
+        "name": "Wrecking Ball"
+       },
+       {
+        "name": "The Rising"
+       },
+       {
+        "name": "The Ghost of Tom Joad",
+        "with": {
+         "mbid": "42a636a0-dbe4-4d0c-abe2-1590fad9531b",
+         "name": "Tom Morello",
+         "sortName": "Morello, Tom",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/tom-morello-13d689dd.html"
+        }
+       },
+       {
+        "name": "Badlands",
+        "with": {
+         "mbid": "42a636a0-dbe4-4d0c-abe2-1590fad9531b",
+         "name": "Tom Morello",
+         "sortName": "Morello, Tom",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/tom-morello-13d689dd.html"
+        }
+       },
+       {
+        "name": "Land of Hope and Dreams",
+        "info": "with “People Get Ready” outro",
+        "with": {
+         "mbid": "42a636a0-dbe4-4d0c-abe2-1590fad9531b",
+         "name": "Tom Morello",
+         "sortName": "Morello, Tom",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/tom-morello-13d689dd.html"
+        }
+       }
+      ]
+     },
+     {
+      "encore": 1,
+      "song": [
+       {
+        "name": "American Land",
+        "with": {
+         "mbid": "42a636a0-dbe4-4d0c-abe2-1590fad9531b",
+         "name": "Tom Morello",
+         "sortName": "Morello, Tom",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/tom-morello-13d689dd.html"
+        }
+       },
+       {
+        "name": "Born to Run"
+       },
+       {
+        "name": "Dancing in the Dark"
+       },
+       {
+        "name": "Tenth Avenue Freeze-Out",
+        "with": {
+         "mbid": "42a636a0-dbe4-4d0c-abe2-1590fad9531b",
+         "name": "Tom Morello",
+         "sortName": "Morello, Tom",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/tom-morello-13d689dd.html"
+        }
+       },
+       {
+        "name": "Chimes of Freedom",
+        "cover": {
+         "mbid": "72c536dc-7137-4477-a521-567eeb840fa8",
+         "name": "Bob Dylan",
+         "sortName": "Dylan, Bob",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/bob-dylan-1bd6adb8.html"
+        },
+        "with": {
+         "mbid": "42a636a0-dbe4-4d0c-abe2-1590fad9531b",
+         "name": "Tom Morello",
+         "sortName": "Morello, Tom",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/tom-morello-13d689dd.html"
+        }
+       },
+       {
+        "name": "This Land Is Your Land",
+        "tape": true,
+        "cover": {
+         "mbid": "cbd827e1-4e38-427e-a436-642683433732",
+         "name": "Woody Guthrie",
+         "sortName": "Guthrie, Woody",
+         "disambiguation": "American singer-songwriter",
+         "url": "https://www.setlist.fm/setlists/woody-guthrie-7bd6264c.html"
+        }
+       }
+      ]
+     }
+    ]
+   },
+   "url": "https://www.setlist.fm/setlist/bruce-springsteen/2026/madison-square-garden-new-york-ny-334b6039.html"
+  },
+  {
+   "id": "234b60db",
+   "versionId": "g431fd31f",
+   "eventDate": "05-05-2026",
+   "lastUpdated": "2026-05-06T12:25:43.353+0000",
+   "artist": {
+    "mbid": "70248960-cb53-4ea4-943a-edb18f7d336f",
+    "name": "Bruce Springsteen",
+    "sortName": "Springsteen, Bruce",
+    "disambiguation": "",
+    "url": "https://www.setlist.fm/setlists/bruce-springsteen-2bd6dcce.html"
+   },
+   "venue": {
+    "id": "7bd0da88",
+    "name": "UBS Arena",
+    "city": {
+     "id": "5116508",
+     "name": "Elmont",
+     "state": "New York",
+     "stateCode": "NY",
+     "coords": {
+      "lat": 40.700936,
+      "long": -73.712909
+     },
+     "country": {
+      "code": "US",
+      "name": "United States"
+     }
+    },
+    "url": "https://www.setlist.fm/venue/ubs-arena-elmont-ny-usa-7bd0da88.html"
+   },
+   "tour": {
+    "name": "Land of Hope & Dreams American Tour"
+   },
+   "sets": {
+    "set": [
+     {
+      "song": [
+       {
+        "name": "War",
+        "cover": {
+         "mbid": "d8df96ae-8fcf-4997-b3e6-e5d1aaf0f69e",
+         "name": "The Temptations",
+         "sortName": "Temptations, The",
+         "disambiguation": "Motown soul vocal group",
+         "url": "https://www.setlist.fm/setlists/the-temptations-13d6b941.html"
+        },
+        "with": {
+         "mbid": "42a636a0-dbe4-4d0c-abe2-1590fad9531b",
+         "name": "Tom Morello",
+         "sortName": "Morello, Tom",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/tom-morello-13d689dd.html"
+        }
+       },
+       {
+        "name": "Born in the U.S.A.",
+        "with": {
+         "mbid": "42a636a0-dbe4-4d0c-abe2-1590fad9531b",
+         "name": "Tom Morello",
+         "sortName": "Morello, Tom",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/tom-morello-13d689dd.html"
+        }
+       },
+       {
+        "name": "Death to My Hometown",
+        "with": {
+         "mbid": "42a636a0-dbe4-4d0c-abe2-1590fad9531b",
+         "name": "Tom Morello",
+         "sortName": "Morello, Tom",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/tom-morello-13d689dd.html"
+        }
+       },
+       {
+        "name": "Clampdown",
+        "cover": {
+         "mbid": "8f92558c-2baa-4758-8c38-615519e9deda",
+         "name": "The Clash",
+         "sortName": "Clash, The",
+         "disambiguation": "70s–80s British punk rock band",
+         "url": "https://www.setlist.fm/setlists/the-clash-bd6a53e.html"
+        },
+        "with": {
+         "mbid": "42a636a0-dbe4-4d0c-abe2-1590fad9531b",
+         "name": "Tom Morello",
+         "sortName": "Morello, Tom",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/tom-morello-13d689dd.html"
+        }
+       },
+       {
+        "name": "No Surrender"
+       },
+       {
+        "name": "Darkness on the Edge of Town"
+       },
+       {
+        "name": "Streets of Minneapolis"
+       },
+       {
+        "name": "The Promised Land"
+       },
+       {
+        "name": "Two Hearts"
+       },
+       {
+        "name": "Hungry Heart"
+       },
+       {
+        "name": "Youngstown"
+       },
+       {
+        "name": "Murder Incorporated"
+       },
+       {
+        "name": "American Skin (41 Shots)",
+        "with": {
+         "mbid": "42a636a0-dbe4-4d0c-abe2-1590fad9531b",
+         "name": "Tom Morello",
+         "sortName": "Morello, Tom",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/tom-morello-13d689dd.html"
+        }
+       },
+       {
+        "name": "Long Walk Home",
+        "with": {
+         "mbid": "42a636a0-dbe4-4d0c-abe2-1590fad9531b",
+         "name": "Tom Morello",
+         "sortName": "Morello, Tom",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/tom-morello-13d689dd.html"
+        }
+       },
+       {
+        "name": "House of a Thousand Guitars",
+        "info": "Acoustic, dedicated to fan in crowd who kept shouting “OBAMA”"
+       },
+       {
+        "name": "My City of Ruins"
+       },
+       {
+        "name": "Because the Night",
+        "cover": {
+         "mbid": "26638df8-ef34-40d1-8d93-616836b72878",
+         "name": "Patti Smith Group",
+         "sortName": "Smith, Patti, Group",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/patti-smith-group-53d657bd.html"
+        }
+       },
+       {
+        "name": "Wrecking Ball",
+        "info": "Bruce joked about LI and Jersey being similar mid intro"
+       },
+       {
+        "name": "The Rising"
+       },
+       {
+        "name": "The Ghost of Tom Joad",
+        "with": {
+         "mbid": "42a636a0-dbe4-4d0c-abe2-1590fad9531b",
+         "name": "Tom Morello",
+         "sortName": "Morello, Tom",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/tom-morello-13d689dd.html"
+        }
+       },
+       {
+        "name": "Badlands",
+        "with": {
+         "mbid": "42a636a0-dbe4-4d0c-abe2-1590fad9531b",
+         "name": "Tom Morello",
+         "sortName": "Morello, Tom",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/tom-morello-13d689dd.html"
+        }
+       },
+       {
+        "name": "Land of Hope and Dreams",
+        "with": {
+         "mbid": "42a636a0-dbe4-4d0c-abe2-1590fad9531b",
+         "name": "Tom Morello",
+         "sortName": "Morello, Tom",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/tom-morello-13d689dd.html"
+        }
+       }
+      ]
+     },
+     {
+      "encore": 1,
+      "song": [
+       {
+        "name": "American Land",
+        "with": {
+         "mbid": "42a636a0-dbe4-4d0c-abe2-1590fad9531b",
+         "name": "Tom Morello",
+         "sortName": "Morello, Tom",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/tom-morello-13d689dd.html"
+        }
+       },
+       {
+        "name": "Born to Run"
+       },
+       {
+        "name": "Dancing in the Dark"
+       },
+       {
+        "name": "Tenth Avenue Freeze-Out",
+        "with": {
+         "mbid": "42a636a0-dbe4-4d0c-abe2-1590fad9531b",
+         "name": "Tom Morello",
+         "sortName": "Morello, Tom",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/tom-morello-13d689dd.html"
+        }
+       },
+       {
+        "name": "Chimes of Freedom",
+        "cover": {
+         "mbid": "72c536dc-7137-4477-a521-567eeb840fa8",
+         "name": "Bob Dylan",
+         "sortName": "Dylan, Bob",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/bob-dylan-1bd6adb8.html"
+        },
+        "with": {
+         "mbid": "42a636a0-dbe4-4d0c-abe2-1590fad9531b",
+         "name": "Tom Morello",
+         "sortName": "Morello, Tom",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/tom-morello-13d689dd.html"
+        }
+       },
+       {
+        "name": "This Land Is Your Land",
+        "tape": true,
+        "cover": {
+         "mbid": "cbd827e1-4e38-427e-a436-642683433732",
+         "name": "Woody Guthrie",
+         "sortName": "Guthrie, Woody",
+         "disambiguation": "American singer-songwriter",
+         "url": "https://www.setlist.fm/setlists/woody-guthrie-7bd6264c.html"
+        }
+       }
+      ]
+     }
+    ]
+   },
+   "url": "https://www.setlist.fm/setlist/bruce-springsteen/2026/ubs-arena-elmont-ny-234b60db.html"
+  },
+  {
+   "id": "334b60e5",
+   "versionId": "g7b1fba30",
+   "eventDate": "02-05-2026",
+   "lastUpdated": "2026-05-03T04:34:14.134+0000",
+   "artist": {
+    "mbid": "70248960-cb53-4ea4-943a-edb18f7d336f",
+    "name": "Bruce Springsteen",
+    "sortName": "Springsteen, Bruce",
+    "disambiguation": "",
+    "url": "https://www.setlist.fm/setlists/bruce-springsteen-2bd6dcce.html"
+   },
+   "venue": {
+    "id": "73d20e81",
+    "name": "State Farm Arena",
+    "city": {
+     "id": "4180439",
+     "name": "Atlanta",
+     "state": "Georgia",
+     "stateCode": "GA",
+     "coords": {
+      "lat": 33.7489954,
+      "long": -84.3879824
+     },
+     "country": {
+      "code": "US",
+      "name": "United States"
+     }
+    },
+    "url": "https://www.setlist.fm/venue/state-farm-arena-atlanta-ga-usa-73d20e81.html"
+   },
+   "tour": {
+    "name": "Land of Hope & Dreams American Tour"
+   },
+   "sets": {
+    "set": [
+     {
+      "song": [
+       {
+        "name": "War",
+        "cover": {
+         "mbid": "d8df96ae-8fcf-4997-b3e6-e5d1aaf0f69e",
+         "name": "The Temptations",
+         "sortName": "Temptations, The",
+         "disambiguation": "Motown soul vocal group",
+         "url": "https://www.setlist.fm/setlists/the-temptations-13d6b941.html"
+        },
+        "with": {
+         "mbid": "42a636a0-dbe4-4d0c-abe2-1590fad9531b",
+         "name": "Tom Morello",
+         "sortName": "Morello, Tom",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/tom-morello-13d689dd.html"
+        }
+       },
+       {
+        "name": "Born in the U.S.A.",
+        "with": {
+         "mbid": "42a636a0-dbe4-4d0c-abe2-1590fad9531b",
+         "name": "Tom Morello",
+         "sortName": "Morello, Tom",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/tom-morello-13d689dd.html"
+        }
+       },
+       {
+        "name": "Death to My Hometown",
+        "with": {
+         "mbid": "42a636a0-dbe4-4d0c-abe2-1590fad9531b",
+         "name": "Tom Morello",
+         "sortName": "Morello, Tom",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/tom-morello-13d689dd.html"
+        }
+       },
+       {
+        "name": "Clampdown",
+        "cover": {
+         "mbid": "8f92558c-2baa-4758-8c38-615519e9deda",
+         "name": "The Clash",
+         "sortName": "Clash, The",
+         "disambiguation": "70s–80s British punk rock band",
+         "url": "https://www.setlist.fm/setlists/the-clash-bd6a53e.html"
+        },
+        "with": {
+         "mbid": "42a636a0-dbe4-4d0c-abe2-1590fad9531b",
+         "name": "Tom Morello",
+         "sortName": "Morello, Tom",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/tom-morello-13d689dd.html"
+        }
+       },
+       {
+        "name": "No Surrender"
+       },
+       {
+        "name": "Darkness on the Edge of Town"
+       },
+       {
+        "name": "Streets of Minneapolis"
+       },
+       {
+        "name": "The Promised Land"
+       },
+       {
+        "name": "Two Hearts",
+        "info": "with outro snippet of Marvin Gaye & Kim Weston's “It Takes Two”"
+       },
+       {
+        "name": "Hungry Heart"
+       },
+       {
+        "name": "Youngstown"
+       },
+       {
+        "name": "Murder Incorporated"
+       },
+       {
+        "name": "American Skin (41 Shots)",
+        "with": {
+         "mbid": "42a636a0-dbe4-4d0c-abe2-1590fad9531b",
+         "name": "Tom Morello",
+         "sortName": "Morello, Tom",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/tom-morello-13d689dd.html"
+        }
+       },
+       {
+        "name": "Long Walk Home",
+        "info": "introduced as “a prayer for our country”",
+        "with": {
+         "mbid": "42a636a0-dbe4-4d0c-abe2-1590fad9531b",
+         "name": "Tom Morello",
+         "sortName": "Morello, Tom",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/tom-morello-13d689dd.html"
+        }
+       },
+       {
+        "name": "House of a Thousand Guitars",
+        "info": "Acoustic solo"
+       },
+       {
+        "name": "My City of Ruins"
+       },
+       {
+        "name": "Because the Night",
+        "cover": {
+         "mbid": "26638df8-ef34-40d1-8d93-616836b72878",
+         "name": "Patti Smith Group",
+         "sortName": "Smith, Patti, Group",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/patti-smith-group-53d657bd.html"
+        }
+       },
+       {
+        "name": "Wrecking Ball"
+       },
+       {
+        "name": "The Rising"
+       },
+       {
+        "name": "The Ghost of Tom Joad",
+        "with": {
+         "mbid": "42a636a0-dbe4-4d0c-abe2-1590fad9531b",
+         "name": "Tom Morello",
+         "sortName": "Morello, Tom",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/tom-morello-13d689dd.html"
+        }
+       },
+       {
+        "name": "Badlands",
+        "with": {
+         "mbid": "42a636a0-dbe4-4d0c-abe2-1590fad9531b",
+         "name": "Tom Morello",
+         "sortName": "Morello, Tom",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/tom-morello-13d689dd.html"
+        }
+       },
+       {
+        "name": "Land of Hope and Dreams",
+        "info": "with outro snippet of The Impressions' “People Get Ready”",
+        "with": {
+         "mbid": "42a636a0-dbe4-4d0c-abe2-1590fad9531b",
+         "name": "Tom Morello",
+         "sortName": "Morello, Tom",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/tom-morello-13d689dd.html"
+        }
+       }
+      ]
+     },
+     {
+      "encore": 1,
+      "song": [
+       {
+        "name": "American Land",
+        "with": {
+         "mbid": "42a636a0-dbe4-4d0c-abe2-1590fad9531b",
+         "name": "Tom Morello",
+         "sortName": "Morello, Tom",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/tom-morello-13d689dd.html"
+        }
+       },
+       {
+        "name": "Born to Run"
+       },
+       {
+        "name": "Dancing in the Dark",
+        "info": "followed by band introductions"
+       },
+       {
+        "name": "Tenth Avenue Freeze-Out",
+        "with": {
+         "mbid": "42a636a0-dbe4-4d0c-abe2-1590fad9531b",
+         "name": "Tom Morello",
+         "sortName": "Morello, Tom",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/tom-morello-13d689dd.html"
+        }
+       },
+       {
+        "name": "Chimes of Freedom",
+        "cover": {
+         "mbid": "72c536dc-7137-4477-a521-567eeb840fa8",
+         "name": "Bob Dylan",
+         "sortName": "Dylan, Bob",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/bob-dylan-1bd6adb8.html"
+        },
+        "with": {
+         "mbid": "42a636a0-dbe4-4d0c-abe2-1590fad9531b",
+         "name": "Tom Morello",
+         "sortName": "Morello, Tom",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/tom-morello-13d689dd.html"
+        }
+       },
+       {
+        "name": "This Land Is Your Land",
+        "tape": true,
+        "cover": {
+         "mbid": "cbd827e1-4e38-427e-a436-642683433732",
+         "name": "Woody Guthrie",
+         "sortName": "Guthrie, Woody",
+         "disambiguation": "American singer-songwriter",
+         "url": "https://www.setlist.fm/setlists/woody-guthrie-7bd6264c.html"
+        }
+       }
+      ]
+     }
+    ]
+   },
+   "url": "https://www.setlist.fm/setlist/bruce-springsteen/2026/state-farm-arena-atlanta-ga-334b60e5.html"
+  },
+  {
+   "id": "3b4b60e0",
+   "versionId": "g5b1e2304",
+   "eventDate": "29-04-2026",
+   "lastUpdated": "2026-04-30T13:52:43.836+0000",
+   "artist": {
+    "mbid": "70248960-cb53-4ea4-943a-edb18f7d336f",
+    "name": "Bruce Springsteen",
+    "sortName": "Springsteen, Bruce",
+    "disambiguation": "",
+    "url": "https://www.setlist.fm/setlists/bruce-springsteen-2bd6dcce.html"
+   },
+   "venue": {
+    "id": "63d0f2d3",
+    "name": "United Center",
+    "city": {
+     "id": "4887398",
+     "name": "Chicago",
+     "state": "Illinois",
+     "stateCode": "IL",
+     "coords": {
+      "lat": 41.850033,
+      "long": -87.6500523
+     },
+     "country": {
+      "code": "US",
+      "name": "United States"
+     }
+    },
+    "url": "https://www.setlist.fm/venue/united-center-chicago-il-usa-63d0f2d3.html"
+   },
+   "tour": {
+    "name": "Land of Hope & Dreams American Tour"
+   },
+   "sets": {
+    "set": [
+     {
+      "song": [
+       {
+        "name": "War",
+        "cover": {
+         "mbid": "d8df96ae-8fcf-4997-b3e6-e5d1aaf0f69e",
+         "name": "The Temptations",
+         "sortName": "Temptations, The",
+         "disambiguation": "Motown soul vocal group",
+         "url": "https://www.setlist.fm/setlists/the-temptations-13d6b941.html"
+        },
+        "with": {
+         "mbid": "42a636a0-dbe4-4d0c-abe2-1590fad9531b",
+         "name": "Tom Morello",
+         "sortName": "Morello, Tom",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/tom-morello-13d689dd.html"
+        }
+       },
+       {
+        "name": "Born in the U.S.A.",
+        "with": {
+         "mbid": "42a636a0-dbe4-4d0c-abe2-1590fad9531b",
+         "name": "Tom Morello",
+         "sortName": "Morello, Tom",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/tom-morello-13d689dd.html"
+        }
+       },
+       {
+        "name": "Death to My Hometown",
+        "with": {
+         "mbid": "42a636a0-dbe4-4d0c-abe2-1590fad9531b",
+         "name": "Tom Morello",
+         "sortName": "Morello, Tom",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/tom-morello-13d689dd.html"
+        }
+       },
+       {
+        "name": "Clampdown",
+        "cover": {
+         "mbid": "8f92558c-2baa-4758-8c38-615519e9deda",
+         "name": "The Clash",
+         "sortName": "Clash, The",
+         "disambiguation": "70s–80s British punk rock band",
+         "url": "https://www.setlist.fm/setlists/the-clash-bd6a53e.html"
+        },
+        "with": {
+         "mbid": "42a636a0-dbe4-4d0c-abe2-1590fad9531b",
+         "name": "Tom Morello",
+         "sortName": "Morello, Tom",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/tom-morello-13d689dd.html"
+        }
+       },
+       {
+        "name": "No Surrender"
+       },
+       {
+        "name": "Darkness on the Edge of Town"
+       },
+       {
+        "name": "Streets of Minneapolis"
+       },
+       {
+        "name": "The Promised Land"
+       },
+       {
+        "name": "Two Hearts",
+        "info": "with outro snippet of Marvin Gaye & Kim Weston's “It Takes Two”"
+       },
+       {
+        "name": "Hungry Heart"
+       },
+       {
+        "name": "Youngstown"
+       },
+       {
+        "name": "Murder Incorporated"
+       },
+       {
+        "name": "American Skin (41 Shots)",
+        "with": {
+         "mbid": "42a636a0-dbe4-4d0c-abe2-1590fad9531b",
+         "name": "Tom Morello",
+         "sortName": "Morello, Tom",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/tom-morello-13d689dd.html"
+        }
+       },
+       {
+        "name": "Long Walk Home",
+        "info": "introduced as “a prayer for our country”",
+        "with": {
+         "mbid": "42a636a0-dbe4-4d0c-abe2-1590fad9531b",
+         "name": "Tom Morello",
+         "sortName": "Morello, Tom",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/tom-morello-13d689dd.html"
+        }
+       },
+       {
+        "name": "House of a Thousand Guitars",
+        "info": "Acoustic solo"
+       },
+       {
+        "name": "My City of Ruins"
+       },
+       {
+        "name": "Because the Night",
+        "cover": {
+         "mbid": "26638df8-ef34-40d1-8d93-616836b72878",
+         "name": "Patti Smith Group",
+         "sortName": "Smith, Patti, Group",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/patti-smith-group-53d657bd.html"
+        }
+       },
+       {
+        "name": "Wrecking Ball"
+       },
+       {
+        "name": "The Rising"
+       },
+       {
+        "name": "The Ghost of Tom Joad",
+        "with": {
+         "mbid": "42a636a0-dbe4-4d0c-abe2-1590fad9531b",
+         "name": "Tom Morello",
+         "sortName": "Morello, Tom",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/tom-morello-13d689dd.html"
+        }
+       },
+       {
+        "name": "Badlands",
+        "with": {
+         "mbid": "42a636a0-dbe4-4d0c-abe2-1590fad9531b",
+         "name": "Tom Morello",
+         "sortName": "Morello, Tom",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/tom-morello-13d689dd.html"
+        }
+       },
+       {
+        "name": "Land of Hope and Dreams",
+        "info": "with outro snippet of The Impressions' “People Get Ready”",
+        "with": {
+         "mbid": "42a636a0-dbe4-4d0c-abe2-1590fad9531b",
+         "name": "Tom Morello",
+         "sortName": "Morello, Tom",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/tom-morello-13d689dd.html"
+        }
+       }
+      ]
+     },
+     {
+      "encore": 1,
+      "song": [
+       {
+        "name": "American Land",
+        "with": {
+         "mbid": "42a636a0-dbe4-4d0c-abe2-1590fad9531b",
+         "name": "Tom Morello",
+         "sortName": "Morello, Tom",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/tom-morello-13d689dd.html"
+        }
+       },
+       {
+        "name": "Born to Run"
+       },
+       {
+        "name": "Dancing in the Dark",
+        "info": "followed by band introductions"
+       },
+       {
+        "name": "Tenth Avenue Freeze-Out",
+        "with": {
+         "mbid": "42a636a0-dbe4-4d0c-abe2-1590fad9531b",
+         "name": "Tom Morello",
+         "sortName": "Morello, Tom",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/tom-morello-13d689dd.html"
+        }
+       },
+       {
+        "name": "Chimes of Freedom",
+        "cover": {
+         "mbid": "72c536dc-7137-4477-a521-567eeb840fa8",
+         "name": "Bob Dylan",
+         "sortName": "Dylan, Bob",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/bob-dylan-1bd6adb8.html"
+        },
+        "with": {
+         "mbid": "42a636a0-dbe4-4d0c-abe2-1590fad9531b",
+         "name": "Tom Morello",
+         "sortName": "Morello, Tom",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/tom-morello-13d689dd.html"
+        }
+       },
+       {
+        "name": "This Land Is Your Land",
+        "tape": true,
+        "cover": {
+         "mbid": "cbd827e1-4e38-427e-a436-642683433732",
+         "name": "Woody Guthrie",
+         "sortName": "Guthrie, Woody",
+         "disambiguation": "American singer-songwriter",
+         "url": "https://www.setlist.fm/setlists/woody-guthrie-7bd6264c.html"
+        }
+       }
+      ]
+     }
+    ]
+   },
+   "url": "https://www.setlist.fm/setlist/bruce-springsteen/2026/united-center-chicago-il-3b4b60e0.html"
+  }
+ ]
+}
