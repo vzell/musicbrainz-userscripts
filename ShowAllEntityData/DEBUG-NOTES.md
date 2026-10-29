@@ -27105,3 +27105,35 @@ Concert note, numbering 1–3 then 1–26, no loose notes, 6 "also in" marks, ch
 `scripts/mutations/setlist-parts.json` 5/5 (among them: the note rule kept off
 "# Scheduled: …", caught by the Stone Pony spec's row count). The 23 popup and
 Discogs specs (`_dpListTableHtml()` is shared): 421/421. **Confirmed live** by vzell.
+
+## 2026-10-29 — A Brucebase link in a MusicBrainz window opens in the window (WIP.5)
+
+Env: 2026-10-29T01:49+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) · Playwright 1.62.1 (bundled Chromium), no Tampermonkey (GM stubs)
+
+**Report (vzell):** on event be07d2a9's window the "Review" link to
+http://brucebase.wikidot.com/2002#100802 opened a new tab; it should open in
+the same window. **Cause:** two separate lists decide what a window link does.
+`_dpWinWhat()` (marking, hover, foot line) and `_dpDrill()` (the click) both
+knew MusicBrainz entities, the foreign host's own pages and, on discogs.com,
+musicbrainz.org links; another site's link drilled only inside a window that
+was itself a reader's with `onAreaClick` (the Discogs family). In a
+MusicBrainz window a Brucebase link was `out`. The readers existed already:
+`bbdate` (`/<year>#<ddmmyy>`, `_extBbDateLoad()`) and `springsteen`
+(`_extDpLoad()`).
+
+**Change:** `_dpWinExtTarget(a, cur)`, ONE helper both lists call: with
+`sa_pop_ext` on, `_extTarget(a, {inWindow: true})` and its reader in
+`_DP_WIN_EXT_READERS` (`bbdate`, `springsteen`) → a drilled target of the `ext`
+source. First tried in `_dpWinWhat()` alone: the link was marked
+`mb-dp-l-here` and a click still opened a new tab — exactly the drift the
+shared helper prevents (the first mutation re-creates it). A hover in the window
+goes through the `ext` source, so the first-contact rule (`askHost`) holds.
+Every other site's link keeps its new tab (pinned by a setlist.fm link in the
+spec).
+
+**Tests.** `popup-mb.spec.js` "a Brucebase review link opens in the window":
+the Stone Pony capture with its review link pointed at the saved 2025 year page
+(#261025) and a setlist.fm link added; marked here vs out, click → "Brucebase
+show", no popup, Back → the event. `scripts/mutations/win-ext-bb.json` 3/3. The
+44 window-related specs (popup, Discogs, the Springsteen sites, detail pages):
+693/693.

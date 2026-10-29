@@ -24968,7 +24968,9 @@
      * own detail pages with its preview on (`_dpSiteForUrl()`: a Brucebase
      * song, event, venue or person in a section, 2026-10-24); and, on
      * discogs.com, a musicbrainz.org entity link (`_dgMbWinTarget()`,
-     * 2026-10-26). A link to what the window already shows does nothing.
+     * 2026-10-26); and, from any window, a Brucebase show or a Springsteen
+     * site's detail page (`_dpWinExtTarget()`, 2026-10-29). A link to what
+     * the window already shows does nothing.
      * One modifier drills too: Ctrl/⌘-click on a tag link shows the
      * logged-in editor's own tag (`_mbOwnTagTarget()`, Phase 3c).
      *
@@ -25004,6 +25006,14 @@
             e.preventDefault();
             _dpDialog.stack.push(cur);
             _dpShowInDialog(dgMb);
+            return true;
+        }
+        // A Brucebase show or a Springsteen site's detail page (2026-10-29).
+        const extT = _dpWinExtTarget(a, cur);
+        if (extT) {
+            e.preventDefault();
+            _dpDialog.stack.push(cur);
+            _dpShowInDialog(extT);
             return true;
         }
         const src = _popSources().find(x => x.id === 'mb-entity');
@@ -25243,7 +25253,43 @@
         if (siteSrc && a.href !== cur.key) {
             return { kind: 'here', a, t: { src: siteSrc, el: a, drilled: true, key: a.href, url: a.href, table: null } };
         }
+        const extT = _dpWinExtTarget(a, cur);
+        if (extT) return { kind: 'here', a, t: extT };
         return { kind: 'out', a };
+    }
+
+    /**
+     * The link previews' readers whose pages open IN any window rather than
+     * in a new tab (`_dpWinExtTarget()`, 2026-10-29): a Brucebase show on its
+     * year page (`bbdate`, `_extBbDateLoad()`) and a Springsteen site's detail
+     * page (`springsteen`, `_extDpLoad()`: a Brucebase gig, venue or person,
+     * springsteenlyrics.com, jungleland.it, brucespringsteen.it). Every other
+     * reader's link keeps its new tab outside a Discogs-family window.
+     * @type {Set<string>}
+     */
+    const _DP_WIN_EXT_READERS = new Set(['bbdate', 'springsteen']);
+
+    /**
+     * What a click on a link to a Brucebase show or a Springsteen site's
+     * detail page shows in the window, from any window (vzell, 2026-10-29: a
+     * MusicBrainz event's "Review" link to http://brucebase.wikidot.com/2002#100802
+     * opened a new tab): the link previews' own target (`_extTarget()`), so
+     * the page is read and kept as its card reads it, with Back. Only while
+     * previews of other sites are on (`sa_pop_ext`), only the readers of
+     * `_DP_WIN_EXT_READERS`, never what the window already shows. Shared by
+     * the click (`_dpDrill()`) and the marking and hover (`_dpWinWhat()`), so
+     * a link marked "opens here" is one a click opens here.
+     *
+     * @param {HTMLAnchorElement} a
+     * @param {object} cur - What the window shows now.
+     * @returns {?object} The target, `drilled`.
+     */
+    function _dpWinExtTarget(a, cur) {
+        const ext = _popSources().find(x => x.id === 'ext');
+        if (!ext || !ext.enabled()) return null;
+        const r = _extTarget(a, { inWindow: true });
+        if (!r || !_DP_WIN_EXT_READERS.has(r.reader.id) || r.key === cur.key) return null;
+        return Object.assign({ src: ext, el: a, drilled: true }, r);
     }
 
     /**

@@ -2629,6 +2629,10 @@ userscript lists that host, so Tampermonkey does not ask first).
   entity in the same window; the title shows the path, for example *Greetings
   From Asbury Park, N.J. › The Angel*. **← Back**, **Backspace** or **Alt+←**
   return. Ctrl-click (or a middle click) still opens the link in a new tab.
+  A link to a **Brucebase** show or page, or to another Springsteen site's
+  page (springsteenlyrics.com, jungleland.it, brucespringsteen.it), opens
+  in the window too (an event's *Review* link, for example), when
+  *Preview external links on hover* is on.
 - **The path in the title bar** is a way back:
   - **Click a step** and the window shows it again, from memory; the steps
     after it are dropped.

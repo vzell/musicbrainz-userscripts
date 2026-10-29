@@ -1745,6 +1745,60 @@ test.describe('MusicBrainz link previews: event, place, series (WIP.4)', () => {
         await expect(box.locator('tbody tr').first().locator('td').nth(1)).toContainText('Badlands');
     });
 
+    // vzell, 2026-10-29: on event be07d2a9's window the "Review" link to
+    // http://brucebase.wikidot.com/2002#100802 opened a new tab; it should
+    // open in the same window. The Stone Pony capture with its review link
+    // pointed at a show of the saved 2025 year page (ext-bb-year-2025.html,
+    // the Stone Pony 26 Oct 2025, #261025).
+    test('the event window: a Brucebase review link opens in the window, and Back returns to the event', async ({ page }) => {
+        const PONY_EV = '/event/26cead1c-a5fa-4677-873a-312412c6dc91';
+        const REVIEW = 'http://brucebase.wikidot.com/2025#261025';
+        const SETLISTFM = 'https://www.setlist.fm/setlist/bruce-springsteen/2001/stone-pony-asbury-park-nj-3bd6b0d8.html';
+        const year = fs.readFileSync(path.join(__dirname, 'ext-bb-year-2025.html'), 'utf8');
+        const answer = { status: 200, responseHeaders: 'Content-Type: text/html; charset=utf-8', responseText: year };
+        await page.context().addInitScript((r) => { window.__gmXhrResponses = r; },
+            { 'https://brucebase.wikidot.com/2025': answer, 'http://brucebase.wikidot.com/2025': answer, [REVIEW]: answer });
+        await open(page, {
+            settings: { sa_pop_mb: true, sa_pop_ext: true, sa_pop_ext_favicons: false }, showAll: false,
+            ws2: (url) => {
+                if (url.includes(`/ws/2${PONY_EV}?inc=artist-rels`)) {
+                    const d = JSON.parse(json('ws2-pop-event-stonepony.json'));
+                    d.relations.forEach((r) => { if (r.url && /brucebase/.test(r.url.resource)) r.url.resource = REVIEW; });
+                    // Another site's link beside it, which keeps its new tab.
+                    const bb = d.relations.find(r => r.url && r.url.resource === REVIEW);
+                    d.relations.push(Object.assign({}, bb, { type: 'setlistfm',
+                        url: { id: '00000000-0000-4000-8000-000000000001', resource: SETLISTFM } }));
+                    return { status: 200, body: JSON.stringify(d) };
+                }
+                if (/\/ws\/2\/event\/[0-9a-f-]{36}\?inc=recording-rels/.test(url)) return { status: 200, body: '{"relations":[]}' };
+                return null;
+            },
+        });
+        const a = await addLink(page, PONY_EV, 'Stone Pony');
+        await ctrlHover(page, a);
+        await expect(card(page)).toContainText('fetched now');
+        await page.keyboard.press('Space');
+        const area = dialog(page).locator('.mb-dp-area');
+        const review = area.locator(`a[href="${REVIEW}"]`);
+        await expect(review).toHaveCount(1);
+        // Marked as a link that opens here, not one that leaves (↗).
+        await expect(review).toHaveClass(/\bmb-dp-l-here\b/);
+        await expect(review).not.toHaveClass(/\bmb-dp-l-out\b/);
+        // Only the Springsteen sites: another site's link still leaves (↗).
+        await expect(area.locator(`a[href="${SETLISTFM}"]`)).toHaveClass(/\bmb-dp-l-out\b/);
+        const pages = [];
+        page.on('popup', (p) => pages.push(p.url()));
+        await review.click();
+        const title = dialog(page).locator(':scope > div > span').first();
+        await expect(title).toContainText('Brucebase show');
+        await expect(area).toContainText(/STONE PONY/i);
+        expect(pages, 'no new tab').toEqual([]);
+        // Back: the event again.
+        await dialog(page).locator('button', { hasText: 'Back' }).click();
+        await expect(title).toContainText('Event');
+        await expect(area.locator(`a[href="${REVIEW}"]`)).toHaveCount(1);
+    });
+
     // org/event-GPE.org. Real captures (scripts/probe-mb-entity-lookups.py
     // --only event-details, 2026-10-08): the Stone Pony show, whose setlist
     // has mixed-case MBIDs and "(with …)" guests; the OceanFirst show, part

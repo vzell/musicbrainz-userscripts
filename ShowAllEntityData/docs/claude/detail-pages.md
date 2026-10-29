@@ -2784,6 +2784,16 @@ the header's `@connect` and `_EXT_CONNECT_HOSTS` (the parent domain covers
   card and window say it).
 - **Different origins, different caches.** IndexedDB is per origin: a card
   cached on brucebase.wikidot.com's own list is not seen on musicbrainz.org.
+- **A Springsteen site's link opens IN any window** (2026-10-29; vzell: an
+  event window's "Review" link to http://brucebase.wikidot.com/2002#100802
+  opened a new tab). `_dpWinExtTarget()` decides for BOTH the marking/hover
+  (`_dpWinWhat()`) and the click (`_dpDrill()`), which used to keep two
+  separate lists: a link marked `mb-dp-l-here` that a click sent to a new
+  tab is exactly the bug a second list invites. Only the readers of
+  `_DP_WIN_EXT_READERS` (`bbdate`, `springsteen`) and only with `sa_pop_ext`;
+  every other site's link keeps its new tab outside a Discogs-family window.
+  A hover over such a link in the window goes through the `ext` source, so
+  the first-contact rule (`askHost`) holds there as on the page.
 - **The Brucebase date anchor (`_extBbDateTest()`, `_extBbDateLoad()`; U0
   X8).** MusicBrainz links a show as `/<year>#<ddmmyy>`: the year page,
   scrolled to `<a name="ddmmyy">`. `_extBbYear()` reads the year page ONCE

@@ -1,5 +1,17 @@
 [
   {
+    "version": "WIP.5",
+    "date": "2026-10-29",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "Link previews: in a preview window, a link to a Brucebase show or page (an event's \"Review\" link to brucebase.wikidot.com/2002#100802, for example) or to another Springsteen site's page now opens in the same window, with Back, instead of a new tab."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.4",
     "date": "2026-10-29",
     "sections": [

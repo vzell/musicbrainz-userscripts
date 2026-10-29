@@ -1,0 +1,41 @@
+[
+  {
+    "name": "the click does not drill into a Brucebase link",
+    "why": "The link would be MARKED as opening here (_dpWinWhat()) while a click still opened a new tab: the two must decide together.",
+    "edits": [
+      {
+        "find": "        const extT = _dpWinExtTarget(a, cur);\n        if (extT) {\n            e.preventDefault();",
+        "replace": "        const extT = null;\n        if (extT) {\n            e.preventDefault();"
+      }
+    ],
+    "spec": "tests/fixtures/popup-mb.spec.js",
+    "grep": "Brucebase review link opens in the window",
+    "expect": "fail"
+  },
+  {
+    "name": "the Brucebase reader is not among the in-window readers",
+    "why": "Without 'bbdate' a year-page anchor (the reported /2002#100802) stays a new-tab link.",
+    "edits": [
+      {
+        "find": "    const _DP_WIN_EXT_READERS = new Set(['bbdate', 'springsteen']);",
+        "replace": "    const _DP_WIN_EXT_READERS = new Set(['springsteen']);"
+      }
+    ],
+    "spec": "tests/fixtures/popup-mb.spec.js",
+    "grep": "Brucebase review link opens in the window",
+    "expect": "fail"
+  },
+  {
+    "name": "every reader opens in the window",
+    "why": "Only the Springsteen readers may: another site's link in a MusicBrainz window (the spec's setlist.fm link) keeps its new tab.",
+    "edits": [
+      {
+        "find": "        if (!r || !_DP_WIN_EXT_READERS.has(r.reader.id) || r.key === cur.key) return null;",
+        "replace": "        if (!r || r.key === cur.key) return null;"
+      }
+    ],
+    "spec": "tests/fixtures/popup-mb.spec.js",
+    "grep": "Brucebase review link opens in the window",
+    "expect": "fail"
+  }
+]
