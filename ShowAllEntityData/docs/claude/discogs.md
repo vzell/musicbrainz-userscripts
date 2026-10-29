@@ -56,7 +56,7 @@ the sentence said "seven" and "three" from 2026-10-18 until then, though
 | `dg-label`   | `/label/<id>`            | Newest: 500 · 1,000 · 5,000 — Oldest: 500 · 1,000 — Then: All     | single: Image, Artist, Title, Format, Cat#, Year                                                                            |
 | `dg-submissions` | `/submissions?…`     | Show all submissions                                              | single: Artist, Title, Changed by, Changed, Matched artist, History (rows from the FLAT view's pages, not the API)            |
 | `dg-user`    | `/user/<name>`           | Submissions · Contributions · Collection · Wantlist (shown when the page counts them) | multi: Releases / Artists / Labels (submissions), or one table; + Status, or Added (collection, wantlist) |
-| `dg-history` | `/release/<id>/history`  | Show the changes and the diff                                     | multi: Changes, and on page 1 the Diff (below)                                                                              |
+| `dg-history` | `/<kind>/<id>/history`   | Show the changes and the diff                                     | multi: Changes, and on page 1 the Diff (below)                                                                              |
 | `dg-ratings` | `/users/ratings/<name>`  | Show all ratings                                                  | single: the user's ratings, 250 a page (below)                                                                              |
 | `dg-images` / `dg-image-history` | `/release/<id>/images`, `…/images/update` | Show every image                  | single: #, Image, Type, Uploaded by, Uploaded (date, time), W × H, Size (KB) — the same on both (below)                     |
 
@@ -289,6 +289,17 @@ check the real markup on such a page when one is at hand.
 
 ## A release's history page (`dg-history`, 2026-10-18)
 
+**Since 2026-10-29 also a master's, artist's and label's**
+(`/<kind>/<id>[-slug]/history`; vzell: the master's history had no
+button). Four things had kept them out: the history `@include` line and
+`_DG_HIST_PATH_RE` (also the `#app` gate) named releases only, and
+`dg-master`/`dg-artist`/`dg-label` would have claimed the page first —
+all four entity definitions now match through `_dgEntityPageIs()`, which
+excludes the history and images pages. Their diffs differ: an artist's or
+label's facts are bare `div.head` + `div.content` pairs in the cell (no
+`.profile`, no section), read by `_extDgHistBlocks()`'s `:scope > .head`
+arm — before, such a diff was empty, in the window too.
+
 `/release/<id>[-slug]/history[?diff=<rev>]` (vzell: "natively support … as
 PTs"; his answers: the changes AND the diff, "View changes" opens the
 window, straight to code). An older page like the submissions list (gate:
@@ -299,8 +310,10 @@ reader's own parse (`_extDgHistParse()`, so the pageType and the window
 cannot disagree), one same-origin GET a page (`_dgHistToHtml()`): "Changes"
 (Changed → `dateTimeParts`, User with picture, Action, Notes, Revision,
 View) and, from page 1, "Diff · revision 8 → 10" (Section, Old, New,
-Marked). Pages: the pager's "Jump to" when there is one — a long history's
-pager was not seen yet. A plain click on "View changes" opens the window;
+Marked). Pages: `_extDgHistParse()`'s `pages` (`.pagination_links`), the
+count the window uses too. Until 2026-10-29 this read a `nav.pagination`
+"Jump to" box no history page has, so only page 1 — the OLDEST changes —
+was ever read. A plain click on "View changes" opens the window;
 the history reader reads `?diff=<rev>` from the link and opens on that
 revision (`revFor`: once per opening).
 

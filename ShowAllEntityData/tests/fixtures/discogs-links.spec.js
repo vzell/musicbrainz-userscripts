@@ -399,6 +399,69 @@ test.describe('discogs.com: links that stay, every link in the window, View chan
         expect(errors).toEqual([]);
     });
 
+    // vzell, 2026-10-29: "Why is …/release/8164856-Human-Touch/history supported
+    // as a PT but e.g. …/master/26725-Born-To-Run/history doesn't offer our
+    // action button". The three saved histories: master 27146 (page 2 of 3),
+    // artist 219986 (page 2 of 2), label 264352 (page 1 of 4). Every page is
+    // served from the one saved page, so each read is one more request.
+    for (const [kind, url, file, pages, diffBlock] of [
+        ['master', 'https://www.discogs.com/master/27146-Human-Touch/history', 'dg-master-history.html', 3, 'Title'],
+        ['artist', 'https://www.discogs.com/artist/219986-Bruce-Springsteen/history', 'dg-artist-history.html', 2, 'Real Name'],
+        ['label', 'https://www.discogs.com/label/264352-DADC/history', 'dg-label-history.html', 4, 'Profile'],
+    ]) {
+        test(`dg-history: a ${kind}'s history page has the button; every page is read, and the diff has its blocks (2026-10-29)`, async ({ page }) => {
+            const { errors } = await openDg(page, { url, file });
+            const asked = [];
+            await page.route(new RegExp(`^https://www\\.discogs\\.com/${kind}/\\d+[^/]*/history\\?(?:.*&)?page=\\d+`), (route) => {
+                asked.push(Number(/[?&]page=(\d+)/.exec(route.request().url())[1]));
+                return route.fulfill({ path: path.join(__dirname, file), contentType: 'text/html' });
+            });
+            const root = page.locator('#mb-dg-root');
+            // Its own pageType only: the entity pageType's path pattern takes /history too.
+            expect(await root.locator('button[data-label^="Show "]').evaluateAll(bs => bs.map(b => b.dataset.label)))
+                .toEqual(['Show the changes and the diff']);
+            expect(await root.locator('button[data-label="Show the changes and the diff"]').getAttribute('data-mbtt')).toContain(`this ${kind}`);
+            await press(page, 'Show the changes and the diff');
+            // Before 2026-10-29 the page count was always 1: only page 1, the
+            // OLDEST changes, was ever read.
+            expect(asked.sort((a, b) => a - b), 'every page of the history').toEqual(Array.from({ length: pages }, (_, i) => i + 1));
+            await page.locator('.mb-master-toggle').click();
+            const h3s = await root.locator('h3').evaluateAll(hs => hs.map(h => Array.from(h.childNodes).filter(n => n.nodeType === 3)
+                .map(n => n.textContent).join('').replace(/\s+/g, ' ').trim()));
+            expect(h3s[0]).toBe('Changes');
+            expect(h3s[1]).toMatch(/^Diff · revision \d+ → \d+$/);
+            const diffT = root.locator('table.tbl').nth(1);
+            // Before 2026-10-29 an artist's or a label's diff had no block at all.
+            const sections = await diffT.evaluate((t) => {
+                const hs = Array.from(t.querySelectorAll('thead tr:first-child th')).map(th => th.dataset.colName || th.textContent.trim());
+                return Array.from(t.tBodies[0].rows).map(r => r.cells[hs.indexOf('Section')].textContent.trim());
+            });
+            expect(sections).toContain(diffBlock);
+            expect(errors).toEqual([]);
+        });
+    }
+
+    test('a Discogs entity page is never taken by dg-history, nor a history page by the entity pageTypes', async ({ page }) => {
+        // On a page without #app only the plain-HTML pages pass the gate, so
+        // the hook is asked from a history page.
+        await openDg(page, { url: 'https://www.discogs.com/master/27146-Human-Touch/history', file: 'dg-master-history.html' });
+        const types = await page.evaluate(() => {
+            const ask = (p) => window.__saTest.pageTypesFor(p);
+            return {
+                master: ask('/master/26725-Bruce-Springsteen-Born-To-Run'),
+                masterHist: ask('/master/26725-Born-To-Run/history'),
+                artistHist: ask('/artist/219986-Bruce-Springsteen/history'),
+                labelHist: ask('/label/264352-DADC/history'),
+                releaseHist: ask('/release/8164856-Human-Touch/history'),
+                artist: ask('/artist/219986-Bruce-Springsteen'),
+            };
+        });
+        expect(types).toEqual({
+            master: ['dg-master'], masterHist: ['dg-history'], artistHist: ['dg-history'],
+            labelHist: ['dg-history'], releaseHist: ['dg-history'], artist: ['dg-artist'],
+        });
+    });
+
     test('a user\'s picture: hover shows a card with the largest picture, a click opens the viewer on it (vzell 2026-10-18)', async ({ page }) => {
         const HIST = 'https://www.discogs.com/release/8164856-Human-Touch/history?diff=10&page=1';
         const BIG = 'https://i.discogs.com/fixture-avatar-500-pleasure.jpeg';

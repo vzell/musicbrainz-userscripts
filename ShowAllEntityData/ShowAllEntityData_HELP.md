@@ -1762,7 +1762,7 @@ an import brings your deletions back.
   and lyrics index, the **jungleland.it**
   bootleg artwork list, the **brucespringsteen.it** record database and
   the **Brucebase** song list, year pages, Relations and Recent changes, and
-  **discogs.com**'s master, release, artist, label, submissions, user, ratings, release history and release images pages — each off until
+  **discogs.com**'s master, release, artist, label, submissions, user, ratings, history (release, master, artist, label) and release images pages — each off until
   you switch it on, see [Page-specific behaviour](#page-specific-behaviour)
 
 </details>
@@ -3617,13 +3617,15 @@ section of its own above Discogs' page, with the toolbar and these buttons:
   tables' Image column (one request for that row, with *Image column: all
   images of a row on hover* on); a click or **Space** opens the viewer
   instead of Discogs' gallery, and Shift+← → steps through the list.
-- **Release history — Show the changes and the diff:** a release's history
-  page (`/release/<id>/history`, also with `?diff=N`): **Changes** — when (date
-  and time also apart), the user with their picture, the action, the note,
-  the revision and *View changes*, which opens the preview window on that
-  revision's changes —, and **Diff · revision 8 → 10**: each part of the
-  release in the revision the page shows, old and new, *Marked* "changed"
-  where Discogs marked it. Read from the page itself.
+- **History — Show the changes and the diff:** the history page of a
+  release, master, artist or label (`/release/<id>/history`,
+  `/master/<id>/history`, …, also with `?diff=N`), every page of it:
+  **Changes** — when (date and time also apart), the user with their
+  picture, the action, the note, the revision and *View changes*, which
+  opens the preview window on that revision's changes —, and **Diff ·
+  revision 8 → 10**: each part of the release (master, artist, label) in
+  the revision the page shows, old and new, *Marked* "changed" where
+  Discogs marked it. Read from the page itself.
 - **Release images — Show every image:** a release's Images page
   (`/release/<id>/images`) and its image editor (`…/images/update`, Image
   history) get the same table: **#**, the image (hover for the card, click

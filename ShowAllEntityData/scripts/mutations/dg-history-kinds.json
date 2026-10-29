@@ -1,0 +1,54 @@
+[
+  {
+    "name": "the history page count is 1 again",
+    "why": "Before 2026-10-29 _dgHistPageCount() read a pager no history page has, so only page 1 (the OLDEST changes) was read, for releases too.",
+    "edits": [
+      {
+        "find": "        return h && h.pages >= 1 ? h.pages : 1;",
+        "replace": "        return h && h.pages >= 1 ? 1 : 1;"
+      }
+    ],
+    "spec": "tests/fixtures/discogs-links.spec.js",
+    "grep": "a master's history page has the button",
+    "expect": "fail"
+  },
+  {
+    "name": "an artist's diff is read with release markup only",
+    "why": "An artist's or label's diff holds bare div.head + div.content pairs; without the :scope > .head arm it has no block at all, in the pageType and in the window.",
+    "edits": [
+      {
+        "find": "        td.querySelectorAll('.profile .head, :scope > .head').forEach((h) => {",
+        "replace": "        td.querySelectorAll('.profile .head').forEach((h) => {"
+      }
+    ],
+    "spec": "tests/fixtures/discogs-links.spec.js",
+    "grep": "a artist's history page has the button",
+    "expect": "fail"
+  },
+  {
+    "name": "the history path pattern is release-only again",
+    "why": "A master's, artist's or label's history page would get no dg-history button (and fail the #app gate).",
+    "edits": [
+      {
+        "find": "(?:release|master|artist|label)\\/(\\d+)(?:-[^/?#]*)?\\/history\\/?$/;",
+        "replace": "release\\/(\\d+)(?:-[^/?#]*)?\\/history\\/?$/;"
+      }
+    ],
+    "spec": "tests/fixtures/discogs-links.spec.js",
+    "grep": "never taken by dg-history",
+    "expect": "fail"
+  },
+  {
+    "name": "dg-master takes its own history page",
+    "why": "_dgPage()'s path pattern is not anchored at the end, so the master pageType (earlier in pageDefinitions) would claim /master/<id>/history first.",
+    "edits": [
+      {
+        "find": "        return _dgPage(path)?.kind === kind && !_DG_HIST_PATH_RE.test(path) && !_DG_IMG_PATH_RE.test(path);",
+        "replace": "        return _dgPage(path)?.kind === kind && (kind === 'release' ? !_DG_HIST_PATH_RE.test(path) : true) && !_DG_IMG_PATH_RE.test(path);"
+      }
+    ],
+    "spec": "tests/fixtures/discogs-links.spec.js",
+    "grep": "never taken by dg-history",
+    "expect": "fail"
+  }
+]

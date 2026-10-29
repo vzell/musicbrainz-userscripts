@@ -34,7 +34,7 @@
 // @include      /^https?:\/\/(?:www\.)?discogs\.com\/(?:[a-z]{2}(?:[-_][a-zA-Z]{2})?\/)?submissions\/?(?:[?#].*)?$/
 // @include      /^https?:\/\/(?:www\.)?discogs\.com\/(?:[a-z]{2}(?:[-_][a-zA-Z]{2})?\/)?user\/[^\/?#]+\/?(?:[?#].*)?$/
 // @include      /^https?:\/\/(?:www\.)?discogs\.com\/(?:[a-z]{2}(?:[-_][a-zA-Z]{2})?\/)?users\/ratings\/[^\/?#]+\/?(?:[?#].*)?$/
-// @include      /^https?:\/\/(?:www\.)?discogs\.com\/(?:[a-z]{2}(?:[-_][a-zA-Z]{2})?\/)?release\/\d+(?:-[^\/?#]*)?\/history\/?(?:[?#].*)?$/
+// @include      /^https?:\/\/(?:www\.)?discogs\.com\/(?:[a-z]{2}(?:[-_][a-zA-Z]{2})?\/)?(?:release|master|artist|label)\/\d+(?:-[^\/?#]*)?\/history\/?(?:[?#].*)?$/
 // @include      /^https?:\/\/(?:www\.)?discogs\.com\/(?:[a-z]{2}(?:[-_][a-zA-Z]{2})?\/)?release\/\d+(?:-[^\/?#]*)?\/images(?:\/update)?\/?(?:[?#].*)?$/
 // @connect      raw.githubusercontent.com
 // @connect      coverartarchive.org
@@ -6530,13 +6530,15 @@
     const _DG_RATINGS_PATH_RE = /^\/(?:[a-z]{2}(?:[-_][a-zA-Z]{2})?\/)?users\/ratings\/([^/?#]+)\/?$/;
 
     /**
-     * A discogs.com release's history page, `/release/<id>[-slug]/history`
-     * (with or without `?diff=<rev>`): pageType `dg-history` (2026-10-18),
-     * plain HTML without `#app`. Read by the `#app` gate below, the
-     * definition's `match` and `dg-release`'s (whose path pattern takes it too).
+     * A discogs.com history page of a release, master, artist or label,
+     * `/<kind>/<id>[-slug]/history` (with or without `?diff=<rev>`):
+     * pageType `dg-history` (releases 2026-10-18, the other three
+     * 2026-10-29), plain HTML without `#app`. Read by the `#app` gate below,
+     * the definition's `match` and `_dgEntityPageIs()` (the four entity
+     * pageTypes' path pattern takes it too).
      * @type {RegExp}
      */
-    const _DG_HIST_PATH_RE = /^\/(?:[a-z]{2}(?:[-_][a-zA-Z]{2})?\/)?release\/(\d+)(?:-[^/?#]*)?\/history\/?$/;
+    const _DG_HIST_PATH_RE = /^\/(?:[a-z]{2}(?:[-_][a-zA-Z]{2})?\/)?(?:release|master|artist|label)\/(\d+)(?:-[^/?#]*)?\/history\/?$/;
 
     /**
      * A discogs.com release's Images page, `/release/<id>[-slug]/images`, or
@@ -15733,6 +15735,22 @@
     }
 
     /**
+     * Whether a path is the main page of a release, master, artist or label
+     * of this `kind`, not one of its own pages under it: the history
+     * (`dg-history`) or the images (`dg-images`, `dg-image-history`), which
+     * `_dgPage()`'s path pattern takes too. The four entity definitions'
+     * `match` (before 2026-10-29 only `dg-release` excluded them; the other
+     * three had no history pageType to give way to).
+     *
+     * @param {string} path
+     * @param {string} kind - 'release', 'master', 'artist' or 'label'.
+     * @returns {boolean}
+     */
+    function _dgEntityPageIs(path, kind) {
+        return _dgPage(path)?.kind === kind && !_DG_HIST_PATH_RE.test(path) && !_DG_IMG_PATH_RE.test(path);
+    }
+
+    /**
      * One answer of Discogs' API as text, through the link previews' gate
      * and headers (`_extGet()`: the host's spacing, 2.5 s apart without a
      * token, 1 s with one; the User-Agent and the token). An answer the run
@@ -18225,7 +18243,10 @@
         return _isDgHost && _DG_SUBS_PATH_RE.test(window.location.pathname);
     }
 
-    // --- discogs.com: a release's history page (pageType dg-history) ---------
+    // --- discogs.com: a history page (pageType dg-history) --------------------
+    // A master's, artist's or label's history since 2026-10-29: the same page
+    // shape, read by the same parser (only their diffs differ, see
+    // `_extDgHistBlocks()`).
     // `/release/<id>/history[?diff=<rev>]` (vzell, 2026-10-18: "natively
     // support … as PTs"; his answers: the changes AND the diff, "View changes"
     // opens the preview window). The page is read by the history reader's own
@@ -18249,15 +18270,19 @@
     }
 
     /**
-     * `features.pageCountAsync` of `dg-history`: the pager's "Jump to"
-     * (`max`) when the page has one, else 1 — the saved histories (14
-     * changes) fit on one page; a longer one's pager was not seen yet.
+     * `features.pageCountAsync` of `dg-history`: how many pages the history
+     * has, as the history reader counts them (`_extDgHistParse()`'s `pages`,
+     * from `.pagination_links`). Until 2026-10-29 this read a
+     * `nav.pagination` "Jump to" box that no history page has, so it was
+     * always 1 and only page 1 was read: the OLDEST changes (pages run
+     * oldest → newest), never the latest (tests/fixtures/dg-master-history.html,
+     * page 2 of 3).
      *
      * @returns {Promise<number>}
      */
     async function _dgHistPageCount() {
-        const jump = Number(document.querySelector('nav.pagination input[name="page"][max]')?.getAttribute('max'));
-        return jump >= 1 ? jump : 1;
+        const h = _extDgHistParse(document, window.location.href);
+        return h && h.pages >= 1 ? h.pages : 1;
     }
 
     /**
@@ -41232,7 +41257,7 @@
         {
             type: 'dg-master',
             host: 'www.discogs.com',
-            match: (path) => _dgPage(path)?.kind === 'master',
+            match: (path) => _dgEntityPageIs(path, 'master'),
             buttons: [ { label: 'Show all versions', shortLabel: 'Versions', get description() { return _dgCostPer('Every version of this master', 'versions', 'Born To Run: 387 versions, 4 requests'); } } ],
             features: {
                 dgToTable: 'master',
@@ -41248,9 +41273,7 @@
         {
             type: 'dg-release',
             host: 'www.discogs.com',
-            // Not its history page (`dg-history`) nor its images (`dg-images`,
-            // `dg-image-history`), which the path pattern takes too.
-            match: (path) => _dgPage(path)?.kind === 'release' && !_DG_HIST_PATH_RE.test(path) && !_DG_IMG_PATH_RE.test(path),
+            match: (path) => _dgEntityPageIs(path, 'release'),
             buttons: [ {
                 label: 'Show tracklist, credits and other versions', shortLabel: 'Tracklist, credits, versions',
                 get description() { return _dgCostPer('The release, then every other version of its master', 'versions', 'one request more for the release'); }
@@ -41270,7 +41293,7 @@
         {
             type: 'dg-artist',
             host: 'www.discogs.com',
-            match: (path) => _dgPage(path)?.kind === 'artist',
+            match: (path) => _dgEntityPageIs(path, 'artist'),
             buttons: [ {
                 label: 'Show the whole discography', shortLabel: 'Discography',
                 get description() { return _dgCostPer('Every entry of the discography, by Discogs\' role', 'entries', 'Bruce Springsteen: 6,782 entries, 68 requests'); }
@@ -41288,7 +41311,7 @@
         {
             type: 'dg-label',
             host: 'www.discogs.com',
-            match: (path) => _dgPage(path)?.kind === 'label',
+            match: (path) => _dgEntityPageIs(path, 'label'),
             // Newest 500 / 1,000 / 5,000, oldest 500 / 1,000, then all (vzell,
             // 2026-10-18): a large label has thousands of pages (Columbia
             // 3,967), so "All" meets "⚠️ High Page Count" first.
@@ -41343,14 +41366,17 @@
             tableMode: 'single'
         },
         {
-            // A release's history page (2026-10-18): its changes and its diff,
-            // read with the history reader's parser. See the "discogs.com: a
-            // release's history page" block above _dgHistPageUrl().
+            // A release's history page (2026-10-18), and a master's, artist's
+            // or label's (2026-10-29): its changes and its diff, read with
+            // the history reader's parser. See the "discogs.com: a history
+            // page" block above _dgHistPageUrl().
             type: 'dg-history',
             host: 'www.discogs.com',
             match: (path) => _DG_HIST_PATH_RE.test(path),
             buttons: [ { label: 'Show the changes and the diff', shortLabel: 'History',
-                description: 'Every change of this release and the diff this page shows, read from this page on discogs.com: one request a page.' } ],
+                get description() {
+                    return `Every change of this ${_dgPage()?.kind || 'release'} and the diff this page shows, read from this page on discogs.com: one request a page.`;
+                } } ],
             features: {
                 dgToTable: 'history',
                 groupByH3: true,
@@ -65703,10 +65729,14 @@
 
     /**
      * One side of the history page's diff (`table.diff`, a cell holding the
-     * release page as it was) as named blocks: the profile's facts (Label,
-     * Format, …), then each section (Tracklist, Companies, Notes, Barcode
-     * and Other Identifiers, Credits) with its lines — a list's items, a
-     * table's rows, or the section's text — each as `_extDgHistHtml()`.
+     * page as it was) as named blocks: the profile's facts (Label, Format,
+     * …), then each section (Tracklist, Companies, Notes, Barcode and Other
+     * Identifiers, Credits) with its lines — a list's items, a table's rows,
+     * or the section's text — each as `_extDgHistHtml()`. A release's or a
+     * master's facts sit in `.profile`; an artist's or a label's (Real Name,
+     * Profile, Sites, Aliases, …) are bare `div.head` + `div.content` pairs
+     * right in the cell, with no section at all (tests/fixtures/dg-artist-history.html,
+     * dg-label-history.html): before 2026-10-29 such a diff came out empty.
      *
      * @param {Element} td
      * @param {string} base
@@ -65716,7 +65746,7 @@
         const out = [];
         const title = td.querySelector('#profile_title, .profile h1');
         if (title) out.push({ name: 'Title', lines: [_extDgHistHtml(title, base)] });
-        td.querySelectorAll('.profile .head').forEach((h) => {
+        td.querySelectorAll('.profile .head, :scope > .head').forEach((h) => {
             const c = h.nextElementSibling;
             if (c && c.classList.contains('content')) out.push({ name: _dpText(h.textContent).replace(/:$/, ''), lines: [_extDgHistHtml(c, base)] });
         });
@@ -66161,7 +66191,7 @@
                 (shown.length ? shown.map(b => side(b, 'old') + side(b, 'new')).join('') : '<div class="mb-dg-dim">Nothing marked as changed.</div><div></div>') + '</div>' +
                 '<div class="mb-dgh-legend"><span class="mb-dgh-rem">removed</span> <span class="mb-dgh-chg">changed</span> <span class="mb-dgh-add">added</span></div>';
             const of = picked || h.entries.find(e => e.latest) || h.entries[h.entries.length - 1];
-            const dact = back + btn('diffall', ui.diffAll ? '0' : '1', ui.diffAll ? 'Only what changed' : 'The whole release', ui.diffAll) +
+            const dact = back + btn('diffall', ui.diffAll ? '0' : '1', ui.diffAll ? 'Only what changed' : `The whole ${id.split('/')[0]}`, ui.diffAll) +
                 (of && of.changes ? link(of.changes, 'Changes on Discogs ↗').replace('<a ', '<a class="mb-dg-btn" ') : '');
             // Discogs' own numbers: revision 10 is compared with 8 when 9
             // changed no data (debug/discogs-release-history-diff.html).
@@ -67537,7 +67567,7 @@
         },
         {
             // Before `discogs`, whose path pattern takes `/history` too.
-            id: 'dghistory', kind: 'Discogs release history', test: _extDgHistTest, askHost: () => 'www.discogs.com', load: _extDgHistLoad,
+            id: 'dghistory', kind: 'Discogs edit history', test: _extDgHistTest, askHost: () => 'www.discogs.com', load: _extDgHistLoad,
             noLive: true, version: _EXT_IDB_VERSION * 100 + _EXT_DGH_VERSION, windowOnly: true, keyUrl: _extDgHistKeyUrl, kindFor: _extDgHistKind,
             window: _extDgHistWindow, onAreaClick: _extDgHistAreaClick,
             loadingNote: 'Reading the edit history from discogs.com (one request).',
@@ -154432,6 +154462,17 @@ a { color: #1565c0; }`;
              * @returns {string}
              */
             siteFamilyOf: (host) => _siteFamilyOf(host),
+            /**
+             * Every pageType of this page's host whose shipping `match` takes
+             * `path` (with `search`, the query without "?"), in
+             * `pageDefinitions` order: detection takes the first. Read-only.
+             * @param {string} path
+             * @param {string} [search]
+             * @returns {string[]}
+             */
+            pageTypesFor: (path, search = '') => pageDefinitions
+                .filter(d => (d.host || 'musicbrainz.org') === window.location.hostname && d.match(path, new URLSearchParams(search)))
+                .map(d => d.type),
             /**
              * The "Instrument Icons Everywhere" icon an instrument anchor
              * owns (`_findInstrumentLinkIcon()`): before it, after it, or

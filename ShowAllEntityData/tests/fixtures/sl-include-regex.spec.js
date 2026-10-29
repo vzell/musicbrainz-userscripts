@@ -313,17 +313,23 @@ test.describe('@include coverage', () => {
         expect(others.filter((u) => injected(u))).toEqual([]);
     });
 
-    test('discogs.com: a release\'s history page (dg-history), with or without ?diff=', () => {
+    test('discogs.com: a release\'s, master\'s, artist\'s or label\'s history page (dg-history), with or without ?diff=', () => {
         const pages = [
             'https://www.discogs.com/release/8164856-Human-Touch/history?diff=10&page=1',
             'https://www.discogs.com/release/8164856-Human-Touch/history',
             'https://www.discogs.com/release/8164856/history',
             'https://www.discogs.com/de/release/8164856-Human-Touch/history?rev=4',
+            // Since 2026-10-29 (vzell: the master's history had no button).
+            'https://www.discogs.com/master/27146/history',
+            'https://www.discogs.com/master/26725-Born-To-Run/history',
+            'https://www.discogs.com/artist/219986-Bruce-Springsteen/history?page=2',
+            'https://www.discogs.com/label/264352-DADC/history',
         ];
         const others = [
             'https://www.discogs.com/release/8164856-Human-Touch/images/history?rev=7',
-            'https://www.discogs.com/master/27146/history',
             'https://www.discogs.com/release/8164856-Human-Touch/historyx',
+            'https://www.discogs.com/user/vzell/history',
+            'https://www.discogs.com/master/26725-Born-To-Run/history/more',
         ];
         expect(pages.filter((u) => !injected(u))).toEqual([]);
         expect(others.filter((u) => injected(u))).toEqual([]);

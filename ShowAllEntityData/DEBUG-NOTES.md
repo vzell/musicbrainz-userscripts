@@ -27036,3 +27036,36 @@ pill's text inside its border, "Video <id>" ≥ 8 px right of the pill, each
 title ≥ 14 px clear of its tile. `scripts/mutations/yt-grid-indent.json`: the
 grid override and both guards caught; the player's own reset alone is covered
 inside the window by the grid override (`"expect": "pass"`).
+
+## 2026-10-29 — dg-history for masters, artists and labels; every page read; an artist's diff (WIP.3)
+
+Env: 2026-10-29T01:11+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) · Playwright 1.62.1 (bundled Chromium), no Tampermonkey (GM stubs)
+
+**Question (vzell):** why does /release/8164856-Human-Touch/history get the
+button and /master/26725-Born-To-Run/history not? **Four blocks, each enough
+alone:** the history `@include` line named `release` only (and
+`sl-include-regex.spec.js` asserted /master/27146/history is NOT injected); the
+master/artist/label `@include` allows nothing after the slug;
+`_DG_HIST_PATH_RE` (also the `#app` gate: history pages have no `#app`) named
+`release` only; and `dg-master`/`dg-artist`/`dg-label` come first in
+`pageDefinitions` and `_dgPage()`'s pattern is not anchored at the end, so they
+would have claimed the page. Deliberate at the time (org/POH-headerline.org
+item 4: "master/artist/label only if the probe finds a history page shaped like
+a release's"); the probe found exactly that, and the window's reader was widened
+on 2026-10-28, the pageType not.
+
+**Two bugs found on the way, both measured on the saved pages:**
+- `_dgHistPageCount()` read `nav.pagination input[name=page][max]`; no history
+  page has one (they use `.pagination_links`), so the count was always 1 and
+  `pageRequest` asked `?page=1`, the OLDEST page — for releases too. Now
+  `_extDgHistParse(document).pages`: master 3, artist 2, label 4.
+- `_extDgHistBlocks()` read `.profile .head` and `div.section`; an artist's or
+  label's diff cell holds bare `div.head` + `div.content` pairs, so its diff had
+  zero blocks (the pageType's "Diff" table AND the window). Added a
+  `:scope > .head` arm.
+
+**Tests.** `discogs-links.spec.js`: per kind (master, artist, label) the button
+alone, every page requested (1..N), and the diff's Section column holding
+Title / Real Name / Profile; a routing test through the new read-only
+`__saTest.pageTypesFor(path)`. `scripts/mutations/dg-history-kinds.json` 4/4.
+The six Discogs specs: 130/130.

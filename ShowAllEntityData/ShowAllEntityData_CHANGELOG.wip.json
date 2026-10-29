@@ -1,5 +1,24 @@
 [
   {
+    "version": "WIP.3",
+    "date": "2026-10-29",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "discogs.com: the history page of a master, an artist or a label (e.g. /master/26725-Born-To-Run/history) now has the \"Show the changes and the diff\" button too, as a release's has had."
+        ]
+      },
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "discogs.com history pages: \"Show the changes and the diff\" read only the first page of a longer history, which holds the oldest changes. It now reads every page.",
+          "An artist's or label's edit history: the diff of a change came out empty, on the history page and in the preview window. It now shows each field (Real Name, Profile, Sites, …), old and new."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.2",
     "date": "2026-10-29",
     "sections": [
