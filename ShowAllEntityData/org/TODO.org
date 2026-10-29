@@ -5553,30 +5553,6 @@ Nothing is published to the mb-userscripts repo users install from; that's still
 https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/releases
 
 
-* TODO Areas NOT aligned
-
-1)
-   
-On an artist POH under "FACTS" (left) there is
-
-#+begin_example
-too much empty space between "Area" string and the actual area name
-too much empty space between "Area" parts after "Born, it also pumps during fetching
-#+end_example
-
-
-#+begin_example
-Facts
-Sort name Springsteen, Bruce
-Area      * United States
-Born 1949-09-23 ·   Long Branch,   New Jersey,   United States
-#+end_example
-
-2.)
-
-ISNI 0000000121418834 - value not hyperlinked
-
-
 * TODO consolidate more LAF across more PTs
 
 
@@ -5636,24 +5612,6 @@ Chaban
 * TODO On https://musicbrainz.org/release-group/f83d2211-dd81-4b1e-9a02-e89733891e1c the "Official homepage" chip in the "Sidebar" section needs a better reader
 
 On https://musicbrainz.org/release-group/f83d2211-dd81-4b1e-9a02-e89733891e1c the "Official homepage" chip in the "Sidebar" section needs a better reader
-
-
-* TODO on every supported PT, e.g. -> place link -> hover ==> Wikipedia link should render inside popup
-
-Actually everywhere, on ALL PTs
-
-1.)
-
-Wikidot URLs, e.g.https://brucebase.wikidot.com/2012
-on BB event pages -> place link -> hover ==> Wikipedia link should render inside popup
-
-2.)
-
-on BB pages links on the form "https://brucebase.wikidot.com/1973#020373" should be rendered inline too
-
-* TODO On MB entity POHs we should get additional POH support for known URLs like Wikipedia/Wikidata
-
-On MB entity POHs we should get additional POH support for known URLs like Wikipedia/Wikidata
 
 
 * TODO Site icons
@@ -5743,7 +5701,7 @@ fix MB collection pages, e.g. https://musicbrainz.org/user/ApeKattQuest%2C%20Mon
 third-party userscript "mb. COLLECTION HIGHLIGHTER" from @jesus2099 is active
 
 
-* TODO Still open:
+* TODO Still open
 
 The 2-of-100-pages search question. Did you pick a limit in the dialog, or did pages fail? If they failed, hovering the 🔄 button shows the reason.
 The two public-list snapshots for 7e, debug/dg-list-public.html and debug/dg-list-public-p2.html, plus the page-2 URL.
@@ -5758,29 +5716,187 @@ test:full before any merge. I’ll ask before merging.
   can close, even though multi-select is meant to keep it open. I haven't changed this; tell me if you want it fixed.
 
 
+* TODO Give our CAA/EAA inline images and the images in the big picture image stripe the same hover handling as usual
+
+Give our CAA/EAA inline images and the images in the big picture image stripe the same hover handling as usual
+
+
 * TODO move the "WARNING/ERROR buttons in their own button
-
-move the "WARNING/ERROR button menus in their own corner-round-shaded button area
-
-On e.g. https://musicbrainz.org/release/22a6802f-d22e-4f47-9f22-6aac257a4194
-
-#+begin_example
-@debug/mb-saed-area.html - FRP - action button area of the WARNING/ERROR button menus
-#+end_example
-
-
-* TODO move the "LINKS" section from right to left in the POH of Discogs labels
-
-From https://www.discogs.com/master/26725-Bruce-Springsteen-Born-To-Run hovering "Columbia" label - https://www.discogs.com/search/?q=Columbia&type=label
+** DONE initial
 
 1.)
 
-move the "LINKS" section from right to left in the POH of Discogs labels
+Currently we have an action button area which on the FRP looks like the following [Image #1], e.g. for PT
+'release-tracks' on e.g. https://musicbrainz.org/release/22a6802f-d22e-4f47-9f22-6aac257a4194
 
-* TODO open
+#+begin_example
+[Tracks|Credits|❌ 1 ▾|⚠️ 51 ▾|SAED ▾] - with rounded corners
+#+end_example
 
-- One unexplained failure. Before the final run, that Discogs test failed once more with no card at all, and that cause
-  is not determined. I couldn't reproduce it in 69 stress runs, and its trace got overwritten. The final run passed it,
-  and the debug log says it's still open.
-- A 📊 behaviour you might notice: if you scroll down, open 📊 and tick an entry that shortens the page a lot, the panel
-  can close, even though multi-select is meant to keep it open. I haven't changed this; tell me if you want it fixed.
+I want the "WARNING/ERROR button menus in their own corner-round-shaded button area after the standard action buttons
+because theie are visible only when warning/error findings show up on the FRP
+
+#+begin_example
+[Tracks|Credits|SAED ▾] [❌ 1 ▾|⚠️ 51 ▾] - again both areas should have the rounded corners
+#+end_example
+
+
+#+begin_example
+@debug/mb-saed-area.html - FRP - action button area of the WARNING/ERROR button menus - see also the action button on the h1 line [Image #1]
+#+end_example
+
+2.)
+
+POH enhancements
+
+a.)
+
+The "BY KIND" entries in
+
+#+begin_src bash
+@debug/POH-mb-tag-rock.html - POH of https://musicbrainz.org/tag/rock
+#+end_src
+
+should get a tooltip which says what happens when clicking (basically fetching/rendering the corresponding data on the
+right side of the POH)
+
+b.)
+
+On e.g. https://www.discogs.com/master/26725-Bruce-Springsteen-Born-To-Run when hovering the "Columbia" label - https://www.discogs.com/search/?q=Columbia&type=label
+on the label POH move the "LINKS" section from the right to left in the POH of Discogs labels
+
+c.)
+
+Areas and area parts are NOT aligned on an artist POH, e.g. when hovering 
+
+ i.)
+   
+Under "FACTS" (left) there is
+
+#+begin_example
+too much empty space between "Area" string and the actual area name
+too much empty space between "Area" parts after "Born, it also pumps during fetching the individual area parts
+#+end_example
+
+#+begin_example
+Facts
+Sort name: Springsteen, Bruce
+Area     :    United States
+Born     : 1949-09-23 ·   Long Branch,    New Jersey,    United States
+#+end_example
+
+ ii.)
+
+when clicking a sort button on the right side after "Also" e.g. the "Compilation 35" one, all the area parts behind
+"Area" and "Born" quickly flush (they move to the left and quickly back in their final position) - @"debug/Bruce Springsteen - Releases - MusicBrainz - Vivaldi 2026-10-29 14-40-36.mp4"
+
+d.)
+
+#+begin_example
+ISNI: 0000000121418834 - value is not hyperlinked
+#+end_example
+
+3.)
+
+Add support for Wikidata and Wikipedia readers so that when hovering a corresponding URL on MB and non-MB pages, we can
+show the information in a POH
+
+#+begin_example
+@debug/wikidata-bruce.html - Wikidate for Bruce Springsteen
+@debug/wikipedia-en-bruce.html - Wikipedia (english) for Bruce Springsteen
+#+end_example
+
+Actually everywhere, on ALL PTs
+
+a.)
+
+Wikidot URLs, e.g.https://brucebase.wikidot.com/2012
+on BB event pages -> place link -> hover ==> Wikipedia link should render inside popup
+
+b.)
+
+on BB pages links on the form "https://brucebase.wikidot.com/1973#020373" should be rendered inline too
+
+4.)
+
+make some nice rich HTML based mockups before implementing
+
+** bugs
+
+1.)
+
+the country flags are still rendered over the green dot, and flicker shirtly when an "Also" filter button is pressed
+
+2.)
+
+On e.g. https://musicbrainz.org/event/2b3f6cca-c45e-44bc-bf70-4dbb5f35b6a5 POH
+
+a.)
+
+MB Event POH: "RECORDED HERE" (left side) needs a filter field for "Releases" e.g. on
+
+#+begin_example
+@debug/POH-MB-event-1988-03-28.html - POH for https://musicbrainz.org/event/2b3f6cca-c45e-44bc-bf70-4dbb5f35b6a5
+#+end_example
+
+b.)
+
+Both the "Release" and "Recording" sections and their table should be collapsable (+ Ctrl-click collabsable for all of
+them)
+
+c.)
+
+On e.g. https://musicbrainz.org/event/585754ce-51c1-4b68-bc98-641a2321bd9f where lots of releases/recordings are present both filter fileds are there
+
+#+begin_example
+@debug/POH-MB-event-1988-04-27.html - POH for https://musicbrainz.org/event/585754ce-51c1-4b68-bc98-641a2321bd9f
+#+end_example
+
+d.)
+
+- add a small additional tooltip for the green marker above the summary detail popup which explains the meaning of the green dot marker
+- show the dot without taking any width, as a small mark over the link's first letter
+
+
+* TODO On e.g. MB artist POHs, could the "RELEASE GROUPS" section on the right, specifically the table itself auto-increase (in showing more table rows), when we resize the POH window size to a bigger size
+
+On e.g. MB artist POHs, could the "RELEASE GROUPS" section on the right, specifically the table itself auto-increase (in
+showing more table rows), when we resize the POH window size to a bigger size - see video @debug/
+
+#+begin_example
+Artist - https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f - Bruce Springsteen
+Place - https://musicbrainz.org/place/bffa8343-2160-497c-937b-60369749eb11 - Los Angeles Memorial Sports Arena
+#+end_example
+
+
+* TODO redesign the "Aa Check title style (MB guidelines)" WARNING-menu entry
+
+redesign the "Aa Check title style (MB guidelines)" WARNING-menu entry; it should be more prominent, currently the
+end-user will NOT know that it even exists until by chance clicking the WARNINGS button
+
+
+* TODO MB Event POH: "RECORDED HERE" (left side) needs filter field for "Releases"
+
+* TODO setlist.fm needs a viewer for venus, artists and events
+
+setlist.fm needs a viewer for
+
+#+begin_example
+artist-setlists - https://www.setlist.fm/setlists/bruce-springsteen-2bd6dcce.html
+event /setlist - https://www.setlist.fm/setlist/bruce-springsteen/2016/los-angeles-sports-arena-los-angeles-ca-4bf0375a.html
+venues - https://www.setlist.fm/venue/los-angeles-sports-arena-los-angeles-ca-usa-3d6c967.html
+#+end_example
+
+* TODO POH - Place - https://musicbrainz.org/place/bffa8343-2160-497c-937b-60369749eb11 - Los Angeles Memorial Sports Arena
+
+POH - Place - https://musicbrainz.org/place/bffa8343-2160-497c-937b-60369749eb11 - Los Angeles Memorial Sports Arena
+
+a.)
+
+The "LINKS" section (left) should render the actual links inside the same window instead of a new tab, for all entity POHs (artist, place, etc.)
+
+b.)
+
+setlist.fm - https://www.setlist.fm/venue/los-angeles-sports-arena-los-angeles-ca-usa-3d6c967.html - @debug/
+
+

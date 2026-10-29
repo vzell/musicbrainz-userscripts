@@ -1,0 +1,80 @@
+[
+  {
+    "name": "the attn area is built inside the SAED button again",
+    "why": "The findings change the button's shape on the pages that have them, which is what the attention bar exists to stop (vzell 2026-10-29).",
+    "edits": [
+      {
+        "find": "[['actions', saedBar], ['disc', saedBar], ['menu', saedBar], ['attn', saedAttnBar]]",
+        "replace": "[['actions', saedBar], ['disc', saedBar], ['attn', saedBar], ['menu', saedBar]]"
+      }
+    ],
+    "spec": "tests/fixtures/findings-menus.spec.js",
+    "grep": "segments of the attention bar after the SAED button",
+    "expect": "fail"
+  },
+  {
+    "name": "_saedAreaFor() resolves attn in the SAED button",
+    "why": "No attn area there: every indicator's button is left out of both bars.",
+    "edits": [
+      {
+        "find": "        const bar = area === 'attn' ? _saedAttnBarEl : _saedBarEl;",
+        "replace": "        const bar = _saedBarEl;"
+      }
+    ],
+    "spec": "tests/fixtures/findings-menus.spec.js",
+    "grep": "segments of the attention bar after the SAED button",
+    "expect": "fail"
+  },
+  {
+    "name": "the attention bar is never shown",
+    "why": "It starts hidden; without _orderToolbar()'s sync the ❌ / ⚠️ segments are in a hidden bar.",
+    "edits": [
+      {
+        "find": "        if (_saedAttnBarEl) _saedAttnBarEl.hidden = !(attn && attn.childElementCount);\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/findings-menus.spec.js",
+    "grep": "segments of the attention bar after the SAED button",
+    "expect": "fail"
+  },
+  {
+    "name": "the attention bar shows while it is empty",
+    "why": "An empty rounded box after ☰ SAED on every page without findings.",
+    "edits": [
+      {
+        "find": "        if (_saedAttnBarEl) _saedAttnBarEl.hidden = !(attn && attn.childElementCount);",
+        "replace": "        if (_saedAttnBarEl) _saedAttnBarEl.hidden = false;"
+      }
+    ],
+    "spec": "tests/fixtures/findings-menus.spec.js",
+    "grep": "the master switch removes both menus",
+    "expect": "fail"
+  },
+  {
+    "name": "no [hidden] rule for the bar",
+    "why": ".mb-saed-bar sets display: inline-flex, which beats the browser's own [hidden]; the empty bar's border shows.",
+    "edits": [
+      {
+        "find": "        .mb-saed-bar[hidden] { display: none; }\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/findings-menus.spec.js",
+    "grep": "the master switch removes both menus",
+    "expect": "fail"
+  },
+  {
+    "name": "the attention bar is left out of the tail order",
+    "why": "The tail pass moves the SAED button to the end on every _orderToolbar(), which puts it AFTER the attention bar unless the bar is named too.",
+    "edits": [
+      {
+        "find": "        'mb-saed-bar',\n        'mb-saed-attn-bar',\n    ];",
+        "replace": "        'mb-saed-bar',\n    ];"
+      }
+    ],
+    "spec": "tests/fixtures/saed-toolbar.spec.js",
+    "grep": "one segmented button",
+    "expect": "fail"
+  }
+]

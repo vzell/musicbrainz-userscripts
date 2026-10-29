@@ -1,0 +1,134 @@
+[
+  {
+    "version": "WIP.7",
+    "date": "2026-10-29",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "Link previews: in an event's window, \"Recorded here\" has a filter on both its tables, also when there are only a few releases (it used to appear only above 25 rows). The filter looks at the name and its comment (\"live, 1988-03-28 …\", \"version 1\"), and the heading counts what it shows (\"Recordings · 3 of 40\"). \"Releases\" and \"Recordings\" fold: click a heading to fold it, Ctrl-click to fold or open both; the next event you open keeps them as you left them."
+        ]
+      },
+      {
+        "label": "🔧 Refactor",
+        "items": [
+          "_dpFoldGroupHtml() / _dpFoldClick() / _dpFolded (a group that folds, Ctrl/⌘ every group of the window, from _dpTblClick()); _mbPopRelGroupHtml() and _mbPopRelTableCols(); _dpCompactTableHtml() takes filter; _mbPopRelTableRows() rows carry comment. Mockup 2f: https://claude.ai/artifact/URrn3dps1EMtnkjKBvsvag. Tests: popup-mb.spec.js (the event window's filter and groups; a new test of the filter, the count, folding, Ctrl-click and the memory); scripts/mutations/poh-fixes.json (+6, all caught). docs/claude/detail-pages.md, HELP."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "WIP.6",
+    "date": "2026-10-29",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Link previews: with \"MusicBrainz Right Side Flags Everywhere\" installed, a country's flag in a window no longer covers the green dot of the name after it, and no longer blinks when you click in the window. That script put its own, wider flag into the window's."
+        ]
+      },
+      {
+        "label": "✨ Improve",
+        "items": [
+          "Link previews: the green dot in a window (the link is already loaded, so a click opens it at once) no longer pushes the text: every link that opens in the window keeps its place. When you rest on a link that has the dot, a small note above its card says what the dot means."
+        ]
+      },
+      {
+        "label": "🔧 Refactor",
+        "items": [
+          "_mbPopFlagHtml(): span.flag-XX.mb-pop-flag (no flag class) with data-hq-skip, the slot overflow: hidden. _dpWinMark() puts mb-dp-dots on the area while sa_dp_window_read_ahead is on; every mb-dp-l-here link keeps the dot's ::before, transparent until mb-dp-l-read. _dpShowPeek() records t.wasRead as the card comes up; _dpCollectNotes() adds a kind-read box (_dpReadNoteHtml()). Mockup 2e: https://claude.ai/artifact/URrn3dps1EMtnkjKBvsvag. Tests: popup-mb.spec.js H5 on/off (the link's box unchanged when read, the note on a dotted link's card and not on another's); pop-area-flags.spec.js gains a Right Side Flags stand-in test; scripts/mutations/poh-fixes.json (+7, all caught). DEBUG-NOTES.md, docs/claude/detail-pages.md, HELP."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "WIP.5",
+    "date": "2026-10-29",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "Link previews: in an artist's or a label's window, the ISNI is a link to its record on isni.org (a new tab), written in groups of four as ISNI does (0000 0001 2141 8834)."
+        ]
+      },
+      {
+        "label": "🔧 Refactor",
+        "items": [
+          "_mbPopIsniHtml() in the artist and label kinds' windowHtml; the cards keep the text. Tests: popup-mb.spec.js (the artist's ISNI; a new label test with two ISNIs, one ending in X); scripts/mutations/poh-fixes.json (+3, all caught). docs/claude/detail-pages.md, HELP."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "WIP.4",
+    "date": "2026-10-29",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Link previews: with \"MusicBrainz More Flags Everywhere\" installed, the areas in a window (an artist's Area and Born, a label's or place's Area, an event's Held at) no longer jump. That script added its flag a moment after every change of the window, so the names moved while the window loaded and flicked when you clicked in it (a release-group type, a chip). The window now draws the flags itself, in a place of fixed size: each country's, and each state's (read from Wikidata the first time a window shows that state, then kept; on discogs.com a country shows its code)."
+        ]
+      },
+      {
+        "label": "🔧 Refactor",
+        "items": [
+          "_mbPopAreaHtml() stamps data-flag-processed and puts _mbPopFlagHtml() before the link (.mb-pop-flag, 16 × 11): a country MusicBrainz's span.flag.flag-XX, off musicbrainz.org its ISO code; a state (_mbPopIsState()) its Wikidata P41 through _mbPopFlagLoad() / _mbPopFlagRecordFor() (area url-rels, wbgetclaims; key pop:flag:area:<id>, _MB_POP_FLAG_VERSION 1), started from _mbPopAreaChainLoad(). __saTest.mbPopFlagHtml(). Tests: new pop-area-flags.spec.js (3); popup-mb.spec.js counts flag lookups apart from chain steps; scripts/mutations/poh-fixes.json (+8, all caught). DEBUG-NOTES.md, docs/claude/detail-pages.md, HELP."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "WIP.3",
+    "date": "2026-10-29",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "Link previews: a MusicBrainz label's window (on MusicBrainz, and from the MusicBrainz column on discogs.com) shows its links on the left, under its facts, as an artist's window does; the right side keeps the related labels, people, places and series."
+        ]
+      },
+      {
+        "label": "🔧 Refactor",
+        "items": [
+          "The label kind's windowHtml puts _mbPopUrlLinksTableHtml() after the facts in the first column. Test: popup-mb.spec.js \"the label card and window\"; scripts/mutations/poh-fixes.json (+1, caught). docs/claude/detail-pages.md, HELP."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "WIP.2",
+    "date": "2026-10-29",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "Link previews: in a tag's window, each kind under \"By kind\" now says what a click does when you rest the pointer on it, e.g. \"Show the 661,243 recordings tagged rock on the right, most votes first: the first 100 now, 100 more a page on demand\"; the kind already listed says so. An editor's tag window names the editor."
+        ]
+      },
+      {
+        "label": "🔧 Refactor",
+        "items": [
+          "_mbTagKindTip() gives each mb-pop-kindbtn its data-mb-tip text in _mbPopTagWindowHtml(); _MB_POP_TAG_KIND_PAGE (100). Tests: popup-mb.spec.js and popup-mb-user-lists.spec.js assert the words; scripts/mutations/poh-fixes.json (4, all caught). docs/claude/detail-pages.md, HELP."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "WIP.1",
+    "date": "2026-10-29",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "Page heading: the ❌ errors and ⚠️ warnings buttons, and 🔄 when pages failed to load, moved out of the SAED button into a small rounded bar of their own right after it. The SAED button keeps the same shape on every page; the second bar appears only when the page has something to show. ⚠️ still shows at 0 where it starts the title-style check."
+        ]
+      },
+      {
+        "label": "🔧 Refactor",
+        "items": [
+          "The attn area is the one area of #mb-saed-attn-bar (class mb-saed-bar, the same custom properties), built next to #mb-saed-bar and held in _saedAttnBarEl; _saedAreaFor() resolves attn there, _saedMarkFirst() marks each bar, _orderToolbar() hides the bar while it is empty (.mb-saed-bar[hidden], since the bar's display beats the browser's own rule), and _TOOLBAR_TAIL_ORDER names both bars. Approved mockup https://claude.ai/artifact/URrn3dps1EMtnkjKBvsvag. Tests: saed-toolbar, findings-menus (placement, rounded corners, hidden when empty) and fetch-in-segment updated; scripts/mutations/saed-attn-bar.json (6, all caught). docs/claude/toolbar-and-header-ui.md, findings.md, CLAUDE.md, HELP."
+        ]
+      }
+    ]
+  }
+]

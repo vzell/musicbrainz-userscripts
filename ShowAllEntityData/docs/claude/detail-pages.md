@@ -329,6 +329,33 @@ hosts (kept, decided 2026-10-07).
   names the others. Songs before any heading are a nameless part: no heading
   row, so a setlist without parts renders as before. The heading rows are
   `tbody tr` too: a spec counting songs counts `tr:not(.mb-dp-tsec)`.
+- **The window's area links keep still** (vzell 2026-10-29, mockup
+  https://claude.ai/artifact/URrn3dps1EMtnkjKBvsvag; DEBUG-NOTES.md
+  2026-10-29): every link `_mbPopAreaHtml()` writes is stamped
+  `data-flag-processed`, which "MusicBrainz More Flags Everywhere" skips —
+  it would otherwise put its flag and a space before each one a moment after
+  EVERY repaint (each chain step, a segment click), so the text jumped. The
+  window draws its own flag first (`_mbPopFlagHtml()`), in one fixed 16 × 11
+  slot (`.mb-pop-flag`): a Country (`_mbPopIsCountry()`) gets MusicBrainz's
+  own `span.flag.flag-XX` on musicbrainz.org (its CSS is on every page), its
+  ISO code in a box elsewhere (discogs.com: `_foreignHost`); a state
+  (`_mbPopIsState()`: `type` Subdivision, or an untyped own area with an ISO
+  3166-2 code) its Wikidata item's P41 on Commons (`Special:FilePath?width=32`),
+  its slot empty while that loads and gone once its record says "none"; any
+  other area none. The state's record (`_mbPopFlagLoad()`,
+  `_mbPopFlagRecordFor()`, key `pop:flag:area:<id>`, `_MB_POP_FLAG_VERSION`):
+  its `url-rels` lookup (the `wikidata` link) and one `wbgetclaims P41`
+  through `_extGet()`, started from `_mbPopAreaChainLoad()` (the window only,
+  never a hover), a failure not retried by repaints, kept in IndexedDB "none"
+  included — two requests per state, once. Specs: pop-area-flags.spec.js (a
+  stand-in for that script's observer; the chain's last link sampled every
+  frame of a repaint), popup-mb.spec.js (`flagLookups()` apart from the
+  chain's `areaLookups()`); mutations in scripts/mutations/poh-fixes.json.
+- **An ISNI is a link** in the artist and label windows' Facts
+  (`_mbPopIsniHtml()`, vzell 2026-10-29): `https://isni.org/isni/<16>` in a
+  new tab, shown in groups of four; a check character X kept. The cards keep
+  the plain text (a card is not clickable); an IPI has no public page and
+  stays text.
 - **An area is named in its area chain** (`_mbPopAreaChain()`, WIP.2):
   "OceanFirst Bank Center in West Long Branch, New Jersey, United States", as
   MusicBrainz writes it — an event's "Held at" and a recording's "Recorded at"
@@ -977,7 +1004,10 @@ everything the card needs in one request.
   which drills into the `genre` kind below), the total, "By kind" — a
   Kind/Count table whose kinds are `seg` buttons in a `data-mb-tbl="tag-kinds"`
   box (the shared click handler), slugs from `SA_TAG_VALUE_CATEGORY_SLUGS`
-  (`_mbTagKindSlugs()`) — and on the right the chosen kind's List table
+  (`_mbTagKindSlugs()`), each with a hover text saying what a click lists
+  (`_mbTagKindTip()`, since 2026-10-29: the count, "most votes first" on a
+  tag's page, the editor on an editor's, the first `_MB_POP_TAG_KIND_PAGE`
+  now; the listed kind says it is listed) — and on the right the chosen kind's List table
   (`tag-kind-<slug>`), read from `<base>/<slug>?page=N` by the paged
   loader's HTML adapter (`_mbTagKindList()`, `_mbPagedHtml()`,
   `_mbParseTagKindPage()`: "N … found", `_mbPagerOf()`, a `ul` of 100 `li`
@@ -1748,6 +1778,20 @@ https://claude.ai/artifact/APF35bPAyvFZvKjFHGHrZU
 - **H5 read-ahead** (`sa_dp_window_read_ahead`, off): after 600 ms the
   target's own `card(t, true)` with `t.readAhead`; `_mbPopWanted()` wants it
   while the link is still `:hover`. MusicBrainz entities only.
+  **The green dot** (`mb-dp-l-read`: the link's record is in memory,
+  `_dpWinRead()` — read ahead, or loaded by the window itself, an area
+  chain's steps) has a RESERVED place since 2026-10-29 (vzell, mockup 2e,
+  https://claude.ai/artifact/URrn3dps1EMtnkjKBvsvag): while H5 is on,
+  `_dpWinMark()` puts `mb-dp-dots` on the area and every `mb-dp-l-here`
+  link keeps an empty 6 px + 4 px `::before`, green once read, so nothing
+  moves when it appears (it used to push an area chain right). With H5 off,
+  no place. **Its note**: a card that comes up for a dotted link has a box
+  right above it in the stack (`_dpCollectNotes()`, kind `read`,
+  `_dpReadNoteHtml()`): "Already loaded: a click opens it at once, with no
+  new request", the setting's name at its foot. Whether the link was dotted
+  is read as the card comes up (`t.wasRead`, `_dpShowPeek()`, before a
+  repaint may replace the link), so the card's own lookup marking the link
+  a moment later adds no note.
 - **H6** (`_dpWinNavTips()`, from `_dpShowInDialog()`): ← Back names the
   stack's top, ‹ › the neighbouring steps' text.
 - **A repaint does not drop the card** (2026-10-29). Every repaint of the
@@ -2505,14 +2549,26 @@ links, the plain `_mbPopUrlLinksHtml()` below `min`; `_rgFactsHtml(t, f)`
 takes the target for it), relations (`_mbPopRelTableRows()` +
 `_mbPopRelTableHtml()`: Relationship · target, group names from
 `_mbPopRelGroupName()`, extracted from `_mbPopRelRows()`): area parts,
-related instruments, an event's "Recorded here" (two tables); a work's
+related instruments, an event's "Recorded here" (two tables, each a group
+that folds since 2026-10-29: `_mbPopRelGroupHtml()` → `_dpFoldGroupHtml()`,
+the heading `button.mb-dp-foldh[data-mb-fold-act]` with ▾/▸ and its count,
+"3 of 20" while the filter narrows; the body built only while open; a click
+folds that group, Ctrl/⌘ every `[data-mb-fold]` group of the window
+(`_dpFoldClick()`, from `_dpTblClick()`); the folded ids in `_dpFolded`, one
+set for every window of the page load, so the next event shows the same
+groups folded; the table's filter always there (`_dpCompactTableHtml()`'s
+`filter`) and matching the target's name and its comment, `comment` on each
+`_mbPopRelTableRows()` row; mockup 2f,
+https://claude.ai/artifact/URrn3dps1EMtnkjKBvsvag); a work's
 codes, an instrument's aliases, a genre's related genres (one table per
 phrase, `genre-rel-<i>`; its links moved to the left column), an editor's
 edits, tags and genres (`genres`, `tags`), ratings (`ratings-<i>`), ISRC
 `recordings`, ISWC `works`, disc ID `releases` (its table of contents stays
 `_mbPopTableHtml()`), annotation `versions`. HTML cells mark matches with
 `_hlHtml()`. Every `windowHtml` that builds one takes `t`. The label's
-aliases one per line (`_mbPopAliasesHtml()`). Specs: popup-mb.spec.js
+aliases one per line (`_mbPopAliasesHtml()`). The label's "Links (N)" sit
+under its facts in the LEFT column since 2026-10-29, as an artist's (the
+right column holds the relationships only). Specs: popup-mb.spec.js
 "Compact tables (Phase 3d)", the genre window's tables, and the windows'
 own tests (selectors moved to `data-mb-tbl`); popup-mb-user-lists.spec.js,
 popup-mb-annotations.spec.js. Mutations: `scripts/mutations/mb-window-compact.json`.

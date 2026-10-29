@@ -36,9 +36,10 @@ async function findingsMenuState(page, level) {
         const btn = document.getElementById(btnId);
         if (!btn) return null;
         const panel = document.getElementById(`${btnId}-panel`);
-        // An indicator segment of the SAED button while it has rows
-        // (docs/claude/toolbar-and-header-ui.md, "The SAED button").
-        const area = document.querySelector('#mb-saed-bar > [data-mb-area="attn"]');
+        // An indicator segment of the attention bar after the SAED button
+        // while it has rows (docs/claude/toolbar-and-header-ui.md, "The SAED
+        // button").
+        const area = document.querySelector('#mb-saed-attn-bar > [data-mb-area="attn"]');
         const rows = panel
             ? Array.from(panel.querySelectorAll('.mb-findings-menu-item[data-mb-finding-id]')).map((r) => ({
                 id: r.dataset.mbFindingId,

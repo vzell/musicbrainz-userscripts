@@ -669,9 +669,10 @@ whether the panel flips upward.
 Cells with a data problem are tinted: **light yellow with ⚠️** for a warning,
 **light red with ❌** for an error. Hover the cell for what is wrong.
 
-Two parts of the SAED button beside the page heading — **❌ N ▾** for errors,
-then **⚠️ N ▾** for warnings, each tinted to match — list every kind of problem
-the page has, with how many rows have it. The same two lists are rows of the
+Two buttons in a small bar of their own, right after the SAED button beside
+the page heading — **❌ N ▾** for errors, then **⚠️ N ▾** for warnings, each
+tinted to match — list every kind of problem the page has, with how many rows
+have it. The bar is there only when the page has something to show. The same two lists are rows of the
 ☰ SAED menu's "Needs attention" group.
 
 ```
@@ -2507,13 +2508,14 @@ userscript lists that host, so Tampermonkey does not ask first).
   lists start sorted by date, since MusicBrainz returns them in no date
   order); for an artist, its area and
   birthplace named as MusicBrainz does (*Long Branch, New Jersey, United
-  States*), its genres (each opening its tag) and aliases one per line, every
+  States*, a flag before each country and state; a state's flag is read from
+  Wikidata the first time a window shows it, then kept), its genres (each opening its tag) and aliases one per line, every
   external link and its release groups: a segment per
   type (Album, Single, EP, Broadcast, Other) with its total, each a list like
   a work's recordings, with chips for Live, Compilation and the like and the
   covers, loaded as you scroll (a missing one leaves an empty square); for
   a label, its area named the same way, the labels it owns, is owned by or is
-  an imprint of, its links and its number of releases; for an area, its parts; for an instrument, the related
+  an imprint of, its links (on the left, under its facts) and its number of releases; for an area, its parts; for an instrument, the related
   instruments and every alias (its description is on the Live page); for an
   event, where it was held as MusicBrainz writes it (*OceanFirst Bank Center
   in West Long Branch, New Jersey, United States* — the window looks up the
@@ -2525,11 +2527,14 @@ userscript lists that host, so Tampermonkey does not ask first).
   of its line, with a filter; a setlist in parts — *Soundcheck*, *Concert*,
   *Encore* — gets a heading row per part, numbers starting over in each,
   a chip per part, and "↺ also in …" on a song played in two parts; the
-  card shows the longest part), what was recorded there and its posters;
+  card shows the longest part), what was recorded there — its releases and
+  its recordings, each with a filter (on the name and its comment) and a
+  heading that folds it; Ctrl-click a heading to fold or open both, and the
+  next event's window keeps them that way — and its posters;
   for a place, its area named the same way, a map link, its links and all
   of its events as a list like a work's recordings (type chips); for a
   series, every item in order, each with its kind's icon; for a tag, its genre and how many of each
-  kind it carries; a click on a kind lists its entities on the right (the
+  kind it carries (rest the pointer on a kind for what a click lists); a click on a kind lists its entities on the right (the
   biggest kind at first), read from MusicBrainz's page of that kind 100 at a
   time with *Load N more pages*, most votes first, with a filter and the
   three-way sort (a link to one kind's page, `/tag/rock/artist`, opens the
@@ -2712,8 +2717,12 @@ userscript lists that host, so Tampermonkey does not ask first).
   - **← Back** and **‹ ›** name where they go when you rest on them.
   - *In the window, read a link ahead while the pointer rests on it* (same
     section, on by default) reads a MusicBrainz link after a moment's rest,
-    so the click shows it at once; such links get a small green dot. Links to
-    other sites are never read ahead.
+    so the click shows it at once; such links get a small green dot (links
+    the window loaded for itself, such as the places of an area, have it
+    too). Every link that opens in the window keeps the dot's place, so
+    nothing moves when it appears, and a dotted link's card says what the
+    dot means in a small note above it. Links to other sites are never read
+    ahead.
   - On a touch screen a tap stays a click; a **long press** shows the link's
     card or the image.
 
@@ -2943,7 +2952,8 @@ once and without Tampermonkey asking first:
   on a hover and opens in the same window on a click (*Back* returns);
   Ctrl-click opens musicbrainz.org in a new tab. A MusicBrainz label's card
   and window show when it was founded and ended, its label code, rating, IPI
-  and ISNI, and the window also lists its people, places and series (up to
+  and ISNI (in the window a link to its record on isni.org, as an artist's),
+  and the window also lists its people, places and series (up to
   12 of each kind, then "+N more"). While these previews are on, Discogs'
   own hover box on an artist name stays away, so the two never overlap.
 

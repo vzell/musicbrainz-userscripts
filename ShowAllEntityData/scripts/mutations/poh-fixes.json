@@ -1,0 +1,379 @@
+[
+  {
+    "name": "the By kind buttons have no hover text",
+    "why": "A click on a kind replaces the right column; nothing said so (vzell 2026-10-29).",
+    "edits": [
+      {
+        "find": "                `data-mb-tip title=\"${_rgEsc(_mbTagKindTip(k.s, k.slug === slug, d.name, editor))}\" ` +\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/popup-mb.spec.js",
+    "grep": "counts by kind",
+    "expect": "fail"
+  },
+  {
+    "name": "the listed kind offers itself again",
+    "why": "The kind already on the right says it would be shown, as if a click did something.",
+    "edits": [
+      {
+        "find": "        if (shown) return `These ${unit} are on the right now.`;",
+        "replace": "        if (false) return `These ${unit} are on the right now.`;"
+      }
+    ],
+    "spec": "tests/fixtures/popup-mb.spec.js",
+    "grep": "counts by kind",
+    "expect": "fail"
+  },
+  {
+    "name": "a kind of fewer than a page promises more on demand",
+    "why": "\"100 more a page\" on a kind of 2 areas.",
+    "edits": [
+      {
+        "find": "        const first = n > _MB_POP_TAG_KIND_PAGE ? ",
+        "replace": "        const first = n >= 0 ? "
+      }
+    ],
+    "spec": "tests/fixtures/popup-mb.spec.js",
+    "grep": "counts by kind",
+    "expect": "fail"
+  },
+  {
+    "name": "an editor's tag page reads as everyone's tag",
+    "why": "\"tagged live, most votes first\": an editor's page has no votes and is one editor's tagging.",
+    "edits": [
+      {
+        "find": "        const editor = /^\\/user\\//.test(base) ? (d.editor || decodeURIComponent(base.split('/')[2] || '')) : '';",
+        "replace": "        const editor = '';"
+      }
+    ],
+    "spec": "tests/fixtures/popup-mb-user-lists.spec.js",
+    "grep": "USER TAG: the window",
+    "expect": "fail"
+  },
+  {
+    "name": "a label's Links back in the right column",
+    "why": "The links sat under the relationships on the right, unlike an artist's (vzell 2026-10-29).",
+    "edits": [
+      {
+        "find": "${left}${links}</div><div class=\"mb-dp-col\">${right}</div></div>`;",
+        "replace": "${left}</div><div class=\"mb-dp-col\">${right}${links}</div></div>`;"
+      }
+    ],
+    "spec": "tests/fixtures/popup-mb.spec.js",
+    "grep": "the label card and window",
+    "expect": "fail"
+  },
+  {
+    "name": "the window's area links are not stamped for More Flags Everywhere",
+    "why": "The other script puts its flag and a space before each one a moment after every repaint: Area and Born jump (vzell 2026-10-29).",
+    "edits": [
+      {
+        "find": "            `data-flag-processed=\"1\">${_rgEsc(a.name)}</a>` : '';",
+        "replace": "            `>${_rgEsc(a.name)}</a>` : '';"
+      }
+    ],
+    "spec": "tests/fixtures/pop-area-flags.spec.js",
+    "grep": "More Flags Everywhere finds nothing to do",
+    "expect": "fail"
+  },
+  {
+    "name": "a state's flag slot appears only once its flag is known",
+    "why": "The slot arriving late shifts the rest of the chain by 20 px: the jump this fixes, made by the window itself.",
+    "edits": [
+      {
+        "find": "        if (!s || s.status === 'loading') return '<span class=\"mb-pop-flag mb-pop-flag-wait\" aria-hidden=\"true\"></span>';",
+        "replace": "        if (!s || s.status === 'loading') return '';"
+      }
+    ],
+    "spec": "tests/fixtures/pop-area-flags.spec.js",
+    "grep": "a country: MusicBrainz",
+    "expect": "fail"
+  },
+  {
+    "name": "the flag slot has no fixed size",
+    "why": "An empty slot collapses and a loaded one takes the picture's size: the text after it moves.",
+    "edits": [
+      {
+        "find": "                display: inline-block; box-sizing: border-box; width: 16px; height: 11px; padding: 0; margin: 0 4px 0 0;",
+        "replace": "                display: inline; box-sizing: border-box; padding: 0; margin: 0 4px 0 0;"
+      }
+    ],
+    "spec": "tests/fixtures/pop-area-flags.spec.js",
+    "grep": "asked only after Space",
+    "expect": "fail"
+  },
+  {
+    "name": "flags are asked for every area of a chain, a country's and a city's too",
+    "why": "A Wikidata request per city and per country; MusicBrainz's CSS already has every country's flag.",
+    "edits": [
+      {
+        "find": "        areas.forEach(a => _mbPopAreaChain(a).areas.forEach(x => { if (_mbPopIsState(x)) states.set(x.id, x); }));",
+        "replace": "        areas.forEach(a => _mbPopAreaChain(a).areas.forEach(x => { if (x.id) states.set(x.id, x); }));"
+      }
+    ],
+    "spec": "tests/fixtures/popup-mb.spec.js",
+    "grep": "area and birthplace in their area chains",
+    "expect": "fail"
+  },
+  {
+    "name": "a state's flag is never asked",
+    "why": "The slot waits forever and no state ever shows its flag.",
+    "edits": [
+      {
+        "find": "        states.forEach(x => _mbPopFlagLoad(t, x, again, repaint));",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/pop-area-flags.spec.js",
+    "grep": "asked only after Space",
+    "expect": "fail"
+  },
+  {
+    "name": "a failed flag lookup is asked again by every repaint",
+    "why": "A state whose lookup failed loops one request a repaint; a failure must wait for ⟳.",
+    "edits": [
+      {
+        "find": "        const key = _mbPopFlagKey(area.id);\n        const s = _mbPop.get(key);\n        if (!again && s && s.status === 'failed') return;",
+        "replace": "        const key = _mbPopFlagKey(area.id);\n        const s = _mbPop.get(key);\n        if (false && s) return;"
+      }
+    ],
+    "spec": "tests/fixtures/popup-mb.spec.js",
+    "grep": "a failed step of the area chain",
+    "expect": "fail"
+  },
+  {
+    "name": "a country's flag the same everywhere, MusicBrainz's CSS class on discogs.com too",
+    "why": "On discogs.com MusicBrainz's flag CSS is absent: an empty slot instead of the ISO code.",
+    "edits": [
+      {
+        "find": "            return onMb ? `<span class=\"flag-${code} mb-pop-flag\"",
+        "replace": "            return true ? `<span class=\"flag-${code} mb-pop-flag\""
+      }
+    ],
+    "spec": "tests/fixtures/pop-area-flags.spec.js",
+    "grep": "a country: MusicBrainz",
+    "expect": "fail"
+  },
+  {
+    "name": "an entity's own state area (type null) is not a state",
+    "why": "An artist based in or born in a state (its own area, untyped) gets no state flag.",
+    "edits": [
+      {
+        "find": "        return !!a && !!a.id && (a.type === 'Subdivision' || (!a.type && (a['iso-3166-2-codes'] || []).length > 0));",
+        "replace": "        return !!a && !!a.id && a.type === 'Subdivision';"
+      }
+    ],
+    "spec": "tests/fixtures/pop-area-flags.spec.js",
+    "grep": "a country: MusicBrainz",
+    "expect": "fail"
+  },
+  {
+    "name": "the ISNI is plain text again",
+    "why": "vzell 2026-10-29: \"ISNI: 0000000121418834 - value is not hyperlinked\".",
+    "edits": [
+      {
+        "find": "            .map(i => `<a href=\"https://isni.org/isni/${_rgEsc(i)}\" target=\"_blank\" rel=\"noopener noreferrer\">` +\n                `${_rgEsc(i.replace(/(.{4})(?=.)/g, '$1 '))}</a>`).join(', ');",
+        "replace": "            .map(i => _rgEsc(i)).join(', ');"
+      }
+    ],
+    "spec": "tests/fixtures/popup-mb.spec.js",
+    "grep": "genres one per line as tag links",
+    "expect": "fail"
+  },
+  {
+    "name": "an ISNI ending in X is dropped",
+    "why": "The last character of an ISNI is a check character and may be X.",
+    "edits": [
+      {
+        "find": ".filter(i => /^[0-9]{15}[0-9X]$/i.test(i))",
+        "replace": ".filter(i => /^[0-9]{16}$/.test(i))"
+      }
+    ],
+    "spec": "tests/fixtures/popup-mb.spec.js",
+    "grep": "each ISNI links its record",
+    "expect": "fail"
+  },
+  {
+    "name": "the label window keeps its ISNI as text",
+    "why": "The artist's is linked, the label's not: the two windows' Facts disagree.",
+    "edits": [
+      {
+        "find": "                        ['ISNI', _mbPopIsniHtml(d.isnis)],\n                        ['Aliases', _mbPopAliasesHtml(d.aliases)],\n                    ]);\n                const ps = _mbPop.get(pin.key);",
+        "replace": "                        ['ISNI', _rgEsc((d.isnis || []).join(', '))],\n                        ['Aliases', _mbPopAliasesHtml(d.aliases)],\n                    ]);\n                const ps = _mbPop.get(pin.key);"
+      }
+    ],
+    "spec": "tests/fixtures/popup-mb.spec.js",
+    "grep": "each ISNI links its record",
+    "expect": "fail"
+  },
+  {
+    "name": "the dot's place is made only once the link is read",
+    "why": "A link grows by 10 px when it is read: every name after it in an area chain moves (vzell 2026-10-29: \"a reserved place, nothing moves when it appears\").",
+    "edits": [
+      {
+        "find": "            .mb-dp-dialog .mb-dp-area.mb-dp-dots a.mb-dp-l-here::before {",
+        "replace": "            .mb-dp-dialog .mb-dp-area.mb-dp-dots a.mb-dp-l-read::before {"
+      }
+    ],
+    "spec": "tests/fixtures/popup-mb.spec.js",
+    "grep": "H5 on",
+    "expect": "fail"
+  },
+  {
+    "name": "the window area never says read-ahead is on",
+    "why": "No place is kept and no dot is drawn: a read link looks unread.",
+    "edits": [
+      {
+        "find": "        api.scrollArea.classList.toggle('mb-dp-dots', dots);\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/popup-mb.spec.js",
+    "grep": "H5 on",
+    "expect": "fail"
+  },
+  {
+    "name": "a place is kept with read-ahead off",
+    "why": "Every link that opens here gains a 10 px gap for a dot that can never appear.",
+    "edits": [
+      {
+        "find": "        api.scrollArea.classList.toggle('mb-dp-dots', dots);",
+        "replace": "        api.scrollArea.classList.toggle('mb-dp-dots', true);"
+      }
+    ],
+    "spec": "tests/fixtures/popup-mb.spec.js",
+    "grep": "H5 off",
+    "expect": "fail"
+  },
+  {
+    "name": "no note on the green dot",
+    "why": "The dot says nothing about itself (vzell 2026-10-29).",
+    "edits": [
+      {
+        "find": "        if (t.wasRead) notes.push({ kind: 'read', html: _dpReadNoteHtml(t), label: '' });\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/popup-mb.spec.js",
+    "grep": "H5 on",
+    "expect": "fail"
+  },
+  {
+    "name": "the note asks the link's class at every repaint, not at show",
+    "why": "The card's own lookup reads the link a moment after it shows; the note then claims \"already loaded\" for a link that was not.",
+    "edits": [
+      {
+        "find": "        t.wasRead = wasRead;\n",
+        "replace": "        t.wasRead = true;\n"
+      }
+    ],
+    "spec": "tests/fixtures/popup-mb.spec.js",
+    "grep": "H5 on",
+    "expect": "fail"
+  },
+  {
+    "name": "our country flag is a .flag again",
+    "why": "Right Side Flags Everywhere blanks it and appends its own wider flag inside it: over the green dot, flickering on every repaint.",
+    "edits": [
+      {
+        "find": "            return onMb ? `<span class=\"flag-${code} mb-pop-flag\" data-hq-skip=\"true\" role=\"img\"",
+        "replace": "            return onMb ? `<span class=\"flag flag-${code} mb-pop-flag\" role=\"img\""
+      }
+    ],
+    "spec": "tests/fixtures/pop-area-flags.spec.js",
+    "grep": "Right Side Flags Everywhere leaves",
+    "expect": "fail"
+  },
+  {
+    "name": "the flag slot does not clip",
+    "why": "Anything put into it (another script's image) spills over the link and its dot.",
+    "edits": [
+      {
+        "find": "                vertical-align: -1px; background-position: center; background-size: 16px 11px; background-repeat: no-repeat;\n                overflow: hidden;\n",
+        "replace": "                vertical-align: -1px; background-position: center; background-size: 16px 11px; background-repeat: no-repeat;\n"
+      }
+    ],
+    "spec": "tests/fixtures/pop-area-flags.spec.js",
+    "grep": "Right Side Flags Everywhere leaves",
+    "expect": "fail"
+  },
+  {
+    "name": "a small Recorded here table has no filter",
+    "why": "vzell 2026-10-29: the 20 releases of 1988-03-28 had no filter, the 29 of 1988-04-27 had one.",
+    "edits": [
+      {
+        "find": "        const filter = rows.length > per || (opts.filter && rows.length) ? ",
+        "replace": "        const filter = rows.length > per ? "
+      }
+    ],
+    "spec": "tests/fixtures/popup-mb.spec.js",
+    "grep": "the whole setlist, what was recorded there",
+    "expect": "fail"
+  },
+  {
+    "name": "the filter reads the relationship, not the comment",
+    "why": "\"live\", \"version 1\", a date in the comment found nothing; \"Recorded at\" matched every row.",
+    "edits": [
+      {
+        "find": "        const search = r => `${r.name} ${r.comment}`;",
+        "replace": "        const search = r => `${r.rel} ${r.name}`;"
+      }
+    ],
+    "spec": "tests/fixtures/popup-mb.spec.js",
+    "grep": "the filter reads name and comment",
+    "expect": "fail"
+  },
+  {
+    "name": "the heading keeps the total while the filter narrows",
+    "why": "\"Recordings · 26\" over three rows: the count no longer says what is shown.",
+    "edits": [
+      {
+        "find": "        const shown = ui.q.trim() ? _dpTblRows(_mbPopRelTableCols(label), rows, ui, { search }).length : rows.length;",
+        "replace": "        const shown = rows.length;"
+      }
+    ],
+    "spec": "tests/fixtures/popup-mb.spec.js",
+    "grep": "the filter reads name and comment",
+    "expect": "fail"
+  },
+  {
+    "name": "a heading's click does nothing",
+    "why": "The groups never fold.",
+    "edits": [
+      {
+        "find": "        if (fold) {\n            _dpFoldClick(fold, e.ctrlKey || e.metaKey);\n            return true;\n        }",
+        "replace": "        if (fold) return true;"
+      }
+    ],
+    "spec": "tests/fixtures/popup-mb.spec.js",
+    "grep": "the filter reads name and comment",
+    "expect": "fail"
+  },
+  {
+    "name": "Ctrl-click folds only its own group",
+    "why": "vzell 2026-10-29: Ctrl-click acts on every foldable group of the window.",
+    "edits": [
+      {
+        "find": "        const ids = all ? Array.from(area.querySelectorAll('[data-mb-fold]')).map(g => g.dataset.mbFold) : [id];",
+        "replace": "        const ids = [id];"
+      }
+    ],
+    "spec": "tests/fixtures/popup-mb.spec.js",
+    "grep": "the filter reads name and comment",
+    "expect": "fail"
+  },
+  {
+    "name": "the folded groups are forgotten with the window",
+    "why": "vzell 2026-10-29: remembered for the next event opened this page load.",
+    "edits": [
+      {
+        "find": "    function _dpFoldGroupHtml(id, title, count, body) {\n        const open = !_dpFolded.has(id);",
+        "replace": "    function _dpFoldGroupHtml(id, title, count, body) {\n        if (!document.querySelector(`#mb-dp-dialog [data-mb-fold=\"${id}\"]`)) _dpFolded.delete(id);\n        const open = !_dpFolded.has(id);"
+      }
+    ],
+    "spec": "tests/fixtures/popup-mb.spec.js",
+    "grep": "the filter reads name and comment",
+    "expect": "fail"
+  }
+]

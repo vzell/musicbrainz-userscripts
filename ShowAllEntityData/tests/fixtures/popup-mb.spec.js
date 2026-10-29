@@ -63,7 +63,11 @@ const AREA_CHAIN_FIXTURES = {
     '74e50e58-5deb-4b99-93a2-decbb365c07f': 'ws2-pop-area-74e50e58.json', // New York (City)
     '75e398a3-5f3f-4224-9cd8-0fe44715bc95': 'ws2-pop-area-75e398a3.json', // New York (Subdivision)
 };
-const areaLookups = (log) => log.ws2.filter(u => u.includes('/ws/2/area/')).map(u => u.match(/area\/([0-9a-f-]{36})/)[1]);
+// An area chain's steps (`inc=area-rels`), and a state's flag lookups
+// (`inc=url-rels`, `_mbPopFlagRecordFor()`, since 2026-10-29), apart: a flag
+// lookup is its own request, asked once per state, never a step asked again.
+const areaLookups = (log) => log.ws2.filter(u => /\/ws\/2\/area\/[0-9a-f-]{36}\?inc=area-rels&/.test(u)).map(u => u.match(/area\/([0-9a-f-]{36})/)[1]);
+const flagLookups = (log) => log.ws2.filter(u => /\/ws\/2\/area\/[0-9a-f-]{36}\?inc=url-rels&/.test(u)).map(u => u.match(/area\/([0-9a-f-]{36})/)[1]);
 // Real captures (scripts/capture-ws2-fixtures.py), by the request each answers.
 // Phase 3's pages, captured with scripts/fetch-mb-page-fixture.js: the user's
 // own applied edit logged in (--auth: editor and notes shown), an open edit
@@ -877,6 +881,9 @@ test.describe('MusicBrainz link previews: recording and work (WIP.2)', () => {
         const ids = areaLookups(log);
         expect(ids.slice().sort()).toEqual(['edd27a39-ff8a-4af4-8bbf-f369b0fb1899', '261962ea-d8c2-4eaf-a80c-f14376ffadb0',
             '74e50e58-5deb-4b99-93a2-decbb365c07f', '75e398a3-5f3f-4224-9cd8-0fe44715bc95'].sort());
+        // The state of New York's flag: asked once for both chains; no
+        // city's, no country's (MusicBrainz's own flag CSS draws that one).
+        await expect.poll(() => flagLookups(log)).toEqual(['75e398a3-5f3f-4224-9cd8-0fe44715bc95']);
     });
 
     test('the recording window\'s releases: covers only where the archive has a front, status chips, by date at first', async ({ page }) => {
@@ -1450,6 +1457,13 @@ test.describe('MusicBrainz link previews: artist, label, area, instrument (WIP.3
         expect(await aliases.locator('br').count(), 'five aliases, one per line').toBe(4);
         await expect(aliases).toContainText('The Boss (Artist name, en)');
         await expect(aliases.locator('.mb-rg-dim').first()).toHaveText('(Legal name)');
+        // The ISNI links its record on isni.org (vzell 2026-10-29); the IPI
+        // has no such page and stays text.
+        const isni = facts.locator('dt:text-is("ISNI") + dd a');
+        await expect(isni).toHaveText('0000 0001 2141 8834');
+        await expect(isni).toHaveAttribute('href', 'https://isni.org/isni/0000000121418834');
+        await expect(isni).toHaveAttribute('target', '_blank');
+        await expect(facts.locator('dt:text-is("IPI") + dd a')).toHaveCount(0);
     });
 
     test('the artist window: area and birthplace in their area chains; a country is never looked up (org/event-GPE.org)', async ({ page }) => {
@@ -1462,6 +1476,17 @@ test.describe('MusicBrainz link previews: artist, label, area, instrument (WIP.3
         // Its links and five release-group counts take their rate slots first.
         await expect(facts.locator('dt:text-is("Born") + dd')).toHaveText('1949-09-23 · Long Branch, New Jersey, United States', { timeout: 20000 });
         await expect(facts.locator('dt:text-is("Born") + dd a')).toHaveCount(3);
+        // Every area link is marked for "More Flags Everywhere", which then
+        // leaves it alone (vzell 2026-10-29); the flags are the window's own,
+        // each in a fixed slot: the country's from MusicBrainz's flag CSS, the
+        // state's slot waiting for (here: no) Wikidata flag, none for a city.
+        await expect(facts.locator('dd a[href^="/area/"]:not([data-flag-processed="1"])')).toHaveCount(0);
+        await expect(facts.locator('dt:text-is("Area") + dd > span.flag-US.mb-pop-flag[data-hq-skip="true"]:not(.flag) + a')).toHaveText('United States');
+        await expect(facts.locator('dt:text-is("Born") + dd > span.flag-US.mb-pop-flag[data-hq-skip="true"]:not(.flag) + a')).toHaveText('United States');
+        await expect(facts.locator('dt:text-is("Born") + dd > .mb-pop-flag + a[href="/area/bb0af2e9-6ae0-4c4f-b729-c8d6444d6380"]'),
+            'no flag for a city').toHaveCount(0);
+        await expect.poll(() => flagLookups(log), { message: 'the state is asked for its flag; a country never', timeout: 15000 })
+            .toEqual(['a36544c1-cb40-4f44-9e0e-7a5a69e403a8']);
         // The artist's own area has no type: the ISO code says "country".
         await expect(facts.locator('dt:text-is("Area") + dd')).toHaveText('United States');
         expect(areaLookups(log)).toEqual(['bb0af2e9-6ae0-4c4f-b729-c8d6444d6380', '604b7841-36b7-4bea-9bdc-7eeb52520e35',
@@ -1473,6 +1498,21 @@ test.describe('MusicBrainz link previews: artist, label, area, instrument (WIP.3
         await ctrlHover(page, artistLink(page));
         await expect(card(page).locator('.mb-dp-kv dt:text-is("Born in") + dd')).toHaveText('Long Branch, New Jersey, United States');
         expect(log.ws2).toHaveLength(before);
+    });
+
+    test('the label window: each ISNI links its record on isni.org', async ({ page }) => {
+        const label = JSON.parse(json('ws2-pop-label-columbia.json'));
+        label.isnis = ['0000000123172425', '000000012345678X'];
+        await open(page, {
+            settings: { sa_pop_mb: true }, showAll: false,
+            ws2: (url) => (/\/ws\/2\/label\/[0-9a-f-]{36}\?inc=genres/.test(url) ? { status: 200, body: JSON.stringify(label) } : null),
+        });
+        await ctrlHover(page, labelLink(page));
+        await expect(card(page)).toContainText('fetched now');
+        await page.keyboard.press('Space');
+        const isni = dialog(page).locator('.mb-dp-area h4:text-is("Facts") + .mb-dp-kv dt:text-is("ISNI") + dd a');
+        await expect(isni).toHaveText(['0000 0001 2317 2425', '0000 0001 2345 678X']);
+        await expect(isni.nth(1)).toHaveAttribute('href', 'https://isni.org/isni/000000012345678X');
     });
 
     test('the label window: a label in a country asks for no area (org/event-GPE.org)', async ({ page }) => {
@@ -1604,6 +1644,12 @@ test.describe('MusicBrainz link previews: artist, label, area, instrument (WIP.3
         await expect(related).toContainText('Vocalion');
         await expect(related).toContainText('Columbia/Epic Label Group');
         await expect(area.locator('.mb-dp-kv').first()).toContainText('43,171');
+        // Its links under the facts, on the left, as an artist's (vzell
+        // 2026-10-29); the right column holds the relationships only.
+        const cols = area.locator('.mb-dp-x > .mb-dp-col');
+        await expect(cols.first().locator('h4', { hasText: /^Links/ })).toHaveText('Links (27)');
+        await expect(cols.first().locator('[data-mb-tbl="links"]')).toHaveCount(1);
+        await expect(cols.last().locator('h4', { hasText: /^Links/ })).toHaveCount(0);
         expect(log.ws2.filter(u => u.includes('inc=url-rels+label-rels'))).toHaveLength(1);
         expect(log.ws2.filter(u => u.includes('/ws/2/release?label='))).toHaveLength(1);
     });
@@ -1681,6 +1727,15 @@ test.describe('MusicBrainz link previews: event, place, series (WIP.4)', () => {
         // Two Compact tables since Phase 3d: its releases, its recordings.
         await expect(area.locator('[data-mb-tbl="recorded-releases"] tbody td:first-child').first()).toHaveText('Recorded at');
         await expect(area.locator('[data-mb-tbl="recorded-recordings"] .mb-dg-pager span')).toHaveText('1–25 of 26');
+        // Each a group that folds, each table with its filter even when it
+        // fits one page (vzell 2026-10-29, mockup 2f).
+        const heads = area.locator('.mb-dp-foldh');
+        await expect(heads).toHaveCount(2);
+        const relCount = Number((await heads.first().locator('.mb-dp-foldn').textContent()).replace(/\D/g, ''));
+        expect(relCount, 'fewer releases than a page, so the filter is not the pager\'s').toBeLessThan(26);
+        await expect(heads.first()).toHaveText(new RegExp(`^▾Releases · ${relCount}$`));
+        await expect(area.locator('[data-mb-tbl="recorded-releases"] input.mb-tbl-q')).toHaveCount(1);
+        await expect(area.locator('[data-mb-tbl="recorded-recordings"] input.mb-tbl-q')).toHaveCount(1);
         await expect(area.locator('.mb-dp-gallery img')).not.toHaveCount(0);
         expect(log.eaa).toEqual([EVENT]);
         // A click on the event art opens the viewer on it, from the record already here.
@@ -1692,6 +1747,60 @@ test.describe('MusicBrainz link previews: event, place, series (WIP.4)', () => {
         await page.keyboard.press('Escape');
         await expect(dialog(page)).toBeVisible();
         expect(log.ws2.filter(u => u.includes('inc=recording-rels+release-rels'))).toHaveLength(1);
+    });
+
+    test('the event window\'s "Recorded here": the filter reads name and comment and counts what it shows; groups fold, Ctrl-click folds every group, remembered for the next event', async ({ page }) => {
+        await open(page, { settings: { sa_pop_mb: true }, showAll: false });
+        const a = await addLink(page, EVENT, 'Manchester');
+        await ctrlHover(page, a);
+        await expect(card(page)).toContainText('fetched now');
+        await page.keyboard.press('Space');
+        const area = dialog(page).locator('.mb-dp-area');
+        const heads = area.locator('.mb-dp-foldh');
+        await expect(heads).toHaveCount(2);
+        const recs = area.locator('[data-mb-tbl="recorded-recordings"]');
+        const total = 26;
+        // A word only the recordings' comments carry ("live, 2024‐…") matches every one.
+        const comment = await recs.locator('tbody .mb-rg-dim').first().textContent();
+        const word = comment.replace(/[()]/g, '').split(/[ ,]+/).find(w => /^[a-z]{3,}$/i.test(w));
+        expect(word, 'a comment word to filter by').toBeTruthy();
+        await recs.locator('input.mb-tbl-q').fill(word);
+        await expect(recs.locator('tbody tr').first()).toBeVisible();
+        const n = await recs.locator('tbody tr').count();
+        expect(n, 'the comment is searched').toBeGreaterThan(0);
+        // The name too: the first recording's own title narrows to it and its namesakes.
+        const name = (await area.locator('[data-mb-tbl="recorded-recordings"] tbody tr td:nth-child(2) a').first().textContent()).trim();
+        await recs.locator('input.mb-tbl-q').fill(name);
+        await expect(recs.locator('tbody tr td:nth-child(2) a').first()).toHaveText(name);
+        const hits = await recs.locator('tbody tr').count();
+        expect(hits).toBeLessThan(total);
+        await expect(heads.nth(1)).toHaveText(`▾Recordings · ${hits} of ${total}`);
+        // "Recorded at" is no part of the name or the comment: it matches nothing.
+        await recs.locator('input.mb-tbl-q').fill('Recorded at');
+        await expect(recs.locator('.mb-dg-empty')).toHaveText('No recordings match.');
+        await recs.locator('input.mb-tbl-q').fill(name);
+        // A click folds one group, its filter text kept for when it opens.
+        await heads.nth(1).click();
+        await expect(heads.nth(1)).toHaveAttribute('aria-expanded', 'false');
+        await expect(heads.nth(1).locator('.mb-dp-foldc')).toHaveText('▸');
+        await expect(area.locator('[data-mb-tbl="recorded-recordings"]')).toHaveCount(0);
+        await expect(area.locator('[data-mb-tbl="recorded-releases"]')).toHaveCount(1);
+        await heads.nth(1).click();
+        await expect(area.locator('[data-mb-tbl="recorded-recordings"] input.mb-tbl-q')).toHaveValue(name);
+        // Ctrl-click folds every group, and again opens every group.
+        await heads.first().click({ modifiers: ['Control'] });
+        await expect(area.locator('.mb-dp-foldh[aria-expanded="false"]')).toHaveCount(2);
+        await expect(area.locator('[data-mb-tbl^="recorded-"]')).toHaveCount(0);
+        await heads.first().click({ modifiers: ['Control'] });
+        await expect(area.locator('.mb-dp-foldh[aria-expanded="true"]')).toHaveCount(2);
+        // Folded stays folded for the next event's window this page load.
+        await heads.first().click();
+        await page.keyboard.press('Escape');
+        await expect(dialog(page)).toBeHidden();
+        await ctrlHover(page, a);
+        await page.keyboard.press('Space');
+        await expect(area.locator('.mb-dp-foldh').first()).toHaveAttribute('aria-expanded', 'false');
+        await expect(area.locator('.mb-dp-foldh').nth(1)).toHaveAttribute('aria-expanded', 'true');
     });
 
     // vzell, 2026-10-29 (debug/mb-event-soundcheck-concert-POH.html): a
@@ -1953,6 +2062,8 @@ test.describe('MusicBrainz link previews: event, place, series (WIP.4)', () => {
         await page.clock.fastForward(5000);
         await expect.poll(() => page.evaluate(() => window.__saTest.mbRateSlotWaitMs())).toBe(0);
         expect(nj(), 'no repaint asks a failed step again').toBe(tries);
+        // Its flag lookup failed too (500): asked once, not by the repaints.
+        expect(flagLookups(log).filter(id => id.startsWith('a36544c1-')), 'a failed flag is not asked again').toHaveLength(1);
         failNj = false;
         await dialog(page).locator('button.mb-dp-tbtn', { hasText: '⟳' }).click();
         await expect(heldAt).toHaveText('OceanFirst Bank Center in West Long Branch, New Jersey, United States');
@@ -2512,6 +2623,14 @@ test.describe('MusicBrainz link previews: tags, read from the page', () => {
         // The biggest kind's list (Phase 3c): its kind page, page 1, most
         // votes first, 100 of the page's own total.
         await expect(rows.locator('button[aria-pressed="true"]')).toHaveText('Recordings');
+        // Each kind says what a click does (vzell 2026-10-29); the listed one
+        // says it is listed. A kind of fewer than a page has no "more".
+        await expect(rows.locator('button[aria-pressed="true"]')).toHaveAttribute('title', 'These recordings are on the right now.');
+        await expect(rows.filter({ hasText: 'Areas' }).locator('button')).toHaveAttribute('title',
+            'Show the 2 areas tagged alternative rock on the right, most votes first.');
+        await expect(rows.filter({ hasText: 'Release groups' }).locator('button')).toHaveAttribute('title',
+            /^Show the [\d,]+ release groups tagged alternative rock on the right, most votes first: the first 100 now, 100 more a page on demand\.$/);
+        await expect(rows.locator('button:not([data-mb-tip])')).toHaveCount(0);
         await expect(area.locator('h4', { hasText: 'Recordings ·' })).toHaveText('Recordings · 129,630');
         await expect(area.locator('.mb-dg-counts').first()).toHaveText('100 of 129,630 loaded · one segment = 100 recordings');
         const recs = area.locator('[data-mb-tbl="tag-kind-recording"] tbody tr');
@@ -3291,19 +3410,59 @@ test.describe('MusicBrainz link previews: hovering inside the window (org/dp-win
         await page.evaluate(() => new Promise(r => setTimeout(r, 1500)));
         expect(log.ws2.filter(u => u.includes('/ws/2/recording/')), 'off: nothing read ahead').toEqual([]);
         await expect(rec).not.toHaveClass(/\bmb-dp-l-read\b/);
+        // Off, no dot can appear: no place is kept for one.
+        expect(await rec.evaluate(a => getComputedStyle(a, '::before').content)).toBe('none');
     });
 
     test('H5 on: a 600 ms rest reads the recording ahead, then the click shows it from memory', async ({ page }) => {
         const log = await releaseWindow(page, { sa_dp_window_read_ahead: true });
         const rec = area(page).locator('table.mb-pop-medtable tbody tr').nth(1).locator('a').first();
+        const recId = (await rec.getAttribute('href')).match(/[0-9a-f-]{36}/)[0];
+        const box = async () => rec.evaluate(a => { const r = a.getBoundingClientRect(); return [Math.round(r.left), Math.round(r.width)]; });
+        const before = await box();
         await rest(page, rec);
         await expect.poll(() => log.ws2.filter(u => u.includes('/ws/2/recording/')).length, { timeout: 5000 }).toBe(1);
         await expect(rec).toHaveClass(/\bmb-dp-l-read\b/);
+        // The dot has its place before it is read (vzell 2026-10-29): the
+        // link neither moves nor grows when it appears.
+        expect(await box(), 'the dot fills a place kept for it').toEqual(before);
+        expect(await rec.evaluate(a => getComputedStyle(a, '::before').width), 'the place is the dot\'s width').toBe('6px');
         await expect(foot(page)).toContainText('(read before, no request)');
+        // Its card (Ctrl: the fixtures keep sa_dp_hover_without_ctrl off) has
+        // the note on the dot right above it (vzell 2026-10-29, mockup 2e) …
+        const peek = page.locator('#mb-dp-peek');
+        const note = page.locator('#mb-dp-notes .mb-dp-note-read');
+        const ctrlRest = async (el) => {
+            await rest(page, el);
+            await page.keyboard.down('Control');
+            await el.hover({ position: { x: 4, y: 4 } });
+            await page.keyboard.up('Control');
+        };
+        await ctrlRest(rec);
+        await expect(peek).toBeVisible();
+        await expect(note).toBeVisible();
+        await expect(note).toContainText('Already loaded: a click opens it at once, with no new request to MusicBrainz.');
+        await expect(note.locator('.mb-dp-read-dot')).toHaveCount(1);
+        const [nb, cb] = await Promise.all([note.boundingBox(), page.locator('#mb-dp-peek').boundingBox()]);
+        expect(nb.y + nb.height, 'the note sits above the card').toBeLessThanOrEqual(cb.y);
+        // … and a link not read before its card came up gets the card alone,
+        // even once that card's own lookup has read it.
+        const other = area(page).locator('table.mb-pop-medtable tbody tr').nth(2).locator('a').first();
+        await expect(other).not.toHaveClass(/\bmb-dp-l-read\b/);
+        await page.mouse.move(0, 0);
+        await expect(peek).toBeHidden();
+        await page.keyboard.down('Control');
+        await other.hover();
+        await page.keyboard.up('Control');
+        await expect(peek).toBeVisible();
+        await expect(peek).toContainText('fetched now', { timeout: 5000 });
+        await expect(note).toHaveCount(0);
+        await page.mouse.move(0, 0);
         await rec.click();
         await expect(title(page)).toHaveText(/Release › Recording$/);
         await page.evaluate(() => new Promise(r => setTimeout(r, 300)));
-        expect(log.ws2.filter(u => /\/ws\/2\/recording\/[0-9a-f-]{36}\?inc=artist-credits/.test(u)), 'the card\'s lookup, once').toHaveLength(1);
+        // The other link's card asked its own recording; this one's lookup is still the one read ahead.
+        expect(log.ws2.filter(u => u.includes(`/ws/2/recording/${recId}?inc=artist-credits`)), 'the card\'s lookup, once').toHaveLength(1);
     });
 });
 

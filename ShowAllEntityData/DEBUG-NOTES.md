@@ -27412,3 +27412,78 @@ Tag card). `ctrlHover()` now gives the locator up to five tries on that error:
 40 of 40. The gate's own "no card" failure was not reproduced in those 69
 runs, and its trace was overwritten by the probe runs, so its cause is still
 open; the next gate keeps `test-results/` untouched.
+
+## 2026-10-29 — A window's area chains jumped: More Flags Everywhere re-flagged every repaint (saed-attn-bar-poh-fixes, WIP.4)
+
+Env: 2026-10-29T16:09+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.54.1-microsoft-standard-WSL2) · user's report: Vivaldi (version unknown) with "MusicBrainz More Flags Everywhere" installed · fixes checked in Playwright 1.62.1 Chromium, no Tampermonkey (GM stubs)
+
+**Symptom (vzell, `debug/Bruce Springsteen - Releases - MusicBrainz - Vivaldi
+2026-10-29 14-40-36.mp4`):** in an artist's window, "Facts" showed too much
+space between "Area" and "United States" and between the parts of "Born"; the
+parts "pumped" while the chain loaded, and a click on a release-group segment
+("Compilation 35") made them all flick left and back.
+
+**Cause (code, not guessed):** the third-party script's observer
+(`tests/fixtures/live-userscripts/MusicBrainz_More_Flags_Everywhere.user.js`,
+`processLink()` l.1311, the debounced `MutationObserver` l.1380) inserts a
+flag span and a `' '` before every `a[href*="/area/"]` that has no
+`data-flag-processed`, a moment after it appears. A window replaces its
+links on every repaint — each step of the area chain, a segment click — so
+the flags (and the space) arrived late every time: the text first appears
+without them, then shifts right. No CSS of ours was involved.
+
+**Fix:** `_mbPopAreaHtml()` stamps `data-flag-processed="1"` (the script
+skips such a link) and draws the window's own flag before it in a fixed
+16 × 11 slot (`_mbPopFlagHtml()`): a country MusicBrainz's own
+`span.flag.flag-XX` (its ISO code in a box off musicbrainz.org), a state its
+Wikidata P41 from Commons (`_mbPopFlagLoad()`: one url-rels lookup and one
+`wbgetclaims`, window only, kept), the slot present while it loads. Decided
+with vzell on mockup https://claude.ai/artifact/URrn3dps1EMtnkjKBvsvag
+("countries and states").
+
+**Regression test:** `tests/fixtures/pop-area-flags.spec.js` injects a
+stand-in for the script's observer (same debounce shape, a span and a space
+before every unstamped area link) and samples the "Born" chain's last link in
+every animation frame for 400 ms after a segment click: one x throughout, no
+stand-in span in the window. Unstamping the links fails it (mutation in
+`scripts/mutations/poh-fixes.json`). Two popup-mb.spec.js tests counted
+every `/ws/2/area/` request; the chain's steps (`inc=area-rels`) and the
+flag lookups (`inc=url-rels`) are counted apart now, each asserted.
+
+## 2026-10-29 — The window's country flag over the green dot, flickering: Right Side Flags Everywhere took our .flag (saed-attn-bar-poh-fixes, WIP.6)
+
+Env: 2026-10-29T16:44+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.54.1-microsoft-standard-WSL2) · user's report: Vivaldi (version unknown) with "MusicBrainz More Flags Everywhere" and "MusicBrainz Right Side Flags Everywhere" installed · fix checked in Playwright 1.62.1 Chromium, no Tampermonkey (GM stubs)
+
+**Symptom (vzell, screenshot of Bruce Springsteen's window on the WIP.4
+build):** "the country flags are still rendered over the green dot, and
+flicker shortly when an 'Also' filter button is pressed".
+
+**Cause (code, `tests/fixtures/live-userscripts/MusicBrainz_Right_Side_Flags_Everywhere.user.js`):**
+WIP.4 drew a country's flag as `span.flag.flag-US`. That script's
+`processFlags()` (l.1318) takes every `.flag:not([data-hq-processed]):not([data-hq-skip])`
+holding no area link and appends its own flag `img.mb-hq-flag-img` (width
+auto, about 21 px at 11 px high, margin-left 0.4em) INSIDE it: wider than the
+16 px slot, so it spilled over the next link's green dot. Its loading style
+(`injectLoadingStyle()`, l.1979) blanks every such `.flag` with an
+`!important` rule, and its observer runs on the next animation frame
+(l.2011): every repaint of the window (a segment or chip click) showed a
+blank slot for a frame, then the image — the flicker. It honours
+`data-flag-processed` on area LINKS (l.1796), which is why WIP.4's stamp kept
+it off the links themselves; the snapshots `debug/POH-MB-event-1988-*.html`
+(its `span.mfe-flag-wrapper`, the image after each area name) were taken on
+a build before WIP.4.
+
+**Fix:** the country flag is `span.flag-XX.mb-pop-flag` — MusicBrainz's
+sprite needs only `.flag-XX` (its `.flag` rule just resets background and
+padding) — stamped `data-hq-skip="true"`, and the slot clips
+(`overflow: hidden`). Same day, decided with vzell on mockup 2e: the green dot
+keeps a reserved place (it pushed an area chain right when it appeared) and
+explains itself in a note above the card.
+
+**Regression test:** `tests/fixtures/pop-area-flags.spec.js` "Right Side
+Flags Everywhere leaves the window's country flags alone" injects a stand-in
+(the loading rule and an rAF observer appending a 30 px image inside each
+unskipped `.flag`), repaints with a segment click, and asserts no image
+inside ours, none of ours matching that script's selector, and a clipping
+slot; `scripts/mutations/poh-fixes.json` (restoring the `.flag` class, or
+dropping the clip, fails it).

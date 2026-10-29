@@ -22163,7 +22163,28 @@
             return { kind: 'title', html: `<div class="mb-tt-body">${text.split('\n').map(_mbttEscape).join('<br>')}</div>`, label };
         }).filter(Boolean);
         if (own && own.dataset && own.dataset.mbtt) notes.push({ kind: 'tip', html: own.dataset.mbtt, label: 'Link' });
+        // A window link that had the green dot when its card came up
+        // (`t.wasRead`, `_dpShowPeek()`): what the dot means, right above
+        // the card (vzell 2026-10-29, mockup 2e,
+        // https://claude.ai/artifact/URrn3dps1EMtnkjKBvsvag).
+        if (t.wasRead) notes.push({ kind: 'read', html: _dpReadNoteHtml(t), label: '' });
         return notes;
+    }
+
+    /**
+     * The note on a window link's green dot (`mb-dp-l-read`, `_dpWinMark()`):
+     * its record is in memory, so a click opens it at once without a
+     * request; how a link gets it, and the setting's name.
+     *
+     * @param {object} t - A target (`_popResolve()`).
+     * @returns {string}
+     */
+    function _dpReadNoteHtml(t) {
+        const where = t.src && t.src.id === 'mb-entity' ? ' to MusicBrainz' : '';
+        return '<div class="mb-tt-body"><span class="mb-dp-read-dot" aria-hidden="true"></span>' +
+            `<b>Already loaded</b>: a click opens it at once, with no new request${where}.</div>` +
+            '<div class="mb-tt-foot">Resting on a link for a moment loads it ahead. Settings: “In the window, ' +
+            'read a link ahead while the pointer rests on it”.</div>';
     }
 
     /**
@@ -24312,6 +24333,10 @@
      */
     function _dpShowPeek(t) {
         if (_dpPeek.link !== t.el || !t.src.enabled()) return;
+        // The green dot as the card comes up: the card's own lookup may
+        // mark the link read a moment later, and that is no "already
+        // loaded" (`_dpReadNoteHtml()`).
+        const wasRead = t.el.classList.contains('mb-dp-l-read');
         if (!t.el.isConnected) {
             // The window repainted during the card's delay (it does on every
             // answer of its own follow-up requests): the card is for the
@@ -24321,6 +24346,7 @@
             _dpPeekMoveTo(n);
             t = n;
         }
+        t.wasRead = wasRead;
         const el = _dpEnsurePeekEl();
         el.classList.toggle('mb-dp-wide', !!('wide' in t ? t.wide : t.src.wide));
         // An image's preview in the window (H4) may be wider than a card.
@@ -26000,6 +26026,9 @@
             }
         }
         const dots = Lib.settings.sa_dp_window_read_ahead === true;
+        // With read-ahead on, every link that opens here keeps the dot's
+        // place, empty until it is read, so nothing moves when it appears.
+        api.scrollArea.classList.toggle('mb-dp-dots', dots);
         api.scrollArea.querySelectorAll('a[href]').forEach(a => {
             const w = _dpWinWhat(a);
             a.classList.toggle('mb-dp-l-img', !!w && (w.kind === 'img' || w.kind === 'fi'));
@@ -28571,15 +28600,24 @@
             .mb-dp-dialog .mb-dp-area a.mb-dp-l-out:not(.mb-dp-l-noglyph)::after { content: " \\2197"; color: #7a6d5c; font-size: 0.8em; }
             .mb-dp-dialog .mb-dp-area a.mb-dp-l-img { cursor: zoom-in; }
             .mb-dp-dialog .mb-dp-area a.mb-dp-l-img:hover img { box-shadow: 0 0 0 2px #2f5f9e; }
-            .mb-dp-dialog .mb-dp-area a.mb-dp-l-read::before {
+            /* The green dot (_dpWinMark()) has a reserved place: while
+               read-ahead is on (.mb-dp-dots), every link that opens here
+               keeps it, empty until the link is read, so nothing moves when
+               the dot appears (vzell 2026-10-29, mockup 2e). */
+            .mb-dp-dialog .mb-dp-area.mb-dp-dots a.mb-dp-l-here::before {
                 content: "";
                 display: inline-block;
                 width: 6px;
                 height: 6px;
                 margin-right: 4px;
                 border-radius: 50%;
-                background: #3f7a3a;
+                background: transparent;
                 vertical-align: 1px;
+            }
+            .mb-dp-dialog .mb-dp-area.mb-dp-dots a.mb-dp-l-here.mb-dp-l-read::before { background: #3f7a3a; }
+            #mb-dp-notes .mb-dp-read-dot {
+                display: inline-block; width: 7px; height: 7px; margin-right: 6px; border-radius: 50%;
+                background: #3f7a3a; vertical-align: 1px;
             }
             #mb-dp-peek.mb-dp-imgpeek { max-width: 560px; }
             #mb-dp-peek .mb-dp-imgprev { display: block; max-width: 300px; max-height: 300px; margin: 2px 0 4px; border: 1px solid #d9cfbd; }
@@ -28866,6 +28904,28 @@
             .mb-dp-dialog .mb-dg-fl { font-style: italic; color: #7a6d5c; padding-top: 2px; }
             .mb-dp-dialog .mb-pop-kindbtn { border: 0; background: none; padding: 0; font: inherit; color: #6b3f12; cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
             .mb-dp-dialog .mb-pop-kindbtn[aria-pressed="true"] { font-weight: 700; text-decoration: none; color: #2b2622; }
+            /* A group that folds (_dpFoldGroupHtml(), mockup 2f). */
+            .mb-dp-dialog .mb-dp-foldh {
+                display: flex; gap: 6px; align-items: baseline; width: 100%; margin: 6px 0 0; padding: 4px 0 3px;
+                border: 0; border-bottom: 1px solid #efe8da; background: none; cursor: pointer; text-align: left;
+                font: 600 12px/1.3 system-ui, -apple-system, "Segoe UI", Arial, sans-serif; color: #2b2622;
+            }
+            .mb-dp-dialog .mb-dp-foldh:hover { background: #f1e9d8; }
+            .mb-dp-dialog .mb-dp-foldh:focus-visible { outline: 2px solid #2f5f9e; outline-offset: 1px; }
+            .mb-dp-dialog .mb-dp-foldc { width: 1em; color: #7a6d5c; }
+            .mb-dp-dialog .mb-dp-foldn { font-weight: 400; color: #7a6d5c; font-variant-numeric: tabular-nums; }
+            .mb-dp-dialog .mb-dp-foldb { padding: 4px 0 6px; }
+            /* An area's flag (_mbPopFlagHtml()): one fixed slot, whatever fills it, so the text after it never moves. */
+            .mb-dp-dialog .mb-pop-flag {
+                display: inline-block; box-sizing: border-box; width: 16px; height: 11px; padding: 0; margin: 0 4px 0 0;
+                vertical-align: -1px; background-position: center; background-size: 16px 11px; background-repeat: no-repeat;
+                overflow: hidden;
+            }
+            .mb-dp-dialog .mb-pop-flag img { display: block; width: 16px; height: 11px; object-fit: contain; }
+            .mb-dp-dialog .mb-pop-flag-iso {
+                width: 20px; height: 13px; vertical-align: -2px; border: 1px solid #d9cfbd; border-radius: 2px; color: #7a6d5c;
+                font: 600 9px/11px system-ui, -apple-system, "Segoe UI", Arial, sans-serif; letter-spacing: 0.04em; text-align: center;
+            }
             .mb-dp-dialog .mb-dg-fc {
                 font: 12px system-ui, -apple-system, "Segoe UI", Arial, sans-serif; border: 1px solid #d9cfbd; background: #fff; color: #2b2622;
                 border-radius: 999px; padding: 1px 8px; margin: 0 4px 4px 0; cursor: pointer; font-variant-numeric: tabular-nums;
@@ -56184,7 +56244,10 @@
         const types = groups.map(([k]) => k.split('|')[0]);
         return groups.flatMap(([k, list]) => list.map((r) => {
             const e = r[targetType] || _mbPopRelEntity(r) || {};
-            return { rel: _mbPopRelGroupName(k, types, targetType), name: e.name || e.title || '', html: fmt ? fmt(r) : _mbPopRelTargetHtml(r, targetType) };
+            return {
+                rel: _mbPopRelGroupName(k, types, targetType), name: e.name || e.title || '', comment: e.disambiguation || '',
+                html: fmt ? fmt(r) : _mbPopRelTargetHtml(r, targetType),
+            };
         }));
     }
 
@@ -56195,17 +56258,52 @@
      *
      * @param {object} t - The window's target.
      * @param {string} id - The table's id in the window.
-     * @param {Array<{rel: string, name: string, html: string}>} rows
+     * @param {Array<{rel: string, name: string, comment: string, html: string}>} rows
      * @param {string} label - The target column's header: "Area".
      * @param {string} what - The rows: "areas".
+     * @param {{filter?: boolean, search?: function(Object): string}} [opts] - As `_dpCompactTableHtml()`'s.
      * @returns {string}
      */
-    function _mbPopRelTableHtml(t, id, rows, label, what) {
+    function _mbPopRelTableHtml(t, id, rows, label, what, opts = {}) {
         if (!rows.length) return '<div class="mb-dp-xsub">None.</div>';
-        return _dpCompactTableHtml(t, id, [
+        return _dpCompactTableHtml(t, id, _mbPopRelTableCols(label), rows, Object.assign({ initial: 'as MusicBrainz lists them', what }, opts));
+    }
+
+    /**
+     * The relation table's columns: Relationship · the target.
+     *
+     * @param {string} label - The target column's header.
+     * @returns {Array<Object>}
+     */
+    function _mbPopRelTableCols(label) {
+        return [
             { key: 'rel', label: 'Relationship', val: r => r.rel, html: (r, q) => _hlEsc(r.rel, q) },
             { key: 'name', label, val: r => r.name, html: (r, q) => _hlHtml(r.html, q) },
-        ], rows, { initial: 'as MusicBrainz lists them', what });
+        ];
+    }
+
+    /**
+     * Relation rows as a group of a window that folds (`_dpFoldGroupHtml()`):
+     * an event's releases and recordings under "Recorded here" (vzell
+     * 2026-10-29, mockup 2f, https://claude.ai/artifact/URrn3dps1EMtnkjKBvsvag).
+     * The table always has its filter, which matches the target's name and
+     * its comment (a release's "version 1", a recording's "live, 1988‐03‐28
+     * …"); the heading counts what it shows, "3 of 20" while it narrows.
+     *
+     * @param {object} t - The window's target.
+     * @param {string} id - The table's id, also the group's.
+     * @param {string} title - "Releases".
+     * @param {Array<Object>} rows - `_mbPopRelTableRows()`.
+     * @param {string} label - The target column's header.
+     * @param {string} what - The rows, for the filter's placeholder.
+     * @returns {string}
+     */
+    function _mbPopRelGroupHtml(t, id, title, rows, label, what) {
+        const search = r => `${r.name} ${r.comment}`;
+        const ui = _dpTblUi(t, id);
+        const shown = ui.q.trim() ? _dpTblRows(_mbPopRelTableCols(label), rows, ui, { search }).length : rows.length;
+        return _dpFoldGroupHtml(id, title, shown === rows.length ? String(rows.length) : `${shown} of ${rows.length}`,
+            () => _mbPopRelTableHtml(t, id, rows, label, what, { filter: true, search }));
     }
 
     /**
@@ -56375,13 +56473,145 @@
     }
 
     /**
-     * An area of the Web Service as a link (a new tab), '' for none.
+     * An area of the Web Service as a link (a new tab), '' for none, after
+     * its flag (`_mbPopFlagHtml()`). The link is stamped
+     * `data-flag-processed`: "MusicBrainz More Flags Everywhere" (@Lotheric)
+     * skips a link so stamped, where it would put its own flag and a space
+     * before every area link a moment after it appears — and a window
+     * replaces its links on every repaint (each step of an area chain, a
+     * click on a segment), so its flags arrived late each time and the text
+     * jumped (vzell 2026-10-29, mockup
+     * https://claude.ai/artifact/URrn3dps1EMtnkjKBvsvag; DEBUG-NOTES.md).
      *
      * @param {?Object} a
      * @returns {string}
      */
     function _mbPopAreaHtml(a) {
-        return a && a.id ? `<a href="/area/${_rgEsc(a.id)}" target="_blank" rel="noopener">${_rgEsc(a.name)}</a>` : '';
+        return a && a.id ? `${_mbPopFlagHtml(a)}<a href="/area/${_rgEsc(a.id)}" target="_blank" rel="noopener" ` +
+            `data-flag-processed="1">${_rgEsc(a.name)}</a>` : '';
+    }
+
+    /** Version of a Subdivision's flag record in IndexedDB (`_mbPopFlagLoad()`). */
+    const _MB_POP_FLAG_VERSION = 1;
+
+    /**
+     * The cache key of an area's flag record.
+     * @param {string} id - The area's MBID.
+     * @returns {string}
+     */
+    function _mbPopFlagKey(id) {
+        return `pop:flag:area:${id}`;
+    }
+
+    /**
+     * An area's flag in a slot of fixed width (16 × 11, `.mb-pop-flag`), so
+     * nothing after it moves when it arrives; '' for an area that has none
+     * to show. A Country (its ISO 3166-1 code): MusicBrainz's own flag
+     * (`.flag-XX`, whose CSS is on every musicbrainz.org page) — without the
+     * `flag` class and stamped `data-hq-skip`: "Right Side Flags Everywhere"
+     * (@Lotheric) blanks every `.flag` until its next frame and appends its
+     * own, wider flag inside it, which spilled over the link's green dot and
+     * flickered on every repaint (vzell 2026-10-29),
+     * elsewhere the code in a small box (on discogs.com MusicBrainz's CSS
+     * is not there). A Subdivision: its Wikidata item's flag (P41,
+     * `_mbPopFlagLoad()`), the slot empty while that loads; a state with no
+     * flag loses the slot once its record says so (then kept). Other area
+     * types (a city, a county): none.
+     *
+     * @param {Object} a - An area of the Web Service.
+     * @param {boolean} [onMb] - On musicbrainz.org (its flag CSS present).
+     * @returns {string}
+     */
+    function _mbPopFlagHtml(a, onMb = _foreignHost === null) {
+        const code = String((a['iso-3166-1-codes'] || [])[0] || '');
+        if (/^[A-Z]{2}$/.test(code) && _mbPopIsCountry(a)) {
+            return onMb ? `<span class="flag-${code} mb-pop-flag" data-hq-skip="true" role="img" aria-label="${_rgEsc(a.name)}"></span>`
+                : `<span class="mb-pop-flag mb-pop-flag-iso" aria-hidden="true">${code}</span>`;
+        }
+        if (!_mbPopIsState(a)) return '';
+        const s = _mbPop.get(_mbPopFlagKey(a.id));
+        if (!s || s.status === 'loading') return '<span class="mb-pop-flag mb-pop-flag-wait" aria-hidden="true"></span>';
+        if (s.status !== 'done' || !s.data || !s.data.file) return '';
+        const name = encodeURIComponent(s.data.file.replace(/ /g, '_'));
+        return `<span class="mb-pop-flag mb-pop-flag-img" role="img" aria-label="${_rgEsc(a.name)}">` +
+            `<img src="https://commons.wikimedia.org/wiki/Special:FilePath/${name}?width=32" alt="" ` +
+            'referrerpolicy="no-referrer" decoding="async"></span>';
+    }
+
+    /**
+     * Whether an area is a state (a Subdivision): a relation's area says so
+     * by its `type`; an entity's own `area`/`begin-area`/`end-area` has
+     * `type: null`, so there its ISO 3166-2 code decides, as the ISO 3166-1
+     * code does for a country (`_mbPopIsCountry()`).
+     *
+     * @param {?Object} a - An area of the Web Service.
+     * @returns {boolean}
+     */
+    function _mbPopIsState(a) {
+        return !!a && !!a.id && (a.type === 'Subdivision' || (!a.type && (a['iso-3166-2-codes'] || []).length > 0));
+    }
+
+    /**
+     * Starts a Subdivision's flag record from a window's `pin()` (through
+     * `_mbPopAreaChainLoad()`: the window only, never a hover), always on ⟳,
+     * else unless it already failed. Kept in `_mbPop` and IndexedDB, "no
+     * flag" included, so each state costs its two requests once.
+     *
+     * @param {object} t - The window's target.
+     * @param {Object} area - A Subdivision.
+     * @param {boolean} again - ⟳.
+     * @param {function(): void} repaint
+     * @returns {void}
+     */
+    function _mbPopFlagLoad(t, area, again, repaint) {
+        const key = _mbPopFlagKey(area.id);
+        const s = _mbPop.get(key);
+        if (!again && s && s.status === 'failed') return;
+        _mbLoad(key, (wanted) => _mbPopFlagRecordFor(area.id, wanted),
+            { force: again, repaint, wanted: _mbPopWanted(t), version: _MB_POP_FLAG_VERSION });
+    }
+
+    /**
+     * A Subdivision's flag record: its `url-rels` (one Web Service lookup,
+     * for its `wikidata` link), then its item's P41 (one `wbgetclaims`
+     * through `_extGet()`: Wikidata's own rate gate, anonymous), as
+     * `_mbPopImageRecordFor()` asks P18. No Wikidata link, no P41, or an item
+     * Wikidata does not have: `file` ''.
+     *
+     * @param {string} id - The area's MBID.
+     * @param {function(): boolean} wanted
+     * @returns {Promise<{ok?: boolean, data?: Object, detail?: string, skipped?: boolean}>}
+     */
+    async function _mbPopFlagRecordFor(id, wanted) {
+        const q = _mbPopLookup({ type: 'area', id }, 'url-rels');
+        const mb = await _rgWsGet(q.url, '_mbPopFlagRecordFor', wanted);
+        if (mb.skipped) return { skipped: true };
+        if (!mb.ok || !mb.data) return { ok: false, detail: mb.detail || `HTTP ${mb.status}` };
+        const item = _mbPopWikidataItem(mb.data.relations);
+        if (!item) return { ok: true, data: { file: '', item: '' } };
+        const url = `https://www.wikidata.org/w/api.php?action=wbgetclaims&format=json&entity=${item}&property=P41`;
+        const res = await _extGet(url, { wanted, fetchOpts: { accept: /\bjson\b/i, headers: { 'Api-User-Agent': _EXT_AGENT } } });
+        if (res.skipped) return { skipped: true };
+        if (res.error || res.status !== 200) return { ok: false, detail: _extFailText(res) };
+        const d = _extJson(res);
+        if (!d) return { ok: false, detail: 'Wikidata answered, but not with JSON' };
+        return { ok: true, data: { file: d.error ? '' : _mbPopClaimFile(d, 'P41'), item } };
+    }
+
+    /**
+     * ISNIs as links to their record on isni.org (a new tab), one each, the
+     * sixteen characters in groups of four as ISNI writes them
+     * ("0000 0001 2141 8834"); '' for none. The windows' Facts (vzell
+     * 2026-10-29, mockup https://claude.ai/artifact/URrn3dps1EMtnkjKBvsvag);
+     * a card is not clickable, so it keeps the plain text.
+     *
+     * @param {?Array<string>} isnis
+     * @returns {string}
+     */
+    function _mbPopIsniHtml(isnis) {
+        return (isnis || []).map(String).map(i => i.replace(/\s+/g, '')).filter(i => /^[0-9]{15}[0-9X]$/i.test(i))
+            .map(i => `<a href="https://isni.org/isni/${_rgEsc(i)}" target="_blank" rel="noopener noreferrer">` +
+                `${_rgEsc(i.replace(/(.{4})(?=.)/g, '$1 '))}</a>`).join(', ');
     }
 
     /**
@@ -56906,6 +57136,10 @@
             const q = _mbPopLookup({ type: 'area', id }, 'area-rels');
             _mbPopPinLoad(t, q.key, q.url, again, repaint);
         });
+        // The flag of each state the chains show so far (`_mbPopFlagHtml()`).
+        const states = new Map();
+        areas.forEach(a => _mbPopAreaChain(a).areas.forEach(x => { if (_mbPopIsState(x)) states.set(x.id, x); }));
+        states.forEach(x => _mbPopFlagLoad(t, x, again, repaint));
     }
 
     /**
@@ -60406,6 +60640,32 @@
     }
 
     /**
+     * The hover text of a "By kind" button of a tag window (vzell
+     * 2026-10-29, mockup https://claude.ai/artifact/URrn3dps1EMtnkjKBvsvag):
+     * what a click lists, how many, in which order and how much at once;
+     * the kind already listed says so. An editor's tag page names the
+     * editor and has no votes to order by.
+     *
+     * @param {{kind: string, count: number}} s - A kind of the tag record.
+     * @param {boolean} shown - It is the kind listed on the right.
+     * @param {string} tag - The tag's name.
+     * @param {string} editor - The editor of an editor's tag page, '' for a tag's.
+     * @returns {string}
+     */
+    function _mbTagKindTip(s, shown, tag, editor) {
+        const unit = s.kind.toLowerCase();
+        if (shown) return `These ${unit} are on the right now.`;
+        const n = s.count;
+        const what = n === 1 ? `the one ${unit.replace(/s$/, '')}` : `the ${n.toLocaleString('en-US')} ${unit}`;
+        const how = editor ? `${what} ${editor} tagged ${tag}` : `${what} tagged ${tag}`;
+        const first = n > _MB_POP_TAG_KIND_PAGE ? `: the first ${_MB_POP_TAG_KIND_PAGE} now, ${_MB_POP_TAG_KIND_PAGE} more a page on demand` : '';
+        return `Show ${how} on the right${editor ? '' : ', most votes first'}${first}.`;
+    }
+
+    /** Entities on one page of a tag's kind page (MusicBrainz lists 100). */
+    const _MB_POP_TAG_KIND_PAGE = 100;
+
+    /**
      * The window of a tag page or an editor's tag page (Phase 3c,
      * 2026-10-27): the facts on the left (`head`, then "By kind": every
      * kind with its count, a click lists that kind), on the right the
@@ -60425,8 +60685,10 @@
     function _mbPopTagWindowHtml(t, d, base, head, empty) {
         const kinds = _mbTagKindSlugs(d);
         const slug = _mbTagKindChosen(t, d);
+        const editor = /^\/user\//.test(base) ? (d.editor || decodeURIComponent(base.split('/')[2] || '')) : '';
         const left = head + (kinds.length ? '<h4>By kind</h4><div class="mb-dp-tbl" data-mb-tbl="tag-kinds">' + _mbPopTableHtml(['Kind', 'Count'],
             kinds.map(k => [`<button type="button" class="mb-pop-kindbtn" data-mb-tbl-act="seg" data-mb-tbl-v="${_rgEsc(k.slug)}" ` +
+                `data-mb-tip title="${_rgEsc(_mbTagKindTip(k.s, k.slug === slug, d.name, editor))}" ` +
                 `aria-pressed="${k.slug === slug}">${_rgEsc(k.s.kind)}</button>`, _rgEsc(k.s.count.toLocaleString('en-US'))]), [1]) + '</div>' : '');
         if (!slug) return `<div class="mb-dp-x"><div class="mb-dp-col">${left}</div><div class="mb-dp-col"><div class="mb-dp-xsub">${_rgEsc(empty)}</div></div></div>`;
         const sec = kinds.find(k => k.slug === slug).s;
@@ -60775,7 +61037,7 @@
                         // One per line, genres as their tags (2026-10-27, as a label's).
                         ['Genres', _mbPopGenreLinksHtml(d.genres)],
                         ['IPI', _rgEsc((d.ipis || []).join(', '))],
-                        ['ISNI', _rgEsc((d.isnis || []).join(', '))],
+                        ['ISNI', _mbPopIsniHtml(d.isnis)],
                         ['Aliases', _mbPopAliasesHtml(d.aliases)],
                     ]) +
                     _mbPopSectionHtml('Links', _mbPop.get(links.key), (p) => _mbPopUrlLinksTableHtml(t, 'links', p.relations, { withHead: false }) ||
@@ -60852,17 +61114,20 @@
                         // One per line, each its tag (Phase 3c, as the release group's).
                         ['Genres', _mbPopGenreLinksHtml(d.genres)],
                         ['IPI', _rgEsc((d.ipis || []).join(', '))],
-                        ['ISNI', _rgEsc((d.isnis || []).join(', '))],
+                        ['ISNI', _mbPopIsniHtml(d.isnis)],
                         ['Aliases', _mbPopAliasesHtml(d.aliases)],
                     ]);
                 const ps = _mbPop.get(pin.key);
+                // The links under the facts, as an artist's (vzell
+                // 2026-10-29, mockup https://claude.ai/artifact/URrn3dps1EMtnkjKBvsvag):
+                // the right column holds the relationships only.
+                const links = ps && ps.status === 'done' && ps.data ? _mbPopUrlLinksTableHtml(t, 'links', ps.data.relations, { min: 10 }) : '';
                 const right = _mbPopSectionHtml('Related labels', ps, (p) => _mbPopKvHtml(_mbPopRelRows(p.relations, 'label')) ||
                     '<div class="mb-dp-xsub">None.</div>') +
                     _mbPopSectionHtml('People, places and series', _mbPop.get(more.key), (p) => _mbPopKvHtml(['artist', 'place', 'series']
                         .flatMap(type => _mbPopRelRowsCapped(p.relations, type, _MB_POP_LABEL_REL_CAP))) ||
-                        '<div class="mb-dp-xsub">None.</div>') +
-                    (ps && ps.status === 'done' && ps.data ? _mbPopUrlLinksTableHtml(t, 'links', ps.data.relations, { min: 10 }) : '');
-                return `<div class="mb-dp-x"><div class="mb-dp-col">${left}</div><div class="mb-dp-col">${right}</div></div>`;
+                        '<div class="mb-dp-xsub">None.</div>');
+                return `<div class="mb-dp-x"><div class="mb-dp-col">${left}${links}</div><div class="mb-dp-col">${right}</div></div>`;
             },
             cardAside: _mbPopCardPicture,
             pin(t, d, again, repaint) {
@@ -61074,8 +61339,9 @@
                         const rel = _mbPopRelTableRows(p.relations, 'release');
                         const rec = _mbPopRelTableRows(p.relations, 'recording');
                         if (!rel.length && !rec.length) return '<div class="mb-dp-xsub">Nothing recorded here is in MusicBrainz.</div>';
-                        return (rel.length ? `<div class="mb-dp-gname">Releases · ${rel.length}</div>` + _mbPopRelTableHtml(t, 'recorded-releases', rel, 'Release', 'releases') : '') +
-                            (rec.length ? `<div class="mb-dp-gname">Recordings · ${rec.length}</div>` + _mbPopRelTableHtml(t, 'recorded-recordings', rec, 'Recording', 'recordings') : '');
+                        // Groups that fold, each table with its filter (2026-10-29).
+                        return (rel.length ? _mbPopRelGroupHtml(t, 'recorded-releases', 'Releases', rel, 'Release', 'releases') : '') +
+                            (rec.length ? _mbPopRelGroupHtml(t, 'recorded-recordings', 'Recordings', rec, 'Recording', 'recordings') : '');
                     });
                 // A List table (Phase 3e): # · Song · Notes (the rest of the
                 // line: guests, a remark), in the order played. A setlist in
@@ -65270,6 +65536,11 @@
      */
     function _dpTblClick(e, t) {
         if (!t || !(e.target instanceof Element)) return false;
+        const fold = e.target.closest('[data-mb-fold-act]');
+        if (fold) {
+            _dpFoldClick(fold, e.ctrlKey || e.metaKey);
+            return true;
+        }
         const el = e.target.closest('[data-mb-tbl-sort], [data-mb-tbl-chip], [data-mb-tbl-act]');
         const box = el && el.closest('[data-mb-tbl]');
         if (!box) return false;
@@ -65319,6 +65590,54 @@
         }
         if (_dpDialog.repaint) _dpDialog.repaint();
         return true;
+    }
+
+    /**
+     * The groups of the windows that are folded, by group id
+     * (`recorded-releases`): one set for every window of this page load, so
+     * the next event opened with ‹ › shows the same groups folded (vzell
+     * 2026-10-29, mockup 2f). Not kept across page loads.
+     * @type {Set<string>}
+     */
+    const _dpFolded = new Set();
+
+    /**
+     * A group of a window that folds (mockup 2f): a heading button, ▾ or ▸
+     * with the title and its count, then the body, built only while open. A
+     * folded group keeps its table's state (its filter text) for when it
+     * opens again.
+     *
+     * @param {string} id - The group's id (`_dpFolded`).
+     * @param {string} title
+     * @param {string} count - "20", or "3 of 20" while a filter narrows.
+     * @param {function(): string} body
+     * @returns {string}
+     */
+    function _dpFoldGroupHtml(id, title, count, body) {
+        const open = !_dpFolded.has(id);
+        return `<div class="mb-dp-fold" data-mb-fold="${_rgEsc(id)}">` +
+            `<button type="button" class="mb-dp-foldh" data-mb-fold-act="${_rgEsc(id)}" aria-expanded="${open}" data-mb-tip ` +
+            `title="Click: ${open ? 'fold' : 'open'} ${_rgEsc(title)} · Ctrl-click: ${open ? 'fold' : 'open'} every group of the window">` +
+            `<span class="mb-dp-foldc" aria-hidden="true">${open ? '▾' : '▸'}</span>${_rgEsc(title)} ` +
+            `<span class="mb-dp-foldn">· ${_rgEsc(count)}</span></button>` +
+            (open ? `<div class="mb-dp-foldb">${body()}</div>` : '') + '</div>';
+    }
+
+    /**
+     * A click on a group's heading: that group folds or opens; with Ctrl/⌘
+     * every group the window shows does the same as this one.
+     *
+     * @param {Element} head - The `[data-mb-fold-act]` button.
+     * @param {boolean} all - Ctrl/⌘ was held.
+     * @returns {void}
+     */
+    function _dpFoldClick(head, all) {
+        const id = head.dataset.mbFoldAct;
+        const toFold = !_dpFolded.has(id);
+        const area = head.closest('.mb-dp-area') || document;
+        const ids = all ? Array.from(area.querySelectorAll('[data-mb-fold]')).map(g => g.dataset.mbFold) : [id];
+        ids.forEach(g => (toFold ? _dpFolded.add(g) : _dpFolded.delete(g)));
+        if (_dpDialog.repaint) _dpDialog.repaint();
     }
 
     /**
@@ -65420,8 +65739,9 @@
      * @param {Array<Object>} rows - In the site's own order.
      * @param {{perPage?: number, initial?: string, what?: string, search?: function(Object): string,
      *   init?: Object, cls?: string, wrapCls?: string, qCls?: string, sortAttr?: string,
-     *   rowAttrs?: function(Object): string}} [opts] - `what` names the rows ("sublabels"); `cls`,
-     *   `wrapCls`, `qCls` and `sortAttr` add names a caller's specs address.
+     *   rowAttrs?: function(Object): string, filter?: boolean}} [opts] - `what` names the rows ("sublabels"); `cls`,
+     *   `wrapCls`, `qCls` and `sortAttr` add names a caller's specs address; `filter`: the
+     *   filter even when the rows fit one page.
      * @returns {string}
      */
     function _dpCompactTableHtml(t, id, cols, rows, opts = {}) {
@@ -65433,7 +65753,7 @@
         ui.page = Math.min(Math.max(0, ui.page), pages - 1);
         const from = ui.page * per;
         const page = view.slice(from, from + per);
-        const filter = rows.length > per ? `<div class="mb-dg-vtools">${_dpTblFilterHtml(id, ui, `Filter ${what}`, opts.qCls)}</div>` : '';
+        const filter = rows.length > per || (opts.filter && rows.length) ? `<div class="mb-dg-vtools">${_dpTblFilterHtml(id, ui, `Filter ${what}`, opts.qCls)}</div>` : '';
         const box = body => `<div class="mb-dp-tbl" data-mb-tbl="${_rgEsc(id)}">${filter}${body}</div>`;
         if (!page.length) return box(`<div class="mb-dg-vwrap"><div class="mb-dg-empty">${rows.length ? `No ${_rgEsc(what)} match.` : 'None.'}</div></div>`);
         const pager = view.length > per ? '<div class="mb-dg-morerow mb-dg-pager">' +
@@ -72212,11 +72532,22 @@
     let _saedBarEl = null;
 
     /**
+     * The attention bar (`#mb-saed-attn-bar`): the `attn` area in a rounded
+     * bar of its own, right after the SAED button, shown only while an
+     * indicator has something (vzell 2026-10-29, mockup
+     * https://claude.ai/artifact/URrn3dps1EMtnkjKBvsvag). Held for the same
+     * detached-subtree reason as `_saedBarEl`.
+     *
+     * @type {HTMLElement|null}
+     */
+    let _saedAttnBarEl = null;
+
+    /**
      * The attention indicators, ONE registry: every entry is a menu
-     * (`createToolbarMenu()`, `segment: true`) whose button sits in the SAED
-     * bar's `attn` area while it has rows, and which also appears as a row of
-     * the SAED menu's "Needs attention" group, opening the same list beside
-     * it. Order on the bar and in the group: by level, alert first. A new
+     * (`createToolbarMenu()`, `segment: true`) whose button sits in the
+     * attention bar's `attn` area (`#mb-saed-attn-bar`) while it has rows,
+     * and which also appears as a row of the SAED menu's "Needs attention"
+     * group, opening the same list beside it. Order on the bar and in the group: by level, alert first. A new
      * indicator is one entry here plus the code that fills its menu and sets
      * `descriptor.indicatorCount` (docs/claude/toolbar-and-header-ui.md, "The
      * SAED button").
@@ -72242,8 +72573,9 @@
 
     /**
      * The h1 controls container's tail, in final visual order: the SAED
-     * button. (A fetch's Stop and progress used to follow it; they are in
-     * the running segment and the status line now, `_saedRunStart()`.)
+     * button, then the attention bar. (A fetch's Stop and progress used to
+     * follow it; they are in the running segment and the status line now,
+     * `_saedRunStart()`.)
      *
      * Everything NOT named here keeps whatever position it was appended at —
      * which is why the hidden `<input type="file">` needs no entry. What used
@@ -72253,6 +72585,7 @@
      */
     const _TOOLBAR_TAIL_ORDER = [
         'mb-saed-bar',
+        'mb-saed-attn-bar',
     ];
 
     /**
@@ -72281,7 +72614,8 @@
      * "move X before Y" rule per button plus three divider spans. Since the
      * SAED button there are no dividers at all: a menu's button goes into its
      * AREA of `#mb-saed-bar` (`_saedAreaFor()`), indicators in registry
-     * order, and the first visible area loses its left rule
+     * order into the attention bar (hidden while it holds none), and the
+     * first visible area of each bar loses its left rule
      * (`_saedMarkFirst()`). A group of the SAED menu has no button; its rows
      * are ordered here like a menu's.
      */
@@ -72326,6 +72660,7 @@
                 if (m && m.btn.parentNode === attn) attn.appendChild(m.btn);
             });
         }
+        if (_saedAttnBarEl) _saedAttnBarEl.hidden = !(attn && attn.childElementCount);
 
         _TOOLBAR_TAIL_ORDER.forEach(id => {
             const el = controlsContainer.querySelector(`#${id}`);
@@ -75930,13 +76265,18 @@ ${sections.join('\n')}
     //    https://claude.ai/artifact/QUqoriyP6qX3D3EutjhyzX) ──────────────────
     //
     // Everything the script adds to the page heading is ONE segmented button,
-    // `#mb-saed-bar`, in four AREAS, each reacting on its own:
+    // `#mb-saed-bar`, in three AREAS, each reacting on its own, followed by
+    // the attention bar `#mb-saed-attn-bar` (since 2026-10-29: the findings
+    // show only on some pages, so they no longer change the button's shape;
+    // mockup https://claude.ai/artifact/URrn3dps1EMtnkjKBvsvag):
     //
     //   actions │ the page's "🧮 …" fetch buttons, as before
     //   disc    │ 📀 Discography: <view> ▾ (artist-releasegroups only)
-    //   attn    │ one segment per attention INDICATOR that has something
-    //           │ (❌ 1 ▾, ⚠️ 43 ▾ …), most urgent first; each opens its list
     //   menu    │ ☰ SAED ▾ — the script's menu (the name is a setting)
+    //   ─────── the attention bar, a rounded bar of its own ───────
+    //   attn    │ one segment per attention INDICATOR that has something
+    //           │ (🔄 2 ▾, ❌ 1 ▾, ⚠️ 43 ▾ …), most urgent first; each opens
+    //           │ its list. Hidden while it has none.
     //
     // The menu holds groups: Load (narrow screens only: the action segments
     // move here), Needs attention (the same indicators as rows), Data, View,
@@ -75946,8 +76286,9 @@ ${sections.join('\n')}
     // into a group instead, so `_toolbarInvoke()`/`_toolbarAnchorFor()` and
     // every id keep working.
 
-    // `_SAED_INDICATORS`, `_SAED_GROUPS` and `_saedBarEl` are declared far
-    // above, next to `_toolbarMenus`, for the same TDZ reason.
+    // `_SAED_INDICATORS`, `_SAED_GROUPS`, `_saedBarEl` and `_saedAttnBarEl`
+    // are declared far above, next to `_toolbarMenus`, for the same TDZ
+    // reason.
 
     /**
      * The menu's name on its button (`sa_toolbar_menu_name`, default "SAED");
@@ -75995,8 +76336,9 @@ ${sections.join('\n')}
 
     /**
      * The bar's area for a menu's button: `menu` for the SAED menu, `disc`
-     * for 📀 Discography, `attn` for an indicator; null for a menu that has
-     * no button in the bar (a submenu such as Export ▸).
+     * for 📀 Discography, `attn` for an indicator (in the attention bar,
+     * `_saedAttnBarEl`); null for a menu that has no button in a bar (a
+     * submenu such as Export ▸).
      *
      * @param {string} key - A `_toolbarMenus` key.
      * @returns {HTMLElement|null}
@@ -76007,23 +76349,27 @@ ${sections.join('\n')}
             : key === 'disc' ? 'disc'
             : _SAED_INDICATORS.some(i => i.key === key) ? 'attn'
             : null;
-        return area ? _saedBarEl.querySelector(`:scope > [data-mb-area="${area}"]`) : null;
+        const bar = area === 'attn' ? _saedAttnBarEl : _saedBarEl;
+        return area && bar ? bar.querySelector(`:scope > [data-mb-area="${area}"]`) : null;
     }
 
     /**
-     * The first visible area of the bar loses its left rule, whichever area
-     * that is (before loading there are no indicators and no Discography; on
-     * a narrow screen the actions are in the menu).
+     * The first visible area of each bar loses its left rule, whichever
+     * area that is (before loading there is no Discography; on a narrow
+     * screen the actions are in the menu). The attention bar has one area,
+     * always its first.
      *
      * @returns {void}
      */
     function _saedMarkFirst() {
-        if (!_saedBarEl) return;
-        let found = false;
-        Array.from(_saedBarEl.children).forEach(el => {
-            const shows = !el.hidden && el.childElementCount > 0 && getComputedStyle(el).display !== 'none';
-            el.classList.toggle('mb-saed-first', shows && !found);
-            if (shows) found = true;
+        [_saedBarEl, _saedAttnBarEl].forEach(bar => {
+            if (!bar) return;
+            let found = false;
+            Array.from(bar.children).forEach(el => {
+                const shows = !el.hidden && el.childElementCount > 0 && getComputedStyle(el).display !== 'none';
+                el.classList.toggle('mb-saed-first', shows && !found);
+                if (shows) found = true;
+            });
         });
     }
 
@@ -84000,9 +84346,10 @@ a { color: #1565c0; }`;
     // ever changed.
     controlsContainer.style.cssText = '--mb-toolbar-gap:8px; display:inline-flex; flex-wrap:wrap; align-items:center; gap:var(--mb-toolbar-gap); margin-left:10px; vertical-align:middle; line-height:1;';
 
-    // The SAED button: one segmented button in four areas (see "The SAED
-    // button" above `_saedMenuName()`). Its height and font size are still
-    // `sa_ui_action_btn_style`'s, its colours `sa_ui_toolbar_menu_btn_style`'s.
+    // The SAED button: one segmented button in three areas, and the
+    // attention bar after it (see "The SAED button" above `_saedMenuName()`).
+    // Their height and font size are still `sa_ui_action_btn_style`'s, their
+    // colours `sa_ui_toolbar_menu_btn_style`'s.
     const saedBar = document.createElement('span');
     saedBar.id = 'mb-saed-bar';
     saedBar.className = 'mb-saed-bar';
@@ -84017,16 +84364,28 @@ a { color: #1565c0; }`;
             + ` --mb-saed-radius:${borderRadius}; --mb-saed-bg:${bg}; --mb-saed-fg:${color};`
             + ` --mb-saed-border:${border}; --mb-saed-hover:${bgHover};`;
     }
-    ['actions', 'disc', 'attn', 'menu'].forEach(area => {
+    // The attention bar: the same look (class and custom properties), its
+    // one area `attn`, hidden until an indicator has something
+    // (`_orderToolbar()`).
+    const saedAttnBar = document.createElement('span');
+    saedAttnBar.id = 'mb-saed-attn-bar';
+    saedAttnBar.className = 'mb-saed-bar mb-saed-attn-bar';
+    saedAttnBar.setAttribute('role', 'toolbar');
+    saedAttnBar.setAttribute('aria-label', 'Needs attention');
+    saedAttnBar.style.cssText = saedBar.style.cssText;
+    saedAttnBar.hidden = true;
+    [['actions', saedBar], ['disc', saedBar], ['menu', saedBar], ['attn', saedAttnBar]].forEach(([area, bar]) => {
         const el = document.createElement('span');
         el.className = 'mb-saed-area';
         el.dataset.mbArea = area;
         el.setAttribute('role', 'group');
-        saedBar.appendChild(el);
+        bar.appendChild(el);
     });
     const saedActions = saedBar.querySelector('[data-mb-area="actions"]');
     controlsContainer.appendChild(saedBar);
+    controlsContainer.appendChild(saedAttnBar);
     _saedBarEl = saedBar;
+    _saedAttnBarEl = saedAttnBar;
 
     const allActionButtons = [];
 
@@ -86476,9 +86835,12 @@ a { color: #1565c0; }`;
         }
 
         /* The SAED button (#mb-saed-bar): everything the script adds to the
-           page heading as ONE segmented button, in four areas (actions,
-           disc, attn, menu). Hairlines split the segments of an area; a
-           heavier rule splits the areas; the first visible area has none
+           page heading as ONE segmented button, in three areas (actions,
+           disc, menu), and the attention bar (#mb-saed-attn-bar) after it,
+           the same look with one area (attn), hidden while it has nothing
+           (vzell 2026-10-29, https://claude.ai/artifact/URrn3dps1EMtnkjKBvsvag).
+           Hairlines split the segments of an area; a heavier rule splits the
+           areas; the first visible area has none
            (.mb-saed-first, set by _saedMarkFirst()). Its size and colours
            come from two settings through custom properties set on the bar
            (sa_ui_action_btn_style, sa_ui_toolbar_menu_btn_style).
@@ -86501,6 +86863,7 @@ a { color: #1565c0; }`;
             overflow: hidden;
             vertical-align: middle;
         }
+        .mb-saed-bar[hidden] { display: none; }
         .mb-saed-area {
             display: inline-flex;
             align-items: stretch;
@@ -156387,6 +156750,16 @@ a { color: #1565c0; }`;
              * @returns {?{kind: string, id: string, list: string}}
              */
             ytParse: (href) => _ytParse(href),
+            /**
+             * An area's flag markup (`_mbPopFlagHtml()`, the shipping
+             * builder) as on musicbrainz.org or on another host, so a spec
+             * can pin the discogs.com box without a page there.
+             *
+             * @param {Object} area - An area of the Web Service.
+             * @param {boolean} onMb
+             * @returns {string}
+             */
+            mbPopFlagHtml: (area, onMb) => _mbPopFlagHtml(area, onMb),
             /**
              * A "Play here" tile's markup (`_ytTileHtml()`, the shipping
              * builder, which also installs the one delegated handler), so a

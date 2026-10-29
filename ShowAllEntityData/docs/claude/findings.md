@@ -356,7 +356,8 @@ honest without a hook of their own.
 `findings-warn` / `findings-error`. Since 2026-10-22 they are the two
 attention INDICATORS of the SAED button (`_SAED_INDICATORS`,
 docs/claude/toolbar-and-header-ui.md "The SAED button"): a segment
-"❌ N ▾" / "⚠️ N ▾" in its `attn` area (errors first), tinted by level, and a
+"❌ N ▾" / "⚠️ N ▾" in the `attn` area (errors first) of the attention bar
+`#mb-saed-attn-bar` after the button (since 2026-10-29), tinted by level, and a
 row of the SAED menu's "Needs attention" group opening the same list beside
 the menu; `menu.indicatorCount` carries the count, and ticking a row keeps
 the list open. Unlike the Data and View groups they **build their own rows**

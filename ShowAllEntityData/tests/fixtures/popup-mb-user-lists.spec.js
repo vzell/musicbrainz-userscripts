@@ -424,6 +424,9 @@ test.describe('MusicBrainz link previews: an editor\'s lists and account pages',
         // "By kind" chooses the list (Phase 3c): the biggest kind first.
         await expect(left.locator('[data-mb-tbl="tag-kinds"] button')).toHaveText(['Releases', 'Release groups']);
         await expect(left.locator('[data-mb-tbl="tag-kinds"] button[aria-pressed="true"]')).toHaveText('Releases');
+        // The editor's words: who tagged, and no votes to order by.
+        await expect(left.locator('[data-mb-tbl="tag-kinds"] button', { hasText: 'Release groups' })).toHaveAttribute('title',
+            'Show the 3 release groups vzell tagged live on the right.');
         await expect(right.locator('h4')).toHaveText('Releases · 44');
         const tbl = right.locator('[data-mb-tbl="tag-kind-release"]');
         await expect(tbl.locator('tbody tr')).toHaveCount(44);
