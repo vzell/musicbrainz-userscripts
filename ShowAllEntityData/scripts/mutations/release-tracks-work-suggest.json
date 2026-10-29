@@ -1,0 +1,132 @@
+[
+  {
+    "name": "a suggested work counts as a linked work",
+    "why": "_rowHasRecordingOfWork() takes any /work/ link again: once suggestions are in, the 🚫 no-work count drops from 4 to 1.",
+    "edits": [
+      {
+        "find": "            if (!a.closest('li.mb-recof-suggested')) return true;",
+        "replace": "            return true;"
+      }
+    ],
+    "spec": "tests/fixtures/release-tracks-work-suggest.spec.js",
+    "grep": "loads each artist's work list once",
+    "expect": "fail"
+  },
+  {
+    "name": "suggestions are written to the live cells only",
+    "why": "_wsugCellIndex() leaves out the source rows: the next filter re-render clones rows that never had the suggestion.",
+    "edits": [
+      {
+        "find": "        if (first) _msSourceRows().forEach(row => add(row, first));",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/release-tracks-work-suggest.spec.js",
+    "grep": "survive a filter re-render",
+    "expect": "fail"
+  },
+  {
+    "name": "an artist shared by several tracks is asked again",
+    "why": "The per-pass artist list is no longer de-duplicated. Known overlap: the loop's \"list already in memory\" check skips the second occurrence, so no extra request is made and the spec cannot see it.",
+    "edits": [
+      {
+        "find": "            arts.forEach(a => { if (!order.includes(a)) order.push(a); });",
+        "replace": "            arts.forEach(a => order.push(a));"
+      }
+    ],
+    "spec": "tests/fixtures/release-tracks-work-suggest.spec.js",
+    "grep": "loads each artist's work list once",
+    "expect": "pass"
+  },
+  {
+    "name": "a list already in memory is asked again",
+    "why": "The loop no longer skips an artist whose list is in memory. Known overlap: _recOfLoadArtistWorks() then answers from IndexedDB (artist-works), so the cost is one IndexedDB read, not a request, and no spec can see it from the network log.",
+    "edits": [
+      {
+        "find": "            if (_wsugLists.has(artist)) continue;\n            index = _wsugCellIndex();",
+        "replace": "            index = _wsugCellIndex();"
+      }
+    ],
+    "spec": "tests/fixtures/release-tracks-work-suggest.spec.js",
+    "grep": "a failed work list marks only",
+    "expect": "pass"
+  },
+  {
+    "name": "a cell with a work becomes a target",
+    "why": "_wsugRowTarget() stops checking for a linked work: every row gets a 💡 and its work is overwritten.",
+    "edits": [
+      {
+        "find": "        if (!cell || !titleTd || _cellHasLinkedWork(cell)) return null;",
+        "replace": "        if (!cell || !titleTd) return null;"
+      }
+    ],
+    "spec": "tests/fixtures/release-tracks-work-suggest.spec.js",
+    "grep": "only the empty cells get",
+    "expect": "fail"
+  },
+  {
+    "name": "a failed list reads as \"no close title\"",
+    "why": "The failure branch is gone: a track whose only candidate list failed is shown as – (answered) instead of ⚠ (retry).",
+    "edits": [
+      {
+        "find": "                } else if (arts.some(a => failedArtists.has(a))) {",
+        "replace": "                } else if (false) {"
+      }
+    ],
+    "spec": "tests/fixtures/release-tracks-work-suggest.spec.js",
+    "grep": "a failed work list marks only",
+    "expect": "fail"
+  },
+  {
+    "name": "a single-cell click loads every track",
+    "why": "The click delegate drops `only`: one 💡 click looks up all four tracks.",
+    "edits": [
+      {
+        "find": "            _wsugLoadAll({ only: td.dataset.wsugRec, withFailed: true });",
+        "replace": "            _wsugLoadAll({ withFailed: true });"
+      }
+    ],
+    "spec": "tests/fixtures/release-tracks-work-suggest.spec.js",
+    "grep": "a 💡 cell loads only its own track",
+    "expect": "fail"
+  },
+  {
+    "name": "suggestions are saved to disk",
+    "why": "getCleanCellHtml() keeps ul.mb-wsug-list: a disk load shows stale suggestions and the cells are no longer pending.",
+    "edits": [
+      {
+        "find": "        clone.querySelectorAll('ul.mb-wsug-list').forEach(ul => ul.remove());\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/release-tracks-work-suggest.spec.js",
+    "grep": "suggestions are not saved",
+    "expect": "fail"
+  },
+  {
+    "name": "the match note is text",
+    "why": "The pill writes its note as text: a filter for \"exact title\" matches rows and the cell text is no longer just the suggestion.",
+    "edits": [
+      {
+        "find": "        pill.dataset.mbWsugMatch = _wsugMatchText(m);\n",
+        "replace": "        pill.dataset.mbWsugMatch = _wsugMatchText(m);\n        pill.textContent = _wsugMatchText(m);\n"
+      }
+    ],
+    "spec": "tests/fixtures/release-tracks-work-suggest.spec.js",
+    "grep": "loads each artist's work list once",
+    "expect": "fail"
+  },
+  {
+    "name": "the setting does not gate the feature",
+    "why": "_wsugOn() ignores sa_release_tracks_work_suggest: switched off, the toggle and 💡 cells still appear.",
+    "edits": [
+      {
+        "find": "        return activeDefinition?.type === 'release-tracks' &&\n            Lib.settings.sa_release_tracks_work_suggest !== false;",
+        "replace": "        return activeDefinition?.type === 'release-tracks';"
+      }
+    ],
+    "spec": "tests/fixtures/release-tracks-work-suggest.spec.js",
+    "grep": "switched off",
+    "expect": "fail"
+  }
+]

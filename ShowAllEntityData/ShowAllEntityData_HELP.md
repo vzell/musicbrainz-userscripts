@@ -1357,7 +1357,8 @@ one a second). Answers are kept in the browser for 30 days, so a reload costs
 nothing, and a recording loaded on one page is already loaded on every other.
 
 **Suggested works** (artist's Recordings page only — the other lists have no
-single artist to take works from). For a recording without a work, the
+single artist to take works from; the release tracklist suggests works too,
+per track artist, see *Release tracklists*). For a recording without a work, the
 column suggests the artist's work with the closest title, in orange and
 marked *suggested:*.
 "(alternate take)" and similar endings are ignored, and so are case,
@@ -2007,6 +2008,31 @@ like a length over the threshold, with a ⚠️ and a tooltip saying why. The Ti
 column's 📊 dropdown counts these tracks under **Title info - Work**. Switch
 the marking off in ⚙️ Settings → 💿 RELEASE TRACKLIST ("Flag tracks whose
 recording has no associated work"); the 📊 counts stay either way.
+
+**Suggested works for those tracks.** Each empty **Recording of work** cell
+shows a 💡. Click it to look up a suggestion for that track, or click ▶💡 in
+the column header for every track without a work. The suggestion is the work
+with the closest title among the works of the track's artists (the recording
+artist where it differs, else the track artist; never Various Artists), in
+orange and marked *suggested:*, with a note (*exact title* or *≈ 88 % alike*)
+and a **➕ relate** link that opens the recording's edit page in a new tab,
+where you can add the work yourself. Nothing is loaded until you click, and
+nothing is ever changed for you. A track whose artists have no work with a
+close title shows –; a work list that could not be loaded shows ⚠, click it to
+try again. Covers often get no suggestion: an artist's work list holds the
+songs they are credited on as writer, not every song they sing.
+
+Each artist's work list is loaded once (100 works per request, about one
+request a second) and kept for 30 days, shared with the suggestions on the
+artist's Recordings page — loaded on one page, it costs nothing on the other.
+A suggestion is not a link: the Title keeps its ⚠️ and its tooltip names the
+suggestion. Suggestions are not saved with **Save to Disk**; after loading a
+file, ▶💡 fills them again from the browser's cache. The column's 📊 dropdown
+has **Recording of work - Suggestions** (not looked up / suggested / no
+suggestion / failed) and **Recording of - Suggested work** (one entry per
+title). Switch it off in ⚙️ Settings → 💿 RELEASE TRACKLIST ("Suggest a work
+for tracks whose recording has none"); how different a title may be is set
+under 🎼 RECORDING OF COLUMN, for both pages.
 
 </details>
 

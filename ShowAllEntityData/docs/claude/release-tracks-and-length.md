@@ -589,6 +589,75 @@ Rules that fail silently if broken:
 Spec: `release-tracks-no-work-flag.spec.js`; mutations in
 `scripts/mutations/uvd-title-sections.json`.
 
+## Work suggestions for tracks with no work
+
+The empty "Recording of work" cells (and only those) get a 💡; ▶💡 in the
+column header looks up every one, a click on a 💡 cell its own track. The
+`_wsug*` family, after `_recOfSnapshot()`; setting
+`sa_release_tracks_work_suggest` (default on). It reuses the artist
+Recordings page's suggestion engine (docs/claude/deferred-columns-picard-relationships.md,
+"Recording of column"): `_recOfNormTitle()`, `_recOfBestWork()` (the matcher,
+split out of `_recOfSuggestTitle()`), `_recOfLoadArtistWorks()` (IndexedDB
+`artist-works` → the batch-add userscript's localStorage list → the Web
+Service, split out of `_recOfEnsureWorks()`) and `_recOfGet()` with its own
+request counter and progress-card key. Shared settings: distance threshold,
+works TTL, batch-add cache import.
+
+**One work list per track artist, not one per page.** A release (a
+compilation above all) has no single artist. `_wsugRowArtists()` reads the
+"Recording artist" cell (shown only where the recording's credit differs),
+else "Artist" (always present: `applyNormalizeMediumTracklists()` backfills
+it), every linked artist, never Various Artists. `_wsugLoadOnce()` loads each
+distinct artist once per pass and answers a track as soon as all its artists'
+lists are in; the best (lowest) `_recOfBestWork()` score across them wins.
+Measured on the snapshot that motivated this (`debug/MB-release-tracks-fill-work-suggestions.html`,
+"Verano Éxitos de los 80"): 27 empty tracks, 26 different artists — at least
+26 requests, about 30–40 s at the shared 1.1 s rate. The lists land in the
+same store the artist Recordings page uses, so either page fills the other's
+cache. A list holds the works an artist is RELATED to (mostly as writer):
+a cover of someone else's song gets "no suggestion", by design.
+
+Rules that fail silently if broken:
+
+- **A suggestion is not a link.** `_rowHasRecordingOfWork()` goes through
+  `_cellHasLinkedWork()`, which ignores anchors inside
+  `li.mb-recof-suggested` — otherwise the 🚫 no-work finding and
+  "Title info - Work" lose every suggested row. The Title keeps its ⚠️ flag;
+  only its tooltip gains a "Suggested:" line.
+- **Targets are found dynamically, not marked at row build.**
+  `_wsugRowTarget()`: the "Recording of work" cell links no (real) work and
+  the Title links a recording. That is what lets a disk load or a sub-table
+  tab get the 💡 back with no extra saved field. `_wsugStamp()` puts
+  `data-wsug="pending"` on live and source cells, but walks rows only when
+  the source rows changed (first source row + count), because it runs on
+  every render tail.
+- **Live AND master.** `_wsugCellIndex()` = live tables + `_msSourceRows()`
+  (one header template serves every table of a render, so the first table's
+  indices read the source rows). `renderGroupedTable()` always clones:
+  without the source rows the next filter drops the suggestion.
+- **Only CSS text besides the suggestion.** The match note (`.mb-wsug-pill`,
+  `data-mb-wsug-match`) and the ➕ relate link (`a.mb-wsug-relate`,
+  `/recording/<mbid>/edit`, new tab) draw their text with `::before`, so a
+  cell's filter/sort/📊 text is exactly "suggested: <title>". The suggested
+  work link has no `<bdi>`, so the 📊 never offers it as a linked-work entity
+  entry; its title IS offered under "Recording of - Suggested work"
+  (`recofsugg:`, shared with the artist Recordings page — same markup).
+- **States and the 📊.** `data-wsug`: `pending` (💡), `queued`, `loading`,
+  `suggested`, `none` (–), `error` (⚠, click retries). ONE classifier,
+  `_wsugCellState()`, feeds both the "Recording of work - Suggestions"
+  counts and its `wsug-state-*` matcher. A track whose candidate lists partly
+  failed still takes a suggestion found in the others; with none found it is
+  `error`, never `none` (unknown is not "no close title").
+- **Not saved.** `getCleanCellHtml()` drops `ul.mb-wsug-list`; a loaded file
+  shows 💡 again, and ▶💡 refills from IndexedDB without a request.
+- **Never automatic.** Requests start only from ▶💡 or a cell click.
+
+Spec: `release-tracks-work-suggest.spec.js` (fixture
+`release-tracks-medley.html`, made-up work lists from a WS/2 mock); mutations
+`scripts/mutations/release-tracks-work-suggest.json` (two `expect: pass`
+entries record that "each artist once" is held by three overlapping guards:
+the per-pass de-duplication, the in-memory skip and the IndexedDB cache).
+
 ## /disc/<n>#<track>: the targeted track's highlight
 
 `/release/<mbid>/disc/<n>` is the release page scrolled to one medium; with

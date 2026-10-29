@@ -27291,3 +27291,35 @@ assert no MusicBrainz heading and cells-per-row equal to the headings with the
 importer simulated; `dg-mb-head.json` 1 fail + 1 recorded pass. Also on that
 screenshot: "Loaded 2 of 100 pages … INCOMPLETE", 98 pages missing — cause
 not known yet (Discogs' rate limit without a token? a dialog choice?); asked.
+
+## 2026-10-29 — release-tracks: work suggestions for the empty "Recording of work" cells (WIP.1)
+Env: 2026-10-29T06:05:17+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.54.1) · Playwright 1.62.1 Chromium, no Tampermonkey (GM stubs)
+
+Asked: suggest works on `release-tracks` as the artist Recordings page does,
+only in cells that are really empty. Snapshot `debug/MB-release-tracks-fill-work-suggestions.html`
+(FRP, release 22a6802f…, "Verano Éxitos de los 80"): 51 tracks, 27 without a
+work, 26 different track artists. So no single work list: one PER TRACK
+ARTIST (recording artist where shown, else track artist, never VA), loaded
+once per pass and kept in the shared IndexedDB `artist-works` store. Mockup
+first (artifact C6VnbNyWeFjXLDSfFACUSJ); the user took every recommended
+answer (per-artist lists, every credited artist, own setting, ➕ relate link
+to `/recording/<mbid>/edit`, not saved to disk).
+
+Design and traps: docs/claude/release-tracks-and-length.md, "Work suggestions
+for tracks with no work". The one that would have failed silently:
+`_rowHasRecordingOfWork()` took ANY `/work/` anchor, so a suggestion would
+have emptied the 🚫 no-work finding; it now goes through
+`_cellHasLinkedWork()`. Refactors, behaviour-neutral for artist-recordings:
+`_recOfBestWork()` out of `_recOfSuggestTitle()`, `_recOfLoadArtistWorks()`
+out of `_recOfEnsureWorks()`, `_recOfIndexWorks()` out of `_recOfSetWorks()`,
+`_recOfGet()` takes a job counter and progress-card key.
+
+Tests: `release-tracks-work-suggest.spec.js`, 7/7 (fixture
+`release-tracks-medley.html`, WS/2 mock). Mutations
+`scripts/mutations/release-tracks-work-suggest.json`: 8 fail as expected;
+2 recorded `expect: pass` — "each artist once" is held by three overlapping
+guards (per-pass dedup, in-memory skip, IndexedDB), and removing one of them
+is invisible in the network log. Found while writing the spec: a pointer click
+on a narrow empty cell can land on the sticky Title column after Playwright's
+scroll-into-view; the spec clicks through `el.click()`. Not checked in a real
+browser yet.

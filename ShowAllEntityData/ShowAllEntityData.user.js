@@ -2165,7 +2165,8 @@
                          + 'relationship yet, suggests the artist\'s work with the closest title (shown in '
                          + 'orange, marked "suggested"). Needs the artist\'s work list, which is loaded with '
                          + 'the column and cached. Other recording lists have no single artist, so they '
-                         + 'show no suggestions.'
+                         + 'show no suggestions. The release tracklist has its own switch (💿 RELEASE '
+                         + 'TRACKLIST) and shares the settings below.'
         },
 
         sa_recording_of_suggest_max_distance_pct: {
@@ -2921,6 +2922,21 @@
                          + 'to any work: the cell is tinted like a length mismatch over the '
                          + 'threshold and gets a ⚠️, plus a tooltip. The Title column\'s 📊 dropdown '
                          + 'counts these tracks under "Title info - Work" either way.'
+        },
+
+        sa_release_tracks_work_suggest: {
+            label: 'Suggest a work for tracks whose recording has none',
+            type: 'checkbox',
+            default: true,
+            description: 'Adds a ▶💡 button to the "Recording of work" column header and a 💡 to every '
+                         + 'empty cell of that column. A click loads the work list of the track\'s '
+                         + 'artists (the recording artist, else the track artist) and suggests the work '
+                         + 'with the closest title, in orange, marked "suggested", with a ➕ relate link '
+                         + 'to the recording\'s edit page. Nothing is loaded until you click. The work '
+                         + 'lists are shared with the artist Recordings page\'s suggestions, and so are '
+                         + 'their settings (how different a title may be, TTL, the batch-add '
+                         + 'userscript\'s cache). A suggestion is not a link: the track keeps its '
+                         + '"no associated work" flag.'
         },
 
         sa_release_tracks_length_mismatch_threshold_ms: {
@@ -69384,7 +69400,10 @@
     }
 
     /**
-     * Whether a row's "Recording of work" cell links at least one work.
+     * Whether a row's "Recording of work" cell links at least one work. A
+     * work SUGGESTED for the track (`li.mb-recof-suggested`, written by
+     * `_wsugRenderCell()`) is not a link and never counts, so the 🚫 no-work
+     * finding and "Title info - Work" do not change when one appears.
      *
      * @param {?HTMLTableRowElement} row
      * @param {number} recOfIdx - From `_findRecOfWorkColIdx()`.
@@ -69394,7 +69413,19 @@
         if (!row || recOfIdx < 0) return null;
         const cell = row.cells[recOfIdx];
         if (!cell) return null;
-        return !!cell.querySelector('a[href*="/work/"]');
+        return _cellHasLinkedWork(cell);
+    }
+
+    /**
+     * Whether a cell holds a work link that is not a suggestion.
+     * @param {Element} cell
+     * @returns {boolean}
+     */
+    function _cellHasLinkedWork(cell) {
+        for (const a of cell.querySelectorAll('a[href*="/work/"]')) {
+            if (!a.closest('li.mb-recof-suggested')) return true;
+        }
+        return false;
     }
 
     /**
@@ -71116,9 +71147,15 @@
             // section — the same classifier its counts use.
             return _recOfCellLoadState(cell) === mode.slice('recof-state-'.length);
         }
+        if (mode.startsWith('wsug-state-')) {
+            // Fixed-flag modes of openUniqDrop()'s "Recording of work -
+            // Suggestions" section — the same classifier its counts use.
+            return _wsugCellState(cell) === mode.slice('wsug-state-'.length);
+        }
         if (mode.startsWith('recofsugg:')) {
             // Compound mode — one suggested work title of a "Recording of"
-            // cell (_findCellRecOfSuggestions()).
+            // cell (_findCellRecOfSuggestions()), or of a release-tracks
+            // "Recording of work" cell (_wsugRenderCell()) — same markup.
             return !!cell && _findCellRecOfSuggestions(cell).includes(mode.slice(10));
         }
         if (mode.startsWith('rel-state-')) {
@@ -87947,6 +87984,7 @@ a { color: #1565c0; }`;
         .mb-picard-col-hdr-btn,
         .mb-rel-col-hdr-btn,
         .mb-recof-col-hdr-btn,
+        .mb-wsug-col-hdr-btn,
         .mb-dgmb-col-hdr-btn,
         .mb-bbmbev-col-hdr-btn,
         .mb-re-col-hdr-btn,
@@ -87976,6 +88014,7 @@ a { color: #1565c0; }`;
         .mb-picard-col-hdr-btn:hover,
         .mb-rel-col-hdr-btn:hover,
         .mb-recof-col-hdr-btn:hover,
+        .mb-wsug-col-hdr-btn:hover,
         .mb-dgmb-col-hdr-btn:hover,
         .mb-bbmbev-col-hdr-btn:hover,
         .mb-re-col-hdr-btn:hover,
@@ -87991,6 +88030,7 @@ a { color: #1565c0; }`;
         .mb-picard-col-hdr-btn:focus-visible,
         .mb-rel-col-hdr-btn:focus-visible,
         .mb-recof-col-hdr-btn:focus-visible,
+        .mb-wsug-col-hdr-btn:focus-visible,
         .mb-dgmb-col-hdr-btn:focus-visible,
         .mb-bbmbev-col-hdr-btn:focus-visible,
         .mb-re-col-hdr-btn:focus-visible,
@@ -88007,6 +88047,7 @@ a { color: #1565c0; }`;
         .mb-picard-col-hdr-btn[aria-pressed="true"],
         .mb-rel-col-hdr-btn[aria-pressed="true"],
         .mb-recof-col-hdr-btn[aria-pressed="true"],
+        .mb-wsug-col-hdr-btn[aria-pressed="true"],
         .mb-dgmb-col-hdr-btn[aria-pressed="true"],
         .mb-bbmbev-col-hdr-btn[aria-pressed="true"],
         .mb-barcode-col-hdr-btn[aria-pressed="true"],
@@ -88070,6 +88111,33 @@ a { color: #1565c0; }`;
         td.mb-recof-cell .mb-credit-attr { color: #43a047; font-style: italic; }
         td.mb-recof-cell li.mb-recof-suggested, td.mb-recof-cell li.mb-recof-suggested a { color: #c76a12; font-style: italic; }
         td.mb-recof-cell .mb-recof-sugg-mark { font-size: 0.9em; }
+        /* release-tracks work suggestions (_wsugInitColHeaderToggles): the
+           column toggle, the suggested work in the same orange italics, its
+           match note and relate link drawn from attributes (CSS text, so
+           neither reaches filter, sort or the unique-values text), and the
+           cell state glyphs. */
+        .mb-wsug-col-hdr-btn::before { content: "▶💡"; }
+        .mb-wsug-col-hdr-btn[aria-pressed="true"]::before { content: "▼💡"; }
+        .mb-wsug-col-hdr-btn[data-wsug-progress]::after { content: " " attr(data-wsug-progress); font-variant-numeric: tabular-nums; }
+        .mb-wsug-col-hdr-btn[data-wsug-state="error"] { background: rgba(255, 193, 7, 0.55); border-color: rgba(190, 140, 0, 0.70); }
+        td[data-wsug] ul.mb-wsug-list { margin: 0; padding-left: 0; list-style: none; }
+        td[data-wsug] li.mb-recof-suggested, td[data-wsug] li.mb-recof-suggested a:not(.mb-wsug-relate) { color: #c76a12; font-style: italic; }
+        td[data-wsug] .mb-recof-sugg-mark { font-size: 0.9em; }
+        td[data-wsug] .mb-wsug-pill::before { content: attr(data-mb-wsug-match); }
+        td[data-wsug] .mb-wsug-pill { font-style: normal; font-size: 0.8em; margin-left: 6px; padding: 0 5px; border: 1px solid currentColor; border-radius: 8px; white-space: nowrap; }
+        td[data-wsug] .mb-wsug-pill[data-mb-wsug-exact] { color: #2e7d32; }
+        td[data-wsug] a.mb-wsug-relate { font-style: normal; font-size: 0.8em; margin-left: 6px; padding: 0 4px; border: 1px dashed #c76a12; border-radius: 4px; color: #c76a12; text-decoration: none; white-space: nowrap; }
+        td[data-wsug] a.mb-wsug-relate::before { content: "➕ relate"; }
+        td[data-wsug] a.mb-wsug-relate:hover { background: rgba(199, 106, 18, 0.12); }
+        td[data-wsug="pending"], td[data-wsug="error"] { cursor: pointer; text-align: center; }
+        td[data-wsug="queued"], td[data-wsug="loading"], td[data-wsug="none"] { text-align: center; }
+        td[data-wsug="pending"]::before { content: "💡"; opacity: 0.4; }
+        td[data-wsug="pending"]:hover::before { opacity: 1; }
+        td[data-wsug="queued"]::before { content: "⋯"; opacity: 0.6; }
+        td[data-wsug="loading"]::before { content: "◌"; }
+        td[data-wsug="none"]::before { content: "–"; opacity: 0.5; }
+        td[data-wsug="error"]::before { content: "⚠︎"; color: #b00020; }
+        td[data-wsug="error"]:hover::before { content: "⟳"; }
         td.mb-recof-cell ul, td.mb-perfattr-cell ul { margin: 0; padding-left: 0; list-style: none; }
         ${Lib.settings.sa_recording_of_cell_state_glyphs === false ? '' : 'td.mb-recof-cell[data-mbid]:not([data-recof]), td.mb-recof-cell[data-recof="error"] { cursor: pointer; text-align: center; } ' + 'td.mb-recof-cell[data-mbid]:not([data-recof])::before { content: "🎼︎"; opacity: 0.45; } ' + 'td.mb-recof-cell[data-mbid]:not([data-recof]):hover::before { opacity: 1; } ' + 'td.mb-recof-cell[data-recof="queued"]::before { content: "⋯"; opacity: 0.6; } ' + 'td.mb-recof-cell[data-recof="loading"]::before { content: "◌"; } ' + 'td.mb-recof-cell[data-recof="none"]::before { content: "–"; opacity: 0.5; } ' + 'td.mb-recof-cell[data-recof="error"]::before { content: "⚠︎"; color: #b00020; } ' + 'td.mb-recof-cell[data-recof="error"]:hover::before { content: "⟳"; }'}
 
@@ -96850,6 +96918,10 @@ a { color: #1565c0; }`;
         // SUGGESTS for recordings without a relation (_findCellRecOfSuggestions()).
         recofLoadState: { label: 'Recording of - Load state', glyph: '📥' },
         recofSuggested: { label: 'Recording of - Suggested work', glyph: '💡' },
+        // release-tracks' "Recording of work" column: where its empty cells
+        // stand with work suggestions (_wsugCellState()). The suggested
+        // titles themselves share recofSuggested above.
+        wsugState: { label: 'Recording of work - Suggestions', glyph: '📥' },
         // "CAA info"/"EAA info" each split into "- Type"/"- Comment" —
         // the image-type badge (controlled vocabulary, e.g. "Front") and
         // the free-text image comment are two distinct data facets that
@@ -97369,6 +97441,8 @@ a { color: #1565c0; }`;
         'recof-state-pending': 'recofLoadState', 'recof-state-has': 'recofLoadState',
         'recof-state-suggested': 'recofLoadState', 'recof-state-none': 'recofLoadState',
         'recof-state-error': 'recofLoadState',
+        'wsug-state-pending': 'wsugState', 'wsug-state-suggested': 'wsugState',
+        'wsug-state-none': 'wsugState', 'wsug-state-error': 'wsugState',
     };
     // "Live title info - Separator …": 3 kinds × 5 facets, one section per
     // kind — and the same for "Event name info - Separator …" (`ev` prefix).
@@ -101714,6 +101788,7 @@ a { color: #1565c0; }`;
             // fire on a settled page.
             _relInitColHeaderToggles();
             _recOfInitColHeaderToggles();
+            _wsugInitColHeaderToggles();
             // discogs.com's MusicBrainz column: its ▶ MB toggles.
             _dgMbAfterRender(false);
             // brucebase.wikidot.com's MB-Event column, the same way.
@@ -102005,6 +102080,7 @@ a { color: #1565c0; }`;
                 // deliberately does not fire on a settled page.
                 _relInitColHeaderToggles();
                 _recOfInitColHeaderToggles();
+                _wsugInitColHeaderToggles();
                 // discogs.com's MusicBrainz column: its ▶ MB toggles.
                 _dgMbAfterRender(false);
                 // brucebase.wikidot.com's MB-Event column, the same way.
@@ -106839,6 +106915,7 @@ a { color: #1565c0; }`;
             // at all, and the toggle is the only way for the user to ask for it.
             _relInitColHeaderToggles();
             _recOfInitColHeaderToggles();
+            _wsugInitColHeaderToggles();
             // discogs.com's MusicBrainz column: its ▶ MB toggles, then the lookup.
             _dgMbAfterRender(true);
             // brucebase.wikidot.com's MB-Event column, the same way.
@@ -118953,8 +119030,29 @@ a { color: #1565c0; }`;
             }
             return counts;
         })() : null;
+        // release-tracks "Recording of work": its suggestion states
+        // (_wsugCellState()); only cells WITHOUT a work carry one, so the
+        // column is found by any such cell, not by the first row.
+        const isWsugCol = _uniqCacheHit ? _uniqCacheHit.isWsugCol : (() => {
+            if (!tbody) return false;
+            for (const row of tbody.rows) {
+                const cell = row.cells[colIndex];
+                if (cell && cell.dataset.wsug) return true;
+            }
+            return false;
+        })();
+        const wsugStateCounts = _uniqCacheHit ? _uniqCacheHit.wsugStateCounts
+            : isWsugCol ? (() => {
+            const counts = { pending: 0, suggested: 0, none: 0, error: 0 };
+            for (const row of tbody.rows) {
+                if (row.style.display === 'none') continue;
+                const st = _wsugCellState(row.cells[colIndex]);
+                if (st) counts[st]++;
+            }
+            return counts;
+        })() : null;
         const recofSuggValueCounts = _uniqCacheHit ? _uniqCacheHit.recofSuggValueCounts
-            : isRecofCol ? (() => {
+            : (isRecofCol || isWsugCol) ? (() => {
             const counts = new Map();
             if (!tbody) return counts;
             for (const row of tbody.rows) {
@@ -119058,6 +119156,7 @@ a { color: #1565c0; }`;
                 eventRoleValueCounts, roleTokenValueCounts, artTypeValueCounts, artCommentValueCounts,
                 flagIconMap, isRelCellCol, relIconCounts, relLoadStateCounts,
                 isRecofCol, recofLoadStateCounts, recofSuggValueCounts,
+                isWsugCol, wsugStateCounts,
                 inlineArtType, inlineArtYes, inlineArtNo,
             });
         }
@@ -119131,6 +119230,7 @@ a { color: #1565c0; }`;
             ...barcodeFormatValueCounts.values(), ...barcodeSameAsValueCounts.values(),
             ...lengthBucketValueCounts.values(), ...timeOfDayValueCounts.values(), ...relTypeCreditValueCounts.values(),
             ...recofSuggValueCounts.values(), ...(recofLoadStateCounts ? Object.values(recofLoadStateCounts) : []),
+            ...(wsugStateCounts ? Object.values(wsugStateCounts) : []),
             ...dateDecadeValueCounts.values(), ...dateMonthValueCounts.values(),
             ...dateYearValueCounts.values(), ...dateWeekdayValueCounts.values(),
             ...partOfSeriesNameValueCounts.values(), ...partOfSeriesDateValueCounts.values(),
@@ -121047,7 +121147,13 @@ a { color: #1565c0; }`;
             if (recofLoadStateCounts.none > 0)      makeSynItem('recof-state-none',      '– no work',           recofLoadStateCounts.none);
             if (recofLoadStateCounts.error > 0)     makeSynItem('recof-state-error',     '⚠ request failed',    recofLoadStateCounts.error);
         }
-        if (isRecofCol && recofSuggValueCounts.size > 0) {
+        if (isWsugCol && wsugStateCounts) {
+            if (wsugStateCounts.pending > 0)   makeSynItem('wsug-state-pending',   '💡 not looked up yet', wsugStateCounts.pending);
+            if (wsugStateCounts.suggested > 0) makeSynItem('wsug-state-suggested', '💡 work suggested',    wsugStateCounts.suggested);
+            if (wsugStateCounts.none > 0)      makeSynItem('wsug-state-none',      '– no suggestion',     wsugStateCounts.none);
+            if (wsugStateCounts.error > 0)     makeSynItem('wsug-state-error',     '⚠ request failed',    wsugStateCounts.error);
+        }
+        if ((isRecofCol || isWsugCol) && recofSuggValueCounts.size > 0) {
             Array.from(recofSuggValueCounts.keys()).sort((a, b) => a.localeCompare(b))
                 .forEach(v => makeValueSynItem('recofsugg', v, recofSuggValueCounts.get(v)));
         }
@@ -121770,6 +121876,10 @@ a { color: #1565c0; }`;
         if (mode === 'recof-state-none')      return '– no work';
         if (mode === 'recof-state-error')     return '⚠ request failed';
         if (mode.startsWith('recofsugg:'))    return `» suggested: ${mode.slice(10)}`;
+        if (mode === 'wsug-state-pending')   return '💡 not looked up yet';
+        if (mode === 'wsug-state-suggested') return '💡 work suggested';
+        if (mode === 'wsug-state-none')      return '– no suggestion';
+        if (mode === 'wsug-state-error')     return '⚠ request failed';
         if (mode === 'rel-state-pending')   return '🔗 not loaded yet';
         if (mode === 'rel-state-has')       return '✓ has relationships';
         if (mode === 'rel-state-none')      return '– no relationships';
@@ -122005,6 +122115,10 @@ a { color: #1565c0; }`;
         if (mode === 'recof-state-none') return 'Loaded, no work, and no work title close enough to suggest — shown as – in the cell.';
         if (mode === 'recof-state-error') return 'The Web Service request failed even after retries — shown as ⚠ in the cell; click it to try again.';
         if (mode.startsWith('recofsugg:')) return 'A work suggested for recordings without a "recording of" relationship, by title.';
+        if (mode === 'wsug-state-pending') return 'The track has no work, and no suggestion has been looked up yet — click ▶💡 or the cell\'s 💡.';
+        if (mode === 'wsug-state-suggested') return 'The track has no work, and one of its artists has a work with a matching title, shown in orange.';
+        if (mode === 'wsug-state-none') return 'The track has no work, and no work of its artists has a close title — shown as – in the cell.';
+        if (mode === 'wsug-state-error') return 'A work list could not be loaded even after retries — shown as ⚠ in the cell; click it to try again.';
         if (mode === 'rel-state-pending') return 'This row\'s relationships have not been fetched yet — collapsed, queued or still loading.';
         if (mode === 'rel-state-has') return 'Fetched, and at least one relationship has an icon in this column.';
         if (mode === 'rel-state-none') return 'Fetched, and nothing with an icon — shown as – in the cell.';
@@ -127157,6 +127271,10 @@ a { color: #1565c0; }`;
         // keystroke.
         _msResetCarriedOverPrecision(clone);
 
+        // A release-tracks work suggestion is not saved (_wsugRenderCell()):
+        // the empty cell is, and a load stamps it again for a new lookup.
+        clone.querySelectorAll('ul.mb-wsug-list').forEach(ul => ul.remove());
+
         return clone.innerHTML;
     }
 
@@ -129304,25 +129422,28 @@ a { color: #1565c0; }`;
      *
      * @param {string} url
      * @param {string} label - For the log.
+     * @param {{requests: number}} [job] - Whose request counter to raise
+     *   (`_recOf`, or `_wsug` for the release tracklist's suggestions).
+     * @param {string} [ajKey] - The progress card provider to log into.
      * @returns {Promise<{ok: boolean, status: number, data: ?Object, detail: string}>}
      */
-    async function _recOfGet(url, label) {
+    async function _recOfGet(url, label, job = _recOf, ajKey = 'recof') {
         await _relAwaitRateSlot();
-        _recOf.requests++;
+        job.requests++;
         const res = await _ws2GetJson(url, {
             tries: _RECOF_TRIES,
             beforeRetry: async (attempt, retryAfterMs) => {
                 const wait = Math.max(_REL_WS2_SPACING_MS * attempt, retryAfterMs);
-                _ajLog('recof', null, `${label}: retry ${attempt + 1} of ${_RECOF_TRIES} in ${Math.round(wait / 100) / 10} s`, 'bad');
+                _ajLog(ajKey, null, `${label}: retry ${attempt + 1} of ${_RECOF_TRIES} in ${Math.round(wait / 100) / 10} s`, 'bad');
                 await new Promise(r => setTimeout(r, wait));
                 await _relAwaitRateSlot();
-                _recOf.requests++;
+                job.requests++;
             },
             dbg: (...a) => Lib.debug('recording-of', ...a),
             label
         });
-        if (res.ok) _ajLog('recof', null, `${label}: ok`, 'good');
-        else _ajLog('recof', null, `${label}: ${res.detail || 'failed'}`, 'bad');
+        if (res.ok) _ajLog(ajKey, null, `${label}: ok`, 'good');
+        else _ajLog(ajKey, null, `${label}: ${res.detail || 'failed'}`, 'bad');
         return res;
     }
 
@@ -129627,26 +129748,43 @@ a { color: #1565c0; }`;
         const norm = _recOfNormTitle(title, true);
         if (!norm) return null;
         if (_recOfSuggestMemo.has(norm)) return _recOfSuggestMemo.get(norm);
-        let best = _recOfWorks.exact.get(norm) || null;
-        if (!best) {
-            const p = Lib.settings.sa_recording_of_suggest_max_distance_pct;
-            const thr = (typeof p === 'number' && p >= 0 ? p : 25) / 100;
-            let bestScore = Infinity;
-            if (thr > 0) {
-                for (const w of _recOfWorks.works) {
-                    const avg = (norm.length + w.norm.length) / 2;
-                    const max = Math.floor(thr * avg);
-                    if (Math.abs(norm.length - w.norm.length) > max) continue;
-                    const d = _recOfDistance(norm, w.norm, max);
-                    if (d > max) continue;
-                    const score = d / avg;
-                    if (score < bestScore) { bestScore = score; best = w; }
-                }
-            }
-        }
-        const out = best ? { id: best.id, title: best.title, comment: best.comment } : null;
+        const m = _recOfBestWork(norm, _recOfWorks);
+        const out = m ? { id: m.work.id, title: m.work.title, comment: m.work.comment } : null;
         _recOfSuggestMemo.set(norm, out);
         return out;
+    }
+
+    /**
+     * The closest work of one indexed work list to a normalised recording
+     * title: the exact match, else the work with the smallest edit distance
+     * relative to the average length within
+     * `sa_recording_of_suggest_max_distance_pct` (length pre-check and early
+     * exit as described at `_recOfSuggestTitle()`). Shared by the artist
+     * Recordings page and the release tracklist (`_wsugSuggest()`).
+     *
+     * @param {string} norm - `_recOfNormTitle(title, true)`.
+     * @param {{works: Array<{norm: string}>, exact: Map<string, object>}} list
+     * @returns {?{work: object, score: number}} `score` 0 for an exact match,
+     *   else distance / average length.
+     */
+    function _recOfBestWork(norm, list) {
+        const hit = list.exact.get(norm);
+        if (hit) return { work: hit, score: 0 };
+        const p = Lib.settings.sa_recording_of_suggest_max_distance_pct;
+        const thr = (typeof p === 'number' && p >= 0 ? p : 25) / 100;
+        if (thr <= 0) return null;
+        let best = null;
+        let bestScore = Infinity;
+        for (const w of list.works) {
+            const avg = (norm.length + w.norm.length) / 2;
+            const max = Math.floor(thr * avg);
+            if (Math.abs(norm.length - w.norm.length) > max) continue;
+            const d = _recOfDistance(norm, w.norm, max);
+            if (d > max) continue;
+            const score = d / avg;
+            if (score < bestScore) { bestScore = score; best = w; }
+        }
+        return best ? { work: best, score: bestScore } : null;
     }
 
     /**
@@ -129673,39 +129811,57 @@ a { color: #1565c0; }`;
         const artist = _recOfArtistMbid();
         if (!artist || !_recOfSuggestOn()) return false;
         if (_recOfWorks && _recOfWorks.artist === artist && !force) return true;
+        const got = await _recOfLoadArtistWorks(artist, allowNetwork, force);
+        if (!got) return false;
+        _recOfSetWorks(artist, got.works, got.ts, got.source);
+        return true;
+    }
+
+    /**
+     * One artist's work list: IndexedDB `artist-works` (within
+     * `sa_recording_of_works_ttl_days`), then the batch-add userscript's
+     * localStorage list (`sa_recording_of_import_bpr_cache`, copied into
+     * IndexedDB), then — only when `allowNetwork` — the Web Service, 100
+     * works per request. A failed request returns null and caches nothing.
+     *
+     * @param {string} artist - Artist MBID.
+     * @param {boolean} allowNetwork
+     * @param {boolean} [force] - Ignore both caches.
+     * @param {{requests: number}} [job] - Request counter (`_recOfGet()`).
+     * @param {string} [ajKey] - Progress card provider for the log lines.
+     * @returns {Promise<?{works: Array<{id: string, title: string, comment: string}>, ts: number, source: string, tier: ('idb'|'bpr'|'net')}>}
+     */
+    async function _recOfLoadArtistWorks(artist, allowNetwork, force, job = _recOf, ajKey = 'recof') {
         const d = Lib.settings.sa_recording_of_works_ttl_days;
         const ttl = (typeof d === 'number' && d > 0 ? d : 30) * 86400000;
         if (!force) {
             const rec = await _artIdbGet('artist-works', artist).catch(() => null);
             if (rec && Date.now() - (rec.ts || 0) <= ttl && Array.isArray(rec.works)) {
-                _recOfSetWorks(artist, rec.works, rec.ts, rec.source || 'IndexedDB');
-                return true;
+                return { works: rec.works, ts: rec.ts, source: rec.source || 'IndexedDB', tier: 'idb' };
             }
             const bpr = Lib.settings.sa_recording_of_import_bpr_cache !== false ? _recOfReadBprWorks(artist) : null;
             if (bpr) {
-                _recOfSetWorks(artist, bpr.works, bpr.ts, 'batch-add userscript');
                 _artIdbPut('artist-works', { artist, works: bpr.works, ts: bpr.ts, source: 'batch-add userscript' }).catch(() => {});
-                _ajLog('recof', null, `${bpr.works.length} works taken from the batch-add userscript's cache`, 'good');
-                return true;
+                _ajLog(ajKey, null, `${bpr.works.length} works taken from the batch-add userscript's cache`, 'good');
+                return { works: bpr.works, ts: bpr.ts, source: 'batch-add userscript', tier: 'bpr' };
             }
         }
-        if (!allowNetwork) return false;
+        if (!allowNetwork) return null;
         const works = [];
         let offset = 0;
         let count = null;
         do {
             const res = await _recOfGet(`/ws/2/work?artist=${artist}&inc=aliases&limit=${_RECOF_PAGE}&offset=${offset}&fmt=json`,
-                `works offset ${offset}`);
-            if (!res.ok || !res.data) return false;
+                `works ${ajKey === 'recof' ? '' : artist.slice(0, 8) + ' '}offset ${offset}`, job, ajKey);
+            if (!res.ok || !res.data) return null;
             if (count === null) count = res.data['work-count'] || 0;
             (res.data.works || []).forEach(w => works.push({ id: w.id, title: w.title || '', comment: w.disambiguation || '' }));
             offset += _RECOF_PAGE;
             if (!(res.data.works || []).length) break;
         } while (offset < count);
         const ts = Date.now();
-        _recOfSetWorks(artist, works, ts, 'MusicBrainz');
         _artIdbPut('artist-works', { artist, works, ts, source: 'MusicBrainz' }).catch(() => {});
-        return true;
+        return { works, ts, source: 'MusicBrainz', tier: 'net' };
     }
 
     /**
@@ -129719,11 +129875,22 @@ a { color: #1565c0; }`;
      * @returns {void}
      */
     function _recOfSetWorks(artist, works, ts, source) {
+        _recOfWorks = { artist, ..._recOfIndexWorks(works), ts, source };
+        _recOfSuggestMemo.clear();
+    }
+
+    /**
+     * A work list with each title normalised (`_recOfNormTitle()`) and an
+     * exact-match index — the shape `_recOfBestWork()` searches.
+     *
+     * @param {Array<{id: string, title: string, comment: string}>} works
+     * @returns {{works: Array<object>, exact: Map<string, object>}}
+     */
+    function _recOfIndexWorks(works) {
         const list = works.map(w => ({ ...w, norm: _recOfNormTitle(w.title, false) }));
         const exact = new Map();
         list.forEach(w => { if (w.norm && !exact.has(w.norm)) exact.set(w.norm, w); });
-        _recOfWorks = { artist, works: list, exact, ts, source };
-        _recOfSuggestMemo.clear();
+        return { works: list, exact };
     }
 
     /**
@@ -129940,6 +130107,637 @@ a { color: #1565c0; }`;
             summary: `Work relationships for ${fmt(_recOf.total)} recording${_recOf.total === 1 ? '' : 's'}`,
             done: _recOf.done, total: _recOf.total, failed: _recOf.failed,
             cached: _recOf.mem + _recOf.idb, queued, unit: 'recordings',
+            facts, cache, actions
+        };
+    }
+
+    // ──────────────────────────────────────────────────────────────────────────
+    // release-tracks: work suggestions for the empty "Recording of work"
+    // cells — the _wsug* family (sa_release_tracks_work_suggest). The same
+    // title matcher and artist work lists as the "Recording of" column's
+    // suggestions above, but one list PER TRACK ARTIST, because a release
+    // (a compilation above all) has no single artist. Design and traps:
+    // docs/claude/release-tracks-and-length.md, "Work suggestions for tracks
+    // with no work".
+    // ──────────────────────────────────────────────────────────────────────────
+
+    /** The column whose empty cells get suggestions. */
+    const _WSUG_COL = 'Recording of work';
+    /** "Various Artists": its work list is huge and says nothing about a track. */
+    const _WSUG_VA_MBID = '89ad4ac3-39f7-470e-963a-56509c546377';
+    /**
+     * Page-wide job state, read by the progress card (O(1)). `queuedOnly`
+     * collects single-cell clicks that arrive while a job runs; `rerun` a
+     * second "load all".
+     */
+    const _wsug = {
+        running: false, rerun: false, queuedOnly: new Set(), force: false,
+        total: 0, done: 0, sugg: 0, none: 0, failed: 0,
+        artistsTotal: 0, artistsDone: 0, mem: 0, idb: 0, net: 0, requests: 0,
+        targets: 0, stampKey: null, stampLen: -1,
+        pendingCount: null, refreshTimer: 0, lastRefresh: 0
+    };
+    /** Artist MBID → its indexed work list (`_recOfIndexWorks()`), this session. */
+    const _wsugLists = new Map();
+    /** `artist + '\u0001' + normalised title` → `_recOfBestWork()` result. */
+    const _wsugMemo = new Map();
+    /** Artist MBID → the name a row's link shows, for the log and tooltips. */
+    const _wsugArtistNames = new Map();
+
+    /**
+     * Whether this page gets work suggestions: release-tracks with the
+     * setting on.
+     * @returns {boolean}
+     */
+    function _wsugOn() {
+        return activeDefinition?.type === 'release-tracks' &&
+            Lib.settings.sa_release_tracks_work_suggest !== false;
+    }
+
+    /**
+     * Column indices a table's rows are read with, or null when the table
+     * has no "Recording of work" or no "Title" column.
+     *
+     * @param {?HTMLTableElement} table
+     * @returns {?{rec: number, title: number, artist: number, recArtist: number}}
+     */
+    function _wsugLayout(table) {
+        const rec = _findRecOfWorkColIdx(table);
+        const title = rec < 0 ? -1 : _findColIdxByName(table, 'Title');
+        if (rec < 0 || title < 0) return null;
+        return {
+            rec, title,
+            artist: _findColIdxByName(table, 'Artist'),
+            recArtist: _findColIdxByName(table, 'Recording artist')
+        };
+    }
+
+    /**
+     * A row's suggestion target: its "Recording of work" cell when that links
+     * no work (a suggestion is not a link, so a suggested cell still is one)
+     * and its Title links a recording.
+     *
+     * @param {HTMLTableRowElement} row
+     * @param {{rec: number, title: number}} lay - `_wsugLayout()`.
+     * @returns {?{cell: HTMLTableCellElement, titleTd: HTMLTableCellElement, mbid: string, title: string}}
+     */
+    function _wsugRowTarget(row, lay) {
+        const cell = row.cells[lay.rec];
+        const titleTd = row.cells[lay.title];
+        if (!cell || !titleTd || _cellHasLinkedWork(cell)) return null;
+        const a = titleTd.querySelector('a[href*="/recording/"]');
+        const m = a && a.getAttribute('href').match(/\/recording\/([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})/);
+        return m ? { cell, titleTd, mbid: m[1], title: a.textContent.trim() } : null;
+    }
+
+    /**
+     * The artists whose works a track's suggestion is searched in: every
+     * artist the "Recording artist" cell links (shown only where the
+     * recording's credit differs), else every artist of "Artist". "Various
+     * Artists" never counts. Records each name in `_wsugArtistNames`.
+     *
+     * @param {HTMLTableRowElement} row
+     * @param {{artist: number, recArtist: number}} lay
+     * @returns {string[]} Distinct artist MBIDs, in credit order.
+     */
+    function _wsugRowArtists(row, lay) {
+        const pick = idx => {
+            const cell = idx >= 0 ? row.cells[idx] : null;
+            if (!cell) return [];
+            const out = [];
+            cell.querySelectorAll('a[href*="/artist/"]').forEach(a => {
+                const m = a.getAttribute('href').match(/\/artist\/([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})(?:$|[/?#])/);
+                if (!m || m[1] === _WSUG_VA_MBID || out.includes(m[1])) return;
+                out.push(m[1]);
+                if (!_wsugArtistNames.has(m[1])) _wsugArtistNames.set(m[1], a.textContent.trim());
+            });
+            return out;
+        };
+        const fromRec = pick(lay.recArtist);
+        return fromRec.length ? fromRec : pick(lay.artist);
+    }
+
+    /**
+     * Every suggestion target on the page, live AND master — the live
+     * tables plus the source rows (`_msSourceRows()`) the next re-render
+     * clones from — by recording MBID. One recording on two tracks is one
+     * entry with both tracks' cells.
+     *
+     * @returns {Map<string, {mbid: string, title: string, cells: Set<HTMLTableCellElement>, titles: Set<HTMLTableCellElement>, row: HTMLTableRowElement, lay: object}>}
+     */
+    function _wsugCellIndex() {
+        const map = new Map();
+        const add = (row, lay) => {
+            const t = _wsugRowTarget(row, lay);
+            if (!t) return;
+            let e = map.get(t.mbid);
+            if (!e) {
+                e = { mbid: t.mbid, title: t.title, cells: new Set(), titles: new Set(), row, lay };
+                map.set(t.mbid, e);
+            }
+            e.cells.add(t.cell);
+            e.titles.add(t.titleTd);
+        };
+        let first = null;
+        document.querySelectorAll('table.tbl').forEach(table => {
+            const lay = _wsugLayout(table);
+            if (!lay || !table.tBodies[0]) return;
+            if (!first) first = lay;
+            for (const row of table.tBodies[0].rows) add(row, lay);
+        });
+        // One header template serves every table of a render (see
+        // _msSourceRows()' neighbours), so the first table's indices read
+        // the source rows too.
+        if (first) _msSourceRows().forEach(row => add(row, first));
+        return map;
+    }
+
+    /**
+     * The suggestion state of a cell, as the 📊 "Recording of work -
+     * Suggestions" section counts and filters it — ONE classifier for both.
+     *
+     * @param {?HTMLTableCellElement} cell
+     * @returns {?('pending'|'suggested'|'none'|'error')} null for a cell that
+     *   is no suggestion target (it has a work, or is another column).
+     */
+    function _wsugCellState(cell) {
+        const st = cell && cell.dataset.wsug;
+        if (!st) return null;
+        if (st === 'suggested' || st === 'none' || st === 'error') return st;
+        return 'pending';   // not asked for, queued or loading
+    }
+
+    /**
+     * The state of an index entry: its first cell's `data-wsug`.
+     * @param {{cells: Set<HTMLTableCellElement>}} e
+     * @returns {string}
+     */
+    function _wsugState(e) {
+        return e.cells.values().next().value.dataset.wsug || 'pending';
+    }
+
+    /**
+     * Stamps `data-wsug="pending"` (the 💡 glyph, CSS) and the recording
+     * MBID on every target cell that has no state yet. Walks the rows only
+     * when the source rows changed (a new fetch, a disk load): re-renders
+     * clone already stamped source rows.
+     *
+     * @returns {void}
+     */
+    function _wsugStamp() {
+        const src = _msSourceRows();
+        const key = src.length ? src[0] : document.querySelector('table.tbl tbody tr');
+        if (key && key === _wsug.stampKey && src.length === _wsug.stampLen) return;
+        const index = _wsugCellIndex();
+        index.forEach(e => e.cells.forEach(td => {
+            if (!td.dataset.wsug) td.dataset.wsug = 'pending';
+            td.dataset.wsugRec = e.mbid;
+        }));
+        _wsug.targets = index.size;
+        _wsug.pendingCount = null;
+        _wsug.stampKey = key;
+        _wsug.stampLen = src.length;
+    }
+
+    /**
+     * Sets a transient state (`queued`, `loading`, `error`) on every cell of
+     * one recording; CSS draws the glyph.
+     *
+     * @param {Map<string, object>} index - `_wsugCellIndex()`.
+     * @param {string} mbid
+     * @param {string} state
+     * @returns {void}
+     */
+    function _wsugMark(index, mbid, state) {
+        const e = index.get(mbid);
+        if (e) e.cells.forEach(td => { td.dataset.wsug = state; });
+        _wsug.pendingCount = null;
+    }
+
+    /**
+     * How a match is described: "exact title" or "≈ N % alike".
+     * @param {{score: number}} m
+     * @returns {string}
+     */
+    function _wsugMatchText(m) {
+        return m.score === 0 ? 'exact title' : `≈ ${Math.round((1 - m.score) * 100)} % alike`;
+    }
+
+    /**
+     * The best suggestion for a track over the work lists of its artists:
+     * the lowest `_recOfBestWork()` score across them, memoised per artist
+     * and normalised title.
+     *
+     * @param {string} title - The recording title.
+     * @param {string[]} artists - `_wsugRowArtists()`.
+     * @returns {?{work: object, score: number, artist: string, count: number}}
+     */
+    function _wsugSuggest(title, artists) {
+        const norm = _recOfNormTitle(title, true);
+        if (!norm) return null;
+        let best = null;
+        artists.forEach(artist => {
+            const list = _wsugLists.get(artist);
+            if (!list) return;
+            const k = `${artist}\u0001${norm}`;
+            let m;
+            if (_wsugMemo.has(k)) {
+                m = _wsugMemo.get(k);
+            } else {
+                m = _recOfBestWork(norm, list);
+                _wsugMemo.set(k, m);
+            }
+            if (m && (!best || m.score < best.score)) best = { ...m, artist, count: list.works.length };
+        });
+        return best;
+    }
+
+    /**
+     * Writes an answer into one "Recording of work" cell, replacing what was
+     * there: a suggestion (`li.mb-recof-suggested`, the artist Recordings
+     * page's markup, so the 📊 "Recording of - Suggested work" entries and
+     * their highlight read it unchanged), or nothing (`none`, drawn "–").
+     * The work link has no `<bdi>`, so the 📊 never offers it as a linked
+     * work; the match note and the ➕ relate link are CSS text, so neither
+     * reaches filter, sort or 📊 text.
+     *
+     * @param {HTMLTableCellElement} td
+     * @param {?{work: object, score: number, artist: string, count: number}} m
+     * @param {string} recMbid - For the ➕ relate link.
+     * @returns {void}
+     */
+    function _wsugRenderCell(td, m, recMbid) {
+        td.textContent = '';
+        if (!m) {
+            td.dataset.wsug = 'none';
+            return;
+        }
+        const ul = document.createElement('ul');
+        ul.className = 'mb-wsug-list';
+        const li = document.createElement('li');
+        li.className = 'mb-recof-suggested';
+        const mark = document.createElement('span');
+        mark.className = 'mb-recof-sugg-mark';
+        mark.textContent = 'suggested: ';
+        const a = document.createElement('a');
+        a.href = `/work/${m.work.id}`;
+        a.textContent = m.work.title;
+        li.append(mark, a);
+        if (m.work.comment) {
+            const c = document.createElement('span');
+            c.className = 'comment';
+            c.textContent = ` (${m.work.comment})`;
+            li.appendChild(c);
+        }
+        const pill = document.createElement('span');
+        pill.className = 'mb-wsug-pill';
+        pill.dataset.mbWsugMatch = _wsugMatchText(m);
+        if (m.score === 0) pill.dataset.mbWsugExact = '';
+        li.appendChild(pill);
+        const rel = document.createElement('a');
+        rel.className = 'mb-wsug-relate';
+        rel.href = `/recording/${recMbid}/edit`;
+        rel.target = '_blank';
+        rel.rel = 'noopener';
+        rel.setAttribute('aria-label', 'Open the recording\'s edit page to add the work');
+        _setTip(rel, 'Opens the recording\'s edit page in a new tab, where you can add the "recording of" relationship to this work. Nothing is changed for you.');
+        li.appendChild(rel);
+        const who = _wsugArtistNames.get(m.artist) || 'the artist';
+        _setTip(li, `Suggested by title (${_wsugMatchText(m)}), from ${who}'s ${m.count} works. Not linked yet.`);
+        ul.appendChild(li);
+        td.appendChild(ul);
+        td.dataset.wsug = 'suggested';
+    }
+
+    /**
+     * Records an answer for one recording: every cell of it (live and
+     * master), and the Title tooltip of a track flagged as having no work.
+     *
+     * @param {object} e - A `_wsugCellIndex()` entry.
+     * @param {?object} m - `_wsugSuggest()`.
+     * @returns {void}
+     */
+    function _wsugApply(e, m) {
+        e.cells.forEach(td => {
+            _wsugRenderCell(td, m, e.mbid);
+            _recOfDropRowText(td);
+        });
+        const extra = m
+            ? `Suggested: ${m.work.title} (${_wsugMatchText(m)}, from ${_wsugArtistNames.get(m.artist) || 'the artist'}'s works).`
+            : 'No work of the track\'s artists has a close title.';
+        e.titles.forEach(td => {
+            if (td.dataset.mbWorkFlag === 'none') _setTip(td, `${_NO_WORK_FLAG_TIP}\n${extra}`);
+        });
+        _wsug.pendingCount = null;
+    }
+
+    /**
+     * The 📊/filter side of a cell write, throttled like
+     * `_recOfScheduleRefresh()`: every 2 s while a job runs, at once with
+     * `now`. Drops the 📊 and filter result caches and re-runs the filter
+     * only when one is active.
+     *
+     * @param {boolean} [now]
+     * @returns {void}
+     */
+    function _wsugScheduleRefresh(now) {
+        clearTimeout(_wsug.refreshTimer);
+        const wait = now ? 0 : Math.max(0, 2000 - (Date.now() - _wsug.lastRefresh));
+        _wsug.refreshTimer = setTimeout(() => {
+            _wsug.lastRefresh = Date.now();
+            document.querySelectorAll('table.tbl').forEach(t => {
+                if (t.querySelector('td[data-wsug]')) _invalidateUniqDropDataCacheForTable(t);
+            });
+            _invalidateFilterCache();
+            _wsugUpdateHdrBtns();
+            if (_anyFilterActive()) runFilter();
+        }, wait);
+    }
+
+    /**
+     * Recordings still without an answer (not looked up, queued, loading or
+     * failed), cached until a write or a mark drops it.
+     * @returns {number}
+     */
+    function _wsugPendingCount() {
+        if (_wsug.pendingCount === null) {
+            let n = 0;
+            _wsugCellIndex().forEach(e => {
+                const st = _wsugState(e);
+                if (st !== 'suggested' && st !== 'none') n++;
+            });
+            _wsug.pendingCount = n;
+        }
+        return _wsug.pendingCount;
+    }
+
+    /**
+     * Looks up suggestions: every pending track, or only `opts.only`. A
+     * second call while one runs is folded into a follow-up pass.
+     *
+     * @param {{user?: boolean, anchor?: Element, withFailed?: boolean, only?: (string|Set<string>), all?: boolean, force?: boolean}} [opts]
+     * @returns {Promise<void>}
+     */
+    async function _wsugLoadAll(opts = {}) {
+        if (_wsug.running) {
+            if (opts.only) {
+                const index = _wsugCellIndex();
+                [].concat(opts.only instanceof Set ? Array.from(opts.only) : opts.only).forEach(id => {
+                    _wsug.queuedOnly.add(id);
+                    _wsugMark(index, id, 'queued');
+                });
+            } else {
+                _wsug.rerun = true;
+            }
+            if (opts.user && opts.anchor) _ajShow('wsug', null, opts.anchor);
+            return;
+        }
+        _wsug.running = true;
+        try {
+            let o = opts;
+            for (;;) {
+                await _wsugLoadOnce(o);
+                if (_wsug.rerun) {
+                    _wsug.rerun = false;
+                    o = { withFailed: false };
+                } else if (_wsug.queuedOnly.size) {
+                    o = { only: new Set(_wsug.queuedOnly), withFailed: true };
+                    _wsug.queuedOnly.clear();
+                } else {
+                    break;
+                }
+            }
+        } finally {
+            _wsug.running = false;
+            _wsugUpdateHdrBtns();
+        }
+    }
+
+    /**
+     * One pass of `_wsugLoadAll()`: groups the tracks by artist, loads each
+     * artist's work list once (memory, IndexedDB, the batch-add userscript's
+     * cache, then the Web Service — `_recOfLoadArtistWorks()`), and answers
+     * a track as soon as all of its artists' lists are in. A track whose
+     * lists partly failed still gets a suggestion found in the others;
+     * otherwise it is marked ⚠ and nothing is cached for it.
+     *
+     * @param {{user?: boolean, anchor?: Element, withFailed?: boolean, only?: (string|Set<string>), all?: boolean, force?: boolean}} opts
+     * @returns {Promise<void>}
+     */
+    async function _wsugLoadOnce(opts) {
+        let index = _wsugCellIndex();
+        const only = opts.only ? new Set(opts.only instanceof Set ? Array.from(opts.only) : [opts.only]) : null;
+        const todo = [];
+        index.forEach((e, id) => {
+            if (only && !only.has(id)) return;
+            const st = _wsugState(e);
+            if (opts.all || st === 'pending' || st === 'queued' || st === 'loading' || (st === 'error' && opts.withFailed)) todo.push(id);
+        });
+        Object.assign(_wsug, { total: todo.length, done: 0, sugg: 0, none: 0, failed: 0,
+            artistsTotal: 0, artistsDone: 0, mem: 0, idb: 0, net: 0, requests: 0 });
+        _ajStart('wsug', null, { user: !!opts.user, anchor: opts.anchor });
+        _wsugUpdateHdrBtns();
+        if (!todo.length) { _ajFinish('wsug', null, 0); return; }
+
+        const recArtists = new Map();
+        const order = [];
+        todo.forEach(id => {
+            const e = index.get(id);
+            const arts = _wsugRowArtists(e.row, e.lay);
+            recArtists.set(id, arts);
+            arts.forEach(a => { if (!order.includes(a)) order.push(a); });
+            _wsugMark(index, id, 'queued');
+        });
+        if (opts.force) order.forEach(a => _wsugLists.delete(a));
+        if (opts.force) _wsugMemo.clear();
+        _wsug.artistsTotal = order.length;
+        order.forEach(a => { if (_wsugLists.has(a)) { _wsug.mem++; _wsug.artistsDone++; } });
+        _ajLog('wsug', null, `${todo.length} track${todo.length === 1 ? '' : 's'}, ${order.length} artist${order.length === 1 ? '' : 's'} (${_wsug.mem} in memory)`);
+
+        const failedArtists = new Set();
+        const open = new Set(todo);
+        const settle = () => {
+            index = _wsugCellIndex();
+            for (const id of Array.from(open)) {
+                const arts = recArtists.get(id);
+                if (!arts.every(a => _wsugLists.has(a) || failedArtists.has(a))) continue;
+                open.delete(id);
+                const e = index.get(id);
+                if (!e) continue;   // gone from the page meanwhile
+                const m = _wsugSuggest(e.title, arts);
+                if (m) {
+                    _wsugApply(e, m);
+                    _wsug.sugg++;
+                    _wsug.done++;
+                } else if (arts.some(a => failedArtists.has(a))) {
+                    _wsugMark(index, id, 'error');
+                    _wsug.failed++;
+                } else {
+                    _wsugApply(e, null);
+                    _wsug.none++;
+                    _wsug.done++;
+                }
+            }
+            _wsugScheduleRefresh();
+            _ajChanged('wsug', null);
+        };
+        settle();   // tracks with no artist, or whose lists are in memory
+
+        for (const artist of order) {
+            if (!open.size) break;
+            if (_wsugLists.has(artist)) continue;
+            index = _wsugCellIndex();
+            open.forEach(id => { if (recArtists.get(id).includes(artist)) _wsugMark(index, id, 'loading'); });
+            const got = await _recOfLoadArtistWorks(artist, true, !!opts.force, _wsug, 'wsug');
+            _wsug.artistsDone++;
+            const name = _wsugArtistNames.get(artist) || artist.slice(0, 8);
+            if (got) {
+                _wsugLists.set(artist, { ..._recOfIndexWorks(got.works), ts: got.ts, source: got.source });
+                _wsug[got.tier === 'net' ? 'net' : 'idb']++;
+                _ajLog('wsug', null, `${name}: ${got.works.length} works${got.tier === 'net' ? '' : ` (${got.source})`}`, 'good');
+            } else {
+                failedArtists.add(artist);
+                _ajLog('wsug', null, `${name}: the work list could not be loaded`, 'bad');
+            }
+            settle();
+        }
+        _wsugScheduleRefresh(true);
+        _ajFinish('wsug', null, _wsug.failed);
+    }
+
+    /**
+     * Stamps the target cells and adds the ▶💡 toggle to every "Recording of
+     * work" header that lacks one (a re-render rebuilds the `<thead>`), then
+     * repaints it. Release-tracks only, with the setting on, and only when
+     * some track has no work. Also installs the click delegates once.
+     * @returns {void}
+     */
+    function _wsugInitColHeaderToggles() {
+        if (!_wsugOn()) return;
+        _wsugStamp();
+        if (!_wsug.targets) return;
+        // Registered at render time, not at page init: _ajRegister() reads
+        // consts declared below the init call (TDZ). Idempotent.
+        _wsugRegisterProvider();
+        _wsugEnsureDelegates();
+        document.querySelectorAll('table.tbl thead th').forEach(th => {
+            if (th.dataset.colName !== _WSUG_COL || th.querySelector('.mb-wsug-col-hdr-btn')) return;
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'mb-wsug-col-hdr-btn';
+            btn.dataset.mbAj = 'wsug';
+            btn.dataset.mbAjName = '▶💡';
+            btn.setAttribute('aria-pressed', 'false');
+            btn.setAttribute('aria-label', 'Suggest works for the tracks without one');
+            const flex = th.querySelector('.mb-col-hdr-flex');
+            (flex || th).prepend(btn);
+        });
+        _wsugUpdateHdrBtns();
+    }
+
+    /**
+     * Repaints every ▶💡 toggle: pressed once every track has an answer, a
+     * done/total badge while a job runs, amber after failures.
+     * @returns {void}
+     */
+    function _wsugUpdateHdrBtns() {
+        const btns = document.querySelectorAll('.mb-wsug-col-hdr-btn');
+        if (!btns.length) return;
+        const pending = _wsugPendingCount();
+        btns.forEach(b => {
+            b.setAttribute('aria-pressed', pending === 0 && !_wsug.running ? 'true' : 'false');
+            if (_wsug.running && _wsug.total) b.dataset.wsugProgress = `${_wsug.done}/${_wsug.total}`;
+            else delete b.dataset.wsugProgress;
+            if (!_wsug.running && _wsug.failed) b.dataset.wsugState = 'error';
+            else delete b.dataset.wsugState;
+        });
+    }
+
+    /**
+     * Installs the delegated clicks once (capture phase, so the header's sort
+     * click never sees the toggle): ▶💡 looks up every track, a 💡 or ⚠ cell
+     * its own.
+     * @returns {void}
+     */
+    function _wsugEnsureDelegates() {
+        if (_wsugEnsureDelegates.done) return;
+        _wsugEnsureDelegates.done = true;
+        document.addEventListener('click', (e) => {
+            const btn = e.target.closest && e.target.closest('.mb-wsug-col-hdr-btn');
+            if (btn) {
+                e.preventDefault();
+                e.stopPropagation();
+                _wsugLoadAll({ user: true, anchor: btn, withFailed: true });
+                return;
+            }
+            const td = e.target.closest && e.target.closest('td[data-wsug]');
+            if (!td || !td.dataset.wsugRec || e.target.closest('a')) return;
+            const st = td.dataset.wsug;
+            if (st !== 'pending' && st !== 'error') return;
+            e.preventDefault();
+            _wsugLoadAll({ only: td.dataset.wsugRec, withFailed: true });
+        }, true);
+    }
+
+    /**
+     * Registers the "Work suggestions" provider of the async job popup.
+     * @returns {void}
+     */
+    function _wsugRegisterProvider() {
+        _ajRegister('wsug', {
+            glyph: '💡',
+            label: 'Work suggestions',
+            scopeOf: () => null,
+            snapshot: (scope, job) => _wsugSnapshot(job),
+            act: (scope, id) => {
+                if (id === 'retry') _wsugLoadAll({ withFailed: true });
+                if (id === 'works') _wsugLoadAll({ all: true, force: true });
+            }
+        });
+    }
+
+    /**
+     * The progress card's content (see `_ajRender()`).
+     * @param {?object} job
+     * @returns {object}
+     */
+    function _wsugSnapshot(job) {
+        const d = Lib.settings.sa_recording_of_works_ttl_days;
+        const ttl = typeof d === 'number' && d > 0 ? d : 30;
+        const fmt = n => Number(n).toLocaleString('en-US');
+        const cache = [
+            ['Store', `IndexedDB artist-works, kept ${ttl} days, shared with the artist Recordings page`],
+            ['This session', `${fmt(_wsugLists.size)} artist work list${_wsugLists.size === 1 ? '' : 's'} in memory`]
+        ];
+        if (job) cache.push(['This run', `${fmt(_wsug.mem)} memory · ${fmt(_wsug.idb)} cached · ${fmt(_wsug.net)} network`]);
+        const actions = [];
+        if (!_wsug.running && _wsug.failed) actions.push({ id: 'retry', label: `Retry ${_wsug.failed} failed`, kind: 'danger' });
+        if (!_wsug.running && _wsugLists.size) actions.push({ id: 'works', label: '⟳ Reload work lists', kind: 'primary' });
+        if (!job) {
+            const pending = _wsugPendingCount();
+            return {
+                phase: 'idle',
+                summary: pending ? 'Not looked up. Click ▶💡 for every track without a work, or a 💡 cell for one.' : 'Every track without a work has an answer.',
+                facts: [['Tracks', `${fmt(pending)} without a work, not looked up yet`]],
+                cache, actions
+            };
+        }
+        const queued = Math.max(0, _wsug.total - _wsug.done - _wsug.failed);
+        const facts = [
+            ['Source', 'each track artist\'s works, 100 per request'],
+            ['Artists', `${fmt(_wsug.artistsDone)} of ${fmt(_wsug.artistsTotal)}`],
+            ['Answers', `${fmt(_wsug.sugg)} suggested · ${fmt(_wsug.none)} no close title`],
+            ['Requests', `${fmt(_wsug.requests)} made`],
+            ['Rate', 'one per 1.1 s, shared with the other columns']
+        ];
+        const end = job.t1 || Date.now();
+        const s = Math.round((end - job.t0) / 1000);
+        facts.push(['Time', `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}${job.t1 ? '' : ' elapsed'}`]);
+        return {
+            phase: job.phase,
+            summary: `Work suggestions for ${fmt(_wsug.total)} track${_wsug.total === 1 ? '' : 's'} without a work`,
+            done: _wsug.done, total: _wsug.total, failed: _wsug.failed,
+            cached: 0, queued, unit: 'tracks',
             facts, cache, actions
         };
     }
@@ -136391,6 +137189,7 @@ a { color: #1565c0; }`;
             // _relTableExpanded()'s "the two defaults".
             _relInitColHeaderToggles();
             _recOfInitColHeaderToggles();
+            _wsugInitColHeaderToggles();
             // discogs.com's MusicBrainz column: its ▶ MB toggles, then the lookup.
             _dgMbAfterRender(true);
             // brucebase.wikidot.com's MB-Event column, the same way.
