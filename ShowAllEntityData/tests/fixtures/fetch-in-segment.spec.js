@@ -128,7 +128,7 @@ test.describe('a fetch runs inside the segment that started it', () => {
             'the progress line is in the status line under the heading').toBe(true);
         expect(await page.evaluate(() => Array.from(document.getElementById('mb-show-all-controls-container').children)
             .map((c) => c.id).filter((id) => id && id !== 'mb-file-input')),
-        'no Stop button or progress bar beside the SAED button').toEqual(['mb-saed-bar']);
+        'no Stop button or progress bar beside the SAED button and its attention bar').toEqual(['mb-saed-bar', 'mb-saed-attn-bar']);
 
         await expect(seg, 'the running segment stays clickable: it is Stop').toBeEnabled();
 
@@ -242,6 +242,7 @@ test.describe('a fetch runs inside the segment that started it', () => {
         const ind = page.locator(MISSING_PAGES_SEGMENT);
         await expect(ind).toBeVisible({ timeout: 30000 });
         expect(await ind.evaluate((b) => b.parentElement.dataset.mbArea), 'in the attention area').toBe('attn');
+        expect(await ind.evaluate((b) => b.closest('.mb-saed-bar').id), 'of the attention bar, with ❌ / ⚠️').toBe('mb-saed-attn-bar');
         await expect(ind).toHaveClass(/mb-saed-lv-alert/);
         await expect(ind).toHaveText(/🔄 2/);
         await expect(ind).toHaveAttribute('aria-label', '2 pages missing');

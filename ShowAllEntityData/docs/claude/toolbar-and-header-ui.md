@@ -223,20 +223,30 @@ history). It replaced 📦 Data ▾, 🛠 View ▾, 📀 Discography ▾ as a bu
 its own, the ⚙️❓ pill, the ⚠️ WARNING / ❌ ERROR menu buttons and every `|`
 divider (`org/action-button-redesign.org` was the step before).
 
-`#mb-saed-bar` sits first in `#mb-show-all-controls-container` and has four
-AREAS (`span.mb-saed-area[data-mb-area]`), each reacting on its own:
+`#mb-saed-bar` sits first in `#mb-show-all-controls-container` and has three
+AREAS (`span.mb-saed-area[data-mb-area]`), each reacting on its own. The
+fourth, `attn`, is the one area of the **attention bar** `#mb-saed-attn-bar`
+right after it (vzell 2026-10-29, approved mockup
+https://claude.ai/artifact/URrn3dps1EMtnkjKBvsvag): the same look (class
+`mb-saed-bar`, the same custom properties), its own rounded corners, and
+`hidden` while it holds no segment (`_orderToolbar()`; `.mb-saed-bar[hidden]`
+because the bar's `display` beats the browser's own rule). The findings show
+on some pages only, so they no longer change the SAED button's shape. 🔄 sits
+there too, and ⚠️ still shows at 0 on title-check pages:
 
 | Area      | Holds                                                                 | Present                                  |
 |-----------|-----------------------------------------------------------------------|------------------------------------------|
 | `actions` | the `🧮N …` fetch buttons as `.mb-seg-action`; group labels as `.mb-seg-label` | always (on a narrow screen: hidden) |
 | `disc`    | `#mb-disc-menu-btn` "📀 Discography: <view> ▾"                         | `artist-releasegroups`, post-render      |
-| `attn`    | one segment per attention indicator with rows (🔄 2 ▾, ❌ 1 ▾, ⚠️ 43 ▾) | post-render, only while it has something |
 | `menu`    | `#mb-saed-menu-btn` "☰ SAED ▾" (name: `sa_toolbar_menu_name`)          | always                                   |
+| `attn`    | one segment per attention indicator with rows (🔄 2 ▾, ❌ 1 ▾, ⚠️ 43 ▾) | post-render, only while it has something |
 
 Hairlines split the segments of an area, a heavier rule the areas, and the
-first visible area has none (`.mb-saed-first`, `_saedMarkFirst()`). Nothing
-follows the bar in the container (`_TOOLBAR_TAIL_ORDER` is the bar alone
-since 2026-10-23: a fetch's Stop and progress are in its segment, below).
+first visible area of each bar has none (`.mb-saed-first`,
+`_saedMarkFirst()`). Nothing but the attention bar follows the SAED button in
+the container (`_TOOLBAR_TAIL_ORDER` is the two bars: since 2026-10-23 a
+fetch's Stop and progress are in its segment, below; it MUST name the
+attention bar, or the tail pass moves the SAED button after it).
 Size and shape come from `sa_ui_action_btn_style`,
 colours from `sa_ui_toolbar_menu_btn_style` ("SAED button colors"), both as
 custom properties on the bar. The colour settings of ⚙️, ❓, Save, Load,
@@ -306,7 +316,7 @@ working. `_saedRefreshGroups()` (on every open and every `_orderToolbar()`):
 **The attention indicators are one registry, `_SAED_INDICATORS`** (glyph,
 level, label; declared next to `_toolbarMenus` for the TDZ reason). Each
 entry is a menu made with `createToolbarMenu({ segment: true })` whose button
-`_orderToolbar()` puts in the `attn` area while it has rows, ordered by the
+`_orderToolbar()` puts in the `attn` area (of the attention bar) while it has rows, ordered by the
 registry (alert first), and which `_saedRefreshAttention()` also lists as a
 row of "Needs attention" that opens the same list beside the menu. Today: 🔄
 missing pages (above) and the two findings menus (docs/claude/findings.md).

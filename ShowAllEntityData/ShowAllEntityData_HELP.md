@@ -669,9 +669,10 @@ whether the panel flips upward.
 Cells with a data problem are tinted: **light yellow with ⚠️** for a warning,
 **light red with ❌** for an error. Hover the cell for what is wrong.
 
-Two parts of the SAED button beside the page heading — **❌ N ▾** for errors,
-then **⚠️ N ▾** for warnings, each tinted to match — list every kind of problem
-the page has, with how many rows have it. The same two lists are rows of the
+Two buttons in a small bar of their own, right after the SAED button beside
+the page heading — **❌ N ▾** for errors, then **⚠️ N ▾** for warnings, each
+tinted to match — list every kind of problem the page has, with how many rows
+have it. The bar is there only when the page has something to show. The same two lists are rows of the
 ☰ SAED menu's "Needs attention" group.
 
 ```

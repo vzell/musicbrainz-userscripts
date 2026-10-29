@@ -116,7 +116,7 @@ const neutralPoint = (page) => page.evaluate(() => {
 });
 
 test.describe('the SAED button', () => {
-    test('one segmented button: the actions, the indicators, ☰ SAED — and nothing else in the bar', async ({ page }) => {
+    test('one segmented button: the actions, ☰ SAED — and nothing else in the bar; the indicators in their own bar after it', async ({ page }) => {
         await loadAndRender(page);
 
         const areas = await page.evaluate(() => Array.from(document.querySelectorAll('#mb-saed-bar > .mb-saed-area'))
@@ -125,10 +125,14 @@ test.describe('the SAED button', () => {
                 first: a.classList.contains('mb-saed-first'),
                 kids: Array.from(a.children).map((c) => c.id || c.dataset.label || c.className),
             })));
-        expect(areas.map((a) => a.area)).toEqual(['actions', 'disc', 'attn', 'menu']);
+        expect(areas.map((a) => a.area)).toEqual(['actions', 'disc', 'menu']);
         expect(areas[0].kids).toEqual(['⊚ All recordings', '♫ Standalone', '🎬 Video']);
         expect(areas[1].kids, 'no 📀 Discography off artist-releasegroups').toEqual([]);
-        expect(areas[3].kids).toEqual(['mb-saed-menu-btn']);
+        expect(areas[2].kids, '☰ SAED is the last segment of the button').toEqual(['mb-saed-menu-btn']);
+        // The indicators' area is the one area of the attention bar
+        // (vzell 2026-10-29), not of the button.
+        expect(await page.evaluate(() => Array.from(document.querySelectorAll('#mb-saed-attn-bar > .mb-saed-area'))
+            .map((a) => a.dataset.mbArea))).toEqual(['attn']);
         // The first visible area has no left rule, whichever it is.
         expect(areas[0].first).toBe(true);
         expect(areas.filter((a) => a.first)).toHaveLength(1);
@@ -143,12 +147,13 @@ test.describe('the SAED button', () => {
         await expect(page.locator(`${PANEL} #mb-settings-btn`)).toHaveCount(1);
         await expect(page.locator(`${PANEL} #mb-app-help-btn`)).toHaveCount(1);
 
-        // The container holds the bar and nothing else: a fetch's Stop and
-        // progress live in its segment and the status line since 2026-10-23.
-        // (The hidden <input type="file"> behind Load from Disk is no control.)
+        // The container holds the bar and the attention bar and nothing else:
+        // a fetch's Stop and progress live in its segment and the status line
+        // since 2026-10-23. (The hidden <input type="file"> behind Load from
+        // Disk is no control.)
         const tail = await page.evaluate(() => Array.from(document.getElementById('mb-show-all-controls-container').children)
             .map((c) => c.id).filter((id) => id && id !== 'mb-file-input'));
-        expect(tail).toEqual(['mb-saed-bar']);
+        expect(tail).toEqual(['mb-saed-bar', 'mb-saed-attn-bar']);
     });
 
     test('each group adopts the real buttons, keeping their ids, in the declared order', async ({ page }) => {

@@ -1,0 +1,20 @@
+[
+  {
+    "version": "WIP.1",
+    "date": "2026-10-29",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "Page heading: the ❌ errors and ⚠️ warnings buttons, and 🔄 when pages failed to load, moved out of the SAED button into a small rounded bar of their own right after it. The SAED button keeps the same shape on every page; the second bar appears only when the page has something to show. ⚠️ still shows at 0 where it starts the title-style check."
+        ]
+      },
+      {
+        "label": "🔧 Refactor",
+        "items": [
+          "The attn area is the one area of #mb-saed-attn-bar (class mb-saed-bar, the same custom properties), built next to #mb-saed-bar and held in _saedAttnBarEl; _saedAreaFor() resolves attn there, _saedMarkFirst() marks each bar, _orderToolbar() hides the bar while it is empty (.mb-saed-bar[hidden], since the bar's display beats the browser's own rule), and _TOOLBAR_TAIL_ORDER names both bars. Approved mockup https://claude.ai/artifact/URrn3dps1EMtnkjKBvsvag. Tests: saed-toolbar, findings-menus (placement, rounded corners, hidden when empty) and fetch-in-segment updated; scripts/mutations/saed-attn-bar.json (6, all caught). docs/claude/toolbar-and-header-ui.md, findings.md, CLAUDE.md, HELP."
+        ]
+      }
+    ]
+  }
+]

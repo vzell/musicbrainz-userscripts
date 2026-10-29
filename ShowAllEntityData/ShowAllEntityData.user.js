@@ -72212,11 +72212,22 @@
     let _saedBarEl = null;
 
     /**
+     * The attention bar (`#mb-saed-attn-bar`): the `attn` area in a rounded
+     * bar of its own, right after the SAED button, shown only while an
+     * indicator has something (vzell 2026-10-29, mockup
+     * https://claude.ai/artifact/URrn3dps1EMtnkjKBvsvag). Held for the same
+     * detached-subtree reason as `_saedBarEl`.
+     *
+     * @type {HTMLElement|null}
+     */
+    let _saedAttnBarEl = null;
+
+    /**
      * The attention indicators, ONE registry: every entry is a menu
-     * (`createToolbarMenu()`, `segment: true`) whose button sits in the SAED
-     * bar's `attn` area while it has rows, and which also appears as a row of
-     * the SAED menu's "Needs attention" group, opening the same list beside
-     * it. Order on the bar and in the group: by level, alert first. A new
+     * (`createToolbarMenu()`, `segment: true`) whose button sits in the
+     * attention bar's `attn` area (`#mb-saed-attn-bar`) while it has rows,
+     * and which also appears as a row of the SAED menu's "Needs attention"
+     * group, opening the same list beside it. Order on the bar and in the group: by level, alert first. A new
      * indicator is one entry here plus the code that fills its menu and sets
      * `descriptor.indicatorCount` (docs/claude/toolbar-and-header-ui.md, "The
      * SAED button").
@@ -72242,8 +72253,9 @@
 
     /**
      * The h1 controls container's tail, in final visual order: the SAED
-     * button. (A fetch's Stop and progress used to follow it; they are in
-     * the running segment and the status line now, `_saedRunStart()`.)
+     * button, then the attention bar. (A fetch's Stop and progress used to
+     * follow it; they are in the running segment and the status line now,
+     * `_saedRunStart()`.)
      *
      * Everything NOT named here keeps whatever position it was appended at —
      * which is why the hidden `<input type="file">` needs no entry. What used
@@ -72253,6 +72265,7 @@
      */
     const _TOOLBAR_TAIL_ORDER = [
         'mb-saed-bar',
+        'mb-saed-attn-bar',
     ];
 
     /**
@@ -72281,7 +72294,8 @@
      * "move X before Y" rule per button plus three divider spans. Since the
      * SAED button there are no dividers at all: a menu's button goes into its
      * AREA of `#mb-saed-bar` (`_saedAreaFor()`), indicators in registry
-     * order, and the first visible area loses its left rule
+     * order into the attention bar (hidden while it holds none), and the
+     * first visible area of each bar loses its left rule
      * (`_saedMarkFirst()`). A group of the SAED menu has no button; its rows
      * are ordered here like a menu's.
      */
@@ -72326,6 +72340,7 @@
                 if (m && m.btn.parentNode === attn) attn.appendChild(m.btn);
             });
         }
+        if (_saedAttnBarEl) _saedAttnBarEl.hidden = !(attn && attn.childElementCount);
 
         _TOOLBAR_TAIL_ORDER.forEach(id => {
             const el = controlsContainer.querySelector(`#${id}`);
@@ -75930,13 +75945,18 @@ ${sections.join('\n')}
     //    https://claude.ai/artifact/QUqoriyP6qX3D3EutjhyzX) ──────────────────
     //
     // Everything the script adds to the page heading is ONE segmented button,
-    // `#mb-saed-bar`, in four AREAS, each reacting on its own:
+    // `#mb-saed-bar`, in three AREAS, each reacting on its own, followed by
+    // the attention bar `#mb-saed-attn-bar` (since 2026-10-29: the findings
+    // show only on some pages, so they no longer change the button's shape;
+    // mockup https://claude.ai/artifact/URrn3dps1EMtnkjKBvsvag):
     //
     //   actions │ the page's "🧮 …" fetch buttons, as before
     //   disc    │ 📀 Discography: <view> ▾ (artist-releasegroups only)
-    //   attn    │ one segment per attention INDICATOR that has something
-    //           │ (❌ 1 ▾, ⚠️ 43 ▾ …), most urgent first; each opens its list
     //   menu    │ ☰ SAED ▾ — the script's menu (the name is a setting)
+    //   ─────── the attention bar, a rounded bar of its own ───────
+    //   attn    │ one segment per attention INDICATOR that has something
+    //           │ (🔄 2 ▾, ❌ 1 ▾, ⚠️ 43 ▾ …), most urgent first; each opens
+    //           │ its list. Hidden while it has none.
     //
     // The menu holds groups: Load (narrow screens only: the action segments
     // move here), Needs attention (the same indicators as rows), Data, View,
@@ -75946,8 +75966,9 @@ ${sections.join('\n')}
     // into a group instead, so `_toolbarInvoke()`/`_toolbarAnchorFor()` and
     // every id keep working.
 
-    // `_SAED_INDICATORS`, `_SAED_GROUPS` and `_saedBarEl` are declared far
-    // above, next to `_toolbarMenus`, for the same TDZ reason.
+    // `_SAED_INDICATORS`, `_SAED_GROUPS`, `_saedBarEl` and `_saedAttnBarEl`
+    // are declared far above, next to `_toolbarMenus`, for the same TDZ
+    // reason.
 
     /**
      * The menu's name on its button (`sa_toolbar_menu_name`, default "SAED");
@@ -75995,8 +76016,9 @@ ${sections.join('\n')}
 
     /**
      * The bar's area for a menu's button: `menu` for the SAED menu, `disc`
-     * for 📀 Discography, `attn` for an indicator; null for a menu that has
-     * no button in the bar (a submenu such as Export ▸).
+     * for 📀 Discography, `attn` for an indicator (in the attention bar,
+     * `_saedAttnBarEl`); null for a menu that has no button in a bar (a
+     * submenu such as Export ▸).
      *
      * @param {string} key - A `_toolbarMenus` key.
      * @returns {HTMLElement|null}
@@ -76007,23 +76029,27 @@ ${sections.join('\n')}
             : key === 'disc' ? 'disc'
             : _SAED_INDICATORS.some(i => i.key === key) ? 'attn'
             : null;
-        return area ? _saedBarEl.querySelector(`:scope > [data-mb-area="${area}"]`) : null;
+        const bar = area === 'attn' ? _saedAttnBarEl : _saedBarEl;
+        return area && bar ? bar.querySelector(`:scope > [data-mb-area="${area}"]`) : null;
     }
 
     /**
-     * The first visible area of the bar loses its left rule, whichever area
-     * that is (before loading there are no indicators and no Discography; on
-     * a narrow screen the actions are in the menu).
+     * The first visible area of each bar loses its left rule, whichever
+     * area that is (before loading there is no Discography; on a narrow
+     * screen the actions are in the menu). The attention bar has one area,
+     * always its first.
      *
      * @returns {void}
      */
     function _saedMarkFirst() {
-        if (!_saedBarEl) return;
-        let found = false;
-        Array.from(_saedBarEl.children).forEach(el => {
-            const shows = !el.hidden && el.childElementCount > 0 && getComputedStyle(el).display !== 'none';
-            el.classList.toggle('mb-saed-first', shows && !found);
-            if (shows) found = true;
+        [_saedBarEl, _saedAttnBarEl].forEach(bar => {
+            if (!bar) return;
+            let found = false;
+            Array.from(bar.children).forEach(el => {
+                const shows = !el.hidden && el.childElementCount > 0 && getComputedStyle(el).display !== 'none';
+                el.classList.toggle('mb-saed-first', shows && !found);
+                if (shows) found = true;
+            });
         });
     }
 
@@ -84000,9 +84026,10 @@ a { color: #1565c0; }`;
     // ever changed.
     controlsContainer.style.cssText = '--mb-toolbar-gap:8px; display:inline-flex; flex-wrap:wrap; align-items:center; gap:var(--mb-toolbar-gap); margin-left:10px; vertical-align:middle; line-height:1;';
 
-    // The SAED button: one segmented button in four areas (see "The SAED
-    // button" above `_saedMenuName()`). Its height and font size are still
-    // `sa_ui_action_btn_style`'s, its colours `sa_ui_toolbar_menu_btn_style`'s.
+    // The SAED button: one segmented button in three areas, and the
+    // attention bar after it (see "The SAED button" above `_saedMenuName()`).
+    // Their height and font size are still `sa_ui_action_btn_style`'s, their
+    // colours `sa_ui_toolbar_menu_btn_style`'s.
     const saedBar = document.createElement('span');
     saedBar.id = 'mb-saed-bar';
     saedBar.className = 'mb-saed-bar';
@@ -84017,16 +84044,28 @@ a { color: #1565c0; }`;
             + ` --mb-saed-radius:${borderRadius}; --mb-saed-bg:${bg}; --mb-saed-fg:${color};`
             + ` --mb-saed-border:${border}; --mb-saed-hover:${bgHover};`;
     }
-    ['actions', 'disc', 'attn', 'menu'].forEach(area => {
+    // The attention bar: the same look (class and custom properties), its
+    // one area `attn`, hidden until an indicator has something
+    // (`_orderToolbar()`).
+    const saedAttnBar = document.createElement('span');
+    saedAttnBar.id = 'mb-saed-attn-bar';
+    saedAttnBar.className = 'mb-saed-bar mb-saed-attn-bar';
+    saedAttnBar.setAttribute('role', 'toolbar');
+    saedAttnBar.setAttribute('aria-label', 'Needs attention');
+    saedAttnBar.style.cssText = saedBar.style.cssText;
+    saedAttnBar.hidden = true;
+    [['actions', saedBar], ['disc', saedBar], ['menu', saedBar], ['attn', saedAttnBar]].forEach(([area, bar]) => {
         const el = document.createElement('span');
         el.className = 'mb-saed-area';
         el.dataset.mbArea = area;
         el.setAttribute('role', 'group');
-        saedBar.appendChild(el);
+        bar.appendChild(el);
     });
     const saedActions = saedBar.querySelector('[data-mb-area="actions"]');
     controlsContainer.appendChild(saedBar);
+    controlsContainer.appendChild(saedAttnBar);
     _saedBarEl = saedBar;
+    _saedAttnBarEl = saedAttnBar;
 
     const allActionButtons = [];
 
@@ -86476,9 +86515,12 @@ a { color: #1565c0; }`;
         }
 
         /* The SAED button (#mb-saed-bar): everything the script adds to the
-           page heading as ONE segmented button, in four areas (actions,
-           disc, attn, menu). Hairlines split the segments of an area; a
-           heavier rule splits the areas; the first visible area has none
+           page heading as ONE segmented button, in three areas (actions,
+           disc, menu), and the attention bar (#mb-saed-attn-bar) after it,
+           the same look with one area (attn), hidden while it has nothing
+           (vzell 2026-10-29, https://claude.ai/artifact/URrn3dps1EMtnkjKBvsvag).
+           Hairlines split the segments of an area; a heavier rule splits the
+           areas; the first visible area has none
            (.mb-saed-first, set by _saedMarkFirst()). Its size and colours
            come from two settings through custom properties set on the bar
            (sa_ui_action_btn_style, sa_ui_toolbar_menu_btn_style).
@@ -86501,6 +86543,7 @@ a { color: #1565c0; }`;
             overflow: hidden;
             vertical-align: middle;
         }
+        .mb-saed-bar[hidden] { display: none; }
         .mb-saed-area {
             display: inline-flex;
             align-items: stretch;

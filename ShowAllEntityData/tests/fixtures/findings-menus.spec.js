@@ -101,14 +101,31 @@ async function settleFinding(page, level, id, checked) {
 }
 
 test.describe('findings menus — placement and counts', () => {
-    test('the menus are indicator segments of the SAED button, and only the levels present appear', async ({ page }) => {
+    test('the menus are segments of the attention bar after the SAED button, and only the levels present appear', async ({ page }) => {
         await openLive(page);
-        // The attention area of #mb-saed-bar, before ☰ SAED (docs/claude/
+        // The attention bar, a rounded bar of its own right after the SAED
+        // button, whose last segment is ☰ SAED (vzell 2026-10-29; docs/claude/
         // toolbar-and-header-ui.md, "The SAED button").
-        const areas = await page.evaluate(() => Array.from(document.querySelectorAll('#mb-saed-bar > .mb-saed-area'))
-            .map((a) => [a.dataset.mbArea, Array.from(a.children).map((c) => c.id).filter(Boolean)]));
-        expect(Object.fromEntries(areas).attn).toEqual(['mb-findings-warn-menu-btn']);
-        expect(areas.map(([a]) => a).indexOf('attn')).toBeLessThan(areas.map(([a]) => a).indexOf('menu'));
+        const bars = await page.evaluate(() => {
+            const main = document.getElementById('mb-saed-bar');
+            const attn = document.getElementById('mb-saed-attn-bar');
+            const areaKids = (bar) => Object.fromEntries(Array.from(bar.querySelectorAll(':scope > .mb-saed-area'))
+                .map((a) => [a.dataset.mbArea, Array.from(a.children).map((c) => c.id).filter(Boolean)]));
+            return {
+                next: main.nextElementSibling === attn,
+                hidden: attn.hidden,
+                main: areaKids(main),
+                attn: areaKids(attn),
+                radius: [main, attn].map((b) => parseFloat(getComputedStyle(b).borderTopLeftRadius)),
+                lastSeg: Array.from(main.querySelectorAll('.mb-seg')).filter((b) => b.offsetParent).pop().id,
+            };
+        });
+        expect(bars.next, 'the attention bar follows the SAED button').toBe(true);
+        expect(bars.hidden, 'shown while it has a segment').toBe(false);
+        expect(bars.attn).toEqual({ attn: ['mb-findings-warn-menu-btn'] });
+        expect(bars.main.attn, 'no attention area in the SAED button').toBeUndefined();
+        expect(bars.lastSeg).toBe('mb-saed-menu-btn');
+        expect(bars.radius.every((r) => r > 0), 'both bars have rounded corners').toBe(true);
 
         const warn = await findingsMenuState(page, 'warn');
         expect(warn.attached).toBe(true);
@@ -300,9 +317,10 @@ test.describe('findings menus — filtering', () => {
             const s = await findingsMenuState(page, level);
             expect(s === null || !s.attached, `${level} menu absent`).toBe(true);
         }
-        // Nothing in the SAED button's attention area, and no "Needs attention" row.
+        // Nothing in the attention bar, which is hidden, and no "Needs attention" row.
         expect(await page.evaluate(() =>
-            document.querySelector('#mb-saed-bar > [data-mb-area="attn"]').childElementCount)).toBe(0);
+            document.querySelector('#mb-saed-attn-bar > [data-mb-area="attn"]').childElementCount)).toBe(0);
+        await expect(page.locator('#mb-saed-attn-bar')).toBeHidden();
         await expect(page.locator('.mb-saed-attn-row')).toHaveCount(0);
     });
 });
