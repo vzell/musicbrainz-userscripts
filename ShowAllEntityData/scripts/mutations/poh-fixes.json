@@ -167,5 +167,44 @@
     "spec": "tests/fixtures/pop-area-flags.spec.js",
     "grep": "a country: MusicBrainz",
     "expect": "fail"
+  },
+  {
+    "name": "the ISNI is plain text again",
+    "why": "vzell 2026-10-29: \"ISNI: 0000000121418834 - value is not hyperlinked\".",
+    "edits": [
+      {
+        "find": "            .map(i => `<a href=\"https://isni.org/isni/${_rgEsc(i)}\" target=\"_blank\" rel=\"noopener noreferrer\">` +\n                `${_rgEsc(i.replace(/(.{4})(?=.)/g, '$1 '))}</a>`).join(', ');",
+        "replace": "            .map(i => _rgEsc(i)).join(', ');"
+      }
+    ],
+    "spec": "tests/fixtures/popup-mb.spec.js",
+    "grep": "genres one per line as tag links",
+    "expect": "fail"
+  },
+  {
+    "name": "an ISNI ending in X is dropped",
+    "why": "The last character of an ISNI is a check character and may be X.",
+    "edits": [
+      {
+        "find": ".filter(i => /^[0-9]{15}[0-9X]$/i.test(i))",
+        "replace": ".filter(i => /^[0-9]{16}$/.test(i))"
+      }
+    ],
+    "spec": "tests/fixtures/popup-mb.spec.js",
+    "grep": "each ISNI links its record",
+    "expect": "fail"
+  },
+  {
+    "name": "the label window keeps its ISNI as text",
+    "why": "The artist's is linked, the label's not: the two windows' Facts disagree.",
+    "edits": [
+      {
+        "find": "                        ['ISNI', _mbPopIsniHtml(d.isnis)],\n                        ['Aliases', _mbPopAliasesHtml(d.aliases)],\n                    ]);\n                const ps = _mbPop.get(pin.key);",
+        "replace": "                        ['ISNI', _rgEsc((d.isnis || []).join(', '))],\n                        ['Aliases', _mbPopAliasesHtml(d.aliases)],\n                    ]);\n                const ps = _mbPop.get(pin.key);"
+      }
+    ],
+    "spec": "tests/fixtures/popup-mb.spec.js",
+    "grep": "each ISNI links its record",
+    "expect": "fail"
   }
 ]

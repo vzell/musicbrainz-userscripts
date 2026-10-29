@@ -56507,6 +56507,22 @@
     }
 
     /**
+     * ISNIs as links to their record on isni.org (a new tab), one each, the
+     * sixteen characters in groups of four as ISNI writes them
+     * ("0000 0001 2141 8834"); '' for none. The windows' Facts (vzell
+     * 2026-10-29, mockup https://claude.ai/artifact/URrn3dps1EMtnkjKBvsvag);
+     * a card is not clickable, so it keeps the plain text.
+     *
+     * @param {?Array<string>} isnis
+     * @returns {string}
+     */
+    function _mbPopIsniHtml(isnis) {
+        return (isnis || []).map(String).map(i => i.replace(/\s+/g, '')).filter(i => /^[0-9]{15}[0-9X]$/i.test(i))
+            .map(i => `<a href="https://isni.org/isni/${_rgEsc(i)}" target="_blank" rel="noopener noreferrer">` +
+                `${_rgEsc(i.replace(/(.{4})(?=.)/g, '$1 '))}</a>`).join(', ');
+    }
+
+    /**
      * Aliases as text: each name with its type and locale, at most `max`
      * and "+N".
      *
@@ -60929,7 +60945,7 @@
                         // One per line, genres as their tags (2026-10-27, as a label's).
                         ['Genres', _mbPopGenreLinksHtml(d.genres)],
                         ['IPI', _rgEsc((d.ipis || []).join(', '))],
-                        ['ISNI', _rgEsc((d.isnis || []).join(', '))],
+                        ['ISNI', _mbPopIsniHtml(d.isnis)],
                         ['Aliases', _mbPopAliasesHtml(d.aliases)],
                     ]) +
                     _mbPopSectionHtml('Links', _mbPop.get(links.key), (p) => _mbPopUrlLinksTableHtml(t, 'links', p.relations, { withHead: false }) ||
@@ -61006,7 +61022,7 @@
                         // One per line, each its tag (Phase 3c, as the release group's).
                         ['Genres', _mbPopGenreLinksHtml(d.genres)],
                         ['IPI', _rgEsc((d.ipis || []).join(', '))],
-                        ['ISNI', _rgEsc((d.isnis || []).join(', '))],
+                        ['ISNI', _mbPopIsniHtml(d.isnis)],
                         ['Aliases', _mbPopAliasesHtml(d.aliases)],
                     ]);
                 const ps = _mbPop.get(pin.key);

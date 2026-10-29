@@ -1457,6 +1457,13 @@ test.describe('MusicBrainz link previews: artist, label, area, instrument (WIP.3
         expect(await aliases.locator('br').count(), 'five aliases, one per line').toBe(4);
         await expect(aliases).toContainText('The Boss (Artist name, en)');
         await expect(aliases.locator('.mb-rg-dim').first()).toHaveText('(Legal name)');
+        // The ISNI links its record on isni.org (vzell 2026-10-29); the IPI
+        // has no such page and stays text.
+        const isni = facts.locator('dt:text-is("ISNI") + dd a');
+        await expect(isni).toHaveText('0000 0001 2141 8834');
+        await expect(isni).toHaveAttribute('href', 'https://isni.org/isni/0000000121418834');
+        await expect(isni).toHaveAttribute('target', '_blank');
+        await expect(facts.locator('dt:text-is("IPI") + dd a')).toHaveCount(0);
     });
 
     test('the artist window: area and birthplace in their area chains; a country is never looked up (org/event-GPE.org)', async ({ page }) => {
@@ -1491,6 +1498,21 @@ test.describe('MusicBrainz link previews: artist, label, area, instrument (WIP.3
         await ctrlHover(page, artistLink(page));
         await expect(card(page).locator('.mb-dp-kv dt:text-is("Born in") + dd')).toHaveText('Long Branch, New Jersey, United States');
         expect(log.ws2).toHaveLength(before);
+    });
+
+    test('the label window: each ISNI links its record on isni.org', async ({ page }) => {
+        const label = JSON.parse(json('ws2-pop-label-columbia.json'));
+        label.isnis = ['0000000123172425', '000000012345678X'];
+        await open(page, {
+            settings: { sa_pop_mb: true }, showAll: false,
+            ws2: (url) => (/\/ws\/2\/label\/[0-9a-f-]{36}\?inc=genres/.test(url) ? { status: 200, body: JSON.stringify(label) } : null),
+        });
+        await ctrlHover(page, labelLink(page));
+        await expect(card(page)).toContainText('fetched now');
+        await page.keyboard.press('Space');
+        const isni = dialog(page).locator('.mb-dp-area h4:text-is("Facts") + .mb-dp-kv dt:text-is("ISNI") + dd a');
+        await expect(isni).toHaveText(['0000 0001 2317 2425', '0000 0001 2345 678X']);
+        await expect(isni.nth(1)).toHaveAttribute('href', 'https://isni.org/isni/000000012345678X');
     });
 
     test('the label window: a label in a country asks for no area (org/event-GPE.org)', async ({ page }) => {

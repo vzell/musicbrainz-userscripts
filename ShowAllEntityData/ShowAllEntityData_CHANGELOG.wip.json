@@ -1,5 +1,23 @@
 [
   {
+    "version": "WIP.5",
+    "date": "2026-10-29",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "Link previews: in an artist's or a label's window, the ISNI is a link to its record on isni.org (a new tab), written in groups of four as ISNI does (0000 0001 2141 8834)."
+        ]
+      },
+      {
+        "label": "🔧 Refactor",
+        "items": [
+          "_mbPopIsniHtml() in the artist and label kinds' windowHtml; the cards keep the text. Tests: popup-mb.spec.js (the artist's ISNI; a new label test with two ISNIs, one ending in X); scripts/mutations/poh-fixes.json (+3, all caught). docs/claude/detail-pages.md, HELP."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.4",
     "date": "2026-10-29",
     "sections": [

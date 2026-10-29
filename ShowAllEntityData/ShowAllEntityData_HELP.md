@@ -2945,7 +2945,8 @@ once and without Tampermonkey asking first:
   on a hover and opens in the same window on a click (*Back* returns);
   Ctrl-click opens musicbrainz.org in a new tab. A MusicBrainz label's card
   and window show when it was founded and ended, its label code, rating, IPI
-  and ISNI, and the window also lists its people, places and series (up to
+  and ISNI (in the window a link to its record on isni.org, as an artist's),
+  and the window also lists its people, places and series (up to
   12 of each kind, then "+N more"). While these previews are on, Discogs'
   own hover box on an artist name stays away, so the two never overlap.
 

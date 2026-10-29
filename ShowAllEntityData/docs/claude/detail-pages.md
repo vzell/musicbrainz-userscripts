@@ -351,6 +351,11 @@ hosts (kept, decided 2026-10-07).
   stand-in for that script's observer; the chain's last link sampled every
   frame of a repaint), popup-mb.spec.js (`flagLookups()` apart from the
   chain's `areaLookups()`); mutations in scripts/mutations/poh-fixes.json.
+- **An ISNI is a link** in the artist and label windows' Facts
+  (`_mbPopIsniHtml()`, vzell 2026-10-29): `https://isni.org/isni/<16>` in a
+  new tab, shown in groups of four; a check character X kept. The cards keep
+  the plain text (a card is not clickable); an IPI has no public page and
+  stays text.
 - **An area is named in its area chain** (`_mbPopAreaChain()`, WIP.2):
   "OceanFirst Bank Center in West Long Branch, New Jersey, United States", as
   MusicBrainz writes it — an event's "Held at" and a recording's "Recorded at"
