@@ -4,9 +4,16 @@ Every version, newest first, with the technical details behind each change. For 
 
 **Months:** [October 2026](ShowAllEntityData_CHANGELOG/2026-10.md) · [September 2026](ShowAllEntityData_CHANGELOG/2026-09.md) · [August 2026](ShowAllEntityData_CHANGELOG/2026-08.md) · [July 2026](ShowAllEntityData_CHANGELOG/2026-07.md) · [June 2026](ShowAllEntityData_CHANGELOG/2026-06.md) · [May 2026](ShowAllEntityData_CHANGELOG/2026-05.md) · [April 2026](ShowAllEntityData_CHANGELOG/2026-04.md) · [March 2026 (1 of 2)](ShowAllEntityData_CHANGELOG/2026-03-1.md) · [March 2026 (2 of 2)](ShowAllEntityData_CHANGELOG/2026-03-2.md) · [February 2026](ShowAllEntityData_CHANGELOG/2026-02.md) · [January 2026](ShowAllEntityData_CHANGELOG/2026-01.md)
 
-This page shows the newest 100 of 1673 versions; the month pages hold all of them.
+This page shows the newest 100 of 1674 versions; the month pages hold all of them.
 
 ---
+
+## 9.99.1503 — 2026-10-29
+
+**🚀 Feature**
+
+- Release tracklist: every empty "Recording of work" cell shows a 💡. Click it, or ▶💡 in the column header for all of them, and the script suggests the work with the closest title among the works of the track's artists, in orange and marked "suggested:", with "exact title" or "≈ N % alike" and a ➕ relate link to the recording's edit page. Each artist's work list is loaded once and kept for 30 days, shared with the artist Recordings page's suggestions. Nothing loads until you click, and a suggestion is not a link: the track keeps its "no associated work" flag. The column's 📊 gets a "Recording of work - Suggestions" section. New setting: "Suggest a work for tracks whose recording has none" (on).
+
 
 ## 9.99.1502 — 2026-10-29
 
@@ -872,13 +879,6 @@ This page shows the newest 100 of 1673 versions; the month pages hold all of the
 
 - Recording lists: the "Recording of" and "Performance attributes" column headers now read "Work" and "Perf.", so the two columns take less width. Hover a header to see its full name. Menus, the 📊 drop-down, exports and the Default Hidden Columns table still use the full names. To get the full names back in the headers, turn off the new setting "Short column header labels" (🎨 UI FEATURES, on by default).
 - Short header labels work for any column. A pageType gets its own with features.columnLabels; the built-in ones are in \_COLUMN\_LABELS. A saved table keeps each labelled column's name, so Load from Disk restores it.
-
-
-## 9.99.1403 — 2026-10-21
-
-**✨ Improve**
-
-- The sidebar's ◀/▶ handle is there as soon as a supported MusicBrainz page opens, before any button is pressed, with the sidebar open and the page laid out exactly as MusicBrainz draws it. Once a button has rendered the table, "Start with sidebar collapsed" closes it as before. New settings: "Sidebar handle before a button is pressed" (on) and "Start with sidebar collapsed before a button is pressed" (off).
 
 
 ---
