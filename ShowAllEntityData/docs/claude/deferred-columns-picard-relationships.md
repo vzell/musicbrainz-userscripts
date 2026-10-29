@@ -591,6 +591,10 @@ into `_recOfDecl`:
 - `suggest` — only artist-recordings: suggestions need ONE artist's work list,
   which no other list has. `_recOfSuggestOn()` gates `_recOfEnsureWorks()`,
   the single-row path and the progress card's work-list row and action.
+  (release-tracks suggests too, with one list PER TRACK ARTIST, through the
+  shared `_recOfBestWork()`/`_recOfLoadArtistWorks()` — not through
+  `features.recordingOf`: see docs/claude/release-tracks-and-length.md,
+  "Work suggestions for tracks with no work".)
 - `setting` — the page group's own checkbox (`sa_recording_of_on_*`, default
   on), under the master switch.
 `true` still means artist-recordings' declaration. Not declared: release-tracks

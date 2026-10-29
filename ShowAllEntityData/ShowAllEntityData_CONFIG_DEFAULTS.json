@@ -2,11 +2,11 @@
   "_meta": {
     "generated_by": "scripts/dump-config-defaults.py",
     "purpose": "Generated artifact. NOTHING in the userscript reads this file. See org/config-handling.org Item 4.",
-    "script_version": "9.99.1495+2026-10-28",
-    "schema_entries": 480,
+    "script_version": "9.99.1502+2026-10-29",
+    "schema_entries": 481,
     "sections": 52,
-    "settings": 428,
-    "settings_with_default": 423,
+    "settings": 429,
+    "settings_with_default": 424,
     "settings_without_default": [
       "sa_default_hidden_columns",
       "sa_rel_other_db_classes",
@@ -15,7 +15,7 @@
       "sa_unicode_char_picker_mappings"
     ],
     "types": {
-      "checkbox": 252,
+      "checkbox": 253,
       "color_picker": 62,
       "number": 53,
       "divider": 52,
@@ -560,6 +560,7 @@
     "sa_release_tracks_length_mismatch_severe_factor": "Length-mismatch \"far over\" multiple",
     "sa_release_tracks_length_mismatch_threshold_ms": "Length-mismatch threshold (milliseconds)",
     "sa_release_tracks_length_mismatch_warn_bg": "Length-mismatch ⚠️ cell background color",
+    "sa_release_tracks_work_suggest": "Suggest a work for tracks whose recording has none",
     "sa_rels_idb_enable": "Enable IndexedDB Relationships WS2 data cache",
     "sa_remove_checkbox_cell": "Remove Checkbox-Cell column",
     "sa_remove_rating": "Remove Rating column",
@@ -986,6 +987,7 @@
     "sa_release_tracks_length_mismatch_severe_factor": 3,
     "sa_release_tracks_length_mismatch_threshold_ms": 1000,
     "sa_release_tracks_length_mismatch_warn_bg": "#fff3cd",
+    "sa_release_tracks_work_suggest": true,
     "sa_rels_idb_enable": true,
     "sa_remove_checkbox_cell": true,
     "sa_remove_rating": false,
