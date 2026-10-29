@@ -5166,7 +5166,6 @@ What the merge gate turned up (9.99.1505): a Discogs popup test had been failing
 
 Nothing is published to the mb-userscripts repo users install from; that's still your manual step (python3 scripts/check-publish-ready.py first).
 
-
 * DONE PT 'release-tracks' needs suggestion for works in the "Recording of work" column
 
 Currently for example on https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/recordings we are able to
@@ -5254,6 +5253,12 @@ b.)
 
 the hyperlinked titles after the youtube play buttons need a little more spacing between the button and the actual titles
 
+5.)
+
+#+begin_example
+@debug/discogs-add-images.html - POH of the release history popup
+@debug/discogs-release-images-history-revision.html - IP - https://www.discogs.com/release/38816589-Rondes-Et-Chansons-De-France-No-1/images/history?rev=4
+#+end_example
 
 
 * TODO consolidate more LAF across more PTs
@@ -5422,8 +5427,6 @@ fix MB collection pages, e.g. https://musicbrainz.org/user/ApeKattQuest%2C%20Mon
 third-party userscript "mb. COLLECTION HIGHLIGHTER" from @jesus2099 is active
 
 
-
-
 * TODO Still open:
 
 The 2-of-100-pages search question. Did you pick a limit in the dialog, or did pages fail? If they failed, hovering the 🔄 button shows the reason.
@@ -5439,3 +5442,13 @@ test:full before any merge. I’ll ask before merging.
   can close, even though multi-select is meant to keep it open. I haven't changed this; tell me if you want it fixed.
 
 * TODO move the "WARNING/ERROR buttons in their own button
+
+* TODO move the "LINKS" section from right to left in the POH of Discogs labels
+
+From https://www.discogs.com/master/26725-Bruce-Springsteen-Born-To-Run hovering "Columbia" label - https://www.discogs.com/search/?q=Columbia&type=label
+
+1.)
+
+move the "LINKS" section from right to left in the POH of Discogs labels
+
+
