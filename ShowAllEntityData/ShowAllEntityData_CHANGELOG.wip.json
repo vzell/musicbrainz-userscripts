@@ -1,5 +1,24 @@
 [
   {
+    "version": "WIP.6",
+    "date": "2026-10-29",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Every picture an artist, label, place, series, instrument or area links (its image, logo and poster links, its Wikimedia Commons files), which MusicBrainz itself does not show, now appears beside its name: one, or several fading from one to the next every 6 seconds, with ‹ › on hover and a click opening them all in the viewer. A picture link that does not load is left out. The script asks MusicBrainz once for the links and remembers them; with the \"MusicBrainz Entity Images\" userscript installed it uses that script's pictures instead. New setting: \"Entity pictures from its links\" (on).",
+          "Link previews: an artist's, label's or place's window shows all of these pictures: one large, a strip of the others (click one to make it the large one), and a line naming the links that did not load. The card shows the first with \"+N\"."
+        ]
+      },
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "The sidebar picture: with the \"MusicBrainz Entity Images\" userscript showing a logo link first, a Wikimedia Commons picture shown after it no longer goes without its card and viewer, and the picture used is the one that script shows."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.5",
     "date": "2026-10-29",
     "sections": [

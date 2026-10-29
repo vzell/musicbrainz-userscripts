@@ -514,6 +514,13 @@
             description: "Also show a small copy of the sidebar picture at the start of the page heading, so it stays in sight with the sidebar closed. Same hover card and viewer. On a release, release group or event page it is the front cover (the event art); its card shows every image and a click opens them all in the viewer (asked on the first hover or click). Needs 'Sidebar picture: hover card and viewer'."
         },
 
+        sa_entity_images: {
+            label: "Entity pictures from its links",
+            type: "checkbox",
+            default: true,
+            description: "An artist's, label's, place's, series', instrument's or area's pictures from its image, logo and poster links and its Wikimedia Commons files, which MusicBrainz itself does not show: beside the name, fading from one to the next every 6 seconds when there are several (‹ › on hover, a click opens them all in the viewer), and in the preview window as a picture with a strip of the others. A picture that does not load is left out. Asks MusicBrainz once a page for the entity's links, kept like the preview window's; not when the 'MusicBrainz Entity Images' userscript already shows them. Needs 'Sidebar picture beside the name' for the heading."
+        },
+
         sa_sidebar_tables_button: {
             label: "'Sidebar as tables' button",
             type: "checkbox",
@@ -27833,6 +27840,8 @@
             // A table's cover (a release group's releases, a collection's
             // entries): that entity's images in the viewer.
             else if (_dpCoverClick(e)) return;
+            // A thumbnail of an entity's picture strip: that picture large.
+            else if (_eiWinPickClick(e)) return;
             // An image: the artwork viewer.
             else if (_dpArtViewerClick(e)) return;
             // An entity link: drill down (Phase 5).
@@ -28616,12 +28625,34 @@
                known only after a Space: 64 px beside the facts. */
             #mb-dp-peek .mb-pop-card-pic { display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: 10px; align-items: start; }
             #mb-dp-peek .mb-pop-pic img { display: block; width: 64px; height: 80px; object-fit: cover; border: 1px solid #d9cfbd; border-radius: 2px; background: #f3eee3; }
+            /* More pictures than the card shows (2026-10-29): "+N" on its corner. */
+            #mb-dp-peek .mb-pop-pic { position: relative; }
+            #mb-dp-peek .mb-pop-pic-more { position: absolute; right: 2px; bottom: 2px; padding: 0 4px; border-radius: 3px;
+                font: 700 10px system-ui, -apple-system, "Segoe UI", Arial, sans-serif; background: rgba(43, 38, 34, 0.82); color: #fbf8f1; }
             #mb-dp-peek .mb-pop-main { min-width: 0; }
             /* An event card's setlist in parts: the part its songs are from. */
             :is(#mb-dp-peek, .mb-dp-note-event) .mb-pop-partline { margin-top: 4px; font: 600 10.5px system-ui, -apple-system, "Segoe UI", Arial, sans-serif;
                 letter-spacing: 0.08em; text-transform: uppercase; color: #7a6d5c; }
             .mb-dp-dialog .mb-pop-xpic { margin: 6px 0 4px; }
             .mb-dp-dialog .mb-pop-xpic .mb-dp-xcover { margin: 0 0 3px; cursor: zoom-in; }
+            /* Every picture of an entity's links (mockup B4, 2026-10-29): the
+               chosen one large and fitted whole (a logo is often wide), where
+               it came from with its place, a strip of the others, a line for
+               the links that did not load. */
+            .mb-dp-dialog .mb-ei-win .mb-dp-xcover { object-fit: contain; background: #fff; max-height: 230px; }
+            .mb-dp-dialog .mb-ei-win figcaption { display: flex; flex-wrap: wrap; gap: 2px 8px; justify-content: space-between; }
+            .mb-dp-dialog .mb-ei-pos { font-variant-numeric: tabular-nums; }
+            .mb-dp-dialog .mb-ei-strip { display: flex; gap: 6px; overflow-x: auto; margin: 6px 0 2px; padding-bottom: 2px; }
+            .mb-dp-dialog .mb-ei-strip a { flex: none; display: block; width: 52px; height: 44px; padding: 3px; box-sizing: border-box;
+                border: 1px solid #d9cfbd; border-radius: 3px; background: #fff; }
+            .mb-dp-dialog .mb-ei-strip a[aria-current="true"] { border-color: #2b2622; box-shadow: 0 0 0 1px #2b2622; }
+            .mb-dp-dialog .mb-ei-strip a:focus-visible { outline: 2px solid #2f5f9e; outline-offset: 1px; }
+            .mb-dp-dialog .mb-ei-thumb { display: block; width: 100%; height: 100%; object-fit: contain; }
+            .mb-dp-dialog .mb-ei-bad { margin-top: 6px; padding-top: 4px; border-top: 1px dashed #d9cfbd;
+                font: 12px system-ui, -apple-system, "Segoe UI", Arial, sans-serif; color: #7a6d5c; }
+            .mb-dp-dialog .mb-ei-bad summary { cursor: pointer; }
+            .mb-dp-dialog .mb-ei-bad ul { margin: 4px 0 0; padding-left: 16px; }
+            .mb-dp-dialog .mb-ei-bad a { overflow-wrap: anywhere; }
             :is(#mb-dp-peek, .mb-dp-note-event) .mb-pop-tracks { columns: 1; }
             :is(#mb-dp-peek, .mb-dp-note-event, .mb-dp-dialog) .mb-pop-tracks li { display: flex; gap: 6px; align-items: baseline; }
             :is(#mb-dp-peek, .mb-dp-note-event, .mb-dp-dialog) .mb-pop-tracks .mb-dp-pos { flex: none; min-width: 1.6em; margin-right: 0; }
@@ -54745,7 +54776,7 @@
                 if (start) _mbWsLoad(q.key, q.url, { repaint, wanted: _mbPopWanted(t) });
                 // A picture only from this browser's storage: a hover asks no one.
                 if (start && spec.cardAside) _mbPopImagePeek(t, repaint);
-                return _mbPopCardShell(t, _mbPop.get(q.key), spec.cardHtml, spec.failNote, spec.cardAside ? spec.cardAside(t) : '');
+                return _mbPopCardShell(t, _mbPop.get(q.key), spec.cardHtml, spec.failNote, spec.cardAside ? spec.cardAside(t, repaint) : '');
             },
             extracted(t, start, force, repaint) {
                 const q = spec.query ? spec.query(t) : _mbPopLookup(t, spec.cardInc);
@@ -56573,15 +56604,22 @@
     }
 
     // ── The entity's picture (docs/claude/sidebar.md, part 4) ────────────────
-    // What musicbrainz-server's Controller/Role/CommonsImage.pm would answer
-    // if its Commons switch were on (it is off on musicbrainz.org, DEBUG-NOTES
-    // 2026-10-11): an `image`/`logo` relationship to a Commons file, else the
-    // entity's Wikidata item's image (P18) or logo (P154). Asked only when
-    // Space opens the window, once its url-rels are there; a card shows it
-    // from memory or IndexedDB only. "No picture" is kept too.
+    // Every picture of the entity's links since 2026-10-29 (`_eiImagesFrom()`:
+    // its image, logo and poster links and its Commons files; version 1 took
+    // the first `image`/`logo` link to a Commons file only, what
+    // musicbrainz-server's Controller/Role/CommonsImage.pm would answer if its
+    // Commons switch were on — it is off on musicbrainz.org, DEBUG-NOTES
+    // 2026-10-11), else the entity's Wikidata item's image (P18) or logo
+    // (P154). Asked only when Space opens the window, once its url-rels are
+    // there; a card shows it from memory or IndexedDB only. "No picture" is
+    // kept too.
 
-    /** Version of the picture records kept in IndexedDB (`_mbPopImageLoad()`); bump when their shape changes. */
-    const _MB_POP_IMG_VERSION = 1;
+    /**
+     * Version of the picture records kept in IndexedDB (`_mbPopImageLoad()`);
+     * bump when their shape changes. 2 (2026-10-29): every picture of the
+     * entity's links (`images`), not one Commons file.
+     */
+    const _MB_POP_IMG_VERSION = 2;
 
     /**
      * The kinds that show a picture, and the Wikidata properties each asks,
@@ -56615,27 +56653,6 @@
      */
     function _mbPopImgOn(t) {
         return Lib.settings.sa_pop_mb_image !== false && Object.prototype.hasOwnProperty.call(_MB_POP_IMG_PROPS, t.type);
-    }
-
-    /**
-     * The Commons file of the first `image` or `logo` relationship that
-     * points at one (`https://commons.wikimedia.org/wiki/File:…`), '' when
-     * none; as the server's `relationships_by_link_type_names('image', 'logo')`.
-     * @param {Array<Object>} relations - The entity's url-rels.
-     * @returns {string} The file name with spaces.
-     */
-    function _mbPopCommonsFile(relations) {
-        for (const r of relations || []) {
-            if (r.type !== 'image' && r.type !== 'logo') continue;
-            const m = /^https?:\/\/commons\.wikimedia\.org\/wiki\/File:(.+)$/i.exec((r.url && r.url.resource) || '');
-            if (!m) continue;
-            try {
-                return decodeURIComponent(m[1]).replace(/_/g, ' ');
-            } catch (_) {
-                return m[1].replace(/_/g, ' ');
-            }
-        }
-        return '';
     }
 
     /**
@@ -56684,6 +56701,161 @@
         };
     }
 
+    // ── Every picture of an entity's links (2026-10-29) ──────────────────────
+    // zabe's "MusicBrainz Entity Images" userscript showed the way
+    // (tests/fixtures/live-userscripts/manifest.json, zabe-entity-image):
+    // an entity's url-rels of type image, logo or poster, and any Wikimedia
+    // Commons File: link, are pictures. MusicBrainz shows none of them (its
+    // Commons switch is off; a logo link sits among the hidden links).
+    // Probe: scripts/probe-entity-image-rels.py (label CBS: six `logo` links,
+    // one http-only; Bruce Springsteen: one `image`, a Commons file). Used by
+    // the window (`_mbPopImageLoad()`, `_mbPopWindowPicture()`) and the page
+    // heading (`_eiInitPage()`), which share the lookup and the record.
+
+    /** The url-rel types whose target is a picture (zabe's three). */
+    const _EI_PIC_TYPES = new Set(['image', 'logo', 'poster']);
+
+    /**
+     * How long a page waits for zabe's pictures (`div.entity-image`, its own
+     * url-rels request about a second after load) before asking MusicBrainz
+     * itself (`_eiStart()`), so the two never ask twice.
+     */
+    const _EI_ZABE_WAIT_MS = 2500;
+
+    /** How long each picture beside the name stays before the next fades in (mockup B2). */
+    const _EI_ROTATE_MS = 6000;
+
+    /**
+     * An entity's pictures from its url-rels, in order: the Commons files
+     * first (they load reliably and ask nothing: `Special:FilePath`), then
+     * the other image, logo and poster links in MusicBrainz's order, once
+     * each. A picture link on http is tried on https (an https page shows no
+     * http image); `url` keeps the link as MusicBrainz has it.
+     *
+     * @param {Array<Object>} relations
+     * @returns {Array<{src: string, thumb: string, large: string, page: string, url: string,
+     *   type: string, file: string, host: string}>}
+     */
+    function _eiImagesFrom(relations) {
+        const commons = [];
+        const other = [];
+        const seen = new Set();
+        for (const r of relations || []) {
+            const url = (r.url && r.url.resource) || '';
+            if (!url || seen.has(url)) continue;
+            const m = /^https?:\/\/commons\.wikimedia\.org\/wiki\/File:(.+)$/i.exec(url);
+            if (m) {
+                let file = m[1];
+                try {
+                    file = decodeURIComponent(file);
+                } catch (_) { /* keep it as written */ }
+                file = file.replace(/_/g, ' ');
+                const u = _mbPopImgUrls(file);
+                seen.add(url);
+                commons.push({ src: u.thumb, thumb: u.thumb, large: u.large, page: u.page, url, type: r.type || 'image', file, host: 'commons.wikimedia.org' });
+            } else if (_EI_PIC_TYPES.has(r.type) && /^https?:\/\//i.test(url)) {
+                const https = url.replace(/^http:/i, 'https:');
+                let host;
+                try {
+                    host = new URL(https).hostname;
+                } catch (_) {
+                    continue;
+                }
+                seen.add(url);
+                other.push({ src: https, thumb: https, large: https, page: '', url, type: r.type, file: '', host });
+            }
+        }
+        return commons.concat(other);
+    }
+
+    /**
+     * A picture from the entity's Wikidata item (P18 image, P154 logo): one
+     * Commons file, in the shape of `_eiImagesFrom()`'s.
+     * @param {string} file
+     * @param {string} prop - 'P18' or 'P154'.
+     * @returns {Object}
+     */
+    function _eiWikidataImage(file, prop) {
+        const u = _mbPopImgUrls(file);
+        return { src: u.thumb, thumb: u.thumb, large: u.large, page: u.page, url: u.page, type: prop === 'P154' ? 'logo' : 'image', file, host: 'commons.wikimedia.org', prop };
+    }
+
+    /**
+     * Whether each picture address loads, by address: 'ok', 'bad' or
+     * 'pending' (`_eiProbe()`). For the page load; a picture is never shown
+     * before it is known to load.
+     * @type {Map<string, string>}
+     */
+    const _eiLoadState = new Map();
+
+    /** Who waits for a probe's answer, by address. */
+    const _eiLoadWaiters = new Map();
+
+    /**
+     * Loads a picture once to learn whether it shows (no referrer, as every
+     * picture of the window), then calls `done(state)`; at once when known.
+     * A picture that answers but is 0 px wide counts as broken.
+     *
+     * @param {string} src
+     * @param {function(string): void} done
+     * @returns {void}
+     */
+    function _eiProbe(src, done) {
+        const st = _eiLoadState.get(src);
+        if (st === 'ok' || st === 'bad') {
+            done(st);
+            return;
+        }
+        if (!_eiLoadWaiters.has(src)) _eiLoadWaiters.set(src, []);
+        _eiLoadWaiters.get(src).push(done);
+        if (st === 'pending') return;
+        _eiLoadState.set(src, 'pending');
+        const img = new Image();
+        img.referrerPolicy = 'no-referrer';
+        const end = (state) => {
+            _eiLoadState.set(src, state);
+            const ws = _eiLoadWaiters.get(src) || [];
+            _eiLoadWaiters.delete(src);
+            ws.forEach(fn => fn(state));
+        };
+        img.onload = () => end(img.naturalWidth > 0 ? 'ok' : 'bad');
+        img.onerror = () => end('bad');
+        img.src = src;
+    }
+
+    /**
+     * Probes every picture of a list and calls `done(ok, bad)` once all are
+     * known, each list in the given order.
+     *
+     * @param {Array<Object>} images - `_eiImagesFrom()`'s.
+     * @param {function(Array<Object>, Array<Object>): void} done
+     * @returns {void}
+     */
+    function _eiProbeAll(images, done) {
+        let left = images.length;
+        if (!left) {
+            done([], []);
+            return;
+        }
+        images.forEach(im => _eiProbe(im.src, () => {
+            left--;
+            if (left) return;
+            done(images.filter(x => _eiLoadState.get(x.src) === 'ok'), images.filter(x => _eiLoadState.get(x.src) === 'bad'));
+        }));
+    }
+
+    /**
+     * Where a picture comes from, in words: "logo link · seeklogo.com",
+     * "Wikimedia Commons", "Wikidata P154 (logo)".
+     * @param {Object} im
+     * @returns {string}
+     */
+    function _eiOrigin(im) {
+        if (im.prop) return `Wikidata ${im.prop} (${im.prop === 'P154' ? 'logo' : 'image'})`;
+        if (im.file) return 'Wikimedia Commons';
+        return `${im.type} link · ${im.host.replace(/^www\./, '')}`;
+    }
+
     /**
      * Starts the entity's picture lookup, from a kind's `pin()` (the window
      * only). `relations` is null while the url-rels are still on their way:
@@ -56707,24 +56879,42 @@
         const force = _mbPopImgAgain.delete(key);
         const s = _mbPop.get(key);
         if (!force && s && s.status === 'failed') return;
-        _mbLoad(key, async (wanted) => {
-            const file = _mbPopCommonsFile(relations);
-            if (file) return { ok: true, data: { file, from: 'commons-rel', item: '' } };
-            const item = _mbPopWikidataItem(relations);
-            for (const prop of item ? _MB_POP_IMG_PROPS[t.type] : []) {
-                const url = `https://www.wikidata.org/w/api.php?action=wbgetclaims&format=json&entity=${item}&property=${prop}`;
-                const res = await _extGet(url, { wanted, fetchOpts: { accept: /\bjson\b/i, headers: { 'Api-User-Agent': _EXT_AGENT } } });
-                if (res.skipped) return { skipped: true };
-                if (res.error || res.status !== 200) return { ok: false, detail: _extFailText(res) };
-                const d = _extJson(res);
-                if (!d) return { ok: false, detail: 'Wikidata answered, but not with JSON' };
-                // An item Wikidata does not have (deleted, never existed): no picture.
-                if (d.error) break;
-                const f = _mbPopClaimFile(d, prop);
-                if (f) return { ok: true, data: { file: f, from: prop, item } };
-            }
-            return { ok: true, data: { file: '', from: '', item } };
-        }, { force, repaint, wanted: _mbPopWanted(t), version: _MB_POP_IMG_VERSION });
+        _mbLoad(key, async (wanted) => _mbPopImageRecordFor(t, relations, wanted),
+            { force, repaint, wanted: _mbPopWanted(t), version: _MB_POP_IMG_VERSION });
+    }
+
+    /**
+     * The picture record of an entity: every picture of its links
+     * (`_eiImagesFrom()`, asks nothing), else the one its Wikidata item names
+     * (one `wbgetclaims` per property of `_MB_POP_IMG_PROPS`, through
+     * `_extGet()`: Wikidata's own rate gate, anonymous). `file` and `from`
+     * keep version 1's meaning for the first picture. The window only: the
+     * page heading (`_eiInitPage()`) shares the url-rels lookup, never this
+     * record, so a heading that found no picture in the links never stands
+     * in for the window's Wikidata answer.
+     *
+     * @param {object} t
+     * @param {Array<Object>} relations
+     * @param {function(): boolean} wanted
+     * @returns {Promise<{ok?: boolean, data?: Object, detail?: string, skipped?: boolean}>}
+     */
+    async function _mbPopImageRecordFor(t, relations, wanted) {
+        const images = _eiImagesFrom(relations);
+        const item = _mbPopWikidataItem(relations);
+        if (images.length) return { ok: true, data: { images, file: images[0].file, from: 'rels', item } };
+        for (const prop of item ? (_MB_POP_IMG_PROPS[t.type] || []) : []) {
+            const url = `https://www.wikidata.org/w/api.php?action=wbgetclaims&format=json&entity=${item}&property=${prop}`;
+            const res = await _extGet(url, { wanted, fetchOpts: { accept: /\bjson\b/i, headers: { 'Api-User-Agent': _EXT_AGENT } } });
+            if (res.skipped) return { skipped: true };
+            if (res.error || res.status !== 200) return { ok: false, detail: _extFailText(res) };
+            const d = _extJson(res);
+            if (!d) return { ok: false, detail: 'Wikidata answered, but not with JSON' };
+            // An item Wikidata does not have (deleted, never existed): no picture.
+            if (d.error) break;
+            const f = _mbPopClaimFile(d, prop);
+            if (f) return { ok: true, data: { images: [_eiWikidataImage(f, prop)], file: f, from: prop, item } };
+        }
+        return { ok: true, data: { images: [], file: '', from: '', item } };
     }
 
     /**
@@ -56743,7 +56933,7 @@
         Promise.resolve(_rgIdbGet(key, _MB_POP_IMG_VERSION)).then((rec) => {
             if (!rec || !rec.data) return;
             _mbPopImgPeek.set(key, rec.data);
-            if (rec.data.file && repaint) repaint();
+            if ((rec.data.images || []).length && repaint) repaint();
         }, () => {});
     }
 
@@ -56761,22 +56951,63 @@
     }
 
     /**
-     * The card's picture, 64 px beside the facts, '' when none is known.
+     * The card's picture, 64 px beside the facts, '' when none is known: the
+     * first that loads, "+N" for the others (a card never asks: only what a
+     * window or an earlier page load put in memory or IndexedDB). A picture
+     * not yet known to load is checked first (an `<img>`, as version 1's
+     * Commons thumbnail was), and the card repaints once all are known.
      * @param {object} t
+     * @param {?function(): void} [repaint] - The card's.
      * @returns {string}
      */
-    function _mbPopCardPicture(t) {
+    function _mbPopCardPicture(t, repaint) {
         if (!_mbPopImgOn(t)) return '';
         const rec = _mbPopImageRecord(t);
-        if (!rec || !rec.file) return '';
-        return `<div class="mb-pop-pic"><img src="${_rgEsc(_mbPopImgUrls(rec.file).thumb)}" alt="" referrerpolicy="no-referrer"></div>`;
+        const images = (rec && rec.images) || [];
+        if (images.some(im => _eiLoadState.get(im.src) !== 'ok' && _eiLoadState.get(im.src) !== 'bad')) {
+            _eiProbeAll(images, () => { if (repaint) repaint(); });
+        }
+        const ok = images.filter(im => _eiLoadState.get(im.src) === 'ok');
+        if (!ok.length) return '';
+        return `<div class="mb-pop-pic"><img src="${_rgEsc(ok[0].thumb)}" alt="" referrerpolicy="no-referrer">` +
+            `${ok.length > 1 ? `<span class="mb-pop-pic-more">+${ok.length - 1}</span>` : ''}</div>`;
     }
 
     /**
-     * The window's picture for its CURRENT state: a loading line, the
-     * failure with "Try again" (⟳), nothing when there is none, else the
-     * picture, which opens the artwork viewer (`_dpArtViewerClick()`), with
-     * where it came from.
+     * Which picture of an entity's window is the large one (B4: a click on a
+     * thumbnail of the strip picks it), by window target key.
+     * @type {Map<string, number>}
+     */
+    const _eiWinPick = new Map();
+
+    /**
+     * A plain click on a thumbnail of a window's picture strip: that picture
+     * becomes the large one (the window repaints). A click on the large one
+     * is the artwork viewer's (`_dpArtViewerClick()`), which steps through
+     * every picture: they are all `data-mb-artv-ext` links, in order.
+     *
+     * @param {MouseEvent} e
+     * @returns {boolean} Whether it was a thumbnail's click.
+     */
+    function _eiWinPickClick(e) {
+        if (e.button !== 0 || e.ctrlKey || e.shiftKey || e.altKey || e.metaKey || !(e.target instanceof Element)) return false;
+        const a = e.target.closest('a[data-mb-ei-pick]');
+        if (!a || !_dpDialog.target) return false;
+        e.preventDefault();
+        _eiWinPick.set(_dpDialog.target.key, Number(a.dataset.mbEiPick));
+        if (_dpDialog.repaint) _dpDialog.repaint();
+        return true;
+    }
+
+    /**
+     * The window's picture for its CURRENT state (mockup B4, 2026-10-29): a
+     * loading line, the failure with "Try again" (⟳), nothing when there is
+     * none, else the chosen picture large, where it came from ("logo link ·
+     * seeklogo.com · 2 / 4"), a strip of every picture that loads (a click
+     * picks one) and a "didn't load" line naming the links that do not.
+     * Every picture is a `data-mb-artv-ext` link, so a click on the large one
+     * opens the viewer on all of them. A picture not yet probed is left out
+     * until its probe repaints the window.
      * @param {object} t
      * @returns {string}
      */
@@ -56790,13 +57021,45 @@
                 '<p><button type="button" class="mb-dp-retry">⟳ Try again</button></p>';
         }
         const rec = s.data || {};
-        if (!rec.file) return '';
-        const u = _mbPopImgUrls(rec.file);
-        const from = rec.from === 'P18' || rec.from === 'P154' ? ` · from Wikidata ${rec.item} (${rec.from === 'P154' ? 'logo' : 'image'})` : '';
-        return `<figure class="mb-pop-xpic"><a href="${_rgEsc(u.large)}" target="_blank" rel="noopener noreferrer" data-mb-artv-ext="0" ` +
-            `data-mb-artv-page="${_rgEsc(u.page)}"><img class="mb-dp-xcover" src="${_rgEsc(u.thumb)}" alt="${_rgEsc(rec.file)}" ` +
-            `referrerpolicy="no-referrer"></a><figcaption class="mb-dp-xsub"><a href="${_rgEsc(u.page)}" target="_blank" ` +
-            `rel="noopener noreferrer">Wikimedia Commons</a> · ${_rgEsc(rec.file)}${_rgEsc(from)}</figcaption></figure>`;
+        const images = rec.images || [];
+        if (!images.length) return '';
+        const key = t.key;
+        let waiting = 0;
+        images.forEach((im) => {
+            if (_eiLoadState.get(im.src) === 'ok' || _eiLoadState.get(im.src) === 'bad') return;
+            waiting++;
+            _eiProbe(im.src, () => {
+                if (_dpDialog.target && _dpDialog.target.key === key && _dpDialog.repaint) _dpDialog.repaint();
+            });
+        });
+        const ok = images.filter(im => _eiLoadState.get(im.src) === 'ok');
+        const bad = images.filter(im => _eiLoadState.get(im.src) === 'bad');
+        const badHtml = bad.length ? `<details class="mb-ei-bad"><summary>${bad.length} picture link${bad.length === 1 ? '' : 's'} did not load</summary><ul>` +
+            bad.map(im => `<li><a href="${_rgEsc(im.url)}" target="_blank" rel="noopener noreferrer">${_rgEsc(im.url)}</a>` +
+                `${/^http:/i.test(im.url) ? ' <span class="mb-rg-dim">(http only: an https page cannot show it)</span>' : ''}</li>`).join('') +
+            '</ul></details>' : '';
+        if (!ok.length) {
+            return waiting ? '<div class="mb-dp-xsub mb-pop-xpic-wait"><span class="mb-dp-spin">◌</span> Loading the pictures…</div>' : badHtml;
+        }
+        const pick = Math.min(Math.max(0, _eiWinPick.get(key) || 0), ok.length - 1);
+        const cur = ok[pick];
+        const link = (im, i, inner, extra = '') => `<a href="${_rgEsc(im.large)}" target="_blank" rel="noopener noreferrer" data-mb-artv-ext="${i}"` +
+            `${im.page ? ` data-mb-artv-page="${_rgEsc(im.page)}"` : ''}${extra}>${inner}</a>`;
+        const img = (im, cls) => `<img class="${cls}" src="${_rgEsc(im.thumb)}" alt="${_rgEsc(_eiOrigin(im))}" referrerpolicy="no-referrer">`;
+        // A Commons file as version 1 named it ("Wikimedia Commons · file",
+        // "· from Wikidata Q… (logo)" when Wikidata named it); a link by its
+        // kind and host.
+        const where = im => (im.file
+            ? `<a href="${_rgEsc(im.page)}" target="_blank" rel="noopener noreferrer">Wikimedia Commons</a> · ${_rgEsc(im.file)}` +
+                (im.prop ? ` · from Wikidata ${_rgEsc(rec.item)} (${im.prop === 'P154' ? 'logo' : 'image'})` : '')
+            : `<a href="${_rgEsc(im.url)}" target="_blank" rel="noopener noreferrer">${_rgEsc(_eiOrigin(im))}</a>`);
+        return '<figure class="mb-pop-xpic mb-ei-win">' + link(cur, pick, img(cur, 'mb-dp-xcover')) +
+            `<figcaption class="mb-dp-xsub"><span>${where(cur)}</span>` +
+            `${ok.length > 1 ? `<span class="mb-ei-pos">${pick + 1} / ${ok.length}</span>` : ''}</figcaption>` +
+            (ok.length > 1 ? '<div class="mb-ei-strip" role="group" aria-label="Pictures">' + ok.map((im, i) => link(im, i, img(im, 'mb-ei-thumb'),
+                ` data-mb-ei-pick="${i}" aria-current="${i === pick}" aria-label="Picture ${i + 1}: ${_rgEsc(_eiOrigin(im))}"`)).join('') + '</div>' : '') +
+            (waiting ? '<div class="mb-dp-xsub"><span class="mb-dp-spin">◌</span> Checking more pictures…</div>' : '') +
+            badHtml + '</figure>';
     }
 
     /**
@@ -83052,6 +83315,10 @@ a { color: #1565c0; }`;
     // The sidebar picture's hover card and viewer (docs/claude/sidebar.md).
     // MusicBrainz adds the picture after load, so this only starts watching.
     _sbInitPicture();
+
+    // Every picture of the entity's links beside the name (sa_entity_images,
+    // 2026-10-29): starts a turn later.
+    _eiInitPage();
 
     // "Play here" tiles under the sidebar's YouTube links and after the
     // annotation's (org/youtube.org, decision 2; sa_yt_play_in_place).
@@ -114115,6 +114382,25 @@ a { color: #1565c0; }`;
             .mb-sb-avatar img { display: block; width: 100%; height: 100%; object-fit: cover; }
             .mb-sb-avatar.mb-sb-avatar-contain { background: #fff; }
             .mb-sb-avatar.mb-sb-avatar-contain img { object-fit: contain; }
+            /* The pictures of the entity's links beside the name (_eiAvatar(),
+               mockup B2, 2026-10-29): stacked in one box, fading, fitted whole
+               on white (a logo is often wide); the arrows inside its edges on
+               hover, the dots just under it. */
+            .mb-ei-avatar { position: relative; overflow: visible; background: #fff; }
+            .mb-ei-avatar .mb-ei-clip { position: absolute; inset: 0; overflow: hidden; border-radius: 2px; }
+            .mb-ei-avatar .mb-ei-clip img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; transition: opacity 0.9s ease; }
+            .mb-ei-avatar .mb-ei-arr { position: absolute; top: 50%; z-index: 1; width: 12px; height: 20px; padding: 0; transform: translateY(-50%);
+                border: 0; border-radius: 2px; background: rgba(43, 38, 34, 0.78); color: #fbf8f1; font: 12px/20px system-ui, sans-serif;
+                cursor: pointer; opacity: 0; transition: opacity 0.15s; }
+            .mb-ei-avatar .mb-ei-prev { left: 0; }
+            .mb-ei-avatar .mb-ei-next { right: 0; }
+            .mb-ei-avatar:hover .mb-ei-arr, .mb-ei-avatar:focus-within .mb-ei-arr { opacity: 1; }
+            .mb-ei-avatar .mb-ei-dots { position: absolute; left: 50%; bottom: -7px; display: flex; gap: 2px; transform: translateX(-50%); pointer-events: none; }
+            .mb-ei-avatar .mb-ei-dots i { width: 4px; height: 4px; border-radius: 50%; background: #c9bfae; }
+            .mb-ei-avatar .mb-ei-dots i.mb-ei-on { background: #2b2622; }
+            @media (prefers-reduced-motion: reduce) {
+                .mb-ei-avatar .mb-ei-clip img, .mb-ei-avatar .mb-ei-arr { transition: none; }
+            }
         `);
         st.id = 'mb-sb-pic-style';
     }
@@ -114325,15 +114611,306 @@ a { color: #1565c0; }`;
             if (cover) _sbWireCover(cover);
             return;
         }
+        // zabe's script shows one of its pictures and hides the others
+        // (`hidden` on its div.picture): the one shown. A picture it cannot
+        // wire (not a Commons file: a logo link) keeps the watch going
+        // instead of ending it, so a Commons picture arriving later is still
+        // wired (2026-10-29; before, the first img found ended the watch).
         const find = () => {
-            const img = sidebar.querySelector('.entity-image .picture img, .commons-image .picture img, :scope > .picture img');
-            if (img && (img.currentSrc || img.src)) { _sbWirePicture(img); return true; }
+            const img = sidebar.querySelector('.entity-image .picture:not([hidden]) img, .commons-image .picture img, :scope > .picture img');
+            if (img && (img.currentSrc || img.src)) {
+                _sbWirePicture(img);
+                return !!img.dataset.mbSbPic;
+            }
             return false;
         };
         if (find()) return;
         const mo = new MutationObserver(() => { if (find()) { mo.disconnect(); clearTimeout(timer); } });
         mo.observe(sidebar, { childList: true, subtree: true, attributes: true, attributeFilter: ['src'] });
         const timer = setTimeout(() => mo.disconnect(), 15000);
+    }
+
+    // ── The entity's pictures beside the name (sa_entity_images, 2026-10-29) ──
+    // Every picture of the entity's links (`_eiImagesFrom()`), which
+    // MusicBrainz itself does not show, beside the name: one, or several
+    // fading from one to the next (mockup B2,
+    // https://claude.ai/artifact/BL4JPmGMBzfhT7yGKepiBr). The links come from
+    // the preview window's own lookup (`_mbPopLookup(t, 'url-rels')`: same key,
+    // same IndexedDB record), so a page and a window ask once between them;
+    // with zabe's "MusicBrainz Entity Images" userscript on the page, its
+    // pictures are read instead (`div.entity-image`, the user's consent of
+    // 2026-10-11 covers reading its img addresses) and nothing is asked. A
+    // picture is shown only once it is known to load (`_eiProbeAll()`). It
+    // takes the place of the single sidebar copy (`_sbHeaderCopy()`); both
+    // carry `.mb-sb-avatar`, so neither adds a second.
+
+    /**
+     * The entity of this page whose pictures the heading may show: an artist,
+     * label, place, series, instrument or area, on any of its tabs; null
+     * elsewhere (a release's, release group's or event's heading shows its
+     * cover, `_sbWireCover()`).
+     * @returns {?{type: string, id: string}}
+     */
+    function _eiPageEntity() {
+        const m = location.pathname.match(/^\/(artist|label|place|series|instrument|area)\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})(?:\/|$)/i);
+        return m ? { type: m[1], id: m[2].toLowerCase() } : null;
+    }
+
+    /**
+     * Starts the heading's pictures at init: MusicBrainz pages only, with
+     * `sa_entity_images`, the sidebar picture and its copy beside the name on.
+     * Everything else waits a turn: this runs at init, before the end of the
+     * file is evaluated (TDZ).
+     * @returns {void}
+     */
+    function _eiInitPage() {
+        const S = Lib.settings;
+        const ent = _foreignHost ? null : _eiPageEntity();
+        const sidebar = document.getElementById('sidebar');
+        if (!ent || !sidebar) return;
+        if (S.sa_entity_images === false || S.sa_sidebar_picture === false || S.sa_sidebar_picture_in_header === false) {
+            _eiDecided(sidebar, 'off');
+            return;
+        }
+        setTimeout(() => _eiStart(ent, sidebar), 0);
+    }
+
+    /**
+     * Records on the sidebar where the heading's pictures came from
+     * (`data-mb-ei`): `known` (the links were in memory or IndexedDB), `zabe`
+     * (zabe's pictures), `asked` (one url-rels lookup), `off`. For a reader
+     * of the page and the specs, which wait for it instead of for time.
+     * @param {HTMLElement} sidebar
+     * @param {string} how
+     * @returns {void}
+     */
+    function _eiDecided(sidebar, how) {
+        sidebar.dataset.mbEi = how;
+    }
+
+    /**
+     * Finds the entity's pictures, asking as little as possible: the links
+     * already in memory or IndexedDB (a window or an earlier page asked
+     * them) at once; else zabe's pictures, if they arrive within
+     * `_EI_ZABE_WAIT_MS`; else one url-rels lookup (`_mbWsLoad()`, the
+     * MusicBrainz rate gate).
+     * @param {{type: string, id: string}} ent
+     * @param {HTMLElement} sidebar
+     * @returns {void}
+     */
+    function _eiStart(ent, sidebar) {
+        const lookup = _mbPopLookup(ent, 'url-rels');
+        const fromRels = () => {
+            const st = _mbPop.get(lookup.key);
+            if (!st || st.status !== 'done') return false;
+            _eiShow(ent, _eiImagesFrom((st.data && st.data.relations) || []));
+            return true;
+        };
+        if (fromRels()) {
+            _eiDecided(sidebar, 'known');
+            return;
+        }
+        const zabe = () => Array.from(sidebar.querySelectorAll('.entity-image .picture img'));
+        Promise.resolve(_rgIdbGet(lookup.key, _MB_POP_IDB_VERSION)).catch(() => null).then((rec) => {
+            if (rec && rec.data) {
+                _eiDecided(sidebar, 'known');
+                _eiShow(ent, _eiImagesFrom(rec.data.relations || []));
+                return;
+            }
+            let done = false;
+            const fromZabe = () => {
+                const imgs = zabe().filter(i => i.getAttribute('src'));
+                if (done || !imgs.length) return false;
+                done = true;
+                _eiDecided(sidebar, 'zabe');
+                _eiShow(ent, _eiFromZabe(sidebar, imgs));
+                return true;
+            };
+            if (fromZabe()) return;
+            const mo = new MutationObserver(() => {
+                if (fromZabe()) {
+                    mo.disconnect();
+                    clearTimeout(timer);
+                }
+            });
+            mo.observe(sidebar, { childList: true, subtree: true });
+            const timer = setTimeout(() => {
+                mo.disconnect();
+                if (done) return;
+                done = true;
+                _eiDecided(sidebar, 'asked');
+                _mbWsLoad(lookup.key, lookup.url, { repaint: fromRels });
+            }, _EI_ZABE_WAIT_MS);
+        });
+    }
+
+    /**
+     * zabe's pictures as `_eiImagesFrom()`'s: a Commons thumbnail (its
+     * api.wikimedia.org answer) as that file, anything else as its address;
+     * the kind from its selector's option ("logo relationship").
+     * @param {HTMLElement} sidebar
+     * @param {HTMLImageElement[]} imgs
+     * @returns {Array<Object>}
+     */
+    function _eiFromZabe(sidebar, imgs) {
+        const opts = Array.from(sidebar.querySelectorAll('.entity-image select option'));
+        const seen = new Set();
+        return imgs.map((img, i) => {
+            const src = img.getAttribute('src');
+            const type = (/^(\w+) relationship$/.exec((opts[i] && opts[i].textContent) || '') || [])[1] || 'image';
+            const file = _sbCommonsFile(src);
+            if (file) {
+                const u = _mbPopImgUrls(file);
+                return { src: u.thumb, thumb: u.thumb, large: u.large, page: u.page, url: u.page, type, file, host: 'commons.wikimedia.org' };
+            }
+            let host;
+            try {
+                host = new URL(src, location.href).hostname;
+            } catch (_) {
+                return null;
+            }
+            return { src, thumb: src, large: src, page: '', url: src, type, file: '', host };
+        }).filter(im => im && !seen.has(im.src) && seen.add(im.src));
+    }
+
+    /**
+     * Shows the pictures that load beside the name; nothing when none does.
+     * @param {{type: string, id: string}} ent
+     * @param {Array<Object>} images
+     * @returns {void}
+     */
+    function _eiShow(ent, images) {
+        if (!images.length) return;
+        _eiProbeAll(images, (ok) => {
+            if (ok.length) _eiAvatar(ent, ok);
+        });
+    }
+
+    /**
+     * The pictures beside the name: one still, or several in one 34 px box
+     * fading from one to the next every `_EI_ROTATE_MS` (not while the
+     * pointer or focus is on it, the tab is hidden, or motion is reduced),
+     * ‹ › on hover, dots for how many. A click (Enter, Space) opens them all
+     * in the viewer at the one shown; ← → step. Replaces the single copy
+     * `_sbHeaderCopy()` made, keeping its picture when the links lack it (an
+     * instrument's IROMBOOK drawing).
+     * @param {{type: string, id: string}} ent
+     * @param {Array<Object>} list
+     * @returns {void}
+     */
+    function _eiAvatar(ent, list) {
+        const h1 = headerContainer && headerContainer.tagName === 'H1' ? headerContainer : document.querySelector('#content h1, h1');
+        if (!h1 || h1.querySelector('.mb-ei-avatar')) return;
+        _sbEnsurePictureStyle();
+        const old = h1.querySelector('.mb-sb-avatar');
+        const oldSrc = old && old.querySelector('img') ? old.querySelector('img').getAttribute('src') : '';
+        const oldFile = oldSrc ? _sbCommonsFile(oldSrc) : '';
+        if (oldSrc && !list.some(im => im.src === oldSrc || (oldFile && im.file === oldFile))) {
+            list = [{ src: oldSrc, thumb: oldSrc, large: oldSrc, page: '', url: oldSrc, type: 'image', file: oldFile, host: '' }].concat(list);
+        }
+        const many = list.length > 1;
+        const box = document.createElement('span');
+        box.className = `mb-sb-avatar mb-ei-avatar${many ? ' mb-ei-rot' : ''}`;
+        box.innerHTML = '<span class="mb-ei-clip">' + list.map((im, i) =>
+            `<img src="${_rgEsc(im.thumb)}" alt="" referrerpolicy="no-referrer" style="opacity:${i ? 0 : 1}">`).join('') + '</span>' +
+            (many ? '<button type="button" class="mb-ei-arr mb-ei-prev" tabindex="-1" aria-label="Previous picture">‹</button>' +
+                '<button type="button" class="mb-ei-arr mb-ei-next" tabindex="-1" aria-label="Next picture">›</button>' +
+                `<span class="mb-ei-dots" aria-hidden="true">${list.map((_, i) => `<i${i ? '' : ' class="mb-ei-on"'}></i>`).join('')}</span>` : '');
+        box._eiList = list;
+        box.dataset.mbEiI = '0';
+        box.dataset.mbttFn = 'ei-pic';
+        box.setAttribute('role', 'button');
+        box.tabIndex = 0;
+        const type = _sbEntityType();
+        box.setAttribute('aria-label', many ? `Open the ${type}'s ${list.length} pictures` : `Open the ${type} picture`);
+        if (old) old.replaceWith(box);
+        else h1.prepend(box);
+        box.addEventListener('click', (e) => {
+            if (e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey) return;
+            e.preventDefault();
+            e.stopPropagation();
+            const arr = e.target.closest('.mb-ei-arr');
+            if (arr) _eiStep(box, arr.classList.contains('mb-ei-prev') ? -1 : 1);
+            else _eiOpenViewer(box);
+        });
+        box.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                _eiOpenViewer(box);
+            } else if (many && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
+                e.preventDefault();
+                _eiStep(box, e.key === 'ArrowLeft' ? -1 : 1);
+            }
+        });
+        if (!many) return;
+        let held = false;
+        ['mouseenter', 'focusin'].forEach(ev => box.addEventListener(ev, () => { held = true; }));
+        ['mouseleave', 'focusout'].forEach(ev => box.addEventListener(ev, () => { held = false; }));
+        const still = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        if (still) return;
+        const timer = setInterval(() => {
+            if (!box.isConnected) {
+                clearInterval(timer);
+                return;
+            }
+            if (!held && !document.hidden) _eiStep(box, 1);
+        }, _EI_ROTATE_MS);
+    }
+
+    /**
+     * Shows another picture of the box beside the name: `delta` steps on,
+     * round the list.
+     * @param {HTMLElement} box - `.mb-ei-avatar`.
+     * @param {number} delta
+     * @returns {void}
+     */
+    function _eiStep(box, delta) {
+        const n = box._eiList.length;
+        const i = (((Number(box.dataset.mbEiI) || 0) + delta) % n + n) % n;
+        box.dataset.mbEiI = String(i);
+        box.querySelectorAll('.mb-ei-clip img').forEach((img, k) => { img.style.opacity = k === i ? '1' : '0'; });
+        box.querySelectorAll('.mb-ei-dots i').forEach((d, k) => d.classList.toggle('mb-ei-on', k === i));
+    }
+
+    /**
+     * Opens every picture beside the name in the artwork viewer, at the one
+     * shown; a picture's bar links its Commons page or its link.
+     * @param {HTMLElement} box - `.mb-ei-avatar`.
+     * @returns {void}
+     */
+    function _eiOpenViewer(box) {
+        const images = box._eiList.map(im => ({
+            image: im.large, thumbnails: { 250: im.thumb }, types: [], external: true,
+            comment: [_eiOrigin(im), im.file].filter(Boolean).join(' · '),
+            pageUrl: im.page || im.url, pageLabel: im.file ? 'Open on Commons' : 'Open the link',
+        }));
+        _SB_PIC_CTX.imagesCache.clear();
+        _SB_PIC_CTX.imagesCache.set('sidebar', images);
+        _artViewerOpen(_SB_PIC_CTX, 'sidebar', null, Number(box.dataset.mbEiI) || 0,
+            { opener: box, title: `${_cachedEntityName || document.title} — ${_sbEntityType()} pictures` });
+    }
+
+    /**
+     * The hover card of the pictures beside the name (`data-mbtt-fn="ei-pic"`):
+     * the picture shown, which of how many, where it came from. Built from
+     * what is shown: nothing is asked.
+     * @param {HTMLElement} el
+     * @returns {?string}
+     */
+    function _eiCardHtml(el) {
+        const box = el.closest('.mb-ei-avatar');
+        const list = box && box._eiList;
+        if (!list || !list.length) return null;
+        const i = Number(box.dataset.mbEiI) || 0;
+        const im = list[i] || list[0];
+        const type = _sbEntityType();
+        return `<div style="max-width:${_artNumSetting('sa_caa_tip_image_size', 200, 40) + 20}px;min-width:200px;">` +
+            `<div class="mb-tt-title">${_rgEsc(type.charAt(0).toUpperCase() + type.slice(1))} picture${list.length > 1 ? ` ${i + 1} of ${list.length}` : ''}</div>` +
+            `<img class="mb-art-card-preview" src="${_rgEsc(im.thumb)}" alt="" referrerpolicy="no-referrer" style="background:#ffffff;">` +
+            `<div class="mb-tt-body" style="display:flex;gap:4px;flex-wrap:wrap;"><span class="mb-tt-pill">${_rgEsc(_eiOrigin(im))}</span></div>` +
+            (im.file ? `<div class="mb-tt-comment">${_rgEsc(im.file)}</div>` : '') +
+            '<div class="mb-tt-rule"></div>' +
+            `<div class="mb-tt-foot">Click: viewer${list.length > 1 ? ' · ‹ › or ← →: the others' : ''}</div></div>`;
     }
 
     /**
@@ -146918,6 +147495,7 @@ a { color: #1565c0; }`;
                 case 'dg-img': return _fiCardHtml(el);
                 case 'fgal': return _fgalTipHtml(el);
                 case 'sb-pic': return _sbPicCardHtml(el);
+                case 'ei-pic': return _eiCardHtml(el);
                 case 'sb-cover': return _sbCoverCardHtml(el);
                 default: return null;
             }

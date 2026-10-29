@@ -256,6 +256,47 @@ settle, not a sleep. There are 14 `picture:` mutations in
 first on the final page" half has no mutation: no code keeps it there, it
 holds because nothing rewrites the h1.
 
+## The entity's pictures beside the name (`_eiInitPage()`, `sa_entity_images`)
+
+2026-10-29, mockup B2 (https://claude.ai/artifact/BL4JPmGMBzfhT7yGKepiBr).
+vzell: zabe's "MusicBrainz Entity Images" userscript (manifest id
+`zabe-entity-image`) shows a label's logo links in the sidebar with a
+drop-down; show the same pictures where this script already shows one.
+
+- **Which pages:** an artist, label, place, series, instrument or area page,
+  any tab (`_eiPageEntity()`); MusicBrainz only; needs `sa_sidebar_picture`
+  and `sa_sidebar_picture_in_header` too. A release's, release group's or
+  event's heading shows its cover (`_sbWireCover()`).
+- **What is asked, least first** (`_eiStart()`): the url-rels in memory
+  (`_mbPop`) or IndexedDB under the WINDOW's own key
+  (`_mbPopLookup(t, 'url-rels')`): nothing; else zabe's `div.entity-image`
+  pictures if they arrive within `_EI_ZABE_WAIT_MS` (2.5 s; its own request
+  comes about a second after load): nothing; else one `_mbWsLoad()` of
+  that key. The decision is written to `#sidebar[data-mb-ei]`
+  (`known`/`zabe`/`asked`/`off`, `_eiDecided()`), which specs wait for
+  instead of sleeping. **The page never writes the window's picture
+  RECORD** (`pop:img:…`): a heading that found nothing in the links must not
+  stand in for the window's Wikidata answer.
+- **zabe's pictures** (`_eiFromZabe()`): a Commons thumbnail (its
+  api.wikimedia.org answer) becomes that file; the kind comes from its
+  select's option text ("logo relationship").
+- **The box** (`_eiAvatar()`): every picture that loads (`_eiProbeAll()`),
+  stacked in the `.mb-sb-avatar` box (it REPLACES `_sbHeaderCopy()`'s single
+  copy, keeping that copy's picture when the links lack it — an IROMBOOK
+  drawing — so there is never a second box), fading every `_EI_ROTATE_MS`
+  (6 s) unless the pointer or focus is on it, the tab is hidden or motion is
+  reduced; ‹ › on hover and ← → step (`_eiStep()`), dots under it; a click,
+  Enter or Space opens all of them in the viewer at the one shown
+  (`_eiOpenViewer()`, `_SB_PIC_CTX`); hover card `ei-pic` (`_eiCardHtml()`).
+  The `_eiList` property lives on the h1's box, which is never cloned.
+- **Also fixed in `_sbInitPicture()`:** it takes zabe's SHOWN picture
+  (`.picture:not([hidden])`), and a picture it cannot wire (a logo link)
+  no longer ends its watch.
+- **Fixtures:** off in `FIXTURE_SETTINGS_OVERRIDE` (a request on every
+  entity page); `entity-images.spec.js` seeds it back on, on the Columbia
+  label page with the CBS label's real url-rels
+  (`ws2-images-label-cbs.json`).
+
 ## "🗂 Sidebar as tables"
 
 A button, not a part of any other render. You chose that over mixing the groups
@@ -391,10 +432,16 @@ is off (above), so it answers `{"image": null}` (DEBUG-NOTES.md, 2026-10-11,
 two entries). The popup engine does in the browser what that server code would
 do, and only on Space.
 
-**What is asked, in order** (`_mbPopImageLoad(t, relations, again, repaint)`):
-1. An `image` or `logo` relationship to `commons.wikimedia.org/wiki/File:…`
-   (`_mbPopCommonsFile()`) gives the file. No request. Bruce Springsteen and
-   Columbia both have one.
+**What is asked, in order** (`_mbPopImageLoad(t, relations, again, repaint)`,
+`_mbPopImageRecordFor()`):
+1. **Every picture of the links** (since 2026-10-29, record version 2,
+   `_eiImagesFrom()`; version 1 took the first Commons `image`/`logo` link
+   only): any Commons `File:` link first, then the `image`, `logo` and
+   `poster` links in MusicBrainz's order, an http one tried on https. No
+   request. The record is `{images, file, from, item}`; `file`/`from` keep
+   version 1's meaning for the first picture. Probe:
+   `scripts/probe-entity-image-rels.py` (CBS label: six `logo` links, one
+   http-only; Bruce Springsteen and Capital One Arena: a Commons `image`).
 2. Else the `wikidata` relationship's item: one `wbgetclaims` per property of
    `_MB_POP_IMG_PROPS` until one names a file.
    - An artist or a place asks P18 (image), then P154 (logo). **A label asks
@@ -423,11 +470,21 @@ card is then a grid (`_mbPopCardShell()`'s `aside`, `spec.cardAside`): a
 card lookup carries the Wikidata link, and still starts nothing.
 
 **The window.** Under the title (`_mbPopWindowPicture()`): a ◌ line while
-loading, nothing when there is none, the failure with "Try again", else the
-picture as an `a[data-mb-artv-ext]` with `data-mb-artv-page`. A click goes
-through `_dpArtViewerClick()`, which now passes that page as the viewer's
-"Open on Commons" link (an optional field: other images are unchanged). The
-caption names the file and, for P18/P154, the item.
+loading, nothing when there is none, the failure with "Try again", else
+(mockup B4, 2026-10-29) the chosen picture large, its caption, a strip of every
+picture that loads and a "N picture links did not load" `details` naming the
+others (an http one said to be http only). **A picture is shown only once it
+is known to load** (`_eiProbe()`: one no-referrer `Image()` per address,
+remembered in `_eiLoadState` for the page load; the window repaints as each
+answers). Every picture is an `a[data-mb-artv-ext]` (with `data-mb-artv-page`
+for a Commons file), so a click on the large one opens the viewer on ALL of
+them; a plain click on a thumbnail (`a[data-mb-ei-pick]`, `_eiWinPickClick()`,
+first in the scroll area's click chain) picks it instead (`_eiWinPick`, by
+target key). The caption keeps version 1's words for a Commons file
+("Wikimedia Commons · file", "· from Wikidata Q… (logo)"), a link is "logo
+link · host". The card shows the first that loads with "+N"
+(`.mb-pop-pic-more`); `cardAside(t, repaint)` repaints it once its probes
+answer.
 
 **Addresses.** `commons.wikimedia.org/wiki/Special:FilePath/<file>?width=330`
 (the card and the window) and `?width=1280` (the viewer). They redirect to
@@ -438,7 +495,10 @@ thumbnail again, from the browser's cache.
 **Setting.** `sa_pop_mb_image` (default on), after the touch twins. Not a
 `_popSettingOn()` twin: it is part of `sa_pop_mb`, not a source.
 
-**Specs.** `pop-mb-image.spec.js` (8) and `pop-mb-image.mobile.spec.js` (1).
+**Specs.** `pop-mb-image.spec.js` (9: the ninth is the CBS label's six
+logo links, four loading, through `routeLogos()`) and
+`pop-mb-image.mobile.spec.js` (1). Mutations of the version 2 parts:
+`scripts/mutations/entity-images.json`.
 Wikidata is the GM stub's `__gmXhrResponses`; Commons a local PNG.
 `popup-mb.spec.js` routes the Wikimedia hosts too, since its artist, label and
 place windows now show the Commons-relationship picture. A trap: the window's

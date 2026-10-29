@@ -1001,6 +1001,18 @@ close every sidebar section; the headings of the main page are left alone.
   sidebar's cover still opens MusicBrainz's own window.
   Switches: *Sidebar picture: hover card and viewer*, *Sidebar picture beside
   the name*.
+- **Every picture of the entity's links.** An artist, label, place, series,
+  instrument or area often links pictures MusicBrainz itself does not show: a
+  label's logos, an artist's photo on Wikimedia Commons, a poster. The script
+  shows them in the copy at the start of the heading: one picture, or several
+  that fade from one to the next every 6 seconds (not while you point at it).
+  Point at it for ‹ › (or press ← →) and the card of the one shown; a click
+  opens all of them in the viewer. A picture link that does not load is left
+  out. To find them the script asks MusicBrainz once for the entity's links,
+  a few seconds after the page opens, and remembers the answer (the preview
+  window uses the same one); with the *MusicBrainz Entity Images* userscript
+  installed it uses that script's pictures and asks nothing. Switch: *Entity
+  pictures from its links*.
 - **The picture in previews.** The link previews of an artist, a label or a
   place show its picture too, once you have pressed Space on one: see
   *Link previews on MusicBrainz* under [Page-specific
@@ -2513,11 +2525,14 @@ userscript lists that host, so Tampermonkey does not ask first).
   pages as a list with a filter and the three-way sort: page, snippet (the
   words searched for marked) and when it was last updated, each page opening
   in the window. An **artist, label or place** window shows its
-  **picture** under the name: the Wikimedia Commons file MusicBrainz links as
-  its image or logo, else the one its Wikidata item names (one or two small
-  requests to Wikidata, a label's logo first). It is asked only here, never
-  for a card; after that the card shows it too, small, beside the facts, also
-  after a reload. Click it for the artwork viewer, with *Open on Commons*.
+  **pictures** under the name: every image, logo and poster MusicBrainz links
+  (Wikimedia Commons files first), else the one its Wikidata item names (one
+  or two small requests to Wikidata, a label's logo first). One is large,
+  with where it comes from; a strip under it shows the others (click one to
+  make it the large one), and a line names the links that did not load. It is
+  asked only here, never for a card; after that the card shows the first too,
+  small, beside the facts, with "+N" for the others, also after a reload.
+  Click the large one for the artwork viewer, on all of them.
   Switch: *Pictures in artist, label and place previews*. A part that could not be loaded says so, with
   **Try again**. Areas are named down from the city, as on MusicBrainz's
   own pages: the window looks up each area above, one per level, and

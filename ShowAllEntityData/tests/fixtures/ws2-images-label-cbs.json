@@ -1,0 +1,210 @@
+{
+  "label-code": 149,
+  "type": "Imprint",
+  "type-id": "b6285b2a-3514-3d43-80df-fcf528824ded",
+  "relations": [
+    {
+      "attribute-ids": {},
+      "attribute-values": {},
+      "target-credit": "",
+      "source-credit": "",
+      "ended": false,
+      "target-type": "url",
+      "attributes": [],
+      "end": null,
+      "begin": null,
+      "direction": "forward",
+      "url": {
+        "resource": "https://www.discogs.com/label/3072",
+        "id": "1387e9bb-4ff2-4bd8-9e31-9de60f262764"
+      },
+      "type": "discogs",
+      "type-id": "5b987f87-25bc-4a2d-b3f1-3618795b8207"
+    },
+    {
+      "url": {
+        "id": "fcde7e63-c526-4835-afb8-37d89edf9b77",
+        "resource": "https://3.bp.blogspot.com/-SgQfKmGIGCo/U3knd_QsNKI/AAAAAAAABeE/MSWrfV016aQ/s0/columbia+eye+logo.jpg=s0?imgmax=0"
+      },
+      "type": "logo",
+      "type-id": "b35f7822-bf3c-4148-b306-fb723c63ee8b",
+      "ended": false,
+      "target-type": "url",
+      "end": null,
+      "attributes": [],
+      "begin": null,
+      "direction": "forward",
+      "source-credit": "",
+      "attribute-ids": {},
+      "attribute-values": {},
+      "target-credit": ""
+    },
+    {
+      "source-credit": "",
+      "target-credit": "",
+      "attribute-values": {},
+      "attribute-ids": {},
+      "type-id": "b35f7822-bf3c-4148-b306-fb723c63ee8b",
+      "url": {
+        "resource": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcR_mJXUHeNeYSLEKgPklGhf0cNeTl_4T8oZ9oQ_dSg12-RKJJCSG9veeJRPNRLXfkyiDEk&usqp=CAU",
+        "id": "9db0d24e-9d12-43ea-9fd4-5c85f7ac4b10"
+      },
+      "type": "logo",
+      "direction": "forward",
+      "begin": null,
+      "target-type": "url",
+      "end": null,
+      "attributes": [],
+      "ended": false
+    },
+    {
+      "ended": false,
+      "begin": null,
+      "target-type": "url",
+      "end": null,
+      "attributes": [],
+      "direction": "forward",
+      "type": "logo",
+      "url": {
+        "resource": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTUdxGVU-dqsIXBaN1R2J-KA3HczGIx2KAsS5KLTgMwt93iXaegmDg7wBiPfOqOWbOx0is&usqp=CAU",
+        "id": "85f534cb-427d-4fd8-88fe-8e9758b13bc3"
+      },
+      "type-id": "b35f7822-bf3c-4148-b306-fb723c63ee8b",
+      "attribute-values": {},
+      "attribute-ids": {},
+      "target-credit": "",
+      "source-credit": ""
+    },
+    {
+      "source-credit": "",
+      "target-credit": "",
+      "attribute-ids": {},
+      "attribute-values": {},
+      "type-id": "b35f7822-bf3c-4148-b306-fb723c63ee8b",
+      "url": {
+        "id": "19def6f8-4d03-4087-85a3-8a67d96ee7b3",
+        "resource": "https://seeklogo.com/images/D/DISCOS_CBS-logo-F718B1BA40-seeklogo.com.png"
+      },
+      "type": "logo",
+      "direction": "forward",
+      "target-type": "url",
+      "attributes": [],
+      "end": null,
+      "begin": null,
+      "ended": false
+    },
+    {
+      "type": "logo",
+      "url": {
+        "resource": "https://www.brandslex.de/img/logos/xl/c/logo-cbs-records-02.png",
+        "id": "bc5d2515-60fa-4dab-997d-72d18bbe69d6"
+      },
+      "type-id": "b35f7822-bf3c-4148-b306-fb723c63ee8b",
+      "begin": null,
+      "target-type": "url",
+      "end": null,
+      "attributes": [],
+      "ended": false,
+      "direction": "forward",
+      "source-credit": "",
+      "attribute-values": {},
+      "attribute-ids": {},
+      "target-credit": ""
+    },
+    {
+      "type-id": "b35f7822-bf3c-4148-b306-fb723c63ee8b",
+      "type": "logo",
+      "url": {
+        "id": "b8f1eba0-6de4-4b2f-8714-2e8645b297c9",
+        "resource": "http://logos-vector.com/images/logo/xxl/1/4/2/142264/DISCOS_CBS_d58ee_450x450.png"
+      },
+      "direction": "forward",
+      "ended": true,
+      "attributes": [],
+      "target-type": "url",
+      "end": null,
+      "begin": null,
+      "source-credit": "",
+      "target-credit": "",
+      "attribute-ids": {},
+      "attribute-values": {}
+    },
+    {
+      "source-credit": "",
+      "attribute-ids": {},
+      "attribute-values": {},
+      "target-credit": "",
+      "type": "purchase for download",
+      "url": {
+        "id": "a9e8bd45-d6f2-48e4-8565-4a709232a309",
+        "resource": "https://www.qobuz.com/gb-en/label/cbs/download-streaming-albums/5119"
+      },
+      "type-id": "dc1a65f4-6458-4f3d-bbb1-57e58668d6e7",
+      "end": null,
+      "target-type": "url",
+      "attributes": [],
+      "begin": null,
+      "ended": false,
+      "direction": "forward"
+    },
+    {
+      "type-id": "cbe05bdd-a877-4cc6-8060-7ba43a2516ef",
+      "type": "streaming",
+      "url": {
+        "id": "a9e8bd45-d6f2-48e4-8565-4a709232a309",
+        "resource": "https://www.qobuz.com/gb-en/label/cbs/download-streaming-albums/5119"
+      },
+      "direction": "forward",
+      "ended": false,
+      "target-type": "url",
+      "attributes": [],
+      "end": null,
+      "begin": null,
+      "source-credit": "",
+      "target-credit": "",
+      "attribute-ids": {},
+      "attribute-values": {}
+    },
+    {
+      "type-id": "75d87e83-d927-4580-ba63-44dc76256f98",
+      "type": "wikidata",
+      "url": {
+        "id": "fc153da3-efb6-4f92-ac9c-12165138155d",
+        "resource": "https://www.wikidata.org/wiki/Q49462460"
+      },
+      "direction": "forward",
+      "begin": null,
+      "target-type": "url",
+      "end": null,
+      "attributes": [],
+      "ended": false,
+      "source-credit": "",
+      "target-credit": "",
+      "attribute-values": {},
+      "attribute-ids": {}
+    }
+  ],
+  "life-span": {
+    "end": "1990-12-31",
+    "begin": "1962-05",
+    "ended": true
+  },
+  "area": {
+    "id": "489ce91b-6658-3307-9877-795b68554c98",
+    "name": "United States",
+    "type-id": null,
+    "disambiguation": "",
+    "type": null,
+    "sort-name": "United States",
+    "iso-3166-1-codes": [
+      "US"
+    ]
+  },
+  "country": "US",
+  "ipis": [],
+  "sort-name": "CBS",
+  "id": "b8d33bec-92cc-40d9-bd92-4eb089b401a9",
+  "name": "CBS",
+  "isnis": [],
+  "disambiguation": "CBS Records’ international imprint from 1962–1990; renamed since 1991 as Columbia"
+}

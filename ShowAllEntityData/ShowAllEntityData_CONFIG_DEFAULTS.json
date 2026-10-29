@@ -2,11 +2,11 @@
   "_meta": {
     "generated_by": "scripts/dump-config-defaults.py",
     "purpose": "Generated artifact. NOTHING in the userscript reads this file. See org/config-handling.org Item 4.",
-    "script_version": "9.99.1483+2026-10-28",
-    "schema_entries": 479,
+    "script_version": "9.99.1495+2026-10-28",
+    "schema_entries": 480,
     "sections": 52,
-    "settings": 427,
-    "settings_with_default": 422,
+    "settings": 428,
+    "settings_with_default": 423,
     "settings_without_default": [
       "sa_default_hidden_columns",
       "sa_rel_other_db_classes",
@@ -15,7 +15,7 @@
       "sa_unicode_char_picker_mappings"
     ],
     "types": {
-      "checkbox": 251,
+      "checkbox": 252,
       "color_picker": 62,
       "number": 53,
       "divider": 52,
@@ -419,6 +419,7 @@
     "sa_enable_uvd_title_series": "Unique-Values Dropdown: Title Series Numbering",
     "sa_enable_uvd_title_style_issues": "Unique-Values Dropdown: Title Style Issues",
     "sa_enable_uvd_title_subtitle": "Unique-Values Dropdown: Title Subtitles",
+    "sa_entity_images": "Entity pictures from its links",
     "sa_event_overview_art_tab": "The \"Event art\" tab opens the viewer",
     "sa_event_overview_event_art": "Show an \"Event art\" section",
     "sa_event_overview_related_series": "Include the related series' own relationships",
@@ -847,6 +848,7 @@
     "sa_enable_uvd_title_series": true,
     "sa_enable_uvd_title_style_issues": true,
     "sa_enable_uvd_title_subtitle": true,
+    "sa_entity_images": true,
     "sa_event_overview_art_tab": true,
     "sa_event_overview_event_art": true,
     "sa_event_overview_related_series": true,

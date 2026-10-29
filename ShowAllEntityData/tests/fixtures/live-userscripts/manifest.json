@@ -182,6 +182,21 @@
                 "Non-visual: /ws/2/url?resource=<discogs url>…&inc=<type>-rels to musicbrainz.org via GM.xmlHttpRequest (75 resources a request, ≥1 s apart, retries on 5xx) — shares MusicBrainz's per-IP rate budget with ShowAllEntityData's own MusicBrainz-column lookups. Caches every answer in page localStorage 'DISCOGS_MBLINKS_CACHE-v3.1' (mblinks.js cache_version 3 + its own '1'; entries '<dgType>/<id>/<mbType>': {timestamp, urls: [{url, ended}]}, 90 days; 'nothing found' stored as an empty list and never trusted). ShowAllEntityData READS that key (read only) for its Discogs MusicBrainz column and as the importer's presence signal (_dgMbImporterPresent()).",
                 "Harness caveats: uses the GM.xmlHttpRequest dot syntax, which tests/support/gmStubs.js does not stub, and '@require lib/logger.js' is a RELATIVE path that injectOne()'s Node fetch cannot load (it rejects) — a harness run needs both fixed first. The run-live-interop pageTypes are musicbrainz.org pages, where this script does nothing; a Discogs run needs --url=https://www.discogs.com/… . Not added to 'kitchen-sink' for that reason (a MusicBrainz-only combination). Simulated for fixture specs by seeding its localStorage key (tests/fixtures/discogs-mb-column.spec.js)."
             ]
+        },
+        {
+            "id": "zabe-entity-image",
+            "file": "entity-image.user.js",
+            "author": "zabe",
+            "version": "2026.8.9",
+            "when": "now",
+            "touches": [
+                "No @run-at (Tampermonkey's default, document-idle), so 'now'. Runs ONCE: no MutationObserver, no interval. @match artist/*, label/*, place/* and series/* on (*.)musicbrainz.org and musicbrainz.eu, so every page UNDER such an entity too (extractEntityFromURL() takes the MBID from anywhere in the URL: /artist/<mbid>/releases runs it as well).",
+                "#sidebar: inserts div.entity-image at its very top (insertAdjacentElement('afterbegin')), one div.picture > img (no alt) per picture; with two or more, every picture but the chosen one gets the `hidden` attribute and a select#entity-image-selector (max-width 218px) follows, one option per picture: '<type> relationship' or 'Wikimedia file'. A change event shows the chosen picture (and console.logs the event). Nothing when the entity has no picture; throws if a page with pictures has no #sidebar.",
+                "Which pictures: the entity's URL relationships of type image, logo or poster (the URL used as the img src as it is, http ones included, so a mixed-content or hot-link-refused picture shows as a broken image: 2 of the 6 CBS label logos, debug/mb-label-CBS-logos-initial.html), plus any commons.wikimedia.org/wiki/File: link, whatever its type. De-duplicated by URL. The SAMBL path (sambl.lioncat6.com, GM_info) is dead code: isSAMBLable() always returns false.",
+                "Reaches OUR code: ShowAllEntityData's sidebar picture (_sbInitPicture(), sa_sidebar_picture, consented 2026-10-11, docs/claude/sidebar.md) watches '.entity-image .picture img' and copies the FIRST such img to the h1 avatar and the viewer, not the one zabe's select shows. Its markup never enters a table.tbl, and nothing of ours is touched by it.",
+                "Non-visual: one same-origin page fetch() of /ws/2/<type>/<mbid>?inc=url-rels&fmt=json per page load (its own 1 request/s queue, shared with nothing of ours), so it adds to MusicBrainz's per-IP rate budget; one GM_xmlhttpRequest to api.wikimedia.org/core/v1/commons/file/<name> per Commons link (@connect api.wikimedia.org), whose thumbnail.url is the img src; console.logs that URL. No storage.",
+                "Harness: classic GM_xmlhttpRequest only (stubbed by tests/support/gmStubs.js); its fetch() of /ws/2 goes to the real musicbrainz.org in a live run. No top-level await."
+            ]
         }
     ],
     "combinations": {
@@ -195,6 +210,7 @@
         "lotheric-instrument-icons-only": ["lotheric-instrument-icons"],
         "majkinetor-isrc-scout-only": ["majkinetor-isrc-scout"],
         "murdos-discogs-importer-only": ["murdos-discogs-importer"],
-        "kitchen-sink": ["jesus2099-supermind", "jesus2099-inline-stuff", "jesus2099-funkey", "right-side-flags-everywhere", "sanojjonas-visualise", "aerozol-nuclear-tags", "wiencek-batch-performance", "lotheric-instrument-icons", "majkinetor-isrc-scout"]
+        "zabe-entity-image-only": ["zabe-entity-image"],
+        "kitchen-sink": ["jesus2099-supermind", "jesus2099-inline-stuff", "jesus2099-funkey", "right-side-flags-everywhere", "sanojjonas-visualise", "aerozol-nuclear-tags", "wiencek-batch-performance", "lotheric-instrument-icons", "majkinetor-isrc-scout", "zabe-entity-image"]
     }
 }

@@ -232,9 +232,10 @@ since org/non-MB-sites.org (2026-10-08), the five link-preview keys
 2026-10-26, the six foreign-site feature keys (`sa_sl_detail_preview`,
 `sa_jl_detail_preview`, `sa_bs_detail_preview`, `sa_bb_detail_preview`,
 `sa_sl_compact_nav`, `sa_dp_window_read_ahead`) and, since org/youtube.org,
-the two YouTube keys (`sa_yt_play_in_place`, `sa_yt_stills`) OFF, and all
-nineteen DEFAULT to true, so any test that counts "changed" settings is off by
-nineteen unless it puts them back —
+the two YouTube keys (`sa_yt_play_in_place`, `sa_yt_stills`) and, since
+2026-10-29, `sa_entity_images` OFF, and all twenty DEFAULT to true, so any
+test that counts "changed" settings is off by twenty unless it puts them
+back —
 `settings-dialog.spec.js`'s `PRISTINE` is what that looks like (derived from
 the override's keys, each seeded `undefined`, which stores nothing). The five
 preview keys are also RETIRED defaults with a `_SETTINGS_MIGRATIONS` entry, so

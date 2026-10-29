@@ -516,7 +516,7 @@ userscript reads that file.
   not exported, never set or blanked by an import, masked in the dialog,
   never logged.
 - A fixture profile is not pristine (`FIXTURE_SETTINGS_OVERRIDE` forces
-  nineteen settings off; a spec that needs a schema default back seeds the key as
+  twenty settings off; a spec that needs a schema default back seeds the key as
   `undefined`).
 
 Full text: `docs/claude/settings-and-config.md`; design history:
@@ -672,7 +672,8 @@ The harness lives under `tests/`; how to run each suite and what it costs:
   the six foreign-site feature keys (`sa_sl_detail_preview`,
   `sa_jl_detail_preview`, `sa_bs_detail_preview`, `sa_bb_detail_preview`,
   `sa_sl_compact_nav`, `sa_dp_window_read_ahead`; default on since 2026-10-26)
-  and the two YouTube keys (`sa_yt_play_in_place`, `sa_yt_stills`) OFF
+  and the two YouTube keys (`sa_yt_play_in_place`, `sa_yt_stills`) and
+  `sa_entity_images` (2026-10-29: a url-rels lookup on entity pages) OFF
   — a "cannot reproduce" means nothing until they are back on. Seeding a key
   as `undefined` in `settingsOverride` un-seeds it (the schema default).
 

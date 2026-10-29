@@ -336,3 +336,63 @@ test.describe('the entity picture in the link previews (sa_pop_mb_image)', () =>
         expect(await wdLog(page)).toEqual([]);
     });
 });
+
+/**
+ * Serves the CBS label's six logo links (tests/fixtures/ws2-images-label-cbs.json,
+ * scripts/probe-entity-image-rels.py, 2026-10-29): four load, one gstatic
+ * thumbnail answers 404 and logos-vector.com (an http link, tried on https)
+ * refuses. Counts the requests by host.
+ * @param {import('@playwright/test').BrowserContext} ctx
+ * @returns {Promise<Object<string, number>>}
+ */
+async function routeLogos(ctx) {
+    const hits = {};
+    await ctx.route(/^https?:\/\/(?:3\.bp\.blogspot\.com|encrypted-tbn0\.gstatic\.com|seeklogo\.com|www\.brandslex\.de|logos-vector\.com)\//, (route) => {
+        const u = new URL(route.request().url());
+        hits[u.hostname] = (hits[u.hostname] || 0) + 1;
+        if (u.hostname === 'logos-vector.com') return route.abort('connectionrefused');
+        if (u.hostname === 'encrypted-tbn0.gstatic.com' && /TUdxGVU/.test(u.search)) return route.fulfill({ status: 404, body: '' });
+        return route.fulfill({ status: 200, contentType: 'image/png', body: PNG });
+    });
+    return hits;
+}
+
+// 2026-10-29 (mockup B4, https://claude.ai/artifact/BL4JPmGMBzfhT7yGKepiBr):
+// every picture of the entity's links, not only a Commons one.
+test.describe('every picture of the links (sa_entity_images, mockup B4)', () => {
+    test('the label\'s six logo links: four that load, large and in a strip; the two that do not, named; a thumbnail picks; the viewer has all four', async ({ page }) => {
+        await routeLogos(page.context());
+        await open(page, { pins: { label: json('ws2-images-label-cbs.json') } });
+        await ctrlHover(page, labelLink(page));
+        await expect(card(page)).toBeVisible();
+        await page.keyboard.press('Space');
+        const fig = dialog(page).locator('.mb-ei-win');
+        await expect(fig.locator('.mb-ei-strip a')).toHaveCount(4);
+        await expect(fig.locator('.mb-ei-pos')).toHaveText('1 / 4');
+        await expect(fig.locator('figcaption')).toContainText('logo link · 3.bp.blogspot.com');
+        // The links that did not load: named, the http one said to be http only.
+        await expect(fig.locator('.mb-ei-bad summary')).toHaveText('2 picture links did not load');
+        await expect(fig.locator('.mb-ei-bad li')).toHaveCount(2);
+        await expect(fig.locator('.mb-ei-bad li', { hasText: 'logos-vector.com' })).toContainText('http only');
+        await expect(fig.locator('img[src*="logos-vector"], img[src*="TUdxGVU"]'), 'nothing broken is shown').toHaveCount(0);
+        // A thumbnail picks the large one.
+        await fig.locator('.mb-ei-strip a').nth(2).click();
+        await expect(fig.locator('.mb-ei-pos')).toHaveText('3 / 4');
+        await expect(fig.locator('figcaption')).toContainText('seeklogo.com');
+        await expect(fig.locator('.mb-ei-strip a').nth(2)).toHaveAttribute('aria-current', 'true');
+        // The large one: the viewer, on every picture, at the one shown.
+        await fig.locator('img.mb-dp-xcover').click();
+        await expect(page.locator('#mb-art-viewer')).toBeVisible();
+        await expect(page.locator('#mb-art-viewer .mb-artv-pos')).toHaveText('3 / 4');
+        await page.keyboard.press('Escape');
+        // Links gave pictures: Wikidata is not asked.
+        expect(await wdLog(page)).toEqual([]);
+        // Afterwards the card shows the first, with "+3".
+        await page.keyboard.press('Escape');
+        await expect(dialog(page)).toHaveCount(0);
+        await page.mouse.move(0, 0);
+        await ctrlHover(page, labelLink(page));
+        await expect(card(page).locator('.mb-pop-pic img')).toHaveAttribute('src', /3\.bp\.blogspot\.com/);
+        await expect(card(page).locator('.mb-pop-pic-more')).toHaveText('+3');
+    });
+});

@@ -27137,3 +27137,61 @@ the Stone Pony capture with its review link pointed at the saved 2025 year page
 show", no popup, Back → the event. `scripts/mutations/win-ext-bb.json` 3/3. The
 44 window-related specs (popup, Discogs, the Springsteen sites, detail pages):
 693/693.
+
+## 2026-10-29 — Every picture of an entity's links: beside the name and in the window (WIP.6, mockups B2 + B4)
+
+Env: 2026-10-29T02:13+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) · Playwright 1.62.1 (bundled Chromium), no Tampermonkey (GM stubs); the user's snapshot debug/mb-label-CBS-logos-initial.html: Tampermonkey 5.5.1, browser unknown
+
+**Request (vzell):** zabe's "MusicBrainz Entity Images" userscript (registered
+as `zabe-entity-image` in tests/fixtures/live-userscripts/manifest.json, code
+read whole) shows a label's logo links in the sidebar with a drop-down, "NOT
+all logos actually display"; use this where the script already shows a picture
+(the heading, the Space window), rotating when there are several. Mockups:
+https://claude.ai/artifact/BL4JPmGMBzfhT7yGKepiBr; vzell chose B2 (heading
+crossfade) and B4 (window picture + strip).
+
+**Facts first.** The logo links are not on the page: MusicBrainz hides them
+(only jesus2099's "Hidden links" shows them in the snapshot, `li[ref=logo]`),
+so a heading needs one url-rels lookup. Probe
+(`scripts/probe-entity-image-rels.py`): CBS label six `logo` links, one of them
+http-only (logos-vector.com: an https page cannot show it); Bruce Springsteen
+and Capital One Arena one Commons `image` each; this series, event and
+instrument none. Why some logos do not show: http (mixed content), and Google
+image-search thumbnails (encrypted-tbn0.gstatic.com) that may refuse.
+
+**Design decisions.**
+- One list builder (`_eiImagesFrom()`): Commons files first (no request:
+  `Special:FilePath`; zabe's api.wikimedia.org call is not copied, so no new
+  `@connect`), then image/logo/poster links, an http one tried on https.
+- Shown only once known to load (`_eiProbe()`, a no-referrer `Image()` per
+  address, remembered for the page load). The window names the others in a
+  `details` line.
+- The page shares the WINDOW's url-rels lookup key (`_mbPopLookup(t,
+  'url-rels')`), checks memory and IndexedDB first, waits 2.5 s for zabe's
+  markup before asking, and never writes the window's picture record (a
+  heading with no link picture must not stand in for the window's Wikidata
+  answer — caught while writing `_mbPopImageRecordFor()`).
+- The record went to version 2 (`images`); the caption keeps version 1's words
+  for Commons and Wikidata pictures (`pop-mb-image.spec.js` pins them).
+- TDZ: `_eiInitPage()` runs at init beside `_sbInitPicture()`, before the end
+  of the file is evaluated, so its constants live in the 56k block and the
+  work starts a turn later.
+- `_sbInitPicture()` fixed on the way: zabe's SHOWN picture
+  (`.picture:not([hidden])`), and a picture it cannot wire no longer ends its
+  watch.
+- The spec's negative cases first slept 3.5 s (`no-wait-for-timeout` rose in
+  the lint baseline); the decision is now on `#sidebar[data-mb-ei]` and the
+  specs wait for it.
+
+**Performance.** Nothing on the filter/sort/render path. One rate-limited
+url-rels request per entity page load (none when known or when zabe's script
+is there) and one image load per picture link.
+
+**Tests.** `entity-images.spec.js` (4: one request and four of six logos,
+fade, ‹ ›, card, viewer; zabe read, nothing asked; known links, nothing asked;
+off), `pop-mb-image.spec.js` 9th test (B4: strip of four, two named as not
+loading, pick, viewer at the pick, card "+3"), `sidebar-picture.spec.js` (the
+watch fix). `scripts/mutations/entity-images.json` 7/7. The picture specs 32/32
+plus mobile 2/2; settings specs 47/47 (`sa_entity_images` joined
+`FIXTURE_SETTINGS_OVERRIDE`; CLAUDE.md and settings-and-config.md now say
+twenty). The 56 window, sidebar, settings and entity-image specs: 852/852.
