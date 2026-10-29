@@ -315,6 +315,22 @@ test.describe('@include coverage', () => {
         expect(others.filter((u) => injected(u))).toEqual([]);
     });
 
+    test('discogs.com: a release\'s Marketplace page (dg-sell, 2026-10-29); not /sell/list or an item', () => {
+        const pages = [
+            'https://www.discogs.com/sell/release/8164856',
+            'https://www.discogs.com/sell/release/8164856?sort=price%2Casc&limit=250&page=2',
+            'https://www.discogs.com/de/sell/release/8164856',
+        ];
+        const others = [
+            'https://www.discogs.com/sell/list?master_id=26725',
+            'https://www.discogs.com/sell/item/4033083994',
+            'https://www.discogs.com/sell/release/8164856x',
+            'https://www.discogs.com/sell/release/',
+        ];
+        expect(pages.filter((u) => !injected(u))).toEqual([]);
+        expect(others.filter((u) => injected(u))).toEqual([]);
+    });
+
     test('discogs.com: a submissions list, either view, a language prefix; no other /submissions… path', () => {
         const pages = [
             'https://www.discogs.com/submissions?mode=list&id=599283&page=1&view=flat',

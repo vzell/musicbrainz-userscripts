@@ -265,6 +265,19 @@ def build_entity_images(kind):
     return SHELL.format(title=html.escape(title), content=squeeze(content)), title
 
 
+def build_sell_release():
+    """dg-sell-release.html (debug/dg-sell-release.html, saved by vzell 2026-10-29, logged in): a release's
+    Marketplace page (`/sell/release/8164856`) — its title, the top pager ("1 – 3 of 3", its sort and limit) and
+    the listings table (3 listings: BRL, EUR, USD). dg-sell reads the table from the fetched pages."""
+    src = read_debug('dg-sell-release.html')
+    title = text(re.search(r'<title[^>]*>(.*?)</title>', src, re.S).group(1))
+    pager = between(src, '<nav aria-label="Pagination" class="pagination top', '</nav>')
+    table = between(src, '<table class="table_block mpitems', '</table>')
+    content = re.sub(r'<script\b.*?</script>', '', pager + table, flags=re.S)
+    content = re.sub(r'<!--.*?-->', '', content, flags=re.S)
+    return SHELL.format(title=html.escape(title), content=squeeze(content)), title
+
+
 def build_user_wantlist():
     """dg-user-wantlist.html (debug/dg-user-wantlist.html, saved by vzell 2026-10-29, logged in): disc-kid's
     public wantlist page (`/wantlist?user=disc-kid`) — its title and the top pager ("1 – 138 of 138"). The rows
@@ -346,7 +359,8 @@ def main():
                      ('dg-collection-page.html', build_collection_page),
                      ('dg-master-images.html', lambda: build_entity_images('master')),
                      ('dg-artist-images.html', lambda: build_entity_images('artist')),
-                     ('dg-label-images.html', lambda: build_entity_images('label'))):
+                     ('dg-label-images.html', lambda: build_entity_images('label')),
+                     ('dg-sell-release.html', build_sell_release)):
         out, title = fn()
         write(name, out, f'title "{title}"')
     return 0

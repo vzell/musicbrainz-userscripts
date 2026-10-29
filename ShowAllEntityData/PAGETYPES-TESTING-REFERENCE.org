@@ -301,6 +301,7 @@ skill for turning a =planned= row into a =captured= one.
 | 138 | dg-image-history              | single       | discogs.com /release/ID/images/update          | NOT MusicBrainz, opt-in; every image with uploader, date, W × H, size (KB)                                                 |
 | 139 | dg-user-list                  | multi        | discogs.com /user/NAME/collection, /wantlist   | NOT MusicBrainz, opt-in; dg-user's collection/wantlist from the API, the page's own list only                              |
 | 140 | dg-entity-images              | single       | discogs.com /KIND/ID/images                    | NOT MusicBrainz, opt-in; a master's/artist's/label's images from the API: #, Image, Type, W × H                            |
+| 141 | dg-sell                       | single       | discogs.com /sell/release/ID                   | NOT MusicBrainz, opt-in; plain HTML: every listing from the page's own pages, 250 a page, sort kept                        |
 
 * Page type details
 ** 1. taglookup
@@ -1134,6 +1135,13 @@ lists converted into sortable tables), tableMode =multi=.
 - Buttons: "Show every image" (one request). tableMode single, =dgToTable: 'entityImages'= (=_DG_HEADERS.entityImages=).
 - Rows: the API's =<kind>s/<id>= =images= (=_extDiscogsImages()=), no token needed (27 for Bruce Springsteen, 7 for the Born To Run master, 10 for DADC, as the pages show); never the page's own list, never =/images/data= (the release's editor only).
 - Coverage: =tests/fixtures/discogs-images.spec.js= (one test per kind), =sl-include-regex.spec.js=; fixtures =dg-{master,artist,label}-images.html= (=scripts/build-discogs-fixtures.py=), =ext-discogs-label-dadc.json= (=scripts/capture-ext-fixtures.py=); mutations =scripts/mutations/dg-entity-images.json=.
+
+** 141. dg-sell
+- URL: [[https://www.discogs.com/sell/release/8164856][discogs.com/sell/release/8164856]] (2026-10-29).
+- Match: =_DG_SELL_PATH_RE= (not =/sell/list=, not =/sell/item/<id>=); its own =@include= line; no =#app=: let through the gate by path.
+- Buttons: "Show every listing" (count from the live pager, =_dgSellSize()=; hidden when the page has no listing).
+- Rows: =table.mpitems= of the page's own pages (=_dgSellToHtml()=), same-origin =fetchHtml()=, =limit=250=, the page's =sort= kept. Columns =_DG_HEADERS.sell=.
+- Coverage: =tests/fixtures/discogs-sell.spec.js=, =sl-include-regex.spec.js=; fixture =dg-sell-release.html= (=scripts/build-discogs-fixtures.py=, 3 listings, one page: several pages unseen); mutations =scripts/mutations/dg-sell.json=.
 
 ** Relationship-tables buttons on existing pageTypes (not pageTypes of their own)
 =_relTablesButton()= adds a second button to series-releases, work-recordings, releasegroup-releases, recording-releases (with "Related works" as "Via <work>" tables), label-relationships and artist-relationships ("Relationship lists"), and release-tracks ("Credits", the release's own =#release-relationships= and its group's =#release-group-relationships=, never the per-medium track credits). Each runs as its own pageType for that render (=series-relationship-tables=, =work-relationship-tables=, =releasegroup-relationship-tables=, =recording-relationship-tables=, =label-relationship-tables=, =artist-relationship-tables=, =release-credit-tables=; =buttonConfig.type= switches =pageType= in =startFetchingProcess()=), with only its own features (=replaceFeatures=), and removes the page's main data section (=removeMain=, =_relRemoveMainSections()=). A saved file records that pageType and loads back as the same button (=_activateButtonForSavedPageType()=). Hidden with =sa_enable_relationship_tables= off (=showIf=). Coverage: =tests/fixtures/rel-tables-recording.spec.js= (incl. the main button unchanged and a Save → Load round trip) and =rel-tables-pages.spec.js=, raw captures =tests/fixtures/rel-{series,work,label-rels,artist-rels,release-group,recording,release}-overview.html=.

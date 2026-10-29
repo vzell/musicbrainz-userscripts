@@ -38,6 +38,7 @@
 // @include      /^https?:\/\/(?:www\.)?discogs\.com\/(?:[a-z]{2}(?:[-_][a-zA-Z]{2})?\/)?(?:release|master|artist|label)\/\d+(?:-[^\/?#]*)?\/history\/?(?:[?#].*)?$/
 // @include      /^https?:\/\/(?:www\.)?discogs\.com\/(?:[a-z]{2}(?:[-_][a-zA-Z]{2})?\/)?release\/\d+(?:-[^\/?#]*)?\/images(?:\/update)?\/?(?:[?#].*)?$/
 // @include      /^https?:\/\/(?:www\.)?discogs\.com\/(?:[a-z]{2}(?:[-_][a-zA-Z]{2})?\/)?(?:master|artist|label)\/\d+(?:-[^\/?#]*)?\/images\/?(?:[?#].*)?$/
+// @include      /^https?:\/\/(?:www\.)?discogs\.com\/(?:[a-z]{2}(?:[-_][a-zA-Z]{2})?\/)?sell\/release\/\d+\/?(?:[?#].*)?$/
 // @connect      raw.githubusercontent.com
 // @connect      coverartarchive.org
 // @connect      eventartarchive.org
@@ -6583,6 +6584,15 @@
     const _DG_ENT_IMG_PATH_RE = /^\/(?:[a-z]{2}(?:[-_][a-zA-Z]{2})?\/)?(master|artist|label)\/(\d+)(?:-[^/?#]*)?\/images\/?$/;
 
     /**
+     * A release's Marketplace page, `/sell/release/<id>` (pageType `dg-sell`,
+     * 2026-10-29): plain HTML without `#app`, the listings in
+     * `table.mpitems`. Read by the `#app` gate below and the definition's
+     * `match`. Not `/sell/list` (every listing of a master, a search).
+     * @type {RegExp}
+     */
+    const _DG_SELL_PATH_RE = /^\/(?:[a-z]{2}(?:[-_][a-zA-Z]{2})?\/)?sell\/release\/(\d+)\/?$/;
+
+    /**
      * A Brucebase year page's path: `/1975`, …, and the one exception
      * `/1949-64` (pageType `bb-year`, docs/claude/brucebase.md). Read by the
      * year-page opt-in gate below and by the `bb-year` definition's `match`.
@@ -6689,7 +6699,8 @@
         !((_DG_SUBS_PATH_RE.test(window.location.pathname) || _DG_USER_PATH_RE.test(window.location.pathname) ||
            _DG_USER_LIST_PATH_RE.test(window.location.pathname) ||
            _DG_HIST_PATH_RE.test(window.location.pathname) || _DG_RATINGS_PATH_RE.test(window.location.pathname) ||
-           _DG_IMG_PATH_RE.test(window.location.pathname) || _DG_ENT_IMG_PATH_RE.test(window.location.pathname)) &&
+           _DG_IMG_PATH_RE.test(window.location.pathname) || _DG_ENT_IMG_PATH_RE.test(window.location.pathname) ||
+           _DG_SELL_PATH_RE.test(window.location.pathname)) &&
           document.getElementById('page_content'))) {
         Lib.info('init', 'discogs.com: no #app on this page (a security check?) — nothing to do.');
         return;
@@ -15723,6 +15734,8 @@
         // A master's, artist's or label's images (dg-entity-images, 2026-10-29):
         // what the API gives; no image editor's data for these kinds.
         entityImages: ['#', 'Image', 'Type', 'W × H'],
+        // A release's Marketplace listings (dg-sell, 2026-10-29).
+        sell: ['Item', 'Media', 'Sleeve', 'Comments', 'Seller', 'Rating', 'Ratings', 'Ships from', 'Price', 'Shipping', 'About'],
         user: {
             releases: ['Image', 'Artist', 'Title', 'Format', 'Label', 'Cat#', 'Country', 'Year', 'Status', 'Added', 'Last changed'],
             names: ['Name', 'Data quality', 'Status'],
@@ -16992,7 +17005,7 @@
         h2.className = 'mb-dg-list-heading';
         h2.textContent = kind === 'user' ? (_DG_USER_LISTS[def.features.dgUserList] || {}).heading || 'Lists'
             : { artist: 'Discography', label: 'Releases', master: 'Versions', release: 'Release', submissions: 'Submissions', history: 'History',
-                ratings: 'Ratings', images: 'Images', entityImages: 'Images' }[kind] || 'Discogs';
+                ratings: 'Ratings', images: 'Images', entityImages: 'Images', sell: 'For sale' }[kind] || 'Discogs';
         const cols = kind === 'release' ? _DG_HEADERS.release.Tracklist : kind === 'user' ? _DG_HEADERS.user.releases
             : kind === 'history' ? _DG_HEADERS.history.Changes : _DG_HEADERS[kind];
         const table = document.createElement('table');
@@ -18494,6 +18507,95 @@
                 `${_dgCell(im.w ? `${im.w} × ${im.h}` : '')}</tr>`;
         });
         return `<!DOCTYPE html><html><head><meta charset="utf-8"></head><body>${_dgTableHtml(null, _DG_HEADERS.entityImages, rows)}</body></html>`;
+    }
+
+    // --- discogs.com: a release's Marketplace page (pageType dg-sell) --------
+    // `/sell/release/<id>` (2026-10-29): older plain HTML, the listings in
+    // `table.mpitems` (debug/dg-sell-release.html: 3 listings). Not in the API
+    // as a list, so the rows come from these pages themselves, same-origin,
+    // `_DG_SELL_PER_PAGE` a page, the page's own sort kept.
+
+    /** Listings a page asked (Discogs' largest `limit`). */
+    const _DG_SELL_PER_PAGE = 250;
+
+    /**
+     * Page `p` of this Marketplace page: its own URL (its sort kept) at
+     * `_DG_SELL_PER_PAGE` a page.
+     * @param {number} p - From 1.
+     * @returns {string}
+     */
+    function _dgSellPageUrl(p) {
+        const u = new URL(window.location.href);
+        u.hash = '';
+        u.searchParams.set('limit', String(_DG_SELL_PER_PAGE));
+        u.searchParams.set('page', String(p));
+        return u.href;
+    }
+
+    /**
+     * How many listings the live page counts ("1 – 3 of 3"), no request, and
+     * the pages at `_DG_SELL_PER_PAGE` a page; total 0 when it says nothing.
+     * @returns {{total: number, pages: number}}
+     */
+    function _dgSellSize() {
+        const el = document.querySelector('.pagination_total');
+        const m = el && /\bof\s+([\d,.]+)/.exec(el.textContent);
+        const total = m ? Number(m[1].replace(/[,.]/g, '')) : 0;
+        return { total, pages: Math.max(1, Math.ceil(total / _DG_SELL_PER_PAGE)) };
+    }
+
+    /**
+     * One page of a release's listings as a `table.tbl` (`_DG_HEADERS.sell`):
+     * the item (its own page), media and sleeve condition, the seller's
+     * comments, the seller, their rating (%) and its count, where it ships
+     * from, the price as listed, its shipping, and "about" that in the
+     * reader's currency (Discogs' own conversion: the one column that compares
+     * across sellers).
+     * @param {string} text - The page's HTML.
+     * @returns {string} An HTML document.
+     * @throws {Error} When the page holds no listing table (`status` 0).
+     */
+    function _dgSellToHtml(text) {
+        const doc = new DOMParser().parseFromString(text, 'text/html');
+        const table = doc.querySelector('table.mpitems');
+        if (!table) throw Object.assign(new Error('Discogs answered, but not with the listings'), { status: 0 });
+        const abs = (a) => (a ? new URL(a.getAttribute('href') || '', 'https://www.discogs.com').href : '');
+        const t = (el) => (el ? _dpText(el.textContent) : '');
+        const link = (a) => (a ? `<td><a href="${_rgEsc(abs(a))}"${_DG_NEW_TAB}>${_rgEsc(t(a))}</a></td>` : '<td></td>');
+        const rows = Array.from(table.querySelectorAll(':scope > tbody > tr.shortcut_navigable')).map((tr) => {
+            const cond = tr.querySelector('p.item_condition');
+            const mediaSpan = cond && Array.from(cond.children).find(x => x.tagName === 'SPAN' &&
+                !x.classList.contains('mplabel') && !x.classList.contains('item_sleeve_condition'));
+            let media = '';
+            if (mediaSpan) {
+                const c = mediaSpan.cloneNode(true);
+                c.querySelectorAll('.has-tooltip').forEach(n => n.remove());
+                media = t(c);
+            }
+            const comments = Array.from(tr.querySelectorAll('td.item_description > p.hide_mobile')).filter(p => !p.classList.contains('label_and_cat'))
+                .map(t).filter(Boolean).join(' ');
+            const seller = tr.querySelector('td.seller_info .seller_block a');
+            const stars = tr.querySelector('td.seller_info .star_rating');
+            const rating = stars ? t(stars.parentElement.querySelector('strong')) : '';
+            const count = t(tr.querySelector('td.seller_info a.section_link')).replace(/\D+/g, '');
+            const ships = Array.from(tr.querySelectorAll('td.seller_info li')).find(li => /Ships From:/i.test(li.textContent));
+            const price = tr.querySelector('td.item_price span.price');
+            const shipping = tr.querySelector('td.item_price .item_shipping');
+            let ship = '';
+            if (shipping) {
+                const c = shipping.cloneNode(true);
+                c.querySelectorAll('button').forEach(n => n.remove());
+                ship = t(c);
+            }
+            const conv = tr.querySelector('td.item_price .converted_price');
+            const about = conv ? _dpText(Array.from(conv.childNodes).filter(n => n.nodeType === 3).map(n => n.nodeValue).join(' ')).replace(/^about\s+/i, '') : '';
+            return `<tr>${link(tr.querySelector('a.item_description_title'))}${_dgCell(media)}${_dgCell(t(tr.querySelector('.item_sleeve_condition')))}` +
+                `${_dgCell(comments)}${link(seller)}${_dgCell(rating)}${_dgCell(count)}` +
+                `${_dgCell(ships ? t(ships).replace(/^Ships From:\s*/i, '') : '')}` +
+                `<td${price ? ` data-mb-currency="${_rgEsc(price.dataset.currency || '')}" data-mb-value="${_rgEsc(price.dataset.pricevalue || '')}"` : ''}>${_rgEsc(t(price))}</td>` +
+                `${_dgCell(ship)}${_dgCell(about)}</tr>`;
+        });
+        return `<!DOCTYPE html><html><head><meta charset="utf-8"></head><body>${_dgTableHtml(null, _DG_HEADERS.sell, rows)}</body></html>`;
     }
 
     // --- discogs.com: a user's page (pageType dg-user) -----------------------
@@ -41762,6 +41864,30 @@
                 pageCountAsync: () => _dgRatingsPageCount(),
                 collapsableColumns: [ 'Cat#' ],
                 integerColumns: [ { sourceColumn: 'Year', align: 'R' }, { sourceColumn: 'Rating', align: 'R' } ]
+            },
+            tableMode: 'single'
+        },
+        {
+            // A release's Marketplace page (2026-10-29): every listing, from
+            // these pages themselves. See the "discogs.com: a release's
+            // Marketplace page" block above _dgSellPageUrl().
+            type: 'dg-sell',
+            host: 'www.discogs.com',
+            match: (path) => _DG_SELL_PATH_RE.test(path),
+            buttons: [ {
+                label: 'Show every listing', shortLabel: 'For sale',
+                showIf: () => !!document.querySelector('table.mpitems tr.shortcut_navigable') || _dgSellSize().total > 0,
+                get description() {
+                    const { total, pages } = _dgSellSize();
+                    return `${total ? `All ${total.toLocaleString('en-US')} listings` : 'Every listing'} of this release, from discogs.com's own ` +
+                        `pages (${_DG_SELL_PER_PAGE} a page): ${pages} request${pages === 1 ? '' : 's'}.`;
+                }
+            } ],
+            features: {
+                dgToTable: 'sell',
+                pageRequest: (p) => ({ url: _dgSellPageUrl(p), toHtml: (text) => _dgSellToHtml(text) }),
+                pageCountAsync: async () => _dgSellSize().pages,
+                integerColumns: [ { sourceColumn: 'Ratings', align: 'R' } ]
             },
             tableMode: 'single'
         }

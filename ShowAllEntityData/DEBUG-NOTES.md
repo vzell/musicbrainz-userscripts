@@ -27255,3 +27255,12 @@ editor's data (`/images/data` is the release's), so a table of its own
 discogs-images.spec.js (one per kind: one button, one API request, no
 `/images/data`, the four columns, Primary first); mutations
 `dg-entity-images.json` 3/3. The eight Discogs specs: 150/150.
+
+**WIP.7 (c): dg-sell** (`/sell/release/<id>`). No listings list in the API, so
+`table.mpitems` of the page's own pages, same-origin, 250 a page, the page's
+`sort` kept (`_dgSellPageUrl()`). Cells: the media grade is a span holding a
+hidden tooltip ("A nearly perfect disc…") — dropped; the shipping span holds a
+"shipping" button — dropped; the converted price is its text nodes only
+("about €53.93 +VAT…" → "€53.93"). Tests: discogs-sell.spec.js (2: the first
+listing's eleven cells, absolute links, limit/page/sort asked);
+`dg-sell.json` 4/4. Unseen: several pages (the snapshot has 3 listings).

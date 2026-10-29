@@ -61,6 +61,7 @@ the sentence said "seven" and "three" from 2026-10-18 until then, though
 | `dg-ratings` | `/users/ratings/<name>`  | Show all ratings                                                  | single: the user's ratings, 250 a page (below)                                                                              |
 | `dg-images` / `dg-image-history` | `/release/<id>/images`, `…/images/update` | Show every image                  | single: #, Image, Type, Uploaded by, Uploaded (date, time), W × H, Size (KB) — the same on both (below)                     |
 | `dg-entity-images` | `/master|artist|label/<id>/images` | Show every image | single: #, Image, Type, W × H (2026-10-29): the API's `<kind>s/<id>` images, one request; the page lists only the images, and these kinds have no image editor's data |
+| `dg-sell` | `/sell/release/<id>` | Show every listing (its count from the pager) | single: Item, Media, Sleeve, Comments, Seller, Rating, Ratings, Ships from, Price, Shipping, About (2026-10-29): `table.mpitems` of the page's own pages, same-origin, 250 a page, its sort kept; the API has no listings list. About is Discogs' conversion into the reader's currency, the comparable column |
 
 A language prefix (`/de/release/…`) and a slug are allowed; a page's
 sub-pages (`/release/<id>-…/image/…`) are not (`sl-include-regex.spec.js`).
