@@ -27276,3 +27276,18 @@ serves the first 10,000 only (`_DG_SEARCH_MAX`); the button says "The first
 Next.js's hydration (it owns the whole document) leaves it alone can only be
 seen live. Tests: discogs-search-page.spec.js (2); `dg-search.json` 3/3. The ten
 Discogs specs: 156/156.
+
+**Live (vzell, 2026-10-29, screenshot of the search page):** a "MusicBrainz"
+heading over the formats, every later heading one column right of its cells.
+Cause: `applyDgToTable()` gave a single table's EMPTY live head the
+MusicBrainz column whenever murdos' importer is present (`_dgMbOn()`), while
+only pageTypes with `features.decorateDoc` give their fetched rows the cell.
+dg-search has no decorateDoc (the importer does nothing on a search page), so
+head and rows disagreed. Fix: the head too only with `decorateDoc`. Only the
+search table showed it: `_dgMbDecorateTable()` places the column after a
+"Title" or "Name" heading, which the images and Marketplace tables lack (the
+Marketplace mutation passes and is recorded as covered). Tests: both specs
+assert no MusicBrainz heading and cells-per-row equal to the headings with the
+importer simulated; `dg-mb-head.json` 1 fail + 1 recorded pass. Also on that
+screenshot: "Loaded 2 of 100 pages … INCOMPLETE", 98 pages missing — cause
+not known yet (Discogs' rate limit without a token? a dialog choice?); asked.

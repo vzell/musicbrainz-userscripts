@@ -80,6 +80,21 @@ test.describe('discogs.com: a release\'s Marketplace page (dg-sell)', () => {
         expect(errors).toEqual([]);
     });
 
+    // As the search page's (vzell, 2026-10-29): the head must not get the
+    // MusicBrainz column its rows never get.
+    test('with the importer installed: no MusicBrainz column, every heading over its own cells', async ({ page }) => {
+        await page.context().addInitScript(() => localStorage.setItem('DISCOGS_MBLINKS_CACHE-v3.1', '{}'));
+        await open(page);
+        await page.locator('#mb-dg-root button[data-label="Show every listing"]').click();
+        await waitForRenderComplete(page, { waitForAutoResize: false });
+        const shape = await page.locator('#mb-dg-root table.tbl').first().evaluate(t => ({
+            heads: Array.from(t.querySelectorAll('thead tr:first-child th')).map(th => th.dataset.colName || th.textContent.trim()),
+            cells: Array.from(t.tBodies[0].rows).map(r => r.cells.length),
+        }));
+        expect(shape.heads).not.toContain('MusicBrainz');
+        expect(new Set(shape.cells)).toEqual(new Set([shape.heads.length]));
+    });
+
     test('the page\'s own sort is kept in what is asked', async ({ page }) => {
         const { asked } = await open(page, `${PAGE}?sort=seller%2Casc`);
         await page.locator('#mb-dg-root button[data-label="Show every listing"]').click();

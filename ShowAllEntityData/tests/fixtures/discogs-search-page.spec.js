@@ -66,6 +66,24 @@ test.describe('discogs.com: the search page (dg-search)', () => {
         expect(errors).toEqual([]);
     });
 
+    // vzell, 2026-10-29 (screenshot): with murdos' importer installed the
+    // table's head got the MusicBrainz column, its rows did not (this page
+    // never decorates them; the importer does nothing on a search page): every
+    // heading after it sat one column off its cells.
+    test('with the importer installed: no MusicBrainz column, every heading over its own cells', async ({ page }) => {
+        await page.context().addInitScript(() => localStorage.setItem('DISCOGS_MBLINKS_CACHE-v3.1', '{}'));
+        await open(page);
+        await page.locator('#mb-dg-root button[data-label="Show all results"]').click();
+        await waitForRenderComplete(page, { waitForAutoResize: false });
+        const table = page.locator('#mb-dg-root table.tbl').first();
+        const shape = await table.evaluate(t => ({
+            heads: Array.from(t.querySelectorAll('thead tr:first-child th')).map(th => th.dataset.colName || th.textContent.trim()),
+            cells: Array.from(t.tBodies[0].rows).slice(0, 5).map(r => r.cells.length),
+        }));
+        expect(shape.heads).not.toContain('MusicBrainz');
+        expect(new Set(shape.cells)).toEqual(new Set([shape.heads.length]));
+    });
+
     test('a page without a query has no button', async ({ page }) => {
         await open(page, 'https://www.discogs.com/search?type=all&q=');
         await expect(page.locator('#mb-dg-root h1.mb-dg-h1')).toBeVisible();

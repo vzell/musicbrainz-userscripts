@@ -17028,7 +17028,11 @@
         // A single table renders into THIS table's tbody, so its head needs
         // the MusicBrainz column the fetched pages get (_dgMbDecorateDoc());
         // a multi-table render builds every head from the fetched pages.
-        if (def.tableMode === 'single' && _dgMbOn()) _dgMbDecorateTable(table, '');
+        // Only when they DO get it (`features.decorateDoc`): the images,
+        // Marketplace and search tables have none, and a head with the column
+        // over rows without it put every later heading one column off
+        // (vzell, 2026-10-29, the search page's screenshot).
+        if (def.tableMode === 'single' && _dgMbOn() && typeof def.features.decorateDoc === 'function') _dgMbDecorateTable(table, '');
         root.append(h2, table);
         Lib.debug('init', `applyDgToTable: empty ${kind} table in place for the fetched pages.`);
     }
