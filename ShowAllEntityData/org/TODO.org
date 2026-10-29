@@ -5031,6 +5031,231 @@ add BB URL "SPACE" POH treatment on MB event popup windows:
 e.g. on the POH of https://brucebase.wikidot.com/gig:2002-08-10-mci-center-washington-dc there is a "Review" URL link pointing to 
 http://brucebase.wikidot.com/2002#100802, it should be rendered in the same window
 
+* DONE embed YouTube videos directly in the PTs where they are referenced + the original URL as popup box as now
+** bugs/enhancements
+
+1.)
+
+In "Relationships" sections like at e.g. https://musicbrainz.org/recording/3e8d2331-3734-4f4b-b865-3313b7bf4303
+youtube links like e.g. the one after "stream video for free" should already get the youtube player treatment on the IP
+
+#+begin_example
+@debug/MB-recording-youtube-initial.html - MB IP for the recording - [Image #4]
+#+end_example
+
+2.)
+
+The following are from https://www.discogs.com/artist/219986-Bruce-Springsteen
+when hovering a master and a release page
+
+#+begin_example
+@debug/discogs-master-youtube-POH.html - @debug/Discogs-master-POH.png - Discgos master page
+@debug/discogs-release-youtube-POH.html - @debug/Discogs-release-POH.png - Discgos release page
+#+end_example
+
+the youtube videos in the "VIDEOS" section should be aligned in three columns
+
+"the video tile itself", "the hyperlinked named URL" and the "Lenght"
+* DONE recording of work
+** summary
+
+The feature is built on feature/release-tracks-work-suggestions with all five of your choices, and its new tests pass,
+but nobody has tried it in a real browser yet. Nothing is committed, and I won't commit or merge until you say so. I
+haven't bumped the version: per your rules that happens on main at merge, and the changelog entry is in the WIP
+changelog file for now.
+
+What you'll see on a release page:
+- Every empty "Recording of work" cell shows a 💡. Click it to look up that track, or click ▶💡 in the column header for all of them.
+- The suggestion is in the same orange "suggested:" style as on the artist Recordings page. It shows exact title or ≈ N % alike and a ➕ relate link that opens the recording's edit page in a new tab.
+- Other cell states: – when no close title was found, ⚠ when a work list failed to load (click it to retry).
+- Each artist's work list is loaded once and kept for 30 days, shared with the artist Recordings page.
+- Nothing loads until you click, and cells that already have a work are never touched.
+- A suggestion is not a link: the yellow ⚠️ no-work flag and the 🚫 count stay. The Title tooltip gains a "Suggested:" line.
+- The column's 📊 dropdown gets a "Recording of work - Suggestions" section. Suggestions are not saved to disk; after loading a file, ▶💡 refills them from the cache without any request.
+- New setting in 💿 RELEASE TRACKLIST, on by default. The "how different a title may be" threshold stays shared with the Recordings page.
+
+One real fix inside: the check "does this track have a work?" counted any work link. Without the change, every suggestion would have silently removed its track from the no-work warning.
+
+Tests:
+- New spec tests/fixtures/release-tracks-work-suggest.spec.js: 7 of 7 pass. It covers only empty cells getting a 💡, no requests before a click, each artist asked once, surviving a filter, failure and retry, the setting switched off, and Save to Disk.
+- Planted bugs: 8 of 10 were caught. The other two are recorded as known overlaps: "each artist is asked once" is protected three ways, so removing any one of those protections changes no network request.
+- Full suite: 2497 passed, 2 failed (27 min, finished 06:32 CET). Both failures pass when run alone.
+  - One was a page load timing out under load.
+  - The other was a 📊 click in uniq-drop-title-anatomy.spec.js that failed with "element outside the viewport". That file passed 16/16 twice on main and twice on the branch. But in one earlier branch run a different test in the same file failed and then passed alone. I can't fully rule out my change there, so the file is worth watching.
+
+Other files changed:
+- HELP, docs/claude/release-tracks-and-length.md (new section) and a pointer in CLAUDE.md.
+- A new DEBUG-NOTES.md entry.
+- The config defaults file, which also picked up sa_entity_images; that setting was already missing from it on main.
+
+Before merging, please re-import the script in Tampermonkey and try https://musicbrainz.org/release/22a6802f-d22e-4f47-9f22-6aac257a4194 in your browser. While writing the tests I saw that an empty, narrow cell can sit under the sticky Title column after scrolling, which could make a 💡 hard to click. Tell me how it looks, and whether you want me to commit (I'll show you git diff first).
+
+** todo
+
+I've committed the feature as ef45c604 on feature/release-tracks-work-suggestions and pushed the branch to
+origin. Before committing I checked that the diff held only the expected changes and no MusicBrainz page tokens.
+
+It hasn't been merged into main. When you want it merged, say so: that step folds the WIP changelog into the real
+changelog, bumps the version and rebuilds the changelog pages.
+
+One thing to look at before the merge: in the full suite run, one test in uniq-drop-title-anatomy.spec.js failed
+once. It passed when run alone and in later runs on both main and the branch, but it's worth watching when the full
+suite runs again at merge time.
+* DONE I have the root cause of the second failure.
+** summary
+
+There are a few ways to fix it, and the fix changes the test harness for every fixture spec, so I'm asking before building it.
+─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+ ☐ CDN fix
+
+│ Fixture pages still fetch MusicBrainz's scripts, stylesheets and images live from static.metabrainz.org. Under 28 workers a fixture load took 27 s median and 73 s at worst (the test timeout is 90 s), and every slow request was on that host. How should the harness stop depending on it?
+
+❯ 1. Local cache (Recommended)
+     tests/support/test.js routes static.metabrainz.org through a disk cache (tests/.cache/static-mb/, gitignored), registered when the context is created, so every spec's own block of that host still wins. The URLs carry content hashes, so a cached file never goes stale. Same bytes as today, and MusicBrainz's scripts still run; only the first fetch of each file per machine touches the network.
+  1. Cache, committed
+     The same cache, but committed to git, so even a fresh clone never touches the CDN. Adds a few MB of MusicBrainz's minified JS/CSS to the repo, and grows when new fixtures reference new bundles.
+  2. Bounded wait
+     page.goto() waits for DOMContentLoaded, then for 'load' at most ~20 s, and goes on without it. Small change, but on a slow CDN the userscript would then start before MusicBrainz's own scripts have run, which some specs may notice.
+
+** a and q
+
+Currently my home Telekom network, which usally has a download bandwith about 100Mbs has just about 7Mbs since
+2026-27-10 at about 18:00 (Berlin time)
+
+Could it be that this also influences our test-suite ? Otherwise I would go with the option "1. Local cache"
+
+** s
+
+Yes, almost certainly. The numbers fit:
+
+- One fixture page pulls about 0.93 MB from static.metabrainz.org (20 files: MusicBrainz's scripts, stylesheets and images).
+- A single load took 27 s just now, with nothing else running. That's about 34 KB/s, well below even 7 Mbps. At 100 Mbps the same transfer takes well under a second.
+- The suite repeats this for nearly every test. Most of the ~2,500 tests load a fixture in a fresh browser context, so nothing is reused between tests, and 14–28 workers share the line. Under 28 workers loads took 27 s on average and 73 s at worst; the test timeout is 90 s.
+- The timing lines up. The 2026-10-27 debug-log entries from 21:15 on, a few hours after your slowdown started, already noted "a busy host again", a page.goto timeout on this same fixture, and a CDN-dependent flake. The suite's wall time has also grown since.
+
+So the page.goto timeout is your line plus the suite's dependency on MusicBrainz's CDN. I'd still build the local cache once your line is back. The failure only shows up on a slow line, but any slow day or busy host can bring it back, and a cache would make fixture loads faster on all three machines. It serves the same files, MusicBrainz's scripts still run, and specs that block the CDN keep blocking it.
+
+The 📊 click failure is separate. It's a test-hook bug, reproduced exactly: the hook opened the panel while the column header was below the visible area, so the panel landed off-screen. A slow line can make it more likely if late layout pushes the table further down, but the fix stands regardless.
+
+Shall I do both now: the 📊 test-hook fix and the gitignored local cache?
+
+** The work-suggestions feature is merged and pushed.
+
+The final full suite on main passed 2502 of 2502 (12:15–12:33 CET, e0a7d33d). main is now at 9.99.1505, in sync with origin, and feature/release-tracks-work-suggestions is deleted locally and on GitHub.
+
+On main now:
+
+┌──────────┬────────────────────────────────────────────────────────────────────────────────────────────┐
+│  Commit  │                                            What                                            │
+├──────────┼────────────────────────────────────────────────────────────────────────────────────────────┤
+│ 4d3536f4 │ Merge of the feature branch                                                                │
+├──────────┼────────────────────────────────────────────────────────────────────────────────────────────┤
+│ 846be1a1 │ Changelog fold: WIP.1 → 9.99.1503, no cross-references to rewrite, changelog pages rebuilt │
+├──────────┼────────────────────────────────────────────────────────────────────────────────────────────┤
+│ 1779b086 │ 9.99.1504: the two fixes from before (test hook and CDN cache)                             │
+├──────────┼────────────────────────────────────────────────────────────────────────────────────────────┤
+│ e0a7d33d │ 9.99.1505: popup-window fix, found during the gate                                         │
+└──────────┴────────────────────────────────────────────────────────────────────────────────────────────┘
+
+The two failures you asked about:
+- The 📊 panel that opened off-screen: my first fix was wrong. It scrolled the page, and the next full run on main broke two tests that tick twice: the panel closes on a page scroll, and the first tick shortens the page enough to make the browser scroll. The test hook now moves the panel into view and leaves the page alone. Covered by a new spec and two mutation checks.
+- The page.goto() timeout: your slow line made fixture pages wait on MusicBrainz's CDN. The test harness now serves that CDN from a local disk cache (gitignored), so a spec's own block of it still wins. The full suite went from 27 min to about 18 min, and the 📊 test file from 6.9 min to 32 s.
+
+What the merge gate turned up (9.99.1505): a Discogs popup test had been failing about half its runs on main already. The cause was in the script: right after a MusicBrainz window opens it keeps loading for a few seconds and rebuilds its contents with every answer. A Ctrl-hover card waiting for its short delay was silently dropped, so you could hit this too. The card now follows its link through the rebuild, and that test went from 9 of 18 passing to 18 of 18. A second race in the test's own hover helper also showed up under heavy load and is fixed.
+
+
+Nothing is published to the mb-userscripts repo users install from; that's still your manual step (python3 scripts/check-publish-ready.py first).
+
+
+* DONE PT 'release-tracks' needs suggestion for works in the "Recording of work" column
+
+Currently for example on https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/recordings we are able to
+suggest MB works based on the recordings
+
+Is it possible on the PT 'release-tracks' to also suggests missing works in the "Recording of work" column e.g. on
+https://musicbrainz.org/release/22a6802f-d22e-4f47-9f22-6aac257a4194 with our async handling, but only in the column
+cells where the data is really missing
+
+#+begin_example
+@debug/MB-release-tracks-fill-work-suggestions.html - FRP - https://musicbrainz.org/release/22a6802f-d22e-4f47-9f22-6aac257a4194
+#+end_example
+
+Show me some nice HTML based mockup before implementation
+* DONE events with soundcheck and concert
+
+1.)
+
+When a MB event has additionally to the actual event songlist of the concert itself, also the list of songs played
+during the soundcheck/pre-show/etc, these should also be rendered differently on the POH version of the event
+
+#+begin_example
+@debug/mb-event-soundcheck-concert-initial.html - IP for https://musicbrainz.org/event/be07d2a9-d1c9-47c8-98ac-69e2b392209a
+@debug/mb-event-soundcheck-concert-POH.html - POH of the above event - currently the descriptive strings (soundcheck/concert) for the event songparts are rendered AFTER the table
+#+end_example
+
+show me a mockup to render this more attractive, maybe as a sub-header (as Discogs sometimes does when a tracklist of a
+release has named parts)
+
+2.)
+
+add support for image URLs from the sidebar like the logo label images:
+
+a.)
+
+register the third-party user script by @zabe
+
+#+begin_example
+@tests/fixtures/live-userscripts/entity-image.user.js
+#+end_example
+
+check what it's doing and how it displays entitity images in the sidebar of some MB PTs
+
+b.)
+
+On e.g. https://musicbrainz.org/label/b8d33bec-92cc-40d9-bd92-4eb089b401a9 when this script is active, we are able to
+choose from a drop down list an entity image from the logo links (at least in the case of labels). Note that NOT all
+logos actually display.
+
+#+begin_example
+@debug/mb-label-CBS-logos-initial.html - IP
+#+end_example
+
+c.)
+
+See if we can use this functionality for displaying additional entity images in our userscript were we currrently
+already do this (e.g. for artist, place, event,  etc) 
+
+#+begin_example
+in the h1 header in front of the entity name
+in the "Space" POH of an entity
+#+end_example
+
+maybe we can rotate the image if there are multiple
+
+d.)
+
+make some suggestions with nice rich HTML based mockups
+
+3.)
+
+Why is https://www.discogs.com/release/8164856-Human-Touch/history supported as a PT but e.g
+https://www.discogs.com/master/26725-Born-To-Run/history doesn't offer our action button. Also check for other Discogs
+PTs which are maybe missing
+
+4.)
+
+On Discogs POHs
+
+a.)
+
+the "PLAYING" string overlaps with "Video VO-n2EFK6sM"
+
+b.)
+
+the hyperlinked titles after the youtube play buttons need a little more spacing between the button and the actual titles
+
+
+
 * TODO consolidate more LAF across more PTs
 
 
@@ -5191,22 +5416,6 @@ function name)
 * TODO majkinetor: async issues with "ISRC" and "Link" columns on PT 'release-tracks'
 
 
-* TODO PT 'release-tracks' needs suggestion for works in the "Recording of work" column
-
-Currently for example on https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/recordings we are able to
-suggest MB works based on the recordings
-
-Is it possible on the PT 'release-tracks' to also suggests missing works in the "Recording of work" column e.g. on
-https://musicbrainz.org/release/22a6802f-d22e-4f47-9f22-6aac257a4194 with our async handling, but only in the column
-cells where the data is really missing
-
-#+begin_example
-@debug/MB-release-tracks-fill-work-suggestions.html - FRP - https://musicbrainz.org/release/22a6802f-d22e-4f47-9f22-6aac257a4194
-#+end_example
-
-Show me some nice HTML based mockup before implementation
-
-
 * TODO fix MB collection pages when "mb. COLLECTION HIGHLIGHTER" from @jesus2099 is active
 
 fix MB collection pages, e.g. https://musicbrainz.org/user/ApeKattQuest%2C%20MonkeyPython/collections when the
@@ -5215,81 +5424,18 @@ third-party userscript "mb. COLLECTION HIGHLIGHTER" from @jesus2099 is active
 
 
 
-* events with soundcheck and concert
-
-1.)
-
-When a MB event has additionally to the actual event songlist of the concert itself, also the list of songs played
-during the soundcheck/pre-show/etc, these should also be rendered differently on the POH version of the event
-
-#+begin_example
-@debug/mb-event-soundcheck-concert-initial.html - IP for https://musicbrainz.org/event/be07d2a9-d1c9-47c8-98ac-69e2b392209a
-@debug/mb-event-soundcheck-concert-POH.html - POH of the above event - currently the descriptive strings (soundcheck/concert) for the event songparts are rendered AFTER the table
-#+end_example
-
-show me a mockup to render this more attractive, maybe as a sub-header (as Discogs sometimes does when a tracklist of a
-release has named parts)
-
-2.)
-
-add support for image URLs from the sidebar like the logo label images:
-
-a.)
-
-register the third-party user script by @zabe
-
-#+begin_example
-@tests/fixtures/live-userscripts/entity-image.user.js
-#+end_example
-
-check what it's doing and how it displays entitity images in the sidebar of some MB PTs
-
-b.)
-
-On e.g. https://musicbrainz.org/label/b8d33bec-92cc-40d9-bd92-4eb089b401a9 when this script is active, we are able to
-choose from a drop down list an entity image from the logo links (at least in the case of labels). Note that NOT all
-logos actually display.
-
-#+begin_example
-@debug/mb-label-CBS-logos-initial.html - IP
-#+end_example
-
-c.)
-
-See if we can use this functionality for displaying additional entity images in our userscript were we currrently
-already do this (e.g. for artist, place, event,  etc) 
-
-#+begin_example
-in the h1 header in front of the entity name
-in the "Space" POH of an entity
-#+end_example
-
-maybe we can rotate the image if there are multiple
-
-d.)
-
-make some suggestions with nice rich HTML based mockups
-
-3.)
-
-Why is https://www.discogs.com/release/8164856-Human-Touch/history supported as a PT but e.g
-https://www.discogs.com/master/26725-Born-To-Run/history doesn't offer our action button. Also check for other Discogs
-PTs which are maybe missing
-
-4.)
-
-On Discogs POHs
-
-a.)
-
-the "PLAYING" string overlaps with "Video VO-n2EFK6sM"
-
-b.)
-
-the hyperlinked titles after the youtube play buttons need a little more spacing between the button and the actual titles
-
 * TODO Still open:
 
 The 2-of-100-pages search question. Did you pick a limit in the dialog, or did pages fail? If they failed, hovering the 🔄 button shows the reason.
 The two public-list snapshots for 7e, debug/dg-list-public.html and debug/dg-list-public-p2.html, plus the page-2 URL.
 test:full before any merge. I’ll ask before merging.
+
+* TODO open
+
+- One unexplained failure. Before the final run, that Discogs test failed once more with no card at all, and that cause
+  is not determined. I couldn't reproduce it in 69 stress runs, and its trace got overwritten. The final run passed it,
+  and the debug log says it's still open.
+- A 📊 behaviour you might notice: if you scroll down, open 📊 and tick an entry that shortens the page a lot, the panel
+  can close, even though multi-select is meant to keep it open. I haven't changed this; tell me if you want it fixed.
+
+* TODO move the "WARNING/ERROR buttons in their own button
