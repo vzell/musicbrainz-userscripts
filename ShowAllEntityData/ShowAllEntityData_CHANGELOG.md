@@ -4,9 +4,42 @@ Every version, newest first, with the technical details behind each change. For 
 
 **Months:** [October 2026](ShowAllEntityData_CHANGELOG/2026-10.md) · [September 2026](ShowAllEntityData_CHANGELOG/2026-09.md) · [August 2026](ShowAllEntityData_CHANGELOG/2026-08.md) · [July 2026](ShowAllEntityData_CHANGELOG/2026-07.md) · [June 2026](ShowAllEntityData_CHANGELOG/2026-06.md) · [May 2026](ShowAllEntityData_CHANGELOG/2026-05.md) · [April 2026](ShowAllEntityData_CHANGELOG/2026-04.md) · [March 2026 (1 of 2)](ShowAllEntityData_CHANGELOG/2026-03-1.md) · [March 2026 (2 of 2)](ShowAllEntityData_CHANGELOG/2026-03-2.md) · [February 2026](ShowAllEntityData_CHANGELOG/2026-02.md) · [January 2026](ShowAllEntityData_CHANGELOG/2026-01.md)
 
-This page shows the newest 100 of 1683 versions; the month pages hold all of them.
+This page shows the newest 100 of 1686 versions; the month pages hold all of them.
 
 ---
+
+## 9.99.1515 — 2026-10-29
+
+**🚀 Feature**
+
+- Link previews: a Wikidata item's window (Space) shows its statements, its picture, every identifier as a link in three groups that fold (Music, Libraries and authority files, Other) with a filter, and its Wikipedia articles; a Language choice switches the names. A Wikipedia article's window shows its infobox, its opening, the other languages, and its sections, each read into the window when you open it. Links inside both open in the same window. The cards stay as quick as before. The identifiers' filter marks what it matched. In a window's path, every step on another site (Wikidata, Wikipedia, setlist.fm, Brucebase, any page; Discogs keeps its own marks) starts with that site's icon, and so does a MusicBrainz URL's ("\[info\]") step, with the icon of the site it names (the icons the cards and windows already show; a hover asks for none). Resting on such an icon shows a card: which site it is, what the step shows and how it was read (through Wikidata's, Wikipedia's or setlist.fm's API, from the page itself …), and that the icon is the site's own, asked once and kept for a month. A click on the icon opens the site's home page in a new tab (the pointer shows a finger there, as on MusicBrainz's own icons).
+
+**🔧 Refactor**
+
+- \_extWdWindow() / \_extWdClaims() / \_extWdNamesFor() (wbgetentities once, two SPARQL queries on query.wikidata.org: @connect, \_EXT\_CONNECT\_HOSTS), \_extWpWindow() / \_extWpLeadFor() / \_extWpSectionFor() (action=parse), \_extWpSafe() (Wikipedia's text rebuilt from a few tags), \_DP\_WIN\_ALL\_LINKS\_READERS. Probe scripts/probe-wiki-rich.py (--save: tests/fixtures/ext-wd-\*.json, ext-wp-\*.json). Tests: popup-ext.spec.js (2); scripts/mutations/wiki-setlistfm.json (+10: 9 caught, 1 recorded as not seen, with why). docs/claude/detail-pages.md (new section), HELP. \_hlEsc()/\_hlHtml() in the identifier rows; \_dpKindGlyph() gives every reader but the Discogs family, and a MusicBrainz url step (\_mbPopUrlResource()), the cached site icon (\_dpSiteIconGlyph(), \_extIcons); the URL window asks its site's icon (\_mbPopUrlIconStart(), first-contact rule kept) and draws its path again once its address is known; and \_extIconEnsure() draws the path again when an icon arrives (it is drawn on a step only). The icon's hover text: \_dpSiteIconTip() (\_DP\_SITE\_ICON\_READS per reader), set by \_dpCrumbsRender() through \_setTip(). The icon is a.mb-dp-crumb-site (href the site's home, a new tab).
+
+
+## 9.99.1514 — 2026-10-29
+
+**🚀 Feature**
+
+- Link previews: setlist.fm links (a setlist, an artist's setlists, a venue) get a card and a window from setlist.fm's own API, with a free key of your own (new setting: setlist.fm API key, kept like the Discogs token: never exported). A setlist shows its songs by set, the encore too, covers with their original artist linked to MusicBrainz, guests, songs from tape and the show's notes; an artist's or a venue's window lists their setlists 20 at a time with "Load 20 more" and counts the tours, venues or artists of what is loaded. Links inside open in the same window. Without a key nothing changes.
+
+**🔧 Refactor**
+
+- The setlistfm reader in \_EXT\_READERS (\_extSfmPage(), \_extSfmLoad(), \_extSfmGet(), \_extSfmSetlist(), \_extSfmWindow(), \_extSfmFactsHtml(), \_extSfmAreaClick(), \_extSfmPageLoad()), only while sa\_pop\_ext\_setlistfm\_key is set (secret: true); @connect api.setlist.fm and \_EXT\_CONNECT\_HOSTS; setlistfm in \_DP\_WIN\_EXT\_READERS. Mockup 4: https://claude.ai/artifact/URrn3dps1EMtnkjKBvsvag. Probe scripts/probe-setlistfm-api.py (run by vzell with their key; fixtures tests/fixtures/ext-sfm-\*.json). Tests: popup-ext.spec.js "setlist.fm through its API" (4); scripts/mutations/wiki-setlistfm.json. ShowAllEntityData\_CONFIG\_DEFAULTS.json and scripts/config-default-history.json regenerated. docs/claude/detail-pages.md (new section), settings-and-config.md, HELP.
+
+
+## 9.99.1513 — 2026-10-29
+
+**✨ Improve**
+
+- Link previews: in the window of a MusicBrainz artist, place, label, event or any other entity, a link to another site (Wikipedia, Wikidata, Discogs, YouTube, setlist.fm, any page) opens in the same window, with Back, instead of a new tab. Ctrl-click still opens a new tab.
+
+**🔧 Refactor**
+
+- \_dpWinExtTarget(): in a window whose source is in \_DP\_WIN\_ALL\_LINKS\_SOURCES (mb-entity, dg-mb, mb-release-group, mb-event-rg) every reader's link opens here; other windows keep \_DP\_WIN\_EXT\_READERS. Test: popup-mb.spec.js (the event window's setlist.fm link opens here, Back, Ctrl-click a new tab). docs/claude/detail-pages.md, HELP.
+
 
 ## 9.99.1512 — 2026-10-29
 
@@ -887,28 +920,6 @@ This page shows the newest 100 of 1683 versions; the month pages hold all of the
 **🐛 Fix**
 
 - Since 9.99.1406, on pages where MusicBrainz marks the Length column itself (an ISRC page, the relationship overviews), the first filter keystroke removed MusicBrainz's own class from the Length header and its new tooltip with it. The jesus2099 clean-up took that tooltip for the "SUPER MIND CONTROL" plugin's, because only one older kind of the script's own tooltips counted as ours. Every tooltip the script writes now counts, so both stay.
-
-
-## 9.99.1415 — 2026-10-21
-
-**🚀 Feature**
-
-- New page type: one version of an annotation ("View this version" on an annotation history, or "View current revision") gets a "Compare with the current version" button. It shows who wrote the version and when, and a table with one row per paragraph or heading: this version's text, the current version's text, and whether it is the same, changed, only in this version or only in the current version. Point at "changed" to see both texts with the difference marked. Both are read from the page itself.
-
-
-## 9.99.1414 — 2026-10-21
-
-**✨ Improve**
-
-- The sidebar picture and its copy beside the name now show the same hover card as an image in a CAA/EAA column, instead of a one-line tooltip: an artist's photo, a label's logo or a place's picture from Wikimedia Commons, and an instrument's IROMBOOK drawing, with the picture, where it comes from and its file name.
-- Release, release group and event pages: pointing at the cover beside the name, or at the sidebar's own cover, shows the CAA/EAA column's card of every image of the release (or the event's event art), asked for on that first hover; Space shows them all, Shift bigger. A click on either opens them all in the artwork viewer, starting at the front, instead of MusicBrainz's own window; Ctrl-click on the sidebar's cover still opens MusicBrainz's. Event pages now get the cover beside the name too.
-
-
-## 9.99.1413 — 2026-10-21
-
-**🐛 Fix**
-
-- MusicBrainz's own pop-up windows, such as the one a click on the sidebar's cover opens on release, release group and event pages, now cover the whole page. The script's buttons beside the title, the headings that stay at the top while scrolling and the sidebar handle no longer show through them.
 
 
 ---
