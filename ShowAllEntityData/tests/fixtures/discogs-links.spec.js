@@ -28,6 +28,7 @@ const answer = (f, url = f.url) => ({ [url]: { status: f.status, responseHeaders
 const API = 'https://api.discogs.com/';
 const SUBS_PAGE = (p) => `${API}users/vzell/submissions?per_page=100&page=${p}`;
 const COLL_PAGE = (p) => `${API}users/GuiBeal/collection/folders/0/releases?sort=added&sort_order=desc&per_page=100&page=${p}`;
+const WANTS_PAGE = (user, p) => `${API}users/${user}/wants?per_page=100&page=${p}`;
 const ANSWERS = Object.assign({},
     ...['discogs-master', 'discogs-release', 'discogs-label', 'discogs-artist', 'discogs-user-vzell', 'discogs-user-guibeal',
         'discogs-user-vzell-contributions-p1', 'discogs-user-guibeal-collection-p1', 'discogs-search-columbia-label-p1',
@@ -41,6 +42,10 @@ const ANSWERS = Object.assign({},
     answer(FX('discogs-user-vzell-submissions-p7'), SUBS_PAGE(3)),
     // GuiBeal's 197: page 2 is page 1's answer again.
     answer(FX('discogs-user-guibeal-collection-p1'), COLL_PAGE(2)),
+    // disc-kid's 138 wants (dg-user-list, 2026-10-29): page 2 is page 1's
+    // answer again; vzell's own (the SYNTHETIC dg-mywantlist-3.html) too.
+    ...[1, 2].map(p => answer(FX('discogs-user-disckid-wants-p1'), WANTS_PAGE('disc-kid', p))),
+    ...[1, 2].map(p => answer(FX('discogs-user-disckid-wants-p1'), WANTS_PAGE('vzell', p))),
     // Pleasure_to_Kill (a history's first user): GuiBeal's capture with that
     // name and a large picture, for the avatar's card and viewer.
     (() => {
@@ -508,6 +513,47 @@ test.describe('discogs.com: links that stay, every link in the window, View chan
         await expect(t.locator('tbody tr')).toHaveCount(200);
         const heads = await t.locator('thead tr:first-child th').evaluateAll(ths => ths.map(th => th.dataset.colName || th.textContent.trim()));
         expect(heads).toEqual(expect.arrayContaining(['Image', 'Artist', 'Title', 'Added']));
+        expect(errors).toEqual([]);
+    });
+
+    // dg-user-list (2026-10-29): a user's collection or wantlist as a page
+    // of its own (vzell: "Other missing Discogs pages should also get a PT"),
+    // read from the API as dg-user's button reads it.
+    test('dg-user-list: a collection page (React) has the Collection button alone; it reads the collection from the API', async ({ page }) => {
+        const { errors } = await openDg(page, { url: 'https://www.discogs.com/user/GuiBeal/collection', file: 'dg-collection-page.html' });
+        const root = page.locator('#mb-dg-root');
+        expect(await root.locator('button[data-label^="Show "]').evaluateAll(bs => bs.map(b => b.dataset.label))).toEqual(['Show the collection']);
+        await press(page, 'Show the collection');
+        expect((await gmLog(page)).filter(u => u.includes('/collection/'))).toEqual([COLL_PAGE(1), COLL_PAGE(2)]);
+        await expect(root.locator('table.tbl').first().locator('tbody tr')).toHaveCount(200);
+        expect(errors).toEqual([]);
+    });
+
+    test('dg-user-list: another user\'s wantlist (/wantlist?user=…) names its 138 wants and reads them from the API', async ({ page }) => {
+        const { errors } = await openDg(page, { url: 'https://www.discogs.com/wantlist?user=disc-kid', file: 'dg-user-wantlist.html' });
+        const root = page.locator('#mb-dg-root');
+        const btn = root.locator('button[data-label="Show the wantlist"]');
+        expect(await root.locator('button[data-label^="Show "]').evaluateAll(bs => bs.map(b => b.dataset.label))).toEqual(['Show the wantlist']);
+        // The page's own total, no request before the press.
+        await expect(btn).toHaveAttribute('data-mbtt', /138 releases in the wantlist/);
+        expect((await gmLog(page)).filter(u => u.includes('/wants'))).toEqual([]);
+        await press(page, 'Show the wantlist');
+        expect((await gmLog(page)).filter(u => u.includes('/wants'))).toEqual([WANTS_PAGE('disc-kid', 1), WANTS_PAGE('disc-kid', 2)]);
+        await expect(root.locator('h2.mb-dg-list-heading')).toHaveText(/Wantlist/);
+        await expect(root.locator('table.tbl').first().locator('tbody tr')).toHaveCount(200);
+        expect(errors).toEqual([]);
+    });
+
+    test('dg-user-list: /mywantlist is the logged-in user\'s; empty, no button; with wants, the button reads that user\'s', async ({ page }) => {
+        await openDg(page, { url: 'https://www.discogs.com/mywantlist', file: 'dg-mywantlist.html' });
+        await expect(page.locator('#mb-dg-root h1.mb-dg-h1')).toBeVisible();
+        await expect(page.locator('#mb-dg-root button[data-label^="Show "]')).toHaveCount(0);
+    });
+
+    test('dg-user-list: /mywantlist with wants reads the logged-in user\'s from the page\'s own config', async ({ page }) => {
+        const { errors } = await openDg(page, { url: 'https://www.discogs.com/mywantlist', file: 'dg-mywantlist-3.html' });
+        await press(page, 'Show the wantlist');
+        expect((await gmLog(page)).filter(u => u.includes('/wants'))).toEqual([WANTS_PAGE('vzell', 1), WANTS_PAGE('vzell', 2)]);
         expect(errors).toEqual([]);
     });
 

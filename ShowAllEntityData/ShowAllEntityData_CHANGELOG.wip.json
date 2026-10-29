@@ -1,5 +1,17 @@
 [
   {
+    "version": "WIP.7",
+    "date": "2026-10-29",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "discogs.com: a user's collection or wantlist page of its own (/user/<name>/collection, /wantlist?user=<name>, your /mywantlist) gets the \"Show the collection\" or \"Show the wantlist\" button, the same table as on the user's page, read from Discogs' API. The button says how many entries the page counts, and stays away when the page says the list is empty."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.6",
     "date": "2026-10-29",
     "sections": [

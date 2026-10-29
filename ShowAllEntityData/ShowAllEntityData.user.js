@@ -33,6 +33,7 @@
 // @include      /^https?:\/\/(?:www\.)?discogs\.com\/(?:[a-z]{2}(?:-[a-z]{2})?\/)?(?:master|release|artist|label)\/\d+(?:-[^\/?#]*)?\/?(?:[?#].*)?$/
 // @include      /^https?:\/\/(?:www\.)?discogs\.com\/(?:[a-z]{2}(?:[-_][a-zA-Z]{2})?\/)?submissions\/?(?:[?#].*)?$/
 // @include      /^https?:\/\/(?:www\.)?discogs\.com\/(?:[a-z]{2}(?:[-_][a-zA-Z]{2})?\/)?user\/[^\/?#]+\/?(?:[?#].*)?$/
+// @include      /^https?:\/\/(?:www\.)?discogs\.com\/(?:[a-z]{2}(?:[-_][a-zA-Z]{2})?\/)?(?:user\/[^\/?#]+\/(?:collection|wantlist)|mywantlist|wantlist)\/?(?:[?#].*)?$/
 // @include      /^https?:\/\/(?:www\.)?discogs\.com\/(?:[a-z]{2}(?:[-_][a-zA-Z]{2})?\/)?users\/ratings\/[^\/?#]+\/?(?:[?#].*)?$/
 // @include      /^https?:\/\/(?:www\.)?discogs\.com\/(?:[a-z]{2}(?:[-_][a-zA-Z]{2})?\/)?(?:release|master|artist|label)\/\d+(?:-[^\/?#]*)?\/history\/?(?:[?#].*)?$/
 // @include      /^https?:\/\/(?:www\.)?discogs\.com\/(?:[a-z]{2}(?:[-_][a-zA-Z]{2})?\/)?release\/\d+(?:-[^\/?#]*)?\/images(?:\/update)?\/?(?:[?#].*)?$/
@@ -6529,6 +6530,18 @@
     const _DG_USER_PATH_RE = /^\/(?:[a-z]{2}(?:[-_][a-zA-Z]{2})?\/)?user\/([^/?#]+)\/?$/;
 
     /**
+     * A discogs.com user's collection or wantlist as its own page
+     * (pageType `dg-user-list`, 2026-10-29): `/user/<name>/collection` (React,
+     * with `#app`), `/user/<name>/wantlist`, `/wantlist?user=<name>` and the
+     * logged-in user's `/mywantlist` (older pages, `#page_content`). Group 1
+     * the user of the path, 2 its list, 3 a wantlist page without a user in
+     * the path. Read by the `#app` gate below, the definition's `match`,
+     * `_dgUserListKind()` and `_dgUserName()`.
+     * @type {RegExp}
+     */
+    const _DG_USER_LIST_PATH_RE = /^\/(?:[a-z]{2}(?:[-_][a-zA-Z]{2})?\/)?(?:user\/([^/?#]+)\/(collection|wantlist)|(mywantlist|wantlist))\/?$/;
+
+    /**
      * A discogs.com user's ratings, `/users/ratings/<name>` (language prefix
      * allowed): pageType `dg-ratings` (2026-10-19), plain HTML without
      * `#app`. Read by the `#app` gate below and the definition's `match`.
@@ -6663,6 +6676,7 @@
     // plain HTML, whose content root is #page_content (the check has neither).
     if (_isDgHost && !document.getElementById('app') &&
         !((_DG_SUBS_PATH_RE.test(window.location.pathname) || _DG_USER_PATH_RE.test(window.location.pathname) ||
+           _DG_USER_LIST_PATH_RE.test(window.location.pathname) ||
            _DG_HIST_PATH_RE.test(window.location.pathname) || _DG_RATINGS_PATH_RE.test(window.location.pathname) ||
            _DG_IMG_PATH_RE.test(window.location.pathname)) &&
           document.getElementById('page_content'))) {
@@ -18445,13 +18459,87 @@
      * @returns {string}
      */
     function _dgUserName() {
-        const m = _DG_USER_PATH_RE.exec(window.location.pathname);
-        if (!m) return '';
+        const path = window.location.pathname;
+        const m = _DG_USER_PATH_RE.exec(path);
+        const l = _DG_USER_LIST_PATH_RE.exec(path);
+        // A list page (2026-10-29): the user of its path, else of its query
+        // (`/wantlist?user=disc-kid`; Discogs' own og:url says `username=`),
+        // else, on `/mywantlist`, the logged-in user (`_dgLoggedInUser()`).
+        const q = new URLSearchParams(window.location.search);
+        const raw = m ? m[1] : l ? (l[1] || q.get('user') || q.get('username') || (l[3] === 'mywantlist' ? _dgLoggedInUser() : '')) : '';
         try {
-            return decodeURIComponent(m[1]);
+            return decodeURIComponent(raw);
         } catch (_) {
-            return m[1];
+            return raw;
         }
+    }
+
+    /**
+     * The logged-in user as the page's own config names it: older pages
+     * carry `<script id="dsdata">function dsdata(){return {…"username":"vzell"…}}</script>`
+     * (debug/dg-wantlist.html, 2026-10-29). '' when not logged in or not said.
+     * Only for `/mywantlist`, whose path names no one: elsewhere the config's
+     * user is the READER, not the list's owner (`/wantlist?user=disc-kid`
+     * saved by vzell says "vzell").
+     * @returns {string}
+     */
+    function _dgLoggedInUser() {
+        const s = document.getElementById('dsdata');
+        const m = s && /["']?username["']?\s*:\s*"([^"]+)"/.exec(s.textContent || '');
+        return m ? m[1] : '';
+    }
+
+    /**
+     * The list a `dg-user-list` page shows: 'collection' or 'wantlist'; ''
+     * on any other page.
+     * @param {string} [path]
+     * @returns {string}
+     */
+    function _dgUserListKind(path = window.location.pathname) {
+        const l = _DG_USER_LIST_PATH_RE.exec(path);
+        return l ? (l[2] || 'wantlist') : '';
+    }
+
+    /**
+     * How many entries a `dg-user-list` page says its list has, read from
+     * the live page (no request): an older page's pager total ("1 – 138 of
+     * 138", debug/dg-user-wantlist.html); 0 for `/mywantlist`'s "You haven't
+     * added anything" block or its config's `userNumWantlist: 0`
+     * (debug/dg-wantlist.html); -1 when the page does not say (the React
+     * collection page draws its rows later).
+     * @returns {number}
+     */
+    function _dgUserListCount() {
+        const total = document.querySelector('nav.pagination strong.pagination_total');
+        const m = total && /of\s+([\d,.]+)/.exec(total.textContent);
+        if (m) return Number(m[1].replace(/[,.]/g, '')) || 0;
+        if (document.getElementById('wantlist-empty')) return 0;
+        const s = document.getElementById('dsdata');
+        const n = s && /["']?userNumWantlist["']?\s*:\s*(\d+)/.exec(s.textContent || '');
+        if (n && _dgUserListKind() === 'wantlist' && /^\/(?:[a-z]{2}(?:[-_][a-zA-Z]{2})?\/)?mywantlist\/?$/.test(window.location.pathname)) return Number(n[1]);
+        return -1;
+    }
+
+    /**
+     * The one button of a `dg-user-list` page: its list, read from Discogs'
+     * API as `dg-user`'s button for it reads it (`dgUserList`, the same
+     * pages and converter). Shown only on that list's page and unless the
+     * page says it is empty; its hover text what it costs when the page
+     * counts it.
+     * @param {string} kind - 'collection' or 'wantlist'.
+     * @returns {Object} A button config.
+     */
+    function _dgUserListButton(kind) {
+        const L = _DG_USER_LISTS[kind];
+        return {
+            label: `Show the ${L.heading.toLowerCase()}`, shortLabel: L.heading, features: { dgUserList: kind },
+            showIf: () => _dgUserListKind() === kind && _dgUserListCount() !== 0,
+            get description() {
+                const n = _dgUserListCount();
+                return n > 0 ? _dgCost(`${_extDgNum(n)} ${L.what}`, Math.max(1, Math.ceil(n / _EXT_DISCOGS_PER_PAGE)))
+                    : `Every one of ${_dgUserName() || 'this user'}'s ${L.what}, from Discogs' API (one request per ${_EXT_DISCOGS_PER_PAGE}).`;
+            },
+        };
     }
 
     /**
@@ -18469,6 +18557,31 @@
             .find(x => re.test(x.getAttribute('href') || ''));
         const small = a && a.querySelector('small');
         return small ? Number(small.textContent.replace(/[^\d]/g, '')) || 0 : 0;
+    }
+
+    /**
+     * The features of `dg-user` and `dg-user-list` (one list of a user, from
+     * Discogs' API), made fresh for each definition.
+     * @returns {Object}
+     */
+    function _dgUserFeatures() {
+        return {
+            dgToTable: 'user',
+            decorateDoc: (doc) => _dgMbDecorateDoc(doc),
+            groupByH3: true,
+            // Each API page has its own Releases / Artists / Labels.
+            groupMergeByName: true,
+            collapsableColumns: [ 'Cat#' ],
+            // Date and time as separate columns, as on MusicBrainz's
+            // pageTypes (vzell, 2026-10-18).
+            columnExtractors: [
+                { sourceColumn: 'Added', extractor: 'dateTimeParts', syntheticColumns: ['Added date', 'Added time'] },
+                { sourceColumn: 'Last changed', extractor: 'dateTimeParts', syntheticColumns: ['Last changed date', 'Last changed time'] }
+            ],
+            pageRequest: (p, def) => _dgUserPageRequest(p, def),
+            pageCountAsync: (def) => _dgUserPageCount(def),
+            integerColumns: [ { sourceColumn: 'Year', align: 'R' } ]
+        };
     }
 
     /**
@@ -41533,23 +41646,17 @@
             host: 'www.discogs.com',
             match: (path) => _DG_USER_PATH_RE.test(path),
             buttons: ['submissions', 'contributions', 'collection', 'wantlist'].map(_dgUserButton),
-            features: {
-                dgToTable: 'user',
-                decorateDoc: (doc) => _dgMbDecorateDoc(doc),
-                groupByH3: true,
-                // Each API page has its own Releases / Artists / Labels.
-                groupMergeByName: true,
-                collapsableColumns: [ 'Cat#' ],
-                // Date and time as separate columns, as on MusicBrainz's
-                // pageTypes (vzell, 2026-10-18).
-                columnExtractors: [
-                    { sourceColumn: 'Added', extractor: 'dateTimeParts', syntheticColumns: ['Added date', 'Added time'] },
-                    { sourceColumn: 'Last changed', extractor: 'dateTimeParts', syntheticColumns: ['Last changed date', 'Last changed time'] }
-                ],
-                pageRequest: (p, def) => _dgUserPageRequest(p, def),
-                pageCountAsync: (def) => _dgUserPageCount(def),
-                integerColumns: [ { sourceColumn: 'Year', align: 'R' } ]
-            },
+            features: _dgUserFeatures(),
+            tableMode: 'multi'
+        },
+        {
+            // A user's collection or wantlist page of its own (2026-10-29):
+            // the same list as dg-user's button, read the same way.
+            type: 'dg-user-list',
+            host: 'www.discogs.com',
+            match: (path) => _DG_USER_LIST_PATH_RE.test(path),
+            buttons: ['collection', 'wantlist'].map(_dgUserListButton),
+            features: _dgUserFeatures(),
             tableMode: 'multi'
         },
         {
@@ -105048,8 +105155,9 @@ a { color: #1565c0; }`;
                         // Labels) — the Changes table's date/time split ran on the Diff
                         // table's first column ("Companies, etc." → "Companies," /
                         // "etc." under no header: vzell's debug/2columns-missing.html).
+                        // 'dg-user-list' (2026-10-29) shares dg-user's lists.
                         if (pageType === 'tag-value' || pageType === 'user-tag-value' || pageType === 'user-ratings' || pageType === 'instrument-list' || pageType === 'artist-credit' || pageType === 'event-overview' || _isRelTablesRun() ||
-                            pageType === 'dg-history' || pageType === 'dg-user') {
+                            pageType === 'dg-history' || pageType === 'dg-user' || pageType === 'dg-user-list') {
                             // Rebuild the active extractors/integer-columns/erasers from this
                             // group's own entity-specific features (entityFeatures map, if any),
                             // merged with the base features (listToTable, removeSelector, etc.) —

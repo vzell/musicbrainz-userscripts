@@ -27195,3 +27195,51 @@ watch fix). `scripts/mutations/entity-images.json` 7/7. The picture specs 32/32
 plus mobile 2/2; settings specs 47/47 (`sa_entity_images` joined
 `FIXTURE_SETTINGS_OVERRIDE`; CLAUDE.md and settings-and-config.md now say
 twenty). The 56 window, sidebar, settings and entity-image specs: 852/852.
+**Confirmed live** by vzell (2026-10-29), with WIP.5.
+
+## 2026-10-29 — The remaining Discogs pages: what they are; dg-user-list (WIP.7)
+
+Env: 2026-10-29T02:48+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) · Playwright 1.62.1 (bundled Chromium), no Tampermonkey (GM stubs); the snapshots: vzell's browser, logged in (`isLoggedIn:true`), browser unknown
+
+**The survey** (vzell saved eleven pages, debug/dg-*.html, 2026-10-29; read whole):
+- `/release/<id>/stats` does not exist: debug/dg-release-stats.html is
+  Discogs' 404 page ("broken record"). Nothing to support.
+- `/release/<id>/images/history?rev=N` lands on `/release/<id>/images/update?rev=N`
+  (every hreflang link of debug/dg-image-history-rev.html), the image editor:
+  already `dg-image-history`, already injected (its `@include` takes a query).
+- master/artist/label `/images`: older pages; `#view_images > p >
+  span.thumbnail_link > img` only (7, 27, 10 images), no type or uploader;
+  a master's are its main release's ("Edit Images" → `/release/13896528/images/update`).
+- `/lists/<name>/<id>`: React; its items in `#dsdata`'s Apollo cache
+  (`CuratedList…offsetItems({pagination:{page,perPage}})`); vzell's is
+  PRIVATE (the API cannot read it) and has 2 items: no page 2 to see.
+- `/user/vzell/collection` (React, rows drawn later) and `/mywantlist`
+  (older, "You haven't added anything") are EMPTY: vzell has neither
+  (`userNumCollection:0`, `userNumWantlist:0`), not a login problem;
+  `/wantlist?user=disc-kid` is a public wantlist, 138 rows server-side, a
+  pager "1 – 138 of 138".
+- `/sell/release/<id>`: older page, `table.mpitems` listings (3), pager with
+  `?page=&limit=&sort=`.
+- `/search?q=…`: a Next.js app (no `#app`, no `#page_content`), results in an
+  RSC stream, page buttons without hrefs (cap 400). The `dgsearch` reader
+  already reads the same results from the API.
+
+**WIP.7 (a): dg-user-list.** The collection and wantlist pages reuse
+dg-user's API lists (`_dgUserFeatures()` now builds both definitions'
+features; `dgUserList` per button). One button, the page's own list
+(`_dgUserListKind()`), hidden when the page says it is empty
+(`_dgUserListCount()`: pager total, the empty block, the config's
+`userNumWantlist`). **The user:** path, else `?user=`/`?username=` (Discogs'
+own og:url says `username=`), else on `/mywantlist` the page config's
+`username` (`_dgLoggedInUser()`). Trap: the config's `username` is the
+READER — debug/dg-user-wantlist.html, disc-kid's list saved by vzell, says
+"vzell" (a mutation pins it). The wantlist pages have no `#app`: their path
+joined the gate. `dg-user-list` joined the fetch loop's per-table extractor
+list (the skill's trap: its sub-tables differ). Fixtures (builder): the
+pager, a SYNTHETIC minimal config (`username`, `userNumWantlist` only: the
+saved one carries more of the account), the React shell; API: disc-kid's
+wants page 1 (`capture-ext-fixtures.py`, 138 in 2 pages, as the page says).
+
+**Tests.** discogs-links.spec.js (4), sl-include-regex.spec.js (the collection
+URL moved from "not injected" to injected; near misses); mutations
+`dg-user-list.json` 5/5. The eight Discogs specs: 147/147.

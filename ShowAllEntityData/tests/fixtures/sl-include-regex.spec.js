@@ -285,11 +285,31 @@ test.describe('@include coverage', () => {
             'https://www.discogs.com/search/?q=Springsteen&type=all',
             'https://www.discogs.com/sell/list?master_id=26725',
             'https://www.discogs.com/release/1874253-Bruce-Springsteen-Born-To-Run/image/SW1hZ2U6NDYwODA1ODY=',
-            'https://www.discogs.com/user/vzell/collection',
             'https://www.discogs.com/artist/Bruce-Springsteen',
             'https://api.discogs.com/releases/1874253',
             'https://www.discogs.com.example.org/release/1874253',
             'https://example.org/www.discogs.com/release/1874253',
+        ];
+        expect(pages.filter((u) => !injected(u))).toEqual([]);
+        expect(others.filter((u) => injected(u))).toEqual([]);
+    });
+
+    test('discogs.com: a user\'s collection or wantlist page (dg-user-list, 2026-10-29); no near miss', () => {
+        const pages = [
+            'https://www.discogs.com/user/vzell/collection',
+            'https://www.discogs.com/user/vzell/collection?folder_id=0',
+            'https://www.discogs.com/user/disc-kid/wantlist',
+            'https://www.discogs.com/wantlist?user=disc-kid',
+            'https://www.discogs.com/wantlist?user=disc-kid&page=2&limit=250',
+            'https://www.discogs.com/mywantlist',
+            'https://www.discogs.com/de/mywantlist',
+        ];
+        const others = [
+            'https://www.discogs.com/user/vzell/collectionx',
+            'https://www.discogs.com/user/vzell/collection/stats',
+            'https://www.discogs.com/wantlistx',
+            'https://www.discogs.com/mywantlist/export',
+            'https://www.discogs.com/user/vzell/lists',
         ];
         expect(pages.filter((u) => !injected(u))).toEqual([]);
         expect(others.filter((u) => injected(u))).toEqual([]);
@@ -353,7 +373,7 @@ test.describe('@include coverage', () => {
         expect(others.filter((u) => injected(u))).toEqual([]);
     });
 
-    test('discogs.com: a user\'s page (dg-user), a language prefix; not its sub-pages', () => {
+    test('discogs.com: a user\'s page (dg-user), a language prefix; not its sub-pages (but collection and wantlist: dg-user-list)', () => {
         const pages = [
             'https://www.discogs.com/user/vzell',
             'https://www.discogs.com/user/vzell/',
@@ -362,7 +382,6 @@ test.describe('@include coverage', () => {
             'https://www.discogs.com/pt_BR/user/vzell',
         ];
         const others = [
-            'https://www.discogs.com/user/vzell/collection',
             'https://www.discogs.com/user/vzell/submissions',
             'https://www.discogs.com/user/',
         ];
