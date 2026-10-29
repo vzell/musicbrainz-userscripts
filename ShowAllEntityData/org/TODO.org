@@ -5986,13 +5986,17 @@ Give our CAA/EAA inline images and the images in the big picture image stripe th
 
 * TODO On e.g. MB artist POHs, could the "RELEASE GROUPS" section on the right, specifically the table itself auto-increase (in showing more table rows), when we resize the POH window size to a bigger size
 
-On e.g. MB artist POHs, could the "RELEASE GROUPS" section on the right, specifically the table itself auto-increase (in
-showing more table rows), when we resize the POH window size to a bigger size - see video @debug/
+On e.g. MB artist POHs (or on MB place POHs) could the "RELEASE GROUPS" ("SETLIST" section) section on the right,
+specifically the table itself, auto-increase (in a sense showing more table rows), when we resize the POH window size to
+a bigger size - see video "@debug/Release “Tunnel of Love Express I_ Tougher Than the Rest” by Bruce Springsteen - MusicBrainz - Vivaldi 2026-10-30 00-07-56.mp4",
+as there is lot of space wasted below the right table
 
 #+begin_example
-Artist - https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f - Bruce Springsteen
-Place - https://musicbrainz.org/place/bffa8343-2160-497c-937b-60369749eb11 - Los Angeles Memorial Sports Arena
+Artist - https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f - Bruce Springsteen - POH-mb-artist-bruce.png
+Place - https://musicbrainz.org/place/bffa8343-2160-497c-937b-60369749eb11 - Los Angeles Memorial Sports Arena - POH-mb-place
 #+end_example
+
+Make some suggestions, mockups for dynamically resizing tables in th POH
 
 
 * TODO play video from setlist.fm and my NAS when hovering a song and also from archive.org for bootlegs
