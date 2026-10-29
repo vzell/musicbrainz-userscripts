@@ -1694,6 +1694,57 @@ test.describe('MusicBrainz link previews: event, place, series (WIP.4)', () => {
         expect(log.ws2.filter(u => u.includes('inc=recording-rels+release-rels'))).toHaveLength(1);
     });
 
+    // vzell, 2026-10-29 (debug/mb-event-soundcheck-concert-POH.html): a
+    // setlist with a soundcheck numbered 1–26 in one run, "Soundcheck" and
+    // "Concert" as loose notes under the table. Mockup A1. The Manchester
+    // capture has the same shape: "# Soundcheck" (3 songs), "# Concert" (26)
+    // with its "# Scheduled: …" note, three songs in both.
+    test('the event window: a setlist in parts, a heading row each, numbered within the part (mockup A1)', async ({ page }) => {
+        await open(page, { settings: { sa_pop_mb: true }, showAll: false });
+        const a = await addLink(page, EVENT, 'Manchester');
+        await ctrlHover(page, a);
+        await expect(card(page)).toContainText('fetched now');
+        // The card previews the longest part, says so, and names the other.
+        await expect(card(page).locator('.mb-pop-partline')).toHaveText('Concert · 26 songs, the first 5');
+        await expect(card(page).locator('.mb-pop-tracks li .mb-pop-ttl')).toHaveText(['No Surrender', 'Land of Hope and Dreams / People Get Ready',
+            'Death to My Hometown', 'Seeds', 'Something in the Night']);
+        await expect(card(page).locator('.mb-tt-dim').last()).toHaveText('+ 21 more · also Soundcheck (3)');
+        await page.keyboard.press('Space');
+        const area = dialog(page).locator('.mb-dp-area');
+        const box = area.locator('[data-mb-tbl="setlist"]');
+        await expect(area.locator('h4', { hasText: /^Setlist/ })).toHaveText('Setlist · 29 in 2 parts');
+        const heads = box.locator('tbody tr.mb-dp-tsec');
+        await expect(heads).toHaveCount(2);
+        await expect(heads.locator('.mb-dp-tsec-n')).toHaveText(['Soundcheck', 'Concert']);
+        await expect(heads.locator('.mb-dp-tsec-c')).toHaveText(['3 songs', '26 songs']);
+        // A comment right under a heading is that part's note.
+        await expect(heads.nth(1).locator('.mb-dp-tsec-note')).toContainText('Scheduled: 19:30');
+        // Numbered within the part, in the order played.
+        await expect(box.locator('tbody tr:not(.mb-dp-tsec) td:first-child'))
+            .toHaveText([...['1', '2', '3'], ...Array.from({ length: 26 }, (_, i) => String(i + 1))]);
+        // The part names are no longer loose notes under the table.
+        await expect(area.locator('.mb-dp-note', { hasText: /^(Soundcheck|Concert)$/ })).toHaveCount(0);
+        // A song played in both parts says so, by work.
+        const noSurrender = box.locator('tbody tr:not(.mb-dp-tsec)', { hasText: 'No Surrender' });
+        await expect(noSurrender.locator('.mb-dp-also')).toHaveText(['↺ also in Concert', '↺ also in Soundcheck']);
+        await expect(box.locator('.mb-dp-also')).toHaveCount(6);
+        // The Part chips keep one part.
+        await expect(box.locator('[data-mb-tbl-chip]')).toHaveText(['Soundcheck3', 'Concert26']);
+        await box.locator('[data-mb-tbl-chip="Soundcheck"]').click();
+        await expect(box.locator('tbody tr.mb-dp-tsec')).toHaveCount(1);
+        await expect(box.locator('tbody tr:not(.mb-dp-tsec)')).toHaveCount(3);
+        await box.locator('[data-mb-tbl-chip="Soundcheck"]').click();
+        // Filtering: each heading counts what is left of its part.
+        await box.locator('input.mb-tbl-q').fill('reason');
+        await expect(box.locator('tbody tr.mb-dp-tsec .mb-dp-tsec-c')).toHaveText(['1 of 3 songs', '1 of 26 songs']);
+        await box.locator('input.mb-tbl-q').fill('');
+        // Sorted by Song the parts mix: no heading rows, a part tag on each song.
+        await box.locator('th[data-mb-tbl-sort="song"]').click();
+        await expect(box.locator('tbody tr.mb-dp-tsec')).toHaveCount(0);
+        await expect(box.locator('tbody tr .mb-dp-tpart')).toHaveCount(29);
+        await expect(box.locator('tbody tr').first().locator('td').nth(1)).toContainText('Badlands');
+    });
+
     // org/event-GPE.org. Real captures (scripts/probe-mb-entity-lookups.py
     // --only event-details, 2026-10-08): the Stone Pony show, whose setlist
     // has mixed-case MBIDs and "(with …)" guests; the OceanFirst show, part

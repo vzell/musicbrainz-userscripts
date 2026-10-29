@@ -1,5 +1,18 @@
 [
   {
+    "version": "WIP.4",
+    "date": "2026-10-29",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "Link previews, an event's window: a setlist in parts (Soundcheck, Concert, Encore, …) shows a heading row for each part with its number of songs and its notes, numbers its songs within each part, and gets a chip per part to show only that part. A song played in two parts says so (\"↺ also in Soundcheck\"). Before, every song was numbered in one run and the part names were loose lines under the table.",
+          "The event card previews the setlist's longest part (usually the concert, not the soundcheck) and names the other parts."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.3",
     "date": "2026-10-29",
     "sections": [

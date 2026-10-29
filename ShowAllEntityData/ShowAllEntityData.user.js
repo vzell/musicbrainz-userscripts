@@ -28307,6 +28307,18 @@
             .mb-dp-dialog .mb-dg-dur { width: 3.4em; text-align: right; color: #7a6d5c; }
             .mb-dp-dialog .mb-dg-tt { font-weight: 600; }
             .mb-dp-dialog .mb-dg-thead td { font-style: italic; color: #7a6d5c; padding-top: 8px; }
+            /* A List table's part heading row (_dpListTableHtml() group, an
+               event's "Soundcheck" / "Concert", 2026-10-29): not a row to
+               click, so no hover tint and no pointer. While the table is
+               sorted the part rides each row as a small tag instead. */
+            .mb-dp-dialog .mb-dg-vt tbody tr.mb-dp-tsec > td,
+            .mb-dp-dialog .mb-dg-vt tbody tr.mb-dp-tsec:hover > td { background: #efe6d4; padding: 5px 8px; border-bottom: 1px solid #d9cfbd; cursor: default; }
+            .mb-dp-dialog .mb-dp-tsec-n { font: 600 10.5px system-ui, -apple-system, "Segoe UI", Arial, sans-serif; letter-spacing: 0.1em; text-transform: uppercase; color: #2b2622; }
+            .mb-dp-dialog .mb-dp-tsec-c { margin-left: 8px; font-style: italic; color: #7a6d5c; }
+            .mb-dp-dialog .mb-dp-tsec-note { font-style: italic; color: #7a6d5c; margin-top: 2px; }
+            .mb-dp-dialog .mb-dp-tpart { margin-left: 6px; padding: 0 4px; border: 1px solid #d9cfbd; border-radius: 3px; white-space: nowrap;
+                font: 600 10px system-ui, -apple-system, "Segoe UI", Arial, sans-serif; letter-spacing: 0.05em; text-transform: uppercase; color: #7a6d5c; }
+            .mb-dp-dialog .mb-dp-also { font: 11px system-ui, -apple-system, "Segoe UI", Arial, sans-serif; color: #7a6d5c; white-space: nowrap; }
             .mb-dp-dialog .mb-dg-cr { all: unset; cursor: pointer; margin-left: 8px; font: 12px system-ui, -apple-system, "Segoe UI", Arial, sans-serif; color: #7a6d5c; }
             .mb-dp-dialog .mb-dg-cr:hover { color: #2b2622; text-decoration: underline; }
             .mb-dp-dialog .mb-dg-cr:focus-visible { outline: 2px solid #2f5f9e; outline-offset: 1px; }
@@ -28559,6 +28571,9 @@
             #mb-dp-peek .mb-pop-card-pic { display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: 10px; align-items: start; }
             #mb-dp-peek .mb-pop-pic img { display: block; width: 64px; height: 80px; object-fit: cover; border: 1px solid #d9cfbd; border-radius: 2px; background: #f3eee3; }
             #mb-dp-peek .mb-pop-main { min-width: 0; }
+            /* An event card's setlist in parts: the part its songs are from. */
+            :is(#mb-dp-peek, .mb-dp-note-event) .mb-pop-partline { margin-top: 4px; font: 600 10.5px system-ui, -apple-system, "Segoe UI", Arial, sans-serif;
+                letter-spacing: 0.08em; text-transform: uppercase; color: #7a6d5c; }
             .mb-dp-dialog .mb-pop-xpic { margin: 6px 0 4px; }
             .mb-dp-dialog .mb-pop-xpic .mb-dp-xcover { margin: 0 0 3px; cursor: zoom-in; }
             :is(#mb-dp-peek, .mb-dp-note-event) .mb-pop-tracks { columns: 1; }
@@ -56120,12 +56135,27 @@
      * a blank line a break. Each part comes as text (the card) and as HTML
      * with its `[mbid|name]` tokens linked (the window, `_mbPopSetlistLine()`).
      *
+     * The setlist's parts ("Soundcheck", "Concert", "Encore", 2026-10-29):
+     * a `#` comment right after a blank line starts one, unless it is a
+     * joining word of the line-up or reads like a note ("Scheduled: 19:00",
+     * a clock time: `_eventSetlistIsNote()`) — the rules of the event page's
+     * own setlist tables (`_eventSetlistParse()`, which reads the rendered
+     * page instead). Songs before any such heading form a part without a
+     * name, so a setlist without parts is one nameless part. Each song is
+     * numbered within its part; a part's other comments are its notes.
+     * Before 2026-10-29 the window numbered every song in one run and listed
+     * "Soundcheck" and "Concert" as loose notes under the table
+     * (debug/mb-event-soundcheck-concert-POH.html).
+     *
      * @param {string} text - `setlist`.
      * @returns {{lineup: string, lineupHtml: string, songs: string[], songsHtml: string[],
-     *   parts: Array<{n: number, head: Object, tail: Object}>, notes: string[], notesHtml: string[]}}
+     *   parts: Array<{n: number, part: string, also: string[], head: Object, tail: Object}>,
+     *   sections: Array<{name: string, count: number, notes: string[], notesHtml: string[]}>,
+     *   notes: string[], notesHtml: string[]}}
      *   The line-up as one line ("A & B with C, D"), the songs in order (and
-     *   each split into its song and the rest: `parts`), and the comments
-     *   that are not joining words.
+     *   each split into its song and the rest: `parts`, with its part's name
+     *   and the other parts that play its work: `also`), the parts in order,
+     *   and the comments before the first part that are not joining words.
      */
     function _mbPopSetlist(text) {
         const lineup = [];
@@ -56133,9 +56163,12 @@
         const songs = [];
         const songsHtml = [];
         const parts = [];
+        const sections = [];
         const notes = [];
         const notesHtml = [];
         let join = '';
+        let sec = null;
+        let prevBlank = true;
         String(text || '').split(/\r?\n/).forEach(line => {
             const kind = line.charAt(0);
             const prefixed = kind === '@' || kind === '#' || kind === '*';
@@ -56148,18 +56181,37 @@
                 join = '';
             } else if (kind === '#' && !songs.length && lineup.length && /^(&|and|with|feat\.?|featuring)$/i.test(body)) {
                 join = ` ${body}`;
+            } else if (kind === '#' && prevBlank && body && !_eventSetlistIsNote(body)) {
+                sec = { name: body, count: 0, notes: [], notesHtml: [] };
+                sections.push(sec);
             } else if (kind === '*' || (!prefixed && line.trim())) {
+                if (!sec) {
+                    sec = { name: '', count: 0, notes: [], notesHtml: [] };
+                    sections.push(sec);
+                }
+                sec.count++;
                 songs.push(body);
                 songsHtml.push(html);
-                parts.push({ n: parts.length + 1, head, tail });
+                parts.push({ n: sec.count, part: sec.name, also: [], head, tail });
             } else if (kind === '#' || kind === '@') {
                 if (body) {
-                    notes.push(body);
-                    notesHtml.push(html);
+                    (sec ? sec.notes : notes).push(body);
+                    (sec ? sec.notesHtml : notesHtml).push(html);
                 }
             }
+            prevBlank = !line.trim();
         });
-        return { lineup: lineup.join(''), lineupHtml: lineupHtml.join(''), songs, songsHtml, parts, notes, notesHtml };
+        // "↺ also in …": the other parts that play the same work (by its
+        // MBID; a song without a work link by its text).
+        const workOf = x => (/\/work\/([0-9a-f-]{36})/.exec(x.head.html) || [])[1] || x.head.text.toLowerCase();
+        const where = new Map();
+        parts.forEach((x) => {
+            const k = workOf(x);
+            if (!where.has(k)) where.set(k, []);
+            if (!where.get(k).includes(x.part)) where.get(k).push(x.part);
+        });
+        parts.forEach((x) => { x.also = where.get(workOf(x)).filter(p => p !== x.part); });
+        return { lineup: lineup.join(''), lineupHtml: lineupHtml.join(''), songs, songsHtml, parts, sections, notes, notesHtml };
     }
 
     /**
@@ -60161,15 +60213,25 @@
                 const head = `<div class="mb-tt-title">${_rgEsc(d.name)}</div>` +
                     `<div class="mb-tt-body mb-rg-pills">${_mbPopPillsHtml([d.type, _mbPopEventWhen(d), d.cancelled ? 'cancelled' : '',
                         sl.songs.length ? `${sl.songs.length} song${sl.songs.length === 1 ? '' : 's'}` : ''])}</div><div class="mb-tt-rule"></div>`;
-                const more = sl.songs.length - _MB_POP_CARD_SONGS;
+                // A setlist in parts (2026-10-29): the card previews its
+                // longest part (the first is often only a soundcheck), named
+                // above the list, and names the others under it.
+                const secs = sl.sections;
+                const main = secs.some(s => s.name) ? secs.reduce((a, b) => (b.count >= a.count ? b : a)) : null;
+                const list = main ? sl.songs.filter((x, i) => sl.parts[i].part === main.name) : sl.songs;
+                const more = list.length - _MB_POP_CARD_SONGS;
+                const others = main ? secs.filter(s => s !== main).map(s => `${s.name || 'Songs'} (${s.count})`) : [];
                 return head + _mbPopKvHtml([
                     ['Place', _rgEsc(_mbPopHeldAtText(place))],
                     ['Part of', _rgEsc(_mbPopEventPartOf(d))],
                     ['Line-up', _rgEsc(sl.lineup || _mbPopRelNames(d.relations, 'artist', ['main performer', 'support act', 'guest performer']))],
                 ]) + (sl.songs.length
-                    ? '<ol class="mb-dp-tracks mb-pop-tracks">' + sl.songs.slice(0, _MB_POP_CARD_SONGS).map((x, i) =>
+                    ? (main ? `<div class="mb-pop-partline">${main.name ? `${_rgEsc(main.name)} · ` : ''}${main.count} song${main.count === 1 ? '' : 's'}` +
+                        `${more > 0 ? `, the first ${_MB_POP_CARD_SONGS}` : ''}</div>` : '') +
+                      '<ol class="mb-dp-tracks mb-pop-tracks">' + list.slice(0, _MB_POP_CARD_SONGS).map((x, i) =>
                         `<li><span class="mb-dp-pos">${i + 1}</span><span class="mb-pop-ttl">${_rgEsc(x)}</span></li>`).join('') + '</ol>' +
-                      (more > 0 ? `<div class="mb-tt-dim">+ ${more} more</div>` : '')
+                      (more > 0 || others.length ? `<div class="mb-tt-dim">${[more > 0 ? `+ ${more} more` : '',
+                          others.length ? `also ${_rgEsc(others.join(', '))}` : ''].filter(Boolean).join(' · ')}</div>` : '')
                     : '');
             },
             windowHtml(d, t) {
@@ -60195,16 +60257,43 @@
                             (rec.length ? `<div class="mb-dp-gname">Recordings · ${rec.length}</div>` + _mbPopRelTableHtml(t, 'recorded-recordings', rec, 'Recording', 'recordings') : '');
                     });
                 // A List table (Phase 3e): # · Song · Notes (the rest of the
-                // line: guests, a remark), in the order played.
-                const right = `<h4>Setlist${sl.songs.length ? ` · ${sl.songs.length}` : ''}</h4>` +
+                // line: guests, a remark), in the order played. A setlist in
+                // parts (2026-10-29, mockup A1 of
+                // https://claude.ai/artifact/BL4JPmGMBzfhT7yGKepiBr): a heading
+                // row per named part with its count and notes, numbers starting
+                // over in each part, a Part chip each when there are two or more.
+                const secs = sl.sections;
+                const named = secs.filter(s => s.name);
+                const partOf = p => p || 'Songs';
+                const songWord = n => `${n} song${n === 1 ? '' : 's'}`;
+                const right = `<h4>Setlist${sl.songs.length ? ` · ${sl.songs.length}${named.length ? ` in ${secs.length} parts` : ''}` : ''}</h4>` +
                     (sl.lineupHtml ? `<div class="mb-dp-xsub">${sl.lineupHtml}</div>` : '') +
                     (sl.songs.length ? _dpListTableHtml(t, 'setlist', [
                         { key: 'n', label: '#', num: true, cls: 'mb-rg-num', val: x => x.n, html: x => String(x.n) },
-                        { key: 'song', label: 'Song', val: x => x.head.text, html: (x, q) => _hlHtml(x.head.html, q) },
+                        {
+                            key: 'song', label: 'Song', val: x => x.head.text,
+                            html: (x, q) => _hlHtml(x.head.html, q) +
+                                (x.also.length ? ` <span class="mb-dp-also">↺ also in ${_rgEsc(x.also.map(partOf).join(', '))}</span>` : ''),
+                        },
                         { key: 'notes', label: 'Notes', val: x => x.tail.text, html: (x, q) => _hlHtml(x.tail.html, q) },
-                    ], sl.parts, { initial: 'in the order played', placeholder: 'Filter the setlist: song, guests', none: 'No songs.' })
+                    ], sl.parts, Object.assign({ initial: 'in the order played', placeholder: 'Filter the setlist: song, guests', none: 'No songs.' },
+                        named.length ? {
+                            group: x => x.part, groupCol: 'song',
+                            groupHead: (g, n, total) => {
+                                const sec = secs.find(s => s.name === g);
+                                return g ? `<span class="mb-dp-tsec-n">${_rgEsc(g)}</span>` +
+                                    `<span class="mb-dp-tsec-c">${n < total ? `${n} of ${songWord(total)}` : songWord(total)}</span>` +
+                                    sec.notesHtml.map(x => `<div class="mb-dp-tsec-note">${x}</div>`).join('') : '';
+                            },
+                        } : {},
+                        secs.length >= 2 ? {
+                            facet: x => partOf(x.part), chipLabel: 'Part',
+                            facetSort: (a, b) => secs.findIndex(s => partOf(s.name) === a[0]) - secs.findIndex(s => partOf(s.name) === b[0]),
+                        } : {}))
                         : '<div class="mb-dp-xsub">MusicBrainz has no setlist for it.</div>') +
-                    sl.notesHtml.map(n => `<div class="mb-dp-note">${n}</div>`).join('');
+                    // The comments before the first part, and those of a part
+                    // without a name (no heading row to carry them).
+                    sl.notesHtml.concat(...secs.filter(s => !s.name).map(s => s.notesHtml)).map(n => `<div class="mb-dp-note">${n}</div>`).join('');
                 return `<div class="mb-dp-x"><div class="mb-dp-col">${left}</div><div class="mb-dp-col">${right}</div></div>`;
             },
             pin(t, d, again, repaint) {
@@ -64559,10 +64648,16 @@
      *   facet?: function(Object): string, chipLabel?: string, thumb?: function(Object): string, tools?: string,
      *   note?: string, body?: ?string, none?: string, nomatch?: string, qCls?: string, sortAttr?: string,
      *   chipAttr?: string, rowAttrs?: function(Object): string,
-     *   facetSort?: function(Array, Array): number}} [opts] - `qCls`, `sortAttr` and
+     *   facetSort?: function(Array, Array): number, group?: function(Object): string,
+     *   groupHead?: function(string, number, number): string, groupCol?: string}} [opts] - `qCls`, `sortAttr` and
      *   `chipAttr` add names a caller's specs address; `facetSort` orders the
      *   chips' `[value, count]` pairs (most rows first by default; the genre
-     *   list's letters A–Z).
+     *   list's letters A–Z). `group` names a row's part (an event's
+     *   "Soundcheck", "Concert", 2026-10-29): while no column is sorted a
+     *   heading row (`tr.mb-dp-tsec`, `groupHead(name, shown, total)`, none
+     *   when it returns '') opens each part where it starts; while sorted the
+     *   parts are mixed, so the `groupCol` column's cell carries its part's
+     *   name instead (`span.mb-dp-tpart`).
      * @returns {string}
      */
     function _dpListTableHtml(t, id, cols, rows, opts = {}) {
@@ -64596,10 +64691,25 @@
         } else {
             const initial = opts.initial || 'as the site lists them';
             const thumb = r => `<td>${opts.thumb(r) || '<span class="mb-dg-vthumb mb-dg-nothumb" aria-hidden="true"></span>'}</td>`;
+            const sorted = !!ui.sort.dir;
+            const count = (list) => list.reduce((m, r) => m.set(opts.group(r), (m.get(opts.group(r)) || 0) + 1), new Map());
+            const totals = opts.group ? count(rows) : null;
+            const shown = opts.group ? count(view) : null;
+            let prevGroup = null;
+            const groupRow = (r) => {
+                if (!opts.group || sorted) return '';
+                const g = opts.group(r);
+                if (g === prevGroup) return '';
+                prevGroup = g;
+                const head = opts.groupHead ? opts.groupHead(g, shown.get(g), totals.get(g)) : _rgEsc(g);
+                return head ? `<tr class="mb-dp-tsec"><td colspan="${cols.length + (opts.thumb ? 1 : 0)}">${head}</td></tr>` : '';
+            };
+            const partTag = (r, c) => (opts.group && sorted && c.key === opts.groupCol && opts.group(r)
+                ? `<span class="mb-dp-tpart">${_rgEsc(opts.group(r))}</span>` : '');
             table = `<div class="mb-dg-vwrap" data-mb-keep-scroll="tbl-${_rgEsc(id)}"><table class="mb-dg-vt mb-dg-lt"><thead><tr>` +
                 `${opts.thumb ? '<th class="mb-dg-nosort"></th>' : ''}${cols.map(c => _dpTblThHtml(c, ui, initial, opts.sortAttr)).join('')}</tr></thead><tbody>` +
-                view.slice(0, ui.limit).map(r => `<tr${opts.rowAttrs ? opts.rowAttrs(r) : ''}>${opts.thumb ? thumb(r) : ''}` +
-                    cols.map(c => `<td${c.cls ? ` class="${c.cls}"` : ''}>${c.html(r, ui.q)}</td>`).join('') + '</tr>').join('') + '</tbody></table>' +
+                view.slice(0, ui.limit).map(r => `${groupRow(r)}<tr${opts.rowAttrs ? opts.rowAttrs(r) : ''}>${opts.thumb ? thumb(r) : ''}` +
+                    cols.map(c => `<td${c.cls ? ` class="${c.cls}"` : ''}>${c.html(r, ui.q)}${partTag(r, c)}</td>`).join('') + '</tr>').join('') + '</tbody></table>' +
                 (view.length > ui.limit ? `<div class="mb-dg-morerow">Showing ${_extDgNum(ui.limit)} of ${_extDgNum(view.length)}. ` +
                     `<button type="button" class="mb-dg-btn" data-mb-tbl-act="all">Show all ${_extDgNum(view.length)}</button></div>` : '') + '</div>';
         }

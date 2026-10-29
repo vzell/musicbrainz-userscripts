@@ -1,0 +1,67 @@
+[
+  {
+    "name": "a comment after a blank line is a note again, not a part",
+    "why": "Without the part rule the window numbers every song in one run and lists \"Soundcheck\" and \"Concert\" as loose notes (debug/mb-event-soundcheck-concert-POH.html).",
+    "edits": [
+      {
+        "find": "            } else if (kind === '#' && prevBlank && body && !_eventSetlistIsNote(body)) {",
+        "replace": "            } else if (kind === '#' && false && prevBlank && body && !_eventSetlistIsNote(body)) {"
+      }
+    ],
+    "spec": "tests/fixtures/popup-mb.spec.js",
+    "grep": "a setlist in parts",
+    "expect": "fail"
+  },
+  {
+    "name": "a note-like comment after a blank line becomes a part",
+    "why": "\"# Scheduled: 16:00 …\" opens the Stone Pony and OceanFirst setlists after a blank line; it is a note, as on the event page's own tables.",
+    "edits": [
+      {
+        "find": "            } else if (kind === '#' && prevBlank && body && !_eventSetlistIsNote(body)) {",
+        "replace": "            } else if (kind === '#' && prevBlank && body) {"
+      }
+    ],
+    "spec": "tests/fixtures/popup-mb.spec.js",
+    "grep": "the event window links its setlist",
+    "expect": "fail"
+  },
+  {
+    "name": "the numbering runs on across parts",
+    "why": "Each song is numbered within its part, as on the event page's own Setlist tables.",
+    "edits": [
+      {
+        "find": "                parts.push({ n: sec.count, part: sec.name, also: [], head, tail });",
+        "replace": "                parts.push({ n: parts.length + 1, part: sec.name, also: [], head, tail });"
+      }
+    ],
+    "spec": "tests/fixtures/popup-mb.spec.js",
+    "grep": "a setlist in parts",
+    "expect": "fail"
+  },
+  {
+    "name": "heading rows stay while the table is sorted",
+    "why": "Sorted, the parts are mixed: a heading row would open a run of songs that is not that part.",
+    "edits": [
+      {
+        "find": "                if (!opts.group || sorted) return '';",
+        "replace": "                if (!opts.group) return '';"
+      }
+    ],
+    "spec": "tests/fixtures/popup-mb.spec.js",
+    "grep": "a setlist in parts",
+    "expect": "fail"
+  },
+  {
+    "name": "the card previews the first part, not the longest",
+    "why": "The first part is often only the soundcheck; the card shows the concert.",
+    "edits": [
+      {
+        "find": "secs.reduce((a, b) => (b.count >= a.count ? b : a))",
+        "replace": "secs[0]"
+      }
+    ],
+    "spec": "tests/fixtures/popup-mb.spec.js",
+    "grep": "a setlist in parts",
+    "expect": "fail"
+  }
+]

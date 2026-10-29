@@ -27068,4 +27068,40 @@ on 2026-10-28, the pageType not.
 alone, every page requested (1..N), and the diff's Section column holding
 Title / Real Name / Profile; a routing test through the new read-only
 `__saTest.pageTypesFor(path)`. `scripts/mutations/dg-history-kinds.json` 4/4.
-The six Discogs specs: 130/130.
+The six Discogs specs: 130/130. **Confirmed live** by vzell (2026-10-29), with WIP.1 and WIP.2.
+
+## 2026-10-29 — The event window's setlist in parts (WIP.4, mockup A1)
+
+Env: 2026-10-29T01:22+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) · Playwright 1.62.1 (bundled Chromium), no Tampermonkey (GM stubs); live check by vzell, browser unknown
+
+**Symptom** (`debug/mb-event-soundcheck-concert-POH.html`, event be07d2a9): the
+window numbered all 26 songs 1–26 and showed "Soundcheck" and "Concert" as two
+`div.mb-dp-note` lines AFTER the table. **Cause:** `_mbPopSetlist()` (the
+window reads the Web Service's `setlist` markup, not the page's
+`p.setlist`) put every `#` comment that is not a billing word into `notes`
+and never tracked blank lines; the event page's own tables
+(`_eventSetlistParse()`) had the part rule all along.
+
+**Change.** The same rule in `_mbPopSetlist()`: `#` after a blank line, not a
+billing word, not `_eventSetlistIsNote()`, starts a part; rows numbered within
+it; `also` by work MBID. `_dpListTableHtml()` got an opt-in grouping (heading
+rows only while unsorted, a part tag on the Song cell while sorted). Variant A1
+of the mockup page (https://claude.ai/artifact/BL4JPmGMBzfhT7yGKepiBr), chosen by
+vzell. **No new fixture:** the Manchester capture (`ws2-pop-event-manchester.json`)
+has "# Soundcheck" (3) and "# Concert" (26) with a "# Scheduled: …" line right
+under "# Concert" (no blank line: that part's note); the Stone Pony and
+OceanFirst captures open with "# Scheduled: …" after a blank line, which the
+note rule keeps a note (their specs' row counts unchanged).
+
+**Trap for specs:** the heading rows are `tbody tr` too. The old card test's
+`.mb-tt-dim` became ambiguous when the part line used that class; the part line
+has its own class (`.mb-pop-partline`). The card list keeps each song's whole
+line ("Land of Hope and Dreams / People Get Ready"), as before.
+
+**Tests.** `popup-mb.spec.js` "a setlist in parts, a heading row each, numbered
+within the part": card line and list, 2 heading rows with counts and the
+Concert note, numbering 1–3 then 1–26, no loose notes, 6 "also in" marks, chip,
+"n of N" while filtering, no heading rows and 29 part tags when sorted.
+`scripts/mutations/setlist-parts.json` 5/5 (among them: the note rule kept off
+"# Scheduled: …", caught by the Stone Pony spec's row count). The 23 popup and
+Discogs specs (`_dpListTableHtml()` is shared): 421/421. **Confirmed live** by vzell.
