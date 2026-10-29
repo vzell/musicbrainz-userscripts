@@ -181,4 +181,175 @@
     "grep": "shared cases",
     "expect": "fail"
   }
+,
+  {
+    "name": "every heading button shows the page-wide count",
+    "why": "The headline button's point on a multi-table page is to say WHICH sub-table needs work. Must fail on the per-table count test.",
+    "edits": [
+      {
+        "find": "            const off = state === 'found' ? _titleStyleOffRows(sc.rows) : 0;",
+        "replace": "            const off = state === 'found' ? scopes.reduce((s, x) => s + _titleStyleOffRows(x.rows), 0) : 0;"
+      }
+    ],
+    "spec": "tests/fixtures/findings-title-style.spec.js",
+    "grep": "each sub-table counts its own rows",
+    "expect": "fail"
+  },
+  {
+    "name": "a checked sub-table with nothing off-style is not shown as clean",
+    "why": "The green \"Style OK\" is the answer for a clean sub-table (vzell, 2026-10-29: keep it). Must fail on the per-table count test.",
+    "edits": [
+      {
+        "find": "        return _titleStyleOffRows(rows) ? 'found' : 'clean';",
+        "replace": "        return 'found';"
+      }
+    ],
+    "spec": "tests/fixtures/findings-title-style.spec.js",
+    "grep": "each sub-table counts its own rows",
+    "expect": "fail"
+  },
+  {
+    "name": "a click on a heading's button also collapses the sub-table",
+    "why": "The button sits inside the h3, whose click handler folds the section. Must fail on the per-table count test, which clicks the inner Aa span.",
+    "edits": [
+      {
+        "find": "    function _titleStyleBtnClick(e) {\n        e.preventDefault();\n        e.stopPropagation();",
+        "replace": "    function _titleStyleBtnClick(e) {\n        e.preventDefault();"
+      }
+    ],
+    "spec": "tests/fixtures/findings-title-style.spec.js",
+    "grep": "each sub-table counts its own rows",
+    "expect": "fail"
+  },
+  {
+    "name": "the buttons are offered on a page with the findings menus switched off",
+    "why": "sa_enable_findings_menus turns the whole findings UI off, the title-style trigger included. Must fail on the switch test.",
+    "edits": [
+      {
+        "find": "        const offered = Lib.settings.sa_enable_findings_menus !== false && !!_titleStyleMenuRow();",
+        "replace": "        const offered = !!_titleStyleMenuRow();"
+      }
+    ],
+    "spec": "tests/fixtures/findings-title-style.spec.js",
+    "grep": "findings-menus switch removes the buttons",
+    "expect": "fail"
+  },
+  {
+    "name": "a panel kind ticks its filter without running it",
+    "why": "The panel's kinds must filter, like the ⚠️ menu's rows (_toggleFinding runs runFilter). Must fail on the panel test.",
+    "edits": [
+      {
+        "find": "            _tsPop.pinned = true;\n            _toggleFinding(kind.dataset.mbTsKind);",
+        "replace": "            _tsPop.pinned = true;\n            _setFinding(_FINDING_BY_ID.get(kind.dataset.mbTsKind), true);"
+      }
+    ],
+    "spec": "tests/fixtures/findings-title-style.spec.js",
+    "grep": "the panel lists the sub-table",
+    "expect": "fail"
+  },
+  {
+    "name": "the proposal keeps the brackets of a removed extra title information",
+    "why": "etiRemove is the group's inner text; removing only it left \"Come Together []\". Must fail on the panel test.",
+    "edits": [
+      {
+        "find": "        if (r && r.etiRemove) now = now.replace(_MBTS_ETI_REMOVE_RE, '').trim();",
+        "replace": "        if (r && r.etiRemove) now = now.replace(r.etiRemove, '').trim();"
+      }
+    ],
+    "spec": "tests/fixtures/findings-title-style.spec.js",
+    "grep": "the panel lists the sub-table",
+    "expect": "fail"
+  },
+  {
+    "name": "Esc does not close the panel",
+    "why": "Every LAF panel closes on Esc. Must fail on the Esc/hover test.",
+    "edits": [
+      {
+        "find": "        if (e.key !== 'Escape' || !_tsPop.anchor) return;",
+        "replace": "        if (e.key !== 'Escape' || _tsPop.anchor) return;"
+      }
+    ],
+    "spec": "tests/fixtures/findings-title-style.spec.js",
+    "grep": "Esc closes the panel",
+    "expect": "fail"
+  },
+  {
+    "name": "the hint ignores its setting",
+    "why": "\"Don't show this again\" would do nothing. Must fail on the hint test that seeds it off.",
+    "edits": [
+      {
+        "find": "        if (Lib.settings.sa_findings_title_style_hint === false) return;",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/findings-title-style.spec.js",
+    "grep": "the setting off shows none",
+    "expect": "fail"
+  },
+  {
+    "name": "\"Don't show this again\" is not stored",
+    "why": "The hint would come back on every page. Must fail on the Not now test.",
+    "edits": [
+      {
+        "find": "        if (never && act !== 'always') _titleStyleSaveSetting('sa_findings_title_style_hint', false);",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/findings-title-style.spec.js",
+    "grep": "Not now with",
+    "expect": "fail"
+  },
+  {
+    "name": "\"Always check\" does not store the auto setting",
+    "why": "It would check this page only. Must fail on the Always check test.",
+    "edits": [
+      {
+        "find": "            _titleStyleSaveSetting('sa_findings_title_style_auto', true);\n        } else _titleStyleHintHide();",
+        "replace": "        } else _titleStyleHintHide();"
+      }
+    ],
+    "spec": "tests/fixtures/findings-title-style.spec.js",
+    "grep": "Always check turns the auto setting on",
+    "expect": "fail"
+  },
+  {
+    "name": "a tap outside does not close the title-style panel",
+    "why": "Touch has no mouseleave; a pinned panel needs a way out. Must fail on the mobile spec.",
+    "edits": [
+      {
+        "find": "        if (_tsPop.anchor && _tsPop.anchor.contains(e.target)) return;\n        _tsPopHide();",
+        "replace": "        if (_tsPop.anchor && _tsPop.anchor.contains(e.target)) return;"
+      }
+    ],
+    "spec": "tests/fixtures/findings-title-style.mobile.spec.js",
+    "project": "chromium-mobile",
+    "grep": "tap checks",
+    "expect": "fail"
+  },
+  {
+    "name": "a click outside does not close the hint",
+    "why": "The hint would keep first claim on Esc over a pop-up opened after it (column-filter-modes.spec.js met exactly that; vzell, 2026-10-29). Must fail on the outside-click test.",
+    "edits": [
+      {
+        "find": "        if (!_tsHint.el || _tsHint.el.contains(e.target)) return;\n        _titleStyleHintHide();",
+        "replace": "        if (!_tsHint.el || _tsHint.el.contains(e.target)) return;"
+      }
+    ],
+    "spec": "tests/fixtures/findings-title-style.spec.js",
+    "grep": "a click outside closes it",
+    "expect": "fail"
+  },
+  {
+    "name": "a warning found nowhere looks tickable",
+    "why": "Variant A: only what can be ticked is a card with a box. Must fail on the single-table test.",
+    "edits": [
+      {
+        "find": "data-mb-ts-kind=\"${E(id)}\"${np ? '' : ' disabled'}>`",
+        "replace": "data-mb-ts-kind=\"${E(id)}\">`"
+      }
+    ],
+    "spec": "tests/fixtures/findings-title-style.spec.js",
+    "grep": "one button in the global filter bar",
+    "expect": "fail"
+  }
 ]

@@ -692,7 +692,8 @@ column show rows with *either*, two in different columns show rows with
 *both*. **✗ Clear warning filters** (or **✗ Clear error filters**) removes only
 what that list set. A part is not shown at all while the page has nothing of
 its kind (except that ⚠️ always offers "Check title style" on a MusicBrainz
-page with titles, see below, and then shows without a number), and the counts
+page with titles, see below, and then shows without a number; an Aa button by
+the filters offers it too), and the counts
 always describe the whole page, not just the rows a filter leaves on screen.
 
 Most rows work by ticking the matching entry in the column's 📊 dropdown — the
@@ -730,10 +731,12 @@ is the day?), the text shows in one row with the part to rewrite marked.
 ### Check title style
 
 On a MusicBrainz page with titles (release groups, releases, recordings,
-works, a tracklist), the ⚠️ warnings list starts with **Aa Check title style
-(MB guidelines)** — even when the page has no other warning. Click it to
-check every title on the page against the MusicBrainz style guide. What it
-finds joins the menu as five more warnings:
+works, a tracklist), an **Aa Check title style** button sits next to the
+filters: in the filter bar after Cc / Rx / Ex on a page with one table, and in
+every sub-table heading on a page with several. The ⚠️ warnings list starts
+with the same **Aa Check title style (MB guidelines)** — even when the page has
+no other warning. Click either to check every title on the page against the
+MusicBrainz style guide. What it finds joins the menu as five more warnings:
 
 | Warning                               | Example                           | MusicBrainz style                |
 |---------------------------------------|-----------------------------------|----------------------------------|
@@ -757,12 +760,37 @@ It flags only what the guideline is sure about. It never flags:
 - lower-case words inside "( … )" (descriptive extra title information);
 - anything in "[ … ]" (file names, "[unknown]").
 
+After the check each Aa button shows its own result: **Aa 4 titles off-style
+▾** in amber for its table (or the page), or a green **✓ Style OK** when there
+is nothing to fix. Click it, or rest the pointer on it, to open a small panel:
+
+- how many titles were checked, how long it took, how many are off-style;
+- the five warnings with their counts (for a sub-table: here / on the page).
+  A warning found on the page is a white box with a checkbox and its count in
+  an amber pill; one found nowhere is greyed out, with no checkbox and "—".
+  Tick one to show only those rows — in every table, exactly like the same
+  row of the ⚠️ list, which shows the tick too;
+- the titles of that table, each struck through over its MusicBrainz style
+  (or a note, for a featured artist). Click one to scroll to its row;
+- **Check every page by itself**, the same switch as in ⚙️ Settings.
+
+Esc closes the panel; a click outside closes it too.
+
 The check is not run by itself, because it costs about 0.2 seconds per
 10,000 different titles. After the click it stays on for the page until you
-reload it, and the first row then says how many titles it checked and how
-long that took. To run it on every page by itself, turn on ⚙️ Settings → ⚠️
-Findings → **Check title style automatically**. Each of the five warnings has
-its own switch there, plus one for their yellow tint.
+reload it, and the first row of the ⚠️ list then says how many titles it
+checked and how long that took. To run it on every page by itself, turn on ⚙️
+Settings → ⚠️ Findings → **Check title style automatically**. Each of the five
+warnings has its own switch there, plus one for their yellow tint.
+
+**The hint.** On a page whose titles are not checked, a short note appears
+under the first Aa button a moment after the page renders: **Check now**,
+**Always check** (turns on the automatic check, so the note is not needed any
+more), or **Not now**. It closes by itself after 14 seconds, on Esc, or when
+you click anywhere else (that counts as Not now). It
+comes back on the next page until you tick **Don’t show this again** (⚙️
+Settings → ⚠️ Findings → **Offer the title-style check in a hint** brings it
+back).
 
 <details>
 <summary>What is checked</summary>

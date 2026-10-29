@@ -650,6 +650,11 @@ The harness lives under `tests/`; how to run each suite and what it costs:
   lasts (done/total, failures, ETA) and for an hour after. Its ETA baseline
   is `~/.cache/sa-test-full/last-<host>.json`, the host's previous complete
   full run.
+  **Every other suite run goes through it too** — vzell follows them all in
+  the status line, `npm test` while developing included: `--script test`
+  (any `test…` script of package.json; default `test:full`). The status line
+  then says `🧪 test`, and each script keeps its own ETA baseline
+  (`last-<host>-test.json`; `:` becomes `-`). Never start a bare `npm test`.
 - **`chromium-mobile`** (`tests/fixtures/*.mobile.spec.js`, Pixel 7
   emulation: touch, no hover, zoomed-out viewport): `npm run test:mobile`,
   included in `npm test` and `test:full`. Chromium emulation, not Firefox
@@ -676,6 +681,10 @@ The harness lives under `tests/`; how to run each suite and what it costs:
   `sa_entity_images` (2026-10-29: a url-rels lookup on entity pages) OFF
   — a "cannot reproduce" means nothing until they are back on. Seeding a key
   as `undefined` in `settingsOverride` un-seeds it (the schema default).
+  That list applies only to a spec that serves an HTML fixture
+  (`fixtureFile`); **`HARNESS_SETTINGS_ALWAYS`** (same file) applies to
+  every load, saved-data and live included: `sa_findings_title_style_hint`
+  (2026-10-29: a card 0.9 s after a render that takes Esc).
 
 **Threshold dialogs will stall a test.** Four blocking plain-DOM overlays (not
 native `confirm()`, so `page.on('dialog')` never fires):

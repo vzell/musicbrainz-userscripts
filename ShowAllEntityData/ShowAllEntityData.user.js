@@ -2491,7 +2491,8 @@
                          'with how many rows carry them. Clicking one filters every table and sub-table to ' +
                          'those rows; clicking it again removes that filter. A menu is hidden while the page ' +
                          'has nothing of its kind — except that on a MusicBrainz page with titles the WARNING ' +
-                         'menu always offers "Check title style".'
+                         'menu always offers "Check title style", as does an Aa button in the filter bar (one ' +
+                         'table) or in each sub-table heading.'
         },
 
         sa_findings_tint_allcaps: {
@@ -2548,9 +2549,18 @@
             type: 'checkbox',
             default: false,
             description: 'Check every title on MusicBrainz pages against the MusicBrainz style guide on every load, ' +
-                         'instead of only after "Check title style" in the ⚠️ WARNING menu. The check finds the five ' +
-                         'title-style warnings below. It costs about 0.2 s per 10,000 distinct titles, which is why it ' +
-                         'is off by default.'
+                         'instead of only after "Check title style" (the Aa button in the filter bar or a sub-table ' +
+                         'heading, or the ⚠️ WARNING menu). The check finds the five title-style warnings below. It ' +
+                         'costs about 0.2 s per 10,000 distinct titles, which is why it is off by default.'
+        },
+
+        sa_findings_title_style_hint: {
+            label: 'Offer the title-style check in a hint',
+            type: 'checkbox',
+            default: true,
+            description: 'On a MusicBrainz page with titles that have not been checked, show a short hint under the ' +
+                         'Aa "Check title style" button after the page renders: Check now, Always check, or Not now. ' +
+                         'It closes by itself after 14 seconds. Its "Don’t show this again" turns this off.'
         },
 
         sa_findings_title_case: {
@@ -52365,6 +52375,44 @@
      */
     let _titleStyleLastRun = null;
 
+    /** The five title-style FINDINGS ids. */
+    const _TITLE_STYLE_IDS = ['title-case', 'title-typography', 'title-series-sep', 'title-feat', 'title-eti-remove'];
+
+    /** `td` selector matching a cell that carries any title-style finding. */
+    const _TITLE_STYLE_CELL_SEL = _TITLE_STYLE_IDS.map(id => `td[data-mb-findings~="${id}"]`).join(', ');
+
+    /** Hint timing: shown this long after the first render, closed after this long. */
+    const _TS_HINT_DELAY_MS = 900;
+    const _TS_HINT_LIFE_MS = 14000;
+
+    /** Estimated check cost per title (docs/claude/findings.md: about 20 µs a distinct title). */
+    const _TS_MS_PER_TITLE = 0.02;
+
+    /**
+     * Between a headline click and its stamp (`_titleStyleRequestCheck()`):
+     * the one frame in which the headline buttons say "Checking…".
+     * @type {boolean}
+     */
+    let _titleStyleRunning = false;
+
+    /**
+     * Whether the first-visit hint was shown (or scheduled) on this page load.
+     * @type {boolean}
+     */
+    let _titleStyleHintDone = false;
+
+    /** @type {WeakMap<HTMLTableElement, {gen: number, has: boolean}>} `_tableHasTitleInfo()`'s memo. */
+    const _titleStyleTableMemo = new WeakMap();
+
+    /** @type {WeakMap<HTMLTableRowElement[], {gen: number, length: number, n: number}>} `_titleStyleOffRows()`'s memo. */
+    const _titleStyleTallyMemo = new WeakMap();
+
+    /** The title-style panel's state: element, anchor button, pinned by a click, timers. */
+    const _tsPop = { el: null, anchor: null, pinned: false, hoverTimer: 0, leaveTimer: 0, listening: false };
+
+    /** The first-visit hint's state: element, anchor, timers. */
+    const _tsHint = { el: null, anchor: null, showTimer: 0, lifeTimer: 0 };
+
     /**
      * Whether the title-style findings run on this page: a MusicBrainz page,
      * and the check asked for from the menu or set to run by itself
@@ -87595,12 +87643,740 @@ a { color: #1565c0; }`;
      */
     function _runTitleStyleCheck() {
         if (_titleStyleActive()) return;
+        _titleStyleStampNow();
+    }
+
+    /**
+     * The check itself, without the "already on" guard: turns the findings on
+     * for this page, stamps, records the time and refreshes the menus and the
+     * headline controls. Shared by the menu row and `_titleStyleRequestCheck()`
+     * (whose "Always check" turns the auto setting on first, which the guard
+     * would read as "already done").
+     */
+    function _titleStyleStampNow() {
         _titleStyleRequested = true;
+        _titleStyleRunning = false;
+        _titleStyleHintHide();
         const t0 = performance.now();
         stampFindings();
         _titleStyleLastRun = { ms: Math.round(performance.now() - t0), titles: _mbTitleStyleMemo.size };
         Lib.debug('filter', `_runTitleStyleCheck(): ${_titleStyleLastRun.titles} title(s), ${_titleStyleLastRun.ms} ms.`);
         _updateFindingMenus();
+    }
+
+    // ── The title-style check in the filter headlines ─────────────────────────
+    // docs/claude/findings.md, "On demand: the title-style findings". Mockup
+    // approved 2026-10-29, preset "B + C":
+    // https://claude.ai/artifact/HvdfbmeTUdcR34J4TrNycD
+    //
+    // B: one "Aa" button per scope: in the global filter bar on a single-table
+    //    page, in every sub-table heading (after the filter panel) on a
+    //    multi-table page. Idle it starts the check (page-wide, as the menu
+    //    row does); afterwards it shows the scope's count and opens a panel
+    //    with the five kinds (filters for every table, as the ⚠️ menu's rows)
+    //    and the scope's titles beside their MusicBrainz style.
+    // C: a one-time hint under the first button, offering the check.
+    // Their state sits beside `_titleStyleLastRun` (declared before any
+    // render can reach it).
+
+    /**
+     * Whether `table` has a title-info column (`Title` or one of
+     * `_uvdTitleInfoColumns()`), the columns the title-style findings read.
+     * Memoized per stamp pass.
+     *
+     * @param {HTMLTableElement} table
+     * @returns {boolean}
+     */
+    function _tableHasTitleInfo(table) {
+        const hit = _titleStyleTableMemo.get(table);
+        if (hit && hit.gen === _findingStampGen) return hit.has;
+        const titleCols = _uvdTitleInfoColumns();
+        const n = table.querySelectorAll('thead tr:first-child th').length;
+        let has = false;
+        for (let i = 0; i < n && !has; i++) {
+            const name = _resolveColHeaderName(table, i);
+            has = name === 'Title' || titleCols.has(name);
+        }
+        _titleStyleTableMemo.set(table, { gen: _findingStampGen, has });
+        return has;
+    }
+
+    /**
+     * How many of `rows` (SOURCE rows, never the live tbody — see
+     * `_findingRowTally()`) carry any title-style finding. Memoized like it.
+     *
+     * @param {HTMLTableRowElement[]} rows
+     * @returns {number}
+     */
+    function _titleStyleOffRows(rows) {
+        if (!Array.isArray(rows) || !rows.length) return 0;
+        const hit = _titleStyleTallyMemo.get(rows);
+        if (hit && hit.gen === _findingStampGen && hit.length === rows.length) return hit.n;
+        let n = 0;
+        rows.forEach(r => { if (r.querySelector(_TITLE_STYLE_CELL_SEL)) n++; });
+        _titleStyleTallyMemo.set(rows, { gen: _findingStampGen, length: rows.length, n });
+        return n;
+    }
+
+    /**
+     * The scopes that get a headline button: on a multi-table page each table
+     * with a title-info column and a sub-table heading; otherwise the one
+     * table, page-wide, in the global filter bar.
+     *
+     * @returns {Array<{table: HTMLTableElement, rows: HTMLTableRowElement[], h3: ?HTMLElement, name: string}>}
+     */
+    function _titleStyleScopes() {
+        const pairs = _tableSourceRows().filter(p => _tableHasTitleInfo(p.table));
+        const multi = typeof groupedRows !== 'undefined' && Array.isArray(groupedRows) && groupedRows.length > 0;
+        if (multi) {
+            return pairs.map(p => {
+                const h3 = findH3ForTable(p.table);
+                const box = h3 && h3.querySelector('.mb-subtable-filter-container');
+                return { ...p, h3, name: (box && box.dataset.categoryName) || '' };
+            }).filter(s => s.h3);
+        }
+        return pairs.slice(0, 1).map(p => ({ ...p, h3: null, name: '' }));
+    }
+
+    /**
+     * The state of a headline button for `rows`.
+     *
+     * @param {HTMLTableRowElement[]} rows
+     * @returns {('idle'|'running'|'found'|'clean')}
+     */
+    function _titleStyleState(rows) {
+        if (_titleStyleRunning) return 'running';
+        if (!_titleStyleActive()) return 'idle';
+        return _titleStyleOffRows(rows) ? 'found' : 'clean';
+    }
+
+    /**
+     * Fills a headline button for its state. The short wording everywhere,
+     * the global filter bar included: the mockup's long idle and clean
+     * labels ("· 56 titles, not checked yet", "✓ All N titles follow the
+     * style guide") made a single-table page's bar wider than the window
+     * (vzell, 2026-10-29). The count lives in the idle tooltip and the panel.
+     *
+     * @param {HTMLButtonElement} btn
+     * @param {('idle'|'running'|'found'|'clean')} state
+     * @param {number} total - Titles in the scope.
+     * @param {number} off - Titles off-style in the scope.
+     */
+    function _titleStyleBtnFill(btn, state, total, off) {
+        const el = (tag, cls, text) => {
+            const e = document.createElement(tag);
+            e.className = cls;
+            if (text) e.textContent = text;
+            return e;
+        };
+        const fmt = n => n.toLocaleString('en-US');
+        const titles = n => `${fmt(n)} title${n === 1 ? '' : 's'}`;
+        btn.textContent = '';
+        if (state === 'idle') btn.append(el('span', 'mb-ts-dot'));
+        btn.append(el('span', 'mb-ts-aa', 'Aa'));
+        btn.append(document.createTextNode(state === 'idle' ? 'Check title style'
+            : state === 'running' ? 'Checking…'
+            : state === 'found' ? `${titles(off)} off-style ▾`
+            : '✓ Style OK'));
+        btn.setAttribute('aria-label', state === 'idle' ? `Check title style: ${titles(total)}, not checked yet`
+            : state === 'running' ? 'Checking title style'
+            : state === 'found' ? `Title style: ${titles(off)} off-style. Opens the list.`
+            : `Title style: all ${titles(total)} follow the style guide. Opens the details.`);
+    }
+
+    /**
+     * Creates one headline button. A new element per state change, so the
+     * idle button's tooltip (`_setTip()`) never reaches the later states,
+     * whose hover opens the panel instead.
+     *
+     * @param {('idle'|'running'|'found'|'clean')} state
+     * @returns {HTMLButtonElement}
+     */
+    function _titleStyleBtnCreate(state) {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'mb-title-style-btn';
+        btn.dataset.mbTsState = state;
+        btn.addEventListener('click', _titleStyleBtnClick);
+        return btn;
+    }
+
+    /**
+     * Brings every headline button in line with the page: one per scope
+     * (`_titleStyleScopes()`), none while the title-style row is not offered
+     * (`_titleStyleMenuRow()` is `null`) or the findings menus are off.
+     * Called from the tail of `_updateFindingMenus()`, so from every render-,
+     * filter- and stamp-completion hook it has. Writes only what changed.
+     */
+    function _updateTitleStyleControls() {
+        const offered = Lib.settings.sa_enable_findings_menus !== false && !!_titleStyleMenuRow();
+        const scopes = offered ? _titleStyleScopes() : [];
+        const keep = new Set();
+        const total = scopes.reduce((s, x) => s + x.rows.length, 0);
+        scopes.forEach(sc => {
+            const inHeading = !!sc.h3;
+            const host = inHeading ? sc.h3 : document.getElementById('mb-global-filter-exclude-label');
+            if (!host) return;
+            const state = _titleStyleState(sc.rows);
+            const off = state === 'found' ? _titleStyleOffRows(sc.rows) : 0;
+            const n = inHeading ? sc.rows.length : total;
+            let btn = inHeading ? sc.h3.querySelector(':scope > .mb-title-style-btn')
+                : document.getElementById('mb-title-style-global-btn');
+            if (btn && btn.dataset.mbTsState !== state) {
+                const fresh = _titleStyleBtnCreate(state);
+                if (btn.id) fresh.id = btn.id;
+                btn.replaceWith(fresh);
+                if (_tsPop.anchor === btn) _tsPopHide();
+                btn = fresh;
+            }
+            if (!btn) {
+                btn = _titleStyleBtnCreate(state);
+                if (!inHeading) btn.id = 'mb-title-style-global-btn';
+            }
+            // Placement: the global bar after Ex; a heading after its filter
+            // panel (or 🔍), the anchor the pending-edits button uses too.
+            const anchor = inHeading
+                ? (sc.h3.querySelector('.mb-subtable-filter-container') || sc.h3.querySelector('.mb-subtable-filter-toggle-icon'))
+                : host;
+            if (anchor && anchor.nextElementSibling !== btn) anchor.after(btn);
+            else if (!anchor && !btn.isConnected) sc.h3.appendChild(btn);
+            btn._mbTsScope = sc;
+            const sig = `${state}|${n}|${off}`;
+            if (btn.dataset.mbTsSig !== sig) {
+                btn.dataset.mbTsSig = sig;
+                _titleStyleBtnFill(btn, state, n, off);
+                if (state === 'idle') {
+                    const est = Math.round(total * _TS_MS_PER_TITLE);
+                    _setTip(btn, `Title style · ${n.toLocaleString('en-US')} title${n === 1 ? '' : 's'}, not checked yet\n`
+                        + 'Checks every title on this page against the MusicBrainz style guide: title case, typographic '
+                        + 'punctuation, series numbers, featured artists, extra title information. It costs about 0.2 s '
+                        + `per 10,000 titles (here ${est < 1 ? 'under a millisecond' : `about ${est} ms`}).`);
+                }
+            }
+            keep.add(btn);
+        });
+        document.querySelectorAll('.mb-title-style-btn').forEach(b => {
+            if (keep.has(b)) return;
+            if (_tsPop.anchor === b) _tsPopHide();
+            b.remove();
+        });
+        if (_tsPop.anchor && _tsPop.el && _tsPop.el.style.display !== 'none') _tsPopRepaint();
+        if (keep.size) _tsPopInitHover();
+        _titleStyleMaybeHint(keep.size ? keep.values().next().value : null);
+    }
+
+    /**
+     * A headline button's click: starts the check while idle, otherwise pins
+     * (or, pinned, closes) the panel. Never reaches the heading's collapse
+     * handler.
+     *
+     * @param {MouseEvent} e
+     */
+    function _titleStyleBtnClick(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        const btn = e.currentTarget;
+        const state = btn.dataset.mbTsState;
+        if (state === 'idle') { _titleStyleRequestCheck(); return; }
+        if (state === 'running') return;
+        if (_tsPop.anchor === btn && _tsPop.pinned) { _tsPopHide(); return; }
+        _tsPopShow(btn, true);
+    }
+
+    /**
+     * Starts the check from a headline button or the hint: one painted frame
+     * of "Checking…", then the stamp (synchronous; about 0.2 s per 10,000
+     * titles).
+     */
+    function _titleStyleRequestCheck() {
+        if (_titleStyleRunning || _titleStyleActive()) return;
+        _titleStyleRunning = true;
+        _titleStyleHintHide();
+        _updateTitleStyleControls();
+        requestAnimationFrame(() => setTimeout(_titleStyleStampNow, 0));
+    }
+
+    /**
+     * Stores one setting from inside the page (no dialog, no reload): GM
+     * storage and the in-memory snapshot.
+     *
+     * @param {string} key
+     * @param {*} value
+     */
+    function _titleStyleSaveSetting(key, value) {
+        try {
+            if (typeof GM_setValue !== 'undefined') GM_setValue(key, value);
+        } catch (err) {
+            Lib.warn('settings', `Could not store "${key}":`, err);
+        }
+        Lib.settings[key] = value;
+    }
+
+    // ── The panel ──────────────────────────────────────────────────────────────
+
+    /**
+     * The title a row's title-style findings propose: the typography, case
+     * and series fixes applied one after the other, then a removable extra
+     * title information dropped; plus the featured-artist note. Reads the
+     * same `_mbTitleStyleCheck()` (memoized) the findings read.
+     *
+     * @param {string} title
+     * @returns {{now: string, note: string}} `now` equals `title` when only a note applies.
+     */
+    function _titleStyleProposal(title) {
+        let now = title;
+        ['typoFix', 'caseFix', 'seriesFix'].forEach(field => {
+            const r = _mbTitleStyleCheck(now);
+            if (r && r[field]) now = r[field];
+        });
+        // `etiRemove` is the group's inner text; the group with its brackets
+        // and the space before it is the same regex's whole match.
+        const r = _mbTitleStyleCheck(now);
+        if (r && r.etiRemove) now = now.replace(_MBTS_ETI_REMOVE_RE, '').trim();
+        const feat = (_mbTitleStyleCheck(title) || {}).feat;
+        return { now, note: feat ? `"${feat}" belongs in the artist credit` : '' };
+    }
+
+    /**
+     * The scope's off-style titles, in row order, for the panel's list.
+     *
+     * @param {{rows: HTMLTableRowElement[]}} sc
+     * @returns {Array<{idx: string, was: string, now: string, note: string}>}
+     */
+    function _titleStyleList(sc) {
+        const out = [];
+        sc.rows.forEach(row => {
+            const cell = row.querySelector(_TITLE_STYLE_CELL_SEL);
+            const el = cell && _findCellTitleEl(cell);
+            if (!el) return;
+            const was = el.textContent.replace(/\s+/g, ' ').trim();
+            out.push({ idx: row.dataset.mbRowIdx || '', was, ..._titleStyleProposal(was) });
+        });
+        return out;
+    }
+
+    /**
+     * Builds the panel's HTML for the scope of its anchor.
+     *
+     * @param {{table: HTMLTableElement, rows: HTMLTableRowElement[], h3: ?HTMLElement, name: string}} sc
+     * @returns {string}
+     */
+    function _tsPopHtml(sc) {
+        const E = _ajEsc;
+        const fmt = n => n.toLocaleString('en-US');
+        const titles = n => `${fmt(n)} title${n === 1 ? '' : 's'}`;
+        const scopes = _titleStyleScopes();
+        const pageTotal = scopes.reduce((s, x) => s + x.rows.length, 0);
+        const pageOff = scopes.reduce((s, x) => s + _titleStyleOffRows(x.rows), 0);
+        const isTable = !!sc.h3;
+        const where = isTable ? (sc.name ? `"${sc.name}"` : 'this sub-table') : 'this page';
+        const off = _titleStyleOffRows(sc.rows);
+        let h = '<div class="mb-tt-ajhead">'
+              + `<span class="mb-tt-title">Aa Title style${isTable && sc.name ? ` · ${E(sc.name)}` : ''}</span>`
+              + (off ? '<span class="mb-tt-ajpill mb-tt-ajpill-warn">Done · issues</span>'
+                     : '<span class="mb-tt-ajpill mb-tt-ajpill-ok">Done</span>')
+              + '</div><div class="mb-tt-rule"></div><dl class="mb-tt-ajfacts">'
+              + `<dt>Titles checked</dt><dd>${fmt(pageTotal)}${isTable ? ` on the page, ${fmt(sc.rows.length)} in ${E(where)}` : ''}</dd>`;
+        if (_titleStyleRequested && _titleStyleLastRun) h += `<dt>Took</dt><dd>${fmt(_titleStyleLastRun.ms)} ms</dd>`;
+        else h += '<dt>Checked</dt><dd>by itself, on every load</dd>';
+        h += `<dt>Off-style</dt><dd>${off ? titles(off) : 'none'}${isTable ? ` here, ${fmt(pageOff)} on the page` : ''}</dd></dl>`;
+        const pageCounts = _countFindingRows();
+        const scopeCounts = _findingRowTally(sc.rows);
+        h += '<div class="mb-tt-rule"></div><div class="mb-tt-ajlog-h">Show only, in every table</div>'
+           + '<ul class="mb-ts-kinds" role="group" aria-label="Title-style filters, every table">';
+        _TITLE_STYLE_IDS.forEach(id => {
+            const f = _FINDING_BY_ID.get(id);
+            if (!f || (f.enabled && !f.enabled())) return;
+            const np = pageCounts.get(id) || 0;
+            const n = scopeCounts.get(id) || 0;
+            const on = np > 0 && _findingState(f) === 'on';
+            // Tickable (found somewhere on the page) is a card with its count
+            // in a pill; nothing found is faded text with no box and "—"
+            // (variant A, https://claude.ai/artifact/XFAcJ9zn5brXitDzJogXqn).
+            const count = !np ? '—' : isTable ? `<b>${fmt(n)}</b> / ${fmt(np)}` : `<b>${fmt(n)}</b>`;
+            h += `<li><button type="button" class="mb-ts-kind" role="menuitemcheckbox" aria-checked="${on}" data-mb-ts-kind="${E(id)}"${np ? '' : ' disabled'}>`
+               + `<span class="mb-ts-box">${on ? '✓' : ''}</span><span class="mb-ts-g">${E(f.glyph)}</span>`
+               + `<span>${E(f.label)}</span><span class="mb-ts-n">${count}</span></button></li>`;
+        });
+        h += '</ul>';
+        const list = off ? _titleStyleList(sc) : [];
+        if (list.length) {
+            h += `<div class="mb-tt-rule"></div><div class="mb-tt-ajlog-h">Titles ${isTable ? `in ${E(where)}` : 'on this page'} · click to go to the row</div><ol class="mb-ts-list">`;
+            list.forEach(it => {
+                const shown = !!(it.idx && sc.table.querySelector(`tbody tr[data-mb-row-idx="${CSS.escape(it.idx)}"]`));
+                h += `<li><button type="button" class="mb-ts-item${shown ? '' : ' mb-ts-item-hidden'}" data-mb-ts-row="${E(it.idx)}"${shown ? '' : ' title="Hidden by the current filter"'}>`
+                   + `<span class="mb-ts-was">${E(it.was)}</span><span class="mb-ts-now">`
+                   + (it.now !== it.was ? E(it.now) : '')
+                   + (it.note ? `${it.now !== it.was ? ' ' : ''}<i>${E(it.note)}</i>` : '')
+                   + '</span></button></li>';
+            });
+            h += '</ol>';
+        }
+        const anyOn = _TITLE_STYLE_IDS.some(id => _findingRowFilter.has(id) || ((pageCounts.get(id) || 0) > 0 && _findingState(_FINDING_BY_ID.get(id)) === 'on'));
+        h += '<div class="mb-ts-foot"><label><input type="checkbox" class="mb-ts-auto"'
+           + `${Lib.settings.sa_findings_title_style_auto === true ? ' checked' : ''}> Check every page by itself</label>`
+           + (anyOn ? '<button type="button" class="mb-tt-ajact" data-mb-ts-act="clear">✗ Clear title filters</button>' : '')
+           + '</div><div class="mb-tt-foot"><kbd>Esc</kbd> closes · hover Aa to reopen</div>';
+        return h;
+    }
+
+    /**
+     * Creates the panel element once, with its delegated listeners.
+     *
+     * @returns {HTMLElement}
+     */
+    function _tsPopEnsure() {
+        if (_tsPop.el && _tsPop.el.isConnected) return _tsPop.el;
+        const el = document.createElement('div');
+        el.id = 'mb-title-style-pop';
+        el.className = 'mb-tt-liner';
+        el.setAttribute('role', 'dialog');
+        el.setAttribute('aria-label', 'Title style');
+        el.style.display = 'none';
+        el.addEventListener('mouseenter', () => clearTimeout(_tsPop.leaveTimer));
+        el.addEventListener('mouseleave', () => _tsPopScheduleHide());
+        el.addEventListener('click', _tsPopClick);
+        el.addEventListener('change', (e) => {
+            if (!e.target.classList.contains('mb-ts-auto')) return;
+            const on = e.target.checked;
+            // Turning the auto check off keeps it on for this page: the
+            // findings are already stamped.
+            if (!on && _titleStyleActive()) _titleStyleRequested = true;
+            _titleStyleSaveSetting('sa_findings_title_style_auto', on);
+            _tsPop.pinned = true;
+            _updateFindingMenus();
+        });
+        document.body.appendChild(el);
+        _tsPop.el = el;
+        return el;
+    }
+
+    /**
+     * Clicks inside the panel: a kind toggles its filter (page-wide, through
+     * `_toggleFinding()`, so the ⚠️ menu shows the same state); a title goes
+     * to its row; "Clear" releases the title-style filters only.
+     *
+     * @param {MouseEvent} e
+     */
+    function _tsPopClick(e) {
+        const kind = e.target.closest('[data-mb-ts-kind]');
+        if (kind && !kind.disabled) {
+            _tsPop.pinned = true;
+            _toggleFinding(kind.dataset.mbTsKind);
+            _tsPopRepaint();
+            return;
+        }
+        const item = e.target.closest('[data-mb-ts-row]');
+        if (item) { _tsGoToRow(item.dataset.mbTsRow); return; }
+        if (e.target.closest('[data-mb-ts-act="clear"]')) {
+            _tsPop.pinned = true;
+            _TITLE_STYLE_IDS.forEach(id => {
+                const f = _FINDING_BY_ID.get(id);
+                if (f && _findingState(f) !== 'off') _setFinding(f, false);
+            });
+            runFilter();
+            _tsPopRepaint();
+        }
+    }
+
+    /**
+     * Scrolls a scope's live row into view and flashes it, opening its
+     * sub-table first when it is collapsed.
+     *
+     * @param {string} idx - The row's `data-mb-row-idx`.
+     */
+    function _tsGoToRow(idx) {
+        const sc = _tsPop.anchor && _tsPop.anchor._mbTsScope;
+        if (!sc || !idx) return;
+        if (sc.h3 && sc.table.style.display === 'none') sc.h3.click();
+        const tr = sc.table.querySelector(`tbody tr[data-mb-row-idx="${CSS.escape(idx)}"]`);
+        if (!tr) return;
+        tr.scrollIntoView({ block: 'center', behavior: 'smooth' });
+        tr.classList.remove('mb-ts-flash');
+        void tr.offsetWidth;
+        tr.classList.add('mb-ts-flash');
+        setTimeout(() => tr.classList.remove('mb-ts-flash'), 1300);
+    }
+
+    /**
+     * Shows the panel under a headline button.
+     *
+     * @param {HTMLButtonElement} anchor
+     * @param {boolean} pinned - Opened by a click: stays until Esc, a second
+     *   click or a click elsewhere; a hover-opened panel closes on leave.
+     */
+    function _tsPopShow(anchor, pinned) {
+        clearTimeout(_tsPop.leaveTimer);
+        clearTimeout(_tsPop.hoverTimer);
+        _titleStyleHintHide();
+        const same = _tsPop.anchor === anchor;
+        if (_tsPop.anchor && !same) _tsPop.anchor.setAttribute('aria-expanded', 'false');
+        _tsPop.pinned = pinned || (_tsPop.pinned && same);
+        _tsPop.anchor = anchor;
+        anchor.setAttribute('aria-expanded', 'true');
+        _tsPopRepaint();
+        _tsPopListen(true);
+    }
+
+    /** Rebuilds the open panel for its anchor's scope and re-places it. */
+    function _tsPopRepaint() {
+        const a = _tsPop.anchor;
+        if (!a || !a.isConnected || !a._mbTsScope) { _tsPopHide(); return; }
+        const el = _tsPopEnsure();
+        const scroll = el.querySelector('.mb-ts-list');
+        const top = scroll ? scroll.scrollTop : 0;
+        el.innerHTML = _tsPopHtml(a._mbTsScope);
+        const list = el.querySelector('.mb-ts-list');
+        if (list) list.scrollTop = top;
+        el.style.display = 'block';
+        _tsPopPlace();
+    }
+
+    /** Places the panel under its anchor, flipped above when there is no room. */
+    function _tsPopPlace() {
+        const el = _tsPop.el, a = _tsPop.anchor;
+        if (!el || !a || !a.isConnected) return;
+        const r = a.getBoundingClientRect();
+        const vw = window.innerWidth, vh = window.innerHeight;
+        el.style.left = '0'; el.style.top = '0';
+        const w = el.offsetWidth, h = el.offsetHeight;
+        const x = Math.max(4, Math.min(r.left - 10, vw - w - 8));
+        let y = r.bottom + 8;
+        if (y + h > vh - 8 && r.top - h - 8 > 4) y = r.top - h - 8;
+        el.style.left = `${x}px`;
+        el.style.top = `${Math.max(4, y)}px`;
+    }
+
+    /** Hides the panel. */
+    function _tsPopHide() {
+        clearTimeout(_tsPop.leaveTimer);
+        clearTimeout(_tsPop.hoverTimer);
+        if (_tsPop.anchor) _tsPop.anchor.setAttribute('aria-expanded', 'false');
+        _tsPop.anchor = null;
+        _tsPop.pinned = false;
+        if (_tsPop.el) _tsPop.el.style.display = 'none';
+        _tsPopListen(false);
+    }
+
+    /** Closes a hover-opened panel after the grace period (`_AJ_LEAVE_GRACE_MS`). */
+    function _tsPopScheduleHide() {
+        if (!_tsPop.anchor || _tsPop.pinned) return;
+        clearTimeout(_tsPop.leaveTimer);
+        _tsPop.leaveTimer = setTimeout(_tsPopHide, _AJ_LEAVE_GRACE_MS);
+    }
+
+    /**
+     * Esc, an outside click and a resize while the panel is open.
+     *
+     * @param {boolean} on
+     */
+    function _tsPopListen(on) {
+        if (on === _tsPop.listening) return;
+        _tsPop.listening = on;
+        if (on) {
+            window.addEventListener('keydown', _tsPopOnKey, true);
+            document.addEventListener('pointerdown', _tsPopOnPointerDown, true);
+            window.addEventListener('resize', _tsPopPlace);
+        } else {
+            window.removeEventListener('keydown', _tsPopOnKey, true);
+            document.removeEventListener('pointerdown', _tsPopOnPointerDown, true);
+            window.removeEventListener('resize', _tsPopPlace);
+        }
+    }
+
+    /**
+     * Esc closes the panel (before anything else Esc does), except while the
+     * artwork viewer owns the keys.
+     *
+     * @param {KeyboardEvent} e
+     */
+    function _tsPopOnKey(e) {
+        if (e.key !== 'Escape' || !_tsPop.anchor) return;
+        const viewer = document.getElementById('mb-art-viewer');
+        if (viewer && !viewer.hidden) return;
+        e.preventDefault();
+        e.stopPropagation();
+        _tsPopHide();
+    }
+
+    /**
+     * A press outside the panel and its button closes it (touch has no
+     * mouseleave; a pinned panel needs a way out by mouse too).
+     *
+     * @param {PointerEvent} e
+     */
+    function _tsPopOnPointerDown(e) {
+        if (!_tsPop.el || _tsPop.el.contains(e.target)) return;
+        if (_tsPop.anchor && _tsPop.anchor.contains(e.target)) return;
+        _tsPopHide();
+    }
+
+    /**
+     * Installs the delegated hover listeners once: hovering a checked
+     * headline button shows its panel after `_AJ_HOVER_DELAY_MS` ("hover
+     * brings it back"); leaving closes a hover-opened panel after the grace
+     * period. An idle button only shows its tooltip. A tap's compatibility
+     * mouse events are ignored.
+     */
+    function _tsPopInitHover() {
+        if (_tsPopInitHover.done) return;
+        _tsPopInitHover.done = true;
+        const sel = '.mb-title-style-btn[data-mb-ts-state="found"], .mb-title-style-btn[data-mb-ts-state="clean"]';
+        document.addEventListener('mouseover', (e) => {
+            const a = e.target.closest && e.target.closest(sel);
+            if (!a || _isTouchCompatMouseEvent(e)) return;
+            if (e.relatedTarget && a.contains(e.relatedTarget)) return;
+            clearTimeout(_tsPop.leaveTimer);
+            clearTimeout(_tsPop.hoverTimer);
+            if (_tsPop.anchor === a) return;
+            if (_tsPop.pinned && _tsPop.anchor) return;
+            _tsPop.hoverTimer = setTimeout(() => {
+                if (a.isConnected && a.matches(':hover')) _tsPopShow(a, false);
+            }, _AJ_HOVER_DELAY_MS);
+        }, true);
+        document.addEventListener('mouseout', (e) => {
+            const a = e.target.closest && e.target.closest(sel);
+            if (!a) return;
+            if (e.relatedTarget && a.contains(e.relatedTarget)) return;
+            clearTimeout(_tsPop.hoverTimer);
+            if (_tsPop.anchor === a) _tsPopScheduleHide();
+        }, true);
+    }
+
+    // ── The first-visit hint ──────────────────────────────────────────────────
+
+    /**
+     * Schedules the hint once per page load: the check is offered, not
+     * active, `sa_findings_title_style_hint` is not off, and there is a
+     * button to point at (else the ⚠️ menu button).
+     *
+     * @param {?HTMLButtonElement} first - The first headline button.
+     */
+    function _titleStyleMaybeHint(first) {
+        if (_titleStyleHintDone || _titleStyleRunning || _titleStyleActive()) return;
+        if (Lib.settings.sa_findings_title_style_hint === false) return;
+        const warn = _toolbarMenus.get('findings-warn');
+        if (!first && !(warn && warn.btn && warn.btn.isConnected)) return;
+        _titleStyleHintDone = true;
+        _tsHint.showTimer = setTimeout(_titleStyleHintShow, _TS_HINT_DELAY_MS);
+    }
+
+    /** Shows the hint under the first headline button, or the ⚠️ button. */
+    function _titleStyleHintShow() {
+        if (_titleStyleRunning || _titleStyleActive() || _tsPop.anchor) return;
+        const warn = _toolbarMenus.get('findings-warn');
+        const anchor = document.querySelector('.mb-title-style-btn[data-mb-ts-state="idle"]')
+            || (warn && warn.btn && warn.btn.isConnected ? warn.btn : null);
+        if (!anchor) return;
+        const n = _titleStyleScopes().reduce((s, x) => s + x.rows.length, 0);
+        const est = Math.round(n * _TS_MS_PER_TITLE);
+        const el = document.createElement('div');
+        el.id = 'mb-title-style-hint';
+        el.className = 'mb-tt-liner';
+        el.setAttribute('role', 'dialog');
+        el.setAttribute('aria-label', 'Check these titles?');
+        el.innerHTML = '<div class="mb-ts-hint-h"><b>Aa</b> Check these titles?</div>'
+            + `<div>The ${n.toLocaleString('en-US')} title${n === 1 ? '' : 's'} on this page have not been checked against the `
+            + 'MusicBrainz style guide: title case, punctuation, series numbers, featured artists, extra title information. '
+            + `Here it takes ${est < 1 ? 'under a millisecond' : `about ${est.toLocaleString('en-US')} ms`}.</div>`
+            + '<div class="mb-tt-ajacts">'
+            + '<button type="button" class="mb-tt-ajact mb-tt-ajact-primary" data-mb-ts-hint="check">Check now</button>'
+            + '<button type="button" class="mb-tt-ajact" data-mb-ts-hint="always">Always check</button>'
+            + '<button type="button" class="mb-tt-ajact" data-mb-ts-hint="later">Not now</button></div>'
+            + '<label class="mb-ts-hint-never"><input type="checkbox" class="mb-ts-hint-never-cb"> Don’t show this again</label>'
+            + `<div class="mb-ts-hint-timer"><i style="animation-duration:${_TS_HINT_LIFE_MS}ms"></i></div>`;
+        el.addEventListener('click', _titleStyleHintClick);
+        el.querySelector('.mb-ts-hint-timer i').addEventListener('animationend', () => _titleStyleHintHide());
+        document.body.appendChild(el);
+        _tsHint.el = el;
+        _tsHint.anchor = anchor;
+        _titleStyleHintPlace();
+        anchor.classList.add('mb-ts-pulse');
+        window.addEventListener('keydown', _titleStyleHintOnKey, true);
+        document.addEventListener('pointerdown', _titleStyleHintOnPointerDown, true);
+        window.addEventListener('resize', _titleStyleHintPlace);
+        // Without animations (reduced motion) the bar never ends: a timer
+        // closes the hint instead, paused the same way while hovered.
+        _titleStyleHintArmLife();
+        el.addEventListener('mouseenter', () => clearTimeout(_tsHint.lifeTimer));
+        el.addEventListener('mouseleave', _titleStyleHintArmLife);
+    }
+
+    /** (Re)starts the hint's fallback close timer. */
+    function _titleStyleHintArmLife() {
+        clearTimeout(_tsHint.lifeTimer);
+        _tsHint.lifeTimer = setTimeout(() => _titleStyleHintHide(), _TS_HINT_LIFE_MS + 500);
+    }
+
+    /** Places the hint under its anchor, in page coordinates (it scrolls with it). */
+    function _titleStyleHintPlace() {
+        const el = _tsHint.el, a = _tsHint.anchor;
+        if (!el || !a || !a.isConnected) return;
+        const r = a.getBoundingClientRect();
+        const w = el.offsetWidth;
+        const x = Math.max(4, Math.min(r.left - 10, window.innerWidth - w - 8));
+        el.style.left = `${x + window.scrollX}px`;
+        el.style.top = `${r.bottom + 10 + window.scrollY}px`;
+        el.style.setProperty('--mb-ts-ax', `${Math.max(10, Math.min(w - 22, r.left - x + Math.min(r.width / 2, 24) - 6))}px`);
+    }
+
+    /**
+     * The hint's buttons: Check now, Always check (turns
+     * `sa_findings_title_style_auto` on), Not now. "Don't show this again"
+     * turns `sa_findings_title_style_hint` off with Check now or Not now.
+     *
+     * @param {MouseEvent} e
+     */
+    function _titleStyleHintClick(e) {
+        const b = e.target.closest('[data-mb-ts-hint]');
+        if (!b) return;
+        const never = !!(_tsHint.el && _tsHint.el.querySelector('.mb-ts-hint-never-cb:checked'));
+        const act = b.dataset.mbTsHint;
+        if (never && act !== 'always') _titleStyleSaveSetting('sa_findings_title_style_hint', false);
+        if (act === 'check') _titleStyleRequestCheck();
+        else if (act === 'always') {
+            _titleStyleRequestCheck();
+            _titleStyleSaveSetting('sa_findings_title_style_auto', true);
+        } else _titleStyleHintHide();
+    }
+
+    /**
+     * Esc closes the hint — after an open panel, whose own handler runs first
+     * and stops the key.
+     *
+     * @param {KeyboardEvent} e
+     */
+    function _titleStyleHintOnKey(e) {
+        if (e.key !== 'Escape' || !_tsHint.el || _tsPop.anchor) return;
+        e.preventDefault();
+        e.stopPropagation();
+        _titleStyleHintHide();
+    }
+
+    /**
+     * A press anywhere outside the hint reads as "Not now" and closes it, so
+     * a pop-up opened after it (a column's Cc / Rx / Ex, say) gets the next
+     * Esc instead of the hint (vzell, 2026-10-29). The press itself goes on
+     * to whatever it was meant for.
+     *
+     * @param {PointerEvent} e
+     */
+    function _titleStyleHintOnPointerDown(e) {
+        if (!_tsHint.el || _tsHint.el.contains(e.target)) return;
+        _titleStyleHintHide();
+    }
+
+    /** Removes the hint (or cancels a scheduled one). */
+    function _titleStyleHintHide() {
+        clearTimeout(_tsHint.showTimer);
+        clearTimeout(_tsHint.lifeTimer);
+        if (_tsHint.anchor) _tsHint.anchor.classList.remove('mb-ts-pulse');
+        if (_tsHint.el) _tsHint.el.remove();
+        _tsHint.el = null;
+        _tsHint.anchor = null;
+        window.removeEventListener('keydown', _titleStyleHintOnKey, true);
+        document.removeEventListener('pointerdown', _titleStyleHintOnPointerDown, true);
+        window.removeEventListener('resize', _titleStyleHintPlace);
     }
 
     /**
@@ -87703,6 +88479,7 @@ a { color: #1565c0; }`;
             _saedRefreshAttention();
         }
         _updateFindingChips();
+        _updateTitleStyleControls();
     }
 
     /**
@@ -88514,7 +89291,7 @@ a { color: #1565c0; }`;
         /* Async job popup (_ajRender): the one card every background job
            reports through. Fixed, under the control that started the job;
            unlike the hover cards it takes the pointer, for its actions. */
-        #mb-async-pop { position: fixed; width: 360px; max-width: calc(100vw - 16px); pointer-events: auto; }
+        #mb-async-pop, #mb-title-style-pop { position: fixed; width: 360px; max-width: calc(100vw - 16px); pointer-events: auto; }
         .mb-tt-liner .mb-tt-ajhead { display: flex; align-items: baseline; gap: 8px; }
         .mb-tt-liner .mb-tt-ajhead .mb-tt-title { flex: 1; min-width: 0; }
         .mb-tt-liner .mb-tt-ajpill { display: inline-block; border: 1px solid #d9cfbd; border-radius: 3px; padding: 0 5px; font: 700 0.74em/1.6 system-ui, Arial, sans-serif; letter-spacing: 0.05em; text-transform: uppercase; white-space: nowrap; background: #efe6d4; color: #4a3f33; }
@@ -88548,6 +89325,63 @@ a { color: #1565c0; }`;
         .mb-tt-liner .mb-tt-ajact:hover { background: #f4eee2; }
         .mb-tt-liner .mb-tt-ajact-primary { color: #2f5f9e; border-color: #b9c9e3; }
         .mb-tt-liner .mb-tt-ajact-danger { color: #9b2218; border-color: #e2b4ae; }
+        /* Title style in the filter headlines (_updateTitleStyleControls):
+           one button per scope, its state in data-mb-ts-state; its panel
+           (#mb-title-style-pop, the async pop's frame above) and the
+           first-visit hint (#mb-title-style-hint). Mockup approved
+           2026-10-29, preset B + C:
+           https://claude.ai/artifact/HvdfbmeTUdcR34J4TrNycD */
+        /* One size everywhere: the global filter bar does not wrap, and the
+           larger button pushed it past a 900 px window. In a heading the
+           button keeps 6px from what precedes it; in the bar the bar's own
+           gap does that. */
+        .mb-title-style-btn { display: inline-flex; align-items: center; gap: 6px; height: 20px; padding: 0 7px; margin-left: 0; box-sizing: border-box; border: 1px solid #c3ae7c; border-radius: 3px; background: #fbf8f1; color: #2b2622; font: 600 10px/1 system-ui, Arial, sans-serif; letter-spacing: 0.05em; text-transform: uppercase; white-space: nowrap; cursor: pointer; vertical-align: middle; }
+        h3 > .mb-title-style-btn { margin-left: 6px; }
+        .mb-title-style-btn:hover { border-color: #7a6d5c; }
+        .mb-title-style-btn:focus-visible { outline: 2px solid #2f5f9e; outline-offset: 2px; }
+        .mb-title-style-btn .mb-ts-aa { font: 700 12.5px/1 Georgia, "Times New Roman", serif; letter-spacing: 0; text-transform: none; }
+        .mb-title-style-btn .mb-ts-dot { width: 7px; height: 7px; border-radius: 50%; background: #2f5f9e; display: inline-block; }
+        .mb-title-style-btn[data-mb-ts-state="idle"] { border-style: dashed; }
+        .mb-title-style-btn[data-mb-ts-state="running"] { color: #2f5f9e; border-color: #2f5f9e; background: #e6edf7; cursor: progress; }
+        .mb-title-style-btn[data-mb-ts-state="found"] { color: #9a6a00; border-color: #e0c14a; background: #fdf3d8; }
+        .mb-title-style-btn[data-mb-ts-state="clean"] { color: #3f7a3a; border-color: #9fc394; background: #e8f1e4; }
+        .mb-title-style-btn.mb-ts-pulse { animation: mbTsPulse 1.6s ease-out 2; }
+        @keyframes mbTsPulse { 0% { box-shadow: 0 0 0 0 rgba(47,95,158,0.5); } 100% { box-shadow: 0 0 0 10px rgba(47,95,158,0); } }
+        #mb-title-style-pop .mb-ts-kinds { list-style: none; margin: 3px 0 0; padding: 0; display: grid; gap: 3px; }
+        #mb-title-style-pop .mb-ts-kind { width: 100%; display: grid; grid-template-columns: 16px 26px minmax(0, 1fr) auto; gap: 6px; align-items: center; text-align: left; border: 1px solid #d9cfbd; border-radius: 3px; background: #ffffff; box-shadow: 0 1px 0 #e9e1d1; padding: 3px 6px; font: inherit; color: inherit; cursor: pointer; }
+        #mb-title-style-pop .mb-ts-kind:hover { border-color: #7a6d5c; }
+        #mb-title-style-pop .mb-ts-kind[aria-checked="true"] { background: #fdf3d8; border-color: #e3cf87; }
+        #mb-title-style-pop .mb-ts-kind:not([disabled]) .mb-ts-n { color: #9a6a00; background: #fdf3d8; border: 1px solid #e3cf87; border-radius: 999px; padding: 0 6px; }
+        #mb-title-style-pop .mb-ts-kind:not([disabled]) .mb-ts-n b { color: inherit; }
+        #mb-title-style-pop .mb-ts-kind[disabled] { color: #b3a896; cursor: default; background: none; border-color: transparent; box-shadow: none; }
+        #mb-title-style-pop .mb-ts-kind[disabled] .mb-ts-box { visibility: hidden; }
+        #mb-title-style-pop .mb-ts-kind[disabled] :is(.mb-ts-g, .mb-ts-n) { color: #c9bea9; }
+        #mb-title-style-pop .mb-ts-box { width: 13px; height: 13px; border: 1px solid #7a6d5c; border-radius: 2px; display: inline-grid; place-items: center; font: 700 10px/1 system-ui, Arial, sans-serif; }
+        #mb-title-style-pop .mb-ts-kind[aria-checked="true"] .mb-ts-box { background: #9a6a00; border-color: #9a6a00; color: #ffffff; }
+        #mb-title-style-pop .mb-ts-g { color: #9a6a00; text-align: center; }
+        #mb-title-style-pop .mb-ts-n { font: 11.5px/1.4 ui-monospace, Consolas, monospace; color: #7a6d5c; font-variant-numeric: tabular-nums; }
+        #mb-title-style-pop .mb-ts-n b { color: #2b2622; font-weight: 400; }
+        #mb-title-style-pop .mb-ts-list { list-style: none; margin: 3px 0 0; padding: 0; display: grid; gap: 2px; max-height: 190px; overflow: auto; }
+        #mb-title-style-pop .mb-ts-item { width: 100%; display: grid; text-align: left; background: none; border: none; padding: 2px 4px; border-radius: 3px; font: inherit; color: inherit; cursor: pointer; }
+        #mb-title-style-pop .mb-ts-item:hover { background: #f3ecdd; }
+        #mb-title-style-pop .mb-ts-item-hidden { opacity: 0.6; }
+        #mb-title-style-pop .mb-ts-was { color: #7a6d5c; text-decoration: line-through; text-decoration-color: rgba(155,34,24,0.55); font-size: 0.93em; }
+        #mb-title-style-pop .mb-ts-now i { color: #7a6d5c; }
+        #mb-title-style-pop .mb-ts-foot { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; margin-top: 8px; }
+        #mb-title-style-pop .mb-ts-foot label { display: flex; gap: 6px; align-items: center; color: #7a6d5c; font-size: 0.93em; cursor: pointer; }
+        tr.mb-ts-flash > td { animation: mbTsFlash 1.2s ease-out; }
+        @keyframes mbTsFlash { 0% { background-color: #cfe0f6; } }
+        #mb-title-style-hint { position: absolute; width: 360px; max-width: calc(100vw - 16px); pointer-events: auto; display: grid; gap: 7px; }
+        #mb-title-style-hint::before { content: ""; position: absolute; top: -7px; left: var(--mb-ts-ax, 24px); width: 12px; height: 12px; background: #fbf8f1; border-left: 1px solid #d9cfbd; border-top: 1px solid #d9cfbd; transform: rotate(45deg); }
+        #mb-title-style-hint .mb-ts-hint-h { font-size: 1.15em; }
+        #mb-title-style-hint .mb-ts-hint-h b { color: #2f5f9e; }
+        #mb-title-style-hint .mb-tt-ajacts { margin-top: 0; }
+        #mb-title-style-hint .mb-ts-hint-never { display: flex; gap: 6px; align-items: center; color: #7a6d5c; font-size: 0.93em; cursor: pointer; }
+        #mb-title-style-hint .mb-ts-hint-timer { height: 2px; background: #d9cfbd; overflow: hidden; border-radius: 1px; }
+        #mb-title-style-hint .mb-ts-hint-timer i { display: block; height: 100%; background: #7a6d5c; transform-origin: left; animation: mbTsShrink 14s linear forwards; }
+        #mb-title-style-hint:hover .mb-ts-hint-timer i { animation-play-state: paused; }
+        @keyframes mbTsShrink { to { transform: scaleX(0); } }
+        @media (prefers-reduced-motion: reduce) { .mb-title-style-btn.mb-ts-pulse, tr.mb-ts-flash > td, #mb-title-style-hint .mb-ts-hint-timer i { animation: none; } }
         #mb-stat-tooltip {
             position: fixed;
             max-width: 520px;

@@ -1,15 +1,20 @@
 #!/usr/bin/env python3
-"""Run `npm run test:full` and publish its progress for the Claude Code status line.
+"""Run `npm run test:full` (or another test script) and publish its progress for the Claude Code status line.
 
 Usage (from ShowAllEntityData/):
 
-    python3 scripts/run-test-full.py [--log PATH] [-- extra playwright args]
+    python3 scripts/run-test-full.py [--script NAME] [--log PATH] [-- extra playwright args]
+
+`--script` names the npm script to run, `test:full` by default (the merge
+gate). Any `test…` script of package.json works — `test` while developing,
+`test:mobile`, … (vzell, 2026-10-29: every suite run is followed in the
+status line, not only the merge gate).
 
 The run's output is passed through unchanged (and copied to --log when given).
 Alongside it, this script keeps a small JSON status file that
 ~/.claude/statusline.sh reads, so the prompt's status line shows
 
-    🧪 test:full · <host> · <branch>@<sha> · since HH:MM:SS CEST · done/total · ETA ~HH:MM CEST
+    🧪 <script> · <host> · <branch>@<sha> · since HH:MM:SS CEST · done/total · ETA ~HH:MM CEST
 
 while the suite runs, and the result for an hour afterwards.
 
@@ -21,11 +26,14 @@ change is still right. Older status/history files hold `…Z` stamps;
 statusline.sh reads both.
 
 Status file: ~/.cache/sa-test-full/status.json (one per user; the newest run
-wins). Per-host history: ~/.cache/sa-test-full/last-<host>.json, holding the
+wins; its `script` field names what ran). Per-host, per-script history:
+~/.cache/sa-test-full/last-<host>.json for test:full (the name it always had),
+last-<host>-<script>.json for the others (`:` becomes `-`), holding the
 previous complete run's wall clock and test count; the ETA is that wall clock
-scaled by this run's test count (CLAUDE.md, "Testing (Playwright)"). Without a
-history file the status line extrapolates from progress and marks the ETA
-"(extrapolated)".
+scaled by this run's test count (CLAUDE.md, "Testing (Playwright)"). A run of
+one script never sets another's baseline: `test` skips the two @slow specs, so
+its minutes say nothing about test:full's. Without a history file the status
+line extrapolates from progress and marks the ETA "(extrapolated)".
 
 The announcement line CLAUDE.md asks for ("The suite started at … on …, on …
 at …, probably around …") is printed as soon as Playwright reports its test
@@ -87,34 +95,57 @@ def write_status(status):
     os.replace(tmp, STATUS_PATH)
 
 
-def load_history(host):
-    """Return the host's last complete run ({'wall_s', 'tests', 'finished'}) or None."""
+def history_path(host, script):
+    """Return the ETA-baseline file of `script` on `host` (test:full keeps its old name)."""
+    suffix = '' if script == 'test:full' else '-' + script.replace(':', '-')
+    return os.path.join(STATE_DIR, f'last-{host}{suffix}.json')
+
+
+def load_history(host, script):
+    """Return the host's last complete run of `script` ({'wall_s', 'tests', 'finished'}) or None."""
     try:
-        with open(os.path.join(STATE_DIR, f'last-{host}.json'), encoding='utf-8') as fh:
+        with open(history_path(host, script), encoding='utf-8') as fh:
             return json.load(fh)
     except (OSError, ValueError):
         return None
 
 
-def save_history(host, wall_s, tests, finished):
-    """Record a complete full run as the host's ETA baseline."""
+def save_history(host, script, wall_s, tests, finished):
+    """Record a complete run of `script` as the host's ETA baseline for it."""
     os.makedirs(STATE_DIR, exist_ok=True)
-    with open(os.path.join(STATE_DIR, f'last-{host}.json'), 'w', encoding='utf-8') as fh:
+    with open(history_path(host, script), 'w', encoding='utf-8') as fh:
         json.dump({'wall_s': wall_s, 'tests': tests, 'finished': finished}, fh, indent=2)
+
+
+def npm_test_scripts():
+    """Return the names of package.json's `test…` scripts (empty when it cannot be read)."""
+    try:
+        with open('package.json', encoding='utf-8') as fh:
+            scripts = json.load(fh).get('scripts', {})
+    except (OSError, ValueError):
+        return []
+    return sorted(k for k in scripts if k == 'test' or k.startswith('test:'))
 
 
 def main():
     """Run the suite, stream its output, and keep the status file current."""
     ap = argparse.ArgumentParser(description=__doc__.split('\n', 1)[0])
+    ap.add_argument('--script', default='test:full',
+                    help='the npm test script to run (default: test:full, the merge gate)')
     ap.add_argument('--log', help='also copy the output to this file')
     ap.add_argument('extra', nargs='*', help='extra args after --, passed to playwright')
     opts = ap.parse_args()
+    known = npm_test_scripts()
+    if opts.script not in known:
+        ap.error(f"--script {opts.script!r} is not a test script of package.json "
+                 f"(run from ShowAllEntityData/): {', '.join(known) or 'none found'}")
 
     host = socket.gethostname()
     start = utc_now()
     status = {
         'state': 'running',
         'pid': os.getpid(),
+        'script': opts.script,
         'host': host,
         'branch': git('branch', '--show-current'),
         'sha': git('rev-parse', '--short', 'HEAD'),
@@ -129,11 +160,11 @@ def main():
         'log': os.path.abspath(opts.log) if opts.log else None,
     }
     write_status(status)
-    history = load_history(host)
+    history = load_history(host, opts.script)
 
     log = open(opts.log, 'w', encoding='utf-8') if opts.log else None
-    cmd = ['npm', 'run', 'test:full'] + (['--', *opts.extra] if opts.extra else [])
-    header = (f"[run-test-full] start {iso(start)} host {host} "
+    cmd = ['npm', 'run', opts.script] + (['--', *opts.extra] if opts.extra else [])
+    header = (f"[run-test-full] start {iso(start)} script {opts.script} host {host} "
               f"branch {status['branch']} head {status['sha']}")
     for out in (sys.stdout, log):
         if out:
@@ -158,13 +189,14 @@ def main():
                 eta_s = history['wall_s'] * status['total'] / history['tests']
                 eta = start + datetime.timedelta(seconds=round(eta_s))
                 status['eta'] = iso(eta)
-                status['eta_basis'] = (f"last full run on {host}: "
+                status['eta_basis'] = (f"last {opts.script} run on {host}: "
                                        f"{history['tests']} tests in {history['wall_s']} s")
                 when = f"probably around {hms(eta, seconds=False)}"
             else:
-                when = f"no recorded test:full on {host}, so no ETA yet"
+                when = f"no recorded {opts.script} on {host}, so no ETA yet"
             msg = (f"[run-test-full] The suite started at {hms(start)} on "
                    f"{host}, on {status['branch']} at {status['sha']}: "
+                   f"npm run {opts.script}, "
                    f"{status['total']} tests, {status['workers']} workers, {when}.")
             for out in (sys.stdout, log):
                 if out:
@@ -196,7 +228,7 @@ def main():
     # A red run's wall clock is as good an ETA baseline as a green one; a
     # partial run (extra args) is not, and an aborted one has no summary.
     if not opts.extra and status['total'] and summary:
-        save_history(host, wall_s, status['total'], iso(finish))
+        save_history(host, opts.script, wall_s, status['total'], iso(finish))
     tail = (f"[run-test-full] exit {rc} finish {iso(finish)} wall {wall_s // 60} m "
             f"{wall_s % 60} s summary {json.dumps(summary)}")
     for out in (sys.stdout, log):

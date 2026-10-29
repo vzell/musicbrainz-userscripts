@@ -53,9 +53,12 @@ test.describe('global filter bar: semantic containers', () => {
         // chips; the live-date and LENGTH summary buttons it used to hold were
         // replaced by the ⚠️ WARNING / ❌ ERROR h1 menus.
         expect(groups[0].children).toEqual(['mb-findings-chips']);
+        // The title-style check's Aa button follows Ex on a page with titles
+        // (docs/claude/findings.md, "On demand: the title-style findings").
         expect(groups[1].children).toEqual([
             'mb-global-filter-wrapper', 'span(anon)',
             'mb-global-filter-case-label', 'mb-global-filter-rx-label', 'mb-global-filter-exclude-label',
+            'mb-title-style-global-btn',
         ]);
         // #mb-col-collapse-all-btn is insertBefore'd ahead of the highlight
         // button, so its position here also proves that insert still resolves

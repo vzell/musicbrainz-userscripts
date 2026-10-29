@@ -2,8 +2,8 @@
   "_meta": {
     "generated_by": "scripts/dump-default-history.py",
     "source": "ShowAllEntityData/ShowAllEntityData.user.js",
-    "head": "80241d32c1f8518616b4f408ca19427ba17a6c7a",
-    "revisions_walked": 1123
+    "head": "e7a390542ed3483619199597d6d550bc3839cfed",
+    "revisions_walked": 1126
   },
   "changes": [
     {
@@ -915,6 +915,7 @@
     "sa_enable_title_eti_style": true,
     "sa_findings_tint_eti_case": true,
     "sa_findings_title_style_auto": false,
+    "sa_findings_title_style_hint": true,
     "sa_findings_title_case": true,
     "sa_findings_title_typography": true,
     "sa_findings_title_series": true,
@@ -1117,6 +1118,7 @@
     "sa_pop_ext_favicons": true,
     "sa_pop_ext_ttl_hours": 168,
     "sa_pop_ext_discogs_token": "",
+    "sa_pop_ext_setlistfm_key": "",
     "sa_yt_play_in_place": true,
     "sa_yt_stills": true,
     "sa_dp_hover_without_ctrl": true,
