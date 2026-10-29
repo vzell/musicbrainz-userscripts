@@ -4,9 +4,28 @@ Every version, newest first, with the technical details behind each change. For 
 
 **Months:** [October 2026](ShowAllEntityData_CHANGELOG/2026-10.md) · [September 2026](ShowAllEntityData_CHANGELOG/2026-09.md) · [August 2026](ShowAllEntityData_CHANGELOG/2026-08.md) · [July 2026](ShowAllEntityData_CHANGELOG/2026-07.md) · [June 2026](ShowAllEntityData_CHANGELOG/2026-06.md) · [May 2026](ShowAllEntityData_CHANGELOG/2026-05.md) · [April 2026](ShowAllEntityData_CHANGELOG/2026-04.md) · [March 2026 (1 of 2)](ShowAllEntityData_CHANGELOG/2026-03-1.md) · [March 2026 (2 of 2)](ShowAllEntityData_CHANGELOG/2026-03-2.md) · [February 2026](ShowAllEntityData_CHANGELOG/2026-02.md) · [January 2026](ShowAllEntityData_CHANGELOG/2026-01.md)
 
-This page shows the newest 100 of 1686 versions; the month pages hold all of them.
+This page shows the newest 100 of 1688 versions; the month pages hold all of them.
 
 ---
+
+## 9.99.1517 — 2026-10-29
+
+**🔧 Refactor**
+
+- scripts/run-test-full.py --script NAME runs any test script of package.json (default test:full, the merge gate, unchanged), so a development run of npm test shows in the Claude Code status line too ("🧪 test · …"). Each script keeps its own ETA baseline (\~/.cache/sa-test-full/last-&lt;host&gt;-&lt;script&gt;.json; test:full keeps last-&lt;host&gt;.json), and the status file names the script, which \~/.claude/statusline.sh shows (a file without it reads as test:full). CLAUDE.md: every suite run goes through the wrapper.
+
+
+## 9.99.1516 — 2026-10-29
+
+**✨ Improve**
+
+- "Check title style" is now where you see it: an Aa button next to the filters, in the filter bar after Cc / Rx / Ex on a page with one table, and in every sub-table heading on a page with several. It checks the whole page, as the ⚠️ list's row does, which stays. Afterwards each button shows its own table's result, "Aa 4 titles off-style ▾" in amber or a green "✓ Style OK". Clicking it (or resting on it) opens a small panel: titles checked, time taken, the five title-style warnings with their counts — a warning found on the page is a white box with a checkbox and its count in a pill, one found nowhere is greyed out — ticked to show only those rows in every table (the ⚠️ list shows the same tick), the table's titles struck through over their MusicBrainz style (click one to go to its row), and the "Check every page by itself" switch. Esc or a click outside closes it.
+- A short hint under the first Aa button, a moment after a page with unchecked titles renders, offers the check: Check now, Always check, or Not now. It closes by itself after 14 seconds, on Esc, or on a click anywhere else; "Don’t show this again" stops it (new setting: ⚠️ Findings → Offer the title-style check in a hint).
+
+**🔧 Refactor**
+
+- \_updateTitleStyleControls() (tail of \_updateFindingMenus()), \_titleStyleScopes(), \_tableHasTitleInfo(), \_titleStyleOffRows() (source rows, memoized per stamp generation), \_titleStyleRequestCheck() / \_titleStyleStampNow() (shared with \_runTitleStyleCheck()), the panel \_tsPop\* (\#mb-title-style-pop, the async pop's frame and CSS, \_titleStyleProposal()), the hint \_titleStyleHint\* (\#mb-title-style-hint). New setting sa\_findings\_title\_style\_hint (default true; off for every Playwright load through the new HARNESS\_SETTINGS\_ALWAYS in tests/support/loadPage.js and realNetworkGmXhr.js). Mockup approved 2026-10-29, preset "B + C": https://claude.ai/artifact/HvdfbmeTUdcR34J4TrNycD; the panel's warning rows variant A of https://claude.ai/artifact/XFAcJ9zn5brXitDzJogXqn. Departures from the mockup, agreed: short labels and one 20 px button size everywhere (the non-wrapping global bar overflowed a 900 px window), a click outside closes the hint. Tests: findings-title-style.spec.js (+10), findings-title-style.mobile.spec.js (new), filter-bar-containers.spec.js (the button in the inventory), user-ratings-multigroup.spec.js (expands a heading by its toggle icon, not its centre, where the button sits); scripts/mutations/title-style.json (+13). docs/claude/findings.md, HELP, CLAUDE.md.
+
 
 ## 9.99.1515 — 2026-10-29
 
@@ -906,20 +925,6 @@ This page shows the newest 100 of 1686 versions; the month pages hold all of the
 
 - Link previews: every hover card now opens with a kind line, the entity's icon and its kind ("Recording", "Release group", "Event"), the same words as the window's title bar, so the card says what Space will open. Cards of other sites get it too ("Discogs release", "Wikipedia"), without an icon. The icon moved out of the title into that line; the loading and failed cards no longer repeat the kind under the title.
 - The release page's release-group cards (the subheader link and the "\#" cell of a live track) now carry MusicBrainz's release-group icon, in the card and in the window's title bar.
-
-
-## 9.99.1417 — 2026-10-21
-
-**✨ Improve**
-
-- The Length column's header tooltip now follows the ⏱ millisecond toggle. On a release tracklist it used to say "rounded to the nearest second, so 4:50 can be anything from 4:49.500 to 4:50.499" even while the column showed milliseconds. With ⏱ on it now says the value is shown with milliseconds, the precision MusicBrainz keeps, and that ⏱ switches back to whole seconds; the Recording length tooltip says the same. On the other pages with a ⏱ button, the Length description (9.99.1406) changes from "minutes and seconds" to "minutes, seconds and milliseconds" in the same way.
-
-
-## 9.99.1416 — 2026-10-21
-
-**🐛 Fix**
-
-- Since 9.99.1406, on pages where MusicBrainz marks the Length column itself (an ISRC page, the relationship overviews), the first filter keystroke removed MusicBrainz's own class from the Length header and its new tooltip with it. The jesus2099 clean-up took that tooltip for the "SUPER MIND CONTROL" plugin's, because only one older kind of the script's own tooltips counted as ours. Every tooltip the script writes now counts, so both stay.
 
 
 ---
