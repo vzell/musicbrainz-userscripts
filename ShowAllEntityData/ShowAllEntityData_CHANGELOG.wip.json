@@ -1,5 +1,17 @@
 [
   {
+    "version": "WIP.2",
+    "date": "2026-10-29",
+    "sections": [
+      {
+        "label": "🔧 Refactor",
+        "items": [
+          "scripts/run-test-full.py --script NAME runs any test script of package.json (default test:full, the merge gate, unchanged), so a development run of npm test shows in the Claude Code status line too (\"🧪 test · …\"). Each script keeps its own ETA baseline (~/.cache/sa-test-full/last-<host>-<script>.json; test:full keeps last-<host>.json), and the status file names the script, which ~/.claude/statusline.sh shows (a file without it reads as test:full). CLAUDE.md: every suite run goes through the wrapper."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.1",
     "date": "2026-10-29",
     "sections": [
