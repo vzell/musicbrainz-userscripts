@@ -6017,6 +6017,15 @@ when hovering a release in the left sidebar, ONLY the newest change should be sh
 BB detail page POHs should alos get a history diff view of the current entity
 
 
+* TODO on "Editing history" POHs we have the same pumping when areas with flas are involved (this has been solved already on artist POHs)
+
+on "Editing history" POHs we have the same pumping when areas with flas are involved (this has been solved already on artist POHs)
+
+* TODO Walter Kerr events POH do not URLify "Patti Scialfa" in "SETLIST" (right)
+
+Walter Kerr events POH do not URLify "Patti Scialfa" in "SETLIST" (right) - https://musicbrainz.org/event/72fecbeb-f38f-48f8-8820-b3c583bd0f1b
+
+
 * TODO statusline.sh
 
 #+begin_src bash
