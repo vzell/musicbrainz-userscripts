@@ -1,0 +1,738 @@
+{
+  "head" : {
+    "vars" : [ "i", "l" ]
+  },
+  "results" : {
+    "bindings" : [ {
+      "i" : {
+        "type" : "uri",
+        "value" : "http://www.wikidata.org/entity/Q5"
+      },
+      "l" : {
+        "xml:lang" : "en",
+        "type" : "literal",
+        "value" : "human"
+      }
+    }, {
+      "i" : {
+        "type" : "uri",
+        "value" : "http://www.wikidata.org/entity/Q30"
+      },
+      "l" : {
+        "xml:lang" : "en",
+        "type" : "literal",
+        "value" : "United States"
+      }
+    }, {
+      "i" : {
+        "type" : "uri",
+        "value" : "http://www.wikidata.org/entity/Q76"
+      },
+      "l" : {
+        "xml:lang" : "en",
+        "type" : "literal",
+        "value" : "Barack Obama"
+      }
+    }, {
+      "i" : {
+        "type" : "uri",
+        "value" : "http://www.wikidata.org/entity/Q150"
+      },
+      "l" : {
+        "xml:lang" : "en",
+        "type" : "literal",
+        "value" : "French"
+      }
+    }, {
+      "i" : {
+        "type" : "uri",
+        "value" : "http://www.wikidata.org/entity/Q1860"
+      },
+      "l" : {
+        "xml:lang" : "en",
+        "type" : "literal",
+        "value" : "English"
+      }
+    }, {
+      "i" : {
+        "type" : "uri",
+        "value" : "http://www.wikidata.org/entity/Q6607"
+      },
+      "l" : {
+        "xml:lang" : "en",
+        "type" : "literal",
+        "value" : "guitar"
+      }
+    }, {
+      "i" : {
+        "type" : "uri",
+        "value" : "http://www.wikidata.org/entity/Q5994"
+      },
+      "l" : {
+        "xml:lang" : "en",
+        "type" : "literal",
+        "value" : "piano"
+      }
+    }, {
+      "i" : {
+        "type" : "uri",
+        "value" : "http://www.wikidata.org/entity/Q11399"
+      },
+      "l" : {
+        "xml:lang" : "en",
+        "type" : "literal",
+        "value" : "rock music"
+      }
+    }, {
+      "i" : {
+        "type" : "uri",
+        "value" : "http://www.wikidata.org/entity/Q9759"
+      },
+      "l" : {
+        "xml:lang" : "en",
+        "type" : "literal",
+        "value" : "blues"
+      }
+    }, {
+      "i" : {
+        "type" : "uri",
+        "value" : "http://www.wikidata.org/entity/Q31687"
+      },
+      "l" : {
+        "xml:lang" : "en",
+        "type" : "literal",
+        "value" : "baritone"
+      }
+    }, {
+      "i" : {
+        "type" : "uri",
+        "value" : "http://www.wikidata.org/entity/Q36834"
+      },
+      "l" : {
+        "xml:lang" : "en",
+        "type" : "literal",
+        "value" : "composer"
+      }
+    }, {
+      "i" : {
+        "type" : "uri",
+        "value" : "http://www.wikidata.org/entity/Q43343"
+      },
+      "l" : {
+        "xml:lang" : "en",
+        "type" : "literal",
+        "value" : "folk music"
+      }
+    }, {
+      "i" : {
+        "type" : "uri",
+        "value" : "http://www.wikidata.org/entity/Q51290"
+      },
+      "l" : {
+        "xml:lang" : "en",
+        "type" : "literal",
+        "value" : "harmonica"
+      }
+    }, {
+      "i" : {
+        "type" : "uri",
+        "value" : "http://www.wikidata.org/entity/Q17144"
+      },
+      "l" : {
+        "xml:lang" : "en",
+        "type" : "literal",
+        "value" : "Presidential Medal of Freedom"
+      }
+    }, {
+      "i" : {
+        "type" : "uri",
+        "value" : "http://www.wikidata.org/entity/Q112243"
+      },
+      "l" : {
+        "xml:lang" : "en",
+        "type" : "literal",
+        "value" : "Academy Award for Best Original Song"
+      }
+    }, {
+      "i" : {
+        "type" : "uri",
+        "value" : "http://www.wikidata.org/entity/Q177220"
+      },
+      "l" : {
+        "xml:lang" : "en",
+        "type" : "literal",
+        "value" : "singer"
+      }
+    }, {
+      "i" : {
+        "type" : "uri",
+        "value" : "http://www.wikidata.org/entity/Q183945"
+      },
+      "l" : {
+        "xml:lang" : "en",
+        "type" : "literal",
+        "value" : "record producer"
+      }
+    }, {
+      "i" : {
+        "type" : "uri",
+        "value" : "http://www.wikidata.org/entity/Q257083"
+      },
+      "l" : {
+        "xml:lang" : "en",
+        "type" : "literal",
+        "value" : "Patti Scialfa"
+      }
+    }, {
+      "i" : {
+        "type" : "uri",
+        "value" : "http://www.wikidata.org/entity/Q326482"
+      },
+      "l" : {
+        "xml:lang" : "en",
+        "type" : "literal",
+        "value" : "MusiCares Person of the Year"
+      }
+    }, {
+      "i" : {
+        "type" : "uri",
+        "value" : "http://www.wikidata.org/entity/Q447799"
+      },
+      "l" : {
+        "xml:lang" : "en",
+        "type" : "literal",
+        "value" : "Pamela Springsteen"
+      }
+    }, {
+      "i" : {
+        "type" : "uri",
+        "value" : "http://www.wikidata.org/entity/Q463303"
+      },
+      "l" : {
+        "xml:lang" : "en",
+        "type" : "literal",
+        "value" : "American Academy of Arts and Sciences"
+      }
+    }, {
+      "i" : {
+        "type" : "uri",
+        "value" : "http://www.wikidata.org/entity/Q204057"
+      },
+      "l" : {
+        "xml:lang" : "en",
+        "type" : "literal",
+        "value" : "Philadelphia"
+      }
+    }, {
+      "i" : {
+        "type" : "uri",
+        "value" : "http://www.wikidata.org/entity/Q667066"
+      },
+      "l" : {
+        "xml:lang" : "en",
+        "type" : "literal",
+        "value" : "MTV Video Music Award – Viewer's Choice"
+      }
+    }, {
+      "i" : {
+        "type" : "uri",
+        "value" : "http://www.wikidata.org/entity/Q753110"
+      },
+      "l" : {
+        "xml:lang" : "en",
+        "type" : "literal",
+        "value" : "songwriter"
+      }
+    }, {
+      "i" : {
+        "type" : "uri",
+        "value" : "http://www.wikidata.org/entity/Q486748"
+      },
+      "l" : {
+        "xml:lang" : "en",
+        "type" : "literal",
+        "value" : "pianist"
+      }
+    }, {
+      "i" : {
+        "type" : "uri",
+        "value" : "http://www.wikidata.org/entity/Q471788"
+      },
+      "l" : {
+        "xml:lang" : "en",
+        "type" : "literal",
+        "value" : "Joseph"
+      }
+    }, {
+      "i" : {
+        "type" : "uri",
+        "value" : "http://www.wikidata.org/entity/Q179191"
+      },
+      "l" : {
+        "xml:lang" : "en",
+        "type" : "literal",
+        "value" : "Rock and Roll Hall of Fame"
+      }
+    }, {
+      "i" : {
+        "type" : "uri",
+        "value" : "http://www.wikidata.org/entity/Q183387"
+      },
+      "l" : {
+        "xml:lang" : "en",
+        "type" : "literal",
+        "value" : "Columbia Records"
+      }
+    }, {
+      "i" : {
+        "type" : "uri",
+        "value" : "http://www.wikidata.org/entity/Q855091"
+      },
+      "l" : {
+        "xml:lang" : "en",
+        "type" : "literal",
+        "value" : "guitarist"
+      }
+    }, {
+      "i" : {
+        "type" : "uri",
+        "value" : "http://www.wikidata.org/entity/Q903494"
+      },
+      "l" : {
+        "xml:lang" : "en",
+        "type" : "literal",
+        "value" : "68th Academy Awards"
+      }
+    }, {
+      "i" : {
+        "type" : "uri",
+        "value" : "http://www.wikidata.org/entity/Q944352"
+      },
+      "l" : {
+        "xml:lang" : "en",
+        "type" : "literal",
+        "value" : "66th Academy Awards"
+      }
+    }, {
+      "i" : {
+        "type" : "uri",
+        "value" : "http://www.wikidata.org/entity/Q579371"
+      },
+      "l" : {
+        "xml:lang" : "en",
+        "type" : "literal",
+        "value" : "Bruce"
+      }
+    }, {
+      "i" : {
+        "type" : "uri",
+        "value" : "http://www.wikidata.org/entity/Q3273004"
+      },
+      "l" : {
+        "xml:lang" : "en",
+        "type" : "literal",
+        "value" : "Frederick"
+      }
+    }, {
+      "i" : {
+        "type" : "uri",
+        "value" : "http://www.wikidata.org/entity/Q10800557"
+      },
+      "l" : {
+        "xml:lang" : "en",
+        "type" : "literal",
+        "value" : "film actor"
+      }
+    }, {
+      "i" : {
+        "type" : "uri",
+        "value" : "http://www.wikidata.org/entity/Q991822"
+      },
+      "l" : {
+        "xml:lang" : "en",
+        "type" : "literal",
+        "value" : "Bruce Springsteen discography"
+      }
+    }, {
+      "i" : {
+        "type" : "uri",
+        "value" : "http://www.wikidata.org/entity/Q995231"
+      },
+      "l" : {
+        "xml:lang" : "en",
+        "type" : "literal",
+        "value" : "Long Branch"
+      }
+    }, {
+      "i" : {
+        "type" : "uri",
+        "value" : "http://www.wikidata.org/entity/Q14705795"
+      },
+      "l" : {
+        "xml:lang" : "en",
+        "type" : "literal",
+        "value" : "New Jersey Hall of Fame"
+      }
+    }, {
+      "i" : {
+        "type" : "uri",
+        "value" : "http://www.wikidata.org/entity/Q21441764"
+      },
+      "l" : {
+        "xml:lang" : "en",
+        "type" : "literal",
+        "value" : "withdrawn identifier value"
+      }
+    }, {
+      "i" : {
+        "type" : "uri",
+        "value" : "http://www.wikidata.org/entity/Q7120528"
+      },
+      "l" : {
+        "xml:lang" : "en",
+        "type" : "literal",
+        "value" : "PRS for Music"
+      }
+    }, {
+      "i" : {
+        "type" : "uri",
+        "value" : "http://www.wikidata.org/entity/Q587891"
+      },
+      "l" : {
+        "xml:lang" : "en",
+        "type" : "literal",
+        "value" : "Dead Man Walking"
+      }
+    }, {
+      "i" : {
+        "type" : "uri",
+        "value" : "http://www.wikidata.org/entity/Q1064978"
+      },
+      "l" : {
+        "xml:lang" : "en",
+        "type" : "literal",
+        "value" : "MTV Video Music Award for Best Male Video"
+      }
+    }, {
+      "i" : {
+        "type" : "uri",
+        "value" : "http://www.wikidata.org/entity/Q1115168"
+      },
+      "l" : {
+        "xml:lang" : "en",
+        "type" : "literal",
+        "value" : "I'm on Fire"
+      }
+    }, {
+      "i" : {
+        "type" : "uri",
+        "value" : "http://www.wikidata.org/entity/Q1159364"
+      },
+      "l" : {
+        "xml:lang" : "en",
+        "type" : "literal",
+        "value" : "Dancing in the Dark"
+      }
+    }, {
+      "i" : {
+        "type" : "uri",
+        "value" : "http://www.wikidata.org/entity/Q1161109"
+      },
+      "l" : {
+        "xml:lang" : "en",
+        "type" : "literal",
+        "value" : "MTV Video Music Award for Best Video from a Film"
+      }
+    }, {
+      "i" : {
+        "type" : "uri",
+        "value" : "http://www.wikidata.org/entity/Q1161136"
+      },
+      "l" : {
+        "xml:lang" : "en",
+        "type" : "literal",
+        "value" : "MTV Video Music Award for Best Stage Performance"
+      }
+    }, {
+      "i" : {
+        "type" : "uri",
+        "value" : "http://www.wikidata.org/entity/Q639669"
+      },
+      "l" : {
+        "xml:lang" : "en",
+        "type" : "literal",
+        "value" : "musician"
+      }
+    }, {
+      "i" : {
+        "type" : "uri",
+        "value" : "http://www.wikidata.org/entity/Q7721887"
+      },
+      "l" : {
+        "xml:lang" : "en",
+        "type" : "literal",
+        "value" : "The Center for Early Education"
+      }
+    }, {
+      "i" : {
+        "type" : "uri",
+        "value" : "http://www.wikidata.org/entity/Q8316826"
+      },
+      "l" : {
+        "xml:lang" : "en",
+        "type" : "literal",
+        "value" : "Category:Bruce Springsteen"
+      }
+    }, {
+      "i" : {
+        "type" : "uri",
+        "value" : "http://www.wikidata.org/entity/Q10514550"
+      },
+      "l" : {
+        "xml:lang" : "en",
+        "type" : "literal",
+        "value" : "Template:Bruce Springsteen"
+      }
+    }, {
+      "i" : {
+        "type" : "uri",
+        "value" : "http://www.wikidata.org/entity/Q10798782"
+      },
+      "l" : {
+        "xml:lang" : "en",
+        "type" : "literal",
+        "value" : "television actor"
+      }
+    }, {
+      "i" : {
+        "type" : "uri",
+        "value" : "http://www.wikidata.org/entity/Q1225089"
+      },
+      "l" : {
+        "xml:lang" : "en",
+        "type" : "literal",
+        "value" : "Jessica Springsteen"
+      }
+    }, {
+      "i" : {
+        "type" : "uri",
+        "value" : "http://www.wikidata.org/entity/Q1276681"
+      },
+      "l" : {
+        "xml:lang" : "en",
+        "type" : "literal",
+        "value" : "E Street Band"
+      }
+    }, {
+      "i" : {
+        "type" : "uri",
+        "value" : "http://www.wikidata.org/entity/Q1738793"
+      },
+      "l" : {
+        "xml:lang" : "en",
+        "type" : "literal",
+        "value" : "Kennedy Center Honors"
+      }
+    }, {
+      "i" : {
+        "type" : "uri",
+        "value" : "http://www.wikidata.org/entity/Q21475355"
+      },
+      "l" : {
+        "xml:lang" : "en",
+        "type" : "literal",
+        "value" : "Springsteen"
+      }
+    }, {
+      "i" : {
+        "type" : "uri",
+        "value" : "http://www.wikidata.org/entity/Q3409033"
+      },
+      "l" : {
+        "xml:lang" : "en",
+        "type" : "literal",
+        "value" : "usual forename"
+      }
+    }, {
+      "i" : {
+        "type" : "uri",
+        "value" : "http://www.wikidata.org/entity/Q4340209"
+      },
+      "l" : {
+        "xml:lang" : "en",
+        "type" : "literal",
+        "value" : "depression"
+      }
+    }, {
+      "i" : {
+        "type" : "uri",
+        "value" : "http://www.wikidata.org/entity/Q1939374"
+      },
+      "l" : {
+        "xml:lang" : "en",
+        "type" : "literal",
+        "value" : "Streets of Philadelphia"
+      }
+    }, {
+      "i" : {
+        "type" : "uri",
+        "value" : "http://www.wikidata.org/entity/Q2516986"
+      },
+      "l" : {
+        "xml:lang" : "en",
+        "type" : "literal",
+        "value" : "Julianne Phillips"
+      }
+    }, {
+      "i" : {
+        "type" : "uri",
+        "value" : "http://www.wikidata.org/entity/Q2526255"
+      },
+      "l" : {
+        "xml:lang" : "en",
+        "type" : "literal",
+        "value" : "film director"
+      }
+    }, {
+      "i" : {
+        "type" : "uri",
+        "value" : "http://www.wikidata.org/entity/Q5500909"
+      },
+      "l" : {
+        "xml:lang" : "en",
+        "type" : "literal",
+        "value" : "Freehold High School"
+      }
+    }, {
+      "i" : {
+        "type" : "uri",
+        "value" : "http://www.wikidata.org/entity/Q6173448"
+      },
+      "l" : {
+        "xml:lang" : "en",
+        "type" : "literal",
+        "value" : "Wikipedia:Vital articles/Level/4"
+      }
+    }, {
+      "i" : {
+        "type" : "uri",
+        "value" : "http://www.wikidata.org/entity/Q6581097"
+      },
+      "l" : {
+        "xml:lang" : "en",
+        "type" : "literal",
+        "value" : "male"
+      }
+    }, {
+      "i" : {
+        "type" : "uri",
+        "value" : "http://www.wikidata.org/entity/Q28378282"
+      },
+      "l" : {
+        "xml:lang" : "en",
+        "type" : "literal",
+        "value" : "verified account or profile"
+      }
+    }, {
+      "i" : {
+        "type" : "uri",
+        "value" : "http://www.wikidata.org/entity/Q45403344"
+      },
+      "l" : {
+        "xml:lang" : "en",
+        "type" : "literal",
+        "value" : "redirect"
+      }
+    }, {
+      "i" : {
+        "type" : "uri",
+        "value" : "http://www.wikidata.org/entity/Q55960555"
+      },
+      "l" : {
+        "xml:lang" : "en",
+        "type" : "literal",
+        "value" : "recording artist"
+      }
+    }, {
+      "i" : {
+        "type" : "uri",
+        "value" : "http://www.wikidata.org/entity/Q60845045"
+      },
+      "l" : {
+        "xml:lang" : "en",
+        "type" : "literal",
+        "value" : "countries with longer than 70 years pma"
+      }
+    }, {
+      "i" : {
+        "type" : "uri",
+        "value" : "http://www.wikidata.org/entity/Q72112388"
+      },
+      "l" : {
+        "xml:lang" : "en",
+        "type" : "literal",
+        "value" : "official YouTube artist channel"
+      }
+    }, {
+      "i" : {
+        "type" : "uri",
+        "value" : "http://www.wikidata.org/entity/Q73555012"
+      },
+      "l" : {
+        "xml:lang" : "en",
+        "type" : "literal",
+        "value" : "works protected by copyrights"
+      }
+    }, {
+      "i" : {
+        "type" : "uri",
+        "value" : "http://www.wikidata.org/entity/Q79155704"
+      },
+      "l" : {
+        "xml:lang" : "en",
+        "type" : "literal",
+        "value" : "William Ruhlmann"
+      }
+    }, {
+      "i" : {
+        "type" : "uri",
+        "value" : "http://www.wikidata.org/entity/Q85249310"
+      },
+      "l" : {
+        "xml:lang" : "en",
+        "type" : "literal",
+        "value" : "Global Music Rights"
+      }
+    }, {
+      "i" : {
+        "type" : "uri",
+        "value" : "http://www.wikidata.org/entity/Q98962768"
+      },
+      "l" : {
+        "xml:lang" : "en",
+        "type" : "literal",
+        "value" : "verified Spotify artist"
+      }
+    }, {
+      "i" : {
+        "type" : "uri",
+        "value" : "http://www.wikidata.org/entity/Q124375270"
+      },
+      "l" : {
+        "xml:lang" : "en",
+        "type" : "literal",
+        "value" : "Karen Darvin"
+      }
+    }, {
+      "i" : {
+        "type" : "uri",
+        "value" : "http://www.wikidata.org/entity/Q124608910"
+      },
+      "l" : {
+        "xml:lang" : "en",
+        "type" : "literal",
+        "value" : "Dead Man Walkin'"
+      }
+    } ]
+  }
+}

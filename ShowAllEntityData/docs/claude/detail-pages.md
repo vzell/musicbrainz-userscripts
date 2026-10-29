@@ -2169,6 +2169,126 @@ live-test round, 26 tests; `recording-youtube.html`,
 `detail-preview.spec.js`'s Live page test; mutations
 `scripts/mutations/youtube-embeds.json` (24).
 
+## The rich Wikidata and Wikipedia windows (branch B, 2026-10-29)
+
+The mockup's tabs "Wikidata" and "Wikipedia"
+(https://claude.ai/artifact/URrn3dps1EMtnkjKBvsvag). The CARD is unchanged
+(`_extWikidataLoad()`, `_extWikipediaLoad()`: one small request); the WINDOW
+asks more, from its reader's `window` hook with `start` only (Space). Probe
+`scripts/probe-wiki-rich.py` (its `--save` wrote the fixtures
+`tests/fixtures/ext-wd-*.json`, `ext-wp-*.json`); numbers for Q1225 and
+en:Bruce_Springsteen in its docstring.
+
+- **Wikidata** (`_extWdWindow()`): the claims, labels and sitelinks in ONE
+  `wbgetentities` (214 KB), kept compact (`_extWdCompact()`: values per
+  property, preferred first, deprecated out, P580/P582/P585 qualifiers) as
+  `ext:wd-claims:<Q>`; the names in the window's language as
+  `ext:wd-names:<Q>:<lang>` (`_extWdNamesFor()`): TWO SPARQL queries on
+  query.wikidata.org (`@connect`, `_EXT_CONNECT_HOSTS`) — every property's
+  label, formatter URL (P1630) and authority-file flag (`wdt:P31/wdt:P279*
+  wd:Q18614948`: a direct P31 finds 5 of 183), then every item a statement
+  names. Asking the properties' own claims instead was 1.7 MB for 50. The
+  names load awaits the claims through `_extWdClaims()` (one promise per
+  item, memory → IndexedDB → network), so a language switch asks only its
+  names. Left: a language choice (`select[data-mb-wiki-lang]`, `onAreaInput`),
+  the P18 picture, the statements of `_EXT_WD_MAIN` in that order, the others
+  under "More statements" (a `_dpFoldGroupHtml()` group). Right: the
+  identifiers in three groups that fold — Music (`_EXT_WD_MUSIC_IDS`, in that
+  order), Libraries and authority files, Other — linked through their
+  formatter URL (MusicBrainz's open its window), with one filter
+  (`input[data-mb-wiki-q]`); then the item's Wikipedia articles.
+- **Wikipedia** (`_extWpWindow()`): `action=parse` section 0 with its language
+  links and the section list (`_extWpLeadFor()`, `ext:wp-lead:<lang>:<title>`):
+  the infobox's rows as facts with its first picture, the opening paragraphs,
+  the other languages (links that open the other article in the window); the
+  top-level sections, each read on its first opening
+  (`_extWpSectionFor()`, `ext:wp-sec:<lang>:<title>:<index>`), its subsections'
+  headings inside it (h5), folded again by a second click (`_extWpAreaClick()`).
+- **Never Wikipedia's markup as given**: `_extWpSafe()` rebuilds text and a few
+  tags (p, lists, b, i, a, br, headings); note marks, edit links, pictures,
+  navigation boxes, styles and scripts are left out; a table is a link to it
+  on Wikipedia; an article link is made absolute (it opens in the window).
+- **The identifiers' filter marks its matches** (`_hlEsc()` on the name,
+  `_hlHtml()` on the linked value, `mark.mb-dg-hl`), as the window's tables do.
+- **A site's icon in the path** (vzell 2026-10-29: first Wikidata, Wikipedia
+  and setlist.fm, then "always show the respective site icons"):
+  `_dpKindGlyph()` returns, for EVERY reader but the Discogs family (whose
+  kinds keep their glyphs), the icon `_extIconEnsure()` keeps for its ask host
+  (`_dpSiteIconGlyph()`, `_extIcons`; setlist.fm's is api.setlist.fm's own
+  favicon), and for a MusicBrainz `url` step the icon of the host its
+  `resource` names (`_mbPopUrlResource()`); the URL window asks that icon
+  (`_mbPopUrlIconStart()`, through `_extTarget()`, so a site not contacted yet
+  gets none). Never asked from `_dpKindGlyph()`, so a card on a hover asks
+  nothing. The path is drawn on a step only: `_extIconEnsure()`'s `done`
+  draws it again when an icon arrives, and a URL window opened before its
+  lookup answered draws it once more when its address is known
+  (`_mbPopUrlPathIconDrawn`). **Its hover text** (vzell: "a rich tooltip
+  for the site icons with a good description"): `_dpSiteIconTip()` — the
+  reader's kind and the site, what the step shows, how it was read
+  (`_DP_SITE_ICON_READS` per reader, the generic one's for any other; a URL
+  step: the URL's own MusicBrainz page), and that the icon is the site's
+  own, asked once and kept a month — set through `_setTip()`, so the engine
+  shows it as a "Liner notes" card. The icon is a link,
+  `a.mb-dp-crumb-site`, to the site's home page in a new tab (vzell: over a
+  bare image the title bar's `cursor: move` showed; a link takes the finger
+  as the MusicBrainz glyph's does, and a click does something).
+- **Links open in the window** in all three readers' windows
+  (`_DP_WIN_ALL_LINKS_READERS`: wikipedia, wikidata, setlistfm), as in a
+  MusicBrainz entity's window; Ctrl-click keeps the new tab.
+- Specs: popup-ext.spec.js "the rich Wikidata and Wikipedia windows (branch
+  B)" (2; the answers by URL pattern through `__gmXhrResponder`); mutations in
+  scripts/mutations/wiki-setlistfm.json (one recorded as not seen, with why).
+
+## setlist.fm through its API (branch B, 2026-10-29)
+
+Mockup 4 of https://claude.ai/artifact/URrn3dps1EMtnkjKBvsvag; vzell chose
+"Official API with a key" over the user's session: setlist.fm's pages answer
+a script with a bot check (202, empty body), and an anonymous request from a
+browser would most likely get the same. API: https://api.setlist.fm/docs/1.0/index.html.
+
+- **The reader `setlistfm`** (`_extSfmTest()`, `_extSfmLoad()`) takes a
+  setlist (`/setlist/<artist>/<year>/<slug>-<id>.html`), an artist's setlists
+  (`/setlists/<slug>-<id>.html`) and a venue (`/venue/<slug>-<id>.html`)
+  (`_EXT_SFM_PATH_RE`, `_extSfmPage()`) — **only while the key
+  `sa_pop_ext_setlistfm_key` is set** (secret, like the Discogs token). Without
+  one the link keeps the generic reader, as before, so a profile without a key
+  sees no change (and the many specs that use a setlist.fm link as the generic
+  example stay valid). setlist.fm's other pages (statistics) stay generic too.
+- **Requests** (`_extSfmGet()`): `https://api.setlist.fm/rest/1.0` with
+  `x-api-key` and `Accept: application/json`, through `_extGet()` (anonymous,
+  its host's 1 s gate; `@connect api.setlist.fm`, `_EXT_CONNECT_HOSTS`). A 401
+  or 403 is a failure that is NOT kept ("did not accept the API key"), so a key
+  fixed in Settings works at the next hover; a 404 is dead. A setlist is one
+  request; a venue two (`/venue/<id>`, `/venue/<id>/setlists?p=1`); an artist
+  two — the link names setlist.fm's own artist id, the API wants the MBID, so
+  `/search/artists?artistName=<the slug's words>&sort=relevance` and the hit
+  whose `url` ends in that id, then `/artist/<mbid>/setlists?p=1`.
+- **Probe** `scripts/probe-setlistfm-api.py` (vzell, with their key,
+  2026-10-29 18:08 CET; answers saved as `tests/fixtures/ext-sfm-*.json`):
+  sets come as `sets.set`, not the docs' `set` (`_extSfmSetlist()` reads
+  both); 20 setlists a page; Bruce Springsteen 3,003, the venue 563; a
+  cover's and a guest's artist carry its MBID. The API has no venue address,
+  opening dates, other names or attendance, no "most played", no tour
+  averages: the window counts what the loaded setlists show instead.
+- **Card**: title ("Bruce Springsteen at Los Angeles Sports Arena", an
+  artist's or venue's name), the notes (`info`), facts (date, venue, tour,
+  songs, covers; an artist's sort name and count; a venue's city and count).
+  **Window** (`_extSfmWindow()`, `swap`): the facts with links through
+  `factsHtml` (`_extSfmFactsHtml()`: MusicBrainz artist by MBID, the
+  setlist.fm pages, the venue's place with an OpenStreetMap link), the notes,
+  and setlist.fm's attribution (`_extSfmCreditHtml()`: its API terms ask that
+  the page be linked wherever the data is shown). A setlist's songs are a List
+  table `sfm-setlist` (# · Song · Notes: cover and guest linked to MusicBrainz,
+  tape, the song's note; a heading row per named set, "Encore" for an encore
+  without a name; a Part chip each). An artist's or venue's setlists are a
+  List table `sfm-artist` / `sfm-venue` (Date · Venue or Artist with its
+  first songs · Tour · Songs) with "Load 20 more" (`data-mb-sfm-act`,
+  `_extSfmAreaClick()`, `_extSfmPageLoad()`: page N kept as
+  `ext:sfm-list:<kind>:<id>:<N>`), and on the left "In the loaded setlists"
+  (tours and venues, or artists and tours, with counts). `_EXT_SFM_VERSION`.
+- Specs: popup-ext.spec.js "setlist.fm through its API (branch B)" (4);
+  mutations: scripts/mutations/wiki-setlistfm.json.
+
 ## Readers of known sites (org/iframe.org "* generalize to URLs", U3)
 
 Three readers in `_EXT_READERS`, before the generic one, each ONE request
@@ -2862,7 +2982,15 @@ the header's `@connect` and `_EXT_CONNECT_HOSTS` (the parent domain covers
   separate lists: a link marked `mb-dp-l-here` that a click sent to a new
   tab is exactly the bug a second list invites. Only the readers of
   `_DP_WIN_EXT_READERS` (`bbdate`, `springsteen`) and only with `sa_pop_ext`;
-  every other site's link keeps its new tab outside a Discogs-family window.
+  every other site's link keeps its new tab outside a Discogs-family window
+  — **except in a MusicBrainz entity's window** (since 2026-10-29; vzell: "the
+  Links section … should render the actual links inside the same window
+  instead of a new tab … for all entity POHs"): there, when the window's
+  source is in `_DP_WIN_ALL_LINKS_SOURCES` (`mb-entity`, `dg-mb`,
+  `mb-release-group`, `mb-event-rg`), ANY link a reader of `_EXT_READERS`
+  takes opens here, the generic reader included; Ctrl-click keeps the new
+  tab (`_dpDrill()` ignores a modifier). setlist.fm's reader is in
+  `_DP_WIN_EXT_READERS` too (branch B), so its pages open in any window.
   A hover over such a link in the window goes through the `ext` source, so
   the first-contact rule (`askHost`) holds there as on the page.
 - **The Brucebase date anchor (`_extBbDateTest()`, `_extBbDateLoad()`; U0

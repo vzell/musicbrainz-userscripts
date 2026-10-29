@@ -54,6 +54,8 @@
 // @connect      brucespringsteen.it
 // @connect      brucebase.wikidot.com
 // @connect      wiki.musicbrainz.org
+// @connect      api.setlist.fm
+// @connect      query.wikidata.org
 // @connect      *
 // @grant        GM_xmlhttpRequest
 // @grant        GM_addStyle
@@ -5266,6 +5268,22 @@
                          '→ Developers → "Generate new token") Discogs allows 60 a minute, so cards come faster. The ' +
                          'token is sent only to api.discogs.com, is never written to a saved configuration file, and ' +
                          'a loaded configuration file leaves it as it is.'
+        },
+
+        // setlist.fm's API key (branch B, vzell 2026-10-29: "Official API with
+        // a key"): secret like the Discogs token above — never exported,
+        // never set or blanked by an import, masked in the dialog, never
+        // logged. Without it setlist.fm links get no card.
+        sa_pop_ext_setlistfm_key: {
+            label: 'setlist.fm API key',
+            type: 'text',
+            default: '',
+            secret: true,
+            description: 'Empty by default. setlist.fm links (a setlist, an artist\'s setlists, a venue) get their card ' +
+                         'and window from setlist.fm\'s API, which needs a key of your own: free at setlist.fm → ' +
+                         'Settings → API. The key is sent only to api.setlist.fm, is never written to a saved ' +
+                         'configuration file, and a loaded configuration file leaves it as it is. Without a key, ' +
+                         'setlist.fm links keep the plain web-page card.'
         },
 
         // org/youtube.org (decisions of 2026-10-25): a tile beside a YouTube
@@ -24099,6 +24117,22 @@
             return { src, doc: d ? base + d.page : '', see: d && d.style ? `${base}Style/${d.page}` : '' };
         }
         const reader = t.reader && t.reader.id;
+        // Every other site but Discogs (whose kinds have their own glyphs
+        // below): its own icon, once a card or a window has read it
+        // (`_extIconEnsure()`, kept a month) — vzell 2026-10-29, first for
+        // Wikidata, Wikipedia and setlist.fm, then "always show the
+        // respective site icons". Never asked from here, so a card on a
+        // hover asks nothing.
+        if (reader && !/^dg/.test(reader) && reader !== 'discogs') {
+            const url = Lib.settings.sa_pop_ext_favicons === true ? _extIconUrl(t, null) : '';
+            return url ? _dpSiteIconGlyph(_extHostOf(url), _dpSiteIconTip(t, t.host || _extHostOf(url)), t.host || _extHostOf(url)) : null;
+        }
+        // A MusicBrainz URL entity (its "[info]" page): the icon of the site
+        // its URL names, once known (`_mbPopUrlIconStart()`).
+        if (t.src && t.src.id === 'mb-entity' && t.type === 'url') {
+            const r = _mbPopUrlResource(t);
+            return r && Lib.settings.sa_pop_ext_favicons === true ? _dpSiteIconGlyph(_extHostOf(r), _dpSiteIconTip(t, _extHostOf(r)), _extHostOf(r)) : null;
+        }
         if (!reader || (!/^dg/.test(reader) && reader !== 'discogs')) return null;
         let u = null;
         try {
@@ -24109,6 +24143,106 @@
         const g = m ? _DG_KIND_GLYPHS[m[1].toLowerCase()] : (reader === 'dguser' ? _DG_KIND_GLYPHS.user : null);
         return g ? { emo: g.emo, doc: g.doc, see: g.see || '' } : { mark: true, doc: _DG_GUIDELINES_URL, see: '' };
     }
+
+    /**
+     * A site's icon as a glyph of the window's path and of a card's kind
+     * line (`_dpKindGlyph()`): the one `_extIconEnsure()` keeps for the host,
+     * null while there is none (the step then has no glyph).
+     *
+     * @param {string} host - The host whose icon it is.
+     * @param {string} [tip] - Its hover text (`_dpSiteIconTip()`).
+     * @param {string} [home] - The site's host whose home page a click opens
+     *   (setlist.fm's icon is api.setlist.fm's, its home www.setlist.fm).
+     * @returns {?{src: string, doc: string, tip: string, home: string}}
+     */
+    function _dpSiteIconGlyph(host, tip = '', home = '') {
+        const ic = host ? _extIcons.get(host) : null;
+        return ic && ic.status === 'done' && ic.data ? { src: ic.data, doc: '', tip, home: home ? `https://${home}/` : '' } : null;
+    }
+
+    /**
+     * What each reader's step reads, for its site icon's hover text
+     * (`_dpSiteIconTip()`); the generic reader's for any other.
+     * @type {Object<string, string>}
+     */
+    const _DP_SITE_ICON_READS = {
+        wikidata: 'Read through Wikidata\'s API: the item\'s statements, identifiers and Wikipedia articles.',
+        wikipedia: 'Read through Wikipedia\'s API: the article\'s infobox, opening and sections.',
+        setlistfm: 'Read through setlist.fm\'s API with your key: setlists, their songs and venues.',
+        youtube: 'Read from YouTube\'s own description of the video: its title and channel.',
+        springsteen: 'Read from the page itself: the site\'s own record of a show, song, venue or person.',
+        bbdate: 'Read from Brucebase\'s year page: the show at this date.',
+        generic: 'Read from the page itself: its title, description and the facts it states.',
+    };
+
+    /**
+     * The hover text of a site's icon in the window's path (vzell
+     * 2026-10-29: "a rich tooltip for the site icons with a good
+     * description"): which site, what this step shows and how it was read,
+     * and where the icon comes from. A card on its first line's title
+     * (`_tipTextToHtml()`).
+     *
+     * @param {object} t - The step's target.
+     * @param {string} host - The site the icon is of.
+     * @returns {string}
+     */
+    function _dpSiteIconTip(t, host) {
+        const site = host.replace(/^www\./, '');
+        if (t.src && t.src.id === 'mb-entity' && t.type === 'url') {
+            return `${site}\nThe icon of the site this MusicBrainz URL names.\n` +
+                'This step is the URL\'s own page on MusicBrainz: the address, and which artists, releases, events … link it.\n' +
+                `The icon is ${site}'s own, asked once from the site and kept for a month; a hover never asks for it.\n` +
+                `Click: ${site}'s home page in a new tab.`;
+        }
+        const reader = t.reader && t.reader.id;
+        const reads = _DP_SITE_ICON_READS[reader] || _DP_SITE_ICON_READS.generic;
+        const kind = t.reader && t.reader.kind && t.reader.kind !== 'Web page' ? `${t.reader.kind} · ` : '';
+        return `${kind}${site}\nThis step of the window shows a page of ${site}.\n${reads}\n` +
+            `The icon is the site's own, asked once from ${t.askHost || host} and kept for a month; a hover never asks for it.\n` +
+            `Click: ${site}'s home page in a new tab.`;
+    }
+
+    /**
+     * The address a MusicBrainz URL entity names (its lookup's `resource`),
+     * '' while its lookup has not answered.
+     *
+     * @param {object} t - A target of the `url` kind.
+     * @returns {string}
+     */
+    function _mbPopUrlResource(t) {
+        const st = _mbPop.get(_mbPopLookup(t, _MB_POP_URL_INC).key);
+        return st && st.status === 'done' && st.data && st.data.resource ? String(st.data.resource) : '';
+    }
+
+    /**
+     * Asks the icon of the site a URL entity names, from its window (as an
+     * other site's window asks its own): through the link previews' target
+     * for that address, so the first-contact rule holds (a site not
+     * contacted yet has no icon asked).
+     *
+     * @param {string} resource
+     * @param {?function(): void} repaint
+     * @returns {void}
+     */
+    function _mbPopUrlIconStart(resource, repaint) {
+        if (!resource || Lib.settings.sa_pop_ext_favicons !== true) return;
+        const a = document.createElement('a');
+        a.setAttribute('href', resource);
+        const et = _extTarget(a, { inWindow: true });
+        if (et) _extIconEnsure(et, null, repaint);
+        // The path was drawn before the lookup named the address: draw it
+        // again once, now that the icon is known (an icon arriving later
+        // draws it itself, `_extIconEnsure()`).
+        const t = _dpDialog.target;
+        if (t && !_mbPopUrlPathIconDrawn.has(t.key) && _dpSiteIconGlyph(_extHostOf(resource))) {
+            _mbPopUrlPathIconDrawn.add(t.key);
+            const title = _dpDialog.controls && _dpDialog.controls.title;
+            if (title) _dpCrumbsRender(title);
+        }
+    }
+
+    /** The URL entities whose window has drawn its path again for their site's icon (`_mbPopUrlIconStart()`). */
+    const _mbPopUrlPathIconDrawn = new Set();
 
     /**
      * MusicBrainz's entity header classes (`div.<kind>header` around the
@@ -25155,6 +25289,18 @@
                     // from another site) says where it goes.
                     if (!_dpDocTarget(a)) _setTip(a, `${_dpKindLabel(s)}: documentation (opens ${a.hostname} in a new tab)`);
                     crumb.append(a);
+                } else if (g.home) {
+                    // A site's icon: a link to its home page, so it takes the
+                    // finger as the MusicBrainz glyph does (vzell 2026-10-29),
+                    // and says which site and what the step read.
+                    const a = document.createElement('a');
+                    a.className = 'mb-dp-crumb-site';
+                    a.href = g.home;
+                    a.target = '_blank';
+                    a.rel = 'noopener noreferrer';
+                    if (g.tip) _setTip(a, g.tip);
+                    a.append(el);
+                    crumb.append(a);
                 } else crumb.append(el);
             }
             const b = document.createElement('button');
@@ -25732,9 +25878,34 @@
      * page (`springsteen`, `_extDpLoad()`: a Brucebase gig, venue or person,
      * springsteenlyrics.com, jungleland.it, brucespringsteen.it). Every other
      * reader's link keeps its new tab outside a Discogs-family window.
+     * setlist.fm since 2026-10-29 (branch B): a setlist, an artist's
+     * setlists or a venue, from any window and inside its own.
      * @type {Set<string>}
      */
-    const _DP_WIN_EXT_READERS = new Set(['bbdate', 'springsteen']);
+    const _DP_WIN_EXT_READERS = new Set(['bbdate', 'springsteen', 'setlistfm']);
+
+    /**
+     * The sources whose windows open EVERY other site's link in the window
+     * (vzell 2026-10-29: "the Links section … should render the actual
+     * links inside the same window instead of a new tab … for all entity
+     * POHs"): a MusicBrainz entity's window, on MusicBrainz (`mb-entity`, the
+     * release page's release-group sources) or from discogs.com's MusicBrainz
+     * column (`dg-mb`). Any link a reader of `_EXT_READERS` takes — Wikidata,
+     * Wikipedia, Discogs, YouTube, setlist.fm and any other page through the
+     * generic one — opens here with Back; Ctrl-click keeps the new tab.
+     * Other windows keep `_DP_WIN_EXT_READERS`.
+     * @type {Set<string>}
+     */
+    const _DP_WIN_ALL_LINKS_SOURCES = new Set(['mb-entity', 'dg-mb', 'mb-release-group', 'mb-event-rg']);
+
+    /**
+     * The readers whose own windows open EVERY link with a reader in the
+     * window (branch B, decided with vzell 2026-10-29: "Links in Wiki text:
+     * open in the same window"): a Wikipedia article's links, a Wikidata
+     * item's, a setlist.fm page's. Ctrl-click keeps the new tab.
+     * @type {Set<string>}
+     */
+    const _DP_WIN_ALL_LINKS_READERS = new Set(['wikipedia', 'wikidata', 'setlistfm']);
 
     /**
      * What a click on a link to a Brucebase show or a Springsteen site's
@@ -25755,7 +25926,9 @@
         const ext = _popSources().find(x => x.id === 'ext');
         if (!ext || !ext.enabled()) return null;
         const r = _extTarget(a, { inWindow: true });
-        if (!r || !_DP_WIN_EXT_READERS.has(r.reader.id) || r.key === cur.key) return null;
+        if (!r || r.key === cur.key) return null;
+        const all = !!((cur.src && _DP_WIN_ALL_LINKS_SOURCES.has(cur.src.id)) || (cur.reader && _DP_WIN_ALL_LINKS_READERS.has(cur.reader.id)));
+        if (!all && !_DP_WIN_EXT_READERS.has(r.reader.id)) return null;
         return Object.assign({ src: ext, el: a, drilled: true }, r);
     }
 
@@ -28493,6 +28666,9 @@
             .mb-dp-dialog .mb-dp-crumb { display: inline-flex; align-items: center; min-width: 0; white-space: nowrap; }
             .mb-dp-dialog .mb-dp-crumb-g { display: inline-flex; align-items: center; margin-right: 3px; padding: 1px; border-radius: 3px; text-decoration: none; }
             .mb-dp-dialog .mb-dp-crumb-g:hover, .mb-dp-dialog .mb-dp-crumb-g:focus-visible { background: #ece4f0; box-shadow: 0 0 0 1px #c9a3bd; outline: none; }
+            /* A site's icon (_dpSiteIconGlyph()): a link to its home page, the same look. */
+            .mb-dp-dialog .mb-dp-crumb-site { display: inline-flex; align-items: center; margin-right: 3px; padding: 1px; border-radius: 3px; text-decoration: none; cursor: pointer; }
+            .mb-dp-dialog .mb-dp-crumb-site:hover, .mb-dp-dialog .mb-dp-crumb-site:focus-visible { background: #ece4f0; box-shadow: 0 0 0 1px #c9a3bd; outline: none; }
             .mb-dp-dialog .mb-dp-crumb-g .mb-dp-kind-icon { margin-right: 0; }
             .mb-dp-dialog .mb-dp-crumb-step {
                 max-width: 16em; padding: 0 2px; border: 0; border-radius: 2px; background: none; color: #0b5394; font: inherit; cursor: pointer;
@@ -28904,6 +29080,17 @@
             .mb-dp-dialog .mb-dg-fl { font-style: italic; color: #7a6d5c; padding-top: 2px; }
             .mb-dp-dialog .mb-pop-kindbtn { border: 0; background: none; padding: 0; font: inherit; color: #6b3f12; cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
             .mb-dp-dialog .mb-pop-kindbtn[aria-pressed="true"] { font-weight: 700; text-decoration: none; color: #2b2622; }
+            /* The rich Wikidata and Wikipedia windows (branch B). */
+            .mb-dp-dialog .mb-wd-lang { font: 12px system-ui, -apple-system, "Segoe UI", Arial, sans-serif; color: #7a6d5c; margin: 0 0 8px; }
+            .mb-dp-dialog .mb-wd-lang select { font: inherit; margin-left: 4px; }
+            .mb-dp-dialog .mb-wd-pic img { display: block; max-width: 220px; max-height: 280px; border: 1px solid #d9cfbd; border-radius: 3px; margin: 4px 0 8px; }
+            .mb-dp-dialog .mb-wd-idrow { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); gap: 8px; padding: 2px 0; border-top: 1px solid #efe8da; }
+            .mb-dp-dialog .mb-wd-idrow > span:last-child { overflow-wrap: anywhere; }
+            .mb-dp-dialog .mb-wd-wikis { line-height: 1.7; }
+            .mb-dp-dialog .mb-wp-text p { margin: 0 0 8px; max-width: 72ch; }
+            .mb-dp-dialog .mb-wp-text .mb-wp-h { font: 600 12px/1.3 system-ui, -apple-system, "Segoe UI", Arial, sans-serif; margin: 10px 0 4px; color: #2b2622; }
+            .mb-dp-dialog .mb-wp-sec .mb-wp-text { padding: 4px 0 8px 1.4em; }
+            .mb-dp-dialog .mb-wp-subs { padding: 0 0 4px 1.4em; font-size: 12px; }
             /* A group that folds (_dpFoldGroupHtml(), mockup 2f). */
             .mb-dp-dialog .mb-dp-foldh {
                 display: flex; gap: 6px; align-items: baseline; width: 100%; margin: 6px 0 0; padding: 4px 0 3px;
@@ -61697,6 +61884,8 @@
                         '<div class="mb-dp-xsub">Not in MusicBrainz (any more): it may have been merged or removed.</div></div></div>';
                 }
                 const n = (d.relations || []).length;
+                // Its site's icon, for the window's path (`_dpKindGlyph()`).
+                _mbPopUrlIconStart(d.resource, null);
                 const left = `<div class="mb-dp-xtitle">${_rgEsc(_mbPopUrlHost(d.resource))}</div>` +
                     `<div class="mb-ext-url"><a href="${_rgEsc(d.resource)}" target="_blank" rel="noopener noreferrer">${_rgEsc(d.resource)}</a></div>` +
                     `<div class="mb-rg-pills">${_mbPopPillsHtml([`${n} relationship${n === 1 ? '' : 's'}`])}</div>` +
@@ -62376,11 +62565,14 @@
      * reader's (oEmbed), U3 Wikipedia's, Wikidata's and Discogs' API hosts,
      * U4 the four Springsteen sites (`_DP_SITES`, `www.` covered by the
      * parent domain), Phase 3f of org/MB-POH-sync-withDiscogs.org the
-     * MusicBrainz wiki's search API (`_mbDocSearchLoad()`).
+     * MusicBrainz wiki's search API (`_mbDocSearchLoad()`), branch B
+     * setlist.fm's API (`_extSfmLoad()`) and Wikidata's SPARQL endpoint
+     * (`_extWdSparql()`).
      * @type {string[]}
      */
     const _EXT_CONNECT_HOSTS = ['www.youtube.com', 'wikipedia.org', 'www.wikidata.org', 'api.discogs.com',
-        'springsteenlyrics.com', 'jungleland.it', 'brucespringsteen.it', 'brucebase.wikidot.com', 'wiki.musicbrainz.org'];
+        'springsteenlyrics.com', 'jungleland.it', 'brucespringsteen.it', 'brucebase.wikidot.com', 'wiki.musicbrainz.org',
+        'api.setlist.fm', 'query.wikidata.org'];
 
     /** The GM key of the hosts that answered once (answer 7): the script's state, not a setting, and not exported. */
     const _EXT_HOSTS_KEY = 'sa_pop_ext_hosts';
@@ -64210,6 +64402,1231 @@
             }
         });
         return { ok: true, data: rec };
+    }
+
+    // ── The rich Wikidata and Wikipedia windows (branch B; the mockup's tabs
+    //    "Wikidata" and "Wikipedia", https://claude.ai/artifact/URrn3dps1EMtnkjKBvsvag)
+    //
+    // The card stays ONE small request (`_extWikidataLoad()`,
+    // `_extWikipediaLoad()`); Space asks more, the window only. Probe:
+    // scripts/probe-wiki-rich.py (2026-10-29 17:24 CET, petri; --save wrote the
+    // fixtures tests/fixtures/ext-wd-*.json and ext-wp-*.json):
+    //   - an item's claims, labels and sitelinks: one `wbgetentities`, 214 KB
+    //     for Q1225 (267 properties, 225 external identifiers, 73 items named);
+    //   - the properties' names, formatter URLs (P1630) and whether each is an
+    //     authority file: ONE SPARQL query (51 KB for all 225; asking the
+    //     properties' own claims was 1.7 MB for 50 of them), and the authority
+    //     test must follow `wdt:P31/wdt:P279*` (a direct P31 found 5 of 183);
+    //   - the items' names in a language: one more SPARQL query;
+    //   - an article's section 0 with its language links (42 KB, the infobox
+    //     in it), its section list (7 KB, 30 sections, 12 at the top) and a
+    //     section (48 KB for "Early life and education").
+    // Links in both windows open in the window (decided with vzell
+    // 2026-10-29): the readers have `onAreaClick`, so `_dpWinWhat()` opens
+    // every reader's link here; Ctrl-click keeps the new tab.
+
+    /** Version of the rich windows' IndexedDB records. */
+    const _EXT_WIKI_VERSION = 1;
+
+    /** Wikidata's SPARQL endpoint (`@connect query.wikidata.org`). */
+    const _EXT_WD_SPARQL = 'https://query.wikidata.org/sparql?format=json&query=';
+
+    /**
+     * The statements the Wikidata window shows first, in this order (people,
+     * groups, labels, places, works); every other one is under "More
+     * statements", external identifiers apart.
+     * @type {string[]}
+     */
+    const _EXT_WD_MAIN = ['P31', 'P569', 'P19', 'P570', 'P20', 'P1477', 'P1449', 'P27', 'P106', 'P412', 'P1303', 'P136',
+        'P264', 'P463', 'P527', 'P571', 'P576', 'P740', 'P495', 'P159', 'P17', 'P131', 'P625', 'P577', 'P86', 'P676',
+        'P175', 'P26', 'P40', 'P69', 'P166', 'P856'];
+
+    /**
+     * The identifiers of the "Music" group, in this order: MusicBrainz's, the
+     * music databases and services, then the social networks.
+     * @type {string[]}
+     */
+    const _EXT_WD_MUSIC_IDS = ['P434', 'P435', 'P436', 'P966', 'P1004', 'P982', 'P1330', 'P5813', 'P4404', 'P6423', 'P1407', 'P8052',
+        'P1953', 'P1954', 'P1955', 'P2206', 'P1728', 'P1729', 'P1902', 'P2850', 'P2722', 'P3192', 'P4208', 'P3040', 'P3283',
+        'P2397', 'P2003', 'P2002', 'P2013', 'P345'];
+
+    /** How many values of one statement the window lists before "+N". */
+    const _EXT_WD_VALUES = 6;
+
+    /** Each rich wiki window's state, by target key: language, open sections, the identifiers' filter. */
+    const _extWikiUi = new Map();
+
+    /**
+     * A rich wiki window's state, made on first use.
+     *
+     * @param {object} t
+     * @returns {{lang: string, open: Set<string>, q: string}}
+     */
+    function _extWikiUiOf(t) {
+        if (!_extWikiUi.has(t.key)) _extWikiUi.set(t.key, { lang: _extUiLang(), open: new Set(), q: '' });
+        return _extWikiUi.get(t.key);
+    }
+
+    /**
+     * Whether the window still shows a target, so its loads stay wanted.
+     *
+     * @param {object} t
+     * @returns {function(): boolean}
+     */
+    function _extWikiWanted(t) {
+        return () => !!(_dpDialog.target && _dpDialog.target.key === t.key);
+    }
+
+    /**
+     * One JSON request to Wikimedia (`Api-User-Agent` as it asks of browser
+     * scripts): the answer, or a failure in `_mbLoad()`'s shape.
+     *
+     * @param {string} url
+     * @param {function(): boolean} wanted
+     * @returns {Promise<{data?: Object, fail?: Object, skipped?: boolean}>}
+     */
+    async function _extWikiGet(url, wanted) {
+        const res = await _extGet(url, { wanted, fetchOpts: { accept: /\bjson\b/i, headers: { 'Api-User-Agent': _EXT_AGENT, Accept: 'application/json' } } });
+        if (res.skipped) return { skipped: true };
+        if (res.error || res.status !== 200) return { fail: { ok: false, detail: _extFailText(res) } };
+        const data = _extJson(res);
+        return data ? { data } : { fail: { ok: false, detail: 'the answer was not JSON' } };
+    }
+
+    /**
+     * A snak's value as the window keeps it: its datatype and a plain value
+     * (an item's id, a time with its precision, a quantity's amount, a text
+     * with its language, coordinates).
+     *
+     * @param {Object} snak
+     * @returns {?{type: string, v: *}}
+     */
+    function _extWdSnak(snak) {
+        const dv = snak && snak.snaktype === 'value' && snak.datavalue;
+        if (!dv) return null;
+        const v = dv.value;
+        switch (dv.type) {
+        case 'wikibase-entityid': return { type: 'item', v: v.id || `Q${v['numeric-id']}` };
+        case 'time': return { type: 'time', v: { time: v.time, precision: v.precision } };
+        case 'quantity': return { type: 'text', v: String(v.amount || '').replace(/^\+/, '') };
+        case 'monolingualtext': return { type: 'text', v: v.text };
+        case 'globecoordinate': return { type: 'coord', v: { lat: v.latitude, long: v.longitude } };
+        default: return { type: snak.datatype === 'url' ? 'url' : snak.datatype === 'external-id' ? 'id'
+            : snak.datatype === 'commonsMedia' ? 'file' : 'text', v: String(v) };
+        }
+    }
+
+    /**
+     * An item's claims as the window keeps them: per property its values
+     * (preferred first, deprecated left out), each with its start, end or
+     * point in time; the labels' languages; its Wikipedia articles.
+     *
+     * @param {Object} e - `wbgetentities`'s entity.
+     * @returns {{props: Object<string, {ext: boolean, values: Array<Object>}>, langs: string[], wikis: Array<[string, string]>}}
+     */
+    function _extWdCompact(e) {
+        const props = {};
+        Object.entries(e.claims || {}).forEach(([p, cs]) => {
+            const ok = cs.filter(c => c.rank !== 'deprecated');
+            const order = ok.filter(c => c.rank === 'preferred').concat(ok.filter(c => c.rank !== 'preferred'));
+            const values = order.map((c) => {
+                const v = _extWdSnak(c.mainsnak);
+                if (!v) return null;
+                const q = (id) => {
+                    const s = ((c.qualifiers || {})[id] || [])[0];
+                    const x = _extWdSnak(s);
+                    return x && x.type === 'time' ? x.v : null;
+                };
+                return Object.assign(v, { from: q('P580'), to: q('P582'), at: q('P585') });
+            }).filter(Boolean);
+            if (values.length) props[p] = { ext: !!(cs[0].mainsnak && cs[0].mainsnak.datatype === 'external-id'), values };
+        });
+        const wikis = Object.values(e.sitelinks || {}).filter(s => /^[a-z][a-z_]*wiki$/.test(s.site) && s.site !== 'commonswiki' && s.site !== 'specieswiki')
+            .map(s => [s.site.replace(/wiki$/, '').replace(/_/g, '-'), s.title]);
+        return { props, langs: Object.keys(e.labels || {}), wikis };
+    }
+
+    /** The claims of an item in flight or kept, by Q-id, so its names load waits for them. */
+    const _extWdClaimsP = new Map();
+
+    /**
+     * An item's compact claims (`_extWdCompact()`): memory, IndexedDB, else
+     * one `wbgetentities` (claims, labels, sitelinks). Shared by the claims
+     * load and the names load, which needs the ids they name.
+     *
+     * @param {string} q
+     * @param {function(): boolean} wanted
+     * @returns {Promise<{ok?: boolean, data?: Object, detail?: string, skipped?: boolean}>}
+     */
+    function _extWdClaims(q, wanted) {
+        const key = `ext:wd-claims:${q}`;
+        const st = _mbPop.get(key);
+        if (st && st.status === 'done') return Promise.resolve({ ok: true, data: st.data });
+        if (_extWdClaimsP.has(q)) return _extWdClaimsP.get(q);
+        const p = (async () => {
+            const rec = await _rgIdbGet(key, _EXT_IDB_VERSION * 100 + _EXT_WIKI_VERSION, _extTtlMs());
+            if (rec && rec.data) return { ok: true, data: rec.data };
+            const r = await _extWikiGet(`https://www.wikidata.org/w/api.php?action=wbgetentities&format=json&ids=${q}` +
+                '&props=claims%7Clabels%7Csitelinks', wanted);
+            if (r.skipped) return { skipped: true };
+            if (r.fail) return r.fail;
+            const e = r.data.entities ? Object.values(r.data.entities)[0] : null;
+            return e && e.claims ? { ok: true, data: _extWdCompact(e) } : { ok: false, detail: 'Wikidata answered, but not with the item' };
+        })();
+        _extWdClaimsP.set(q, p);
+        p.then((x) => { if (!x || !x.ok) _extWdClaimsP.delete(q); });
+        return p;
+    }
+
+    /**
+     * One SPARQL query's rows.
+     *
+     * @param {string} query
+     * @param {function(): boolean} wanted
+     * @returns {Promise<{rows?: Array<Object>, fail?: Object, skipped?: boolean}>}
+     */
+    async function _extWdSparql(query, wanted) {
+        const r = await _extWikiGet(_EXT_WD_SPARQL + encodeURIComponent(query), wanted);
+        if (r.skipped || r.fail) return r;
+        return { rows: (r.data.results && r.data.results.bindings) || [] };
+    }
+
+    /**
+     * The names an item's window needs in one language (English where the
+     * language has none): each property's name, its formatter URL and
+     * whether it is an authority file; each item a statement names. Two
+     * SPARQL queries, after the claims.
+     *
+     * @param {string} q
+     * @param {string} lang
+     * @param {function(): boolean} wanted
+     * @returns {Promise<{ok?: boolean, data?: Object, detail?: string, skipped?: boolean}>}
+     */
+    async function _extWdNamesFor(q, lang, wanted) {
+        const c = await _extWdClaims(q, wanted);
+        if (!c.ok) return c;
+        const props = Object.keys(c.data.props);
+        const items = Array.from(new Set(Object.values(c.data.props).flatMap(p => p.values.filter(v => v.type === 'item').map(v => v.v))));
+        const langs = lang === 'en' ? '"en"' : `"${lang}", "en"`;
+        const pick = (rows, idVar) => {
+            const out = {};
+            rows.forEach((r) => {
+                const id = r[idVar].value.replace(/^.*\//, '');
+                const l = r.l;
+                if (!l) return;
+                const cur = out[id];
+                if (!cur || (cur.lang !== lang && l['xml:lang'] === lang)) out[id] = { name: l.value, lang: l['xml:lang'] };
+            });
+            return Object.fromEntries(Object.entries(out).map(([k, v]) => [k, v.name]));
+        };
+        const pr = await _extWdSparql('SELECT DISTINCT ?p ?l ?f ?a WHERE { VALUES ?p { ' + props.map(p => `wd:${p}`).join(' ') + ' } ' +
+            `OPTIONAL { ?p rdfs:label ?l . FILTER(LANG(?l) IN (${langs})) } OPTIONAL { ?p wdt:P1630 ?f } ` +
+            'OPTIONAL { ?p wdt:P31/wdt:P279* wd:Q18614948 . BIND(1 AS ?a) } }', wanted);
+        if (pr.skipped) return { skipped: true };
+        if (pr.fail) return pr.fail;
+        const formatter = {};
+        const authority = {};
+        pr.rows.forEach((r) => {
+            const id = r.p.value.replace(/^.*\//, '');
+            if (r.f && !formatter[id]) formatter[id] = r.f.value;
+            if (r.a) authority[id] = true;
+        });
+        let itemNames = {};
+        if (items.length) {
+            const ir = await _extWdSparql('SELECT ?i ?l WHERE { VALUES ?i { ' + items.map(i => `wd:${i}`).join(' ') + ' } ' +
+                `?i rdfs:label ?l . FILTER(LANG(?l) IN (${langs})) }`, wanted);
+            if (ir.skipped) return { skipped: true };
+            if (ir.fail) return ir.fail;
+            itemNames = pick(ir.rows, 'i');
+        }
+        return { ok: true, data: { props: pick(pr.rows, 'p'), formatter, authority, items: itemNames } };
+    }
+
+    /**
+     * Starts the Wikidata window's loads (the window only): the claims, and
+     * the names in the window's language.
+     *
+     * @param {object} t
+     * @param {string} q
+     * @param {{force?: boolean, repaint?: ?function(): void}} how
+     * @returns {void}
+     */
+    function _extWdStart(t, q, { force = false, repaint = null } = {}) {
+        const lang = _extWikiUiOf(t).lang;
+        const opts = { force, repaint, wanted: _extWikiWanted(t), version: _EXT_IDB_VERSION * 100 + _EXT_WIKI_VERSION, ttlMs: _extTtlMs() };
+        if (force) _extWdClaimsP.delete(q);
+        _mbLoad(`ext:wd-claims:${q}`, (wanted) => _extWdClaims(q, wanted), opts);
+        _mbLoad(`ext:wd-names:${q}:${lang}`, (wanted) => _extWdNamesFor(q, lang, wanted), opts);
+    }
+
+    /**
+     * A Wikidata time as written ("1949-09-23", "1949", "1949-09"), its
+     * precision's part only.
+     *
+     * @param {?{time: string, precision: number}} t
+     * @returns {string}
+     */
+    function _extWdTime(t) {
+        if (!t || !t.time) return '';
+        const m = /^([+-])(\d+)-(\d\d)-(\d\d)/.exec(t.time);
+        if (!m) return t.time;
+        const y = String(Number(m[2])) + (m[1] === '-' ? ' BCE' : '');
+        return t.precision >= 11 ? `${y}-${m[3]}-${m[4]}` : t.precision === 10 ? `${y}-${m[3]}` : y;
+    }
+
+    /**
+     * One value of a statement as HTML: an item its name linked to its
+     * Wikidata page (it opens in the window), a URL linked, a file its
+     * Commons page, coordinates with a map link, an identifier through its
+     * property's formatter URL (a MusicBrainz identifier opens its window);
+     * then its time qualifiers.
+     *
+     * @param {Object} v
+     * @param {string} p - Its property.
+     * @param {Object} names - `_extWdNamesFor()`'s.
+     * @returns {string}
+     */
+    function _extWdValueHtml(v, p, names) {
+        const link = (href, text) => `<a href="${_rgEsc(href)}" target="_blank" rel="noopener noreferrer">${_rgEsc(text)}</a>`;
+        let html;
+        if (v.type === 'item') html = link(`https://www.wikidata.org/wiki/${v.v}`, (names && names.items[v.v]) || v.v);
+        else if (v.type === 'time') html = _rgEsc(_extWdTime(v.v));
+        else if (v.type === 'url') html = /^https?:\/\//i.test(v.v) ? link(v.v, v.v.replace(/^https?:\/\/(www\.)?/i, '').replace(/\/$/, '')) : _rgEsc(v.v);
+        else if (v.type === 'file') html = link(_mbPopImgUrls(v.v).page, v.v);
+        else if (v.type === 'coord') {
+            html = `${_rgEsc(String(v.v.lat))}, ${_rgEsc(String(v.v.long))} ` +
+                link(`https://www.openstreetmap.org/?mlat=${v.v.lat}&mlon=${v.v.long}#map=12/${v.v.lat}/${v.v.long}`, 'map');
+        } else if (v.type === 'id') {
+            const f = names && names.formatter[p];
+            html = f ? link(f.replace('$1', String(v.v).replace(/ /g, '%20')), v.v) : _rgEsc(v.v);
+        } else html = _rgEsc(v.v);
+        const span = [_extWdTime(v.from), _extWdTime(v.to)];
+        const when = v.at ? _extWdTime(v.at) : (span[0] || span[1] ? `${span[0]}–${span[1]}` : '');
+        return html + (when ? ` <span class="mb-rg-dim">(${_rgEsc(when)})</span>` : '');
+    }
+
+    /**
+     * A statement's values as one cell: the first `_EXT_WD_VALUES`, " · "
+     * between them, then "+N".
+     *
+     * @param {string} p
+     * @param {Object} prop - `{values}`.
+     * @param {Object} names
+     * @returns {string}
+     */
+    function _extWdValuesHtml(p, prop, names) {
+        const vs = prop.values;
+        return vs.slice(0, _EXT_WD_VALUES).map(v => _extWdValueHtml(v, p, names)).join(' · ') +
+            (vs.length > _EXT_WD_VALUES ? ` <span class="mb-rg-dim">+${vs.length - _EXT_WD_VALUES}</span>` : '');
+    }
+
+    /**
+     * The Wikidata window (mockup tab "Wikidata"): on the left a language
+     * choice, the picture, the main statements (`_EXT_WD_MAIN`) and the
+     * others folded; on the right the identifiers in three groups that fold
+     * (Music, Libraries and authority files, Other) with one filter, and the
+     * item's Wikipedia articles.
+     *
+     * @param {object} t
+     * @param {Object} rec - The card's record.
+     * @param {{start: boolean, force: boolean, repaint: function(): void}} how
+     * @returns {{left: string[], right: string[], full: string[], swap: boolean}}
+     */
+    function _extWdWindow(t, rec, how) {
+        const out = { left: [], right: [], full: [], swap: true };
+        const q = /\/wiki\/(Q[1-9]\d*)$/.exec(new URL(t.url).pathname);
+        if (!q || rec.state !== 'ok') return out;
+        const id = q[1];
+        const ui = _extWikiUiOf(t);
+        if (how.start) _extWdStart(t, id, { force: how.force, repaint: how.repaint });
+        const cs = _mbPop.get(`ext:wd-claims:${id}`);
+        const ns = _mbPop.get(`ext:wd-names:${id}:${ui.lang}`);
+        if (!cs || cs.status === 'loading') {
+            out.left.push('<div class="mb-dp-xsub"><span class="mb-dp-spin">◌</span> Asking Wikidata for the statements…</div>');
+            return out;
+        }
+        if (cs.status === 'failed') {
+            out.left.push(`<div class="mb-dp-warn">The statements did not come: ${_rgEsc(cs.detail)}.</div>` +
+                '<p><button type="button" class="mb-dg-btn" data-mb-wiki-act="retry">⟳ Try again</button></p>');
+            return out;
+        }
+        const c = cs.data;
+        const names = ns && ns.status === 'done' ? ns.data : null;
+        const pname = p => (names && names.props[p]) || p;
+        const langs = Array.from(new Set([_extUiLang(), 'en', ...c.langs])).filter(l => c.langs.includes(l) || l === 'en');
+        out.left.push('<div class="mb-wd-lang"><label>Language <select data-mb-wiki-lang aria-label="Language of the names">' +
+            langs.map(l => `<option value="${_rgEsc(l)}"${l === ui.lang ? ' selected' : ''}>${_rgEsc(l)}</option>`).join('') + '</select></label>' +
+            (!names ? (ns && ns.status === 'failed' ? ` <span class="mb-dp-warn">names: ${_rgEsc(ns.detail)}</span>`
+                : ' <span class="mb-rg-dim"><span class="mb-dp-spin">◌</span> names…</span>') : '') + '</div>');
+        const pic = c.props.P18 && c.props.P18.values[0];
+        if (pic && pic.type === 'file') {
+            const u = _mbPopImgUrls(pic.v);
+            out.left.push(`<div class="mb-wd-pic"><img src="${_rgEsc(u.thumb)}" alt="" referrerpolicy="no-referrer" loading="lazy"></div>`);
+        }
+        const main = _EXT_WD_MAIN.filter(p => c.props[p] && p !== 'P18');
+        const others = Object.keys(c.props).filter(p => !c.props[p].ext && !main.includes(p) && p !== 'P18');
+        out.left.push(`<h4>Statements · ${main.length + others.length}</h4>` +
+            _mbPopKvHtml(main.map(p => [pname(p), _extWdValuesHtml(p, c.props[p], names)])) +
+            (others.length ? _dpFoldGroupHtml('wd-more', 'More statements', String(others.length),
+                () => _mbPopKvHtml(others.map(p => [pname(p), _extWdValuesHtml(p, c.props[p], names)]))) : ''));
+        // The identifiers, MusicBrainz's and the music services' first.
+        const ids = Object.keys(c.props).filter(p => c.props[p].ext);
+        const qs = ui.q.trim().toLowerCase();
+        const hit = p => !qs || `${pname(p)} ${c.props[p].values.map(v => v.v).join(' ')}`.toLowerCase().includes(qs);
+        const music = _EXT_WD_MUSIC_IDS.filter(p => ids.includes(p));
+        const auth = ids.filter(p => !music.includes(p) && names && names.authority[p]);
+        const other = ids.filter(p => !music.includes(p) && !auth.includes(p));
+        // The filter's matches marked in the name and the value, as in the
+        // window's tables (vzell 2026-10-29: "NO highlighting").
+        const rows = list => list.filter(hit).map(p => `<div class="mb-wd-idrow"><span class="mb-rg-dim">${_hlEsc(pname(p), ui.q)}</span>` +
+            `<span>${_hlHtml(c.props[p].values.map(v => _extWdValueHtml(v, p, names)).join(', '), ui.q)}</span></div>`).join('') ||
+            '<div class="mb-rg-dim">No match.</div>';
+        const group = (gid, title, list) => (list.length ? _dpFoldGroupHtml(gid, title,
+            qs ? `${list.filter(hit).length} of ${list.length}` : String(list.length), () => rows(list)) : '');
+        out.right.push(`<h4>Identifiers · ${ids.length}</h4>` +
+            `<input type="search" class="mb-tbl-q" data-mb-wiki-q value="${_rgEsc(ui.q)}" data-mb-keep-focus="wd-ids" ` +
+            'placeholder="Filter identifiers: name or value" aria-label="Filter identifiers">' +
+            group('wd-ids-music', 'Music', music) + group('wd-ids-auth', 'Libraries and authority files', names ? auth : []) +
+            group('wd-ids-other', 'Other', names ? other : []));
+        if (c.wikis.length) {
+            const first = Array.from(new Set([ui.lang, _extUiLang(), 'en'])).map(l => c.wikis.find(w => w[0] === l)).filter(Boolean);
+            const rest = c.wikis.filter(w => !first.includes(w));
+            const a = ([l, title]) => `<a href="https://${_rgEsc(l)}.wikipedia.org/wiki/${_rgEsc(encodeURIComponent(title.replace(/ /g, '_')))}" ` +
+                `target="_blank" rel="noopener noreferrer">${_rgEsc(l)}</a>`;
+            out.right.push(`<h4>Wikipedia · ${c.wikis.length}</h4><div class="mb-wd-wikis">${first.map(a).join(' · ')}` +
+                (rest.length ? ` · ${rest.map(a).join(' · ')}` : '') + '</div>');
+        }
+        return out;
+    }
+
+    /**
+     * A choice or a word in the Wikidata window: another language asks its
+     * names (once, then kept); the identifiers' filter narrows them.
+     *
+     * @param {Event} e
+     * @param {object} t
+     * @returns {void}
+     */
+    function _extWdAreaInput(e, t) {
+        const el = e.target;
+        if (!(el instanceof Element)) return;
+        const ui = _extWikiUiOf(t);
+        const repaint = () => { if (_dpDialog.repaint) _dpDialog.repaint(); };
+        if (el.matches('select[data-mb-wiki-lang]')) {
+            ui.lang = el.value;
+            const q = /\/wiki\/(Q[1-9]\d*)$/.exec(new URL(t.url).pathname);
+            if (q) _extWdStart(t, q[1], { repaint });
+            repaint();
+        } else if (el.matches('input[data-mb-wiki-q]')) {
+            ui.q = el.value;
+            repaint();
+        }
+    }
+
+    /**
+     * A click in the Wikidata window that no shared control took: "Try
+     * again" after a failed load.
+     *
+     * @param {MouseEvent} e
+     * @param {object} t
+     * @returns {void}
+     */
+    function _extWdAreaClick(e, t) {
+        const b = e.target instanceof Element ? e.target.closest('[data-mb-wiki-act="retry"]') : null;
+        if (!b) return;
+        const q = /\/wiki\/(Q[1-9]\d*)$/.exec(new URL(t.url).pathname);
+        if (q) _extWdStart(t, q[1], { force: true, repaint: () => { if (_dpDialog.repaint) _dpDialog.repaint(); } });
+    }
+
+    /**
+     * Wikipedia's HTML as the window shows it, rebuilt from its text and a
+     * few tags (p, lists, b, i, a, br, headings as h5): an article link made
+     * absolute (it opens in the window), an outside link kept, a note's mark,
+     * an edit link, a picture, a navigation box and any style or script left
+     * out, a table replaced by a link to it on Wikipedia. Never Wikipedia's
+     * markup as given.
+     *
+     * @param {Node} node
+     * @param {string} lang
+     * @param {string} page - The article's URL, for a table's link.
+     * @returns {string}
+     */
+    function _extWpSafe(node, lang, page) {
+        const SKIP = 'sup.reference, .reference, .mw-editsection, .noprint, .navbox, .metadata, .mw-empty-elt, style, script, ' +
+            'figure, img, .thumb, .gallery, .infobox, .hatnote, .shortdescription, .mw-references-wrap, .reflist, .sidebar, link, meta';
+        const keep = { P: 'p', UL: 'ul', OL: 'ol', LI: 'li', B: 'b', STRONG: 'b', I: 'i', EM: 'i', BR: 'br', BLOCKQUOTE: 'blockquote', DL: 'dl', DT: 'dt', DD: 'dd' };
+        const walk = (n) => {
+            if (n.nodeType === 3) return _rgEsc(n.nodeValue);
+            if (n.nodeType !== 1) return '';
+            if (n.matches(SKIP)) return '';
+            if (n.tagName === 'TABLE') return `<p class="mb-rg-dim"><a href="${_rgEsc(page)}" target="_blank" rel="noopener noreferrer">A table: show it on Wikipedia ↗</a></p>`;
+            const inner = Array.from(n.childNodes).map(walk).join('');
+            if (/^H[2-6]$/.test(n.tagName)) return `<h5 class="mb-wp-h">${_rgEsc(n.textContent.trim())}</h5>`;
+            if (n.tagName === 'A') {
+                const href = n.getAttribute('href') || '';
+                if (href.startsWith('/wiki/')) return `<a href="https://${_rgEsc(lang)}.wikipedia.org${_rgEsc(href)}" target="_blank" rel="noopener noreferrer">${inner}</a>`;
+                if (/^https?:\/\//i.test(href)) return `<a href="${_rgEsc(href)}" target="_blank" rel="noopener noreferrer">${inner}</a>`;
+                return inner;
+            }
+            const tag = keep[n.tagName];
+            if (tag === 'br') return '<br>';
+            return tag ? `<${tag}>${inner}</${tag}>` : inner;
+        };
+        return walk(node);
+    }
+
+    /**
+     * An article's opening, read once for the window: its infobox as label /
+     * value rows with its first picture, the opening paragraphs, the
+     * language links (section 0 with `prop=text|langlinks`) and the
+     * sections (`prop=sections`).
+     *
+     * @param {string} lang
+     * @param {string} title - As the link writes it.
+     * @param {function(): boolean} wanted
+     * @returns {Promise<{ok?: boolean, data?: Object, detail?: string, skipped?: boolean}>}
+     */
+    async function _extWpLeadFor(lang, title, wanted) {
+        const api = `https://${lang}.wikipedia.org/w/api.php?action=parse&format=json&formatversion=2&redirects=1` +
+            `&page=${encodeURIComponent(_extWikiTitleKey(title).replace(/ /g, '_'))}`;
+        const a = await _extWikiGet(`${api}&prop=text%7Clanglinks&section=0`, wanted);
+        if (a.skipped) return { skipped: true };
+        if (a.fail) return a.fail;
+        const p = a.data.parse;
+        if (!p) return { ok: false, detail: (a.data.error && a.data.error.info) || 'Wikipedia answered, but not with the article' };
+        const b = await _extWikiGet(`${api}&prop=sections`, wanted);
+        if (b.skipped) return { skipped: true };
+        if (b.fail) return b.fail;
+        const page = `https://${lang}.wikipedia.org/wiki/${encodeURIComponent(String(p.title).replace(/ /g, '_'))}`;
+        const doc = new DOMParser().parseFromString(`<div>${p.text || ''}</div>`, 'text/html');
+        const root = doc.querySelector('.mw-parser-output') || doc.body.firstElementChild;
+        const box = root.querySelector('table.infobox');
+        const info = [];
+        let image = '';
+        if (box) {
+            const img = box.querySelector('.infobox-image img, img');
+            const src = img ? (img.getAttribute('src') || '') : '';
+            if (src) image = src.startsWith('//') ? `https:${src}` : src;
+            box.querySelectorAll('tr').forEach((tr) => {
+                const th = tr.querySelector(':scope > th');
+                const td = tr.querySelector(':scope > td');
+                if (!th || !td) return;
+                const label = th.textContent.replace(/\s+/g, ' ').trim();
+                const value = _extWpSafe(td, lang, page).replace(/\s+/g, ' ').trim();
+                if (label && value) info.push([label, value]);
+            });
+        }
+        const lead = Array.from(root.querySelectorAll(':scope > p')).filter(x => !x.classList.contains('mw-empty-elt') && x.textContent.trim())
+            .map(x => _extWpSafe(x, lang, page));
+        const secs = ((b.data.parse && b.data.parse.sections) || []).map(s => ({
+            index: String(s.index), level: Number(s.toclevel) || 1, line: String(s.line || '').replace(/<[^>]+>/g, ''), anchor: String(s.anchor || ''),
+        })).filter(s => s.index && !/^T-/.test(s.index));
+        return {
+            ok: true,
+            data: {
+                title: String(p.title), page, info, image, lead, secs,
+                langs: (p.langlinks || []).map(l => ({ lang: String(l.lang), title: String(l.title), name: String(l.autonym || l.langname || l.lang) })),
+            },
+        };
+    }
+
+    /**
+     * One section of an article, read when it is opened (kept): its text
+     * through `_extWpSafe()`, subsections' headings included.
+     *
+     * @param {string} lang
+     * @param {string} title
+     * @param {string} index
+     * @param {function(): boolean} wanted
+     * @returns {Promise<{ok?: boolean, data?: Object, detail?: string, skipped?: boolean}>}
+     */
+    async function _extWpSectionFor(lang, title, index, wanted) {
+        const api = `https://${lang}.wikipedia.org/w/api.php?action=parse&format=json&formatversion=2&redirects=1` +
+            `&page=${encodeURIComponent(_extWikiTitleKey(title).replace(/ /g, '_'))}&prop=text&section=${encodeURIComponent(index)}`;
+        const r = await _extWikiGet(api, wanted);
+        if (r.skipped) return { skipped: true };
+        if (r.fail) return r.fail;
+        const p = r.data.parse;
+        if (!p) return { ok: false, detail: (r.data.error && r.data.error.info) || 'Wikipedia answered, but not with the section' };
+        const doc = new DOMParser().parseFromString(`<div>${p.text || ''}</div>`, 'text/html');
+        const root = doc.querySelector('.mw-parser-output') || doc.body.firstElementChild;
+        // The section's own heading is the window's TOC row: left out.
+        const first = root.querySelector(':scope > .mw-heading, :scope > h2');
+        if (first) first.remove();
+        const page = `https://${lang}.wikipedia.org/wiki/${encodeURIComponent(String(p.title).replace(/ /g, '_'))}`;
+        return { ok: true, data: { html: _extWpSafe(root, lang, page) } };
+    }
+
+    /**
+     * The article a Wikipedia link names: its language and title.
+     *
+     * @param {object} t
+     * @returns {{lang: string, title: string}}
+     */
+    function _extWpOf(t) {
+        const u = new URL(t.url);
+        return { lang: _EXT_WIKIPEDIA_HOST_RE.exec(u.hostname.toLowerCase())[1], title: u.pathname.slice(6) };
+    }
+
+    /**
+     * The Wikipedia window (mockup tab "Wikipedia"): on the left the
+     * infobox as facts with its picture, the other languages (each opens in
+     * the window); on the right the opening paragraphs and the top-level
+     * sections, a click on one reading it once, then folding it.
+     *
+     * @param {object} t
+     * @param {Object} rec - The card's record.
+     * @param {{start: boolean, force: boolean, repaint: function(): void}} how
+     * @returns {{left: string[], right: string[], full: string[], swap: boolean}}
+     */
+    function _extWpWindow(t, rec, how) {
+        const out = { left: [], right: [], full: [], swap: true };
+        if (rec.state !== 'ok' || rec.type === 'disambiguation page') return out;
+        const { lang, title } = _extWpOf(t);
+        const key = `ext:wp-lead:${lang}:${title}`;
+        const opts = { force: how.force, repaint: how.repaint, wanted: _extWikiWanted(t), version: _EXT_IDB_VERSION * 100 + _EXT_WIKI_VERSION, ttlMs: _extTtlMs() };
+        if (how.start) _mbLoad(key, (wanted) => _extWpLeadFor(lang, title, wanted), opts);
+        const st = _mbPop.get(key);
+        if (!st || st.status === 'loading') {
+            out.right.push('<div class="mb-dp-xsub"><span class="mb-dp-spin">◌</span> Asking Wikipedia for the infobox and the sections…</div>');
+            return out;
+        }
+        if (st.status === 'failed') {
+            out.right.push(`<div class="mb-dp-warn">The article did not come: ${_rgEsc(st.detail)}.</div>`);
+            return out;
+        }
+        const d = st.data;
+        const ui = _extWikiUiOf(t);
+        if (d.image) out.left.push(`<div class="mb-wd-pic"><img src="${_rgEsc(d.image)}" alt="" referrerpolicy="no-referrer" loading="lazy"></div>`);
+        if (d.info.length) out.left.push(`<h4>Infobox</h4>${_mbPopKvHtml(d.info.map(([k, v]) => [k, v]))}`);
+        if (d.langs.length) {
+            const pref = Array.from(new Set([_extUiLang(), 'en', 'de']));
+            const sorted = d.langs.slice().sort((a, b) => ((pref.indexOf(a.lang) + 1 || 99) - (pref.indexOf(b.lang) + 1 || 99)) || a.lang.localeCompare(b.lang));
+            const a = l => `<a href="https://${_rgEsc(l.lang)}.wikipedia.org/wiki/${_rgEsc(encodeURIComponent(l.title.replace(/ /g, '_')))}" ` +
+                `target="_blank" rel="noopener noreferrer" title="${_rgEsc(l.title)}">${_rgEsc(l.name)}</a>`;
+            out.left.push(`<h4>Other languages · ${d.langs.length}</h4><div class="mb-wd-wikis">${sorted.map(a).join(' · ')}</div>`);
+        }
+        out.right.push('<h4>Opening</h4><div class="mb-wp-text">' + (d.lead.map(p => `<p>${p}</p>`).join('') || '<p class="mb-rg-dim">No opening text.</p>') + '</div>');
+        const top = d.secs.filter(s => s.level === 1);
+        out.right.push(`<h4>Sections · ${top.length}</h4><div class="mb-wp-toc">` + top.map((s) => {
+            const sk = `ext:wp-sec:${lang}:${title}:${s.index}`;
+            const ss = _mbPop.get(sk);
+            const open = ui.open.has(s.index);
+            const subs = d.secs.filter(x => x.level > 1 && Number(x.index) > Number(s.index) &&
+                Number(x.index) < Number((top.find(y => Number(y.index) > Number(s.index)) || { index: 1e9 }).index));
+            const state = ss && ss.status === 'loading' ? '<span class="mb-dp-spin">◌</span> asking Wikipedia'
+                : ss && ss.status === 'failed' ? `<span class="mb-dp-warn">${_rgEsc(ss.detail)}</span>` : open ? '▾' : '▸';
+            return `<div class="mb-wp-sec"><button type="button" class="mb-dp-foldh" data-mb-wp-sec="${_rgEsc(s.index)}" aria-expanded="${open}">` +
+                `<span class="mb-dp-foldc" aria-hidden="true">${open ? '▾' : '▸'}</span>${_rgEsc(s.line)} <span class="mb-dp-foldn">${state === '▾' || state === '▸' ? '' : state}</span></button>` +
+                (subs.length && !open ? `<div class="mb-rg-dim mb-wp-subs">${_rgEsc(subs.map(x => x.line).join(' · '))}</div>` : '') +
+                (open && ss && ss.status === 'done' ? `<div class="mb-wp-text">${ss.data.html}</div>` : '') + '</div>';
+        }).join('') + '</div>');
+        return out;
+    }
+
+    /**
+     * A click in the Wikipedia window that no shared control took: a
+     * section's heading opens it (read once, kept) or folds it.
+     *
+     * @param {MouseEvent} e
+     * @param {object} t
+     * @returns {void}
+     */
+    function _extWpAreaClick(e, t) {
+        const b = e.target instanceof Element ? e.target.closest('[data-mb-wp-sec]') : null;
+        if (!b) return;
+        const ui = _extWikiUiOf(t);
+        const index = b.dataset.mbWpSec;
+        const repaint = () => { if (_dpDialog.repaint) _dpDialog.repaint(); };
+        if (ui.open.has(index)) ui.open.delete(index);
+        else {
+            ui.open.add(index);
+            const { lang, title } = _extWpOf(t);
+            const sk = `ext:wp-sec:${lang}:${title}:${index}`;
+            const ss = _mbPop.get(sk);
+            _mbLoad(sk, (wanted) => _extWpSectionFor(lang, title, index, wanted), {
+                force: !!(ss && ss.status === 'failed'), repaint, wanted: _extWikiWanted(t),
+                version: _EXT_IDB_VERSION * 100 + _EXT_WIKI_VERSION, ttlMs: _extTtlMs(),
+            });
+        }
+        repaint();
+    }
+
+    // ── setlist.fm (branch B, vzell 2026-10-29; mockup 4 of
+    //    https://claude.ai/artifact/URrn3dps1EMtnkjKBvsvag) ──────────────────
+    //
+    // A setlist, an artist's setlists and a venue, read through setlist.fm's
+    // official API (https://api.setlist.fm/docs/1.0/index.html) with the
+    // user's own key (`sa_pop_ext_setlistfm_key`, secret) — never its pages,
+    // which answer a script with a bot check (a 202 with an empty body, from
+    // here 2026-10-29). Probe: scripts/probe-setlistfm-api.py, run by vzell
+    // with their key 2026-10-29 18:08 CET; its answers are the fixtures
+    // tests/fixtures/ext-sfm-*.json. What it showed: a setlist's sets come
+    // as `sets.set` (the docs' example says `set`; both are read), 20
+    // setlists a page (`itemsPerPage`, `total`), a cover and a guest carry
+    // their artist's MusicBrainz MBID. The API has no venue address, opening
+    // dates or other names, no "most played", no tour averages: the window
+    // counts what the loaded setlists show instead. setlist.fm asks that each
+    // setlist's page be linked wherever its data is shown (its `url`): the
+    // window's foot line names it.
+
+    /** The API's base. */
+    const _EXT_SFM_API = 'https://api.setlist.fm/rest/1.0';
+
+    /** Version of the setlist.fm records kept in IndexedDB; bump when their shape changes. */
+    const _EXT_SFM_VERSION = 1;
+
+    /**
+     * A setlist.fm page the reader takes, by its path: a setlist
+     * (`/setlist/<artist>/<year>/<slug>-<id>.html`), an artist's setlists
+     * (`/setlists/<slug>-<id>.html`, setlist.fm's own artist id) or a venue
+     * (`/venue/<slug>-<id>.html`).
+     * @type {RegExp}
+     */
+    const _EXT_SFM_PATH_RE = /^\/(?:(setlist)\/[^/]+\/\d{4}\/[^/]*?-([0-9a-f]+)\.html|(setlists)\/([^/]*?)-([0-9a-f]+)\.html|(venue)\/[^/]*?-([0-9a-f]+)\.html)$/i;
+
+    /**
+     * The setlist.fm page a link names: its kind, its id and (an artist's)
+     * the name its slug spells; null for any other link.
+     *
+     * @param {URL} u
+     * @returns {?{kind: ('setlist'|'artist'|'venue'), id: string, name: string}}
+     */
+    function _extSfmPage(u) {
+        if (!/^(?:www\.)?setlist\.fm$/i.test(u.hostname)) return null;
+        const m = _EXT_SFM_PATH_RE.exec(u.pathname);
+        if (!m) return null;
+        if (m[1]) return { kind: 'setlist', id: m[2].toLowerCase(), name: '' };
+        if (m[3]) return { kind: 'artist', id: m[5].toLowerCase(), name: decodeURIComponent(m[4]).replace(/-/g, ' ') };
+        return { kind: 'venue', id: m[7].toLowerCase(), name: '' };
+    }
+
+    /**
+     * Whether a link is a setlist.fm page the reader takes: only while a key
+     * is set. Without one the link keeps the generic reader's card, as
+     * before the reader (its page answers a script with a bot check, but its
+     * `<head>` has served some cards), so a profile without a key sees no
+     * change.
+     *
+     * @param {URL} u
+     * @returns {boolean}
+     */
+    function _extSfmTest(u) {
+        return !!_extSfmPage(u) && !!_extSfmKey();
+    }
+
+    /**
+     * The window's title for a setlist.fm link: "setlist.fm setlist",
+     * "setlist.fm artist", "setlist.fm venue".
+     *
+     * @param {URL} u
+     * @returns {string}
+     */
+    function _extSfmKind(u) {
+        const pg = _extSfmPage(u);
+        return pg ? `setlist.fm ${pg.kind}` : 'setlist.fm';
+    }
+
+    /**
+     * The user's setlist.fm API key (`sa_pop_ext_setlistfm_key`, empty by
+     * default), trimmed; '' for none. It goes only into the `x-api-key`
+     * header of requests to api.setlist.fm — never into a URL, a debug line
+     * or the config export.
+     *
+     * @returns {string}
+     */
+    function _extSfmKey() {
+        const v = Lib.settings.sa_pop_ext_setlistfm_key;
+        return typeof v === 'string' ? v.trim() : '';
+    }
+
+    /** What the card and the window say while no key is set. */
+    const _EXT_SFM_NO_KEY = 'setlist.fm is read through its API, which needs your own key: ' +
+        'Settings → "setlist.fm API key" (free at setlist.fm → Settings → API)';
+
+    /**
+     * One API request, JSON, with the key; `null` for an answer the reader
+     * cannot use, with its reason in `fail` (a missing or refused key, no
+     * answer, a 5xx or 429: not kept, so the next start asks again).
+     *
+     * @param {object} t
+     * @param {string} path - After `/rest/1.0`.
+     * @param {function(): boolean} wanted
+     * @returns {Promise<{res?: Object, data?: ?Object, out?: Object, skipped?: boolean}>}
+     */
+    async function _extSfmGet(t, path, wanted) {
+        const res = await _extGet(_EXT_SFM_API + path, {
+            wanted, fetchOpts: { accept: /\bjson\b/i, headers: { Accept: 'application/json', 'x-api-key': _extSfmKey() } },
+        });
+        if (res.skipped) return { skipped: true };
+        if (res.status === 401 || res.status === 403) {
+            return { out: { ok: false, detail: `setlist.fm did not accept the API key (HTTP ${res.status}): check it in Settings` } };
+        }
+        const out = _extApiOutcome(t, res, 'setlist.fm', 'setlist.fm has no such page (its API answered 404).');
+        if (out) return { out };
+        const data = _extJson(res);
+        if (!data) return { out: { ok: false, detail: 'setlist.fm answered, but not with JSON' } };
+        return { res, data };
+    }
+
+    /**
+     * A date of the API ("dd-MM-yyyy") as MusicBrainz writes one
+     * ("yyyy-MM-dd"); '' for none.
+     *
+     * @param {?string} s
+     * @returns {string}
+     */
+    function _extSfmDate(s) {
+        const m = /^(\d{2})-(\d{2})-(\d{4})$/.exec(String(s || ''));
+        return m ? `${m[3]}-${m[2]}-${m[1]}` : '';
+    }
+
+    /**
+     * An artist of the API (a setlist's, a cover's original, a guest) as
+     * `{name, mbid, url}`; null for none.
+     *
+     * @param {?Object} a
+     * @returns {?{name: string, mbid: string, url: string}}
+     */
+    function _extSfmArtist(a) {
+        return a && a.name ? { name: String(a.name), mbid: String(a.mbid || ''), url: String(a.url || '') } : null;
+    }
+
+    /**
+     * A venue of the API with its city as plain fields.
+     *
+     * @param {?Object} v
+     * @returns {{id: string, name: string, url: string, city: string, state: string, stateCode: string,
+     *   country: string, lat: ?number, long: ?number}}
+     */
+    function _extSfmVenue(v) {
+        const c = (v && v.city) || {};
+        const co = c.coords || {};
+        return {
+            id: String((v && v.id) || ''), name: String((v && v.name) || ''), url: String((v && v.url) || ''),
+            city: String(c.name || ''), state: String(c.state || ''), stateCode: String(c.stateCode || ''),
+            country: String((c.country && c.country.name) || ''),
+            lat: typeof co.lat === 'number' ? co.lat : null, long: typeof co.long === 'number' ? co.long : null,
+        };
+    }
+
+    /**
+     * A setlist of the API for the card and the window: its artist, venue,
+     * date, tour, notes (`info`) and sets, each set named as setlist.fm shows
+     * it ("Encore" for an encore without a name), each song with its cover's
+     * and guest's artist, its own note and whether it came from tape.
+     *
+     * @param {Object} d
+     * @returns {Object}
+     */
+    function _extSfmSetlist(d) {
+        const raw = d.set || (d.sets && d.sets.set) || [];
+        const sets = raw.map(s => ({
+            name: s.name ? String(s.name) : (s.encore ? (s.encore > 1 ? `Encore ${s.encore}` : 'Encore') : ''),
+            encore: !!s.encore,
+            songs: (s.song || []).map(g => ({
+                name: String(g.name || ''), info: String(g.info || ''), tape: !!g.tape,
+                cover: _extSfmArtist(g.cover), with: _extSfmArtist(g.with),
+            })),
+        }));
+        return {
+            id: String(d.id || ''), url: String(d.url || ''), date: _extSfmDate(d.eventDate),
+            artist: _extSfmArtist(d.artist), venue: _extSfmVenue(d.venue), tour: String((d.tour && d.tour.name) || ''),
+            info: String(d.info || ''), updated: String(d.lastUpdated || '').slice(0, 10), sets,
+        };
+    }
+
+    /**
+     * A setlist of a list (an artist's, a venue's) as one row: date, its
+     * artist and venue, tour, how many songs and the first of them.
+     *
+     * @param {Object} d
+     * @returns {Object}
+     */
+    function _extSfmListRow(d) {
+        const s = _extSfmSetlist(d);
+        const songs = s.sets.flatMap(x => x.songs).filter(g => g.name);
+        return {
+            id: s.id, url: s.url, date: s.date, artist: s.artist, venue: s.venue, tour: s.tour,
+            songs: songs.length, first: songs.slice(0, 5).map(g => g.name),
+        };
+    }
+
+    /**
+     * A page of a list (`setlist[]`, `total`, `itemsPerPage`) as rows.
+     *
+     * @param {Object} d
+     * @returns {{total: number, per: number, rows: Array<Object>}}
+     */
+    function _extSfmListPage(d) {
+        const rows = Array.isArray(d.setlist) ? d.setlist.map(_extSfmListRow).filter(r => r.id) : [];
+        return { total: Number(d.total) || rows.length, per: Number(d.itemsPerPage) || 20, rows };
+    }
+
+    /**
+     * The path of a list's page: an artist's setlists by MBID, a venue's by id.
+     *
+     * @param {string} kind - 'artist' or 'venue'.
+     * @param {string} id - The artist's MBID, the venue's id.
+     * @param {number} page
+     * @returns {string}
+     */
+    function _extSfmListPath(kind, id, page) {
+        return `/${kind}/${encodeURIComponent(id)}/setlists?p=${page}`;
+    }
+
+    /**
+     * The setlist.fm reader: one API request for a setlist; a venue and the
+     * first page of its setlists; an artist found by name (one search, the
+     * one whose page is the link's) and the first page of its setlists. No
+     * key: a failure that says where to enter one, nothing asked, nothing
+     * kept.
+     *
+     * @param {object} t
+     * @param {function(): boolean} wanted
+     * @returns {Promise<{ok?: boolean, data?: Object, detail?: string, skipped?: boolean}>}
+     */
+    async function _extSfmLoad(t, wanted) {
+        const pg = _extSfmPage(new URL(t.url));
+        if (!pg) return { ok: false, detail: 'not a setlist.fm page the reader knows' };
+        if (!_extSfmKey()) return { ok: false, detail: _EXT_SFM_NO_KEY };
+        const rec = _extApiRecord(t, 200, 'setlist.fm');
+        rec.links.push(['On setlist.fm', t.url]);
+        if (pg.kind === 'setlist') {
+            const r = await _extSfmGet(t, `/setlist/${pg.id}`, wanted);
+            if (r.skipped) return { skipped: true };
+            if (r.out) return r.out;
+            const s = _extSfmSetlist(r.data);
+            const songs = s.sets.flatMap(x => x.songs).filter(g => g.name);
+            Object.assign(rec, {
+                title: `${s.artist ? s.artist.name : 'Setlist'} at ${s.venue.name}`, type: 'setlist',
+                description: s.info.slice(0, 600), sfm: { kind: 'setlist', setlist: s },
+            });
+            rec.facts = [
+                ['Date', s.date], ['Venue', [s.venue.name, s.venue.city, s.venue.stateCode, s.venue.country].filter(Boolean).join(', ')],
+                ['Tour', s.tour], ['Songs', songs.length ? String(songs.length) : ''],
+                ['Covers', String(songs.filter(g => g.cover).length || '')],
+            ].filter(f => f[1]);
+            return { ok: true, data: rec };
+        }
+        let mbid = '';
+        let artist = null;
+        if (pg.kind === 'artist') {
+            const q = await _extSfmGet(t, `/search/artists?artistName=${encodeURIComponent(pg.name)}&sort=relevance`, wanted);
+            if (q.skipped) return { skipped: true };
+            if (q.out) return q.out;
+            const hit = (q.data.artist || []).find(a => new RegExp(`-${pg.id}\\.html$`, 'i').test(String(a.url || '')));
+            if (!hit || !hit.mbid) return { ok: false, detail: `setlist.fm's search did not find the artist of this page ("${pg.name}")` };
+            mbid = String(hit.mbid);
+            artist = { name: String(hit.name || ''), sortName: String(hit.sortName || ''), disambiguation: String(hit.disambiguation || ''), mbid };
+        }
+        let venue = null;
+        if (pg.kind === 'venue') {
+            const v = await _extSfmGet(t, `/venue/${pg.id}`, wanted);
+            if (v.skipped) return { skipped: true };
+            if (v.out) return v.out;
+            venue = _extSfmVenue(v.data);
+        }
+        const id = pg.kind === 'artist' ? mbid : pg.id;
+        const l = await _extSfmGet(t, _extSfmListPath(pg.kind, id, 1), wanted);
+        if (l.skipped) return { skipped: true };
+        if (l.out) return l.out;
+        const list = _extSfmListPage(l.data);
+        if (pg.kind === 'artist') {
+            Object.assign(rec, { title: artist.name, description: artist.disambiguation, type: 'artist' });
+            rec.facts = [['Sort name', artist.sortName !== artist.name ? artist.sortName : ''], ['Setlists', _extDgNum(list.total)]].filter(f => f[1]);
+        } else {
+            Object.assign(rec, { title: venue.name, type: 'venue' });
+            rec.facts = [['City', [venue.city, venue.state, venue.country].filter(Boolean).join(', ')], ['Setlists', _extDgNum(list.total)]].filter(f => f[1]);
+        }
+        rec.sfm = { kind: pg.kind, id, artist, venue, list };
+        return { ok: true, data: rec };
+    }
+
+    /** Each setlist.fm window's state, by target key: how many list pages it shows. */
+    const _extSfmUi = new Map();
+
+    /**
+     * A setlist.fm window's state, made on first use.
+     *
+     * @param {object} t
+     * @returns {{pages: number}}
+     */
+    function _extSfmUiOf(t) {
+        if (!_extSfmUi.has(t.key)) _extSfmUi.set(t.key, { pages: 1 });
+        return _extSfmUi.get(t.key);
+    }
+
+    /**
+     * The cache key of a list's page (page 1 is the record's own).
+     *
+     * @param {Object} sfm - The record's `sfm`.
+     * @param {number} page
+     * @returns {string}
+     */
+    function _extSfmPageKey(sfm, page) {
+        return `ext:sfm-list:${sfm.kind}:${sfm.id}:${page}`;
+    }
+
+    /**
+     * Asks a list's page (2 and on), kept like the record; a failure waits
+     * for "Try again".
+     *
+     * @param {object} t
+     * @param {Object} sfm
+     * @param {number} page
+     * @param {{force?: boolean, repaint?: ?function(): void}} [how]
+     * @returns {void}
+     */
+    function _extSfmPageLoad(t, sfm, page, { force = false, repaint = null } = {}) {
+        _mbLoad(_extSfmPageKey(sfm, page), async (wanted) => {
+            const r = await _extSfmGet(t, _extSfmListPath(sfm.kind, sfm.id, page), wanted);
+            if (r.skipped) return { skipped: true };
+            if (r.out) return r.out.ok ? { ok: false, detail: `setlist.fm answered HTTP ${r.out.data.status}` } : r.out;
+            return { ok: true, data: _extSfmListPage(r.data) };
+        }, { force, repaint, wanted: () => !!(_dpDialog.target && _dpDialog.target.key === t.key), version: _EXT_IDB_VERSION * 100 + _EXT_SFM_VERSION, ttlMs: _extTtlMs() });
+    }
+
+    /**
+     * An MBID's MusicBrainz artist as a link (it opens in the window), else
+     * the plain name.
+     *
+     * @param {?{name: string, mbid: string}} a
+     * @returns {string}
+     */
+    function _extSfmArtistHtml(a) {
+        if (!a) return '';
+        return a.mbid ? `<a href="${_rgEsc(_mbOrigin())}/artist/${_rgEsc(a.mbid)}" target="_blank" rel="noopener">${_rgEsc(a.name)}</a>`
+            : _rgEsc(a.name);
+    }
+
+    /**
+     * A setlist.fm page as a link (it opens in the window: `setlistfm` is in
+     * `_DP_WIN_EXT_READERS`).
+     *
+     * @param {string} url
+     * @param {string} text
+     * @returns {string}
+     */
+    function _extSfmLinkHtml(url, text) {
+        return url ? `<a href="${_rgEsc(url)}" target="_blank" rel="noopener noreferrer">${_rgEsc(text)}</a>` : _rgEsc(text);
+    }
+
+    /**
+     * A venue's place as one line: "Los Angeles, California (CA), United
+     * States", with a map link when it has coordinates.
+     *
+     * @param {Object} v - `_extSfmVenue()`.
+     * @returns {string}
+     */
+    function _extSfmPlaceHtml(v) {
+        const state = v.state ? `${v.state}${v.stateCode && v.stateCode !== v.state ? ` (${v.stateCode})` : ''}` : '';
+        const where = _rgEsc([v.city, state, v.country].filter(Boolean).join(', '));
+        const map = v.lat != null && v.long != null
+            ? ` · <a href="https://www.openstreetmap.org/?mlat=${v.lat}&amp;mlon=${v.long}#map=14/${v.lat}/${v.long}" target="_blank" rel="noopener noreferrer">map</a>` : '';
+        return where + map;
+    }
+
+    /**
+     * The attribution setlist.fm asks for wherever its data is shown: its
+     * page, linked.
+     *
+     * @param {string} url
+     * @returns {string}
+     */
+    function _extSfmCreditHtml(url) {
+        return `<div class="mb-dg-counts">Data from ${_extSfmLinkHtml(url, 'setlist.fm')}, read through its API with your key.</div>`;
+    }
+
+    /**
+     * The setlist window: on the left its facts (artist, date, venue with its
+     * place, tour, last edit), its notes and the attribution; on the right
+     * the songs as a List table, # · Song · Notes (the cover's and the
+     * guest's artist linked to MusicBrainz, tape, the song's note), a heading
+     * row per named set, a Part chip each.
+     *
+     * @param {object} t
+     * @param {Object} s - `_extSfmSetlist()`.
+     * @returns {{left: string[], right: string[], full: string[], swap: boolean}}
+     */
+    function _extSfmSetlistWindow(t, s) {
+        const out = { left: [], right: [], full: [], swap: true };
+        out.left.push((s.info ? `<h4>Notes</h4><div class="mb-dp-section">${_rgEsc(s.info)}</div>` : '') + _extSfmCreditHtml(s.url));
+        let n = 0;
+        const rows = s.sets.flatMap(set => set.songs.map(g => {
+            const bits = [];
+            if (g.cover) bits.push(`${_extSfmArtistHtml(g.cover)} cover`);
+            if (g.with) bits.push(`with ${_extSfmArtistHtml(g.with)}`);
+            if (g.tape) bits.push('from tape');
+            if (g.info) bits.push(_rgEsc(g.info));
+            const notes = bits.join(' · ');
+            return {
+                n: ++n, part: set.name, song: g.name || '(untitled)',
+                notes: { html: notes, text: notes.replace(/<[^>]+>/g, '') },
+            };
+        }));
+        const named = s.sets.filter(x => x.name);
+        const word = k => `${k} song${k === 1 ? '' : 's'}`;
+        out.right.push(`<h4>Setlist · ${rows.length}${named.length ? ` in ${s.sets.length} parts` : ''}</h4>` + (rows.length ? _dpListTableHtml(t, 'sfm-setlist', [
+            { key: 'n', label: '#', num: true, cls: 'mb-rg-num', val: x => x.n, html: x => String(x.n) },
+            { key: 'song', label: 'Song', val: x => x.song, html: (x, q) => _hlEsc(x.song, q) },
+            { key: 'notes', label: 'Notes', val: x => x.notes.text, html: (x, q) => _hlHtml(x.notes.html, q) },
+        ], rows, Object.assign({ initial: 'in the order played', placeholder: 'Filter the setlist: song, cover, guest', none: 'No songs.' },
+            named.length ? {
+                group: x => x.part, groupCol: 'song',
+                groupHead: (g, k, total) => (g ? `<span class="mb-dp-tsec-n">${_rgEsc(g)}</span>` +
+                    `<span class="mb-dp-tsec-c">${k < total ? `${k} of ${word(total)}` : word(total)}</span>` : ''),
+            } : {},
+            s.sets.length >= 2 && named.length ? { facet: x => x.part || 'Set', chipLabel: 'Part', facetSort: () => 0 } : {}))
+            : '<div class="mb-dp-xsub">setlist.fm has no songs for it yet.</div>'));
+        return out;
+    }
+
+    /**
+     * An artist's or a venue's window: its facts and what the loaded
+     * setlists show (tours and venues, or artists, with counts) on the left;
+     * on the right the setlists as a List table — date, the setlist (linked:
+     * it opens in the window), tour, songs — with "Load 20 more" while
+     * setlist.fm has more, one page a click.
+     *
+     * @param {object} t
+     * @param {Object} rec
+     * @param {{start: boolean, force: boolean, repaint: function(): void}} how
+     * @returns {{left: string[], right: string[], full: string[], swap: boolean}}
+     */
+    function _extSfmListWindow(t, rec, how) {
+        const out = { left: [], right: [], full: [], swap: true };
+        const sfm = rec.sfm;
+        const ui = _extSfmUiOf(t);
+        let rows = sfm.list.rows.slice();
+        let busy = false;
+        let failed = '';
+        for (let p = 2; p <= ui.pages; p++) {
+            const st = _mbPop.get(_extSfmPageKey(sfm, p));
+            if (!st || st.status === 'loading') busy = true;
+            else if (st.status === 'failed') failed = st.detail;
+            else rows = rows.concat(st.data.rows);
+        }
+        const count = (f) => {
+            const m = new Map();
+            rows.forEach(r => { const k = f(r); if (k) m.set(k, (m.get(k) || 0) + 1); });
+            return Array.from(m).sort((a, b) => b[1] - a[1]);
+        };
+        const top = (list, n = 6) => list.slice(0, n).map(([k, c]) => `${_rgEsc(k)} <span class="mb-rg-dim">(${c})</span>`).join('<br>') +
+            (list.length > n ? `<br><span class="mb-rg-dim">+${list.length - n} more</span>` : '');
+        if (sfm.kind === 'artist') {
+            out.left.push(`<h4>In the loaded setlists · ${rows.length}</h4>` + _mbPopKvHtml([
+                ['Tours', top(count(r => r.tour))],
+                ['Venues', top(count(r => [r.venue.name, r.venue.city].filter(Boolean).join(', ')))],
+            ]));
+        } else {
+            out.left.push(`<h4>In the loaded setlists · ${rows.length}</h4>` + _mbPopKvHtml([
+                ['Artists', top(count(r => (r.artist ? r.artist.name : '')))],
+                ['Tours', top(count(r => r.tour))],
+            ]));
+        }
+        out.left.push(_extSfmCreditHtml(t.url));
+        const who = sfm.kind === 'artist' ? (r => [r.venue.name, r.venue.city].filter(Boolean).join(', ')) : (r => (r.artist ? r.artist.name : ''));
+        const table = _dpListTableHtml(t, `sfm-${sfm.kind}`, [
+            { key: 'date', label: 'Date', val: r => r.date, html: (r, q) => _hlEsc(r.date, q) },
+            {
+                key: 'what', label: sfm.kind === 'artist' ? 'Venue' : 'Artist', val: who,
+                html: (r, q) => `<a href="${_rgEsc(r.url)}" target="_blank" rel="noopener noreferrer">${_hlEsc(who(r), q)}</a>` +
+                    (r.first.length ? `<div class="mb-rg-dim">${_hlEsc(r.first.join(' · '), q)}${r.songs > r.first.length ? ' …' : ''}</div>` : ''),
+            },
+            { key: 'tour', label: 'Tour', val: r => r.tour, html: (r, q) => _hlEsc(r.tour, q) },
+            { key: 'songs', label: 'Songs', num: true, cls: 'mb-rg-num', val: r => r.songs, html: r => (r.songs ? String(r.songs) : '—') },
+        ], rows, {
+            initial: 'newest first, as setlist.fm lists them', placeholder: 'Filter loaded setlists: venue, artist, tour, song',
+            search: r => [r.date, who(r), r.tour, r.first.join(' ')].join(' '), none: 'No setlists.',
+        });
+        const more = rows.length < sfm.list.total && !busy && !failed;
+        const status = `<div class="mb-dg-vstat"><span class="mb-dg-pill">${busy ? 'Loading' : failed ? 'Failed' : rows.length < sfm.list.total ? 'Idle' : 'Done'}</span>` +
+            (more ? `<button type="button" class="mb-dg-btn mb-dg-primary" data-mb-sfm-act="more">Load ${sfm.list.per} more</button>` : '') +
+            (failed ? `<button type="button" class="mb-dg-btn" data-mb-sfm-act="retry">⟳ Try again</button>` : '') +
+            `</div><div class="mb-dg-counts">${_extDgNum(rows.length)} of ${_extDgNum(sfm.list.total)} loaded${failed ? ` · the next page did not come: ${_rgEsc(failed)}` : ''}</div>`;
+        out.right.push(`<h4>Setlists · ${_extDgNum(sfm.list.total)}</h4>` + status + table);
+        if (how && how.start) {
+            for (let p = 2; p <= ui.pages; p++) if (!_mbPop.get(_extSfmPageKey(sfm, p))) _extSfmPageLoad(t, sfm, p, { repaint: how.repaint });
+        }
+        return out;
+    }
+
+    /**
+     * The window's "setlist.fm says" (`factsHtml`, in place of the plain
+     * facts): a setlist's artist (MusicBrainz, and its setlist.fm page),
+     * date, venue and its place (a map link), tour and last edit; an
+     * artist's MusicBrainz artist, sort name and count; a venue's place and
+     * count. Its links open in the window.
+     *
+     * @param {object} t
+     * @param {Object} rec
+     * @param {Array<[string, string]>} facts - The plain ones, for a record without `sfm`.
+     * @returns {string}
+     */
+    function _extSfmFactsHtml(t, rec, facts) {
+        const sfm = rec.sfm;
+        if (!sfm) return _dpFieldsHtml(facts);
+        if (sfm.kind === 'setlist') {
+            const s = sfm.setlist;
+            return _mbPopKvHtml([
+                ['Artist', _extSfmArtistHtml(s.artist) + (s.artist && s.artist.url ? ` · ${_extSfmLinkHtml(s.artist.url, 'its setlists')}` : '')],
+                ['Date', _rgEsc(s.date)],
+                ['Venue', _extSfmLinkHtml(s.venue.url, s.venue.name)],
+                ['Where', _extSfmPlaceHtml(s.venue)],
+                ['Tour', _rgEsc(s.tour)],
+                ['Last edited', _rgEsc(s.updated)],
+            ]);
+        }
+        const count = `${_extDgNum(sfm.list.total)} · ${sfm.list.per} a page`;
+        if (sfm.kind === 'artist') {
+            return _mbPopKvHtml([
+                ['On MusicBrainz', _extSfmArtistHtml({ name: rec.title, mbid: sfm.artist.mbid })],
+                ['Sort name', _rgEsc(sfm.artist.sortName !== sfm.artist.name ? sfm.artist.sortName : '')],
+                ['Setlists', count],
+            ]);
+        }
+        return _mbPopKvHtml([['Where', _extSfmPlaceHtml(sfm.venue)], ['Setlists', count]]);
+    }
+
+    /**
+     * The reader's own window sections (`_extExtracted()`'s reader hook).
+     *
+     * @param {object} t
+     * @param {Object} rec
+     * @param {{start: boolean, force: boolean, repaint: function(): void}} how
+     * @returns {{left: string[], right: string[], full: string[], swap: boolean}}
+     */
+    function _extSfmWindow(t, rec, how) {
+        if (!rec.sfm) return { left: [], right: [], full: [] };
+        return rec.sfm.kind === 'setlist' ? _extSfmSetlistWindow(t, rec.sfm.setlist) : _extSfmListWindow(t, rec, how);
+    }
+
+    /**
+     * A click in a setlist.fm window that no shared control took: "Load 20
+     * more" asks the next page of the list, "Try again" the failed one.
+     *
+     * @param {MouseEvent} e
+     * @param {object} t
+     * @returns {void}
+     */
+    function _extSfmAreaClick(e, t) {
+        const b = e.target instanceof Element ? e.target.closest('[data-mb-sfm-act]') : null;
+        const st = _mbPop.get(t.key);
+        const rec = st && st.status === 'done' ? st.data : null;
+        if (!b || !rec || !rec.sfm || !rec.sfm.list) return;
+        const ui = _extSfmUiOf(t);
+        const repaint = () => { if (_dpDialog.repaint) _dpDialog.repaint(); };
+        if (b.dataset.mbSfmAct === 'more') {
+            ui.pages++;
+            _extSfmPageLoad(t, rec.sfm, ui.pages, { repaint });
+        } else {
+            for (let p = 2; p <= ui.pages; p++) {
+                const s = _mbPop.get(_extSfmPageKey(rec.sfm, p));
+                if (s && s.status === 'failed') _extSfmPageLoad(t, rec.sfm, p, { force: true, repaint });
+            }
+        }
+        repaint();
     }
 
     /** A Discogs page of one release, master, artist or label (an optional language prefix, a slug after the id). */
@@ -68807,8 +70224,14 @@
         {
             id: 'wikipedia', kind: 'Wikipedia', test: _extWikipediaTest, load: _extWikipediaLoad, noLive: false, live: _EXT_LIVE_WIKIPEDIA,
             askHost: (u) => `${_EXT_WIKIPEDIA_HOST_RE.exec(u.hostname.toLowerCase())[1]}.wikipedia.org`,
+            // The rich window (branch B): infobox, opening, sections on demand.
+            window: _extWpWindow, onAreaClick: _extWpAreaClick,
         },
-        { id: 'wikidata', kind: 'Wikidata', test: _extWikidataTest, askHost: () => 'www.wikidata.org', load: _extWikidataLoad, noLive: false },
+        {
+            id: 'wikidata', kind: 'Wikidata', test: _extWikidataTest, askHost: () => 'www.wikidata.org', load: _extWikidataLoad, noLive: false,
+            // The rich window (branch B): statements, identifiers, articles, a language.
+            window: _extWdWindow, onAreaClick: _extWdAreaClick, onAreaInput: _extWdAreaInput,
+        },
         {
             // Before `discogs`, whose path pattern takes `/images` too (Phase 4).
             id: 'dgimages', kind: 'Discogs images', test: _extDgImgTest, askHost: () => 'www.discogs.com', load: _extDgImgLoad,
@@ -68852,6 +70275,12 @@
         {
             id: 'springsteen', kind: 'Detail page', test: _extDpTest, askHost: (u) => u.hostname.toLowerCase(), load: _extDpLoad,
             noLive: false, liveFor: (u) => _extDpLive(_DP_SITES[_extDpSiteKey(u)]), version: _EXT_IDB_VERSION * 100 + _DP_PARSER_VERSION,
+        },
+        {
+            // setlist.fm through its API with the user's key (branch B, mockup 4).
+            id: 'setlistfm', kind: 'setlist.fm', test: _extSfmTest, askHost: () => 'api.setlist.fm', load: _extSfmLoad, noLive: true,
+            version: _EXT_IDB_VERSION * 100 + _EXT_SFM_VERSION, kindFor: _extSfmKind,
+            window: _extSfmWindow, onAreaClick: _extSfmAreaClick, factsHtml: _extSfmFactsHtml,
         },
         { id: 'generic', kind: 'Web page', test: () => true, askHost: (u) => u.hostname.toLowerCase(), load: _extGenericLoad, noLive: false },
     ];
@@ -69055,6 +70484,11 @@
             st.status = data ? 'done' : 'none';
             st.data = data;
             st.listeners.forEach(fn => fn());
+            // The window's path shows the icon of a Wikidata, Wikipedia or
+            // setlist.fm step (`_dpKindGlyph()`), and is drawn only on a step:
+            // draw it again now the icon is here.
+            const title = data && _dpDialog.controls && _dpDialog.controls.title;
+            if (title && _dpDialog.target) _dpCrumbsRender(title);
         };
         (async () => {
             const kept = await _rgIdbGet(`ext-icon:${key}`, _EXT_ICON_VERSION, _EXT_ICON_TTL_MS);

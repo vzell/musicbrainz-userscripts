@@ -1,0 +1,1547 @@
+{
+ "type": "setlists",
+ "itemsPerPage": 20,
+ "page": 1,
+ "total": 563,
+ "setlist": [
+  {
+   "id": "4bf0375a",
+   "versionId": "g5bc66330",
+   "eventDate": "19-03-2016",
+   "lastUpdated": "2021-10-28T18:04:55.442+0000",
+   "artist": {
+    "mbid": "70248960-cb53-4ea4-943a-edb18f7d336f",
+    "name": "Bruce Springsteen",
+    "sortName": "Springsteen, Bruce",
+    "disambiguation": "",
+    "url": "https://www.setlist.fm/setlists/bruce-springsteen-2bd6dcce.html"
+   },
+   "venue": {
+    "id": "3d6c967",
+    "name": "Los Angeles Sports Arena",
+    "city": {
+     "id": "5368361",
+     "name": "Los Angeles",
+     "state": "California",
+     "stateCode": "CA",
+     "coords": {
+      "lat": 34.052,
+      "long": -118.244
+     },
+     "country": {
+      "code": "US",
+      "name": "United States"
+     }
+    },
+    "url": "https://www.setlist.fm/venue/los-angeles-sports-arena-los-angeles-ca-usa-3d6c967.html"
+   },
+   "tour": {
+    "name": "The River Tour 2016"
+   },
+   "sets": {
+    "set": [
+     {
+      "song": [
+       {
+        "name": "Meet Me in the City"
+       }
+      ]
+     },
+     {
+      "name": "The River",
+      "song": [
+       {
+        "name": "The Ties That Bind"
+       },
+       {
+        "name": "Sherry Darling"
+       },
+       {
+        "name": "Jackson Cage"
+       },
+       {
+        "name": "Two Hearts"
+       },
+       {
+        "name": "Independence Day"
+       },
+       {
+        "name": "Hungry Heart"
+       },
+       {
+        "name": "Out in the Street"
+       },
+       {
+        "name": "Crush on You"
+       },
+       {
+        "name": "You Can Look (But You Better Not Touch)"
+       },
+       {
+        "name": "I Wanna Marry You"
+       },
+       {
+        "name": "The River"
+       },
+       {
+        "name": "Point Blank"
+       },
+       {
+        "name": "Cadillac Ranch"
+       },
+       {
+        "name": "I'm a Rocker"
+       },
+       {
+        "name": "Fade Away"
+       },
+       {
+        "name": "Stolen Car"
+       },
+       {
+        "name": "Ramrod"
+       },
+       {
+        "name": "The Price You Pay"
+       },
+       {
+        "name": "Drive All Night"
+       },
+       {
+        "name": "Wreck on the Highway"
+       }
+      ]
+     },
+     {
+      "name": "",
+      "song": [
+       {
+        "name": "Prove It All Night"
+       },
+       {
+        "name": "My Love Will Not Let You Down"
+       },
+       {
+        "name": "Badlands"
+       },
+       {
+        "name": "Tougher Than the Rest"
+       },
+       {
+        "name": "Because the Night",
+        "cover": {
+         "mbid": "26638df8-ef34-40d1-8d93-616836b72878",
+         "name": "Patti Smith Group",
+         "sortName": "Smith, Patti, Group",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/patti-smith-group-53d657bd.html"
+        }
+       },
+       {
+        "name": "Jungleland"
+       },
+       {
+        "name": "Thunder Road"
+       }
+      ]
+     },
+     {
+      "encore": 1,
+      "song": [
+       {
+        "name": "Wrecking Ball"
+       },
+       {
+        "name": "Born to Run"
+       },
+       {
+        "name": "Dancing in the Dark"
+       },
+       {
+        "name": "Rosalita (Come Out Tonight)"
+       },
+       {
+        "name": "Tenth Avenue Freeze-Out"
+       },
+       {
+        "name": "Shout",
+        "cover": {
+         "mbid": "4a76400d-283f-492e-9754-18ef41755f81",
+         "name": "The Isley Brothers",
+         "sortName": "Isley Brothers, The",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/the-isley-brothers-3d6b943.html"
+        }
+       },
+       {
+        "name": "Bobby Jean"
+       }
+      ]
+     }
+    ]
+   },
+   "info": "Bruce dedicated \"Jungleland\" and \"Wrecking Ball\" to the LA Sports Arena's forthcoming demolition. This show marks Bruce's 34th and final performance at this venue since his first during the original River Tour on 30 Oct 1980. \"Badlands\" replaced \"It's Hard to Be a Saint in the City\" on the printed setlist. Soundcheck included: \"Meet Me in the City\", \"Tougher Than the Rest\", \"My Love Will Not Let You Down\" and \"Born in the U.S.A.\"",
+   "url": "https://www.setlist.fm/setlist/bruce-springsteen/2016/los-angeles-sports-arena-los-angeles-ca-4bf0375a.html"
+  },
+  {
+   "id": "6bf0c23e",
+   "versionId": "g5bc66338",
+   "eventDate": "17-03-2016",
+   "lastUpdated": "2021-10-28T18:04:16.985+0000",
+   "artist": {
+    "mbid": "70248960-cb53-4ea4-943a-edb18f7d336f",
+    "name": "Bruce Springsteen",
+    "sortName": "Springsteen, Bruce",
+    "disambiguation": "",
+    "url": "https://www.setlist.fm/setlists/bruce-springsteen-2bd6dcce.html"
+   },
+   "venue": {
+    "id": "3d6c967",
+    "name": "Los Angeles Sports Arena",
+    "city": {
+     "id": "5368361",
+     "name": "Los Angeles",
+     "state": "California",
+     "stateCode": "CA",
+     "coords": {
+      "lat": 34.052,
+      "long": -118.244
+     },
+     "country": {
+      "code": "US",
+      "name": "United States"
+     }
+    },
+    "url": "https://www.setlist.fm/venue/los-angeles-sports-arena-los-angeles-ca-usa-3d6c967.html"
+   },
+   "tour": {
+    "name": "The River Tour 2016"
+   },
+   "sets": {
+    "set": [
+     {
+      "song": [
+       {
+        "name": "Meet Me in the City"
+       }
+      ]
+     },
+     {
+      "name": "The River",
+      "song": [
+       {
+        "name": "The Ties That Bind"
+       },
+       {
+        "name": "Sherry Darling"
+       },
+       {
+        "name": "Jackson Cage"
+       },
+       {
+        "name": "Two Hearts"
+       },
+       {
+        "name": "Independence Day"
+       },
+       {
+        "name": "Hungry Heart"
+       },
+       {
+        "name": "Out in the Street"
+       },
+       {
+        "name": "Crush on You"
+       },
+       {
+        "name": "You Can Look (But You Better Not Touch)"
+       },
+       {
+        "name": "I Wanna Marry You"
+       },
+       {
+        "name": "The River"
+       },
+       {
+        "name": "Point Blank"
+       },
+       {
+        "name": "Cadillac Ranch"
+       },
+       {
+        "name": "I'm a Rocker"
+       },
+       {
+        "name": "Fade Away"
+       },
+       {
+        "name": "Stolen Car"
+       },
+       {
+        "name": "Ramrod"
+       },
+       {
+        "name": "The Price You Pay"
+       },
+       {
+        "name": "Drive All Night"
+       },
+       {
+        "name": "Wreck on the Highway"
+       }
+      ]
+     },
+     {
+      "name": "",
+      "song": [
+       {
+        "name": "Badlands"
+       },
+       {
+        "name": "Death to My Hometown",
+        "info": "tour debut"
+       },
+       {
+        "name": "The Promised Land"
+       },
+       {
+        "name": "Backstreets",
+        "info": "replaced Because the Night on printed setlist"
+       },
+       {
+        "name": "Brilliant Disguise"
+       },
+       {
+        "name": "The Rising"
+       },
+       {
+        "name": "Thunder Road"
+       }
+      ]
+     },
+     {
+      "encore": 1,
+      "song": [
+       {
+        "name": "American Land",
+        "info": "tour debut"
+       },
+       {
+        "name": "Born to Run"
+       },
+       {
+        "name": "Dancing in the Dark"
+       },
+       {
+        "name": "Rosalita (Come Out Tonight)"
+       },
+       {
+        "name": "Tenth Avenue Freeze-Out"
+       },
+       {
+        "name": "Shout",
+        "cover": {
+         "mbid": "4a76400d-283f-492e-9754-18ef41755f81",
+         "name": "The Isley Brothers",
+         "sortName": "Isley Brothers, The",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/the-isley-brothers-3d6b943.html"
+        }
+       }
+      ]
+     }
+    ]
+   },
+   "info": "Soundcheck included: \"American Land\" and \"Death to My Hometown\"",
+   "url": "https://www.setlist.fm/setlist/bruce-springsteen/2016/los-angeles-sports-arena-los-angeles-ca-6bf0c23e.html"
+  },
+  {
+   "id": "1bf0c914",
+   "versionId": "g5bc66344",
+   "eventDate": "15-03-2016",
+   "lastUpdated": "2021-10-28T18:03:38.475+0000",
+   "artist": {
+    "mbid": "70248960-cb53-4ea4-943a-edb18f7d336f",
+    "name": "Bruce Springsteen",
+    "sortName": "Springsteen, Bruce",
+    "disambiguation": "",
+    "url": "https://www.setlist.fm/setlists/bruce-springsteen-2bd6dcce.html"
+   },
+   "venue": {
+    "id": "3d6c967",
+    "name": "Los Angeles Sports Arena",
+    "city": {
+     "id": "5368361",
+     "name": "Los Angeles",
+     "state": "California",
+     "stateCode": "CA",
+     "coords": {
+      "lat": 34.052,
+      "long": -118.244
+     },
+     "country": {
+      "code": "US",
+      "name": "United States"
+     }
+    },
+    "url": "https://www.setlist.fm/venue/los-angeles-sports-arena-los-angeles-ca-usa-3d6c967.html"
+   },
+   "tour": {
+    "name": "The River Tour 2016"
+   },
+   "sets": {
+    "set": [
+     {
+      "song": [
+       {
+        "name": "Meet Me in the City"
+       }
+      ]
+     },
+     {
+      "name": "The River",
+      "song": [
+       {
+        "name": "The Ties That Bind"
+       },
+       {
+        "name": "Sherry Darling"
+       },
+       {
+        "name": "Jackson Cage"
+       },
+       {
+        "name": "Two Hearts"
+       },
+       {
+        "name": "Independence Day"
+       },
+       {
+        "name": "Hungry Heart"
+       },
+       {
+        "name": "Out in the Street"
+       },
+       {
+        "name": "Crush on You"
+       },
+       {
+        "name": "You Can Look (But You Better Not Touch)"
+       },
+       {
+        "name": "I Wanna Marry You"
+       },
+       {
+        "name": "The River"
+       },
+       {
+        "name": "Point Blank"
+       },
+       {
+        "name": "Cadillac Ranch"
+       },
+       {
+        "name": "I'm a Rocker"
+       },
+       {
+        "name": "Fade Away"
+       },
+       {
+        "name": "Stolen Car"
+       },
+       {
+        "name": "Ramrod"
+       },
+       {
+        "name": "The Price You Pay"
+       },
+       {
+        "name": "Drive All Night"
+       },
+       {
+        "name": "Wreck on the Highway"
+       }
+      ]
+     },
+     {
+      "name": "",
+      "song": [
+       {
+        "name": "Badlands"
+       },
+       {
+        "name": "Wrecking Ball"
+       },
+       {
+        "name": "Lonesome Day"
+       },
+       {
+        "name": "Human Touch"
+       },
+       {
+        "name": "Because the Night",
+        "cover": {
+         "mbid": "26638df8-ef34-40d1-8d93-616836b72878",
+         "name": "Patti Smith Group",
+         "sortName": "Smith, Patti, Group",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/patti-smith-group-53d657bd.html"
+        }
+       },
+       {
+        "name": "She's the One"
+       },
+       {
+        "name": "The Rising"
+       },
+       {
+        "name": "Thunder Road"
+       }
+      ]
+     },
+     {
+      "encore": 1,
+      "song": [
+       {
+        "name": "No Surrender"
+       },
+       {
+        "name": "Born to Run"
+       },
+       {
+        "name": "Dancing in the Dark"
+       },
+       {
+        "name": "Rosalita (Come Out Tonight)"
+       },
+       {
+        "name": "Tenth Avenue Freeze-Out"
+       },
+       {
+        "name": "Shout",
+        "cover": {
+         "mbid": "4a76400d-283f-492e-9754-18ef41755f81",
+         "name": "The Isley Brothers",
+         "sortName": "Isley Brothers, The",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/the-isley-brothers-3d6b943.html"
+        }
+       }
+      ]
+     }
+    ]
+   },
+   "info": "Soundcheck included: \"Meet Me in the City\", \"The Ties That Bind\", \"Human Touch\", \"Wrecking Ball\" and \"Death to My Hometown\"",
+   "url": "https://www.setlist.fm/setlist/bruce-springsteen/2016/los-angeles-sports-arena-los-angeles-ca-1bf0c914.html"
+  },
+  {
+   "id": "33b640bd",
+   "versionId": "g38c5ddb",
+   "eventDate": "14-02-2016",
+   "lastUpdated": "2023-12-06T11:57:59.662+0000",
+   "artist": {
+    "mbid": "b3785a55-2cf6-497d-b8e3-cfa21a36f997",
+    "name": "EXO",
+    "sortName": "EXO",
+    "disambiguation": "South Korean-Chinese boy group",
+    "url": "https://www.setlist.fm/setlists/exo-7bd10a40.html"
+   },
+   "venue": {
+    "id": "3d6c967",
+    "name": "Los Angeles Sports Arena",
+    "city": {
+     "id": "5368361",
+     "name": "Los Angeles",
+     "state": "California",
+     "stateCode": "CA",
+     "coords": {
+      "lat": 34.052,
+      "long": -118.244
+     },
+     "country": {
+      "code": "US",
+      "name": "United States"
+     }
+    },
+    "url": "https://www.setlist.fm/venue/los-angeles-sports-arena-los-angeles-ca-usa-3d6c967.html"
+   },
+   "tour": {
+    "name": "EXO PLANET #2 – The EXO'luXion"
+   },
+   "sets": {
+    "set": [
+     {
+      "song": [
+       {
+        "name": "EXO'luXion",
+        "tape": true,
+        "info": "Opening VCR + Intro"
+       },
+       {
+        "name": "Overdose"
+       },
+       {
+        "name": "History"
+       },
+       {
+        "name": "MAMA",
+        "info": "Shortened"
+       },
+       {
+        "name": "Opening ment",
+        "tape": true
+       },
+       {
+        "name": "Don't Go"
+       },
+       {
+        "name": "PLAYBOY"
+       },
+       {
+        "name": "Baby, Don't Cry",
+        "info": "Suho, Baekhyun, Chanyeol, D.O.; w/ Kai & Sehun outro dance"
+       },
+       {
+        "name": "MY ANSWER",
+        "info": "Suho, Baekhyun, D.O.; Baekhyun on piano"
+       },
+       {
+        "name": "VCR MV - My Turn To Cry",
+        "tape": true
+       },
+       {
+        "name": "The Star"
+       },
+       {
+        "name": "EXODUS"
+       },
+       {
+        "name": "HURT"
+       },
+       {
+        "name": "VCR 3",
+        "tape": true
+       },
+       {
+        "name": "Peter Pan"
+       },
+       {
+        "name": "XOXO"
+       },
+       {
+        "name": "Lucky"
+       },
+       {
+        "name": "3.6.5"
+       },
+       {
+        "name": "Ment 2",
+        "tape": true
+       },
+       {
+        "name": "Christmas Day"
+       },
+       {
+        "name": "The First Snow"
+       },
+       {
+        "name": "Miracles in December",
+        "info": "Baekhyun, Chen, D.O."
+       },
+       {
+        "name": "Full Moon"
+       },
+       {
+        "name": "Machine",
+        "info": "Shortened"
+       },
+       {
+        "name": "Drop That",
+        "info": "Korean Ver.; shortened"
+       },
+       {
+        "name": "Let Out The Beast",
+        "info": "Shortened; remix"
+       },
+       {
+        "name": "Run",
+        "info": "Remix"
+       },
+       {
+        "name": "Going Crazy VCR",
+        "tape": true
+       },
+       {
+        "name": "CALL ME BABY"
+       },
+       {
+        "name": "One Love"
+       },
+       {
+        "name": "Growl"
+       },
+       {
+        "name": "Ment 3",
+        "tape": true
+       },
+       {
+        "name": "LOVE ME RIGHT"
+       }
+      ]
+     },
+     {
+      "encore": 1,
+      "song": [
+       {
+        "name": "Promise VCR",
+        "tape": true
+       },
+       {
+        "name": "Sing For You"
+       },
+       {
+        "name": "Closing ment",
+        "tape": true
+       },
+       {
+        "name": "Unfair"
+       }
+      ]
+     }
+    ]
+   },
+   "url": "https://www.setlist.fm/setlist/exo/2016/los-angeles-sports-arena-los-angeles-ca-33b640bd.html"
+  },
+  {
+   "id": "63fb8abb",
+   "versionId": "1b544dc0",
+   "eventDate": "31-12-2015",
+   "lastUpdated": "2016-12-01T12:06:27.000+0000",
+   "artist": {
+    "mbid": "5259b7e7-3c14-4aa5-838e-15423f90125c",
+    "name": "Blue Bird",
+    "sortName": "Blue Bird",
+    "disambiguation": "",
+    "url": "https://www.setlist.fm/setlists/blue-bird-3bc6c404.html"
+   },
+   "venue": {
+    "id": "3d6c967",
+    "name": "Los Angeles Sports Arena",
+    "city": {
+     "id": "5368361",
+     "name": "Los Angeles",
+     "state": "California",
+     "stateCode": "CA",
+     "coords": {
+      "lat": 34.052,
+      "long": -118.244
+     },
+     "country": {
+      "code": "US",
+      "name": "United States"
+     }
+    },
+    "url": "https://www.setlist.fm/venue/los-angeles-sports-arena-los-angeles-ca-usa-3d6c967.html"
+   },
+   "sets": {
+    "set": [
+     {
+      "song": [
+       {
+        "name": "Republic"
+       }
+      ]
+     }
+    ]
+   },
+   "url": "https://www.setlist.fm/setlist/blue-bird/2015/los-angeles-sports-arena-los-angeles-ca-63fb8abb.html"
+  },
+  {
+   "id": "3bf564ec",
+   "versionId": "6bbabe7a",
+   "eventDate": "14-11-2015",
+   "lastUpdated": "2015-11-16T19:41:16.000+0000",
+   "artist": {
+    "mbid": "96f6ec97-998c-4991-b836-7b71feb3ca6f",
+    "name": "TOKiMONSTA",
+    "sortName": "TOKiMONSTA",
+    "disambiguation": "",
+    "url": "https://www.setlist.fm/setlists/tokimonsta-bd46122.html"
+   },
+   "venue": {
+    "id": "3d6c967",
+    "name": "Los Angeles Sports Arena",
+    "city": {
+     "id": "5368361",
+     "name": "Los Angeles",
+     "state": "California",
+     "stateCode": "CA",
+     "coords": {
+      "lat": 34.052,
+      "long": -118.244
+     },
+     "country": {
+      "code": "US",
+      "name": "United States"
+     }
+    },
+    "url": "https://www.setlist.fm/venue/los-angeles-sports-arena-los-angeles-ca-usa-3d6c967.html"
+   },
+   "sets": {
+    "set": []
+   },
+   "url": "https://www.setlist.fm/setlist/tokimonsta/2015/los-angeles-sports-arena-los-angeles-ca-3bf564ec.html"
+  },
+  {
+   "id": "3bf56458",
+   "versionId": "23babcbf",
+   "eventDate": "14-11-2015",
+   "lastUpdated": "2015-11-16T18:05:08.000+0000",
+   "artist": {
+    "mbid": "cae09884-f473-460a-a04a-4dd3fc69cf6e",
+    "name": "Pouya",
+    "sortName": "Pouya",
+    "disambiguation": "US rapper",
+    "url": "https://www.setlist.fm/setlists/pouya-63d452a7.html"
+   },
+   "venue": {
+    "id": "3d6c967",
+    "name": "Los Angeles Sports Arena",
+    "city": {
+     "id": "5368361",
+     "name": "Los Angeles",
+     "state": "California",
+     "stateCode": "CA",
+     "coords": {
+      "lat": 34.052,
+      "long": -118.244
+     },
+     "country": {
+      "code": "US",
+      "name": "United States"
+     }
+    },
+    "url": "https://www.setlist.fm/venue/los-angeles-sports-arena-los-angeles-ca-usa-3d6c967.html"
+   },
+   "sets": {
+    "set": []
+   },
+   "url": "https://www.setlist.fm/setlist/pouya/2015/los-angeles-sports-arena-los-angeles-ca-3bf56458.html"
+  },
+  {
+   "id": "3bf5643c",
+   "versionId": "5bbabf10",
+   "eventDate": "14-11-2015",
+   "lastUpdated": "2015-11-16T18:54:12.000+0000",
+   "artist": {
+    "mbid": "e9aeb584-4729-46f0-bd90-bb8113722326",
+    "name": "Mr. Carmack",
+    "sortName": "Mr. Carmack",
+    "disambiguation": "",
+    "url": "https://www.setlist.fm/setlists/mr-carmack-73dc4a99.html"
+   },
+   "venue": {
+    "id": "3d6c967",
+    "name": "Los Angeles Sports Arena",
+    "city": {
+     "id": "5368361",
+     "name": "Los Angeles",
+     "state": "California",
+     "stateCode": "CA",
+     "coords": {
+      "lat": 34.052,
+      "long": -118.244
+     },
+     "country": {
+      "code": "US",
+      "name": "United States"
+     }
+    },
+    "url": "https://www.setlist.fm/venue/los-angeles-sports-arena-los-angeles-ca-usa-3d6c967.html"
+   },
+   "sets": {
+    "set": []
+   },
+   "url": "https://www.setlist.fm/setlist/mr-carmack/2015/los-angeles-sports-arena-los-angeles-ca-3bf5643c.html"
+  },
+  {
+   "id": "3bf56438",
+   "versionId": "4bbabf26",
+   "eventDate": "14-11-2015",
+   "lastUpdated": "2015-11-16T18:49:30.000+0000",
+   "artist": {
+    "mbid": "960afc67-9c21-46dd-9c7f-ff2b509e3150",
+    "name": "Danny Brown",
+    "sortName": "Brown, Danny",
+    "disambiguation": "US rapper",
+    "url": "https://www.setlist.fm/setlists/danny-brown-7bd0e2b8.html"
+   },
+   "venue": {
+    "id": "3d6c967",
+    "name": "Los Angeles Sports Arena",
+    "city": {
+     "id": "5368361",
+     "name": "Los Angeles",
+     "state": "California",
+     "stateCode": "CA",
+     "coords": {
+      "lat": 34.052,
+      "long": -118.244
+     },
+     "country": {
+      "code": "US",
+      "name": "United States"
+     }
+    },
+    "url": "https://www.setlist.fm/venue/los-angeles-sports-arena-los-angeles-ca-usa-3d6c967.html"
+   },
+   "sets": {
+    "set": []
+   },
+   "url": "https://www.setlist.fm/setlist/danny-brown/2015/los-angeles-sports-arena-los-angeles-ca-3bf56438.html"
+  },
+  {
+   "id": "33f56c39",
+   "versionId": "g2bbf9cae",
+   "eventDate": "14-11-2015",
+   "lastUpdated": "2024-04-14T13:10:00.623+0000",
+   "artist": {
+    "mbid": "f6beac20-5dfe-4d1f-ae02-0b0a740aafd6",
+    "name": "Tyler, The Creator",
+    "sortName": "Tyler, The Creator",
+    "disambiguation": "",
+    "url": "https://www.setlist.fm/setlists/tyler-the-creator-73d2e2cd.html"
+   },
+   "venue": {
+    "id": "3d6c967",
+    "name": "Los Angeles Sports Arena",
+    "city": {
+     "id": "5368361",
+     "name": "Los Angeles",
+     "state": "California",
+     "stateCode": "CA",
+     "coords": {
+      "lat": 34.052,
+      "long": -118.244
+     },
+     "country": {
+      "code": "US",
+      "name": "United States"
+     }
+    },
+    "url": "https://www.setlist.fm/venue/los-angeles-sports-arena-los-angeles-ca-usa-3d6c967.html"
+   },
+   "tour": {
+    "name": "Rocky And Tyler Tour"
+   },
+   "sets": {
+    "set": [
+     {
+      "song": [
+       {
+        "name": "BUFFALO"
+       },
+       {
+        "name": "DEATHCAMP"
+       },
+       {
+        "name": "Tron Cat"
+       },
+       {
+        "name": "Sam (Is Dead)",
+        "cover": {
+         "mbid": "519336c2-f5a3-4137-a88e-58fecc604575",
+         "name": "Odd Future",
+         "sortName": "Odd Future",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/odd-future-63d2f2db.html"
+        },
+        "with": {
+         "mbid": "0ad99596-cbec-4726-af16-138e2a9268a1",
+         "name": "Domo Genesis",
+         "sortName": "Domo Genesis",
+         "disambiguation": "Odd Future member",
+         "url": "https://www.setlist.fm/setlists/domo-genesis-5bd20f3c.html"
+        }
+       },
+       {
+        "name": "Bimmer"
+       },
+       {
+        "name": "RUN"
+       },
+       {
+        "name": "Jamba"
+       },
+       {
+        "name": "IFHY"
+       },
+       {
+        "name": "Domo23"
+       },
+       {
+        "name": "FUCKING YOUNG"
+       },
+       {
+        "name": "Yonkers"
+       },
+       {
+        "name": "Fuck It"
+       },
+       {
+        "name": "THE BROWN STAINS OF DARKEESE LATIFAH PART 6–12 (REMIX)",
+        "with": {
+         "mbid": "bce6d667-cde8-485e-b078-c0a05adea36d",
+         "name": "ScHoolboy Q",
+         "sortName": "ScHoolboy Q",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/schoolboy-q-5bd217fc.html"
+        }
+       },
+       {
+        "name": "SMUCKERS"
+       },
+       {
+        "name": "Tamale",
+        "with": {
+         "mbid": "149f91ef-1287-46da-9a8e-87fee02f1471",
+         "name": "Pharrell Williams",
+         "sortName": "Williams, Pharrell",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/pharrell-williams-23d6e08b.html"
+        }
+       },
+       {
+        "name": "KEEP DA O'S"
+       }
+      ]
+     }
+    ]
+   },
+   "url": "https://www.setlist.fm/setlist/tyler-the-creator/2015/los-angeles-sports-arena-los-angeles-ca-33f56c39.html"
+  },
+  {
+   "id": "33f564f5",
+   "versionId": "5bbabf8c",
+   "eventDate": "14-11-2015",
+   "lastUpdated": "2015-11-16T19:39:47.000+0000",
+   "artist": {
+    "mbid": "0780be69-eb62-4ffa-bb76-e4f466f4fc47",
+    "name": "AmpLive",
+    "sortName": "AmpLive",
+    "disambiguation": "hip hop producer & DJ",
+    "url": "https://www.setlist.fm/setlists/amplive-3d6cd57.html"
+   },
+   "venue": {
+    "id": "3d6c967",
+    "name": "Los Angeles Sports Arena",
+    "city": {
+     "id": "5368361",
+     "name": "Los Angeles",
+     "state": "California",
+     "stateCode": "CA",
+     "coords": {
+      "lat": 34.052,
+      "long": -118.244
+     },
+     "country": {
+      "code": "US",
+      "name": "United States"
+     }
+    },
+    "url": "https://www.setlist.fm/venue/los-angeles-sports-arena-los-angeles-ca-usa-3d6c967.html"
+   },
+   "sets": {
+    "set": []
+   },
+   "url": "https://www.setlist.fm/setlist/amplive/2015/los-angeles-sports-arena-los-angeles-ca-33f564f5.html"
+  },
+  {
+   "id": "33f5643d",
+   "versionId": "g7b77e600",
+   "eventDate": "14-11-2015",
+   "lastUpdated": "2025-06-23T23:22:18.444+0000",
+   "artist": {
+    "mbid": "ceb3f5b7-9f1a-430f-afbe-976fdcf30482",
+    "name": "Jhené Aiko",
+    "sortName": "Aiko, Jhené",
+    "disambiguation": "",
+    "url": "https://www.setlist.fm/setlists/jhene-aiko-73d02a0d.html"
+   },
+   "venue": {
+    "id": "3d6c967",
+    "name": "Los Angeles Sports Arena",
+    "city": {
+     "id": "5368361",
+     "name": "Los Angeles",
+     "state": "California",
+     "stateCode": "CA",
+     "coords": {
+      "lat": 34.052,
+      "long": -118.244
+     },
+     "country": {
+      "code": "US",
+      "name": "United States"
+     }
+    },
+    "url": "https://www.setlist.fm/venue/los-angeles-sports-arena-los-angeles-ca-usa-3d6c967.html"
+   },
+   "sets": {
+    "set": [
+     {
+      "song": [
+       {
+        "name": "Limbo Limbo Limbo"
+       },
+       {
+        "name": "To Love & Die"
+       },
+       {
+        "name": "Spotless Mind"
+       },
+       {
+        "name": "Bed Peace"
+       },
+       {
+        "name": "B's & H's"
+       },
+       {
+        "name": "3:16AM"
+       },
+       {
+        "name": "Comfort Inn Ending (Freestyle)"
+       },
+       {
+        "name": "Beware",
+        "cover": {
+         "mbid": "942a9807-9c1a-4a0e-a285-1fde2c5be9d1",
+         "name": "Big Sean",
+         "sortName": "Big Sean",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/big-sean-4bd4bbae.html"
+        },
+        "with": {
+         "mbid": "942a9807-9c1a-4a0e-a285-1fde2c5be9d1",
+         "name": "Big Sean",
+         "sortName": "Big Sean",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/big-sean-4bd4bbae.html"
+        }
+       },
+       {
+        "name": "I Know",
+        "cover": {
+         "mbid": "942a9807-9c1a-4a0e-a285-1fde2c5be9d1",
+         "name": "Big Sean",
+         "sortName": "Big Sean",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/big-sean-4bd4bbae.html"
+        },
+        "with": {
+         "mbid": "942a9807-9c1a-4a0e-a285-1fde2c5be9d1",
+         "name": "Big Sean",
+         "sortName": "Big Sean",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/big-sean-4bd4bbae.html"
+        }
+       },
+       {
+        "name": "From Time",
+        "cover": {
+         "mbid": "9fff2f8a-21e6-47de-a2b8-7f449929d43f",
+         "name": "Drake",
+         "sortName": "Drake",
+         "disambiguation": "Canadian rapper",
+         "url": "https://www.setlist.fm/setlists/drake-23d774a3.html"
+        }
+       },
+       {
+        "name": "The Worst"
+       },
+       {
+        "name": "Post to Be",
+        "cover": {
+         "mbid": "3ca09fae-fdee-4771-bab9-244708515a98",
+         "name": "Omarion",
+         "sortName": "Omarion",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/omarion-1bd699a8.html"
+        }
+       }
+      ]
+     }
+    ]
+   },
+   "url": "https://www.setlist.fm/setlist/jhene-aiko/2015/los-angeles-sports-arena-los-angeles-ca-33f5643d.html"
+  },
+  {
+   "id": "33f56439",
+   "versionId": "5bbabf20",
+   "eventDate": "14-11-2015",
+   "lastUpdated": "2015-11-16T18:49:10.000+0000",
+   "artist": {
+    "mbid": "fc7376fe-1a6f-4414-b4a7-83f50ed59c92",
+    "name": "Flying Lotus",
+    "sortName": "Flying Lotus",
+    "disambiguation": "",
+    "url": "https://www.setlist.fm/setlists/flying-lotus-1bd6856c.html"
+   },
+   "venue": {
+    "id": "3d6c967",
+    "name": "Los Angeles Sports Arena",
+    "city": {
+     "id": "5368361",
+     "name": "Los Angeles",
+     "state": "California",
+     "stateCode": "CA",
+     "coords": {
+      "lat": 34.052,
+      "long": -118.244
+     },
+     "country": {
+      "code": "US",
+      "name": "United States"
+     }
+    },
+    "url": "https://www.setlist.fm/venue/los-angeles-sports-arena-los-angeles-ca-usa-3d6c967.html"
+   },
+   "sets": {
+    "set": []
+   },
+   "url": "https://www.setlist.fm/setlist/flying-lotus/2015/los-angeles-sports-arena-los-angeles-ca-33f56439.html"
+  },
+  {
+   "id": "33f56435",
+   "versionId": "g13de69e9",
+   "eventDate": "14-11-2015",
+   "lastUpdated": "2021-06-26T21:09:02.345+0000",
+   "artist": {
+    "mbid": "6bbfc71b-5f18-4e61-82fb-bee0c2a6b5f9",
+    "name": "WILLOW",
+    "sortName": "WILLOW",
+    "disambiguation": "Willow Smith",
+    "url": "https://www.setlist.fm/setlists/willow-43d547d3.html"
+   },
+   "venue": {
+    "id": "3d6c967",
+    "name": "Los Angeles Sports Arena",
+    "city": {
+     "id": "5368361",
+     "name": "Los Angeles",
+     "state": "California",
+     "stateCode": "CA",
+     "coords": {
+      "lat": 34.052,
+      "long": -118.244
+     },
+     "country": {
+      "code": "US",
+      "name": "United States"
+     }
+    },
+    "url": "https://www.setlist.fm/venue/los-angeles-sports-arena-los-angeles-ca-usa-3d6c967.html"
+   },
+   "sets": {
+    "set": [
+     {
+      "song": [
+       {
+        "name": "Why Don't You Cry"
+       },
+       {
+        "name": "Whip My Hair"
+       }
+      ]
+     }
+    ]
+   },
+   "info": "Setlist incomplete and out of order",
+   "url": "https://www.setlist.fm/setlist/willow/2015/los-angeles-sports-arena-los-angeles-ca-33f56435.html"
+  },
+  {
+   "id": "33f56431",
+   "versionId": "g365790f",
+   "eventDate": "14-11-2015",
+   "lastUpdated": "2025-11-12T01:11:33.378+0000",
+   "artist": {
+    "mbid": "3039780c-6db4-499a-8b22-ddd0bb7da0af",
+    "name": "Trash Talk",
+    "sortName": "Trash Talk",
+    "disambiguation": "American hardcore punk band",
+    "url": "https://www.setlist.fm/setlists/trash-talk-63d6d6ef.html"
+   },
+   "venue": {
+    "id": "3d6c967",
+    "name": "Los Angeles Sports Arena",
+    "city": {
+     "id": "5368361",
+     "name": "Los Angeles",
+     "state": "California",
+     "stateCode": "CA",
+     "coords": {
+      "lat": 34.052,
+      "long": -118.244
+     },
+     "country": {
+      "code": "US",
+      "name": "United States"
+     }
+    },
+    "url": "https://www.setlist.fm/venue/los-angeles-sports-arena-los-angeles-ca-usa-3d6c967.html"
+   },
+   "sets": {
+    "set": [
+     {
+      "song": [
+       {
+        "name": "The Dogman"
+       },
+       {
+        "name": "Walking Disease"
+       },
+       {
+        "name": "The Great Escape"
+       },
+       {
+        "name": "Manifest Destination"
+       },
+       {
+        "name": "Hash Wednesday"
+       },
+       {
+        "name": "Blind Evolution"
+       },
+       {
+        "name": "Envy"
+       },
+       {
+        "name": "Awake"
+       },
+       {
+        "name": "Destroy"
+       },
+       {
+        "name": "Sacramento Is Dead"
+       }
+      ]
+     }
+    ]
+   },
+   "info": "Setlist incomplete",
+   "url": "https://www.setlist.fm/setlist/trash-talk/2015/los-angeles-sports-arena-los-angeles-ca-33f56431.html"
+  },
+  {
+   "id": "2bf56c32",
+   "versionId": "43bd531b",
+   "eventDate": "14-11-2015",
+   "lastUpdated": "2015-11-15T16:58:07.000+0000",
+   "artist": {
+    "mbid": "ef954679-5ee7-4016-acef-7ac71f2fa3d8",
+    "name": "Atmosphere",
+    "sortName": "Atmosphere",
+    "disambiguation": "Minneapolis hip hop duo Slug & Ant",
+    "url": "https://www.setlist.fm/setlists/atmosphere-63d6c637.html"
+   },
+   "venue": {
+    "id": "3d6c967",
+    "name": "Los Angeles Sports Arena",
+    "city": {
+     "id": "5368361",
+     "name": "Los Angeles",
+     "state": "California",
+     "stateCode": "CA",
+     "coords": {
+      "lat": 34.052,
+      "long": -118.244
+     },
+     "country": {
+      "code": "US",
+      "name": "United States"
+     }
+    },
+    "url": "https://www.setlist.fm/venue/los-angeles-sports-arena-los-angeles-ca-usa-3d6c967.html"
+   },
+   "sets": {
+    "set": []
+   },
+   "url": "https://www.setlist.fm/setlist/atmosphere/2015/los-angeles-sports-arena-los-angeles-ca-2bf56c32.html"
+  },
+  {
+   "id": "2bf564fe",
+   "versionId": "2bbab412",
+   "eventDate": "14-11-2015",
+   "lastUpdated": "2015-11-17T04:26:31.000+0000",
+   "artist": {
+    "mbid": "519336c2-f5a3-4137-a88e-58fecc604575",
+    "name": "Odd Future",
+    "sortName": "Odd Future",
+    "disambiguation": "",
+    "url": "https://www.setlist.fm/setlists/odd-future-63d2f2db.html"
+   },
+   "venue": {
+    "id": "3d6c967",
+    "name": "Los Angeles Sports Arena",
+    "city": {
+     "id": "5368361",
+     "name": "Los Angeles",
+     "state": "California",
+     "stateCode": "CA",
+     "coords": {
+      "lat": 34.052,
+      "long": -118.244
+     },
+     "country": {
+      "code": "US",
+      "name": "United States"
+     }
+    },
+    "url": "https://www.setlist.fm/venue/los-angeles-sports-arena-los-angeles-ca-usa-3d6c967.html"
+   },
+   "sets": {
+    "set": []
+   },
+   "info": "Only Mike G, Domo Genesis, Hodgy Beats, and Left Brain.",
+   "url": "https://www.setlist.fm/setlist/odd-future/2015/los-angeles-sports-arena-los-angeles-ca-2bf564fe.html"
+  },
+  {
+   "id": "2bf5646a",
+   "versionId": "1ba27d74",
+   "eventDate": "14-11-2015",
+   "lastUpdated": "2016-04-16T17:25:30.000+0000",
+   "artist": {
+    "mbid": "25b7b584-d952-4662-a8b9-dd8cdfbfeb64",
+    "name": "A$AP Rocky",
+    "sortName": "ASAP Rocky",
+    "disambiguation": "US rapper",
+    "url": "https://www.setlist.fm/setlists/aap-rocky-bd3e58e.html"
+   },
+   "venue": {
+    "id": "3d6c967",
+    "name": "Los Angeles Sports Arena",
+    "city": {
+     "id": "5368361",
+     "name": "Los Angeles",
+     "state": "California",
+     "stateCode": "CA",
+     "coords": {
+      "lat": 34.052,
+      "long": -118.244
+     },
+     "country": {
+      "code": "US",
+      "name": "United States"
+     }
+    },
+    "url": "https://www.setlist.fm/venue/los-angeles-sports-arena-los-angeles-ca-usa-3d6c967.html"
+   },
+   "tour": {
+    "name": "Rocky And Tyler Tour"
+   },
+   "sets": {
+    "set": [
+     {
+      "song": [
+       {
+        "name": "Hella Hoes",
+        "cover": {
+         "mbid": "938bbcc7-3c04-4209-85fb-fa8b3dcd2672",
+         "name": "A$AP Mob",
+         "sortName": "ASAP Mob",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/aap-mob-23df9023.html"
+        }
+       },
+       {
+        "name": "L$D"
+       },
+       {
+        "name": "Off the Rip",
+        "cover": {
+         "mbid": "45dc5f07-6609-4760-a933-8c9e0f858d05",
+         "name": "French Montana",
+         "sortName": "French Montana",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/french-montana-3d28907.html"
+        }
+       }
+      ]
+     }
+    ]
+   },
+   "url": "https://www.setlist.fm/setlist/aap-rocky/2015/los-angeles-sports-arena-los-angeles-ca-2bf5646a.html"
+  },
+  {
+   "id": "2bf56466",
+   "versionId": "33babcdd",
+   "eventDate": "14-11-2015",
+   "lastUpdated": "2015-11-16T17:59:00.000+0000",
+   "artist": {
+    "mbid": "ca7e5899-0934-4f35-b153-60562b8f9e9d",
+    "name": "Living Legends",
+    "sortName": "Living Legends",
+    "disambiguation": "California underground hip-hop collective",
+    "url": "https://www.setlist.fm/setlists/living-legends-73d6c629.html"
+   },
+   "venue": {
+    "id": "3d6c967",
+    "name": "Los Angeles Sports Arena",
+    "city": {
+     "id": "5368361",
+     "name": "Los Angeles",
+     "state": "California",
+     "stateCode": "CA",
+     "coords": {
+      "lat": 34.052,
+      "long": -118.244
+     },
+     "country": {
+      "code": "US",
+      "name": "United States"
+     }
+    },
+    "url": "https://www.setlist.fm/venue/los-angeles-sports-arena-los-angeles-ca-usa-3d6c967.html"
+   },
+   "sets": {
+    "set": []
+   },
+   "url": "https://www.setlist.fm/setlist/living-legends/2015/los-angeles-sports-arena-los-angeles-ca-2bf56466.html"
+  },
+  {
+   "id": "2bf5643e",
+   "versionId": "5bbabf1c",
+   "eventDate": "14-11-2015",
+   "lastUpdated": "2015-11-16T18:53:27.000+0000",
+   "artist": {
+    "mbid": "45804465-4271-4e6a-b881-ce668ef09530",
+    "name": "The Internet",
+    "sortName": "Internet, The",
+    "disambiguation": "Syd the Kid & Matt Martians",
+    "url": "https://www.setlist.fm/setlists/the-internet-2bd01402.html"
+   },
+   "venue": {
+    "id": "3d6c967",
+    "name": "Los Angeles Sports Arena",
+    "city": {
+     "id": "5368361",
+     "name": "Los Angeles",
+     "state": "California",
+     "stateCode": "CA",
+     "coords": {
+      "lat": 34.052,
+      "long": -118.244
+     },
+     "country": {
+      "code": "US",
+      "name": "United States"
+     }
+    },
+    "url": "https://www.setlist.fm/venue/los-angeles-sports-arena-los-angeles-ca-usa-3d6c967.html"
+   },
+   "sets": {
+    "set": []
+   },
+   "url": "https://www.setlist.fm/setlist/the-internet/2015/los-angeles-sports-arena-los-angeles-ca-2bf5643e.html"
+  }
+ ]
+}

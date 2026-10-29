@@ -2,8 +2,8 @@
   "_meta": {
     "generated_by": "scripts/dump-default-history.py",
     "source": "ShowAllEntityData/ShowAllEntityData.user.js",
-    "head": "52ff69e551f1950b1b3e71edec6d49a1edf97e9f",
-    "revisions_walked": 1087
+    "head": "80241d32c1f8518616b4f408ca19427ba17a6c7a",
+    "revisions_walked": 1123
   },
   "changes": [
     {
@@ -721,6 +721,7 @@
     "sa_sidebar_link_groups": true,
     "sa_sidebar_picture": true,
     "sa_sidebar_picture_in_header": true,
+    "sa_entity_images": true,
     "sa_sidebar_tables_button": false,
     "sa_sidebar_inline_main": true,
     "sa_sidebar_inline_collapsed": false,
@@ -952,6 +953,7 @@
     "sa_enable_release_tracks_length_mismatch_flag": true,
     "sa_enable_release_tracks_video_medium_flag": true,
     "sa_enable_release_tracks_no_work_flag": true,
+    "sa_release_tracks_work_suggest": true,
     "sa_release_tracks_length_mismatch_threshold_ms": 1000,
     "sa_release_tracks_length_mismatch_severe_factor": 3,
     "sa_release_tracks_length_mismatch_warn_bg": "#fff3cd",

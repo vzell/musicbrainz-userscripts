@@ -1,0 +1,179 @@
+{
+ "id": "4bf0375a",
+ "versionId": "g5bc66330",
+ "eventDate": "19-03-2016",
+ "lastUpdated": "2021-10-28T18:04:55.442+0000",
+ "artist": {
+  "mbid": "70248960-cb53-4ea4-943a-edb18f7d336f",
+  "name": "Bruce Springsteen",
+  "sortName": "Springsteen, Bruce",
+  "disambiguation": "",
+  "url": "https://www.setlist.fm/setlists/bruce-springsteen-2bd6dcce.html"
+ },
+ "venue": {
+  "id": "3d6c967",
+  "name": "Los Angeles Sports Arena",
+  "city": {
+   "id": "5368361",
+   "name": "Los Angeles",
+   "state": "California",
+   "stateCode": "CA",
+   "coords": {
+    "lat": 34.052,
+    "long": -118.244
+   },
+   "country": {
+    "code": "US",
+    "name": "United States"
+   }
+  },
+  "url": "https://www.setlist.fm/venue/los-angeles-sports-arena-los-angeles-ca-usa-3d6c967.html"
+ },
+ "tour": {
+  "name": "The River Tour 2016"
+ },
+ "sets": {
+  "set": [
+   {
+    "song": [
+     {
+      "name": "Meet Me in the City"
+     }
+    ]
+   },
+   {
+    "name": "The River",
+    "song": [
+     {
+      "name": "The Ties That Bind"
+     },
+     {
+      "name": "Sherry Darling"
+     },
+     {
+      "name": "Jackson Cage"
+     },
+     {
+      "name": "Two Hearts"
+     },
+     {
+      "name": "Independence Day"
+     },
+     {
+      "name": "Hungry Heart"
+     },
+     {
+      "name": "Out in the Street"
+     },
+     {
+      "name": "Crush on You"
+     },
+     {
+      "name": "You Can Look (But You Better Not Touch)"
+     },
+     {
+      "name": "I Wanna Marry You"
+     },
+     {
+      "name": "The River"
+     },
+     {
+      "name": "Point Blank"
+     },
+     {
+      "name": "Cadillac Ranch"
+     },
+     {
+      "name": "I'm a Rocker"
+     },
+     {
+      "name": "Fade Away"
+     },
+     {
+      "name": "Stolen Car"
+     },
+     {
+      "name": "Ramrod"
+     },
+     {
+      "name": "The Price You Pay"
+     },
+     {
+      "name": "Drive All Night"
+     },
+     {
+      "name": "Wreck on the Highway"
+     }
+    ]
+   },
+   {
+    "name": "",
+    "song": [
+     {
+      "name": "Prove It All Night"
+     },
+     {
+      "name": "My Love Will Not Let You Down"
+     },
+     {
+      "name": "Badlands"
+     },
+     {
+      "name": "Tougher Than the Rest"
+     },
+     {
+      "name": "Because the Night",
+      "cover": {
+       "mbid": "26638df8-ef34-40d1-8d93-616836b72878",
+       "name": "Patti Smith Group",
+       "sortName": "Smith, Patti, Group",
+       "disambiguation": "",
+       "url": "https://www.setlist.fm/setlists/patti-smith-group-53d657bd.html"
+      }
+     },
+     {
+      "name": "Jungleland"
+     },
+     {
+      "name": "Thunder Road"
+     }
+    ]
+   },
+   {
+    "encore": 1,
+    "song": [
+     {
+      "name": "Wrecking Ball"
+     },
+     {
+      "name": "Born to Run"
+     },
+     {
+      "name": "Dancing in the Dark"
+     },
+     {
+      "name": "Rosalita (Come Out Tonight)"
+     },
+     {
+      "name": "Tenth Avenue Freeze-Out"
+     },
+     {
+      "name": "Shout",
+      "cover": {
+       "mbid": "4a76400d-283f-492e-9754-18ef41755f81",
+       "name": "The Isley Brothers",
+       "sortName": "Isley Brothers, The",
+       "disambiguation": "",
+       "url": "https://www.setlist.fm/setlists/the-isley-brothers-3d6b943.html"
+      }
+     },
+     {
+      "name": "Bobby Jean"
+     }
+    ]
+   }
+  ]
+ },
+ "info": "Bruce dedicated \"Jungleland\" and \"Wrecking Ball\" to the LA Sports Arena's forthcoming demolition. This show marks Bruce's 34th and final performance at this venue since his first during the original River Tour on 30 Oct 1980. \"Badlands\" replaced \"It's Hard to Be a Saint in the City\" on the printed setlist. Soundcheck included: \"Meet Me in the City\", \"Tougher Than the Rest\", \"My Love Will Not Let You Down\" and \"Born in the U.S.A.\"",
+ "url": "https://www.setlist.fm/setlist/bruce-springsteen/2016/los-angeles-sports-arena-los-angeles-ca-4bf0375a.html"
+}

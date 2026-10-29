@@ -1552,8 +1552,8 @@ change asks first, inside the dialog, and <kbd>Esc</kbd> cancels the question
 before it closes the dialog. A changed setting takes effect when you reload
 the page.
 
-The Discogs token is shown only as dots. It is never copied or written to the
-export, and it can only be deleted.
+The Discogs token and the setlist.fm API key are shown only as dots. They are
+never copied or written to the export, and they can only be deleted.
 
 Like the browser cache window, this window moves by its title bar and resizes
 from its lower-right corner. Open it from the SAED menu (View → **🗄️ Script
@@ -2946,6 +2946,37 @@ once and without Tampermonkey asking first:
   a second. The token is sent only to Discogs, shows as dots in the settings,
   is never written into a saved configuration file, and loading one leaves
   your token as it is.
+
+  **setlist.fm** (a setlist, an artist's setlists, a venue) is read through
+  setlist.fm's own API, which needs a free key of your own: ⚙️ Settings → 🔎
+  EXTERNAL LINK PREVIEWS → *setlist.fm API key* (on setlist.fm: Settings →
+  API). With it, a setlist's card says where and when, the tour and how many
+  songs; its window lists every song by set (the encore too), each cover's
+  original artist linked to MusicBrainz, guests, songs from tape, the show's
+  notes, and the venue's city with a map link. An artist's or a venue's
+  window lists their setlists 20 at a time (*Load 20 more*), with a filter,
+  and counts the tours, venues or artists of what is loaded. The links in it
+  open in the same window (*Back* returns). setlist.fm has no address,
+  opening dates or attendance for a venue in its API, so those are not shown.
+  Without a key, setlist.fm links keep the plain web-page card.
+
+  A **Wikidata** item's window shows its statements (born, place of birth,
+  occupation, genres, instruments, labels, awards …; the others folded under
+  *More statements*), its picture, all its identifiers in three groups that
+  fold — *Music* first, then *Libraries and authority files* and *Other* —
+  each a link (a MusicBrainz identifier opens its window), with a filter, and
+  its Wikipedia articles. *Language* switches the names to another language.
+  A **Wikipedia** article's window shows its infobox, its opening paragraphs,
+  the other languages it is written in, and its sections: a click reads one
+  into the window (once, then kept), a second click folds it. Tables and
+  pictures inside the text are left out (a link shows a table on Wikipedia).
+  The card of both stays as quick as before; only the window asks for more.
+  Links inside these windows open in the same window too.
+
+  In the window of a **MusicBrainz** artist, place, label, event or any other
+  entity, a link to another site — Wikipedia, Wikidata, Discogs, YouTube,
+  setlist.fm or any other page — opens in the same window, with *Back*;
+  Ctrl-click opens it in a new tab instead.
 
   On discogs.com, a **MusicBrainz link inside the window** (a label's or an
   artist's site, a link in a release's notes) shows MusicBrainz's own card
