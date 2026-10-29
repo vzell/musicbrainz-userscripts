@@ -1,5 +1,23 @@
 [
   {
+    "version": "WIP.2",
+    "date": "2026-10-29",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "Link previews: in a tag's window, each kind under \"By kind\" now says what a click does when you rest the pointer on it, e.g. \"Show the 661,243 recordings tagged rock on the right, most votes first: the first 100 now, 100 more a page on demand\"; the kind already listed says so. An editor's tag window names the editor."
+        ]
+      },
+      {
+        "label": "🔧 Refactor",
+        "items": [
+          "_mbTagKindTip() gives each mb-pop-kindbtn its data-mb-tip text in _mbPopTagWindowHtml(); _MB_POP_TAG_KIND_PAGE (100). Tests: popup-mb.spec.js and popup-mb-user-lists.spec.js assert the words; scripts/mutations/poh-fixes.json (4, all caught). docs/claude/detail-pages.md, HELP."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.1",
     "date": "2026-10-29",
     "sections": [

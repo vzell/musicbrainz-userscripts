@@ -2530,7 +2530,7 @@ userscript lists that host, so Tampermonkey does not ask first).
   for a place, its area named the same way, a map link, its links and all
   of its events as a list like a work's recordings (type chips); for a
   series, every item in order, each with its kind's icon; for a tag, its genre and how many of each
-  kind it carries; a click on a kind lists its entities on the right (the
+  kind it carries (rest the pointer on a kind for what a click lists); a click on a kind lists its entities on the right (the
   biggest kind at first), read from MusicBrainz's page of that kind 100 at a
   time with *Load N more pages*, most votes first, with a filter and the
   three-way sort (a link to one kind's page, `/tag/rock/artist`, opens the

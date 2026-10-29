@@ -977,7 +977,10 @@ everything the card needs in one request.
   which drills into the `genre` kind below), the total, "By kind" — a
   Kind/Count table whose kinds are `seg` buttons in a `data-mb-tbl="tag-kinds"`
   box (the shared click handler), slugs from `SA_TAG_VALUE_CATEGORY_SLUGS`
-  (`_mbTagKindSlugs()`) — and on the right the chosen kind's List table
+  (`_mbTagKindSlugs()`), each with a hover text saying what a click lists
+  (`_mbTagKindTip()`, since 2026-10-29: the count, "most votes first" on a
+  tag's page, the editor on an editor's, the first `_MB_POP_TAG_KIND_PAGE`
+  now; the listed kind says it is listed) — and on the right the chosen kind's List table
   (`tag-kind-<slug>`), read from `<base>/<slug>?page=N` by the paged
   loader's HTML adapter (`_mbTagKindList()`, `_mbPagedHtml()`,
   `_mbParseTagKindPage()`: "N … found", `_mbPagerOf()`, a `ul` of 100 `li`

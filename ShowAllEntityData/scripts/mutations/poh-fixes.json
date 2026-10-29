@@ -1,0 +1,54 @@
+[
+  {
+    "name": "the By kind buttons have no hover text",
+    "why": "A click on a kind replaces the right column; nothing said so (vzell 2026-10-29).",
+    "edits": [
+      {
+        "find": "                `data-mb-tip title=\"${_rgEsc(_mbTagKindTip(k.s, k.slug === slug, d.name, editor))}\" ` +\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/popup-mb.spec.js",
+    "grep": "counts by kind",
+    "expect": "fail"
+  },
+  {
+    "name": "the listed kind offers itself again",
+    "why": "The kind already on the right says it would be shown, as if a click did something.",
+    "edits": [
+      {
+        "find": "        if (shown) return `These ${unit} are on the right now.`;",
+        "replace": "        if (false) return `These ${unit} are on the right now.`;"
+      }
+    ],
+    "spec": "tests/fixtures/popup-mb.spec.js",
+    "grep": "counts by kind",
+    "expect": "fail"
+  },
+  {
+    "name": "a kind of fewer than a page promises more on demand",
+    "why": "\"100 more a page\" on a kind of 2 areas.",
+    "edits": [
+      {
+        "find": "        const first = n > _MB_POP_TAG_KIND_PAGE ? ",
+        "replace": "        const first = n >= 0 ? "
+      }
+    ],
+    "spec": "tests/fixtures/popup-mb.spec.js",
+    "grep": "counts by kind",
+    "expect": "fail"
+  },
+  {
+    "name": "an editor's tag page reads as everyone's tag",
+    "why": "\"tagged live, most votes first\": an editor's page has no votes and is one editor's tagging.",
+    "edits": [
+      {
+        "find": "        const editor = /^\\/user\\//.test(base) ? (d.editor || decodeURIComponent(base.split('/')[2] || '')) : '';",
+        "replace": "        const editor = '';"
+      }
+    ],
+    "spec": "tests/fixtures/popup-mb-user-lists.spec.js",
+    "grep": "USER TAG: the window",
+    "expect": "fail"
+  }
+]

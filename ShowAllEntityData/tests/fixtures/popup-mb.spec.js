@@ -2512,6 +2512,14 @@ test.describe('MusicBrainz link previews: tags, read from the page', () => {
         // The biggest kind's list (Phase 3c): its kind page, page 1, most
         // votes first, 100 of the page's own total.
         await expect(rows.locator('button[aria-pressed="true"]')).toHaveText('Recordings');
+        // Each kind says what a click does (vzell 2026-10-29); the listed one
+        // says it is listed. A kind of fewer than a page has no "more".
+        await expect(rows.locator('button[aria-pressed="true"]')).toHaveAttribute('title', 'These recordings are on the right now.');
+        await expect(rows.filter({ hasText: 'Areas' }).locator('button')).toHaveAttribute('title',
+            'Show the 2 areas tagged alternative rock on the right, most votes first.');
+        await expect(rows.filter({ hasText: 'Release groups' }).locator('button')).toHaveAttribute('title',
+            /^Show the [\d,]+ release groups tagged alternative rock on the right, most votes first: the first 100 now, 100 more a page on demand\.$/);
+        await expect(rows.locator('button:not([data-mb-tip])')).toHaveCount(0);
         await expect(area.locator('h4', { hasText: 'Recordings ·' })).toHaveText('Recordings · 129,630');
         await expect(area.locator('.mb-dg-counts').first()).toHaveText('100 of 129,630 loaded · one segment = 100 recordings');
         const recs = area.locator('[data-mb-tbl="tag-kind-recording"] tbody tr');

@@ -60406,6 +60406,32 @@
     }
 
     /**
+     * The hover text of a "By kind" button of a tag window (vzell
+     * 2026-10-29, mockup https://claude.ai/artifact/URrn3dps1EMtnkjKBvsvag):
+     * what a click lists, how many, in which order and how much at once;
+     * the kind already listed says so. An editor's tag page names the
+     * editor and has no votes to order by.
+     *
+     * @param {{kind: string, count: number}} s - A kind of the tag record.
+     * @param {boolean} shown - It is the kind listed on the right.
+     * @param {string} tag - The tag's name.
+     * @param {string} editor - The editor of an editor's tag page, '' for a tag's.
+     * @returns {string}
+     */
+    function _mbTagKindTip(s, shown, tag, editor) {
+        const unit = s.kind.toLowerCase();
+        if (shown) return `These ${unit} are on the right now.`;
+        const n = s.count;
+        const what = n === 1 ? `the one ${unit.replace(/s$/, '')}` : `the ${n.toLocaleString('en-US')} ${unit}`;
+        const how = editor ? `${what} ${editor} tagged ${tag}` : `${what} tagged ${tag}`;
+        const first = n > _MB_POP_TAG_KIND_PAGE ? `: the first ${_MB_POP_TAG_KIND_PAGE} now, ${_MB_POP_TAG_KIND_PAGE} more a page on demand` : '';
+        return `Show ${how} on the right${editor ? '' : ', most votes first'}${first}.`;
+    }
+
+    /** Entities on one page of a tag's kind page (MusicBrainz lists 100). */
+    const _MB_POP_TAG_KIND_PAGE = 100;
+
+    /**
      * The window of a tag page or an editor's tag page (Phase 3c,
      * 2026-10-27): the facts on the left (`head`, then "By kind": every
      * kind with its count, a click lists that kind), on the right the
@@ -60425,8 +60451,10 @@
     function _mbPopTagWindowHtml(t, d, base, head, empty) {
         const kinds = _mbTagKindSlugs(d);
         const slug = _mbTagKindChosen(t, d);
+        const editor = /^\/user\//.test(base) ? (d.editor || decodeURIComponent(base.split('/')[2] || '')) : '';
         const left = head + (kinds.length ? '<h4>By kind</h4><div class="mb-dp-tbl" data-mb-tbl="tag-kinds">' + _mbPopTableHtml(['Kind', 'Count'],
             kinds.map(k => [`<button type="button" class="mb-pop-kindbtn" data-mb-tbl-act="seg" data-mb-tbl-v="${_rgEsc(k.slug)}" ` +
+                `data-mb-tip title="${_rgEsc(_mbTagKindTip(k.s, k.slug === slug, d.name, editor))}" ` +
                 `aria-pressed="${k.slug === slug}">${_rgEsc(k.s.kind)}</button>`, _rgEsc(k.s.count.toLocaleString('en-US'))]), [1]) + '</div>' : '');
         if (!slug) return `<div class="mb-dp-x"><div class="mb-dp-col">${left}</div><div class="mb-dp-col"><div class="mb-dp-xsub">${_rgEsc(empty)}</div></div></div>`;
         const sec = kinds.find(k => k.slug === slug).s;
