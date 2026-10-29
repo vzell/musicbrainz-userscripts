@@ -2,11 +2,11 @@
   "_meta": {
     "generated_by": "scripts/dump-config-defaults.py",
     "purpose": "Generated artifact. NOTHING in the userscript reads this file. See org/config-handling.org Item 4.",
-    "script_version": "9.99.1515+2026-10-29",
-    "schema_entries": 483,
+    "script_version": "9.99.1517+2026-10-29",
+    "schema_entries": 484,
     "sections": 52,
-    "settings": 431,
-    "settings_with_default": 426,
+    "settings": 432,
+    "settings_with_default": 427,
     "settings_without_default": [
       "sa_default_hidden_columns",
       "sa_rel_other_db_classes",
@@ -15,7 +15,7 @@
       "sa_unicode_char_picker_mappings"
     ],
     "types": {
-      "checkbox": 254,
+      "checkbox": 255,
       "color_picker": 62,
       "number": 53,
       "divider": 52,
@@ -448,6 +448,7 @@
     "sa_findings_bb_mbev_link_mismatch": "Find Brucebase entries whose MusicBrainz event links another entry",
     "sa_findings_bb_mbev_link_missing": "Find Brucebase entries whose MusicBrainz event has no Brucebase link",
     "sa_findings_eti_keywords": "Extra title information keywords",
+    "sa_findings_event_typography": "Title style: find ASCII punctuation in event names",
     "sa_findings_no_front_image": "Find releases whose artwork has no Front image",
     "sa_findings_no_medium_image": "Find physical releases whose artwork has no Medium image",
     "sa_findings_nonphysical_formats": "Formats that have no medium to photograph",
@@ -880,6 +881,7 @@
     "sa_findings_bb_mbev_link_mismatch": true,
     "sa_findings_bb_mbev_link_missing": true,
     "sa_findings_eti_keywords": "version, single, album, soundtrack, live, rehearsal, studio, radio, remix, mix, edit, demo, instrumental, acoustic, extended, original, remaster, remastered, take, dub, reprise, mono, stereo, bonus, karaoke",
+    "sa_findings_event_typography": true,
     "sa_findings_no_front_image": true,
     "sa_findings_no_medium_image": true,
     "sa_findings_nonphysical_formats": "Digital Media",

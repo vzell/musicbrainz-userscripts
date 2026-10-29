@@ -1,0 +1,93 @@
+[
+  {
+    "name": "a style-guide near miss is flagged again for its punctuation",
+    "why": "\"KISS - Rod Laver Arena\" already carries event-style-nearmiss, whose fix changes the same characters (vzell, 2026-10-29: skip them). Must fail on the flagging test.",
+    "edits": [
+      {
+        "find": "        if (!ev || ev.form === 'nearmiss' || (ev.live && ev.live.kind !== 'valid')) return null;",
+        "replace": "        if (!ev || (ev.live && ev.live.kind !== 'valid')) return null;"
+      }
+    ],
+    "spec": "tests/fixtures/findings-event-typography.spec.js",
+    "grep": "flags exactly the planted names",
+    "expect": "fail"
+  },
+  {
+    "name": "a live name's date is not kept out of the proposal",
+    "why": "Defensive: event-live-sep owns a live date's hyphens. Not observable today, because _mbTypographyFixed() leaves a live-form date's \"-\" alone (probe 2026-10-29: \"1975-08-13: The Bottom Line, …\" has no typoFix), so the guard only matters if that rule ever changes. Recorded as expected to pass rather than left unmentioned.",
+    "edits": [
+      {
+        "find": "            b = a.slice(0, i) + b.slice(i);",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/findings-event-typography.spec.js",
+    "grep": "flags exactly the planted names|hover card",
+    "expect": "pass"
+  },
+  {
+    "name": "an Events page does not offer the check",
+    "why": "The availability gate must count event-name columns; an Events page has no title column at all. Must fail on the offer test.",
+    "edits": [
+      {
+        "find": "            for (let i = 0; i < n; i++) if (plan.titleInfo(plan.nameOf(i)) || plan.eventName(plan.nameOf(i))) return true;",
+        "replace": "            for (let i = 0; i < n; i++) if (plan.titleInfo(plan.nameOf(i))) return true;"
+      }
+    ],
+    "spec": "tests/fixtures/findings-event-typography.spec.js",
+    "grep": "offers the Aa button",
+    "expect": "fail"
+  },
+  {
+    "name": "the panel lists warnings the page cannot have",
+    "why": "Variant A: only what the page can have; five greyed title rows on an Events page are noise. Must fail on the panel test.",
+    "edits": [
+      {
+        "find": "            if (id === _TITLE_STYLE_EVENT_ID ? !pageCols.event : !pageCols.title) return;",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/findings-event-typography.spec.js",
+    "grep": "panel lists only the event warning",
+    "expect": "fail"
+  },
+  {
+    "name": "the panel's list skips event names",
+    "why": "An event cell has no title element (_findCellTitleEl() reads recording/release/… links only), so the list needs the event path. Must fail on the panel test.",
+    "edits": [
+      {
+        "find": "                    if (cmp) out.push({ idx, was: cmp.a, now: cmp.b, note: '' });",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/findings-event-typography.spec.js",
+    "grep": "panel lists only the event warning",
+    "expect": "fail"
+  },
+  {
+    "name": "an events-only page counts \"titles\"",
+    "why": "The button and panel say names where there are only event names. Must fail on the flagging test (the button text).",
+    "edits": [
+      {
+        "find": "        return cols.title ? 'title' : 'name';",
+        "replace": "        return 'title';"
+      }
+    ],
+    "spec": "tests/fixtures/findings-event-typography.spec.js",
+    "grep": "flags exactly the planted names",
+    "expect": "fail"
+  },
+  {
+    "name": "the event warning ignores its own setting",
+    "why": "sa_findings_event_typography would do nothing. Must fail on the setting test.",
+    "edits": [
+      {
+        "find": "            enabled: _titleStyleEnabled('sa_findings_event_typography'),",
+        "replace": "            enabled: () => _titleStyleActive(),"
+      }
+    ],
+    "spec": "tests/fixtures/findings-event-typography.spec.js",
+    "grep": "its setting turns it off",
+    "expect": "fail"
+  }
+]

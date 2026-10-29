@@ -2550,8 +2550,9 @@
             default: false,
             description: 'Check every title on MusicBrainz pages against the MusicBrainz style guide on every load, ' +
                          'instead of only after "Check title style" (the Aa button in the filter bar or a sub-table ' +
-                         'heading, or the ⚠️ WARNING menu). The check finds the five title-style warnings below. It ' +
-                         'costs about 0.2 s per 10,000 distinct titles, which is why it is off by default.'
+                         'heading, or the ⚠️ WARNING menu). The check finds the title-style warnings below (five on ' +
+                         'titles, one on event names). It costs about 0.2 s per 10,000 distinct titles, which is why ' +
+                         'it is off by default.'
         },
 
         sa_findings_title_style_hint: {
@@ -2606,11 +2607,22 @@
                          '"(new song)", "(… cover)".'
         },
 
+        sa_findings_event_typography: {
+            label: 'Title style: find ASCII punctuation in event names',
+            type: 'checkbox',
+            default: true,
+            description: 'A WARNING when an event name uses a straight apostrophe or quotation mark, a hyphen-minus ' +
+                         'where a dash belongs, or three dots ("Max\'s Kansas City" for "Max’s Kansas City", ' +
+                         '"2024-2025" for "2024–2025"). Runs with the title-style check. Only punctuation: an event ' +
+                         'name follows the poster, so its capitalization is never checked. The date of a live-form ' +
+                         'name and names that almost follow the event style guide are left to their own warnings.'
+        },
+
         sa_findings_tint_title_style: {
             label: 'Highlight title-style findings as WARNING',
             type: 'checkbox',
             default: true,
-            description: 'Tint a title cell light yellow with a ⚠️ when one of the five title-style checks above ' +
+            description: 'Tint a title or event cell light yellow with a ⚠️ when one of the title-style checks above ' +
                          'found something. The menu rows and 📊 entries stay either way.'
         },
 
@@ -51345,21 +51357,33 @@
     }
 
     /**
-     * Parses an event cell with `_parseEventName()`: the first `<bdi>` inside
-     * a link, outside a `.comment`, when that link is an event's own page;
-     * `null` for anything else. Reads `textContent`, so a filter highlight
-     * inside the name is read straight through.
+     * An event cell's name element: the first `<bdi>` inside a link, outside
+     * a `.comment`, when that link is an event's own page; `null` for
+     * anything else.
+     *
+     * @param {?HTMLTableCellElement} cell
+     * @returns {?HTMLElement}
+     */
+    function _findCellEventEl(cell) {
+        if (!cell) return null;
+        for (const bdi of cell.querySelectorAll('a[href] bdi')) {
+            if (bdi.closest('.comment')) continue;
+            return _EVENT_HREF_RE.test(bdi.closest('a[href]').getAttribute('href')) ? bdi : null;
+        }
+        return null;
+    }
+
+    /**
+     * Parses an event cell with `_parseEventName()` (`_findCellEventEl()`'s
+     * element). Reads `textContent`, so a filter highlight inside the name is
+     * read straight through.
      *
      * @param {?HTMLTableCellElement} cell
      * @returns {?ReturnType<typeof _parseEventName>}
      */
     function _findCellEventName(cell) {
-        if (!cell) return null;
-        for (const bdi of cell.querySelectorAll('a[href] bdi')) {
-            if (bdi.closest('.comment')) continue;
-            return _EVENT_HREF_RE.test(bdi.closest('a[href]').getAttribute('href')) ? _parseEventName(bdi.textContent) : null;
-        }
-        return null;
+        const el = _findCellEventEl(cell);
+        return el ? _parseEventName(el.textContent) : null;
     }
 
     /**
@@ -52362,8 +52386,8 @@
 
     /**
      * Whether the last `stampFindings()` pass met a title-info column
-     * (`plan.titleInfo()`) on a MusicBrainz page: the "Check title style"
-     * row is offered only then.
+     * (`plan.titleInfo()`) or an event-name column (`plan.eventName()`) on a
+     * MusicBrainz page: the "Check title style" row is offered only then.
      * @type {boolean}
      */
     let _titleStyleAvail = false;
@@ -52375,8 +52399,11 @@
      */
     let _titleStyleLastRun = null;
 
-    /** The five title-style FINDINGS ids. */
-    const _TITLE_STYLE_IDS = ['title-case', 'title-typography', 'title-series-sep', 'title-feat', 'title-eti-remove'];
+    /** The title-style FINDINGS ids: five on titles, then the one on event names. */
+    const _TITLE_STYLE_IDS = ['title-case', 'title-typography', 'title-series-sep', 'title-feat', 'title-eti-remove', 'event-typography'];
+
+    /** The title-style id that reads event-name columns; the others read title columns. */
+    const _TITLE_STYLE_EVENT_ID = 'event-typography';
 
     /** `td` selector matching a cell that carries any title-style finding. */
     const _TITLE_STYLE_CELL_SEL = _TITLE_STYLE_IDS.map(id => `td[data-mb-findings~="${id}"]`).join(', ');
@@ -52401,7 +52428,7 @@
      */
     let _titleStyleHintDone = false;
 
-    /** @type {WeakMap<HTMLTableElement, {gen: number, has: boolean}>} `_tableHasTitleInfo()`'s memo. */
+    /** @type {WeakMap<HTMLTableElement, {gen: number, cols: {title: boolean, event: boolean}}>} `_tableStyleCols()`'s memo. */
     const _titleStyleTableMemo = new WeakMap();
 
     /** @type {WeakMap<HTMLTableRowElement[], {gen: number, length: number, n: number}>} `_titleStyleOffRows()`'s memo. */
@@ -52460,6 +52487,41 @@
         const r = el ? _mbTitleStyleCheck(el.textContent) : null;
         if (!r || !r[field]) return null;
         return { la: 'Title', lb: 'MB style', sb: 'MB style', own: 'b', a: el.textContent.replace(/\s+/g, ' ').trim(), b: r[field] };
+    }
+
+    /**
+     * The `event-typography` finding: an event name with ASCII punctuation
+     * where the typographic form belongs, as the name over its fix — or
+     * `null`. Only the punctuation rule of `_mbTitleStyleCheck()`
+     * (`typoFix`): an event name follows the poster
+     * (https://musicbrainz.org/doc/Style/Event: "reputation Stadium Tour:
+     * Seattle"), so its case is never checked. Left to the event findings
+     * that already flag them, so nothing is flagged twice: a style-guide
+     * near miss (`event-style-nearmiss`: " - " for ": ", "'23"), whose fix
+     * changes the same characters; a live-form name whose date is not
+     * valid (`event-live-invalid`/`-nearmiss`); and a valid live-form
+     * name's date (`event-live-sep`), which keeps its own characters here.
+     * `_mbTypographyFixed()` is one-for-one, so the date's characters line
+     * up in both strings.
+     *
+     * @param {HTMLTableCellElement} cell
+     * @returns {?{la: string, lb: string, sb: string, own: string, a: string, b: string}}
+     */
+    function _findingEventTypo(cell) {
+        const el = _findCellEventEl(cell);
+        if (!el) return null;
+        const a = el.textContent.replace(/\s+/g, ' ').trim();
+        const ev = _parseEventName(a);
+        if (!ev || ev.form === 'nearmiss' || (ev.live && ev.live.kind !== 'valid')) return null;
+        const r = _mbTitleStyleCheck(a);
+        if (!r || !r.typoFix) return null;
+        let b = r.typoFix;
+        if (ev.live) {
+            const i = a.indexOf(': ');
+            if (i < 0 || b.length !== a.length) return null;
+            b = a.slice(0, i) + b.slice(i);
+        }
+        return b === a ? null : { la: 'Event', lb: 'MB style', sb: 'MB style', own: 'b', a, b };
     }
 
     /**
@@ -52731,6 +52793,17 @@
                 const e = _findingTitleStyle(cell)?.etiRemove;
                 return e ? `"${e}"` : null;
             },
+            tint: _findingTintSetting('sa_findings_tint_title_style'),
+        },
+        // The sixth, on event names: punctuation only (_findingEventTypo()).
+        {
+            id: 'event-typography', level: 'warn', glyph: '’', scope: 'cell',
+            label: 'ASCII punctuation in event name',
+            tip: 'A straight apostrophe or quotation mark, a hyphen-minus where a dash belongs, or three dots for an ellipsis in an event name. The typographic form: ’ “ ” ‐ – — …. Capitalization is never checked: an event name follows the poster (https://musicbrainz.org/doc/Style/Event). A live-form date and the style-guide near misses are left to their own findings.',
+            enabled: _titleStyleEnabled('sa_findings_event_typography'),
+            cols: (name, plan) => plan.eventName(name),
+            test: cell => !!_findingEventTypo(cell),
+            compare: cell => _findingEventTypo(cell),
             tint: _findingTintSetting('sa_findings_tint_title_style'),
         },
         {
@@ -71094,7 +71167,7 @@
         _titleStyleAvail = !_foreignHost && tables.some(t => {
             const plan = plans.get(t);
             const n = t.querySelectorAll('thead tr:first-child th').length;
-            for (let i = 0; i < n; i++) if (plan.titleInfo(plan.nameOf(i))) return true;
+            for (let i = 0; i < n; i++) if (plan.titleInfo(plan.nameOf(i)) || plan.eventName(plan.nameOf(i))) return true;
             return false;
         });
         // Pass 1: every row's event key, page-wide, because the main event
@@ -87680,25 +87753,39 @@ a { color: #1565c0; }`;
     // render can reach it).
 
     /**
-     * Whether `table` has a title-info column (`Title` or one of
-     * `_uvdTitleInfoColumns()`), the columns the title-style findings read.
-     * Memoized per stamp pass.
+     * Which columns of `table` the title-style findings read: a title-info
+     * column (`Title` or one of `_uvdTitleInfoColumns()`) for the five title
+     * warnings, an event-name column (`_uvdEventNameColumns()`) for
+     * `event-typography`. Memoized per stamp pass.
      *
      * @param {HTMLTableElement} table
-     * @returns {boolean}
+     * @returns {{title: boolean, event: boolean}}
      */
-    function _tableHasTitleInfo(table) {
+    function _tableStyleCols(table) {
         const hit = _titleStyleTableMemo.get(table);
-        if (hit && hit.gen === _findingStampGen) return hit.has;
+        if (hit && hit.gen === _findingStampGen) return hit.cols;
         const titleCols = _uvdTitleInfoColumns();
+        const eventCols = _uvdEventNameColumns();
         const n = table.querySelectorAll('thead tr:first-child th').length;
-        let has = false;
-        for (let i = 0; i < n && !has; i++) {
+        const cols = { title: false, event: false };
+        for (let i = 0; i < n; i++) {
             const name = _resolveColHeaderName(table, i);
-            has = name === 'Title' || titleCols.has(name);
+            if (name === 'Title' || titleCols.has(name)) cols.title = true;
+            if (eventCols.has(name)) cols.event = true;
         }
-        _titleStyleTableMemo.set(table, { gen: _findingStampGen, has });
-        return has;
+        _titleStyleTableMemo.set(table, { gen: _findingStampGen, cols });
+        return cols;
+    }
+
+    /**
+     * What a scope's (or the page's) headline counts are made of: "title"
+     * where there is a title column, "name" where there are event names only.
+     *
+     * @param {{title: boolean}} cols - From `_tableStyleCols()`, or the page's union.
+     * @returns {('title'|'name')}
+     */
+    function _titleStyleNoun(cols) {
+        return cols.title ? 'title' : 'name';
     }
 
     /**
@@ -87720,13 +87807,17 @@ a { color: #1565c0; }`;
 
     /**
      * The scopes that get a headline button: on a multi-table page each table
-     * with a title-info column and a sub-table heading; otherwise the one
-     * table, page-wide, in the global filter bar.
+     * with a title-info or event-name column and a sub-table heading;
+     * otherwise the one table, page-wide, in the global filter bar. `cols`
+     * says which (`_tableStyleCols()`).
      *
-     * @returns {Array<{table: HTMLTableElement, rows: HTMLTableRowElement[], h3: ?HTMLElement, name: string}>}
+     * @returns {Array<{table: HTMLTableElement, rows: HTMLTableRowElement[], h3: ?HTMLElement, name: string,
+     *   cols: {title: boolean, event: boolean}}>}
      */
     function _titleStyleScopes() {
-        const pairs = _tableSourceRows().filter(p => _tableHasTitleInfo(p.table));
+        const pairs = _tableSourceRows()
+            .map(p => ({ ...p, cols: _tableStyleCols(p.table) }))
+            .filter(p => p.cols.title || p.cols.event);
         const multi = typeof groupedRows !== 'undefined' && Array.isArray(groupedRows) && groupedRows.length > 0;
         if (multi) {
             return pairs.map(p => {
@@ -87736,6 +87827,19 @@ a { color: #1565c0; }`;
             }).filter(s => s.h3);
         }
         return pairs.slice(0, 1).map(p => ({ ...p, h3: null, name: '' }));
+    }
+
+    /**
+     * Which kinds of column the page's scopes have, together — what decides
+     * the panel's warning rows (variant A of
+     * https://claude.ai/artifact/PB5NwvrZz61sMqju5qxFYu: only the warnings
+     * this page can have) and the page-wide noun.
+     *
+     * @param {Array<{cols: {title: boolean, event: boolean}}>} scopes
+     * @returns {{title: boolean, event: boolean}}
+     */
+    function _titleStylePageCols(scopes) {
+        return { title: scopes.some(s => s.cols.title), event: scopes.some(s => s.cols.event) };
     }
 
     /**
@@ -87759,10 +87863,11 @@ a { color: #1565c0; }`;
      *
      * @param {HTMLButtonElement} btn
      * @param {('idle'|'running'|'found'|'clean')} state
-     * @param {number} total - Titles in the scope.
-     * @param {number} off - Titles off-style in the scope.
+     * @param {number} total - Titles (or event names) in the scope.
+     * @param {number} off - Of those, off-style.
+     * @param {('title'|'name')} noun - `_titleStyleNoun()` of the scope.
      */
-    function _titleStyleBtnFill(btn, state, total, off) {
+    function _titleStyleBtnFill(btn, state, total, off, noun) {
         const el = (tag, cls, text) => {
             const e = document.createElement(tag);
             e.className = cls;
@@ -87770,7 +87875,7 @@ a { color: #1565c0; }`;
             return e;
         };
         const fmt = n => n.toLocaleString('en-US');
-        const titles = n => `${fmt(n)} title${n === 1 ? '' : 's'}`;
+        const titles = n => `${fmt(n)} ${noun}${n === 1 ? '' : 's'}`;
         btn.textContent = '';
         if (state === 'idle') btn.append(el('span', 'mb-ts-dot'));
         btn.append(el('span', 'mb-ts-aa', 'Aa'));
@@ -87820,6 +87925,7 @@ a { color: #1565c0; }`;
             const state = _titleStyleState(sc.rows);
             const off = state === 'found' ? _titleStyleOffRows(sc.rows) : 0;
             const n = inHeading ? sc.rows.length : total;
+            const noun = _titleStyleNoun(sc.cols);
             let btn = inHeading ? sc.h3.querySelector(':scope > .mb-title-style-btn')
                 : document.getElementById('mb-title-style-global-btn');
             if (btn && btn.dataset.mbTsState !== state) {
@@ -87841,16 +87947,21 @@ a { color: #1565c0; }`;
             if (anchor && anchor.nextElementSibling !== btn) anchor.after(btn);
             else if (!anchor && !btn.isConnected) sc.h3.appendChild(btn);
             btn._mbTsScope = sc;
-            const sig = `${state}|${n}|${off}`;
+            const sig = `${state}|${n}|${off}|${noun}`;
             if (btn.dataset.mbTsSig !== sig) {
                 btn.dataset.mbTsSig = sig;
-                _titleStyleBtnFill(btn, state, n, off);
+                _titleStyleBtnFill(btn, state, n, off, noun);
                 if (state === 'idle') {
                     const est = Math.round(total * _TS_MS_PER_TITLE);
-                    _setTip(btn, `Title style · ${n.toLocaleString('en-US')} title${n === 1 ? '' : 's'}, not checked yet\n`
-                        + 'Checks every title on this page against the MusicBrainz style guide: title case, typographic '
-                        + 'punctuation, series numbers, featured artists, extra title information. It costs about 0.2 s '
-                        + `per 10,000 titles (here ${est < 1 ? 'under a millisecond' : `about ${est} ms`}).`);
+                    const what = [
+                        sc.cols.title ? 'every title: title case, typographic punctuation, series numbers, featured '
+                            + 'artists, extra title information' : '',
+                        sc.cols.event ? 'every event name: typographic punctuation only (an event name follows the '
+                            + 'poster, so its capitalization is not checked)' : '',
+                    ].filter(Boolean).join('; and ');
+                    _setTip(btn, `Title style · ${n.toLocaleString('en-US')} ${noun}${n === 1 ? '' : 's'}, not checked yet\n`
+                        + `Checks, against the MusicBrainz style guide, ${what}. It costs about 0.2 s per 10,000 `
+                        + `titles (here ${est < 1 ? 'under a millisecond' : `about ${est} ms`}).`);
                 }
             }
             keep.add(btn);
@@ -87938,7 +88049,10 @@ a { color: #1565c0; }`;
     }
 
     /**
-     * The scope's off-style titles, in row order, for the panel's list.
+     * The scope's off-style titles and event names, in row order (a row's
+     * cells in column order), for the panel's list. An event name's
+     * proposal is its own finding's (`_findingEventTypo()`: punctuation
+     * only, the live date kept); a title's is `_titleStyleProposal()`.
      *
      * @param {{rows: HTMLTableRowElement[]}} sc
      * @returns {Array<{idx: string, was: string, now: string, note: string}>}
@@ -87946,11 +88060,18 @@ a { color: #1565c0; }`;
     function _titleStyleList(sc) {
         const out = [];
         sc.rows.forEach(row => {
-            const cell = row.querySelector(_TITLE_STYLE_CELL_SEL);
-            const el = cell && _findCellTitleEl(cell);
-            if (!el) return;
-            const was = el.textContent.replace(/\s+/g, ' ').trim();
-            out.push({ idx: row.dataset.mbRowIdx || '', was, ..._titleStyleProposal(was) });
+            row.querySelectorAll(_TITLE_STYLE_CELL_SEL).forEach(cell => {
+                const idx = row.dataset.mbRowIdx || '';
+                if (cell.dataset.mbFindings.split(' ').includes(_TITLE_STYLE_EVENT_ID)) {
+                    const cmp = _findingEventTypo(cell);
+                    if (cmp) out.push({ idx, was: cmp.a, now: cmp.b, note: '' });
+                    return;
+                }
+                const el = _findCellTitleEl(cell);
+                if (!el) return;
+                const was = el.textContent.replace(/\s+/g, ' ').trim();
+                out.push({ idx, was, ..._titleStyleProposal(was) });
+            });
         });
         return out;
     }
@@ -87964,22 +88085,28 @@ a { color: #1565c0; }`;
     function _tsPopHtml(sc) {
         const E = _ajEsc;
         const fmt = n => n.toLocaleString('en-US');
-        const titles = n => `${fmt(n)} title${n === 1 ? '' : 's'}`;
         const scopes = _titleStyleScopes();
+        const pageCols = _titleStylePageCols(scopes);
+        const pageNoun = _titleStyleNoun(pageCols);
+        const noun = _titleStyleNoun(sc.cols);
+        const titles = n => `${fmt(n)} ${noun}${n === 1 ? '' : 's'}`;
         const pageTotal = scopes.reduce((s, x) => s + x.rows.length, 0);
         const pageOff = scopes.reduce((s, x) => s + _titleStyleOffRows(x.rows), 0);
         const isTable = !!sc.h3;
         const where = isTable ? (sc.name ? `"${sc.name}"` : 'this sub-table') : 'this page';
         const off = _titleStyleOffRows(sc.rows);
+        const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
         let h = '<div class="mb-tt-ajhead">'
               + `<span class="mb-tt-title">Aa Title style${isTable && sc.name ? ` · ${E(sc.name)}` : ''}</span>`
               + (off ? '<span class="mb-tt-ajpill mb-tt-ajpill-warn">Done · issues</span>'
                      : '<span class="mb-tt-ajpill mb-tt-ajpill-ok">Done</span>')
               + '</div><div class="mb-tt-rule"></div><dl class="mb-tt-ajfacts">'
-              + `<dt>Titles checked</dt><dd>${fmt(pageTotal)}${isTable ? ` on the page, ${fmt(sc.rows.length)} in ${E(where)}` : ''}</dd>`;
+              + `<dt>${cap(pageNoun)}s checked</dt><dd>${fmt(pageTotal)}${isTable ? ` on the page, ${fmt(sc.rows.length)} in ${E(where)}` : ''}</dd>`;
         if (_titleStyleRequested && _titleStyleLastRun) h += `<dt>Took</dt><dd>${fmt(_titleStyleLastRun.ms)} ms</dd>`;
         else h += '<dt>Checked</dt><dd>by itself, on every load</dd>';
-        h += `<dt>Off-style</dt><dd>${off ? titles(off) : 'none'}${isTable ? ` here, ${fmt(pageOff)} on the page` : ''}</dd></dl>`;
+        h += `<dt>Off-style</dt><dd>${off ? titles(off) : 'none'}${isTable ? ` here, ${fmt(pageOff)} on the page` : ''}</dd>`;
+        if (pageCols.event) h += '<dt>Not checked</dt><dd>capitalization of event names (they follow the poster)</dd>';
+        h += '</dl>';
         const pageCounts = _countFindingRows();
         const scopeCounts = _findingRowTally(sc.rows);
         h += '<div class="mb-tt-rule"></div><div class="mb-tt-ajlog-h">Show only, in every table</div>'
@@ -87987,6 +88114,11 @@ a { color: #1565c0; }`;
         _TITLE_STYLE_IDS.forEach(id => {
             const f = _FINDING_BY_ID.get(id);
             if (!f || (f.enabled && !f.enabled())) return;
+            // Only the warnings this page can have (variant A of
+            // https://claude.ai/artifact/PB5NwvrZz61sMqju5qxFYu): the event
+            // warning where there are event names, the five where there are
+            // titles.
+            if (id === _TITLE_STYLE_EVENT_ID ? !pageCols.event : !pageCols.title) return;
             const np = pageCounts.get(id) || 0;
             const n = scopeCounts.get(id) || 0;
             const on = np > 0 && _findingState(f) === 'on';
@@ -88001,7 +88133,7 @@ a { color: #1565c0; }`;
         h += '</ul>';
         const list = off ? _titleStyleList(sc) : [];
         if (list.length) {
-            h += `<div class="mb-tt-rule"></div><div class="mb-tt-ajlog-h">Titles ${isTable ? `in ${E(where)}` : 'on this page'} · click to go to the row</div><ol class="mb-ts-list">`;
+            h += `<div class="mb-tt-rule"></div><div class="mb-tt-ajlog-h">${cap(noun)}s ${isTable ? `in ${E(where)}` : 'on this page'} · click to go to the row</div><ol class="mb-ts-list">`;
             list.forEach(it => {
                 const shown = !!(it.idx && sc.table.querySelector(`tbody tr[data-mb-row-idx="${CSS.escape(it.idx)}"]`));
                 h += `<li><button type="button" class="mb-ts-item${shown ? '' : ' mb-ts-item-hidden'}" data-mb-ts-row="${E(it.idx)}"${shown ? '' : ' title="Hidden by the current filter"'}>`
@@ -88268,16 +88400,23 @@ a { color: #1565c0; }`;
         const anchor = document.querySelector('.mb-title-style-btn[data-mb-ts-state="idle"]')
             || (warn && warn.btn && warn.btn.isConnected ? warn.btn : null);
         if (!anchor) return;
-        const n = _titleStyleScopes().reduce((s, x) => s + x.rows.length, 0);
+        const scopes = _titleStyleScopes();
+        const n = scopes.reduce((s, x) => s + x.rows.length, 0);
         const est = Math.round(n * _TS_MS_PER_TITLE);
+        const cols = _titleStylePageCols(scopes);
+        const noun = cols.title ? 'title' : 'event name';
+        const what = cols.title
+            ? 'title case, punctuation, series numbers, featured artists, extra title information'
+              + (cols.event ? ', and the punctuation of event names' : '')
+            : 'their punctuation (their capitalization follows the poster and is not checked)';
         const el = document.createElement('div');
         el.id = 'mb-title-style-hint';
         el.className = 'mb-tt-liner';
         el.setAttribute('role', 'dialog');
-        el.setAttribute('aria-label', 'Check these titles?');
-        el.innerHTML = '<div class="mb-ts-hint-h"><b>Aa</b> Check these titles?</div>'
-            + `<div>The ${n.toLocaleString('en-US')} title${n === 1 ? '' : 's'} on this page have not been checked against the `
-            + 'MusicBrainz style guide: title case, punctuation, series numbers, featured artists, extra title information. '
+        el.setAttribute('aria-label', `Check these ${cols.title ? 'titles' : 'names'}?`);
+        el.innerHTML = `<div class="mb-ts-hint-h"><b>Aa</b> Check these ${cols.title ? 'titles' : 'names'}?</div>`
+            + `<div>The ${n.toLocaleString('en-US')} ${noun}${n === 1 ? '' : 's'} on this page have not been checked against the `
+            + `MusicBrainz style guide: ${what}. `
             + `Here it takes ${est < 1 ? 'under a millisecond' : `about ${est.toLocaleString('en-US')} ms`}.</div>`
             + '<div class="mb-tt-ajacts">'
             + '<button type="button" class="mb-tt-ajact mb-tt-ajact-primary" data-mb-ts-hint="check">Check now</button>'

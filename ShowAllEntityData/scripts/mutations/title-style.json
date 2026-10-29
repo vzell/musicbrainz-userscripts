@@ -43,8 +43,8 @@
     "why": "The re-stamp then runs with the findings still disabled. Must fail on the stamped-titles test.",
     "edits": [
       {
-        "find": "        _titleStyleRequested = true;\n        const t0 = performance.now();",
-        "replace": "        const t0 = performance.now();"
+        "find": "        _titleStyleRequested = true;\n        _titleStyleRunning = false;",
+        "replace": "        _titleStyleRunning = false;"
       }
     ],
     "spec": "tests/fixtures/findings-title-style.spec.js",
