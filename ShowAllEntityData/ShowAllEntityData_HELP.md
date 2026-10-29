@@ -2514,7 +2514,7 @@ userscript lists that host, so Tampermonkey does not ask first).
   a work's recordings, with chips for Live, Compilation and the like and the
   covers, loaded as you scroll (a missing one leaves an empty square); for
   a label, its area named the same way, the labels it owns, is owned by or is
-  an imprint of, its links and its number of releases; for an area, its parts; for an instrument, the related
+  an imprint of, its links (on the left, under its facts) and its number of releases; for an area, its parts; for an instrument, the related
   instruments and every alias (its description is on the Live page); for an
   event, where it was held as MusicBrainz writes it (*OceanFirst Bank Center
   in West Long Branch, New Jersey, United States* — the window looks up the

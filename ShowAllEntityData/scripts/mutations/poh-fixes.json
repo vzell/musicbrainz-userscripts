@@ -50,5 +50,18 @@
     "spec": "tests/fixtures/popup-mb-user-lists.spec.js",
     "grep": "USER TAG: the window",
     "expect": "fail"
+  },
+  {
+    "name": "a label's Links back in the right column",
+    "why": "The links sat under the relationships on the right, unlike an artist's (vzell 2026-10-29).",
+    "edits": [
+      {
+        "find": "${left}${links}</div><div class=\"mb-dp-col\">${right}</div></div>`;",
+        "replace": "${left}</div><div class=\"mb-dp-col\">${right}${links}</div></div>`;"
+      }
+    ],
+    "spec": "tests/fixtures/popup-mb.spec.js",
+    "grep": "the label card and window",
+    "expect": "fail"
   }
 ]

@@ -1604,6 +1604,12 @@ test.describe('MusicBrainz link previews: artist, label, area, instrument (WIP.3
         await expect(related).toContainText('Vocalion');
         await expect(related).toContainText('Columbia/Epic Label Group');
         await expect(area.locator('.mb-dp-kv').first()).toContainText('43,171');
+        // Its links under the facts, on the left, as an artist's (vzell
+        // 2026-10-29); the right column holds the relationships only.
+        const cols = area.locator('.mb-dp-x > .mb-dp-col');
+        await expect(cols.first().locator('h4', { hasText: /^Links/ })).toHaveText('Links (27)');
+        await expect(cols.first().locator('[data-mb-tbl="links"]')).toHaveCount(1);
+        await expect(cols.last().locator('h4', { hasText: /^Links/ })).toHaveCount(0);
         expect(log.ws2.filter(u => u.includes('inc=url-rels+label-rels'))).toHaveLength(1);
         expect(log.ws2.filter(u => u.includes('/ws/2/release?label='))).toHaveLength(1);
     });

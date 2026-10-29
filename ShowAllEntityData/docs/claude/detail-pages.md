@@ -2515,7 +2515,9 @@ edits, tags and genres (`genres`, `tags`), ratings (`ratings-<i>`), ISRC
 `recordings`, ISWC `works`, disc ID `releases` (its table of contents stays
 `_mbPopTableHtml()`), annotation `versions`. HTML cells mark matches with
 `_hlHtml()`. Every `windowHtml` that builds one takes `t`. The label's
-aliases one per line (`_mbPopAliasesHtml()`). Specs: popup-mb.spec.js
+aliases one per line (`_mbPopAliasesHtml()`). The label's "Links (N)" sit
+under its facts in the LEFT column since 2026-10-29, as an artist's (the
+right column holds the relationships only). Specs: popup-mb.spec.js
 "Compact tables (Phase 3d)", the genre window's tables, and the windows'
 own tests (selectors moved to `data-mb-tbl`); popup-mb-user-lists.spec.js,
 popup-mb-annotations.spec.js. Mutations: `scripts/mutations/mb-window-compact.json`.

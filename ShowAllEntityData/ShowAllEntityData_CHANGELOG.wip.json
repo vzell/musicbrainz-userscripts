@@ -1,5 +1,23 @@
 [
   {
+    "version": "WIP.3",
+    "date": "2026-10-29",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "Link previews: a MusicBrainz label's window (on MusicBrainz, and from the MusicBrainz column on discogs.com) shows its links on the left, under its facts, as an artist's window does; the right side keeps the related labels, people, places and series."
+        ]
+      },
+      {
+        "label": "🔧 Refactor",
+        "items": [
+          "The label kind's windowHtml puts _mbPopUrlLinksTableHtml() after the facts in the first column. Test: popup-mb.spec.js \"the label card and window\"; scripts/mutations/poh-fixes.json (+1, caught). docs/claude/detail-pages.md, HELP."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.2",
     "date": "2026-10-29",
     "sections": [

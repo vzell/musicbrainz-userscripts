@@ -60884,13 +60884,16 @@
                         ['Aliases', _mbPopAliasesHtml(d.aliases)],
                     ]);
                 const ps = _mbPop.get(pin.key);
+                // The links under the facts, as an artist's (vzell
+                // 2026-10-29, mockup https://claude.ai/artifact/URrn3dps1EMtnkjKBvsvag):
+                // the right column holds the relationships only.
+                const links = ps && ps.status === 'done' && ps.data ? _mbPopUrlLinksTableHtml(t, 'links', ps.data.relations, { min: 10 }) : '';
                 const right = _mbPopSectionHtml('Related labels', ps, (p) => _mbPopKvHtml(_mbPopRelRows(p.relations, 'label')) ||
                     '<div class="mb-dp-xsub">None.</div>') +
                     _mbPopSectionHtml('People, places and series', _mbPop.get(more.key), (p) => _mbPopKvHtml(['artist', 'place', 'series']
                         .flatMap(type => _mbPopRelRowsCapped(p.relations, type, _MB_POP_LABEL_REL_CAP))) ||
-                        '<div class="mb-dp-xsub">None.</div>') +
-                    (ps && ps.status === 'done' && ps.data ? _mbPopUrlLinksTableHtml(t, 'links', ps.data.relations, { min: 10 }) : '');
-                return `<div class="mb-dp-x"><div class="mb-dp-col">${left}</div><div class="mb-dp-col">${right}</div></div>`;
+                        '<div class="mb-dp-xsub">None.</div>');
+                return `<div class="mb-dp-x"><div class="mb-dp-col">${left}${links}</div><div class="mb-dp-col">${right}</div></div>`;
             },
             cardAside: _mbPopCardPicture,
             pin(t, d, again, repaint) {
