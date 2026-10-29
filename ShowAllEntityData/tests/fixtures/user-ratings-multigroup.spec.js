@@ -39,9 +39,14 @@ const openRatings = async (page, settingsOverride = {}) => {
     await page.waitForSelector('#mb-filter-container');
 };
 
-/** Expands a collapsed h3 sub-section by clicking its heading. */
+/**
+ * Expands a collapsed h3 sub-section by clicking its heading's ▲/▼ toggle
+ * icon. Not the heading's centre: a control can sit there (the title-style
+ * Aa button does, on "Release group ratings"), and a click on it is the
+ * control's, never the heading's.
+ */
 async function expandSection(page, headingText) {
-    await page.locator('h3', { hasText: headingText }).first().click();
+    await page.locator('h3', { hasText: headingText }).first().locator('.mb-toggle-icon').click();
     await page.waitForTimeout(50);
 }
 

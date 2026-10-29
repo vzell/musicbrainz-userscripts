@@ -274,7 +274,7 @@ check costs real render time: about 20 µs per distinct title in Node, so
   `sa_findings_title_style_auto`, default OFF) plus the finding's own
   `sa_findings_title_*` setting. A disabled finding is not in any plan, so
   the default render pays nothing but `_titleStyleAvail`'s header scan.
-- **The trigger is the first row of the ⚠️ WARNING menu**
+- **The first trigger is the first row of the ⚠️ WARNING menu**
   (`_titleStyleMenuRow()`, `_buildTitleStyleMenuRow()`, placement option B
   of the mockup https://claude.ai/artifact/5MUe9Ti1hGBu9tAP6PYXVV, chosen
   2026-10-20). It is offered while `_titleStyleAvail` (the last
@@ -282,6 +282,51 @@ check costs real render time: about 20 µs per distinct title in Node, so
   so `_updateFindingMenus()` now builds the WARNING menu even with no
   finding rows — the one exception to "a menu is hidden while the page has
   nothing of its kind". Without rows its label carries no "(0)".
+- **The visible triggers are the "Aa" buttons by the filters** (mockup
+  https://claude.ai/artifact/HvdfbmeTUdcR34J4TrNycD, preset "B + C",
+  approved 2026-10-29 — nobody found the menu row). `_updateTitleStyleControls()`,
+  called at the tail of `_updateFindingMenus()`, keeps one
+  `button.mb-title-style-btn` per scope (`_titleStyleScopes()`): after
+  `#mb-global-filter-exclude-label` on a single-table page
+  (`#mb-title-style-global-btn`), after `.mb-subtable-filter-container` in
+  every sub-table heading with a title-info column on a multi-table page
+  (`_tableHasTitleInfo()`, memoized per stamp generation). Same gate as the
+  menu row plus `sa_enable_findings_menus`. State in `data-mb-ts-state`
+  (`idle | running | found | clean`); a state change makes a NEW element,
+  so the idle button's `_setTip()` never reaches a later state, whose hover
+  opens the panel instead. The click stops propagation: the button sits in
+  the h3, whose handler folds the section. **Short labels and one small size
+  everywhere** ("Check title style" / "N titles off-style ▾" / "✓ Style
+  OK", 20 px), the global bar included: it does not wrap, and the mockup's
+  long labels and 24 px button pushed it past a 900 px window
+  (sticky-page-headers.spec.js, async-pop-tablework, filter-sliced; vzell
+  chose short labels 2026-10-29). Its title count is in the idle tooltip.
+  - **Counts are per scope, from SOURCE rows** (`_titleStyleOffRows()`:
+    rows with any of `_TITLE_STYLE_IDS`, memoized like
+    `_findingRowTally()`). The check itself stays page-wide
+    (`_titleStyleRequestCheck()` → one painted "Checking…" frame →
+    `_titleStyleStampNow()`, which the menu row's `_runTitleStyleCheck()`
+    shares).
+  - **The panel** `#mb-title-style-pop` (`_tsPop*`, the async pop's frame
+    and CSS; hover after `_AJ_HOVER_DELAY_MS`, leave grace
+    `_AJ_LEAVE_GRACE_MS`, click pins, Esc and an outside press close):
+    facts, the five kinds through `_toggleFinding()` — page-wide, so the
+    ⚠️ row shows the same derived state; a kind found on the page is a white
+    card with its count in a pill, one found nowhere is disabled faded text
+    with no box and "—" (variant A of
+    https://claude.ai/artifact/XFAcJ9zn5brXitDzJogXqn) — and the scope's titles with
+    `_titleStyleProposal()` (typography, case, series fixes chained, then
+    `_MBTS_ETI_REMOVE_RE`'s whole match removed; the feat note), and the
+    `sa_findings_title_style_auto` switch.
+  - **The hint** `#mb-title-style-hint` (`_titleStyleMaybeHint()`,
+    once per page load, 0.9 s after the first update, gone after 14 s):
+    Check now / Always check / Not now, "Don't show this again" →
+    `sa_findings_title_style_hint` false. A press outside it reads as "Not
+    now" (`_titleStyleHintOnPointerDown()`), so a pop-up opened later gets
+    the next Esc. Off in every Playwright load (`HARNESS_SETTINGS_ALWAYS` in
+    tests/support/loadPage.js — not `FIXTURE_SETTINGS_OVERRIDE`, which a
+    saved-data load never gets: column-filter-modes.spec.js's Esc went to
+    the hint); the title-style spec seeds it on.
 - **The click re-runs `stampFindings()`** (`_runTitleStyleCheck()`), which is
   idempotent — `initReleaseGroupLink()` included — and then shows the time
   and the memo size as the row's status line. Later fetches and disk loads
@@ -303,8 +348,10 @@ check costs real render time: about 20 µs per distinct title in Node, so
   such as "(Second Night)" is `title-case` only.
 
 Spec `tests/fixtures/findings-title-style.spec.js` (plants titles into
-`artist-releasegroups-live-titles.html`), cases
-`tests/support/mbTitleStyleCases.js` (Node and browser).
+`artist-releasegroups-live-titles.html`; the single-table button into
+`uniq-drop-pending-edits.html`), `findings-title-style.mobile.spec.js`
+(tap, no hover), cases `tests/support/mbTitleStyleCases.js` (Node and
+browser), mutations `scripts/mutations/title-style.json`.
 
 ## Counting: `_findingRowTally()` and the stamp generation
 

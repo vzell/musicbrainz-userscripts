@@ -227,3 +227,269 @@ test('the shared cases hold in the browser', async ({ page }) => {
     const bad = STYLE_CASES.map((c, i) => [c[0], c[1], got[i]]).filter(([, want, g]) => JSON.stringify(want) !== JSON.stringify(g));
     expect(bad).toEqual([]);
 });
+
+// ── The check in the filter headlines, and the first-visit hint ─────────────
+// Mockup approved 2026-10-29, preset "B + C":
+// https://claude.ai/artifact/HvdfbmeTUdcR34J4TrNycD
+//
+// Guarantees pinned:
+//   - every sub-table with titles has an idle Aa button BEFORE any check, and
+//     nothing is stamped by its presence (the cost stays opt-in);
+//   - one click checks the whole page, and each sub-table's button counts the
+//     rows OF ITS OWN TABLE (compared, in document order, with the stamped
+//     cells — a page total or a neighbour's count on every button fails);
+//   - a click on a heading's button never collapses that sub-table;
+//   - the panel's kinds are the ⚠️ menu's filters (same derived state), and
+//     its list proposes the MusicBrainz style per title;
+//   - the hint is offered once, its three answers do what they say, and
+//     "Don't show this again" is stored.
+
+/** The headline buttons in document order: scope ("page" or the sub-table name), state, text. */
+const headButtons = (page) => page.evaluate(() => Array.from(document.querySelectorAll('.mb-title-style-btn')).map((b) => {
+    const h3 = b.closest('h3');
+    const box = h3 && h3.querySelector('.mb-subtable-filter-container');
+    return { scope: h3 ? (box ? box.dataset.categoryName : '?') : 'page', state: b.dataset.mbTsState, text: b.textContent.trim() };
+}));
+
+/**
+ * Per sub-table with a heading button, in document order: its name and how
+ * many rows of its tbody carry any title-style finding — read from the
+ * stamped cells, independently of the buttons.
+ */
+const offRowsPerTable = (page) => page.evaluate((ids) => {
+    const sel = ids.map((id) => `td[data-mb-findings~="${id}"]`).join(', ');
+    return Array.from(document.querySelectorAll('h3 .mb-title-style-btn')).map((b) => {
+        const h3 = b.closest('h3');
+        let t = h3.nextElementSibling;
+        while (t && !(t.tagName === 'TABLE' && t.classList.contains('tbl'))) t = t.nextElementSibling;
+        const rows = Array.from(t.tBodies[0].rows).filter((r) => r.querySelector(sel)).length;
+        return { scope: h3.querySelector('.mb-subtable-filter-container').dataset.categoryName, rows };
+    });
+}, IDS);
+
+/** Waits until no headline button is idle or running any more. */
+const checked = async (page) => {
+    await expect.poll(() => page.evaluate(() =>
+        !!document.querySelector('.mb-title-style-btn') &&
+        !document.querySelector('.mb-title-style-btn[data-mb-ts-state="idle"], .mb-title-style-btn[data-mb-ts-state="running"]'))).toBe(true);
+};
+
+/** The open panel's kinds and list, or `null` while closed. */
+const panel = (page) => page.evaluate(() => {
+    const el = document.getElementById('mb-title-style-pop');
+    if (!el || el.style.display === 'none') return null;
+    return {
+        title: el.querySelector('.mb-tt-title').textContent,
+        kinds: Array.from(el.querySelectorAll('.mb-ts-kind')).map((k) => ({
+            id: k.dataset.mbTsKind, checked: k.getAttribute('aria-checked'), disabled: k.disabled,
+            n: k.querySelector('.mb-ts-n').textContent,
+        })),
+        list: Array.from(el.querySelectorAll('.mb-ts-item')).map((i) => [
+            i.querySelector('.mb-ts-was').textContent, i.querySelector('.mb-ts-now').textContent]),
+    };
+});
+
+/** The button of the sub-table named `name`. */
+const headBtn = (page, name) => page.locator(`h3:has(.mb-subtable-filter-container[data-category-name="${name}"]) .mb-title-style-btn`);
+
+test('headline: every sub-table with titles gets an idle Aa button, and its presence checks nothing', async ({ page }) => {
+    await open(page);
+    const btns = await headButtons(page);
+    const tables = await page.evaluate(() => document.querySelectorAll('h3.mb-toggle-h3').length);
+    expect(btns.length).toBe(tables);
+    expect(btns.length).toBeGreaterThan(1);
+    btns.forEach((b) => {
+        expect(b.scope).not.toBe('page');
+        expect(b.state).toBe('idle');
+        expect(b.text).toBe('AaCheck title style');
+    });
+    expect(await page.evaluate(() => !!document.getElementById('mb-title-style-global-btn'))).toBe(false);
+    const got = await stamped(page);
+    IDS.forEach((id) => expect(got[id].rows, id).toBe(0));
+});
+
+test('headline: one click checks the page; each sub-table counts its own rows, in order', async ({ page }) => {
+    await open(page);
+    const first = page.locator('h3 .mb-title-style-btn').first();
+    const tableShown = () => page.evaluate(() => {
+        const h3 = document.querySelector('h3 .mb-title-style-btn').closest('h3');
+        let t = h3.nextElementSibling;
+        while (t && t.tagName !== 'TABLE') t = t.nextElementSibling;
+        return t.style.display;
+    });
+    const before = await tableShown();
+    // On the inner "Aa" span: the heading's handler already ignores a click
+    // whose target is the BUTTON itself, so only a click on a child shows
+    // whether the button keeps it from the heading.
+    await first.locator('.mb-ts-aa').click();
+    await checked(page);
+    // The click reached the button, not the heading's collapse handler.
+    expect(await tableShown()).toBe(before);
+    const per = await offRowsPerTable(page);
+    const btns = await headButtons(page);
+    expect(btns.map((b) => b.scope)).toEqual(per.map((p) => p.scope));
+    btns.forEach((b, i) => {
+        const n = per[i].rows;
+        expect(b.state, b.scope).toBe(n ? 'found' : 'clean');
+        expect(b.text, b.scope).toBe(n ? `Aa${n} title${n === 1 ? '' : 's'} off-style ▾` : 'Aa✓ Style OK');
+    });
+    // Not every table alike, so a page-wide number on every button fails.
+    expect(new Set(per.map((p) => p.rows)).size).toBeGreaterThan(1);
+    expect(per.reduce((s, p) => s + p.rows, 0)).toBe(6);
+    const status = await page.evaluate(() =>
+        document.querySelector('#mb-findings-warn-menu-btn-panel .mb-findings-style-item').dataset.mbTitleStyle);
+    expect(status).toBe('done');
+});
+
+test('headline: the panel lists the sub-table\'s titles in MB style; its kinds are the ⚠️ menu\'s filters', async ({ page }) => {
+    await open(page);
+    await page.locator('h3 .mb-title-style-btn').first().click();
+    await checked(page);
+    const name = (await offRowsPerTable(page)).find((p) => p.rows >= 4).scope;
+    await headBtn(page, name).click();
+    const p = await panel(page);
+    expect(p.title).toBe(`Aa Title style · ${name}`);
+    expect(p.list).toEqual(expect.arrayContaining([
+        ['Reasons To Believe', 'Reasons to Believe'],
+        ["Don't Look Back", 'Don’t Look Back'],
+        ['Hungry Heart (feat. Somebody)', '"feat." belongs in the artist credit'],
+        ['Come Together [The Beatles Cover]', 'Come Together'],
+    ]));
+    const all = (await findingRowState(page)).visible;
+    const caseRows = (await findingRow(page, 'warn', 'title-case')).count;
+    await page.locator('#mb-title-style-pop .mb-ts-kind[data-mb-ts-kind="title-case"]').click();
+    expect((await panel(page)).kinds.find((k) => k.id === 'title-case').checked).toBe('true');
+    expect((await findingRow(page, 'warn', 'title-case')).checked).toBe('true');
+    const on = await findingRowState(page, 'title-case');
+    expect(on.visible).toBe(caseRows);
+    expect(on.withFinding).toBe(caseRows);
+    // Released from the ⚠️ menu: the panel shows that too (derived state).
+    await clickFinding(page, 'title-case');
+    expect((await findingRowState(page)).visible).toBe(all);
+    // Opening the ⚠️ menu was a click outside the panel, which closed it.
+    expect(await panel(page)).toBe(null);
+    await headBtn(page, name).click();
+    expect((await panel(page)).kinds.find((k) => k.id === 'title-case').checked).toBe('false');
+});
+
+test('headline: Esc closes the panel; a hover brings it back', async ({ page }) => {
+    await open(page);
+    await page.locator('h3 .mb-title-style-btn').first().click();
+    await checked(page);
+    const btn = page.locator('h3 .mb-title-style-btn').first();
+    await btn.click();
+    expect(await panel(page)).not.toBe(null);
+    await page.keyboard.press('Escape');
+    expect(await panel(page)).toBe(null);
+    await page.mouse.move(0, 0);
+    await btn.hover();
+    await expect.poll(() => panel(page).then((x) => x !== null)).toBe(true);
+    await page.mouse.move(0, 0);
+    await expect.poll(() => panel(page).then((x) => x === null)).toBe(true);
+});
+
+test('headline: one button in the global filter bar on a single-table page', async ({ page }) => {
+    const REC_URL = 'https://musicbrainz.org/artist/89729b97-90a3-4f84-9e88-e16f96cab350/recordings';
+    const html = fs.readFileSync(path.join(__dirname, 'uniq-drop-pending-edits.html'), 'utf8')
+        .replace('<bdi>Track A<', '<bdi>Born To Run<')
+        .replace('<bdi>Track B<', '<bdi>Don&#39;t Look Back<');
+    const fixture = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'sa-title-style-rec-')), 'planted.html');
+    fs.writeFileSync(fixture, html);
+    await loadUserscriptPage(page, { url: REC_URL, fixtureFile: fixture, testMode: true });
+    await page.route(`${REC_URL}?**`, (r) => r.fulfill({ path: fixture, contentType: 'text/html' }));
+    await page.click('button[data-label="⊚ All recordings"]');
+    await waitForRenderComplete(page, { waitForAutoResize: false });
+    // The short wording in the global bar too: a long label pushed the bar
+    // past the window (vzell, 2026-10-29); the count is in the tooltip.
+    expect(await headButtons(page)).toEqual([{ scope: 'page', state: 'idle', text: 'AaCheck title style' }]);
+    expect(await page.evaluate(() => document.getElementById('mb-title-style-global-btn').title))
+        .toMatch(/^Title style · 5 titles, not checked yet\n/);
+    const after = await page.evaluate(() => document.getElementById('mb-title-style-global-btn').previousElementSibling.id);
+    expect(after).toBe('mb-global-filter-exclude-label');
+    await page.click('#mb-title-style-global-btn');
+    await checked(page);
+    expect(await headButtons(page)).toEqual([{ scope: 'page', state: 'found', text: 'Aa2 titles off-style ▾' }]);
+    await page.click('#mb-title-style-global-btn');
+    const p = await panel(page);
+    expect(p.title).toBe('Aa Title style');
+    expect(p.list).toEqual([['Born To Run', 'Born to Run'], ["Don't Look Back", 'Don’t Look Back']]);
+    // Variant A (https://claude.ai/artifact/XFAcJ9zn5brXitDzJogXqn): what can
+    // be ticked is a card with a box; nothing found is disabled, no box, "—".
+    expect(p.kinds.map((k) => [k.id, k.disabled, k.n])).toEqual([
+        ['title-case', false, '1'], ['title-typography', false, '1'],
+        ['title-series-sep', true, '—'], ['title-feat', true, '—'], ['title-eti-remove', true, '—'],
+    ]);
+    const look = await page.evaluate(() => Array.from(document.querySelectorAll('#mb-title-style-pop .mb-ts-kind')).map((k) => ({
+        box: getComputedStyle(k.querySelector('.mb-ts-box')).visibility,
+        bg: getComputedStyle(k).backgroundColor,
+    })));
+    expect(look.slice(0, 2)).toEqual([{ box: 'visible', bg: 'rgb(255, 255, 255)' }, { box: 'visible', bg: 'rgb(255, 255, 255)' }]);
+    look.slice(2).forEach((l) => expect(l.box).toBe('hidden'));
+    look.slice(2).forEach((l) => expect(l.bg).not.toBe('rgb(255, 255, 255)'));
+});
+
+test('headline: the findings-menus switch removes the buttons too', async ({ page }) => {
+    await open(page, { sa_enable_findings_menus: false });
+    expect(await headButtons(page)).toEqual([]);
+});
+
+test('hint: offered once under the first button; Not now with "Don\'t show this again" stores the setting', async ({ page }) => {
+    await open(page, { sa_findings_title_style_hint: true });
+    const hint = page.locator('#mb-title-style-hint');
+    await expect(hint).toBeVisible();
+    const placed = await page.evaluate(() => {
+        const h = document.getElementById('mb-title-style-hint').getBoundingClientRect();
+        const b = document.querySelector('.mb-title-style-btn').getBoundingClientRect();
+        return { below: h.top >= b.bottom, pulse: document.querySelector('.mb-title-style-btn').classList.contains('mb-ts-pulse') };
+    });
+    expect(placed).toEqual({ below: true, pulse: true });
+    await hint.locator('.mb-ts-hint-never-cb').check();
+    await hint.locator('[data-mb-ts-hint="later"]').click();
+    await expect(hint).toHaveCount(0);
+    expect(await page.evaluate(() => window.__gmValues.sa_findings_title_style_hint)).toBe(false);
+    // "Not now" checks nothing.
+    const got = await stamped(page);
+    IDS.forEach((id) => expect(got[id].rows, id).toBe(0));
+});
+
+test('hint: Check now runs the check; Esc closes it; the setting off shows none', async ({ page }) => {
+    // A fake clock (time still flows) lets the last step jump past the
+    // hint's 0.9 s delay instead of sleeping through it.
+    await page.clock.install();
+    await open(page, { sa_findings_title_style_hint: true });
+    await page.locator('#mb-title-style-hint [data-mb-ts-hint="check"]').click();
+    await checked(page);
+    await expect(page.locator('#mb-title-style-hint')).toHaveCount(0);
+    expect((await stamped(page))['title-case'].rows).toBe(1);
+    // Check now alone stores nothing: the seeded value stays.
+    expect(await page.evaluate(() => window.__gmValues.sa_findings_title_style_hint)).toBe(true);
+
+    await open(page, { sa_findings_title_style_hint: true });
+    await expect(page.locator('#mb-title-style-hint')).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(page.locator('#mb-title-style-hint')).toHaveCount(0);
+
+    await open(page, { sa_findings_title_style_hint: false });
+    await page.clock.fastForward(1500);
+    await expect(page.locator('#mb-title-style-hint')).toHaveCount(0);
+});
+
+test('hint: Always check turns the auto setting on and checks the page', async ({ page }) => {
+    await open(page, { sa_findings_title_style_hint: true });
+    await page.locator('#mb-title-style-hint [data-mb-ts-hint="always"]').click();
+    await checked(page);
+    expect(await page.evaluate(() => window.__gmValues.sa_findings_title_style_auto)).toBe(true);
+    const got = await stamped(page);
+    Object.entries(EXPECT).forEach(([id, titles]) => expect(got[id].titles, id).toEqual([...titles].sort()));
+});
+
+test('hint: a click outside closes it, so a pop-up opened later gets Esc', async ({ page }) => {
+    await open(page, { sa_findings_title_style_hint: true });
+    const hint = page.locator('#mb-title-style-hint');
+    await expect(hint).toBeVisible();
+    await page.locator('h1').first().click();
+    await expect(hint).toHaveCount(0);
+    // Read as "Not now": nothing checked, nothing stored.
+    expect((await stamped(page))['title-case'].rows).toBe(0);
+    expect(await page.evaluate(() => window.__gmValues.sa_findings_title_style_hint)).toBe(true);
+});

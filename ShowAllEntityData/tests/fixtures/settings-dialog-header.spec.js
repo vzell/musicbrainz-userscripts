@@ -36,7 +36,7 @@
 const path = require('path');
 const fs = require('fs');
 const { test, expect } = require('../support/test');
-const { loadUserscriptPage, FIXTURE_SETTINGS_OVERRIDE } = require('../support/loadPage');
+const { loadUserscriptPage, FIXTURE_SETTINGS_OVERRIDE, HARNESS_SETTINGS_ALWAYS } = require('../support/loadPage');
 const { collectPageErrors } = require('../support/liveAssertions');
 
 const SERIES_URL = 'https://musicbrainz.org/series/aa3694d3-a3d0-48ed-8f07-5b576de87908';
@@ -49,7 +49,7 @@ const OVERLAY = `#${SID}-settings-overlay`;
 // harness forces settings OFF that all default to true, so an untouched
 // profile would otherwise arrive with that many changes already on the
 // counter. Derived from the override, as there.
-const PRISTINE = Object.fromEntries(Object.keys(FIXTURE_SETTINGS_OVERRIDE).map((k) => [k, undefined]));
+const PRISTINE = Object.fromEntries([...Object.keys(FIXTURE_SETTINGS_OVERRIDE), ...Object.keys(HARNESS_SETTINGS_ALWAYS)].map((k) => [k, undefined]));
 
 /**
  * The library's own `LIBRARY_VERSION`, read from the file the harness loads.

@@ -139,6 +139,21 @@ const SETTINGS_MIGRATION_PRE_APPLIED = {
     sa_settings_migration_level: 9999,
 };
 
+// Settings off for EVERY load, unlike FIXTURE_SETTINGS_OVERRIDE above, which
+// applies only when a spec serves an HTML fixture (`fixtureFile`): a
+// saved-data load (`loadFromDiskFixture()` without a page shell) and a live
+// spec get it too.
+//
+// `sa_findings_title_style_hint` (default true, 2026-10-29): a card that
+// appears 0.9 s after any render with titles, takes Esc and pulses the Aa
+// button, so every spec that renders a MusicBrainz table would race it. It
+// first showed in a saved-data spec: column-filter-modes.spec.js's Esc went
+// to the hint instead of the column's Cc / Rx / Ex pop-up.
+// findings-title-style.spec.js seeds it back on.
+const HARNESS_SETTINGS_ALWAYS = {
+    sa_findings_title_style_hint: false,
+};
+
 // A fixture page is served from disk, but only its main document is routed:
 // every subresource it references still goes to the network, and `page.goto()`
 // waits for all of them before `load` fires. One of them is a saved release
@@ -246,6 +261,7 @@ async function loadUserscriptPage(page, { url, fixtureFile, testMode, settingsOv
             // but "nothing to do" is a property of the store, not a guarantee,
             // and a live spec that seeds a setting deserves the same protection.
             ...SETTINGS_MIGRATION_PRE_APPLIED,
+            ...HARNESS_SETTINGS_ALWAYS,
             ...(fixtureFile ? FIXTURE_SETTINGS_OVERRIDE : {}),
             ...(settingsOverride || {}),
         }),
@@ -301,5 +317,5 @@ async function addRequiredLibs(page) {
 
 module.exports = {
     loadUserscriptPage, addRequiredLibs, USERSCRIPT_PATH, MB_LIBRARY_PATH, ARCHIVE_ORG_RE, ART_ARCHIVE_RE,
-    IRO_PATH, PAKO_PATH, CDN_RE, FIXTURE_SETTINGS_OVERRIDE, SETTINGS_MIGRATION_PRE_APPLIED,
+    IRO_PATH, PAKO_PATH, CDN_RE, FIXTURE_SETTINGS_OVERRIDE, SETTINGS_MIGRATION_PRE_APPLIED, HARNESS_SETTINGS_ALWAYS,
 };

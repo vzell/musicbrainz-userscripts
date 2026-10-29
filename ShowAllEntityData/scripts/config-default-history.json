@@ -2,8 +2,8 @@
   "_meta": {
     "generated_by": "scripts/dump-default-history.py",
     "source": "ShowAllEntityData/ShowAllEntityData.user.js",
-    "head": "80241d32c1f8518616b4f408ca19427ba17a6c7a",
-    "revisions_walked": 1123
+    "head": "389aab14702daffa3372274801d17c99559c77f2",
+    "revisions_walked": 1125
   },
   "changes": [
     {
@@ -1117,6 +1117,7 @@
     "sa_pop_ext_favicons": true,
     "sa_pop_ext_ttl_hours": 168,
     "sa_pop_ext_discogs_token": "",
+    "sa_pop_ext_setlistfm_key": "",
     "sa_yt_play_in_place": true,
     "sa_yt_stills": true,
     "sa_dp_hover_without_ctrl": true,

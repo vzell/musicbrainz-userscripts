@@ -2,11 +2,11 @@
   "_meta": {
     "generated_by": "scripts/dump-config-defaults.py",
     "purpose": "Generated artifact. NOTHING in the userscript reads this file. See org/config-handling.org Item 4.",
-    "script_version": "9.99.1512+2026-10-29",
-    "schema_entries": 482,
+    "script_version": "9.99.1515+2026-10-29",
+    "schema_entries": 483,
     "sections": 52,
-    "settings": 430,
-    "settings_with_default": 425,
+    "settings": 431,
+    "settings_with_default": 426,
     "settings_without_default": [
       "sa_default_hidden_columns",
       "sa_rel_other_db_classes",
@@ -15,7 +15,7 @@
       "sa_unicode_char_picker_mappings"
     ],
     "types": {
-      "checkbox": 253,
+      "checkbox": 254,
       "color_picker": 62,
       "number": 53,
       "divider": 52,
@@ -479,6 +479,7 @@
     "sa_findings_title_feat": "Title style: find featured artists in titles",
     "sa_findings_title_series": "Title style: find series numbers without a comma",
     "sa_findings_title_style_auto": "Check title style automatically",
+    "sa_findings_title_style_hint": "Offer the title-style check in a hint",
     "sa_findings_title_typography": "Title style: find ASCII punctuation in titles",
     "sa_fn_edit_pinned_filter_list": "Edit Pinned Filter List",
     "sa_fn_idb_overview": "💾 Browser cache overview",
@@ -910,6 +911,7 @@
     "sa_findings_title_feat": true,
     "sa_findings_title_series": true,
     "sa_findings_title_style_auto": false,
+    "sa_findings_title_style_hint": true,
     "sa_findings_title_typography": true,
     "sa_fn_edit_pinned_filter_list": "_openEditPinnedFilterListFromSettings",
     "sa_fn_idb_overview": "_idbOverviewOpenFromSettings",

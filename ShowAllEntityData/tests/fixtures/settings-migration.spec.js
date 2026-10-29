@@ -49,7 +49,7 @@
 
 const path = require('path');
 const { test, expect } = require('../support/test');
-const { loadUserscriptPage, FIXTURE_SETTINGS_OVERRIDE } = require('../support/loadPage');
+const { loadUserscriptPage, FIXTURE_SETTINGS_OVERRIDE, HARNESS_SETTINGS_ALWAYS } = require('../support/loadPage');
 const { collectPageErrors } = require('../support/liveAssertions');
 
 const SERIES_URL = 'https://musicbrainz.org/series/aa3694d3-a3d0-48ed-8f07-5b576de87908';
@@ -68,7 +68,7 @@ const ABSENT = '__ABSENT__';
 // `undefined` (JSON.stringify drops it) stores nothing, so the profile holds
 // exactly what a test seeds. No test here clicks "Show all", so the artwork
 // and Relationships keys coming back on fetch nothing.
-const UNSEEDED = Object.fromEntries(Object.keys(FIXTURE_SETTINGS_OVERRIDE).map((k) => [k, undefined]));
+const UNSEEDED = Object.fromEntries([...Object.keys(FIXTURE_SETTINGS_OVERRIDE), ...Object.keys(HARNESS_SETTINGS_ALWAYS)].map((k) => [k, undefined]));
 
 /**
  * Loads the shell with `settings` seeded into GM storage. The migration runs

@@ -1,7 +1,7 @@
 'use strict';
 
 const { buildGmStubsScript } = require('./gmStubs');
-const { USERSCRIPT_PATH, MB_LIBRARY_PATH, addRequiredLibs } = require('./loadPage');
+const { USERSCRIPT_PATH, MB_LIBRARY_PATH, addRequiredLibs, HARNESS_SETTINGS_ALWAYS } = require('./loadPage');
 
 /**
  * Real, network-passthrough replacement for `gmStubs.js`'s always-404
@@ -109,7 +109,7 @@ async function loadUserscriptPageWithRealNetwork(page, { url, testMode, settings
     if (testMode) {
         await page.addInitScript({ content: 'window.__SA_TEST_MODE__ = true;' });
     }
-    await page.addInitScript({ content: buildGmStubsScript(settingsOverride) });
+    await page.addInitScript({ content: buildGmStubsScript({ ...HARNESS_SETTINGS_ALWAYS, ...(settingsOverride || {}) }) });
     await page.addInitScript({ content: buildPassthroughGmXhrScript() });
 
     await page.goto(url);

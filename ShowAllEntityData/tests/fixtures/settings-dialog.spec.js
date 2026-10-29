@@ -42,7 +42,7 @@
 
 const path = require('path');
 const { test, expect } = require('../support/test');
-const { loadUserscriptPage, FIXTURE_SETTINGS_OVERRIDE } = require('../support/loadPage');
+const { loadUserscriptPage, FIXTURE_SETTINGS_OVERRIDE, HARNESS_SETTINGS_ALWAYS } = require('../support/loadPage');
 const { collectPageErrors } = require('../support/liveAssertions');
 
 const SERIES_URL = 'https://musicbrainz.org/series/aa3694d3-a3d0-48ed-8f07-5b576de87908';
@@ -74,8 +74,10 @@ const SECTION_A = 'divider_';
 // is seeded as `undefined`, which JSON.stringify drops: nothing is stored and
 // the schema default applies. Derived from the override, so a key added there
 // can no longer leave this list behind (the five link-preview keys did, on
-// 2026-10-08, when this was a hand-written copy of four).
-const PRISTINE = Object.fromEntries(Object.keys(FIXTURE_SETTINGS_OVERRIDE).map((k) => [k, undefined]));
+// 2026-10-08, when this was a hand-written copy of four) — and from
+// HARNESS_SETTINGS_ALWAYS, the keys seeded for every load
+// (`sa_findings_title_style_hint`, 2026-10-29).
+const PRISTINE = Object.fromEntries([...Object.keys(FIXTURE_SETTINGS_OVERRIDE), ...Object.keys(HARNESS_SETTINGS_ALWAYS)].map((k) => [k, undefined]));
 
 /** Loads the shell without clicking anything — the dialog needs no table. */
 async function loadShell(page, settings) {
