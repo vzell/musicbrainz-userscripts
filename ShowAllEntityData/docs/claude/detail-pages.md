@@ -2549,7 +2549,17 @@ links, the plain `_mbPopUrlLinksHtml()` below `min`; `_rgFactsHtml(t, f)`
 takes the target for it), relations (`_mbPopRelTableRows()` +
 `_mbPopRelTableHtml()`: Relationship · target, group names from
 `_mbPopRelGroupName()`, extracted from `_mbPopRelRows()`): area parts,
-related instruments, an event's "Recorded here" (two tables); a work's
+related instruments, an event's "Recorded here" (two tables, each a group
+that folds since 2026-10-29: `_mbPopRelGroupHtml()` → `_dpFoldGroupHtml()`,
+the heading `button.mb-dp-foldh[data-mb-fold-act]` with ▾/▸ and its count,
+"3 of 20" while the filter narrows; the body built only while open; a click
+folds that group, Ctrl/⌘ every `[data-mb-fold]` group of the window
+(`_dpFoldClick()`, from `_dpTblClick()`); the folded ids in `_dpFolded`, one
+set for every window of the page load, so the next event shows the same
+groups folded; the table's filter always there (`_dpCompactTableHtml()`'s
+`filter`) and matching the target's name and its comment, `comment` on each
+`_mbPopRelTableRows()` row; mockup 2f,
+https://claude.ai/artifact/URrn3dps1EMtnkjKBvsvag); a work's
 codes, an instrument's aliases, a genre's related genres (one table per
 phrase, `genre-rel-<i>`; its links moved to the left column), an editor's
 edits, tags and genres (`genres`, `tags`), ratings (`ratings-<i>`), ISRC

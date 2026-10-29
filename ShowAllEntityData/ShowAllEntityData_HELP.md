@@ -2527,7 +2527,10 @@ userscript lists that host, so Tampermonkey does not ask first).
   of its line, with a filter; a setlist in parts — *Soundcheck*, *Concert*,
   *Encore* — gets a heading row per part, numbers starting over in each,
   a chip per part, and "↺ also in …" on a song played in two parts; the
-  card shows the longest part), what was recorded there and its posters;
+  card shows the longest part), what was recorded there — its releases and
+  its recordings, each with a filter (on the name and its comment) and a
+  heading that folds it; Ctrl-click a heading to fold or open both, and the
+  next event's window keeps them that way — and its posters;
   for a place, its area named the same way, a map link, its links and all
   of its events as a list like a work's recordings (type chips); for a
   series, every item in order, each with its kind's icon; for a tag, its genre and how many of each

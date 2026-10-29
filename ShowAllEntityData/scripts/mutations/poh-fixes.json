@@ -297,5 +297,83 @@
     "spec": "tests/fixtures/pop-area-flags.spec.js",
     "grep": "Right Side Flags Everywhere leaves",
     "expect": "fail"
+  },
+  {
+    "name": "a small Recorded here table has no filter",
+    "why": "vzell 2026-10-29: the 20 releases of 1988-03-28 had no filter, the 29 of 1988-04-27 had one.",
+    "edits": [
+      {
+        "find": "        const filter = rows.length > per || (opts.filter && rows.length) ? ",
+        "replace": "        const filter = rows.length > per ? "
+      }
+    ],
+    "spec": "tests/fixtures/popup-mb.spec.js",
+    "grep": "the whole setlist, what was recorded there",
+    "expect": "fail"
+  },
+  {
+    "name": "the filter reads the relationship, not the comment",
+    "why": "\"live\", \"version 1\", a date in the comment found nothing; \"Recorded at\" matched every row.",
+    "edits": [
+      {
+        "find": "        const search = r => `${r.name} ${r.comment}`;",
+        "replace": "        const search = r => `${r.rel} ${r.name}`;"
+      }
+    ],
+    "spec": "tests/fixtures/popup-mb.spec.js",
+    "grep": "the filter reads name and comment",
+    "expect": "fail"
+  },
+  {
+    "name": "the heading keeps the total while the filter narrows",
+    "why": "\"Recordings · 26\" over three rows: the count no longer says what is shown.",
+    "edits": [
+      {
+        "find": "        const shown = ui.q.trim() ? _dpTblRows(_mbPopRelTableCols(label), rows, ui, { search }).length : rows.length;",
+        "replace": "        const shown = rows.length;"
+      }
+    ],
+    "spec": "tests/fixtures/popup-mb.spec.js",
+    "grep": "the filter reads name and comment",
+    "expect": "fail"
+  },
+  {
+    "name": "a heading's click does nothing",
+    "why": "The groups never fold.",
+    "edits": [
+      {
+        "find": "        if (fold) {\n            _dpFoldClick(fold, e.ctrlKey || e.metaKey);\n            return true;\n        }",
+        "replace": "        if (fold) return true;"
+      }
+    ],
+    "spec": "tests/fixtures/popup-mb.spec.js",
+    "grep": "the filter reads name and comment",
+    "expect": "fail"
+  },
+  {
+    "name": "Ctrl-click folds only its own group",
+    "why": "vzell 2026-10-29: Ctrl-click acts on every foldable group of the window.",
+    "edits": [
+      {
+        "find": "        const ids = all ? Array.from(area.querySelectorAll('[data-mb-fold]')).map(g => g.dataset.mbFold) : [id];",
+        "replace": "        const ids = [id];"
+      }
+    ],
+    "spec": "tests/fixtures/popup-mb.spec.js",
+    "grep": "the filter reads name and comment",
+    "expect": "fail"
+  },
+  {
+    "name": "the folded groups are forgotten with the window",
+    "why": "vzell 2026-10-29: remembered for the next event opened this page load.",
+    "edits": [
+      {
+        "find": "    function _dpFoldGroupHtml(id, title, count, body) {\n        const open = !_dpFolded.has(id);",
+        "replace": "    function _dpFoldGroupHtml(id, title, count, body) {\n        if (!document.querySelector(`#mb-dp-dialog [data-mb-fold=\"${id}\"]`)) _dpFolded.delete(id);\n        const open = !_dpFolded.has(id);"
+      }
+    ],
+    "spec": "tests/fixtures/popup-mb.spec.js",
+    "grep": "the filter reads name and comment",
+    "expect": "fail"
   }
 ]

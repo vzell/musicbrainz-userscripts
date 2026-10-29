@@ -1,5 +1,23 @@
 [
   {
+    "version": "WIP.7",
+    "date": "2026-10-29",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "Link previews: in an event's window, \"Recorded here\" has a filter on both its tables, also when there are only a few releases (it used to appear only above 25 rows). The filter looks at the name and its comment (\"live, 1988-03-28 …\", \"version 1\"), and the heading counts what it shows (\"Recordings · 3 of 40\"). \"Releases\" and \"Recordings\" fold: click a heading to fold it, Ctrl-click to fold or open both; the next event you open keeps them as you left them."
+        ]
+      },
+      {
+        "label": "🔧 Refactor",
+        "items": [
+          "_dpFoldGroupHtml() / _dpFoldClick() / _dpFolded (a group that folds, Ctrl/⌘ every group of the window, from _dpTblClick()); _mbPopRelGroupHtml() and _mbPopRelTableCols(); _dpCompactTableHtml() takes filter; _mbPopRelTableRows() rows carry comment. Mockup 2f: https://claude.ai/artifact/URrn3dps1EMtnkjKBvsvag. Tests: popup-mb.spec.js (the event window's filter and groups; a new test of the filter, the count, folding, Ctrl-click and the memory); scripts/mutations/poh-fixes.json (+6, all caught). docs/claude/detail-pages.md, HELP."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.6",
     "date": "2026-10-29",
     "sections": [

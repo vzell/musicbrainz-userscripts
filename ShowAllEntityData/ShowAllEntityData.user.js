@@ -28904,6 +28904,17 @@
             .mb-dp-dialog .mb-dg-fl { font-style: italic; color: #7a6d5c; padding-top: 2px; }
             .mb-dp-dialog .mb-pop-kindbtn { border: 0; background: none; padding: 0; font: inherit; color: #6b3f12; cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
             .mb-dp-dialog .mb-pop-kindbtn[aria-pressed="true"] { font-weight: 700; text-decoration: none; color: #2b2622; }
+            /* A group that folds (_dpFoldGroupHtml(), mockup 2f). */
+            .mb-dp-dialog .mb-dp-foldh {
+                display: flex; gap: 6px; align-items: baseline; width: 100%; margin: 6px 0 0; padding: 4px 0 3px;
+                border: 0; border-bottom: 1px solid #efe8da; background: none; cursor: pointer; text-align: left;
+                font: 600 12px/1.3 system-ui, -apple-system, "Segoe UI", Arial, sans-serif; color: #2b2622;
+            }
+            .mb-dp-dialog .mb-dp-foldh:hover { background: #f1e9d8; }
+            .mb-dp-dialog .mb-dp-foldh:focus-visible { outline: 2px solid #2f5f9e; outline-offset: 1px; }
+            .mb-dp-dialog .mb-dp-foldc { width: 1em; color: #7a6d5c; }
+            .mb-dp-dialog .mb-dp-foldn { font-weight: 400; color: #7a6d5c; font-variant-numeric: tabular-nums; }
+            .mb-dp-dialog .mb-dp-foldb { padding: 4px 0 6px; }
             /* An area's flag (_mbPopFlagHtml()): one fixed slot, whatever fills it, so the text after it never moves. */
             .mb-dp-dialog .mb-pop-flag {
                 display: inline-block; box-sizing: border-box; width: 16px; height: 11px; padding: 0; margin: 0 4px 0 0;
@@ -56233,7 +56244,10 @@
         const types = groups.map(([k]) => k.split('|')[0]);
         return groups.flatMap(([k, list]) => list.map((r) => {
             const e = r[targetType] || _mbPopRelEntity(r) || {};
-            return { rel: _mbPopRelGroupName(k, types, targetType), name: e.name || e.title || '', html: fmt ? fmt(r) : _mbPopRelTargetHtml(r, targetType) };
+            return {
+                rel: _mbPopRelGroupName(k, types, targetType), name: e.name || e.title || '', comment: e.disambiguation || '',
+                html: fmt ? fmt(r) : _mbPopRelTargetHtml(r, targetType),
+            };
         }));
     }
 
@@ -56244,17 +56258,52 @@
      *
      * @param {object} t - The window's target.
      * @param {string} id - The table's id in the window.
-     * @param {Array<{rel: string, name: string, html: string}>} rows
+     * @param {Array<{rel: string, name: string, comment: string, html: string}>} rows
      * @param {string} label - The target column's header: "Area".
      * @param {string} what - The rows: "areas".
+     * @param {{filter?: boolean, search?: function(Object): string}} [opts] - As `_dpCompactTableHtml()`'s.
      * @returns {string}
      */
-    function _mbPopRelTableHtml(t, id, rows, label, what) {
+    function _mbPopRelTableHtml(t, id, rows, label, what, opts = {}) {
         if (!rows.length) return '<div class="mb-dp-xsub">None.</div>';
-        return _dpCompactTableHtml(t, id, [
+        return _dpCompactTableHtml(t, id, _mbPopRelTableCols(label), rows, Object.assign({ initial: 'as MusicBrainz lists them', what }, opts));
+    }
+
+    /**
+     * The relation table's columns: Relationship · the target.
+     *
+     * @param {string} label - The target column's header.
+     * @returns {Array<Object>}
+     */
+    function _mbPopRelTableCols(label) {
+        return [
             { key: 'rel', label: 'Relationship', val: r => r.rel, html: (r, q) => _hlEsc(r.rel, q) },
             { key: 'name', label, val: r => r.name, html: (r, q) => _hlHtml(r.html, q) },
-        ], rows, { initial: 'as MusicBrainz lists them', what });
+        ];
+    }
+
+    /**
+     * Relation rows as a group of a window that folds (`_dpFoldGroupHtml()`):
+     * an event's releases and recordings under "Recorded here" (vzell
+     * 2026-10-29, mockup 2f, https://claude.ai/artifact/URrn3dps1EMtnkjKBvsvag).
+     * The table always has its filter, which matches the target's name and
+     * its comment (a release's "version 1", a recording's "live, 1988‐03‐28
+     * …"); the heading counts what it shows, "3 of 20" while it narrows.
+     *
+     * @param {object} t - The window's target.
+     * @param {string} id - The table's id, also the group's.
+     * @param {string} title - "Releases".
+     * @param {Array<Object>} rows - `_mbPopRelTableRows()`.
+     * @param {string} label - The target column's header.
+     * @param {string} what - The rows, for the filter's placeholder.
+     * @returns {string}
+     */
+    function _mbPopRelGroupHtml(t, id, title, rows, label, what) {
+        const search = r => `${r.name} ${r.comment}`;
+        const ui = _dpTblUi(t, id);
+        const shown = ui.q.trim() ? _dpTblRows(_mbPopRelTableCols(label), rows, ui, { search }).length : rows.length;
+        return _dpFoldGroupHtml(id, title, shown === rows.length ? String(rows.length) : `${shown} of ${rows.length}`,
+            () => _mbPopRelTableHtml(t, id, rows, label, what, { filter: true, search }));
     }
 
     /**
@@ -61290,8 +61339,9 @@
                         const rel = _mbPopRelTableRows(p.relations, 'release');
                         const rec = _mbPopRelTableRows(p.relations, 'recording');
                         if (!rel.length && !rec.length) return '<div class="mb-dp-xsub">Nothing recorded here is in MusicBrainz.</div>';
-                        return (rel.length ? `<div class="mb-dp-gname">Releases · ${rel.length}</div>` + _mbPopRelTableHtml(t, 'recorded-releases', rel, 'Release', 'releases') : '') +
-                            (rec.length ? `<div class="mb-dp-gname">Recordings · ${rec.length}</div>` + _mbPopRelTableHtml(t, 'recorded-recordings', rec, 'Recording', 'recordings') : '');
+                        // Groups that fold, each table with its filter (2026-10-29).
+                        return (rel.length ? _mbPopRelGroupHtml(t, 'recorded-releases', 'Releases', rel, 'Release', 'releases') : '') +
+                            (rec.length ? _mbPopRelGroupHtml(t, 'recorded-recordings', 'Recordings', rec, 'Recording', 'recordings') : '');
                     });
                 // A List table (Phase 3e): # · Song · Notes (the rest of the
                 // line: guests, a remark), in the order played. A setlist in
@@ -65486,6 +65536,11 @@
      */
     function _dpTblClick(e, t) {
         if (!t || !(e.target instanceof Element)) return false;
+        const fold = e.target.closest('[data-mb-fold-act]');
+        if (fold) {
+            _dpFoldClick(fold, e.ctrlKey || e.metaKey);
+            return true;
+        }
         const el = e.target.closest('[data-mb-tbl-sort], [data-mb-tbl-chip], [data-mb-tbl-act]');
         const box = el && el.closest('[data-mb-tbl]');
         if (!box) return false;
@@ -65535,6 +65590,54 @@
         }
         if (_dpDialog.repaint) _dpDialog.repaint();
         return true;
+    }
+
+    /**
+     * The groups of the windows that are folded, by group id
+     * (`recorded-releases`): one set for every window of this page load, so
+     * the next event opened with ‹ › shows the same groups folded (vzell
+     * 2026-10-29, mockup 2f). Not kept across page loads.
+     * @type {Set<string>}
+     */
+    const _dpFolded = new Set();
+
+    /**
+     * A group of a window that folds (mockup 2f): a heading button, ▾ or ▸
+     * with the title and its count, then the body, built only while open. A
+     * folded group keeps its table's state (its filter text) for when it
+     * opens again.
+     *
+     * @param {string} id - The group's id (`_dpFolded`).
+     * @param {string} title
+     * @param {string} count - "20", or "3 of 20" while a filter narrows.
+     * @param {function(): string} body
+     * @returns {string}
+     */
+    function _dpFoldGroupHtml(id, title, count, body) {
+        const open = !_dpFolded.has(id);
+        return `<div class="mb-dp-fold" data-mb-fold="${_rgEsc(id)}">` +
+            `<button type="button" class="mb-dp-foldh" data-mb-fold-act="${_rgEsc(id)}" aria-expanded="${open}" data-mb-tip ` +
+            `title="Click: ${open ? 'fold' : 'open'} ${_rgEsc(title)} · Ctrl-click: ${open ? 'fold' : 'open'} every group of the window">` +
+            `<span class="mb-dp-foldc" aria-hidden="true">${open ? '▾' : '▸'}</span>${_rgEsc(title)} ` +
+            `<span class="mb-dp-foldn">· ${_rgEsc(count)}</span></button>` +
+            (open ? `<div class="mb-dp-foldb">${body()}</div>` : '') + '</div>';
+    }
+
+    /**
+     * A click on a group's heading: that group folds or opens; with Ctrl/⌘
+     * every group the window shows does the same as this one.
+     *
+     * @param {Element} head - The `[data-mb-fold-act]` button.
+     * @param {boolean} all - Ctrl/⌘ was held.
+     * @returns {void}
+     */
+    function _dpFoldClick(head, all) {
+        const id = head.dataset.mbFoldAct;
+        const toFold = !_dpFolded.has(id);
+        const area = head.closest('.mb-dp-area') || document;
+        const ids = all ? Array.from(area.querySelectorAll('[data-mb-fold]')).map(g => g.dataset.mbFold) : [id];
+        ids.forEach(g => (toFold ? _dpFolded.add(g) : _dpFolded.delete(g)));
+        if (_dpDialog.repaint) _dpDialog.repaint();
     }
 
     /**
@@ -65636,8 +65739,9 @@
      * @param {Array<Object>} rows - In the site's own order.
      * @param {{perPage?: number, initial?: string, what?: string, search?: function(Object): string,
      *   init?: Object, cls?: string, wrapCls?: string, qCls?: string, sortAttr?: string,
-     *   rowAttrs?: function(Object): string}} [opts] - `what` names the rows ("sublabels"); `cls`,
-     *   `wrapCls`, `qCls` and `sortAttr` add names a caller's specs address.
+     *   rowAttrs?: function(Object): string, filter?: boolean}} [opts] - `what` names the rows ("sublabels"); `cls`,
+     *   `wrapCls`, `qCls` and `sortAttr` add names a caller's specs address; `filter`: the
+     *   filter even when the rows fit one page.
      * @returns {string}
      */
     function _dpCompactTableHtml(t, id, cols, rows, opts = {}) {
@@ -65649,7 +65753,7 @@
         ui.page = Math.min(Math.max(0, ui.page), pages - 1);
         const from = ui.page * per;
         const page = view.slice(from, from + per);
-        const filter = rows.length > per ? `<div class="mb-dg-vtools">${_dpTblFilterHtml(id, ui, `Filter ${what}`, opts.qCls)}</div>` : '';
+        const filter = rows.length > per || (opts.filter && rows.length) ? `<div class="mb-dg-vtools">${_dpTblFilterHtml(id, ui, `Filter ${what}`, opts.qCls)}</div>` : '';
         const box = body => `<div class="mb-dp-tbl" data-mb-tbl="${_rgEsc(id)}">${filter}${body}</div>`;
         if (!page.length) return box(`<div class="mb-dg-vwrap"><div class="mb-dg-empty">${rows.length ? `No ${_rgEsc(what)} match.` : 'None.'}</div></div>`);
         const pager = view.length > per ? '<div class="mb-dg-morerow mb-dg-pager">' +

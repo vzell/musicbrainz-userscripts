@@ -1727,6 +1727,15 @@ test.describe('MusicBrainz link previews: event, place, series (WIP.4)', () => {
         // Two Compact tables since Phase 3d: its releases, its recordings.
         await expect(area.locator('[data-mb-tbl="recorded-releases"] tbody td:first-child').first()).toHaveText('Recorded at');
         await expect(area.locator('[data-mb-tbl="recorded-recordings"] .mb-dg-pager span')).toHaveText('1–25 of 26');
+        // Each a group that folds, each table with its filter even when it
+        // fits one page (vzell 2026-10-29, mockup 2f).
+        const heads = area.locator('.mb-dp-foldh');
+        await expect(heads).toHaveCount(2);
+        const relCount = Number((await heads.first().locator('.mb-dp-foldn').textContent()).replace(/\D/g, ''));
+        expect(relCount, 'fewer releases than a page, so the filter is not the pager\'s').toBeLessThan(26);
+        await expect(heads.first()).toHaveText(new RegExp(`^▾Releases · ${relCount}$`));
+        await expect(area.locator('[data-mb-tbl="recorded-releases"] input.mb-tbl-q')).toHaveCount(1);
+        await expect(area.locator('[data-mb-tbl="recorded-recordings"] input.mb-tbl-q')).toHaveCount(1);
         await expect(area.locator('.mb-dp-gallery img')).not.toHaveCount(0);
         expect(log.eaa).toEqual([EVENT]);
         // A click on the event art opens the viewer on it, from the record already here.
@@ -1738,6 +1747,60 @@ test.describe('MusicBrainz link previews: event, place, series (WIP.4)', () => {
         await page.keyboard.press('Escape');
         await expect(dialog(page)).toBeVisible();
         expect(log.ws2.filter(u => u.includes('inc=recording-rels+release-rels'))).toHaveLength(1);
+    });
+
+    test('the event window\'s "Recorded here": the filter reads name and comment and counts what it shows; groups fold, Ctrl-click folds every group, remembered for the next event', async ({ page }) => {
+        await open(page, { settings: { sa_pop_mb: true }, showAll: false });
+        const a = await addLink(page, EVENT, 'Manchester');
+        await ctrlHover(page, a);
+        await expect(card(page)).toContainText('fetched now');
+        await page.keyboard.press('Space');
+        const area = dialog(page).locator('.mb-dp-area');
+        const heads = area.locator('.mb-dp-foldh');
+        await expect(heads).toHaveCount(2);
+        const recs = area.locator('[data-mb-tbl="recorded-recordings"]');
+        const total = 26;
+        // A word only the recordings' comments carry ("live, 2024‐…") matches every one.
+        const comment = await recs.locator('tbody .mb-rg-dim').first().textContent();
+        const word = comment.replace(/[()]/g, '').split(/[ ,]+/).find(w => /^[a-z]{3,}$/i.test(w));
+        expect(word, 'a comment word to filter by').toBeTruthy();
+        await recs.locator('input.mb-tbl-q').fill(word);
+        await expect(recs.locator('tbody tr').first()).toBeVisible();
+        const n = await recs.locator('tbody tr').count();
+        expect(n, 'the comment is searched').toBeGreaterThan(0);
+        // The name too: the first recording's own title narrows to it and its namesakes.
+        const name = (await area.locator('[data-mb-tbl="recorded-recordings"] tbody tr td:nth-child(2) a').first().textContent()).trim();
+        await recs.locator('input.mb-tbl-q').fill(name);
+        await expect(recs.locator('tbody tr td:nth-child(2) a').first()).toHaveText(name);
+        const hits = await recs.locator('tbody tr').count();
+        expect(hits).toBeLessThan(total);
+        await expect(heads.nth(1)).toHaveText(`▾Recordings · ${hits} of ${total}`);
+        // "Recorded at" is no part of the name or the comment: it matches nothing.
+        await recs.locator('input.mb-tbl-q').fill('Recorded at');
+        await expect(recs.locator('.mb-dg-empty')).toHaveText('No recordings match.');
+        await recs.locator('input.mb-tbl-q').fill(name);
+        // A click folds one group, its filter text kept for when it opens.
+        await heads.nth(1).click();
+        await expect(heads.nth(1)).toHaveAttribute('aria-expanded', 'false');
+        await expect(heads.nth(1).locator('.mb-dp-foldc')).toHaveText('▸');
+        await expect(area.locator('[data-mb-tbl="recorded-recordings"]')).toHaveCount(0);
+        await expect(area.locator('[data-mb-tbl="recorded-releases"]')).toHaveCount(1);
+        await heads.nth(1).click();
+        await expect(area.locator('[data-mb-tbl="recorded-recordings"] input.mb-tbl-q')).toHaveValue(name);
+        // Ctrl-click folds every group, and again opens every group.
+        await heads.first().click({ modifiers: ['Control'] });
+        await expect(area.locator('.mb-dp-foldh[aria-expanded="false"]')).toHaveCount(2);
+        await expect(area.locator('[data-mb-tbl^="recorded-"]')).toHaveCount(0);
+        await heads.first().click({ modifiers: ['Control'] });
+        await expect(area.locator('.mb-dp-foldh[aria-expanded="true"]')).toHaveCount(2);
+        // Folded stays folded for the next event's window this page load.
+        await heads.first().click();
+        await page.keyboard.press('Escape');
+        await expect(dialog(page)).toBeHidden();
+        await ctrlHover(page, a);
+        await page.keyboard.press('Space');
+        await expect(area.locator('.mb-dp-foldh').first()).toHaveAttribute('aria-expanded', 'false');
+        await expect(area.locator('.mb-dp-foldh').nth(1)).toHaveAttribute('aria-expanded', 'true');
     });
 
     // vzell, 2026-10-29 (debug/mb-event-soundcheck-concert-POH.html): a
