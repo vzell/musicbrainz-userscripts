@@ -4,9 +4,76 @@ Every version, newest first, with the technical details behind each change. For 
 
 **Months:** [October 2026](ShowAllEntityData_CHANGELOG/2026-10.md) · [September 2026](ShowAllEntityData_CHANGELOG/2026-09.md) · [August 2026](ShowAllEntityData_CHANGELOG/2026-08.md) · [July 2026](ShowAllEntityData_CHANGELOG/2026-07.md) · [June 2026](ShowAllEntityData_CHANGELOG/2026-06.md) · [May 2026](ShowAllEntityData_CHANGELOG/2026-05.md) · [April 2026](ShowAllEntityData_CHANGELOG/2026-04.md) · [March 2026 (1 of 2)](ShowAllEntityData_CHANGELOG/2026-03-1.md) · [March 2026 (2 of 2)](ShowAllEntityData_CHANGELOG/2026-03-2.md) · [February 2026](ShowAllEntityData_CHANGELOG/2026-02.md) · [January 2026](ShowAllEntityData_CHANGELOG/2026-01.md)
 
-This page shows the newest 100 of 1666 versions; the month pages hold all of them.
+This page shows the newest 100 of 1673 versions; the month pages hold all of them.
 
 ---
+
+## 9.99.1502 — 2026-10-29
+
+**🚀 Feature**
+
+- discogs.com: a user's collection or wantlist page of its own (/user/&lt;name&gt;/collection, /wantlist?user=&lt;name&gt;, your /mywantlist) gets the "Show the collection" or "Show the wantlist" button, the same table as on the user's page, read from Discogs' API. The button says how many entries the page counts, and stays away when the page says the list is empty.
+- discogs.com: a master's, artist's or label's Images page gets "Show every image": every image with its type and size, from Discogs' API in one request.
+- discogs.com: a release's Marketplace page (/sell/release/&lt;id&gt;) gets "Show every listing": every listing in one table with its conditions, seller and rating, where it ships from, price, shipping, and the price in your currency to compare.
+- discogs.com: the search page gets "Show all results": the results in one table from Discogs' API, 100 a request (Discogs' API gives at most the first 10,000 of a search; the button says so).
+
+**🐛 Fix**
+
+- discogs.com search results: with the "Import Discogs releases to MusicBrainz" userscript installed, the table no longer gets a MusicBrainz column header without its cells, which put every later heading over the wrong column.
+
+
+## 9.99.1501 — 2026-10-29
+
+**🚀 Feature**
+
+- Every picture an artist, label, place, series, instrument or area links (its image, logo and poster links, its Wikimedia Commons files), which MusicBrainz itself does not show, now appears beside its name: one, or several fading from one to the next every 6 seconds, with ‹ › on hover and a click opening them all in the viewer. A picture link that does not load is left out. The script asks MusicBrainz once for the links and remembers them; with the "MusicBrainz Entity Images" userscript installed it uses that script's pictures instead. New setting: "Entity pictures from its links" (on).
+- Link previews: an artist's, label's or place's window shows all of these pictures: one large, a strip of the others (click one to make it the large one), and a line naming the links that did not load. The card shows the first with "+N".
+
+**🐛 Fix**
+
+- The sidebar picture: with the "MusicBrainz Entity Images" userscript showing a logo link first, a Wikimedia Commons picture shown after it no longer goes without its card and viewer, and the picture used is the one that script shows.
+
+
+## 9.99.1500 — 2026-10-29
+
+**✨ Improve**
+
+- Link previews: in a preview window, a link to a Brucebase show or page (an event's "Review" link to brucebase.wikidot.com/2002\#100802, for example) or to another Springsteen site's page now opens in the same window, with Back, instead of a new tab.
+
+
+## 9.99.1499 — 2026-10-29
+
+**✨ Improve**
+
+- Link previews, an event's window: a setlist in parts (Soundcheck, Concert, Encore, …) shows a heading row for each part with its number of songs and its notes, numbers its songs within each part, and gets a chip per part to show only that part. A song played in two parts says so ("↺ also in Soundcheck"). Before, every song was numbered in one run and the part names were loose lines under the table.
+- The event card previews the setlist's longest part (usually the concert, not the soundcheck) and names the other parts.
+
+
+## 9.99.1498 — 2026-10-29
+
+**✨ Improve**
+
+- discogs.com: the history page of a master, an artist or a label (e.g. /master/26725-Born-To-Run/history) now has the "Show the changes and the diff" button too, as a release's has had.
+
+**🐛 Fix**
+
+- discogs.com history pages: "Show the changes and the diff" read only the first page of a longer history, which holds the oldest changes. It now reads every page.
+- An artist's or label's edit history: the diff of a change came out empty, on the history page and in the preview window. It now shows each field (Real Name, Profile, Sites, …), old and new.
+
+
+## 9.99.1497 — 2026-10-29
+
+**🐛 Fix**
+
+- Discogs windows, Videos: the "Playing" label under the player no longer runs into "Video &lt;id&gt;", and each video's title has its proper gap after its ▶ Play tile.
+
+
+## 9.99.1496 — 2026-10-29
+
+**🐛 Fix**
+
+- A long text cell (an editor profile's Bio, an Annotation, edit notes) in a sub-table that starts collapsed now gets its ▶ more toggle when the sub-table is opened. Before, its text was cut off after a few lines with no way to read the rest (reported on https://musicbrainz.org/user/atj).
+
 
 ## 9.99.1495 — 2026-10-28
 
@@ -812,60 +879,6 @@ This page shows the newest 100 of 1666 versions; the month pages hold all of the
 **✨ Improve**
 
 - The sidebar's ◀/▶ handle is there as soon as a supported MusicBrainz page opens, before any button is pressed, with the sidebar open and the page laid out exactly as MusicBrainz draws it. Once a button has rendered the table, "Start with sidebar collapsed" closes it as before. New settings: "Sidebar handle before a button is pressed" (on) and "Start with sidebar collapsed before a button is pressed" (off).
-
-
-## 9.99.1402 — 2026-10-21
-
-**🚀 Feature**
-
-- Two new switches for the link previews (⚙️ → 🔎 LINK PREVIEWS ON MUSICBRAINZ, both on by default): "Link previews (hover card and Space window)" turns every hover card and Space window off at once, and the script then adds nothing for them to the page; "Link previews also before a button is pressed", off, keeps a supported page as MusicBrainz draws it until a button has rendered the table.
-
-
-## 9.99.1401 — 2026-10-21
-
-**✨ Improve**
-
-- The Relationships column's ⚠️ WARNING "Several Discogs links in Relationships" is now "Several links to one site in Relationships": two or more different links to ANY one site (two Discogs pages, two amazon.de products, two pages of one Bandcamp artist, …) flag the cell. A site is the host without "www.", so amazon.de and amazon.com, or music.apple.com and itunes.apple.com, stay one link each and never flag. The cell's tooltip and the icon's popup name every site involved with its links. Its two switches keep their saved values; the new setting "Sites allowed more than one link in Relationships" lists hosts that never count.
-
-
-## 9.99.1400 — 2026-10-21
-
-**🐛 Fix**
-
-- Relationships column: hovering a cell's ⚠️ (several Discogs links) no longer replaces it with the reload ⟳ at the cell's right edge. The ⚠️ stays at the right edge, the ⟳ appears right after the icons as on any other cell, and the cell's tooltip keeps the warning above the reload hint instead of losing it.
-- Relationships column: the popup of an icon in such a cell now starts with the warning itself, with the links involved and the icon you point at marked, under a link preview card as well as without one. Only the ⚠️ WARNING menu showed it before.
-
-
-## 9.99.1399 — 2026-10-20
-
-**✨ Improve**
-
-- A collection's link preview now reads the collection's own page instead of the Web Service, which knows only its name, type, size and owner. The card shows the type, size and number of pages, whether it is public, the owner and the collaborators, the first two lines of the description and the first eight entries. It is still one request, through the same once-a-second gate.
-- The collection window (Space) shows the whole description with its links, and the entries 25 at a time with the page's own columns (without the rating stars) and ◀ ▶ to page through them. MusicBrainz shows 100 entries a page, so the next page is read only when the pager gets there. A release or release group collection also shows those 25 entries' covers from the Cover Art Archive. A release group collection's page splits its entries into one table per type; the window lists them together with the type as a column.
-- When a collection cannot be read (someone else's private one, or one that was removed), the card says it may be private or no longer exist, and the next hover asks again. Other userscripts' additions to a collection page are never read.
-
-
-## 9.99.1398 — 2026-10-20
-
-**🚀 Feature**
-
-- Editor profiles (/user/&lt;name&gt;) get a Profile button. It reads the page you are on, nothing is fetched, and shows General information, Edits, Votes, Added entities and, when the profile has it, Tags and ratings as sub-tables under one Profile heading, with the usual filters, sorting and 📊 dropdowns. Counts sort as numbers; a count's share and its "view" link have their own columns; the bio is clamped with a more toggle.
-- Blocks other userscripts add to a profile (an Edit Notes list, highlights, flags) stay where they are and are never copied into the tables.
-
-
-## 9.99.1397 — 2026-10-20
-
-**✨ Improve**
-
-- Pressing an action button a second time still reloads the page (that is what keeps the column filters working), but the reloaded page now runs the same button by itself: no more "⚠️ Page Reloaded" dialog to dismiss and button to press again. A short note beside the status line ("↻ Page reloaded — re-running …") says what is happening and fades after about 3 seconds. The dialog remains only as a fallback when the button cannot be found again.
-- The reload now happens before anything else a press does. It used to come after the other sections had already been removed from the visible page and, on an artist's release groups, after a whole pass of page requests for the official headers, all of which the reload then threw away.
-
-
-## 9.99.1396 — 2026-10-20
-
-**✨ Improve**
-
-- Three more warnings show the rich comparison card instead of a sentence only. "Live title date uses "-"" (release and release group titles, event names, recording comments): the text over the same text with "‐" in its date, only the date's hyphens marked — a hyphen in the venue stays. "Extra title information starts uppercase": the title over the same title with its keywords in lower case, "(Live in Asbury Park 2009)" over "(live in Asbury Park 2009)". "Title truncated with "…"": the title in one row with the "…" marked, since the full title is not on the page. The cards also show in the note box above a link preview.
 
 
 ---
