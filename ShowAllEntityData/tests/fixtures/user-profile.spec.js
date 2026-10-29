@@ -1,6 +1,7 @@
 'use strict';
 
 const path = require('path');
+const fs = require('fs');
 const { test, expect } = require('../support/test');
 const { loadUserscriptPage } = require('../support/loadPage');
 const { waitForRenderComplete } = require('../support/browser');
@@ -191,6 +192,48 @@ test.describe('user-profile: an editor profile as tables', () => {
         const g = await groups(page);
         expect(g.find((x) => x.name === 'Added entities').rows.map((r) => r[0])).toEqual(['Cover art']);
         expect(g.find((x) => x.name === 'Edits').rows).toHaveLength(0);
+    });
+
+    test('a long Bio left in a hidden sub-table gets its ▶ more toggle once the sub-table opens', async ({ page }) => {
+        // atj's Bio (debug/mb-user-atj.html, debug/mb-user-atj-final.html,
+        // 2026-10-29): <p> headings with a <ul> under each, so it is a prose
+        // cell, not a list cell. The five groups render hidden, and
+        // initCollapsableColumns() measures the Bio at 0/0 there: before the
+        // fix it kept the clamp and never got its toggle, so the text was cut
+        // off for good once the sub-table was opened.
+        const bio = fs.readFileSync(path.join(__dirname, 'user-bio-atj.html'), 'utf8');
+        await open(page);
+        await page.evaluate((html) => { document.querySelector('tr.biography td').innerHTML = html; }, bio);
+        await press(page);
+        const state = () => page.evaluate(() => {
+            const row = Array.from(document.querySelectorAll('#page table.tbl tbody tr'))
+                .find((r) => r.cells[0] && r.cells[0].textContent.trim() === 'Bio');
+            const td = row.cells[1];
+            const inner = td.querySelector('.mb-text-clamp-inner');
+            const toggle = td.querySelector('.mb-cell-collapse-toggle');
+            return {
+                hidden: getComputedStyle(td.closest('table')).display === 'none',
+                clamped: !!inner,
+                toggle: !!toggle,
+                expanded: toggle ? toggle.getAttribute('aria-expanded') : null,
+                shown: inner ? inner.clientHeight : td.clientHeight,
+                full: inner ? inner.scrollHeight : td.scrollHeight,
+                hdrBtn: !!td.closest('table').querySelector('thead .mb-col-collapse-hdr-btn'),
+            };
+        });
+        const atRender = await state();
+        expect(atRender.hidden, 'precondition: the group renders hidden, as on musicbrainz.org').toBe(true);
+        expect(atRender.clamped, 'the Bio is a prose cell').toBe(true);
+        await ensureSubTableVisible(page, 0);
+        await expect.poll(async () => (await state()).toggle, { message: 'a cut-off Bio has its ▶ more toggle' }).toBe(true);
+        const before = await state();
+        expect(before.full, 'it is longer than the clamp').toBeGreaterThan(before.shown + 1);
+        expect(before.expanded).toBe('false');
+        expect(before.hdrBtn, "the Value column's header toggle is there too").toBe(true);
+        await page.locator('#page table.tbl tr:has(td:text-is("Bio")) .mb-cell-collapse-toggle').click();
+        const after = await state();
+        expect(after.expanded).toBe('true');
+        expect(after.shown, 'expanded: nothing is cut off').toBeGreaterThanOrEqual(after.full);
     });
 
     test('not on a page under the profile', async ({ page }) => {

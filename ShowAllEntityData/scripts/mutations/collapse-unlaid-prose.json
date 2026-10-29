@@ -1,0 +1,28 @@
+[
+  {
+    "name": "prose cells measured while hidden are not watched",
+    "why": "Without the watch a prose cell in a sub-table rendered hidden keeps its height clamp but never gets its toggle: opening the sub-table later does not measure it again (user-profile's Bio, debug/mb-user-atj-final.html).",
+    "edits": [
+      {
+        "find": "        _collapseWatchUnlaid(table, _unlaid);",
+        "replace": "        void _unlaid;"
+      }
+    ],
+    "spec": "tests/fixtures/user-profile.spec.js",
+    "grep": "long Bio left in a hidden sub-table",
+    "expect": "fail"
+  },
+  {
+    "name": "the watch fires but does not set the table up again",
+    "why": "The observer must re-run initCollapsableColumns() on the table once a watched cell is laid out and cut off; noticing the size alone adds no toggle.",
+    "edits": [
+      {
+        "find": "                Lib.debug('collapse', '_collapseWatchUnlaid: a prose cell measured while hidden is cut off; setting the table up again.');\n                initCollapsableColumns(table);",
+        "replace": "                Lib.debug('collapse', '_collapseWatchUnlaid: a prose cell measured while hidden is cut off; setting the table up again.');"
+      }
+    ],
+    "spec": "tests/fixtures/user-profile.spec.js",
+    "grep": "long Bio left in a hidden sub-table",
+    "expect": "fail"
+  }
+]

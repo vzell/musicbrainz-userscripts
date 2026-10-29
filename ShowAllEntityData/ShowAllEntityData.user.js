@@ -109661,14 +109661,14 @@ a { color: #1565c0; }`;
                 // categories 'album'/'official' have a small enough row count, OR this is
                 // release-tracks (every medium — "1 - CD", "2 - DVD-Video", … — always
                 // stays open; hiding mediums by default works against the whole point of
-                // consolidating a release's tracklists into one view). The release-tracks
-                // case also fixes a real bug, not just a UX preference: initCollapsableColumns()/
+                // consolidating a release's tracklists into one view). It was also how a
+                // real bug was first sidestepped: initCollapsableColumns()/
                 // makeColumnsResizable() run synchronously right after this, in the same
-                // pass — measuring scrollHeight/clientHeight on a `display:none` table
-                // always reads 0/0 in a real browser, so any collapsable column
-                // (ARs/AcoustID/ISRC) on a table left hidden here permanently never gets
-                // its overflow-triggered toggle, even after the user later expands the
-                // section manually (see DEBUG-NOTES.md).
+                // pass, and on a `display:none` table scrollHeight/clientHeight read 0/0,
+                // so a prose column's cut-off cells got no toggle. Since 2026-10-29
+                // _collapseWatchUnlaid() measures those cells again once the table is
+                // shown, for every pageType (see DEBUG-NOTES.md); list columns' minimum
+                // widths are still measured as 0 on a hidden table.
                 const isSingleSubTable = dataArray.length === 1;
                 const isReleaseTracks = activeDefinition?.type === 'release-tracks';
                 const shouldStayOpen = isSingleSubTable || isReleaseTracks ||
@@ -121205,6 +121205,61 @@ a { color: #1565c0; }`;
     }
 
     /**
+     * The ResizeObserver of each table's prose cells that `initCollapsableColumns()`
+     * could not measure, by table (`_collapseWatchUnlaid()`).
+     * @type {WeakMap<HTMLTableElement, ResizeObserver>}
+     */
+    const _collapseUnlaidObservers = new WeakMap();
+
+    /**
+     * Watches the prose cells of `table` that `initCollapsableColumns()` measured
+     * while they were not laid out, typically because their sub-table was
+     * rendered hidden (`renderGroupedTable()`'s `shouldStayOpen`). There both
+     * `scrollHeight` and `clientHeight` read 0, so such a cell kept its height
+     * clamp but never got its ▶ more toggle, and opening the sub-table later
+     * never measured it again: the text stayed cut off for good (a long "Bio"
+     * on user-profile, debug/mb-user-atj-final.html, 2026-10-29; the same trap
+     * release-tracks once sidestepped by keeping every medium open, see
+     * DEBUG-NOTES.md).
+     *
+     * The first time one of them gets a height and is cut off, the whole table
+     * is set up again: `initCollapsableColumns()` is idempotent and keeps each
+     * cell's state (`expandedCells`). Cells still without a size are watched
+     * again. Replaces the table's previous observer; called with `[]` at the
+     * start of every `initCollapsableColumns()`, which stops it.
+     *
+     * @param {HTMLTableElement} table
+     * @param {HTMLElement[]} inners - The cells' `.mb-text-clamp-inner` wrappers.
+     */
+    function _collapseWatchUnlaid(table, inners) {
+        const prev = _collapseUnlaidObservers.get(table);
+        if (prev) {
+            prev.disconnect();
+            _collapseUnlaidObservers.delete(table);
+        }
+        if (!inners.length || typeof ResizeObserver !== 'function') return;
+        const ro = new ResizeObserver((entries) => {
+            if (!entries.some(e => e.contentRect.height > 0)) return;
+            ro.disconnect();
+            _collapseUnlaidObservers.delete(table);
+            if (!table.isConnected) return;
+            const live = inners.filter(inner => inner.isConnected && table.contains(inner));
+            if (live.some(inner => inner.scrollHeight > inner.clientHeight + 1)) {
+                Lib.debug('collapse', '_collapseWatchUnlaid: a prose cell measured while hidden is cut off; setting the table up again.');
+                initCollapsableColumns(table);
+                if (activeDefinition && activeDefinition.tableMode === 'multi') {
+                    updateSubTableCollapseButton(table);
+                    rewireGlobalCollapseButtonMulti();
+                }
+                return;
+            }
+            _collapseWatchUnlaid(table, live.filter(inner => inner.scrollHeight === 0));
+        });
+        inners.forEach(inner => ro.observe(inner));
+        _collapseUnlaidObservers.set(table, ro);
+    }
+
+    /**
      * Wires the single global ▶/◀ toggle button for multi-table mode.
      *
      * In multi-table mode `initCollapsableColumns` is called once per sub-table,
@@ -122051,6 +122106,7 @@ a { color: #1565c0; }`;
      */
     function initCollapsableColumns(table) {
         if (!activeDefinition || !activeDefinition.features) return;
+        _collapseWatchUnlaid(table, []);
         const collapsableColumns = activeDefinition.features.collapsableColumns;
         if (!Array.isArray(collapsableColumns) || collapsableColumns.length === 0) {
             const globalBtn = document.getElementById('mb-col-collapse-all-btn');
@@ -122779,9 +122835,20 @@ a { color: #1565c0; }`;
         const _widths = _colPasses.map(p => p.req.firstLis.reduce(
             (m, li) => Math.max(m, Math.ceil(li.getBoundingClientRect().width)), 0));
         _allFirstLis.forEach(li => { li.style.width = ''; });
-        const _overflowing = _colPasses.map(p => p.req.prose.filter(({ inner }) =>
-            inner.scrollHeight > inner.clientHeight + 1));
+        // A prose cell has text, so a laid-out one is never 0 px high: 0 means
+        // it is not laid out (a sub-table rendered hidden), not that it fits.
+        // Those are watched until they get a size (_collapseWatchUnlaid()).
+        const _unlaid = [];
+        const _overflowing = _colPasses.map(p => p.req.prose.filter(({ inner }) => {
+            const sh = inner.scrollHeight;
+            if (sh === 0) {
+                _unlaid.push(inner);
+                return false;
+            }
+            return sh > inner.clientHeight + 1;
+        }));
         _colPasses.forEach((p, i) => p.g.next({ maxFirstLiWidth: _widths[i], overflowing: _overflowing[i] }));
+        _collapseWatchUnlaid(table, _unlaid);
 
         // ── Wire global ▶/◀ toggle button ────────────────────────────────────
         // In single-table mode: wire directly here (only one table to handle).

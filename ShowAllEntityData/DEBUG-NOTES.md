@@ -26962,3 +26962,54 @@ Four requests from vzell's screenshots; the snapshot is `debug/genres-initial.ht
   synchronously, while the request log only shows a request after the
   rate gate. A log-based check let the mutation "a tag card asks for the
   genre list" survive.
+
+## 2026-10-29 — A prose cell measured in a hidden sub-table never got its toggle (user-profile Bio; feature/poh-setlist-images-dg-history, WIP.1)
+
+Env: 2026-10-29T00:38+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) · Playwright 1.62.1 (bundled Chromium), no Tampermonkey (GM stubs); the user's snapshots: browser and Tampermonkey 5.5.1 (version per the SAED card in the snapshot), browser version unknown
+
+**Symptom.** On https://musicbrainz.org/user/atj the profile's "Bio" (a long
+wiki text: `<p>` headings with a `<ul>` under each) is cut off after a few
+lines in the Value column, with no ▶ more toggle (`debug/mb-user-atj.html` IP,
+`debug/mb-user-atj-final.html` FRP: the cell carries `mb-text-clamp-inner`,
+the page has zero `.mb-cell-collapse-toggle`, and the Bio td lacks
+`mb-collapse-col-pad`, so its column pass ended with "none overflowed").
+
+**Root cause, measured.** The five groups render hidden (`renderGroupedTable()`'s
+`shouldStayOpen` is false for them), and `initCollapsableColumns()` runs right
+after, on the hidden table. A probe that wrapped `Element.prototype.scrollHeight`
+logged ONE read of the Bio: `scrollHeight 0, clientHeight 0, getClientRects()
+0, table display none`, taken in the driver's batched overflow read. 0 > 0 + 1
+is false, so the cell counted as short: clamp kept, no toggle, and opening the
+sub-table only flips `display`, it never measures again. This is the exact trap
+the "2026-08-07 — ARs/AcoustID/ISRC collapse toggle never appears on
+multi-medium releases" entry worked around
+for one pageType by keeping every medium open; it was never fixed generally,
+so every prose column (Annotation, Edit notes, Bio) in a sub-table that starts
+hidden had it.
+
+**Fix (general, no new layout read).** In the driver, a prose cell whose
+`scrollHeight` is 0 — the value it already read — is "not laid out", not
+"short" (a prose candidate has text, so a laid-out one is never 0 px). Those
+wrappers go to `_collapseWatchUnlaid(table, inners)`: one ResizeObserver per
+table (a WeakMap); the first time a watched cell has a height and is cut off,
+the observer disconnects and runs `initCollapsableColumns(table)` again
+(idempotent; `expandedCells` keeps the state), then in multi mode
+`updateSubTableCollapseButton()` and `rewireGlobalCollapseButtonMulti()`, as
+`renderGroupedTable()` does. Cells still without a size are watched again.
+Every `initCollapsableColumns()` call stops the table's previous observer
+first. The column pass itself is unchanged, so the batching of PERFORMANCE.org
+Step 40 holds (`collapse-measure-batched.spec.js` passes).
+
+**Not fixed here, same cause:** a LIST column's `maxFirstLiWidth` and
+`makeColumnsResizable()`'s header minimum are also measured as 0 on a hidden
+table. Their toggles still exist, so nothing is lost, only a minimum width.
+
+**Test.** `user-profile.spec.js` "a long Bio left in a hidden sub-table gets
+its ▶ more toggle once the sub-table opens": it plants atj's Bio
+(`tests/fixtures/user-bio-atj.html`, cut from the IP) into the vzell fixture,
+asserts the group renders hidden (the precondition), opens it, and expects
+the toggle, the column header toggle, and the full height after a click. It
+failed before the fix at the toggle assertion. `scripts/mutations/collapse-unlaid-prose.json`:
+2/2 caught (no watch; watch without the re-run).
+
+**Confirmed live** by vzell in the real browser (2026-10-29), on /user/atj.

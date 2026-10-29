@@ -1,0 +1,14 @@
+[
+  {
+    "version": "WIP.1",
+    "date": "2026-10-29",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "A long text cell (an editor profile's Bio, an Annotation, edit notes) in a sub-table that starts collapsed now gets its ▶ more toggle when the sub-table is opened. Before, its text was cut off after a few lines with no way to read the rest (reported on https://musicbrainz.org/user/atj)."
+        ]
+      }
+    ]
+  }
+]
