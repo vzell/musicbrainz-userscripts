@@ -302,6 +302,7 @@ skill for turning a =planned= row into a =captured= one.
 | 139 | dg-user-list                  | multi        | discogs.com /user/NAME/collection, /wantlist   | NOT MusicBrainz, opt-in; dg-user's collection/wantlist from the API, the page's own list only                              |
 | 140 | dg-entity-images              | single       | discogs.com /KIND/ID/images                    | NOT MusicBrainz, opt-in; a master's/artist's/label's images from the API: #, Image, Type, W × H                            |
 | 141 | dg-sell                       | single       | discogs.com /sell/release/ID                   | NOT MusicBrainz, opt-in; plain HTML: every listing from the page's own pages, 250 a page, sort kept                        |
+| 142 | dg-search                     | single       | discogs.com /search?q=…                        | NOT MusicBrainz, opt-in; Next.js page; the API's database/search, 100 a page, at most 10,000                               |
 
 * Page type details
 ** 1. taglookup
@@ -1142,6 +1143,13 @@ lists converted into sortable tables), tableMode =multi=.
 - Buttons: "Show every listing" (count from the live pager, =_dgSellSize()=; hidden when the page has no listing).
 - Rows: =table.mpitems= of the page's own pages (=_dgSellToHtml()=), same-origin =fetchHtml()=, =limit=250=, the page's =sort= kept. Columns =_DG_HEADERS.sell=.
 - Coverage: =tests/fixtures/discogs-sell.spec.js=, =sl-include-regex.spec.js=; fixture =dg-sell-release.html= (=scripts/build-discogs-fixtures.py=, 3 listings, one page: several pages unseen); mutations =scripts/mutations/dg-sell.json=.
+
+** 142. dg-search
+- URL: [[https://www.discogs.com/search?q=bruce+springsteen&type=all][discogs.com/search?q=bruce+springsteen]] (2026-10-29).
+- Match: =_DG_SEARCH_PATH_RE=; its =@include= line needs a non-empty =q=. A Next.js page (no =#app=, no =#page_content=): the gate lets it in by path and =<main>=.
+- Buttons: "Show all results" (hidden without =q=; the count from the page's "1 - 25 of N", capped at =_DG_SEARCH_MAX=).
+- Rows: the API's =database/search?<q, type>&per_page=100= (=_dgSearchPageUrl()=), page 1 asked once for the count and kept (=_dgTexts=). The API serves 100 pages at most.
+- Coverage: =tests/fixtures/discogs-search-page.spec.js= (2), =sl-include-regex.spec.js=; fixtures =dg-search.html= (=scripts/build-discogs-fixtures.py=), =ext-discogs-search-springsteen-all-p1.json=; mutations =scripts/mutations/dg-search.json=. Unchecked by fixtures: whether Next.js's hydration leaves our section (first in =<body>=) alone — a live check.
 
 ** Relationship-tables buttons on existing pageTypes (not pageTypes of their own)
 =_relTablesButton()= adds a second button to series-releases, work-recordings, releasegroup-releases, recording-releases (with "Related works" as "Via <work>" tables), label-relationships and artist-relationships ("Relationship lists"), and release-tracks ("Credits", the release's own =#release-relationships= and its group's =#release-group-relationships=, never the per-medium track credits). Each runs as its own pageType for that render (=series-relationship-tables=, =work-relationship-tables=, =releasegroup-relationship-tables=, =recording-relationship-tables=, =label-relationship-tables=, =artist-relationship-tables=, =release-credit-tables=; =buttonConfig.type= switches =pageType= in =startFetchingProcess()=), with only its own features (=replaceFeatures=), and removes the page's main data section (=removeMain=, =_relRemoveMainSections()=). A saved file records that pageType and loads back as the same button (=_activateButtonForSavedPageType()=). Hidden with =sa_enable_relationship_tables= off (=showIf=). Coverage: =tests/fixtures/rel-tables-recording.spec.js= (incl. the main button unchanged and a Save → Load round trip) and =rel-tables-pages.spec.js=, raw captures =tests/fixtures/rel-{series,work,label-rels,artist-rels,release-group,recording,release}-overview.html=.

@@ -1774,7 +1774,7 @@ an import brings your deletions back.
   and lyrics index, the **jungleland.it**
   bootleg artwork list, the **brucespringsteen.it** record database and
   the **Brucebase** song list, year pages, Relations and Recent changes, and
-  **discogs.com**'s master, release, artist, label, submissions, user, ratings, collection, wantlist, history (release, master, artist, label), images (release, master, artist, label) and release Marketplace pages — each off until
+  **discogs.com**'s master, release, artist, label, submissions, user, ratings, collection, wantlist, history (release, master, artist, label), images (release, master, artist, label), release Marketplace and search pages — each off until
   you switch it on, see [Page-specific behaviour](#page-specific-behaviour)
 
 </details>
@@ -3671,6 +3671,11 @@ section of its own above Discogs' page, with the toolbar and these buttons:
   Secondary) and **W × H** as Discogs serves it, from Discogs' API in one
   request. Who uploaded an image and when is known for a release's images
   only.
+- **Search — Show all results:** a search page (`/search?q=…`): its results
+  in one table (**Type**, **Title**, **Format**, **Label**, **Year**; the
+  thumbnails with a Discogs token only), from Discogs' API, 100 a request.
+  Discogs' API gives at most the first 10,000 results of a search; the
+  button says so when there are more.
 - **For sale — Show every listing:** a release's Marketplace page
   (`/sell/release/<id>`): every listing in one table, read from the page's
   own pages, 250 at a time, in the order you chose there: the **Item**,

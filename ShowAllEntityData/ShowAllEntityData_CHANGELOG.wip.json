@@ -8,7 +8,8 @@
         "items": [
           "discogs.com: a user's collection or wantlist page of its own (/user/<name>/collection, /wantlist?user=<name>, your /mywantlist) gets the \"Show the collection\" or \"Show the wantlist\" button, the same table as on the user's page, read from Discogs' API. The button says how many entries the page counts, and stays away when the page says the list is empty.",
           "discogs.com: a master's, artist's or label's Images page gets \"Show every image\": every image with its type and size, from Discogs' API in one request.",
-          "discogs.com: a release's Marketplace page (/sell/release/<id>) gets \"Show every listing\": every listing in one table with its conditions, seller and rating, where it ships from, price, shipping, and the price in your currency to compare."
+          "discogs.com: a release's Marketplace page (/sell/release/<id>) gets \"Show every listing\": every listing in one table with its conditions, seller and rating, where it ships from, price, shipping, and the price in your currency to compare.",
+          "discogs.com: the search page gets \"Show all results\": the results in one table from Discogs' API, 100 a request (Discogs' API gives at most the first 10,000 of a search; the button says so)."
         ]
       }
     ]

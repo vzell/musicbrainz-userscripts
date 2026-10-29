@@ -39,6 +39,7 @@
 // @include      /^https?:\/\/(?:www\.)?discogs\.com\/(?:[a-z]{2}(?:[-_][a-zA-Z]{2})?\/)?release\/\d+(?:-[^\/?#]*)?\/images(?:\/update)?\/?(?:[?#].*)?$/
 // @include      /^https?:\/\/(?:www\.)?discogs\.com\/(?:[a-z]{2}(?:[-_][a-zA-Z]{2})?\/)?(?:master|artist|label)\/\d+(?:-[^\/?#]*)?\/images\/?(?:[?#].*)?$/
 // @include      /^https?:\/\/(?:www\.)?discogs\.com\/(?:[a-z]{2}(?:[-_][a-zA-Z]{2})?\/)?sell\/release\/\d+\/?(?:[?#].*)?$/
+// @include      /^https?:\/\/(?:www\.)?discogs\.com\/(?:[a-z]{2}(?:[-_][a-zA-Z]{2})?\/)?search\/?\?(?:[^#]*&)?q=[^&#]+.*$/
 // @connect      raw.githubusercontent.com
 // @connect      coverartarchive.org
 // @connect      eventartarchive.org
@@ -6593,6 +6594,15 @@
     const _DG_SELL_PATH_RE = /^\/(?:[a-z]{2}(?:[-_][a-zA-Z]{2})?\/)?sell\/release\/(\d+)\/?$/;
 
     /**
+     * discogs.com's search, `/search?q=…` (pageType `dg-search`, 2026-10-29):
+     * a Next.js page, with neither `#app` nor `#page_content`
+     * (debug/dg-search.html); the gate below lets it through by this path and
+     * its `<main>`, which Cloudflare's check has none of.
+     * @type {RegExp}
+     */
+    const _DG_SEARCH_PATH_RE = /^\/(?:[a-z]{2}(?:[-_][a-zA-Z]{2})?\/)?search\/?$/;
+
+    /**
      * A Brucebase year page's path: `/1975`, …, and the one exception
      * `/1949-64` (pageType `bb-year`, docs/claude/brucebase.md). Read by the
      * year-page opt-in gate below and by the `bb-year` definition's `match`.
@@ -6701,7 +6711,9 @@
            _DG_HIST_PATH_RE.test(window.location.pathname) || _DG_RATINGS_PATH_RE.test(window.location.pathname) ||
            _DG_IMG_PATH_RE.test(window.location.pathname) || _DG_ENT_IMG_PATH_RE.test(window.location.pathname) ||
            _DG_SELL_PATH_RE.test(window.location.pathname)) &&
-          document.getElementById('page_content'))) {
+          document.getElementById('page_content')) &&
+        // The search (2026-10-29): a Next.js page, its content in <main>.
+        !(_DG_SEARCH_PATH_RE.test(window.location.pathname) && document.querySelector('body main'))) {
         Lib.info('init', 'discogs.com: no #app on this page (a security check?) — nothing to do.');
         return;
     }
@@ -15736,6 +15748,8 @@
         entityImages: ['#', 'Image', 'Type', 'W × H'],
         // A release's Marketplace listings (dg-sell, 2026-10-29).
         sell: ['Item', 'Media', 'Sleeve', 'Comments', 'Seller', 'Rating', 'Ratings', 'Ships from', 'Price', 'Shipping', 'About'],
+        // A search's results (dg-search, 2026-10-29), as the API gives them.
+        search: ['Image', 'Type', 'Title', 'Format', 'Label', 'Year'],
         user: {
             releases: ['Image', 'Artist', 'Title', 'Format', 'Label', 'Cat#', 'Country', 'Year', 'Status', 'Added', 'Last changed'],
             names: ['Name', 'Data quality', 'Status'],
@@ -17005,7 +17019,7 @@
         h2.className = 'mb-dg-list-heading';
         h2.textContent = kind === 'user' ? (_DG_USER_LISTS[def.features.dgUserList] || {}).heading || 'Lists'
             : { artist: 'Discography', label: 'Releases', master: 'Versions', release: 'Release', submissions: 'Submissions', history: 'History',
-                ratings: 'Ratings', images: 'Images', entityImages: 'Images', sell: 'For sale' }[kind] || 'Discogs';
+                ratings: 'Ratings', images: 'Images', entityImages: 'Images', sell: 'For sale', search: 'Search results' }[kind] || 'Discogs';
         const cols = kind === 'release' ? _DG_HEADERS.release.Tracklist : kind === 'user' ? _DG_HEADERS.user.releases
             : kind === 'history' ? _DG_HEADERS.history.Changes : _DG_HEADERS[kind];
         const table = document.createElement('table');
@@ -18596,6 +18610,77 @@
                 `${_dgCell(ship)}${_dgCell(about)}</tr>`;
         });
         return `<!DOCTYPE html><html><head><meta charset="utf-8"></head><body>${_dgTableHtml(null, _DG_HEADERS.sell, rows)}</body></html>`;
+    }
+
+    // --- discogs.com: a search (pageType dg-search) ---------------------------
+    // `/search?q=…[&type=…]` (2026-10-29). The page is Next.js: its results
+    // in a streamed payload, its pager buttons without hrefs (cap 400 pages,
+    // debug/dg-search.html). The API's `database/search` answers the same
+    // query without a token (the search reader's, `_extDgSearchSub()`), 100 a
+    // page: the rows come from there.
+
+    /**
+     * How many results of a search Discogs' API gives at most: it counts them
+     * all ("items": 24,128 for "bruce springsteen") but serves 100 pages of
+     * 100 (capture ext-discogs-search-springsteen-all-p1.json, 2026-10-29:
+     * "pages": 100).
+     */
+    const _DG_SEARCH_MAX = 10000;
+
+    /**
+     * Page `p` of this search in the API, 100 a page.
+     * @param {number} p - From 1.
+     * @returns {string}
+     */
+    function _dgSearchPageUrl(p) {
+        return `https://api.discogs.com/database/search?${_extDgSearchSub(new URL(window.location.href))}` +
+            `&per_page=${_EXT_DISCOGS_PER_PAGE}&page=${p}`;
+    }
+
+    /**
+     * How many results the live page says ("1 - 25 of 24,128"), no request;
+     * 0 when it says nothing.
+     * @returns {number}
+     */
+    function _dgSearchTotal() {
+        const p = Array.from(document.querySelectorAll('main p')).find(x => /^\s*[\d,]+\s*-\s*[\d,]+\s+of\s+[\d,]+\s*$/.test(x.textContent));
+        const m = p && /of\s+([\d,]+)/.exec(p.textContent);
+        return m ? Number(m[1].replace(/,/g, '')) : 0;
+    }
+
+    /**
+     * `features.pageCountAsync` of `dg-search`: page 1 asked once (kept in
+     * `_dgTexts` for the loop), its `pagination.pages`.
+     * @returns {Promise<number>}
+     */
+    async function _dgSearchPageCount() {
+        _dgTexts.clear();
+        const url = _dgSearchPageUrl(1);
+        const text = await _dgFetchText(url, false);
+        _dgTexts.set(url, text);
+        const d = _dgJson(text);
+        return Math.max(1, Number(d && d.pagination && d.pagination.pages) || 1);
+    }
+
+    /**
+     * One API page of the search as a `table.tbl` (`_DG_HEADERS.search`):
+     * the thumbnail (empty without a token: the API sends none), the kind,
+     * the title linking its page, format, label and year, as the search
+     * reader reads a result (`_extDgSearchRow()`).
+     * @param {string} text
+     * @returns {string} An HTML document.
+     * @throws {Error} When the answer holds no results (`status` 0).
+     */
+    function _dgSearchToHtml(text) {
+        const d = _dgJson(text);
+        if (!d || !Array.isArray(d.results)) throw Object.assign(new Error('Discogs answered, but not with search results'), { status: 0 });
+        const rows = d.results.map(_extDgSearchRow).filter(r => r.url).map(r => {
+            const img = r.thumb ? `<a class="mb-dg-thumblink" data-mbtt-fn="fi-img" data-mb-fi="dg" href="${_rgEsc(r.thumb)}" target="_blank" rel="noopener noreferrer">` +
+                `<img class="mb-dg-thumb" src="${_rgEsc(r.thumb)}" alt="" width="40" height="40" loading="lazy" referrerpolicy="no-referrer"></a>` : '';
+            return `<tr><td class="mb-dg-imgcell">${img}</td>${_dgCell(r.type ? r.type.charAt(0).toUpperCase() + r.type.slice(1) : '')}` +
+                `<td><a href="${_rgEsc(r.url)}"${_DG_NEW_TAB}>${_rgEsc(r.title)}</a></td>${_dgCell(r.format)}${_dgCell(r.label)}${_dgCell(r.year)}</tr>`;
+        });
+        return `<!DOCTYPE html><html><head><meta charset="utf-8"></head><body>${_dgTableHtml(null, _DG_HEADERS.search, rows)}</body></html>`;
     }
 
     // --- discogs.com: a user's page (pageType dg-user) -----------------------
@@ -41888,6 +41973,34 @@
                 pageRequest: (p) => ({ url: _dgSellPageUrl(p), toHtml: (text) => _dgSellToHtml(text) }),
                 pageCountAsync: async () => _dgSellSize().pages,
                 integerColumns: [ { sourceColumn: 'Ratings', align: 'R' } ]
+            },
+            tableMode: 'single'
+        },
+        {
+            // discogs.com's search (2026-10-29): the results from the API.
+            // See the "discogs.com: a search" block above _dgSearchPageUrl().
+            type: 'dg-search',
+            host: 'www.discogs.com',
+            match: (path) => _DG_SEARCH_PATH_RE.test(path),
+            buttons: [ {
+                label: 'Show all results', shortLabel: 'Results',
+                showIf: () => !!new URLSearchParams(window.location.search).get('q'),
+                get description() {
+                    const n = _dgSearchTotal();
+                    const shown = Math.min(n, _DG_SEARCH_MAX);
+                    return n ? _dgCost(`${n > _DG_SEARCH_MAX ? `The first ${_extDgNum(shown)} of ${_extDgNum(n)}` : _extDgNum(n)} results`,
+                        Math.max(1, Math.ceil(shown / _EXT_DISCOGS_PER_PAGE)))
+                        : `Every result of this search, from Discogs' API (one request per ${_EXT_DISCOGS_PER_PAGE}).`;
+                }
+            } ],
+            features: {
+                dgToTable: 'search',
+                pageRequest: (p) => {
+                    const url = _dgSearchPageUrl(p);
+                    return { url, fetchText: () => _dgFetchText(url), toHtml: (text) => _dgSearchToHtml(text) };
+                },
+                pageCountAsync: () => _dgSearchPageCount(),
+                integerColumns: [ { sourceColumn: 'Year', align: 'R' } ]
             },
             tableMode: 'single'
         }

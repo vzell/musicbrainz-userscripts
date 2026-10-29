@@ -278,6 +278,23 @@ def build_sell_release():
     return SHELL.format(title=html.escape(title), content=squeeze(content)), title
 
 
+def build_search():
+    """dg-search.html (debug/dg-search.html, saved by vzell 2026-10-29, logged in): discogs.com's search page
+    (`/search?q=bruce+springsteen&type=all`), a Next.js page with neither #app nor #page_content — its title and,
+    in <main>, the count line ("1 - 25 of 24,128") the button reads. The rows come from Discogs' API."""
+    src = read_debug('dg-search.html')
+    title = text(re.search(r'<title[^>]*>(.*?)</title>', src, re.S).group(1))
+    m = re.search(r'<p class="hifi-body hifi-body-medium">(\d[\d,]* - \d[\d,]* of \d[\d,]*)<', src)
+    if not m or '<main' not in src or 'id="app"' in src or 'id="page_content"' in src:
+        sys.exit('dg-search.html: not the Next.js search page with its count')
+    return ('<!DOCTYPE html>\n<html lang="en"><head><meta charset="utf-8">'
+            f'<title>{html.escape(title)}</title></head><body>\n'
+            '<div id="__header_root_8239"><header class="dg-fx-header"><a href="https://www.discogs.com/release/1874253">Header link</a></header></div>\n'
+            f'<main><p class="hifi-body hifi-body-medium">{m.group(1)}</p><div role="list"></div></main>\n'
+            '<div id="esi-footer-root"><footer class="dg-fx-footer"><a href="https://www.discogs.com/master/26725">Footer link</a></footer></div>\n'
+            '</body></html>\n'), title
+
+
 def build_user_wantlist():
     """dg-user-wantlist.html (debug/dg-user-wantlist.html, saved by vzell 2026-10-29, logged in): disc-kid's
     public wantlist page (`/wantlist?user=disc-kid`) — its title and the top pager ("1 – 138 of 138"). The rows
@@ -360,7 +377,8 @@ def main():
                      ('dg-master-images.html', lambda: build_entity_images('master')),
                      ('dg-artist-images.html', lambda: build_entity_images('artist')),
                      ('dg-label-images.html', lambda: build_entity_images('label')),
-                     ('dg-sell-release.html', build_sell_release)):
+                     ('dg-sell-release.html', build_sell_release),
+                     ('dg-search.html', build_search)):
         out, title = fn()
         write(name, out, f'title "{title}"')
     return 0

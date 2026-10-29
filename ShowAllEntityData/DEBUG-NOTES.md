@@ -27264,3 +27264,15 @@ hidden tooltip ("A nearly perfect disc…") — dropped; the shipping span holds
 ("about €53.93 +VAT…" → "€53.93"). Tests: discogs-sell.spec.js (2: the first
 listing's eleven cells, absolute links, limit/page/sort asked);
 `dg-sell.json` 4/4. Unseen: several pages (the snapshot has 3 listings).
+
+**WIP.7 (d): dg-search** (`/search?q=…`). A Next.js app-router page: no `#app`,
+no `#page_content`, results in an RSC stream, pager buttons without hrefs. The
+gate gained a third arm (path + `<main>`; Cloudflare's check has no `<main>`).
+Rows from the API's `database/search` with the search reader's query
+(`_extDgSearchSub()`), 100 a page. **Measured:** the API counts 24,128 results
+for "bruce springsteen" but `pagination.pages` is 100 at per_page 100 — it
+serves the first 10,000 only (`_DG_SEARCH_MAX`); the button says "The first
+10,000 of 24,128". **Not checked:** our section goes first in `<body>`; whether
+Next.js's hydration (it owns the whole document) leaves it alone can only be
+seen live. Tests: discogs-search-page.spec.js (2); `dg-search.json` 3/3. The ten
+Discogs specs: 156/156.

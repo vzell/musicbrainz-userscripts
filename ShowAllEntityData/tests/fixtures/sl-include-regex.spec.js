@@ -282,7 +282,6 @@ test.describe('@include coverage', () => {
         ];
         const others = [
             'https://www.discogs.com/',
-            'https://www.discogs.com/search/?q=Springsteen&type=all',
             'https://www.discogs.com/sell/list?master_id=26725',
             'https://www.discogs.com/release/1874253-Bruce-Springsteen-Born-To-Run/image/SW1hZ2U6NDYwODA1ODY=',
             'https://www.discogs.com/artist/Bruce-Springsteen',
@@ -326,6 +325,23 @@ test.describe('@include coverage', () => {
             'https://www.discogs.com/sell/item/4033083994',
             'https://www.discogs.com/sell/release/8164856x',
             'https://www.discogs.com/sell/release/',
+        ];
+        expect(pages.filter((u) => !injected(u))).toEqual([]);
+        expect(others.filter((u) => injected(u))).toEqual([]);
+    });
+
+    test('discogs.com: a search with a query (dg-search, 2026-10-29); not one without', () => {
+        const pages = [
+            'https://www.discogs.com/search/?q=Springsteen&type=all',
+            'https://www.discogs.com/search?q=bruce+springsteen&type=all',
+            'https://www.discogs.com/search?type=master&q=born+to+run',
+            'https://www.discogs.com/de/search?q=springsteen',
+        ];
+        const others = [
+            'https://www.discogs.com/search',
+            'https://www.discogs.com/search?type=all',
+            'https://www.discogs.com/search?q=&type=all',
+            'https://www.discogs.com/searchx?q=springsteen',
         ];
         expect(pages.filter((u) => !injected(u))).toEqual([]);
         expect(others.filter((u) => injected(u))).toEqual([]);

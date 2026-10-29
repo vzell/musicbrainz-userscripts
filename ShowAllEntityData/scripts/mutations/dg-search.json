@@ -1,0 +1,41 @@
+[
+  {
+    "name": "the gate stops the Next.js search page",
+    "why": "No #app and no #page_content: without the search arm the gate takes it for Cloudflare's check.",
+    "edits": [
+      {
+        "find": "        !(_DG_SEARCH_PATH_RE.test(window.location.pathname) && document.querySelector('body main'))) {",
+        "replace": "        !(false && document.querySelector('body main'))) {"
+      }
+    ],
+    "spec": "tests/fixtures/discogs-search-page.spec.js",
+    "grep": "the Next.js page is let in",
+    "expect": "fail"
+  },
+  {
+    "name": "the button promises every result",
+    "why": "The API serves 100 pages of 100: a search of 24,128 results gives the first 10,000.",
+    "edits": [
+      {
+        "find": "    const _DG_SEARCH_MAX = 10000;",
+        "replace": "    const _DG_SEARCH_MAX = Infinity;"
+      }
+    ],
+    "spec": "tests/fixtures/discogs-search-page.spec.js",
+    "grep": "the Next.js page is let in",
+    "expect": "fail"
+  },
+  {
+    "name": "page 1 is asked twice (count, then rows)",
+    "why": "The page count's answer is kept for the loop (_dgTexts), as dg-user's.",
+    "edits": [
+      {
+        "find": "        const text = await _dgFetchText(url, false);\n        _dgTexts.set(url, text);\n        const d = _dgJson(text);\n        return Math.max(1, Number(d && d.pagination && d.pagination.pages) || 1);\n    }\n\n    /**\n     * One API page of the search",
+        "replace": "        const text = await _dgFetchText(url, false);\n        const d = _dgJson(text);\n        return Math.max(1, Number(d && d.pagination && d.pagination.pages) || 1);\n    }\n\n    /**\n     * One API page of the search"
+      }
+    ],
+    "spec": "tests/fixtures/discogs-search-page.spec.js",
+    "grep": "the Next.js page is let in",
+    "expect": "fail"
+  }
+]
