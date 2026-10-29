@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VZ: MusicBrainz - Show All Entity Data In A Consolidated View With Filtering And Multi-Sorting Capabilities
 // @namespace    https://github.com/vzell/mb-userscripts
-// @version      9.99.1503+2026-10-29
+// @version      9.99.1504+2026-10-29
 // @description  Consolidation tool to accumulate paginated and non-paginated (tables with subheadings) MusicBrainz table lists (Events, Recordings, Releases, Works, etc.) into a single view with real-time filtering and sorting. Optionally also springsteenlyrics.com collection and bootleg lists, the jungleland.it bootleg artwork list and the brucespringsteen.it record database.
 // @author       vzell
 // @tag          AI generated
@@ -156923,6 +156923,23 @@ a { color: #1565c0; }`;
                 // column's panel isn't already the one open.
                 if (_uniqDropOwner !== wrap) {
                     wrap.click();
+                    // The panel is position:fixed and placed from the
+                    // button's rect, so for a header below the fold it opened
+                    // partly or wholly off-screen, where no entry could be
+                    // clicked ("element is outside of the viewport";
+                    // DEBUG-NOTES 2026-10-29). Move the PANEL into view, never
+                    // the page: the panel closes on a page scroll that moves
+                    // its button, and a tick that shortens the table makes the
+                    // browser clamp a scrolled page (the medley specs' second
+                    // tick found the panel closed).
+                    const opened = document.getElementById('mb-col-uniq-dropdown');
+                    if (opened && opened.style.display !== 'none') {
+                        const pr = opened.getBoundingClientRect();
+                        const room = window.innerHeight - 6;
+                        if (pr.top < 0 || pr.bottom > room) {
+                            opened.style.top = `${Math.max(6, Math.min(pr.top, room - pr.height))}px`;
+                        }
+                    }
                 }
 
                 const dropEl = document.getElementById('mb-col-uniq-dropdown');

@@ -1,0 +1,28 @@
+[
+  {
+    "name": "the hook leaves an off-screen panel off-screen",
+    "why": "getUniqDropSections() no longer moves an off-screen panel into view: for a header below the fold the fixed panel opens below the fold and no entry can be clicked.",
+    "edits": [
+      {
+        "find": "                            opened.style.top = `${Math.max(6, Math.min(pr.top, room - pr.height))}px`;\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/harness-uniq-drop-hook.spec.js",
+    "grep": "a header below the fold",
+    "expect": "fail"
+  },
+  {
+    "name": "the hook scrolls the page to the 📊 button",
+    "why": "The first fix of 2026-10-29: scrolling the page instead of moving the panel. A tick that shortens the medley table makes the browser clamp the scrolled page, the panel closes on that scroll, and the second tick finds no panel.",
+    "edits": [
+      {
+        "find": "                if (_uniqDropOwner !== wrap) {\n                    wrap.click();\n",
+        "replace": "                if (_uniqDropOwner !== wrap) {\n                    wrap.scrollIntoView({ block: 'center' });\n                    wrap.click();\n"
+      }
+    ],
+    "spec": "tests/fixtures/uniq-drop-title-anatomy.spec.js",
+    "grep": "two titles of one medley both get marked \\(ticked Drink",
+    "expect": "fail"
+  }
+]

@@ -4,9 +4,16 @@ Every version, newest first, with the technical details behind each change. For 
 
 **Months:** [October 2026](ShowAllEntityData_CHANGELOG/2026-10.md) · [September 2026](ShowAllEntityData_CHANGELOG/2026-09.md) · [August 2026](ShowAllEntityData_CHANGELOG/2026-08.md) · [July 2026](ShowAllEntityData_CHANGELOG/2026-07.md) · [June 2026](ShowAllEntityData_CHANGELOG/2026-06.md) · [May 2026](ShowAllEntityData_CHANGELOG/2026-05.md) · [April 2026](ShowAllEntityData_CHANGELOG/2026-04.md) · [March 2026 (1 of 2)](ShowAllEntityData_CHANGELOG/2026-03-1.md) · [March 2026 (2 of 2)](ShowAllEntityData_CHANGELOG/2026-03-2.md) · [February 2026](ShowAllEntityData_CHANGELOG/2026-02.md) · [January 2026](ShowAllEntityData_CHANGELOG/2026-01.md)
 
-This page shows the newest 100 of 1674 versions; the month pages hold all of them.
+This page shows the newest 100 of 1675 versions; the month pages hold all of them.
 
 ---
+
+## 9.99.1504 — 2026-10-29
+
+**🔧 Refactor**
+
+- Tests: the two failures of the 9.99.1503 merge gate are fixed. \_\_saTest.getUniqDropSections() now moves a 📊 panel that opened off-screen into view: the panel is placed from its button, so for a header below the fold no entry could be ticked. It moves the panel, never the page, because a page scroll that moves the button closes the panel (a first version that scrolled broke the medley specs' second tick). New harness-uniq-drop-hook.spec.js; both mutations are caught. And the fixture projects answer MusicBrainz's CDN (static.metabrainz.org) from a disk cache (tests/support/test.js, tests/.cache/static-mb/, gitignored): on a slow line a fixture load under 28 workers took 27 s median and 73 s at worst and a full run timed out in page.goto(); cached, 7.4 s and 9.6 s, with the same files and MusicBrainz's scripts still running. A spec that blocks that host still wins. No change for users.
+
 
 ## 9.99.1503 — 2026-10-29
 
@@ -871,14 +878,6 @@ This page shows the newest 100 of 1674 versions; the month pages hold all of the
 **🐛 Fix**
 
 - Fixed a test flake in discogs-links.spec.js ("in the history window: … a support link with its section"): it failed about 1 run in 28 when many tests ran in parallel. The help-centre window asks for the site's icon after the article answers. Under load that icon request (support.discogs.com/favicon.ico) arrived before the check that only the article was requested. The check now leaves the icon request out; icons have their own tests in popup-ext.spec.js. The userscript is unchanged.
-
-
-## 9.99.1404 — 2026-10-21
-
-**✨ Improve**
-
-- Recording lists: the "Recording of" and "Performance attributes" column headers now read "Work" and "Perf.", so the two columns take less width. Hover a header to see its full name. Menus, the 📊 drop-down, exports and the Default Hidden Columns table still use the full names. To get the full names back in the headers, turn off the new setting "Short column header labels" (🎨 UI FEATURES, on by default).
-- Short header labels work for any column. A pageType gets its own with features.columnLabels; the built-in ones are in \_COLUMN\_LABELS. A saved table keeps each labelled column's name, so Load from Disk restores it.
 
 
 ---

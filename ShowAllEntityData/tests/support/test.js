@@ -1,10 +1,72 @@
 'use strict';
 
 const base = require('@playwright/test');
+const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 
 const SAVE_HTML_DIR = path.join(__dirname, '..', '..', 'test-results', 'rendered-html');
+
+// MusicBrainz's CDN, from which every saved fixture page still loads its
+// scripts, stylesheets and images: only the main document is served from
+// disk (loadPage.js), and page.goto() waits for all of them. One release
+// fixture pulls about 0.93 MB from it; under 28 workers a fixture load took
+// 27 s median and 73 s at worst, every request still open after 8 s being
+// on this host, and a full suite run timed out in page.goto() (DEBUG-NOTES
+// 2026-10-29). So the fixture projects answer it from a disk cache: the same
+// bytes, and MusicBrainz's scripts still run. Its URLs carry content hashes,
+// so a cached file never goes stale. Gitignored; only the first fetch of a
+// file on a machine reaches the network. SA_NO_STATIC_CACHE=1 turns it off.
+const STATIC_MB_RE = /^https:\/\/static\.metabrainz\.org\//;
+const STATIC_MB_CACHE = path.join(__dirname, '..', '.cache', 'static-mb');
+const STATIC_MB_HEADERS = ['content-type', 'access-control-allow-origin', 'timing-allow-origin', 'cache-control'];
+const FIXTURE_PROJECTS = new Set(['chromium-fixtures', 'chromium-mobile']);
+
+/**
+ * Answers a static.metabrainz.org GET from the disk cache, or fetches it,
+ * stores a 200 answer (written to a temporary file and renamed, so a
+ * parallel worker never reads half a file) and passes the answer on.
+ *
+ * @param {import('@playwright/test').Route} route
+ * @returns {Promise<void>}
+ */
+async function serveStaticMb(route) {
+    const req = route.request();
+    if (req.method() !== 'GET') return route.fallback();
+    const key = crypto.createHash('sha1').update(req.url()).digest('hex');
+    const bodyFile = path.join(STATIC_MB_CACHE, `${key}.body`);
+    const metaFile = path.join(STATIC_MB_CACHE, `${key}.json`);
+    let cached = null;
+    try {
+        cached = { meta: JSON.parse(fs.readFileSync(metaFile, 'utf8')), body: fs.readFileSync(bodyFile) };
+    } catch {
+        // Not cached yet (or half written by a parallel worker): fetch it.
+    }
+    try {
+        if (cached) {
+            await route.fulfill({ status: cached.meta.status, headers: cached.meta.headers, body: cached.body });
+            return;
+        }
+        const res = await route.fetch();
+        const body = await res.body();
+        if (res.status() === 200) {
+            const all = res.headers();
+            const headers = {};
+            STATIC_MB_HEADERS.forEach((h) => { if (all[h]) headers[h] = all[h]; });
+            fs.mkdirSync(STATIC_MB_CACHE, { recursive: true });
+            const tmp = `${bodyFile}.${process.pid}.${Date.now()}.tmp`;
+            fs.writeFileSync(tmp, body);
+            fs.renameSync(tmp, bodyFile);
+            fs.writeFileSync(`${tmp}.json`, JSON.stringify({ url: req.url(), status: 200, headers }));
+            fs.renameSync(`${tmp}.json`, metaFile);
+        }
+        await route.fulfill({ response: res, body });
+    } catch {
+        // The page closed mid-request, or the network failed: answer as
+        // the network would have, and never fail a test from here.
+        await route.abort('failed').catch(() => {});
+    }
+}
 
 /**
  * Playwright `test`, extended so every test's final `page.content()` gets
@@ -38,6 +100,16 @@ const SAVE_HTML_DIR = path.join(__dirname, '..', '..', 'test-results', 'rendered
  * directly from '@playwright/test' so the behavior applies uniformly.
  */
 const test = base.test.extend({
+    // Registered when the context is created, before any spec code: route
+    // handlers run newest first, so a spec's own route for this host (most
+    // abort it, so MusicBrainz's current bundle cannot re-render a fixture)
+    // still wins, and this one answers only what nothing else handles.
+    context: async ({ context }, use, testInfo) => {
+        if (FIXTURE_PROJECTS.has(testInfo.project.name) && !process.env.SA_NO_STATIC_CACHE) {
+            await context.route(STATIC_MB_RE, serveStaticMb);
+        }
+        await use(context);
+    },
     page: async ({ page }, use, testInfo) => {
         await use(page);
 

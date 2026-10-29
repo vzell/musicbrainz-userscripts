@@ -290,6 +290,26 @@ version moves without the devDependency; `scripts/check-vendored-libs.py`
 compares the bytes with the CDNs by hand. `PLAYWRIGHT_BLOCK_CDN=1` blocks both
 CDN hosts for a whole run.
 
+**MusicBrainz's CDN comes from a disk cache in the fixture projects.**
+`static.metabrainz.org` (every saved page's scripts, stylesheets and images,
+about 0.93 MB for a release) is served by `serveStaticMb()` in
+`tests/support/test.js` from `tests/.cache/static-mb/` (gitignored), through a
+CONTEXT route registered in the `context` fixture, i.e. before any spec code:
+handlers run newest first, so a spec's own `context.route()`/`page.route()` for
+that host (most abort it, so MusicBrainz's current bundle cannot re-render the
+fixture) still wins. Never move it into `loadUserscriptPage()`: registered
+there, after a spec's block, it would run first and silently undo the block.
+Reason and numbers: DEBUG-NOTES.md 2026-10-29 (a slow line made a full run time
+out in `page.goto()`). `SA_NO_STATIC_CACHE=1` turns it off.
+
+**`__saTest.getUniqDropSections()` moves an off-screen 📊 panel into view,
+never the page.** The panel is `position: fixed`, placed from the button's
+rect: opened for a header below the fold it landed off-screen and no entry
+could be clicked (`harness-uniq-drop-hook.spec.js`). Scrolling the page
+instead breaks every spec that ticks twice: the panel closes on a page scroll
+that moves its button, and a tick that shortens the table makes the browser
+clamp a scrolled page (`uniq-drop-hook-viewport.json` pins both).
+
 **`waitForFilterSettled` / `waitForSortSettled` / `waitForSubTableFilterSettled`
 count WRITES to the status element, not only text changes.** An operation that
 ends with a byte-identical line ("✓ Filtered 9 rows in 22ms …" twice) used to

@@ -27321,5 +27321,54 @@ Tests: `release-tracks-work-suggest.spec.js`, 7/7 (fixture
 guards (per-pass dedup, in-memory skip, IndexedDB), and removing one of them
 is invisible in the network log. Found while writing the spec: a pointer click
 on a narrow empty cell can land on the sticky Title column after Playwright's
-scroll-into-view; the spec clicks through `el.click()`. Not checked in a real
-browser yet.
+scroll-into-view; the spec clicks through `el.click()`. Checked live in the
+browser by vzell before the merge: ok.
+
+## 2026-10-29 — The two merge-gate failures of the work-suggestions run: an off-screen 📊 panel, and MusicBrainz's CDN on a slow line
+Env: 2026-10-29T06:05 → 06:32+01:00 (the failing run), probes to about 09:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.54.1) · Playwright 1.62.1 Chromium, no Tampermonkey (GM stubs) · home line about 7 Mbit/s instead of 100 since 2026-10-27 ~18:00 (vzell)
+
+`test:full` on `feature/release-tracks-work-suggestions`: 2497 passed, 2
+failed, both passing alone.
+
+**`uniq-drop-title-anatomy.spec.js` "ETI keywords … Moonitor remix": the
+test hook opened the 📊 panel for an off-screen header.** Call log: "element
+is outside of the viewport", 146 retries. `#mb-col-uniq-dropdown` is
+`position: fixed`, placed from the 📊 button's rect at open time;
+`__saTest.getUniqDropSections()` clicked the button wherever it was. On this
+fixture the Title header sits at y=731 in a 720 px viewport, so the panel
+opens upward to 377–730 and the entries usually stay reachable; any late
+layout that pushes the table further down puts the whole panel below the
+fold. Reproduced every time with a 600 px spacer (panel at 877–1230). Not
+reproduced without the spacer: 60/60 at 28 workers. Load alone does not
+explain it, so a layout shift is the likely trigger, not proven.
+
+First fix, WRONG: the hook scrolled the 📊 button into view. The merge gate
+on `main` then failed both "two titles of one medley" specs (2/2 alone,
+passing with the scroll removed): the panel closes on a page scroll that
+moves its button (`_ensureUniqDrop()`'s scroll listener), and the first tick
+shortens the medley table from 25 rows to 1, so the browser clamps the
+scrolled page and the panel is gone before the second tick. All three
+release fixtures put the button at y=725–731 in a 720 px viewport, so a
+"panel overflows" test would have scrolled them all. Fix: the hook moves the
+PANEL into the viewport (its `top`), never the page. 17/17 (the anatomy file
+and the harness spec); `uniq-drop-hook-viewport.json`: both entries caught
+(panel left off-screen; page scrolled).
+
+A real-user consequence of that listener, not changed here: scroll down,
+open 📊, tick an entry that shortens the page enough to clamp the scroll,
+and the panel closes although multi-select expects it to stay open.
+
+**`art-viewer-extras.spec.js:296`: `page.goto()` timed out at 90 s, on
+MusicBrainz's CDN.** A probe loading `release-tracks-medley.html` 120 times
+at 28 workers, listing requests open for more than 8 s: median load 27 s,
+worst 73 s; all 3202 slow-request sightings were `static.metabrainz.org`
+(MusicBrainz's 15 scripts, 6 stylesheets and 3 images, about 0.93 MB per load;
+one load ALONE took 27 s ≈ 34 KB/s). The same fixture timed out in
+`page.goto()` on 2026-10-27 (`release-tracks-no-work-flag.spec.js:193`, "load
+only"), a few hours after the line slowed down. Fix: the fixture projects
+answer that host from a disk cache (`tests/support/test.js`,
+`serveStaticMb()`, `tests/.cache/static-mb/`, gitignored), registered in the
+`context` fixture so that the ~40 specs that abort the host still win (probe:
+0 served, 20 blocked). Same probe with the cache warm: median 7.4 s, worst
+9.6 s, 120/120, jQuery defined in every load (MusicBrainz's scripts still
+run).

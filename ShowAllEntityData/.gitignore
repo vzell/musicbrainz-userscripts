@@ -16,3 +16,5 @@ tests/fixtures/local-large/
 # the manifest.json that names them is committed. See that directory's own
 # README.md.
 tests/fixtures/live-userscripts/*.user.js
+# Disk cache of static.metabrainz.org for the fixture projects (tests/support/test.js).
+tests/.cache/

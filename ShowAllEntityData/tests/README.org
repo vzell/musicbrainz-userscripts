@@ -99,6 +99,17 @@ second url — =filter-autofocus.spec.js= timed out in =page.goto()= that way
 =page.goto()= runs (=ART_ARCHIVE_RE=): once the page has loaded, their requests
 reach a spec's own mock, or the network, as before.
 
+MusicBrainz's own CDN, =static.metabrainz.org=, is answered from a disk cache
+in the two fixture projects (=tests/support/test.js=, =serveStaticMb()=):
+=tests/.cache/static-mb/=, gitignored, filled by the first fetch of each file
+on a machine. A release fixture pulls about 0.93 MB from that host; on a slow
+line (7 Mbit/s, 2026-10-29) a load under 28 workers took 27 s median and 73 s
+at worst, and a full run timed out in =page.goto()=. Cached: 7.4 s / 9.6 s,
+the same bytes, MusicBrainz's scripts still run. The route is registered when
+the context is created, so a spec's own route for the host (most abort it)
+still wins. =SA_NO_STATIC_CACHE=1= turns it off; deleting the directory
+refetches everything.
+
 The second one is musicbrainz.org itself: every saved page loads
 =/static/scripts/supported-browser-check.js= from it, and under a parallel run
 the server sometimes answers with an HTML page, which Chromium reports as an
