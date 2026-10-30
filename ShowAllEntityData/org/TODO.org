@@ -5732,7 +5732,6 @@ such). please extend what we just did for wikidata, wikipedia and setlist.fm cha
 
 add a rich tooltip for the site icons with a good description
 
-
 * DONE redesign the "Aa Check title style (MB guidelines)" WARNING-menu entry
 
 redesign the "Aa Check title style (MB guidelines)" WARNING-menu entry; it should be more prominent; currently the
@@ -5741,7 +5740,6 @@ end-user will NOT know that it even exists until by chance clicking the WARNINGS
 maybe even position it in the global (single PT) or sub-table level (multi-table PTs) filter head lines, if that is feasible
 
 make some nice rich HTML based mockups fist
-
 
 * DONE Aa button for events and maybe other entities
 
@@ -5910,7 +5908,6 @@ function name)
 
 
 * TODO majkinetor: async issues with "ISRC" and "Link" columns on PT 'release-tracks'
-
 * TODO majkinetor: "Links" column - switch of the native tooltip on the FRP
 * TODO majkinetor: no icons in the lower right corner
 
@@ -6017,9 +6014,10 @@ when hovering a release in the left sidebar, ONLY the newest change should be sh
 BB detail page POHs should alos get a history diff view of the current entity
 
 
-* TODO on "Editing history" POHs we have the same pumping when areas with flas are involved (this has been solved already on artist POHs)
+* TODO on "Editing history" POHs we have the same pumping when areas with flags are involved (this has been solved already on artist POHs)
 
-on "Editing history" POHs we have the same pumping when areas with flas are involved (this has been solved already on artist POHs)
+on "Editing history" POHs we have the same pumping when areas with flags are involved (this has been solved already on artist POHs)
+
 
 * TODO Walter Kerr events POH do not URLify "Patti Scialfa" in "SETLIST" (right)
 
@@ -6176,3 +6174,9 @@ fi
 exit 0
 _EOF
 #+end_src
+
+* TODO "Space" handling with large tables on right side leave the download aread flickering and it's NOT stoppable
+
+"Space" handling with large tables on right side leave the download aread flickering and it's NOT stoppable
+
+see videos
