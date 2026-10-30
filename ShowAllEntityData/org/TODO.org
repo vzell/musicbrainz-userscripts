@@ -5989,8 +5989,8 @@ a bigger size - see video "@debug/Release “Tunnel of Love Express I_ Tougher T
 as there is lot of space wasted below the right table
 
 #+begin_example
-Artist - https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f - Bruce Springsteen - POH-mb-artist-bruce.png
-Place - https://musicbrainz.org/place/bffa8343-2160-497c-937b-60369749eb11 - Los Angeles Memorial Sports Arena - POH-mb-place
+Artist - https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f - Bruce Springsteen - @debug/POH-mb-artist-bruce.png
+Place - https://musicbrainz.org/place/bffa8343-2160-497c-937b-60369749eb11 - Los Angeles Memorial Sports Arena - @debug/POH-mb-place.png
 #+end_example
 
 Make some suggestions, mockups for dynamically resizing tables in th POH
@@ -6011,7 +6011,7 @@ when hovering a release in the left sidebar, ONLY the newest change should be sh
 
 * TODO BB detail page POHs should also get a history diff view of the current entity
 
-BB detail page POHs should alos get a history diff view of the current entity
+BB detail page POHs should also get a history diff view of the current entity
 
 
 * TODO on "Editing history" POHs we have the same pumping when areas with flags are involved (this has been solved already on artist POHs)
@@ -6174,6 +6174,7 @@ fi
 exit 0
 _EOF
 #+end_src
+
 
 * TODO "Space" handling with large tables on right side leave the download aread flickering and it's NOT stoppable
 
