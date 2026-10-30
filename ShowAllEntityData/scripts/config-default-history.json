@@ -2,8 +2,8 @@
   "_meta": {
     "generated_by": "scripts/dump-default-history.py",
     "source": "ShowAllEntityData/ShowAllEntityData.user.js",
-    "head": "e7a390542ed3483619199597d6d550bc3839cfed",
-    "revisions_walked": 1126
+    "head": "674503d0bb7cd32f5e9d46c72509c51f9e1cd371",
+    "revisions_walked": 1128
   },
   "changes": [
     {
@@ -921,6 +921,7 @@
     "sa_findings_title_series": true,
     "sa_findings_title_feat": true,
     "sa_findings_title_eti_remove": true,
+    "sa_findings_event_typography": true,
     "sa_findings_tint_title_style": true,
     "sa_findings_tint_event_style": true,
     "sa_findings_tint_rec_date": true,
