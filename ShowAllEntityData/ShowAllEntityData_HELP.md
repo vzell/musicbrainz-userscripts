@@ -746,6 +746,19 @@ MusicBrainz style guide. What it finds joins the menu as five more warnings:
 | ft. Featured artist in title          | Song (feat. Somebody)             | the artist belongs in the credit |
 | ( ) Extra title information to remove | Come Together [The Beatles Cover] | Come Together                    |
 
+**Event names** (an artist's Events, and any page with an Event column) get
+the same Aa button, and one warning of their own: **’ ASCII punctuation in
+event name** — "Bruce Springsteen at Max's Kansas City" for "… Max’s Kansas
+City", "Springsteen on Broadway..." for "…Broadway…", "2024-2025" for
+"2024–2025". Only the punctuation: an event name is written as on the poster
+(MusicBrainz's event guide: "reputation Stadium Tour: Seattle"), so its
+capitalization is never checked. Two things are left to the event warnings
+that already exist, so nothing is flagged twice: the date of a live-form name
+("1975-08-13: …", flagged as a date with "-") and names that almost follow the
+event guide ("KISS - Rod Laver Arena", "Hellfest '23"). On a page with only
+events the button and panel count "names", and the panel lists only this one
+warning; on a page with both, one click checks titles and event names.
+
 Rest the pointer on a flagged cell to see the title over its MusicBrainz style,
 with only the letters or marks that differ highlighted. Nothing is changed:
 the check only points things out.
@@ -816,6 +829,7 @@ back).
 | ⚠️     | Series number without comma (after "Check title style")         | Title columns                               |
 | ⚠️     | Featured artist in title (after "Check title style")            | Title columns                               |
 | ⚠️     | Extra title information to remove (after "Check title style")   | Title columns                               |
+| ⚠️     | ASCII punctuation in event name (after "Check title style")     | Event columns                               |
 | ⚠️     | 🟠 Release has low data quality                                 | Release / Title columns                     |
 | ⚠️     | Invalid ISRC / ISWC / barcode format                            | ISRCs, ISRC, ISWC, Barcode                  |
 | ⚠️     | Artwork has no Front image (releases with artwork only)         | CAA                                         |
