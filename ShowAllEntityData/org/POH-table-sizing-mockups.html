@@ -1,0 +1,589 @@
+<title>POH table sizing</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/* Layout: an intro and a control strip on paper, then one resizable "window"
+   that mirrors the popup (title bar, two-column body, foot line).
+   Single light theme on purpose: it reproduces the popup's "Liner notes" look. */
+:root {
+    --paper: #fbf8f1;
+    --paper-2: #f6f1e6;
+    --ink: #2b2622;
+    --rule: #d9cfbd;
+    --rule-soft: #ece4d4;
+    --muted: #7a6d5c;
+    --link: #2f4f8a;
+    --ok: #3f7a3a;
+    --run: #2f5f9e;
+    --warn: #9a6a00;
+    --alert: #9b2218;
+    --white: #fff;
+    --shadow: 0 10px 24px -8px rgba(60,40,20,.35);
+    --serif: Georgia, "Times New Roman", Times, serif;
+    --sans: system-ui, -apple-system, "Segoe UI", Arial, sans-serif;
+    --mono: ui-monospace, Consolas, "Liberation Mono", monospace;
+    color-scheme: light;
+}
+html, body { background: var(--paper); color: var(--ink); }
+body {
+    font: 14px/1.5 var(--serif);
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+    padding-block: 18px 40px;
+}
+.page { max-width: 1320px; margin: 0 auto; display: grid; gap: 16px; }
+.cap, .lbl { font: 600 10.5px/1.3 var(--sans); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+h1 { font-size: 22px; line-height: 1.25; margin: 0; text-wrap: balance; }
+.intro p { margin: 4px 0 0; max-width: 72ch; }
+.intro code, .note code { font: 12.5px var(--mono); background: var(--paper-2); padding: 0 4px; border-radius: 3px; }
+
+/* Controls */
+.controls { display: grid; gap: 10px; padding: 12px 14px; border: 1px solid var(--rule); border-radius: 4px; background: var(--white); }
+.crow { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; }
+.crow > .lbl { min-width: 5.5em; }
+.seg { display: inline-flex; flex-wrap: wrap; }
+.seg button {
+    font: 600 11px/1 var(--sans); letter-spacing: .06em; text-transform: uppercase;
+    padding: 7px 10px; border: 1px solid var(--rule); background: var(--paper); color: var(--ink); cursor: pointer;
+    margin-left: -1px;
+}
+.seg button:first-child { margin-left: 0; border-radius: 3px 0 0 3px; }
+.seg button:last-child { border-radius: 0 3px 3px 0; }
+.seg button[aria-pressed="true"] { background: var(--ink); border-color: var(--ink); color: var(--paper); position: relative; }
+.seg button:hover:not([aria-pressed="true"]) { background: var(--paper-2); }
+.seg button:focus-visible, .btn:focus-visible, .grip:focus-visible, input:focus-visible { outline: 2px solid var(--run); outline-offset: 1px; }
+.seg .rec { color: var(--ok); margin-left: 4px; }
+.seg button[aria-pressed="true"] .rec { color: #b9dcb3; }
+.hint { color: var(--muted); font-size: 12.5px; font-style: italic; }
+.vdesc { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 3px 14px; margin: 0; padding-top: 8px; border-top: 1px solid var(--rule-soft); font-size: 13.5px; }
+.vdesc dt { font-style: italic; color: var(--muted); }
+.vdesc dd { margin: 0; min-width: 0; }
+.vdesc .vt { grid-column: 1 / -1; font-weight: 700; }
+
+/* Readout */
+.readout { display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: center; font: 12.5px var(--sans); color: var(--muted); font-variant-numeric: tabular-nums; }
+.readout b { color: var(--ink); font-weight: 600; }
+.pill { font: 600 10px/1 var(--sans); letter-spacing: .08em; text-transform: uppercase; padding: 4px 8px; border-radius: 999px; border: 1px solid currentColor; }
+.pill.ok { color: var(--ok); background: #f1f8ee; }
+.pill.warn { color: var(--warn); background: #fbf3dc; }
+.pill.info { color: var(--run); background: #eef2f8; }
+
+/* The window */
+.stage { position: relative; min-width: 0; }
+.win {
+    container: win / inline-size;
+    position: relative; display: flex; flex-direction: column;
+    width: 100%; max-width: 100%; height: 760px; min-height: 320px; min-width: 300px;
+    resize: both; overflow: hidden;
+    background: var(--paper); border: 1px solid #c9bfae; border-radius: 4px; box-shadow: var(--shadow);
+}
+.win[hidden] { display: none !important; }
+.tbar { display: flex; align-items: center; gap: 8px; padding: 7px 10px; border-bottom: 1px solid var(--rule); background: var(--white); flex: none; min-width: 0; }
+.tbar .ic { width: 14px; height: 14px; border-radius: 3px; background: #ba478f; flex: none; }
+.tbar .tt { font: 600 13px var(--sans); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; flex: 1 1 auto; }
+.tbtn { font: 12px/1 var(--sans); padding: 5px 8px; border: 1px solid #ccc; border-radius: 3px; background: var(--white); color: #222; cursor: pointer; white-space: nowrap; }
+.tbtn.dark { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+.tbtn.x { border: 0; background: none; font-size: 16px; color: var(--muted); }
+.tpos { font: 12px var(--mono); color: #666; }
+@container win (max-width: 760px) { .tbar .wide { display: none; } }
+
+.area {
+    container: area / size;
+    position: relative; flex: 1 1 auto; min-height: 0; overflow: auto; background: var(--paper);
+}
+.wfoot { flex: none; display: flex; gap: 10px; align-items: center; min-height: 20px; padding: 5px 12px; border-top: 1px solid var(--rule); background: var(--paper-2); color: var(--muted); font: 12px/1.4 var(--sans); }
+.wfoot .t { flex: 1 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wfoot .k { margin-left: auto; white-space: nowrap; padding-right: 12px; }
+
+.x { display: grid; grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr); gap: 18px; padding: 14px 18px; align-items: start; font: 13.5px/1.5 var(--serif); }
+.col { min-width: 0; display: grid; gap: 10px; align-content: start; }
+.xt { font-weight: 700; font-size: 1.15em; line-height: 1.3; }
+.pills { display: flex; gap: 4px; flex-wrap: wrap; }
+.tag { font: 600 11px/1 var(--serif); padding: 3px 5px; background: #efe2c2; border-radius: 2px; }
+.facts { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 1px 14px; margin: 0; }
+.facts dt { font-style: italic; color: var(--muted); }
+.facts dd { margin: 0; min-width: 0; }
+a { color: var(--link); text-decoration: underline dotted; text-underline-offset: 2px; }
+a.ext::after { content: " \2197"; font-size: .75em; color: var(--alert); }
+.photo { width: 106px; height: 150px; background: repeating-linear-gradient(135deg, #e8dfcf 0 8px, #efe8da 8px 16px); border: 1px solid var(--rule); display: grid; place-items: center; font: 11px var(--sans); color: var(--muted); }
+.sub { font-style: italic; color: var(--muted); }
+.sechead { display: flex; gap: 6px; align-items: baseline; font: 600 12px var(--sans); }
+.sechead .n { font-weight: 400; color: var(--muted); }
+
+/* Shared table block (the window's _dpListTableHtml) */
+.tbl { display: grid; gap: 6px; min-width: 0; }
+.tools { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.tools input { font: 13px var(--serif); padding: 4px 7px; border: 1px solid var(--rule); border-radius: 3px; background: var(--white); width: min(100%, 300px); }
+.chips { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+.chip { font: 11px/1 var(--sans); padding: 4px 8px; border: 1px solid var(--rule); border-radius: 999px; background: var(--white); }
+.chip b { font-weight: 600; }
+.chip .n { color: var(--muted); margin-left: 3px; }
+.chip.on { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+.chip.on .n { color: #cfc5b3; }
+.prog { display: flex; gap: 2px; height: 6px; max-width: 360px; }
+.prog i { flex: 1; background: var(--ok); border-radius: 1px; }
+.prog i.c { background: repeating-linear-gradient(135deg, var(--ok) 0 3px, #a7c9a2 3px 6px); }
+.counts { font: 11.5px var(--sans); color: var(--muted); font-variant-numeric: tabular-nums; }
+
+.vwrap { overflow: auto; max-height: 460px; border: 1px solid var(--rule); border-radius: 3px; background: var(--white); }
+table.lt { width: 100%; border-collapse: collapse; font-size: 13px; line-height: 1.35; }
+table.lt th { position: sticky; top: 0; z-index: 1; background: #f3ede1; text-align: left; font: 600 10px/1.2 var(--sans); letter-spacing: .07em; text-transform: uppercase; color: var(--muted); padding: 6px 8px; border-bottom: 1px solid var(--rule); white-space: nowrap; }
+table.lt td { padding: 3px 8px; border-bottom: 1px solid #f0eadf; vertical-align: top; }
+table.lt td.num { text-align: right; font-variant-numeric: tabular-nums; width: 3em; color: var(--muted); }
+table.lt td .cm { color: var(--muted); }
+table.lt td.th { width: 34px; padding: 3px 4px 3px 8px; }
+.thumb { display: block; width: 30px; height: 30px; border-radius: 2px; }
+table.lt tr[hidden] { display: none; }
+.empty { padding: 10px; color: var(--muted); font-style: italic; }
+.after { font-size: 12.5px; color: var(--muted); }
+
+/* Variant A: the right column is a pane as tall as the window body */
+.win.v-a .col.r, .win.v-ad .col.r {
+    position: sticky; top: 0; height: calc(100cqh - 28px);
+    display: flex; flex-direction: column; gap: 10px; min-height: 0;
+}
+.win.v-a .col.r > *, .win.v-ad .col.r > * { flex: none; }
+.win.v-a .col.r > .tbl, .win.v-ad .col.r > .tbl { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
+.win.v-a .col.r .tbl > *, .win.v-ad .col.r .tbl > * { flex: none; }
+.win.v-a .col.r .vwrap, .win.v-ad .col.r .vwrap { flex: 1 1 auto; max-height: none; min-height: 160px; }
+
+/* Variant C: every table a share of the window body */
+.win.v-c .vwrap { max-height: max(240px, 62cqh); }
+
+/* Variant D: grips */
+.grip {
+    height: 12px; margin-top: -4px; cursor: ns-resize; touch-action: none; display: grid; place-items: center; position: relative;
+    border-radius: 0 0 3px 3px;
+}
+.grip::before { content: ""; width: 38px; height: 4px; border-top: 1px solid #b8ac97; border-bottom: 1px solid #b8ac97; }
+.grip:hover::before, .grip.drag::before { border-color: var(--run); }
+.grip .gl { position: absolute; right: 4px; top: -2px; font: 11px var(--sans); color: var(--run); background: var(--white); padding: 0 4px; border: 1px solid var(--rule); border-radius: 3px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+
+/* One column under 640 px: every variant falls back to today's capped tables */
+@container win (max-width: 640px) {
+    .x { grid-template-columns: minmax(0, 1fr); }
+    .win .col.r { position: static !important; height: auto !important; display: grid !important; }
+    .win .col.r .tbl { display: grid !important; }
+    .win .col.r .vwrap { max-height: 460px; min-height: 0; }
+}
+
+.closed { display: grid; place-items: center; gap: 8px; height: 220px; border: 1px dashed var(--rule); border-radius: 4px; color: var(--muted); text-align: center; }
+.btn { font: 600 11px/1 var(--sans); letter-spacing: .06em; text-transform: uppercase; padding: 7px 12px; border: 1px solid var(--run); border-radius: 3px; background: var(--white); color: var(--run); cursor: pointer; }
+.btn:hover { background: #eef2f8; }
+
+.note { padding: 12px 14px; border: 1px solid var(--rule); border-radius: 4px; background: var(--white); display: grid; gap: 6px; }
+.note ol, .note ul { margin: 0; padding-left: 1.3em; display: grid; gap: 4px; }
+.note h2 { margin: 0; }
+
+@media (prefers-reduced-motion: no-preference) {
+    .vwrap { transition: max-height .12s ease-out; }
+    .win.v-d .vwrap, .win.v-ad .vwrap { transition: none; }
+}
+</style>
+
+<div class="page">
+    <header class="intro">
+        <div class="cap">ShowAllEntityData · popup window · mockup</div>
+        <h1>Tables in the popup window that grow with it</h1>
+        <p>Today every table in the window stops at 460 px, however tall you drag the window. Pick a variant below, then
+            drag the window's bottom-right corner or use the height buttons, and watch the readout. The data is sample data.</p>
+    </header>
+
+    <section class="controls" aria-label="Mockup controls">
+        <div class="crow">
+            <span class="lbl">Variant</span>
+            <div class="seg" role="group" aria-label="Variant" id="vseg">
+                <button type="button" data-v="today">Today</button>
+                <button type="button" data-v="a">A · Right pane fills<span class="rec" title="Recommended">●</span></button>
+                <button type="button" data-v="b">B · Fill to bottom</button>
+                <button type="button" data-v="c">C · Proportional</button>
+                <button type="button" data-v="d">D · Drag grips</button>
+                <button type="button" data-v="ad">A + D</button>
+            </div>
+        </div>
+        <div class="crow">
+            <span class="lbl">Window</span>
+            <div class="seg" role="group" aria-label="Window" id="kseg">
+                <button type="button" data-k="event">Event · setlist</button>
+                <button type="button" data-k="artist">Artist · release groups</button>
+            </div>
+            <span class="lbl">Height</span>
+            <div class="seg" role="group" aria-label="Window height" id="hseg">
+                <button type="button" data-h="520">Short</button>
+                <button type="button" data-h="760">Medium</button>
+                <button type="button" data-h="1000">Tall</button>
+            </div>
+            <span class="hint">or drag the window's corner · Esc closes it</span>
+        </div>
+        <dl class="vdesc" id="vdesc"></dl>
+    </section>
+
+    <div class="readout" id="readout" aria-live="polite"></div>
+
+    <div class="stage">
+        <div class="win v-a" id="win" role="dialog" aria-label="Popup window">
+            <div class="tbar">
+                <span class="ic" aria-hidden="true"></span>
+                <span class="tt" id="wtitle"></span>
+                <button type="button" class="tbtn wide">✎ Editing history ▾</button>
+                <span class="wide"><button type="button" class="tbtn">‹</button> <span class="tpos" id="wpos">3 / 3</span> <button type="button" class="tbtn">›</button></span>
+                <span class="wide"><button type="button" class="tbtn dark">Extracted</button><button type="button" class="tbtn">Live page</button></span>
+                <button type="button" class="tbtn x" id="wclose" aria-label="Close">✕</button>
+            </div>
+            <div class="area" id="area"></div>
+            <div class="wfoot"><span aria-hidden="true">▭</span><span class="t" id="wfoot">Rest on a link or an image: this line says what a click does.</span><span class="k">← → rows · H history · Esc close</span></div>
+        </div>
+        <div class="closed" id="closed" hidden>
+            <div>The window is closed.</div>
+            <button type="button" class="btn" id="reopen">Reopen the window</button>
+        </div>
+    </div>
+
+    <section class="note">
+        <div class="cap">What I'd build, and what's still open</div>
+        <p style="margin:0"><b>Recommendation: A</b>, optionally with D's grips on the left column's tables.
+            A is CSS only (the window body becomes a size container, the right column a sticky pane), so filtering, sorting
+            and rendering cost nothing extra. Under 640 px, where the window shows one column, every variant keeps today's 460 px tables.</p>
+        <ul>
+            <li>Should the left column fill too? With A it keeps 460 px per table; B can stretch its last table, but only when that table starts on screen.</li>
+            <li>With D: remember a dragged height per table for every later window (as shown), or only for this window?</li>
+            <li>Should A's pane apply to every right-column table (Discogs lists, the work's recordings, the label's releases) or only release groups and setlists?</li>
+        </ul>
+    </section>
+</div>
+
+<script>
+(function () {
+    'use strict';
+    const $ = (s, r = document) => r.querySelector(s);
+    const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
+    const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+    const VARIANTS = {
+        today: { t: 'Today: every table stops at 460 px', what: 'One CSS rule caps every table box at 460 px, whatever the window size.', good: '—', bad: 'Drag the window taller and the space under the right table stays empty.', cost: '—' },
+        a: { t: 'A · The right column is its own pane, as tall as the window', what: 'The right column stays in view and reaches the window\'s bottom edge. Its heading, chips and filter take what they need; the table gets the rest. The left column scrolls as today.', good: 'Drag the window taller and rows are added at once. You can read the facts on the left and filter the setlist on the right at the same time.', bad: 'The left column\'s tables keep 460 px.', cost: 'CSS only. No script, no extra work while filtering or sorting.' },
+        b: { t: 'B · The last table of each column fills to the bottom', what: 'A small script measures where the last table in each column starts and stretches it to the window\'s bottom edge, again on every resize.', good: 'Also uses empty space in the left column, when its last table starts on screen.', bad: 'A table that starts below the bottom edge (Recordings on the event window) cannot fill anything and keeps a 240 px minimum. The right column scrolls away with the left one.', cost: 'A ResizeObserver on the window body and one measurement per resize.' },
+        c: { t: 'C · Every table a share of the window\'s height', what: 'Each table may be 62 % of the window body\'s height, at least 240 px.', good: 'CSS only, every table grows.', bad: 'Two tables in one column take 62 % each, so the second ends up off screen; the right table still stops short of the bottom.', cost: 'CSS only.' },
+        d: { t: 'D · A drag grip under each table', what: 'Drag the grip under a table to set its height. Double-click resets it; ↑ and ↓ move it by 20 px when the grip has focus. The height is remembered for that table in later windows.', good: 'Full control, for every table in both columns.', bad: 'Nothing grows by itself when the window grows.', cost: 'A few pointer handlers; one saved number per table.' },
+        ad: { t: 'A + D · The right pane fills; grips on the left tables', what: 'The right column works as in A. The left column\'s tables get D\'s grips.', good: 'The right table follows the window; the left tables are as tall as you make them.', bad: 'Two different behaviours side by side.', cost: 'CSS for the pane, a few pointer handlers for the grips.' },
+    };
+
+    /* ---- sample data ---- */
+    const SETLIST = [
+        ['Tunnel of Love', ''], ['Be True', ''], ['Adam Raised a Cain', ''], ['Two Faces', ''], ['All That Heaven Will Allow', ''],
+        ['Seeds', ''], ['Roulette', ''], ['Cover Me', ''], ['Brilliant Disguise', ''], ['Spare Parts', ''], ['War', ''],
+        ['Born in the U.S.A.', ''], ['Tougher Than the Rest', ''], ['Ain\'t Got You', '/ She\'s the One'],
+        ['You Can Look (but You Better Not Touch)', ''], ['I\'m a Coward', ''], ['I\'m on Fire', ''], ['One Step Up', ''],
+        ['Part Man, Part Monkey', ''], ['Walk Like a Man', ''], ['Dancing in the Dark', ''], ['Light of Day', ''],
+        ['Born to Run', 'encore, acoustic'], ['Hungry Heart', ''], ['Glory Days', ''], ['Across the Borderline', ''],
+        ['Rosalita (Come Out Tonight)', ''], ['Have Love, Will Travel', ''], ['Sweet Soul Music', ''], ['Raise Your Hand', ''],
+    ];
+    const RELEASES = [
+        ['Acoustic Tales', ''], ['Across the Borderline… With the Boss', ''], ['Better Days', 'for the European market'],
+        ['Chimes of Freedom', ''], ['Chimes of Freedom', ''], ['Chimes of Freedom', 'version 1'], ['Chimes of Freedom', 'version 2'],
+        ['Chimes of Freedom', ''], ['Chimes of Freedom', 'black shell, moulded with linear piping'], ['Chimes of Freedom', '“Made in Canada” on back'],
+        ['Chimes of Freedom', 'promo'], ['Chimes of Freedom', 'version 5'], ['Live', 'corrected barcode'], ['Live', 'promo, corrected barcode'],
+        ['Sampler', ''], ['Spare Parts', '7" single'], ['Spare Parts', 'CD single'], ['The Album Collection, Vol. 2: 1987–1996', ''],
+        ['The Future of Rock\'n Roll: 70\'s to 80\'s', ''], ['The Live Collection', ''], ['Tougher Than the Rest', '7" single'],
+        ['Tougher Than the Rest', '12" single'], ['Tougher Than the Rest', 'CD single'], ['Tunnel of Love Express Tour Sampler', ''],
+        ['Brilliant Disguise', '12" single, live B-side'], ['Born to Run', 'live single'], ['Los Angeles 1988', ''],
+        ['Tunnel of Love Express', 'promo'], ['Chimes of Freedom', 'Japanese edition'],
+    ];
+    const LA = 'live, 1988-04-27: Los Angeles Memorial Sports Arena, Los Angeles, CA, USA';
+    const RECORDINGS = SETLIST.map(s => [s[0], LA])
+        .concat([['[intro]', LA], ['Across the Borderline', LA], ['Across the Borderline', 'live, 1988-06-18: Château de Vincennes, Paris, France'],
+            ['Born to Run', LA], ['Born to Run', LA], ['Tougher Than the Rest', LA], ['Tougher Than the Rest', LA], ['Spare Parts', LA],
+            ['Light of Day', LA], ['Tunnel of Love', LA]])
+        .sort((a, b) => a[0].replace(/^\W+/, '').localeCompare(b[0].replace(/^\W+/, '')));
+    const BS = 'Bruce Springsteen', BSE = 'Bruce Springsteen & The E Street Band';
+    const RGS = [
+        ['Greetings From Asbury Park, N.J.', '—', BS, '1973-01-05'], ['The Wild, the Innocent & the E Street Shuffle', '—', BS, '1973-11-05'],
+        ['Acoustic Radio Jam', 'Live', BS, '1974'], ['Born to Run / E. C. Was Here', 'Compilation', 'Bruce Springsteen / Eric Clapton', '1975'],
+        ['Born to Run', '—', BS, '1975-08-25'], ['“E” Ticket', 'Compilation', BS, '1975'], ['The Jersey Devil', 'Compilation + Live', BS, '1975'],
+        ['1975-08-23: Alex Cooley\'s Electric Ballroom, Atlanta, GA, USA', 'Live', BSE, '1975'],
+        ['1975-08-15, early show: The Bottom Line, New York City, NY, USA', 'Live', BSE, '1975'],
+        ['Hammersmith Odeon London \'75', 'Live', BSE, '1975'], ['Darkness on the Edge of Town', '—', BS, '1978-06-02'],
+        ['The River', '—', BS, '1980-10-17'], ['Nebraska', '—', BS, '1982-09-30'], ['Born in the U.S.A.', '—', BS, '1984-06-04'],
+        ['Live/1975–85', 'Live', BSE, '1986-11-10'], ['Tunnel of Love', '—', BS, '1987-10-09'], ['Chimes of Freedom', 'Live', BS, '1988-08-01'],
+        ['1988-04-27: Los Angeles Memorial Sports Arena', 'Live', BSE, '1988'], ['Human Touch', '—', BS, '1992-03-31'],
+        ['Lucky Town', '—', BS, '1992-03-31'], ['In Concert/MTV Plugged', 'Live', BS, '1993-04-12'], ['Greatest Hits', 'Compilation', BS, '1995-02-27'],
+        ['The Ghost of Tom Joad', '—', BS, '1995-11-21'], ['Tracks', 'Compilation', BS, '1998-11-10'], ['18 Tracks', 'Compilation', BS, '1999-04-13'],
+        ['Live in New York City', 'Live', BSE, '2001-03-27'], ['The Rising', '—', BS, '2002-07-30'], ['The Essential Bruce Springsteen', 'Compilation', BS, '2003-11-11'],
+        ['Devils & Dust', '—', BS, '2005-04-26'], ['We Shall Overcome: The Seeger Sessions', '—', BS, '2006-04-25'], ['Magic', '—', BS, '2007-10-02'],
+        ['Working on a Dream', '—', BS, '2009-01-27'], ['The Promise', 'Compilation', BS, '2010-11-16'], ['Wrecking Ball', '—', BS, '2012-03-05'],
+        ['High Hopes', '—', BS, '2014-01-14'], ['Chapter and Verse', 'Compilation', BS, '2016-09-23'], ['Springsteen on Broadway', 'Live', BS, '2018-12-14'],
+        ['Western Stars', '—', BS, '2019-06-14'], ['Letter to You', '—', BS, '2020-10-23'], ['Only the Strong Survive', '—', BS, '2022-11-11'],
+    ];
+    const LINKS = [
+        ['allmusic.com', 'allmusic', '/artist/mn0000530745'], ['bandsintown.com', 'bandsintown', '/a/26654'],
+        ['bbc.co.uk', 'BBC Music page', '/music/artists/70248960-cb53-4ea4-943a-edb18f7d336f'], ['bookbrainz.org', 'BookBrainz', '/author/40060843-…'],
+        ['brucebase.wikidot.com', 'discography page', '—'], ['brucespringsteen.it', 'discography page', '/Discox.htm'], ['discogs.com', 'discogs', '/artist/219986'],
+        ['vk.ru', 'fanpage', '/bspringsteen'], ['vk.ru', 'fanpage', '/bruceboss'], ['brucebase.wikidot.com', 'fanpage', '—'],
+        ['the-circuit.greasylake.org', 'fanpage', '—'], ['brucespringsteen.it', 'fanpage', '—'], ['brucespringsteen.nl', 'fanpage', '—'],
+        ['springsteenlyrics.com', 'fanpage', '—'], ['music.migu.cn', 'free streaming', '/v3/music/artist/30115'],
+        ['open.spotify.com', 'free streaming', '/artist/3eqjTLE0HfPfh78zjh6TqT'], ['deezer.com', 'free streaming', '/artist/1762'],
+        ['genius.com', 'lyrics', '/artists/Bruce-springsteen'], ['imdb.com', 'IMDb', '/name/nm0819778'], ['last.fm', 'last.fm', '/music/Bruce+Springsteen'],
+        ['secondhandsongs.com', 'SecondHandSongs', '/artist/40'], ['setlist.fm', 'setlist.fm', '/setlists/bruce-springsteen-…'],
+        ['wikidata.org', 'Wikidata', '/wiki/Q1225'], ['youtube.com', 'YouTube', '/@brucespringsteen'], ['brucespringsteen.net', 'official homepage', '/'],
+    ];
+
+    const hue = s => { let h = 0; for (const c of s) h = (h * 31 + c.charCodeAt(0)) % 360; return h; };
+    const lnk = t => `<a href="#" class="ext">${esc(t)}</a>`;
+
+    /** One table block: filter, optional chips, the scrolling box, optional note after. */
+    function tbl(id, placeholder, heads, rows, rowHtml, opts = {}) {
+        return `<div class="tbl" data-tbl="${id}">` +
+            (opts.pre || '') +
+            `<div class="tools"><input type="search" id="f-${id}" data-f="${id}" placeholder="${esc(placeholder)}" aria-label="${esc(placeholder)}"></div>` +
+            (opts.chips || '') +
+            `<div class="vwrap" data-id="${id}"><table class="lt"><thead><tr>${heads.map(h => `<th>${h}</th>`).join('')}</tr></thead>` +
+            `<tbody>${rows.map(rowHtml).join('')}</tbody></table><div class="empty" hidden>No row matches.</div></div></div>`;
+    }
+
+    const KINDS = {
+        event: {
+            title: '1988-04-27: Los Angeles Memorial Sports Arena, Los Angeles, CA, USA',
+            pos: '3 / 3',
+            left: () => `
+                <div><div class="xt">1988-04-27: Los Angeles Memorial Sports Arena, Los Angeles, CA, USA</div><div class="pills"><span class="tag">Concert</span></div></div>
+                <div><div class="cap">Facts</div><dl class="facts">
+                    <dt>When</dt><dd>1988-04-27</dd>
+                    <dt>Held at</dt><dd>${lnk('Los Angeles Memorial Sports Arena')} in ${lnk('Los Angeles')}, ${lnk('California')}, ${lnk('United States')}</dd>
+                    <dt>Part of</dt><dd>${lnk('Tunnel of Love Express Tour')}</dd>
+                    <dt>Main performer</dt><dd>${lnk('The E Street Band')}<br>${lnk('The Miami Horns')}<br>${lnk('Bruce Springsteen')} (${lnk('electric guitar')}, ${lnk('harmonica')}, lead vocals)</dd>
+                </dl></div>
+                <div><div class="cap">URLs · 1</div><dl class="facts"><dt>Review</dt><dd>${lnk('http://brucebase.wikidot.com/1988#270488')}</dd></dl></div>
+                <div class="cap">Recorded here</div>
+                <div class="sechead">▾ Releases <span class="n">· ${RELEASES.length}</span></div>
+                ${tbl('releases', 'Filter releases', ['Relationship', 'Release'], RELEASES, r => `<tr><td>Recorded at</td><td>${lnk(r[0])}${r[1] ? ` <span class="cm">(${esc(r[1])})</span>` : ''}</td></tr>`)}
+                <div class="sechead">▾ Recordings <span class="n">· ${RECORDINGS.length}</span></div>
+                ${tbl('recordings', 'Filter recordings', ['Relationship', 'Recording'], RECORDINGS, r => `<tr><td>Recorded at</td><td>${lnk(r[0])} <span class="cm">(${esc(r[1])})</span></td></tr>`)}`,
+            right: () => `
+                <div class="cap">Setlist · ${SETLIST.length}</div>
+                <div class="sub">${lnk('Bruce Springsteen')} &amp; ${lnk('The E Street Band')} with ${lnk('The Horns of Love')}</div>
+                ${tbl('setlist', 'Filter the setlist: song, guests', ['#', 'Song', 'Notes'], SETLIST, (s, i) => `<tr><td class="num">${i + 1}</td><td>${lnk(s[0])}</td><td>${s[1] ? esc(s[1]) : ''}</td></tr>`)}`,
+            rightId: 'setlist', rightName: 'Setlist',
+        },
+        artist: {
+            title: 'Bruce Springsteen',
+            pos: '1 / 100',
+            left: () => `
+                <div><div class="xt">Bruce Springsteen</div><div class="pills"><span class="tag">Person</span><span class="tag">Male</span></div></div>
+                <div class="photo">picture</div>
+                <div><div class="cap">Facts</div><dl class="facts">
+                    <dt>Sort name</dt><dd>Springsteen, Bruce</dd>
+                    <dt>Area</dt><dd>${lnk('United States')}</dd>
+                    <dt>Born</dt><dd>1949-09-23 · ${lnk('Long Branch')}, ${lnk('New Jersey')}, ${lnk('United States')}</dd>
+                    <dt>Rating</dt><dd>4.4 of 5 · 15 votes</dd>
+                    <dt>Genres</dt><dd>${['rock', 'heartland rock', 'americana', 'singer-songwriter', 'pop rock', 'folk', 'aor', 'contemporary folk', 'rock and roll', 'alternative folk', 'classic rock', 'folk rock', 'soft rock'].map(lnk).join('<br>')}</dd>
+                    <dt>IPI</dt><dd>00076333277</dd>
+                    <dt>Aliases</dt><dd>Bruce Frederick Joseph Springsteen (Legal name)<br>The Boss (Artist name, en)</dd>
+                </dl></div>
+                <div class="cap">Links</div>
+                ${tbl('links', 'Filter links', ['Site', 'Relationship', 'URL'], LINKS, l => `<tr><td>${lnk(l[0])}</td><td>${esc(l[1])}</td><td class="cm">${esc(l[2])}</td></tr>`)}`,
+            right: () => `
+                <div class="cap">Release groups</div>
+                <div class="tools"><span class="pill ok">Done</span><div class="prog" style="flex:1">${'<i class="c"></i>'.repeat(11)}${'<i></i>'.repeat(9)}</div></div>
+                <div class="counts">1,924 of 1,924 loaded · 1,100 from cache · one segment = 100 release groups</div>
+                ${tbl('rgs', 'Filter loaded release groups: title, artist, year', ['', 'Release group', 'Also', 'Artist', 'First release'], RGS,
+                    r => `<tr><td class="th"><span class="thumb" style="background:hsl(${hue(r[0])} 30% 55%)"></span></td><td>${lnk(r[0])}</td><td>${esc(r[1])}</td><td>${esc(r[2])}</td><td style="white-space:nowrap">${esc(r[3])}</td></tr>`,
+                    { chips: `<div class="chips"><span class="chip on"><b>Album</b><span class="n">1,924</span></span><span class="chip">Single<span class="n">178</span></span><span class="chip">EP<span class="n">28</span></span><span class="chip">Broadcast<span class="n">6</span></span><span class="chip">Other<span class="n">10</span></span></div>` +
+                        `<div class="chips"><span class="sub" style="font-size:12px">Also</span><span class="chip">Live<span class="n">1,214</span></span><span class="chip">Compilation + Live<span class="n">454</span></span><span class="chip">Compilation<span class="n">203</span></span><span class="chip">Interview<span class="n">5</span></span><span class="chip">Demo<span class="n">5</span></span><span class="chip">+4 more</span></div>` })}
+                <div class="after">${lnk('The discography')} (official releases; the page filters the others)</div>`,
+            rightId: 'rgs', rightName: 'Release groups table',
+        },
+    };
+
+    /* ---- state ---- */
+    const win = $('#win'), area = $('#area');
+    let variant = 'a', kind = 'event';
+    const store = {
+        get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
+        set(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* not available */ } },
+        del(k) { try { localStorage.removeItem(k); } catch (e) { /* not available */ } },
+    };
+    const gripKey = id => `poh-mock-h:${id}`;
+
+    function render() {
+        const K = KINDS[kind];
+        $('#wtitle').textContent = K.title;
+        $('#wpos').textContent = K.pos;
+        area.scrollTop = 0;
+        area.innerHTML = `<div class="x"><div class="col l">${K.left()}</div><div class="col r">${K.right()}</div></div>`;
+        applyVariant();
+    }
+
+    function setPressed(seg, attr, val) {
+        $$(`button[${attr}]`, seg).forEach(b => b.setAttribute('aria-pressed', String(b.getAttribute(attr) === val)));
+    }
+
+    function applyVariant() {
+        win.className = `win v-${variant}`;
+        setPressed($('#vseg'), 'data-v', variant);
+        setPressed($('#kseg'), 'data-k', kind);
+        const V = VARIANTS[variant];
+        $('#vdesc').innerHTML = `<div class="vt">${esc(V.t)}</div><dt>What it does</dt><dd>${esc(V.what)}</dd><dt>Good</dt><dd>${esc(V.good)}</dd><dt>Limit</dt><dd>${esc(V.bad)}</dd><dt>Cost</dt><dd>${esc(V.cost)}</dd>`;
+        $$('.vwrap', area).forEach(w => { w.style.maxHeight = ''; });
+        $$('.grip', area).forEach(g => g.remove());
+        if (variant === 'd' || variant === 'ad') addGrips(variant === 'ad' ? '.col.l' : '.x');
+        fillB();
+        measure();
+    }
+
+    /* ---- B: fill the last table of each column to the window's bottom ---- */
+    function fillB() {
+        if (variant !== 'b') return;
+        const aTop = area.getBoundingClientRect().top - area.scrollTop;
+        $$('.col', area).forEach(col => {
+            const tbls = $$('.tbl', col);
+            const last = tbls[tbls.length - 1];
+            if (!last) return;
+            const wrap = $('.vwrap', last);
+            wrap.style.maxHeight = '';
+            const top = wrap.getBoundingClientRect().top - aTop;
+            let after = 0;
+            for (let n = last.nextElementSibling; n; n = n.nextElementSibling) after += n.getBoundingClientRect().height + 10;
+            const room = area.clientHeight - top - after - 14;
+            wrap.style.maxHeight = `${Math.max(240, Math.round(room))}px`;
+        });
+    }
+
+    /* ---- D: grips ---- */
+    function visibleRows(wrap) {
+        const head = $('thead', wrap).offsetHeight;
+        const r = wrap.getBoundingClientRect();
+        const top = r.top + head - 1, bot = r.top + wrap.clientHeight + 1;
+        const rows = $$('tbody tr:not([hidden])', wrap);
+        return { shown: rows.filter(tr => { const b = tr.getBoundingClientRect(); return b.top >= top && b.bottom <= bot; }).length, total: rows.length };
+    }
+
+    function addGrips(scopeSel) {
+        $$(`${scopeSel} .vwrap`, area).forEach(wrap => {
+            const id = wrap.dataset.id;
+            const saved = parseInt(store.get(gripKey(id)), 10);
+            if (saved > 0) wrap.style.maxHeight = `${saved}px`;
+            const g = document.createElement('div');
+            g.className = 'grip';
+            g.tabIndex = 0;
+            g.setAttribute('role', 'separator');
+            g.setAttribute('aria-orientation', 'horizontal');
+            g.setAttribute('aria-label', 'Drag to set the table\'s height; double-click to reset');
+            wrap.after(g);
+            let drag = null;
+            const label = () => {
+                const v = visibleRows(wrap);
+                let l = $('.gl', g);
+                if (!l) { l = document.createElement('span'); l.className = 'gl'; g.append(l); }
+                l.textContent = `${wrap.offsetHeight} px · ${v.shown === v.total ? `all ${v.total} rows` : `${v.shown} of ${v.total} rows`}`;
+            };
+            const setH = h => { wrap.style.maxHeight = `${Math.max(120, Math.round(h))}px`; label(); measure(); };
+            const save = () => store.set(gripKey(id), String(wrap.offsetHeight));
+            g.addEventListener('pointerdown', (e) => {
+                e.preventDefault();
+                g.setPointerCapture(e.pointerId);
+                drag = { y: e.clientY, h: wrap.offsetHeight, prev: wrap.style.maxHeight };
+                g.classList.add('drag');
+                activeDrag = { cancel: () => { wrap.style.maxHeight = drag.prev; end(false); } };
+                label();
+            });
+            g.addEventListener('pointermove', (e) => { if (drag) setH(drag.h + e.clientY - drag.y); });
+            const end = (keep) => {
+                if (!drag) return;
+                drag = null;
+                activeDrag = null;
+                g.classList.remove('drag');
+                const l = $('.gl', g);
+                if (l) l.remove();
+                if (keep) { save(); foot(`Saved: the ${id} table opens ${wrap.offsetHeight} px tall in later windows.`); }
+                else foot('Drag cancelled; the table kept its height.');
+                measure();
+            };
+            g.addEventListener('pointerup', () => end(true));
+            g.addEventListener('pointercancel', () => end(false));
+            g.addEventListener('dblclick', () => { wrap.style.maxHeight = ''; store.del(gripKey(id)); foot(`Reset: the ${id} table is back to 460 px.`); measure(); });
+            g.addEventListener('keydown', (e) => {
+                if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    setH(wrap.offsetHeight + (e.key === 'ArrowDown' ? 20 : -20));
+                    save();
+                }
+            });
+            g.addEventListener('blur', () => { const l = $('.gl', g); if (l && !drag) l.remove(); });
+        });
+    }
+    let activeDrag = null;
+
+    /* ---- readout ---- */
+    function foot(t) { $('#wfoot').textContent = t; }
+
+    function measure() {
+        const ro = $('#readout');
+        if (win.hidden) { ro.innerHTML = '<span class="pill info">Closed</span> Reopen the window to measure again.'; return; }
+        const K = KINDS[kind];
+        const col = $('.col.r', area);
+        const wrap = $(`.vwrap[data-id="${K.rightId}"]`, area);
+        if (!col || !wrap) return;
+        const v = visibleRows(wrap);
+        const aR = area.getBoundingClientRect();
+        const last = col.lastElementChild.getBoundingClientRect();
+        const narrow = win.offsetWidth <= 640;
+        const unused = Math.max(0, Math.round(aR.top + area.clientHeight - last.bottom - 14));
+        const scrolled = last.bottom < aR.top + 40;
+        let state;
+        if (narrow) state = '<span class="pill info">One column</span>';
+        else if (scrolled) state = '<span class="pill info">Scrolled away</span>';
+        else if (unused <= 24 || v.shown === v.total) state = '<span class="pill ok">Fills the window</span>';
+        else state = '<span class="pill warn">Space left over</span>';
+        ro.innerHTML = `${state}<span>Window body <b>${area.clientHeight} px</b> tall</span>` +
+            `<span>${esc(K.rightName)} <b>${wrap.offsetHeight} px</b>, <b>${v.shown}</b> of ${v.total} rows in view</span>` +
+            (narrow || scrolled ? '' : `<span><b style="color:${unused > 24 && v.shown < v.total ? 'var(--warn)' : 'var(--ink)'}">${unused} px</b> unused under it</span>`);
+    }
+
+    let raf = 0;
+    const schedule = () => { if (raf) return; raf = requestAnimationFrame(() => { raf = 0; fillB(); measure(); }); };
+    if (typeof ResizeObserver === 'function') new ResizeObserver(schedule).observe(area);
+    area.addEventListener('scroll', () => { if (!raf) raf = requestAnimationFrame(() => { raf = 0; measure(); }); }, { passive: true });
+
+    /* ---- filters ---- */
+    area.addEventListener('input', (e) => {
+        const id = e.target.dataset && e.target.dataset.f;
+        if (!id) return;
+        const q = e.target.value.trim().toLowerCase();
+        const wrap = $(`.vwrap[data-id="${id}"]`, area);
+        let n = 0;
+        $$('tbody tr', wrap).forEach(tr => { const hit = !q || tr.textContent.toLowerCase().includes(q); tr.hidden = !hit; if (hit) n++; });
+        $('.empty', wrap).hidden = n > 0;
+        measure();
+    });
+    area.addEventListener('mouseover', (e) => {
+        const a = e.target.closest('a');
+        if (a) foot(`Click: opens “${a.textContent}” here in the window. Ctrl-click: a new tab.`);
+    });
+    area.addEventListener('click', (e) => { if (e.target.closest('a')) e.preventDefault(); });
+
+    /* ---- controls ---- */
+    $('#vseg').addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) { variant = b.dataset.v; applyVariant(); } });
+    $('#kseg').addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) { kind = b.dataset.k; render(); } });
+    $('#hseg').addEventListener('click', (e) => {
+        const b = e.target.closest('button');
+        if (!b) return;
+        win.style.height = `${b.dataset.h}px`;
+        win.style.width = '';
+        setPressed($('#hseg'), 'data-h', b.dataset.h);
+    });
+
+    const close = () => { win.hidden = true; $('#closed').hidden = false; $('#reopen').focus(); measure(); };
+    const reopen = () => { win.hidden = false; $('#closed').hidden = true; render(); };
+    $('#wclose').addEventListener('click', close);
+    $('#reopen').addEventListener('click', reopen);
+    document.addEventListener('keydown', (e) => {
+        if (e.key !== 'Escape') return;
+        if (activeDrag) { activeDrag.cancel(); return; }
+        if (!win.hidden) close();
+    });
+
+    const startH = window.innerWidth < 700 ? '520' : '760';
+    win.style.height = `${startH}px`;
+    setPressed($('#hseg'), 'data-h', startH);
+    render();
+})();
+</script>
