@@ -1,5 +1,23 @@
 [
   {
+    "version": "9.99.1518",
+    "date": "2026-10-30",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "The title-style check now also covers event names, for punctuation only: a new warning, \"ASCII punctuation in event name\" (\"Max's\" for \"Max’s\", \"...\" for \"…\", \"2024-2025\" for \"2024–2025\"). Capitalization of event names is never checked: they follow the poster. A live-form name's date and names that almost follow the event style guide keep their own warnings and are not flagged twice. Pages with events (an artist's Events, …) now get the Aa button too; its panel lists only the warnings the page can have, and counts \"names\" where there are only event names. New setting: ⚠️ Findings → Title style: find ASCII punctuation in event names."
+        ]
+      },
+      {
+        "label": "🔧 Refactor",
+        "items": [
+          "FINDINGS event-typography (_findingEventTypo(), _findCellEventEl()), _tableStyleCols() (was _tableHasTitleInfo()), _titleStylePageCols(), _titleStyleNoun(); _titleStyleAvail counts event-name columns. Mockup approved 2026-10-29, variant A: https://claude.ai/artifact/PB5NwvrZz61sMqju5qxFYu. Tests: findings-event-typography.spec.js (new, 6); scripts/mutations/event-typography.json (new: 6 caught, 1 recorded as not observable, with why). scripts/mutations/title-style.json: \"the click does not turn the findings on\" re-anchored (its find had not matched since 9.99.1516)."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.1517",
     "date": "2026-10-29",
     "sections": [

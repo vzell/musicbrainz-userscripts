@@ -4,9 +4,20 @@ Every version, newest first, with the technical details behind each change. For 
 
 **Months:** [October 2026](ShowAllEntityData_CHANGELOG/2026-10.md) · [September 2026](ShowAllEntityData_CHANGELOG/2026-09.md) · [August 2026](ShowAllEntityData_CHANGELOG/2026-08.md) · [July 2026](ShowAllEntityData_CHANGELOG/2026-07.md) · [June 2026](ShowAllEntityData_CHANGELOG/2026-06.md) · [May 2026](ShowAllEntityData_CHANGELOG/2026-05.md) · [April 2026](ShowAllEntityData_CHANGELOG/2026-04.md) · [March 2026 (1 of 2)](ShowAllEntityData_CHANGELOG/2026-03-1.md) · [March 2026 (2 of 2)](ShowAllEntityData_CHANGELOG/2026-03-2.md) · [February 2026](ShowAllEntityData_CHANGELOG/2026-02.md) · [January 2026](ShowAllEntityData_CHANGELOG/2026-01.md)
 
-This page shows the newest 100 of 1688 versions; the month pages hold all of them.
+This page shows the newest 100 of 1689 versions; the month pages hold all of them.
 
 ---
+
+## 9.99.1518 — 2026-10-30
+
+**✨ Improve**
+
+- The title-style check now also covers event names, for punctuation only: a new warning, "ASCII punctuation in event name" ("Max's" for "Max’s", "..." for "…", "2024-2025" for "2024–2025"). Capitalization of event names is never checked: they follow the poster. A live-form name's date and names that almost follow the event style guide keep their own warnings and are not flagged twice. Pages with events (an artist's Events, …) now get the Aa button too; its panel lists only the warnings the page can have, and counts "names" where there are only event names. New setting: ⚠️ Findings → Title style: find ASCII punctuation in event names.
+
+**🔧 Refactor**
+
+- FINDINGS event-typography (\_findingEventTypo(), \_findCellEventEl()), \_tableStyleCols() (was \_tableHasTitleInfo()), \_titleStylePageCols(), \_titleStyleNoun(); \_titleStyleAvail counts event-name columns. Mockup approved 2026-10-29, variant A: https://claude.ai/artifact/PB5NwvrZz61sMqju5qxFYu. Tests: findings-event-typography.spec.js (new, 6); scripts/mutations/event-typography.json (new: 6 caught, 1 recorded as not observable, with why). scripts/mutations/title-style.json: "the click does not turn the findings on" re-anchored (its find had not matched since 9.99.1516).
+
 
 ## 9.99.1517 — 2026-10-29
 
@@ -917,14 +928,6 @@ This page shows the newest 100 of 1688 versions; the month pages hold all of the
 **🚀 Feature**
 
 - Release tracklist: hovering a live track's "\#" cell now also shows the event the track was recorded at, in a card stacked right above the release group card: its name, type, date, place, tour, line-up and the start of its setlist, as the event link's own preview shows them. With the kind line of 9.99.1418, the two cards read "Event" and "Release group". The first hover on a track of an event asks MusicBrainz once, after the release group search and at the same one-a-second pace; the answer is kept like the other previews. A track whose event is only named in its comment shows no event card. New setting "Show the track's event above the "\#" release group card" (💿 RELEASE TRACKLIST), on by default.
-
-
-## 9.99.1418 — 2026-10-21
-
-**✨ Improve**
-
-- Link previews: every hover card now opens with a kind line, the entity's icon and its kind ("Recording", "Release group", "Event"), the same words as the window's title bar, so the card says what Space will open. Cards of other sites get it too ("Discogs release", "Wikipedia"), without an icon. The icon moved out of the title into that line; the loading and failed cards no longer repeat the kind under the title.
-- The release page's release-group cards (the subheader link and the "\#" cell of a live track) now carry MusicBrainz's release-group icon, in the card and in the window's title bar.
 
 
 ---
