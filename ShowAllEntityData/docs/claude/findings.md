@@ -340,7 +340,24 @@ check costs real render time: about 20 µs per distinct title in Node, so
 - **`compare`** gives `{la: 'Title', lb: 'MB style', own: 'b'}` for case,
   typography and series; `title-feat` and `title-eti-remove` propose no
   title and give a `detail` instead.
-- **One tint setting** for all five, `sa_findings_tint_title_style`.
+- **A sixth, on event names: `event-typography`** (2026-10-29, mockup
+  https://claude.ai/artifact/PB5NwvrZz61sMqju5qxFYu, variant A). Only
+  `typoFix` (`_findingEventTypo()`, `_findCellEventEl()`): an event name
+  follows the poster (https://musicbrainz.org/doc/Style/Event), so
+  `title-case` never reads it, and series/feat/ETI do not apply. It returns
+  `null` for a style-guide near miss (`event-style-nearmiss` owns those
+  characters) and a live name whose date is not valid, and keeps a valid
+  live name's date out of the proposal (`event-live-sep` owns it;
+  `_mbTypographyFixed()` is one-for-one, so the indexes line up — today the
+  rule never touches such a date anyway, recorded as an expected-pass
+  mutation). Own switch `sa_findings_event_typography`. `_titleStyleAvail`
+  and `_tableStyleCols()` count event-name columns (`_uvdEventNameColumns()`)
+  beside title-info ones; the panel lists only the ids the page's columns
+  can have (`_titleStylePageCols()`), and `_titleStyleNoun()` says "names"
+  where a scope has event names only. Spec
+  `tests/fixtures/findings-event-typography.spec.js`, mutations
+  `scripts/mutations/event-typography.json`.
+- **One tint setting** for all six, `sa_findings_tint_title_style`.
 - Overlaps are deliberate: an ALL UPPERCASE title also carries `title-case`
   (its card shows the proposal), and "(Live)" both `eti-case` and
   `title-case`. `_MBTC_ETI` (the case rule's lower-case ETI words) and
