@@ -1,22 +1,159 @@
-* TODO add support for Internet Archive (Bruce first)
+﻿* TODO add support for Internet Archive pages
+** initial
 
 1.)
 
-How comes that the https://archive.org/ wesite allows playin bootleg songs e.g. via the integrated player at e.g.
+How comes that the https://archive.org/ website allows playing bootleg songs/videos e.g. via the integrated music
+player/video player for free at e.g.
+
 https://archive.org/details/bs1975-12-27.aud.jk.cb.hrubesh.flac16
 
 2.)
 
-add support for a new PT, Internet Archive (Bruce Springsteen first)
+add support for a new Internet Archive PT for Bruce Springsteen Year overview
+
+There are different views on a year page "Tile view", "List view" and "Compact list view" 
+
+It's possibly the easiest to scrape the "Compact list view"
 
 #+begin_example
-Year overview - https://archive.org/search?query=subject%3A%22Bruce+Springsteen%22&sort=title&and%5B%5D=year%3A%221975%22
+"Tile view" - https://archive.org/search?query=subject%3A%22Bruce+Springsteen%22&sort=title&and%5B%5D=year%3A%221975%22 - @debug/ia-1975-tile-view-initial-.html
+"Compact list view" - https://archive.org/search?query=subject%3A%22Bruce+Springsteen%22&sort=title&and%5B%5D=year%3A%221975%22 - @debug/ia-1975-compact-list-view-initial.html
+"Tile view" - https://archive.org/search?query=subject%3A%22Bruce+Springsteen%22&sort=title&and%5B%5D=year%3A%222000%22 - @debug/ia-2000-tile-view-initial.html
 #+end_example
 
-Detail release pages:
+Also create columns for the information which appears when hovering the image before the actual entity title
+
+3.)
+
+add POH support for internet archive detail pages, e.g.
+
 #+begin_example
+concert video - https://archive.org/details/live-at-the-ahmanson-theater-los-angeles-1973 - @debug/ia-amanson-1973-video.html
+concert video - https://archive.org/details/1975-bruce-springsteen-widener-college-audience-cam - @debug/ia-widener-1975-video.html
+setlist songs - https://archive.org/details/bs1975-02-05.prefm-fm.prodigalson.jems.flac16 - @debug/ia-1975-02-05-setlist-songs.html
+setlist songs - https://archive.org/details/bs1975-03-07.aud.cdr.unknown.flac16 - @debug/ia-1975-03-07-setlist-songs.html
 https://archive.org/details/bs1975-10-18-late.aud.cb.flac16/1-02.+Tenth+Avenue+Freeze-Out.flac
 https://archive.org/details/bs1975-12-28.sbd.sciaky.jerseyboy.flac16/1-02.+Spirit+In+The+Night.flac
 https://archive.org/details/bs1975-12-27.aud.jk.cb.hrubesh.flac16
+etc.
 #+end_example
 
+when hovering entries in the new Internet Archive PT
+
+4.)
+
+also add POH support for the new Internet Archive PT for Bruce Springsteen Year overview
+
+5.)
+
+make some nice rich HTML based mockups first
+
+** Answer (2026-10-31, branch =feat/internet-archive=, no userscript change yet)
+
+Env: 2026-10-31T18:51:42+01:00 · vzell-lap · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) · browser n/a (API probes, saved HTML)
+
+Mockup v1: =org/internet-archive-mockups.html= (built from =org/internet-archive-mockups.src.html= + the
+probe's data), published at https://claude.ai/artifact/4aXkdPxudwhuzACj4Wg81C
+
+*** 1.) Why archive.org plays these bootlegs
+
+The items are uploads by archive.org users, not the Archive's own releases. The 1975 shows sit in
+user collections (=radionowhere=, =roiocollection=) inside "Community Audio" (=folksoundomy=); the
+four 1975 videos in "Community Video" (=opensource_movies=). The Internet Archive does not check
+rights before an upload is published. As a US host of user content it relies on the DMCA's
+notice-and-takedown rule (17 U.S.C. § 512): it is not liable as long as it removes an item when a
+rights holder sends a valid notice. So an unofficial recording stays playable until someone with
+the rights asks for it to be taken down. Many uploads have been removed that way over the years.
+This differs from the Live Music Archive (=etree=), which only takes bands that allow taping and
+trading; as far as I know Springsteen is not one of them, which is why these items are in the
+community collections instead. (Not legal advice; this describes how the site works.)
+
+*** The search page has no rows in its HTML (2.)
+
+=debug/ia-1975-tile-view-initial-.html= and =debug/ia-1975-compact-list-view-initial.html= are
+byte-identical, 10.5 KB: an =<app-root>= Lit web-component shell. The results, and the Tile /
+List / Compact list views, are drawn by the page's scripts into shadow DOM. So "scrape the
+Compact list view" has nothing to scrape; the rows come from the Internet Archive's search API.
+
+*** Probes (=scripts/probe-ia-search.py=, anonymous, no token)
+
+| What                          | Answer                                                                                                                     |
+|-------------------------------+----------------------------------------------------------------------------------------------------------------------------|
+| =advancedsearch.php= (Solr)   | 200 JSON. 1975: 73 items (69 audio, 4 movies); 2000: 59 (incl. 4 texts, Backstreets magazines); 2016: 1,064 (paging needed) |
+| its fields                    | identifier, title, date, venue, source (Audience/…), downloads, item_size, num_reviews, avg_rating, addeddate, collection (with =fav-<user>= favorites), subject, description, format |
+| =/services/search/v1/scrape=  | 200 JSON, =items/count/total=, cursor paging past 10,000                                                                   |
+| =/metadata/<identifier>=      | 200 JSON. A show: title, date, venue, source, =brucebase_url=, =databruce_url=, uploader, description, reviews; files with =title=, =track=, =length= on the originals (19 and 27 tracks). A video: MPEG4 + h.264 files, 44–62 thumbnails |
+
+The detail pages are 290–470 KB of HTML; the metadata API has everything the card and window need,
+in one small request.
+
+*** Open questions (in the mockup's side notes; asked 2026-10-31)
+
+Q1 which searches; Q2 which media types; Q3 the hover columns; Q4 first order; Q5 where links get
+the card; Q6 card on hover or Space; Q7 play in the window; Q8 description; Q9 video thumbnails;
+Q10 a track link's window.
+
+*** Answers (vzell, 2026-10-31)
+
+- Q1: any =archive.org/search?…= page (its own query and filters).
+- Q5 + Q6: every =archive.org/details/…= link the link previews see, card on hover.
+- Q7: yes, play in the window (archive.org's embeddable player).
+- Q10: a track link opens its show's window with that row marked.
+- Not answered, so the mockup's recommendation stands until said otherwise: Q2 all media types
+  with a Type chip each; Q3 the shaded columns as shown; Q4 first sorted by date; Q8 description
+  clamped with ▾; Q9 a strip of the first 12 thumbnails, Space for all.
+
+Embed probe (=scripts/probe-ia-embed.py=, 2026-10-31 before 19:21+01:00, vzell-lap): =archive.org/embed/<id>=
+and =/embed/<id>/<file>= answer 200 with no X-Frame-Options and no CSP =frame-ancestors=, so
+another site may frame them. MusicBrainz's own CSP =frame-src= could still refuse the frame; not
+checkable from vzell-lap (MetaBrainz resets IPv4 here). The YouTube player's fallback (the page
+refuses the frame → the tile opens the site in a new tab, =securitypolicyviolation=) covers that.
+
+** Plan (proposed 2026-10-31, waiting for vzell's go-ahead)
+
+Branch =feat/internet-archive=. No =// @version= / changelog on the branch; =WIP.N= entries.
+
+1. *Site switch and gate*: =sa_enable_internetarchive= (default true, per CLAUDE.md since
+   2026-10-26), =_isIaHost=, a =host:= on every new pageType so =_foreignHost= keeps it out of
+   MusicBrainz detection; =@match=/=@include= for =https://archive.org/search*=, =@connect archive.org=.
+2. *pageType =ia-search=* (any search page): =features.pageRequest= with =fetchText()= to
+   =advancedsearch.php= — the page's =query=, =and[]= filters and =sort= translated to Solr; 100
+   rows a request, the count from =numFound=, one request a second. Converter =_iaToHtml()= →
+   =table.tbl=: Art (lazy, =archive.org/services/img/<id>=, as Jungleland's Art column), Date,
+   Title (the item), Venue, Source, Type, Views, Favorites, Reviews, Added, Size, Collection,
+   Topics, Description (prose collapse). First sort: Date. Placement on the live page: the page is
+   an =<app-root>= web-component shell, so our section goes outside it (like =_dgPrepareLivePage()=
+   keeps ours outside =#app=); to be checked on a saved FRP.
+3. *Reader =iadetails=* in =_EXT_READERS= (any host): =archive.org/details/<id>[/<file>]=,
+   =keyUrl= = =/details/<id>= (a track link shares its show's request); =load()= = one anonymous
+   =_extGet()= of =/metadata/<id>=, trimmed to what the card and window use. Card: kind, title,
+   source/tracks/runtime pills, date, venue, collection, views, first songs (a track link: the
+   track and its place). Window: left facts, description, links (Brucebase/Databruce open in the
+   window); right the setlist as a List table (it fills the window, 9.99.1519); a track link marks
+   its row; a video: files, thumbnail strip.
+4. *Play here*: one in-place player for YouTube AND archive.org — the YouTube player
+   (=_ytPlay()=, =_ytAreaRepaint()=, one at a time, =_yt.blocked= fallback) gets a provider
+   (embed URL, key), rather than a second player beside it (CLAUDE.md: one engine). Its own setting
+   =sa_ia_play_in_place= (default true) next to =sa_yt_play_in_place=.
+5. *Tests*: fixtures from the probes (=ext-ia-search-*.json=, =ext-ia-metadata-*.json=, a trimmed
+   =debug/ia-*-initial.html= shell); specs =ia-search.spec.js= (rows, paging, columns, sort,
+   no request before the press, the switch off), =ia-reader.spec.js= (card on hover on an MB page
+   and on Brucebase, window, track link, video, Play here + the refused-frame fallback),
+   =ia-search.mobile.spec.js=; MusicBrainz fixture suite unchanged; mutations
+   =scripts/mutations/internet-archive.json=.
+6. *Docs*: see "Doc updates" below. Then =test:full=, push the branch, ask before merging.
+
+** Doc updates (proposed before coding, per ~/.claude/CLAUDE.md)
+
+- =docs/claude/internet-archive.md= (new): the site, why rows come from the API (the shell),
+  the search → Solr translation, the reader, Play here, specs, mockup link; plus its doc-map row
+  and an =IA= abbreviation row in =ShowAllEntityData/CLAUDE.md=.
+- =docs/claude/detail-pages.md=: the =iadetails= reader section; Play here's provider split
+  (=docs/claude/detail-pages.md= is where YouTube in place is documented).
+- =ShowAllEntityData_HELP.md=: an Internet Archive section (the table, its columns, the card,
+  the window, Play here) and the two settings.
+- =PAGETYPES-TESTING-REFERENCE.org=: the =ia-search= roster and coverage rows.
+- =ShowAllEntityData_CHANGELOG.wip.json=: =WIP.1= (🚀 Feature) in the user's words, with the
+  mockup link.
+- =DEBUG-NOTES.md=: a dated entry with the probes' findings (the empty shell, the APIs).
