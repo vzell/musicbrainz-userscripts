@@ -102,5 +102,53 @@
     "spec": "tests/fixtures/popup-ext.spec.js",
     "grep": "Play here: a song plays",
     "expect": "fail"
+  },
+  {
+    "name": "the Art picture is no image trigger",
+    "why": "vzell 2026-11-01 'looks good, except image hovering': the picture must carry the shared card and viewer (_IA_FI).",
+    "edits": [{ "find": "<a class=\"mb-ia-thumblink\" data-mbtt-fn=\"fi-img\" data-mb-fi=\"ia\" href=", "replace": "<a class=\"mb-ia-thumblink\" href=" }],
+    "spec": "tests/fixtures/ia-search.spec.js",
+    "grep": "resting on a picture",
+    "expect": "fail"
+  },
+  {
+    "name": "the per-track spectrograms count as pictures",
+    "why": "Only the uploader's ORIGINAL image files are the item's pictures; the PNG derivatives are spectrograms of the audio.",
+    "edits": [{ "find": ".filter(f => f.source === 'original' && _EXT_IA_PICTURE_RE.test(", "replace": ".filter(f => _EXT_IA_PICTURE_RE.test(" }],
+    "spec": "tests/fixtures/ia-search.spec.js",
+    "grep": "resting on a picture",
+    "expect": "fail"
+  },
+  {
+    "name": "the pictures in file order, not a cover first",
+    "why": "A cover or front is the item's main picture: first in the card and where the viewer opens.",
+    "edits": [{ "find": "            .sort((a, b) => (Number(!/\\b(?:cover|front)\\b/i.test(a.name)) - Number(!/\\b(?:cover|front)\\b/i.test(b.name)))\n                || a.name.localeCompare(b.name, 'en', { numeric: true }))", "replace": "            .sort((a, b) => a.name.localeCompare(b.name, 'en', { numeric: true }))" }],
+    "spec": "tests/fixtures/ia-search.spec.js",
+    "grep": "resting on a picture",
+    "expect": "fail"
+  },
+  {
+    "name": "the viewer click is not installed on archive.org",
+    "why": "A click on the picture must open the viewer, not follow the link to the tile in a new tab.",
+    "edits": [{ "find": "        // The Art column's card and viewer click (_IA_FI).\n        _fiInstall();\n", "replace": "" }],
+    "spec": "tests/fixtures/ia-search.spec.js",
+    "grep": "resting on a picture",
+    "expect": "fail"
+  },
+  {
+    "name": "a video's stills are not shown",
+    "why": "A video item has no scans: its stills are its pictures.",
+    "edits": [{ "find": "            if (stills.length) return stills;\n", "replace": "" }],
+    "spec": "tests/fixtures/ia-search.spec.js",
+    "grep": "a video item without pictures",
+    "expect": "fail"
+  },
+  {
+    "name": "the Art card ignores its setting",
+    "why": "sa_ia_tip_images off: no card, no request.",
+    "edits": [{ "find": "        cardOn: () => Lib.settings.sa_ia_tip_images !== false,", "replace": "        cardOn: () => true," }],
+    "spec": "tests/fixtures/ia-search.spec.js",
+    "grep": "pictures on hover\" off",
+    "expect": "fail"
   }
 ]

@@ -14,7 +14,10 @@
 // when there is one; the columns and a known row's cells (venue, source,
 // favorites from `num_favorites`, size in MB, collections without users'
 // favorites); the rows first by date; a title's card and window on
-// archive.org itself (the `iadetails` reader).
+// archive.org itself (the `iadetails` reader); the Art column's hover
+// card and viewer (`_IA_FI`, vzell 2026-11-01: "looks good, except image
+// hovering"): the item's own pictures, a cover first, or a video's stills,
+// from ONE metadata request shared with the title's card.
 // Mutations: scripts/mutations/internet-archive.json.
 
 const fs = require('fs');
@@ -55,12 +58,16 @@ async function open(page, url, responses, settings = {}) {
     const errors = [];
     page.on('pageerror', (e) => errors.push(String(e.stack || e.message || e)));
     await page.route(/^https?:\/\//, (route) => route.abort('blockedbyclient'));
-    await page.route('https://archive.org/services/img/**', (route) => route.fulfill({ status: 200, contentType: 'image/png', body: PNG }));
     await page.context().addInitScript((r) => { window.__gmXhrResponses = r; }, responses);
     await loadUserscriptPage(page, {
         url, fixtureFile: FILE, testMode: true,
         settingsOverride: { sa_enable_internetarchive: true, sa_render_threshold: 100000, sa_rich_tooltip_delay_ms: 0, ...settings },
     });
+    // After the load: loadUserscriptPage() aborts every archive.org image
+    // with a route of its own, and the newest route wins.
+    const png = (route) => route.fulfill({ status: 200, contentType: 'image/png', body: PNG });
+    await page.route('https://archive.org/services/img/**', png);
+    await page.route('https://archive.org/download/**', png);
     return errors;
 }
 
@@ -168,5 +175,92 @@ test.describe('archive.org: a search page (ia-search)', () => {
         // The capture's 19 songs (its original FLAC files with a title).
         await expect(d.locator('[data-mb-tbl="ia-setlist"] tbody tr')).toHaveCount(19);
         expect((await apiLog(page)).filter(u => u.includes('/metadata/'))).toEqual([m.url]);
+    });
+});
+
+test.describe('archive.org: the Art column\'s hover card and viewer (_IA_FI)', () => {
+    const VIDEO = '1975-bruce-springsteen-widener-college-audience-cam';
+    const DL = (id, name) => `https://archive.org/download/${encodeURIComponent(id)}/${encodeURIComponent(name)}`;
+    const tip = (page) => page.locator('#mb-stat-tooltip');
+
+    /**
+     * Loads the 1975 table with the two items' metadata as GM answers.
+     * @param {import('@playwright/test').Page} page
+     * @param {Object} [settings]
+     * @returns {Promise<string[]>} Page errors.
+     */
+    async function openTable(page, settings = {}) {
+        const errors = await open(page, S1975, Object.fromEntries([
+            answer(FX('ia-search-1975-p1')), answer(FX(`ia-metadata-${SHOW}`)), answer(FX(`ia-metadata-${VIDEO}`)),
+        ]), settings);
+        await page.locator('#mb-ia-root button[data-label="Show all items"]').click();
+        await waitForRenderComplete(page, { waitForAutoResize: false });
+        return errors;
+    }
+
+    /**
+     * The Art link of the row whose Title links the item, hovered from outside.
+     * @param {import('@playwright/test').Page} page
+     * @param {string} id
+     * @returns {Promise<import('@playwright/test').Locator>}
+     */
+    async function hoverArt(page, id) {
+        const link = page.locator('#mb-ia-root table.tbl tbody > tr', { has: page.locator(`a[href="https://archive.org/details/${id}"]`) })
+            .first().locator('a.mb-ia-thumblink');
+        await page.mouse.move(0, 0);
+        await link.scrollIntoViewIfNeeded();
+        await link.hover();
+        return link;
+    }
+
+    const metaLog = async (page) => (await apiLog(page)).filter(u => u.includes('/metadata/'));
+
+    test('resting on a picture: the item\'s own pictures, a cover first, from ONE request the title\'s card shares', async ({ page }) => {
+        const errors = await openTable(page);
+        expect(await metaLog(page), 'nothing before the hover').toEqual([]);
+        const link = await hoverArt(page, SHOW);
+        await expect(tip(page)).toBeVisible();
+        await expect(tip(page)).toContainText('Bruce Springsteen - 1975-12-27, Tower Theater, Philadelphia');
+        // The capture's seven scans (Cover, Front, Back, two booklet pages,
+        // two discs); not its 19 spectrogram PNGs, not the item tile.
+        const tiles = tip(page).locator('.mb-art-card-tile img');
+        await expect(tiles).toHaveCount(7);
+        // A cover first, each drawn from its "JPEG Thumb".
+        await expect(tiles.first()).toHaveAttribute('src', DL(SHOW, 'Cover_thumb.jpg'));
+        await expect(tiles.nth(1)).toHaveAttribute('src', DL(SHOW, 'Front_thumb.jpg'));
+        expect(await metaLog(page), 'one request, this row only').toEqual([FX(`ia-metadata-${SHOW}`).url]);
+        // A click: the viewer at full size, from the record in memory.
+        await link.click();
+        const viewer = page.locator('#mb-art-viewer');
+        await expect(viewer.locator('.mb-artv-pos')).toHaveText('1 / 7');
+        const stage = viewer.locator('.mb-artv-stage .mb-artv-img');
+        await expect(stage).toHaveAttribute('data-artv-size', 'big');
+        await expect(stage).toHaveAttribute('data-artv-url', DL(SHOW, 'Cover.jpg'));
+        await expect(viewer.locator('.mb-artv-info')).toContainText('the cache');
+        await page.keyboard.press('Escape');
+        await expect(viewer).toBeHidden();
+        expect(await metaLog(page), 'the viewer asked nothing more').toHaveLength(1);
+        expect(errors).toEqual([]);
+    });
+
+    test('a video item without pictures of its own: its stills', async ({ page }) => {
+        const errors = await openTable(page);
+        const link = await hoverArt(page, VIDEO);
+        const tiles = tip(page).locator('.mb-art-card-tile img');
+        await expect(tiles.first()).toHaveAttribute('src', /\.thumbs\//);
+        await link.click();
+        // The record keeps the first 12 of its 62 stills.
+        await expect(page.locator('#mb-art-viewer .mb-artv-pos')).toHaveText('1 / 12');
+        expect(await metaLog(page)).toEqual([FX(`ia-metadata-${VIDEO}`).url]);
+        expect(errors).toEqual([]);
+    });
+
+    test('"Art column: the item\'s pictures on hover" off: no card, no request', async ({ page }) => {
+        await openTable(page, { sa_ia_tip_images: false });
+        await hoverArt(page, SHOW);
+        // The title's own card still works: the setting is the picture's only.
+        await page.waitForFunction(() => document.readyState === 'complete');
+        await expect(tip(page)).toBeHidden();
+        expect(await metaLog(page)).toEqual([]);
     });
 });

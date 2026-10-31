@@ -3952,6 +3952,15 @@ search API, 100 a request, one request a second; a search of more than
 10,000 items lists the first 10,000. A search of the texts' contents ("Search
 text contents") gets no button: the API does not search those.
 
+**Rest on a picture** in the Art column for a card with the item's own
+pictures: the uploader's scans (a cover first, then back, booklet, discs), or
+a video's stills; an item with neither shows archive.org's tile. The first
+time it asks archive.org for that item, one request for that row only, the
+same one the title's card and window use. A **click** (or Space while the card
+shows) opens the pictures full size in the viewer: ← → step through them,
+Shift+← → through the rows. **🖼** after the row count shows the whole table's
+pictures as a gallery.
+
 Wherever link previews are on, a link to an archive.org item
 (archive.org/details/…) has a **card**: the date, venue, source, the number
 of tracks and their running time, and the first songs. **Space** opens the
@@ -3966,8 +3975,9 @@ archive.org's own player in the window. One track or video plays at a time,
 YouTube's included; **Esc** or **■ Stop** ends it. Where a page does not
 allow archive.org's player, a click opens the item on archive.org instead.
 
-Switches, in ⚙️ Settings → 🏛 Internet Archive: *Enable on archive.org* and
-*Play archive.org tracks and videos in the window*, both on by default.
+Switches, in ⚙️ Settings → 🏛 Internet Archive: *Enable on archive.org*,
+*Art column: the item's pictures on hover* and *Play archive.org tracks and
+videos in the window*, all on by default.
 
 </details>
 

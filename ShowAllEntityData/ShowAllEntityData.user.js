@@ -5132,6 +5132,18 @@
                          'so this can be switched on from either site.'
         },
 
+        sa_ia_tip_images: {
+            label: 'Art column: the item\'s pictures on hover',
+            type: 'checkbox',
+            default: true,
+            description: 'Pointing at a picture in the Art column of an archive.org search table shows a card with ' +
+                         'the item\'s own pictures (the uploader\'s scans of a cover, back or booklet) or a ' +
+                         'video\'s stills; a click opens them full size in the viewer. The first time, the item is ' +
+                         'asked from archive.org\'s metadata API — one request for that row only, the same record ' +
+                         'the title\'s card and window use, so a later preview costs nothing; moving on before its ' +
+                         'turn asks nothing.'
+        },
+
         sa_ia_play_in_place: {
             label: 'Play archive.org tracks and videos in the window (a click asks archive.org\'s player)',
             type: 'checkbox',
@@ -19025,14 +19037,153 @@
         const reviews = Number(d.num_reviews) > 0 ? `${d.num_reviews} ${'★'.repeat(Math.max(0, Math.min(5, Math.round(Number(d.avg_rating) || 0))))}`.trim() : '';
         const size = Number(d.item_size) > 0 ? `${Math.max(1, Math.round(Number(d.item_size) / 1e6)).toLocaleString('en-US')} MB` : '';
         const type = _iaFirst(d.mediatype);
-        const img = `<img class="mb-ia-thumb" src="https://archive.org/services/img/${encodeURIComponent(id)}" alt="" width="40" height="40" ` +
-            'loading="lazy" referrerpolicy="no-referrer">';
+        // data-mbtt-fn + data-mb-fi: the hover card of the item's pictures
+        // and the viewer click (_fiCardHtml(), _fiClick(); _IA_FI).
+        const tile = `https://archive.org/services/img/${encodeURIComponent(id)}`;
+        const img = `<a class="mb-ia-thumblink" data-mbtt-fn="fi-img" data-mb-fi="ia" href="${_rgEsc(tile)}" target="_blank" rel="noopener noreferrer">` +
+            `<img class="mb-ia-thumb" src="${_rgEsc(tile)}" alt="" width="40" height="40" loading="lazy" referrerpolicy="no-referrer"></a>`;
         return `<tr><td class="mb-ia-artcell">${img}</td><td class="mb-ia-when">${_rgEsc(_iaEarliestDate(d.date))}</td>` +
             `<td><a href="${_rgEsc(url)}"${_DG_NEW_TAB}>${_rgEsc(_iaFirst(d.title) || id)}</a></td>` +
             `${_dgCell(_iaFirst(d.venue))}${_dgCell(_iaFirst(d.source))}${_dgCell(_IA_TYPE_NAMES[type] || type)}` +
             `${_dgCell(n(d.downloads))}${_dgCell(favs > 0 ? String(favs) : '')}${_dgCell(reviews)}` +
             `<td class="mb-ia-when">${_rgEsc(_iaFirst(d.addeddate).slice(0, 10))}</td>${_dgCell(size)}${_dgCell(shown.join(', '))}</tr>`;
     }
+
+    /**
+     * The artwork viewer's context for the archive.org table's Art column.
+     * @type {ArtCtx}
+     */
+    const _IA_ART_CTX = { key: 'ia', column: 'Art', external: true, imagesCache: new Map() };
+
+    /**
+     * A file of an item as a download URL, each path part encoded (a name
+     * may hold folders: "…Frank Wallace423/A.jpg").
+     *
+     * @param {string} id - The item's identifier.
+     * @param {string} name - The file's name in the item.
+     * @returns {string}
+     */
+    function _iaFileUrl(id, name) {
+        return `https://archive.org/download/${encodeURIComponent(id)}/${String(name).split('/').map(encodeURIComponent).join('/')}`;
+    }
+
+    /**
+     * One Art thumbnail's row as the image card and the viewer take it: its
+     * tile, the row's Title link read by the link previews' `iadetails`
+     * reader (the item, null when the cell has no such link).
+     *
+     * @param {HTMLAnchorElement} a - The row's `a.mb-ia-thumblink`.
+     * @param {HTMLTableElement} table
+     * @param {string} path - The viewer's key for the row.
+     * @returns {DgArtRow}
+     */
+    function _iaArtRowFor(a, table, path) {
+        const idx = _fiTitleColIdx(table);
+        const cell = idx >= 0 ? a.closest('tr').cells[idx] : null;
+        const ta = cell && cell.querySelector('a[href]');
+        const target = ta ? _extTarget(ta) : null;
+        return {
+            thumb: a.href, title: cell ? cell.textContent.trim() : '', asked: false,
+            target: target && target.reader.id === 'iadetails' ? target : null, path,
+        };
+    }
+
+    /**
+     * A picture's type for the card's tally and the viewer, from its file
+     * name (archive.org records none): Front, Back, Booklet, Medium.
+     *
+     * @param {string} name
+     * @returns {string[]}
+     */
+    function _iaPictureTypes(name) {
+        const base = String(name).split('/').pop();
+        if (/\b(?:cover|front)\b/i.test(base)) return ['Front'];
+        if (/\bback\b/i.test(base)) return ['Back'];
+        if (/\b(?:booklet|inlay|insert|inner|outer)\b/i.test(base)) return ['Booklet'];
+        if (/\b(?:disc|disk|cd\s*\d*|medium)\b/i.test(base)) return ['Medium'];
+        return [];
+    }
+
+    /**
+     * A row's images for the card and the viewer. Once the link previews'
+     * record of the item is there (`_extLoad()`: memory, IndexedDB, or ONE
+     * request to the metadata API, the same record the title's card and
+     * window use), the uploader's own pictures at full size (a cover first),
+     * or a video's stills; until then, and for an item with neither, the
+     * item's tile with a note.
+     *
+     * @param {DgArtRow} row
+     * @returns {Object[]} The viewer's image records.
+     */
+    function _iaArtImages(row) {
+        const tileOnly = (note, retry) => [{
+            image: row.thumb, thumbnails: { 250: row.thumb }, types: [], external: true, comment: row.title,
+            note, ...(retry ? { retry } : {}), source: note ? 'archive.org\'s item tile' : '',
+        }];
+        if (!row.target) return tileOnly(null, null);
+        const st = _mbPop.get(row.target.key);
+        if (st && st.status === 'done' && st.data) {
+            const it = st.data.ia;
+            if (!it) return tileOnly(_extStateText(st.data), null);
+            const source = row.asked && !st.cached ? 'archive.org\'s metadata: one request, now in the cache' : 'the cache: no request';
+            const pics = (it.pictures || []).map(p => ({
+                image: _iaFileUrl(it.id, p.name), thumbnails: { 250: _iaFileUrl(it.id, p.thumb || p.name) }, types: _iaPictureTypes(p.name),
+                external: true, comment: p.name.split('/').pop().replace(/\.[^.]+$/, ''), source,
+            }));
+            if (pics.length) return pics;
+            const stills = (it.thumbs || []).map((n, i) => ({
+                image: _iaFileUrl(it.id, n), thumbnails: { 250: _iaFileUrl(it.id, n) }, types: ['Still'], external: true,
+                comment: `Still ${i + 1} of ${it.thumbCount}`, source,
+            }));
+            if (stills.length) return stills;
+            return tileOnly('The item has no picture of its own: this is archive.org\'s tile.', null);
+        }
+        if (st && st.status === 'failed') {
+            return tileOnly(`archive.org did not answer (${st.detail}). Showing the item's tile.`, () => _fiLoad(_IA_FI, row, true));
+        }
+        return tileOnly('Loading the item\'s pictures from archive.org… one request for this one.', null);
+    }
+
+    /**
+     * The archive.org table's Art column as a provider of the foreign-image
+     * card and viewer click (`_fiCardHtml()`, `_fiClick()`; vzell,
+     * 2026-11-01: "looks good, except image hovering"), as Discogs' Image
+     * column (`_DG_FI`). Resting on a picture shows the item's own pictures
+     * (a cover, back, booklet: the uploader's scans) or a video's stills,
+     * from the item's record (`_extLoad()`: one request for this row only,
+     * never a neighbour's, the record the title's card and window use too);
+     * off with `sa_ia_tip_images`. A plain click opens the viewer on them at
+     * full size.
+     * @type {FiProvider}
+     */
+    const _IA_FI = {
+        ctx: _IA_ART_CTX,
+        name: 'Internet Archive',
+        tableSel: '#mb-ia-root table.tbl',
+        linkSel: 'a.mb-ia-thumblink',
+        cardOn: () => Lib.settings.sa_ia_tip_images !== false,
+        rowFor: _iaArtRowFor,
+        hasRecord: (row) => !!row.target,
+        state: (row) => {
+            const st = _mbPop.get(row.target.key);
+            return st && ['loading', 'done', 'failed'].includes(st.status) ? st.status : 'cold';
+        },
+        request: (row, o) => _extLoad(row.target, { force: !!o.force, repaint: o.repaint, wanted: o.wanted }),
+        images: _iaArtImages,
+        loadingText: () => 'Loading the item\'s pictures from archive.org…',
+        foot: 'Click: viewer',
+        title: () => {
+            const h1 = document.querySelector('#mb-ia-root h1.mb-ia-h1 bdi');
+            return h1 ? h1.textContent : '';
+        },
+        // The saved records are the link previews' own (`_dgFiPeek()` reads
+        // any reader's targets, not only Discogs').
+        peekSaved: (rows) => _dgFiPeek(rows),
+        spacingS: () => _extSpacingMs('archive.org') / 1000,
+        tokenSpacingS: () => 0,
+        kept: () => _DG_FI.kept(),
+        gal: { heading: 'Pictures', where: 'Art column', point: 'its picture', rows: 'rows', page: 'archive.org item', pages: 'archive.org items' },
+    };
 
     /**
      * One API page of the search as a `table.tbl` (`_IA_HEADERS`).
@@ -19087,6 +19238,7 @@
             body.mb-sa-host-ia h2.mb-ia-list-heading { font: 700 17px/1.3 "Helvetica Neue", Helvetica, Arial, sans-serif; margin: 10px 0 6px; color: #222; }
             body.mb-sa-host-ia #mb-ia-root table.tbl a { color: #194880; }
             body.mb-sa-host-ia td.mb-ia-artcell { width: 44px; padding: 2px !important; }
+            body.mb-sa-host-ia a.mb-ia-thumblink { display: block; width: 40px; height: 40px; cursor: zoom-in; }
             body.mb-sa-host-ia img.mb-ia-thumb { display: block; width: 40px; height: 40px; object-fit: cover; border: 1px solid #ddd; background: #f2f2f2; }
             body.mb-sa-host-ia td.mb-ia-when { white-space: nowrap; font-variant-numeric: tabular-nums; }
             body.mb-sa-host-ia input.mb-col-filter-input { box-sizing: border-box; }
@@ -19114,6 +19266,8 @@
         if (!document.body) return null;
         document.body.classList.add('mb-sa-host-ia');
         _ensureIaStyle();
+        // The Art column's card and viewer click (_IA_FI).
+        _fiInstall();
         const root = document.createElement('section');
         root.id = 'mb-ia-root';
         const h1 = document.createElement('h1');
@@ -27195,8 +27349,9 @@
     // come from: Discogs' Image column (`_DG_FI`), springsteenlyrics' Cover
     // column (`_SL_FI`), the lazy Art / Photo columns of jungleland.it and
     // brucespringsteen.it (`_JL_FI`, `_BS_FI`), Brucebase's Media icons and
-    // song glyphs (`_BB_FI`, `_BBS_FI`) and springsteenlyrics' lyrics glyphs
-    // (`_SLL_FI`); `_fiDpProvider()` builds every detail-page one. Everything is delegated
+    // song glyphs (`_BB_FI`, `_BBS_FI`), springsteenlyrics' lyrics glyphs
+    // (`_SLL_FI`) and archive.org's Art column (`_IA_FI`); `_fiDpProvider()`
+    // builds every detail-page one. Everything is delegated
     // (the card through `#mb-stat-tooltip`, the click on the window), so it
     // survives every re-render's clones with no re-wiring, and nothing runs
     // until a hover or a click: a render asks for nothing.
@@ -27268,6 +27423,7 @@
             case 'bb': return _BB_FI;
             case 'bbs': return _BBS_FI;
             case 'sll': return _SLL_FI;
+            case 'ia': return _IA_FI;
             default: return null;
         }
     }
@@ -27463,7 +27619,7 @@
      * Installs the foreign-image viewer click (`_fiClick()`) once. Called
      * by each foreign host's page preparation (`_dgPrepareLivePage()`,
      * `_slPrepareLivePage()`, `_jlPrepareLivePage()`, `_bsPrepareLivePage()`,
-     * `_bbPrepareLivePage()`); on MusicBrainz only once a Discogs window
+     * `_bbPrepareLivePage()`, `_iaPrepareLivePage()`); on MusicBrainz only once a Discogs window
      * shows (`_extDiscogsWindow()`: its tables' thumbnails, `_DGW_FI`).
      *
      * @returns {void}
@@ -28284,7 +28440,7 @@
      */
     function _fgalProviderFor(table) {
         const cands = _isDgHost ? [_DG_FI] : _isSlHost ? [_SL_FI, _SLL_FI] : _isJlHost ? [_JL_FI]
-            : _isBsHost ? [_BS_FI] : _isBbHost ? [_BB_FI, _BBS_FI] : [];
+            : _isBsHost ? [_BS_FI] : _isBbHost ? [_BB_FI, _BBS_FI] : _isIaHost ? [_IA_FI] : [];
         return cands.find(p => table.matches(p.tableSel) && table.querySelector(`tbody > tr ${p.linkSel}`)) || null;
     }
 
@@ -66773,8 +66929,11 @@
     // show's tracks with their title, number and length on the original
     // audio files, a video's MPEG4 files and thumbnails.
 
-    /** The `iadetails` records' own version (bump when `_extIaItem()`'s output changes). */
-    const _EXT_IA_VERSION = 1;
+    /**
+     * The `iadetails` records' own version (bump when `_extIaItem()`'s
+     * output changes): 2 since the item's `pictures` (2026-11-01).
+     */
+    const _EXT_IA_VERSION = 2;
 
     /**
      * An archive.org item's page, `/details/<identifier>[/<file>]`; group 1
@@ -66786,6 +66945,9 @@
 
     /** The audio formats whose files are a show's tracks. */
     const _EXT_IA_AUDIO_RE = /^(?:Flac|24bit Flac|VBR MP3|128Kbps MP3|64Kbps MP3|MP3|Ogg Vorbis|WAVE|Shorten|Apple Lossless Audio|AIFF)$/i;
+
+    /** The picture formats whose ORIGINAL files are an item's own pictures (`pictures`). */
+    const _EXT_IA_PICTURE_RE = /^(?:JPEG|PNG|GIF|Animated GIF|WebP)$/i;
 
     /** The video formats whose files a video item lists. */
     const _EXT_IA_VIDEO_RE = /^(?:MPEG4|h\.264(?: IA)?|h\.264 HD|512Kb MPEG4|Ogg Video|Matroska|QuickTime|MPEG2|Cinepack|DivX)$/i;
@@ -66910,6 +67072,19 @@
                 original: f.source === 'original' }));
         const thumbs = files.filter(f => f.format === 'Thumbnail').map(f => String(f.name || ''))
             .sort((a, b) => a.localeCompare(b, 'en', { numeric: true }));
+        // The uploader's own pictures (scans of a cover, back, booklet,
+        // disc): ORIGINAL image files, never the per-track spectrogram PNGs
+        // (derivatives of the audio) nor the item tile (`__ia_thumb.jpg`,
+        // what /services/img answers); each with its "JPEG Thumb"
+        // derivative where archive.org made one. A cover or front first.
+        // Probe scripts/probe-ia-images.py, 2026-11-01.
+        const small = new Map(files.filter(f => f.format === 'JPEG Thumb' && f.original).map(f => [String(f.original), String(f.name || '')]));
+        const pictures = files
+            .filter(f => f.source === 'original' && _EXT_IA_PICTURE_RE.test(String(f.format || '')) && !/(?:^|\/)__ia_thumb\.jpg$/i.test(String(f.name || '')))
+            .map(f => ({ name: String(f.name || ''), thumb: small.get(String(f.name || '')) || '' }))
+            .sort((a, b) => (Number(!/\b(?:cover|front)\b/i.test(a.name)) - Number(!/\b(?:cover|front)\b/i.test(b.name)))
+                || a.name.localeCompare(b.name, 'en', { numeric: true }))
+            .slice(0, 60);
         const colls = (Array.isArray(md.collection) ? md.collection : [md.collection]).map(c => String(c || '')).filter(c => c && !c.startsWith('fav-'));
         const reviews = Array.isArray(d.reviews) ? d.reviews : [];
         const stars = reviews.map(r => Number(r.stars)).filter(n => n > 0);
@@ -66923,7 +67098,7 @@
             size: Number(d.item_size) || 0, files: files.length,
             reviews: reviews.length, rating: stars.length ? stars.reduce((a, b) => a + b, 0) / stars.length : 0,
             desc: _extIaDescText(md.description).slice(0, 6000),
-            tracks, videos, thumbs: thumbs.slice(0, 12), thumbCount: thumbs.length,
+            tracks, videos, thumbs: thumbs.slice(0, 12), thumbCount: thumbs.length, pictures,
         };
     }
 

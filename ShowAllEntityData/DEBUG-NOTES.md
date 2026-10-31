@@ -27641,3 +27641,31 @@ mutations `scripts/mutations/internet-archive.json`: 12 caught, 1 recorded
 `pass`. The shared code's specs (YouTube in place, link previews, Discogs
 search, settings and config): 228 of 228 at 20:06+01:00.
 Docs: docs/claude/internet-archive.md.
+
+## 2026-11-01 — archive.org: the Art pictures had no card (feat/internet-archive, WIP.1)
+
+Env: 2026-11-01T00:17:38+01:00 · vzell-lap · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) · probe: n/a; specs: Playwright 1.62.1 Chromium, no Tampermonkey (GM stubs)
+
+vzell's first live check of the branch: "looks good, except image hovering"
+(screenshot of the 1975 table). The Art cell was a bare `<img>`, so resting
+on it did nothing, unlike every other foreign table's picture (Discogs'
+Image column, Jungleland's Art). Now `a.mb-ia-thumblink` with
+`data-mbtt-fn="fi-img"` + `data-mb-fi="ia"` and a provider `_IA_FI`
+(`_iaArtRowFor()`, `_iaArtImages()`): the record is the title link's
+`iadetails` record, so card, viewer, title card and window share ONE
+`/metadata/<id>` request.
+
+`scripts/probe-ia-images.py` (18 items): an item's original JPEGs are the
+uploader's scans with a `JPEG Thumb` derivative each; the PNGs are per-track
+spectrogram derivatives; `__ia_thumb.jpg` is the item tile (= `/services/img`).
+`_extIaItem()` keeps `pictures` (`_EXT_IA_VERSION` 1 → 2); a video falls back
+to its stills.
+
+Found on the way: `ia-search.spec.js` routed archive.org's images BEFORE
+`loadUserscriptPage()`, whose own `ARCHIVE_ORG_RE` route (aborting every
+archive.org image) is newer and wins, so the table's thumbnails never loaded
+in the spec. Nothing asserted they did. The routes now come after the load.
+
+Tests: `ia-search.spec.js` "the Art column's hover card and viewer" (3);
+mutations `scripts/mutations/internet-archive.json` +6, all caught (each
+failed its spec; userscript restored, hash verified).

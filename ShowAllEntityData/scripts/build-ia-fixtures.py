@@ -17,7 +17,10 @@ the shape the Discogs fixtures have. The search URLs are built exactly as
 _iaSearchPageUrl() builds them (same fields, same order), so a spec can key
 the GM stub's answers by URL.
 
-Usage: python3 scripts/build-ia-fixtures.py [--out tests/fixtures]
+Usage: python3 scripts/build-ia-fixtures.py [--out tests/fixtures] [--metadata-only]
+
+--metadata-only rewrites the ext-ia-metadata-*.json files alone, so the search
+pages (whose counts change as archive.org grows) stay as the specs know them.
 """
 
 import argparse
@@ -35,7 +38,8 @@ ITEMS = [
     '1975-bruce-springsteen-widener-college-audience-cam',
     'this-item-does-not-exist-sa-fixture',
 ]
-FILE_KEYS = ('name', 'source', 'format', 'title', 'track', 'length', 'size')
+# 'original': a derivative's source file (a "JPEG Thumb" of a scan; 2026-11-01).
+FILE_KEYS = ('name', 'source', 'format', 'title', 'track', 'length', 'size', 'original')
 META_KEYS = ('identifier', 'title', 'date', 'venue', 'source', 'mediatype', 'collection', 'creator', 'uploader',
              'addeddate', 'lineage', 'taper', 'transferer', 'brucebase_url', 'databruce_url', 'description')
 SHELL = ('<!DOCTYPE html>\n<html lang="en"><head><meta charset="utf-8">'
@@ -84,7 +88,14 @@ def main():
     """Fetches and writes every fixture."""
     ap = argparse.ArgumentParser()
     ap.add_argument('--out', default=os.path.join(os.path.dirname(__file__), '..', 'tests', 'fixtures'))
+    ap.add_argument('--metadata-only', action='store_true')
     a = ap.parse_args()
+    for ident in ITEMS:
+        url = f'https://archive.org/metadata/{urllib.parse.quote(ident)}'
+        st, ct, body = get(url)
+        write(a.out, f'ext-ia-metadata-{ident}.json', url, st, ct, trim_metadata(body) if st == 200 else body)
+    if a.metadata_only:
+        return 0
     with open(os.path.join(a.out, 'ia-search.html'), 'w', encoding='utf-8') as f:
         f.write(SHELL)
     for year, pages in (('1975', 1), ('2016', 2)):
@@ -93,10 +104,6 @@ def main():
             url = search_url(solr, p)
             st, ct, body = get(url)
             write(a.out, f'ext-ia-search-{year}-p{p}.json', url, st, ct, body)
-    for ident in ITEMS:
-        url = f'https://archive.org/metadata/{urllib.parse.quote(ident)}'
-        st, ct, body = get(url)
-        write(a.out, f'ext-ia-metadata-{ident}.json', url, st, ct, trim_metadata(body) if st == 200 else body)
     return 0
 
 

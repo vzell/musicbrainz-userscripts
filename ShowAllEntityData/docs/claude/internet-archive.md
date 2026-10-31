@@ -11,10 +11,12 @@ Two parts that share nothing but the host:
 |---|---|---|
 | pageType `ia-search` | archive.org/search?query=… → one table of every item | `_iaSearch*()`, `_iaPrepareLivePage()`, `applyIaToTable()` |
 | reader `iadetails` | any archive.org/details/… link → card on hover, window on Space | `_extIa*()` in `_EXT_READERS` |
+| Art column card + viewer | a picture in the `ia-search` table → the item's pictures | `_IA_FI`, `_iaArtImages()` |
 
 Switches: `sa_enable_internetarchive` (the site, default on; its gate exits
-before anything visible on archive.org) and `sa_ia_play_in_place` (the
-window's player, default on). The reader itself runs under the link
+before anything visible on archive.org), `sa_ia_tip_images` (the Art
+column's card, default on) and `sa_ia_play_in_place` (the window's player,
+default on). The reader itself runs under the link
 previews' own switches (`sa_pop_ext`, …), on every host.
 
 ## The search page has no rows (why everything comes from the API)
@@ -69,6 +71,33 @@ no button: advancedsearch.php does not index what it searches.
   `_extIaTest()` (as Discogs' `_extDgSiteTest()`), and `_DP_SITES['archive.org']`
   has `extRoot: '#mb-ia-root'`: the site's own links are in shadow DOM.
 
+## The Art column's card and viewer (`_IA_FI`)
+
+vzell, 2026-11-01, after the first live check: "looks good, except image
+hovering" — the Art picture was a bare `<img>`, while every other foreign
+table's picture has the shared image card and viewer (docs/claude/discogs.md,
+"The Image column's hover card"). Now it is `a.mb-ia-thumblink`
+(`data-mbtt-fn="fi-img"`, `data-mb-fi="ia"`, href the item tile) and a
+provider `_IA_FI` like Discogs' `_DG_FI`: the row's record is the TITLE
+link's `iadetails` record (`_iaArtRowFor()` → `_extTarget()`), asked through
+`_extLoad()` — one `/metadata/<id>` for that row, wanted only while its card
+or viewer shows, the record the title's card and window then reuse.
+`_fiInstall()` runs in `_iaPrepareLivePage()`; `_fgalProviderFor()` lists it
+(🖼 gallery).
+
+What the pictures are (`scripts/probe-ia-images.py`, 2026-11-01T00:17+01:00,
+vzell-lap, 18 items of the 1975 search): an item's ORIGINAL image files are
+the uploader's scans (Cover, Front, Back, Booklet …, Disc 1 …), each with a
+`JPEG Thumb` derivative (`original` = the scan's name); the PNG files are
+DERIVATIVES — a spectrogram per audio track — and `__ia_thumb.jpg` ("Item
+Tile") is what `/services/img/<id>` answers. So `_extIaItem()` keeps
+`pictures` (originals of `_EXT_IA_PICTURE_RE`, not the tile, a cover or front
+first, at most 60, each with its thumb; `_EXT_IA_VERSION` 2) and
+`_iaArtImages()` shows them, else a video's stills (`thumbs`, the first 12),
+else the tile with a note. Types come from the file name
+(`_iaPictureTypes()`: Front, Back, Booklet, Medium); archive.org records
+none.
+
 ## The `iadetails` reader
 
 - `test`: `archive.org/details/<id>[/<file>]` on any page (not `/details/@user`).
@@ -120,14 +149,19 @@ browser.
 
 | Spec | What |
 |---|---|
-| `tests/fixtures/ia-search.spec.js` | the section before `<app-root>`, the button, nothing before the press, page 1 once, the request's q/sort/rows, columns, a known row's cells, dates ascending (two-date item), two pages, `sin=TXT`, the switch off, a title's card and window on archive.org |
+| `tests/fixtures/ia-search.spec.js` | the section before `<app-root>`, the button, nothing before the press, page 1 once, the request's q/sort/rows, columns, a known row's cells, dates ascending (two-date item), two pages, `sin=TXT`, the switch off, a title's card and window on archive.org; the Art column: card with the seven scans (cover first, from their thumbs, one request), the viewer at full size from memory, a video's stills, `sa_ia_tip_images` off |
 | `tests/fixtures/ia-search.mobile.spec.js` | a tap loads the table; a tap on a title opens its window, the page stays |
 | `tests/fixtures/popup-ext.spec.js` "archive.org items" | on a MusicBrainz event page: card (one request), window (19-song setlist, swap, Brucebase link), a track link (no second request, its row marked), Play here (song in the slot, one player, Esc; a video's tile), a missing item |
 | `tests/fixtures/sl-include-regex.spec.js` | the `@include` line: searches with a query; not without one, not an item, not the Wayback Machine |
 
 Fixtures from `scripts/build-ia-fixtures.py` (the live APIs, the same URLs
-the script builds; metadata trimmed to the fields read). Mutations
-`scripts/mutations/internet-archive.json` (12 caught, 1 recorded `pass`:
+the script builds; metadata trimmed to the fields read; `--metadata-only`
+rewrites the items alone, as on 2026-11-01 for the files' `original`). The
+spec serves archive.org's pictures with routes set AFTER
+`loadUserscriptPage()`, whose own route aborts every archive.org image and,
+being newer, would win (until 2026-11-01 the Art thumbnails of these specs
+never loaded, unnoticed). Mutations
+`scripts/mutations/internet-archive.json` (18 caught, 1 recorded `pass`:
 Favorites from the `fav-` count, which equals `num_favorites` in the data).
 Fixture specs force `sa_ia_play_in_place` off (`FIXTURE_SETTINGS_OVERRIDE`),
 like YouTube's.
