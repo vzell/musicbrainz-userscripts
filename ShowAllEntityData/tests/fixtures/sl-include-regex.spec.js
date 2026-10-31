@@ -347,6 +347,26 @@ test.describe('@include coverage', () => {
         expect(others.filter((u) => injected(u))).toEqual([]);
     });
 
+    test('archive.org: a search with a query (ia-search, 2026-10-31); not one without, not an item, not the Wayback Machine', () => {
+        const pages = [
+            'https://archive.org/search?query=subject%3A%22Bruce+Springsteen%22&sort=title&and%5B%5D=year%3A%221975%22',
+            'https://archive.org/search?query=springsteen',
+            'https://archive.org/search/?query=springsteen&sin=TXT',
+            'https://archive.org/search?sort=-date&query=springsteen+1975',
+            'https://www.archive.org/search?query=springsteen',
+        ];
+        const others = [
+            'https://archive.org/search',
+            'https://archive.org/search?query=',
+            'https://archive.org/search?sort=title',
+            'https://archive.org/details/bs1975-12-27.aud.jk.cb.hrubesh.flac16',
+            'https://archive.org/searchx?query=springsteen',
+            'https://web.archive.org/search?query=springsteen',
+        ];
+        expect(pages.filter((u) => !injected(u))).toEqual([]);
+        expect(others.filter((u) => injected(u))).toEqual([]);
+    });
+
     test('discogs.com: a submissions list, either view, a language prefix; no other /submissions… path', () => {
         const pages = [
             'https://www.discogs.com/submissions?mode=list&id=599283&page=1&view=flat',

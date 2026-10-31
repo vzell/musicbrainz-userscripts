@@ -110,7 +110,9 @@ another site may frame them. MusicBrainz's own CSP =frame-src= could still refus
 checkable from vzell-lap (MetaBrainz resets IPv4 here). The YouTube player's fallback (the page
 refuses the frame → the tile opens the site in a new tab, =securitypolicyviolation=) covers that.
 
-** Plan (proposed 2026-10-31, waiting for vzell's go-ahead)
+** Plan (approved 2026-10-31; steps 1–6 built on =feat/internet-archive= the same evening, see
+docs/claude/internet-archive.md and its "Known differences from the mockup"; =test:full= and the
+live check in the browser remain)
 
 Branch =feat/internet-archive=. No =// @version= / changelog on the branch; =WIP.N= entries.
 

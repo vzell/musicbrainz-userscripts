@@ -2109,6 +2109,18 @@ LINK PREVIEWS): `sa_yt_play_in_place` (off: no tile, no style, no listener —
 `_ytTileHtml()` itself returns `''`) and `sa_yt_stills`; both default on and
 both forced OFF in `FIXTURE_SETTINGS_OVERRIDE`.
 
+**A second source since 2026-10-31: archive.org** (docs/claude/internet-archive.md,
+"Play in the window: one player, two sources"). A playable `v` with
+`src: 'ia'` (`{kind: 'audio'|'video', id, file}`) goes through the SAME
+`_ytPlay()`, `_ytStop()`, `_ytAreaRepaint()` and Esc: one player at a time
+across both sites. What branches on `v.src`: `_ytKey()`, `_ytWatchUrl()`,
+`_ytEmbedUrl()` (`archive.org/embed/<id>[/<file>]`), `_ytPlayerHtml()`,
+`_ytSubText()`, `_ytFromTile()` (`data-mb-yt-src`, `data-mb-yt-file`); the
+setting (`_ytOnFor()`: `sa_ia_play_in_place`, also forced OFF in fixtures)
+and the refused-frame state (`_ytBlockedFor()`, `_yt.blockedIa`). The
+tile's `mini` option (the ▶ alone) is for a setlist row. A new source
+extends these, never copies the player.
+
 **The shared part** (grep `// --- YouTube in place`):
 - `_ytParse(href)` → `{kind: 'video'|'short'|'playlist', id, list}`: the
   reader's shapes plus `embed/<id>`, `embed/videoseries?list=` (a playlist,
@@ -2305,6 +2317,19 @@ browser would most likely get the same. API: https://api.setlist.fm/docs/1.0/ind
   (tours and venues, or artists and tours, with counts). `_EXT_SFM_VERSION`.
 - Specs: popup-ext.spec.js "setlist.fm through its API (branch B)" (4);
   mutations: scripts/mutations/wiki-setlistfm.json.
+
+## archive.org items (reader `iadetails`, 2026-10-31)
+
+docs/claude/internet-archive.md is the full text. In short: any
+`archive.org/details/<id>[/<file>]` link on any host; ONE anonymous request
+to `/metadata/<id>` (big `maxBytes`), `keyUrl` the item (a track link
+shares its show's request), `200 {}` / `is_dark` a dead link; card with the
+first songs or the linked track (`cardExtra`); window with `swap`, the
+setlist as a List table (`ia-setlist`, the linked track's row
+`tr.mb-ia-mark`), a video's tile, thumbnails and files. archive.org is in
+`_EXT_CONNECT_HOSTS` (the header's `@connect`) and `iadetails` in
+`_DP_WIN_EXT_READERS`. On archive.org itself `_extTarget()` lets a
+same-host item link through by `_extIaTest()`.
 
 ## Readers of known sites (org/iframe.org "* generalize to URLs", U3)
 

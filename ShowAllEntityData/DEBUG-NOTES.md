@@ -27600,3 +27600,44 @@ test, so seeding `undefined` after a `goto` still read the old `false`.
 Mutations: `scripts/mutations/followups-2026-10-31.json` (3 caught, 1 recorded
 `pass`: the inline fallback, which the library's resolved default covers in the
 harness).
+
+## 2026-10-31 — archive.org: the search page holds no rows; an item is one metadata request (feat/internet-archive, WIP.1)
+
+Env: 2026-10-31T18:51 → 20:09+01:00 · vzell-lap · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.54.1) · probes: no browser (Python urllib, anonymous); specs: Playwright 1.62.1 Chromium, no Tampermonkey (GM stubs)
+
+**What the snapshots showed (vzell's `debug/ia-1975-tile-view-initial-.html`,
+`debug/ia-1975-compact-list-view-initial.html`, `debug/ia-2000-tile-view-initial.html`):**
+the first two are byte-identical, 10.5 KB, and `<body>` holds only
+`<app-root>`: archive.org's search is a Lit web-component app drawing its
+results (and its Tile / List / Compact list views) into shadow DOM after load.
+The request in org/internet.archive.org ("scrape the Compact list view") had
+nothing to scrape: the rows come from `advancedsearch.php`
+(`scripts/probe-ia-search.py`), the window's data from `/metadata/<id>`, both
+anonymous, no token. The detail pages' HTML (290–470 KB) is not read at all.
+
+**Findings that shaped the code:**
+- `date` (and `title`, `creator`) can be an array; `sort[]=date asc` orders
+  such an item by its earliest date. The first spec run caught the Date column
+  showing the first-listed one (1975-08-15 for an item sorted as 1974):
+  `_iaEarliestDate()`.
+- `num_favorites` equals the `fav-<user>` collection count on every sampled
+  row; so the fallback mutation survives, recorded `pass` with that reason.
+- `/metadata/<missing>` answers `200 {}`: a dead link, not an empty card.
+- archive.org was in the header's `@connect` (Cover Art Archive) but not in
+  `_EXT_CONNECT_HOSTS`, which mirrors it: the first card said "not contacted
+  yet". Added.
+- `archive.org/embed/<id>[/<file>]` has no X-Frame-Options and no
+  `frame-ancestors` (`scripts/probe-ia-embed.py`): playable in the window as
+  a second source of the YouTube player. MusicBrainz's `frame-src` could not
+  be checked from vzell-lap (IPv4 reset); the refused-frame fallback covers it.
+- A spec trap: an image route on the CONTEXT lost to the harness's own
+  page-level routes, so the video window's thumbnails failed and the
+  window's error listener removed them ("Thumbnails · 62", 0 images).
+  Routes for a window's images go on the PAGE, after the load.
+
+**Tests:** `ia-search.spec.js` (5), `ia-search.mobile.spec.js` (1),
+`popup-ext.spec.js` "archive.org items" (4), `sl-include-regex.spec.js` (1);
+mutations `scripts/mutations/internet-archive.json`: 12 caught, 1 recorded
+`pass`. The shared code's specs (YouTube in place, link previews, Discogs
+search, settings and config): 228 of 228 at 20:06+01:00.
+Docs: docs/claude/internet-archive.md.

@@ -40,6 +40,7 @@
 // @include      /^https?:\/\/(?:www\.)?discogs\.com\/(?:[a-z]{2}(?:[-_][a-zA-Z]{2})?\/)?(?:master|artist|label)\/\d+(?:-[^\/?#]*)?\/images\/?(?:[?#].*)?$/
 // @include      /^https?:\/\/(?:www\.)?discogs\.com\/(?:[a-z]{2}(?:[-_][a-zA-Z]{2})?\/)?sell\/release\/\d+\/?(?:[?#].*)?$/
 // @include      /^https?:\/\/(?:www\.)?discogs\.com\/(?:[a-z]{2}(?:[-_][a-zA-Z]{2})?\/)?search\/?\?(?:[^#]*&)?q=[^&#]+.*$/
+// @include      /^https?:\/\/(?:www\.)?archive\.org\/search\/?\?(?:[^#]*&)?query=[^&#]+.*$/
 // @connect      raw.githubusercontent.com
 // @connect      coverartarchive.org
 // @connect      eventartarchive.org
@@ -5108,6 +5109,41 @@
         },
 
         // ============================================================
+        // INTERNET ARCHIVE (archive.org, 2026-10-31;
+        // docs/claude/internet-archive.md)
+        // ============================================================
+        divider_internetarchive: {
+            type: 'divider',
+            label: '🏛 INTERNET ARCHIVE'
+        },
+
+        sa_enable_internetarchive: {
+            label: 'Enable on archive.org',
+            type: 'checkbox',
+            default: true,
+            description: 'On by default. When on, the script also runs on archive.org\'s search pages ' +
+                         '(archive.org/search?query=…) and offers a button that lists every item of that ' +
+                         'search as a filterable, sortable table: date, title, venue, source, type, views, ' +
+                         'favorites, reviews, when it was added, its size and collection. The rows come from ' +
+                         'the Internet Archive\'s search API, 100 a request, one request a second. Links to an ' +
+                         'archive.org item (archive.org/details/…) get a card and a window wherever the link ' +
+                         'previews are on: its date, venue, source and the whole setlist. When off, the script ' +
+                         'exits on archive.org before touching the page. Settings are shared with MusicBrainz, ' +
+                         'so this can be switched on from either site.'
+        },
+
+        sa_ia_play_in_place: {
+            label: 'Play archive.org tracks and videos in the window (a click asks archive.org\'s player)',
+            type: 'checkbox',
+            default: true,
+            description: 'On by default. In the window of an archive.org item, each song of the setlist has a ▶, ' +
+                         'and a video item a "Play here" tile: a click plays it right there, in archive.org\'s own ' +
+                         'embeddable player (archive.org/embed/…). Nothing is asked from the player before you click. ' +
+                         'One track or video plays at a time, YouTube\'s included; Esc or "■ Stop" ends it. Where a ' +
+                         'page does not allow the player, a click opens the item on archive.org in a new tab. Off: no ▶.'
+        },
+
+        // ============================================================
         // LINK PREVIEWS ON MUSICBRAINZ (the popup engine's entity cards,
         // org/iframe.org Phase 2)
         // ============================================================
@@ -6573,6 +6609,29 @@
     const _isDgHost = /(^|\.)discogs\.com$/.test(window.location.hostname);
 
     /**
+     * True when this page is on archive.org (the Internet Archive) rather
+     * than MusicBrainz.
+     *
+     * The sixth non-MusicBrainz host (its `@include` line and
+     * docs/claude/internet-archive.md): a search page, `/search?query=…`,
+     * whose rows come from the Internet Archive's search API (the page
+     * itself is a web-component shell with no rows in its HTML). Read by its
+     * own opt-in and frame gates just below, through `_foreignHost` by the
+     * detection loop, by `performClutterCleanup()`, `_sphPageEl()` and
+     * `_extTarget()` (an archive.org item is previewed on archive.org too).
+     * @type {boolean}
+     */
+    const _isIaHost = /^(?:www\.)?archive\.org$/.test(window.location.hostname);
+
+    /**
+     * archive.org's search page, `/search` (pageType `ia-search`,
+     * 2026-10-31). Its query is in `?query=`, its filters in `and[]` /
+     * `not[]` (`_iaSearchSolr()`).
+     * @type {RegExp}
+     */
+    const _IA_SEARCH_PATH_RE = /^\/search\/?$/;
+
+    /**
      * A discogs.com submissions list's path, `/submissions`, with Discogs'
      * language prefix allowed (`/de/`, `/pt_BR/`): pageType `dg-submissions`,
      * a plain HTML page without React's `#app` (docs/claude/discogs.md).
@@ -6690,6 +6749,7 @@
         : _isBsHost ? 'brucespringsteen.it'
         : _isBbHost ? 'brucebase.wikidot.com'
         : _isDgHost ? 'www.discogs.com'
+        : _isIaHost ? 'archive.org'
         : null;
 
     // springsteenlyrics.com support has its own switch (`sa_enable_springsteenlyrics`,
@@ -6775,6 +6835,15 @@
         Lib.info('init', 'discogs.com: no #app on this page (a security check?) — nothing to do.');
         return;
     }
+
+    // archive.org: own switch (`sa_enable_internetarchive`, default on), gated
+    // as early as the others, and the top window only (its embed players are
+    // archive.org pages too).
+    if (_isIaHost && Lib.settings.sa_enable_internetarchive !== true) {
+        Lib.info('init', 'archive.org support is off (sa_enable_internetarchive) — nothing to do.');
+        return;
+    }
+    if (_isIaHost && window.top !== window) return;
 
     // The notice is independent of pageType — it reports on GM storage, not on
     // anything this page renders — so it is armed here rather than from a
@@ -12284,7 +12353,7 @@
      * borders, padding, header background and the `tr.even` zebra stripe
      * that `applyZebraStriping()` merely toggles classes for; neither site
      * has any of it. The rules are scoped to the hosts' body classes
-     * (`mb-sa-host-sl`, `mb-sa-host-jl`, `mb-sa-host-bs`, `mb-sa-host-bb`, `mb-sa-host-dg`) and sit inside `:where()` so they
+     * (`mb-sa-host-sl`, `mb-sa-host-jl`, `mb-sa-host-bs`, `mb-sa-host-bb`, `mb-sa-host-dg`, `mb-sa-host-ia`) and sit inside `:where()` so they
      * carry almost no specificity: any of this script's own table styling
      * (sticky header colours, finding tints, hover, highlights) still wins
      * wherever it applies. A further host extends the `:is()` list here
@@ -12296,23 +12365,23 @@
         if (document.getElementById('mb-foreign-table-style')) return;
         // GM_addStyle so this is exempt from page CSP style-src restrictions.
         const style = GM_addStyle(`
-            :where(body:is(.mb-sa-host-sl, .mb-sa-host-jl, .mb-sa-host-bs, .mb-sa-host-bb, .mb-sa-host-dg) table.tbl) {
+            :where(body:is(.mb-sa-host-sl, .mb-sa-host-jl, .mb-sa-host-bs, .mb-sa-host-bb, .mb-sa-host-dg, .mb-sa-host-ia) table.tbl) {
                 border-collapse: collapse;
                 background: #fff;
                 font-size: 13px;
                 margin: 6px 0;
             }
-            :where(body:is(.mb-sa-host-sl, .mb-sa-host-jl, .mb-sa-host-bs, .mb-sa-host-bb, .mb-sa-host-dg) table.tbl) th,
-            :where(body:is(.mb-sa-host-sl, .mb-sa-host-jl, .mb-sa-host-bs, .mb-sa-host-bb, .mb-sa-host-dg) table.tbl) td {
+            :where(body:is(.mb-sa-host-sl, .mb-sa-host-jl, .mb-sa-host-bs, .mb-sa-host-bb, .mb-sa-host-dg, .mb-sa-host-ia) table.tbl) th,
+            :where(body:is(.mb-sa-host-sl, .mb-sa-host-jl, .mb-sa-host-bs, .mb-sa-host-bb, .mb-sa-host-dg, .mb-sa-host-ia) table.tbl) td {
                 border: 1px solid #ddd;
                 padding: 3px 6px;
                 vertical-align: top;
             }
-            :where(body:is(.mb-sa-host-sl, .mb-sa-host-jl, .mb-sa-host-bs, .mb-sa-host-bb, .mb-sa-host-dg) table.tbl) thead th {
+            :where(body:is(.mb-sa-host-sl, .mb-sa-host-jl, .mb-sa-host-bs, .mb-sa-host-bb, .mb-sa-host-dg, .mb-sa-host-ia) table.tbl) thead th {
                 background-color: #e8e8e8;
                 text-align: left;
             }
-            :where(body:is(.mb-sa-host-sl, .mb-sa-host-jl, .mb-sa-host-bs, .mb-sa-host-bb, .mb-sa-host-dg) table.tbl) tr.even > td {
+            :where(body:is(.mb-sa-host-sl, .mb-sa-host-jl, .mb-sa-host-bs, .mb-sa-host-bb, .mb-sa-host-dg, .mb-sa-host-ia) table.tbl) tr.even > td {
                 background-color: #f2f2f2;
             }
             /* NOT inside :where(), on purpose: the backing behind a sorted
@@ -12325,7 +12394,7 @@
                outrank the site's own rules: springsteenlyrics.com's
                Bootstrap 3.3.2 has table { background-color: transparent },
                which also beats the zero-specificity table colour above. */
-            body:is(.mb-sa-host-sl, .mb-sa-host-jl, .mb-sa-host-bs, .mb-sa-host-bb, .mb-sa-host-dg) table.tbl > thead {
+            body:is(.mb-sa-host-sl, .mb-sa-host-jl, .mb-sa-host-bs, .mb-sa-host-bb, .mb-sa-host-dg, .mb-sa-host-ia) table.tbl > thead {
                 background-color: #fff;
             }
         `);
@@ -18745,6 +18814,343 @@
         return `<!DOCTYPE html><html><head><meta charset="utf-8"></head><body>${_dgTableHtml(null, _DG_HEADERS.search, rows)}</body></html>`;
     }
 
+    // --- archive.org: a search (pageType ia-search) ---------------------------
+    // docs/claude/internet-archive.md; mockup
+    // https://claude.ai/artifact/4aXkdPxudwhuzACj4Wg81C (view 1, vzell's
+    // answers of 2026-10-31: any search, every media type, first by date).
+    // `/search?query=…[&and[]=…][&not[]=…]`: the page is a Lit web-component
+    // shell (`<app-root>`) with no rows in its HTML — its Tile and Compact
+    // list views are one and the same saved document
+    // (debug/ia-1975-*-view-initial.html). The rows come from the Internet
+    // Archive's search API, advancedsearch.php, 100 a request, no token
+    // (scripts/probe-ia-search.py, 2026-10-31: 1975 → 73 items, 2016 → 1,064;
+    // `sort[]=date asc` works; `num_favorites` equals the item's `fav-<user>`
+    // collections; `date`, `creator`, `title` may be arrays).
+
+    /** Rows per search request. */
+    const _IA_SEARCH_PER_PAGE = 100;
+
+    /** At most this many pages a run (10,000 rows): Solr's deep paging slows past that. */
+    const _IA_SEARCH_MAX_PAGES = 100;
+
+    /** The fields a row reads (advancedsearch.php's `fl[]`). */
+    const _IA_SEARCH_FIELDS = ['identifier', 'title', 'date', 'mediatype', 'venue', 'source', 'downloads', 'item_size',
+        'num_reviews', 'avg_rating', 'num_favorites', 'addeddate', 'collection'];
+
+    /** The `ia-search` table's columns, in order (the mockup's). */
+    const _IA_HEADERS = ['Art', 'Date', 'Title', 'Venue', 'Source', 'Type', 'Views', 'Favorites', 'Reviews', 'Added', 'Size', 'Collection'];
+
+    /** archive.org's media types as its pages name them. */
+    const _IA_TYPE_NAMES = { audio: 'Audio', etree: 'Audio', movies: 'Video', texts: 'Text', image: 'Image', software: 'Software',
+        data: 'Data', web: 'Web', collection: 'Collection', account: 'Account' };
+
+    /**
+     * Collections archive.org names by a title of their own; any other is
+     * shown by its identifier (as its address names it).
+     * @type {Object<string, string>}
+     */
+    const _IA_COLLECTION_NAMES = { folksoundomy: 'Community Audio', opensource_audio: 'Community Audio',
+        opensource_movies: 'Community Video', opensource: 'Community Texts', etree: 'Live Music Archive' };
+
+    /** Page 1's answer, asked by the page count and kept for the loop (as `_dgTexts`). */
+    const _iaTexts = new Map();
+
+    /** How many items the last page count found (the heading's and the button's number). */
+    let _iaSearchFound = 0;
+
+    /**
+     * One value of a search field: the first of an array, as a string.
+     *
+     * @param {*} v
+     * @returns {string}
+     */
+    function _iaFirst(v) {
+        const x = Array.isArray(v) ? v[0] : v;
+        return x == null ? '' : String(x).trim();
+    }
+
+    /**
+     * An item's date as the search orders it: of several
+     * (`["1975-08-15T00:00:00Z", "1974-01-01T00:00:00Z"]`, a 1975 item in
+     * the 2026-10-31 capture), the earliest — `sort[]=date asc` puts the item
+     * there, so the Date column agrees with the order.
+     *
+     * @param {*} v
+     * @returns {string} `YYYY-MM-DD`, or ''.
+     */
+    function _iaEarliestDate(v) {
+        const all = (Array.isArray(v) ? v : [v]).map(x => String(x == null ? '' : x).trim().slice(0, 10)).filter(Boolean).sort();
+        return all[0] || '';
+    }
+
+    /**
+     * The search of this page (or `href`) as one Solr query for
+     * advancedsearch.php: its `query`, then every `and[]` filter (archive.org
+     * writes them in Lucene already: `year:"1975"`, `mediatype:"audio"`,
+     * `date:[1975-01-01 TO 1975-12-31]`) and every `not[]` one negated. ''
+     * without a query.
+     *
+     * @param {string} [href]
+     * @returns {string}
+     */
+    function _iaSearchSolr(href = window.location.href) {
+        let u;
+        try {
+            u = new URL(href);
+        } catch (_) {
+            return '';
+        }
+        const q = (u.searchParams.get('query') || '').trim();
+        if (!q) return '';
+        const parts = [`(${q})`];
+        u.searchParams.getAll('and[]').forEach((f) => { if (f.trim()) parts.push(f.trim()); });
+        u.searchParams.getAll('not[]').forEach((f) => { if (f.trim()) parts.push(`NOT ${f.trim()}`); });
+        return parts.join(' AND ');
+    }
+
+    /**
+     * Whether this page's search is one the API can answer: a metadata
+     * search with a query. archive.org's "search text contents" and TV /
+     * radio captions (`sin=TXT`, `TV`, `RADIO`) search what
+     * advancedsearch.php does not index.
+     *
+     * @returns {boolean}
+     */
+    function _iaSearchUsable() {
+        const p = new URLSearchParams(window.location.search);
+        return !!_iaSearchSolr() && !(p.get('sin') || '').trim();
+    }
+
+    /**
+     * Page `p` of this search in the API, 100 a page, first by date (then
+     * title): the order the mockup's answer 4 chose, whatever the page sorts by.
+     *
+     * @param {number} p - From 1.
+     * @returns {string}
+     */
+    function _iaSearchPageUrl(p) {
+        const params = new URLSearchParams();
+        params.set('q', _iaSearchSolr());
+        _IA_SEARCH_FIELDS.forEach(f => params.append('fl[]', f));
+        params.append('sort[]', 'date asc');
+        params.append('sort[]', 'titleSorter asc');
+        params.set('rows', String(_IA_SEARCH_PER_PAGE));
+        params.set('page', String(p));
+        params.set('output', 'json');
+        return `https://archive.org/advancedsearch.php?${params}`;
+    }
+
+    /**
+     * One answer of the search API as text, through the link previews' gate
+     * (`_extGet()`: archive.org's own spacing, a second apart). Page 1, when
+     * the page count already asked it, from `_iaTexts`. Not asked once Stop
+     * is pressed — except the page count's own request (`stoppable` false),
+     * as `_dgFetchText()`.
+     *
+     * @param {string} url
+     * @param {boolean} [stoppable]
+     * @returns {Promise<string>}
+     * @throws {Error} With `status` (0: no answer, or stopped).
+     */
+    async function _iaFetchText(url, stoppable = true) {
+        if (_iaTexts.has(url)) {
+            const kept = _iaTexts.get(url);
+            _iaTexts.delete(url);
+            return kept;
+        }
+        const res = await _extGet(url, { wanted: stoppable ? () => !stopRequested : null, fetchOpts: { accept: /\bjson\b/i } });
+        const fail = (message, status) => Object.assign(new Error(message), { status });
+        if (res.skipped) throw fail('Stopped before this page was asked', 0);
+        if (res.error) throw fail(`The Internet Archive did not answer (${res.error}${res.detail ? `: ${res.detail}` : ''})`, 0);
+        if (res.status !== 200) throw fail(`HTTP ${res.status} from the Internet Archive for ${url}`, res.status);
+        return String(res.body || '') + String(res.tail || '');
+    }
+
+    /**
+     * A search answer as JSON with its `response`.
+     *
+     * @param {string} text
+     * @returns {{numFound: number, docs: Array<Object>}}
+     * @throws {Error} When it is not a search answer (`status` 0).
+     */
+    function _iaSearchJson(text) {
+        let d = null;
+        try {
+            d = JSON.parse(text);
+        } catch (_) { /* below */ }
+        const r = d && d.response;
+        if (!r || !Array.isArray(r.docs)) {
+            const why = d && d.error ? `: ${String(d.error).slice(0, 160)}` : '';
+            throw Object.assign(new Error(`The Internet Archive answered, but not with search results${why}`), { status: 0 });
+        }
+        return { numFound: Number(r.numFound) || 0, docs: r.docs };
+    }
+
+    /**
+     * `features.pageCountAsync` of `ia-search`: page 1 asked once (kept in
+     * `_iaTexts` for the loop), its `numFound` in pages of 100, at most
+     * `_IA_SEARCH_MAX_PAGES`.
+     *
+     * @returns {Promise<number>}
+     */
+    async function _iaSearchPageCount() {
+        _iaTexts.clear();
+        const url = _iaSearchPageUrl(1);
+        const text = await _iaFetchText(url, false);
+        _iaTexts.set(url, text);
+        _iaSearchFound = _iaSearchJson(text).numFound;
+        return Math.max(1, Math.min(_IA_SEARCH_MAX_PAGES, Math.ceil(_iaSearchFound / _IA_SEARCH_PER_PAGE)));
+    }
+
+    /**
+     * One search result as a row of `_IA_HEADERS`: the item's picture
+     * (`/services/img/<id>`, lazy, without a referrer), date, title (the
+     * item, a new tab; its card and window through the `iadetails` reader),
+     * venue, source, type, views, favorites, reviews (their number and the
+     * average as stars, no digits, so the numeric sort reads the number),
+     * when it was added, its size in MB and its collections (favorites left
+     * out: they are users' lists).
+     *
+     * @param {Object} d - One `docs[]` entry.
+     * @returns {string} A `<tr>`, or '' without an identifier.
+     */
+    function _iaSearchRow(d) {
+        const id = _iaFirst(d.identifier);
+        if (!id) return '';
+        const url = `https://archive.org/details/${encodeURIComponent(id)}`;
+        const colls = (Array.isArray(d.collection) ? d.collection : [d.collection]).map(c => String(c || '')).filter(Boolean);
+        const favs = typeof d.num_favorites === 'number' ? d.num_favorites : colls.filter(c => c.startsWith('fav-')).length;
+        const shown = colls.filter(c => !c.startsWith('fav-')).map(c => _IA_COLLECTION_NAMES[c] || c);
+        const n = (x) => (Number(x) > 0 ? Number(x).toLocaleString('en-US') : '');
+        const reviews = Number(d.num_reviews) > 0 ? `${d.num_reviews} ${'★'.repeat(Math.max(0, Math.min(5, Math.round(Number(d.avg_rating) || 0))))}`.trim() : '';
+        const size = Number(d.item_size) > 0 ? `${Math.max(1, Math.round(Number(d.item_size) / 1e6)).toLocaleString('en-US')} MB` : '';
+        const type = _iaFirst(d.mediatype);
+        const img = `<img class="mb-ia-thumb" src="https://archive.org/services/img/${encodeURIComponent(id)}" alt="" width="40" height="40" ` +
+            'loading="lazy" referrerpolicy="no-referrer">';
+        return `<tr><td class="mb-ia-artcell">${img}</td><td class="mb-ia-when">${_rgEsc(_iaEarliestDate(d.date))}</td>` +
+            `<td><a href="${_rgEsc(url)}"${_DG_NEW_TAB}>${_rgEsc(_iaFirst(d.title) || id)}</a></td>` +
+            `${_dgCell(_iaFirst(d.venue))}${_dgCell(_iaFirst(d.source))}${_dgCell(_IA_TYPE_NAMES[type] || type)}` +
+            `${_dgCell(n(d.downloads))}${_dgCell(favs > 0 ? String(favs) : '')}${_dgCell(reviews)}` +
+            `<td class="mb-ia-when">${_rgEsc(_iaFirst(d.addeddate).slice(0, 10))}</td>${_dgCell(size)}${_dgCell(shown.join(', '))}</tr>`;
+    }
+
+    /**
+     * One API page of the search as a `table.tbl` (`_IA_HEADERS`).
+     *
+     * @param {string} text
+     * @returns {string} An HTML document.
+     * @throws {Error} When the answer holds no results (`status` 0).
+     */
+    function _iaSearchToHtml(text) {
+        const rows = _iaSearchJson(text).docs.map(_iaSearchRow).filter(Boolean);
+        return `<!DOCTYPE html><html><head><meta charset="utf-8"></head><body>${_dgTableHtml(null, _IA_HEADERS, rows)}</body></html>`;
+    }
+
+    /**
+     * The search as words for the toolbar's name: its query and filters as
+     * archive.org shows them ("subject:"Bruce Springsteen" · year:"1975").
+     *
+     * @returns {string}
+     */
+    function _iaSearchName() {
+        const p = new URLSearchParams(window.location.search);
+        const parts = [(p.get('query') || '').trim(), ...p.getAll('and[]').map(f => f.trim()), ...p.getAll('not[]').map(f => `not ${f.trim()}`)];
+        return parts.filter(Boolean).join(' · ');
+    }
+
+    /**
+     * Styles of the archive.org pages: our section before the site's
+     * `<app-root>` (`#mb-ia-root`), its `<h1>`/`<h2>` and the pictures.
+     * Every rule is scoped to `body.mb-sa-host-ia`; the table itself is the
+     * shared `_ensureForeignTableStyle()`.
+     *
+     * @returns {void}
+     */
+    function _ensureIaStyle() {
+        _ensureForeignTableStyle();
+        if (document.getElementById('mb-ia-style')) return;
+        // GM_addStyle so this is exempt from page CSP style-src restrictions.
+        const style = GM_addStyle(`
+            /* As wide as its widest table, at least the window (as Discogs' section). */
+            body.mb-sa-host-ia #mb-ia-root {
+                box-sizing: border-box;
+                width: fit-content;
+                min-width: 100%;
+                margin: 0 0 12px;
+                padding: 8px 8px 14px;
+                background: #fff;
+                color: #222;
+                font: 13px/1.4 "Helvetica Neue", Helvetica, Arial, sans-serif;
+                border-bottom: 1px solid #e5e5e5;
+            }
+            body.mb-sa-host-ia h1.mb-ia-h1 { font: 700 20px/1.25 "Helvetica Neue", Helvetica, Arial, sans-serif; margin: 0 0 6px; color: #222; }
+            body.mb-sa-host-ia h2.mb-ia-list-heading { font: 700 17px/1.3 "Helvetica Neue", Helvetica, Arial, sans-serif; margin: 10px 0 6px; color: #222; }
+            body.mb-sa-host-ia #mb-ia-root table.tbl a { color: #194880; }
+            body.mb-sa-host-ia td.mb-ia-artcell { width: 44px; padding: 2px !important; }
+            body.mb-sa-host-ia img.mb-ia-thumb { display: block; width: 40px; height: 40px; object-fit: cover; border: 1px solid #ddd; background: #f2f2f2; }
+            body.mb-sa-host-ia td.mb-ia-when { white-space: nowrap; font-variant-numeric: tabular-nums; }
+            body.mb-sa-host-ia input.mb-col-filter-input { box-sizing: border-box; }
+        `);
+        style.id = 'mb-ia-style';
+    }
+
+    /**
+     * Prepares an archive.org search page at init, standing in for the
+     * MusicBrainz header lookup (the init block calls it for the archive.org
+     * definitions only). The page is a web-component shell — `<body>` holds
+     * only `<app-root>` — so ShowAllEntityData's own section,
+     * `<section id="mb-ia-root">`, goes first in `<body>`, before it: the
+     * site's redraws, inside its shadow DOM, never reach it, and the site
+     * stays as it is below. Its `<h1 class="mb-ia-h1">` holds the toolbar,
+     * its text in a `<bdi>` (the search) for the init-time name capture.
+     * Tags `<body>` with `mb-sa-host-ia` and installs `_ensureIaStyle()`.
+     * Nothing else changes until the user presses the button.
+     *
+     * @returns {?HTMLHeadingElement} The `<h1>`, or null without a `<body>`.
+     */
+    function _iaPrepareLivePage() {
+        const existing = document.querySelector('h1.mb-ia-h1');
+        if (existing) return existing;
+        if (!document.body) return null;
+        document.body.classList.add('mb-sa-host-ia');
+        _ensureIaStyle();
+        const root = document.createElement('section');
+        root.id = 'mb-ia-root';
+        const h1 = document.createElement('h1');
+        h1.className = 'mb-ia-h1';
+        const bdi = document.createElement('bdi');
+        const what = _iaSearchName();
+        bdi.textContent = what ? `Internet Archive: ${what}` : 'Internet Archive search';
+        h1.appendChild(bdi);
+        root.appendChild(h1);
+        document.body.insertBefore(root, document.body.firstChild);
+        return h1;
+    }
+
+    /**
+     * The live page's part of `ia-search` (`features.iaToTable`), at the
+     * press, on a Load from Disk and on every repeat: under
+     * `<h2 class="mb-ia-list-heading">` (where the row count anchors), an
+     * EMPTY `table.tbl` with the search's columns in `#mb-ia-root`; the rows
+     * come from the fetched pages only (`features.pageRequest`). Idempotent.
+     *
+     * @param {object} def - The active merged pageDefinition.
+     * @returns {void}
+     */
+    function applyIaToTable(def) {
+        if (!def?.features?.iaToTable || document.querySelector('table.mb-ia-table')) return;
+        const root = document.getElementById('mb-ia-root') || _iaPrepareLivePage()?.parentNode;
+        if (!root) return;
+        const h2 = document.createElement('h2');
+        h2.className = 'mb-ia-list-heading';
+        h2.textContent = 'Items';
+        const table = document.createElement('table');
+        table.className = 'tbl mb-ia-table';
+        table.innerHTML = `<thead><tr>${_IA_HEADERS.map(c => `<th>${_rgEsc(c)}</th>`).join('')}</tr></thead><tbody></tbody>`;
+        root.append(h2, table);
+        Lib.debug('init', 'applyIaToTable: empty ia-search table in place for the fetched pages.');
+    }
+
     // --- discogs.com: a user's page (pageType dg-user) -----------------------
     // `/user/<name>` (vzell, 2026-10-18; mockup
     // https://claude.ai/artifact/XRTM8v1aLNj3voVt6RxVJz, tab D): plain HTML
@@ -23271,6 +23677,22 @@
             // (submissions, a release's history, a user's ratings) have no
             // `#app`, their content is `#page_content` (5a, 2026-10-24).
             extRoot: '#app, #page_content'
+        },
+        // archive.org (2026-10-31): like discogs.com, no detail pages of its
+        // own to parse — an item is the `iadetails` reader's
+        // (`_EXT_READERS`). The site's own page is a web-component shell
+        // (its links in shadow DOM, out of reach), so the content area is
+        // our own section only.
+        'archive.org': {
+            setting: null,
+            isDetailUrl: () => false,
+            charset: null,
+            parse: () => null,
+            liveRoot: null,
+            liveHide: [],
+            liveCss: '',
+            livePrepare: null,
+            extRoot: '#mb-ia-root'
         }
     };
 
@@ -26301,10 +26723,12 @@
      * springsteenlyrics.com, jungleland.it, brucespringsteen.it). Every other
      * reader's link keeps its new tab outside a Discogs-family window.
      * setlist.fm since 2026-10-29 (branch B): a setlist, an artist's
-     * setlists or a venue, from any window and inside its own.
+     * setlists or a venue, from any window and inside its own. An
+     * archive.org item since 2026-10-31 (`iadetails`): a show linked from an
+     * event's or a Brucebase show's window opens there.
      * @type {Set<string>}
      */
-    const _DP_WIN_EXT_READERS = new Set(['bbdate', 'springsteen', 'setlistfm']);
+    const _DP_WIN_EXT_READERS = new Set(['bbdate', 'springsteen', 'setlistfm', 'iadetails']);
 
     /**
      * The sources whose windows open EVERY other site's link in the window
@@ -29556,6 +29980,12 @@
                every other table. The pane is as tall as its content (align-self), which
                is what the pass measures. */
             .mb-dp-dialog .mb-dp-x > .mb-dp-col.mb-dp-pane { position: sticky; top: var(--mb-dp-pane-top, 0px); align-self: start; }
+            /* An archive.org item's window (2026-10-31): the description in a box of its own height, the
+               track a link named marked, the video's thumbnails. */
+            .mb-dp-dialog .mb-ia-desc { white-space: pre-wrap; max-height: 12em; overflow: auto; padding: 0 6px 0 8px; border-left: 3px solid #ece4d4; font-size: 13px; }
+            .mb-dp-dialog tr.mb-ia-mark > td { background: #e6edf8; }
+            .mb-dp-dialog tr.mb-ia-mark > td:first-child { box-shadow: inset 3px 0 0 #2f5f9e; }
+            .mb-dp-dialog .mb-ia-thumbs img { height: 54px; max-width: 96px; }
             .mb-dp-dialog .mb-dp-grip {
                 position: relative; display: grid; place-items: center; height: 12px; margin-top: 1px;
                 cursor: ns-resize; touch-action: none; user-select: none; -webkit-user-select: none; border-radius: 0 0 3px 3px;
@@ -42779,6 +43209,39 @@
                 integerColumns: [ { sourceColumn: 'Year', align: 'R' } ]
             },
             tableMode: 'single'
+        },
+        {
+            // archive.org's search (2026-10-31): every item of the page's
+            // query, from the search API. See the "archive.org: a search"
+            // block above _iaSearchSolr(); docs/claude/internet-archive.md.
+            type: 'ia-search',
+            host: 'archive.org',
+            match: (path) => _IA_SEARCH_PATH_RE.test(path),
+            buttons: [ {
+                label: 'Show all items', shortLabel: 'Items',
+                showIf: () => _iaSearchUsable(),
+                get description() {
+                    const n = _iaSearchFound;
+                    if (!n) return `Every item of this search, from the Internet Archive's search API (one request per ${_IA_SEARCH_PER_PAGE}, one a second).`;
+                    const cap = _IA_SEARCH_PER_PAGE * _IA_SEARCH_MAX_PAGES;
+                    const pages = Math.min(_IA_SEARCH_MAX_PAGES, Math.ceil(n / _IA_SEARCH_PER_PAGE));
+                    return `${n > cap ? `The first ${cap.toLocaleString('en-US')} of ${n.toLocaleString('en-US')}` : `All ${n.toLocaleString('en-US')}`} ` +
+                        `items of this search, from the Internet Archive's search API: ${pages} request${pages === 1 ? '' : 's'}, one a second.`;
+                }
+            } ],
+            features: {
+                iaToTable: true,
+                pageRequest: (p) => {
+                    const url = _iaSearchPageUrl(p);
+                    return { url, fetchText: () => _iaFetchText(url), toHtml: (text) => _iaSearchToHtml(text) };
+                },
+                pageCountAsync: () => _iaSearchPageCount(),
+                integerColumns: [
+                    { sourceColumn: 'Views', align: 'R' }, { sourceColumn: 'Favorites', align: 'R' },
+                    { sourceColumn: 'Reviews', align: 'R' }, { sourceColumn: 'Size', align: 'R' }
+                ]
+            },
+            tableMode: 'single'
         }
     ];
 
@@ -47547,7 +48010,10 @@
      * @returns {?HTMLElement}
      */
     function _sphPageEl() {
-        return _isDgHost ? document.getElementById('mb-dg-root') : document.getElementById('page');
+        // archive.org (2026-10-31): our `#mb-ia-root` too, beside the site's
+        // `<app-root>` shell, which must never be pinned whole.
+        return _isDgHost ? document.getElementById('mb-dg-root')
+            : _isIaHost ? document.getElementById('mb-ia-root') : document.getElementById('page');
     }
 
     /**
@@ -63146,12 +63612,14 @@
      * parent domain), Phase 3f of org/MB-POH-sync-withDiscogs.org the
      * MusicBrainz wiki's search API (`_mbDocSearchLoad()`), branch B
      * setlist.fm's API (`_extSfmLoad()`) and Wikidata's SPARQL endpoint
-     * (`_extWdSparql()`).
+     * (`_extWdSparql()`). archive.org (2026-10-31, the `iadetails` reader's
+     * metadata API, `_extIaLoad()`): in the header since the Cover Art
+     * Archive, `*.archive.org` with it.
      * @type {string[]}
      */
     const _EXT_CONNECT_HOSTS = ['www.youtube.com', 'wikipedia.org', 'www.wikidata.org', 'api.discogs.com',
         'springsteenlyrics.com', 'jungleland.it', 'brucespringsteen.it', 'brucebase.wikidot.com', 'wiki.musicbrainz.org',
-        'api.setlist.fm', 'query.wikidata.org'];
+        'api.setlist.fm', 'query.wikidata.org', 'archive.org'];
 
     /** The GM key of the hosts that answered once (answer 7): the script's state, not a setting, and not exported. */
     const _EXT_HOSTS_KEY = 'sa_pop_ext_hosts';
@@ -63961,10 +64429,10 @@
      * or `'under'` (a `div.mb-yt-under` right after the tile; `el` that div),
      * `player` the `.mb-yt-player`. `blocked`: the page's frame policy refused
      * the player (decision 6, `_ytBlocked()`), so a tile opens YouTube in a
-     * new tab instead.
-     * @type {{cur: ?Object, obs: ?MutationObserver, blocked: boolean, init: boolean}}
+     * new tab instead; `blockedIa` the same for archive.org's player.
+     * @type {{cur: ?Object, obs: ?MutationObserver, blocked: boolean, blockedIa: boolean, init: boolean}}
      */
-    const _yt = { cur: null, obs: null, blocked: false, init: false };
+    const _yt = { cur: null, obs: null, blocked: false, blockedIa: false, init: false };
 
     /**
      * Whether tiles are built at all (`sa_yt_play_in_place`). Off, nothing of
@@ -63974,6 +64442,40 @@
      */
     function _ytOn() {
         return Lib.settings.sa_yt_play_in_place === true;
+    }
+
+    /*
+     * The same player plays archive.org items (2026-10-31,
+     * docs/claude/internet-archive.md, vzell's answer Q7): one player, one
+     * at a time, YouTube's and archive.org's alike. A playable thing `v`
+     * carries `src`: absent for YouTube, `'ia'` for archive.org, whose `v` is
+     * `{src: 'ia', kind: 'audio'|'video', id: <identifier>, file: <a file
+     * name, or ''>, list: ''}` and plays in archive.org's own embeddable
+     * player (`/embed/<id>[/<file>]`, framable: scripts/probe-ia-embed.py).
+     * Each source has its own setting and its own "the page refuses the
+     * frame" state.
+     */
+
+    /**
+     * Whether tiles of `v`'s source are built: `sa_yt_play_in_place` for
+     * YouTube, `sa_ia_play_in_place` for archive.org.
+     *
+     * @param {{src?: string}} v
+     * @returns {boolean}
+     */
+    function _ytOnFor(v) {
+        return v && v.src === 'ia' ? Lib.settings.sa_ia_play_in_place === true : _ytOn();
+    }
+
+    /**
+     * Whether the page's frame policy refused `v`'s player (`_ytOnPolicy()`),
+     * so its tiles open the site in a new tab instead.
+     *
+     * @param {{src?: string}} v
+     * @returns {boolean}
+     */
+    function _ytBlockedFor(v) {
+        return v && v.src === 'ia' ? _yt.blockedIa : _yt.blocked;
     }
 
     /**
@@ -64025,7 +64527,19 @@
      * @returns {string}
      */
     function _ytKey(v) {
+        if (v.src === 'ia') return `ia:${v.id}/${v.file || ''}`;
         return v.kind === 'playlist' ? `list:${v.list}` : v.id;
+    }
+
+    /**
+     * An archive.org item's (or one of its files') address part:
+     * `<id>[/<file>]`, each encoded.
+     *
+     * @param {{id: string, file?: string}} v
+     * @returns {string}
+     */
+    function _ytIaPath(v) {
+        return encodeURIComponent(v.id) + (v.file ? `/${encodeURIComponent(v.file)}` : '');
     }
 
     /**
@@ -64035,6 +64549,7 @@
      * @returns {string}
      */
     function _ytWatchUrl(v) {
+        if (v.src === 'ia') return `https://archive.org/details/${_ytIaPath(v)}`;
         if (v.kind === 'playlist') return `https://www.youtube.com/playlist?list=${encodeURIComponent(v.list)}`;
         if (v.kind === 'short') return `https://www.youtube.com/shorts/${encodeURIComponent(v.id)}`;
         return `https://www.youtube.com/watch?v=${encodeURIComponent(v.id)}`;
@@ -64048,6 +64563,7 @@
      * @returns {string}
      */
     function _ytEmbedUrl(v) {
+        if (v.src === 'ia') return `https://archive.org/embed/${_ytIaPath(v)}?autoplay=1`;
         return v.kind === 'playlist'
             ? `https://www.youtube-nocookie.com/embed/videoseries?list=${encodeURIComponent(v.list)}&autoplay=1`
             : `https://www.youtube-nocookie.com/embed/${encodeURIComponent(v.id)}?autoplay=1`;
@@ -64076,6 +64592,7 @@
      * @returns {string}
      */
     function _ytSubText(v, o) {
+        if (v.src === 'ia') return _yt.blockedIa ? 'Opens on archive.org (new tab)' : `Play here${o.dur ? ` · ${o.dur}` : ''}`;
         if (o.dead) return 'Not available on YouTube any more';
         if (_yt.blocked) return 'Opens on YouTube (new tab)';
         if (v.kind === 'playlist') return 'Play the playlist here';
@@ -64091,24 +64608,39 @@
      * request for a picture). Its text is decoration to filtering, sorting
      * and the 📊 dropdown (`.mb-yt-tile` is in `_CLEAN_STRIP_SEL`).
      *
-     * @param {{kind: string, id: string, list: string}} v - `_ytParse()`'s answer.
-     * @param {{title?: string, dur?: number|string, small?: boolean, bare?: boolean, dead?: boolean}} [opts]
+     * @param {{kind: string, id: string, list: string, src?: string, file?: string}} v - `_ytParse()`'s
+     *        answer, or an archive.org item's (`src: 'ia'`, see `_ytOnFor()`).
+     * @param {{title?: string, dur?: number|string, small?: boolean, bare?: boolean, dead?: boolean,
+     *        mini?: boolean, still?: string}} [opts]
      *        `small`: the sidebar's and the lists' tile ("▶ Play"); `bare`:
      *        the frame alone (a table's Play column); `dead`: YouTube is
      *        known not to show it (the reader's oEmbed said so), drawn as
-     *        Unavailable, and a click asks nothing.
-     * @returns {string} Empty with `sa_yt_play_in_place` off.
+     *        Unavailable, and a click asks nothing; `mini` (archive.org's
+     *        setlist rows): the ▶ alone, no frame; `still`: the picture's
+     *        address for a source other than YouTube (archive.org's item
+     *        picture).
+     * @returns {string} Empty with the source's setting off (`_ytOnFor()`).
      */
     function _ytTileHtml(v, opts = {}) {
-        if (!_ytOn()) return '';
+        if (!_ytOnFor(v)) return '';
         _ytInit();
+        const ia = v.src === 'ia';
         const title = String(opts.title || '').trim();
         const dur = _ytDurText(opts.dur);
         const playlist = v.kind === 'playlist';
-        const still = Lib.settings.sa_yt_stills === true && !playlist && !!v.id;
-        const label = title || (playlist ? 'YouTube playlist' : 'YouTube video');
+        const stillUrl = ia ? String(opts.still || '') : (Lib.settings.sa_yt_stills === true && !playlist && v.id
+            ? `https://i.ytimg.com/vi/${encodeURIComponent(v.id)}/mqdefault.jpg` : '');
+        const still = !!stillUrl;
+        const label = title || (ia ? (v.kind === 'video' ? 'archive.org video' : 'archive.org track') : playlist ? 'YouTube playlist' : 'YouTube video');
+        const iaAttrs = ia ? ` data-mb-yt-src="ia" data-mb-yt-file="${_rgEsc(v.file || '')}"` : '';
+        if (opts.mini) {
+            return `<button type="button" class="mb-yt-tile mb-yt-mini" data-mb-yt="${_rgEsc(_ytKey(v))}" data-mb-yt-kind="${_rgEsc(v.kind)}" ` +
+                `data-mb-yt-id="${_rgEsc(v.id)}" data-mb-yt-list="" data-mb-yt-title="${_rgEsc(title)}"${iaAttrs}` +
+                `${dur ? ` data-mb-yt-dur="${_rgEsc(dur)}"` : ''} aria-pressed="false" aria-label="${_rgEsc(`Play ${label} here`)}">` +
+                '<span class="mb-yt-btn"></span></button>';
+        }
         const pic = `<span class="mb-yt-pic${still ? ' mb-yt-has-still' : ''}">` +
-            (still ? `<img src="https://i.ytimg.com/vi/${encodeURIComponent(v.id)}/mqdefault.jpg" alt="" loading="lazy" referrerpolicy="no-referrer">` : '') +
+            (still ? `<img src="${_rgEsc(stillUrl)}" alt="" loading="lazy" referrerpolicy="no-referrer">` : '') +
             '<span class="mb-yt-btn"></span>' +
             (playlist ? '<span class="mb-yt-list">≡<br>list</span>' : '') +
             (dur && still ? `<span class="mb-yt-dur">${_rgEsc(dur)}</span>` : '') + '</span>';
@@ -64117,7 +64649,7 @@
             `<span class="mb-yt-s">${_rgEsc(_ytSubText(v, { dead: opts.dead, dur }))}</span></span>`;
         const cls = `mb-yt-tile${opts.small ? ' mb-yt-small' : ''}${opts.bare ? ' mb-yt-bare' : ''}${opts.dead ? ' mb-yt-dead' : ''}`;
         return `<button type="button" class="${cls}" data-mb-yt="${_rgEsc(_ytKey(v))}" data-mb-yt-kind="${_rgEsc(v.kind)}" ` +
-            `data-mb-yt-id="${_rgEsc(v.id)}" data-mb-yt-list="${_rgEsc(v.list || '')}" data-mb-yt-title="${_rgEsc(title)}"` +
+            `data-mb-yt-id="${_rgEsc(v.id)}" data-mb-yt-list="${_rgEsc(v.list || '')}" data-mb-yt-title="${_rgEsc(title)}"${iaAttrs}` +
             `${dur ? ` data-mb-yt-dur="${_rgEsc(dur)}"` : ''}${opts.dead ? ' data-mb-yt-dead=""' : ''} aria-pressed="false" ` +
             `aria-label="${_rgEsc(`Play ${label}`)}">${pic}${meta}</button>`;
     }
@@ -64282,15 +64814,18 @@
      * What a tile plays, read back from its attributes (a clone has them all).
      *
      * @param {Element} tile
-     * @returns {?{kind: string, id: string, list: string, title: string, dur: string, dead: boolean}}
+     * @returns {?{kind: string, id: string, list: string, title: string, dur: string, dead: boolean, src?: string, file?: string}}
      */
     function _ytFromTile(tile) {
         const d = tile.dataset;
         if (!d.mbYtKind || (!d.mbYtId && !d.mbYtList)) return null;
-        return {
+        const v = {
             kind: d.mbYtKind, id: d.mbYtId || '', list: d.mbYtList || '',
             title: d.mbYtTitle || '', dur: d.mbYtDur || '', dead: d.mbYtDead !== undefined,
         };
+        // An archive.org item's (`_ytOnFor()`).
+        if (d.mbYtSrc === 'ia') Object.assign(v, { src: 'ia', file: d.mbYtFile || '' });
+        return v;
     }
 
     /**
@@ -64305,16 +64840,23 @@
      * @returns {string}
      */
     function _ytPlayerHtml(v) {
-        const what = v.kind === 'playlist' ? 'Playlist' : 'Video';
+        const ia = v.src === 'ia';
+        // archive.org: an audio file's player is a bar, not a screen
+        // (`.mb-yt-frame-audio`); its foot names the track, else the item.
+        const audio = ia && v.kind !== 'video';
+        const what = ia ? (audio ? 'Track' : 'Video') : v.kind === 'playlist' ? 'Playlist' : 'Video';
+        const site = ia ? 'archive.org' : 'YouTube';
         const screen = v.dead
             ? '<div class="mb-yt-gone">This video is not available on YouTube any more.</div>'
-            : `<iframe class="mb-yt-frame" src="${_rgEsc(_ytEmbedUrl(v))}" title="${_rgEsc(v.title || `YouTube ${what.toLowerCase()}`)}" ` +
+            : `<iframe class="mb-yt-frame${audio ? ' mb-yt-frame-audio' : ''}" src="${_rgEsc(_ytEmbedUrl(v))}" ` +
+              `title="${_rgEsc(v.title || `${site} ${what.toLowerCase()}`)}" ` +
               'allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen ' +
               'referrerpolicy="strict-origin-when-cross-origin"></iframe>';
-        return `<div class="mb-yt-player" role="region" aria-label="YouTube player">${screen}<div class="mb-yt-foot">` +
+        const code = ia ? (v.title || v.file || v.id) : (v.kind === 'playlist' ? v.list : v.id);
+        return `<div class="mb-yt-player" role="region" aria-label="${site} player">${screen}<div class="mb-yt-foot">` +
             (v.dead ? '<span class="mb-yt-pill mb-yt-pill-alert">Unavailable</span>' : '<span class="mb-yt-pill mb-yt-pill-run">Playing</span>') +
-            `<span class="mb-yt-grow">${what} <code>${_rgEsc(v.kind === 'playlist' ? v.list : v.id)}</code></span>` +
-            `<a href="${_rgEsc(_ytWatchUrl(v))}" target="_blank" rel="noopener noreferrer">Open on YouTube ↗</a>` +
+            `<span class="mb-yt-grow">${what} <code>${_rgEsc(code)}</code></span>` +
+            `<a href="${_rgEsc(_ytWatchUrl(v))}" target="_blank" rel="noopener noreferrer">Open on ${site} ↗</a>` +
             '<button type="button" class="mb-yt-stop">■ Stop <kbd>Esc</kbd></button></div></div>';
     }
 
@@ -64352,7 +64894,7 @@
             return;
         }
         if (cur) _ytStop('another video');
-        if (_yt.blocked && !v.dead) {
+        if (_ytBlockedFor(v) && !v.dead) {
             window.open(_ytWatchUrl(v), '_blank', 'noopener');
             return;
         }
@@ -64496,17 +65038,23 @@
      * @returns {void}
      */
     function _ytOnPolicy(e) {
-        if (!/^https?:\/\/(?:www\.)?youtube-nocookie\.com\//i.test(e.blockedURI || '')) return;
-        const was = _yt.blocked;
-        _yt.blocked = true;
+        const uri = e.blockedURI || '';
+        // archive.org's player (2026-10-31): the same, for its own tiles only.
+        const ia = /^https?:\/\/(?:www\.)?archive\.org\/embed\//i.test(uri);
+        if (!ia && !/^https?:\/\/(?:www\.)?youtube-nocookie\.com\//i.test(uri)) return;
+        const was = ia ? _yt.blockedIa : _yt.blocked;
+        if (ia) _yt.blockedIa = true;
+        else _yt.blocked = true;
         const cur = _ytCur();
-        if (cur) {
+        if (cur && (cur.v.src === 'ia') === ia) {
             const v = cur.v;
             _ytStop('frame policy');
             window.open(_ytWatchUrl(v), '_blank', 'noopener');
         }
-        if (!was) Lib.debug('yt', `the page's frame policy refuses ${e.blockedURI}: tiles open YouTube instead`);
-        document.querySelectorAll('.mb-yt-tile:not(.mb-yt-dead) .mb-yt-s').forEach(s => { s.textContent = 'Opens on YouTube (new tab)'; });
+        const site = ia ? 'archive.org' : 'YouTube';
+        if (!was) Lib.debug('yt', `the page's frame policy refuses ${uri}: tiles open ${site} instead`);
+        document.querySelectorAll(`.mb-yt-tile${ia ? '[data-mb-yt-src="ia"]' : ':not([data-mb-yt-src])'}:not(.mb-yt-dead) .mb-yt-s`)
+            .forEach(s => { s.textContent = `Opens on ${site} (new tab)`; });
     }
 
     /**
@@ -64614,6 +65162,10 @@
             .mb-yt-tile:focus-visible { outline: 2px solid #2f5f9e; outline-offset: 2px; }
             .mb-yt-tile.mb-yt-playing { border-color: #2f5f9e; }
             .mb-yt-tile.mb-yt-bare { padding: 3px; margin: 0; }
+            /* archive.org's setlist rows (2026-10-31): the play button alone, a row's height. */
+            .mb-yt-tile.mb-yt-mini { padding: 2px 4px; margin: 0; gap: 0; }
+            .mb-yt-tile.mb-yt-mini .mb-yt-btn { width: 22px; height: 16px; background: #7a6d5c; }
+            .mb-yt-tile.mb-yt-mini.mb-yt-playing .mb-yt-btn { background: #2f5f9e; }
             /* A table cell or a list item: the tile on its own line, under the link. */
             :is(td, li, div) > .mb-yt-tile:not(.mb-yt-bare) { display: flex; width: fit-content; }
             .mb-yt-pic {
@@ -64707,6 +65259,8 @@
                 background: #1d1a17;
                 box-shadow: 0 10px 24px -8px rgba(60, 40, 20, .35);
             }
+            /* archive.org's player of one audio file: its controls bar, no screen. */
+            .mb-yt-frame.mb-yt-frame-audio { aspect-ratio: auto; height: 40px; background: #fff; box-shadow: none; border: 1px solid #d9cfbd; }
             .mb-yt-gone {
                 display: grid;
                 place-items: center;
@@ -66206,6 +66760,310 @@
             }
         }
         repaint();
+    }
+
+    // --- The Internet Archive: an item (reader `iadetails`, 2026-10-31) ------
+    // docs/claude/internet-archive.md; mockup
+    // https://claude.ai/artifact/4aXkdPxudwhuzACj4Wg81C (views 2–5, vzell's
+    // answers: every archive.org/details link, the card on hover, play in
+    // the window, a track link opens its show with the track marked). One
+    // anonymous request to the metadata API, `/metadata/<identifier>`
+    // (scripts/probe-ia-search.py): title, date, venue, source, the
+    // Brucebase and Databruce links, the description, and the files — a
+    // show's tracks with their title, number and length on the original
+    // audio files, a video's MPEG4 files and thumbnails.
+
+    /** The `iadetails` records' own version (bump when `_extIaItem()`'s output changes). */
+    const _EXT_IA_VERSION = 1;
+
+    /**
+     * An archive.org item's page, `/details/<identifier>[/<file>]`; group 1
+     * the identifier, 2 a file of it (`1-02.+Tenth+Avenue+Freeze-Out.flac`).
+     * A user's page (`/details/@name`) is not an item.
+     * @type {RegExp}
+     */
+    const _EXT_IA_PATH_RE = /^\/details\/([^/?#@][^/?#]*)(?:\/([^?#]+?))?\/?$/;
+
+    /** The audio formats whose files are a show's tracks. */
+    const _EXT_IA_AUDIO_RE = /^(?:Flac|24bit Flac|VBR MP3|128Kbps MP3|64Kbps MP3|MP3|Ogg Vorbis|WAVE|Shorten|Apple Lossless Audio|AIFF)$/i;
+
+    /** The video formats whose files a video item lists. */
+    const _EXT_IA_VIDEO_RE = /^(?:MPEG4|h\.264(?: IA)?|h\.264 HD|512Kb MPEG4|Ogg Video|Matroska|QuickTime|MPEG2|Cinepack|DivX)$/i;
+
+    /**
+     * A link to an archive.org item (on archive.org, MusicBrainz, Brucebase,
+     * anywhere the link previews look).
+     *
+     * @param {URL} u
+     * @returns {boolean}
+     */
+    function _extIaTest(u) {
+        return /^(?:www\.)?archive\.org$/i.test(u.hostname) && _EXT_IA_PATH_RE.test(u.pathname);
+    }
+
+    /**
+     * An item link's identifier and file (the file's `+` read as a space,
+     * as archive.org writes its links).
+     *
+     * @param {URL} u
+     * @returns {?{id: string, file: string}}
+     */
+    function _extIaParts(u) {
+        const m = _EXT_IA_PATH_RE.exec(u.pathname);
+        if (!m) return null;
+        const dec = (s) => {
+            try {
+                return decodeURIComponent(String(s || '').replace(/\+/g, ' '));
+            } catch (_) {
+                return String(s || '');
+            }
+        };
+        return { id: dec(m[1]), file: m[2] ? dec(m[2]) : '' };
+    }
+
+    /**
+     * The cache key's URL: the item, so a link to one of its files shares
+     * its show's request (`keyUrl`).
+     *
+     * @param {URL} u
+     * @returns {string}
+     */
+    function _extIaKeyUrl(u) {
+        const p = _extIaParts(u);
+        return p ? `https://archive.org/details/${encodeURIComponent(p.id)}` : u.href;
+    }
+
+    /**
+     * The window's title for a link: an item, or one track of it.
+     *
+     * @param {URL} u
+     * @returns {string}
+     */
+    function _extIaKind(u) {
+        const p = _extIaParts(u);
+        return p && p.file ? 'Internet Archive track' : 'Internet Archive';
+    }
+
+    /**
+     * A length of the metadata API as seconds: seconds ("634.83") or a
+     * clock ("10:34", "1:02:03"); 0 for none.
+     *
+     * @param {*} v
+     * @returns {number}
+     */
+    function _extIaSeconds(v) {
+        const s = String(v == null ? '' : v).trim();
+        if (/^\d+(?:\.\d+)?$/.test(s)) return Number(s);
+        const parts = s.split(':').map(Number);
+        if (parts.length < 2 || parts.some(n => !Number.isFinite(n))) return 0;
+        return parts.reduce((t, n) => t * 60 + n, 0);
+    }
+
+    /**
+     * An item's description (HTML as archive.org stores it) as plain text,
+     * its line breaks kept; parsed inert (`DOMParser`, no scripts run).
+     *
+     * @param {*} html - A string, or an array of them.
+     * @returns {string}
+     */
+    function _extIaDescText(html) {
+        const raw = (Array.isArray(html) ? html.join('\n') : String(html || ''))
+            .replace(/<br\s*\/?>/gi, '\n').replace(/<\/(?:p|div|li|h\d)>/gi, '\n');
+        const text = new DOMParser().parseFromString(`<body>${raw}</body>`, 'text/html').body.textContent || '';
+        return text.replace(/\r/g, '').replace(/[ \t]+\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim();
+    }
+
+    /**
+     * A metadata answer as what the card and window use: the item's facts,
+     * description, links and its files — a show's tracks (its original
+     * audio files that carry a title or a track number, else the MP3
+     * derivatives; one per song, in file order, numbered 1…), a video's
+     * files and its first 12 thumbnails.
+     *
+     * @param {Object} d - The API's answer.
+     * @returns {Object}
+     */
+    function _extIaItem(d) {
+        const md = d.metadata || {};
+        const one = (k) => _iaFirst(md[k]);
+        const id = one('identifier');
+        const files = Array.isArray(d.files) ? d.files : [];
+        const audio = (f) => _EXT_IA_AUDIO_RE.test(String(f.format || ''));
+        let picked = files.filter(f => audio(f) && f.source === 'original' && (f.title || f.track));
+        if (!picked.length) picked = files.filter(f => audio(f) && f.source === 'derivative' && /mp3/i.test(String(f.format || '')));
+        // One per song: an upload may hold the same song in two formats.
+        const seen = new Set();
+        const tracks = picked
+            .slice().sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''), 'en', { numeric: true }))
+            .filter((f) => {
+                const k = String(f.name || '').replace(/\.[^.]+$/, '').toLowerCase();
+                if (seen.has(k)) return false;
+                seen.add(k);
+                return true;
+            })
+            .map((f, i) => ({
+                n: i + 1, name: String(f.name || ''), title: String(f.title || '').trim() || String(f.name || '').replace(/\.[^.]+$/, ''),
+                len: _extIaSeconds(f.length),
+            }));
+        const videos = files.filter(f => _EXT_IA_VIDEO_RE.test(String(f.format || '')))
+            .map(f => ({ name: String(f.name || ''), format: String(f.format || ''), len: _extIaSeconds(f.length), size: Number(f.size) || 0,
+                original: f.source === 'original' }));
+        const thumbs = files.filter(f => f.format === 'Thumbnail').map(f => String(f.name || ''))
+            .sort((a, b) => a.localeCompare(b, 'en', { numeric: true }));
+        const colls = (Array.isArray(md.collection) ? md.collection : [md.collection]).map(c => String(c || '')).filter(c => c && !c.startsWith('fav-'));
+        const reviews = Array.isArray(d.reviews) ? d.reviews : [];
+        const stars = reviews.map(r => Number(r.stars)).filter(n => n > 0);
+        return {
+            id, title: one('title'), date: one('date'), venue: one('venue'), source: one('source'), mediatype: one('mediatype'),
+            creator: one('creator'), uploader: one('uploader'), added: one('addeddate').slice(0, 10),
+            lineage: one('lineage'), taper: one('taper'), transferer: one('transferer'),
+            brucebase: /^https?:\/\//i.test(one('brucebase_url')) ? one('brucebase_url') : '',
+            databruce: /^https?:\/\//i.test(one('databruce_url')) ? one('databruce_url') : '',
+            collections: colls.map(c => _IA_COLLECTION_NAMES[c] || c),
+            size: Number(d.item_size) || 0, files: files.length,
+            reviews: reviews.length, rating: stars.length ? stars.reduce((a, b) => a + b, 0) / stars.length : 0,
+            desc: _extIaDescText(md.description).slice(0, 6000),
+            tracks, videos, thumbs: thumbs.slice(0, 12), thumbCount: thumbs.length,
+        };
+    }
+
+    /**
+     * The `iadetails` reader: one anonymous request to the metadata API. An
+     * answer without metadata (`{}`: no such item) or `is_dark` (taken down)
+     * is a dead link, said in the Internet Archive's words.
+     *
+     * @param {object} t
+     * @param {function(): boolean} wanted
+     * @returns {Promise<{ok?: boolean, data?: Object, detail?: string, skipped?: boolean}>}
+     */
+    async function _extIaLoad(t, wanted) {
+        const pt = _extIaParts(new URL(t.url));
+        if (!pt) return { ok: false, detail: 'not an archive.org item the reader knows' };
+        const res = await _extGet(`https://archive.org/metadata/${encodeURIComponent(pt.id)}`, {
+            // An item with thousands of files answers with a long list.
+            wanted, fetchOpts: { accept: /\bjson\b/i, maxBytes: 32 * 1024 * 1024, maxDownload: 64 * 1024 * 1024 },
+        });
+        if (res.skipped) return { skipped: true };
+        const out = _extApiOutcome(t, res, 'Internet Archive', 'The Internet Archive has no such item.');
+        if (out) return out;
+        const d = _extJson(res);
+        if (!d) return { ok: false, detail: 'The Internet Archive answered, but not with JSON' };
+        const rec = _extApiRecord(t, 200, 'Internet Archive');
+        if (d.is_dark || !d.metadata) {
+            Object.assign(rec, { state: 'dead', note: d.is_dark ? 'The Internet Archive has taken this item down.' : 'The Internet Archive has no such item.' });
+            return { ok: true, data: rec };
+        }
+        const it = _extIaItem(d);
+        const runtime = it.tracks.reduce((s, x) => s + x.len, 0);
+        const type = _IA_TYPE_NAMES[it.mediatype] || it.mediatype;
+        Object.assign(rec, {
+            title: it.title || it.id, subtitle: `Internet Archive${type ? ` · ${type}` : ''}`, type: it.mediatype,
+            description: it.desc.slice(0, 600), descInWindow: true,
+            image: `https://archive.org/services/img/${encodeURIComponent(it.id)}`, ia: it,
+        });
+        rec.facts = [
+            ['Date', it.date], ['Venue', it.venue], ['Source', it.source],
+            ['Tracks', it.tracks.length ? `${it.tracks.length}${runtime ? ` · ${_ytDurText(runtime)}` : ''}` : ''],
+            ['Collection', it.collections.join(', ')], ['Creator', it.creator], ['Uploaded by', it.uploader], ['Added', it.added],
+            ['Reviews', it.reviews ? `${it.reviews}${it.rating ? ` · ${it.rating.toFixed(1)} of 5` : ''}` : ''],
+            ['Size', it.size ? `${Math.max(1, Math.round(it.size / 1e6)).toLocaleString('en-US')} MB · ${it.files} files` : ''],
+        ].filter(f => f[1]);
+        if (it.brucebase) rec.links.push(['Brucebase', it.brucebase]);
+        if (it.databruce) rec.links.push(['Databruce', it.databruce]);
+        rec.links.push(['On archive.org', `https://archive.org/details/${encodeURIComponent(it.id)}`]);
+        return { ok: true, data: rec };
+    }
+
+    /**
+     * The card's own line (`cardExtra`): a track link's track and its place
+     * in the show; a show's first songs; a video's length.
+     *
+     * @param {object} t
+     * @param {Object} rec
+     * @returns {string}
+     */
+    function _extIaCardExtra(t, rec) {
+        const it = rec.ia;
+        if (!it) return '';
+        const pt = _extIaParts(new URL(t.url));
+        const tr = pt && pt.file ? it.tracks.find(x => x.name === pt.file) : null;
+        if (tr) {
+            return `<div class="mb-tt-body"><b>${_rgEsc(tr.title)}</b> · track ${tr.n} of ${it.tracks.length}` +
+                `${tr.len ? ` · ${_rgEsc(_ytDurText(tr.len))}` : ''}</div>`;
+        }
+        if (it.tracks.length) {
+            const first = it.tracks.slice(0, 6);
+            return `<ul class="mb-dp-tracks">${first.map(x => `<li><span class="mb-dp-pos">${x.n}</span>${_rgEsc(x.title)}</li>`).join('')}</ul>` +
+                (it.tracks.length > first.length ? `<div class="mb-tt-dim">+ ${it.tracks.length - first.length} more</div>` : '');
+        }
+        const v = it.videos.find(x => x.len) || null;
+        return v ? `<div class="mb-tt-body">Video · ${_rgEsc(_ytDurText(v.len))}</div>` : '';
+    }
+
+    /**
+     * The item's window (`_extExtracted()`'s reader hook, `swap`: the
+     * generic blocks on the left): the description on the left; on the
+     * right a show's setlist as a List table (# · Song · Length · ▶, the
+     * track a link named marked, the player in a slot above it), or a
+     * video's "Play here" tile, its thumbnails and its files.
+     *
+     * @param {object} t
+     * @param {Object} rec
+     * @returns {{left: string[], right: string[], full: string[], swap: boolean}}
+     */
+    function _extIaWindow(t, rec) {
+        const out = { left: [], right: [], full: [], swap: true };
+        const it = rec.ia;
+        if (!it) return out;
+        if (it.desc) out.left.push(`<h4>Description</h4><div class="mb-ia-desc">${_rgEsc(it.desc)}</div>`);
+        const lineage = [['Lineage', it.lineage], ['Taper', it.taper], ['Transferred by', it.transferer]].filter(f => f[1]);
+        if (lineage.length) out.left.push(_mbPopKvHtml(lineage.map(([k, v]) => [k, _rgEsc(v)])));
+        const pt = _extIaParts(new URL(t.url));
+        const mark = pt ? pt.file : '';
+        if (it.tracks.length) {
+            const play = Lib.settings.sa_ia_play_in_place === true;
+            const runtime = it.tracks.reduce((s, x) => s + x.len, 0);
+            const cols = [
+                { key: 'n', label: '#', num: true, cls: 'mb-rg-num', val: x => x.n, html: x => String(x.n) },
+                { key: 'title', label: 'Song', val: x => x.title, html: (x, q) => _hlEsc(x.title, q) },
+                { key: 'len', label: 'Length', num: true, cls: 'mb-rg-num', val: x => x.len, html: x => _rgEsc(_ytDurText(x.len) || '—') },
+            ];
+            if (play) {
+                cols.push({
+                    key: 'play', label: '', sort: false, val: () => '',
+                    html: x => _ytTileHtml({ src: 'ia', kind: 'audio', id: it.id, file: x.name, list: '' }, { mini: true, title: x.title, dur: x.len }),
+                });
+            }
+            const table = _dpListTableHtml(t, 'ia-setlist', cols, it.tracks, {
+                initial: 'in the order of the files', placeholder: 'Filter the setlist: song', none: 'No tracks.',
+                rowAttrs: x => (x.name === mark ? ' class="mb-ia-mark"' : ''),
+            });
+            out.right.push(`<h4>Setlist · ${it.tracks.length}${runtime ? ` · ${_rgEsc(_ytDurText(runtime))}` : ''}</h4>` +
+                (play ? `<div data-mb-yt-slots=""><div class="mb-yt-slot"></div>${table}</div>` : table));
+            return out;
+        }
+        if (it.mediatype === 'movies' || it.videos.length) {
+            const tile = _ytTileHtml({ src: 'ia', kind: 'video', id: it.id, file: '', list: '' },
+                { title: it.title, still: rec.image, dur: (it.videos.find(x => x.len) || {}).len || 0 });
+            if (tile) out.right.push(`<div class="mb-yt-win">${tile}</div>`);
+            if (it.thumbs.length) {
+                const base = `https://archive.org/download/${encodeURIComponent(it.id)}/`;
+                out.right.push(`<h4>Thumbnails · ${it.thumbCount}</h4><div class="mb-dp-gallery mb-ia-thumbs">` +
+                    it.thumbs.map(n => `<a href="${_rgEsc(base + n.split('/').map(encodeURIComponent).join('/'))}" target="_blank" rel="noopener noreferrer">` +
+                        `<img src="${_rgEsc(base + n.split('/').map(encodeURIComponent).join('/'))}" alt="" loading="lazy" referrerpolicy="no-referrer"></a>`).join('') +
+                    (it.thumbCount > it.thumbs.length ? `<span class="mb-tt-dim">+ ${it.thumbCount - it.thumbs.length} more on archive.org</span>` : '') + '</div>');
+            }
+            if (it.videos.length) {
+                out.right.push(`<h4>Files · ${it.videos.length}</h4>` + _dpCompactTableHtml(t, 'ia-videos', [
+                    { key: 'name', label: 'File', val: x => x.name, html: (x, q) => _hlEsc(x.name, q) },
+                    { key: 'format', label: 'Format', val: x => x.format, html: (x, q) => _hlEsc(x.format, q) },
+                    { key: 'len', label: 'Length', num: true, cls: 'mb-rg-num', val: x => x.len, html: x => _rgEsc(_ytDurText(x.len) || '—') },
+                    { key: 'size', label: 'Size', num: true, cls: 'mb-rg-num', val: x => x.size,
+                        html: x => (x.size ? `${Math.max(1, Math.round(x.size / 1e6)).toLocaleString('en-US')} MB` : '—') },
+                ], it.videos, { initial: 'as archive.org lists them', what: 'files' }));
+            }
+        }
+        return out;
     }
 
     /** A Discogs page of one release, master, artist or label (an optional language prefix, a slug after the id). */
@@ -70861,6 +71719,13 @@
             version: _EXT_IDB_VERSION * 100 + _EXT_SFM_VERSION, kindFor: _extSfmKind,
             window: _extSfmWindow, onAreaClick: _extSfmAreaClick, factsHtml: _extSfmFactsHtml,
         },
+        {
+            // An archive.org item through its metadata API (2026-10-31,
+            // docs/claude/internet-archive.md): a show's setlist, a video.
+            id: 'iadetails', kind: 'Internet Archive', test: _extIaTest, askHost: () => 'archive.org', load: _extIaLoad, noLive: false,
+            version: _EXT_IDB_VERSION * 100 + _EXT_IA_VERSION, keyUrl: _extIaKeyUrl, kindFor: _extIaKind,
+            cardExtra: _extIaCardExtra, window: _extIaWindow,
+        },
         { id: 'generic', kind: 'Web page', test: () => true, askHost: (u) => u.hostname.toLowerCase(), load: _extGenericLoad, noLive: false },
     ];
 
@@ -71464,7 +72329,10 @@
         // A link to this site is not "another site", except on discogs.com
         // a Discogs page a Discogs reader takes (2026-10-18: a release,
         // master, artist, label or its history, a user, a search).
-        if (bare(host) === bare(window.location.hostname.toLowerCase()) && !(_isDgHost && _extDgSiteTest(u))) return null;
+        // On archive.org (2026-10-31): an item our table links, the
+        // `iadetails` reader's.
+        if (bare(host) === bare(window.location.hostname.toLowerCase()) &&
+            !(_isDgHost && _extDgSiteTest(u)) && !(_isIaHost && _extIaTest(u))) return null;
         if (_EXT_SKIP_HOST_RE.test(host) || _EXT_SKIP_URL_RE.test(href)) return null;
         // A Relationships icon is an image link that IS the link: it gets
         // the card (2026-10-17). Elsewhere a link around an image is the
@@ -86153,6 +87021,11 @@ a { color: #1565c0; }`;
         // discogs.com's <h1> is inside Discogs' React page: the toolbar goes
         // to a section of our own above it — see _dgPrepareLivePage().
         headerContainer = _dgPrepareLivePage();
+    } else if (baseDefinition?.host === 'archive.org') {
+        // archive.org's search page is a web-component shell (`<app-root>`,
+        // no heading in reach): a section of our own before it — see
+        // _iaPrepareLivePage().
+        headerContainer = _iaPrepareLivePage();
     }
 
     // The popup engine (hover card + pinned dialog), when one of its sources
@@ -95523,7 +96396,7 @@ a { color: #1565c0; }`;
         // userscript's widget, and some removals (any <details> with more
         // than 5 images, any 700px-wide div) would hit unrelated content on
         // another site.
-        if (_isSlHost || _isJlHost || _isBsHost || _isBbHost || _isDgHost) return;
+        if (_isSlHost || _isJlHost || _isBsHost || _isBbHost || _isDgHost || _isIaHost) return;
         Lib.debug('cleanup', 'Starting clutter element removal.');
 
         // Remove Jesus2099 bigbox elements
@@ -107575,6 +108448,11 @@ a { color: #1565c0; }`;
         // section; the rows come from Discogs' API pages fetched below.
         if (activeDefinition.features?.dgToTable) {
             applyDgToTable(activeDefinition);
+        }
+        // archive.org ('ia-search'): the same, the rows from the Internet
+        // Archive's search API.
+        if (activeDefinition.features?.iaToTable) {
+            applyIaToTable(activeDefinition);
         }
 
         // ── bsRecordsToTable pre-processing ──────────────────────────────────
@@ -139460,6 +140338,9 @@ a { color: #1565c0; }`;
             }
             if (activeDefinition.features?.dgToTable) {
                 applyDgToTable(activeDefinition);
+            }
+            if (activeDefinition.features?.iaToTable) {
+                applyIaToTable(activeDefinition);
             }
             // And for brucespringsteen.it: the reloaded page holds the site's
             // record paragraphs again; an empty table takes their place.

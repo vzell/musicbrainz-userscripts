@@ -1819,8 +1819,9 @@ an import brings your deletions back.
   and lyrics index, the **jungleland.it**
   bootleg artwork list, the **brucespringsteen.it** record database and
   the **Brucebase** song list, year pages, Relations and Recent changes, and
-  **discogs.com**'s master, release, artist, label, submissions, user, ratings, collection, wantlist, history (release, master, artist, label), images (release, master, artist, label), release Marketplace and search pages — each off until
-  you switch it on, see [Page-specific behaviour](#page-specific-behaviour)
+  **discogs.com**'s master, release, artist, label, submissions, user, ratings, collection, wantlist, history (release, master, artist, label), images (release, master, artist, label), release Marketplace and search pages, and
+  the **Internet Archive**'s (archive.org) search pages — each site with its
+  own switch, on by default, see [Page-specific behaviour](#page-specific-behaviour)
 
 </details>
 
@@ -3927,6 +3928,46 @@ versions, a label's releases, a user's lists and ratings …) also gets the
 Discogs release has a MusicBrainz release gets a ♪ that loads that release
 into Picard — rows still being looked up get theirs as soon as MusicBrainz
 answers.
+
+</details>
+
+<details>
+<summary>archive.org: search pages and items (the Internet Archive)</summary>
+
+On an Internet Archive search page (archive.org/search?query=…, for example
+everything with the subject "Bruce Springsteen" in 1975) the script adds its
+own section above the site with one button, **Items**. It lists every item of
+that search, the page's filters included, as one table:
+
+- the item's picture, **Date**, **Title** (it opens the item on archive.org),
+  **Venue**, **Source** (Audience, Soundboard, …), **Type** (Audio, Video,
+  Text, …);
+- what archive.org shows only when you rest on a tile: **Views**,
+  **Favorites**, **Reviews** (their number and the average as stars),
+  **Added**, **Size** in MB and **Collection**.
+
+The rows come first by date (an item with two dates under its earlier one),
+whatever the page itself sorts by. They come from the Internet Archive's
+search API, 100 a request, one request a second; a search of more than
+10,000 items lists the first 10,000. A search of the texts' contents ("Search
+text contents") gets no button: the API does not search those.
+
+Wherever link previews are on, a link to an archive.org item
+(archive.org/details/…) has a **card**: the date, venue, source, the number
+of tracks and their running time, and the first songs. **Space** opens the
+**window**: the item's facts, description, lineage and links (Brucebase and
+Databruce open in the window), and the whole setlist with each song's length,
+with a filter. A link to one track of a show opens the show's window with
+that track marked. A video item shows its picture, thumbnails and files.
+
+With *Play archive.org tracks and videos in the window* on (the default),
+each song has a **▶**, and a video a "Play here" tile: a click plays it in
+archive.org's own player in the window. One track or video plays at a time,
+YouTube's included; **Esc** or **■ Stop** ends it. Where a page does not
+allow archive.org's player, a click opens the item on archive.org instead.
+
+Switches, in ⚙️ Settings → 🏛 Internet Archive: *Enable on archive.org* and
+*Play archive.org tracks and videos in the window*, both on by default.
 
 </details>
 

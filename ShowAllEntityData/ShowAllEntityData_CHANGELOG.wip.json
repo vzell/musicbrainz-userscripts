@@ -1,0 +1,22 @@
+[
+  {
+    "version": "WIP.1",
+    "date": "2026-10-31",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Internet Archive (archive.org): on a search page such as everything with the subject \"Bruce Springsteen\" in 1975, a new \"Items\" button lists every item of that search as one filterable, sortable table: picture, date, title, venue, source, type, and what archive.org only shows when you rest on a tile (views, favorites, reviews, when it was added, size, collection). The rows come first by date, from the Internet Archive's search API (100 a request, one a second); archive.org's own page holds none of them. New settings section 🏛 Internet Archive, \"Enable on archive.org\", on by default. Mockup: https://claude.ai/artifact/4aXkdPxudwhuzACj4Wg81C",
+          "Link previews: a link to an archive.org item (archive.org/details/…), on MusicBrainz, Brucebase, archive.org or anywhere else previews look, has a card (date, venue, source, tracks and running time, the first songs) and a window on Space (facts, description, lineage, links to Brucebase and Databruce, the whole setlist with each song's length). A link to one track opens its show with that track marked. A video item shows its picture, thumbnails and files.",
+          "Play in the window: each song of an archive.org show has a ▶ and a video item a \"Play here\" tile, which play in archive.org's own player in the window, one at a time with YouTube's; Esc or \"■ Stop\" ends it. New setting \"Play archive.org tracks and videos in the window\", on by default."
+        ]
+      },
+      {
+        "label": "📝 Docs",
+        "items": [
+          "Help: the list of supported sites said each other site was \"off until you switch it on\"; every site's switch has been on by default since 2026-10-26. Now it says so."
+        ]
+      }
+    ]
+  }
+]

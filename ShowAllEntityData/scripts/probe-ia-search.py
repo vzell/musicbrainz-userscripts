@@ -32,7 +32,8 @@ UA = 'ShowAllEntityData-probe/1.0 (https://github.com/vzell/mb-userscripts)'
 QUERY = 'subject:"Bruce Springsteen"'
 FIELDS = ['identifier', 'title', 'date', 'year', 'mediatype', 'collection', 'creator',
           'coverage', 'venue', 'downloads', 'item_size', 'num_reviews', 'avg_rating',
-          'publicdate', 'addeddate', 'source', 'subject', 'description', 'runtime', 'format']
+          'publicdate', 'addeddate', 'source', 'subject', 'description', 'runtime', 'format',
+          'num_favorites']
 DETAILS = [
     'live-at-the-ahmanson-theater-los-angeles-1973',
     '1975-bruce-springsteen-widener-college-audience-cam',
@@ -66,10 +67,11 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--year', default='1975')
     ap.add_argument('--json', default='')
+    ap.add_argument('--sort', default='titleSorter asc', help='e.g. "date asc" (the ia-search pageType\'s order)')
     a = ap.parse_args()
 
     q = f'{QUERY} AND year:{a.year}'
-    params = [('q', q), ('rows', '50'), ('page', '1'), ('output', 'json'), ('sort[]', 'titleSorter asc')]
+    params = [('q', q), ('rows', '50'), ('page', '1'), ('output', 'json'), ('sort[]', a.sort)]
     params += [('fl[]', f) for f in FIELDS]
     url = 'https://archive.org/advancedsearch.php?' + urllib.parse.urlencode(params)
     st, ct, body = get(url)
@@ -88,6 +90,9 @@ def main():
         for doc in docs:
             mt[doc.get('mediatype')] = mt.get(doc.get('mediatype'), 0) + 1
         print('   mediatypes:', mt)
+        print('   first dates in this order:', [doc.get('date', '')[:10] for doc in docs[:8]])
+        favs = [(doc.get('num_favorites'), sum(1 for c in (doc.get('collection') or []) if str(c).startswith('fav-'))) for doc in docs[:8]]
+        print('   num_favorites vs fav- collections (first 8):', favs)
         for doc in docs[:4]:
             short = {k: (v if not isinstance(v, str) or len(v) < 120 else v[:120] + '…') for k, v in doc.items()}
             print('   row:', json.dumps(short, ensure_ascii=False))

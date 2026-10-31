@@ -114,6 +114,8 @@ const FIXTURE_SETTINGS_OVERRIDE = {
     sa_dp_window_read_ahead: false,
     sa_yt_play_in_place: false,
     sa_yt_stills: false,
+    // archive.org's player in its window (2026-10-31): off like YouTube's.
+    sa_ia_play_in_place: false,
     sa_entity_images: false,
     sa_dp_path_label: 'kind',
 };

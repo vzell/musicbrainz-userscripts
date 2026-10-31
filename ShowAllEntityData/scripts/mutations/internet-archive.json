@@ -1,0 +1,106 @@
+[
+  {
+    "name": "the archive.org switch is ignored",
+    "why": "sa_enable_internetarchive off must leave the site's page untouched (CLAUDE.md: each site's own switch).",
+    "edits": [{ "find": "    if (_isIaHost && Lib.settings.sa_enable_internetarchive !== true) {", "replace": "    if (false && _isIaHost && Lib.settings.sa_enable_internetarchive !== true) {" }],
+    "spec": "tests/fixtures/ia-search.spec.js",
+    "grep": "switched off",
+    "expect": "fail"
+  },
+  {
+    "name": "the search is asked in the site's order, not by date",
+    "why": "vzell's answer Q4: first by date, whatever the page sorts by.",
+    "edits": [{ "find": "        params.append('sort[]', 'date asc');\n", "replace": "" }],
+    "spec": "tests/fixtures/ia-search.spec.js",
+    "grep": "the shell gets our section",
+    "expect": "fail"
+  },
+  {
+    "name": "an item with two dates shows its first, not the one it is ordered by",
+    "why": "The Date column must agree with the order (a 1975 item dated 1975-08-15 and 1974-01-01 sorts as 1974).",
+    "edits": [{ "find": "<td class=\"mb-ia-when\">${_rgEsc(_iaEarliestDate(d.date))}</td>", "replace": "<td class=\"mb-ia-when\">${_rgEsc(_iaFirst(d.date).slice(0, 10))}</td>" }],
+    "spec": "tests/fixtures/ia-search.spec.js",
+    "grep": "the shell gets our section",
+    "expect": "fail"
+  },
+  {
+    "name": "users' favorites are listed as collections",
+    "why": "fav-<user> collections are people's lists, counted in Favorites, not collections.",
+    "edits": [{ "find": "        const shown = colls.filter(c => !c.startsWith('fav-')).map(c => _IA_COLLECTION_NAMES[c] || c);", "replace": "        const shown = colls.map(c => _IA_COLLECTION_NAMES[c] || c);" }],
+    "spec": "tests/fixtures/ia-search.spec.js",
+    "grep": "the shell gets our section",
+    "expect": "fail"
+  },
+  {
+    "name": "Favorites counted from the fav- collections instead of num_favorites",
+    "why": "Known overlap, recorded honestly: in the 2026-10-31 capture num_favorites equals the fav- count on every row (probe-ia-search.py), so the fallback gives the same number and no spec can tell them apart.",
+    "edits": [{ "find": "        const favs = typeof d.num_favorites === 'number' ? d.num_favorites : colls.filter(c => c.startsWith('fav-')).length;", "replace": "        const favs = colls.filter(c => c.startsWith('fav-')).length;" }],
+    "spec": "tests/fixtures/ia-search.spec.js",
+    "grep": "the shell gets our section",
+    "expect": "pass"
+  },
+  {
+    "name": "a full-text search gets the button",
+    "why": "advancedsearch.php does not index what sin=TXT searches: the table would answer a different question.",
+    "edits": [{ "find": "        return !!_iaSearchSolr() && !(p.get('sin') || '').trim();", "replace": "        return !!_iaSearchSolr();" }],
+    "spec": "tests/fixtures/ia-search.spec.js",
+    "grep": "full-text search",
+    "expect": "fail"
+  },
+  {
+    "name": "an archive.org link on archive.org is 'not another site'",
+    "why": "Our table's titles link the item on the same host; without the exception they get no card.",
+    "edits": [{ "find": "            !(_isDgHost && _extDgSiteTest(u)) && !(_isIaHost && _extIaTest(u))) return null;", "replace": "            !(_isDgHost && _extDgSiteTest(u))) return null;" }],
+    "spec": "tests/fixtures/ia-search.spec.js",
+    "grep": "a title in our table",
+    "expect": "fail"
+  },
+  {
+    "name": "a track link asks its own request",
+    "why": "keyUrl: a link to one file shares its show's request (vzell's answer Q10).",
+    "edits": [{ "find": "            version: _EXT_IDB_VERSION * 100 + _EXT_IA_VERSION, keyUrl: _extIaKeyUrl, kindFor: _extIaKind,", "replace": "            version: _EXT_IDB_VERSION * 100 + _EXT_IA_VERSION, kindFor: _extIaKind," }],
+    "spec": "tests/fixtures/popup-ext.spec.js",
+    "grep": "a link to one track",
+    "expect": "fail"
+  },
+  {
+    "name": "the linked track is not marked",
+    "why": "Q10: the show's window with that track's row marked.",
+    "edits": [{ "find": "                rowAttrs: x => (x.name === mark ? ' class=\"mb-ia-mark\"' : ''),", "replace": "                rowAttrs: () => '',"}],
+    "spec": "tests/fixtures/popup-ext.spec.js",
+    "grep": "a link to one track",
+    "expect": "fail"
+  },
+  {
+    "name": "archive.org is not a known host",
+    "why": "It is in the header's @connect: a hover may ask it, no 'not contacted yet' card.",
+    "edits": [{ "find": "        'api.setlist.fm', 'query.wikidata.org', 'archive.org'];", "replace": "        'api.setlist.fm', 'query.wikidata.org'];" }],
+    "spec": "tests/fixtures/popup-ext.spec.js",
+    "grep": "a show: the card on a hover",
+    "expect": "fail"
+  },
+  {
+    "name": "an item archive.org does not have is read as an item",
+    "why": "The metadata API answers 200 {} for no item: a dead link, not an empty card.",
+    "edits": [{ "find": "        if (d.is_dark || !d.metadata) {", "replace": "        if (d.is_dark) {" }],
+    "spec": "tests/fixtures/popup-ext.spec.js",
+    "grep": "does not have",
+    "expect": "fail"
+  },
+  {
+    "name": "archive.org's tiles follow YouTube's setting",
+    "why": "Each source its own setting (sa_ia_play_in_place); the fixtures keep YouTube's off.",
+    "edits": [{ "find": "        return v && v.src === 'ia' ? Lib.settings.sa_ia_play_in_place === true : _ytOn();", "replace": "        return _ytOn();" }],
+    "spec": "tests/fixtures/popup-ext.spec.js",
+    "grep": "Play here: a song plays",
+    "expect": "fail"
+  },
+  {
+    "name": "archive.org plays in YouTube's player",
+    "why": "An archive.org tile embeds archive.org/embed/<id>[/<file>].",
+    "edits": [{ "find": "        if (v.src === 'ia') return `https://archive.org/embed/${_ytIaPath(v)}?autoplay=1`;\n", "replace": "" }],
+    "spec": "tests/fixtures/popup-ext.spec.js",
+    "grep": "Play here: a song plays",
+    "expect": "fail"
+  }
+]

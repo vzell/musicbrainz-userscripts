@@ -3,10 +3,10 @@
     "generated_by": "scripts/dump-config-defaults.py",
     "purpose": "Generated artifact. NOTHING in the userscript reads this file. See org/config-handling.org Item 4.",
     "script_version": "9.99.1521+2026-10-31",
-    "schema_entries": 484,
-    "sections": 52,
-    "settings": 432,
-    "settings_with_default": 427,
+    "schema_entries": 487,
+    "sections": 53,
+    "settings": 434,
+    "settings_with_default": 429,
     "settings_without_default": [
       "sa_default_hidden_columns",
       "sa_rel_other_db_classes",
@@ -15,10 +15,10 @@
       "sa_unicode_char_picker_mappings"
     ],
     "types": {
-      "checkbox": 255,
+      "checkbox": 257,
       "color_picker": 62,
+      "divider": 53,
       "number": 53,
-      "divider": 52,
       "keyboard_shortcut": 23,
       "text": 16,
       "popup_dialog": 8,
@@ -225,6 +225,10 @@
       "label": "💿 DISCOGS"
     },
     {
+      "key": "divider_internetarchive",
+      "label": "🏛 INTERNET ARCHIVE"
+    },
+    {
       "key": "divider_pop_mb",
       "label": "🔎 LINK PREVIEWS ON MUSICBRAINZ"
     },
@@ -367,6 +371,7 @@
     "sa_enable_h1_comment_span_relocation_on_final_page": "Relocate H1 comment-span alias block (final rendered page)",
     "sa_enable_h1_comment_span_relocation_on_initial_page": "Relocate H1 comment-span alias block (initial page)",
     "sa_enable_h2_section_relocation_on_final_page": "Relocate trailing h2 sections before data table (final rendered page)",
+    "sa_enable_internetarchive": "Enable on archive.org",
     "sa_enable_jungleland": "Enable on the jungleland.it bootleg artwork list",
     "sa_enable_keyboard_shortcut_tooltip": "Enable Keyboard Shortcut Tooltip",
     "sa_enable_keyboard_shortcuts": "Enable Keyboard Shortcuts",
@@ -492,6 +497,7 @@
     "sa_global_filter_highlight_color": "Global Filter Highlight Color",
     "sa_global_filter_initial_width": "Global filter initial width (px)",
     "sa_hide_empty_subtables": "Hide Empty Sub-tables While Filtering",
+    "sa_ia_play_in_place": "Play archive.org tracks and videos in the window (a click asks archive.org's player)",
     "sa_jl_detail_preview": "Preview artwork pages on the jungleland.it list",
     "sa_jl_tip_images": "Art column: every scan of an entry on hover",
     "sa_keyboard_shortcut_prefix": "Keyboard Shortcut Prefix",
@@ -800,6 +806,7 @@
     "sa_enable_h1_comment_span_relocation_on_final_page": true,
     "sa_enable_h1_comment_span_relocation_on_initial_page": true,
     "sa_enable_h2_section_relocation_on_final_page": true,
+    "sa_enable_internetarchive": true,
     "sa_enable_jungleland": true,
     "sa_enable_keyboard_shortcut_tooltip": true,
     "sa_enable_keyboard_shortcuts": true,
@@ -925,6 +932,7 @@
     "sa_global_filter_highlight_color": "red",
     "sa_global_filter_initial_width": 500,
     "sa_hide_empty_subtables": true,
+    "sa_ia_play_in_place": true,
     "sa_jl_detail_preview": true,
     "sa_jl_tip_images": true,
     "sa_keyboard_shortcut_prefix": "Ctrl+M",
