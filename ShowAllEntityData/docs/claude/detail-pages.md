@@ -2747,6 +2747,70 @@ documentation (Phase 3f)"; mutations `scripts/mutations/mb-window-3f.json`
 (its last entry survives by design: the IndexedDB layer covers the memory
 guard).
 
+### Table heights in the window (2026-10-31, A+D)
+
+org/POH-table-sizing.org; mockup
+https://claude.ai/artifact/RdCsLUVrkiLNgZNFNaqkBn (variant A+D, vzell's
+answers of 2026-10-31). Every window table sits in a `.mb-dg-vwrap`, which
+CSS caps at 460 px, so before this change a taller window only added empty
+space below the tables. Now ONE pass, `_dpTblSizePass(area)`, sizes every
+table in the window:
+
+- **A: the right column fills.** `_dpTblPane()` takes the second `.mb-dp-col`
+  of the FIRST `.mb-dp-x` with two columns, but only while the computed
+  `grid-template-columns` has two tracks. When the 640 px media query
+  stacks the columns (the Pixel 7 emulation, a 412 px page), there is no pane.
+  The column gets `mb-dp-pane` (sticky at `--mb-dp-pane-top`, the grid's
+  padding; `align-self: start`, so its height is its content), and its LAST
+  visible `.mb-dg-vwrap` with a table gets `mb-dp-fill` and an inline
+  `max-height` = body height − grid padding − everything else in the pane.
+  It is MEASURED (`pane.offsetHeight − fill.offsetHeight`, which does not depend
+  on the table's own height) rather than built as a CSS flex chain, because
+  right columns nest their tables at different depths (`.mb-dp-tbl` directly,
+  `details.mb-dp-sec`, Discogs `section.mb-dg-sec`). When less than
+  `_DP_TBL_FILL_MIN` (160 px) is left, the pane is off and the table is a plain
+  one (the event setlist's line-up, filter and chips take ~190 px, so a
+  420 px window has no pane).
+- **D: grips under the others.** Every other visible `.mb-dg-vwrap` with a
+  table gets `div.mb-dp-grip` (role separator, focusable) after it, but only
+  when the table scrolls or has a saved height. This covers the left column,
+  the pane's other tables, full-width sections and everything in one column.
+  The height is kept in `sa_dp_table_heights` (`{ key: px }`, at most 200,
+  the oldest set first out; workspace export's `geometry` group). It is read
+  again when a window opens (`_dpTblHeights(true)`). The key comes from
+  `_dpTblSizeKey()`: `data-mb-keep-scroll`, else `tbl-<data-mb-tbl id>`, with
+  the running part folded away (`tbl-tag-kind`, `dg-a`, `tbl-ratings`), so
+  that kind of table opens at that height in every window. Drag (min 120 px,
+  label "N px · x of y rows"), double-click (forget, back to 460), ↑ ↓ on a
+  focused grip (±20, saved; `_dpDialogKeys()` takes neither), Esc mid-drag
+  (a window-capture listener only while dragging, `stopImmediatePropagation`:
+  the window's own Esc would close it).
+- **When it runs:** synchronously after `_dpRenderDialog()`'s first paint
+  and inside `_dpAreaRepaint()` BEFORE the `data-mb-keep-scroll` positions come
+  back. Otherwise a position restored into the 460 px box, which then shrinks
+  to the window, loses the bottom of the table on every repaint, and a window
+  repaints about every 1.1 s while its follow-up loads arrive. Also, through
+  `_dpTblSizeSoon()` (one per frame), on a resize of the body (a
+  `ResizeObserver` from `_dpTblSizeInstall()`), on a captured `toggle` and on a
+  captured image `load`.
+- **Repaints replace the grips,** so their events (`pointerdown`, `dblclick`,
+  `keydown`) are delegated on the body. A drag is held by KEY in
+  `_dpTblSize.drag`, and the pass applies its height to whichever wrap carries
+  that key now, so an answer that arrives mid-drag does not end it.
+  `pointermove`/`pointerup` are document listeners, so they keep working
+  after the grip they started on is gone. The grip reuses its element across
+  passes, so a focused grip keeps the focus on ↑ ↓.
+- `.mb-rg-wtable-wrap` (`_mbPopTableHtml()`) has no height cap and is out of
+  scope. Nothing here touches the page's own tables.
+
+Specs: popup-mb.spec.js "the window's tables and its height (A+D)" (the
+event window: setlist right, "Recorded here" left), popup-ext.spec.js "a
+label's releases (right column) fill…" (Discogs, `mb-dg-swap`),
+popup-mb.mobile.spec.js "one column, no pane; … touch-dragged grip" (a real
+CDP touch drag, which needs `touch-action: none`),
+config-workspace-roundtrip.spec.js (the key in `geometry`). Mutations:
+`scripts/mutations/poh-table-fill.json`, 9 of 9 caught.
+
 ### A Discogs release's edit history (2026-10-18)
 
 Mockup https://claude.ai/artifact/Y69bUJTvYSksKTFRMcYJvZ, tab C; vzell's

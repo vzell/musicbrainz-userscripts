@@ -242,3 +242,45 @@ test('inside the window: a long press shows a link\'s card and opens nothing; a 
     await expect(dialog.locator(':scope > div > span').first()).toHaveText(/Release › Artist$/);
     expect(log.navigations, 'the page stays').toEqual([]);
 });
+
+// The window's tables and its height (org/POH-table-sizing.org, A+D,
+// 2026-10-31) on the phone: the window is one column here (a 412 px page),
+// so the right-column pane is off and the tracklist is a plain table; a
+// saved height applies, and its grip drags by touch (a real touch drag
+// through CDP: without touch-action none the page would scroll instead and
+// cancel it).
+test('the release window on the phone: one column, no pane; a saved height and a touch-dragged grip', async ({ page }) => {
+    await openPhone(page, { sa_pop_mb_on_touch: true, sa_dp_table_heights: { 'tbl-tracks': 150 } });
+    await tapLink(page, page.locator(RELEASE_LINK).first());
+    const dialog = page.locator('#mb-dp-dialog');
+    await expect(dialog.locator('[data-mb-tbl="tracks"] tbody tr')).toHaveCount(9, { timeout: 20000 });
+    const read = () => page.evaluate(() => {
+        const area = document.querySelector('#mb-dp-dialog .mb-dp-area');
+        const w = area.querySelector('[data-mb-tbl="tracks"] .mb-dg-vwrap');
+        return {
+            cols: getComputedStyle(area.querySelector('.mb-dp-x')).gridTemplateColumns.trim().split(/\s+/).length,
+            fill: w.classList.contains('mb-dp-fill'),
+            pane: !!area.querySelector('.mb-dp-pane'),
+            box: w.offsetHeight - 2 * w.clientTop,
+            saved: window.__gmValues.sa_dp_table_heights,
+        };
+    });
+    const m = await read();
+    expect(m.cols, 'one column on the phone').toBe(1);
+    expect(m.fill).toBe(false);
+    expect(m.pane).toBe(false);
+    expect(m.box, 'the saved height').toBe(150);
+    const grip = dialog.locator('[data-mb-tbl="tracks"] .mb-dp-grip');
+    await expect(grip).toHaveCount(1);
+    await grip.scrollIntoViewIfNeeded();
+    const g = await grip.boundingBox();
+    const x = g.x + g.width / 2;
+    const y = g.y + g.height / 2;
+    const cdp = await page.context().newCDPSession(page);
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x, y }] });
+    for (let i = 1; i <= 6; i++) await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x, y: y + i * 10 }] });
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+    await expect.poll(async () => (await read()).box).toBeGreaterThan(160);
+    const after = await read();
+    expect(after.saved, 'saved on release').toEqual({ 'tbl-tracks': after.box });
+});

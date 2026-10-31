@@ -27487,3 +27487,65 @@ unskipped `.flag`), repaints with a segment click, and asserts no image
 inside ours, none of ours matching that script's selector, and a clipping
 slot; `scripts/mutations/poh-fixes.json` (restoring the `.flag` class, or
 dropping the clip, fails it).
+
+## 2026-10-31 — The window's tables ignored the window's height: one 460 px cap (feat/poh-table-fill, WIP.1)
+
+Env: 2026-10-31T12:57 → 13:41+01:00 · vzell-lap · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.54.1) · Playwright 1.62.1 Chromium, no Tampermonkey (GM stubs); the user's report: Vivaldi (version unknown)
+
+**Symptom (vzell, 2026-10-30, a video in `debug/` and
+`debug/POH-mb-artist-bruce.png`, `debug/POH-mb-place.png`):** in an
+artist's window the release groups, and in an event window the setlist,
+stopped at the same height whatever the window's size, with empty space
+below them.
+
+**Cause (code):** every window table sits in `div.mb-dg-vwrap`, and one rule,
+`.mb-dp-dialog .mb-dg-vwrap { … max-height: 460px … }`, capped all of them.
+Nothing in it depended on the window's height.
+
+**Design (vzell chose A+D on mockup
+https://claude.ai/artifact/RdCsLUVrkiLNgZNFNaqkBn; org/POH-table-sizing.org):**
+the right column becomes a sticky pane whose last table fills the window body
+(A), and grips sit under every other table, with the height kept per kind of
+table (D). Full rules: docs/claude/detail-pages.md, "Table heights in the
+window". Two findings that shaped it:
+
+- The mockup's pure-CSS flex chain only works when the table is a direct child
+  of the column. The real right columns nest it in `.mb-dp-tbl`, in
+  `details.mb-dp-sec` or in a Discogs `section.mb-dg-sec`, so the fill is
+  MEASURED (`pane.offsetHeight − fill.offsetHeight`, independent of the
+  table's own height) in one pass, `_dpTblSizePass()`.
+- The pass has to run BEFORE `_dpAreaRepaint()` restores the
+  `data-mb-keep-scroll` positions. A window repaints about every 1.1 s while
+  follow-up loads arrive (2026-10-29 entry above), and a position restored into
+  the 460 px box that then shrinks to the window loses the bottom of the table.
+  The mutation that moves the pass after the restore fails the keep-scroll spec.
+
+The event setlist's line-up, filter and Part chips take ~190 px, so a 420 px
+window has no pane; the pass then falls back to the plain 460 px table and its
+grip rather than squeezing it under 160 px. Under Pixel 7 emulation the page
+is 412 px wide, so the 640 px media query stacks the columns and there is no
+pane at all; grips only.
+
+**Regression tests:** popup-mb.spec.js "the window's tables and its height
+(A+D)" (3), popup-ext.spec.js (the Discogs label), popup-mb.mobile.spec.js
+(a real CDP touch drag), config-workspace-roundtrip.spec.js. Mutations
+`scripts/mutations/poh-table-fill.json`: 9 of 9 caught, userscript restored and
+verified.
+
+**An existing flake, not this branch's:** popup-mb.spec.js "resting on a
+step shows its own card from memory, no Ctrl, no request" failed once in the
+popup run ("the card asked nothing": `lookups` 2, not 1). With `--repeat-each
+12` it failed 7 of 12 here and 6 of 12 on `main` (`d0ba9281`, a separate
+worktree), so the rate is the same with and without this change.
+
+**Fixed (same branch, vzell asked):** a probe logged each release lookup's
+id and time. The late lookup was always `ee6fc76d…`, the THIRD step's own
+release, never step 1's (the card's, served from memory). `threeSteps()`
+returned when the title showed three steps, at the click, while that
+release's lookup was still waiting for its rate slot behind the release
+group's requests. In the failing runs the slot came up during the hover (the
+window still wanted step 3), so it was asked about 1.7 s after the snapshot.
+In the passing runs the test pressed Space first, and it was never asked at
+all. Not a product bug: `threeSteps()` now also waits for step 3's tracklist.
+12 of 12 after (6 of 12 on `main` before); the "window's path" block 21 of 21
+at `--repeat-each 3`.

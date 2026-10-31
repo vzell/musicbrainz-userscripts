@@ -2,8 +2,7 @@
 #+STARTUP: showall
 
 * TODO Let the POH tables use the window's height
-
-** initial
+** DONE initial
 
 On e.g. MB artist POHs (or on MB place POHs) could the "RELEASE GROUPS" ("SETLIST" section) section on the right,
 specifically the table itself, auto-increase (in a sense showing more table rows), when we resize the POH window size to
@@ -40,34 +39,34 @@ Every table in the window sits in =div.mb-dg-vwrap=, and one rule gives it a fix
 Nothing in it depends on the window's height, so a taller window only adds empty paper under the
 table. Grep anchors (line numbers drift):
 
-| Grep for                                               | What                                                                                                    |
-|--------------------------------------------------------+---------------------------------------------------------------------------------------------------------|
-| =.mb-dp-dialog .mb-dg-vwrap {=                         | the 460 px cap                                                                                          |
-| =function _dpListTableHtml=                            | the window's List table: filter, chips, =div.mb-dp-tbl > div.mb-dg-vwrap= (setlist, RGs, releases, …)   |
-| =function _dpCompactTableHtml= (box with =mb-dg-cwrap=) | the Compact tables (Discogs sublabels, …), same wrapper                                                 |
-| =.mb-dp-dialog .mb-dp-x {=                             | the window body's two-column grid =minmax(0, .9fr) minmax(0, 1.1fr)=; one column under 640 px          |
-| =.mb-dp-dialog .mb-dp-col=                             | a column (=min-width: 0=)                                                                                |
-| =.mb-dp-dialog .mb-dp-area {=                          | the scrolling window body (=api.scrollArea=)                                                            |
-| =placeholder: 'Filter the setlist: song, guests'=      | the event window's setlist (right column); a second setlist at =placeholder: 'Filter the setlist: song, cover, guest'= |
-| =placeholder: 'Filter loaded release groups=           | the artist window's release groups (right column)                                                       |
-| =data-mb-keep-scroll=                                  | the table's scroll position survives a re-render; must keep working                                     |
+| Grep for                                                | What                                                                                                                   |
+|---------------------------------------------------------+------------------------------------------------------------------------------------------------------------------------|
+| =.mb-dp-dialog .mb-dg-vwrap {=                          | the 460 px cap                                                                                                         |
+| =function _dpListTableHtml=                             | the window's List table: filter, chips, =div.mb-dp-tbl > div.mb-dg-vwrap= (setlist, RGs, releases, …)                  |
+| =function _dpCompactTableHtml= (box with =mb-dg-cwrap=) | the Compact tables (Discogs sublabels, …), same wrapper                                                                |
+| =.mb-dp-dialog .mb-dp-x {=                              | the window body's two-column grid =minmax(0, .9fr) minmax(0, 1.1fr)=; one column under 640 px                          |
+| =.mb-dp-dialog .mb-dp-col=                              | a column (=min-width: 0=)                                                                                              |
+| =.mb-dp-dialog .mb-dp-area {=                           | the scrolling window body (=api.scrollArea=)                                                                           |
+| =placeholder: 'Filter the setlist: song, guests'=       | the event window's setlist (right column); a second setlist at =placeholder: 'Filter the setlist: song, cover, guest'= |
+| =placeholder: 'Filter loaded release groups=            | the artist window's release groups (right column)                                                                      |
+| =data-mb-keep-scroll=                                   | the table's scroll position survives a re-render; must keep working                                                    |
 
 Other =mb-dg-vwrap= users: =.mb-pop-medtable= (release media), the Discogs versions table
 (=data-mb-keep-scroll="dg-versions"=), the Discogs credits (=dg-a-<role>=).
 
 *** Suggestions (each a switch in the mockup)
 
-| Id  | What                                                                                                                                                                                                           | Limit                                                                                                                         | Cost                                                     | Verdict     |
-|-----+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+-------------------------------------------------------------------------------------------------------------------------------+----------------------------------------------------------+-------------|
-| A   | The right column becomes its own pane: =position: sticky; top: 0=, as tall as the window body (=100cqh= with the body as a size container), a flex column; heading/chips/filter take what they need, the table's =.mb-dg-vwrap= takes the rest (=flex: 1; max-height: none=) | the left column's tables keep 460 px                                                                                          | CSS only, nothing on the filter/sort/render path        | recommended |
-| B   | Fill to the bottom: a =ResizeObserver= stretches the last table of each column to the window's bottom edge                                                                                                      | a table starting below the bottom edge (Recordings on the event window) can't fill anything (240 px minimum); right column scrolls away | one observer, one measurement per resize                | option      |
-| C   | Proportional: =max-height: max(240px, 62cqh)= on every table                                                                                                                                                   | two tables in one column push the second off screen; the right table still stops short of the bottom                          | CSS only                                                 | weak        |
-| D   | A drag grip under each table (drag, double-click resets, ↑/↓ by 20 px), height remembered per table id                                                                                                          | nothing grows by itself                                                                                                       | a few pointer handlers, one saved number per table      | add-on      |
-| A+D | A for the right column, D's grips on the left column's tables                                                                                                                                                  | two behaviours side by side                                                                                                   | both                                                     | option      |
+| Id  | What                                                                                                                                                                                                                                                                         | Limit                                                                                                                                   | Cost                                               | Verdict     |
+|-----+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+-----------------------------------------------------------------------------------------------------------------------------------------+----------------------------------------------------+-------------|
+| A   | The right column becomes its own pane: =position: sticky; top: 0=, as tall as the window body (=100cqh= with the body as a size container), a flex column; heading/chips/filter take what they need, the table's =.mb-dg-vwrap= takes the rest (=flex: 1; max-height: none=) | the left column's tables keep 460 px                                                                                                    | CSS only, nothing on the filter/sort/render path   | recommended |
+| B   | Fill to the bottom: a =ResizeObserver= stretches the last table of each column to the window's bottom edge                                                                                                                                                                   | a table starting below the bottom edge (Recordings on the event window) can't fill anything (240 px minimum); right column scrolls away | one observer, one measurement per resize           | option      |
+| C   | Proportional: =max-height: max(240px, 62cqh)= on every table                                                                                                                                                                                                                 | two tables in one column push the second off screen; the right table still stops short of the bottom                                    | CSS only                                           | weak        |
+| D   | A drag grip under each table (drag, double-click resets, ↑/↓ by 20 px), height remembered per table id                                                                                                                                                                       | nothing grows by itself                                                                                                                 | a few pointer handlers, one saved number per table | add-on      |
+| A+D | A for the right column, D's grips on the left column's tables                                                                                                                                                                                                                | two behaviours side by side                                                                                                             | both                                               | option      |
 
 Under 640 px (one column) every variant keeps today's 460 px tables.
 
-*** Open questions (waiting for vzell)
+*** Open questions (answered 2026-10-31, see "answers to questions")
 
 1. Which variant: A (recommended), B, C, D or A+D?
 2. Should the left column grow too (Releases/Recordings, Links)?
@@ -75,10 +74,11 @@ Under 640 px (one column) every variant keeps today's 460 px tables.
 4. A for every right-column table (Discogs lists, a work's recordings, a label's releases), or
    only release groups and setlists?
 
-** Plan (approved 2026-10-30; step 1 done, waiting on the choice)
+** Plan (approved 2026-10-30; choice A+D made 2026-10-31, see "Design" below)
 
 1. [X] Mockup first (LAF, interactive): published, link above; recorded here.
-2. [ ] Branch =feat/poh-table-fill= from =main=. No =// @version= / changelog on the branch; entries
+2. [X] Branch =feat/poh-table-fill= from =main=. (2026-10-31: steps 3–5 done on the branch — A+D as in
+   "Design" above, fixture + mobile + Discogs specs, mutations 9/9, docs; step 6 pending.) No =// @version= / changelog on the branch; entries
    go in =ShowAllEntityData_CHANGELOG.wip.json= (=WIP.1=).
 3. [ ] Implement what was approved. For A, roughly:
    - make =.mb-dp-area= a size container (=container: … / size=) so =100cqh= is the body's height
@@ -119,3 +119,47 @@ page changes.
   answer the open questions, then continue at plan step 2.
 - Republishing the mockup from the other machine: publish =org/POH-table-sizing-mockups.html=
   with =url= = the artifact link above (read it first), so the link stays the same.
+
+** DONE answers to questions
+
+Work on the "** TODO answers to questions" at @org/POH-table-sizing.org
+
+1. Which variant: A+D
+2. Should the left column grow too (Releases/Recordings, Links): YES
+3. With D: remember a dragged height per table for every later window, or only for this window: PER TABLE FOR EVERY LATER WINDOW
+4. A for every right-column table (Discogs lists, a work's recordings, a label's releases), or only release groups and setlists: FOR EVERY RIGHT-COLUMN TABLE
+
+** Design (approved 2026-10-31, branch =feat/poh-table-fill=)
+
+Env: 2026-10-31T12:57:00+01:00 · vzell-lap · WSL2 Ubuntu 24.04.3 (Linux 6.18.54.1) · browser n/a (code reading)
+
+Answer 2 is read as: the left column grows by D (grips, a dragged height sticks); left tables do not
+fill the window by themselves. Say so if that is wrong.
+
+*** A: the right column fills the window (=_dpPaneFit()=)
+
+The right columns differ a lot (one List table; several Compact tables; tables inside
+=details.mb-dp-sec= or Discogs =section.mb-dg-sec=). The mockup's pure-CSS flex chain only works when
+the table is a direct child of the column, so A measures instead, which works for any nesting:
+
+- Which column: the second =.mb-dp-col= of a two-column =.mb-dp-x= laid out side by side, holding a
+  =.mb-dg-vwrap= with a table. One column (the =max-width: 640px= media query): A is off.
+- Pane: that column gets =mb-dp-pane= — sticky at the top of the window body, =align-self: start=,
+  =max-height: var(--mb-dp-pane-h)=, =overflow-y: auto= as the fallback.
+- The LAST =.mb-dg-vwrap= in the pane fills (=mb-dp-fill=): =max(160px, paneH − rest of the pane)=.
+  Other tables in the pane keep 460 px and get grips.
+- Runs after every paint (before =data-mb-keep-scroll= positions are restored), on a window resize
+  (a =ResizeObserver= on the body), and on =toggle=/=load= inside the body; one pass per frame.
+- =.mb-rg-wtable-wrap= (=_mbPopTableHtml()=) has no height cap: out of scope.
+
+*** D: grips under every other table
+
+- Every =.mb-dg-vwrap= with a table that is not the fill table: left column, the pane's other tables,
+  full-width sections, everything in the one-column layout. Only when the table scrolls or has a
+  saved height.
+- Key: =data-mb-keep-scroll=, else the closest =[data-mb-tbl]= id, with running parts folded
+  (=tag-kind-<slug>= → =tag-kind=, =ratings-<n>= → =ratings=, =dg-a-<role>= → =dg-a=).
+- Stored in one GM value =sa_dp_table_heights= ={ key: px }=, in the workspace export's geometry group.
+- Drag (min 120 px, label "312 px · 14 of 52 rows"), double-click resets, ↑/↓ ±20 px, Esc cancels a
+  drag without closing the window. Events delegated on the window body (repaints replace the grips).
+

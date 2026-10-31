@@ -2303,6 +2303,40 @@ test.describe('the Discogs artist and label windows (2026-10-18)', () => {
         await expect(card(page).locator('.mb-tt-title')).toHaveText('Max Weinberg');
         expect((await xhrFull(page)).map(r => r.url), 'asked again').toEqual(['https://api.discogs.com/artists/254876']);
     });
+
+    // The window's tables and its height (org/POH-table-sizing.org, A+D,
+    // 2026-10-31): every right-column table, a Discogs one too. The label
+    // window has its sides swapped (mb-dg-swap): the releases on the right.
+    test('a label\'s releases (right column) fill the window body and follow its height', async ({ page }) => {
+        await page.setViewportSize({ width: 1280, height: 1000 });
+        await openDiscogsEntities(page);
+        await ctrlHover(page, probe(page, 2));
+        await expect(card(page).locator('.mb-tt-title')).toHaveText('Columbia');
+        await page.keyboard.press('Space');
+        const rel = dialog(page).locator('[data-mb-dg-disco="label"]');
+        await expect(rel.locator('tbody > tr')).toHaveCount(100);
+        const read = () => page.evaluate(() => {
+            const area = document.querySelector('#mb-dp-dialog .mb-dp-area');
+            const pane = area.querySelector('.mb-dp-x.mb-dg-swap > .mb-dp-col:nth-child(2)');
+            const w = pane.querySelector('[data-mb-dg-disco="label"] .mb-dg-vwrap');
+            const pad = parseFloat(getComputedStyle(pane.parentElement).paddingBottom);
+            const a = area.getBoundingClientRect();
+            return {
+                fill: w.classList.contains('mb-dp-fill'),
+                pane: pane.classList.contains('mb-dp-pane'),
+                max: parseFloat(w.style.maxHeight) || 0,
+                gap: (a.top + area.clientTop + area.clientHeight - pad) - pane.getBoundingClientRect().bottom,
+            };
+        });
+        await page.evaluate(() => { document.getElementById('mb-dp-dialog').style.height = '600px'; });
+        await expect.poll(async () => (await read()).fill).toBe(true);
+        const low = await read();
+        expect(low.pane).toBe(true);
+        expect(Math.abs(low.gap), 'the pane ends where the window body ends').toBeLessThanOrEqual(4);
+        await page.evaluate(() => { document.getElementById('mb-dp-dialog').style.height = '850px'; });
+        await expect.poll(async () => (await read()).max - low.max).toBeGreaterThan(240);
+        expect((await read()).max - low.max).toBeLessThanOrEqual(260);
+    });
 });
 
 // U4: the four Springsteen sites' own parsers on links from MusicBrainz, and

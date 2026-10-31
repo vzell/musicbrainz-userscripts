@@ -1,0 +1,120 @@
+[
+  {
+    "name": "no right-column table fills the window",
+    "why": "A (org/POH-table-sizing.org): the pass stops before the fill, so the setlist keeps the 460 px cap and a taller window only adds empty paper.",
+    "edits": [
+      {
+        "find": "        if (!fill) return;\n        pane.classList.add('mb-dp-pane');",
+        "replace": "        if (fill || !fill) return;\n        pane.classList.add('mb-dp-pane');"
+      }
+    ],
+    "spec": "tests/fixtures/popup-mb.spec.js",
+    "grep": "right column's last table fills",
+    "expect": "fail"
+  },
+  {
+    "name": "the pane is not sticky",
+    "why": "A: scrolling the left column took the right table with it.",
+    "edits": [
+      {
+        "find": "            .mb-dp-dialog .mb-dp-x > .mb-dp-col.mb-dp-pane { position: sticky; top: var(--mb-dp-pane-top, 0px); align-self: start; }",
+        "replace": "            .mb-dp-dialog .mb-dp-x > .mb-dp-col.mb-dp-pane { position: static; top: var(--mb-dp-pane-top, 0px); align-self: start; }"
+      }
+    ],
+    "spec": "tests/fixtures/popup-mb.spec.js",
+    "grep": "right column's last table fills",
+    "expect": "fail"
+  },
+  {
+    "name": "a window resize does not size the tables again",
+    "why": "A: the table follows the window's height only through the body's ResizeObserver.",
+    "edits": [
+      {
+        "find": "        ro.observe(area);\n    }",
+        "replace": "        ro.disconnect();\n    }"
+      }
+    ],
+    "spec": "tests/fixtures/popup-mb.spec.js",
+    "grep": "right column's last table fills",
+    "expect": "fail"
+  },
+  {
+    "name": "the size pass runs after the scroll positions come back",
+    "why": "A: a position restored into the 460 px box before it shrinks to the window loses the bottom of the table on every repaint.",
+    "edits": [
+      {
+        "find": "        if (!_dpWin.hover) _dpWinFoot(null);\n        // The tables' final heights BEFORE their scroll positions come back:\n        // a position restored into a 460 px box that then grows (or one\n        // still at its full height) lands somewhere else.\n        _dpTblSizePass(area);\n        scrolls.forEach(([name, top, left]) => {\n            const el = area.querySelector(`[data-mb-keep-scroll=\"${name}\"]`);\n            if (el) {\n                el.scrollTop = top;\n                el.scrollLeft = left;\n            }\n        });",
+        "replace": "        if (!_dpWin.hover) _dpWinFoot(null);\n        scrolls.forEach(([name, top, left]) => {\n            const el = area.querySelector(`[data-mb-keep-scroll=\"${name}\"]`);\n            if (el) {\n                el.scrollTop = top;\n                el.scrollLeft = left;\n            }\n        });\n        _dpTblSizePass(area);"
+      }
+    ],
+    "spec": "tests/fixtures/popup-mb.spec.js",
+    "grep": "repaint keeps the filling table",
+    "expect": "fail"
+  },
+  {
+    "name": "a dragged height is not saved",
+    "why": "D: the height must be kept per table for every later window (vzell 2026-10-31, answer 3).",
+    "edits": [
+      {
+        "find": "            if (keep && d.moved) _dpTblHeightSave(d.key, d.cur);",
+        "replace": "            if (keep && d.moved && false) _dpTblHeightSave(d.key, d.cur);"
+      }
+    ],
+    "spec": "tests/fixtures/popup-mb.spec.js",
+    "grep": "a grip under the left column",
+    "expect": "fail"
+  },
+  {
+    "name": "a later window does not read the saved heights",
+    "why": "D: only the window the drag happened in would show the height.",
+    "edits": [
+      {
+        "find": "            const px = key && drag && drag.key === key && drag.cur != null ? drag.cur : (key ? heights[key] : null);",
+        "replace": "            const px = key && drag && drag.key === key && drag.cur != null ? drag.cur : null;"
+      }
+    ],
+    "spec": "tests/fixtures/popup-mb.spec.js",
+    "grep": "a grip under the left column",
+    "expect": "fail"
+  },
+  {
+    "name": "Esc during a drag reaches the window",
+    "why": "D: Esc must cancel the drag, not close the window with the drag half done.",
+    "edits": [
+      {
+        "find": "            ev.preventDefault();\n            ev.stopImmediatePropagation();\n            end(false);",
+        "replace": "            end(false);"
+      }
+    ],
+    "spec": "tests/fixtures/popup-mb.spec.js",
+    "grep": "a grip under the left column",
+    "expect": "fail"
+  },
+  {
+    "name": "the grip lets the page scroll on touch",
+    "why": "D on a phone: without touch-action none the finger scrolls the window and the drag is cancelled.",
+    "edits": [
+      {
+        "find": "                cursor: ns-resize; touch-action: none; user-select: none;",
+        "replace": "                cursor: ns-resize; user-select: none;"
+      }
+    ],
+    "spec": "tests/fixtures/popup-mb.mobile.spec.js",
+    "project": "chromium-mobile",
+    "grep": "one column, no pane",
+    "expect": "fail"
+  },
+  {
+    "name": "a Discogs right-column table does not fill",
+    "why": "Answer 4: every right-column table, not only MusicBrainz release groups and setlists. The pane is taken from the first two-column grid only when its columns stand side by side.",
+    "edits": [
+      {
+        "find": "            return getComputedStyle(x).gridTemplateColumns.trim().split(/\\s+/).length >= 2 ? cols[1] : null;",
+        "replace": "            return x.classList.contains('mb-dg-swap') ? null : cols[1];"
+      }
+    ],
+    "spec": "tests/fixtures/popup-ext.spec.js",
+    "grep": "fill the window body and follow",
+    "expect": "fail"
+  }
+]

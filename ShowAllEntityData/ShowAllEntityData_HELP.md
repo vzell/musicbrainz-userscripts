@@ -2528,6 +2528,19 @@ userscript lists that host, so Tampermonkey does not ask first).
   annotation's versions are tables you can sort by any column (a third click
   restores MusicBrainz's order), 25 rows a page with ‹ ›, and filter when
   they hold more than 25 rows.
+- **Table heights**: the last table in the window's right column (an artist's
+  release groups, an event's setlist, a work's recordings, a Discogs label's
+  releases, …) reaches down to the window's bottom edge. Make the window
+  taller and it shows more rows; scroll the window, and the right column stays
+  where it is while the left one moves. If the window is too low to leave the
+  table at least 160 px, it goes back to the usual size. Every other table that
+  scrolls has a grip under it: **drag** it to make the table taller or shorter
+  (a label shows the height and how many rows fit), **↑ / ↓** on the focused
+  grip changes it by 20 px, **Esc** while dragging cancels, and a
+  **double-click** puts it back to 460 px. The height is kept for that kind
+  of table in every later window (and travels with the settings export, under
+  panel geometry). On a phone the window is one column, so no table fills it,
+  but the grips work by touch.
 - **Extracted**: for a release, the whole tracklist as a table per medium
   under a header you can click to fold it ("CD 2 · 8 tracks · 52:09"), with one
   filter for all mediums and an Artist column where a track is not by the
