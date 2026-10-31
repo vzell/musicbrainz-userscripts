@@ -2,11 +2,24 @@
 
 Every version, newest first, with the technical details behind each change. For what changed for you in each published release, in plain words, see [What's new](ShowAllEntityData_RELEASES.md).
 
-**Months:** [October 2026](ShowAllEntityData_CHANGELOG/2026-10.md) · [September 2026](ShowAllEntityData_CHANGELOG/2026-09.md) · [August 2026](ShowAllEntityData_CHANGELOG/2026-08.md) · [July 2026](ShowAllEntityData_CHANGELOG/2026-07.md) · [June 2026](ShowAllEntityData_CHANGELOG/2026-06.md) · [May 2026](ShowAllEntityData_CHANGELOG/2026-05.md) · [April 2026](ShowAllEntityData_CHANGELOG/2026-04.md) · [March 2026 (1 of 2)](ShowAllEntityData_CHANGELOG/2026-03-1.md) · [March 2026 (2 of 2)](ShowAllEntityData_CHANGELOG/2026-03-2.md) · [February 2026](ShowAllEntityData_CHANGELOG/2026-02.md) · [January 2026](ShowAllEntityData_CHANGELOG/2026-01.md)
+**Months:** [November 2026](ShowAllEntityData_CHANGELOG/2026-11.md) · [October 2026](ShowAllEntityData_CHANGELOG/2026-10.md) · [September 2026](ShowAllEntityData_CHANGELOG/2026-09.md) · [August 2026](ShowAllEntityData_CHANGELOG/2026-08.md) · [July 2026](ShowAllEntityData_CHANGELOG/2026-07.md) · [June 2026](ShowAllEntityData_CHANGELOG/2026-06.md) · [May 2026](ShowAllEntityData_CHANGELOG/2026-05.md) · [April 2026](ShowAllEntityData_CHANGELOG/2026-04.md) · [March 2026 (1 of 2)](ShowAllEntityData_CHANGELOG/2026-03-1.md) · [March 2026 (2 of 2)](ShowAllEntityData_CHANGELOG/2026-03-2.md) · [February 2026](ShowAllEntityData_CHANGELOG/2026-02.md) · [January 2026](ShowAllEntityData_CHANGELOG/2026-01.md)
 
-This page shows the newest 100 of 1692 versions; the month pages hold all of them.
+This page shows the newest 100 of 1693 versions; the month pages hold all of them.
 
 ---
+
+## 9.99.1522 — 2026-11-01
+
+**🚀 Feature**
+
+- Internet Archive (archive.org): on a search page such as everything with the subject "Bruce Springsteen" in 1975, a new "Items" button lists every item of that search as one filterable, sortable table: picture, date, title, venue, source, type, and what archive.org only shows when you rest on a tile (views, favorites, reviews, when it was added, size, collection). The rows come first by date, from the Internet Archive's search API (100 a request, one a second); archive.org's own page holds none of them. Rest on an item's picture for a card with its own pictures (the uploader's scans of the cover, back, booklet or discs, or a video's stills); a click opens them full size in the viewer, and 🖼 shows the whole table's pictures. New settings section 🏛 Internet Archive, "Enable on archive.org" and "Art column: the item's pictures on hover", on by default. Mockup: https://claude.ai/artifact/4aXkdPxudwhuzACj4Wg81C
+- Link previews: a link to an archive.org item (archive.org/details/…), on MusicBrainz, Brucebase, archive.org or anywhere else previews look, has a card (date, venue, source, tracks and running time, the first songs) and a window on Space (facts, description, lineage, links to Brucebase and Databruce, the whole setlist with each song's length). A link to one track opens its show with that track marked. A video item shows its picture, thumbnails and files.
+- Play in the window: each song of an archive.org show has a ▶ and a video item a "Play here" tile, which play in archive.org's own player in the window, one at a time with YouTube's; Esc or "■ Stop" ends it. New setting "Play archive.org tracks and videos in the window", on by default.
+
+**📝 Docs**
+
+- Help: the list of supported sites said each other site was "off until you switch it on"; every site's switch has been on by default since 2026-10-26. Now it says so.
+
 
 ## 9.99.1521 — 2026-10-31
 
@@ -924,15 +937,8 @@ This page shows the newest 100 of 1692 versions; the month pages hold all of the
 - Release and release group collections: the "plus N other private collections" row no longer comes back as a table row after a sort or filter; it stays folded into the line above the table. An entity in no collection no longer offers a Collections button with nothing to show, and neither does a subscribers page without subscribers.
 
 
-## 9.99.1422 — 2026-10-22
-
-**🚀 Feature**
-
-- New pages: the "Found in N user collections" page of an area, artist, event, instrument, label, place, recording, series or work (the link in its sidebar) becomes a filterable Collection \| Editor table, like a release's. The "Subscribers" page of an artist, label, series or collection becomes a table of its subscribers, like an editor's, with the anonymous subscribers counted in the line above it.
-
-
 ---
 
-**Older versions:** [October 2026](ShowAllEntityData_CHANGELOG/2026-10.md) · [September 2026](ShowAllEntityData_CHANGELOG/2026-09.md) · [August 2026](ShowAllEntityData_CHANGELOG/2026-08.md) · [July 2026](ShowAllEntityData_CHANGELOG/2026-07.md) · [June 2026](ShowAllEntityData_CHANGELOG/2026-06.md) · [May 2026](ShowAllEntityData_CHANGELOG/2026-05.md) · [April 2026](ShowAllEntityData_CHANGELOG/2026-04.md) · [March 2026 (1 of 2)](ShowAllEntityData_CHANGELOG/2026-03-1.md) · [March 2026 (2 of 2)](ShowAllEntityData_CHANGELOG/2026-03-2.md) · [February 2026](ShowAllEntityData_CHANGELOG/2026-02.md) · [January 2026](ShowAllEntityData_CHANGELOG/2026-01.md)
+**Older versions:** [November 2026](ShowAllEntityData_CHANGELOG/2026-11.md) · [October 2026](ShowAllEntityData_CHANGELOG/2026-10.md) · [September 2026](ShowAllEntityData_CHANGELOG/2026-09.md) · [August 2026](ShowAllEntityData_CHANGELOG/2026-08.md) · [July 2026](ShowAllEntityData_CHANGELOG/2026-07.md) · [June 2026](ShowAllEntityData_CHANGELOG/2026-06.md) · [May 2026](ShowAllEntityData_CHANGELOG/2026-05.md) · [April 2026](ShowAllEntityData_CHANGELOG/2026-04.md) · [March 2026 (1 of 2)](ShowAllEntityData_CHANGELOG/2026-03-1.md) · [March 2026 (2 of 2)](ShowAllEntityData_CHANGELOG/2026-03-2.md) · [February 2026](ShowAllEntityData_CHANGELOG/2026-02.md) · [January 2026](ShowAllEntityData_CHANGELOG/2026-01.md)
 
 *Generated from ShowAllEntityData_CHANGELOG.json by scripts/build-changelog-pages.py — do not edit by hand.*
