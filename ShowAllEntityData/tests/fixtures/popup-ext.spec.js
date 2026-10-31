@@ -3028,3 +3028,130 @@ test.describe('Discogs windows: ✎ Editing history (org/POH-headerline.org item
         expect(await histLog(page), 'one request per page, anonymous').toEqual([[url, true], [`${url}?page=1`, true]]);
     });
 });
+
+// An archive.org item through its metadata API (the `iadetails` reader,
+// 2026-10-31, org/internet.archive.org; mockup
+// https://claude.ai/artifact/4aXkdPxudwhuzACj4Wg81C views 2–5): the card on a
+// hover, the window on Space, a link to one track sharing its show's request
+// and marked in its setlist, "Play here" in archive.org's own player. The
+// answers are real captures (scripts/build-ia-fixtures.py →
+// tests/fixtures/ext-ia-metadata-*.json). Mutations:
+// scripts/mutations/internet-archive.json.
+test.describe('archive.org items (the iadetails reader)', () => {
+    const IA_SHOW = 'bs1975-12-27.aud.jk.cb.hrubesh.flac16';
+    const IA_VIDEO = '1975-bruce-springsteen-widener-college-audience-cam';
+    const IA_MISS = 'this-item-does-not-exist-sa-fixture';
+    const IA = {
+        show: `https://archive.org/details/${IA_SHOW}`,
+        track: `https://archive.org/details/${IA_SHOW}/1-02.+Tenth+Avenue+Freeze-Out.flac`,
+        video: `https://archive.org/details/${IA_VIDEO}`,
+        miss: `https://archive.org/details/${IA_MISS}`,
+    };
+    const iaLog = (page) => page.evaluate(() => (window.__gmXhrLog || []).map(r => r.url).filter(u => u.startsWith('https://archive.org/')));
+
+    /**
+     * The event page with archive.org links in its annotation; archive.org's
+     * pictures and players answered locally.
+     *
+     * @param {import('@playwright/test').Page} page
+     * @param {Object} [settings]
+     * @returns {Promise<void>}
+     */
+    async function openIa(page, settings = {}) {
+        await openEvent(page, {
+            settings: { sa_pop_ext: true, ...settings },
+            responses: extAnswers(`ia-metadata-${IA_SHOW}`, `ia-metadata-${IA_VIDEO}`, `ia-metadata-${IA_MISS}`),
+        });
+        // On the page, after the load: the harness's own page routes win
+        // over the context's, and a picture that fails is removed from the
+        // window (its error listener).
+        await page.route(/^https:\/\/archive\.org\/(?:services\/img|download)\//, (route) => route.fulfill({ status: 200, contentType: 'image/png', body: PNG }));
+        await page.route('https://archive.org/embed/**', (route) => route.fulfill({ status: 200, contentType: 'text/html', body: '<html><body>player</body></html>' }));
+        await addAnnotationLinks(page, [IA.show, IA.track, IA.video, IA.miss]);
+    }
+
+    test('a show: the card on a hover (one request, its first songs); Space: its facts, links and the whole setlist', async ({ page }) => {
+        await openIa(page);
+        await ctrlHover(page, probe(page, 0));
+        const c = card(page);
+        await expect(c.locator('.mb-tt-title')).toHaveText('Bruce Springsteen - 1975-12-27, Tower Theater, Philadelphia');
+        await expect(c).toContainText('Internet Archive · Audio');
+        await expect(c.locator('.mb-dp-tracks li')).toHaveCount(6);
+        await expect(c.locator('.mb-dp-tracks li').nth(1)).toHaveText('2Tenth Avenue Freeze-Out');
+        await expect(c).toContainText('+ 13 more');
+        expect(await iaLog(page), 'one request: the item\'s metadata').toEqual([`https://archive.org/metadata/${IA_SHOW}`]);
+        await page.keyboard.press('Space');
+        const d = dialog(page);
+        await expect(d.locator(':scope > div > span').first()).toHaveText('Internet Archive');
+        const rows = d.locator('[data-mb-tbl="ia-setlist"] tbody tr');
+        await expect(rows).toHaveCount(19);
+        await expect(rows.nth(1)).toContainText('Tenth Avenue Freeze-Out');
+        await expect(rows.nth(1)).toContainText('3:50');
+        await expect(d.locator('.mb-dp-x.mb-dg-swap')).toHaveCount(1);
+        await expect(d).toContainText('Tower Theater, Philadelphia');
+        await expect(d.locator('a[href^="http://brucebase.wikidot.com/"], a[href^="https://brucebase.wikidot.com/"]').first()).toBeVisible();
+        await expect(d.locator('.mb-ia-desc')).not.toBeEmpty();
+        // Play is off (the fixtures' default): no ▶, no slot.
+        await expect(d.locator('.mb-yt-tile')).toHaveCount(0);
+        expect(await iaLog(page), 'still the one request').toEqual([`https://archive.org/metadata/${IA_SHOW}`]);
+    });
+
+    test('a link to one track: its show\'s request (no second one), the track in the card, its row marked in the window', async ({ page }) => {
+        await openIa(page);
+        await ctrlHover(page, probe(page, 0));
+        await expect(card(page).locator('.mb-tt-title')).toHaveText(/Tower Theater/);
+        await ctrlHover(page, probe(page, 1));
+        await expect(card(page)).toContainText('Tenth Avenue Freeze-Out · track 2 of 19 · 3:50');
+        expect(await iaLog(page)).toEqual([`https://archive.org/metadata/${IA_SHOW}`]);
+        await page.keyboard.press('Space');
+        const d = dialog(page);
+        await expect(d.locator(':scope > div > span').first()).toHaveText('Internet Archive track');
+        await expect(d.locator('[data-mb-tbl="ia-setlist"] tbody tr.mb-ia-mark')).toHaveCount(1);
+        await expect(d.locator('[data-mb-tbl="ia-setlist"] tbody tr.mb-ia-mark')).toContainText('Tenth Avenue Freeze-Out');
+    });
+
+    test('Play here: a song plays in archive.org\'s player above the setlist, one at a time; a video\'s tile plays the video; Esc stops', async ({ page }) => {
+        await openIa(page, { sa_ia_play_in_place: true });
+        await ctrlHover(page, probe(page, 0));
+        await expect(card(page).locator('.mb-tt-title')).toHaveText(/Tower Theater/);
+        await page.keyboard.press('Space');
+        const d = dialog(page);
+        const plays = d.locator('[data-mb-tbl="ia-setlist"] tbody .mb-yt-tile.mb-yt-mini');
+        await expect(plays).toHaveCount(19);
+        expect(await iaLog(page), 'no player asked before a click').toEqual([`https://archive.org/metadata/${IA_SHOW}`]);
+        await plays.nth(1).click();
+        const frame = d.locator('[data-mb-yt-slots] > .mb-yt-slot iframe.mb-yt-frame');
+        await expect(frame).toHaveAttribute('src', `https://archive.org/embed/${IA_SHOW}/1-02.%20Tenth%20Avenue%20Freeze-Out.flac?autoplay=1`);
+        await expect(frame).toHaveClass(/mb-yt-frame-audio/);
+        await expect(d.locator('.mb-yt-foot')).toContainText('Track');
+        await expect(d.locator('.mb-yt-foot a')).toHaveAttribute('href', `https://archive.org/details/${IA_SHOW}/1-02.%20Tenth%20Avenue%20Freeze-Out.flac`);
+        await expect(plays.nth(1)).toHaveAttribute('aria-pressed', 'true');
+        // A second song: one player still.
+        await plays.nth(2).click();
+        await expect(d.locator('iframe.mb-yt-frame')).toHaveCount(1);
+        await expect(frame).toHaveAttribute('src', /\/1-03\.%20Spirit%20In%20The%20Night\.flac\?autoplay=1$/);
+        await page.keyboard.press('Escape');
+        await expect(d.locator('iframe.mb-yt-frame')).toHaveCount(0);
+        await expect(d).toBeVisible();
+        // The video: a tile with its picture; the player under it.
+        await page.keyboard.press('Escape');
+        await expect(d).toBeHidden();
+        await ctrlHover(page, probe(page, 2));
+        await expect(card(page).locator('.mb-tt-title')).toHaveText('1975 Bruce Springsteen Widener College (Audience Cam)');
+        await page.keyboard.press('Space');
+        const tile = dialog(page).locator('.mb-yt-win .mb-yt-tile');
+        await expect(tile.locator('img')).toHaveAttribute('src', `https://archive.org/services/img/${IA_VIDEO}`);
+        await expect(dialog(page).locator('.mb-ia-thumbs img')).toHaveCount(12);
+        await expect(dialog(page).locator('[data-mb-tbl="ia-videos"] tbody tr')).not.toHaveCount(0);
+        await tile.click();
+        await expect(dialog(page).locator('iframe.mb-yt-frame')).toHaveAttribute('src', `https://archive.org/embed/${IA_VIDEO}?autoplay=1`);
+        await expect(dialog(page).locator('iframe.mb-yt-frame')).not.toHaveClass(/mb-yt-frame-audio/);
+    });
+
+    test('an item archive.org does not have: a dead link in its words, kept as such', async ({ page }) => {
+        await openIa(page);
+        await ctrlHover(page, probe(page, 3));
+        await expect(card(page)).toContainText('The Internet Archive has no such item.');
+        expect(await iaLog(page)).toEqual([`https://archive.org/metadata/${IA_MISS}`]);
+    });
+});

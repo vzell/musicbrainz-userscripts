@@ -1,0 +1,412 @@
+<title>Internet Archive in SAED</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/* Layout: an intro and a view switch on paper; each view mirrors what the
+   script would show (archive.org's search page with the SAED table, the hover
+   card, the Space window), with the open questions beside it.
+   Single light theme on purpose: it reproduces the script's "Liner notes" look. */
+:root {
+    --paper: #fbf8f1;
+    --paper-2: #f6f1e6;
+    --ink: #2b2622;
+    --rule: #d9cfbd;
+    --rule-soft: #ece4d4;
+    --muted: #7a6d5c;
+    --link: #2f4f8a;
+    --run: #2f5f9e;
+    --ok: #3f7a3a;
+    --warn: #9a6a00;
+    --white: #fff;
+    --ia: #1b1b1b;
+    --ia-fg: #e9e9e9;
+    --shadow: 0 10px 24px -8px rgba(60,40,20,.35);
+    --serif: Georgia, "Times New Roman", Times, serif;
+    --sans: system-ui, -apple-system, "Segoe UI", Arial, sans-serif;
+    --mono: ui-monospace, Consolas, "Liberation Mono", monospace;
+    color-scheme: light;
+}
+html, body { background: var(--paper); color: var(--ink); }
+body {
+    font: 14px/1.5 var(--serif);
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+    padding-block: 18px 40px;
+}
+.page { max-width: 1380px; margin: 0 auto; display: grid; gap: 16px; }
+.cap { font: 600 10.5px/1.3 var(--sans); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+h1 { font-size: 22px; line-height: 1.25; margin: 0; text-wrap: balance; }
+.intro p { margin: 4px 0 0; max-width: 78ch; }
+code { font: 12.5px var(--mono); background: var(--paper-2); padding: 0 4px; border-radius: 3px; }
+a { color: var(--link); }
+
+.seg { display: inline-flex; flex-wrap: wrap; }
+.seg button {
+    font: 600 11px/1 var(--sans); letter-spacing: .06em; text-transform: uppercase;
+    padding: 8px 11px; border: 1px solid var(--rule); background: var(--white); color: var(--ink); cursor: pointer; margin-left: -1px;
+}
+.seg button:first-child { margin-left: 0; border-radius: 3px 0 0 3px; }
+.seg button:last-child { border-radius: 0 3px 3px 0; }
+.seg button[aria-pressed="true"] { background: var(--ink); border-color: var(--ink); color: var(--paper); position: relative; }
+.seg button:hover:not([aria-pressed="true"]) { background: var(--paper-2); }
+button:focus-visible, input:focus-visible, a:focus-visible, th:focus-visible { outline: 2px solid var(--run); outline-offset: 1px; }
+
+.layout { display: grid; grid-template-columns: minmax(0, 1fr) 330px; gap: 16px; align-items: start; }
+@media (max-width: 1000px) { .layout { grid-template-columns: minmax(0, 1fr); } }
+.notes { border: 1px solid var(--rule); border-radius: 4px; background: var(--white); padding: 12px 14px; display: grid; gap: 10px; font-size: 13.5px; }
+.notes h2 { margin: 0; font: 600 11px/1.3 var(--sans); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.notes ol { margin: 0; padding-left: 1.3em; display: grid; gap: 6px; }
+.notes .q b { display: block; }
+.notes .rec { color: var(--ok); font-style: italic; }
+.notes p { margin: 0; }
+
+/* archive.org page stand-in */
+.site { border: 1px solid var(--rule); border-radius: 4px; overflow: hidden; background: var(--white); min-width: 0; }
+.ia-bar { background: var(--ia); color: var(--ia-fg); font: 600 12px/1 var(--sans); letter-spacing: .12em; padding: 10px 14px; display: flex; gap: 14px; align-items: center; }
+.ia-bar .crumb { font-weight: 400; letter-spacing: 0; color: #b9b9b9; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.ia-body { padding: 14px; display: grid; gap: 10px; }
+.h1row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.h1row h3 { margin: 0; font-size: 20px; }
+.saed { display: inline-flex; border: 1px solid #b0bec5; border-radius: 6px; overflow: hidden; font: 12px/1 var(--sans); }
+.saed span { padding: 6px 9px; background: #eceff1; color: #263238; }
+.saed span + span { border-left: 1px solid #b0bec5; }
+.saed .on { background: #2f5f9e; color: #fff; }
+.h2row { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; border-bottom: 1px solid var(--rule); padding-bottom: 6px; }
+.h2row h4 { margin: 0; font-size: 16px; }
+.stat { font: 12px var(--sans); color: var(--muted); font-variant-numeric: tabular-nums; }
+.gf { font: 13px var(--serif); padding: 4px 8px; border: 1px solid var(--rule); border-radius: 3px; width: min(320px, 100%); }
+.chips { display: flex; flex-wrap: wrap; gap: 4px; }
+.chip { font: 12px var(--sans); border: 1px solid var(--rule); background: var(--white); border-radius: 999px; padding: 2px 9px; cursor: pointer; font-variant-numeric: tabular-nums; }
+.chip .n { color: var(--muted); margin-left: 4px; }
+.chip[aria-pressed="true"] { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+.chip[aria-pressed="true"] .n { color: var(--rule); }
+.twrap { overflow: auto; max-height: 560px; border: 1px solid var(--rule); border-radius: 3px; }
+table.tbl { width: 100%; border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; }
+table.tbl th {
+    position: sticky; top: 0; z-index: 1; background: #f4eee2; text-align: left; white-space: nowrap; cursor: pointer; user-select: none;
+    font: 600 10.5px var(--sans); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); padding: 6px 8px; border-bottom: 1px solid var(--rule);
+}
+table.tbl th[aria-sort="ascending"]::after { content: " \25B2"; }
+table.tbl th[aria-sort="descending"]::after { content: " \25BC"; }
+table.tbl td { padding: 4px 8px; border-bottom: 1px solid #f0eadf; vertical-align: top; }
+table.tbl tbody tr:hover td { background: #fbf5e7; }
+td.num { text-align: right; white-space: nowrap; }
+td.nowrap { white-space: nowrap; }
+.thumb { width: 34px; height: 34px; border-radius: 2px; display: grid; place-items: center; font: 600 10px var(--sans); color: #fff; letter-spacing: .04em; }
+.t-audio { background: #6d5a8c; } .t-movies { background: #8c4a3a; } .t-texts { background: #4a6a5a; } .t-other { background: #777; }
+.pill { display: inline-block; font: 600 10.5px/1.5 var(--sans); padding: 0 6px; border: 1px solid var(--rule); border-radius: 999px; color: var(--muted); background: var(--paper); white-space: nowrap; }
+.pill.aud { color: #7a4a00; border-color: #e0c48a; background: #fbf2de; }
+.pill.sbd { color: #2f5f2a; border-color: #b8d6b0; background: #eef6ec; }
+.pill.fm { color: #2f4f8a; border-color: #b9c8e4; background: #edf2fa; }
+.dim { color: var(--muted); }
+.hl { background: #fff1a8; }
+.newcol { background: #fdf7e8; }
+th.newcol { background: #f3e6c5; }
+
+/* hover card */
+.card {
+    width: min(430px, 100%); border: 1px solid var(--rule); border-radius: 4px; background: var(--paper); box-shadow: var(--shadow);
+    padding: 10px 12px; display: grid; gap: 6px; font-size: 13.5px;
+}
+.kh { display: flex; gap: 6px; align-items: center; font: 600 10.5px var(--sans); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.kh .g { width: 16px; height: 16px; border-radius: 3px; background: var(--ia); color: #fff; display: grid; place-items: center; font-size: 9px; }
+.ct { font-weight: 700; font-size: 15px; line-height: 1.3; }
+.kv { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 1px 10px; margin: 0; }
+.kv dt { font-style: italic; color: var(--muted); }
+.kv dd { margin: 0; min-width: 0; }
+.songs { margin: 0; padding: 0; list-style: none; columns: 2; column-gap: 16px; }
+.songs li { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; break-inside: avoid; }
+.songs .p { color: var(--muted); margin-right: 6px; font-variant-numeric: tabular-nums; }
+.foot { font: 12px var(--sans); color: var(--muted); border-top: 1px solid var(--rule-soft); padding-top: 5px; }
+.stage { display: grid; gap: 12px; padding: 14px; border: 1px dashed var(--rule); border-radius: 4px; background: var(--paper-2); }
+.stage .ctx { font-size: 13px; }
+.stage .ctx a { text-decoration: underline dotted; }
+
+/* window */
+.win { border: 1px solid var(--rule); border-radius: 6px; background: var(--paper); box-shadow: var(--shadow); overflow: hidden; min-width: 0; }
+.wbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 8px 12px; border-bottom: 1px solid var(--rule); background: var(--white); }
+.wbar .t { font: 600 14px var(--sans); display: flex; gap: 6px; align-items: center; min-width: 0; }
+.wbar .t .path { color: var(--muted); font-weight: 400; font-style: italic; }
+.wbar .sp { flex: 1; }
+.tb { font: 12px var(--sans); border: 1px solid #ccc; border-radius: 3px; background: #fff; padding: 4px 8px; }
+.tb.on { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+.wx { display: grid; grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr); gap: 18px; padding: 14px 18px; }
+@media (max-width: 760px) { .wx { grid-template-columns: minmax(0, 1fr); } }
+.wx h5 { margin: 12px 0 4px; font: 600 11px/1.3 var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.wx h5:first-child { margin-top: 0; }
+.wt { font-weight: 700; font-size: 1.2em; line-height: 1.3; }
+.desc { white-space: pre-wrap; max-height: 9.5em; overflow: auto; font-size: 13px; padding-right: 6px; border-left: 3px solid var(--rule-soft); padding-left: 8px; }
+.links { display: grid; gap: 2px; }
+.links a::after { content: " \2197"; color: var(--muted); font-size: .8em; }
+.links a.here::after { content: ""; }
+.links a.here { text-decoration: underline dotted; }
+.vtools { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 4px 0 6px; }
+.play { font: 12px var(--sans); border: 1px solid var(--rule); background: var(--white); border-radius: 3px; padding: 1px 6px; cursor: pointer; color: var(--run); }
+.player { border: 1px solid var(--rule); border-radius: 4px; background: #222; color: #ddd; padding: 10px; font: 12px var(--sans); display: grid; gap: 6px; }
+.player .bar { height: 4px; background: #555; border-radius: 2px; overflow: hidden; }
+.player .bar i { display: block; width: 32%; height: 100%; background: #9ab8e6; }
+.wfoot { padding: 5px 12px; border-top: 1px solid var(--rule); background: var(--paper-2); color: var(--muted); font: 12px var(--sans); }
+.vid { aspect-ratio: 16 / 9; max-width: 100%; background: repeating-linear-gradient(45deg, #2a2a2a 0 10px, #303030 10px 20px); border-radius: 4px; display: grid; place-items: center; color: #ccc; font: 13px var(--sans); }
+.strip { display: flex; gap: 4px; overflow-x: auto; }
+.strip i { flex: none; width: 64px; height: 36px; border-radius: 2px; background: #3a3a3a; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<div class="page">
+    <div class="intro">
+        <div class="cap">org/internet.archive.org · mockup v1 · real data from archive.org, read 2026-10-31</div>
+        <h1>Internet Archive in SAED</h1>
+        <p>A new site for the script, like Brucebase and Discogs: its own switch, on by default. A year's search page gets the
+            consolidated table, and every <code>archive.org/details/…</code> link (on archive.org, MusicBrainz, Brucebase, …) gets
+            the hover card and the Space window. Rows come from the Internet Archive's search API, because the search page is
+            drawn by scripts and holds no rows of its own (its Tile and Compact list views are the same saved HTML).</p>
+    </div>
+    <div class="seg" id="views" role="group" aria-label="View">
+        <button type="button" data-v="list" aria-pressed="true">1 · Year list</button>
+        <button type="button" data-v="card" aria-pressed="false">2 · Hover card</button>
+        <button type="button" data-v="show" aria-pressed="false">3 · Window: a show</button>
+        <button type="button" data-v="video" aria-pressed="false">4 · Window: a video</button>
+        <button type="button" data-v="track" aria-pressed="false">5 · A track link</button>
+    </div>
+    <div class="layout">
+        <div id="stage"></div>
+        <aside class="notes" id="notes"></aside>
+    </div>
+</div>
+
+<script>
+const DATA = /*DATA*/null;
+
+const $ = (s, r = document) => r.querySelector(s);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const num = n => Number(n || 0).toLocaleString('en-US');
+const size = b => { const g = (b || 0) / 1e9; return g >= 1 ? `${g.toFixed(1)} GB` : `${Math.round((b || 0) / 1e6)} MB`; };
+const dur = s => { s = Math.round(Number(s) || 0); const h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), x = s % 60; return (h ? `${h}:${String(m).padStart(2, '0')}` : `${m}`) + `:${String(x).padStart(2, '0')}`; };
+const srcPill = s => { const t = String(s || ''); const k = /aud/i.test(t) ? 'aud' : /sbd|soundboard/i.test(t) ? 'sbd' : /fm|broadcast/i.test(t) ? 'fm' : ''; return t ? `<span class="pill ${k}">${esc(t)}</span>` : '<span class="dim">—</span>'; };
+const TYPE = { audio: 'Audio', movies: 'Video', texts: 'Text' };
+const typeOf = r => TYPE[r.type] || r.type;
+const COLL = { radionowhere: 'Radio Nowhere', roiocollection: 'ROIO', folksoundomy: 'Community Audio', opensource_movies: 'Community Video', musicmagazines: 'Music magazines' };
+
+let view = 'list';
+const ui = { q: '', type: [], sort: { key: 'date', dir: 1 } };
+
+const NOTES = {
+    list: `<h2>Year list · pageType <code>ia-search</code></h2>
+        <p>The button reads every row of the page's own query (<code>subject:"Bruce Springsteen"</code>, year 1975: 73 items) from
+        <code>advancedsearch.php</code>, 100 a request; 2016 has 1,064, so 11 requests at one a second. Shaded columns are the ones
+        archive.org shows only when you rest on a tile.</p>
+        <ol>
+        <li class="q"><b>Q1 · Which searches?</b> Any <code>archive.org/search?…</code> page (the query and filters it carries),
+        or only a subject + year page like these? <span class="rec">Recommended: any search; the year pages are one case of it.</span></li>
+        <li class="q"><b>Q2 · Which media types?</b> 1975 is 69 audio and 4 video; 2000 also has 4 texts (Backstreets magazines).
+        <span class="rec">Recommended: all, with a Type chip per kind (shown here).</span></li>
+        <li class="q"><b>Q3 · The hover columns.</b> Views (downloads), Favorites, Reviews/rating, Added, Size, Collection, Topics,
+        Description. archive.org draws that hover pane inside its own page code, which the saved HTML cannot show me, so this list is
+        from the API's fields. <span class="rec">Tell me any it shows that is missing here.</span></li>
+        <li class="q"><b>Q4 · First order.</b> By date (here); the site sorts by title.</li>
+        </ol>`,
+    card: `<h2>Hover card · reader <code>iadetails</code></h2>
+        <p>One request to <code>archive.org/metadata/&lt;id&gt;</code> (anonymous, one a second for the host). The tracklist,
+        venue, source and the Brucebase link are all in it, so the card needs nothing else.</p>
+        <ol>
+        <li class="q"><b>Q5 · Where?</b> Every <code>archive.org/details/…</code> link the link previews see: in this table, on
+        MusicBrainz (an event's or release's archive.org link), on Brucebase and the other Springsteen sites.
+        <span class="rec">Recommended: everywhere, under "Preview links to other sites".</span></li>
+        <li class="q"><b>Q6 · On a hover or on Space?</b> The metadata is JSON and small (a few KB without the file list).
+        <span class="rec">Recommended: the card on a hover, like Discogs' API cards.</span></li>
+        </ol>`,
+    show: `<h2>Window · a show</h2>
+        <p>Left: what the item says about itself and its links; Brucebase and Databruce open in the window (both have readers
+        already, Databruce through the generic one). Right: the setlist as a List table, which fills the window's height.</p>
+        <ol>
+        <li class="q"><b>Q7 · Play here?</b> archive.org offers an embeddable player (<code>archive.org/embed/&lt;id&gt;</code>),
+        as YouTube does. ▶ on a row would play that track in the window, as YouTube's "Play here" tiles do.
+        <span class="rec">Your call: it plays someone else's upload inside MusicBrainz' page.</span></li>
+        <li class="q"><b>Q8 · The description.</b> Shown clamped, with ▾ to open (here). Often it is the lineage and the taper's
+        notes.</li>
+        </ol>`,
+    video: `<h2>Window · a video</h2>
+        <p>A video item has no tracklist: the window shows its files (MPEG4 and the 512 kb h.264 copy) and the thumbnails archive.org
+        made, in the cover strip's style.</p>
+        <ol>
+        <li class="q"><b>Q9 · Thumbnails.</b> The Widener video has 62. Show a strip of the first 12 (Space draws all, as in the
+        Cover art strip)?</li>
+        </ol>`,
+    track: `<h2>A link to one track</h2>
+        <p><code>/details/bs1975-12-27…/1-02.+Tenth+Avenue+Freeze-Out.flac</code>: the same one request as its show; the card names the
+        track and where it is in the show, the window opens on the show with that row marked.</p>
+        <ol><li class="q"><b>Q10 · Window for a track link:</b> the show with the track marked (here), or the track alone?</li></ol>`,
+};
+
+/** Draws the year-list view. */
+function drawList() {
+    const rows = DATA.rows;
+    const counts = {};
+    rows.forEach(r => { counts[typeOf(r)] = (counts[typeOf(r)] || 0) + 1; });
+    const q = ui.q.trim().toLowerCase();
+    let shown = rows.filter(r => (!ui.type.length || ui.type.includes(typeOf(r))) &&
+        (!q || [r.title, r.venue, r.source, r.date, r.desc, (r.subj || []).join(' ')].join(' ').toLowerCase().includes(q)));
+    const k = ui.sort.key, d = ui.sort.dir;
+    shown = shown.slice().sort((a, b) => {
+        const x = a[k], y = b[k];
+        if (typeof x === 'number' || typeof y === 'number') return ((x || 0) - (y || 0)) * d;
+        return String(x || '').localeCompare(String(y || '')) * d;
+    });
+    const hl = t => { const s = esc(t); if (!q) return s; const i = s.toLowerCase().indexOf(q); return i < 0 ? s : s.slice(0, i) + '<mark class="hl">' + s.slice(i, i + q.length) + '</mark>' + s.slice(i + q.length); };
+    const cols = [
+        ['art', '', false], ['date', 'Date', false], ['title', 'Title', false], ['venue', 'Venue', false], ['source', 'Source', false],
+        ['type', 'Type', false], ['dl', 'Views', true], ['favs', 'Favs', true], ['rev', 'Reviews', true], ['added', 'Added', true],
+        ['size', 'Size', true], ['coll', 'Collection', true],
+    ];
+    const th = c => c[0] === 'art' ? '<th></th>' : `<th class="${c[2] ? 'newcol' : ''}" tabindex="0" data-k="${c[0]}" aria-sort="${ui.sort.key === c[0] ? (ui.sort.dir > 0 ? 'ascending' : 'descending') : 'none'}">${c[1]}</th>`;
+    const td = r => `<tr>
+        <td><div class="thumb t-${['audio', 'movies', 'texts'].includes(r.type) ? r.type : 'other'}">${r.type === 'movies' ? '▶' : r.type === 'texts' ? 'TXT' : '♪'}</div></td>
+        <td class="nowrap">${hl(r.date)}</td>
+        <td><a href="https://archive.org/details/${esc(r.id)}" target="_blank" rel="noopener" data-card="${esc(r.id)}">${hl(r.title)}</a></td>
+        <td>${hl(r.venue) || '<span class="dim">—</span>'}</td>
+        <td>${srcPill(r.source)}</td>
+        <td>${esc(typeOf(r))}</td>
+        <td class="num newcol">${num(r.dl)}</td>
+        <td class="num newcol">${r.favs || ''}</td>
+        <td class="num newcol">${r.rev ? `${r.rev} · ${'★'.repeat(Math.round(r.rating || 0))}` : ''}</td>
+        <td class="nowrap newcol">${esc(r.added)}</td>
+        <td class="num newcol">${size(r.size)}</td>
+        <td class="newcol">${(r.coll || []).map(c => esc(COLL[c] || c)).join(', ')}</td></tr>`;
+    $('#stage').innerHTML = `<div class="site">
+        <div class="ia-bar">INTERNET ARCHIVE <span class="crumb">archive.org/search?query=subject:"Bruce Springsteen"&amp;and[]=year:"1975"</span></div>
+        <div class="ia-body">
+            <div class="h1row"><h3>Search: subject "Bruce Springsteen" · 1975</h3>
+                <span class="saed"><span class="on">🧮 Items</span><span>☰ SAED ▾</span></span></div>
+            <div class="h2row"><h4>Items</h4><span class="stat">${shown.length} of ${DATA.total} items</span>
+                <input class="gf" id="gf" type="search" placeholder="Filter: title, venue, source, description…" value="${esc(ui.q)}"></div>
+            <div class="chips"><span class="cap" style="align-self:center">Type</span>${Object.entries(counts).map(([t, n]) =>
+                `<button type="button" class="chip" data-type="${esc(t)}" aria-pressed="${ui.type.includes(t)}">${esc(t)}<span class="n">${n}</span></button>`).join('')}</div>
+            <div class="twrap"><table class="tbl"><thead><tr>${cols.map(th).join('')}</tr></thead><tbody>${shown.map(td).join('')}</tbody></table></div>
+            <div class="stat">Shaded: the columns archive.org shows only in a tile's hover pane. A title opens the item on archive.org; Ctrl+hover shows its card (view 2), Space its window (view 3).</div>
+        </div></div>`;
+    const gf = $('#gf');
+    gf.addEventListener('input', () => { ui.q = gf.value; const pos = gf.selectionStart; drawList(); const n = $('#gf'); n.focus(); n.setSelectionRange(pos, pos); });
+}
+
+/** The hover card of an item, as HTML. */
+function cardHtml(id, trackName) {
+    const it = DATA.items[id];
+    const total = it.tracks.reduce((s, t) => s + Number(t.len || 0), 0);
+    const tr = trackName ? it.tracks.find(t => t.name === trackName) : null;
+    const coll = (Array.isArray(it.collection) ? it.collection : [it.collection]).filter(Boolean).map(c => COLL[c] || c);
+    const row = DATA.rows.find(r => r.id === id) || {};
+    return `<div class="card">
+        <div class="kh"><span class="g">IA</span>Internet Archive · ${tr ? 'Track' : (it.mediatype === 'movies' ? 'Video' : 'Audio')}</div>
+        ${tr ? `<div class="ct">${esc(tr.title)}</div><div class="dim">Track ${Number(tr.n)} of ${it.tracks.length} · ${dur(tr.len)} · in:</div>` : ''}
+        <div class="${tr ? '' : 'ct'}">${esc(it.title)}</div>
+        <div>${srcPill(it.source)} <span class="pill">${it.tracks.length} tracks</span> <span class="pill">${dur(total)}</span></div>
+        <dl class="kv"><dt>Date</dt><dd>${esc(it.date)}</dd><dt>Venue</dt><dd>${esc(it.venue || '—')}</dd>
+            <dt>Collection</dt><dd>${esc(coll.join(', '))}</dd><dt>Views</dt><dd>${num(row.dl)} · ${row.favs || 0} favorites</dd></dl>
+        ${tr ? '' : `<ul class="songs">${it.tracks.slice(0, 6).map(t => `<li><span class="p">${Number(t.n)}</span>${esc(t.title)}</li>`).join('')}</ul>
+        <div class="dim">+ ${it.tracks.length - 6} more</div>`}
+        <div class="foot">archive.org · fetched now · Space: ${tr ? 'the show, this track marked' : 'the whole setlist'}</div></div>`;
+}
+
+/** Draws the hover-card view. */
+function drawCard() {
+    const id = 'bs1975-12-27.aud.jk.cb.hrubesh.flac16';
+    $('#stage').innerHTML = `<div class="stage">
+        <div class="ctx">On MusicBrainz, an event's links: … <a href="https://archive.org/details/${id}" target="_blank" rel="noopener">archive.org</a> · Brucebase · setlist.fm …
+        The pointer rests on the archive.org link with Ctrl held:</div>${cardHtml(id)}</div>`;
+}
+
+/** The setlist table of a show, as HTML. */
+function setlistHtml(it, mark) {
+    const total = it.tracks.reduce((s, t) => s + Number(t.len || 0), 0);
+    return `<h5>Setlist · ${it.tracks.length} tracks · ${dur(total)}</h5>
+        <div class="vtools"><input class="gf" placeholder="Filter the setlist: song" aria-label="Filter the setlist"></div>
+        <div class="twrap" style="max-height:none"><table class="tbl"><thead><tr><th aria-sort="none">#</th><th aria-sort="none">Song</th><th aria-sort="none">Length</th><th></th></tr></thead><tbody>
+        ${it.tracks.map(t => `<tr${t.name === mark ? ' style="outline:2px solid var(--run);outline-offset:-2px"' : ''}><td class="num">${Number(t.n)}</td><td>${esc(t.title)}</td><td class="num">${dur(t.len)}</td>
+            <td><button type="button" class="play" aria-label="Play ${esc(t.title)} here">▶</button></td></tr>`).join('')}
+        </tbody></table></div>`;
+}
+
+/** Draws a show's window. */
+function drawShow(mark) {
+    const id = 'bs1975-12-27.aud.jk.cb.hrubesh.flac16';
+    const it = DATA.items[id];
+    const row = DATA.rows.find(r => r.id === id) || {};
+    const coll = (Array.isArray(it.collection) ? it.collection : [it.collection]).filter(Boolean).map(c => COLL[c] || c);
+    $('#stage').innerHTML = `<div class="win">
+        <div class="wbar"><span class="t">Internet Archive <span class="path">› ${esc(it.date)} Tower Theater</span></span><span class="sp"></span>
+            <button class="tb" type="button">‹</button><span class="dim" style="font:12px var(--mono)">4 / 73</span><button class="tb" type="button">›</button>
+            <span class="seg"><button class="tb on" type="button">Extracted</button><button class="tb" type="button">Live page</button></span>
+            <button class="tb" type="button">⟳</button><button class="tb" type="button">↗</button><button class="tb" type="button">✕</button></div>
+        <div class="wx"><div>
+            <div class="wt">${esc(it.title)}</div>
+            <div style="margin:4px 0">${srcPill(it.source)} <span class="pill">${it.files} files</span> <span class="pill">${size(it.size)}</span></div>
+            <h5>Facts</h5>
+            <dl class="kv"><dt>Date</dt><dd>${esc(it.date)}</dd><dt>Venue</dt><dd>${esc(it.venue)}</dd><dt>Source</dt><dd>${esc(it.source)}</dd>
+                <dt>Collection</dt><dd>${esc(coll.join(', '))}</dd><dt>Uploaded by</dt><dd>${esc(it.uploader || '—')}</dd>
+                <dt>Added</dt><dd>${esc((it.addeddate || '').slice(0, 10))}</dd><dt>Views</dt><dd>${num(row.dl)} · ${row.favs || 0} favorites</dd></dl>
+            <h5>Description ▾</h5><div class="desc">${esc(it.desc)}</div>
+            <h5>Links</h5><div class="links">
+                ${it.brucebase_url ? `<a class="here" href="${esc(it.brucebase_url)}" target="_blank" rel="noopener">Brucebase · this show</a>` : ''}
+                ${it.databruce_url ? `<a class="here" href="${esc(it.databruce_url)}" target="_blank" rel="noopener">Databruce · this show</a>` : ''}
+                <a href="https://archive.org/details/${esc(id)}" target="_blank" rel="noopener">archive.org · the item page</a></div>
+            <div class="player" style="margin-top:12px"><div>▶ Playing here: 2. Tenth Avenue Freeze-Out · 1:14 / 3:50</div><div class="bar"><i></i></div><div class="dim" style="color:#aaa">Q7: archive.org's own player, embedded, as YouTube's "Play here"</div></div>
+        </div><div>${setlistHtml(it, mark)}</div></div>
+        <div class="wfoot">Rest on a link or an image: this line says what a click does. · H history · Esc close</div></div>`;
+}
+
+/** Draws a video's window. */
+function drawVideo() {
+    const id = '1975-bruce-springsteen-widener-college-audience-cam';
+    const it = DATA.items[id];
+    const row = DATA.rows.find(r => r.id === id) || {};
+    $('#stage').innerHTML = `<div class="win">
+        <div class="wbar"><span class="t">Internet Archive <span class="path">› Widener College (video)</span></span><span class="sp"></span>
+            <span class="seg"><button class="tb on" type="button">Extracted</button><button class="tb" type="button">Live page</button></span><button class="tb" type="button">↗</button><button class="tb" type="button">✕</button></div>
+        <div class="wx"><div>
+            <div class="wt">${esc(it.title)}</div>
+            <h5>Facts</h5>
+            <dl class="kv"><dt>Date</dt><dd>${esc(it.date)} <span class="dim">(year only)</span></dd><dt>Type</dt><dd>Video</dd>
+                <dt>Collection</dt><dd>Community Video</dd><dt>Added</dt><dd>${esc((it.addeddate || '').slice(0, 10))}</dd>
+                <dt>Views</dt><dd>${num(row.dl)} · ${row.favs || 0} favorites</dd><dt>Size</dt><dd>${size(it.size)}</dd></dl>
+            <h5>Description</h5><div class="desc">${esc(it.desc || '—')}</div>
+        </div><div>
+            <div class="vid">▶ archive.org player (Q7)</div>
+            <h5>Thumbnails · 62 (Q9)</h5><div class="strip">${'<i></i>'.repeat(12)}</div>
+            <h5>Files · ${it.videos.length}</h5>
+            <table class="tbl"><thead><tr><th>File</th><th>Format</th><th>Length</th><th>Size</th></tr></thead><tbody>
+            ${it.videos.map(v => `<tr><td>${esc(v.name)}</td><td>${esc(v.format)}</td><td class="num">${v.len ? dur(v.len) : '—'}</td><td class="num">${size(v.size)}</td></tr>`).join('')}</tbody></table>
+        </div></div></div>`;
+}
+
+/** Draws the track-link view: its card, then its window. */
+function drawTrack() {
+    const id = 'bs1975-12-27.aud.jk.cb.hrubesh.flac16';
+    const name = DATA.items[id].tracks[1].name;
+    $('#stage').innerHTML = `<div class="stage"><div class="ctx">A link to one file of the show:
+        <a href="https://archive.org/details/${id}/${encodeURIComponent(name)}" target="_blank" rel="noopener">…/${esc(name)}</a></div>
+        ${cardHtml(id, name)}<div class="cap">Space, then:</div><div id="trackwin"></div></div>`;
+    const keep = $('#stage').innerHTML;
+    drawShow(name);
+    const win = $('#stage').innerHTML;
+    $('#stage').innerHTML = keep;
+    $('#trackwin').innerHTML = win;
+}
+
+/** Switches the view. */
+function show(v) {
+    view = v;
+    document.querySelectorAll('#views button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.v === v)));
+    $('#notes').innerHTML = NOTES[v];
+    ({ list: drawList, card: drawCard, show: () => drawShow(''), video: drawVideo, track: drawTrack })[v]();
+}
+
+document.getElementById('views').addEventListener('click', e => { const b = e.target.closest('button[data-v]'); if (b) show(b.dataset.v); });
+document.getElementById('stage').addEventListener('click', (e) => {
+    const th = e.target.closest('th[data-k]');
+    if (th) { const k = th.dataset.k; ui.sort = { key: k, dir: ui.sort.key === k ? -ui.sort.dir : 1 }; drawList(); return; }
+    const chip = e.target.closest('.chip[data-type]');
+    if (chip) { const t = chip.dataset.type; ui.type = ui.type.includes(t) ? ui.type.filter(x => x !== t) : (e.ctrlKey || e.metaKey ? ui.type.concat(t) : [t]); drawList(); }
+});
+document.getElementById('stage').addEventListener('keydown', (e) => { const th = e.target.closest('th[data-k]'); if (th && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); th.click(); } });
+try { const h = (location.hash || '').slice(1); if (NOTES[h]) view = h; } catch (_) { /* no hash */ }
+show(view);
+</script>
