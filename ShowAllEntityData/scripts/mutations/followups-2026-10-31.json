@@ -1,0 +1,54 @@
+[
+  {
+    "name": "the unlinked h1 link is not in the page-wide selector",
+    "why": "jesus2099's UNLINK_ENTITY_HEADER removes the href on the h1's first mouseover; without the selector the engine never looks at it (debug/mb-h1.html).",
+    "edits": [
+      {
+        "find": "#page a[href], #page h1 a:not([href])'",
+        "replace": "#page a[href]'"
+      }
+    ],
+    "spec": "tests/fixtures/popup-mb.spec.js",
+    "grep": "the unlinked h1 link has its card",
+    "expect": "fail"
+  },
+  {
+    "name": "the unlinked h1 link does not resolve to the page's entity",
+    "why": "Selected but not understood: an href-less link has no origin, so it falls through to 'not a link'.",
+    "edits": [
+      {
+        "find": "        } else if (_mbPopIsUnlinkedH1(a)) {",
+        "replace": "        } else if (false && _mbPopIsUnlinkedH1(a)) {"
+      }
+    ],
+    "spec": "tests/fixtures/popup-mb.spec.js",
+    "grep": "the unlinked h1 link has its card",
+    "expect": "fail"
+  },
+  {
+    "name": "the Sidebar section's default is back to open",
+    "why": "sa_sidebar_inline_collapsed default true since 2026-10-31 (vzell).",
+    "edits": [
+      {
+        "find": "            label: \"… start the 'Sidebar' section closed\",\n            type: \"checkbox\",\n            default: true,",
+        "replace": "            label: \"… start the 'Sidebar' section closed\",\n            type: \"checkbox\",\n            default: false,"
+      }
+    ],
+    "spec": "tests/fixtures/sidebar-inline.spec.js",
+    "grep": "starts closed by default",
+    "expect": "fail"
+  },
+  {
+    "name": "the inline fallback treats an unset value as open",
+    "why": "Known overlap, recorded honestly: in the harness VZ_MBLibrary resolves the schema default before this check sees it, so only a stub Lib (the library failed to load) would show the difference.",
+    "edits": [
+      {
+        "find": "        if (Lib.settings.sa_sidebar_inline_collapsed !== false) return;",
+        "replace": "        if (Lib.settings.sa_sidebar_inline_collapsed === true) return;"
+      }
+    ],
+    "spec": "tests/fixtures/sidebar-inline.spec.js",
+    "grep": "starts closed by default",
+    "expect": "pass"
+  }
+]

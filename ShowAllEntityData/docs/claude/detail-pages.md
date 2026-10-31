@@ -1570,6 +1570,23 @@ kinds (no `url`, no `collection`); `edit_annotation` and
 
 ## MusicBrainz: beyond table links (org/iframe.org, Phase 4)
 
+- **The h1 link another script unlinked (2026-10-31).** jesus2099's "mb.
+  SUPER MIND CONTROL Ⅱ X TURBO" (`tests/fixtures/live-userscripts/`,
+  version 2026.5.21), option UNLINK_ENTITY_HEADER (off by default, vzell
+  has it on), removes the `href` of the h1 link that names the current page's
+  entity on the h1's FIRST mouseover (`unlinkH1Link()`), leaving
+  `<a class=""><bdi>Name</bdi></a>` (debug/mb-h1.html; MusicBrainz itself
+  always sends the href). From then on `#page a[href]` missed it. The
+  page-wide selector also takes `#page h1 a:not([href])`, and
+  `_mbPopIsUnlinkedH1()` resolves such a link to the entity in the ADDRESS
+  (`_MB_POP_OWN_ENTITY_RE`: `/<kind>/<MBID>`, also on a tab like `/edits`,
+  as that script matches it). Only under `sa_pop_mb_page`, like every link
+  outside a table. Spec: popup-mb.spec.js "the h1 link another script
+  unlinked". Its stand-in unlinks on a FIRST plain hover before the Ctrl-hover:
+  the engine reads the link before the h1's own listener does, so a test that
+  Ctrl-hovers first sees the href and proves nothing (both mutations in
+  `scripts/mutations/followups-2026-10-31.json` survived until it did).
+
 - **`data-mb-pop="<kind>:<id>"`** on any element makes it a target
   (`_mbPopTarget()`'s first branch; the source's selector always includes
   `[data-mb-pop]`). Stamp it at pre-processing or in a formatter that runs on

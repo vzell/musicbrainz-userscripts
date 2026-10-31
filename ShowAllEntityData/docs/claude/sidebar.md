@@ -540,7 +540,9 @@ load all get the tables, and the place / area / instrument overviews too.
 
 **After every other render: the read-only "Sidebar" section**
 (`sa_sidebar_inline_main`, default on; `sa_sidebar_inline_collapsed`,
-default off).
+default on since 2026-10-31, off before — a `_SETTINGS_MIGRATIONS` entry
+names the old `false`; `_sbInlineOpen()` opens the heading only on an
+explicit `false`, so an unset value stays closed).
 - Markup: `div.mb-sb-inline-wrap > h2.mb-sb-inline-h2 + div.mb-sb-inline >
   div.mb-sb-cards > section.mb-sb-card[data-mb-sb-key]`. **No `table.tbl`,
   no h3**, so no table pass, filter, sort, Picard, CAA or the

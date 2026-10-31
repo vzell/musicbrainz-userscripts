@@ -4162,3 +4162,69 @@ test.describe('MusicBrainz link previews: the window\'s tables and its height (A
         expect(await saved()).toEqual({});
     });
 });
+
+// The h1's entity link with its href taken away (vzell 2026-10-31,
+// debug/mb-h1.html: `<a class=""><bdi>Tougher Than the Rest</bdi></a>`):
+// jesus2099's "mb. SUPER MIND CONTROL Ⅱ X TURBO", option
+// UNLINK_ENTITY_HEADER, removes it on the first mouseover of the h1
+// (`unlinkH1Link()`). It still names the page's entity: card and window as
+// for any entity link, under the page-wide scope (`sa_pop_mb_page`).
+test.describe('MusicBrainz link previews: the h1 link another script unlinked', () => {
+    /**
+     * Unlinks the h1's entity link as that script does: its class added on
+     * load, then on the h1's first mouseover the class and the href removed.
+     *
+     * @param {import('@playwright/test').Page} page
+     * @returns {Promise<import('@playwright/test').Locator>} The link.
+     */
+    async function unlinkH1(page) {
+        await page.evaluate(() => {
+            const a = document.querySelector('#page h1 a[href^="/release-group/"]');
+            a.classList.add('jesus2099userjs85790');
+            const h1 = a.closest('h1');
+            h1.addEventListener('mouseover', function unlink() {
+                h1.removeEventListener('mouseover', unlink);
+                a.classList.remove('jesus2099userjs85790');
+                a.removeAttribute('href');
+            });
+        });
+        // Its first mouseover unlinks it, so every LATER hover finds no href.
+        // Without this pass the card's own hover would still read the href
+        // (the engine listens before the h1 does) and prove nothing.
+        const link = page.locator('#page h1 > a').first();
+        await link.hover();
+        await page.mouse.move(0, 0);
+        await expect(link, 'the stand-in took the href away').not.toHaveAttribute('href', /./);
+        await expect(link).toHaveAttribute('class', '');
+        await expect(card(page)).toBeHidden();
+        return link;
+    }
+
+    test('the unlinked h1 link has its card and its window', async ({ page }) => {
+        const log = await open(page, { showAll: false, settings: { sa_pop_mb: true, sa_pop_mb_page: true } });
+        const a = await unlinkH1(page);
+        await ctrlHover(page, a);
+        await expect(card(page)).toBeVisible();
+        await expect(card(page).locator(':scope > .mb-pop-kind-head')).toHaveText('Release group');
+        await expect(card(page)).toContainText('Greetings From Asbury Park, N.J.');
+        // The release-group card asks for its releases (a browse by the group).
+        const asked = log.browses.concat(log.rgLookups);
+        expect(asked.length, 'the page\'s own release group was asked').toBeGreaterThan(0);
+        expect(asked.every(u => u.includes('c497fc44-ddaf-3cce-a9b4-bfec958a0f3c')), 'and nothing else').toBe(true);
+        await page.keyboard.press('Space');
+        await expect(dialog(page).locator(':scope > div > span').first()).toHaveText('Release group');
+    });
+
+    test('outside the page-wide scope it has none, like every link outside a table', async ({ page }) => {
+        const log = await open(page, { showAll: false, settings: { sa_pop_mb: true, sa_pop_mb_page: false } });
+        const a = await unlinkH1(page);
+        await ctrlHover(page, a);
+        await expect(card(page)).toBeHidden();
+        // A positive control instead of a fixed wait: a table link's card,
+        // asked after the h1's hover, has arrived, so a card the h1 asked for
+        // would have been asked by now.
+        await ctrlHover(page, relLink(page));
+        await expect(card(page)).toContainText('fetched now');
+        expect(log.browses.concat(log.rgLookups), 'the h1 asked nothing').toEqual([]);
+    });
+});

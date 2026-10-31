@@ -544,8 +544,8 @@
         sa_sidebar_inline_collapsed: {
             label: "… start the 'Sidebar' section closed",
             type: "checkbox",
-            default: false,
-            description: "Start the 'Sidebar' heading of the setting above closed. Off: it starts open."
+            default: true,
+            description: "On by default: the 'Sidebar' heading of the setting above starts closed; a click opens it. Off: it starts open."
         },
 
         sa_sidebar_inline_cards_open: {
@@ -5615,6 +5615,8 @@
         { key: 'sa_rel_tooltip_color',             was: ['#000000'] },
         { key: 'sa_sidebar_collapsed',             was: [false] },
         { key: 'sa_sidebar_inline_cards_open',     was: ['info'] },
+        // Off until 2026-10-31 (vzell: "change … to default true").
+        { key: 'sa_sidebar_inline_collapsed',      was: [false] },
         { key: 'sa_sidebar_tables_button',         was: [true] },
         { key: 'sa_sl_compact_nav',                was: [false] },
         { key: 'sa_sl_detail_preview',             was: [false] },
@@ -55693,6 +55695,31 @@
     const _MB_POP_PAGE_SKIP = '.tabs, .pagination, .pageselector, nav, #mb-show-all-controls-container, .mb-toolbar-menu-panel';
 
     /**
+     * The entity part of a MusicBrainz address, `/<kind>/<MBID>`, also on
+     * one of its tabs (`/release-group/<MBID>/edits`).
+     * @type {RegExp}
+     */
+    const _MB_POP_OWN_ENTITY_RE = /^\/[a-z-]+\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}(?=\/|$)/i;
+
+    /**
+     * Whether an element is the page's own h1 entity link with its href
+     * taken away: jesus2099's "mb. SUPER MIND CONTROL Ⅱ X TURBO", option
+     * UNLINK_ENTITY_HEADER (off by default), removes the href of the h1
+     * link that names the current page's entity on the first mouseover of
+     * the h1 (`unlinkH1Link()`, version 2026.5.21), leaving
+     * `<a class=""><bdi>Name</bdi></a>` (vzell 2026-10-31, debug/mb-h1.html).
+     * Such a link still means that entity, so the page-wide scope previews
+     * it (`_mbEntitySource()`'s selector, `_mbPopTarget()`).
+     *
+     * @param {Element} a
+     * @returns {boolean}
+     */
+    function _mbPopIsUnlinkedH1(a) {
+        return a.tagName === 'A' && !a.hasAttribute('href') && !!a.closest('#page h1') &&
+            _MB_POP_OWN_ENTITY_RE.test(window.location.pathname);
+    }
+
+    /**
      * What an element previews, or null:
      *   - an element stamped `data-mb-pop="<kind>:<id>"` (org/iframe.org 1b,
      *     Phase 4): a converter, an extractor or a formatter marks a
@@ -55748,6 +55775,12 @@
             const i = pop.indexOf(':');
             type = i > 0 ? pop.slice(0, i) : '';
             id = i > 0 ? pop.slice(i + 1) : '';
+        } else if (_mbPopIsUnlinkedH1(a)) {
+            // The page's own entity, its h1 link unlinked by another script
+            // (`_mbPopIsUnlinkedH1()`): read from the address, as it was.
+            const own = window.location.pathname.match(_MB_POP_OWN_ENTITY_RE);
+            const pp = own ? _mbPopParsePath(own[0], '') : null;
+            if (pp) ({ seg, type, id, list = '' } = pp);
         } else if (a.tagName !== 'A' || a.origin !== (mbOrigin ? _mbOrigin() : window.location.origin)) {
             return null;
         } else {
@@ -63030,8 +63063,10 @@
             kind: 'MusicBrainz',
             // Read at every event, so the setting needs no reload.
             get selector() {
+                // `#page h1 a:not([href])`: the h1 link another script
+                // unlinked (`_mbPopIsUnlinkedH1()`).
                 return _popSettingOn('sa_pop_mb_page')
-                    ? '[data-mb-pop], table.tbl > tbody td.barcode-cell, table.tbl > tbody span.catalog-number, #page a[href]'
+                    ? '[data-mb-pop], table.tbl > tbody td.barcode-cell, table.tbl > tbody span.catalog-number, #page a[href], #page h1 a:not([href])'
                     : '[data-mb-pop], table.tbl > tbody td.barcode-cell, table.tbl > tbody span.catalog-number, table.tbl > tbody a[href]';
             },
             live: _MB_LIVE,
@@ -117959,11 +117994,12 @@ a { color: #1565c0; }`;
 
     /**
      * Opens the "Sidebar" section after `makeH2sCollapsible()` (which starts
-     * every non-data h2 closed), unless sa_sidebar_inline_collapsed.
+     * every non-data h2 closed), only when sa_sidebar_inline_collapsed is
+     * off (default on since 2026-10-31, vzell: an unset value stays closed).
      * @returns {void}
      */
     function _sbInlineOpen() {
-        if (Lib.settings.sa_sidebar_inline_collapsed === true) return;
+        if (Lib.settings.sa_sidebar_inline_collapsed !== false) return;
         const h2 = document.querySelector('#content .mb-sb-inline-wrap > h2');
         if (h2 && typeof h2._mbToggle === 'function') h2._mbToggle(true);
     }

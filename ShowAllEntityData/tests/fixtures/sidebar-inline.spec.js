@@ -74,7 +74,7 @@ async function open(page, kind, which, settings = {}) {
     await loadUserscriptPage(page, {
         url, fixtureFile: fixture, testMode: true,
         settingsOverride: { sa_enable_relationship_tables: true, sa_enable_release_tracks: true,
-                            sa_enable_caa_pics: false, sa_enable_relationships_column: false, sa_collabsable_sidebar: false, ...settings },
+                            sa_enable_caa_pics: false, sa_enable_relationships_column: false, sa_collabsable_sidebar: false, sa_sidebar_inline_collapsed: false, ...settings },
     });
     await page.route('https://musicbrainz.org/ws/2/**', (route) => route.fulfill({ status: 404, body: '' }));
     await page.route(/^https:\/\/musicbrainz\.org\/(?!ws\/)/, (route) => route.fulfill({ path: fixture, contentType: 'text/html' }));
@@ -251,7 +251,7 @@ test.describe('sidebar in the Credits/Relationships view', () => {
             await reopened.context().route('https://static.metabrainz.org/**', (route) => route.abort('blockedbyclient'));
             await loadUserscriptPage(reopened, { url, fixtureFile: path.join(__dirname, file), testMode: true,
                 settingsOverride: { sa_enable_relationship_tables: true, sa_enable_release_tracks: true,
-                                    sa_enable_caa_pics: false, sa_enable_relationships_column: false, sa_collabsable_sidebar: false } });
+                                    sa_enable_caa_pics: false, sa_enable_relationships_column: false, sa_collabsable_sidebar: false, sa_sidebar_inline_collapsed: false } });
             await clickToolbarItem(reopened, '#mb-load-from-disk-btn');
             await reopened.locator('input[type="file"][accept*="json"]').setInputFiles(saved);
             const renderBtn = reopened.locator('#sa-render-no-filter-confirm');
@@ -373,7 +373,7 @@ test.describe('sidebar cards after the page render', () => {
             await reopened.context().route('https://static.metabrainz.org/**', (route) => route.abort('blockedbyclient'));
             await loadUserscriptPage(reopened, { url, fixtureFile: path.join(__dirname, file), testMode: true,
                 settingsOverride: { sa_enable_relationship_tables: true, sa_enable_caa_pics: false,
-                                    sa_enable_relationships_column: false, sa_collabsable_sidebar: false } });
+                                    sa_enable_relationships_column: false, sa_collabsable_sidebar: false, sa_sidebar_inline_collapsed: false } });
             await clickToolbarItem(reopened, '#mb-load-from-disk-btn');
             await reopened.locator('input[type="file"][accept*="json"]').setInputFiles(saved);
             const renderBtn = reopened.locator('#sa-render-no-filter-confirm');
@@ -429,7 +429,7 @@ test.describe('sidebar cards after the page render', () => {
         await page.context().route('https://static.metabrainz.org/**', (route) => route.abort('blockedbyclient'));
         await loadUserscriptPage(page, {
             url: 'https://musicbrainz.org/label/0b805b9c-ea03-4fc1-b50d-6dcef76433e0/relationships', fixtureFile: fixture, testMode: true,
-            settingsOverride: { sa_enable_relationship_tables: true, sa_enable_caa_pics: false, sa_enable_relationships_column: false, sa_collabsable_sidebar: false },
+            settingsOverride: { sa_enable_relationship_tables: true, sa_enable_caa_pics: false, sa_enable_relationships_column: false, sa_collabsable_sidebar: false, sa_sidebar_inline_collapsed: false },
         });
         await page.route('https://musicbrainz.org/ws/2/**', (route) => route.fulfill({ status: 404, body: '' }));
         await page.route(/^https:\/\/musicbrainz\.org\/(?!ws\/)/, (route) => route.fulfill({ path: fixture, contentType: 'text/html' }));
@@ -473,14 +473,28 @@ test.describe('sidebar cards after the page render', () => {
         expect(fit.ddScrolls, 'at desktop width the value needs no scrolling').toBe(false);
     });
 
-    test('the switches: off; start closed', async ({ page }) => {
+    test('the "Sidebar" section starts closed by default (since 2026-10-31)', async ({ page }) => {
+        // Its own test, so a fresh profile: the GM stub keeps what an earlier
+        // load in the same test seeded. `open()` seeds false for the card
+        // tests; undefined puts the schema default back.
+        await open(page, 'release', 'own', { sa_sidebar_inline_main: true, sa_sidebar_inline_collapsed: undefined });
+        const s = await inline(page);
+        expect(s).not.toBeNull();
+        expect(s.open, 'closed by default').toBe(false);
+    });
+
+    test('the switches: off; start closed; start open', async ({ page }) => {
         await open(page, 'release', 'own', { sa_sidebar_inline_main: false });
         expect(await inline(page)).toBeNull();
         await page.goto('about:blank');
         await open(page, 'release', 'own', { sa_sidebar_inline_main: true, sa_sidebar_inline_collapsed: true });
-        const s = await inline(page);
+        let s = await inline(page);
         expect(s).not.toBeNull();
         expect(s.open).toBe(false);
+        await page.goto('about:blank');
+        await open(page, 'release', 'own', { sa_sidebar_inline_main: true, sa_sidebar_inline_collapsed: false });
+        s = await inline(page);
+        expect(s.open, 'off: it starts open').toBe(true);
     });
 
     // ── Card folding (WIP.1): only the first information card starts open,

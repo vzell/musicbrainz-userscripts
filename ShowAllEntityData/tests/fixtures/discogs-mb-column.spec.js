@@ -605,8 +605,13 @@ test.describe('discogs.com: MusicBrainz cards for the MusicBrainz icons (2026-10
         await page.mouse.move(0, 0);
         await genre.click();
         await expect(title).toHaveText('Artist › Tag');
-        expect(await page.evaluate(() => window.__mbPageAsked), 'the tag page, with the browser\'s cookies, once')
-            .toEqual([{ path: '/tag/americana', anonymous: false }]);
+        // The tag window then starts its own list of the kind with the most
+        // entities (`_mbTagKindPin()`: recordings here). Waited for, not
+        // raced: asserting right after the title failed 13 of 30 runs, by
+        // whether that list's request had gone out yet (2026-10-31).
+        await expect.poll(() => page.evaluate(() => window.__mbPageAsked.length), { timeout: 30000 }).toBe(2);
+        expect(await page.evaluate(() => window.__mbPageAsked), 'the tag page once, then its first kind\'s list once, with the browser\'s cookies')
+            .toEqual([{ path: '/tag/americana', anonymous: false }, { path: '/tag/americana/recording', anonymous: false }]);
         expect(errors).toEqual([]);
     });
 

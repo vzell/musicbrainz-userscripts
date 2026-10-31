@@ -27549,3 +27549,54 @@ In the passing runs the test pressed Space first, and it was never asked at
 all. Not a product bug: `threeSteps()` now also waits for step 3's tracklist.
 12 of 12 after (6 of 12 on `main` before); the "window's path" block 21 of 21
 at `--repeat-each 3`.
+
+## 2026-10-31 — The merge gate's two failures; the h1 title without its card (fix/flaky-sidebar-h1-poh)
+
+Env: 2026-10-31T14:07 → 17:38+01:00 · vzell-lap · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.54.1) · Playwright 1.62.1 Chromium, no Tampermonkey (GM stubs); the h1 report: the user's browser (version unknown) with "mb. SUPER MIND CONTROL Ⅱ X TURBO" 2026.5.21
+
+`test:full` on `main` after the feat/poh-table-fill merge (`5a5ff5f1`,
+14:07:44 → 16:28:59 CET, 2537 tests): 2535 passed, 2 failed. Both were test
+races. Each was compared against the pre-merge `main` (`d0ba9281`) in a
+separate worktree, at the same `--repeat-each` and workers:
+
+- **discogs-mb-column.spec.js "a genre's tag link opens here and has its
+  card"** (the 2026-10-29 entry's open cause): 26 of 30 failed before the
+  merge, 13 of 30 after, so the change was not involved. The failure was
+  always one extra request, `/tag/americana/recording`: the tag window starts
+  its own list of the kind with the most entities (`_mbTagKindPin()`) after
+  it shows, and the test asserted "the tag page, once" right after the title
+  appeared. It now waits for that request and asserts both, in order, with
+  cookies: 20 of 20.
+- **youtube-embeds.spec.js "the window: the PLAYING pill …"**: 0 of 40 before,
+  2 of 40 after, so a timing shift from the merge exposed it. A probe (90 runs,
+  1 failure) found the one live player in the one live Videos section's slot,
+  foot included, at the moment of failure. The test measured with
+  `sec.evaluate()`, which resolves the section and runs a step later. A
+  repaint in between (`_ytAreaRepaint()` moves the player into the NEW
+  section) left it measuring the detached old section: slot empty, tile still
+  marked as playing, exactly the HTML in the error. The size pass of WIP.1
+  (9.99.1519) lengthens each repaint slightly, which shifted the timing. It
+  now measures in one `page.evaluate()` that finds the live section: 90 of
+  90.
+
+**The h1 title without its card (vzell, debug/mb-h1.html:
+`<a class=""><bdi>Tougher Than the Rest</bdi></a>` on
+/release-group/f83d2211-…):** MusicBrainz always sends the h1 link with its
+href (every `debug/*.html` snapshot checked). The href is removed by
+jesus2099's "mb. SUPER MIND CONTROL Ⅱ X TURBO", option UNLINK_ENTITY_HEADER
+(`tests/fixtures/live-userscripts/mb_SUPER-MIND-CONTROL-II-X-TURBO.user.js`,
+the block at the option's comment, `unlinkH1Link()`), on the h1's first
+mouseover, and it leaves its own class behind as `class=""`. Fix and spec:
+docs/claude/detail-pages.md, "The h1 link another script unlinked". The first
+spec draft passed with the fix removed (both mutations survived): its
+Ctrl-hover was the first hover, so the engine still read the href. The
+stand-in now unlinks on a plain hover first.
+
+Also on this branch: `sa_sidebar_inline_collapsed` defaults to true (vzell),
+with a `_SETTINGS_MIGRATIONS` entry; the sidebar card specs seed the old
+`false`; the default is pinned in its own test. That needs a fresh profile,
+because the GM stub keeps an earlier load's values in localStorage within a
+test, so seeding `undefined` after a `goto` still read the old `false`.
+Mutations: `scripts/mutations/followups-2026-10-31.json` (3 caught, 1 recorded
+`pass`: the inline fallback, which the library's resolved default covers in the
+harness).
