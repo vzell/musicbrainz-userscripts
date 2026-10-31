@@ -1,0 +1,26 @@
+[
+  {
+    "version": "WIP.2",
+    "date": "2026-10-31",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Link previews: the page's own title in the header (the release group's, artist's, … name) has its card and window again when jesus2099's \"mb. SUPER MIND CONTROL Ⅱ X TURBO\" has its option \"unlink entity headers\" on. That script turns the title into plain text the first time the pointer passes over it, so every later hover found no link. The title now stands for the page's own entity, also on its other tabs. As for every link outside a table, this follows \"Also preview links outside tables\"."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "WIP.1",
+    "date": "2026-10-31",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "The read-only \"Sidebar\" section shown below the Credits or Relationships section now starts closed by default; a click on its heading opens it. Setting: \"… start the 'Sidebar' section closed\", now on by default (off: it starts open). A profile that kept the old value only because SAVE stored it moves to the new default once."
+        ]
+      }
+    ]
+  }
+]

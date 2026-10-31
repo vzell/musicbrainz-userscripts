@@ -58,7 +58,9 @@ async function open(page, label = 'Show all Tracks for Release', settings = {}, 
     await loadUserscriptPage(page, {
         url: URL_, fixtureFile: FIXTURE, testMode: true,
         settingsOverride: { sa_enable_relationship_tables: true, sa_enable_release_tracks: true,
-                            sa_enable_caa_pics: false, sa_enable_relationships_column: false, sa_collabsable_sidebar: false, ...settings },
+                            sa_enable_caa_pics: false, sa_enable_relationships_column: false, sa_collabsable_sidebar: false,
+                            // The cards are read here: the "Sidebar" section open (its default is closed since 2026-10-31).
+                            sa_sidebar_inline_collapsed: false, ...settings },
     });
     await page.route('https://musicbrainz.org/ws/2/**', (route) => route.fulfill({ status: 404, body: '' }));
     await page.route(/^https:\/\/musicbrainz\.org\/(?!ws\/)/, (route) => route.fulfill({ path: FIXTURE, contentType: 'text/html' }));

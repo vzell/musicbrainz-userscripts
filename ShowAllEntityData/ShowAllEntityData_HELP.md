@@ -1090,8 +1090,9 @@ close every sidebar section; the headings of the main page are left alone.
   by its name, variant, section or group; Esc empties it. Pointing at a
   search link names the site it searches, also when the script sends the
   search through its forwarding page.
-  They are for reading: no filter, no sorting. The heading opens and closes
-  like any other. Every card starts open except **Search**, which starts
+  They are for reading: no filter, no sorting. The heading starts closed (a
+  click opens it; *… start the 'Sidebar' section closed* off: it starts open)
+  and opens and closes like any other. Inside, every card starts open except **Search**, which starts
   closed, marked with ▶. With *Information card* chosen instead, only the
   first information card (*Artist information*, *Release group information*,
   …) starts open, and after *Show all Tracks for Release* the release's
@@ -2794,7 +2795,9 @@ any other link (see *The Relationships column*). Links
 outside a table are previewed while *Also preview links outside tables* is on
 (same section, on by default): the header, an annotation, the sidebar and
 relationship lists have cards then, but not the tabs, the page navigation or
-the script's own toolbar. Switch it off and only the links in a table have
+the script's own toolbar. The page's own title in the header keeps its card
+also after jesus2099's *mb. SUPER MIND CONTROL Ⅱ X TURBO* (option *unlink
+entity headers*) has turned it into plain text. Switch it off and only the links in a table have
 cards. On a **touch screen**, with *Preview linked entities on touch devices*
 ticked, a tap on such a link opens the window instead of the page; **↗** in
 the window opens the page. Links outside a table count there only with *Also

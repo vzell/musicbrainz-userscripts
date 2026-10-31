@@ -716,9 +716,16 @@ test.describe('YouTube in place — Step 3: Discogs', () => {
         const sec = d.locator('[data-mb-dg-sec="videos"]');
         await sec.locator('.mb-yt-tile.mb-yt-small').first().click();
         await expect(sec.locator('.mb-yt-slot iframe.mb-yt-frame')).toHaveCount(1);
-        // The window repaints around a click: measure once the foot is there.
+        // The window repaints around a click: measure once the foot is there,
+        // and in ONE task that finds the section itself. `sec.evaluate()`
+        // resolves the section, then runs a step later; a repaint in between
+        // (`_ytAreaRepaint()` moves the player into the NEW section) left it
+        // measuring the detached old one, whose slot is empty but whose tile
+        // still reads "playing" (2026-10-31: about 1 run in 40; a probe found
+        // the one live player in the one live section's slot, foot and all).
         await expect(sec.locator('.mb-yt-foot .mb-yt-pill')).toBeVisible();
-        const m = await sec.evaluate((s) => {
+        const m = await page.evaluate(() => {
+            const s = document.querySelector('#mb-dp-dialog [data-mb-dg-sec="videos"]');
             const textBox = (el) => {
                 const r = document.createRange();
                 r.selectNodeContents(el);
