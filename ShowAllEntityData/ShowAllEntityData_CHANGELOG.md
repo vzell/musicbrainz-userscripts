@@ -4,9 +4,23 @@ Every version, newest first, with the technical details behind each change. For 
 
 **Months:** [October 2026](ShowAllEntityData_CHANGELOG/2026-10.md) · [September 2026](ShowAllEntityData_CHANGELOG/2026-09.md) · [August 2026](ShowAllEntityData_CHANGELOG/2026-08.md) · [July 2026](ShowAllEntityData_CHANGELOG/2026-07.md) · [June 2026](ShowAllEntityData_CHANGELOG/2026-06.md) · [May 2026](ShowAllEntityData_CHANGELOG/2026-05.md) · [April 2026](ShowAllEntityData_CHANGELOG/2026-04.md) · [March 2026 (1 of 2)](ShowAllEntityData_CHANGELOG/2026-03-1.md) · [March 2026 (2 of 2)](ShowAllEntityData_CHANGELOG/2026-03-2.md) · [February 2026](ShowAllEntityData_CHANGELOG/2026-02.md) · [January 2026](ShowAllEntityData_CHANGELOG/2026-01.md)
 
-This page shows the newest 100 of 1690 versions; the month pages hold all of them.
+This page shows the newest 100 of 1692 versions; the month pages hold all of them.
 
 ---
+
+## 9.99.1521 — 2026-10-31
+
+**🐛 Fix**
+
+- Link previews: the page's own title in the header (the release group's, artist's, … name) has its card and window again when jesus2099's "mb. SUPER MIND CONTROL Ⅱ X TURBO" has its option "unlink entity headers" on. That script turns the title into plain text the first time the pointer passes over it, so every later hover found no link. The title now stands for the page's own entity, also on its other tabs. As for every link outside a table, this follows "Also preview links outside tables".
+
+
+## 9.99.1520 — 2026-10-31
+
+**✨ Improve**
+
+- The read-only "Sidebar" section shown below the Credits or Relationships section now starts closed by default; a click on its heading opens it. Setting: "… start the 'Sidebar' section closed", now on by default (off: it starts open). A profile that kept the old value only because SAVE stored it moves to the new default once.
+
 
 ## 9.99.1519 — 2026-10-31
 
@@ -915,20 +929,6 @@ This page shows the newest 100 of 1690 versions; the month pages hold all of the
 **🚀 Feature**
 
 - New pages: the "Found in N user collections" page of an area, artist, event, instrument, label, place, recording, series or work (the link in its sidebar) becomes a filterable Collection \| Editor table, like a release's. The "Subscribers" page of an artist, label, series or collection becomes a table of its subscribers, like an editor's, with the anonymous subscribers counted in the line above it.
-
-
-## 9.99.1421 — 2026-10-21
-
-**🚀 Feature**
-
-- Link previews: an editor's own tag (the links of /user/&lt;name&gt;/tags, e.g. /user/vzell/tag/acoustic%20rock) now has a card and a window, read from its page: what that editor tagged with it, how many entities and of which kinds, the first few on the card; in the window each kind's first entries, its "See all" page, and "Everyone's" to open the tag's own card. Works on the tags page as it loads and after its table render.
-
-
-## 9.99.1420 — 2026-10-21
-
-**✨ Improve**
-
-- Link previews: every box stacked above a hover card now opens with a kind line and a thin line under it, as the card does since 9.99.1418: "Finding", "Note", "Track ≠ recording", "Link title", "Link" (a link's own card, a Relationships icon) or "Filter".
 
 
 ---
