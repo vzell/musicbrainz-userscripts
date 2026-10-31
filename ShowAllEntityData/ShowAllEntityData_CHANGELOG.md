@@ -4,9 +4,17 @@ Every version, newest first, with the technical details behind each change. For 
 
 **Months:** [October 2026](ShowAllEntityData_CHANGELOG/2026-10.md) · [September 2026](ShowAllEntityData_CHANGELOG/2026-09.md) · [August 2026](ShowAllEntityData_CHANGELOG/2026-08.md) · [July 2026](ShowAllEntityData_CHANGELOG/2026-07.md) · [June 2026](ShowAllEntityData_CHANGELOG/2026-06.md) · [May 2026](ShowAllEntityData_CHANGELOG/2026-05.md) · [April 2026](ShowAllEntityData_CHANGELOG/2026-04.md) · [March 2026 (1 of 2)](ShowAllEntityData_CHANGELOG/2026-03-1.md) · [March 2026 (2 of 2)](ShowAllEntityData_CHANGELOG/2026-03-2.md) · [February 2026](ShowAllEntityData_CHANGELOG/2026-02.md) · [January 2026](ShowAllEntityData_CHANGELOG/2026-01.md)
 
-This page shows the newest 100 of 1689 versions; the month pages hold all of them.
+This page shows the newest 100 of 1690 versions; the month pages hold all of them.
 
 ---
+
+## 9.99.1519 — 2026-10-31
+
+**✨ Improve**
+
+- Popup window: the last table in the right column (an artist's release groups, an event's setlist, a work's recordings, a Discogs label's releases, …) now reaches down to the window's bottom edge. A taller window shows more rows, and the right column stays where it is while the left one scrolls. A window too low to leave the table 160 px keeps the usual 460 px table.
+- Popup window: every other table that scrolls has a grip under it. Drag it to change the table's height (a label shows the height and how many rows fit), use ↑/↓ on the focused grip for 20 px steps, Esc while dragging to cancel, and double-click to go back to 460 px. The height is kept for that kind of table in every later window and is part of the settings export (panel geometry). On a phone the window is one column; the grips work by touch.
+
 
 ## 9.99.1518 — 2026-10-30
 
@@ -921,13 +929,6 @@ This page shows the newest 100 of 1689 versions; the month pages hold all of the
 **✨ Improve**
 
 - Link previews: every box stacked above a hover card now opens with a kind line and a thin line under it, as the card does since 9.99.1418: "Finding", "Note", "Track ≠ recording", "Link title", "Link" (a link's own card, a Relationships icon) or "Filter".
-
-
-## 9.99.1419 — 2026-10-21
-
-**🚀 Feature**
-
-- Release tracklist: hovering a live track's "\#" cell now also shows the event the track was recorded at, in a card stacked right above the release group card: its name, type, date, place, tour, line-up and the start of its setlist, as the event link's own preview shows them. With the kind line of 9.99.1418, the two cards read "Event" and "Release group". The first hover on a track of an event asks MusicBrainz once, after the release group search and at the same one-a-second pace; the answer is kept like the other previews. A track whose event is only named in its comment shows no event card. New setting "Show the track's event above the "\#" release group card" (💿 RELEASE TRACKLIST), on by default.
 
 
 ---

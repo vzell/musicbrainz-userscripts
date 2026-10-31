@@ -1,5 +1,18 @@
 [
   {
+    "version": "9.99.1519",
+    "date": "2026-10-31",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "Popup window: the last table in the right column (an artist's release groups, an event's setlist, a work's recordings, a Discogs label's releases, …) now reaches down to the window's bottom edge. A taller window shows more rows, and the right column stays where it is while the left one scrolls. A window too low to leave the table 160 px keeps the usual 460 px table.",
+          "Popup window: every other table that scrolls has a grip under it. Drag it to change the table's height (a label shows the height and how many rows fit), use ↑/↓ on the focused grip for 20 px steps, Esc while dragging to cancel, and double-click to go back to 460 px. The height is kept for that kind of table in every later window and is part of the settings export (panel geometry). On a phone the window is one column; the grips work by touch."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.1518",
     "date": "2026-10-30",
     "sections": [
