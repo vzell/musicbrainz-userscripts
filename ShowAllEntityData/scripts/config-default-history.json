@@ -2,7 +2,7 @@
   "_meta": {
     "generated_by": "scripts/dump-default-history.py",
     "source": "ShowAllEntityData/ShowAllEntityData.user.js",
-    "head": "fe519f353ce6df11907a916e6abad1e1233f221e",
+    "head": "b2d9fee97a0f48b8174b686d9a196ff5d36efe14",
     "revisions_walked": 1132
   },
   "changes": [
@@ -376,7 +376,7 @@
       "to": true
     },
     {
-      "sha": "fe519f35",
+      "sha": "b2d9fee9",
       "date": "2026-10-31",
       "version": "9.99.1519+2026-10-31",
       "key": "sa_sidebar_inline_collapsed",
