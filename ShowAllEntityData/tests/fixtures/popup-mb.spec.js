@@ -3971,3 +3971,187 @@ test.describe('MusicBrainz link previews: the h1\'s entity icon links its kind\'
         await expect(page.locator('.mb-h1-kind-doc-host')).toHaveCount(0);
     });
 });
+
+// The window's tables and the window's height (org/POH-table-sizing.org,
+// mockup https://claude.ai/artifact/RdCsLUVrkiLNgZNFNaqkBn, A+D, 2026-10-31):
+// the right column's last table fills the window body and follows its height
+// (A); every other table gets a grip whose height is kept per kind of table
+// for every later window (D). The event window serves both: its setlist on
+// the right, "Recorded here" (two Compact tables) on the left.
+// Mutation list: scripts/mutations/poh-table-fill.json.
+test.describe('MusicBrainz link previews: the window\'s tables and its height (A+D)', () => {
+    const EVENT = '/event/3f2ca30a-7de4-4964-ad30-48376535fec8';
+    const SETLIST = '[data-mb-tbl="setlist"] .mb-dg-vwrap';
+
+    /**
+     * Sets the window's height, as dragging its corner does.
+     *
+     * @param {import('@playwright/test').Page} page
+     * @param {number} px
+     * @returns {Promise<void>}
+     */
+    const setHeight = (page, px) => page.evaluate((h) => { document.getElementById('mb-dp-dialog').style.height = `${h}px`; }, px);
+
+    /**
+     * Opens the event window on a 1280 × 1000 page, `px` high.
+     *
+     * @param {import('@playwright/test').Page} page
+     * @param {number} px
+     * @param {Object} [settings]
+     * @returns {Promise<void>}
+     */
+    async function openEvent(page, px, settings = {}) {
+        await page.setViewportSize({ width: 1280, height: 1000 });
+        await open(page, { settings: { sa_pop_mb: true, ...settings }, showAll: false });
+        const a = await addLink(page, EVENT, 'Manchester');
+        await ctrlHover(page, a);
+        await expect(card(page)).toContainText('fetched now');
+        await page.keyboard.press('Space');
+        await expect(dialog(page).locator('[data-mb-tbl="setlist"] tbody tr').last()).toContainText('Chimes of Freedom');
+        await setHeight(page, px);
+    }
+
+    /**
+     * Where a table and its column stand in the window body.
+     *
+     * @param {import('@playwright/test').Page} page
+     * @param {string} sel - The table's `.mb-dg-vwrap`.
+     * @returns {Promise<{fill: boolean, pane: boolean, max: number, box: number, paneTop: number,
+     *   paneGap: number, padTop: number, leftTop: number}>}
+     */
+    const metrics = (page, sel) => page.evaluate((s) => {
+        const area = document.querySelector('#mb-dp-dialog .mb-dp-area');
+        const w = area.querySelector(s);
+        const col = w.closest('.mb-dp-col');
+        const x = col.parentElement;
+        const cs = getComputedStyle(x);
+        const a = area.getBoundingClientRect();
+        const bodyTop = a.top + area.clientTop;
+        return {
+            fill: w.classList.contains('mb-dp-fill'),
+            pane: col.classList.contains('mb-dp-pane'),
+            max: parseFloat(w.style.maxHeight) || 0,
+            box: w.offsetHeight - 2 * w.clientTop,
+            paneTop: col.getBoundingClientRect().top - bodyTop,
+            paneGap: (bodyTop + area.clientHeight - parseFloat(cs.paddingBottom)) - col.getBoundingClientRect().bottom,
+            padTop: parseFloat(cs.paddingTop),
+            leftTop: x.firstElementChild.getBoundingClientRect().top - bodyTop,
+        };
+    }, sel);
+
+    test('A: the right column\'s last table fills the window body, follows the window\'s height, and stays while the left column scrolls', async ({ page }) => {
+        await openEvent(page, 520);
+        await expect.poll(async () => (await metrics(page, SETLIST)).fill).toBe(true);
+        const small = await metrics(page, SETLIST);
+        expect(small.pane, 'its column is the pane').toBe(true);
+        // The setlist is longer than this window: its column ends at the body's bottom.
+        expect(Math.abs(small.paneGap), 'the pane ends where the window body ends').toBeLessThanOrEqual(4);
+        expect(small.box, 'not the 460 px cap').toBe(small.max);
+        // 300 px taller: the table's height grows by the same, not by a share.
+        await setHeight(page, 820);
+        await expect.poll(async () => (await metrics(page, SETLIST)).max).toBeGreaterThan(small.max + 290);
+        const big = await metrics(page, SETLIST);
+        expect(big.max - small.max).toBeLessThanOrEqual(310);
+        expect(big.box, 'more rows shown').toBeGreaterThan(small.box);
+        // Back down: it shrinks with the window.
+        await setHeight(page, 520);
+        await expect.poll(async () => Math.abs((await metrics(page, SETLIST)).max - small.max)).toBeLessThanOrEqual(1);
+        // The left column ("Recorded here", two tables) is longer than the
+        // window: scrolling the body moves it, the pane stays where it was.
+        const before = await metrics(page, SETLIST);
+        await page.evaluate(() => { document.querySelector('#mb-dp-dialog .mb-dp-area').scrollTop = 150; });
+        const after = await metrics(page, SETLIST);
+        expect(before.leftTop - after.leftTop, 'the left column scrolled').toBeGreaterThan(140);
+        expect(Math.abs(after.paneTop - after.padTop), 'the pane stayed at the top').toBeLessThanOrEqual(2);
+        // A window too low for the pane: never a table under 160 px. Either
+        // it still fills at 160 or more, or the pane is off (today's layout).
+        await setHeight(page, 300);
+        await expect.poll(async () => {
+            const m = await metrics(page, SETLIST);
+            return (m.fill && m.pane && m.max >= 160) || (!m.fill && !m.pane);
+        }).toBe(true);
+    });
+
+    test('A: a repaint keeps the filling table\'s scroll position (its height is set before the position comes back)', async ({ page }) => {
+        // Low enough that the filling table is under 460 px: restored into
+        // the 460 px box first, the bottom would be lost.
+        await openEvent(page, 500);
+        await expect.poll(async () => (await metrics(page, SETLIST)).fill).toBe(true);
+        const m = await metrics(page, SETLIST);
+        expect(m.max, 'lower than the CSS cap').toBeLessThan(440);
+        const wrap = dialog(page).locator(SETLIST);
+        const end = await wrap.evaluate((w) => {
+            w.scrollTop = w.scrollHeight;
+            return w.scrollTop;
+        });
+        expect(end).toBeGreaterThan(0);
+        // "#" sorts by the order played: the same rows, a repaint.
+        await wrap.locator('th', { hasText: '#' }).click();
+        await expect(wrap.locator('th', { hasText: '#' })).toHaveAttribute('aria-sort', /ascending|descending/);
+        expect(await dialog(page).locator(SETLIST).evaluate(w => w.scrollTop)).toBe(end);
+    });
+
+    test('D: a grip under the left column\'s table; a dragged height is kept for that table in every later window; ↑ ↓, Esc, double-click', async ({ page }) => {
+        await openEvent(page, 820);
+        const area = dialog(page).locator('.mb-dp-area');
+        const box = area.locator('[data-mb-tbl="recorded-recordings"]');
+        const wrap = box.locator('.mb-dg-vwrap');
+        const grip = box.locator('.mb-dp-grip');
+        const boxH = () => dialog(page).locator('[data-mb-tbl="recorded-recordings"] .mb-dg-vwrap').evaluate(w => w.offsetHeight - 2 * w.clientTop);
+        const saved = () => page.evaluate(() => window.__gmValues.sa_dp_table_heights);
+        await expect(grip).toHaveAttribute('data-mb-grip', 'tbl-recorded-recordings');
+        await expect(grip).toHaveAttribute('role', 'separator');
+        await expect(area.locator('[data-mb-tbl="setlist"] .mb-dp-grip'), 'the filling table has none').toHaveCount(0);
+        await expect(wrap).not.toHaveClass(/mb-dp-fill/);
+        expect(await boxH(), 'the CSS cap until dragged').toBe(460);
+
+        // Drag 100 px down: a label while dragging, the height saved on release.
+        await grip.scrollIntoViewIfNeeded();
+        let g = await grip.boundingBox();
+        await page.mouse.move(g.x + g.width / 2, g.y + g.height / 2);
+        await page.mouse.down();
+        await page.mouse.move(g.x + g.width / 2, g.y + g.height / 2 + 50, { steps: 5 });
+        await page.mouse.move(g.x + g.width / 2, g.y + g.height / 2 + 100, { steps: 5 });
+        await expect(grip.locator('.mb-dp-grip-l')).toHaveText(/^560 px · (\d+ of 25|all 25) rows$/);
+        await page.mouse.up();
+        await expect(grip.locator('.mb-dp-grip-l')).toHaveCount(0);
+        expect(await boxH()).toBe(560);
+        expect(await saved()).toEqual({ 'tbl-recorded-recordings': 560 });
+
+        // A later window of the same kind opens at that height.
+        await page.locator('#mb-dp-dialog button', { hasText: '✕' }).click();
+        await expect(dialog(page)).toHaveCount(0);
+        await ctrlHover(page, page.locator(`a.pop-probe[href="${EVENT}"]`));
+        await expect(card(page)).toBeVisible();
+        await page.keyboard.press('Space');
+        await expect(dialog(page).locator('[data-mb-tbl="recorded-recordings"] .mb-dp-grip')).toHaveCount(1);
+        expect(await boxH(), 'kept for every later window').toBe(560);
+
+        // ↑ / ↓ on the focused grip: 20 px, saved.
+        await grip.focus();
+        await page.keyboard.press('ArrowUp');
+        expect(await boxH()).toBe(540);
+        await page.keyboard.press('ArrowDown');
+        expect(await boxH()).toBe(560);
+        expect(await saved()).toEqual({ 'tbl-recorded-recordings': 560 });
+
+        // Esc in the middle of a drag: the saved height back, the window open.
+        await grip.scrollIntoViewIfNeeded();
+        g = await grip.boundingBox();
+        await page.mouse.move(g.x + g.width / 2, g.y + g.height / 2);
+        await page.mouse.down();
+        await page.mouse.move(g.x + g.width / 2, g.y + g.height / 2 + 80, { steps: 5 });
+        await expect.poll(boxH).toBe(640);
+        await page.keyboard.press('Escape');
+        await expect(dialog(page)).toBeVisible();
+        expect(await boxH()).toBe(560);
+        await page.mouse.up();
+        expect(await boxH()).toBe(560);
+        expect(await saved()).toEqual({ 'tbl-recorded-recordings': 560 });
+
+        // Double-click: back to 460, the saved height forgotten.
+        await grip.dblclick();
+        expect(await boxH()).toBe(460);
+        expect(await saved()).toEqual({});
+    });
+});

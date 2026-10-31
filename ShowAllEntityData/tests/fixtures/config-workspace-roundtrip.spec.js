@@ -82,6 +82,8 @@ const WORKSPACE = {
     // the foreign tables' 🖼 gallery and the Space window (2026-10-24)
     'sa_fgal_geometry': { top: 20, left: 64, width: 704, height: 529 },
     'sa_dp_dialog_geometry': { top: 30, left: 90, width: 640, height: 560 },
+    // the window's dragged table heights, per kind of table (2026-10-31)
+    'sa_dp_table_heights': { 'tbl-recorded-recordings': 300, 'tbl-setlist': 520 },
     // the 💾 Browser cache window, movable and resizable (2026-10-26)
     'sa_idbo_geometry': { top: 24, left: 120, width: 900, height: 600 },
     // geometry — the 📊 dropdown's per-pageType, per-column resized size
@@ -380,7 +382,7 @@ test.describe('config file schema_version 2 — the workspace block', () => {
                 pinned: 1,
                 history: 1,
                 colvis: 2,          // the state and its -touched- companion
-                geometry: 6,        // stats, load dialog, 📊 dropdown, 🖼 gallery, Space window, 💾 Browser cache
+                geometry: 7,        // stats, load dialog, 📊 dropdown, 🖼 gallery, Space window and its table heights, 💾 Browser cache
                 dropdown: 1,
                 releaseart: 1,
                 dialog: 4,

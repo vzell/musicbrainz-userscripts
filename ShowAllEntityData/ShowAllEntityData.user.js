@@ -25038,6 +25038,9 @@
         };
         _dpDialog.repaint = repaint;
         area.innerHTML = src.extracted(t, true, !!force, repaint);
+        // The tables' heights: the right column fills, the others take
+        // their saved height and a grip (org/POH-table-sizing.org).
+        _dpTblSizePass(area);
     }
 
     /**
@@ -25064,6 +25067,10 @@
         // The foot line at rest names keys that depend on what arrived (a
         // tag link's Ctrl-click): written again while nothing is hovered.
         if (!_dpWin.hover) _dpWinFoot(null);
+        // The tables' final heights BEFORE their scroll positions come back:
+        // a position restored into a 460 px box that then grows (or one
+        // still at its full height) lands somewhere else.
+        _dpTblSizePass(area);
         scrolls.forEach(([name, top, left]) => {
             const el = area.querySelector(`[data-mb-keep-scroll="${name}"]`);
             if (el) {
@@ -25080,6 +25087,397 @@
                 } catch (_) { /* a field without a caret */ }
             }
         }
+    }
+
+    /*
+     * The window's tables and the window's height (org/POH-table-sizing.org,
+     * mockup https://claude.ai/artifact/RdCsLUVrkiLNgZNFNaqkBn, variant A+D,
+     * vzell 2026-10-31). Every table sits in a `.mb-dg-vwrap` capped at
+     * 460 px by CSS, so a taller window only added empty paper. Now:
+     *   A  the right column of a two-column window is a pane that stays
+     *      while the left one scrolls, and its LAST table is as tall as the
+     *      window lets it be (measured, so any nesting works: a List table,
+     *      a Compact one, one inside a folding section);
+     *   D  every other table gets a grip under it; a dragged height is kept
+     *      per kind of table (`_dpTblSizeKey()`) for every later window, in
+     *      `sa_dp_table_heights`.
+     * One pass (`_dpTblSizePass()`) does both after every paint, resize,
+     * section toggle and image load. Repaints replace the grips, so their
+     * events are delegated on the window body.
+     */
+
+    /**
+     * State of the window's table heights: `heights` is `sa_dp_table_heights`
+     * as read when the window opened (`{ key: px }`, the last set last),
+     * `drag` the grip being dragged, `raf` a pass asked for the next frame.
+     * @type {{heights: ?Object<string, number>, drag: ?Object, raf: number}}
+     */
+    const _dpTblSize = { heights: null, drag: null, raf: 0 };
+    /** GM key of the saved table heights (workspace export: geometry group). */
+    const _DP_TBL_SIZE_KEY = 'sa_dp_table_heights';
+    /** A filling table never gets lower than this; below it the pane is off. */
+    const _DP_TBL_FILL_MIN = 160;
+    /** The lowest a grip drags a table to. */
+    const _DP_TBL_GRIP_MIN = 120;
+    /** What ↑ / ↓ on a focused grip change, in px. */
+    const _DP_TBL_GRIP_STEP = 20;
+    /** At most this many saved heights; the oldest set goes first. */
+    const _DP_TBL_SIZE_CAP = 200;
+
+    /**
+     * The saved table heights, read from GM storage the first time or when
+     * `reload` is set (a window opening: an import may have changed them).
+     *
+     * @param {boolean} [reload]
+     * @returns {Object<string, number>}
+     */
+    function _dpTblHeights(reload) {
+        if (!_dpTblSize.heights || reload) {
+            let v = null;
+            try {
+                v = GM_getValue(_DP_TBL_SIZE_KEY, null);
+            } catch (_) { /* no storage: nothing saved */ }
+            _dpTblSize.heights = v && typeof v === 'object' && !Array.isArray(v) ? Object.assign({}, v) : {};
+        }
+        return _dpTblSize.heights;
+    }
+
+    /**
+     * Saves (or with `px` null, forgets) one table's height. The key moves to
+     * the end, so the cap drops the heights set longest ago.
+     *
+     * @param {string} key - From `_dpTblSizeKey()`.
+     * @param {?number} px - The wrap's CSS `max-height`.
+     * @returns {void}
+     */
+    function _dpTblHeightSave(key, px) {
+        if (!key) return;
+        const h = _dpTblHeights();
+        delete h[key];
+        if (px != null) h[key] = px;
+        const keys = Object.keys(h);
+        keys.slice(0, Math.max(0, keys.length - _DP_TBL_SIZE_CAP)).forEach(k => delete h[k]);
+        GM_setValue(_DP_TBL_SIZE_KEY, h);
+    }
+
+    /**
+     * The key a table's height is kept under: its `data-mb-keep-scroll`
+     * name, else its `[data-mb-tbl]` box's id, with a running part folded
+     * away (`tag-kind-<slug>`, `dg-a-<role>`, `ratings-<n>`) so one height
+     * serves that kind of table in every window. '' for none.
+     *
+     * @param {HTMLElement} wrap - A `.mb-dg-vwrap`.
+     * @returns {string}
+     */
+    function _dpTblSizeKey(wrap) {
+        let k = wrap.dataset.mbKeepScroll || '';
+        if (!k) {
+            const box = wrap.closest('[data-mb-tbl]');
+            if (box && box.dataset.mbTbl) k = `tbl-${box.dataset.mbTbl}`;
+        }
+        return k.replace(/^tbl-tag-kind-.+$/, 'tbl-tag-kind').replace(/^dg-a-.+$/, 'dg-a').replace(/-\d+$/, '');
+    }
+
+    /**
+     * A wrap's height without its borders: what its `max-height` sets.
+     *
+     * @param {HTMLElement} wrap
+     * @returns {number}
+     */
+    function _dpTblBoxH(wrap) {
+        return wrap.offsetHeight - 2 * wrap.clientTop;
+    }
+
+    /**
+     * The right column that becomes a pane: the second of the first
+     * `.mb-dp-x` with two columns, while they stand side by side (one
+     * column, under the 640 px media query: none).
+     *
+     * @param {HTMLElement} area - The window body.
+     * @returns {?HTMLElement}
+     */
+    function _dpTblPane(area) {
+        for (const x of area.querySelectorAll('.mb-dp-x')) {
+            const cols = Array.from(x.children).filter(c => c.classList.contains('mb-dp-col'));
+            if (cols.length !== 2) continue;
+            return getComputedStyle(x).gridTemplateColumns.trim().split(/\s+/).length >= 2 ? cols[1] : null;
+        }
+        return null;
+    }
+
+    /**
+     * How many of a table's rows its box shows whole, of how many.
+     *
+     * @param {HTMLElement} wrap
+     * @returns {{shown: number, total: number}}
+     */
+    function _dpTblRowsInView(wrap) {
+        const head = wrap.querySelector('thead');
+        const r = wrap.getBoundingClientRect();
+        const top = r.top + wrap.clientTop + (head ? head.offsetHeight : 0) - 1;
+        const bot = r.top + wrap.clientTop + wrap.clientHeight + 1;
+        const rows = Array.from(wrap.querySelectorAll('tbody tr:not(.mb-dp-tsec)'));
+        const shown = rows.filter((tr) => {
+            const b = tr.getBoundingClientRect();
+            return b.top >= top && b.bottom <= bot;
+        }).length;
+        return { shown, total: rows.length };
+    }
+
+    /**
+     * Puts the grip under a table that scrolls or has a saved height (and
+     * takes it away otherwise), reusing the one there so a focused grip
+     * keeps its focus; while that table's grip is dragged, its label.
+     *
+     * @param {HTMLElement} wrap
+     * @param {string} key - From `_dpTblSizeKey()`; '' gets no grip.
+     * @param {boolean} saved - The table has a saved or dragged height.
+     * @returns {void}
+     */
+    function _dpTblGripSync(wrap, key, saved) {
+        const next = wrap.nextElementSibling;
+        let g = next && next.classList.contains('mb-dp-grip') ? next : null;
+        if (!key || !(saved || wrap.scrollHeight > wrap.clientHeight + 1)) {
+            if (g) g.remove();
+            return;
+        }
+        if (!g) {
+            g = document.createElement('div');
+            g.className = 'mb-dp-grip';
+            g.tabIndex = 0;
+            g.setAttribute('role', 'separator');
+            g.setAttribute('aria-orientation', 'horizontal');
+            g.setAttribute('aria-label', 'Table height');
+            g.setAttribute('aria-valuemin', String(_DP_TBL_GRIP_MIN));
+            _setTip(g, 'Drag to set this table\'s height, kept for this table in every window · double-click: back to 460 px · ↑ ↓: 20 px');
+            wrap.after(g);
+        }
+        g.dataset.mbGrip = key;
+        const h = _dpTblBoxH(wrap);
+        g.setAttribute('aria-valuenow', String(h));
+        const drag = _dpTblSize.drag;
+        const dragged = !!drag && drag.key === key;
+        g.classList.toggle('mb-dp-grip-drag', dragged);
+        let label = g.querySelector('.mb-dp-grip-l');
+        if (!dragged) {
+            if (label) label.remove();
+            return;
+        }
+        if (!label) {
+            label = document.createElement('span');
+            label.className = 'mb-dp-grip-l';
+            g.appendChild(label);
+        }
+        const v = _dpTblRowsInView(wrap);
+        label.textContent = `${h} px · ${v.shown === v.total ? `all ${v.total} rows` : `${v.shown} of ${v.total} rows`}`;
+    }
+
+    /**
+     * Sizes every table of the window (A+D, see above): the right pane's
+     * last table fills to the window's bottom edge; every other table takes
+     * its saved height (or the one being dragged), else the CSS 460 px, and
+     * a grip. Called after every paint (before scroll positions come back),
+     * and through `_dpTblSizeSoon()` on a resize, toggle or image load.
+     * Window only: nothing on the page's own tables.
+     *
+     * @param {HTMLElement} area - The window body.
+     * @returns {void}
+     */
+    function _dpTblSizePass(area) {
+        if (_dpTblSize.raf) {
+            cancelAnimationFrame(_dpTblSize.raf);
+            _dpTblSize.raf = 0;
+        }
+        if (!area || !area.isConnected) return;
+        const live = area.classList.contains('mb-dp-area-live');
+        const heights = _dpTblHeights();
+        const drag = _dpTblSize.drag;
+        const wraps = live ? [] : Array.from(area.querySelectorAll('.mb-dg-vwrap'))
+            .filter(w => w.querySelector('table') && w.getClientRects().length > 0);
+        const pane = live ? null : _dpTblPane(area);
+        const inPane = pane ? wraps.filter(w => pane.contains(w)) : [];
+        let fill = inPane.length ? inPane[inPane.length - 1] : null;
+        area.querySelectorAll('.mb-dp-pane').forEach((p) => {
+            if (p !== pane || !fill) p.classList.remove('mb-dp-pane');
+        });
+        const plain = (w) => {
+            const key = _dpTblSizeKey(w);
+            const px = key && drag && drag.key === key && drag.cur != null ? drag.cur : (key ? heights[key] : null);
+            w.classList.remove('mb-dp-fill');
+            w.style.maxHeight = px > 0 ? `${px}px` : '';
+            _dpTblGripSync(w, key, px > 0);
+        };
+        wraps.forEach((w) => {
+            if (w !== fill) plain(w);
+        });
+        // A grip whose table filled, folded away or went.
+        area.querySelectorAll('.mb-dp-grip').forEach((g) => {
+            const w = g.previousElementSibling;
+            if (!w || w === fill || !wraps.includes(w)) g.remove();
+        });
+        if (!fill) return;
+        pane.classList.add('mb-dp-pane');
+        const cs = getComputedStyle(pane.parentElement);
+        const padTop = parseFloat(cs.paddingTop) || 0;
+        const room = area.clientHeight - padTop - (parseFloat(cs.paddingBottom) || 0);
+        pane.style.setProperty('--mb-dp-pane-top', `${padTop}px`);
+        // What the pane holds besides the table: the pane is as tall as
+        // its content (align-self: start), so this is independent of the
+        // table's own height.
+        const rest = pane.offsetHeight - fill.offsetHeight;
+        const h = Math.floor(room - rest - 2 * fill.clientTop);
+        if (h < _DP_TBL_FILL_MIN) {
+            // Too little window for the pane: today's layout, the table a
+            // plain one with its grip.
+            pane.classList.remove('mb-dp-pane');
+            const last = fill;
+            fill = null;
+            plain(last);
+            return;
+        }
+        fill.classList.add('mb-dp-fill');
+        fill.style.maxHeight = `${h}px`;
+        const next = fill.nextElementSibling;
+        if (next && next.classList.contains('mb-dp-grip')) next.remove();
+    }
+
+    /**
+     * Asks for one `_dpTblSizePass()` in the next frame (a resize, a section
+     * opening, an image arriving, a grip moving: many of them per frame).
+     *
+     * @param {HTMLElement} area - The window body.
+     * @returns {void}
+     */
+    function _dpTblSizeSoon(area) {
+        if (_dpTblSize.raf) return;
+        _dpTblSize.raf = requestAnimationFrame(() => {
+            _dpTblSize.raf = 0;
+            _dpTblSizePass(area);
+        });
+    }
+
+    /**
+     * Pointer down on a grip (delegated on the window body): drags that
+     * table's height, by its key, so a repaint in the middle of it (an
+     * answer arriving) keeps the height being dragged. Release saves it;
+     * Esc (taken before the window's own Esc, which would close it) and a
+     * cancelled pointer put the saved one back.
+     *
+     * @param {PointerEvent} e
+     * @returns {boolean} Whether it was a grip's.
+     */
+    function _dpTblGripDown(e) {
+        const g = e.target instanceof Element ? e.target.closest('.mb-dp-grip') : null;
+        if (!g || (e.pointerType === 'mouse' && e.button !== 0) || _dpTblSize.drag) return false;
+        const wrap = g.previousElementSibling;
+        const area = g.closest('.mb-dp-area');
+        if (!wrap || !area || !g.dataset.mbGrip) return false;
+        e.preventDefault();
+        try {
+            g.setPointerCapture(e.pointerId);
+        } catch (_) { /* the document listeners still follow it */ }
+        const start = _dpTblBoxH(wrap);
+        const d = { key: g.dataset.mbGrip, y: e.clientY, h: start, cur: start, id: e.pointerId, moved: false };
+        const move = (ev) => {
+            if (ev.pointerId !== d.id) return;
+            d.cur = Math.max(_DP_TBL_GRIP_MIN, Math.round(d.h + ev.clientY - d.y));
+            d.moved = d.moved || d.cur !== d.h;
+            _dpTblSizeSoon(area);
+        };
+        const end = (keep) => {
+            document.removeEventListener('pointermove', move, true);
+            document.removeEventListener('pointerup', up, true);
+            document.removeEventListener('pointercancel', cancel, true);
+            window.removeEventListener('keydown', esc, true);
+            if (_dpTblSize.drag === d) _dpTblSize.drag = null;
+            area.classList.remove('mb-dp-grip-dragging');
+            if (keep && d.moved) _dpTblHeightSave(d.key, d.cur);
+            _dpTblSizePass(area);
+        };
+        const up = (ev) => {
+            if (ev.pointerId === d.id) end(true);
+        };
+        const cancel = (ev) => {
+            if (ev.pointerId === d.id) end(false);
+        };
+        const esc = (ev) => {
+            if (ev.key !== 'Escape') return;
+            ev.preventDefault();
+            ev.stopImmediatePropagation();
+            end(false);
+        };
+        document.addEventListener('pointermove', move, true);
+        document.addEventListener('pointerup', up, true);
+        document.addEventListener('pointercancel', cancel, true);
+        window.addEventListener('keydown', esc, true);
+        _dpTblSize.drag = d;
+        area.classList.add('mb-dp-grip-dragging');
+        _dpTblSizePass(area);
+        return true;
+    }
+
+    /**
+     * Double-click on a grip: the table back to the CSS 460 px, its saved
+     * height forgotten.
+     *
+     * @param {MouseEvent} e
+     * @returns {boolean} Whether it was a grip's.
+     */
+    function _dpTblGripReset(e) {
+        const g = e.target instanceof Element ? e.target.closest('.mb-dp-grip') : null;
+        const area = g && g.closest('.mb-dp-area');
+        if (!area || !g.dataset.mbGrip) return false;
+        e.preventDefault();
+        _dpTblHeightSave(g.dataset.mbGrip, null);
+        _dpTblSizePass(area);
+        return true;
+    }
+
+    /**
+     * ↑ / ↓ on a focused grip: the table 20 px lower / higher, saved.
+     *
+     * @param {KeyboardEvent} e
+     * @returns {boolean} Whether it was a grip's.
+     */
+    function _dpTblGripKey(e) {
+        if ((e.key !== 'ArrowUp' && e.key !== 'ArrowDown') || e.altKey || e.ctrlKey || e.metaKey) return false;
+        const g = e.target instanceof Element ? e.target.closest('.mb-dp-grip') : null;
+        const wrap = g && g.previousElementSibling;
+        const area = g && g.closest('.mb-dp-area');
+        if (!wrap || !area || !g.dataset.mbGrip) return false;
+        e.preventDefault();
+        e.stopPropagation();
+        const px = Math.max(_DP_TBL_GRIP_MIN, _dpTblBoxH(wrap) + (e.key === 'ArrowDown' ? _DP_TBL_GRIP_STEP : -_DP_TBL_GRIP_STEP));
+        _dpTblHeightSave(g.dataset.mbGrip, px);
+        _dpTblSizePass(area);
+        return true;
+    }
+
+    /**
+     * Wires the table heights into a new window: the saved heights read
+     * again, the grips' events delegated on the body, and a pass on every
+     * resize of the body, section toggle and image load.
+     *
+     * @param {{dialog: HTMLElement, scrollArea: HTMLElement}} api - The window.
+     * @returns {void}
+     */
+    function _dpTblSizeInstall(api) {
+        const area = api.scrollArea;
+        _dpTblHeights(true);
+        area.addEventListener('pointerdown', _dpTblGripDown);
+        area.addEventListener('dblclick', _dpTblGripReset);
+        area.addEventListener('keydown', _dpTblGripKey);
+        area.addEventListener('toggle', () => _dpTblSizeSoon(area), true);
+        area.addEventListener('load', () => _dpTblSizeSoon(area), true);
+        if (typeof ResizeObserver !== 'function') return;
+        const ro = new ResizeObserver(() => {
+            if (!api.dialog.isConnected) {
+                ro.disconnect();
+                return;
+            }
+            _dpTblSizeSoon(area);
+        });
+        ro.observe(area);
     }
 
     /**
@@ -28553,6 +28951,9 @@
         // Hovering inside the window: the foot line, the marks, the cards of
         // its links, an image's preview, the long press (org/dp-window-hover.org).
         _dpWinInstall(api);
+        // The tables and the window's height: the right pane fills, grips
+        // under the others (org/POH-table-sizing.org).
+        _dpTblSizeInstall(api);
         back.addEventListener('click', _dpBack);
         hist.addEventListener('click', _dpOpenEdits);
         histMore.addEventListener('click', (e) => {
@@ -29146,6 +29547,28 @@
             .mb-dp-dialog .mb-dg-vtools { margin: 6px 0; }
             .mb-dp-dialog .mb-dg-vq, .mb-dp-dialog .mb-dg-aq, .mb-dp-dialog .mb-tbl-q { font: 13.5px Georgia, "Times New Roman", serif; padding: 3px 8px; border: 1px solid #d9cfbd; border-radius: 3px; width: min(340px, 100%); background: #fff; color: #2b2622; }
             .mb-dp-dialog .mb-dg-vwrap { overflow: auto; max-height: 460px; border: 1px solid #d9cfbd; border-radius: 3px; background: #fff; }
+            /* The tables and the window's height (_dpTblSizePass(), org/POH-table-sizing.org,
+               mockup https://claude.ai/artifact/RdCsLUVrkiLNgZNFNaqkBn, A+D): the right
+               column a pane that stays while the left one scrolls, its last table as tall
+               as the window (an inline max-height over the 460 px above); a grip under
+               every other table. The pane is as tall as its content (align-self), which
+               is what the pass measures. */
+            .mb-dp-dialog .mb-dp-x > .mb-dp-col.mb-dp-pane { position: sticky; top: var(--mb-dp-pane-top, 0px); align-self: start; }
+            .mb-dp-dialog .mb-dp-grip {
+                position: relative; display: grid; place-items: center; height: 12px; margin-top: 1px;
+                cursor: ns-resize; touch-action: none; user-select: none; -webkit-user-select: none; border-radius: 0 0 3px 3px;
+            }
+            .mb-dp-dialog .mb-dp-grip::before { content: ""; width: 38px; height: 4px; border-top: 1px solid #b8ac97; border-bottom: 1px solid #b8ac97; }
+            .mb-dp-dialog .mb-dp-grip:hover::before, .mb-dp-dialog .mb-dp-grip.mb-dp-grip-drag::before, .mb-dp-dialog .mb-dp-grip:focus-visible::before { border-color: #2f5f9e; }
+            .mb-dp-dialog .mb-dp-grip:focus-visible { outline: 2px solid #2f5f9e; outline-offset: 1px; }
+            .mb-dp-dialog .mb-dp-grip-l {
+                position: absolute; right: 4px; top: -2px; padding: 0 4px; border: 1px solid #d9cfbd; border-radius: 3px; background: #fff;
+                color: #2f5f9e; font: 11px system-ui, -apple-system, "Segoe UI", Arial, sans-serif; font-variant-numeric: tabular-nums; white-space: nowrap;
+            }
+            .mb-dp-dialog .mb-dp-area.mb-dp-grip-dragging { cursor: ns-resize; user-select: none; -webkit-user-select: none; }
+            @media (pointer: coarse) {
+                .mb-dp-dialog .mb-dp-grip { height: 22px; }
+            }
             .mb-dp-dialog .mb-dg-vt { width: 100%; border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; }
             .mb-dp-dialog .mb-dg-vt th {
                 position: sticky; top: 0; z-index: 1; background: #f4eee2; text-align: left; white-space: nowrap; cursor: pointer; user-select: none;
@@ -130775,7 +131198,7 @@ a { color: #1565c0; }`;
             keys: [
                 'sa_stats_panel_geometry', 'sa_load_dialog_geometry',
                 'sa_shortcuts_help_geometry',
-                'sa_dp_dialog_geometry', 'sa_fgal_geometry',
+                'sa_dp_dialog_geometry', 'sa_dp_table_heights', 'sa_fgal_geometry',
                 'sa_idbo_geometry', 'sa_gms_geometry',
                 MB_UNIQ_DROP_GEOMETRY_KEY,
             ],
