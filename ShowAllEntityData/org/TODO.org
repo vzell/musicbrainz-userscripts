@@ -6181,3 +6181,12 @@ _EOF
 "Space" handling with large tables on right side leave the download aread flickering and it's NOT stoppable
 
 see videos
+
+* sa_sidebar_inline_collapsed true
+
+1.)
+
+change the "sa_sidebar_inline_collapsed" setting to default "true"
+
+2.)
+

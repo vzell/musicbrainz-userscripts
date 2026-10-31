@@ -27536,6 +27536,16 @@ verified.
 step shows its own card from memory, no Ctrl, no request" failed once in the
 popup run ("the card asked nothing": `lookups` 2, not 1). With `--repeat-each
 12` it failed 7 of 12 here and 6 of 12 on `main` (`d0ba9281`, a separate
-worktree), so the rate is the same with and without this change. Most likely a release lookup
-started by `threeSteps()` is still in flight when the test takes its snapshot
-of `asked`. Not investigated further.
+worktree), so the rate is the same with and without this change.
+
+**Fixed (same branch, vzell asked):** a probe logged each release lookup's
+id and time. The late lookup was always `ee6fc76d…`, the THIRD step's own
+release, never step 1's (the card's, served from memory). `threeSteps()`
+returned when the title showed three steps, at the click, while that
+release's lookup was still waiting for its rate slot behind the release
+group's requests. In the failing runs the slot came up during the hover (the
+window still wanted step 3), so it was asked about 1.7 s after the snapshot.
+In the passing runs the test pressed Space first, and it was never asked at
+all. Not a product bug: `threeSteps()` now also waits for step 3's tracklist.
+12 of 12 after (6 of 12 on `main` before); the "window's path" block 21 of 21
+at `--repeat-each 3`.

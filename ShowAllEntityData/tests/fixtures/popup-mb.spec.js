@@ -3713,6 +3713,13 @@ test.describe('MusicBrainz link previews: the window\'s path (org/POH-headerline
         names.push((await relInRg(page).textContent()).trim());
         await relInRg(page).click();
         await expect(steps(page)).toHaveCount(3);
+        // The third step LOADED, not just named: its release lookup waits
+        // for a rate slot (~1 s after the release group's requests), and a
+        // test that snapshots the request log before it lands sees it arrive
+        // later and blames whatever it does next (2026-10-31: "resting on a
+        // step … no request" failed 6 of 12 on main this way; a probe showed
+        // the late lookup was the third step's own release, never the card's).
+        await expect(dialog(page).locator('[data-mb-tbl="tracks"] tbody tr').first()).toBeVisible();
         await page.mouse.move(0, 0);
         return { log, names };
     }
