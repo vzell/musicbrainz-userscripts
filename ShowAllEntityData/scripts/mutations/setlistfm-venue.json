@@ -102,5 +102,122 @@
     "spec": "tests/fixtures/popup-ext.spec.js",
     "grep": "a tour: linked as setlist.fm's search",
     "expect": "fail"
+  },
+  {
+    "name": "set times stay on setlist.fm's 12-hour clock",
+    "why": "vzell's answer Q2 to mockup v1: 24-hour, as MusicBrainz writes times.",
+    "edits": [
+      {
+        "find": "        const m = /^(\\d{1,2}):(\\d{2})\\s*([AP])\\.?M\\.?$/i.exec(v);",
+        "replace": "        const m = null;"
+      }
+    ],
+    "spec": "tests/fixtures/popup-ext.spec.js",
+    "grep": "a venue window: set times by setlist id",
+    "expect": "fail"
+  },
+  {
+    "name": "a row looks its set times up on the wrong page of setlist.fm",
+    "why": "10 setlists a page on setlist.fm against the API's 20: the loaded rows' i-th is on page floor(i / 10) + 1.",
+    "edits": [
+      {
+        "find": "        const pageOf = new Map(rows.map((r, i) => [r.id, Math.floor(i / _EXT_SFM_SITE_PER) + 1]));",
+        "replace": "        const pageOf = new Map(rows.map((r, i) => [r.id, Math.floor(i / _EXT_SFM_SITE_PER) + 2]));"
+      }
+    ],
+    "spec": "tests/fixtures/popup-ext.spec.js",
+    "grep": "a venue window: set times by setlist id",
+    "expect": "fail"
+  },
+  {
+    "name": "setlist.fm's pages are read with the browser's cookies",
+    "why": "The session probe of 2026-11-02 read them anonymously; no consent was given for cookies (detail-pages.md's exceptions).",
+    "edits": [
+      {
+        "find": "            const res = await _extGet(url, { wanted });\n            if (res.skipped) return { skipped: true };\n            const checked = _extBotCheck(res);",
+        "replace": "            const res = await _extGet(url, { wanted, fetchOpts: { session: true } });\n            if (res.skipped) return { skipped: true };\n            const checked = _extBotCheck(res);"
+      }
+    ],
+    "spec": "tests/fixtures/popup-ext.spec.js",
+    "grep": "a venue window: set times by setlist id",
+    "expect": "fail"
+  },
+  {
+    "name": "a closed venue's \"Open\" is left out",
+    "why": "debug/setlistfm-venue.html (Los Angeles Sports Arena): \"Open\" with a range where an open venue has \"Opened\".",
+    "edits": [
+      {
+        "find": "    const _EXT_SFM_VENUE_LABELS_RE = /^(?:Address|Opened|Open|Also known as|Info)$/i;",
+        "replace": "    const _EXT_SFM_VENUE_LABELS_RE = /^(?:Address|Opened|Also known as|Info)$/i;"
+      }
+    ],
+    "spec": "tests/fixtures/popup-ext.spec.js",
+    "grep": "a venue window: set times by setlist id",
+    "expect": "fail"
+  },
+  {
+    "name": "the page's own newlines break a venue fact into lines",
+    "why": "Found by the spec on 2026-11-02: \"4 July 1959 - 19 March 2016\" came out as three lines.",
+    "edits": [
+      {
+        "find": "            v.querySelectorAll('br').forEach(br => br.replaceWith('\\uE000'));\n            const text = v.textContent.split('\\uE000').map(flat).filter(Boolean).join('\\n');",
+        "replace": "            v.querySelectorAll('br').forEach(br => br.replaceWith('\\n'));\n            const text = v.textContent.split('\\n').map(flat).filter(Boolean).join('\\n');"
+      }
+    ],
+    "spec": "tests/fixtures/popup-ext.spec.js",
+    "grep": "a venue window: set times by setlist id",
+    "expect": "fail"
+  },
+  {
+    "name": "\"Try again\" does not read a set-times page that did not come",
+    "why": "A failure is not kept; the window's button is the way to ask again.",
+    "edits": [
+      {
+        "find": "                if (s && s.status === 'failed') _extSfmSiteLoad(t, sf.kind, sf.id, sf.tour || '', n, { force: true, repaint });",
+        "replace": "                if (s && s.status === 'failed' && false) _extSfmSiteLoad(t, sf.kind, sf.id, sf.tour || '', n, { force: true, repaint });"
+      }
+    ],
+    "spec": "tests/fixtures/popup-ext.spec.js",
+    "grep": "a venue window: set times by setlist id",
+    "expect": "fail"
+  },
+  {
+    "name": "\"Load 20 more\" reads no more of setlist.fm's pages",
+    "why": "Each API page of 20 is two of setlist.fm's pages of 10.",
+    "edits": [
+      {
+        "find": "            for (let n = 1; n <= sitePages; n++) {\n                if (!site(n)) _extSfmSiteLoad(",
+        "replace": "            for (let n = 1; n <= Math.min(sitePages, 2); n++) {\n                if (!site(n)) _extSfmSiteLoad("
+      }
+    ],
+    "spec": "tests/fixtures/popup-ext.spec.js",
+    "grep": "an artist window: Doors and Show",
+    "expect": "fail"
+  },
+  {
+    "name": "a tour's set times are asked of a page that is not its search",
+    "why": "debug/setlistfm-tour-journey.html: the tour's pages are setlist.fm's search, `search?page=N&query=…`.",
+    "edits": [
+      {
+        "find": "        if (kind === 'tour') {\n            return `${u.origin}/search?",
+        "replace": "        if (kind === 'no-tour') {\n            return `${u.origin}/search?"
+      }
+    ],
+    "spec": "tests/fixtures/popup-ext.spec.js",
+    "grep": "a tour window: set times",
+    "expect": "fail"
+  },
+  {
+    "name": "a setlist's own Set Times box is not read",
+    "why": "Item 4 (vzell 2026-11-02): the set times \"should also be extracted and shown in the POH\".",
+    "edits": [
+      {
+        "find": "            setlist: kind === 'setlist' ? _extSfmSetlistTimes(doc) : null,",
+        "replace": "            setlist: null,"
+      }
+    ],
+    "spec": "tests/fixtures/popup-ext.spec.js",
+    "grep": "a setlist window: \"Set times\" from its own page",
+    "expect": "fail"
   }
 ]

@@ -2373,6 +2373,50 @@ What Part A does:
   Part A)" (3); mutations: scripts/mutations/setlistfm-venue.json (8, all
   fail as they should, 2026-11-02).
 
+What Part B does (item 4, Q2, Q3, Q5) — setlist.fm's own pages, read
+ANONYMOUSLY through `_extGet()` (host www.setlist.fm, its own 1 s gate, not
+the API's), only by the window, never by the card:
+
+- **Which page** (`_extSfmSiteUrl()`): a venue's or an artist's own page with
+  `?page=N` (page 1 without), a tour's setlist.fm search
+  `search?page=N&query=…` (the search page's own pager,
+  debug/setlistfm-tour-journey.html; the `#mbid=` fragment is dropped), a
+  setlist's own page. 10 setlists a page (`_EXT_SFM_SITE_PER`) against the
+  API's 20: the loaded rows' i-th is on page floor(i / 10) + 1, and a row is
+  found by setlist id on that page or a neighbour (`timesOf` in
+  `_extSfmListWindow()`). Kept like the API's pages,
+  `ext:sfm-site:<kind>:<id>:[<tour>:]<N>` (`_extSfmSiteKey()`,
+  `_EXT_SFM_SITE_VERSION`); a bot check, an error or any status but 200 is a
+  failure, not kept, and the List table's "⟳ Try again" reads it again.
+- **When**: whenever the window renders and a page it needs has no state
+  yet, not only on `start` — after a drill-down the record arrives on a
+  repaint (the add-foreign-page-or-reader skill's trap). "Load 20 more"
+  needs two more pages.
+- **Parsing** (`_extSfmSiteParse()`): each `.setlistPreview`'s id from its
+  `h2 a` and `.setlistPreviewSetTimes` in three shapes ("Doors: …",
+  "Show: … – …", both; `_extSfmPreviewTimes()`); a setlist page's first
+  `.setTimesTimeline` (`_extSfmSetlistTimes()`: `.doors`/`.scheduled`/
+  `.start`/`.end > strong`, "Add doors" is a link and stays empty, the
+  `.inlineDivider` durations); a venue page's `.venueInfo` box
+  (`_extSfmVenueInfo()`: the labels of `_EXT_SFM_VENUE_LABELS_RE` with their
+  own names — "Opened", or "Open" with a range for a closed venue, "Also
+  known as", "Info" —, the Web links, the attendances). A `<br>` becomes a
+  private-use marker before whitespace is squeezed: the page's own newlines
+  between `<span>`s are spaces. Every time on a 24-hour clock (`_extSfm24h()`).
+- **Showing**: the List table's "Set times" column (`td.mb-sfm-times`,
+  `_extSfmTimesHtml()`: Doors, then Show from–to on a second line; "…"
+  reading, "?" failed, "—" none), sortable by the doors or start time; the
+  status line "set times: setlist.fm pages read N of M"
+  (`.mb-sfm-site-n`); a venue's facts after Where (`_extSfmFactsHtml()`,
+  from page 1, so no request of their own); a setlist window's "Set times"
+  (`_extSfmSetlistTimesHtml()`, `.mb-sfm-settimes`) above its notes.
+- Fixtures: `scripts/build-setlistfm-fixtures.py` trims vzell's snapshots to
+  what the parser reads (`tests/fixtures/sfm-site-*.html`); the venue's and
+  the artist's page 1 hold the API fixtures' first 10 setlists (both saved
+  2026-10-29), so set times are checked by id against real data.
+- Specs: popup-ext.spec.js "setlist.fm venue additions (org/setlistfm.org,
+  Part B)" (6); mutations: the same file (9 more).
+
 ## archive.org items (reader `iadetails`, 2026-10-31)
 
 docs/claude/internet-archive.md is the full text. In short: any

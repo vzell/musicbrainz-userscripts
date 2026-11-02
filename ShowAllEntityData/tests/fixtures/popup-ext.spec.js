@@ -1095,8 +1095,19 @@ const sfmAnswers = () => {
         [`${SFM_API}/artist/${SFM_MBID}/setlists?p=2`]: sfmJson(JSON.stringify(p2)),
         // A tour by the artist's MBID (vzell's probe of 2026-11-02).
         [`${SFM_API}/search/setlists?artistMbid=${SFM_MBID}&tourName=The%20River%20Tour%202016&p=1`]: sfmJson(json('ext-sfm-tour-setlists-p1.json')),
+        // setlist.fm's own pages (Part B, scripts/build-setlistfm-fixtures.py):
+        // the venue's and the artist's page 1 list the API fixtures' first
+        // 10 setlists; their page 2 is not served (a 404: "?"). The tour's
+        // page is Journey's (no setlist of it is the River Tour's: "—").
+        [SFM.venue]: sfmHtml('sfm-site-venue-3d6c967-p1.html'),
+        [SFM.artist]: sfmHtml('sfm-site-artist-2bd6dcce-p1.html'),
+        [SFM.setlist]: sfmHtml('sfm-site-setlist-4bf0375a.html'),
+        [SFM_TOUR_PAGE(1)]: sfmHtml('sfm-site-tour-journey-p1.html'),
     };
 };
+const sfmHtml = name => ({ status: 200, responseHeaders: 'Content-Type: text/html;charset=UTF-8', responseText: json(name) });
+// setlist.fm's search page of the River Tour 2016, page n (its own pager's form).
+const SFM_TOUR_PAGE = n => `https://www.setlist.fm/search?${n > 1 ? `page=${n}&` : ''}query=${encodeURIComponent('artist:(Bruce Springsteen) tour:(The River Tour 2016)')}`;
 const SFM_KEY = 'sfm-probe-key';
 
 test.describe('setlist.fm through its API (branch B)', () => {
@@ -1202,10 +1213,11 @@ const SFM_TOUR = `https://www.setlist.fm/search?query=${encodeURIComponent('arti
  * Opens the window of a setlist.fm link through the API answers.
  * @param {import('@playwright/test').Page} page
  * @param {string} url
+ * @param {Object<string, Object>} [extra] - Answers over `sfmAnswers()`.
  * @returns {Promise<import('@playwright/test').Locator>} The window's area.
  */
-async function sfmWindow(page, url) {
-    await openEvent(page, { settings: { sa_pop_ext: true, sa_pop_ext_setlistfm_key: SFM_KEY }, responses: sfmAnswers() });
+async function sfmWindow(page, url, extra = {}) {
+    await openEvent(page, { settings: { sa_pop_ext: true, sa_pop_ext_setlistfm_key: SFM_KEY }, responses: Object.assign(sfmAnswers(), extra) });
     await addAnnotationLinks(page, [url]);
     await ctrlHover(page, probe(page, 0));
     await expect(card(page).locator('.mb-tt-title')).not.toBeEmpty();
@@ -1219,8 +1231,9 @@ test.describe('setlist.fm venue additions (org/setlistfm.org, Part A)', () => {
         const right = area.locator('[data-mb-tbl="sfm-venue"] tbody tr');
         await expect(right).toHaveCount(20);
         // Item 1: the Date cell is set not to wrap ("2026-10-20" broke at its hyphens).
-        const dates = area.locator('[data-mb-tbl="sfm-venue"] tbody td.mb-dg-yr');
+        const dates = area.locator('[data-mb-tbl="sfm-venue"] tbody tr > td:first-child');
         await expect(dates).toHaveCount(20);
+        await expect(dates.first()).toHaveText('2016-03-19');
         expect(await dates.first().evaluate(td => getComputedStyle(td).whiteSpace)).toBe('nowrap');
         // Item 3: tables, most setlists first, 8 a page.
         await expect(area.locator('h4', { hasText: 'In the loaded setlists' })).toHaveText('In the loaded setlists · 20');
@@ -1248,6 +1261,8 @@ test.describe('setlist.fm venue additions (org/setlistfm.org, Part A)', () => {
         // A third click: the initial order again, most setlists first.
         await countHead.click();
         await expect(artists.first().locator('td').first()).toHaveText('Bruce Springsteen');
+        // The set times' pages are read by now (Part B), so nothing late is counted.
+        await expect(area.locator('td.mb-sfm-times', { hasText: '…' })).toHaveCount(0);
         const before = (await xhrFull(page)).length;
         // The pick: only that tour's setlists, the row marked, the pill.
         await tours.first().locator('.mb-sfm-pick').click();
@@ -1287,7 +1302,7 @@ test.describe('setlist.fm venue additions (org/setlistfm.org, Part A)', () => {
         await expect(d.locator(':scope > div > span').first()).toHaveText(/setlist\.fm tour$/);
         const rows = area.locator('[data-mb-tbl="sfm-tour"] tbody tr');
         await expect(rows).toHaveCount(20);
-        await expect(area.locator('[data-mb-tbl="sfm-tour"] th')).toHaveText(['Date', 'Venue', 'Songs']);
+        await expect(area.locator('[data-mb-tbl="sfm-tour"] th')).toHaveText(['Date', 'Venue', 'Set times', 'Songs']);
         await expect(area.locator('dt:text-is("Artist") + dd a').first()).toHaveAttribute('href', `https://musicbrainz.org/artist/${SFM_MBID}`);
         await expect(area).toContainText('20 of 75 loaded');
         const venues = area.locator('[data-mb-tbl="sfm-l-venue"] tbody tr');
@@ -1312,6 +1327,113 @@ test.describe('setlist.fm venue additions (org/setlistfm.org, Part A)', () => {
         const keys = await page.evaluate(() => Array.from(document.querySelectorAll('.ext-probe a'))
             .map(a => (window.__saTest.popResolve(a) || '').split(':').slice(0, 2).join(':')));
         expect(keys).toEqual(['ext|ext:setlistfm', 'ext|ext:generic', 'ext|ext:generic', 'ext|ext:generic']);
+    });
+});
+
+// org/setlistfm.org "venue additions", Part B (item 4, Q2, Q3, Q5): set times
+// and a venue's facts from setlist.fm's own pages, read anonymously, only by
+// the window. The pages are vzell's snapshots, trimmed by
+// scripts/build-setlistfm-fixtures.py; the venue's and the artist's page 1
+// list the API fixtures' first 10 setlists. Mutation list:
+// scripts/mutations/setlistfm-venue.json.
+const SFM_SITE = 'https://www.setlist.fm/';
+const sfmSiteLog = async page => (await xhrFull(page)).filter(r => r.url.startsWith(SFM_SITE));
+const timesCell = (area, tbl, i) => area.locator(`[data-mb-tbl="${tbl}"] tbody tr`).nth(i).locator('td.mb-sfm-times');
+
+test.describe('setlist.fm venue additions (org/setlistfm.org, Part B)', () => {
+    test('a venue window: set times by setlist id from the page, 24-hour; the venue\'s own facts; the pages read anonymously, never for the card; a page that does not come is "?" and "Try again" reads it', async ({ page }) => {
+        await openEvent(page, { settings: { sa_pop_ext: true, sa_pop_ext_setlistfm_key: SFM_KEY }, responses: sfmAnswers() });
+        await addAnnotationLinks(page, [SFM.venue]);
+        await ctrlHover(page, probe(page, 0));
+        await expect(card(page).locator('.mb-tt-title')).toHaveText('Los Angeles Sports Arena');
+        expect(await sfmSiteLog(page), 'the card reads no page').toEqual([]);
+        await page.keyboard.press('Space');
+        const area = dialog(page).locator('.mb-dp-area');
+        await expect(area.locator('[data-mb-tbl="sfm-venue"] th')).toHaveText(['Date', 'Artist', 'Tour', 'Set times', 'Songs']);
+        await expect(timesCell(area, 'sfm-venue', 0)).toHaveText('Show 20:10–23:55');
+        await expect(timesCell(area, 'sfm-venue', 1)).toHaveText('Show 20:10–23:40');
+        await expect(timesCell(area, 'sfm-venue', 2)).toHaveText('Show 20:15–23:40');
+        await expect(timesCell(area, 'sfm-venue', 3), 'on the page, without set times').toHaveText('—');
+        // Rows 11-20 are on page 2, which is not served: "?".
+        await expect(timesCell(area, 'sfm-venue', 10)).toHaveText('?');
+        await expect(area.locator('.mb-sfm-site-n')).toHaveText('1 of 2');
+        await expect(area).toContainText('a page did not come');
+        expect((await sfmSiteLog(page)).map(r => [r.url, r.anonymous])).toEqual([[SFM.venue, true], [`${SFM.venue}?page=2`, true]]);
+        // Q3: what the API has not, with setlist.fm's own labels.
+        await expect(area.locator('dt:text-is("Address") + dd')).toHaveText('3939 South Figueroa StreetLos Angeles, CA 90037USA');
+        await expect(area.locator('dt:text-is("Address") + dd br')).toHaveCount(2);
+        await expect(area.locator('dt:text-is("Open") + dd')).toHaveText('4 July 1959 - 19 March 2016');
+        await expect(area.locator('dt:text-is("Also known as") + dd')).toHaveText('L.A. Sports Arena, Los Angeles Memorial Sports Arena, Sport Arena');
+        await expect(area.locator('dt:text-is("Web") + dd a')).toHaveAttribute('href', 'http://en.wikipedia.org/wiki/Los_Angeles_Memorial_Sports_Arena');
+        await expect(area.locator('dt:text-is("Attendances") + dd')).toHaveText('4,131 attendances by 1,650 users');
+        await expect(area.locator('dt:text-is("Actions")')).toHaveCount(0);
+        await expect(area.locator('.mb-dg-counts', { hasText: 'Data from' })).toContainText('set times from its pages');
+        // Sorting by Set times: those with a time first, earliest first.
+        await area.locator('[data-mb-tbl="sfm-venue"] th', { hasText: 'Set times' }).click();
+        await expect(timesCell(area, 'sfm-venue', 0)).toHaveText(/^Show 20:10/);
+        await expect(timesCell(area, 'sfm-venue', 2)).toHaveText('Show 20:15–23:40');
+        await area.locator('[data-mb-tbl="sfm-venue"] th', { hasText: 'Set times' }).click();
+        await area.locator('[data-mb-tbl="sfm-venue"] th', { hasText: 'Set times' }).click();
+        // Page 2 now answers (no setlist of it has times): "Try again" reads it.
+        await page.evaluate((u) => {
+            window.__gmXhrResponses[u] = { status: 200, responseHeaders: 'Content-Type: text/html', responseText: '<html><body></body></html>' };
+        }, `${SFM.venue}?page=2`);
+        await area.locator('[data-mb-sfm-act="retry"]').click();
+        await expect(timesCell(area, 'sfm-venue', 10)).toHaveText('—');
+        await expect(area.locator('.mb-sfm-site-n')).toHaveText('2 of 2');
+        await expect(area.locator('[data-mb-sfm-act="retry"]')).toHaveCount(0);
+    });
+
+    test('an artist window: Doors and Show on two lines; "Load 20 more" reads the two pages of setlist.fm that list them', async ({ page }) => {
+        const area = await sfmWindow(page, SFM.artist);
+        const merriweather = area.locator('[data-mb-tbl="sfm-artist"] tbody tr', { hasText: '2026-10-03' }).locator('td.mb-sfm-times');
+        await expect(merriweather).toContainText('Doors 12:00');
+        await expect(merriweather).toContainText('Show 22:00–22:50');
+        await expect(merriweather.locator('br')).toHaveCount(1);
+        await expect(area.locator('[data-mb-tbl="sfm-artist"] tbody tr', { hasText: '2026-05-30' }).locator('td.mb-sfm-times'))
+            .toContainText('Doors 18:00');
+        await expect(area.locator('.mb-sfm-site-n')).toHaveText(/ of 2$/);
+        await area.locator('[data-mb-sfm-act="more"]').click();
+        await expect(area).toContainText('40 of 3,003 loaded');
+        await expect(area.locator('.mb-sfm-site-n')).toHaveText(/ of 4$/);
+        await expect.poll(async () => (await sfmSiteLog(page)).map(r => r.url)).toEqual(
+            [SFM.artist, `${SFM.artist}?page=2`, `${SFM.artist}?page=3`, `${SFM.artist}?page=4`]);
+    });
+
+    test('a setlist window whose doors are not entered ("Add doors"): no Doors, and the start not "after doors"', async ({ page }) => {
+        const area = await sfmWindow(page, SFM.setlist);
+        await expect.poll(async () => (await sfmSiteLog(page)).map(r => [r.url, r.anonymous])).toEqual([[SFM.setlist, true]]);
+        const kv = area.locator('.mb-sfm-settimes');
+        await expect(kv.locator('dt')).toHaveText(['Scheduled', 'Start', 'End']);
+        await expect(kv.locator('dt:text-is("Scheduled") + dd')).toHaveText('19:30');
+        await expect(kv.locator('dt:text-is("Start") + dd')).toHaveText('20:10');
+        await expect(kv.locator('dt:text-is("End") + dd')).toHaveText('23:55 · 3h 45m long');
+        await expect(area.locator('[data-mb-tbl="sfm-setlist"] tbody tr:not(.mb-dp-tsec)')).toHaveCount(35);
+    });
+
+    test('a setlist window whose page has no Set Times box: no block, nothing waiting', async ({ page }) => {
+        const area = await sfmWindow(page, SFM.setlist, { [SFM.setlist]: { status: 200, responseHeaders: 'Content-Type: text/html', responseText: '<html><body></body></html>' } });
+        await expect.poll(async () => (await sfmSiteLog(page)).length).toBe(1);
+        await expect(area.locator('[data-mb-tbl="sfm-setlist"] tbody tr:not(.mb-dp-tsec)')).toHaveCount(35);
+        await expect(area.locator('h4', { hasText: 'Set times' })).toHaveCount(0);
+        await expect(area.locator('.mb-sfm-settimes')).toHaveCount(0);
+    });
+
+    test('a setlist window: "Set times" from its own page (Doors, Scheduled, Start after doors, End and how long, 24-hour)', async ({ page }) => {
+        // The Merriweather page (debug/setlistfm-venue-set-times.html) served for it.
+        const area = await sfmWindow(page, SFM.setlist, { [SFM.setlist]: sfmHtml('sfm-site-setlist-37589df.html') });
+        const kv = area.locator('.mb-sfm-settimes');
+        await expect(kv.locator('dt:text-is("Doors") + dd')).toHaveText('12:00');
+        await expect(kv.locator('dt:text-is("Scheduled") + dd')).toHaveText('21:15');
+        await expect(kv.locator('dt:text-is("Start") + dd')).toHaveText('22:00 · 10h 0m after doors');
+        await expect(kv.locator('dt:text-is("End") + dd')).toHaveText('22:50 · 50m long');
+    });
+
+    test('a tour window: set times from setlist.fm\'s search pages (its own pager\'s URL, without the fragment); a setlist not on them is "—"', async ({ page }) => {
+        const area = await sfmWindow(page, SFM_TOUR);
+        await expect(area.locator('[data-mb-tbl="sfm-tour"] tbody tr')).toHaveCount(20);
+        await expect(timesCell(area, 'sfm-tour', 0)).toHaveText('—');
+        await expect.poll(async () => (await sfmSiteLog(page)).map(r => r.url)).toEqual([SFM_TOUR_PAGE(1), SFM_TOUR_PAGE(2)]);
     });
 });
 

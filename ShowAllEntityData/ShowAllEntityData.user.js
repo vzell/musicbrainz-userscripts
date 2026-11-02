@@ -66869,6 +66869,243 @@
         }, { force, repaint, wanted: () => !!(_dpDialog.target && _dpDialog.target.key === t.key), version: _EXT_IDB_VERSION * 100 + _EXT_SFM_VERSION, ttlMs: _extTtlMs() });
     }
 
+    // --- setlist.fm's own pages: set times and a venue's facts -------------
+    // org/setlistfm.org "venue additions" Part B (items 4 and Q3/Q5 of mockup
+    // v1). The API has no set times and no venue address; setlist.fm's pages
+    // do, and they answer the script's ANONYMOUS request with the page
+    // (scripts/probe-setlistfm-session.user.js, 2026-11-02: 200, 10
+    // `.setlistPreview`, 7 with `.setlistPreviewSetTimes`). Read only in the
+    // window (Space), never for a card; each page is kept like the API's.
+
+    /** Version of the kept setlist.fm page reads; bump when their shape changes. */
+    const _EXT_SFM_SITE_VERSION = 1;
+
+    /**
+     * How many setlists a page of setlist.fm lists (a venue's, an artist's,
+     * a search's: debug/setlistfm-venue-initial*.html, setlistfm-artist.html,
+     * setlistfm-tour-journey.html), against the API's 20: API page p is the
+     * site's pages 2p-1 and 2p.
+     * @type {number}
+     */
+    const _EXT_SFM_SITE_PER = 10;
+
+    /**
+     * A time as setlist.fm writes it ("7:45 PM") on a 24-hour clock, as
+     * MusicBrainz writes times ("19:45"; vzell's answer Q2); anything else
+     * as it is.
+     *
+     * @param {string} s
+     * @returns {string}
+     */
+    function _extSfm24h(s) {
+        const v = String(s || '').replace(/\u00a0/g, ' ').trim();
+        const m = /^(\d{1,2}):(\d{2})\s*([AP])\.?M\.?$/i.exec(v);
+        if (!m) return v;
+        const h = Number(m[1]) % 12 + (m[3].toUpperCase() === 'P' ? 12 : 0);
+        return `${String(h).padStart(2, '0')}:${m[2]}`;
+    }
+
+    /**
+     * The setlist.fm page that lists page `n` of a venue's, an artist's or a
+     * tour's setlists: the link's own page with `?page=n` (page 1 without
+     * it), a tour's search with `page=n&query=…` (the search page's own
+     * pager, debug/setlistfm-tour-journey.html). A setlist's own page for a
+     * setlist.
+     *
+     * @param {object} t
+     * @param {string} kind - 'venue', 'artist', 'tour' or 'setlist'.
+     * @param {number} n
+     * @returns {string}
+     */
+    function _extSfmSiteUrl(t, kind, n) {
+        const u = new URL(t.url);
+        if (kind === 'tour') {
+            return `${u.origin}/search?${n > 1 ? `page=${n}&` : ''}query=${encodeURIComponent(u.searchParams.get('query') || '')}`;
+        }
+        return `${u.origin}${u.pathname}${n > 1 ? `?page=${n}` : ''}`;
+    }
+
+    /**
+     * The cache key of a setlist.fm page read for the window: by the
+     * record's kind and id (a tour's with its name too) and page.
+     *
+     * @param {string} kind
+     * @param {string} id
+     * @param {string} tour
+     * @param {number} n
+     * @returns {string}
+     */
+    function _extSfmSiteKey(kind, id, tour, n) {
+        return `ext:sfm-site:${kind}:${id}:${kind === 'tour' ? `${tour}:` : ''}${n}`;
+    }
+
+    /**
+     * The set times of one `.setlistPreviewSetTimes` box, on a 24-hour
+     * clock. The box has three shapes (the venue, artist and tour
+     * snapshots): "Doors: 6:00 PM", "Show: 8:00 PM – 11:05 PM", or both.
+     *
+     * @param {?Element} box
+     * @returns {?{doors: string, start: string, end: string}} null without a box.
+     */
+    function _extSfmPreviewTimes(box) {
+        if (!box) return null;
+        const tx = (box.textContent || '').replace(/\u00a0/g, ' ').replace(/\s+/g, ' ');
+        const T = '(\\d{1,2}:\\d{2}\\s*[AP]M)';
+        const doors = new RegExp(`Doors:\\s*${T}`, 'i').exec(tx);
+        const show = new RegExp(`Show:\\s*${T}?\\s*(?:[–-]\\s*${T})?`, 'i').exec(tx);
+        const out = {
+            doors: doors ? _extSfm24h(doors[1]) : '',
+            start: show && show[1] ? _extSfm24h(show[1]) : '',
+            end: show && show[2] ? _extSfm24h(show[2]) : '',
+        };
+        return out.doors || out.start || out.end ? out : null;
+    }
+
+    /**
+     * The labels of a venue's info box the window shows, as setlist.fm
+     * names them: "Opened" for a venue still open, "Open" with a range for
+     * a closed one (Los Angeles Sports Arena: "4 July 1959 - 19 March
+     * 2016"), "Also known as" as several names, "Info" for notes such as
+     * former names (debug/setlistfm-venue*.html, 2026-10-29 and 11-02).
+     * City is the API's already; Web is read as links; "Actions" is
+     * setlist.fm's editing menu.
+     * @type {RegExp}
+     */
+    const _EXT_SFM_VENUE_LABELS_RE = /^(?:Address|Opened|Open|Also known as|Info)$/i;
+
+    /**
+     * A venue's facts from the info box of its page (`.venueInfo .info`),
+     * what the API has not: the labels of `_EXT_SFM_VENUE_LABELS_RE` with
+     * their text in the page's order (a `<br>` starts a new line), the Web
+     * links and the attendances.
+     *
+     * @param {Document} doc
+     * @returns {?{facts: Array<[string, string]>, web: Array<{url: string, text: string}>, attendance: string}}
+     */
+    function _extSfmVenueInfo(doc) {
+        const box = doc.querySelector('.venueInfo');
+        if (!box) return null;
+        const flat = s => String(s || '').replace(/\u00a0/g, ' ').replace(/\s+/g, ' ').trim();
+        const out = { facts: [], web: [], attendance: '' };
+        box.querySelectorAll('.info .form-group').forEach((g) => {
+            const labelEl = g.querySelector('.label');
+            const label = flat(labelEl && labelEl.textContent);
+            if (/^Web$/i.test(label)) {
+                out.web = Array.from(g.querySelectorAll('a[href]')).filter(a => /^https?:\/\//i.test(a.getAttribute('href')))
+                    .map(a => ({ url: a.getAttribute('href'), text: flat(a.textContent) || a.getAttribute('href') }));
+                return;
+            }
+            if (!_EXT_SFM_VENUE_LABELS_RE.test(label)) return;
+            // The value: the group without its label, one line per <br>.
+            // The page's own newlines between tags are mere spaces (a closed
+            // venue's "Open" is three <span>s on three lines: "4 July 1959",
+            // " - ", "19 March 2016"), so a <br> becomes a private-use
+            // marker that squeezing whitespace leaves alone.
+            const v = g.cloneNode(true);
+            v.querySelectorAll('.label').forEach(x => x.remove());
+            v.querySelectorAll('br').forEach(br => br.replaceWith('\uE000'));
+            const text = v.textContent.split('\uE000').map(flat).filter(Boolean).join('\n');
+            if (text) out.facts.push([label, text]);
+        });
+        const att = box.querySelector('.attendance');
+        if (att) out.attendance = flat(att.textContent).replace(/\.$/, '');
+        return out;
+    }
+
+    /**
+     * A setlist's set times from its own page (the "Set Times" box,
+     * `.setTimesTimeline`, twice on the page: phone and desktop; the first
+     * is read): Doors, Scheduled, Start and End on a 24-hour clock, with
+     * setlist.fm's "10h 0m" after doors and "50m" long
+     * (debug/setlistfm-venue-set-times.html). A time not entered is "Add
+     * doors", a link, not a `<strong>`: it stays ''.
+     *
+     * @param {Document} doc
+     * @returns {?{doors: string, scheduled: string, start: string, end: string, after: string, long: string}}
+     */
+    function _extSfmSetlistTimes(doc) {
+        const box = doc.querySelector('.setTimesTimeline');
+        if (!box) return null;
+        const time = sel => _extSfm24h((box.querySelector(`${sel} > strong`) || {}).textContent || '');
+        const span = sel => ((box.querySelector(`${sel} > .inlineDivider`) || {}).textContent || '').replace(/\s+/g, ' ').trim();
+        const out = {
+            doors: time('.doors'), scheduled: time('.scheduled'), start: time('.start'), end: time('.end'),
+            after: span('.start'), long: span('.end'),
+        };
+        return out.doors || out.scheduled || out.start || out.end ? out : null;
+    }
+
+    /**
+     * What the window reads from one setlist.fm page: the set times of
+     * every setlist it lists, by setlist id (the id ends its link,
+     * `…-3374e495.html`); a venue's page also its facts; a setlist's page
+     * its own times.
+     *
+     * @param {Document} doc
+     * @param {string} kind
+     * @returns {{times: Object<string, {doors: string, start: string, end: string}>, venue: ?Object, setlist: ?Object}}
+     */
+    function _extSfmSiteParse(doc, kind) {
+        const times = {};
+        if (kind !== 'setlist') {
+            doc.querySelectorAll('.setlistPreview').forEach((p) => {
+                const a = p.querySelector('h2 a[href]');
+                const m = a && /-([0-9a-f]+)\.html(?:[?#].*)?$/i.exec(a.getAttribute('href'));
+                const st = _extSfmPreviewTimes(p.querySelector('.setlistPreviewSetTimes'));
+                if (m && st) times[m[1].toLowerCase()] = st;
+            });
+        }
+        return {
+            times, venue: kind === 'venue' ? _extSfmVenueInfo(doc) : null,
+            setlist: kind === 'setlist' ? _extSfmSetlistTimes(doc) : null,
+        };
+    }
+
+    /**
+     * Reads one setlist.fm page for the window (`_extSfmSiteUrl()`), kept
+     * like an API page. Anonymous, through the host's own gate
+     * (www.setlist.fm, not the API's); a bot check, an error or any status
+     * but 200 is a failure, not kept: "Try again" asks again.
+     *
+     * @param {object} t
+     * @param {string} kind
+     * @param {string} id
+     * @param {string} tour
+     * @param {number} n
+     * @param {{force?: boolean, repaint?: ?function(): void}} [how]
+     * @returns {void}
+     */
+    function _extSfmSiteLoad(t, kind, id, tour, n, { force = false, repaint = null } = {}) {
+        const url = _extSfmSiteUrl(t, kind, n);
+        _mbLoad(_extSfmSiteKey(kind, id, tour, n), async (wanted) => {
+            const res = await _extGet(url, { wanted });
+            if (res.skipped) return { skipped: true };
+            const checked = _extBotCheck(res);
+            if (checked) return { ok: false, detail: `setlist.fm answered with a bot check (${checked})` };
+            if (res.error || res.status !== 200) return { ok: false, detail: res.error ? _extFailText(res) : `setlist.fm answered HTTP ${res.status}` };
+            return { ok: true, data: _extSfmSiteParse(new DOMParser().parseFromString(res.body, 'text/html'), kind) };
+        }, { force, repaint, wanted: () => !!(_dpDialog.target && _dpDialog.target.key === t.key), version: _EXT_IDB_VERSION * 100 + _EXT_SFM_SITE_VERSION, ttlMs: _extTtlMs() });
+    }
+
+    /**
+     * The set times cell of a list window's row: Doors, then Show from–to,
+     * each on its own line (vzell's Q1: one column in the window); "…"
+     * while its page is read, "?" when it could not be, "—" when setlist.fm
+     * has none.
+     *
+     * @param {?{doors: string, start: string, end: string}} st
+     * @param {string} state - 'done', 'loading' or 'failed'.
+     * @returns {string}
+     */
+    function _extSfmTimesHtml(st, state) {
+        if (state === 'loading') return '<span class="mb-rg-dim" data-mb-tip title="Reading setlist.fm\'s page">…</span>';
+        if (state === 'failed') return '<span class="mb-rg-dim" data-mb-tip title="setlist.fm\'s page could not be read">?</span>';
+        if (!st) return '<span class="mb-rg-dim">—</span>';
+        const show = st.start || st.end ? `${st.start}${st.end ? `–${st.end}` : ''}` : '';
+        return [st.doors ? `<span class="mb-rg-dim">Doors</span> ${_rgEsc(st.doors)}` : '',
+            show ? `<span class="mb-rg-dim">Show</span> ${_rgEsc(show)}` : ''].filter(Boolean).join('<br>');
+    }
+
     /**
      * An MBID's MusicBrainz artist as a link (it opens in the window), else
      * the plain name.
@@ -66911,29 +67148,63 @@
 
     /**
      * The attribution setlist.fm asks for wherever its data is shown: its
-     * page, linked.
+     * page, linked; with `pages`, that the set times (and a venue's facts)
+     * come from its pages.
      *
      * @param {string} url
+     * @param {boolean} [pages]
      * @returns {string}
      */
-    function _extSfmCreditHtml(url) {
-        return `<div class="mb-dg-counts">Data from ${_extSfmLinkHtml(url, 'setlist.fm')}, read through its API with your key.</div>`;
+    function _extSfmCreditHtml(url, pages = false) {
+        return `<div class="mb-dg-counts">Data from ${_extSfmLinkHtml(url, 'setlist.fm')}, read through its API with your key` +
+            `${pages ? '; set times from its pages' : ''}.</div>`;
+    }
+
+    /**
+     * A setlist window's "Set times" (item 4, mockup v1 view 3): Doors,
+     * Scheduled, Start (and how long after doors) and End (and how long the
+     * show was), from the setlist's own page, read once the window shows it
+     * (`_extSfmSiteLoad()`); nothing when the page has none.
+     *
+     * @param {object} t
+     * @param {Object} s - `_extSfmSetlist()`.
+     * @param {?{repaint: function(): void}} how
+     * @returns {string}
+     */
+    function _extSfmSetlistTimesHtml(t, s, how) {
+        const st = _mbPop.get(_extSfmSiteKey('setlist', s.id, '', 1));
+        if (!st && how) _extSfmSiteLoad(t, 'setlist', s.id, '', 1, { repaint: how.repaint });
+        if (!st || st.status === 'loading') return '<h4>Set times</h4><div class="mb-dp-xsub">Reading setlist.fm\'s page…</div>';
+        if (st.status === 'failed') {
+            return `<h4>Set times</h4><div class="mb-dp-xsub">setlist.fm's page did not come: ${_rgEsc(st.detail)} ` +
+                '<button type="button" class="mb-dg-btn" data-mb-sfm-act="retry">⟳ Try again</button></div>';
+        }
+        const x = st.data.setlist;
+        if (!x) return '';
+        const withNote = (v, d) => (v ? `${_rgEsc(v)}${d ? ` <span class="mb-rg-dim">· ${_rgEsc(d)}</span>` : ''}` : '');
+        return '<h4>Set times</h4><div class="mb-sfm-settimes">' + _mbPopKvHtml([
+            ['Doors', _rgEsc(x.doors)], ['Scheduled', _rgEsc(x.scheduled)],
+            ['Start', withNote(x.start, x.after && x.doors ? `${x.after} after doors` : '')],
+            ['End', withNote(x.end, x.long ? `${x.long} long` : '')],
+        ]) + '</div>';
     }
 
     /**
      * The setlist window: on the left its facts (artist, date, venue with its
-     * place, tour, last edit), its notes and the attribution; on the right
-     * the songs as a List table, # · Song · Notes (the cover's and the
-     * guest's artist linked to MusicBrainz, tape, the song's note), a heading
-     * row per named set, a Part chip each.
+     * place, tour, last edit), its set times (from its page), its notes and
+     * the attribution; on the right the songs as a List table, # · Song ·
+     * Notes (the cover's and the guest's artist linked to MusicBrainz, tape,
+     * the song's note), a heading row per named set, a Part chip each.
      *
      * @param {object} t
      * @param {Object} s - `_extSfmSetlist()`.
+     * @param {?{repaint: function(): void}} [how]
      * @returns {{left: string[], right: string[], full: string[], swap: boolean}}
      */
-    function _extSfmSetlistWindow(t, s) {
+    function _extSfmSetlistWindow(t, s, how = null) {
         const out = { left: [], right: [], full: [], swap: true };
-        out.left.push((s.info ? `<h4>Notes</h4><div class="mb-dp-section">${_rgEsc(s.info)}</div>` : '') + _extSfmCreditHtml(s.url));
+        const times = _extSfmSetlistTimesHtml(t, s, how);
+        out.left.push(times + (s.info ? `<h4>Notes</h4><div class="mb-dp-section">${_rgEsc(s.info)}</div>` : '') + _extSfmCreditHtml(s.url, !!times));
         let n = 0;
         const rows = s.sets.flatMap(set => set.songs.map(g => {
             const bits = [];
@@ -67067,13 +67338,35 @@
             else if (st.status === 'failed') failed = st.detail;
             else rows = rows.concat(st.data.rows);
         }
+        // Set times (item 4, Q5): from setlist.fm's own pages, 10 setlists a
+        // page, so the loaded rows' i-th is on page floor(i / 10) + 1. Looked
+        // up by setlist id, on that page or a neighbour (a setlist added
+        // between the two reads moves the rest by one).
+        const sitePages = Math.ceil(rows.length / _EXT_SFM_SITE_PER);
+        const site = n => _mbPop.get(_extSfmSiteKey(sfm.kind, sfm.id, sfm.tour || '', n));
+        const pageOf = new Map(rows.map((r, i) => [r.id, Math.floor(i / _EXT_SFM_SITE_PER) + 1]));
+        const timesOf = (r) => {
+            const n = pageOf.get(r.id);
+            const st = site(n);
+            if (!st || st.status === 'loading') return { state: 'loading', st: null };
+            if (st.status === 'failed') return { state: 'failed', st: null };
+            const near = [n, n - 1, n + 1].map(site).find(s => s && s.status === 'done' && s.data.times[r.id]);
+            return { state: 'done', st: near ? near.data.times[r.id] : null };
+        };
+        let siteRead = 0;
+        let siteFailed = '';
+        for (let n = 1; n <= sitePages; n++) {
+            const st = site(n);
+            if (st && st.status === 'done') siteRead++;
+            else if (st && st.status === 'failed') siteFailed = st.detail;
+        }
         // Left: the artists, tours or venues of the loaded setlists, each a
         // table (item 3). A venue's: artists and tours; an artist's: tours
         // and venues; a tour's: venues.
         const lefts = { venue: [['artist', 'Artists'], ['tour', 'Tours']], artist: [['tour', 'Tours'], ['venue', 'Venues']], tour: [['venue', 'Venues']] }[sfm.kind];
         out.left.push(`<h4>In the loaded setlists · ${rows.length}</h4>` +
             lefts.map(([kind, label]) => _extSfmLeftTableHtml(t, kind, label, rows, ui.pick)).join(''));
-        out.left.push(_extSfmCreditHtml(t.url));
+        out.left.push(_extSfmCreditHtml(t.url, true));
         const shown = ui.pick ? rows.filter(r => _EXT_SFM_PICK_OF[ui.pick.kind](r) === ui.pick.v) : rows;
         const only = ui.pick ? `<span class="mb-sfm-only">Only ${_rgEsc(ui.pick.kind)}: <b>${_rgEsc(ui.pick.v)}</b> · ${_extDgNum(shown.length)}` +
             '<button type="button" data-mb-sfm-act="unpick" aria-label="Show every loaded setlist" data-mb-tip title="Show every loaded setlist">✕</button></span>' : '';
@@ -67098,6 +67391,16 @@
                 },
             });
         }
+        cols.push({
+            key: 'times', label: 'Set times', cls: 'mb-dg-yr mb-sfm-times', val: (r) => {
+                const x = timesOf(r).st;
+                return x ? x.doors || x.start || x.end : '';
+            },
+            html: (r) => {
+                const x = timesOf(r);
+                return _extSfmTimesHtml(x.st, x.state);
+            },
+        });
         cols.push({ key: 'songs', label: 'Songs', num: true, cls: 'mb-rg-num', val: r => r.songs, html: r => (r.songs ? String(r.songs) : '—') });
         const table = _dpListTableHtml(t, `sfm-${sfm.kind}`, cols, shown, {
             initial: 'newest first, as setlist.fm lists them', tools: only,
@@ -67107,11 +67410,21 @@
         const more = rows.length < sfm.list.total && !busy && !failed;
         const status = `<div class="mb-dg-vstat"><span class="mb-dg-pill">${busy ? 'Loading' : failed ? 'Failed' : rows.length < sfm.list.total ? 'Idle' : 'Done'}</span>` +
             (more ? `<button type="button" class="mb-dg-btn mb-dg-primary" data-mb-sfm-act="more">Load ${sfm.list.per} more</button>` : '') +
-            (failed ? `<button type="button" class="mb-dg-btn" data-mb-sfm-act="retry">⟳ Try again</button>` : '') +
-            `</div><div class="mb-dg-counts">${_extDgNum(rows.length)} of ${_extDgNum(sfm.list.total)} loaded${failed ? ` · the next page did not come: ${_rgEsc(failed)}` : ''}</div>`;
+            (failed || siteFailed ? `<button type="button" class="mb-dg-btn" data-mb-sfm-act="retry">⟳ Try again</button>` : '') +
+            `</div><div class="mb-dg-counts">${_extDgNum(rows.length)} of ${_extDgNum(sfm.list.total)} loaded${failed ? ` · the next page did not come: ${_rgEsc(failed)}` : ''}` +
+            ` · set times: setlist.fm page${sitePages === 1 ? '' : 's'} read <span class="mb-sfm-site-n">${siteRead} of ${sitePages}</span>` +
+            `${siteFailed ? ` · a page did not come: ${_rgEsc(siteFailed)}` : ''}</div>`;
         out.right.push(`<h4>Setlists · ${_extDgNum(sfm.list.total)}</h4>` + status + table);
         if (how && how.start) {
             for (let p = 2; p <= ui.pages; p++) if (!_mbPop.get(_extSfmPageKey(sfm, p))) _extSfmPageLoad(t, sfm, p, { repaint: how.repaint });
+        }
+        // The site's pages for what is loaded: asked whenever one has no
+        // state yet, not only on `start` — after a drill-down the record
+        // comes on a repaint (the add-foreign-page-or-reader skill's trap).
+        if (how) {
+            for (let n = 1; n <= sitePages; n++) {
+                if (!site(n)) _extSfmSiteLoad(t, sfm.kind, sfm.id, sfm.tour || '', n, { repaint: how.repaint });
+            }
         }
         return out;
     }
@@ -67157,7 +67470,18 @@
                 ['Setlists', count],
             ]);
         }
-        return _mbPopKvHtml([['Where', _extSfmPlaceHtml(sfm.venue)], ['Setlists', count]]);
+        // A venue's own page adds what the API has not (Q3): read with the
+        // set times of its first page, so it costs no request of its own.
+        const p1 = _mbPop.get(_extSfmSiteKey('venue', sfm.id, '', 1));
+        const v = p1 && p1.status === 'done' ? p1.data.venue : null;
+        const lines = s => s.split('\n').map(_rgEsc).join('<br>');
+        return _mbPopKvHtml([
+            ['Where', _extSfmPlaceHtml(sfm.venue)],
+            ...(v ? v.facts.map(([k, x]) => [k, lines(x)]) : []),
+            ['Web', v ? v.web.map(w => _extSfmLinkHtml(w.url, w.text)).join(' · ') : ''],
+            ['Attendances', v ? _rgEsc(v.attendance) : ''],
+            ['Setlists', count],
+        ]);
     }
 
     /**
@@ -67170,7 +67494,7 @@
      */
     function _extSfmWindow(t, rec, how) {
         if (!rec.sfm) return { left: [], right: [], full: [] };
-        return rec.sfm.kind === 'setlist' ? _extSfmSetlistWindow(t, rec.sfm.setlist) : _extSfmListWindow(t, rec, how);
+        return rec.sfm.kind === 'setlist' ? _extSfmSetlistWindow(t, rec.sfm.setlist, how) : _extSfmListWindow(t, rec, how);
     }
 
     /**
@@ -67190,9 +67514,18 @@
         const b = el && el.closest('[data-mb-sfm-act]');
         const st = _mbPop.get(t.key);
         const rec = st && st.status === 'done' ? st.data : null;
-        if ((!b && !pk) || !rec || !rec.sfm || !rec.sfm.list) return;
+        if ((!b && !pk) || !rec || !rec.sfm) return;
         const ui = _extSfmUiOf(t);
         const repaint = () => { if (_dpDialog.repaint) _dpDialog.repaint(); };
+        // A setlist's own page (its set times), when it did not come.
+        if (rec.sfm.kind === 'setlist') {
+            if (b && b.dataset.mbSfmAct === 'retry') {
+                _extSfmSiteLoad(t, 'setlist', rec.sfm.setlist.id, '', 1, { force: true, repaint });
+                repaint();
+            }
+            return;
+        }
+        if (!rec.sfm.list) return;
         if (pk) {
             const v = pk.dataset.mbSfmV || '';
             const same = ui.pick && ui.pick.kind === pk.dataset.mbSfmPick && ui.pick.v === v;
@@ -67215,6 +67548,12 @@
             for (let p = 2; p <= ui.pages; p++) {
                 const s = _mbPop.get(_extSfmPageKey(rec.sfm, p));
                 if (s && s.status === 'failed') _extSfmPageLoad(t, rec.sfm, p, { force: true, repaint });
+            }
+            // The set times' pages that did not come (two a page of the API).
+            const sf = rec.sfm;
+            for (let n = 1; n <= ui.pages * 2; n++) {
+                const s = _mbPop.get(_extSfmSiteKey(sf.kind, sf.id, sf.tour || '', n));
+                if (s && s.status === 'failed') _extSfmSiteLoad(t, sf.kind, sf.id, sf.tour || '', n, { force: true, repaint });
             }
         }
         repaint();

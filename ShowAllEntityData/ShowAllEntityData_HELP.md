@@ -3020,9 +3020,18 @@ once and without Tampermonkey asking first:
   table to that artist, tour or venue (together with the text filter); click
   it again, or the ✕ of the *Only …* label, to see them all. A tour is a link
   to setlist.fm's search for that artist's tour; in the window it opens that
-  tour's setlists. The links in it
-  open in the same window (*Back* returns). setlist.fm has no address,
-  opening dates or attendance for a venue in its API, so those are not shown.
+  tour's setlists. The links in it open in the same window (*Back* returns).
+
+  **Set times** are not in setlist.fm's API, so the window reads them from
+  setlist.fm's own pages, without your key and only once the window is open
+  (never for the card): two pages for every 20 setlists, at most one a
+  second. The Setlists table then has a *Set times* column (doors, and the
+  show from start to end), and a setlist's window lists Doors, Scheduled,
+  Start and End with setlist.fm's own durations, all on a 24-hour clock. "…"
+  means the page is still being read, "?" that it could not be (*⟳ Try
+  again*), "—" that setlist.fm has no times for that show. A venue's window
+  also shows what its page adds to the API: the address, when it opened (or
+  was open), other names, its web links and the attendances.
   Without a key, setlist.fm links keep the plain web-page card.
 
   A **Wikidata** item's window shows its statements (born, place of birth,

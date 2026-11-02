@@ -1,5 +1,18 @@
 [
   {
+    "version": "WIP.2",
+    "date": "2026-11-02",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "setlist.fm windows (link preview, with your setlist.fm API key): set times. The Setlists table of a venue, an artist or a tour has a \"Set times\" column (doors, and the show from start to end), and a setlist's window lists Doors, Scheduled, Start (how long after doors) and End (how long the show was). The times are on a 24-hour clock, as on MusicBrainz. setlist.fm's API has no set times, so they are read from setlist.fm's own pages: only once the window is open, never for the hover card, two pages for every 20 setlists, at most one a second. \"…\" means the page is still being read, \"?\" that it could not be (⟳ Try again), \"—\" that setlist.fm has none.",
+          "setlist.fm window of a venue: what the API leaves out, read from the venue's own page with the set times: its address, when it opened (or was open), other names, its web links and how many attendances setlist.fm's users have logged."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.1",
     "date": "2026-11-02",
     "sections": [
