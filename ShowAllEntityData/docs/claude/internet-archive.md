@@ -199,7 +199,7 @@ like YouTube's.
 ## Known differences from the mockup
 
 - Collections are named by archive.org's own titles, read from the search
-  API (since WIP.1, 2026-11-02); the mockup's "ROIO" is archive.org's
+  API (since 9.99.1523, 2026-11-02); the mockup's "ROIO" is archive.org's
   "Recordings of Independent Origin". Until then the table showed ids
   besides a few fixed names, one of them wrong (`folksoundomy` is
   "Folksoundomy: A Library of Sound", not "Community Audio").

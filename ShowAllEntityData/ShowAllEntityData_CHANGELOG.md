@@ -4,9 +4,23 @@ Every version, newest first, with the technical details behind each change. For 
 
 **Months:** [November 2026](ShowAllEntityData_CHANGELOG/2026-11.md) · [October 2026](ShowAllEntityData_CHANGELOG/2026-10.md) · [September 2026](ShowAllEntityData_CHANGELOG/2026-09.md) · [August 2026](ShowAllEntityData_CHANGELOG/2026-08.md) · [July 2026](ShowAllEntityData_CHANGELOG/2026-07.md) · [June 2026](ShowAllEntityData_CHANGELOG/2026-06.md) · [May 2026](ShowAllEntityData_CHANGELOG/2026-05.md) · [April 2026](ShowAllEntityData_CHANGELOG/2026-04.md) · [March 2026 (1 of 2)](ShowAllEntityData_CHANGELOG/2026-03-1.md) · [March 2026 (2 of 2)](ShowAllEntityData_CHANGELOG/2026-03-2.md) · [February 2026](ShowAllEntityData_CHANGELOG/2026-02.md) · [January 2026](ShowAllEntityData_CHANGELOG/2026-01.md)
 
-This page shows the newest 100 of 1693 versions; the month pages hold all of them.
+This page shows the newest 100 of 1695 versions; the month pages hold all of them.
 
 ---
+
+## 9.99.1524 — 2026-11-02
+
+**✨ Improve**
+
+- archive.org item window (link preview): a new "Images" section shows every picture the uploader added (cover, back, booklet, …), not just archive.org's tile. A click opens them in the viewer, and ← → step through all of them. A click on the cover now opens the cover itself at full size.
+
+
+## 9.99.1523 — 2026-11-02
+
+**✨ Improve**
+
+- archive.org search table: the Collection column lists one collection per line and links each one to its archive.org page. It names them as archive.org does ("Radio Nowhere", "Recordings of Independent Origin") rather than by their ids. This costs one more request to archive.org for a page that brings new collections.
+
 
 ## 9.99.1522 — 2026-11-01
 
@@ -921,20 +935,6 @@ This page shows the newest 100 of 1693 versions; the month pages hold all of the
 **✨ Improve**
 
 - Brucebase recent changes: the Flags column is a multi-row column now. A change with two flags ("content source text changed" and "title changed") shows the first one with a ▶ toggle to open the other, and the column header can open or close them all and counts them, like MusicBrainz's list columns.
-
-
-## 9.99.1424 — 2026-10-22
-
-**🚀 Feature**
-
-- Link previews: an artist's, label's, series' or collection's sidebar "Subscribers" link now has a card and a window, like an editor's subscribers: how many are subscribed, how many anonymously, and their names. The "Found in N user collections" link of any entity has one too: how many collections hold it, how many of them are private, and the first few by name and owner; the window lists every public collection with its owner, and a click on either opens their card.
-
-
-## 9.99.1423 — 2026-10-22
-
-**🐛 Fix**
-
-- Release and release group collections: the "plus N other private collections" row no longer comes back as a table row after a sort or filter; it stays folded into the line above the table. An entity in no collection no longer offers a Collections button with nothing to show, and neither does a subscribers page without subscribers.
 
 
 ---

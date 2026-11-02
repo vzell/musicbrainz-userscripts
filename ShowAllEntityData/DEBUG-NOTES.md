@@ -27670,7 +27670,7 @@ Tests: `ia-search.spec.js` "the Art column's hover card and viewer" (3);
 mutations `scripts/mutations/internet-archive.json` +6, all caught (each
 failed its spec; userscript restored, hash verified).
 
-## 2026-11-02 — archive.org: Collection as ids, the window with the tile only (feat/ia-collections-images, WIP.1/WIP.2)
+## 2026-11-02 — archive.org: Collection as ids, the window with the tile only (feat/ia-collections-images, 9.99.1523/9.99.1524)
 Env: 2026-11-02T15:32:52+01:00 · vzell-lap · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) · probes: n/a (curl, Python); specs: Playwright 1.62.1 Chromium, no Tampermonkey (GM stubs)
 
 vzell, on https://archive.org/details/bs1977-02-28.aud.ntl-2.jems.flac16
