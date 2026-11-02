@@ -1,5 +1,36 @@
 [
   {
+    "version": "WIP.5",
+    "date": "2026-11-03",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "setlist.fm: a search for an artist's setlists (setlist.fm/search?artist=…, with or without a tour, country, city or venue) gets the same \"Setlists\" button as an artist's page: every setlist of the search as one table, named after the search's choices (\"setlist.fm search: Bruce Springsteen · Land of Hope & Dreams American Tour\")."
+        ]
+      },
+      {
+        "label": "✨ Improve",
+        "items": [
+          "setlist.fm links: a link to setlist.fm's search for an artist's setlists — every Tour cell of the setlist.fm tables links one — now has its card and window like the other setlist.fm links, also without an API key: they are read from setlist.fm's search page itself. The window lists the search's setlists with their set times, 10 at a time (\"Load 10 more\"), with the tours and venues on the left."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "WIP.4",
+    "date": "2026-11-03",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "setlist.fm tables: the page now scrolls sideways, so a table wider than the window can be read to its last column. setlist.fm's own stylesheet turns sideways scrolling off for the whole page.",
+          "setlist.fm tables: a show at a stage inside a venue (\"NAC Opera Hall at National Arts Centre, Ottawa\") no longer repeats the venue in the Event column."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.3",
     "date": "2026-11-02",
     "sections": [

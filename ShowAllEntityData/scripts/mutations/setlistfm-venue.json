@@ -69,8 +69,8 @@
     "why": "Item 5, vzell's answer to the plan: the tour opens in the window through the API.",
     "edits": [
       {
-        "find": "        if (u.pathname === '/search') return _extSfmTourPage(u);",
-        "replace": "        if (u.pathname === '/search') return null;"
+        "find": "        if (u.pathname === '/search') return _extSfmTourPage(u) || _extSfmSearchPage(u);",
+        "replace": "        if (u.pathname === '/search') return _extSfmSearchPage(u);"
       }
     ],
     "spec": "tests/fixtures/popup-ext.spec.js",
@@ -218,6 +218,71 @@
     ],
     "spec": "tests/fixtures/popup-ext.spec.js",
     "grep": "a setlist window: \"Set times\" from its own page",
+    "expect": "fail"
+  },
+  {
+    "name": "setlist.fm's own search links are not the reader's",
+    "why": "vzell 2026-11-03: the Tour column \"does not have the hover POH\".",
+    "edits": [
+      {
+        "find": "        if (u.pathname === '/search') return _extSfmTourPage(u) || _extSfmSearchPage(u);",
+        "replace": "        if (u.pathname === '/search') return _extSfmTourPage(u);"
+      }
+    ],
+    "spec": "tests/fixtures/popup-ext.spec.js",
+    "grep": "which search links the reader takes",
+    "expect": "fail"
+  },
+  {
+    "name": "a search link needs the API key",
+    "why": "It is read from setlist.fm's page, which needs no key (the session probe, 2026-11-02).",
+    "edits": [
+      {
+        "find": "        return !!pg && (pg.kind === 'search' || !!_extSfmKey());",
+        "replace": "        return !!pg && !!_extSfmKey();"
+      }
+    ],
+    "spec": "tests/fixtures/popup-ext.spec.js",
+    "grep": "without a key, setlist.fm's own search",
+    "expect": "fail"
+  },
+  {
+    "name": "a search's rows lose the set times their cards show",
+    "why": "Item 4 for searches: the cards carry the times; nothing more is asked.",
+    "edits": [
+      {
+        "find": "            if (fromSite) return { state: 'done', st: r.times || null };",
+        "replace": "            if (fromSite) return { state: 'done', st: null };"
+      }
+    ],
+    "spec": "tests/fixtures/popup-ext.spec.js",
+    "grep": "a setlist.fm search link",
+    "expect": "fail"
+  },
+  {
+    "name": "a search's card cut at 12 songs counts as 12",
+    "why": "Q7: \"12+\" when the card goes on.",
+    "edits": [
+      {
+        "find": "html: r => (r.songs ? `${r.songs}${r.more ? '+' : ''}` : '—') });",
+        "replace": "html: r => (r.songs ? `${r.songs}` : '—') });"
+      }
+    ],
+    "spec": "tests/fixtures/popup-ext.spec.js",
+    "grep": "a setlist.fm search link",
+    "expect": "fail"
+  },
+  {
+    "name": "a search's Tour cell loses setlist.fm's own link",
+    "why": "Without an MBID only setlist.fm's own search link can name the tour.",
+    "edits": [
+      {
+        "find": "        if (kind === 'tour') return r.tourUrl || _extSfmTourUrl(r.artist, r.tour);",
+        "replace": "        if (kind === 'tour') return _extSfmTourUrl(r.artist, r.tour);"
+      }
+    ],
+    "spec": "tests/fixtures/popup-ext.spec.js",
+    "grep": "a setlist.fm search link",
     "expect": "fail"
   }
 ]

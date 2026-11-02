@@ -11,6 +11,7 @@ browser into `debug/`:
     debug/setlistfm-setlist.html         the setlist 4bf0375a, no set times entered (2026-10-29)
     debug/setlistfm-venue-set-times.html the setlist 37589df, with set times (2026-11-02)
     debug/setlistfm-tour-journey.html    the search artist:(Journey) tour:(Final Frontier Tour) (2026-11-02)
+    debug/setlistfm-artist-serch.html    the search artist=2bd6dcce&tour=3daa95b (2026-11-02)
 
 The first two list the same setlists, in the same order, as the API answers
 tests/fixtures/ext-sfm-venue-setlists-p1.json and
@@ -51,6 +52,8 @@ PAGE_TARGETS = [
     ('debug/setlistfm-venue-initial.html', 'tests/fixtures/sfm-page-venue-73d20e81-p2.html', 'venueInfo', 2),
     ('debug/setlistfm-venue-one-page.html', 'tests/fixtures/sfm-page-venue-53d30b75.html', 'venueInfo', 0),
     ('debug/setlistfm-artist.html', 'tests/fixtures/sfm-page-artist-2bd6dcce-p1.html', 'transparentBox border', 0),
+    # A search for an artist's tour (2026-11-03): no <h1>, its filter form names it.
+    ('debug/setlistfm-artist-serch.html', 'tests/fixtures/sfm-page-search-2bd6dcce-3daa95b.html', 'searchFilter', 0),
 ]
 
 DIV_TAG_RE = re.compile(r'<(/?)div\b[^>]*>', re.I)

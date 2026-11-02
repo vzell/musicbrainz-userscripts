@@ -2417,6 +2417,31 @@ the API's), only by the window, never by the card:
 - Specs: popup-ext.spec.js "setlist.fm venue additions (org/setlistfm.org,
   Part B)" (6); mutations: the same file (9 more).
 
+setlist.fm's own search links (2026-11-03, vzell: the Tour column "does
+not have the hover POH"): every Tour cell of a setlist.fm page — and of our
+`sfm-*` tables — links `search?artist=<id>&tour=<id>`, setlist.fm's own ids,
+which its API does not take. The reader takes any `/search` with a non-empty
+`artist=` (`_extSfmSearchPage()`: kind `search`, id the query without `page`,
+sorted) and reads the search PAGE itself (`_extSfmSearchLoad()`,
+`_extSfmSearchGet()`: `_extGet()`, anonymous, `_extApiOutcome()` for bot
+checks and dead links) — **with or without a key** (`_extSfmTest()`), the one
+setlist.fm link that changed for a profile without one. Its cards become the
+list's rows through the pageTypes' own parser (`_sfmCardData()` →
+`_extSfmSiteListPage()`): `tourUrl` (setlist.fm's own link, used before
+`_extSfmTourUrl()`), `times` (no separate set-times reads: `fromSite`),
+`more` ("12+"); 10 a page ("Load 10 more", `_extSfmSearchUrl()` with
+`&page=N`); the total is the filter's count (`_sfmSearchChoices()`). The card
+is named by the filter's choices. `askHost` is www.setlist.fm for it. That
+host is NOT in `@connect`/`_EXT_CONNECT_HOSTS`: off setlist.fm a first
+contact stays Space-only (the card offers Space until the script has asked
+www.setlist.fm once — a Part B window does), and the specs' generic
+first-contact example is a setlist.fm link; on setlist.fm itself the page's
+own host is known, so a Tour cell's card loads on hover. Adding it was tried
+and taken back the same night (it broke that first-contact spec).
+`_EXT_SFM_VERSION` 3. Specs: popup-ext.spec.js
+(search links with and without a key, a search link's window); sfm-list.spec.js
+(a Tour cell on setlist.fm); mutations in setlistfm-venue.json.
+
 ## archive.org items (reader `iadetails`, 2026-10-31)
 
 docs/claude/internet-archive.md is the full text. In short: any

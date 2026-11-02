@@ -43,8 +43,8 @@
     "why": "The plain \"<artist> at <venue>\" heading names no event; only \"Jersey 4 Jersey\" and festivals do.",
     "edits": [
       {
-        "find": "        const event = title === `${atPrefix}${venue.text}` ? '' :",
-        "replace": "        const event = false ? '' :"
+        "find": "        const event = place === venue.text || venue.parts.includes(place) ? '' : place;",
+        "replace": "        const event = place;"
       }
     ],
     "spec": "tests/fixtures/sfm-list.spec.js",
@@ -69,8 +69,8 @@
     "why": "vzell's Q7: \"12+\" from the page, so a sort and a reader see that the card shows only the start.",
     "edits": [
       {
-        "find": "            songs.length ? `${songs.length}${more ? '+' : ''}` : '',",
-        "replace": "            songs.length ? `${songs.length}` : '',"
+        "find": "            d.songs.length ? `${d.songs.length}${d.more ? '+' : ''}` : '',",
+        "replace": "            d.songs.length ? `${d.songs.length}` : '',"
       }
     ],
     "spec": "tests/fixtures/sfm-list.spec.js",
@@ -101,6 +101,58 @@
     ],
     "spec": "tests/fixtures/sl-include-regex.spec.js",
     "grep": "setlist.fm: a venue",
+    "expect": "fail"
+  },
+  {
+    "name": "setlist.fm's body { overflow-x: hidden } cuts the table off again",
+    "why": "vzell 2026-11-03: \"The table is not scrollable to the right\"; setlist-5.9.163's body rule, handed to the viewport.",
+    "edits": [
+      {
+        "find": "            body.mb-sa-host-sfm { overflow-x: visible !important; }\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/sfm-list.spec.js",
+    "grep": "does not cut the table off",
+    "expect": "fail"
+  },
+  {
+    "name": "a heading that names the venue of a stage becomes an Event",
+    "why": "vzell 2026-11-03: the 1975-12-20 row, \"NAC Opera Hall at National Arts Centre\", showed its venue as the Event.",
+    "edits": [
+      {
+        "find": "        const event = place === venue.text || venue.parts.includes(place) ? '' : place;",
+        "replace": "        const event = place === venue.text ? '' : place;"
+      }
+    ],
+    "spec": "tests/fixtures/sfm-list.spec.js",
+    "grep": "names the venue of a stage is no event",
+    "expect": "fail"
+  },
+  {
+    "name": "a search for an artist's setlists is no pageType",
+    "why": "vzell 2026-11-03: \"setlist.fm artist search pages should also get their own PTs\".",
+    "edits": [
+      {
+        "find": "        if (path === '/search') return params.get('artist') ? 'search' : '';",
+        "replace": "        if (path === '/search') return '';"
+      }
+    ],
+    "spec": "tests/fixtures/sfm-list.spec.js",
+    "grep": "a search for an artist",
+    "expect": "fail"
+  },
+  {
+    "name": "a search page is named \"setlist.fm setlists\", not by its filter",
+    "why": "A search has no <h1>; its filter's choices say what it is.",
+    "edits": [
+      {
+        "find": "        const choices = _sfmKind() === 'search' ? _sfmSearchChoices().names : [];",
+        "replace": "        const choices = [];"
+      }
+    ],
+    "spec": "tests/fixtures/sfm-list.spec.js",
+    "grep": "a search for an artist",
     "expect": "fail"
   }
 ]

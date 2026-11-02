@@ -8,8 +8,8 @@ Two parts that share the host and a parser:
 
 | Part | What | Where |
 |---|---|---|
-| pageTypes `sfm-venue`, `sfm-artist` | setlist.fm's list of a venue's or an artist's setlists → one table of every setlist | `_sfm*()`, `applySfmToTable()`, `_sfmPrepareLivePage()` |
-| reader `setlistfm` | any setlist.fm setlist, artist, venue (or our tour) link → card on hover, window on Space, through the API with the user's key | `_extSfm*()` in `_EXT_READERS`; docs/claude/detail-pages.md "setlist.fm through its API" and "Venue additions" |
+| pageTypes `sfm-venue`, `sfm-artist`, `sfm-search` | setlist.fm's list of a venue's or an artist's setlists, or its search for an artist's setlists (`/search?artist=…`, 2026-11-03) → one table of every setlist | `_sfm*()`, `applySfmToTable()`, `_sfmPrepareLivePage()` |
+| reader `setlistfm` | any setlist.fm setlist, artist, venue (or our tour) link → card on hover, window on Space, through the API with the user's key; setlist.fm's own search for an artist (`search?artist=…`, every Tour cell's link) read from its page, key or not (2026-11-03) | `_extSfm*()` in `_EXT_READERS`; docs/claude/detail-pages.md "setlist.fm through its API" and "Venue additions" |
 
 The reader's windows also read setlist.fm's pages (set times, a venue's
 facts); the parser of a list card's set times, `_extSfmPreviewTimes()`, is
@@ -61,13 +61,20 @@ on every host, and only with `sa_pop_ext_setlistfm_key` set.
   `.attendance`. The page's own newlines between `<span>`s are spaces: a
   `<br>` is turned into a private-use marker before whitespace is squeezed.
 
-## sfm-venue / sfm-artist
+## sfm-venue / sfm-artist / sfm-search
 
 - Gate: `_isSfmHost` is setlist.fm or www.setlist.fm. Its `@include` takes
   `/venue/<slug>-<id>.html` and `/setlists/<slug>-<id>.html` with any query
   (`?page=N`); a setlist, a search, statistics, the venue index stay out
   (`tests/fixtures/sl-include-regex.spec.js`). `_SFM_LIST_PATH_RE`,
-  `_sfmKind()`.
+  `_sfmKind()`. A search (`sfm-search`, vzell 2026-11-03,
+  `debug/setlistfm-artist-serch.html`) is `/search` with a non-empty
+  `artist=` and any of `tour`, `country`, `city`, `venue`, … (its own
+  `@include` line); one without an artist is not (many artists' rows), nor
+  our own `query=` tour links. It has no `<h1>`: its section is named by its
+  filter form's selected options (`_sfmSearchChoices()`: "setlist.fm search:
+  Bruce Springsteen · Land of Hope & Dreams American Tour"; the smallest of
+  their counts is the number found). Its rows are an artist's (Venue).
 - `_sfmPrepareLivePage()`: `<section id="mb-sfm-root">` FIRST in `<body>`,
   as on archive.org — never inside setlist.fm's `div.body`: the sticky
   headers pin every `<body>` child but `_sphPageEl()`, which returns this
@@ -101,12 +108,34 @@ on every host, and only with `sa_pop_ext_setlistfm_key` set.
   (no detail pages of its own, `extRoot: '#mb-sfm-root'`) must exist:
   without it `_extSource()`'s selector threw on setlist.fm (found by the spec).
 
+### The window would not scroll sideways (2026-11-03)
+
+vzell: "The table is not scrollable to the right" (a 9-column table on
+an artist's tour list and on a one-page venue). setlist.fm's stylesheet
+(`//w1.cdn.setlistfm.com/css/setlist-5.9.163-…css`, read with a plain
+request 2026-11-03 — a static file, not the bot-checked pages) has
+`body{…;overflow-x:hidden}`. With `<html>` at `visible`, CSS hands the
+body's overflow to the viewport: the window itself cannot scroll
+sideways, and our section (`width: fit-content; min-width: 100%`) is cut
+off. `_ensureSfmStyle()`: `body.mb-sa-host-sfm { overflow-x: visible
+!important }`, only while our host class is on. The spec injects the
+site's exact rule after ours in a 700 px window and scrolls to the right.
+
+### Event: a stage's venue is no event (2026-11-03)
+
+"Bruce Springsteen at National Arts Centre, Ottawa, ON, Canada" on a card
+whose venue is "NAC Opera Hall at National Arts Centre, Ottawa, ON,
+Canada" filled Event with the venue. The heading's place is no event when
+it is the venue's whole text or one of its `<strong>` parts
+(`_sfmCardData()`'s `venue.parts`).
+
 ## Tests
 
 | Spec | Pins |
 |---|---|
 | `tests/fixtures/sfm-list.spec.js` | section first in `<body>`, named by the page; nothing before the press; both pages of a 2-page list fetched once each, page 1 too; a one-page venue; an artist; cells (links, event, a stage at a venue, set times, "12+"); Upcoming Shows out; previews on setlist.fm with and without a key; switched off |
 | `tests/fixtures/sfm-list.mobile.spec.js` | a tap on the button renders the table |
+| (2026-11-03) `sfm-list.spec.js` | the window scrolls past setlist.fm's `overflow-x: hidden`; a stage's venue is no event; a search page (named by its choices, its query kept); a Tour cell previewed without a key |
 | `tests/fixtures/sl-include-regex.spec.js` | the `@include` line |
 | `tests/fixtures/popup-ext.spec.js` | the reader (Part A/B) |
 

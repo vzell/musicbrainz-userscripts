@@ -27752,3 +27752,63 @@ Tests: popup-ext.spec.js Part A (3) and Part B (6), 85/85 for the file;
 sfm-list.spec.js (7), sfm-list.mobile.spec.js, sl-include-regex.spec.js;
 mutations setlistfm-venue.json 17/17 and setlistfm-list.json 8/8 as expected
 (userscript restored, hash verified).
+
+## 2026-11-03 — setlist.fm: the window could not scroll sideways; a stage's venue as Event; search pages and links (feat/setlistfm-venue, WIP.4/WIP.5)
+Env: 2026-11-03T00:00+01:00–00:30+01:00 · vzell-lap · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) · specs: Playwright Chromium, no Tampermonkey (GM stubs); the reports: vzell's browser (Windows, Chrome 152, Tampermonkey unknown)
+
+vzell's live check of Part C:
+
+1. "The table is not scrollable to the right" (screenshots of
+   /setlists/bruce-springsteen-2bd6dcce.html?tour=53d7e759 and the one-page
+   Colts Neck venue). **Root cause, read from the site's stylesheet**
+   (`//w1.cdn.setlistfm.com/css/setlist-5.9.163-7-g3097b89-dirty.css`, a plain
+   request of the static file; the snapshots carry no such rule because the
+   CSS is external): `body{background-color:var(--bs-footer-bg-color);
+   overflow-x:hidden}`. `<html>` stays `visible`, so CSS propagates the
+   body's overflow to the viewport — the WINDOW cannot scroll sideways, and
+   our `#mb-sfm-root` (fit-content) is clipped. Fix:
+   `body.mb-sa-host-sfm { overflow-x: visible !important }`
+   (`_ensureSfmStyle()`). Spec: the site's exact rule injected after ours,
+   700 px window, `scrollTo(5000)` must move.
+2. Seen in the same screenshot: the 1975-12-20 row's Event was "National
+   Arts Centre, Ottawa, ON, Canada": the heading names the main venue of the
+   card's stage line "NAC Opera Hall at National Arts Centre, …". An event
+   is now none when the heading's place is the venue or one of its
+   `<strong>` parts.
+3. "setlist.fm artist search pages should also get their own PTs"
+   (`/search?artist=…&tour=…&country=…&city=…`,
+   `debug/setlistfm-artist-serch.html`): `sfm-search`, the same cards and
+   pager; no `<h1>`, named by the filter form's selected options.
+4. "the Tour column … does not have the hover POH": its links are
+   setlist.fm's own `search?artist=<id>&tour=<id>`, ids the API does not
+   take, so the reader skipped them. It now reads such a search's PAGE
+   (anonymous, key or not), with the pageTypes' card parser. On setlist.fm
+   the host is the page's own, so the card loads on hover. Adding
+   `setlist.fm` to `@connect`/`_EXT_CONNECT_HOSTS` (so it would on
+   MusicBrainz too) broke popup-ext.spec.js "first contact: a hover asks
+   nothing…", whose unknown-host example is a setlist.fm link — taken back:
+   off setlist.fm a first contact stays Space-only, as for any host.
+
+Found on the way: the Edit/Bash tool layer turns a ` ` written in a
+command or a heredoc into the literal character too, not only in Edit's
+new_string; the scan for literal U+00A0/U+E000 runs before every commit.
+Two mutations' `find` strings went stale with the card-parser refactor
+(`_sfmCardRow()` → `_sfmCardData()`); re-pointed, every find checked to
+match once before the run.
+
+Two false results of the first mutation run, both caught by reading the
+summary rather than counting OKs:
+
+- **The scroll spec proved nothing.** Its mutation (the fix removed) PASSED:
+  the spec used `window.scrollTo()`, and a script may scroll even an
+  `overflow: hidden` viewport (only `clip` forbids it) — the user cannot.
+  It now asserts the body's computed `overflow-x` is `visible` under the
+  site's own rule and scrolls with `page.mouse.wheel()`; with the fix
+  removed it fails.
+- **Four "OK"s ran no test.** Their `grep` held an unclosed "(" (copied from
+  a test title): Playwright exits non-zero with `SyntaxError: Invalid
+  regular expression` — the same exit as a real failure — and
+  `mutation-check.py` only knew "No tests found" as "nothing selected". The
+  summary's detail was a stray auth warning, not an `Error:` line, which is
+  what gave it away. The greps are fixed, and `run_spec()` now also counts
+  an invalid regular expression as "selected NO tests" (a PROBLEM, never OK).

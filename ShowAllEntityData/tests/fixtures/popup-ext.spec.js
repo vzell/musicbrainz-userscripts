@@ -1220,7 +1220,8 @@ async function sfmWindow(page, url, extra = {}) {
     await openEvent(page, { settings: { sa_pop_ext: true, sa_pop_ext_setlistfm_key: SFM_KEY }, responses: Object.assign(sfmAnswers(), extra) });
     await addAnnotationLinks(page, [url]);
     await ctrlHover(page, probe(page, 0));
-    await expect(card(page).locator('.mb-tt-title')).not.toBeEmpty();
+    // A host not contacted yet shows its first-contact card: Space loads it.
+    await expect(card(page)).toBeVisible();
     await page.keyboard.press('Space');
     return dialog(page).locator('.mb-dp-area');
 }
@@ -1320,13 +1321,44 @@ test.describe('setlist.fm venue additions (org/setlistfm.org, Part A)', () => {
         await expect(area.locator('dt:text-is("Tour") + dd a')).toHaveAttribute('href', SFM_TOUR);
     });
 
-    test('which search links the reader takes: only a tour link with the artist\'s MBID in the fragment; setlist.fm\'s own search links stay generic', async ({ page }) => {
+    test('which search links the reader takes: a tour link with the artist\'s MBID in the fragment, and (2026-11-03) setlist.fm\'s own search for an artist, key or not; a query search without the MBID, or a search without an artist, stays generic', async ({ page }) => {
         await openEvent(page, { settings: { sa_pop_ext: true, sa_pop_ext_setlistfm_key: SFM_KEY }, responses: sfmAnswers() });
         await addAnnotationLinks(page, [SFM_TOUR, SFM_TOUR.split('#')[0], 'https://www.setlist.fm/search?artist=2bd6dcce&tour=13d7a945',
-            `https://www.setlist.fm/search?query=${encodeURIComponent('artist:(Bruce Springsteen)')}#mbid=${SFM_MBID}`]);
+            `https://www.setlist.fm/search?query=${encodeURIComponent('artist:(Bruce Springsteen)')}#mbid=${SFM_MBID}`, 'https://www.setlist.fm/search?tour=13d7a945']);
+        const keys = () => page.evaluate(() => Array.from(document.querySelectorAll('.ext-probe a'))
+            .map(a => (window.__saTest.popResolve(a) || '').split(':').slice(0, 2).join(':')));
+        expect(await keys()).toEqual(['ext|ext:setlistfm', 'ext|ext:generic', 'ext|ext:setlistfm', 'ext|ext:generic', 'ext|ext:generic']);
+    });
+
+    test('without a key, setlist.fm\'s own search for an artist is still the reader\'s (its page, no API); every other setlist.fm link stays generic', async ({ page }) => {
+        await openEvent(page, { settings: { sa_pop_ext: true, sa_pop_ext_setlistfm_key: '' } });
+        await addAnnotationLinks(page, [SFM.setlist, SFM_TOUR, 'https://www.setlist.fm/search?artist=2bd6dcce&tour=13d7a945']);
         const keys = await page.evaluate(() => Array.from(document.querySelectorAll('.ext-probe a'))
             .map(a => (window.__saTest.popResolve(a) || '').split(':').slice(0, 2).join(':')));
-        expect(keys).toEqual(['ext|ext:setlistfm', 'ext|ext:generic', 'ext|ext:generic', 'ext|ext:generic']);
+        expect(keys).toEqual(['ext|ext:generic', 'ext|ext:generic', 'ext|ext:setlistfm']);
+    });
+
+    test('a setlist.fm search link (a Tour cell on setlist.fm, 2026-11-03): one anonymous read of its page, no API; the card names it by its filter; the window lists its setlists with their set times, 10 a page', async ({ page }) => {
+        const url = 'https://www.setlist.fm/search?artist=2bd6dcce&tour=3daa95b';
+        const area = await sfmWindow(page, url, { [url]: sfmHtml('sfm-page-search-2bd6dcce-3daa95b.html') });
+        const d = dialog(page);
+        await expect(d.locator(':scope > div > span').first()).toHaveText(/setlist\.fm search$/);
+        await expect(area.locator('.mb-dp-xtitle')).toHaveText('Bruce Springsteen · Land of Hope & Dreams American Tour');
+        const rows = area.locator('[data-mb-tbl="sfm-search"] tbody tr');
+        await expect(rows).toHaveCount(10);
+        await expect(area).toContainText('10 of 20 loaded');
+        await expect(area.locator('[data-mb-tbl="sfm-search"] tbody tr', { hasText: '2026-05-30' }).locator('td.mb-sfm-times')).toContainText('Doors 18:00');
+        await expect(area.locator('[data-mb-tbl="sfm-search"] tbody tr', { hasText: '2026-05-30' }).locator('td.mb-sfm-times')).toContainText('Show 19:30–22:20');
+        // The card shows 12 songs and "...": "12+".
+        await expect(area.locator('[data-mb-tbl="sfm-search"] tbody tr', { hasText: '2026-05-30' }).locator('td.mb-rg-num')).toHaveText('12+');
+        await expect(area.locator('.mb-sfm-site-n'), 'its rows bring their own times').toHaveCount(0);
+        await expect(area.locator('.mb-dg-counts', { hasText: 'Data from' })).toContainText('read from its pages');
+        // The tour link of a row is setlist.fm's own search again.
+        await expect(rows.first().locator('td').nth(2).locator('a')).toHaveAttribute('href', 'https://www.setlist.fm/search?artist=2bd6dcce&tour=3daa95b');
+        const log = (await xhrFull(page)).filter(r => /setlist\.fm/.test(r.url));
+        expect(log.map(r => [r.url, r.anonymous]), 'one read of the page, anonymous; nothing of the API').toEqual([[url, true]]);
+        await area.locator('[data-mb-sfm-act="more"]').click();
+        await expect.poll(async () => (await xhrFull(page)).map(r => r.url).filter(u => /setlist\.fm/.test(u))).toEqual([url, `${url}&page=2`]);
     });
 });
 

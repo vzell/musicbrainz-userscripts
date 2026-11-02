@@ -389,6 +389,25 @@ test.describe('@include coverage', () => {
         expect(others.filter((u) => injected(u))).toEqual([]);
     });
 
+    test('setlist.fm: a search for an artist\'s setlists (sfm-search, 2026-11-03), with any other filter; not one without an artist', () => {
+        const pages = [
+            'https://www.setlist.fm/search?artist=2bd6dcce&tour=3daa95b&country=us&city=bd6bde6',
+            'https://www.setlist.fm/search?artist=2bd6dcce&tour=3daa95b&country=us',
+            'https://www.setlist.fm/search?artist=2bd6dcce&tour=3daa95b',
+            'https://www.setlist.fm/search?artist=2bd6dcce',
+            'https://www.setlist.fm/search?tour=3daa95b&artist=2bd6dcce&page=2',
+        ];
+        const others = [
+            'https://www.setlist.fm/search?tour=3daa95b',
+            'https://www.setlist.fm/search?artist=',
+            'https://www.setlist.fm/search?query=artist:(Journey)+tour:(Final+Frontier+Tour)',
+            'https://www.setlist.fm/search',
+            'https://www.setlist.fm/searchx?artist=2bd6dcce',
+        ];
+        expect(pages.filter((u) => !injected(u))).toEqual([]);
+        expect(others.filter((u) => injected(u))).toEqual([]);
+    });
+
     test('discogs.com: a submissions list, either view, a language prefix; no other /submissions… path', () => {
         const pages = [
             'https://www.discogs.com/submissions?mode=list&id=599283&page=1&view=flat',

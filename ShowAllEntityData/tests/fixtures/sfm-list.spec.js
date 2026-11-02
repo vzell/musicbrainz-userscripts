@@ -29,6 +29,8 @@ const PAGES = {
     '/venue/state-farm-arena-atlanta-ga-usa-73d20e81.html': ['sfm-page-venue-73d20e81-p1.html', 'sfm-page-venue-73d20e81-p2.html'],
     '/venue/private-venue-colts-neck-nj-usa-53d30b75.html': ['sfm-page-venue-53d30b75.html'],
     '/setlists/bruce-springsteen-2bd6dcce.html': ['sfm-page-artist-2bd6dcce-p1.html'],
+    // A search for an artist's tour (2026-11-03): one page in the fixture.
+    '/search': ['sfm-page-search-2bd6dcce-3daa95b.html'],
 };
 
 /**
@@ -37,7 +39,7 @@ const PAGES = {
  * list served from the fixtures and everything else blocked.
  *
  * @param {import('@playwright/test').Page} page
- * @param {string} pathName
+ * @param {string} pathName - The path, with a search's query.
  * @param {Object} [settings]
  * @returns {Promise<{served: string[], errors: string[]}>}
  */
@@ -53,7 +55,7 @@ async function open(page, pathName, settings = {}) {
         return file ? route.fulfill({ path: FX(file), contentType: 'text/html; charset=utf-8' }) : route.fulfill({ status: 404, body: '' });
     });
     await loadUserscriptPage(page, {
-        url: `${SFM}${pathName}?page=1`, fixtureFile: FX(PAGES[pathName][0]), testMode: true,
+        url: `${SFM}${pathName}${pathName.includes('?') ? '&' : '?'}page=1`, fixtureFile: FX(PAGES[pathName.split('?')[0]][0]), testMode: true,
         settingsOverride: { ...FIXTURE_SETTINGS_OVERRIDE, sa_enable_setlistfm: true, sa_render_threshold: 100000, ...settings },
     });
     return { served, errors };
@@ -173,6 +175,60 @@ test.describe('setlist.fm list pages (sfm-venue, sfm-artist)', () => {
             const a = document.querySelector('#mb-sfm-root table.tbl tbody tr td a[href*="/setlist/"]');
             return window.__saTest.popResolve(a) || null;
         })).toBe(null);
+    });
+
+    test('on setlist.fm, a Tour cell (setlist.fm\'s own search link) has its card and window, key or not (vzell, 2026-11-03: "does not have the hover POH")', async ({ page }) => {
+        await open(page, '/venue/state-farm-arena-atlanta-ga-usa-73d20e81.html', { sa_pop_ext: true, sa_pop_ext_setlistfm_key: '' });
+        await show(page, 'Show all setlists of this venue');
+        expect(await page.evaluate(() => {
+            const a = document.querySelector('#mb-sfm-root table.tbl tbody tr td a[href*="/search?artist="]');
+            return (window.__saTest.popResolve(a) || '').split(':').slice(0, 2).join(':');
+        })).toBe('ext|ext:setlistfm');
+    });
+
+    test('setlist.fm\'s own body { overflow-x: hidden } does not cut the table off: the window scrolls sideways (vzell, 2026-11-03)', async ({ page }) => {
+        await page.setViewportSize({ width: 700, height: 800 });
+        await open(page, '/venue/state-farm-arena-atlanta-ga-usa-73d20e81.html');
+        // The site's own rule (setlist-5.9.163-…css, read 2026-11-03), after ours.
+        await page.addStyleTag({ content: 'body{background-color:#fff;overflow-x:hidden}' });
+        await show(page, 'Show all setlists of this venue');
+        const m = await page.evaluate(() => ({
+            sw: document.documentElement.scrollWidth, cw: document.documentElement.clientWidth,
+            body: getComputedStyle(document.body).overflowX,
+        }));
+        expect(m.sw, 'the table is wider than the window').toBeGreaterThan(m.cw);
+        expect(m.body, 'the site\'s hidden is undone, so the viewport is not hidden').toBe('visible');
+        // As a user scrolls: the wheel (a script's scrollTo() moves even an
+        // overflow: hidden viewport, so it proves nothing).
+        await page.mouse.move(350, 600);
+        await page.mouse.wheel(1500, 0);
+        await expect.poll(() => page.evaluate(() => window.scrollX), { message: 'the wheel scrolls the window sideways' }).toBeGreaterThan(0);
+    });
+
+    test('a heading that names the venue of a stage is no event ("NAC Opera Hall at National Arts Centre", vzell 2026-11-03)', async ({ page }) => {
+        const p = '/setlists/bruce-springsteen-2bd6dcce.html';
+        await open(page, p);
+        // The Merriweather card as the 1975-12-20 NAC card is: its heading
+        // names the stage's venue, not a festival.
+        const html = require('fs').readFileSync(FX('sfm-page-artist-2bd6dcce-p1.html'), 'utf8')
+            .replace('Bruce Springsteen at Power to the People Festival 2026', 'Bruce Springsteen at Merriweather Post Pavilion, Columbia, MD, USA');
+        await page.route((u) => u.hostname === 'www.setlist.fm' && u.pathname === p && !u.search, (route) => route.fulfill({ body: html, contentType: 'text/html; charset=utf-8' }));
+        await show(page, 'Show all setlists of this artist');
+        const r = await rows(page);
+        expect(r.find(x => x.Date === '2026-10-03')).toMatchObject({ Venue: 'Pavilion Stage at Merriweather Post Pavilion, Columbia, MD, USA', Event: '' });
+    });
+
+    test('a search for an artist\'s tour (sfm-search, vzell 2026-11-03): named by its filter\'s choices; the cards as an artist\'s rows; its query kept for the fetch', async ({ page }) => {
+        const { served, errors } = await open(page, '/search?artist=2bd6dcce&tour=3daa95b');
+        await expect(page.locator('#mb-sfm-root h1.mb-sfm-h1 bdi')).toHaveText('setlist.fm search: Bruce Springsteen · Land of Hope & Dreams American Tour');
+        await show(page, 'Show all setlists of this search');
+        expect(served).toEqual(['/search?artist=2bd6dcce&tour=3daa95b']);
+        const r = await rows(page);
+        expect(r).toHaveLength(10);
+        expect(Object.keys(r[0]).filter(k => !k.endsWith('@'))).toEqual(['Date', 'Venue', 'Event', 'Tour', 'Doors', 'Start', 'End', 'Songs', 'Setlist']);
+        expect(r.every(x => x.Tour === 'Land of Hope & Dreams American Tour')).toBe(true);
+        expect(r.find(x => x.Date === '2026-05-30')).toMatchObject({ Doors: '18:00', Start: '19:30', End: '22:20' });
+        expect(errors).toEqual([]);
     });
 
     test('switched off: nothing on the page changes', async ({ page }) => {
