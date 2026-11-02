@@ -1,0 +1,21 @@
+[
+  {
+    "version": "WIP.1",
+    "date": "2026-11-02",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "setlist.fm window of a venue or an artist (link preview, with your setlist.fm API key): the dates in the Setlists table no longer break onto a second line (\"2026-10-20\" wrapped at its hyphens)."
+        ]
+      },
+      {
+        "label": "✨ Improve",
+        "items": [
+          "setlist.fm window of a venue or an artist: \"In the loaded setlists\" lists the artists and tours (a venue's) or the tours and venues (an artist's) as small tables you can sort and filter, most setlists first. The number of setlists is a button: it keeps the Setlists table on the right to that artist, tour or venue, and works together with the table's text filter. A second click, or the ✕ of the \"Only …\" label above the table, shows them all again.",
+          "setlist.fm windows: a tour is a link, as on setlist.fm. It goes to setlist.fm's search for that artist and tour; in the window it opens the tour's setlists (20 at a time, \"Load 20 more\", its venues on the left), and ← Back returns. A setlist's window links its tour the same way."
+        ]
+      }
+    ]
+  }
+]

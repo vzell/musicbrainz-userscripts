@@ -3013,8 +3013,14 @@ once and without Tampermonkey asking first:
   songs; its window lists every song by set (the encore too), each cover's
   original artist linked to MusicBrainz, guests, songs from tape, the show's
   notes, and the venue's city with a map link. An artist's or a venue's
-  window lists their setlists 20 at a time (*Load 20 more*), with a filter,
-  and counts the tours, venues or artists of what is loaded. The links in it
+  window lists their setlists 20 at a time (*Load 20 more*), with a filter.
+  On the left, *In the loaded setlists* has small tables of the artists and
+  tours (a venue's) or the tours and venues (an artist's), most setlists
+  first, which you can sort and filter. Click a number to keep the Setlists
+  table to that artist, tour or venue (together with the text filter); click
+  it again, or the ✕ of the *Only …* label, to see them all. A tour is a link
+  to setlist.fm's search for that artist's tour; in the window it opens that
+  tour's setlists. The links in it
   open in the same window (*Back* returns). setlist.fm has no address,
   opening dates or attendance for a venue in its API, so those are not shown.
   Without a key, setlist.fm links keep the plain web-page card.

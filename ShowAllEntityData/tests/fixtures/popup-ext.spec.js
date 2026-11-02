@@ -1093,6 +1093,8 @@ const sfmAnswers = () => {
             sfmJson(JSON.stringify({ type: 'artists', itemsPerPage: 30, page: 1, total: 1, artist: [JSON.parse(json('ext-sfm-artist.json'))] })),
         [`${SFM_API}/artist/${SFM_MBID}/setlists?p=1`]: sfmJson(JSON.stringify(p1)),
         [`${SFM_API}/artist/${SFM_MBID}/setlists?p=2`]: sfmJson(JSON.stringify(p2)),
+        // A tour by the artist's MBID (vzell's probe of 2026-11-02).
+        [`${SFM_API}/search/setlists?artistMbid=${SFM_MBID}&tourName=The%20River%20Tour%202016&p=1`]: sfmJson(json('ext-sfm-tour-setlists-p1.json')),
     };
 };
 const SFM_KEY = 'sfm-probe-key';
@@ -1184,6 +1186,132 @@ test.describe('setlist.fm through its API (branch B)', () => {
         await ctrlHover(page, probe(page, 0));
         await expect(card(page)).toContainText('did not accept the API key');
         expect((await xhrFull(page)).filter(r => r.url.startsWith(SFM_API)), 'not kept: asked again').toHaveLength(2);
+    });
+});
+
+// org/setlistfm.org "venue additions", Part A (mockup v1,
+// https://claude.ai/artifact/71itNE6a2ekiAtQxcTi1hq view 1-2): the Date on
+// one line (item 1), the loaded setlists' artists, tours and venues as tables
+// whose count keeps the Setlists table to one (item 3), and a tour linked as
+// setlist.fm's search with the artist's MBID in the fragment, opening in the
+// window through the API (item 5). Mutation list:
+// scripts/mutations/setlistfm-venue.json.
+const SFM_TOUR = `https://www.setlist.fm/search?query=${encodeURIComponent('artist:(Bruce Springsteen) tour:(The River Tour 2016)')}#mbid=${SFM_MBID}`;
+
+/**
+ * Opens the window of a setlist.fm link through the API answers.
+ * @param {import('@playwright/test').Page} page
+ * @param {string} url
+ * @returns {Promise<import('@playwright/test').Locator>} The window's area.
+ */
+async function sfmWindow(page, url) {
+    await openEvent(page, { settings: { sa_pop_ext: true, sa_pop_ext_setlistfm_key: SFM_KEY }, responses: sfmAnswers() });
+    await addAnnotationLinks(page, [url]);
+    await ctrlHover(page, probe(page, 0));
+    await expect(card(page).locator('.mb-tt-title')).not.toBeEmpty();
+    await page.keyboard.press('Space');
+    return dialog(page).locator('.mb-dp-area');
+}
+
+test.describe('setlist.fm venue additions (org/setlistfm.org, Part A)', () => {
+    test('a venue window: the Date never wraps; artists and tours are tables whose count keeps the Setlists table to one, with the text filter on top; the pill or a second click shows them all again, nothing asked', async ({ page }) => {
+        const area = await sfmWindow(page, SFM.venue);
+        const right = area.locator('[data-mb-tbl="sfm-venue"] tbody tr');
+        await expect(right).toHaveCount(20);
+        // Item 1: the Date cell is set not to wrap ("2026-10-20" broke at its hyphens).
+        const dates = area.locator('[data-mb-tbl="sfm-venue"] tbody td.mb-dg-yr');
+        await expect(dates).toHaveCount(20);
+        expect(await dates.first().evaluate(td => getComputedStyle(td).whiteSpace)).toBe('nowrap');
+        // Item 3: tables, most setlists first, 8 a page.
+        await expect(area.locator('h4', { hasText: 'In the loaded setlists' })).toHaveText('In the loaded setlists · 20');
+        await expect(area.locator('h4', { hasText: /^Artists/ })).toHaveText('Artists · 18');
+        const artists = area.locator('[data-mb-tbl="sfm-l-artist"] tbody tr');
+        await expect(artists).toHaveCount(8);
+        await expect(artists.first().locator('td').first()).toHaveText('Bruce Springsteen');
+        await expect(artists.first().locator('.mb-sfm-pick')).toHaveText('3');
+        await expect(area.locator('[data-mb-tbl="sfm-l-artist"] .mb-dg-pager')).toContainText('1–8 of 18');
+        const tours = area.locator('[data-mb-tbl="sfm-l-tour"] tbody tr');
+        await expect(tours).toHaveCount(3);
+        await expect(tours.first().locator('td').first()).toHaveText('The River Tour 2016');
+        await expect(tours.first().locator('a')).toHaveAttribute('href', SFM_TOUR);
+        // The left filter narrows its own table only.
+        await area.locator('[data-mb-tbl="sfm-l-artist"] input.mb-tbl-q').fill('tyler');
+        await expect(artists).toHaveCount(1);
+        await expect(artists.first()).toContainText('Tyler, The Creator');
+        await expect(right).toHaveCount(20);
+        await area.locator('[data-mb-tbl="sfm-l-artist"] input.mb-tbl-q').fill('');
+        // Sorting by the count: descending first, then ascending.
+        const countHead = area.locator('[data-mb-tbl="sfm-l-artist"] th', { hasText: 'Setlists' });
+        await countHead.click();
+        await countHead.click();
+        await expect(artists.first().locator('.mb-sfm-pick')).toHaveText('1');
+        // A third click: the initial order again, most setlists first.
+        await countHead.click();
+        await expect(artists.first().locator('td').first()).toHaveText('Bruce Springsteen');
+        const before = (await xhrFull(page)).length;
+        // The pick: only that tour's setlists, the row marked, the pill.
+        await tours.first().locator('.mb-sfm-pick').click();
+        await expect(right).toHaveCount(3);
+        for (const tr of await right.all()) await expect(tr).toContainText('The River Tour 2016');
+        await expect(tours.first()).toHaveClass(/mb-sfm-picked/);
+        await expect(tours.first().locator('.mb-sfm-pick')).toHaveAttribute('aria-pressed', 'true');
+        const pill = area.locator('.mb-sfm-only');
+        await expect(pill).toContainText('Only tour: The River Tour 2016 · 3');
+        // With the text filter: both narrow.
+        await area.locator('[data-mb-tbl="sfm-venue"] input.mb-tbl-q').fill('2016-03-19');
+        await expect(right).toHaveCount(1);
+        await area.locator('[data-mb-tbl="sfm-venue"] input.mb-tbl-q').fill('');
+        await expect(right).toHaveCount(3);
+        // The pill's ✕ shows them all again; so does a second click.
+        await pill.locator('button').click();
+        await expect(right).toHaveCount(20);
+        await expect(pill).toHaveCount(0);
+        await artists.filter({ hasText: 'Bruce Springsteen' }).locator('.mb-sfm-pick').click();
+        await expect(right).toHaveCount(3);
+        await expect(pill).toContainText('Only artist: Bruce Springsteen · 3');
+        await artists.filter({ hasText: 'Bruce Springsteen' }).locator('.mb-sfm-pick').click();
+        await expect(right).toHaveCount(20);
+        expect((await xhrFull(page)).length, 'picking asks nothing').toBe(before);
+    });
+
+    test('a tour: linked as setlist.fm\'s search with the artist\'s MBID in the fragment; it opens in the window through the API by MBID (no Tour column, its venues on the left); Back returns; the setlist window links its tour too', async ({ page }) => {
+        const area = await sfmWindow(page, SFM.venue);
+        const d = dialog(page);
+        const cell = area.locator('[data-mb-tbl="sfm-venue"] tbody tr').first().locator('td').nth(2);
+        await expect(cell.locator('a')).toHaveAttribute('href', SFM_TOUR);
+        // A tour-less setlist's cell stays text.
+        await expect(area.locator('[data-mb-tbl="sfm-venue"] tbody tr', { hasText: 'Blue Bird' }).locator('td').nth(2).locator('a')).toHaveCount(0);
+        const pages = [];
+        page.on('popup', (pp) => pages.push(pp.url()));
+        await cell.locator('a').click();
+        await expect(d.locator(':scope > div > span').first()).toHaveText(/setlist\.fm tour$/);
+        const rows = area.locator('[data-mb-tbl="sfm-tour"] tbody tr');
+        await expect(rows).toHaveCount(20);
+        await expect(area.locator('[data-mb-tbl="sfm-tour"] th')).toHaveText(['Date', 'Venue', 'Songs']);
+        await expect(area.locator('dt:text-is("Artist") + dd a').first()).toHaveAttribute('href', `https://musicbrainz.org/artist/${SFM_MBID}`);
+        await expect(area).toContainText('20 of 75 loaded');
+        const venues = area.locator('[data-mb-tbl="sfm-l-venue"] tbody tr');
+        await expect(venues.first().locator('td').first()).toHaveText('MetLife Stadium, East Rutherford');
+        await expect(venues.first().locator('.mb-sfm-pick')).toHaveText('3');
+        expect(pages, 'no new tab').toEqual([]);
+        const api = (await xhrFull(page)).map(r => r.url).filter(u => u.startsWith(SFM_API));
+        expect(api, 'asked by the MBID, never by the name').toContain(`${SFM_API}/search/setlists?artistMbid=${SFM_MBID}&tourName=The%20River%20Tour%202016&p=1`);
+        expect(api.filter(u => /artistName=/.test(u))).toEqual([]);
+        await d.locator('button', { hasText: 'Back' }).click();
+        await expect(area.locator('[data-mb-tbl="sfm-venue"] tbody tr')).toHaveCount(20);
+        // The setlist window's Tour fact.
+        await area.locator('[data-mb-tbl="sfm-venue"] tbody tr').first().locator('td').nth(1).locator('a').click();
+        await expect(d.locator(':scope > div > span').first()).toHaveText(/setlist\.fm setlist$/);
+        await expect(area.locator('dt:text-is("Tour") + dd a')).toHaveAttribute('href', SFM_TOUR);
+    });
+
+    test('which search links the reader takes: only a tour link with the artist\'s MBID in the fragment; setlist.fm\'s own search links stay generic', async ({ page }) => {
+        await openEvent(page, { settings: { sa_pop_ext: true, sa_pop_ext_setlistfm_key: SFM_KEY }, responses: sfmAnswers() });
+        await addAnnotationLinks(page, [SFM_TOUR, SFM_TOUR.split('#')[0], 'https://www.setlist.fm/search?artist=2bd6dcce&tour=13d7a945',
+            `https://www.setlist.fm/search?query=${encodeURIComponent('artist:(Bruce Springsteen)')}#mbid=${SFM_MBID}`]);
+        const keys = await page.evaluate(() => Array.from(document.querySelectorAll('.ext-probe a'))
+            .map(a => (window.__saTest.popResolve(a) || '').split(':').slice(0, 2).join(':')));
+        expect(keys).toEqual(['ext|ext:setlistfm', 'ext|ext:generic', 'ext|ext:generic', 'ext|ext:generic']);
     });
 });
 

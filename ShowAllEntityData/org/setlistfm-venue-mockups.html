@@ -1,0 +1,531 @@
+<title>setlist.fm Venue Additions</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/* Layout: an intro and a view switch on paper; each view mirrors what the
+   script would show (the Space window on a venue, a tour and a setlist, and
+   setlist.fm's venue page with the SAED table), the open questions beside it.
+   Single light theme on purpose: it reproduces the script's "Liner notes" look,
+   like the earlier mockups in org/. */
+:root {
+    --paper: #fbf8f1;
+    --paper-2: #f6f1e6;
+    --ink: #2b2622;
+    --rule: #d9cfbd;
+    --rule-soft: #ece4d4;
+    --muted: #7a6d5c;
+    --link: #2f4f8a;
+    --run: #2f5f9e;
+    --ok: #3f7a3a;
+    --pick: #fdf0c8;
+    --white: #fff;
+    --sfm: #85b146;
+    --sfm-ink: #ffffff;
+    --new: #fdf7e8;
+    --new-h: #f3e6c5;
+    --shadow: 0 10px 24px -8px rgba(60,40,20,.35);
+    --serif: Georgia, "Times New Roman", Times, serif;
+    --sans: system-ui, -apple-system, "Segoe UI", Arial, sans-serif;
+    --mono: ui-monospace, Consolas, "Liberation Mono", monospace;
+    color-scheme: light;
+}
+html, body { background: var(--paper); color: var(--ink); }
+body {
+    font: 14px/1.5 var(--serif);
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+    padding-block: 18px 40px;
+}
+.page { max-width: 1440px; margin: 0 auto; display: grid; gap: 16px; }
+.cap { font: 600 10.5px/1.3 var(--sans); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+h1 { font-size: 22px; line-height: 1.25; margin: 0; text-wrap: balance; }
+.intro p { margin: 4px 0 0; max-width: 80ch; }
+code { font: 12.5px var(--mono); background: var(--paper-2); padding: 0 4px; border-radius: 3px; }
+a { color: var(--link); }
+
+.seg { display: inline-flex; flex-wrap: wrap; }
+.seg button {
+    font: 600 11px/1 var(--sans); letter-spacing: .06em; text-transform: uppercase;
+    padding: 8px 11px; border: 1px solid var(--rule); background: var(--white); color: var(--ink); cursor: pointer; margin-left: -1px;
+}
+.seg button:first-child { margin-left: 0; border-radius: 3px 0 0 3px; }
+.seg button:last-child { border-radius: 0 3px 3px 0; }
+.seg button[aria-pressed="true"] { background: var(--ink); border-color: var(--ink); color: var(--paper); position: relative; }
+.seg button:hover:not([aria-pressed="true"]) { background: var(--paper-2); }
+button:focus-visible, input:focus-visible, a:focus-visible, th:focus-visible { outline: 2px solid var(--run); outline-offset: 1px; }
+
+.layout { display: grid; grid-template-columns: minmax(0, 1fr) 330px; gap: 16px; align-items: start; }
+@media (max-width: 1100px) { .layout { grid-template-columns: minmax(0, 1fr); } }
+.notes { border: 1px solid var(--rule); border-radius: 4px; background: var(--white); padding: 12px 14px; display: grid; gap: 10px; font-size: 13.5px; }
+.notes h2 { margin: 0; font: 600 11px/1.3 var(--sans); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.notes ol, .notes ul { margin: 0; padding-left: 1.3em; display: grid; gap: 6px; }
+.notes .q b { display: block; }
+.notes .rec { color: var(--ok); font-style: italic; }
+.notes p { margin: 0; }
+
+/* The Space window stand-in */
+.win { border: 1px solid #ccc; border-radius: 8px; background: var(--white); box-shadow: var(--shadow); overflow: hidden; min-width: 0; }
+.win-head { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; justify-content: space-between; padding: 10px 14px; background: #f8f8f8; border-bottom: 2px solid #ddd; font: 13px var(--sans); }
+.crumbs { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; min-width: 0; font-weight: 700; }
+.crumbs .ico { width: 16px; height: 16px; border-radius: 3px; background: var(--sfm); color: var(--sfm-ink); display: inline-grid; place-items: center; font: 700 10px var(--sans); }
+.crumbs button { font: 600 12.5px var(--sans); border: 0; background: none; color: var(--ink); cursor: pointer; padding: 2px 4px; border-radius: 3px; max-width: 46ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.crumbs button[aria-current="step"] { background: var(--paper-2); }
+.crumbs .sep { color: var(--muted); }
+.tbtns { display: flex; gap: 6px; align-items: center; }
+.tbtn { font: 12px var(--sans); border: 1px solid #ccc; background: var(--white); border-radius: 4px; padding: 3px 8px; cursor: pointer; }
+.tbtn[disabled] { opacity: .45; cursor: default; }
+.win-body { display: grid; grid-template-columns: 360px minmax(0, 1fr); gap: 0; max-height: 760px; overflow: auto; }
+@media (max-width: 860px) { .win-body { grid-template-columns: minmax(0, 1fr); } }
+.col { padding: 12px 14px; display: grid; gap: 8px; align-content: start; min-width: 0; }
+.col + .col { border-left: 1px solid var(--rule-soft); }
+.col h4 { margin: 6px 0 0; font: 600 12px var(--sans); letter-spacing: .05em; text-transform: uppercase; color: var(--muted); }
+.xtitle { font-size: 19px; font-weight: 700; line-height: 1.2; }
+.xsub { font: 12px var(--sans); color: var(--muted); }
+dl.kv { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 3px 10px; margin: 0; font-size: 13px; }
+dl.kv dt { color: var(--muted); font: 12.5px var(--sans); }
+dl.kv dd { margin: 0; min-width: 0; }
+.credit { font: 11.5px var(--sans); color: var(--muted); }
+
+/* tables */
+.tools { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.q { font: 13px var(--serif); padding: 3px 7px; border: 1px solid var(--rule); border-radius: 3px; width: min(300px, 100%); }
+.q.small { width: 100%; }
+.twrap { overflow: auto; border: 1px solid var(--rule); border-radius: 3px; }
+.twrap.tall { max-height: 520px; }
+table.t { width: 100%; border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; }
+table.t th {
+    position: sticky; top: 0; z-index: 1; background: #f4eee2; text-align: left; white-space: nowrap; cursor: pointer; user-select: none;
+    font: 600 10.5px var(--sans); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); padding: 5px 7px; border-bottom: 1px solid var(--rule);
+}
+table.t th[aria-sort="ascending"]::after { content: " \25B2"; }
+table.t th[aria-sort="descending"]::after { content: " \25BC"; }
+table.t td { padding: 4px 7px; border-bottom: 1px solid #f0eadf; vertical-align: top; }
+table.t tbody tr:hover td { background: #fbf5e7; }
+table.t td.num { text-align: right; white-space: nowrap; }
+table.t td.yr { white-space: nowrap; }
+table.t td.tm { white-space: nowrap; font: 12.5px var(--sans); }
+table.t tr.picked td { background: var(--pick); }
+.dim { color: var(--muted); }
+.first { font-size: 12px; color: var(--muted); }
+.newcol { background: var(--new); }
+table.t th.newcol { background: var(--new-h); }
+.pager { display: flex; gap: 6px; align-items: center; justify-content: flex-end; font: 12px var(--sans); color: var(--muted); padding: 4px 2px 0; }
+.pager button { font: 12px var(--sans); border: 1px solid var(--rule); background: var(--white); border-radius: 3px; padding: 1px 7px; cursor: pointer; }
+.pager button[disabled] { opacity: .4; cursor: default; }
+.pickbtn {
+    font: 600 12px var(--sans); font-variant-numeric: tabular-nums; border: 1px solid var(--rule); background: var(--white); border-radius: 999px;
+    padding: 0 8px; cursor: pointer; color: var(--ink); white-space: nowrap;
+}
+.pickbtn::after { content: " \25B8"; color: var(--muted); font-size: 10px; }
+.pickbtn[aria-pressed="true"] { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+.pickbtn[aria-pressed="true"]::after { content: " \2715"; color: var(--rule); }
+.only { display: inline-flex; gap: 6px; align-items: center; font: 12.5px var(--sans); background: var(--pick); border: 1px solid #e6cf86; border-radius: 999px; padding: 2px 4px 2px 10px; }
+.only button { border: 0; background: none; cursor: pointer; font-size: 13px; line-height: 1; padding: 2px 5px; border-radius: 999px; }
+.only button:hover { background: #f3dfa0; }
+.vstat { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font: 12px var(--sans); }
+.pill { display: inline-block; font: 600 10.5px/1.5 var(--sans); padding: 0 7px; border: 1px solid var(--rule); border-radius: 999px; color: var(--muted); background: var(--paper); white-space: nowrap; }
+.btn { font: 600 12px var(--sans); border: 1px solid var(--run); background: var(--run); color: #fff; border-radius: 4px; padding: 3px 9px; cursor: pointer; }
+.btn.ghost { background: var(--white); color: var(--run); }
+.counts { font: 12px var(--sans); color: var(--muted); }
+.tsec td { background: #f6f1e6 !important; font: 600 12px var(--sans); }
+
+/* set times timeline (setlist window) */
+.times { display: grid; grid-template-columns: max-content max-content minmax(0, 1fr); gap: 2px 10px; font: 13px var(--sans); align-items: baseline; }
+.times .l { color: var(--muted); font-size: 12px; }
+.times .v { font-weight: 600; white-space: nowrap; }
+.times .d { color: var(--muted); font-size: 12px; }
+
+/* setlist.fm page stand-in */
+.site { border: 1px solid var(--rule); border-radius: 4px; overflow: hidden; background: var(--white); min-width: 0; }
+.sfm-top { background: var(--white); padding: 10px 14px; display: flex; gap: 14px; align-items: center; border-bottom: 1px solid #eee; }
+.sfm-logo { font: 800 22px/1 var(--sans); letter-spacing: -.02em; color: #222; }
+.sfm-logo small { display: block; font: 600 9px var(--sans); letter-spacing: .02em; }
+.sfm-search { flex: 1; min-width: 0; border: 1px solid #ccc; border-radius: 4px; padding: 6px 10px; font: 13px var(--sans); color: #999; }
+.sfm-nav { background: var(--sfm); color: var(--sfm-ink); font: 700 12px var(--sans); letter-spacing: .05em; padding: 10px 14px; display: flex; flex-wrap: wrap; gap: 18px; }
+.sfm-body { padding: 14px; display: grid; gap: 10px; background: #f4f4f4; }
+.panel { background: var(--white); border: 1px solid #e5e5e5; border-radius: 3px; padding: 12px; display: grid; gap: 10px; min-width: 0; }
+.h1row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.h1row h3 { margin: 0; font: 600 20px var(--sans); }
+.saed { display: inline-flex; border: 1px solid #b0bec5; border-radius: 6px; overflow: hidden; font: 12px/1 var(--sans); }
+.saed span { padding: 6px 9px; background: #eceff1; color: #263238; }
+.saed span + span { border-left: 1px solid #b0bec5; }
+.saed .on { background: #2f5f9e; color: #fff; }
+.h2row { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; border-bottom: 1px solid var(--rule); padding-bottom: 6px; }
+.h2row h4 { margin: 0; font: 600 16px var(--sans); }
+.stat { font: 12px var(--sans); color: var(--muted); font-variant-numeric: tabular-nums; }
+.venue-facts { display: flex; flex-wrap: wrap; gap: 4px 18px; font: 12.5px var(--sans); color: #555; }
+.venue-facts b { color: #333; font-weight: 600; }
+</style>
+
+<div class="page">
+    <header class="intro">
+        <div class="cap">ShowAllEntityData · org/setlistfm.org “venue additions” · mockup v1 · 2026-11-02</div>
+        <h1>setlist.fm venue additions</h1>
+        <p>Rows are real: the State Farm Arena window you hovered (<code>debug/POH-setlistfm-venue.html</code>), venue pages 1 and 2, the
+            River Tour 2016 answer of the API probe, and the Merriweather setlist with set times. Cells that change are tinted.
+            Click the column heads, the filters, the ▸ counts and the tour names: they work.</p>
+    </header>
+    <div class="seg" role="group" aria-label="View">
+        <button type="button" data-view="venue" aria-pressed="true">1 · Venue window</button>
+        <button type="button" data-view="tour" aria-pressed="false">2 · Tour window</button>
+        <button type="button" data-view="setlist" aria-pressed="false">3 · Setlist window</button>
+        <button type="button" data-view="page" aria-pressed="false">4 · setlist.fm venue page</button>
+    </div>
+    <div class="layout">
+        <main id="stage" style="min-width:0"></main>
+        <aside class="notes" id="notes"></aside>
+    </div>
+</div>
+
+<script>
+'use strict';
+/* ---- data (real, from the snapshots and the probe) ---------------------- */
+const VENUE = { name: 'State Farm Arena', where: 'Atlanta, Georgia (GA), United States', total: 929, url: 'https://www.setlist.fm/venue/state-farm-arena-atlanta-ga-usa-73d20e81.html' };
+// [date, artist, setlist id, first songs, tour, songs]
+const ROWS = [["2026-11-04","Dave Chappelle","5b7f03d8","","Karmageddon","—"],["2026-10-31","Young Miko","7b76ceb0","","Lake Checkout","—"],["2026-10-29","T‐Pain","b7db122","","","—"],["2026-10-25","Johnny Blue Skies & The Dark Clouds","2b7c5ca6","Make America Fuk Again · Scooter Blues · Juanita · Situation · Viridescent …","Mutiny For The Masses Tour","27"],["2026-10-25","Sturgill Simpson","13761921","SpottieOttieDopaliscious · Make America Fuk Again · Scooter Blues · Juanita · Situation …","Mutiny For The Masses","29"],["2026-10-24","Pastor Troy","737c5e39","No Mo Play in G.A.","","1"],["2026-10-24","Big Boi","1b7c65f0","The Way You Move · So Fresh, So Clean · Ms. Jackson · Kryptonite (I'm on It)","","4"],["2026-10-22","The Last Dinner Party","3b767020","Knocking at the Sky · The Feminine Urge · Burn Alive · The Scythe · Sinner …","","9"],["2026-10-22","The Hellp","33767041","","","—"],["2026-10-22","sombr","13767121","we never even dated · i wish i knew how to quit you · under the mat · perfume · come closer …","You Are The Reason Tour","17"],["2026-10-20","Teddy Swims","43764ba3","The Door · Hammer to the Heart · Are You Even Real · Funeral · What More Can I Say …","The UGLY Tour","25"],["2026-10-20","St. Paul & The Broken Bones","2373a82f","","","—"],["2026-10-19","Journey","3374e495","Be Good to Yourself · Stone in Love · Ask the Lonely · Only the Young · Just the Same Way …","Final Frontier Tour","29"],["2026-10-15","KATSEYE","6b74da0a","Intro · Hootie Frutti · Internet Girl · That Way · Ment …","WILDWORLD TOUR","29"],["2026-10-13","Alex G","6b751a3e","Gretel · Southern Sky · Hope · June Guitar · Runner …","The Lost Tour 2026","18"],["2026-10-13","Phoebe Bridgers","13751959","The Outside · Motion Sickness · Kill Me · The Governor's Waltz · Lost Boys …","The Lost Tour 2026","26"],["2026-10-10","Weezer","734966c9","Shine Again · Surf Wax America · Keep Fishin' · Hash Pipe · The Good Life …","Weezer: The Gathering","27"],["2026-10-10","The Shins","73496685","Simple Song · Australia · Gone for Good · So Now What · Saint Simon …","","12"],["2026-10-10","Silversun Pickups","1b4961f0","Well Thought Out Twinkles · The Wreckage · Substitution · Panic Switch · Lazy Eye","","5"],["2026-10-08","Jonas Brothers","2b71ec92","That's Just the Way We Roll · Shelf · Hold On · BB Good · Goodnight and Goodbye …","The Burning Up Tour All Over Again","30"],["2026-10-06","underscores","37571f7","You don’t even know who I am · Unlimited Love · Stupid (Can't run from the urge) · Hollywood Forever · The Peace …","","12"],["2026-10-06","Charli xcx","1b7575a8","Damaged III · Oblivion · Rock Music · Yeah · Apple …","Music, Fashion, Film","31"],["2026-09-30","Kacey Musgraves","5b771730","Thunderstruck · Everybody Wants to Be a Cowboy · Dry Spell · justified · High Horse …","Middle of Nowhere","24"],["2026-09-30","Charles Wesley Godwin","2b7f1cfe","Better That Way · Christian Name · Family Ties · Cue Country Roads · Blood Feud …","Christian Name","7"],["2026-09-24","aespa","13773129","Intro · Welcome to MY World · LEMONADE · Switchblade · Whiplash …","SYNK : COMPLaeXITY","29"],["2026-09-18","Master P","4b7faff2","","","—"],["2026-09-18","Big Tymers","4b7fafea","","","—"],["2026-09-18","Juvenile","437fafeb","","","—"],["2026-09-13","Ken Carson","6b738696","deaf note · Lord Of Chaos · scrape · possession · edm …","xperimenting tour","31"],["2026-09-13","DJ Moon","373ed2f","","","—"],["2026-09-13","xaviersobased","1b73ed28","","","—"],["2026-09-13","prettifun","1373ed29","","","—"],["2026-08-22","Baby Rose","7b715234","","","—"],["2026-08-22","Olivia Dean","34f0dcb","The Art of Loving (Intro) · Nice to Each Other · Lady Lady · Close Up · So Easy (To Fall in Love) …","The Art of Loving Tour","24"],["2026-08-18","Don Toliver","2b723c0a","E85 · OPPOSITE · Rendezvous · ATM · Call Back …","OCTANE","38"],["2026-08-18","Chase B","23718c73","","OCTANE","—"],["2026-08-04","Medium Build","73777281","WMP · In My Room · Triple Marathon · Home Depot · In My Gut …","Prizefighter","11"],["2026-08-04","Mumford & Sons","5348bf01","The Wild · Begin Again · Babel · Little Lion Man · White Blank Page …","Prizefighter","27"],["2026-08-03","Monaleo","13703161","","","—"],["2026-07-24","Faye Webster","4b7687da","","","—"]];
+// Set times read from setlist.fm's venue pages 1 and 2 (the first 20 setlists): [doors, start, end]
+const TIMES = {
+    '13761921': ['7:00 PM', '8:00 PM', '11:05 PM'], '2b7c5ca6': ['', '8:00 PM', '11:05 PM'], '3b767020': ['6:00 PM', '7:45 PM', '8:30 PM'],
+    '43764ba3': ['', '9:00 PM', '11:00 PM'], '3374e495': ['6:30 PM', '7:45 PM', '10:30 PM'], '6b74da0a': ['6:30 PM', '8:20 PM', '10:00 PM'],
+    '13751959': ['6:00 PM', '', ''], '734966c9': ['6:00 PM', '9:10 PM', '10:55 PM'], '73496685': ['6:00 PM', '7:50 PM', '8:40 PM'],
+    '1b4961f0': ['6:00 PM', '6:55 PM', '7:30 PM'],
+};
+const TIMES_READ = 20;  // setlists whose site page (10 a page) has been read
+// The API probe's River Tour 2016 answer: [date, venue, city, state, country, id, songs, first]
+const TOUR = { name: 'The River Tour 2016', artist: 'Bruce Springsteen', total: 75, rows: [["2016-09-14","Gillette Stadium","Foxborough","MA","US","6bfdb24a",33,["New York City Serenade","Prove It All Night","Does This Bus Stop at 82nd Street?","Blinded by the Light","It's Hard to Be a Saint in the City"]],["2016-09-11","Consol Energy Center","Pittsburgh","PA","US","7bfc461c",32,["New York City Serenade","Into the Fire","Lonesome Day","You're Missing","Mary's Place"]],["2016-09-09","Citizens Bank Park","Philadelphia","PA","US","63fc56bf",33,["New York City Serenade","Out in the Street","Sherry Darling","From Small Things (Big Things One Day Come)","I'm Goin' Down"]],["2016-09-07","Citizens Bank Park","Philadelphia","PA","US","6bfc6262",34,["New York City Serenade","Does This Bus Stop at 82nd Street?","It's Hard to Be a Saint in the City","Growin' Up","Spirit in the Night"]],["2016-09-05","Veterans United Home Loans Amphitheater at Virginia Beach","Virginia Beach","VA","US","63fc66fb",32,["For You","Does This Bus Stop at 82nd Street?","It's Hard to Be a Saint in the City","Growin' Up","Spirit in the Night"]],["2016-09-01","Nationals Park","Washington","DC","US","4bfc072e",35,["New York City Serenade","Summertime Blues","Sherry Darling","No Surrender","Growin' Up"]],["2016-08-30","MetLife Stadium","East Rutherford","NJ","US","7bfc0a4c",34,["New York City Serenade","Blinded by the Light","Does This Bus Stop at 82nd Street?","It's Hard to Be a Saint in the City","Spirit in the Night"]],["2016-08-28","United Center","Chicago","IL","US","3fc19e3",32,["New York City Serenade","Prove It All Night","My Love Will Not Let You Down","The Ties That Bind","Sherry Darling"]],["2016-08-25","MetLife Stadium","East Rutherford","NJ","US","2bfc30ba",33,["New York City Serenade","Prove It All Night","Night","No Surrender","Wrecking Ball"]],["2016-08-23","MetLife Stadium","East Rutherford","NJ","US","53fc3f81",35,["New York City Serenade","Wrecking Ball","Badlands","Something in the Night","The Ties That Bind"]],["2016-07-31","Letzigrund Stadion","Zurich","ZH","CH","1bff498c",30,["Prove It All Night","My Love Will Not Let You Down","The Ties That Bind","Sherry Darling","Trapped"]],["2016-07-28","Frognerparken","Oslo","12","NO","3bff5c14",36,["Working on the Highway","Meet Me in the City","The Ties That Bind","Sherry Darling","Jackson Cage"]],["2016-07-26","Granåsen Arena","Trondheim","16","NO","3bff688c",32,["Who'll Stop the Rain","Badlands","The Promised Land","The Ties That Bind","Sherry Darling"]],["2016-07-23","Ullevi Stadium","Gothenburg","28","SE","23ff7cdb",35,["Meet Me in the City","The Ties That Bind","Sherry Darling","Jackson Cage","Two Hearts"]],["2016-07-20","CASA Arena Horsens","Horsens","18","DK","7bff1acc",33,["Dream Baby Dream","The Promised Land","Badlands","No Surrender","The Ties That Bind"]],["2016-07-16","Circo Massimo","Rome","07","IT","5bff3758",34,["New York City Serenade","Badlands","Summertime Blues","The Ties That Bind","Sherry Darling"]],["2016-07-13","AccorHotels Arena","Paris","11","FR","3bffc8b8",33,["Iceman","Lucky Town","The Ties That Bind","Sherry Darling","Jackson Cage"]],["2016-07-11","AccorHotels Arena","Paris","11","FR","53ffd7fd",33,["Incident on 57th Street","Reason to Believe","Badlands","Into the Fire","The Ties That Bind"]],["2016-07-09","Festivalpark","Werchter","BE.VB","BE","3bffe4b8",27,["Prove It All Night","Darkness on the Edge of Town","No Surrender","The Ties That Bind","Sherry Darling"]],["2016-07-05","Stadio Giuseppe Meazza","Milan","09","IT","1bfff9b8",35,["Once Upon a Time in the West","Meet Me in the City","Prove It All Night","Roulette","The Ties That Bind"]]] };
+// The Merriweather setlist (debug/setlistfm-venue-set-times.html and its screenshot)
+const SETLIST = {
+    title: 'Bruce Springsteen at Merriweather Post Pavilion', date: '2026-10-03', venue: 'Pavilion Stage at Merriweather Post Pavilion', where: 'Columbia, Maryland (MD), United States',
+    times: { doors: '12:00 PM', scheduled: '9:15 PM', start: '10:00 PM', end: '10:50 PM', after: '10h 0m after doors', long: '50m long' },
+    songs: [['Streets of Minneapolis', 'acoustic, Bruce solo'], ['Chimes of Freedom', 'Bob Dylan cover · with Joan Baez · acoustic'], ['Clampdown', 'The Clash cover · with Tom Morello'],
+        ['The Ghost of Tom Joad', 'with Tom Morello'], ['Fortunate Son', 'Creedence Clearwater Revival cover · with Dave Matthews · + with Tom Morello & Nathaniel Rateliff; first time since 2014'],
+        ['Rockin\' in the Free World', 'Neil Young cover · with Dave Grohl · + Dave Matthews & Tom Morello; first time since 2004'], ['This Land Is Your Land', ''], ['Power to the People', '']],
+};
+
+/* ---- small helpers ------------------------------------------------------- */
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const hl = (s, q) => {
+    const e = esc(s);
+    if (!q) return e;
+    const i = s.toLowerCase().indexOf(q.toLowerCase());
+    return i < 0 ? e : esc(s.slice(0, i)) + '<mark>' + esc(s.slice(i, i + q.length)) + '</mark>' + esc(s.slice(i + q.length));
+};
+let fmt24 = false;
+/** "7:45 PM" → "19:45" when the 24-hour switch is on. */
+const tm = (s) => {
+    if (!s || !fmt24) return s;
+    const m = /^(\d+):(\d\d) (AM|PM)$/.exec(s);
+    if (!m) return s;
+    let h = Number(m[1]) % 12 + (m[3] === 'PM' ? 12 : 0);
+    return `${String(h).padStart(2, '0')}:${m[2]}`;
+};
+const tourHref = (artist, tour) => `https://www.setlist.fm/search?query=${encodeURIComponent(`artist:(${artist}) tour:(${tour})`)}`;
+const count = (rows, f) => {
+    const m = new Map();
+    rows.forEach(r => { const k = f(r); if (k) m.set(k, (m.get(k) || 0) + 1); });
+    return Array.from(m, ([name, n]) => ({ name, n }));
+};
+
+/* ---- state --------------------------------------------------------------- */
+const S = {
+    view: 'venue', back: [],
+    left: { artists: { q: '', sort: ['n', -1], page: 0 }, tours: { q: '', sort: ['n', -1], page: 0 }, venues: { q: '', sort: ['n', -1], page: 0 } },
+    pick: null,            // {kind: 'artist'|'tour'|'venue', name}
+    right: { q: '', sort: [null, 0] },
+    tour: { q: '', sort: [null, 0] },
+};
+
+/* ---- the left Compact tables -------------------------------------------- */
+function leftTable(id, label, kind, items, linkOf) {
+    const st = S.left[id];
+    const per = 8;
+    let v = items.filter(x => !st.q || x.name.toLowerCase().includes(st.q.toLowerCase()));
+    const [col, dir] = st.sort;
+    if (dir) v = v.slice().sort((a, b) => (col === 'n' ? (a.n - b.n) || b.name.localeCompare(a.name) : a.name.localeCompare(b.name)) * dir);
+    const pages = Math.max(1, Math.ceil(v.length / per));
+    st.page = Math.min(st.page, pages - 1);
+    const page = v.slice(st.page * per, st.page * per + per);
+    const aria = c => (col === c && dir ? (dir > 0 ? 'ascending' : 'descending') : 'none');
+    return `<h4>${esc(label)} · ${items.length}</h4>
+        <input class="q small" type="search" id="lq-${id}" data-lq="${id}" value="${esc(st.q)}" placeholder="Filter ${esc(label.toLowerCase())}" aria-label="Filter ${esc(label.toLowerCase())}">
+        <div class="twrap"><table class="t newcol-t"><thead><tr>
+            <th data-ls="${id}:name" aria-sort="${aria('name')}">${esc(label.replace(/s$/, ''))}</th>
+            <th data-ls="${id}:n" aria-sort="${aria('n')}" style="text-align:right">Setlists</th></tr></thead><tbody>
+        ${page.map(x => {
+            const on = S.pick && S.pick.kind === kind && S.pick.name === x.name;
+            const link = linkOf(x.name);
+            return `<tr class="${on ? 'picked' : ''}"><td>${link ? `<a href="${esc(link)}" data-drill="${kind}" data-name="${esc(x.name)}">${hl(x.name, st.q)}</a>` : hl(x.name, st.q)}</td>
+                <td class="num"><button type="button" class="pickbtn" data-pick="${kind}" data-name="${esc(x.name)}" aria-pressed="${on}"
+                    title="${on ? 'Show every setlist again' : `Show only ${esc(x.name)}'s setlists on the right`}">${x.n}</button></td></tr>`;
+        }).join('') || '<tr><td colspan="2" class="dim">No match.</td></tr>'}
+        </tbody></table></div>
+        ${v.length > per ? `<div class="pager"><button type="button" data-lp="${id}:-1" ${st.page ? '' : 'disabled'} aria-label="Previous page">‹</button>
+            <span>${st.page * per + 1}–${st.page * per + page.length} of ${v.length}</span>
+            <button type="button" data-lp="${id}:1" ${st.page < pages - 1 ? '' : 'disabled'} aria-label="Next page">›</button></div>` : ''}`;
+}
+
+/* ---- view 1: the venue window ------------------------------------------- */
+function timesCell(r) {
+    const i = ROWS.indexOf(r);
+    if (i >= TIMES_READ) return '<span class="dim" title="setlist.fm page 3 not read yet">…</span>';
+    const t = TIMES[r[2]];
+    if (!t) return '<span class="dim">—</span>';
+    const show = t[1] ? `${tm(t[1])}${t[2] ? `–${tm(t[2])}` : ''}` : '';
+    return [t[0] ? `<span class="dim">Doors</span> ${tm(t[0])}` : '', show ? `<span class="dim">Show</span> ${show}` : ''].filter(Boolean).join('<br>');
+}
+function viewVenue() {
+    const rows = ROWS;
+    const artists = count(rows, r => r[1]);
+    const tours = count(rows, r => r[4]);
+    const artistOf = name => (rows.find(r => r[1] === name) || [])[1];
+    let v = rows.filter(r => !S.pick || (S.pick.kind === 'artist' ? r[1] : r[4]) === S.pick.name);
+    const q = S.right.q.toLowerCase();
+    if (q) v = v.filter(r => [r[0], r[1], r[4], r[3]].join(' ').toLowerCase().includes(q));
+    const [col, dir] = S.right.sort;
+    const key = { date: r => r[0], what: r => r[1], tour: r => r[4], songs: r => (r[5] === '—' ? -1 : Number(r[5])), times: r => (TIMES[r[2]] || [''])[0] };
+    if (dir) v = v.slice().sort((a, b) => { const x = key[col](a), y = key[col](b); return (x < y ? -1 : x > y ? 1 : 0) * dir; });
+    const aria = c => (col === c && dir ? (dir > 0 ? 'ascending' : 'descending') : 'none');
+    const tourLink = r => (r[4] ? `<a href="${esc(tourHref(artistOf(r[1]), r[4]))}" data-drill="tour" data-name="${esc(r[4])}">${hl(r[4], S.right.q)}</a>` : '');
+    return `<div class="win">
+        ${winHead([{ label: VENUE.url }])}
+        <div class="win-body">
+            <div class="col">
+                <div class="xtitle">${esc(VENUE.name)}</div><div class="xsub">setlist.fm</div>
+                <h4>setlist.fm says</h4>
+                <dl class="kv"><dt>Where</dt><dd>${esc(VENUE.where)} · <a href="#">map</a></dd><dt>Setlists</dt><dd>929 · 20 a page</dd></dl>
+                <div class="cap" style="margin-top:6px">In the loaded setlists · ${rows.length}</div>
+                ${leftTable('artists', 'Artists', 'artist', artists, () => '#')}
+                ${leftTable('tours', 'Tours', 'tour', tours, name => tourHref(artistOf(rows.find(r => r[4] === name)[1]), name))}
+                <div class="credit">Data from <a href="${esc(VENUE.url)}">setlist.fm</a>, read through its API with your key. Set times from setlist.fm's pages.</div>
+            </div>
+            <div class="col">
+                <h4>Setlists · 929</h4>
+                <div class="vstat"><span class="pill">Idle</span><button type="button" class="btn">Load 20 more</button>
+                    <span class="counts">${rows.length} of 929 loaded · set times of ${TIMES_READ} read (setlist.fm pages 1–2 of 93)</span></div>
+                <div class="tools"><input class="q" type="search" id="rq" value="${esc(S.right.q)}" placeholder="Filter loaded setlists: artist, tour, song" aria-label="Filter loaded setlists">
+                    ${S.pick ? `<span class="only">Only ${S.pick.kind}: <b>${esc(S.pick.name)}</b> · ${v.length}<button type="button" data-unpick aria-label="Show every setlist">✕</button></span>` : ''}</div>
+                <div class="twrap tall"><table class="t"><thead><tr>
+                    <th data-rs="date" aria-sort="${aria('date')}" class="newcol">Date</th>
+                    <th data-rs="what" aria-sort="${aria('what')}">Artist</th>
+                    <th data-rs="tour" aria-sort="${aria('tour')}" class="newcol">Tour</th>
+                    <th data-rs="times" aria-sort="${aria('times')}" class="newcol">Set times</th>
+                    <th data-rs="songs" aria-sort="${aria('songs')}" style="text-align:right">Songs</th></tr></thead><tbody>
+                ${v.map(r => `<tr><td class="yr newcol">${hl(r[0], S.right.q)}</td>
+                    <td><a href="#">${hl(r[1], S.right.q)}</a>${r[3] ? `<div class="first">${hl(r[3], S.right.q)}</div>` : ''}</td>
+                    <td class="newcol">${tourLink(r)}</td><td class="tm newcol">${timesCell(r)}</td>
+                    <td class="num">${esc(r[5])}</td></tr>`).join('') || '<tr><td colspan="5" class="dim">No loaded setlist matches.</td></tr>'}
+                </tbody></table></div>
+            </div>
+        </div></div>`;
+}
+
+/* ---- view 2: the tour window -------------------------------------------- */
+function viewTour() {
+    const rows = TOUR.rows;
+    const venues = count(rows, r => `${r[1]}, ${r[2]}`);
+    let v = rows.filter(r => !S.pick || S.pick.kind !== 'venue' || `${r[1]}, ${r[2]}` === S.pick.name);
+    const q = S.tour.q.toLowerCase();
+    if (q) v = v.filter(r => [r[0], r[1], r[2], r[7].join(' ')].join(' ').toLowerCase().includes(q));
+    const [col, dir] = S.tour.sort;
+    const key = { date: r => r[0], what: r => r[1], songs: r => r[6] };
+    if (dir) v = v.slice().sort((a, b) => { const x = key[col](a), y = key[col](b); return (x < y ? -1 : x > y ? 1 : 0) * dir; });
+    const aria = c => (col === c && dir ? (dir > 0 ? 'ascending' : 'descending') : 'none');
+    return `<div class="win">
+        ${winHead([{ label: VENUE.url }, { label: tourHref(TOUR.artist, TOUR.name) }])}
+        <div class="win-body">
+            <div class="col">
+                <div class="xtitle">${esc(TOUR.name)}</div><div class="xsub">setlist.fm tour · ${esc(TOUR.artist)}</div>
+                <h4>setlist.fm says</h4>
+                <dl class="kv"><dt>Artist</dt><dd><a href="#">${esc(TOUR.artist)}</a> · <a href="#">its setlists</a></dd>
+                    <dt>Setlists</dt><dd>75 · 20 a page</dd><dt>First, last</dt><dd>2016-07-05 … 2016-09-14 <span class="dim">(loaded)</span></dd></dl>
+                <div class="cap" style="margin-top:6px">In the loaded setlists · ${rows.length}</div>
+                ${leftTable('venues', 'Venues', 'venue', venues, () => '#')}
+                <div class="credit">Data from <a href="#">setlist.fm</a>, read through its API with your key.</div>
+            </div>
+            <div class="col">
+                <h4>Setlists · 75</h4>
+                <div class="vstat"><span class="pill">Idle</span><button type="button" class="btn">Load 20 more</button><span class="counts">20 of 75 loaded</span></div>
+                <div class="tools"><input class="q" type="search" id="tq" value="${esc(S.tour.q)}" placeholder="Filter loaded setlists: venue, city, song" aria-label="Filter loaded setlists">
+                    ${S.pick && S.pick.kind === 'venue' ? `<span class="only">Only venue: <b>${esc(S.pick.name)}</b> · ${v.length}<button type="button" data-unpick aria-label="Show every setlist">✕</button></span>` : ''}</div>
+                <div class="twrap tall"><table class="t"><thead><tr>
+                    <th data-ts="date" aria-sort="${aria('date')}">Date</th><th data-ts="what" aria-sort="${aria('what')}">Venue</th>
+                    <th class="newcol">Set times</th><th data-ts="songs" aria-sort="${aria('songs')}" style="text-align:right">Songs</th></tr></thead><tbody>
+                ${v.map(r => `<tr><td class="yr">${hl(r[0], S.tour.q)}</td>
+                    <td><a href="#">${hl(`${r[1]}, ${r[2]}${r[4] === 'US' ? `, ${r[3]}` : ''}, ${r[4]}`, S.tour.q)}</a><div class="first">${hl(r[7].join(' · '), S.tour.q)} …</div></td>
+                    <td class="tm newcol"><span class="dim">—</span></td><td class="num">${r[6]}</td></tr>`).join('')}
+                </tbody></table></div>
+            </div>
+        </div></div>`;
+}
+
+/* ---- view 3: the setlist window ----------------------------------------- */
+function viewSetlist() {
+    const t = SETLIST.times;
+    return `<div class="win">
+        ${winHead([{ label: 'https://www.setlist.fm/setlist/bruce-springsteen/2026/merriweather-post-pavilion-pavilion-stage-columbia-md-37589df.html' }])}
+        <div class="win-body">
+            <div class="col">
+                <div class="xtitle">${esc(SETLIST.title)}</div><div class="xsub">setlist.fm setlist</div>
+                <h4>setlist.fm says</h4>
+                <dl class="kv"><dt>Artist</dt><dd><a href="#">Bruce Springsteen</a> · <a href="#">its setlists</a></dd><dt>Date</dt><dd>${SETLIST.date}</dd>
+                    <dt>Venue</dt><dd><a href="#">${esc(SETLIST.venue)}</a></dd><dt>Where</dt><dd>${esc(SETLIST.where)} · <a href="#">map</a></dd>
+                    <dt>Tour</dt><dd class="dim">none</dd></dl>
+                <h4 class="newcol" style="padding:2px 4px">Set times</h4>
+                <div class="times newcol" style="padding:4px">
+                    <span class="l">Doors</span><span class="v">${tm(t.doors)}</span><span></span>
+                    <span class="l">Scheduled</span><span class="v">${tm(t.scheduled)}</span><span></span>
+                    <span class="l">Start</span><span class="v">${tm(t.start)}</span><span class="d">${t.after}</span>
+                    <span class="l">End</span><span class="v">${tm(t.end)}</span><span class="d">${t.long}</span>
+                </div>
+                <div class="credit">Data from <a href="#">setlist.fm</a>, read through its API with your key; set times from its page.</div>
+            </div>
+            <div class="col">
+                <h4>Setlist · ${SETLIST.songs.length} <span class="dim" style="text-transform:none;letter-spacing:0">(first 8 of the page)</span></h4>
+                <div class="twrap tall"><table class="t"><thead><tr><th style="text-align:right">#</th><th>Song</th><th>Notes</th></tr></thead><tbody>
+                ${SETLIST.songs.map((s, i) => `<tr><td class="num">${i + 1}</td><td>${esc(s[0])}</td><td>${esc(s[1])}</td></tr>`).join('')}
+                </tbody></table></div>
+            </div>
+        </div></div>`;
+}
+
+/* ---- view 4: setlist.fm's own venue page -------------------------------- */
+function viewPage() {
+    const rows = ROWS.slice(0, 20);
+    const artistIds = { 'Journey': '3d6b507' };
+    return `<div class="site">
+        <div class="sfm-top"><div class="sfm-logo">setlist<small>all about the show</small></div><div class="sfm-search">Search for Artist, Venue, Tour, …</div></div>
+        <div class="sfm-nav"><span>SETLISTS</span><span>ARTISTS</span><span>FESTIVALS</span><span>VENUES</span><span>STATISTICS</span><span>NEWS</span><span>FORUM</span></div>
+        <div class="sfm-body">
+            <div class="panel">
+                <div class="h1row"><h3>State Farm Arena Atlanta Concert Setlists</h3>
+                    <span class="saed"><span class="on">Show all setlists</span><span>💾</span><span>☰ SAED</span></span></div>
+                <div class="venue-facts"><span><b>City</b> Atlanta, GA, United States</span><span><b>Address</b> 1 Philips Drive Northwest, Atlanta, GA 30303</span><span><b>Opened</b> 28 August 2018</span><span><b>Attendances</b> 7,792 by 3,033 users</span></div>
+                <div class="h2row"><h4>Setlists</h4><span class="stat">929 rows · 93 pages · 1:34 min</span>
+                    <input class="gf" style="font:13px var(--serif);padding:4px 8px;border:1px solid var(--rule);border-radius:3px;width:min(280px,100%)" placeholder="Global filter" aria-label="Global filter"></div>
+                <div class="twrap tall"><table class="t"><thead><tr>
+                    <th>Date</th><th>Artist</th><th>Event</th><th>Tour</th><th class="newcol">Doors</th><th class="newcol">Start</th><th class="newcol">End</th>
+                    <th style="text-align:right">Songs</th><th>Setlist</th></tr></thead><tbody>
+                ${rows.map(r => {
+                    const t = TIMES[r[2]] || ['', '', ''];
+                    const shown = r[5] === '—' ? 0 : Math.min(12, Number(r[5]));
+                    const more = r[5] !== '—' && Number(r[5]) > 12;
+                    return `<tr><td class="yr">${r[0]}</td><td><a href="#">${esc(r[1])}</a></td><td class="dim">${r[1] === 'Bruce Springsteen' ? 'Jersey 4 Jersey' : ''}</td>
+                        <td>${r[4] ? `<a href="https://www.setlist.fm/search?artist=${artistIds[r[1]] || '…'}&amp;tour=…">${esc(r[4])}</a>` : ''}</td>
+                        <td class="tm newcol">${tm(t[0])}</td><td class="tm newcol">${tm(t[1])}</td><td class="tm newcol">${tm(t[2])}</td>
+                        <td class="num">${shown ? `${shown}${more ? '+' : ''}` : ''}</td>
+                        <td class="first">${esc(r[3])}</td></tr>`;
+                }).join('')}
+                </tbody></table></div>
+                <div class="counts">The first 20 of 929 rows, from setlist.fm's pages 1 and 2. Set times and the tour links come from the pages, so no API key is needed here.</div>
+            </div>
+        </div></div>`;
+}
+
+/* ---- window head --------------------------------------------------------- */
+function winHead(steps) {
+    return `<div class="win-head"><span class="crumbs"><span class="ico">S</span>${steps.map((s, i) => `${i ? '<span class="sep">›</span>' : ''}<button type="button" data-step="${i}" ${i === steps.length - 1 ? 'aria-current="step"' : ''}>${esc(s.label)}</button>`).join('')}</span>
+        <span class="tbtns"><button type="button" class="tbtn" data-back ${S.back.length ? '' : 'disabled'}>← Back</button><span class="tbtn" style="cursor:default">Extracted</span><span class="tbtn" style="cursor:default">⟳</span><span class="tbtn" style="cursor:default">↗</span></span></div>`;
+}
+
+/* ---- notes --------------------------------------------------------------- */
+const NOTES = {
+    venue: `<h2>Window · a venue (items 1, 3, 4, 5)</h2>
+        <ul>
+            <li><b>Date</b> no longer wraps (item 1: the column gets the nowrap every other window date has).</li>
+            <li><b>Artists / Tours</b> are small tables: sort by name or count, filter, 8 a page. The <b>count</b> is the button: it keeps only those setlists on the right, and the ✕ (or a second click) shows them all again. The name stays a link that opens in the window.</li>
+            <li><b>Tour</b> links to setlist.fm's search for the artist and the tour, the form you checked works. In the window it opens the tour through the API (view 2).</li>
+            <li><b>Set times</b> come from setlist.fm's own venue pages, read anonymously (the probe: 200, 7 of 10 with times). They have 10 setlists a page, the API 20, so each "Load 20 more" also reads two site pages. Rows not read yet show “…”.</li>
+        </ul>
+        <h2>Questions</h2>
+        <ol>
+            <li class="q"><b>Q1 · Times: one column or two?</b> One “Set times” cell (Doors · Show start–end) as here, or Doors and Show as separate sortable columns. <span class="rec">Recommended: one column in the window, three on the page (view 4).</span></li>
+            <li class="q"><b>Q2 · 12-hour or 24-hour?</b> setlist.fm writes “7:45 PM”, MusicBrainz “19:45”. <label><input type="checkbox" id="fmt24"> try 24-hour</label> <span class="rec">Recommended: 24-hour, as MusicBrainz.</span></li>
+            <li class="q"><b>Q3 · The venue's own facts?</b> The page has Address, Opened, Web and attendances, which the API lacks. Now that the page is readable, the window could show them. That's one more request on Space. <span class="rec">Recommended: yes, on Space only.</span></li>
+            <li class="q"><b>Q4 · Pick and filter together?</b> The pick and the text filter combine (both narrow). <span class="rec">Recommended: as shown.</span></li>
+        </ol>`,
+    tour: `<h2>Window · a tour (item 5)</h2>
+        <ul>
+            <li>Reached from any Tour link; Back returns to the venue. One API request: <code>/search/setlists?artistName=…&amp;tourName=…</code>, then “Load 20 more” as for a venue.</li>
+            <li>The link carries the artist's NAME (setlist.fm's search URL), so the API is asked by name. Before coding I'll check with the probe that <code>artistName=Bruce Springsteen</code> gives the same 75 as the MBID, and that a name shared by two artists does not mix them.</li>
+            <li>On the left the venues of the loaded setlists, with the same pick.</li>
+        </ul>
+        <h2>Questions</h2>
+        <ol>
+            <li class="q"><b>Q5 · Set times here too?</b> A tour has no site page of its own to read them from (the search page would have to be read instead). <span class="rec">Recommended: not in the tour window. The setlist window shows them.</span></li>
+        </ol>`,
+    setlist: `<h2>Window · a setlist (item 4)</h2>
+        <ul>
+            <li>A “Set times” block under the facts: Doors, Scheduled, Start, End, with setlist.fm's own durations. It reads the setlist's page (one more request, on Space only, never on hover).</li>
+            <li>No set times on the page → no block.</li>
+            <li>The hover card stays as it is (API only).</li>
+        </ul>
+        <h2>Questions</h2>
+        <ol>
+            <li class="q"><b>Q6 · The card too?</b> Showing set times in the hover card would cost a request per hover. <span class="rec">Recommended: no, window only.</span></li>
+        </ol>`,
+    page: `<h2>setlist.fm venue page · pageType sfm-venue (item 2)</h2>
+        <ul>
+            <li>New site, its own switch <code>sa_enable_setlistfm</code> (on by default). It does nothing on other setlist.fm pages.</li>
+            <li>Rows come from setlist.fm's own pages (same-origin, 10 a page): 929 setlists are 93 pages, so the High Page Count question appears first (at 1 page/s, about 1½ minutes).</li>
+            <li>Columns: Date · Artist · Event (when the heading is not “Artist at Venue”, e.g. “Jersey 4 Jersey”) · Tour (setlist.fm's own link) · Doors · Start · End · Songs · Setlist.</li>
+            <li>The Upcoming Shows box of page 1 is left alone.</li>
+        </ul>
+        <h2>Questions</h2>
+        <ol>
+            <li class="q"><b>Q7 · Songs count?</b> The page previews at most 12 songs, then “…”, so the count is “12+”. Exact counts would need the API (your key, 47 more requests). <span class="rec">Recommended: “12+” from the page, no key needed.</span></li>
+            <li class="q"><b>Q8 · The venue facts line</b> (City, Address, Opened, Attendances) above the table? <span class="rec">Recommended: keep setlist.fm's own box; no extra line.</span></li>
+            <li class="q"><b>Q9 · Artist pages next?</b> <code>/setlists/&lt;artist&gt;.html</code> has the same list shape, so the same converter would take it. <span class="rec">Recommended: a follow-up after this one.</span></li>
+        </ol>`,
+};
+
+/* ---- render and events --------------------------------------------------- */
+const stage = document.getElementById('stage');
+const notes = document.getElementById('notes');
+function render() {
+    const focus = document.activeElement && document.activeElement.id;
+    const pos = focus && document.activeElement.selectionStart;
+    stage.innerHTML = { venue: viewVenue, tour: viewTour, setlist: viewSetlist, page: viewPage }[S.view]();
+    document.querySelectorAll('[data-view]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.view === S.view)));
+    if (notes.dataset.view !== S.view) { notes.innerHTML = NOTES[S.view]; notes.dataset.view = S.view; }
+    const box = document.getElementById('fmt24');
+    if (box) box.checked = fmt24;
+    if (focus) { const el = document.getElementById(focus); if (el) { el.focus(); if (pos != null && el.setSelectionRange) el.setSelectionRange(pos, pos); } }
+}
+function go(view, keepBack) {
+    if (!keepBack && view !== S.view) S.back.push(S.view);
+    S.view = view;
+    S.pick = null;
+    render();
+}
+document.addEventListener('click', (e) => {
+    const t = e.target.closest('button, a, th');
+    if (!t) return;
+    if (t.dataset.view) { S.back = []; go(t.dataset.view, true); return; }
+    if (t.hasAttribute('data-back')) { const v = S.back.pop(); if (v) go(v, true); return; }
+    if (t.dataset.pick) {
+        const on = S.pick && S.pick.kind === t.dataset.pick && S.pick.name === t.dataset.name;
+        S.pick = on ? null : { kind: t.dataset.pick, name: t.dataset.name };
+        render(); return;
+    }
+    if (t.hasAttribute('data-unpick')) { S.pick = null; render(); return; }
+    if (t.dataset.drill === 'tour') { e.preventDefault(); go('tour'); return; }
+    if (t.tagName === 'A' && !t.closest('.notes')) { e.preventDefault(); return; }
+    if (t.dataset.ls) {
+        const [id, c] = t.dataset.ls.split(':');
+        const st = S.left[id];
+        st.sort = st.sort[0] === c ? [c, st.sort[1] === -1 ? 1 : st.sort[1] === 1 ? 0 : -1] : [c, c === 'n' ? -1 : 1];
+        st.page = 0; render(); return;
+    }
+    if (t.dataset.lp) { const [id, d] = t.dataset.lp.split(':'); S.left[id].page += Number(d); render(); return; }
+    const sortOf = (st, c) => { st.sort = st.sort[0] === c ? [c, st.sort[1] === 1 ? -1 : st.sort[1] === -1 ? 0 : 1] : [c, 1]; render(); };
+    if (t.dataset.rs) return sortOf(S.right, t.dataset.rs);
+    if (t.dataset.ts) return sortOf(S.tour, t.dataset.ts);
+});
+document.addEventListener('input', (e) => {
+    const el = e.target;
+    if (el.dataset.lq) { S.left[el.dataset.lq].q = el.value; S.left[el.dataset.lq].page = 0; render(); }
+    else if (el.id === 'rq') { S.right.q = el.value; render(); }
+    else if (el.id === 'tq') { S.tour.q = el.value; render(); }
+    else if (el.id === 'fmt24') { fmt24 = el.checked; render(); }
+});
+render();
+</script>

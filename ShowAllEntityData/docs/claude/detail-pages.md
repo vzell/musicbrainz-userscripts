@@ -2318,6 +2318,61 @@ browser would most likely get the same. API: https://api.setlist.fm/docs/1.0/ind
 - Specs: popup-ext.spec.js "setlist.fm through its API (branch B)" (4);
   mutations: scripts/mutations/wiki-setlistfm.json.
 
+### Venue additions (org/setlistfm.org, 2026-11-02)
+
+Mockup v1: https://claude.ai/artifact/71itNE6a2ekiAtQxcTi1hq
+(`org/setlistfm-venue-mockups.html`), vzell's answers Q1–Q9 in the plan.
+Probes, all 2026-11-02. Env: the session probe in vzell's browser (Windows,
+Chrome 152, Tampermonkey unknown), 19:32–20:01 CET; the API probe on
+`vzell-lap` (WSL2 Ubuntu 24.04.4, Linux 6.18.54.1), browser n/a, time
+unknown (before 22:00 CET):
+
+- **setlist.fm's pages ARE readable by the script, anonymously.**
+  `scripts/probe-setlistfm-session.user.js` (installed once) asked venue
+  page 2 from musicbrainz.org with `GM_xmlhttpRequest`: `anonymous: true`
+  and with cookies both got 200, 141,914 chars, 10 `.setlistPreview`, 7
+  `.setlistPreviewSetTimes`; a same-origin `fetch()` on setlist.fm the same.
+  The "bot check (202, empty body)" above was the Python probe's answer, not
+  a browser's. A shell fetch with a browser's User-Agent is refused by
+  Claude Code's auto mode (bot-check circumvention): page shapes come from
+  vzell's saved snapshots (`debug/setlistfm-*.html`).
+- **The API's set search by artist NAME is fuzzy**
+  (`scripts/probe-setlistfm-api.py` step 7): `artistName=Bruce Springsteen` +
+  tour = the same 75 as by MBID, but `artistName=Nirvana` answered five
+  tribute acts and not Nirvana. So a tour is asked by MBID only.
+- One 429 from `/artist/<mbid>` 1.1 s after the previous request (the run
+  before), none in the run after: the host's 1 s gate stays.
+
+What Part A does:
+
+- **Date** (item 1): `cls: 'mb-dg-yr'` (nowrap) on the list's Date column.
+- **Left tables** (item 3, `_extSfmLeftTableHtml()`): the artists and tours
+  of a venue's loaded setlists, the tours and venues of an artist's, the
+  venues of a tour's — each a Compact table `sfm-l-<kind>` (name linked, it
+  opens in the window; Setlists most first, `first: -1`;
+  `_EXT_SFM_LEFT_ROWS` = 8 a page; filter always). The count is a
+  `.mb-dg-fc.mb-sfm-pick` button (`data-mb-sfm-pick`, `data-mb-sfm-v`): it
+  sets `_extSfmUiOf(t).pick`, which keeps the List table's rows to that name
+  (`_EXT_SFM_PICK_OF`) BEFORE the table's own filter (the two combine); the
+  row is `tr.mb-sfm-picked`; the List table's tools carry the pill
+  `.mb-sfm-only` whose ✕ is `data-mb-sfm-act="unpick"`; a second click on the
+  same count clears it. No request.
+- **Tours** (item 5): `_extSfmTourUrl(artist, tour)` =
+  `https://www.setlist.fm/search?query=artist:(<name>) tour:(<tour>)#mbid=<mbid>`
+  (all three search forms vzell tried list the tour; the fragment never
+  reaches setlist.fm). `_extSfmPage()` → `_extSfmTourPage()` takes `/search`
+  only with `#mbid=` and `_EXT_SFM_TOUR_QUERY_RE` (the tour runs to the end
+  of the query: a tour name may hold parentheses); setlist.fm's own
+  `search?artist=<id>&tour=<id>` links stay generic (ids the API does not
+  know). The kind `tour` is one request,
+  `/search/setlists?artistMbid=&tourName=&p=N` (`_extSfmListPath()`), key
+  `ext:sfm-list:tour:<mbid>:<tour>:<N>`; its window has no Tour column and
+  its venues on the left. The List table's Tour cells, the left Tours table
+  and the setlist window's Tour fact link it. `_EXT_SFM_VERSION` 2.
+- Specs: popup-ext.spec.js "setlist.fm venue additions (org/setlistfm.org,
+  Part A)" (3); mutations: scripts/mutations/setlistfm-venue.json (8, all
+  fail as they should, 2026-11-02).
+
 ## archive.org items (reader `iadetails`, 2026-10-31)
 
 docs/claude/internet-archive.md is the full text. In short: any

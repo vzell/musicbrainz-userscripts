@@ -1,0 +1,3734 @@
+{
+ "type": "setlists",
+ "itemsPerPage": 20,
+ "page": 1,
+ "total": 75,
+ "setlist": [
+  {
+   "id": "6bfdb24a",
+   "versionId": "gb0c61d6",
+   "eventDate": "14-09-2016",
+   "lastUpdated": "2026-09-13T08:55:07.477+0000",
+   "artist": {
+    "mbid": "70248960-cb53-4ea4-943a-edb18f7d336f",
+    "name": "Bruce Springsteen",
+    "sortName": "Springsteen, Bruce",
+    "disambiguation": "",
+    "url": "https://www.setlist.fm/setlists/bruce-springsteen-2bd6dcce.html"
+   },
+   "venue": {
+    "id": "13d6d59d",
+    "name": "Gillette Stadium",
+    "city": {
+     "id": "4937222",
+     "name": "Foxborough",
+     "state": "Massachusetts",
+     "stateCode": "MA",
+     "coords": {
+      "lat": 42.0653768,
+      "long": -71.2478308
+     },
+     "country": {
+      "code": "US",
+      "name": "United States"
+     }
+    },
+    "url": "https://www.setlist.fm/venue/gillette-stadium-foxborough-ma-usa-13d6d59d.html"
+   },
+   "tour": {
+    "name": "The River Tour 2016"
+   },
+   "sets": {
+    "set": [
+     {
+      "song": [
+       {
+        "name": "New York City Serenade",
+        "info": "with string section"
+       },
+       {
+        "name": "Prove It All Night",
+        "info": "'78 intro"
+       },
+       {
+        "name": "Does This Bus Stop at 82nd Street?"
+       },
+       {
+        "name": "Blinded by the Light"
+       },
+       {
+        "name": "It's Hard to Be a Saint in the City"
+       },
+       {
+        "name": "Growin' Up"
+       },
+       {
+        "name": "Spirit in the Night"
+       },
+       {
+        "name": "Lost in the Flood"
+       },
+       {
+        "name": "Kitty's Back"
+       },
+       {
+        "name": "Incident on 57th Street"
+       },
+       {
+        "name": "Rosalita (Come Out Tonight)"
+       },
+       {
+        "name": "No Surrender",
+        "info": "sign request"
+       },
+       {
+        "name": "Boom Boom",
+        "cover": {
+         "mbid": "b0122194-c49a-46a1-ade7-84d1d76bd8e9",
+         "name": "John Lee Hooker",
+         "sortName": "Hooker, John Lee",
+         "disambiguation": "US blues singer, songwriter & guitarist",
+         "url": "https://www.setlist.fm/setlists/john-lee-hooker-2bd698da.html"
+        },
+        "info": "sign request"
+       },
+       {
+        "name": "Darkness on the Edge of Town",
+        "info": "sign request"
+       },
+       {
+        "name": "Radio Nowhere",
+        "info": "sign request"
+       },
+       {
+        "name": "Hungry Heart"
+       },
+       {
+        "name": "Out in the Street"
+       },
+       {
+        "name": "Detroit Medley",
+        "info": "sign request"
+       },
+       {
+        "name": "Light of Day"
+       },
+       {
+        "name": "4th of July, Asbury Park (Sandy)",
+        "info": "live debut of solo electric version; sign request"
+       },
+       {
+        "name": "American Skin (41 Shots)"
+       },
+       {
+        "name": "The Promised Land"
+       },
+       {
+        "name": "Because the Night",
+        "cover": {
+         "mbid": "26638df8-ef34-40d1-8d93-616836b72878",
+         "name": "Patti Smith Group",
+         "sortName": "Smith, Patti, Group",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/patti-smith-group-53d657bd.html"
+        }
+       },
+       {
+        "name": "The Rising"
+       },
+       {
+        "name": "Badlands"
+       }
+      ]
+     },
+     {
+      "encore": 1,
+      "song": [
+       {
+        "name": "Long Walk Home",
+        "info": "solo acoustic; sign request"
+       },
+       {
+        "name": "Jungleland"
+       },
+       {
+        "name": "Born to Run"
+       },
+       {
+        "name": "Dancing in the Dark"
+       },
+       {
+        "name": "Tenth Avenue Freeze-Out"
+       },
+       {
+        "name": "Shout",
+        "cover": {
+         "mbid": "4a76400d-283f-492e-9754-18ef41755f81",
+         "name": "The Isley Brothers",
+         "sortName": "Isley Brothers, The",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/the-isley-brothers-3d6b943.html"
+        },
+        "with": {
+         "mbid": "83701bad-b130-4c19-9783-59061ca79aa0",
+         "name": "Peter Wolf",
+         "sortName": "Wolf, Peter",
+         "disambiguation": "US rock vocalist, member of J. Geils Band",
+         "url": "https://www.setlist.fm/setlists/peter-wolf-13d6a1c1.html"
+        }
+       },
+       {
+        "name": "Rockin' All Over the World",
+        "cover": {
+         "mbid": "c3649208-0ebe-449b-b1d7-4bd6c560f109",
+         "name": "John Fogerty",
+         "sortName": "Fogerty, John",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/john-fogerty-53d63fc1.html"
+        },
+        "info": "tour debut"
+       },
+       {
+        "name": "Bobby Jean"
+       }
+      ]
+     }
+    ]
+   },
+   "info": "\"Adam Raised a Cain\", \"Streets of Fire\", \"Darlington County\", \"Working on the Highway\", \"I'm a Rocker\", \"Ramrod\", \"Downbound Train\", and \"I'm on Fire\" were on the setlist, but were not played. \"Blinded by the Light\", \"Boom Boom\", \"Radio Nowhere\", \"Hungry Heart\", \"Out in the Street\", \"Detroit Medley\", \"Long Walk Home\", and \"Bobby Jean\" were not on the setlist. \"Lonesome Day\" was listed as an alternate to \"Because the Night\". At 4 hours and 3 minutes, this was the second-longest show of the tour and Springsteen's third-longest ever. Soundcheck included \"New York City Serenade\"",
+   "url": "https://www.setlist.fm/setlist/bruce-springsteen/2016/gillette-stadium-foxborough-ma-6bfdb24a.html"
+  },
+  {
+   "id": "7bfc461c",
+   "versionId": "g4bc65fb2",
+   "eventDate": "11-09-2016",
+   "lastUpdated": "2021-10-28T21:28:14.592+0000",
+   "artist": {
+    "mbid": "70248960-cb53-4ea4-943a-edb18f7d336f",
+    "name": "Bruce Springsteen",
+    "sortName": "Springsteen, Bruce",
+    "disambiguation": "",
+    "url": "https://www.setlist.fm/setlists/bruce-springsteen-2bd6dcce.html"
+   },
+   "venue": {
+    "id": "7bd64e10",
+    "name": "Consol Energy Center",
+    "city": {
+     "id": "5206379",
+     "name": "Pittsburgh",
+     "state": "Pennsylvania",
+     "stateCode": "PA",
+     "coords": {
+      "lat": 40.4406248,
+      "long": -79.9958864
+     },
+     "country": {
+      "code": "US",
+      "name": "United States"
+     }
+    },
+    "url": "https://www.setlist.fm/venue/consol-energy-center-pittsburgh-pa-usa-7bd64e10.html"
+   },
+   "tour": {
+    "name": "The River Tour 2016"
+   },
+   "sets": {
+    "set": [
+     {
+      "song": [
+       {
+        "name": "New York City Serenade",
+        "info": "with string section"
+       },
+       {
+        "name": "Into the Fire"
+       },
+       {
+        "name": "Lonesome Day"
+       },
+       {
+        "name": "You're Missing",
+        "info": "tour debut; last performed with the E Street Band in 2003"
+       },
+       {
+        "name": "Mary's Place"
+       },
+       {
+        "name": "Darkness on the Edge of Town"
+       },
+       {
+        "name": "Does This Bus Stop at 82nd Street?"
+       },
+       {
+        "name": "It's Hard to Be a Saint in the City"
+       },
+       {
+        "name": "Growin' Up"
+       },
+       {
+        "name": "Spirit in the Night"
+       },
+       {
+        "name": "Lost in the Flood"
+       },
+       {
+        "name": "Kitty's Back"
+       },
+       {
+        "name": "Incident on 57th Street"
+       },
+       {
+        "name": "Rosalita (Come Out Tonight)"
+       },
+       {
+        "name": "Light of Day",
+        "info": "sign request; tour debut",
+        "with": {
+         "mbid": "ce48dd78-903e-4737-aee7-5e70bba7e15d",
+         "name": "Joe Grushecky",
+         "sortName": "Grushecky, Joe",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/joe-grushecky-73d642d9.html"
+        }
+       },
+       {
+        "name": "Streets of Fire"
+       },
+       {
+        "name": "American Skin (41 Shots)"
+       },
+       {
+        "name": "The Promised Land"
+       },
+       {
+        "name": "Cadillac Ranch"
+       },
+       {
+        "name": "I'm a Rocker"
+       },
+       {
+        "name": "Downbound Train"
+       },
+       {
+        "name": "Because the Night",
+        "cover": {
+         "mbid": "26638df8-ef34-40d1-8d93-616836b72878",
+         "name": "Patti Smith Group",
+         "sortName": "Smith, Patti, Group",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/patti-smith-group-53d657bd.html"
+        }
+       },
+       {
+        "name": "My City of Ruins"
+       },
+       {
+        "name": "The Rising"
+       },
+       {
+        "name": "Badlands"
+       }
+      ]
+     },
+     {
+      "encore": 1,
+      "song": [
+       {
+        "name": "Long Walk Home",
+        "info": "solo acoustic) (sign request; tour debut"
+       },
+       {
+        "name": "Backstreets"
+       },
+       {
+        "name": "Born to Run"
+       },
+       {
+        "name": "Dancing in the Dark"
+       },
+       {
+        "name": "Tenth Avenue Freeze-Out"
+       },
+       {
+        "name": "Shout",
+        "cover": {
+         "mbid": "4a76400d-283f-492e-9754-18ef41755f81",
+         "name": "The Isley Brothers",
+         "sortName": "Isley Brothers, The",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/the-isley-brothers-3d6b943.html"
+        }
+       },
+       {
+        "name": "Bobby Jean"
+       }
+      ]
+     }
+    ]
+   },
+   "info": "The final concert under the name Consol Energy Center; renamed PPG Paints Arena",
+   "url": "https://www.setlist.fm/setlist/bruce-springsteen/2016/consol-energy-center-pittsburgh-pa-7bfc461c.html"
+  },
+  {
+   "id": "63fc56bf",
+   "versionId": "g6b0f4e32",
+   "eventDate": "09-09-2016",
+   "lastUpdated": "2026-09-06T22:11:15.829+0000",
+   "artist": {
+    "mbid": "70248960-cb53-4ea4-943a-edb18f7d336f",
+    "name": "Bruce Springsteen",
+    "sortName": "Springsteen, Bruce",
+    "disambiguation": "",
+    "url": "https://www.setlist.fm/setlists/bruce-springsteen-2bd6dcce.html"
+   },
+   "venue": {
+    "id": "1bd6d524",
+    "name": "Citizens Bank Park",
+    "city": {
+     "id": "4560349",
+     "name": "Philadelphia",
+     "state": "Pennsylvania",
+     "stateCode": "PA",
+     "coords": {
+      "lat": 39.952335,
+      "long": -75.163789
+     },
+     "country": {
+      "code": "US",
+      "name": "United States"
+     }
+    },
+    "url": "https://www.setlist.fm/venue/citizens-bank-park-philadelphia-pa-usa-1bd6d524.html"
+   },
+   "tour": {
+    "name": "The River Tour 2016"
+   },
+   "sets": {
+    "set": [
+     {
+      "song": [
+       {
+        "name": "New York City Serenade",
+        "info": "with string section"
+       },
+       {
+        "name": "Out in the Street"
+       },
+       {
+        "name": "Sherry Darling"
+       },
+       {
+        "name": "From Small Things (Big Things One Day Come)",
+        "info": "sign request"
+       },
+       {
+        "name": "I'm Goin' Down",
+        "info": "sign request"
+       },
+       {
+        "name": "Loose Ends",
+        "info": "sign request"
+       },
+       {
+        "name": "It's Hard to Be a Saint in the City",
+        "with": {
+         "mbid": "3e2b6ee0-6ec7-4622-b039-1cbed5f55288",
+         "name": "Vini Lopez",
+         "sortName": "Lopez, Vini",
+         "disambiguation": "former E Street Band drummer",
+         "url": "https://www.setlist.fm/setlists/vini-lopez-13d2b195.html"
+        }
+       },
+       {
+        "name": "Spirit in the Night",
+        "with": {
+         "mbid": "3e2b6ee0-6ec7-4622-b039-1cbed5f55288",
+         "name": "Vini Lopez",
+         "sortName": "Lopez, Vini",
+         "disambiguation": "former E Street Band drummer",
+         "url": "https://www.setlist.fm/setlists/vini-lopez-13d2b195.html"
+        }
+       },
+       {
+        "name": "4th of July, Asbury Park (Sandy)"
+       },
+       {
+        "name": "Kitty's Back"
+       },
+       {
+        "name": "Rosalita (Come Out Tonight)"
+       },
+       {
+        "name": "No Surrender",
+        "info": "sign request played with fan"
+       },
+       {
+        "name": "My City of Ruins",
+        "info": "sign request"
+       },
+       {
+        "name": "American Skin (41 Shots)"
+       },
+       {
+        "name": "The Promised Land"
+       },
+       {
+        "name": "Candy's Room"
+       },
+       {
+        "name": "She's the One"
+       },
+       {
+        "name": "Racing in the Street",
+        "info": "sign request"
+       },
+       {
+        "name": "Lucky Town"
+       },
+       {
+        "name": "Hungry Heart"
+       },
+       {
+        "name": "Darlington County"
+       },
+       {
+        "name": "I'm on Fire"
+       },
+       {
+        "name": "Because the Night",
+        "cover": {
+         "mbid": "26638df8-ef34-40d1-8d93-616836b72878",
+         "name": "Patti Smith Group",
+         "sortName": "Smith, Patti, Group",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/patti-smith-group-53d657bd.html"
+        }
+       },
+       {
+        "name": "The Rising"
+       },
+       {
+        "name": "Badlands"
+       }
+      ]
+     },
+     {
+      "encore": 1,
+      "song": [
+       {
+        "name": "Streets of Philadelphia"
+       },
+       {
+        "name": "Backstreets"
+       },
+       {
+        "name": "Born to Run"
+       },
+       {
+        "name": "Dancing in the Dark"
+       },
+       {
+        "name": "Tenth Avenue Freeze-Out"
+       },
+       {
+        "name": "Shout",
+        "cover": {
+         "mbid": "4a76400d-283f-492e-9754-18ef41755f81",
+         "name": "The Isley Brothers",
+         "sortName": "Isley Brothers, The",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/the-isley-brothers-3d6b943.html"
+        }
+       },
+       {
+        "name": "Bobby Jean"
+       },
+       {
+        "name": "Jersey Girl",
+        "cover": {
+         "mbid": "c3aeb863-7b26-4388-94e8-5a240f2be21b",
+         "name": "Tom Waits",
+         "sortName": "Waits, Tom",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/tom-waits-3bd6c0ac.html"
+        },
+        "info": "sign request"
+       }
+      ]
+     }
+    ]
+   },
+   "info": "\"Night\", \"Rendezvous\", \"Streets of Fire\", \"Downbound Train\", and Secret Garden\" were on the setlist, but were not played. \"From Small Things (Big Things One Day Come)\", \"I'm Goin' Down\", \"Loose Ends\", \"No Surrender\", \"My City of Ruins\", \"Racing in the Street\", \"Streets of Philadelphia\", and \"Bobby Jean\" were not on the setlist. \"Cadillac Ranch\" was listed as an alternate to \"Darlington County\". Soundcheck included: \"New York City Serenade\", and \"Jack of All Trades\"",
+   "url": "https://www.setlist.fm/setlist/bruce-springsteen/2016/citizens-bank-park-philadelphia-pa-63fc56bf.html"
+  },
+  {
+   "id": "6bfc6262",
+   "versionId": "g33bf4c01",
+   "eventDate": "07-09-2016",
+   "lastUpdated": "2024-04-20T23:07:39.058+0000",
+   "artist": {
+    "mbid": "70248960-cb53-4ea4-943a-edb18f7d336f",
+    "name": "Bruce Springsteen",
+    "sortName": "Springsteen, Bruce",
+    "disambiguation": "",
+    "url": "https://www.setlist.fm/setlists/bruce-springsteen-2bd6dcce.html"
+   },
+   "venue": {
+    "id": "1bd6d524",
+    "name": "Citizens Bank Park",
+    "city": {
+     "id": "4560349",
+     "name": "Philadelphia",
+     "state": "Pennsylvania",
+     "stateCode": "PA",
+     "coords": {
+      "lat": 39.952335,
+      "long": -75.163789
+     },
+     "country": {
+      "code": "US",
+      "name": "United States"
+     }
+    },
+    "url": "https://www.setlist.fm/venue/citizens-bank-park-philadelphia-pa-usa-1bd6d524.html"
+   },
+   "tour": {
+    "name": "The River Tour 2016"
+   },
+   "sets": {
+    "set": [
+     {
+      "song": [
+       {
+        "name": "New York City Serenade",
+        "info": "with string section"
+       },
+       {
+        "name": "Does This Bus Stop at 82nd Street?"
+       },
+       {
+        "name": "It's Hard to Be a Saint in the City"
+       },
+       {
+        "name": "Growin' Up"
+       },
+       {
+        "name": "Spirit in the Night"
+       },
+       {
+        "name": "Lost in the Flood"
+       },
+       {
+        "name": "Kitty's Back"
+       },
+       {
+        "name": "The E Street Shuffle"
+       },
+       {
+        "name": "Incident on 57th Street"
+       },
+       {
+        "name": "Rosalita (Come Out Tonight)"
+       },
+       {
+        "name": "The Fever",
+        "info": "tour debut"
+       },
+       {
+        "name": "Thundercrack",
+        "info": "tour debut"
+       },
+       {
+        "name": "Night"
+       },
+       {
+        "name": "No Surrender"
+       },
+       {
+        "name": "The Ties That Bind"
+       },
+       {
+        "name": "My Love Will Not Let You Down"
+       },
+       {
+        "name": "Death to My Hometown"
+       },
+       {
+        "name": "Jack of All Trades",
+        "info": "with string section"
+       },
+       {
+        "name": "American Skin (41 Shots)"
+       },
+       {
+        "name": "The Promised Land"
+       },
+       {
+        "name": "Hungry Heart"
+       },
+       {
+        "name": "Darlington County"
+       },
+       {
+        "name": "Working on the Highway"
+       },
+       {
+        "name": "Downbound Train"
+       },
+       {
+        "name": "Because the Night",
+        "cover": {
+         "mbid": "26638df8-ef34-40d1-8d93-616836b72878",
+         "name": "Patti Smith Group",
+         "sortName": "Smith, Patti, Group",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/patti-smith-group-53d657bd.html"
+        }
+       },
+       {
+        "name": "The Rising"
+       },
+       {
+        "name": "Badlands"
+       }
+      ]
+     },
+     {
+      "encore": 1,
+      "song": [
+       {
+        "name": "Streets of Philadelphia",
+        "info": "tour debut"
+       },
+       {
+        "name": "Jungleland"
+       },
+       {
+        "name": "Born to Run"
+       },
+       {
+        "name": "Dancing in the Dark"
+       },
+       {
+        "name": "Tenth Avenue Freeze-Out"
+       },
+       {
+        "name": "Shout",
+        "cover": {
+         "mbid": "4a76400d-283f-492e-9754-18ef41755f81",
+         "name": "The Isley Brothers",
+         "sortName": "Isley Brothers, The",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/the-isley-brothers-3d6b943.html"
+        }
+       },
+       {
+        "name": "Bobby Jean"
+       }
+      ]
+     }
+    ]
+   },
+   "info": "Bruce's longest North American concert ever clocking in at 4 hours and 4 minutes. This makes it his second longest performance of all time just slightly behind 31 July 2012 in Helsinki, Finland. \"Out in the Street\" and \"I'm on Fire\" were on the setlist, but were not played. \"No Surrender\", \"The Ties That Bind\", \"My Love Will Not Let You Down\", and \"Working on the Highway\" were not on the setlist. Soundcheck included: \"New York City Serenade\" and \"Jack of All Trades\"",
+   "url": "https://www.setlist.fm/setlist/bruce-springsteen/2016/citizens-bank-park-philadelphia-pa-6bfc6262.html"
+  },
+  {
+   "id": "63fc66fb",
+   "versionId": "g53c65fc9",
+   "eventDate": "05-09-2016",
+   "lastUpdated": "2021-10-28T21:20:53.031+0000",
+   "artist": {
+    "mbid": "70248960-cb53-4ea4-943a-edb18f7d336f",
+    "name": "Bruce Springsteen",
+    "sortName": "Springsteen, Bruce",
+    "disambiguation": "",
+    "url": "https://www.setlist.fm/setlists/bruce-springsteen-2bd6dcce.html"
+   },
+   "venue": {
+    "id": "3d24567",
+    "name": "Veterans United Home Loans Amphitheater at Virginia Beach",
+    "city": {
+     "id": "4791259",
+     "name": "Virginia Beach",
+     "state": "Virginia",
+     "stateCode": "VA",
+     "coords": {
+      "lat": 36.8529263,
+      "long": -75.977985
+     },
+     "country": {
+      "code": "US",
+      "name": "United States"
+     }
+    },
+    "url": "https://www.setlist.fm/venue/veterans-united-home-loans-amphitheater-at-virginia-beach-virginia-beach-va-usa-3d24567.html"
+   },
+   "tour": {
+    "name": "The River Tour 2016"
+   },
+   "sets": {
+    "set": [
+     {
+      "song": [
+       {
+        "name": "For You",
+        "info": "solo piano"
+       },
+       {
+        "name": "Does This Bus Stop at 82nd Street?"
+       },
+       {
+        "name": "It's Hard to Be a Saint in the City"
+       },
+       {
+        "name": "Growin' Up"
+       },
+       {
+        "name": "Spirit in the Night"
+       },
+       {
+        "name": "Lost in the Flood"
+       },
+       {
+        "name": "Kitty's Back"
+       },
+       {
+        "name": "The E Street Shuffle",
+        "info": "tour debut, sign request"
+       },
+       {
+        "name": "Incident on 57th Street"
+       },
+       {
+        "name": "Rosalita (Come Out Tonight)"
+       },
+       {
+        "name": "Thunder Road",
+        "info": "sign request"
+       },
+       {
+        "name": "Pink Cadillac",
+        "info": "sign request"
+       },
+       {
+        "name": "Save My Love",
+        "info": "sign request"
+       },
+       {
+        "name": "Candy's Room"
+       },
+       {
+        "name": "She's the One"
+       },
+       {
+        "name": "Factory",
+        "info": "tour debut"
+       },
+       {
+        "name": "American Skin (41 Shots)"
+       },
+       {
+        "name": "The Promised Land"
+       },
+       {
+        "name": "Hungry Heart"
+       },
+       {
+        "name": "Out in the Street"
+       },
+       {
+        "name": "Mary's Place",
+        "info": "sign request"
+       },
+       {
+        "name": "Because the Night",
+        "cover": {
+         "mbid": "26638df8-ef34-40d1-8d93-616836b72878",
+         "name": "Patti Smith Group",
+         "sortName": "Smith, Patti, Group",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/patti-smith-group-53d657bd.html"
+        }
+       },
+       {
+        "name": "The Rising"
+       },
+       {
+        "name": "Badlands"
+       },
+       {
+        "name": "Land of Hope and Dreams"
+       }
+      ]
+     },
+     {
+      "encore": 1,
+      "song": [
+       {
+        "name": "Backstreets"
+       },
+       {
+        "name": "Born to Run"
+       },
+       {
+        "name": "Dancing in the Dark"
+       },
+       {
+        "name": "Tenth Avenue Freeze-Out"
+       },
+       {
+        "name": "Shout",
+        "cover": {
+         "mbid": "4a76400d-283f-492e-9754-18ef41755f81",
+         "name": "The Isley Brothers",
+         "sortName": "Isley Brothers, The",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/the-isley-brothers-3d6b943.html"
+        }
+       },
+       {
+        "name": "Bobby Jean"
+       }
+      ]
+     },
+     {
+      "encore": 2,
+      "song": [
+       {
+        "name": "This Hard Land",
+        "info": "solo acoustic"
+       }
+      ]
+     }
+    ]
+   },
+   "info": "Show rescheduled from September 3 due to the effects of tropical storm Hermine. Soundcheck included: \"Does This Bus Stop at 82nd Street?\", \"Factory\" and \"Mary Queen of Arkansas\"",
+   "url": "https://www.setlist.fm/setlist/bruce-springsteen/2016/veterans-united-home-loans-amphitheater-at-virginia-beach-virginia-beach-va-63fc66fb.html"
+  },
+  {
+   "id": "4bfc072e",
+   "versionId": "g4bc65fca",
+   "eventDate": "01-09-2016",
+   "lastUpdated": "2021-10-28T21:20:12.806+0000",
+   "artist": {
+    "mbid": "70248960-cb53-4ea4-943a-edb18f7d336f",
+    "name": "Bruce Springsteen",
+    "sortName": "Springsteen, Bruce",
+    "disambiguation": "",
+    "url": "https://www.setlist.fm/setlists/bruce-springsteen-2bd6dcce.html"
+   },
+   "venue": {
+    "id": "33d654f5",
+    "name": "Nationals Park",
+    "city": {
+     "id": "4140963",
+     "name": "Washington",
+     "state": "Washington, D.C.",
+     "stateCode": "DC",
+     "coords": {
+      "lat": 38.895,
+      "long": -77.036
+     },
+     "country": {
+      "code": "US",
+      "name": "United States"
+     }
+    },
+    "url": "https://www.setlist.fm/venue/nationals-park-washington-dc-usa-33d654f5.html"
+   },
+   "tour": {
+    "name": "The River Tour 2016"
+   },
+   "sets": {
+    "set": [
+     {
+      "song": [
+       {
+        "name": "New York City Serenade",
+        "info": "with string section"
+       },
+       {
+        "name": "Summertime Blues",
+        "cover": {
+         "mbid": "17995d1c-5b3c-4ee9-98f5-105ee3b4ada1",
+         "name": "Eddie Cochran",
+         "sortName": "Cochran, Eddie",
+         "disambiguation": "US rock and roll musician active in 1950s",
+         "url": "https://www.setlist.fm/setlists/eddie-cochran-4bd6af56.html"
+        }
+       },
+       {
+        "name": "Sherry Darling"
+       },
+       {
+        "name": "No Surrender",
+        "info": "sign request"
+       },
+       {
+        "name": "Growin' Up",
+        "info": "sign request"
+       },
+       {
+        "name": "It's Hard to Be a Saint in the City"
+       },
+       {
+        "name": "Does This Bus Stop at 82nd Street?"
+       },
+       {
+        "name": "Spirit in the Night"
+       },
+       {
+        "name": "Lost in the Flood"
+       },
+       {
+        "name": "Kitty's Back",
+        "info": "sign request"
+       },
+       {
+        "name": "Incident on 57th Street"
+       },
+       {
+        "name": "Rosalita (Come Out Tonight)"
+       },
+       {
+        "name": "Night"
+       },
+       {
+        "name": "Trapped",
+        "cover": {
+         "mbid": "2caa54a7-b08c-41da-b892-3a41abe778be",
+         "name": "Jimmy Cliff",
+         "sortName": "Cliff, Jimmy",
+         "disambiguation": "Jamaican ska, rocksteady, reggae and soul musician",
+         "url": "https://www.setlist.fm/setlists/jimmy-cliff-7bd6cec4.html"
+        },
+        "info": "sign request"
+       },
+       {
+        "name": "Better Days",
+        "info": "tour debut"
+       },
+       {
+        "name": "The Promised Land"
+       },
+       {
+        "name": "American Skin (41 Shots)"
+       },
+       {
+        "name": "Hungry Heart"
+       },
+       {
+        "name": "Out in the Street"
+       },
+       {
+        "name": "Darlington County"
+       },
+       {
+        "name": "Working on the Highway"
+       },
+       {
+        "name": "Downbound Train"
+       },
+       {
+        "name": "I'm on Fire"
+       },
+       {
+        "name": "Because the Night",
+        "cover": {
+         "mbid": "26638df8-ef34-40d1-8d93-616836b72878",
+         "name": "Patti Smith Group",
+         "sortName": "Smith, Patti, Group",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/patti-smith-group-53d657bd.html"
+        }
+       },
+       {
+        "name": "The Rising"
+       },
+       {
+        "name": "Badlands"
+       }
+      ]
+     },
+     {
+      "encore": 1,
+      "song": [
+       {
+        "name": "Secret Garden"
+       },
+       {
+        "name": "Jungleland"
+       },
+       {
+        "name": "Born to Run"
+       },
+       {
+        "name": "Seven Nights to Rock",
+        "cover": {
+         "mbid": "da009937-d372-4ba9-833f-02c89a9b1f1d",
+         "name": "Moon Mullican",
+         "sortName": "Moon Mullican",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/moon-mullican-bd70dba.html"
+        }
+       },
+       {
+        "name": "Dancing in the Dark"
+       },
+       {
+        "name": "Tenth Avenue Freeze-Out"
+       },
+       {
+        "name": "Shout",
+        "cover": {
+         "mbid": "4a76400d-283f-492e-9754-18ef41755f81",
+         "name": "The Isley Brothers",
+         "sortName": "Isley Brothers, The",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/the-isley-brothers-3d6b943.html"
+        }
+       },
+       {
+        "name": "Bobby Jean"
+       },
+       {
+        "name": "Down to the River to Pray",
+        "tape": true,
+        "cover": {
+         "mbid": "6b064ead-91a4-4ac8-8076-b1febe4f4aac",
+         "name": "Alison Krauss",
+         "sortName": "Krauss, Alison",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/alison-krauss-3d6b167.html"
+        }
+       }
+      ]
+     }
+    ]
+   },
+   "info": "Soundcheck: New York City Serenade, Prove It All Night, Lost in the Flood, Youngstown, American Skin (41 Shots)",
+   "url": "https://www.setlist.fm/setlist/bruce-springsteen/2016/nationals-park-washington-dc-4bfc072e.html"
+  },
+  {
+   "id": "7bfc0a4c",
+   "versionId": "g2bbcc4e2",
+   "eventDate": "30-08-2016",
+   "lastUpdated": "2024-04-25T03:11:01.638+0000",
+   "artist": {
+    "mbid": "70248960-cb53-4ea4-943a-edb18f7d336f",
+    "name": "Bruce Springsteen",
+    "sortName": "Springsteen, Bruce",
+    "disambiguation": "",
+    "url": "https://www.setlist.fm/setlists/bruce-springsteen-2bd6dcce.html"
+   },
+   "venue": {
+    "id": "1bd72160",
+    "name": "MetLife Stadium",
+    "city": {
+     "id": "5097459",
+     "name": "East Rutherford",
+     "state": "New Jersey",
+     "stateCode": "NJ",
+     "coords": {
+      "lat": 40.833989,
+      "long": -74.0970865
+     },
+     "country": {
+      "code": "US",
+      "name": "United States"
+     }
+    },
+    "url": "https://www.setlist.fm/venue/metlife-stadium-east-rutherford-nj-usa-1bd72160.html"
+   },
+   "tour": {
+    "name": "The River Tour 2016"
+   },
+   "sets": {
+    "set": [
+     {
+      "song": [
+       {
+        "name": "New York City Serenade",
+        "info": "with string ensemble"
+       },
+       {
+        "name": "Blinded by the Light"
+       },
+       {
+        "name": "Does This Bus Stop at 82nd Street?"
+       },
+       {
+        "name": "It's Hard to Be a Saint in the City"
+       },
+       {
+        "name": "Spirit in the Night",
+        "with": {
+         "mbid": "9cd9232e-7a3e-4eb9-8043-ee05c1e396ec",
+         "name": "Rickie Lee Jones",
+         "sortName": "Jones, Rickie Lee",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/rickie-lee-jones-63d6aafb.html"
+        }
+       },
+       {
+        "name": "Summertime Blues",
+        "cover": {
+         "mbid": "17995d1c-5b3c-4ee9-98f5-105ee3b4ada1",
+         "name": "Eddie Cochran",
+         "sortName": "Cochran, Eddie",
+         "disambiguation": "US rock and roll musician active in 1950s",
+         "url": "https://www.setlist.fm/setlists/eddie-cochran-4bd6af56.html"
+        },
+        "info": "sign request"
+       },
+       {
+        "name": "4th of July, Asbury Park (Sandy)"
+       },
+       {
+        "name": "Kitty's Back",
+        "info": "sign request, tour debut"
+       },
+       {
+        "name": "Incident on 57th Street",
+        "info": "sign request, full band"
+       },
+       {
+        "name": "Rosalita (Come Out Tonight)"
+       },
+       {
+        "name": "Pretty Flamingo",
+        "cover": {
+         "mbid": "06b6f280-8787-4a3d-8ab6-c6487b465320",
+         "name": "Manfred Mann",
+         "sortName": "Manfred Mann",
+         "disambiguation": "English band",
+         "url": "https://www.setlist.fm/setlists/manfred-mann-2bd6ac42.html"
+        },
+        "info": "tour debut"
+       },
+       {
+        "name": "Atlantic City",
+        "info": "sign request"
+       },
+       {
+        "name": "I'm Goin' Down"
+       },
+       {
+        "name": "Darlington County"
+       },
+       {
+        "name": "Working on the Highway"
+       },
+       {
+        "name": "Downbound Train",
+        "info": "sign request"
+       },
+       {
+        "name": "I'm on Fire"
+       },
+       {
+        "name": "Hungry Heart"
+       },
+       {
+        "name": "Out in the Street"
+       },
+       {
+        "name": "Living Proof",
+        "info": "sign request, tour debut, first performance since 2009, dedicated to his son Evan"
+       },
+       {
+        "name": "Candy's Room"
+       },
+       {
+        "name": "She's the One"
+       },
+       {
+        "name": "Because the Night",
+        "cover": {
+         "mbid": "26638df8-ef34-40d1-8d93-616836b72878",
+         "name": "Patti Smith Group",
+         "sortName": "Smith, Patti, Group",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/patti-smith-group-53d657bd.html"
+        }
+       },
+       {
+        "name": "The Rising"
+       },
+       {
+        "name": "Badlands"
+       }
+      ]
+     },
+     {
+      "encore": 1,
+      "song": [
+       {
+        "name": "Secret Garden",
+        "info": "tour debut"
+       },
+       {
+        "name": "Jungleland"
+       },
+       {
+        "name": "Born to Run"
+       },
+       {
+        "name": "Dancing in the Dark"
+       },
+       {
+        "name": "Tenth Avenue Freeze-Out"
+       },
+       {
+        "name": "Twist and Shout",
+        "cover": {
+         "mbid": "f18eac60-48d2-4d2b-b432-e43ce7e31d36",
+         "name": "The Top Notes",
+         "sortName": "Top Notes, The",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/the-top-notes-53d433dd.html"
+        },
+        "info": "with E Street Band introductions"
+       },
+       {
+        "name": "Glory Days"
+       },
+       {
+        "name": "Shout",
+        "cover": {
+         "mbid": "4a76400d-283f-492e-9754-18ef41755f81",
+         "name": "The Isley Brothers",
+         "sortName": "Isley Brothers, The",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/the-isley-brothers-3d6b943.html"
+        }
+       }
+      ]
+     },
+     {
+      "encore": 2,
+      "song": [
+       {
+        "name": "Jersey Girl",
+        "cover": {
+         "mbid": "c3aeb863-7b26-4388-94e8-5a240f2be21b",
+         "name": "Tom Waits",
+         "sortName": "Waits, Tom",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/tom-waits-3bd6c0ac.html"
+        }
+       }
+      ]
+     }
+    ]
+   },
+   "info": "\"Lost in the Flood\", \"Lucky Town\", \"Better Days\", \"Human Touch\", and \"Ramrod\" were on the setlist but were not played. \"Summertime Blues\", \"Atlantic City\", \"Darlington County\", \"Working on the Highway\", \"She's the One\", and \"Jungleland\" were not on the setlist. Soundcheck included: \"New York City Serenade\", \"Incident on 57th Street\", \"Kitty's Back\", \"Better Days\", \"Blinded by the Light\", \"Does This Bus Stop at 82nd Street?\", \"Secret Garden\", \"Pretty Flamingo\" and \"Living Proof\"",
+   "url": "https://www.setlist.fm/setlist/bruce-springsteen/2016/metlife-stadium-east-rutherford-nj-7bfc0a4c.html"
+  },
+  {
+   "id": "3fc19e3",
+   "versionId": "g33bf4c39",
+   "eventDate": "28-08-2016",
+   "lastUpdated": "2024-04-20T22:57:02.605+0000",
+   "artist": {
+    "mbid": "70248960-cb53-4ea4-943a-edb18f7d336f",
+    "name": "Bruce Springsteen",
+    "sortName": "Springsteen, Bruce",
+    "disambiguation": "",
+    "url": "https://www.setlist.fm/setlists/bruce-springsteen-2bd6dcce.html"
+   },
+   "venue": {
+    "id": "63d0f2d3",
+    "name": "United Center",
+    "city": {
+     "id": "4887398",
+     "name": "Chicago",
+     "state": "Illinois",
+     "stateCode": "IL",
+     "coords": {
+      "lat": 41.850033,
+      "long": -87.6500523
+     },
+     "country": {
+      "code": "US",
+      "name": "United States"
+     }
+    },
+    "url": "https://www.setlist.fm/venue/united-center-chicago-il-usa-63d0f2d3.html"
+   },
+   "tour": {
+    "name": "The River Tour 2016"
+   },
+   "sets": {
+    "set": [
+     {
+      "song": [
+       {
+        "name": "New York City Serenade",
+        "info": "with string ensemble"
+       },
+       {
+        "name": "Prove It All Night"
+       },
+       {
+        "name": "My Love Will Not Let You Down"
+       },
+       {
+        "name": "The Ties That Bind"
+       },
+       {
+        "name": "Sherry Darling"
+       },
+       {
+        "name": "Two Hearts"
+       },
+       {
+        "name": "The Promised Land",
+        "info": "sign request"
+       },
+       {
+        "name": "Mary's Place",
+        "info": "sign request"
+       },
+       {
+        "name": "Racing in the Street",
+        "info": "sign request"
+       },
+       {
+        "name": "None but the Brave",
+        "info": "sign request"
+       },
+       {
+        "name": "Hungry Heart"
+       },
+       {
+        "name": "Out in the Street"
+       },
+       {
+        "name": "Death to My Hometown"
+       },
+       {
+        "name": "Jack of All Trades",
+        "info": "with string ensemble"
+       },
+       {
+        "name": "The River"
+       },
+       {
+        "name": "American Skin (41 Shots)"
+       },
+       {
+        "name": "Murder Incorporated"
+       },
+       {
+        "name": "Cadillac Ranch"
+       },
+       {
+        "name": "I'm a Rocker"
+       },
+       {
+        "name": "Waitin' on a Sunny Day",
+        "info": "sign request"
+       },
+       {
+        "name": "Candy's Room"
+       },
+       {
+        "name": "She's the One"
+       },
+       {
+        "name": "Because the Night",
+        "cover": {
+         "mbid": "26638df8-ef34-40d1-8d93-616836b72878",
+         "name": "Patti Smith Group",
+         "sortName": "Smith, Patti, Group",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/patti-smith-group-53d657bd.html"
+        }
+       },
+       {
+        "name": "The Rising"
+       },
+       {
+        "name": "Badlands"
+       }
+      ]
+     },
+     {
+      "encore": 1,
+      "song": [
+       {
+        "name": "Backstreets",
+        "info": "sign request"
+       },
+       {
+        "name": "Born to Run"
+       },
+       {
+        "name": "Dancing in the Dark"
+       },
+       {
+        "name": "Rosalita (Come Out Tonight)"
+       },
+       {
+        "name": "Tenth Avenue Freeze-Out"
+       },
+       {
+        "name": "Shout",
+        "cover": {
+         "mbid": "4a76400d-283f-492e-9754-18ef41755f81",
+         "name": "The Isley Brothers",
+         "sortName": "Isley Brothers, The",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/the-isley-brothers-3d6b943.html"
+        }
+       },
+       {
+        "name": "Bobby Jean"
+       }
+      ]
+     }
+    ]
+   },
+   "info": "\"Blinded by the Light\", \"Does This Bus Stop at 82nd Street\", \"It's Hard to be Saint in the City\", \"Lost in the Flood\", \"Incident on 57th Street\", \"Darlington County\", \"Jungleland\", and \"This Hard Land\" were on the setlist, but were not played. \"Two Hearts\", \"Mary's Place\", \"None But the Brave\", \"Murder Incorporated\", \"Waitin' on a Sunny Day\", \"Candy's Room\", \"Backstreets\", and \"Bobby Jean\" were not on the setlist. Soundcheck included: \"The Ties That Bind\", \"Jack of All Trades\" and \"New York City Serenade\"",
+   "url": "https://www.setlist.fm/setlist/bruce-springsteen/2016/united-center-chicago-il-3fc19e3.html"
+  },
+  {
+   "id": "2bfc30ba",
+   "versionId": "g5bc65ff8",
+   "eventDate": "25-08-2016",
+   "lastUpdated": "2021-10-28T21:08:33.531+0000",
+   "artist": {
+    "mbid": "70248960-cb53-4ea4-943a-edb18f7d336f",
+    "name": "Bruce Springsteen",
+    "sortName": "Springsteen, Bruce",
+    "disambiguation": "",
+    "url": "https://www.setlist.fm/setlists/bruce-springsteen-2bd6dcce.html"
+   },
+   "venue": {
+    "id": "1bd72160",
+    "name": "MetLife Stadium",
+    "city": {
+     "id": "5097459",
+     "name": "East Rutherford",
+     "state": "New Jersey",
+     "stateCode": "NJ",
+     "coords": {
+      "lat": 40.833989,
+      "long": -74.0970865
+     },
+     "country": {
+      "code": "US",
+      "name": "United States"
+     }
+    },
+    "url": "https://www.setlist.fm/venue/metlife-stadium-east-rutherford-nj-usa-1bd72160.html"
+   },
+   "tour": {
+    "name": "The River Tour 2016"
+   },
+   "sets": {
+    "set": [
+     {
+      "song": [
+       {
+        "name": "New York City Serenade",
+        "info": "with string section"
+       },
+       {
+        "name": "Prove It All Night"
+       },
+       {
+        "name": "Night"
+       },
+       {
+        "name": "No Surrender"
+       },
+       {
+        "name": "Wrecking Ball"
+       },
+       {
+        "name": "Sherry Darling"
+       },
+       {
+        "name": "Spirit in the Night"
+       },
+       {
+        "name": "My City of Ruins",
+        "info": "sign request dedicated to the people of Italy, where there was an earthquake the day before"
+       },
+       {
+        "name": "Waitin' on a Sunny Day",
+        "info": "sign request"
+       },
+       {
+        "name": "Darkness on the Edge of Town",
+        "info": "sign request"
+       },
+       {
+        "name": "Lost in the Flood",
+        "info": "sign request"
+       },
+       {
+        "name": "Hungry Heart"
+       },
+       {
+        "name": "Out in the Street"
+       },
+       {
+        "name": "Death to My Hometown",
+        "with": {
+         "mbid": "42a636a0-dbe4-4d0c-abe2-1590fad9531b",
+         "name": "Tom Morello",
+         "sortName": "Morello, Tom",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/tom-morello-13d689dd.html"
+        }
+       },
+       {
+        "name": "Youngstown"
+       },
+       {
+        "name": "Jack of All Trades",
+        "info": "with string section"
+       },
+       {
+        "name": "American Skin (41 Shots)",
+        "with": {
+         "mbid": "42a636a0-dbe4-4d0c-abe2-1590fad9531b",
+         "name": "Tom Morello",
+         "sortName": "Morello, Tom",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/tom-morello-13d689dd.html"
+        }
+       },
+       {
+        "name": "The Promised Land"
+       },
+       {
+        "name": "Cadillac Ranch"
+       },
+       {
+        "name": "I'm a Rocker"
+       },
+       {
+        "name": "Tougher Than the Rest"
+       },
+       {
+        "name": "Because the Night",
+        "cover": {
+         "mbid": "26638df8-ef34-40d1-8d93-616836b72878",
+         "name": "Patti Smith Group",
+         "sortName": "Smith, Patti, Group",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/patti-smith-group-53d657bd.html"
+        }
+       },
+       {
+        "name": "The Rising"
+       },
+       {
+        "name": "The Ghost of Tom Joad",
+        "with": {
+         "mbid": "42a636a0-dbe4-4d0c-abe2-1590fad9531b",
+         "name": "Tom Morello",
+         "sortName": "Morello, Tom",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/tom-morello-13d689dd.html"
+        }
+       },
+       {
+        "name": "Badlands",
+        "with": {
+         "mbid": "42a636a0-dbe4-4d0c-abe2-1590fad9531b",
+         "name": "Tom Morello",
+         "sortName": "Morello, Tom",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/tom-morello-13d689dd.html"
+        }
+       }
+      ]
+     },
+     {
+      "encore": 1,
+      "song": [
+       {
+        "name": "Backstreets"
+       },
+       {
+        "name": "Born to Run"
+       },
+       {
+        "name": "Dancing in the Dark"
+       },
+       {
+        "name": "Rosalita (Come Out Tonight)"
+       },
+       {
+        "name": "Tenth Avenue Freeze-Out"
+       },
+       {
+        "name": "Shout",
+        "cover": {
+         "mbid": "4a76400d-283f-492e-9754-18ef41755f81",
+         "name": "The Isley Brothers",
+         "sortName": "Isley Brothers, The",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/the-isley-brothers-3d6b943.html"
+        }
+       },
+       {
+        "name": "Thunder Road"
+       },
+       {
+        "name": "Jersey Girl",
+        "cover": {
+         "mbid": "c3aeb863-7b26-4388-94e8-5a240f2be21b",
+         "name": "Tom Waits",
+         "sortName": "Waits, Tom",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/tom-waits-3bd6c0ac.html"
+        },
+        "info": "with on-stage fan proposal"
+       }
+      ]
+     }
+    ]
+   },
+   "info": "Soundcheck included: \"The Ghost of Tom Joad\", \"No Surrender\" and \"Jack of All Trades\"",
+   "url": "https://www.setlist.fm/setlist/bruce-springsteen/2016/metlife-stadium-east-rutherford-nj-2bfc30ba.html"
+  },
+  {
+   "id": "53fc3f81",
+   "versionId": "g23bf4c63",
+   "eventDate": "23-08-2016",
+   "lastUpdated": "2024-04-20T22:48:42.678+0000",
+   "artist": {
+    "mbid": "70248960-cb53-4ea4-943a-edb18f7d336f",
+    "name": "Bruce Springsteen",
+    "sortName": "Springsteen, Bruce",
+    "disambiguation": "",
+    "url": "https://www.setlist.fm/setlists/bruce-springsteen-2bd6dcce.html"
+   },
+   "venue": {
+    "id": "1bd72160",
+    "name": "MetLife Stadium",
+    "city": {
+     "id": "5097459",
+     "name": "East Rutherford",
+     "state": "New Jersey",
+     "stateCode": "NJ",
+     "coords": {
+      "lat": 40.833989,
+      "long": -74.0970865
+     },
+     "country": {
+      "code": "US",
+      "name": "United States"
+     }
+    },
+    "url": "https://www.setlist.fm/venue/metlife-stadium-east-rutherford-nj-usa-1bd72160.html"
+   },
+   "tour": {
+    "name": "The River Tour 2016"
+   },
+   "sets": {
+    "set": [
+     {
+      "song": [
+       {
+        "name": "New York City Serenade",
+        "info": "with string section"
+       },
+       {
+        "name": "Wrecking Ball"
+       },
+       {
+        "name": "Badlands"
+       },
+       {
+        "name": "Something in the Night"
+       },
+       {
+        "name": "The Ties That Bind"
+       },
+       {
+        "name": "Sherry Darling"
+       },
+       {
+        "name": "Spirit in the Night"
+       },
+       {
+        "name": "Santa Claus Is Comin' to Town",
+        "cover": {
+         "mbid": "bf98f37f-766c-4c11-99a5-8772f68a2ae6",
+         "name": "Harry Reser and His Orchestra",
+         "sortName": "Harry Reser and His Orchestra",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/harry-reser-and-his-orchestra-1bdfc11c.html"
+        },
+        "info": "sign request; audience choice"
+       },
+       {
+        "name": "Independence Day"
+       },
+       {
+        "name": "Hungry Heart"
+       },
+       {
+        "name": "Out in the Street"
+       },
+       {
+        "name": "Growin' Up",
+        "info": "sign request"
+       },
+       {
+        "name": "You Can Look (But You Better Not Touch)"
+       },
+       {
+        "name": "Death to My Hometown"
+       },
+       {
+        "name": "Mansion on the Hill",
+        "info": "solo acoustic with Patti Scialfa on vocals"
+       },
+       {
+        "name": "Jack of All Trades",
+        "info": "with string section; tour debut"
+       },
+       {
+        "name": "My Hometown"
+       },
+       {
+        "name": "The River"
+       },
+       {
+        "name": "American Skin (41 Shots)"
+       },
+       {
+        "name": "The Promised Land"
+       },
+       {
+        "name": "Working on the Highway"
+       },
+       {
+        "name": "Darlington County"
+       },
+       {
+        "name": "Because the Night",
+        "cover": {
+         "mbid": "26638df8-ef34-40d1-8d93-616836b72878",
+         "name": "Patti Smith Group",
+         "sortName": "Smith, Patti, Group",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/patti-smith-group-53d657bd.html"
+        }
+       },
+       {
+        "name": "She's the One"
+       },
+       {
+        "name": "Brilliant Disguise"
+       },
+       {
+        "name": "The Rising"
+       },
+       {
+        "name": "Land of Hope and Dreams",
+        "info": "with “People Get Ready” outro"
+       }
+      ]
+     },
+     {
+      "encore": 1,
+      "song": [
+       {
+        "name": "Jungleland"
+       },
+       {
+        "name": "Born to Run"
+       },
+       {
+        "name": "Dancing in the Dark"
+       },
+       {
+        "name": "Rosalita (Come Out Tonight)"
+       },
+       {
+        "name": "Tenth Avenue Freeze-Out",
+        "info": "with video montage/tribute to Clarence Clemons and Danny Federici"
+       },
+       {
+        "name": "Shout",
+        "cover": {
+         "mbid": "4a76400d-283f-492e-9754-18ef41755f81",
+         "name": "The Isley Brothers",
+         "sortName": "Isley Brothers, The",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/the-isley-brothers-3d6b943.html"
+        }
+       },
+       {
+        "name": "Bobby Jean"
+       }
+      ]
+     },
+     {
+      "encore": 2,
+      "song": [
+       {
+        "name": "Jersey Girl",
+        "cover": {
+         "mbid": "c3aeb863-7b26-4388-94e8-5a240f2be21b",
+         "name": "Tom Waits",
+         "sortName": "Waits, Tom",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/tom-waits-3bd6c0ac.html"
+        },
+        "info": "sign request"
+       }
+      ]
+     }
+    ]
+   },
+   "info": "\"Two Hearts\", \"Trapped\", and \"I'm on Fire\" were on the setlist but were not played. \"Spirit in the Night\", \"Santa Claus Is Comin' to Town\", \"Growin' Up\", \"She's the One\", and \"Bobby Jean\" were not on the setlist. \"Tougher Than the Rest\" was listed as an alternate to \"Brilliant Disguise\". Soundcheck included: \"Atlantic City\", \"New York City Serenade\", \"Wrecking Ball\", \"Back in the U.S.A.\", \"My Lucky Day\", \"None But the Brave\", \"Mansion on the Hill\", \"Jack of All Trades\" and \"I'm on Fire\"",
+   "url": "https://www.setlist.fm/setlist/bruce-springsteen/2016/metlife-stadium-east-rutherford-nj-53fc3f81.html"
+  },
+  {
+   "id": "1bff498c",
+   "versionId": "g636d36f7",
+   "eventDate": "31-07-2016",
+   "lastUpdated": "2026-01-20T08:26:15.848+0000",
+   "artist": {
+    "mbid": "70248960-cb53-4ea4-943a-edb18f7d336f",
+    "name": "Bruce Springsteen",
+    "sortName": "Springsteen, Bruce",
+    "disambiguation": "",
+    "url": "https://www.setlist.fm/setlists/bruce-springsteen-2bd6dcce.html"
+   },
+   "venue": {
+    "id": "23d61c2f",
+    "name": "Letzigrund Stadion",
+    "city": {
+     "id": "2657896",
+     "name": "Zurich",
+     "state": "Zürich",
+     "stateCode": "ZH",
+     "coords": {
+      "lat": 47.3666667,
+      "long": 8.55
+     },
+     "country": {
+      "code": "CH",
+      "name": "Switzerland"
+     }
+    },
+    "url": "https://www.setlist.fm/venue/letzigrund-stadion-zurich-switzerland-23d61c2f.html"
+   },
+   "tour": {
+    "name": "The River Tour 2016"
+   },
+   "sets": {
+    "set": [
+     {
+      "song": [
+       {
+        "name": "Prove It All Night"
+       },
+       {
+        "name": "My Love Will Not Let You Down"
+       },
+       {
+        "name": "The Ties That Bind"
+       },
+       {
+        "name": "Sherry Darling"
+       },
+       {
+        "name": "Trapped",
+        "cover": {
+         "mbid": "2caa54a7-b08c-41da-b892-3a41abe778be",
+         "name": "Jimmy Cliff",
+         "sortName": "Cliff, Jimmy",
+         "disambiguation": "Jamaican ska, rocksteady, reggae and soul musician",
+         "url": "https://www.setlist.fm/setlists/jimmy-cliff-7bd6cec4.html"
+        },
+        "info": "sign request"
+       },
+       {
+        "name": "Spirit in the Night"
+       },
+       {
+        "name": "None but the Brave",
+        "info": "sign request) (tour debut"
+       },
+       {
+        "name": "Roll of the Dice",
+        "info": "sign request) (tour debut"
+       },
+       {
+        "name": "Hungry Heart"
+       },
+       {
+        "name": "Out in the Street"
+       },
+       {
+        "name": "Jole Blon",
+        "cover": {
+         "mbid": "9be7f096-97ec-4615-8957-8d40b5dcbc41",
+         "name": "[traditional]",
+         "sortName": "[traditional]",
+         "disambiguation": "special purpose artist",
+         "url": "https://www.setlist.fm/setlists/traditional-5bd2f7e4.html"
+        },
+        "info": "sign request"
+       },
+       {
+        "name": "Atlantic City",
+        "info": "sign request"
+       },
+       {
+        "name": "The River"
+       },
+       {
+        "name": "Murder Incorporated"
+       },
+       {
+        "name": "American Skin (41 Shots)"
+       },
+       {
+        "name": "The Promised Land"
+       },
+       {
+        "name": "Mary's Place"
+       },
+       {
+        "name": "Waitin' on a Sunny Day"
+       },
+       {
+        "name": "Because the Night",
+        "cover": {
+         "mbid": "26638df8-ef34-40d1-8d93-616836b72878",
+         "name": "Patti Smith Group",
+         "sortName": "Smith, Patti, Group",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/patti-smith-group-53d657bd.html"
+        }
+       },
+       {
+        "name": "The Rising"
+       },
+       {
+        "name": "Badlands"
+       }
+      ]
+     },
+     {
+      "encore": 1,
+      "song": [
+       {
+        "name": "Jungleland"
+       },
+       {
+        "name": "Born in the U.S.A."
+       },
+       {
+        "name": "Born to Run"
+       },
+       {
+        "name": "Ramrod"
+       },
+       {
+        "name": "Dancing in the Dark"
+       },
+       {
+        "name": "Tenth Avenue Freeze-Out"
+       },
+       {
+        "name": "Shout",
+        "cover": {
+         "mbid": "4a76400d-283f-492e-9754-18ef41755f81",
+         "name": "The Isley Brothers",
+         "sortName": "Isley Brothers, The",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/the-isley-brothers-3d6b943.html"
+        }
+       },
+       {
+        "name": "Bobby Jean"
+       }
+      ]
+     },
+     {
+      "encore": 2,
+      "song": [
+       {
+        "name": "Twist and Shout",
+        "cover": {
+         "mbid": "f18eac60-48d2-4d2b-b432-e43ce7e31d36",
+         "name": "The Top Notes",
+         "sortName": "Top Notes, The",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/the-top-notes-53d433dd.html"
+        }
+       }
+      ]
+     }
+    ]
+   },
+   "url": "https://www.setlist.fm/setlist/bruce-springsteen/2016/letzigrund-stadion-zurich-switzerland-1bff498c.html"
+  },
+  {
+   "id": "3bff5c14",
+   "versionId": "g7302d269",
+   "eventDate": "28-07-2016",
+   "lastUpdated": "2026-07-29T05:38:47.763+0000",
+   "artist": {
+    "mbid": "70248960-cb53-4ea4-943a-edb18f7d336f",
+    "name": "Bruce Springsteen",
+    "sortName": "Springsteen, Bruce",
+    "disambiguation": "",
+    "url": "https://www.setlist.fm/setlists/bruce-springsteen-2bd6dcce.html"
+   },
+   "venue": {
+    "id": "2bd628ca",
+    "name": "Frognerparken",
+    "city": {
+     "id": "6942479",
+     "name": "Oslo",
+     "state": "Oslo",
+     "stateCode": "12",
+     "coords": {
+      "lat": 59.912697157616,
+      "long": 10.7413673400879
+     },
+     "country": {
+      "code": "NO",
+      "name": "Norway"
+     }
+    },
+    "url": "https://www.setlist.fm/venue/frognerparken-oslo-norway-2bd628ca.html"
+   },
+   "tour": {
+    "name": "The River Tour 2016"
+   },
+   "sets": {
+    "set": [
+     {
+      "name": "Pre-Show Acoustic Set",
+      "song": [
+       {
+        "name": "Working on the Highway"
+       }
+      ]
+     },
+     {
+      "name": "Main Set",
+      "song": [
+       {
+        "name": "Meet Me in the City"
+       }
+      ]
+     },
+     {
+      "name": "The River",
+      "song": [
+       {
+        "name": "The Ties That Bind"
+       },
+       {
+        "name": "Sherry Darling"
+       },
+       {
+        "name": "Jackson Cage"
+       },
+       {
+        "name": "Two Hearts"
+       },
+       {
+        "name": "Independence Day"
+       },
+       {
+        "name": "Hungry Heart"
+       },
+       {
+        "name": "Out in the Street"
+       },
+       {
+        "name": "Crush on You"
+       },
+       {
+        "name": "You Can Look (But You Better Not Touch)"
+       },
+       {
+        "name": "I Wanna Marry You",
+        "info": "with 'Here She Comes' intro"
+       },
+       {
+        "name": "The River"
+       },
+       {
+        "name": "Point Blank"
+       },
+       {
+        "name": "Cadillac Ranch"
+       },
+       {
+        "name": "I'm a Rocker"
+       },
+       {
+        "name": "Fade Away"
+       },
+       {
+        "name": "Stolen Car"
+       },
+       {
+        "name": "Ramrod"
+       },
+       {
+        "name": "The Price You Pay"
+       },
+       {
+        "name": "Drive All Night",
+        "info": "with 'Dream Baby Dream' interlude"
+       },
+       {
+        "name": "Wreck on the Highway"
+       }
+      ]
+     },
+     {
+      "name": "",
+      "song": [
+       {
+        "name": "Badlands"
+       },
+       {
+        "name": "The Promised Land"
+       },
+       {
+        "name": "Lonesome Day"
+       },
+       {
+        "name": "Wrecking Ball",
+        "info": "sign request"
+       },
+       {
+        "name": "Because the Night",
+        "cover": {
+         "mbid": "26638df8-ef34-40d1-8d93-616836b72878",
+         "name": "Patti Smith Group",
+         "sortName": "Smith, Patti, Group",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/patti-smith-group-53d657bd.html"
+        }
+       },
+       {
+        "name": "The Rising"
+       },
+       {
+        "name": "Land of Hope and Dreams"
+       },
+       {
+        "name": "Born in the U.S.A."
+       },
+       {
+        "name": "Born to Run"
+       },
+       {
+        "name": "Dancing in the Dark"
+       },
+       {
+        "name": "Tenth Avenue Freeze-Out"
+       },
+       {
+        "name": "Shout",
+        "cover": {
+         "mbid": "4a76400d-283f-492e-9754-18ef41755f81",
+         "name": "The Isley Brothers",
+         "sortName": "Isley Brothers, The",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/the-isley-brothers-3d6b943.html"
+        }
+       },
+       {
+        "name": "Bobby Jean"
+       }
+      ]
+     },
+     {
+      "encore": 1,
+      "song": [
+       {
+        "name": "This Hard Land",
+        "info": "solo acoustic"
+       }
+      ]
+     }
+    ]
+   },
+   "url": "https://www.setlist.fm/setlist/bruce-springsteen/2016/frognerparken-oslo-norway-3bff5c14.html"
+  },
+  {
+   "id": "3bff688c",
+   "versionId": "g53c65f09",
+   "eventDate": "26-07-2016",
+   "lastUpdated": "2021-10-28T21:04:51.128+0000",
+   "artist": {
+    "mbid": "70248960-cb53-4ea4-943a-edb18f7d336f",
+    "name": "Bruce Springsteen",
+    "sortName": "Springsteen, Bruce",
+    "disambiguation": "",
+    "url": "https://www.setlist.fm/setlists/bruce-springsteen-2bd6dcce.html"
+   },
+   "venue": {
+    "id": "3d5c95b",
+    "name": "Granåsen Arena",
+    "city": {
+     "id": "3133880",
+     "name": "Trondheim",
+     "state": "Sør-Trøndelag",
+     "stateCode": "16",
+     "coords": {
+      "lat": 63.4305242970809,
+      "long": 10.3949761390686
+     },
+     "country": {
+      "code": "NO",
+      "name": "Norway"
+     }
+    },
+    "url": "https://www.setlist.fm/venue/granasen-arena-trondheim-norway-3d5c95b.html"
+   },
+   "tour": {
+    "name": "The River Tour 2016"
+   },
+   "sets": {
+    "set": [
+     {
+      "song": [
+       {
+        "name": "Who'll Stop the Rain",
+        "cover": {
+         "mbid": "109958eb-a335-4c5e-907e-597ff4c6af46",
+         "name": "Creedence Clearwater Revival",
+         "sortName": "Creedence Clearwater Revival",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/creedence-clearwater-revival-5bd69794.html"
+        },
+        "info": "tour debut"
+       },
+       {
+        "name": "Badlands"
+       },
+       {
+        "name": "The Promised Land"
+       },
+       {
+        "name": "The Ties That Bind"
+       },
+       {
+        "name": "Sherry Darling"
+       },
+       {
+        "name": "Spirit in the Night"
+       },
+       {
+        "name": "Loose Ends",
+        "info": "sign request"
+       },
+       {
+        "name": "Two Hearts"
+       },
+       {
+        "name": "Independence Day"
+       },
+       {
+        "name": "Hungry Heart"
+       },
+       {
+        "name": "Out in the Street"
+       },
+       {
+        "name": "Radio Nowhere",
+        "info": "sign request; tour debut"
+       },
+       {
+        "name": "Death to My Hometown"
+       },
+       {
+        "name": "The River"
+       },
+       {
+        "name": "Racing in the Street"
+       },
+       {
+        "name": "Darlington County"
+       },
+       {
+        "name": "Working on the Highway"
+       },
+       {
+        "name": "Waitin' on a Sunny Day",
+        "info": "sign request"
+       },
+       {
+        "name": "I'm on Fire"
+       },
+       {
+        "name": "Candy's Room"
+       },
+       {
+        "name": "She's the One"
+       },
+       {
+        "name": "Because the Night",
+        "cover": {
+         "mbid": "26638df8-ef34-40d1-8d93-616836b72878",
+         "name": "Patti Smith Group",
+         "sortName": "Smith, Patti, Group",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/patti-smith-group-53d657bd.html"
+        }
+       },
+       {
+        "name": "The Rising"
+       },
+       {
+        "name": "Land of Hope and Dreams"
+       },
+       {
+        "name": "Born in the U.S.A."
+       },
+       {
+        "name": "Born to Run"
+       },
+       {
+        "name": "Ramrod"
+       },
+       {
+        "name": "Dancing in the Dark"
+       },
+       {
+        "name": "Tenth Avenue Freeze-Out"
+       },
+       {
+        "name": "Shout",
+        "cover": {
+         "mbid": "4a76400d-283f-492e-9754-18ef41755f81",
+         "name": "The Isley Brothers",
+         "sortName": "Isley Brothers, The",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/the-isley-brothers-3d6b943.html"
+        }
+       },
+       {
+        "name": "Bobby Jean"
+       }
+      ]
+     },
+     {
+      "encore": 1,
+      "song": [
+       {
+        "name": "Thunder Road",
+        "info": "solo acoustic"
+       }
+      ]
+     }
+    ]
+   },
+   "url": "https://www.setlist.fm/setlist/bruce-springsteen/2016/granasen-arena-trondheim-norway-3bff688c.html"
+  },
+  {
+   "id": "23ff7cdb",
+   "versionId": "g2b6b986a",
+   "eventDate": "23-07-2016",
+   "lastUpdated": "2026-02-01T20:25:12.841+0000",
+   "artist": {
+    "mbid": "70248960-cb53-4ea4-943a-edb18f7d336f",
+    "name": "Bruce Springsteen",
+    "sortName": "Springsteen, Bruce",
+    "disambiguation": "",
+    "url": "https://www.setlist.fm/setlists/bruce-springsteen-2bd6dcce.html"
+   },
+   "venue": {
+    "id": "3bd61c34",
+    "name": "Ullevi Stadium",
+    "city": {
+     "id": "2711537",
+     "name": "Gothenburg",
+     "state": "Västra Götaland County",
+     "stateCode": "28",
+     "coords": {
+      "lat": 57.7071623103656,
+      "long": 11.9667935371399
+     },
+     "country": {
+      "code": "SE",
+      "name": "Sweden"
+     }
+    },
+    "url": "https://www.setlist.fm/venue/ullevi-stadium-gothenburg-sweden-3bd61c34.html"
+   },
+   "tour": {
+    "name": "The River Tour 2016"
+   },
+   "sets": {
+    "set": [
+     {
+      "song": [
+       {
+        "name": "Meet Me in the City"
+       }
+      ]
+     },
+     {
+      "name": "The River",
+      "song": [
+       {
+        "name": "The Ties That Bind"
+       },
+       {
+        "name": "Sherry Darling"
+       },
+       {
+        "name": "Jackson Cage"
+       },
+       {
+        "name": "Two Hearts"
+       },
+       {
+        "name": "Independence Day"
+       },
+       {
+        "name": "Hungry Heart"
+       },
+       {
+        "name": "Out in the Street"
+       },
+       {
+        "name": "Crush on You"
+       },
+       {
+        "name": "You Can Look (But You Better Not Touch)"
+       },
+       {
+        "name": "I Wanna Marry You",
+        "info": "with Here She Comes intro"
+       },
+       {
+        "name": "The River"
+       },
+       {
+        "name": "Point Blank"
+       },
+       {
+        "name": "Cadillac Ranch"
+       },
+       {
+        "name": "I'm a Rocker"
+       },
+       {
+        "name": "Fade Away"
+       },
+       {
+        "name": "Stolen Car"
+       },
+       {
+        "name": "Ramrod"
+       },
+       {
+        "name": "The Price You Pay"
+       },
+       {
+        "name": "Drive All Night",
+        "info": "with Dream Baby Dream interlude"
+       },
+       {
+        "name": "Wreck on the Highway"
+       }
+      ]
+     },
+     {
+      "name": "",
+      "song": [
+       {
+        "name": "Badlands"
+       },
+       {
+        "name": "The Promised Land"
+       },
+       {
+        "name": "Candy's Room"
+       },
+       {
+        "name": "She's the One"
+       },
+       {
+        "name": "Because the Night",
+        "cover": {
+         "mbid": "26638df8-ef34-40d1-8d93-616836b72878",
+         "name": "Patti Smith Group",
+         "sortName": "Smith, Patti, Group",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/patti-smith-group-53d657bd.html"
+        }
+       },
+       {
+        "name": "The Rising"
+       },
+       {
+        "name": "Land of Hope and Dreams"
+       },
+       {
+        "name": "Born in the U.S.A."
+       },
+       {
+        "name": "Born to Run"
+       },
+       {
+        "name": "Seven Nights to Rock",
+        "cover": {
+         "mbid": "da009937-d372-4ba9-833f-02c89a9b1f1d",
+         "name": "Moon Mullican",
+         "sortName": "Moon Mullican",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/moon-mullican-bd70dba.html"
+        }
+       },
+       {
+        "name": "Dancing in the Dark"
+       },
+       {
+        "name": "Tenth Avenue Freeze-Out"
+       },
+       {
+        "name": "Shout",
+        "cover": {
+         "mbid": "4a76400d-283f-492e-9754-18ef41755f81",
+         "name": "The Isley Brothers",
+         "sortName": "Isley Brothers, The",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/the-isley-brothers-3d6b943.html"
+        }
+       },
+       {
+        "name": "Twist and Shout",
+        "cover": {
+         "mbid": "f18eac60-48d2-4d2b-b432-e43ce7e31d36",
+         "name": "The Top Notes",
+         "sortName": "Top Notes, The",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/the-top-notes-53d433dd.html"
+        },
+        "info": "sign request"
+       }
+      ]
+     }
+    ]
+   },
+   "url": "https://www.setlist.fm/setlist/bruce-springsteen/2016/ullevi-stadium-gothenburg-sweden-23ff7cdb.html"
+  },
+  {
+   "id": "7bff1acc",
+   "versionId": "g2bf7acfa",
+   "eventDate": "20-07-2016",
+   "lastUpdated": "2022-06-07T19:48:06.244+0000",
+   "artist": {
+    "mbid": "70248960-cb53-4ea4-943a-edb18f7d336f",
+    "name": "Bruce Springsteen",
+    "sortName": "Springsteen, Bruce",
+    "disambiguation": "",
+    "url": "https://www.setlist.fm/setlists/bruce-springsteen-2bd6dcce.html"
+   },
+   "venue": {
+    "id": "33d018f9",
+    "name": "CASA Arena Horsens",
+    "city": {
+     "id": "2619771",
+     "name": "Horsens",
+     "state": "Central Jutland",
+     "stateCode": "18",
+     "coords": {
+      "lat": 55.8606582358663,
+      "long": 9.85033750534058
+     },
+     "country": {
+      "code": "DK",
+      "name": "Denmark"
+     }
+    },
+    "url": "https://www.setlist.fm/venue/casa-arena-horsens-horsens-denmark-33d018f9.html"
+   },
+   "tour": {
+    "name": "The River Tour 2016"
+   },
+   "sets": {
+    "set": [
+     {
+      "song": [
+       {
+        "name": "Dream Baby Dream",
+        "cover": {
+         "mbid": "7a0f02e0-0ab8-4a62-9e14-c6925cfaed07",
+         "name": "Suicide",
+         "sortName": "Suicide",
+         "disambiguation": "Alan Vega and Martin Rev",
+         "url": "https://www.setlist.fm/setlists/suicide-7bd6ae18.html"
+        },
+        "info": "tour debut, for Alan Vega"
+       },
+       {
+        "name": "The Promised Land"
+       },
+       {
+        "name": "Badlands"
+       },
+       {
+        "name": "No Surrender"
+       },
+       {
+        "name": "The Ties That Bind"
+       },
+       {
+        "name": "Sherry Darling"
+       },
+       {
+        "name": "Two Hearts"
+       },
+       {
+        "name": "Independence Day"
+       },
+       {
+        "name": "Hungry Heart"
+       },
+       {
+        "name": "Out in the Street"
+       },
+       {
+        "name": "You Never Can Tell",
+        "cover": {
+         "mbid": "592a3b6d-c42b-4567-99c9-ecf63bd66499",
+         "name": "Chuck Berry",
+         "sortName": "Berry, Chuck",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/chuck-berry-63d6a2b7.html"
+        },
+        "info": "sign request, tour debut"
+       },
+       {
+        "name": "Cover Me",
+        "info": "sign request"
+       },
+       {
+        "name": "You Can Look (But You Better Not Touch)"
+       },
+       {
+        "name": "Death to My Hometown"
+       },
+       {
+        "name": "The River"
+       },
+       {
+        "name": "American Skin (41 Shots)",
+        "info": "sign request"
+       },
+       {
+        "name": "Frankie",
+        "info": "sign request, tour debut"
+       },
+       {
+        "name": "Darlington County"
+       },
+       {
+        "name": "I'm a Rocker"
+       },
+       {
+        "name": "Working on the Highway"
+       },
+       {
+        "name": "Follow That Dream",
+        "cover": {
+         "mbid": "01809552-4f87-45b0-afff-2c6f0730a3be",
+         "name": "Elvis Presley",
+         "sortName": "Presley, Elvis",
+         "disambiguation": "“The King of Rock and Roll”",
+         "url": "https://www.setlist.fm/setlists/elvis-presley-73d6a2b1.html"
+        },
+        "info": "tour debut"
+       },
+       {
+        "name": "I'm on Fire"
+       },
+       {
+        "name": "Because the Night",
+        "cover": {
+         "mbid": "26638df8-ef34-40d1-8d93-616836b72878",
+         "name": "Patti Smith Group",
+         "sortName": "Smith, Patti, Group",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/patti-smith-group-53d657bd.html"
+        }
+       },
+       {
+        "name": "The Rising"
+       },
+       {
+        "name": "Land of Hope and Dreams"
+       }
+      ]
+     },
+     {
+      "encore": 1,
+      "song": [
+       {
+        "name": "Backstreets"
+       },
+       {
+        "name": "Born in the U.S.A."
+       },
+       {
+        "name": "Born to Run"
+       },
+       {
+        "name": "Ramrod"
+       },
+       {
+        "name": "Dancing in the Dark"
+       },
+       {
+        "name": "Tenth Avenue Freeze-Out"
+       },
+       {
+        "name": "Shout",
+        "cover": {
+         "mbid": "4a76400d-283f-492e-9754-18ef41755f81",
+         "name": "The Isley Brothers",
+         "sortName": "Isley Brothers, The",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/the-isley-brothers-3d6b943.html"
+        }
+       }
+      ]
+     },
+     {
+      "encore": 2,
+      "song": [
+       {
+        "name": "Thunder Road",
+        "info": "solo acoustic"
+       }
+      ]
+     }
+    ]
+   },
+   "info": "Soundcheck included \"Dream Baby Dream\"",
+   "url": "https://www.setlist.fm/setlist/bruce-springsteen/2016/casa-arena-horsens-horsens-denmark-7bff1acc.html"
+  },
+  {
+   "id": "5bff3758",
+   "versionId": "g5b454360",
+   "eventDate": "16-07-2016",
+   "lastUpdated": "2025-03-12T10:29:37.206+0000",
+   "artist": {
+    "mbid": "70248960-cb53-4ea4-943a-edb18f7d336f",
+    "name": "Bruce Springsteen",
+    "sortName": "Springsteen, Bruce",
+    "disambiguation": "",
+    "url": "https://www.setlist.fm/setlists/bruce-springsteen-2bd6dcce.html"
+   },
+   "venue": {
+    "id": "5bd603a4",
+    "name": "Circo Massimo",
+    "city": {
+     "id": "3169070",
+     "name": "Rome",
+     "state": "Lazio",
+     "stateCode": "07",
+     "coords": {
+      "lat": 41.9,
+      "long": 12.483
+     },
+     "country": {
+      "code": "IT",
+      "name": "Italy"
+     }
+    },
+    "url": "https://www.setlist.fm/venue/circo-massimo-rome-italy-5bd603a4.html"
+   },
+   "tour": {
+    "name": "The River Tour 2016"
+   },
+   "sets": {
+    "set": [
+     {
+      "song": [
+       {
+        "name": "New York City Serenade",
+        "info": "tour debut, with 7-piece strings from Roma Sinfonietta Orchestra"
+       },
+       {
+        "name": "Badlands"
+       },
+       {
+        "name": "Summertime Blues",
+        "cover": {
+         "mbid": "17995d1c-5b3c-4ee9-98f5-105ee3b4ada1",
+         "name": "Eddie Cochran",
+         "sortName": "Cochran, Eddie",
+         "disambiguation": "US rock and roll musician active in 1950s",
+         "url": "https://www.setlist.fm/setlists/eddie-cochran-4bd6af56.html"
+        },
+        "info": "tour debut, sign request"
+       },
+       {
+        "name": "The Ties That Bind"
+       },
+       {
+        "name": "Sherry Darling"
+       },
+       {
+        "name": "Jackson Cage"
+       },
+       {
+        "name": "Two Hearts"
+       },
+       {
+        "name": "Independence Day"
+       },
+       {
+        "name": "Hungry Heart"
+       },
+       {
+        "name": "Out in the Street"
+       },
+       {
+        "name": "Boom Boom",
+        "cover": {
+         "mbid": "b0122194-c49a-46a1-ade7-84d1d76bd8e9",
+         "name": "John Lee Hooker",
+         "sortName": "Hooker, John Lee",
+         "disambiguation": "US blues singer, songwriter & guitarist",
+         "url": "https://www.setlist.fm/setlists/john-lee-hooker-2bd698da.html"
+        },
+        "info": "sign request"
+       },
+       {
+        "name": "Detroit Medley",
+        "info": "request on an hat wore during the song"
+       },
+       {
+        "name": "You Can Look (But You Better Not Touch)"
+       },
+       {
+        "name": "Death to My Hometown"
+       },
+       {
+        "name": "The Ghost of Tom Joad",
+        "info": "solo acoustic, tour debut, requested before the show by Roman social workers"
+       },
+       {
+        "name": "The River"
+       },
+       {
+        "name": "Point Blank"
+       },
+       {
+        "name": "The Promised Land"
+       },
+       {
+        "name": "Working on the Highway"
+       },
+       {
+        "name": "Darlington County"
+       },
+       {
+        "name": "Bobby Jean"
+       },
+       {
+        "name": "Tougher Than the Rest",
+        "info": "sign request"
+       },
+       {
+        "name": "Drive All Night"
+       },
+       {
+        "name": "Because the Night",
+        "cover": {
+         "mbid": "26638df8-ef34-40d1-8d93-616836b72878",
+         "name": "Patti Smith Group",
+         "sortName": "Smith, Patti, Group",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/patti-smith-group-53d657bd.html"
+        }
+       },
+       {
+        "name": "The Rising"
+       },
+       {
+        "name": "Land of Hope and Dreams",
+        "info": "dedicated to the victims in Nice"
+       }
+      ]
+     },
+     {
+      "encore": 1,
+      "song": [
+       {
+        "name": "Jungleland"
+       },
+       {
+        "name": "Born in the U.S.A."
+       },
+       {
+        "name": "Born to Run"
+       },
+       {
+        "name": "Ramrod"
+       },
+       {
+        "name": "Dancing in the Dark"
+       },
+       {
+        "name": "Tenth Avenue Freeze-Out"
+       },
+       {
+        "name": "Shout",
+        "cover": {
+         "mbid": "4a76400d-283f-492e-9754-18ef41755f81",
+         "name": "The Isley Brothers",
+         "sortName": "Isley Brothers, The",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/the-isley-brothers-3d6b943.html"
+        }
+       }
+      ]
+     },
+     {
+      "encore": 2,
+      "song": [
+       {
+        "name": "Thunder Road",
+        "info": "solo acoustic"
+       }
+      ]
+     }
+    ]
+   },
+   "url": "https://www.setlist.fm/setlist/bruce-springsteen/2016/circo-massimo-rome-italy-5bff3758.html"
+  },
+  {
+   "id": "3bffc8b8",
+   "versionId": "g7b94da44",
+   "eventDate": "13-07-2016",
+   "lastUpdated": "2023-05-15T06:43:50.696+0000",
+   "artist": {
+    "mbid": "70248960-cb53-4ea4-943a-edb18f7d336f",
+    "name": "Bruce Springsteen",
+    "sortName": "Springsteen, Bruce",
+    "disambiguation": "",
+    "url": "https://www.setlist.fm/setlists/bruce-springsteen-2bd6dcce.html"
+   },
+   "venue": {
+    "id": "2bd5f872",
+    "name": "AccorHotels Arena",
+    "city": {
+     "id": "2988507",
+     "name": "Paris",
+     "state": "Île-de-France",
+     "stateCode": "11",
+     "coords": {
+      "lat": 48.853,
+      "long": 2.349
+     },
+     "country": {
+      "code": "FR",
+      "name": "France"
+     }
+    },
+    "url": "https://www.setlist.fm/venue/accorhotels-arena-paris-france-2bd5f872.html"
+   },
+   "tour": {
+    "name": "The River Tour 2016"
+   },
+   "sets": {
+    "set": [
+     {
+      "song": [
+       {
+        "name": "Iceman",
+        "info": "tour debut"
+       },
+       {
+        "name": "Lucky Town"
+       }
+      ]
+     },
+     {
+      "name": "The River",
+      "song": [
+       {
+        "name": "The Ties That Bind"
+       },
+       {
+        "name": "Sherry Darling"
+       },
+       {
+        "name": "Jackson Cage"
+       },
+       {
+        "name": "Two Hearts"
+       },
+       {
+        "name": "Independence Day"
+       },
+       {
+        "name": "Hungry Heart"
+       },
+       {
+        "name": "Out in the Street"
+       },
+       {
+        "name": "Crush on You"
+       },
+       {
+        "name": "You Can Look (But You Better Not Touch)"
+       },
+       {
+        "name": "I Wanna Marry You",
+        "info": "with Here She Comes intro; fan proposal beforehand"
+       },
+       {
+        "name": "The River"
+       },
+       {
+        "name": "Point Blank"
+       },
+       {
+        "name": "Cadillac Ranch"
+       },
+       {
+        "name": "I'm a Rocker"
+       },
+       {
+        "name": "Fade Away"
+       },
+       {
+        "name": "Stolen Car"
+       },
+       {
+        "name": "Ramrod"
+       },
+       {
+        "name": "The Price You Pay"
+       },
+       {
+        "name": "Drive All Night"
+       },
+       {
+        "name": "Wreck on the Highway"
+       }
+      ]
+     },
+     {
+      "name": "",
+      "song": [
+       {
+        "name": "Badlands"
+       },
+       {
+        "name": "The Promised Land"
+       },
+       {
+        "name": "Growin' Up"
+       },
+       {
+        "name": "Because the Night",
+        "cover": {
+         "mbid": "26638df8-ef34-40d1-8d93-616836b72878",
+         "name": "Patti Smith Group",
+         "sortName": "Smith, Patti, Group",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/patti-smith-group-53d657bd.html"
+        }
+       },
+       {
+        "name": "The Rising"
+       },
+       {
+        "name": "Born in the U.S.A."
+       },
+       {
+        "name": "Born to Run"
+       },
+       {
+        "name": "Dancing in the Dark"
+       },
+       {
+        "name": "Tenth Avenue Freeze-Out"
+       },
+       {
+        "name": "Shout",
+        "cover": {
+         "mbid": "4a76400d-283f-492e-9754-18ef41755f81",
+         "name": "The Isley Brothers",
+         "sortName": "Isley Brothers, The",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/the-isley-brothers-3d6b943.html"
+        }
+       }
+      ]
+     },
+     {
+      "encore": 1,
+      "song": [
+       {
+        "name": "Thunder Road",
+        "info": "solo acoustic"
+       }
+      ]
+     }
+    ]
+   },
+   "info": "First performance of \"The River\" album in Europe",
+   "url": "https://www.setlist.fm/setlist/bruce-springsteen/2016/accorhotels-arena-paris-france-3bffc8b8.html"
+  },
+  {
+   "id": "53ffd7fd",
+   "versionId": "g4ba18fc2",
+   "eventDate": "11-07-2016",
+   "lastUpdated": "2024-07-27T13:20:11.362+0000",
+   "artist": {
+    "mbid": "70248960-cb53-4ea4-943a-edb18f7d336f",
+    "name": "Bruce Springsteen",
+    "sortName": "Springsteen, Bruce",
+    "disambiguation": "",
+    "url": "https://www.setlist.fm/setlists/bruce-springsteen-2bd6dcce.html"
+   },
+   "venue": {
+    "id": "2bd5f872",
+    "name": "AccorHotels Arena",
+    "city": {
+     "id": "2988507",
+     "name": "Paris",
+     "state": "Île-de-France",
+     "stateCode": "11",
+     "coords": {
+      "lat": 48.853,
+      "long": 2.349
+     },
+     "country": {
+      "code": "FR",
+      "name": "France"
+     }
+    },
+    "url": "https://www.setlist.fm/venue/accorhotels-arena-paris-france-2bd5f872.html"
+   },
+   "tour": {
+    "name": "The River Tour 2016"
+   },
+   "sets": {
+    "set": [
+     {
+      "song": [
+       {
+        "name": "Incident on 57th Street",
+        "info": "solo piano"
+       },
+       {
+        "name": "Reason to Believe",
+        "info": "tour debut"
+       },
+       {
+        "name": "Badlands"
+       },
+       {
+        "name": "Into the Fire",
+        "info": "tour debut"
+       },
+       {
+        "name": "The Ties That Bind"
+       },
+       {
+        "name": "Sherry Darling"
+       },
+       {
+        "name": "Jackson Cage"
+       },
+       {
+        "name": "Two Hearts"
+       },
+       {
+        "name": "Independence Day"
+       },
+       {
+        "name": "Hungry Heart"
+       },
+       {
+        "name": "Out in the Street"
+       },
+       {
+        "name": "Crush on You"
+       },
+       {
+        "name": "You Can Look (But You Better Not Touch)"
+       },
+       {
+        "name": "Death to My Hometown"
+       },
+       {
+        "name": "Nebraska",
+        "info": "tour debut, solo acoustic"
+       },
+       {
+        "name": "The River"
+       },
+       {
+        "name": "Point Blank"
+       },
+       {
+        "name": "Cadillac Ranch"
+       },
+       {
+        "name": "I'm a Rocker"
+       },
+       {
+        "name": "Darlington County"
+       },
+       {
+        "name": "Tougher Than the Rest"
+       },
+       {
+        "name": "Drive All Night"
+       },
+       {
+        "name": "Because the Night",
+        "cover": {
+         "mbid": "26638df8-ef34-40d1-8d93-616836b72878",
+         "name": "Patti Smith Group",
+         "sortName": "Smith, Patti, Group",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/patti-smith-group-53d657bd.html"
+        }
+       },
+       {
+        "name": "The Rising"
+       },
+       {
+        "name": "Land of Hope and Dreams"
+       }
+      ]
+     },
+     {
+      "encore": 1,
+      "song": [
+       {
+        "name": "Jungleland"
+       },
+       {
+        "name": "Born to Run",
+        "with": {
+         "mbid": "7dd2a29e-5415-4180-9af9-231b1d5716ad",
+         "name": "Elliott Murphy",
+         "sortName": "Murphy, Elliott",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/elliott-murphy-73d79ef9.html"
+        }
+       },
+       {
+        "name": "Ramrod",
+        "info": "interrupted due to power outage"
+       },
+       {
+        "name": "Dancing in the Dark"
+       },
+       {
+        "name": "Tenth Avenue Freeze-Out"
+       },
+       {
+        "name": "Shout",
+        "cover": {
+         "mbid": "4a76400d-283f-492e-9754-18ef41755f81",
+         "name": "The Isley Brothers",
+         "sortName": "Isley Brothers, The",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/the-isley-brothers-3d6b943.html"
+        }
+       },
+       {
+        "name": "Bobby Jean"
+       }
+      ]
+     },
+     {
+      "encore": 2,
+      "song": [
+       {
+        "name": "Thunder Road",
+        "info": "solo acoustic"
+       }
+      ]
+     }
+    ]
+   },
+   "info": "\"Spirit in the Night\", \"American Skin (41 Shots)\", \"The Promised Land\", \"Born in the U.S.A.\" were on the setlist, but were not played. \"Into the Fire\", \"Point Blank\", \"Cadillac Ranch\", \"Tougher Than the Rest\", \"Drive All Night\", and \"Bobby Jean\" were not on the setlist. During Ramrod the main power went down due to a short-circuit. Bruce and band stayed onstage and signed autographs for about 15 minutes. The remainder of the show was played with only the house lights on and without video. Total showtime incl interruption 3h48",
+   "url": "https://www.setlist.fm/setlist/bruce-springsteen/2016/accorhotels-arena-paris-france-53ffd7fd.html"
+  },
+  {
+   "id": "3bffe4b8",
+   "versionId": "g535da389",
+   "eventDate": "09-07-2016",
+   "lastUpdated": "2024-12-29T10:32:44.791+0000",
+   "artist": {
+    "mbid": "70248960-cb53-4ea4-943a-edb18f7d336f",
+    "name": "Bruce Springsteen",
+    "sortName": "Springsteen, Bruce",
+    "disambiguation": "",
+    "url": "https://www.setlist.fm/setlists/bruce-springsteen-2bd6dcce.html"
+   },
+   "venue": {
+    "id": "5bd0e738",
+    "name": "Festivalpark",
+    "city": {
+     "id": "2783844",
+     "name": "Werchter",
+     "state": "Flemish Brabant",
+     "stateCode": "BE.VB",
+     "coords": {
+      "lat": 50.967,
+      "long": 4.7
+     },
+     "country": {
+      "code": "BE",
+      "name": "Belgium"
+     }
+    },
+    "url": "https://www.setlist.fm/venue/festivalpark-werchter-belgium-5bd0e738.html"
+   },
+   "tour": {
+    "name": "The River Tour 2016"
+   },
+   "sets": {
+    "set": [
+     {
+      "song": [
+       {
+        "name": "Prove It All Night"
+       },
+       {
+        "name": "Darkness on the Edge of Town"
+       },
+       {
+        "name": "No Surrender"
+       },
+       {
+        "name": "The Ties That Bind"
+       },
+       {
+        "name": "Sherry Darling"
+       },
+       {
+        "name": "Spirit in the Night"
+       },
+       {
+        "name": "Thunder Road",
+        "info": "sign request"
+       },
+       {
+        "name": "Hungry Heart"
+       },
+       {
+        "name": "Cover Me",
+        "info": "sign request"
+       },
+       {
+        "name": "You Can Look (But You Better Not Touch)"
+       },
+       {
+        "name": "Death to My Hometown"
+       },
+       {
+        "name": "Mansion on the Hill",
+        "info": "sign request, solo acoustic, tour debut, first time live since 2012"
+       },
+       {
+        "name": "The River"
+       },
+       {
+        "name": "American Skin (41 Shots)",
+        "info": "sign request"
+       },
+       {
+        "name": "The Promised Land"
+       },
+       {
+        "name": "Darlington County"
+       },
+       {
+        "name": "Waitin' on a Sunny Day"
+       },
+       {
+        "name": "Because the Night",
+        "cover": {
+         "mbid": "26638df8-ef34-40d1-8d93-616836b72878",
+         "name": "Patti Smith Group",
+         "sortName": "Smith, Patti, Group",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/patti-smith-group-53d657bd.html"
+        }
+       },
+       {
+        "name": "The Rising"
+       },
+       {
+        "name": "Badlands"
+       },
+       {
+        "name": "Born in the U.S.A."
+       },
+       {
+        "name": "Born to Run"
+       },
+       {
+        "name": "Dancing in the Dark"
+       },
+       {
+        "name": "Tenth Avenue Freeze-Out"
+       },
+       {
+        "name": "Shout",
+        "cover": {
+         "mbid": "4a76400d-283f-492e-9754-18ef41755f81",
+         "name": "The Isley Brothers",
+         "sortName": "Isley Brothers, The",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/the-isley-brothers-3d6b943.html"
+        }
+       },
+       {
+        "name": "Bobby Jean",
+        "info": "sign request"
+       }
+      ]
+     },
+     {
+      "encore": 1,
+      "song": [
+       {
+        "name": "If I Should Fall Behind",
+        "info": "solo acoustic, tour debut"
+       }
+      ]
+     }
+    ]
+   },
+   "info": "\"My Love Will Not Let You Down\", \"Two Hearts\", \"Out in the Street\", \"I'm on Fire\", \"Lonesome Day\", and \"Backstreets\" were on the setlist, but were not played. \"Thunder Road\", \"Cover Me\", \"Mansion on the Hill\", \"American Skin (41 Shots), \"Waitin' on a Sunny Day\", and \"If I Should Fall Behind\" were not on the setlist",
+   "url": "https://www.setlist.fm/setlist/bruce-springsteen/2016/festivalpark-werchter-belgium-3bffe4b8.html"
+  },
+  {
+   "id": "1bfff9b8",
+   "versionId": "g5307f391",
+   "eventDate": "05-07-2016",
+   "lastUpdated": "2026-07-06T04:47:28.006+0000",
+   "artist": {
+    "mbid": "70248960-cb53-4ea4-943a-edb18f7d336f",
+    "name": "Bruce Springsteen",
+    "sortName": "Springsteen, Bruce",
+    "disambiguation": "",
+    "url": "https://www.setlist.fm/setlists/bruce-springsteen-2bd6dcce.html"
+   },
+   "venue": {
+    "id": "3d0554f",
+    "name": "Stadio Giuseppe Meazza",
+    "city": {
+     "id": "3173435",
+     "name": "Milan",
+     "state": "Lombardy",
+     "stateCode": "09",
+     "coords": {
+      "lat": 45.4642693810258,
+      "long": 9.1895055770874
+     },
+     "country": {
+      "code": "IT",
+      "name": "Italy"
+     }
+    },
+    "url": "https://www.setlist.fm/venue/stadio-giuseppe-meazza-milan-italy-3d0554f.html"
+   },
+   "tour": {
+    "name": "The River Tour 2016"
+   },
+   "sets": {
+    "set": [
+     {
+      "song": [
+       {
+        "name": "Once Upon a Time in the West",
+        "tape": true,
+        "cover": {
+         "mbid": "a16e47f5-aa54-47fe-87e4-bb8af91a9fdd",
+         "name": "Ennio Morricone",
+         "sortName": "Morricone, Ennio",
+         "disambiguation": "Italian classical and score composer",
+         "url": "https://www.setlist.fm/setlists/ennio-morricone-23d6a833.html"
+        }
+       },
+       {
+        "name": "Meet Me in the City"
+       },
+       {
+        "name": "Prove It All Night"
+       },
+       {
+        "name": "Roulette"
+       },
+       {
+        "name": "The Ties That Bind"
+       },
+       {
+        "name": "Sherry Darling"
+       },
+       {
+        "name": "Spirit in the Night",
+        "info": "sign request"
+       },
+       {
+        "name": "Rosalita (Come Out Tonight)",
+        "info": "sign request"
+       },
+       {
+        "name": "Fire",
+        "info": "sign request"
+       },
+       {
+        "name": "Something in the Night"
+       },
+       {
+        "name": "Hungry Heart"
+       },
+       {
+        "name": "Out in the Street"
+       },
+       {
+        "name": "Mary's Place",
+        "info": "sign request"
+       },
+       {
+        "name": "Death to My Hometown"
+       },
+       {
+        "name": "The River"
+       },
+       {
+        "name": "Racing in the Street"
+       },
+       {
+        "name": "Cadillac Ranch"
+       },
+       {
+        "name": "The Promised Land"
+       },
+       {
+        "name": "I'm a Rocker"
+       },
+       {
+        "name": "Lonesome Day"
+       },
+       {
+        "name": "Darlington County"
+       },
+       {
+        "name": "The Price You Pay",
+        "info": "sign request"
+       },
+       {
+        "name": "Because the Night",
+        "cover": {
+         "mbid": "26638df8-ef34-40d1-8d93-616836b72878",
+         "name": "Patti Smith Group",
+         "sortName": "Smith, Patti, Group",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/patti-smith-group-53d657bd.html"
+        }
+       },
+       {
+        "name": "Streets of Fire",
+        "info": "Tour debut"
+       },
+       {
+        "name": "The Rising"
+       },
+       {
+        "name": "Badlands"
+       }
+      ]
+     },
+     {
+      "encore": 1,
+      "song": [
+       {
+        "name": "Backstreets",
+        "info": "Dream Baby Dream snippet"
+       },
+       {
+        "name": "Born to Run"
+       },
+       {
+        "name": "Seven Nights to Rock",
+        "cover": {
+         "mbid": "da009937-d372-4ba9-833f-02c89a9b1f1d",
+         "name": "Moon Mullican",
+         "sortName": "Moon Mullican",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/moon-mullican-bd70dba.html"
+        }
+       },
+       {
+        "name": "Dancing in the Dark"
+       },
+       {
+        "name": "Tenth Avenue Freeze-Out"
+       },
+       {
+        "name": "Shout",
+        "cover": {
+         "mbid": "4a76400d-283f-492e-9754-18ef41755f81",
+         "name": "The Isley Brothers",
+         "sortName": "Isley Brothers, The",
+         "disambiguation": "",
+         "url": "https://www.setlist.fm/setlists/the-isley-brothers-3d6b943.html"
+        }
+       },
+       {
+        "name": "Bobby Jean"
+       }
+      ]
+     },
+     {
+      "encore": 2,
+      "song": [
+       {
+        "name": "This Hard Land",
+        "info": "solo acoustic"
+       },
+       {
+        "name": "Once Upon a Time in the West",
+        "tape": true,
+        "cover": {
+         "mbid": "a16e47f5-aa54-47fe-87e4-bb8af91a9fdd",
+         "name": "Ennio Morricone",
+         "sortName": "Morricone, Ennio",
+         "disambiguation": "Italian classical and score composer",
+         "url": "https://www.setlist.fm/setlists/ennio-morricone-23d6a833.html"
+        }
+       }
+      ]
+     }
+    ]
+   },
+   "url": "https://www.setlist.fm/setlist/bruce-springsteen/2016/stadio-giuseppe-meazza-milan-italy-1bfff9b8.html"
+  }
+ ]
+}

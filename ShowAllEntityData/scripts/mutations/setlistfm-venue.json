@@ -1,0 +1,106 @@
+[
+  {
+    "name": "the Date of a setlist.fm list window wraps again",
+    "why": "org/setlistfm.org item 1 (vzell 2026-11-02): \"the 2026-10-20 DATE entries wrap on the next line\" in the State Farm Arena window (debug/POH-setlistfm-venue.html).",
+    "edits": [
+      {
+        "find": "            { key: 'date', label: 'Date', cls: 'mb-dg-yr', val: r => r.date, html: (r, q) => _hlEsc(r.date, q) },",
+        "replace": "            { key: 'date', label: 'Date', val: r => r.date, html: (r, q) => _hlEsc(r.date, q) },"
+      }
+    ],
+    "spec": "tests/fixtures/popup-ext.spec.js",
+    "grep": "a venue window: the Date never wraps",
+    "expect": "fail"
+  },
+  {
+    "name": "a left-hand count no longer keeps the Setlists table to its name",
+    "why": "Item 3 (vzell's answer to the plan: \"Tables + click filters\").",
+    "edits": [
+      {
+        "find": "        const shown = ui.pick ? rows.filter(r => _EXT_SFM_PICK_OF[ui.pick.kind](r) === ui.pick.v) : rows;",
+        "replace": "        const shown = rows;"
+      }
+    ],
+    "spec": "tests/fixtures/popup-ext.spec.js",
+    "grep": "a venue window: the Date never wraps",
+    "expect": "fail"
+  },
+  {
+    "name": "a second click on the picked count does not show every setlist again",
+    "why": "Mockup v1 view 1: a second click, or the pill's x, shows them all again.",
+    "edits": [
+      {
+        "find": "            const same = ui.pick && ui.pick.kind === pk.dataset.mbSfmPick && ui.pick.v === v;",
+        "replace": "            const same = false;"
+      }
+    ],
+    "spec": "tests/fixtures/popup-ext.spec.js",
+    "grep": "a venue window: the Date never wraps",
+    "expect": "fail"
+  },
+  {
+    "name": "the picked row is not marked",
+    "why": "Mockup v1 view 1: the picked name's row is tinted, so the reader sees which one keeps the table.",
+    "edits": [
+      {
+        "find": "            rowAttrs: x => (on(x) ? ' class=\"mb-sfm-picked\"' : ''),",
+        "replace": "            rowAttrs: () => '',"
+      }
+    ],
+    "spec": "tests/fixtures/popup-ext.spec.js",
+    "grep": "a venue window: the Date never wraps",
+    "expect": "fail"
+  },
+  {
+    "name": "the Tour column is plain text again",
+    "why": "Item 5 (vzell 2026-11-02): \"the TOUR column in the POH should get the column values urlified like in the original setlist.fm pages\".",
+    "edits": [
+      {
+        "find": "        if (!tour || !artist || !artist.mbid) return '';",
+        "replace": "        return '';"
+      }
+    ],
+    "spec": "tests/fixtures/popup-ext.spec.js",
+    "grep": "a tour: linked as setlist.fm's search",
+    "expect": "fail"
+  },
+  {
+    "name": "the reader does not take a tour link",
+    "why": "Item 5, vzell's answer to the plan: the tour opens in the window through the API.",
+    "edits": [
+      {
+        "find": "        if (u.pathname === '/search') return _extSfmTourPage(u);",
+        "replace": "        if (u.pathname === '/search') return null;"
+      }
+    ],
+    "spec": "tests/fixtures/popup-ext.spec.js",
+    "grep": "which search links the reader takes",
+    "expect": "fail"
+  },
+  {
+    "name": "a search link without the artist's MBID goes to the reader too",
+    "why": "The API's search by artist NAME is fuzzy (scripts/probe-setlistfm-api.py, 2026-11-02: artistName=Nirvana answered five tribute acts), so only a link carrying the MBID may be read.",
+    "edits": [
+      {
+        "find": "        if (!h || !q || !q[2].trim()) return null;\n        return { kind: 'tour', id: h[1].toLowerCase(),",
+        "replace": "        if (!q || !q[2].trim()) return null;\n        return { kind: 'tour', id: (h ? h[1] : '').toLowerCase(),"
+      }
+    ],
+    "spec": "tests/fixtures/popup-ext.spec.js",
+    "grep": "which search links the reader takes",
+    "expect": "fail"
+  },
+  {
+    "name": "a tour is asked by the artist's name",
+    "why": "The same probe: a name can match other artists; the MBID cannot.",
+    "edits": [
+      {
+        "find": "        if (kind === 'tour') return `/search/setlists?artistMbid=${encodeURIComponent(id)}",
+        "replace": "        if (kind === 'tour') return `/search/setlists?artistName=${encodeURIComponent(id)}"
+      }
+    ],
+    "spec": "tests/fixtures/popup-ext.spec.js",
+    "grep": "a tour: linked as setlist.fm's search",
+    "expect": "fail"
+  }
+]

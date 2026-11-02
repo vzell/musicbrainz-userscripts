@@ -30225,6 +30225,19 @@
             .mb-dp-dialog .mb-dg-fc[aria-pressed="true"] { background: #2b2622; color: #fbf8f1; border-color: #2b2622; }
             .mb-dp-dialog .mb-dg-fc[aria-pressed="true"] .mb-dg-n { color: #d9cfbd; }
             .mb-dp-dialog .mb-dg-fc.mb-dg-more { color: #2f5f9e; border-style: dashed; }
+            /* A setlist.fm window: the count of a left-hand table keeps the
+               Setlists table to that name (_extSfmLeftTableHtml), a pressed
+               one marks its row; the pill above the Setlists table says so. */
+            .mb-dp-dialog .mb-dg-fc.mb-sfm-pick { margin: 0; white-space: nowrap; }
+            .mb-dp-dialog .mb-dg-fc.mb-sfm-pick::after { content: " \\25B8"; color: #7a6d5c; font-size: 10px; }
+            .mb-dp-dialog .mb-dg-fc.mb-sfm-pick[aria-pressed="true"]::after { content: " \\2715"; color: #d9cfbd; }
+            .mb-dp-dialog tr.mb-sfm-picked > td { background: #fdf0c8; }
+            .mb-dp-dialog .mb-sfm-only {
+                display: inline-flex; gap: 4px; align-items: center; font: 12.5px system-ui, -apple-system, "Segoe UI", Arial, sans-serif;
+                background: #fdf0c8; border: 1px solid #e6cf86; border-radius: 999px; padding: 1px 2px 1px 10px; white-space: nowrap;
+            }
+            .mb-dp-dialog .mb-sfm-only button { border: 0; background: none; cursor: pointer; font-size: 13px; line-height: 1; padding: 2px 6px; border-radius: 999px; color: #2b2622; }
+            .mb-dp-dialog .mb-sfm-only button:hover { background: #f3dfa0; }
             .mb-dp-dialog .mb-dg-vtools { margin: 6px 0; }
             .mb-dp-dialog .mb-dg-vq, .mb-dp-dialog .mb-dg-aq, .mb-dp-dialog .mb-tbl-q { font: 13.5px Georgia, "Times New Roman", serif; padding: 3px 8px; border: 1px solid #d9cfbd; border-radius: 3px; width: min(340px, 100%); background: #fff; color: #2b2622; }
             .mb-dp-dialog .mb-dg-vwrap { overflow: auto; max-height: 460px; border: 1px solid #d9cfbd; border-radius: 3px; background: #fff; }
@@ -66472,7 +66485,7 @@
     const _EXT_SFM_API = 'https://api.setlist.fm/rest/1.0';
 
     /** Version of the setlist.fm records kept in IndexedDB; bump when their shape changes. */
-    const _EXT_SFM_VERSION = 1;
+    const _EXT_SFM_VERSION = 2;
 
     /**
      * A setlist.fm page the reader takes, by its path: a setlist
@@ -66484,14 +66497,60 @@
     const _EXT_SFM_PATH_RE = /^\/(?:(setlist)\/[^/]+\/\d{4}\/[^/]*?-([0-9a-f]+)\.html|(setlists)\/([^/]*?)-([0-9a-f]+)\.html|(venue)\/[^/]*?-([0-9a-f]+)\.html)$/i;
 
     /**
+     * A tour's link as the reader writes it (`_extSfmTourUrl()`): setlist.fm's
+     * search for the artist and the tour, `query=artist:(<name>) tour:(<tour>)`
+     * (every one of the three forms vzell tried in the browser on 2026-11-02
+     * lists the tour), with the artist's MBID in the fragment. The fragment
+     * never reaches setlist.fm; the API needs the MBID, since a search by
+     * the artist's NAME is fuzzy (scripts/probe-setlistfm-api.py,
+     * 2026-11-02: `artistName=Nirvana` answered five tribute acts and not
+     * Nirvana). The tour's name may hold parentheses itself, so it runs to
+     * the end of the query.
+     * @type {RegExp}
+     */
+    const _EXT_SFM_TOUR_QUERY_RE = /^artist:\((.*?)\)\s+tour:\((.*)\)$/;
+
+    /**
+     * The tour a setlist.fm search link names, when it carries the artist's
+     * MBID (`#mbid=…`); null otherwise, so setlist.fm's own search links
+     * (`search?artist=<id>&tour=<id>`, ids the API does not know) keep the
+     * generic reader.
+     *
+     * @param {URL} u - A setlist.fm `/search` URL.
+     * @returns {?{kind: 'tour', id: string, name: string, tour: string}}
+     */
+    function _extSfmTourPage(u) {
+        const h = /^#mbid=([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/i.exec(u.hash);
+        const q = _EXT_SFM_TOUR_QUERY_RE.exec((u.searchParams.get('query') || '').trim());
+        if (!h || !q || !q[2].trim()) return null;
+        return { kind: 'tour', id: h[1].toLowerCase(), name: q[1].trim(), tour: q[2].trim() };
+    }
+
+    /**
+     * A tour's link (setlist.fm's search, `_EXT_SFM_TOUR_QUERY_RE`), the
+     * artist's MBID in the fragment so the reader can open it through the
+     * API; '' without a tour or an MBID (the cell stays plain text).
+     *
+     * @param {?{name: string, mbid: string}} artist
+     * @param {string} tour
+     * @returns {string}
+     */
+    function _extSfmTourUrl(artist, tour) {
+        if (!tour || !artist || !artist.mbid) return '';
+        return `https://www.setlist.fm/search?query=${encodeURIComponent(`artist:(${artist.name}) tour:(${tour})`)}#mbid=${artist.mbid}`;
+    }
+
+    /**
      * The setlist.fm page a link names: its kind, its id and (an artist's)
-     * the name its slug spells; null for any other link.
+     * the name its slug spells, (a tour's) the artist's MBID as its id, the
+     * artist's name and the tour; null for any other link.
      *
      * @param {URL} u
-     * @returns {?{kind: ('setlist'|'artist'|'venue'), id: string, name: string}}
+     * @returns {?{kind: ('setlist'|'artist'|'venue'|'tour'), id: string, name: string, tour?: string}}
      */
     function _extSfmPage(u) {
         if (!/^(?:www\.)?setlist\.fm$/i.test(u.hostname)) return null;
+        if (u.pathname === '/search') return _extSfmTourPage(u);
         const m = _EXT_SFM_PATH_RE.exec(u.pathname);
         if (!m) return null;
         if (m[1]) return { kind: 'setlist', id: m[2].toLowerCase(), name: '' };
@@ -66662,23 +66721,29 @@
     }
 
     /**
-     * The path of a list's page: an artist's setlists by MBID, a venue's by id.
+     * The path of a list's page: an artist's setlists by MBID, a venue's by
+     * id, a tour's by the artist's MBID and the tour's name (the API's
+     * setlist search; the probe of 2026-11-02 answered The River Tour 2016's
+     * 75 setlists, every one of that tour).
      *
-     * @param {string} kind - 'artist' or 'venue'.
+     * @param {string} kind - 'artist', 'venue' or 'tour'.
      * @param {string} id - The artist's MBID, the venue's id.
      * @param {number} page
+     * @param {string} [tour] - A tour's name.
      * @returns {string}
      */
-    function _extSfmListPath(kind, id, page) {
+    function _extSfmListPath(kind, id, page, tour = '') {
+        if (kind === 'tour') return `/search/setlists?artistMbid=${encodeURIComponent(id)}&tourName=${encodeURIComponent(tour)}&p=${page}`;
         return `/${kind}/${encodeURIComponent(id)}/setlists?p=${page}`;
     }
 
     /**
      * The setlist.fm reader: one API request for a setlist; a venue and the
      * first page of its setlists; an artist found by name (one search, the
-     * one whose page is the link's) and the first page of its setlists. No
-     * key: a failure that says where to enter one, nothing asked, nothing
-     * kept.
+     * one whose page is the link's) and the first page of its setlists; a
+     * tour (our own link, `_extSfmTourUrl()`): the first page of its
+     * setlists, one request. No key: a failure that says where to enter
+     * one, nothing asked, nothing kept.
      *
      * @param {object} t
      * @param {function(): boolean} wanted
@@ -66705,6 +66770,20 @@
                 ['Tour', s.tour], ['Songs', songs.length ? String(songs.length) : ''],
                 ['Covers', String(songs.filter(g => g.cover).length || '')],
             ].filter(f => f[1]);
+            return { ok: true, data: rec };
+        }
+        if (pg.kind === 'tour') {
+            const l = await _extSfmGet(t, _extSfmListPath('tour', pg.id, 1, pg.tour), wanted);
+            if (l.skipped) return { skipped: true };
+            if (l.out) return l.out;
+            const list = _extSfmListPage(l.data);
+            // The artist as the API names it (its first setlist's), else as
+            // the link does.
+            const own = list.rows.find(r => r.artist && r.artist.mbid === pg.id);
+            const artist = own ? own.artist : { name: pg.name, mbid: pg.id, url: '' };
+            Object.assign(rec, { title: pg.tour, description: artist.name, type: 'tour' });
+            rec.facts = [['Artist', artist.name], ['Setlists', _extDgNum(list.total)]].filter(f => f[1]);
+            rec.sfm = { kind: 'tour', id: pg.id, tour: pg.tour, artist, venue: null, list };
             return { ok: true, data: rec };
         }
         let mbid = '';
@@ -66741,29 +66820,34 @@
         return { ok: true, data: rec };
     }
 
-    /** Each setlist.fm window's state, by target key: how many list pages it shows. */
+    /**
+     * Each setlist.fm window's state, by target key: how many list pages it
+     * shows, and the artist, tour or venue a left-hand table's count keeps
+     * the Setlists table to (`pick`, `_extSfmAreaClick()`).
+     */
     const _extSfmUi = new Map();
 
     /**
      * A setlist.fm window's state, made on first use.
      *
      * @param {object} t
-     * @returns {{pages: number}}
+     * @returns {{pages: number, pick: ?{kind: string, v: string}}}
      */
     function _extSfmUiOf(t) {
-        if (!_extSfmUi.has(t.key)) _extSfmUi.set(t.key, { pages: 1 });
+        if (!_extSfmUi.has(t.key)) _extSfmUi.set(t.key, { pages: 1, pick: null });
         return _extSfmUi.get(t.key);
     }
 
     /**
-     * The cache key of a list's page (page 1 is the record's own).
+     * The cache key of a list's page (page 1 is the record's own); a tour's
+     * names the tour too.
      *
      * @param {Object} sfm - The record's `sfm`.
      * @param {number} page
      * @returns {string}
      */
     function _extSfmPageKey(sfm, page) {
-        return `ext:sfm-list:${sfm.kind}:${sfm.id}:${page}`;
+        return `ext:sfm-list:${sfm.kind}:${sfm.id}:${sfm.kind === 'tour' ? `${sfm.tour}:` : ''}${page}`;
     }
 
     /**
@@ -66778,7 +66862,7 @@
      */
     function _extSfmPageLoad(t, sfm, page, { force = false, repaint = null } = {}) {
         _mbLoad(_extSfmPageKey(sfm, page), async (wanted) => {
-            const r = await _extSfmGet(t, _extSfmListPath(sfm.kind, sfm.id, page), wanted);
+            const r = await _extSfmGet(t, _extSfmListPath(sfm.kind, sfm.id, page, sfm.tour), wanted);
             if (r.skipped) return { skipped: true };
             if (r.out) return r.out.ok ? { ok: false, detail: `setlist.fm answered HTTP ${r.out.data.status}` } : r.out;
             return { ok: true, data: _extSfmListPage(r.data) };
@@ -66880,11 +66964,89 @@
         return out;
     }
 
+    /** How many rows a left-hand table of a setlist.fm window shows a page. */
+    const _EXT_SFM_LEFT_ROWS = 8;
+
     /**
-     * An artist's or a venue's window: its facts and what the loaded
-     * setlists show (tours and venues, or artists, with counts) on the left;
-     * on the right the setlists as a List table — date, the setlist (linked:
-     * it opens in the window), tour, songs — with "Load 20 more" while
+     * What a loaded setlist counts as in a left-hand table, and what the
+     * Setlists table is kept to when that table's count is picked: its
+     * artist's name, its tour, its venue with the city.
+     * @type {Object<string, function(Object): string>}
+     */
+    const _EXT_SFM_PICK_OF = {
+        artist: r => (r.artist ? r.artist.name : ''),
+        tour: r => r.tour,
+        venue: r => [r.venue.name, r.venue.city].filter(Boolean).join(', '),
+    };
+
+    /**
+     * The link of a left-hand table's name: an artist's setlists, a tour
+     * (`_extSfmTourUrl()`), a venue; '' when there is none. Each opens in
+     * the window (`setlistfm` is in `_DP_WIN_ALL_LINKS_READERS`).
+     *
+     * @param {string} kind - 'artist', 'tour' or 'venue'.
+     * @param {Object} r - A row that has it.
+     * @returns {string}
+     */
+    function _extSfmPickUrl(kind, r) {
+        if (kind === 'artist') return r.artist ? r.artist.url : '';
+        if (kind === 'tour') return _extSfmTourUrl(r.artist, r.tour);
+        return r.venue.url;
+    }
+
+    /**
+     * A left-hand table of a setlist.fm window (org/setlistfm.org item 3,
+     * mockup https://claude.ai/artifact/71itNE6a2ekiAtQxcTi1hq view 1): the
+     * artists, tours or venues of the loaded setlists as a Compact table —
+     * the name (linked, it opens in the window) and how many setlists, most
+     * first, sortable, filterable, `_EXT_SFM_LEFT_ROWS` a page. The count is
+     * a button (`data-mb-sfm-pick`): it keeps the Setlists table to that
+     * name, and a second click (or the "Only" pill's ✕) shows them all again
+     * (`_extSfmAreaClick()`).
+     *
+     * @param {object} t
+     * @param {string} kind - 'artist', 'tour' or 'venue'.
+     * @param {string} label - "Artists", "Tours", "Venues".
+     * @param {Array<Object>} rows - The loaded setlists.
+     * @param {?{kind: string, v: string}} pick
+     * @returns {string}
+     */
+    function _extSfmLeftTableHtml(t, kind, label, rows, pick) {
+        const by = new Map();
+        rows.forEach((r) => {
+            const k = _EXT_SFM_PICK_OF[kind](r);
+            if (!k) return;
+            const x = by.get(k) || { name: k, n: 0, url: _extSfmPickUrl(kind, r) };
+            x.n++;
+            by.set(k, x);
+        });
+        const items = Array.from(by.values()).sort((a, b) => b.n - a.n || a.name.localeCompare(b.name));
+        const on = x => !!pick && pick.kind === kind && pick.v === x.name;
+        const one = label.replace(/s$/, '');
+        return `<h4>${_rgEsc(label)} · ${_extDgNum(items.length)}</h4>` + _dpCompactTableHtml(t, `sfm-l-${kind}`, [
+            {
+                key: 'name', label: one, val: x => x.name,
+                html: (x, q) => (x.url ? `<a href="${_rgEsc(x.url)}" target="_blank" rel="noopener noreferrer">${_hlEsc(x.name, q)}</a>` : _hlEsc(x.name, q)),
+            },
+            {
+                key: 'n', label: 'Setlists', num: true, first: -1, cls: 'mb-rg-num', val: x => x.n,
+                html: x => `<button type="button" class="mb-dg-fc mb-sfm-pick" data-mb-sfm-pick="${kind}" data-mb-sfm-v="${_rgEsc(x.name)}" ` +
+                    `aria-pressed="${on(x)}" data-mb-tip title="${_rgEsc(on(x) ? 'Show every loaded setlist again'
+                        : `Show only the setlists of ${x.name}`)}">${_extDgNum(x.n)}</button>`,
+            },
+        ], items, {
+            perPage: _EXT_SFM_LEFT_ROWS, initial: 'most setlists first', what: label.toLowerCase(), search: x => x.name, filter: true,
+            rowAttrs: x => (on(x) ? ' class="mb-sfm-picked"' : ''),
+        });
+    }
+
+    /**
+     * An artist's, a venue's or a tour's window: its facts and what the
+     * loaded setlists show on the left, as tables (`_extSfmLeftTableHtml()`:
+     * tours and venues, artists and tours, or venues, with counts that keep
+     * the Setlists table to one of them); on the right the setlists as a
+     * List table — date, the setlist (linked: it opens in the window), tour
+     * (linked, but for a tour's own), songs — with "Load 20 more" while
      * setlist.fm has more, one page a click.
      *
      * @param {object} t
@@ -66905,37 +67067,41 @@
             else if (st.status === 'failed') failed = st.detail;
             else rows = rows.concat(st.data.rows);
         }
-        const count = (f) => {
-            const m = new Map();
-            rows.forEach(r => { const k = f(r); if (k) m.set(k, (m.get(k) || 0) + 1); });
-            return Array.from(m).sort((a, b) => b[1] - a[1]);
-        };
-        const top = (list, n = 6) => list.slice(0, n).map(([k, c]) => `${_rgEsc(k)} <span class="mb-rg-dim">(${c})</span>`).join('<br>') +
-            (list.length > n ? `<br><span class="mb-rg-dim">+${list.length - n} more</span>` : '');
-        if (sfm.kind === 'artist') {
-            out.left.push(`<h4>In the loaded setlists · ${rows.length}</h4>` + _mbPopKvHtml([
-                ['Tours', top(count(r => r.tour))],
-                ['Venues', top(count(r => [r.venue.name, r.venue.city].filter(Boolean).join(', ')))],
-            ]));
-        } else {
-            out.left.push(`<h4>In the loaded setlists · ${rows.length}</h4>` + _mbPopKvHtml([
-                ['Artists', top(count(r => (r.artist ? r.artist.name : '')))],
-                ['Tours', top(count(r => r.tour))],
-            ]));
-        }
+        // Left: the artists, tours or venues of the loaded setlists, each a
+        // table (item 3). A venue's: artists and tours; an artist's: tours
+        // and venues; a tour's: venues.
+        const lefts = { venue: [['artist', 'Artists'], ['tour', 'Tours']], artist: [['tour', 'Tours'], ['venue', 'Venues']], tour: [['venue', 'Venues']] }[sfm.kind];
+        out.left.push(`<h4>In the loaded setlists · ${rows.length}</h4>` +
+            lefts.map(([kind, label]) => _extSfmLeftTableHtml(t, kind, label, rows, ui.pick)).join(''));
         out.left.push(_extSfmCreditHtml(t.url));
-        const who = sfm.kind === 'artist' ? (r => [r.venue.name, r.venue.city].filter(Boolean).join(', ')) : (r => (r.artist ? r.artist.name : ''));
-        const table = _dpListTableHtml(t, `sfm-${sfm.kind}`, [
-            { key: 'date', label: 'Date', val: r => r.date, html: (r, q) => _hlEsc(r.date, q) },
+        const shown = ui.pick ? rows.filter(r => _EXT_SFM_PICK_OF[ui.pick.kind](r) === ui.pick.v) : rows;
+        const only = ui.pick ? `<span class="mb-sfm-only">Only ${_rgEsc(ui.pick.kind)}: <b>${_rgEsc(ui.pick.v)}</b> · ${_extDgNum(shown.length)}` +
+            '<button type="button" data-mb-sfm-act="unpick" aria-label="Show every loaded setlist" data-mb-tip title="Show every loaded setlist">✕</button></span>' : '';
+        const atVenue = sfm.kind !== 'venue';
+        const who = atVenue ? _EXT_SFM_PICK_OF.venue : _EXT_SFM_PICK_OF.artist;
+        const cols = [
+            // Item 1: "2026-10-20" broke at its hyphens (debug/POH-setlistfm-venue.html).
+            { key: 'date', label: 'Date', cls: 'mb-dg-yr', val: r => r.date, html: (r, q) => _hlEsc(r.date, q) },
             {
-                key: 'what', label: sfm.kind === 'artist' ? 'Venue' : 'Artist', val: who,
+                key: 'what', label: atVenue ? 'Venue' : 'Artist', val: who,
                 html: (r, q) => `<a href="${_rgEsc(r.url)}" target="_blank" rel="noopener noreferrer">${_hlEsc(who(r), q)}</a>` +
                     (r.first.length ? `<div class="mb-rg-dim">${_hlEsc(r.first.join(' · '), q)}${r.songs > r.first.length ? ' …' : ''}</div>` : ''),
             },
-            { key: 'tour', label: 'Tour', val: r => r.tour, html: (r, q) => _hlEsc(r.tour, q) },
-            { key: 'songs', label: 'Songs', num: true, cls: 'mb-rg-num', val: r => r.songs, html: r => (r.songs ? String(r.songs) : '—') },
-        ], rows, {
-            initial: 'newest first, as setlist.fm lists them', placeholder: 'Filter loaded setlists: venue, artist, tour, song',
+        ];
+        // A tour's setlists are all of that tour: no Tour column. Item 5:
+        // the tour linked as setlist.fm does, opening in the window.
+        if (sfm.kind !== 'tour') {
+            cols.push({
+                key: 'tour', label: 'Tour', val: r => r.tour, html: (r, q) => {
+                    const url = _extSfmTourUrl(r.artist, r.tour);
+                    return url ? `<a href="${_rgEsc(url)}" target="_blank" rel="noopener noreferrer">${_hlEsc(r.tour, q)}</a>` : _hlEsc(r.tour, q);
+                },
+            });
+        }
+        cols.push({ key: 'songs', label: 'Songs', num: true, cls: 'mb-rg-num', val: r => r.songs, html: r => (r.songs ? String(r.songs) : '—') });
+        const table = _dpListTableHtml(t, `sfm-${sfm.kind}`, cols, shown, {
+            initial: 'newest first, as setlist.fm lists them', tools: only,
+            placeholder: `Filter loaded setlists: ${atVenue ? 'venue' : 'artist'}${sfm.kind !== 'tour' ? ', tour' : ''}, song`,
             search: r => [r.date, who(r), r.tour, r.first.join(' ')].join(' '), none: 'No setlists.',
         });
         const more = rows.length < sfm.list.total && !busy && !failed;
@@ -66972,11 +67138,18 @@
                 ['Date', _rgEsc(s.date)],
                 ['Venue', _extSfmLinkHtml(s.venue.url, s.venue.name)],
                 ['Where', _extSfmPlaceHtml(s.venue)],
-                ['Tour', _rgEsc(s.tour)],
+                ['Tour', _extSfmTourUrl(s.artist, s.tour) ? _extSfmLinkHtml(_extSfmTourUrl(s.artist, s.tour), s.tour) : _rgEsc(s.tour)],
                 ['Last edited', _rgEsc(s.updated)],
             ]);
         }
         const count = `${_extDgNum(sfm.list.total)} · ${sfm.list.per} a page`;
+        if (sfm.kind === 'tour') {
+            const a = sfm.artist;
+            return _mbPopKvHtml([
+                ['Artist', _extSfmArtistHtml(a) + (a.url ? ` · ${_extSfmLinkHtml(a.url, 'its setlists')}` : '')],
+                ['Setlists', count],
+            ]);
+        }
         if (sfm.kind === 'artist') {
             return _mbPopKvHtml([
                 ['On MusicBrainz', _extSfmArtistHtml({ name: rec.title, mbid: sfm.artist.mbid })],
@@ -67001,20 +67174,40 @@
     }
 
     /**
-     * A click in a setlist.fm window that no shared control took: "Load 20
-     * more" asks the next page of the list, "Try again" the failed one.
+     * A click in a setlist.fm window that no shared control took: a
+     * left-hand table's count keeps the Setlists table to that artist, tour
+     * or venue (a second click, or the "Only" pill's ✕, shows them all
+     * again); "Load 20 more" asks the next page of the list, "Try again"
+     * the failed one.
      *
      * @param {MouseEvent} e
      * @param {object} t
      * @returns {void}
      */
     function _extSfmAreaClick(e, t) {
-        const b = e.target instanceof Element ? e.target.closest('[data-mb-sfm-act]') : null;
+        const el = e.target instanceof Element ? e.target : null;
+        const pk = el && el.closest('[data-mb-sfm-pick]');
+        const b = el && el.closest('[data-mb-sfm-act]');
         const st = _mbPop.get(t.key);
         const rec = st && st.status === 'done' ? st.data : null;
-        if (!b || !rec || !rec.sfm || !rec.sfm.list) return;
+        if ((!b && !pk) || !rec || !rec.sfm || !rec.sfm.list) return;
         const ui = _extSfmUiOf(t);
         const repaint = () => { if (_dpDialog.repaint) _dpDialog.repaint(); };
+        if (pk) {
+            const v = pk.dataset.mbSfmV || '';
+            const same = ui.pick && ui.pick.kind === pk.dataset.mbSfmPick && ui.pick.v === v;
+            ui.pick = same ? null : { kind: pk.dataset.mbSfmPick, v };
+            // The Setlists table starts again at its top.
+            const tbl = _dpTblUi(t, `sfm-${rec.sfm.kind}`);
+            if (tbl) tbl.page = 0;
+            repaint();
+            return;
+        }
+        if (b.dataset.mbSfmAct === 'unpick') {
+            ui.pick = null;
+            repaint();
+            return;
+        }
         if (b.dataset.mbSfmAct === 'more') {
             ui.pages++;
             _extSfmPageLoad(t, rec.sfm, ui.pages, { repaint });
