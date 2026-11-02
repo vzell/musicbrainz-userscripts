@@ -26,7 +26,7 @@
   {
     "name": "users' favorites are listed as collections",
     "why": "fav-<user> collections are people's lists, counted in Favorites, not collections.",
-    "edits": [{ "find": "        const shown = colls.filter(c => !c.startsWith('fav-')).map(c => _IA_COLLECTION_NAMES[c] || c);", "replace": "        const shown = colls.map(c => _IA_COLLECTION_NAMES[c] || c);" }],
+    "edits": [{ "find": "        const shown = colls.filter(c => !c.startsWith('fav-'))\n", "replace": "        const shown = colls\n" }],
     "spec": "tests/fixtures/ia-search.spec.js",
     "grep": "the shell gets our section",
     "expect": "fail"
@@ -149,6 +149,54 @@
     "edits": [{ "find": "        cardOn: () => Lib.settings.sa_ia_tip_images !== false,", "replace": "        cardOn: () => true," }],
     "spec": "tests/fixtures/ia-search.spec.js",
     "grep": "pictures on hover\" off",
+    "expect": "fail"
+  },
+  {
+    "name": "the Collection cell is plain text again, no links",
+    "why": "vzell, 2026-11-02: the collections link their pages, as on the item page.",
+    "edits": [{ "find": "            .map(c => `<a href=\"https://archive.org/details/${_rgEsc(encodeURIComponent(c))}\"${_DG_NEW_TAB}>${_rgEsc(_iaCollName(c))}</a>`);", "replace": "            .map(c => _rgEsc(_iaCollName(c)));" }],
+    "spec": "tests/fixtures/ia-search.spec.js",
+    "grep": "the shell gets our section",
+    "expect": "fail"
+  },
+  {
+    "name": "the Collection column is not multi-row",
+    "why": "One collection a line (renderMultiRowCell), vzell 2026-11-02.",
+    "edits": [{ "find": "                renderMultiRowCell: [ 'Collection' ],\n", "replace": "" }],
+    "spec": "tests/fixtures/ia-search.spec.js",
+    "grep": "the shell gets our section",
+    "expect": "fail"
+  },
+  {
+    "name": "the collections' titles are never asked",
+    "why": "The table names collections as archive.org does, not by their ids.",
+    "edits": [{ "find": "                        await _iaCollTitlesFor(text);\n", "replace": "" }],
+    "spec": "tests/fixtures/ia-search.spec.js",
+    "grep": "the shell gets our section",
+    "expect": "fail"
+  },
+  {
+    "name": "a failed titles request fails the page",
+    "why": "_iaCollTitlesFor() must never fail a search page: the rows fall back to fixed names or ids.",
+    "edits": [{ "find": "                if (res.skipped || res.error || res.status !== 200) {", "replace": "                if (res.skipped || res.error || res.status !== 200) {\n                    throw new Error(`no titles (${res.status})`);" }, { "find": "            } catch (err) {\n                Lib.debug('fetch', `_iaCollTitlesFor: the titles answer failed", "replace": "            } catch (err) {\n                throw err;\n                Lib.debug('fetch', `_iaCollTitlesFor: the titles answer failed" }],
+    "spec": "tests/fixtures/ia-search.spec.js",
+    "grep": "titles request failing",
+    "expect": "fail"
+  },
+  {
+    "name": "the window has no Images section",
+    "why": "vzell, 2026-11-02: the window shows ALL the item's pictures in an Images section.",
+    "edits": [{ "find": "        if (images) out.lead = [images];\n", "replace": "" }],
+    "spec": "tests/fixtures/popup-ext.spec.js",
+    "grep": "the window's Images",
+    "expect": "fail"
+  },
+  {
+    "name": "the window's cover links the tile, not the first picture",
+    "why": "Without imageFull the viewer holds the tile besides the pictures (8, not 7), and the cover opens the tile.",
+    "edits": [{ "find": "            ...(it.pictures.length ? { imageFull: _iaFileUrl(it.id, it.pictures[0].name) } : {}),\n", "replace": "" }],
+    "spec": "tests/fixtures/popup-ext.spec.js",
+    "grep": "the window's Images",
     "expect": "fail"
   }
 ]

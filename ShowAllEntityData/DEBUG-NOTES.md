@@ -27669,3 +27669,41 @@ in the spec. Nothing asserted they did. The routes now come after the load.
 Tests: `ia-search.spec.js` "the Art column's hover card and viewer" (3);
 mutations `scripts/mutations/internet-archive.json` +6, all caught (each
 failed its spec; userscript restored, hash verified).
+
+## 2026-11-02 — archive.org: Collection as ids, the window with the tile only (feat/ia-collections-images, WIP.1/WIP.2)
+Env: 2026-11-02T15:32:52+01:00 · vzell-lap · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) · probes: n/a (curl, Python); specs: Playwright 1.62.1 Chromium, no Tampermonkey (GM stubs)
+
+vzell, on https://archive.org/details/bs1977-02-28.aud.ntl-2.jems.flac16
+(`debug/ia-1977-02-28-inital.html`, `-images-initial.html`, `-images-clicked.html`):
+
+1. The ia-search Collection column was plain text: ids (`radionowhere`,
+   `roiocollection`) besides a few fixed names, while the item page links
+   each collection under archive.org's own title ("Radio Nowhere",
+   "Recordings of Independent Origin", "Folksoundomy: A Library of Sound").
+   One fixed name was simply wrong: `_IA_COLLECTION_NAMES.folksoundomy` said
+   "Community Audio" (that is `opensource_audio`). The search API returns
+   identifiers only; ONE advancedsearch request `identifier:("a" OR "b" …)`
+   with `fl[]=identifier,title` names them all
+   (`scripts/probe-ia-collection-titles.py`: the 1975 search's 12
+   collections, 384 characters, 11 titled; `community` has none). Now
+   `_iaCollTitlesFor()` after each page (only ids not yet seen), links, and
+   `renderMultiRowCell`/`collapsableColumns`. A failed lookup falls back,
+   never fails the page.
+2. "Art column hover shows no pictures" — NOT a bug: vzell's Tampermonkey
+   copy predated 9.99.1522; on 9.99.1522 all five pictures show. The live
+   metadata was checked first (5 original pictures, each with a JPEG Thumb).
+3. The item WINDOW showed archive.org's tile only, though `_extIaItem()`
+   already kept every picture (`it.pictures`). Now an "Images · N" section
+   (`out.lead`, `_extIaImagesHtml()`), and `rec.imageFull` = the first
+   picture so the cover opens it and the viewer holds the N pictures, not
+   the tile besides (`_EXT_IA_VERSION` 2 → 3).
+
+Found on the way: a 503 on the titles request is asked twice (`_extGet()`'s
+own retry), so the failure spec asserts "page 1, then the titles URL only",
+not an exact count.
+
+Tests: `ia-search.spec.js` (Collection cell, two-page titles, the lookup
+failing, a collection link's card and window), `popup-ext.spec.js` "the
+window's Images"; mutations `scripts/mutations/internet-archive.json` +6
+(and the favorites entry's `find` updated), all 25 as expected (userscript
+restored, hash verified).

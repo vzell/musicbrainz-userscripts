@@ -3096,6 +3096,50 @@ test.describe('archive.org items (the iadetails reader)', () => {
         expect(await iaLog(page), 'still the one request').toEqual([`https://archive.org/metadata/${IA_SHOW}`]);
     });
 
+    test('the window\'s Images: every picture of the item\'s own, the viewer on all of them, the cover = picture 1; none for a video', async ({ page }) => {
+        // vzell, 2026-11-02: "The POH should also display ALL images … in a
+        // separate IMAGES section" — before, the window showed the tile only.
+        const DL = (name) => `https://archive.org/download/${encodeURIComponent(IA_SHOW)}/${encodeURIComponent(name)}`;
+        await openIa(page);
+        await ctrlHover(page, probe(page, 0));
+        await expect(card(page).locator('.mb-tt-title')).toHaveText(/Tower Theater/);
+        await page.keyboard.press('Space');
+        const d = dialog(page);
+        // The capture's seven scans, a cover first, each its "JPEG Thumb"
+        // linking the full file; under the cover, in the left column.
+        const pics = d.locator('.mb-ia-pics a[data-mb-artv-ext]');
+        await expect(pics).toHaveCount(7);
+        await expect(d.locator('h4', { hasText: /^Images · 7$/ })).toHaveCount(1);
+        await expect(pics.first()).toHaveAttribute('href', DL('Cover.jpg'));
+        await expect(pics.first().locator('img')).toHaveAttribute('src', DL('Cover_thumb.jpg'));
+        await expect(pics.first().locator('span')).toHaveText('Cover');
+        await expect(pics.nth(1)).toHaveAttribute('href', DL('Front.jpg'));
+        await expect(d.locator('.mb-dp-col').first().locator('.mb-ia-pics')).toHaveCount(1);
+        // A thumbnail: the viewer on it, the seven pictures and not the
+        // tile besides (the cover links picture 1, counted once).
+        await pics.nth(2).click();
+        const viewer = page.locator('#mb-art-viewer');
+        await expect(viewer.locator('.mb-artv-pos')).toHaveText('3 / 7');
+        await page.keyboard.press('Escape');
+        await expect(viewer).toBeHidden();
+        await expect(d).toBeVisible();
+        // The cover opens the cover itself at full size.
+        await expect(d.locator('img.mb-dp-xcover').locator('xpath=..')).toHaveAttribute('href', DL('Cover.jpg'));
+        await d.locator('img.mb-dp-xcover').click();
+        await expect(viewer.locator('.mb-artv-pos')).toHaveText('1 / 7');
+        await page.keyboard.press('Escape');
+        await expect(viewer).toBeHidden();
+        expect(await iaLog(page), 'nothing asked but the item\'s metadata').toEqual([`https://archive.org/metadata/${IA_SHOW}`]);
+        // A video without pictures of its own: no Images section.
+        await page.keyboard.press('Escape');
+        await expect(d).toBeHidden();
+        await ctrlHover(page, probe(page, 2));
+        await expect(card(page).locator('.mb-tt-title')).toHaveText(/Widener College/);
+        await page.keyboard.press('Space');
+        await expect(dialog(page).locator('.mb-ia-thumbs img')).toHaveCount(12);
+        await expect(dialog(page).locator('.mb-ia-pics')).toHaveCount(0);
+    });
+
     test('a link to one track: its show\'s request (no second one), the track in the card, its row marked in the window', async ({ page }) => {
         await openIa(page);
         await ctrlHover(page, probe(page, 0));

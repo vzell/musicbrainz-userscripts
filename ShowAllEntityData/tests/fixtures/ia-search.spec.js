@@ -84,10 +84,28 @@ const tableData = (page) => page.locator('#mb-ia-root table.tbl').first().evalua
     return { heads, rows };
 });
 
+/**
+ * The Collection cell of the row whose Title links item `id`: one entry
+ * per `ul > li` (the multi-row cell), its link's text, href and target.
+ * @param {import('@playwright/test').Page} page
+ * @param {string} id
+ * @returns {Promise<Array<{text: string, href: string, target: string}>>}
+ */
+const collCell = (page, id) => page.locator('#mb-ia-root table.tbl').first().evaluate((t, ident) => {
+    const heads = Array.from(t.querySelectorAll('thead tr:first-child th')).map(th => th.dataset.colName || th.textContent.trim());
+    const ci = heads.indexOf('Collection');
+    const tr = Array.from(t.tBodies[0].rows).find(r => r.querySelector(`a[href="https://archive.org/details/${ident}"]`));
+    return Array.from(tr.cells[ci].querySelectorAll('ul > li')).map((li) => {
+        const a = li.querySelector('a');
+        return { text: li.textContent.trim(), href: a ? a.href : '', target: a ? a.target : '' };
+    });
+}, id);
+
 test.describe('archive.org: a search page (ia-search)', () => {
     test('the shell gets our section and one button; the rows from the search API, 100 a request, first by date', async ({ page }) => {
         const f = FX('ia-search-1975-p1');
-        const errors = await open(page, S1975, Object.fromEntries([answer(f)]));
+        const titles = FX('ia-colltitles-1975-p1');
+        const errors = await open(page, S1975, Object.fromEntries([answer(f), answer(titles)]));
         const root = page.locator('#mb-ia-root');
         await expect(root.locator('h1.mb-ia-h1 bdi')).toHaveText('Internet Archive: subject:"Bruce Springsteen" · year:"1975"');
         // Our section is first in <body>, before the site's own shell.
@@ -97,7 +115,9 @@ test.describe('archive.org: a search page (ia-search)', () => {
         expect(await apiLog(page), 'nothing before the press').toEqual([]);
         await root.locator('button[data-label="Show all items"]').click();
         await waitForRenderComplete(page, { waitForAutoResize: false });
-        expect(await apiLog(page), 'page 1 once: it is the page count').toEqual([f.url]);
+        // Page 1 once (it is the page count), then ONE request for the
+        // titles of its collections (_iaCollTitlesFor()).
+        expect(await apiLog(page), 'page 1 once, then its collections\' titles').toEqual([f.url, titles.url]);
         // The request: the page's query and filter, first by date, 100 a page.
         const u = new URL(f.url);
         expect(u.searchParams.get('q')).toBe('(subject:"Bruce Springsteen") AND year:"1975"');
@@ -122,8 +142,17 @@ test.describe('archive.org: a search page (ia-search)', () => {
         expect(r.Favorites).toBe(String(d.num_favorites));
         expect(r.Size).toBe(`${Math.round(d.item_size / 1e6).toLocaleString('en-US')} MB`);
         expect(r.Collection).not.toMatch(/fav-/);
-        expect(r.Collection).toContain('Community Audio');
         await expect(root.locator(`table.tbl a[href="https://archive.org/details/${SHOW}"]`)).toHaveAttribute('target', '_blank');
+        // Its collections (vzell, 2026-11-02, "as on the IP"): one a line
+        // (renderMultiRowCell), each a link to its page in a new tab, named
+        // by archive.org's own title, as the item page names it — not the
+        // id, and "Folksoundomy", not our old "Community Audio".
+        const coll = await collCell(page, SHOW);
+        expect(coll).toEqual([
+            { text: 'Radio Nowhere', href: 'https://archive.org/details/radionowhere', target: '_blank' },
+            { text: 'Recordings of Independent Origin', href: 'https://archive.org/details/roiocollection', target: '_blank' },
+            { text: 'Folksoundomy: A Library of Sound', href: 'https://archive.org/details/folksoundomy', target: '_blank' },
+        ]);
         // The videos are there too, as Video.
         expect(rows.filter(x => x.Type === 'Video').length).toBe(docs.filter(x => x.mediatype === 'movies').length);
         expect(errors).toEqual([]);
@@ -134,12 +163,69 @@ test.describe('archive.org: a search page (ia-search)', () => {
         const p2 = FX('ia-search-2016-p2');
         // 1,064 items in fact: cut to 200, two pages.
         const cut = (b) => Object.assign(b, { response: Object.assign(b.response, { numFound: 200 }) });
-        await open(page, S2016, Object.fromEntries([answer(p1, cut), answer(p2, cut)]));
+        const t1 = FX('ia-colltitles-2016-p1');
+        const t2 = FX('ia-colltitles-2016-p2');
+        await open(page, S2016, Object.fromEntries([answer(p1, cut), answer(p2, cut), answer(t1), answer(t2)]));
         await page.locator('#mb-ia-root button[data-label="Show all items"]').click();
         await waitForRenderComplete(page, { waitForAutoResize: false });
-        expect(await apiLog(page)).toEqual([p1.url, p2.url]);
+        // Each page's titles request asks only for collections no earlier
+        // page named: page 2's has none of page 1's.
+        expect(await apiLog(page)).toEqual([p1.url, t1.url, p2.url, t2.url]);
+        const ids = (f) => new URL(f.url).searchParams.get('q').match(/"[^"]+"/g);
+        expect(ids(t2).filter(x => ids(t1).includes(x)), 'page 2 asks no title page 1 asked').toEqual([]);
         const { rows } = await tableData(page);
         expect(rows).toHaveLength(JSON.parse(p1.body).response.docs.length + JSON.parse(p2.body).response.docs.length);
+    });
+
+    test('the titles request failing never fails the page: ids or our fixed names, still links', async ({ page }) => {
+        const f = FX('ia-search-1975-p1');
+        const titles = FX('ia-colltitles-1975-p1');
+        const errors = await open(page, S1975, Object.fromEntries([
+            answer(f), [titles.url, { status: 503, responseHeaders: 'Content-Type: text/html', responseText: 'Service Unavailable' }],
+        ]));
+        await page.locator('#mb-ia-root button[data-label="Show all items"]').click();
+        await waitForRenderComplete(page, { waitForAutoResize: false });
+        // Page 1, then the titles request (a 503 is asked again by
+        // _extGet()'s own retry): nothing else.
+        const log = await apiLog(page);
+        expect(log[0]).toBe(f.url);
+        expect(log.slice(1).length).toBeGreaterThan(0);
+        expect(log.slice(1).filter(u => u !== titles.url)).toEqual([]);
+        const { rows } = await tableData(page);
+        expect(rows).toHaveLength(JSON.parse(f.body).response.docs.length);
+        expect(await collCell(page, SHOW)).toEqual([
+            { text: 'radionowhere', href: 'https://archive.org/details/radionowhere', target: '_blank' },
+            { text: 'roiocollection', href: 'https://archive.org/details/roiocollection', target: '_blank' },
+            { text: 'Folksoundomy: A Library of Sound', href: 'https://archive.org/details/folksoundomy', target: '_blank' },
+        ]);
+        expect(errors).toEqual([]);
+    });
+
+    test('a collection link in our table: the iadetails card and window of the collection', async ({ page }) => {
+        const meta = 'https://archive.org/metadata/radionowhere';
+        const coll = { metadata: { identifier: 'radionowhere', title: 'Radio Nowhere', mediatype: 'collection',
+            description: 'Bruce Springsteen recordings.' }, files: [], item_size: 0 };
+        const errors = await open(page, S1975, Object.fromEntries([
+            answer(FX('ia-search-1975-p1')), answer(FX('ia-colltitles-1975-p1')),
+            [meta, { status: 200, responseHeaders: 'Content-Type: application/json', responseText: JSON.stringify(coll) }],
+        ]), { sa_pop_ext: true });
+        await page.locator('#mb-ia-root button[data-label="Show all items"]').click();
+        await waitForRenderComplete(page, { waitForAutoResize: false });
+        const link = page.locator('#mb-ia-root table.tbl a[href="https://archive.org/details/radionowhere"]').first();
+        await page.mouse.move(0, 0);
+        await link.scrollIntoViewIfNeeded();
+        await page.keyboard.down('Control');
+        await link.hover();
+        await page.keyboard.up('Control');
+        const card = page.locator('#mb-dp-peek');
+        await expect(card.locator('.mb-tt-title')).toHaveText('Radio Nowhere');
+        await page.keyboard.press('Space');
+        const d = page.locator('#mb-dp-dialog');
+        await expect(d).toContainText('Internet Archive · Collection');
+        // A collection has no pictures of its own: no Images section.
+        await expect(d.locator('.mb-ia-pics')).toHaveCount(0);
+        expect((await apiLog(page)).filter(u => u.includes('/metadata/'))).toEqual([meta]);
+        expect(errors).toEqual([]);
     });
 
     test('a full-text search (sin=TXT) gets no button: the search API does not index texts', async ({ page }) => {
