@@ -18861,7 +18861,7 @@
      * shown by its identifier (as its address names it).
      * @type {Object<string, string>}
      */
-    const _IA_COLLECTION_NAMES = { folksoundomy: 'Community Audio', opensource_audio: 'Community Audio',
+    const _IA_COLLECTION_NAMES = { folksoundomy: 'Folksoundomy: A Library of Sound', opensource_audio: 'Community Audio',
         opensource_movies: 'Community Video', opensource: 'Community Texts', etree: 'Live Music Archive' };
 
     /** Page 1's answer, asked by the page count and kept for the loop (as `_dgTexts`). */
@@ -18869,6 +18869,100 @@
 
     /** How many items the last page count found (the heading's and the button's number). */
     let _iaSearchFound = 0;
+
+    /**
+     * Collections' titles as archive.org names them, by identifier, for
+     * this page load (`_iaCollTitlesFor()`); '' for an id the search API
+     * answered without (asked once, never again).
+     * @type {Map<string, string>}
+     */
+    const _iaCollTitles = new Map();
+
+    /** At most this many collections a title request asks for. */
+    const _IA_COLL_TITLES_PER_REQUEST = 100;
+
+    /**
+     * The search API's request for these collections' titles: one
+     * `identifier:("a" OR "b" …)` query, the ids sorted (the same URL for
+     * the same ids: the fixtures are keyed by it).
+     *
+     * @param {string[]} ids
+     * @returns {string}
+     */
+    function _iaCollTitlesUrl(ids) {
+        const sorted = ids.slice().sort();
+        const params = new URLSearchParams();
+        params.set('q', `identifier:(${sorted.map(i => `"${i.replace(/["\\]/g, '')}"`).join(' OR ')})`);
+        params.append('fl[]', 'identifier');
+        params.append('fl[]', 'title');
+        params.set('rows', String(sorted.length));
+        params.set('output', 'json');
+        return `https://archive.org/advancedsearch.php?${params}`;
+    }
+
+    /**
+     * Asks archive.org for the titles of the collections one search page
+     * names that this page load has not seen yet, and keeps them in
+     * `_iaCollTitles` for the page's rows (`_iaSearchRow()`; vzell,
+     * 2026-11-02: the Collection column "as on the IP", which names
+     * them "Radio Nowhere", "Recordings of Independent Origin"). The search
+     * API gives identifiers only; one more request per page — in practice
+     * pages 1–2 only — at archive.org's own spacing (`_extGet()`), not
+     * asked once Stop is pressed. Never fails the page: on any failure the
+     * rows fall back to `_IA_COLLECTION_NAMES`, then the id.
+     *
+     * Probe scripts/probe-ia-collection-titles.py
+     * (2026-11-02T15:32:52+01:00, vzell-lap): the 1975 search's 12
+     * collections in one request of 384 characters, 11 with a title;
+     * `community` has none.
+     *
+     * @param {string} text - A search page's answer.
+     * @returns {Promise<void>}
+     */
+    async function _iaCollTitlesFor(text) {
+        let docs;
+        try {
+            docs = _iaSearchJson(text).docs;
+        } catch (_) {
+            return; // the page's own conversion says what is wrong
+        }
+        const want = new Set();
+        docs.forEach((d) => {
+            (Array.isArray(d.collection) ? d.collection : [d.collection]).forEach((c) => {
+                const id = String(c || '');
+                if (id && !id.startsWith('fav-') && !_iaCollTitles.has(id)) want.add(id);
+            });
+        });
+        const ids = Array.from(want).sort();
+        for (let i = 0; i < ids.length; i += _IA_COLL_TITLES_PER_REQUEST) {
+            const chunk = ids.slice(i, i + _IA_COLL_TITLES_PER_REQUEST);
+            try {
+                const res = await _extGet(_iaCollTitlesUrl(chunk), { wanted: () => !stopRequested, fetchOpts: { accept: /\bjson\b/i } });
+                if (res.skipped || res.error || res.status !== 200) {
+                    Lib.debug('fetch', `_iaCollTitlesFor: no titles for ${chunk.length} collection(s) ` +
+                        `(${res.skipped ? 'stopped' : res.error || `HTTP ${res.status}`}); their ids or fixed names are shown.`);
+                    continue;
+                }
+                const d = JSON.parse(String(res.body || '') + String(res.tail || ''));
+                const got = new Map(((d.response && d.response.docs) || []).map(x => [_iaFirst(x.identifier), _iaFirst(x.title)]));
+                chunk.forEach(id => _iaCollTitles.set(id, got.get(id) || ''));
+                Lib.debug('fetch', `_iaCollTitlesFor: ${got.size} of ${chunk.length} collection title(s).`);
+            } catch (err) {
+                Lib.debug('fetch', `_iaCollTitlesFor: the titles answer failed (${err && err.message}); ids or fixed names are shown.`);
+            }
+        }
+    }
+
+    /**
+     * A collection's name in the table: archive.org's title, else a fixed
+     * name, else its identifier.
+     *
+     * @param {string} id
+     * @returns {string}
+     */
+    function _iaCollName(id) {
+        return _iaCollTitles.get(id) || _IA_COLLECTION_NAMES[id] || id;
+    }
 
     /**
      * One value of a search field: the first of an array, as a string.
@@ -19020,8 +19114,9 @@
      * item, a new tab; its card and window through the `iadetails` reader),
      * venue, source, type, views, favorites, reviews (their number and the
      * average as stars, no digits, so the numeric sort reads the number),
-     * when it was added, its size in MB and its collections (favorites left
-     * out: they are users' lists).
+     * when it was added, its size in MB and its collections, each a link
+     * named as archive.org names it (`_iaCollName()`; favorites left out:
+     * they are users' lists).
      *
      * @param {Object} d - One `docs[]` entry.
      * @returns {string} A `<tr>`, or '' without an identifier.
@@ -19032,7 +19127,11 @@
         const url = `https://archive.org/details/${encodeURIComponent(id)}`;
         const colls = (Array.isArray(d.collection) ? d.collection : [d.collection]).map(c => String(c || '')).filter(Boolean);
         const favs = typeof d.num_favorites === 'number' ? d.num_favorites : colls.filter(c => c.startsWith('fav-')).length;
-        const shown = colls.filter(c => !c.startsWith('fav-')).map(c => _IA_COLLECTION_NAMES[c] || c);
+        // One link per collection (its archive.org page, a new tab), named
+        // as archive.org names it (`_iaCollName()`); ", " between them is
+        // what `renderMultiRowCell` splits on, never a comma in a title.
+        const shown = colls.filter(c => !c.startsWith('fav-'))
+            .map(c => `<a href="https://archive.org/details/${_rgEsc(encodeURIComponent(c))}"${_DG_NEW_TAB}>${_rgEsc(_iaCollName(c))}</a>`);
         const n = (x) => (Number(x) > 0 ? Number(x).toLocaleString('en-US') : '');
         const reviews = Number(d.num_reviews) > 0 ? `${d.num_reviews} ${'★'.repeat(Math.max(0, Math.min(5, Math.round(Number(d.avg_rating) || 0))))}`.trim() : '';
         const size = Number(d.item_size) > 0 ? `${Math.max(1, Math.round(Number(d.item_size) / 1e6)).toLocaleString('en-US')} MB` : '';
@@ -19046,7 +19145,7 @@
             `<td><a href="${_rgEsc(url)}"${_DG_NEW_TAB}>${_rgEsc(_iaFirst(d.title) || id)}</a></td>` +
             `${_dgCell(_iaFirst(d.venue))}${_dgCell(_iaFirst(d.source))}${_dgCell(_IA_TYPE_NAMES[type] || type)}` +
             `${_dgCell(n(d.downloads))}${_dgCell(favs > 0 ? String(favs) : '')}${_dgCell(reviews)}` +
-            `<td class="mb-ia-when">${_rgEsc(_iaFirst(d.addeddate).slice(0, 10))}</td>${_dgCell(size)}${_dgCell(shown.join(', '))}</tr>`;
+            `<td class="mb-ia-when">${_rgEsc(_iaFirst(d.addeddate).slice(0, 10))}</td>${_dgCell(size)}<td>${shown.join(', ')}</td></tr>`;
     }
 
     /**
@@ -43389,13 +43488,23 @@
                 iaToTable: true,
                 pageRequest: (p) => {
                     const url = _iaSearchPageUrl(p);
-                    return { url, fetchText: () => _iaFetchText(url), toHtml: (text) => _iaSearchToHtml(text) };
+                    // Then the titles of the page's new collections (one
+                    // request, never failing the page: _iaCollTitlesFor()).
+                    const fetchText = async () => {
+                        const text = await _iaFetchText(url);
+                        await _iaCollTitlesFor(text);
+                        return text;
+                    };
+                    return { url, fetchText, toHtml: (text) => _iaSearchToHtml(text) };
                 },
                 pageCountAsync: () => _iaSearchPageCount(),
                 integerColumns: [
                     { sourceColumn: 'Views', align: 'R' }, { sourceColumn: 'Favorites', align: 'R' },
                     { sourceColumn: 'Reviews', align: 'R' }, { sourceColumn: 'Size', align: 'R' }
-                ]
+                ],
+                // One collection a line, each a link (vzell, 2026-11-02).
+                renderMultiRowCell: [ 'Collection' ],
+                collapsableColumns: [ 'Collection' ]
             },
             tableMode: 'single'
         }
@@ -66931,9 +67040,10 @@
 
     /**
      * The `iadetails` records' own version (bump when `_extIaItem()`'s
-     * output changes): 2 since the item's `pictures` (2026-11-01).
+     * output changes): 2 since the item's `pictures` (2026-11-01), 3 since
+     * the record's `imageFull` (the first picture, 2026-11-02).
      */
-    const _EXT_IA_VERSION = 2;
+    const _EXT_IA_VERSION = 3;
 
     /**
      * An archive.org item's page, `/details/<identifier>[/<file>]`; group 1
@@ -67135,6 +67245,10 @@
             title: it.title || it.id, subtitle: `Internet Archive${type ? ` · ${type}` : ''}`, type: it.mediatype,
             description: it.desc.slice(0, 600), descInWindow: true,
             image: `https://archive.org/services/img/${encodeURIComponent(it.id)}`, ia: it,
+            // The window's cover opens the item's first picture (a cover or
+            // front) at full size, the first of its Images section too, so
+            // the viewer holds each picture once and never the tile besides.
+            ...(it.pictures.length ? { imageFull: _iaFileUrl(it.id, it.pictures[0].name) } : {}),
         });
         rec.facts = [
             ['Date', it.date], ['Venue', it.venue], ['Source', it.source],
@@ -67176,20 +67290,42 @@
     }
 
     /**
+     * The window's Images section: every picture of the item's own
+     * (`pictures`: the uploader's scans, a cover first), each its thumbnail
+     * linking the full file for the artwork viewer (`_dpArtViewerClick()`;
+     * `data-mb-artv-ext` from 1, the cover above being 0 and the same file
+     * as the first, counted once). As Discogs' gallery (`_extDgImagesHtml()`).
+     *
+     * @param {Object} it - `_extIaItem()`.
+     * @returns {string} '' for an item without pictures.
+     */
+    function _extIaImagesHtml(it) {
+        if (!it.pictures || !it.pictures.length) return '';
+        return `<h4>Images · ${it.pictures.length}</h4><div class="mb-dp-gallery mb-ia-pics">` + it.pictures.map((p, i) =>
+            `<a href="${_rgEsc(_iaFileUrl(it.id, p.name))}" target="_blank" rel="noopener noreferrer" data-mb-artv-ext="${i + 1}">` +
+            `<img src="${_rgEsc(_iaFileUrl(it.id, p.thumb || p.name))}" alt="" loading="lazy" referrerpolicy="no-referrer">` +
+            `<span>${_rgEsc(p.name.split('/').pop().replace(/\.[^.]+$/, ''))}</span></a>`).join('') + '</div>';
+    }
+
+    /**
      * The item's window (`_extExtracted()`'s reader hook, `swap`: the
-     * generic blocks on the left): the description on the left; on the
-     * right a show's setlist as a List table (# · Song · Length · ▶, the
-     * track a link named marked, the player in a slot above it), or a
-     * video's "Play here" tile, its thumbnails and its files.
+     * generic blocks on the left): under the cover the item's own pictures
+     * (`lead`, `_extIaImagesHtml()`; vzell, 2026-11-02: "ALL images … in a
+     * separate IMAGES section"), then the description; on the right a
+     * show's setlist as a List table (# · Song · Length · ▶, the track a
+     * link named marked, the player in a slot above it), or a video's
+     * "Play here" tile, its thumbnails and its files.
      *
      * @param {object} t
      * @param {Object} rec
-     * @returns {{left: string[], right: string[], full: string[], swap: boolean}}
+     * @returns {{left: string[], right: string[], full: string[], swap: boolean, lead?: string[]}}
      */
     function _extIaWindow(t, rec) {
         const out = { left: [], right: [], full: [], swap: true };
         const it = rec.ia;
         if (!it) return out;
+        const images = _extIaImagesHtml(it);
+        if (images) out.lead = [images];
         if (it.desc) out.left.push(`<h4>Description</h4><div class="mb-ia-desc">${_rgEsc(it.desc)}</div>`);
         const lineage = [['Lineage', it.lineage], ['Taper', it.taper], ['Transferred by', it.transferer]].filter(f => f[1]);
         if (lineage.length) out.left.push(_mbPopKvHtml(lineage.map(([k, v]) => [k, _rgEsc(v)])));

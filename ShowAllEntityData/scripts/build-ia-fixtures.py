@@ -11,16 +11,23 @@ Writes into tests/fixtures/:
                                          a run of more than one page
   ext-ia-metadata-<identifier>.json      /metadata/<identifier> for a show, a video and a
                                          missing item, trimmed to what _extIaItem() reads
+  ext-ia-colltitles-<year>-p<N>.json     the titles of the collections search page N
+                                         names that no earlier page of that search named
+                                         (_iaCollTitlesFor(), 2026-11-02); none when a
+                                         page brings no new collection
 
 Each answer is {url, status, contentType, body} with `body` the answer's text,
 the shape the Discogs fixtures have. The search URLs are built exactly as
-_iaSearchPageUrl() builds them (same fields, same order), so a spec can key
-the GM stub's answers by URL.
+_iaSearchPageUrl() builds them (same fields, same order), the titles URLs as
+_iaCollTitlesUrl() does (the ids sorted, each quoted), so a spec can key the
+GM stub's answers by URL.
 
-Usage: python3 scripts/build-ia-fixtures.py [--out tests/fixtures] [--metadata-only]
+Usage: python3 scripts/build-ia-fixtures.py [--out tests/fixtures] [--metadata-only | --titles-only]
 
 --metadata-only rewrites the ext-ia-metadata-*.json files alone, so the search
 pages (whose counts change as archive.org grows) stay as the specs know them.
+--titles-only rewrites the ext-ia-colltitles-*.json files alone, from the
+collections of the search pages already in --out.
 """
 
 import argparse
@@ -52,6 +59,43 @@ def search_url(solr, page):
     p = [('q', solr)] + [('fl[]', f) for f in FIELDS]
     p += [('sort[]', 'date asc'), ('sort[]', 'titleSorter asc'), ('rows', '100'), ('page', str(page)), ('output', 'json')]
     return 'https://archive.org/advancedsearch.php?' + urllib.parse.urlencode(p)
+
+
+def titles_url(ids):
+    """The advancedsearch.php URL _iaCollTitlesUrl() builds for these collections."""
+    ids = sorted(ids)
+    q = 'identifier:(' + ' OR '.join('"' + i.replace('"', '').replace('\\', '') + '"' for i in ids) + ')'
+    p = [('q', q), ('fl[]', 'identifier'), ('fl[]', 'title'), ('rows', str(len(ids))), ('output', 'json')]
+    return 'https://archive.org/advancedsearch.php?' + urllib.parse.urlencode(p)
+
+
+def page_collections(path):
+    """The collections (no fav-*) a search fixture's rows name."""
+    with open(path, encoding='utf-8') as f:
+        docs = json.loads(json.load(f)['body'])['response']['docs']
+    out = set()
+    for d in docs:
+        c = d.get('collection') or []
+        for x in (c if isinstance(c, list) else [c]):
+            if x and not str(x).startswith('fav-'):
+                out.add(str(x))
+    return out
+
+
+def write_titles(out_dir):
+    """Writes each search page's titles answer, as a run asks them: page by
+    page, only the collections no earlier page of the search named."""
+    for year, pages in (('1975', 1), ('2016', 2)):
+        seen = set()
+        for p in range(1, pages + 1):
+            new = page_collections(os.path.join(out_dir, f'ext-ia-search-{year}-p{p}.json')) - seen
+            seen |= new
+            if not new:
+                print(f'ext-ia-colltitles-{year}-p{p}.json: no new collection, none written')
+                continue
+            url = titles_url(new)
+            st, ct, body = get(url)
+            write(out_dir, f'ext-ia-colltitles-{year}-p{p}.json', url, st, ct, body)
 
 
 def get(url):
@@ -89,7 +133,11 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--out', default=os.path.join(os.path.dirname(__file__), '..', 'tests', 'fixtures'))
     ap.add_argument('--metadata-only', action='store_true')
+    ap.add_argument('--titles-only', action='store_true')
     a = ap.parse_args()
+    if a.titles_only:
+        write_titles(a.out)
+        return 0
     for ident in ITEMS:
         url = f'https://archive.org/metadata/{urllib.parse.quote(ident)}'
         st, ct, body = get(url)
@@ -104,6 +152,7 @@ def main():
             url = search_url(solr, p)
             st, ct, body = get(url)
             write(a.out, f'ext-ia-search-{year}-p{p}.json', url, st, ct, body)
+    write_titles(a.out)
     return 0
 
 

@@ -3944,11 +3944,15 @@ that search, the page's filters included, as one table:
   Text, …);
 - what archive.org shows only when you rest on a tile: **Views**,
   **Favorites**, **Reviews** (their number and the average as stars),
-  **Added**, **Size** in MB and **Collection**.
+  **Added**, **Size** in MB and **Collection**: one collection a line, each a
+  link to its page on archive.org, named as archive.org names it ("Radio
+  Nowhere", "Recordings of Independent Origin"). A cell with several has a ▶
+  to fold them.
 
 The rows come first by date (an item with two dates under its earlier one),
 whatever the page itself sorts by. They come from the Internet Archive's
-search API, 100 a request, one request a second; a search of more than
+search API, 100 a request, one request a second, and after a page one more
+for the names of the collections it brings that are new; a search of more than
 10,000 items lists the first 10,000. A search of the texts' contents ("Search
 text contents") gets no button: the API does not search those.
 
@@ -3966,8 +3970,12 @@ Wherever link previews are on, a link to an archive.org item
 of tracks and their running time, and the first songs. **Space** opens the
 **window**: the item's facts, description, lineage and links (Brucebase and
 Databruce open in the window), and the whole setlist with each song's length,
-with a filter. A link to one track of a show opens the show's window with
-that track marked. A video item shows its picture, thumbnails and files.
+with a filter. Under the picture, **Images** shows every picture the uploader
+added (cover, back, booklet, …); a click on one, or on the picture above,
+opens them all in the viewer. A link to one track of a show opens the show's
+window with that track marked. A video item shows its picture, thumbnails and
+files. On an archive.org search page a collection's link has a card and a
+window too.
 
 With *Play archive.org tracks and videos in the window* on (the default),
 each song has a **▶**, and a video a "Play here" tile: a click plays it in

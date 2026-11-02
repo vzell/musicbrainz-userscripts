@@ -12,6 +12,7 @@ Two parts that share nothing but the host:
 | pageType `ia-search` | archive.org/search?query=… → one table of every item | `_iaSearch*()`, `_iaPrepareLivePage()`, `applyIaToTable()` |
 | reader `iadetails` | any archive.org/details/… link → card on hover, window on Space | `_extIa*()` in `_EXT_READERS` |
 | Art column card + viewer | a picture in the `ia-search` table → the item's pictures | `_IA_FI`, `_iaArtImages()` |
+| Collection column | links to each collection, named by archive.org's own titles | `_iaCollTitles`, `_iaCollTitlesFor()` |
 
 Switches: `sa_enable_internetarchive` (the site, default on; its gate exits
 before anything visible on archive.org), `sa_ia_tip_images` (the Art
@@ -65,6 +66,24 @@ no button: advancedsearch.php does not index what it searches.
   honoured). Columns `_IA_HEADERS`; Views, Favorites, Reviews, Size are
   `integerColumns` (numeric sort strips non-digits: Size is whole MB,
   Reviews is the count plus ★ without digits).
+- Collection (vzell, 2026-11-02: "the cell values should have their
+  hyperlinks intact as on the IP"): one link per collection
+  (`/details/<id>`, a new tab), named by archive.org's own title, the one
+  the item page shows ("Radio Nowhere", "Folksoundomy: A Library of
+  Sound"). The search API returns identifiers only, so after each page ONE
+  more advancedsearch request (`identifier:("a" OR "b" …)`,
+  `fl[]=identifier,title`, the ids sorted, at most 100 a request:
+  `_iaCollTitlesUrl()`) asks for the titles not yet seen in this page
+  load (`_iaCollTitlesFor()`, kept in `_iaCollTitles`; an id the answer
+  leaves out is kept as `''`, never asked again) — in practice pages 1–2
+  only. A failed or stopped lookup never fails the page: the cell falls
+  back to `_IA_COLLECTION_NAMES`, then the id. The column is
+  `renderMultiRowCell` + `collapsableColumns`. On archive.org a collection
+  link is an `iadetails` link too (a card, a window "Internet Archive ·
+  Collection"). Probe `scripts/probe-ia-collection-titles.py`
+  (Env: 2026-11-02T15:32:52+01:00 · vzell-lap · WSL2 Ubuntu 24.04.4 (Linux
+  6.18.54.1) · n/a): the 1975 search's 12 collections in one request of
+  384 characters, 11 with a title; `community` has none (the id is shown).
 - Titles open the item in a new tab (the navigation guard skips `_blank`);
   their card and window are the reader's. On archive.org itself
   `_extTarget()` takes a link to the same host only through
@@ -119,6 +138,14 @@ none.
   as a List table (`ia-setlist`, which fills the window's height), the
   linked track's row `tr.mb-ia-mark`; a video: a "Play here" tile with the
   item's picture, the thumbnails, a Compact table of its files.
+- Images (vzell, 2026-11-02: "the POH should also display ALL images …
+  in a separate IMAGES section"): an item with pictures of its own
+  (`it.pictures`) gets an "Images · N" gallery (`out.lead`, under the
+  cover), Discogs' gallery's shape — `data-mb-artv-ext` links, so
+  `_dpArtViewerClick()` steps through all of them. `rec.imageFull` is the
+  first picture (a cover or front), so a click on the cover opens it at
+  full size and the viewer (which counts one href once) holds exactly the
+  N pictures, never the tile besides. `_EXT_IA_VERSION` 3 since then.
 - `iadetails` is in `_DP_WIN_EXT_READERS`: an archive.org link inside any
   window opens there.
 
@@ -149,29 +176,33 @@ browser.
 
 | Spec | What |
 |---|---|
-| `tests/fixtures/ia-search.spec.js` | the section before `<app-root>`, the button, nothing before the press, page 1 once, the request's q/sort/rows, columns, a known row's cells, dates ascending (two-date item), two pages, `sin=TXT`, the switch off, a title's card and window on archive.org; the Art column: card with the seven scans (cover first, from their thumbs, one request), the viewer at full size from memory, a video's stills, `sa_ia_tip_images` off |
+| `tests/fixtures/ia-search.spec.js` | the section before `<app-root>`, the button, nothing before the press, page 1 once then its titles request, the request's q/sort/rows, columns, a known row's cells (Collection: `ul > li` links with archive.org's titles), dates ascending (two-date item), two pages (page 2's titles request asks none of page 1's), the titles request failing (503: ids or fixed names, no page error), a collection link's card and window, `sin=TXT`, the switch off, a title's card and window on archive.org; the Art column: card with the seven scans (cover first, from their thumbs, one request), the viewer at full size from memory, a video's stills, `sa_ia_tip_images` off |
 | `tests/fixtures/ia-search.mobile.spec.js` | a tap loads the table; a tap on a title opens its window, the page stays |
-| `tests/fixtures/popup-ext.spec.js` "archive.org items" | on a MusicBrainz event page: card (one request), window (19-song setlist, swap, Brucebase link), a track link (no second request, its row marked), Play here (song in the slot, one player, Esc; a video's tile), a missing item |
+| `tests/fixtures/popup-ext.spec.js` "archive.org items" | on a MusicBrainz event page: card (one request), window (19-song setlist, swap, Brucebase link), the window's Images (7 scans in the left column, cover first, the viewer on all 7 and never the tile, the cover = picture 1; none for a video), a track link (no second request, its row marked), Play here (song in the slot, one player, Esc; a video's tile), a missing item |
 | `tests/fixtures/sl-include-regex.spec.js` | the `@include` line: searches with a query; not without one, not an item, not the Wayback Machine |
 
 Fixtures from `scripts/build-ia-fixtures.py` (the live APIs, the same URLs
 the script builds; metadata trimmed to the fields read; `--metadata-only`
-rewrites the items alone, as on 2026-11-01 for the files' `original`). The
+rewrites the items alone, as on 2026-11-01 for the files' `original`;
+`--titles-only` writes `ext-ia-colltitles-<year>-p<N>.json` from the search
+pages already there, keyed by `_iaCollTitlesUrl()`'s URL, as on 2026-11-02 —
+the 2016 pages are cut to 200 rows in the spec, so they are not refetched). The
 spec serves archive.org's pictures with routes set AFTER
 `loadUserscriptPage()`, whose own route aborts every archive.org image and,
 being newer, would win (until 2026-11-01 the Art thumbnails of these specs
 never loaded, unnoticed). Mutations
-`scripts/mutations/internet-archive.json` (18 caught, 1 recorded `pass`:
+`scripts/mutations/internet-archive.json` (24 caught, 1 recorded `pass`:
 Favorites from the `fav-` count, which equals `num_favorites` in the data).
 Fixture specs force `sa_ia_play_in_place` off (`FIXTURE_SETTINGS_OVERRIDE`),
 like YouTube's.
 
 ## Known differences from the mockup
 
-- Collections are shown by archive.org's own name only where it has one
-  (Community Audio, Community Video, Live Music Archive, …); the others by
-  their identifier (`radionowhere`, `roiocollection`). The mockup's
-  "Radio Nowhere" and "ROIO" were invented labels.
+- Collections are named by archive.org's own titles, read from the search
+  API (since WIP.1, 2026-11-02); the mockup's "ROIO" is archive.org's
+  "Recordings of Independent Origin". Until then the table showed ids
+  besides a few fixed names, one of them wrong (`folksoundomy` is
+  "Folksoundomy: A Library of Sound", not "Community Audio").
 - The mockup's description had a "▾"; the window shows it in a scroll box of
   its own height instead (the mockup's own box scrolled too).
 - The button's hover text names the count only after a run (the page holds
