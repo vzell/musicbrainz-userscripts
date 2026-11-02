@@ -1,5 +1,17 @@
 [
   {
+    "version": "WIP.3",
+    "date": "2026-11-02",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "setlist.fm: on the list of a venue's setlists (setlist.fm/venue/…) or an artist's (setlist.fm/setlists/…), a new \"Setlists\" button lists every setlist as one filterable, sortable table: date (linked to the setlist), artist or venue, event, tour, doors, start and end (24-hour), how many songs the list shows (\"12+\" when there are more) and those songs. The rows come from setlist.fm's own pages, 10 setlists each, one page after another; no API key is needed. Upcoming shows stay out of the table. With your setlist.fm API key set, the table's setlist links get their card and window on setlist.fm too. Its own switch, ⚙️ Settings → 🎤 setlist.fm → \"Enable on setlist.fm\", is on by default."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.2",
     "date": "2026-11-02",
     "sections": [

@@ -1820,7 +1820,8 @@ an import brings your deletions back.
   bootleg artwork list, the **brucespringsteen.it** record database and
   the **Brucebase** song list, year pages, Relations and Recent changes, and
   **discogs.com**'s master, release, artist, label, submissions, user, ratings, collection, wantlist, history (release, master, artist, label), images (release, master, artist, label), release Marketplace and search pages, and
-  the **Internet Archive**'s (archive.org) search pages — each site with its
+  the **Internet Archive**'s (archive.org) search pages, and **setlist.fm**'s
+  lists of a venue's or an artist's setlists — each site with its
   own switch, on by default, see [Page-specific behaviour](#page-specific-behaviour)
 
 </details>
@@ -4001,6 +4002,33 @@ allow archive.org's player, a click opens the item on archive.org instead.
 Switches, in ⚙️ Settings → 🏛 Internet Archive: *Enable on archive.org*,
 *Art column: the item's pictures on hover* and *Play archive.org tracks and
 videos in the window*, all on by default.
+
+</details>
+
+<details>
+<summary>setlist.fm: a venue's or an artist's setlists</summary>
+
+On setlist.fm's list of a venue's setlists (setlist.fm/venue/…) or an
+artist's (setlist.fm/setlists/…) the script adds its own section above the
+site with one button, **Setlists**. It lists every setlist of that venue or
+artist as one table you can filter and sort:
+
+- **Date** (it opens the setlist on setlist.fm), **Artist** on a venue's list
+  or **Venue** on an artist's (a stage at a venue shows both, each linked),
+  **Event** when the setlist names one ("Jersey 4 Jersey", a festival), and
+  **Tour** (setlist.fm's own link);
+- **Doors**, **Start** and **End**, on a 24-hour clock, where someone
+  entered set times;
+- **Songs** and **Setlist**: the songs the list shows, at most 12 — "12+"
+  means there are more. A ▶ unfolds a long Setlist cell.
+
+The rows come from setlist.fm's own pages, 10 setlists each, one page after
+another; a venue with 93 pages first asks whether you want them all (⚠️ High
+Page Count). No API key is needed. The Upcoming Shows box is not part of the
+table. With the setlist.fm API key set (🔎 EXTERNAL LINK PREVIEWS), the
+table's setlist links get their card and window here too.
+
+Switch, in ⚙️ Settings → 🎤 setlist.fm: *Enable on setlist.fm*, on by default.
 
 </details>
 

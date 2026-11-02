@@ -27707,3 +27707,48 @@ failing, a collection link's card and window), `popup-ext.spec.js` "the
 window's Images"; mutations `scripts/mutations/internet-archive.json` +6
 (and the favorites entry's `find` updated), all 25 as expected (userscript
 restored, hash verified).
+
+## 2026-11-02 — setlist.fm: venue additions; the pages ARE readable; sfm-venue/sfm-artist (feat/setlistfm-venue, WIP.1–3)
+Env: 2026-11-02T19:32+01:00–23:40+01:00 · vzell-lap · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) · specs: Playwright Chromium, no Tampermonkey (GM stubs); the session probe and the live checks: vzell's browser (Windows, Chrome 152), Tampermonkey unknown
+
+org/setlistfm.org "venue additions", five items, plan and mockup v1
+(https://claude.ai/artifact/71itNE6a2ekiAtQxcTi1hq, answers Q1–Q9). Full text:
+docs/claude/detail-pages.md "Venue additions", docs/claude/setlistfm.md.
+
+1. "The 2026-10-20 DATE entries wrap" (`debug/POH-setlistfm-venue.html`):
+   the list window's Date column was the only window date column without
+   `cls: 'mb-dg-yr'` (nowrap); "2026-10-20" broke at its hyphens.
+2. **The assumption "setlist.fm's pages answer a script with a bot check"
+   was wrong for a browser.** It came from the Python probe of 2026-10-29
+   (202, empty body). `scripts/probe-setlistfm-session.user.js` in vzell's
+   browser: `GM_xmlhttpRequest` from musicbrainz.org, anonymous AND with
+   cookies, and a same-origin `fetch()` on setlist.fm all answered 200 with
+   the whole page (10 `.setlistPreview`, 7 with set times). So set times
+   (not in the API) are read from the pages, anonymously, no consent
+   exception needed. Claude Code itself cannot fetch setlist.fm: a shell
+   request with a browser User-Agent is refused by auto mode as bot-check
+   circumvention — every page shape comes from vzell's snapshots.
+3. **The API's set search by artist NAME is fuzzy**
+   (`scripts/probe-setlistfm-api.py` step 7): `artistName=Nirvana` answered
+   five tribute acts and not Nirvana. The tour link therefore carries the
+   artist's MBID in its fragment (`#mbid=`), and the reader asks
+   `/search/setlists?artistMbid=&tourName=` only.
+4. Page family surprises, each pinned by a spec: a closed venue's info box
+   says "Open" with a range (not "Opened"); "Also known as" is several
+   `<span>`s; the page's own newlines between `<span>`s made a fact three
+   lines until `<br>` became a private-use marker before whitespace was
+   squeezed; a setlist page without doors still has Scheduled/Start/End (the
+   first spec assumed "no times" and was wrong); a card's venue can be a
+   stage AT a venue, two `<strong>` links; `querySelector('strong a[href],
+   strong')` returns the `<strong>` (document order), not its link.
+5. The Edit tool wrote ` ` / `` in new_string as the literal
+   characters: invisible in the source, and a later Edit could not match the
+   line. `find-literal` scan before every commit; all are escapes now.
+6. sfm-list.spec.js found a crash: `_extSource()`'s selector reads
+   `_DP_SITES[_foreignHost].extRoot`, so a new foreign host needs a
+   `_DP_SITES` entry even without detail pages of its own (as archive.org).
+
+Tests: popup-ext.spec.js Part A (3) and Part B (6), 85/85 for the file;
+sfm-list.spec.js (7), sfm-list.mobile.spec.js, sl-include-regex.spec.js;
+mutations setlistfm-venue.json 17/17 and setlistfm-list.json 8/8 as expected
+(userscript restored, hash verified).

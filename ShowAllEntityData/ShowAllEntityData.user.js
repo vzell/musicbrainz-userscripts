@@ -41,6 +41,7 @@
 // @include      /^https?:\/\/(?:www\.)?discogs\.com\/(?:[a-z]{2}(?:[-_][a-zA-Z]{2})?\/)?sell\/release\/\d+\/?(?:[?#].*)?$/
 // @include      /^https?:\/\/(?:www\.)?discogs\.com\/(?:[a-z]{2}(?:[-_][a-zA-Z]{2})?\/)?search\/?\?(?:[^#]*&)?q=[^&#]+.*$/
 // @include      /^https?:\/\/(?:www\.)?archive\.org\/search\/?\?(?:[^#]*&)?query=[^&#]+.*$/
+// @include      /^https?:\/\/(?:www\.)?setlist\.fm\/(?:venue|setlists)\/[^\/?#]+-[0-9a-f]+\.html(?:[?#].*)?$/
 // @connect      raw.githubusercontent.com
 // @connect      coverartarchive.org
 // @connect      eventartarchive.org
@@ -5156,6 +5157,28 @@
         },
 
         // ============================================================
+        // SETLIST.FM (2026-11-02; docs/claude/setlistfm.md). The link
+        // previews' reader and its API key are under EXTERNAL LINK PREVIEWS.
+        // ============================================================
+        divider_setlistfm: {
+            type: 'divider',
+            label: '🎤 SETLIST.FM'
+        },
+
+        sa_enable_setlistfm: {
+            label: 'Enable on setlist.fm',
+            type: 'checkbox',
+            default: true,
+            description: 'On by default. When on, the script also runs on setlist.fm\'s list of a venue\'s or an ' +
+                         'artist\'s setlists (setlist.fm/venue/… and setlist.fm/setlists/…) and offers a button ' +
+                         'that lists every setlist as one filterable, sortable table: date, artist or venue, event, ' +
+                         'tour, doors, start and end (24-hour), how many songs and the first of them. The rows ' +
+                         'come from setlist.fm\'s own pages, 10 setlists each, one page after another; no API key ' +
+                         'is needed. When off, the script exits on setlist.fm before touching the page. Settings ' +
+                         'are shared with MusicBrainz, so this can be switched on from either site.'
+        },
+
+        // ============================================================
         // LINK PREVIEWS ON MUSICBRAINZ (the popup engine's entity cards,
         // org/iframe.org Phase 2)
         // ============================================================
@@ -6636,6 +6659,20 @@
     const _isIaHost = /^(?:www\.)?archive\.org$/.test(window.location.hostname);
 
     /**
+     * True when this page is on setlist.fm rather than MusicBrainz.
+     *
+     * The seventh non-MusicBrainz host (its `@include` lines and
+     * docs/claude/setlistfm.md, 2026-11-02): a venue's or an artist's list of
+     * setlists, read from setlist.fm's own pages (`sfm-venue`, `sfm-artist`).
+     * Read by its own opt-in and frame gates just below, through
+     * `_foreignHost` by the detection loop, by `performClutterCleanup()`,
+     * `_sphPageEl()` and `_extTarget()` (a setlist.fm link is previewed on
+     * setlist.fm too, while the reader has its key).
+     * @type {boolean}
+     */
+    const _isSfmHost = /^(?:www\.)?setlist\.fm$/.test(window.location.hostname);
+
+    /**
      * archive.org's search page, `/search` (pageType `ia-search`,
      * 2026-10-31). Its query is in `?query=`, its filters in `and[]` /
      * `not[]` (`_iaSearchSolr()`).
@@ -6762,6 +6799,7 @@
         : _isBbHost ? 'brucebase.wikidot.com'
         : _isDgHost ? 'www.discogs.com'
         : _isIaHost ? 'archive.org'
+        : _isSfmHost ? 'www.setlist.fm'
         : null;
 
     // springsteenlyrics.com support has its own switch (`sa_enable_springsteenlyrics`,
@@ -6856,6 +6894,14 @@
         return;
     }
     if (_isIaHost && window.top !== window) return;
+
+    // setlist.fm: own switch (`sa_enable_setlistfm`, default on), gated as
+    // early as the others, and the top window only (its pages carry ad frames).
+    if (_isSfmHost && Lib.settings.sa_enable_setlistfm !== true) {
+        Lib.info('init', 'setlist.fm support is off (sa_enable_setlistfm) — nothing to do.');
+        return;
+    }
+    if (_isSfmHost && window.top !== window) return;
 
     // The notice is independent of pageType — it reports on GM storage, not on
     // anything this page renders — so it is armed here rather than from a
@@ -12365,7 +12411,7 @@
      * borders, padding, header background and the `tr.even` zebra stripe
      * that `applyZebraStriping()` merely toggles classes for; neither site
      * has any of it. The rules are scoped to the hosts' body classes
-     * (`mb-sa-host-sl`, `mb-sa-host-jl`, `mb-sa-host-bs`, `mb-sa-host-bb`, `mb-sa-host-dg`, `mb-sa-host-ia`) and sit inside `:where()` so they
+     * (`mb-sa-host-sl`, `mb-sa-host-jl`, `mb-sa-host-bs`, `mb-sa-host-bb`, `mb-sa-host-dg`, `mb-sa-host-ia`, `mb-sa-host-sfm`) and sit inside `:where()` so they
      * carry almost no specificity: any of this script's own table styling
      * (sticky header colours, finding tints, hover, highlights) still wins
      * wherever it applies. A further host extends the `:is()` list here
@@ -12377,23 +12423,23 @@
         if (document.getElementById('mb-foreign-table-style')) return;
         // GM_addStyle so this is exempt from page CSP style-src restrictions.
         const style = GM_addStyle(`
-            :where(body:is(.mb-sa-host-sl, .mb-sa-host-jl, .mb-sa-host-bs, .mb-sa-host-bb, .mb-sa-host-dg, .mb-sa-host-ia) table.tbl) {
+            :where(body:is(.mb-sa-host-sl, .mb-sa-host-jl, .mb-sa-host-bs, .mb-sa-host-bb, .mb-sa-host-dg, .mb-sa-host-ia, .mb-sa-host-sfm) table.tbl) {
                 border-collapse: collapse;
                 background: #fff;
                 font-size: 13px;
                 margin: 6px 0;
             }
-            :where(body:is(.mb-sa-host-sl, .mb-sa-host-jl, .mb-sa-host-bs, .mb-sa-host-bb, .mb-sa-host-dg, .mb-sa-host-ia) table.tbl) th,
-            :where(body:is(.mb-sa-host-sl, .mb-sa-host-jl, .mb-sa-host-bs, .mb-sa-host-bb, .mb-sa-host-dg, .mb-sa-host-ia) table.tbl) td {
+            :where(body:is(.mb-sa-host-sl, .mb-sa-host-jl, .mb-sa-host-bs, .mb-sa-host-bb, .mb-sa-host-dg, .mb-sa-host-ia, .mb-sa-host-sfm) table.tbl) th,
+            :where(body:is(.mb-sa-host-sl, .mb-sa-host-jl, .mb-sa-host-bs, .mb-sa-host-bb, .mb-sa-host-dg, .mb-sa-host-ia, .mb-sa-host-sfm) table.tbl) td {
                 border: 1px solid #ddd;
                 padding: 3px 6px;
                 vertical-align: top;
             }
-            :where(body:is(.mb-sa-host-sl, .mb-sa-host-jl, .mb-sa-host-bs, .mb-sa-host-bb, .mb-sa-host-dg, .mb-sa-host-ia) table.tbl) thead th {
+            :where(body:is(.mb-sa-host-sl, .mb-sa-host-jl, .mb-sa-host-bs, .mb-sa-host-bb, .mb-sa-host-dg, .mb-sa-host-ia, .mb-sa-host-sfm) table.tbl) thead th {
                 background-color: #e8e8e8;
                 text-align: left;
             }
-            :where(body:is(.mb-sa-host-sl, .mb-sa-host-jl, .mb-sa-host-bs, .mb-sa-host-bb, .mb-sa-host-dg, .mb-sa-host-ia) table.tbl) tr.even > td {
+            :where(body:is(.mb-sa-host-sl, .mb-sa-host-jl, .mb-sa-host-bs, .mb-sa-host-bb, .mb-sa-host-dg, .mb-sa-host-ia, .mb-sa-host-sfm) table.tbl) tr.even > td {
                 background-color: #f2f2f2;
             }
             /* NOT inside :where(), on purpose: the backing behind a sorted
@@ -12406,7 +12452,7 @@
                outrank the site's own rules: springsteenlyrics.com's
                Bootstrap 3.3.2 has table { background-color: transparent },
                which also beats the zero-specificity table colour above. */
-            body:is(.mb-sa-host-sl, .mb-sa-host-jl, .mb-sa-host-bs, .mb-sa-host-bb, .mb-sa-host-dg, .mb-sa-host-ia) table.tbl > thead {
+            body:is(.mb-sa-host-sl, .mb-sa-host-jl, .mb-sa-host-bs, .mb-sa-host-bb, .mb-sa-host-dg, .mb-sa-host-ia, .mb-sa-host-sfm) table.tbl > thead {
                 background-color: #fff;
             }
         `);
@@ -19404,6 +19450,267 @@
         Lib.debug('init', 'applyIaToTable: empty ia-search table in place for the fetched pages.');
     }
 
+    // --- setlist.fm: a venue's or an artist's setlists (sfm-venue, sfm-artist) --
+    // org/setlistfm.org "venue additions" item 2 and Q9 (2026-11-02; mockup v1
+    // https://claude.ai/artifact/71itNE6a2ekiAtQxcTi1hq view 4,
+    // docs/claude/setlistfm.md). setlist.fm's own pages list 10 setlists each
+    // as `.setlistPreview` cards: date, artist, tour, venue, set times and up
+    // to 12 songs. Every page is fetched (same-origin, `features.pageRequest`)
+    // and turned into rows; the live page gets our own section with an empty
+    // table, first in <body>, as on archive.org. No API, no key.
+
+    /**
+     * A setlist.fm list page the pageTypes take: a venue's setlists
+     * (`/venue/<slug>-<id>.html`) or an artist's (`/setlists/<slug>-<id>.html`).
+     * @type {RegExp}
+     */
+    const _SFM_LIST_PATH_RE = /^\/(venue|setlists)\/[^/]+-[0-9a-f]+\.html$/i;
+
+    /**
+     * The columns of a fetched page, by kind (vzell's Q1: Doors, Start and
+     * End as three columns here; Q7: Songs "12+" from the page).
+     * @type {Object<string, string[]>}
+     */
+    const _SFM_HEADERS = {
+        venue: ['Date', 'Artist', 'Event', 'Tour', 'Doors', 'Start', 'End', 'Songs', 'Setlist'],
+        artist: ['Date', 'Venue', 'Event', 'Tour', 'Doors', 'Start', 'End', 'Songs', 'Setlist'],
+    };
+
+    /** The English month abbreviations of a `.dateBlock`. */
+    const _SFM_MONTHS = { jan: 1, feb: 2, mar: 3, apr: 4, may: 5, jun: 6, jul: 7, aug: 8, sep: 9, oct: 10, nov: 11, dec: 12 };
+
+    /**
+     * Which list this page is: 'venue', 'artist', or '' for none.
+     *
+     * @param {string} [path]
+     * @returns {string}
+     */
+    function _sfmKind(path = window.location.pathname) {
+        const m = _SFM_LIST_PATH_RE.exec(path);
+        return m ? (m[1].toLowerCase() === 'venue' ? 'venue' : 'artist') : '';
+    }
+
+    /**
+     * How many pages the list has, as its own pager says: the highest
+     * `page=` of `ul.listPagingNavigator` (State Farm Arena: 93), 1 without
+     * a pager (a venue with up to 10 setlists). No request.
+     *
+     * @param {Document} [doc]
+     * @returns {number}
+     */
+    function _sfmPageCount(doc = document) {
+        let max = 1;
+        doc.querySelectorAll('ul.listPagingNavigator a[href]').forEach((a) => {
+            const m = /[?&]page=(\d+)/.exec(a.getAttribute('href') || '');
+            if (m) max = Math.max(max, Number(m[1]));
+        });
+        return max;
+    }
+
+    /**
+     * Page `p` of this list: the page's own URL with `page=p` (page 1
+     * without it), other parameters kept, no fragment.
+     *
+     * @param {number} p
+     * @returns {string}
+     */
+    function _sfmPageUrl(p) {
+        const u = new URL(window.location.href);
+        u.hash = '';
+        if (p > 1) u.searchParams.set('page', String(p));
+        else u.searchParams.delete('page');
+        return u.href;
+    }
+
+    /**
+     * One `.setlistPreview` card as a row (`_SFM_HEADERS`): the date (linked
+     * to the setlist), the artist or venue (linked), the event when the
+     * card's heading names one ("Bruce Springsteen at Jersey 4 Jersey"; the
+     * plain "<artist> at <venue>" is none), the tour (setlist.fm's own
+     * search link), Doors, Start and End on a 24-hour clock
+     * (`_extSfmPreviewTimes()`), how many songs the card shows ("12+" when
+     * it ends in "...") and those songs. Links are made absolute against
+     * the page they came from and open in a new tab.
+     *
+     * @param {Element} card
+     * @param {string} kind - 'venue' or 'artist'.
+     * @param {string} base - The page's URL.
+     * @returns {?string} A `<tr>`, or null for a card without its setlist link.
+     */
+    function _sfmCardRow(card, kind, base) {
+        const flat = s => String(s || '').replace(/\u00a0/g, ' ').replace(/\s+/g, ' ').trim();
+        const abs = (href) => {
+            try {
+                return new URL(href, base).href;
+            } catch (_) {
+                return '';
+            }
+        };
+        const link = (a, text) => {
+            const href = a ? abs(a.getAttribute('href') || '') : '';
+            return href ? `<a href="${_rgEsc(href)}" target="_blank" rel="noopener">${_rgEsc(text)}</a>` : _rgEsc(text);
+        };
+        const h2a = card.querySelector('h2 a[href]');
+        if (!h2a) return null;
+        // One "Label: value" line of `.details` as text and as HTML, each
+        // <strong> its link. A venue can be two: "Venue: Pavilion Stage at
+        // Merriweather Post Pavilion, Columbia, MD, USA", the stage and the
+        // venue each linked (debug/setlistfm-artist.html, 2026-10-29).
+        const field = (label) => {
+            const span = Array.from(card.querySelectorAll('.details > span'))
+                .find(s => new RegExp(`^\\s*${label}:`, 'i').test(s.textContent || ''));
+            if (!span) return { text: '', html: '' };
+            const text = [];
+            const html = [];
+            span.childNodes.forEach((n) => {
+                if (n.nodeType === 3) {
+                    const t = flat(n.textContent).replace(new RegExp(`^${label}:\\s*`, 'i'), '').replace(/,$/, '').trim();
+                    if (t) { text.push(t); html.push(_rgEsc(t)); }
+                } else if (n.nodeType === 1 && n.tagName === 'STRONG') {
+                    const t = flat(n.textContent);
+                    if (t) { text.push(t); html.push(link(n.querySelector('a[href]'), t)); }
+                }
+            });
+            return { text: text.join(' '), html: html.join(' ') };
+        };
+        const day = flat((card.querySelector('.dateBlock .day') || {}).textContent);
+        const month = _SFM_MONTHS[flat((card.querySelector('.dateBlock .month') || {}).textContent).slice(0, 3).toLowerCase()];
+        const year = flat((card.querySelector('.dateBlock .year') || {}).textContent);
+        const date = year && month && day ? `${year}-${String(month).padStart(2, '0')}-${day.padStart(2, '0')}` : year;
+        const artist = field('Artist');
+        const venue = field('Venue');
+        const tour = field('Tour');
+        const title = flat(h2a.textContent);
+        const atPrefix = `${artist.text} at `;
+        const event = title === `${atPrefix}${venue.text}` ? '' : (title.startsWith(atPrefix) ? title.slice(atPrefix.length) : title);
+        const times = _extSfmPreviewTimes(card.querySelector('.setlistPreviewSetTimes')) || { doors: '', start: '', end: '' };
+        const lis = Array.from(card.querySelectorAll('.setSummary li')).map(li => flat(li.textContent)).filter(Boolean);
+        const more = lis.length > 0 && /^\.{3}$|^…$/.test(lis[lis.length - 1]);
+        const songs = more ? lis.slice(0, -1) : lis;
+        const who = kind === 'venue' ? artist : venue;
+        const cells = [
+            link(h2a, date), who.html, _rgEsc(event), tour.html,
+            _rgEsc(times.doors), _rgEsc(times.start), _rgEsc(times.end),
+            songs.length ? `${songs.length}${more ? '+' : ''}` : '',
+            _rgEsc(songs.join(' · ') + (more ? ' …' : '')),
+        ];
+        return `<tr>${cells.map(c => `<td>${c}</td>`).join('')}</tr>`;
+    }
+
+    /**
+     * One fetched page of the list (`features.pageRequest`'s `toHtml`) as a
+     * `table.tbl` of its `.setlistPreview` cards. The Upcoming Shows box is
+     * not cards of that class, so it never gets in. A page without any
+     * card is a failure (a bot check, a changed page), never "no rows".
+     *
+     * @param {string} text - The page.
+     * @param {string} kind - 'venue' or 'artist'.
+     * @param {string} base - Its URL.
+     * @returns {string} An HTML document.
+     * @throws {Error} When the page holds no setlist.
+     */
+    function _sfmListToHtml(text, kind, base) {
+        const doc = new DOMParser().parseFromString(text, 'text/html');
+        const cards = Array.from(doc.querySelectorAll('.setlistPreview'));
+        if (!cards.length) throw new Error(`setlist.fm's page has no setlists: ${base}`);
+        const rows = cards.map(c => _sfmCardRow(c, kind, base)).filter(Boolean);
+        return `<!DOCTYPE html><html><head><meta charset="utf-8"></head><body>${_dgTableHtml(null, _SFM_HEADERS[kind], rows)}</body></html>`;
+    }
+
+    /**
+     * Installs setlist.fm's stylesheet, once: our section first in <body>
+     * (`#mb-sfm-root`), its `<h1>`/`<h2>`; the table itself is the shared
+     * `_ensureForeignTableStyle()`. Every rule is scoped to
+     * `body.mb-sa-host-sfm`.
+     *
+     * @returns {void}
+     */
+    function _ensureSfmStyle() {
+        _ensureForeignTableStyle();
+        if (document.getElementById('mb-sfm-style')) return;
+        // GM_addStyle so this is exempt from page CSP style-src restrictions.
+        const style = GM_addStyle(`
+            /* As wide as its widest table, at least the window (as archive.org's section). */
+            body.mb-sa-host-sfm #mb-sfm-root {
+                box-sizing: border-box;
+                width: fit-content;
+                min-width: 100%;
+                margin: 0 0 12px;
+                padding: 8px 8px 14px;
+                background: #fff;
+                color: #222;
+                font: 13px/1.4 "Helvetica Neue", Helvetica, Arial, sans-serif;
+                border-bottom: 1px solid #e5e5e5;
+                position: relative;
+                z-index: 2;
+            }
+            body.mb-sa-host-sfm h1.mb-sfm-h1 { font: 700 20px/1.25 "Helvetica Neue", Helvetica, Arial, sans-serif; margin: 0 0 6px; color: #222; }
+            body.mb-sa-host-sfm h2.mb-sfm-list-heading { font: 700 17px/1.3 "Helvetica Neue", Helvetica, Arial, sans-serif; margin: 10px 0 6px; color: #222; }
+            body.mb-sa-host-sfm #mb-sfm-root table.tbl a { color: #2a6496; }
+            body.mb-sa-host-sfm #mb-sfm-root table.tbl td:first-child { white-space: nowrap; font-variant-numeric: tabular-nums; }
+            body.mb-sa-host-sfm input.mb-col-filter-input { box-sizing: border-box; }
+        `);
+        style.id = 'mb-sfm-style';
+    }
+
+    /**
+     * Prepares a setlist.fm list page at init, standing in for the
+     * MusicBrainz header lookup (the init block calls it for the setlist.fm
+     * definitions only): our own `<section id="mb-sfm-root">` FIRST in
+     * <body>, never inside setlist.fm's `div.body` — the sticky headers pin
+     * every <body> child but `_sphPageEl()`, which is this section here, so
+     * a section inside `div.body` would pin the whole site. Its
+     * `<h1 class="mb-sfm-h1">` holds the toolbar, named by the page's own
+     * `<h1>` ("State Farm Arena Atlanta Concert Setlists") in a `<bdi>`.
+     * Tags <body> with `mb-sa-host-sfm`.
+     *
+     * @returns {?HTMLHeadingElement} The `<h1>`, or null without a <body>.
+     */
+    function _sfmPrepareLivePage() {
+        const existing = document.querySelector('h1.mb-sfm-h1');
+        if (existing) return existing;
+        if (!document.body) return null;
+        document.body.classList.add('mb-sa-host-sfm');
+        _ensureSfmStyle();
+        const root = document.createElement('section');
+        root.id = 'mb-sfm-root';
+        const h1 = document.createElement('h1');
+        h1.className = 'mb-sfm-h1';
+        const bdi = document.createElement('bdi');
+        const own = document.querySelector('.mainColumn h1');
+        bdi.textContent = (own && own.textContent.replace(/\s+/g, ' ').trim()) || 'setlist.fm setlists';
+        h1.appendChild(bdi);
+        root.appendChild(h1);
+        document.body.insertBefore(root, document.body.firstChild);
+        return h1;
+    }
+
+    /**
+     * The live page's part of `sfm-venue` / `sfm-artist`
+     * (`features.sfmToTable`), at the press, on a Load from Disk and on every
+     * repeat: under `<h2 class="mb-sfm-list-heading">` (where the row count
+     * anchors), an EMPTY `table.tbl` with the kind's columns in
+     * `#mb-sfm-root`; the rows come from the fetched pages only
+     * (`features.pageRequest`), page 1 included. Idempotent.
+     *
+     * @param {object} def - The active merged pageDefinition.
+     * @returns {void}
+     */
+    function applySfmToTable(def) {
+        const kind = def?.features?.sfmToTable;
+        if (!kind || document.querySelector('table.mb-sfm-table')) return;
+        const root = document.getElementById('mb-sfm-root') || _sfmPrepareLivePage()?.parentNode;
+        if (!root) return;
+        const h2 = document.createElement('h2');
+        h2.className = 'mb-sfm-list-heading';
+        h2.textContent = 'Setlists';
+        const table = document.createElement('table');
+        table.className = 'tbl mb-sfm-table';
+        table.innerHTML = `<thead><tr>${_SFM_HEADERS[kind].map(c => `<th>${_rgEsc(c)}</th>`).join('')}</tr></thead><tbody></tbody>`;
+        root.append(h2, table);
+        Lib.debug('init', `applySfmToTable: empty sfm-${kind} table in place for the fetched pages.`);
+    }
+
     // --- discogs.com: a user's page (pageType dg-user) -----------------------
     // `/user/<name>` (vzell, 2026-10-18; mockup
     // https://claude.ai/artifact/XRTM8v1aLNj3voVt6RxVJz, tab D): plain HTML
@@ -23946,6 +24253,22 @@
             liveCss: '',
             livePrepare: null,
             extRoot: '#mb-ia-root'
+        },
+        // setlist.fm (2026-11-02): as archive.org, no detail pages of its own
+        // to parse — a setlist, an artist's or a venue's page is the
+        // `setlistfm` reader's (with its key). The content area is our own
+        // section (`#mb-sfm-root`): without this entry `_extSource()`'s
+        // selector threw on setlist.fm (found by tests/fixtures/sfm-list.spec.js).
+        'www.setlist.fm': {
+            setting: null,
+            isDetailUrl: () => false,
+            charset: null,
+            parse: () => null,
+            liveRoot: null,
+            liveHide: [],
+            liveCss: '',
+            livePrepare: null,
+            extRoot: '#mb-sfm-root'
         }
     };
 
@@ -43520,6 +43843,60 @@
                 collapsableColumns: [ 'Collection' ]
             },
             tableMode: 'single'
+        },
+        // setlist.fm (2026-11-02, org/setlistfm.org item 2 and Q9;
+        // docs/claude/setlistfm.md): a venue's and an artist's setlists, ten a
+        // page as `.setlistPreview` cards. Every page, page 1 too, is fetched
+        // same-origin and turned into rows (`features.pageRequest`,
+        // `_sfmListToHtml()`); the live page gets an empty table in our
+        // section (`sfmToTable`). The page count is the live pager's
+        // (`_sfmPageCount()`), so it costs no request and "⚠️ High Page Count"
+        // sees it before anything is asked.
+        {
+            type: 'sfm-venue',
+            host: 'www.setlist.fm',
+            match: (path) => _sfmKind(path) === 'venue',
+            buttons: [ {
+                label: 'Show all setlists of this venue', shortLabel: 'Setlists',
+                get description() {
+                    const n = _sfmPageCount();
+                    return `Every setlist of this venue as one table: ${n} page${n === 1 ? '' : 's'} of setlist.fm, 10 setlists each, read one after another.`;
+                }
+            } ],
+            features: {
+                sfmToTable: 'venue',
+                pageRequest: (p) => {
+                    const url = _sfmPageUrl(p);
+                    return { url, toHtml: (text) => _sfmListToHtml(text, 'venue', url) };
+                },
+                pageCountAsync: () => _sfmPageCount(),
+                integerColumns: [ { sourceColumn: 'Songs', align: 'R' } ],
+                collapsableColumns: [ 'Setlist' ]
+            },
+            tableMode: 'single'
+        },
+        {
+            type: 'sfm-artist',
+            host: 'www.setlist.fm',
+            match: (path) => _sfmKind(path) === 'artist',
+            buttons: [ {
+                label: 'Show all setlists of this artist', shortLabel: 'Setlists',
+                get description() {
+                    const n = _sfmPageCount();
+                    return `Every setlist of this artist as one table: ${n} page${n === 1 ? '' : 's'} of setlist.fm, 10 setlists each, read one after another.`;
+                }
+            } ],
+            features: {
+                sfmToTable: 'artist',
+                pageRequest: (p) => {
+                    const url = _sfmPageUrl(p);
+                    return { url, toHtml: (text) => _sfmListToHtml(text, 'artist', url) };
+                },
+                pageCountAsync: () => _sfmPageCount(),
+                integerColumns: [ { sourceColumn: 'Songs', align: 'R' } ],
+                collapsableColumns: [ 'Setlist' ]
+            },
+            tableMode: 'single'
         }
     ];
 
@@ -48291,7 +48668,9 @@
         // archive.org (2026-10-31): our `#mb-ia-root` too, beside the site's
         // `<app-root>` shell, which must never be pinned whole.
         return _isDgHost ? document.getElementById('mb-dg-root')
-            : _isIaHost ? document.getElementById('mb-ia-root') : document.getElementById('page');
+            : _isIaHost ? document.getElementById('mb-ia-root')
+            // setlist.fm (2026-11-02): our `#mb-sfm-root`, first in <body> as on archive.org.
+            : _isSfmHost ? document.getElementById('mb-sfm-root') : document.getElementById('page');
     }
 
     /**
@@ -73175,7 +73554,7 @@
         // On archive.org (2026-10-31): an item our table links, the
         // `iadetails` reader's.
         if (bare(host) === bare(window.location.hostname.toLowerCase()) &&
-            !(_isDgHost && _extDgSiteTest(u)) && !(_isIaHost && _extIaTest(u))) return null;
+            !(_isDgHost && _extDgSiteTest(u)) && !(_isIaHost && _extIaTest(u)) && !(_isSfmHost && _extSfmTest(u))) return null;
         if (_EXT_SKIP_HOST_RE.test(host) || _EXT_SKIP_URL_RE.test(href)) return null;
         // A Relationships icon is an image link that IS the link: it gets
         // the card (2026-10-17). Elsewhere a link around an image is the
@@ -87869,6 +88248,10 @@ a { color: #1565c0; }`;
         // no heading in reach): a section of our own before it — see
         // _iaPrepareLivePage().
         headerContainer = _iaPrepareLivePage();
+    } else if (baseDefinition?.host === 'www.setlist.fm') {
+        // setlist.fm's own <h1> is inside its page body: the toolbar goes
+        // to a section of our own first in <body> — see _sfmPrepareLivePage().
+        headerContainer = _sfmPrepareLivePage();
     }
 
     // The popup engine (hover card + pinned dialog), when one of its sources
@@ -97239,7 +97622,7 @@ a { color: #1565c0; }`;
         // userscript's widget, and some removals (any <details> with more
         // than 5 images, any 700px-wide div) would hit unrelated content on
         // another site.
-        if (_isSlHost || _isJlHost || _isBsHost || _isBbHost || _isDgHost || _isIaHost) return;
+        if (_isSlHost || _isJlHost || _isBsHost || _isBbHost || _isDgHost || _isIaHost || _isSfmHost) return;
         Lib.debug('cleanup', 'Starting clutter element removal.');
 
         // Remove Jesus2099 bigbox elements
@@ -109296,6 +109679,11 @@ a { color: #1565c0; }`;
         // Archive's search API.
         if (activeDefinition.features?.iaToTable) {
             applyIaToTable(activeDefinition);
+        }
+        // setlist.fm ('sfm-venue', 'sfm-artist'): the same empty table in
+        // our section; the rows come from every fetched page, page 1 too.
+        if (activeDefinition.features?.sfmToTable) {
+            applySfmToTable(activeDefinition);
         }
 
         // ── bsRecordsToTable pre-processing ──────────────────────────────────
@@ -141184,6 +141572,9 @@ a { color: #1565c0; }`;
             }
             if (activeDefinition.features?.iaToTable) {
                 applyIaToTable(activeDefinition);
+            }
+            if (activeDefinition.features?.sfmToTable) {
+                applySfmToTable(activeDefinition);
             }
             // And for brucespringsteen.it: the reloaded page holds the site's
             // record paragraphs again; an empty table takes their place.

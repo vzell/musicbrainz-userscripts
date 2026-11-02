@@ -1,0 +1,106 @@
+[
+  {
+    "name": "setlist.fm support runs although it is switched off",
+    "why": "CLAUDE.md: each site's own switch; its gate exits before anything visible happens.",
+    "edits": [
+      {
+        "find": "    if (_isSfmHost && Lib.settings.sa_enable_setlistfm !== true) {",
+        "replace": "    if (false) {"
+      }
+    ],
+    "spec": "tests/fixtures/sfm-list.spec.js",
+    "grep": "switched off: nothing on the page changes",
+    "expect": "fail"
+  },
+  {
+    "name": "only page 1 is read: the live pager's count is ignored",
+    "why": "State Farm Arena has 93 pages; the count is the pager's highest page= (no request).",
+    "edits": [
+      {
+        "find": "            if (m) max = Math.max(max, Number(m[1]));",
+        "replace": "            if (m) max = 1;"
+      }
+    ],
+    "spec": "tests/fixtures/sfm-list.spec.js",
+    "grep": "a venue: our section first",
+    "expect": "fail"
+  },
+  {
+    "name": "our section is not first in <body>",
+    "why": "The sticky headers pin every <body> child but _sphPageEl(); inside setlist.fm's div.body the whole site would be pinned.",
+    "edits": [
+      {
+        "find": "        document.body.insertBefore(root, document.body.firstChild);\n        return h1;\n    }\n\n    /**\n     * The live page's part of `sfm-venue`",
+        "replace": "        document.body.appendChild(root);\n        return h1;\n    }\n\n    /**\n     * The live page's part of `sfm-venue`"
+      }
+    ],
+    "spec": "tests/fixtures/sfm-list.spec.js",
+    "grep": "a venue: our section first",
+    "expect": "fail"
+  },
+  {
+    "name": "every card's heading becomes an Event",
+    "why": "The plain \"<artist> at <venue>\" heading names no event; only \"Jersey 4 Jersey\" and festivals do.",
+    "edits": [
+      {
+        "find": "        const event = title === `${atPrefix}${venue.text}` ? '' :",
+        "replace": "        const event = false ? '' :"
+      }
+    ],
+    "spec": "tests/fixtures/sfm-list.spec.js",
+    "grep": "a venue: our section first",
+    "expect": "fail"
+  },
+  {
+    "name": "a stage at a venue keeps only the stage",
+    "why": "debug/setlistfm-artist.html: \"Venue: Pavilion Stage at Merriweather Post Pavilion, Columbia, MD, USA\", two links.",
+    "edits": [
+      {
+        "find": "                } else if (n.nodeType === 1 && n.tagName === 'STRONG') {",
+        "replace": "                } else if (n.nodeType === 1 && n.tagName === 'STRONG' && !html.length) {"
+      }
+    ],
+    "spec": "tests/fixtures/sfm-list.spec.js",
+    "grep": "an artist: Venue instead of Artist",
+    "expect": "fail"
+  },
+  {
+    "name": "a card cut at 12 songs counts as 12",
+    "why": "vzell's Q7: \"12+\" from the page, so a sort and a reader see that the card shows only the start.",
+    "edits": [
+      {
+        "find": "            songs.length ? `${songs.length}${more ? '+' : ''}` : '',",
+        "replace": "            songs.length ? `${songs.length}` : '',"
+      }
+    ],
+    "spec": "tests/fixtures/sfm-list.spec.js",
+    "grep": "a venue: our section first",
+    "expect": "fail"
+  },
+  {
+    "name": "the table's setlist.fm links are not previewed on setlist.fm",
+    "why": "A link to this site is \"not another site\" unless a reader takes it, as archive.org's and Discogs' own.",
+    "edits": [
+      {
+        "find": " && !(_isSfmHost && _extSfmTest(u))) return null;",
+        "replace": ") return null;"
+      }
+    ],
+    "spec": "tests/fixtures/sfm-list.spec.js",
+    "grep": "previewed by the setlist.fm reader while it has its key",
+    "expect": "fail"
+  },
+  {
+    "name": "the @include leaves out an artist's setlists",
+    "why": "vzell's Q9: artist pages now.",
+    "edits": [
+      {
+        "find": "setlist\\.fm\\/(?:venue|setlists)\\/",
+        "replace": "setlist\\.fm\\/(?:venue)\\/"
+      }
+    ],
+    "spec": "tests/fixtures/sl-include-regex.spec.js",
+    "grep": "setlist.fm: a venue",
+    "expect": "fail"
+  }
+]
