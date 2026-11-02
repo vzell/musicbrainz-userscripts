@@ -1,5 +1,5 @@
 ﻿* TODO add support for Internet Archive pages
-** initial
+** DONE initial
 
 1.)
 
@@ -49,6 +49,46 @@ also add POH support for the new Internet Archive PT for Bruce Springsteen Year 
 
 make some nice rich HTML based mockups first
 
+** TODO additions
+
+1.)
+
+On IA PTs the "Collection" column should be a multi-row column and the cell values should have their hyperlinks intact
+as on the IP
+
+2.)
+
+Currently when hovering the image in the "Art" column on the FRP of the IA PT, the image doesn't have our usual display
+of all the underlying images of the IA page, although they seem to be available after a click on the image itself on the IA detail page, e.g.
+
+#+begin_example
+@debug/ia-1977-02-28-inital.html - IP - https://archive.org/details/bs1977-02-28.aud.ntl-2.jems.flac16
+@debug/ia-1977-02-28-images-initial.html - area with the image and playable songlist after initial rendering - https://archive.org/details/bs1977-02-28.aud.ntl-2.jems.flac16 - [Image #4]
+@debug/ia-1977-02-28-images-clicked.html - area with the image and playable songlist after clicking the image itslef and then clicking the " - https://archive.org/details/bs1977-02-28.aud.ntl-2.jems.flac16 - [Image #5]
+#+end_example
+
+#+begin_example
+[Image #6] - DOWNLOADS OPTIONS section of https://archive.org/details/bs1977-02-28.aud.ntl-2.jems.flac16
+[Image #7] - after clicking the "JPEG" toggle, all images are available in full size
+"JPEG" section:
+https://dn710206.ca.archive.org/0/items/bs1977-02-28.aud.ntl-2.jems.flac16/Front.jpg
+https://dn710206.ca.archive.org/0/items/bs1977-02-28.aud.ntl-2.jems.flac16/Folder.jpg
+https://dn710206.ca.archive.org/0/items/bs1977-02-28.aud.ntl-2.jems.flac16/Back.jpg
+https://dn801704.us.archive.org/0/items/bs1977-02-28.aud.ntl-2.jems.flac16/AlbumArtSmall.jpg
+"PNG" section:
+https://dn801704.us.archive.org/0/items/bs1977-02-28.aud.ntl-2.jems.flac16/Cover.png
+#+end_example
+
+a.)
+
+I want the same image hovering on the "Art" column of the IA PT FRP
+
+b.)
+
+The POH should also display ALL images (like on MB and Discogs POhs) in addition to the current one in a separate
+"IMAGES" section, currently only one image is displayed [Image #8]
+
+
 ** Answer (2026-10-31, branch =feat/internet-archive=, no userscript change yet)
 
 Env: 2026-10-31T18:51:42+01:00 · vzell-lap · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) · browser n/a (API probes, saved HTML)
@@ -78,12 +118,12 @@ Compact list view" has nothing to scrape; the rows come from the Internet Archiv
 
 *** Probes (=scripts/probe-ia-search.py=, anonymous, no token)
 
-| What                          | Answer                                                                                                                     |
-|-------------------------------+----------------------------------------------------------------------------------------------------------------------------|
-| =advancedsearch.php= (Solr)   | 200 JSON. 1975: 73 items (69 audio, 4 movies); 2000: 59 (incl. 4 texts, Backstreets magazines); 2016: 1,064 (paging needed) |
-| its fields                    | identifier, title, date, venue, source (Audience/…), downloads, item_size, num_reviews, avg_rating, addeddate, collection (with =fav-<user>= favorites), subject, description, format |
-| =/services/search/v1/scrape=  | 200 JSON, =items/count/total=, cursor paging past 10,000                                                                   |
-| =/metadata/<identifier>=      | 200 JSON. A show: title, date, venue, source, =brucebase_url=, =databruce_url=, uploader, description, reviews; files with =title=, =track=, =length= on the originals (19 and 27 tracks). A video: MPEG4 + h.264 files, 44–62 thumbnails |
+| What                         | Answer                                                                                                                                                                                                                                    |
+|------------------------------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| =advancedsearch.php= (Solr)  | 200 JSON. 1975: 73 items (69 audio, 4 movies); 2000: 59 (incl. 4 texts, Backstreets magazines); 2016: 1,064 (paging needed)                                                                                                               |
+| its fields                   | identifier, title, date, venue, source (Audience/…), downloads, item_size, num_reviews, avg_rating, addeddate, collection (with =fav-<user>= favorites), subject, description, format                                                     |
+| =/services/search/v1/scrape= | 200 JSON, =items/count/total=, cursor paging past 10,000                                                                                                                                                                                  |
+| =/metadata/<identifier>=     | 200 JSON. A show: title, date, venue, source, =brucebase_url=, =databruce_url=, uploader, description, reviews; files with =title=, =track=, =length= on the originals (19 and 27 tracks). A video: MPEG4 + h.264 files, 44–62 thumbnails |
 
 The detail pages are 290–470 KB of HTML; the metadata API has everything the card and window need,
 in one small request.
