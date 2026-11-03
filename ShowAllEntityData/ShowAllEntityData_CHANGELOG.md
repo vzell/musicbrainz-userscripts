@@ -4,9 +4,62 @@ Every version, newest first, with the technical details behind each change. For 
 
 **Months:** [November 2026](ShowAllEntityData_CHANGELOG/2026-11.md) · [October 2026](ShowAllEntityData_CHANGELOG/2026-10.md) · [September 2026](ShowAllEntityData_CHANGELOG/2026-09.md) · [August 2026](ShowAllEntityData_CHANGELOG/2026-08.md) · [July 2026](ShowAllEntityData_CHANGELOG/2026-07.md) · [June 2026](ShowAllEntityData_CHANGELOG/2026-06.md) · [May 2026](ShowAllEntityData_CHANGELOG/2026-05.md) · [April 2026](ShowAllEntityData_CHANGELOG/2026-04.md) · [March 2026 (1 of 2)](ShowAllEntityData_CHANGELOG/2026-03-1.md) · [March 2026 (2 of 2)](ShowAllEntityData_CHANGELOG/2026-03-2.md) · [February 2026](ShowAllEntityData_CHANGELOG/2026-02.md) · [January 2026](ShowAllEntityData_CHANGELOG/2026-01.md)
 
-This page shows the newest 100 of 1695 versions; the month pages hold all of them.
+This page shows the newest 100 of 1701 versions; the month pages hold all of them.
 
 ---
+
+## 9.99.1530 — 2026-11-03
+
+**✨ Improve**
+
+- setlist.fm setlist window (link preview, with your setlist.fm API key): every song has a ▶, as on setlist.fm itself. A click finds the song on YouTube (YouTube's own search for the artist and the song, its first video) and plays it in the window, above the setlist, in the same player as YouTube links and archive.org tracks; a second click stops it, and a song played once starts at once the next time. A song YouTube finds nothing for is marked, and its next click opens YouTube's search in a new tab. Follows the setting "Play YouTube videos in place"; with it off, no ▶.
+
+
+## 9.99.1529 — 2026-11-03
+
+**🚀 Feature**
+
+- setlist.fm: a search for an artist's setlists (setlist.fm/search?artist=…, with or without a tour, country, city or venue) gets the same "Setlists" button as an artist's page: every setlist of the search as one table, named after the search's choices ("setlist.fm search: Bruce Springsteen · Land of Hope & Dreams American Tour").
+
+**✨ Improve**
+
+- setlist.fm links: a link to setlist.fm's search for an artist's setlists — every Tour cell of the setlist.fm tables links one — now has its card and window like the other setlist.fm links, also without an API key: they are read from setlist.fm's search page itself. The window lists the search's setlists with their set times, 10 at a time ("Load 10 more"), with the tours and venues on the left.
+
+
+## 9.99.1528 — 2026-11-03
+
+**🐛 Fix**
+
+- setlist.fm tables: the page now scrolls sideways, so a table wider than the window can be read to its last column. setlist.fm's own stylesheet turns sideways scrolling off for the whole page.
+- setlist.fm tables: a show at a stage inside a venue ("NAC Opera Hall at National Arts Centre, Ottawa") no longer repeats the venue in the Event column.
+
+
+## 9.99.1527 — 2026-11-03
+
+**🚀 Feature**
+
+- setlist.fm: on the list of a venue's setlists (setlist.fm/venue/…) or an artist's (setlist.fm/setlists/…), a new "Setlists" button lists every setlist as one filterable, sortable table: date (linked to the setlist), artist or venue, event, tour, doors, start and end (24-hour), how many songs the list shows ("12+" when there are more) and those songs. The rows come from setlist.fm's own pages, 10 setlists each, one page after another; no API key is needed. Upcoming shows stay out of the table. With your setlist.fm API key set, the table's setlist links get their card and window on setlist.fm too. Its own switch, ⚙️ Settings → 🎤 setlist.fm → "Enable on setlist.fm", is on by default.
+
+
+## 9.99.1526 — 2026-11-03
+
+**✨ Improve**
+
+- setlist.fm windows (link preview, with your setlist.fm API key): set times. The Setlists table of a venue, an artist or a tour has a "Set times" column (doors, and the show from start to end), and a setlist's window lists Doors, Scheduled, Start (how long after doors) and End (how long the show was). The times are on a 24-hour clock, as on MusicBrainz. setlist.fm's API has no set times, so they are read from setlist.fm's own pages: only once the window is open, never for the hover card, two pages for every 20 setlists, at most one a second. "…" means the page is still being read, "?" that it could not be (⟳ Try again), "—" that setlist.fm has none.
+- setlist.fm window of a venue: what the API leaves out, read from the venue's own page with the set times: its address, when it opened (or was open), other names, its web links and how many attendances setlist.fm's users have logged.
+
+
+## 9.99.1525 — 2026-11-03
+
+**🐛 Fix**
+
+- setlist.fm window of a venue or an artist (link preview, with your setlist.fm API key): the dates in the Setlists table no longer break onto a second line ("2026-10-20" wrapped at its hyphens).
+
+**✨ Improve**
+
+- setlist.fm window of a venue or an artist: "In the loaded setlists" lists the artists and tours (a venue's) or the tours and venues (an artist's) as small tables you can sort and filter, most setlists first. The number of setlists is a button: it keeps the Setlists table on the right to that artist, tour or venue, and works together with the table's text filter. A second click, or the ✕ of the "Only …" label above the table, shows them all again.
+- setlist.fm windows: a tour is a link, as on setlist.fm. It goes to setlist.fm's search for that artist and tour; in the window it opens the tour's setlists (20 at a time, "Load 20 more", its venues on the left), and ← Back returns. A setlist's window links its tour the same way.
+
 
 ## 9.99.1524 — 2026-11-02
 
@@ -874,67 +927,6 @@ This page shows the newest 100 of 1695 versions; the month pages hold all of the
 **🔧 Refactor**
 
 - Discogs' Image column card and viewer click now run on one shared path for every non-MusicBrainz site (`_fiCardHtml()`, `_fiClick()`, `_fiLoad()`, a provider per site), which the jungleland.it, brucespringsteen.it and Brucebase tables will use next. Its click listens on the window instead of the document. Unchanged on Discogs, except that a row with no other image now shows its thumbnail beside the note. Nothing changes on MusicBrainz, and nothing new runs while a table renders.
-
-
-## 9.99.1430 — 2026-10-23
-
-**🚀 Feature**
-
-- An entity's Open edits page (the sidebar's "Open edits", e.g. /artist/&lt;id&gt;/open\_edits or /recording/&lt;id&gt;/open\_edits) gets a "Show all Open Edits" button: every open edit as one row of a filterable, sortable table, the same as the entity's Edits page already gets.
-- The sidebar's "Open edits" link now has a preview like "Editing history" beside it: hover for a card (how many edits, how many open, the latest, the commonest types), press Space for the window listing them, titled "Open edits".
-
-
-## 9.99.1429 — 2026-10-23
-
-**✨ Improve**
-
-- A fetch now runs inside the button you pressed. It fills blue page by page and reads "■ Stop · 3 / 40"; the line under the heading says which page, how many rows so far and about how long is left. Click it again to stop (or Ctrl+M then O): the page under way finishes and what has arrived is shown, and the status line says "Stopped by you after page n of N … — the rest was not loaded" instead of reading like a complete run. While the rows are being built it is striped (the stripes move only if your system allows motion), then it is the button it was. The other fetch buttons wait meanwhile. The separate red Stop button and the long progress bar beside the heading are gone, and so is the "Stop button colors" setting (its stored value is removed by itself).
-- A fetch that could not load every page now leaves a red "🔄 N ▾" on the SAED button, N being the pages missing, also listed under "Needs attention" in the ☰ menu. Its list says which page failed and why, and "↻ Load the N missing pages" carries on from there, keeping the rows you have — what the "↻ Load remaining pages" button at the end of the status line did. It goes away when that load starts, when you press a fetch button again, or when you load a file from disk.
-
-**🐛 Fix**
-
-- On a phone, the ☰ SAED menu could open below the bottom of the screen on a page wider than the screen (a release group's releases, for example); it now opens within what you see, above the button when there is no room below. On a phone the fetch buttons are always in that menu, under "Load", because MusicBrainz pages are laid out at the phone's width.
-
-
-## 9.99.1428 — 2026-10-23
-
-**🚀 Feature**
-
-- One button in the page heading: the SAED button. Everything the script adds there is now ONE segmented button with up to four parts, each doing its own thing: the page's fetch buttons as before ("🧮¹ Artist \| 🧮² Various Artists"), 📀 Discography with the view it shows (release groups of an artist only), one part per thing that needs your attention (❌ 1 ▾ for errors, ⚠️ 43 ▾ for warnings, each opening its list right under it), and ☰ SAED ▾, the script's menu. 📦 Data ▾, 🛠 View ▾, the ⚙️ and ❓ buttons and the separate WARNING / ERROR buttons are gone into it.
-- The ☰ SAED menu has groups with a rule between them: Needs attention (the same lists as the parts on the bar), Data (Save to Disk, Load from Disk, Export ▸), View (Density, Statistics, Keyboard Shortcuts), Help (Settings, Help ↗) and Changelog (What's new ↗, Full development log ↗), with the installed version at its foot. Before anything is loaded there is nothing to view, so View is left out and Keyboard Shortcuts sits under Help. Export ▸ opens its four formats beside the menu when the pointer rests on it (or with → or a click); on a phone or a narrow window they open in place under the row. ↑ ↓ move, → opens, ← or Escape goes back, a second Escape closes the menu.
-- Hovering ☰ SAED shows a card with the script's full name, version, library version, script manager and its version, browser, author, and that it was written with AI help from Claude (Anthropic).
-- The menu's name is a setting: ⚙️ Settings → 🖌️ ELEMENT UI STYLES → "Name of the ☰ menu" (default "SAED"). The button's colours are "SAED button colors" there (formerly "Toolbar menu button colors").
-- On a narrow window (520 px or less) the fetch buttons leave the bar and head the menu as a "Load" group, so the button stays one line.
-- Help and the changelog open on GitHub, in a new tab. ❓ Help ↗ (and Ctrl+M then H) opens the help page; Shift-click no longer renders it inside the page. The changelog is two pages: "What's new", the changes of each published version in plain words, and the "Full development log" with every version and its technical details, one page per month. The Tampermonkey menu's "📜 ChangeLog" opens the SAED menu on these two (on the pages the script works on).
-
-**⚡ Performance**
-
-- The changelog is no longer downloaded, stored and read on every page. The library used to fetch the whole changelog (1.75 MB) about once an hour, keep it in the script's storage — which Tampermonkey hands to every page the script runs on — and read it on every page for a dialog most visits never opened: about 9 ms (34 ms on a slow computer) before a page settled and about 6.5 MiB of memory per tab. The stored copies of the changelog and of the help text are deleted when a page starts.
-
-**🔧 Refactor**
-
-- Retired settings: the colours of the Settings ⚙️, Help ❓, Save and Load buttons and the "\|" divider style. Those controls are rows of one menu in one look now; anyone who had chosen their own colours there loses them. Their stored values are deleted when a page starts.
-
-
-## 9.99.1427 — 2026-10-23
-
-**⚡ Performance**
-
-- Values the script stored once and nothing reads any more are now deleted when a page starts (a moment after it settles, so the page is not slowed). Tampermonkey hands everything a script has stored to every page it runs on, before the script starts, so a leftover is paid for on every page view. Two kinds go: the old plain-text help cache (replaced by the Markdown help in 9.99.1148, up to 50 kB), and the hand-off copies of a table that "Show single-table" leaves behind when the new tab was blocked or closed before it loaded, which can be megabytes each; one older than an hour is deleted, a younger one is kept for a tab that may still be loading. Settings are not touched.
-
-
-## 9.99.1426 — 2026-10-22
-
-**🚀 Feature**
-
-- An editor's other edit lists get a button too: the accepted, auto-edits, applied, rejected, failed and cancelled edits (/user/&lt;name&gt;/edits/&lt;status&gt;) and the edits they voted on (/user/&lt;name&gt;/votes), the "view" links of a profile's Statistics. Each one loads every page into one table, the way "Show all Edits for User" already did for their edits and open edits.
-
-
-## 9.99.1425 — 2026-10-22
-
-**✨ Improve**
-
-- Brucebase recent changes: the Flags column is a multi-row column now. A change with two flags ("content source text changed" and "title changed") shows the first one with a ▶ toggle to open the other, and the column header can open or close them all and counts them, like MusicBrainz's list columns.
 
 
 ---
