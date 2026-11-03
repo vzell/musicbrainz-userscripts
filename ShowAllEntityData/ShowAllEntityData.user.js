@@ -19505,6 +19505,14 @@
         if (!(a.getRootNode() instanceof ShadowRoot)) {
             return !!a.closest(_IA_DETAILS_PATH_RE.test(window.location.pathname) ? 'table.tbl > tbody, #mb-ia-root, #maincontent' : 'table.tbl > tbody, #mb-ia-root');
         }
+        // A link without text of its own: a tile (tile view: the whole tile
+        // is one link, its picture and title in further shadow roots) or a
+        // result's picture (list views). archive.org shows its own hover
+        // card there, and ours came on top of it (vzell, 2026-11-04, in the
+        // browser; probe scripts/probe-ia-shadow-links.js: tile view 60
+        // text-less item links, list views 58 text-less picture links plus
+        // 58 title links with text). The list views' title links keep ours.
+        if (!(a.textContent || '').trim()) return false;
         for (let n = a; n;) {
             if (n.matches && n.matches(_IA_SHADOW_SKIP)) return false;
             if (n.parentElement) n = n.parentElement;

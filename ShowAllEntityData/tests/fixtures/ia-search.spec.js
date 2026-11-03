@@ -290,8 +290,13 @@ test.describe('archive.org: the site\'s own result list, in shadow DOM (G4)', ()
             // <ia-topnav> itself.
             root.querySelector('ia-topnav').attachShadow({ mode: 'open' }).innerHTML =
                 '<div class="topnav"><a id="ia-nav" href="/details/etree" style="display:inline-block;padding:8px">Live Music Archive</a></div>';
-            root.querySelector('search-page').attachShadow({ mode: 'open' }).innerHTML =
-                `<div class="tile"><a id="ia-tile" href="/details/${id}" style="display:inline-block;padding:8px">Tower Theater 1975-12-27</a></div>`;
+            const sp = root.querySelector('search-page').attachShadow({ mode: 'open' });
+            // As in archive.org's list views (probe of 2026-11-04): a
+            // result's picture link, its content in a further shadow root
+            // (no text of its own), then its title link.
+            sp.innerHTML = `<div class="tile"><a id="ia-pic" href="/details/${id}" style="display:inline-block;width:40px;height:40px"><item-image></item-image></a>` +
+                `<a id="ia-tile" href="/details/${id}" style="display:inline-block;padding:8px">Tower Theater 1975-12-27</a></div>`;
+            sp.querySelector('item-image').attachShadow({ mode: 'open' }).innerHTML = '<img alt="" style="width:40px;height:40px">';
         }, SHOW);
     }
 
@@ -305,10 +310,14 @@ test.describe('archive.org: the site\'s own result list, in shadow DOM (G4)', ()
             const sr = document.querySelector('app-root').shadowRoot;
             const tile = sr.querySelector('search-page').shadowRoot.querySelector('#ia-tile');
             const nav = sr.querySelector('ia-topnav').shadowRoot.querySelector('#ia-nav');
-            return { tile: window.__saTest.popResolve(tile), nav: window.__saTest.popResolve(nav) };
+            const pic = sr.querySelector('search-page').shadowRoot.querySelector('#ia-pic');
+            return { tile: window.__saTest.popResolve(tile), nav: window.__saTest.popResolve(nav), pic: window.__saTest.popResolve(pic) };
         });
         expect(r.tile).toBe(`ext|ext:iadetails:https://archive.org/details/${SHOW}`);
         expect(r.nav, 'archive.org\'s navigation').toBeNull();
+        // vzell, 2026-11-04: our card came on top of archive.org's own over a
+        // result's picture (and a tile view's whole tile, one text-less link).
+        expect(r.pic, 'a link without text of its own (a picture, a tile)').toBeNull();
 
         const card = page.locator('#mb-dp-peek');
         await page.mouse.move(0, 0);
