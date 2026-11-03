@@ -1,0 +1,294 @@
+* TODO setlist.fm additions
+** DONE venue additions
+
+1.)
+
+when hovering from https://musicbrainz.org/place/eca38ec4-f493-47c5-bbed-2ef762567b73 e.g. the setlist.fm venue link
+https://www.setlist.fm/venue/state-farm-arena-atlanta-ga-usa-73d20e81.html, the "2026-10-20" DATE entries wrap on the next line, please fix
+
+#+begin_example
+@debug/POH-setlistfm-venue.html - POH from https://www.setlist.fm/venue/state-farm-arena-atlanta-ga-usa-73d20e81.html
+#+end_example
+
+2.)
+
+#+begin_example
+@debug/setlistfm-venue-initial.html - IP page 2 - https://www.setlist.fm/venue/state-farm-arena-atlanta-ga-usa-73d20e81.html?page=2
+#+end_example
+
+3.)
+
+The "IN THE LOADED SETLISTS" sections "Artists" and "Tours" in the POH on the left side should get our table treatment
+(filterable, sortable)
+
+4.)
+
+The "Set Times: Doors: 6:30 PMShow: 7:45 PM – 10:30 PM" should also be extracted and shown in the POH
+
+5.)
+
+The "TOUR" column in the POH should get the column values urlified like in the original setlist.fm pages
+
+** DONE console
+
+1.
+
+MusicBrainz:
+#+begin_example
+18:32:11.361 [VZ-ShowAllEntityData: place-overview] 🖥️ Sticky filter bars: base 0px, header block 51px (1), h2 0px, h3 0px (0 shown), thead at 57/57px. 
+userscript.html?name=PROBE-setlist.fm-session-throwaway.user.js&id=2498ca96-9600-4dc6-91df-e176a59c13f6:79 [sfm-probe] start 2026-11-02T18:32:14.118Z on https://musicbrainz.org/place/eca38ec4-f493-47c5-bbed-2ef762567b73, UA Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36
+userscript.html?name=PROBE-setlist.fm-session-throwaway.user.js&id=2498ca96-9600-4dc6-91df-e176a59c13f6:49 [sfm-probe] GM_xmlhttpRequest anonymous=true: status 200, 141914 chars, final https://www.setlist.fm/venue/state-farm-arena-atlanta-ga-usa-73d20e81.html?page=2, .setlistPreview 10, .setlistPreviewSetTimes 7, first: "Set Times: Show: 9:00 PM – 11:00 PM", title "State Farm Arena, Atlanta, GA, USA Concert Setlists | setlist.fm"
+userscript.html?name=PROBE-setlist.fm-session-throwaway.user.js&id=2498ca96-9600-4dc6-91df-e176a59c13f6:49 [sfm-probe] GM_xmlhttpRequest anonymous=false: status 200, 141914 chars, final https://www.setlist.fm/venue/state-farm-arena-atlanta-ga-usa-73d20e81.html?page=2, .setlistPreview 10, .setlistPreviewSetTimes 7, first: "Set Times: Show: 9:00 PM – 11:00 PM", title "State Farm Arena, Atlanta, GA, USA Concert Setlists | setlist.fm"
+userscript.html?name=PROBE-setlist.fm-session-throwaway.user.js&id=2498ca96-9600-4dc6-91df-e176a59c13f6:88 [sfm-probe] done
+userscript.html?name=sanojjonas-visualise-stuff.user.js&id=39cb5d25-a89a-401b-9c61-6d1089d68abe:134 no localstorage
+userscript.html?name=sanojjonas-visualise-stuff.user.js&id=39cb5d25-a89a-401b-9c61-6d1089d68abe:167 Map(556)
+userscript.html?name=sanojjonas-visualise-stuff.user.js&id=39cb5d25-a89a-401b-9c61-6d1089d68abe:1384 https://musicbrainz.org/ws/2/place/eca38ec4-f493-47c5-bbed-2ef762567b73?inc=aliases+event-rels+artist-rels+area-rels+place-rels+url-rels&fmt=json
+userscript.html?name=sanojjonas-visualise-stuff.user.js&id=39cb5d25-a89a-401b-9c61-6d1089d68abe:598 -- eventmap --
+userscript.html?name=sanojjonas-visualise-stuff.user.js&id=39cb5d25-a89a-401b-9c61-6d1089d68abe:599 Map(100)
+userscript.html?name=sanojjonas-visualise-stuff.user.js&id=39cb5d25-a89a-401b-9c61-6d1089d68abe:600 -- eventmap --
+userscript.html?name=sanojjonas-visualise-stuff.user.js&id=39cb5d25-a89a-401b-9c61-6d1089d68abe:608 -- placemap --
+userscript.html?name=sanojjonas-visualise-stuff.user.js&id=39cb5d25-a89a-401b-9c61-6d1089d68abe:609 Map(1)
+userscript.html?name=sanojjonas-visualise-stuff.user.js&id=39cb5d25-a89a-401b-9c61-6d1089d68abe:610 -- placemap --
+userscript.html?name=sanojjonas-visualise-stuff.user.js&id=39cb5d25-a89a-401b-9c61-6d1089d68abe:629 -- FULL --
+userscript.html?name=sanojjonas-visualise-stuff.user.js&id=39cb5d25-a89a-401b-9c61-6d1089d68abe:638 Object
+userscript.html?name=sanojjonas-visualise-stuff.user.js&id=39cb5d25-a89a-401b-9c61-6d1089d68abe:639 -- FULL --
+userscript.html?name=sanojjonas-visualise-stuff.user.js&id=39cb5d25-a89a-401b-9c61-6d1089d68abe:641 count : 1
+userscript.html?name=PROBE-setlist.fm-session-throwaway.user.js&id=2498ca96-9600-4dc6-91df-e176a59c13f6:79 [sfm-probe] start 2026-11-02T18:32:51.684Z on https://musicbrainz.org/place/eca38ec4-f493-47c5-bbed-2ef762567b73, UA Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36
+userscript.html?name=PROBE-setlist.fm-session-throwaway.user.js&id=2498ca96-9600-4dc6-91df-e176a59c13f6:49 [sfm-probe] GM_xmlhttpRequest anonymous=true: status 200, 141914 chars, final https://www.setlist.fm/venue/state-farm-arena-atlanta-ga-usa-73d20e81.html?page=2, .setlistPreview 10, .setlistPreviewSetTimes 7, first: "Set Times: Show: 9:00 PM – 11:00 PM", title "State Farm Arena, Atlanta, GA, USA Concert Setlists | setlist.fm"
+userscript.html?name=PROBE-setlist.fm-session-throwaway.user.js&id=2498ca96-9600-4dc6-91df-e176a59c13f6:49 [sfm-probe] GM_xmlhttpRequest anonymous=false: status 200, 141964 chars, final https://www.setlist.fm/venue/state-farm-arena-atlanta-ga-usa-73d20e81.html?page=2, .setlistPreview 10, .setlistPreviewSetTimes 7, first: "Set Times: Show: 9:00 PM – 11:00 PM", title "State Farm Arena, Atlanta, GA, USA Concert Setlists | setlist.fm"
+userscript.html?name=PROBE-setlist.fm-session-throwaway.user.js&id=2498ca96-9600-4dc6-91df-e176a59c13f6:88 [sfm-probe] done
+#+end_example
+
+setlist.fm:
+#+begin_example
+[sfm-probe] start 2026-11-02T19:01:52.775Z on https://www.setlist.fm/venue/state-farm-arena-atlanta-ga-usa-73d20e81.html?page=2, UA Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36
+userscript.html?name=PROBE-setlist.fm-session-throwaway.user.js&id=2498ca96-9600-4dc6-91df-e176a59c13f6:49 [sfm-probe] same-origin fetch: status 200, 142216 chars, final https://www.setlist.fm/venue/state-farm-arena-atlanta-ga-usa-73d20e81.html?page=2, .setlistPreview 10, .setlistPreviewSetTimes 7, first: "Set Times: Show: 9:00 PM – 11:00 PM", title "State Farm Arena, Atlanta, GA, USA Concert Setlists | setlist.fm"
+userscript.html?name=PROBE-setlist.fm-session-throwaway.user.js&id=2498ca96-9600-4dc6-91df-e176a59c13f6:88
+#+end_example
+
+2.
+
+Output of python script
+#+begin_example
+/setlist/4bf0375a: 200 4327 B 0.58 s                                                                                                                                                            
+  shape: sets.set                                                                                                                                                                               
+  sets 4 (['', 'The River', '', 'encore 1']), songs 35, with info 0, covers 2, tour 'The River Tour 2016', keys ['artist', 'eventDate', 'id', 'info', 'lastUpdated', 'sets', 'tour', 'url', 'venue', 'versionId']                                                                                                                                                                               
+/artist/70248960-cb53-4ea4-943a-edb18f7d336f: 429 32 B 0.31 s                                                                                                                                   
+/artist/70248960-cb53-4ea4-943a-edb18f7d336f/setlists?p=1: 200 125597 B 0.66 s                                                                                                                  
+  itemsPerPage 20, total 3003, page 1, items 20                                                                                                                                                 
+/venue/3d6c967: 200 459 B 0.16 s                                                                                                                                                                
+  venue keys ['city', 'id', 'name', 'url'], city keys ['coords', 'country', 'id', 'name', 'state', 'stateCode']                                                                                 
+/venue/3d6c967/setlists?p=1: 200 43018 B 0.53 s                                                                                                                                                 
+  itemsPerPage 20, total 563, items 20                                                                                                                                                          
+/search/setlists?artistMbid=70248960-cb53-4ea4-943a-edb18f7d336f&tourName=The+River+Tour+2016&p=1: 200 105853 B 0.77 s                                                                          
+  itemsPerPage 20, total 75, items 20, tours ['The River Tour 2016'], tour keys ['name']                                                                                                        
+/setlist/4bf0375a: 200 4327 B 0.04 s                                                                                                                                                            
+/setlist/4bf0375a: 200 4327 B 0.03 s                                                                                                                                                            
+/setlist/00000000: 404 123 B 0.34 s                                                                                                                                                             
+/setlist/4bf0375a: 403 24 B 0.32 s                                                                                                                                                              
+#+end_example
+
+3.
+
+ALL three tour URL works
+
+4.
+
+#+begin_example
+@debug/setlistfm-venue-initial-1.html - https://www.setlist.fm/venue/state-farm-arena-atlanta-ga-usa-73d20e81.html - venue page 1, with the upcoming-shows box
+@debug/setlistfm-venue-one-page.html - https://www.setlist.fm/venue/private-venue-colts-neck-nj-usa-53d30b75.html - a venue that has only one page
+@debug/setlistfm-venue-set-times.html - https://www.setlist.fm/setlist/bruce-springsteen/2026/merriweather-post-pavilion-pavilion-stage-columbia-md-37589df.html - [Image #1] 
+#+end_example
+
+** DONE questions
+
+  Questions (they're also in the mockup's side notes)
+
+  ┌─────┬───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┬───────────────────────────────────────────────────────────────────────┐
+  │  #  │                                                       Question                                                        │                           My recommendation                           │
+  ├─────┼───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┼───────────────────────────────────────────────────────────────────────┤
+  │ Q1  │ One "Set times" column, or separate Doors / Show columns?                                                             │ One in the window, three (Doors · Start · End) on the setlist.fm page │
+  ├─────┼───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┼───────────────────────────────────────────────────────────────────────┤
+  │ Q2  │ 12-hour "7:45 PM" or 24-hour "19:45"? (the mockup has a toggle)                                                       │ 24-hour, as on MusicBrainz                                            │
+  ├─────┼───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┼───────────────────────────────────────────────────────────────────────┤
+  │ Q3  │ Show the venue's address, opening date, web site and attendance in the venue window? Costs one more request on Space. │ Yes, Space only                                                       │
+  ├─────┼───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┼───────────────────────────────────────────────────────────────────────┤
+  │ Q4  │ Should the count-button pick and the text filter work together?                                                       │ Yes, as shown                                                         │
+  ├─────┼───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┼───────────────────────────────────────────────────────────────────────┤
+  │ Q5  │ Set times in the tour window?                                                                                         │ No                                                                    │
+  ├─────┼───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┼───────────────────────────────────────────────────────────────────────┤
+  │ Q6  │ Set times in the hover card? It would cost a request per hover.                                                       │ No, window only                                                       │
+  ├─────┼───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┼───────────────────────────────────────────────────────────────────────┤
+  │ Q7  │ Song count on the setlist.fm page: "12+" from the page, or exact counts from the API (key needed, 47 more requests)?  │ "12+"                                                                 │
+  ├─────┼───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┼───────────────────────────────────────────────────────────────────────┤
+  │ Q8  │ An extra line with the venue facts above the table on setlist.fm?                                                     │ No, keep setlist.fm's own box                                         │
+  ├─────┼───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┼───────────────────────────────────────────────────────────────────────┤
+  │ Q9  │ Artist pages (/setlists/…)                                                                                            │ A later follow-up                                                     │
+  └─────┴───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┴───────────────────────────────────────────────────────────────────────┘
+
+  Two things for you
+
+  1. Please run the API probe once more: ! SETLISTFM_API_KEY=<key> python3 scripts/probe-setlistfm-api.py. I added a check that searching by artist name returns the same 75 setlists as searching by MBID, and
+     that a name two artists share (Nirvana) doesn't mix their setlists. The tour window depends on it, because the tour link carries the artist's name, not the MBID.
+  2. Heads-up: your probe run also re-saved tests/fixtures/ext-sfm-artist-setlists-p1.json with today's data. The existing setlist.fm specs were written against the old file. If they break, I'll restore it
+     from git at implementation time and keep only the new tour fixture.
+
+** DONE answers
+
+1.)
+
+answers:
+
+│ Q1  │ One "Set times" column, or separate Doors / Show columns?                                                             │ One in the window, three (Doors · Start · End) on the setlist.fm page │
+│ Q2  │ 12-hour "7:45 PM" or 24-hour "19:45"? (the mockup has a toggle)                                                       │ 24-hour, as on MusicBrainz                                            │
+│ Q3  │ Show the venue's address, opening date, web site and attendance in the venue window? Costs one more request on Space. │ Yes, Space only                                                       │
+│ Q4  │ Should the count-button pick and the text filter work together?                                                       │ Yes, as shown                                                         │
+│ Q5  │ Set times in the tour window?                                                                                         │ Yes                                                                   │
+│ Q6  │ Set times in the hover card? It would cost a request per hover.                                                       │ No, window only                                                       │
+│ Q7  │ Song count on the setlist.fm page: "12+" from the page, or exact counts from the API (key needed, 47 more requests)?  │ "12+"                                                                 │
+│ Q8  │ An extra line with the venue facts above the table on setlist.fm?                                                     │ No, keep setlist.fm's own box                                         │
+│ Q9  │ Artist pages (/setlists/…)                                                                                            │ do it now                                                             │
+
+2.)
+
+python3 scripts/probe-setlistfm-api.py                                  
+
+#+begin_example
+/setlist/4bf0375a: 200 4327 B 0.46 s                                                                                                                                                            
+  shape: sets.set                                                                                                                                                                               
+  sets 4 (['', 'The River', '', 'encore 1']), songs 35, with info 0, covers 2, tour 'The River Tour 2016', keys ['artist', 'eventDate', 'id', 'info', 'lastUpdated', 'sets', 'tour', 'url', 'venue', 'versionId']                                                                                                                                                                               
+/artist/70248960-cb53-4ea4-943a-edb18f7d336f: 200 229 B 0.36 s                                                                                                                                  
+/artist/70248960-cb53-4ea4-943a-edb18f7d336f/setlists?p=1: 200 125597 B 0.66 s                                                                                                                  
+  itemsPerPage 20, total 3003, page 1, items 20                                                                                                                                                 
+/venue/3d6c967: 200 459 B 0.37 s                                                                                                                                                                
+  venue keys ['city', 'id', 'name', 'url'], city keys ['coords', 'country', 'id', 'name', 'state', 'stateCode']                                                                                 
+/venue/3d6c967/setlists?p=1: 200 43018 B 0.54 s                                                                                                                                                 
+  itemsPerPage 20, total 563, items 20                                                                                                                                                          
+/search/setlists?artistMbid=70248960-cb53-4ea4-943a-edb18f7d336f&tourName=The+River+Tour+2016&p=1: 200 105853 B 0.63 s                                                                          
+  itemsPerPage 20, total 75, items 20, tours ['The River Tour 2016'], tour keys ['name']                                                                                                        
+/search/setlists?artistName=Bruce+Springsteen&tourName=The+River+Tour+2016&p=1: 200 105853 B 0.73 s                                                                                             
+  total 75, items 20, artists ['Bruce Springsteen 70248960-cb53-4ea4-943a-edb18f7d336f'], tours ['The River Tour 2016']                                                                         
+/search/setlists?artistName=Journey&tourName=Final+Frontier+Tour&p=1: 200 67321 B 0.57 s                                                                                                        
+  total 94, items 20, artists ['Journey abd506e1-6f2b-4d6f-b937-92c267f6f88b'], tours ['Final Frontier Tour']                                                                                   
+/search/setlists?artistName=Nirvana&p=1: 200 70194 B 0.20 s                                                                                                                                     
+  total 907, items 20, artists ['Nirvana Experience e5a4c61b-1613-4841-8706-33d99b1e7ba5', 'Nirvana Tribute 1d7c7a00-a650-47a3-8073-9b33cafbed5c', 'Nirvana UK 8f32371e-4bac-4090-ba13-2c1cd1aeab0d', 'Nirvani - A Nirvana Tribute Experience 4a59229c-67b6-4577-8a32-1ff3c3b94371', 'Smells Like Nirvana e43ad11b-5d29-45ae-90f7-73ac47fb815d'], tours ['']                                    
+/setlist/4bf0375a: 200 4327 B 0.04 s                                                                                                                                                            
+/setlist/4bf0375a: 200 4327 B 0.04 s                                                                                                                                                            
+/setlist/00000000: 404 123 B 0.17 s                                                                                                                                                             
+/setlist/4bf0375a: 403 24 B 0.32 s                                                                                                                                                              
+#+end_example
+
+3.)
+
+docs approved
+
+** DONE add more PTs
+
+1.)
+
+setlist.fm artist search pages should also get their own PTs, the format is typically:
+
+#+begin_example
+https://www.setlist.fm/search?artist=2bd6dcce&tour=3daa95b&country=us&city=bd6bde6 - @debug/setlistfm-artist-serch.html
+https://www.setlist.fm/search?artist=2bd6dcce&tour=3daa95b&country=us
+https://www.setlist.fm/search?artist=2bd6dcce&tour=3daa95b
+https://www.setlist.fm/search?artist=2bd6dcce
+#+end_example
+
+2.)
+
+a.)
+
+The table is not scrollable to the right on
+e.g. https://www.setlist.fm/setlists/bruce-springsteen-2bd6dcce.html?tour=53d7e759 see [Image #4] or on
+https://www.setlist.fm/venue/private-venue-colts-neck-nj-usa-53d30b75.html [Image #5]
+
+b.)
+
+also the data in the cells of the "Tour" column, e.g. "Born to Run" does not have the hover POH also it is hyperlinked
+
+** DONE youtube on setlist.fm
+
+add youtube player support for setlist pages (POH) on setlist.fm
+e.g. https://www.setlist.fm/setlist/bruce-springsteen/2026/xfinity-mobile-arena-philadelphia-pa-2b4b60da.html
+as each song in the tracklist has an optional youtube play link
+
+#+begin_example
+<a rel="nofollow" href="#" class="play hidden-print" title="Play Video" onclick="YouTubeSearch.playIndex(0, 'en');return false;">
+<span class="sr-only">Play Video</span>
+</a>
+#+end_example
+
+Model it the same as we do for the detail POH on IA PTs e.g. [Image #7]
+
+#+begin_example
+@debug/setlistfm-2026-05-30.html - IP - https://www.setlist.fm/setlist/bruce-springsteen/2026/xfinity-mobile-arena-philadelphia-pa-2b4b60da.html
+#+end_example
+
+** TODO bugs and new additions
+
+1.)
+
+an SFM tour link like e.g. https://www.setlist.fm/search?artist=2bd6dcce&tour=3daa95b in a "Tour" column on the FRP from
+e.g. https://www.setlist.fm/search?artist=2bd6dcce&tour=3daa95b gives
+
+#+begin_example
+The site answers scripts with a browser check (AWS WAF), so the card cannot read it. The link itself is fine: ↗ opens it in a tab. - [Image #13]
+#+end_example
+
+but on a setlist POH when hovering the same tour it works
+
+#+begin_example
+@debug/setlistfm-2026-05-30-POH.html - POH of https://www.setlist.fm/setlist/bruce-springsteen/2026/xfinity-mobile-arena-philadelphia-pa-2b4b60da.html - [Image #14]
+@debug/setlistfm-2026-05-30.html - IP - https://www.setlist.fm/setlist/bruce-springsteen/2026/xfinity-mobile-arena-philadelphia-pa-2b4b60da.html
+#+end_example
+
+2.)
+
+Also on the IP of e.g.
+https://www.setlist.fm/setlist/bruce-springsteen/2026/xfinity-mobile-arena-philadelphia-pa-2b4b60da.html the referenced
+artists are hyperlinked to their setlist.fm counterparts, on the corresponding POH they want to reach out to the
+corresponding MB artists in both sections
+
+#+begin_example
+SETLIST.FM SAYS - left side
+SETLIST - right side
+#+end_example
+
+I actually want both poth possibilities, but renderded in the same PO window
+
+a.)
+
+to still render the MB entity (like artist) but there should be the corresponding MB entity glyph in front of the entity
+name with a hyperlink to the MB page + POH hover functionality
+
+b.)
+
+and when hovering the entity/artist name itself, the setlist.fm entity page should be shown
+
+3.)
+
+currently an SFM artist like "Bruce Springsteen" with lots of setlist pages, has only a "LOAD 20 MORE" button to load 20
+more rows per click on its POH
+
+#+begin_example
+@debug/setlistfm-Bruce-POH.html  - https://www.setlist.fm/setlists/bruce-springsteen-2bd6dcce.html - [Image #15]
+same for a venue POH - https://www.setlist.fm/venue/the-stone-pony-asbury-park-nj-usa-23d6c88f.html - [Image #16]
+#+end_example
+
+actually the same feature like we have on other POH based dialogs like MB itself but also Discogs etc. (albeit with other button texts)
+
+a.)
+
+could this functionality be enriched with a button to fetch all underlying rows with an option to stop midway (showing
+somehow how many have been fetched so far, how many are left and the possible time it takes to fetch all)
+
+b.)
+
+Under the "SETLIST.FM SAYS" section, the artist name should render the MB page in the same POH
+
+4.)
+
+make some nice rich HTML based mockups
+
+
