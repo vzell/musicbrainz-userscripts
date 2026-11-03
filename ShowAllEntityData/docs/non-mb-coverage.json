@@ -135,7 +135,10 @@
       "pts": [
         { "type": "ia-search", "url": "https://archive.org/search?query=…", "mode": "single",
           "ip": { "state": "yes", "ev": "spec", "why": "The site's result list, in shadow DOM since 2026-11-03 (G4: composedPath(), mousemove); not its navigation. The spec builds the shadow DOM; the real page's shapes: scripts/probe-ia-shadow-links.js.", "spec": ["tests/fixtures/ia-search.spec.js", "a result's title link: the item's card from its metadata"] },
-          "frp": { "state": "yes", "ev": "spec", "spec": ["tests/fixtures/ia-search.spec.js", "a title in our table: its card and window"] } }
+          "frp": { "state": "yes", "ev": "spec", "spec": ["tests/fixtures/ia-search.spec.js", "a title in our table: its card and window"] } },
+        { "type": "ia-details", "url": "https://archive.org/details/<id>", "mode": "multi",
+          "ip": { "state": "yes", "ev": "spec", "why": "The item's own content (main#maincontent: description, the Brucebase and Databruce links); not the site's top bar.", "spec": ["tests/fixtures/ia-details.spec.js", "before any button, the item's own content previews"] },
+          "frp": { "state": "yes", "ev": "code", "why": "A title links its track on archive.org (the iadetails card, the track marked)." } }
       ]
     },
     {

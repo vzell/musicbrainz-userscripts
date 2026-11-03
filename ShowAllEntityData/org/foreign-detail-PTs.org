@@ -139,3 +139,25 @@ vzell, 2026-11-03:
    release-wide credits stay a "Release credits" sub-table.
 5. *One branch each*, in this order: archive.org (=ia-details=), Discogs (=dg-release= upgrade), setlist.fm
    (=sfm-setlist=).
+
+** archive.org (=ia-details=) — built (2026-11-03, branch feat/ia-details, stacked on fix/non-mb-coverage-gaps)
+
+- Probe =scripts/probe-ia-details.py=, 18 items:
+  - every show's FLAC originals carry track, title and length, with disc prefixes up to 3;
+  - one tape has none;
+  - video items have 1–3 video originals; a text item has neither.
+  - Every audio page embeds the metadata JSON; no video page does. So the pageType asks the API.
+- Built as drawn: a sub-table per disc, the MP3 copy as a column (Q3), Play, then Pictures and facts above.
+  - Second button "All files".
+  - A video item gets its video files.
+  - The item page's own content (=main#maincontent=) previews before any button.
+- *Deviation from the plan, step 1 ("shared pieces first")*: the pictures and facts are host-scoped
+  (=_iaDetailsAfterRender()=, =_dpArtViewerClick()= for the viewer). The release-tracks code is not generalised:
+  CLAUDE.md's rule is that nothing may change for MusicBrainz, and "when in doubt, a host-scoped branch". Discogs
+  can reuse the same shape.
+- *Left out for now*:
+  - the mockup's "Song (Brucebase)" column (it needs matching a live title to a song);
+  - pictures and facts on a disk load.
+- Specs: =tests/fixtures/ia-details.spec.js= (6), =sl-include-regex.spec.js= (+1).
+- Mutations: =scripts/mutations/ia-details.json= (8, all caught).
+- Docs: =docs/claude/internet-archive.md= "An item page", HELP, the PAGETYPES reference #147, the coverage registry row.

@@ -20,7 +20,7 @@
 | KF   | brucespringsteen.it   | sa_enable_brucespringsteen  | sa_bs_detail_preview | -                                                            | docs/claude/brucespringsteen.md  | 1   |
 | BB   | brucebase.wikidot.com | sa_enable_brucebase         | sa_bb_detail_preview | #page-content                                                | docs/claude/brucebase.md         | 5   |
 | DI   | www.discogs.com       | sa_enable_discogs           | sa_pop_ext           | #app, #page_content, main                                    | docs/claude/discogs.md           | 14  |
-| IA   | archive.org           | sa_enable_internetarchive   | sa_pop_ext           | #mb-ia-root                                                  | docs/claude/internet-archive.md  | 1   |
+| IA   | archive.org           | sa_enable_internetarchive   | sa_pop_ext           | #mb-ia-root                                                  | docs/claude/internet-archive.md  | 2   |
 | SFM  | www.setlist.fm        | sa_enable_setlistfm         | sa_pop_ext           | #mb-sfm-root, .mainColumn .setlistPreview, .mainColumn .info | docs/claude/setlistfm.md         | 3   |
 
 * 1b pageTypes: previews on the initial page (IP) and the rendered table (FRP)
@@ -55,6 +55,7 @@
 | DI   | dg-sell             | https://www.discogs.com/sell/release/<id>                                      | single | yes (code)  | yes (code) | IP: As dg-submissions.                                                                                                                                                                                                              |
 | DI   | dg-search           | https://www.discogs.com/search?q=…                                             | single | yes (spec)  | yes (code) | IP: The page's content is <main>, in extRoot since 2026-11-03 (G4).                                                                                                                                                                 |
 | IA   | ia-search           | https://archive.org/search?query=…                                             | single | yes (spec)  | yes (spec) | IP: The site's result list, in shadow DOM since 2026-11-03 (G4: composedPath(), mousemove); not its navigation. The spec builds the shadow DOM; the real page's shapes: scripts/probe-ia-shadow-links.js.                           |
+| IA   | ia-details          | https://archive.org/details/<id>                                               | multi  | yes (spec)  | yes (code) | IP: The item's own content (main#maincontent: description, the Brucebase and Databruce links); not the site's top bar.; FRP: A title links its track on archive.org (the iadetails card, the track marked).                         |
 | SFM  | sfm-venue           | https://www.setlist.fm/venue/<slug>-<hex>.html                                 | single | yes (spec)  | yes (spec) | IP: The setlist cards (.setlistPreview) and the venue box (.info) since 2026-11-03 (G4); not the Upcoming box's ticket links. A setlist's own link needs the key.; FRP: The site's own setlist links need sa_pop_ext_setlistfm_key. |
 | SFM  | sfm-artist          | https://www.setlist.fm/setlists/<slug>-<hex>.html                              | single | yes (code)  | yes (code) | IP: The setlist cards, as sfm-venue (no venue box here).; FRP: As sfm-venue.                                                                                                                                                        |
 | SFM  | sfm-search          | https://www.setlist.fm/search?artist=<id>&tour=…                               | single | yes (code)  | yes (code) | IP: The setlist cards, as sfm-venue (no venue box here).; FRP: As sfm-venue.                                                                                                                                                        |
@@ -80,6 +81,7 @@
 | dg-search         | IP   | tests/fixtures/discogs-search-page.spec.js | G4: before any button, a result in the page's <main> previews       |
 | ia-search         | IP   | tests/fixtures/ia-search.spec.js           | a result's title link: the item's card from its metadata            |
 | ia-search         | FRP  | tests/fixtures/ia-search.spec.js           | a title in our table: its card and window                           |
+| ia-details        | IP   | tests/fixtures/ia-details.spec.js          | before any button, the item's own content previews                  |
 | sfm-venue         | IP   | tests/fixtures/sfm-list.spec.js            | G4: before any button, setlist.fm's own list previews               |
 | sfm-venue         | FRP  | tests/fixtures/sfm-list.spec.js            | a Tour cell (setlist.fm's own search link) has its card and window  |
 

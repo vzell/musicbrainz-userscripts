@@ -41,6 +41,7 @@
 // @include      /^https?:\/\/(?:www\.)?discogs\.com\/(?:[a-z]{2}(?:[-_][a-zA-Z]{2})?\/)?sell\/release\/\d+\/?(?:[?#].*)?$/
 // @include      /^https?:\/\/(?:www\.)?discogs\.com\/(?:[a-z]{2}(?:[-_][a-zA-Z]{2})?\/)?search\/?\?(?:[^#]*&)?q=[^&#]+.*$/
 // @include      /^https?:\/\/(?:www\.)?archive\.org\/search\/?\?(?:[^#]*&)?query=[^&#]+.*$/
+// @include      /^https?:\/\/(?:www\.)?archive\.org\/details\/(?!@)[^\/?#]+(?:\/[^?#]*)?(?:[?#].*)?$/
 // @include      /^https?:\/\/(?:www\.)?setlist\.fm\/(?:venue|setlists)\/[^\/?#]+-[0-9a-f]+\.html(?:[?#].*)?$/
 // @include      /^https?:\/\/(?:www\.)?setlist\.fm\/search\?(?:[^#]*&)?artist=[^&#]+.*$/
 // @connect      raw.githubusercontent.com
@@ -19414,6 +19415,22 @@
             body.mb-sa-host-ia img.mb-ia-thumb { display: block; width: 40px; height: 40px; object-fit: cover; border: 1px solid #ddd; background: #f2f2f2; }
             body.mb-sa-host-ia td.mb-ia-when { white-space: nowrap; font-variant-numeric: tabular-nums; }
             body.mb-sa-host-ia input.mb-col-filter-input { box-sizing: border-box; }
+            /* An item page (ia-details): its pictures and facts above the tables. */
+            body.mb-sa-host-ia .mb-ia-det-head { display: grid; gap: 10px; margin: 8px 0 4px; max-width: 1100px; }
+            body.mb-sa-host-ia h3.mb-ia-det-h { font: 700 15px/1.3 "Helvetica Neue", Helvetica, Arial, sans-serif; margin: 0; color: #222; }
+            body.mb-sa-host-ia .mb-ia-det-n { font-weight: 400; color: #666; }
+            body.mb-sa-host-ia .mb-ia-det-pics { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 4px; }
+            body.mb-sa-host-ia .mb-ia-det-pics a { flex: none; width: 110px; display: grid; gap: 3px; color: #555; text-decoration: none; font-size: 11.5px; cursor: zoom-in; }
+            body.mb-sa-host-ia .mb-ia-det-pics img { width: 110px; height: 110px; object-fit: cover; border: 1px solid #ddd; border-radius: 3px; background: #f2f2f2; }
+            body.mb-sa-host-ia .mb-ia-det-pics span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+            body.mb-sa-host-ia .mb-ia-det-facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 10px; }
+            body.mb-sa-host-ia .mb-ia-det-card { border: 1px solid #ddd; border-radius: 5px; padding: 7px 10px; background: #fcfcfd; display: grid; gap: 4px; align-content: start; }
+            body.mb-sa-host-ia .mb-ia-det-card h4 { margin: 0; font: 700 11.5px/1.2 "Helvetica Neue", Helvetica, Arial, sans-serif; text-transform: uppercase; letter-spacing: 0.04em; color: #666; }
+            body.mb-sa-host-ia .mb-ia-det-card dl { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 2px 8px; }
+            body.mb-sa-host-ia .mb-ia-det-card dt { color: #666; }
+            body.mb-sa-host-ia .mb-ia-det-card dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
+            body.mb-sa-host-ia .mb-ia-det-card p { margin: 0; overflow-wrap: anywhere; }
+            body.mb-sa-host-ia td.mb-ia-md5 { font: 11.5px/1.3 ui-monospace, Consolas, monospace; color: #555; }
         `);
         style.id = 'mb-ia-style';
     }
@@ -19445,8 +19462,11 @@
         const h1 = document.createElement('h1');
         h1.className = 'mb-ia-h1';
         const bdi = document.createElement('bdi');
-        const what = _iaSearchName();
-        bdi.textContent = what ? `Internet Archive: ${what}` : 'Internet Archive search';
+        // An item page (ia-details) is named after the item, a search page
+        // after its query.
+        const item = _IA_DETAILS_PATH_RE.test(window.location.pathname);
+        const what = item ? _iaDetailsName() : _iaSearchName();
+        bdi.textContent = what ? `Internet Archive: ${what}` : (item ? 'Internet Archive item' : 'Internet Archive search');
         h1.appendChild(bdi);
         root.appendChild(h1);
         document.body.insertBefore(root, document.body.firstChild);
@@ -19466,7 +19486,7 @@
      * Whether a link on archive.org is one the link previews serve (G4 of
      * NON-MB-COVERAGE.org, 2026-11-03). In the document itself: only the
      * table's and our own section's, as `_DP_SITES['archive.org'].extRoot`
-     * says. Inside the site's shadow DOM (its result list, written there by
+     * says, and on an item page the item's own content (`#maincontent`). Inside the site's shadow DOM (its result list, written there by
      * its web components after load, so no root selector reaches it): any
      * link outside `_IA_SHADOW_SKIP`, crossing each shadow root to its host
      * on the way up. `_extTarget()` then decides what it previews (an item's
@@ -19477,7 +19497,14 @@
      */
     function _iaShadowLinkInScope(a) {
         if (!a || !a.getRootNode) return false;
-        if (!(a.getRootNode() instanceof ShadowRoot)) return !!a.closest('table.tbl > tbody, #mb-ia-root');
+        // An item page (ia-details, 2026-11-03) is plain HTML: its own
+        // content — the description, the metadata list with its Brucebase
+        // and Databruce links — is `main#maincontent` (both kinds of item
+        // probed, debug/ia-1975-02-05-setlist-songs.html,
+        // ia-amanson-1973-video.html), outside the site's top bar.
+        if (!(a.getRootNode() instanceof ShadowRoot)) {
+            return !!a.closest(_IA_DETAILS_PATH_RE.test(window.location.pathname) ? 'table.tbl > tbody, #mb-ia-root, #maincontent' : 'table.tbl > tbody, #mb-ia-root');
+        }
         for (let n = a; n;) {
             if (n.matches && n.matches(_IA_SHADOW_SKIP)) return false;
             if (n.parentElement) n = n.parentElement;
@@ -19503,14 +19530,288 @@
         if (!def?.features?.iaToTable || document.querySelector('table.mb-ia-table')) return;
         const root = document.getElementById('mb-ia-root') || _iaPrepareLivePage()?.parentNode;
         if (!root) return;
+        const details = def.features.iaToTable === 'details';
         const h2 = document.createElement('h2');
         h2.className = 'mb-ia-list-heading';
-        h2.textContent = 'Items';
+        h2.textContent = details ? (def.features.iaView === 'files' ? 'Files' : 'Tracks') : 'Items';
         const table = document.createElement('table');
         table.className = 'tbl mb-ia-table';
-        table.innerHTML = `<thead><tr>${_IA_HEADERS.map(c => `<th>${_rgEsc(c)}</th>`).join('')}</tr></thead><tbody></tbody>`;
+        // An item (ia-details) is a multi-table render: each sub-table's
+        // head comes from the fetched answer (`data-mb-col-headers`).
+        const cols = details ? ['#', 'Title', 'Length'] : _IA_HEADERS;
+        table.innerHTML = `<thead><tr>${cols.map(c => `<th>${_rgEsc(c)}</th>`).join('')}</tr></thead><tbody></tbody>`;
         root.append(h2, table);
-        Lib.debug('init', 'applyIaToTable: empty ia-search table in place for the fetched pages.');
+        Lib.debug('init', `applyIaToTable: empty ${details ? 'ia-details' : 'ia-search'} table in place for the fetched pages.`);
+    }
+
+    // --- archive.org: an item (pageType ia-details, 2026-11-03) ------------
+    // org/foreign-detail-PTs.org (mockup https://claude.ai/artifact/ECoqApKnedJqbTMSuBBN14,
+    // tab "archive.org item"; vzell's answers: archive.org first, a file's
+    // derivatives as columns). Modelled on MusicBrainz's release-tracks: a
+    // sub-table per disc, the item's pictures and facts above the tables. An
+    // item page is server-rendered (no shadow DOM); its rows come from ONE
+    // anonymous request, `/metadata/<id>` — the answer the item's card and
+    // window read too (`_extIaItem()`), which gives the facts and pictures
+    // here as well. Probe scripts/probe-ia-details.py (2026-11-03, 18
+    // items): every show's FLAC originals carry track, title and length, and
+    // names such as "1-01. Intro.flac" give the disc (up to 3); a tape
+    // ("SideA.flac") has no disc; a video item has 1–3 video originals; a
+    // text item neither, and gets its files.
+
+    /** An item page's path, `/details/<id>[/<file>]`, never a user's (`/details/@name`). */
+    const _IA_DETAILS_PATH_RE = /^\/details\/(?!@)([^/?#]+)(?:\/.*)?$/;
+
+    /**
+     * The item id of this page (an `ia-details` page), or ''.
+     *
+     * @returns {string}
+     */
+    function _iaDetailsId() {
+        const m = _IA_DETAILS_PATH_RE.exec(window.location.pathname);
+        return m ? decodeURIComponent(m[1]) : '';
+    }
+
+    /**
+     * The item page's own title for the toolbar's name: archive.org's
+     * `h1.item-title`, else the document's title without " : Free … :
+     * Internet Archive", else the id.
+     *
+     * @returns {string}
+     */
+    function _iaDetailsName() {
+        const h = document.querySelector('h1.item-title');
+        const t = (h && h.textContent.trim()) || String(document.title || '').replace(/\s*:\s*.*Internet Archive\s*$/i, '').trim();
+        return t || _iaDetailsId();
+    }
+
+    /** The original audio formats, best first: a show's rows are its files of the first one it has. */
+    const _IA_DET_FORMAT_ORDER = ['flac', '24bit flac', 'shorten', 'wave', 'aiff', 'apple lossless audio', 'vbr mp3', 'mp3', '128kbps mp3', '64kbps mp3', 'ogg vorbis'];
+
+    /** Derivative formats that are audio: a column each. Spectrograms, waveform PNGs and peak files are not. */
+    const _IA_DET_DERIV_AUDIO_RE = /mp3|ogg|m4a|aac|flac/i;
+
+    /**
+     * The item read for the render (`_iaDetailsToHtml()`): `_extIaItem()`'s
+     * record, for the pictures and facts painted above the tables after the
+     * render (`_iaDetailsAfterRender()`).
+     * @type {?Object}
+     */
+    let _iaDetailsRec = null;
+
+    /**
+     * A length in seconds as m:ss, or h:mm:ss from an hour.
+     *
+     * @param {number} sec
+     * @returns {string}
+     */
+    function _iaLenText(sec) {
+        const s = Math.round(Number(sec) || 0);
+        if (!s) return '';
+        const h = Math.floor(s / 3600);
+        const m = Math.floor((s % 3600) / 60);
+        const r = String(s % 60).padStart(2, '0');
+        return h ? `${h}:${String(m).padStart(2, '0')}:${r}` : `${m}:${r}`;
+    }
+
+    /**
+     * A size in bytes, always in MB so a column sorts by its numbers: one
+     * decimal from 1 MB, two below ("0.89 MB"), "< 0.01 MB" for a few KB.
+     *
+     * @param {number|string} bytes
+     * @returns {string}
+     */
+    function _iaSizeText(bytes) {
+        const b = Number(bytes) || 0;
+        if (!b) return '';
+        const mb = b / 1048576;
+        if (mb >= 1) return `${mb.toFixed(1)} MB`;
+        return mb >= 0.01 ? `${mb.toFixed(2)} MB` : '< 0.01 MB';
+    }
+
+    /**
+     * The `ia-details` answer as sub-tables (the fetch loop's `toHtml`): a
+     * show's tracks, one sub-table per disc; a video's files; anything else,
+     * or the "All files" button (`view` 'files'), every file. Keeps the item
+     * for the pictures and facts (`_iaDetailsRec`).
+     *
+     * @param {string} text - The metadata API's answer.
+     * @param {string} [view] - 'files' for every file.
+     * @returns {string} `<h3>` + `table.tbl[data-mb-col-headers]` pairs.
+     */
+    function _iaDetailsToHtml(text, view = '') {
+        let d;
+        try {
+            d = JSON.parse(text);
+        } catch (_) {
+            d = null;
+        }
+        if (!d || !d.metadata) {
+            _iaDetailsRec = null;
+            return _dgTableHtml('Tracks', ['#', 'Title', 'Length'], []);
+        }
+        _iaDetailsRec = _extIaItem(d);
+        const id = _iaDetailsRec.id || _iaDetailsId();
+        const files = Array.isArray(d.files) ? d.files : [];
+        if (view === 'files') return _iaDetailsFilesHtml(id, files);
+        const audio = files.filter(f => f.source === 'original' && _EXT_IA_AUDIO_RE.test(String(f.format || '')));
+        if (audio.length) return _iaDetailsTracksHtml(id, files, audio);
+        const video = files.filter(f => f.source === 'original' && _EXT_IA_VIDEO_RE.test(String(f.format || '')));
+        if (video.length) return _iaDetailsVideosHtml(id, video);
+        return _iaDetailsFilesHtml(id, files);
+    }
+
+    /**
+     * A show's tracks: its original audio files of the best format it has
+     * (`_IA_DET_FORMAT_ORDER`), a sub-table per disc ("1-01. …" in the
+     * name), else one; per row the track number, the title (linking the
+     * track on archive.org, which previews as that show with the track
+     * marked), the length, the file and its size, then one column per audio
+     * derivative format (VBR MP3, Ogg Vorbis) with that derivative's size,
+     * linking it, and ▶ (`sa_ia_play_in_place`): archive.org's own player.
+     *
+     * @param {string} id
+     * @param {Object[]} files
+     * @param {Object[]} audio - The original audio files.
+     * @returns {string}
+     */
+    function _iaDetailsTracksHtml(id, files, audio) {
+        const fmt = _IA_DET_FORMAT_ORDER.find(p => audio.some(f => String(f.format).toLowerCase() === p)) || String(audio[0].format).toLowerCase();
+        const rows = audio.filter(f => String(f.format).toLowerCase() === fmt)
+            .sort((a, b) => String(a.name).localeCompare(String(b.name), 'en', { numeric: true }));
+        const fmtName = String(rows[0].format);
+        const derivFmts = [];
+        const deriv = new Map();
+        for (const f of files) {
+            if (f.source !== 'derivative' || !f.original || !_IA_DET_DERIV_AUDIO_RE.test(String(f.format || ''))) continue;
+            if (String(f.format) === fmtName) continue;
+            if (!derivFmts.includes(f.format)) derivFmts.push(f.format);
+            deriv.set(`${f.original}\n${f.format}`, f);
+        }
+        const play = Lib.settings.sa_ia_play_in_place === true;
+        const cols = ['#', 'Title', 'Length', 'File', 'Size', ...derivFmts, ...(play ? ['Play'] : [])];
+        const disc = (f) => {
+            const m = /(?:^|\/)(\d+)-\d+/.exec(String(f.name));
+            return m ? Number(m[1]) : 0;
+        };
+        const groups = new Map();
+        rows.forEach((f) => {
+            const k = disc(f);
+            if (!groups.has(k)) groups.set(k, []);
+            groups.get(k).push(f);
+        });
+        const several = [...groups.keys()].some(k => k > 0);
+        return [...groups.entries()].sort((a, b) => (a[0] || 999) - (b[0] || 999)).map(([k, list]) => {
+            const secs = list.reduce((n, f) => n + _extIaSeconds(f.length), 0);
+            const heading = `${several ? (k ? `Disc ${k}` : 'Other') : 'Tracks'} · ${fmtName}${secs ? ` · ${_iaLenText(secs)}` : ''}`;
+            const trs = list.map((f, i) => {
+                const name = String(f.name);
+                const no = parseInt(String(f.track || ''), 10) || i + 1;
+                const title = String(f.title || '').trim() || name.split('/').pop().replace(/\.[^.]+$/, '');
+                const secs1 = _extIaSeconds(f.length);
+                const cells = [
+                    `<td class="mb-ia-when">${no}</td>`,
+                    `<td><a href="${_rgEsc(`https://archive.org/details/${encodeURIComponent(id)}/${name.split('/').map(encodeURIComponent).join('/')}`)}" target="_blank" rel="noopener noreferrer">${_rgEsc(title)}</a></td>`,
+                    `<td class="mb-ia-when">${_rgEsc(_iaLenText(secs1))}</td>`,
+                    `<td><a href="${_rgEsc(_iaFileUrl(id, name))}" target="_blank" rel="noopener noreferrer">${_rgEsc(name.split('/').pop())}</a></td>`,
+                    `<td class="mb-ia-when">${_rgEsc(_iaSizeText(f.size))}</td>`,
+                    ...derivFmts.map((df) => {
+                        const x = deriv.get(`${name}\n${df}`);
+                        return x ? `<td class="mb-ia-when"><a href="${_rgEsc(_iaFileUrl(id, x.name))}" target="_blank" rel="noopener noreferrer">${_rgEsc(_iaSizeText(x.size))}</a></td>` : '<td></td>';
+                    }),
+                ];
+                if (play) {
+                    cells.push(`<td class="mb-dg-playcell">${_ytTileHtml({ src: 'ia', kind: 'audio', id, file: name, list: '' }, { mini: true, title, dur: secs1 })}</td>`);
+                }
+                return `<tr>${cells.join('')}</tr>`;
+            });
+            return _dgTableHtml(heading, cols, trs);
+        }).join('');
+    }
+
+    /**
+     * A video item: its original video files (Title, Format, Length, Size,
+     * and a "Play here" tile with `sa_ia_play_in_place`).
+     *
+     * @param {string} id
+     * @param {Object[]} video - The original video files.
+     * @returns {string}
+     */
+    function _iaDetailsVideosHtml(id, video) {
+        const play = Lib.settings.sa_ia_play_in_place === true;
+        const cols = [...(play ? ['Play'] : []), 'Title', 'Format', 'Length', 'Size'];
+        const trs = video.map((f) => {
+            const name = String(f.name);
+            const title = String(f.title || '').trim() || name.split('/').pop().replace(/\.[^.]+$/, '');
+            const secs = _extIaSeconds(f.length);
+            const tile = play ? _ytTileHtml({ src: 'ia', kind: 'video', id, file: name, list: '' }, { bare: true, title, dur: secs }) : '';
+            return `<tr>${play ? `<td class="mb-dg-playcell">${tile}</td>` : ''}` +
+                `<td><a href="${_rgEsc(_iaFileUrl(id, name))}" target="_blank" rel="noopener noreferrer">${_rgEsc(title)}</a></td>` +
+                `<td>${_rgEsc(String(f.format || ''))}</td><td class="mb-ia-when">${_rgEsc(_iaLenText(secs))}</td>` +
+                `<td class="mb-ia-when">${_rgEsc(_iaSizeText(f.size))}</td></tr>`;
+        });
+        return _dgTableHtml('Videos', cols, trs);
+    }
+
+    /**
+     * Every file of the item, one row each, by name: format, source
+     * (original or derivative), what it was made from, size, length, MD5.
+     *
+     * @param {string} id
+     * @param {Object[]} files
+     * @returns {string}
+     */
+    function _iaDetailsFilesHtml(id, files) {
+        const cols = ['Name', 'Format', 'Source', 'Original', 'Size', 'Length', 'MD5'];
+        const trs = files.slice().sort((a, b) => String(a.name).localeCompare(String(b.name), 'en', { numeric: true })).map((f) => {
+            const name = String(f.name || '');
+            return `<tr><td><a href="${_rgEsc(_iaFileUrl(id, name))}" target="_blank" rel="noopener noreferrer">${_rgEsc(name)}</a></td>` +
+                `<td>${_rgEsc(String(f.format || ''))}</td><td>${_rgEsc(String(f.source || ''))}</td><td>${_rgEsc(String(f.original || ''))}</td>` +
+                `<td class="mb-ia-when">${_rgEsc(_iaSizeText(f.size))}</td><td class="mb-ia-when">${_rgEsc(_iaLenText(_extIaSeconds(f.length)))}</td>` +
+                `<td class="mb-ia-md5">${_rgEsc(String(f.md5 || ''))}</td></tr>`;
+        });
+        return _dgTableHtml('All files', cols, trs);
+    }
+
+    /**
+     * After an `ia-details` render: the item's pictures and facts above the
+     * tables, in our section (`div.mb-ia-det-head` before the data h2), as
+     * release-tracks has its Cover art section and Sidebar cards there. The
+     * pictures open the artwork viewer (`_dpArtViewerClick()` on the strip:
+     * every picture, in order, the scan as the full image). Idempotent: an
+     * existing head is replaced. Nothing on any other pageType.
+     *
+     * @returns {void}
+     */
+    function _iaDetailsAfterRender() {
+        if (activeDefinition?.type !== 'ia-details') return;
+        const it = _iaDetailsRec;
+        const h2 = document.querySelector('#mb-ia-root h2.mb-ia-list-heading');
+        if (!it || !h2) return;
+        const old = document.querySelector('#mb-ia-root .mb-ia-det-head');
+        if (old) old.remove();
+        const head = document.createElement('div');
+        head.className = 'mb-ia-det-head';
+        const runtime = it.tracks.reduce((n, x) => n + (x.len || 0), 0);
+        const kv = (rows) => `<dl>${rows.filter(r => r[1]).map(([k, v]) => `<dt>${_rgEsc(k)}</dt><dd>${v}</dd>`).join('')}</dl>`;
+        const link = (u, text) => `<a href="${_rgEsc(u)}" target="_blank" rel="noopener noreferrer">${_rgEsc(text)}</a>`;
+        const pics = it.pictures.length ? `<h3 class="mb-ia-det-h">Pictures <span class="mb-ia-det-n">(${it.pictures.length})</span></h3>` +
+            `<div class="mb-ia-det-pics">${it.pictures.map((p, i) =>
+                `<a href="${_rgEsc(_iaFileUrl(it.id, p.name))}" target="_blank" rel="noopener noreferrer" data-mb-artv-ext="${i + 1}">` +
+                `<img src="${_rgEsc(_iaFileUrl(it.id, p.thumb || p.name))}" alt="" loading="lazy" referrerpolicy="no-referrer">` +
+                `<span>${_rgEsc(p.name.split('/').pop().replace(/\.[^.]+$/, ''))}</span></a>`).join('')}</div>` : '';
+        const facts = [
+            ['Show', kv([['Date', _rgEsc(it.date)], ['Venue', _rgEsc(it.venue)], ['Source', _rgEsc(it.source)], ['Taper', _rgEsc(it.taper)],
+                ['Transferred by', _rgEsc(it.transferer)], ['Running time', _rgEsc(_iaLenText(runtime))]])],
+            ['Links', kv([['Brucebase', it.brucebase ? link(it.brucebase, it.brucebase.replace(/^https?:\/\/[^/]+\/+/, '')) : ''],
+                ['Databruce', it.databruce ? link(it.databruce, it.databruce.replace(/^https?:\/\/[^/]+\/+/, '')) : ''],
+                ['Collections', it.collections.map(_rgEsc).join(' · ')], ['Uploaded by', _rgEsc(it.uploader)], ['Added', _rgEsc(it.added)]])],
+            ['Lineage', it.lineage ? `<p>${_rgEsc(it.lineage)}</p>` : ''],
+        ].filter(([, body]) => body && body !== '<dl></dl>');
+        head.innerHTML = pics + `<div class="mb-ia-det-facts">${facts.map(([h, body]) =>
+            `<div class="mb-ia-det-card"><h4>${_rgEsc(h)}</h4>${body}</div>`).join('')}</div>`;
+        const strip = head.querySelector('.mb-ia-det-pics');
+        if (strip) strip.addEventListener('click', _dpArtViewerClick);
+        h2.before(head);
     }
 
     // --- setlist.fm: a venue's or an artist's setlists (sfm-venue, sfm-artist) --
@@ -44078,6 +44379,41 @@
                 collapsableColumns: [ 'Collection' ]
             },
             tableMode: 'single'
+        },
+        {
+            // archive.org's item page (2026-11-03, org/foreign-detail-PTs.org):
+            // modelled on release-tracks — a sub-table per disc, a file's
+            // derivatives as columns, the item's pictures and facts above.
+            // One anonymous request, the metadata API. See the "archive.org:
+            // an item" block below applyIaToTable(); docs/claude/internet-archive.md.
+            type: 'ia-details',
+            host: 'archive.org',
+            match: (path) => _IA_DETAILS_PATH_RE.test(path),
+            buttons: [
+                {
+                    label: 'Show all tracks', shortLabel: 'Tracks',
+                    description: 'The item\'s tracks, a table per disc, with each file\'s size and its MP3 and other copies; above them its pictures and facts. One request to the Internet Archive.'
+                },
+                {
+                    label: 'Show all files', shortLabel: 'All files',
+                    description: 'Every file of the item, one row each: format, original or copy, what it was made from, size, length, MD5. One request to the Internet Archive.',
+                    features: { iaView: 'files' }
+                }
+            ],
+            features: {
+                iaToTable: 'details',
+                groupByH3: true,
+                pageRequest: (p, def) => {
+                    const url = `https://archive.org/metadata/${encodeURIComponent(_iaDetailsId())}`;
+                    return { url, fetchText: () => _iaFetchText(url), toHtml: (text) => _iaDetailsToHtml(text, def?.features?.iaView || '') };
+                },
+                pageCountAsync: () => 1,
+                integerColumns: [
+                    { sourceColumn: '#', align: 'C' }, { sourceColumn: 'Length', align: ':' }, { sourceColumn: 'Size', align: 'R' },
+                    { sourceColumn: 'VBR MP3', align: 'R' }, { sourceColumn: 'Ogg Vorbis', align: 'R' }
+                ]
+            },
+            tableMode: 'multi'
         },
         // setlist.fm (2026-11-02, org/setlistfm.org item 2 and Q9;
         // docs/claude/setlistfm.md): a venue's and an artist's setlists, ten a
@@ -108178,6 +108514,8 @@ a { color: #1565c0; }`;
             _bbMbevAfterRender(false);
             // A foreign table's 🖼 gallery opener, after its row count.
             _fgalAfterRender();
+            // archive.org's item page (ia-details): its pictures and facts above the tables.
+            _iaDetailsAfterRender();
             // Same reason as the line above: the <thead> this writes into may
             // have just been rebuilt from a clone. No-op unless the Release-events
             // lookup is loading or has failed.
@@ -113315,6 +113653,8 @@ a { color: #1565c0; }`;
             _bbMbevAfterRender(true);
             // A foreign table's 🖼 gallery opener, after its row count.
             _fgalAfterRender();
+            // archive.org's item page (ia-details): its pictures and facts above the tables.
+            _iaDetailsAfterRender();
             // jungleland.it / brucespringsteen.it lazy Art / Photo cells and
             // Brucebase / springsteenlyrics Title glyphs read before, painted
             // from the detail-page database (no request).
@@ -143596,6 +143936,8 @@ a { color: #1565c0; }`;
             _bbMbevAfterRender(true);
             // A foreign table's 🖼 gallery opener, after its row count.
             _fgalAfterRender();
+            // archive.org's item page (ia-details): its pictures and facts above the tables.
+            _iaDetailsAfterRender();
             // jungleland.it / brucespringsteen.it lazy Art / Photo cells and
             // Brucebase / springsteenlyrics Title glyphs read before, painted
             // from the detail-page database (no request).

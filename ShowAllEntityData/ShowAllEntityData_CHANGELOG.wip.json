@@ -1,5 +1,17 @@
 [
   {
+    "version": "WIP.3",
+    "date": "2026-11-03",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "archive.org item pages (archive.org/details/…) get two buttons, built like MusicBrainz's release page. \"Tracks\" lists a show's songs in one table per disc, each named with its format and running time: #, Title (with the item's card), Length, the file and its size, a column for each copy archive.org made (VBR MP3, …) and ▶ to play the song in archive.org's player. Above the tables: the item's pictures (a click opens the viewer) and its facts (date, venue, source, taper, running time, Brucebase and Databruce links, collections, lineage). A video item lists its video files with a \"Play here\" tile. \"All files\" lists every file of the item with its format, size, length and MD5. Both read the item in one request. Before any button, the item page's own links have cards too, its Brucebase link for example."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.2",
     "date": "2026-11-03",
     "sections": [

@@ -4039,6 +4039,26 @@ archive.org's own player in the window. One track or video plays at a time,
 YouTube's included; **Esc** or **■ Stop** ends it. Where a page does not
 allow archive.org's player, a click opens the item on archive.org instead.
 
+On an **item page** (archive.org/details/…, a show or a video) the script adds
+its section above the page with two buttons, built like MusicBrainz's release
+page:
+
+- **Tracks** lists the show's songs, one table per disc (the files named
+  "1-01. …", "2-01. …"; a tape or a single set is one table), each named with
+  its format and running time: **#**, **Title** (it opens the track on
+  archive.org, and has the item's card), **Length**, the **File** and its
+  **Size**, a column for each copy archive.org made of it (**VBR MP3**, …,
+  linking that copy), and **▶** to play it in archive.org's player. Above
+  the tables: the item's **Pictures** (a click opens them in the viewer) and
+  its facts (date, venue, source, taper, running time, its Brucebase and
+  Databruce links, collections, lineage). A video item lists its video files
+  with a "Play here" tile.
+- **All files** lists every file of the item, one row each: format, original
+  or copy, what it was made from, size, length, MD5.
+
+Both read the item in one request. Before you press a button, the item's own
+page previews too: rest on its Brucebase link for the show's card.
+
 Switches, in ⚙️ Settings → 🏛 Internet Archive: *Enable on archive.org*,
 *Art column: the item's pictures on hover* and *Play archive.org tracks and
 videos in the window*, all on by default.

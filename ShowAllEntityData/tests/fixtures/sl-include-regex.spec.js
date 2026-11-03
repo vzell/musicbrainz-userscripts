@@ -359,9 +359,27 @@ test.describe('@include coverage', () => {
             'https://archive.org/search',
             'https://archive.org/search?query=',
             'https://archive.org/search?sort=title',
-            'https://archive.org/details/bs1975-12-27.aud.jk.cb.hrubesh.flac16',
             'https://archive.org/searchx?query=springsteen',
             'https://web.archive.org/search?query=springsteen',
+        ];
+        expect(pages.filter((u) => !injected(u))).toEqual([]);
+        expect(others.filter((u) => injected(u))).toEqual([]);
+    });
+
+    test('archive.org: an item page (ia-details, 2026-11-03), a track of it too; not a user\'s page, the list of items, or the Wayback Machine', () => {
+        const pages = [
+            'https://archive.org/details/bs1975-12-27.aud.jk.cb.hrubesh.flac16',
+            'https://archive.org/details/bs1975-12-27.aud.jk.cb.hrubesh.flac16/',
+            'https://archive.org/details/bs1975-12-27.aud.jk.cb.hrubesh.flac16/1-02.+Tenth+Avenue+Freeze-Out.flac',
+            'https://www.archive.org/details/1975-bruce-springsteen-widener-college-audience-cam',
+            'https://archive.org/details/bs1978-05-19.aud.tillywilly.flac16?tab=about',
+        ];
+        const others = [
+            'https://archive.org/details/@vzell',
+            'https://archive.org/details/',
+            'https://archive.org/details',
+            'https://web.archive.org/details/bs1975-12-27.aud.jk.cb.hrubesh.flac16',
+            'https://archive.org/download/bs1975-12-27.aud.jk.cb.hrubesh.flac16',
         ];
         expect(pages.filter((u) => !injected(u))).toEqual([]);
         expect(others.filter((u) => injected(u))).toEqual([]);

@@ -1,0 +1,66 @@
+[
+    {
+        "name": "ia-details: no disc split",
+        "why": "A show's files named \"1-01. …\" / \"2-01. …\" are two discs: one sub-table each, as release-tracks has one per medium.",
+        "edits": [{ "find": "            return m ? Number(m[1]) : 0;", "replace": "            return 0;" }],
+        "spec": "tests/fixtures/ia-details.spec.js",
+        "grep": "Tracks: one request",
+        "expect": "fail"
+    },
+    {
+        "name": "ia-details: no derivative columns",
+        "why": "vzell's answer Q3: a file's copies (VBR MP3, …) are columns of its row.",
+        "edits": [{ "find": "            if (!derivFmts.includes(f.format)) derivFmts.push(f.format);", "replace": "" }],
+        "spec": "tests/fixtures/ia-details.spec.js",
+        "grep": "Tracks: one request",
+        "expect": "fail"
+    },
+    {
+        "name": "ia-details: no pictures and facts",
+        "why": "The item's pictures and facts go above the tables after the render, as release-tracks' Cover art section and Sidebar cards.",
+        "edits": [{ "find": "        if (activeDefinition?.type !== 'ia-details') return;", "replace": "        return;" }],
+        "spec": "tests/fixtures/ia-details.spec.js",
+        "grep": "the pictures",
+        "expect": "fail"
+    },
+    {
+        "name": "ia-details: a picture does not open the viewer",
+        "why": "A click on a picture opens the artwork viewer on every picture of the item (_dpArtViewerClick on the strip).",
+        "edits": [{ "find": "        if (strip) strip.addEventListener('click', _dpArtViewerClick);", "replace": "" }],
+        "spec": "tests/fixtures/ia-details.spec.js",
+        "grep": "the pictures",
+        "expect": "fail"
+    },
+    {
+        "name": "ia-details: All files shows the tracks",
+        "why": "The second button lists every file, one row each.",
+        "edits": [{ "find": "        if (view === 'files') return _iaDetailsFilesHtml(id, files);", "replace": "" }],
+        "spec": "tests/fixtures/ia-details.spec.js",
+        "grep": "All files: every file",
+        "expect": "fail"
+    },
+    {
+        "name": "ia-details: a video item gets its file list",
+        "why": "A video item's table is its video files with a Play here tile.",
+        "edits": [{ "find": "        if (video.length) return _iaDetailsVideosHtml(id, video);", "replace": "" }],
+        "spec": "tests/fixtures/ia-details.spec.js",
+        "grep": "a video item",
+        "expect": "fail"
+    },
+    {
+        "name": "ia-details: the item's own content has no previews",
+        "why": "An item page is plain HTML; its content (main#maincontent) previews before any button.",
+        "edits": [{ "find": "'table.tbl > tbody, #mb-ia-root, #maincontent'", "replace": "'table.tbl > tbody, #mb-ia-root'" }],
+        "spec": "tests/fixtures/ia-details.spec.js",
+        "grep": "the item's own content previews",
+        "expect": "fail"
+    },
+    {
+        "name": "ia-details: the toolbar named as a search",
+        "why": "An item page's section is named after the item.",
+        "edits": [{ "find": "        const what = item ? _iaDetailsName() : _iaSearchName();", "replace": "        const what = _iaSearchName();" }],
+        "spec": "tests/fixtures/ia-details.spec.js",
+        "grep": "the toolbar is named after the item",
+        "expect": "fail"
+    }
+]

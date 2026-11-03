@@ -122,6 +122,56 @@ card), which custom elements hold the list — come from
 `scripts/probe-ia-shadow-links.js`, run in vzell's browser (paste it into
 the console on a search page, once per view).
 
+## An item page: `ia-details` (2026-11-03)
+
+Plan, mockup and vzell's answers: org/foreign-detail-PTs.org (mockup
+https://claude.ai/artifact/ECoqApKnedJqbTMSuBBN14, tab "archive.org item").
+Modelled on MusicBrainz's release-tracks.
+
+- **Match**: `_IA_DETAILS_PATH_RE`, `/details/<id>[/<file>]`, never
+  `/details/@user`; its own `@include` line. `_iaPrepareLivePage()` names
+  the section after the item (`_iaDetailsName()`: `h1.item-title`, else the
+  document title).
+- **The page is plain HTML** (both probed kinds:
+  debug/ia-1975-02-05-setlist-songs.html, ia-amanson-1973-video.html): no
+  `<app-root>`, the item's content is `main#maincontent`, which previews
+  before any button (`_iaShadowLinkInScope()` adds it on an item page).
+- **Rows**: ONE anonymous request, `/metadata/<id>` (`features.pageRequest`,
+  `pageCountAsync: () => 1`, `_iaFetchText()`); `_iaDetailsToHtml()` writes
+  `<h3>` + `table.tbl[data-mb-col-headers]` pairs (`groupByH3`, multi):
+  - a show (original audio files, the best format it has,
+    `_IA_DET_FORMAT_ORDER`): a sub-table per disc from "1-01." in the
+    name, else one ("Tracks"); its h3 names the format and the running
+    time. Columns: # · Title (the track's archive.org link: the item's card
+    with the track marked) · Length · File · Size · one column per AUDIO
+    derivative format (VBR MP3, Ogg Vorbis: the copy's size, linking it;
+    spectrograms, PNG waveforms and peak files are not columns) · Play
+    (`sa_ia_play_in_place`, archive.org's own player);
+  - a video item: its video files (Play · Title · Format · Length · Size);
+  - anything else, or the second button "All files" (`iaView: 'files'`):
+    every file, one row (Name · Format · Source · Original · Size · Length ·
+    MD5).
+  Sizes are always in MB (`_iaSizeText()`), so a size column sorts by its
+  numbers.
+- **Pictures and facts above the tables** (`_iaDetailsAfterRender()`, in
+  the three render tails, a no-op on any other pageType): the item record
+  of `_extIaItem()` from the same answer (`_iaDetailsRec`), as
+  release-tracks has its Cover art section and Sidebar cards there. A
+  picture opens the artwork viewer: `_dpArtViewerClick()` on the strip
+  (`data-mb-artv-ext`), every picture in order. Host-scoped, not a
+  generalisation of the release-tracks code (CLAUDE.md: nothing may change
+  for MusicBrainz).
+- **Probe** `scripts/probe-ia-details.py` (2026-11-03, 18 items): every
+  show's FLAC originals carry `track`, `title` and `length`; disc prefixes
+  up to 3; one tape ("SideA.flac") without; video items 1–3 video
+  originals; a text item neither. Every audio item's raw page HTML embeds
+  the metadata JSON (`input.js-ia-metadata`), no video item's: the
+  pageType asks the API, which covers both.
+- **Not yet**: the pictures and facts are not saved with "Save to disk" (a
+  disk load shows the tables only); a song's Brucebase page (the mockup's
+  "Song (Brucebase)" column) needs matching a live title to a song, a later
+  step.
+
 ## The Art column's card and viewer (`_IA_FI`)
 
 vzell, 2026-11-01, after the first live check: "looks good, except image
