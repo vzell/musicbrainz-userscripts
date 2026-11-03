@@ -15,7 +15,11 @@ records, before any code depends on it, for the three pages vzell named:
    (`/1.0/venue/{venueId}/setlists?p=1`);
 4. the rate limit headers the API sends, if any (`X-RateLimit-*`), and what
    a second request inside a second answers (429?);
-5. an unknown setlist id (404?) and a request without a key (401/403?).
+5. an unknown setlist id (404?) and a request without a key (401/403?);
+6. a tour's setlists by name (`/1.0/search/setlists?artistMbid=…&tourName=…&p=1`,
+   org/setlistfm.org "venue additions" item 5, 2026-11-02): the API names a
+   tour only by its name, so the reader's tour links search by it. Saved as
+   ext-sfm-tour-setlists-p1.json; prints whether every hit carries that tour.
 
 A setlist.fm page names its ids in the URL: a setlist ends "-<id>.html"
 (4bf0375a), an artist's list "-<id>.html" (2bd6dcce, setlist.fm's own artist
@@ -34,12 +38,15 @@ import os
 import sys
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
 
 API = 'https://api.setlist.fm/rest/1.0'
 SETLIST = '4bf0375a'                                   # Los Angeles Sports Arena, 2016-03-19
 ARTIST_MBID = '70248960-cb53-4ea4-943a-edb18f7d336f'   # Bruce Springsteen
 VENUE = '3d6c967'                                      # Los Angeles Sports Arena
+TOUR = 'The River Tour 2016'                           # the tour of SETLIST
+ARTIST_NAME = 'Bruce Springsteen'                      # ARTIST_MBID's name
 OUT = os.path.join(os.path.dirname(__file__), '..', 'tests', 'fixtures')
 UA = 'ShowAllEntityData-probe/1.0 (https://github.com/vzell/mb-userscripts)'
 
@@ -95,6 +102,27 @@ def main():
     st, d = get(f'/venue/{VENUE}/setlists?p=1', key, 'venue-setlists-p1')
     if d:
         print(f'  itemsPerPage {d.get("itemsPerPage")}, total {d.get("total")}, items {len(d.get("setlist") or [])}')
+    time.sleep(1.1)
+    q = urllib.parse.urlencode({'artistMbid': ARTIST_MBID, 'tourName': TOUR, 'p': 1})
+    st, d = get(f'/search/setlists?{q}', key, 'tour-setlists-p1')
+    if d:
+        rows = d.get('setlist') or []
+        tours = sorted({(x.get('tour') or {}).get('name', '') for x in rows})
+        print(f'  itemsPerPage {d.get("itemsPerPage")}, total {d.get("total")}, items {len(rows)}, tours {tours}, '
+              f'tour keys {sorted((rows[0].get("tour") or {})) if rows else []}')
+    # 7. The same tour by the artist's NAME (a tour link carries setlist.fm's
+    # search URL, which names the artist, not its MBID; 2026-11-02): the same
+    # total? And a name two artists share (Nirvana: the 1960s UK band and the
+    # US one) — does the API mix their setlists?
+    for name, tour in ((ARTIST_NAME, TOUR), ('Journey', 'Final Frontier Tour'), ('Nirvana', '')):
+        time.sleep(1.1)
+        q = urllib.parse.urlencode({k: v for k, v in (('artistName', name), ('tourName', tour), ('p', 1)) if v})
+        st, d = get(f'/search/setlists?{q}', key)
+        if d:
+            rows = d.get('setlist') or []
+            arts = sorted({f'{(x.get("artist") or {}).get("name")} {(x.get("artist") or {}).get("mbid")}' for x in rows})
+            print(f'  total {d.get("total")}, items {len(rows)}, artists {arts}, '
+                  f'tours {sorted({(x.get("tour") or {}).get("name", "") for x in rows})[:5]}')
     # Two at once: does the API answer 429 inside a second?
     get(f'/setlist/{SETLIST}', key)
     get(f'/setlist/{SETLIST}', key)

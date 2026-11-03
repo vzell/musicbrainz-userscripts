@@ -27707,3 +27707,141 @@ failing, a collection link's card and window), `popup-ext.spec.js` "the
 window's Images"; mutations `scripts/mutations/internet-archive.json` +6
 (and the favorites entry's `find` updated), all 25 as expected (userscript
 restored, hash verified).
+
+## 2026-11-02 — setlist.fm: venue additions; the pages ARE readable; sfm-venue/sfm-artist (feat/setlistfm-venue, WIP.1–3)
+Env: 2026-11-02T19:32+01:00–23:40+01:00 · vzell-lap · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) · specs: Playwright Chromium, no Tampermonkey (GM stubs); the session probe and the live checks: vzell's browser (Windows, Chrome 152), Tampermonkey unknown
+
+org/setlistfm.org "venue additions", five items, plan and mockup v1
+(https://claude.ai/artifact/71itNE6a2ekiAtQxcTi1hq, answers Q1–Q9). Full text:
+docs/claude/detail-pages.md "Venue additions", docs/claude/setlistfm.md.
+
+1. "The 2026-10-20 DATE entries wrap" (`debug/POH-setlistfm-venue.html`):
+   the list window's Date column was the only window date column without
+   `cls: 'mb-dg-yr'` (nowrap); "2026-10-20" broke at its hyphens.
+2. **The assumption "setlist.fm's pages answer a script with a bot check"
+   was wrong for a browser.** It came from the Python probe of 2026-10-29
+   (202, empty body). `scripts/probe-setlistfm-session.user.js` in vzell's
+   browser: `GM_xmlhttpRequest` from musicbrainz.org, anonymous AND with
+   cookies, and a same-origin `fetch()` on setlist.fm all answered 200 with
+   the whole page (10 `.setlistPreview`, 7 with set times). So set times
+   (not in the API) are read from the pages, anonymously, no consent
+   exception needed. Claude Code itself cannot fetch setlist.fm: a shell
+   request with a browser User-Agent is refused by auto mode as bot-check
+   circumvention — every page shape comes from vzell's snapshots.
+3. **The API's set search by artist NAME is fuzzy**
+   (`scripts/probe-setlistfm-api.py` step 7): `artistName=Nirvana` answered
+   five tribute acts and not Nirvana. The tour link therefore carries the
+   artist's MBID in its fragment (`#mbid=`), and the reader asks
+   `/search/setlists?artistMbid=&tourName=` only.
+4. Page family surprises, each pinned by a spec: a closed venue's info box
+   says "Open" with a range (not "Opened"); "Also known as" is several
+   `<span>`s; the page's own newlines between `<span>`s made a fact three
+   lines until `<br>` became a private-use marker before whitespace was
+   squeezed; a setlist page without doors still has Scheduled/Start/End (the
+   first spec assumed "no times" and was wrong); a card's venue can be a
+   stage AT a venue, two `<strong>` links; `querySelector('strong a[href],
+   strong')` returns the `<strong>` (document order), not its link.
+5. The Edit tool wrote ` ` / `` in new_string as the literal
+   characters: invisible in the source, and a later Edit could not match the
+   line. `find-literal` scan before every commit; all are escapes now.
+6. sfm-list.spec.js found a crash: `_extSource()`'s selector reads
+   `_DP_SITES[_foreignHost].extRoot`, so a new foreign host needs a
+   `_DP_SITES` entry even without detail pages of its own (as archive.org).
+
+Tests: popup-ext.spec.js Part A (3) and Part B (6), 85/85 for the file;
+sfm-list.spec.js (7), sfm-list.mobile.spec.js, sl-include-regex.spec.js;
+mutations setlistfm-venue.json 17/17 and setlistfm-list.json 8/8 as expected
+(userscript restored, hash verified).
+
+## 2026-11-03 — setlist.fm: the window could not scroll sideways; a stage's venue as Event; search pages and links (feat/setlistfm-venue, WIP.4/WIP.5)
+Env: 2026-11-03T00:00+01:00–00:30+01:00 · vzell-lap · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) · specs: Playwright Chromium, no Tampermonkey (GM stubs); the reports: vzell's browser (Windows, Chrome 152, Tampermonkey unknown)
+
+vzell's live check of Part C:
+
+1. "The table is not scrollable to the right" (screenshots of
+   /setlists/bruce-springsteen-2bd6dcce.html?tour=53d7e759 and the one-page
+   Colts Neck venue). **Root cause, read from the site's stylesheet**
+   (`//w1.cdn.setlistfm.com/css/setlist-5.9.163-7-g3097b89-dirty.css`, a plain
+   request of the static file; the snapshots carry no such rule because the
+   CSS is external): `body{background-color:var(--bs-footer-bg-color);
+   overflow-x:hidden}`. `<html>` stays `visible`, so CSS propagates the
+   body's overflow to the viewport — the WINDOW cannot scroll sideways, and
+   our `#mb-sfm-root` (fit-content) is clipped. Fix:
+   `body.mb-sa-host-sfm { overflow-x: visible !important }`
+   (`_ensureSfmStyle()`). Spec: the site's exact rule injected after ours,
+   700 px window, `scrollTo(5000)` must move.
+2. Seen in the same screenshot: the 1975-12-20 row's Event was "National
+   Arts Centre, Ottawa, ON, Canada": the heading names the main venue of the
+   card's stage line "NAC Opera Hall at National Arts Centre, …". An event
+   is now none when the heading's place is the venue or one of its
+   `<strong>` parts.
+3. "setlist.fm artist search pages should also get their own PTs"
+   (`/search?artist=…&tour=…&country=…&city=…`,
+   `debug/setlistfm-artist-serch.html`): `sfm-search`, the same cards and
+   pager; no `<h1>`, named by the filter form's selected options.
+4. "the Tour column … does not have the hover POH": its links are
+   setlist.fm's own `search?artist=<id>&tour=<id>`, ids the API does not
+   take, so the reader skipped them. It now reads such a search's PAGE
+   (anonymous, key or not), with the pageTypes' card parser. On setlist.fm
+   the host is the page's own, so the card loads on hover. Adding
+   `setlist.fm` to `@connect`/`_EXT_CONNECT_HOSTS` (so it would on
+   MusicBrainz too) broke popup-ext.spec.js "first contact: a hover asks
+   nothing…", whose unknown-host example is a setlist.fm link — taken back:
+   off setlist.fm a first contact stays Space-only, as for any host.
+
+Found on the way: the Edit/Bash tool layer turns a ` ` written in a
+command or a heredoc into the literal character too, not only in Edit's
+new_string; the scan for literal U+00A0/U+E000 runs before every commit.
+Two mutations' `find` strings went stale with the card-parser refactor
+(`_sfmCardRow()` → `_sfmCardData()`); re-pointed, every find checked to
+match once before the run.
+
+Two false results of the first mutation run, both caught by reading the
+summary rather than counting OKs:
+
+- **The scroll spec proved nothing.** Its mutation (the fix removed) PASSED:
+  the spec used `window.scrollTo()`, and a script may scroll even an
+  `overflow: hidden` viewport (only `clip` forbids it) — the user cannot.
+  It now asserts the body's computed `overflow-x` is `visible` under the
+  site's own rule and scrolls with `page.mouse.wheel()`; with the fix
+  removed it fails.
+- **Four "OK"s ran no test.** Their `grep` held an unclosed "(" (copied from
+  a test title): Playwright exits non-zero with `SyntaxError: Invalid
+  regular expression` — the same exit as a real failure — and
+  `mutation-check.py` only knew "No tests found" as "nothing selected". The
+  summary's detail was a stray auth warning, not an `Error:` line, which is
+  what gave it away. The greps are fixed, and `run_spec()` now also counts
+  an invalid regular expression as "selected NO tests" (a PROBLEM, never OK).
+
+## 2026-11-03 — setlist.fm: a setlist's songs play in the window (feat/setlistfm-venue, WIP.6)
+Env: 2026-11-03T00:40+01:00–01:05+01:00 · vzell-lap · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) · probes: n/a browser; specs: Playwright Chromium, no Tampermonkey (GM stubs)
+
+vzell: "add youtube player support for setlist pages (POH) on setlist.fm …
+as each song in the tracklist has an optional youtube play link", modelled on
+archive.org's setlist rows (`debug/setlistfm-2026-05-30.html`).
+
+- **setlist.fm's ▶ holds no video id.** The page carries
+  `YouTubeSearch.setPlaylist([{song, artist}, …])`; setlist.fm's static
+  `setlist-jquery-5.9.163-…js` (read with a plain request) shows
+  `YouTubeSearch.search()`: YouTube Data API v3,
+  `search?part=snippet&q=<artist> <song>&type=video&topicId=/m/04rlf`, with
+  setlist.fm's OWN API key. Not reused. Options put to vzell: own key,
+  YouTube's search page, a link only — vzell chose the search page.
+- **Probe** `scripts/probe-youtube-search.py` (an honest User-Agent, no
+  cookies): 200 for all three songs, NO consent redirect from here, pages
+  1.19–1.44 MB, `var ytInitialData = {…};</script>` 0.36–0.55 MB, the first
+  `videoRenderer` the artist's own video ("Bruce Springsteen - War",
+  "Born in the U.S.A. (Official Video)", "Two Hearts (Live in New York
+  City)"). `--save` keeps a trimmed real answer as the fixture. Unchecked
+  here: whether a browser's anonymous request in the EU meets YouTube's
+  consent page — the tile then shows "no video" and its next click opens
+  YouTube's search, so it degrades to the link.
+- Design: a third source of the one player (`src: 'yts'`), resolved on the
+  first click, cached by query; details in docs/claude/detail-pages.md
+  "YouTube in place". A cache mutation was NOT planted: without the cache
+  entry the second `_ytPlay()` searches again and recurses, so the spec would
+  hang rather than fail; the third click's "no second request" pins it.
+
+Tests: popup-ext.spec.js "setlist.fm: a setlist's songs play in the window"
+(3); mutations setlistfm-venue.json +3, all fail as expected (userscript
+restored, hash verified).

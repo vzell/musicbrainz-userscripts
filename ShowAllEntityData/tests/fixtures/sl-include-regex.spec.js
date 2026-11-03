@@ -367,6 +367,47 @@ test.describe('@include coverage', () => {
         expect(others.filter((u) => injected(u))).toEqual([]);
     });
 
+    test('setlist.fm: a venue\'s or an artist\'s setlists (sfm-venue, sfm-artist, 2026-11-02), any page; not a setlist, a search or statistics', () => {
+        const pages = [
+            'https://www.setlist.fm/venue/state-farm-arena-atlanta-ga-usa-73d20e81.html',
+            'https://www.setlist.fm/venue/state-farm-arena-atlanta-ga-usa-73d20e81.html?page=2',
+            'https://www.setlist.fm/venue/private-venue-colts-neck-nj-usa-53d30b75.html',
+            'https://www.setlist.fm/setlists/bruce-springsteen-2bd6dcce.html',
+            'https://www.setlist.fm/setlists/bruce-springsteen-2bd6dcce.html?page=301',
+            'https://setlist.fm/setlists/journey-3d6b507.html#top',
+        ];
+        const others = [
+            'https://www.setlist.fm/setlist/bruce-springsteen/2026/merriweather-post-pavilion-pavilion-stage-columbia-md-37589df.html',
+            'https://www.setlist.fm/search?query=artist:(Journey)+tour:(Final+Frontier+Tour)',
+            'https://www.setlist.fm/stats/bruce-springsteen-2bd6dcce.html',
+            'https://www.setlist.fm/venue/',
+            'https://www.setlist.fm/venues',
+            'https://api.setlist.fm/venue/state-farm-arena-atlanta-ga-usa-73d20e81.html',
+            'https://www.setlist.fm.example.com/venue/state-farm-arena-atlanta-ga-usa-73d20e81.html',
+        ];
+        expect(pages.filter((u) => !injected(u))).toEqual([]);
+        expect(others.filter((u) => injected(u))).toEqual([]);
+    });
+
+    test('setlist.fm: a search for an artist\'s setlists (sfm-search, 2026-11-03), with any other filter; not one without an artist', () => {
+        const pages = [
+            'https://www.setlist.fm/search?artist=2bd6dcce&tour=3daa95b&country=us&city=bd6bde6',
+            'https://www.setlist.fm/search?artist=2bd6dcce&tour=3daa95b&country=us',
+            'https://www.setlist.fm/search?artist=2bd6dcce&tour=3daa95b',
+            'https://www.setlist.fm/search?artist=2bd6dcce',
+            'https://www.setlist.fm/search?tour=3daa95b&artist=2bd6dcce&page=2',
+        ];
+        const others = [
+            'https://www.setlist.fm/search?tour=3daa95b',
+            'https://www.setlist.fm/search?artist=',
+            'https://www.setlist.fm/search?query=artist:(Journey)+tour:(Final+Frontier+Tour)',
+            'https://www.setlist.fm/search',
+            'https://www.setlist.fm/searchx?artist=2bd6dcce',
+        ];
+        expect(pages.filter((u) => !injected(u))).toEqual([]);
+        expect(others.filter((u) => injected(u))).toEqual([]);
+    });
+
     test('discogs.com: a submissions list, either view, a language prefix; no other /submissions… path', () => {
         const pages = [
             'https://www.discogs.com/submissions?mode=list&id=599283&page=1&view=flat',

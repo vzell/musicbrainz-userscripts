@@ -2121,6 +2121,32 @@ and the refused-frame state (`_ytBlockedFor()`, `_yt.blockedIa`). The
 tile's `mini` option (the ▶ alone) is for a setlist row. A new source
 extends these, never copies the player.
 
+**A third source since 2026-11-03: a YouTube SEARCH** (`src: 'yts'`, a
+setlist.fm setlist window's songs; vzell: "add youtube player support for
+setlist pages (POH)"). setlist.fm's own ▶ has no video id: it asks YouTube's
+Data API v3 search (`q=<artist> <song>`, `topicId=/m/04rlf`) with
+setlist.fm's own key, embedded in its `setlist-jquery-…js` — never reused
+here. vzell chose reading YouTube's search PAGE instead
+(`scripts/probe-youtube-search.py`, Env 2026-11-03T00:45+01:00 · vzell-lap ·
+n/a: anonymous 200, no consent redirect, 1.2–1.4 MB, `ytInitialData`'s
+first `videoRenderer` the artist's own video). A `yts` tile carries
+`data-mb-yt-src="yts"` and the query (`data-mb-yt-q`), no id; its key is
+`yts:<query>` for life, so a repaint's tile is the same one. `_ytPlay()`
+resolves it first: `_ytSearchVideo()` — ONE `_extGet()` of
+`www.youtube.com/results?search_query=` (in `@connect`; `maxBytes`
+`_YT_SEARCH_MAX_BYTES` 4 MB, the data lies past `_EXT_MAX_BYTES`), the
+first `videoRenderer.videoId` (`_ytSearchFirstId()`), kept by query in
+`_ytSearchHits` (an answer only; a failed request is asked again), one run
+per query (`_ytSearchRuns`); the tile is `.mb-yt-busy` meanwhile. Then
+`_ytFromTile()` gives the id and it plays as plain YouTube (embed, watch
+URL, the refused-frame fallback). No video: `.mb-yt-dead` and a tip; its
+next click opens YouTube's search (`window.open` from the click, never
+after the request: a popup blocker). `sa_yt_play_in_place` decides it.
+Window: `_extSfmSetlistWindow()`'s play column ("<setlist artist> <song>",
+as setlist.fm searches — covers too), the slot above the table. Specs:
+popup-ext.spec.js "setlist.fm: a setlist's songs play in the window" (3),
+fixture `ext-yt-search-war.html` (`--save`, real data trimmed).
+
 **The shared part** (grep `// --- YouTube in place`):
 - `_ytParse(href)` → `{kind: 'video'|'short'|'playlist', id, list}`: the
   reader's shapes plus `embed/<id>`, `embed/videoseries?list=` (a playlist,
@@ -2317,6 +2343,130 @@ browser would most likely get the same. API: https://api.setlist.fm/docs/1.0/ind
   (tours and venues, or artists and tours, with counts). `_EXT_SFM_VERSION`.
 - Specs: popup-ext.spec.js "setlist.fm through its API (branch B)" (4);
   mutations: scripts/mutations/wiki-setlistfm.json.
+
+### Venue additions (org/setlistfm.org, 2026-11-02)
+
+Mockup v1: https://claude.ai/artifact/71itNE6a2ekiAtQxcTi1hq
+(`org/setlistfm-venue-mockups.html`), vzell's answers Q1–Q9 in the plan.
+Probes, all 2026-11-02. Env: the session probe in vzell's browser (Windows,
+Chrome 152, Tampermonkey unknown), 19:32–20:01 CET; the API probe on
+`vzell-lap` (WSL2 Ubuntu 24.04.4, Linux 6.18.54.1), browser n/a, time
+unknown (before 22:00 CET):
+
+- **setlist.fm's pages ARE readable by the script, anonymously.**
+  `scripts/probe-setlistfm-session.user.js` (installed once) asked venue
+  page 2 from musicbrainz.org with `GM_xmlhttpRequest`: `anonymous: true`
+  and with cookies both got 200, 141,914 chars, 10 `.setlistPreview`, 7
+  `.setlistPreviewSetTimes`; a same-origin `fetch()` on setlist.fm the same.
+  The "bot check (202, empty body)" above was the Python probe's answer, not
+  a browser's. A shell fetch with a browser's User-Agent is refused by
+  Claude Code's auto mode (bot-check circumvention): page shapes come from
+  vzell's saved snapshots (`debug/setlistfm-*.html`).
+- **The API's set search by artist NAME is fuzzy**
+  (`scripts/probe-setlistfm-api.py` step 7): `artistName=Bruce Springsteen` +
+  tour = the same 75 as by MBID, but `artistName=Nirvana` answered five
+  tribute acts and not Nirvana. So a tour is asked by MBID only.
+- One 429 from `/artist/<mbid>` 1.1 s after the previous request (the run
+  before), none in the run after: the host's 1 s gate stays.
+
+What Part A does:
+
+- **Date** (item 1): `cls: 'mb-dg-yr'` (nowrap) on the list's Date column.
+- **Left tables** (item 3, `_extSfmLeftTableHtml()`): the artists and tours
+  of a venue's loaded setlists, the tours and venues of an artist's, the
+  venues of a tour's — each a Compact table `sfm-l-<kind>` (name linked, it
+  opens in the window; Setlists most first, `first: -1`;
+  `_EXT_SFM_LEFT_ROWS` = 8 a page; filter always). The count is a
+  `.mb-dg-fc.mb-sfm-pick` button (`data-mb-sfm-pick`, `data-mb-sfm-v`): it
+  sets `_extSfmUiOf(t).pick`, which keeps the List table's rows to that name
+  (`_EXT_SFM_PICK_OF`) BEFORE the table's own filter (the two combine); the
+  row is `tr.mb-sfm-picked`; the List table's tools carry the pill
+  `.mb-sfm-only` whose ✕ is `data-mb-sfm-act="unpick"`; a second click on the
+  same count clears it. No request.
+- **Tours** (item 5): `_extSfmTourUrl(artist, tour)` =
+  `https://www.setlist.fm/search?query=artist:(<name>) tour:(<tour>)#mbid=<mbid>`
+  (all three search forms vzell tried list the tour; the fragment never
+  reaches setlist.fm). `_extSfmPage()` → `_extSfmTourPage()` takes `/search`
+  only with `#mbid=` and `_EXT_SFM_TOUR_QUERY_RE` (the tour runs to the end
+  of the query: a tour name may hold parentheses); setlist.fm's own
+  `search?artist=<id>&tour=<id>` links stay generic (ids the API does not
+  know). The kind `tour` is one request,
+  `/search/setlists?artistMbid=&tourName=&p=N` (`_extSfmListPath()`), key
+  `ext:sfm-list:tour:<mbid>:<tour>:<N>`; its window has no Tour column and
+  its venues on the left. The List table's Tour cells, the left Tours table
+  and the setlist window's Tour fact link it. `_EXT_SFM_VERSION` 2.
+- Specs: popup-ext.spec.js "setlist.fm venue additions (org/setlistfm.org,
+  Part A)" (3); mutations: scripts/mutations/setlistfm-venue.json (8, all
+  fail as they should, 2026-11-02).
+
+What Part B does (item 4, Q2, Q3, Q5) — setlist.fm's own pages, read
+ANONYMOUSLY through `_extGet()` (host www.setlist.fm, its own 1 s gate, not
+the API's), only by the window, never by the card:
+
+- **Which page** (`_extSfmSiteUrl()`): a venue's or an artist's own page with
+  `?page=N` (page 1 without), a tour's setlist.fm search
+  `search?page=N&query=…` (the search page's own pager,
+  debug/setlistfm-tour-journey.html; the `#mbid=` fragment is dropped), a
+  setlist's own page. 10 setlists a page (`_EXT_SFM_SITE_PER`) against the
+  API's 20: the loaded rows' i-th is on page floor(i / 10) + 1, and a row is
+  found by setlist id on that page or a neighbour (`timesOf` in
+  `_extSfmListWindow()`). Kept like the API's pages,
+  `ext:sfm-site:<kind>:<id>:[<tour>:]<N>` (`_extSfmSiteKey()`,
+  `_EXT_SFM_SITE_VERSION`); a bot check, an error or any status but 200 is a
+  failure, not kept, and the List table's "⟳ Try again" reads it again.
+- **When**: whenever the window renders and a page it needs has no state
+  yet, not only on `start` — after a drill-down the record arrives on a
+  repaint (the add-foreign-page-or-reader skill's trap). "Load 20 more"
+  needs two more pages.
+- **Parsing** (`_extSfmSiteParse()`): each `.setlistPreview`'s id from its
+  `h2 a` and `.setlistPreviewSetTimes` in three shapes ("Doors: …",
+  "Show: … – …", both; `_extSfmPreviewTimes()`); a setlist page's first
+  `.setTimesTimeline` (`_extSfmSetlistTimes()`: `.doors`/`.scheduled`/
+  `.start`/`.end > strong`, "Add doors" is a link and stays empty, the
+  `.inlineDivider` durations); a venue page's `.venueInfo` box
+  (`_extSfmVenueInfo()`: the labels of `_EXT_SFM_VENUE_LABELS_RE` with their
+  own names — "Opened", or "Open" with a range for a closed venue, "Also
+  known as", "Info" —, the Web links, the attendances). A `<br>` becomes a
+  private-use marker before whitespace is squeezed: the page's own newlines
+  between `<span>`s are spaces. Every time on a 24-hour clock (`_extSfm24h()`).
+- **Showing**: the List table's "Set times" column (`td.mb-sfm-times`,
+  `_extSfmTimesHtml()`: Doors, then Show from–to on a second line; "…"
+  reading, "?" failed, "—" none), sortable by the doors or start time; the
+  status line "set times: setlist.fm pages read N of M"
+  (`.mb-sfm-site-n`); a venue's facts after Where (`_extSfmFactsHtml()`,
+  from page 1, so no request of their own); a setlist window's "Set times"
+  (`_extSfmSetlistTimesHtml()`, `.mb-sfm-settimes`) above its notes.
+- Fixtures: `scripts/build-setlistfm-fixtures.py` trims vzell's snapshots to
+  what the parser reads (`tests/fixtures/sfm-site-*.html`); the venue's and
+  the artist's page 1 hold the API fixtures' first 10 setlists (both saved
+  2026-10-29), so set times are checked by id against real data.
+- Specs: popup-ext.spec.js "setlist.fm venue additions (org/setlistfm.org,
+  Part B)" (6); mutations: the same file (9 more).
+
+setlist.fm's own search links (2026-11-03, vzell: the Tour column "does
+not have the hover POH"): every Tour cell of a setlist.fm page — and of our
+`sfm-*` tables — links `search?artist=<id>&tour=<id>`, setlist.fm's own ids,
+which its API does not take. The reader takes any `/search` with a non-empty
+`artist=` (`_extSfmSearchPage()`: kind `search`, id the query without `page`,
+sorted) and reads the search PAGE itself (`_extSfmSearchLoad()`,
+`_extSfmSearchGet()`: `_extGet()`, anonymous, `_extApiOutcome()` for bot
+checks and dead links) — **with or without a key** (`_extSfmTest()`), the one
+setlist.fm link that changed for a profile without one. Its cards become the
+list's rows through the pageTypes' own parser (`_sfmCardData()` →
+`_extSfmSiteListPage()`): `tourUrl` (setlist.fm's own link, used before
+`_extSfmTourUrl()`), `times` (no separate set-times reads: `fromSite`),
+`more` ("12+"); 10 a page ("Load 10 more", `_extSfmSearchUrl()` with
+`&page=N`); the total is the filter's count (`_sfmSearchChoices()`). The card
+is named by the filter's choices. `askHost` is www.setlist.fm for it. That
+host is NOT in `@connect`/`_EXT_CONNECT_HOSTS`: off setlist.fm a first
+contact stays Space-only (the card offers Space until the script has asked
+www.setlist.fm once — a Part B window does), and the specs' generic
+first-contact example is a setlist.fm link; on setlist.fm itself the page's
+own host is known, so a Tour cell's card loads on hover. Adding it was tried
+and taken back the same night (it broke that first-contact spec).
+`_EXT_SFM_VERSION` 3. Specs: popup-ext.spec.js
+(search links with and without a key, a search link's window); sfm-list.spec.js
+(a Tour cell on setlist.fm); mutations in setlistfm-venue.json.
 
 ## archive.org items (reader `iadetails`, 2026-10-31)
 

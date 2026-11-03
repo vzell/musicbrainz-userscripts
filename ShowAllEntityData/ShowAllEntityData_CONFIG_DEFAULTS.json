@@ -2,11 +2,11 @@
   "_meta": {
     "generated_by": "scripts/dump-config-defaults.py",
     "purpose": "Generated artifact. NOTHING in the userscript reads this file. See org/config-handling.org Item 4.",
-    "script_version": "9.99.1522+2026-11-01",
-    "schema_entries": 488,
-    "sections": 53,
-    "settings": 435,
-    "settings_with_default": 430,
+    "script_version": "9.99.1524+2026-11-02",
+    "schema_entries": 490,
+    "sections": 54,
+    "settings": 436,
+    "settings_with_default": 431,
     "settings_without_default": [
       "sa_default_hidden_columns",
       "sa_rel_other_db_classes",
@@ -15,9 +15,9 @@
       "sa_unicode_char_picker_mappings"
     ],
     "types": {
-      "checkbox": 258,
+      "checkbox": 259,
       "color_picker": 62,
-      "divider": 53,
+      "divider": 54,
       "number": 53,
       "keyboard_shortcut": 23,
       "text": 16,
@@ -229,6 +229,10 @@
       "label": "🏛 INTERNET ARCHIVE"
     },
     {
+      "key": "divider_setlistfm",
+      "label": "🎤 SETLIST.FM"
+    },
+    {
       "key": "divider_pop_mb",
       "label": "🔎 LINK PREVIEWS ON MUSICBRAINZ"
     },
@@ -407,6 +411,7 @@
     "sa_enable_release_tracks_video_medium_flag": "Flag video recordings on a medium that cannot carry video",
     "sa_enable_release_tracks_work_ar_columns": "Add columns for the recorded WORK's own relationships",
     "sa_enable_save_load": "Enable Save/Load to Disk",
+    "sa_enable_setlistfm": "Enable on setlist.fm",
     "sa_enable_show_single_table_btn": "Enable \"Show single-table\" button",
     "sa_enable_springsteenlyrics": "Enable on springsteenlyrics.com collection and bootleg lists",
     "sa_enable_stats_panel": "Enable Quick Stats Panel",
@@ -843,6 +848,7 @@
     "sa_enable_release_tracks_video_medium_flag": true,
     "sa_enable_release_tracks_work_ar_columns": true,
     "sa_enable_save_load": true,
+    "sa_enable_setlistfm": true,
     "sa_enable_show_single_table_btn": true,
     "sa_enable_springsteenlyrics": true,
     "sa_enable_stats_panel": true,

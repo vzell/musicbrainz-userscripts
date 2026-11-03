@@ -90,7 +90,10 @@ def run_spec(spec, grep, project=DEFAULT_PROJECT):
     mistyped `grep` reads as "expected fail, got fail" and the mutation is
     scored OK while proving nothing. That is not hypothetical: on 2026-09-16 an
     entry whose test had been renamed reported OK with `Error: No tests found.`
-    (see DEBUG-NOTES.md).
+    (see DEBUG-NOTES.md). The same for a `grep` that is no valid regular
+    expression (an unclosed "(" in a test title, 2026-11-03): Playwright
+    then runs nothing and exits non-zero with "SyntaxError: Invalid regular
+    expression", which four entries scored as OK.
     """
     cmd = ['npx', 'playwright', 'test', spec, f'--project={project}',
            '--reporter=line', '--workers=1', '-g', grep]
@@ -98,7 +101,7 @@ def run_spec(spec, grep, project=DEFAULT_PROJECT):
     out = (proc.stdout or '') + (proc.stderr or '')
     lines = [ln for ln in out.splitlines() if ln.strip()]
     first_error = next((ln.strip() for ln in lines if ln.strip().startswith('Error:')), '')
-    selected = 'no tests found' not in out.lower()
+    selected = 'no tests found' not in out.lower() and 'invalid regular expression' not in out.lower()
     return proc.returncode == 0, first_error or (lines[-1].strip() if lines else ''), selected
 
 

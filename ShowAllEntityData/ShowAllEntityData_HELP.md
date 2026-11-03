@@ -1820,7 +1820,9 @@ an import brings your deletions back.
   bootleg artwork list, the **brucespringsteen.it** record database and
   the **Brucebase** song list, year pages, Relations and Recent changes, and
   **discogs.com**'s master, release, artist, label, submissions, user, ratings, collection, wantlist, history (release, master, artist, label), images (release, master, artist, label), release Marketplace and search pages, and
-  the **Internet Archive**'s (archive.org) search pages — each site with its
+  the **Internet Archive**'s (archive.org) search pages, and **setlist.fm**'s
+  lists of a venue's or an artist's setlists and its searches for an artist's
+  setlists — each site with its
   own switch, on by default, see [Page-specific behaviour](#page-specific-behaviour)
 
 </details>
@@ -3013,10 +3015,32 @@ once and without Tampermonkey asking first:
   songs; its window lists every song by set (the encore too), each cover's
   original artist linked to MusicBrainz, guests, songs from tape, the show's
   notes, and the venue's city with a map link. An artist's or a venue's
-  window lists their setlists 20 at a time (*Load 20 more*), with a filter,
-  and counts the tours, venues or artists of what is loaded. The links in it
-  open in the same window (*Back* returns). setlist.fm has no address,
-  opening dates or attendance for a venue in its API, so those are not shown.
+  window lists their setlists 20 at a time (*Load 20 more*), with a filter.
+  On the left, *In the loaded setlists* has small tables of the artists and
+  tours (a venue's) or the tours and venues (an artist's), most setlists
+  first, which you can sort and filter. Click a number to keep the Setlists
+  table to that artist, tour or venue (together with the text filter); click
+  it again, or the ✕ of the *Only …* label, to see them all. A tour is a link
+  to setlist.fm's search for that artist's tour; in the window it opens that
+  tour's setlists. The links in it open in the same window (*Back* returns).
+  A link to setlist.fm's own search for an artist's setlists
+  (setlist.fm/search?artist=…) has its card and window even without a key:
+  they are read from that search page. In a setlist's window each song has a
+  **▶**, as on setlist.fm: a click finds the song on YouTube (its search for
+  the artist and the song, the first video) and plays it in the window,
+  above the setlist; a second click stops it. A song YouTube finds nothing
+  for is marked, and its next click opens YouTube's search in a new tab.
+
+  **Set times** are not in setlist.fm's API, so the window reads them from
+  setlist.fm's own pages, without your key and only once the window is open
+  (never for the card): two pages for every 20 setlists, at most one a
+  second. The Setlists table then has a *Set times* column (doors, and the
+  show from start to end), and a setlist's window lists Doors, Scheduled,
+  Start and End with setlist.fm's own durations, all on a 24-hour clock. "…"
+  means the page is still being read, "?" that it could not be (*⟳ Try
+  again*), "—" that setlist.fm has no times for that show. A venue's window
+  also shows what its page adds to the API: the address, when it opened (or
+  was open), other names, its web links and the attendances.
   Without a key, setlist.fm links keep the plain web-page card.
 
   A **Wikidata** item's window shows its statements (born, place of birth,
@@ -3986,6 +4010,39 @@ allow archive.org's player, a click opens the item on archive.org instead.
 Switches, in ⚙️ Settings → 🏛 Internet Archive: *Enable on archive.org*,
 *Art column: the item's pictures on hover* and *Play archive.org tracks and
 videos in the window*, all on by default.
+
+</details>
+
+<details>
+<summary>setlist.fm: a venue's or an artist's setlists, a search</summary>
+
+On setlist.fm's list of a venue's setlists (setlist.fm/venue/…), an
+artist's (setlist.fm/setlists/…), or a search for an artist's setlists
+(setlist.fm/search?artist=…, with or without a tour, country, city or venue)
+the script adds its own section above the site with one button,
+**Setlists**. It lists every setlist of that venue, artist or search as one
+table you can filter and sort; a search's section is named after its
+choices ("Bruce Springsteen · Land of Hope & Dreams American Tour"):
+
+- **Date** (it opens the setlist on setlist.fm), **Artist** on a venue's list
+  or **Venue** on an artist's (a stage at a venue shows both, each linked),
+  **Event** when the setlist names one ("Jersey 4 Jersey", a festival), and
+  **Tour** (setlist.fm's own link);
+- **Doors**, **Start** and **End**, on a 24-hour clock, where someone
+  entered set times;
+- **Songs** and **Setlist**: the songs the list shows, at most 12 — "12+"
+  means there are more. A ▶ unfolds a long Setlist cell.
+
+The rows come from setlist.fm's own pages, 10 setlists each, one page after
+another; a venue with 93 pages first asks whether you want them all (⚠️ High
+Page Count). No API key is needed. The Upcoming Shows box is not part of the
+table. With the setlist.fm API key set (🔎 EXTERNAL LINK PREVIEWS), the
+table's setlist, artist and venue links get their card and window here too.
+A **Tour** cell links setlist.fm's search for that artist's tour: its card
+and window need no key, they read setlist.fm's search page itself (the window
+lists its setlists with their set times, 10 at a time).
+
+Switch, in ⚙️ Settings → 🎤 setlist.fm: *Enable on setlist.fm*, on by default.
 
 </details>
 
