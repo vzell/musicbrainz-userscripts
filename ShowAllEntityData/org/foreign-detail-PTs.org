@@ -1,0 +1,131 @@
+#+TITLE: pageTypes on three foreign detail pages, modelled on release-tracks
+#+STARTUP: overview
+
+* TODO PTs for the setlist.fm setlist, archive.org item and Discogs release pages
+
+** request (vzell, 2026-11-03)
+
+Before tackling the open items, I'm connected remotely right now, create a new plan for: is it feasible to add proper
+PTs to the SFM setlist detail page, the IA detail page, the Discogs release detail page? If yes model it after the MB
+release-tracks PT and show me some rich HTML based mockups
+
+** mockups
+
+https://claude.ai/artifact/ECoqApKnedJqbTMSuBBN14 (=org/foreign-detail-PTs-mockups.html=, published copy built by
+=scripts/build-mockup-artifact.py=). Real data from the fixtures:
+- setlist.fm setlist 4bf0375a: =tests/fixtures/ext-sfm-setlist.json=
+- archive.org item bs1975-12-27: =ext-ia-metadata-bs1975-12-27.aud.jk.cb.hrubesh.flac16.json=
+- Discogs release 1874253: =ext-discogs-release.json=
+
+Each tab is a mock of the rendered page with notes beside it. A fourth tab holds the plan and the questions.
+
+Env: 2026-11-03 · vzell-lap · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) · no browser (code reading, two Explore reports, fixtures) · n/a
+
+** findings
+
+*** release-tracks, the model
+
+- Top to bottom:
+  1. the h1 toolbar (Tracks · Credits);
+  2. "Cover art (N)" (chips, Grid / By type / Spreads, the viewer);
+  3. =h2.tracklist= with the global filter;
+  4. one h3 + =table.tbl= per medium ("1 - CD", collapsible, medium art);
+  5. the "Sidebar" cards.
+- Columns: # · Title · Artist · Length (⏱) · …, then the AR columns: Recording of work, Recorded at …, Performer,
+  Vocals, Instruments, Producer, Engineer, Mixer, ℗ …, plus dynamic ones. They are =collapsableColumns=, multi-row.
+- The Cover-art section, the medium art and the Sidebar cards are tied to MusicBrainz:
+  - =_sbInlineInsertSection()= returns on any =_foreignHost=;
+  - =_artSectionDesc()= is keyed on the pageType.
+- A foreign detail page therefore needs those generalised behind a provider, or equivalents of its own.
+
+*** Discogs release: =dg-release= exists (upgrade, not a new PT)
+
+- One API request plus the master's versions.
+- Sub-tables today:
+  - Tracklist (Pos, Title, Duration, one Credits cell per track);
+  - Credits (Role, Name, Tracks);
+  - Companies;
+  - Identifiers;
+  - Videos;
+  - Other versions.
+- Missing compared with release-tracks:
+  - no sub-table per side or disc: positions stay "A1", heading rows are dropped;
+  - no track artists;
+  - Duration is plain text: no duration sort, no ⏱;
+  - credits are not split into role columns, and the Credits table's "Tracks" ranges are not mapped onto tracks;
+  - no images section for the release's own images (the data is in the answer);
+  - no facts box (format, label, country, genres, notes, have/want);
+  - no MusicBrainz column on the Tracklist.
+
+*** archive.org item: new PT =ia-details=
+
+- =/details/<id>= is not =@include='d today; only the search page is.
+- The item page is server-rendered, NOT a web-component shell. Audio items embed the whole metadata JSON in
+  =input.js-ia-metadata= (seen in browser saves; unconfirmed for the raw server HTML).
+- One anonymous =/metadata/<id>= request (no key) has everything: the request the =iadetails= card already makes and
+  caches.
+- Per file: name, format, source (original or derivative), original, size, md5, length, title, track.
+- The current parse (=_extIaItem()=) drops track, size, md5 and the derivative relation, so a richer parse is needed
+  (bump =_EXT_IA_VERSION=).
+- Reusable: the pictures (=_IA_FI=, the viewer), the ▶ archive.org player (=_yt*=, source =ia=), and the Brucebase
+  and Databruce links.
+
+*** setlist.fm setlist: new PT =sfm-setlist=
+
+- =/setlist/…= is not =@include='d today.
+- The live page holds the whole list: =ol.songsList > li.setlistParts=.
+  - =.song=, with =a.songLabel=, =.infoPart=, a ▶;
+  - =.section= (a set name, or =.empty= for an unnamed break);
+  - =.encore=;
+  - =.tape=;
+  - ad items to skip.
+- Covers and guests are setlist.fm links; their MusicBrainz IDs come only from the API (key).
+- The set times have a parser already (=_extSfmSetlistTimes()=).
+- No parser reads the song list yet. Segues appear in no snapshot, so their markup is unknown.
+- Claude Code cannot fetch setlist.fm: page shapes must come from snapshots vzell saves. Existing ones:
+  - =debug/setlistfm-setlist.html=
+  - =setlistfm-2026-05-30.html=
+  - =setlistfm-venue-set-times.html=
+
+** plan (proposed; nothing built)
+
+1. *Shared pieces first.* An images section and a facts box that work off MusicBrainz:
+   - generalise =_releaseArt*= and =_sb*= behind a per-page provider (recommended: one viewer, one set of chips and
+     layouts), or write one small foreign-detail module.
+2. *archive.org =ia-details=*:
+   - =@include= for =/details/<id>= (not =@user=); a details variant of =_iaPrepareLivePage()=;
+   - the per-file parse; =pageRequest= with one page, the metadata answer;
+   - a sub-table per disc (the file name prefix or =track=), Pictures, facts, ▶;
+   - a second button "All files";
+   - probe five items first: audio, video, multi-disc, one without track numbers, one with only MP3s.
+3. *Discogs =dg-release= upgrade*:
+   - the per-medium split; credit role columns (the ranges spread onto tracks; release-wide credits stay a sub-table);
+   - Length as a duration; Images; facts; two buttons;
+   - probe about twenty releases of different shapes first: box set, 7", index tracks, sub-tracks, "1-1 to 1-5" ranges.
+4. *setlist.fm =sfm-setlist=*:
+   - =@include= for =/setlist/…=; a parser of =ol.songsList=;
+   - facts from the header and the set-times parser;
+   - with the key, one API request for the MusicBrainz IDs;
+   - first, vzell saves about ten setlist pages (segues, several encores, a festival, a tape intro, a guest-heavy show).
+5. Each one also needs:
+   - specs per shape and a mutation file;
+   - rows in =docs/non-mb-coverage.json= (=build-coverage-report.py --check= fails without them);
+   - HELP and its topic doc;
+   - a feature branch (see Q5).
+
+No performance cost on MusicBrainz: every new path is gated on its foreign host. The shared-pieces step touches
+MusicBrainz code (the Cover-art section and the Sidebar cards), so it needs the MusicBrainz fixture suite and a perf
+comparison of a release-tracks page.
+
+** questions
+
+1. Discogs: upgrade =dg-release= (button "Tracks", with today's sub-tables as a second button), or keep today's view
+   and add the release-tracks view as a second button?
+2. setlist.fm without a key: covers and guests as setlist.fm links only (no MusicBrainz glyph), or ask MusicBrainz by
+   name?
+3. archive.org: derivatives as columns (as drawn) or as their own sub-table per format?
+4. Discogs: which credit roles get their own column (drawn: Instruments, Vocals, Producer, Engineer, Mixed by,
+   Arranged by), and which go into one "Other credits" column?
+5. Order of the three; one branch for all or one each?
+
+** answers

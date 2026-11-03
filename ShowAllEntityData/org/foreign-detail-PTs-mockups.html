@@ -1,0 +1,490 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<!-- SKELETON-END: everything above this line is dropped when the page is published as an Artifact. -->
+<title>Foreign Detail Pages</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<!--
+  Mockups for org/foreign-detail-PTs.org: pageTypes on three foreign DETAIL
+  pages, modelled on MusicBrainz's release-tracks: a setlist.fm setlist, an
+  archive.org item, a Discogs release. 2026-11-03, branch
+  fix/non-mb-coverage-gaps (follow-up on the open branch).
+  Request (vzell): "is it feasible to add proper PTs to the SFM setlist
+  detail page, the IA detail page, the Discogs release detail page? If yes
+  model it after the MB release-tracks PT and show me some rich HTML based
+  mockups".
+  Data: real, from tests/fixtures/ext-sfm-setlist.json (setlist 4bf0375a),
+  ext-ia-metadata-bs1975-12-27.aud.jk.cb.hrubesh.flac16.json and
+  ext-discogs-release.json (release 1874253), extracted by a scratch script
+  and embedded below (#mock-data). Code facts: two Explore reports of the
+  same day (release-tracks / dg-release; iadetails / setlistfm readers and
+  the debug/ snapshots of both detail pages).
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,500..800&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: a design bench. Verdicts first, then one tab per site; each tab is a
+   mock browser window holding the rendered page (the script's section, an
+   images strip, a facts box, the data h2 and its sub-tables), with notes
+   beside it. House cool-slate palette (detail-pages-mockups.html); the mock
+   site area is a light page in both themes, as the real one is. */
+:root {
+    --bg: #e9edf1;
+    --surface: #f8fafc;
+    --ink: #18202b;
+    --muted: #556070;
+    --line: #cfd6df;
+    --accent: #24527f;
+    --accent-ink: #ffffff;
+    --accent-soft: #dbe6f1;
+    --ok: #2c7347;
+    --ok-soft: #dcefe2;
+    --warn: #8f5a00;
+    --warn-soft: #f6e8cc;
+    --shadow: 0 1px 0 rgba(20, 30, 45, 0.05), 0 12px 32px -18px rgba(20, 30, 45, 0.35);
+
+    /* The mocked site page and the script's table: light in both themes. */
+    --site-bg: #ffffff;
+    --site-ink: #222222;
+    --site-dim: #6b6b6b;
+    --site-line: #dddddd;
+    --site-head: #eceef1;
+    --site-even: #f6f7f9;
+    --site-link: #1d4f96;
+    --site-chrome: #f1f3f6;
+    --site-chrome-ink: #4d5664;
+    --site-h3: #f0f3f7;
+    --site-tag: #e8eef7;
+    --site-flt: #fbfcfd;
+    --mb: #ba478f;
+    --sfm: #a0336b;
+    --ia: #1d5c8f;
+    --dg: #333333;
+
+    --f-display: "Archivo", "Arial Narrow", "Helvetica Neue", Arial, sans-serif;
+    --f-body: "IBM Plex Sans", "Segoe UI", system-ui, -apple-system, sans-serif;
+    --f-mono: "IBM Plex Mono", ui-monospace, Consolas, "Courier New", monospace;
+    --f-site: Arial, Helvetica, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+        --bg: #11161d;
+        --surface: #19212b;
+        --ink: #e2e7ee;
+        --muted: #9aa5b4;
+        --line: #2c3746;
+        --accent: #86b4e2;
+        --accent-ink: #0e1620;
+        --accent-soft: #1f3248;
+        --ok: #74c494;
+        --ok-soft: #1c3326;
+        --warn: #e3ac4c;
+        --warn-soft: #3a2d14;
+        --shadow: 0 1px 0 rgba(0, 0, 0, 0.3), 0 14px 34px -16px rgba(0, 0, 0, 0.7);
+        color-scheme: dark;
+    }
+}
+:root[data-theme="dark"] {
+    --bg: #11161d;
+    --surface: #19212b;
+    --ink: #e2e7ee;
+    --muted: #9aa5b4;
+    --line: #2c3746;
+    --accent: #86b4e2;
+    --accent-ink: #0e1620;
+    --accent-soft: #1f3248;
+    --ok: #74c494;
+    --ok-soft: #1c3326;
+    --warn: #e3ac4c;
+    --warn-soft: #3a2d14;
+    --shadow: 0 1px 0 rgba(0, 0, 0, 0.3), 0 14px 34px -16px rgba(0, 0, 0, 0.7);
+    color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body {
+    background: var(--bg); color: var(--ink); font: 15px/1.55 var(--f-body); margin: 0;
+    padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+    padding-block: 0 64px;
+}
+.wrap { max-width: 1280px; margin: 0 auto; display: grid; gap: 28px; }
+h1, h2, h3 { font-family: var(--f-display); text-wrap: balance; margin: 0; }
+h1 { font-size: clamp(28px, 4vw, 40px); font-weight: 800; font-stretch: 85%; }
+h2 { font-size: 22px; font-weight: 700; font-stretch: 90%; }
+p { margin: 0; max-width: 76ch; }
+code { font-family: var(--f-mono); font-size: 0.87em; }
+.eyebrow { font: 600 11px/1 var(--f-body); letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
+.muted { color: var(--muted); }
+header.top { padding-block: 32px 0; display: grid; gap: 12px; }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; box-shadow: var(--shadow); min-width: 0; }
+
+/* Verdicts */
+.verdicts { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px; }
+.verdict { padding: 14px 16px; display: grid; gap: 8px; align-content: start; border-top: 4px solid var(--c); }
+.verdict h3 { font-size: 17px; display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
+.pill { font: 600 11.5px/1 var(--f-body); padding: 4px 8px; border-radius: 999px; white-space: nowrap; }
+.pill.yes { background: var(--ok-soft); color: var(--ok); }
+.pill.up { background: var(--accent-soft); color: var(--accent); }
+.verdict dl { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 4px 10px; font-size: 13px; }
+.verdict dt { color: var(--muted); }
+.verdict dd { margin: 0; min-width: 0; }
+
+/* Tabs */
+.tabs { display: flex; flex-wrap: wrap; gap: 8px; position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--bg); padding-block: 10px; border-bottom: 1px solid var(--line); }
+.tabs button { font: 600 13px/1 var(--f-body); color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 9px 14px; cursor: pointer; }
+.tabs button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.tabs button:focus-visible, .mock button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.bench { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 18px; align-items: start; }
+@media (max-width: 980px) { .bench { grid-template-columns: minmax(0, 1fr); } }
+.notes { padding: 14px 16px; display: grid; gap: 10px; font-size: 13.5px; }
+.notes h3 { font-size: 15px; }
+.notes ul { margin: 0; padding-left: 18px; display: grid; gap: 6px; }
+
+/* The mock browser window */
+.mock { background: var(--site-bg); color: var(--site-ink); border-radius: 8px; border: 1px solid var(--line); overflow: hidden; box-shadow: var(--shadow); font: 13px/1.45 var(--f-site); min-width: 0; }
+.mock a { color: var(--site-link); text-decoration: none; }
+.chrome { background: var(--site-chrome); color: var(--site-chrome-ink); padding: 7px 12px; font: 12px/1.3 var(--f-mono); display: flex; gap: 8px; align-items: center; border-bottom: 1px solid var(--site-line); overflow: hidden; }
+.chrome .dot { width: 9px; height: 9px; border-radius: 50%; background: #c8ccd2; flex: none; }
+.chrome .url { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.page { padding: 14px 16px 20px; display: grid; gap: 14px; }
+.sa-h1 { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; font: 700 20px/1.2 var(--f-site); }
+.sa-btns { display: inline-flex; border: 1px solid #9fb0c4; border-radius: 6px; overflow: hidden; font: 600 12.5px/1 var(--f-site); }
+.sa-btns span { padding: 6px 10px; background: #eef3f9; color: #24364d; border-right: 1px solid #9fb0c4; }
+.sa-btns span:last-child { border-right: 0; }
+.sa-btns span.on { background: #24527f; color: #fff; }
+.site-native { color: var(--site-dim); font-size: 12px; border: 1px dashed var(--site-line); border-radius: 6px; padding: 8px 10px; }
+.sec-h2 { font: 700 16px/1.2 var(--f-site); border-bottom: 1px solid var(--site-line); padding-bottom: 4px; display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+.sec-h2 .cnt { color: var(--site-dim); font-weight: 400; font-size: 13px; }
+.gf { margin-left: auto; display: inline-flex; gap: 6px; align-items: center; font: 400 12px/1 var(--f-site); }
+.gf input { font: inherit; border: 1px solid #b7c0cc; border-radius: 4px; padding: 4px 6px; width: 150px; background: #fff; color: var(--site-ink); }
+
+/* Images strip (the release-tracks "Cover art" section) */
+.art-tools { display: flex; flex-wrap: wrap; gap: 6px; font-size: 12px; }
+.chip { border: 1px solid #b7c0cc; border-radius: 999px; padding: 2px 8px; background: #fff; }
+.chip.on { background: #24527f; color: #fff; border-color: #24527f; }
+.tiles { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 4px; }
+.tile { flex: none; width: 104px; display: grid; gap: 4px; font-size: 11.5px; color: var(--site-dim); }
+.tile .ph { width: 104px; height: 104px; border-radius: 4px; border: 1px solid var(--site-line);
+    background: linear-gradient(135deg, #e3e8ef 0%, #cdd6e2 100%); display: grid; place-items: center; font: 600 11px/1.2 var(--f-site); color: #5b6879; text-align: center; padding: 6px; }
+
+/* Facts box (the Sidebar cards' role) */
+.facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; }
+.card { border: 1px solid var(--site-line); border-radius: 6px; padding: 8px 10px; display: grid; gap: 4px; align-content: start; background: #fcfcfd; }
+.card h4 { margin: 0; font: 700 12px/1.2 var(--f-site); text-transform: uppercase; letter-spacing: 0.04em; color: var(--site-dim); }
+.card dl { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 2px 8px; }
+.card dt { color: var(--site-dim); }
+.card dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
+.card p { font-size: 12.5px; }
+
+/* Sub-tables */
+.st { display: grid; gap: 6px; }
+.st-h3 { background: var(--site-h3); border: 1px solid var(--site-line); border-radius: 4px; padding: 5px 8px; font: 700 13.5px/1.2 var(--f-site); display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.st-h3 .tog { color: var(--site-dim); font-weight: 400; }
+.st-h3 .cnt { color: var(--site-dim); font-weight: 400; }
+.st-h3 .stf { margin-left: auto; font-weight: 400; font-size: 12px; color: var(--site-dim); }
+.st-h3.closed { opacity: 0.85; }
+.tw { overflow-x: auto; border: 1px solid var(--site-line); border-radius: 4px; }
+table.tbl { border-collapse: collapse; width: 100%; font-size: 12.5px; font-variant-numeric: tabular-nums; }
+table.tbl th, table.tbl td { padding: 4px 8px; border-bottom: 1px solid var(--site-line); text-align: left; vertical-align: top; }
+table.tbl thead tr.hd th { background: var(--site-head); white-space: nowrap; font-weight: 700; }
+table.tbl thead tr.ft th { background: var(--site-flt); padding: 3px 6px; }
+table.tbl thead tr.ft span { display: block; border: 1px solid #ccd3dc; border-radius: 3px; height: 18px; background: #fff; }
+table.tbl tbody tr:nth-child(even) td { background: var(--site-even); }
+table.tbl td.n, table.tbl th.n { text-align: right; }
+table.tbl ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 1px; min-width: 13em; }
+table.tbl .role { color: var(--site-dim); }
+.uq { font-size: 10px; margin-left: 3px; opacity: 0.7; }
+.mbg { display: inline-block; width: 12px; height: 12px; border-radius: 2px; background: var(--mb); vertical-align: -1px; margin-right: 3px; }
+.play { display: inline-block; font-size: 10px; border: 1px solid #b7c0cc; border-radius: 3px; padding: 0 4px; color: #24527f; }
+.tag { background: var(--site-tag); border-radius: 3px; padding: 0 4px; font-size: 11.5px; }
+.na { color: #9aa2ad; }
+.new { box-shadow: inset 0 -2px 0 #e0a33a; }
+.legend { font-size: 12px; color: var(--site-dim); display: flex; gap: 12px; flex-wrap: wrap; }
+.legend .new { padding: 0 4px; }
+
+/* Plan */
+.plan { padding: 16px 18px; display: grid; gap: 12px; }
+.plan ol, .plan ul { margin: 0; padding-left: 20px; display: grid; gap: 6px; }
+.qs { display: grid; gap: 8px; }
+.q { border-left: 3px solid var(--accent); padding: 4px 10px; background: var(--accent-soft); border-radius: 0 6px 6px 0; }
+@media (prefers-reduced-motion: no-preference) { .tabs button { transition: background 0.12s, color 0.12s; } }
+</style>
+<!--EMBED-->
+<script type="application/json" id="mockup-images">{}</script>
+</head>
+<body>
+<div class="wrap">
+    <header class="top">
+        <span class="eyebrow">ShowAllEntityData · design study · 2026-11-03</span>
+        <h1>Three detail pages, built like a MusicBrainz release</h1>
+        <p>Can a setlist.fm setlist, an archive.org item and a Discogs release get a pageType like MusicBrainz's <em>release-tracks</em>: a button that turns the page into the script's tables, one sub-table per medium or set, credits split into columns, images on top, a facts box, and every column filterable and sortable? Yes, all three. The mockups below use real data from the test fixtures.</p>
+    </header>
+
+    <section class="verdicts" aria-label="Verdicts">
+        <article class="panel verdict" style="--c:var(--sfm)">
+            <h3>setlist.fm setlist <span class="pill yes">feasible · new PT</span></h3>
+            <dl>
+                <dt>URL</dt><dd><code>/setlist/&lt;artist&gt;/&lt;yyyy&gt;/&lt;slug&gt;-&lt;id&gt;.html</code></dd>
+                <dt>Rows from</dt><dd>the page itself (<code>ol.songsList</code>), no request, no key</dd>
+                <dt>Key adds</dt><dd>MusicBrainz ids of covered artists and guests (one API request)</dd>
+                <dt>New</dt><dd><code>@include</code>, <code>sfm-setlist</code> PT, a parser of the setlist list (none exists)</dd>
+                <dt>Reuses</dt><dd>set times parser, MusicBrainz glyph, YouTube ▶ (song search)</dd>
+            </dl>
+        </article>
+        <article class="panel verdict" style="--c:var(--ia)">
+            <h3>archive.org item <span class="pill yes">feasible · new PT</span></h3>
+            <dl>
+                <dt>URL</dt><dd><code>/details/&lt;id&gt;</code> (not <code>@user</code>)</dd>
+                <dt>Rows from</dt><dd>one anonymous <code>/metadata/&lt;id&gt;</code> request, the one the item's card already makes and caches; no key</dd>
+                <dt>Page itself</dt><dd>server-rendered, no shadow DOM; audio items embed the same JSON (<code>input.js-ia-metadata</code>)</dd>
+                <dt>New</dt><dd><code>@include</code>, <code>ia-details</code> PT, a per-file parse (track no., size, md5, derivatives)</dd>
+                <dt>Reuses</dt><dd>pictures + viewer, ▶ archive.org player, Brucebase links</dd>
+            </dl>
+        </article>
+        <article class="panel verdict" style="--c:var(--dg)">
+            <h3>Discogs release <span class="pill up">feasible · upgrade dg-release</span></h3>
+            <dl>
+                <dt>URL</dt><dd><code>/release/&lt;id&gt;</code> (PT <code>dg-release</code> exists)</dd>
+                <dt>Rows from</dt><dd>the API answer it already reads (one request + the master's versions)</dd>
+                <dt>Today</dt><dd>one Tracklist (Pos, Title, Duration, one Credits cell), Credits, Companies, Identifiers, Other versions</dd>
+                <dt>Missing</dt><dd>a sub-table per side or disc, credits as role columns, sortable Length, images, facts</dd>
+                <dt>Reuses</dt><dd>the API record, image viewer, MusicBrainz column, 📊 Credit details</dd>
+            </dl>
+        </article>
+    </section>
+
+    <nav class="tabs" aria-label="Mockup">
+        <button type="button" id="tab-sfm" data-tab="sfm" aria-pressed="true">setlist.fm setlist</button>
+        <button type="button" id="tab-ia" data-tab="ia" aria-pressed="false">archive.org item</button>
+        <button type="button" id="tab-dg" data-tab="dg" aria-pressed="false">Discogs release</button>
+        <button type="button" id="tab-plan" data-tab="plan" aria-pressed="false">Plan and questions</button>
+    </nav>
+
+    <div id="view-sfm" class="bench"></div>
+    <div id="view-ia" class="bench" hidden></div>
+    <div id="view-dg" class="bench" hidden></div>
+    <section id="view-plan" class="panel plan" hidden></section>
+</div>
+
+<script type="application/json" id="mock-data">{"sfm":{"date":"19-03-2016","artist":"Bruce Springsteen","mbid":"70248960-cb53-4ea4-943a-edb18f7d336f","venue":"Los Angeles Sports Arena","city":"Los Angeles","state":"CA","country":"US","tour":"The River Tour 2016","info":"Bruce dedicated \"Jungleland\" and \"Wrecking Ball\" to the LA Sports Arena's forthcoming demolition. This show marks Bruce's 34th and final performance at this venue since his first during the original River Tour on 30 Oct 1980. \"Badlands\" replaced \"It's Hard to Be a Saint in the City\" on the printed setlist. Soundcheck included: \"Meet Me in the City\", \"Tougher Than the Rest\", \"My Love Will Not Let You Down\" and \"Born in the U.S.A.\"","url":"https://www.setlist.fm/setlist/bruce-springsteen/2016/los-angeles-sports-arena-los-angeles-ca-4bf0375a.html","sets":[{"name":"","encore":0,"songs":[{"name":"Meet Me in the City"}]},{"name":"The River","encore":0,"songs":[{"name":"The Ties That Bind"},{"name":"Sherry Darling"},{"name":"Jackson Cage"},{"name":"Two Hearts"},{"name":"Independence Day"},{"name":"Hungry Heart"},{"name":"Out in the Street"},{"name":"Crush on You"},{"name":"You Can Look (But You Better Not Touch)"},{"name":"I Wanna Marry You"},{"name":"The River"},{"name":"Point Blank"},{"name":"Cadillac Ranch"},{"name":"I'm a Rocker"},{"name":"Fade Away"},{"name":"Stolen Car"},{"name":"Ramrod"},{"name":"The Price You Pay"},{"name":"Drive All Night"},{"name":"Wreck on the Highway"}]},{"name":"","encore":0,"songs":[{"name":"Prove It All Night"},{"name":"My Love Will Not Let You Down"},{"name":"Badlands"},{"name":"Tougher Than the Rest"},{"name":"Because the Night","cover":"Patti Smith Group","coverMbid":"26638df8-ef34-40d1-8d93-616836b72878"},{"name":"Jungleland"},{"name":"Thunder Road"}]},{"name":"","encore":1,"songs":[{"name":"Wrecking Ball"},{"name":"Born to Run"},{"name":"Dancing in the Dark"},{"name":"Rosalita (Come Out Tonight)"},{"name":"Tenth Avenue Freeze-Out"},{"name":"Shout","cover":"The Isley Brothers","coverMbid":"4a76400d-283f-492e-9754-18ef41755f81"},{"name":"Bobby Jean"}]}]},"ia":{"id":"bs1975-12-27.aud.jk.cb.hrubesh.flac16","title":"Bruce Springsteen - 1975-12-27, Tower Theater, Philadelphia","date":"1975-12-27","venue":"Tower Theater, Philadelphia","source":"Audience","collection":["radionowhere","roiocollection","folksoundomy"],"brucebase":"http://brucebase.wikidot.com//gig:1975-12-27-tower-theater-philadelphia-pa","databruce":"https://www.databruce.com/events/19751227-01","desc":"Bruce Springsteen And The E Street Band\n\nTitle: N/A\nLabel: N/A\nCatalog #: N/A\nSource: Audience\nBruce Base: http://brucebase.wikidot.com/1975#271275\nStory Teller: http://brucebase.wikidot.com/gig:1975-12-27-tower-theater-philadelphia-pa\nFormat: flac files from Master tapes\nTotal Time: 2 hours 32 minutes 56.42 seconds\nDate: December 27, 1975\nLocation: Tower Theater, Upper Darby, Philadelphia, Pennsylvania, USA\nTaper: JK\n\nTransfer/Trade and Generation Info: Master tapes (mono) -> Transferred with Cable -> wav -> Nero Wav Editor -> EQ, Split -> TLH -> Flac (Level 8) (Align On Sector Boundaries).\n\n","tracks":[{"name":"1-01. Intro.flac","title":"Intro","track":"01","len":"50.43","size":"3534724","mp3":"933721"},{"name":"1-02. Tenth Avenue Freeze-Out.flac","title":"Tenth Avenue Freeze-Out","track":"02","len":"229.97","size":"16232527","mp3":"3978101"},{"name":"1-03. Spirit In The Night.flac","title":"Spirit In The Night","track":"03","len":"424.24","size":"30059148","mp3":"7269256"},{"name":"1-04. Lost In The Flood.flac","title":"Lost In The Flood","track":"04","len":"430.63","size":"29489357","mp3":"7238106"},{"name":"1-05. She's The One.flac","title":"She's The One","track":"05","len":"395.52","size":"26995105","mp3":"6756317"},{"name":"1-06. Born To Run.flac","title":"Born To Run","track":"06","len":"301.09","size":"21107675","mp3":"5256824"},{"name":"1-07. It's My Life.flac","title":"It's My Life","track":"07","len":"507.23","size":"32747773","mp3":"8338949"},{"name":"1-08. It's Hard To Be A Saint In The City.flac","title":"It's Hard To Be A Saint In The City","track":"08","len":"470.35","size":"31851292","mp3":"7976024"},{"name":"1-09. Backstreets.flac","title":"Backstreets","track":"09","len":"473.77","size":"32402824","mp3":"8158777"},{"name":"1-10. Kitty's Back.flac","title":"Kitty's Back","track":"10","len":"1116.21","size":"76332226","mp3":"19180767"},{"name":"2-01. Jungleland.flac","title":"Jungleland","track":"01","len":"592.88","size":"39202693","mp3":"9999239"},{"name":"2-02. Rosalita (Come Out Tonight).flac","title":"Rosalita (Come Out Tonight)","track":"02","len":"880.03","size":"61732336","mp3":"15513838"},{"name":"2-03. 4th Of July, Asbury Park (Sandy).flac","title":"4th Of July, Asbury Park (Sandy)","track":"03","len":"453.59","size":"31193584","mp3":"7881379"},{"name":"2-04. Detroit Medley.flac","title":"Detroit Medley","track":"04","len":"594.99","size":"41845390","mp3":"10513682"},{"name":"2-05. Thunder Road.flac","title":"Thunder Road","track":"05","len":"359.67","size":"24785680","mp3":"6145963"},{"name":"2-06. Quarter To Three.flac","title":"Quarter To Three","track":"06","len":"566.37","size":"42907282","mp3":"10238545"},{"name":"2-07. For You.flac","title":"For You","track":"07","len":"560.45","size":"35126839","mp3":"9137671"},{"name":"2-08. Back In The U.S.A..flac","title":"Back In The U.S.A.","track":"08","len":"291.72","size":"21911545","mp3":"5264427"},{"name":"2-09. Twist And Shout.flac","title":"Twist And Shout","track":"09","len":"477.43","size":"36071734","mp3":"8572900"}],"pictures":["Back.jpg","Booklet Inner.jpg","Booklet Outer.jpg","Cover.jpg","Disc 1.jpg","Disc 2.jpg","Front.jpg"],"formats":["Archive BitTorrent","Columbia Peaks","Flac","Item Tile","JPEG","JPEG Thumb","Metadata","PNG","Spectrogram","Text","VBR MP3"]},"dg":{"id":1874253,"title":"Born To Run","artist":"Bruce Springsteen","year":1975,"country":"US","released":"1975","labels":["Columbia – PC 33795"],"formats":["1× Vinyl LP, Album, Stereo"],"genres":["Rock"],"styles":["Pop Rock","Rock & Roll"],"tracklist":[{"pos":"A1","type":"track","title":"Thunder Road","dur":"4:50","credits":["Backing Vocals: Mike Appel","Backing Vocals: Steve Van Zandt","Backing Vocals, Electric Piano [Fender Rhodes], Glockenspiel: Roy Bittan","Bass: Garry Tallent","Drums: Max Weinberg","Harmonica, Guitar, Vocals: Bruce Springsteen","Saxophone: Clarence Clemons"]},{"pos":"A2","type":"track","title":"Tenth Avenue Freeze-Out","dur":"3:11","credits":["Baritone Saxophone: David Sanborn","Bass: Garry Tallent","Drums: Max Weinberg","Guitar, Vocals: Bruce Springsteen","Piano: Roy Bittan","Tenor Saxophone: Clarence Clemons","Tenor Saxophone: Michael Brecker","Trombone: Wayne Andre","Trumpet, Flugelhorn: Randy Brecker"]},{"pos":"A3","type":"track","title":"Night","dur":"3:01","credits":["Bass: Garry Tallent","Drums: Max Weinberg","Guitar, Vocals: Bruce Springsteen","Harpsichord, Glockenspiel, Piano: Roy Bittan","Saxophone: Clarence Clemons"]},{"pos":"A4","type":"track","title":"Backstreets","dur":"6:29","credits":["Bass: Garry Tallent","Drums: Max Weinberg","Guitar, Vocals: Bruce Springsteen","Piano, Organ: Roy Bittan"]},{"pos":"B1","type":"track","title":"Born To Run","dur":"4:30","credits":["Bass: Garry Tallent","Drums: Ernest Carter","Guitar, Vocals: Bruce Springsteen","Keyboards: David Sancious","Organ: Danny Federici","Saxophone: Clarence Clemons"]},{"pos":"B2","type":"track","title":"She's The One","dur":"4:30","credits":["Bass: Garry Tallent","Drums: Max Weinberg","Guitar, Vocals: Bruce Springsteen","Harpsichord, Piano, Organ: Roy Bittan","Saxophone: Clarence Clemons"]},{"pos":"B3","type":"track","title":"Meeting Across The River","dur":"3:16","credits":["Double Bass: Richard Davis (2)","Piano: Roy Bittan","Trumpet: Randy Brecker","Vocals: Bruce Springsteen"]},{"pos":"B4","type":"track","title":"Jungleland","dur":"9:33","credits":["Bass: Garry Tallent","Drums: Max Weinberg","Guitar, Vocals: Bruce Springsteen","Piano, Organ: Roy Bittan","Tenor Saxophone: Clarence Clemons","Violin: Tzruya Lahav"]}],"extraartists":[{"role":"Arranged By [Strings], Conductor [Strings]","name":"Charlie Calello","tracks":"B4"},{"role":"Design","name":"Andy Engel","tracks":""},{"role":"Design","name":"John Berg","tracks":""},{"role":"Engineer","name":"Louis Lahav","tracks":"B1"},{"role":"Engineer [Assistant], Mixed By [Assistant]","name":"Andy Abrams","tracks":"A1 to A4, B2 to B4"},{"role":"Engineer [Assistant], Mixed By [Assistant]","name":"Angie Arcuri","tracks":"A1 to A4, B2 to B4"},{"role":"Engineer [Assistant], Mixed By [Assistant]","name":"Corky Stasiak","tracks":"A1 to A4, B2 to B4"},{"role":"Engineer [Assistant], Mixed By [Assistant]","name":"Dave Thoener","tracks":""},{"role":"Engineer [Assistant], Mixed By [Assistant]","name":"Mike Appel","tracks":"A1 to A4, B2 to B4"},{"role":"Engineer [Assistant], Mixed By [Assistant]","name":"Ricke Delena","tracks":"A1 to A4, B2 to B4"},{"role":"Engineer [Assistant], Mixed By [Assistant]","name":"Thom Panunzio","tracks":"A1 to A4, B2 to B4"},{"role":"Engineer, Mixed By","name":"Jimmy Iovine","tracks":"A1 to A4, B2 to B4"},{"role":"Mastered By","name":"Greg Calbi","tracks":""},{"role":"Other [Maintainance]","name":"Paul Prestopino","tracks":""},{"role":"Photography By [Cover And Liner]","name":"Eric Meola","tracks":""},{"role":"Producer","name":"Jon Landau","tracks":"A1 to A4, B2 to B4"},{"role":"Producer","name":"Mike Appel","tracks":""},{"role":"Written-By, Arranged By, Producer","name":"Bruce Springsteen","tracks":""}],"images":5,"companies":12,"identifiers":12,"master_id":26725,"notes":"A1 to A4 & B2 to B4: Recorded, mixed and mastered at Record Plant Studio, New York, N.Y.\nB1: Recorded at 914 Sound Studio, Blauvelt, N.Y.\n\nRandy Brecker and Michael Brecker appear courtesy of Arista Records.\nDavid Sancious appears courtesy of Epic Records.\nDavid Sanborn appears courtesy of Warner Re","community":{"have":18799,"want":2149,"data_quality":"Needs Vote"}}}</script>
+<script>
+const D = JSON.parse(document.getElementById('mock-data').textContent);
+const E = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+/** Seconds (string, decimals) as m:ss, or h:mm:ss. */
+function dur(sec) {
+    const s = Math.round(Number(sec) || 0);
+    const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), r = s % 60;
+    return h ? `${h}:${String(m).padStart(2, '0')}:${String(r).padStart(2, '0')}` : `${m}:${String(r).padStart(2, '0')}`;
+}
+/** Bytes as MB with one decimal. */
+const mb = (b) => b ? `${(Number(b) / 1048576).toFixed(1)} MB` : '';
+
+/** A sub-table: h3 bar plus a table with a filter row and 📊 per column. */
+function subTable(title, count, cols, rows, opts = {}) {
+    const head = cols.map(c => `<th class="${c.n ? 'n' : ''}${c.isNew ? ' new' : ''}">${E(c.h)}<span class="uq">📊</span></th>`).join('');
+    const flt = cols.map(() => '<th><span></span></th>').join('');
+    const body = rows.map(r => `<tr>${cols.map((c, i) => `<td class="${c.n ? 'n' : ''}">${r[i] == null ? '' : r[i]}</td>`).join('')}</tr>`).join('');
+    const closed = opts.closed;
+    return `<div class="st"><div class="st-h3${closed ? ' closed' : ''}"><span class="tog">${closed ? '▶' : '▼'}</span>${E(title)} <span class="cnt">(${count})</span>${opts.extra || ''}<span class="stf">filter this table…</span></div>` +
+        (closed ? '' : `<div class="tw"><table class="tbl"><thead><tr class="hd">${head}</tr><tr class="ft">${flt}</tr></thead><tbody>${body}</tbody></table></div>`) + '</div>';
+}
+/** A mock browser window around a page body. */
+const frame = (url, inner) => `<div class="mock"><div class="chrome"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="url">${E(url)}</span></div><div class="page">${inner}</div></div>`;
+const toolbar = (name, btns) => `<div class="sa-h1"><span>${E(name)}</span><span class="sa-btns">${btns.map((b, i) => `<span class="${i === 0 ? 'on' : ''}">${E(b)}</span>`).join('')}<span>☰ SAED ▾</span></span></div>`;
+const card = (h, rows, extra = '') => `<div class="card"><h4>${E(h)}</h4><dl>${rows.filter(r => r[1]).map(([k, v]) => `<dt>${E(k)}</dt><dd>${v}</dd>`).join('')}</dl>${extra}</div>`;
+const notes = (h, items) => `<aside class="panel notes"><h3>${E(h)}</h3><ul>${items.map(x => `<li>${x}</li>`).join('')}</ul></aside>`;
+
+// ── setlist.fm ──────────────────────────────────────────────────────────
+function renderSfm() {
+    const s = D.sfm;
+    const [dd, mm, yy] = s.date.split('-');
+    const iso = `${yy}-${mm}-${dd}`;
+    let n = 0, setNo = 0;
+    const parts = s.sets.map((st) => {
+        const name = st.encore ? (st.encore > 1 ? `Encore ${st.encore}` : 'Encore') : (st.name || `Set ${++setNo}`);
+        if (!st.encore && st.name) setNo++;
+        const rows = st.songs.map((so) => {
+            n++;
+            const cover = so.cover ? `<span class="mbg" title="MusicBrainz (with the key)"></span><a href="#">${E(so.cover)}</a>` : '';
+            return [String(n), `<a href="#">${E(so.name)}</a>`, cover, so.with ? `<a href="#">${E(so.with)}</a>` : '',
+                so.tape ? 'from tape' : '', E(so.info || ''), '<span class="play">▶</span>'];
+        });
+        return { name, rows };
+    });
+    const cols = [{ h: '#', n: true }, { h: 'Song' }, { h: 'Cover of', isNew: true }, { h: 'With', isNew: true }, { h: 'Tape', isNew: true }, { h: 'Info' }, { h: '▶' }];
+    const total = parts.reduce((k, p) => k + p.rows.length, 0);
+    const body = toolbar(`${s.artist} at ${s.venue}, ${iso}`, ['Setlist', 'Song stats']) +
+        `<div class="site-native">setlist.fm's own page stays below, unchanged: its header, the song list with its ▶ and ads, the comments.</div>` +
+        `<div class="facts">` +
+        card('Show', [['Date', iso], ['Artist', `<span class="mbg"></span><a href="#">${E(s.artist)}</a>`], ['Venue', `<a href="#">${E(s.venue)}</a>, ${E(s.city)}, ${E(s.state)}, ${E(s.country)}`], ['Tour', `<a href="#">${E(s.tour)}</a>`]]) +
+        card('Set times', [['Doors', '18:00'], ['Show', '19:30–22:20'], ['Length', '2h 50m']]) +
+        card('Notes', [], `<p>${E(s.info.slice(0, 220))}…</p>`) +
+        `</div>` +
+        `<div class="sec-h2">Setlist <span class="cnt">${total} songs · ${parts.length} parts</span><span class="gf">🔍 <input value="" placeholder="Filter all parts" aria-label="Filter all parts"></span></div>` +
+        parts.map(p => subTable(p.name, p.rows.length, cols, p.rows)).join('') +
+        `<div class="legend"><span><span class="new">underlined</span>: columns setlist.fm's list shows only as small print</span><span>Set times shown are the window's example values</span></div>`;
+    document.getElementById('view-sfm').innerHTML = frame(s.url, body) + notes('How it maps to release-tracks', [
+        'A <b>set</b> is a medium: one sub-table per set, named as setlist.fm names it (<i>The River</i>), else Set 1, 2…; an encore is <i>Encore</i>. Show/Hide all and the per-set filter as on a release.',
+        '<b>Columns</b> instead of small print: <i>Cover of</i> and <i>With</i> (each a setlist.fm artist link; with the API key also MusicBrainz\'s glyph and window), <i>Tape</i>, <i>Info</i> (free text such as "solo acoustic"). 📊 lists e.g. every covered artist with its count.',
+        '<b>Rows from the page itself</b>: the live document already holds the whole list (<code>li.setlistParts</code>), so the button reads no page and asks nothing, unless the key is set: then one API request adds the MusicBrainz ids.',
+        '<b>Facts box</b> in place of the MusicBrainz sidebar cards: date, artist, venue, tour, set times (the existing set-times parser), notes.',
+        '<b>▶</b> plays the song in the window\'s YouTube player (the same artist + song search the setlist window uses).',
+        'Second button <b>Song stats</b> (optional): the artist\'s song statistics for this tour, a later step.',
+    ]);
+}
+
+// ── archive.org ─────────────────────────────────────────────────────────
+function renderIa() {
+    const a = D.ia;
+    const discs = {};
+    a.tracks.forEach((t) => {
+        const d = (/^(\d+)-/.exec(t.name) || [, '1'])[1];
+        (discs[d] = discs[d] || []).push(t);
+    });
+    const cols = [{ h: '#', n: true }, { h: 'Title' }, { h: 'Length', n: true }, { h: 'Original', isNew: true }, { h: 'Size', n: true, isNew: true }, { h: 'MP3', n: true, isNew: true }, { h: 'Song (Brucebase)', isNew: true }, { h: '▶' }];
+    const subs = Object.keys(discs).map((d) => {
+        const rows = discs[d].map(t => [String(Number(t.track)), E(t.title), dur(t.len), `<span class="tag">FLAC</span> <a href="#">${E(t.name)}</a>`, mb(t.size), mb(t.mp3),
+            `<a href="#">${E(t.title)}</a>`, '<span class="play">▶</span>']);
+        const tot = discs[d].reduce((k, t) => k + Number(t.len), 0);
+        return subTable(`Disc ${d} · FLAC`, rows.length, cols, rows, { extra: ` <span class="cnt">· ${dur(tot)}</span>` });
+    }).join('');
+    const total = a.tracks.reduce((k, t) => k + Number(t.len), 0);
+    const pics = a.pictures.map(p => `<div class="tile"><div class="ph">${E(p.replace(/\.jpg$/i, ''))}</div>${E(p)}</div>`).join('');
+    const body = toolbar(a.title, ['Tracks', 'All files']) +
+        `<div class="site-native">archive.org's item page stays below: its player, its file list, the reviews.</div>` +
+        `<div class="sec-h2">Pictures <span class="cnt">(${a.pictures.length})</span></div>` +
+        `<div class="art-tools"><span class="chip on">All ${a.pictures.length}</span><span class="chip">Front/Cover 2</span><span class="chip">Back 1</span><span class="chip">Booklet 2</span><span class="chip">Disc 2</span><span class="chip">Grid</span><span class="chip">Spreads</span></div>` +
+        `<div class="tiles">${pics}</div>` +
+        `<div class="facts">` +
+        card('Show', [['Date', E(a.date)], ['Venue', E(a.venue)], ['Source', E(a.source)], ['Taper', 'JK'], ['Running time', dur(total)]]) +
+        card('Links', [['Brucebase', `<a href="#">gig:1975-12-27-tower-theater…</a>`], ['Databruce', `<a href="#">events/19751227-01</a>`], ['Collections', a.collection.map(c => `<span class="tag">${E(c)}</span>`).join(' ')]]) +
+        card('Lineage', [], `<p>Master tapes (mono) → Cable → wav → Nero Wav Editor → EQ, Split → TLH → Flac (Level 8)</p>`) +
+        `</div>` +
+        `<div class="sec-h2">Tracks <span class="cnt">${a.tracks.length} tracks · ${dur(total)}</span><span class="gf">🔍 <input value="" placeholder="Filter all discs" aria-label="Filter all discs"></span></div>` +
+        subs +
+        subTable('Other files', 'Spectrogram 19, PNG 19, Columbia Peaks 19, Text 1, Metadata 2, Torrent 1', [], [], { closed: true });
+    document.getElementById('view-ia').innerHTML = frame(`https://archive.org/details/${a.id}`, body) + notes('How it maps to release-tracks', [
+        'A <b>disc</b> is a medium: the files\' "1-01." / "2-01." prefix (or their <code>track</code> field) splits them, and the h3 shows the disc\'s running time.',
+        '<b>Pictures</b> take the "Cover art" section\'s place: the uploader\'s scans as tiles, type chips from their names (Front, Back, Booklet, Disc), Grid and Spreads, and the existing full-size viewer.',
+        '<b>One row per song</b>, its FLAC original as the row; its derivatives (MP3, OGG) as columns, not rows. Length as a duration (sortable; the files\' decimals give the ⏱ precision for free).',
+        '<b>Song (Brucebase)</b>: the title linked to Brucebase\'s song page, which previews with Brucebase\'s card (the existing reader). Matching a live title to a song is a later step; until then a search link.',
+        '<b>▶</b> plays the file in archive.org\'s own player in the window (the existing <code>ia</code> source).',
+        'Second button <b>All files</b>: every file, one row each (format, size, md5, source, original), for checking a torrent or a lineage.',
+        'A <b>video</b> item: one sub-table of its video files and a Play here tile; its stills as the pictures.',
+    ]);
+}
+
+// ── Discogs ─────────────────────────────────────────────────────────────
+/** Expands "A1 to A4, B2 to B4" into the set of positions. */
+function expandRanges(spec, positions) {
+    const out = new Set();
+    if (!spec) return out;
+    spec.split(',').map(x => x.trim()).forEach((part) => {
+        const m = /^(\S+)\s+to\s+(\S+)$/.exec(part);
+        if (m) {
+            const i = positions.indexOf(m[1]), j = positions.indexOf(m[2]);
+            if (i >= 0 && j >= i) positions.slice(i, j + 1).forEach(p => out.add(p));
+        } else if (part) out.add(part);
+    });
+    return out;
+}
+function renderDg() {
+    const g = D.dg;
+    const tracks = g.tracklist.filter(t => t.type === 'track');
+    const positions = tracks.map(t => t.pos);
+    const ranged = g.extraartists.filter(x => x.tracks);
+    const releaseWide = g.extraartists.filter(x => !x.tracks);
+    // A credit may name several roles ("Engineer, Mixed By"): it goes into
+    // each matching column, its own qualifier ("[Assistant]") with it.
+    const COLS = [['Producer', /^Producer/], ['Engineer', /^Engineer/], ['Mixed by', /^Mixed By/], ['Arranged by', /^Arranged By/]];
+    const rolesOf = (role) => role.split(/,\s*(?![^\[]*\])/).map(r => r.trim());
+    const perTrack = (pos, col) => ranged.filter(x => expandRanges(x.tracks, positions).has(pos)).flatMap((x) => {
+        const re = COLS.find(c => c[0] === col)[1];
+        const hit = rolesOf(x.role).find(r => re.test(r));
+        return hit ? [`<li><a href="#">${E(x.name)}</a>${/\[Assistant\]/.test(hit) ? ' <span class="role">(assistant)</span>' : ''}</li>`] : [];
+    });
+    const sides = {};
+    tracks.forEach(t => { const s = t.pos.replace(/\d+$/, '') || '1'; (sides[s] = sides[s] || []).push(t); });
+    const cols = [{ h: '#' }, { h: 'Title' }, { h: 'Length', n: true }, { h: 'Instruments', isNew: true }, { h: 'Vocals', isNew: true }, { h: 'Producer', isNew: true }, { h: 'Engineer', isNew: true }, { h: 'Mixed by', isNew: true }, { h: 'Arranged by', isNew: true }, { h: 'MusicBrainz' }];
+    const subs = Object.keys(sides).map((s) => {
+        const rows = sides[s].map((t) => {
+            const inst = [], voc = [];
+            t.credits.forEach((c) => {
+                const k = c.indexOf(': ');
+                const roles = c.slice(0, k).split(/,\s*(?![^\[]*\])/), who = c.slice(k + 2);
+                const v = roles.filter(r => /Vocals/.test(r)), i = roles.filter(r => !/Vocals/.test(r));
+                if (i.length) inst.push(`<li><span class="role">${E(i.join(', '))} –</span> <a href="#">${E(who)}</a></li>`);
+                if (v.length) voc.push(`<li><span class="role">${E(v.join(', '))} –</span> <a href="#">${E(who)}</a></li>`);
+            });
+            const ul = (xs) => xs.length ? `<ul>${xs.join('')}</ul>` : '<span class="na">—</span>';
+            return [E(t.pos), `<a href="#">${E(t.title)}</a>`, E(t.dur), ul(inst), ul(voc), ul(perTrack(t.pos, 'Producer')), ul(perTrack(t.pos, 'Engineer')),
+                ul(perTrack(t.pos, 'Mixed by')), ul(perTrack(t.pos, 'Arranged by')), '<span class="mbg"></span>'];
+        });
+        const tot = sides[s].reduce((k, t) => { const [m, ss] = t.dur.split(':').map(Number); return k + m * 60 + ss; }, 0);
+        return subTable(`Side ${s} · Vinyl LP`, rows.length, cols, rows, { extra: ` <span class="cnt">· ${dur(tot)}</span>` });
+    }).join('');
+    const rw = releaseWide.map(x => [E(x.role), `<a href="#">${E(x.name)}</a>`]);
+    const body = toolbar(`${g.artist} – ${g.title}`, ['Tracks', 'Credits, companies, versions']) +
+        `<div class="site-native">Discogs' own page stays below our section, unchanged.</div>` +
+        `<div class="sec-h2">Images <span class="cnt">(${g.images})</span></div>` +
+        `<div class="art-tools"><span class="chip on">All ${g.images}</span><span class="chip">Primary 1</span><span class="chip">Secondary 4</span><span class="chip">Grid</span><span class="chip">Spreads</span></div>` +
+        `<div class="tiles">${['Front', 'Back', 'Inner sleeve', 'Label A', 'Label B'].map(x => `<div class="tile"><div class="ph">${x}</div>${x}</div>`).join('')}</div>` +
+        `<div class="facts">` +
+        card('Release', [['Label', E(g.labels.join('; '))], ['Format', E(g.formats.join('; '))], ['Country', E(g.country)], ['Released', E(g.released)], ['Genre', E(g.genres.join(', '))], ['Style', E(g.styles.join(', '))]]) +
+        card('Community', [['Have', String(g.community.have)], ['Want', String(g.community.want)], ['Data quality', E(g.community.data_quality)], ['Master', `<a href="#">${g.master_id}</a>`]]) +
+        card('Notes', [], `<p>${E(g.notes.slice(0, 200))}…</p>`) +
+        `</div>` +
+        `<div class="sec-h2">Tracklist <span class="cnt">${tracks.length} tracks</span><span class="gf">🔍 <input value="" placeholder="Filter all sides" aria-label="Filter all sides"></span></div>` +
+        subs +
+        subTable('Release credits', rw.length, [{ h: 'Role' }, { h: 'Name' }], rw) +
+        subTable('Companies, etc.', g.companies, [], [], { closed: true }) +
+        subTable('Barcode and Other Identifiers', g.identifiers, [], [], { closed: true });
+    document.getElementById('view-dg').innerHTML = frame(`https://www.discogs.com/release/${g.id}-Bruce-Springsteen-Born-To-Run`, body) + notes('Upgrade of dg-release, as release-tracks', [
+        'A <b>side or disc</b> is a medium: positions A1…/B1… or 1-1…/2-1… split the tracklist; the h3 names the format and the side\'s running time. Heading rows ("Side One") become the h3 name when Discogs has them.',
+        '<b>Credits as columns</b>, as release-tracks\' AR columns: each track\'s own credits split into <i>Instruments</i> and <i>Vocals</i> (role then name, one line each); the release\'s credits that name tracks ("A1 to A4, B2 to B4") are spread onto those tracks as <i>Producer</i>, <i>Engineer</i>, <i>Mixed by</i>, <i>Arranged by</i>, … The rest (design, mastering, photography) stays a <i>Release credits</i> sub-table.',
+        '<b>Length</b> as a duration: sortable, a side total in the h3, 📊 Length info as on MusicBrainz.',
+        '<b>Images</b> and the <b>facts box</b> from the API answer the PT already reads: no extra request.',
+        'The <b>MusicBrainz</b> column (murdos\' importer) reaches the tracklist too: a recording link where one is known.',
+        'Second button <b>Credits, companies, versions</b>: today\'s sub-tables (Credits, Companies, Identifiers, Videos, Other versions), as release-tracks\' second button shows the relationship tables.',
+    ]);
+}
+
+// ── Plan ────────────────────────────────────────────────────────────────
+function renderPlan() {
+    document.getElementById('view-plan').innerHTML = `
+        <h2>Plan</h2>
+        <p>One branch per site, in this order: archive.org first (all data in one request we already make), then Discogs (an upgrade of a working PT), then setlist.fm (a new parser from saved pages, since Claude Code cannot fetch setlist.fm).</p>
+        <ol>
+            <li><b>Shared pieces first.</b> An images section and a facts box that are not tied to MusicBrainz: today the Cover-art section and the Sidebar cards stop on any foreign host. Either generalise <code>_releaseArt*</code>/<code>_sb*</code> behind a provider, or write one small "foreign detail" module the three PTs share. Recommendation: the provider, so the viewer, chips, Grid/Spreads stay one implementation.</li>
+            <li><b>archive.org <code>ia-details</code></b>: <code>@include</code> for <code>/details/&lt;id&gt;</code> (not <code>@user</code>); <code>_iaPrepareLivePage()</code> for an item; a per-file parse (track, size, md5, derivatives; bump <code>_EXT_IA_VERSION</code>); <code>pageRequest</code> with one page = the metadata answer (reusing the card's cache); sub-tables per disc; Pictures; facts; ▶. Probe: snapshot five items (audio, video, multi-disc, one without track numbers, one with only MP3s).</li>
+            <li><b>Discogs <code>dg-release</code> upgrade</b>: per-medium split; credit role columns (ranges spread onto tracks); duration columns; Images; facts; two buttons. Probe: twenty releases of different shapes (CD box set, 7", index tracks, sub-tracks, credits with "1-1 to 1-5").</li>
+            <li><b>setlist.fm <code>sfm-setlist</code></b>: <code>@include</code> for <code>/setlist/…</code>; a parser of <code>ol.songsList</code> (sets, encores, tape, cover, with, info; skip ads); facts from the header and the set-times parser; with the key, one API request for the MusicBrainz ids. Probe: vzell saves ten setlist pages (segues, multiple encores, festivals, a tape intro), as Claude Code cannot fetch them.</li>
+            <li>Each: specs per shape, mutation file, registry rows in <code>docs/non-mb-coverage.json</code> (the checker fails without them), HELP, topic doc.</li>
+        </ol>
+        <h2>Questions for you</h2>
+        <div class="qs">
+            <div class="q"><b>Q1.</b> Discogs: upgrade <code>dg-release</code> (one button "Tracks" + a second for today's sub-tables) or keep today's view as is and add the release-tracks view as a second button?</div>
+            <div class="q"><b>Q2.</b> setlist.fm without a key: show covers and guests as setlist.fm links only (no MusicBrainz glyph), or ask MusicBrainz by name?</div>
+            <div class="q"><b>Q3.</b> archive.org: the derivatives as columns (as drawn) or as their own sub-table per format?</div>
+            <div class="q"><b>Q4.</b> Which credit roles become their own columns on Discogs (drawn: Instruments, Vocals, Producer, Engineer, Mixed by, Arranged by), and which stay in one "Other credits" column?</div>
+            <div class="q"><b>Q5.</b> Order of the three, and whether all go on one branch or one each.</div>
+        </div>`;
+}
+
+renderSfm();
+renderIa();
+renderDg();
+renderPlan();
+document.querySelector('.tabs').addEventListener('click', (e) => {
+    const b = e.target.closest('button[data-tab]');
+    if (!b) return;
+    document.querySelectorAll('.tabs button').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+    ['sfm', 'ia', 'dg', 'plan'].forEach(k => { document.getElementById(`view-${k}`).hidden = k !== b.dataset.tab; });
+});
+</script>
+</body>
+</html>
