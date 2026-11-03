@@ -284,5 +284,44 @@
     "spec": "tests/fixtures/popup-ext.spec.js",
     "grep": "a setlist.fm search link",
     "expect": "fail"
+  },
+  {
+    "name": "a setlist window's songs have no ▶",
+    "why": "vzell 2026-11-03: \"add youtube player support for setlist pages (POH)\".",
+    "edits": [
+      {
+        "find": "        const play = _ytOn() && rows.length > 0;",
+        "replace": "        const play = false;"
+      }
+    ],
+    "spec": "tests/fixtures/popup-ext.spec.js",
+    "grep": "a ▶ per song",
+    "expect": "fail"
+  },
+  {
+    "name": "YouTube's search page yields no video",
+    "why": "The first videoRenderer of ytInitialData is the video (scripts/probe-youtube-search.py, 2026-11-03).",
+    "edits": [
+      {
+        "find": "        return walk(data);\n    }",
+        "replace": "        return '';\n    }"
+      }
+    ],
+    "spec": "tests/fixtures/popup-ext.spec.js",
+    "grep": "a ▶ per song",
+    "expect": "fail"
+  },
+  {
+    "name": "a song YouTube finds nothing for opens nothing",
+    "why": "Its next click opens YouTube's own search, from the click (a popup blocker allows that).",
+    "edits": [
+      {
+        "find": "                window.open(_ytSearchUrl(v.q), '_blank', 'noopener');",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/popup-ext.spec.js",
+    "grep": "a song YouTube finds nothing for",
+    "expect": "fail"
   }
 ]

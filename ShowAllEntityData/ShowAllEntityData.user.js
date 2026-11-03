@@ -65298,6 +65298,9 @@
      */
     function _ytKey(v) {
         if (v.src === 'ia') return `ia:${v.id}/${v.file || ''}`;
+        // A search (a setlist.fm song): its query, before and after the video
+        // is found, so a repaint's tile is the same one.
+        if (v.src === 'yts') return `yts:${v.q}`;
         return v.kind === 'playlist' ? `list:${v.list}` : v.id;
     }
 
@@ -65320,6 +65323,7 @@
      */
     function _ytWatchUrl(v) {
         if (v.src === 'ia') return `https://archive.org/details/${_ytIaPath(v)}`;
+        if (v.src === 'yts' && !v.id) return _ytSearchUrl(v.q);
         if (v.kind === 'playlist') return `https://www.youtube.com/playlist?list=${encodeURIComponent(v.list)}`;
         if (v.kind === 'short') return `https://www.youtube.com/shorts/${encodeURIComponent(v.id)}`;
         return `https://www.youtube.com/watch?v=${encodeURIComponent(v.id)}`;
@@ -65402,7 +65406,9 @@
             ? `https://i.ytimg.com/vi/${encodeURIComponent(v.id)}/mqdefault.jpg` : '');
         const still = !!stillUrl;
         const label = title || (ia ? (v.kind === 'video' ? 'archive.org video' : 'archive.org track') : playlist ? 'YouTube playlist' : 'YouTube video');
-        const iaAttrs = ia ? ` data-mb-yt-src="ia" data-mb-yt-file="${_rgEsc(v.file || '')}"` : '';
+        // A search (setlist.fm's songs, 2026-11-03): the query instead of an id.
+        const iaAttrs = ia ? ` data-mb-yt-src="ia" data-mb-yt-file="${_rgEsc(v.file || '')}"`
+            : v.src === 'yts' ? ` data-mb-yt-src="yts" data-mb-yt-q="${_rgEsc(v.q || '')}"` : '';
         if (opts.mini) {
             return `<button type="button" class="mb-yt-tile mb-yt-mini" data-mb-yt="${_rgEsc(_ytKey(v))}" data-mb-yt-kind="${_rgEsc(v.kind)}" ` +
                 `data-mb-yt-id="${_rgEsc(v.id)}" data-mb-yt-list="" data-mb-yt-title="${_rgEsc(title)}"${iaAttrs}` +
@@ -65581,6 +65587,95 @@
     }
 
     /**
+     * The videos YouTube's search found, by query (a setlist.fm song's
+     * "<artist> <song>"): a video id, or '' when the page held none. Only an
+     * answer is kept; a failed request is asked again by the next click.
+     * @type {Map<string, string>}
+     */
+    const _ytSearchHits = new Map();
+
+    /** The searches under way, by query, so two clicks make one request. */
+    const _ytSearchRuns = new Map();
+
+    /**
+     * How much of YouTube's search page is read: the whole page (1.2–1.4 MB
+     * for a song, scripts/probe-youtube-search.py, 2026-11-03); its
+     * `ytInitialData` is past `_EXT_MAX_BYTES`.
+     * @type {number}
+     */
+    const _YT_SEARCH_MAX_BYTES = 4 * 1024 * 1024;
+
+    /**
+     * YouTube's search for a query, as a page.
+     *
+     * @param {string} q
+     * @returns {string}
+     */
+    function _ytSearchUrl(q) {
+        return `https://www.youtube.com/results?search_query=${encodeURIComponent(q)}`;
+    }
+
+    /**
+     * The first video of a YouTube search page: the first `videoRenderer`
+     * in its `ytInitialData`, in document order (probe 2026-11-03: "Bruce
+     * Springsteen War" → the artist's own "Bruce Springsteen - War"); ''
+     * for a page without one (a consent page, a changed page).
+     *
+     * @param {string} html
+     * @returns {string}
+     */
+    function _ytSearchFirstId(html) {
+        const m = /var ytInitialData\s*=\s*(\{[\s\S]*?\});\s*<\/script>/.exec(String(html || ''));
+        if (!m) return '';
+        let data;
+        try {
+            data = JSON.parse(m[1]);
+        } catch (_) {
+            return '';
+        }
+        const walk = (x) => {
+            if (!x || typeof x !== 'object') return '';
+            if (x.videoRenderer && typeof x.videoRenderer.videoId === 'string' && /^[\w-]{6,}$/.test(x.videoRenderer.videoId)) return x.videoRenderer.videoId;
+            for (const v of Array.isArray(x) ? x : Object.values(x)) {
+                const id = walk(v);
+                if (id) return id;
+            }
+            return '';
+        };
+        return walk(data);
+    }
+
+    /**
+     * Finds the video a setlist.fm song's ▶ plays (vzell, 2026-11-03: "read
+     * YouTube's search page"; setlist.fm's own ▶ asks YouTube's Data API
+     * with setlist.fm's key, which the script never uses): ONE anonymous
+     * request to YouTube's search page through `_extGet()` (www.youtube.com
+     * is in `@connect`), its first video (`_ytSearchFirstId()`), kept by
+     * query for the page's life.
+     *
+     * @param {string} q - "<artist> <song>".
+     * @returns {Promise<string>} The video id, or '' (none found, or the request failed).
+     */
+    function _ytSearchVideo(q) {
+        if (_ytSearchHits.has(q)) return Promise.resolve(_ytSearchHits.get(q));
+        if (_ytSearchRuns.has(q)) return _ytSearchRuns.get(q);
+        const run = (async () => {
+            const res = await _extGet(_ytSearchUrl(q), { fetchOpts: { maxBytes: _YT_SEARCH_MAX_BYTES, maxDownload: _YT_SEARCH_MAX_BYTES } });
+            _ytSearchRuns.delete(q);
+            if (res.skipped || res.error || res.status !== 200) {
+                Lib.debug('yt', `search "${q}": no answer (${res.error || res.status})`);
+                return '';
+            }
+            const id = _ytSearchFirstId(res.body);
+            _ytSearchHits.set(q, id);
+            Lib.debug('yt', `search "${q}": ${id || 'no video'}`);
+            return id;
+        })();
+        _ytSearchRuns.set(q, run);
+        return run;
+    }
+
+    /**
      * What a tile plays, read back from its attributes (a clone has them all).
      *
      * @param {Element} tile
@@ -65588,13 +65683,15 @@
      */
     function _ytFromTile(tile) {
         const d = tile.dataset;
-        if (!d.mbYtKind || (!d.mbYtId && !d.mbYtList)) return null;
+        if (!d.mbYtKind || (!d.mbYtId && !d.mbYtList && !d.mbYtQ)) return null;
         const v = {
             kind: d.mbYtKind, id: d.mbYtId || '', list: d.mbYtList || '',
             title: d.mbYtTitle || '', dur: d.mbYtDur || '', dead: d.mbYtDead !== undefined,
         };
         // An archive.org item's (`_ytOnFor()`).
         if (d.mbYtSrc === 'ia') Object.assign(v, { src: 'ia', file: d.mbYtFile || '' });
+        // A YouTube search's (setlist.fm's songs): its video once found.
+        if (d.mbYtSrc === 'yts') Object.assign(v, { src: 'yts', q: d.mbYtQ || '', id: _ytSearchHits.get(d.mbYtQ || '') || '' });
         return v;
     }
 
@@ -65661,6 +65758,28 @@
         const cur = _ytCur();
         if (cur && cur.tile === tile) {
             _ytStop('the same tile');
+            return;
+        }
+        // A search not resolved yet (2026-11-03): ask YouTube once, then
+        // play; a query YouTube found no video for opens its search (from
+        // this click, so no popup blocker stands in the way).
+        if (v.src === 'yts' && !v.id) {
+            if (_ytSearchHits.get(v.q) === '') {
+                window.open(_ytSearchUrl(v.q), '_blank', 'noopener');
+                return;
+            }
+            tile.classList.add('mb-yt-busy');
+            tile.setAttribute('aria-busy', 'true');
+            _ytSearchVideo(v.q).then((id) => {
+                tile.classList.remove('mb-yt-busy');
+                tile.removeAttribute('aria-busy');
+                if (!id) {
+                    tile.classList.add('mb-yt-dead');
+                    _setTip(tile, `YouTube found no video for "${v.q}" — click: YouTube's search in a new tab`);
+                    return;
+                }
+                if (tile.isConnected) _ytPlay(tile);
+            });
             return;
         }
         if (cur) _ytStop('another video');
@@ -65936,6 +66055,8 @@
             .mb-yt-tile.mb-yt-mini { padding: 2px 4px; margin: 0; gap: 0; }
             .mb-yt-tile.mb-yt-mini .mb-yt-btn { width: 22px; height: 16px; background: #7a6d5c; }
             .mb-yt-tile.mb-yt-mini.mb-yt-playing .mb-yt-btn { background: #2f5f9e; }
+            .mb-yt-tile.mb-yt-busy .mb-yt-btn { opacity: .45; }
+            .mb-yt-tile.mb-yt-busy { cursor: progress; }
             /* A table cell or a list item: the tile on its own line, under the link. */
             :is(td, li, div) > .mb-yt-tile:not(.mb-yt-bare) { display: flex; width: fit-content; }
             .mb-yt-pic {
@@ -67825,24 +67946,40 @@
             if (g.info) bits.push(_rgEsc(g.info));
             const notes = bits.join(' · ');
             return {
-                n: ++n, part: set.name, song: g.name || '(untitled)',
+                n: ++n, part: set.name, song: g.name || '(untitled)', named: !!g.name,
                 notes: { html: notes, text: notes.replace(/<[^>]+>/g, '') },
             };
         }));
         const named = s.sets.filter(x => x.name);
         const word = k => `${k} song${k === 1 ? '' : 's'}`;
-        out.right.push(`<h4>Setlist · ${rows.length}${named.length ? ` in ${s.sets.length} parts` : ''}</h4>` + (rows.length ? _dpListTableHtml(t, 'sfm-setlist', [
+        // Each song plays in the window (vzell, 2026-11-03: as setlist.fm's
+        // own ▶, as archive.org's setlist rows): a YouTube search for
+        // "<artist> <song>" (setlist.fm searches with the setlist's artist,
+        // covers too), found on the first click (`_ytSearchVideo()`), played
+        // in the slot above the table. YouTube's own switch.
+        const play = _ytOn() && rows.length > 0;
+        const artist = s.artist ? s.artist.name : '';
+        const cols = [
             { key: 'n', label: '#', num: true, cls: 'mb-rg-num', val: x => x.n, html: x => String(x.n) },
             { key: 'song', label: 'Song', val: x => x.song, html: (x, q) => _hlEsc(x.song, q) },
             { key: 'notes', label: 'Notes', val: x => x.notes.text, html: (x, q) => _hlHtml(x.notes.html, q) },
-        ], rows, Object.assign({ initial: 'in the order played', placeholder: 'Filter the setlist: song, cover, guest', none: 'No songs.' },
+        ];
+        if (play) {
+            cols.push({
+                key: 'play', label: '', sort: false, val: () => '',
+                html: x => (x.named ? _ytTileHtml({ src: 'yts', kind: 'video', id: '', list: '', q: `${artist} ${x.song}`.trim() }, { mini: true, title: x.song }) : ''),
+            });
+        }
+        const table = rows.length ? _dpListTableHtml(t, 'sfm-setlist', cols, rows, Object.assign({ initial: 'in the order played', placeholder: 'Filter the setlist: song, cover, guest', none: 'No songs.' },
             named.length ? {
                 group: x => x.part, groupCol: 'song',
                 groupHead: (g, k, total) => (g ? `<span class="mb-dp-tsec-n">${_rgEsc(g)}</span>` +
                     `<span class="mb-dp-tsec-c">${k < total ? `${k} of ${word(total)}` : word(total)}</span>` : ''),
             } : {},
             s.sets.length >= 2 && named.length ? { facet: x => x.part || 'Set', chipLabel: 'Part', facetSort: () => 0 } : {}))
-            : '<div class="mb-dp-xsub">setlist.fm has no songs for it yet.</div>'));
+            : '<div class="mb-dp-xsub">setlist.fm has no songs for it yet.</div>';
+        out.right.push(`<h4>Setlist · ${rows.length}${named.length ? ` in ${s.sets.length} parts` : ''}</h4>` +
+            (play ? `<div data-mb-yt-slots=""><div class="mb-yt-slot"></div>${table}</div>` : table));
         return out;
     }
 

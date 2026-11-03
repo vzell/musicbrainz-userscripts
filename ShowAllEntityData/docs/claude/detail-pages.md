@@ -2121,6 +2121,32 @@ and the refused-frame state (`_ytBlockedFor()`, `_yt.blockedIa`). The
 tile's `mini` option (the ▶ alone) is for a setlist row. A new source
 extends these, never copies the player.
 
+**A third source since 2026-11-03: a YouTube SEARCH** (`src: 'yts'`, a
+setlist.fm setlist window's songs; vzell: "add youtube player support for
+setlist pages (POH)"). setlist.fm's own ▶ has no video id: it asks YouTube's
+Data API v3 search (`q=<artist> <song>`, `topicId=/m/04rlf`) with
+setlist.fm's own key, embedded in its `setlist-jquery-…js` — never reused
+here. vzell chose reading YouTube's search PAGE instead
+(`scripts/probe-youtube-search.py`, Env 2026-11-03T00:45+01:00 · vzell-lap ·
+n/a: anonymous 200, no consent redirect, 1.2–1.4 MB, `ytInitialData`'s
+first `videoRenderer` the artist's own video). A `yts` tile carries
+`data-mb-yt-src="yts"` and the query (`data-mb-yt-q`), no id; its key is
+`yts:<query>` for life, so a repaint's tile is the same one. `_ytPlay()`
+resolves it first: `_ytSearchVideo()` — ONE `_extGet()` of
+`www.youtube.com/results?search_query=` (in `@connect`; `maxBytes`
+`_YT_SEARCH_MAX_BYTES` 4 MB, the data lies past `_EXT_MAX_BYTES`), the
+first `videoRenderer.videoId` (`_ytSearchFirstId()`), kept by query in
+`_ytSearchHits` (an answer only; a failed request is asked again), one run
+per query (`_ytSearchRuns`); the tile is `.mb-yt-busy` meanwhile. Then
+`_ytFromTile()` gives the id and it plays as plain YouTube (embed, watch
+URL, the refused-frame fallback). No video: `.mb-yt-dead` and a tip; its
+next click opens YouTube's search (`window.open` from the click, never
+after the request: a popup blocker). `sa_yt_play_in_place` decides it.
+Window: `_extSfmSetlistWindow()`'s play column ("<setlist artist> <song>",
+as setlist.fm searches — covers too), the slot above the table. Specs:
+popup-ext.spec.js "setlist.fm: a setlist's songs play in the window" (3),
+fixture `ext-yt-search-war.html` (`--save`, real data trimmed).
+
 **The shared part** (grep `// --- YouTube in place`):
 - `_ytParse(href)` → `{kind: 'video'|'short'|'playlist', id, list}`: the
   reader's shapes plus `embed/<id>`, `embed/videoseries?list=` (a playlist,

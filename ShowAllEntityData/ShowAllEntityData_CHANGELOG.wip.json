@@ -1,5 +1,17 @@
 [
   {
+    "version": "WIP.6",
+    "date": "2026-11-03",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "setlist.fm setlist window (link preview, with your setlist.fm API key): every song has a ▶, as on setlist.fm itself. A click finds the song on YouTube (YouTube's own search for the artist and the song, its first video) and plays it in the window, above the setlist, in the same player as YouTube links and archive.org tracks; a second click stops it, and a song played once starts at once the next time. A song YouTube finds nothing for is marked, and its next click opens YouTube's search in a new tab. Follows the setting \"Play YouTube videos in place\"; with it off, no ▶."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.5",
     "date": "2026-11-03",
     "sections": [

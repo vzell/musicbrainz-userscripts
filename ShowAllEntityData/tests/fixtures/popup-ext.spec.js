@@ -1214,10 +1214,11 @@ const SFM_TOUR = `https://www.setlist.fm/search?query=${encodeURIComponent('arti
  * @param {import('@playwright/test').Page} page
  * @param {string} url
  * @param {Object<string, Object>} [extra] - Answers over `sfmAnswers()`.
+ * @param {Object} [settings] - Over the reader's own.
  * @returns {Promise<import('@playwright/test').Locator>} The window's area.
  */
-async function sfmWindow(page, url, extra = {}) {
-    await openEvent(page, { settings: { sa_pop_ext: true, sa_pop_ext_setlistfm_key: SFM_KEY }, responses: Object.assign(sfmAnswers(), extra) });
+async function sfmWindow(page, url, extra = {}, settings = {}) {
+    await openEvent(page, { settings: { sa_pop_ext: true, sa_pop_ext_setlistfm_key: SFM_KEY, ...settings }, responses: Object.assign(sfmAnswers(), extra) });
     await addAnnotationLinks(page, [url]);
     await ctrlHover(page, probe(page, 0));
     // A host not contacted yet shows its first-contact card: Space loads it.
@@ -1466,6 +1467,65 @@ test.describe('setlist.fm venue additions (org/setlistfm.org, Part B)', () => {
         await expect(area.locator('[data-mb-tbl="sfm-tour"] tbody tr')).toHaveCount(20);
         await expect(timesCell(area, 'sfm-tour', 0)).toHaveText('—');
         await expect.poll(async () => (await sfmSiteLog(page)).map(r => r.url)).toEqual([SFM_TOUR_PAGE(1), SFM_TOUR_PAGE(2)]);
+    });
+});
+
+// The setlist window's songs play here (2026-11-03, vzell: "add youtube
+// player support for setlist pages (POH)", modelled on archive.org's setlist
+// rows). setlist.fm's own ▶ asks YouTube's Data API with setlist.fm's key;
+// the script reads YouTube's search page instead (vzell's choice), anonymous,
+// on the first click. Answer: scripts/probe-youtube-search.py --save
+// (tests/fixtures/ext-yt-search-war.html, real data trimmed: first video
+// mn91L9goKfQ). Mutations: scripts/mutations/setlistfm-venue.json.
+const YT_SEARCH = q => `https://www.youtube.com/results?search_query=${encodeURIComponent(q)}`;
+
+test.describe('setlist.fm: a setlist\'s songs play in the window (YouTube search)', () => {
+    test('a ▶ per song; nothing asked before a click; the click reads YouTube\'s search once, anonymously, and plays its first video above the setlist; a second click stops it; a third plays from memory', async ({ page }) => {
+        const q1 = 'Bruce Springsteen Meet Me in the City';
+        const area = await sfmWindow(page, SFM.setlist, {
+            [YT_SEARCH(q1)]: { status: 200, responseHeaders: 'Content-Type: text/html; charset=utf-8', responseText: json('ext-yt-search-war.html') },
+        }, { sa_yt_play_in_place: true });
+        const rows = area.locator('[data-mb-tbl="sfm-setlist"] tbody tr:not(.mb-dp-tsec)');
+        await expect(rows).toHaveCount(35);
+        const tiles = area.locator('[data-mb-tbl="sfm-setlist"] .mb-yt-tile.mb-yt-mini');
+        await expect(tiles).toHaveCount(35);
+        const tile = rows.first().locator('.mb-yt-tile');
+        await expect(tile).toHaveAttribute('data-mb-yt-q', q1);
+        const ytLog = async () => (await xhrFull(page)).filter(r => r.url.startsWith('https://www.youtube.com/'));
+        expect(await ytLog(), 'nothing before a click').toEqual([]);
+        await tile.click();
+        const frame = area.locator('[data-mb-yt-slots] .mb-yt-slot iframe.mb-yt-frame');
+        await expect(frame).toHaveAttribute('src', 'https://www.youtube-nocookie.com/embed/mn91L9goKfQ?autoplay=1');
+        await expect(tile).toHaveAttribute('aria-pressed', 'true');
+        expect((await ytLog()).map(r => [r.url, r.anonymous])).toEqual([[YT_SEARCH(q1), true]]);
+        await tile.click();
+        await expect(frame).toHaveCount(0);
+        await expect(tile).toHaveAttribute('aria-pressed', 'false');
+        await tile.click();
+        await expect(frame).toHaveAttribute('src', 'https://www.youtube-nocookie.com/embed/mn91L9goKfQ?autoplay=1');
+        expect(await ytLog(), 'from memory: no second request').toHaveLength(1);
+    });
+
+    test('a song YouTube finds nothing for: the ▶ is marked, and its next click opens YouTube\'s search in a new tab; YouTube in place off: no ▶', async ({ page }) => {
+        const q2 = 'Bruce Springsteen The Ties That Bind';
+        const area = await sfmWindow(page, SFM.setlist, {
+            [YT_SEARCH(q2)]: { status: 200, responseHeaders: 'Content-Type: text/html', responseText: '<html><body>no data</body></html>' },
+        }, { sa_yt_play_in_place: true });
+        await page.evaluate(() => { window.__opened = []; window.open = (u) => { window.__opened.push(u); return null; }; });
+        const tile = area.locator('[data-mb-tbl="sfm-setlist"] tbody tr:not(.mb-dp-tsec)').nth(1).locator('.mb-yt-tile');
+        await tile.click();
+        await expect(tile).toHaveClass(/mb-yt-dead/);
+        await expect(area.locator('.mb-yt-slot iframe')).toHaveCount(0);
+        expect(await page.evaluate(() => window.__opened), 'the first click searched, nothing opened').toEqual([]);
+        await tile.click();
+        expect(await page.evaluate(() => window.__opened)).toEqual([YT_SEARCH(q2)]);
+    });
+
+    test('YouTube in place off: the setlist has no ▶ and no slot', async ({ page }) => {
+        const area = await sfmWindow(page, SFM.setlist, {}, { sa_yt_play_in_place: false });
+        await expect(area.locator('[data-mb-tbl="sfm-setlist"] tbody tr:not(.mb-dp-tsec)')).toHaveCount(35);
+        await expect(area.locator('.mb-yt-tile')).toHaveCount(0);
+        await expect(area.locator('[data-mb-yt-slots]')).toHaveCount(0);
     });
 });
 

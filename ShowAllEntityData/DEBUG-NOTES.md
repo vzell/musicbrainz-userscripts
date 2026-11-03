@@ -27812,3 +27812,36 @@ summary rather than counting OKs:
   summary's detail was a stray auth warning, not an `Error:` line, which is
   what gave it away. The greps are fixed, and `run_spec()` now also counts
   an invalid regular expression as "selected NO tests" (a PROBLEM, never OK).
+
+## 2026-11-03 — setlist.fm: a setlist's songs play in the window (feat/setlistfm-venue, WIP.6)
+Env: 2026-11-03T00:40+01:00–01:05+01:00 · vzell-lap · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) · probes: n/a browser; specs: Playwright Chromium, no Tampermonkey (GM stubs)
+
+vzell: "add youtube player support for setlist pages (POH) on setlist.fm …
+as each song in the tracklist has an optional youtube play link", modelled on
+archive.org's setlist rows (`debug/setlistfm-2026-05-30.html`).
+
+- **setlist.fm's ▶ holds no video id.** The page carries
+  `YouTubeSearch.setPlaylist([{song, artist}, …])`; setlist.fm's static
+  `setlist-jquery-5.9.163-…js` (read with a plain request) shows
+  `YouTubeSearch.search()`: YouTube Data API v3,
+  `search?part=snippet&q=<artist> <song>&type=video&topicId=/m/04rlf`, with
+  setlist.fm's OWN API key. Not reused. Options put to vzell: own key,
+  YouTube's search page, a link only — vzell chose the search page.
+- **Probe** `scripts/probe-youtube-search.py` (an honest User-Agent, no
+  cookies): 200 for all three songs, NO consent redirect from here, pages
+  1.19–1.44 MB, `var ytInitialData = {…};</script>` 0.36–0.55 MB, the first
+  `videoRenderer` the artist's own video ("Bruce Springsteen - War",
+  "Born in the U.S.A. (Official Video)", "Two Hearts (Live in New York
+  City)"). `--save` keeps a trimmed real answer as the fixture. Unchecked
+  here: whether a browser's anonymous request in the EU meets YouTube's
+  consent page — the tile then shows "no video" and its next click opens
+  YouTube's search, so it degrades to the link.
+- Design: a third source of the one player (`src: 'yts'`), resolved on the
+  first click, cached by query; details in docs/claude/detail-pages.md
+  "YouTube in place". A cache mutation was NOT planted: without the cache
+  entry the second `_ytPlay()` searches again and recurses, so the spec would
+  hang rather than fail; the third click's "no second request" pins it.
+
+Tests: popup-ext.spec.js "setlist.fm: a setlist's songs play in the window"
+(3); mutations setlistfm-venue.json +3, all fail as expected (userscript
+restored, hash verified).

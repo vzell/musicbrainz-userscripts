@@ -3025,7 +3025,11 @@ once and without Tampermonkey asking first:
   tour's setlists. The links in it open in the same window (*Back* returns).
   A link to setlist.fm's own search for an artist's setlists
   (setlist.fm/search?artist=…) has its card and window even without a key:
-  they are read from that search page.
+  they are read from that search page. In a setlist's window each song has a
+  **▶**, as on setlist.fm: a click finds the song on YouTube (its search for
+  the artist and the song, the first video) and plays it in the window,
+  above the setlist; a second click stops it. A song YouTube finds nothing
+  for is marked, and its next click opens YouTube's search in a new tab.
 
   **Set times** are not in setlist.fm's API, so the window reads them from
   setlist.fm's own pages, without your key and only once the window is open
