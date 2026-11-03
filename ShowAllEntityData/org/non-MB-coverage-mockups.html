@@ -1,0 +1,625 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<!-- SKELETON-END: everything above this line is dropped when the page is published as an Artifact. -->
+<title>Foreign Site Coverage</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<!--
+  Mockups for org/non-MB-coverage.org: the report on which non-MusicBrainz
+  sites have pageTypes (PT) and link previews (POH), shown two ways so vzell
+  can pick a format. 2026-11-03, branch docs/non-mb-coverage-report.
+  Request (org/TODO.org): "create a comprehensive report about which non-MB
+  websites have currently PT and POH support … decide if org mode table(s)
+  are appropriate for result display or some nice rich HTML based solution,
+  make some mockups first for both".
+  Data: read from ShowAllEntityData.user.js on main at ebf22d4b
+  (pageDefinitions entries with host:, _DP_SITES, _EXT_READERS, _dpDrill(),
+  _dpWinExtTarget(), _DP_WIN_* sets). Counts were re-derived by a script on
+  that SHA. Evidence marks are preliminary; Phase B re-checks every cell.
+  Both mockups render from ONE data object (REG below), which is the shape
+  proposed for docs/non-mb-coverage.json.
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,500..800&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: a report bench. Header with the counts, a switch between the two
+   mockups (Org / HTML), each a stack of the four answers (1a, 1b, 2a, 2b).
+   House palette of detail-pages-mockups.html (cool slate), plus one token per
+   foreign host so a site keeps its colour in every table. */
+:root {
+    --bg: #e9edf1;
+    --surface: #f8fafc;
+    --ink: #18202b;
+    --muted: #556070;
+    --line: #cfd6df;
+    --accent: #24527f;
+    --accent-ink: #ffffff;
+    --accent-soft: #dbe6f1;
+    --ok: #2c7347;
+    --ok-soft: #dcefe2;
+    --warn: #8f5a00;
+    --warn-soft: #f6e8cc;
+    --err: #9b2218;
+    --err-soft: #f6dcd8;
+    --tab: #5d6878;
+    --tab-soft: #e6e9ee;
+    --shadow: 0 1px 0 rgba(20, 30, 45, 0.05), 0 12px 32px -18px rgba(20, 30, 45, 0.35);
+
+    /* Emacs org buffer (Mockup O): a light buffer in both themes would lie
+       about the user's Emacs, so it follows the theme like the rest. */
+    --org-bg: #fbfbf8;
+    --org-ink: #2a2a28;
+    --org-dim: #8a8a80;
+    --org-h1: #1f4e8c;
+    --org-h2: #7a3e9d;
+    --org-rule: #9a9a90;
+    --org-todo: #b0261c;
+
+    --site-sl: #8a3b12;
+    --site-jl: #2f6b3a;
+    --site-bs: #7a5a00;
+    --site-bb: #5b2e86;
+    --site-dg: #333333;
+    --site-ia: #1d5c8f;
+    --site-sfm: #a0336b;
+
+    --f-display: "Archivo", "Arial Narrow", "Helvetica Neue", Arial, sans-serif;
+    --f-body: "IBM Plex Sans", "Segoe UI", system-ui, -apple-system, sans-serif;
+    --f-mono: "IBM Plex Mono", ui-monospace, Consolas, "Courier New", monospace;
+}
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+        --bg: #11161d;
+        --surface: #19212b;
+        --ink: #e2e7ee;
+        --muted: #9aa5b4;
+        --line: #2c3746;
+        --accent: #86b4e2;
+        --accent-ink: #0e1620;
+        --accent-soft: #1f3248;
+        --ok: #74c494;
+        --ok-soft: #1c3326;
+        --warn: #e3ac4c;
+        --warn-soft: #3a2d14;
+        --err: #f08a7d;
+        --err-soft: #3d1f1b;
+        --tab: #aab4c2;
+        --tab-soft: #252e3a;
+        --shadow: 0 1px 0 rgba(0, 0, 0, 0.3), 0 14px 34px -16px rgba(0, 0, 0, 0.7);
+        --org-bg: #1b1d1f;
+        --org-ink: #d8d8d2;
+        --org-dim: #8e8e86;
+        --org-h1: #7fb0ec;
+        --org-h2: #c69be0;
+        --org-rule: #6c6c64;
+        --org-todo: #f08a7d;
+        --site-sl: #e59a6c;
+        --site-jl: #8fcf98;
+        --site-bs: #e3c25c;
+        --site-bb: #c3a2e6;
+        --site-dg: #cfcfcf;
+        --site-ia: #8cc0ec;
+        --site-sfm: #ec9cc4;
+        color-scheme: dark;
+    }
+}
+:root[data-theme="dark"] {
+    --bg: #11161d;
+    --surface: #19212b;
+    --ink: #e2e7ee;
+    --muted: #9aa5b4;
+    --line: #2c3746;
+    --accent: #86b4e2;
+    --accent-ink: #0e1620;
+    --accent-soft: #1f3248;
+    --ok: #74c494;
+    --ok-soft: #1c3326;
+    --warn: #e3ac4c;
+    --warn-soft: #3a2d14;
+    --err: #f08a7d;
+    --err-soft: #3d1f1b;
+    --tab: #aab4c2;
+    --tab-soft: #252e3a;
+    --shadow: 0 1px 0 rgba(0, 0, 0, 0.3), 0 14px 34px -16px rgba(0, 0, 0, 0.7);
+    --org-bg: #1b1d1f;
+    --org-ink: #d8d8d2;
+    --org-dim: #8e8e86;
+    --org-h1: #7fb0ec;
+    --org-h2: #c69be0;
+    --org-rule: #6c6c64;
+    --org-todo: #f08a7d;
+    --site-sl: #e59a6c;
+    --site-jl: #8fcf98;
+    --site-bs: #e3c25c;
+    --site-bb: #c3a2e6;
+    --site-dg: #cfcfcf;
+    --site-ia: #8cc0ec;
+    --site-sfm: #ec9cc4;
+    color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body {
+    background: var(--bg);
+    color: var(--ink);
+    font: 15px/1.55 var(--f-body);
+    margin: 0;
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+    padding-block: 0 64px;
+}
+.wrap { max-width: 1240px; margin: 0 auto; display: grid; gap: 28px; }
+h1, h2, h3 { font-family: var(--f-display); text-wrap: balance; margin: 0; }
+h1 { font-size: clamp(28px, 4vw, 40px); font-weight: 800; font-stretch: 85%; letter-spacing: -0.01em; }
+h2 { font-size: 22px; font-weight: 700; font-stretch: 90%; }
+h3 { font-size: 16px; font-weight: 700; }
+p { margin: 0; max-width: 72ch; }
+code, .mono { font-family: var(--f-mono); font-size: 0.88em; }
+a { color: var(--accent); }
+.muted { color: var(--muted); }
+.eyebrow { font: 600 11px/1 var(--f-body); letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
+
+header.top { padding-block: 32px 0; display: grid; gap: 14px; }
+.counts { display: flex; flex-wrap: wrap; gap: 10px 26px; font-variant-numeric: tabular-nums; }
+.counts div { display: grid; }
+.counts b { font: 700 26px/1.1 var(--f-display); font-stretch: 90%; }
+.counts span { font-size: 12px; color: var(--muted); }
+
+/* Mockup switch */
+.switch { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--bg); padding-block: 10px; border-bottom: 1px solid var(--line); }
+.switch button, .seg button {
+    font: 600 13px/1 var(--f-body); color: var(--ink); background: var(--surface);
+    border: 1px solid var(--line); border-radius: 6px; padding: 9px 14px; cursor: pointer;
+}
+.switch button[aria-pressed="true"], .seg button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.switch button:focus-visible, .seg button:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.switch .hint { font-size: 13px; color: var(--muted); }
+
+section.q { display: grid; gap: 12px; }
+.q-head { display: flex; gap: 12px; align-items: baseline; flex-wrap: wrap; }
+.q-id { font: 700 13px/1 var(--f-mono); color: var(--accent); background: var(--accent-soft); border-radius: 4px; padding: 5px 7px; }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; box-shadow: var(--shadow); min-width: 0; }
+.scroll { overflow-x: auto; }
+
+/* Tables (Mockup H) */
+table.r { border-collapse: collapse; width: 100%; font-size: 13.5px; font-variant-numeric: tabular-nums; }
+table.r th, table.r td { padding: 7px 10px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+table.r thead th { font: 600 11px/1.2 var(--f-body); letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); background: var(--surface); position: sticky; top: 0; }
+table.r tbody tr:last-child td { border-bottom: 0; }
+table.r td.c { text-align: center; }
+.site-tag { font: 600 12px/1 var(--f-mono); padding: 3px 6px; border-radius: 4px; border: 1px solid currentColor; white-space: nowrap; }
+.pt { font-family: var(--f-mono); font-size: 12.5px; white-space: nowrap; }
+.url { font-family: var(--f-mono); font-size: 12px; color: var(--muted); word-break: break-all; }
+
+/* Badges */
+.b { display: inline-flex; gap: 5px; align-items: center; font: 600 12px/1 var(--f-body); padding: 4px 7px; border-radius: 999px; white-space: nowrap; }
+.b-yes { background: var(--ok-soft); color: var(--ok); }
+.b-part { background: var(--warn-soft); color: var(--warn); }
+.b-no { background: var(--err-soft); color: var(--err); }
+.b-here { background: var(--ok-soft); color: var(--ok); }
+.b-tab { background: var(--tab-soft); color: var(--tab); }
+.b-gap { background: var(--warn-soft); color: var(--warn); }
+.b-na { background: transparent; color: var(--muted); }
+.ev { font: 500 10.5px/1 var(--f-mono); color: var(--muted); border: 1px solid var(--line); border-radius: 3px; padding: 2px 4px; margin-left: 4px; }
+.why { display: block; font-size: 12px; color: var(--muted); margin-top: 4px; max-width: 46ch; }
+
+/* Site cards */
+.sites { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
+.site { padding: 14px 16px; display: grid; gap: 8px; border-top: 4px solid var(--c); }
+.site h3 { color: var(--c); display: flex; justify-content: space-between; gap: 8px; }
+.site dl { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 3px 10px; font-size: 12.5px; }
+.site dt { color: var(--muted); }
+.site dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
+.site .pts { display: flex; flex-wrap: wrap; gap: 4px; }
+.site .pts span { font: 500 11.5px/1 var(--f-mono); background: var(--bg); border-radius: 3px; padding: 3px 5px; }
+
+/* Routing matrix */
+.seg { display: flex; flex-wrap: wrap; gap: 6px; }
+table.m { border-collapse: separate; border-spacing: 3px; font-size: 12px; }
+table.m th { font: 600 11px/1.25 var(--f-body); color: var(--muted); text-align: left; padding: 4px 6px; vertical-align: bottom; }
+table.m thead th { min-width: 78px; }
+table.m tbody th { white-space: nowrap; color: var(--ink); font-size: 12.5px; }
+table.m td { padding: 0; }
+table.m td .b { width: 100%; justify-content: center; border-radius: 4px; padding: 7px 4px; cursor: default; }
+.legend { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; font-size: 12.5px; color: var(--muted); }
+.note { padding: 12px 16px; font-size: 13.5px; display: grid; gap: 6px; }
+.note ul { margin: 0; padding-left: 18px; display: grid; gap: 6px; }
+
+/* Mockup O: an Emacs org buffer */
+.org { background: var(--org-bg); color: var(--org-ink); font: 13px/1.45 var(--f-mono); padding: 16px 18px; white-space: pre; overflow-x: auto; border-radius: 8px; border: 1px solid var(--line); }
+.org .h1 { color: var(--org-h1); font-weight: 600; }
+.org .h2 { color: var(--org-h2); font-weight: 600; }
+.org .rule { color: var(--org-rule); }
+.org .todo { color: var(--org-todo); font-weight: 600; }
+.org .dim { color: var(--org-dim); }
+.verdict { padding: 14px 16px; display: grid; gap: 8px; font-size: 14px; }
+.verdict b { font-family: var(--f-display); }
+.pros { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+.pros ul { margin: 0; padding-left: 18px; display: grid; gap: 4px; font-size: 13.5px; }
+
+@media (prefers-reduced-motion: no-preference) {
+    .switch button, .seg button { transition: background 0.12s, color 0.12s; }
+}
+</style>
+<!--EMBED-->
+<!-- No images: an empty list keeps scripts/build-mockup-artifact.py's input contract. -->
+<script type="application/json" id="mockup-images">{}</script>
+</head>
+<body>
+<div class="wrap">
+    <header class="top">
+        <span class="eyebrow">ShowAllEntityData · report mockups · 2026-11-03 · main at ebf22d4b</span>
+        <h1>Which other sites get tables and previews</h1>
+        <p>Every non-MusicBrainz site the script supports, what pageTypes (PT) it has, where the link previews (POH: card on hover, window on Space) work, and which links inside a preview window open there or in a new tab. The same data is shown two ways, so you can pick the report's format.</p>
+        <div class="counts" id="counts"></div>
+    </header>
+
+    <nav class="switch" aria-label="Mockup">
+        <button type="button" id="btn-h" aria-pressed="true" data-view="h">Mockup H · rich HTML</button>
+        <button type="button" id="btn-o" aria-pressed="false" data-view="o">Mockup O · org tables</button>
+        <span class="hint">Both render from the same data object, the proposed registry.</span>
+    </nav>
+
+    <!-- ===================== Mockup H ===================== -->
+    <div id="view-h" class="wrap" style="gap:34px">
+        <section class="q">
+            <div class="q-head"><span class="q-id">1a</span><h2>Sites with pageTypes</h2></div>
+            <p class="muted">One card per host: its on/off switch, its topic doc and its PTs. A new site is one more card.</p>
+            <div class="sites" id="h-sites"></div>
+        </section>
+
+        <section class="q">
+            <div class="q-head"><span class="q-id">1b</span><h2>Previews on the initial page and on the rendered table</h2></div>
+            <div class="legend">
+                <span class="b b-yes">✔ works</span><span class="b b-part">◐ partly</span><span class="b b-no">✗ missing</span>
+                <span>Evidence: <span class="ev">spec</span> a spec asserts it · <span class="ev">code</span> read from the code · <span class="ev">inferred</span> not checked</span>
+            </div>
+            <div class="panel scroll"><table class="r" id="h-pt"></table></div>
+        </section>
+
+        <section class="q">
+            <div class="q-head"><span class="q-id">2a</span><h2>Link families the preview reads</h2></div>
+            <p class="muted">One row per reader in <code>_EXT_READERS</code>, plus the Springsteen sites' own window. First match wins, in this order.</p>
+            <div class="panel scroll"><table class="r" id="h-rd"></table></div>
+        </section>
+
+        <section class="q">
+            <div class="q-head"><span class="q-id">2b</span><h2>Inside a window: opens here, or a new tab</h2></div>
+            <p>A plain left click. Ctrl, Shift, Alt, ⌘ and the middle button always keep the new tab. The answer depends on the site you are on, so pick it:</p>
+            <div class="seg" id="h-hosts" role="group" aria-label="Viewed on"></div>
+            <div class="legend">
+                <span class="b b-here">here</span> opens in the window, Back returns
+                <span class="b b-tab">tab</span> new tab
+                <span class="b b-gap">tab ⚑</span> new tab, listed as a gap below
+                <span class="b b-na">—</span> no such window here
+            </div>
+            <div class="panel scroll" style="padding:8px"><table class="m" id="h-mx"></table></div>
+            <div class="panel note" id="h-mx-notes"></div>
+        </section>
+
+        <section class="q">
+            <div class="q-head"><span class="q-id">⚑</span><h2>Gaps and stale docs</h2></div>
+            <div class="panel scroll"><table class="r" id="h-gaps"></table></div>
+        </section>
+    </div>
+
+    <!-- ===================== Mockup O ===================== -->
+    <div id="view-o" class="wrap" hidden>
+        <p>What <code>NON-MB-COVERAGE.org</code> would hold, as Emacs shows it. 1a, 1b and 2a are ordinary org tables. 2b has a third dimension (the site you are on), so it becomes one table per site; only the musicbrainz.org one is shown in full, the other five have the same shape.</p>
+        <div class="org" id="o-buf"></div>
+        <div class="panel verdict">
+            <span class="eyebrow">Comparison</span>
+            <div class="pros">
+                <div><b>Org tables</b><ul>
+                    <li>Lives with the other org docs; greppable; diffable line by line.</li>
+                    <li>1a, 1b and 2a read well: one row per PT or reader.</li>
+                    <li>2b turns into six 14×10 tables of single letters. You read one by matching a row label to a column number.</li>
+                    <li>No colour, so a gap looks like any other "T".</li>
+                </ul></div>
+                <div><b>Rich HTML</b><ul>
+                    <li>2b is one matrix with a site switch; gaps stand out in colour.</li>
+                    <li>Evidence and "why" sit in the cell, not in a footnote.</li>
+                    <li>Needs a browser or the published Artifact to read.</li>
+                    <li>Diffs are only readable in the JSON it is built from.</li>
+                </ul></div>
+                <div><b>Recommendation</b><ul>
+                    <li>One JSON registry as the source, checked against the userscript by <code>build-coverage-report.py --check</code>.</li>
+                    <li>HTML as the report people read.</li>
+                    <li>Optionally the org file generated from the same JSON, for grep.</li>
+                </ul></div>
+            </div>
+        </div>
+    </div>
+
+    <section class="panel note">
+        <span class="eyebrow">Keeping it current</span>
+        <p>Both mockups are drawn from one data object with the shape proposed for <code>docs/non-mb-coverage.json</code>: sites → pageTypes (IP/FRP state, evidence, why), readers, windows, link families, and per-site routing. <code>scripts/build-coverage-report.py --check</code> reads <code>pageDefinitions</code> (<code>host:</code>), <code>_DP_SITES</code>, <code>_EXT_READERS</code> and the <code>_DP_WIN_*</code> sets from the userscript and fails when a host, PT or reader exists on one side only. A new site then cannot ship without its rows.</p>
+    </section>
+</div>
+
+<script>
+/* The registry, in the shape proposed for docs/non-mb-coverage.json. */
+const REG = {
+    sites: [
+        { key: 'sl', host: 'springsteenlyrics.com', name: 'SpringsteenLyrics', gate: 'sa_enable_springsteenlyrics', preview: 'sa_sl_detail_preview', extRoot: '.project-detail', doc: 'springsteenlyrics.md', pts: [
+            { type: 'sl-collection', url: '/collection.php?cmd=list&…', mode: 'single', ip: ['yes', 'code', 'Item title links and outside links in .project-detail'], frp: ['yes', 'code', ''] },
+            { type: 'sl-collection-intro', url: '/collection.php[?cmd=intro]', mode: 'single', ip: ['yes', 'code', ''], frp: ['yes', 'code', ''] },
+            { type: 'sl-bootlegs', url: '/bootlegs.php?cmd=list&…', mode: 'single', ip: ['yes', 'code', 'Title links; the cover link belongs to the image card'], frp: ['yes', 'code', ''] },
+            { type: 'sl-bootlegs-intro', url: '/bootlegs.php[?cmd=intro]', mode: 'single', ip: ['part', 'code', 'Only while sa_sl_compact_nav is on; no item links, so only .project-detail links'], frp: ['na', 'code', 'No button, no table'] },
+            { type: 'sl-lyrics', url: '/lyrics.php[?cmd=list&letter=X]', mode: 'single', ip: ['yes', 'code', ''], frp: ['yes', 'code', ''] },
+            { type: 'sl-brucelegs', url: '/brucelegs.php?cmd=list[&f_…]', mode: 'single', ip: ['yes', 'code', ''], frp: ['yes', 'code', ''] },
+        ] },
+        { key: 'jl', host: 'jungleland.it', name: 'Jungleland', gate: 'sa_enable_jungleland', preview: 'sa_jl_detail_preview', extRoot: null, doc: 'jungleland.md', pts: [
+            { type: 'jl-list', url: '/html/list.htm (own tab only)', mode: 'single', ip: ['yes', 'code', 'Show pages; no outside links (extRoot null)'], frp: ['yes', 'code', ''] },
+        ] },
+        { key: 'bs', host: 'brucespringsteen.it', name: 'KillingFloor', gate: 'sa_enable_brucespringsteen', preview: 'sa_bs_detail_preview', extRoot: null, doc: 'brucespringsteen.md', pts: [
+            { type: 'bs-records', url: '/DB/records.aspx?tipe=…&sort=…', mode: 'single', ip: ['yes', 'code', 'detrec.aspx links; no outside links (extRoot null)'], frp: ['yes', 'code', ''] },
+        ] },
+        { key: 'bb', host: 'brucebase.wikidot.com', name: 'Brucebase', gate: 'sa_enable_brucebase', preview: 'sa_bb_detail_preview', extRoot: '#page-content', doc: 'brucebase.md', pts: [
+            { type: 'bb-songs', url: '/stats:songs', mode: 'single', ip: ['yes', 'spec', 'Song tabview (detail-preview.spec.js)'], frp: ['yes', 'spec', ''] },
+            { type: 'bb-relations', url: '/stats:relations', mode: 'single', ip: ['yes', 'code', '/relation: links (sa_bb_event_preview)'], frp: ['yes', 'code', ''] },
+            { type: 'bb-recent-changes', url: '/system:recent-changes', mode: 'single', ip: ['yes', 'inferred', 'No fixture checked'], frp: ['yes', 'code', ''] },
+            { type: 'bb-year', url: '/1975 … /1949-64', mode: 'single', ip: ['yes', 'code', 'Show links (ownLinks)'], frp: ['yes', 'spec', 'Plus the MB-Event glyph and Venue cards (table only)'] },
+            { type: 'bb-home', url: '/ or /home', mode: 'single', ip: ['part', 'code', 'Year links are not detail links; #page-content outside links only'], frp: ['yes', 'code', ''] },
+        ] },
+        { key: 'dg', host: 'www.discogs.com', name: 'Discogs', gate: 'sa_enable_discogs', preview: null, extRoot: '#app, #page_content', doc: 'discogs.md', pts: [
+            { type: 'dg-master', url: '/master/<id>', mode: 'single', ip: ['yes', 'code', '#app'], frp: ['yes', 'spec', ''] },
+            { type: 'dg-release', url: '/release/<id>', mode: 'multi', ip: ['yes', 'code', '#app'], frp: ['yes', 'spec', ''] },
+            { type: 'dg-artist', url: '/artist/<id>', mode: 'multi', ip: ['yes', 'code', '#app'], frp: ['yes', 'spec', ''] },
+            { type: 'dg-label', url: '/label/<id>', mode: 'single', ip: ['yes', 'code', '#app'], frp: ['yes', 'spec', ''] },
+            { type: 'dg-submissions', url: '/submissions[?…]', mode: 'single', ip: ['part', 'code', '#page_content: outside links yes, MB-importer icons no (dg-mb names #app only)'], frp: ['yes', 'spec', ''] },
+            { type: 'dg-history', url: '/(release|master|artist|label)/<id>/history', mode: 'multi', ip: ['part', 'code', 'Same as dg-submissions'], frp: ['yes', 'code', ''] },
+            { type: 'dg-images', url: '/release/<id>/images', mode: 'single', ip: ['part', 'code', 'Same as dg-submissions'], frp: ['yes', 'code', ''] },
+            { type: 'dg-entity-images', url: '/(master|artist|label)/<id>/images', mode: 'single', ip: ['part', 'code', 'Same as dg-submissions'], frp: ['yes', 'code', ''] },
+            { type: 'dg-image-history', url: '/release/<id>/images/update', mode: 'single', ip: ['part', 'code', 'Same as dg-submissions'], frp: ['yes', 'code', ''] },
+            { type: 'dg-user', url: '/user/<name>', mode: 'multi', ip: ['part', 'code', 'Same as dg-submissions'], frp: ['yes', 'code', ''] },
+            { type: 'dg-user-list', url: '/user/<name>/(collection|wantlist), /mywantlist', mode: 'multi', ip: ['yes', 'code', '#app or #page_content by layout'], frp: ['yes', 'code', ''] },
+            { type: 'dg-ratings', url: '/users/ratings/<name>', mode: 'single', ip: ['part', 'code', 'Same as dg-submissions'], frp: ['yes', 'code', ''] },
+            { type: 'dg-sell', url: '/sell/release/<id>', mode: 'single', ip: ['part', 'code', 'Same as dg-submissions'], frp: ['yes', 'code', ''] },
+            { type: 'dg-search', url: '/search?q=…', mode: 'single', ip: ['no', 'code', 'Content is in <main>, which extRoot does not name'], frp: ['yes', 'code', ''] },
+        ] },
+        { key: 'ia', host: 'archive.org', name: 'Internet Archive', gate: 'sa_enable_internetarchive', preview: null, extRoot: '#mb-ia-root', doc: 'internet-archive.md', pts: [
+            { type: 'ia-search', url: '/search?query=…', mode: 'single', ip: ['no', 'code', 'The site’s links are in shadow DOM; extRoot is our own section'], frp: ['yes', 'spec', ''] },
+        ] },
+        { key: 'sfm', host: 'www.setlist.fm', name: 'setlist.fm', gate: 'sa_enable_setlistfm', preview: null, extRoot: '#mb-sfm-root', doc: 'setlistfm.md', pts: [
+            { type: 'sfm-venue', url: '/venue/<slug>-<hex>.html', mode: 'single', ip: ['no', 'code', 'extRoot is our own section; div.body is not covered'], frp: ['yes', 'spec', 'Own-site links need sa_pop_ext_setlistfm_key'] },
+            { type: 'sfm-artist', url: '/setlists/<slug>-<hex>.html', mode: 'single', ip: ['no', 'code', 'Same'], frp: ['yes', 'spec', 'Same'] },
+            { type: 'sfm-search', url: '/search?artist=<id>[&…]', mode: 'single', ip: ['no', 'code', 'Same'], frp: ['yes', 'spec', 'Same'] },
+        ] },
+    ],
+    readers: [
+        { id: 'youtube', fam: 'youtube.com/watch, youtu.be, /shorts, /playlist …', ask: 'www.youtube.com (oEmbed)', flags: 'Play here tile' },
+        { id: 'wikipedia', fam: '<lang>.wikipedia.org/wiki/<title>', ask: '<lang>.wikipedia.org', flags: 'all links open here' },
+        { id: 'wikidata', fam: 'www.wikidata.org/wiki/Q<n>', ask: 'www.wikidata.org, query.wikidata.org', flags: 'all links open here' },
+        { id: 'dgimages', fam: 'discogs.com/release/<id>/images[/update]', ask: 'www.discogs.com (session)', flags: 'window only' },
+        { id: 'dghistory', fam: 'discogs.com/(release|master|artist|label)/<id>/history', ask: 'www.discogs.com', flags: 'window only' },
+        { id: 'discogs', fam: 'discogs.com/(release|master|artist|label)/<id>', ask: 'api.discogs.com (+ token)', flags: 'Discogs family' },
+        { id: 'dguser', fam: 'discogs.com/user/<name>', ask: 'api.discogs.com', flags: 'Discogs family' },
+        { id: 'dgsearch', fam: 'discogs.com/search/?q=…', ask: 'api.discogs.com', flags: 'Discogs family' },
+        { id: 'dgsupport', fam: 'support.discogs.com/hc/…/articles/<id>', ask: 'support.discogs.com', flags: 'Discogs family' },
+        { id: 'bbdate', fam: 'brucebase.wikidot.com/<yyyy>#<ddmmyy>', ask: 'brucebase.wikidot.com', flags: 'opens in any window' },
+        { id: 'springsteen', fam: 'SL item/song, JL /html/<x>.htm, KF detrec.aspx, BB /song: (+ /gig: etc. on discogs.com)', ask: 'the link’s own host', flags: 'opens in any window' },
+        { id: 'setlistfm', fam: 'setlist.fm /setlist/, /setlists/, /venue/ (key); /search?artist=', ask: 'api.setlist.fm (key)', flags: 'opens in any window; all links open here' },
+        { id: 'iadetails', fam: 'archive.org/details/<id>[/<file>]', ask: 'archive.org (/metadata)', flags: 'opens in any window' },
+        { id: 'generic', fam: 'any other http(s) link to another host', ask: 'the link’s host (HEAD tags)', flags: '' },
+    ],
+    // Link families (columns of 2b).
+    fams: [
+        ['mb', 'MusicBrainz'], ['spr', 'SL·JL·KF·BB song'], ['bbgig', 'BB gig/venue/relation'], ['bbdate', 'BB year#date'],
+        ['sfm', 'setlist.fm'], ['ia', 'archive.org item'], ['dg', 'Discogs r/m/a/l'], ['dgx', 'Discogs other (/sell…)'],
+        ['wp', 'Wikipedia'], ['wd', 'Wikidata'], ['yt', 'YouTube'], ['web', 'Other web'],
+    ],
+    // Windows (rows of 2b): how each routes. allLinks = every _extTarget link opens here.
+    wins: [
+        ['mbent', 'MusicBrainz entity', { allLinks: true }],
+        ['dgfam', 'Discogs family (6 readers)', { allLinks: true }],
+        ['wp', 'Wikipedia', { allLinks: true }],
+        ['wd', 'Wikidata', { allLinks: true }],
+        ['sfm', 'setlist.fm', { allLinks: true }],
+        ['spr', 'Springsteen detail', {}],
+        ['bbdate', 'Brucebase show (year#date)', {}],
+        ['ia', 'archive.org item', {}],
+        ['yt', 'YouTube', {}],
+        ['web', 'Other web page', {}],
+    ],
+    viewHosts: [['mb', 'musicbrainz.org'], ['dg', 'discogs.com'], ['sfm', 'setlist.fm'], ['spr', 'SL · JL · KF'], ['bb', 'brucebase'], ['ia', 'archive.org']],
+    gaps: [
+        ['gap', 'code', 'Brucebase /gig:, /venue:, /relation: links open a new tab in the Springsteen, Brucebase show, archive.org, YouTube and web-page windows, on every site but discogs.com and Brucebase. Off discogs.com they are generic links, and _extDpTest() adds ownLinks on discogs.com only.'],
+        ['gap', 'code', 'MusicBrainz links open a new tab in every window on the Springsteen sites and archive.org: the MB entity source is off on a foreign host, and _MB_FOREIGN_POP_HOST is discogs.com and setlist.fm only.'],
+        ['gap', 'inferred', 'On brucebase.wikidot.com, a /<yyyy>#<ddmmyy> link inside a window opens a new tab: same host, and /<yyyy> is neither a detail URL nor an ownLink.'],
+        ['gap', 'code', 'No preview on the initial page of ia-search, the three sfm-* pages and dg-search (see 1b).'],
+        ['gap', 'inferred', '“All credits on Discogs ↗” in an artist window probably opens the same artist again in the window (?type=Credits changes the key).'],
+        ['gap', 'inferred', 'Wikipedia’s “show it on Wikipedia ↗” opens the same article again in the window when the opening link was spelled differently.'],
+        ['gap', 'code', 'A Discogs window opens nothing in place until its record has loaded, while the hover marks already say “opens here”.'],
+        ['doc', 'code', 'detail-pages.md still says extRoot ‘#app’ (code: ‘#app, #page_content’).'],
+        ['doc', 'code', 'detail-pages.md L21 and springsteenlyrics.md L13 say “default off”; the code defaults are on since 2026-10-26.'],
+        ['doc', 'code', 'detail-pages.md U5 says the SL bootleg intro page has no pageType; sl-bootlegs-intro exists.'],
+        ['doc', 'code', 'detail-pages.md ~2664 says a version’s label search opens a new tab; dgsearch now opens it in the window.'],
+        ['doc', 'code', 'brucebase.md L314 describes the song preview as table-only; the initial page is covered too.'],
+    ],
+};
+
+/**
+ * 2b: where a plain click on a link of family `f`, inside window `w`, goes
+ * when the page is on site `h`. Mirrors _dpDrill() → _dgMbWinTarget() →
+ * _dpWinExtTarget() → mb-entity → the Discogs family's onAreaClick.
+ * @returns {Array} [state, footnote]
+ */
+function route(h, w, f) {
+    const all = !!w[2].allLinks;
+    // The MB entity window exists on MB; on discogs.com / setlist.fm it is the dg-mb window.
+    if (w[0] === 'mbent' && !['mb', 'dg', 'sfm'].includes(h)) return ['na', ''];
+    if (f === 'mb') {
+        if (h === 'mb' || h === 'dg' || h === 'sfm') return ['here', ''];
+        return ['gap', ''];
+    }
+    if (f === 'spr') return ['here', h === 'bb' || h === 'spr' ? '¹' : ''];
+    if (f === 'bbgig') {
+        if (h === 'dg' || h === 'bb') return ['here', h === 'bb' ? '¹' : ''];
+        return all ? ['here', '²'] : ['gap', ''];
+    }
+    if (f === 'bbdate') return h === 'bb' ? ['gap', ''] : ['here', ''];
+    if (f === 'ia') return ['here', ''];
+    if (f === 'sfm') return ['here', '³'];
+    if (f === 'dgx' && h === 'dg') return ['tab', '⁴'];
+    return all ? ['here', f === 'dg' && w[0] === 'dgfam' ? '⁵' : ''] : ['tab', ''];
+}
+
+const STATE = { yes: ['b-yes', '✔'], part: ['b-part', '◐'], no: ['b-no', '✗'], na: ['b-na', '—'] };
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const siteTag = (s) => `<span class="site-tag" style="color:var(--site-${s.key})">${esc(s.key.toUpperCase())}</span>`;
+
+/** Renders the header counts. */
+function renderCounts() {
+    const pts = REG.sites.reduce((n, s) => n + s.pts.length, 0);
+    const ipNo = REG.sites.reduce((n, s) => n + s.pts.filter((p) => p.ip[0] === 'no').length, 0);
+    const gaps = REG.gaps.filter((g) => g[0] === 'gap').length;
+    const items = [[REG.sites.length, 'sites'], [pts, 'pageTypes'], [REG.readers.length, 'preview readers'], [ipNo, 'PTs without an initial-page preview'], [gaps, 'open gaps']];
+    document.getElementById('counts').innerHTML = items.map(([n, l]) => `<div><b>${n}</b><span>${l}</span></div>`).join('');
+}
+
+/** Mockup H, 1a: site cards. */
+function renderSites() {
+    document.getElementById('h-sites').innerHTML = REG.sites.map((s) => `
+        <article class="panel site" style="--c:var(--site-${s.key})">
+            <h3><span>${esc(s.name)}</span><span class="mono">${s.pts.length} PT</span></h3>
+            <dl>
+                <dt>host</dt><dd class="mono">${esc(s.host)}</dd>
+                <dt>switch</dt><dd class="mono">${esc(s.gate)}</dd>
+                <dt>previews</dt><dd class="mono">${esc(s.preview || 'sa_pop_ext')}</dd>
+                <dt>doc</dt><dd class="mono">docs/claude/${esc(s.doc)}</dd>
+            </dl>
+            <div class="pts">${s.pts.map((p) => `<span>${esc(p.type)}</span>`).join('')}</div>
+        </article>`).join('');
+}
+
+/** A 1b state cell. */
+function cell(v) {
+    const [cls, glyph] = STATE[v[0]];
+    const label = { yes: 'works', part: 'partly', no: 'missing', na: 'n/a' }[v[0]];
+    return `<span class="b ${cls}">${glyph} ${label}</span><span class="ev">${v[1]}</span>${v[2] ? `<span class="why">${esc(v[2])}</span>` : ''}`;
+}
+
+/** Mockup H, 1b: PT × {IP, FRP}. */
+function renderPts() {
+    let html = '<thead><tr><th>Site</th><th>pageType</th><th>URL</th><th>Mode</th><th>Initial page</th><th>Rendered table</th></tr></thead><tbody>';
+    for (const s of REG.sites) for (const p of s.pts) {
+        html += `<tr><td>${siteTag(s)}</td><td class="pt">${esc(p.type)}</td><td class="url">${esc(p.url)}</td><td>${p.mode}</td><td>${cell(p.ip)}</td><td>${cell(p.frp)}</td></tr>`;
+    }
+    document.getElementById('h-pt').innerHTML = html + '</tbody>';
+}
+
+/** Mockup H, 2a: readers. */
+function renderReaders() {
+    let html = '<thead><tr><th>#</th><th>Reader</th><th>Links it reads</th><th>Asks</th><th>In its window</th></tr></thead><tbody>';
+    REG.readers.forEach((r, i) => {
+        html += `<tr><td>${i + 1}</td><td class="pt">${esc(r.id)}</td><td class="url">${esc(r.fam)}</td><td class="url">${esc(r.ask)}</td><td>${esc(r.flags)}</td></tr>`;
+    });
+    document.getElementById('h-rd').innerHTML = html + '</tbody>';
+}
+
+let curHost = 'mb';
+
+/** Mockup H, 2b: the routing matrix for the chosen site. */
+function renderMatrix() {
+    document.getElementById('h-hosts').innerHTML = REG.viewHosts.map(([k, l]) =>
+        `<button type="button" id="host-${k}" data-host="${k}" aria-pressed="${k === curHost}">on ${esc(l)}</button>`).join('');
+    let html = '<thead><tr><th>Window ↓ · link →</th>' + REG.fams.map((f) => `<th>${esc(f[1])}</th>`).join('') + '</tr></thead><tbody>';
+    for (const w of REG.wins) {
+        html += `<tr><th>${esc(w[1])}</th>`;
+        for (const f of REG.fams) {
+            const [st, fn] = route(curHost, w, f[0]);
+            const lab = { here: 'here', tab: 'tab', gap: 'tab ⚑', na: '—' }[st];
+            html += `<td><span class="b b-${st}" title="${esc(w[1])} → ${esc(f[1])}">${lab}${fn}</span></td>`;
+        }
+        html += '</tr>';
+    }
+    document.getElementById('h-mx').innerHTML = html + '</tbody>';
+    document.getElementById('h-mx-notes').innerHTML = `<ul>
+        <li>¹ On its own site, a detail link opens in the site’s window (needs that site’s preview switch; Brucebase shows also need <code>sa_bb_event_preview</code>).</li>
+        <li>² Read by the generic reader, so the window shows a plain web page, not Brucebase’s parsed show.</li>
+        <li>³ setlist, artist and venue pages need <code>sa_pop_ext_setlistfm_key</code>; without it only <code>/search?artist=</code> is read, and on setlist.fm itself the rest open a new tab.</li>
+        <li>⁴ On discogs.com a Discogs page no reader takes is the site’s own link and keeps its new tab.</li>
+        <li>⁵ Only after the record has loaded.</li>
+    </ul>`;
+}
+
+/** Mockup H: gaps table. */
+function renderGaps() {
+    let html = '<thead><tr><th>Kind</th><th>Evidence</th><th>What</th></tr></thead><tbody>';
+    for (const g of REG.gaps) {
+        html += `<tr><td>${g[0] === 'gap' ? '<span class="b b-gap">gap</span>' : '<span class="b b-tab">stale doc</span>'}</td><td><span class="ev">${g[1]}</span></td><td>${esc(g[2])}</td></tr>`;
+    }
+    document.getElementById('h-gaps').innerHTML = html + '</tbody>';
+}
+
+/** Pads `s` to `n` characters for the org tables. */
+function pad(s, n) { s = String(s); return s + ' '.repeat(Math.max(0, n - [...s].length)); }
+
+/** One org table from rows of cells, aligned like org-mode does it. */
+function orgTable(head, rows) {
+    const all = [head, ...rows];
+    const w = head.map((_, i) => Math.max(...all.map((r) => [...String(r[i])].length)));
+    const line = (r) => '| ' + r.map((c, i) => pad(c, w[i])).join(' | ') + ' |';
+    const rule = '|' + w.map((n) => '-'.repeat(n + 2)).join('+') + '|';
+    return [line(head), rule, ...rows.map(line)].join('\n');
+}
+
+/** Mockup O: the org buffer. */
+function renderOrg() {
+    const ev = (v) => ({ yes: 'yes', part: 'part', no: 'NO', na: 'n/a' }[v[0]]) + ` (${v[1]})`;
+    const t1a = orgTable(['Site', 'Host', 'Switch', 'Doc', 'PTs'],
+        REG.sites.map((s) => [s.key.toUpperCase(), s.host, s.gate, s.doc, s.pts.length]));
+    const t1b = orgTable(['Site', 'pageType', 'URL', 'IP', 'FRP', 'Why'],
+        REG.sites.flatMap((s) => s.pts.map((p) => [s.key.toUpperCase(), p.type, p.url, ev(p.ip), ev(p.frp), p.ip[2] || p.frp[2]])));
+    const t2a = orgTable(['#', 'Reader', 'Links it reads', 'In its window'],
+        REG.readers.map((r, i) => [i + 1, r.id, r.fam, r.flags]));
+    const famHead = ['Window \\ link', ...REG.fams.map((_, i) => String(i + 1))];
+    const t2b = orgTable(famHead, REG.wins.map((w) => [w[1], ...REG.fams.map((f) => {
+        const [st, fn] = route('mb', w, f[0]);
+        return ({ here: 'H', tab: 'T', gap: 'T!', na: '-' }[st]) + fn;
+    })]));
+    const famKey = REG.fams.map((f, i) => `${i + 1}=${f[1]}`).join(', ');
+    const tg = orgTable(['Kind', 'Ev.', 'What'], REG.gaps.map((g) => [g[0], g[1], g[2].length > 90 ? g[2].slice(0, 88) + '…' : g[2]]));
+    const hl = (t) => esc(t).replace(/^(\|[-+|]+\|)$/gm, '<span class="rule">$1</span>');
+    document.getElementById('o-buf').innerHTML =
+        `<span class="h1">* Non-MB coverage: pageTypes and previews</span>\n<span class="dim">#+DATE: 2026-11-03  generated by scripts/build-coverage-report.py from docs/non-mb-coverage.json — do not edit</span>\n\n` +
+        `<span class="h2">** 1a Sites with pageTypes</span>\n${hl(t1a)}\n\n` +
+        `<span class="h2">** 1b Previews on the initial page (IP) and rendered table (FRP)</span>\n${hl(t1b)}\n\n` +
+        `<span class="h2">** 2a Link families the preview reads</span>\n${hl(t2a)}\n\n` +
+        `<span class="h2">** 2b In a window: H here, T new tab, T! gap, - none</span>\n<span class="h2">*** on musicbrainz.org</span>\n<span class="dim">Columns: ${esc(famKey)}</span>\n${hl(t2b)}\n\n` +
+        REG.viewHosts.slice(1).map(([, l]) => `<span class="h2">*** on ${esc(l)}</span>\n<span class="dim">  (same 10 × 12 shape)</span>`).join('\n') + '\n\n' +
+        `<span class="h2">** <span class="todo">TODO</span> Gaps and stale docs</span>\n${hl(tg)}`;
+}
+
+/** Switches between the two mockups. */
+function setView(v) {
+    document.getElementById('view-h').hidden = v !== 'h';
+    document.getElementById('view-o').hidden = v !== 'o';
+    document.getElementById('btn-h').setAttribute('aria-pressed', v === 'h');
+    document.getElementById('btn-o').setAttribute('aria-pressed', v === 'o');
+}
+
+document.querySelector('.switch').addEventListener('click', (e) => {
+    const b = e.target.closest('button[data-view]');
+    if (b) setView(b.dataset.view);
+});
+document.getElementById('h-hosts').addEventListener('click', (e) => {
+    const b = e.target.closest('button[data-host]');
+    if (b) { curHost = b.dataset.host; renderMatrix(); }
+});
+
+renderCounts();
+renderSites();
+renderPts();
+renderReaders();
+renderMatrix();
+renderGaps();
+renderOrg();
+</script>
+</body>
+</html>
