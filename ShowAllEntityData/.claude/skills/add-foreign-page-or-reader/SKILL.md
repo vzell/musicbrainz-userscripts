@@ -148,6 +148,16 @@ row, coverage row, details); CLAUDE.md doc-map rows; a dated DEBUG-NOTES.md
 entry with the Env stamp and the `test:full` result. Don't commit or merge
 without the user's go-ahead; offer `git diff`.
 
+**The coverage registry, `docs/non-mb-coverage.json`.** A new pageType gets a
+row in its site's `pts` (URL, mode, and an `ip`/`frp` cell each: state,
+evidence, why, and `spec` when a spec asserts it). A new site gets a `sites`
+entry and a place in `views`. A new reader gets a `readers` row in
+`_EXT_READERS` order. If the change moves where a link opens inside a window,
+update `families`/`windows`. Then run `python3 scripts/build-coverage-report.py`
+(it rewrites `NON-MB-COVERAGE.html`/`.org`) and `--check`. `--check` fails
+until the registry matches the userscript, so this step cannot be skipped
+silently.
+
 ## Known traps
 
 - `loadUserscriptPage()` routes the fixture URL last, so it beats a spec's

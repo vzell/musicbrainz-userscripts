@@ -9,10 +9,10 @@ pageTypes `sl-collection` and `sl-bootlegs`, and on the collection's entry
 page `collection.php` ("Latest additions", every item, `pg=` pagination) as
 `sl-collection-intro`, on the **CD and vinyl bootleg** list
 (`brucelegs.php?cmd=list…`) as `sl-brucelegs`, and on the **lyrics index**
-(`lyrics.php`, one page per first letter) as `sl-lyrics`. It is **opt-in**:
-`sa_enable_springsteenlyrics`, default **off**. Only what each list card shows
-goes into the table; an item's own page is read only by the opt-in detail
-preview (`sa_sl_detail_preview`, docs/claude/detail-pages.md). The bootleg landing page
+(`lyrics.php`, one page per first letter) as `sl-lyrics`. It has its own
+switch, `sa_enable_springsteenlyrics`, default **on** since 2026-10-26 (off
+before). Only what each list card shows goes into the table; an item's own
+page is read only by the detail preview (`sa_sl_detail_preview`, docs/claude/detail-pages.md). The bootleg landing page
 `bootlegs.php` (`sl-bootlegs-intro`) has no cards; it is supported only for the
 compact bar, and only while `sa_sl_compact_nav` is on as well — see "The
 bootleg landing page" below.
@@ -374,7 +374,7 @@ rules. Survey counts:
 
 ## The compact category/filter bar — `_slInstallScopeBar()`
 
-Behind its own setting, `sa_sl_compact_nav` (default **off**; needs
+Behind its own setting, `sa_sl_compact_nav` (default **on** since 2026-10-26; needs
 `sa_enable_springsteenlyrics`), on the collection and bootleg list pageTypes
 (`slCardsToTable` `'collection'`/`'bootlegs'`; on the bootleg lists the
 category wall becomes the Category menu and the four search forms the search

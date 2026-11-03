@@ -75,4 +75,46 @@ Counts re-derived by a script, not taken from memory:
 
 *** answers
 
-** Phase B: the report (after the answers)
+1. HTML, org, or both from the one JSON registry: BOTH
+2. Should I fix the stale doc lines on this branch: YES
+3. Should each confirmed gap get its own TODO in org/TODO.org: YES
+
+** Phase B: the report — DONE (2026-11-03)
+
+Env: 2026-11-03T14:20:24+01:00 · vzell-lap · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) · no browser (code reading, Python) · n/a
+
+Report: https://claude.ai/artifact/XHGSNR7PPzCjdtKXkTmNmP (=NON-MB-COVERAGE.html=, published copy built by
+=scripts/build-mockup-artifact.py=); =NON-MB-COVERAGE.org= holds the same data.
+
+- *Source*: =docs/non-mb-coverage.json=, written by hand.
+  - Sites hold their pageTypes. Each PT has an IP cell and an FRP cell: state, evidence, why, and a gap id.
+  - A cell with "spec" evidence names the spec file and part of a test title.
+  - There are readers, the three window sets, the site views and the windows.
+  - Link families carry one route rule per site view (=here=, =tab=, =all=, =gap:G<n>=, with notes).
+  - Gaps G1–G8.
+- *Generator*: =scripts/build-coverage-report.py=, modelled on =build-changelog-pages.py=.
+  - It writes both outputs. =--check= and =--selftest= work as there.
+  - It never prints a timestamp, SHA or version, so a version bump does not make the report stale.
+- *What =--check= compares against the userscript*:
+  - every =pageDefinitions= entry with a =host:=: type, tableMode and order;
+  - every =_DP_SITES= key with its =setting= and =extRoot=;
+  - the =_EXT_READERS= ids in order;
+  - the three =_DP_WIN_*= sets and =_MB_FOREIGN_POP_HOST='s host flags;
+  - each host flag, gate and preview setting (=configSchema= keys);
+  - each topic doc;
+  - each spec file and its test title;
+  - each gap's code symbols.
+- *Planted defects*: the selftest plants 23 defects in a small synthetic userscript and registry, and each one must be reported.
+  - This replaces the =scripts/mutations/*.json= entry the plan named. =mutation-check.py= runs Playwright specs only, so it cannot check a Python generator.
+- *Evidence*: re-checked cell by cell before stamping.
+  - Of the 62 PT cells, 16 are backed by a spec, 46 by code reading, 0 inferred.
+  - The three gaps the mockup had as "inferred" (G3, G6, G7) were traced in the code and are now "code".
+- *Stale docs fixed*:
+  - =detail-pages.md=: the four detail-preview defaults are on; =extRoot= is ='#app, #page_content'=; =sl-bootlegs-intro= exists; the version label search opens in the window.
+  - =springsteenlyrics.md=: =sa_enable_springsteenlyrics= and =sa_sl_compact_nav= default on.
+  - =brucebase.md=: song previews outside the table body too.
+- *Bookkeeping*:
+  - CLAUDE.md: a fourth rule under "Scope", plus =NON-MB-COVERAGE.org= under "Small and current".
+  - The =add-foreign-page-or-reader= skill: a registry step.
+  - =org/TODO.org=: this item DONE, and one TODO per gap.
+- *Not a userscript change*, so there is no =@version= bump and no changelog/WIP entry.
