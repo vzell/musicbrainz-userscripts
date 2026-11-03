@@ -1839,7 +1839,6 @@ I get
 
 * TODO fix my release-tracks special script
 
-
 * TODO adapt the logging framework and orig page shine through from majkinetor
 
 
@@ -1855,10 +1854,10 @@ I get
 
 * TODO integration with my own BB userscript
 
+
 * TODO increase the IDB lifetime, non-MB sites should basically be there forever
 
 Planned as phase 1 of [[file:offline.org]] ("** Answer (2026-10-16, …)", "*** 7. Plan").
-
 
 * TODO sync add non-MB images with the CAA framework, but unlimited
 
@@ -6035,20 +6034,15 @@ play video from my NS when hovering a song and also from archive.org for bootleg
 
 * DONE make proper PTs from wikipedia/wikidata and setlist.fm
 
-* TODO On discogs submission page when hovering a release in the left sidebar, ONLY the newest change should be shown in a POH diff view
-
-On discogs https://www.discogs.com/submissions?mode=list&id=599283#mode=list&id=599283&item=%2Frelease%2F1752289-Born-In-The-USA%2Fhistory
-when hovering a release in the left sidebar, ONLY the newest change should be shown in a POH diff view
-
-
-* TODO BB detail page POHs should also get a history diff view of the current entity
-
-BB detail page POHs should also get a history diff view of the current entity
-
-
 * TODO on "Editing history" POHs we have the same pumping when areas with flags are involved (this has been solved already on artist POHs)
 
 on "Editing history" POHs we have the same pumping when areas with flags are involved (this has been solved already on artist POHs)
+
+* TODO "Space" handling with large tables on right side leave the download aread flickering and it's NOT stoppable
+
+"Space" handling with large tables on right side leave the download aread flickering and it's NOT stoppable
+
+see videos
 
 
 * TODO statusline.sh
@@ -6203,23 +6197,21 @@ _EOF
 #+end_src
 
 
-* TODO "Space" handling with large tables on right side leave the download aread flickering and it's NOT stoppable
+* TODO Diff History view should display the details inline and NOT at the end of the page
 
-"Space" handling with large tables on right side leave the download aread flickering and it's NOT stoppable
-
-see videos
+Diff History view should display the details inline and NOT at the end of the page
 
 
-* TODO Diff History view should disply the details inline and NOT at the end of the page
+* TODO on MB event (search pages) when hovering an event songs from medleys are displayed in the wrong column 
 
-Diff History view should disply the details inline and NOT at the end of the page
+When there is a medley (songs separated with " / ") in the setlist section of an MB event page, e.g.
 
+#+begin_example
+@debug/mb-event-with-medley-initial.html - IP - https://musicbrainz.org/event/e68e1e24-b1fa-410d-be2f-f70ad27508f7 - medley in the setlist section ==> "Mona / She's the One"
+@debug/mb-event-with-medley-POH.html - POH of above event
+#+end_example
 
-* TODO on event search pages when hovering an event
-
-https://musicbrainz.org/search?query=1977-02-28&type=event&method=indexed
-
-on the POH the "She's the One" from the medley "Mona / She's the One" i in the wrong column: "NOTES" under "SETLIST"
+on the POH the "/ She's the One" from the medley "Mona / She's the One" is in the wrong column ==> "NOTES" under "SETLIST"
 
 
 * DONE create a comprehensive report about which non-MB websites have currently PT and POH support
@@ -6301,41 +6293,47 @@ Also keep in mind that this report should be extensible if we support more websi
 - Each gap is its own TODO below (G1–G8, the ids the report uses).
 
 
-* TODO [G1] POH: Brucebase gig, venue and relation links leave the window
+* DONE [G1] POH: Brucebase gig, venue and relation links leave the window
 Away from discogs.com and Brucebase itself, a Brucebase =/gig:=, =/venue:= or =/relation:= link in a Springsteen,
 Brucebase show, archive.org, YouTube or web-page window opens a new tab. In the other windows it opens as a plain
 web page. =_extDpTest()= adds the site's =ownLinks= on discogs.com only, so elsewhere these links are the generic
 reader's. Report: NON-MB-COVERAGE.org "G1".
 
-* TODO [G2] POH: MusicBrainz links leave the window on the Springsteen sites and archive.org
+* DONE [G2] POH: MusicBrainz links leave the window on the Springsteen sites and archive.org
 On springsteenlyrics.com, jungleland.it, brucespringsteen.it, brucebase.wikidot.com and archive.org, a
 musicbrainz.org link in any window opens a new tab. The MB entity source is off on a foreign host, and
 =_MB_FOREIGN_POP_HOST= covers discogs.com and setlist.fm only. Report: "G2".
 
-* TODO [G3] POH: a Brucebase show link on Brucebase leaves the window
+* DONE [G3] POH: a Brucebase show link on Brucebase leaves the window
 On brucebase.wikidot.com, a =/<yyyy>#<ddmmyy>= link in a window opens a new tab. It is the page's own host
 (=_extTarget()= returns null), and =/<yyyy>= is neither a detail URL nor one of the site's =ownLinks=. Report: "G3".
 
-* TODO [G4] POH: no previews on the initial page of dg-search, ia-search and the sfm-* pages
+* DONE [G4] POH: no previews on the initial page of dg-search, ia-search and the sfm-* pages
 dg-search's content is in =<main>=, which =_DP_SITES['www.discogs.com'].extRoot= does not name. archive.org's links
 are in shadow DOM. setlist.fm's =extRoot= names only our own section (=#mb-sfm-root=), not the site's =div.body=.
 Report: "G4".
 
-* TODO [G5] POH: the MB importer's icons on Discogs' older layout get no card before a render
+* DONE [G5] POH: the MB importer's icons on Discogs' older layout get no card before a render
 On the =#page_content= pages (submissions, history, images, user, ratings, sell), the =dg-mb= source's selector
 (=_dgMbSource()=) names =#app= only, so murdos' MusicBrainz icons in Discogs' own content have no card on the
 initial page. First check whether the importer puts icons on those pages at all. Report: "G5".
 
-* TODO [G6] POH: "All credits on Discogs ↗" opens the same artist again in the window
+* DONE [G6] POH: "All credits on Discogs ↗" opens the same artist again in the window
 The link is =/artist/<id>?type=Credits=. The discogs reader has no =keyUrl=, so its key differs from the artist
 window's own, and =_extDgDrill()= opens the same artist in place instead of the website's credits in a new tab.
 Report: "G6".
 
-* TODO [G7] POH: Wikipedia's "A table: show it on Wikipedia ↗" can reopen the same article
+* DONE [G7] POH: Wikipedia's "A table: show it on Wikipedia ↗" can reopen the same article
 =_extWpLeadFor()= rebuilds the link from the API's resolved title with =encodeURIComponent=. When the window was
 opened from a redirect or from a URL spelled differently (a literal comma, as MusicBrainz stores them), the key
 differs and the click opens the same article in the window instead of Wikipedia in a new tab. Report: "G7".
 
-* TODO [G8] POH: a Discogs window opens nothing in place until its record has loaded
+* DONE [G8] POH: a Discogs window opens nothing in place until its record has loaded
 Before the record arrives, a click on a link in a Discogs window keeps its new tab (=_extDiscogsAreaClick()= returns
 early), while the hover marks (=_dpWinWhat()=) already say it opens here. Report: "G8".
+
+
+* TODO make the doubling of the IP information on non-MB PTs shine through instead of appending it again on the FRP
+
+make the doubling of the IP information on non-MB PTs shine through instead of appending it again on the FRP
+

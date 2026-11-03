@@ -124,6 +124,10 @@ https://www.brucespringsteen.it/DB/records.aspx?tipe=-1,0,1,2,3,4,5,6,7,8,9,10,1
 
 https://www.brucespringsteen.it/DB/detrec.aspx?code=CBSXSSC5739
 
+3.)
+
+both complex URLs with tipe queyr string should get a button on the main framed IP too
+
 
 * TODO add support for Setlist page - https://www.brucespringsteen.it/Showdx.htm
 

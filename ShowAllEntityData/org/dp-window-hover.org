@@ -1,7 +1,7 @@
 #+TITLE: Hovering links and images inside the Space window (#mb-dp-dialog)
 #+STARTUP: showall
 
-* TODO Make a resting pointer useful inside the Space window
+* DONE Make a resting pointer useful inside the Space window
 
 In the "Space" popup-ed detail view window currently hovering a link (href) doesn't do anything.
 Make some suggestions (images should probably treated differently) and nice rich HTML based

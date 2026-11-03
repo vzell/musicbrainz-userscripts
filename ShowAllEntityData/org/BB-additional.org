@@ -1,29 +1,3 @@
-* add additional PTs to BB
-
-add additional PTs to BB:
-
-we already have
-
-#+begin_example
-https://brucebase.wikidot.com/stats:songs - tabbed page
-#+end_example
-
-#+begin_example
-https://brucebase.wikidot.com/stats:songs-list - list page
-https://brucebase.wikidot.com/stats:handwritten-lyric-sheets - tabbed page
-https://brucebase.wikidot.com/stats:songs-official-video - tabbed page
-https://brucebase.wikidot.com/stats:orphaned-songs - tabbed page
-https://brucebase.wikidot.com/stats:lyrics - scans of the known Bruce Springsteen lyrics - tabbed page
-https://brucebase.wikidot.com/stats:songs-by-album - songs by album -  tabbed page
-https://brucebase.wikidot.com/stats:songs-count - songs count - multi-column statistics numbers
-
-https://brucebase.wikidot.com/stats:bootlegs -
-https://brucebase.wikidot.com/stats:bootlegs-label -
-https://brucebase.wikidot.com/stats:discography - tabs - but alos the actual images
-
-https://brucebase.wikidot.com/stats:songs-registered - text page - @debug/BB-songs-registered.html
-#+end_example
-
 * TODO song - followup
 
 #+begin_example

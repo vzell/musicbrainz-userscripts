@@ -1,8 +1,3 @@
-* TODO add support for discogs pages
-** my BS edits
-** master and releases
-
-
 * DONE On D master POH allow "Ctrl"-click for multi-select for "Format", "Country" and "Released" buttons
 
 1.)
@@ -158,6 +153,12 @@ images initally (+ full "Space" handling)
 
 
 
+* TODO add support for discogs pages
+** my BS edits
+** master and releases
+
+
+
 * TODO add support for the Discogs "Apple Music Audio Player"
 
 add support for the Discogs "Apple Music Audio Player" - https://support.discogs.com/hc/en-us/articles/17114733929229-Release-Page-Guide
@@ -166,6 +167,7 @@ add support for the Discogs "Apple Music Audio Player" - https://support.discogs
 * TODO on D release PTs do not show sub-tables which have zero rows initially
 
 on D release PTs do not show sub-tables which have zero rows initially
+
 
 * TODO overwhole of the Discogs release track rendering in the popup viewer
 
@@ -195,6 +197,7 @@ the e.g. "Tracklist" on release pages)
 
 * TODO check discogs artist pages if really ALL masters are present + implement master->release(s) drilldown
 
+
 * TODO The Discogs artist FRP needs an overwhole
 
 1.)
@@ -204,4 +207,9 @@ It's not yet clear how the data is derived, explain
 2.)
 
 The "Releases" sub-table should get another column "Release-subtype" e.g. "Album", "Single & EP", "Compilation", "Video" and "Misc"
+
+* TODO On discogs submission page when hovering a release in the left sidebar, ONLY the newest change should be shown in a POH diff view
+
+On discogs https://www.discogs.com/submissions?mode=list&id=599283#mode=list&id=599283&item=%2Frelease%2F1752289-Born-In-The-USA%2Fhistory
+when hovering a release in the left sidebar, ONLY the newest change should be shown in a POH diff view
 
