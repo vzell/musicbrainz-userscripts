@@ -219,5 +219,13 @@
         "spec": "tests/fixtures/ia-search.spec.js",
         "grep": "navigation's link",
         "expect": "fail"
+    },
+    {
+        "name": "G4: a text-less shadow link (a picture, a tile) previewed",
+        "why": "vzell, 2026-11-04: our card came on top of archive.org's own hover card over a result's picture and a tile.",
+        "edits": [{ "find": "        if (!(a.textContent || '').trim()) return false;", "replace": "" }],
+        "spec": "tests/fixtures/ia-search.spec.js",
+        "grep": "a result's title link",
+        "expect": "fail"
     }
 ]

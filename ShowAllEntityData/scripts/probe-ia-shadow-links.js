@@ -9,7 +9,8 @@
  *     https://archive.org/search?query=springsteen+1975
  *
  * once in each result view (Tile, List, Compact list), after the results
- * show. It prints one JSON line to copy back: per distinct link shape, how
+ * show. It copies its JSON to the clipboard (v2; paste it into a file such as
+ * debug/ia-tile-probe.json — the object the console shows is cut off): per distinct link shape, how
  * many there are, an example href, whether the link wraps an image, its text,
  * and the custom elements and landmark tags from the link up to <app-root>
  * (shadow hosts marked with "#"). Read-only: it changes nothing on the page
@@ -72,8 +73,13 @@
         shapes.set(key, s);
     }
     const view = (new URLSearchParams(location.search)).get('view') || '(default)';
-    const result = { probe: 'ia-shadow-links v1', url: location.href, view, ua: navigator.userAgent, links: links.length,
+    const result = { probe: 'ia-shadow-links v2', url: location.href, view, ua: navigator.userAgent, links: links.length,
         shapes: [...shapes.values()].sort((x, y) => y.n - x.n) };
-    console.log(JSON.stringify(result));
-    return result;
+    const json = JSON.stringify(result, null, 1);
+    // v2 (2026-11-04): the console shows a returned object collapsed, so the
+    // fields that matter (chain, skipped) were cut off in the copied text.
+    // The JSON goes to the clipboard (DevTools' copy()) and is returned as
+    // one string: paste it into debug/ia-<view>-probe.json.
+    if (typeof copy === 'function') copy(json);  // eslint-disable-line no-undef
+    return `Copied ${result.shapes.length} link shapes (${json.length} characters) to the clipboard: paste them into a file.`;
 })();
