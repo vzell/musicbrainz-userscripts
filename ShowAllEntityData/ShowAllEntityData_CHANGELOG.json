@@ -1,5 +1,43 @@
 [
   {
+    "version": "9.99.1533",
+    "date": "2026-11-03",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "setlist.fm artist, venue, tour and search windows (link preview): next to \"Load 20 more\", \"Load all N\" reads every other setlist, one page a second, and \"Load all with set times\" reads their set times as well. Each button says how many requests that takes and about how long. While it runs, a bar per site fills, the counts say how many are loaded, how many are left and about how long it still takes, and Stop ends the run after the page under way. Pages already read are kept, so the next run only reads what is missing. After \"Load all\" the set times of the newly loaded rows show \"·\", and \"Read set times for the other N\" reads them.",
+          "setlist.fm's API allows a key 1,440 requests a day. The window counts the requests the script made today (from midnight UTC), shows \"API requests today: n of 1,440\", and before a run that would need more than are left it says so and offers to load as many as are left instead. A run stops when the day's requests are used up."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.1532",
+    "date": "2026-11-03",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "setlist.fm setlist window: every artist (the show's own, each cover's original, each guest) is now two links: MusicBrainz's artist icon in front opens the artist on MusicBrainz (its card when you point at it, its window on a click), and the name opens the artist's setlists on setlist.fm. Both open in the same window, with Back. The same in a tour's window and in a venue window's \"Artists\" table. \"· its setlists\" after the setlist's artist is gone: the name opens that page.",
+          "On setlist.fm itself, MusicBrainz links in the preview window now open MusicBrainz's own card and window, as on discogs.com (an artist window's \"On MusicBrainz\" too), instead of a new tab."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.1531",
+    "date": "2026-11-03",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "setlist.fm: the card of a Tour cell (setlist.fm's search for an artist's tour) said \"checked by AWS WAF\" instead of showing the tour. setlist.fm answers its search pages only when the request carries the browser's setlist.fm cookies; the card now reads them as the page does on setlist.fm, and with your setlist.fm cookies elsewhere. A tour window's set times, which come from the same search pages, are read the same way."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.1530",
     "date": "2026-11-03",
     "sections": [

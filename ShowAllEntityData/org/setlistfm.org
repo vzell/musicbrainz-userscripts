@@ -225,7 +225,7 @@ Model it the same as we do for the detail POH on IA PTs e.g. [Image #7]
 @debug/setlistfm-2026-05-30.html - IP - https://www.setlist.fm/setlist/bruce-springsteen/2026/xfinity-mobile-arena-philadelphia-pa-2b4b60da.html
 #+end_example
 
-** TODO bugs and new additions
+** DONE bugs and new additions
 *** DONE initial
 
 1.)
@@ -291,7 +291,7 @@ Under the "SETLIST.FM SAYS" section, the artist name should render the MB page i
 4.)
 
 make some nice rich HTML based mockups
-*** answers
+*** DONE answers
 
 1.)
 

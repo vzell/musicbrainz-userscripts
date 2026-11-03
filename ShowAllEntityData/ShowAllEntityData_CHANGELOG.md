@@ -4,9 +4,32 @@ Every version, newest first, with the technical details behind each change. For 
 
 **Months:** [November 2026](ShowAllEntityData_CHANGELOG/2026-11.md) · [October 2026](ShowAllEntityData_CHANGELOG/2026-10.md) · [September 2026](ShowAllEntityData_CHANGELOG/2026-09.md) · [August 2026](ShowAllEntityData_CHANGELOG/2026-08.md) · [July 2026](ShowAllEntityData_CHANGELOG/2026-07.md) · [June 2026](ShowAllEntityData_CHANGELOG/2026-06.md) · [May 2026](ShowAllEntityData_CHANGELOG/2026-05.md) · [April 2026](ShowAllEntityData_CHANGELOG/2026-04.md) · [March 2026 (1 of 2)](ShowAllEntityData_CHANGELOG/2026-03-1.md) · [March 2026 (2 of 2)](ShowAllEntityData_CHANGELOG/2026-03-2.md) · [February 2026](ShowAllEntityData_CHANGELOG/2026-02.md) · [January 2026](ShowAllEntityData_CHANGELOG/2026-01.md)
 
-This page shows the newest 100 of 1701 versions; the month pages hold all of them.
+This page shows the newest 100 of 1704 versions; the month pages hold all of them.
 
 ---
+
+## 9.99.1533 — 2026-11-03
+
+**🚀 Feature**
+
+- setlist.fm artist, venue, tour and search windows (link preview): next to "Load 20 more", "Load all N" reads every other setlist, one page a second, and "Load all with set times" reads their set times as well. Each button says how many requests that takes and about how long. While it runs, a bar per site fills, the counts say how many are loaded, how many are left and about how long it still takes, and Stop ends the run after the page under way. Pages already read are kept, so the next run only reads what is missing. After "Load all" the set times of the newly loaded rows show "·", and "Read set times for the other N" reads them.
+- setlist.fm's API allows a key 1,440 requests a day. The window counts the requests the script made today (from midnight UTC), shows "API requests today: n of 1,440", and before a run that would need more than are left it says so and offers to load as many as are left instead. A run stops when the day's requests are used up.
+
+
+## 9.99.1532 — 2026-11-03
+
+**✨ Improve**
+
+- setlist.fm setlist window: every artist (the show's own, each cover's original, each guest) is now two links: MusicBrainz's artist icon in front opens the artist on MusicBrainz (its card when you point at it, its window on a click), and the name opens the artist's setlists on setlist.fm. Both open in the same window, with Back. The same in a tour's window and in a venue window's "Artists" table. "· its setlists" after the setlist's artist is gone: the name opens that page.
+- On setlist.fm itself, MusicBrainz links in the preview window now open MusicBrainz's own card and window, as on discogs.com (an artist window's "On MusicBrainz" too), instead of a new tab.
+
+
+## 9.99.1531 — 2026-11-03
+
+**🐛 Fix**
+
+- setlist.fm: the card of a Tour cell (setlist.fm's search for an artist's tour) said "checked by AWS WAF" instead of showing the tour. setlist.fm answers its search pages only when the request carries the browser's setlist.fm cookies; the card now reads them as the page does on setlist.fm, and with your setlist.fm cookies elsewhere. A tour window's set times, which come from the same search pages, are read the same way.
+
 
 ## 9.99.1530 — 2026-11-03
 
@@ -887,46 +910,6 @@ This page shows the newest 100 of 1701 versions; the month pages hold all of the
 **✨ Improve**
 
 - The Brucebase song preview (card and window) now shows the song page's images too: the graph and the lyric sheets, which open the artwork viewer from the window. Pages saved before are read again once, because what is kept of a page has changed (the springsteenlyrics.com, jungleland.it and brucespringsteen.it pages too).
-
-
-## 9.99.1433 — 2026-10-23
-
-**🚀 Feature**
-
-- Brucebase year pages: in the Media column the Photo, Ticket, News and Memorabilia icons are ringed and open what they announce. Pointing at one shows a card with those images from the entry's own page (photos, tickets, passes, newspaper clippings); a click opens the artwork viewer on them, every other kind one ← → away, and Shift+← → go to the previous or next row (Ctrl-click: the page). The page is read on that first hover or click only, one request for that row, kept 30 days. Works for every entry with a page of its own (shows, rehearsals, recordings …), on a year page and on "all years". New setting "Media icons and song glyphs: the page's images on hover" (on by default, the card only).
-
-**🔧 Refactor**
-
-- The foreign sites' image click (`_fiClick()`) builds a row when the viewer first shows it, not every row of the table up front, and a row with several triggers (a year row's Media icons) is one stop for Shift+← →. On a 10,348-row year table (four years cloned, Playwright Chromium) a click takes about 0.17 s after the first.
-
-
-## 9.99.1432 — 2026-10-23
-
-**🚀 Feature**
-
-- jungleland.it list: a new Art column. Each row shows a dashed tile until its artwork page has been read, then the front scan and the number of scans. Pointing at it shows a card with every scan, typed as on MusicBrainz (Front ★, Back, Medium for a CD, Booklet), and a click opens the artwork viewer on them (Ctrl-click: the entry's page). The page is read on that first hover or click only, one request for that row. New setting "Art column: every scan of an entry on hover" (on by default, the card only).
-- brucespringsteen.it records: a new Photo column, the same way: a dashed tile until the record's page has been read, then its photo or "no photo" (many records have none; a photo the site hides as missing counts as none). Pointing at it shows the photo large; a click opens the viewer. New setting "Photo column: the record's photo on hover" (on by default, the card only).
-- On both sites, rows read before keep their picture: after the table appears, one read of the saved pages paints them, with no request to the site. Sorting by the Art/Photo column puts the rows with a picture first.
-
-**✨ Improve**
-
-- jungleland.it and brucespringsteen.it now keep a page they read for half a year instead of 30 days (the preview and the new columns share it): these sites barely change. springsteenlyrics.com and Brucebase keep 30 days.
-
-**🔧 Refactor**
-
-- The springsteenlyrics.com, jungleland.it and brucespringsteen.it image cards are built by one function (`_fiDpProvider()`) over the detail preview's page reader. `_sortCellText()` also reads the new hidden `.mb-fi-sort-key`: one more class in its one lookup; the MusicBrainz sort timing was compared before and after.
-
-
-## 9.99.1431 — 2026-10-23
-
-**🚀 Feature**
-
-- springsteenlyrics.com lists (collection, latest additions, bootlegs, CD and vinyl bootlegs): pointing at a cover shows a card with the cover and every artwork scan of that item, as the Cover Art column does on MusicBrainz (Space: every image, Shift: bigger tiles). The scans are read from the item's own page on that first hover, one request for that row only, kept 30 days and shared with the item preview; moving on before its turn asks nothing, and a bootleg the list marks as having no artwork is never asked. New setting "Cover column: every image of an item on hover" (on by default, inside the site's own switch).
-- A click on a cover opens the artwork viewer on that item's cover and scans: ← → through its images, Shift+← → through the rows the filter left, an "Item page" button. Ctrl-click (or a middle click) still opens the item page.
-
-**🔧 Refactor**
-
-- Discogs' Image column card and viewer click now run on one shared path for every non-MusicBrainz site (`_fiCardHtml()`, `_fiClick()`, `_fiLoad()`, a provider per site), which the jungleland.it, brucespringsteen.it and Brucebase tables will use next. Its click listens on the window instead of the document. Unchanged on Discogs, except that a row with no other image now shows its thumbnail beside the note. Nothing changes on MusicBrainz, and nothing new runs while a table renders.
 
 
 ---
