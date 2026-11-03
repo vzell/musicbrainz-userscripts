@@ -129,3 +129,13 @@ comparison of a release-tracks page.
 5. Order of the three; one branch for all or one each?
 
 ** answers
+
+vzell, 2026-11-03:
+1. Discogs: *replace* the view. =dg-release='s first button becomes "Tracks" (the release-tracks view); today's
+   sub-tables (Credits, Companies, Identifiers, Videos, Other versions) move to a second button.
+2. setlist.fm without a key: covers and guests as *setlist.fm links only*; no MusicBrainz lookup by name.
+3. archive.org: derivatives *as columns* (as drawn).
+4. Discogs role columns: *as in the mockup* first: Instruments, Vocals, Producer, Engineer, Mixed by, Arranged by;
+   release-wide credits stay a "Release credits" sub-table.
+5. *One branch each*, in this order: archive.org (=ia-details=), Discogs (=dg-release= upgrade), setlist.fm
+   (=sfm-setlist=).
