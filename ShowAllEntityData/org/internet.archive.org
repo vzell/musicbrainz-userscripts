@@ -49,7 +49,7 @@ also add POH support for the new Internet Archive PT for Bruce Springsteen Year 
 
 make some nice rich HTML based mockups first
 
-** TODO additions
+** DONE additions
 
 1.)
 
@@ -87,6 +87,15 @@ b.)
 
 The POH should also display ALL images (like on MB and Discogs POhs) in addition to the current one in a separate
 "IMAGES" section, currently only one image is displayed [Image #8]
+
+** TODO the "Collection" on the left side should get hyperlinks and POH support on IA detail pages like https://archive.org/details/bs1966-05-18.sbd.hrubesh.flac16
+
+the "Collection" on the left side should get hyperlinks and POH support on IA detail pages like
+https://archive.org/details/bs1966-05-18.sbd.hrubesh.flac16
+
+#+begin_example
+Collection: radionowhere, roiocollection, Folksoundomy: A Library of Sound
+#+end_example
 
 
 ** Answer (2026-10-31, branch =feat/internet-archive=, no userscript change yet)

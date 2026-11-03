@@ -1,0 +1,120 @@
+#+TITLE: Report: pageType and preview coverage on the non-MusicBrainz sites
+#+STARTUP: overview
+
+* TODO create a comprehensive report about which non-MB websites have currently PT and POH support
+
+** request (vzell, 2026-11-03, org/TODO.org)
+
+1.)
+   a.) list of website URLs with PTs
+   b.) which PT has already support for POH from it's IP and FRP and which ones are still missing
+2.)
+   a.) list of website URLs with POH support
+   b.) which POHs show which URLs inside the same POH window and which URLs are rendered in a new tab from the POH
+3.) decide if org mode table(s) are appropriate for result display or some nice rich HTML based
+    solution, make some mockups first for both
+
+Also keep in mind that this report should be extensible if we support more websites with PT/POH support
+
+** Phase A: mockups (2026-11-03, branch docs/non-mb-coverage-report)
+
+Mockups: https://claude.ai/artifact/JU7FuMcU5MN99idfvJW9k7 (=org/non-MB-coverage-mockups.html=,
+published copy built by =scripts/build-mockup-artifact.py=).
+
+Env: 2026-11-03T14:20:24+01:00 · vzell-lap · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) · no browser (code reading) · n/a
+
+The page has a switch between two mockups of the same data:
+- *Mockup H, rich HTML*:
+  - site cards (1a);
+  - a pageType × {initial page, rendered table} table with evidence badges (1b);
+  - the reader table (2a);
+  - the routing matrix with an "on <site>" switch (2b);
+  - the gaps and stale docs.
+- *Mockup O, org tables*: the same four answers as Emacs shows them. 2b becomes one table per site you are on, six in all.
+
+Both mockups render from ONE data object, which has the shape proposed for =docs/non-mb-coverage.json=.
+
+*** Findings (read from ShowAllEntityData.user.js on main at ebf22d4b)
+
+Counts re-derived by a script, not taken from memory:
+
+- *31 pageTypes on 7 hosts.* The plan's first draft said 36; the Discogs count was wrong.
+  - springsteenlyrics.com 6
+  - jungleland.it 1
+  - brucespringsteen.it 1
+  - brucebase.wikidot.com 5
+  - www.discogs.com 14
+  - archive.org 1
+  - www.setlist.fm 3
+- *14 readers in =_EXT_READERS=*: youtube, wikipedia, wikidata, dgimages, dghistory, discogs, dguser, dgsearch, dgsupport, bbdate, springsteen, setlistfm, iadetails, generic.
+- *Rendered table (FRP):* previews work on every pageType. =_extSource()= always takes =table.tbl > tbody a[href]=.
+- *Initial page (IP):*
+  - No previews: ia-search (shadow DOM), sfm-venue, sfm-artist and sfm-search (=extRoot= names only our own section), and dg-search (content in =<main>=).
+  - Partly: the =#page_content= Discogs pages (the =dg-mb= selector names =#app= only), bb-home, and sl-bootlegs-intro (only while =sa_sl_compact_nav= is on).
+- *Links inside a window:* =_dpDrill()= decides, in this order:
+  1. a same-host detail page;
+  2. =_dgMbWinTarget()= (discogs.com and setlist.fm);
+  3. =_dpWinExtTarget()=;
+  4. the MusicBrainz entity source (musicbrainz.org only);
+  5. the Discogs family's =_extDgDrill()=.
+
+  Where a link opens depends on the site the page is on. That is why 2b has a site switch.
+- The gaps and the stale doc lines are listed on the mockup page, each with its evidence level.
+
+*** Recommendation
+
+- Keep one JSON registry as the source, cross-checked against the userscript by =scripts/build-coverage-report.py --check=. The check fails when a host, pageType or reader exists in only one of the two.
+- Use the HTML report as the one people read, because 2b does not flatten into org.
+- Optionally generate the org file from the same JSON, so it can be grepped.
+
+*** questions
+
+1. Which format: HTML, org, or both from the one registry?
+2. Should the stale doc lines (detail-pages.md, springsteenlyrics.md, brucebase.md) be fixed on this branch?
+3. Should each confirmed gap get its own TODO in org/TODO.org?
+
+*** answers
+
+1. HTML, org, or both from the one JSON registry: BOTH
+2. Should I fix the stale doc lines on this branch: YES
+3. Should each confirmed gap get its own TODO in org/TODO.org: YES
+
+** Phase B: the report — DONE (2026-11-03)
+
+Env: 2026-11-03T14:20:24+01:00 · vzell-lap · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) · no browser (code reading, Python) · n/a
+
+Report: https://claude.ai/artifact/XHGSNR7PPzCjdtKXkTmNmP (=NON-MB-COVERAGE.html=, published copy built by
+=scripts/build-mockup-artifact.py=); =NON-MB-COVERAGE.org= holds the same data.
+
+- *Source*: =docs/non-mb-coverage.json=, written by hand.
+  - Sites hold their pageTypes. Each PT has an IP cell and an FRP cell: state, evidence, why, and a gap id.
+  - A cell with "spec" evidence names the spec file and part of a test title.
+  - There are readers, the three window sets, the site views and the windows.
+  - Link families carry one route rule per site view (=here=, =tab=, =all=, =gap:G<n>=, with notes).
+  - Gaps G1–G8.
+- *Generator*: =scripts/build-coverage-report.py=, modelled on =build-changelog-pages.py=.
+  - It writes both outputs. =--check= and =--selftest= work as there.
+  - It never prints a timestamp, SHA or version, so a version bump does not make the report stale.
+- *What =--check= compares against the userscript*:
+  - every =pageDefinitions= entry with a =host:=: type, tableMode and order;
+  - every =_DP_SITES= key with its =setting= and =extRoot=;
+  - the =_EXT_READERS= ids in order;
+  - the three =_DP_WIN_*= sets and =_MB_FOREIGN_POP_HOST='s host flags;
+  - each host flag, gate and preview setting (=configSchema= keys);
+  - each topic doc;
+  - each spec file and its test title;
+  - each gap's code symbols.
+- *Planted defects*: the selftest plants 23 defects in a small synthetic userscript and registry, and each one must be reported.
+  - This replaces the =scripts/mutations/*.json= entry the plan named. =mutation-check.py= runs Playwright specs only, so it cannot check a Python generator.
+- *Evidence*: re-checked cell by cell before stamping.
+  - Of the 62 PT cells, 16 are backed by a spec, 46 by code reading, 0 inferred.
+  - The three gaps the mockup had as "inferred" (G3, G6, G7) were traced in the code and are now "code".
+- *Stale docs fixed*:
+  - =detail-pages.md=: the four detail-preview defaults are on; =extRoot= is ='#app, #page_content'=; =sl-bootlegs-intro= exists; the version label search opens in the window.
+  - =springsteenlyrics.md=: =sa_enable_springsteenlyrics= and =sa_sl_compact_nav= default on.
+  - =brucebase.md=: song previews outside the table body too.
+- *Bookkeeping*:
+  - CLAUDE.md: a fourth rule under "Scope", plus =NON-MB-COVERAGE.org= under "Small and current".
+  - The =add-foreign-page-or-reader= skill: a registry step.
+  - =org/TODO.org=: this item DONE, and one TODO per gap.
+- *Not a userscript change*, so there is no =@version= bump and no changelog/WIP entry.

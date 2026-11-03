@@ -20,8 +20,10 @@ Design study, probes and the mockups the user chose from:
 | brucespringsteen.it   | `sa_bs_detail_preview` | `/DB/detrec.aspx?code=`                                                                                             |
 | brucebase.wikidot.com | `sa_bb_detail_preview` | `/song:<slug>`                                                                                                      |
 
-All four default **off** and sit under their host's own `sa_enable_<site>`
-setting, which still has to be on.
+All four default **on** (since 2026-10-26; they were off before) and sit
+under their host's own `sa_enable_<site>` setting, which still has to be on.
+Which pageType gets a preview where, site by site, is in
+`NON-MB-COVERAGE.html`/`.org` (generated from `docs/non-mb-coverage.json`).
 
 **Scope (WIP.4, 2026-10-12):** `_dpSiteForLink()` takes a detail link in a
 `table.tbl > tbody` as before, AND — on a desktop — one anywhere on the page
@@ -2661,9 +2663,11 @@ subdomain, matched by `endsWith`), so a hover loads them from the first time.
   A VERSION's label has no id (the versions rows carry `catno, country,
   format, id, label, major_formats, released, resource_url, stats, status,
   thumb, title`; checked 2026-10-17), so it links Discogs' label SEARCH
-  (`/search/?q=<name>&type=label`, vzell's pick), `a.mb-dg-label`, new tab:
-  `_extDgDrill()` takes only the Discogs reader's pages, so a click on it
-  never opens the search in the window.
+  (`/search/?q=<name>&type=label`, vzell's pick), `a.mb-dg-label`. When this
+  was written it opened a new tab, because `_extDgDrill()` took only the
+  Discogs reader's pages. Since 2026-10-18 `_extDgDrill()` takes any reader's
+  link and `dgsearch` reads `/search/?q=…`, so a plain click opens the search
+  in the window; Ctrl-click keeps the new tab.
   The cover links the full primary image (`rec.imageFull`)
   and is the same file as the gallery's first: `_dpArtViewerClick()` counts
   a URL once.
@@ -2747,8 +2751,9 @@ subdomain, matched by `endsWith`), so a hover loads them from the first time.
   `dg-*` pageTypes' tables (`_EXT_DG_LISTS` rows, `_extDiscogsTracklist()`),
   and a Discogs link there — the page's OWN host — is previewed:
   `_extTarget()` takes it when `_extDiscogsTest()` does, and
-  `_DP_SITES['www.discogs.com']` (`setting: null`, `extRoot: '#app'`) limits
-  it to the table and Discogs' content. See docs/claude/discogs.md.
+  `_DP_SITES['www.discogs.com']` (`setting: null`, `extRoot: '#app,
+  #page_content'`, the React and the older layout) limits it to the table and
+  Discogs' content. See docs/claude/discogs.md.
 - **The token: `sa_pop_ext_discogs_token`** (text, default empty), read by
   `_extDiscogsToken()` (trimmed) and sent ONLY as `Authorization: Discogs
   token=…` to api.discogs.com — never in a URL, so `_extGet()`'s debug line
@@ -3404,9 +3409,11 @@ has a pageType (`_initDetailPreview()` at the end of initialization).
 - **A link to another Springsteen site** gets that site's card through U4's
   readers, from any host (springsteenlyrics.com → Brucebase's song card).
 - **Where it cannot help**: springsteenlyrics.com's bootleg INTRO page, where
-  the census found its Brucebase links, has no pageType, so the script and
-  the engine stop early there; its list pages have the same `.project-detail`
-  and get cards.
+  the census found its Brucebase links, had no pageType when this was
+  written. It has one now, `sl-bootlegs-intro`, but only while
+  `sa_sl_compact_nav` is on; with that off the script and the engine still
+  stop early there. Its list pages have the same `.project-detail` and get
+  cards.
 - **Caches**: IndexedDB is per origin, so each site keeps its own
   external-link records; the known hosts (`sa_pop_ext_hosts`) are a GM value,
   shared by every site the script runs on.

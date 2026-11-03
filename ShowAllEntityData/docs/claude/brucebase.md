@@ -312,7 +312,9 @@ Previous / Listing / Next line stay. On the live document
   Fixture `bb-year-2012.html`.
 - Notes clones the description with links made absolute (`_bbAbsHref()`),
   so its `/song:` links get the song preview (`_dpSiteForLink()` takes any
-  `/song:` link in `table.tbl > tbody` when `sa_bb_detail_preview` is on).
+  `/song:` link in `table.tbl > tbody` when `sa_bb_detail_preview` is on; on
+  a desktop also one anywhere else on the page outside `_DP_PAGE_SKIP`, the
+  initial page included).
   A prose column, clamped like Annotation.
 - Media is `ul.mb-bb-media`, one `<li>` per icon: the site's image (16 px)
   and a visually hidden `.mb-bb-media-label` — clipped, never

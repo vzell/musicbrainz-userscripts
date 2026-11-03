@@ -58,6 +58,13 @@ rules for each new one:
   MusicBrainz definitions out of the foreign site's detection.
 - **Own topic doc.** Each site gets a `docs/claude/<site>.md` and a row in the
   doc map below.
+- **Rows in the coverage registry.** Each site, pageType and preview reader
+  has rows in `docs/non-mb-coverage.json`, which records where previews work
+  (initial page and rendered table) and where a link inside a preview window
+  opens. `python3 scripts/build-coverage-report.py` writes
+  `NON-MB-COVERAGE.html`/`.org` from it. `--check` fails when the userscript
+  has a host, pageType or reader the registry lacks, or the other way round,
+  or when either output is stale.
 
 ## Abbreviations used in prompts
 
@@ -149,7 +156,8 @@ and `Read` with `offset`/`limit`.
 
 **Small and current:** `tests/README.org` (how to run each suite),
 `FORUM.org`, `org/picard.org`, `org/relationships.org`,
-`org/action-button-redesign.org`. **Backlog:** `org/TODO.org` (active),
+`org/action-button-redesign.org`, `NON-MB-COVERAGE.org` (generated: every
+non-MusicBrainz site's pageTypes and link previews). **Backlog:** `org/TODO.org` (active),
 `REFACTORING.org`.
 
 **Historical — do not read unless asked:** the other `org/*.org` files

@@ -335,6 +335,3 @@ MB:
 [sfm-probe] venue GM_xmlhttpRequest anonymous=false: status 200, waf "", 147165 chars, final https://www.setlist.fm/venue/state-farm-arena-atlanta-ga-usa-73d20e81.html?page=2, .setlistPreview 10, .setlistPreviewSetTimes 7, title "State Farm Arena, Atlanta, GA, USA Concert Setlists | setlist.fm"
 [sfm-probe] done
 #+end_example
-
-
-

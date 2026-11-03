@@ -6024,13 +6024,16 @@ test:full before any merge. I’ll ask before merging.
 Give our CAA/EAA inline images and the images in the big picture image stripe the same hover handling as usual
 
 
-* TODO play video from setlist.fm and my NAS when hovering a song and also from archive.org for bootlegs
+* DONE play video from setlist.fm when hovering a song
 
-play video from setlist.fm and my NS when hovering a song and also from archive.org for bootlegs
+play video from setlist.fm when hovering a song
+
+* TODO play video from my NAS when hovering a song and also from archive.org for bootlegs
+
+play video from my NS when hovering a song and also from archive.org for bootlegs
 
 
-* TODO make proper PTs from wikipedia/wikidata and setlist.fm
-
+* DONE make proper PTs from wikipedia/wikidata and setlist.fm
 
 * TODO On discogs submission page when hovering a release in the left sidebar, ONLY the newest change should be shown in a POH diff view
 
@@ -6217,3 +6220,122 @@ Diff History view should disply the details inline and NOT at the end of the pag
 https://musicbrainz.org/search?query=1977-02-28&type=event&method=indexed
 
 on the POH the "She's the One" from the medley "Mona / She's the One" i in the wrong column: "NOTES" under "SETLIST"
+
+
+* DONE create a comprehensive report about which non-MB websites have currently PT and POH support
+** initial
+
+create a comprehensive report about which non-MB websites have currently PT and POH support
+
+1.)
+
+a.)
+
+list of website URLs with PTs
+
+b.)
+
+which PT has already support for POH from it's IP and FRP and which ones are still missing
+
+2.)
+
+a.)
+
+list of website URLs with POH support
+
+b.)
+
+which POHs show which URLs inside the same POH window and which URLs are rendered in a new tab from the POH 
+
+3.)
+
+decide if org mode table(s) are appropriate for result display or some nice rich HTML based solution, make some mockups
+first for both
+
+Also keep in mind that this report should be extensible if we support more websites with PT/POH support
+
+** summary
+
+● I've published both mockups for you to compare: ⧉ https://claude.ai/artifact/JU7FuMcU5MN99idfvJW9k7
+
+  A button at the top switches between Mockup H (rich HTML) and Mockup O (org tables as Emacs shows them). Both are drawn from the same code-derived data, for all four of your questions (1a, 1b, 2a, 2b), plus
+  a list of gaps and stale docs.
+
+  What the code shows (main at ebf22d4b):
+  - Coverage: 31 pageTypes on 7 hosts, and 14 preview readers. My plan said 36 pageTypes; a recount from the code put Discogs at 14, not 16.
+  - 1b, rendered table: previews work on every pageType.
+  - 1b, initial page:
+    - None at all on 5 pageTypes: ia-search (archive.org's links are in shadow DOM), the three sfm-* pages and dg-search (their page content isn't in the area previews are watched in).
+    - Only partly on: most Discogs pages that use the older #page_content layout (the MusicBrainz importer icons get no card), bb-home, and sl-bootlegs-intro (only while sa_sl_compact_nav is on).
+  - 2b, links inside a window: where a link opens depends on which site you're on, so the HTML mockup has an "on <site>" switch above the window × link grid. Two clear gaps:
+    - On the Springsteen sites and archive.org, MusicBrainz links always open a new tab.
+    - Away from discogs.com and Brucebase, Brucebase /gig:, /venue: and /relation: links open a new tab in most windows.
+  - Stale docs: five lines in detail-pages.md, springsteenlyrics.md and brucebase.md no longer match the code. The mockup page lists each one.
+
+  Most cells are from reading the code; only a few are confirmed by tests, and each cell says which. Phase B re-checks every cell before the real report is built.
+
+  My recommendation: HTML for the report people read. 2b has three dimensions (window, link, site you're on), and in org it becomes six tables of letters where a gap looks like any other "T". The source would
+  be one JSON registry, checked against the userscript by a new build-coverage-report.py --check. That check fails when a site, pageType or reader exists in only one of them, so a new site can't ship without
+  its rows. An org copy can be generated from the same JSON if you want something to grep.
+
+  The mockup and org/non-MB-coverage.org are committed on docs/non-mb-coverage-report and pushed. I didn't touch your uncommitted edits to org/TODO.org, org/setlistfm.org and org/internet.archive.org. The
+  userscript is unchanged, so there's no version bump.
+
+  Three decisions before I build the real report (also listed in org/non-MB-coverage.org):
+  1. HTML, org, or both from the one JSON registry?
+  2. Should I fix the stale doc lines on this branch?
+  3. Should each confirmed gap get its own TODO in org/TODO.org?
+
+** answers
+
+1. HTML, org, or both from the one JSON registry: BOTH
+2. Should I fix the stale doc lines on this branch: YES
+3. Should each confirmed gap get its own TODO in org/TODO.org: YES
+
+** result (2026-11-03, branch docs/non-mb-coverage-report)
+
+- Report: =NON-MB-COVERAGE.html= (published: https://claude.ai/artifact/XHGSNR7PPzCjdtKXkTmNmP) and
+  =NON-MB-COVERAGE.org=, both generated from =docs/non-mb-coverage.json= by =scripts/build-coverage-report.py=.
+  The script's =--check= fails when the registry and the userscript disagree.
+- Design and decisions: =org/non-MB-coverage.org=. Mockups: https://claude.ai/artifact/JU7FuMcU5MN99idfvJW9k7
+- Each gap is its own TODO below (G1–G8, the ids the report uses).
+
+
+* TODO [G1] POH: Brucebase gig, venue and relation links leave the window
+Away from discogs.com and Brucebase itself, a Brucebase =/gig:=, =/venue:= or =/relation:= link in a Springsteen,
+Brucebase show, archive.org, YouTube or web-page window opens a new tab. In the other windows it opens as a plain
+web page. =_extDpTest()= adds the site's =ownLinks= on discogs.com only, so elsewhere these links are the generic
+reader's. Report: NON-MB-COVERAGE.org "G1".
+
+* TODO [G2] POH: MusicBrainz links leave the window on the Springsteen sites and archive.org
+On springsteenlyrics.com, jungleland.it, brucespringsteen.it, brucebase.wikidot.com and archive.org, a
+musicbrainz.org link in any window opens a new tab. The MB entity source is off on a foreign host, and
+=_MB_FOREIGN_POP_HOST= covers discogs.com and setlist.fm only. Report: "G2".
+
+* TODO [G3] POH: a Brucebase show link on Brucebase leaves the window
+On brucebase.wikidot.com, a =/<yyyy>#<ddmmyy>= link in a window opens a new tab. It is the page's own host
+(=_extTarget()= returns null), and =/<yyyy>= is neither a detail URL nor one of the site's =ownLinks=. Report: "G3".
+
+* TODO [G4] POH: no previews on the initial page of dg-search, ia-search and the sfm-* pages
+dg-search's content is in =<main>=, which =_DP_SITES['www.discogs.com'].extRoot= does not name. archive.org's links
+are in shadow DOM. setlist.fm's =extRoot= names only our own section (=#mb-sfm-root=), not the site's =div.body=.
+Report: "G4".
+
+* TODO [G5] POH: the MB importer's icons on Discogs' older layout get no card before a render
+On the =#page_content= pages (submissions, history, images, user, ratings, sell), the =dg-mb= source's selector
+(=_dgMbSource()=) names =#app= only, so murdos' MusicBrainz icons in Discogs' own content have no card on the
+initial page. First check whether the importer puts icons on those pages at all. Report: "G5".
+
+* TODO [G6] POH: "All credits on Discogs ↗" opens the same artist again in the window
+The link is =/artist/<id>?type=Credits=. The discogs reader has no =keyUrl=, so its key differs from the artist
+window's own, and =_extDgDrill()= opens the same artist in place instead of the website's credits in a new tab.
+Report: "G6".
+
+* TODO [G7] POH: Wikipedia's "A table: show it on Wikipedia ↗" can reopen the same article
+=_extWpLeadFor()= rebuilds the link from the API's resolved title with =encodeURIComponent=. When the window was
+opened from a redirect or from a URL spelled differently (a literal comma, as MusicBrainz stores them), the key
+differs and the click opens the same article in the window instead of Wikipedia in a new tab. Report: "G7".
+
+* TODO [G8] POH: a Discogs window opens nothing in place until its record has loaded
+Before the record arrives, a click on a link in a Discogs window keeps its new tab (=_extDiscogsAreaClick()= returns
+early), while the hover marks (=_dpWinWhat()=) already say it opens here. Report: "G8".
