@@ -56,8 +56,8 @@
         "why": "The guard this entry first planted (the stale data-mbtt a Ctrl press left on the cell) is gone with its mechanism: the popup engine keeps no card state on the cell. The same test's nearest guard is the engine's: leaving the cell hides the card, so a later plain hover finds none showing.",
         "edits": [
             {
-                "find": "            if (e.relatedTarget && a.contains(e.relatedTarget)) return;\n            _dpHidePeek();",
-                "replace": "            if (e.relatedTarget && a.contains(e.relatedTarget)) return;"
+                "find": "            if (related && a.contains(related)) return;\n            _dpHidePeek();",
+                "replace": "            if (related && a.contains(related)) return;"
             }
         ],
         "spec": "tests/fixtures/release-event-colours-rg-tooltip.spec.js",

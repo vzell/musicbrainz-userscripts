@@ -90,6 +90,38 @@ no button: advancedsearch.php does not index what it searches.
   `_extIaTest()` (as Discogs' `_extDgSiteTest()`), and `_DP_SITES['archive.org']`
   has `extRoot: '#mb-ia-root'`: the site's own links are in shadow DOM.
 
+## The site's own result list, in shadow DOM (G4, 2026-11-03)
+
+Before any button, archive.org's own results preview too (G4 of
+NON-MB-COVERAGE.org; vzell chose to implement it). Three pieces, all gated
+on `_isIaHost`, so no other host changes:
+
+- **`_dpEventTarget(e)`**: the popup engine's listeners sit on the document,
+  which sees an event inside `<app-root>` retargeted to `<app-root>`; the
+  first element of `composedPath()` is the one under the pointer.
+- **`mousemove`, not `mouseover`/`mouseout`, inside the shadow DOM**
+  (`_dpInIaShadow()`, in `_initDetailPreview()`): a boundary event whose
+  target and `relatedTarget` both retarget to the same shadow host never
+  reaches the document, so moving from a result's link to the empty space
+  beside it fired NO `mouseout` there (found by the G4 spec, which logged the
+  events). `mousemove` always does; the engine follows the element under the
+  pointer with it and runs the same over/out steps with the exact elements
+  on both sides. The two boundary handlers leave shadow-DOM elements to it.
+- **Scope** (`_iaShadowLinkInScope()`, `_IA_SHADOW_SKIP`): the `ext`
+  source's selector on archive.org adds a bare `a[href]` (no root selector
+  crosses a shadow root); `resolve` keeps a document link only in the table
+  or `#mb-ia-root`, and a shadow-DOM link anywhere but under `nav`, `header`,
+  `footer`, `<ia-topnav>` or `<ia-footer>`, walking up through each shadow
+  host. Result links are relative (`/details/<id>`); `_extTarget()` reads
+  them against the page on archive.org.
+
+The fixture cannot hold shadow DOM (a saved page loses it), so
+tests/fixtures/ia-search.spec.js builds it. The real page's link shapes —
+whether a tile's link wraps its picture (then it is the image's, never a
+card), which custom elements hold the list — come from
+`scripts/probe-ia-shadow-links.js`, run in vzell's browser (paste it into
+the console on a search page, once per view).
+
 ## The Art column's card and viewer (`_IA_FI`)
 
 vzell, 2026-11-01, after the first live check: "looks good, except image

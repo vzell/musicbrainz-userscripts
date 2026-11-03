@@ -74,6 +74,7 @@ OUT_HTML = os.path.join(ROOT, 'NON-MB-COVERAGE.html')
 OUT_ORG = os.path.join(ROOT, 'NON-MB-COVERAGE.org')
 
 STATES = ('yes', 'part', 'no', 'na')
+NO_GAPS = 'None open. Gaps found and fixed are recorded in org/non-MB-coverage.org.'
 EVIDENCE = ('spec', 'code', 'inferred')
 RULE_RE = re.compile(r'^(here|tab|all|gap:G\d+)(?:\^(n\d+))?(?:/gap:(G\d+))?$')
 
@@ -408,6 +409,8 @@ def render_org(reg):
     out += ['** Windows', ''] + [f'- {w["label"]}: {w["how"]}' for w in reg['windows']] + ['']
 
     out += ['* Gaps', '']
+    if not reg['gaps']:
+        out += [NO_GAPS, '']
     for g in reg['gaps']:
         out += [f'** {g["id"]} {g["title"]}', '', f'Evidence: {g["ev"]}. Code: {g["where"]}.', '', g['text'], '']
     return '\n'.join(out).rstrip('\n') + '\n'
@@ -662,6 +665,8 @@ def render_html(reg):
 
     # Gaps
     o += ['<section class="q"><div class="q-head"><span class="q-id">⚑</span><h2>Gaps</h2></div><div class="gaps">']
+    if not reg['gaps']:
+        o.append(f'<p class="muted">{E(NO_GAPS)}</p>')
     for g in reg['gaps']:
         o.append(f'<article class="panel gap" id="{E(g["id"])}"><h3><span class="id">{E(g["id"])}</span>{E(g["title"])}'
                  f'<span class="ev">{E(g["ev"])}</span></h3><p>{E(g["text"])}</p><p class="code">Code: <code>{E(g["where"])}</code></p></article>')

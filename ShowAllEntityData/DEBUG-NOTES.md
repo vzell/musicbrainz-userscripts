@@ -27895,3 +27895,66 @@ Tests: sfm-list.spec.js +2 (the WAF, the glyph in place on setlist.fm);
 popup-ext.spec.js +5 new, 4 updated (the cover's two links, "On
 MusicBrainz", the search read and a tour's set-times reads now with cookies).
 Mutations: scripts/mutations/setlistfm-bugs.json (12).
+
+## 2026-11-03 — link previews: G1–G8 of the non-MB coverage report; archive.org's shadow DOM fires no mouseout at the document (fix/non-mb-coverage-gaps, WIP.1)
+
+Env: 2026-11-03T16:19:59+01:00 · vzell-lap · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) · Playwright 1.62.1, Chromium build 1234 · no Tampermonkey (GM stubs)
+
+The eight gaps NON-MB-COVERAGE.org listed (org/non-MB-coverage.org "Phase
+C", vzell's decisions there), and how each was fixed:
+
+- G1 `_extDpTest()`: a site's `ownLinks` (Brucebase's /gig:, /venue:,
+  /relation:) count on every host under their own setting, no longer on
+  discogs.com only. Changes MusicBrainz on purpose (vzell: "everywhere"):
+  popup-ext's "which reader serves which link: the four sites" pinned the
+  old generic reader and was updated; discogs-initial-previews.json's
+  mutation that WAS this change is now the inverse defect.
+- G2 `_MB_FOREIGN_POP_HOST`: + the four Springsteen sites and archive.org,
+  each named (never `_foreignHost`), with vzell's cookie consent.
+- G3 `_extTarget()`: on Brucebase, IN a window only, `/<yyyy>#<ddmmyy>` is
+  the bbdate reader's despite the same host.
+- G4 discogs.com `extRoot` + `main`; setlist.fm `extRoot` + `.mainColumn
+  .setlistPreview, .mainColumn .info` (not the whole column: its Upcoming
+  list is ticket-shop affiliate links) and its relative links read against
+  the page; archive.org: see below.
+- G5 `_dgMbSource()` + `#page_content`.
+- G6/G7 `data-mb-dp-newtab`: `_extTarget()` refuses such a link in a
+  window; on "All credits on Discogs ↗" and "A table: show it on Wikipedia ↗".
+- G8 `_extDiscogsAreaClick()`: without the record it still drills a link.
+
+**Root cause worth keeping (G4, archive.org).** The first version read the
+element under the pointer through `composedPath()` and decided "left the
+link" with `:hover`. The card showed, but never hid on leaving the link.
+A first guess (`:hover` not yet updated during `mouseout`, so read it a task
+later) changed nothing. The evidence came from logging every `mouseout` and
+`mousemove` at the document during the move: ZERO `mouseout`s, one
+`mousemove` whose `composedPath()[0]` was the shadow host's element. A
+boundary event whose target and `relatedTarget` retarget to the same node
+for a listener is not dispatched to that listener, and both retarget to
+`<app-root>` for the document, so a move inside the shadow tree never
+reaches a document-level `mouseover`/`mouseout`. Fix: on archive.org a
+`mousemove` listener follows the element under the pointer and runs the
+same over/out steps with the exact elements (`_dpInIaShadow()`); the
+boundary handlers skip shadow-DOM nodes. The `:hover` workaround was removed.
+A second false lead on the way: the test's first "leave" moved the pointer
+200 px right, onto the card itself (the card opens to the link's right; the
+screenshot showed it), which keeps the card by design.
+
+Also found by mutation-checking: the navigation test first wrapped its link
+in `<nav>`, which `_extTarget()`'s own skip list (`_MB_POP_PAGE_SKIP`)
+already drops, so `_IA_SHADOW_SKIP` was never exercised; the link now sits
+directly in `<ia-topnav>`, and the test gained a positive control (the same
+hover on a result shows its card).
+
+Fixtures cannot hold shadow DOM; ia-search.spec.js builds it. The real
+page's link shapes are unconfirmed until vzell runs
+scripts/probe-ia-shadow-links.js in the console (a tile's link that wraps
+its picture would be the image's, never a card).
+
+Tests: popup-ext.spec.js +4 (G6, G7, G8, G1 setting off), 1 updated (G1);
+popup-ext-foreign.spec.js +3 (G2 ×2, G3); ia-search.spec.js +2;
+discogs-search-page.spec.js +1; sfm-list.spec.js +1; discogs-links.spec.js
++1 (G5). Mutations: scripts/mutations/non-mb-coverage-gaps.json (17, all
+fail as expected); discogs-initial-previews.json updated (7, all OK); five
+entries elsewhere whose `find` quoted a changed line repointed and re-run
+(OK).

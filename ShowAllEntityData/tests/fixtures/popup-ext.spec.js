@@ -1809,6 +1809,45 @@ test.describe('the rich Wikidata and Wikipedia windows (branch B)', () => {
         await expect(dialog(page).locator('button', { hasText: 'Back' })).toBeVisible();
         expect(pages, 'no new tab').toEqual([]);
     });
+
+    test('G7: a section\'s table becomes "A table: show it on Wikipedia ↗", which keeps its new tab even when spelled unlike the window\'s link', async ({ page }) => {
+        // Pins G7 of NON-MB-COVERAGE.org (2026-11-03). The table's link is
+        // rebuilt from the API's resolved title with encodeURIComponent, so
+        // when the window was opened from a redirect or another spelling
+        // (a literal comma, as MusicBrainz stores titles) its key differs
+        // and a click reopened the same article in the window. The link
+        // carries data-mb-dp-newtab now. The capture's section 1 has no
+        // table, so one is put into its HTML here.
+        await answerWiki(page);
+        await page.context().addInitScript(() => {
+            const prev = window.__gmXhrResponder;
+            window.__gmXhrResponder = (opts) => {
+                const r = prev(opts);
+                if (!r || !opts.url.startsWith('https://en.wikipedia.org/w/api.php') || !opts.url.includes('section=1')) return r;
+                const j = JSON.parse(r.responseText);
+                j.parse.text = j.parse.text.replace('</p>', '</p><table class="wikitable"><tr><td>Year</td></tr></table>');
+                return Object.assign({}, r, { responseText: JSON.stringify(j) });
+            };
+        });
+        await openEvent(page, { settings: { sa_pop_ext: true } });
+        await addAnnotationLinks(page, [WP_BRUCE]);
+        await ctrlHover(page, probe(page, 0));
+        await expect(card(page)).toContainText('fetched now');
+        await page.keyboard.press('Space');
+        const d = dialog(page);
+        const area = d.locator('.mb-dp-area');
+        await area.locator('[data-mb-wp-sec="1"]').click();
+        const tableLink = area.locator('.mb-wp-text a', { hasText: 'A table: show it on Wikipedia' });
+        await expect(tableLink).toHaveAttribute('data-mb-dp-newtab', '');
+        // As the link reads after a redirect: another spelling of the page.
+        const other = 'https://en.wikipedia.org/wiki/Bruce%20Springsteen';
+        await page.context().route(other, (route) => route.fulfill({ status: 200, contentType: 'text/html', body: '<p>wikipedia</p>' }));
+        await tableLink.evaluate((a, h) => a.setAttribute('href', h), other);
+        const popup = page.waitForEvent('popup');
+        await tableLink.click();
+        expect((await popup).url()).toBe(other);
+        await expect(d.locator(':scope > div > span').first(), 'no step deeper').toHaveText('Wikipedia');
+    });
 });
 
 test.describe('readers of known sites (U3): Wikipedia, Wikidata, Discogs', () => {
@@ -2380,6 +2419,38 @@ test.describe('the Discogs window (2026-10-17)', () => {
             expect((await xhrFull(page)).map(r => r.url), `version ${v}: asked again`).toEqual(['https://api.discogs.com/releases/1874253']);
         }
     });
+
+    test('G8: before the record has arrived, a link in a Discogs window opens in the window, not a new tab', async ({ page }) => {
+        // Pins G8 of NON-MB-COVERAGE.org (2026-11-03): the window's click
+        // handler (`_extDiscogsAreaClick()`) returned at once while the
+        // record was not there, so a link kept its new tab, though the hover
+        // marks already said "opens here". The release's answer is held back
+        // here; a link as the window writes one (absolute, target=_blank) is
+        // put into the waiting window.
+        const rel = extAnswers('discogs-release')['https://api.discogs.com/releases/1874253'];
+        await openDiscogs(page, { responses: { 'https://api.discogs.com/releases/1874253': Object.assign({}, rel, { delayMs: 15000 }) } });
+        await page.keyboard.down('Control');
+        await probe(page, 0).hover();
+        await page.keyboard.up('Control');
+        await expect(card(page)).toBeVisible();
+        await page.keyboard.press('Space');
+        const d = dialog(page);
+        const title = d.locator(':scope > div > span').first();
+        await expect(title).toHaveText('Discogs release');
+        await page.evaluate((href) => {
+            const a = document.createElement('a');
+            a.id = 'g8-probe';
+            a.href = href;
+            a.target = '_blank';
+            a.textContent = 'Born To Run (master)';
+            document.querySelector('#mb-dp-dialog .mb-dp-area').appendChild(a);
+        }, DG.master);
+        const pages = [];
+        page.on('popup', (pp) => pages.push(pp.url()));
+        await d.locator('#g8-probe').click();
+        await expect(title, 'the master, one step deeper in the same window').toHaveText('Discogs release › Discogs master');
+        expect(pages, 'no new tab').toEqual([]);
+    });
 });
 
 // The Discogs artist and label windows (2026-10-18, mockup
@@ -2824,6 +2895,30 @@ test.describe('the Discogs artist and label windows (2026-10-18)', () => {
         await expect.poll(async () => (await read()).max - low.max).toBeGreaterThan(240);
         expect((await read()).max - low.max).toBeLessThanOrEqual(260);
     });
+
+    test('G6: "All credits on Discogs ↗" keeps its new tab, never the same artist again in the window', async ({ page }) => {
+        // Pins G6 of NON-MB-COVERAGE.org (2026-11-03): the link is
+        // /artist/<id>?type=Credits, whose key differs from the window's
+        // own, so a plain click reopened the same artist in place
+        // ("Discogs artist › Discogs artist") instead of the website's
+        // credits. The link carries data-mb-dp-newtab now.
+        const credits = 'https://www.discogs.com/artist/254876?type=Credits';
+        await page.context().route(credits, (route) => route.fulfill({ status: 200, contentType: 'text/html', body: '<p>credits</p>' }));
+        await openDiscogsEntities(page);
+        await ctrlHover(page, probe(page, 0));
+        await expect(card(page).locator('.mb-tt-title')).toHaveText('Max Weinberg');
+        await page.keyboard.press('Space');
+        const d = dialog(page);
+        const title = d.locator(':scope > div > span').first();
+        const all = d.locator('[data-mb-dg-disco="artist"] [data-mb-dg-sec="a-credits"] .mb-dg-box a');
+        await expect(all).toHaveAttribute('href', credits);
+        await expect(all).toHaveAttribute('data-mb-dp-newtab', '');
+        await expect(title).toHaveText('Discogs artist');
+        const popup = page.waitForEvent('popup');
+        await all.click();
+        expect((await popup).url(), 'the website\'s credits, in a new tab').toBe(credits);
+        await expect(title, 'the window still shows the artist, one step deep').toHaveText('Discogs artist');
+    });
 });
 
 // U4: the four Springsteen sites' own parsers on links from MusicBrainz, and
@@ -2877,7 +2972,11 @@ function solidPng(w, h) {
 }
 
 test.describe('the Springsteen sites across hosts (U4)', () => {
-    test('which reader serves which link: the four sites\' detail pages, a Brucebase date; the rest generic', async ({ page }) => {
+    test('which reader serves which link: the four sites\' detail pages, a Brucebase date and show; the rest generic', async ({ page }) => {
+        // Pins: on MusicBrainz a Brucebase show (/gig:) is Brucebase's own
+        // reader's while sa_bb_event_preview is on — since 2026-11-03 (G1 of
+        // NON-MB-COVERAGE.org, vzell: "everywhere"); before, it was generic
+        // on every host but discogs.com.
         await openEvent(page, { settings: { sa_pop_ext: true } });
         await addAnnotationLinks(page, [
             SP.sl, SP.jl, SP.bs, SP.bb, BBD.stonePony,
@@ -2888,8 +2987,18 @@ test.describe('the Springsteen sites across hosts (U4)', () => {
             .map(a => window.__saTest.popResolve(a).split(':').slice(0, 2).join(':')));
         expect(keys).toEqual([
             'ext|ext:springsteen', 'ext|ext:springsteen', 'ext|ext:springsteen', 'ext|ext:springsteen', 'ext|ext:bbdate',
-            'ext|ext:generic', 'ext|ext:generic', 'ext|ext:generic', 'ext|ext:generic',
+            'ext|ext:generic', 'ext|ext:springsteen', 'ext|ext:generic', 'ext|ext:generic',
         ]);
+    });
+
+    test('a Brucebase show link on MusicBrainz is generic again with sa_bb_event_preview off', async ({ page }) => {
+        // Pins the other half of G1: Brucebase's own links follow their own
+        // setting on every host, as on Brucebase itself.
+        await openEvent(page, { settings: { sa_pop_ext: true, sa_bb_event_preview: false } });
+        await addAnnotationLinks(page, [SP.bb, 'https://brucebase.wikidot.com/gig:2025-10-26-stone-pony-asbury-park-nj']);
+        const keys = await page.evaluate(() => Array.from(document.querySelectorAll('.ext-probe a'))
+            .map(a => window.__saTest.popResolve(a).split(':').slice(0, 2).join(':')));
+        expect(keys).toEqual(['ext|ext:springsteen', 'ext|ext:generic']);
     });
 
     test('each site\'s own card, fetched anonymously; jungleland.it decoded as windows-1252', async ({ page }) => {

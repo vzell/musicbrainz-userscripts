@@ -18384,11 +18384,17 @@
      * setlist's artists with MusicBrainz's glyph, an artist window's "On
      * MusicBrainz"), the Live page and the editing history read with the
      * browser's musicbrainz.org cookies there too (`_mbPageGetForeign()`,
-     * vzell's consent of the same day). The source's id stays `dg-mb`:
-     * `_mbKindIconUrl()`, `_mbWinSource()` and the specs key on it.
+     * vzell's consent of the same day). Since 2026-11-03 also the four
+     * Springsteen sites and archive.org (G2 of NON-MB-COVERAGE.org, vzell's
+     * consent of that day, org/non-MB-coverage.org "Phase C": "yes, cookies
+     * too"): a musicbrainz.org link in any window there opened a new tab. The
+     * list names each host on purpose, never `_foreignHost`: a site added
+     * later does not inherit a consent given for these. The source's id
+     * stays `dg-mb`: `_mbKindIconUrl()`, `_mbWinSource()` and the specs key
+     * on it.
      * @type {boolean}
      */
-    const _MB_FOREIGN_POP_HOST = !!(_isDgHost || _isSfmHost);
+    const _MB_FOREIGN_POP_HOST = !!(_isDgHost || _isSfmHost || _isSlHost || _isJlHost || _isBsHost || _isBbHost || _isIaHost);
 
     /**
      * MusicBrainz links on discogs.com as a source of the popup engine
@@ -18416,9 +18422,12 @@
     function _dgMbSource() {
         // Also our own <h1> (`_dgPrepareLivePage()`): murdos' importer puts
         // its icon in front of the page's name there too (vzell, 2026-10-28:
-        // it had no card).
+        // it had no card). And Discogs' older layout, `#page_content`
+        // (submissions, history, images, user, ratings, sell), as
+        // `_DP_SITES['www.discogs.com'].extRoot` names it: an icon there had
+        // no card before a render (G5 of NON-MB-COVERAGE.org, 2026-11-03).
         const sel = '#mb-dg-root table.tbl > tbody a[href^="https://musicbrainz.org/"], #app a[href^="https://musicbrainz.org/"], ' +
-            '#mb-dg-root h1.mb-dg-h1 a[href^="https://musicbrainz.org/"]';
+            '#page_content a[href^="https://musicbrainz.org/"], #mb-dg-root h1.mb-dg-h1 a[href^="https://musicbrainz.org/"]';
         const resolve = (a) => {
             const m = _DG_MB_LINK_RE.exec(a.getAttribute('href') || '');
             const type = m && m[1].toLowerCase();
@@ -19442,6 +19451,42 @@
         root.appendChild(h1);
         document.body.insertBefore(root, document.body.firstChild);
         return h1;
+    }
+
+    /**
+     * archive.org's own parts no link preview belongs to, inside its shadow
+     * DOM: the site's navigation, header and footer (`<ia-topnav>` and the
+     * plain elements). Matched on every element from the link up through
+     * each shadow host (`_iaShadowLinkInScope()`).
+     * @type {string}
+     */
+    const _IA_SHADOW_SKIP = 'nav, header, footer, ia-topnav, ia-footer';
+
+    /**
+     * Whether a link on archive.org is one the link previews serve (G4 of
+     * NON-MB-COVERAGE.org, 2026-11-03). In the document itself: only the
+     * table's and our own section's, as `_DP_SITES['archive.org'].extRoot`
+     * says. Inside the site's shadow DOM (its result list, written there by
+     * its web components after load, so no root selector reaches it): any
+     * link outside `_IA_SHADOW_SKIP`, crossing each shadow root to its host
+     * on the way up. `_extTarget()` then decides what it previews (an item's
+     * `/details/<id>`: the `iadetails` reader).
+     *
+     * @param {Element} a
+     * @returns {boolean}
+     */
+    function _iaShadowLinkInScope(a) {
+        if (!a || !a.getRootNode) return false;
+        if (!(a.getRootNode() instanceof ShadowRoot)) return !!a.closest('table.tbl > tbody, #mb-ia-root');
+        for (let n = a; n;) {
+            if (n.matches && n.matches(_IA_SHADOW_SKIP)) return false;
+            if (n.parentElement) n = n.parentElement;
+            else {
+                const r = n.getRootNode();
+                n = r instanceof ShadowRoot ? r.host : null;
+            }
+        }
+        return true;
     }
 
     /**
@@ -24269,9 +24314,9 @@
             // 2026-10-24: "on all BB PTs where an event href is involved in
             // a column or elsewhere"): any link to one previews under its
             // own setting, whatever `setting` says. `isDetailUrl` stays
-            // /song:, so /gig: links on other hosts (`_extDpTest()`) are
-            // left as they were; a Media icon (an `<img>` link) stays the
-            // image card's.
+            // /song:; on other hosts `_extDpTest()` takes these under the
+            // same setting (2026-11-03, G1 of NON-MB-COVERAGE.org); a Media
+            // icon (an `<img>` link) stays the image card's.
             ownLinks: {
                 // Venue and people pages too (2026-10-24: "all relations
                 // under On stage … should support detail hovering").
@@ -24332,14 +24377,19 @@
             livePrepare: null,
             // The React pages' root; the older, server-rendered ones
             // (submissions, a release's history, a user's ratings) have no
-            // `#app`, their content is `#page_content` (5a, 2026-10-24).
-            extRoot: '#app, #page_content'
+            // `#app`, their content is `#page_content` (5a, 2026-10-24). The
+            // search page (Next.js, `dg-search`) has neither: its content is
+            // `<main>`, outside Discogs' header (G4 of NON-MB-COVERAGE.org,
+            // 2026-11-03: no preview there before a render).
+            extRoot: '#app, #page_content, main'
         },
         // archive.org (2026-10-31): like discogs.com, no detail pages of its
         // own to parse — an item is the `iadetails` reader's
         // (`_EXT_READERS`). The site's own page is a web-component shell
-        // (its links in shadow DOM, out of reach), so the content area is
-        // our own section only.
+        // (its links in shadow DOM, out of reach of a root selector), so the
+        // content area is our own section only; the shadow DOM's links are
+        // reached since 2026-11-03 through `_dpEventTarget()` and
+        // `_iaShadowLinkInScope()` (G4 of NON-MB-COVERAGE.org).
         'archive.org': {
             setting: null,
             isDetailUrl: () => false,
@@ -24356,6 +24406,12 @@
         // `setlistfm` reader's (with its key). The content area is our own
         // section (`#mb-sfm-root`): without this entry `_extSource()`'s
         // selector threw on setlist.fm (found by tests/fixtures/sfm-list.spec.js).
+        // Since 2026-11-03 (G4 of NON-MB-COVERAGE.org) also setlist.fm's own
+        // list, before any render: its setlist cards (`.setlistPreview`, the
+        // Tour and setlist links, written relative and read against the page
+        // by `_extTarget()`) and a venue's info box (`.info`: its website,
+        // Wikipedia). Not the whole `.mainColumn`: its "Upcoming" list is
+        // ticket-shop affiliate links.
         'www.setlist.fm': {
             setting: null,
             isDetailUrl: () => false,
@@ -24365,7 +24421,7 @@
             liveHide: [],
             liveCss: '',
             livePrepare: null,
-            extRoot: '#mb-sfm-root'
+            extRoot: '#mb-sfm-root, .mainColumn .setlistPreview, .mainColumn .info'
         }
     };
 
@@ -31005,6 +31061,40 @@
     }
 
     /**
+     * The element an event of the popup engine really happened on. On
+     * archive.org the site's own result list is web components with open
+     * shadow roots (`<app-root>` and below), and a listener on the document
+     * gets `e.target` retargeted to the outermost shadow host; the first
+     * element of `composedPath()` is the one under the pointer (G4 of
+     * NON-MB-COVERAGE.org, 2026-11-03). On every other host `e.target`,
+     * unchanged: MusicBrainz's pages and the other sites have no shadow DOM
+     * the engine reads.
+     *
+     * @param {Event} e
+     * @returns {?EventTarget}
+     */
+    function _dpEventTarget(e) {
+        if (_isIaHost && typeof e.composedPath === 'function') {
+            const first = e.composedPath()[0];
+            if (first && first.closest) return first;
+        }
+        return e.target;
+    }
+
+    /**
+     * Whether `node` is inside archive.org's shadow DOM (G4 of
+     * NON-MB-COVERAGE.org): there the popup engine follows the pointer with
+     * `mousemove` instead of `mouseover`/`mouseout` (`_initDetailPreview()`).
+     * Always false on any other host.
+     *
+     * @param {?EventTarget} node
+     * @returns {boolean}
+     */
+    function _dpInIaShadow(node) {
+        return _isIaHost && !!node && typeof node.getRootNode === 'function' && node.getRootNode() instanceof ShadowRoot;
+    }
+
+    /**
      * Installs the popup engine (the detail-page preview's hover card and
      * pinned dialog) when one of its sources is enabled here (`_popSources()`:
      * a foreign host whose preview setting is on, a MusicBrainz release page
@@ -31033,6 +31123,11 @@
      * Hover handlers ignore a tap's compatibility mouse events
      * (`_isTouchCompatMouseEvent()`), as every tooltip of the script does.
      *
+     * On archive.org the site's own links are in shadow DOM; the handlers
+     * read the element under the pointer through `_dpEventTarget()` (G4 of
+     * NON-MB-COVERAGE.org, 2026-11-03). Everywhere else they read
+     * `e.target`, as before.
+     *
      * @returns {void}
      */
     function _initDetailPreview() {
@@ -31041,34 +31136,69 @@
         _installTouchInputTracker();
         _ensureDetailPreviewStyle();
         _h1KindDocInstall();
-        document.addEventListener('mouseover', (e) => {
-            _dpPeek.px = e.clientX;
-            _dpPeek.py = e.clientY;
+        // The pointer entered `node`.
+        const over = (e, node) => {
             // A link of the window's own Extracted view: what a click on it
             // opens there, or an image's preview (`_dpWinTarget()`).
-            const t = _popResolve(e.target) || _dpWinTarget(e.target);
+            const t = _popResolve(node) || _dpWinTarget(node);
             if (!t || t.el === _dpPeek.link || _isTouchCompatMouseEvent(e)) return;
             _dpPeek.hover = t.el;
             // Without Ctrl held, only remember the element: pressing Ctrl on
             // it shows the card (the keydown handler below).
             if (t.src.needsCtrl() && !e.ctrlKey) return;
             _dpSchedulePeek(t);
+        };
+        // The pointer left `node` for `related` (null: the window).
+        const out = (node, related) => {
+            const h = _dpPeek.hover;
+            if (h && h.contains(node) && !(related && h.contains(related))) _dpPeek.hover = null;
+            const a = _dpPeek.link;
+            if (!a || !a.contains(node)) return;
+            if (related && a.contains(related)) return;
+            _dpHidePeek();
+        };
+        document.addEventListener('mouseover', (e) => {
+            _dpPeek.px = e.clientX;
+            _dpPeek.py = e.clientY;
+            const node = _dpEventTarget(e);
+            if (_dpInIaShadow(node)) return;
+            over(e, node);
         }, true);
         document.addEventListener('mouseout', (e) => {
-            const h = _dpPeek.hover;
-            if (h && h.contains(e.target) && !(e.relatedTarget && h.contains(e.relatedTarget))) _dpPeek.hover = null;
-            const a = _dpPeek.link;
-            if (!a || !a.contains(e.target)) return;
-            if (e.relatedTarget && a.contains(e.relatedTarget)) return;
-            _dpHidePeek();
+            const node = _dpEventTarget(e);
+            if (_dpInIaShadow(node)) return;
+            out(node, e.relatedTarget);
         }, true);
+        // archive.org's shadow DOM (G4): a mouseover or mouseout whose target
+        // and relatedTarget both retarget to the same shadow host never
+        // reaches the document — a move from one result to the next inside
+        // `<app-root>` fires none here (seen in the G4 spec: no mouseout at
+        // all on leaving a result's link). mousemove always does, so on
+        // archive.org it follows the element under the pointer and runs the
+        // same two steps, with the exact elements on both sides; the two
+        // handlers above leave shadow-DOM elements to it.
+        if (_isIaHost) {
+            let under = null;
+            document.addEventListener('mousemove', (e) => {
+                const node = _dpEventTarget(e);
+                if (node === under) return;
+                const prev = under;
+                under = node;
+                if (!_dpInIaShadow(prev) && !_dpInIaShadow(node)) return;
+                _dpPeek.px = e.clientX;
+                _dpPeek.py = e.clientY;
+                if (_dpInIaShadow(prev)) out(prev, node);
+                if (_dpInIaShadow(node)) over(e, node);
+            }, true);
+        }
         document.addEventListener('focusin', (e) => {
-            const t = _popResolve(e.target) || _dpWinTarget(e.target);
-            if (!t || t.el !== e.target || t.el === _dpPeek.link) return;
+            const node = _dpEventTarget(e);
+            const t = _popResolve(node) || _dpWinTarget(node);
+            if (!t || t.el !== node || t.el === _dpPeek.link) return;
             if (_dpFocusVisible(t.el) && !t.src.needsCtrl()) _dpSchedulePeek(t);
         }, true);
         document.addEventListener('focusout', (e) => {
-            if (e.target === _dpPeek.link) _dpHidePeek();
+            if (_dpEventTarget(e) === _dpPeek.link) _dpHidePeek();
         }, true);
         document.addEventListener('mousedown', () => {
             if (_dpPeek.link) _dpHidePeek();
@@ -56282,7 +56412,10 @@
      * scripts/probe-dg-poh-headerline.user.js P1: 1394 bytes of check vs
      * the 1.28 MB release page and its 183 KB /edits). vzell's consent:
      * org/POH-headerline.org item 3 — the second request of the popup
-     * engine that is not anonymous (the first: `_extDgImgDataGet()`). The
+     * engine that is not anonymous (the first: `_extDgImgDataGet()`).
+     * The hosts it runs on are `_MB_FOREIGN_POP_HOST`'s: discogs.com,
+     * setlist.fm (2026-11-03) and, by vzell's consent of 2026-11-03 (G2 of
+     * NON-MB-COVERAGE.org), the four Springsteen sites and archive.org. The
      * Web Service stays anonymous (`_mbWsGetForeign()`). The caller has
      * taken the MusicBrainz rate slot (`_MB_LIVE.awaitSlot`).
      *
@@ -66911,7 +67044,7 @@
             if (n.nodeType === 3) return _rgEsc(n.nodeValue);
             if (n.nodeType !== 1) return '';
             if (n.matches(SKIP)) return '';
-            if (n.tagName === 'TABLE') return `<p class="mb-rg-dim"><a href="${_rgEsc(page)}" target="_blank" rel="noopener noreferrer">A table: show it on Wikipedia ↗</a></p>`;
+            if (n.tagName === 'TABLE') return `<p class="mb-rg-dim"><a href="${_rgEsc(page)}" target="_blank" rel="noopener noreferrer" data-mb-dp-newtab>A table: show it on Wikipedia ↗</a></p>`;
             const inner = Array.from(n.childNodes).map(walk).join('');
             if (/^H[2-6]$/.test(n.tagName)) return `<h5 class="mb-wp-h">${_rgEsc(n.textContent.trim())}</h5>`;
             if (n.tagName === 'A') {
@@ -71077,7 +71210,7 @@
             `${_extDgNum(cst.n)} entr${cst.n === 1 ? 'y' : 'ies'}` : 'none'}${cst.done ? '' : ' so far'})`;
         const box = `<div class="mb-dg-box">Discogs' API lists only some of an artist's credits, the production ones${listed}. ` +
             'The website lists them all, written-by, instruments and vocals included. ' +
-            `<a href="https://www.discogs.com/artist/${dg.id}?type=Credits" target="_blank" rel="noopener noreferrer">All credits on Discogs ↗</a></div>`;
+            `<a href="https://www.discogs.com/artist/${dg.id}?type=Credits" target="_blank" rel="noopener noreferrer" data-mb-dp-newtab>All credits on Discogs ↗</a></div>`;
         const cparts = croles.map((role) => {
             const st = _extDgRoleState(vs, all, role);
             return `<div class="mb-dg-subsec">${_extDgSection(`a-c-${role.replace(/[^\w-]/g, '-')}`, role, _extDgSoFar(st),
@@ -71512,7 +71645,10 @@
      * toggle and "Show all track credits"; the versions' buttons, chips,
      * sort headers; an artist's or a label's controls
      * (`_extDgEntityAct()`, `_extDgEntityControl()`); a Discogs link or a
-     * version's row drills down.
+     * version's row drills down. Before the record has arrived (or when it
+     * failed) there are no controls, but a link is still a link: it opens in
+     * the window, as `_dpWinWhat()` already marks it (G8 of
+     * NON-MB-COVERAGE.org, 2026-11-03: it kept its new tab until then).
      *
      * @param {MouseEvent} e
      * @param {object} t
@@ -71521,7 +71657,11 @@
     function _extDiscogsAreaClick(e, t) {
         const st = _mbPop.get(t.key);
         const rec = st && st.status === 'done' ? st.data : null;
-        if (!rec || !rec.discogs || !(e.target instanceof Element)) return;
+        if (!(e.target instanceof Element)) return;
+        if (!rec || !rec.discogs) {
+            _extDgDrill(e, e.target.closest('a[href]'));
+            return;
+        }
         const ui = _extDgUiOf(t);
         const repaint = () => { if (_dpDialog.repaint) _dpDialog.repaint(); };
         // The edit history's controls (a release's window on a submissions list).
@@ -71647,13 +71787,16 @@
     }
 
     /**
-     * A detail page of one of the four sites, by that site's own test. On
-     * discogs.com also a page the site previews under a setting of its own
-     * (`ownLinks`: Brucebase's show, venue and people pages), so a Brucebase
-     * link in Discogs' content gets Brucebase's card, not a generic one
-     * (org/TODO.org "some more BB and MB fixes/enhancements" 5a, vzell
-     * 2026-10-24: "Discogs + Brucebase links"). Elsewhere, MusicBrainz above
-     * all, such a link stays the generic reader's, as before.
+     * A detail page of one of the four sites, by that site's own test, or a
+     * page the site previews under a setting of its own while that setting
+     * is on (`ownLinks`: Brucebase's show, venue and people pages, under
+     * `sa_bb_event_preview`), so a Brucebase link gets Brucebase's card, not
+     * a generic one, and opens in any window (`_DP_WIN_EXT_READERS`). First
+     * on discogs.com only (org/TODO.org "some more BB and MB
+     * fixes/enhancements" 5a, vzell 2026-10-24: "Discogs + Brucebase
+     * links"); on every host since 2026-11-03, MusicBrainz included (G1 of
+     * NON-MB-COVERAGE.org, vzell: "everywhere"): a Brucebase show window's
+     * own gig page, in its See also, opened a new tab.
      *
      * @param {URL} u
      * @returns {boolean}
@@ -71662,7 +71805,9 @@
         const key = _extDpSiteKey(u);
         if (!key) return false;
         const site = _DP_SITES[key];
-        return site.isDetailUrl(u) || (_isDgHost && !!site.ownLinks && site.ownLinks.test(u));
+        if (site.isDetailUrl(u)) return true;
+        const own = site.ownLinks;
+        return !!own && Lib.settings[own.setting] !== false && own.test(u);
     }
 
     /**
@@ -74330,7 +74475,13 @@
      * page fields, else null) replaces the source's; `liveUrl`, when not
      * '', is the Live page's address (a reader's `liveUrlFor()`).
      * `inWindow` takes a link IN the window (a Discogs window's own links,
-     * `_extDgDrill()`), which a hover never previews.
+     * `_extDgDrill()`), which a hover never previews. In the window, a link
+     * marked `data-mb-dp-newtab` is none: it names the website's own page of
+     * what the window already shows ("All credits on Discogs ↗", "A table:
+     * show it on Wikipedia ↗"), which no reader can show, so it keeps its new
+     * tab — a key built from it differs from the window's (a query, another
+     * spelling of a title) and would otherwise reopen the same record in
+     * place (G6, G7 of NON-MB-COVERAGE.org, 2026-11-03).
      *
      * @param {Element} a
      * @param {{inWindow?: boolean}} [opts]
@@ -74339,6 +74490,7 @@
      */
     function _extTarget(a, { inWindow = false } = {}) {
         if (!a || a.tagName !== 'A') return null;
+        if (inWindow && a.hasAttribute('data-mb-dp-newtab')) return null;
         const raw = (a.getAttribute('href') || '').trim();
         // MusicBrainz writes the sidebar's Wikidata link protocol-relative
         // (`//www.wikidata.org/wiki/Q…`, found by U3's live spec): read as
@@ -74352,6 +74504,17 @@
         // 5a, 2026-10-24). Only there: on MusicBrainz a relative link is
         // MusicBrainz's, never another site's.
         if (_isDgHost && /^\/[^/]/.test(href)) href = `${window.location.origin}${href}`;
+        // setlist.fm writes its own list's links relative to the page
+        // ("../search?artist=…&tour=…"), archive.org its result list's
+        // ("/details/<id>"): read against it, so they preview on the initial
+        // page (G4 of NON-MB-COVERAGE.org, 2026-11-03).
+        if ((_isSfmHost || _isIaHost) && href && !/^(?:[a-z][\w+.-]*:|\/\/|#)/i.test(href)) {
+            try {
+                href = new URL(href, window.location.href).href;
+            } catch (_) {
+                return null;
+            }
+        }
         if (!/^https?:\/\//i.test(href)) return null;
         let u;
         try {
@@ -74369,9 +74532,14 @@
         // a Discogs page a Discogs reader takes (2026-10-18: a release,
         // master, artist, label or its history, a user, a search).
         // On archive.org (2026-10-31): an item our table links, the
-        // `iadetails` reader's.
+        // `iadetails` reader's. On Brucebase, IN a window only (G3 of
+        // NON-MB-COVERAGE.org, 2026-11-03): a show on its year page
+        // (`/<yyyy>#<ddmmyy>`, the `bbdate` reader's) — a MusicBrainz event's
+        // Brucebase link, which kept its new tab here and opens in the window
+        // everywhere else. On the page itself such a link stays the site's.
         if (bare(host) === bare(window.location.hostname.toLowerCase()) &&
-            !(_isDgHost && _extDgSiteTest(u)) && !(_isIaHost && _extIaTest(u)) && !(_isSfmHost && _extSfmTest(u))) return null;
+            !(_isDgHost && _extDgSiteTest(u)) && !(_isIaHost && _extIaTest(u)) && !(_isSfmHost && _extSfmTest(u)) &&
+            !(_isBbHost && inWindow && _extBbDateTest(u))) return null;
         if (_EXT_SKIP_HOST_RE.test(host) || _EXT_SKIP_URL_RE.test(href)) return null;
         // A Relationships icon is an image link that IS the link: it gets
         // the card (2026-10-17). Elsewhere a link around an image is the
@@ -74420,7 +74588,10 @@
                     const root = _DP_SITES[_foreignHost].extRoot;
                     // `extRoot` may name several roots (discogs.com's two layouts).
                     const roots = root ? root.split(',').map(r => `, ${r.trim()} a[href]`).join('') : '';
-                    return `table.tbl > tbody a[href]${roots}`;
+                    // archive.org: any link too, for its shadow DOM, which no
+                    // root selector reaches; `resolve` keeps only the
+                    // shadow-DOM ones (`_iaShadowLinkInScope()`).
+                    return `table.tbl > tbody a[href]${roots}${_isIaHost ? ', a[href]' : ''}`;
                 }
                 return _popSettingOn('sa_pop_mb_page') ? `${_EXT_SCOPE_SEL}, #page a[href]` : _EXT_SCOPE_SEL;
             },
@@ -74431,7 +74602,7 @@
             // `sa_enable_<site>` gate, so `sa_pop_ext` (on touch its twin) is
             // the one switch.
             enabled: () => _popSettingOn('sa_pop_ext'),
-            resolve: (a) => _extTarget(a),
+            resolve: (a) => (_isIaHost && !_iaShadowLinkInScope(a) ? null : _extTarget(a)),
             needsCtrl: _dpNeedsCtrl,
             // A reader may show another address than the link (U4: a
             // Brucebase date's year page as https).

@@ -81,7 +81,7 @@
     },
     {
       "key": "dg", "abbr": "DI", "name": "Discogs", "host": "www.discogs.com", "hostVar": "_isDgHost",
-      "gate": "sa_enable_discogs", "preview": null, "extRoot": "#app, #page_content",
+      "gate": "sa_enable_discogs", "preview": null, "extRoot": "#app, #page_content, main",
       "doc": "docs/claude/discogs.md", "view": "dg",
       "pts": [
         { "type": "dg-master", "url": "https://www.discogs.com/master/<id>", "mode": "single",
@@ -97,34 +97,34 @@
           "ip": { "state": "yes", "ev": "code", "why": "#app." },
           "frp": { "state": "yes", "ev": "code" } },
         { "type": "dg-submissions", "url": "https://www.discogs.com/submissions", "mode": "single",
-          "ip": { "state": "part", "ev": "spec", "why": "#page_content: outside links yes; the MB importer's icons get no card (dg-mb names #app only).", "gap": "G5", "spec": ["tests/fixtures/discogs-links.spec.js", "the older layout: #page_content's relative links preview on the initial page"] },
+          "ip": { "state": "yes", "ev": "spec", "why": "#page_content: Discogs' links, and the MB importer's icons since 2026-11-03 (G5).", "spec": ["tests/fixtures/discogs-links.spec.js", "G5: the older layout: a MusicBrainz icon in #page_content"] },
           "frp": { "state": "yes", "ev": "spec", "spec": ["tests/fixtures/discogs-submissions.spec.js", "a release title on the list: \"History, then the release\""] } },
         { "type": "dg-history", "url": "https://www.discogs.com/release/<id>/history", "mode": "multi",
-          "ip": { "state": "part", "ev": "code", "why": "As dg-submissions.", "gap": "G5" },
+          "ip": { "state": "yes", "ev": "code", "why": "As dg-submissions." },
           "frp": { "state": "yes", "ev": "spec", "spec": ["tests/fixtures/discogs-links.spec.js", "\"View changes\" opens the window on that diff"] } },
         { "type": "dg-images", "url": "https://www.discogs.com/release/<id>/images", "mode": "single",
-          "ip": { "state": "part", "ev": "code", "why": "As dg-submissions.", "gap": "G5" },
+          "ip": { "state": "yes", "ev": "code", "why": "As dg-submissions." },
           "frp": { "state": "yes", "ev": "code" } },
         { "type": "dg-entity-images", "url": "https://www.discogs.com/artist/<id>/images", "mode": "single",
-          "ip": { "state": "part", "ev": "code", "why": "As dg-submissions.", "gap": "G5" },
+          "ip": { "state": "yes", "ev": "code", "why": "As dg-submissions." },
           "frp": { "state": "yes", "ev": "code" } },
         { "type": "dg-image-history", "url": "https://www.discogs.com/release/<id>/images/update", "mode": "single",
-          "ip": { "state": "part", "ev": "code", "why": "As dg-submissions.", "gap": "G5" },
+          "ip": { "state": "yes", "ev": "code", "why": "As dg-submissions." },
           "frp": { "state": "yes", "ev": "code" } },
         { "type": "dg-user", "url": "https://www.discogs.com/user/<name>", "mode": "multi",
-          "ip": { "state": "part", "ev": "code", "why": "As dg-submissions.", "gap": "G5" },
+          "ip": { "state": "yes", "ev": "code", "why": "As dg-submissions." },
           "frp": { "state": "yes", "ev": "code" } },
         { "type": "dg-user-list", "url": "https://www.discogs.com/user/<name>/collection", "mode": "multi",
           "ip": { "state": "yes", "ev": "code", "why": "#app or #page_content, by the page's layout." },
           "frp": { "state": "yes", "ev": "code" } },
         { "type": "dg-ratings", "url": "https://www.discogs.com/users/ratings/<name>", "mode": "single",
-          "ip": { "state": "part", "ev": "code", "why": "As dg-submissions.", "gap": "G5" },
+          "ip": { "state": "yes", "ev": "code", "why": "As dg-submissions." },
           "frp": { "state": "yes", "ev": "code" } },
         { "type": "dg-sell", "url": "https://www.discogs.com/sell/release/<id>", "mode": "single",
-          "ip": { "state": "part", "ev": "code", "why": "As dg-submissions.", "gap": "G5" },
+          "ip": { "state": "yes", "ev": "code", "why": "As dg-submissions." },
           "frp": { "state": "yes", "ev": "code" } },
         { "type": "dg-search", "url": "https://www.discogs.com/search?q=…", "mode": "single",
-          "ip": { "state": "no", "ev": "code", "why": "The page's content is in <main>, which extRoot does not name.", "gap": "G4" },
+          "ip": { "state": "yes", "ev": "spec", "why": "The page's content is <main>, in extRoot since 2026-11-03 (G4).", "spec": ["tests/fixtures/discogs-search-page.spec.js", "G4: before any button, a result in the page's <main> previews"] },
           "frp": { "state": "yes", "ev": "code" } }
       ]
     },
@@ -134,23 +134,23 @@
       "doc": "docs/claude/internet-archive.md", "view": "ia",
       "pts": [
         { "type": "ia-search", "url": "https://archive.org/search?query=…", "mode": "single",
-          "ip": { "state": "no", "ev": "code", "why": "The site's links are in shadow DOM; extRoot is our own section.", "gap": "G4" },
+          "ip": { "state": "yes", "ev": "spec", "why": "The site's result list, in shadow DOM since 2026-11-03 (G4: composedPath(), mousemove); not its navigation. The spec builds the shadow DOM; the real page's shapes: scripts/probe-ia-shadow-links.js.", "spec": ["tests/fixtures/ia-search.spec.js", "a result's title link: the item's card from its metadata"] },
           "frp": { "state": "yes", "ev": "spec", "spec": ["tests/fixtures/ia-search.spec.js", "a title in our table: its card and window"] } }
       ]
     },
     {
       "key": "sfm", "abbr": "SFM", "name": "setlist.fm", "host": "www.setlist.fm", "hostVar": "_isSfmHost",
-      "gate": "sa_enable_setlistfm", "preview": null, "extRoot": "#mb-sfm-root",
+      "gate": "sa_enable_setlistfm", "preview": null, "extRoot": "#mb-sfm-root, .mainColumn .setlistPreview, .mainColumn .info",
       "doc": "docs/claude/setlistfm.md", "view": "sfm",
       "pts": [
         { "type": "sfm-venue", "url": "https://www.setlist.fm/venue/<slug>-<hex>.html", "mode": "single",
-          "ip": { "state": "no", "ev": "code", "why": "extRoot is our own section; the site's div.body is not covered.", "gap": "G4" },
+          "ip": { "state": "yes", "ev": "spec", "why": "The setlist cards (.setlistPreview) and the venue box (.info) since 2026-11-03 (G4); not the Upcoming box's ticket links. A setlist's own link needs the key.", "spec": ["tests/fixtures/sfm-list.spec.js", "G4: before any button, setlist.fm's own list previews"] },
           "frp": { "state": "yes", "ev": "spec", "why": "The site's own setlist links need sa_pop_ext_setlistfm_key.", "spec": ["tests/fixtures/sfm-list.spec.js", "a Tour cell (setlist.fm's own search link) has its card and window"] } },
         { "type": "sfm-artist", "url": "https://www.setlist.fm/setlists/<slug>-<hex>.html", "mode": "single",
-          "ip": { "state": "no", "ev": "code", "why": "As sfm-venue.", "gap": "G4" },
+          "ip": { "state": "yes", "ev": "code", "why": "The setlist cards, as sfm-venue (no venue box here)." },
           "frp": { "state": "yes", "ev": "code", "why": "As sfm-venue." } },
         { "type": "sfm-search", "url": "https://www.setlist.fm/search?artist=<id>&tour=…", "mode": "single",
-          "ip": { "state": "no", "ev": "code", "why": "As sfm-venue.", "gap": "G4" },
+          "ip": { "state": "yes", "ev": "code", "why": "The setlist cards, as sfm-venue (no venue box here)." },
           "frp": { "state": "yes", "ev": "code", "why": "As sfm-venue." } }
       ]
     }
@@ -174,7 +174,7 @@
   "winExtReaders": ["bbdate", "springsteen", "setlistfm", "iadetails"],
   "allLinksReaders": ["wikipedia", "wikidata", "setlistfm"],
   "allLinksSources": ["mb-entity", "dg-mb", "mb-release-group", "mb-event-rg"],
-  "mbForeignSites": ["dg", "sfm"],
+  "mbForeignSites": ["dg", "sfm", "sl", "jl", "bs", "bb", "ia"],
   "views": [
     { "key": "mb", "label": "musicbrainz.org", "sites": [] },
     { "key": "dg", "label": "discogs.com", "sites": ["dg"] },
@@ -184,8 +184,8 @@
     { "key": "ia", "label": "archive.org", "sites": ["ia"] }
   ],
   "windows": [
-    { "key": "mbent", "label": "MusicBrainz entity", "how": "mb-entity on musicbrainz.org; dg-mb on discogs.com and setlist.fm", "allLinks": true, "only": ["mb", "dg", "sfm"] },
-    { "key": "dgfam", "label": "Discogs (6 readers)", "how": "discogs, dguser, dgsearch, dgsupport, dghistory, dgimages: onAreaClick → _extDgDrill()", "allLinks": true, "notes": { "dg": "n5" } },
+    { "key": "mbent", "label": "MusicBrainz entity", "how": "mb-entity on musicbrainz.org; dg-mb on every other site (_MB_FOREIGN_POP_HOST; the Springsteen sites and archive.org since 2026-11-03)", "allLinks": true },
+    { "key": "dgfam", "label": "Discogs (6 readers)", "how": "discogs, dguser, dgsearch, dgsupport, dghistory, dgimages: onAreaClick → _extDgDrill()", "allLinks": true },
     { "key": "wp", "label": "Wikipedia", "how": "allLinksReaders", "allLinks": true },
     { "key": "wd", "label": "Wikidata", "how": "allLinksReaders", "allLinks": true },
     { "key": "sfm", "label": "setlist.fm", "how": "allLinksReaders", "allLinks": true },
@@ -196,10 +196,10 @@
     { "key": "web", "label": "Other web page", "how": "the generic reader", "allLinks": false }
   ],
   "families": [
-    { "key": "mb", "label": "MusicBrainz", "example": "musicbrainz.org/artist/<mbid>", "route": { "mb": "here", "dg": "here", "sfm": "here", "*": "gap:G2" } },
+    { "key": "mb", "label": "MusicBrainz", "example": "musicbrainz.org/artist/<mbid>", "route": { "*": "here^n2" } },
     { "key": "spr", "label": "SL · JL · KF · BB song", "example": "brucebase.wikidot.com/song:badlands", "route": { "spr": "here^n1", "bb": "here^n1", "*": "here" } },
-    { "key": "bbgig", "label": "BB gig · venue · relation", "example": "brucebase.wikidot.com/gig:1985-01-13-…", "route": { "dg": "here", "bb": "here^n1", "*": "all^n2/gap:G1" } },
-    { "key": "bbdate", "label": "BB year#date", "example": "brucebase.wikidot.com/1985#130185", "route": { "bb": "gap:G3", "*": "here" } },
+    { "key": "bbgig", "label": "BB gig · venue · relation", "example": "brucebase.wikidot.com/gig:1985-01-13-…", "route": { "bb": "here^n1", "*": "here^n5" } },
+    { "key": "bbdate", "label": "BB year#date", "example": "brucebase.wikidot.com/1985#130185", "route": { "*": "here" } },
     { "key": "sfm", "label": "setlist.fm", "example": "setlist.fm/setlist/…-<id>.html", "route": { "*": "here^n3" } },
     { "key": "ia", "label": "archive.org item", "example": "archive.org/details/<id>", "route": { "*": "here" } },
     { "key": "dg", "label": "Discogs r · m · a · l", "example": "discogs.com/release/<id>", "route": { "*": "all" } },
@@ -211,35 +211,10 @@
   ],
   "notes": {
     "n1": "On its own site a detail link opens in the site's own window; it needs that site's preview switch (Brucebase shows also sa_bb_event_preview).",
-    "n2": "Read by the generic reader: the window shows a plain web page, not Brucebase's parsed show.",
+    "n2": "Needs sa_pop_mb (Preview linked entities on hover). Off musicbrainz.org it is MusicBrainz's window read from the other site (dg-mb): its Web Service request anonymous, its Live page and editing history with the browser's musicbrainz.org cookies (vzell's consent: discogs.com and setlist.fm, then on 2026-11-03 the Springsteen sites and archive.org).",
     "n3": "setlist, artist and venue pages need sa_pop_ext_setlistfm_key; without it only /search?artist= is read, and on setlist.fm itself the others keep their new tab.",
     "n4": "On discogs.com a Discogs page no reader takes is the site's own link and keeps its new tab.",
-    "n5": "Only once the record has loaded (see G8)."
+    "n5": "Brucebase's own reader, under sa_bb_event_preview; with it off, the generic reader's (then here only in a window that opens every link)."
   },
-  "gaps": [
-    { "id": "G1", "ev": "code", "title": "Brucebase gig, venue and relation links leave the window",
-      "text": "Away from discogs.com and Brucebase itself, a Brucebase /gig:, /venue: or /relation: link in a Springsteen, Brucebase show, archive.org, YouTube or web-page window opens a new tab; in the other windows it opens as a plain web page. _extDpTest() adds the site's ownLinks on discogs.com only, so elsewhere these links are the generic reader's.",
-      "where": "_extDpTest()" },
-    { "id": "G2", "ev": "code", "title": "MusicBrainz links leave the window on the Springsteen sites and archive.org",
-      "text": "On springsteenlyrics.com, jungleland.it, brucespringsteen.it, brucebase.wikidot.com and archive.org, a musicbrainz.org link in any window opens a new tab: the MB entity source is off on a foreign host, and _MB_FOREIGN_POP_HOST covers discogs.com and setlist.fm only.",
-      "where": "_MB_FOREIGN_POP_HOST, _dgMbWinTarget()" },
-    { "id": "G3", "ev": "code", "title": "A Brucebase show link on Brucebase leaves the window",
-      "text": "On brucebase.wikidot.com, a /<yyyy>#<ddmmyy> link in a window opens a new tab: it is the page's own host (_extTarget() returns null), and /<yyyy> is neither a detail URL nor one of the site's ownLinks.",
-      "where": "_extTarget(), _DP_SITES['brucebase.wikidot.com']" },
-    { "id": "G4", "ev": "code", "title": "No previews on the initial page of dg-search, ia-search and the sfm-* pages",
-      "text": "dg-search's content is in <main>, which _DP_SITES['www.discogs.com'].extRoot does not name. archive.org's links are in shadow DOM, and setlist.fm's extRoot names only our own section (#mb-sfm-root), not the site's div.body.",
-      "where": "_DP_SITES[…].extRoot" },
-    { "id": "G5", "ev": "code", "title": "The MB importer's icons on Discogs' older layout get no card before a render",
-      "text": "On the #page_content pages (submissions, history, images, user, ratings, sell), the dg-mb source's selector names #app only, so murdos' MusicBrainz icons in Discogs' own content have no card on the initial page. Not checked: whether the importer puts icons on those pages at all.",
-      "where": "_dgMbSource()" },
-    { "id": "G6", "ev": "code", "title": "\"All credits on Discogs ↗\" opens the same artist again in the window",
-      "text": "The link is /artist/<id>?type=Credits. The discogs reader has no keyUrl, so its key differs from the artist window's own, and _extDgDrill() opens the same artist in place instead of the website's credits in a new tab.",
-      "where": "_extDgArtistHtml() (the mb-dg-box), _extDgDrill()" },
-    { "id": "G7", "ev": "code", "title": "Wikipedia's \"A table: show it on Wikipedia ↗\" can reopen the same article",
-      "text": "The link is rebuilt from the API's resolved title with encodeURIComponent. When the window was opened from a redirect or from a URL spelled differently (a literal comma, as MusicBrainz stores them), the key differs and the click opens the same article in the window instead of Wikipedia in a new tab.",
-      "where": "_extWpLeadFor()" },
-    { "id": "G8", "ev": "code", "title": "A Discogs window opens nothing in place until its record has loaded",
-      "text": "Before the record arrives, a click on a link in a Discogs window keeps its new tab, while the hover marks (_dpWinWhat()) already say it opens here.",
-      "where": "_extDiscogsAreaClick()" }
-  ]
+  "gaps": []
 }

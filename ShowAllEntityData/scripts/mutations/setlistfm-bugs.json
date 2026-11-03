@@ -30,8 +30,8 @@
     "why": "Items 2a/3b: on setlist.fm a MusicBrainz link of the window left it (a new tab).",
     "edits": [
       {
-        "find": "    const _MB_FOREIGN_POP_HOST = !!(_isDgHost || _isSfmHost);",
-        "replace": "    const _MB_FOREIGN_POP_HOST = !!_isDgHost;"
+        "find": "    const _MB_FOREIGN_POP_HOST = !!(_isDgHost || _isSfmHost || _isSlHost || _isJlHost || _isBsHost || _isBbHost || _isIaHost);",
+        "replace": "    const _MB_FOREIGN_POP_HOST = !!(_isDgHost || _isSlHost || _isJlHost || _isBsHost || _isBbHost || _isIaHost);"
       }
     ],
     "spec": "tests/fixtures/sfm-list.spec.js",

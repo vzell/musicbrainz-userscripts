@@ -2737,7 +2737,17 @@ userscript lists that host, so Tampermonkey does not ask first).
   A link to a **Brucebase** show or page, or to another Springsteen site's
   page (springsteenlyrics.com, jungleland.it, brucespringsteen.it), opens
   in the window too (an event's *Review* link, for example), when
-  *Preview external links on hover* is on.
+  *Preview external links on hover* is on. A Brucebase **gig, venue or
+  person** page (`/gig:…`, `/venue:…`, `/relation:…`) shows Brucebase's own
+  card and window wherever you are, on MusicBrainz too, while *Preview event,
+  venue and people pages on hover* (📚 Brucebase) is on.
+  On discogs.com, setlist.fm, archive.org and the four Springsteen sites, a
+  **MusicBrainz link** in any window opens MusicBrainz's own window there
+  too (*Preview linked entities on hover* on); its Live page and editing history are
+  read with your browser's musicbrainz.org login, as on discogs.com.
+  A link that names the website's own page of what the window already shows
+  keeps its new tab: *All credits on Discogs ↗* in an artist's window, *A
+  table: show it on Wikipedia ↗* in an article's.
 - **The path in the title bar** is a way back:
   - **Click a step** and the window shows it again, from memory; the steps
     after it are dropped.
@@ -2956,8 +2966,9 @@ once and without Tampermonkey asking first:
   Chips of different kinds narrow each other (*Vinyl or CD*, and *UK*); a line
   above the table says what is chosen, and *Clear filters* lifts them all. The master's
   main release and a release this page links are marked. A version's label
-  links Discogs' label search for that name, in a new tab: the list of
-  versions names a label without saying which one. A click on a version
+  links Discogs' label search for that name (the list of versions names a
+  label without saying which one); a click shows that search in the same
+  window, Ctrl-click opens it in a new tab. A click on a version
   shows it in the same window, and *Back* returns to the master; a click (or
   **Space**) on its small picture opens the viewer on that version's images
   instead, and a rest on the picture shows them all. A card never
@@ -3844,7 +3855,8 @@ section of its own above Discogs' page, with the toolbar and these buttons:
   in one table (**Type**, **Title**, **Format**, **Label**, **Year**; the
   thumbnails with a Discogs token only), from Discogs' API, 100 a request.
   Discogs' API gives at most the first 10,000 results of a search; the
-  button says so when there are more.
+  button says so when there are more. Before you press it, the results
+  Discogs shows already have their cards: rest on a title.
 - **For sale — Show every listing:** a release's Marketplace page
   (`/sell/release/<id>`): every listing in one table, read from the page's
   own pages, 250 at a time, in the order you chose there: the **Item**,
@@ -4018,7 +4030,8 @@ added (cover, back, booklet, …); a click on one, or on the picture above,
 opens them all in the viewer. A link to one track of a show opens the show's
 window with that track marked. A video item shows its picture, thumbnails and
 files. On an archive.org search page a collection's link has a card and a
-window too.
+window too, and so has archive.org's own result list before you press
+**Items**: rest on an item's title (its menu bar and header excepted).
 
 With *Play archive.org tracks and videos in the window* on (the default),
 each song has a **▶**, and a video a "Play here" tile: a click plays it in
@@ -4060,6 +4073,10 @@ table's setlist, artist and venue links get their card and window here too.
 A **Tour** cell links setlist.fm's search for that artist's tour: its card
 and window need no key, they read setlist.fm's search page itself (the window
 lists its setlists with their set times, 10 at a time).
+Before you press the button, setlist.fm's own list previews the same way: a
+setlist's Tour link, the venue box's links (its website, Wikipedia) and, with
+the key, a setlist's own link. The Upcoming Shows box's ticket links have no
+card.
 
 Switch, in ⚙️ Settings → 🎤 setlist.fm: *Enable on setlist.fm*, on by default.
 

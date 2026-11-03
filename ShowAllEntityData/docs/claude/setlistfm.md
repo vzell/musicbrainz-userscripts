@@ -112,8 +112,15 @@ on every host, and only with `sa_pop_ext_setlistfm_key` set.
   `setlistfm` reader while it has its key (`_extTarget()`'s same-host
   exception `_extSfmTest(u)`, as archive.org's and Discogs'); without a key
   it is this site's own link and not previewed. `_DP_SITES['www.setlist.fm']`
-  (no detail pages of its own, `extRoot: '#mb-sfm-root'`) must exist:
-  without it `_extSource()`'s selector threw on setlist.fm (found by the spec).
+  (no detail pages of its own) must exist: without it `_extSource()`'s
+  selector threw on setlist.fm (found by the spec).
+- **setlist.fm's own list previews before a render** (G4 of
+  NON-MB-COVERAGE.org, 2026-11-03): `extRoot` is `'#mb-sfm-root,
+  .mainColumn .setlistPreview, .mainColumn .info'` — the setlist cards and a
+  venue's info box (website, Wikipedia), not the whole `.mainColumn`, whose
+  "Upcoming" list is ticket-shop affiliate links. setlist.fm writes its links
+  relative to the page (`../search?artist=…&tour=…`); `_extTarget()` reads
+  them against it on setlist.fm (and archive.org), as on discogs.com.
 
 ### The window would not scroll sideways (2026-11-03)
 

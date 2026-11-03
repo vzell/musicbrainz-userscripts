@@ -553,11 +553,15 @@ page keeps its own behaviour. Ctrl/⌘-click: the new tab.
 ## Link previews on discogs.com
 
 `_DP_SITES['www.discogs.com']`: no detail pages of its own (`setting: null`,
-that source never switches on), `extRoot: '#app, #page_content'` — Discogs'
+that source never switches on), `extRoot: '#app, #page_content, main'` — Discogs'
 content, not its header or footer (vzell); `#page_content` is the older,
 server-rendered pages' (submissions, history, ratings, user), added
-2026-10-24 (org/TODO.org "some more BB and MB fixes/enhancements" 5a), and
-`_extSource()`'s selector appends `a[href]` to each root of the list.
+2026-10-24 (org/TODO.org "some more BB and MB fixes/enhancements" 5a);
+`main` is the search page's (Next.js, `dg-search`: neither of the other
+two), added 2026-11-03 (G4 of NON-MB-COVERAGE.org); and
+`_extSource()`'s selector appends `a[href]` to each root of the list. The
+`dg-mb` source (murdos' importer icons) names `#page_content` too since
+2026-11-03 (G5): an icon in the older layout had no card before a render.
 **Discogs writes its own links relative** (`/release/…`): `_extTarget()`
 reads a relative href against the page on discogs.com only (on MusicBrainz a
 relative link is MusicBrainz's, refused by the same-host rule anyway). Until

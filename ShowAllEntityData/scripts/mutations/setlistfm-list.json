@@ -82,8 +82,8 @@
     "why": "A link to this site is \"not another site\" unless a reader takes it, as archive.org's and Discogs' own.",
     "edits": [
       {
-        "find": " && !(_isSfmHost && _extSfmTest(u))) return null;",
-        "replace": ") return null;"
+        "find": " && !(_isSfmHost && _extSfmTest(u)) &&\n",
+        "replace": " &&\n"
       }
     ],
     "spec": "tests/fixtures/sfm-list.spec.js",
