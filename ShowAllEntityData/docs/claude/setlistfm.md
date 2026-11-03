@@ -15,6 +15,13 @@ The reader's windows also read setlist.fm's pages (set times, a venue's
 facts); the parser of a list card's set times, `_extSfmPreviewTimes()`, is
 shared with the pageTypes.
 
+**setlist.fm's `/search` answers only a request with its WAF cookie**
+(probe v0.2, 2026-11-03: anonymous → 202 `x-amzn-waf-action: challenge`;
+its venue and artist pages answer anonymously). The pageTypes read
+same-origin and never met it; the reader reads every setlist.fm page through
+`_extSfmPageGet()` (detail-pages.md "Bugs and additions"). Mockup of that
+round: https://claude.ai/artifact/CpGp9328FvEZ2yGbXbZrKY.
+
 Switch: `sa_enable_setlistfm` (the site, default on, per CLAUDE.md's rule for
 a new site; its gate exits before anything visible on setlist.fm, and only
 the top window runs). The reader runs under the link previews' own switches
@@ -138,6 +145,8 @@ it is the venue's whole text or one of its `<strong>` parts
 | (2026-11-03) `sfm-list.spec.js` | the window scrolls past setlist.fm's `overflow-x: hidden`; a stage's venue is no event; a search page (named by its choices, its query kept); a Tour cell previewed without a key |
 | `tests/fixtures/sl-include-regex.spec.js` | the `@include` line |
 | `tests/fixtures/popup-ext.spec.js` | the reader (Part A/B) |
+| (2026-11-03, bugs and additions) `sfm-list.spec.js` | a Tour cell's card past AWS WAF (same-origin); the MusicBrainz glyph of a window opens in place on setlist.fm |
+| (2026-11-03) `popup-ext.spec.js` | artists as glyph + name; Load all, Stop, with set times, the daily limit |
 
 Fixtures: `scripts/build-setlistfm-fixtures.py` — `sfm-page-*.html` (the
 live pages in setlist.fm's skeleton; State Farm Arena's pager cut from 93

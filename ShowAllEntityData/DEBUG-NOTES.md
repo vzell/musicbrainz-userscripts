@@ -27845,3 +27845,53 @@ archive.org's setlist rows (`debug/setlistfm-2026-05-30.html`).
 Tests: popup-ext.spec.js "setlist.fm: a setlist's songs play in the window"
 (3); mutations setlistfm-venue.json +3, all fail as expected (userscript
 restored, hash verified).
+
+## 2026-11-03 — setlist.fm: a Tour cell's card met AWS WAF; MusicBrainz glyph + setlist.fm name; Load all (feat/setlistfm-bugs, WIP.1–3)
+Env: probe 2026-11-03T12:47:01+01:00 (setlist.fm) and 12:48:53+01:00 (musicbrainz.org) · vzell's browser, Windows, Chrome 152 · Tampermonkey unknown; code and specs 2026-11-03T12:50+01:00–13:30+01:00 · vzell-lap · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) · Playwright Chromium, no Tampermonkey (GM stubs)
+
+org/setlistfm.org "bugs and new additions"; mockup https://claude.ai/artifact/CpGp9328FvEZ2yGbXbZrKY
+(`org/setlistfm-bugs-mockups.html`), vzell's answers in the same file.
+
+- **Item 1, root cause (probed, not guessed).** On setlist.fm's FRP
+  (`sfm-search`) a Tour cell's card said "checked by AWS WAF" while the
+  same tour in a setlist window worked. The window's tour link is our own
+  `_extSfmTourUrl()` form, read through the API; the Tour cell is
+  setlist.fm's own `search?artist=…&tour=…`, read from its page by
+  `_extSfmSearchGet()` with an ANONYMOUS GM request. The pageType reads the
+  same page same-origin (`fetchHtml()`) and got it.
+  `scripts/probe-setlistfm-session.user.js` v0.2 asked `/search?artist=2bd6dcce&tour=3daa95b`
+  and a venue page (control) three ways: `/search` anonymous → **202,
+  `x-amzn-waf-action: challenge`, 0 chars**, from setlist.fm and from
+  musicbrainz.org alike; with cookies → 200, 85,639 chars, 10
+  `.setlistPreview`; same-origin → the same 200. The venue page: 200 all
+  three ways. So setlist.fm's WAF challenges `/search` without the
+  `aws-waf-token` cookie and lets its list pages through — the 2026-11-02
+  probe tried only a venue page, which is why "the pages ARE readable"
+  held there.
+- **Fix** (`_extSfmPageGet()`, the `_extDgImgDataGet()` pattern): on
+  setlist.fm a same-origin `fetch()` through www.setlist.fm's gate; off
+  setlist.fm a `/search` with the browser's setlist.fm cookies (`session`,
+  vzell's consent 2026-11-03 — the third such exception), every other page
+  still anonymous. Used by the search reader AND by the windows' set-times
+  reads: a tour's set times are read from `/search?query=…`, which met the
+  same challenge unnoticed (its spec's fixture answered anonymously).
+- **Item 2a found a second gate.** With the `dg-mb` source on for
+  setlist.fm (`_MB_FOREIGN_POP_HOST`), the glyph still said "New tab" on
+  MusicBrainz itself: `_mbPopTarget()` skips every link that holds an
+  `<img>` ("an image means artwork") but a Relationships icon. The glyph's
+  image IS the link: `a.mb-sfm-mb` is now an exception, and the glyph names
+  its artist through `data-mb-pop-name` (both resolvers read it).
+- **Item 3a.** `_extSfmRun()`: the list's pages one after another and, for
+  "with set times", setlist.fm's pages in parallel on the other host's gate;
+  Stop after the page under way; leaving the window ends it (`onSkip` on both
+  loaders: `_mbLoad()` forgets a skipped load without a word, and an awaited
+  run would hang). `ui.timesUpTo` bounds which rows' set times are read
+  ("·" past it). vzell's key page: "max. 2.0/second and max. 1440/DAY" —
+  every API attempt is counted in GM storage (`sa_ext_sfm_api_day`, from
+  00:00 UTC, shared by tabs and sites); a run that would pass the day's rest
+  is warned of instead of started, and a run stops at the limit.
+
+Tests: sfm-list.spec.js +2 (the WAF, the glyph in place on setlist.fm);
+popup-ext.spec.js +5 new, 4 updated (the cover's two links, "On
+MusicBrainz", the search read and a tour's set-times reads now with cookies).
+Mutations: scripts/mutations/setlistfm-bugs.json (12).

@@ -231,6 +231,71 @@ test.describe('setlist.fm list pages (sfm-venue, sfm-artist)', () => {
         expect(errors).toEqual([]);
     });
 
+    // org/setlistfm.org "bugs and new additions" item 1 (2026-11-03): the
+    // card of a Tour cell said "checked by AWS WAF". setlist.fm's /search
+    // answers a request without the browser's WAF cookie with a 202
+    // challenge (scripts/probe-setlistfm-session.user.js v0.2); the
+    // anonymous GM request got it, the table's same-origin reads did not.
+    // Here the GM stub answers the challenge and only the page's own
+    // origin answers the page.
+    test('on setlist.fm, a Tour cell\'s card reads the search page same-origin, past AWS WAF\'s challenge to an anonymous request (vzell, 2026-11-03)', async ({ page }) => {
+        await page.addInitScript(() => {
+            window.__gmXhrResponder = (o) => (/^https:\/\/www\.setlist\.fm\/search\?/.test(o.url)
+                ? { status: 202, responseHeaders: 'x-amzn-waf-action: challenge\r\nContent-Type: text/html', responseText: '' } : undefined);
+        });
+        const { served } = await open(page, '/venue/state-farm-arena-atlanta-ga-usa-73d20e81.html', { sa_pop_ext: true, sa_pop_ext_setlistfm_key: '', sa_rich_tooltip_delay_ms: 0 });
+        await show(page, 'Show all setlists of this venue');
+        const a = page.locator('#mb-sfm-root table.tbl tbody tr td a[href*="/search?artist="]').first();
+        await page.mouse.move(0, 0);
+        await page.keyboard.down('Control');
+        await a.hover();
+        await page.keyboard.up('Control');
+        const c = page.locator('#mb-dp-peek');
+        await expect(c.locator('.mb-tt-title')).toHaveText('Bruce Springsteen · Land of Hope & Dreams American Tour');
+        await expect(c).not.toContainText('AWS WAF');
+        expect(served.filter(u => u.startsWith('/search')), 'read by the page\'s own origin').toHaveLength(1);
+        expect(await page.evaluate(() => (window.__gmXhrLog || []).filter(r => /setlist\.fm\/search/.test(r.url)).length), 'never by GM').toBe(0);
+    });
+
+    // Items 2a/3b (2026-11-03): on setlist.fm a MusicBrainz link in the
+    // window left it (↗): MusicBrainz's source in the window was discogs.com's
+    // only (`dg-mb`). Now the glyph opens MusicBrainz's artist here, with Back.
+    test('on setlist.fm, the MusicBrainz glyph of a setlist window\'s artist opens MusicBrainz\'s window in place, not a tab', async ({ page }) => {
+        const fs = require('fs');
+        const setlist = 'https://www.setlist.fm/setlist/bruce-springsteen/2016/los-angeles-sports-arena-los-angeles-ca-4bf0375a.html';
+        await page.addInitScript((body) => {
+            window.__gmXhrResponses = { 'https://api.setlist.fm/rest/1.0/setlist/4bf0375a': { status: 200, responseHeaders: 'Content-Type: application/json', responseText: body } };
+        }, fs.readFileSync(FX('ext-sfm-setlist.json'), 'utf8'));
+        await page.route((u) => u.href === setlist, (route) => route.fulfill({ path: FX('sfm-site-setlist-4bf0375a.html'), contentType: 'text/html; charset=utf-8' }));
+        await open(page, '/venue/state-farm-arena-atlanta-ga-usa-73d20e81.html', { sa_pop_ext: true, sa_pop_mb: true, sa_pop_ext_setlistfm_key: 'sfm-probe-key', sa_rich_tooltip_delay_ms: 0 });
+        // MusicBrainz's glyph (a blocked image collapses to nothing; after open()'s block-all, which a later route overrides).
+        await page.route('https://musicbrainz.org/static/images/entity/*.svg', (route) => route.fulfill({ status: 200, contentType: 'image/svg+xml', body: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"><rect width="16" height="16"/></svg>' }));
+        await page.evaluate((href) => {
+            const p = document.createElement('p');
+            p.className = 'sfm-probe';
+            p.innerHTML = `<a href="${href}">a setlist</a>`;
+            document.getElementById('mb-sfm-root').append(p);
+        }, setlist);
+        await page.keyboard.down('Control');
+        await page.locator('.sfm-probe a').hover();
+        await page.keyboard.up('Control');
+        await expect(page.locator('#mb-dp-peek .mb-tt-title')).toHaveText('Bruce Springsteen at Los Angeles Sports Arena');
+        await page.keyboard.press('Space');
+        const d = page.locator('#mb-dp-dialog');
+        const glyph = d.locator('dt:text-is("Artist") + dd a.mb-sfm-mb');
+        await expect(glyph).toHaveAttribute('href', 'https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f');
+        await page.mouse.move(0, 0);
+        await glyph.locator('img').hover();
+        await expect(d.locator('.mb-dp-wfoot')).toContainText('Opens here: ');
+        const tabs = [];
+        page.on('popup', (pp) => tabs.push(pp.url()));
+        await glyph.click();
+        await expect(d.locator('button.mb-dp-tbtn', { hasText: '← Back' })).toBeVisible();
+        expect(tabs, 'no new tab').toEqual([]);
+        expect(await page.evaluate(() => (window.__gmXhrLog || []).some(r => /^https:\/\/musicbrainz\.org\/ws\/2\/artist\/70248960/.test(r.url))),
+            'MusicBrainz\'s Web Service asked for the artist').toBe(true);
+    });
+
     test('switched off: nothing on the page changes', async ({ page }) => {
         const { served } = await open(page, '/venue/state-farm-arena-atlanta-ga-usa-73d20e81.html', { sa_enable_setlistfm: false });
         await expect(page.locator('.mainColumn h1')).toBeVisible();

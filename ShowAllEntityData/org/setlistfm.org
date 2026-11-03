@@ -226,6 +226,7 @@ Model it the same as we do for the detail POH on IA PTs e.g. [Image #7]
 #+end_example
 
 ** TODO bugs and new additions
+*** DONE initial
 
 1.)
 
@@ -290,5 +291,50 @@ Under the "SETLIST.FM SAYS" section, the artist name should render the MB page i
 4.)
 
 make some nice rich HTML based mockups
+*** answers
+
+1.)
+
+a.)
+
+I approve all the recommendations to your questions
+
+b.)
+
+Q7: The API's daily limit: Rate limit max. 2.0/second and max. 1440/DAY
+
+Take this into account and warn the user if the limit would get hit beforehand
+
+2.)
+
+scripts/probe-setlistfm-session.user.js:
+
+a.)
+
+setlist.fm:
+#+begin_example
+[sfm-probe] v0.2 start 2026-11-03T11:47:01.025Z on https://www.setlist.fm/search?artist=2bd6dcce&tour=3daa95b, UA Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36
+[sfm-probe] search GM_xmlhttpRequest anonymous=true: status 202, waf "challenge", 0 chars, final https://www.setlist.fm/search?artist=2bd6dcce&tour=3daa95b, .setlistPreview 0, .setlistPreviewSetTimes 0, title ""
+[sfm-probe] search GM_xmlhttpRequest anonymous=false: status 200, waf "", 85639 chars, final https://www.setlist.fm/search?artist=2bd6dcce&tour=3daa95b, .setlistPreview 10, .setlistPreviewSetTimes 10, title "Search for setlists | setlist.fm"
+[sfm-probe] search same-origin fetch: status 200, waf "", 85639 chars, final https://www.setlist.fm/search?artist=2bd6dcce&tour=3daa95b, .setlistPreview 10, .setlistPreviewSetTimes 10, title "Search for setlists | setlist.fm"
+[sfm-probe] venue GM_xmlhttpRequest anonymous=true: status 200, waf "", 146863 chars, final https://www.setlist.fm/venue/state-farm-arena-atlanta-ga-usa-73d20e81.html?page=2, .setlistPreview 10, .setlistPreviewSetTimes 7, title "State Farm Arena, Atlanta, GA, USA Concert Setlists | setlist.fm"
+[sfm-probe] venue GM_xmlhttpRequest anonymous=false: status 200, waf "", 147081 chars, final https://www.setlist.fm/venue/state-farm-arena-atlanta-ga-usa-73d20e81.html?page=2, .setlistPreview 10, .setlistPreviewSetTimes 7, title "State Farm Arena, Atlanta, GA, USA Concert Setlists | setlist.fm"
+[sfm-probe] venue same-origin fetch: status 200, waf "", 147165 chars, final https://www.setlist.fm/venue/state-farm-arena-atlanta-ga-usa-73d20e81.html?page=2, .setlistPreview 10, .setlistPreviewSetTimes 7, title "State Farm Arena, Atlanta, GA, USA Concert Setlists | setlist.fm"
+[sfm-probe] done
+#+end_example
+
+b.)
+
+MB:
+#+begin_example
+11:48:39.732 [VZ-ShowAllEntityData: place-overview] 🖥️ Sticky filter bars: base 0px, header block 51px (1), h2 0px, h3 0px (0 shown), thead at 57/57px. 
+[sfm-probe] v0.2 start 2026-11-03T11:48:53.891Z on https://musicbrainz.org/place/eca38ec4-f493-47c5-bbed-2ef762567b73, UA Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36
+[sfm-probe] search GM_xmlhttpRequest anonymous=true: status 202, waf "challenge", 0 chars, final https://www.setlist.fm/search?artist=2bd6dcce&tour=3daa95b, .setlistPreview 0, .setlistPreviewSetTimes 0, title ""
+[sfm-probe] search GM_xmlhttpRequest anonymous=false: status 200, waf "", 85698 chars, final https://www.setlist.fm/search?artist=2bd6dcce&tour=3daa95b, .setlistPreview 10, .setlistPreviewSetTimes 10, title "Search for setlists | setlist.fm"
+[sfm-probe] venue GM_xmlhttpRequest anonymous=true: status 200, waf "", 146863 chars, final https://www.setlist.fm/venue/state-farm-arena-atlanta-ga-usa-73d20e81.html?page=2, .setlistPreview 10, .setlistPreviewSetTimes 7, title "State Farm Arena, Atlanta, GA, USA Concert Setlists | setlist.fm"
+[sfm-probe] venue GM_xmlhttpRequest anonymous=false: status 200, waf "", 147165 chars, final https://www.setlist.fm/venue/state-farm-arena-atlanta-ga-usa-73d20e81.html?page=2, .setlistPreview 10, .setlistPreviewSetTimes 7, title "State Farm Arena, Atlanta, GA, USA Concert Setlists | setlist.fm"
+[sfm-probe] done
+#+end_example
+
 
 

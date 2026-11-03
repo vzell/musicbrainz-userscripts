@@ -18377,6 +18377,20 @@
     }
 
     /**
+     * The other sites whose windows show MusicBrainz's own card and window
+     * for a musicbrainz.org link (the `dg-mb` source, `_dgMbSource()`;
+     * `_dgMbWinTarget()`): discogs.com (2026-10-24) and setlist.fm (vzell,
+     * 2026-11-03, org/setlistfm.org "bugs and new additions" items 2a/3b: a
+     * setlist's artists with MusicBrainz's glyph, an artist window's "On
+     * MusicBrainz"), the Live page and the editing history read with the
+     * browser's musicbrainz.org cookies there too (`_mbPageGetForeign()`,
+     * vzell's consent of the same day). The source's id stays `dg-mb`:
+     * `_mbKindIconUrl()`, `_mbWinSource()` and the specs key on it.
+     * @type {boolean}
+     */
+    const _MB_FOREIGN_POP_HOST = !!(_isDgHost || _isSfmHost);
+
+    /**
      * MusicBrainz links on discogs.com as a source of the popup engine
      * (org/TODO.org "some more BB and MB fixes/enhancements" 5b/5c, vzell
      * 2026-10-24): the icons murdos' "Import Discogs releases to
@@ -18421,7 +18435,8 @@
             const cell = a.closest('td.mb-dg-mb-cell');
             // In our <h1>: the page's name, its <bdi>.
             const h1 = a.closest('h1.mb-dg-h1');
-            const name = _dpText(a.textContent) || (beside ? _dpText(beside.textContent) : '') ||
+            // A setlist.fm window's glyph names its artist itself (`_extSfmMbGlyphHtml()`).
+            const name = a.getAttribute('data-mb-pop-name') || _dpText(a.textContent) || (beside ? _dpText(beside.textContent) : '') ||
                 (cell && cell.dataset.mbDgName) || (h1 ? _dpText((h1.querySelector('bdi') || {}).textContent || '') : '') || '';
             return {
                 key: `${type}:${id}`, url: `https://musicbrainz.org/${type}/${id}`, type, id,
@@ -18435,7 +18450,7 @@
             selector: sel,
             // Read with the browser's musicbrainz.org cookies (`_MB_LIVE.fetchText`).
             live: _MB_LIVE,
-            enabled: () => !!_isDgHost && _popSettingOn('sa_pop_mb'),
+            enabled: () => _MB_FOREIGN_POP_HOST && _popSettingOn('sa_pop_mb'),
             resolve,
             needsCtrl: _dpNeedsCtrl,
             liveUrl: (t) => t.url,
@@ -18470,15 +18485,16 @@
      * or tag's, an edit's, an editor's, a documentation page — PAGES, read
      * with the browser's cookies since 2026-10-28 (`_mbPageGetForeign()`;
      * vzell: "Genres -> tags link do not open inside the same window and do
-     * not have a hover window"). Null elsewhere, with `sa_pop_mb` off, or for
-     * what the window already shows.
+     * not have a hover window"). The same on setlist.fm since 2026-11-03
+     * (`_MB_FOREIGN_POP_HOST`). Null on any other host, with `sa_pop_mb`
+     * off, or for what the window already shows.
      *
      * @param {HTMLAnchorElement} a
      * @param {?object} cur - What the window shows now.
      * @returns {?object} The target, `drilled`.
      */
     function _dgMbWinTarget(a, cur) {
-        if (!_isDgHost || !a || !cur) return null;
+        if (!_MB_FOREIGN_POP_HOST || !a || !cur) return null;
         const src = _popSources().find(x => x.id === 'dg-mb');
         if (!src || !src.enabled()) return null;
         const r = src.resolve(a) || (a.origin === 'https://musicbrainz.org' ? _mbPopTarget(a, { inWindow: true, mbOrigin: true }) : null);
@@ -30632,6 +30648,14 @@
             /* A setlist.fm window: the count of a left-hand table keeps the
                Setlists table to that name (_extSfmLeftTableHtml), a pressed
                one marks its row; the pill above the Setlists table says so. */
+            .mb-dp-dialog a.mb-sfm-mb { display: inline-block; margin-right: 3px; text-decoration: none; border-radius: 3px; }
+            .mb-dp-dialog .mb-sfm-bars { display: inline-grid; gap: 3px; flex: 1 1 160px; min-width: 120px; max-width: 440px; }
+            .mb-dp-dialog .mb-sfm-bars .mb-dg-bar { width: 100% !important; }
+            .mb-dp-dialog .mb-sfm-cost { font-weight: 400; opacity: 0.85; }
+            .mb-dp-dialog .mb-sfm-eta { color: #2b2622; font-weight: 600; }
+            .mb-dp-dialog .mb-sfm-warn { margin: 4px 0; padding: 6px 8px; border: 1px solid #e6cf86; background: #fdf0c8; border-radius: 4px; font-size: 12.5px; }
+            .mb-dp-dialog .mb-sfm-warn .mb-dg-btn { margin-left: 6px; }
+            .mb-dp-dialog a.mb-sfm-mb:hover { background: #f3dcea; }
             .mb-dp-dialog .mb-dg-fc.mb-sfm-pick { margin: 0; white-space: nowrap; }
             .mb-dp-dialog .mb-dg-fc.mb-sfm-pick::after { content: " \\25B8"; color: #7a6d5c; font-size: 10px; }
             .mb-dp-dialog .mb-dg-fc.mb-sfm-pick[aria-pressed="true"]::after { content: " \\2715"; color: #d9cfbd; }
@@ -57023,10 +57047,12 @@
         const k = type && id && Object.prototype.hasOwnProperty.call(_MB_KINDS, type) ? _MB_KINDS[type] : null;
         if (!k) return null;
         // An image means artwork (it has its own preview) — except the
-        // avatar MusicBrainz puts inside every editor link (Phase 3), and a
-        // Relationships icon, whose image is the link (2026-10-26).
+        // avatar MusicBrainz puts inside every editor link (Phase 3), a
+        // Relationships icon, whose image is the link (2026-10-26), and the
+        // artist glyph of a setlist.fm window (`a.mb-sfm-mb`, 2026-11-03).
         const relIcon = !!a.closest('td.mb-rel-cell');
-        if ((!relIcon && a.querySelector('img:not(.avatar)')) || (!inWindow && a.closest('#mb-dp-peek, #mb-dp-dialog'))) return null;
+        const iconLink = relIcon || a.classList.contains('mb-sfm-mb');
+        if ((!iconLink && a.querySelector('img:not(.avatar)')) || (!inWindow && a.closest('#mb-dp-peek, #mb-dp-dialog'))) return null;
         if (!a.closest('table.tbl > tbody') && a.closest(_MB_POP_PAGE_SKIP)) return null;
         const td = a.closest('td, th');
         const table = td && td.closest('table.tbl');
@@ -64834,6 +64860,8 @@
                 return { skipped: true };
             }
             Lib.debug('ext', `GET ${url}${attempt > 1 ? ` (attempt ${attempt})` : ''}`);
+            // setlist.fm's API allows a key 1,440 requests a day: count them.
+            if (host === 'api.setlist.fm') _extSfmApiTally();
             const res = await _extFetch(url, fetchOpts);
             if (res.status > 0) _extRememberHost(host);
             const paused = _extNoteBudget(host, res);
@@ -67173,8 +67201,48 @@
     }
 
     /**
-     * One page of a setlist.fm search, read anonymously through
-     * `_extGet()` (www.setlist.fm's own gate); `{doc}`, or `{out}` for what
+     * One of setlist.fm's own PAGES for the reader (a search, a list's set
+     * times, a venue's facts, a setlist's set times), through
+     * www.setlist.fm's 1 s gate, in `_extFetch()`'s answer shape. Its
+     * `/search` answers a request without the browser's `aws-waf-token`
+     * cookie with AWS WAF's silent challenge (202, empty body,
+     * `x-amzn-waf-action: challenge`) and one with it with the page
+     * (scripts/probe-setlistfm-session.user.js v0.2, vzell's browser,
+     * Windows, Chrome 152, 2026-11-03 12:47 CET, from setlist.fm and from
+     * musicbrainz.org alike; its venue pages answer an anonymous request,
+     * the control). So, as `_extDgImgDataGet()` does for Discogs: on
+     * setlist.fm a same-origin `fetch()`, as the pageTypes read their pages;
+     * elsewhere a `/search` with the browser's setlist.fm cookies
+     * (`session`, vzell's consent of 2026-11-03, org/setlistfm.org "bugs and
+     * new additions" item 1) and every other page anonymously, as before.
+     *
+     * @param {string} url
+     * @param {?function(): boolean} wanted
+     * @returns {Promise<Object>} `_extFetch()`'s answer shape, or `{skipped: true}`.
+     */
+    async function _extSfmPageGet(url, wanted) {
+        if (!_isSfmHost) {
+            const session = _extHostOf(url) === 'www.setlist.fm' && new URL(url).pathname === '/search';
+            return _extGet(url, { wanted, fetchOpts: session ? { session: true } : {} });
+        }
+        await _extAwaitSlot('www.setlist.fm');
+        if (wanted && !wanted()) return { skipped: true };
+        Lib.debug('ext', `GET ${url} (same-origin)`);
+        try {
+            const r = await fetch(url, { credentials: 'same-origin' });
+            const body = await r.text();
+            return {
+                status: r.status, finalUrl: r.url || url, contentType: (r.headers.get('content-type') || '').toLowerCase(),
+                headers: { 'x-amzn-waf-action': r.headers.get('x-amzn-waf-action') || '' }, bytes: body.length, body, tail: '',
+            };
+        } catch (e) {
+            return { error: 'unreachable', detail: (e && e.message) || String(e) };
+        }
+    }
+
+    /**
+     * One page of a setlist.fm search (`_extSfmPageGet()`: same-origin on
+     * setlist.fm, with its cookies elsewhere); `{doc}`, or `{out}` for what
      * the reader says instead (a bot check, a dead link, a failure).
      *
      * @param {object} t
@@ -67183,7 +67251,7 @@
      * @returns {Promise<{doc?: Document, out?: Object, skipped?: boolean}>}
      */
     async function _extSfmSearchGet(t, url, wanted) {
-        const res = await _extGet(url, { wanted });
+        const res = await _extSfmPageGet(url, wanted);
         if (res.skipped) return { skipped: true };
         const out = _extApiOutcome(t, res, 'setlist.fm', 'setlist.fm has no such search.');
         if (out) return { out };
@@ -67553,11 +67621,20 @@
     /**
      * A setlist.fm window's state, made on first use.
      *
+     * `timesUpTo`: how many of the loaded setlists have their set times
+     * read (setlist.fm's own pages, 10 a page): the first page's on opening,
+     * the next page's with "Load 20 more", none more with "Load all", all
+     * with "Load all with set times" or "Read set times for the other N".
+     * `run`: a run of `_extSfmRun()` under way (Stop sets `stopped`), its
+     * end (`end`: 'limit', 'gone'); `warn`: the run asked for that would pass
+     * the API's daily limit, waiting for the user's answer.
+     *
      * @param {object} t
-     * @returns {{pages: number, pick: ?{kind: string, v: string}}}
+     * @returns {{pages: number, pick: ?{kind: string, v: string}, timesUpTo: number, run: ?Object, warn: ?Object,
+     *   end: string, repaintTimer: number}}
      */
     function _extSfmUiOf(t) {
-        if (!_extSfmUi.has(t.key)) _extSfmUi.set(t.key, { pages: 1, pick: null });
+        if (!_extSfmUi.has(t.key)) _extSfmUi.set(t.key, { pages: 1, pick: null, timesUpTo: 0, run: null, warn: null, end: '', repaintTimer: 0 });
         return _extSfmUi.get(t.key);
     }
 
@@ -67580,23 +67657,212 @@
      * @param {object} t
      * @param {Object} sfm
      * @param {number} page
-     * @param {{force?: boolean, repaint?: ?function(): void}} [how]
+     * @param {{force?: boolean, repaint?: ?function(): void, onSkip?: ?function(): void}} [how] - `onSkip`:
+     *   told when the load was forgotten unasked (the window left), which `_mbLoad()` says to no one.
      * @returns {void}
      */
-    function _extSfmPageLoad(t, sfm, page, { force = false, repaint = null } = {}) {
+    function _extSfmPageLoad(t, sfm, page, { force = false, repaint = null, onSkip = null } = {}) {
+        const skipped = () => {
+            if (onSkip) setTimeout(onSkip, 0);
+            return { skipped: true };
+        };
         _mbLoad(_extSfmPageKey(sfm, page), async (wanted) => {
             if (sfm.kind === 'search') {
                 const url = _extSfmSearchUrl(sfm.id, page);
                 const s = await _extSfmSearchGet(t, url, wanted);
-                if (s.skipped) return { skipped: true };
+                if (s.skipped) return skipped();
                 if (s.out) return s.out.ok ? { ok: false, detail: `setlist.fm answered HTTP ${s.out.data.status}` } : s.out;
                 return { ok: true, data: _extSfmSiteListPage(s.doc, url) };
             }
             const r = await _extSfmGet(t, _extSfmListPath(sfm.kind, sfm.id, page, sfm.tour), wanted);
-            if (r.skipped) return { skipped: true };
+            if (r.skipped) return skipped();
             if (r.out) return r.out.ok ? { ok: false, detail: `setlist.fm answered HTTP ${r.out.data.status}` } : r.out;
             return { ok: true, data: _extSfmListPage(r.data) };
         }, { force, repaint, wanted: () => !!(_dpDialog.target && _dpDialog.target.key === t.key), version: _EXT_IDB_VERSION * 100 + _EXT_SFM_VERSION, ttlMs: _extTtlMs() });
+    }
+
+    // --- "Load all" in a setlist.fm list window (2026-11-03) ---------------
+    // org/setlistfm.org "bugs and new additions" item 3a, mockup
+    // https://claude.ai/artifact/CpGp9328FvEZ2yGbXbZrKY views 3 and 5;
+    // vzell's answers: two buttons ("Load all", "Load all with set times"),
+    // no dialog but a warning before a run would pass the API's daily
+    // limit.
+
+    /**
+     * How many requests setlist.fm's API allows a key a day (vzell's key
+     * page, 2026-11-03: "Rate limit max. 2.0/second and max. 1440/DAY"; its
+     * docs publish none). The 1 s gate stays under the 2 a second.
+     * @type {number}
+     */
+    const _EXT_SFM_DAY_LIMIT = 1440;
+
+    /** The GM storage key of the day's count of API requests (shared by every tab and site of the script). */
+    const _EXT_SFM_DAY_KEY = 'sa_ext_sfm_api_day';
+
+    /**
+     * Today's count of setlist.fm API requests made by this script, from
+     * 00:00 UTC (setlist.fm does not say when its day starts): `{day, n}`.
+     * Other programs using the same key are not counted.
+     *
+     * @returns {{day: string, n: number}}
+     */
+    function _extSfmApiDay() {
+        const day = new Date().toISOString().slice(0, 10);
+        let v = null;
+        try {
+            v = GM_getValue(_EXT_SFM_DAY_KEY, null);
+        } catch (_) { /* storage unavailable: counted from 0 */ }
+        return v && v.day === day && Number.isFinite(v.n) ? { day, n: v.n } : { day, n: 0 };
+    }
+
+    /**
+     * Counts one setlist.fm API request (`_extGet()`, every attempt).
+     *
+     * @returns {void}
+     */
+    function _extSfmApiTally() {
+        const d = _extSfmApiDay();
+        d.n++;
+        try {
+            GM_setValue(_EXT_SFM_DAY_KEY, d);
+        } catch (_) { /* the count is a guide, not a gate */ }
+    }
+
+    /**
+     * How many setlist.fm API requests are left today (`_EXT_SFM_DAY_LIMIT`
+     * less this script's count).
+     *
+     * @returns {number}
+     */
+    function _extSfmApiLeft() {
+        return Math.max(0, _EXT_SFM_DAY_LIMIT - _extSfmApiDay().n);
+    }
+
+    /**
+     * Repaints the window soon, once for several calls in a row (the run's
+     * two loops answer within the same moment), while it shows this target.
+     *
+     * @param {object} t
+     * @returns {void}
+     */
+    function _extSfmRepaintSoon(t) {
+        const ui = _extSfmUiOf(t);
+        if (ui.repaintTimer) return;
+        ui.repaintTimer = setTimeout(() => {
+            ui.repaintTimer = 0;
+            if (_dpDialog.repaint && _dpDialog.target && _dpDialog.target.key === t.key) _dpDialog.repaint();
+        }, 30);
+    }
+
+    /**
+     * Waits until a load of `_mbLoad()` has settled: done, failed, or
+     * forgotten unasked (`onSkip`).
+     *
+     * @param {string} key
+     * @param {function(function(): void): void} start - Starts the load with the callback to call on any change.
+     * @returns {Promise<void>}
+     */
+    function _extSfmAwait(key, start) {
+        return new Promise((resolve) => {
+            const check = () => {
+                const st = _mbPop.get(key);
+                if (!st || st.status !== 'loading') resolve();
+            };
+            start(check);
+            check();
+        });
+    }
+
+    /**
+     * A run of a setlist.fm list window: its next pages one after another
+     * (`list`, at most `maxPages`) and, in parallel on the other host, the
+     * set times' pages (`times`: 'all' of the list, 'loaded' for the rows
+     * loaded so far, '' none), each through its host's 1 s gate and kept
+     * like a single page (`_extSfmPageLoad()`, `_extSfmSiteLoad()`), so a
+     * second run asks only what is missing. Stop (`run.stopped`) lets the
+     * page under way finish; a failed list page ends the run ("Try page N
+     * again"); a failed set-times page is skipped ("?", "⟳ Try again");
+     * leaving the window ends it (its loads are no longer wanted); the API's
+     * daily count at the limit ends it ("used up").
+     *
+     * @param {object} t
+     * @param {Object} sfm - The record's `sfm`.
+     * @param {{list?: boolean, times?: string, maxPages?: number}} [opts]
+     * @returns {Promise<void>}
+     */
+    async function _extSfmRun(t, sfm, { list = true, times = '', maxPages = Infinity } = {}) {
+        const ui = _extSfmUiOf(t);
+        if (ui.run) return;
+        const run = { stopped: false, list, times };
+        Object.assign(ui, { run, warn: null, end: '' });
+        const repaint = () => _extSfmRepaintSoon(t);
+        repaint();
+        const api = sfm.kind !== 'search';
+        const last = Math.ceil(sfm.list.total / sfm.list.per);
+        const listLoop = async () => {
+            let asked = 0;
+            while (list && !run.stopped && ui.pages < last && asked < maxPages) {
+                if (api && _extSfmApiLeft() <= 0) {
+                    ui.end = 'limit';
+                    break;
+                }
+                const p = ui.pages + 1;
+                const key = _extSfmPageKey(sfm, p);
+                ui.pages = p;
+                await _extSfmAwait(key, done => _extSfmPageLoad(t, sfm, p, { repaint: () => { done(); repaint(); }, onSkip: done }));
+                asked++;
+                const st = _mbPop.get(key);
+                if (!st) {
+                    // Forgotten unasked: the window shows something else now.
+                    ui.pages = p - 1;
+                    break;
+                }
+                if (st.status === 'failed') break;
+                repaint();
+            }
+        };
+        const timesLoop = async () => {
+            while (times && !run.stopped) {
+                const goal = Math.min(sfm.list.total, times === 'all' ? sfm.list.total : ui.pages * sfm.list.per);
+                if (ui.timesUpTo >= goal) break;
+                const n = Math.floor(ui.timesUpTo / _EXT_SFM_SITE_PER) + 1;
+                const key = _extSfmSiteKey(sfm.kind, sfm.id, sfm.tour || '', n);
+                await _extSfmAwait(key, done => _extSfmSiteLoad(t, sfm.kind, sfm.id, sfm.tour || '', n, { repaint: () => { done(); repaint(); }, onSkip: done }));
+                if (!_mbPop.get(key)) break;
+                ui.timesUpTo = Math.min(sfm.list.total, n * _EXT_SFM_SITE_PER);
+                repaint();
+            }
+        };
+        try {
+            await Promise.all([listLoop(), timesLoop()]);
+        } finally {
+            ui.run = null;
+            repaint();
+        }
+    }
+
+    /**
+     * "Load all" (with set times or not), or the part of it today's API
+     * requests allow: straight to the run, or first the warning
+     * (`ui.warn`) when the list's pages would pass what is left of the day
+     * (vzell, 2026-11-03). A search reads setlist.fm's pages, not the API:
+     * no warning.
+     *
+     * @param {object} t
+     * @param {Object} sfm
+     * @param {string} times - 'all' or ''.
+     * @returns {void}
+     */
+    function _extSfmLoadAll(t, sfm, times) {
+        const ui = _extSfmUiOf(t);
+        const needed = Math.max(0, Math.ceil(sfm.list.total / sfm.list.per) - ui.pages);
+        const left = sfm.kind === 'search' ? Infinity : _extSfmApiLeft();
+        if (needed > left) {
+            ui.warn = { needed, left, times };
+            _extSfmRepaintSoon(t);
+            return;
+        }
+        _extSfmRun(t, sfm, { list: true, times });
     }
 
     // --- setlist.fm's own pages: set times and a venue's facts -------------
@@ -67802,14 +68068,19 @@
      * @param {string} id
      * @param {string} tour
      * @param {number} n
-     * @param {{force?: boolean, repaint?: ?function(): void}} [how]
+     * @param {{force?: boolean, repaint?: ?function(): void, onSkip?: ?function(): void}} [how] - `onSkip`:
+     *   as `_extSfmPageLoad()`'s.
      * @returns {void}
      */
-    function _extSfmSiteLoad(t, kind, id, tour, n, { force = false, repaint = null } = {}) {
+    function _extSfmSiteLoad(t, kind, id, tour, n, { force = false, repaint = null, onSkip = null } = {}) {
         const url = _extSfmSiteUrl(t, kind, n);
         _mbLoad(_extSfmSiteKey(kind, id, tour, n), async (wanted) => {
-            const res = await _extGet(url, { wanted });
-            if (res.skipped) return { skipped: true };
+            // A tour's pages are setlist.fm's search: `_extSfmPageGet()`.
+            const res = await _extSfmPageGet(url, wanted);
+            if (res.skipped) {
+                if (onSkip) setTimeout(onSkip, 0);
+                return { skipped: true };
+            }
             const checked = _extBotCheck(res);
             if (checked) return { ok: false, detail: `setlist.fm answered with a bot check (${checked})` };
             if (res.error || res.status !== 200) return { ok: false, detail: res.error ? _extFailText(res) : `setlist.fm answered HTTP ${res.status}` };
@@ -67830,6 +68101,10 @@
     function _extSfmTimesHtml(st, state) {
         if (state === 'loading') return '<span class="mb-rg-dim" data-mb-tip title="Reading setlist.fm\'s page">…</span>';
         if (state === 'failed') return '<span class="mb-rg-dim" data-mb-tip title="setlist.fm\'s page could not be read">?</span>';
+        // Loaded by "Load all" without them (2026-11-03): "Read set times for the other N" reads them.
+        if (state === 'unread') {
+            return '<span class="mb-rg-dim mb-sfm-unread" data-mb-tip title="Set times not read: &quot;Read set times for the other …&quot; reads them">·</span>';
+        }
         if (!st) return '<span class="mb-rg-dim">—</span>';
         const show = st.start || st.end ? `${st.start}${st.end ? `–${st.end}` : ''}` : '';
         return [st.doors ? `<span class="mb-rg-dim">Doors</span> ${_rgEsc(st.doors)}` : '',
@@ -67837,16 +68112,42 @@
     }
 
     /**
-     * An MBID's MusicBrainz artist as a link (it opens in the window), else
-     * the plain name.
+     * An artist of a setlist.fm window as its two pages (vzell, 2026-11-03,
+     * org/setlistfm.org "bugs and new additions" item 2, mockup
+     * https://claude.ai/artifact/CpGp9328FvEZ2yGbXbZrKY view 2): MusicBrainz's
+     * artist glyph, linked to the artist on MusicBrainz (its card and
+     * window: `mb-entity` on MusicBrainz, `dg-mb` on setlist.fm), then the
+     * name, linked to the artist's setlist.fm page (the `setlistfm`
+     * reader's card and window). Without an MBID (setlist.fm knows artists
+     * MusicBrainz does not) the name alone; without a setlist.fm page, the
+     * name as text. `mbOnly`: the name links to MusicBrainz too (an artist
+     * window's "On MusicBrainz", item 3b: the window IS its setlist.fm page).
      *
-     * @param {?{name: string, mbid: string}} a
+     * @param {?{name: string, mbid: string, url?: string}} a
+     * @param {{mbOnly?: boolean}} [opts]
      * @returns {string}
      */
-    function _extSfmArtistHtml(a) {
+    function _extSfmArtistHtml(a, { mbOnly = false } = {}) {
         if (!a) return '';
-        return a.mbid ? `<a href="${_rgEsc(_mbOrigin())}/artist/${_rgEsc(a.mbid)}" target="_blank" rel="noopener">${_rgEsc(a.name)}</a>`
-            : _rgEsc(a.name);
+        const url = mbOnly ? (a.mbid ? `${_mbOrigin()}/artist/${a.mbid}` : '') : a.url || '';
+        const name = url ? `<a href="${_rgEsc(url)}" target="_blank" rel="noopener noreferrer">${_rgEsc(a.name)}</a>` : _rgEsc(a.name);
+        return _extSfmMbGlyphHtml(a.name, a.mbid) + name;
+    }
+
+    /**
+     * MusicBrainz's artist glyph as a link to the artist on MusicBrainz
+     * (`a.mb-sfm-mb`, its card and window in a setlist.fm window); '' without
+     * an MBID.
+     *
+     * @param {string} name - For the link's label.
+     * @param {string} mbid
+     * @returns {string}
+     */
+    function _extSfmMbGlyphHtml(name, mbid) {
+        if (!mbid) return '';
+        return `<a class="mb-sfm-mb" href="${_rgEsc(_mbOrigin())}/artist/${_rgEsc(mbid)}" target="_blank" rel="noopener" ` +
+            `data-mb-pop-name="${_rgEsc(name)}" aria-label="${_rgEsc(name)} on MusicBrainz"><img class="mb-pop-ent-icon" ` +
+            `src="${_rgEsc(_mbOrigin())}/static/images/entity/${_MB_KIND_ICON.artist}.svg" alt="" width="16" height="16"></a>`;
     }
 
     /**
@@ -68035,7 +68336,7 @@
         rows.forEach((r) => {
             const k = _EXT_SFM_PICK_OF[kind](r);
             if (!k) return;
-            const x = by.get(k) || { name: k, n: 0, url: _extSfmPickUrl(kind, r) };
+            const x = by.get(k) || { name: k, n: 0, url: _extSfmPickUrl(kind, r), mbid: kind === 'artist' && r.artist ? r.artist.mbid || '' : '' };
             x.n++;
             by.set(k, x);
         });
@@ -68045,7 +68346,10 @@
         return `<h4>${_rgEsc(label)} · ${_extDgNum(items.length)}</h4>` + _dpCompactTableHtml(t, `sfm-l-${kind}`, [
             {
                 key: 'name', label: one, val: x => x.name,
-                html: (x, q) => (x.url ? `<a href="${_rgEsc(x.url)}" target="_blank" rel="noopener noreferrer">${_hlEsc(x.name, q)}</a>` : _hlEsc(x.name, q)),
+                // An artist with MusicBrainz's glyph in front (Q3 of mockup
+                // https://claude.ai/artifact/CpGp9328FvEZ2yGbXbZrKY), as a setlist's.
+                html: (x, q) => _extSfmMbGlyphHtml(x.name, x.mbid) +
+                    (x.url ? `<a href="${_rgEsc(x.url)}" target="_blank" rel="noopener noreferrer">${_hlEsc(x.name, q)}</a>` : _hlEsc(x.name, q)),
             },
             {
                 key: 'n', label: 'Setlists', num: true, first: -1, cls: 'mb-rg-num', val: x => x.n,
@@ -68065,8 +68369,9 @@
      * tours and venues, artists and tours, or venues, with counts that keep
      * the Setlists table to one of them); on the right the setlists as a
      * List table — date, the setlist (linked: it opens in the window), tour
-     * (linked, but for a tour's own), songs — with "Load 20 more" while
-     * setlist.fm has more, one page a click.
+     * (linked, but for a tour's own), set times, songs — with "Load 20
+     * more", "Load all" and Stop while setlist.fm has more
+     * (`_extSfmStatusHtml()`, `_extSfmRun()`).
      *
      * @param {object} t
      * @param {Object} rec
@@ -68080,11 +68385,15 @@
         let rows = sfm.list.rows.slice();
         let busy = false;
         let failed = '';
+        let cachedRows = 0;
         for (let p = 2; p <= ui.pages; p++) {
             const st = _mbPop.get(_extSfmPageKey(sfm, p));
             if (!st || st.status === 'loading') busy = true;
             else if (st.status === 'failed') failed = st.detail;
-            else rows = rows.concat(st.data.rows);
+            else {
+                rows = rows.concat(st.data.rows);
+                if (st.cached) cachedRows += st.data.rows.length;
+            }
         }
         // Set times (item 4, Q5): from setlist.fm's own pages, 10 setlists a
         // page, so the loaded rows' i-th is on page floor(i / 10) + 1. Looked
@@ -68092,13 +68401,17 @@
         // between the two reads moves the rest by one).
         // A search's rows were read from those pages: they carry their own
         // times (`r.times`), and nothing more is asked.
+        // Only the first `ui.timesUpTo` rows' pages are read (2026-11-03):
+        // "Load all" leaves the rest unread ("·"), "with set times" reads them.
         const fromSite = sfm.kind === 'search';
-        const sitePages = fromSite ? 0 : Math.ceil(rows.length / _EXT_SFM_SITE_PER);
+        if (!fromSite && ui.timesUpTo < sfm.list.per) ui.timesUpTo = sfm.list.per;
+        const sitePages = fromSite ? 0 : Math.ceil(Math.min(rows.length, ui.timesUpTo) / _EXT_SFM_SITE_PER);
         const site = n => _mbPop.get(_extSfmSiteKey(sfm.kind, sfm.id, sfm.tour || '', n));
         const pageOf = new Map(rows.map((r, i) => [r.id, Math.floor(i / _EXT_SFM_SITE_PER) + 1]));
         const timesOf = (r) => {
             if (fromSite) return { state: 'done', st: r.times || null };
             const n = pageOf.get(r.id);
+            if (n > sitePages) return { state: 'unread', st: null };
             const st = site(n);
             if (!st || st.status === 'loading') return { state: 'loading', st: null };
             if (st.status === 'failed') return { state: 'failed', st: null };
@@ -68163,13 +68476,7 @@
             placeholder: `Filter loaded setlists: ${atVenue ? 'venue' : 'artist'}${sfm.kind !== 'tour' ? ', tour' : ''}, song`,
             search: r => [r.date, who(r), r.tour, r.first.join(' ')].join(' '), none: 'No setlists.',
         });
-        const more = rows.length < sfm.list.total && !busy && !failed;
-        const status = `<div class="mb-dg-vstat"><span class="mb-dg-pill">${busy ? 'Loading' : failed ? 'Failed' : rows.length < sfm.list.total ? 'Idle' : 'Done'}</span>` +
-            (more ? `<button type="button" class="mb-dg-btn mb-dg-primary" data-mb-sfm-act="more">Load ${sfm.list.per} more</button>` : '') +
-            (failed || siteFailed ? `<button type="button" class="mb-dg-btn" data-mb-sfm-act="retry">⟳ Try again</button>` : '') +
-            `</div><div class="mb-dg-counts">${_extDgNum(rows.length)} of ${_extDgNum(sfm.list.total)} loaded${failed ? ` · the next page did not come: ${_rgEsc(failed)}` : ''}` +
-            (fromSite ? '' : ` · set times: setlist.fm page${sitePages === 1 ? '' : 's'} read <span class="mb-sfm-site-n">${siteRead} of ${sitePages}</span>`) +
-            `${siteFailed ? ` · a page did not come: ${_rgEsc(siteFailed)}` : ''}</div>`;
+        const status = _extSfmStatusHtml(t, sfm, ui, { rows: rows.length, busy, failed, cachedRows, siteRead, sitePages, siteFailed, fromSite });
         out.right.push(`<h4>Setlists · ${_extDgNum(sfm.list.total)}</h4>` + status + table);
         if (how && how.start) {
             for (let p = 2; p <= ui.pages; p++) if (!_mbPop.get(_extSfmPageKey(sfm, p))) _extSfmPageLoad(t, sfm, p, { repaint: how.repaint });
@@ -68183,6 +68490,110 @@
             }
         }
         return out;
+    }
+
+    /**
+     * The status of a setlist.fm list window (org/setlistfm.org "bugs and
+     * new additions" item 3a, mockup https://claude.ai/artifact/CpGp9328FvEZ2yGbXbZrKY
+     * views 3 and 5), in the look of a Discogs list's (`_extDgStatusHtml()`):
+     * the pill; a bar of the list's pages and, but for a search, one of the
+     * set times' pages; the buttons that apply with what each costs —
+     * "Load 20 more", "Load all N", "Load all with set times", "Read set
+     * times for the other N"; Stop while a run is under way; "Try page N
+     * again" after a failure; the warning before a run that would pass the
+     * API's daily limit — and the counts: loaded, left, the time left while
+     * running, from cache, set times, the API requests of the day.
+     *
+     * @param {object} t
+     * @param {Object} sfm - The record's `sfm`.
+     * @param {Object} ui - `_extSfmUiOf(t)`.
+     * @param {{rows: number, busy: boolean, failed: string, cachedRows: number, siteRead: number,
+     *   sitePages: number, siteFailed: string, fromSite: boolean}} s - What the window counted.
+     * @returns {string}
+     */
+    function _extSfmStatusHtml(t, sfm, ui, s) {
+        const run = ui.run;
+        const total = sfm.list.total;
+        const per = sfm.list.per;
+        const last = Math.ceil(total / per);
+        const api = !s.fromSite;
+        const listHost = api ? 'api.setlist.fm' : 'www.setlist.fm';
+        const leftRows = Math.max(0, total - s.rows);
+        const listLeft = Math.max(0, last - ui.pages);
+        const timesTotal = Math.ceil(total / _EXT_SFM_SITE_PER);
+        const timesDone = Math.floor(Math.min(ui.timesUpTo, total) / _EXT_SFM_SITE_PER);
+        const timesLeft = api ? Math.max(0, timesTotal - timesDone) : 0;
+        const unread = api ? Math.max(0, s.rows - ui.timesUpTo) : 0;
+        const unreadPages = api ? Math.ceil(s.rows / _EXT_SFM_SITE_PER) - timesDone : 0;
+        const secs = (n, host) => n * _extSpacingMs(host);
+        const btn = (act, label, cost, cls = '') => `<button type="button" class="mb-dg-btn${cls}" data-mb-sfm-act="${act}">${label}` +
+            (cost ? ` <span class="mb-sfm-cost">(${cost})</span>` : '') + '</button>';
+        const reqs = n => `${_extDgNum(n)} request${n === 1 ? '' : 's'}`;
+        const pill = run || s.busy ? '<span class="mb-dg-pill mb-dg-run">Running</span>'
+            : s.failed || s.siteFailed ? '<span class="mb-dg-pill mb-dg-warn">Done with errors</span>'
+                : leftRows ? '<span class="mb-dg-pill">Idle</span>' : '<span class="mb-dg-pill mb-dg-ok">Done</span>';
+        // One segment a page: the list's, then (an API window) the set times'.
+        const seg = (st, n, on) => {
+            if (st && st.status === 'done') return st.cached ? 'cache' : 'loaded';
+            if (st && st.status === 'failed') return 'failed';
+            if (st) return 'running';
+            return on ? 'queued' : 'none';
+        };
+        const listSegs = Array.from({ length: last }, (_, i) => (i === 0 ? 'loaded'
+            : seg(i < ui.pages ? _mbPop.get(_extSfmPageKey(sfm, i + 1)) : null, i + 1, !!(run && run.list))));
+        const bar = (segs, label) => `<span class="mb-dg-bar" aria-hidden="true" data-mb-tip title="${_rgEsc(label)}" ` +
+            `style="width: min(${Math.max(40, segs.length * 26)}px, 100%)">${segs.map(x => `<i class="mb-dg-seg-${x}"></i>`).join('')}</span>`;
+        let bars = bar(listSegs, `The setlists: one segment = ${per}`);
+        if (api) {
+            const timesSegs = Array.from({ length: timesTotal }, (_, i) => seg(i < Math.max(s.sitePages, timesDone)
+                ? _mbPop.get(_extSfmSiteKey(sfm.kind, sfm.id, sfm.tour || '', i + 1)) : null, i + 1, !!(run && run.times === 'all')));
+            bars += bar(timesSegs, `Their set times, from setlist.fm's pages: one segment = ${_EXT_SFM_SITE_PER}`);
+        }
+        let btns = '';
+        let warn = '';
+        if (run) {
+            btns = run.stopped ? '<span class="mb-dg-dim">Stopping after this page…</span>'
+                : btn('stop', 'Stop', '', ' mb-dg-danger');
+        } else if (ui.warn) {
+            // The run asked for would pass the API's daily limit (vzell, 2026-11-03: "warn the user
+            // if the limit would get hit beforehand").
+            const w = ui.warn;
+            warn = `<div class="mb-sfm-warn" role="alert">This needs ${reqs(w.needed)} of setlist.fm's API, and ` +
+                `${w.left ? `only ${_extDgNum(w.left)} of today's ${_extDgNum(_EXT_SFM_DAY_LIMIT)}` : `none of today's ${_extDgNum(_EXT_SFM_DAY_LIMIT)}`} ` +
+                `${w.left === 1 ? 'is' : 'are'} left (counted by this script since 00:00 UTC; a key allows ${_extDgNum(_EXT_SFM_DAY_LIMIT)} a day). ` +
+                (w.left ? btn('allcap', `Load ${_extDgNum(Math.min(leftRows, w.left * per))} more`, `${reqs(w.left)}, about ${_extDgDur(secs(w.left, listHost))}`, ' mb-dg-primary') : '') +
+                btn('nowarn', 'Cancel', '') + '</div>';
+        } else if (s.failed && !s.busy) {
+            btns = btn('retry', `Try page ${ui.pages} again`, `1 request, about ${_extDgDur(secs(1, listHost))}`, ' mb-dg-primary');
+        } else if (!s.busy) {
+            if (leftRows) {
+                btns += btn('more', `Load ${per} more`, '');
+                btns += btn('all', `Load all ${_extDgNum(leftRows)}`, `${reqs(listLeft)}, about ${_extDgDur(secs(listLeft, listHost))}`, ' mb-dg-primary');
+                if (api) {
+                    btns += btn('alltimes', 'Load all with set times', `${reqs(listLeft + timesLeft)}, about ` +
+                        `${_extDgDur(Math.max(secs(listLeft, listHost), secs(timesLeft, 'www.setlist.fm')))}`);
+                }
+            }
+            if (unread > 0) {
+                btns += btn('times', `Read set times for the other ${_extDgNum(unread)}`, `${reqs(unreadPages)}, about ${_extDgDur(secs(unreadPages, 'www.setlist.fm'))}`);
+            }
+            if (s.siteFailed) btns += btn('retry', '⟳ Try again', '');
+        }
+        const counts = [`${_extDgNum(s.rows)} of ${_extDgNum(total)} loaded`];
+        if (leftRows) counts.push(`${_extDgNum(leftRows)} left`);
+        if (run) {
+            const listMs = run.list ? secs(listLeft, listHost) : 0;
+            const timesMs = run.times === 'all' ? secs(timesLeft, 'www.setlist.fm') : run.times === 'loaded' ? secs(unreadPages, 'www.setlist.fm') : 0;
+            counts.push(`<b class="mb-sfm-eta">about ${_extDgDur(Math.max(listMs, timesMs))} left</b>`);
+        }
+        if (s.cachedRows) counts.push(`${_extDgNum(s.cachedRows)} from cache`);
+        if (s.failed) counts.push(`<span class="mb-dg-bad">the next page did not come: ${_rgEsc(s.failed)}</span>`);
+        if (api) counts.push(`set times: setlist.fm page${s.sitePages === 1 ? '' : 's'} read <span class="mb-sfm-site-n">${s.siteRead} of ${s.sitePages}</span>`);
+        if (s.siteFailed) counts.push(`<span class="mb-dg-bad">a page did not come: ${_rgEsc(s.siteFailed)}</span>`);
+        if (api) counts.push(`<span class="mb-sfm-day">API requests today: ${_extDgNum(_extSfmApiDay().n)} of ${_extDgNum(_EXT_SFM_DAY_LIMIT)}</span>`);
+        if (ui.end === 'limit') counts.push(`<span class="mb-dg-bad">stopped: today's ${_extDgNum(_EXT_SFM_DAY_LIMIT)} API requests are used up</span>`);
+        return `<div class="mb-dg-vstat">${pill}<span class="mb-sfm-bars">${bars}</span>${btns}</div>${warn}` +
+            `<div class="mb-dg-counts">${counts.join(' · ')}</div>`;
     }
 
     /**
@@ -68203,7 +68614,9 @@
         if (sfm.kind === 'setlist') {
             const s = sfm.setlist;
             return _mbPopKvHtml([
-                ['Artist', _extSfmArtistHtml(s.artist) + (s.artist && s.artist.url ? ` · ${_extSfmLinkHtml(s.artist.url, 'its setlists')}` : '')],
+                // The glyph opens MusicBrainz, the name setlist.fm's page (item 2;
+                // "its setlists" after it went: the name opens that page, Q2).
+                ['Artist', _extSfmArtistHtml(s.artist)],
                 ['Date', _rgEsc(s.date)],
                 ['Venue', _extSfmLinkHtml(s.venue.url, s.venue.name)],
                 ['Where', _extSfmPlaceHtml(s.venue)],
@@ -68223,13 +68636,14 @@
         if (sfm.kind === 'tour') {
             const a = sfm.artist;
             return _mbPopKvHtml([
-                ['Artist', _extSfmArtistHtml(a) + (a.url ? ` · ${_extSfmLinkHtml(a.url, 'its setlists')}` : '')],
+                ['Artist', _extSfmArtistHtml(a)],
                 ['Setlists', count],
             ]);
         }
         if (sfm.kind === 'artist') {
             return _mbPopKvHtml([
-                ['On MusicBrainz', _extSfmArtistHtml({ name: rec.title, mbid: sfm.artist.mbid })],
+                // Item 3b: MusicBrainz's artist, in the window here (on setlist.fm too).
+                ['On MusicBrainz', _extSfmArtistHtml({ name: rec.title, mbid: sfm.artist.mbid }, { mbOnly: true })],
                 ['Sort name', _rgEsc(sfm.artist.sortName !== sfm.artist.name ? sfm.artist.sortName : '')],
                 ['Setlists', count],
             ]);
@@ -68266,7 +68680,9 @@
      * left-hand table's count keeps the Setlists table to that artist, tour
      * or venue (a second click, or the "Only" pill's ✕, shows them all
      * again); "Load 20 more" asks the next page of the list, "Try again"
-     * the failed one.
+     * the failed one; "Load all" (with set times or not), Stop, "Read set
+     * times for the other N" and the daily-limit warning's two answers
+     * (`_extSfmRun()`, `_extSfmLoadAll()`).
      *
      * @param {MouseEvent} e
      * @param {object} t
@@ -68305,17 +68721,32 @@
             repaint();
             return;
         }
-        if (b.dataset.mbSfmAct === 'more') {
+        const act = b.dataset.mbSfmAct;
+        // Load all (item 3a): the run, its Stop, the warning's answers.
+        if (act === 'stop') {
+            if (ui.run) ui.run.stopped = true;
+        } else if (act === 'all' || act === 'alltimes') {
+            _extSfmLoadAll(t, rec.sfm, act === 'alltimes' ? 'all' : '');
+        } else if (act === 'allcap') {
+            const w = ui.warn;
+            if (w && w.left) _extSfmRun(t, rec.sfm, { list: true, times: w.times, maxPages: w.left });
+        } else if (act === 'nowarn') {
+            ui.warn = null;
+        } else if (act === 'times') {
+            _extSfmRun(t, rec.sfm, { list: false, times: 'loaded' });
+        } else if (act === 'more') {
             ui.pages++;
+            // Its set times too, as before "Load all".
+            ui.timesUpTo = Math.max(ui.timesUpTo, ui.pages * rec.sfm.list.per);
             _extSfmPageLoad(t, rec.sfm, ui.pages, { repaint });
         } else {
             for (let p = 2; p <= ui.pages; p++) {
                 const s = _mbPop.get(_extSfmPageKey(rec.sfm, p));
                 if (s && s.status === 'failed') _extSfmPageLoad(t, rec.sfm, p, { force: true, repaint });
             }
-            // The set times' pages that did not come (two a page of the API).
+            // The set times' pages that did not come (of the rows whose times are read).
             const sf = rec.sfm;
-            for (let n = 1; n <= ui.pages * 2; n++) {
+            for (let n = 1; n <= Math.ceil(ui.timesUpTo / _EXT_SFM_SITE_PER); n++) {
                 const s = _mbPop.get(_extSfmSiteKey(sf.kind, sf.id, sf.tour || '', n));
                 if (s && s.status === 'failed') _extSfmSiteLoad(t, sf.kind, sf.id, sf.tour || '', n, { force: true, repaint });
             }

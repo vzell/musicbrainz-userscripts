@@ -1,0 +1,593 @@
+<title>setlist.fm Window Fixes</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/* Layout: an intro and a view switch on paper; each view mirrors what the
+   script would show (a hover card on setlist.fm, the Space window on a
+   setlist, an artist and a venue), the open questions beside it.
+   Single light theme on purpose: it reproduces the script's "Liner notes"
+   look, like the earlier mockups in org/ (setlistfm-venue-mockups.html). */
+:root {
+    --paper: #fbf8f1;
+    --paper-2: #f6f1e6;
+    --ink: #2b2622;
+    --rule: #d9cfbd;
+    --rule-soft: #ece4d4;
+    --muted: #7a6d5c;
+    --link: #2f4f8a;
+    --run: #2f5f9e;
+    --run-soft: #dbe6f4;
+    --ok: #3f7a3a;
+    --ok-soft: #e3efdc;
+    --warn: #9a5a12;
+    --warn-soft: #f8e7cd;
+    --bad: #a23a2a;
+    --cache: #b9c7a5;
+    --white: #fff;
+    --sfm: #85b146;
+    --sfm-ink: #ffffff;
+    --mb: #ba478f;
+    --new: #fdf7e8;
+    --shadow: 0 10px 24px -8px rgba(60,40,20,.35);
+    --serif: Georgia, "Times New Roman", Times, serif;
+    --sans: system-ui, -apple-system, "Segoe UI", Arial, sans-serif;
+    --mono: ui-monospace, Consolas, "Liberation Mono", monospace;
+    color-scheme: light;
+}
+html, body { background: var(--paper); color: var(--ink); }
+body {
+    font: 14px/1.5 var(--serif);
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+    padding-block: 18px 40px;
+}
+.page { max-width: 1440px; margin: 0 auto; display: grid; gap: 16px; }
+.cap { font: 600 10.5px/1.3 var(--sans); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+h1 { font-size: 22px; line-height: 1.25; margin: 0; text-wrap: balance; }
+.intro p { margin: 4px 0 0; max-width: 80ch; }
+code { font: 12.5px var(--mono); background: var(--paper-2); padding: 0 4px; border-radius: 3px; }
+a { color: var(--link); }
+button:focus-visible, input:focus-visible, a:focus-visible { outline: 2px solid var(--run); outline-offset: 1px; }
+
+.seg { display: inline-flex; flex-wrap: wrap; }
+.seg button {
+    font: 600 11px/1 var(--sans); letter-spacing: .06em; text-transform: uppercase;
+    padding: 8px 11px; border: 1px solid var(--rule); background: var(--white); color: var(--ink); cursor: pointer; margin-left: -1px;
+}
+.seg button:first-child { margin-left: 0; border-radius: 3px 0 0 3px; }
+.seg button:last-child { border-radius: 0 3px 3px 0; }
+.seg button[aria-pressed="true"] { background: var(--ink); border-color: var(--ink); color: var(--paper); position: relative; }
+.seg button:hover:not([aria-pressed="true"]) { background: var(--paper-2); }
+
+.layout { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 16px; align-items: start; }
+@media (max-width: 1100px) { .layout { grid-template-columns: minmax(0, 1fr); } }
+.notes { border: 1px solid var(--rule); border-radius: 4px; background: var(--white); padding: 12px 14px; display: grid; gap: 10px; font-size: 13.5px; }
+.notes h2 { margin: 0; font: 600 11px/1.3 var(--sans); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.notes ol, .notes ul { margin: 0; padding-left: 1.3em; display: grid; gap: 6px; }
+.notes .q b { display: block; }
+.notes .rec { color: var(--ok); font-style: italic; }
+.notes p { margin: 0; }
+
+/* The Space window stand-in */
+.win { border: 1px solid #ccc; border-radius: 8px; background: var(--white); box-shadow: var(--shadow); overflow: hidden; min-width: 0; }
+.win-head { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; justify-content: space-between; padding: 10px 14px; background: #f8f8f8; border-bottom: 2px solid #ddd; font: 13px var(--sans); }
+.crumbs { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; min-width: 0; font-weight: 700; }
+.ico { width: 16px; height: 16px; border-radius: 3px; background: var(--sfm); color: var(--sfm-ink); display: inline-grid; place-items: center; font: 700 10px var(--sans); flex: none; }
+.crumbs button { font: 600 12.5px var(--sans); border: 0; background: none; color: var(--ink); cursor: pointer; padding: 2px 4px; border-radius: 3px; max-width: 46ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.crumbs button[aria-current="step"] { background: var(--paper-2); }
+.crumbs .sep { color: var(--muted); }
+.tbtns { display: flex; gap: 6px; align-items: center; }
+.tbtn { font: 12px var(--sans); border: 1px solid #ccc; background: var(--white); border-radius: 4px; padding: 3px 8px; cursor: pointer; }
+.tbtn.dark { background: #222; color: #fff; border-color: #222; }
+.tbtn[disabled] { opacity: .45; cursor: default; }
+.win-body { display: grid; grid-template-columns: 360px minmax(0, 1fr); max-height: 820px; overflow: auto; }
+@media (max-width: 860px) { .win-body { grid-template-columns: minmax(0, 1fr); } }
+.col { padding: 12px 14px; display: grid; gap: 8px; align-content: start; min-width: 0; }
+.col + .col { border-left: 1px solid var(--rule-soft); }
+.col h4 { margin: 6px 0 0; font: 600 12px var(--sans); letter-spacing: .05em; text-transform: uppercase; color: var(--muted); }
+.xtitle { font-size: 19px; font-weight: 700; line-height: 1.2; }
+.xsub { font: 12px var(--sans); color: var(--muted); }
+dl.kv { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 3px 10px; margin: 0; font-size: 13px; }
+dl.kv dt { color: var(--muted); font: italic 13px var(--serif); }
+dl.kv dd { margin: 0; min-width: 0; }
+.credit { font: 11.5px var(--sans); color: var(--muted); }
+.win-foot { border-top: 1px solid #ddd; background: #f8f8f8; padding: 6px 14px; font: 12px var(--sans); color: var(--muted); display: flex; flex-wrap: wrap; gap: 6px 16px; justify-content: space-between; }
+.win-foot b { color: var(--ink); }
+
+/* the glyph + name pair */
+a.mbg { display: inline-grid; place-items: center; width: 18px; height: 18px; border-radius: 3px; vertical-align: -4px; margin-right: 3px; text-decoration: none; }
+a.mbg:hover { background: #f3dcea; }
+a.mbg svg { width: 16px; height: 16px; display: block; }
+a.out::after { content: " \2197"; font-size: 10px; color: var(--muted); }
+a.here { text-decoration-style: dotted; }
+.newtint { background: var(--new); box-shadow: 0 0 0 3px var(--new); border-radius: 2px; }
+
+/* tables */
+.q { font: 13px var(--serif); padding: 3px 7px; border: 1px solid var(--rule); border-radius: 3px; width: min(300px, 100%); }
+.twrap { overflow: auto; border: 1px solid var(--rule); border-radius: 3px; }
+table.t { width: 100%; border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; }
+table.t th { position: sticky; top: 0; z-index: 1; background: #f4eee2; text-align: left; white-space: nowrap; font: 600 10.5px var(--sans); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); padding: 5px 7px; border-bottom: 1px solid var(--rule); }
+table.t td { padding: 4px 7px; border-bottom: 1px solid #f0eadf; vertical-align: top; }
+table.t td.num { text-align: right; white-space: nowrap; }
+table.t td.yr, table.t td.tm { white-space: nowrap; }
+table.t td.tm { font: 12.5px var(--sans); }
+table.t tr.tsec td { background: #f6f1e6; font: 600 12px var(--sans); }
+.dim { color: var(--muted); }
+.first { font-size: 12px; color: var(--muted); }
+.play { width: 26px; height: 18px; border-radius: 4px; background: #333; display: inline-grid; place-items: center; }
+.play::after { content: ""; border-left: 7px solid #fff; border-top: 4px solid transparent; border-bottom: 4px solid transparent; }
+.chip { font: 12px var(--sans); border: 1px solid var(--rule); border-radius: 999px; padding: 0 8px; background: var(--white); }
+.notread { color: var(--muted); border-bottom: 1px dotted var(--muted); cursor: help; }
+
+/* status block, as the Discogs and MusicBrainz windows draw it */
+.vstat { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font: 12px var(--sans); }
+.pill { display: inline-block; font: 600 10.5px/1.6 var(--sans); padding: 0 8px; border: 1px solid var(--rule); border-radius: 999px; color: var(--muted); background: var(--paper); white-space: nowrap; text-transform: uppercase; letter-spacing: .05em; }
+.pill.run { color: var(--run); border-color: var(--run); background: var(--run-soft); }
+.pill.ok { color: var(--ok); border-color: var(--ok); background: var(--ok-soft); }
+.pill.warn { color: var(--warn); border-color: var(--warn); background: var(--warn-soft); }
+.btn { font: 600 12px var(--sans); border: 1px solid var(--run); background: var(--white); color: var(--run); border-radius: 4px; padding: 3px 9px; cursor: pointer; }
+.btn.primary { background: var(--run); color: #fff; }
+.btn.danger { border-color: var(--bad); color: var(--bad); }
+.btn .cost { font-weight: 400; opacity: .85; }
+.counts { font: 12px var(--sans); color: var(--muted); font-variant-numeric: tabular-nums; }
+.counts .bad { color: var(--bad); }
+.bars { display: grid; gap: 3px; width: min(440px, 100%); }
+.bar { display: flex; height: 8px; border: 1px solid var(--rule); border-radius: 2px; overflow: hidden; background: var(--paper-2); }
+.bar i { flex: 1 1 0; min-width: 0; border-right: 1px solid rgba(255,255,255,.7); }
+.bar i:last-child { border-right: 0; }
+.bar i.loaded { background: var(--run); }
+.bar i.cache { background: var(--cache); }
+.bar i.running { background: repeating-linear-gradient(45deg, var(--run) 0 3px, var(--run-soft) 3px 6px); }
+.bar i.failed { background: var(--bad); }
+.barlbl { display: flex; justify-content: space-between; font: 10.5px var(--sans); color: var(--muted); }
+.statebox { border: 1px dashed var(--rule); border-radius: 4px; padding: 8px 10px; display: grid; gap: 6px; background: var(--white); }
+.statebox .cap { margin-bottom: 2px; }
+.speed { font: 11.5px var(--sans); color: var(--muted); }
+
+/* hover card */
+#card { position: absolute; z-index: 50; width: 330px; max-width: calc(100vw - 32px); background: #fffdf8; border: 1px solid #e2d6bd; border-radius: 6px; box-shadow: var(--shadow); padding: 10px 12px; display: grid; gap: 6px; font-size: 13px; pointer-events: none; }
+#card .ttl { font-weight: 700; font-size: 14.5px; }
+#card .host { font: 11.5px var(--mono); display: flex; gap: 6px; align-items: center; }
+#card .st { font: 600 10.5px var(--mono); padding: 0 5px; border-radius: 3px; background: var(--ok-soft); color: var(--ok); }
+#card .st.waf { background: var(--warn-soft); color: var(--warn); }
+#card .rule { border-top: 1px solid #ece2cc; }
+#card .foot { font: italic 12px var(--serif); color: var(--muted); }
+#card kbd { font: 10.5px var(--mono); border: 1px solid #cfc3aa; border-radius: 3px; padding: 0 4px; background: var(--white); font-style: normal; }
+#card dl.kv dt { font-size: 12.5px; }
+.ctag { font: 600 10px var(--sans); letter-spacing: .06em; text-transform: uppercase; padding: 1px 6px; border-radius: 3px; color: #fff; }
+.ctag.mb { background: var(--mb); }
+.ctag.sfm { background: var(--sfm); }
+
+/* card pair (view 1) */
+.pair { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }
+.pcard { background: #fffdf8; border: 1px solid #e2d6bd; border-radius: 6px; box-shadow: var(--shadow); padding: 10px 12px; display: grid; gap: 6px; font-size: 13px; min-width: 0; }
+.pcard .ttl { font-weight: 700; font-size: 14.5px; }
+.pcard .host { font: 11.5px var(--mono); display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.pcard .st { font: 600 10.5px var(--mono); padding: 0 5px; border-radius: 3px; background: var(--ok-soft); color: var(--ok); }
+.pcard .st.waf { background: var(--warn-soft); color: var(--warn); }
+.pcard .rule { border-top: 1px solid #ece2cc; }
+.pcard .foot { font: italic 12px var(--serif); color: var(--muted); }
+.pcard kbd { font: 10.5px var(--mono); border: 1px solid #cfc3aa; border-radius: 3px; padding: 0 4px; background: var(--white); font-style: normal; }
+.pcard .url { font: 11.5px var(--mono); color: var(--muted); overflow-wrap: anywhere; }
+.verdict { font: 600 11px var(--sans); letter-spacing: .06em; text-transform: uppercase; }
+.verdict.before { color: var(--bad); }
+.verdict.after { color: var(--ok); }
+.flow { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 4px 12px; font: 12.5px var(--sans); background: var(--white); border: 1px solid var(--rule); border-radius: 4px; padding: 10px 12px; }
+.flow dt { color: var(--muted); }
+.flow dd { margin: 0; }
+.tick { color: var(--ok); font-weight: 700; }
+.cross { color: var(--bad); font-weight: 700; }
+.frp { border: 1px solid var(--rule); border-radius: 4px; background: var(--white); padding: 8px 10px; font: 13px var(--sans); display: grid; gap: 6px; min-width: 0; }
+.frp .h1 { font: 700 17px var(--sans); }
+.frp table.t td { font-family: var(--sans); }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<div class="page">
+    <header class="intro">
+        <div class="cap">ShowAllEntityData · org/setlistfm.org “bugs and new additions” · mockup · 2026-11-03</div>
+        <h1>setlist.fm window fixes</h1>
+        <p>Rows, songs and counts are real: they come from your snapshots (<code>debug/setlistfm-2026-05-30*.html</code>,
+            <code>setlistfm-Bruce-POH.html</code>) and screenshots. Pale yellow marks what changes. Hover over the MusicBrainz glyphs and the
+            names to see which card each one opens. In view 3 the buttons run a simulated load, ten times faster than real.</p>
+    </header>
+    <div class="seg" role="group" aria-label="View">
+        <button type="button" data-view="card" aria-pressed="true">1 · Tour-cell card</button>
+        <button type="button" data-view="setlist" aria-pressed="false">2 · Setlist window</button>
+        <button type="button" data-view="artist" aria-pressed="false">3 · Load all</button>
+        <button type="button" data-view="mb" aria-pressed="false">4 · On MusicBrainz</button>
+        <button type="button" data-view="venue" aria-pressed="false">5 · Venue window</button>
+    </div>
+    <div class="layout">
+        <main id="stage" style="min-width:0"></main>
+        <aside class="notes" id="notes"></aside>
+    </div>
+</div>
+<div id="card" hidden></div>
+
+<script>
+'use strict';
+/* ---- data (real, from vzell's snapshots and screenshots) ---------------- */
+const MB_GLYPH = '<svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="5" r="3" fill="none" stroke="#ba478f" stroke-width="1.6"/>' +
+    '<path d="M2.5 14.5c.6-3.2 2.8-5 5.5-5s4.9 1.8 5.5 5" fill="none" stroke="#ba478f" stroke-width="1.6" stroke-linecap="round"/></svg>';
+const ART = {
+    'Bruce Springsteen': { mbid: '70248960-cb53-4ea4-943a-edb18f7d336f', sfm: 'bruce-springsteen-2bd6dcce', setlists: '3,003',
+        mb: { type: 'Person', area: 'United States', begin: '1949-09-23', where: 'Long Branch', rgs: 'Album, Single, Live, Compilation' } },
+    'Tom Morello': { mbid: 'b5ab1c5c-…', sfm: 'tom-morello-…', setlists: '—', mb: { type: 'Person', area: 'United States', begin: '1964-05-30', where: 'Harlem', rgs: 'Album, Single' } },
+    'The Temptations': { mbid: '…', sfm: 'the-temptations-…', setlists: '—', mb: { type: 'Group', area: 'United States', begin: '1960', where: 'Detroit', rgs: 'Album, Single, Compilation' } },
+    'The Clash': { mbid: '…', sfm: 'the-clash-…', setlists: '—', mb: { type: 'Group', area: 'United Kingdom', begin: '1976', where: 'London', rgs: 'Album, Single, Live' } },
+    'Patti Smith Group': { mbid: '26638df8-ef34-40d1-8d93-616836b72878', sfm: 'patti-smith-group-53d657bd', setlists: '—', mb: { type: 'Group', area: 'United States', begin: '1974', where: 'New York', rgs: 'Album, Single' } },
+};
+// debug/setlistfm-2026-05-30.html: the 28 songs, 22 in the set, 6 in the encore; notes from the window screenshot.
+const SONGS = [
+    ['War', { cover: 'The Temptations', with: 'Tom Morello' }], ['Born in the U.S.A.', { with: 'Tom Morello' }], ['Death to My Hometown', { with: 'Tom Morello' }],
+    ['Clampdown', { cover: 'The Clash', with: 'Tom Morello' }], ['No Surrender', {}], ['Darkness on the Edge of Town', {}], ['Streets of Minneapolis', {}],
+    ['The Promised Land', {}], ['Two Hearts', { info: 'with "It Takes Two" snippet interpolated' }], ['Hungry Heart', {}], ['Youngstown', {}],
+    ['Murder Incorporated', {}], ['American Skin (41 Shots)', { with: 'Tom Morello' }], ['Long Walk Home', { with: 'Tom Morello' }],
+    ['House of a Thousand Guitars', { info: 'Bruce solo acoustic' }], ['My City of Ruins', {}], ['Because the Night', { cover: 'Patti Smith Group' }],
+    ['Wrecking Ball', {}], ['The Rising', {}], ['The Ghost of Tom Joad', { with: 'Tom Morello' }], ['Badlands', {}], ['Land of Hope and Dreams', {}],
+    ['American Land', {}], ['Born to Run', {}], ['Dancing in the Dark', {}], ['Tenth Avenue Freeze-Out', {}], ['Chimes of Freedom', {}],
+];
+// debug/setlistfm-Bruce-POH.html, the first rows of the Setlists table
+const BRUCE_ROWS = [
+    ['2026-10-16', 'Transparent Clinch Gallery, Asbury Park', 'Stones · Hello Sunshine · Moonlight Motel · The Ghost of Tom Joad · This Land Is Your Land', '', '—', '5'],
+    ['2026-10-03', 'Pavilion Stage, Columbia', 'Streets of Minneapolis · Chimes of Freedom · Clampdown · The Ghost of Tom Joad · Fortunate Son …', '', 'Doors 12:00|Show 22:00–22:50', '9'],
+    ['2026-08-01', 'Private Venue, Colts Neck', 'Born to Run', '', '—', '1'],
+    ['2026-07-24', 'Hilton Hotel International Ballroom, Washington', 'Streets of Minneapolis', '', '—', '1'],
+    ['2026-06-18', 'Obama Presidential Center, Chicago', 'Land of Hope and Dreams', '', '—', '1'],
+    ['2026-06-13', 'Tribeca Performing Arts Center, New York', 'Land of Hope and Dreams', '', '—', '1'],
+    ['2026-06-05', 'OceanFirst Bank Center, West Long Branch', 'Jailhouse Rock · Burning Love · I Shall Be Released · Farther Up the Road · Raise Your Hand …', '', '—', '7'],
+    ['2026-06-04', 'OceanFirst Bank Center, West Long Branch', 'Deportee (Plane Wreck at Los Gatos) · This Land Is Your Land · I\'m Shipping Up to Boston · American Land · When the Saints Go Marching In', '', '—', '5'],
+];
+// From the Stone Pony screenshot
+const PONY_ROWS = [
+    ['2026-11-04', 'She Wants Revenge', '', 'She Wants Revenge 20', '—', '—'],
+    ['2026-10-31', 'Splintered Sunlight', '', '', '—', '—'],
+    ['2026-10-25', 'Melvin Seals & JGB', 'Expressway to Your Heart · Bright Side of the Road · Run for the Roses · After Midnight · Rosa Lee McFall …', '', 'Doors 19:00', '18'],
+];
+
+/* ---- helpers ------------------------------------------------------------- */
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const num = n => n.toLocaleString('en-US');
+/** "about 2 min 30 s" from seconds. */
+const dur = (s) => {
+    s = Math.max(0, Math.round(s));
+    if (s < 60) return `${s} s`;
+    const m = Math.floor(s / 60);
+    const r = s % 60;
+    return r ? `${m} min ${r} s` : `${m} min`;
+};
+/** The glyph + name pair: MusicBrainz glyph (MB card, opens MB's window), the name (setlist.fm card and window). */
+const pair = (name, tint = true) => {
+    const a = ART[name] || {};
+    return `<span class="${tint ? 'newtint' : ''}"><a class="mbg" href="#" data-card="mb" data-name="${esc(name)}" aria-label="${esc(name)} on MusicBrainz">${MB_GLYPH}</a>` +
+        `<a class="here" href="#" data-card="sfm" data-name="${esc(name)}">${esc(name)}</a></span>`;
+};
+const head = (crumbs, n, extra = '') => `<div class="win-head"><div class="crumbs">${crumbs}</div><div class="tbtns">${extra}` +
+    `<button class="tbtn" type="button" disabled>‹</button><span class="dim" style="font:12px var(--mono)">${n}</span><button class="tbtn" type="button" disabled>›</button>` +
+    '<button class="tbtn dark" type="button">Extracted</button><button class="tbtn" type="button" aria-label="Reload">⟳</button>' +
+    '<button class="tbtn" type="button" aria-label="Open in a tab">↗</button><button class="tbtn" type="button" aria-label="Close">✕</button></div></div>';
+const sfmIco = '<span class="ico" aria-hidden="true">♪</span>';
+
+/* ---- view 1: the Tour-cell card ----------------------------------------- */
+function viewCard() {
+    const url = 'https://www.setlist.fm/search?artist=2bd6dcce&tour=3daa95b';
+    return `<div style="display:grid;gap:14px">
+    <div class="frp">
+        <div class="h1">setlist.fm search: Bruce Springsteen · Land of Hope &amp; Dreams American Tour</div>
+        <div class="twrap"><table class="t"><thead><tr><th>Date</th><th>Venue</th><th>Tour</th><th>Doors</th><th>Start</th><th>End</th><th>Songs</th></tr></thead><tbody>
+            <tr><td class="yr"><a href="#">2026-05-30</a></td><td><a href="#">Xfinity Mobile Arena, Philadelphia, PA, USA</a></td><td><a href="#" style="outline:2px solid var(--run);outline-offset:1px">Land of Hope &amp; Dreams American Tour</a></td><td class="tm">18:00</td><td class="tm">19:30</td><td class="tm">22:20</td><td class="num">12+</td></tr>
+            <tr><td class="yr"><a href="#">2026-05-27</a></td><td><a href="#">Nationals Park, Washington, DC, USA</a></td><td><a href="#">Land of Hope &amp; Dreams American Tour</a></td><td></td><td></td><td></td><td class="num">12+</td></tr>
+        </tbody></table></div>
+        <div class="dim" style="font-size:12px">The table on the FRP of <code>${esc(url)}</code>. The outlined Tour cell is the hovered link.</div>
+    </div>
+    <div class="pair">
+        <div style="display:grid;gap:6px;min-width:0"><span class="verdict before">Today</span>
+        <div class="pcard"><div class="ttl">${sfmIco} setlist.fm search</div>
+            <div class="host">${sfmIco} www.setlist.fm <span class="st waf">checked by AWS WAF</span></div>
+            <div class="rule"></div><div class="url">${esc(url)}</div>
+            <div>The site answers scripts with a browser check (AWS WAF), so the card cannot read it. The link itself is fine: ↗ opens it in a tab.</div>
+            <div class="foot">until the page is reloaded · <kbd>Space</kbd> more · <kbd>Esc</kbd> close</div></div></div>
+        <div style="display:grid;gap:6px;min-width:0"><span class="verdict after">After the fix</span>
+        <div class="pcard newtint" style="box-shadow:var(--shadow)"><div class="ttl">${sfmIco} setlist.fm search</div>
+            <div class="host">${sfmIco} www.setlist.fm <span class="st">200</span></div>
+            <div class="rule"></div>
+            <div class="ttl" style="font-size:14px">Bruce Springsteen · Land of Hope &amp; Dreams American Tour</div>
+            <div class="dim" style="font-style:italic">setlist.fm</div>
+            <dl class="kv"><dt>Artist</dt><dd>Bruce Springsteen</dd><dt>Setlists</dt><dd>20</dd></dl>
+            <div class="foot">read now · <kbd>Space</kbd> more · <kbd>Esc</kbd> close</div></div></div>
+    </div>
+    <dl class="flow">
+        <dt>The table's own pages</dt><dd><span class="tick">✓</span> same-origin <code>fetch()</code>, sends your setlist.fm cookies (the WAF token), gets the page</dd>
+        <dt>The card today</dt><dd><span class="cross">✕</span> anonymous GM request, no WAF token, gets the challenge (<code>x-amzn-waf-action</code>)</dd>
+        <dt>The card, on setlist.fm</dt><dd><span class="tick">✓</span> the same same-origin <code>fetch()</code> as the table, through www.setlist.fm's 1 s gate</dd>
+        <dt>The card, off setlist.fm</dt><dd><span class="tick">✓</span> GM request carrying your setlist.fm cookies (your consent of 2026-11-03), still only after the first Space</dd>
+        <dt>Also uses it</dt><dd>set times and a venue's facts in the windows (setlist.fm's own pages: the same WAF)</dd>
+    </dl></div>`;
+}
+
+/* ---- view 2: the setlist window ----------------------------------------- */
+function viewSetlist() {
+    const rows = SONGS.map((s, i) => {
+        const g = s[1];
+        const bits = [];
+        if (g.cover) bits.push(`${pair(g.cover)} cover`);
+        if (g.with) bits.push(`with ${pair(g.with)}`);
+        if (g.info) bits.push(esc(g.info));
+        const sec = i === 0 ? '<tr class="tsec"><td></td><td colspan="3">Set <span class="dim">· 22 songs</span></td></tr>'
+            : i === 22 ? '<tr class="tsec"><td></td><td colspan="3">Encore <span class="dim">· 6 songs</span></td></tr>' : '';
+        return `${sec}<tr><td class="num dim">${i + 1}</td><td>${esc(s[0])}</td><td>${bits.join(' · ')}</td><td><span class="play" aria-hidden="true"></span></td></tr>`;
+    }).join('');
+    return `<div class="win">${head(`${sfmIco}<button type="button" aria-current="step">2026-05-30</button>`, '1 / 20')}
+    <div class="win-body"><div class="col">
+        <div class="xtitle">Bruce Springsteen at Xfinity Mobile Arena</div><div class="xsub" style="font-style:italic">setlist.fm</div>
+        <div>Rescheduled from May 8, 2026 and the final show of Land of Hope &amp; Dreams American Tour. Full concert on official "Philadelphia Freedom Cut" on vevo and youtube.</div>
+        <h4>setlist.fm says</h4>
+        <dl class="kv">
+            <dt>Artist</dt><dd>${pair('Bruce Springsteen')}</dd>
+            <dt>Date</dt><dd>2026-05-30</dd>
+            <dt>Venue</dt><dd><a class="here" href="#">Xfinity Mobile Arena</a></dd>
+            <dt>Where</dt><dd>Philadelphia, Pennsylvania (PA), United States · <a href="#">map</a></dd>
+            <dt>Tour</dt><dd><a class="here" href="#">Land of Hope &amp; Dreams American Tour</a></dd>
+            <dt>Last edited</dt><dd>2026-11-01</dd>
+        </dl>
+        <h4>Set times</h4>
+        <dl class="kv"><dt>Doors</dt><dd>18:00</dd><dt>Scheduled</dt><dd>19:30</dd><dt>Start</dt><dd>19:30 <span class="dim">· 1h 30m after doors</span></dd><dt>End</dt><dd>22:20 <span class="dim">· 2h 50m long</span></dd></dl>
+        <div class="credit">Data from <a href="#">setlist.fm</a>, read through its API with your key; set times from its pages.</div>
+    </div><div class="col">
+        <h4>Setlist · 28 in 2 parts</h4>
+        <input class="q" id="sq" placeholder="Filter the setlist: song, cover, guest" aria-label="Filter the setlist">
+        <div style="display:flex;gap:6px;align-items:center;font:12px var(--sans)"><i class="dim">Part</i><span class="chip">Set 22</span><span class="chip">Encore 6</span></div>
+        <div class="twrap" style="max-height:560px"><table class="t"><thead><tr><th>#</th><th>Song</th><th>Notes</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>
+    </div></div>
+    <div class="win-foot"><span id="foot2">Hover over a glyph or a name.</span><span>Click: here · Ctrl-click: new tab</span></div></div>`;
+}
+
+/* ---- view 3: Load all ---------------------------------------------------- */
+const RUN = {
+    kind: 'artist', total: 3003, per: 20, sitePer: 10,
+    loaded: 20, timesRead: 20, cached: 0,     // rows
+    on: false, stopping: false, withTimes: false, failAt: 0, failed: '', timer: 0, t0: 0, demoFail: false,
+};
+const SPEED = 10;   // the mockup runs ten times faster than the 1 s gates
+function runReset(kind) {
+    clearInterval(RUN.timer);
+    Object.assign(RUN, kind === 'venue' ? { kind, total: 2734 } : { kind, total: 3003 },
+        { loaded: 20, timesRead: 20, cached: 0, on: false, stopping: false, withTimes: false, failed: '', timer: 0, demoFail: false });
+}
+/** Requests and time for what a button would do. */
+function cost(withTimes) {
+    const apiReq = Math.ceil((RUN.total - RUN.loaded) / RUN.per);
+    const siteReq = withTimes ? Math.ceil(RUN.total / RUN.sitePer) - Math.ceil(RUN.timesRead / RUN.sitePer) : 0;
+    return { apiReq, siteReq, req: apiReq + siteReq, secs: Math.max(apiReq, siteReq) };
+}
+function statusHtml() {
+    const leftRows = RUN.total - RUN.loaded;
+    const pages = Math.ceil(RUN.total / RUN.per);
+    const done = Math.ceil(RUN.loaded / RUN.per);
+    const sitePages = Math.ceil(RUN.total / RUN.sitePer);
+    const siteDone = Math.ceil(RUN.timesRead / RUN.sitePer);
+    const pill = RUN.on ? '<span class="pill run">Running</span>' : RUN.failed ? '<span class="pill warn">Done with errors</span>'
+        : leftRows <= 0 ? '<span class="pill ok">Done</span>' : '<span class="pill">Idle</span>';
+    const segs = (n, k, run, failed) => Array.from({ length: n }, (_, i) => `<i class="${i < k ? 'loaded' : i === k && run ? 'running' : i === k && failed ? 'failed' : ''}"></i>`).join('');
+    const bars = `<div class="bars"><div class="barlbl"><span>Setlists · API pages</span><span>${done} of ${pages}</span></div>` +
+        `<div class="bar">${segs(pages, done, RUN.on, !!RUN.failed)}</div>` +
+        `<div class="barlbl"><span>Set times · setlist.fm pages</span><span>${siteDone} of ${sitePages}</span></div>` +
+        `<div class="bar">${segs(sitePages, siteDone, RUN.on && RUN.withTimes, false)}</div></div>`;
+    let btns = '';
+    if (RUN.on) {
+        btns = RUN.stopping ? '<span class="dim">Stopping after this page…</span>' : '<button type="button" class="btn danger" data-act="stop">■ Stop</button>';
+    } else if (RUN.failed) {
+        btns = `<button type="button" class="btn primary" data-act="retry">Try page ${done + 1} again <span class="cost">(1 request, about 1 s)</span></button>`;
+    } else if (leftRows > 0) {
+        const a = cost(false);
+        const b = cost(true);
+        btns = `<button type="button" class="btn" data-act="more">Load ${RUN.per} more</button>` +
+            `<button type="button" class="btn primary newtint" data-act="all">Load all ${num(leftRows)} <span class="cost">(${num(a.req)} requests, about ${dur(a.secs)})</span></button>` +
+            `<button type="button" class="btn newtint" data-act="alltimes">Load all with set times <span class="cost">(${num(b.req)} requests, about ${dur(b.secs)})</span></button>`;
+    } else if (RUN.timesRead < RUN.total) {
+        const n = RUN.total - RUN.timesRead;
+        const k = Math.ceil(RUN.total / RUN.sitePer) - Math.ceil(RUN.timesRead / RUN.sitePer);
+        btns = `<button type="button" class="btn newtint" data-act="times">Read set times for the other ${num(n)} <span class="cost">(${num(k)} requests, about ${dur(k)})</span></button>`;
+    }
+    const left = [`${num(RUN.loaded)} of ${num(RUN.total)} loaded`];
+    if (leftRows > 0) left.push(`${num(leftRows)} left`);
+    if (RUN.on) {
+        const c = { api: Math.ceil(leftRows / RUN.per), site: RUN.withTimes ? sitePages - siteDone : 0 };
+        left.push(`<b style="color:var(--ink)">about ${dur(Math.max(c.api, c.site))} left</b>`);
+    }
+    if (RUN.cached) left.push(`${num(RUN.cached)} from cache`);
+    left.push(`set times read for ${num(RUN.timesRead)}`);
+    if (RUN.failed) left.push(`<span class="bad">page ${done + 1} failed: ${esc(RUN.failed)}</span>`);
+    return `<div class="vstat">${pill}${bars}</div><div class="vstat">${btns}</div><div class="counts">${left.join(' · ')}</div>`;
+}
+function tick() {
+    // one simulated second: one API page (20 rows) and, with set times, one setlist.fm page (10 rows)
+    if (RUN.demoFail && Math.ceil(RUN.loaded / RUN.per) === 37) {
+        RUN.on = false; RUN.failed = 'setlist.fm answered HTTP 503'; RUN.demoFail = false;
+        clearInterval(RUN.timer); paintRun(); return;
+    }
+    if (RUN.loaded < RUN.total) {
+        const p = Math.ceil(RUN.loaded / RUN.per) + 1;
+        RUN.loaded = Math.min(RUN.total, RUN.loaded + RUN.per);
+        if (p >= 2 && p <= 4) RUN.cached += RUN.per;   // pages 2–4 were kept from an earlier "Load 20 more"
+    }
+    if (RUN.withTimes && RUN.timesRead < RUN.total) RUN.timesRead = Math.min(RUN.total, RUN.timesRead + RUN.sitePer);
+    const apiDone = RUN.loaded >= RUN.total;
+    const siteDone = !RUN.withTimes || RUN.timesRead >= RUN.total;
+    if (RUN.stopping || (apiDone && siteDone)) { RUN.on = false; RUN.stopping = false; clearInterval(RUN.timer); }
+    paintRun();
+}
+function start(withTimes) {
+    Object.assign(RUN, { on: true, stopping: false, withTimes, failed: '' });
+    clearInterval(RUN.timer);
+    RUN.timer = setInterval(tick, 1000 / SPEED);
+    paintRun();
+}
+function paintRun() {
+    const el = document.getElementById('runbox');
+    if (el) el.innerHTML = statusHtml();
+    const t = document.getElementById('runrows');
+    if (t) t.innerHTML = runRowsHtml();
+}
+function runRowsHtml() {
+    const rows = RUN.kind === 'venue' ? PONY_ROWS : BRUCE_ROWS;
+    const body = rows.map(r => `<tr><td class="yr">${r[0]}</td><td><a class="here" href="#">${esc(r[1])}</a>${r[2] ? `<div class="first">${esc(r[2])}</div>` : ''}</td>` +
+        `<td>${r[3] ? `<a class="here" href="#">${esc(r[3])}</a>` : ''}</td><td class="tm">${r[4].split('|').map(esc).join('<br>')}</td><td class="num">${r[5]}</td></tr>`).join('');
+    const past = RUN.loaded > RUN.timesRead
+        ? `<tr><td colspan="5" class="dim" style="font:12px var(--sans);background:var(--paper-2)">… rows 21–${num(RUN.loaded)}: their Set times cell reads
+            <span class="notread newtint" title="Set times not read: “Read set times for the other …” reads them">·</span> until their setlist.fm page is read</td></tr>` : '';
+    return body + past;
+}
+function viewList(kind) {
+    if (RUN.kind !== kind) runReset(kind);
+    const isV = kind === 'venue';
+    const left = isV
+        ? `<div class="xtitle">The Stone Pony</div><div class="xsub" style="font-style:italic">setlist.fm</div>
+           <h4>setlist.fm says</h4><dl class="kv"><dt>Where</dt><dd>Asbury Park, New Jersey (NJ), United States · <a href="#">map</a></dd>
+           <dt>Address</dt><dd>913 Ocean Avenue<br>Asbury Park, NJ 07712<br>USA</dd><dt>Opened</dt><dd>8 February 1974</dd><dt>Setlists</dt><dd>2,734 · 20 a page</dd></dl>`
+        : `<div class="xtitle">Bruce Springsteen</div><div class="xsub" style="font-style:italic">setlist.fm</div>
+           <h4>setlist.fm says</h4><dl class="kv"><dt>On MusicBrainz</dt><dd><span class="newtint"><a class="mbg" href="#" data-card="mb" data-name="Bruce Springsteen" data-view-go="mb" aria-label="Bruce Springsteen on MusicBrainz">${MB_GLYPH}</a><a class="here" href="#" data-card="mb" data-name="Bruce Springsteen" data-view-go="mb">Bruce Springsteen</a></span></dd>
+           <dt>Sort name</dt><dd>Springsteen, Bruce</dd><dt>Setlists</dt><dd>3,003 · 20 a page</dd></dl>`;
+    const crumb = isV ? `${sfmIco}<button type="button" aria-current="step">The Stone Pony, Asbury Park, …</button>`
+        : `${sfmIco}<button type="button">2026-05-30</button><span class="sep">›</span>${sfmIco}<button type="button" aria-current="step">its setlists</button>`;
+    return `<div class="win">${head(crumb, isV ? '1 / 86' : '1 / 1', isV ? '' : '<button class="tbtn" type="button">← Back</button>')}
+    <div class="win-body"><div class="col">${left}
+        <div class="credit">Data from <a href="#">setlist.fm</a>, read through its API with your key; set times from its pages.</div>
+    </div><div class="col">
+        <h4>Setlists · ${num(RUN.total)}</h4>
+        <div class="statebox"><div id="runbox">${statusHtml()}</div>
+            <div class="speed">Simulated: one page a second on each host, run ten times faster here. <button type="button" class="btn" data-act="reset" style="font-weight:400">Reset</button>
+            <button type="button" class="btn" data-act="faildemo" style="font-weight:400">Fail at page 38</button></div></div>
+        <input class="q" id="lq" placeholder="Filter loaded setlists: ${isV ? 'artist' : 'venue'}, tour, song" aria-label="Filter loaded setlists">
+        <div class="twrap" style="max-height:480px"><table class="t"><thead><tr><th>Date</th><th>${isV ? 'Artist' : 'Venue'}</th><th>Tour</th><th>Set times</th><th>Songs</th></tr></thead>
+            <tbody id="runrows">${runRowsHtml()}</tbody></table></div>
+    </div></div></div>`;
+}
+
+/* ---- view 4: On MusicBrainz, in the window -------------------------------- */
+function viewMb() {
+    const a = ART['Bruce Springsteen'].mb;
+    return `<div class="win">${head(`${sfmIco}<button type="button">2026-05-30</button><span class="sep">›</span>${sfmIco}<button type="button">its setlists</button>` +
+        `<span class="sep">›</span><span class="newtint" style="display:inline-flex;gap:4px;align-items:center">${MB_GLYPH.replace('<svg', '<svg width="16" height="16"')}<button type="button" aria-current="step">Bruce Springsteen</button></span>`,
+        '1 / 1', '<button class="tbtn" type="button" data-view-go="artist">← Back</button>')}
+    <div class="win-body"><div class="col">
+        <div class="xtitle">Bruce Springsteen</div><div class="xsub">MusicBrainz artist · ${a.type}</div>
+        <dl class="kv"><dt>Type</dt><dd>${a.type}</dd><dt>Area</dt><dd><a class="here" href="#">${a.area}</a></dd><dt>Born</dt><dd>${a.begin} · ${a.where}</dd></dl>
+        <h4>Links</h4><div style="font-size:13px"><a class="here" href="#">setlist.fm</a> · <a class="here" href="#">Wikidata</a> · <a class="here" href="#">Discogs</a> · <a class="here" href="#">official homepage</a></div>
+    </div><div class="col">
+        <h4>Release groups</h4>
+        <div class="dim" style="font-size:13px">MusicBrainz's own artist window, as on musicbrainz.org and on discogs.com: Extracted from the Web Service,
+            Live from the artist page, <kbd style="font:11px var(--mono);border:1px solid var(--rule);padding:0 4px;border-radius:3px">H</kbd> its editing history.</div>
+        <div class="twrap"><table class="t"><thead><tr><th>Year</th><th>Title</th><th>Type</th></tr></thead><tbody>
+            <tr><td class="yr">1973</td><td><a class="here" href="#">Greetings From Asbury Park, N.J.</a></td><td>Album</td></tr>
+            <tr><td class="yr">1975</td><td><a class="here" href="#">Born to Run</a></td><td>Album</td></tr>
+            <tr><td class="yr">1978</td><td><a class="here" href="#">Darkness on the Edge of Town</a></td><td>Album</td></tr>
+            <tr><td class="yr">1984</td><td><a class="here" href="#">Born in the U.S.A.</a></td><td>Album</td></tr>
+        </tbody></table></div>
+    </div></div>
+    <div class="win-foot"><span><b>Opens here:</b> MusicBrainz artist · Bruce Springsteen (on setlist.fm too, no longer ↗)</span><span>Backspace or Alt+← goes back</span></div></div>`;
+}
+
+/* ---- notes per view ------------------------------------------------------- */
+const NOTES = {
+    card: `<h2>What changes</h2>
+        <p>The Tour cell links setlist.fm's own search. The card reads that page the way the table already reads it, so the WAF lets it through.
+            The setlist window's tour link never had the problem: it goes through the API with your key.</p>
+        <h2>Before any code</h2>
+        <ol><li class="q"><b>Probe first.</b> <code>scripts/probe-setlistfm-session.user.js</code> v0.2 asks <code>/search?artist=2bd6dcce&amp;tour=3daa95b</code>
+            anonymously, with cookies and same-origin, plus a <code>/venue/</code> page as a control, and logs the status and <code>x-amzn-waf-action</code> of each.
+            If anonymous turns out to pass, the cause is something else and I come back with a new plan.</li></ol>
+        <h2>Questions</h2>
+        <ol><li class="q"><b>Q1 · Off setlist.fm</b>: a search link is rare on musicbrainz.org. Should the cookie read there also be limited to setlist.fm's
+            <code>/search</code> and list pages, never setlists? <span class="rec">Recommended: yes, only the pages the reader reads from the site (search, set times, venue facts).</span></li></ol>`,
+    setlist: `<h2>What changes</h2>
+        <p>Each artist (the Artist fact, every cover and guest) becomes two links. The <b>glyph</b> is MusicBrainz: its card on hover, its window on click.
+            The <b>name</b> is setlist.fm's artist page: the setlist.fm card and window. On setlist.fm both open in this window with Back, using the same
+            MusicBrainz source as on discogs.com.</p>
+        <h2>Questions</h2>
+        <ol>
+            <li class="q"><b>Q2 · "· its setlists"</b> after the Artist fact: the name now opens that same page. <span class="rec">Recommended: drop it.</span></li>
+            <li class="q"><b>Q3 · Also in list windows?</b> A venue window's left "Artists" table and its Artist column could carry the glyph too (the API gives each row's MBID).
+                <span class="rec">Recommended: the left table yes; the Artist column keeps opening the setlist.</span></li>
+            <li class="q"><b>Q4 · No MBID</b> (setlist.fm has artists MusicBrainz does not): <span class="rec">Recommended: name only, no glyph, no empty slot.</span></li>
+        </ol>`,
+    artist: `<h2>What changes</h2>
+        <p>The status block takes the look of the Discogs and MusicBrainz windows: a pill, one bar per host, the buttons with their cost, and Stop while a run is going.
+            Stop lets the page under way finish. Closing the window stops the run too. Pages are kept, so a second run asks only what is missing.</p>
+        <h2>Questions</h2>
+        <ol>
+            <li class="q"><b>Q5 · Keep "Load 20 more"?</b> <span class="rec">Recommended: yes, next to the two Load all buttons.</span></li>
+            <li class="q"><b>Q6 · Confirm a long run?</b> Bruce takes 150 requests. <span class="rec">Recommended: no dialog; the button already names the cost, and Stop is one click away.</span></li>
+            <li class="q"><b>Q7 · The API's daily limit:</b> its docs publish none. Could you look at the limits on your key's page (setlist.fm → Settings → API)? A run over the limit ends with "Try page N again".</li>
+            <li class="q"><b>Q8 · The table while it grows:</b> <span class="rec">Recommended: it stays on the page you are reading; the counts and the pager grow underneath.</span></li>
+        </ol>`,
+    mb: `<h2>What changes</h2>
+        <p>"On MusicBrainz" in the artist window opens MusicBrainz's own artist window here, with the breadcrumb and Back. On musicbrainz.org that already
+            happens. On setlist.fm the link left the window (↗), because MusicBrainz's source in the window existed only on discogs.com.</p>
+        <p>Per your answer, the Live page and the editing history read musicbrainz.org pages with your MusicBrainz cookies, as on discogs.com.
+            Web Service requests stay anonymous.</p>`,
+    venue: `<h2>The same controls</h2>
+        <p>A venue window gets the same block: 136 requests for The Stone Pony's other 2,714 setlists, 408 with set times.
+            A tour window and a search window too. A search reads setlist.fm's pages, 10 a page, and carries its own set times, so it has a single Load all.</p>
+        <h2>Questions</h2>
+        <ol><li class="q"><b>Q9 · Wording</b>: "Load all 2,714" or "Load the other 2,714"? <span class="rec">Recommended: "Load all 2,714", with the count of what is still missing.</span></li></ol>`,
+};
+
+/* ---- hover cards ---------------------------------------------------------- */
+const card = document.getElementById('card');
+function cardHtml(kind, name) {
+    const a = ART[name] || {};
+    if (kind === 'mb') {
+        const m = a.mb || {};
+        return `<div style="display:flex;gap:6px;align-items:center"><span class="ctag mb">MusicBrainz</span><span class="ttl">${esc(name)}</span></div>
+            <div class="dim">${esc(m.type || 'Artist')} · ${esc(m.area || '')}</div><div class="rule"></div>
+            <dl class="kv"><dt>Begin</dt><dd>${esc(m.begin || '')}${m.where ? ` · ${esc(m.where)}` : ''}</dd><dt>Release groups</dt><dd>${esc(m.rgs || '')}</dd></dl>
+            <div class="foot">MusicBrainz artist · <kbd>Space</kbd> more · <kbd>Esc</kbd> close</div>`;
+    }
+    return `<div style="display:flex;gap:6px;align-items:center"><span class="ctag sfm">setlist.fm</span><span class="ttl">${esc(name)}</span></div>
+        <div class="host">${sfmIco} www.setlist.fm <span class="st">200</span></div><div class="rule"></div>
+        <dl class="kv"><dt>Setlists</dt><dd>${esc(a.setlists && a.setlists !== '—' ? a.setlists : 'read on hover')}</dd></dl>
+        <div class="foot">setlist.fm artist · <kbd>Space</kbd> more · <kbd>Esc</kbd> close</div>`;
+}
+document.addEventListener('mouseover', (e) => {
+    const a = e.target.closest('[data-card]');
+    if (!a) { card.hidden = true; return; }
+    card.innerHTML = cardHtml(a.dataset.card, a.dataset.name);
+    card.hidden = false;
+    const r = a.getBoundingClientRect();
+    const x = Math.min(window.scrollX + r.left, window.scrollX + document.documentElement.clientWidth - card.offsetWidth - 16);
+    card.style.left = `${Math.max(window.scrollX + 16, x)}px`;
+    card.style.top = `${window.scrollY + r.bottom + 6}px`;
+    const f = document.getElementById('foot2');
+    if (f) f.innerHTML = a.dataset.card === 'mb' ? `<b>Opens here:</b> MusicBrainz artist · ${esc(a.dataset.name)}` : `<b>Opens here:</b> setlist.fm artist · ${esc(a.dataset.name)}`;
+});
+
+/* ---- render and events ---------------------------------------------------- */
+const S = { view: 'card' };
+const stage = document.getElementById('stage');
+const notes = document.getElementById('notes');
+function render() {
+    card.hidden = true;
+    stage.innerHTML = { card: viewCard, setlist: viewSetlist, artist: () => viewList('artist'), mb: viewMb, venue: () => viewList('venue') }[S.view]();
+    document.querySelectorAll('[data-view]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.view === S.view)));
+    notes.innerHTML = NOTES[S.view];
+}
+document.addEventListener('click', (e) => {
+    const t = e.target.closest('button, a');
+    if (!t) return;
+    if (t.tagName === 'A') e.preventDefault();
+    if (t.dataset.view) { if (S.view !== t.dataset.view) { clearInterval(RUN.timer); RUN.on = false; } S.view = t.dataset.view; render(); return; }
+    if (t.dataset.viewGo) { clearInterval(RUN.timer); RUN.on = false; S.view = t.dataset.viewGo; render(); return; }
+    const act = t.dataset.act;
+    if (!act) return;
+    if (act === 'stop') { RUN.stopping = true; paintRun(); }
+    else if (act === 'more') { RUN.loaded = Math.min(RUN.total, RUN.loaded + RUN.per); RUN.timesRead = RUN.loaded; paintRun(); }
+    else if (act === 'all') start(false);
+    else if (act === 'alltimes') start(true);
+    else if (act === 'times') start(true);
+    else if (act === 'retry') start(RUN.withTimes);
+    else if (act === 'reset') { runReset(RUN.kind); paintRun(); }
+    else if (act === 'faildemo') { runReset(RUN.kind); RUN.demoFail = true; start(false); }
+});
+render();
+</script>

@@ -1148,7 +1148,10 @@ test.describe('setlist.fm through its API (branch B)', () => {
         await expect(area.locator('[data-mb-tbl="sfm-setlist"] .mb-dp-tsec-n')).toHaveText(['The River', 'Encore']);
         const cover = songs.filter({ hasText: 'Because the Night' });
         await expect(cover).toContainText('Patti Smith Group cover');
-        await expect(cover.locator('a')).toHaveAttribute('href', 'https://musicbrainz.org/artist/26638df8-ef34-40d1-8d93-616836b72878');
+        // 2026-11-03 (item 2): MusicBrainz's glyph, then the name as setlist.fm's artist page.
+        await expect(cover.locator('a.mb-sfm-mb')).toHaveAttribute('href', 'https://musicbrainz.org/artist/26638df8-ef34-40d1-8d93-616836b72878');
+        await expect(cover.locator('a.mb-sfm-mb img.mb-pop-ent-icon')).toHaveAttribute('src', /\/static\/images\/entity\/artist\.svg$/);
+        await expect(cover.locator('a:not(.mb-sfm-mb)', { hasText: 'Patti Smith Group' })).toHaveAttribute('href', 'https://www.setlist.fm/setlists/patti-smith-group-53d657bd.html');
         await expect(area).toContainText('forthcoming demolition');
         await expect(area.locator('.mb-dg-counts a', { hasText: 'setlist.fm' })).toHaveAttribute('href', SFM.setlist);
         await expect(area.locator('dt:text-is("Where") + dd')).toContainText('Los Angeles, California (CA), United States');
@@ -1175,7 +1178,9 @@ test.describe('setlist.fm through its API (branch B)', () => {
         const rows = area.locator('[data-mb-tbl="sfm-artist"] tbody tr');
         await expect(rows).toHaveCount(20);
         await expect(area).toContainText('20 of 3,003 loaded');
-        await expect(area.locator('dt:text-is("On MusicBrainz") + dd a')).toHaveAttribute('href', `https://musicbrainz.org/artist/${SFM_MBID}`);
+        // Item 3b: the glyph and the name both MusicBrainz's (the window is the setlist.fm page).
+        await expect(area.locator('dt:text-is("On MusicBrainz") + dd a')).toHaveCount(2);
+        for (const a of await area.locator('dt:text-is("On MusicBrainz") + dd a').all()) await expect(a).toHaveAttribute('href', `https://musicbrainz.org/artist/${SFM_MBID}`);
         await expect(area.locator('h4', { hasText: 'In the loaded setlists' })).toHaveText('In the loaded setlists · 20');
         await area.locator('[data-mb-sfm-act="more"]').click();
         await expect(area).toContainText('40 of 3,003 loaded');
@@ -1339,7 +1344,7 @@ test.describe('setlist.fm venue additions (org/setlistfm.org, Part A)', () => {
         expect(keys).toEqual(['ext|ext:generic', 'ext|ext:generic', 'ext|ext:setlistfm']);
     });
 
-    test('a setlist.fm search link (a Tour cell on setlist.fm, 2026-11-03): one anonymous read of its page, no API; the card names it by its filter; the window lists its setlists with their set times, 10 a page', async ({ page }) => {
+    test('a setlist.fm search link (a Tour cell on setlist.fm, 2026-11-03): one read of its page with the browser\'s setlist.fm cookies (its WAF), no API; the card names it by its filter; the window lists its setlists with their set times, 10 a page', async ({ page }) => {
         const url = 'https://www.setlist.fm/search?artist=2bd6dcce&tour=3daa95b';
         const area = await sfmWindow(page, url, { [url]: sfmHtml('sfm-page-search-2bd6dcce-3daa95b.html') });
         const d = dialog(page);
@@ -1357,7 +1362,9 @@ test.describe('setlist.fm venue additions (org/setlistfm.org, Part A)', () => {
         // The tour link of a row is setlist.fm's own search again.
         await expect(rows.first().locator('td').nth(2).locator('a')).toHaveAttribute('href', 'https://www.setlist.fm/search?artist=2bd6dcce&tour=3daa95b');
         const log = (await xhrFull(page)).filter(r => /setlist\.fm/.test(r.url));
-        expect(log.map(r => [r.url, r.anonymous]), 'one read of the page, anonymous; nothing of the API').toEqual([[url, true]]);
+        // Off setlist.fm a /search carries the cookies (scripts/probe-setlistfm-session.user.js v0.2,
+        // 2026-11-03: anonymous gets AWS WAF's 202 challenge).
+        expect(log.map(r => [r.url, r.anonymous]), 'one read of the page, with the cookies; nothing of the API').toEqual([[url, false]]);
         await area.locator('[data-mb-sfm-act="more"]').click();
         await expect.poll(async () => (await xhrFull(page)).map(r => r.url).filter(u => /setlist\.fm/.test(u))).toEqual([url, `${url}&page=2`]);
     });
@@ -1466,7 +1473,145 @@ test.describe('setlist.fm venue additions (org/setlistfm.org, Part B)', () => {
         const area = await sfmWindow(page, SFM_TOUR);
         await expect(area.locator('[data-mb-tbl="sfm-tour"] tbody tr')).toHaveCount(20);
         await expect(timesCell(area, 'sfm-tour', 0)).toHaveText('—');
-        await expect.poll(async () => (await sfmSiteLog(page)).map(r => r.url)).toEqual([SFM_TOUR_PAGE(1), SFM_TOUR_PAGE(2)]);
+        // A tour's pages are setlist.fm's search: with the browser's cookies (its WAF, 2026-11-03).
+        await expect.poll(async () => (await sfmSiteLog(page)).map(r => [r.url, r.anonymous])).toEqual([[SFM_TOUR_PAGE(1), false], [SFM_TOUR_PAGE(2), false]]);
+    });
+});
+
+// org/setlistfm.org "bugs and new additions" (2026-11-03, mockup
+// https://claude.ai/artifact/CpGp9328FvEZ2yGbXbZrKY, vzell's answers in the
+// same file): item 2, an artist as MusicBrainz's glyph then setlist.fm's
+// page; item 3a, "Load all" (with set times or not) with Stop, the time left
+// and a warning before the API's daily limit (1,440 a day) would be passed.
+// The artist's list is trimmed to 60 setlists (3 API pages) so a run takes
+// seconds through the real 1 s gates. Mutations: scripts/mutations/setlistfm-bugs.json.
+const SFM_SHORT = 60;
+const sfmShortAnswers = () => {
+    const p1 = JSON.parse(json('ext-sfm-artist-setlists-p1.json'));
+    const page = n => sfmJson(JSON.stringify(Object.assign({}, p1, {
+        total: SFM_SHORT, page: n, setlist: p1.setlist.map(x => Object.assign({}, x, { id: n === 1 ? x.id : `p${n}${x.id}` })),
+    })));
+    return {
+        [`${SFM_API}/artist/${SFM_MBID}/setlists?p=1`]: page(1),
+        [`${SFM_API}/artist/${SFM_MBID}/setlists?p=2`]: page(2),
+        [`${SFM_API}/artist/${SFM_MBID}/setlists?p=3`]: page(3),
+    };
+};
+const sfmApiLog = async page => (await xhrFull(page)).filter(r => r.url.startsWith(SFM_API)).map(r => r.url.slice(SFM_API.length));
+const sfmAct = (area, act) => area.locator(`[data-mb-sfm-act="${act}"]`);
+
+test.describe('setlist.fm bugs and new additions (org/setlistfm.org, 2026-11-03)', () => {
+    test('item 2: a setlist\'s artist, covers and guests are MusicBrainz\'s glyph (MusicBrainz\'s window here) then the name (setlist.fm\'s artist page, here); "its setlists" is gone', async ({ page }) => {
+        await page.route('https://musicbrainz.org/static/images/entity/*.svg', (route) => route.fulfill({ status: 200, contentType: 'image/svg+xml', body: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"><rect width="16" height="16"/></svg>' }));
+        const area = await sfmWindow(page, SFM.setlist, {}, { sa_pop_mb: true });
+        const fact = area.locator('dt:text-is("Artist") + dd');
+        await expect(fact.locator('a.mb-sfm-mb')).toHaveAttribute('href', `https://musicbrainz.org/artist/${SFM_MBID}`);
+        await expect(fact.locator('a:not(.mb-sfm-mb)')).toHaveAttribute('href', SFM.artist);
+        await expect(fact).toHaveText('Bruce Springsteen');
+        // Every cover in the Notes carries both.
+        const covers = area.locator('[data-mb-tbl="sfm-setlist"] tbody tr', { hasText: 'cover' });
+        await expect(covers).toHaveCount(2);
+        for (const tr of await covers.all()) {
+            await expect(tr.locator('a.mb-sfm-mb')).toHaveAttribute('href', /^https:\/\/musicbrainz\.org\/artist\/[0-9a-f-]{36}$/);
+            await expect(tr.locator('a:not(.mb-sfm-mb)')).toHaveAttribute('href', /^https:\/\/www\.setlist\.fm\/setlists\//);
+        }
+        // Both open in the window: the glyph as MusicBrainz's artist, the name as setlist.fm's.
+        const d = dialog(page);
+        await page.mouse.move(0, 0);
+        await fact.locator('a.mb-sfm-mb img').hover();
+        await expect(d.locator('.mb-dp-wfoot')).toContainText('Opens here: ');
+        await expect(fact.locator('a.mb-sfm-mb')).toHaveClass(/\bmb-dp-l-here\b/);
+        await fact.locator('a:not(.mb-sfm-mb)').hover();
+        await expect(d.locator('.mb-dp-wfoot')).toContainText('setlist.fm artist');
+    });
+
+    test('item 2, Q3: a venue window\'s left Artists table carries MusicBrainz\'s glyph before each artist with an MBID', async ({ page }) => {
+        const area = await sfmWindow(page, SFM.venue);
+        const t = area.locator('[data-mb-tbl="sfm-l-artist"] tbody tr').first();
+        await expect(t.locator('a.mb-sfm-mb')).toHaveAttribute('href', /^https:\/\/musicbrainz\.org\/artist\/[0-9a-f-]{36}$/);
+        await expect(t.locator('a:not(.mb-sfm-mb)').first()).toHaveAttribute('href', /^https:\/\/www\.setlist\.fm\/setlists\//);
+    });
+
+    test('item 3a, Load all: every page once, one after another; their set times are left unread ("·") and "Read set times for the other N" reads them; the buttons name their cost', async ({ page }) => {
+        const area = await sfmWindow(page, SFM.artist, sfmShortAnswers());
+        await expect(area).toContainText('20 of 60 loaded');
+        await expect(sfmAct(area, 'all')).toHaveText('Load all 40 (2 requests, about 2 s)');
+        await expect(sfmAct(area, 'alltimes')).toHaveText('Load all with set times (6 requests, about 4 s)');
+        await sfmAct(area, 'all').click();
+        await expect(area.locator('.mb-dg-pill')).toHaveText('Running');
+        await expect(area.locator('.mb-sfm-eta')).toHaveText(/^about \d+ s left$/);
+        await expect(area).toContainText('60 of 60 loaded', { timeout: 15000 });
+        // Done (with errors: setlist.fm's page 2 of set times is not served).
+        await expect(area.locator('.mb-dg-pill')).toHaveText(/^Done/);
+        expect((await sfmApiLog(page)).filter(u => u.includes('/setlists?p=')), 'each page once')
+            .toEqual(['/artist/70248960-cb53-4ea4-943a-edb18f7d336f/setlists?p=1', '/artist/70248960-cb53-4ea4-943a-edb18f7d336f/setlists?p=2',
+                '/artist/70248960-cb53-4ea4-943a-edb18f7d336f/setlists?p=3']);
+        // Only the first page's set times were read: two of setlist.fm's pages.
+        expect((await sfmSiteLog(page)).map(r => r.url)).toEqual([SFM.artist, `${SFM.artist}?page=2`]);
+        await expect(area.locator('.mb-sfm-site-n')).toHaveText('1 of 2');
+        await expect(sfmAct(area, 'times')).toHaveText('Read set times for the other 40 (4 requests, about 4 s)');
+        await sfmAct(area, 'times').click();
+        await expect(area.locator('.mb-sfm-site-n')).toHaveText(/ of 6$/, { timeout: 15000 });
+        await expect.poll(async () => (await sfmSiteLog(page)).map(r => r.url), { timeout: 15000 })
+            .toEqual([SFM.artist, ...[2, 3, 4, 5, 6].map(n => `${SFM.artist}?page=${n}`)]);
+        await expect(sfmAct(area, 'times')).toHaveCount(0);
+    });
+
+    test('item 3a, Stop: the page under way finishes and no other is asked; Load all asks only what is missing', async ({ page }) => {
+        const area = await sfmWindow(page, SFM.artist, sfmShortAnswers(), { sa_pop_mb: true });
+        await expect(area).toContainText('20 of 60 loaded');
+        // Item 3b: "On MusicBrainz" opens MusicBrainz's artist here.
+        await page.mouse.move(0, 0);
+        await area.locator('dt:text-is("On MusicBrainz") + dd a:not(.mb-sfm-mb)').hover();
+        await expect(dialog(page).locator('.mb-dp-wfoot')).toContainText('Opens here: ');
+        await sfmAct(area, 'all').click();
+        await sfmAct(area, 'stop').click();
+        await expect(area.locator('.mb-dg-pill')).not.toHaveText('Running', { timeout: 10000 });
+        await expect(area).toContainText('40 of 60 loaded');
+        const pages = async () => (await sfmApiLog(page)).filter(u => u.includes('/setlists?p='));
+        expect(await pages()).toHaveLength(2);
+        await expect(sfmAct(area, 'all')).toHaveText('Load all 20 (1 request, about 1 s)');
+        await sfmAct(area, 'all').click();
+        await expect(area).toContainText('60 of 60 loaded', { timeout: 10000 });
+        expect(await pages()).toHaveLength(3);
+    });
+
+    test('item 3a, Load all with set times: the list and every set-times page, the two hosts in parallel', async ({ page }) => {
+        const area = await sfmWindow(page, SFM.artist, sfmShortAnswers());
+        await expect(area).toContainText('20 of 60 loaded');
+        await sfmAct(area, 'alltimes').click();
+        await expect(area).toContainText('60 of 60 loaded', { timeout: 15000 });
+        await expect.poll(async () => (await sfmSiteLog(page)).map(r => r.url), { timeout: 15000 })
+            .toEqual([SFM.artist, ...[2, 3, 4, 5, 6].map(n => `${SFM.artist}?page=${n}`)]);
+        await expect(area.locator('.mb-sfm-site-n')).toHaveText(/ of 6$/);
+        await expect(area.locator('.mb-dg-pill')).not.toHaveText('Running', { timeout: 10000 });
+        await expect(area.locator('.mb-sfm-unread')).toHaveCount(0);
+    });
+
+    test('item 3a, the daily limit (vzell: 1,440 a day): a run that would pass it is not started but warned of; "Load N more" loads what is left; none left: only Cancel', async ({ page }) => {
+        await openEvent(page, { settings: { sa_pop_ext: true, sa_pop_ext_setlistfm_key: SFM_KEY }, responses: Object.assign(sfmAnswers(), sfmShortAnswers()) });
+        // The artist window costs two requests (the search, page 1): one is left after it.
+        await page.evaluate(() => window.GM_setValue('sa_ext_sfm_api_day', { day: new Date().toISOString().slice(0, 10), n: 1437 }));
+        await addAnnotationLinks(page, [SFM.artist]);
+        await ctrlHover(page, probe(page, 0));
+        await expect(card(page)).toBeVisible();
+        await page.keyboard.press('Space');
+        const area = dialog(page).locator('.mb-dp-area');
+        await expect(area).toContainText('20 of 60 loaded');
+        await expect(area.locator('.mb-sfm-day')).toHaveText('API requests today: 1,439 of 1,440');
+        await sfmAct(area, 'all').click();
+        const warn = area.locator('.mb-sfm-warn');
+        await expect(warn).toContainText('This needs 2 requests of setlist.fm\'s API, and only 1 of today\'s 1,440 is left');
+        expect((await sfmApiLog(page)).filter(u => u.includes('p=2')), 'nothing asked before the answer').toEqual([]);
+        await sfmAct(area, 'allcap').click();
+        await expect(area).toContainText('40 of 60 loaded', { timeout: 10000 });
+        await expect(area.locator('.mb-sfm-day')).toHaveText('API requests today: 1,440 of 1,440');
+        await sfmAct(area, 'all').click();
+        await expect(warn).toContainText('none of today\'s 1,440 are left');
+        await expect(sfmAct(area, 'allcap')).toHaveCount(0);
+        await sfmAct(area, 'nowarn').click();
+        await expect(warn).toHaveCount(0);
+        expect((await sfmApiLog(page)).filter(u => u.includes('p=3')), 'never past the limit').toEqual([]);
     });
 });
 
