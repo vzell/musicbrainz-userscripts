@@ -27958,3 +27958,35 @@ discogs-search-page.spec.js +1; sfm-list.spec.js +1; discogs-links.spec.js
 fail as expected); discogs-initial-previews.json updated (7, all OK); five
 entries elsewhere whose `find` quoted a changed line repointed and re-run
 (OK).
+
+## 2026-11-03 — setlist.fm "Load all": Stop let the next page through; the "item 3a, Stop" spec failed 2 in 3 (fix/non-mb-coverage-gaps, WIP.2)
+
+Env: 2026-11-03T21:59:44+01:00 · vzell-lap · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) · Playwright 1.62.1, Chromium build 1234 · no Tampermonkey (GM stubs)
+
+Symptom: popup-ext.spec.js "item 3a, Stop: the page under way finishes and
+no other is asked" failed in the popup-engine run on this branch, and 2 of
+3 runs on `main` (`--repeat-each 3`, same machine): "60 of 60 loaded"
+where 40 was expected.
+
+Evidence (a temporary copy of the test stamping each api.setlist.fm
+request and the clicks with `performance.now()`, 4 runs): page 2 asked
+6313–6488 ms, Stop clicked 6783–7007 ms, page 3 asked 7315–7502 ms —
+every time AFTER Stop. The stub answers page 2 at once, so `_extSfmRun()`'s
+loop had already started page 3, which sat in `_extGet()`'s 1 s rate slot
+when Stop came; `_extGet()` asks `wanted()` after the slot, but the
+load's `wanted()` only asked whether the window was still open.
+
+So it was a real defect, not only a racy test: Stop sent one more request
+than it promised (HELP: "Stop ends it after the page under way"). Fix:
+`_extSfmPageLoad()` and `_extSfmSiteLoad()` take `stopped`, and their
+`wanted()` asks it; `_extSfmRun()` passes `() => run.stopped`. A skipped
+page is forgotten and the loop puts `ui.pages` back.
+
+Tests, made independent of click timing: "item 3a, Stop" now holds page
+2's answer 3 s and presses Stop once page 2 is in the request log (the
+page under way finishes, no other is asked); new "Stop while the next
+page waits for its 1 s slot" (page 2 answered at once, Stop as soon as the
+log shows it, polled every 50 ms — a first version waited for the
+repainted "40 of 60" and once saw it too late); new "Stop during Load all
+with set times" (no setlist.fm page after Stop). 30/30 green with
+`--repeat-each 10`. Mutations: setlistfm-bugs.json +2, both caught.

@@ -67790,11 +67790,13 @@
      * @param {object} t
      * @param {Object} sfm
      * @param {number} page
-     * @param {{force?: boolean, repaint?: ?function(): void, onSkip?: ?function(): void}} [how] - `onSkip`:
-     *   told when the load was forgotten unasked (the window left), which `_mbLoad()` says to no one.
+     * @param {{force?: boolean, repaint?: ?function(): void, onSkip?: ?function(): void, stopped?: ?function(): boolean}} [how] - `onSkip`:
+     *   told when the load was forgotten unasked (the window left, or the run was stopped), which `_mbLoad()`
+     *   says to no one. `stopped`: a run's Stop (`_extSfmRun()`), asked with the window after the rate slot,
+     *   so a page still waiting for its slot is never sent once Stop is pressed.
      * @returns {void}
      */
-    function _extSfmPageLoad(t, sfm, page, { force = false, repaint = null, onSkip = null } = {}) {
+    function _extSfmPageLoad(t, sfm, page, { force = false, repaint = null, onSkip = null, stopped = null } = {}) {
         const skipped = () => {
             if (onSkip) setTimeout(onSkip, 0);
             return { skipped: true };
@@ -67811,7 +67813,7 @@
             if (r.skipped) return skipped();
             if (r.out) return r.out.ok ? { ok: false, detail: `setlist.fm answered HTTP ${r.out.data.status}` } : r.out;
             return { ok: true, data: _extSfmListPage(r.data) };
-        }, { force, repaint, wanted: () => !!(_dpDialog.target && _dpDialog.target.key === t.key), version: _EXT_IDB_VERSION * 100 + _EXT_SFM_VERSION, ttlMs: _extTtlMs() });
+        }, { force, repaint, wanted: () => !(stopped && stopped()) && !!(_dpDialog.target && _dpDialog.target.key === t.key), version: _EXT_IDB_VERSION * 100 + _EXT_SFM_VERSION, ttlMs: _extTtlMs() });
     }
 
     // --- "Load all" in a setlist.fm list window (2026-11-03) ---------------
@@ -67927,6 +67929,10 @@
         const ui = _extSfmUiOf(t);
         if (ui.run) return;
         const run = { stopped: false, list, times };
+        // Asked by each load after its rate slot: a page waiting for its
+        // slot when Stop is pressed is never sent (tests/fixtures/popup-ext
+        // "item 3a, Stop", 2026-11-03: page 3 was asked ~0.5 s after Stop).
+        const stopped = () => run.stopped;
         Object.assign(ui, { run, warn: null, end: '' });
         const repaint = () => _extSfmRepaintSoon(t);
         repaint();
@@ -67942,7 +67948,7 @@
                 const p = ui.pages + 1;
                 const key = _extSfmPageKey(sfm, p);
                 ui.pages = p;
-                await _extSfmAwait(key, done => _extSfmPageLoad(t, sfm, p, { repaint: () => { done(); repaint(); }, onSkip: done }));
+                await _extSfmAwait(key, done => _extSfmPageLoad(t, sfm, p, { repaint: () => { done(); repaint(); }, onSkip: done, stopped }));
                 asked++;
                 const st = _mbPop.get(key);
                 if (!st) {
@@ -67960,7 +67966,7 @@
                 if (ui.timesUpTo >= goal) break;
                 const n = Math.floor(ui.timesUpTo / _EXT_SFM_SITE_PER) + 1;
                 const key = _extSfmSiteKey(sfm.kind, sfm.id, sfm.tour || '', n);
-                await _extSfmAwait(key, done => _extSfmSiteLoad(t, sfm.kind, sfm.id, sfm.tour || '', n, { repaint: () => { done(); repaint(); }, onSkip: done }));
+                await _extSfmAwait(key, done => _extSfmSiteLoad(t, sfm.kind, sfm.id, sfm.tour || '', n, { repaint: () => { done(); repaint(); }, onSkip: done, stopped }));
                 if (!_mbPop.get(key)) break;
                 ui.timesUpTo = Math.min(sfm.list.total, n * _EXT_SFM_SITE_PER);
                 repaint();
@@ -68201,11 +68207,11 @@
      * @param {string} id
      * @param {string} tour
      * @param {number} n
-     * @param {{force?: boolean, repaint?: ?function(): void, onSkip?: ?function(): void}} [how] - `onSkip`:
-     *   as `_extSfmPageLoad()`'s.
+     * @param {{force?: boolean, repaint?: ?function(): void, onSkip?: ?function(): void, stopped?: ?function(): boolean}} [how] - `onSkip`
+     *   and `stopped`: as `_extSfmPageLoad()`'s.
      * @returns {void}
      */
-    function _extSfmSiteLoad(t, kind, id, tour, n, { force = false, repaint = null, onSkip = null } = {}) {
+    function _extSfmSiteLoad(t, kind, id, tour, n, { force = false, repaint = null, onSkip = null, stopped = null } = {}) {
         const url = _extSfmSiteUrl(t, kind, n);
         _mbLoad(_extSfmSiteKey(kind, id, tour, n), async (wanted) => {
             // A tour's pages are setlist.fm's search: `_extSfmPageGet()`.
@@ -68218,7 +68224,7 @@
             if (checked) return { ok: false, detail: `setlist.fm answered with a bot check (${checked})` };
             if (res.error || res.status !== 200) return { ok: false, detail: res.error ? _extFailText(res) : `setlist.fm answered HTTP ${res.status}` };
             return { ok: true, data: _extSfmSiteParse(new DOMParser().parseFromString(res.body, 'text/html'), kind) };
-        }, { force, repaint, wanted: () => !!(_dpDialog.target && _dpDialog.target.key === t.key), version: _EXT_IDB_VERSION * 100 + _EXT_SFM_SITE_VERSION, ttlMs: _extTtlMs() });
+        }, { force, repaint, wanted: () => !(stopped && stopped()) && !!(_dpDialog.target && _dpDialog.target.key === t.key), version: _EXT_IDB_VERSION * 100 + _EXT_SFM_SITE_VERSION, ttlMs: _extTtlMs() });
     }
 
     /**

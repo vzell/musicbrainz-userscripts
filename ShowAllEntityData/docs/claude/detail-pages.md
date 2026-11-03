@@ -2516,6 +2516,14 @@ Mockup https://claude.ai/artifact/CpGp9328FvEZ2yGbXbZrKY
   again"); leaving the window ends it (`onSkip` on `_extSfmPageLoad()` and
   `_extSfmSiteLoad()`: `_mbLoad()` forgets a skipped load silently). No
   dialog (Q6); the table stays on its page while it grows (Q8).
+  **Stop drops a page still waiting for its slot** (2026-11-03): each load
+  of a run asks the run's `stopped()` with the window in its `wanted()`,
+  which `_extGet()` asks after the 1 s slot, so only a page already SENT
+  finishes. Before, the loop had moved on to the next page, which waited
+  for its slot when Stop came and was sent after it (measured: ~0.5 s after
+  Stop) — the "item 3a, Stop" spec failed 2 runs in 3 on `main`. A skipped
+  page is forgotten, `ui.pages` goes back by one, and "Load all N" offers
+  it again.
   `ui.timesUpTo` bounds the rows whose set times are read: the first page's,
   "Load 20 more"'s, none more by "Load all" (those rows show "·"), all by
   the second button; "Read set times for the other N" reads the rest.

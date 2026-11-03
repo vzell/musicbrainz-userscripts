@@ -1558,22 +1558,69 @@ test.describe('setlist.fm bugs and new additions (org/setlistfm.org, 2026-11-03)
     });
 
     test('item 3a, Stop: the page under way finishes and no other is asked; Load all asks only what is missing', async ({ page }) => {
-        const area = await sfmWindow(page, SFM.artist, sfmShortAnswers(), { sa_pop_mb: true });
+        // Page 2's answer is held back, and Stop is pressed only once page 2
+        // has been asked, so "under way" is certain whatever the click's
+        // timing (it used to race: page 2 answered at once, and Stop met
+        // page 3 instead — see the next test).
+        const answers = sfmShortAnswers();
+        const p2 = `${SFM_API}/artist/${SFM_MBID}/setlists?p=2`;
+        answers[p2] = Object.assign({}, answers[p2], { delayMs: 3000 });
+        const area = await sfmWindow(page, SFM.artist, answers, { sa_pop_mb: true });
         await expect(area).toContainText('20 of 60 loaded');
         // Item 3b: "On MusicBrainz" opens MusicBrainz's artist here.
         await page.mouse.move(0, 0);
         await area.locator('dt:text-is("On MusicBrainz") + dd a:not(.mb-sfm-mb)').hover();
         await expect(dialog(page).locator('.mb-dp-wfoot')).toContainText('Opens here: ');
+        const pages = async () => (await sfmApiLog(page)).filter(u => u.includes('/setlists?p='));
         await sfmAct(area, 'all').click();
+        await expect.poll(pages, { message: 'page 2 asked' }).toHaveLength(2);
         await sfmAct(area, 'stop').click();
         await expect(area.locator('.mb-dg-pill')).not.toHaveText('Running', { timeout: 10000 });
-        await expect(area).toContainText('40 of 60 loaded');
-        const pages = async () => (await sfmApiLog(page)).filter(u => u.includes('/setlists?p='));
-        expect(await pages()).toHaveLength(2);
+        await expect(area, 'page 2, under way when Stop came, finished').toContainText('40 of 60 loaded');
+        expect(await pages(), 'no page after it').toHaveLength(2);
         await expect(sfmAct(area, 'all')).toHaveText('Load all 20 (1 request, about 1 s)');
         await sfmAct(area, 'all').click();
         await expect(area).toContainText('60 of 60 loaded', { timeout: 10000 });
         expect(await pages()).toHaveLength(3);
+    });
+
+    test('item 3a, Stop while the next page waits for its 1 s slot: that page is never sent', async ({ page }) => {
+        // Pins the fix of 2026-11-03: the loop had started page 3, which
+        // waited for setlist.fm's rate slot when Stop came, and was sent
+        // after the slot all the same (measured: page 3 asked ~0.5 s after
+        // Stop). Each load now asks the run's Stop with the window, after
+        // its slot (`_extSfmRun()`'s `stopped`). Page 2 is answered at once
+        // (the stub's next task), and page 3 waits 1 s after page 2 was
+        // sent for its slot; Stop is pressed as soon as the request log
+        // shows page 2 (polled every 50 ms, not the repainted count, which
+        // once came too late), well inside that second.
+        const area = await sfmWindow(page, SFM.artist, sfmShortAnswers());
+        await expect(area).toContainText('20 of 60 loaded');
+        const pages = async () => (await sfmApiLog(page)).filter(u => u.includes('/setlists?p='));
+        await sfmAct(area, 'all').click();
+        await expect.poll(pages, { message: 'page 2 sent', intervals: [50] }).toHaveLength(2);
+        await sfmAct(area, 'stop').click();
+        await expect(area.locator('.mb-dg-pill')).not.toHaveText('Running', { timeout: 10000 });
+        await expect(area).toContainText('40 of 60 loaded');
+        await expect(sfmAct(area, 'all')).toHaveText('Load all 20 (1 request, about 1 s)');
+        expect(await pages(), 'page 3 never sent').toHaveLength(2);
+    });
+
+    test('item 3a, Stop during "Load all with set times": no set-times page is sent after Stop', async ({ page }) => {
+        // The set-times loop (setlist.fm's own pages, their own 1 s gate)
+        // had the same gap as the list's: the page waiting for its slot was
+        // sent after Stop. Whatever was asked before the click may finish;
+        // nothing may be asked after it.
+        const area = await sfmWindow(page, SFM.artist, sfmShortAnswers());
+        await expect(area).toContainText('20 of 60 loaded');
+        const site = async () => (await sfmSiteLog(page)).map(r => r.url);
+        await sfmAct(area, 'alltimes').click();
+        await expect.poll(site, { message: 'the run has asked a set-times page' }).toContain(`${SFM.artist}?page=3`);
+        await sfmAct(area, 'stop').click();
+        const atStop = (await site()).length;
+        await expect(area.locator('.mb-dg-pill')).not.toHaveText('Running', { timeout: 10000 });
+        expect(await site(), 'no set-times page after Stop').toHaveLength(atStop);
+        expect(atStop, 'the run stopped before the last of setlist.fm\'s six pages').toBeLessThan(6);
     });
 
     test('item 3a, Load all with set times: the list and every set-times page, the two hosts in parallel', async ({ page }) => {
