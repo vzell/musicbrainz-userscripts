@@ -1,0 +1,162 @@
+[
+  {
+    "name": "on setlist.fm the reader's page reads go anonymous through GM again",
+    "why": "org/setlistfm.org \"bugs and new additions\" item 1 (vzell 2026-11-03): a Tour cell's card said \"checked by AWS WAF\"; setlist.fm's /search answers an anonymous request with a 202 challenge (scripts/probe-setlistfm-session.user.js v0.2).",
+    "edits": [
+      {
+        "find": "    async function _extSfmPageGet(url, wanted) {\n        if (!_isSfmHost) {",
+        "replace": "    async function _extSfmPageGet(url, wanted) {\n        if (true) {"
+      }
+    ],
+    "spec": "tests/fixtures/sfm-list.spec.js",
+    "grep": "past AWS WAF",
+    "expect": "fail"
+  },
+  {
+    "name": "off setlist.fm a /search is read without the browser's setlist.fm cookies",
+    "why": "Item 1, vzell's consent: off setlist.fm a /search carries the cookies (its WAF), every other page stays anonymous.",
+    "edits": [
+      {
+        "find": "            return _extGet(url, { wanted, fetchOpts: session ? { session: true } : {} });",
+        "replace": "            return _extGet(url, { wanted, fetchOpts: {} });"
+      }
+    ],
+    "spec": "tests/fixtures/popup-ext.spec.js",
+    "grep": "a setlist.fm search link \\(a Tour cell on setlist.fm",
+    "expect": "fail"
+  },
+  {
+    "name": "the MusicBrainz source of the window is discogs.com's only again",
+    "why": "Items 2a/3b: on setlist.fm a MusicBrainz link of the window left it (a new tab).",
+    "edits": [
+      {
+        "find": "    const _MB_FOREIGN_POP_HOST = !!(_isDgHost || _isSfmHost);",
+        "replace": "    const _MB_FOREIGN_POP_HOST = !!_isDgHost;"
+      }
+    ],
+    "spec": "tests/fixtures/sfm-list.spec.js",
+    "grep": "MusicBrainz glyph of a setlist window",
+    "expect": "fail"
+  },
+  {
+    "name": "the glyph is an image link like any other: not MusicBrainz's entity",
+    "why": "Item 2a: _mbPopTarget() skips a link holding an image (artwork); the glyph's image IS the link.",
+    "edits": [
+      {
+        "find": "        const iconLink = relIcon || a.classList.contains('mb-sfm-mb');",
+        "replace": "        const iconLink = relIcon;"
+      }
+    ],
+    "spec": "tests/fixtures/popup-ext.spec.js",
+    "grep": "item 2: a setlist",
+    "expect": "fail"
+  },
+  {
+    "name": "an artist is its MusicBrainz link only again (no glyph, no setlist.fm name)",
+    "why": "Item 2 (vzell): both pages in the same window, the glyph MusicBrainz's, the name setlist.fm's.",
+    "edits": [
+      {
+        "find": "        const url = mbOnly ? (a.mbid ? `${_mbOrigin()}/artist/${a.mbid}` : '') : a.url || '';",
+        "replace": "        const url = a.mbid ? `${_mbOrigin()}/artist/${a.mbid}` : '';"
+      }
+    ],
+    "spec": "tests/fixtures/popup-ext.spec.js",
+    "grep": "item 2: a setlist",
+    "expect": "fail"
+  },
+  {
+    "name": "Stop does not stop the run",
+    "why": "Item 3a: \"with an option to stop midway\".",
+    "edits": [
+      {
+        "find": "            if (ui.run) ui.run.stopped = true;",
+        "replace": "            if (ui.run) ui.run.stopped = false;"
+      }
+    ],
+    "spec": "tests/fixtures/popup-ext.spec.js",
+    "grep": "item 3a, Stop",
+    "expect": "fail"
+  },
+  {
+    "name": "Load all reads every loaded row's set times (no unread rows)",
+    "why": "Item 3a, vzell's answer: \"Load all\" and \"Load all with set times\" are two buttons; the first leaves the set times unread.",
+    "edits": [
+      {
+        "find": "        const sitePages = fromSite ? 0 : Math.ceil(Math.min(rows.length, ui.timesUpTo) / _EXT_SFM_SITE_PER);",
+        "replace": "        const sitePages = fromSite ? 0 : Math.ceil(rows.length / _EXT_SFM_SITE_PER);"
+      }
+    ],
+    "spec": "tests/fixtures/popup-ext.spec.js",
+    "grep": "item 3a, Load all: every page once",
+    "expect": "fail"
+  },
+  {
+    "name": "Load all with set times reads no set times",
+    "why": "Item 3a: the second button reads the list and every set-times page.",
+    "edits": [
+      {
+        "find": "            _extSfmLoadAll(t, rec.sfm, act === 'alltimes' ? 'all' : '');",
+        "replace": "            _extSfmLoadAll(t, rec.sfm, '');"
+      }
+    ],
+    "spec": "tests/fixtures/popup-ext.spec.js",
+    "grep": "item 3a, Load all with set times",
+    "expect": "fail"
+  },
+  {
+    "name": "no warning before the daily limit: the run starts anyway",
+    "why": "Item 3a, vzell: \"Rate limit max. 2.0/second and max. 1440/DAY ... warn the user if the limit would get hit beforehand\".",
+    "edits": [
+      {
+        "find": "        if (needed > left) {\n            ui.warn = { needed, left, times };",
+        "replace": "        if (false) {\n            ui.warn = { needed, left, times };"
+      }
+    ],
+    "spec": "tests/fixtures/popup-ext.spec.js",
+    "grep": "item 3a, the daily limit",
+    "expect": "fail"
+  },
+  {
+    "name": "the API's requests are not counted",
+    "why": "Item 3a: the warning and the run's stop at the limit depend on the day's count.",
+    "edits": [
+      {
+        "find": "            if (host === 'api.setlist.fm') _extSfmApiTally();",
+        "replace": "            if (host === 'api.setlist.fm.invalid') _extSfmApiTally();"
+      }
+    ],
+    "spec": "tests/fixtures/popup-ext.spec.js",
+    "grep": "item 3a, the daily limit",
+    "expect": "fail"
+  },
+  {
+    "name": "the run passes the daily limit",
+    "why": "Item 3a: a run never asks past the day's 1,440.",
+    "edits": [
+      {
+        "find": "                if (api && _extSfmApiLeft() <= 0) {\n                    ui.end = 'limit';",
+        "replace": "                if (false) {\n                    ui.end = 'limit';"
+      },
+      {
+        "find": "            if (w && w.left) _extSfmRun(t, rec.sfm, { list: true, times: w.times, maxPages: w.left });",
+        "replace": "            if (w && w.left) _extSfmRun(t, rec.sfm, { list: true, times: w.times });"
+      }
+    ],
+    "spec": "tests/fixtures/popup-ext.spec.js",
+    "grep": "item 3a, the daily limit",
+    "expect": "fail"
+  },
+  {
+    "name": "the buttons' cost counts the set times' pages from the wrong host",
+    "why": "Item 3a: \"the possible time it takes to fetch all\": the two hosts' gates run in parallel, so the time is the longer of the two.",
+    "edits": [
+      {
+        "find": "                        `${_extDgDur(Math.max(secs(listLeft, listHost), secs(timesLeft, 'www.setlist.fm')))}`);",
+        "replace": "                        `${_extDgDur(secs(listLeft, listHost) + secs(timesLeft, 'www.setlist.fm'))}`);"
+      }
+    ],
+    "spec": "tests/fixtures/popup-ext.spec.js",
+    "grep": "item 3a, Load all: every page once",
+    "expect": "fail"
+  }
+]
