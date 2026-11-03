@@ -3013,9 +3013,24 @@ once and without Tampermonkey asking first:
   EXTERNAL LINK PREVIEWS → *setlist.fm API key* (on setlist.fm: Settings →
   API). With it, a setlist's card says where and when, the tour and how many
   songs; its window lists every song by set (the encore too), each cover's
-  original artist linked to MusicBrainz, guests, songs from tape, the show's
-  notes, and the venue's city with a map link. An artist's or a venue's
+  original artist, guests, songs from tape, the show's notes, and the
+  venue's city with a map link. Every artist in it — the show's own, a
+  cover's, a guest — comes twice: MusicBrainz's small artist icon in front
+  opens the artist on MusicBrainz (its card when you point at it, its
+  window on a click), and the name opens the artist's setlists on
+  setlist.fm, both in the same window. An artist's or a venue's
   window lists their setlists 20 at a time (*Load 20 more*), with a filter.
+  *Load all N* reads the rest, one page a second, and says how many
+  requests that takes and about how long; *Load all with set times* reads
+  their set times too (see below), which takes longer. While it runs, the
+  bar fills, the counts say how many are loaded, how many are left and
+  about how long it still takes, and *Stop* ends it after the page under
+  way. Pages already read are kept, so the next *Load all* only reads what
+  is missing. setlist.fm allows a key 1,440 API requests a day; the window
+  counts the requests this script made today (from midnight UTC) and, before
+  a run that would need more than are left, says so and offers to load as
+  many as are left instead. In an artist's window, *On MusicBrainz* opens
+  that artist's MusicBrainz window here.
   On the left, *In the loaded setlists* has small tables of the artists and
   tours (a venue's) or the tours and venues (an artist's), most setlists
   first, which you can sort and filter. Click a number to keep the Setlists
@@ -3025,7 +3040,10 @@ once and without Tampermonkey asking first:
   tour's setlists. The links in it open in the same window (*Back* returns).
   A link to setlist.fm's own search for an artist's setlists
   (setlist.fm/search?artist=…) has its card and window even without a key:
-  they are read from that search page. In a setlist's window each song has a
+  they are read from that search page. setlist.fm answers such a search
+  only when the request carries your browser's setlist.fm cookies (its
+  browser check), so on setlist.fm the page is read as the page itself reads
+  it, and elsewhere with your setlist.fm cookies. In a setlist's window each song has a
   **▶**, as on setlist.fm: a click finds the song on YouTube (its search for
   the artist and the song, the first video) and plays it in the window,
   above the setlist; a second click stops it. A song YouTube finds nothing
@@ -3034,7 +3052,8 @@ once and without Tampermonkey asking first:
   **Set times** are not in setlist.fm's API, so the window reads them from
   setlist.fm's own pages, without your key and only once the window is open
   (never for the card): two pages for every 20 setlists, at most one a
-  second. The Setlists table then has a *Set times* column (doors, and the
+  second. After *Load all* (without set times) the rows past the first ones
+  show "·" in Set times; *Read set times for the other N* reads them. The Setlists table then has a *Set times* column (doors, and the
   show from start to end), and a setlist's window lists Doors, Scheduled,
   Start and End with setlist.fm's own durations, all on a 24-hour clock. "…"
   means the page is still being read, "?" that it could not be (*⟳ Try

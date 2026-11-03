@@ -1525,6 +1525,13 @@ test.describe('setlist.fm bugs and new additions (org/setlistfm.org, 2026-11-03)
         await expect(d.locator('.mb-dp-wfoot')).toContainText('setlist.fm artist');
     });
 
+    test('item 2, Q3: a venue window\'s left Artists table carries MusicBrainz\'s glyph before each artist with an MBID', async ({ page }) => {
+        const area = await sfmWindow(page, SFM.venue);
+        const t = area.locator('[data-mb-tbl="sfm-l-artist"] tbody tr').first();
+        await expect(t.locator('a.mb-sfm-mb')).toHaveAttribute('href', /^https:\/\/musicbrainz\.org\/artist\/[0-9a-f-]{36}$/);
+        await expect(t.locator('a:not(.mb-sfm-mb)').first()).toHaveAttribute('href', /^https:\/\/www\.setlist\.fm\/setlists\//);
+    });
+
     test('item 3a, Load all: every page once, one after another; their set times are left unread ("·") and "Read set times for the other N" reads them; the buttons name their cost', async ({ page }) => {
         const area = await sfmWindow(page, SFM.artist, sfmShortAnswers());
         await expect(area).toContainText('20 of 60 loaded');

@@ -2468,6 +2468,63 @@ and taken back the same night (it broke that first-contact spec).
 (search links with and without a key, a search link's window); sfm-list.spec.js
 (a Tour cell on setlist.fm); mutations in setlistfm-venue.json.
 
+### Bugs and additions (org/setlistfm.org, 2026-11-03)
+
+Mockup https://claude.ai/artifact/CpGp9328FvEZ2yGbXbZrKY
+(`org/setlistfm-bugs-mockups.html`); vzell approved every recommendation.
+
+- **setlist.fm's `/search` needs its WAF cookie** (item 1).
+  `scripts/probe-setlistfm-session.user.js` v0.2 (vzell's browser, Windows,
+  Chrome 152, 2026-11-03 12:47 CET, Env in DEBUG-NOTES.md): `/search`
+  anonymous → 202, `x-amzn-waf-action: challenge`, empty — from setlist.fm
+  and from musicbrainz.org; with cookies or same-origin → 200, the page; a
+  venue page → 200 all three ways. The card of a Tour cell on setlist.fm
+  showed "checked by AWS WAF". Every read of setlist.fm's own pages goes
+  through `_extSfmPageGet()`: on setlist.fm a same-origin `fetch()`
+  (www.setlist.fm's gate), elsewhere a `/search` with the browser's
+  setlist.fm cookies (`session`: **the third consented exception** to "an
+  external request is anonymous", vzell 2026-11-03) and any other page
+  anonymously. That covers the search reader and the windows' set-times
+  reads — a tour's are `/search?query=…`.
+- **Artists as two links** (item 2, `_extSfmArtistHtml()`,
+  `_extSfmMbGlyphHtml()`): MusicBrainz's artist glyph (`a.mb-sfm-mb`, the
+  entity's own `artist.svg`, `data-mb-pop-name`) linked to the artist on
+  MusicBrainz, then the name linked to setlist.fm's artist page — a
+  setlist's Artist fact ("· its setlists" went, Q2), covers and guests in
+  its Notes, a tour's Artist fact, a venue window's left Artists table
+  (Q3). No MBID: the name only (Q4). An artist window's "On MusicBrainz" is
+  MusicBrainz's twice (`mbOnly`, item 3b). Two gates had to open:
+  `_mbPopTarget()` skips a link holding an `<img>` (artwork) but a
+  Relationships icon and now `a.mb-sfm-mb`; and on setlist.fm the
+  window's MusicBrainz source is `dg-mb`, on for `_MB_FOREIGN_POP_HOST`
+  (discogs.com, setlist.fm) — the Live page and the history read with the
+  browser's musicbrainz.org cookies (`_mbPageGetForeign()`), vzell's consent
+  extended to setlist.fm the same day.
+- **Load all** (item 3a, `_extSfmRun()`, `_extSfmLoadAll()`,
+  `_extSfmStatusHtml()`): "Load 20 more" stays (Q5); "Load all N" reads the
+  list's other pages one after another; "Load all with set times" also
+  setlist.fm's pages in parallel on www.setlist.fm's gate; each button names
+  its requests and time (the longer of the two hosts'). While running: the
+  pill, a bar per host (`.mb-sfm-bars`), Stop ("Stopping after this
+  page…"), "about T left". A failed list page ends the run ("Try page N
+  again"); leaving the window ends it (`onSkip` on `_extSfmPageLoad()` and
+  `_extSfmSiteLoad()`: `_mbLoad()` forgets a skipped load silently). No
+  dialog (Q6); the table stays on its page while it grows (Q8).
+  `ui.timesUpTo` bounds the rows whose set times are read: the first page's,
+  "Load 20 more"'s, none more by "Load all" (those rows show "·"), all by
+  the second button; "Read set times for the other N" reads the rest.
+- **The API's daily limit** (vzell's key page: "max. 2.0/second and max.
+  1440/DAY"; the docs publish none): `_extGet()` counts every attempt to
+  api.setlist.fm in GM storage (`sa_ext_sfm_api_day`, `{day, n}`, from
+  00:00 UTC — setlist.fm does not say when its day starts —, shared by every
+  tab and site; other programs using the key are not seen). The counts line
+  shows "API requests today: n of 1,440"; a Load all that needs more than
+  is left is not started but warned of (`.mb-sfm-warn`: "Load N more" for
+  what is left, Cancel); a run stops at the limit ("used up").
+- Specs: popup-ext.spec.js "setlist.fm bugs and new additions" (5) and 4
+  updated; sfm-list.spec.js (the WAF; the glyph in place on setlist.fm);
+  mutations: scripts/mutations/setlistfm-bugs.json.
+
 ## archive.org items (reader `iadetails`, 2026-10-31)
 
 docs/claude/internet-archive.md is the full text. In short: any
