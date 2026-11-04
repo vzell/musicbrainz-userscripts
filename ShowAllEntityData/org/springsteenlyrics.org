@@ -667,10 +667,7 @@ parse a couple and make some suggestions, nice rich HTML based mockups
 
 * TODO Support bootleg SL URL PTs
 
-
-
-
-* Add new SL PTs and POHs, see skills:
+* TODO Add new SL PTs and POHs, see skills
 
 Add new SL PTs and POHs, see skills:
 

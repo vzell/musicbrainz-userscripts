@@ -426,21 +426,12 @@ COMMUNITY - always last
 currently the "COMMUNITY" card ([Image #33]) has not all the information available on the IP under the "Statistics"
 section, see [Image #34] and the hyperlinks are also missing
 
-
-* TODO add MB entity glyph handling for all entities whhich have one when the third party userscript from murdos is installed
-
-add MB entity glyph handling for all entities whhich have one when the third party userscript from murdos is installed
-
-
-
-
-* TODO add 2-column display in the "COMMUNITY" card of the Discogs release PT
+* DONE add 2-column display in the "COMMUNITY" card of the Discogs release PT
 
 add 2-column display in the "COMMUNITY" card of the Discogs release PT, currently the ten entries are listed below each
 other but there is enough space to list them inside the card in two columns 5, entries each
 
-
-* TODO SFM IPs
+* DONE SFM IPs
 
 next setlist.fm sfm-setlist:
 
@@ -456,7 +447,7 @@ sfm-lohadt.html
 sfm-solo-plus-jam.html
 #+end_example
 
-* some SFM search pages have no PT yet
+* DONE some SFM search pages have no PT yet
 
 some SFM search pages have no PT yet, no action buttons
 
@@ -550,3 +541,10 @@ bug in festival edition POH, the "MOST ATTENDED" section renders raw href garbag
 #+begin_example
 @debug/sfm-festival-edition-POH.html - POH - https://www.setlist.fm/festival/2025/glastonbury-festival-2025-3d581bb.html - [Image #6]
 #+end_example
+
+
+* TODO add MB entity glyph handling for all entities whhich have one when the third party userscript from murdos is installed
+
+add MB entity glyph handling for all entities whhich have one when the third party userscript from murdos is installed
+
+
