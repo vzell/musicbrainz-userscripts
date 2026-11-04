@@ -33,6 +33,8 @@ function includePatterns() {
  * @returns {boolean}
  */
 const injected = (url) => includePatterns().some((re) => re.test(url));
+/** A page of brucebase.wikidot.com itself (not www., not a look-alike host). */
+const BB_ANY = /^https?:\/\/brucebase\.wikidot\.com\//;
 
 test.describe('@include coverage', () => {
     test('springsteenlyrics.com: every list page and both entry pages, and nothing else', () => {
@@ -150,7 +152,7 @@ test.describe('@include coverage', () => {
         expect(others.filter((u) => injected(u))).toEqual([]);
     });
 
-    test('brucebase.wikidot.com: stats:songs, and nothing else', () => {
+    test('brucebase.wikidot.com: stats:songs, and no other wiki', () => {
         const lists = [
             'https://brucebase.wikidot.com/stats:songs',
             'http://brucebase.wikidot.com/stats:songs',
@@ -177,10 +179,12 @@ test.describe('@include coverage', () => {
             'https://example.org/brucebase.wikidot.com/stats:songs',
         ];
         expect(lists.filter((u) => !injected(u))).toEqual([]);
-        expect(others.filter((u) => injected(u))).toEqual([]);
+        // Every Brucebase page is included since 2026-11-04 (link previews
+        // everywhere); other wikis and look-alike hosts never are.
+        expect(others.filter((u) => !BB_ANY.test(u)).filter((u) => injected(u))).toEqual([]);
     });
 
-    test('brucebase.wikidot.com: Relations and Recent changes, and nothing else', () => {
+    test('brucebase.wikidot.com: Relations and Recent changes, and no other wiki', () => {
         const pages = [
             'https://brucebase.wikidot.com/stats:relations',
             'http://brucebase.wikidot.com/stats:relations/',
@@ -207,10 +211,12 @@ test.describe('@include coverage', () => {
             'https://brucebase.wikidot.com.example.org/stats:relations',
         ];
         expect(pages.filter((u) => !injected(u))).toEqual([]);
-        expect(others.filter((u) => injected(u))).toEqual([]);
+        // Every Brucebase page is included since 2026-11-04 (link previews
+        // everywhere); other wikis and look-alike hosts never are.
+        expect(others.filter((u) => !BB_ANY.test(u)).filter((u) => injected(u))).toEqual([]);
     });
 
-    test('brucebase.wikidot.com: the year pages, and nothing else', () => {
+    test('brucebase.wikidot.com: the year pages, and no other wiki', () => {
         const years = [
             'https://brucebase.wikidot.com/2026',
             'http://brucebase.wikidot.com/1975',
@@ -237,10 +243,12 @@ test.describe('@include coverage', () => {
             'https://brucebase.wikidot.com.example.org/2026',
         ];
         expect(years.filter((u) => !injected(u))).toEqual([]);
-        expect(others.filter((u) => injected(u))).toEqual([]);
+        // Every Brucebase page is included since 2026-11-04 (link previews
+        // everywhere); other wikis and look-alike hosts never are.
+        expect(others.filter((u) => !BB_ANY.test(u)).filter((u) => injected(u))).toEqual([]);
     });
 
-    test('brucebase.wikidot.com: the start page, and nothing else', () => {
+    test('brucebase.wikidot.com: the start page, and no other wiki', () => {
         const home = [
             // (A bare `https://brucebase.wikidot.com` never reaches a
             // pattern: the browser's location.href always has the slash.)
@@ -262,6 +270,31 @@ test.describe('@include coverage', () => {
             'https://brucebase.wikidot.com.example.org/',
         ];
         expect(home.filter((u) => !injected(u))).toEqual([]);
+        // Every Brucebase page is included since 2026-11-04 (link previews
+        // everywhere); other wikis and look-alike hosts never are.
+        expect(others.filter((u) => !BB_ANY.test(u)).filter((u) => injected(u))).toEqual([]);
+    });
+
+    test('brucebase.wikidot.com: every page of the wiki, for the link previews (2026-11-04); never another wiki or a look-alike host', () => {
+        // vzell: "previews should run on every Brucebase page". A page no
+        // pageType matches gets the link previews only (init's Brucebase
+        // branch), a frame (an html block) nothing.
+        const pages = [
+            'https://brucebase.wikidot.com/gig:1985-01-13-carolina-coliseum-columbia-sc',
+            'https://brucebase.wikidot.com/venue:paramount-theatre-asbury-park-nj',
+            'https://brucebase.wikidot.com/relation:bryan-adams',
+            'https://brucebase.wikidot.com/song:1945',
+            'https://brucebase.wikidot.com/stats:songs-by-album',
+            'https://brucebase.wikidot.com/2026-list',
+            'http://brucebase.wikidot.com/nogig:1978-09-23-asbury-park-nj#toc2',
+        ];
+        const others = [
+            'https://otherwiki.wikidot.com/gig:1985-01-13-carolina-coliseum-columbia-sc',
+            'https://www.brucebase.wikidot.com/song:1945',
+            'https://brucebase.wikidot.com.example.org/song:1945',
+            'https://example.org/brucebase.wikidot.com/song:1945',
+        ];
+        expect(pages.filter((u) => !injected(u))).toEqual([]);
         expect(others.filter((u) => injected(u))).toEqual([]);
     });
 

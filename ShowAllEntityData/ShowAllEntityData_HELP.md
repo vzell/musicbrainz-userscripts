@@ -3546,6 +3546,20 @@ that button by itself.
 </details>
 
 <details>
+<summary>Brucebase: link previews on every page</summary>
+
+On **every** Brucebase page — a show, a venue, a person, a song, not only the
+lists below — the links have their cards and windows: rest the pointer on a
+song, a show, a venue or a person for Brucebase's own card, on a link to
+another site (Wikipedia, YouTube, archive.org, …) for that site's; **Space**
+opens the window. Nothing else changes on those pages: no buttons, no
+toolbar. It follows the same switches: *Enable on the Brucebase song list*,
+*Preview song pages on the Brucebase song list*, *Preview event, venue and
+people pages on hover* and *Preview external links on hover*.
+
+</details>
+
+<details>
 <summary>Brucebase song list</summary>
 
 Not a MusicBrainz page either, and **on unless you switch it off**: ⚙️ Settings

@@ -1,0 +1,18 @@
+[
+    {
+        "name": "bb-page: the catch-all matches nothing",
+        "why": "vzell, 2026-11-04: previews on every Brucebase page; without the catch-all pageType a gig page has none.",
+        "edits": [{ "find": "            match: () => true,", "replace": "            match: () => false," }],
+        "spec": "tests/fixtures/bb-every-page.spec.js",
+        "grep": "a gig page",
+        "expect": "fail"
+    },
+    {
+        "name": "bb-page: the visible toolbar of the list pageTypes",
+        "why": "A preview-only page shows nothing of ours: a hidden header, the wiki's title untouched.",
+        "edits": [{ "find": "headerContainer = baseDefinition.features?.bbPreviewOnly ? _bbPreviewOnlyHeader() : _bbPrepareLivePage();", "replace": "headerContainer = _bbPrepareLivePage();" }],
+        "spec": "tests/fixtures/bb-every-page.spec.js",
+        "grep": "a gig page",
+        "expect": "fail"
+    }
+]

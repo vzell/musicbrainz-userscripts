@@ -30,6 +30,7 @@
 // @include      /^https?:\/\/brucebase\.wikidot\.com\/(?:stats:relations|system:recent-changes)\/?(?:[?#].*)?$/
 // @include      /^https?:\/\/brucebase\.wikidot\.com\/(?:\d{4}|1949-64)\/?(?:[?#].*)?$/
 // @include      /^https?:\/\/brucebase\.wikidot\.com\/(?:home\/?)?(?:[?#].*)?$/
+// @include      /^https?:\/\/brucebase\.wikidot\.com\/[^?#]*(?:[?#].*)?$/
 // @include      /^https?:\/\/(?:www\.)?discogs\.com\/(?:[a-z]{2}(?:-[a-z]{2})?\/)?(?:master|release|artist|label)\/\d+(?:-[^\/?#]*)?\/?(?:[?#].*)?$/
 // @include      /^https?:\/\/(?:www\.)?discogs\.com\/(?:[a-z]{2}(?:[-_][a-zA-Z]{2})?\/)?submissions\/?(?:[?#].*)?$/
 // @include      /^https?:\/\/(?:www\.)?discogs\.com\/(?:[a-z]{2}(?:[-_][a-zA-Z]{2})?\/)?user\/[^\/?#]+\/?(?:[?#].*)?$/
@@ -22750,6 +22751,31 @@
     }
 
     /**
+     * The header container of a Brucebase page with link previews only
+     * (`bb-page`, 2026-11-04): a HIDDEN `<h1 class="mb-bb-h1 mb-bb-preview-only">`
+     * at the end of `<body>`, so init runs as on every pageType (the popup
+     * engine, every declaration of the script initialised) while nothing is
+     * shown and nothing of the wiki's page is touched: no side bar
+     * arrangement, no style, no title change (`_bbPrepareLivePage()` does
+     * those for the pageTypes with a table).
+     *
+     * @returns {?HTMLHeadingElement} The hidden `<h1>`, or null without a `<body>`.
+     */
+    function _bbPreviewOnlyHeader() {
+        const existing = document.querySelector('h1.mb-bb-preview-only');
+        if (existing) return existing;
+        if (!document.body) return null;
+        const h1 = document.createElement('h1');
+        h1.className = 'mb-bb-h1 mb-bb-preview-only';
+        h1.hidden = true;
+        const bdi = document.createElement('bdi');
+        bdi.textContent = String(document.title || '').replace(/\s*-\s*Brucebase.*$/i, '').trim() || 'Brucebase';
+        h1.appendChild(bdi);
+        document.body.appendChild(h1);
+        return h1;
+    }
+
+    /**
      * Prepares the Brucebase song list at init, standing in for the
      * MusicBrainz header lookup (the init block calls it right after that
      * lookup, for the Brucebase definition only). The page's only `<h1>` is
@@ -43736,6 +43762,24 @@
                 pageKeys: { pathRe: _BB_YEAR_PATH_RE_KEY, selector: '#side-bar a[href]', unit: 'year' },
                 ..._bbYearTableFeatures()
             },
+            tableMode: 'single'
+        },
+        {
+            // Every other Brucebase page (vzell, 2026-11-04: "previews should
+            // run on every Brucebase page"): a gig, a venue, a person, a song
+            // — link previews only. LAST of the Brucebase definitions: it
+            // matches any path. No button and nothing visible: its header is
+            // a hidden element (`_bbPreviewOnlyHeader()`), and init installs
+            // the popup engine as on every pageType. A real pageType rather
+            // than an early exit on purpose: an exit leaves every top-level
+            // declaration after it uninitialised, and the artwork viewer
+            // then threw "Cannot access '_artViewerState' before
+            // initialization" (tests/fixtures/bb-every-page.spec.js).
+            type: 'bb-page',
+            host: 'brucebase.wikidot.com',
+            match: () => true,
+            buttons: [],
+            features: { bbPreviewOnly: true },
             tableMode: 'single'
         },
 
@@ -89174,6 +89218,12 @@ a { color: #1565c0; }`;
     // has nothing for the script to do without the compact bar: stop here,
     // before any toolbar or heading is added, and say so at info level rather
     // than letting the required-elements check below log an error.
+    // A Brucebase page with link previews only (`bb-page`) inside a frame
+    // (an html block of a wiki page, under the same host): nothing to do.
+    if (baseDefinition?.features?.bbPreviewOnly && window.top !== window) {
+        Lib.info('init', `${pageType}: a frame — no link previews here.`);
+        return;
+    }
     if (baseDefinition?.features?.slNavOnly && Lib.settings.sa_sl_compact_nav !== true) {
         Lib.info('init', `${pageType}: navigation-only page and the compact bar (sa_sl_compact_nav) is off — nothing to do.`);
         return;
@@ -89237,8 +89287,9 @@ a { color: #1565c0; }`;
     } else if (baseDefinition?.host === 'brucebase.wikidot.com') {
         // Brucebase has an <h1>, but it is the wiki's site name in the page
         // header, which the generic fallback above would pick — see
-        // _bbPrepareLivePage().
-        headerContainer = _bbPrepareLivePage();
+        // _bbPrepareLivePage(). A page of `bb-page` (link previews only)
+        // gets a hidden header and nothing else.
+        headerContainer = baseDefinition.features?.bbPreviewOnly ? _bbPreviewOnlyHeader() : _bbPrepareLivePage();
     } else if (baseDefinition?.host === 'www.discogs.com') {
         // discogs.com's <h1> is inside Discogs' React page: the toolbar goes
         // to a section of our own above it — see _dgPrepareLivePage().

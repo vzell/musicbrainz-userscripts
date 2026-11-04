@@ -76,7 +76,10 @@
           "frp": { "state": "yes", "ev": "spec", "why": "Also the MB-Event glyph and the Venue column, table only.", "spec": ["tests/fixtures/bb-event-preview.spec.js", "Ctrl+hover on Event: ONE request"] } },
         { "type": "bb-home", "url": "https://brucebase.wikidot.com/", "mode": "single",
           "ip": { "state": "part", "ev": "code", "why": "The year links are no detail links; outside links in #page-content only." },
-          "frp": { "state": "yes", "ev": "code" } }
+          "frp": { "state": "yes", "ev": "code" } },
+        { "type": "bb-page", "url": "https://brucebase.wikidot.com/gig:… (any other page: venue, relation, song, …)", "mode": "single",
+          "ip": { "state": "yes", "ev": "spec", "why": "Link previews only (vzell, 2026-11-04: every Brucebase page): the site's own detail pages and other sites' links in #page-content; nothing visible added.", "spec": ["tests/fixtures/bb-every-page.spec.js", "a gig page (no pageType)"] },
+          "frp": { "state": "na", "ev": "code", "why": "No button, no table." } }
       ]
     },
     {
