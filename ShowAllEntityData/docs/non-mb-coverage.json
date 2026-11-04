@@ -43,7 +43,10 @@
           "frp": { "state": "yes", "ev": "code", "why": "The head's MusicBrainz link and the Files card's info file link." } },
         { "type": "sl-brucelegs-item", "url": "https://www.springsteenlyrics.com/brucelegs.php?item=N", "mode": "multi",
           "ip": { "state": "yes", "ev": "code", "why": "The All versions cards' item links and outside links in .project-detail." },
-          "frp": { "state": "yes", "ev": "code", "why": "All versions: the item links of its table; the tracklist's titles are not links yet." } }
+          "frp": { "state": "yes", "ev": "code", "why": "All versions: the item links of its table; the tracklist's titles are not links yet." } },
+        { "type": "sl-song", "url": "https://www.springsteenlyrics.com/lyrics.php?song=SLUG", "mode": "multi",
+          "ip": { "state": "yes", "ev": "code", "why": "The page's song links (tracklist panels, other versions, prose) and outside links in .project-detail." },
+          "frp": { "state": "yes", "ev": "code", "why": "The editions' and versions' song links and the Live releases' Version links are same-origin song pages in table.tbl > tbody, which _dpSiteForLink() takes; no spec hovers one yet." } }
       ]
     },
     {

@@ -237,6 +237,22 @@ was "Several Discogs links in Relationships", Discogs only:
   glyphs on hover, popup stack); mutations
   `scripts/mutations/link-site-uvd.json`, `scripts/mutations/rel-multi-site-and-ip.json`.
 
+### Old springsteenlyrics.com addresses: `sl-old-address`
+
+Not late data: an Annotation cell carries its links from the start
+(2026-11-05, org/springsteenlyrics.org, vzell's answer 6). A cell finding on
+`Annotation` only (an annotation search, the annotation reports such as
+report/AnnotationsWorks); the census found the two old forms in annotations
+alone, none in relationships. `rowGate` is one `querySelector` for
+`_SL_OLD_ADDRESS_SEL`; `test()` asks `_findCellSlOldLinks()`, which reads
+the cell's own hrefs through `_slCurrentAddress()` (the springsteen reader's
+alias), so a current address (`lyrics.php?song=`) never counts and a master
+row answers like a live one. `detail` names each link's current address.
+Generic tint, `sa_findings_tint_sl_old_address`. A work's own page shows its
+annotation outside any table, so there the link's card ("Old address") is
+what tells. Spec: `findings-sl-old-address.spec.js` (links planted in
+`search-annotation-tooltip.html`); mutations in `scripts/mutations/sl-song.json`.
+
 ### The Brucebase MB-Event column: `bb-mbev-link-mismatch`, `bb-mbev-link-missing`
 
 The third kind of late data (2026-10-24, org/TODO.org "Some enhancements"

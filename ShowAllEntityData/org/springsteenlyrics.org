@@ -980,8 +980,8 @@ in e.g. https://www.springsteenlyrics.com/lyrics.php?cmd=list&letter=b
 
 1.)
 
-URLify the SL tracklist to SL song URLs, by constructing the song URL from parsing the song name. Create an assoc list where
-the automatic conversion does not work
+URLify the SL tracklist to SL song URLs (by hyperlinking the songtitle), by constructing the song URL from parsing the song name. Create an assoc list where
+the automatic conversion does not work, by reading the song titles from the full song list at https://www.springsteenlyrics.com/lyrics.php
 
 E.g. on https://www.springsteenlyrics.com/collection.php?item=10163
 
@@ -999,7 +999,12 @@ B2- ROSALITA (COME OUT TONIGHT) ==> https://www.springsteenlyrics.com/lyrics.php
 
 2.)
 
-also URLify the SL tracklist to MB song URLs if possible
+additionally URLify the SL tracklist to MB work URLs if possible, maybe by adding the MB work glyph in front of the SL
+song title
+
+3.)
+
+make some suggestions, nice rich HTML based mockups
 
 
 * TODO Overwhole of the SL PTs and POHs
@@ -1153,3 +1158,47 @@ What follows from the answers (2026-11-05T00:05:47+01:00):
   it out or shows it closed.
 - Build order: one branch stacked on =feat/sl-songs= (=feat/sl-song-pt=): the =sl-song= PT and the shared song
   reader first, then the old-address alias, then the finding.
+
+*** Built (2026-11-05, branch =feat/sl-song-pt=, stacked on =feat/sl-songs=; WIP.4–WIP.6)
+
+Env: 2026-11-05T00:48:09+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) · Playwright 1.62.1 Chromium (GM
+stubs, no Tampermonkey). Real browser: vzell's two screenshots during the build (browser and Tampermonkey versions
+unknown).
+
+- WIP.4, the =sl-song= PT (answers 1–5, 8): =lyrics.php?song== and =?item=N= (=@include= with a =cmd== lookahead;
+  =sl-lyrics= leaves =item== alone). One reader, =_slSongRead()=, for the page view and the preview. Tables: one
+  per release edition (sides paired; "Disc 5:" among the sides is side 5), Other official releases, Live releases
+  (Date/Show/Release/Kind/Released, the version page of that show, "first released" in Note), Covers (+ Item
+  logged in, without "add N songs"), Appearance in movies, Available versions (ID logged in). The song is marked ●
+  (CSS, not text). Head: Lyrics, texts, Request without its form, Details (Version, Show, Released on, Studio
+  recording, On this page), Pictures, Private Info (closed, logged in). "All versions" = the versions alone.
+- Found by vzell's live test during the build, fixed before anything shipped: only the song pages give
+  =.project-detail= an inline =overflow:hidden=. It became the scroll container of our sticky h1 (drawn 80 px down,
+  over the site's title) and of the sticky Title column (15 px over Version). Root cause measured under the site's
+  real CSS from =debug/sl-song-official.html=. Fix: =overflow: visible !important; display: flow-root= on SL.
+- WIP.5, the preview (=_DP_PARSER_VERSION= 11): Type/Date/Show, the song number (logged in), versions by type,
+  releases/live releases/covers/movies counted, a live version's show, release and tracklist (● on the song).
+  Deviation from the mockup: the window keeps its text sections; the song page's tables are not copied into it.
+  An album version gets no tracklist in the window (it pushed the lyrics down).
+- WIP.6, answer 6: the springsteen reader reads =/lyrics/<l>/<slug>.php= and =/collection/moreinfo.php?item=N= at
+  their current address (=_slCurrentAddress()=); the card's first field is "Old address", and the Live page frames
+  the current address. New ⚠️ finding =sl-old-address= on Annotation cells (annotation search, annotation reports
+  such as report/AnnotationsWorks), setting =sa_findings_tint_sl_old_address=. A work's own page has its
+  annotation outside any table, so the menu cannot show there; the link's card says "Old address" instead.
+  Find them all with an annotation search, e.g. =search?type=annotation&query="springsteenlyrics.com/lyrics/"=.
+- Fixtures: the three other song snapshots added to =scripts/build-sl-item-fixtures.py=, and every song fixture's
+  lyrics are now blanked (=blank_lyrics()= of =build-detail-fixtures.py=). The backstreets fixture from
+  =feat/sl-songs= had its full lyrics.
+
+Checked:
+- =sl-song.spec.js= (9), =findings-sl-old-address.spec.js= (2), =detail-preview.spec.js= (live version, Request),
+  =popup-ext.spec.js= (the old forms' reader, the old-address card), =sl-include-regex.spec.js=.
+- =scripts/mutations/sl-song.json=: 19 entries, 18 fail as expected, 1 recorded =pass= (Private Info logged out:
+  no logged-out page has the section). Five =find=s of =detail-preview.json=, =popup-ext.json= and
+  =sl-songs.json= repointed after the reader changes, each run again: fail as expected. 171 other =find=s across
+  the lists were already broken on HEAD, so they are not this branch's.
+- The layout test fails without the fix only with a stand-in for the site's grid and navbar CSS
+  (=SITE_LAYOUT_CSS=): the fixtures carry no stylesheet.
+- Lint within the baseline; =build-coverage-report.py --check=, =audit-docs.py=, =verify-doc-crossrefs.sh=,
+  =build-sl-item-fixtures.py --check= pass. =audit-config-defaults.py= reports the new setting as "added" until the
+  commit (=dump-default-history.py= reads git).

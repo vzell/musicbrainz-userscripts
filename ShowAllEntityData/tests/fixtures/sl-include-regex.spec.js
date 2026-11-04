@@ -37,7 +37,7 @@ const injected = (url) => includePatterns().some((re) => re.test(url));
 const BB_ANY = /^https?:\/\/brucebase\.wikidot\.com\//;
 
 test.describe('@include coverage', () => {
-    test('springsteenlyrics.com: every list page, both entry pages and every item page, and nothing else', () => {
+    test('springsteenlyrics.com: every list page, both entry pages, every item page and song page, and nothing else', () => {
         const lists = [
             'https://springsteenlyrics.com/collection.php?cmd=list&category=album&f_format=12i',
             'https://springsteenlyrics.com/collection.php?cmd=list&category=album&f_format=12i&page=4',
@@ -83,13 +83,23 @@ test.describe('@include coverage', () => {
             'https://www.springsteenlyrics.com/bootlegs.php?item=2567',
             'https://springsteenlyrics.com/brucelegs.php?item=281&f_format=vinyl',
             'https://springsteenlyrics.com/brucelegs.php?f_format=vinyl&item=148#top',
+            // A song's own page (sl-song, 2026-11-05), by its slug or its number.
+            'https://springsteenlyrics.com/lyrics.php?song=babycomeback',
+            'https://www.springsteenlyrics.com/lyrics.php?song=backstreets_1975-11-18',
+            'https://springsteenlyrics.com/lyrics.php?item=12',
+            'https://springsteenlyrics.com/lyrics.php?item=2298#top',
         ];
         const others = [
             'https://springsteenlyrics.com/collection.php?item=abc',
             'https://springsteenlyrics.com/bootlegs.php?item=',
             'https://springsteenlyrics.com/bootlegs.php?xitem=2567',
-            'https://springsteenlyrics.com/lyrics.php?item=12',
             'https://springsteenlyrics.com/bootlegs/aud_live1984/2567_infofile.txt',
+            // The site's own song forms: never a song page.
+            'https://springsteenlyrics.com/lyrics.php?cmd=edit&item=2298',
+            'https://springsteenlyrics.com/lyrics.php?cmd=edit&song=backstreets',
+            'https://springsteenlyrics.com/lyrics.php?cmd=displaycoverrelease&item=1400',
+            'https://springsteenlyrics.com/lyrics.php?item=abc',
+            'https://springsteenlyrics.com/lyrics.php?song=',
             'https://springsteenlyrics.com/brucelegs.php',
             'https://springsteenlyrics.com/bootlegs.php?cmd=introx',
             'https://springsteenlyrics.com/bootlegs.php?pg=2',
@@ -97,8 +107,7 @@ test.describe('@include coverage', () => {
             'https://springsteenlyrics.com/collection.php?xcmd=intro',
             'https://springsteenlyrics.com/collection.php?cmd=listing',
             'https://springsteenlyrics.com/collection.php?xcmd=list',
-            // A song page, and the by-release listing, are not the index.
-            'https://springsteenlyrics.com/lyrics.php?song=babycomeback',
+            // The by-release listing is not the index.
             'https://springsteenlyrics.com/lyrics.php?cmd=songslistedbyrelease',
             'https://springsteenlyrics.com/lyrics.php?cmd=listing',
             'https://springsteenlyrics.com/index.php',

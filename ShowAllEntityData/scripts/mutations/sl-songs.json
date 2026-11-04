@@ -99,8 +99,8 @@
         "why": "The ID is declared numeric while logged in (_slLyricsIntegerColumns()).",
         "edits": [
             {
-                "find": "        if (_slLoggedIn(document)) cols.push({ sourceColumn: 'ID', align: 'R' });\n",
-                "replace": ""
+                "find": "        if (_slLoggedIn(document)) cols.push({ sourceColumn: 'ID', align: 'R' });\n        return cols;\n    }\n\n    /**\n     * Returns a lyrics letter page's own heading",
+                "replace": "        return cols;\n    }\n\n    /**\n     * Returns a lyrics letter page's own heading"
             }
         ],
         "spec": "tests/fixtures/sl-lyrics.spec.js",

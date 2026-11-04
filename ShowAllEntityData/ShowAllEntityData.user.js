@@ -25,6 +25,7 @@
 // @include      /^https?:\/\/(?:www\.)?springsteenlyrics\.com\/bootlegs\.php(?:\?(?:[^#]*&)?cmd=intro(?:&[^#]*)?)?(?:#.*)?$/
 // @include      /^https?:\/\/(?:www\.)?springsteenlyrics\.com\/(?:collection|bootlegs|brucelegs)\.php\?(?:[^#]*&)?item=\d+(?:[&#].*)?$/
 // @include      /^https?:\/\/(?:www\.)?springsteenlyrics\.com\/lyrics\.php(?:\?(?:[^#]*&)?cmd=(?:intro|list)(?:&[^#]*)?)?(?:#.*)?$/
+// @include      /^https?:\/\/(?:www\.)?springsteenlyrics\.com\/lyrics\.php\?(?![^#]*\bcmd=)(?:[^#]*&)?(?:song=[^&#]+|item=\d+)(?:[&#].*)?$/
 // @include      /^https?:\/\/(?:www\.)?jungleland\.it\/html\/list\.htm(?:[?#].*)?$/
 // @include      /^https?:\/\/(?:www\.)?brucespringsteen\.it\/(?:DB|db)\/records\.aspx(?:[?#].*)?$/
 // @include      /^https?:\/\/brucebase\.wikidot\.com\/stats:songs\/?(?:[?#].*)?$/
@@ -2837,6 +2838,15 @@
             default: true,
             description: 'Tint the MB-Event cell light red with a ❌ when the link differs, light yellow with a ⚠️ ' +
                          'when it is missing, and ring its glyph in the same colour.'
+        },
+
+        sa_findings_tint_sl_old_address: {
+            label: 'Highlight Annotation cells with an old springsteenlyrics.com address as WARNING',
+            type: 'checkbox',
+            default: true,
+            description: 'Tint the Annotation cell light yellow with a ⚠️ when it links springsteenlyrics.com at an ' +
+                         'address the site no longer serves (/lyrics/<letter>/<song>.php, /collection/moreinfo.php?item=N), ' +
+                         'so the annotation can be edited to the current one.'
         },
 
         sa_findings_nonphysical_formats: {
@@ -12498,10 +12508,12 @@
     }
 
     /**
-     * The live page's part of the item pageTypes (`features.slItemToTable`),
+     * The live page's part of the item pageTypes (`features.slItemToTable`)
+     * and of the song page (`sl-song`, kind 'song'),
      * at the press, on a Load from Disk and on every repeat: under our
      * toolbar `<h1>` (`_slPrepareLivePage()`), an `<h2
-     * class="mb-sl-list-heading">` — "Tracklist", or "All versions" — and an
+     * class="mb-sl-list-heading">` — "Tracklist" ("Releases and versions"
+     * on a song page), or "All versions" — and an
      * EMPTY `table.tbl` for the engine to render into; the rows come from the
      * page's own HTML (`features.pageRequest`). The site's own item content
      * after the h1 is hidden (`mb-sl-item-native`): the head and the tables
@@ -12522,7 +12534,7 @@
         });
         const h2 = document.createElement('h2');
         h2.className = 'mb-sl-list-heading';
-        h2.textContent = def.features.slItemView === 'versions' ? 'All versions' : 'Tracklist';
+        h2.textContent = def.features.slItemView === 'versions' ? 'All versions' : kind === 'song' ? 'Releases and versions' : 'Tracklist';
         const table = document.createElement('table');
         table.className = 'tbl mb-sl-item-table';
         table.innerHTML = '<thead><tr><th>Pos</th><th>Title</th></tr></thead><tbody></tbody>';
@@ -12671,6 +12683,287 @@
             texts, textsAfter, facts, others,
             pictureGroups,
             title: _slItemName(src), source: 'springsteenlyrics.com\'s page',
+        };
+    }
+
+    // -------------------------------------------------------------------------
+    // springsteenlyrics.com: a song's own page (lyrics.php?song=, sl-song)
+    // -------------------------------------------------------------------------
+    // One page per version of a song (2026-11-05; org/springsteenlyrics.org
+    // "Overwhole of the SL PTs and POHs", vzell's answers 1-5 and 8; mockup
+    // org/sl-song-mockups.html). The page is read by `_slSongRead()`, the
+    // preview's reader too. No request: as on the item pages, `fetchText`
+    // hands over the page's own HTML (`_slItemPageHtml()`), and the head and
+    // the tables read that copy. Private Info is shown in the head, closed,
+    // logged in only, and nowhere else.
+
+    /**
+     * Whether a page is a springsteenlyrics.com song page:
+     * `lyrics.php?song=SLUG`, or `lyrics.php?item=N`, the same page by its
+     * number (the lyrics index's logged-in ID cell links it). Never with a
+     * `cmd`: `cmd=edit&item=N` is the edit form, `cmd=displaycoverrelease`
+     * a cover release.
+     *
+     * @param {Location|URL} [loc]
+     * @returns {boolean}
+     */
+    function _slIsSongPage(loc = window.location) {
+        if ((loc.pathname || '') !== '/lyrics.php') return false;
+        const q = new URLSearchParams(loc.search);
+        return !q.has('cmd') && (!!q.get('song') || /^\d+$/.test(q.get('item') || ''));
+    }
+
+    /**
+     * The name of a song page: its title and, in brackets, its version as
+     * the lyrics index writes it ("BACKSTREETS [Album version]").
+     *
+     * @param {Document} doc
+     * @returns {string}
+     */
+    function _slSongName(doc) {
+        const head = doc.querySelector('.project-detail > h3:not(.heading)');
+        if (!head) return '';
+        const em = head.nextElementSibling && head.nextElementSibling.querySelector('em');
+        const version = em ? _dpText(em.textContent) : '';
+        return _dpText(head.textContent) + (version ? ` [${version}]` : '');
+    }
+
+    /**
+     * The `sl-song` pageType's `integerColumns`, read through a getter on
+     * its `features` (the lyrics index's rule, `_slLyricsIntegerColumns()`):
+     * "ID" only while logged in, when the versions table has it.
+     *
+     * @returns {Array<{sourceColumn: string, align: string}>}
+     */
+    function _slSongIntegerColumns() {
+        const cols = [
+            { sourceColumn: 'No.', align: 'R' }, { sourceColumn: 'Year', align: 'C' }, { sourceColumn: 'Released', align: 'C' },
+            { sourceColumn: 'DD', align: 'R' }, { sourceColumn: 'MM', align: 'R' }, { sourceColumn: 'YYYY', align: 'C' }
+        ];
+        if (_slLoggedIn(document)) cols.push({ sourceColumn: 'ID', align: 'R' });
+        return cols;
+    }
+
+    /**
+     * The `features` of the `sl-song` pageType: the live page's HTML as its
+     * one page (`_slSongToHtml()`), its sub-tables by `<h3>`, Date split as
+     * in the lyrics index, Title sticky. Shares the item pages' live part
+     * (`applySlItemToTable()`, kind 'song').
+     *
+     * @returns {object}
+     */
+    function _slSongFeatures() {
+        return {
+            slItemToTable: 'song',
+            groupByH3: true,
+            pageRequest: () => {
+                const url = window.location.href;
+                return { url, fetchText: async () => _slItemPageHtml(),
+                    toHtml: (text) => _slSongToHtml(text, url, activeDefinition?.features?.slItemView) };
+            },
+            pageCountAsync: () => 1,
+            columnExtractors: [
+                { sourceColumn: 'Date', extractor: 'dateParts', syntheticColumns: ['DD', 'MM', 'YYYY', 'Day', 'Month'] }
+            ],
+            get integerColumns() { return _slSongIntegerColumns(); },
+            collapsableColumns: [ 'Tracks' ],
+            stickyColumn: 'Title'
+        };
+    }
+
+    /**
+     * The `pageRequest` converter of the `sl-song` pageType: the page's HTML
+     * in (`_slSongRead()`), `<h3>` + `table.tbl` pairs out.
+     *
+     * The song view (`view` unset), in this order:
+     *   - one sub-table per edition (and disc or record) of each release the
+     *     page has a section for ("Born To Run · vinyl edition"):
+     *     `_slSongEditionGroups()`; Pos, Title;
+     *   - "Other official releases": Cover, Artist, Title, Format, Label, Cat.
+     *     no., Country, Year, Note (and Tracks, when a row has them);
+     *   - "Live releases" (vzell's answer 4): Cover, Date, Show, Release,
+     *     Kind, Released, Version (this song's page of that show, when the
+     *     site has one), a sentence that reads otherwise in Note;
+     *   - "Covers": as the releases, and logged in an Item column (the
+     *     cover release's page, its edit link; answer 8);
+     *   - "Appearance in movies": Poster, Title, Note;
+     *   - "Available versions": the lyrics index's columns (Title, Version,
+     *     Type, Artist, Date, Show, No., and ID logged in).
+     * "All versions" (`view` 'versions', answer 1): that last table alone.
+     *
+     * This page's own version is marked in its release's tracklist and in
+     * the versions (`td.mb-sl-self`, a ● drawn by CSS: the cell's text stays
+     * the title). Titles are in MusicBrainz style while
+     * `sa_foreign_mb_titles` / `sa_foreign_typography` are on, the site's
+     * text as the tooltip.
+     *
+     * @param {string} text  The page's HTML.
+     * @param {string} url   The page's URL.
+     * @param {string} [view] 'versions' for the versions alone.
+     * @returns {string}
+     */
+    function _slSongToHtml(text, url, view) {
+        const doc = new DOMParser().parseFromString(text, 'text/html');
+        const s = _slSongRead(doc, url);
+        if (!s) throw Object.assign(new Error('springsteenlyrics.com answered, but not with a song page'), { status: 0 });
+        const esc = _rgEsc;
+        const table = (cols, rows) => `<table class="tbl" data-mb-col-headers="${esc(JSON.stringify(cols))}">` +
+            `<thead><tr>${cols.map(c => `<th>${esc(c)}</th>`).join('')}</tr></thead><tbody>${rows.join('')}</tbody></table>`;
+        const td = v => `<td>${esc(v)}</td>`;
+        const link = (href, t) => (href ? `<a href="${esc(href)}">${esc(t)}</a>` : esc(t));
+        const titleCell = (t, href, self) => {
+            const shown = _mbSiteTitleText(t);
+            const tip = shown !== t ? ` data-mb-tip title="${esc(`As written on the site:\n${t}`)}"` : '';
+            return `<td${self ? ' class="mb-sl-self"' : ''}${tip}>${link(self ? '' : href, shown)}</td>`;
+        };
+        const cover = r => `<td>${r.image ? `<a href="${esc(r.image.full)}" target="_blank" rel="noopener">` +
+            `<img class="mb-sl-cover" src="${esc(r.image.thumb)}" alt="${esc(r.image.alt)}" loading="lazy" referrerpolicy="no-referrer"></a>` : ''}</td>`;
+        const idCell = (id, href, edit) => (id
+            ? `<td><a href="${esc(href)}">${esc(id)}</a>` +
+              (edit ? `<a class="mb-sl-edit" href="${esc(edit)}" title="Edit on springsteenlyrics.com" aria-label="Edit on springsteenlyrics.com"></a>` : '') + '</td>'
+            : '<td></td>');
+        const seen = new Map();
+        const h3 = (name) => {
+            const n = (seen.get(name) || 0) + 1;
+            seen.set(name, n);
+            return `<h3>${esc(n > 1 ? `${name} (${n})` : name)}</h3>`;
+        };
+        const parts = [];
+        const versions = () => {
+            if (!s.versions.length) return;
+            const cols = ['Title', 'Version', 'Type', 'Artist', 'Date', 'Show', 'No.'].concat(s.loggedIn ? ['ID'] : []);
+            const rows = s.versions.map(r => '<tr>' + titleCell(r.title, r.href, r.self) +
+                [r.version, r.v.type, r.v.artist, r.v.date, r.v.show, r.v.no].map(td).join('') +
+                (s.loggedIn ? idCell(r.id, r.idHref, r.editHref) : '') + '</tr>');
+            parts.push(h3(view === 'versions' ? 'All versions' : 'Available versions') + table(cols, rows));
+        };
+        if (view === 'versions') {
+            versions();
+            if (!parts.length) throw Object.assign(new Error('The page lists no versions'), { status: 0 });
+            return `<!DOCTYPE html><html><head><meta charset="utf-8"></head><body>${parts.join('')}</body></html>`;
+        }
+        s.releases.forEach(rel => rel.editions.forEach(ed => _slSongEditionGroups(rel.name, ed, s.slug).forEach((g) => {
+            const rows = g.tracks.map(t => `<tr>${td(t.pos)}${titleCell(t.title, t.href, t.self)}</tr>`);
+            parts.push(h3(g.name) + table(['Pos', 'Title'], rows));
+        })));
+        const releaseTable = (name, list, withItem) => {
+            if (!list.length) return;
+            const tracks = list.some(r => r.tracks.length);
+            const cols = ['Cover', 'Artist', 'Title', 'Format', 'Label', 'Cat. no.', 'Country', 'Year', 'Note']
+                .concat(tracks ? ['Tracks'] : [], withItem ? ['Item'] : []);
+            const rows = list.map(r => '<tr>' + cover(r) + td(r.artist) + titleCell(r.title, '', false) +
+                [r.format, r.label, r.catNo, r.country, r.year, r.note].map(td).join('') +
+                (tracks ? `<td>${r.tracks.length ? '<ul>' + r.tracks.map(t => `<li>${esc(t.pos ? `${t.pos} ` : '')}${link(t.href, _mbSiteTitleText(t.title))}</li>`).join('') + '</ul>' : ''}</td>` : '') +
+                (withItem ? (r.item ? idCell(r.item.id, r.item.href, r.item.edit) : '<td></td>') : '') + '</tr>');
+            parts.push(h3(name) + table(cols, rows));
+        };
+        releaseTable('Other official releases', s.others, false);
+        if (s.live.length) {
+            const byDate = new Map(s.versions.filter(v => v.v.type === 'Live' && v.v.date).map(v => [v.v.date + '|' + v.v.show, v]));
+            const cols = ['Cover', 'Date', 'Show', 'Release', 'Kind', 'Released', 'Version', 'Note'];
+            const rows = s.live.map((r) => {
+                const l = r.live;
+                const ver = byDate.get(l.date + '|' + l.show);
+                const verCell = ver ? (ver.self ? '<td class="mb-sl-self">this page</td>' : `<td>${link(ver.href, ver.version)}</td>`) : '<td></td>';
+                return '<tr>' + cover(r) + [l.date, l.show, l.release, l.kind, l.year].map(td).join('') + verCell +
+                    td(l.first ? 'first released here' : '') + '</tr>';
+            });
+            parts.push(h3('Live releases') + table(cols, rows));
+        }
+        releaseTable('Covers', s.covers, s.loggedIn && s.covers.some(r => r.item));
+        if (s.movies.length) {
+            const rows = s.movies.map(r => '<tr>' + cover(r) + titleCell(r.title, '', false) + td(r.note) + '</tr>');
+            parts.push(h3('Appearance in movies') + table(['Poster', 'Title', 'Note'], rows));
+        }
+        versions();
+        if (!parts.length) throw Object.assign(new Error('The page has no releases and no versions to show'), { status: 0 });
+        return `<!DOCTYPE html><html><head><meta charset="utf-8"></head><body>${parts.join('')}</body></html>`;
+    }
+
+    /**
+     * Lyrics as HTML for the head's Lyrics section: the lines escaped, the
+     * site's stage notes ("[Spoken:]", "[Fades out]") greyed
+     * (`span.mb-sl-stage`).
+     *
+     * @param {string} text  `_slSongRead().lyrics`.
+     * @returns {string}
+     */
+    function _slSongLyricsHtml(text) {
+        return _rgEsc(text).replace(/\[[^\]\n]*\]/g, m => `<span class="mb-sl-stage">${m}</span>`);
+    }
+
+    /**
+     * The head of a song page (`_fdHeadSpec()`), read from the page's copy
+     * (`_slItemSourceDoc()`): "~ <version> (date · page updated …)"; the
+     * text sections — Lyrics, Info, Studio Recording, each release's own
+     * prose, the other texts in page order, Request's text without its
+     * form (vzell's answer 3); Details — on the left the Version (Type,
+     * Date, Show, the song number and its edit link while logged in, the
+     * versions by type), a live version's Show (venue, place and tour from
+     * the Info sentence, best effort: answer 5) and Released on, the
+     * studio recording; on the right "On this page" (what the tables
+     * hold); the page's pictures; then "Private Info" (logged in, closed:
+     * answer 2). Null on another page.
+     *
+     * @returns {?Object}
+     */
+    function _slSongHeadSpec() {
+        const h2 = document.querySelector('h2.mb-sl-list-heading');
+        if (!h2 || !_slIsSongPage()) return null;
+        const src = _slItemSourceDoc();
+        const url = window.location.href;
+        const s = _slSongRead(src, url);
+        if (!s) return null;
+        const v = s.v;
+        const texts = [];
+        if (s.lyrics) texts.push({ title: s.version ? `Lyrics (${s.version})` : 'Lyrics', body: s.lyrics, html: _slSongLyricsHtml(s.lyrics) });
+        s.texts.forEach(t => texts.push({ title: t.label, body: t.text }));
+        if (s.requestText) texts.push({ title: 'Request', body: s.requestText, note: 'the site\'s contact form is left out' });
+        const facts = [];
+        const others = [];
+        const idNode = () => {
+            if (!s.self || !s.self.id) return '';
+            const span = document.createElement('span');
+            span.appendChild(_fdLink(_dpAbsUrl(s.self.idHref, url), s.self.id));
+            if (s.self.editHref) span.append(' · ', _fdLink(_dpAbsUrl(s.self.editHref, url), 'edit'));
+            return span;
+        };
+        facts.push(['version', 'Version', [['Version', s.version], ['Type', v.type], ['Artist', v.artist],
+            ['Date', v.date], ['Show', v.show], ['Lyrics', s.noLyrics ? 'not available' : ''],
+            ['Song number', s.loggedIn ? idNode() : ''],
+            ['Versions', s.versions.length > 1 ? `${s.versions.length}: ${_slSongVersionTypes(s.versions)}` : '']]]);
+        if (s.show) {
+            facts.push(['show', 'Show', [['Date', v.date], ['Venue', s.show.venue], ['Place', s.show.place], ['Tour', s.show.tour]]]);
+        }
+        if (s.released) {
+            const rel = s.releases.find(r => r.name === s.released.release);
+            const eds = rel ? rel.editions.map((ed) => {
+                const gs = _slSongEditionGroups(rel.name, ed, s.slug);
+                const what = (ed.edition || ed.name).replace(/\s*edition$/i, '');
+                return gs.length > 1 ? `${what} (${gs.length} ${/· Record/.test(gs[0].name) ? 'records' : 'discs'})` : what;
+            }).join(', ') : '';
+            facts.push(['released', 'Released on', [['Release', s.released.release], ['Kind', s.released.kind],
+                ['Year', s.released.year], ['Editions', eds]]]);
+        }
+        if (s.studio) {
+            facts.push(['studio', 'Studio recording', [['Recorded', s.studio.recorded], ['Studio', s.studio.studio], ['Takes', s.studio.takes]]]);
+        }
+        const years = s.live.map(x => (x.live.date || '').slice(0, 4)).filter(Boolean).sort();
+        others.push(['onpage', 'On this page', [
+            ['Releases', s.releases.map(r => r.name).join(', ')],
+            ['Other releases', s.others.length ? String(s.others.length) : ''],
+            ['Live releases', s.live.length ? String(s.live.length) + (years.length ? ` (${years[0]}–${years[years.length - 1]})` : '') : ''],
+            ['Covers', s.covers.length ? String(s.covers.length) : ''],
+            ['Movies', s.movies.length ? String(s.movies.length) : ''],
+            ['Versions', s.versions.length ? String(s.versions.length) : '']]]);
+        const textsAfter = [];
+        if (s.loggedIn && s.privateText) textsAfter.push({ title: 'Private Info', body: s.privateText, note: 'only shown while you are logged in' });
+        return {
+            root: h2.parentElement, h2,
+            sub: { what: s.version || 'Song', by: '', when: [v.date, s.updated ? `page updated ${s.updated}` : ''].filter(Boolean).join(' · ') },
+            texts, textsAfter, facts, others,
+            pictures: s.pictures, picturesTitle: 'Pictures',
+            title: _slSongName(src), source: 'springsteenlyrics.com\'s page',
         };
     }
 
@@ -13166,17 +13459,29 @@
         const style = GM_addStyle(`
             /* The lyrics index's logged-in ID cell: the site's edit link,
                empty in the DOM (_slLyricsIdCell()), its pencil drawn here so
-               the cell's text stays the number alone. */
-            body.mb-sa-host-sl table.mb-sl-table a.mb-sl-edit {
+               the cell's text stays the number alone. The song page's ID and
+               Item cells too (_slSongToHtml()). */
+            body.mb-sa-host-sl table.tbl a.mb-sl-edit {
                 margin-left: 0.4em;
                 text-decoration: none;
                 opacity: 0.6;
             }
-            body.mb-sa-host-sl table.mb-sl-table a.mb-sl-edit::before {
+            body.mb-sa-host-sl table.tbl a.mb-sl-edit::before {
                 content: "\\270E";
             }
-            body.mb-sa-host-sl table.mb-sl-table a.mb-sl-edit:hover {
+            body.mb-sa-host-sl table.tbl a.mb-sl-edit:hover {
                 opacity: 1;
+            }
+            /* A song page's own version, in its release's tracklist and in
+               the versions (_slSongToHtml()): a mark that is not text. */
+            body.mb-sa-host-sl table.tbl td.mb-sl-self::before {
+                content: "\\25CF\\00A0";
+                color: #b5121b;
+            }
+            /* The lyrics' stage notes in the song page's head. */
+            body.mb-sa-host-sl .mb-fd-text .mb-sl-stage {
+                color: #888;
+                font-style: italic;
             }
             body.mb-sa-host-sl h1.mb-sl-h1 {
                 font-size: 24px;
@@ -13208,6 +13513,17 @@
                (applySlItemToTable()): the head and the tables show it all. */
             body.mb-sa-host-sl .mb-sl-item-native {
                 display: none !important;
+            }
+            /* A song page's .project-detail carries the site's inline
+               "overflow:hidden" (the list and item pages' do not), which
+               made it the scroll container of everything sticky inside it:
+               our toolbar h1 (top: 80px) sat 80px down its own box, over the
+               site's title, and the sticky Title column was pushed 15px over
+               the next column (vzell's screenshots, 2026-11-05). flow-root
+               keeps the float containment the hidden overflow gave. */
+            body.mb-sa-host-sl .project-detail[style*="overflow"] {
+                overflow: visible !important;
+                display: flow-root;
             }
             /* The MusicBrainz column's link (_slMbCell()): MusicBrainz's
                glyph colours, the text "MB" stays what filters and sorts. */
@@ -13623,13 +13939,15 @@
         }
 
         const section = document.querySelector('.breadcrumb-wrap h4')?.textContent.replace(/\s+/g, ' ').trim() || '';
-        // An item page is named by its item (`_slItemName()`); its first
-        // h3.heading is the card's "Info", not a list heading.
-        const listHeading = _slItemKind() ? '' : _slFindListHeading(document)?.textContent.replace(/\s+/g, ' ').trim() || '';
+        // An item page is named by its item (`_slItemName()`), a song page
+        // by its song and version (`_slSongName()`); their first h3.heading
+        // is "Info", not a list heading.
+        const listHeading = _slItemKind() || _slIsSongPage() ? '' : _slFindListHeading(document)?.textContent.replace(/\s+/g, ' ').trim() || '';
         const h1 = document.createElement('h1');
         h1.className = 'mb-sl-h1';
         const bdi = document.createElement('bdi');
-        bdi.textContent = (_slItemKind() && _slItemName(document)) || [section, listHeading].filter(Boolean).join(' — ') || 'springsteenlyrics.com';
+        bdi.textContent = (_slItemKind() && _slItemName(document)) || (_slIsSongPage() && _slSongName(document)) ||
+            [section, listHeading].filter(Boolean).join(' — ') || 'springsteenlyrics.com';
         h1.appendChild(bdi);
         main.insertBefore(h1, main.firstChild);
         return h1;
@@ -21338,6 +21656,7 @@
         if (t === 'sfm-festival') return _sfmFestivalHeadSpec();
         if (t === 'sfm-festivals') return _sfmFestivalsHeadSpec();
         if (t === 'sl-collection-item' || t === 'sl-bootlegs-item' || t === 'sl-brucelegs-item') return _slItemHeadSpec();
+        if (t === 'sl-song') return _slSongHeadSpec();
         return null;
     }
 
@@ -25648,9 +25967,15 @@
      *    Info" section is no longer a section of the record
      *    (`_dpParseSlSong()`), so records that carried it are read again;
      *    the record carries its login state (`session`).
+     * 11: springsteenlyrics.com song pages read through `_slSongRead()`
+     *    (shared with the `sl-song` pageType): Type, Date, Show, the song
+     *    number (logged in), the versions by type, the releases, live
+     *    releases, covers and movies counted, a live version's show and
+     *    release and the tracklist of that release (the song marked:
+     *    `self`); the contact form and scripts are out of the sections.
      * @type {number}
      */
-    const _DP_PARSER_VERSION = 10;
+    const _DP_PARSER_VERSION = 11;
 
     /**
      * IndexedDB database of parsed detail pages. Deliberately NOT a store in
@@ -26502,6 +26827,498 @@
     const _SL_SONG_PRIVATE_RE = /^private info\b/i;
 
     /**
+     * The headings of a springsteenlyrics.com song page whose `.blog-post`
+     * rows `_slSongRead()` reads as rows of a table, and the kind each
+     * becomes. A row of "Other Official Releases" that is one "The live …
+     * version of … was released on …" sentence is a live release instead.
+     * @type {Array<[RegExp, string]>}
+     */
+    const _SL_SONG_ROW_SECTIONS = [
+        [/^other official releases$/i, 'others'],
+        [/^covers$/i, 'covers'],
+        [/^appearances? in movies$/i, 'movies'],
+    ];
+
+    /**
+     * What a copy of a song page's section leaves out: scripts (the Request
+     * section's `document.write` of an e-mail address), the contact form,
+     * embedded videos and the spacers.
+     * @type {string}
+     */
+    const _SL_SONG_DROP_SEL = 'script, style, noscript, form, .sky-form-columns, iframe, .embed-responsive, div.divide10, div.divide30';
+
+    /**
+     * Number words of the "Four studio takes of X are in circulation"
+     * sentence (`_slSongRead()`'s studio facts).
+     * @type {string[]}
+     */
+    const _SL_NUMBER_WORDS = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'eleven', 'twelve'];
+
+    /**
+     * The slug of a springsteenlyrics.com song page (`lyrics.php?song=SLUG`):
+     * the URL's own `song=`, or, for a page opened by its number
+     * (`lyrics.php?item=N`), the slug the page names itself by — its
+     * log-in form's action, its edit link, or its share links.
+     *
+     * @param {Document} doc
+     * @param {string}   url
+     * @returns {string} '' when none is found.
+     */
+    function _slSongSlug(doc, url) {
+        let own;
+        try {
+            own = new URL(url).searchParams.get('song') || '';
+        } catch (_) {
+            own = '';
+        }
+        if (own) return own;
+        for (const el of doc.querySelectorAll('form[action*="song="], a[href*="cmd=edit&song="], a[href*="url="]')) {
+            let v = el.getAttribute('action') || el.getAttribute('href') || '';
+            try {
+                v = decodeURIComponent(v);
+            } catch (_) { /* keep it as written */ }
+            const m = v.match(/lyrics\.php\?(?:[^#\s]*&)?song=([^&#\s]+)/);
+            if (m) return m[1];
+        }
+        return '';
+    }
+
+    /**
+     * The `song=` slug of a link to a song page, lower case, or ''.
+     *
+     * @param {string} href
+     * @returns {string}
+     */
+    function _slSongHrefSlug(href) {
+        const m = String(href || '').match(/lyrics\.php\?(?:[^#]*&)?song=([^&#]+)/);
+        return m ? m[1].toLowerCase() : '';
+    }
+
+    /**
+     * One tracklist panel group of a song page (`.panel-group`: an album's
+     * "track list (vinyl edition)", "(CD edition)", …; a release row's
+     * "track list") as editions, each a list of media. The site writes a
+     * medium as `<p><strong>Side 1:</strong></p>` + `<ol>`, an edition
+     * without media as one `<ol>`, and a release row's list as text lines
+     * "01- <a>TITLE</a>" (`_DP_TRACK_RE`). A title is the song's link when
+     * the site has a page for it, plain text when not ("SHE'S THE ONE" on
+     * Hammersmith Odeon).
+     *
+     * @param {Element} pg  The `.panel-group`.
+     * @returns {Array<{name: string, edition: string, media: Array<{name: string, tracks: Array<{pos: string, title: string, href: string}>}>}>}
+     *   `name` is the panel's title, `edition` its parenthesised edition
+     *   ("vinyl edition"), '' when it names none.
+     */
+    function _slSongPanels(pg) {
+        return Array.from(pg.querySelectorAll('.panel')).map((p) => {
+            const name = _dpText((p.querySelector('.panel-title') || {}).textContent || '');
+            const edition = (name.match(/\(([^()]*\bedition\b[^()]*)\)\s*$/i) || [])[1] || '';
+            const body = p.querySelector('.panel-body');
+            const media = [];
+            let cur = null;
+            const open = (n) => { cur = { name: n, tracks: [] }; media.push(cur); };
+            const push = (pos, title, href) => {
+                if (!cur) open('');
+                cur.tracks.push({ pos, title, href: href || '' });
+            };
+            if (body && body.querySelector('ol, ul')) {
+                Array.from(body.children).forEach((el) => {
+                    if (el.matches('ol, ul')) {
+                        Array.from(el.children).filter(li => li.matches('li')).forEach((li, i) => {
+                            const a = li.querySelector('a[href*="song="]');
+                            push(String(i + 1), _dpText(li.textContent), a ? a.getAttribute('href') : '');
+                        });
+                        return;
+                    }
+                    const t = _dpText(el.textContent);
+                    const m = t.match(/^(.{1,30}?):$/);
+                    if (m && el.querySelector('strong, b')) open(m[1]);
+                });
+            } else if (body) {
+                const anchors = Array.from(body.querySelectorAll('a[href*="song="]'));
+                _dpBlockText(body).split('\n').forEach((line) => {
+                    const d = line.match(_DP_DISC_RE);
+                    if (d) { open(d[1].trim()); return; }
+                    const t = line.match(_DP_TRACK_RE);
+                    if (!t) return;
+                    const at = anchors.findIndex(a => _dpText(a.textContent) === t[2]);
+                    const a = at >= 0 ? anchors.splice(at, 1)[0] : null;
+                    push(t[1], t[2], a ? a.getAttribute('href') : '');
+                });
+            }
+            return { name, edition, media: media.filter(m => m.tracks.length) };
+        }).filter(e => e.media.length);
+    }
+
+    /**
+     * Reads one "The live 18 Oct 1975 (early show) version of BACKSTREETS
+     * was released on <em>The Roxy 1975</em> official live download in
+     * 2018." sentence: the date text, its ISO date and show, the release
+     * (the `<em>`), its kind (the words between the release and "in
+     * YYYY") and the year. A song page's Info gives the same shape for a
+     * live version's own release ("The complete 18 Nov 1975 show was
+     * released on …"), so `dateText` may be ''.
+     *
+     * @param {string} text     The sentence.
+     * @param {string} release  The text of its `<em>`.
+     * @returns {?{dateText: string, date: string, show: string, release: string, kind: string, year: string, first: boolean}}
+     *   null when the sentence does not read so.
+     */
+    function _slSongLiveSentence(text, release) {
+        const s = _dpText(text);
+        const at = release ? s.indexOf(release) : -1;
+        if (at < 0) return null;
+        const before = s.slice(0, at);
+        const after = s.slice(at + release.length);
+        const r = before.match(/\bwas (first )?released on (?:the )?$/i);
+        const y = after.match(/^\s*(.*?)\s*\bin (\d{4})\b/);
+        if (!r || !y) return null;
+        const d = before.match(/^The live (.+?) version of /i);
+        const dateText = d ? d[1] : '';
+        return {
+            dateText, date: _slFirstIsoDate(dateText), show: _slShowQualifier(dateText),
+            release, kind: y[1], year: y[2], first: !!r[1],
+        };
+    }
+
+    /**
+     * One `.blog-post` row of a song page — an official release, a cover,
+     * a movie or a live release — as fields. A release or cover row is "<strong>Artist --
+     * <em>Title</em></strong>", then "FORMAT - LABEL (CAT#) - COUNTRY,
+     * YEAR", then a note and track lines (or a track list panel); a movie
+     * row has only the `<em>` title and its note; a live release row is
+     * one sentence (`_slSongLiveSentence()`). Logged in, a cover row also
+     * carries "view item · edit item · add N songs" links: the cover
+     * release's page and edit link are kept as `item`, the "add N songs"
+     * links are dropped (vzell's answer 8, 2026-11-05).
+     *
+     * @param {Element}  row  The `.blog-post`.
+     * @param {function(string): string} abs  Makes a URL absolute.
+     * @returns {object}
+     */
+    function _slSongRow(row, abs) {
+        const img = row.querySelector('img');
+        const ov = row.querySelector('.item-img-overlay a[href]');
+        const image = img ? {
+            thumb: abs(img.getAttribute('src')),
+            full: abs(ov ? ov.getAttribute('href') : img.getAttribute('src')),
+            alt: _dpText(img.getAttribute('alt') || img.getAttribute('title') || ''),
+        } : null;
+        const col = Array.from(row.children).filter(c => c.matches('.col-md-10')).pop() || row;
+        const c = col.cloneNode(true);
+        c.querySelectorAll(_SL_SONG_DROP_SEL).forEach(n => n.remove());
+        const view = c.querySelector('a[href*="cmd=displaycoverrelease"]');
+        const edit = c.querySelector('a[href*="cmd=editcoverrelease"]');
+        const item = view ? {
+            href: view.getAttribute('href'),
+            id: (view.getAttribute('href').match(/[?&]item=(\d+)/) || [])[1] || '',
+            edit: edit ? edit.getAttribute('href') : '',
+        } : null;
+        c.querySelectorAll('a[href*="cmd=displaycoverrelease"], a[href*="cmd=editcoverrelease"], a[href*="cmd=addcoversongs"], ' +
+            'i.glyphicon, i.bi-pencil-square, span.text-primary').forEach(n => n.remove());
+        const out = { image, artist: '', title: '', format: '', label: '', catNo: '', country: '', year: '', note: '', tracks: [], item, live: null };
+        c.querySelectorAll('.panel-group').forEach((pg) => {
+            _slSongPanels(pg).forEach(ed => ed.media.forEach(m => m.tracks.forEach(t => out.tracks.push(t))));
+            pg.remove();
+        });
+        const strong = c.querySelector('strong');
+        if (!strong) {
+            const em = c.querySelector('em');
+            out.live = em ? _slSongLiveSentence(c.textContent, _dpText(em.textContent)) : null;
+            if (!out.live) out.note = _dpBlockText(c).replace(/\n+/g, ' ');
+            return out;
+        }
+        const em = strong.querySelector('em');
+        const st = _dpText(strong.textContent);
+        out.title = _dpText(em ? em.textContent : st);
+        const am = st.match(/^(.*?)\s+--\s+/);
+        out.artist = am ? am[1] : '';
+        strong.remove();
+        const anchors = Array.from(c.querySelectorAll('a[href*="song="]'));
+        const notes = [];
+        _dpBlockText(c).split('\n').map(l => l.trim()).filter(Boolean).forEach((line) => {
+            const f = !out.format && line.match(/^(.+?)\s+-\s+(.+?)\s+\(([^()]*)\)\s+-\s+(.+?),\s*(\S+)$/);
+            if (f) {
+                [, out.format, out.label, out.catNo, out.country, out.year] = f;
+                return;
+            }
+            const t = line.match(_DP_TRACK_RE);
+            if (t && /^[A-Z]?\d/.test(t[1])) {
+                const at = anchors.findIndex(a => _dpText(a.textContent) === t[2]);
+                const a = at >= 0 ? anchors.splice(at, 1)[0] : null;
+                out.tracks.push({ pos: t[1], title: t[2], href: a ? a.getAttribute('href') : '' });
+                return;
+            }
+            notes.push(line);
+        });
+        out.note = notes.join(' ');
+        return out;
+    }
+
+    /**
+     * Reads a springsteenlyrics.com song page (`lyrics.php?song=SLUG`, or
+     * `?item=N`) into one record, shared by the song page's own view (the
+     * `sl-song` pageType: `_slSongToHtml()`, `_slSongHeadSpec()`) and its
+     * preview (`_dpParseSlSong()`), so both show the same facts.
+     *
+     * Page anatomy (`.project-detail`, four logged-in snapshots of
+     * 2026-11-04: an album version, an unofficial studio version, a live
+     * version, a song without lyrics): an `<h3>` title, a `<p><em>` version
+     * line, the lyrics between two `<hr>`s (or an "alert-warning" "Lyrics
+     * not available"), then `h3.heading` sections, each to the next heading
+     * (or the `<h5>` "Page last updated"):
+     *   - a heading that is one `<em>` is a release ("Born To Run",
+     *     "Hammersmith Odeon, London '75"): its prose, and its `.panel-group`
+     *     track lists, one panel per edition;
+     *   - "Other Official Releases", "Covers", "Appearance in Movies": prose
+     *     and `.blog-post` rows (`_slSongRow()`); a live release row is one
+     *     sentence;
+     *   - "Available Versions": one `span.monospaced` line per version, as
+     *     the lyrics index writes them, the page's own version unlinked;
+     *   - "Request": text and the site's contact form (left out);
+     *   - "Private Info" (logged in only): kept as `privateText`, which only
+     *     the song page's own view shows (closed); every card and window
+     *     leaves it out;
+     *   - anything else is text ("Info", "Studio Recording", "Credits /
+     *     References", "Live History" — its "SECTION NOT YET COMPLETED"
+     *     placeholder dropped, and with it a section with nothing else).
+     *
+     * @param {Document} doc
+     * @param {string}   url  The page's URL.
+     * @returns {?object} null when the page has no `.project-detail` title.
+     */
+    function _slSongRead(doc, url) {
+        const pd = doc.querySelector('.project-detail');
+        const head = pd && pd.querySelector(':scope > h3:not(.heading)');
+        if (!head) return null;
+        const abs = (href) => _dpAbsUrl(href, url);
+        const em0 = head.nextElementSibling && head.nextElementSibling.querySelector('em');
+        const version = em0 ? _dpText(em0.textContent) : '';
+        const slug = _slSongSlug(doc, url).toLowerCase();
+        const s = {
+            title: _dpText(head.textContent), version, v: _slLyricsParseVersion(version), slug,
+            loggedIn: _slLoggedIn(doc), updated: '',
+            lyrics: '', noLyrics: false,
+            texts: [], releases: [], others: [], live: [], covers: [], movies: [], versions: [],
+            pictures: [], self: null, show: null, released: null, studio: null, privateText: '', requestText: '',
+        };
+        const upd = pd.querySelector(':scope > h5');
+        if (upd) s.updated = _dpText(upd.textContent).replace(/^Page last updated:\s*/i, '');
+        const rules = Array.from(pd.querySelectorAll(':scope > hr'));
+        if (rules.length >= 2) {
+            const box = doc.createElement('div');
+            for (let n = rules[0].nextSibling; n && n !== rules[1]; n = n.nextSibling) box.appendChild(n.cloneNode(true));
+            if (box.querySelector('.alert-warning')) s.noLyrics = true;
+            else s.lyrics = _dpBlockText(box);
+        }
+        Array.from(pd.querySelectorAll(':scope > h3.heading')).forEach((h) => {
+            const box = doc.createElement('div');
+            for (let n = h.nextSibling; n && !(n.nodeType === Node.ELEMENT_NODE && n.matches('h3.heading, h5')); n = n.nextSibling) {
+                box.appendChild(n.cloneNode(true));
+            }
+            const label = _dpText(h.textContent);
+            const em = h.querySelector('em');
+            if (_SL_SONG_PRIVATE_RE.test(label)) {
+                s.privateText = _dpBlockText(box);
+                return;
+            }
+            if (label === 'Available Versions') {
+                box.querySelectorAll('span.monospaced').forEach((span) => {
+                    const idA = Array.from(span.querySelectorAll('a[href*="item="]'))
+                        .find(a => !/cmd=/.test(a.getAttribute('href')) && /^\d+$/.test(_dpText(a.textContent)));
+                    const editA = span.querySelector('a[href*="cmd=edit"]');
+                    const songA = span.querySelector('a[href*="song="]');
+                    const c = span.cloneNode(true);
+                    c.querySelectorAll('a[href*="item="], span.text-primary, i').forEach(n => n.remove());
+                    const t = _dpText(c.textContent);
+                    const m = t.match(/^(.*?)\s*\[([^\]]*)\]\s*$/);
+                    const ver = m ? m[2] : '';
+                    s.versions.push({
+                        title: m ? m[1] : t, version: ver, v: _slLyricsParseVersion(ver),
+                        href: songA ? songA.getAttribute('href') : '', self: !songA,
+                        id: idA ? _dpText(idA.textContent) : '', idHref: idA ? idA.getAttribute('href') : '',
+                        editHref: editA ? editA.getAttribute('href') : '',
+                    });
+                });
+                return;
+            }
+            box.querySelectorAll(_SL_SONG_DROP_SEL).forEach(n => n.remove());
+            const rowKind = (_SL_SONG_ROW_SECTIONS.find(([re]) => re.test(label)) || [])[1];
+            const release = em && _dpText(em.textContent) === label;
+            if (rowKind) {
+                const rows = Array.from(box.querySelectorAll('.blog-post'));
+                rows.forEach((r) => {
+                    const row = _slSongRow(r, abs);
+                    if (row.live) s.live.push(row);
+                    else s[rowKind].push(row);
+                });
+                rows.forEach(r => (r.closest('.row') || r).remove());
+                // The prose between the rows ("BACKSTREETS can also be found
+                // on a Japanese … sampler.") is kept for the releases only.
+                if (rowKind === 'others') {
+                    const t = _dpBlockText(box);
+                    if (t) s.texts.push({ label, text: t });
+                }
+                return;
+            }
+            if (release) {
+                const editions = [];
+                box.querySelectorAll('.panel-group').forEach((pg) => {
+                    _slSongPanels(pg).forEach(e => editions.push(e));
+                    pg.remove();
+                });
+                s.releases.push({ name: label, editions });
+            }
+            let text = _dpBlockText(box).split('\n')
+                .filter(l => !/^SECTION NOT YET COMPLETED$/i.test(l)).join('\n').replace(/\n{3,}/g, '\n\n').trim();
+            if (label === 'Request') {
+                s.requestText = text;
+                return;
+            }
+            if (!text) return;
+            s.texts.push({ label, text, release: !!release });
+            if (label === 'Info') {
+                const ps = Array.from(box.querySelectorAll('p'));
+                // A live version's show (vzell's answer 5: best effort, from
+                // the Info sentence; nothing when it reads otherwise) …
+                const perf = ps.map(p => _dpText(p.textContent)).find(t => /\bperformance of\b/i.test(t)) || '';
+                const sm = perf.match(/\bperformance of .+? at (.+?) in (.+?)(?:,\s*during (?:the )?(.+?))?\.(?=\s|$)/);
+                if (sm) s.show = { venue: sm[1], place: sm[2], tour: sm[3] || '', sentence: perf };
+                // … and the release it came out on.
+                ps.some((p) => {
+                    const pem = Array.from(p.querySelectorAll('em')).find(e => _slSongLiveSentence(p.textContent, _dpText(e.textContent)));
+                    if (pem) s.released = _slSongLiveSentence(p.textContent, _dpText(pem.textContent));
+                    return !!pem;
+                });
+            }
+            if (/^studio recording$/i.test(label)) {
+                text = text.replace(/\s+/g, ' ');
+                const rm = text.match(/\bwas recorded on (.+?) at (.+?)\.(?=\s|$)/);
+                const tm = text.match(/\b(\w+) studio takes? of .+? (?:is|are) in circulation\b/i);
+                const n = tm ? (/^\d+$/.test(tm[1]) ? tm[1] : String(_SL_NUMBER_WORDS.indexOf(tm[1].toLowerCase()))) : '';
+                s.studio = { recorded: rm ? rm[1] : '', studio: rm ? rm[2] : '', takes: n === '-1' ? '' : n };
+            }
+        });
+        s.self = s.versions.find(r => r.self) || null;
+        pd.querySelectorAll('img').forEach((img) => {
+            const wrap = img.closest('.item-img-wrap, .blog-post');
+            if (!wrap || img.closest('.navbar, footer')) return;
+            const ov = wrap.querySelector('.item-img-overlay a[href]');
+            const desc = img.closest('.col-md-2') && img.closest('.col-md-2').querySelector('.work-desc');
+            s.pictures.push({
+                thumb: abs(img.getAttribute('src')),
+                full: abs(ov ? ov.getAttribute('href') : img.getAttribute('src')),
+                caption: _dpText(desc ? desc.textContent : (img.getAttribute('alt') || img.getAttribute('title') || '')),
+            });
+        });
+        return s;
+    }
+
+    /**
+     * Counts a song's versions by type, in the lyrics index's words:
+     * "Album 1, Unofficial studio 3, Live 57".
+     *
+     * @param {Array<object>} versions  `_slSongRead().versions`.
+     * @returns {string}
+     */
+    function _slSongVersionTypes(versions) {
+        const by = new Map();
+        versions.forEach((r) => {
+            const t = r.v.type || 'No version';
+            by.set(t, (by.get(t) || 0) + 1);
+        });
+        return Array.from(by, ([t, n]) => `${t} ${n}`).join(', ');
+    }
+
+    /**
+     * The sub-tables of one edition of a song page's release (a panel of
+     * `_slSongPanels()`): named "<release> · <edition>", and, when the
+     * edition has several media, " · Disc N" / " · Record N". Vinyl sides
+     * are paired into records (Side 1 and 2 → Record 1: MusicBrainz's
+     * medium, the item pages' rule), a track's position then being its
+     * side's letter and number ("B2"); the site's "Disc 5:" among "Side
+     * 1:" to "Side 8:" (Hammersmith Odeon, London '75) counts as side 5.
+     * A track whose song link is this page's own (`slug`) is `self`.
+     *
+     * @param {string} release  The release's name.
+     * @param {object} ed       One edition of `_slSongPanels()`.
+     * @param {string} slug     This page's slug (`_slSongSlug()`), lower case.
+     * @returns {Array<{name: string, tracks: Array<{pos: string, title: string, href: string, self: boolean}>}>}
+     */
+    function _slSongEditionGroups(release, ed, slug) {
+        const base = [release, ed.edition].filter(Boolean).join(' · ') || ed.name;
+        const mark = t => Object.assign({}, t, { self: !!slug && _slSongHrefSlug(t.href) === slug });
+        const sideNo = (m) => {
+            const x = /^(?:side|disc)\s*(\d+)$/i.exec(m.name);
+            return x ? Number(x[1]) : 0;
+        };
+        if (ed.media.some(m => /^side\b/i.test(m.name)) && ed.media.every(m => sideNo(m) > 0)) {
+            const groups = [];
+            ed.media.forEach((m) => {
+                const n = sideNo(m);
+                const rec = Math.ceil(n / 2);
+                let g = groups.find(x => x.rec === rec);
+                if (!g) {
+                    g = { rec, name: `${base} · Record ${rec}`, tracks: [] };
+                    groups.push(g);
+                }
+                m.tracks.forEach((t, i) => g.tracks.push(mark(Object.assign({}, t, { pos: String.fromCharCode(64 + n) + (i + 1) }))));
+            });
+            if (groups.length === 1) groups[0].name = base;
+            return groups.map(g => ({ name: g.name, tracks: g.tracks }));
+        }
+        return ed.media.map((m, i) => ({
+            name: ed.media.length > 1 ? `${base} · ${m.name || `Disc ${i + 1}`}` : base,
+            tracks: m.tracks.map(mark),
+        }));
+    }
+
+    /**
+     * The facts of `_slSongRead()` that a song page's card and window show,
+     * added to its record: Type, Date, Show and Artist of the version (the
+     * lyrics index's reading of it), the song number (logged in), a live
+     * version's venue, place, tour and release, then — after "Versions on
+     * the site" — the versions by type, the releases, live releases,
+     * covers and movies counted; and, for a live version, the tracklist of
+     * the first release edition that has it, the version marked (`self`).
+     *
+     * @param {object} song  `_slSongRead()`.
+     * @param {object} data  The record (`_dpEmpty()` shape).
+     * @returns {void}
+     */
+    function _dpSlSongFacts(song, data) {
+        const v = song.v;
+        const lead = [['Type', v.type], ['Date', v.date], ['Show', v.show], ['Artist', v.artist],
+            ['Song number', song.loggedIn && song.self ? song.self.id : '']];
+        if (song.show) lead.push(['Venue', song.show.venue], ['Place', song.show.place], ['Tour', song.show.tour]);
+        const r = song.released;
+        if (r) lead.push(['Released on', `${r.release} (${[r.kind, r.year].filter(Boolean).join(', ')})`]);
+        data.fields.unshift(...lead.filter(([, x]) => x));
+        if (song.versions.length > 1) data.fields.push(['By type', _slSongVersionTypes(song.versions)]);
+        // "Born To Run + 5 others": the first release the page has a
+        // section for, and how many more it names (sections and rows).
+        const names = song.releases.map(x => x.name);
+        const more = names.length - 1 + song.others.length;
+        if (names.length) data.fields.push(['Releases', names[0] + (more > 0 ? ` + ${more} other${more === 1 ? '' : 's'}` : '')]);
+        else if (song.others.length) data.fields.push(['Releases', `${song.others.length} release${song.others.length === 1 ? '' : 's'}`]);
+        if (song.live.length) {
+            const years = song.live.map(x => (x.live.date || '').slice(0, 4)).filter(Boolean).sort();
+            data.fields.push(['Live releases', String(song.live.length) + (years.length ? ` (${years[0]}–${years[years.length - 1]})` : '')]);
+        }
+        if (song.covers.length) data.fields.push(['Covers', String(song.covers.length)]);
+        if (song.movies.length) data.fields.push(['Movies', String(song.movies.length)]);
+        // A live version's window adds its release's tracklist (the mockup's
+        // proposal); an album version's would push its lyrics down.
+        if (song.v.type !== 'Live') return;
+        for (const rel of song.releases) {
+            const groups = rel.editions.map(ed => _slSongEditionGroups(rel.name, ed, song.slug)).find(gs => gs.some(g => g.tracks.some(t => t.self)));
+            if (!groups) continue;
+            groups.forEach(g => g.tracks.forEach(t => data.tracks.push({ disc: g.name, pos: t.pos, title: t.title, from: '', self: t.self })));
+            break;
+        }
+    }
+
+    /**
      * Parses a springsteenlyrics.com song page (`lyrics.php?song=SLUG`, one
      * per version: the lyrics index's rows link to these).
      *
@@ -26558,11 +27375,14 @@
         const heads = Array.from(pd.querySelectorAll(':scope > h3.heading'));
         heads.forEach(h => {
             const box = doc.createElement('div');
-            for (let n = h.nextSibling; n && !(n.nodeType === Node.ELEMENT_NODE && n.matches('h3.heading')); n = n.nextSibling) {
+            // To the next heading, or the "Page last updated" line.
+            for (let n = h.nextSibling; n && !(n.nodeType === Node.ELEMENT_NODE && n.matches('h3.heading, h5')); n = n.nextSibling) {
                 // Spacers and embedded videos (a YouTube iframe in a .row) carry no text.
                 if (n.nodeType === Node.ELEMENT_NODE && (n.matches('div.divide10, iframe, script') || n.querySelector('iframe'))) continue;
                 box.appendChild(n.cloneNode(true));
             }
+            // Request's contact form and its e-mail script are no text.
+            box.querySelectorAll(_SL_SONG_DROP_SEL).forEach(n => n.remove());
             const label = _dpText(h.textContent);
             if (_SL_SONG_PRIVATE_RE.test(label)) return;
             const text = _dpBlockText(box).split('\n')
@@ -26577,6 +27397,8 @@
                 if (p) data.summary = _dpText(p.textContent);
             }
         });
+        const song = _slSongRead(doc, url);
+        if (song) _dpSlSongFacts(song, data);
         pd.querySelectorAll('img[src*="lyrics/images/"]').forEach(img => {
             const a = img.closest('.item-img-wrap') && img.closest('.item-img-wrap').querySelector('a[href]');
             data.images.push({
@@ -27982,7 +28804,9 @@
 
     /**
      * HTML of one ordered track list. A track with a `length` (the CD and
-     * vinyl bootleg pages write "(5:45.15)") shows it after the title.
+     * vinyl bootleg pages write "(5:45.15)") shows it after the title; a
+     * track marked `self` (a springsteenlyrics.com song page's own version)
+     * gets a ● after it.
      *
      * @param {Array<object>} tracks
      * @returns {string}
@@ -27990,6 +28814,8 @@
     function _dpTrackListHtml(tracks) {
         return '<ol class="mb-dp-tracks">' + tracks.map(t =>
             `<li><span class="mb-dp-pos">${_mbttEscape(t.pos || '·')}</span>${_mbttEscape(t.title)}` +
+            // A song page's own version in its release's tracklist (`_dpSlSongFacts()`).
+            (t.self ? ' <span class="mb-dp-self" title="This version">●</span>' : '') +
             (t.length ? ` <span class="mb-dp-len">${_mbttEscape(t.length)}</span>` : '') + '</li>').join('') + '</ol>';
     }
 
@@ -46482,12 +47308,13 @@
         // converts that page alone, with no request: `pageKeys: null`
         // switches the key list off, so the run is the numbered path's one
         // widget-less page, the live one (vzell, 2026-11-04: on a letter
-        // page the one button used to load all 32). `?song=` (a song page)
-        // and `cmd=songslistedbyrelease` are not this list.
+        // page the one button used to load all 32). `?song=` and `?item=N`
+        // (a song page: sl-song) and `cmd=songslistedbyrelease` are not this
+        // list.
         {
             type: 'sl-lyrics',
             host: 'springsteenlyrics.com',
-            match: (path, params) => path === '/lyrics.php' && !params.has('song') &&
+            match: (path, params) => path === '/lyrics.php' && !params.has('song') && !params.has('item') &&
                 (!params.has('cmd') || params.get('cmd') === 'intro' || params.get('cmd') === 'list'),
             buttons: [
                 {
@@ -46591,6 +47418,32 @@
                 }
             ],
             features: _slItemFeatures('brucelegs'),
+            tableMode: 'multi'
+        },
+        // A song's own page, one per version (2026-11-05; org/springsteenlyrics.org
+        // "Overwhole of the SL PTs and POHs", vzell's answers): the song's
+        // releases, live releases, covers, movies and versions as tables, and
+        // its lyrics, texts, facts and pictures above them
+        // (`_slSongHeadSpec()`). No request, as the item pages. "All
+        // versions" is the page's own list of versions as one table, with the
+        // lyrics index's columns (answer 1).
+        {
+            type: 'sl-song',
+            host: 'springsteenlyrics.com',
+            match: () => _slIsSongPage(),
+            buttons: [
+                {
+                    label: 'Show the song', shortLabel: 'Song',
+                    description: 'No request: the song\'s releases (a sub-table per edition), live releases, covers, movies and versions from this page, as tables; its lyrics, texts, facts and pictures above them.'
+                },
+                {
+                    label: 'Show all versions of this song', shortLabel: 'All versions',
+                    showIf: () => document.querySelectorAll('.project-detail span.monospaced a[href*="song="]').length > 0,
+                    description: 'No request: every version of this song the page lists, this one included, as one table with the lyrics index\'s columns.',
+                    features: { slItemView: 'versions' }
+                }
+            ],
+            features: _slSongFeatures(),
             tableMode: 'multi'
         },
 
@@ -57351,6 +58204,37 @@
     const _findingTintSetting = key => () => Lib.settings[key] !== false;
 
     /**
+     * Links that may be an old springsteenlyrics.com address
+     * (`_slCurrentAddress()` decides): the `sl-old-address` finding's row
+     * gate, one `querySelector` per row.
+     * @type {string}
+     */
+    const _SL_OLD_ADDRESS_SEL = 'a[href*="springsteenlyrics.com/lyrics/" i], a[href*="springsteenlyrics.com/collection/moreinfo" i]';
+
+    /**
+     * The old springsteenlyrics.com links of a cell, each with its current
+     * address (`_slCurrentAddress()`), in cell order. Reads the cell's own
+     * hrefs, so a detached master row answers as a live one.
+     *
+     * @param {HTMLTableCellElement} cell
+     * @returns {Array<{old: string, now: string}>}
+     */
+    function _findCellSlOldLinks(cell) {
+        const out = [];
+        cell.querySelectorAll(_SL_OLD_ADDRESS_SEL).forEach((a) => {
+            let u;
+            try {
+                u = new URL(a.getAttribute('href'), 'https://musicbrainz.org/');
+            } catch (_) {
+                return;
+            }
+            const now = _slCurrentAddress(u);
+            if (now) out.push({ old: u.href, now });
+        });
+        return out;
+    }
+
+    /**
      * Whether a cell holds a live-recording credit-date flag of one kind
      * (`_appendLiveDateFlag()`'s real-text ⚠️/❌ span).
      *
@@ -57924,6 +58808,22 @@
             test: cell => _findCellRelSiteDupes(cell).length > 0,
             detail: cell => _relSiteDupesDetail(cell),
             tint: _findingTintSetting('sa_findings_tint_rel_multi_discogs'),
+        },
+        // An Annotation cell (report/AnnotationsWorks and the other
+        // annotation reports, an annotation search) linking springsteenlyrics.com
+        // at an address the site no longer serves (org/springsteenlyrics.org
+        // "Overwhole of the SL PTs and POHs", vzell's answer 6, 2026-11-05):
+        // about 450 links in a sample of 2026-11-04, nearly all in work
+        // annotations. The link's preview already reads the current page.
+        {
+            id: 'sl-old-address', level: 'warn', glyph: '🔗', scope: 'cell',
+            label: 'Old springsteenlyrics.com address in the annotation',
+            tip: 'The annotation links springsteenlyrics.com at an address the site no longer serves (it answers 404): a song page /lyrics/<letter>/<song>.php, now lyrics.php?song=<song>, or an item /collection/moreinfo.php?item=N, now collection.php?item=N. Edit the annotation to the current address; the link\'s preview already reads the current page. The cell\'s tooltip names each link\'s current address.',
+            cols: name => name === 'Annotation',
+            rowGate: row => !!row.querySelector(_SL_OLD_ADDRESS_SEL),
+            test: cell => _findCellSlOldLinks(cell).length > 0,
+            detail: cell => _findCellSlOldLinks(cell).map(l => `${l.old} → ${l.now}`).join('; '),
+            tint: _findingTintSetting('sa_findings_tint_sl_old_address'),
         },
         // The Brucebase year table's MB-Event column (org/TODO.org "Some
         // enhancements" g, 2026-10-24): late data, as rel-multi-site — the
@@ -75157,6 +76057,29 @@
     }
 
     /**
+     * The current address of an OLD springsteenlyrics.com link, '' for any
+     * other URL. MusicBrainz carries two old forms, nearly all in work
+     * annotations, and both answer 404 today (census of 2026-11-04,
+     * `scripts/probe-mb-sl-urls.py`: 431 and 22 links in a sample of about
+     * 500 annotations): a song page `/lyrics/<l>/<slug>.php`, now
+     * `lyrics.php?song=<slug>` (angelina: 200, "ANGELINA"), and an item's
+     * page `/collection/moreinfo.php?item=N`, now `collection.php?item=N`
+     * (5027: 200). vzell's answer 6 (2026-11-05): read them as their
+     * current address, and say so in the card.
+     *
+     * @param {URL} u
+     * @returns {string}
+     */
+    function _slCurrentAddress(u) {
+        if (!/(?:^|\.)springsteenlyrics\.com$/i.test(u.hostname)) return '';
+        const m = u.pathname.match(/^\/lyrics\/[^/]+\/([^/]+)\.php$/i);
+        if (m) return `https://${u.host}/lyrics.php?song=${m[1]}`;
+        const item = u.searchParams.get('item') || '';
+        if (/^\/collection\/moreinfo\.php$/i.test(u.pathname) && /^\d+$/.test(item)) return `https://${u.host}/collection.php?item=${item}`;
+        return '';
+    }
+
+    /**
      * A detail page of one of the four sites, by that site's own test, or a
      * page the site previews under a setting of its own while that setting
      * is on (`ownLinks`: Brucebase's show, venue and people pages, under
@@ -75176,6 +76099,8 @@
         if (!key) return false;
         const site = _DP_SITES[key];
         if (site.isDetailUrl(u)) return true;
+        // springsteenlyrics.com's old addresses, read as their current one.
+        if (_slCurrentAddress(u)) return true;
         const own = site.ownLinks;
         return !!own && Lib.settings[own.setting] !== false && own.test(u);
     }
@@ -75184,7 +76109,8 @@
      * The Springsteen sites' reader (U4): the page itself through `_extGet()`
      * (decoded with the site's charset when the page names none:
      * jungleland.it), `_extRecord()` for its status, then the site's own
-     * parser on it. A page the parser finds nothing in (an error page) keeps
+     * parser on it. An old springsteenlyrics.com address is read at its
+     * current one, the record's first field saying so ("Old address"). A page the parser finds nothing in (an error page) keeps
      * the generic record; the HTML is remembered for the Live page.
      *
      * @param {object} t
@@ -75192,15 +76118,23 @@
      * @returns {Promise<{ok?: boolean, data?: Object, detail?: string, skipped?: boolean}>}
      */
     async function _extDpLoad(t, wanted) {
-        const site = _DP_SITES[_extDpSiteKey(new URL(t.url))];
-        const res = await _extGet(t.url, { wanted, fetchOpts: { charset: site.charset } });
+        const u = new URL(t.url);
+        const site = _DP_SITES[_extDpSiteKey(u)];
+        // An old springsteenlyrics.com address is read at its current one
+        // (`_slCurrentAddress()`); the card names both.
+        const now = _slCurrentAddress(u);
+        const url = now || t.url;
+        const res = await _extGet(url, { wanted, fetchOpts: { charset: site.charset } });
         if (res.skipped) return { skipped: true };
-        const rec = _extRecord(t.url, res);
+        const rec = _extRecord(url, res);
         if (!rec) return { ok: false, detail: _extFailText(res) };
         if (rec.state === 'ok' && res.body) {
-            _dpRememberRaw(t.url, res.body);
+            _dpRememberRaw(url, res.body);
             const data = site.parse(new DOMParser().parseFromString(res.body, 'text/html'), rec.finalUrl);
-            if (data && (data.title || data.fields.length || data.tracks.length || data.images.length)) rec.dp = data;
+            if (data && (data.title || data.fields.length || data.tracks.length || data.images.length)) {
+                if (now) data.fields.unshift(['Old address', `the site now serves this page at ${now.replace(/^https:\/\/[^/]+\//, '')}`]);
+                rec.dp = data;
+            }
         }
         return { ok: true, data: rec };
     }
@@ -77265,6 +78199,8 @@
         {
             id: 'springsteen', kind: 'Detail page', test: _extDpTest, askHost: (u) => u.hostname.toLowerCase(), load: _extDpLoad,
             noLive: false, liveFor: (u) => _extDpLive(_DP_SITES[_extDpSiteKey(u)]), version: _EXT_IDB_VERSION * 100 + _DP_PARSER_VERSION,
+            // An old springsteenlyrics.com address: the Live page frames the current one.
+            liveUrlFor: (u) => _slCurrentAddress(u),
         },
         {
             // setlist.fm through its API with the user's key (branch B, mockup 4).
@@ -115329,8 +116265,11 @@ a { color: #1565c0; }`;
                         // table's first column ("Companies, etc." → "Companies," /
                         // "etc." under no header: vzell's debug/2columns-missing.html).
                         // 'dg-user-list' (2026-10-29) shares dg-user's lists.
+                        // 'sl-song' (2026-11-05): a song's editions, releases,
+                        // live releases and versions differ too (Date only in
+                        // the last two).
                         if (pageType === 'tag-value' || pageType === 'user-tag-value' || pageType === 'user-ratings' || pageType === 'instrument-list' || pageType === 'artist-credit' || pageType === 'event-overview' || _isRelTablesRun() ||
-                            pageType === 'dg-history' || pageType === 'dg-user' || pageType === 'dg-user-list') {
+                            pageType === 'dg-history' || pageType === 'dg-user' || pageType === 'dg-user-list' || pageType === 'sl-song') {
                             // Rebuild the active extractors/integer-columns/erasers from this
                             // group's own entity-specific features (entityFeatures map, if any),
                             // merged with the base features (listToTable, removeSelector, etc.) —

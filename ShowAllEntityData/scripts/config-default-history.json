@@ -2,8 +2,8 @@
   "_meta": {
     "generated_by": "scripts/dump-default-history.py",
     "source": "ShowAllEntityData/ShowAllEntityData.user.js",
-    "head": "3b8f05910ece56637507d07da493fc8c37918d0e",
-    "revisions_walked": 1157
+    "head": "347a4cbea28ce39b0e3ab43d65fd15d75972f4d5",
+    "revisions_walked": 1165
   },
   "changes": [
     {
@@ -1121,6 +1121,7 @@
     "sa_dg_mb_column": true,
     "sa_dg_mb_auto_lookup": true,
     "sa_dg_tip_images": true,
+    "sa_dg_master_versions_count": true,
     "sa_enable_internetarchive": true,
     "sa_ia_tip_images": true,
     "sa_ia_play_in_place": true,
