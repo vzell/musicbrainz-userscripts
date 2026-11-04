@@ -179,6 +179,94 @@ Env: 2026-11-04T03:46+01:00 · vzell-lap · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1
 - *Left out*: the MusicBrainz column on the track tables (a recording link needs the release's MusicBrainz match first).
 - Specs: =tests/fixtures/discogs-release-tracks.spec.js= (6), =discogs-mb-column.spec.js= (+1), =discogs-pages.spec.js= retargeted.
 - Mutations: =scripts/mutations/dg-release-tracks.json= (15, all caught); =ia-details.json= repointed (13, all caught).
+- After vzell's live tests (2026-11-04, all fixed, then "tested live, OK"): identifiers' descriptions moved to the
+  value (the label column had squeezed the values to 18 px); the head's values linked as on Discogs' page and
+  previewing; Notes' markup as links; cards placed left (Release, External links, Genres and styles, Contributors,
+  Community last) / right (Identifiers); Community = Discogs' Statistics box in full, sales figures read from the page
+  (=_dgLiveStats()=). Mutations now 27, all caught. Committed =89e6574b=.
+
+** pickup on NB-3641 (written 2026-11-04 on vzell-lap)
+
+Env: 2026-11-04T11:54+01:00 · vzell-lap · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) · n/a (state of the repo)
+
+*** where things stand
+
+- =main= is at =2967a04a= (=@version 9.99.1533+2026-11-03=), untouched by this work.
+- One stack of three branches, each pushed, each containing the one below it:
+
+  | branch                     | head       | holds                                                                 |
+  |----------------------------+------------+-----------------------------------------------------------------------|
+  | =fix/non-mb-coverage-gaps= | =6ad4efaf= | G1–G8 of NON-MB-COVERAGE (WIP.1), setlist.fm Stop fix (WIP.2), Brucebase previews on every page (WIP.4) |
+  | =feat/ia-details=          | =8201b1c4= | + archive.org item page =ia-details= (WIP.3) and its release-tracks head (WIP.5) |
+  | =feat/dg-release=          | =6aaef806= | + Discogs release Tracks view (WIP.6) and vzell's "add new todo"      |
+
+- =feat/dg-release= therefore holds everything (14 commits ahead of =main=). =ShowAllEntityData_CHANGELOG.wip.json=
+  has WIP.1 … WIP.6; no =@version= bump on the branches (main only).
+- vzell tested all of it live: G-fixes, setlist.fm Stop, Brucebase every page, the archive.org item page (both heads),
+  the Discogs Tracks view and its head ("tested live, OK").
+- Not yet run: =test:full= on the stack (only targeted specs ran on vzell-lap, as agreed: the full suite once, at the
+  end of a stack).
+
+*** on NB-3641, in this order
+
+1. Get the stack:
+   #+begin_src sh
+   cd ShowAllEntityData
+   git fetch origin
+   git checkout feat/dg-release && git pull --ff-only   # expect 6aaef806 or later
+   npm install                                          # no dependency change on the stack, but cheap
+   #+end_src
+2. Full suite on =feat/dg-release=:
+   #+begin_src sh
+   python3 scripts/run-test-full.py --log <scratchpad>/test-full.log
+   #+end_src
+   - 2625 tests now (=npx playwright test --list=, fixtures + mobile, 2026-11-04). NB-3641's last full run
+     (=tests/MEASUREMENTS.org=, 2026-10-15) was 1774 tests in 657 s; scaled by count, expect *about 16 min*. Its ETA
+     baseline is =~/.cache/sa-test-full/last-NB-3641.json= there.
+   - Known flakes, not this stack's: =discogs-mb-column.spec.js= "in a MusicBrainz window, a card showing through a
+     repaint still hides…" (failed once at 46 s under load on vzell-lap, passed 3/3 alone); =popup-ext.spec.js:1025=
+     (gate timing). Rerun a failure alone with =--repeat-each 3= before blaming the code.
+   - Known pre-existing failure: =scripts/verify-claudemd-anchors.sh= (duplicate anchors =const Lib == and
+     =function runFilter=), not part of the suite.
+3. If anything else fails: diagnose on the branch; a fix goes on =feat/dg-release= (follow-ups on the open branch).
+4. Merge — *only after vzell says so*: =/merge-push-remove= on =feat/dg-release=. That one merge brings all three
+   branches. The fold maps WIP.1 … WIP.6 to six new versions after 9.99.1533; read its dry run first. Afterwards
+   delete the two lower branches too, which the skill does not know about:
+   #+begin_src sh
+   git branch -d fix/non-mb-coverage-gaps feat/ia-details
+   git push origin --delete fix/non-mb-coverage-gaps feat/ia-details
+   #+end_src
+   Merge-time reads (CLAUDE.md): =PERFORMANCE.org= for prose this made false (nothing on the MusicBrainz hot path
+   changed; the one shared change is =_sbInlineWireFolds()=, extracted unchanged from the Sidebar section),
+   =audit-docs.py=, HELP against what shipped, =check-publish-ready.py= before a republish.
+
+*** optional re-checks on NB-3641
+
+- Mutation lists of this stack (each edits the live userscript for a while, restores and hash-verifies it):
+  =scripts/mutations/non-mb-coverage-gaps.json= (18), =ia-details.json= (13), =bb-every-page.json= (2),
+  =dg-release-tracks.json= (27).
+- =python3 scripts/build-coverage-report.py --check=, =python3 scripts/lint-summary.py --check=,
+  =python3 scripts/audit-docs.py=, =bash scripts/verify-doc-crossrefs.sh=: all green on vzell-lap at =89e6574b=.
+- The Discogs splitter on more releases: =python3 scripts/probe-dg-release-shapes.py DIR [N] [--multi]=, then
+  =node scripts/check-dg-release-media.js DIR [--roles]= (prints any credit range it cannot place).
+
+*** next work (plan step 4, after the merge)
+
+- setlist.fm =sfm-setlist= on its own branch from =main= (Q5). Answer 2: covers and guests as setlist.fm links only.
+- *Needs vzell first*: about ten setlist pages saved from the browser into =debug/= (Claude Code cannot fetch
+  setlist.fm): segues, several encores, a festival, a tape intro, a guest-heavy show, one with covers, one with an
+  unnamed set break. Existing: =debug/setlistfm-setlist.html=, =setlistfm-2026-05-30.html=,
+  =setlistfm-venue-set-times.html=.
+- Model: the shared head (=_fdHeadInsertSections()=, a spec function per site, as =_iaDetailsHeadSpec()= and
+  =_dgReleaseHeadSpec()=).
+
+*** left open on the built ones
+
+- archive.org: the mockup's "Song (Brucebase)" column; the head after a disk load (=_iaDetailsRec= is not saved).
+- Discogs: the MusicBrainz column on the track tables (needs the release's MusicBrainz match first); the head after a
+  disk load (=_dgRelRec= likewise); Contributors/Community on a release whose page has no Statistics box only show the
+  API's figures (by design).
+- The new TODO below (murdos' MusicBrainz glyphs for every entity kind).
 
 
 * DONE summary - IA
