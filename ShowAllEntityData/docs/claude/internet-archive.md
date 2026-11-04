@@ -113,14 +113,16 @@ on `_isIaHost`, so no other host changes:
   or `#mb-ia-root`, and a shadow-DOM link anywhere but under `nav`, `header`,
   `footer`, `<ia-topnav>` or `<ia-footer>`, walking up through each shadow
   host. Result links are relative (`/details/<id>`); `_extTarget()` reads
-  them against the page on archive.org. **Only a shadow-DOM link with text
-  of its own** (2026-11-04, vzell in the browser: our card came on top of
-  archive.org's own hover card). The probe (`scripts/probe-ia-shadow-links.js`
-  v1, three views): in the Tile view the whole tile is one link whose
-  picture and title sit in further shadow roots (no own text); the List
-  views have a text-less picture link and a separate title link per
-  result. So the List views' titles get our card, and pictures and tiles
-  keep archive.org's.
+  them against the page on archive.org. **Every result link gets our card,
+  next to archive.org's own hover card** (vzell, 2026-11-04: "Always ours
+  too"; ours adds the tracks and Space's window). The probe
+  (`scripts/probe-ia-shadow-links.js` v2, three views,
+  debug/ia-{t,l,lx}-debug.log): the Tile view's whole tile is one link
+  whose picture and title sit in further shadow roots; in the List view
+  every item link (312) has no text of its own; only the Compact list's
+  title links carry text. A rule of the same morning that skipped
+  text-less links (it left the List view without cards and the Compact
+  list's double cards in place) was taken back.
 
 The fixture cannot hold shadow DOM (a saved page loses it), so
 tests/fixtures/ia-search.spec.js builds it. The real page's link shapes —

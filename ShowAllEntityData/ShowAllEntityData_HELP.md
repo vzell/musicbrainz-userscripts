@@ -3546,6 +3546,20 @@ that button by itself.
 </details>
 
 <details>
+<summary>Brucebase: link previews on every page</summary>
+
+On **every** Brucebase page — a show, a venue, a person, a song, not only the
+lists below — the links have their cards and windows: rest the pointer on a
+song, a show, a venue or a person for Brucebase's own card, on a link to
+another site (Wikipedia, YouTube, archive.org, …) for that site's; **Space**
+opens the window. Nothing else changes on those pages: no buttons, no
+toolbar. It follows the same switches: *Enable on the Brucebase song list*,
+*Preview song pages on the Brucebase song list*, *Preview event, venue and
+people pages on hover* and *Preview external links on hover*.
+
+</details>
+
+<details>
 <summary>Brucebase song list</summary>
 
 Not a MusicBrainz page either, and **on unless you switch it off**: ⚙️ Settings
@@ -4031,9 +4045,9 @@ opens them all in the viewer. A link to one track of a show opens the show's
 window with that track marked. A video item shows its picture, thumbnails and
 files. On an archive.org search page a collection's link has a card and a
 window too, and so has archive.org's own result list before you press
-**Items**: in its List and Compact list views, rest on an item's title (its
-menu bar and header excepted). A picture, and a tile of the Tile view, keep
-archive.org's own hover card.
+**Items**: rest on an item's picture or title in any view (its menu bar and
+header excepted). archive.org shows its own hover card there too; ours adds
+the item's tracks, and Space opens its window.
 
 With *Play archive.org tracks and videos in the window* on (the default),
 each song has a **▶**, and a video a "Play here" tile: a click plays it in

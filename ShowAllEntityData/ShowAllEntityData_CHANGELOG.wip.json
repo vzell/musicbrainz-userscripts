@@ -1,5 +1,17 @@
 [
   {
+    "version": "WIP.4",
+    "date": "2026-11-04",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "Brucebase: link previews on every page of the wiki, not only on its song list, Relations, Recent changes, the year pages and the start page. On a show, venue, person or song page, rest the pointer on a link for Brucebase's own card (or another site's, Wikipedia for example), and Space opens the window. Nothing else changes on those pages: no buttons, no toolbar."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.3",
     "date": "2026-11-03",
     "sections": [
@@ -30,7 +42,7 @@
       {
         "label": "✨ Improve",
         "items": [
-          "Link previews on other sites, before you press a button: on a Discogs search page a result's title has its card; on setlist.fm the site's own list does too (a setlist's Tour link, the venue box's website and Wikipedia links; a setlist's own link with the setlist.fm key), but not the Upcoming box's ticket links; on an archive.org search page the site's own result list does (an item's title in the List and Compact list views; not its menu bar, and a picture or a Tile view tile keeps archive.org's own hover card), although archive.org builds it in a way the previews could not reach before. On Discogs' older pages (submissions, history, images, user, ratings, sell) the MusicBrainz icons of murdos' importer get MusicBrainz's card there too.",
+          "Link previews on other sites, before you press a button: on a Discogs search page a result's title has its card; on setlist.fm the site's own list does too (a setlist's Tour link, the venue box's website and Wikipedia links; a setlist's own link with the setlist.fm key), but not the Upcoming box's ticket links; on an archive.org search page the site's own result list does (an item's picture or title in any view, next to archive.org's own hover card; not its menu bar), although archive.org builds it in a way the previews could not reach before. On Discogs' older pages (submissions, history, images, user, ratings, sell) the MusicBrainz icons of murdos' importer get MusicBrainz's card there too.",
           "Inside a preview window, more links open in the window instead of a new tab: a MusicBrainz link on springsteenlyrics.com, jungleland.it, brucespringsteen.it, Brucebase and archive.org now opens MusicBrainz's own window, as on discogs.com and setlist.fm (its Live page and editing history are read with your musicbrainz.org login, as there). A Brucebase gig, venue or person page now shows Brucebase's own card and window wherever you are, on MusicBrainz too (under \"Preview event, venue and people pages on hover\"), so a Brucebase show window's own gig page opens in the window. On Brucebase itself, a show link of the form brucebase.wikidot.com/1985#130185 in a window opens that show in the window.",
           "A Discogs window opens a clicked link in the window even before its record has loaded; until now such a click opened a new tab."
         ]
