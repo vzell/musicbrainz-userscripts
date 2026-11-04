@@ -421,3 +421,19 @@ add 2-column display in the "COMMUNITY" card of the Discogs release PT, currentl
 other but there is enough space to list them inside the card in two columns 5, entries each
 
 
+* TODO SFM IPs
+
+next setlist.fm sfm-setlist:
+
+SFM IPs for Bruce Springsteen events under @debug
+
+#+begin_example
+sfm-2026-06-04.html
+sfm-2026-06-13.html
+sfm-2026-07-24.html
+sfm-2026-08-01.html
+sfm-2026-10-03.html
+sfm-lohadt.html
+sfm-solo-plus-jam.html
+#+end_example
+
