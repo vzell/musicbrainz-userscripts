@@ -4175,8 +4175,8 @@ setlist.fm for anything (the page already holds the whole list):
 - one table per set, named as setlist.fm names it ("The River", "Solo
   Acoustic"), else **Set 1**, **Set 2** …; an encore is **Encore** (**Encore
   1**, **Encore 2** … when there are more);
-- **#** (numbered on through the sets, as on setlist.fm; a tape has none),
-  **Song** (its statistics on setlist.fm), **Cover of** (the covered artist;
+- the columns **#** (numbered on through the sets, as on setlist.fm; a tape
+  has none), **Song** (its statistics on setlist.fm), **Cover of** (the covered artist;
   for a tape, the song's artist), **With** (each guest on a line of their
   own), **Tape** ("from tape"), **Info** (setlist.fm's notes: "acoustic,
   Bruce solo", "first time since 2019"), and **Play**: a click finds the song

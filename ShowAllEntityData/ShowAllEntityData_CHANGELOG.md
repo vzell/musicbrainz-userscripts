@@ -4,9 +4,67 @@ Every version, newest first, with the technical details behind each change. For 
 
 **Months:** [November 2026](ShowAllEntityData_CHANGELOG/2026-11.md) · [October 2026](ShowAllEntityData_CHANGELOG/2026-10.md) · [September 2026](ShowAllEntityData_CHANGELOG/2026-09.md) · [August 2026](ShowAllEntityData_CHANGELOG/2026-08.md) · [July 2026](ShowAllEntityData_CHANGELOG/2026-07.md) · [June 2026](ShowAllEntityData_CHANGELOG/2026-06.md) · [May 2026](ShowAllEntityData_CHANGELOG/2026-05.md) · [April 2026](ShowAllEntityData_CHANGELOG/2026-04.md) · [March 2026 (1 of 2)](ShowAllEntityData_CHANGELOG/2026-03-1.md) · [March 2026 (2 of 2)](ShowAllEntityData_CHANGELOG/2026-03-2.md) · [February 2026](ShowAllEntityData_CHANGELOG/2026-02.md) · [January 2026](ShowAllEntityData_CHANGELOG/2026-01.md)
 
-This page shows the newest 100 of 1710 versions; the month pages hold all of them.
+This page shows the newest 100 of 1718 versions; the month pages hold all of them.
 
 ---
+
+## 9.99.1547 — 2026-11-04
+
+**🚀 Feature**
+
+- setlist.fm: a link to a festival or one of its editions has a card and a window, without the setlist.fm API key, wherever such links appear (setlist.fm's own festival pages before you press a button, the tables, the top of an edition's page, MusicBrainz). An edition's window lists all its setlists by day, with a chip per stage, its stages and its most attended setlists; a festival's window lists its editions and its Artist charts.
+
+
+## 9.99.1546 — 2026-11-04
+
+**🚀 Feature**
+
+- setlist.fm: a festival edition's page (setlist.fm/festival/2025/…) gets a button, Setlists: every setlist of the festival from the page itself, one table per day, with Time, Artist (its setlist), Stage and Attendees. Above the tables: the dates and venue, and Details with the festival's facts (setlists, stages, attendances), its stages with their number of setlists, and the ten most attended setlists.
+- setlist.fm: a festival's page (setlist.fm/festivals/…) gets a button, Editions: every edition as one table (Year, Edition, Stages, Venues, Start, End), with the festival's facts and its Artist charts above.
+
+
+## 9.99.1545 — 2026-11-04
+
+**🐛 Fix**
+
+- setlist.fm: on a search page (an artist's search, a search by words), the setlists' links had no hover card or window before you pressed the button: setlist.fm lays a search page out differently from a venue's or an artist's list, and the cards were outside the part of the page the previews looked at. On a setlist's own page, the headline's artist and venue, its Tour line and the covers and guests in the song list now preview too.
+
+
+## 9.99.1544 — 2026-11-04
+
+**🚀 Feature**
+
+- setlist.fm: a search by words (setlist.fm/search?query=…, such as "Bruce Springsteen", or "artist:(Bruce Springsteen) tour:(…)" as the Tour links open) gets the Setlists button too. Its table has both an Artist and a Venue column, as such a search can find other artists' setlists; its section is named after the query. These searches had no button before.
+
+
+## 9.99.1543 — 2026-11-04
+
+**🚀 Feature**
+
+- setlist.fm: a setlist's own page (setlist.fm/setlist/…) gets a button, Setlist, that lays the setlist out like a MusicBrainz release page, without asking setlist.fm for anything (the page already holds the whole list). One table per set, named as setlist.fm names it ("The River", "Solo Acoustic"), else Set 1, Set 2 …, and Encore. Columns: \# (numbered on through the sets, a tape has none), Song (its statistics on setlist.fm), Cover of, With (each guest on a line), Tape, Info (setlist.fm's notes such as "first time since 2019") and Play, which finds the song on YouTube and plays it in place. Above the tables: "\~ Setlist by … (date: venue)", setlist.fm's Note, and Details: Show (date, artist, venue, tour, how many setlist.fm users were there), Set times, Setlist (songs, sets, encores, covers, tapes), and on the right Guests and Covered artists, the one on the most songs first ("Tom Morello ×2"). A setlist without songs yet has no button.
+
+
+## 9.99.1542 — 2026-11-04
+
+**🐛 Fix**
+
+- Discogs Tracks view (a release's and a master's): track positions with a letter after the same number ("1a", "1b", …, a medley's parts) stay one table. Each part used to start a new disc: "The Very Best Of Stars On 45" came out as 147 tables of one row; now it is one table of 159 rows with a Section per medley.
+
+
+## 9.99.1541 — 2026-11-04
+
+**✨ Improve**
+
+- Discogs release page, Tracks: the Community card shows its rows in two columns: Have, Want, Avg rating, Ratings and Data quality on the left, Last sold, Low, Median, High and For sale on the right. When the card is narrow it is one column again. The counts have thousands separators, as on Discogs' own box.
+
+
+## 9.99.1540 — 2026-11-04
+
+**🚀 Feature**
+
+- Discogs master page: a new first button, Tracks, shows the master the way the release page's Tracks button shows a release. There is one table per disc or record (named by its positions, or by Discogs' heading when there is one per disc), the credits as columns (Instruments, Vocals, Producer, Engineer, Mixed by, Arranged by, Other credits), and the master's videos in a table under the tracks, with Play. Above the tables: "\~ Master release by … (year)", Notes, Details and Images. Details has on the left Master release (year, the main release ★, the newest release, the number of versions), External links, Genres and styles and Community (Have, Want, ratings and data quality; copies for sale, prices and formats, read from Discogs' own Statistics and For Sale boxes on the page). On the right is Credits: one line per person with their roles and the tracks each is on ("Guitar A1–B2, B4 · Harmonica A1"), the people on the most tracks first. The versions table is the second button, Versions, as before, now under one "Versions" sub-table heading.
+- New setting: ⚙️ Settings → 💿 Discogs → "Master page: the number of versions in the Tracks view" (on). The count costs one request more, the master's first page of versions; off, Tracks asks only for the master.
+
 
 ## 9.99.1539 — 2026-11-04
 
@@ -847,66 +905,6 @@ This page shows the newest 100 of 1710 versions; the month pages hold all of the
 
 - The 🖼 images gallery: dragging it by its title bar no longer makes it grow to its whole list (on a Discogs master with many versions it reached past the bottom of the screen, its resize corner out of reach). Dragged or reopened, it now always stays inside the browser window.
 - Pressing on the gallery's resize corner no longer scrolls the list inside it: the list's scrollbar used to reach into that corner.
-
-
-## 9.99.1447 — 2026-10-24
-
-**✨ Improve**
-
-- Brucebase: "Collabsable sidebar" (⚙️ Settings → 📚 Brucebase) is now on by default, so the wiki's side bar gets its show/hide handle and starts hidden while "Start with sidebar collapsed" is on. If you never changed it, it switches on with this version.
-
-
-## 9.99.1446 — 2026-10-24
-
-**🚀 Feature**
-
-- Brucebase year table: pointing at a found MB-Event glyph (with Ctrl held, unless every preview shows on a plain hover) shows the MusicBrainz event's card: its name, type, date, place and line-up. Under it, the card says how the event was found and whether its Brucebase link is this entry's. Space pins it into a window with the event's links.
-- Two new findings check that link. ❌ "MB-Event: the Brucebase link differs": the MusicBrainz event links another Brucebase entry, or this entry's anchor is linked from another event; the card shows both links. ⚠️ "MB-Event: no Brucebase link": the event has none. They appear in the ❌ / ⚠️ menus, filter the table and tint the cell as the other findings do, and fill in while the column looks the events up. Each has its own switch in ⚙️ Settings → ⚠️ Findings, plus one for the tint.
-
-
-## 9.99.1445 — 2026-10-24
-
-**✨ Improve**
-
-- Brucebase windows (the one Space opens on an event or a song): every section on the right — On stage, Setlist, Performances, Credits, … — folds with a click on its heading and stays folded for the next page you open.
-- The people on stage, the songs of a setlist, the other shows at the venue and a song's credits are now links. A click opens them in the same window (Backspace goes back), and pointing at one shows its card. People and venue pages preview too, on every Brucebase page.
-- The images on the left are grouped by kind (Setlist, Ticket, News, Memorabilia, …), photos last, and the viewer steps through them in that order.
-- A song's window lists its performances (folded at first), each show linked.
-
-
-## 9.99.1444 — 2026-10-24
-
-**🚀 Feature**
-
-- Brucebase year table: a new second column, MB-Event, shows a glyph for the entry's kind (gig, no gig, recording, rehearsal, interview, no Bruce) and links it to the entry's event on MusicBrainz once found. After the table renders, the column looks the events up by itself: first by the entry's Brucebase link (100 entries a request), then the year's events by date, then by name for the rest, about one request a second, shown in the background jobs popup with Stop. A "?" means MusicBrainz has no event (a click searches it), ⚠ that it did not answer (a click asks again). Answers are kept 90 days ("no event" 7 days), so a second visit asks nothing. New setting "MB-Event column: look the events up on MusicBrainz" (on by default); off, the ▶ MB button in the column's header runs the lookup.
-
-
-## 9.99.1443 — 2026-10-24
-
-**🚀 Feature**
-
-- Brucebase: on every Brucebase page, resting the pointer (with Ctrl held, unless every preview shows on a plain hover) on a link to an event's page — a gig, no gig, recording, rehearsal, interview or "no Bruce" page — shows a card of that page. This includes the year table's Event and Venue columns, Notes, Recent changes and the wiki's own lists. The card shows when it was scheduled, who was on stage, the setlist and the page's images. Space pins it into a window with the whole setlist, the other shows at that venue, the recording, the stories and the eyewitness accounts, and its "Live page" view shows the wiki's own page. ← → step through the rows. New setting "Preview event pages on hover" (on by default), independent of the song preview. The Media icons keep their image cards.
-
-
-## 9.99.1442 — 2026-10-24
-
-**🚀 Feature**
-
-- Brucebase year table: a new first column, Event, holds each entry's whole name, for example "1985-01-13 - Carolina Coliseum, Columbia, SC", linked to the entry's page. Venue, city and country are written the way their own columns write them, and pointing at the name shows it as the wiki writes it. Event is now the column that stays in view when you scroll sideways (Date was before), and it always shows the whole name on one line.
-
-
-## 9.99.1441 — 2026-10-24
-
-**✨ Improve**
-
-- The 🖼 gallery on Discogs, the Springsteen sites and Brucebase can now be moved by its title bar (by touch too) and resized from its lower-right corner, like the window Space opens. It reopens where you left it, at that size, kept inside the browser window. Until you have moved or resized it once, it still opens under its 🖼 button. Its position and size go with the config export, as the other panels' do.
-
-
-## 9.99.1440 — 2026-10-24
-
-**✨ Improve**
-
-- Brucebase year table: the Media column is now the second column, right after Date. Before, it came after Notes at the far right, so you had to scroll sideways to see an entry's icons.
 
 
 ---
